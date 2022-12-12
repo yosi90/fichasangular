@@ -1,0 +1,93 @@
+@import '../../assets/css/variables'
+
+mat-card
+    height: calc(100% - 56px) //33 navabar + 3 margin-top aside + 10 margin-bottom aside
+    
+    // background-color: $contrast
+
+    padding: 10px 8px
+    margin-top: 13px
+
+#menu
+    float: left
+
+    width: 250px
+
+    aside
+        position: relative
+        height: 100%
+
+        background-color: $contrast-dark
+
+        border-radius: 4px
+
+        mat-expansion-panel
+            border-bottom-left-radius: 0
+            border-bottom-right-radius: 0
+
+            padding: 0
+            margin-bottom: 6px
+
+            mat-expansion-panel-header button
+                justify-content: left
+                
+                position: absolute
+                right: 0
+                bottom: 0
+                left: 0
+                height: 100%
+                width: 100%
+
+                background-color: $primary
+                text-transform: uppercase
+                font-weight: 600
+
+            ::ng-deep .mat-expansion-panel-body 
+                padding: 0
+
+                button
+                    justify-content: right
+
+                    width: 100%
+                    
+                    border-radius: 0
+
+                button:nth-child(even):not([disabled]):not([mat-raised-button])
+                    background-color: #ccc
+
+                button:nth-child(odd):not([disabled]):not([mat-raised-button])
+                    background-color: lightgray
+
+        mat-expansion-panel:last-child
+            display: flex !important
+            flex-direction: column
+
+            position: absolute
+            right: 0
+            bottom: 0
+            left: 0
+
+            margin-bottom: 0
+        
+            .mat-expansion-panel-header
+                order: 2
+
+                z-index: 1
+
+            ::ng-deep .mat-expansion-panel-body button
+                justify-content: center
+
+#base
+    float: right
+
+    width: calc(100% - 265px)
+
+    ::ng-deep mat-tab-header
+        background-color: $contrast-dark
+
+        border-bottom: 4px solid $active
+
+    mat-tab-group
+        height: 100%
+
+        background-color: $contrast

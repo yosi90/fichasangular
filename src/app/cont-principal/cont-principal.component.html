@@ -1,0 +1,78 @@
+<mat-card id="menu">
+  <aside>
+    <mat-accordion>
+      <mat-expansion-panel>
+        <mat-expansion-panel-header>
+          <button mat-stroked-button color="accent">
+            <mat-icon>group_add</mat-icon>Personajes
+          </button>
+        </mat-expansion-panel-header>
+        <button mat-raised-button color="primary">Nuevo personaje</button>
+        <button mat-button color="primary">Nueva ficha</button>
+        <button mat-button color="primary" disabled="">Modificar personaje</button>
+        <button mat-button color="primary">Archivar personajes</button>
+      </mat-expansion-panel>
+      <mat-expansion-panel>
+        <mat-expansion-panel-header>
+          <button mat-stroked-button color="accent">
+            <mat-icon>add_box</mat-icon>Insertar datos
+          </button>
+        </mat-expansion-panel-header>
+        <button mat-button color="primary">Raza</button>
+        <button mat-button color="primary">Clase</button>
+        <button mat-button color="primary">Dote</button>
+        <button mat-button color="primary">Conjuro</button>
+        <button mat-button color="primary">Monstruo</button>
+        <button mat-button color="primary">Plantilla</button>
+        <button mat-button color="primary">Otros</button>
+      </mat-expansion-panel>
+      <mat-expansion-panel>
+        <mat-expansion-panel-header>
+          <button mat-stroked-button color="accent">
+            <mat-icon>edit_square</mat-icon>Modificar datos
+          </button>
+        </mat-expansion-panel-header>
+        <button mat-button color="primary">Raza</button>
+        <button mat-button color="primary">Clase</button>
+        <button mat-button color="primary">Dote</button>
+        <button mat-button color="primary">Conjuro</button>
+        <button mat-button color="primary">Monstruo</button>
+        <button mat-button color="primary">Plantilla</button>
+        <button mat-button color="primary">Otros</button>
+      </mat-expansion-panel>
+      <mat-expansion-panel>
+        <mat-expansion-panel-header>
+          <button mat-stroked-button color="accent">
+            <mat-icon>search</mat-icon>Detalles
+          </button>
+        </mat-expansion-panel-header>
+        <button mat-button color="primary">Raza</button>
+        <button mat-button color="primary">Clase</button>
+        <button mat-button color="primary">Dote</button>
+        <button mat-button color="primary">Conjuro</button>
+        <button mat-button color="primary">Monstruo</button>
+        <button mat-button color="primary">Plantilla</button>
+        <button mat-button color="primary">Otros</button>
+      </mat-expansion-panel>
+      <mat-expansion-panel>
+        <mat-expansion-panel-header>
+          <button mat-stroked-button color="accent">
+            <mat-icon>account_circle</mat-icon>Nombre usuario
+          </button>
+        </mat-expansion-panel-header>
+        <button mat-raised-button color="accent">Cerrar sesión</button>
+      </mat-expansion-panel>
+    </mat-accordion>
+  </aside>
+</mat-card>
+<mat-card id="base">
+  <mat-tab-group mat-stretch-tabs="false" mat-align-tabs="start">
+    <mat-tab label="Personajes">
+      hola
+    </mat-tab><!-- TODO eliminar esto y crear dinámicamente -->
+    <mat-tab label="algo"></mat-tab>
+    <mat-tab label="otras cosas">
+      <app-empleado></app-empleado>
+    </mat-tab>
+  </mat-tab-group>
+</mat-card>
