@@ -1,0 +1,31 @@
+<div class="container-fluid bg-dark">
+    <div class="row">
+        <div id="filtros" class="col-12 d-flex justify-content-around align-items-center overflow-hidden p-2">
+            <button mat-raised-button color="accent"><mat-icon>filter_alt</mat-icon>Filtros de personaje</button>
+            <mat-form-field class="flex-fill ms-2">
+                <mat-label>Nombre de personaje</mat-label>
+                <input matInput placeholder="Nombre a buscar">
+            </mat-form-field>
+            <mat-form-field class="ms-2">
+                <mat-label>Filtrar por campaña</mat-label>
+                <mat-select appearance="fill" [(value)]="personajeCampania">
+                    <mat-option *ngFor="let c of campanias" [value]="c.id">{{c.nombre + " [" + c.id + "]"}}</mat-option>
+                </mat-select>
+            </mat-form-field>
+            <mat-form-field class="ms-2">
+                <mat-label>Filtrar por trama</mat-label>
+                <mat-select appearance="fill" [(value)]="filtrosPerDefaultSelected">
+                    <mat-option *ngFor="let c of tramas">{{c}}</mat-option>
+                </mat-select>
+            </mat-form-field>
+            <mat-form-field class="ms-2">
+                <mat-label>Filtrar por subtrama</mat-label>
+                <mat-select appearance="fill" [(value)]="filtrosPerDefaultSelected">
+                    <mat-option value="0">Cualquiera</mat-option>
+                </mat-select>
+            </mat-form-field>
+            <mat-slide-toggle class="mx-2">Mostrar archivados</mat-slide-toggle>
+        </div>
+    </div>
+    <div class="row"></div>
+</div>

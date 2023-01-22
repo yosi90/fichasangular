@@ -1,0 +1,37 @@
+<div class="container">
+    <div class="row">
+        <div class="col bg-dark rounded p-4">
+            <p id="{{Nombre}}">El empleado {{Nombre}} {{Apellido}} works!</p>
+            <p>La edad de {{Nombre}} es {{Edad}}</p>
+            <p>Este señor trabaja para {{Empresa}}</p>
+        </div>
+        <div class="col bg-dark rounded p-2 m-2">
+            <p class="text-center text-uppercase">Nuevo empleado</p>
+            <mat-form-field appearance="fill" (mouseover)="alternar()" (mouseout)="alternar()">
+                <mat-label><span [ngStyle]="{color: Nombre=='yosi' ? 'red' : 'white'}">Nombre<span [ngStyle]="{display: Nombre=='yosi' ? 'inherit' : 'none'}"> - Nombre en uso*</span></span></mat-label>
+                <input matInput #name placeholder="Introduce aquí tu nombre" (input)="cargaNombre(name.value)"
+                    [disabled]="disableProperty">
+            </mat-form-field>
+            <mat-form-field>
+                <mat-label>Apellidos</mat-label>
+                <input matInput #surname placeholder="Introduce aquí tus apellidos"
+                    (input)="cargaApellido(surname.value)">
+            </mat-form-field>
+            <mat-form-field>
+                <mat-label>Edad</mat-label>
+                <input matInput #age placeholder="Introduce aquí tu edad" (input)="cargaEdad(age.value)">
+            </mat-form-field>
+            <mat-form-field>
+                <mat-label>Empresa</mat-label>
+                <input matInput #company placeholder="Introduce el nombre de la empresa en la que trabaja" [(ngModel)]="Empresa"> <!-- Two way binding -->
+            </mat-form-field>
+            <mat-slide-toggle #registro (click)="alternarRegistro(registro.checked)">{{estadoRegistro}}</mat-slide-toggle>
+            <mat-slide-toggle (change)="eventoRegistro($event)">{{estadoEventoRegistro}}</mat-slide-toggle>
+            <mat-slide-toggle (change)="registrarUsuario()">Activar para registrar usuario</mat-slide-toggle>
+            <p *ngIf="registrado; else sinRegistrar">Usuario registrado satisfactoriamente</p>
+            <ng-template #sinRegistrar>
+                <p>No registrado</p>
+            </ng-template>
+        </div>
+    </div>
+</div>

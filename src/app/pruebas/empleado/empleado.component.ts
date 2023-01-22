@@ -80,6 +80,12 @@ export class EmpleadoComponent {
   eventoRegistro(e: MatSlideToggleChange) {
     this.estadoEventoRegistro = e.checked ? "Registro satisfactorio" : "Error en el registro";
   }
+
+
+  registrado = false;
+  registrarUsuario() {
+    this.registrado = !this.registrado;
+  }
 }
 
 class tab {
