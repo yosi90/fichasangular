@@ -21,6 +21,7 @@ import { FormsModule } from '@angular/forms';
 import { ListaPersonajesComponent } from './lista-personajes/lista-personajes.component';
 import { HttpClientModule } from '@angular/common/http';
 import { DataServices } from './data.services';
+import { NgbModule } from '@ng-bootstrap/ng-bootstrap';
 
 @NgModule({
   declarations: [
@@ -44,7 +45,8 @@ import { DataServices } from './data.services';
     MatExpansionModule,
     MatCardModule,
     MatTabsModule,
-    HttpClientModule
+    HttpClientModule,
+    NgbModule
   ],
   providers: [DataServices],
   bootstrap: [AppComponent]
