@@ -1,16 +1,22 @@
 import { Component } from '@angular/core';
 import { MatSlideToggleChange } from '@angular/material/slide-toggle';
+import { Empleado } from 'src/app/@Clases/empleado.model';
 
 @Component({
   selector: 'app-empleado',
   templateUrl: './empleado.component.html',
   styleUrls: ['./empleado.component.sass']
 })
+
 export class EmpleadoComponent {
   private nombre = 'pepe';
   private apellido = 'mikasa';
   private edad = 18;
   private empresa = 'lalo construcciones';
+  e: Empleado = new Empleado("", "", 0, "");
+  empleados: Array<Empleado> = [
+    // new Empleado("Yosi", "González", 32, "Yosiftware")
+  ];
 
   disableProperty = true;
   estadoRegistro = "Usuario no registrado";
@@ -81,30 +87,15 @@ export class EmpleadoComponent {
     this.estadoEventoRegistro = e.checked ? "Registro satisfactorio" : "Error en el registro";
   }
 
-
   registrado = false;
   registrarUsuario() {
     this.registrado = !this.registrado;
   }
-}
 
-class tab {
-  private nombre: string;
-  private activa = false;
-
-  public constructor(_nombre: string) {
-    this.nombre = _nombre;
-  }
-
-  public get Nombre() {
-    return this.nombre;
-  }
-
-  public set Nombre(value: string) {
-    this.nombre = value;
-  }
-
-  public toggleActiva() {
-    //Alternar la clase activa. con jquery supongo
+  nuevoUsuario(nombre: string, apellido: string, edad: number, empresa: string) {
+    if (!nombre && !apellido && !isNaN(edad) && !empresa)
+      this.e = new Empleado(nombre, apellido, edad, empresa);
+    else
+      
   }
 }
