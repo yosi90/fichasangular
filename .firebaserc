@@ -5,7 +5,7 @@
   "targets": {
     "yosiftware-fichas": {
       "hosting": {
-        "primeraApp": [
+        "fichas3.5": [
           "yosiftware-fichas"
         ]
       }

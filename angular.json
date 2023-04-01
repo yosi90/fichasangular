@@ -3,7 +3,7 @@
   "version": 1,
   "newProjectRoot": "projects",
   "projects": {
-    "primeraApp": {
+    "fichas3.5": {
       "projectType": "application",
       "schematics": {
         "@schematics/angular:component": {
@@ -17,7 +17,7 @@
         "build": {
           "builder": "@angular-devkit/build-angular:browser",
           "options": {
-            "outputPath": "dist/primera-app",
+            "outputPath": "dist/fichas3.5",
             "index": "src/index.html",
             "main": "src/main.ts",
             "polyfills": [
@@ -43,8 +43,8 @@
               "budgets": [
                 {
                   "type": "initial",
-                  "maximumWarning": "500kb",
-                  "maximumError": "1mb"
+                  "maximumWarning": "2mb",
+                  "maximumError": "3mb"
                 },
                 {
                   "type": "anyComponentStyle",
@@ -69,10 +69,10 @@
           "builder": "@angular-devkit/build-angular:dev-server",
           "configurations": {
             "production": {
-              "browserTarget": "primeraApp:build:production"
+              "browserTarget": "fichas3.5:build:production"
             },
             "development": {
-              "browserTarget": "primeraApp:build:development"
+              "browserTarget": "fichas3.5:build:development"
             }
           },
           "defaultConfiguration": "development"
@@ -80,7 +80,7 @@
         "extract-i18n": {
           "builder": "@angular-devkit/build-angular:extract-i18n",
           "options": {
-            "browserTarget": "primeraApp:build"
+            "browserTarget": "fichas3.5:build"
           }
         },
         "test": {
@@ -108,7 +108,7 @@
           "options": {
             "prerender": false,
             "ssr": false,
-            "browserTarget": "primeraApp:build:production",
+            "browserTarget": "fichas3.5:build:production",
             "firebaseProject": "yosiftware-fichas",
             "firebaseHostingSite": "yosiftware-fichas"
           }
