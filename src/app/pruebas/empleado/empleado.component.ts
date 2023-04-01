@@ -13,10 +13,8 @@ export class EmpleadoComponent {
   private apellido = 'mikasa';
   private edad = 18;
   private empresa = 'lalo construcciones';
-  e: Empleado = new Empleado("", "", 0, "");
-  empleados: Array<Empleado> = [
-    // new Empleado("Yosi", "González", 32, "Yosiftware")
-  ];
+  error: string = "";
+  empleados: Array<Empleado> = [];
 
   disableProperty = true;
   estadoRegistro = "Usuario no registrado";
@@ -53,6 +51,18 @@ export class EmpleadoComponent {
 
   public set Empresa(value: string) {
     this.empresa = value;
+  }
+
+  public get Error() {
+    return this.error;
+  }
+
+  public set Error(value: string) {
+    this.error = value;
+    if (value != "")
+      setTimeout(() => {
+        this.error = "";
+      }, 5000);
   }
 
   cargaNombre(value: string) {
@@ -92,10 +102,27 @@ export class EmpleadoComponent {
     this.registrado = !this.registrado;
   }
 
-  nuevoUsuario(nombre: string, apellido: string, edad: number, empresa: string) {
-    if (!nombre && !apellido && !isNaN(edad) && !empresa)
-      this.e = new Empleado(nombre, apellido, edad, empresa);
-    else
-      
+  nuevoUsuario(nombre: string, apellido: string, edad: string, empresa: string) {
+    if (nombre.length > 3 && apellido.length > 3 && edad.length > 0 && !isNaN(+edad) && empresa.length > 3) {
+      const e = new Empleado(nombre, apellido, +edad, empresa);
+      if (!this.empleados.some(ele => ele.Nombre === nombre && ele.Apellido === apellido && ele.Edad === +edad && ele.Empresa === empresa)) {
+        this.empleados.push(e);
+        this.Error = "";
+      }
+      else {
+        this.Error = "";
+        this.Error += "<b>Error en la inserción</b><br>Usuario ya contenido";
+      }
+    }
+    else {
+      this.Error = "";
+      this.Error += "<b>Error en la inserción</b>" + (nombre.length <= 3 ? "<br>Nombre demasiado corto" : "")
+        + (apellido.length <= 3 ? "<br>Apellido demasiado corto" : "") + (edad.length == 0 ? "<br>Edad demasiado corta" : "")
+        + (isNaN(+edad) ? "<br>Edad debe ser un número" : "") + (empresa.length <= 3 ? "<br>Empresa demasiado corta" : "");
+    }
+  }
+
+  quitarAlerta() {
+    this.Error = "";
   }
 }

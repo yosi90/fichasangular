@@ -1,5 +1,9 @@
 import { NgModule } from '@angular/core';
 import { BrowserModule } from '@angular/platform-browser';
+import { AngularFireModule } from '@angular/fire/compat';
+import { initializeApp,provideFirebaseApp } from '@angular/fire/app';
+import { environment } from '../environments/environment';
+
 
 import { AppComponent } from './app.component';
 import { EmpleadosComponent } from './pruebas/empleados/empleados.component';
@@ -22,6 +26,9 @@ import { ListaPersonajesComponent } from './lista-personajes/lista-personajes.co
 import { HttpClientModule } from '@angular/common/http';
 import { DataServices } from './data.services';
 import { NgbModule } from '@ng-bootstrap/ng-bootstrap';
+import { HijoEmpleadoComponent } from './pruebas/empleado/hijo-empleado/hijo-empleado.component';
+import { provideAuth,getAuth } from '@angular/fire/auth';
+import { provideDatabase,getDatabase } from '@angular/fire/database';
 
 @NgModule({
   declarations: [
@@ -31,10 +38,12 @@ import { NgbModule } from '@ng-bootstrap/ng-bootstrap';
     NavbarComponent,
     ContPrincipalComponent,
     ListaPersonajesComponent,
+    HijoEmpleadoComponent,
   ],
   imports: [
     BrowserModule,
     FormsModule,
+    // AngularFireModule.initializeApp(environment.firebase),
     BrowserAnimationsModule,
     MatIconModule,
     MatInputModule,
@@ -46,7 +55,10 @@ import { NgbModule } from '@ng-bootstrap/ng-bootstrap';
     MatCardModule,
     MatTabsModule,
     HttpClientModule,
-    NgbModule
+    NgbModule,
+    provideFirebaseApp(() => initializeApp(environment.firebase)),
+    provideAuth(() => getAuth()),
+    provideDatabase(() => getDatabase())
   ],
   providers: [DataServices],
   bootstrap: [AppComponent]

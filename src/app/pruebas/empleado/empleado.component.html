@@ -2,27 +2,35 @@
     <div class="row">
         <div class="col bg-dark rounded p-4 m-2">
             <h2 class="text-center text-uppercase text-white">añadir empleado</h2>
-            <mat-form-field appearance="fill">
-                <mat-label>Nombre</mat-label>
-                <input matInput #nameAñadir placeholder="Introduce aquí tu nombre">
-            </mat-form-field>
-            <mat-form-field>
-                <mat-label>Apellidos</mat-label>
-                <input matInput #surnameAñadir placeholder="Introduce aquí tus apellidos">
-            </mat-form-field>
-            <mat-form-field>
-                <mat-label>Edad</mat-label>
-                <input matInput #ageAñadir placeholder="Introduce aquí tu edad">
-            </mat-form-field>
-            <mat-form-field>
-                <mat-label>Empresa</mat-label>
-                <input matInput #companyAñadir placeholder="Introduce el nombre de la empresa en la que trabaja">
-            </mat-form-field>
-            <button mat-raised-button color="accent"><mat-icon>add_circle</mat-icon>Crear empleado</button>
+            <form action="#">
+                <mat-form-field appearance="fill">
+                    <mat-label>Nombre</mat-label>
+                    <input matInput #nameAnadir placeholder="Introduce aquí tu nombre" required="true" minlength="3">
+                </mat-form-field>
+                <mat-form-field>
+                    <mat-label>Apellidos</mat-label>
+                    <input matInput #surnameAnadir placeholder="Introduce aquí tus apellidos" required="true" minlength="3">
+                </mat-form-field>
+                <mat-form-field>
+                    <mat-label>Edad</mat-label>
+                    <input matInput #ageAnadir placeholder="Introduce aquí tu edad" required="true" minlength="2">
+                </mat-form-field>
+                <mat-form-field>
+                    <mat-label>Empresa</mat-label>
+                    <input matInput #companyAnadir placeholder="Introduce el nombre de la empresa en la que trabaja" required="true" minlength="3">
+                </mat-form-field>
+                <button mat-raised-button color="accent" type="submit"
+                    (click)="nuevoUsuario(nameAnadir.value, surnameAnadir.value, ageAnadir.value, companyAnadir.value)">
+                    <mat-icon>add_circle</mat-icon>
+                    Crear empleado
+                </button>
+                <ngb-alert #autoCierre *ngIf="error" type="danger" (click)="quitarAlerta()" (close)="quitarAlerta()" [innerHTML]="error"></ngb-alert>
+
+            </form>
             <br>
             <p class="text-center text-uppercase">Listado de empleados</p>
             <br>
-            <p *ngFor="let e of empleados" [id]="e.Id">{{e.Nombre + " [" + e.Id + "]"}}{{e.Empresa}}</p>
+            <app-hijo-empleado *ngFor="let empleado of empleados; let indice = index" [e]="empleado" [i]="indice"></app-hijo-empleado>
         </div>
         <div class="col bg-dark rounded p-2 m-2">
             <h2 class="text-center text-uppercase text-white">Modificar empleado</h2>
@@ -32,7 +40,9 @@
             <p>Este señor trabaja para {{Empresa}}</p>
             <br><br>
             <mat-form-field appearance="fill" (mouseover)="alternar()" (mouseout)="alternar()">
-                <mat-label><span [ngStyle]="{color: Nombre=='yosi' ? 'red' : 'white'}">Nombre<span [ngStyle]="{display: Nombre=='yosi' ? 'inherit' : 'none'}"> - Nombre en uso*</span></span></mat-label>
+                <mat-label><span [ngStyle]="{color: Nombre=='yosi' ? 'red' : 'white'}">Nombre<span
+                             [ngClass]="Nombre=='yosi' ? '':'d-none'"> - Nombre en
+                            uso*</span></span></mat-label>
                 <input matInput #name placeholder="Introduce aquí tu nombre" (input)="cargaNombre(name.value)"
                     [disabled]="disableProperty">
             </mat-form-field>
@@ -47,11 +57,13 @@
             </mat-form-field>
             <mat-form-field>
                 <mat-label>Empresa</mat-label>
-                <input matInput #company placeholder="Introduce el nombre de la empresa en la que trabaja" [(ngModel)]="Empresa"> <!-- Two way binding -->
+                <input matInput #company placeholder="Introduce el nombre de la empresa en la que trabaja"
+                    [(ngModel)]="Empresa"> <!-- Two way binding -->
             </mat-form-field>
             <button mat-raised-button color="accent"><mat-icon>add_circle</mat-icon>Crear empleado</button>
             <br>
-            <mat-slide-toggle #registro (click)="alternarRegistro(registro.checked)">{{estadoRegistro}}</mat-slide-toggle>
+            <mat-slide-toggle #registro
+                (click)="alternarRegistro(registro.checked)">{{estadoRegistro}}</mat-slide-toggle>
             <br>
             <mat-slide-toggle (change)="eventoRegistro($event)">{{estadoEventoRegistro}}</mat-slide-toggle>
             <br>

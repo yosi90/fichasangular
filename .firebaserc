@@ -1,0 +1,14 @@
+{
+  "projects": {
+    "default": "yosiftware-fichas"
+  },
+  "targets": {
+    "yosiftware-fichas": {
+      "hosting": {
+        "primeraApp": [
+          "yosiftware-fichas"
+        ]
+      }
+    }
+  }
+}
