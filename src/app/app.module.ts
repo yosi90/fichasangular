@@ -1,8 +1,9 @@
 import { NgModule } from '@angular/core';
 import { BrowserModule } from '@angular/platform-browser';
 import { AngularFireModule } from '@angular/fire/compat';
-import { initializeApp,provideFirebaseApp } from '@angular/fire/app';
+import { initializeApp, provideFirebaseApp } from '@angular/fire/app';
 import { environment } from '../environments/environment';
+import { ReactiveFormsModule } from '@angular/forms';
 
 
 import { AppComponent } from './app.component';
@@ -21,46 +22,53 @@ import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { MatCardModule } from '@angular/material/card';
 import { MatTabsModule } from '@angular/material/tabs';
+import { MatDialogModule } from '@angular/material/dialog';
 import { FormsModule } from '@angular/forms';
 import { ListaPersonajesComponent } from './lista-personajes/lista-personajes.component';
 import { HttpClientModule } from '@angular/common/http';
 import { DataServices } from './data.services';
 import { NgbModule } from '@ng-bootstrap/ng-bootstrap';
 import { HijoEmpleadoComponent } from './pruebas/empleado/hijo-empleado/hijo-empleado.component';
-import { provideAuth,getAuth } from '@angular/fire/auth';
-import { provideDatabase,getDatabase } from '@angular/fire/database';
+import { provideAuth, getAuth } from '@angular/fire/auth';
+import { provideDatabase, getDatabase } from '@angular/fire/database';
+import { SesionDialogComponent } from './@Utilidades/sesion-dialog/sesion-dialog.component';
 
 @NgModule({
-  declarations: [
-    AppComponent,
-    EmpleadosComponent,
-    EmpleadoComponent,
-    NavbarComponent,
-    ContPrincipalComponent,
-    ListaPersonajesComponent,
-    HijoEmpleadoComponent,
-  ],
-  imports: [
-    BrowserModule,
-    FormsModule,
-    // AngularFireModule.initializeApp(environment.firebase),
-    BrowserAnimationsModule,
-    MatIconModule,
-    MatInputModule,
-    MatFormFieldModule,
-    MatButtonModule,
-    MatSelectModule,
-    MatSlideToggleModule,
-    MatExpansionModule,
-    MatCardModule,
-    MatTabsModule,
-    HttpClientModule,
-    NgbModule,
-    provideFirebaseApp(() => initializeApp(environment.firebase)),
-    provideAuth(() => getAuth()),
-    provideDatabase(() => getDatabase())
-  ],
-  providers: [DataServices],
-  bootstrap: [AppComponent]
+    declarations: [
+        AppComponent,
+        EmpleadosComponent,
+        EmpleadoComponent,
+        NavbarComponent,
+        ContPrincipalComponent,
+        ListaPersonajesComponent,
+        HijoEmpleadoComponent,
+        SesionDialogComponent,
+    ],
+    imports: [
+        BrowserModule,
+        FormsModule,
+        BrowserAnimationsModule,
+        MatIconModule,
+        MatInputModule,
+        MatFormFieldModule,
+        MatButtonModule,
+        MatSelectModule,
+        MatSlideToggleModule,
+        MatExpansionModule,
+        MatCardModule,
+        MatTabsModule,
+        MatDialogModule,
+        HttpClientModule,
+        NgbModule,
+        ReactiveFormsModule,
+        provideFirebaseApp(() => initializeApp(environment.firebase)),
+        provideAuth(() => getAuth()),
+        provideDatabase(() => getDatabase())
+    ],
+    entryComponents: [
+        SesionDialogComponent,
+    ],
+    providers: [DataServices],
+    bootstrap: [AppComponent]
 })
 export class AppModule { }

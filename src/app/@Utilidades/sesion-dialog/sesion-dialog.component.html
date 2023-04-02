@@ -1,0 +1,94 @@
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-lg-6 col-12">
+            <h1 mat-dialog-title class="text-center border-3 border-bottom border-white">Identifícate</h1>
+            <div mat-dialog-content>
+                <form [formGroup]="loginForm" #lForm="ngForm" (ngSubmit)="login(lForm.value)">
+                    <mat-form-field appearance="fill" class="w-100">
+                        <mat-label>Correo electrónico</mat-label>
+                        <input matInput #email type="email" formControlName="email"
+                            placeholder="Introduce aquí tu correo" cdkFocusInitial>
+                        <mat-error *ngIf="loginForm.get('email')?.errors?.['email']">
+                            Necesitas un correo electrónico para confirmar tu cuenta.
+                        </mat-error>
+                        <mat-error *ngIf="loginForm.get('email')?.errors?.['pattern']">
+                            Correo electrónico no válido.
+                        </mat-error>
+                    </mat-form-field>
+                    <mat-form-field class="w-100">
+                        <mat-label>Contraseña</mat-label>
+                        <input matInput #password type="password" formControlName="password"
+                            placeholder="Introduce aquí tu contraseña">
+                        <mat-error *ngIf="loginForm.get('password')?.errors?.['required']">
+                            Debes introducir tu contraseña logearte
+                        </mat-error>
+                        <mat-error *ngIf="loginForm.get('password')?.errors?.['minlength']">
+                            Faltan caracteres
+                        </mat-error>
+                    </mat-form-field>
+                    <div mat-dialog-actions class="d-flex justify-content-end">
+                        <button mat-raised-button class="w-100" color="accent" type="submit" [mat-dialog-close]="true"
+                            [disabled]="loginForm.invalid">
+                            <mat-icon>login</mat-icon>
+                            Login
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        <div class="col-lg-6 col-12">
+            <h1 mat-dialog-title class="text-center border-3 border-bottom border-white">Regístrate</h1>
+            <div mat-dialog-content>
+                <form [formGroup]="registerForm" #rform="ngForm" (ngSubmit)="register(rform.value)">
+                    <mat-form-field class="w-100">
+                        <mat-label>Nombre de usuario</mat-label>
+                        <input matInput type="text" placeholder="Nombre de usuario" formControlName="usuario" required>
+                        <mat-error *ngIf="registerForm.get('password')?.errors?.['required']">
+                            Necesitas un nombre de usuario.
+                        </mat-error>
+                        <mat-error *ngIf="registerForm.get('password')?.errors?.['minlength']">
+                            Usuario demasiado corto.
+                        </mat-error>
+                    </mat-form-field>
+                    <mat-form-field class="w-100">
+                        <mat-label>Correo electrónico</mat-label>
+                        <input matInput type="email" placeholder="Email de confirmación" formControlName="email"
+                            required>
+                        <mat-error *ngIf="registerForm.get('email')?.errors?.['email']">
+                            Necesitas un correo electrónico para confirmar tu cuenta.
+                        </mat-error>
+                        <mat-error *ngIf="registerForm.get('email')?.errors?.['pattern']">
+                            Correo electrónico no válido.
+                        </mat-error>
+                    </mat-form-field>
+                    <mat-form-field class="w-100">
+                        <mat-label>Contraseña</mat-label>
+                        <input matInput type="password" placeholder="Crea una contraseña" formControlName="password"
+                            required>
+                        <mat-error *ngIf="registerForm.get('password')?.errors?.['required']">
+                            Debes crear una contraseña para la cuenta
+                        </mat-error>
+                        <mat-error *ngIf="registerForm.get('password')?.errors?.['minlength']">
+                            Contraseña demasiado corta
+                        </mat-error>
+                    </mat-form-field>
+                    <mat-form-field class="w-100">
+                        <mat-label>Confirma tu contraseña</mat-label>
+                        <input matInput type="password" placeholder="Confirma la contraseña"
+                            formControlName="confirmPassword" [errorStateMatcher]="matcher">
+                        <mat-error *ngIf="registerForm.hasError('notSame')">
+                            Las contraseñas no coinciden
+                        </mat-error>
+                    </mat-form-field>
+                    <div mat-dialog-actions class="d-flex justify-content-end w-100">
+                        <button mat-raised-button class="w-100" color="accent" type="submit" [mat-dialog-close]="true"
+                            [disabled]="registerForm.invalid">
+                            <mat-icon>app_registration</mat-icon>
+                            Regístrate
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>

@@ -24,8 +24,7 @@
                     <mat-icon>add_circle</mat-icon>
                     Crear empleado
                 </button>
-                <ngb-alert #autoCierre *ngIf="error" type="danger" (click)="quitarAlerta()" (close)="quitarAlerta()" [innerHTML]="error"></ngb-alert>
-
+                <ngb-alert #autoCierre *ngIf="error" type="danger" (click)="quitarAlerta()" (close)="quitarAlerta()" [innerHTML]="error" class="position-absolute"></ngb-alert>
             </form>
             <br>
             <p class="text-center text-uppercase">Listado de empleados</p>
