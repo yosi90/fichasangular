@@ -28,23 +28,31 @@ export class SesionDialogComponent {
     login(value: any): void {
         if (this.emailRegex.test(value.email) && value.password.length >= 8) {
             this.usrService.loginEmailPass(this.loginForm.value)
-            .then(Response => {
-                console.log(Response);
+                .then(Response => {
+                    console.log(Response);
+                    this.loginEfectivo();
+                })
+                .catch(error => console.log(error));
+        }
+    }
+
+    loginGoogle() {
+        this.usrService.loginGoogle()
+            .then(response => {
+                console.log(response);
+                this.loginEfectivo();
             })
             .catch(error => console.log(error));
-        }
     }
 
     register(value: any): void {
         if (value.usuario.length >= 3 && this.emailRegex.test(value.email) && value.password.length >= 8 && value.password === value.confirmPassword) {
             this.usrService.register(this.registerForm.value)
-            .then(response => {
-                console.log(response);
-                //logear directamente
-                //guardar el usuario en localstorage
-                //cargar una global usuario en angular
-            })
-            .catch(error => console.log(error));
+                .then(response => {
+                    console.log(response);
+                    this.loginEfectivo();
+                })
+                .catch(error => console.log(error));
         }
     }
 
@@ -68,11 +76,9 @@ export class SesionDialogComponent {
         confirmPassword: new FormControl(''),
     }, { validators: this.checkPasswords });
 
-    onSubmit() {
-        console.log('llega');
-    }
-
-    nuevoUsuario(nombre: string, correo: string, pass1: string, pass2: string) {
-
+    loginEfectivo() {
+        //logear directamente
+        //guardar el usuario en localstorage
+        //cargar una global usuario en angular
     }
 }
