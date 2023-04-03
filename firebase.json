@@ -1,6 +1,6 @@
 {
   "hosting": {
-    "public": "dist/primera-app",
+    "public": "public",
     "ignore": [
       "firebase.json",
       "**/.*",
