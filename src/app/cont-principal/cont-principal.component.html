@@ -1,60 +1,60 @@
 <mat-card id="menu">
     <aside>
         <mat-accordion>
-            <mat-expansion-panel>
+            <mat-expansion-panel #primero>
                 <mat-expansion-panel-header class="rounded-0 rounded-top">
                     <button mat-stroked-button color="accent" class="rounded-0 rounded-top">
                         <mat-icon>group_add</mat-icon>Personajes
                     </button>
                 </mat-expansion-panel-header>
-                <button mat-raised-button color="primary">Nuevo personaje</button>
-                <button mat-button color="primary">Nueva ficha</button>
-                <button mat-button color="primary" disabled="">Modificar personaje</button>
-                <button mat-button color="primary">Archivar personajes</button>
+                <button mat-raised-button color="primary" (click)="closeAcordion()">Nuevo personaje</button>
+                <button mat-button color="primary" (click)="closeAcordion()">Nueva ficha</button>
+                <button mat-button color="primary" disabled="" (click)="closeAcordion()">Modificar personaje</button>
+                <button mat-button color="primary" (click)="closeAcordion()">Archivar personajes</button>
             </mat-expansion-panel>
-            <mat-expansion-panel>
+            <mat-expansion-panel #segundo>
                 <mat-expansion-panel-header>
                     <button mat-stroked-button color="accent" class="rounded-0">
                         <mat-icon>add_box</mat-icon>Insertar
                     </button>
                 </mat-expansion-panel-header>
-                <button mat-button color="primary">Raza</button>
-                <button mat-button color="primary">Clase</button>
-                <button mat-button color="primary">Dote</button>
-                <button mat-button color="primary">Conjuro</button>
-                <button mat-button color="primary">Monstruo</button>
-                <button mat-button color="primary">Plantilla</button>
-                <button mat-button color="primary">Otros</button>
+                <button mat-button color="primary" (click)="closeAcordion()">Raza</button>
+                <button mat-button color="primary" (click)="closeAcordion()">Clase</button>
+                <button mat-button color="primary" (click)="closeAcordion()">Dote</button>
+                <button mat-button color="primary" (click)="closeAcordion()">Conjuro</button>
+                <button mat-button color="primary" (click)="closeAcordion()">Monstruo</button>
+                <button mat-button color="primary" (click)="closeAcordion()">Plantilla</button>
+                <button mat-button color="primary" (click)="closeAcordion()">Otros</button>
             </mat-expansion-panel>
-            <mat-expansion-panel>
+            <mat-expansion-panel #tercero>
                 <mat-expansion-panel-header>
                     <button mat-stroked-button color="accent" class="rounded-0">
                         <mat-icon>edit_square</mat-icon>Modificar
                     </button>
                 </mat-expansion-panel-header>
-                <button mat-button color="primary">Raza</button>
-                <button mat-button color="primary">Clase</button>
-                <button mat-button color="primary">Dote</button>
-                <button mat-button color="primary">Conjuro</button>
-                <button mat-button color="primary">Monstruo</button>
-                <button mat-button color="primary">Plantilla</button>
-                <button mat-button color="primary">Otros</button>
+                <button mat-button color="primary" (click)="closeAcordion()">Raza</button>
+                <button mat-button color="primary" (click)="closeAcordion()">Clase</button>
+                <button mat-button color="primary" (click)="closeAcordion()">Dote</button>
+                <button mat-button color="primary" (click)="closeAcordion()">Conjuro</button>
+                <button mat-button color="primary" (click)="closeAcordion()">Monstruo</button>
+                <button mat-button color="primary" (click)="closeAcordion()">Plantilla</button>
+                <button mat-button color="primary" (click)="closeAcordion()">Otros</button>
             </mat-expansion-panel>
-            <mat-expansion-panel class="rounded-0 rounded-bottom">
+            <mat-expansion-panel class="rounded-0 rounded-bottom" #cuarto>
                 <mat-expansion-panel-header>
                     <button mat-stroked-button color="accent" class="rounded-0 rounded-bottom">
                         <mat-icon>search</mat-icon>Detalles
                     </button>
                 </mat-expansion-panel-header>
-                <button mat-button color="primary">Raza</button>
-                <button mat-button color="primary">Clase</button>
-                <button mat-button color="primary">Dote</button>
-                <button mat-button color="primary">Conjuro</button>
-                <button mat-button color="primary">Monstruo</button>
-                <button mat-button color="primary">Plantilla</button>
-                <button mat-button color="primary">Otros</button>
+                <button mat-button color="primary" (click)="closeAcordion()">Raza</button>
+                <button mat-button color="primary" (click)="closeAcordion()">Clase</button>
+                <button mat-button color="primary" (click)="closeAcordion()">Dote</button>
+                <button mat-button color="primary" (click)="closeAcordion()">Conjuro</button>
+                <button mat-button color="primary" (click)="closeAcordion()">Monstruo</button>
+                <button mat-button color="primary" (click)="closeAcordion()">Plantilla</button>
+                <button mat-button color="primary" (click)="closeAcordion()">Otros</button>
             </mat-expansion-panel>
-            <mat-expansion-panel hideToggle="true">
+            <mat-expansion-panel hideToggle="true" #quinto>
                 <mat-expansion-panel-header>
                     <button mat-stroked-button color="accent">
                         <mat-icon>account_circle</mat-icon>Invitado

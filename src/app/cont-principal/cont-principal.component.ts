@@ -1,7 +1,8 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, ViewChild } from '@angular/core';
 import { MatDialog } from '@angular/material/dialog';
 import { SesionDialogComponent } from '../@Utilidades/sesion-dialog/sesion-dialog.component';
 import { UserService } from '../services/user.service';
+import { MatExpansionPanel } from '@angular/material/expansion';
 
 @Component({
     selector: 'app-cont-principal',
@@ -9,10 +10,29 @@ import { UserService } from '../services/user.service';
     styleUrls: ['./cont-principal.component.sass']
 })
 export class ContPrincipalComponent {
+    @ViewChild('primero') primero!: MatExpansionPanel;
+    @ViewChild('segundo') segundo!: MatExpansionPanel;
+    @ViewChild('tercero') tercero!: MatExpansionPanel;
+    @ViewChild('cuarto') cuarto!: MatExpansionPanel;
+    @ViewChild('quinto') quinto!: MatExpansionPanel;
 
     constructor(public dSesion: MatDialog, private usrService: UserService) { }
 
+    closeAcordion() {
+        if (this.primero.expanded)
+            this.primero.close();
+        else if (this.segundo.expanded)
+            this.segundo.close();
+        else if (this.tercero.expanded)
+            this.tercero.close();
+        else if (this.cuarto.expanded)
+            this.cuarto.close();
+        else if (this.quinto.expanded)
+            this.quinto.close();
+    }
+
     openSesionDialog(): void {
+        this.closeAcordion();
         const dialogRef = this.dSesion.open(SesionDialogComponent, {
             // width: '80vw',
             // height: '70vh'
