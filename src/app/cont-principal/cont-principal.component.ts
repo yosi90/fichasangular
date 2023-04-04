@@ -16,7 +16,22 @@ export class ContPrincipalComponent {
     @ViewChild('cuarto') cuarto!: MatExpansionPanel;
     @ViewChild('quinto') quinto!: MatExpansionPanel;
 
+    usr: string = 'Invitado';
+
     constructor(public dSesion: MatDialog, private usrService: UserService) { }
+
+    ngOnInit(): void {
+        this.usrService.isLoggedIn$.subscribe(_ => {
+            const nombre = this.usrService.Usuario.nombre;
+            const correo = this.usrService.Usuario.correo;
+            this.usr = nombre != '' ? nombre : correo != '' ? correo : 'Invitado';
+        });
+
+        const tokenViejo = localStorage.getItem('sesionFichas');
+        if (tokenViejo)
+            this.usrService.recuperarSesion(tokenViejo);
+    }
+
 
     closeAcordion() {
         if (this.primero.expanded)
@@ -40,16 +55,14 @@ export class ContPrincipalComponent {
         });
 
         dialogRef.afterClosed().subscribe(result => {
-            console.log('Ves esto porque se cerró el modal de login.\nAhora tienes que actualizar la vista de la app con los datos del usuario');
+            //hacer algo cuando se cierra el modal, si quieres claro..
         });
     }
 
     logOut() {
         this.usrService.logOut()
-            .then(response => {
+            ?.then(response => {
                 console.log(response);
-                //Cargarnos el localStorage
-                //Cambiar el usuario a invitado
             })
             .catch(error => console.log(error));
     }

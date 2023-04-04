@@ -2,6 +2,7 @@ import { Component, Inject } from '@angular/core';
 import { MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
 import { FormGroup, Validators, ValidatorFn, FormControl, AbstractControl, ValidationErrors, FormGroupDirective, NgForm } from '@angular/forms';
 import { ErrorStateMatcher } from '@angular/material/core';
+import { UserCredential } from 'firebase/auth';
 import { UserService } from 'src/app/services/user.service';
 
 export class MyErrorStateMatcher implements ErrorStateMatcher {
@@ -21,45 +22,28 @@ export class MyErrorStateMatcher implements ErrorStateMatcher {
 export class SesionDialogComponent {
     emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
 
-    constructor(private usrService: UserService, public dialogRef: MatDialogRef<SesionDialogComponent>, @Inject(MAT_DIALOG_DATA) public msg: string) {
-
-    }
-
-    login(value: any): void {
-        if (this.emailRegex.test(value.email) && value.password.length >= 8) {
-            this.usrService.loginEmailPass(this.loginForm.value)
-                .then(Response => {
-                    console.log(Response);
-                    this.loginEfectivo();
-                })
-                .catch(error => console.log(error));
-        }
-    }
-
-    loginGoogle() {
-        this.usrService.loginGoogle()
-            .then(response => {
-                console.log(response);
-                this.loginEfectivo();
-            })
-            .catch(error => console.log(error));
-    }
-
-    register(value: any): void {
-        if (value.usuario.length >= 3 && this.emailRegex.test(value.email) && value.password.length >= 8 && value.password === value.confirmPassword) {
-            this.usrService.register(this.registerForm.value)
-                .then(response => {
-                    console.log(response);
-                    this.loginEfectivo();
-                })
-                .catch(error => console.log(error));
-        }
-    }
+    constructor(private usrService: UserService,
+        public dialogRef: MatDialogRef<SesionDialogComponent>, @Inject(MAT_DIALOG_DATA) public msg: string) { }
 
     loginForm = new FormGroup({
         email: new FormControl('', [Validators.required, Validators.pattern(this.emailRegex)]),
         password: new FormControl('', [Validators.required, Validators.minLength(8)])
     });
+
+    login(value: any): void {
+        if (this.emailRegex.test(value.email) && value.password.length >= 8) {
+            this.usrService.loginEmailPass(this.loginForm.value);
+        }
+    }
+
+    loginGoogle() {
+        this.usrService.loginGoogle()?.then(_ => this.dialogRef.close());
+    }
+
+    register(value: any): void {
+        if (value.usuario.length >= 3 && this.emailRegex.test(value.email) && value.password.length >= 8 && value.password === value.confirmPassword)
+            this.usrService.register(this.registerForm.value);
+    }
 
     matcher = new MyErrorStateMatcher();
 
@@ -75,10 +59,4 @@ export class SesionDialogComponent {
         password: new FormControl('', [Validators.required, Validators.minLength(8)]),
         confirmPassword: new FormControl(''),
     }, { validators: this.checkPasswords });
-
-    loginEfectivo() {
-        //logear directamente
-        //guardar el usuario en localstorage
-        //cargar una global usuario en angular
-    }
 }

@@ -57,14 +57,23 @@
             <mat-expansion-panel hideToggle="true" #quinto>
                 <mat-expansion-panel-header>
                     <button mat-stroked-button color="accent">
-                        <mat-icon>account_circle</mat-icon>Invitado
+                        <mat-icon>account_circle</mat-icon>{{usr}}
                         <!-- TODO {{Usuario.nombre}} Llamar a la propiedad del componente usuario -->
                     </button>
                 </mat-expansion-panel-header>
-                <button mat-raised-button color="accent" (click)="openSesionDialog()">
+
+                <button mat-raised-button color="accent" (click)="openSesionDialog()" *ngIf="usr == 'Invitado'; else sinRegistrar">
                     Identifícate
                     <!-- TODO {{Interpolar esto}} Llamar a la propiedad del componente usuario -->
                 </button>
+                <ng-template #sinRegistrar>
+                    <button mat-raised-button color="accent" (click)="logOut()">
+                        Cerrar sesión
+                        <!-- TODO {{Interpolar esto}} Llamar a la propiedad del componente usuario -->
+                    </button>
+                </ng-template>
+
+                
             </mat-expansion-panel>
         </mat-accordion>
     </aside>

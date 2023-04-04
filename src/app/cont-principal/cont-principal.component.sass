@@ -30,6 +30,11 @@ mat-card
             mat-expansion-panel-header
                 max-height: 48px
 
+                mat-icon
+                    font-size: 24px
+                    width: auto
+                    height: auto
+
             mat-expansion-panel-header button
                 justify-content: left
 
@@ -41,8 +46,7 @@ mat-card
                 width: 100%
 
                 background-color: $primary
-                text-transform: uppercase
-                font-weight: 600
+                font-weight: 500
 
             ::ng-deep .mat-expansion-panel-body
                 padding: 0
@@ -80,6 +84,14 @@ mat-card
 
             ::ng-deep .mat-expansion-panel-body button
                 justify-content: center
+
+            ::ng-deep span .mdc-button__label
+                max-width: 165px
+
+                overflow: hidden
+                text-overflow: ellipsis
+
+                margin: auto
 
 #base
     float: right
