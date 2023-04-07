@@ -1,7 +1,6 @@
 <div class="container-fluid bg-dark">
-    <div class="row">
+    <!-- <div class="row">
         <div id="filtros" class="col-12 d-flex justify-content-around align-items-center overflow-hidden p-2">
-            <!-- TODO Eliminar esta línea superior y meter los filtros a un dialog(modal) flotar el boton filtros a la derecha y que sea el trigger para el dialog -->
             <button mat-raised-button color="accent"><mat-icon>filter_alt</mat-icon>Filtros de personaje</button>
             <mat-form-field class="flex-fill ms-2">
                 <mat-label>Nombre de personaje</mat-label>
@@ -27,6 +26,61 @@
             </mat-form-field>
             <mat-slide-toggle class="mx-2">Mostrar archivados</mat-slide-toggle>
         </div>
+    </div> -->
+    <div class="row position-relative justify-content-center align-items-center">
+        <button mat-icon-button [matMenuTriggerFor]="menu" class="filtros bg-accent">
+            <mat-icon class="">filter_alt</mat-icon>
+        </button>
+        <mat-menu #menu="matMenu" class="me-1">
+            <div id="menu">
+                <mat-form-field (click)="$event.stopPropagation();">
+                    <mat-label>Nombre de personaje</mat-label>
+                    <input matInput placeholder="Nombre a buscar">
+                </mat-form-field>
+                <mat-form-field (click)="$event.stopPropagation();">
+                    <mat-label>Filtrar por campaña</mat-label>
+                    <mat-select appearance="fill" [(value)]="personajeCampania">
+                        <mat-option *ngFor="let c of campanias" [value]="c.id">{{c.nombre + " [" + c.id +
+                            "]"}}</mat-option>
+                    </mat-select>
+                </mat-form-field>
+                <mat-form-field (click)="$event.stopPropagation();">
+                    <mat-label>Filtrar por trama</mat-label>
+                    <mat-select appearance="fill" [(value)]="filterDefSelect">
+                        <mat-option *ngFor="let c of tramas">{{c}}</mat-option>
+                    </mat-select>
+                </mat-form-field>
+                <mat-form-field (click)="$event.stopPropagation();">
+                    <mat-label>Filtrar por subtrama</mat-label>
+                    <mat-select appearance="fill" [(value)]="filterDefSelect">
+                        <mat-option value="0">Cualquiera</mat-option>
+                    </mat-select>
+                </mat-form-field>
+            </div>
+            <mat-chip-option #archivo color="warn" class="mt-4 mb-1"
+                (click)="$event.stopPropagation(); AlternarArchivados(archivo.value);">{{anuncioArchivo}}</mat-chip-option>
+        </mat-menu>
+
+        <table mat-table [dataSource]="dataSource" class="mat-elevation-z8 demo-table">
+            <ng-container *ngFor="let column of columns" [matColumnDef]="column.columnDef">
+                <th mat-header-cell *matHeaderCellDef>
+                    <ng-container *ngIf="column.header != '¿Archivado?' || anuncioArchivo != 'Clic para mostar pjs archivados'">
+                        {{column.header}}
+                    </ng-container>
+                </th>
+                <td mat-cell *matCellDef="let row">
+                    <p class="mb-0" *ngIf="column.header != '¿Archivado?'; else colArchivo">{{column.cell(row)}}</p>
+                    <ng-template #colArchivo>
+                        <ng-container *ngIf="anuncioArchivo != 'Clic para mostar pjs archivados'">
+                            <mat-checkbox [checked]="column.cell(row)" [disableRipple]="true"
+                                (click)="$event.preventDefault()"></mat-checkbox>
+                        </ng-container>
+                    </ng-template>
+                </td>
+            </ng-container>
+            <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+            <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
+        </table>
+
     </div>
-    <div class="row"></div>
 </div>

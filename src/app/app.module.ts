@@ -1,6 +1,5 @@
 import { NgModule } from '@angular/core';
 import { BrowserModule } from '@angular/platform-browser';
-import { AngularFireModule } from '@angular/fire/compat';
 import { initializeApp, provideFirebaseApp } from '@angular/fire/app';
 import { environment } from '../environments/environment';
 import { ReactiveFormsModule } from '@angular/forms';
@@ -18,10 +17,14 @@ import { MatInputModule } from '@angular/material/input';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatButtonModule } from '@angular/material/button';
 import { MatSelectModule } from '@angular/material/select';
+import { MatCheckbox, MatCheckboxModule } from '@angular/material/checkbox';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { MatCardModule } from '@angular/material/card';
 import { MatTabsModule } from '@angular/material/tabs';
+import { MatTableModule } from '@angular/material/table';
+import { MatMenuModule } from '@angular/material/menu';
+import { MatChipsModule } from '@angular/material/chips';
 import { MatDialogModule } from '@angular/material/dialog';
 import { FormsModule } from '@angular/forms';
 import { ListaPersonajesComponent } from './lista-personajes/lista-personajes.component';
@@ -53,10 +56,14 @@ import { SesionDialogComponent } from './@Utilidades/sesion-dialog/sesion-dialog
         MatFormFieldModule,
         MatButtonModule,
         MatSelectModule,
+        MatCheckboxModule,
         MatSlideToggleModule,
         MatExpansionModule,
         MatCardModule,
         MatTabsModule,
+        MatTableModule,
+        MatMenuModule,
+        MatChipsModule,
         MatDialogModule,
         HttpClientModule,
         NgbModule,
