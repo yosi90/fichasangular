@@ -1,4 +1,5 @@
 import { Component, OnInit } from '@angular/core';
+import { animate, state, style, transition, trigger } from '@angular/animations';
 import { Campana } from '../interfaces/Campana';
 import { ListaPersonajesService } from '../services/lista-personajes.service';
 import { PersonajeSimple } from '../interfaces/personaje-simple';
@@ -6,25 +7,79 @@ import { PersonajeSimple } from '../interfaces/personaje-simple';
 @Component({
     selector: 'app-lista-personajes',
     templateUrl: './lista-personajes.component.html',
-    styleUrls: ['./lista-personajes.component.sass']
+    styleUrls: ['./lista-personajes.component.sass'],
+    animations: [
+        trigger('detailExpand', [
+          state('collapsed', style({height: '0px', minHeight: '0'})),
+          state('expanded', style({height: '*'})),
+          transition('expanded <=> collapsed', animate('225ms cubic-bezier(0.4, 0.0, 0.2, 1)')),
+        ]),
+      ],
 })
 export class ListaPersonajesComponent implements OnInit {
 
     Personajes: PersonajeSimple[] = [];
     columns = [
         {
-            columnDef: 'Nombre del personaje',
+            title: 'Nombre del personaje',
+            columnDef: 'expand',
             header: 'Nombre',
             cell: (pj: PersonajeSimple) => `${pj.Nombre}`,
         },
         {
-            columnDef: 'Estado de la ficha',
+            title: 'Clases y nivel',
+            columnDef: 'expand',
+            header: 'Clases',
+            cell: (pj: PersonajeSimple) => `${pj.Clases}`,
+        },
+        {
+            title: 'Raza del personaje',
+            columnDef: 'expand',
+            header: 'Raza',
+            cell: (pj: PersonajeSimple) => `${pj.Raza}`,
+        },
+        {
+            title: 'Estado de la ficha',
+            columnDef: 'expand',
             header: '¿Archivado?',
             cell: (pj: PersonajeSimple): boolean => pj.Archivado,
         },
+        {
+            title: 'Personalidad del personaje',
+            columnDef: 'expandedDetail',
+            header: 'Personalidad',
+            cell: (pj: PersonajeSimple) => `${pj.Personalidad}`,
+        },
+        {
+            title: 'Contexto del personaje',
+            columnDef: 'expandedDetail',
+            header: 'Contexto',
+            cell: (pj: PersonajeSimple) => `${pj.Contexto}`,
+        },
+        {
+            title: 'Campaña en la que aparece',
+            columnDef: 'expandedDetail',
+            header: 'Campaña',
+            cell: (pj: PersonajeSimple) => `${pj.Campana}`,
+        },
+        {
+            title: 'Trama de la campaña',
+            columnDef: 'expandedDetail',
+            header: 'Trama',
+            cell: (pj: PersonajeSimple) => `${pj.Trama}`,
+        },
+        {
+            title: 'Subtrama de la trama',
+            columnDef: 'expandedDetail',
+            header: 'Subtrama',
+            cell: (pj: PersonajeSimple) => `${pj.Subtrama}`,
+        },
     ];
-    dataSource = this.Personajes;
-    displayedColumns = this.columns.map(c => c.columnDef);
+    personajesDS = this.Personajes;
+    // displayedColumns = this.columns.map(c => c.columnDef);
+    columnsToDisplay = ['Nombre', 'Clases', 'Raza', '¿Archivado?'];
+    columnsToDisplayWithExpand = [...this.columnsToDisplay, 'expand'];
+    expandedElement: PersonajeSimple | null | undefined;
 
     constructor(private listaPjs: ListaPersonajesService) { }
 
@@ -33,43 +88,62 @@ export class ListaPersonajesComponent implements OnInit {
             this.Personajes = Personajes;
             this.columns = [
                 {
-                    columnDef: 'Nombre del personaje',
+                    title: 'Nombre del personaje',
+                    columnDef: 'expand',
                     header: 'Nombre',
                     cell: (pj: PersonajeSimple) => `${pj.Nombre}`,
                 },
                 {
-                    columnDef: 'Clases y nivel',
+                    title: 'Clases y nivel',
+                    columnDef: 'expand',
                     header: 'Clases',
                     cell: (pj: PersonajeSimple) => `${pj.Clases}`,
                 },
                 {
-                    columnDef: 'Raza del personaje',
+                    title: 'Raza del personaje',
+                    columnDef: 'expand',
                     header: 'Raza',
                     cell: (pj: PersonajeSimple) => `${pj.Raza}`,
                 },
                 {
-                    columnDef: 'Campaña en la que aparece',
+                    title: 'Estado de la ficha',
+                    columnDef: 'expand',
+                    header: '¿Archivado?',
+                    cell: (pj: PersonajeSimple) => pj.Archivado,
+                },
+                {
+                    title: 'Personalidad del personaje',
+                    columnDef: 'expandedDetail',
+                    header: 'Personalidad',
+                    cell: (pj: PersonajeSimple) => `${pj.Personalidad}`,
+                },
+                {
+                    title: 'Contexto del personaje',
+                    columnDef: 'expandedDetail',
+                    header: 'Contexto',
+                    cell: (pj: PersonajeSimple) => `${pj.Contexto}`,
+                },
+                {
+                    title: 'Campaña en la que aparece',
+                    columnDef: 'expandedDetail',
                     header: 'Campaña',
                     cell: (pj: PersonajeSimple) => `${pj.Campana}`,
                 },
                 {
-                    columnDef: 'Trama de la campaña',
+                    title: 'Trama de la campaña',
+                    columnDef: 'expandedDetail',
                     header: 'Trama',
                     cell: (pj: PersonajeSimple) => `${pj.Trama}`,
                 },
                 {
-                    columnDef: 'Subtrama de la trama',
+                    title: 'Subtrama de la trama',
+                    columnDef: 'expandedDetail',
                     header: 'Subtrama',
                     cell: (pj: PersonajeSimple) => `${pj.Subtrama}`,
                 },
-                {
-                    columnDef: 'Estado de la ficha',
-                    header: '¿Archivado?',
-                    cell: (pj: PersonajeSimple) => pj.Archivado,
-                },
             ];
-            this.dataSource = this.Personajes;
-            this.displayedColumns = this.columns.map(c => c.columnDef);
+            this.personajesDS = this.Personajes;
+            // this.displayedColumns = this.columns.map(c => c.columnDef);
         });
     }
 

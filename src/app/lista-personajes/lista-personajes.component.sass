@@ -22,11 +22,12 @@ mat-form-field
 
 .filtros
     position: absolute
-    top: 10px
-    right: 10px
-
+    top: 7px
+    right: 7px
 
     box-shadow: 4px 4px 6px rgb(51, 51, 51)
+
+    z-index: 101
 
     &:hover
         box-shadow: 4px 4px 6px inset rgb(51, 51, 51)
@@ -69,3 +70,42 @@ mat-form-field
 
     mat-chip-option
         box-shadow: 6px 6px 8px black
+
+#personajes thead tr th
+    font-size: large 
+
+table
+    width: 100%
+
+tr.details-row
+    height: 0
+
+tr.example-element-row:not(.example-expanded-row):hover
+    background: #575757
+
+tr.example-element-row:not(.example-expanded-row):active
+    background: #646464
+
+.example-element-row td
+    border-bottom-width: 0
+
+.details .contenedorDetalles
+    display: grid
+    grid-template: 1fr / .5fr 1fr 1fr
+
+    background-color: #3d3d3d
+    border-radius: 4px
+    box-shadow: 6px 6px 8px black
+
+    overflow: hidden
+
+    padding: 10px
+    margin-bottom: 10px
+
+    p
+        background-color: #383838
+        border-radius: 8px
+
+    .campana
+        display: flex
+        flex-flow: column nowrap

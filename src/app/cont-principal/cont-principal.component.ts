@@ -7,7 +7,7 @@ import { MatExpansionPanel } from '@angular/material/expansion';
 @Component({
     selector: 'app-cont-principal',
     templateUrl: './cont-principal.component.html',
-    styleUrls: ['./cont-principal.component.sass']
+    styleUrls: ['./cont-principal.component.sass'],
 })
 export class ContPrincipalComponent {
     @ViewChild('primero') primero!: MatExpansionPanel;
