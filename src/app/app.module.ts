@@ -26,6 +26,7 @@ import { MatTableModule } from '@angular/material/table';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatDialogModule } from '@angular/material/dialog';
+import { MatSortModule } from '@angular/material/sort';
 import { FormsModule } from '@angular/forms';
 import { ListaPersonajesComponent } from './lista-personajes/lista-personajes.component';
 import { HttpClientModule } from '@angular/common/http';
@@ -65,6 +66,7 @@ import { SesionDialogComponent } from './@Utilidades/sesion-dialog/sesion-dialog
         MatMenuModule,
         MatChipsModule,
         MatDialogModule,
+        MatSortModule,
         HttpClientModule,
         NgbModule,
         ReactiveFormsModule,
