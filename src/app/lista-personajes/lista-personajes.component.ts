@@ -4,6 +4,7 @@ import { ListaPersonajesService } from '../services/lista-personajes.service';
 import { PersonajeSimple } from '../interfaces/personaje-simple';
 import { MatTableDataSource } from '@angular/material/table';
 import { MatSort, Sort } from '@angular/material/sort';
+import { MatPaginator } from '@angular/material/paginator';
 import { LiveAnnouncer } from '@angular/cdk/a11y';
 import { Campana } from '../interfaces/Campana';
 
@@ -32,6 +33,7 @@ export class ListaPersonajesComponent implements OnInit, AfterViewInit {
     constructor(private listaPjs: ListaPersonajesService, private lva: LiveAnnouncer) { }
 
     @ViewChild(MatSort) sort!: MatSort;
+    @ViewChild(MatPaginator) paginator!: MatPaginator;
 
     async ngOnInit(): Promise<void> {
         (await this.listaPjs.getPersonajes()).subscribe(Personajes => {
@@ -94,11 +96,13 @@ export class ListaPersonajesComponent implements OnInit, AfterViewInit {
             ];
             this.personajesDS = new MatTableDataSource(this.Personajes);
             this.personajesDS.sort = this.sort;
+            this.personajesDS.paginator = this.paginator;
         });
     }
 
     ngAfterViewInit() {
         this.personajesDS.sort = this.sort;
+        this.personajesDS.paginator = this.paginator;
     }
 
     filtroGeneral(event: Event) {

@@ -33,9 +33,11 @@
                 (click)="$event.stopPropagation(); AlternarArchivados(archivo.value);">{{anuncioArchivo}}</mat-chip-option>
         </mat-menu>
 
-        <table id="personajes" mat-table  [dataSource]="personajesDS" multiTemplateDataRows matSort (matSortChange)="announceSortChange($event);">
+        <table id="personajes" mat-table [dataSource]="personajesDS" multiTemplateDataRows matSort
+            (matSortChange)="announceSortChange($event);">
             <ng-container matColumnDef="{{column}}" *ngFor="let column of columnsToDisplay">
-                <th class="lead" mat-header-cell *matHeaderCellDef mat-sort-header sortActionDescription="Ordenar por {{column}}">
+                <th class="lead" mat-header-cell *matHeaderCellDef mat-sort-header
+                    sortActionDescription="Ordenar por {{column}}">
                     <ng-container
                         *ngIf="column != '¿Archivado?' || anuncioArchivo != 'Clic para mostar pjs archivados'">
                         {{column}}
@@ -90,6 +92,8 @@
             </tr>
             <tr mat-row *matRowDef="let row; columns: ['expandedDetail']" class="details-row"></tr>
         </table>
-
+        <mat-paginator [pageSizeOptions]="[5, 10, 20, 40]" showFirstLastButtons
+            aria-label="Selecciona una página de personajes">
+        </mat-paginator>
     </div>
 </div>
