@@ -1,0 +1,9 @@
+<mat-tab-group mat-stretch-tabs="false" mat-align-tabs="start">
+    <mat-tab label="Personajes">
+        <app-lista-personajes></app-lista-personajes>
+    </mat-tab>
+    <mat-tab label="Algo" *ngIf="usrPerm === 1"></mat-tab>
+    <mat-tab label="Pruebas" *ngIf="usrPerm === 1">
+        <app-empleado></app-empleado>
+    </mat-tab>
+</mat-tab-group>

@@ -2,19 +2,13 @@ import { Injectable } from '@angular/core';
 import { Auth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, signOut, UserCredential, AuthInstances, user } from '@angular/fire/auth';
 import { BehaviorSubject } from 'rxjs';
 import { __values } from 'tslib';
-
-
-interface User {
-    nombre: string;
-    correo: string;
-    //permisos: ¿¿??
-}
+import { Usuario } from '../interfaces/usuario';
 
 @Injectable({
     providedIn: 'root'
 })
 export class UserService {
-    private usuario: User = { nombre: 'Invitado', correo: '' };
+    private usuario: Usuario = { nombre: 'Invitado', correo: '', permisos: 0 };
     private sesionAbierta: boolean = false;
     private isLoggedInSubject = new BehaviorSubject<boolean>(false);
     public isLoggedIn$ = this.isLoggedInSubject.asObservable();
@@ -23,8 +17,9 @@ export class UserService {
         return this.usuario;
     }
 
-    public set Usuario(value: User) {
+    public set Usuario(value: Usuario) {
         this.usuario = value;
+        this.usuario.permisos = this.usuario.nombre === "MrYosi90" || this.usuario.correo === "Yosi121990@hotmail.es" ? 1 : 0;
         const abrirSesion: boolean = value.nombre !== 'Invitado' && value.correo !== '';
         this.isLoggedInSubject.next(abrirSesion);
         this.sesionAbierta = abrirSesion;
@@ -32,7 +27,7 @@ export class UserService {
 
     constructor(private auth: Auth) { }
 
-    public setLoggedIn(usr: User): void {
+    public setLoggedIn(usr: Usuario): void {
         this.Usuario = usr;
     }
 
@@ -41,7 +36,7 @@ export class UserService {
             const sesion = createUserWithEmailAndPassword(this.auth, email, password);
             sesion.then(response => {
                 localStorage.setItem('sesionFichas', JSON.stringify(response));
-                this.setLoggedIn({ nombre: response.user.displayName ?? '', correo: response.user.email ?? '' });
+                this.setLoggedIn({ nombre: response.user.displayName ?? '', correo: response.user.email ?? '', permisos: 0 });
             }).catch(error => console.log(error));
             return sesion;
         } else return null;
@@ -51,7 +46,7 @@ export class UserService {
         if (!this.sesionAbierta) {
             const sesion = signInWithEmailAndPassword(this.auth, email, password).then(response => {
                 localStorage.setItem('sesionFichas', JSON.stringify(response));
-                this.setLoggedIn({ nombre: response.user.displayName ?? '', correo: response.user.email ?? '' });
+                this.setLoggedIn({ nombre: response.user.displayName ?? '', correo: response.user.email ?? '', permisos: 0 });
             }).catch(error => console.log(error));
             return sesion;
         } else return null;
@@ -61,7 +56,7 @@ export class UserService {
         if (!this.sesionAbierta) {
             const sesion = signInWithPopup(this.auth, new GoogleAuthProvider()).then(response => {
                 localStorage.setItem('sesionFichas', JSON.stringify(response));
-                this.setLoggedIn({ nombre: response.user.displayName ?? '', correo: response.user.email ?? '' });
+                this.setLoggedIn({ nombre: response.user.displayName ?? '', correo: response.user.email ?? '', permisos: 0 });
             }).catch(error => console.log(error));
             return sesion;
         } else return null;
@@ -75,13 +70,13 @@ export class UserService {
 
     recuperarSesion(token: string) {
         const sesion = JSON.parse(token);
-        this.setLoggedIn({ nombre: sesion.user.displayName ?? '', correo: sesion.user.email ?? '' });
+        this.setLoggedIn({ nombre: sesion.user.displayName ?? '', correo: sesion.user.email ?? '', permisos: 0 });
     }
 
     logOut() {
         if (this.sesionAbierta) {
             localStorage.removeItem('sesionFichas');
-            this.setLoggedIn({ nombre: '', correo: '' });
+            this.setLoggedIn({ nombre: '', correo: '', permisos: 0 });
             return signOut(this.auth);
         } else return null;
     }

@@ -37,6 +37,7 @@ import { HijoEmpleadoComponent } from './pruebas/empleado/hijo-empleado/hijo-emp
 import { provideAuth, getAuth } from '@angular/fire/auth';
 import { provideDatabase, getDatabase } from '@angular/fire/database';
 import { SesionDialogComponent } from './@Utilidades/sesion-dialog/sesion-dialog.component';
+import { TabControlComponent } from './tab-control/tab-control.component';
 
 @NgModule({
     declarations: [
@@ -48,6 +49,7 @@ import { SesionDialogComponent } from './@Utilidades/sesion-dialog/sesion-dialog
         ListaPersonajesComponent,
         HijoEmpleadoComponent,
         SesionDialogComponent,
+        TabControlComponent,
     ],
     imports: [
         BrowserModule,
