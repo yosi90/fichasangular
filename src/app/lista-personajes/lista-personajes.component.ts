@@ -1,4 +1,4 @@
-import { Component, ViewChild, OnInit, AfterViewInit } from '@angular/core';
+import { Component, ViewChild, OnInit, AfterViewInit, ElementRef } from '@angular/core';
 import { animate, state, style, transition, trigger } from '@angular/animations';
 import { ListaPersonajesService } from '../services/lista-personajes.service';
 import { PersonajeSimple } from '../interfaces/personaje-simple';
@@ -22,7 +22,6 @@ import { Campana } from '../interfaces/Campana';
     ],
 })
 export class ListaPersonajesComponent implements OnInit, AfterViewInit {
-
     Personajes: PersonajeSimple[] = [];
     columns: ({ title: string; columnDef: string; header: string; cell: (pj: PersonajeSimple) => string; } | { title: string; columnDef: string; header: string; cell: (pj: PersonajeSimple) => boolean; })[] = [];
     personajesDS = new MatTableDataSource(this.Personajes);
@@ -32,6 +31,7 @@ export class ListaPersonajesComponent implements OnInit, AfterViewInit {
 
     constructor(private listaPjs: ListaPersonajesService, private lva: LiveAnnouncer) { }
 
+    @ViewChild('tablaPjs', { read: ElementRef }) tabla!: ElementRef;
     @ViewChild(MatSort) sort!: MatSort;
     @ViewChild(MatPaginator) paginator!: MatPaginator;
 
@@ -103,6 +103,11 @@ export class ListaPersonajesComponent implements OnInit, AfterViewInit {
     ngAfterViewInit() {
         this.personajesDS.sort = this.sort;
         this.personajesDS.paginator = this.paginator;
+        let filtros = document.getElementById('filtrosLP') as HTMLElement;
+        if (filtros) {
+            filtros!.style.top = `${this.tabla.nativeElement.offsetHeight + 54}px`;
+            filtros!.style.right = `40px`;
+        }
     }
 
     filtroGeneral(event: Event) {
