@@ -14,7 +14,7 @@ export class AppComponent implements OnInit {
     async ngOnInit(): Promise<void> {
         this.height = window.innerHeight;
         this.width = window.innerWidth;
-        (await this.resize$).subscribe(() => {
+        (this.resize$).subscribe(() => {
             this.height = window.innerHeight;
             this.width = window.innerWidth;
         });

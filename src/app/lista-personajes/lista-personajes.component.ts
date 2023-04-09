@@ -103,11 +103,9 @@ export class ListaPersonajesComponent implements OnInit, AfterViewInit {
     ngAfterViewInit() {
         this.personajesDS.sort = this.sort;
         this.personajesDS.paginator = this.paginator;
-        let filtros = document.getElementById('filtrosLP') as HTMLElement;
-        if (filtros) {
-            filtros!.style.top = `${this.tabla.nativeElement.offsetHeight + 54}px`;
-            filtros!.style.right = `40px`;
-        }
+        const flt = document.querySelectorAll('.filtros');
+        flt[0].classList.add('filtroBS');
+        flt[1].classList.add('filtroSS');
     }
 
     filtroGeneral(event: Event) {
