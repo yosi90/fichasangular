@@ -1,8 +1,14 @@
 <div class="container-fluid">
-  <app-navbar *ngIf="height < width"></app-navbar>
-  <app-cont-principal *ngIf="height < width"></app-cont-principal>
-  <app-tab-control *ngIf="height >= width"></app-tab-control>
-  <!-- <app-navbar [ngStyle]="{'visibility':height < width ? 'visible' : 'hidden'}"></app-navbar>
-  <app-cont-principal [ngStyle]="{'visibility':height < width ? 'visible' : 'hidden'}"></app-cont-principal>
-  <app-tab-control [ngStyle]="{'visibility':height > width ? 'visible' : 'hidden'}"></app-tab-control> -->
+  <!-- <app-navbar *ngIf="height > 700 && height < width"></app-navbar>
+  <app-cont-principal *ngIf="height > 700 && height < width"></app-cont-principal>
+  <app-tab-control *ngIf="height < 700 || height >= width"></app-tab-control> -->
+
+
+  <app-navbar [ngStyle]="{'display':width > 1250 && height > 700 && height < width ? 'initial' : 'none'}"></app-navbar>
+  <app-cont-principal [ngStyle]="{'display':width > 1250 && height > 700 && height < width ? 'initial' : 'none'}"></app-cont-principal> 
+  <app-tab-control [ngStyle]="{'display':width <= 1250 || height <= 700 || height >= width ? 'initial' : 'none'}"></app-tab-control>
+
+  <!-- <app-navbar></app-navbar> -->
+  <!-- <app-cont-principal></app-cont-principal> -->
+  <!-- <app-tab-control></app-tab-control> -->
 </div>
