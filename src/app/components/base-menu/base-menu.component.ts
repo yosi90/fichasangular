@@ -1,15 +1,15 @@
-import { Component, ViewChild } from '@angular/core';
+import { Component, OnInit, ViewChild } from '@angular/core';
 import { MatDialog } from '@angular/material/dialog';
-import { SesionDialogComponent } from '../@Utilidades/sesion-dialog/sesion-dialog.component';
-import { UserService } from '../services/user.service';
+import { SesionDialogComponent } from '../sesion-dialog/sesion-dialog.component';
+import { UserService } from '../../services/user.service';
 import { MatExpansionPanel } from '@angular/material/expansion';
 
 @Component({
-    selector: 'app-cont-principal',
-    templateUrl: './cont-principal.component.html',
-    styleUrls: ['./cont-principal.component.sass'],
+    selector: 'app-base-menu',
+    templateUrl: './base-menu.component.html',
+    styleUrls: ['./base-menu.component.sass']
 })
-export class ContPrincipalComponent {
+export class BaseMenuComponent implements OnInit {
     @ViewChild('primero') primero!: MatExpansionPanel;
     @ViewChild('segundo') segundo!: MatExpansionPanel;
     @ViewChild('tercero') tercero!: MatExpansionPanel;
@@ -66,4 +66,5 @@ export class ContPrincipalComponent {
             })
             .catch(error => console.log(error));
     }
+
 }

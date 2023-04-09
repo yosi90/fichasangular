@@ -1,0 +1,11 @@
+<mat-drawer-container class="example-container">
+    <mat-drawer #baseMenu>
+        <app-base-menu></app-base-menu>
+    </mat-drawer>
+    <mat-drawer-content>
+        <app-tab-control></app-tab-control>
+        <button id="bmButton" mat-raised-button (click)="baseMenu.toggle()">
+            <mat-icon>menu</mat-icon>
+        </button>
+    </mat-drawer-content>
+</mat-drawer-container>
