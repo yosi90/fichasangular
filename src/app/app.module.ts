@@ -28,7 +28,8 @@ import { MatChipsModule } from '@angular/material/chips';
 import { MatDialogModule } from '@angular/material/dialog';
 import { MatSortModule } from '@angular/material/sort';
 import { MatPaginatorModule } from '@angular/material/paginator';
-import {MatSidenavModule} from '@angular/material/sidenav';
+import { MatSidenavModule } from '@angular/material/sidenav';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { FormsModule } from '@angular/forms';
 import { ListaPersonajesComponent } from './components/lista-personajes/lista-personajes.component';
 import { HttpClientModule } from '@angular/common/http';
@@ -77,6 +78,7 @@ import { BaseMenuComponent } from './components/base-menu/base-menu.component';
         MatSortModule,
         MatPaginatorModule,
         MatSidenavModule,
+        MatTooltipModule,
         HttpClientModule,
         NgbModule,
         ReactiveFormsModule,
