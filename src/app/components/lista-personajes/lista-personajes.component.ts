@@ -23,7 +23,8 @@ import { Campana } from '../../interfaces/Campana';
 })
 export class ListaPersonajesComponent implements OnInit, AfterViewInit {
     Personajes: PersonajeSimple[] = [];
-    columns: ({ title: string; columnDef: string; header: string; cell: (pj: PersonajeSimple) => string; } | { title: string; columnDef: string; header: string; cell: (pj: PersonajeSimple) => boolean; })[] = [];
+    PersonajesArchivados: PersonajeSimple[] = [];
+    columns = this.listaPjs.ceateDataTable();
     personajesDS = new MatTableDataSource(this.Personajes);
     columnsToDisplay = ['Nombre', 'Clases', 'Raza', '¿Archivado?'];
     columnsToDisplayWithExpand = [...this.columnsToDisplay, 'expand'];
@@ -36,36 +37,14 @@ export class ListaPersonajesComponent implements OnInit, AfterViewInit {
     @ViewChild(MatPaginator) paginator!: MatPaginator;
 
     async ngOnInit(): Promise<void> {
-        this.listaPjs.pjs().subscribe(
-            response => {
-                response.forEach((element: { i: any; n: any; r: any; c: any; co: any; p: any; ca: any; t: any; s: any; a: any; }) => {
-                    const pj: PersonajeSimple = {
-                        Id: element.i,
-                        Nombre: element.n,
-                        Raza: element.r,
-                        Clases: element.c,
-                        Contexto: element.co,
-                        Personalidad: element.p,
-                        Campana: element.ca,
-                        Trama: element.t,
-                        Subtrama: element.s,
-                        Archivado: element.a,
-
-                    };
-                    this.Personajes.push(pj);
-                });
-                this.columns = this.listaPjs.ceateDataTable();
-                this.personajesDS = new MatTableDataSource(this.Personajes);
-                this.personajesDS.sort = this.sort;
-                this.personajesDS.paginator = this.paginator;
-            },
-            error => console.log(error)
-        );
+        (await this.listaPjs.getPersonajes()).subscribe(Personajes => {
+            this.Personajes = Personajes.filter(pj => !pj.Archivado);
+            this.PersonajesArchivados = Personajes;
+            this.actualizarDataSource(this.anuncioArchivo);
+        });
     }
 
     ngAfterViewInit() {
-        this.personajesDS.sort = this.sort;
-        this.personajesDS.paginator = this.paginator;
         const flt = document.querySelectorAll('.filtros');
         flt[0].classList.add('filtroBS');
         if (flt.length > 1)
@@ -117,5 +96,15 @@ export class ListaPersonajesComponent implements OnInit, AfterViewInit {
             this.anuncioArchivo = 'Mostrando pjs archivados';
         else
             this.anuncioArchivo = 'Clic para mostar pjs archivados';
+        this.actualizarDataSource(this.anuncioArchivo);
+    }
+
+    actualizarDataSource(value: string) {
+        if (value === 'Clic para mostar pjs archivados')
+            this.personajesDS = new MatTableDataSource(this.Personajes);
+        else
+            this.personajesDS = new MatTableDataSource(this.PersonajesArchivados);
+        this.personajesDS.sort = this.sort;
+        this.personajesDS.paginator = this.paginator;
     }
 }

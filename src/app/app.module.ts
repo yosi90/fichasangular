@@ -40,8 +40,9 @@ import { provideAuth, getAuth } from '@angular/fire/auth';
 import { provideDatabase, getDatabase } from '@angular/fire/database';
 import { SesionDialogComponent } from './components/sesion-dialog/sesion-dialog.component';
 import { TabControlComponent } from './components/tab-control/tab-control.component';
-import { BaseMenuResponsiveComponent } from './components/base-menu-responsive/base-menu-responsive.component';
+import { BaseMenuResponsiveComponent } from './components/responsive-base/responsive-base.component';
 import { BaseMenuComponent } from './components/base-menu/base-menu.component';
+import { AdminPanelComponent } from './components/admin-panel/admin-panel.component';
 
 @NgModule({
     declarations: [
@@ -56,6 +57,7 @@ import { BaseMenuComponent } from './components/base-menu/base-menu.component';
         TabControlComponent,
         BaseMenuResponsiveComponent,
         BaseMenuComponent,
+        AdminPanelComponent,
     ],
     imports: [
         BrowserModule,

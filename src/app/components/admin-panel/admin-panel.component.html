@@ -1,0 +1,23 @@
+<div class="container fluid">
+    <div class="row">
+        <div class="col-6">
+            <mat-card class="m-2 p-3">
+                <mat-accordion>
+                    <mat-expansion-panel #primero>
+                        <mat-expansion-panel-header class="rounded-0 rounded-top">
+                            <button mat-stroked-button color="accent" class="rounded-0 rounded-top"
+                                matTooltip="Solo debe ser usado para inicializar datos en firebase">
+                                <mat-icon>sync_alt</mat-icon>Sincronizar datos entre SQL server y firebase
+                            </button>
+                        </mat-expansion-panel-header>
+                        <button mat-raised-button color="primary" (click)="sincronizarListaPJs();">Lista de
+                            personajes</button>
+                        <button mat-raised-button color="primary">Campañas, tramas y subtramas</button>
+                        <button mat-raised-button color="primary">Detalles de personajes</button>
+                    </mat-expansion-panel>
+                </mat-accordion>
+            </mat-card>
+        </div>
+        <div class="col-6"></div>
+    </div>
+</div>

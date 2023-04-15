@@ -3,7 +3,6 @@
 from flask import Flask, jsonify
 from flask_cors import CORS
 import pyodbc
-import json
 
 server = 'YOSI-PC\SQLEXPRESS'
 database = 'rol'
