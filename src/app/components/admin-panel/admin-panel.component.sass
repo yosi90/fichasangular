@@ -1,0 +1,47 @@
+@import '../../../assets/css/_variables'
+
+mat-expansion-panel
+    border-bottom-left-radius: 0
+    border-bottom-right-radius: 0
+    box-shadow: 3px 3px 10px black
+
+    padding: 0
+    margin-bottom: 1px
+
+    mat-expansion-panel-header
+        max-height: 48px
+
+        mat-icon
+            font-size: 24px
+            width: auto
+            height: auto
+
+    mat-expansion-panel-header button
+        justify-content: left
+
+        position: absolute
+        right: 0
+        bottom: 0
+        left: 0
+
+        height: 100%
+        width: 100%
+
+        background-color: $primary
+        font-weight: 500
+
+    ::ng-deep .mat-expansion-panel-body
+        padding: 0
+
+        button
+            // justify-content: right
+
+            width: 100%
+
+            border-radius: 0
+
+        button:nth-child(even):not([disabled]):not([mat-raised-button])
+            background-color: #ccc
+
+        button:nth-child(odd):not([disabled]):not([mat-raised-button])
+            background-color: lightgray

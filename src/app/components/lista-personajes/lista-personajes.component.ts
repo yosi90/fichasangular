@@ -23,7 +23,8 @@ import { Campana } from '../../interfaces/Campana';
 })
 export class ListaPersonajesComponent implements OnInit, AfterViewInit {
     Personajes: PersonajeSimple[] = [];
-    columns: ({ title: string; columnDef: string; header: string; cell: (pj: PersonajeSimple) => string; } | { title: string; columnDef: string; header: string; cell: (pj: PersonajeSimple) => boolean; })[] = [];
+    PersonajesArchivados: PersonajeSimple[] = [];
+    columns = this.listaPjs.ceateDataTable();
     personajesDS = new MatTableDataSource(this.Personajes);
     columnsToDisplay = ['Nombre', 'Clases', 'Raza', '¿Archivado?'];
     columnsToDisplayWithExpand = [...this.columnsToDisplay, 'expand'];
@@ -37,75 +38,17 @@ export class ListaPersonajesComponent implements OnInit, AfterViewInit {
 
     async ngOnInit(): Promise<void> {
         (await this.listaPjs.getPersonajes()).subscribe(Personajes => {
-            this.Personajes = Personajes;
-            this.columns = [
-                {
-                    title: 'Nombre del personaje',
-                    columnDef: 'expand',
-                    header: 'Nombre',
-                    cell: (pj: PersonajeSimple) => `${pj.Nombre}`,
-                },
-                {
-                    title: 'Clases y nivel',
-                    columnDef: 'expand',
-                    header: 'Clases',
-                    cell: (pj: PersonajeSimple) => `${pj.Clases}`,
-                },
-                {
-                    title: 'Raza del personaje',
-                    columnDef: 'expand',
-                    header: 'Raza',
-                    cell: (pj: PersonajeSimple) => `${pj.Raza}`,
-                },
-                {
-                    title: 'Estado de la ficha',
-                    columnDef: 'expand',
-                    header: '¿Archivado?',
-                    cell: (pj: PersonajeSimple) => pj.Archivado,
-                },
-                {
-                    title: 'Personalidad del personaje',
-                    columnDef: 'expandedDetail',
-                    header: 'Personalidad',
-                    cell: (pj: PersonajeSimple) => `${pj.Personalidad}`,
-                },
-                {
-                    title: 'Contexto del personaje',
-                    columnDef: 'expandedDetail',
-                    header: 'Contexto',
-                    cell: (pj: PersonajeSimple) => `${pj.Contexto}`,
-                },
-                {
-                    title: 'Campaña en la que aparece',
-                    columnDef: 'expandedDetail',
-                    header: 'Campaña',
-                    cell: (pj: PersonajeSimple) => `${pj.Campana}`,
-                },
-                {
-                    title: 'Trama de la campaña',
-                    columnDef: 'expandedDetail',
-                    header: 'Trama',
-                    cell: (pj: PersonajeSimple) => `${pj.Trama}`,
-                },
-                {
-                    title: 'Subtrama de la trama',
-                    columnDef: 'expandedDetail',
-                    header: 'Subtrama',
-                    cell: (pj: PersonajeSimple) => `${pj.Subtrama}`,
-                },
-            ];
-            this.personajesDS = new MatTableDataSource(this.Personajes);
-            this.personajesDS.sort = this.sort;
-            this.personajesDS.paginator = this.paginator;
+            this.Personajes = Personajes.filter(pj => !pj.Archivado);
+            this.PersonajesArchivados = Personajes;
+            this.actualizarDataSource(this.anuncioArchivo);
         });
     }
 
     ngAfterViewInit() {
-        this.personajesDS.sort = this.sort;
-        this.personajesDS.paginator = this.paginator;
         const flt = document.querySelectorAll('.filtros');
         flt[0].classList.add('filtroBS');
-        flt[1].classList.add('filtroSS');
+        if (flt.length > 1)
+            flt[1].classList.add('filtroSS');
     }
 
     filtroGeneral(event: Event) {
@@ -153,5 +96,15 @@ export class ListaPersonajesComponent implements OnInit, AfterViewInit {
             this.anuncioArchivo = 'Mostrando pjs archivados';
         else
             this.anuncioArchivo = 'Clic para mostar pjs archivados';
+        this.actualizarDataSource(this.anuncioArchivo);
+    }
+
+    actualizarDataSource(value: string) {
+        if (value === 'Clic para mostar pjs archivados')
+            this.personajesDS = new MatTableDataSource(this.Personajes);
+        else
+            this.personajesDS = new MatTableDataSource(this.PersonajesArchivados);
+        this.personajesDS.sort = this.sort;
+        this.personajesDS.paginator = this.paginator;
     }
 }

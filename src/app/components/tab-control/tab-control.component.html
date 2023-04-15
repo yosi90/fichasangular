@@ -2,7 +2,9 @@
     <mat-tab label="Personajes">
         <app-lista-personajes></app-lista-personajes>
     </mat-tab>
-    <mat-tab label="Algo" *ngIf="usrPerm === 1"></mat-tab>
+    <mat-tab label="Panel de administración" *ngIf="usrPerm === 1">
+        <app-admin-panel></app-admin-panel>
+    </mat-tab>
     <mat-tab label="Pruebas" *ngIf="usrPerm === 1">
         <app-empleado></app-empleado>
     </mat-tab>

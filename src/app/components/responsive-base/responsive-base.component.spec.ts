@@ -1,6 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
-import { BaseMenuResponsiveComponent } from './base-menu-responsive.component';
+import { BaseMenuResponsiveComponent } from './responsive-base.component';
 
 describe('BaseMenuResponsiveComponent', () => {
   let component: BaseMenuResponsiveComponent;
