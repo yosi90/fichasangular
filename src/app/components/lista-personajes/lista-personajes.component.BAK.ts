@@ -36,31 +36,68 @@ export class ListaPersonajesComponent implements OnInit, AfterViewInit {
     @ViewChild(MatPaginator) paginator!: MatPaginator;
 
     async ngOnInit(): Promise<void> {
-        this.listaPjs.pjs().subscribe(
-            response => {
-                response.forEach((element: { i: any; n: any; r: any; c: any; co: any; p: any; ca: any; t: any; s: any; a: any; }) => {
-                    const pj: PersonajeSimple = {
-                        Id: element.i,
-                        Nombre: element.n,
-                        Raza: element.r,
-                        Clases: element.c,
-                        Contexto: element.co,
-                        Personalidad: element.p,
-                        Campana: element.ca,
-                        Trama: element.t,
-                        Subtrama: element.s,
-                        Archivado: element.a,
-
-                    };
-                    this.Personajes.push(pj);
-                });
-                this.columns = this.listaPjs.ceateDataTable();
-                this.personajesDS = new MatTableDataSource(this.Personajes);
-                this.personajesDS.sort = this.sort;
-                this.personajesDS.paginator = this.paginator;
-            },
-            error => console.log(error)
-        );
+        // (await this.listaPjs.getPersonajes()).subscribe(Personajes => {
+        //     this.Personajes = Personajes;
+        //     this.columns = [
+        //         {
+        //             title: 'Nombre del personaje',
+        //             columnDef: 'expand',
+        //             header: 'Nombre',
+        //             cell: (pj: PersonajeSimple) => `${pj.Nombre}`,
+        //         },
+        //         {
+        //             title: 'Clases y nivel',
+        //             columnDef: 'expand',
+        //             header: 'Clases',
+        //             cell: (pj: PersonajeSimple) => `${pj.Clases}`,
+        //         },
+        //         {
+        //             title: 'Raza del personaje',
+        //             columnDef: 'expand',
+        //             header: 'Raza',
+        //             cell: (pj: PersonajeSimple) => `${pj.Raza}`,
+        //         },
+        //         {
+        //             title: 'Estado de la ficha',
+        //             columnDef: 'expand',
+        //             header: '¿Archivado?',
+        //             cell: (pj: PersonajeSimple) => pj.Archivado,
+        //         },
+        //         {
+        //             title: 'Personalidad del personaje',
+        //             columnDef: 'expandedDetail',
+        //             header: 'Personalidad',
+        //             cell: (pj: PersonajeSimple) => `${pj.Personalidad}`,
+        //         },
+        //         {
+        //             title: 'Contexto del personaje',
+        //             columnDef: 'expandedDetail',
+        //             header: 'Contexto',
+        //             cell: (pj: PersonajeSimple) => `${pj.Contexto}`,
+        //         },
+        //         {
+        //             title: 'Campaña en la que aparece',
+        //             columnDef: 'expandedDetail',
+        //             header: 'Campaña',
+        //             cell: (pj: PersonajeSimple) => `${pj.Campana}`,
+        //         },
+        //         {
+        //             title: 'Trama de la campaña',
+        //             columnDef: 'expandedDetail',
+        //             header: 'Trama',
+        //             cell: (pj: PersonajeSimple) => `${pj.Trama}`,
+        //         },
+        //         {
+        //             title: 'Subtrama de la trama',
+        //             columnDef: 'expandedDetail',
+        //             header: 'Subtrama',
+        //             cell: (pj: PersonajeSimple) => `${pj.Subtrama}`,
+        //         },
+        //     ];
+        //     this.personajesDS = new MatTableDataSource(this.Personajes);
+        //     this.personajesDS.sort = this.sort;
+        //     this.personajesDS.paginator = this.paginator;
+        // });
     }
 
     ngAfterViewInit() {

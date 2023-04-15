@@ -19,7 +19,7 @@ export class UserService {
 
     public set Usuario(value: Usuario) {
         this.usuario = value;
-        this.usuario.permisos = this.usuario.nombre === "MrYosi90" || this.usuario.correo === "Yosi121990@hotmail.es" ? 1 : 0;
+        this.usuario.permisos = this.usuario.nombre === "MrYosi90" || this.usuario.correo.toLowerCase() === "yosi121990@hotmail.es" ? 1 : 0;
         const abrirSesion: boolean = value.nombre !== 'Invitado' && value.correo !== '';
         this.isLoggedInSubject.next(abrirSesion);
         this.sesionAbierta = abrirSesion;
