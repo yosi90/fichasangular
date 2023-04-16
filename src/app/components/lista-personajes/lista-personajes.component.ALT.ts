@@ -6,7 +6,7 @@ import { MatTableDataSource } from '@angular/material/table';
 import { MatSort, Sort } from '@angular/material/sort';
 import { MatPaginator } from '@angular/material/paginator';
 import { LiveAnnouncer } from '@angular/cdk/a11y';
-import { Campana } from '../../interfaces/Campana';
+import { Campana } from '../../../../trashCode/Campana';
 
 // @Component({
 //     selector: 'app-lista-personajes.ALT',

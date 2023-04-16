@@ -1,14 +1,15 @@
 import { Injectable } from '@angular/core';
 import { PersonajeSimple } from '../interfaces/personaje-simple';
-import { Database, Unsubscribe, onValue, ref } from '@angular/fire/database';
+import { Database, getDatabase, Unsubscribe, onValue, ref, set } from '@angular/fire/database';
 import { Observable } from 'rxjs';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
 
 @Injectable({
     providedIn: 'root'
 })
 export class ListaPersonajesService {
 
-    constructor(public db: Database) { }
+    constructor(public db: Database, private http: HttpClient) { }
 
     async getPersonajes(): Promise<Observable<PersonajeSimple[]>> {
         return new Observable((observador) => {
@@ -113,7 +114,31 @@ export class ListaPersonajesService {
         return columns;
     }
 
-    public RenovarLPsFirebase(): boolean{
-        return false;
+    pjs(): Observable<any> {
+        const headers = new HttpHeaders({ 'Content-Type': 'application/json' });
+        const personajes = this.http.post('http://127.0.0.1:5000/personajes', { headers });
+        return personajes;
+    }
+
+    public async RenovarLPsFirebase() {
+        const db = getDatabase();
+        this.pjs().subscribe(
+            response => {
+                response.forEach((element: { i: any; n: any; r: any; c: any; co: any; p: any; ca: any; t: any; s: any; a: any; }) => {
+                    set(ref(db, `Personajes/${element.i}`), {
+                        Nombre: element.n,
+                        Raza: element.r,
+                        Clases: element.c,
+                        Contexto: element.co,
+                        Personalidad: element.p,
+                        Campaña: element.ca,
+                        Trama: element.t,
+                        Subtrama: element.s,
+                        Archivado: element.a,
+                    })
+                });
+            },
+            error => console.log(error)
+        );
     }
 }

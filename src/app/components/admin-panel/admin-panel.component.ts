@@ -1,5 +1,6 @@
 import { Component } from '@angular/core';
 import { ListaPersonajesService } from 'src/app/services/lista-personajes.service';
+import { CampañasService } from 'src/app/services/campañas.service';
 
 @Component({
     selector: 'app-admin-panel',
@@ -8,12 +9,13 @@ import { ListaPersonajesService } from 'src/app/services/lista-personajes.servic
 })
 export class AdminPanelComponent {
 
-    constructor(private lpsrv: ListaPersonajesService) { }
+    constructor(private lpsrv: ListaPersonajesService, private csrv: CampañasService) { }
 
-    sincronizarListaPJs(){
+    sincronizarListaPJs() {
         const resultado = this.lpsrv.RenovarLPsFirebase();
-        if(!resultado){
-            alert('error al sincronizar datos');
-        }
+    }
+
+    sincronizarCampanas() {
+        const resultado = this.csrv.RenovarCampañasFirebase();
     }
 }

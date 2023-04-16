@@ -2,7 +2,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 
 import { BaseMenuResponsiveComponent } from './responsive-base.component';
 
-describe('BaseMenuResponsiveComponent', () => {
+describe('ResponsiveBaseComponent', () => {
   let component: BaseMenuResponsiveComponent;
   let fixture: ComponentFixture<BaseMenuResponsiveComponent>;
 
