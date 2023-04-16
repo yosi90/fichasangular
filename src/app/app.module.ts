@@ -6,8 +6,6 @@ import { ReactiveFormsModule } from '@angular/forms';
 
 
 import { AppComponent } from './app.component';
-import { EmpleadosComponent } from './pruebas/empleados/empleados.component';
-import { EmpleadoComponent } from './pruebas/empleado/empleado.component';
 import { NavbarComponent } from './components/navbar/navbar.component';
 import { ContPrincipalComponent } from './components/cont-principal/cont-principal.component';
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
@@ -35,7 +33,6 @@ import { ListaPersonajesComponent } from './components/lista-personajes/lista-pe
 import { HttpClientModule } from '@angular/common/http';
 import { DataServices } from './data.services';
 import { NgbModule } from '@ng-bootstrap/ng-bootstrap';
-import { HijoEmpleadoComponent } from './pruebas/empleado/hijo-empleado/hijo-empleado.component';
 import { provideAuth, getAuth } from '@angular/fire/auth';
 import { provideDatabase, getDatabase } from '@angular/fire/database';
 import { SesionDialogComponent } from './components/sesion-dialog/sesion-dialog.component';
@@ -47,12 +44,9 @@ import { AdminPanelComponent } from './components/admin-panel/admin-panel.compon
 @NgModule({
     declarations: [
         AppComponent,
-        EmpleadosComponent,
-        EmpleadoComponent,
         NavbarComponent,
         ContPrincipalComponent,
         ListaPersonajesComponent,
-        HijoEmpleadoComponent,
         SesionDialogComponent,
         TabControlComponent,
         BaseMenuResponsiveComponent,
