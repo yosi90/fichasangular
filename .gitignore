@@ -39,6 +39,7 @@ testem.log
 /src/backend/php/
 /src/backend/python/pruebas.py
 /trashCode
+/src/environments
 
 # System files
 .DS_Store

@@ -3,7 +3,6 @@ import { Database, getDatabase, Unsubscribe, onValue, ref, set } from '@angular/
 import { Observable } from 'rxjs';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Campaña } from '../interfaces/campaña';
-import { Super } from '../interfaces/genericas';
 
 @Injectable({
     providedIn: 'root'

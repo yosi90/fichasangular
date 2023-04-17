@@ -40,6 +40,7 @@ import { TabControlComponent } from './components/tab-control/tab-control.compon
 import { BaseMenuResponsiveComponent } from './components/responsive-base/responsive-base.component';
 import { BaseMenuComponent } from './components/base-menu/base-menu.component';
 import { AdminPanelComponent } from './components/admin-panel/admin-panel.component';
+import { DetallesPersonajeComponent } from './components/detalles-personaje/detalles-personaje.component';
 
 @NgModule({
     declarations: [
@@ -52,6 +53,7 @@ import { AdminPanelComponent } from './components/admin-panel/admin-panel.compon
         BaseMenuResponsiveComponent,
         BaseMenuComponent,
         AdminPanelComponent,
+        DetallesPersonajeComponent,
     ],
     imports: [
         BrowserModule,
