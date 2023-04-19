@@ -59,8 +59,9 @@ def get_detalles_personaje():
         cursor = connection.cursor()
 
         cursor.execute("""
-                        select p.id_personaje i, p.nombre n, descripcion_personalidad dcp, descripcion_historia dh, p.ataque_base a, p.armadura_natural an, p.ca_desvio cd, r.nombre ra, ti.nombre tc, pc.fuerza f, pc.destreza d, pc.constitucion co, pc.inteligencia int, 
-                        pc.sabiduria s, pc.carisma ca, p.ajuste aju, dei.nombre de, ab.nombre ali, g.nombre g, ca.nombre ncam, t.nombre ntr, s.nombre nst, p.puntos_golpe v, p.correr cor, p.nadar na, p.volar vo, p.trepar t, p.escalar e, p.oficial o, 
+                        select p.id_personaje i, p.nombre n, descripcion_personalidad dcp, descripcion_historia dh, p.ataque_base a, p.armadura_natural an, p.ca_desvio cd, r.nombre ra, ti.nombre tc, pc.fuerza f, pc.destreza d, pc.constitucion co, 
+                        pc.inteligencia int, pc.sabiduria s, pc.carisma ca, p.ajuste aju, dei.nombre de, ab.nombre ali, g.nombre g, ca.nombre ncam, t.nombre ntr, s.nombre nst, p.puntos_golpe v, p.correr cor, p.nadar na, p.volar vo, p.trepar t, 
+                        p.escalar e, p.oficial o, ta.nombre tn, ta.modificador tm,
                         (select sum(valor) from personajes_dgsExtra where id_personaje = p.id_personaje) dg, 
                         stuff((select '| ' + cl.nombre + ';' + cast(pc.nivel as nvarchar) from clases cl inner join personaje_clases pc on cl.id_clase = pc.id_clase where pc.id_personaje = p.id_personaje for xml path('')), 1, 2, '') cla, 
                         stuff((select '| ' + d.nombre from dominios d inner join personaje_dominios pd on d.id_dominio = pd.id_dominio where pd.id_personaje = p.id_personaje for xml path('')), 1, 2, '') dom, 
@@ -77,19 +78,22 @@ def get_detalles_personaje():
                         from personajes p 
                         inner join genero g on p.id_genero = g.id_genero inner join capacidades_cargas c on p.id_carga = c.id_carga inner join campañas ca on p.id_campaña = ca.id_campaña inner join tramas t on p.id_trama = t.id_trama inner join subtramas s on p.id_subtrama = s.id_subtrama 
                         inner join personajes_caracteristicas pc on p.id_personaje = pc.id_personaje inner join razas r on p.id_raza = r.id_raza inner join tipos ti on p.id_tipoCriatura = ti.id_tipo inner join deidades dei on p.deidad = dei.id_deidad 
-                        inner join alineamientos al on p.id_alineamiento = al.id_alineamiento inner join alineamientos_basicos ab on al.id_basico = ab.id_alineamiento
+                        inner join alineamientos al on p.id_alineamiento = al.id_alineamiento inner join alineamientos_basicos ab on al.id_basico = ab.id_alineamiento inner join tamaños ta on r.id_tamaño = ta.id_tamaño
                         """)
 
-        # Calcular los modificadores y añadirlos a la lista
-        # Calcular la CA
+        def calc_mod(caracteristica):
+            return (caracteristica - 10) // 2
 
         results = []
         for row in cursor.fetchall():
-            results.append({'i': row.i, 'n': Capitalizador(row.n), 'dcp': Capitalizador(row.dcp), 'dh': Capitalizador(row.dh), 'a': row.a, 'an': row.an, 'cd': row.cd, 'ra': Capitalizador(row.ra), 'tc': Capitalizador(row.tc), 'f': row.f, 'd': row.d, 'co': row.co, 'int': row.int, 's': row.s, 'ca': row.ca,
-                            'aju': row.aju, 'de': Capitalizador(row.de), 'ali': Capitalizador(row.ali), 'g': Capitalizador(row.g), 'ncam': Capitalizador(row.ncam), 'ntr': Capitalizador(row.ntr), 'nst': Capitalizador(row.nst), 'v': row.v, 'cor': row.cor, 'na': row.na, 'vo': row.vo, 't': row.t, 'e': row.e,
-                            'o': row.o, 'dg': row.dg, 'cla': CapitalizadorCaracterControl(row.cla), 'dom': CapitalizadorCaracterControl(row.dom), 'stc': CapitalizadorCaracterControl(row.stc), 'pla': CapitalizadorCaracterControl(row.pla), 'con': CapitalizadorCaracterControl(row.con),
-                            'esp': CapitalizadorCaracterControl(row.esp), 'rac': CapitalizadorCaracterControl(row.rac), 'hab': CapitalizadorCaracterControl(row.hab), 'dot': CapitalizadorCaracterControl(row.dot), 've': CapitalizadorCaracterControl(row.ve), 'idi': CapitalizadorCaracterControl(row.idi),
-                            'sor': CapitalizadorCaracterControl(row.sor)})
+            # TODO Incluir mod varios en algún momento
+            ca = 10 + calc_mod(row.d) + row.an + row.tm + row.cd
+            results.append({'i': row.i, 'n': Capitalizador(row.n), 'dcp': Capitalizador(row.dcp), 'dh': Capitalizador(row.dh), 'a': row.a, 'tn': row.tn, 'tm': row.tm, 'ca': ca, 'an': row.an, 'cd': row.cd, 'ra': Capitalizador(row.ra), 'tc': Capitalizador(row.tc),
+                            'f': row.f, 'mf': calc_mod(row.f), 'd': row.d, 'md': calc_mod(row.d), 'co': row.co, 'mco': calc_mod(row.co), 'int': row.int, 'mint': calc_mod(row.int), 's': row.s, 'ms': calc_mod(row.s), 'car': row.ca, 'mcar': calc_mod(row.ca),
+                            'aju': row.aju, 'de': Capitalizador(row.de), 'ali': Capitalizador(row.ali), 'g': Capitalizador(row.g), 'ncam': Capitalizador(row.ncam), 'ntr': Capitalizador(row.ntr), 'nst': Capitalizador(row.nst), 'v': row.v, 'cor': row.cor, 'na': row.na,
+                            'vo': row.vo, 't': row.t, 'e': row.e, 'o': row.o, 'dg': row.dg, 'cla': CapitalizadorCaracterControl(row.cla), 'dom': CapitalizadorCaracterControl(row.dom), 'stc': CapitalizadorCaracterControl(row.stc),
+                            'pla': CapitalizadorCaracterControl(row.pla), 'con': CapitalizadorCaracterControl(row.con), 'esp': CapitalizadorCaracterControl(row.esp), 'rac': CapitalizadorCaracterControl(row.rac), 'hab': CapitalizadorCaracterControl(row.hab),
+                            'dot': CapitalizadorCaracterControl(row.dot), 've': CapitalizadorCaracterControl(row.ve), 'idi': CapitalizadorCaracterControl(row.idi), 'sor': CapitalizadorCaracterControl(row.sor)})
 
         connection.close()
 

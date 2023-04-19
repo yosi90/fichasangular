@@ -11,28 +11,66 @@ export class DetallesPersonajeService {
 
     constructor(public db: Database, private http: HttpClient) { }
 
-    async getPersonajes(): Promise<Observable<DetallesPersonaje[]>> {
+    async getDetallesPersonaje(id: number): Promise<Observable<DetallesPersonaje>> {
         return new Observable((observador) => {
-            const dbRef = ref(this.db, 'Personajes');
+            const dbRef = ref(this.db, `Detalles-personaje/${id}`);
             let unsubscribe: Unsubscribe;
 
             const onNext = (snapshot: any) => {
-                const Personajes: DetallesPersonaje[] = [];
-                snapshot.forEach((obj: any) => {
-                    const pj: DetallesPersonaje = {
-                        Id: obj.key,
-                        Nombre: obj.child('Nombre').val(),
-                        Raza: obj.child('Raza').val(),
-                        Clases: obj.child('Clases').val(),
-                        Personalidad: obj.child('Personalidad').val(),
-                        Contexto: obj.child('Contexto').val(),
-                        Campana: obj.child('Campaña').val(),
-                        Trama: obj.child('Trama').val(),
-                        Subtrama: obj.child('Subtrama').val()
-                    };
-                    Personajes.push(pj);
-                });
-                observador.next(Personajes); // Emitir el array de personajes
+                let Personaje: DetallesPersonaje = {
+                    Id: id,
+                    Nombre: snapshot.child('Nombre').val(),
+                    Raza: snapshot.child('Raza').val(),
+                    Clases: snapshot.child('Clases').val(),
+                    Personalidad: snapshot.child('Personalidad').val(),
+                    Contexto: snapshot.child('Contexto').val(),
+                    Campana: snapshot.child('Campaña').val(),
+                    Trama: snapshot.child('Trama').val(),
+                    Subtrama: snapshot.child('Subtrama').val(),
+                    Ataque_base: snapshot.child('Ataque_base').val(),
+                    Tamano: snapshot.child('Tamano').val(),
+                    ModTamano: snapshot.child('ModTamano').val(),
+                    Ca: snapshot.child('Ca').val(),
+                    Armadura_natural: snapshot.child('Armadura_natural').val(),
+                    Ca_desvio: snapshot.child('Ca_desvio').val(),
+                    Tipo_criatura: snapshot.child('Tipo_criatura').val(),
+                    Subtipos: snapshot.child('Subtipos').val(),
+                    Fuerza: snapshot.child('Fuerza').val(),
+                    ModFuerza: snapshot.child('ModFuerza').val(),
+                    Destreza: snapshot.child('Destreza').val(),
+                    ModDestreza: snapshot.child('ModDestreza').val(),
+                    Constitucion: snapshot.child('Constitucion').val(),
+                    ModConstitucion: snapshot.child('ModConstitucion').val(),
+                    Inteligencia: snapshot.child('Inteligencia').val(),
+                    ModInteligencia: snapshot.child('ModInteligencia').val(),
+                    Sabiduria: snapshot.child('Sabiduria').val(),
+                    ModSabiduria: snapshot.child('ModSabiduria').val(),
+                    Carisma: snapshot.child('Carisma').val(),
+                    ModCarisma: snapshot.child('ModCarisma').val(),
+                    Ajuste_nivel: snapshot.child('Ajuste_nivel').val(),
+                    Deidad: snapshot.child('Deidad').val(),
+                    Alineamiento: snapshot.child('Alineamiento').val(),
+                    Genero: snapshot.child('Genero').val(),
+                    Vida: snapshot.child('Vida').val(),
+                    Correr: snapshot.child('Correr').val(),
+                    Nadar: snapshot.child('Nadar').val(),
+                    Volar: snapshot.child('Volar').val(),
+                    Trepar: snapshot.child('Trepar').val(),
+                    Escalar: snapshot.child('Escalar').val(),
+                    Oficial: snapshot.child('Oficial').val(),
+                    Dados_golpe: snapshot.child('Dados_golpe').val(),
+                    Dominios: snapshot.child('Dominios').val(),
+                    Plantillas: snapshot.child('Plantillas').val(),
+                    Conjuros: snapshot.child('Conjuros').val(),
+                    Claseas: snapshot.child('Claseas').val(),
+                    Raciales: snapshot.child('Raciales').val(),
+                    Habilidades: snapshot.child('Habilidades').val(),
+                    Dotes: snapshot.child('Dotes').val(),
+                    Ventajas: snapshot.child('Ventajas').val(),
+                    Idiomas: snapshot.child('Idiomas').val(),
+                    Sortilegas: snapshot.child('Sortilegas').val(),
+                };
+                observador.next(Personaje); // Emitir el array de personajes
             };
 
             const onError = (error: any) => {
@@ -63,10 +101,10 @@ export class DetallesPersonajeService {
         this.d_pjs().subscribe(
             response => {
                 response.forEach((element: {
-                    i: any; n: any; dcp: any; dh: any; a: any; an: any; cd: any; ra: any; tc: any; f: any; d: any; co: any;
-                    int: any; s: any; ca: any; aju: any; de: any; ali: any; g: any; ncam: any; ntr: any; nst: any; v: any; cor: any; na: any; vo:
-                    any; t: any; e: any; o: any; dg: any; cla: any; dom: any; stc: any; pla: any; con: any; esp: any; rac: any; hab: any; dot: any;
-                    ve: any; idi: any; sor: any;
+                    i: any; n: any; dcp: any; dh: any; tn: any; tm: any; a: any; ca: any; an: any; cd: any; ra: any; tc: any; f: any; mf: any; d: any; md: any;
+                    co: any; mco: any; int: any; mint: any; s: any; ms: any; car: any; mcar: any; aju: any; de: any; ali: any; g: any;
+                    ncam: any; ntr: any; nst: any; v: any; cor: any; na: any; vo: any; t: any; e: any; o: any; dg: any; cla: any; dom: any;
+                    stc: any; pla: any; con: any; esp: any; rac: any; hab: any; dot: any; ve: any; idi: any; sor: any;
                 }) => {
                     const tempcla = element.cla.split("|");
                     let clas: { Nombre: string; Nivel: number }[] = [];
@@ -103,16 +141,25 @@ export class DetallesPersonajeService {
                         Personalidad: element.dcp,
                         Contexto: element.dh,
                         Ataque_base: element.a,
+                        Tamano: element.tn,
+                        ModTamano: element.tm,
+                        Ca: element.ca,
                         Armadura_natural: element.an,
                         Ca_desvio: element.cd,
                         Raza: element.ra,
                         Tipo_criatura: element.tc,
                         Fuerza: element.f,
+                        ModFuerza: element.mf,
                         Destreza: element.d,
+                        ModDestreza: element.md,
                         Constitucion: element.co,
+                        ModConstitucion: element.mco,
                         Inteligencia: element.int,
+                        ModInteligencia: element.mint,
                         Sabiduria: element.s,
-                        Carisma: element.ca,
+                        ModSabiduria: element.ms,
+                        Carisma: element.car,
+                        ModCarisma: element.mcar,
                         Ajuste_nivel: element.aju,
                         Deidad: element.de,
                         Alineamiento: element.ali,

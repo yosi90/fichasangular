@@ -1,4 +1,4 @@
-import { Component, ViewChild, OnInit, AfterViewInit, ElementRef } from '@angular/core';
+import { Component, ViewChild, OnInit, AfterViewInit, ElementRef, Output, EventEmitter } from '@angular/core';
 import { animate, state, style, transition, trigger } from '@angular/animations';
 import { ListaPersonajesService } from '../../services/lista-personajes.service';
 import { PersonajeSimple } from '../../interfaces/personaje-simple';
@@ -104,5 +104,10 @@ export class ListaPersonajesComponent implements OnInit, AfterViewInit {
         } else {
             this.lva.announce('Orden limpiado');
         }
+    }
+
+    @Output() NewDetallesTab: EventEmitter<any> = new EventEmitter();
+    CrearDetallesDe(value: number) {
+        this.NewDetallesTab.emit(value);
     }
 }
