@@ -1,1 +1,204 @@
-<p>{{dp.Nombre}}</p>
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-md-4 col-12 p-2">
+            <div class="d-flex flex-wrap align-items-center rounded p-2 my-2">
+                <mat-icon class="me-1">account_box</mat-icon>
+                <mat-chip class="warm m-1">{{dp.Nombre}}</mat-chip>
+                <mat-chip class="m-1">{{dp.Genero}}</mat-chip>
+                <mat-chip class="m-1">{{dp.Alineamiento}}</mat-chip>
+                <mat-chip class="m-1">Nivel {{dp.Nivel}}</mat-chip>
+                <mat-chip class="m-1" *ngIf="dp.Ajuste_nivel > 0">Ajuste de nivel +{{dp.Ajuste_nivel}}</mat-chip>
+                <mat-chip class="m-1">Exp {{dp.Experiencia}}</mat-chip>
+                <mat-chip class="warm m-1">Ataque base {{dp.Ataque_base}}</mat-chip>
+                <mat-chip class="m-1">Pg {{dp.Vida}}</mat-chip>
+                <mat-chip class="m-1">Ca {{dp.Ca}}</mat-chip>
+                <ng-template *ngIf="dp.Campana != 'Sin campaña'">
+                    <mat-chip class="m-1">Campaña {{dp.Campana}}</mat-chip>
+                    <mat-chip class="m-1">Trama {{dp.Trama}}</mat-chip>
+                    <mat-chip class="m-1">Subtrama {{dp.Subtrama}}</mat-chip>
+                </ng-template>
+                <mat-chip class="m-1">Deidad {{dp.Deidad}}</mat-chip>
+                <mat-chip class="warm m-1" *ngIf="!dp.Oficial" matTooltip="Este personaje tiene elementos homebrew">No es oficial</mat-chip>
+            </div>
+            <div class="d-flex flex-wrap align-items-center rounded p-2 my-2">
+                <mat-icon class="me-1">settings_accessibility</mat-icon>
+                <mat-chip class="warm m-1">{{dp.Raza}}</mat-chip>
+                <mat-chip class="m-1">{{dp.Tamano}}</mat-chip>
+                <mat-chip class="m-1">{{dp.Tipo_criatura}}</mat-chip>
+                <mat-chip class="m-1">Velocidad {{dp.Correr}} pies, correr x3</mat-chip>
+                <mat-chip class="m-1" *ngIf="dp.Nadar > 0">Nadar {{dp.Nadar}}</mat-chip>
+                <mat-chip class="m-1" *ngIf="dp.Volar > 0">Volar {{dp.Volar}}</mat-chip>
+                <mat-chip class="m-1" *ngIf="dp.Trepar > 0">Trepar {{dp.Trepar}}</mat-chip>
+                <mat-chip class="m-1" *ngIf="dp.Escalar > 0">Escalar {{dp.Escalar}}</mat-chip>
+                <mat-chip class="m-1" *ngIf="dp.Armadura_natural > 0">Armadura Natural {{dp.Armadura_natural}}</mat-chip>
+                <mat-chip class="m-1" *ngIf="dp.Ca_desvio > 0">Ca de Desvio {{dp.Ca_desvio}}</mat-chip>
+            </div>
+            <div class="d-flex flex-wrap align-items-center rounded p-2 my-2">
+                <mat-icon class="me-1">style</mat-icon>
+                <mat-chip-set class="m-1" *ngIf="dp.Clases;else sinClase">
+                    <mat-chip class="warm" *ngFor="let c of dp.Clases">
+                        {{c.Nombre}} {{c.Nivel}}
+                    </mat-chip>
+                </mat-chip-set>
+                <ng-template #sinClase>
+                    <mat-chip class="m-1">No tiene clase</mat-chip>
+                </ng-template>
+            </div>
+            <div id="caracteristicas" class="rounded p-2 my-2">
+                <mat-chip class="warm">Características</mat-chip>
+                Fuerza
+                <mat-chip [ngClass]="dp.Fuerza > 18 ? 'warm' : ''" class="m-1">{{dp.Fuerza}}</mat-chip>
+                <mat-chip [ngClass]="dp.Fuerza > 18 ? 'warm' : ''" class="m-1">{{dp.ModFuerza > 0 ? '+' : ''}}{{dp.ModFuerza}}</mat-chip>
+                Destreza
+                <mat-chip [ngClass]="dp.Destreza > 18 ? 'warm' : ''" class="m-1">{{dp.Destreza}}</mat-chip>
+                <mat-chip [ngClass]="dp.Destreza > 18 ? 'warm' : ''" class="m-1">{{dp.ModDestreza > 0 ? '+' : ''}}{{dp.ModDestreza}}</mat-chip>
+                Constitución
+                <mat-chip [ngClass]="dp.Constitucion > 18 ? 'warm' : ''" class="m-1">{{dp.Constitucion}}</mat-chip>
+                <mat-chip [ngClass]="dp.Constitucion > 18 ? 'warm' : ''" class="m-1">{{dp.ModConstitucion > 0 ? '+' : ''}}{{dp.ModConstitucion}}</mat-chip>
+                Inteligencia
+                <mat-chip [ngClass]="dp.Inteligencia > 18 ? 'warm' : ''" class="m-1">{{dp.Inteligencia}}</mat-chip>
+                <mat-chip [ngClass]="dp.Inteligencia > 18 ? 'warm' : ''" class="m-1">{{dp.ModInteligencia > 0 ? '+' : ''}}{{dp.ModInteligencia}}</mat-chip>
+                Sabiduría
+                <mat-chip [ngClass]="dp.Sabiduria > 18 ? 'warm' : ''" class="m-1">{{dp.Sabiduria}}</mat-chip>
+                <mat-chip [ngClass]="dp.Sabiduria > 18 ? 'warm' : ''" class="m-1">{{dp.ModSabiduria > 0 ? '+' : ''}}{{dp.ModSabiduria}}</mat-chip>
+                Carisma
+                <mat-chip [ngClass]="dp.Carisma > 18 ? 'warm' : ''" class="m-1">{{dp.Carisma}}</mat-chip>
+                <mat-chip [ngClass]="dp.Carisma > 18 ? 'warm' : ''" class="m-1">{{dp.ModCarisma > 0 ? '+' : ''}}{{dp.ModCarisma}}</mat-chip>
+            </div>
+        </div>
+        <div class="col-md-4 col-12 p-2">
+            <div class="rounded p-2 my-2">
+                <mat-chip class="w-100 mb-2">Personalidad</mat-chip>
+                <p>{{dp.Personalidad}}</p>
+            </div>
+            <div class="rounded p-2 my-2">
+                <mat-chip class="w-100 mb-2">Contexto</mat-chip>
+                <p>{{dp.Contexto}}</p>
+            </div>
+        </div>
+        <div class="col-md-4 col-12 p-2">
+            <mat-accordion>
+                <mat-expansion-panel *ngIf="dp.Claseas">
+                    <mat-expansion-panel-header>
+                        <button mat-stroked-button color="accent" class="rounded-0 rounded-top">
+                            <h2 class="mb-0">Habilidades cláseas</h2>
+                        </button>
+                    </mat-expansion-panel-header>
+                    <mat-chip-set class="m-1">
+                        <mat-chip *ngFor="let c of dp.Claseas">
+                            {{c}}
+                        </mat-chip>
+                    </mat-chip-set>
+                </mat-expansion-panel>
+                <mat-expansion-panel *ngIf="dp.Raciales">
+                    <mat-expansion-panel-header>
+                        <button mat-stroked-button color="accent" class="rounded-0">
+                            <h2 class="mb-0">Habilidades raciales</h2>
+                        </button>
+                    </mat-expansion-panel-header>
+                    <mat-chip-set class="m-1">
+                        <mat-chip *ngFor="let r of dp.Raciales">
+                            {{r}}
+                        </mat-chip>
+                    </mat-chip-set>
+                </mat-expansion-panel>
+                <mat-expansion-panel *ngIf="dp.Dotes">
+                    <mat-expansion-panel-header>
+                        <button mat-stroked-button color="accent" class="rounded-0">
+                            <h2 class="mb-0">Dotes obtenidas</h2>
+                        </button>
+                    </mat-expansion-panel-header>
+                    <mat-chip-set class="m-1">
+                        <mat-chip *ngFor="let d of dp.Dotes">
+                            {{d}}
+                        </mat-chip>
+                    </mat-chip-set>
+                </mat-expansion-panel>
+                <mat-expansion-panel *ngIf="dp.Habilidades">
+                    <mat-expansion-panel-header>
+                        <button mat-stroked-button color="accent" class="rounded-0">
+                            <h2 class="mb-0">Habilidades</h2>
+                        </button>
+                    </mat-expansion-panel-header>
+                    <mat-chip-set class="m-1">
+                        <mat-chip *ngFor="let h of dp.Habilidades">
+                            {{h.Nombre}}: {{h.Rangos}}
+                        </mat-chip>
+                    </mat-chip-set>
+                </mat-expansion-panel>
+                <mat-expansion-panel *ngIf="dp.Idiomas">
+                    <mat-expansion-panel-header>
+                        <button mat-stroked-button color="accent" class="rounded-0">
+                            <h2 class="mb-0">Idiomas conocidos</h2>
+                        </button>
+                    </mat-expansion-panel-header>
+                    <mat-chip-set class="m-1">
+                        <mat-chip *ngFor="let i of dp.Idiomas">
+                            {{i}}
+                        </mat-chip>
+                    </mat-chip-set>
+                </mat-expansion-panel>
+                <mat-expansion-panel *ngIf="dp.Dominios">
+                    <mat-expansion-panel-header>
+                        <button mat-stroked-button color="accent" class="rounded-0">
+                            <h2 class="mb-0">Dominios</h2>
+                        </button>
+                    </mat-expansion-panel-header>
+                    <mat-chip-set class="m-1">
+                        <mat-chip *ngFor="let d of dp.Dominios">
+                            {{d}}
+                        </mat-chip>
+                    </mat-chip-set>
+                </mat-expansion-panel>
+                <mat-expansion-panel *ngIf="dp.Plantillas">
+                    <mat-expansion-panel-header>
+                        <button mat-stroked-button color="accent" class="rounded-0">
+                            <h2 class="mb-0">Plantillas obtenidas</h2>
+                        </button>
+                    </mat-expansion-panel-header>
+                    <mat-chip-set class="m-1">
+                        <mat-chip *ngFor="let p of dp.Plantillas">
+                            {{p}}
+                        </mat-chip>
+                    </mat-chip-set>
+                </mat-expansion-panel>
+                <mat-expansion-panel *ngIf="dp.Conjuros">
+                    <mat-expansion-panel-header>
+                        <button mat-stroked-button color="accent" class="rounded-0">
+                            <h2 class="mb-0">Conjuros conocidos</h2>
+                        </button>
+                    </mat-expansion-panel-header>
+                    <mat-chip-set class="m-1">
+                        <mat-chip *ngFor="let c of dp.Conjuros">
+                            {{c}}
+                        </mat-chip>
+                    </mat-chip-set>
+                </mat-expansion-panel>
+                <mat-expansion-panel *ngIf="dp.Sortilegas">
+                    <mat-expansion-panel-header>
+                        <button mat-stroked-button color="accent" class="rounded-0">
+                            <h2 class="mb-0">Habilidades sortílegas</h2>
+                        </button>
+                    </mat-expansion-panel-header>
+                    <mat-chip-set class="m-1">
+                        <mat-chip *ngFor="let s of dp.Sortilegas">
+                            {{s}}
+                        </mat-chip>
+                    </mat-chip-set>
+                </mat-expansion-panel>
+                <mat-expansion-panel *ngIf="dp.Ventajas">
+                    <mat-expansion-panel-header>
+                        <button mat-stroked-button color="accent" class="rounded-0">
+                            <h2 class="mb-0">Ventajas y desventajas obtenidas</h2>
+                        </button>
+                    </mat-expansion-panel-header>
+                    <mat-chip-set class="m-1">
+                        <mat-chip *ngFor="let v of dp.Ventajas">
+                            {{v}}
+                        </mat-chip>
+                    </mat-chip-set>
+                </mat-expansion-panel>
+            </mat-accordion>
+        </div>
+    </div>
+</div>

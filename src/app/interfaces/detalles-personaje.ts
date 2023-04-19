@@ -1,3 +1,7 @@
+// TODO Obtener los extras de las habilidades cláseas
+// TODO Obtener los extras de las habilidades
+// TODO Obtener los extras de las dotes
+
 export interface DetallesPersonaje {
     Id: number;
     Nombre: string;
@@ -34,6 +38,8 @@ export interface DetallesPersonaje {
     Carisma: number;
     ModCarisma: number;
     Ajuste_nivel: number;
+    Nivel: number;
+    Experiencia: number;
     Deidad: string;
     Alineamiento: string;
     Genero: string;

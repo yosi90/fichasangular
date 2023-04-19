@@ -48,6 +48,8 @@ export class DetallesPersonajeService {
                     Carisma: snapshot.child('Carisma').val(),
                     ModCarisma: snapshot.child('ModCarisma').val(),
                     Ajuste_nivel: snapshot.child('Ajuste_nivel').val(),
+                    Nivel: snapshot.child('Nivel').val(),
+                    Experiencia: snapshot.child('Experiencia').val(),
                     Deidad: snapshot.child('Deidad').val(),
                     Alineamiento: snapshot.child('Alineamiento').val(),
                     Genero: snapshot.child('Genero').val(),
@@ -107,15 +109,23 @@ export class DetallesPersonajeService {
                     stc: any; pla: any; con: any; esp: any; rac: any; hab: any; dot: any; ve: any; idi: any; sor: any;
                 }) => {
                     const tempcla = element.cla.split("|");
+                    let nivel: number = 0;
                     let clas: { Nombre: string; Nivel: number }[] = [];
                     tempcla.forEach((el: string) => {
                         let datos = el.split(";");
-                        if (datos[0] != "")
+                        if (datos[0] != "") {
                             clas.push({
                                 Nombre: datos[0].trim(),
                                 Nivel: +datos[1]
                             });
+                            nivel += +datos[1];
+                        }
                     });
+                    if (element.aju)
+                        nivel += +element.aju;
+                    let experiencia: number = 0;
+                    for (let i = 0; i < nivel; i++)
+                        experiencia += i * 1000;
                     const temphab = element.hab.split("|");
                     let hab: { Nombre: string; Rangos: number }[] = [];
                     temphab.forEach((el: string) => {
@@ -161,6 +171,8 @@ export class DetallesPersonajeService {
                         Carisma: element.car,
                         ModCarisma: element.mcar,
                         Ajuste_nivel: element.aju,
+                        Nivel: nivel,
+                        Experiencia: experiencia,
                         Deidad: element.de,
                         Alineamiento: element.ali,
                         Genero: element.g,

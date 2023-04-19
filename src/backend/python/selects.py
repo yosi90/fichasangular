@@ -86,7 +86,7 @@ def get_detalles_personaje():
 
         results = []
         for row in cursor.fetchall():
-            # TODO Incluir mod varios en algún momento
+            # TODO Incluir mod varios a la CA
             ca = 10 + calc_mod(row.d) + row.an + row.tm + row.cd
             results.append({'i': row.i, 'n': Capitalizador(row.n), 'dcp': Capitalizador(row.dcp), 'dh': Capitalizador(row.dh), 'a': row.a, 'tn': row.tn, 'tm': row.tm, 'ca': ca, 'an': row.an, 'cd': row.cd, 'ra': Capitalizador(row.ra), 'tc': Capitalizador(row.tc),
                             'f': row.f, 'mf': calc_mod(row.f), 'd': row.d, 'md': calc_mod(row.d), 'co': row.co, 'mco': calc_mod(row.co), 'int': row.int, 'mint': calc_mod(row.int), 's': row.s, 'ms': calc_mod(row.s), 'car': row.ca, 'mcar': calc_mod(row.ca),

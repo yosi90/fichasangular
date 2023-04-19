@@ -1,17 +1,26 @@
 <mat-tab-group #TabControl mat-stretch-tabs="false" mat-align-tabs="start">
     <mat-tab label="Personajes">
+        <ng-template mat-tab-label="">
+            <mat-icon class="me-2">people_alt</mat-icon>
+            Personajes
+        </ng-template>
         <app-lista-personajes (NewDetallesTab)="VerDetallesDe($event)"></app-lista-personajes>
     </mat-tab>
     <mat-tab label="Panel de administración" *ngIf="usrPerm === 1">
+        <ng-template mat-tab-label="">
+            <mat-icon class="me-2">admin_panel_settings</mat-icon>
+            Panel de administración
+        </ng-template>
         <app-admin-panel></app-admin-panel>
     </mat-tab>
-    <mat-tab label="Pruebas" *ngIf="usrPerm === 1">
-    </mat-tab>
+    <!-- <mat-tab label="Pruebas" *ngIf="usrPerm === 1">
+    </mat-tab> -->
     <mat-tab *ngFor="let tab of tabs; let index = index" [label]="tab.Nombre">
         <ng-template mat-tab-label>
+            <mat-icon class="me-2">person_search</mat-icon>
             {{tab.Nombre}}
             <button (click)="removeTab(tab.Nombre)" mat-icon-button class="ms-2"><mat-icon>close</mat-icon></button>
         </ng-template>
-        <app-detalles-personaje [dp]="tabs[0]"></app-detalles-personaje>
+        <app-detalles-personaje [dp]="tabs[index]"></app-detalles-personaje>
     </mat-tab>
 </mat-tab-group>

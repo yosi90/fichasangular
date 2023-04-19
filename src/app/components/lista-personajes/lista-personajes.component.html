@@ -48,7 +48,7 @@
                         *ngIf="column != '¿Archivado?' || anuncioArchivo != 'Clic para mostar pjs archivados'">
                         <mat-icon *ngIf="column == 'Nombre'">portrait</mat-icon>
                         <mat-icon *ngIf="column == 'Clases'">style</mat-icon>
-                        <mat-icon *ngIf="column == 'Raza'">directions_walk</mat-icon>
+                        <mat-icon *ngIf="column == 'Raza'">settings_accessibility</mat-icon>
                         <mat-icon *ngIf="column == '¿Archivado?'">archive</mat-icon>
                         &nbsp;{{column}}
                     </ng-container>
@@ -67,7 +67,7 @@
                             <button mat-stroked-button matTooltip="A la info y fichas de {{element[column]}}"
                                 color="accent" class="d-flex justify-content-start w-100" *ngIf="column == 'Nombre'"
                                 (click)="CrearDetallesDe(element.Id); $event.stopPropagation();">
-                                <mat-icon>view_compact</mat-icon>
+                                <mat-icon>read_more</mat-icon>
                                 {{element[column]}}
                             </button>
                         </ng-template>
