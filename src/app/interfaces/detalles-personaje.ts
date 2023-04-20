@@ -1,7 +1,3 @@
-// TODO Obtener los extras de las habilidades cláseas
-// TODO Obtener los extras de las habilidades
-// TODO Obtener los extras de las dotes
-
 export interface DetallesPersonaje {
     Id: number;
     Nombre: string;
@@ -21,6 +17,7 @@ export interface DetallesPersonaje {
     Ca: number;
     Armadura_natural: number;
     Ca_desvio: number;
+    Ca_varios: number;
     Tipo_criatura: string;
     Subtipos: {
         Nombre: string;
@@ -62,6 +59,7 @@ export interface DetallesPersonaje {
     }[]
     Claseas: {
         Nombre: string;
+        Extra: string;
     }[]
     Raciales: {
         Nombre: string;
@@ -69,9 +67,13 @@ export interface DetallesPersonaje {
     Habilidades: {
         Nombre: string;
         Rangos: number;
+        Extra: string;
+        Varios: string;
     }[]
     Dotes: {
         Nombre: string;
+        Extra: string;
+        Origen: string;
     }[]
     Ventajas: {
         Nombre: string;

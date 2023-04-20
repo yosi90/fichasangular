@@ -33,6 +33,7 @@ export class DetallesPersonajeService {
                     Ca: snapshot.child('Ca').val(),
                     Armadura_natural: snapshot.child('Armadura_natural').val(),
                     Ca_desvio: snapshot.child('Ca_desvio').val(),
+                    Ca_varios: snapshot.child('Ca_varios').val(),
                     Tipo_criatura: snapshot.child('Tipo_criatura').val(),
                     Subtipos: snapshot.child('Subtipos').val(),
                     Fuerza: snapshot.child('Fuerza').val(),
@@ -103,10 +104,10 @@ export class DetallesPersonajeService {
         this.d_pjs().subscribe(
             response => {
                 response.forEach((element: {
-                    i: any; n: any; dcp: any; dh: any; tn: any; tm: any; a: any; ca: any; an: any; cd: any; ra: any; tc: any; f: any; mf: any; d: any; md: any;
-                    co: any; mco: any; int: any; mint: any; s: any; ms: any; car: any; mcar: any; aju: any; de: any; ali: any; g: any;
-                    ncam: any; ntr: any; nst: any; v: any; cor: any; na: any; vo: any; t: any; e: any; o: any; dg: any; cla: any; dom: any;
-                    stc: any; pla: any; con: any; esp: any; rac: any; hab: any; dot: any; ve: any; idi: any; sor: any;
+                    i: any; n: any; dcp: any; dh: any; tn: any; tm: any; a: any; ca: any; an: any; cd: any; cv: any; ra: any; tc: any; f: any; mf: any; d: any; md: any;
+                    co: any; mco: any; int: any; mint: any; s: any; ms: any; car: any; mcar: any; aju: any; de: any; ali: any; g: any; ncam: any; ntr: any; 
+                    nst: any; v: any; cor: any; na: any; vo: any; t: any; e: any; o: any; dg: any; cla: any; dom: any; stc: any; pla: any; con: any; esp: any; 
+                    espX: any; rac: any; hab: any; habR: any; habX: any; habV: any; dot: any; dotX: any; dotO: any; ve: any; idi: any; sor: any;
                 }) => {
                     const tempcla = element.cla.split("|");
                     let nivel: number = 0;
@@ -126,23 +127,35 @@ export class DetallesPersonajeService {
                     let experiencia: number = 0;
                     for (let i = 0; i < nivel; i++)
                         experiencia += i * 1000;
-                    const temphab = element.hab.split("|");
-                    let hab: { Nombre: string; Rangos: number }[] = [];
-                    temphab.forEach((el: string) => {
-                        let datos = el.split(";");
-                        if (datos[0] != "")
-                            hab.push({
-                                Nombre: datos[0].trim(),
-                                Rangos: +datos[1]
-                            });
-                    });
+                    let dotes: { Nombre: string; Extra: string; Origen: string; }[] = [];
+                    for (let index = 0; index < element.dot.length; index++) {
+                        dotes.push({
+                            Nombre: element.dot[index],
+                            Extra: element.dotX[index],
+                            Origen: element.dotO[index]
+                        });
+                    }
+                    let claseas: { Nombre: string; Extra: string; }[] = [];
+                    for (let index = 0; index < element.esp.length; index++) {
+                        claseas.push({
+                            Nombre: element.esp[index],
+                            Extra: element.espX[index] ?? 'Nada',
+                        });
+                    }
+                    let habilidades: { Nombre: string; Rangos: number; Extra: string; Varios: string; }[] = [];
+                    for (let index = 0; index < element.hab.length; index++) {
+                        habilidades.push({
+                            Nombre: element.hab[index],
+                            Rangos: element.habR[index],
+                            Extra: element.habX[index],
+                            Varios: element.habV[index]
+                        });
+                    }
                     const dom: [] = element.dom.split("|").map((item: string) => item.trim()).filter((item: string) => item.length > 0);
                     const stc: [] = element.stc.split("|").map((item: string) => item.trim()).filter((item: string) => item.length > 0);
                     const pla: [] = element.pla.split("|").map((item: string) => item.trim()).filter((item: string) => item.length > 0);
                     const con: [] = element.con.split("|").map((item: string) => item.trim()).filter((item: string) => item.length > 0);
-                    const esp: [] = element.esp.split("|").map((item: string) => item.trim()).filter((item: string) => item.length > 0);
                     const rac: [] = element.rac.split("|").map((item: string) => item.trim()).filter((item: string) => item.length > 0);
-                    const dot: [] = element.dot.split("|").map((item: string) => item.trim()).filter((item: string) => item.length > 0);
                     const ve: [] = element.ve.split("|").map((item: string) => item.trim()).filter((item: string) => item.length > 0);
                     const idi: [] = element.idi.split("|").map((item: string) => item.trim()).filter((item: string) => item.length > 0);
                     const sor: [] = element.sor.split("|").map((item: string) => item.trim()).filter((item: string) => item.length > 0);
@@ -156,6 +169,7 @@ export class DetallesPersonajeService {
                         Ca: element.ca,
                         Armadura_natural: element.an,
                         Ca_desvio: element.cd,
+                        Ca_varios: element.cv,
                         Raza: element.ra,
                         Tipo_criatura: element.tc,
                         Fuerza: element.f,
@@ -192,10 +206,10 @@ export class DetallesPersonajeService {
                         Subtipos: stc,
                         Plantillas: pla,
                         Conjuros: con,
-                        Claseas: esp,
+                        Claseas: claseas,
                         Raciales: rac,
-                        Habilidades: hab,
-                        Dotes: dot,
+                        Habilidades: habilidades,
+                        Dotes: dotes,
                         Ventajas: ve,
                         Idiomas: idi,
                         Sortilegas: sor

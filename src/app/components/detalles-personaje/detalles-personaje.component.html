@@ -11,7 +11,12 @@
                 <mat-chip class="m-1">Exp {{dp.Experiencia}}</mat-chip>
                 <mat-chip class="warm m-1">Ataque base {{dp.Ataque_base}}</mat-chip>
                 <mat-chip class="m-1">Pg {{dp.Vida}}</mat-chip>
-                <mat-chip class="m-1">Ca {{dp.Ca}}</mat-chip>
+                <mat-chip class="m-1" matTooltip="
+                    {{dp.Armadura_natural > 0 ? 'Armadura natural: ' + dp.Armadura_natural : ''}} 
+                    {{dp.Ca_desvio > 0 ? 'Ca de desvio: ' + dp.Ca_desvio : ''}} 
+                    {{dp.Ca_varios > 0 ? 'Mod varios: ' + dp.Ca_varios : ''}}">
+                    <mat-icon class="me-1" *ngIf="dp.Armadura_natural > 0 || dp.Ca_desvio > 0 ||dp.Ca_varios > 0">ads_click</mat-icon>Ca {{dp.Ca}}
+                </mat-chip>
                 <ng-template *ngIf="dp.Campana != 'Sin campaña'">
                     <mat-chip class="m-1">Campaña {{dp.Campana}}</mat-chip>
                     <mat-chip class="m-1">Trama {{dp.Trama}}</mat-chip>
@@ -25,13 +30,11 @@
                 <mat-chip class="warm m-1">{{dp.Raza}}</mat-chip>
                 <mat-chip class="m-1">{{dp.Tamano}}</mat-chip>
                 <mat-chip class="m-1">{{dp.Tipo_criatura}}</mat-chip>
-                <mat-chip class="m-1">Velocidad {{dp.Correr}} pies, correr x3</mat-chip>
+                <mat-chip class="m-1">Velocidad {{dp.Correr}} pies</mat-chip>
                 <mat-chip class="m-1" *ngIf="dp.Nadar > 0">Nadar {{dp.Nadar}}</mat-chip>
                 <mat-chip class="m-1" *ngIf="dp.Volar > 0">Volar {{dp.Volar}}</mat-chip>
                 <mat-chip class="m-1" *ngIf="dp.Trepar > 0">Trepar {{dp.Trepar}}</mat-chip>
                 <mat-chip class="m-1" *ngIf="dp.Escalar > 0">Escalar {{dp.Escalar}}</mat-chip>
-                <mat-chip class="m-1" *ngIf="dp.Armadura_natural > 0">Armadura Natural {{dp.Armadura_natural}}</mat-chip>
-                <mat-chip class="m-1" *ngIf="dp.Ca_desvio > 0">Ca de Desvio {{dp.Ca_desvio}}</mat-chip>
             </div>
             <div class="d-flex flex-wrap align-items-center rounded p-2 my-2">
                 <mat-icon class="me-1">style</mat-icon>
@@ -86,7 +89,7 @@
                     </mat-expansion-panel-header>
                     <mat-chip-set class="m-1">
                         <mat-chip *ngFor="let c of dp.Claseas">
-                            {{c}}
+                            {{c.Nombre}}{{c.Extra != 'Nada' ? ' ' + c.Extra : ''}}
                         </mat-chip>
                     </mat-chip-set>
                 </mat-expansion-panel>
@@ -109,8 +112,8 @@
                         </button>
                     </mat-expansion-panel-header>
                     <mat-chip-set class="m-1">
-                        <mat-chip *ngFor="let d of dp.Dotes">
-                            {{d}}
+                        <mat-chip *ngFor="let d of dp.Dotes" matTooltip="Origen: {{d.Origen}}">
+                            {{d.Nombre}} {{d.Extra != 'No aplica' ? '(' + d.Extra + ')' : ''}}
                         </mat-chip>
                     </mat-chip-set>
                 </mat-expansion-panel>
@@ -122,7 +125,7 @@
                     </mat-expansion-panel-header>
                     <mat-chip-set class="m-1">
                         <mat-chip *ngFor="let h of dp.Habilidades">
-                            {{h.Nombre}}: {{h.Rangos}}
+                            {{h.Nombre}}{{h.Extra != '' ? ' - ' + h.Extra : ''}}: +{{h.Rangos}} {{h.Varios != '' ? ' [' + h.Varios + ']' : ''}}
                         </mat-chip>
                     </mat-chip-set>
                 </mat-expansion-panel>
