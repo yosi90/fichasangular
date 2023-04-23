@@ -2,26 +2,27 @@ import { Injectable } from '@angular/core';
 import { Database, getDatabase, Unsubscribe, onValue, ref, set } from '@angular/fire/database';
 import { Observable } from 'rxjs';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
-import { DetallesPersonaje } from '../interfaces/detalles-personaje';
+import { Personaje } from '../interfaces/personaje';
 
 @Injectable({
     providedIn: 'root'
 })
-export class DetallesPersonajeService {
+export class PersonajeService {
 
     constructor(public db: Database, private http: HttpClient) { }
 
-    async getDetallesPersonaje(id: number): Promise<Observable<DetallesPersonaje>> {
+    async getDetallesPersonaje(id: number): Promise<Observable<Personaje>> {
         return new Observable((observador) => {
-            const dbRef = ref(this.db, `Detalles-personaje/${id}`);
+            const dbRef = ref(this.db, `Personajes/${id}`);
             let unsubscribe: Unsubscribe;
 
             const onNext = (snapshot: any) => {
-                let Personaje: DetallesPersonaje = {
+                let pj: Personaje = {
                     Id: id,
                     Nombre: snapshot.child('Nombre').val(),
                     Raza: snapshot.child('Raza').val(),
-                    Clases: snapshot.child('Clases').val(),
+                    desgloseClases: snapshot.child('Clases').val(),
+                    Clases: snapshot.child('Clases').val().map((c: { Nombre: any; Nivel: any; }) => `${c.Nombre} (${c.Nivel})`).join(", "),
                     Personalidad: snapshot.child('Personalidad').val(),
                     Contexto: snapshot.child('Contexto').val(),
                     Campana: snapshot.child('Campaña').val(),
@@ -62,6 +63,7 @@ export class DetallesPersonajeService {
                     Escalar: snapshot.child('Escalar').val(),
                     Oficial: snapshot.child('Oficial').val(),
                     Dados_golpe: snapshot.child('Dados_golpe').val(),
+                    Pgs_lic: snapshot.child('Pgs_lic').val(),
                     Dominios: snapshot.child('Dominios').val(),
                     Plantillas: snapshot.child('Plantillas').val(),
                     Conjuros: snapshot.child('Conjuros').val(),
@@ -72,8 +74,10 @@ export class DetallesPersonajeService {
                     Ventajas: snapshot.child('Ventajas').val(),
                     Idiomas: snapshot.child('Idiomas').val(),
                     Sortilegas: snapshot.child('Sortilegas').val(),
+                    Archivado: false,
+                    Jugador: snapshot.child('Jugador').val()
                 };
-                observador.next(Personaje); // Emitir el array de personajes
+                observador.next(pj); // Emitir el array de personajes
             };
 
             const onError = (error: any) => {
@@ -95,19 +99,20 @@ export class DetallesPersonajeService {
 
     d_pjs(): Observable<any> {
         const headers = new HttpHeaders({ 'Content-Type': 'application/json' });
-        const res = this.http.post('http://127.0.0.1:5000/detalles_personajes', { headers });
+        const res = this.http.post('http://127.0.0.1:5000/personajes', { headers });
         return res;
     }
 
-    public async RenovarDetallesPJsFirebase() {
+    public async RenovarPersonajes() {
         const db = getDatabase();
         this.d_pjs().subscribe(
             response => {
                 response.forEach((element: {
-                    i: any; n: any; dcp: any; dh: any; tn: any; tm: any; a: any; ca: any; an: any; cd: any; cv: any; ra: any; tc: any; f: any; mf: any; d: any; md: any;
-                    co: any; mco: any; int: any; mint: any; s: any; ms: any; car: any; mcar: any; aju: any; de: any; ali: any; g: any; ncam: any; ntr: any; 
+                    i: any; n: any; dcp: any; dh: any; tm: any; a: any; ca: any; an: any; cd: any; cv: any; ra: any; tc: any; f: any; mf: any; d: any; md: any;
+                    co: any; mco: any; int: any; mint: any; s: any; ms: any; car: any; mcar: any; aju: any; de: any; ali: any; g: any; ncam: any; ntr: any; ju: any;
                     nst: any; v: any; cor: any; na: any; vo: any; t: any; e: any; o: any; dg: any; cla: any; dom: any; stc: any; pla: any; con: any; esp: any; 
-                    espX: any; rac: any; hab: any; habR: any; habX: any; habV: any; dot: any; dotX: any; dotO: any; ve: any; idi: any; sor: any;
+                    espX: any; rac: any; hab: any; habC: any; habMc: any; habR: any; habRv: any; habX: any; habV: any; dot: any; dotX: any; dotO: any; ve: any; 
+                    idi: any; sor: any; pgl: any;
                 }) => {
                     const tempcla = element.cla.split("|");
                     let nivel: number = 0;
@@ -142,30 +147,31 @@ export class DetallesPersonajeService {
                             Extra: element.espX[index] ?? 'Nada',
                         });
                     }
-                    let habilidades: { Nombre: string; Rangos: number; Extra: string; Varios: string; }[] = [];
+                    let habilidades: { Nombre: string; Clasea: boolean; Mod_car: number; Rangos: number; Rangos_varios: number; Extra: string; Varios: string; }[] = [];
                     for (let index = 0; index < element.hab.length; index++) {
                         habilidades.push({
                             Nombre: element.hab[index],
+                            Clasea: element.habC[index],
+                            Mod_car: element.habMc[index],
                             Rangos: element.habR[index],
+                            Rangos_varios: element.habRv[index],
                             Extra: element.habX[index],
                             Varios: element.habV[index]
                         });
                     }
                     const dom: [] = element.dom.split("|").map((item: string) => item.trim()).filter((item: string) => item.length > 0);
                     const stc: [] = element.stc.split("|").map((item: string) => item.trim()).filter((item: string) => item.length > 0);
-                    const pla: [] = element.pla.split("|").map((item: string) => item.trim()).filter((item: string) => item.length > 0);
                     const con: [] = element.con.split("|").map((item: string) => item.trim()).filter((item: string) => item.length > 0);
                     const rac: [] = element.rac.split("|").map((item: string) => item.trim()).filter((item: string) => item.length > 0);
                     const ve: [] = element.ve.split("|").map((item: string) => item.trim()).filter((item: string) => item.length > 0);
                     const idi: [] = element.idi.split("|").map((item: string) => item.trim()).filter((item: string) => item.length > 0);
                     const sor: [] = element.sor.split("|").map((item: string) => item.trim()).filter((item: string) => item.length > 0);
-                    set(ref(db, `Detalles-personaje/${element.i}`), {
+                    set(ref(db, `Personajes/${element.i}`), {
                         Nombre: element.n,
                         Personalidad: element.dcp,
                         Contexto: element.dh,
                         Ataque_base: element.a,
-                        Tamano: element.tn,
-                        ModTamano: element.tm,
+                        Tamano: element.tm,
                         Ca: element.ca,
                         Armadura_natural: element.an,
                         Ca_desvio: element.cd,
@@ -201,10 +207,12 @@ export class DetallesPersonajeService {
                         Escalar: element.e,
                         Oficial: element.o,
                         Dados_golpe: element.dg,
+                        Pgs_lic: element.pgl,
+                        Jugador: element.ju,
                         Clases: clas,
                         Dominios: dom,
                         Subtipos: stc,
-                        Plantillas: pla,
+                        Plantillas: element.pla,
                         Conjuros: con,
                         Claseas: claseas,
                         Raciales: rac,

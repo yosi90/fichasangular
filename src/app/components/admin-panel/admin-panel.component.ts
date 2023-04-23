@@ -1,7 +1,7 @@
 import { Component } from '@angular/core';
 import { ListaPersonajesService } from 'src/app/services/lista-personajes.service';
 import { CampañasService } from 'src/app/services/campañas.service';
-import { DetallesPersonajeService } from 'src/app/services/detalles-personaje.service';
+import { PersonajeService } from 'src/app/services/personaje.service';
 
 @Component({
     selector: 'app-admin-panel',
@@ -10,10 +10,10 @@ import { DetallesPersonajeService } from 'src/app/services/detalles-personaje.se
 })
 export class AdminPanelComponent {
 
-    constructor(private dps: DetallesPersonajeService, private lpsrv: ListaPersonajesService, private csrv: CampañasService) { }
+    constructor(private pSvc: PersonajeService, private lpsrv: ListaPersonajesService, private csrv: CampañasService) { }
 
     sincronizarListaPJs() {
-        const resultado = this.lpsrv.RenovarLPsFirebase();
+        const resultado = this.lpsrv.RenovarPersonajesSimples();
     }
 
     sincronizarCampanas() {
@@ -21,6 +21,6 @@ export class AdminPanelComponent {
     }
 
     sincronizarDetallesPJs() {
-        const resultado = this.dps.RenovarDetallesPJsFirebase();
+        const resultado = this.pSvc.RenovarPersonajes();
     }
 }

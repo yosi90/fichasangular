@@ -1,6 +1,6 @@
 import { Component, ViewChild, OnInit, AfterViewInit, ElementRef } from '@angular/core';
 import { animate, state, style, transition, trigger } from '@angular/animations';
-import { ListaPersonajesService } from '../../services/lista-personajes.service.ALT';
+import { ListaPersonajesService } from '../../../../trashCode/lista-personajes.service.ALT';
 import { PersonajeSimple } from '../../interfaces/personaje-simple';
 import { MatTableDataSource } from '@angular/material/table';
 import { MatSort, Sort } from '@angular/material/sort';

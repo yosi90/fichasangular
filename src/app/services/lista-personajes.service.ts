@@ -13,7 +13,7 @@ export class ListaPersonajesService {
 
     async getPersonajes(): Promise<Observable<PersonajeSimple[]>> {
         return new Observable((observador) => {
-            const dbRef = ref(this.db, 'Personajes');
+            const dbRef = ref(this.db, 'Personajes-simples');
             let unsubscribe: Unsubscribe;
 
             const onNext = (snapshot: any) => {
@@ -116,16 +116,16 @@ export class ListaPersonajesService {
 
     pjs(): Observable<any> {
         const headers = new HttpHeaders({ 'Content-Type': 'application/json' });
-        const personajes = this.http.post('http://127.0.0.1:5000/personajes', { headers });
+        const personajes = this.http.post('http://127.0.0.1:5000/personajes-simplificados', { headers });
         return personajes;
     }
 
-    public async RenovarLPsFirebase() {
+    public async RenovarPersonajesSimples() {
         const db = getDatabase();
         this.pjs().subscribe(
             response => {
                 response.forEach((element: { i: any; n: any; r: any; c: any; co: any; p: any; ca: any; t: any; s: any; a: any; }) => {
-                    set(ref(db, `Personajes/${element.i}`), {
+                    set(ref(db, `Personajes-simples/${element.i}`), {
                         Nombre: element.n,
                         Raza: element.r,
                         Clases: element.c,
