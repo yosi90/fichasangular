@@ -11,6 +11,8 @@ export interface Personaje extends PersonajeSimple {
     Armadura_natural: number;
     Ca_desvio: number;
     Ca_varios: number;
+    Presa: number;
+    Presa_varios: number;
     Tipo_criatura: string;
     Subtipos: {
         Nombre: string;
@@ -43,6 +45,9 @@ export interface Personaje extends PersonajeSimple {
     Dados_golpe: number;
     Pgs_lic: number;
     Jugador: string;
+    Edad: number;
+    Altura: number;
+    Peso: number;
     Tamano: {
         Id: number;
         Nombre: string;

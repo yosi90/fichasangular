@@ -25,7 +25,7 @@ export class PersonajeService {
                     Clases: snapshot.child('Clases').val().map((c: { Nombre: any; Nivel: any; }) => `${c.Nombre} (${c.Nivel})`).join(", "),
                     Personalidad: snapshot.child('Personalidad').val(),
                     Contexto: snapshot.child('Contexto').val(),
-                    Campana: snapshot.child('Campaña').val(),
+                    Campana: snapshot.child('Campana').val(),
                     Trama: snapshot.child('Trama').val(),
                     Subtrama: snapshot.child('Subtrama').val(),
                     Ataque_base: snapshot.child('Ataque_base').val(),
@@ -35,6 +35,8 @@ export class PersonajeService {
                     Armadura_natural: snapshot.child('Armadura_natural').val(),
                     Ca_desvio: snapshot.child('Ca_desvio').val(),
                     Ca_varios: snapshot.child('Ca_varios').val(),
+                    Presa: snapshot.child('Presa').val(),
+                    Presa_varios: snapshot.child('Presa_varios').val(),
                     Tipo_criatura: snapshot.child('Tipo_criatura').val(),
                     Subtipos: snapshot.child('Subtipos').val(),
                     Fuerza: snapshot.child('Fuerza').val(),
@@ -75,7 +77,10 @@ export class PersonajeService {
                     Idiomas: snapshot.child('Idiomas').val(),
                     Sortilegas: snapshot.child('Sortilegas').val(),
                     Archivado: false,
-                    Jugador: snapshot.child('Jugador').val()
+                    Jugador: snapshot.child('Jugador').val(),
+                    Edad: snapshot.child('Edad').val(),
+                    Altura: snapshot.child('Altura').val(),
+                    Peso: snapshot.child('Peso').val(),
                 };
                 observador.next(pj); // Emitir el array de personajes
             };
@@ -110,9 +115,9 @@ export class PersonajeService {
                 response.forEach((element: {
                     i: any; n: any; dcp: any; dh: any; tm: any; a: any; ca: any; an: any; cd: any; cv: any; ra: any; tc: any; f: any; mf: any; d: any; md: any;
                     co: any; mco: any; int: any; mint: any; s: any; ms: any; car: any; mcar: any; aju: any; de: any; ali: any; g: any; ncam: any; ntr: any; ju: any;
-                    nst: any; v: any; cor: any; na: any; vo: any; t: any; e: any; o: any; dg: any; cla: any; dom: any; stc: any; pla: any; con: any; esp: any; 
-                    espX: any; rac: any; hab: any; habC: any; habMc: any; habR: any; habRv: any; habX: any; habV: any; dot: any; dotX: any; dotO: any; ve: any; 
-                    idi: any; sor: any; pgl: any;
+                    nst: any; v: any; cor: any; na: any; vo: any; t: any; e: any; o: any; dg: any; cla: any; dom: any; stc: any; pla: any; con: any; esp: any;
+                    espX: any; rac: any; hab: any; habC: any; habMc: any; habR: any; habRv: any; habX: any; habV: any; dot: any; dotX: any; dotO: any; ve: any;
+                    idi: any; sor: any; pgl: any; pr_v: any; edad: any; alt: any; peso: any;
                 }) => {
                     const tempcla = element.cla.split("|");
                     let nivel: number = 0;
@@ -176,6 +181,8 @@ export class PersonajeService {
                         Armadura_natural: element.an,
                         Ca_desvio: element.cd,
                         Ca_varios: element.cv,
+                        Presa: Number(+(element.a.includes('/') ? element.a.substring(0, element.a.indexOf('/')) : element.a) + +element.mf + +element.tm.Modificador_presa + +element.pr_v),
+                        Presa_varios: element.pr_v,
                         Raza: element.ra,
                         Tipo_criatura: element.tc,
                         Fuerza: element.f,
@@ -209,6 +216,9 @@ export class PersonajeService {
                         Dados_golpe: element.dg,
                         Pgs_lic: element.pgl,
                         Jugador: element.ju,
+                        Edad: element.edad,
+                        Altura: element.alt,
+                        Peso: element.peso,
                         Clases: clas,
                         Dominios: dom,
                         Subtipos: stc,

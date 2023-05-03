@@ -59,9 +59,9 @@ def get_personajes():
         cursorPlantillas = connection.cursor()
 
         cursor.execute("""
-            select p.id_personaje i, p.nombre n, descripcion_personalidad dcp, descripcion_historia dh, p.ataque_base a, p.armadura_natural an, p.ca_desvio cd, r.nombre ra, ti.nombre tc, pc.fuerza f, pc.destreza d, pc.constitucion co, 
+            select p.id_personaje i, p.nombre n, descripcion_personalidad dcp, descripcion_historia dh, p.ataque_base a, p.armadura_natural an, p.ca_desvio cd, r.nombre ra, r.presa, ti.nombre tc, pc.fuerza f, pc.destreza d, pc.constitucion co, 
             pc.inteligencia int, pc.sabiduria s, pc.carisma ca, p.ajuste aju, dei.nombre de, ab.nombre ali, g.nombre g, ca.nombre ncam, t.nombre ntr, s.nombre nst, p.puntos_golpe v, p.correr cor, p.nadar na, p.volar vo, p.trepar t, 
-            p.escalar e, p.oficial o, ta.id_tamaño i_t, ta.nombre n_t, ta.modificador tm, ta.mod_presa tmp, j.nombre ju, p.pgs_lic pgl,
+            p.escalar e, p.oficial o, ta.id_tamaño i_t, ta.nombre n_t, ta.modificador tm, ta.mod_presa tmp, j.nombre ju, p.pgs_lic pgl, p.edad, p.altura alt, p.peso,
             (select sum(valor) from personajes_dgsExtra where id_personaje = p.id_personaje) dg, 
             stuff((select '| ' + CAST(pmc.valor as varchar) from personaje_modificadores_ca pmc where pmc.id_personaje = p.id_personaje for xml path('')), 1, 2, '') cav, 
             stuff((select '| ' + cl.nombre + ';' + cast(pc.nivel as nvarchar) from clases cl inner join personaje_clases pc on cl.id_clase = pc.id_clase where pc.id_personaje = p.id_personaje for xml path('')), 1, 2, '') cla, 
@@ -73,7 +73,7 @@ def get_personajes():
             stuff((select '| ' + ra.nombre from raciales ra inner join personaje_raciales pr on ra.id_racial = pr.id_racial where pr.id_personaje = p.id_personaje for xml path('')), 1, 2, '') rac, 
             stuff((select '| ' + ha.nombre + ';' + CAST(ph.clasea as varchar) + ';' + cast(ph.rangos as nvarchar) + ';' + cast(ph.rangos_varios as nvarchar) + ';' + exh.nombre + ';' + ph.mod_varios + ';' + CAST(ha.id_caracteristica as varchar) from habilidades ha inner join personajes_habilidades ph on ha.id_habilidad = ph.id_habilidad inner join extras_habilidades exh on ph.id_extra = exh.id_extra where ph.id_personaje = p.id_personaje for xml path('')), 1, 2, '') hab, 
             stuff((select '| ' + hac.nombre + ';' + CAST(phc.clasea as varchar) + ';' + cast(phc.rangos as nvarchar) + ';' + cast(phc.rangos_varios as nvarchar) + ';' + phc.mod_varios + ';' + CAST(hac.id_caracteristica as varchar) from habilidades_custom hac inner join personajes_habilidades_custom phc on hac.id_habilidad = phc.id_habilidad where phc.id_personaje = p.id_personaje for xml path('')), 1, 2, '') habc, 
-            stuff((select '| ' + do.nombre + ';' + CAST(pdo.id_extra as varchar) + ';' + CAST(do.extra_arma as varchar) + ';' + CAST(do.extra_armadura as varchar) + ';' + CAST(do.extra_escuela as varchar) + ';' + CAST(do.extra_habilidad as varchar) + ';' + pdo.origen from dotes do inner join personaje_dotes pdo on do.id_dote = pdo.id_dotes where pdo.id_personaje = p.id_personaje for xml path('')), 1, 2, '') dot, 
+            stuff((select '| ' + do.nombre + ';' + CAST(pdo.id_extra as varchar) + ';' + CAST(do.extra_arma as varchar) + ';' + CAST(do.extra_armadura as varchar) + ';' + CAST(do.extra_escuela as varchar) + ';' + CAST(do.extra_habilidad as varchar) + ';' + pdo.origen + ';' + CAST(do.presa as varchar) from dotes do inner join personaje_dotes pdo on do.id_dote = pdo.id_dotes where pdo.id_personaje = p.id_personaje for xml path('')), 1, 2, '') dot, 
             stuff((select '| ' + v.nombre from ventajas v inner join personaje_ventajas pv on v.id_ventaja = pv.id_ventaja where pv.id_personaje = p.id_personaje for xml path('')), 1, 2, '') ve, 
             stuff((select '| ' + id.nombre from idiomas id inner join personaje_idiomas pid on id.id_idioma = pid.id_idioma where pid.id_personaje = p.id_personaje for xml path('')), 1, 2, '') idi, 
             stuff((select '| ' + conj2.nombre from conjuros conj2 inner join personaje_sortilegas pso on conj2.id_conjuro = pso.id_conjuro where pso.id_personaje = p.id_personaje for xml path('')), 1, 2, '') sor 
@@ -99,6 +99,7 @@ def get_personajes():
 
         results = []
         for row in cursor.fetchall():
+            presa_varios = row.presa #Declaramos aquí porque bebe de raza, dotes y plantillas
             # Dotes                                 Dotes                                 Dotes                                 Dotes                                 Dotes                                 Dotes                                 
             dotes = []
             dotes_extra = []
@@ -138,6 +139,7 @@ def get_personajes():
                         dotes_origen.append(Capitalizador(subcadenas[6]))
                     else:
                         dotes_origen.append('Desconocido')
+                    presa_varios += int(subcadenas[7])
             # Claseas                                 Claseas                                 Claseas                                 Claseas                                 Claseas                                 Claseas                                 
             claseas = []
             claseas_extra = []
@@ -227,6 +229,7 @@ def get_personajes():
                             'Id_dados_golpe_pasos': pl.i_dgpm, 'Dados_golpe_pasos': pl.n_dgpm, 'Actualiza_dgs': pl.adg, 'Correr': pl.co, 'Nadar': pl.na, 'Volar': pl.vo, 'Maniobrabilidad': Capitalizador(pl.n_ma), 'Trepar': pl.tr, 'Escalar': pl.es, 'Ataque_base': pl.at, 'Ca': Capitalizador(pl.ca), 
                             'Resistencia_conjuros': Capitalizador(pl.rc), 'Reduccion_dano': Capitalizador(pl.rd), 'Resistencia_elemental': Capitalizador(pl.re), 'Velocidades': Capitalizador(pl.vel), 'Iniciativa': pl.ini, 'Presa': pl.pr
                         })
+                    presa_varios += int(pl.pr)
             tamano = { 'Id': row.i_t, 'Nombre': Capitalizador(row.n_t), 'Modificador': row.tm, 'Modificador_presa': row.tmp }
             # Ca varios                                 Ca varios                                 Ca varios                                 Ca varios                                 Ca varios                                 Ca varios                                 
             ca_varios = 0
@@ -243,7 +246,7 @@ def get_personajes():
                 'ncam': Capitalizador(row.ncam), 'ntr': Capitalizador(row.ntr), 'nst': Capitalizador(row.nst), 'v': row.v, 'cor': row.cor, 'na': row.na, 'vo': row.vo, 't': row.t, 'e': row.e, 'o': row.o, 'dg': row.dg, 'cla': CapitalizadorCaracterControl(row.cla), 'dom': CapitalizadorCaracterControl(row.dom), 
                 'stc': CapitalizadorCaracterControl(row.stc), 'pla': plantillas, 'con': CapitalizadorCaracterControl(row.con), 'esp': claseas, 'espX': claseas_extra, 'rac': CapitalizadorCaracterControl(row.rac), 'hab': habilidades, 'habC': habilidades_claseas, 'habMc': habilidades_mod_car, 
                 'habR': habilidades_rango, 'habRv': habilidades_rango_varios, 'habX': habilidades_extra, 'habV': habilidades_varios, 'dot': dotes, 'dotX': dotes_extra, 'dotO': dotes_origen, 've': CapitalizadorCaracterControl(row.ve), 'idi': CapitalizadorCaracterControl(row.idi), 
-                'sor': CapitalizadorCaracterControl(row.sor), 'ju': Capitalizador(row.ju), 'pgl': row.pgl
+                'sor': CapitalizadorCaracterControl(row.sor), 'ju': Capitalizador(row.ju), 'pgl': row.pgl, 'pr_v': presa_varios, 'edad': row.edad, 'alt': row.alt, 'peso': row.peso
             })
 
         cursor.close()
