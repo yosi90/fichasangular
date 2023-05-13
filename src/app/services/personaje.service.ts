@@ -104,7 +104,7 @@ export class PersonajeService {
 
     d_pjs(): Observable<any> {
         const headers = new HttpHeaders({ 'Content-Type': 'application/json' });
-        const res = this.http.post('http://85.155.185.187:5000/personajes', { headers });
+        const res = this.http.post('https://85.155.185.187:5000/personajes', { headers });
         return res;
     }
 
