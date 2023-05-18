@@ -116,7 +116,7 @@ export class ListaPersonajesService {
 
     pjs(): Observable<any> {
         const headers = new HttpHeaders({ 'Content-Type': 'application/json' });
-        const personajes = this.http.post('http://127.0.0.1:5000/personajes-simplificados', { headers });
+        const personajes = this.http.post('https://85.155.185.187:5000/personajes-simplificados', { headers });
         return personajes;
     }
 

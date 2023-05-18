@@ -47,66 +47,21 @@ export class CampañasService {
 
     private getCampañas(): Observable<any> {
         const headers = new HttpHeaders({ 'Content-Type': 'application/json' });
-        const campañas = this.http.post('http://127.0.0.1:5000/campañas', { headers });
+        const campañas = this.http.post('https://85.155.185.187:5000/campañas', { headers });
         return campañas;
     }
 
     private getTramas(idCam: number): Observable<any> {
         const headers = new HttpHeaders({ 'Content-Type': 'application/json' });
-        const campañas = this.http.post('http://127.0.0.1:5000/tramas', idCam, { headers });
+        const campañas = this.http.post('https://85.155.185.187:5000/tramas', idCam, { headers });
         return campañas;
     }
 
     private getSubtramas(idTra: number): Observable<any> {
         const headers = new HttpHeaders({ 'Content-Type': 'application/json' });
-        const campañas = this.http.post('http://127.0.0.1:5000/subtramas', idTra, { headers });
+        const campañas = this.http.post('https://85.155.185.187:5000/subtramas', idTra, { headers });
         return campañas;
     }
-
-    // public async RenovarCampañasFirebase() {
-    //     const db = getDatabase();
-    //     let campañas: Campaña[] = [];
-    //     this.getCampañas().subscribe(
-    //         response => {
-    //             let tramas: { Id: any; Nombre: any; Subtramas: { Id: any; Nombre: any; }[]; }[] = [];
-    //             response.forEach((cam: any) => {
-    //                 this.getTramas(cam.i).subscribe(
-    //                     response => {
-    //                         let subTramas: { Id: any; Nombre: any; }[] = [];
-    //                         response.forEach((tra: any) => {
-    //                             this.getSubtramas(tra.i).subscribe(
-    //                                 response => {
-    //                                     response.forEach((sub: any) => {
-    //                                         subTramas.push({
-    //                                             Id: sub.i,
-    //                                             Nombre: sub.n
-    //                                         });
-    //                                     });
-    //                                 },
-    //                                 error => console.log(error)
-    //                             );
-    //                             tramas.push({
-    //                                 Id: tra.i,
-    //                                 Nombre: tra.n,
-    //                                 Subtramas: subTramas
-    //                             });
-    //                         });
-    //                     },
-    //                     error => console.log(error)
-    //                 );
-    //                 campañas.push({
-    //                     Id: cam.i,
-    //                     Nombre: cam.n,
-    //                     Tramas: tramas
-    //                 });
-    //             });
-    //         },
-    //         error => console.log(error)
-    //     );
-    //     console.log(campañas);
-    //     if (campañas.length > 0)
-    //         console.log('comenzamos');
-    // }
 
     public async RenovarCampañasFirebase() {
         const db = getDatabase();
