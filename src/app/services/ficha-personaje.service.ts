@@ -58,15 +58,15 @@ export class FichaPersonajeService {
         form.getTextField('ca_toque').setText(pj.Ca.toString());
         form.getTextField('ca_desprevenido').setText((pj.Ca - pj.ModDestreza).toString());
         form.getTextField('pg').setText(pj.Vida.toString());
-        // form.getTextField('fort_clase').setText(pj.);
+        form.getTextField('fort_clase').setText(pj.Salvaciones.fortaleza.modsClaseos ? pj.Salvaciones.fortaleza.modsClaseos.valor.reduce((c, v) => c + v, 0).toString() : '0');
         form.getTextField('mod_magico_fortaleza').setText('0');
-        // form.getTextField('mod_varios_fortaleza').setText(pj.);
-        // form.getTextField('ref_clase').setText(pj.);
+        form.getTextField('mod_varios_fortaleza').setText(pj.Salvaciones.fortaleza.modsVarios ? pj.Salvaciones.fortaleza.modsVarios.valor.reduce((c, v) => c + v, 0).toString() : '0');
+        form.getTextField('ref_clase').setText(pj.Salvaciones.reflejos.modsClaseos ? pj.Salvaciones.reflejos.modsClaseos.valor.reduce((c, v) => c + v, 0).toString() : '0');
         form.getTextField('mod_magico_reflejos').setText('0');
-        // form.getTextField('mod_varios_reflejos').setText(pj.);
-        // form.getTextField('vol_clase').setText(pj.);
+        form.getTextField('mod_varios_reflejos').setText(pj.Salvaciones.reflejos.modsVarios ? pj.Salvaciones.reflejos.modsVarios.valor.reduce((c, v) => c + v, 0).toString() : '0');
+        form.getTextField('vol_clase').setText(pj.Salvaciones.voluntad.modsClaseos ? pj.Salvaciones.voluntad.modsClaseos.valor.reduce((c, v) => c + v, 0).toString() : '0');
         form.getTextField('mod_magico_voluntad').setText('0');
-        // form.getTextField('mod_varios_voluntad').setText(pj.);
+        form.getTextField('mod_varios_voluntad').setText(pj.Salvaciones.voluntad.modsVarios ? pj.Salvaciones.voluntad.modsVarios.valor.reduce((c, v) => c + v, 0).toString() : '0');
 
         form.getTextField('mod_varios_presa').setText(pj.Presa_varios.toString());
 

@@ -57,9 +57,11 @@ export class ListaPersonajesComponent implements OnInit, AfterViewInit {
 
     ngAfterViewInit() {
         const flt = document.querySelectorAll('.filtros');
-        flt[0].classList.add('filtroBS');
-        if (flt.length > 1)
-            flt[1].classList.add('filtroSS');
+        if (flt[0]) {
+            flt[0].classList.add('filtroBS');
+            if (flt.length > 1)
+                flt[1].classList.add('filtroSS');
+        }
     }
 
     actualizarTramas(value: string) {
@@ -75,18 +77,20 @@ export class ListaPersonajesComponent implements OnInit, AfterViewInit {
     }
 
     filtroPersonajes() {
-        const texto = this.inputText.nativeElement.value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
-        const archivo = !(this.anuncioArchivo === 'Clic para mostar pjs archivados');
-        const pjFiltrados = this.Personajes.filter(pj => (texto === undefined || texto === '' || pj.Nombre.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().includes(texto) || pj.Contexto.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().includes(texto) ||
-            pj.Personalidad.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().includes(texto) || pj.Clases.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().includes(texto) || pj.Raza.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().includes(texto) ||
-            pj.Campana.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().includes(texto) || pj.Trama.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().includes(texto) || pj.Subtrama.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().includes(texto))
-            && (this.defaultCampana === undefined || this.defaultCampana === 'Sin campaña' || pj.Campana === this.defaultCampana)
-            && (this.defaultTrama === undefined || this.defaultTrama === 'Trama base' || pj.Trama === this.defaultTrama)
-            && (this.defaultSubtrama === undefined || this.defaultSubtrama === 'Subtrama base' || pj.Subtrama === this.defaultSubtrama)
-            && (archivo || !archivo && !pj.Archivado));
-        this.personajesDS = new MatTableDataSource(pjFiltrados);
-        this.personajesDS.sort = this.sort;
-        this.personajesDS.paginator = this.paginator;
+        if (this.inputText) {
+            const texto = this.inputText.nativeElement.value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+            const archivo = !(this.anuncioArchivo === 'Clic para mostar pjs archivados');
+            const pjFiltrados = this.Personajes.filter(pj => (texto === undefined || texto === '' || pj.Nombre.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().includes(texto) || pj.Contexto.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().includes(texto) ||
+                pj.Personalidad.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().includes(texto) || pj.Clases.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().includes(texto) || pj.Raza.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().includes(texto) ||
+                pj.Campana.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().includes(texto) || pj.Trama.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().includes(texto) || pj.Subtrama.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().includes(texto))
+                && (this.defaultCampana === undefined || this.defaultCampana === 'Sin campaña' || pj.Campana === this.defaultCampana)
+                && (this.defaultTrama === undefined || this.defaultTrama === 'Trama base' || pj.Trama === this.defaultTrama)
+                && (this.defaultSubtrama === undefined || this.defaultSubtrama === 'Subtrama base' || pj.Subtrama === this.defaultSubtrama)
+                && (archivo || !archivo && !pj.Archivado));
+            this.personajesDS = new MatTableDataSource(pjFiltrados);
+            this.personajesDS.sort = this.sort;
+            this.personajesDS.paginator = this.paginator;
+        }
     }
 
     anuncioArchivo: string = 'Clic para mostar pjs archivados';

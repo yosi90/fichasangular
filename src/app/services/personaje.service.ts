@@ -81,6 +81,7 @@ export class PersonajeService {
                     Edad: snapshot.child('Edad').val(),
                     Altura: snapshot.child('Altura').val(),
                     Peso: snapshot.child('Peso').val(),
+                    Salvaciones: snapshot.child('Salvaciones').val(),
                 };
                 observador.next(pj); // Emitir el array de personajes
             };
@@ -117,7 +118,7 @@ export class PersonajeService {
                     co: any; mco: any; int: any; mint: any; s: any; ms: any; car: any; mcar: any; aju: any; de: any; ali: any; g: any; ncam: any; ntr: any; ju: any;
                     nst: any; v: any; cor: any; na: any; vo: any; t: any; e: any; o: any; dg: any; cla: any; dom: any; stc: any; pla: any; con: any; esp: any;
                     espX: any; rac: any; hab: any; habC: any; habMc: any; habR: any; habRv: any; habX: any; habV: any; dot: any; dotX: any; dotO: any; ve: any;
-                    idi: any; sor: any; pgl: any; pr_v: any; edad: any; alt: any; peso: any;
+                    idi: any; sor: any; pgl: any; pr_v: any; edad: any; alt: any; peso: any; salv: any;
                 }) => {
                     const tempcla = element.cla.split("|");
                     let nivel: number = 0;
@@ -171,6 +172,7 @@ export class PersonajeService {
                     const ve: [] = element.ve.split("|").map((item: string) => item.trim()).filter((item: string) => item.length > 0);
                     const idi: [] = element.idi.split("|").map((item: string) => item.trim()).filter((item: string) => item.length > 0);
                     const sor: [] = element.sor.split("|").map((item: string) => item.trim()).filter((item: string) => item.length > 0);
+                    console.log(element.salv);
                     set(ref(db, `Personajes/${element.i}`), {
                         Nombre: element.n,
                         Personalidad: element.dcp,
@@ -230,7 +232,8 @@ export class PersonajeService {
                         Dotes: dotes,
                         Ventajas: ve,
                         Idiomas: idi,
-                        Sortilegas: sor
+                        Sortilegas: sor,
+                        Salvaciones: element.salv,
                     })
                 });
             },

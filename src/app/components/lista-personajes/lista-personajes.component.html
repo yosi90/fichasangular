@@ -40,7 +40,7 @@
         </mat-menu>
 
         <table id="personajes" #tablaPjs mat-table [dataSource]="personajesDS" multiTemplateDataRows matSort
-            (matSortChange)="announceSortChange($event);">
+            (matSortChange)="announceSortChange($event);" *ngIf="Personajes.length > 0; else cargando">
             <ng-container matColumnDef="{{column}}" *ngFor="let column of columnsToDisplay">
                 <th class="lead" mat-header-cell *matHeaderCellDef mat-sort-header
                     sortActionDescription="Ordenar por {{column}}">
@@ -113,6 +113,12 @@
             </tr>
             <tr mat-row *matRowDef="let row; columns: ['expandedDetail']" class="details-row"></tr>
         </table>
+        <ng-template #cargando>
+            <div class="superballs">
+                <div class="superballs__dot"></div>
+                <div class="superballs__dot"></div>
+            </div>
+        </ng-template>
         <mat-paginator [pageSizeOptions]="[10, 20, 30, 40]" showFirstLastButtons
             aria-label="Selecciona una página de personajes">
         </mat-paginator>

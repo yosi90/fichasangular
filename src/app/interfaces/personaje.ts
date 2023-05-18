@@ -54,6 +54,38 @@ export interface Personaje extends PersonajeSimple {
         Modificador: number;
         Modificador_presa: number;
     }
+    Salvaciones: {
+        fortaleza: {
+            modsClaseos:{
+                valor: [],
+                origen: []
+            },
+            modsVarios:{
+                valor: [],
+                origen: []
+            }
+        }
+        reflejos: {
+            modsClaseos:{
+                valor: [],
+                origen: []
+            },
+            modsVarios:{
+                valor: [],
+                origen: []
+            }
+        }
+        voluntad: {
+            modsClaseos:{
+                valor: [],
+                origen: []
+            },
+            modsVarios:{
+                valor: [],
+                origen: []
+            }
+        }
+    }
     Dominios: {
         Nombre: string;
     }[]
