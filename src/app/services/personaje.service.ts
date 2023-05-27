@@ -82,6 +82,9 @@ export class PersonajeService {
                     Altura: snapshot.child('Altura').val(),
                     Peso: snapshot.child('Peso').val(),
                     Salvaciones: snapshot.child('Salvaciones').val(),
+                    Rd: snapshot.child('Rd').val(),
+                    Rc: snapshot.child('Rc').val(),
+                    Re: snapshot.child('Re').val(),
                 };
                 observador.next(pj); // Emitir el array de personajes
             };
@@ -117,8 +120,8 @@ export class PersonajeService {
                     i: any; n: any; dcp: any; dh: any; tm: any; a: any; ca: any; an: any; cd: any; cv: any; ra: any; tc: any; f: any; mf: any; d: any; md: any;
                     co: any; mco: any; int: any; mint: any; s: any; ms: any; car: any; mcar: any; aju: any; de: any; ali: any; g: any; ncam: any; ntr: any; ju: any;
                     nst: any; v: any; cor: any; na: any; vo: any; t: any; e: any; o: any; dg: any; cla: any; dom: any; stc: any; pla: any; con: any; esp: any;
-                    espX: any; rac: any; hab: any; habC: any; habMc: any; habR: any; habRv: any; habX: any; habV: any; dot: any; dotX: any; dotO: any; ve: any;
-                    idi: any; sor: any; pgl: any; pr_v: any; edad: any; alt: any; peso: any; salv: any;
+                    espX: any; rac: any; hab: any; habN: any; habC: any; habCa: any; habMc: any; habR: any; habRv: any; habX: any; habV: any; habCu: any; dot: any;
+                    dotX: any; dotO: any; ve: any; idi: any; sor: any; pgl: any; pr_v: any; edad: any; alt: any; peso: any; salv: any; rd: any; rc: any; re: any;
                 }) => {
                     const tempcla = element.cla.split("|");
                     let nivel: number = 0;
@@ -153,16 +156,22 @@ export class PersonajeService {
                             Extra: element.espX[index] ?? 'Nada',
                         });
                     }
-                    let habilidades: { Nombre: string; Clasea: boolean; Mod_car: number; Rangos: number; Rangos_varios: number; Extra: string; Varios: string; }[] = [];
-                    for (let index = 0; index < element.hab.length; index++) {
+                    let habilidades: {
+                        Id: number; Nombre: string; Clasea: boolean; Car: string; Mod_car: number; Rangos: number; Rangos_varios: number; Extra: string;
+                        Varios: string; Custom: boolean;
+                    }[] = [];
+                    for (let index = 0; index < element.habN.length; index++) {
                         habilidades.push({
-                            Nombre: element.hab[index],
+                            Id: element.hab[index],
+                            Nombre: element.habN[index],
                             Clasea: element.habC[index],
+                            Car: element.habCa[index],
                             Mod_car: element.habMc[index],
                             Rangos: element.habR[index],
                             Rangos_varios: element.habRv[index],
                             Extra: element.habX[index],
-                            Varios: element.habV[index]
+                            Varios: element.habV[index],
+                            Custom: element.habCu[index]
                         });
                     }
                     const dom: [] = element.dom.split("|").map((item: string) => item.trim()).filter((item: string) => item.length > 0);
@@ -172,7 +181,6 @@ export class PersonajeService {
                     const ve: [] = element.ve.split("|").map((item: string) => item.trim()).filter((item: string) => item.length > 0);
                     const idi: [] = element.idi.split("|").map((item: string) => item.trim()).filter((item: string) => item.length > 0);
                     const sor: [] = element.sor.split("|").map((item: string) => item.trim()).filter((item: string) => item.length > 0);
-                    console.log(element.salv);
                     set(ref(db, `Personajes/${element.i}`), {
                         Nombre: element.n,
                         Personalidad: element.dcp,
@@ -234,6 +242,9 @@ export class PersonajeService {
                         Idiomas: idi,
                         Sortilegas: sor,
                         Salvaciones: element.salv,
+                        Rd: element.rd,
+                        Rc: element.rc,
+                        Re: element.re,
                     })
                 });
             },

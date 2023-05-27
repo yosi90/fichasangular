@@ -19,7 +19,7 @@ export class FichaPersonajeService {
         }
         form.getTextField('nombre').setText(pj.Nombre);
         form.getTextField('jugador').setText(pj.Jugador);
-        form.getTextField('clase').setText(pj.Clases);
+        form.getTextField('clase').setText(pj.Clases.replace('(', '').replace(')', ''));
         let raza = pj.Raza;
         if (pj.Plantillas)
             pj.Plantillas.forEach(p => {
@@ -67,8 +67,33 @@ export class FichaPersonajeService {
         form.getTextField('vol_clase').setText(pj.Salvaciones.voluntad.modsClaseos ? pj.Salvaciones.voluntad.modsClaseos.valor.reduce((c, v) => c + v, 0).toString() : '0');
         form.getTextField('mod_magico_voluntad').setText('0');
         form.getTextField('mod_varios_voluntad').setText(pj.Salvaciones.voluntad.modsVarios ? pj.Salvaciones.voluntad.modsVarios.valor.reduce((c, v) => c + v, 0).toString() : '0');
+        if (pj.Rd != "No aplica")
+            form.getTextField('rd').setText(pj.Rd);
+        if (pj.Re != "No aplica")
+            form.getTextField('rc').setText(pj.Rc);
+        var notas = `Personalidad:\r\n${pj.Personalidad}\r\n\r\nContexto:\r\n${pj.Contexto}`;
+        if (pj.Re != "No aplica")
+            notas += `\r\n\r\nResistencia a la energía: ${pj.Re}`;
+        form.getTextField('mod_ataque_base').setText(pj.Ataque_base);
+        if (pj.Ataque_base.includes('/'))
+            form.getTextField('ataque_base').setText(pj.Ataque_base.substring(0, pj.Ataque_base.indexOf('/')));
+        else
+            form.getTextField('ataque_base').setText(pj.Ataque_base.toString());
+        form.getTextField('velocidad').setText(pj.Correr.toString());
+        if (pj.Volar > 0)
+            notas += `\r\n\r\nVolar: ${pj.Volar} pies`;
+        if (pj.Nadar > 0)
+            notas += `\r\n\r\nNadar: ${pj.Nadar} pies`;
+        if (pj.Trepar > 0)
+            notas += `\r\n\r\nTrepar: ${pj.Trepar} pies`;
+        if (pj.Escalar > 0)
+            notas += `\r\n\r\nEscalar: ${pj.Escalar} pies`;
+        form.getTextField('rangos_max').setText((pj.Nivel + 3).toString());
+        form.getTextField('rangos_min').setText(((pj.Nivel + 3) / 2).toString());
+        notas += Rellenar_habilidades();
 
         form.getTextField('mod_varios_presa').setText(pj.Presa_varios.toString());
+        form.getTextField('notas').setText(notas);
 
 
         // const pngImage = await pdfDoc.embedPng(...)
@@ -93,7 +118,72 @@ export class FichaPersonajeService {
         //   method: 'POST',
         //   body: formData,
         // });
+
+        function Rellenar_habilidades(): string {
+            var notas = "";
+            var contHabsCustom = 1;
+            pj.Habilidades.forEach(h => {
+                if (h.Clasea) {
+                    form.getCheckBox(`clasea${h.Id - 1}`).check();
+                }
+                form.getTextField(`rangos${h.Id - 1}`).setText(h.Rangos.toString());
+                if (h.Extra != "" && h.Extra != "Elegir") {
+                    form.getTextField(`extra${h.Id - 1}`).setText(h.Extra);
+                } else if (h.Custom) {
+                    if (contHabsCustom < 3) {
+                        form.getTextField(`custom${contHabsCustom}`).setText(h.Nombre);
+                        form.getTextField(`car${contHabsCustom}`).setText(h.Car.substring(0, 3).toUpperCase());
+                        switch (h.Mod_car) {
+                            case 1:
+                                form.getTextField(`mod_custom${contHabsCustom}`).setText(pj.ModFuerza.toString());
+                                break;
+                            case 2:
+                                form.getTextField(`mod_custom${contHabsCustom}`).setText(pj.ModDestreza.toString());
+                                break;
+                            case 3:
+                                form.getTextField(`mod_custom${contHabsCustom}`).setText(pj.ModConstitucion.toString());
+                                break;
+                            case 4:
+                                form.getTextField(`mod_custom${contHabsCustom}`).setText(pj.ModInteligencia.toString());
+                                break;
+                            case 5:
+                                form.getTextField(`mod_custom${contHabsCustom}`).setText(pj.ModSabiduria.toString());
+                                break;
+                            case 6:
+                                form.getTextField(`mod_custom${contHabsCustom}`).setText(pj.ModCarisma.toString());
+                                break;
+                            default:
+                                break;
+                        }
+                        form.getTextField(`rangos_custom${contHabsCustom}`).setText(h.Rangos.toString());
+                        form.getTextField(`varios_custom${contHabsCustom}`).setText(h.Rangos_varios.toString());
+                        if (h.Varios != "") {
+                            if (!notas.includes('Habilidades con rangos circunstanciales:'))
+                                notas += '\r\n\r\nHabilidades con rangos circunstanciales:\r\n';
+                            notas += `${h.Nombre}: - ${h.Varios}`;
+                        }
+                    } else {
+                        if (!notas.includes('Habilidades extra (No caben):'))
+                            notas += 'Habilidades extra (No caben):';
+                        notas += `${contHabsCustom - 2}.- ${h.Nombre} [${h.Car.substring(0, 3).toUpperCase()}] rangos: ${h.Rangos} rangos varios: ${h.Rangos_varios} mod varios: ${h.Varios}`;
+                    }
+                    contHabsCustom++;
+                }
+                if (!h.Custom) {
+                    if (h.Rangos_varios > 0) {
+                        form.getTextField(`varios${h.Id - 1}`).setText(h.Rangos_varios.toString());
+                    }
+                    if (h.Varios != "") {
+                        if (!notas.includes('Habilidades con rangos circunstanciales:'))
+                            notas += '\r\n\r\nHabilidades con rangos circunstanciales:\r\n';
+                        notas += `${h.Nombre}: ${h.Varios}`;
+                    }
+                }
+            });
+            return notas;
+        }
     }
 
     constructor() { }
+
 }

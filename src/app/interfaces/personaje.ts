@@ -48,6 +48,9 @@ export interface Personaje extends PersonajeSimple {
     Edad: number;
     Altura: number;
     Peso: number;
+    Rd: string;
+    Rc: string;
+    Re: string;
     Tamano: {
         Id: number;
         Nombre: string;
@@ -129,13 +132,16 @@ export interface Personaje extends PersonajeSimple {
         Nombre: string;
     }[]
     Habilidades: {
+        Id: number;
         Nombre: string;
         Clasea: boolean;
+        Car: string;
         Mod_car: number;
         Rangos: number;
         Rangos_varios: number;
         Extra: string;
         Varios: string;
+        Custom: boolean;
     }[]
     Dotes: {
         Nombre: string;
