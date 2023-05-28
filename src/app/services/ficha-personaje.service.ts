@@ -47,7 +47,9 @@ export class FichaPersonajeService {
         form.getTextField('mod_int').setText(`${pj.ModInteligencia > 0 ? '+' : ''}${pj.ModInteligencia}`);
         form.getTextField('mod_sab').setText(`${pj.ModSabiduria > 0 ? '+' : ''}${pj.ModSabiduria}`);
         form.getTextField('mod_car').setText(`${pj.ModCarisma > 0 ? '+' : ''}${pj.ModCarisma}`);
+        form.getTextField('mod_varios_iniciativa').setText(pj.Iniciativa_varios ? `${pj.Iniciativa_varios.reduce((c, v) => c + v.Valor, 0)}` : '0');
         form.getTextField('mod_tamaño_presa').setText(pj.Tamano.Modificador_presa.toString());
+        form.getTextField('mod_varios_presa').setText(pj.Presa_varios ? `${pj.Presa_varios.reduce((c, v) => c + v.Valor, 0)}` : '0');
         form.getTextField('ca').setText(pj.Ca.toString());
         form.getTextField('ca_armadura').setText('0');
         form.getTextField('ca_escudo').setText('0');
@@ -91,8 +93,22 @@ export class FichaPersonajeService {
         form.getTextField('rangos_max').setText((pj.Nivel + 3).toString());
         form.getTextField('rangos_min').setText(((pj.Nivel + 3) / 2).toString());
         notas += Rellenar_habilidades();
-
-        form.getTextField('mod_varios_presa').setText(pj.Presa_varios.toString());
+        form.getTextField('carga_ligera').setText(pj.Capacidad_carga.Ligera.toString());
+        form.getTextField('carga_media').setText(pj.Capacidad_carga.Media.toString());
+        form.getTextField('carga_pesada').setText(pj.Capacidad_carga.Pesada.toString());
+        form.getTextField('levantar_cabeza').setText(pj.Capacidad_carga.Pesada.toString());
+        form.getTextField('levantar_suelo').setText((pj.Capacidad_carga.Pesada * 2).toString());
+        form.getTextField('empujar_arrastrar').setText((pj.Capacidad_carga.Pesada * 5).toString());
+        let idiomas = 1;
+        pj.Idiomas.forEach(i => {
+            if(idiomas < 10)
+                form.getTextField(`idioma${idiomas}`).setText(`${i.Nombre}`);
+            else if(idiomas == 20)
+                notas += `\r\n\r\nIdiomas que no cabían: \r\n - ${i.Nombre}`;
+            else
+                notas += `\r\n - ${i.Nombre}`;
+            idiomas++;
+        });
         form.getTextField('notas').setText(notas);
 
 
@@ -133,28 +149,7 @@ export class FichaPersonajeService {
                     if (contHabsCustom < 3) {
                         form.getTextField(`custom${contHabsCustom}`).setText(h.Nombre);
                         form.getTextField(`car${contHabsCustom}`).setText(h.Car.substring(0, 3).toUpperCase());
-                        switch (h.Mod_car) {
-                            case 1:
-                                form.getTextField(`mod_custom${contHabsCustom}`).setText(pj.ModFuerza.toString());
-                                break;
-                            case 2:
-                                form.getTextField(`mod_custom${contHabsCustom}`).setText(pj.ModDestreza.toString());
-                                break;
-                            case 3:
-                                form.getTextField(`mod_custom${contHabsCustom}`).setText(pj.ModConstitucion.toString());
-                                break;
-                            case 4:
-                                form.getTextField(`mod_custom${contHabsCustom}`).setText(pj.ModInteligencia.toString());
-                                break;
-                            case 5:
-                                form.getTextField(`mod_custom${contHabsCustom}`).setText(pj.ModSabiduria.toString());
-                                break;
-                            case 6:
-                                form.getTextField(`mod_custom${contHabsCustom}`).setText(pj.ModCarisma.toString());
-                                break;
-                            default:
-                                break;
-                        }
+                        form.getTextField(`mod_custom${contHabsCustom}`).setText(h.Mod_car == 1 ? `${pj.ModFuerza}` : h.Mod_car == 2 ? `${pj.ModDestreza}` : h.Mod_car == 3 ? `${pj.ModConstitucion}` : h.Mod_car == 4 ? `${pj.ModInteligencia}` : h.Mod_car == 5 ? `${pj.ModSabiduria}` : `${pj.ModCarisma}`);
                         form.getTextField(`rangos_custom${contHabsCustom}`).setText(h.Rangos.toString());
                         form.getTextField(`varios_custom${contHabsCustom}`).setText(h.Rangos_varios.toString());
                         if (h.Varios != "") {

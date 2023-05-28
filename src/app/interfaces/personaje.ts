@@ -12,7 +12,14 @@ export interface Personaje extends PersonajeSimple {
     Ca_desvio: number;
     Ca_varios: number;
     Presa: number;
-    Presa_varios: number;
+    Presa_varios: {
+        Valor: number;
+        Origen: string;
+    }[]
+    Iniciativa_varios: {
+        Valor: number;
+        Origen: string;
+    }[]
     Tipo_criatura: string;
     Subtipos: {
         Nombre: string;
@@ -56,6 +63,11 @@ export interface Personaje extends PersonajeSimple {
         Nombre: string;
         Modificador: number;
         Modificador_presa: number;
+    }
+    Capacidad_carga: {
+        Ligera: number;
+        Media: number;
+        Pesada: number;
     }
     Salvaciones: {
         fortaleza: {
@@ -153,6 +165,9 @@ export interface Personaje extends PersonajeSimple {
     }[]
     Idiomas: {
         Nombre: string;
+        Descripcion: string;
+        Secreto: boolean;
+        Oficial: boolean;
     }[]
     Sortilegas: {
         Nombre: string;

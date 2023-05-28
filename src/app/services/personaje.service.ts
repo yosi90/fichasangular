@@ -35,6 +35,7 @@ export class PersonajeService {
                     Armadura_natural: snapshot.child('Armadura_natural').val(),
                     Ca_desvio: snapshot.child('Ca_desvio').val(),
                     Ca_varios: snapshot.child('Ca_varios').val(),
+                    Iniciativa_varios: snapshot.child('Iniciativa_varios').val(),
                     Presa: snapshot.child('Presa').val(),
                     Presa_varios: snapshot.child('Presa_varios').val(),
                     Tipo_criatura: snapshot.child('Tipo_criatura').val(),
@@ -85,6 +86,7 @@ export class PersonajeService {
                     Rd: snapshot.child('Rd').val(),
                     Rc: snapshot.child('Rc').val(),
                     Re: snapshot.child('Re').val(),
+                    Capacidad_carga: snapshot.child('Capacidad_carga').val(),
                 };
                 observador.next(pj); // Emitir el array de personajes
             };
@@ -121,7 +123,8 @@ export class PersonajeService {
                     co: any; mco: any; int: any; mint: any; s: any; ms: any; car: any; mcar: any; aju: any; de: any; ali: any; g: any; ncam: any; ntr: any; ju: any;
                     nst: any; v: any; cor: any; na: any; vo: any; t: any; e: any; o: any; dg: any; cla: any; dom: any; stc: any; pla: any; con: any; esp: any;
                     espX: any; rac: any; hab: any; habN: any; habC: any; habCa: any; habMc: any; habR: any; habRv: any; habX: any; habV: any; habCu: any; dot: any;
-                    dotX: any; dotO: any; ve: any; idi: any; sor: any; pgl: any; pr_v: any; edad: any; alt: any; peso: any; salv: any; rd: any; rc: any; re: any;
+                    dotX: any; dotO: any; ve: any; idi: any; sor: any; pgl: any; ini_v: any; pr_v: {Valor: number; Origen: string;}[]; edad: any; alt: any; 
+                    peso: any; salv: any; rd: any; rc: any; re: any; ccl: any; ccm: any; ccp: any;
                 }) => {
                     const tempcla = element.cla.split("|");
                     let nivel: number = 0;
@@ -174,12 +177,16 @@ export class PersonajeService {
                             Custom: element.habCu[index]
                         });
                     }
+                    let cargas = {
+                        Ligera: element.ccl,
+                        Media: element.ccm,
+                        Pesada: element.ccp
+                    }
                     const dom: [] = element.dom.split("|").map((item: string) => item.trim()).filter((item: string) => item.length > 0);
                     const stc: [] = element.stc.split("|").map((item: string) => item.trim()).filter((item: string) => item.length > 0);
                     const con: [] = element.con.split("|").map((item: string) => item.trim()).filter((item: string) => item.length > 0);
                     const rac: [] = element.rac.split("|").map((item: string) => item.trim()).filter((item: string) => item.length > 0);
                     const ve: [] = element.ve.split("|").map((item: string) => item.trim()).filter((item: string) => item.length > 0);
-                    const idi: [] = element.idi.split("|").map((item: string) => item.trim()).filter((item: string) => item.length > 0);
                     const sor: [] = element.sor.split("|").map((item: string) => item.trim()).filter((item: string) => item.length > 0);
                     set(ref(db, `Personajes/${element.i}`), {
                         Nombre: element.n,
@@ -191,7 +198,8 @@ export class PersonajeService {
                         Armadura_natural: element.an,
                         Ca_desvio: element.cd,
                         Ca_varios: element.cv,
-                        Presa: Number(+(element.a.includes('/') ? element.a.substring(0, element.a.indexOf('/')) : element.a) + +element.mf + +element.tm.Modificador_presa + +element.pr_v),
+                        Iniciativa_varios: element.ini_v,
+                        Presa: Number(+(element.a.includes('/') ? element.a.substring(0, element.a.indexOf('/')) : element.a) + +element.mf + +element.tm.Modificador_presa + +element.pr_v.reduce((c, v) => c + v.Valor, 0)),
                         Presa_varios: element.pr_v,
                         Raza: element.ra,
                         Tipo_criatura: element.tc,
@@ -239,12 +247,13 @@ export class PersonajeService {
                         Habilidades: habilidades,
                         Dotes: dotes,
                         Ventajas: ve,
-                        Idiomas: idi,
+                        Idiomas: element.idi,
                         Sortilegas: sor,
                         Salvaciones: element.salv,
                         Rd: element.rd,
                         Rc: element.rc,
                         Re: element.re,
+                        Capacidad_carga: cargas
                     })
                 });
             },

@@ -33,11 +33,16 @@
                 <mat-chip class="warm m-1">{{pj.Raza}}</mat-chip>
                 <mat-chip class="m-1">{{pj.Tamano.Nombre}}</mat-chip>
                 <mat-chip class="m-1">{{pj.Tipo_criatura}}</mat-chip>
-                <mat-chip class="m-1">Velocidad {{pj.Correr}} pies</mat-chip>
-                <mat-chip class="m-1" *ngIf="pj.Nadar > 0">Nadar {{pj.Nadar}}</mat-chip>
-                <mat-chip class="m-1" *ngIf="pj.Volar > 0">Volar {{pj.Volar}}</mat-chip>
-                <mat-chip class="m-1" *ngIf="pj.Trepar > 0">Trepar {{pj.Trepar}}</mat-chip>
-                <mat-chip class="m-1" *ngIf="pj.Escalar > 0">Escalar {{pj.Escalar}}</mat-chip>
+                <mat-chip class="m-1">Iniciativa {{iniciativa}}</mat-chip>
+                <mat-chip class="m-1">Presa {{presa}}</mat-chip>
+                <mat-chip class="m-1">Caminar {{pj.Correr}} pies</mat-chip>
+                <mat-chip class="m-1" *ngIf="pj.Nadar > 0">Nadar {{pj.Nadar}} pies</mat-chip>
+                <mat-chip class="m-1" *ngIf="pj.Volar > 0">Volar {{pj.Volar}} pies</mat-chip>
+                <mat-chip class="m-1" *ngIf="pj.Trepar > 0">Trepar {{pj.Trepar}} pies</mat-chip>
+                <mat-chip class="m-1" *ngIf="pj.Escalar > 0">Escalar {{pj.Escalar}} pies</mat-chip>
+                <mat-chip class="m-1">Carga ligera {{pj.Capacidad_carga.Ligera}} libras</mat-chip>
+                <mat-chip class="m-1">Carga media {{pj.Capacidad_carga.Media}} libras</mat-chip>
+                <mat-chip class="m-1">Carga pesada {{pj.Capacidad_carga.Pesada}} libras</mat-chip>
                 <mat-chip-set class="m-1">
                     <mat-chip *ngFor="let p of pj.Plantillas" class="warm m-1">{{p.Nombre}}</mat-chip>
                 </mat-chip-set>
@@ -150,8 +155,8 @@
                         </button>
                     </mat-expansion-panel-header>
                     <mat-chip-set class="m-1">
-                        <mat-chip *ngFor="let i of pj.Idiomas">
-                            {{i}}
+                        <mat-chip *ngFor="let i of pj.Idiomas" matTooltip="{{i.Descripcion}}">
+                            {{i.Nombre}}
                         </mat-chip>
                     </mat-chip-set>
                 </mat-expansion-panel>
