@@ -1,7 +1,7 @@
-import { Component, OnInit, ViewChild } from '@angular/core';
+import { Component, EventEmitter, Input, OnInit, Output, SimpleChanges, ViewChild } from '@angular/core';
 import { UserService } from '../../services/user.service';
 import { PersonajeService } from 'src/app/services/personaje.service';
-import { MatTabGroup } from '@angular/material/tabs';
+import { MatTab, MatTabGroup } from '@angular/material/tabs';
 import { FormControl } from '@angular/forms';
 import { Personaje } from 'src/app/interfaces/personaje';
 
@@ -11,6 +11,7 @@ import { Personaje } from 'src/app/interfaces/personaje';
     styleUrls: ['./tab-control.component.sass']
 })
 export class TabControlComponent implements OnInit {
+    @Input() AbrirNuevoPersonajeTab!: number;
     usrPerm: number = 0;
     tabs: Personaje[] = [];
 
@@ -24,22 +25,39 @@ export class TabControlComponent implements OnInit {
     }
 
     async VerDetallesDe(value: number) {
-        (await this.pSvc.getDetallesPersonaje(value)).subscribe(personaje => {
-            const pestañaExistente = this.TabGroup._tabs.find(tab => tab.textLabel === personaje.Nombre);
-            if (!pestañaExistente) {
+        const abierto = this.tabs.find(p => p.Id == value);
+        if (abierto) {
+            const pestaña = this.TabGroup._tabs.find(tab => tab.textLabel === abierto.Nombre);
+            if (pestaña && !pestaña.isActive)
+                this.TabGroup.selectedIndex = this.TabGroup._tabs.toArray().indexOf(pestaña);
+        } else {
+            (await this.pSvc.getDetallesPersonaje(value)).subscribe(personaje => {
                 this.tabs.push(personaje);
-                this.TabGroup.selectedIndex = this.TabGroup._tabs.toArray().length;
-            } else if (pestañaExistente && !pestañaExistente.isActive)
-                this.TabGroup.selectedIndex = this.TabGroup._tabs.toArray().indexOf(pestañaExistente);
-        });
+                setTimeout(() => {
+                    this.VerDetallesDe(value);
+                  }, 20);
+            });
+        }
     }
 
-    removeTab(value: string) {
+    ngOnChanges(changes: SimpleChanges) {
+        if (changes['AbrirNuevoPersonajeTab'].currentValue) {
+            this.TabGroup.selectedIndex = this.TabGroup._tabs.toArray().length;
+        }
+    }
+
+    removeDetallesTab(value: string) {
         const existe = this.TabGroup._tabs.find(tab => tab.textLabel === value);
         const resta = this.TabGroup._allTabs.length - this.tabs.length;
         if (existe) {
-            this.tabs.splice(this.TabGroup._tabs.toArray().indexOf(existe) - resta, 1);
             this.TabGroup.selectedIndex = 0;
+            this.tabs.splice(this.TabGroup._tabs.toArray().indexOf(existe) - resta, 1);
         }
+    }
+
+    @Output() CerrarNuevoPersonajeTab: EventEmitter<any> = new EventEmitter();
+    removeNuevoPersonaje() {
+        this.TabGroup.selectedIndex = 0;
+        this.CerrarNuevoPersonajeTab.emit();
     }
 }

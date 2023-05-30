@@ -41,6 +41,7 @@ import { BaseMenuResponsiveComponent } from './components/responsive-base/respon
 import { BaseMenuComponent } from './components/base-menu/base-menu.component';
 import { AdminPanelComponent } from './components/admin-panel/admin-panel.component';
 import { DetallesPersonajeComponent } from './components/detalles-personaje/detalles-personaje.component';
+import { NuevoPersonajeComponent } from './components/nuevo-personaje/nuevo-personaje.component';
 
 @NgModule({
     declarations: [
@@ -54,6 +55,7 @@ import { DetallesPersonajeComponent } from './components/detalles-personaje/deta
         BaseMenuComponent,
         AdminPanelComponent,
         DetallesPersonajeComponent,
+        NuevoPersonajeComponent,
     ],
     imports: [
         BrowserModule,

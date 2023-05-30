@@ -2,119 +2,51 @@
 
 :host
     display: flex
+
     height: 100%
-
-    .row
-        height: 100%
-
-        background-color: #424242
-
-        .filtros
-            position: fixed
-
-            color: #414141
-            background-color: $accent
-            box-shadow: 4px 4px 6px rgb(51, 51, 51)
-
-            z-index: 101
-
-            &:hover
-                box-shadow: 0 0 6px inset rgb(51, 51, 51)
-                
-            &:active
-                box-shadow: 4px 4px 6px inset rgb(51, 51, 51)
-
-        table
-            align-self: flex-start
-
-            width: 100%
-
-            tr.details-row
-                height: 0
-
-            tr.element-row:not(.expanded-row):hover
-                background: #575757
-
-            tr.element-row:not(.expanded-row):active
-                background: #646464
-
-            .element-row td
-                border-bottom-width: 0
-
-            .details .contenedorDetalles
-                display: grid
-                grid-template: 1fr / .5fr 1fr 1fr
-
-                background-color: #3d3d3d
-                border-radius: 4px
-                box-shadow: 6px 6px 4px rgba(0, 0, 0, .5)
-
-                overflow: hidden
-
-                padding: 10px
-                margin-bottom: 10px
-
-                p
-                    background-color: #383838
-                    border-radius: 8px
-
-                .campana
-                    display: flex
-                    flex-flow: column nowrap
-
-        mat-paginator
-            align-self: flex-end
-
-::ng-deep div[id*="mat-menu-panel"]
-    max-width: 300px
-
-    background-color: lightgray
-    box-shadow: 3px 3px 8px inset black
 
     padding: 5px
 
-    ::ng-deep .mat-mdc-menu-content 
-        display: flex
-        flex-wrap: wrap
-        justify-content: center
-        
-    #menu
-        display: flex
-        flex-wrap: wrap
-        justify-content: center
-        
-        box-shadow: 6px 6px 4px rgba(0, 0, 0, .5)
+    mat-tab-group
+        flex: 1 0 100%
 
-        margin-left: 5px
-        margin-right: 5px
+        ::ng-deep mat-tab-header
+            background-color: #353538 
 
-        mat-form-field 
-            width: 100%
+        ::ng-deep .mdc-tab__text-label
+            font-size: 15px
+            font-weight: 300
 
-            .mat-mdc-form-field-subscript-wrapper
-                display: none
+        .row
+            height: 100%
 
-        mat-form-field:nth-child(n+1):not(:first-child) .mdc-text-field
-            border-top-left-radius: 0
-            border-top-right-radius: 0
+            background-color: #424242
 
-    mat-chip-option
-        box-shadow: 6px 6px 4px rgba(0, 0, 0, .5)
+            .filtros
+                position: fixed
 
-.filtroBS
-    top: 116px
+                color: #414141
+                background-color: $accent
+                box-shadow: 4px 4px 6px rgb(51, 51, 51)
+
+                z-index: 101
+
+                &:hover
+                    box-shadow: 0 0 6px inset rgb(51, 51, 51)
+                    
+                &:active
+                    box-shadow: 4px 4px 6px inset rgb(51, 51, 51)
+
+#filtrosRazas
+    top: 100px
     right: 40px
+    width: 38px
+    height: 38px
+
+    padding: 4px 0 0 1px
 
     @supports (-moz-appearance:none)
-        top: 110px
-
-.filtroSS
-    top: 57px
-    right: 30px
-
-    @supports (-moz-appearance:none)
-        top: 54px
-
+        top: 100px
 
 .superballs
     --uib-size: 85px

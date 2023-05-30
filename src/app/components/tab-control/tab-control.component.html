@@ -19,8 +19,16 @@
         <ng-template mat-tab-label>
             <mat-icon class="me-2">person_search</mat-icon>
             {{tab.Nombre}}
-            <button (click)="removeTab(tab.Nombre)" mat-icon-button class="ms-2"><mat-icon>close</mat-icon></button>
+            <button (click)="removeDetallesTab(tab.Nombre)" mat-icon-button class="ms-2"><mat-icon>close</mat-icon></button>
         </ng-template>
         <app-detalles-personaje [pj]="tabs[index]"></app-detalles-personaje>
+    </mat-tab>
+    <mat-tab label="Nuevo personaje" *ngIf="AbrirNuevoPersonajeTab">
+        <ng-template mat-tab-label="">
+            <mat-icon class="me-2">person_add</mat-icon>
+            Nuevo personaje
+            <button (click)="removeNuevoPersonaje()" mat-icon-button class="ms-2"><mat-icon>close</mat-icon></button>
+        </ng-template>
+        <app-nuevo-personaje></app-nuevo-personaje>
     </mat-tab>
 </mat-tab-group>

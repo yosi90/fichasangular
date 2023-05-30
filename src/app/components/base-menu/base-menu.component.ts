@@ -1,4 +1,4 @@
-import { Component, OnInit, ViewChild } from '@angular/core';
+import { Component, EventEmitter, OnInit, Output, ViewChild } from '@angular/core';
 import { MatDialog } from '@angular/material/dialog';
 import { SesionDialogComponent } from '../sesion-dialog/sesion-dialog.component';
 import { UserService } from '../../services/user.service';
@@ -14,7 +14,6 @@ export class BaseMenuComponent implements OnInit {
     @ViewChild('segundo') segundo!: MatExpansionPanel;
     @ViewChild('tercero') tercero!: MatExpansionPanel;
     @ViewChild('cuarto') cuarto!: MatExpansionPanel;
-    @ViewChild('quinto') quinto!: MatExpansionPanel;
 
     usr: string = 'Invitado';
 
@@ -42,8 +41,11 @@ export class BaseMenuComponent implements OnInit {
             this.tercero.close();
         else if (this.cuarto.expanded)
             this.cuarto.close();
-        else if (this.quinto.expanded)
-            this.quinto.close();
+    }
+
+    @Output() NuevoPersonajeTab: EventEmitter<any> = new EventEmitter();
+    AbrirNuevoPersonaje(): void {
+        this.NuevoPersonajeTab.emit();
     }
 
     openSesionDialog(): void {
