@@ -32,7 +32,7 @@ export class ListaPersonajesComponent implements OnInit, AfterViewInit {
     defaultSubtrama!: string;
     columns = this.listaPjs.ceateDataTable();
     personajesDS = new MatTableDataSource(this.Personajes);
-    columnsToDisplay = ['Nombre', 'Clases', 'Raza', '¿Archivado?'];
+    columnsToDisplay = ['Nombre', 'Clases', 'Raza'];
     columnsToDisplayWithExpand = [...this.columnsToDisplay, 'expand'];
     expandedElement!: PersonajeSimple;
 
@@ -41,7 +41,6 @@ export class ListaPersonajesComponent implements OnInit, AfterViewInit {
     @ViewChild(MatSort) sort!: MatSort;
     @ViewChild(MatPaginator) paginator!: MatPaginator;
     @ViewChild('textInc', { read: ElementRef }) inputText!: ElementRef;
-    @ViewChild('archivo', { read: ElementRef }) chipArc!: ElementRef;
 
     async ngOnInit(): Promise<void> {
         (await this.listaPjs.getPersonajes()).subscribe(personajes => {
@@ -86,19 +85,24 @@ export class ListaPersonajesComponent implements OnInit, AfterViewInit {
                 && (this.defaultCampana === undefined || this.defaultCampana === 'Sin campaña' || pj.Campana === this.defaultCampana)
                 && (this.defaultTrama === undefined || this.defaultTrama === 'Trama base' || pj.Trama === this.defaultTrama)
                 && (this.defaultSubtrama === undefined || this.defaultSubtrama === 'Subtrama base' || pj.Subtrama === this.defaultSubtrama)
-                && (archivo || !archivo && !pj.Archivado));
+                && (archivo || !archivo && !pj.Archivado)
+            );
             this.personajesDS = new MatTableDataSource(pjFiltrados);
             this.personajesDS.sort = this.sort;
             this.personajesDS.paginator = this.paginator;
         }
     }
 
-    anuncioArchivo: string = 'Clic para mostar pjs archivados';
+    anuncioArchivo: string = 'Clic para mostrar pjs archivados';
     AlternarArchivados(value: string) {
-        if (value === 'Clic para mostar pjs archivados')
+        if (value === 'Clic para mostrar pjs archivados') {
             this.anuncioArchivo = 'Mostrando pjs archivados';
-        else
-            this.anuncioArchivo = 'Clic para mostar pjs archivados';
+            this.columnsToDisplay.push('¿Archivado?');
+        } else {
+            this.anuncioArchivo = 'Clic para mostrar pjs archivados';
+            this.columnsToDisplay.pop();
+        }
+        this.columnsToDisplayWithExpand = [...this.columnsToDisplay, 'expand'];
         this.filtroPersonajes();
     }
 

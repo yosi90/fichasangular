@@ -35,7 +35,7 @@ export class TabControlComponent implements OnInit {
                 this.tabs.push(personaje);
                 setTimeout(() => {
                     this.VerDetallesDe(value);
-                  }, 20);
+                }, 20);
             });
         }
     }

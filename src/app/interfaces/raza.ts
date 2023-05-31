@@ -13,4 +13,5 @@ export interface Raza {
         Sabiduria: number;
         Carisma: number;
     }
+    Homebrew: boolean;
 }

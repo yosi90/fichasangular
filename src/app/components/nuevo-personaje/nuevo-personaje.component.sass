@@ -17,25 +17,43 @@
             font-size: 15px
             font-weight: 300
 
-        .row
-            height: 100%
+        #container-razas
+            display: grid
+            grid-template: 1fr auto/1fr
 
-            background-color: #424242
+            overflow: hidden
 
-            .filtros
-                position: fixed
+            .row:first-of-type
+                align-self: flex-start
 
-                color: #414141
-                background-color: $accent
-                box-shadow: 4px 4px 6px rgb(51, 51, 51)
+                height: 100%
+                max-height: 100%
 
-                z-index: 101
+                overflow: auto
 
-                &:hover
-                    box-shadow: 0 0 6px inset rgb(51, 51, 51)
-                    
-                &:active
-                    box-shadow: 4px 4px 6px inset rgb(51, 51, 51)
+            .row
+                position: relative
+
+                .filtros
+                    position: fixed
+
+                    color: #414141
+                    background-color: $accent
+                    box-shadow: 4px 4px 6px rgb(51, 51, 51)
+
+                    z-index: 101
+
+                    &:hover
+                        box-shadow: 0 0 6px inset rgb(51, 51, 51)
+                        
+                    &:active
+                        box-shadow: 4px 4px 6px inset rgb(51, 51, 51)
+
+                ::ng-deep .mat-sort-header-container
+                    justify-content: center
+
+                mat-paginator
+                    align-self: flex-end
 
 #filtrosRazas
     top: 100px
@@ -175,3 +193,17 @@
     100%
         transform: translate(calc(var(--uib-size) * 0.5)) scale(0.73684)
         opacity: 0.65
+
+.d-initial
+    display: initial
+
+.sombra3d
+    box-shadow: rgba(0, 0, 0, 0.09) 0px 2px 1px, rgba(0, 0, 0, 0.09) 0px 4px 2px, rgba(0, 0, 0, 0.09) 0px 8px 4px, rgba(0, 0, 0, 0.09) 0px 16px 8px, rgba(0, 0, 0, 0.09) 0px 32px 16px
+
+    cursor: pointer
+
+    &:hover
+        transform: scale(98%)
+
+    &:active
+        transform: scale(97%)

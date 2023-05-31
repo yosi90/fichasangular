@@ -3,6 +3,7 @@ import { ListaPersonajesService } from 'src/app/services/lista-personajes.servic
 import { CampañasService } from 'src/app/services/campañas.service';
 import { PersonajeService } from 'src/app/services/personaje.service';
 import { RazasService } from 'src/app/services/razas.service';
+import { ManualesService } from 'src/app/services/manuales.service';
 
 @Component({
     selector: 'app-admin-panel',
@@ -11,7 +12,7 @@ import { RazasService } from 'src/app/services/razas.service';
 })
 export class AdminPanelComponent {
 
-    constructor(private pSvc: PersonajeService, private lpSvc: ListaPersonajesService, private cSvc: CampañasService, private rSvc: RazasService) { }
+    constructor(private pSvc: PersonajeService, private lpSvc: ListaPersonajesService, private cSvc: CampañasService, private rSvc: RazasService, private mSvc: ManualesService) { }
 
     sincronizarListaPJs() {
         const resultado = this.lpSvc.RenovarPersonajesSimples();
@@ -27,5 +28,9 @@ export class AdminPanelComponent {
 
     sincronizarRazas() {
         const resultado = this.rSvc.RenovarRazas();
+    }
+
+    sincronizarManuales() {
+        const resultado = this.mSvc.RenovarManuales();
     }
 }

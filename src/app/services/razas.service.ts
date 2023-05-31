@@ -25,6 +25,7 @@ export class RazasService {
                     Dgs_extra: snapshot.child('Dgs_extra').val(),
                     Ajuste_nivel: snapshot.child('Ajuste_nivel').val(),
                     Clase_predilecta: snapshot.child('Clase_predilecta').val(),
+                    Homebrew: snapshot.child('Homebrew').val(),
                 };
                 observador.next(raza); // Emitir el array de personajes
             };
@@ -62,6 +63,7 @@ export class RazasService {
                         Dgs_extra: obj.child('Dgs_extra').val(),
                         Ajuste_nivel: obj.child('Ajuste_nivel').val(),
                         Clase_predilecta: obj.child('Clase_predilecta').val(),
+                        Homebrew: obj.child('Homebrew').val(),
                     };
                     Razas.push(raza);
                 });
@@ -97,7 +99,7 @@ export class RazasService {
             response => {
                 response.forEach((element: {
                     i: any; n: any; m: { Fuerza: number; Destreza: number; Constitucion: number; Inteligencia: number; Sabiduria: number; Carisma: number; }; ma: any;
-                    dg: any; aju: any; c: any;
+                    dg: any; aju: any; c: any; o: boolean;
                 }) => {
                     set(ref(db, `Razas/${element.i}`), {
                         Nombre: element.n,
@@ -106,6 +108,7 @@ export class RazasService {
                         Dgs_extra: element.dg,
                         Ajuste_nivel: element.aju,
                         Clase_predilecta: element.c,
+                        Homebrew: element.o,
                     })
                 });
             },
