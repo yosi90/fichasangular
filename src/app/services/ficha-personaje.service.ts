@@ -90,8 +90,8 @@ export class FichaPersonajeService {
             notas += `\r\n\r\nTrepar: ${pj.Trepar} pies`;
         if (pj.Escalar > 0)
             notas += `\r\n\r\nEscalar: ${pj.Escalar} pies`;
-        form.getTextField('rangos_max').setText((pj.Nivel + 3).toString());
-        form.getTextField('rangos_min').setText(((pj.Nivel + 3) / 2).toString());
+        form.getTextField('rangos_max').setText((pj.NEP + 3).toString());
+        form.getTextField('rangos_min').setText(((pj.NEP + 3) / 2).toString());
         notas += Rellenar_habilidades();
         form.getTextField('carga_ligera').setText(pj.Capacidad_carga.Ligera.toString());
         form.getTextField('carga_media').setText(pj.Capacidad_carga.Media.toString());
@@ -101,16 +101,31 @@ export class FichaPersonajeService {
         form.getTextField('empujar_arrastrar').setText((pj.Capacidad_carga.Pesada * 5).toString());
         let idiomas = 1;
         pj.Idiomas.forEach(i => {
-            if(idiomas < 10)
+            if (idiomas < 10)
                 form.getTextField(`idioma${idiomas}`).setText(`${i.Nombre}`);
-            else if(idiomas == 20)
+            else if (idiomas == 20)
                 notas += `\r\n\r\nIdiomas que no cabían: \r\n - ${i.Nombre}`;
             else
                 notas += `\r\n - ${i.Nombre}`;
             idiomas++;
         });
+        form.getTextField('monedas_cobre').setText("0");
+        form.getTextField('monedas_plata').setText("0");
+        form.getTextField('monedas_oro').setText(pj.Oro_inicial.toString());
+        form.getTextField('monedas_platino').setText("0");
+        let contador = 1;
+        pj.Dotes.forEach(d => {
+            if(contador <= 12){
+            form.getTextField(`dote${contador}`).setText(d.Nombre);
+            form.getTextField(`pag_dote${contador}`).setText(d.Pagina.toString());
+            form.getTextField(`desc_dote${contador}`).setText(d.Beneficio);
+            } else if(contador == 13)
+                notas += `\r\n\r\nDotes que no cabían: \r\n - ${d.Nombre} - Pág ${d.Pagina}\r\n${d.Beneficio}`;
+            else
+                notas += `\r\n\r\n - ${d.Nombre} - Pág ${d.Pagina}\r\n${d.Beneficio}`;
+            contador++;
+        });
         form.getTextField('notas').setText(notas);
-
 
         // const pngImage = await pdfDoc.embedPng(...)
         // const textField = form.getTextField('some.text.field')

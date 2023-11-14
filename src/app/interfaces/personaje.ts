@@ -5,6 +5,8 @@ export interface Personaje extends PersonajeSimple {
         Nombre: string;
         Nivel: number;
     }[],
+    Raza_dgs_extra: number;
+    Tipo_dgs_extra: string;
     Ataque_base: string;
     ModTamano: number;
     Ca: number;
@@ -36,8 +38,8 @@ export interface Personaje extends PersonajeSimple {
     ModSabiduria: number;
     Carisma: number;
     ModCarisma: number;
-    Ajuste_nivel: number;
-    Nivel: number;
+    Raza_ajuste_nivel: number;
+    NEP: number;
     Experiencia: number;
     Deidad: string;
     Alineamiento: string;
@@ -58,6 +60,7 @@ export interface Personaje extends PersonajeSimple {
     Rd: string;
     Rc: string;
     Re: string;
+    Oro_inicial: number;
     Tamano: {
         Id: number;
         Nombre: string;
@@ -118,6 +121,9 @@ export interface Personaje extends PersonajeSimple {
         Id_dados_golpe_pasos: number;
         Dados_golpe_pasos: string;
         Actualiza_dgs: boolean;
+        Multiplicador_dgs_lic: number;
+        Tipo_dgs_lic: string;
+        Suma_dgs_lic: number;
         Correr: number;
         Nadar: number;
         Volar: number;
@@ -132,6 +138,7 @@ export interface Personaje extends PersonajeSimple {
         Velocidades: string;
         Iniciativa: number;
         Presa: number;
+        Ajuste_nivel: number;
     }[]
     Conjuros: {
         Nombre: string;
@@ -157,6 +164,9 @@ export interface Personaje extends PersonajeSimple {
     }[]
     Dotes: {
         Nombre: string;
+        Descripcion: string;
+        Beneficio: string;
+        Pagina: number;
         Extra: string;
         Origen: string;
     }[]

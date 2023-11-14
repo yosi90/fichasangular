@@ -21,6 +21,8 @@ export class PersonajeService {
                     Id: id,
                     Nombre: snapshot.child('Nombre').val(),
                     Raza: snapshot.child('Raza').val(),
+                    Raza_dgs_extra: snapshot.child('Raza_dgs_extra'),
+                    Tipo_dgs_extra: snapshot.child('Tipo_dgs_extra'),
                     desgloseClases: snapshot.child('Clases').val(),
                     Clases: snapshot.child('Clases').val().map((c: { Nombre: any; Nivel: any; }) => `${c.Nombre} (${c.Nivel})`).join(", "),
                     Personalidad: snapshot.child('Personalidad').val(),
@@ -52,8 +54,8 @@ export class PersonajeService {
                     ModSabiduria: snapshot.child('ModSabiduria').val(),
                     Carisma: snapshot.child('Carisma').val(),
                     ModCarisma: snapshot.child('ModCarisma').val(),
-                    Ajuste_nivel: snapshot.child('Ajuste_nivel').val(),
-                    Nivel: snapshot.child('Nivel').val(),
+                    Raza_ajuste_nivel: snapshot.child('Raza_ajuste_nivel').val(),
+                    NEP: snapshot.child('NEP').val(),
                     Experiencia: snapshot.child('Experiencia').val(),
                     Deidad: snapshot.child('Deidad').val(),
                     Alineamiento: snapshot.child('Alineamiento').val(),
@@ -87,6 +89,7 @@ export class PersonajeService {
                     Rc: snapshot.child('Rc').val(),
                     Re: snapshot.child('Re').val(),
                     Capacidad_carga: snapshot.child('Capacidad_carga').val(),
+                    Oro_inicial: snapshot.child('Oro_inicial').val() ?? 0,
                 };
                 observador.next(pj); // Emitir el array de personajes
             };
@@ -110,7 +113,7 @@ export class PersonajeService {
 
     private d_pjs(): Observable<any> {
         const headers = new HttpHeaders({ 'Content-Type': 'application/json' });
-        const res = this.http.post('https://85.155.185.187:5000/personajes', { headers });
+        const res = this.http.post('https://85.155.186.112:5000/personajes', { headers });
         return res;
     }
 
@@ -119,15 +122,15 @@ export class PersonajeService {
         this.d_pjs().subscribe(
             response => {
                 response.forEach((element: {
-                    i: any; n: any; dcp: any; dh: any; tm: any; a: any; ca: any; an: any; cd: any; cv: any; ra: any; tc: any; f: any; mf: any; d: any; md: any;
-                    co: any; mco: any; int: any; mint: any; s: any; ms: any; car: any; mcar: any; aju: any; de: any; ali: any; g: any; ncam: any; ntr: any; ju: any;
-                    nst: any; v: any; cor: any; na: any; vo: any; t: any; e: any; o: any; dg: any; cla: any; dom: any; stc: any; pla: any; con: any; esp: any;
-                    espX: any; rac: any; hab: any; habN: any; habC: any; habCa: any; habMc: any; habR: any; habRv: any; habX: any; habV: any; habCu: any; dot: any;
-                    dotX: any; dotO: any; ve: any; idi: any; sor: any; pgl: any; ini_v: any; pr_v: {Valor: number; Origen: string;}[]; edad: any; alt: any; 
-                    peso: any; salv: any; rd: any; rc: any; re: any; ccl: any; ccm: any; ccp: any;
+                    i: any; n: any; dcp: any; dh: any; tm: any; a: any; ca: any; an: any; cd: any; cv: any; ra: any; rdge: number; tdge: any; tc: any; f: any; mf: any; 
+                    d: any; md: any; co: any; mco: any; int: any; mint: any; s: any; ms: any; car: any; mcar: any; raju: any; de: any; ali: any; g: any; ncam: any; 
+                    ntr: any; ju: any; nst: any; v: any; cor: any; na: any; vo: any; t: any; e: any; o: any; dg: any; cla: any; dom: any; stc: any; pla: any; con: any; 
+                    esp: any; espX: any; rac: any; hab: any; habN: any; habC: any; habCa: any; habMc: any; habR: any; habRv: any; habX: any; habV: any; habCu: any; 
+                    dot: any; dotD: string; dotB: string; dotP: any; dotX: any; dotO: any; ve: any; idi: any; sor: any; pgl: any; ini_v: any; 
+                    pr_v: {Valor: number; Origen: string;}[]; edad: any; alt: any; peso: any; salv: any; rd: any; rc: any; re: any; ccl: any; ccm: any; ccp: any;
                 }) => {
                     const tempcla = element.cla.split("|");
-                    let nivel: number = 0;
+                    let nep: number = 0 + element.rdge;
                     let clas: { Nombre: string; Nivel: number }[] = [];
                     tempcla.forEach((el: string) => {
                         let datos = el.split(";");
@@ -136,18 +139,24 @@ export class PersonajeService {
                                 Nombre: datos[0].trim(),
                                 Nivel: +datos[1]
                             });
-                            nivel += +datos[1];
+                            nep += +datos[1];
                         }
                     });
-                    if (element.aju)
-                        nivel += +element.aju;
+                    if (element.raju)
+                        nep += +element.raju;
+                    element.pla.forEach((el: { Ajuste_nivel: number; Multiplicador_dgs_lic: number }) => {
+                        nep += el.Ajuste_nivel + el.Multiplicador_dgs_lic;
+                    });
                     let experiencia: number = 0;
-                    for (let i = 0; i < nivel; i++)
+                    for (let i = 0; i < nep; i++)
                         experiencia += i * 1000;
-                    let dotes: { Nombre: string; Extra: string; Origen: string; }[] = [];
+                    let dotes: { Nombre: string; Descripcion: string; Beneficio: string; Pagina: number; Extra: string; Origen: string; }[] = [];
                     for (let index = 0; index < element.dot.length; index++) {
                         dotes.push({
                             Nombre: element.dot[index],
+                            Descripcion: element.dotD[index],
+                            Beneficio: element.dotB[index],
+                            Pagina: element.dotP[index],
                             Extra: element.dotX[index],
                             Origen: element.dotO[index]
                         });
@@ -202,6 +211,8 @@ export class PersonajeService {
                         Presa: Number(+(element.a.includes('/') ? element.a.substring(0, element.a.indexOf('/')) : element.a) + +element.mf + +element.tm.Modificador_presa + +element.pr_v.reduce((c, v) => c + v.Valor, 0)),
                         Presa_varios: element.pr_v,
                         Raza: element.ra,
+                        Raza_dgs_extra: element.rdge,
+                        Tipo_dgs_extra: element.tdge,
                         Tipo_criatura: element.tc,
                         Fuerza: element.f,
                         ModFuerza: element.mf,
@@ -215,8 +226,8 @@ export class PersonajeService {
                         ModSabiduria: element.ms,
                         Carisma: element.car,
                         ModCarisma: element.mcar,
-                        Ajuste_nivel: element.aju,
-                        Nivel: nivel,
+                        Raza_ajuste_nivel: element.raju,
+                        NEP: nep,
                         Experiencia: experiencia,
                         Deidad: element.de,
                         Alineamiento: element.ali,
@@ -253,11 +264,41 @@ export class PersonajeService {
                         Rd: element.rd,
                         Rc: element.rc,
                         Re: element.re,
-                        Capacidad_carga: cargas
+                        Capacidad_carga: cargas,
+                        Oro_inicial: calc_oro(nep)
                     })
                 });
             },
             error => console.log(error)
         );
     }
+}
+
+function calc_oro(nep:number) {
+    const valoresOro: { [key: number]: number } = {
+        1: 0,
+        2: 900,
+        3: 2700,
+        4: 5400,
+        5: 9000,
+        6: 13000,
+        7: 19000,
+        8: 27000,
+        9: 36000,
+        10: 49000,
+        11: 66000,
+        12: 88000,
+        13: 110000,
+        14: 150000,
+        15: 200000,
+        16: 260000,
+        17: 340000,
+        18: 440000,
+        19: 580000,
+        20: 760000,
+    };
+    if (nep <= 20)
+        return valoresOro[nep] || 0;
+    else
+        return 760000 * (1.3 * (nep - 20));
 }

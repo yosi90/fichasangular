@@ -70,7 +70,7 @@ export class ManualesService {
 
     private syncManuales(): Observable<any> {
         const headers = new HttpHeaders({ 'Content-Type': 'application/json' });
-        const res = this.http.post('https://85.155.185.187:5000/manuales', { headers });
+        const res = this.http.post('https://85.155.186.112:5000/manuales', { headers });
         return res;
     }
 

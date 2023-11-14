@@ -6,17 +6,11 @@
                 <mat-chip class="warm m-1">{{pj.Nombre}}</mat-chip>
                 <mat-chip class="m-1">{{pj.Genero}}</mat-chip>
                 <mat-chip class="m-1">{{pj.Alineamiento}}</mat-chip>
-                <mat-chip class="m-1">Nivel {{pj.Nivel}}</mat-chip>
-                <mat-chip class="m-1" *ngIf="pj.Ajuste_nivel > 0">Ajuste de nivel +{{pj.Ajuste_nivel}}</mat-chip>
+                <mat-chip class="m-1" [matTooltip]="nepDisclaimer" matTooltipClass="tt-accent tt-multiline">Nivel {{pj.NEP}}</mat-chip>
                 <mat-chip class="m-1">Exp {{pj.Experiencia}}</mat-chip>
                 <mat-chip class="warm m-1">Ataque base {{pj.Ataque_base}}</mat-chip>
                 <mat-chip class="m-1">Pg {{pj.Vida}}</mat-chip>
-                <mat-chip class="m-1" matTooltip="
-                    {{pj.Armadura_natural > 0 ? 'Armadura natural: ' + pj.Armadura_natural : ''}} 
-                    {{pj.Ca_desvio > 0 ? 'Ca de desvio: ' + pj.Ca_desvio : ''}} 
-                    {{pj.Ca_varios > 0 ? 'Mod varios: ' + pj.Ca_varios : ''}}">
-                    <mat-icon class="me-1" *ngIf="pj.Armadura_natural > 0 || pj.Ca_desvio > 0 ||pj.Ca_varios > 0">ads_click</mat-icon>Ca {{pj.Ca}}
-                </mat-chip>
+                <mat-chip class="m-1" [matTooltip]="caDisclaimer"  matTooltipClass="tt-accent tt-multiline">Ca {{pj.Ca}}</mat-chip>
                 <ng-template *ngIf="pj.Campana != 'Sin campaña'">
                     <mat-chip class="m-1">Campaña {{pj.Campana}}</mat-chip>
                     <mat-chip class="m-1">Trama {{pj.Trama}}</mat-chip>
@@ -26,25 +20,37 @@
                 <mat-chip class="warm m-1" *ngIf="pj.Rd != 'No aplica'">Reducción de daño {{pj.Rd}}</mat-chip>
                 <mat-chip class="warm m-1" *ngIf="pj.Rc != 'No aplica'">Resistencia a conjuros {{pj.Rc}}</mat-chip>
                 <mat-chip class="warm m-1" *ngIf="pj.Re != 'No aplica'">Resistencia a la energía {{pj.Re}}</mat-chip>
-                <mat-chip class="warm m-1" *ngIf="!pj.Oficial" matTooltip="Este personaje tiene elementos homebrew"><mat-icon class="me-1">ads_click</mat-icon>No es oficial</mat-chip>
+                <mat-chip class="m-1" matTooltip="Monedas de oro" matTooltipClass="tt-accent">
+                    Oro inicial &nbsp;{{pj.Oro_inicial}}
+                    <mat-icon style="width: 20px; height: 20px; font-size: 20px;">currency_bitcoin</mat-icon>
+                </mat-chip>
+                <mat-chip class="warm m-1" *ngIf="!pj.Oficial" matTooltip="Este personaje tiene elementos homebrew">No es oficial</mat-chip>
             </div>
             <div class="d-flex flex-wrap align-items-center rounded p-2 my-2">
                 <mat-icon class="me-1">settings_accessibility</mat-icon>
-                <mat-chip class="warm m-1">{{pj.Raza}}</mat-chip>
-                <mat-chip class="m-1">{{pj.Tamano.Nombre}}</mat-chip>
-                <mat-chip class="m-1">{{pj.Tipo_criatura}}</mat-chip>
+                <mat-chip class="h-auto warm m-1">{{pj.Raza}}
+                    <mat-chip class="ms-3 m-1">{{pj.Tamano.Nombre}}</mat-chip>
+                    <mat-chip class="m-1">{{pj.Tipo_criatura}}</mat-chip>
+                    <mat-chip class="m-1" *ngIf="pj.Raza_dgs_extra> 0">Dgs adicionales +{{pj.Raza_dgs_extra}}{{pj.Tipo_dgs_extra}}</mat-chip>
+                    <mat-chip class="m-1" *ngIf="pj.Raza_ajuste_nivel> 0">Ajuste de nivel +{{pj.Raza_ajuste_nivel}}</mat-chip>
+                </mat-chip>
                 <mat-chip class="m-1">Iniciativa {{iniciativa}}</mat-chip>
                 <mat-chip class="m-1">Presa {{presa}}</mat-chip>
-                <mat-chip class="m-1">Caminar {{pj.Correr}} pies</mat-chip>
-                <mat-chip class="m-1" *ngIf="pj.Nadar > 0">Nadar {{pj.Nadar}} pies</mat-chip>
-                <mat-chip class="m-1" *ngIf="pj.Volar > 0">Volar {{pj.Volar}} pies</mat-chip>
-                <mat-chip class="m-1" *ngIf="pj.Trepar > 0">Trepar {{pj.Trepar}} pies</mat-chip>
-                <mat-chip class="m-1" *ngIf="pj.Escalar > 0">Escalar {{pj.Escalar}} pies</mat-chip>
-                <mat-chip class="m-1">Carga ligera {{pj.Capacidad_carga.Ligera}} libras</mat-chip>
-                <mat-chip class="m-1">Carga media {{pj.Capacidad_carga.Media}} libras</mat-chip>
-                <mat-chip class="m-1">Carga pesada {{pj.Capacidad_carga.Pesada}} libras</mat-chip>
-                <mat-chip-set class="m-1">
-                    <mat-chip *ngFor="let p of pj.Plantillas" class="warm m-1">{{p.Nombre}}</mat-chip>
+                <mat-chip class="m-1" [matTooltip]="velDisclaimer" matTooltipClass="tt-accent tt-multiline">Velocidad {{pj.Correr}}'</mat-chip>
+                <mat-chip class="m-1" *ngIf="pj.Nadar > 0" [matTooltip]="velDisclaimer" matTooltipClass="tt-accent tt-multiline">Nadar {{pj.Nadar}}'</mat-chip>
+                <mat-chip class="m-1" *ngIf="pj.Volar > 0" [matTooltip]="velDisclaimer" matTooltipClass="tt-accent tt-multiline">Volar {{pj.Volar}}'</mat-chip>
+                <mat-chip class="m-1" *ngIf="pj.Trepar > 0" [matTooltip]="velDisclaimer" matTooltipClass="tt-accent tt-multiline">Trepar {{pj.Trepar}}'</mat-chip>
+                <mat-chip class="m-1" *ngIf="pj.Escalar > 0" [matTooltip]="velDisclaimer" matTooltipClass="tt-accent tt-multiline">Escalar {{pj.Escalar}}'</mat-chip>
+                <mat-chip class="h-auto m-1" matTooltip="Medida en libras" matTooltipClass="tt-accent">Capacidad de carga
+                    <mat-chip class="ms-3 m-1" [matTooltip]="cLigera" matTooltipClass="tt-accent" matTooltipPosition="above">Ligera {{pj.Capacidad_carga.Ligera}}</mat-chip>
+                    <mat-chip class="m-1" [matTooltip]="cMedia" matTooltipClass="tt-accent" matTooltipPosition="above">Media {{pj.Capacidad_carga.Media}}</mat-chip>
+                    <mat-chip class="m-1" [matTooltip]="cPesada" matTooltipClass="tt-accent tt-multiline" matTooltipPosition="above">Pesada {{pj.Capacidad_carga.Pesada}}</mat-chip>
+                </mat-chip>
+                <mat-chip-set class="m-1" *ngFor="let p of pj.Plantillas">
+                    <mat-chip [ngStyle]="{'height': p.Multiplicador_dgs_lic > 0 ? 'auto' : 'initial'}" class="warm m-1">{{p.Nombre}}
+                        <mat-chip class="ms-3 m-1" *ngIf="p.Multiplicador_dgs_lic > 0">{{p.Multiplicador_dgs_lic}}{{p.Tipo_dgs_lic}}{{p.Suma_dgs_lic > 0 ? ' +' + p.Suma_dgs_lic : ''}} dgs adicionales</mat-chip>
+                        <mat-chip *ngIf="p.Ajuste_nivel > 0" [ngClass]="p.Multiplicador_dgs_lic == 0 ? 'ms-3' : ''" class="m-1">Ajuste de nivel +{{p.Ajuste_nivel}}</mat-chip>
+                    </mat-chip>
                 </mat-chip-set>
             </div>
             <div class="d-flex flex-wrap align-items-center rounded p-2 my-2">
@@ -57,11 +63,11 @@
                 <ng-template #sinClase>
                     <mat-chip class="m-1">No tiene clase</mat-chip>
                 </ng-template>
-                <mat-chip-set class="ms-2">
-                    <mat-chip class="m-1">Fortaleza {{fortaleza}}</mat-chip>
+                <mat-chip class="h-auto ms-2">Salvaciones
+                    <mat-chip class="ms-3 m-1">Fortaleza {{fortaleza}}</mat-chip>
                     <mat-chip class="m-1">Reflejos {{reflejos}}</mat-chip>
                     <mat-chip class="m-1">Voluntad {{voluntad}}</mat-chip>
-                </mat-chip-set>
+                </mat-chip>
             </div>
         </div>
         <div class="col-md-4 col-12 p-2">
@@ -131,8 +137,9 @@
                         </button>
                     </mat-expansion-panel-header>
                     <mat-chip-set class="m-1">
-                        <mat-chip *ngFor="let d of pj.Dotes" matTooltip="Origen: {{d.Origen}}">
-                            {{d.Nombre}} {{d.Extra != 'No aplica' ? '(' + d.Extra + ')' : ''}}
+                        <mat-chip *ngFor="let d of pj.Dotes" [matTooltip]="getTooltip_Dotes(d)" matTooltipClass="tt-accent tt-multiline" [ngClass]="d.Extra != 'No aplica' ? 'h-auto' : ''">
+                            {{d.Nombre}}
+                            <mat-chip class="m-1" *ngIf="d.Extra != 'No aplica'">{{d.Extra}}</mat-chip>
                         </mat-chip>
                     </mat-chip-set>
                 </mat-expansion-panel>
@@ -143,8 +150,10 @@
                         </button>
                     </mat-expansion-panel-header>
                     <mat-chip-set class="m-1">
-                        <mat-chip *ngFor="let h of Habilidades">
-                            {{h.Nombre}}{{h.Extra != '' ? ' - ' + h.Extra : ''}}: +{{h.Rangos + h.Rangos_varios + h.Mod_car}} {{h.Varios != '' ? ' [' + h.Varios + ']' : ''}}
+                        <mat-chip *ngFor="let h of Habilidades" [ngClass]="h.Extra != '' ? 'h-auto' : ''">
+                            {{h.Nombre}}
+                            <mat-chip class="m-1" *ngIf="h.Extra != ''">{{h.Extra}}</mat-chip>
+                            +{{h.Rangos + h.Rangos_varios + h.Mod_car}} {{h.Varios != '' ? ' [' + h.Varios + ']' : ''}}
                         </mat-chip>
                     </mat-chip-set>
                 </mat-expansion-panel>

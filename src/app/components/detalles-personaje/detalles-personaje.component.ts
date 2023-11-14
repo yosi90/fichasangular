@@ -9,11 +9,25 @@ import { FichaPersonajeService } from 'src/app/services/ficha-personaje.service'
 })
 export class DetallesPersonajeComponent implements OnInit {
     @Input() pj!: Personaje;
+    nepDisclaimer: string = `
+    NEP (Nivel efectivo de personaje)
+    Suma del nivel de sus clases + DGs extra + Ajustes de nivel
+
+    Este es el valor usado para determinar cosas como el oro inicial o el nivel de encuentro
+    `;
+    caDisclaimer: string = "Error";
     iniciativa: string = "0";
     presa: string = "0";
     fortaleza: string = "0";
     reflejos: string = "0";
     voluntad: string = "0";
+    cLigera: string = "0 Kilogramos";
+    cMedia: string = "0 Kilogramos";
+    cPesada: string = "0 Kilogramos";
+    velDisclaimer: string = `
+    Medido en pies
+    5 pies equivalen a una casilla
+    `;
     Habilidades: { Nombre: string; Mod_car: number; Rangos: number; Rangos_varios: number; Extra: string; Varios: string; }[] = [];
 
     constructor(private fpSvc: FichaPersonajeService) { }
@@ -43,9 +57,32 @@ export class DetallesPersonajeComponent implements OnInit {
             this.voluntad = (this.pj.Salvaciones.voluntad.modsClaseos.valor.reduce((c, v) => c + v, 0) + this.pj.ModSabiduria).toString();
         if (this.pj.Salvaciones.voluntad.modsVarios)
             this.voluntad += ` + ${this.pj.Salvaciones.voluntad.modsVarios.valor.reduce((c, v) => c + v, 0)}`;
+        this.cLigera = `${parseFloat((this.pj.Capacidad_carga.Ligera * 0.453592).toFixed(2))} Kilogramos`;
+        this.cMedia = `${parseFloat((this.pj.Capacidad_carga.Media * 0.453592).toFixed(2))} Kilogramos`;
+        const carga_pesada = parseFloat((this.pj.Capacidad_carga.Pesada * 0.453592).toFixed(2));
+        this.cPesada = `
+        ${carga_pesada} Kilogramos
+        Levantar sobre la cabeza: ${this.pj.Capacidad_carga.Pesada} (${carga_pesada}KG)
+        Levantar del suelo: ${this.pj.Capacidad_carga.Pesada * 2} (${carga_pesada * 2}KG)
+        Empujar/Arrastrar: ${this.pj.Capacidad_carga.Pesada * 5} (${carga_pesada * 5}KG)
+        `;
+        this.caDisclaimer = `
+        Armadura natural: ${this.pj.Armadura_natural > 0 ? this.pj.Armadura_natural : '0'}
+        Desvio: ${this.pj.Ca_desvio > 0 ? this.pj.Ca_desvio : '0'}
+        Varios: ${this.pj.Ca_varios > 0 ? this.pj.Ca_varios : '0'}
+        `;
     }
 
     generarFicha() {
         this.fpSvc.generarPDF(this.pj);
     }
+
+    getTooltip_Dotes(dote: any): string {
+        return `${dote.Descripcion}
+
+        Beneficio: ${dote.Beneficio}
+
+        Origen: ${dote.Origen}`;
+    }
+      
 }
