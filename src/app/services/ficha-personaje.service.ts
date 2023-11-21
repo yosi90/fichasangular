@@ -60,22 +60,42 @@ export class FichaPersonajeService {
         form.getTextField('ca_toque').setText(pj.Ca.toString());
         form.getTextField('ca_desprevenido').setText((pj.Ca - pj.ModDestreza).toString());
         form.getTextField('pg').setText(pj.Vida.toString());
-        form.getTextField('fort_clase').setText(pj.Salvaciones.fortaleza.modsClaseos ? pj.Salvaciones.fortaleza.modsClaseos.valor.reduce((c, v) => c + v, 0).toString() : '0');
+        form.getTextField('fort_clase').setText(pj.Salvaciones.fortaleza.modsClaseos.map(m => m.valor).reduce((c, v) => c + v, 0).toString());
         form.getTextField('mod_magico_fortaleza').setText('0');
-        form.getTextField('mod_varios_fortaleza').setText(pj.Salvaciones.fortaleza.modsVarios ? pj.Salvaciones.fortaleza.modsVarios.valor.reduce((c, v) => c + v, 0).toString() : '0');
-        form.getTextField('ref_clase').setText(pj.Salvaciones.reflejos.modsClaseos ? pj.Salvaciones.reflejos.modsClaseos.valor.reduce((c, v) => c + v, 0).toString() : '0');
+        form.getTextField('mod_varios_fortaleza').setText(pj.Salvaciones.fortaleza.modsVarios.map(m => m.valor).reduce((c, v) => c + v, 0).toString());
+        form.getTextField('ref_clase').setText(pj.Salvaciones.reflejos.modsClaseos.map(m => m.valor).reduce((c, v) => c + v, 0).toString());
         form.getTextField('mod_magico_reflejos').setText('0');
-        form.getTextField('mod_varios_reflejos').setText(pj.Salvaciones.reflejos.modsVarios ? pj.Salvaciones.reflejos.modsVarios.valor.reduce((c, v) => c + v, 0).toString() : '0');
-        form.getTextField('vol_clase').setText(pj.Salvaciones.voluntad.modsClaseos ? pj.Salvaciones.voluntad.modsClaseos.valor.reduce((c, v) => c + v, 0).toString() : '0');
+        form.getTextField('mod_varios_reflejos').setText(pj.Salvaciones.reflejos.modsVarios.map(m => m.valor).reduce((c, v) => c + v, 0).toString());
+        form.getTextField('vol_clase').setText(pj.Salvaciones.voluntad.modsClaseos.map(m => m.valor).reduce((c, v) => c + v, 0).toString());
         form.getTextField('mod_magico_voluntad').setText('0');
-        form.getTextField('mod_varios_voluntad').setText(pj.Salvaciones.voluntad.modsVarios ? pj.Salvaciones.voluntad.modsVarios.valor.reduce((c, v) => c + v, 0).toString() : '0');
-        if (pj.Rd != "No aplica")
-            form.getTextField('rd').setText(pj.Rd);
-        if (pj.Re != "No aplica")
-            form.getTextField('rc').setText(pj.Rc);
+        form.getTextField('mod_varios_voluntad').setText(pj.Salvaciones.voluntad.modsVarios.map(m => m.valor).reduce((c, v) => c + v, 0).toString());
         var notas = `Personalidad:\r\n${pj.Personalidad}\r\n\r\nContexto:\r\n${pj.Contexto}`;
-        if (pj.Re != "No aplica")
-            notas += `\r\n\r\nResistencia a la energía: ${pj.Re}`;
+        if (pj.Rds && pj.Rds.length > 0) {
+            if (pj.Rds[0].Modificador.length < 25)
+                form.getTextField('rd').setText(`${pj.Rds[0].Modificador} [${pj.Rds[0].Origen}]`);
+            else
+                form.getTextField('rd').setText("Revisar en notas");
+            notas += "\r\n\r\nReducción de daño: ";
+            pj.Rds.forEach(rd => {
+                notas += `\r\n${rd.Modificador} [${rd.Origen}]`;
+            });
+        }
+        if (pj.Rcs && pj.Rcs.length > 0) {
+            if (pj.Rcs[0].Modificador.length < 18)
+                form.getTextField('rc').setText(`${pj.Rcs[0].Modificador} [${pj.Rcs[0].Origen}]`);
+            else
+                form.getTextField('rc').setText("Revisar en notas");
+            notas += "\r\n\r\nResistencia a conjuros: ";
+            pj.Rcs.forEach(rc => {
+                notas += `\r\n${rc.Modificador} [${rc.Origen}]`;
+            });
+        }
+        if (pj.Res && pj.Res.length > 0) {
+            notas += "\r\n\r\nResistencia a la energía:";
+            pj.Res.forEach(re => {
+                notas += `\r\n${re.Modificador} [${re.Origen}]`;
+            });
+        }
         form.getTextField('mod_ataque_base').setText(pj.Ataque_base);
         if (pj.Ataque_base.includes('/'))
             form.getTextField('ataque_base').setText(pj.Ataque_base.substring(0, pj.Ataque_base.indexOf('/')));
@@ -92,7 +112,8 @@ export class FichaPersonajeService {
             notas += `\r\n\r\nEscalar: ${pj.Escalar} pies`;
         form.getTextField('rangos_max').setText((pj.NEP + 3).toString());
         form.getTextField('rangos_min').setText(((pj.NEP + 3) / 2).toString());
-        notas += Rellenar_habilidades();
+        if (pj.Habilidades)
+            notas += Rellenar_habilidades();
         form.getTextField('carga_ligera').setText(pj.Capacidad_carga.Ligera.toString());
         form.getTextField('carga_media').setText(pj.Capacidad_carga.Media.toString());
         form.getTextField('carga_pesada').setText(pj.Capacidad_carga.Pesada.toString());
@@ -114,17 +135,30 @@ export class FichaPersonajeService {
         form.getTextField('monedas_oro').setText(pj.Oro_inicial.toString());
         form.getTextField('monedas_platino').setText("0");
         let contador = 1;
-        pj.Dotes.forEach(d => {
-            if(contador <= 12){
-            form.getTextField(`dote${contador}`).setText(d.Nombre);
-            form.getTextField(`pag_dote${contador}`).setText(d.Pagina.toString());
-            form.getTextField(`desc_dote${contador}`).setText(d.Beneficio);
-            } else if(contador == 13)
-                notas += `\r\n\r\nDotes que no cabían: \r\n - ${d.Nombre} - Pág ${d.Pagina}\r\n${d.Beneficio}`;
-            else
-                notas += `\r\n\r\n - ${d.Nombre} - Pág ${d.Pagina}\r\n${d.Beneficio}`;
-            contador++;
-        });
+        if (pj.Dotes)
+            pj.Dotes.forEach(d => {
+                if (contador <= 12) {
+                    form.getTextField(`dote${contador}`).setText(d.Nombre);
+                    form.getTextField(`pag_dote${contador}`).setText(d.Pagina.toString());
+                    form.getTextField(`desc_dote${contador}`).setText(d.Beneficio);
+                } else if (contador == 13)
+                    notas += `\r\n\r\nDotes que no cabían: \r\n - ${d.Nombre} - Pág ${d.Pagina}\r\n${d.Beneficio}`;
+                else
+                    notas += `\r\n\r\n - ${d.Nombre} - Pág ${d.Pagina}\r\n${d.Beneficio}`;
+                contador++;
+            });
+        if (pj.Escuela_especialista.Calificativo != "") {
+            form.getTextField('escuela1').setText(`${pj.Escuela_especialista.Nombre}, eres un ${pj.Escuela_especialista.Calificativo}`);
+            contador = 1;
+            pj.Escuelas_prohibidas.forEach(e => {
+                form.getTextField(`escuela_pro${contador}`).setText(`${e}`);
+                contador++;
+            });
+        }
+        if (pj.Disciplina_especialista.Calificativo != "") {
+            form.getTextField(`${pj.Escuela_especialista.Calificativo != "" ? 'escuela2' : 'escuela1'}`).setText(`${pj.Disciplina_especialista.Nombre}, eres un ${pj.Disciplina_especialista.Calificativo}`);
+            form.getTextField('disciplina_pro').setText(pj.Disciplina_prohibida);
+        }
         form.getTextField('notas').setText(notas);
 
         // const pngImage = await pdfDoc.embedPng(...)
@@ -192,6 +226,41 @@ export class FichaPersonajeService {
             });
             return notas;
         }
+    }
+
+    async generarPDF_Conjuros(pj: Personaje) {
+        const pdfTemplateBytes = await fetch('../../assets/pdf/Conjuros.pdf').then((res) => res.arrayBuffer());
+        const pdfDoc = await PDFDocument.load(pdfTemplateBytes);
+        const form = pdfDoc.getForm();
+        form.getTextField('Conjuros').setText(pj.Conjuros && pj.Conjuros.length > 0 && pj.Sortilegas && pj.Sortilegas.length > 0 ? "Listado de conjuros y sortílegas" : pj.Conjuros && pj.Conjuros.length > 0 ? "Listado de conjuros" : "Listado de sortílegas");
+        let contador = 0;
+        if (pj.Conjuros)
+            pj.Conjuros.forEach(c => {
+                form.getTextField(`conjuro${contador}`).setText(c.Nombre);
+                form.getTextField(`pag_con${contador}`).setText(`${c.Manual} - ${c.Pagina}`);
+                form.getTextField(`desc_con${contador}`).setText(c.Descripcion);
+                contador++;
+            });
+        if (pj.Sortilegas)
+            pj.Sortilegas.forEach(s => {
+                form.getTextField(`conjuro${contador}`).setText(s.Nombre);
+                form.getTextField(`pag_con${contador}`).setText(`${s.Manual} - ${s.Pagina}`);
+                form.getTextField(`desc_con${contador}`).setText(`${s.Usos}\r\n${s.Nivel_lanzador}\r\n${s.Descripcion}`);
+                contador++;
+            });
+
+        const pdfBytes = await pdfDoc.save();
+        // save to a file
+        const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+        saveAs(blob, `${pj.Nombre} conjuros.pdf`);
+
+        // send to server
+        // const formData = new FormData();
+        // formData.append('file', new File([pdfBytes], 'filled-form.pdf'));
+        // const response = await fetch('url/to/server', {
+        //   method: 'POST',
+        //   body: formData,
+        // });
     }
 
     constructor() { }

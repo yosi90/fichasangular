@@ -57,10 +57,28 @@ export interface Personaje extends PersonajeSimple {
     Edad: number;
     Altura: number;
     Peso: number;
-    Rd: string;
-    Rc: string;
-    Re: string;
+    Rds: {
+        Modificador: string;
+        Origen: string;
+    }[]
+    Rcs: {
+        Modificador: string;
+        Origen: string;
+    }[]
+    Res: {
+        Modificador: string;
+        Origen: string;
+    }[]
     Oro_inicial: number;
+    Escuela_especialista: {
+        Nombre: string;
+        Calificativo: string;
+    }
+    Disciplina_especialista: {
+        Nombre: string;
+        Calificativo: string;
+    }
+    Disciplina_prohibida: string;
     Tamano: {
         Id: number;
         Nombre: string;
@@ -75,33 +93,33 @@ export interface Personaje extends PersonajeSimple {
     Salvaciones: {
         fortaleza: {
             modsClaseos:{
-                valor: [],
-                origen: []
-            },
+                valor: number,
+                origen: string
+            }[],
             modsVarios:{
-                valor: [],
-                origen: []
-            }
+                valor: number,
+                origen: string
+            }[],
         }
         reflejos: {
             modsClaseos:{
-                valor: [],
-                origen: []
-            },
+                valor: number,
+                origen: string
+            }[],
             modsVarios:{
-                valor: [],
-                origen: []
-            }
+                valor: number,
+                origen: string
+            }[],
         }
         voluntad: {
             modsClaseos:{
-                valor: [],
-                origen: []
-            },
+                valor: number,
+                origen: string
+            }[],
             modsVarios:{
-                valor: [],
-                origen: []
-            }
+                valor: number,
+                origen: string
+            }[],
         }
     }
     Dominios: {
@@ -139,9 +157,14 @@ export interface Personaje extends PersonajeSimple {
         Iniciativa: number;
         Presa: number;
         Ajuste_nivel: number;
+        Heredada: boolean;
     }[]
     Conjuros: {
         Nombre: string;
+        Descripcion: string;
+        Manual: string;
+        Pagina: number;
+        Oficial: boolean;
     }[]
     Claseas: {
         Nombre: string;
@@ -180,6 +203,17 @@ export interface Personaje extends PersonajeSimple {
         Oficial: boolean;
     }[]
     Sortilegas: {
+        Nombre: string;
+        Descripcion: string;
+        Manual: string;
+        Pagina: number;
+        Dgs_necesarios: number;
+        Usos: string;
+        Nivel_lanzador: string;
+        Origen: string;
+        Oficial: boolean;
+    }[]
+    Escuelas_prohibidas: {
         Nombre: string;
     }[]
 }

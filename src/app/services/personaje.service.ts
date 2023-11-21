@@ -21,8 +21,8 @@ export class PersonajeService {
                     Id: id,
                     Nombre: snapshot.child('Nombre').val(),
                     Raza: snapshot.child('Raza').val(),
-                    Raza_dgs_extra: snapshot.child('Raza_dgs_extra'),
-                    Tipo_dgs_extra: snapshot.child('Tipo_dgs_extra'),
+                    Raza_dgs_extra: snapshot.child('Raza_dgs_extra').val(),
+                    Tipo_dgs_extra: snapshot.child('Tipo_dgs_extra').val(),
                     desgloseClases: snapshot.child('Clases').val(),
                     Clases: snapshot.child('Clases').val().map((c: { Nombre: any; Nivel: any; }) => `${c.Nombre} (${c.Nivel})`).join(", "),
                     Personalidad: snapshot.child('Personalidad').val(),
@@ -85,11 +85,15 @@ export class PersonajeService {
                     Altura: snapshot.child('Altura').val(),
                     Peso: snapshot.child('Peso').val(),
                     Salvaciones: snapshot.child('Salvaciones').val(),
-                    Rd: snapshot.child('Rd').val(),
-                    Rc: snapshot.child('Rc').val(),
-                    Re: snapshot.child('Re').val(),
+                    Rds: snapshot.child('Rds').val(),
+                    Rcs: snapshot.child('Rcs').val(),
+                    Res: snapshot.child('Res').val(),
                     Capacidad_carga: snapshot.child('Capacidad_carga').val(),
                     Oro_inicial: snapshot.child('Oro_inicial').val() ?? 0,
+                    Escuela_especialista: snapshot.child('Escuela_especialista').val(),
+                    Disciplina_especialista: snapshot.child('Disciplina_especialista').val(),
+                    Disciplina_prohibida: snapshot.child('Disciplina_prohibida').val(),
+                    Escuelas_prohibidas: snapshot.child('Escuelas_prohibidas').val(),
                 };
                 observador.next(pj); // Emitir el array de personajes
             };
@@ -122,12 +126,13 @@ export class PersonajeService {
         this.d_pjs().subscribe(
             response => {
                 response.forEach((element: {
-                    i: any; n: any; dcp: any; dh: any; tm: any; a: any; ca: any; an: any; cd: any; cv: any; ra: any; rdge: number; tdge: any; tc: any; f: any; mf: any; 
-                    d: any; md: any; co: any; mco: any; int: any; mint: any; s: any; ms: any; car: any; mcar: any; raju: any; de: any; ali: any; g: any; ncam: any; 
-                    ntr: any; ju: any; nst: any; v: any; cor: any; na: any; vo: any; t: any; e: any; o: any; dg: any; cla: any; dom: any; stc: any; pla: any; con: any; 
-                    esp: any; espX: any; rac: any; hab: any; habN: any; habC: any; habCa: any; habMc: any; habR: any; habRv: any; habX: any; habV: any; habCu: any; 
-                    dot: any; dotD: string; dotB: string; dotP: any; dotX: any; dotO: any; ve: any; idi: any; sor: any; pgl: any; ini_v: any; 
-                    pr_v: {Valor: number; Origen: string;}[]; edad: any; alt: any; peso: any; salv: any; rd: any; rc: any; re: any; ccl: any; ccm: any; ccp: any;
+                    i: any; n: any; dcp: any; dh: any; tm: any; a: any; ca: any; an: any; cd: any; cv: any; ra: any; rdge: number; tdge: any; tc: any; f: any; mf: any;
+                    d: any; md: any; co: any; mco: any; int: any; mint: any; s: any; ms: any; car: any; mcar: any; raju: any; de: any; ali: any; g: any; ncam: any;
+                    ntr: any; ju: any; nst: any; v: any; cor: any; na: any; vo: any; t: any; e: any; o: any; dg: any; cla: any; dom: any; stc: any; pla: any; con: any;
+                    esp: any; espX: any; rac: any; hab: any; habN: any; habC: any; habCa: any; habMc: any; habR: any; habRv: any; habX: any; habV: any; habCu: any;
+                    dot: any; dotD: string; dotB: string; dotP: any; dotX: any; dotO: any; ve: any; idi: any; sor: any; pgl: any; ini_v: any;
+                    pr_v: { Valor: number; Origen: string; }[]; edad: any; alt: any; peso: any; salv: any; rds: any; rcs: any; res: any; ccl: any; ccm: any; ccp: any;
+                    espa: any; espan: any; espp: any; esppn: any; disp: any; ecp: any;
                 }) => {
                     const tempcla = element.cla.split("|");
                     let nep: number = 0 + element.rdge;
@@ -191,12 +196,74 @@ export class PersonajeService {
                         Media: element.ccm,
                         Pesada: element.ccp
                     }
+                    let escuela_esp = {
+                        Nombre: element.espa,
+                        Calificativo: element.espan
+                    }
+                    let disciplina_esp = {
+                        Nombre: element.espp,
+                        Calificativo: element.esppn
+                    }
+                    let rds: { Modificador: string; Origen: string; }[] = [];
+                    if (element.rds)
+                        for (let index = 0; index < element.rds.length; index++) {
+                            let partes = element.rds[index].split(";");
+                            rds.push({
+                                Modificador: partes[0],
+                                Origen: partes[1],
+                            });
+                        }
+                    let rcs: { Modificador: string; Origen: string; }[] = [];
+                    if (element.rcs)
+                        for (let index = 0; index < element.rcs.length; index++) {
+                            let partes = element.rcs[index].split(";");
+                            rcs.push({
+                                Modificador: partes[0],
+                                Origen: partes[1],
+                            });
+                        }
+                    let res: { Modificador: string; Origen: string; }[] = [];
+                    if (element.res)
+                        for (let index = 0; index < element.res.length; index++) {
+                            let partes = element.res[index].split(";");
+                            res.push({
+                                Modificador: partes[0],
+                                Origen: partes[1],
+                            });
+                        }
+                    let con: { Nombre: string; Descripcion: string; Manual: string; Pagina: number; Oficial: boolean; }[] = [];
+                    if (element.con)
+                        for (let index = 0; index < element.con.length; index++) {
+                            let partes = element.con[index].split(";");
+                            con.push({
+                                Nombre: partes[0],
+                                Descripcion: partes[4],
+                                Manual: partes[1],
+                                Pagina: partes[2],
+                                Oficial: partes[3],
+                            });
+                        }
+                    let sor: { Nombre: string; Descripcion: string; Manual: string; Pagina: number; Dgs_necesarios: number; Usos: string; Nivel_lanzador: string; Origen: string; Oficial: boolean; }[] = [];
+                    if (element.sor)
+                        for (let index = 0; index < element.sor.length; index++) {
+                            let partes = element.sor[index].split(";");
+                            sor.push({
+                                Nombre: partes[0],
+                                Descripcion: partes[8],
+                                Manual: partes[1],
+                                Pagina: partes[2],
+                                Dgs_necesarios: partes[3],
+                                Usos: partes[4],
+                                Nivel_lanzador: partes[5],
+                                Origen: partes[6],
+                                Oficial: partes[7],
+                            });
+                        }
                     const dom: [] = element.dom.split("|").map((item: string) => item.trim()).filter((item: string) => item.length > 0);
                     const stc: [] = element.stc.split("|").map((item: string) => item.trim()).filter((item: string) => item.length > 0);
-                    const con: [] = element.con.split("|").map((item: string) => item.trim()).filter((item: string) => item.length > 0);
                     const rac: [] = element.rac.split("|").map((item: string) => item.trim()).filter((item: string) => item.length > 0);
                     const ve: [] = element.ve.split("|").map((item: string) => item.trim()).filter((item: string) => item.length > 0);
-                    const sor: [] = element.sor.split("|").map((item: string) => item.trim()).filter((item: string) => item.length > 0);
+                    const ecp: [] = element.ecp.split("|").map((item: string) => item.trim()).filter((item: string) => item.length > 0);
                     set(ref(db, `Personajes/${element.i}`), {
                         Nombre: element.n,
                         Personalidad: element.dcp,
@@ -261,11 +328,15 @@ export class PersonajeService {
                         Idiomas: element.idi,
                         Sortilegas: sor,
                         Salvaciones: element.salv,
-                        Rd: element.rd,
-                        Rc: element.rc,
-                        Re: element.re,
+                        Rds: rds,
+                        Rcs: rcs,
+                        Res: res,
                         Capacidad_carga: cargas,
-                        Oro_inicial: calc_oro(nep)
+                        Oro_inicial: calc_oro(nep),
+                        Escuela_especialista: escuela_esp,
+                        Disciplina_especialista: disciplina_esp,
+                        Disciplina_prohibida: element.disp,
+                        Escuelas_prohibidas: ecp
                     })
                 });
             },
@@ -274,7 +345,7 @@ export class PersonajeService {
     }
 }
 
-function calc_oro(nep:number) {
+function calc_oro(nep: number) {
     const valoresOro: { [key: number]: number } = {
         1: 0,
         2: 900,

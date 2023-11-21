@@ -17,14 +17,20 @@
                     <mat-chip class="m-1">Subtrama {{pj.Subtrama}}</mat-chip>
                 </ng-template>
                 <mat-chip class="m-1">Deidad {{pj.Deidad}}</mat-chip>
-                <mat-chip class="warm m-1" *ngIf="pj.Rd != 'No aplica'">Reducción de daño {{pj.Rd}}</mat-chip>
-                <mat-chip class="warm m-1" *ngIf="pj.Rc != 'No aplica'">Resistencia a conjuros {{pj.Rc}}</mat-chip>
-                <mat-chip class="warm m-1" *ngIf="pj.Re != 'No aplica'">Resistencia a la energía {{pj.Re}}</mat-chip>
+                <mat-chip class="h-auto m-1" *ngIf="pj.Rds && pj.Rds.length > 0"><p class="m-0 me-2">Reducción de daño</p>
+                    <mat-chip class="m-1" *ngFor="let r of pj.Rds" [matTooltip]="getTooltip_simples('Origen:', r.Origen)" matTooltipClass="tt-accent" >{{r.Modificador}}</mat-chip>
+                </mat-chip>
+                <mat-chip class="h-auto m-1" *ngIf="pj.Rcs && pj.Rcs.length > 0"><p class="m-0 me-2">Resistencia a conjuros</p>
+                    <mat-chip class="m-1" *ngFor="let r of pj.Rcs" [matTooltip]="getTooltip_simples('Origen:', r.Origen)" matTooltipClass="tt-accent" >{{r.Modificador}}</mat-chip>
+                </mat-chip>
+                <mat-chip class="h-auto m-1" *ngIf="pj.Res && pj.Res.length > 0"><p class="m-0 me-2">Resistencia a la energía</p>
+                    <mat-chip class="m-1" *ngFor="let r of pj.Res" [matTooltip]="getTooltip_simples('Origen:', r.Origen)" matTooltipClass="tt-accent" >{{r.Modificador}}</mat-chip>
+                </mat-chip>
                 <mat-chip class="m-1" matTooltip="Monedas de oro" matTooltipClass="tt-accent">
                     Oro inicial &nbsp;{{pj.Oro_inicial}}
                     <mat-icon style="width: 20px; height: 20px; font-size: 20px;">currency_bitcoin</mat-icon>
                 </mat-chip>
-                <mat-chip class="warm m-1" *ngIf="!pj.Oficial" matTooltip="Este personaje tiene elementos homebrew">No es oficial</mat-chip>
+                <mat-chip class="warm m-1" *ngIf="!pj.Oficial" matTooltip="Este personaje tiene elementos homebrew" matTooltipClass="tt-accent">No es oficial</mat-chip>
             </div>
             <div class="d-flex flex-wrap align-items-center rounded p-2 my-2">
                 <mat-icon class="me-1">settings_accessibility</mat-icon>
@@ -50,6 +56,7 @@
                     <mat-chip [ngStyle]="{'height': p.Multiplicador_dgs_lic > 0 ? 'auto' : 'initial'}" class="warm m-1">{{p.Nombre}}
                         <mat-chip class="ms-3 m-1" *ngIf="p.Multiplicador_dgs_lic > 0">{{p.Multiplicador_dgs_lic}}{{p.Tipo_dgs_lic}}{{p.Suma_dgs_lic > 0 ? ' +' + p.Suma_dgs_lic : ''}} dgs adicionales</mat-chip>
                         <mat-chip *ngIf="p.Ajuste_nivel > 0" [ngClass]="p.Multiplicador_dgs_lic == 0 ? 'ms-3' : ''" class="m-1">Ajuste de nivel +{{p.Ajuste_nivel}}</mat-chip>
+                        <mat-chip class="m-1">{{p.Heredada ? "Heredada" : "Adquirida"}}</mat-chip>
                     </mat-chip>
                 </mat-chip-set>
             </div>
@@ -63,10 +70,25 @@
                 <ng-template #sinClase>
                     <mat-chip class="m-1">No tiene clase</mat-chip>
                 </ng-template>
-                <mat-chip class="h-auto ms-2">Salvaciones
-                    <mat-chip class="ms-3 m-1">Fortaleza {{fortaleza}}</mat-chip>
-                    <mat-chip class="m-1">Reflejos {{reflejos}}</mat-chip>
-                    <mat-chip class="m-1">Voluntad {{voluntad}}</mat-chip>
+                <mat-chip class="warm m-1" *ngIf="pj.Escuela_especialista.Nombre != 'Cualquiera'">{{pj.Escuela_especialista.Calificativo}}</mat-chip>
+                <mat-chip class="h-auto m-1" *ngIf="pj.Escuelas_prohibidas && pj.Escuelas_prohibidas.length > 0"><p class="m-0 me-2">Escuelas prohibidas:</p>
+                    <mat-chip class="m-1" *ngFor="let e of pj.Escuelas_prohibidas">{{e}}</mat-chip>
+                </mat-chip>
+                <mat-chip class="warm m-1" *ngIf="pj.Disciplina_especialista.Nombre != 'Ninguna'">{{pj.Disciplina_especialista.Calificativo}}</mat-chip>
+                <mat-chip class="warm m-1" *ngIf="pj.Disciplina_prohibida != 'Ninguna'">{{pj.Disciplina_prohibida}}</mat-chip>
+                <mat-chip class="h-auto m-1">Salvaciones
+                    <mat-chip class="ms-3 m-1">Fortaleza: 
+                        <p class="m-0 ms-1" [matTooltip]="fortaleza_origenes" matTooltipClass="tt-accent">{{fortaleza}}</p>
+                        <p class="m-0 ms-1" [matTooltip]="fortaleza_varios_origenes" matTooltipClass="tt-accent" *ngIf="fortaleza_varios > 0"> + {{fortaleza_varios}}</p>
+                    </mat-chip>
+                    <mat-chip class="m-1">Reflejos:
+                        <p class="m-0 ms-1" [matTooltip]="reflejos_origenes" matTooltipClass="tt-accent">{{reflejos}}</p>
+                        <p class="m-0 ms-1" [matTooltip]="reflejos_varios_origenes" matTooltipClass="tt-accent" *ngIf="reflejos_varios > 0"> + {{reflejos_varios}}</p>
+                    </mat-chip>
+                    <mat-chip class="m-1">Voluntad:
+                        <p class="m-0 ms-1" [matTooltip]="voluntad_origenes" matTooltipClass="tt-accent">{{voluntad}}</p>
+                        <p class="m-0 ms-1" [matTooltip]="voluntad_varios_origenes" matTooltipClass="tt-accent" *ngIf="voluntad_varios > 0"> + {{voluntad_varios}}</p>
+                    </mat-chip>
                 </mat-chip>
             </div>
         </div>
@@ -188,8 +210,8 @@
                         </button>
                     </mat-expansion-panel-header>
                     <mat-chip-set class="m-1">
-                        <mat-chip *ngFor="let c of pj.Conjuros">
-                            {{c}}
+                        <mat-chip *ngFor="let c of pj.Conjuros" [matTooltip]="getTooltip_Conjuros(c)" matTooltipClass="tt-accent tt-multiline" [matTooltipShowDelay]="250">
+                            {{c.Nombre}}
                         </mat-chip>
                     </mat-chip-set>
                 </mat-expansion-panel>
@@ -200,8 +222,8 @@
                         </button>
                     </mat-expansion-panel-header>
                     <mat-chip-set class="m-1">
-                        <mat-chip *ngFor="let s of pj.Sortilegas">
-                            {{s}}
+                        <mat-chip *ngFor="let s of pj.Sortilegas" [matTooltip]="getTooltip_Sortilegas(s)" matTooltipClass="tt-accent tt-multiline" [matTooltipShowDelay]="250">
+                            {{s.Nombre}}
                         </mat-chip>
                     </mat-chip-set>
                 </mat-expansion-panel>
