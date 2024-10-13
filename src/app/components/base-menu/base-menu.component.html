@@ -1,7 +1,7 @@
 <mat-card id="menu">
     <aside>
+        <button id="nuevopj" mat-raised-button color="primary" (click)="AbrirNuevoPersonaje();" class="w-100 mt-1 mb-3">Nuevo personaje</button>
         <mat-accordion>
-            <button id="nuevopj" mat-raised-button color="primary" (click)="AbrirNuevoPersonaje(); closeAcordion();" class="w-100 mt-1 mb-3">Nuevo personaje</button>
             <!-- <mat-expansion-panel #primero>
                 <mat-expansion-panel-header class="rounded-0 rounded-top">
                     <button mat-stroked-button color="accent" class="rounded-0 rounded-top">
@@ -46,7 +46,7 @@
                         <mat-icon>search</mat-icon>Detalles
                     </button>
                 </mat-expansion-panel-header>
-                <button mat-button color="primary" (click)="closeAcordion()">Raza</button>
+                <button mat-button color="primary" (click)="AbrirListado('razas', 'detalles')">Raza</button>
                 <button mat-button color="primary" (click)="closeAcordion()">Clase</button>
                 <button mat-button color="primary" (click)="closeAcordion()">Dote</button>
                 <button mat-button color="primary" (click)="closeAcordion()">Conjuro</button>

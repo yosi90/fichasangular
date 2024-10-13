@@ -29,6 +29,14 @@
                 </mat-accordion>
             </mat-card>
         </div>
-        <div class="col-6"></div>
+        <div class="col-6">
+            <mat-card class="m-2 p-3">
+                <button mat-raised-button color="{{serverStatusIcon === 'thumb_up' ? 'accent' : 'warn'}}"
+                    (click)="reverificar()">
+                    {{serverStatus}}
+                    <mat-icon class="me-5">{{serverStatusIcon}}</mat-icon>
+                </button>
+            </mat-card>
+        </div>
     </div>
 </div>

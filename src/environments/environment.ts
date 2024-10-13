@@ -9,5 +9,7 @@ export const environment = {
         apiKey: 'AIzaSyA8EKaHtmn2K7dXYcd23XBT2hc-vKx26gs',
         authDomain: 'yosiftware-fichas.firebaseapp.com',
         messagingSenderId: '89131912577',
-    }
+    },
+
+    apiUrl: 'https://83.59.130.100:5000/'
 }

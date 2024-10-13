@@ -3,6 +3,7 @@ import { Database, getDatabase, Unsubscribe, onValue, ref, set } from '@angular/
 import { Observable } from 'rxjs';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Campaña } from '../interfaces/campaña';
+import { environment } from 'src/environments/environment';
 
 @Injectable({
     providedIn: 'root'
@@ -47,19 +48,19 @@ export class CampañasService {
 
     private getCampañas(): Observable<any> {
         const headers = new HttpHeaders({ 'Content-Type': 'application/json' });
-        const campañas = this.http.post('https://85.155.186.112:5000/campañas', { headers });
+        const campañas = this.http.post(`${environment.apiUrl}/campañas`, { headers });
         return campañas;
     }
 
     private getTramas(idCam: number): Observable<any> {
         const headers = new HttpHeaders({ 'Content-Type': 'application/json' });
-        const campañas = this.http.post('https://85.155.186.112:5000/tramas', idCam, { headers });
+        const campañas = this.http.post(`${environment.apiUrl}/tramas`, idCam, { headers });
         return campañas;
     }
 
     private getSubtramas(idTra: number): Observable<any> {
         const headers = new HttpHeaders({ 'Content-Type': 'application/json' });
-        const campañas = this.http.post('https://85.155.186.112:5000/subtramas', idTra, { headers });
+        const campañas = this.http.post(`${environment.apiUrl}/subtramas`, idTra, { headers });
         return campañas;
     }
 

@@ -2,6 +2,7 @@ import { Injectable } from '@angular/core';
 import { Database, getDatabase, Unsubscribe, onValue, ref, set } from '@angular/fire/database';
 import { Observable } from 'rxjs';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { environment } from 'src/environments/environment';
 
 @Injectable({
     providedIn: 'root'
@@ -70,7 +71,7 @@ export class ManualesService {
 
     private syncManuales(): Observable<any> {
         const headers = new HttpHeaders({ 'Content-Type': 'application/json' });
-        const res = this.http.post('https://85.155.186.112:5000/manuales', { headers });
+        const res = this.http.post(`${environment.apiUrl}/manuales`, { headers });
         return res;
     }
 

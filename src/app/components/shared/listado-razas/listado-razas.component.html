@@ -1,0 +1,109 @@
+<div id="container-razas" class="container-fluid bg-dark h-100">
+    <div class="row position-relative">
+        <button id="filtrosRazas" matTooltip="Filtros de razas" #filtros mat-icon-button
+            [matMenuTriggerFor]="menuRazas" class="filtros bg-accent">
+            <mat-icon>filter_alt</mat-icon>
+        </button>
+        <mat-menu id="containerMenu" #menuRazas="matMenu" class="me-1">
+            <div id="menu">
+                <mat-form-field (click)="$event.stopPropagation();" (keyup)="filtroRazas();">
+                    <mat-label>Incluye texto</mat-label>
+                    <input #razaTextInc matInput placeholder="Texto a buscar">
+                </mat-form-field>
+                <mat-form-field (click)="$event.stopPropagation();">
+                    <mat-label>Manual</mat-label>
+                    <mat-select #manualRaza appearance="fill" [(value)]="defaultManual"
+                        (selectionChange)="filtroRazas();">
+                        <mat-option *ngFor="let m of Manuales" [value]="m">{{m}}</mat-option>
+                    </mat-select>
+                </mat-form-field>
+            </div>
+            <mat-chip-option #razasHomebrew color="warn" class="mt-4 mb-1"
+                (click)="$event.stopPropagation(); AlternarRazasHombrew(razasHomebrew.value);">{{anuncioRazasHomebrew}}</mat-chip-option>
+        </mat-menu>
+
+        <table id="razas" #tablaRazas mat-table [dataSource]="razasDS" matSort
+            *ngIf="razas.length > 0; else cargando">
+            <ng-container matColumnDef="{{column}}" *ngFor="let column of razaColumns">
+                <th class="lead" mat-header-cell *matHeaderCellDef mat-sort-header
+                    sortActionDescription="Ordenar por {{column}}">
+                    {{column.replace('_', ' ')}}
+                </th>
+                <td mat-cell *matCellDef="let element">
+                    <p class="mb-0" *ngIf="column == 'Manual' || column == 'Clase_predilecta'">
+                        {{element[column]}}
+                    </p>
+                    <p class="text-center mb-0" *ngIf="column == 'Ajuste_nivel' || column == 'Dgs_extra'">
+                        {{element[column] > 0 ? '+' + element[column] : element[column]}}
+                    </p>
+                    <button mat-stroked-button matTooltip="Click para ver esta raza" [matTooltipShowDelay]="200"
+                        *ngIf="column == 'Nombre'" color="accent" class="d-flex justify-content-start w-100"
+                        (click)="verDetallesRaza(element.Id); $event.stopPropagation();">
+                        <mat-icon>read_more</mat-icon>
+                        {{element[column]}}
+                    </button>
+                    <div class="d-flex justify-content-center align-items-center"
+                        *ngIf="column == 'Modificadores'">
+                        <p class="d-initial sombra3d rounded p-1 me-1 mb-0" *ngIf="element[column].Fuerza != 0">
+                            {{element[column].Fuerza > 0 ? 'FUE +' + element[column].Fuerza : 'FUE ' +
+                            element[column].Fuerza}}
+                        </p>
+                        <p class="d-initial sombra3d rounded p-1 me-1 mb-0"
+                            *ngIf="element[column].Destreza != 0">
+                            {{element[column].Destreza > 0 ? 'DES +' + element[column].Destreza : 'DES ' +
+                            element[column].Destreza}}
+                        </p>
+                        <p class="d-initial sombra3d rounded p-1 me-1 mb-0"
+                            *ngIf="element[column].Constitucion != 0">
+                            {{element[column].Constitucion > 0 ? 'CON +' + element[column].Constitucion : 'CON '
+                            + element[column].Constitucion}}
+                        </p>
+                        <p class="d-initial sombra3d rounded p-1 me-1 mb-0"
+                            *ngIf="element[column].Inteligencia != 0">
+                            {{element[column].Inteligencia > 0 ? 'INT +' + element[column].Inteligencia : 'INT '
+                            + element[column].Inteligencia}}
+                        </p>
+                        <p class="d-initial sombra3d rounded p-1 me-1 mb-0"
+                            *ngIf="element[column].Sabiduria != 0">
+                            {{element[column].Sabiduria > 0 ? 'SAB +' + element[column].Sabiduria : 'SAB ' +
+                            element[column].Sabiduria}}
+                        </p>
+                        <p class="d-initial sombra3d rounded p-1 me-1 mb-0"
+                            *ngIf="element[column].Carisma != 0">
+                            {{element[column].Carisma > 0 ? 'CAR +' + element[column].Carisma : 'CAR ' +
+                            element[column].Carisma}}
+                        </p>
+                        <p class="d-initial sombra3d rounded p-1 me-1 mb-0"
+                            *ngIf="element[column].Fuerza == 0 && element[column].Destreza == 0 && element[column].Constitucion == 0 
+                            && element[column].Inteligencia == 0 && element[column].Sabiduria == 0 && element[column].Carisma == 0">
+                            No modifica características
+                        </p>
+                    </div>
+                    <div class="d-flex justify-content-center align-items-center" *ngIf="column == 'Homebrew'">
+                        <mat-checkbox #isHombrew [checked]="element.Homebrew" [disableRipple]="true"
+                            (click)="$event.preventDefault(); $event.stopPropagation();"></mat-checkbox>
+                    </div>
+                </td>
+            </ng-container>
+            <tr mat-header-row *matHeaderRowDef="razaColumns; sticky: true"></tr>
+            <tr mat-row *matRowDef="let element; columns: razaColumns;" class="element-row elegir-raza"
+                (click)="seleccionarRaza(element.Id)"></tr>
+            <tr class="mat-row" *matNoDataRow>
+                <td class="mat-cell text-center text-white p-3" colspan="6">
+                    Ninguna raza encaja con los filtros
+                </td>
+            </tr>
+        </table>
+        <ng-template #cargando>
+            <div class="superballs">
+                <div class="superballs__dot"></div>
+                <div class="superballs__dot"></div>
+            </div>
+        </ng-template>
+    </div>
+    <div class="row justify-content-center align-items-center">
+        <mat-paginator [pageSizeOptions]="[10, 20, 30, 40]" showFirstLastButtons
+            aria-label="Selecciona una página de razas">
+        </mat-paginator>
+    </div>
+</div>

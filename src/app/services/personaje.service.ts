@@ -3,6 +3,7 @@ import { Database, getDatabase, Unsubscribe, onValue, ref, set } from '@angular/
 import { Observable } from 'rxjs';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Personaje } from '../interfaces/personaje';
+import { environment } from 'src/environments/environment';
 
 @Injectable({
     providedIn: 'root'
@@ -117,7 +118,7 @@ export class PersonajeService {
 
     private d_pjs(): Observable<any> {
         const headers = new HttpHeaders({ 'Content-Type': 'application/json' });
-        const res = this.http.post('https://85.155.186.112:5000/personajes', { headers });
+        const res = this.http.post(`${environment.apiUrl}/personajes`, { headers });
         return res;
     }
 

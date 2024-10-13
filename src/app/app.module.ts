@@ -15,6 +15,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatButtonModule } from '@angular/material/button';
 import { MatSelectModule } from '@angular/material/select';
+import {MatAutocompleteModule} from '@angular/material/autocomplete';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatExpansionModule } from '@angular/material/expansion';
@@ -40,8 +41,11 @@ import { TabControlComponent } from './components/tab-control/tab-control.compon
 import { BaseMenuResponsiveComponent } from './components/responsive-base/responsive-base.component';
 import { BaseMenuComponent } from './components/base-menu/base-menu.component';
 import { AdminPanelComponent } from './components/admin-panel/admin-panel.component';
-import { DetallesPersonajeComponent } from './components/detalles-personaje/detalles-personaje.component';
+import { DetallesPersonajeComponent } from './components/Detalles/detalles-personaje/detalles-personaje.component';
 import { NuevoPersonajeComponent } from './components/nuevo-personaje/nuevo-personaje.component';
+import { DetallesRazaComponent } from './components/Detalles/detalles-raza/detalles-raza.component';
+import { ListadoComponent } from './components/listado/listado.component';
+import { ListadoRazasComponent } from './components/shared/listado-razas/listado-razas.component';
 
 @NgModule({
     declarations: [
@@ -56,6 +60,9 @@ import { NuevoPersonajeComponent } from './components/nuevo-personaje/nuevo-pers
         AdminPanelComponent,
         DetallesPersonajeComponent,
         NuevoPersonajeComponent,
+        DetallesRazaComponent,
+        ListadoComponent,
+        ListadoRazasComponent,
     ],
     imports: [
         BrowserModule,
@@ -66,6 +73,7 @@ import { NuevoPersonajeComponent } from './components/nuevo-personaje/nuevo-pers
         MatFormFieldModule,
         MatButtonModule,
         MatSelectModule,
+        MatAutocompleteModule,
         MatCheckboxModule,
         MatSlideToggleModule,
         MatExpansionModule,

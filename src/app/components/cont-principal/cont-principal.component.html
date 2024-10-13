@@ -1,4 +1,7 @@
-<app-base-menu (NuevoPersonajeTab)="AbrirNuevoPersonaje()"></app-base-menu>
+<app-base-menu (NuevoPersonajeTab)="AbrirNuevoPersonaje()" (ListadoTab)="abrirListado($event)"></app-base-menu>
 <mat-card id="base">
-    <app-tab-control [AbrirNuevoPersonajeTab]="NuevoPersonaje" (CerrarNuevoPersonajeTab)="CerrarNuevoPersonaje()"></app-tab-control>
+    <app-tab-control 
+    [AbrirNuevoPersonajeTab]="NuevoPersonaje" (CerrarNuevoPersonajeTab)="CerrarNuevoPersonaje()"
+    [AbrirListadoTab]="Listado" [ListadoTabTipo]="TipoListado" [ListadoTabOperacion]="OperacionListado" (CerrarListadoTab)="CerrarListado()"
+    ></app-tab-control>
 </mat-card>

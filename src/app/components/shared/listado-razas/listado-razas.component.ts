@@ -1,17 +1,17 @@
-import { Component, ElementRef, ViewChild } from '@angular/core';
+import { Component, ElementRef, EventEmitter, Output, ViewChild } from '@angular/core';
 import { MatPaginator } from '@angular/material/paginator';
 import { MatSort } from '@angular/material/sort';
 import { MatTableDataSource } from '@angular/material/table';
 import { Raza } from 'src/app/interfaces/raza';
-import { RazasService } from 'src/app/services/razas.service';
 import { ManualesService } from 'src/app/services/manuales.service';
+import { RazasService } from 'src/app/services/razas.service';
 
 @Component({
-    selector: 'app-nuevo-personaje',
-    templateUrl: './nuevo-personaje.component.html',
-    styleUrls: ['./nuevo-personaje.component.sass']
+    selector: 'app-listado-razas',
+    templateUrl: './listado-razas.component.html',
+    styleUrls: ['./listado-razas.component.sass']
 })
-export class NuevoPersonajeComponent {
+export class ListadoRazasComponent {
     razas: Raza[] = [];
     Manuales: string[] = [];
     defaultManual!: string;
@@ -40,11 +40,11 @@ export class NuevoPersonajeComponent {
         if (this.nombreText) {
             const texto = this.nombreText.nativeElement.value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
             const homebrew = !(this.anuncioRazasHomebrew === 'Clic para mostar razas homebrew');
-            const razasFiltradas = this.razas.filter(raza => 
+            const razasFiltradas = this.razas.filter(raza =>
                 (texto === undefined || texto === '' || raza.Nombre.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().includes(texto)
-                || raza.Modificadores.Fuerza.toString().includes(texto) || raza.Modificadores.Destreza.toString().includes(texto) || raza.Modificadores.Constitucion.toString().includes(texto)
-                || raza.Modificadores.Inteligencia.toString().includes(texto) || raza.Modificadores.Sabiduria.toString().includes(texto) || raza.Modificadores.Carisma.toString().includes(texto)
-                || raza.Clase_predilecta.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().includes(texto))
+                    || raza.Modificadores.Fuerza.toString().includes(texto) || raza.Modificadores.Destreza.toString().includes(texto) || raza.Modificadores.Constitucion.toString().includes(texto)
+                    || raza.Modificadores.Inteligencia.toString().includes(texto) || raza.Modificadores.Sabiduria.toString().includes(texto) || raza.Modificadores.Carisma.toString().includes(texto)
+                    || raza.Clase_predilecta.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().includes(texto))
                 && (this.defaultManual == 'Cualquiera' || raza.Manual.includes(this.defaultManual))
                 && (homebrew || !homebrew && !raza.Homebrew)
             );
@@ -58,7 +58,7 @@ export class NuevoPersonajeComponent {
 
     anuncioRazasHomebrew: string = 'Clic para mostar razas homebrew';
     AlternarRazasHombrew(value: string) {
-        if (value === 'Clic para mostar razas homebrew'){
+        if (value === 'Clic para mostar razas homebrew') {
             this.anuncioRazasHomebrew = 'Mostrando razas homebrew';
             this.razaColumns.push('Homebrew');
         } else {
@@ -68,11 +68,13 @@ export class NuevoPersonajeComponent {
         this.filtroRazas();
     }
 
-    DetallesRaza(value: number) {
-        console.log(`Detalles de ${value}`);
+    @Output() razaDetalles: EventEmitter<Raza> = new EventEmitter<Raza>();
+    verDetallesRaza(value: number) {
+        this.razaDetalles.emit(this.razas.find(r => r.Id === value));
     }
 
-    SeleccionarRaza(value: number){
-        console.log(`Raza seleccionada ${value}`);
+    @Output() razaSeleccionada: EventEmitter<Raza> = new EventEmitter<Raza>();
+    seleccionarRaza(value: number) {
+        this.razaSeleccionada.emit(this.razas.find(r => r.Id === value));
     }
 }

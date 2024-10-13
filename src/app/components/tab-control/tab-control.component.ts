@@ -4,6 +4,8 @@ import { PersonajeService } from 'src/app/services/personaje.service';
 import { MatTab, MatTabGroup } from '@angular/material/tabs';
 import { FormControl } from '@angular/forms';
 import { Personaje } from 'src/app/interfaces/personaje';
+import { RazasService } from 'src/app/services/razas.service';
+import { Raza } from 'src/app/interfaces/raza';
 
 @Component({
     selector: 'app-tab-control',
@@ -12,8 +14,12 @@ import { Personaje } from 'src/app/interfaces/personaje';
 })
 export class TabControlComponent implements OnInit {
     @Input() AbrirNuevoPersonajeTab!: number;
+    @Input() AbrirListadoTab!: number;
+    @Input() ListadoTabTipo!: string;
+    @Input() ListadoTabOperacion!: string;
     usrPerm: number = 0;
-    tabs: Personaje[] = [];
+    detallesPersonajeAbiertos: Personaje[] = [];
+    detallesRazaAbiertos: Raza[] = [];
 
     constructor(private usrSvc: UserService, private pSvc: PersonajeService) { }
 
@@ -24,40 +30,84 @@ export class TabControlComponent implements OnInit {
         this.usrPerm = this.usrSvc.Usuario.permisos;
     }
 
-    async VerDetallesDe(value: number) {
-        const abierto = this.tabs.find(p => p.Id == value);
-        if (abierto) {
-            const pestaña = this.TabGroup._tabs.find(tab => tab.textLabel === abierto.Nombre);
-            if (pestaña && !pestaña.isActive)
-                this.TabGroup.selectedIndex = this.TabGroup._tabs.toArray().indexOf(pestaña);
-        } else {
+    ngOnChanges(changes: SimpleChanges) {
+        if (changes['AbrirNuevoPersonajeTab'] && changes['AbrirNuevoPersonajeTab'].currentValue) {
+            setTimeout(() => {
+                this.cambiarA(this.TabGroup._tabs.find(t => t.textLabel === 'Nuevo personaje'));
+            }, 100);
+        } else if (changes['AbrirListadoTab'] && changes['AbrirListadoTab'].currentValue) {
+            setTimeout(() => {
+                this.cambiarA(this.TabGroup._tabs.find(t => t.textLabel === `Lista de ${this.ListadoTabTipo}`));
+            }, 100);
+        }
+    }
+
+    cambiarA(pestaña?: MatTab) {
+        if (pestaña && !pestaña.isActive)
+            this.TabGroup.selectedIndex = this.TabGroup._tabs.toArray().indexOf(pestaña);
+    }
+
+    async abrirDetallesPersonaje(value: number) {
+        const abierto = this.detallesPersonajeAbiertos.find(p => p.Id == value);
+        if (abierto)
+            this.cambiarA(this.TabGroup._tabs.find(tab => tab.textLabel === abierto.Nombre));
+        else {
             (await this.pSvc.getDetallesPersonaje(value)).subscribe(personaje => {
-                this.tabs.push(personaje);
+                this.detallesPersonajeAbiertos.push(personaje);
                 setTimeout(() => {
-                    this.VerDetallesDe(value);
-                }, 20);
+                    this.cambiarA(this.TabGroup._tabs.find(tab => tab.textLabel === personaje.Nombre));
+                }, 100);
             });
         }
     }
+    quitarDetallesPersonaje(value: string) {
+        const tab = this.detallesPersonajeAbiertos.find(p => p.Nombre === value);
+        if (!tab)
+            return;
+        const indexTab = this.detallesPersonajeAbiertos.indexOf(tab);
+        this.detallesPersonajeAbiertos.splice(indexTab, 1);
+        this.TabGroup.selectedIndex = 0;
+    }
 
-    ngOnChanges(changes: SimpleChanges) {
-        if (changes['AbrirNuevoPersonajeTab'].currentValue) {
-            this.TabGroup.selectedIndex = this.TabGroup._tabs.toArray().length;
+    recibirObjetoListado(value: { item: any, tipo: string }) {
+        if (value.tipo === 'razas') {
+            this.abrirDetallesRaza(value.item);
         }
     }
 
-    removeDetallesTab(value: string) {
-        const existe = this.TabGroup._tabs.find(tab => tab.textLabel === value);
-        const resta = this.TabGroup._allTabs.length - this.tabs.length;
-        if (existe) {
-            this.TabGroup.selectedIndex = 0;
-            this.tabs.splice(this.TabGroup._tabs.toArray().indexOf(existe) - resta, 1);
+    async abrirDetallesRaza(raza: Raza) {
+        if (this.detallesRazaAbiertos.find(r => r.Id === raza.Id))
+            this.cambiarA(this.TabGroup._tabs.find(tab => tab.textLabel === raza.Nombre));
+        else {
+            this.detallesRazaAbiertos.push(raza);
+            setTimeout(() => {
+                this.cambiarA(this.TabGroup._tabs.find(tab => tab.textLabel === raza.Nombre));
+            }, 100);
         }
     }
+    quitarDetallesRaza(value: string) {
+        const tab = this.detallesRazaAbiertos.find(r => r.Nombre === value);
+        console.log(value, tab);
+        if (!tab)
+            return;
+        const indexTab = this.detallesRazaAbiertos.indexOf(tab);
+        this.detallesRazaAbiertos.splice(indexTab, 1);
+        this.TabGroup.selectedIndex = 0;
+    }
 
-    @Output() CerrarNuevoPersonajeTab: EventEmitter<any> = new EventEmitter();
-    removeNuevoPersonaje() {
+    verPersonajes() {
+        this.TabGroup.selectedIndex = 0;
+    }
+
+    @Output() CerrarNuevoPersonajeTab: EventEmitter<void> = new EventEmitter();
+    quitarNuevoPersonaje() {
         this.TabGroup.selectedIndex = 0;
         this.CerrarNuevoPersonajeTab.emit();
+    }
+
+    @Output() CerrarListadoTab: EventEmitter<void> = new EventEmitter();
+    quitarListado() {
+        this.TabGroup.selectedIndex = 0;
+        this.CerrarListadoTab.emit();
     }
 }

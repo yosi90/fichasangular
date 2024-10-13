@@ -31,7 +31,6 @@ export class BaseMenuComponent implements OnInit {
             this.usrService.recuperarSesion(tokenViejo);
     }
 
-
     closeAcordion() {
         if (this.primero.expanded)
             this.primero.close();
@@ -46,6 +45,13 @@ export class BaseMenuComponent implements OnInit {
     @Output() NuevoPersonajeTab: EventEmitter<any> = new EventEmitter();
     AbrirNuevoPersonaje(): void {
         this.NuevoPersonajeTab.emit();
+        this.closeAcordion();
+    }
+
+    @Output() ListadoTab: EventEmitter<{tipo: string, operacion: string}> = new EventEmitter();
+    AbrirListado(tipo: string, operacion: string): void {
+        this.ListadoTab.emit({tipo, operacion});
+        this.closeAcordion();
     }
 
     openSesionDialog(): void {

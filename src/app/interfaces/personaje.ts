@@ -1,4 +1,4 @@
-import { PersonajeSimple } from "./personaje-simple";
+import { PersonajeSimple } from "./simplificaciones/personaje-simple";
 
 export interface Personaje extends PersonajeSimple {
     desgloseClases: {

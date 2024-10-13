@@ -1,0 +1,77 @@
+@import ../../../../assets/css/_variables
+@import ../../../../assets/css/_animations
+@import ../../../../assets/css/_loaders
+
+:host
+    width: 100%
+
+#container-razas
+    display: grid
+    grid-template: 1fr auto/1fr
+
+    overflow: hidden
+
+    .row:first-of-type
+        align-self: flex-start
+
+        height: 100%
+        max-height: 100%
+
+        overflow: auto
+
+    .row
+        position: relative
+
+        .filtros
+            position: fixed
+
+            color: #414141
+            background-color: $accent
+            box-shadow: 4px 4px 6px rgb(51, 51, 51)
+
+            z-index: 101
+
+            &:hover
+                box-shadow: 0 0 6px inset rgb(51, 51, 51)
+                
+            &:active
+                box-shadow: 4px 4px 6px inset rgb(51, 51, 51)
+
+        ::ng-deep .mat-sort-header-container
+            justify-content: center
+
+        mat-paginator
+            align-self: flex-end
+
+        .elegir-raza
+
+            transition: .3s
+            cursor: pointer
+
+            &:hover
+                background-color: rgba(255, 255, 255, 0.04)
+
+#filtrosRazas
+    top: 100px
+    right: 40px
+    width: 38px
+    height: 38px
+
+    padding: 4px 0 0 1px
+
+    @supports (-moz-appearance:none)
+        top: 100px
+
+.d-initial
+    display: initial
+
+.sombra3d
+    box-shadow: rgba(0, 0, 0, 0.09) 0px 2px 1px, rgba(0, 0, 0, 0.09) 0px 4px 2px, rgba(0, 0, 0, 0.09) 0px 8px 4px, rgba(0, 0, 0, 0.09) 0px 16px 8px, rgba(0, 0, 0, 0.09) 0px 32px 16px
+
+    cursor: pointer
+
+    &:hover
+        transform: scale(98%)
+
+    &:active
+        transform: scale(97%)

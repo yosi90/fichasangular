@@ -24,6 +24,7 @@
     "@ng-bootstrap/ng-bootstrap": "^14.0.1",
     "@popperjs/core": "^2.11.6",
     "bootstrap": "^5.2.2",
+    "fichas3.5": "file:",
     "file-saver": "^2.0.5",
     "firebase": "^9.19.1",
     "pdf-lib": "^1.17.1",

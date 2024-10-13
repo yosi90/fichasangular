@@ -1,8 +1,9 @@
 import { Injectable } from '@angular/core';
-import { PersonajeSimple } from '../interfaces/personaje-simple';
+import { PersonajeSimple } from '../../interfaces/simplificaciones/personaje-simple';
 import { Database, getDatabase, Unsubscribe, onValue, ref, set } from '@angular/fire/database';
 import { Observable } from 'rxjs';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { environment } from 'src/environments/environment';
 
 @Injectable({
     providedIn: 'root'
@@ -116,7 +117,7 @@ export class ListaPersonajesService {
 
     pjs(): Observable<any> {
         const headers = new HttpHeaders({ 'Content-Type': 'application/json' });
-        const personajes = this.http.post('https://85.155.186.112:5000/personajes-simplificados', { headers });
+        const personajes = this.http.post(`${environment.apiUrl}/personajes-simplificados`, { headers });
         return personajes;
     }
 

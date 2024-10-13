@@ -4,31 +4,88 @@
             <mat-icon class="me-2">people_alt</mat-icon>
             Personajes
         </ng-template>
-        <app-lista-personajes (NewDetallesTab)="VerDetallesDe($event)"></app-lista-personajes>
+        <app-lista-personajes (NewDetallesTab)="abrirDetallesPersonaje($event)"></app-lista-personajes>
     </mat-tab>
     <mat-tab label="Panel de administración" *ngIf="usrPerm === 1">
         <ng-template mat-tab-label="">
             <mat-icon class="me-2">admin_panel_settings</mat-icon>
-            Panel de administración
+            Admin panel
         </ng-template>
         <app-admin-panel></app-admin-panel>
     </mat-tab>
-    <!-- <mat-tab label="Pruebas" *ngIf="usrPerm === 1">
-    </mat-tab> -->
-    <mat-tab *ngFor="let tab of tabs; let index = index" [label]="tab.Nombre">
+    <mat-tab *ngFor="let tab of detallesPersonajeAbiertos; let index = index" [label]="tab.Nombre">
         <ng-template mat-tab-label>
             <mat-icon class="me-2">person_search</mat-icon>
             {{tab.Nombre}}
-            <button (click)="removeDetallesTab(tab.Nombre)" mat-icon-button class="ms-2"><mat-icon>close</mat-icon></button>
+            <button (click)="quitarDetallesPersonaje(tab.Nombre)" mat-icon-button class="ms-2"><mat-icon>close</mat-icon></button>
         </ng-template>
-        <app-detalles-personaje [pj]="tabs[index]"></app-detalles-personaje>
+        <app-detalles-personaje [pj]="detallesPersonajeAbiertos[index]"></app-detalles-personaje>
     </mat-tab>
     <mat-tab label="Nuevo personaje" *ngIf="AbrirNuevoPersonajeTab">
         <ng-template mat-tab-label="">
             <mat-icon class="me-2">person_add</mat-icon>
             Nuevo personaje
-            <button (click)="removeNuevoPersonaje()" mat-icon-button class="ms-2"><mat-icon>close</mat-icon></button>
+            <button (click)="quitarNuevoPersonaje()" mat-icon-button class="ms-2"><mat-icon>close</mat-icon></button>
         </ng-template>
         <app-nuevo-personaje></app-nuevo-personaje>
+    </mat-tab>
+    <mat-tab label="Lista de {{ListadoTabTipo}}" *ngIf="AbrirListadoTab">
+        <ng-template mat-tab-label="">
+            <mat-icon class="me-2">view_list</mat-icon>
+            Lista de {{ListadoTabTipo}}
+            <button (click)="quitarListado()" mat-icon-button class="ms-2"><mat-icon>close</mat-icon></button>
+        </ng-template>
+        <app-listado (abrirDetalles)="recibirObjetoListado($event)" (itemSeleccionado)="recibirObjetoListado($event)" [tipoLista]="ListadoTabTipo" [tipoOperacion]="ListadoTabOperacion"></app-listado>
+    </mat-tab>
+    <mat-tab *ngFor="let tab of detallesRazaAbiertos; let index = index" [label]="tab.Nombre">
+        <ng-template mat-tab-label>
+            <mat-icon class="me-2">find_in_page</mat-icon>
+            {{tab.Nombre}} (Raza)
+            <button (click)="quitarDetallesRaza(tab.Nombre)" mat-icon-button class="ms-2"><mat-icon>close</mat-icon></button>
+        </ng-template>
+        <app-detalles-raza [raza]="detallesRazaAbiertos[index]"></app-detalles-raza>
+    </mat-tab>
+    <mat-tab label="Información importante" class="pe-3">
+        <ng-template mat-tab-label="">
+            <mat-icon class="me-2">info_outline</mat-icon>
+            Importante leer
+        </ng-template>
+        <mat-card class="m-5">
+            <mat-card-header>
+                <mat-card-title class="text-white">En construcción</mat-card-title>
+                <mat-card-subtitle>Esta web está siendo desarrollada por <a href="https://yosiftware.es" target="_blank">Yosiftware.es</a></mat-card-subtitle>
+            </mat-card-header>
+            <mat-card-content class="text-white p-5">
+                Versión 0.1
+                <hr>
+                <ol>
+                    <li>Base de la web creada</li>
+                    <li>Creada lista de personajes</li>
+                    <li>Creada Vista de personajes</li>
+                    <li>Creada funcionalidad para descargar la ficha en pdf</li>
+                </ol>
+                <hr><hr>
+                Versión 0.2 (Actual)
+                <hr>
+                <ol>
+                    <li>Creada creación de personajes (Desarrollo actual)</li>
+                    <li>Creada vista de Razas</li>
+                    <li>Creada vista de clases</li>
+                    <li>Creada vista de Dotes</li>
+                </ol>
+                <hr><hr>
+                ¡Aclaraciones!
+                <ul class="">
+                    <li>Los personajes existentes han sido creados con la versión de escritorio de la app</li>
+                    <li>Los botones de la cinta NO están programados.</li>
+                    <li>Los botones de insertar, modificar y detalles NO están programados.</li>
+                </ul>
+                
+                
+            </mat-card-content>
+            <mat-card-actions>
+                <button mat-raised-button color="primary" class="w-100" (click)="verPersonajes()">Ok</button>
+            </mat-card-actions>
+        </mat-card>
     </mat-tab>
 </mat-tab-group>

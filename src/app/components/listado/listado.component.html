@@ -1,0 +1,9 @@
+<mat-card class="text-white overflow-auto">
+    <mat-card-header>
+        <mat-card-title>Lista de {{tipoLista}}</mat-card-title>
+        <mat-card-subtitle>Pulsa un item para {{tipoOperacion === 'detalles' ? 'ver su descripción completa' : 'modificarlo'}}</mat-card-subtitle>
+    </mat-card-header>
+    <mat-card-content class="d-flex justify-content-start align-item-start p-2 gap-2">
+        <ng-template #contenedor></ng-template>
+    </mat-card-content>
+</mat-card>

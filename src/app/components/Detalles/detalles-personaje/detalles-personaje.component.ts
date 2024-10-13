@@ -13,8 +13,7 @@ export class DetallesPersonajeComponent implements OnInit {
     NEP (Nivel efectivo de personaje)
     Suma del nivel de sus clases + DGs extra + Ajustes de nivel
 
-    Este es el valor usado para determinar cosas como el oro inicial o el nivel de encuentro
-    `;
+    Este es el valor usado para determinar cosas como el oro inicial o el nivel de encuentro`;
     caDisclaimer: string = "Error";
     iniciativa: string = "0";
     presa: string = "0";
@@ -35,8 +34,7 @@ export class DetallesPersonajeComponent implements OnInit {
     cPesada: string = "0 Kilogramos";
     velDisclaimer: string = `
     Medido en pies
-    5 pies equivalen a una casilla
-    `;
+    5 pies equivalen a una casilla`;
     Habilidades: { Nombre: string; Mod_car: number; Rangos: number; Rangos_varios: number; Extra: string; Varios: string; }[] = [];
 
     constructor(private fpSvc: FichaPersonajeService) { }
