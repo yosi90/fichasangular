@@ -1,5 +1,5 @@
 <div id="container-razas" class="container-fluid bg-dark h-100">
-    <div class="row position-relative">
+    <div class="row position-relative justify-content-center align-items-center">
         <button id="filtrosRazas" matTooltip="Filtros de razas" #filtros mat-icon-button
             [matMenuTriggerFor]="menuRazas" class="filtros bg-accent">
             <mat-icon>filter_alt</mat-icon>
@@ -33,51 +33,45 @@
                     <p class="mb-0" *ngIf="column == 'Manual' || column == 'Clase_predilecta'">
                         {{element[column]}}
                     </p>
-                    <p class="text-center mb-0" *ngIf="column == 'Ajuste_nivel' || column == 'Dgs_extra'">
-                        {{element[column] > 0 ? '+' + element[column] : element[column]}}
-                    </p>
-                    <button mat-stroked-button matTooltip="Click para ver esta raza" [matTooltipShowDelay]="200"
-                        *ngIf="column == 'Nombre'" color="accent" class="d-flex justify-content-start w-100"
+                    <div class="d-flex justify-content-center align-items-center" *ngIf="column == 'Ajuste_nivel'">
+                        <p class="text-center mb-0" [ngClass]="element[column] > 0 ? 'd-initial sombra3d-sm rounded px-2 py-1 bad' : ''">
+                            {{element[column] > 0 ? '+' + element[column] : ''}}
+                        </p>
+                    </div>
+                    <div class="d-flex justify-content-center align-items-center" *ngIf="column == 'Dgs_adicionales'">
+                        <p class="text-center mb-0" [ngClass]="element[column].Cantidad > 0 ? 'd-initial sombra3d-sm rounded px-2 py-1 bad' : ''">
+                            {{element['Dgs_adicionales'].Cantidad > 0 ? '+' + element[column].Cantidad : ''}}{{element[column].Dado}}
+                        </p>
+                    </div>
+                    <button mat-stroked-button matTooltip="Click para ver esta raza" [matTooltipShowDelay]="200" *ngIf="column == 'Nombre'" color="accent" class="d-flex justify-content-start sombra3d w-100"
                         (click)="verDetallesRaza(element.Id); $event.stopPropagation();">
                         <mat-icon>read_more</mat-icon>
                         {{element[column]}}
                     </button>
-                    <div class="d-flex justify-content-center align-items-center"
-                        *ngIf="column == 'Modificadores'">
-                        <p class="d-initial sombra3d rounded p-1 me-1 mb-0" *ngIf="element[column].Fuerza != 0">
-                            {{element[column].Fuerza > 0 ? 'FUE +' + element[column].Fuerza : 'FUE ' +
-                            element[column].Fuerza}}
+                    <div class="d-flex justify-content-center align-items-center" *ngIf="column == 'Modificadores'">
+                        <p class="d-initial sombra3d-sm rounded p-1 me-1 mb-0" *ngIf="element[column].Fuerza != 0" [ngClass]="element[column].Fuerza > 0 ? 'good' : 'bad'">
+                            {{element[column].Fuerza > 0 ? 'FUE +' + element[column].Fuerza : 'FUE ' + element[column].Fuerza}}
                         </p>
-                        <p class="d-initial sombra3d rounded p-1 me-1 mb-0"
-                            *ngIf="element[column].Destreza != 0">
-                            {{element[column].Destreza > 0 ? 'DES +' + element[column].Destreza : 'DES ' +
-                            element[column].Destreza}}
+                        <p class="d-initial sombra3d-sm rounded p-1 me-1 mb-0" *ngIf="element[column].Destreza != 0" [ngClass]="element[column].Destreza > 0 ? 'good' : 'bad'">
+                            {{element[column].Destreza > 0 ? 'DES +' + element[column].Destreza : 'DES ' + element[column].Destreza}}
                         </p>
-                        <p class="d-initial sombra3d rounded p-1 me-1 mb-0"
-                            *ngIf="element[column].Constitucion != 0">
-                            {{element[column].Constitucion > 0 ? 'CON +' + element[column].Constitucion : 'CON '
-                            + element[column].Constitucion}}
+                        <p class="d-initial sombra3d-sm rounded p-1 me-1 mb-0" *ngIf="element[column].Constitucion != 0" [ngClass]="element[column].Constitucion > 0 ? 'good' : 'bad'">
+                            {{element[column].Constitucion > 0 ? 'CON +' + element[column].Constitucion : 'CON ' + element[column].Constitucion}}
                         </p>
-                        <p class="d-initial sombra3d rounded p-1 me-1 mb-0"
-                            *ngIf="element[column].Inteligencia != 0">
-                            {{element[column].Inteligencia > 0 ? 'INT +' + element[column].Inteligencia : 'INT '
-                            + element[column].Inteligencia}}
+                        <p class="d-initial sombra3d-sm rounded p-1 me-1 mb-0" *ngIf="element[column].Inteligencia != 0" [ngClass]="element[column].Inteligencia > 0 ? 'good' : 'bad'">
+                            {{element[column].Inteligencia > 0 ? 'INT +' + element[column].Inteligencia : 'INT ' + element[column].Inteligencia}}
                         </p>
-                        <p class="d-initial sombra3d rounded p-1 me-1 mb-0"
-                            *ngIf="element[column].Sabiduria != 0">
-                            {{element[column].Sabiduria > 0 ? 'SAB +' + element[column].Sabiduria : 'SAB ' +
-                            element[column].Sabiduria}}
+                        <p class="d-initial sombra3d-sm rounded p-1 me-1 mb-0" *ngIf="element[column].Sabiduria != 0" [ngClass]="element[column].Sabiduria > 0 ? 'good' : 'bad'">
+                            {{element[column].Sabiduria > 0 ? 'SAB +' + element[column].Sabiduria : 'SAB ' + element[column].Sabiduria}}
                         </p>
-                        <p class="d-initial sombra3d rounded p-1 me-1 mb-0"
-                            *ngIf="element[column].Carisma != 0">
-                            {{element[column].Carisma > 0 ? 'CAR +' + element[column].Carisma : 'CAR ' +
-                            element[column].Carisma}}
+                        <p class="d-initial sombra3d-sm rounded p-1 me-1 mb-0" *ngIf="element[column].Carisma != 0" [ngClass]="element[column].Carisma > 0 ? 'good' : 'bad'">
+                            {{element[column].Carisma > 0 ? 'CAR +' + element[column].Carisma : 'CAR ' + element[column].Carisma}}
                         </p>
-                        <p class="d-initial sombra3d rounded p-1 me-1 mb-0"
+                        <!-- <p class="d-initial sombra3d-sm rounded p-1 me-1 mb-0"
                             *ngIf="element[column].Fuerza == 0 && element[column].Destreza == 0 && element[column].Constitucion == 0 
                             && element[column].Inteligencia == 0 && element[column].Sabiduria == 0 && element[column].Carisma == 0">
                             No modifica características
-                        </p>
+                        </p> -->
                     </div>
                     <div class="d-flex justify-content-center align-items-center" *ngIf="column == 'Homebrew'">
                         <mat-checkbox #isHombrew [checked]="element.Homebrew" [disableRipple]="true"

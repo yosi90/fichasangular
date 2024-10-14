@@ -1,7 +1,7 @@
 <div class="container-fluid">
     <div class="row">
         <div class="col-md-4 col-12 p-2">
-            <div class="d-flex flex-wrap align-items-center rounded p-2 my-2">
+            <div class="d-flex flex-wrap align-items-center sombra-caja-sm rounded p-2 my-2">
                 <mat-icon class="me-1">account_box</mat-icon>
                 <mat-chip class="warm m-1">{{pj.Nombre}}</mat-chip>
                 <mat-chip class="m-1">{{pj.Genero}}</mat-chip>
@@ -32,7 +32,7 @@
                 </mat-chip>
                 <mat-chip class="warm m-1" *ngIf="pj.Oficial" matTooltip="Este personaje tiene elementos homebrew" matTooltipClass="tt-accent">No es oficial</mat-chip>
             </div>
-            <div class="d-flex flex-wrap align-items-center rounded p-2 my-2">
+            <div class="d-flex flex-wrap align-items-center sombra-caja-sm rounded p-2 my-2">
                 <mat-icon class="me-1">settings_accessibility</mat-icon>
                 <mat-chip class="h-auto warm m-1">{{pj.Raza}}
                     <mat-chip class="ms-3 m-1">{{pj.Tamano.Nombre}}</mat-chip>
@@ -60,7 +60,7 @@
                     </mat-chip>
                 </mat-chip-set>
             </div>
-            <div class="d-flex flex-wrap align-items-center rounded p-2 my-2">
+            <div class="d-flex flex-wrap align-items-center sombra-caja-sm rounded p-2 my-2">
                 <mat-icon class="me-1">style</mat-icon>
                 <mat-chip-set class="m-1" *ngIf="pj.desgloseClases;else sinClase">
                     <mat-chip class="warm" *ngFor="let c of pj.desgloseClases">
@@ -93,8 +93,8 @@
             </div>
         </div>
         <div class="col-md-4 col-12 p-2">
-            <div id="caracteristicas" class="rounded p-2 my-2">
-                <mat-chip class="warm">Características</mat-chip>
+            <div id="caracteristicas" class="sombra-caja-sm rounded p-2 my-2">
+                <mat-chip class="warm sombra-caja-sm">Características</mat-chip>
                 Fuerza
                 <mat-chip [ngClass]="pj.Fuerza > 18 ? 'warm' : ''" class="m-1">{{pj.Fuerza}}</mat-chip>
                 <mat-chip [ngClass]="pj.Fuerza > 18 ? 'warm' : ''" class="m-1">{{pj.ModFuerza > 0 ? '+' : ''}}{{pj.ModFuerza}}</mat-chip>
@@ -114,17 +114,17 @@
                 <mat-chip [ngClass]="pj.Carisma > 18 ? 'warm' : ''" class="m-1">{{pj.Carisma}}</mat-chip>
                 <mat-chip [ngClass]="pj.Carisma > 18 ? 'warm' : ''" class="m-1">{{pj.ModCarisma > 0 ? '+' : ''}}{{pj.ModCarisma}}</mat-chip>
             </div>
-            <div class="rounded p-2 my-2">
-                <mat-chip class="w-100 mb-2">Personalidad</mat-chip>
+            <div class="sombra-caja-sm rounded p-2 my-2">
+                <mat-chip class="w-100 sombra-caja-sm mb-2">Personalidad</mat-chip>
                 <p>{{pj.Personalidad}}</p>
             </div>
-            <div class="rounded p-2 my-2">
-                <mat-chip class="w-100 mb-2">Contexto</mat-chip>
+            <div class="sombra-caja-sm rounded p-2 my-2">
+                <mat-chip class="w-100 sombra-caja-sm mb-2">Contexto</mat-chip>
                 <p>{{pj.Contexto}}</p>
             </div>
         </div>
         <div class="col-md-4 col-12 p-2">
-            <button mat-stroked-button color="accent" class="w-100 rounded my-2" (click)="generarFicha();">
+            <button mat-stroked-button color="accent" class="w-100 sombra-caja-sm rounded my-2" (click)="generarFicha();">
                 Generar pdf
             </button>
             <mat-accordion>

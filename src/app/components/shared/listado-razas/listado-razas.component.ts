@@ -16,7 +16,7 @@ export class ListadoRazasComponent {
     Manuales: string[] = [];
     defaultManual!: string;
     razasDS = new MatTableDataSource(this.razas);
-    razaColumns = ['Nombre', 'Modificadores', 'Clase_predilecta', 'Manual', 'Ajuste_nivel', 'Dgs_extra'];
+    razaColumns = ['Nombre', 'Modificadores', 'Clase_predilecta', 'Manual', 'Ajuste_nivel', 'Dgs_adicionales'];
 
     constructor(private rSvc: RazasService, private mSvc: ManualesService) { }
 
@@ -53,6 +53,8 @@ export class ListadoRazasComponent {
                 this.razasDS.sort = this.razaSort;
             }, 20);
             this.razasDS.paginator = this.razaPaginator;
+            this.razaSort.active = 'Nombre';
+            this.razaSort.direction = 'asc';
         }
     }
 

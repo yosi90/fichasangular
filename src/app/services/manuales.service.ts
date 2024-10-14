@@ -71,7 +71,7 @@ export class ManualesService {
 
     private syncManuales(): Observable<any> {
         const headers = new HttpHeaders({ 'Content-Type': 'application/json' });
-        const res = this.http.post(`${environment.apiUrl}/manuales`, { headers });
+        const res = this.http.post(`${environment.apiUrl}manuales`, { headers });
         return res;
     }
 

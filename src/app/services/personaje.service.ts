@@ -118,7 +118,7 @@ export class PersonajeService {
 
     private d_pjs(): Observable<any> {
         const headers = new HttpHeaders({ 'Content-Type': 'application/json' });
-        const res = this.http.post(`${environment.apiUrl}/personajes`, { headers });
+        const res = this.http.post(`${environment.apiUrl}personajes`, { headers });
         return res;
     }
 

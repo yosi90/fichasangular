@@ -1,6 +1,6 @@
-<mat-card id="menu">
+<mat-card id="menu" class="sombra-interna">
     <aside>
-        <button id="nuevopj" mat-raised-button color="primary" (click)="AbrirNuevoPersonaje();" class="w-100 mt-1 mb-3">Nuevo personaje</button>
+        <button id="nuevopj" mat-raised-button color="primary" (click)="AbrirNuevoPersonaje();" class="w-100 sombra mt-1 mb-3">Nuevo personaje</button>
         <mat-accordion>
             <!-- <mat-expansion-panel #primero>
                 <mat-expansion-panel-header class="rounded-0 rounded-top">
@@ -12,7 +12,7 @@
                 <button mat-button color="primary" (click)="closeAcordion()">Modificar personaje</button>
                 <button mat-button color="primary" (click)="closeAcordion()">Archivar personajes</button>
             </mat-expansion-panel> -->
-            <mat-expansion-panel #primero>
+            <mat-expansion-panel #primero (mouseenter)="onMouseEnter(1);" (mouseleave)="closeAcordion()">
                 <mat-expansion-panel-header class="rounded-0 rounded-top">
                     <button mat-stroked-button color="accent" class="rounded-0 rounded-top">
                         <mat-icon>add_box</mat-icon>Insertar
@@ -26,7 +26,7 @@
                 <button mat-button color="primary" (click)="closeAcordion()">Plantilla</button>
                 <button mat-button color="primary" (click)="closeAcordion()">Otros</button>
             </mat-expansion-panel>
-            <mat-expansion-panel #segundo>
+            <mat-expansion-panel #segundo (mouseenter)="onMouseEnter(2);" (mouseleave)="closeAcordion()">
                 <mat-expansion-panel-header>
                     <button mat-stroked-button color="accent" class="rounded-0">
                         <mat-icon>edit_square</mat-icon>Modificar
@@ -40,7 +40,7 @@
                 <button mat-button color="primary" (click)="closeAcordion()">Plantilla</button>
                 <button mat-button color="primary" (click)="closeAcordion()">Otros</button>
             </mat-expansion-panel>
-            <mat-expansion-panel class="rounded-0 rounded-bottom" #tercero>
+            <mat-expansion-panel class="rounded-0 rounded-bottom" #tercero (mouseenter)="onMouseEnter(3);" (mouseleave)="closeAcordion()">
                 <mat-expansion-panel-header>
                     <button mat-stroked-button color="accent" class="rounded-0 rounded-bottom">
                         <mat-icon>search</mat-icon>Detalles
@@ -54,7 +54,7 @@
                 <button mat-button color="primary" (click)="closeAcordion()">Plantilla</button>
                 <button mat-button color="primary" (click)="closeAcordion()">Otros</button>
             </mat-expansion-panel>
-            <mat-expansion-panel hideToggle="true" #cuarto>
+            <mat-expansion-panel hideToggle="true" #cuarto (mouseenter)="onMouseEnter(4);" (mouseleave)="closeAcordion()">
                 <mat-expansion-panel-header>
                     <button mat-stroked-button color="accent">
                         <mat-icon>account_circle</mat-icon>{{usr}}

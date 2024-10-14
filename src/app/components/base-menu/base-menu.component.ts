@@ -42,6 +42,25 @@ export class BaseMenuComponent implements OnInit {
             this.cuarto.close();
     }
 
+    onMouseEnter(panel: number) {
+        switch (panel) {
+            case 1:
+                this.primero.open();
+                break;
+            case 2:
+                this.segundo.open();
+                break;
+            case 3:
+                this.tercero.open();
+                break;
+            case 4:
+                this.cuarto.open();
+                break;
+            default:
+                break;
+        }
+    }
+
     @Output() NuevoPersonajeTab: EventEmitter<any> = new EventEmitter();
     AbrirNuevoPersonaje(): void {
         this.NuevoPersonajeTab.emit();

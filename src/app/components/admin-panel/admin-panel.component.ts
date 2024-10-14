@@ -5,7 +5,6 @@ import { PersonajeService } from 'src/app/services/personaje.service';
 import { RazasService } from 'src/app/services/razas.service';
 import { ManualesService } from 'src/app/services/manuales.service';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
-import { catchError, map, Observable, of, take } from 'rxjs';
 import { environment } from 'src/environments/environment';
 
 @Component({

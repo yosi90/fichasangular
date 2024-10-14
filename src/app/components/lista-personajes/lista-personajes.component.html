@@ -63,7 +63,7 @@
                         </ng-container>
                         <ng-template #nombrePJ>
                             <button mat-stroked-button matTooltip="Click para ver este personaje" [matTooltipShowDelay]="200"
-                                color="accent" class="d-flex justify-content-start w-100" *ngIf="column == 'Nombre'"
+                                color="accent" class="d-flex justify-content-start sombra3d-sm w-100" *ngIf="column == 'Nombre'"
                                 (click)="CrearDetallesDe(element.Id); $event.stopPropagation();">
                                 <mat-icon>read_more</mat-icon>
                                 {{element[column]}}

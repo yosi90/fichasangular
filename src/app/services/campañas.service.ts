@@ -48,19 +48,19 @@ export class CampañasService {
 
     private getCampañas(): Observable<any> {
         const headers = new HttpHeaders({ 'Content-Type': 'application/json' });
-        const campañas = this.http.post(`${environment.apiUrl}/campañas`, { headers });
+        const campañas = this.http.post(`${environment.apiUrl}campañas`, { headers });
         return campañas;
     }
 
     private getTramas(idCam: number): Observable<any> {
         const headers = new HttpHeaders({ 'Content-Type': 'application/json' });
-        const campañas = this.http.post(`${environment.apiUrl}/tramas`, idCam, { headers });
+        const campañas = this.http.post(`${environment.apiUrl}tramas`, idCam, { headers });
         return campañas;
     }
 
     private getSubtramas(idTra: number): Observable<any> {
         const headers = new HttpHeaders({ 'Content-Type': 'application/json' });
-        const campañas = this.http.post(`${environment.apiUrl}/subtramas`, idTra, { headers });
+        const campañas = this.http.post(`${environment.apiUrl}subtramas`, idTra, { headers });
         return campañas;
     }
 
