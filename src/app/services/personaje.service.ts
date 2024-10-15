@@ -4,6 +4,8 @@ import { Observable } from 'rxjs';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Personaje } from '../interfaces/personaje';
 import { environment } from 'src/environments/environment';
+import { RazaSimple } from '../interfaces/simplificaciones/raza-simple';
+import Swal from 'sweetalert2';
 
 @Injectable({
     providedIn: 'root'
@@ -22,8 +24,6 @@ export class PersonajeService {
                     Id: id,
                     Nombre: snapshot.child('Nombre').val(),
                     Raza: snapshot.child('Raza').val(),
-                    Raza_dgs_extra: snapshot.child('Raza_dgs_extra').val(),
-                    Tipo_dgs_extra: snapshot.child('Tipo_dgs_extra').val(),
                     desgloseClases: snapshot.child('Clases').val(),
                     Clases: snapshot.child('Clases').val().map((c: { Nombre: any; Nivel: any; }) => `${c.Nombre} (${c.Nivel})`).join(", "),
                     Personalidad: snapshot.child('Personalidad').val(),
@@ -32,8 +32,6 @@ export class PersonajeService {
                     Trama: snapshot.child('Trama').val(),
                     Subtrama: snapshot.child('Subtrama').val(),
                     Ataque_base: snapshot.child('Ataque_base').val(),
-                    Tamano: snapshot.child('Tamano').val(),
-                    ModTamano: snapshot.child('ModTamano').val(),
                     Ca: snapshot.child('Ca').val(),
                     Armadura_natural: snapshot.child('Armadura_natural').val(),
                     Ca_desvio: snapshot.child('Ca_desvio').val(),
@@ -55,7 +53,6 @@ export class PersonajeService {
                     ModSabiduria: snapshot.child('ModSabiduria').val(),
                     Carisma: snapshot.child('Carisma').val(),
                     ModCarisma: snapshot.child('ModCarisma').val(),
-                    Raza_ajuste_nivel: snapshot.child('Raza_ajuste_nivel').val(),
                     NEP: snapshot.child('NEP').val(),
                     Experiencia: snapshot.child('Experiencia').val(),
                     Deidad: snapshot.child('Deidad').val(),
@@ -118,7 +115,7 @@ export class PersonajeService {
 
     private d_pjs(): Observable<any> {
         const headers = new HttpHeaders({ 'Content-Type': 'application/json' });
-        const res = this.http.post(`${environment.apiUrl}personajes`, { headers });
+        const res = this.http.get(`${environment.apiUrl}personajes`);
         return res;
     }
 
@@ -127,16 +124,14 @@ export class PersonajeService {
         this.d_pjs().subscribe(
             response => {
                 response.forEach((element: {
-                    i: any; n: any; dcp: any; dh: any; tm: any; a: any; ca: any; an: any; cd: any; cv: any; ra: any; rdge: number; tdge: any; tc: any; f: any; mf: any;
-                    d: any; md: any; co: any; mco: any; int: any; mint: any; s: any; ms: any; car: any; mcar: any; raju: any; de: any; ali: any; g: any; ncam: any;
-                    ntr: any; ju: any; nst: any; v: any; cor: any; na: any; vo: any; t: any; e: any; o: any; dg: any; cla: any; dom: any; stc: any; pla: any; con: any;
-                    esp: any; espX: any; rac: any; hab: any; habN: any; habC: any; habCa: any; habMc: any; habR: any; habRv: any; habX: any; habV: any; habCu: any;
-                    dot: any; dotD: string; dotB: string; dotP: any; dotX: any; dotO: any; ve: any; idi: any; sor: any; pgl: any; ini_v: any;
-                    pr_v: { Valor: number; Origen: string; }[]; edad: any; alt: any; peso: any; salv: any; rds: any; rcs: any; res: any; ccl: any; ccm: any; ccp: any;
-                    espa: any; espan: any; espp: any; esppn: any; disp: any; ecp: any;
+                    i: any; n: any; dcp: any; dh: any; tm: any; a: any; ca: any; an: any; cd: any; cv: any; ra: any; tc: any; f: any; mf: any; d: any; md: any; co: any; mco: any; int: any; mint: any; s: any; ms: any; 
+                    car: any; mcar: any; de: any; ali: any; g: any; ncam: any; ntr: any; ju: any; nst: any; v: any; cor: any; na: any; vo: any; t: any; e: any; o: any; dg: any; cla: any; dom: any; stc: any; pla: any; 
+                    con: any; esp: any; espX: any; rac: any; hab: any; habN: any; habC: any; habCa: any; habMc: any; habR: any; habRv: any; habX: any; habV: any; habCu: any; dot: any; dotD: string; dotB: string; 
+                    dotP: any; dotX: any; dotO: any; ve: any; idi: any; sor: any; pgl: any; ini_v: any; pr_v: { Valor: number; Origen: string; }[]; edad: any; alt: any; peso: any; salv: any; rds: any; rcs: any; 
+                    res: any; ccl: any; ccm: any; ccp: any; espa: any; espan: any; espp: any; esppn: any; disp: any; ecp: any;
                 }) => {
                     const tempcla = element.cla.split("|");
-                    let nep: number = 0 + element.rdge;
+                    let nep: number = 0 + element.ra.Dgs_adicionales.Cantidad;
                     let clas: { Nombre: string; Nivel: number }[] = [];
                     tempcla.forEach((el: string) => {
                         let datos = el.split(";");
@@ -148,8 +143,8 @@ export class PersonajeService {
                             nep += +datos[1];
                         }
                     });
-                    if (element.raju)
-                        nep += +element.raju;
+                    if (element.ra.Ajuste_nivel && element.ra.Ajuste_nivel > 0)
+                        nep += +element.ra.Ajuste_nivel;
                     element.pla.forEach((el: { Ajuste_nivel: number; Multiplicador_dgs_lic: number }) => {
                         nep += el.Ajuste_nivel + el.Multiplicador_dgs_lic;
                     });
@@ -270,17 +265,15 @@ export class PersonajeService {
                         Personalidad: element.dcp,
                         Contexto: element.dh,
                         Ataque_base: element.a,
-                        Tamano: element.tm,
+                        Tamano: element.ra.Tamano.Nombre,
                         Ca: element.ca,
                         Armadura_natural: element.an,
                         Ca_desvio: element.cd,
                         Ca_varios: element.cv,
                         Iniciativa_varios: element.ini_v,
-                        Presa: Number(+(element.a.includes('/') ? element.a.substring(0, element.a.indexOf('/')) : element.a) + +element.mf + +element.tm.Modificador_presa + +element.pr_v.reduce((c, v) => c + v.Valor, 0)),
+                        Presa: Number(+(element.a.includes('/') ? element.a.substring(0, element.a.indexOf('/')) : element.a) + +element.mf + +element.ra.Tamano.Modificador_presa + +element.pr_v.reduce((c, v) => c + v.Valor, 0)),
                         Presa_varios: element.pr_v,
                         Raza: element.ra,
-                        Raza_dgs_extra: element.rdge,
-                        Tipo_dgs_extra: element.tdge,
                         Tipo_criatura: element.tc,
                         Fuerza: element.f,
                         ModFuerza: element.mf,
@@ -294,7 +287,6 @@ export class PersonajeService {
                         ModSabiduria: element.ms,
                         Carisma: element.car,
                         ModCarisma: element.mcar,
-                        Raza_ajuste_nivel: element.raju,
                         NEP: nep,
                         Experiencia: experiencia,
                         Deidad: element.de,
@@ -340,8 +332,21 @@ export class PersonajeService {
                         Escuelas_prohibidas: ecp
                     })
                 });
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Listado de personajes actualizado con éxito',
+                    showConfirmButton: true,
+                    timer: 2000
+                });
             },
-            error => console.log(error)
+            onerror = (error: any) => {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Error al actualizar el listado de personajes',
+                    text: error,
+                    showConfirmButton: true
+                });
+            }
         );
     }
 }

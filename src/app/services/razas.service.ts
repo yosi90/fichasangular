@@ -5,6 +5,8 @@ import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Raza } from '../interfaces/raza';
 import { environment } from 'src/environments/environment';
 import Swal from 'sweetalert2';
+import { Maniobrabilidad } from '../interfaces/maniobrabilidad';
+import { Tamaño } from '../interfaces/tamaño';
 
 @Injectable({
     providedIn: 'root'
@@ -33,6 +35,18 @@ export class RazasService {
                     Reduccion_dano: snapshot.child('Reduccion_dano').val(),
                     Resistencia_magica: snapshot.child('Resistencia_magica').val(),
                     Resistencia_energia: snapshot.child('Resistencia_energia').val(),
+                    Heredada: snapshot.child('Heredada').val(),
+                    Mutada: snapshot.child('Mutada').val(),
+                    Tamano_mutacion_dependiente: snapshot.child('Tamano_mutacion_pendiente').val(),
+                    Prerrequisitos: snapshot.child('Prerrequisitos').val(),
+                    Armadura_natural: snapshot.child('Armadura_natural').val(),
+                    Varios_armadura: snapshot.child('Varios_armadura').val(),
+                    Correr: snapshot.child('Correr').val(),
+                    Nadar: snapshot.child('Nadar').val(),
+                    Volar: snapshot.child('Volar').val(),
+                    Maniobrabilidad: snapshot.child('Maniobrabilidad').val(),
+                    Trepar: snapshot.child('Trepar').val(),
+                    Escalar: snapshot.child('Escalar').val(),
                 };
                 observador.next(raza); // Emitir el array de personajes
             };
@@ -76,6 +90,18 @@ export class RazasService {
                         Reduccion_dano: obj.child('Reduccion_dano').val(),
                         Resistencia_magica: obj.child('Resistencia_magica').val(),
                         Resistencia_energia: obj.child('Resistencia_energia').val(),
+                        Heredada: obj.child('Heredada').val(),
+                        Mutada: obj.child('Mutada').val(),
+                        Tamano_mutacion_dependiente: obj.child('Tamano_mutacion_pendiente').val(),
+                        Prerrequisitos: obj.child('Prerrequisitos').val(),
+                        Armadura_natural: obj.child('Armadura_natural').val(),
+                        Varios_armadura: obj.child('Varios_armadura').val(),
+                        Correr: obj.child('Correr').val(),
+                        Nadar: obj.child('Nadar').val(),
+                        Volar: obj.child('Volar').val(),
+                        Maniobrabilidad: obj.child('Maniobrabilidad').val(),
+                        Trepar: obj.child('Trepar').val(),
+                        Escalar: obj.child('Escalar').val(),
                     };
                     Razas.push(raza);
                 });
@@ -101,7 +127,7 @@ export class RazasService {
 
     private syncRazas(): Observable<any> {
         const headers = new HttpHeaders({ 'Content-Type': 'application/json' });
-        const res = this.http.post(`${environment.apiUrl}razas`, { headers });
+        const res = this.http.get(`${environment.apiUrl}razas`);
         return res;
     }
 
@@ -111,7 +137,8 @@ export class RazasService {
             response => {
                 response.forEach((element: {
                     i: any; n: any; m: { Fuerza: number; Destreza: number; Constitucion: number; Inteligencia: number; Sabiduria: number; Carisma: number; }; ma: any;
-                    aju: any; c: any; o: boolean; an: string; t: any; dg: any; rd: string; rc: string; re: string;
+                    aju: any; c: any; o: boolean; an: string; t: Tamaño; dg: any; rd: string; rc: string; re: string; he: boolean; mu: boolean; tmd: boolean; pr: any;
+                    am: number; vm: number; co: number; na: number; vo: number; man: Maniobrabilidad; tr: number; es: number;
                 }) => {
                     set(
                         ref(db, `Razas/${element.i}`), {
@@ -127,7 +154,21 @@ export class RazasService {
                         Reduccion_dano: element.rd,
                         Resistencia_magia: element.rc,
                         Resistencia_energia: element.re,
-                    })
+                        Heredada: element.he,
+                        Mutada: element.mu,
+                        Tamano_mutacion_dependiente: element.tmd,
+                        Prerrequisitos: element.pr,
+                        Armadura_natural: element.am,
+                        Varios_armadura: element.vm,
+                        Correr: element.co,
+                        Nadar: element.na,
+                        Volar: element.vo,
+                        Maniobrabilidad: element.man,
+                        Trepar: element.tr,
+                        Escalar: element.es,
+                    });
+                    if(element.pr)
+                        console.log(element.pr);
                 });
                 Swal.fire({
                     icon: 'success',

@@ -20,7 +20,7 @@ export class FichaPersonajeService {
         form.getTextField('nombre').setText(pj.Nombre);
         form.getTextField('jugador').setText(pj.Jugador);
         form.getTextField('clase').setText(pj.Clases.replace('(', '').replace(')', ''));
-        let raza = pj.Raza;
+        let raza = pj.Raza.Nombre;
         if (pj.Plantillas)
             pj.Plantillas.forEach(p => {
                 raza += ` ${p.Nombre}`;
@@ -29,7 +29,7 @@ export class FichaPersonajeService {
         form.getTextField('alineamiento').setText(pj.Alineamiento);
         if (pj.Deidad && pj.Deidad.length > 0)
             form.getTextField('deidad').setText(pj.Deidad);
-        form.getTextField('tamaño').setText(pj.Tamano.Nombre);
+        form.getTextField('tamaño').setText(pj.Raza.Tamano.Nombre);
         form.getTextField('edad').setText(pj.Edad.toString());
         form.getTextField('sexo').setText(pj.Genero);
         form.getTextField('altura').setText(pj.Altura.toString());
@@ -48,12 +48,12 @@ export class FichaPersonajeService {
         form.getTextField('mod_sab').setText(`${pj.ModSabiduria > 0 ? '+' : ''}${pj.ModSabiduria}`);
         form.getTextField('mod_car').setText(`${pj.ModCarisma > 0 ? '+' : ''}${pj.ModCarisma}`);
         form.getTextField('mod_varios_iniciativa').setText(pj.Iniciativa_varios ? `${pj.Iniciativa_varios.reduce((c, v) => c + v.Valor, 0)}` : '0');
-        form.getTextField('mod_tamaño_presa').setText(pj.Tamano.Modificador_presa.toString());
+        form.getTextField('mod_tamaño_presa').setText(pj.Raza.Tamano.Modificador_presa.toString());
         form.getTextField('mod_varios_presa').setText(pj.Presa_varios ? `${pj.Presa_varios.reduce((c, v) => c + v.Valor, 0)}` : '0');
         form.getTextField('ca').setText(pj.Ca.toString());
         form.getTextField('ca_armadura').setText('0');
         form.getTextField('ca_escudo').setText('0');
-        form.getTextField('mod_tamaño_ca').setText(pj.Tamano.Modificador.toString());
+        form.getTextField('mod_tamaño_ca').setText(pj.Raza.Tamano.Modificador.toString());
         form.getTextField('armadura_natural').setText(pj.Armadura_natural.toString());
         form.getTextField('mod_desvio').setText(pj.Ca_desvio.toString());
         form.getTextField('mod_varios_ca').setText(pj.Ca_varios.toString());

@@ -51,8 +51,8 @@ export class AdminPanelComponent implements OnInit {
 
     verifyCon(): void {
         const headers = new HttpHeaders({ 'Content-Type': 'application/json' });
-        this.http.get(`${environment.apiUrl}conexion`, { headers }).subscribe(
-            (response: any) => {
+        this.http.get(`${environment.apiUrl}verify`).subscribe(
+            () => {
                 this.hasCon = true;
                 this.serverStatusIcon = 'thumb_up';
                 this.serverStatus = 'Conexión establecida';

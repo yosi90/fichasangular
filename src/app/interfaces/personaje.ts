@@ -5,10 +5,7 @@ export interface Personaje extends PersonajeSimple {
         Nombre: string;
         Nivel: number;
     }[],
-    Raza_dgs_extra: number;
-    Tipo_dgs_extra: string;
     Ataque_base: string;
-    ModTamano: number;
     Ca: number;
     Armadura_natural: number;
     Ca_desvio: number;
@@ -38,7 +35,6 @@ export interface Personaje extends PersonajeSimple {
     ModSabiduria: number;
     Carisma: number;
     ModCarisma: number;
-    Raza_ajuste_nivel: number;
     NEP: number;
     Experiencia: number;
     Deidad: string;
@@ -79,12 +75,6 @@ export interface Personaje extends PersonajeSimple {
         Calificativo: string;
     }
     Disciplina_prohibida: string;
-    Tamano: {
-        Id: number;
-        Nombre: string;
-        Modificador: number;
-        Modificador_presa: number;
-    }
     Capacidad_carga: {
         Ligera: number;
         Media: number;

@@ -1,3 +1,6 @@
+import { Maniobrabilidad } from "./maniobrabilidad";
+import { Tamaño } from "./tamaño";
+
 export interface Raza {
     Id: number;
     Nombre: string;
@@ -14,11 +17,7 @@ export interface Raza {
     }
     Homebrew: boolean;
     Ataques_naturales: string;
-    Tamano: {
-        Nombre: string;
-        Modificador: number;
-        Modificador_presa: number;
-    }
+    Tamano: Tamaño;
     Dgs_adicionales: {
         Cantidad: number;
         Dado: string;
@@ -31,4 +30,16 @@ export interface Raza {
     Reduccion_dano: string;
     Resistencia_magica: string;
     Resistencia_energia: string;
+    Heredada: boolean;
+    Mutada: boolean;
+    Tamano_mutacion_dependiente: boolean;
+    Prerrequisitos: [];
+    Armadura_natural: number;
+    Varios_armadura: number;
+    Correr: number;
+    Nadar: number;
+    Volar: number;
+    Maniobrabilidad: Maniobrabilidad;
+    Trepar: number;
+    Escalar: number;
 }

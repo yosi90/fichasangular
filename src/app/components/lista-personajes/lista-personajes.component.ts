@@ -80,7 +80,7 @@ export class ListaPersonajesComponent implements OnInit, AfterViewInit {
             const texto = this.inputText.nativeElement.value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
             const archivo = !(this.anuncioArchivo === 'Clic para mostar pjs archivados');
             const pjFiltrados = this.Personajes.filter(pj => (texto === undefined || texto === '' || pj.Nombre.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().includes(texto) || pj.Contexto.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().includes(texto) ||
-                pj.Personalidad.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().includes(texto) || pj.Clases.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().includes(texto) || pj.Raza.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().includes(texto) ||
+                pj.Personalidad.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().includes(texto) || pj.Clases.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().includes(texto) || pj.Raza.Nombre.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().includes(texto) ||
                 pj.Campana.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().includes(texto) || pj.Trama.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().includes(texto) || pj.Subtrama.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().includes(texto))
                 && (this.defaultCampana === undefined || this.defaultCampana === 'Sin campaña' || pj.Campana === this.defaultCampana)
                 && (this.defaultTrama === undefined || this.defaultTrama === 'Trama base' || pj.Trama === this.defaultTrama)

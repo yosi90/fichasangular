@@ -1,7 +1,9 @@
+import { RazaSimple } from "./raza-simple";
+
 export interface PersonajeSimple {
     Id: number;
     Nombre: string;
-    Raza: string;
+    Raza: RazaSimple;
     Clases: string;
     Personalidad: string;
     Contexto: string;

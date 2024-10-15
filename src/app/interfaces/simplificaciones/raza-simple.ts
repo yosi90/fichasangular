@@ -1,8 +1,15 @@
+import { Tamaño } from "../tamaño";
+
 export interface RazaSimple {
     Id: number;
     Nombre: string;
     Ajuste_nivel: number;
-    Dgs_extra: number;
+    Tamano: Tamaño;
+    Dgs_adicionales: {
+        Cantidad: number;
+        Dado: string;
+        Tipo_criatura: string;
+    }
     Manual: string;
     Clase_predilecta: string;
     Modificadores: {

@@ -34,11 +34,11 @@
             </div>
             <div class="d-flex flex-wrap align-items-center sombra-caja-sm rounded p-2 my-2">
                 <mat-icon class="me-1">settings_accessibility</mat-icon>
-                <mat-chip class="h-auto warm m-1">{{pj.Raza}}
-                    <mat-chip class="ms-3 m-1">{{pj.Tamano.Nombre}}</mat-chip>
+                <mat-chip class="h-auto warm m-1">{{pj.Raza.Nombre}}
+                    <mat-chip class="ms-3 m-1">{{pj.Raza.Tamano.Nombre}}</mat-chip>
                     <mat-chip class="m-1">{{pj.Tipo_criatura}}</mat-chip>
-                    <mat-chip class="m-1" *ngIf="pj.Raza_dgs_extra> 0">Dgs adicionales +{{pj.Raza_dgs_extra}}{{pj.Tipo_dgs_extra}}</mat-chip>
-                    <mat-chip class="m-1" *ngIf="pj.Raza_ajuste_nivel> 0">Ajuste de nivel +{{pj.Raza_ajuste_nivel}}</mat-chip>
+                    <mat-chip class="m-1" *ngIf="pj.Raza.Dgs_adicionales.Cantidad">+{{pj.Raza.Dgs_adicionales.Cantidad}}{{pj.Raza.Dgs_adicionales.Dado}} Dgs de {{pj.Raza.Dgs_adicionales.Tipo_criatura}}</mat-chip>
+                    <mat-chip class="m-1" *ngIf="pj.Raza.Ajuste_nivel">Ajuste de nivel +{{pj.Raza.Ajuste_nivel}}</mat-chip>
                 </mat-chip>
                 <mat-chip class="m-1">Iniciativa {{iniciativa}}</mat-chip>
                 <mat-chip class="m-1">Presa {{presa}}</mat-chip>

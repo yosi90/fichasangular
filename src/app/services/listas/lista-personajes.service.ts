@@ -4,6 +4,8 @@ import { Database, getDatabase, Unsubscribe, onValue, ref, set } from '@angular/
 import { Observable } from 'rxjs';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { environment } from 'src/environments/environment';
+import { RazaSimple } from 'src/app/interfaces/simplificaciones/raza-simple';
+import Swal from 'sweetalert2';
 
 @Injectable({
     providedIn: 'root'
@@ -73,7 +75,7 @@ export class ListaPersonajesService {
                 title: 'Raza del personaje',
                 columnDef: 'expand',
                 header: 'Raza',
-                cell: (pj: PersonajeSimple) => `${pj.Raza}`,
+                cell: (pj: PersonajeSimple) => `${pj.Raza.Nombre}`,
             },
             {
                 title: 'Estado de la ficha',
@@ -125,7 +127,7 @@ export class ListaPersonajesService {
         const db = getDatabase();
         this.pjs().subscribe(
             response => {
-                response.forEach((element: { i: any; n: any; r: any; c: any; co: any; p: any; ca: any; t: any; s: any; a: any; }) => {
+                response.forEach((element: { i: any; n: any; r: RazaSimple; c: any; co: any; p: any; ca: any; t: any; s: any; a: any; }) => {
                     set(ref(db, `Personajes-simples/${element.i}`), {
                         Nombre: element.n,
                         Raza: element.r,
@@ -138,8 +140,21 @@ export class ListaPersonajesService {
                         Archivado: element.a,
                     })
                 });
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Listado de personajes simple actualizado con éxito',
+                    showConfirmButton: true,
+                    timer: 2000
+                });
             },
-            error => console.log(error)
+            onerror = (error: any) => {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Error al actualizar el listado de personajes simple',
+                    text: error,
+                    showConfirmButton: true
+                });
+            }
         );
     }
 }
