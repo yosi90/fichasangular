@@ -6,6 +6,7 @@ import { Personaje } from '../interfaces/personaje';
 import { environment } from 'src/environments/environment';
 import { RazaSimple } from '../interfaces/simplificaciones/raza-simple';
 import Swal from 'sweetalert2';
+import { Tipo_criatura } from '../interfaces/tipo_criatura';
 
 @Injectable({
     providedIn: 'root'
@@ -124,11 +125,11 @@ export class PersonajeService {
         this.d_pjs().subscribe(
             response => {
                 response.forEach((element: {
-                    i: any; n: any; dcp: any; dh: any; tm: any; a: any; ca: any; an: any; cd: any; cv: any; ra: any; tc: any; f: any; mf: any; d: any; md: any; co: any; mco: any; int: any; mint: any; s: any; ms: any; 
-                    car: any; mcar: any; de: any; ali: any; g: any; ncam: any; ntr: any; ju: any; nst: any; v: any; cor: any; na: any; vo: any; t: any; e: any; o: any; dg: any; cla: any; dom: any; stc: any; pla: any; 
-                    con: any; esp: any; espX: any; rac: any; hab: any; habN: any; habC: any; habCa: any; habMc: any; habR: any; habRv: any; habX: any; habV: any; habCu: any; dot: any; dotD: string; dotB: string; 
-                    dotP: any; dotX: any; dotO: any; ve: any; idi: any; sor: any; pgl: any; ini_v: any; pr_v: { Valor: number; Origen: string; }[]; edad: any; alt: any; peso: any; salv: any; rds: any; rcs: any; 
-                    res: any; ccl: any; ccm: any; ccp: any; espa: any; espan: any; espp: any; esppn: any; disp: any; ecp: any;
+                    i: any; n: any; dcp: any; dh: any; tm: any; a: any; ca: any; an: any; cd: any; cv: any; ra: any; tc: Tipo_criatura; f: any; mf: any; d: any; md: any; co: any; mco: any; int: any; mint: any; s: any; 
+                    ms: any; car: any; mcar: any; de: any; ali: any; g: any; ncam: any; ntr: any; ju: any; nst: any; v: any; cor: any; na: any; vo: any; t: any; e: any; o: any; dg: any; cla: any; dom: any; stc: any; 
+                    pla: any; con: any; esp: any; espX: any; rac: any; hab: any; habN: any; habC: any; habCa: any; habMc: any; habR: any; habRv: any; habX: any; habV: any; habCu: any; dot: any; dotD: string; 
+                    dotB: string; dotP: any; dotX: any; dotO: any; ve: any; idi: any; sor: any; pgl: any; ini_v: any; pr_v: { Valor: number; Origen: string; }[]; edad: any; alt: any; peso: any; salv: any; rds: any; 
+                    rcs: any; res: any; ccl: any; ccm: any; ccp: any; espa: any; espan: any; espp: any; esppn: any; disp: any; ecp: any;
                 }) => {
                     const tempcla = element.cla.split("|");
                     let nep: number = 0 + element.ra.Dgs_adicionales.Cantidad;

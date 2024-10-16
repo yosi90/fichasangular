@@ -3,6 +3,7 @@ import { Database, getDatabase, Unsubscribe, onValue, ref, set } from '@angular/
 import { Observable } from 'rxjs';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { environment } from 'src/environments/environment';
+import Swal from 'sweetalert2';
 
 @Injectable({
     providedIn: 'root'
@@ -70,8 +71,7 @@ export class ManualesService {
     }
 
     private syncManuales(): Observable<any> {
-        const headers = new HttpHeaders({ 'Content-Type': 'application/json' });
-        const res = this.http.post(`${environment.apiUrl}manuales`, { headers });
+        const res = this.http.get(`${environment.apiUrl}manuales`);
         return res;
     }
 
@@ -86,8 +86,21 @@ export class ManualesService {
                         Nombre: element.n,
                     })
                 });
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Listado de manuales actualizado con éxito',
+                    showConfirmButton: true,
+                    timer: 2000
+                });
             },
-            error => console.log(error)
+            onerror = (error: any) => {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Error al actualizar el listado de manuales',
+                    text: error,
+                    showConfirmButton: true
+                });
+            }
         );
     }
 }

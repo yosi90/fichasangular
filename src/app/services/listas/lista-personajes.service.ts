@@ -119,7 +119,7 @@ export class ListaPersonajesService {
 
     pjs(): Observable<any> {
         const headers = new HttpHeaders({ 'Content-Type': 'application/json' });
-        const personajes = this.http.post(`${environment.apiUrl}personajes-simplificados`, { headers });
+        const personajes = this.http.get(`${environment.apiUrl}personajes/simplificados`);
         return personajes;
     }
 

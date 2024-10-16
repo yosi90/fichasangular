@@ -1,5 +1,6 @@
 import { Maniobrabilidad } from "./maniobrabilidad";
 import { Tamaño } from "./tamaño";
+import { Tipo_criatura } from "./tipo_criatura";
 
 export interface Raza {
     Id: number;
@@ -26,6 +27,9 @@ export interface Raza {
         Dotes_extra: number;
         Puntos_habilidad: number;
         Multiplicador_puntos_habilidad: number;
+        Fortaleza: number;
+        Reflejos: number;
+        Voluntad: number;
     }
     Reduccion_dano: string;
     Resistencia_magica: string;
@@ -42,4 +46,15 @@ export interface Raza {
     Maniobrabilidad: Maniobrabilidad;
     Trepar: number;
     Escalar: number;
+    Altura_rango_inf: number; 
+    Altura_rango_sup: number; 
+    Peso_rango_inf: number; 
+    Peso_rango_sup: number; 
+    Edad_adulto: number; 
+    Edad_mediana: number; 
+    Edad_viejo: number; 
+    Edad_venerable: number;
+    Espacio: number;
+    Alcance: number;
+    Tipo_criatura: Tipo_criatura;
 }

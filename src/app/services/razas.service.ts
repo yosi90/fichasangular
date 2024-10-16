@@ -7,6 +7,7 @@ import { environment } from 'src/environments/environment';
 import Swal from 'sweetalert2';
 import { Maniobrabilidad } from '../interfaces/maniobrabilidad';
 import { Tamaño } from '../interfaces/tamaño';
+import { Tipo_criatura } from '../interfaces/tipo_criatura';
 
 @Injectable({
     providedIn: 'root'
@@ -47,6 +48,17 @@ export class RazasService {
                     Maniobrabilidad: snapshot.child('Maniobrabilidad').val(),
                     Trepar: snapshot.child('Trepar').val(),
                     Escalar: snapshot.child('Escalar').val(),
+                    Altura_rango_inf: snapshot.child('Altura_rango_inf').val(),
+                    Altura_rango_sup: snapshot.child('Altura_rango_sup').val(),
+                    Peso_rango_inf: snapshot.child('Peso_rango_inf').val(),
+                    Peso_rango_sup: snapshot.child('Peso_rango_sup').val(),
+                    Edad_adulto: snapshot.child('Edad_adulto').val(),
+                    Edad_mediana: snapshot.child('Edad_mediana').val(),
+                    Edad_viejo: snapshot.child('Edad_viejo').val(),
+                    Edad_venerable: snapshot.child('Edad_venerable').val(),
+                    Espacio: snapshot.child('Espacio').val(),
+                    Alcance: snapshot.child('Alcance').val(),
+                    Tipo_criatura: snapshot.child('Tipo_criatura').val(),
                 };
                 observador.next(raza); // Emitir el array de personajes
             };
@@ -102,6 +114,17 @@ export class RazasService {
                         Maniobrabilidad: obj.child('Maniobrabilidad').val(),
                         Trepar: obj.child('Trepar').val(),
                         Escalar: obj.child('Escalar').val(),
+                        Altura_rango_inf: obj.child('Altura_rango_inf').val(),
+                        Altura_rango_sup: obj.child('Altura_rango_sup').val(),
+                        Peso_rango_inf: obj.child('Peso_rango_inf').val(),
+                        Peso_rango_sup: obj.child('Peso_rango_sup').val(),
+                        Edad_adulto: obj.child('Edad_adulto').val(),
+                        Edad_mediana: obj.child('Edad_mediana').val(),
+                        Edad_viejo: obj.child('Edad_viejo').val(),
+                        Edad_venerable: obj.child('Edad_venerable').val(),
+                        Espacio: obj.child('Espacio').val(),
+                        Alcance: obj.child('Alcance').val(),
+                        Tipo_criatura: obj.child('Tipo_criatura').val(),
                     };
                     Razas.push(raza);
                 });
@@ -138,8 +161,10 @@ export class RazasService {
                 response.forEach((element: {
                     i: any; n: any; m: { Fuerza: number; Destreza: number; Constitucion: number; Inteligencia: number; Sabiduria: number; Carisma: number; }; ma: any;
                     aju: any; c: any; o: boolean; an: string; t: Tamaño; dg: any; rd: string; rc: string; re: string; he: boolean; mu: boolean; tmd: boolean; pr: any;
-                    am: number; vm: number; co: number; na: number; vo: number; man: Maniobrabilidad; tr: number; es: number;
+                    ant: number; va: number; co: number; na: number; vo: number; man: Maniobrabilidad; tr: number; es: number; ari: number; ars: number; pri: number; 
+                    prs: number; ea: number; em: number; ev: number; eve: number; esp: number; alc: number; tc: Tipo_criatura;
                 }) => {
+                    console.log(element);
                     set(
                         ref(db, `Razas/${element.i}`), {
                         Nombre: element.n,
@@ -158,14 +183,25 @@ export class RazasService {
                         Mutada: element.mu,
                         Tamano_mutacion_dependiente: element.tmd,
                         Prerrequisitos: element.pr,
-                        Armadura_natural: element.am,
-                        Varios_armadura: element.vm,
+                        Armadura_natural: element.ant,
+                        Varios_armadura: element.va,
                         Correr: element.co,
                         Nadar: element.na,
                         Volar: element.vo,
                         Maniobrabilidad: element.man,
                         Trepar: element.tr,
                         Escalar: element.es,
+                        Altura_rango_inf: element.ari,
+                        Altura_rango_sup: element.ars,
+                        Peso_rango_inf: element.pri,
+                        Peso_rango_sup: element.prs,
+                        Edad_adulto: element.ea,
+                        Edad_mediana: element.em,
+                        Edad_viejo: element.ev,
+                        Edad_venerable: element.eve,
+                        Espacio: element.esp,
+                        Alcance: element.alc,
+                        Tipo_criatura: element.tc,
                     });
                     if(element.pr)
                         console.log(element.pr);

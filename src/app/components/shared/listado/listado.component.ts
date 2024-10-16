@@ -1,5 +1,5 @@
 import { ChangeDetectorRef, Component, EventEmitter, Input, Output, ViewChild, ViewContainerRef } from '@angular/core';
-import { ListadoRazasComponent } from '../shared/listado-razas/listado-razas.component';
+import { ListadoRazasComponent } from '../listado-razas/listado-razas.component';
 import { Raza } from 'src/app/interfaces/raza';
 
 @Component({

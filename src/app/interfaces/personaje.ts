@@ -1,4 +1,5 @@
 import { PersonajeSimple } from "./simplificaciones/personaje-simple";
+import { Tipo_criatura } from "./tipo_criatura";
 
 export interface Personaje extends PersonajeSimple {
     desgloseClases: {
@@ -19,7 +20,7 @@ export interface Personaje extends PersonajeSimple {
         Valor: number;
         Origen: string;
     }[]
-    Tipo_criatura: string;
+    Tipo_criatura: Tipo_criatura;
     Subtipos: {
         Nombre: string;
     }[]

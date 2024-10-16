@@ -1,9 +1,10 @@
 import { Injectable } from '@angular/core';
 import { Database, getDatabase, Unsubscribe, onValue, ref, set } from '@angular/fire/database';
 import { Observable } from 'rxjs';
-import { HttpClient, HttpHeaders } from '@angular/common/http';
-import { Campaña } from '../interfaces/campaña';
+import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
+import { Campana } from '../interfaces/campaña';
 import { environment } from 'src/environments/environment';
+import Swal from 'sweetalert2';
 
 @Injectable({
     providedIn: 'root'
@@ -11,15 +12,15 @@ import { environment } from 'src/environments/environment';
 export class CampañasService {
     constructor(public db: Database, private http: HttpClient) { }
 
-    async getListCampañas(): Promise<Observable<Campaña[]>> {
+    async getListCampañas(): Promise<Observable<Campana[]>> {
         return new Observable((observador) => {
             const dbRef = ref(this.db, 'Campañas');
             let unsubscribe: Unsubscribe;
 
             const onNext = (snapshot: any) => {
-                const Campañas: Campaña[] = [];
+                const Campañas: Campana[] = [];
                 snapshot.forEach((obj: any) => {
-                    const campaña: Campaña = {
+                    const campaña: Campana = {
                         Id: obj.key,
                         Nombre: obj.child('Nombre').val(),
                         Tramas: obj.child('Tramas').val()
@@ -48,25 +49,27 @@ export class CampañasService {
 
     private getCampañas(): Observable<any> {
         const headers = new HttpHeaders({ 'Content-Type': 'application/json' });
-        const campañas = this.http.post(`${environment.apiUrl}campañas`, { headers });
+        const campañas = this.http.get(`${environment.apiUrl}campanas`);
         return campañas;
     }
 
     private getTramas(idCam: number): Observable<any> {
         const headers = new HttpHeaders({ 'Content-Type': 'application/json' });
-        const campañas = this.http.post(`${environment.apiUrl}tramas`, idCam, { headers });
+        const params = new HttpParams().set('id_campana', idCam)
+        const campañas = this.http.get(`${environment.apiUrl}tramas`, { params });
         return campañas;
     }
 
     private getSubtramas(idTra: number): Observable<any> {
         const headers = new HttpHeaders({ 'Content-Type': 'application/json' });
-        const campañas = this.http.post(`${environment.apiUrl}subtramas`, idTra, { headers });
+        const params = new HttpParams().set('id_trama', idTra)
+        const campañas = this.http.get(`${environment.apiUrl}subtramas`, { params });
         return campañas;
     }
 
     public async RenovarCampañasFirebase() {
         const db = getDatabase();
-        let campañas: Campaña[] = [];
+        let campañas: Campana[] = [];
 
         this.getCampañas().subscribe(
             async (response: any) => {
@@ -108,8 +111,21 @@ export class CampañasService {
                         })
                     })
                 }
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Listado de campañas, tramas y subtramas actualizado con éxito',
+                    showConfirmButton: true,
+                    timer: 2000
+                });
             },
-            error => console.log(error)
+            onerror = (error: any) => {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Error al actualizar el listado de campañas, tramas y subtramas',
+                    text: error,
+                    showConfirmButton: true
+                });
+            }
         );
     }
 

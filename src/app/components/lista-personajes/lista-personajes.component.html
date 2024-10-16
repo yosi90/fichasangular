@@ -52,24 +52,33 @@
                     </ng-container>
                 </th>
                 <td mat-cell *matCellDef="let element">
-                    <p class="mb-0" *ngIf="column != 'Nombre' && column != '¿Archivado?'; else colArchivo">
-                        {{element[column]}}</p>
-                    <ng-template #colArchivo>
-                        <ng-container *ngIf="column == '¿Archivado?'; else nombrePJ">
+                    <ng-container [ngSwitch]="column">
+                        
+                        <ng-container *ngSwitchDefault>
+                            <p class="mb-0">{{element[column]}}</p>
+                        </ng-container>
+
+                        <ng-container  *ngSwitchCase="'Raza'">
+                            <p class="mb-0">{{element[column].Nombre}}</p>
+                        </ng-container>
+
+                        <ng-container *ngSwitchCase="'¿Archivado?'">
                             <div class="d-flex justify-content-center align-items-center">
-                                <mat-checkbox [checked]="element.Archivado" [disableRipple]="true" (click)="$event.preventDefault(); $event.stopPropagation();">
+                                <mat-checkbox [checked]="element.Archivado" [disableRipple]="true"
+                                    (click)="$event.preventDefault(); $event.stopPropagation();">
                                 </mat-checkbox>
                             </div>
                         </ng-container>
-                        <ng-template #nombrePJ>
-                            <button mat-stroked-button matTooltip="Click para ver este personaje" [matTooltipShowDelay]="200"
-                                color="accent" class="d-flex justify-content-start sombra3d-sm w-100" *ngIf="column == 'Nombre'"
+
+                        <ng-container *ngSwitchCase="'Nombre'">
+                            <button mat-stroked-button matTooltip="Click para ver este personaje"
+                                [matTooltipShowDelay]="200" color="accent" class="d-flex justify-content-start sombra3d-sm w-100"
                                 (click)="CrearDetallesDe(element.Id); $event.stopPropagation();">
                                 <mat-icon>read_more</mat-icon>
                                 {{element[column]}}
                             </button>
-                        </ng-template>
-                    </ng-template>
+                        </ng-container>
+                    </ng-container>
                 </td>
             </ng-container>
             <ng-container matColumnDef="expand">

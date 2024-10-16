@@ -6,8 +6,8 @@ import { ReactiveFormsModule } from '@angular/forms';
 
 
 import { AppComponent } from './app.component';
-import { NavbarComponent } from './components/navbar/navbar.component';
-import { ContPrincipalComponent } from './components/cont-principal/cont-principal.component';
+import { NavbarComponent } from './components/base/navbar/navbar.component';
+import { ContPrincipalComponent } from './components/base/cont-principal/cont-principal.component';
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
 
 import { MatIconModule } from '@angular/material/icon';
@@ -37,14 +37,14 @@ import { NgbModule } from '@ng-bootstrap/ng-bootstrap';
 import { provideAuth, getAuth } from '@angular/fire/auth';
 import { provideDatabase, getDatabase } from '@angular/fire/database';
 import { SesionDialogComponent } from './components/sesion-dialog/sesion-dialog.component';
-import { TabControlComponent } from './components/tab-control/tab-control.component';
-import { BaseMenuResponsiveComponent } from './components/responsive-base/responsive-base.component';
-import { BaseMenuComponent } from './components/base-menu/base-menu.component';
-import { AdminPanelComponent } from './components/admin-panel/admin-panel.component';
+import { TabControlComponent } from './components/base/tab-control/tab-control.component';
+import { BaseMenuResponsiveComponent } from './components/base/responsive-base/responsive-base.component';
+import { BaseMenuComponent } from './components/base/base-menu/base-menu.component';
+import { AdminPanelComponent } from './components/base/admin-panel/admin-panel.component';
 import { DetallesPersonajeComponent } from './components/Detalles/detalles-personaje/detalles-personaje.component';
 import { NuevoPersonajeComponent } from './components/nuevo-personaje/nuevo-personaje.component';
 import { DetallesRazaComponent } from './components/Detalles/detalles-raza/detalles-raza.component';
-import { ListadoComponent } from './components/listado/listado.component';
+import { ListadoComponent } from './components/shared/listado/listado.component';
 import { ListadoRazasComponent } from './components/shared/listado-razas/listado-razas.component';
 
 @NgModule({

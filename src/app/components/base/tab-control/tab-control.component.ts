@@ -1,10 +1,9 @@
 import { Component, EventEmitter, Input, OnInit, Output, SimpleChanges, ViewChild } from '@angular/core';
-import { UserService } from '../../services/user.service';
+import { UserService } from '../../../services/user.service';
 import { PersonajeService } from 'src/app/services/personaje.service';
 import { MatTab, MatTabGroup } from '@angular/material/tabs';
 import { FormControl } from '@angular/forms';
 import { Personaje } from 'src/app/interfaces/personaje';
-import { RazasService } from 'src/app/services/razas.service';
 import { Raza } from 'src/app/interfaces/raza';
 
 @Component({

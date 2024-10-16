@@ -1,4 +1,4 @@
-export interface Campaña {
+export interface Campana {
     Id: number;
     Nombre: string;
     Tramas: {

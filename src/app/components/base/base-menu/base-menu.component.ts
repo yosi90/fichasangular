@@ -1,7 +1,7 @@
 import { Component, EventEmitter, OnInit, Output, ViewChild } from '@angular/core';
 import { MatDialog } from '@angular/material/dialog';
-import { SesionDialogComponent } from '../sesion-dialog/sesion-dialog.component';
-import { UserService } from '../../services/user.service';
+import { SesionDialogComponent } from '../../sesion-dialog/sesion-dialog.component';
+import { UserService } from '../../../services/user.service';
 import { MatExpansionPanel } from '@angular/material/expansion';
 
 @Component({

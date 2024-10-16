@@ -6,7 +6,7 @@ import { MatTableDataSource } from '@angular/material/table';
 import { MatSort, Sort } from '@angular/material/sort';
 import { MatPaginator } from '@angular/material/paginator';
 import { LiveAnnouncer } from '@angular/cdk/a11y';
-import { Campaña, Tramas, Super } from 'src/app/interfaces/campaña';
+import { Campana, Tramas, Super } from 'src/app/interfaces/campaña';
 import { CampañasService } from 'src/app/services/campañas.service';
 
 @Component({
@@ -24,7 +24,7 @@ import { CampañasService } from 'src/app/services/campañas.service';
 })
 export class ListaPersonajesComponent implements OnInit, AfterViewInit {
     Personajes: PersonajeSimple[] = [];
-    Campanas: Campaña[] = [];
+    Campanas: Campana[] = [];
     Tramas: Tramas[] = [];
     Subtramas: Super[] = [];
     defaultCampana!: string;
