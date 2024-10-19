@@ -51,7 +51,7 @@ export class ListadoRazasComponent {
             this.razasDS = new MatTableDataSource(razasFiltradas);
             setTimeout(() => {
                 this.razasDS.sort = this.razaSort;
-            }, 20);
+            }, 200);
             this.razasDS.paginator = this.razaPaginator;
             this.razaSort.active = 'Nombre';
             this.razaSort.direction = 'asc';

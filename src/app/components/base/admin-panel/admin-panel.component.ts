@@ -1,11 +1,15 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, inject, OnInit } from '@angular/core';
 import { ListaPersonajesService } from 'src/app/services/listas/lista-personajes.service';
 import { CampañasService } from 'src/app/services/campañas.service';
 import { PersonajeService } from 'src/app/services/personaje.service';
 import { RazasService } from 'src/app/services/razas.service';
 import { ManualesService } from 'src/app/services/manuales.service';
-import { HttpClient, HttpHeaders } from '@angular/common/http';
-import { environment } from 'src/environments/environment';
+import { RasgoService } from 'src/app/services/rasgo.service';
+import { TipoCriaturaService } from 'src/app/services/tipo-criatura.service';
+import { VerifyConnectionService } from 'src/app/services/utils/verify-connection.service';
+import { ConjurosService } from 'src/app/services/conjuros.service';
+import { EscuelasConjurosService } from 'src/app/services/escuelas-conjuros.service';
+import { DisciplinasConjurosService } from 'src/app/services/disciplinas-conjuros.service';
 
 @Component({
     selector: 'app-admin-panel',
@@ -17,51 +21,45 @@ export class AdminPanelComponent implements OnInit {
     serverStatusIcon: string = 'question_mark';
     serverStatus: string = 'Verificar conexión';
 
-    constructor(private pSvc: PersonajeService, private lpSvc: ListaPersonajesService, private cSvc: CampañasService, private rSvc: RazasService, private mSvc: ManualesService, private http: HttpClient) { }
+    constructor(private conSvc: VerifyConnectionService, private pSvc: PersonajeService, private lpSvc: ListaPersonajesService, private cSvc: CampañasService, private rSvc: RazasService, private mSvc: ManualesService,
+        private tcSvc: TipoCriaturaService, private raSvc: RasgoService, private coSvc: ConjurosService, private escSvc: EscuelasConjurosService, private disSvc: DisciplinasConjurosService
+    ) { }
 
     ngOnInit(): void {
-        this.verifyCon();
+        this.verificar();
     }
 
-    sincronizarListaPJs() {
-        const resultado = this.lpSvc.RenovarPersonajesSimples();
-    }
+    sincronizarListaPJs() { this.lpSvc.RenovarPersonajesSimples(); }
 
-    sincronizarCampanas() {
-        const resultado = this.cSvc.RenovarCampañasFirebase();
-    }
+    sincronizarCampanas() { this.cSvc.RenovarCampañasFirebase(); }
 
-    sincronizarPJs() {
-        const resultado = this.pSvc.RenovarPersonajes();
-    }
+    sincronizarPJs() { this.pSvc.RenovarPersonajes(); }
 
-    sincronizarRazas() {
-        const resultado = this.rSvc.RenovarRazas();
-    }
+    sincronizarRazas() { this.rSvc.RenovarRazas(); }
 
-    sincronizarManuales() {
-        const resultado = this.mSvc.RenovarManuales();
-    }
+    sincronizarManuales() { this.mSvc.RenovarManuales(); }
 
-    reverificar() {
+    sincronizarTiposCriatura() { this.tcSvc.RenovarTiposCriatura(); }
+
+    sincronizarRasgos() { this.raSvc.RenovarRasgos(); }
+
+    sincronizarConjuros() { this.coSvc.RenovarConjuros(); }
+
+    sincronizarEscuelas() { this.escSvc.RenovarEscuelas(); }
+
+    sincronizarDisciplinas() { this.disSvc.RenovarDisciplinas(); }
+
+    verificar() {
         this.serverStatusIcon = 'question_mark';
         this.serverStatus = 'Verificando...';
-        this.verifyCon();
-    }
-
-    verifyCon(): void {
-        const headers = new HttpHeaders({ 'Content-Type': 'application/json' });
-        this.http.get(`${environment.apiUrl}verify`).subscribe(
-            () => {
-                this.hasCon = true;
+        this.conSvc.verifyCon().subscribe(isConnected => {
+            if (isConnected) {
                 this.serverStatusIcon = 'thumb_up';
                 this.serverStatus = 'Conexión establecida';
-            },
-            (error) => {
-                this.hasCon = false;
+            } else {
                 this.serverStatusIcon = 'thumb_down';
-                this.serverStatus = `Error en la conexión: ${error.status} - ${error.statusText}`;
+                this.serverStatus = 'Error en la conexión';
             }
-        );
+        });
     }
 }

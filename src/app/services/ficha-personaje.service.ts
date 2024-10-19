@@ -237,15 +237,15 @@ export class FichaPersonajeService {
         if (pj.Conjuros)
             pj.Conjuros.forEach(c => {
                 form.getTextField(`conjuro${contador}`).setText(c.Nombre);
-                form.getTextField(`pag_con${contador}`).setText(`${c.Manual} - ${c.Pagina}`);
+                form.getTextField(`pag_con${contador}`).setText(`${c.Manual}`);
                 form.getTextField(`desc_con${contador}`).setText(c.Descripcion);
                 contador++;
             });
         if (pj.Sortilegas)
             pj.Sortilegas.forEach(s => {
-                form.getTextField(`conjuro${contador}`).setText(s.Nombre);
-                form.getTextField(`pag_con${contador}`).setText(`${s.Manual} - ${s.Pagina}`);
-                form.getTextField(`desc_con${contador}`).setText(`${s.Usos}\r\n${s.Nivel_lanzador}\r\n${s.Descripcion}`);
+                form.getTextField(`conjuro${contador}`).setText(s.Conjuro.Nombre);
+                form.getTextField(`pag_con${contador}`).setText(`${s.Conjuro.Manual}`);
+                form.getTextField(`desc_con${contador}`).setText(`Usos diarios: ${s.Usos_diarios}\r\nNivel de lanzador:${s.Nivel_lanzador}\r\n${(s.Descripcion ? s.Descripcion : '')}`);
                 contador++;
             });
 

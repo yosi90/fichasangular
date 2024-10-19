@@ -10,7 +10,7 @@ import Swal from 'sweetalert2';
     providedIn: 'root'
 })
 export class CampañasService {
-    constructor(public db: Database, private http: HttpClient) { }
+    constructor(private db: Database, private http: HttpClient) { }
 
     async getListCampañas(): Promise<Observable<Campana[]>> {
         return new Observable((observador) => {
@@ -118,11 +118,11 @@ export class CampañasService {
                     timer: 2000
                 });
             },
-            onerror = (error: any) => {
+            (error: any) => {
                 Swal.fire({
                     icon: 'warning',
-                    title: 'Error al actualizar el listado de campañas, tramas y subtramas',
-                    text: error,
+                    title: 'Error al actualizar el listado de campañas, ttramas y subtramas',
+                    text: error.message,
                     showConfirmButton: true
                 });
             }

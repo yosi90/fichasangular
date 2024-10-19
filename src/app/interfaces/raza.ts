@@ -1,6 +1,8 @@
+import { AptitudSortilega } from "./Aptitud-sortilega";
+import { Conjuro } from "./conjuro";
 import { Maniobrabilidad } from "./maniobrabilidad";
 import { Tamaño } from "./tamaño";
-import { Tipo_criatura } from "./tipo_criatura";
+import { TipoCriatura } from "./tipo_criatura";
 
 export interface Raza {
     Id: number;
@@ -56,5 +58,6 @@ export interface Raza {
     Edad_venerable: number;
     Espacio: number;
     Alcance: number;
-    Tipo_criatura: Tipo_criatura;
+    Tipo_criatura: TipoCriatura;
+    Sortilegas: AptitudSortilega[];
 }

@@ -12,7 +12,7 @@ import Swal from 'sweetalert2';
 })
 export class ListaPersonajesService {
 
-    constructor(public db: Database, private http: HttpClient) { }
+    constructor(private db: Database, private http: HttpClient) { }
 
     async getPersonajes(): Promise<Observable<PersonajeSimple[]>> {
         return new Observable((observador) => {
@@ -147,11 +147,12 @@ export class ListaPersonajesService {
                     timer: 2000
                 });
             },
-            onerror = (error: any) => {
+            
+            (error: any) => {
                 Swal.fire({
                     icon: 'warning',
                     title: 'Error al actualizar el listado de personajes simple',
-                    text: error,
+                    text: error.message,
                     showConfirmButton: true
                 });
             }

@@ -15,7 +15,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatButtonModule } from '@angular/material/button';
 import { MatSelectModule } from '@angular/material/select';
-import {MatAutocompleteModule} from '@angular/material/autocomplete';
+import { MatAutocompleteModule } from '@angular/material/autocomplete';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatExpansionModule } from '@angular/material/expansion';
@@ -46,6 +46,7 @@ import { NuevoPersonajeComponent } from './components/nuevo-personaje/nuevo-pers
 import { DetallesRazaComponent } from './components/Detalles/detalles-raza/detalles-raza.component';
 import { ListadoComponent } from './components/shared/listado/listado.component';
 import { ListadoRazasComponent } from './components/shared/listado-razas/listado-razas.component';
+import { ListadoConjurosComponent } from './components/shared/listado-conjuros/listado-conjuros.component';
 
 @NgModule({
     declarations: [
@@ -63,6 +64,7 @@ import { ListadoRazasComponent } from './components/shared/listado-razas/listado
         DetallesRazaComponent,
         ListadoComponent,
         ListadoRazasComponent,
+        ListadoConjurosComponent,
     ],
     imports: [
         BrowserModule,

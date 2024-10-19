@@ -1,4 +1,6 @@
 import { Component, Input, OnInit } from '@angular/core';
+import { AptitudSortilega } from 'src/app/interfaces/Aptitud-sortilega';
+import { Conjuro } from 'src/app/interfaces/conjuro';
 import { Personaje } from 'src/app/interfaces/personaje';
 import { FichaPersonajeService } from 'src/app/services/ficha-personaje.service';
 
@@ -98,24 +100,24 @@ export class DetallesPersonajeComponent implements OnInit {
         Origen: ${dote.Origen}`;
     }
 
-    getTooltip_Conjuros(conjuro: any): string {
-        return `${conjuro.Manual} - ${conjuro.Pagina}
+    getTooltip_Conjuros(conjuro: Conjuro): string {
+        return `${conjuro.Manual}
         
         ${conjuro.Descripcion}
         
-        ${conjuro.Oficial == 1 ? 'Contenido Homebrew' : ''}`;
+        ${conjuro.Oficial ? 'Contenido Homebrew' : ''}`;
     }   
 
-    getTooltip_Sortilegas(sortilega: any): string {
-        return `Usos diarios: ${sortilega.Usos}
+    getTooltip_Sortilegas(sortilega: AptitudSortilega): string {
+        return `Usos diarios: ${sortilega.Usos_diarios}
         Dgs necesarios para usarlo: ${sortilega.Dgs_necesarios}
         Nivel de lanzador de: ${sortilega.Nivel_lanzador}
         Origen: ${sortilega.Origen}
         
-        ${sortilega.Manual} - ${sortilega.Pagina}
+        ${sortilega.Conjuro.Manual}
         
-        ${sortilega.Descripcion}
+        ${sortilega.Descripcion ? sortilega.Descripcion : ''}
         
-        ${sortilega.Oficial == 1 ? 'Contenido Homebrew' : ''}`;
+        ${sortilega.Conjuro.Oficial ? 'Contenido Homebrew' : ''}`;
     }    
 }

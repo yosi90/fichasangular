@@ -1,4 +1,4 @@
-export interface Rasgos {
+export interface Rasgo {
     Id: number;
     Nombre: string;
     Descripcion: string;

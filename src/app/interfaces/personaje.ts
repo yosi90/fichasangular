@@ -1,5 +1,7 @@
+import { AptitudSortilega } from "./Aptitud-sortilega";
+import { Conjuro } from "./conjuro";
 import { PersonajeSimple } from "./simplificaciones/personaje-simple";
-import { Tipo_criatura } from "./tipo_criatura";
+import { TipoCriatura } from "./tipo_criatura";
 
 export interface Personaje extends PersonajeSimple {
     desgloseClases: {
@@ -20,7 +22,7 @@ export interface Personaje extends PersonajeSimple {
         Valor: number;
         Origen: string;
     }[]
-    Tipo_criatura: Tipo_criatura;
+    Tipo_criatura: TipoCriatura;
     Subtipos: {
         Nombre: string;
     }[]
@@ -150,13 +152,7 @@ export interface Personaje extends PersonajeSimple {
         Ajuste_nivel: number;
         Heredada: boolean;
     }[]
-    Conjuros: {
-        Nombre: string;
-        Descripcion: string;
-        Manual: string;
-        Pagina: number;
-        Oficial: boolean;
-    }[]
+    Conjuros: Conjuro[];
     Claseas: {
         Nombre: string;
         Extra: string;
@@ -183,28 +179,18 @@ export interface Personaje extends PersonajeSimple {
         Pagina: number;
         Extra: string;
         Origen: string;
-    }[]
+    }[];
     Ventajas: {
         Nombre: string;
-    }[]
+    }[];
     Idiomas: {
         Nombre: string;
         Descripcion: string;
         Secreto: boolean;
         Oficial: boolean;
-    }[]
-    Sortilegas: {
-        Nombre: string;
-        Descripcion: string;
-        Manual: string;
-        Pagina: number;
-        Dgs_necesarios: number;
-        Usos: string;
-        Nivel_lanzador: string;
-        Origen: string;
-        Oficial: boolean;
-    }[]
+    }[];
+    Sortilegas: AptitudSortilega[];
     Escuelas_prohibidas: {
         Nombre: string;
-    }[]
+    }[];
 }

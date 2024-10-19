@@ -6,14 +6,14 @@ import { Personaje } from '../interfaces/personaje';
 import { environment } from 'src/environments/environment';
 import { RazaSimple } from '../interfaces/simplificaciones/raza-simple';
 import Swal from 'sweetalert2';
-import { Tipo_criatura } from '../interfaces/tipo_criatura';
+import { TipoCriatura } from '../interfaces/tipo_criatura';
 
 @Injectable({
     providedIn: 'root'
 })
 export class PersonajeService {
 
-    constructor(public db: Database, private http: HttpClient) { }
+    constructor(private db: Database, private http: HttpClient) { }
 
     async getDetallesPersonaje(id: number): Promise<Observable<Personaje>> {
         return new Observable((observador) => {
@@ -125,7 +125,7 @@ export class PersonajeService {
         this.d_pjs().subscribe(
             response => {
                 response.forEach((element: {
-                    i: any; n: any; dcp: any; dh: any; tm: any; a: any; ca: any; an: any; cd: any; cv: any; ra: any; tc: Tipo_criatura; f: any; mf: any; d: any; md: any; co: any; mco: any; int: any; mint: any; s: any; 
+                    i: any; n: any; dcp: any; dh: any; tm: any; a: any; ca: any; an: any; cd: any; cv: any; ra: any; tc: TipoCriatura; f: any; mf: any; d: any; md: any; co: any; mco: any; int: any; mint: any; s: any; 
                     ms: any; car: any; mcar: any; de: any; ali: any; g: any; ncam: any; ntr: any; ju: any; nst: any; v: any; cor: any; na: any; vo: any; t: any; e: any; o: any; dg: any; cla: any; dom: any; stc: any; 
                     pla: any; con: any; esp: any; espX: any; rac: any; hab: any; habN: any; habC: any; habCa: any; habMc: any; habR: any; habRv: any; habX: any; habV: any; habCu: any; dot: any; dotD: string; 
                     dotB: string; dotP: any; dotX: any; dotO: any; ve: any; idi: any; sor: any; pgl: any; ini_v: any; pr_v: { Valor: number; Origen: string; }[]; edad: any; alt: any; peso: any; salv: any; rds: any; 
@@ -228,34 +228,6 @@ export class PersonajeService {
                                 Origen: partes[1],
                             });
                         }
-                    let con: { Nombre: string; Descripcion: string; Manual: string; Pagina: number; Oficial: boolean; }[] = [];
-                    if (element.con)
-                        for (let index = 0; index < element.con.length; index++) {
-                            let partes = element.con[index].split(";");
-                            con.push({
-                                Nombre: partes[0],
-                                Descripcion: partes[4],
-                                Manual: partes[1],
-                                Pagina: partes[2],
-                                Oficial: partes[3],
-                            });
-                        }
-                    let sor: { Nombre: string; Descripcion: string; Manual: string; Pagina: number; Dgs_necesarios: number; Usos: string; Nivel_lanzador: string; Origen: string; Oficial: boolean; }[] = [];
-                    if (element.sor)
-                        for (let index = 0; index < element.sor.length; index++) {
-                            let partes = element.sor[index].split(";");
-                            sor.push({
-                                Nombre: partes[0],
-                                Descripcion: partes[8],
-                                Manual: partes[1],
-                                Pagina: partes[2],
-                                Dgs_necesarios: partes[3],
-                                Usos: partes[4],
-                                Nivel_lanzador: partes[5],
-                                Origen: partes[6],
-                                Oficial: partes[7],
-                            });
-                        }
                     const dom: [] = element.dom.split("|").map((item: string) => item.trim()).filter((item: string) => item.length > 0);
                     const stc: [] = element.stc.split("|").map((item: string) => item.trim()).filter((item: string) => item.length > 0);
                     const rac: [] = element.rac.split("|").map((item: string) => item.trim()).filter((item: string) => item.length > 0);
@@ -313,14 +285,14 @@ export class PersonajeService {
                         Dominios: dom,
                         Subtipos: stc,
                         Plantillas: element.pla,
-                        Conjuros: con,
+                        Conjuros: element.con,
                         Claseas: claseas,
                         Raciales: rac,
                         Habilidades: habilidades,
                         Dotes: dotes,
                         Ventajas: ve,
                         Idiomas: element.idi,
-                        Sortilegas: sor,
+                        Sortilegas: element.sor,
                         Salvaciones: element.salv,
                         Rds: rds,
                         Rcs: rcs,
@@ -340,11 +312,12 @@ export class PersonajeService {
                     timer: 2000
                 });
             },
-            onerror = (error: any) => {
+            
+            (error: any) => {
                 Swal.fire({
                     icon: 'warning',
                     title: 'Error al actualizar el listado de personajes',
-                    text: error,
+                    text: error.message,
                     showConfirmButton: true
                 });
             }

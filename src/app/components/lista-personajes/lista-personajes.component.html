@@ -72,7 +72,7 @@
 
                         <ng-container *ngSwitchCase="'Nombre'">
                             <button mat-stroked-button matTooltip="Click para ver este personaje"
-                                [matTooltipShowDelay]="200" color="accent" class="d-flex justify-content-start sombra3d-sm w-100"
+                                [matTooltipShowDelay]="2000" color="accent" class="d-flex justify-content-start sombra3d-sm w-100"
                                 (click)="CrearDetallesDe(element.Id); $event.stopPropagation();">
                                 <mat-icon>read_more</mat-icon>
                                 {{element[column]}}

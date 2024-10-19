@@ -86,7 +86,6 @@ export class TabControlComponent implements OnInit {
     }
     quitarDetallesRaza(value: string) {
         const tab = this.detallesRazaAbiertos.find(r => r.Nombre === value);
-        console.log(value, tab);
         if (!tab)
             return;
         const indexTab = this.detallesRazaAbiertos.indexOf(tab);

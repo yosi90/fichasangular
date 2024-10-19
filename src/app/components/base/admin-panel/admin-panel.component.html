@@ -25,6 +25,21 @@
                         <button mat-raised-button color="primary" (click)="sincronizarManuales();">
                             Manuales
                         </button>
+                        <button mat-raised-button color="primary" (click)="sincronizarTiposCriatura();">
+                            Tipos de criatura
+                        </button>
+                        <button mat-raised-button color="primary" (click)="sincronizarRasgos();">
+                            Rasgos
+                        </button>
+                        <button mat-raised-button color="primary" (click)="sincronizarConjuros();">
+                            Conjuros
+                        </button>
+                        <button mat-raised-button color="primary" (click)="sincronizarEscuelas();">
+                            Escuelas de conjuros
+                        </button>
+                        <button mat-raised-button color="primary" (click)="sincronizarDisciplinas();">
+                            Disciplinas de conjuros
+                        </button>
                     </mat-expansion-panel>
                 </mat-accordion>
             </mat-card>
@@ -32,7 +47,7 @@
         <div class="col-6">
             <mat-card class="m-2 p-3">
                 <button mat-raised-button color="{{serverStatusIcon === 'thumb_up' ? 'accent' : 'warn'}}"
-                    (click)="reverificar()">
+                    (click)="verificar()">
                     {{serverStatus}}
                     <mat-icon class="me-5">{{serverStatusIcon}}</mat-icon>
                 </button>

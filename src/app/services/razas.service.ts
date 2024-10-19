@@ -7,14 +7,16 @@ import { environment } from 'src/environments/environment';
 import Swal from 'sweetalert2';
 import { Maniobrabilidad } from '../interfaces/maniobrabilidad';
 import { Tamaño } from '../interfaces/tamaño';
-import { Tipo_criatura } from '../interfaces/tipo_criatura';
+import { TipoCriatura } from '../interfaces/tipo_criatura';
+import { Conjuro } from '../interfaces/conjuro';
+import { AptitudSortilega } from '../interfaces/Aptitud-sortilega';
 
 @Injectable({
     providedIn: 'root'
 })
 export class RazasService {
 
-    constructor(public db: Database, private http: HttpClient) { }
+    constructor(private db: Database, private http: HttpClient) { }
 
     async getRaza(id: number): Promise<Observable<Raza>> {
         return new Observable((observador) => {
@@ -59,6 +61,7 @@ export class RazasService {
                     Espacio: snapshot.child('Espacio').val(),
                     Alcance: snapshot.child('Alcance').val(),
                     Tipo_criatura: snapshot.child('Tipo_criatura').val(),
+                    Sortilegas: snapshot.child('Sortilegas').val(),
                 };
                 observador.next(raza); // Emitir el array de personajes
             };
@@ -125,6 +128,7 @@ export class RazasService {
                         Espacio: obj.child('Espacio').val(),
                         Alcance: obj.child('Alcance').val(),
                         Tipo_criatura: obj.child('Tipo_criatura').val(),
+                        Sortilegas: obj.child('Sortilegas').val(),
                     };
                     Razas.push(raza);
                 });
@@ -162,9 +166,8 @@ export class RazasService {
                     i: any; n: any; m: { Fuerza: number; Destreza: number; Constitucion: number; Inteligencia: number; Sabiduria: number; Carisma: number; }; ma: any;
                     aju: any; c: any; o: boolean; an: string; t: Tamaño; dg: any; rd: string; rc: string; re: string; he: boolean; mu: boolean; tmd: boolean; pr: any;
                     ant: number; va: number; co: number; na: number; vo: number; man: Maniobrabilidad; tr: number; es: number; ari: number; ars: number; pri: number; 
-                    prs: number; ea: number; em: number; ev: number; eve: number; esp: number; alc: number; tc: Tipo_criatura;
+                    prs: number; ea: number; em: number; ev: number; eve: number; esp: number; alc: number; tc: TipoCriatura; sor: AptitudSortilega[]
                 }) => {
-                    console.log(element);
                     set(
                         ref(db, `Razas/${element.i}`), {
                         Nombre: element.n,
@@ -202,9 +205,8 @@ export class RazasService {
                         Espacio: element.esp,
                         Alcance: element.alc,
                         Tipo_criatura: element.tc,
+                        Sortilegas: element.sor,
                     });
-                    if(element.pr)
-                        console.log(element.pr);
                 });
                 Swal.fire({
                     icon: 'success',
@@ -213,12 +215,11 @@ export class RazasService {
                     timer: 2000
                 });
             },
-            // error => console.log(error)
-            onerror = (error: any) => {
+            (error: any) => {
                 Swal.fire({
                     icon: 'warning',
                     title: 'Error al actualizar el listado de razas',
-                    text: error,
+                    text: error.message,
                     showConfirmButton: true
                 });
             }

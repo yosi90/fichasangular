@@ -1,6 +1,6 @@
-import { Rasgos } from "./rasgos";
+import { Rasgo } from "./rasgo";
 
-export interface Tipo_criatura {
+export interface TipoCriatura {
     Id: number;
     Nombre: string;
     Descripcion: string;
@@ -21,5 +21,5 @@ export interface Tipo_criatura {
     Limite_inteligencia: number;
     Tesoro: string;
     Id_alineamiento: number;
-    Rasgos: Rasgos[];
+    Rasgos: Rasgo[];
 }
