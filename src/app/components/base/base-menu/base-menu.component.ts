@@ -1,8 +1,9 @@
-import { Component, EventEmitter, OnInit, Output, ViewChild } from '@angular/core';
+import { Component, EventEmitter, OnInit, Output, QueryList, ViewChild, ViewChildren } from '@angular/core';
 import { MatDialog } from '@angular/material/dialog';
 import { SesionDialogComponent } from '../../sesion-dialog/sesion-dialog.component';
 import { UserService } from '../../../services/user.service';
 import { MatExpansionPanel } from '@angular/material/expansion';
+import { MatMenuTrigger } from '@angular/material/menu';
 
 @Component({
     selector: 'app-base-menu',
@@ -14,6 +15,8 @@ export class BaseMenuComponent implements OnInit {
     @ViewChild('segundo') segundo!: MatExpansionPanel;
     @ViewChild('tercero') tercero!: MatExpansionPanel;
     @ViewChild('cuarto') cuarto!: MatExpansionPanel;
+    
+    @ViewChildren(MatMenuTrigger) menuTriggers!: QueryList<MatMenuTrigger>;
 
     usr: string = 'Invitado';
 
@@ -42,39 +45,21 @@ export class BaseMenuComponent implements OnInit {
             this.cuarto.close();
     }
 
-    onMouseEnter(panel: number) {
-        switch (panel) {
-            case 1:
-                this.primero.open();
-                break;
-            case 2:
-                this.segundo.open();
-                break;
-            case 3:
-                this.tercero.open();
-                break;
-            case 4:
-                this.cuarto.open();
-                break;
-            default:
-                break;
-        }
+    openMenu(menu: MatMenuTrigger){
+        menu.openMenu();
     }
 
     @Output() NuevoPersonajeTab: EventEmitter<any> = new EventEmitter();
     AbrirNuevoPersonaje(): void {
         this.NuevoPersonajeTab.emit();
-        this.closeAcordion();
     }
 
     @Output() ListadoTab: EventEmitter<{tipo: string, operacion: string}> = new EventEmitter();
     AbrirListado(tipo: string, operacion: string): void {
         this.ListadoTab.emit({tipo, operacion});
-        this.closeAcordion();
     }
 
     openSesionDialog(): void {
-        this.closeAcordion();
         const dialogRef = this.dSesion.open(SesionDialogComponent, {
             // width: '80vw',
             // height: '70vh'

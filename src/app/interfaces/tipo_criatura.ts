@@ -12,14 +12,15 @@ export interface TipoCriatura {
     Id_reflejos: number;
     Id_voluntad: number;
     Id_puntos_habilidad: number;
-    Come: number;
-    Respira: number;
-    Duerme: number;
-    Recibe_críticos: number;
-    Puede_ser_flanqueado: number;
-    Pierde_constitucion: number;
+    Come: boolean;
+    Respira: boolean;
+    Duerme: boolean;
+    Recibe_criticos: boolean;
+    Puede_ser_flanqueado: boolean;
+    Pierde_constitucion: boolean;
     Limite_inteligencia: number;
     Tesoro: string;
     Id_alineamiento: number;
     Rasgos: Rasgo[];
+    Oficial: boolean;
 }

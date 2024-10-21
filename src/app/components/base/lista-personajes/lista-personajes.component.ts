@@ -1,7 +1,7 @@
 import { Component, ViewChild, OnInit, AfterViewInit, ElementRef, Output, EventEmitter } from '@angular/core';
 import { animate, state, style, transition, trigger } from '@angular/animations';
-import { ListaPersonajesService } from '../../services/listas/lista-personajes.service';
-import { PersonajeSimple } from '../../interfaces/simplificaciones/personaje-simple';
+import { ListaPersonajesService } from '../../../services/listas/lista-personajes.service';
+import { PersonajeSimple } from '../../../interfaces/simplificaciones/personaje-simple';
 import { MatTableDataSource } from '@angular/material/table';
 import { MatSort, Sort } from '@angular/material/sort';
 import { MatPaginator } from '@angular/material/paginator';

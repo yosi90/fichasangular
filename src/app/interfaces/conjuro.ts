@@ -29,22 +29,25 @@ export interface Conjuro {
     Descriptores: Id_nombre[];
     Nivel_clase: {
         "Id_clase": number;
-        "Nombre": string;
+        "Clase": string;
         "Nivel": number;
         "Espontaneo": boolean;
     }[];
     Nivel_dominio: {
         "Id_dominio": number;
-        "Nombre": string;
+        "Dominio": string;
         "Nivel": number;
         "Espontaneo": boolean;
     }[];
     Nivel_disciplinas: {
         "Id_disciplina": number;
-        "Nombre": string;
+        "Disciplina": string;
         "Nivel": number;
         "Espontaneo": boolean;
     }[];
-    Componentes: Clave_valor[];
+    Componentes: {
+        Componente: string;
+        Id_componente: number;
+    }[];
     Oficial: boolean;
 }

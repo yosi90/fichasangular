@@ -36,7 +36,7 @@
                 <mat-icon class="me-1">settings_accessibility</mat-icon>
                 <mat-chip class="h-auto warm m-1">{{pj.Raza.Nombre}}
                     <mat-chip class="ms-3 m-1">{{pj.Raza.Tamano.Nombre}}</mat-chip>
-                    <mat-chip class="m-1">{{pj.Tipo_criatura.Nombre}}</mat-chip>
+                    <mat-chip class="chip-clic m-1" (click)="verDetallesTipoCriatura(pj.Tipo_criatura);">{{pj.Tipo_criatura.Nombre}}</mat-chip>
                     <mat-chip class="m-1" *ngIf="pj.Raza.Dgs_adicionales.Cantidad">+{{pj.Raza.Dgs_adicionales.Cantidad}}{{pj.Raza.Dgs_adicionales.Dado}} Dgs de {{pj.Raza.Dgs_adicionales.Tipo_criatura}}</mat-chip>
                     <mat-chip class="m-1" *ngIf="pj.Raza.Ajuste_nivel">Ajuste de nivel +{{pj.Raza.Ajuste_nivel}}</mat-chip>
                 </mat-chip>
@@ -210,7 +210,7 @@
                         </button>
                     </mat-expansion-panel-header>
                     <mat-chip-set class="m-1">
-                        <mat-chip *ngFor="let c of pj.Conjuros" [matTooltip]="getTooltip_Conjuros(c)" matTooltipClass="tt-accent tt-multiline" [matTooltipShowDelay]="250">
+                        <mat-chip *ngFor="let c of pj.Conjuros" matTooltip="Pulsa para ver los detalles" [matTooltipShowDelay]="250" (click)="verDetallesConjuro(c);" class="sombra3d-sm" matTooltipClass="tt-accent">
                             {{c.Nombre}}
                         </mat-chip>
                     </mat-chip-set>
@@ -222,7 +222,7 @@
                         </button>
                     </mat-expansion-panel-header>
                     <mat-chip-set class="m-1">
-                        <mat-chip *ngFor="let s of pj.Sortilegas" [matTooltip]="getTooltip_Sortilegas(s)" matTooltipClass="tt-accent tt-multiline" [matTooltipShowDelay]="250">
+                        <mat-chip *ngFor="let s of pj.Sortilegas" matTooltip="Pulsa para ver los detalles" [matTooltipShowDelay]="250" (click)="verDetallesSortilega(s);" class="sombra3d-sm" matTooltipClass="tt-accent">
                             {{s.Conjuro.Nombre}}
                         </mat-chip>
                     </mat-chip-set>

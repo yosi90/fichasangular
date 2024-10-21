@@ -1,82 +1,81 @@
-import { Component, ElementRef, EventEmitter, Output, ViewChild } from '@angular/core';
+import { ChangeDetectorRef, Component, ElementRef, EventEmitter, Output, ViewChild } from '@angular/core';
 import { MatPaginator } from '@angular/material/paginator';
 import { MatSort } from '@angular/material/sort';
 import { MatTableDataSource } from '@angular/material/table';
-import { Raza } from 'src/app/interfaces/raza';
+import { Conjuro } from 'src/app/interfaces/conjuro';
+import { ConjurosService } from 'src/app/services/conjuros.service';
 import { ManualesService } from 'src/app/services/manuales.service';
-import { RazasService } from 'src/app/services/razas.service';
 
 @Component({
-  selector: 'app-listado-conjuros',
-  templateUrl: './listado-conjuros.component.html',
-  styleUrls: ['./listado-conjuros.component.sass']
+    selector: 'app-listado-conjuros',
+    templateUrl: './listado-conjuros.component.html',
+    styleUrls: ['./listado-conjuros.component.sass']
 })
 export class ListadoConjurosComponent {
-  razas: Raza[] = [];
-  Manuales: string[] = [];
-  defaultManual!: string;
-  razasDS = new MatTableDataSource(this.razas);
-  razaColumns = ['Nombre', 'Modificadores', 'Clase_predilecta', 'Manual', 'Ajuste_nivel', 'Dgs_adicionales'];
+    conjuros: Conjuro[] = [];
+    Manuales: string[] = [];
+    defaultManual!: string;
+    conjurosDS = new MatTableDataSource(this.conjuros);
+    conjuroColumns = ['Nombre', 'Manual', 'Arcano', 'Divino', 'Psionico', 'Alma'];
 
-  constructor(private rSvc: RazasService, private mSvc: ManualesService) { }
+    constructor(private cdr: ChangeDetectorRef, private cSvc: ConjurosService, private mSvc: ManualesService) { }
 
-  @ViewChild(MatSort) razaSort!: MatSort;
-  @ViewChild(MatPaginator) razaPaginator!: MatPaginator;
-  @ViewChild('razaTextInc', { read: ElementRef }) nombreText!: ElementRef;
+    @ViewChild(MatSort) conjuroSort!: MatSort;
+    @ViewChild(MatPaginator) conjuroPaginator!: MatPaginator;
+    @ViewChild('conjuroTextInc', { read: ElementRef }) nombreText!: ElementRef;
 
-  async ngOnInit(): Promise<void> {
-      (await this.rSvc.getRazas()).subscribe(razas => {
-          this.razas = razas;
-      });
-      (await this.mSvc.getManuales()).subscribe(manuales => {
-          manuales.unshift('Cualquiera');
-          this.Manuales = manuales;
-          this.defaultManual = this.Manuales[0];
-          this.filtroRazas();
-      });
-  }
+    ngAfterViewInit() {
+        this.conjurosDS.paginator = this.conjuroPaginator;
+        this.conjurosDS.sort = this.conjuroSort;
+        (this.cSvc.getConjuros()).subscribe(conjuros => {
+            this.conjuros = conjuros;
+            (this.mSvc.getManuales()).subscribe(manuales => {
+                manuales.unshift('Cualquiera');
+                this.Manuales = manuales;
+                this.defaultManual = this.Manuales[0];
+                this.cdr.detectChanges();
+                this.filtroConjuros();
+                this.cdr.detectChanges();
+            });
+        });
+    }
 
-  filtroRazas() {
-      if (this.nombreText) {
-          const texto = this.nombreText.nativeElement.value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
-          const homebrew = !(this.anuncioRazasHomebrew === 'Clic para mostar razas homebrew');
-          const razasFiltradas = this.razas.filter(raza =>
-              (texto === undefined || texto === '' || raza.Nombre.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().includes(texto)
-                  || raza.Modificadores.Fuerza.toString().includes(texto) || raza.Modificadores.Destreza.toString().includes(texto) || raza.Modificadores.Constitucion.toString().includes(texto)
-                  || raza.Modificadores.Inteligencia.toString().includes(texto) || raza.Modificadores.Sabiduria.toString().includes(texto) || raza.Modificadores.Carisma.toString().includes(texto)
-                  || raza.Clase_predilecta.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().includes(texto))
-              && (this.defaultManual == 'Cualquiera' || raza.Manual.includes(this.defaultManual))
-              && (homebrew || !homebrew && !raza.Homebrew)
-          );
-          this.razasDS = new MatTableDataSource(razasFiltradas);
-          setTimeout(() => {
-              this.razasDS.sort = this.razaSort;
-          }, 200);
-          this.razasDS.paginator = this.razaPaginator;
-          this.razaSort.active = 'Nombre';
-          this.razaSort.direction = 'asc';
-      }
-  }
+    filtroConjuros() {
+        const texto = this.nombreText?.nativeElement.value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase() ?? '';
+        const homebrew = !(this.anuncioConjurosHomebrew === 'Clic para mostar conjuros homebrew');
+        const conjurosFiltrados = this.conjuros.filter(conjuro =>
+            (texto === undefined || texto === '' || conjuro.Nombre.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().includes(texto))
+            && (this.defaultManual == 'Cualquiera' || conjuro.Manual.includes(this.defaultManual))
+            && (homebrew || !homebrew && !conjuro.Oficial)
+        );
+        this.conjurosDS = new MatTableDataSource(conjurosFiltrados);
+        setTimeout(() => {
+            this.conjurosDS.sort = this.conjuroSort;
+        }, 200);
+        this.conjurosDS.paginator = this.conjuroPaginator;
+        this.conjuroSort.active = 'Nombre';
+        this.conjuroSort.direction = 'asc';
+    }
 
-  anuncioRazasHomebrew: string = 'Clic para mostar razas homebrew';
-  AlternarRazasHombrew(value: string) {
-      if (value === 'Clic para mostar razas homebrew') {
-          this.anuncioRazasHomebrew = 'Mostrando razas homebrew';
-          this.razaColumns.push('Homebrew');
-      } else {
-          this.anuncioRazasHomebrew = 'Clic para mostar razas homebrew';
-          this.razaColumns.pop();
-      }
-      this.filtroRazas();
-  }
+    anuncioConjurosHomebrew: string = 'Clic para mostar conjuros homebrew';
+    AlternarConjurosHombrew(value: string) {
+        if (value === 'Clic para mostar conjuros homebrew') {
+            this.anuncioConjurosHomebrew = 'Mostrando conjuros homebrew';
+            this.conjuroColumns.push('Homebrew');
+        } else {
+            this.anuncioConjurosHomebrew = 'Clic para mostar conjuros homebrew';
+            this.conjuroColumns.pop();
+        }
+        this.filtroConjuros();
+    }
 
-  @Output() razaDetalles: EventEmitter<Raza> = new EventEmitter<Raza>();
-  verDetallesRaza(value: number) {
-      this.razaDetalles.emit(this.razas.find(r => r.Id === value));
-  }
+    @Output() conjuroDetalles: EventEmitter<Conjuro> = new EventEmitter<Conjuro>();
+    verDetallesConjuro(value: number) {
+        this.conjuroDetalles.emit(this.conjuros.find(c => c.Id === value));
+    }
 
-  @Output() razaSeleccionada: EventEmitter<Raza> = new EventEmitter<Raza>();
-  seleccionarRaza(value: number) {
-      this.razaSeleccionada.emit(this.razas.find(r => r.Id === value));
-  }
+    @Output() conjuroSeleccionado: EventEmitter<Conjuro> = new EventEmitter<Conjuro>();
+    seleccionarConjuro(value: number) {
+        this.conjuroSeleccionado.emit(this.conjuros.find(c => c.Id === value));
+    }
 }

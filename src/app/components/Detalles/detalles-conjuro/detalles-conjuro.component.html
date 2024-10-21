@@ -1,0 +1,159 @@
+<div class="container-fluid" *ngIf="conjuro">
+    <div class="row">
+        <div class="col-md-4 col-12 p-2">
+            <div class="d-flex flex-wrap align-items-center sombra-caja-sm rounded p-2 my-2" *ngIf="ap && fuente">
+                <mat-chip class="h-auto warm w-100 sombra-caja-sm py-2 m-1">
+                    <mat-chip class="sombra3d-sm m-1 ms-2"><mat-icon>follow_the_signs</mat-icon></mat-chip>
+                    Estas viendo una aptitud sortílega de
+                    <mat-chip class="sombra3d-sm m-1">{{fuente}}</mat-chip>
+                </mat-chip>
+                <mat-chip class="sombra3d-sm m-1">La utiliza como un lanzador de nivel {{ap.Nivel_lanzador}}</mat-chip>
+                <mat-chip class="h-auto sombra3d-sm m-1">Usos diarios <mat-chip class="sombra3d-sm m-1">{{ap.Usos_diarios}}</mat-chip></mat-chip>
+                <mat-chip class="sombra3d-sm m-1" *ngIf="ap.Dgs_necesarios > 0">solo la puede usar si tiene al menos {{ap.Dgs_necesarios}} DGs</mat-chip>
+                <mat-chip class="sombra3d-sm m-1" *ngIf="ap.Origen != fuente">La obtuvo de: {{ap.Origen}}</mat-chip>
+                <div class="d-flex flex-wrap align-items-center rounded p-1 mt-2" *ngIf="ap.Descripcion && ap.Descripcion != 'No especifica'">
+                    <mat-chip class="w-100 sombra-caja-sm m-1 mb-2">Descripción <mat-icon class="ms-2">short_text</mat-icon></mat-chip>
+                    <p class="m-1">{{ap.Descripcion}}</p>
+                </div>
+            </div>
+            <div class="d-flex flex-wrap align-items-center sombra-caja-sm rounded p-2 my-2">
+                <mat-chip class="h-auto warm w-100 sombra-caja-sm py-2 m-1" [ngClass]="conjuro.Descriptores ? 'titulo' : ''">
+                    {{conjuro.Nombre}}
+                    <mat-icon class="ms-2">auto_awesome</mat-icon>
+                    <mat-chip class="sombra3d-sm m-1 ms-4" *ngIf="conjuro.Descriptores">
+                        {{getDescriptores(conjuro.Descriptores)}}
+                    </mat-chip>
+                </mat-chip>
+                <mat-chip class="sombra3d-sm m-1"><mat-icon class="me-2">auto_stories</mat-icon>{{conjuro.Manual}}</mat-chip>
+                <mat-chip class="h-auto warm sombra3d-sm m-1" *ngIf="conjuro.Arcano">Arcano <mat-chip class="sombra3d-sm m-1">{{conjuro.Escuela.Nombre}}</mat-chip></mat-chip>
+                <mat-chip class="warm sombra3d-sm m-1" *ngIf="conjuro.Divino">Divino</mat-chip>
+                <mat-chip class="h-auto warm sombra3d-sm m-1" *ngIf="conjuro.Psionico">Psionico <mat-chip class="sombra3d-sm m-1">{{conjuro.Disciplina.Nombre}}</mat-chip></mat-chip>
+                <mat-chip class="warm sombra3d-sm m-1" *ngIf="conjuro.Alma">Alma</mat-chip>
+                <mat-chip class="warm sombra3d-sm m-1" *ngIf="conjuro.Resistencia_conjuros">Ofrece resistencia a conjuros</mat-chip>
+                <mat-chip class="warm sombra3d-sm m-1" *ngIf="conjuro.Resistencia_poderes">Ofrece resistencia a poderes</mat-chip>
+                <mat-chip class="warm sombra3d-sm m-1" *ngIf="conjuro.Permanente">Puede hacerse permanente</mat-chip>
+                <mat-chip class="h-auto warm sombra3d-sm m-1" *ngIf="conjuro.Puntos_poder">Cuesta<mat-chip class="sombra3d-sm m-1">{{conjuro.Puntos_poder}}</mat-chip>puntos de poder</mat-chip>
+                <mat-chip class="warm sombra3d-sm m-1" *ngIf="conjuro.Oficial" matTooltip="Este conjuro es homebrew" matTooltipClass="tt-accent">No es oficial</mat-chip>
+                <div class="d-flex flex-wrap align-items-center rounded p-1 mt-2" *ngIf="conjuro.Descripcion_aumentos != 'No especifica'">
+                    <mat-chip class="w-100 sombra-caja-sm m-1 mb-2">Descripción de los aumentos<mat-icon class="ms-2">short_text</mat-icon></mat-chip>
+                    <p class="m-1">{{conjuro.Descripcion_aumentos}}</p>
+                </div>
+            </div>
+            <div class="d-flex flex-wrap align-items-center sombra-caja-sm rounded p-2 my-2">
+                <mat-chip class="h-auto w-100 sombra-caja-sm py-2 m-1 mb-2">Detalles<mat-icon class="ms-2">format_list_numbered</mat-icon></mat-chip>
+                <mat-chip class="h-auto sombra3d-sm m-1" *ngIf="conjuro.Tiempo_lanzamiento">Tiempo de lanzamiento <mat-chip class="sombra3d-sm m-1">{{conjuro.Tiempo_lanzamiento}}</mat-chip></mat-chip>
+                <mat-chip class="h-auto sombra3d-sm m-1" *ngIf="conjuro.Alcance">Alcance <mat-chip class="sombra3d-sm m-1">{{conjuro.Alcance != '0' ? conjuro.Alcance : 'Personal'}}</mat-chip></mat-chip>
+                <mat-chip class="h-auto sombra3d-sm m-1" *ngIf="conjuro.Objetivo && conjuro.Objetivo != 'No especifica'" [ngClass]="conjuro.Objetivo.length > 60 ? 'py-2' : ''">
+                    Objetivo 
+                    <mat-chip class="sombra3d-sm m-1" [ngClass]="conjuro.Objetivo.length > 60 ? 'chip-multilinea' : ''">
+                        {{conjuro.Objetivo}}
+                    </mat-chip>
+                </mat-chip>
+                <mat-chip class="h-auto sombra3d-sm m-1" *ngIf="conjuro.Efecto && conjuro.Efecto != 'No especifica'" [ngClass]="conjuro.Efecto.length > 60 ? 'py-2' : ''">
+                    Efecto 
+                    <mat-chip class="sombra3d-sm m-1" [ngClass]="conjuro.Efecto.length > 60 ? 'chip-multilinea' : ''">
+                        {{conjuro.Efecto}}
+                    </mat-chip>
+                </mat-chip>
+                <mat-chip class="h-auto sombra3d-sm p-1 m-1" *ngIf="conjuro.Area && conjuro.Area != 'No especifica'" [ngClass]="conjuro.Area.length > 60 ? 'py-2' : ''">
+                    Área 
+                    <mat-chip class="sombra3d-sm ms-2" [ngClass]="conjuro.Area.length > 60 ? 'chip-multilinea' : ''">
+                        {{conjuro.Area}}
+                    </mat-chip>
+                </mat-chip>
+                <mat-chip class="h-auto sombra3d-sm p-1 m-1" *ngIf="conjuro.Duracion && conjuro.Duracion != 'No especifica'" [ngClass]="conjuro.Duracion.length > 60 ? 'py-2' : ''">
+                    Duración 
+                    <mat-chip class="sombra3d-sm ms-2" [ngClass]="conjuro.Duracion.length > 60 ? 'chip-multilinea' : ''">
+                        {{conjuro.Duracion}}
+                    </mat-chip>
+                </mat-chip>
+                <mat-chip class="h-auto sombra3d-sm p-1 m-1" *ngIf="conjuro.Tipo_salvacion && conjuro.Tipo_salvacion != 'No especifica'" [ngClass]="conjuro.Tipo_salvacion.length > 60 ? 'py-2' : ''">
+                    Salvación 
+                    <mat-chip class="sombra3d-sm ms-2" [ngClass]="conjuro.Tipo_salvacion.length > 60 ? 'chip-multilinea' : ''">
+                        {{conjuro.Tipo_salvacion}}
+                    </mat-chip>
+                </mat-chip>
+            </div>
+        </div>
+        <div class="col-md-4 col-12 p-2">
+            <div class="d-flex flex-wrap align-items-center sombra-caja-sm rounded p-2 my-2">
+                <mat-chip class="w-100 sombra-caja-sm m-1 mb-2">Descripción<mat-icon class="ms-2">short_text</mat-icon></mat-chip>
+                <p class="m-1">{{conjuro.Descripcion}}</p>
+            </div>
+        </div>
+        <div class="col-md-4 col-12 p-2">
+            <mat-accordion>
+                <mat-expansion-panel *ngIf="conjuro.Componentes">
+                    <mat-expansion-panel-header>
+                        <button mat-stroked-button color="accent" class="rounded-0 rounded-top">
+                            <h2 class="mb-0">Componentes</h2>
+                        </button>
+                    </mat-expansion-panel-header>
+                    <mat-chip-set class="m-1">
+                        <mat-chip *ngFor="let c of conjuro.Componentes">
+                            {{c.Componente}}
+                        </mat-chip>
+                    </mat-chip-set>
+                    <div class="d-flex flex-wrap align-items-center p-1" *ngIf="conjuro.Descripcion_componentes != 'No especifica'">
+                        <mat-chip class="w-100 sombra-caja-sm m-1 mb-2">Descripción<mat-icon class="ms-2">short_text</mat-icon></mat-chip>
+                        <p class="m-1">{{conjuro.Descripcion_componentes}}</p>
+                    </div>
+                </mat-expansion-panel>
+                <mat-expansion-panel *ngIf="conjuro.Nivel_clase">
+                    <mat-expansion-panel-header>
+                        <button mat-stroked-button color="accent" class="rounded-0">
+                            <h2 class="mb-0">Niveles de acceso según clase</h2>
+                        </button>
+                    </mat-expansion-panel-header>
+                    <mat-chip-set class="m-1">
+                        <mat-chip *ngFor="let c of conjuro.Nivel_clase" class="h-auto sombra3d-sm">
+                            {{c.Clase}}
+                            <mat-chip class="sombra3d-sm m-1 ms-4">
+                                {{c.Nivel}}
+                            </mat-chip>
+                            <mat-chip class="sombra3d-sm m-1 ms-4" *ngIf="c.Espontaneo">
+                                Espontáneo
+                            </mat-chip>
+                        </mat-chip>
+                    </mat-chip-set>
+                </mat-expansion-panel>
+                <mat-expansion-panel *ngIf="conjuro.Nivel_dominio">
+                    <mat-expansion-panel-header>
+                        <button mat-stroked-button color="accent" class="rounded-0">
+                            <h2 class="mb-0">Niveles de acceso según dominio</h2>
+                        </button>
+                    </mat-expansion-panel-header>
+                    <mat-chip-set class="m-1">
+                        <mat-chip *ngFor="let c of conjuro.Nivel_dominio" class="h-auto sombra3d-sm">
+                            {{c.Dominio}}
+                            <mat-chip class="sombra3d-sm m-1 ms-4">
+                                {{c.Nivel}}
+                            </mat-chip>
+                            <mat-chip class="sombra3d-sm m-1 ms-4" *ngIf="c.Espontaneo">
+                                Espontáneo
+                            </mat-chip>
+                        </mat-chip>
+                    </mat-chip-set>
+                </mat-expansion-panel>
+                <mat-expansion-panel *ngIf="conjuro.Nivel_disciplinas">
+                    <mat-expansion-panel-header>
+                        <button mat-stroked-button color="accent" class="rounded-0 rounded-bottom">
+                            <h2 class="mb-0">Niveles de acceso según disciplina</h2>
+                        </button>
+                    </mat-expansion-panel-header>
+                    <mat-chip-set class="m-1">
+                        <mat-chip *ngFor="let c of conjuro.Nivel_disciplinas" class="h-auto sombra3d-sm">
+                            {{c.Disciplina}}
+                            <mat-chip class="sombra3d-sm m-1 ms-4">
+                                {{c.Nivel}}
+                            </mat-chip>
+                            <mat-chip class="sombra3d-sm m-1 ms-4" *ngIf="c.Espontaneo">
+                                Espontáneo
+                            </mat-chip>
+                        </mat-chip>
+                    </mat-chip-set>
+                </mat-expansion-panel>
+            </mat-accordion>
+        </div>
+    </div>
+</div>

@@ -15,7 +15,7 @@ export class TipoCriaturaService {
 
     getTipoCriatura(id: number): Observable<TipoCriatura> {
         return new Observable((observador) => {
-            const dbRef = ref(this.db, `tiposCriatura/${id}`);
+            const dbRef = ref(this.db, `TiposCriatura/${id}`);
             let unsubscribe: Unsubscribe;
 
             const onNext = (snapshot: any) => {
@@ -34,13 +34,14 @@ export class TipoCriaturaService {
                     Come: snapshot.child('Come').val(),
                     Respira: snapshot.child('Respira').val(),
                     Duerme: snapshot.child('Duerme').val(),
-                    Recibe_críticos: snapshot.child('Recibe_críticos').val(),
+                    Recibe_criticos: snapshot.child('Recibe_críticos').val(),
                     Puede_ser_flanqueado: snapshot.child('Puede_ser_flanqueado').val(),
                     Pierde_constitucion: snapshot.child('Pierde_constitucion').val(),
                     Limite_inteligencia: snapshot.child('Limite_inteligencia').val(),
                     Tesoro: snapshot.child('Tesoro').val(),
                     Id_alineamiento: snapshot.child('Id_alineamiento').val(),
                     Rasgos: snapshot.child('Rasgos').val(),
+                    Oficial: snapshot.child('Oficial').val(),
                 };
                 observador.next(tipoCriatura);
             };
@@ -58,7 +59,7 @@ export class TipoCriaturaService {
 
     getTiposCriatura(): Observable<TipoCriatura[]> {
         return new Observable((observador) => {
-            const dbRef = ref(this.db, 'tiposCriatura');
+            const dbRef = ref(this.db, 'TiposCriatura');
             let unsubscribe: Unsubscribe;
 
             const onNext = (snapshot: any) => {
@@ -79,13 +80,14 @@ export class TipoCriaturaService {
                         Come: obj.child('Come').val(),
                         Respira: obj.child('Respira').val(),
                         Duerme: obj.child('Duerme').val(),
-                        Recibe_críticos: obj.child('Recibe_críticos').val(),
+                        Recibe_criticos: obj.child('Recibe_críticos').val(),
                         Puede_ser_flanqueado: obj.child('Puede_ser_flanqueado').val(),
                         Pierde_constitucion: obj.child('Pierde_constitucion').val(),
                         Limite_inteligencia: obj.child('Limite_inteligencia').val(),
                         Tesoro: obj.child('Tesoro').val(),
                         Id_alineamiento: obj.child('Id_alineamiento').val(),
                         Rasgos: obj.child('Rasgos').val(),
+                        Oficial: obj.child('Oficial').val(),
                     };
                     TiposCriatura.push(tipoCriatura);
                 });
@@ -115,7 +117,7 @@ export class TipoCriaturaService {
             response => {
                 response.forEach((element: {
                     i: number; n: string; d: string; ma: any; itd: number; ntd: string; ia: number; ift: number; ir: number; iv: number; iph: number; c: boolean; r: Boolean; du: boolean; cr: boolean; f: boolean; pc: boolean;
-                    li: number; t: string; ial: number; ra: any;
+                    li: number; t: string; ial: number; ra: any; o: boolean;
                 }) => {
                     set(
                         ref(db_instance, `TiposCriatura/${element.i}`), {
@@ -140,6 +142,7 @@ export class TipoCriaturaService {
                         Tesoro: element.t,
                         Id_alineamiento: element.ial,
                         Rasgos: element.ra,
+                        Oficial: element.o
                     });
                 });
                 Swal.fire({

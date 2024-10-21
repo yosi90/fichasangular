@@ -1,7 +1,8 @@
-import { Component, Input, OnInit } from '@angular/core';
+import { Component, EventEmitter, Input, OnInit, Output } from '@angular/core';
 import { AptitudSortilega } from 'src/app/interfaces/Aptitud-sortilega';
 import { Conjuro } from 'src/app/interfaces/conjuro';
 import { Personaje } from 'src/app/interfaces/personaje';
+import { TipoCriatura } from 'src/app/interfaces/tipo_criatura';
 import { FichaPersonajeService } from 'src/app/services/ficha-personaje.service';
 
 @Component({
@@ -99,25 +100,20 @@ export class DetallesPersonajeComponent implements OnInit {
 
         Origen: ${dote.Origen}`;
     }
+    
+    @Output() conjuroDetalles: EventEmitter<Conjuro> = new EventEmitter<Conjuro>();
+    verDetallesConjuro(value: Conjuro) {
+        this.conjuroDetalles.emit(value);
+    }
+    
+    @Output() sortilegaDetalles: EventEmitter<AptitudSortilega> = new EventEmitter<AptitudSortilega>();
+    verDetallesSortilega(value: AptitudSortilega) {
+        if(this.pj.Sortilegas)
+            this.sortilegaDetalles.emit(value);
+    }
 
-    getTooltip_Conjuros(conjuro: Conjuro): string {
-        return `${conjuro.Manual}
-        
-        ${conjuro.Descripcion}
-        
-        ${conjuro.Oficial ? 'Contenido Homebrew' : ''}`;
-    }   
-
-    getTooltip_Sortilegas(sortilega: AptitudSortilega): string {
-        return `Usos diarios: ${sortilega.Usos_diarios}
-        Dgs necesarios para usarlo: ${sortilega.Dgs_necesarios}
-        Nivel de lanzador de: ${sortilega.Nivel_lanzador}
-        Origen: ${sortilega.Origen}
-        
-        ${sortilega.Conjuro.Manual}
-        
-        ${sortilega.Descripcion ? sortilega.Descripcion : ''}
-        
-        ${sortilega.Conjuro.Oficial ? 'Contenido Homebrew' : ''}`;
-    }    
+    @Output() tipoDetalles: EventEmitter<TipoCriatura> = new EventEmitter<TipoCriatura>();
+    verDetallesTipoCriatura(value: TipoCriatura) {
+        this.tipoDetalles.emit(value);
+    }
 }

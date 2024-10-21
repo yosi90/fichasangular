@@ -1,0 +1,103 @@
+@import ../_variables
+@import ../_sombras
+
+mat-chip.h-auto
+    height: auto
+
+    mat-chip
+        background-color: $contrast
+
+mat-chip.warm
+    background-color: #f44336
+
+::ng-deep .tt-accent *
+    background-color: $active
+
+::ng-deep .tt-multiline
+    white-space: pre-line
+    text-align: start
+
+::ng-deep span.mdc-evolution-chip__action
+    flex-wrap: wrap
+    justify-content: flex-start
+
+.col-md-4 div, .col-12 div
+    background-color: #3d3d3d
+    color: #ccc
+    font-weight: 500
+
+    border: 1px ridge #747474
+
+    mat-chip ::ng-deep .mat-mdc-chip-action-label
+        display: contents
+
+.mat-accordion .mat-expansion-panel
+    border: 1px ridge #747474
+    border-radius: 0
+
+    padding: 0
+    margin-bottom: 1px
+
+    &:first-of-type
+        border-top-right-radius: 8px
+        border-top-left-radius: 8px
+
+    &:last-of-type
+        border-bottom-right-radius: 8px
+        border-bottom-left-radius: 8px
+
+    mat-expansion-panel-header
+        max-height: 48px
+
+        mat-icon
+            font-size: 24px
+            width: auto
+            height: auto
+
+    mat-expansion-panel-header button
+        justify-content: left
+
+        position: absolute
+        right: 0
+        bottom: 0
+        left: 0
+        height: 100%
+        width: 100%
+
+        background-color: $primary
+        font-weight: 500
+
+    ::ng-deep .mat-expansion-panel-body
+        padding: 0
+
+        button
+            justify-content: right
+
+            width: 100%
+
+            border-radius: 0
+
+        button:nth-child(even):not([disabled]):not([mat-raised-button])
+            background-color: #ccc
+
+        button:nth-child(odd):not([disabled]):not([mat-raised-button])
+            background-color: lightgray
+
+    mat-chip-set::ng-deep.mdc-evolution-chip-set__chips
+        display: flex
+        align-items: center
+
+.chip-multilinea
+    height: auto
+    
+    white-space: normal
+
+    padding: 6px 1px
+
+    ::ng-deep.mdc-evolution-chip__text-label
+        white-space: normal
+        word-wrap: break-word
+
+.chip-clic
+    &:hover
+        cursor: pointer

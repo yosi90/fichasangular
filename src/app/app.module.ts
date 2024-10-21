@@ -30,7 +30,7 @@ import { MatPaginatorModule } from '@angular/material/paginator';
 import { MatSidenavModule } from '@angular/material/sidenav';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { FormsModule } from '@angular/forms';
-import { ListaPersonajesComponent } from './components/lista-personajes/lista-personajes.component';
+import { ListaPersonajesComponent } from './components/base/lista-personajes/lista-personajes.component';
 import { HttpClientModule } from '@angular/common/http';
 import { DataServices } from './data.services';
 import { NgbModule } from '@ng-bootstrap/ng-bootstrap';
@@ -47,6 +47,9 @@ import { DetallesRazaComponent } from './components/Detalles/detalles-raza/detal
 import { ListadoComponent } from './components/shared/listado/listado.component';
 import { ListadoRazasComponent } from './components/shared/listado-razas/listado-razas.component';
 import { ListadoConjurosComponent } from './components/shared/listado-conjuros/listado-conjuros.component';
+import { DetallesConjuroComponent } from './components/detalles/detalles-conjuro/detalles-conjuro.component';
+import { ListadoTiposCriaturaComponent } from './components/shared/listado-tipos-criatura/listado-tipos-criatura.component';
+import { DetallesTipoCriaturaComponent } from './components/detalles/detalles-tipo-criatura/detalles-tipo-criatura.component';
 
 @NgModule({
     declarations: [
@@ -65,6 +68,9 @@ import { ListadoConjurosComponent } from './components/shared/listado-conjuros/l
         ListadoComponent,
         ListadoRazasComponent,
         ListadoConjurosComponent,
+        DetallesConjuroComponent,
+        ListadoTiposCriaturaComponent,
+        DetallesTipoCriaturaComponent,
     ],
     imports: [
         BrowserModule,

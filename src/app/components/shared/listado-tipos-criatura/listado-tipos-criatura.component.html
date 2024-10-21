@@ -1,29 +1,29 @@
 <div id="container-lista" class="container-fluid bg-dark h-100">
     <div class="row position-relative justify-content-center align-items-center">
-        <button id="filtros" matTooltip="Filtros de conjuros" #filtros mat-icon-button
+        <button id="filtros" matTooltip="Filtros de tipos" #filtros mat-icon-button
             [matMenuTriggerFor]="menuConjuros" class="filtros bg-accent">
             <mat-icon>filter_alt</mat-icon>
         </button>
         <mat-menu id="containerMenu" #menuConjuros="matMenu" class="me-1">
             <div id="menu">
-                <mat-form-field (click)="$event.stopPropagation();" (keyup)="filtroConjuros();">
+                <mat-form-field (click)="$event.stopPropagation();" (keyup)="filtroTipos();">
                     <mat-label>Incluye texto</mat-label>
-                    <input #conjuroTextInc matInput placeholder="Texto a buscar">
+                    <input #tipoTextInc matInput placeholder="Texto a buscar">
                 </mat-form-field>
                 <mat-form-field (click)="$event.stopPropagation();">
                     <mat-label>Manual</mat-label>
                     <mat-select #manualconjuro appearance="fill" [(value)]="defaultManual"
-                        (selectionChange)="filtroConjuros();">
+                        (selectionChange)="filtroTipos();">
                         <mat-option *ngFor="let m of Manuales" [value]="m">{{m}}</mat-option>
                     </mat-select>
                 </mat-form-field>
             </div>
             <mat-chip-option #conjurosHomebrew color="warn" class="mt-4 mb-1"
-                (click)="$event.stopPropagation(); AlternarConjurosHombrew(conjurosHomebrew.value);">{{anuncioConjurosHomebrew}}</mat-chip-option>
+                (click)="$event.stopPropagation(); AlternarTiposHombrew(conjurosHomebrew.value);">{{anuncioTiposHomebrew}}</mat-chip-option>
         </mat-menu>
 
-        <table id="conjuros" #tablaConjuros mat-table [dataSource]="conjurosDS" matSort *ngIf="conjuros.length > 0; else cargando">
-            <ng-container matColumnDef="{{column}}" *ngFor="let column of conjuroColumns">
+        <table id="tipos" #tablaTipos mat-table [dataSource]="tiposDS" matSort *ngIf="tipos.length > 0; else cargando">
+            <ng-container matColumnDef="{{column}}" *ngFor="let column of tipoColumns">
                 <th class="lead" mat-header-cell *matHeaderCellDef mat-sort-header sortActionDescription="Ordenar por {{column}}">
                     {{column.replace('_', ' ')}}
                 </th>
@@ -31,8 +31,8 @@
                     <p class="mb-0" *ngIf="column == 'Manual'">
                         {{element[column]}}
                     </p>
-                    <button mat-stroked-button matTooltip="Clic para ver este conjuro" [matTooltipShowDelay]="200" *ngIf="column == 'Nombre'" color="accent" class="d-flex justify-content-start sombra3d w-100"
-                        (click)="verDetallesConjuro(element.Id); $event.stopPropagation();">
+                    <button mat-stroked-button matTooltip="Clic para ver este tipo" [matTooltipShowDelay]="200" *ngIf="column == 'Nombre'" color="accent" class="d-flex justify-content-start sombra3d w-100"
+                        (click)="verDetallesTipo(element.Id); $event.stopPropagation();">
                         <mat-icon>read_more</mat-icon>
                         {{element[column]}}
                     </button>
@@ -42,17 +42,17 @@
                         </p>
                     </div>
                     <div class="d-flex justify-content-center align-items-center" *ngIf="column == 'Homebrew'">
-                        <mat-checkbox #isHombrew [checked]="element.Oficial" [disableRipple]="true"
+                        <mat-checkbox #isHombrew [checked]="!element.Oficial" [disableRipple]="true"
                             (click)="$event.preventDefault(); $event.stopPropagation();"></mat-checkbox>
                     </div>
                 </td>
             </ng-container>
-            <tr mat-header-row *matHeaderRowDef="conjuroColumns; sticky: true"></tr>
-            <tr mat-row *matRowDef="let element; columns: conjuroColumns;" class="element-row elegir"
-                (click)="seleccionarConjuro(element.Id)"></tr>
+            <tr mat-header-row *matHeaderRowDef="tipoColumns; sticky: true"></tr>
+            <tr mat-row *matRowDef="let element; columns: tipoColumns;" class="element-row elegir"
+                (click)="seleccionarTipo(element.Id)"></tr>
             <tr class="mat-row" *matNoDataRow>
                 <td class="mat-cell text-center text-white p-3" colspan="6">
-                    Ningún conjuro encaja con los filtros
+                    Ningún tipo encaja con los filtros
                 </td>
             </tr>
         </table>
@@ -64,7 +64,7 @@
         </ng-template>
     </div>
     <div class="row justify-content-center align-items-center">
-        <mat-paginator [pageSizeOptions]="[10, 20, 30, 40]" showFirstLastButtons aria-label="Selecciona una página de conjuros">
+        <mat-paginator [pageSizeOptions]="[10, 20, 30, 40]" showFirstLastButtons aria-label="Selecciona una página de tipos">
         </mat-paginator>
     </div>
 </div>

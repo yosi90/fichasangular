@@ -1,4 +1,4 @@
-<mat-tab-group #TabControl mat-stretch-tabs="false" mat-align-tabs="start">
+<mat-tab-group #TabControl mat-stretch-tabs="false" mat-align-tabs="start" (selectedTabChange)="onTabChange($event)">
     <mat-tab label="Personajes">
         <ng-template mat-tab-label="">
             <mat-icon class="me-2">people_alt</mat-icon>
@@ -13,13 +13,18 @@
         </ng-template>
         <app-admin-panel></app-admin-panel>
     </mat-tab>
-    <mat-tab *ngFor="let tab of detallesPersonajeAbiertos; let index = index" [label]="tab.Nombre">
+    <mat-tab *ngFor="let pj of detallesPersonajeAbiertos; let index = index" [label]="pj.Nombre">
         <ng-template mat-tab-label>
             <mat-icon class="me-2">person_search</mat-icon>
-            {{tab.Nombre}}
-            <button (click)="quitarDetallesPersonaje(tab.Nombre)" mat-icon-button class="ms-2"><mat-icon>close</mat-icon></button>
+            {{pj.Nombre}}
+            <button (click)="quitarDetallesPersonaje(pj.Nombre)" mat-icon-button class="ms-2"><mat-icon>close</mat-icon></button>
         </ng-template>
-        <app-detalles-personaje [pj]="detallesPersonajeAbiertos[index]"></app-detalles-personaje>
+        <app-detalles-personaje 
+            [pj]="detallesPersonajeAbiertos[index]" 
+            (conjuroDetalles)="abrirDetallesConjuro($event);"
+            (sortilegaDetalles)="abrirDetallesSortilega($event, pj.Nombre);"
+            (tipoDetalles)="abrirDetallesTipoCriatura($event);">
+        </app-detalles-personaje>
     </mat-tab>
     <mat-tab label="Nuevo personaje" *ngIf="AbrirNuevoPersonajeTab">
         <ng-template mat-tab-label="">
@@ -27,7 +32,7 @@
             Nuevo personaje
             <button (click)="quitarNuevoPersonaje()" mat-icon-button class="ms-2"><mat-icon>close</mat-icon></button>
         </ng-template>
-        <app-nuevo-personaje></app-nuevo-personaje>
+        <app-nuevo-personaje (razaDetalles)="abrirDetallesRaza($event)"></app-nuevo-personaje>
     </mat-tab>
     <mat-tab label="Lista de {{ListadoTabTipo}}" *ngIf="AbrirListadoTab">
         <ng-template mat-tab-label="">
@@ -45,6 +50,30 @@
         </ng-template>
         <app-detalles-raza [raza]="detallesRazaAbiertos[index]"></app-detalles-raza>
     </mat-tab>
+    <mat-tab *ngFor="let tab of detallesConjuroAbiertos; let index = index" [label]="tab.Nombre">
+        <ng-template mat-tab-label>
+            <mat-icon class="me-2">find_in_page</mat-icon>
+            {{tab.Nombre}} (Conjuro)
+            <button (click)="quitarDetallesConjuro(tab.Nombre)" mat-icon-button class="ms-2"><mat-icon>close</mat-icon></button>
+        </ng-template>
+        <app-detalles-conjuro [conjuro]="detallesConjuroAbiertos[index]"></app-detalles-conjuro>
+    </mat-tab>
+    <mat-tab *ngFor="let tupla of detallesSortilegaAbiertos; let index = index" [label]="tupla.ap.Conjuro.Nombre">
+        <ng-template mat-tab-label>
+            <mat-icon class="me-2">find_in_page</mat-icon>
+            {{tupla.ap.Conjuro.Nombre}} (Sortílega)
+            <button (click)="quitarDetallesSortilega(tupla.ap.Conjuro.Nombre)" mat-icon-button class="ms-2"><mat-icon>close</mat-icon></button>
+        </ng-template>
+        <app-detalles-conjuro [sortilega]="detallesSortilegaAbiertos[index]"></app-detalles-conjuro>
+    </mat-tab>
+    <mat-tab *ngFor="let tipo of detallesTipoCriaturaAbiertos; let index = index" [label]="tipo.Nombre">
+        <ng-template mat-tab-label>
+            <mat-icon class="me-2">find_in_page</mat-icon>
+            {{tipo.Nombre}} (Tipo)
+            <button (click)="quitarDetallesTipoCriatura(tipo.Nombre)" mat-icon-button class="ms-2"><mat-icon>close</mat-icon></button>
+        </ng-template>
+        <app-detalles-tipo-criatura [tipo]="detallesTipoCriaturaAbiertos[index]"></app-detalles-tipo-criatura>
+    </mat-tab>
     <mat-tab label="Información importante" class="pe-3">
         <ng-template mat-tab-label="">
             <mat-icon class="me-2">info_outline</mat-icon>
@@ -52,38 +81,43 @@
         </ng-template>
         <mat-card class="mh-90 m-5">
             <mat-card-header>
-                <mat-card-title class="text-white">En construcción</mat-card-title>
+                <mat-card-title class="text-white"><mat-icon class="me-2">construction</mat-icon> En construcción <mat-icon class="ms-2">construction</mat-icon></mat-card-title>
                 <mat-card-subtitle>Esta web está siendo desarrollada por <a href="https://yosiftware.es" target="_blank">Yosiftware.es</a></mat-card-subtitle>
             </mat-card-header>
             <mat-card-content class="text-white p-5">
-                Versión 0.1
+                <p class="d-flex align-items-center mb-0">Versión 0.1 <mat-icon class="ms-2">done_all</mat-icon></p>
                 <hr>
                 <ol>
-                    <li>Base de la web creada</li>
-                    <li>Creada lista de personajes</li>
-                    <li>Creada Vista de personajes</li>
-                    <li>Creada funcionalidad para descargar la ficha en pdf</li>
+                    <li><p class="d-flex align-items-center mb-0">Base de la web creada</p></li> 
+                    <li><p class="d-flex align-items-center mb-0">Creada lista de personajes</p></li>
+                    <li><p class="d-flex align-items-center mb-0">Creada Vista de personajes</p></li>
+                    <li><p class="d-flex align-items-center mb-0">Creada funcionalidad para descargar la ficha en pdf</p></li>
                 </ol>
                 <hr><hr>
-                Versión 0.2 (Actual)
+                <p class="d-flex align-items-center mb-0">Versión 0.2 (Actual)</p>
                 <hr>
                 <ol>
-                    <li>Creada creación de personajes (Desarrollo actual)</li>
-                    <li>Creada vista de Razas</li>
-                    <li>Creada vista de tipos de criatura</li>
-                    <li>Creada vista de rasgos</li>
-                    <li>Creada vista de clases</li>
-                    <li>Creada vista de Dotes</li>
+                    <li><p class="d-flex align-items-center mb-0">Creada creación de personajes (Desarrollo actual)</p></li>
+                    <li><p class="d-flex align-items-center mb-0">Creada vista de Razas</p></li>
+                    <li><p class="d-flex align-items-center mb-0">Creada vista de tipos de criatura</p></li>
+                    <li><p class="d-flex align-items-center mb-0">Creada vista de rasgos</p></li>
+                    <li><p class="d-flex align-items-center mb-0">Creada vista de conjuros y sortílegas <mat-icon class="ms-2">done</mat-icon></p></li>
+                    <li><p class="d-flex align-items-center mb-0">Creada vista de clases</p></li>
+                    <li><p class="d-flex align-items-center mb-0">Creada vista de Dotes</p></li>
                 </ol>
                 <hr><hr>
-                ¡Aclaraciones!
-                <ul class="">
-                    <li>Los personajes existentes han sido creados con la versión de escritorio de la app</li>
-                    <li>Los botones de la cinta NO están programados.</li>
-                    <li>Los botones de insertar, modificar y detalles NO están programados.</li>
+                <p class="d-flex align-items-center mb-0">¡Aclaraciones!</p>
+                <ul>
+                    <li>
+                        <p class="d-flex align-items-center mb-0">
+                        Esta web no es, ni pretende ser, una demostración de conocimientos 
+                        <mat-icon class="ms-2">done_all</mat-icon><mat-icon class="ms-2">done_all</mat-icon><mat-icon class="ms-2">done_all</mat-icon>
+                        </p>
+                    </li>
+                    <li><p class="d-flex align-items-center mb-0">Actualmente los personajes existentes han sido creados con la versión de escritorio de la app</p></li>
+                    <li><p class="d-flex align-items-center mb-0">Los botones de la cinta NO están programados.</p></li>
+                    <li><p class="d-flex align-items-center mb-0">La mayoría de botones de insertar, modificar y detalles NO están programados.</p></li>
                 </ul>
-                
-                
             </mat-card-content>
             <mat-card-actions>
                 <button mat-raised-button color="primary" class="w-100" (click)="verPersonajes()">Ok</button>

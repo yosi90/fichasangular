@@ -39,7 +39,7 @@ export class ManualesService {
         });
     }
 
-    async getManuales(): Promise<Observable<string[]>> {
+    getManuales(): Observable<string[]> {
         return new Observable((observador) => {
             const dbRef = ref(this.db, 'Manuales');
             let unsubscribe: Unsubscribe;

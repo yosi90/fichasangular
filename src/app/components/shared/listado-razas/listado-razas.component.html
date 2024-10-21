@@ -1,6 +1,6 @@
-<div id="container-razas" class="container-fluid bg-dark h-100">
+<div id="container-lista" class="container-fluid bg-dark h-100">
     <div class="row position-relative justify-content-center align-items-center">
-        <button id="filtrosRazas" matTooltip="Filtros de razas" #filtros mat-icon-button
+        <button id="filtros" matTooltip="Filtros de razas" #filtros mat-icon-button
             [matMenuTriggerFor]="menuRazas" class="filtros bg-accent">
             <mat-icon>filter_alt</mat-icon>
         </button>
@@ -80,7 +80,7 @@
                 </td>
             </ng-container>
             <tr mat-header-row *matHeaderRowDef="razaColumns; sticky: true"></tr>
-            <tr mat-row *matRowDef="let element; columns: razaColumns;" class="element-row elegir-raza"
+            <tr mat-row *matRowDef="let element; columns: razaColumns;" class="element-row elegir"
                 (click)="seleccionarRaza(element.Id)"></tr>
             <tr class="mat-row" *matNoDataRow>
                 <td class="mat-cell text-center text-white p-3" colspan="6">

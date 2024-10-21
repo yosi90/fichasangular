@@ -83,7 +83,7 @@ export class RazasService {
         });
     }
 
-    async getRazas(): Promise<Observable<Raza[]>> {
+    getRazas(): Observable<Raza[]> {
         return new Observable((observador) => {
             const dbRef = ref(this.db, 'Razas');
             let unsubscribe: Unsubscribe;
