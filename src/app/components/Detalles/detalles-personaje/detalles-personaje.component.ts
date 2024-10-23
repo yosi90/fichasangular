@@ -2,6 +2,7 @@ import { Component, EventEmitter, Input, OnInit, Output } from '@angular/core';
 import { AptitudSortilega } from 'src/app/interfaces/Aptitud-sortilega';
 import { Conjuro } from 'src/app/interfaces/conjuro';
 import { Personaje } from 'src/app/interfaces/personaje';
+import { Rasgo } from 'src/app/interfaces/rasgo';
 import { TipoCriatura } from 'src/app/interfaces/tipo_criatura';
 import { FichaPersonajeService } from 'src/app/services/ficha-personaje.service';
 
@@ -115,5 +116,10 @@ export class DetallesPersonajeComponent implements OnInit {
     @Output() tipoDetalles: EventEmitter<TipoCriatura> = new EventEmitter<TipoCriatura>();
     verDetallesTipoCriatura(value: TipoCriatura) {
         this.tipoDetalles.emit(value);
+    }
+
+    @Output() rasgoDetalles: EventEmitter<Rasgo> = new EventEmitter<Rasgo>();
+    verDetallesRasgo(value: Rasgo) {
+        this.rasgoDetalles.emit(value);
     }
 }

@@ -1,4 +1,5 @@
-import { Component, Input } from '@angular/core';
+import { Component, EventEmitter, Input, Output } from '@angular/core';
+import { Rasgo } from 'src/app/interfaces/rasgo';
 import { TipoCriatura } from 'src/app/interfaces/tipo_criatura';
 
 @Component({
@@ -8,4 +9,9 @@ import { TipoCriatura } from 'src/app/interfaces/tipo_criatura';
 })
 export class DetallesTipoCriaturaComponent {
     @Input() tipo!: TipoCriatura;
+
+    @Output() rasgoDetalles: EventEmitter<Rasgo> = new EventEmitter<Rasgo>();
+    verDetallesRasgo(value: Rasgo) {
+        this.rasgoDetalles.emit(value);
+    }
 }

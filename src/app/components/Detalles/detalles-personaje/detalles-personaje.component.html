@@ -227,6 +227,18 @@
                         </mat-chip>
                     </mat-chip-set>
                 </mat-expansion-panel>
+                <mat-expansion-panel *ngIf="pj.Tipo_criatura.Rasgos">
+                    <mat-expansion-panel-header>
+                        <button mat-stroked-button color="accent" class="rounded-0">
+                            <h2 class="mb-0">Rasgos del tipo de criatura</h2>
+                        </button>
+                    </mat-expansion-panel-header>
+                    <mat-chip-set class="m-1">
+                        <mat-chip *ngFor="let r of pj.Tipo_criatura.Rasgos" matTooltip="Pulsa para ver los detalles" [matTooltipShowDelay]="250" (click)="verDetallesRasgo(r);" class="sombra3d-sm" matTooltipClass="tt-accent">
+                            {{r.Nombre}}
+                        </mat-chip>
+                    </mat-chip-set>
+                </mat-expansion-panel>
                 <mat-expansion-panel *ngIf="pj.Ventajas">
                     <mat-expansion-panel-header>
                         <button mat-stroked-button color="accent" class="rounded-0">

@@ -33,7 +33,7 @@
         <div class="col-md-4 col-12 p-2">
             <div class="d-flex flex-wrap align-items-center sombra-caja-sm rounded p-2 my-2" *ngIf="tipo.Rasgos">
                 <mat-chip class="w-100 sombra-caja-sm m-1 mb-2">Rasgos<mat-icon class="ms-2">auto_awesome_motion</mat-icon></mat-chip>
-                <mat-chip *ngFor="let r of tipo.Rasgos" class="sombra3d-sm m-1">
+                <mat-chip *ngFor="let r of tipo.Rasgos" matTooltip="Pulsa para ver los detalles" [matTooltipShowDelay]="250" (click)="verDetallesRasgo(r);" class="sombra3d-sm m-1" matTooltipClass="tt-accent">
                     {{r.Nombre}}
                 </mat-chip>
             </div>
