@@ -74,6 +74,14 @@
         </ng-template>
         <app-detalles-tipo-criatura [tipo]="detallesTipoCriaturaAbiertos[index]"></app-detalles-tipo-criatura>
     </mat-tab>
+    <mat-tab *ngFor="let rasgo of detallesRasgoAbiertos; let index = index" [label]="rasgo.Nombre">
+        <ng-template mat-tab-label>
+            <mat-icon class="me-2">find_in_page</mat-icon>
+            {{rasgo.Nombre}} (Rasgo)
+            <button (click)="quitarDetallesRasgo(rasgo.Nombre)" mat-icon-button class="ms-2"><mat-icon>close</mat-icon></button>
+        </ng-template>
+        <app-detalles-rasgo [rasgo]="detallesRasgoAbiertos[index]"></app-detalles-rasgo>
+    </mat-tab>
     <mat-tab label="Información importante" class="pe-3">
         <ng-template mat-tab-label="">
             <mat-icon class="me-2">info_outline</mat-icon>

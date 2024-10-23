@@ -23,6 +23,7 @@ export class RasgoService {
                     Id: id,
                     Nombre: snapshot.child('Nombre').val(),
                     Descripcion: snapshot.child('Descripcion').val(),
+                    Oficial: snapshot.child('Oficial').val(),
                 };
                 observador.next(rasgo);
             };
@@ -50,6 +51,7 @@ export class RasgoService {
                         Id: obj.child('Id').val(),
                         Nombre: obj.child('Nombre').val(),
                         Descripcion: obj.child('Descripcion').val(),
+                        Oficial: obj.child('Oficial').val(),
                     };
                     rasgos.push(rasgo);
                 });
@@ -78,13 +80,14 @@ export class RasgoService {
         this.syncRasgos().subscribe(
             response => {
                 response.forEach((element: {
-                    i: number; n: string; d: string;
+                    i: number; n: string; d: string; o: boolean;
                 }) => {
                     set(
                         ref(db_instance, `Rasgos/${element.i}`), {
                         Id: element.i,
                         Nombre: element.n,
                         Descripcion: element.d,
+                        Oficial: element.o,
                     });
                 });
                 Swal.fire({

@@ -9,6 +9,7 @@ import { Conjuro } from 'src/app/interfaces/conjuro';
 import Swal from 'sweetalert2';
 import { AptitudSortilega } from 'src/app/interfaces/Aptitud-sortilega';
 import { TipoCriatura } from 'src/app/interfaces/tipo_criatura';
+import { Rasgo } from 'src/app/interfaces/rasgo';
 
 @Component({
     selector: 'app-tab-control',
@@ -26,6 +27,7 @@ export class TabControlComponent implements OnInit {
     detallesConjuroAbiertos: Conjuro[] = [];
     detallesSortilegaAbiertos: { ap: AptitudSortilega, fuente: string }[] = [];
     detallesTipoCriaturaAbiertos: TipoCriatura[] = [];
+    detallesRasgoAbiertos: Rasgo[] = [];
 
     constructor(private usrSvc: UserService, private pSvc: PersonajeService) { }
 
@@ -103,6 +105,8 @@ export class TabControlComponent implements OnInit {
             return;
         else if (this.detallesTipoCriaturaAbiertos.map(t => t.Nombre).includes(tabLabel) && this.quitarDetallesTipoCriatura(tabLabel))
             return;
+        else if (this.detallesRasgoAbiertos.map(t => t.Nombre).includes(tabLabel) && this.quitarDetallesRasgo(tabLabel))
+            return;
         else if (tabLabel.includes('Nuevo personaje'))
             this.quitarNuevoPersonaje();
         else if (tabLabel.includes('Lista de'))
@@ -156,6 +160,8 @@ export class TabControlComponent implements OnInit {
             this.abrirDetallesConjuro(value.item);
         } else if (value.tipo === 'tipos de criatura') {
             this.abrirDetallesTipoCriatura(value.item);
+        } else if (value.tipo === 'rasgos') {
+            this.abrirDetallesRasgo(value.item);
         }
     }
 
@@ -235,6 +241,26 @@ export class TabControlComponent implements OnInit {
             return false;
         const indexTab = this.detallesTipoCriaturaAbiertos.indexOf(tab);
         this.detallesTipoCriaturaAbiertos.splice(indexTab, 1);
+        this.cambiarA(false);
+        return true;
+    }
+
+    async abrirDetallesRasgo(rasgo: Rasgo) {
+        if (this.detallesRasgoAbiertos.find(r => r.Id === rasgo.Id))
+            this.cambiarA(true, this.TabGroup._tabs.find(tab => tab.textLabel === rasgo.Nombre));
+        else {
+            this.detallesRasgoAbiertos.push(rasgo);
+            setTimeout(() => {
+                this.cambiarA(true, this.TabGroup._tabs.find(tab => tab.textLabel === rasgo.Nombre));
+            }, 100);
+        }
+    }
+    quitarDetallesRasgo(value: string): boolean {
+        const tab = this.detallesRasgoAbiertos.find(t => t.Nombre === value);
+        if (!tab)
+            return false;
+        const indexTab = this.detallesRasgoAbiertos.indexOf(tab);
+        this.detallesRasgoAbiertos.splice(indexTab, 1);
         this.cambiarA(false);
         return true;
     }

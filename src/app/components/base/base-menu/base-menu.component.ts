@@ -15,7 +15,7 @@ export class BaseMenuComponent implements OnInit {
     @ViewChild('segundo') segundo!: MatExpansionPanel;
     @ViewChild('tercero') tercero!: MatExpansionPanel;
     @ViewChild('cuarto') cuarto!: MatExpansionPanel;
-    
+
     @ViewChildren(MatMenuTrigger) menuTriggers!: QueryList<MatMenuTrigger>;
 
     usr: string = 'Invitado';
@@ -45,7 +45,7 @@ export class BaseMenuComponent implements OnInit {
             this.cuarto.close();
     }
 
-    openMenu(menu: MatMenuTrigger){
+    openMenu(menu: MatMenuTrigger) {
         menu.openMenu();
     }
 
@@ -54,9 +54,9 @@ export class BaseMenuComponent implements OnInit {
         this.NuevoPersonajeTab.emit();
     }
 
-    @Output() ListadoTab: EventEmitter<{tipo: string, operacion: string}> = new EventEmitter();
+    @Output() ListadoTab: EventEmitter<{ tipo: string, operacion: string }> = new EventEmitter();
     AbrirListado(tipo: string, operacion: string): void {
-        this.ListadoTab.emit({tipo, operacion});
+        this.ListadoTab.emit({ tipo, operacion });
     }
 
     openSesionDialog(): void {

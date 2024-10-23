@@ -41,15 +41,17 @@ import { TabControlComponent } from './components/base/tab-control/tab-control.c
 import { BaseMenuResponsiveComponent } from './components/base/responsive-base/responsive-base.component';
 import { BaseMenuComponent } from './components/base/base-menu/base-menu.component';
 import { AdminPanelComponent } from './components/base/admin-panel/admin-panel.component';
-import { DetallesPersonajeComponent } from './components/Detalles/detalles-personaje/detalles-personaje.component';
+import { DetallesPersonajeComponent } from './components/detalles/detalles-personaje/detalles-personaje.component';
 import { NuevoPersonajeComponent } from './components/nuevo-personaje/nuevo-personaje.component';
-import { DetallesRazaComponent } from './components/Detalles/detalles-raza/detalles-raza.component';
+import { DetallesRazaComponent } from './components/detalles/detalles-raza/detalles-raza.component';
 import { ListadoComponent } from './components/shared/listado/listado.component';
 import { ListadoRazasComponent } from './components/shared/listado-razas/listado-razas.component';
 import { ListadoConjurosComponent } from './components/shared/listado-conjuros/listado-conjuros.component';
 import { DetallesConjuroComponent } from './components/detalles/detalles-conjuro/detalles-conjuro.component';
 import { ListadoTiposCriaturaComponent } from './components/shared/listado-tipos-criatura/listado-tipos-criatura.component';
 import { DetallesTipoCriaturaComponent } from './components/detalles/detalles-tipo-criatura/detalles-tipo-criatura.component';
+import { DetallesRasgoRacialComponent } from './components/detalles/detalles-rasgo/detalles-rasgo.component';
+import { ListadoRasgoRacialComponent } from './components/shared/listado-rasgo/listado-rasgo.component';
 
 @NgModule({
     declarations: [
@@ -71,6 +73,8 @@ import { DetallesTipoCriaturaComponent } from './components/detalles/detalles-ti
         DetallesConjuroComponent,
         ListadoTiposCriaturaComponent,
         DetallesTipoCriaturaComponent,
+        DetallesRasgoRacialComponent,
+        ListadoRasgoRacialComponent,
     ],
     imports: [
         BrowserModule,

@@ -57,7 +57,7 @@
                 <mat-menu #menuDetalles="matMenu" [class]="'menuOscuro'" yPosition="above" xPosition="before">
                     <button mat-menu-item (click)="AbrirListado('tipos de criatura', 'detalles'); closeAcordion();">Tipos de criatura</button>
                     <button mat-menu-item>Subtipos de criatura</button>
-                    <button mat-menu-item>Rasgos raciales</button>
+                    <button mat-menu-item (click)="AbrirListado('rasgos', 'detalles'); closeAcordion();">Rasgos</button>
                 </mat-menu>
             </mat-expansion-panel>
             <mat-expansion-panel hideToggle="true" #cuarto>

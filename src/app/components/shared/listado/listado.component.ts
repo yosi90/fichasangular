@@ -5,6 +5,7 @@ import { ListadoConjurosComponent } from '../listado-conjuros/listado-conjuros.c
 import { Conjuro } from 'src/app/interfaces/conjuro';
 import { ListadoTiposCriaturaComponent } from '../listado-tipos-criatura/listado-tipos-criatura.component';
 import { TipoCriatura } from 'src/app/interfaces/tipo_criatura';
+import { ListadoRasgoRacialComponent } from '../listado-rasgo/listado-rasgo.component';
 
 @Component({
     selector: 'app-listado',
@@ -19,13 +20,9 @@ export class ListadoComponent {
 
     componentes: any = {
         'razas': ListadoRazasComponent,
-        // 'clases':
-        // 'dotes':
         'conjuros': ListadoConjurosComponent,
-        // 'mosntruos':
-        // 'plantillas':
-        // 'otros':
         'tipos de criatura': ListadoTiposCriaturaComponent,
+        'rasgos': ListadoRasgoRacialComponent,
     };
 
     constructor(private cdr: ChangeDetectorRef) { }
@@ -54,31 +51,25 @@ export class ListadoComponent {
             componentRef.instance.razaSeleccionada.subscribe((item: Raza) => {
                 this.handleItemSeleccionado(item);
             });
-        }
-
-        // if (componentRef.instance instanceof ListadoClasesComponent) {
-        //     componentRef.instance.claseDetalles.subscribe((item: Clase) => {
-        //         this.handleItemSeleccionado(item);
-        //     });
-        //     componentRef.instance.claseSeleccionada.subscribe((item: Clase) => {
-        //         this.handleItemSeleccionado(item);
-        //     });
-        // }
-
-        if (componentRef.instance instanceof ListadoConjurosComponent) {
+        } else if (componentRef.instance instanceof ListadoConjurosComponent) {
             componentRef.instance.conjuroDetalles.subscribe((item: Conjuro) => {
                 this.handleItemDetalles(item);
             });
             componentRef.instance.conjuroSeleccionado.subscribe((item: Conjuro) => {
                 this.handleItemSeleccionado(item);
             });
-        }
-
-        if (componentRef.instance instanceof ListadoTiposCriaturaComponent) {
+        } else if (componentRef.instance instanceof ListadoTiposCriaturaComponent) {
             componentRef.instance.tipoCriaturaDetalles.subscribe((item: TipoCriatura) => {
                 this.handleItemDetalles(item);
             });
             componentRef.instance.tipoCriaturaSeleccionado.subscribe((item: TipoCriatura) => {
+                this.handleItemSeleccionado(item);
+            });
+        } else if (componentRef.instance instanceof ListadoRasgoRacialComponent) {
+            componentRef.instance.rasgoDetalles.subscribe((item: TipoCriatura) => {
+                this.handleItemDetalles(item);
+            });
+            componentRef.instance.rasgoSeleccionado.subscribe((item: TipoCriatura) => {
                 this.handleItemSeleccionado(item);
             });
         }
