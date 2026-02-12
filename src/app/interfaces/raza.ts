@@ -1,7 +1,8 @@
-import { AptitudSortilega } from "./Aptitud-sortilega";
-import { Conjuro } from "./conjuro";
+import { Alineamiento } from "./alineamiento";
+import { AptitudSortilega } from "./aptitud-sortilega";
+import { DoteContextual } from "./dote-contextual";
 import { Maniobrabilidad } from "./maniobrabilidad";
-import { Tamaño } from "./tamaño";
+import { Tamano } from "./tamaño";
 import { TipoCriatura } from "./tipo_criatura";
 
 export interface Raza {
@@ -18,9 +19,10 @@ export interface Raza {
         Sabiduria: number;
         Carisma: number;
     }
-    Homebrew: boolean;
+    Alineamiento: Alineamiento;
+    Oficial: boolean;
     Ataques_naturales: string;
-    Tamano: Tamaño;
+    Tamano: Tamano;
     Dgs_adicionales: {
         Cantidad: number;
         Dado: string;
@@ -60,4 +62,5 @@ export interface Raza {
     Alcance: number;
     Tipo_criatura: TipoCriatura;
     Sortilegas: AptitudSortilega[];
+    DotesContextuales: DoteContextual[];
 }

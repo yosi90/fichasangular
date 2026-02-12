@@ -1,10 +1,10 @@
-import { Tamaño } from "../tamaño";
+import { Tamano } from "../tamaño";
 
 export interface RazaSimple {
     Id: number;
     Nombre: string;
     Ajuste_nivel: number;
-    Tamano: Tamaño;
+    Tamano: Tamano;
     Dgs_adicionales: {
         Cantidad: number;
         Dado: string;
@@ -20,5 +20,5 @@ export interface RazaSimple {
         Sabiduria: number;
         Carisma: number;
     }
-    Homebrew: boolean;
+    Oficial: boolean;
 }

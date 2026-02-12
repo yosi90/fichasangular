@@ -53,13 +53,41 @@
                 </th>
                 <td mat-cell *matCellDef="let element">
                     <ng-container [ngSwitch]="column">
-                        
-                        <ng-container *ngSwitchDefault>
-                            <p class="mb-0">{{element[column]}}</p>
+                        <ng-container *ngSwitchCase="'Clases'">
+                            <ng-container *ngIf="extraerClases(element[column]) as clases">
+                                <button mat-stroked-button matTooltip="Click para ver la clase"
+                                    [matTooltipShowDelay]="300" color="accent" class="d-flex justify-content-start sombra3d-sm w-100"
+                                    *ngIf="clases.length === 1" (click)="CrearDetallesClase(clases[0].Nombre); $event.stopPropagation();">
+                                    <mat-icon>read_more</mat-icon>
+                                    {{clases[0].Nombre}}<span *ngIf="clases[0].Nivel !== null">&nbsp;({{clases[0].Nivel}})</span>
+                                </button>
+                                <button mat-stroked-button matTooltip="Click para elegir clase"
+                                    [matTooltipShowDelay]="300" color="accent" class="d-flex justify-content-start sombra3d-sm w-100"
+                                    *ngIf="clases.length > 1" [matMenuTriggerFor]="menuClases" #clasesTrigger="matMenuTrigger"
+                                    [matMenuTriggerData]="{ clases: clases, trigger: clasesTrigger }"
+                                    (click)="$event.stopPropagation();">
+                                    <mat-icon>read_more</mat-icon>
+                                    {{element[column]}}
+                                </button>
+                                <p class="mb-0" *ngIf="clases.length < 1">Sin clase</p>
+
+                                <mat-menu #menuClases="matMenu" class="menuOscuro menu-clases-personaje" xPosition="after" yPosition="below">
+                                    <ng-template matMenuContent let-clases="clases" let-trigger="trigger">
+                                        <button mat-menu-item *ngFor="let c of clases" (click)="CrearDetallesClase(c.Nombre); trigger?.closeMenu()">
+                                            {{c.Nombre}}<span *ngIf="c.Nivel !== null">&nbsp;({{c.Nivel}})</span>
+                                        </button>
+                                    </ng-template>
+                                </mat-menu>
+                            </ng-container>
                         </ng-container>
 
                         <ng-container  *ngSwitchCase="'Raza'">
-                            <p class="mb-0">{{element[column].Nombre}}</p>
+                            <button mat-stroked-button matTooltip="Click para ver esta raza"
+                                [matTooltipShowDelay]="300" color="accent" class="d-flex justify-content-start sombra3d-sm w-100"
+                                (click)="CrearDetallesRaza(element[column].Id); $event.stopPropagation();">
+                                <mat-icon>read_more</mat-icon>
+                                {{element[column].Nombre}}
+                            </button>
                         </ng-container>
 
                         <ng-container *ngSwitchCase="'¿Archivado?'">
@@ -77,6 +105,10 @@
                                 <mat-icon>read_more</mat-icon>
                                 {{element[column]}}
                             </button>
+                        </ng-container>
+
+                        <ng-container *ngSwitchDefault>
+                            <p class="mb-0">{{element[column]}}</p>
                         </ng-container>
                     </ng-container>
                 </td>

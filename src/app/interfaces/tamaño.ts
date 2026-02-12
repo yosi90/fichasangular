@@ -1,4 +1,4 @@
-export interface Tamaño {
+export interface Tamano {
     Id: number;
     Nombre: string;
     Modificador: number;

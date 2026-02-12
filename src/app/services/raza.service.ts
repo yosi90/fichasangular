@@ -6,15 +6,21 @@ import { Raza } from '../interfaces/raza';
 import { environment } from 'src/environments/environment';
 import Swal from 'sweetalert2';
 import { Maniobrabilidad } from '../interfaces/maniobrabilidad';
-import { Tamaño } from '../interfaces/tamaño';
+import { Tamano } from '../interfaces/tamaño';
 import { TipoCriatura } from '../interfaces/tipo_criatura';
-import { Conjuro } from '../interfaces/conjuro';
-import { AptitudSortilega } from '../interfaces/Aptitud-sortilega';
+import { AptitudSortilega } from '../interfaces/aptitud-sortilega';
+import { Alineamiento } from '../interfaces/alineamiento';
+import { DoteContextual } from '../interfaces/dote-contextual';
+import { toDoteContextualArray } from './utils/dote-mapper';
+
+function toBoolean(value: any): boolean {
+    return value === true || value === 1 || value === "1";
+}
 
 @Injectable({
     providedIn: 'root'
 })
-export class RazasService {
+export class RazaService {
 
     constructor(private db: Database, private http: HttpClient) { }
 
@@ -24,23 +30,25 @@ export class RazasService {
             let unsubscribe: Unsubscribe;
 
             const onNext = (snapshot: any) => {
+                const dotesContextuales = toDoteContextualArray(snapshot.child('DotesContextuales').val());
                 let raza: Raza = {
                     Id: id,
                     Nombre: snapshot.child('Nombre').val(),
                     Modificadores: snapshot.child('Modificadores').val(),
+                    Alineamiento: snapshot.child('Alineamiento').val(),
                     Manual: snapshot.child('Manual').val(),
                     Ajuste_nivel: snapshot.child('Ajuste_nivel').val(),
                     Clase_predilecta: snapshot.child('Clase_predilecta').val(),
-                    Homebrew: snapshot.child('Homebrew').val(),
+                    Oficial: toBoolean(snapshot.child('Oficial').val()),
                     Ataques_naturales: snapshot.child('Ataques_naturales').val(),
                     Tamano: snapshot.child('Tamano').val(),
                     Dgs_adicionales: snapshot.child('Dgs_adicionales').val(),
                     Reduccion_dano: snapshot.child('Reduccion_dano').val(),
-                    Resistencia_magica: snapshot.child('Resistencia_magica').val(),
+                    Resistencia_magica: snapshot.child('Resistencia_magica').val() ?? snapshot.child('Resistencia_magia').val(),
                     Resistencia_energia: snapshot.child('Resistencia_energia').val(),
                     Heredada: snapshot.child('Heredada').val(),
                     Mutada: snapshot.child('Mutada').val(),
-                    Tamano_mutacion_dependiente: snapshot.child('Tamano_mutacion_pendiente').val(),
+                    Tamano_mutacion_dependiente: snapshot.child('Tamano_mutacion_dependiente').val() ?? snapshot.child('Tamano_mutacion_pendiente').val(),
                     Prerrequisitos: snapshot.child('Prerrequisitos').val(),
                     Armadura_natural: snapshot.child('Armadura_natural').val(),
                     Varios_armadura: snapshot.child('Varios_armadura').val(),
@@ -62,6 +70,7 @@ export class RazasService {
                     Alcance: snapshot.child('Alcance').val(),
                     Tipo_criatura: snapshot.child('Tipo_criatura').val(),
                     Sortilegas: snapshot.child('Sortilegas').val(),
+                    DotesContextuales: dotesContextuales,
                 };
                 observador.next(raza); // Emitir el array de personajes
             };
@@ -91,23 +100,25 @@ export class RazasService {
             const onNext = (snapshot: any) => {
                 const Razas: Raza[] = [];
                 snapshot.forEach((obj: any) => {
+                    const dotesContextuales = toDoteContextualArray(obj.child('DotesContextuales').val());
                     const raza: Raza = {
                         Id: obj.key,
                         Nombre: obj.child('Nombre').val(),
                         Modificadores: obj.child('Modificadores').val(),
+                        Alineamiento: obj.child('Alineamiento').val(),
                         Manual: obj.child('Manual').val(),
                         Ajuste_nivel: obj.child('Ajuste_nivel').val(),
                         Clase_predilecta: obj.child('Clase_predilecta').val(),
-                        Homebrew: obj.child('Homebrew').val(),
+                        Oficial: toBoolean(obj.child('Oficial').val()),
                         Ataques_naturales: obj.child('Ataques_naturales').val(),
                         Tamano: obj.child('Tamano').val(),
                         Dgs_adicionales: obj.child('Dgs_adicionales').val(),
                         Reduccion_dano: obj.child('Reduccion_dano').val(),
-                        Resistencia_magica: obj.child('Resistencia_magica').val(),
+                        Resistencia_magica: obj.child('Resistencia_magica').val() ?? obj.child('Resistencia_magia').val(),
                         Resistencia_energia: obj.child('Resistencia_energia').val(),
                         Heredada: obj.child('Heredada').val(),
                         Mutada: obj.child('Mutada').val(),
-                        Tamano_mutacion_dependiente: obj.child('Tamano_mutacion_pendiente').val(),
+                        Tamano_mutacion_dependiente: obj.child('Tamano_mutacion_dependiente').val() ?? obj.child('Tamano_mutacion_pendiente').val(),
                         Prerrequisitos: obj.child('Prerrequisitos').val(),
                         Armadura_natural: obj.child('Armadura_natural').val(),
                         Varios_armadura: obj.child('Varios_armadura').val(),
@@ -129,6 +140,7 @@ export class RazasService {
                         Alcance: obj.child('Alcance').val(),
                         Tipo_criatura: obj.child('Tipo_criatura').val(),
                         Sortilegas: obj.child('Sortilegas').val(),
+                        DotesContextuales: dotesContextuales,
                     };
                     Razas.push(raza);
                 });
@@ -164,22 +176,26 @@ export class RazasService {
             response => {
                 response.forEach((element: {
                     i: any; n: any; m: { Fuerza: number; Destreza: number; Constitucion: number; Inteligencia: number; Sabiduria: number; Carisma: number; }; ma: any;
-                    aju: any; c: any; o: boolean; an: string; t: Tamaño; dg: any; rd: string; rc: string; re: string; he: boolean; mu: boolean; tmd: boolean; pr: any;
+                    aju: any; c: any; o: boolean; an: string; t: Tamano; dg: any; rd: string; rc: string; re: string; he: boolean; mu: boolean; tmd: boolean; pr: any;
                     ant: number; va: number; co: number; na: number; vo: number; man: Maniobrabilidad; tr: number; es: number; ari: number; ars: number; pri: number; 
-                    prs: number; ea: number; em: number; ev: number; eve: number; esp: number; alc: number; tc: TipoCriatura; sor: AptitudSortilega[]
+                    prs: number; ea: number; em: number; ev: number; eve: number; esp: number; alc: number; tc: TipoCriatura; sor: AptitudSortilega[], 
+                    ali: Alineamiento; dotes: DoteContextual[];
                 }) => {
+                    const dotesContextuales = toDoteContextualArray(element.dotes);
                     set(
                         ref(db, `Razas/${element.i}`), {
                         Nombre: element.n,
                         Modificadores: element.m,
+                        Alineamiento: element.ali,
                         Manual: element.ma,
                         Ajuste_nivel: element.aju,
                         Clase_predilecta: element.c,
-                        Homebrew: element.o,
+                        Oficial: toBoolean(element.o),
                         Ataques_naturales: element.an,
                         Tamano: element.t,
                         Dgs_adicionales: element.dg,
                         Reduccion_dano: element.rd,
+                        Resistencia_magica: element.rc,
                         Resistencia_magia: element.rc,
                         Resistencia_energia: element.re,
                         Heredada: element.he,
@@ -206,6 +222,7 @@ export class RazasService {
                         Alcance: element.alc,
                         Tipo_criatura: element.tc,
                         Sortilegas: element.sor,
+                        DotesContextuales: dotesContextuales,
                     });
                 });
                 Swal.fire({

@@ -1,0 +1,72 @@
+@import ../../../../assets/css/preformas/_detalles
+
+.prerrequisito-condicion
+    background-color: rgba(255, 255, 255, .03)
+
+.prerrequisito-condicion p
+    color: #ddd
+
+.tabla-progresion-container
+    overflow: hidden
+
+.tabla-scroll
+    overflow-x: auto
+    max-width: 100%
+
+.tabla-progresion
+    width: 100%
+    min-width: 1300px
+    border-collapse: collapse
+    color: #ddd
+
+    th, td
+        border: 1px ridge #747474
+        padding: .45rem .4rem
+        vertical-align: top
+
+    th
+        position: sticky
+        top: 0
+        z-index: 2
+        background: #333a41
+        text-align: center
+
+    td
+        background: #3d3d3d
+        min-width: 90px
+
+.chips-celda
+    display: flex
+    flex-wrap: wrap
+    gap: .35rem
+    border: none !important
+    box-shadow: none !important
+    background: transparent !important
+    padding: 0 !important
+
+    .chip-celda
+        height: auto
+        border: none !important
+        box-shadow: none !important
+
+.chip-anidada
+    height: auto
+    padding: .15rem .2rem
+
+    ::ng-deep .mdc-evolution-chip__action
+        display: flex
+        align-items: center
+        flex-wrap: wrap
+        row-gap: .25rem
+
+.chip-conjuro
+    cursor: pointer
+    transition: filter .15s ease-in-out
+
+    &:hover
+        filter: brightness(1.12)
+
+::ng-deep .tabla-progresion td div,
+::ng-deep .tabla-progresion td mat-chip-set
+    border: none !important
+    box-shadow: none !important

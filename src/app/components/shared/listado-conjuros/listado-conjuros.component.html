@@ -14,7 +14,8 @@
                     <mat-label>Manual</mat-label>
                     <mat-select #manualconjuro appearance="fill" [(value)]="defaultManual"
                         (selectionChange)="filtroConjuros();">
-                        <mat-option *ngFor="let m of Manuales" [value]="m">{{m}}</mat-option>
+                        <mat-option [value]="'Cualquiera'">Cualquiera</mat-option>
+                        <mat-option *ngFor="let m of Manuales" [value]="m.Nombre">{{m.Nombre}}</mat-option>
                     </mat-select>
                 </mat-form-field>
             </div>
@@ -42,7 +43,7 @@
                         </p>
                     </div>
                     <div class="d-flex justify-content-center align-items-center" *ngIf="column == 'Homebrew'">
-                        <mat-checkbox #isHombrew [checked]="element.Oficial" [disableRipple]="true"
+                        <mat-checkbox #isHombrew [checked]="!element.Oficial" [disableRipple]="true"
                             (click)="$event.preventDefault(); $event.stopPropagation();"></mat-checkbox>
                     </div>
                 </td>

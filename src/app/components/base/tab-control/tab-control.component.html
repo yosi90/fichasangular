@@ -4,7 +4,11 @@
             <mat-icon class="me-2">people_alt</mat-icon>
             Personajes
         </ng-template>
-        <app-lista-personajes (NewDetallesTab)="abrirDetallesPersonaje($event)"></app-lista-personajes>
+        <app-lista-personajes
+            (NewDetallesTab)="abrirDetallesPersonaje($event)"
+            (RazaDetallesTab)="abrirDetallesRazaPorId($event)"
+            (ClaseDetallesTab)="abrirDetallesClasePorNombre($event)">
+        </app-lista-personajes>
     </mat-tab>
     <mat-tab label="Panel de administración" *ngIf="usrPerm === 1">
         <ng-template mat-tab-label="">
@@ -24,7 +28,9 @@
             (conjuroDetalles)="abrirDetallesConjuro($event);"
             (sortilegaDetalles)="abrirDetallesSortilega($event, pj.Nombre);"
             (tipoDetalles)="abrirDetallesTipoCriatura($event);"
-            (rasgoDetalles)="abrirDetallesRasgo($event);">
+            (rasgoDetalles)="abrirDetallesRasgo($event);"
+            (claseDetalles)="abrirDetallesClasePorNombre($event);"
+            (doteDetalles)="abrirDetallesDote($event);">
         </app-detalles-personaje>
     </mat-tab>
     <mat-tab label="Nuevo personaje" *ngIf="AbrirNuevoPersonajeTab">
@@ -86,6 +92,25 @@
         </ng-template>
         <app-detalles-rasgo [rasgo]="detallesRasgoAbiertos[index]"></app-detalles-rasgo>
     </mat-tab>
+    <mat-tab *ngFor="let clase of detallesClaseAbiertos; let index = index" [label]="getEtiquetaClase(clase)">
+        <ng-template mat-tab-label>
+            <mat-icon class="me-2">find_in_page</mat-icon>
+            {{getEtiquetaClase(clase)}}
+            <button (click)="quitarDetallesClase(getEtiquetaClase(clase))" mat-icon-button class="ms-2"><mat-icon>close</mat-icon></button>
+        </ng-template>
+        <app-detalles-clase
+            [clase]="detallesClaseAbiertos[index]"
+            (conjuroDetalles)="abrirDetallesConjuroPorId($event)">
+        </app-detalles-clase>
+    </mat-tab>
+    <mat-tab *ngFor="let doteCtx of detallesDoteAbiertos; let index = index" [label]="getEtiquetaDote(doteCtx)">
+        <ng-template mat-tab-label>
+            <mat-icon class="me-2">find_in_page</mat-icon>
+            {{getEtiquetaDote(doteCtx)}}
+            <button (click)="quitarDetallesDote(doteCtx)" mat-icon-button class="ms-2"><mat-icon>close</mat-icon></button>
+        </ng-template>
+        <app-detalles-dote [dote]="detallesDoteAbiertos[index]"></app-detalles-dote>
+    </mat-tab>
     <mat-tab label="Información importante" class="pe-3">
         <ng-template mat-tab-label="">
             <mat-icon class="me-2">info_outline</mat-icon>
@@ -110,12 +135,12 @@
                 <hr>
                 <ol>
                     <li><p class="d-flex align-items-center mb-0">Creada creación de personajes (Desarrollo actual)</p></li>
-                    <li><p class="d-flex align-items-center mb-0">Creada vista de Razas</p></li>
+                    <li><p class="d-flex align-items-center mb-0">Creada vista de Razas <mat-icon class="ms-2">done</mat-icon></p></li>
                     <li><p class="d-flex align-items-center mb-0">Creada vista de tipos de criatura <mat-icon class="ms-2">done</mat-icon></p></li>
                     <li><p class="d-flex align-items-center mb-0">Creada vista de rasgos <mat-icon class="ms-2">done</mat-icon></p></li>
                     <li><p class="d-flex align-items-center mb-0">Creada vista de conjuros y sortílegas <mat-icon class="ms-2">done</mat-icon></p></li>
                     <li><p class="d-flex align-items-center mb-0">Creada vista de clases</p></li>
-                    <li><p class="d-flex align-items-center mb-0">Creada vista de Dotes</p></li>
+                    <li><p class="d-flex align-items-center mb-0">Creada vista de Dotes <mat-icon class="ms-2">done</mat-icon></p></li>
                 </ol>
                 <hr><hr>
                 <p class="d-flex align-items-center mb-0">¡Aclaraciones!</p>

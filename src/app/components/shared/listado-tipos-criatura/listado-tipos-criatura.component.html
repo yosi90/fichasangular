@@ -14,7 +14,8 @@
                     <mat-label>Manual</mat-label>
                     <mat-select #manualconjuro appearance="fill" [(value)]="defaultManual"
                         (selectionChange)="filtroTipos();">
-                        <mat-option *ngFor="let m of Manuales" [value]="m">{{m}}</mat-option>
+                        <mat-option [value]="'Cualquiera'">Cualquiera</mat-option>
+                        <mat-option *ngFor="let m of Manuales" [value]="m.Nombre">{{m.Nombre}}</mat-option>
                     </mat-select>
                 </mat-form-field>
             </div>

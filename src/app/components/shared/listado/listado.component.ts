@@ -6,6 +6,10 @@ import { Conjuro } from 'src/app/interfaces/conjuro';
 import { ListadoTiposCriaturaComponent } from '../listado-tipos-criatura/listado-tipos-criatura.component';
 import { TipoCriatura } from 'src/app/interfaces/tipo_criatura';
 import { ListadoRasgoRacialComponent } from '../listado-rasgo/listado-rasgo.component';
+import { ListadoDotesComponent } from '../listado-dotes/listado-dotes.component';
+import { Dote } from 'src/app/interfaces/dote';
+import { ListadoClasesComponent } from '../listado-clases/listado-clases.component';
+import { Clase } from 'src/app/interfaces/clase';
 
 @Component({
     selector: 'app-listado',
@@ -23,6 +27,8 @@ export class ListadoComponent {
         'conjuros': ListadoConjurosComponent,
         'tipos de criatura': ListadoTiposCriaturaComponent,
         'rasgos': ListadoRasgoRacialComponent,
+        'dotes': ListadoDotesComponent,
+        'clases': ListadoClasesComponent,
     };
 
     constructor(private cdr: ChangeDetectorRef) { }
@@ -70,6 +76,20 @@ export class ListadoComponent {
                 this.handleItemDetalles(item);
             });
             componentRef.instance.rasgoSeleccionado.subscribe((item: TipoCriatura) => {
+                this.handleItemSeleccionado(item);
+            });
+        } else if (componentRef.instance instanceof ListadoDotesComponent) {
+            componentRef.instance.doteDetalles.subscribe((item: Dote) => {
+                this.handleItemDetalles(item);
+            });
+            componentRef.instance.doteSeleccionada.subscribe((item: Dote) => {
+                this.handleItemSeleccionado(item);
+            });
+        } else if (componentRef.instance instanceof ListadoClasesComponent) {
+            componentRef.instance.claseDetalles.subscribe((item: Clase) => {
+                this.handleItemDetalles(item);
+            });
+            componentRef.instance.claseSeleccionada.subscribe((item: Clase) => {
                 this.handleItemSeleccionado(item);
             });
         }

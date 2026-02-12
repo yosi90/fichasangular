@@ -30,7 +30,7 @@
                     Oro inicial &nbsp;{{pj.Oro_inicial}}
                     <mat-icon style="width: 20px; height: 20px; font-size: 20px;">currency_bitcoin</mat-icon>
                 </mat-chip>
-                <mat-chip class="warm m-1" *ngIf="pj.Oficial" matTooltip="Este personaje tiene elementos homebrew" matTooltipClass="tt-accent">No es oficial</mat-chip>
+                <mat-chip class="warm m-1" *ngIf="!pj.Oficial" matTooltip="Este personaje tiene elementos homebrew" matTooltipClass="tt-accent">No es oficial</mat-chip>
             </div>
             <div class="d-flex flex-wrap align-items-center sombra-caja-sm rounded p-2 my-2">
                 <mat-icon class="me-1">settings_accessibility</mat-icon>
@@ -62,13 +62,14 @@
             </div>
             <div class="d-flex flex-wrap align-items-center sombra-caja-sm rounded p-2 my-2">
                 <mat-icon class="me-1">style</mat-icon>
-                <mat-chip-set class="m-1" *ngIf="pj.desgloseClases;else sinClase">
-                    <mat-chip class="warm" *ngFor="let c of pj.desgloseClases">
+                <mat-chip-set class="m-1" *ngIf="(pj.desgloseClases?.length ?? 0) > 0; else sinClase">
+                    <mat-chip class="warm chip-clic sombra3d-sm" *ngFor="let c of pj.desgloseClases" matTooltip="Pulsa para ver los detalles de esta clase"
+                        [matTooltipShowDelay]="250" matTooltipClass="tt-accent" (click)="verDetallesClase(c.Nombre)">
                         {{c.Nombre}} {{c.Nivel}}
                     </mat-chip>
                 </mat-chip-set>
                 <ng-template #sinClase>
-                    <mat-chip class="m-1">No tiene clase</mat-chip>
+                    <mat-chip class="warm m-1">No tiene clase</mat-chip>
                 </ng-template>
                 <mat-chip class="warm m-1" *ngIf="pj.Escuela_especialista.Nombre != 'Cualquiera'">{{pj.Escuela_especialista.Calificativo}}</mat-chip>
                 <mat-chip class="h-auto m-1" *ngIf="pj.Escuelas_prohibidas && pj.Escuelas_prohibidas.length > 0"><p class="m-0 me-2">Escuelas prohibidas:</p>
@@ -159,7 +160,7 @@
                         </button>
                     </mat-expansion-panel-header>
                     <mat-chip-set class="m-1">
-                        <mat-chip *ngFor="let d of pj.Dotes" [matTooltip]="getTooltip_Dotes(d)" matTooltipClass="tt-accent tt-multiline" [ngClass]="d.Extra != 'No aplica' ? 'h-auto' : ''">
+                        <mat-chip *ngFor="let d of pj.Dotes" [matTooltip]="getTooltip_Dotes(d)" matTooltipClass="tt-accent tt-multiline" [ngClass]="d.Extra != 'No aplica' ? 'h-auto chip-clic sombra3d-sm' : 'chip-clic sombra3d-sm'" (click)="verDetallesDote(d);">
                             {{d.Nombre}}
                             <mat-chip class="m-1" *ngIf="d.Extra != 'No aplica'">{{d.Extra}}</mat-chip>
                         </mat-chip>

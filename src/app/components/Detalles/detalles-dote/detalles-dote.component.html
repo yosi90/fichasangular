@@ -1,0 +1,105 @@
+<div class="container-fluid" *ngIf="doteData">
+    <div class="row">
+        <div class="col-md-4 col-12 p-2">
+            <div class="d-flex flex-wrap align-items-center sombra-caja-sm rounded p-2 my-2">
+                <mat-chip class="h-auto warm w-100 sombra-caja-sm py-2 m-1">
+                    {{doteData.Nombre}}
+                </mat-chip>
+                <mat-chip class="sombra3d-sm m-1">
+                    <mat-icon class="me-2">auto_stories</mat-icon>
+                    {{doteData.Manual.Nombre}} (p. {{doteData.Manual.Pagina}})
+                </mat-chip>
+                <mat-chip class="h-auto sombra3d-sm m-1" *ngIf="doteData.Tipos?.length">
+                    Tipos
+                    <mat-chip class="sombra3d-sm m-1">{{getTipos()}}</mat-chip>
+                </mat-chip>
+                <mat-chip class="sombra3d-sm m-1" *ngIf="doteData.Repetible">Repetible</mat-chip>
+                <mat-chip class="sombra3d-sm m-1" *ngIf="doteData.Repetible_distinto_extra">Repetible con extra distinto</mat-chip>
+                <mat-chip class="sombra3d-sm m-1" *ngIf="doteData.Repetible_comb">Repetible en combinación</mat-chip>
+                <mat-chip class="sombra3d-sm m-1" *ngIf="doteData.Comp_arma">Competencia de arma</mat-chip>
+                <mat-chip class="warm sombra3d-sm m-1" *ngIf="!doteData.Oficial" matTooltip="Esta dote es homebrew" matTooltipClass="tt-accent">No es oficial</mat-chip>
+                <mat-chip class="h-auto sombra3d-sm m-1" *ngIf="getOrigenContexto()">
+                    Origen
+                    <mat-chip class="sombra3d-sm m-1">{{getOrigenContexto()}}</mat-chip>
+                </mat-chip>
+            </div>
+            <div class="d-flex flex-wrap align-items-center sombra-caja-sm rounded p-2 my-2" *ngIf="tieneTextoVisible(doteData.Descripcion)">
+                <mat-chip class="h-auto w-100 sombra-caja-sm py-2 m-1 mb-2">Descripción</mat-chip>
+                <p class="m-1">{{doteData.Descripcion}}</p>
+            </div>
+        </div>
+        <div class="col-md-4 col-12 p-2">
+            <div class="d-flex flex-wrap align-items-center sombra-caja-sm rounded p-2 my-2" *ngIf="tieneTextoVisible(doteData.Beneficio)">
+                <mat-chip class="h-auto w-100 sombra-caja-sm py-2 m-1 mb-2">Beneficio</mat-chip>
+                <p class="m-1">{{doteData.Beneficio}}</p>
+            </div>
+            <div class="d-flex flex-wrap align-items-center sombra-caja-sm rounded p-2 my-2" *ngIf="tieneTextoVisible(doteData.Normal)">
+                <mat-chip class="h-auto w-100 sombra-caja-sm py-2 m-1 mb-2">Normal</mat-chip>
+                <p class="m-1">{{doteData.Normal}}</p>
+            </div>
+            <div class="d-flex flex-wrap align-items-center sombra-caja-sm rounded p-2 my-2" *ngIf="tieneTextoVisible(doteData.Especial)">
+                <mat-chip class="h-auto w-100 sombra-caja-sm py-2 m-1 mb-2">Especial</mat-chip>
+                <p class="m-1">{{doteData.Especial}}</p>
+            </div>
+        </div>
+        <div class="col-md-4 col-12 p-2">
+            <mat-accordion>
+                <mat-expansion-panel *ngIf="tieneExtras()">
+                    <mat-expansion-panel-header>
+                        <button mat-stroked-button color="accent" class="rounded-0 rounded-top">
+                            <h2 class="mb-0">Extras</h2>
+                        </button>
+                    </mat-expansion-panel-header>
+                    <mat-chip-set class="m-1">
+                        <mat-chip class="sombra3d-sm m-1" *ngFor="let extra of getExtrasSoportadosActivos()">{{extra.nombre}}</mat-chip>
+                    </mat-chip-set>
+                    <div class="p-2" *ngFor="let extra of getExtrasDisponibles()">
+                        <mat-chip class="w-100 sombra-caja-sm m-1 mb-2">{{extra.nombre}}</mat-chip>
+                        <mat-chip-set class="m-1">
+                            <mat-chip class="sombra3d-sm m-1" *ngFor="let item of extra.items">{{item.Nombre}}</mat-chip>
+                        </mat-chip-set>
+                    </div>
+                </mat-expansion-panel>
+                <mat-expansion-panel *ngIf="getModificadoresActivos().length > 0">
+                    <mat-expansion-panel-header>
+                        <button mat-stroked-button color="accent" class="rounded-0">
+                            <h2 class="mb-0">Modificadores</h2>
+                        </button>
+                    </mat-expansion-panel-header>
+                    <mat-chip-set class="m-1">
+                        <mat-chip class="sombra3d-sm m-1" *ngFor="let mod of getModificadoresActivos()">
+                            {{mod.clave}} {{mod.valor > 0 ? '+' : ''}}{{mod.valor}}
+                        </mat-chip>
+                    </mat-chip-set>
+                </mat-expansion-panel>
+                <mat-expansion-panel>
+                    <mat-expansion-panel-header>
+                        <button mat-stroked-button color="accent" class="rounded-0 rounded-bottom">
+                            <h2 class="mb-0">Prerrequisitos</h2>
+                        </button>
+                    </mat-expansion-panel-header>
+                    <div *ngIf="getPrerrequisitosConDatos().length > 0; else sinPrerrequisitos">
+                        <div class="prerrequisito-bloque p-2" *ngFor="let key of getPrerrequisitosConDatos()">
+                            <mat-chip class="w-100 sombra-caja-sm m-1 mb-2">{{getEtiquetaPrerrequisito(key)}}</mat-chip>
+                            <div class="prerrequisito-condicion sombra-caja-sm m-1 p-2"
+                                *ngFor="let item of doteData.Prerrequisitos[key]; let i = index">
+                                <p class="mb-2 fw-bold">Condicion {{i + 1}}</p>
+                                <mat-chip-set class="m-0" *ngIf="getCamposPrerrequisito(item).length > 0; else condicionSinCampos">
+                                    <mat-chip class="sombra3d-sm m-1" *ngFor="let campo of getCamposPrerrequisito(item)">
+                                        {{campo.etiqueta}}: {{campo.valor}}
+                                    </mat-chip>
+                                </mat-chip-set>
+                                <ng-template #condicionSinCampos>
+                                    <p class="m-0">Condicion sin datos mostrables.</p>
+                                </ng-template>
+                            </div>
+                        </div>
+                    </div>
+                    <ng-template #sinPrerrequisitos>
+                        <p class="m-2">Sin prerrequisitos.</p>
+                    </ng-template>
+                </mat-expansion-panel>
+            </mat-accordion>
+        </div>
+    </div>
+</div>

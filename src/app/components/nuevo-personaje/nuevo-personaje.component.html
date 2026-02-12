@@ -1,20 +1,159 @@
-<mat-tab-group #nuevoPersonajeTabControl mat-stretch-tabs="false" mat-align-tabs="start">
-    <mat-tab label="raza" (click)="$event.preventDefault(); $event.stopPropagation();">
+<mat-tab-group #nuevoPersonajeTabControl mat-stretch-tabs="false" mat-align-tabs="start" (selectedTabChange)="onInternalTabChange($event)">
+    <mat-tab label="raza">
         <ng-template mat-tab-label="">
             <mat-icon class="me-2">settings_accessibility</mat-icon>
-            Elección de raza
+            Raza
         </ng-template>
         <app-listado-razas (razaDetalles)="verDetallesRaza($event)" (razaSeleccionada)="seleccionarRaza($event)"></app-listado-razas>
     </mat-tab>
-    <mat-tab label="futuro">
+    <mat-tab label="datos" [disabled]="!razaElegida">
         <ng-template mat-tab-label="">
-            <mat-icon class="me-2">tips_and_updates</mat-icon>
-            Futuras updates....
+            <mat-icon class="me-2">badge</mat-icon>
+            Básicos
         </ng-template>
-        <div class="d-flex justify-content-center align-items-center h-100 w-100">
-            <h1 class="text-white">Proximamente.. </h1>
-            <h2>Nombre del personaje; elección de alineamiento y deidad; Contexto y personalidad; altura, peso y edad;
-                etc..</h2>
+        <div class="container-fluid h-100 py-2" *ngIf="razaSeleccionada as raza; else sinRazaSeleccionada">
+            <div class="row">
+                <div class="col-md-4 col-12 p-2">
+                    <div class="sombra-caja-sm rounded p-2 my-2 seccion-form">
+                        <mat-chip class="h-auto w-100 sombra-caja-sm py-2 m-1 mb-3">
+                            Nombre del personaje
+                            <mat-icon class="ms-2">person</mat-icon>
+                        </mat-chip>
+                        <mat-form-field appearance="fill" class="w-100 nombre-hero__field">
+                            <mat-label>Nombre</mat-label>
+                            <input matInput [(ngModel)]="Personaje.Nombre" placeholder="Nombre del personaje">
+                        </mat-form-field>
+                    </div>
+                    <div class="sombra-caja-sm rounded p-2 my-2 seccion-form">
+                        <mat-chip class="h-auto w-100 sombra-caja-sm py-2 m-1 mb-3">
+                            Identidad
+                            <mat-icon class="ms-2">assignment_ind</mat-icon>
+                        </mat-chip>
+                        <div class="field-grid">
+                            <mat-form-field appearance="fill" class="full-span">
+                                <mat-label>Genero</mat-label>
+                                <mat-select [(value)]="Personaje.Genero">
+                                    <mat-option *ngFor="let genero of generos" [value]="genero">{{genero}}</mat-option>
+                                </mat-select>
+                            </mat-form-field>
+                            <div class="alineamiento-bloque full-span">
+                                <mat-form-field appearance="fill" class="w-100 m-0">
+                                    <mat-label>Alineamiento</mat-label>
+                                    <mat-select [(value)]="Personaje.Alineamiento" (selectionChange)="recalcularOficialidad()">
+                                        <mat-option *ngFor="let alineamiento of alineamientos" [value]="alineamiento">{{alineamiento}}</mat-option>
+                                    </mat-select>
+                                </mat-form-field>
+                                <div class="alineamiento-preferencias">
+                                    <p class="m-0"><strong>Base de la raza:</strong> {{alineamientoBaseRaza}}</p>
+                                    <p class="m-0"><strong>Preferencia de la raza (ley/normas):</strong> {{preferenciaLeyRaza}}</p>
+                                    <p class="m-0"><strong>Preferencia de la raza (moral/trato):</strong> {{preferenciaMoralRaza}}</p>
+                                </div>
+                            </div>
+                            <div class="deidad-bloque full-span">
+                                <mat-form-field appearance="fill" class="w-100 m-0">
+                                    <mat-label>Deidad</mat-label>
+                                    <input matInput [(ngModel)]="Personaje.Deidad" (ngModelChange)="recalcularOficialidad()" [matAutocomplete]="deidadAuto" placeholder="No tener deidad">
+                                    <mat-autocomplete #deidadAuto="matAutocomplete">
+                                        <mat-option *ngFor="let deidad of deidadesFiltradas" [value]="deidad">{{deidad}}</mat-option>
+                                    </mat-autocomplete>
+                                </mat-form-field>
+                                <div class="deidad-contexto" *ngIf="mostrarPanelDeidad">
+                                    <p class="m-0"><strong>Deidad:</strong> {{deidadSeleccionadaTexto}}</p>
+                                    <p class="m-0"><strong>Alineamiento de referencia:</strong> {{deidadAlineamientoInfo}}</p>
+                                    <p class="m-0"><strong>Estado en catalogo:</strong> {{deidadOficialidadInfo}}</p>
+                                    <p class="m-0">{{deidadDescripcionInfo}}</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4 col-12 p-2">
+                    <div class="sombra-caja-sm rounded p-2 my-2 seccion-form">
+                        <mat-chip class="h-auto w-100 sombra-caja-sm py-2 m-1 mb-3">
+                            Campaña
+                            <mat-icon class="ms-2">campaign</mat-icon>
+                        </mat-chip>
+                        <div class="field-grid">
+                            <mat-form-field appearance="fill">
+                                <mat-label>Campana</mat-label>
+                                <mat-select [(value)]="Personaje.Campana" (selectionChange)="actualizarTramas()">
+                                    <mat-option value="Sin campaña">Sin campaña</mat-option>
+                                    <mat-option *ngFor="let campana of Campanas" [value]="campana.Nombre">{{campana.Nombre}}</mat-option>
+                                </mat-select>
+                            </mat-form-field>
+                            <mat-form-field appearance="fill">
+                                <mat-label>Trama</mat-label>
+                                <mat-select [(value)]="Personaje.Trama" [disabled]="!campanaTieneTramas" (selectionChange)="actualizarSubtramas()">
+                                    <mat-option value="Trama base" *ngIf="Personaje.Campana === 'Sin campaña'">Trama base</mat-option>
+                                    <mat-option *ngFor="let trama of Tramas" [value]="trama.Nombre">{{trama.Nombre}}</mat-option>
+                                </mat-select>
+                            </mat-form-field>
+                            <mat-form-field appearance="fill">
+                                <mat-label>Subtrama</mat-label>
+                                <mat-select [(value)]="Personaje.Subtrama" [disabled]="!tramaTieneSubtramas">
+                                    <mat-option value="Subtrama base" *ngIf="!tramaTieneSubtramas">Subtrama base</mat-option>
+                                    <mat-option *ngFor="let subtrama of Subtramas" [value]="subtrama.Nombre">{{subtrama.Nombre}}</mat-option>
+                                </mat-select>
+                            </mat-form-field>
+                        </div>
+                    </div>
+                    <div class="sombra-caja-sm rounded p-2 my-2 seccion-form">
+                        <mat-chip class="h-auto w-100 sombra-caja-sm py-2 m-1 mb-3">
+                            Cuerpo
+                            <mat-icon class="ms-2">straighten</mat-icon>
+                        </mat-chip>
+                        <div class="field-grid">
+                            <div class="edad-bloque full-span">
+                                <mat-form-field appearance="fill" class="w-100 m-0">
+                                    <mat-label>Edad</mat-label>
+                                    <input matInput type="number" min="0" [(ngModel)]="Personaje.Edad" (ngModelChange)="recalcularOficialidad()">
+                                </mat-form-field>
+                                <div class="edad-contexto">
+                                    <p class="m-0"><strong>Etapas tipicas:</strong> {{rangoEdadTexto}}</p>
+                                    <p class="m-0"><strong>Etapa actual:</strong> {{etapaEdadActual}}</p>
+                                    <p class="m-0">{{edadMensajeContextual}}</p>
+                                </div>
+                            </div>
+                            <mat-chip class="bad mb-2 chip-alerta" *ngIf="edadFueraRango">
+                                La edad elegida sale del rango tipico de la raza.
+                            </mat-chip>
+                            <mat-form-field appearance="fill">
+                                <mat-label>Peso (kg)</mat-label>
+                                <input matInput type="number" min="0" step="0.1" [(ngModel)]="Personaje.Peso" (ngModelChange)="recalcularOficialidad()">
+                                <mat-hint>Recomendado {{raza.Peso_rango_inf}} - {{raza.Peso_rango_sup}}</mat-hint>
+                            </mat-form-field>
+                            <mat-form-field appearance="fill">
+                                <mat-label>Altura (m)</mat-label>
+                                <input matInput type="number" min="0" step="0.01" [(ngModel)]="Personaje.Altura" (ngModelChange)="recalcularOficialidad()">
+                                <mat-hint>Recomendado {{raza.Altura_rango_inf}} - {{raza.Altura_rango_sup}}</mat-hint>
+                            </mat-form-field>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4 col-12 p-2">
+                    <div class="sombra-caja-sm rounded p-2 my-2">
+                        <mat-chip class="w-100 sombra-caja-sm mb-2">Contexto</mat-chip>
+                        <mat-form-field appearance="fill" class="w-100">
+                            <mat-label>Trasfondo</mat-label>
+                            <textarea matInput rows="7" [(ngModel)]="Personaje.Contexto" [placeholder]="placeholderContexto"></textarea>
+                        </mat-form-field>
+                    </div>
+                    <div class="sombra-caja-sm rounded p-2 my-2">
+                        <mat-chip class="w-100 sombra-caja-sm mb-2">Personalidad</mat-chip>
+                        <mat-form-field appearance="fill" class="w-100">
+                            <mat-label>Rasgos de personalidad</mat-label>
+                            <textarea matInput rows="7" [(ngModel)]="Personaje.Personalidad" [placeholder]="placeholderPersonalidad"></textarea>
+                        </mat-form-field>
+                    </div>
+                </div>
+            </div>
         </div>
+        <ng-template #sinRazaSeleccionada>
+            <div class="d-flex justify-content-center align-items-center h-100 w-100 px-3">
+                <mat-chip class="h-auto warm p-3">
+                    Primero selecciona una raza para continuar con los datos base.
+                </mat-chip>
+            </div>
+        </ng-template>
     </mat-tab>
 </mat-tab-group>

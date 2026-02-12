@@ -2,80 +2,129 @@
 @import ../../../assets/css/_animations
 @import ../../../assets/css/_loaders
 @import ../../../assets/css/_sombras
+@import ../../../assets/css/preformas/_detalles
 
 :host
     display: flex
-
     height: 100%
-
     padding: 5px
 
     mat-tab-group
         flex: 1 0 100%
 
         ::ng-deep mat-tab-header
-            background-color: #353538 
+            background-color: #353538
 
         ::ng-deep .mdc-tab__text-label
             font-size: 15px
             font-weight: 300
 
-        #container-razas
-            display: grid
-            grid-template: 1fr auto/1fr
+    .col-md-4 div, .col-12 div
+        border: 0
 
-            overflow: hidden
+.field-grid
+    display: grid
+    grid-template-columns: repeat(auto-fit, minmax(190px, 1fr))
+    gap: 10px
 
-            .row:first-of-type
-                align-self: flex-start
+    mat-form-field
+        width: 100%
 
-                height: 100%
-                max-height: 100%
+.full-span
+    grid-column: 1 / -1
 
-                overflow: auto
+.nombre-hero__field
+    width: 100%
 
-            .row
-                position: relative
+    ::ng-deep .mdc-text-field
+        min-height: 72px
 
-                .filtros
-                    position: fixed
+    input
+        font-size: 1.2rem
+        font-weight: 600
+        letter-spacing: 0.02rem
 
-                    color: #414141
-                    background-color: $accent
-                    box-shadow: 4px 4px 6px rgb(51, 51, 51)
+.nombre-hero__hint
+    color: #bfbfbf
+    font-size: 0.92rem
 
-                    z-index: 101
+.seccion-form
+    .field-grid
+        ::ng-deep .mdc-text-field
+            border: none !important
+            box-shadow: none !important
 
-                    &:hover
-                        box-shadow: 0 0 6px inset rgb(51, 51, 51)
-                        
-                    &:active
-                        box-shadow: 4px 4px 6px inset rgb(51, 51, 51)
+        ::ng-deep .mdc-line-ripple::before, ::ng-deep .mdc-line-ripple::after
+            border-bottom-color: transparent !important
 
-                ::ng-deep .mat-sort-header-container
-                    justify-content: center
+        ::ng-deep .mat-mdc-form-field-subscript-wrapper
+            display: block
 
-                mat-paginator
-                    align-self: flex-end
+.alineamiento-bloque, .edad-bloque, .deidad-bloque
+    display: flex
+    flex-direction: column
+    gap: 0
 
-                .elegir-raza
+    ::ng-deep .mat-mdc-form-field-subscript-wrapper
+        height: 0 !important
+        min-height: 0 !important
+        padding: 0 !important
 
-                    transition: .3s
-                    cursor: pointer
+    ::ng-deep .mat-mdc-form-field-bottom-align::before
+        display: none !important
 
-                    &:hover
-                        background-color: rgba(255, 255, 255, 0.04)
+    ::ng-deep .mat-mdc-form-field-infix
+        padding-bottom: 0 !important
 
-#filtrosRazas
-    top: 100px
-    right: 40px
-    width: 38px
-    height: 38px
+.alineamiento-preferencias
+    background-color: rgba(255, 255, 255, 0.04)
+    border: 0
+    border-bottom: 1px solid #5f5f5f
+    border-radius: 0
+    margin-top: -2px
+    padding: 8px
+    font-size: 0.9rem
+    line-height: 1.4
 
-    padding: 4px 0 0 1px
+.edad-contexto
+    background-color: rgba(255, 255, 255, 0.04)
+    border: 0
+    border-bottom: 1px solid #5f5f5f
+    border-radius: 0
+    margin-top: -2px
+    padding: 8px
+    font-size: 0.9rem
+    line-height: 1.4
 
-    @supports (-moz-appearance:none)
-        top: 100px
+.deidad-contexto
+    background-color: rgba(255, 255, 255, 0.04)
+    border: 0
+    border-bottom: 1px solid #5f5f5f
+    border-radius: 0
+    margin-top: -2px
+    padding: 8px
+    font-size: 0.9rem
+    line-height: 1.4
 
-.d-initial
-    display: initial
+.chip-alerta
+    height: auto
+    white-space: normal
+    line-height: 1.3
+    overflow-wrap: anywhere
+
+textarea
+    resize: vertical
+
+.bad
+    background-color: rgb(87, 66, 66)
+
+::ng-deep .mat-mdc-form-field-subscript-wrapper
+    padding: 0 2px
+
+@media (max-width: 768px)
+    .nombre-hero__field
+        ::ng-deep .mdc-text-field
+            min-height: 60px
+
+        input
+            font-size: 1.05rem

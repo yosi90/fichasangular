@@ -9,7 +9,7 @@ import { Conjuro } from "../interfaces/conjuro";
 @Injectable({
     providedIn: 'root'
 })
-export class ConjurosService {
+export class ConjuroService {
 
     constructor(private db: Database, private http: HttpClient) { }
 

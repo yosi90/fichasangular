@@ -1,7 +1,41 @@
 <div>
     <p>Archivo</p>
-    <p>Manuales</p>
+    <p [matMenuTriggerFor]="menuManuales">Manuales</p>
     <p>Opciones</p>
     <p>Ayuda</p>
-    <!-- TODO dar funcionalidad -->
 </div>
+
+<mat-menu #menuManuales="matMenu" [class]="'menuManualesOscuro'">
+    <div class="manuales-menu" (click)="$event.stopPropagation();">
+        <p class="menu-estado" *ngIf="isLoading">
+            Cargando manuales...
+        </p>
+
+        <p class="menu-estado text-danger" *ngIf="!isLoading && errorState">
+            {{errorState}}
+        </p>
+
+        <p class="menu-estado" *ngIf="!isLoading && !errorState && manuales.length === 0">
+            No hay manuales en cache. Sincroniza en Admin panel.
+        </p>
+
+        <div class="manuales-lista" *ngIf="!isLoading && !errorState && manuales.length > 0">
+            <div class="manual-item" *ngFor="let manual of manuales">
+                <div class="manual-linea">
+                    <div class="manual-nombre">{{manual.Nombre}}</div>
+                    <span class="chip chip-estado" [ngClass]="manual.Oficial ? 'chip-oficial' : 'chip-homebrew'">
+                        {{manual.Oficial ? 'Oficial' : 'Homebrew'}}
+                    </span>
+                </div>
+                <div class="manual-chips">
+                    <span class="chip chip-categoria" *ngFor="let categoria of getCategorias(manual)">
+                        {{categoria}}
+                    </span>
+                    <span class="chip chip-categoria" *ngIf="getCategorias(manual).length === 0">
+                        Sin categorías
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+</mat-menu>

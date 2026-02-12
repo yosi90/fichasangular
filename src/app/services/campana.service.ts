@@ -9,10 +9,10 @@ import Swal from 'sweetalert2';
 @Injectable({
     providedIn: 'root'
 })
-export class CampañasService {
+export class CampanaService {
     constructor(private db: Database, private http: HttpClient) { }
 
-    async getListCampañas(): Promise<Observable<Campana[]>> {
+    async getListCampanas(): Promise<Observable<Campana[]>> {
         return new Observable((observador) => {
             const dbRef = ref(this.db, 'Campañas');
             let unsubscribe: Unsubscribe;
@@ -47,7 +47,7 @@ export class CampañasService {
         });
     }
 
-    private getCampañas(): Observable<any> {
+    private getCampanas(): Observable<any> {
         const headers = new HttpHeaders({ 'Content-Type': 'application/json' });
         const campañas = this.http.get(`${environment.apiUrl}campanas`);
         return campañas;
@@ -71,7 +71,7 @@ export class CampañasService {
         const db = getDatabase();
         let campañas: Campana[] = [];
 
-        this.getCampañas().subscribe(
+        this.getCampanas().subscribe(
             async (response: any) => {
                 for (const cam of response) {
                     let tramas: { Id: any; Nombre: any; Subtramas: { Id: any; Nombre: any; }[]; }[] = [];

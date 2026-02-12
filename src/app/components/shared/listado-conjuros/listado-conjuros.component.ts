@@ -3,8 +3,9 @@ import { MatPaginator } from '@angular/material/paginator';
 import { MatSort } from '@angular/material/sort';
 import { MatTableDataSource } from '@angular/material/table';
 import { Conjuro } from 'src/app/interfaces/conjuro';
-import { ConjurosService } from 'src/app/services/conjuros.service';
-import { ManualesService } from 'src/app/services/manuales.service';
+import { Manual } from 'src/app/interfaces/manual';
+import { ConjuroService } from 'src/app/services/conjuro.service';
+import { ManualService } from 'src/app/services/manual.service';
 
 @Component({
     selector: 'app-listado-conjuros',
@@ -13,12 +14,12 @@ import { ManualesService } from 'src/app/services/manuales.service';
 })
 export class ListadoConjurosComponent {
     conjuros: Conjuro[] = [];
-    Manuales: string[] = [];
-    defaultManual!: string;
+    Manuales: Manual[] = [];
+    defaultManual: string = 'Cualquiera';
     conjurosDS = new MatTableDataSource(this.conjuros);
     conjuroColumns = ['Nombre', 'Manual', 'Arcano', 'Divino', 'Psionico', 'Alma'];
 
-    constructor(private cdr: ChangeDetectorRef, private cSvc: ConjurosService, private mSvc: ManualesService) { }
+    constructor(private cdr: ChangeDetectorRef, private cSvc: ConjuroService, private mSvc: ManualService) { }
 
     @ViewChild(MatSort) conjuroSort!: MatSort;
     @ViewChild(MatPaginator) conjuroPaginator!: MatPaginator;
@@ -30,9 +31,8 @@ export class ListadoConjurosComponent {
         (this.cSvc.getConjuros()).subscribe(conjuros => {
             this.conjuros = conjuros;
             (this.mSvc.getManuales()).subscribe(manuales => {
-                manuales.unshift('Cualquiera');
-                this.Manuales = manuales;
-                this.defaultManual = this.Manuales[0];
+                this.Manuales = [...manuales].sort((a, b) => a.Nombre.localeCompare(b.Nombre, 'es', { sensitivity: 'base' }));
+                this.defaultManual = 'Cualquiera';
                 this.cdr.detectChanges();
                 this.filtroConjuros();
                 this.cdr.detectChanges();
@@ -46,7 +46,7 @@ export class ListadoConjurosComponent {
         const conjurosFiltrados = this.conjuros.filter(conjuro =>
             (texto === undefined || texto === '' || conjuro.Nombre.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().includes(texto))
             && (this.defaultManual == 'Cualquiera' || conjuro.Manual.includes(this.defaultManual))
-            && (homebrew || !homebrew && !conjuro.Oficial)
+            && (homebrew || !homebrew && conjuro.Oficial)
         );
         this.conjurosDS = new MatTableDataSource(conjurosFiltrados);
         setTimeout(() => {

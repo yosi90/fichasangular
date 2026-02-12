@@ -1,0 +1,1606 @@
+openapi: 3.0.3
+info:
+  title: Programa de Fichas API
+  version: 1.0.0
+  description: |
+    Documentacion OpenAPI del backend Flask.
+    Fecha: 2026-02-09.
+servers:
+  - url: http://127.0.0.1:5000
+    description: Local
+tags:
+  - name: verify
+  - name: personajes
+  - name: razas
+  - name: campanas
+  - name: tramas
+  - name: subtramas
+  - name: manuales
+  - name: tiposCriatura
+  - name: rasgos
+  - name: conjuros
+  - name: escuelas
+  - name: disciplinas
+  - name: alineamientos
+  - name: dotes
+  - name: clases
+  - name: plantillas
+paths:
+  /verify:
+    get:
+      tags: [verify]
+      summary: Verifica conexion con la base de datos
+      responses:
+        '200':
+          description: Conexion OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VerifyResponse'
+        '500':
+          description: Error de conexion
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /personajes:
+    get:
+      tags: [personajes]
+      summary: Lista detallada de personajes
+      responses:
+        '200':
+          description: Lista de personajes
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PersonajeDetalle'
+        '500':
+          description: Error interno
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /personajes/simplificados:
+    get:
+      tags: [personajes]
+      summary: Lista simplificada de personajes
+      responses:
+        '200':
+          description: Lista simplificada
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PersonajeSimplificado'
+
+  /personajes/add:
+    post:
+      tags: [personajes]
+      summary: Crear personaje
+      description: Endpoint definido en rutas, no implementado en controller.
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        '501':
+          description: No implementado
+
+  /razas:
+    get:
+      tags: [razas]
+      summary: Lista completa de razas
+      responses:
+        '200':
+          description: Lista de razas
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/RazaCompleta'
+
+  /razas/add:
+    post:
+      tags: [razas]
+      summary: Crear raza
+      description: Endpoint definido en rutas, no implementado en controller.
+      responses:
+        '501':
+          description: No implementado
+
+  /campanas:
+    get:
+      tags: [campanas]
+      summary: Lista de campanas
+      responses:
+        '200':
+          description: Lista de campanas
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/IdNombre'
+
+  /campanas/add:
+    post:
+      tags: [campanas]
+      summary: Crear campana
+      description: Endpoint definido en rutas, no implementado en controller.
+      responses:
+        '501':
+          description: No implementado
+
+  /tramas:
+    get:
+      tags: [tramas]
+      summary: Lista de tramas
+      responses:
+        '200':
+          description: Lista de tramas
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/IdNombre'
+
+  /tramas/campana/{id_campana}:
+    get:
+      tags: [tramas]
+      summary: Tramas por campana
+      parameters:
+        - name: id_campana
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Lista de tramas de la campana
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/IdNombre'
+
+  /tramas/add:
+    post:
+      tags: [tramas]
+      summary: Crear trama
+      description: Endpoint definido en rutas, no implementado en controller.
+      responses:
+        '501':
+          description: No implementado
+
+  /subtramas:
+    get:
+      tags: [subtramas]
+      summary: Lista de subtramas
+      responses:
+        '200':
+          description: Lista de subtramas
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/IdNombre'
+
+  /subtramas/trama/{id_trama}:
+    get:
+      tags: [subtramas]
+      summary: Subtramas por trama
+      parameters:
+        - name: id_trama
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Lista de subtramas de la trama
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/IdNombre'
+
+  /subtramas/add:
+    post:
+      tags: [subtramas]
+      summary: Crear subtrama
+      description: Endpoint definido en rutas, no implementado en controller.
+      responses:
+        '501':
+          description: No implementado
+
+  /manuales:
+    get:
+      tags: [manuales]
+      summary: Lista de manuales
+      responses:
+        '200':
+          description: Lista de manuales
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ManualDetalle'
+
+  /manuales/{id_manual}:
+    get:
+      tags: [manuales]
+      summary: Manual por id
+      parameters:
+        - name: id_manual
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Manual encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ManualDetalle'
+        '404':
+          description: Manual no encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /manuales/add:
+    post:
+      tags: [manuales]
+      summary: Crear manual
+      description: Endpoint definido en rutas, no implementado en controller.
+      responses:
+        '501':
+          description: No implementado
+
+  /tiposCriatura:
+    get:
+      tags: [tiposCriatura]
+      summary: Lista de tipos de criatura
+      responses:
+        '200':
+          description: Lista de tipos de criatura
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TipoCriaturaResumen'
+
+  /tiposCriatura/add:
+    post:
+      tags: [tiposCriatura]
+      summary: Crear tipo de criatura
+      description: Endpoint definido en rutas, no implementado en controller.
+      responses:
+        '501':
+          description: No implementado
+
+  /rasgos:
+    get:
+      tags: [rasgos]
+      summary: Lista de rasgos
+      responses:
+        '200':
+          description: Lista de rasgos
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/RasgoResumen'
+
+  /rasgos/add:
+    post:
+      tags: [rasgos]
+      summary: Crear rasgo
+      description: Endpoint definido en rutas, no implementado en controller.
+      responses:
+        '501':
+          description: No implementado
+
+  /conjuros:
+    get:
+      tags: [conjuros]
+      summary: Lista de conjuros
+      responses:
+        '200':
+          description: Lista de conjuros
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ConjuroResumen'
+
+  /conjuros/add:
+    post:
+      tags: [conjuros]
+      summary: Crear conjuro
+      description: Endpoint definido en rutas, no implementado en controller.
+      responses:
+        '501':
+          description: No implementado
+
+  /escuelas:
+    get:
+      tags: [escuelas]
+      summary: Lista de escuelas de conjuros
+      responses:
+        '200':
+          description: Lista de escuelas
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/EscuelaResumen'
+
+  /disciplinas:
+    get:
+      tags: [disciplinas]
+      summary: Lista de disciplinas de conjuros
+      responses:
+        '200':
+          description: Lista de disciplinas
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/DisciplinaResumen'
+
+  /alineamientos:
+    get:
+      tags: [alineamientos]
+      summary: Lista de alineamientos
+      responses:
+        '200':
+          description: Lista de alineamientos
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AlineamientoResumen'
+
+  /dotes:
+    get:
+      tags: [dotes]
+      summary: Lista de dotes completas con prerrequisitos
+      responses:
+        '200':
+          description: Lista de dotes
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/DoteDetalle'
+
+  /dotes/{id_dote}:
+    get:
+      tags: [dotes]
+      summary: Obtiene una dote por id
+      parameters:
+        - name: id_dote
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Dote encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DoteDetalle'
+        '404':
+          description: Dote no encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /clases:
+    get:
+      tags: [clases]
+      summary: Lista de clases detalladas
+      responses:
+        '200':
+          description: Lista de clases
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ClaseDetalle'
+
+  /clases/{id_clase}:
+    get:
+      tags: [clases]
+      summary: Clase detallada por id
+      parameters:
+        - name: id_clase
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Clase encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClaseDetalle'
+        '404':
+          description: Clase no encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /plantillas:
+    get:
+      tags: [plantillas]
+      summary: Lista de plantillas
+      responses:
+        '200':
+          description: Lista de plantillas
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PlantillaDetalle'
+
+  /plantillas/add:
+    post:
+      tags: [plantillas]
+      summary: Crear plantilla
+      description: Endpoint definido en rutas, no implementado en controller.
+      responses:
+        '501':
+          description: No implementado
+
+components:
+  schemas:
+    VerifyResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: success
+        message:
+          type: string
+          example: Conexion establecida con exito
+      required: [status, message]
+
+    ErrorResponse:
+      type: object
+      additionalProperties: true
+      description: Error no estandarizado (varia segun controlador/pyodbc).
+
+    IdNombre:
+      type: object
+      properties:
+        i:
+          type: integer
+        n:
+          type: string
+      required: [i, n]
+
+    ManualDetalle:
+      type: object
+      description: Los campos Incluye_* indican si el manual contiene definiciones de ese tipo de contenido.
+      properties:
+        Id: { type: integer }
+        Nombre: { type: string }
+        Incluye_dotes: { type: integer }
+        Incluye_conjuros: { type: integer }
+        Incluye_plantillas: { type: integer }
+        Incluye_monstruos: { type: integer }
+        Incluye_razas: { type: integer }
+        Incluye_clases: { type: integer }
+        Incluye_tipos: { type: integer }
+        Incluye_subtipos: { type: integer }
+        Oficial: { type: boolean }
+
+    DoteTipo:
+      type: object
+      properties:
+        Id: { type: integer }
+        Nombre: { type: string }
+        Usado: { type: integer }
+
+    DoteManual:
+      type: object
+      properties:
+        Id: { type: integer }
+        Nombre: { type: string }
+        Pagina: { type: integer }
+
+    DoteExtraItem:
+      type: object
+      properties:
+        Id: { type: integer }
+        Nombre: { type: string }
+
+    DoteExtrasSoportados:
+      type: object
+      properties:
+        Extra_arma: { type: integer }
+        Extra_armadura: { type: integer }
+        Extra_escuela: { type: integer }
+        Extra_habilidad: { type: integer }
+
+    DoteExtrasDisponibles:
+      type: object
+      properties:
+        Armas:
+          type: array
+          items:
+            $ref: '#/components/schemas/DoteExtraItem'
+        Armaduras:
+          type: array
+          items:
+            $ref: '#/components/schemas/DoteExtraItem'
+        Escuelas:
+          type: array
+          items:
+            $ref: '#/components/schemas/DoteExtraItem'
+        Habilidades:
+          type: array
+          items:
+            $ref: '#/components/schemas/DoteExtraItem'
+
+    DoteModificadores:
+      type: object
+      additionalProperties:
+        type: integer
+
+    DotePrerrequisitos:
+      type: object
+      additionalProperties:
+        type: array
+        items:
+          type: object
+          additionalProperties: true
+
+    DoteDetalle:
+      type: object
+      properties:
+        Id: { type: integer }
+        Nombre: { type: string }
+        Descripcion: { type: string }
+        Beneficio: { type: string }
+        Normal: { type: string }
+        Especial: { type: string }
+        Manual:
+          $ref: '#/components/schemas/DoteManual'
+        Tipos:
+          type: array
+          items:
+            $ref: '#/components/schemas/DoteTipo'
+        Repetible: { type: integer }
+        Repetible_distinto_extra: { type: integer }
+        Repetible_comb: { type: integer }
+        Comp_arma: { type: integer }
+        Oficial:
+          type: boolean
+          description: true si la dote es oficial; false si es homebrew.
+        Extras_soportados:
+          $ref: '#/components/schemas/DoteExtrasSoportados'
+        Extras_disponibles:
+          $ref: '#/components/schemas/DoteExtrasDisponibles'
+        Modificadores:
+          $ref: '#/components/schemas/DoteModificadores'
+        Prerrequisitos:
+          $ref: '#/components/schemas/DotePrerrequisitos'
+
+    DoteContexto:
+      type: object
+      additionalProperties: true
+
+    DoteContextual:
+      type: object
+      properties:
+        Dote:
+          $ref: '#/components/schemas/DoteDetalle'
+        Contexto:
+          $ref: '#/components/schemas/DoteContexto'
+
+    EscuelaDetalle:
+      type: object
+      properties:
+        Id: { type: integer }
+        Nombre: { type: string }
+        Nombre_esp: { type: string }
+        Prohibible: { type: integer }
+
+    DisciplinaDetalle:
+      type: object
+      properties:
+        Id: { type: integer }
+        Nombre: { type: string }
+        Nombre_esp: { type: string }
+        Subdisciplinas:
+          type: array
+          items: { type: string }
+
+    EscuelaResumen:
+      type: object
+      properties:
+        i: { type: integer }
+        n: { type: string }
+        ne: { type: string }
+        p: { type: integer }
+
+    DisciplinaResumen:
+      type: object
+      properties:
+        i: { type: integer }
+        n: { type: string }
+        ne: { type: string }
+        sd:
+          type: array
+          items: { type: string }
+
+    RasgoResumen:
+      type: object
+      properties:
+        i: { type: integer }
+        n: { type: string }
+        d: { type: string }
+        o: { type: boolean }
+
+    RasgoTipo:
+      type: object
+      properties:
+        Id: { type: integer }
+        Nombre: { type: string }
+        Descripcion: { type: string }
+        Oficial: { type: boolean }
+
+    AlineamientoResumenParte:
+      type: object
+      properties:
+        Id_basico: { type: integer }
+        Id_ley: { type: integer }
+        Id_moral: { type: integer }
+        Id_prioridad: { type: integer }
+        Nombre: { type: string }
+
+    AlineamientoResumen:
+      type: object
+      properties:
+        i: { type: integer }
+        b:
+          type: object
+          properties:
+            Id_basico: { type: integer }
+            Nombre: { type: string }
+        l:
+          type: object
+          properties:
+            Id_ley: { type: integer }
+            Nombre: { type: string }
+        m:
+          type: object
+          properties:
+            Id_moral: { type: integer }
+            Nombre: { type: string }
+        p:
+          type: object
+          properties:
+            Id_prioridad: { type: integer }
+            Nombre: { type: string }
+        d: { type: string }
+
+    AlineamientoDetalle:
+      type: object
+      properties:
+        Id: { type: integer }
+        Basico:
+          type: object
+          properties:
+            Id_basico: { type: integer }
+            Nombre: { type: string }
+        Ley:
+          type: object
+          properties:
+            Id_ley: { type: integer }
+            Nombre: { type: string }
+        Moral:
+          type: object
+          properties:
+            Id_moral: { type: integer }
+            Nombre: { type: string }
+        Prioridad:
+          type: object
+          properties:
+            Id_prioridad: { type: integer }
+            Nombre: { type: string }
+        Descripcion: { type: string }
+
+    ConjuroDescriptor:
+      type: object
+      properties:
+        Id: { type: string }
+        Nombre: { type: string }
+
+    ConjuroNivel:
+      type: object
+      properties:
+        Id_clase: { type: string }
+        Clase: { type: string }
+        Nivel: { type: string }
+        Espontaneo: { type: string }
+        Id_dominio: { type: string }
+        Dominio: { type: string }
+        Id_disciplina: { type: string }
+        Disciplina: { type: string }
+
+    ConjuroComponente:
+      type: object
+      properties:
+        Id_componente: { type: string }
+        Componente: { type: string }
+
+    ConjuroResumen:
+      type: object
+      properties:
+        i: { type: integer }
+        n: { type: string }
+        d: { type: string }
+        tl: { type: string }
+        ac: { type: string }
+        es:
+          $ref: '#/components/schemas/EscuelaDetalle'
+        di:
+          $ref: '#/components/schemas/DisciplinaDetalle'
+        m: { type: string }
+        ob: { type: string }
+        ef: { type: string }
+        ar: { type: string }
+        arc: { type: integer }
+        div: { type: integer }
+        psi: { type: integer }
+        alm: { type: integer }
+        com: { type: integer }
+        dur: { type: string }
+        t_s: { type: string }
+        r_c: { type: integer }
+        r_p: { type: integer }
+        d_c: { type: string }
+        per: { type: integer }
+        pp: { type: integer }
+        da: { type: string }
+        des:
+          type: array
+          items:
+            $ref: '#/components/schemas/ConjuroDescriptor'
+        ncl:
+          type: array
+          items:
+            type: object
+            properties:
+              Id_clase: { type: string }
+              Clase: { type: string }
+              Nivel: { type: string }
+              Espontaneo: { type: string }
+        nd:
+          type: array
+          items:
+            type: object
+            properties:
+              Id_dominio: { type: string }
+              Dominio: { type: string }
+              Nivel: { type: string }
+              Espontaneo: { type: string }
+        ndis:
+          type: array
+          items:
+            type: object
+            properties:
+              Id_disciplina: { type: string }
+              Disciplina: { type: string }
+              Nivel: { type: string }
+              Espontaneo: { type: string }
+        coms:
+          type: array
+          items:
+            $ref: '#/components/schemas/ConjuroComponente'
+        o: { type: boolean }
+
+    ConjuroDetalle:
+      type: object
+      properties:
+        Id: { type: integer }
+        Nombre: { type: string }
+        Descripcion: { type: string }
+        Tiempo_lanzamiento: { type: string }
+        Alcance: { type: string }
+        Escuela:
+          $ref: '#/components/schemas/EscuelaDetalle'
+        Disciplina:
+          $ref: '#/components/schemas/DisciplinaDetalle'
+        Manual: { type: string }
+        Objetivo: { type: string }
+        Efecto: { type: string }
+        Area: { type: string }
+        Arcano: { type: integer }
+        Divino: { type: integer }
+        Psionico: { type: integer }
+        alma: { type: integer }
+        Duracion: { type: string }
+        Tipo_salvacion: { type: string }
+        Resistencia_conjuros: { type: integer }
+        Resistencia_poderes: { type: integer }
+        Descripcion_componentes: { type: string }
+        Permanente: { type: integer }
+        Puntos_poder: { type: integer }
+        Descripcion_aumentos: { type: string }
+        Descriptores:
+          type: array
+          items:
+            $ref: '#/components/schemas/ConjuroDescriptor'
+        Niveles_clase:
+          type: array
+          items:
+            type: object
+            properties:
+              Id_clase: { type: string }
+              Clase: { type: string }
+              Nivel: { type: string }
+              Espontaneo: { type: string }
+        Niveles_dominio:
+          type: array
+          items:
+            type: object
+            properties:
+              Id_dominio: { type: string }
+              Dominio: { type: string }
+              Nivel: { type: string }
+              Espontaneo: { type: string }
+        Niveles_disciplina:
+          type: array
+          items:
+            type: object
+            properties:
+              Id_disciplina: { type: string }
+              Disciplina: { type: string }
+              Nivel: { type: string }
+              Espontaneo: { type: string }
+        Componentes:
+          type: array
+          items:
+            $ref: '#/components/schemas/ConjuroComponente'
+        Oficial: { type: boolean }
+
+    TipoCriaturaDetalle:
+      type: object
+      properties:
+        Id: { type: integer }
+        Nombre: { type: string }
+        Descripcion: { type: string }
+        Manual: { type: string }
+        Id_tipo_dado: { type: integer }
+        Tipo_dado: { type: string }
+        Id_ataque: { type: integer }
+        Id_fortaleza: { type: integer }
+        Id_reflejos: { type: integer }
+        Id_voluntad: { type: integer }
+        Id_puntos_habilidad: { type: integer }
+        Come: { type: integer }
+        Respira: { type: integer }
+        Duerme: { type: integer }
+        Recibe_críticos: { type: integer }
+        Puede_ser_flanqueado: { type: integer }
+        Pierde_constitucion: { type: integer }
+        Limite_inteligencia: { type: integer }
+        Tesoro: { type: string }
+        Id_alineamiento: { type: integer }
+        Rasgos:
+          type: array
+          items:
+            $ref: '#/components/schemas/RasgoTipo'
+        Oficial: { type: boolean }
+
+    TipoCriaturaResumen:
+      type: object
+      properties:
+        i: { type: integer }
+        n: { type: string }
+        d: { type: string }
+        ma: { type: string }
+        itd: { type: integer }
+        ntd: { type: string }
+        ia: { type: integer }
+        ift: { type: integer }
+        ir: { type: integer }
+        iv: { type: integer }
+        iph: { type: integer }
+        c: { type: integer }
+        r: { type: integer }
+        du: { type: integer }
+        cr: { type: integer }
+        f: { type: integer }
+        pc: { type: integer }
+        li: { type: integer }
+        t: { type: string }
+        ial: { type: integer }
+        ra:
+          type: array
+          items:
+            $ref: '#/components/schemas/RasgoTipo'
+        o: { type: boolean }
+
+    RazaSimplificada:
+      type: object
+      properties:
+        Id: { type: integer }
+        Nombre: { type: string }
+        Modificadores:
+          type: object
+          properties:
+            Fuerza: { type: integer }
+            Destreza: { type: integer }
+            Constitucion: { type: integer }
+            Inteligencia: { type: integer }
+            Sabiduria: { type: integer }
+            Carisma: { type: integer }
+        Ajuste_nivel: { type: integer }
+        Manual: { type: string }
+        Clase_predilecta: { type: string }
+        Oficial: { type: boolean }
+        Tamano:
+          type: object
+          additionalProperties: true
+        Dgs_adicionales:
+          type: object
+          additionalProperties: true
+        Tipo_criatura:
+          $ref: '#/components/schemas/TipoCriaturaDetalle'
+
+    SortilegioRaza:
+      type: object
+      properties:
+        Conjuro:
+          $ref: '#/components/schemas/ConjuroDetalle'
+        Nivel_lanzador: { type: integer }
+        Usos_diarios: { type: string }
+        Descripcion: { type: string }
+
+    SortilegioPersonaje:
+      type: object
+      properties:
+        Conjuro:
+          $ref: '#/components/schemas/ConjuroDetalle'
+        Nivel_lanzador: { type: integer }
+        Usos_diarios: { type: string }
+        Dgs_necesarios: { type: integer }
+        Origen: { type: string }
+
+    RazaCompleta:
+      type: object
+      properties:
+        i: { type: integer }
+        n: { type: string }
+        m:
+          type: object
+          properties:
+            Fuerza: { type: integer }
+            Destreza: { type: integer }
+            Constitucion: { type: integer }
+            Inteligencia: { type: integer }
+            Sabiduria: { type: integer }
+            Carisma: { type: integer }
+        aju: { type: integer }
+        ma: { type: string }
+        c: { type: string }
+        o: { type: boolean }
+        an: { type: string }
+        t:
+          type: object
+          additionalProperties: true
+        dg:
+          type: object
+          additionalProperties: true
+        rd: { type: string }
+        rc: { type: string }
+        re: { type: string }
+        he: { type: integer }
+        mu: { type: integer }
+        tmd: { type: integer }
+        pr:
+          type: object
+          additionalProperties: true
+        ant: { type: integer }
+        va: { type: integer }
+        co: { type: integer }
+        na: { type: integer }
+        vo: { type: integer }
+        man:
+          type: object
+          additionalProperties: true
+        tr: { type: integer }
+        es: { type: integer }
+        ari: { type: integer }
+        ars: { type: integer }
+        pri: { type: integer }
+        prs: { type: integer }
+        ea: { type: integer }
+        em: { type: integer }
+        ev: { type: integer }
+        eve: { type: integer }
+        esp: { type: integer }
+        alc: { type: integer }
+        tc:
+          $ref: '#/components/schemas/TipoCriaturaDetalle'
+        sor:
+          type: array
+          items:
+            $ref: '#/components/schemas/SortilegioRaza'
+        ali:
+          $ref: '#/components/schemas/AlineamientoDetalle'
+        dotes:
+          type: array
+          items:
+            $ref: '#/components/schemas/DoteContextual'
+
+    Idioma:
+      type: object
+      properties:
+        Nombre: { type: string }
+        Descripcion: { type: string }
+        Secreto: { type: string }
+        Oficial: { type: boolean }
+
+    SalvacionMod:
+      type: object
+      properties:
+        valor: { type: integer }
+        origen: { type: string }
+
+    SalvacionDetalle:
+      type: object
+      properties:
+        modsClaseos:
+          type: array
+          items:
+            $ref: '#/components/schemas/SalvacionMod'
+        modsVarios:
+          type: array
+          items:
+            $ref: '#/components/schemas/SalvacionMod'
+
+    Salvaciones:
+      type: object
+      properties:
+        fortaleza:
+          $ref: '#/components/schemas/SalvacionDetalle'
+        reflejos:
+          $ref: '#/components/schemas/SalvacionDetalle'
+        voluntad:
+          $ref: '#/components/schemas/SalvacionDetalle'
+
+    PlantillaPersonaje:
+      type: object
+      properties:
+        Id: { type: integer }
+        Nombre: { type: string }
+        Ataques: { type: string }
+        Ataque_completo: { type: string }
+        Id_tamano: { type: integer }
+        Tamano: { type: string }
+        Id_tamano_pasos: { type: integer }
+        Tamano_pasos: { type: string }
+        Id_dados_golpe: { type: integer }
+        Dados_golpe: { type: string }
+        Id_dados_golpe_pasos: { type: integer }
+        Dados_golpe_pasos: { type: string }
+        Actualiza_dgs: { type: integer }
+        Multiplicador_dgs_lic: { type: integer }
+        Tipo_dgs_lic: { type: string }
+        Suma_dgs_lic: { type: integer }
+        Correr: { type: integer }
+        Nadar: { type: integer }
+        Volar: { type: integer }
+        Maniobrabilidad: { type: string }
+        Trepar: { type: integer }
+        Escalar: { type: integer }
+        Ataque_base: { type: integer }
+        Ca: { type: string }
+        Resistencia_conjuros: { type: string }
+        Reduccion_dano: { type: string }
+        Resistencia_elemental: { type: string }
+        Velocidades: { type: string }
+        Iniciativa: { type: integer }
+        Presa: { type: integer }
+        Ajuste_nivel: { type: integer }
+        Heredada: { type: integer }
+
+    PersonajeSimplificado:
+      type: object
+      properties:
+        i: { type: integer }
+        n: { type: string }
+        r:
+          $ref: '#/components/schemas/RazaSimplificada'
+        c: { type: string }
+        p: { type: string }
+        co: { type: string }
+        ca: { type: string }
+        t: { type: string }
+        s: { type: string }
+        a: { type: integer }
+
+    PersonajeDetalle:
+      type: object
+      properties:
+        i: { type: integer }
+        n: { type: string }
+        dcp: { type: string }
+        dh: { type: string }
+        a: { type: integer }
+        ca: { type: integer }
+        an: { type: integer }
+        cd: { type: integer }
+        cv: { type: integer }
+        ra:
+          $ref: '#/components/schemas/RazaSimplificada'
+        tc:
+          $ref: '#/components/schemas/TipoCriaturaDetalle'
+        f: { type: integer }
+        mf: { type: integer }
+        d: { type: integer }
+        md: { type: integer }
+        co: { type: integer }
+        mco: { type: integer }
+        int: { type: integer }
+        mint: { type: integer }
+        s: { type: integer }
+        ms: { type: integer }
+        car: { type: integer }
+        mcar: { type: integer }
+        de: { type: string }
+        ali: { type: string }
+        g: { type: string }
+        ncam: { type: string }
+        ntr: { type: string }
+        nst: { type: string }
+        v: { type: integer }
+        cor: { type: integer }
+        na: { type: integer }
+        vo: { type: integer }
+        t: { type: integer }
+        e: { type: integer }
+        o: { type: boolean }
+        dg: { type: integer }
+        cla: { type: string }
+        dom: { type: string }
+        stc: { type: string }
+        pla:
+          type: array
+          items:
+            $ref: '#/components/schemas/PlantillaPersonaje'
+        con:
+          type: array
+          items:
+            $ref: '#/components/schemas/ConjuroDetalle'
+        esp:
+          type: array
+          items: { type: string }
+        espX:
+          type: array
+          items: { type: string }
+        rac: { type: string }
+        hab:
+          type: array
+          items: { type: string }
+        habN:
+          type: array
+          items: { type: string }
+        habC:
+          type: array
+          items: { type: boolean }
+        habCa:
+          type: array
+          items: { type: string }
+        habMc:
+          type: array
+          items: { type: integer }
+        habR:
+          type: array
+          items: { type: integer }
+        habRv:
+          type: array
+          items: { type: integer }
+        habX:
+          type: array
+          items: { type: string }
+        habV:
+          type: array
+          items: { type: string }
+        habCu:
+          type: array
+          items: { type: boolean }
+        dotes:
+          type: array
+          items:
+            $ref: '#/components/schemas/DoteContextual'
+        ve: { type: string }
+        idi:
+          type: array
+          items:
+            $ref: '#/components/schemas/Idioma'
+        sor:
+          type: array
+          items:
+            $ref: '#/components/schemas/SortilegioPersonaje'
+        ju: { type: string }
+        pgl: { type: integer }
+        ini_v:
+          type: array
+          items:
+            type: object
+            properties:
+              Valor: { type: integer }
+              Origen: { type: string }
+        pr_v:
+          type: array
+          items:
+            type: object
+            properties:
+              Valor: { type: integer }
+              Origen: { type: string }
+        edad: { type: integer }
+        alt: { type: integer }
+        peso: { type: integer }
+        salv:
+          $ref: '#/components/schemas/Salvaciones'
+        rds:
+          type: array
+          items: { type: string }
+        rcs:
+          type: array
+          items: { type: string }
+        res:
+          type: array
+          items: { type: string }
+        ccl: { type: integer }
+        ccm: { type: integer }
+        ccp: { type: integer }
+        espa: { type: string }
+        espan: { type: string }
+        espp: { type: string }
+        esppn: { type: string }
+        disp: { type: string }
+        ecp: { type: string }
+
+    PlantillaDetalle:
+      type: object
+      properties:
+        i: { type: integer }
+        n: { type: string }
+        d: { type: string }
+        m: { type: string }
+        ta:
+          type: object
+          additionalProperties: true
+        da:
+          type: object
+          properties:
+            Id_tipo_dado: { type: integer }
+            Nombre: { type: string }
+        act_dg: { type: integer }
+        mod_dg:
+          type: object
+          properties:
+            Id_paso_modificacion: { type: integer }
+            Nombre: { type: string }
+        mod_tam:
+          type: object
+          properties:
+            Id_paso_modificacion: { type: integer }
+            Nombre: { type: string }
+        ini: { type: integer }
+        vs: { type: string }
+        ca: { type: string }
+        a: { type: integer }
+        p: { type: integer }
+        as: { type: string }
+        ac: { type: string }
+        rd: { type: string }
+        rc: { type: string }
+        re: { type: string }
+        f: { type: integer }
+        r: { type: integer }
+        v: { type: integer }
+        fue: { type: integer }
+        de: { type: integer }
+        con: { type: integer }
+        inte: { type: integer }
+        sab: { type: integer }
+        car: { type: integer }
+        mfue: { type: integer }
+        mde: { type: integer }
+        mcon: { type: integer }
+        minte: { type: integer }
+        msab: { type: integer }
+        mcar: { type: integer }
+        aju: { type: integer }
+        lic:
+          type: object
+          properties:
+            Id_dado: { type: integer }
+            Dado: { type: string }
+            Multiplicador: { type: integer }
+            Suma: { type: integer }
+        cd: { type: integer }
+        hab:
+          type: object
+          properties:
+            Suma: { type: integer }
+            Suma_fija: { type: integer }
+        nac: { type: integer }
+        c: { type: integer }
+        na: { type: integer }
+        vo: { type: integer }
+        man:
+          type: object
+          additionalProperties: true
+        t: { type: integer }
+        e: { type: integer }
+        ali:
+          $ref: '#/components/schemas/AlineamientoDetalle'
+        o: { type: boolean }
+        dotes:
+          type: array
+          items:
+            $ref: '#/components/schemas/DoteContextual'
+
+    ConjuroClaseRef:
+      type: object
+      properties:
+        Id: { type: integer }
+        Nombre: { type: string }
+        Nivel: { type: integer }
+        Espontaneo: { type: boolean }
+
+    ClaseDoteNivel:
+      type: object
+      properties:
+        Dote:
+          $ref: '#/components/schemas/DoteDetalle'
+        Nivel: { type: integer }
+        Id_extra: { type: integer }
+        Extra: { type: string }
+        Opcional: { type: integer }
+        Id_interno: { type: integer }
+        Id_especial_requerido: { type: integer }
+        Id_dote_requerida: { type: integer }
+
+    ClaseEspecialNivel:
+      type: object
+      properties:
+        Especial:
+          type: object
+          additionalProperties: true
+        Nivel: { type: integer }
+        Id_extra: { type: integer }
+        Extra: { type: string }
+        Opcional: { type: integer }
+        Id_interno: { type: integer }
+        Id_especial_requerido: { type: integer }
+        Id_dote_requerida: { type: integer }
+
+    ClaseNivelDetalle:
+      type: object
+      properties:
+        Nivel: { type: integer }
+        Ataque_base: { type: string }
+        Salvaciones:
+          type: object
+          properties:
+            Fortaleza: { type: string }
+            Reflejos: { type: string }
+            Voluntad: { type: string }
+        Nivel_max_conjuro: { type: integer }
+        Reserva_psionica: { type: integer }
+        Aumentos_clase_lanzadora:
+          type: array
+          items:
+            type: object
+            properties:
+              Id: { type: integer }
+              Nombre: { type: string }
+        Conjuros_diarios:
+          type: object
+          additionalProperties: true
+        Conjuros_conocidos_nivel_a_nivel:
+          type: object
+          additionalProperties: true
+        Conjuros_conocidos_total: { type: integer }
+        Dotes:
+          type: array
+          items:
+            $ref: '#/components/schemas/ClaseDoteNivel'
+        Especiales:
+          type: array
+          items:
+            $ref: '#/components/schemas/ClaseEspecialNivel'
+
+    ClasePrerrequisitos:
+      type: object
+      properties:
+        subtipo: { type: array, items: { type: object, additionalProperties: true } }
+        caracteristica: { type: array, items: { type: object, additionalProperties: true } }
+        dg: { type: array, items: { type: object, additionalProperties: true } }
+        dominio: { type: array, items: { type: object, additionalProperties: true } }
+        nivel_minimo_escuela: { type: array, items: { type: object, additionalProperties: true } }
+        ataque_base: { type: array, items: { type: object, additionalProperties: true } }
+        reserva_psionica_minima: { type: array, items: { type: object, additionalProperties: true } }
+        lanzar_conjuros_psionicos_nivel: { type: array, items: { type: object, additionalProperties: true } }
+        poder_psionico_conocido: { type: array, items: { type: object, additionalProperties: true } }
+        genero: { type: array, items: { type: object, additionalProperties: true } }
+        competencia_arma: { type: array, items: { type: object, additionalProperties: true } }
+        competencia_armadura: { type: array, items: { type: object, additionalProperties: true } }
+        competencia_grupo_arma: { type: array, items: { type: object, additionalProperties: true } }
+        competencia_grupo_armadura: { type: array, items: { type: object, additionalProperties: true } }
+        dote: { type: array, items: { type: object, additionalProperties: true } }
+        habilidad: { type: array, items: { type: object, additionalProperties: true } }
+        idioma: { type: array, items: { type: object, additionalProperties: true } }
+        alineamiento_requerido: { type: array, items: { type: object, additionalProperties: true } }
+        alineamiento_prohibido: { type: array, items: { type: object, additionalProperties: true } }
+        actitud_requerido: { type: array, items: { type: object, additionalProperties: true } }
+        actitud_prohibido: { type: array, items: { type: object, additionalProperties: true } }
+        lanzador_arcano: { type: array, items: { type: object, additionalProperties: true } }
+        lanzador_divino: { type: array, items: { type: object, additionalProperties: true } }
+        lanzar_conjuros_arcanos_nivel: { type: array, items: { type: object, additionalProperties: true } }
+        lanzar_conjuros_divinos_nivel: { type: array, items: { type: object, additionalProperties: true } }
+        conjuro_conocido: { type: array, items: { type: object, additionalProperties: true } }
+        inherente: { type: array, items: { type: object, additionalProperties: true } }
+        clase_especial: { type: array, items: { type: object, additionalProperties: true } }
+        tamano_maximo: { type: array, items: { type: object, additionalProperties: true } }
+        tamano_minimo: { type: array, items: { type: object, additionalProperties: true } }
+        raza: { type: array, items: { type: object, additionalProperties: true } }
+        no_raza: { type: array, items: { type: object, additionalProperties: true } }
+
+    ClasePrerrequisitosFlags:
+      type: object
+      additionalProperties: false
+      properties:
+        actitud_requerido: { type: boolean }
+        actitud_prohibido: { type: boolean }
+        alineamiento_requerido: { type: boolean }
+        alineamiento_prohibido: { type: boolean }
+        ataque_base: { type: boolean }
+        caracteristica: { type: boolean }
+        habilidad_clase: { type: boolean }
+        competencia_arma: { type: boolean }
+        competencia_armadura: { type: boolean }
+        competencia_grupo_arma: { type: boolean }
+        competencia_grupo_armadura: { type: boolean }
+        conjuro_conocido: { type: boolean }
+        dg: { type: boolean }
+        dominio: { type: boolean }
+        dote_elegida: { type: boolean }
+        nivel_escuela: { type: boolean }
+        rangos_habilidad: { type: boolean }
+        idioma: { type: boolean }
+        inherente: { type: boolean }
+        lanzador_arcano: { type: boolean }
+        lanzador_divino: { type: boolean }
+        lanzar_conjuros_arcanos_nivel: { type: boolean }
+        lanzar_conjuros_divinos_nivel: { type: boolean }
+        lanzar_poder_psionico_nivel: { type: boolean }
+        no_raza: { type: boolean }
+        conocer_poder_psionico: { type: boolean }
+        raza: { type: boolean }
+        reserva_psionica: { type: boolean }
+        genero: { type: boolean }
+        subtipo: { type: boolean }
+        tamano_maximo: { type: boolean }
+        tamano_minimo: { type: boolean }
+
+    ClaseDetalle:
+      type: object
+      properties:
+        Id: { type: integer }
+        Nombre: { type: string }
+        Descripcion: { type: string }
+        Manual:
+          $ref: '#/components/schemas/DoteManual'
+        Tipo_dado:
+          type: object
+          properties:
+            Id: { type: integer }
+            Nombre: { type: string }
+        Puntos_habilidad:
+          type: object
+          properties:
+            Id: { type: integer }
+            Valor: { type: integer }
+        Nivel_max_claseo: { type: integer }
+        Mod_salv_conjuros: { type: string }
+        Conjuros:
+          type: object
+          properties:
+            Dependientes_alineamiento: { type: boolean }
+            Divinos: { type: boolean }
+            Arcanos: { type: boolean }
+            Psionicos: { type: boolean }
+            Alma: { type: boolean }
+            Conocidos_total: { type: boolean }
+            Conocidos_nivel_a_nivel: { type: boolean }
+            Dominio: { type: boolean }
+            Escuela: { type: boolean }
+            Lanzamiento_espontaneo: { type: boolean }
+            Clase_origen:
+              type: object
+              properties:
+                Id: { type: integer }
+                Nombre: { type: string }
+            Listado:
+              type: array
+              items:
+                $ref: '#/components/schemas/ConjuroClaseRef'
+        Roles:
+          type: object
+          properties:
+            Dps: { type: boolean }
+            Tanque: { type: boolean }
+            Support: { type: boolean }
+            Utilidad: { type: boolean }
+        Aumenta_clase_lanzadora: { type: boolean }
+        Es_predilecta: { type: boolean }
+        Prestigio: { type: boolean }
+        Alineamiento:
+          $ref: '#/components/schemas/AlineamientoDetalle'
+        Oficial: { type: boolean }
+        Competencias:
+          type: object
+          properties:
+            Armas: { type: array, items: { type: object, additionalProperties: true } }
+            Armaduras: { type: array, items: { type: object, additionalProperties: true } }
+            Grupos_arma: { type: array, items: { type: object, additionalProperties: true } }
+            Grupos_armadura: { type: array, items: { type: object, additionalProperties: true } }
+        Habilidades:
+          type: object
+          properties:
+            Base: { type: array, items: { type: object, additionalProperties: true } }
+            Custom: { type: array, items: { type: object, additionalProperties: true } }
+        Idiomas:
+          type: array
+          items:
+            $ref: '#/components/schemas/Idioma'
+        Desglose_niveles:
+          type: array
+          items:
+            $ref: '#/components/schemas/ClaseNivelDetalle'
+        Prerrequisitos_flags:
+          $ref: '#/components/schemas/ClasePrerrequisitosFlags'
+        Prerrequisitos:
+          $ref: '#/components/schemas/ClasePrerrequisitos'

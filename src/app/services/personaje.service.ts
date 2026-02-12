@@ -7,6 +7,8 @@ import { environment } from 'src/environments/environment';
 import { RazaSimple } from '../interfaces/simplificaciones/raza-simple';
 import Swal from 'sweetalert2';
 import { TipoCriatura } from '../interfaces/tipo_criatura';
+import { DoteContextual } from '../interfaces/dote-contextual';
+import { toDoteContextualArray, toDoteLegacyArray } from './utils/dote-mapper';
 
 @Injectable({
     providedIn: 'root'
@@ -21,12 +23,21 @@ export class PersonajeService {
             let unsubscribe: Unsubscribe;
 
             const onNext = (snapshot: any) => {
+                const clasesVal = snapshot.child('Clases').val();
+                const clasesArray = Array.isArray(clasesVal) ? clasesVal : [];
+                const dotesContextuales = toDoteContextualArray(snapshot.child('DotesContextuales').val());
+                const dotesLegacyRaw = snapshot.child('Dotes').val();
+                const dotesLegacy = Array.isArray(dotesLegacyRaw)
+                    ? dotesLegacyRaw
+                    : (dotesLegacyRaw && typeof dotesLegacyRaw === 'object'
+                        ? Object.values(dotesLegacyRaw)
+                        : toDoteLegacyArray(dotesContextuales));
                 let pj: Personaje = {
                     Id: id,
                     Nombre: snapshot.child('Nombre').val(),
                     Raza: snapshot.child('Raza').val(),
-                    desgloseClases: snapshot.child('Clases').val(),
-                    Clases: snapshot.child('Clases').val().map((c: { Nombre: any; Nivel: any; }) => `${c.Nombre} (${c.Nivel})`).join(", "),
+                    desgloseClases: clasesArray,
+                    Clases: clasesArray.map((c: { Nombre: any; Nivel: any; }) => `${c.Nombre} (${c.Nivel})`).join(", "),
                     Personalidad: snapshot.child('Personalidad').val(),
                     Contexto: snapshot.child('Contexto').val(),
                     Campana: snapshot.child('Campana').val(),
@@ -74,7 +85,8 @@ export class PersonajeService {
                     Claseas: snapshot.child('Claseas').val(),
                     Raciales: snapshot.child('Raciales').val(),
                     Habilidades: snapshot.child('Habilidades').val(),
-                    Dotes: snapshot.child('Dotes').val(),
+                    Dotes: dotesLegacy,
+                    DotesContextuales: dotesContextuales,
                     Ventajas: snapshot.child('Ventajas').val(),
                     Idiomas: snapshot.child('Idiomas').val(),
                     Sortilegas: snapshot.child('Sortilegas').val(),
@@ -127,11 +139,11 @@ export class PersonajeService {
                 response.forEach((element: {
                     i: any; n: any; dcp: any; dh: any; tm: any; a: any; ca: any; an: any; cd: any; cv: any; ra: any; tc: TipoCriatura; f: any; mf: any; d: any; md: any; co: any; mco: any; int: any; mint: any; s: any; 
                     ms: any; car: any; mcar: any; de: any; ali: any; g: any; ncam: any; ntr: any; ju: any; nst: any; v: any; cor: any; na: any; vo: any; t: any; e: any; o: any; dg: any; cla: any; dom: any; stc: any; 
-                    pla: any; con: any; esp: any; espX: any; rac: any; hab: any; habN: any; habC: any; habCa: any; habMc: any; habR: any; habRv: any; habX: any; habV: any; habCu: any; dot: any; dotD: string; 
-                    dotB: string; dotP: any; dotX: any; dotO: any; ve: any; idi: any; sor: any; pgl: any; ini_v: any; pr_v: { Valor: number; Origen: string; }[]; edad: any; alt: any; peso: any; salv: any; rds: any; 
+                    pla: any; con: any; esp: any; espX: any; rac: any; hab: any; habN: any; habC: any; habCa: any; habMc: any; habR: any; habRv: any; habX: any; habV: any; habCu: any; dotes: DoteContextual[]; ve: any; idi: any;
+                    sor: any; pgl: any; ini_v: any; pr_v: { Valor: number; Origen: string; }[]; edad: any; alt: any; peso: any; salv: any; rds: any; 
                     rcs: any; res: any; ccl: any; ccm: any; ccp: any; espa: any; espan: any; espp: any; esppn: any; disp: any; ecp: any;
                 }) => {
-                    const tempcla = element.cla.split("|");
+                    const tempcla = (element.cla ?? "").split("|");
                     let nep: number = 0 + element.ra.Dgs_adicionales.Cantidad;
                     let clas: { Nombre: string; Nivel: number }[] = [];
                     tempcla.forEach((el: string) => {
@@ -152,17 +164,8 @@ export class PersonajeService {
                     let experiencia: number = 0;
                     for (let i = 0; i < nep; i++)
                         experiencia += i * 1000;
-                    let dotes: { Nombre: string; Descripcion: string; Beneficio: string; Pagina: number; Extra: string; Origen: string; }[] = [];
-                    for (let index = 0; index < element.dot.length; index++) {
-                        dotes.push({
-                            Nombre: element.dot[index],
-                            Descripcion: element.dotD[index],
-                            Beneficio: element.dotB[index],
-                            Pagina: element.dotP[index],
-                            Extra: element.dotX[index],
-                            Origen: element.dotO[index]
-                        });
-                    }
+                    const dotesContextuales = toDoteContextualArray(element.dotes);
+                    const dotes = toDoteLegacyArray(dotesContextuales);
                     let claseas: { Nombre: string; Extra: string; }[] = [];
                     for (let index = 0; index < element.esp.length; index++) {
                         claseas.push({
@@ -233,6 +236,8 @@ export class PersonajeService {
                     const rac: [] = element.rac.split("|").map((item: string) => item.trim()).filter((item: string) => item.length > 0);
                     const ve: [] = element.ve.split("|").map((item: string) => item.trim()).filter((item: string) => item.length > 0);
                     const ecp: [] = element.ecp.split("|").map((item: string) => item.trim()).filter((item: string) => item.length > 0);
+                    const ataqueBase = `${element.a ?? 0}`;
+                    const presaBase = +(ataqueBase.includes('/') ? ataqueBase.substring(0, ataqueBase.indexOf('/')) : ataqueBase);
                     set(ref(db, `Personajes/${element.i}`), {
                         Nombre: element.n,
                         Personalidad: element.dcp,
@@ -243,9 +248,9 @@ export class PersonajeService {
                         Armadura_natural: element.an,
                         Ca_desvio: element.cd,
                         Ca_varios: element.cv,
-                        Iniciativa_varios: element.ini_v,
-                        Presa: Number(+(element.a.includes('/') ? element.a.substring(0, element.a.indexOf('/')) : element.a) + +element.mf + +element.ra.Tamano.Modificador_presa + +element.pr_v.reduce((c, v) => c + v.Valor, 0)),
-                        Presa_varios: element.pr_v,
+                        Iniciativa_varios: element.ini_v ?? [],
+                        Presa: Number(presaBase + +element.mf + +element.ra.Tamano.Modificador_presa + +(element.pr_v ?? []).reduce((c: number, v: { Valor: number; }) => c + Number(v.Valor), 0)),
+                        Presa_varios: element.pr_v ?? [],
                         Raza: element.ra,
                         Tipo_criatura: element.tc,
                         Fuerza: element.f,
@@ -290,6 +295,7 @@ export class PersonajeService {
                         Raciales: rac,
                         Habilidades: habilidades,
                         Dotes: dotes,
+                        DotesContextuales: dotesContextuales,
                         Ventajas: ve,
                         Idiomas: element.idi,
                         Sortilegas: element.sor,

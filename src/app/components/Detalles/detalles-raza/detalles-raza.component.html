@@ -1,1 +1,143 @@
-<p>{{raza.Nombre}}</p>
+<div class="container-fluid" *ngIf="raza">
+    <div class="row">
+        <div class="col-md-4 col-12 p-2">
+            <div class="d-flex flex-wrap align-items-center sombra-caja-sm rounded p-2 my-2">
+                <mat-chip class="h-auto warm w-100 sombra-caja-sm py-2 m-1">
+                    {{raza.Nombre}}
+                    <mat-chip class="sombra3d-sm m-1 ms-4" *ngIf="raza.Tamano">{{raza.Tamano.Nombre}}</mat-chip>
+                    <mat-chip class="sombra3d-sm m-1" *ngIf="raza.Tipo_criatura">{{raza.Tipo_criatura.Nombre}}</mat-chip>
+                </mat-chip>
+                <mat-chip class="sombra3d-sm m-1"><mat-icon class="me-2">auto_stories</mat-icon>{{raza.Manual}}</mat-chip>
+                <mat-chip class="h-auto warm sombra3d-sm m-1">
+                    Clase predilecta
+                    <mat-chip class="sombra3d-sm m-1">{{raza.Clase_predilecta}}</mat-chip>
+                </mat-chip>
+                <mat-chip class="h-auto warm sombra3d-sm m-1" *ngIf="raza.Ajuste_nivel > 0">
+                    Ajuste de nivel
+                    <mat-chip class="sombra3d-sm m-1">+{{raza.Ajuste_nivel}}</mat-chip>
+                </mat-chip>
+                <mat-chip class="warm sombra3d-sm m-1" *ngIf="!raza.Oficial" matTooltip="Esta raza es homebrew" matTooltipClass="tt-accent">
+                    No es oficial
+                </mat-chip>
+                <mat-chip class="h-auto sombra3d-sm m-1" *ngIf="raza.Alineamiento">
+                    Alineamiento
+                    <mat-chip class="sombra3d-sm m-1">
+                        {{raza.Alineamiento.Basico.Nombre}} ({{raza.Alineamiento.Ley.Nombre}}/{{raza.Alineamiento.Moral.Nombre}})
+                    </mat-chip>
+                </mat-chip>
+            </div>
+            <div class="d-flex flex-wrap align-items-center sombra-caja-sm rounded p-2 my-2">
+                <mat-chip class="h-auto w-100 sombra-caja-sm py-2 m-1 mb-2">
+                    Modificadores
+                    <mat-icon class="ms-2">tune</mat-icon>
+                </mat-chip>
+                <mat-chip class="sombra3d-sm m-1" [ngClass]="raza.Modificadores.Fuerza > 0 ? 'good' : 'bad'" *ngIf="raza.Modificadores.Fuerza !== 0">
+                    FUE {{raza.Modificadores.Fuerza > 0 ? '+' + raza.Modificadores.Fuerza : raza.Modificadores.Fuerza}}
+                </mat-chip>
+                <mat-chip class="sombra3d-sm m-1" [ngClass]="raza.Modificadores.Destreza > 0 ? 'good' : 'bad'" *ngIf="raza.Modificadores.Destreza !== 0">
+                    DES {{raza.Modificadores.Destreza > 0 ? '+' + raza.Modificadores.Destreza : raza.Modificadores.Destreza}}
+                </mat-chip>
+                <mat-chip class="sombra3d-sm m-1" [ngClass]="raza.Modificadores.Constitucion > 0 ? 'good' : 'bad'" *ngIf="raza.Modificadores.Constitucion !== 0">
+                    CON {{raza.Modificadores.Constitucion > 0 ? '+' + raza.Modificadores.Constitucion : raza.Modificadores.Constitucion}}
+                </mat-chip>
+                <mat-chip class="sombra3d-sm m-1" [ngClass]="raza.Modificadores.Inteligencia > 0 ? 'good' : 'bad'" *ngIf="raza.Modificadores.Inteligencia !== 0">
+                    INT {{raza.Modificadores.Inteligencia > 0 ? '+' + raza.Modificadores.Inteligencia : raza.Modificadores.Inteligencia}}
+                </mat-chip>
+                <mat-chip class="sombra3d-sm m-1" [ngClass]="raza.Modificadores.Sabiduria > 0 ? 'good' : 'bad'" *ngIf="raza.Modificadores.Sabiduria !== 0">
+                    SAB {{raza.Modificadores.Sabiduria > 0 ? '+' + raza.Modificadores.Sabiduria : raza.Modificadores.Sabiduria}}
+                </mat-chip>
+                <mat-chip class="sombra3d-sm m-1" [ngClass]="raza.Modificadores.Carisma > 0 ? 'good' : 'bad'" *ngIf="raza.Modificadores.Carisma !== 0">
+                    CAR {{raza.Modificadores.Carisma > 0 ? '+' + raza.Modificadores.Carisma : raza.Modificadores.Carisma}}
+                </mat-chip>
+            </div>
+        </div>
+        <div class="col-md-4 col-12 p-2">
+            <div class="d-flex flex-wrap align-items-center sombra-caja-sm rounded p-2 my-2">
+                <mat-chip class="h-auto w-100 sombra-caja-sm py-2 m-1 mb-2">
+                    Detalles
+                    <mat-icon class="ms-2">format_list_numbered</mat-icon>
+                </mat-chip>
+                <mat-chip class="h-auto warm sombra3d-sm m-1" *ngIf="raza.Dgs_adicionales && raza.Dgs_adicionales.Cantidad > 0">
+                    Dados de golpe extra
+                    <mat-chip class="sombra3d-sm m-1">
+                        +{{raza.Dgs_adicionales.Cantidad}}{{raza.Dgs_adicionales.Dado}} de {{raza.Dgs_adicionales.Tipo_criatura}}
+                    </mat-chip>
+                </mat-chip>
+                <mat-chip class="sombra3d-sm m-1" *ngIf="raza.Armadura_natural !== 0">Armadura natural {{raza.Armadura_natural > 0 ? '+' : ''}}{{raza.Armadura_natural}}</mat-chip>
+                <mat-chip class="sombra3d-sm m-1" *ngIf="raza.Varios_armadura !== 0">CA varios {{raza.Varios_armadura > 0 ? '+' : ''}}{{raza.Varios_armadura}}</mat-chip>
+                <mat-chip class="sombra3d-sm m-1" *ngIf="raza.Espacio > 0">Espacio {{raza.Espacio}}'</mat-chip>
+                <mat-chip class="sombra3d-sm m-1" *ngIf="raza.Alcance > 0">Alcance {{raza.Alcance}}'</mat-chip>
+                <mat-chip class="sombra3d-sm m-1" *ngIf="raza.Correr > 0">Correr {{raza.Correr}}'</mat-chip>
+                <mat-chip class="sombra3d-sm m-1" *ngIf="raza.Nadar > 0">Nadar {{raza.Nadar}}'</mat-chip>
+                <mat-chip class="sombra3d-sm m-1" *ngIf="raza.Volar > 0">Volar {{raza.Volar}}'</mat-chip>
+                <mat-chip class="sombra3d-sm m-1" *ngIf="raza.Trepar > 0">Trepar {{raza.Trepar}}'</mat-chip>
+                <mat-chip class="sombra3d-sm m-1" *ngIf="raza.Escalar > 0">Escalar {{raza.Escalar}}'</mat-chip>
+                <mat-chip class="sombra3d-sm m-1" *ngIf="raza.Maniobrabilidad && raza.Volar > 0">Maniobrabilidad {{raza.Maniobrabilidad.Nombre}}</mat-chip>
+                <mat-chip class="sombra3d-sm m-1" *ngIf="raza.Ataques_naturales && raza.Ataques_naturales !== 'No especifica'">Ataques naturales: {{raza.Ataques_naturales}}</mat-chip>
+                <mat-chip class="sombra3d-sm m-1" *ngIf="raza.Reduccion_dano && raza.Reduccion_dano !== 'No especifica'">Reduccion de dano: {{raza.Reduccion_dano}}</mat-chip>
+                <mat-chip class="sombra3d-sm m-1" *ngIf="raza.Resistencia_magica && raza.Resistencia_magica !== 'No especifica'">Resistencia magica: {{raza.Resistencia_magica}}</mat-chip>
+                <mat-chip class="sombra3d-sm m-1" *ngIf="raza.Resistencia_energia && raza.Resistencia_energia !== 'No especifica'">Resistencia a la energia: {{raza.Resistencia_energia}}</mat-chip>
+                <mat-chip class="sombra3d-sm m-1" *ngIf="raza.Heredada">Plantilla heredada</mat-chip>
+                <mat-chip class="sombra3d-sm m-1" *ngIf="raza.Mutada">Plantilla mutada</mat-chip>
+                <mat-chip class="sombra3d-sm m-1" *ngIf="raza.Tamano_mutacion_dependiente">Tamano dependiente de mutacion</mat-chip>
+            </div>
+            <div class="d-flex flex-wrap align-items-center sombra-caja-sm rounded p-2 my-2">
+                <mat-chip class="h-auto w-100 sombra-caja-sm py-2 m-1 mb-2">
+                    Rangos
+                    <mat-icon class="ms-2">straighten</mat-icon>
+                </mat-chip>
+                <mat-chip class="h-auto sombra3d-sm m-1">
+                    Altura
+                    <mat-chip class="sombra3d-sm m-1">{{raza.Altura_rango_inf}} - {{raza.Altura_rango_sup}} m</mat-chip>
+                </mat-chip>
+                <mat-chip class="h-auto sombra3d-sm m-1">
+                    Peso
+                    <mat-chip class="sombra3d-sm m-1">{{raza.Peso_rango_inf}} - {{raza.Peso_rango_sup}} kg</mat-chip>
+                </mat-chip>
+                <mat-chip class="h-auto sombra3d-sm m-1">
+                    Edades
+                    <mat-chip class="sombra3d-sm m-1">Adulto {{raza.Edad_adulto}} años</mat-chip>
+                    <mat-chip class="sombra3d-sm m-1">Mediana {{raza.Edad_mediana}} años</mat-chip>
+                    <mat-chip class="sombra3d-sm m-1">Viejo {{raza.Edad_viejo}} años</mat-chip>
+                    <mat-chip class="sombra3d-sm m-1">Venerable {{raza.Edad_venerable}} años</mat-chip>
+                </mat-chip>
+            </div>
+        </div>
+        <div class="col-md-4 col-12 p-2">
+            <mat-accordion>
+                <mat-expansion-panel *ngIf="raza.Dgs_adicionales && raza.Dgs_adicionales.Cantidad > 0">
+                    <mat-expansion-panel-header>
+                        <button mat-stroked-button color="accent" class="rounded-0 rounded-top">
+                            <h2 class="mb-0">Progresion de DGS adicionales</h2>
+                        </button>
+                    </mat-expansion-panel-header>
+                    <mat-chip-set class="m-1">
+                        <mat-chip class="sombra3d-sm m-1">Ataque base {{raza.Dgs_adicionales.Ataque_base > 0 ? '+' : ''}}{{raza.Dgs_adicionales.Ataque_base}}</mat-chip>
+                        <mat-chip class="sombra3d-sm m-1">Fortaleza {{raza.Dgs_adicionales.Fortaleza > 0 ? '+' : ''}}{{raza.Dgs_adicionales.Fortaleza}}</mat-chip>
+                        <mat-chip class="sombra3d-sm m-1">Reflejos {{raza.Dgs_adicionales.Reflejos > 0 ? '+' : ''}}{{raza.Dgs_adicionales.Reflejos}}</mat-chip>
+                        <mat-chip class="sombra3d-sm m-1">Voluntad {{raza.Dgs_adicionales.Voluntad > 0 ? '+' : ''}}{{raza.Dgs_adicionales.Voluntad}}</mat-chip>
+                        <mat-chip class="sombra3d-sm m-1">Dotes extra {{raza.Dgs_adicionales.Dotes_extra}}</mat-chip>
+                        <mat-chip class="sombra3d-sm m-1">Puntos de habilidad {{raza.Dgs_adicionales.Puntos_habilidad}}</mat-chip>
+                        <mat-chip class="sombra3d-sm m-1">Multiplicador x{{raza.Dgs_adicionales.Multiplicador_puntos_habilidad}}</mat-chip>
+                    </mat-chip-set>
+                </mat-expansion-panel>
+                <mat-expansion-panel *ngIf="raza.Sortilegas && raza.Sortilegas.length > 0">
+                    <mat-expansion-panel-header>
+                        <button mat-stroked-button color="accent" class="rounded-0 rounded-bottom">
+                            <h2 class="mb-0">Sortilegas</h2>
+                        </button>
+                    </mat-expansion-panel-header>
+                    <mat-chip-set class="m-1">
+                        <mat-chip class="h-auto sombra3d-sm m-1" *ngFor="let s of raza.Sortilegas">
+                            {{s.Conjuro.Nombre}}
+                            <mat-chip class="sombra3d-sm m-1">NL {{s.Nivel_lanzador}}</mat-chip>
+                            <mat-chip class="sombra3d-sm m-1">Usos {{s.Usos_diarios}}</mat-chip>
+                            <mat-chip class="sombra3d-sm m-1" *ngIf="s.Dgs_necesarios > 0">DGs min {{s.Dgs_necesarios}}</mat-chip>
+                            <mat-chip class="sombra3d-sm m-1" *ngIf="s.Descripcion && s.Descripcion !== 'No especifica'">{{s.Descripcion}}</mat-chip>
+                        </mat-chip>
+                    </mat-chip-set>
+                </mat-expansion-panel>
+            </mat-accordion>
+        </div>
+    </div>
+</div>

@@ -4,28 +4,28 @@ import { Database, getDatabase, Unsubscribe, onValue, ref, set } from '@angular/
 import { Observable } from "rxjs";
 import { environment } from "src/environments/environment";
 import Swal from "sweetalert2";
-import { DisciplinaConjuros, Subdisciplinas } from "../interfaces/disciplina-conjuros";
+import { EscuelaConjuros } from "../interfaces/escuela-conjuros";
 
 @Injectable({
     providedIn: 'root'
 })
-export class DisciplinasConjurosService {
+export class EscuelaConjurosService {
 
     constructor(private db: Database, private http: HttpClient) { }
 
-    getDisciplina(id: number): Observable<DisciplinaConjuros> {
+    getEscuela(id: number): Observable<EscuelaConjuros> {
         return new Observable((observador) => {
-            const dbRef = ref(this.db, `Disciplinas/${id}`);
+            const dbRef = ref(this.db, `Escuelas/${id}`);
             let unsubscribe: Unsubscribe;
 
             const onNext = (snapshot: any) => {
-                let disciplina: DisciplinaConjuros = {
+                let escuela: EscuelaConjuros = {
                     Id: id,
                     Nombre: snapshot.child('Nombre').val(),
                     Nombre_especial: snapshot.child('Nombre_especial').val(),
-                    Subdisciplinas: snapshot.child('Subdisciplinas').val()
+                    Prohibible: snapshot.child('Prohibible').val()
                 };
-                observador.next(disciplina);
+                observador.next(escuela);
             };
 
             const onError = (error: any) => {
@@ -39,23 +39,23 @@ export class DisciplinasConjurosService {
         });
     }
 
-    getDisciplinas(): Observable<DisciplinaConjuros[]> {
+    getEscuelas(): Observable<EscuelaConjuros[]> {
         return new Observable((observador) => {
-            const dbRef = ref(this.db, 'Disciplinas');
+            const dbRef = ref(this.db, 'Escuelas');
             let unsubscribe: Unsubscribe;
 
             const onNext = (snapshot: any) => {
-                const disciplinas: DisciplinaConjuros[] = [];
+                const escuelas: EscuelaConjuros[] = [];
                 snapshot.forEach((obj: any) => {
-                    const disciplina: DisciplinaConjuros = {
+                    const escuela: EscuelaConjuros = {
                         Id: obj.child('Id').val(),
                         Nombre: obj.child('Nombre').val(),
                         Nombre_especial: obj.child('Nombre_especial').val(),
-                        Subdisciplinas: obj.child('Subdisciplinas').val()
+                        Prohibible: obj.child('Prohibible').val()
                     };
-                    disciplinas.push(disciplina);
+                    escuelas.push(escuela);
                 });
-                observador.next(disciplinas);
+                observador.next(escuelas);
             };
 
             const onError = (error: any) => {
@@ -70,29 +70,29 @@ export class DisciplinasConjurosService {
         });
     }
 
-    private syncConjuros(): Observable<any> {
-        const res = this.http.get(`${environment.apiUrl}disciplinas`);
+    private syncEscuelas(): Observable<any> {
+        const res = this.http.get(`${environment.apiUrl}escuelas`);
         return res;
     }
 
-    public async RenovarDisciplinas() {
+    public async RenovarEscuelas() {
         const db_instance = getDatabase();
-        this.syncConjuros().subscribe(
+        this.syncEscuelas().subscribe(
             response => {
                 response.forEach((element: {
-                    i: number; n: string; ne: string; sd: Subdisciplinas[];
+                    i: number; n: string; ne: string; p: boolean;
                 }) => {
                     set(
-                        ref(db_instance, `Disciplinas/${element.i}`), {
+                        ref(db_instance, `Escuelas/${element.i}`), {
                         Id: element.i,
                         Nombre: element.n,
                         Nombre_especial: element.ne,
-                        Subdisciplinas: element.sd
+                        Prohibible: element.p
                     });
                 });
                 Swal.fire({
                     icon: 'success',
-                    title: 'Listado de disciplinas actualizado con éxito',
+                    title: 'Listado de escuelas actualizado con éxito',
                     showConfirmButton: true,
                     timer: 2000
                 });
@@ -100,7 +100,7 @@ export class DisciplinasConjurosService {
             (error: any) => {
                 Swal.fire({
                     icon: 'warning',
-                    title: 'Error al actualizar el listado de disciplinas',
+                    title: 'Error al actualizar el listado de escuelas',
                     text: error.message,
                     showConfirmButton: true
                 });

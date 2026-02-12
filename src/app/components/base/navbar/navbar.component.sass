@@ -1,8 +1,5 @@
 @import '../../../../assets/css/variables'
 
-.row
-    background-color: $contrast-dark
-    
 p
     display: inline-block
 
@@ -19,3 +16,70 @@ p
         border-radius: 4px
 
         cursor: pointer
+
+::ng-deep .cdk-overlay-pane:has(.menuManualesOscuro)
+    width: min(620px, calc(100vw - 16px)) !important
+    max-width: min(620px, calc(100vw - 16px)) !important
+
+    .menuManualesOscuro
+        background-color: #2a3036
+        color: #d7dde2
+
+.manuales-menu
+    width: 100%
+    max-width: 100%
+    padding: 10px 12px
+
+.menu-estado
+    margin: 0
+    padding: 4px 0
+    color: #d7dde2
+
+.manuales-lista
+    max-height: min(62vh, 430px)
+    overflow: auto
+
+.manual-item
+    padding: 10px 0
+    border-bottom: 1px solid rgba(255, 255, 255, 0.12)
+
+    &:last-child
+        border-bottom: 0
+
+.manual-linea
+    display: flex
+    justify-content: space-between
+    align-items: center
+    gap: 8px
+
+.manual-nombre
+    font-weight: 500
+    color: #f0f3f6
+    padding-right: 8px
+
+.manual-chips
+    margin-top: 8px
+
+.chip
+    display: inline-block
+    font-size: 12px
+    line-height: 1.2
+    padding: 4px 10px
+    border-radius: 999px
+    margin: 0 6px 6px 0
+    white-space: nowrap
+
+.chip-estado
+    margin: 0
+
+.chip-oficial
+    background: #2e7d32
+    color: #fff
+
+.chip-homebrew
+    background: #b45309
+    color: #fff
+
+.chip-categoria
+    background: #4f575f
+    color: #f0f3f6

@@ -1,6 +1,8 @@
 import { Component, EventEmitter, Input, OnInit, Output } from '@angular/core';
-import { AptitudSortilega } from 'src/app/interfaces/Aptitud-sortilega';
+import { AptitudSortilega } from 'src/app/interfaces/aptitud-sortilega';
 import { Conjuro } from 'src/app/interfaces/conjuro';
+import { Dote } from 'src/app/interfaces/dote';
+import { DoteContextual, DoteLegacy } from 'src/app/interfaces/dote-contextual';
 import { Personaje } from 'src/app/interfaces/personaje';
 import { Rasgo } from 'src/app/interfaces/rasgo';
 import { TipoCriatura } from 'src/app/interfaces/tipo_criatura';
@@ -94,12 +96,74 @@ export class DetallesPersonajeComponent implements OnInit {
         return `${titular} ${texto}`;
     }
 
-    getTooltip_Dotes(dote: any): string {
+    getTooltip_Dotes(dote: DoteLegacy): string {
         return `${dote.Descripcion}
 
         Beneficio: ${dote.Beneficio}
 
         Origen: ${dote.Origen}`;
+    }
+
+    toDoteContextualFallback(dote: DoteLegacy): DoteContextual {
+        const fallbackDote: Dote = {
+            Id: 0,
+            Nombre: dote.Nombre,
+            Descripcion: dote.Descripcion,
+            Beneficio: dote.Beneficio,
+            Normal: "No especifica",
+            Especial: "No especifica",
+            Manual: {
+                Id: 0,
+                Nombre: "Desconocido",
+                Pagina: dote.Pagina ?? 0,
+            },
+            Tipos: [],
+            Repetible: 0,
+            Repetible_distinto_extra: 0,
+            Repetible_comb: 0,
+            Comp_arma: 0,
+            Oficial: true,
+            Extras_soportados: {
+                Extra_arma: 0,
+                Extra_armadura: 0,
+                Extra_escuela: 0,
+                Extra_habilidad: 0,
+            },
+            Extras_disponibles: {
+                Armas: [],
+                Armaduras: [],
+                Escuelas: [],
+                Habilidades: [],
+            },
+            Modificadores: {},
+            Prerrequisitos: {},
+        };
+
+        return {
+            Dote: fallbackDote,
+            Contexto: {
+                Entidad: 'personaje',
+                Id_personaje: this.pj.Id,
+                Id_extra: -1,
+                Extra: dote.Extra ?? 'No aplica',
+                Origen: dote.Origen ?? 'Desconocido',
+            }
+        };
+    }
+
+    @Output() doteDetalles: EventEmitter<DoteContextual> = new EventEmitter<DoteContextual>();
+    verDetallesDote(dote: DoteLegacy) {
+        if (this.pj.DotesContextuales && this.pj.DotesContextuales.length > 0) {
+            const contextual = this.pj.DotesContextuales.find(dc =>
+                dc.Dote.Nombre === dote.Nombre &&
+                (dc.Contexto.Extra ?? 'No aplica') === (dote.Extra ?? 'No aplica')
+            );
+            if (contextual) {
+                this.doteDetalles.emit(contextual);
+                return;
+            }
+        }
+        this.doteDetalles.emit(this.toDoteContextualFallback(dote));
     }
     
     @Output() conjuroDetalles: EventEmitter<Conjuro> = new EventEmitter<Conjuro>();
@@ -121,5 +185,11 @@ export class DetallesPersonajeComponent implements OnInit {
     @Output() rasgoDetalles: EventEmitter<Rasgo> = new EventEmitter<Rasgo>();
     verDetallesRasgo(value: Rasgo) {
         this.rasgoDetalles.emit(value);
+    }
+
+    @Output() claseDetalles: EventEmitter<string> = new EventEmitter<string>();
+    verDetallesClase(nombreClase: string) {
+        if (nombreClase && nombreClase.trim().length > 0)
+            this.claseDetalles.emit(nombreClase.trim());
     }
 }

@@ -1,5 +1,6 @@
-import { AptitudSortilega } from "./Aptitud-sortilega";
+import { AptitudSortilega } from "./aptitud-sortilega";
 import { Conjuro } from "./conjuro";
+import { DoteContextual, DoteLegacy } from "./dote-contextual";
 import { PersonajeSimple } from "./simplificaciones/personaje-simple";
 import { TipoCriatura } from "./tipo_criatura";
 
@@ -172,14 +173,8 @@ export interface Personaje extends PersonajeSimple {
         Varios: string;
         Custom: boolean;
     }[]
-    Dotes: {
-        Nombre: string;
-        Descripcion: string;
-        Beneficio: string;
-        Pagina: number;
-        Extra: string;
-        Origen: string;
-    }[];
+    Dotes: DoteLegacy[];
+    DotesContextuales: DoteContextual[];
     Ventajas: {
         Nombre: string;
     }[];

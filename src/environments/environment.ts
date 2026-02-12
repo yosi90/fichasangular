@@ -11,5 +11,6 @@ export const environment = {
         messagingSenderId: '89131912577',
     },
 
-    apiUrl: 'https://83.59.130.100:5000/'
+    // apiUrl: 'https://62.43.222.28:5000/'
+    apiUrl: 'http://localhost:5000/'
 }

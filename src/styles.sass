@@ -10,3 +10,8 @@ body
     max-height: 100vh
 
     overflow: auto
+
+// Evita que SweetAlert2 rompa layouts basados en 100vh al abrir alerts.
+body.swal2-height-auto
+    height: 100vh !important
+    max-height: 100vh !important

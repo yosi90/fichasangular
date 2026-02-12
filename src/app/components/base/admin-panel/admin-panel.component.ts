@@ -1,15 +1,19 @@
-import { Component, inject, OnInit } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { ListaPersonajesService } from 'src/app/services/listas/lista-personajes.service';
-import { CampañasService } from 'src/app/services/campañas.service';
+import { CampanaService } from 'src/app/services/campana.service';
 import { PersonajeService } from 'src/app/services/personaje.service';
-import { RazasService } from 'src/app/services/razas.service';
-import { ManualesService } from 'src/app/services/manuales.service';
+import { RazaService } from 'src/app/services/raza.service';
+import { ManualService } from 'src/app/services/manual.service';
 import { RasgoService } from 'src/app/services/rasgo.service';
 import { TipoCriaturaService } from 'src/app/services/tipo-criatura.service';
 import { VerifyConnectionService } from 'src/app/services/utils/verify-connection.service';
-import { ConjurosService } from 'src/app/services/conjuros.service';
-import { EscuelasConjurosService } from 'src/app/services/escuelas-conjuros.service';
-import { DisciplinasConjurosService } from 'src/app/services/disciplinas-conjuros.service';
+import { ConjuroService } from 'src/app/services/conjuro.service';
+import { EscuelaConjurosService } from 'src/app/services/escuela-conjuros.service';
+import { DisciplinaConjurosService } from 'src/app/services/disciplina-conjuros.service';
+import { AlineamientoService } from 'src/app/services/alineamiento.service';
+import { PlantillaService } from 'src/app/services/plantilla.service';
+import { DoteService } from 'src/app/services/dote.service';
+import { ClaseService } from 'src/app/services/clase.service';
 
 @Component({
     selector: 'app-admin-panel',
@@ -21,8 +25,9 @@ export class AdminPanelComponent implements OnInit {
     serverStatusIcon: string = 'question_mark';
     serverStatus: string = 'Verificar conexión';
 
-    constructor(private conSvc: VerifyConnectionService, private pSvc: PersonajeService, private lpSvc: ListaPersonajesService, private cSvc: CampañasService, private rSvc: RazasService, private mSvc: ManualesService,
-        private tcSvc: TipoCriaturaService, private raSvc: RasgoService, private coSvc: ConjurosService, private escSvc: EscuelasConjurosService, private disSvc: DisciplinasConjurosService
+    constructor(private conSvc: VerifyConnectionService, private pSvc: PersonajeService, private lpSvc: ListaPersonajesService, private cSvc: CampanaService, private rSvc: RazaService, private mSvc: ManualService,
+        private tcSvc: TipoCriaturaService, private raSvc: RasgoService, private coSvc: ConjuroService, private escSvc: EscuelaConjurosService, private disSvc: DisciplinaConjurosService, private aSvc: AlineamientoService,
+        private plSvc: PlantillaService, private doSvc: DoteService, private clSvc: ClaseService,
     ) { }
 
     ngOnInit(): void {
@@ -48,6 +53,14 @@ export class AdminPanelComponent implements OnInit {
     sincronizarEscuelas() { this.escSvc.RenovarEscuelas(); }
 
     sincronizarDisciplinas() { this.disSvc.RenovarDisciplinas(); }
+
+    sincronizarAlineamientos() { this.aSvc.RenovarAlineamientos(); }
+
+    sincronizarPlantillas() { this.plSvc.RenovarPlantillas(); }
+
+    sincronizarDotes() { this.doSvc.RenovarDotes(); }
+
+    sincronizarClases() { this.clSvc.RenovarClases(); }
 
     verificar() {
         this.serverStatusIcon = 'question_mark';

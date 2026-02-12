@@ -7,7 +7,7 @@ import { MatSort, Sort } from '@angular/material/sort';
 import { MatPaginator } from '@angular/material/paginator';
 import { LiveAnnouncer } from '@angular/cdk/a11y';
 import { Campana, Tramas, Super } from 'src/app/interfaces/campaña';
-import { CampañasService } from 'src/app/services/campañas.service';
+import { CampanaService } from 'src/app/services/campana.service';
 
 @Component({
     selector: 'app-lista-personajes',
@@ -36,7 +36,7 @@ export class ListaPersonajesComponent implements OnInit, AfterViewInit {
     columnsToDisplayWithExpand = [...this.columnsToDisplay, 'expand'];
     expandedElement!: PersonajeSimple;
 
-    constructor(private listaPjs: ListaPersonajesService, private csrv: CampañasService, private lva: LiveAnnouncer) { }
+    constructor(private listaPjs: ListaPersonajesService, private csrv: CampanaService, private lva: LiveAnnouncer) { }
 
     @ViewChild(MatSort) sort!: MatSort;
     @ViewChild(MatPaginator) paginator!: MatPaginator;
@@ -47,7 +47,7 @@ export class ListaPersonajesComponent implements OnInit, AfterViewInit {
             this.Personajes = personajes;
             this.filtroPersonajes();
         });
-        (await this.csrv.getListCampañas()).subscribe(campañas => {
+        (await this.csrv.getListCampanas()).subscribe(campañas => {
             this.Campanas = campañas;
             this.defaultCampana = this.Campanas[0].Nombre;
             this.actualizarTramas(this.Campanas[0].Nombre);
@@ -117,5 +117,46 @@ export class ListaPersonajesComponent implements OnInit, AfterViewInit {
     @Output() NewDetallesTab: EventEmitter<any> = new EventEmitter();
     CrearDetallesDe(value: number) {
         this.NewDetallesTab.emit(value);
+    }
+
+    @Output() RazaDetallesTab: EventEmitter<number> = new EventEmitter();
+    CrearDetallesRaza(value: number) {
+        this.RazaDetallesTab.emit(value);
+    }
+
+    extraerClases(raw: string): { Nombre: string, Nivel: number | null }[] {
+        if (!raw || raw.trim().length < 1)
+            return [];
+
+        return raw
+            .split(',')
+            .map(parte => parte.trim())
+            .filter(parte => parte.length > 0)
+            .map(parte => {
+                const formatoParentesis = parte.match(/^(.*)\((\d+)\)$/);
+                if (formatoParentesis) {
+                    return {
+                        Nombre: formatoParentesis[1].trim(),
+                        Nivel: Number(formatoParentesis[2]),
+                    };
+                }
+
+                const formatoEspacio = parte.match(/^(.*)\s+(\d+)$/);
+                if (formatoEspacio) {
+                    return {
+                        Nombre: formatoEspacio[1].trim(),
+                        Nivel: Number(formatoEspacio[2]),
+                    };
+                }
+
+                return { Nombre: parte, Nivel: null };
+            })
+            .filter(c => c.Nombre.length > 0);
+    }
+
+    @Output() ClaseDetallesTab: EventEmitter<string> = new EventEmitter();
+    CrearDetallesClase(nombreClase: string) {
+        if (nombreClase && nombreClase.trim().length > 0)
+            this.ClaseDetallesTab.emit(nombreClase.trim());
     }
 }

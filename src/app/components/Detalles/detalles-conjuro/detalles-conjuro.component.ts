@@ -1,5 +1,5 @@
 import { Component, Input } from '@angular/core';
-import { AptitudSortilega } from 'src/app/interfaces/Aptitud-sortilega';
+import { AptitudSortilega } from 'src/app/interfaces/aptitud-sortilega';
 import { Conjuro } from 'src/app/interfaces/conjuro';
 import { Id_nombre } from 'src/app/interfaces/genericas';
 

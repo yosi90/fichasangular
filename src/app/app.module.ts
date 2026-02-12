@@ -52,6 +52,10 @@ import { ListadoTiposCriaturaComponent } from './components/shared/listado-tipos
 import { DetallesTipoCriaturaComponent } from './components/detalles/detalles-tipo-criatura/detalles-tipo-criatura.component';
 import { DetallesRasgoRacialComponent } from './components/detalles/detalles-rasgo/detalles-rasgo.component';
 import { ListadoRasgoRacialComponent } from './components/shared/listado-rasgo/listado-rasgo.component';
+import { ListadoDotesComponent } from './components/shared/listado-dotes/listado-dotes.component';
+import { DetallesDoteComponent } from './components/detalles/detalles-dote/detalles-dote.component';
+import { ListadoClasesComponent } from './components/shared/listado-clases/listado-clases.component';
+import { DetallesClaseComponent } from './components/detalles/detalles-clase/detalles-clase.component';
 
 @NgModule({
     declarations: [
@@ -75,6 +79,10 @@ import { ListadoRasgoRacialComponent } from './components/shared/listado-rasgo/l
         DetallesTipoCriaturaComponent,
         DetallesRasgoRacialComponent,
         ListadoRasgoRacialComponent,
+        ListadoDotesComponent,
+        DetallesDoteComponent,
+        ListadoClasesComponent,
+        DetallesClaseComponent,
     ],
     imports: [
         BrowserModule,

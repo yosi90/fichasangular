@@ -33,7 +33,7 @@
                 <mat-chip class="warm sombra3d-sm m-1" *ngIf="conjuro.Resistencia_poderes">Ofrece resistencia a poderes</mat-chip>
                 <mat-chip class="warm sombra3d-sm m-1" *ngIf="conjuro.Permanente">Puede hacerse permanente</mat-chip>
                 <mat-chip class="h-auto warm sombra3d-sm m-1" *ngIf="conjuro.Puntos_poder">Cuesta<mat-chip class="sombra3d-sm m-1">{{conjuro.Puntos_poder}}</mat-chip>puntos de poder</mat-chip>
-                <mat-chip class="warm sombra3d-sm m-1" *ngIf="conjuro.Oficial" matTooltip="Este conjuro es homebrew" matTooltipClass="tt-accent">No es oficial</mat-chip>
+                <mat-chip class="warm sombra3d-sm m-1" *ngIf="!conjuro.Oficial" matTooltip="Este conjuro es homebrew" matTooltipClass="tt-accent">No es oficial</mat-chip>
                 <div class="d-flex flex-wrap align-items-center rounded p-1 mt-2" *ngIf="conjuro.Descripcion_aumentos != 'No especifica'">
                     <mat-chip class="w-100 sombra-caja-sm m-1 mb-2">Descripción de los aumentos<mat-icon class="ms-2">short_text</mat-icon></mat-chip>
                     <p class="m-1">{{conjuro.Descripcion_aumentos}}</p>

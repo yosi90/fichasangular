@@ -7,9 +7,16 @@ import { Personaje } from 'src/app/interfaces/personaje';
 import { Raza } from 'src/app/interfaces/raza';
 import { Conjuro } from 'src/app/interfaces/conjuro';
 import Swal from 'sweetalert2';
-import { AptitudSortilega } from 'src/app/interfaces/Aptitud-sortilega';
+import { AptitudSortilega } from 'src/app/interfaces/aptitud-sortilega';
 import { TipoCriatura } from 'src/app/interfaces/tipo_criatura';
 import { Rasgo } from 'src/app/interfaces/rasgo';
+import { Dote } from 'src/app/interfaces/dote';
+import { DoteContextual } from 'src/app/interfaces/dote-contextual';
+import { RazaService } from 'src/app/services/raza.service';
+import { Clase } from 'src/app/interfaces/clase';
+import { ClaseService } from 'src/app/services/clase.service';
+import { take } from 'rxjs';
+import { ConjuroService } from 'src/app/services/conjuro.service';
 
 @Component({
     selector: 'app-tab-control',
@@ -28,8 +35,16 @@ export class TabControlComponent implements OnInit {
     detallesSortilegaAbiertos: { ap: AptitudSortilega, fuente: string }[] = [];
     detallesTipoCriaturaAbiertos: TipoCriatura[] = [];
     detallesRasgoAbiertos: Rasgo[] = [];
+    detallesDoteAbiertos: DoteContextual[] = [];
+    detallesClaseAbiertos: Clase[] = [];
 
-    constructor(private usrSvc: UserService, private pSvc: PersonajeService) { }
+    constructor(
+        private usrSvc: UserService,
+        private pSvc: PersonajeService,
+        private rSvc: RazaService,
+        private clSvc: ClaseService,
+        private conjuroSvc: ConjuroService
+    ) { }
 
     @ViewChild(MatTabGroup) TabGroup!: MatTabGroup;
     previousTab!: MatTab;
@@ -107,6 +122,10 @@ export class TabControlComponent implements OnInit {
             return;
         else if (this.detallesRasgoAbiertos.map(t => t.Nombre).includes(tabLabel) && this.quitarDetallesRasgo(tabLabel))
             return;
+        else if (this.detallesClaseAbiertos.map(c => this.getEtiquetaClase(c)).includes(tabLabel) && this.quitarDetallesClase(tabLabel))
+            return;
+        else if (this.detallesDoteAbiertos.map(d => this.getEtiquetaDote(d)).includes(tabLabel) && this.quitarDetallesDotePorLabel(tabLabel))
+            return;
         else if (tabLabel.includes('Nuevo personaje'))
             this.quitarNuevoPersonaje();
         else if (tabLabel.includes('Lista de'))
@@ -162,6 +181,10 @@ export class TabControlComponent implements OnInit {
             this.abrirDetallesTipoCriatura(value.item);
         } else if (value.tipo === 'rasgos') {
             this.abrirDetallesRasgo(value.item);
+        } else if (value.tipo === 'clases') {
+            this.abrirDetallesClase(value.item);
+        } else if (value.tipo === 'dotes') {
+            this.abrirDetallesDote(value.item);
         }
     }
 
@@ -175,6 +198,19 @@ export class TabControlComponent implements OnInit {
             }, 100);
         }
     }
+
+    async abrirDetallesRazaPorId(idRaza: number) {
+        const abierto = this.detallesRazaAbiertos.find(r => r.Id === idRaza);
+        if (abierto) {
+            this.cambiarA(true, this.TabGroup._tabs.find(tab => tab.textLabel === abierto.Nombre));
+            return;
+        }
+
+        (await this.rSvc.getRaza(idRaza)).subscribe(raza => {
+            this.abrirDetallesRaza(raza);
+        });
+    }
+
     quitarDetallesRaza(value: string): boolean {
         const tab = this.detallesRazaAbiertos.find(r => r.Nombre === value);
         if (!tab)
@@ -265,6 +301,129 @@ export class TabControlComponent implements OnInit {
         return true;
     }
 
+    getEtiquetaClase(clase: Clase): string {
+        return `${clase.Nombre} (Clase)`;
+    }
+
+    async abrirDetallesClase(clase: Clase) {
+        const abierto = this.detallesClaseAbiertos.find(c => c.Id === clase.Id);
+        if (abierto)
+            this.cambiarA(true, this.TabGroup._tabs.find(tab => tab.textLabel === this.getEtiquetaClase(abierto)));
+        else {
+            this.detallesClaseAbiertos.push(clase);
+            setTimeout(() => {
+                this.cambiarA(true, this.TabGroup._tabs.find(tab => tab.textLabel === this.getEtiquetaClase(clase)));
+            }, 100);
+        }
+    }
+
+    abrirDetallesConjuroPorId(idConjuro: number) {
+        const id = Number(idConjuro);
+        if (!Number.isFinite(id) || id <= 0)
+            return;
+
+        const abierto = this.detallesConjuroAbiertos.find(c => c.Id === id);
+        if (abierto) {
+            this.cambiarA(true, this.TabGroup._tabs.find(tab => tab.textLabel === abierto.Nombre));
+            return;
+        }
+
+        this.conjuroSvc.getConjuro(id).pipe(take(1)).subscribe(conjuro => {
+            this.abrirDetallesConjuro(conjuro);
+        });
+    }
+
+    abrirDetallesClasePorNombre(nombreClase: string) {
+        if (!nombreClase || nombreClase.trim().length < 1)
+            return;
+
+        const encontrado = this.detallesClaseAbiertos.find(c => this.normalizar(c.Nombre) === this.normalizar(nombreClase));
+        if (encontrado) {
+            this.cambiarA(true, this.TabGroup._tabs.find(tab => tab.textLabel === this.getEtiquetaClase(encontrado)));
+            return;
+        }
+
+        this.clSvc.buscarPorNombre(nombreClase).pipe(take(1)).subscribe(clase => {
+            if (clase) {
+                this.abrirDetallesClase(clase);
+            } else {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Clase no encontrada',
+                    text: `No se encontró la clase "${nombreClase}" en cache`,
+                    showConfirmButton: true
+                });
+            }
+        });
+    }
+
+    quitarDetallesClase(label: string): boolean {
+        const tab = this.detallesClaseAbiertos.find(c => this.getEtiquetaClase(c) === label);
+        if (!tab)
+            return false;
+        const indexTab = this.detallesClaseAbiertos.indexOf(tab);
+        this.detallesClaseAbiertos.splice(indexTab, 1);
+        this.cambiarA(false);
+        return true;
+    }
+
+    getEtiquetaDote(doteCtx: DoteContextual): string {
+        const extra = doteCtx.Contexto.Extra && doteCtx.Contexto.Extra !== 'No aplica' ? `: ${doteCtx.Contexto.Extra}` : '';
+        return `${doteCtx.Dote.Nombre} (Dote - ${doteCtx.Contexto.Entidad}${extra})`;
+    }
+
+    getClaveDoteTab(doteCtx: DoteContextual): string {
+        return `${doteCtx.Dote.Id}|${doteCtx.Contexto.Entidad}|${doteCtx.Contexto.Id_extra}|${doteCtx.Contexto.Extra ?? ''}`;
+    }
+
+    toDoteContextual(dote: Dote | DoteContextual): DoteContextual {
+        if ((dote as DoteContextual).Dote)
+            return dote as DoteContextual;
+        return {
+            Dote: dote as Dote,
+            Contexto: {
+                Entidad: 'personaje',
+                Id_personaje: 0,
+                Id_extra: -1,
+                Extra: 'No aplica',
+                Origen: 'Catálogo',
+            }
+        };
+    }
+
+    async abrirDetallesDote(dote: Dote | DoteContextual) {
+        const doteCtx = this.toDoteContextual(dote);
+        const clave = this.getClaveDoteTab(doteCtx);
+        const abierto = this.detallesDoteAbiertos.find(tab => this.getClaveDoteTab(tab) === clave);
+
+        if (abierto)
+            this.cambiarA(true, this.TabGroup._tabs.find(tab => tab.textLabel === this.getEtiquetaDote(abierto)));
+        else {
+            this.detallesDoteAbiertos.push(doteCtx);
+            setTimeout(() => {
+                this.cambiarA(true, this.TabGroup._tabs.find(tab => tab.textLabel === this.getEtiquetaDote(doteCtx)));
+            }, 100);
+        }
+    }
+
+    quitarDetallesDote(doteCtx: DoteContextual): boolean {
+        const clave = this.getClaveDoteTab(doteCtx);
+        const tab = this.detallesDoteAbiertos.find(d => this.getClaveDoteTab(d) === clave);
+        if (!tab)
+            return false;
+        const indexTab = this.detallesDoteAbiertos.indexOf(tab);
+        this.detallesDoteAbiertos.splice(indexTab, 1);
+        this.cambiarA(false);
+        return true;
+    }
+
+    quitarDetallesDotePorLabel(label: string): boolean {
+        const tab = this.detallesDoteAbiertos.find(d => this.getEtiquetaDote(d) === label);
+        if (!tab)
+            return false;
+        return this.quitarDetallesDote(tab);
+    }
+
     verPersonajes() {
         this.TabGroup.selectedIndex = 0;
     }
@@ -279,5 +438,13 @@ export class TabControlComponent implements OnInit {
     quitarListado() {
         this.cambiarA(false);
         this.CerrarListadoTab.emit();
+    }
+
+    private normalizar(value: string): string {
+        return (value ?? '')
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .trim()
+            .toLowerCase();
     }
 }

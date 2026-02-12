@@ -2,9 +2,10 @@ import { ChangeDetectorRef, Component, ElementRef, EventEmitter, Output, ViewChi
 import { MatPaginator } from '@angular/material/paginator';
 import { MatSort } from '@angular/material/sort';
 import { MatTableDataSource } from '@angular/material/table';
+import { Manual } from 'src/app/interfaces/manual';
 import { Raza } from 'src/app/interfaces/raza';
-import { ManualesService } from 'src/app/services/manuales.service';
-import { RazasService } from 'src/app/services/razas.service';
+import { ManualService } from 'src/app/services/manual.service';
+import { RazaService } from 'src/app/services/raza.service';
 
 @Component({
     selector: 'app-listado-razas',
@@ -13,12 +14,12 @@ import { RazasService } from 'src/app/services/razas.service';
 })
 export class ListadoRazasComponent {
     razas: Raza[] = [];
-    Manuales: string[] = [];
-    defaultManual!: string;
+    Manuales: Manual[] = [];
+    defaultManual: string = 'Cualquiera';
     razasDS = new MatTableDataSource(this.razas);
     razaColumns = ['Nombre', 'Modificadores', 'Clase_predilecta', 'Manual', 'Ajuste_nivel', 'Dgs_adicionales'];
 
-    constructor(private cdr: ChangeDetectorRef, private rSvc: RazasService, private mSvc: ManualesService) { }
+    constructor(private cdr: ChangeDetectorRef, private rSvc: RazaService, private mSvc: ManualService) { }
 
     @ViewChild(MatSort) razaSort!: MatSort;
     @ViewChild(MatPaginator) razaPaginator!: MatPaginator;
@@ -28,9 +29,8 @@ export class ListadoRazasComponent {
         (this.rSvc.getRazas()).subscribe(razas => {
             this.razas = razas;
             (this.mSvc.getManuales()).subscribe(manuales => {
-                manuales.unshift('Cualquiera');
-                this.Manuales = manuales;
-                this.defaultManual = this.Manuales[0];
+                this.Manuales = [...manuales].sort((a, b) => a.Nombre.localeCompare(b.Nombre, 'es', { sensitivity: 'base' }));
+                this.defaultManual = 'Cualquiera';
                 this.cdr.detectChanges();
                 this.filtroRazas();
                 this.cdr.detectChanges();
@@ -48,7 +48,7 @@ export class ListadoRazasComponent {
                 || raza.Modificadores.Inteligencia.toString().includes(texto) || raza.Modificadores.Sabiduria.toString().includes(texto) || raza.Modificadores.Carisma.toString().includes(texto)
                 || raza.Clase_predilecta.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().includes(texto))
             && (this.defaultManual == 'Cualquiera' || raza.Manual.includes(this.defaultManual))
-            && (homebrew || !homebrew && !raza.Homebrew)
+            && (homebrew || !homebrew && raza.Oficial)
         );
         this.razasDS = new MatTableDataSource(razasFiltradas);
         setTimeout(() => {

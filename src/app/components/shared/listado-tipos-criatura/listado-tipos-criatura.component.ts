@@ -2,8 +2,9 @@ import { ChangeDetectorRef, Component, ElementRef, EventEmitter, Output, ViewChi
 import { MatPaginator } from '@angular/material/paginator';
 import { MatSort } from '@angular/material/sort';
 import { MatTableDataSource } from '@angular/material/table';
+import { Manual } from 'src/app/interfaces/manual';
 import { TipoCriatura } from 'src/app/interfaces/tipo_criatura';
-import { ManualesService } from 'src/app/services/manuales.service';
+import { ManualService } from 'src/app/services/manual.service';
 import { TipoCriaturaService } from 'src/app/services/tipo-criatura.service';
 
 @Component({
@@ -13,12 +14,12 @@ import { TipoCriaturaService } from 'src/app/services/tipo-criatura.service';
 })
 export class ListadoTiposCriaturaComponent {
     tipos: TipoCriatura[] = [];
-    Manuales: string[] = [];
-    defaultManual!: string;
+    Manuales: Manual[] = [];
+    defaultManual: string = 'Cualquiera';
     tiposDS = new MatTableDataSource(this.tipos);
     tipoColumns = ['Nombre', 'Manual'];
 
-    constructor(private cdr: ChangeDetectorRef, private tSvc: TipoCriaturaService, private mSvc: ManualesService) { }
+    constructor(private cdr: ChangeDetectorRef, private tSvc: TipoCriaturaService, private mSvc: ManualService) { }
 
     @ViewChild(MatSort) tipoSort!: MatSort;
     @ViewChild(MatPaginator) tipoPaginator!: MatPaginator;
@@ -30,9 +31,8 @@ export class ListadoTiposCriaturaComponent {
         (this.tSvc.getTiposCriatura()).subscribe(tipos => {
             this.tipos = tipos.filter(t => t.Nombre !== 'Cualquiera');
             (this.mSvc.getManuales()).subscribe(manuales => {
-                manuales.unshift('Cualquiera');
-                this.Manuales = manuales;
-                this.defaultManual = this.Manuales[0];
+                this.Manuales = [...manuales].sort((a, b) => a.Nombre.localeCompare(b.Nombre, 'es', { sensitivity: 'base' }));
+                this.defaultManual = 'Cualquiera';
                 this.cdr.detectChanges();
                 this.filtroTipos();
                 this.cdr.detectChanges();
