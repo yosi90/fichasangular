@@ -66,6 +66,42 @@
     @supports (-moz-appearance:none)
         top: 100px
 
+::ng-deep .mat-mdc-menu-panel.menu-filtros-estandar
+    max-width: 300px
+
+    background-color: lightgray
+    box-shadow: 3px 3px 8px inset black
+
+    padding: 5px
+
+    .mat-mdc-menu-content
+        display: flex
+        flex-wrap: wrap
+        justify-content: center
+
+    #menu
+        display: flex
+        flex-wrap: wrap
+        justify-content: center
+
+        box-shadow: 6px 6px 4px rgba(0, 0, 0, .5)
+
+        margin-left: 5px
+        margin-right: 5px
+
+        mat-form-field
+            width: 100%
+
+            .mat-mdc-form-field-subscript-wrapper
+                display: none
+
+        mat-form-field:nth-child(n+1):not(:first-child) .mdc-text-field
+            border-top-left-radius: 0
+            border-top-right-radius: 0
+
+    mat-chip-option
+        box-shadow: 6px 6px 4px rgba(0, 0, 0, .5)
+
 .d-initial
     display: initial
 

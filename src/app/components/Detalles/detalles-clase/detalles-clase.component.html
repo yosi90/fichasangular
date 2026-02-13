@@ -1,8 +1,8 @@
-<div class="container-fluid" *ngIf="claseData">
+<div class="container-fluid detalle-view" *ngIf="claseData">
     <div class="row">
         <div class="col-md-4 col-12 p-2">
             <div class="d-flex flex-wrap align-items-center sombra-caja-sm rounded p-2 my-2">
-                <mat-chip class="h-auto warm w-100 sombra-caja-sm py-2 m-1">
+                <mat-chip class="h-auto warm w-100 sombra-caja-sm py-2 m-1 chip-titulo">
                     {{claseData.Nombre}}
                 </mat-chip>
                 <mat-chip class="sombra3d-sm m-1">
@@ -30,14 +30,14 @@
                 </mat-chip>
             </div>
             <div class="d-flex flex-wrap align-items-center sombra-caja-sm rounded p-2 my-2" *ngIf="(claseData.Idiomas?.length ?? 0) > 0">
-                <mat-chip class="h-auto w-100 sombra-caja-sm py-2 m-1 mb-2">Idiomas</mat-chip>
+                <mat-chip class="h-auto w-100 sombra-caja-sm py-2 m-1 mb-2 chip-titulo">Idiomas</mat-chip>
                 <mat-chip class="sombra3d-sm m-1" *ngFor="let idioma of claseData.Idiomas">{{idioma.Nombre}}</mat-chip>
             </div>
         </div>
 
         <div class="col-md-4 col-12 p-2">
             <div class="d-flex flex-wrap align-items-center sombra-caja-sm rounded p-2 my-2" *ngIf="tieneTextoVisible(claseData.Descripcion)">
-                <mat-chip class="h-auto w-100 sombra-caja-sm py-2 m-1 mb-2">Descripción</mat-chip>
+                <mat-chip class="h-auto w-100 sombra-caja-sm py-2 m-1 mb-2 chip-titulo">Descripción</mat-chip>
                 <p class="m-1">{{claseData.Descripcion}}</p>
             </div>
         </div>
@@ -58,7 +58,7 @@
                         </mat-chip>
                     </div>
                     <div class="w-100 p-2" *ngIf="(claseData.Conjuros.Listado?.length ?? 0) > 0">
-                        <mat-chip class="w-100 sombra-caja-sm m-1 mb-2">Listado asociado</mat-chip>
+                        <mat-chip class="w-100 sombra-caja-sm m-1 mb-2 chip-titulo">Listado asociado</mat-chip>
                         <mat-chip-set class="m-1">
                             <mat-chip class="h-auto sombra3d-sm m-1 chip-conjuro" *ngFor="let conjuro of claseData.Conjuros.Listado"
                                 matTooltip="Click para abrir detalle del conjuro" [matTooltipShowDelay]="250"
@@ -77,7 +77,7 @@
                         </button>
                     </mat-expansion-panel-header>
                     <div class="w-100 p-2" *ngIf="getCompetenciasVisibles('Armas').length > 0">
-                        <mat-chip class="w-100 sombra-caja-sm m-1 mb-2">Armas</mat-chip>
+                        <mat-chip class="w-100 sombra-caja-sm m-1 mb-2 chip-titulo">Armas</mat-chip>
                         <mat-chip-set class="m-1">
                             <mat-chip class="h-auto chip-anidada sombra3d-sm m-1" *ngFor="let item of getCompetenciasVisibles('Armas')">
                                 {{item.nombre}}
@@ -87,7 +87,7 @@
                         </mat-chip-set>
                     </div>
                     <div class="w-100 p-2" *ngIf="getCompetenciasVisibles('Armaduras').length > 0">
-                        <mat-chip class="w-100 sombra-caja-sm m-1 mb-2">Armaduras</mat-chip>
+                        <mat-chip class="w-100 sombra-caja-sm m-1 mb-2 chip-titulo">Armaduras</mat-chip>
                         <mat-chip-set class="m-1">
                             <mat-chip class="h-auto chip-anidada sombra3d-sm m-1" *ngFor="let item of getCompetenciasVisibles('Armaduras')">
                                 {{item.nombre}}
@@ -97,7 +97,7 @@
                         </mat-chip-set>
                     </div>
                     <div class="w-100 p-2" *ngIf="getCompetenciasVisibles('Grupos_arma').length > 0">
-                        <mat-chip class="w-100 sombra-caja-sm m-1 mb-2">Grupos de arma</mat-chip>
+                        <mat-chip class="w-100 sombra-caja-sm m-1 mb-2 chip-titulo">Grupos de arma</mat-chip>
                         <mat-chip-set class="m-1">
                             <mat-chip class="h-auto chip-anidada sombra3d-sm m-1" *ngFor="let item of getCompetenciasVisibles('Grupos_arma')">
                                 {{item.nombre}}
@@ -107,7 +107,7 @@
                         </mat-chip-set>
                     </div>
                     <div class="w-100 p-2" *ngIf="getCompetenciasVisibles('Grupos_armadura').length > 0">
-                        <mat-chip class="w-100 sombra-caja-sm m-1 mb-2">Grupos de armadura</mat-chip>
+                        <mat-chip class="w-100 sombra-caja-sm m-1 mb-2 chip-titulo">Grupos de armadura</mat-chip>
                         <mat-chip-set class="m-1">
                             <mat-chip class="h-auto chip-anidada sombra3d-sm m-1" *ngFor="let item of getCompetenciasVisibles('Grupos_armadura')">
                                 {{item.nombre}}
@@ -124,7 +124,7 @@
                         </button>
                     </mat-expansion-panel-header>
                     <div class="w-100 p-2" *ngIf="getHabilidadesVisibles('Base').length > 0">
-                        <mat-chip class="w-100 sombra-caja-sm m-1 mb-2">Base</mat-chip>
+                        <mat-chip class="w-100 sombra-caja-sm m-1 mb-2 chip-titulo">Base</mat-chip>
                         <mat-chip-set class="m-1">
                             <mat-chip class="h-auto chip-anidada sombra3d-sm m-1" *ngFor="let item of getHabilidadesVisibles('Base')">
                                 {{item.nombre}}
@@ -134,7 +134,7 @@
                         </mat-chip-set>
                     </div>
                     <div class="w-100 p-2" *ngIf="getHabilidadesVisibles('Custom').length > 0">
-                        <mat-chip class="w-100 sombra-caja-sm m-1 mb-2">Custom</mat-chip>
+                        <mat-chip class="w-100 sombra-caja-sm m-1 mb-2 chip-titulo">Custom</mat-chip>
                         <mat-chip-set class="m-1">
                             <mat-chip class="h-auto chip-anidada sombra3d-sm m-1" *ngFor="let item of getHabilidadesVisibles('Custom')">
                                 {{item.nombre}}
@@ -151,7 +151,7 @@
                         </button>
                     </mat-expansion-panel-header>
                     <div class="prerrequisito-bloque p-2" *ngFor="let familia of getPrerrequisitosActivos()">
-                        <mat-chip class="w-100 sombra-caja-sm m-1 mb-2">{{familia.etiqueta}}</mat-chip>
+                        <mat-chip class="w-100 sombra-caja-sm m-1 mb-2 chip-titulo">{{familia.etiqueta}}</mat-chip>
                         <div class="prerrequisito-condicion sombra-caja-sm m-1 p-2" *ngFor="let item of familia.items; let i = index">
                             <p class="mb-2 fw-bold">Condición {{i + 1}}</p>
                             <mat-chip-set class="m-0" *ngIf="getCamposVisibles(item).length > 0; else condicionSinCampos">
@@ -172,7 +172,7 @@
     <div class="row">
         <div class="col-12 p-2">
             <div class="tabla-progresion-container sombra-caja-sm rounded p-2 my-2">
-                <mat-chip class="h-auto w-100 sombra-caja-sm py-2 m-1 mb-2">Progresión por nivel</mat-chip>
+                <mat-chip class="h-auto w-100 sombra-caja-sm py-2 m-1 mb-2 chip-titulo">Progresión por nivel</mat-chip>
                 <div class="tabla-scroll">
                     <table class="tabla-progresion">
                         <thead>
@@ -183,7 +183,6 @@
                                 <th *ngIf="mostrarReflejos">Ref</th>
                                 <th *ngIf="mostrarVoluntad">Vol</th>
                                 <th *ngIf="mostrarEspeciales">Especiales</th>
-                                <th *ngIf="mostrarDotes">Dotes</th>
                                 <th *ngIf="mostrarNivelMaxConjuro">Nivel max conjuro</th>
                                 <th *ngIf="mostrarReservaPsionica">Reserva psiónica</th>
                                 <th *ngIf="mostrarAumentosClaseLanzadora">Aumentos clase lanzadora</th>
@@ -195,37 +194,31 @@
                         <tbody>
                             <tr *ngFor="let nivel of filasNivel">
                                 <td>{{nivel.Nivel}}</td>
-                                <td *ngIf="mostrarAtaqueBase">{{tieneTextoVisible(nivel.Ataque_base) ? nivel.Ataque_base : '-'}}</td>
-                                <td *ngIf="mostrarFortaleza">{{tieneTextoVisible(nivel.Salvaciones.Fortaleza) ? nivel.Salvaciones.Fortaleza : '-'}}</td>
-                                <td *ngIf="mostrarReflejos">{{tieneTextoVisible(nivel.Salvaciones.Reflejos) ? nivel.Salvaciones.Reflejos : '-'}}</td>
-                                <td *ngIf="mostrarVoluntad">{{tieneTextoVisible(nivel.Salvaciones.Voluntad) ? nivel.Salvaciones.Voluntad : '-'}}</td>
+                                <td *ngIf="mostrarAtaqueBase">{{tieneTextoVisible(nivel.Ataque_base) ? nivel.Ataque_base : ''}}</td>
+                                <td *ngIf="mostrarFortaleza">{{tieneTextoVisible(nivel.Salvaciones.Fortaleza) ? nivel.Salvaciones.Fortaleza : ''}}</td>
+                                <td *ngIf="mostrarReflejos">{{tieneTextoVisible(nivel.Salvaciones.Reflejos) ? nivel.Salvaciones.Reflejos : ''}}</td>
+                                <td *ngIf="mostrarVoluntad">{{tieneTextoVisible(nivel.Salvaciones.Voluntad) ? nivel.Salvaciones.Voluntad : ''}}</td>
                                 <td *ngIf="mostrarEspeciales">
                                     <div class="chips-celda" *ngIf="getResumenEspeciales(nivel).length > 0; else sinEspeciales">
-                                        <mat-chip class="chip-celda sombra3d-sm" *ngFor="let especial of getResumenEspeciales(nivel)">
+                                        <mat-chip class="chip-celda sombra3d-sm" [ngClass]="especial.clicable ? 'chip-clic' : ''"
+                                            [matTooltip]="getTooltipEspecial(especial)"
+                                            [matTooltipDisabled]="!tieneTextoVisible(getTooltipEspecial(especial))"
+                                            matTooltipClass="tt-accent tt-multiline"
+                                            (click)="abrirDetalleEspecialFila(especial)"
+                                            *ngFor="let especial of getResumenEspeciales(nivel)">
                                             {{especial.texto}}
                                             <span *ngIf="especial.opcional"> (Opcional)</span>
                                         </mat-chip>
                                     </div>
-                                    <ng-template #sinEspeciales>-</ng-template>
+                                    <ng-template #sinEspeciales></ng-template>
                                 </td>
-                                <td *ngIf="mostrarDotes">
-                                    <div class="chips-celda" *ngIf="getResumenDotes(nivel).length > 0; else sinDotes">
-                                        <mat-chip class="chip-celda sombra3d-sm" *ngFor="let dote of getResumenDotes(nivel)">
-                                            <span [matTooltip]="dote.tooltip" [matTooltipDisabled]="!tieneTextoVisible(dote.tooltip)" matTooltipClass="tt-accent">
-                                            {{dote.texto}}
-                                            <span *ngIf="dote.opcional"> (Opcional)</span>
-                                            </span>
-                                        </mat-chip>
-                                    </div>
-                                    <ng-template #sinDotes>-</ng-template>
-                                </td>
-                                <td *ngIf="mostrarNivelMaxConjuro">{{nivel.Nivel_max_conjuro >= 0 ? nivel.Nivel_max_conjuro : '-'}}</td>
+                                <td *ngIf="mostrarNivelMaxConjuro">{{nivel.Nivel_max_conjuro >= 0 ? nivel.Nivel_max_conjuro : ''}}</td>
                                 <td *ngIf="mostrarReservaPsionica">{{nivel.Reserva_psionica}}</td>
                                 <td *ngIf="mostrarAumentosClaseLanzadora">
                                     <div class="chips-celda" *ngIf="getAumentosLanzadora(nivel).length > 0; else sinAumentos">
                                         <mat-chip class="chip-celda sombra3d-sm" *ngFor="let aumento of getAumentosLanzadora(nivel)">{{aumento}}</mat-chip>
                                     </div>
-                                    <ng-template #sinAumentos>-</ng-template>
+                                    <ng-template #sinAumentos></ng-template>
                                 </td>
                                 <td *ngFor="let nivelConjuro of columnasDiarios">{{getValorDiarios(nivel, nivelConjuro)}}</td>
                                 <td *ngFor="let nivelConjuro of columnasConocidos">{{getValorConocidos(nivel, nivelConjuro)}}</td>

@@ -4,7 +4,7 @@
             [matMenuTriggerFor]="menuDotes" class="filtros bg-accent">
             <mat-icon>filter_alt</mat-icon>
         </button>
-        <mat-menu id="containerMenu" #menuDotes="matMenu" class="me-1 menu-dotes-filtros">
+        <mat-menu id="containerMenu" #menuDotes="matMenu" class="me-1 menu-filtros-estandar menu-dotes-filtros">
             <div id="menu">
                 <mat-form-field (click)="$event.stopPropagation();" (keyup)="filtroDotes();">
                     <mat-label>Incluye texto</mat-label>

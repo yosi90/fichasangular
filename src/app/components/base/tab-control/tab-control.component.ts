@@ -2,7 +2,6 @@ import { Component, EventEmitter, HostListener, Input, OnInit, Output, SimpleCha
 import { UserService } from '../../../services/user.service';
 import { PersonajeService } from 'src/app/services/personaje.service';
 import { MatTab, MatTabGroup } from '@angular/material/tabs';
-import { FormControl } from '@angular/forms';
 import { Personaje } from 'src/app/interfaces/personaje';
 import { Raza } from 'src/app/interfaces/raza';
 import { Conjuro } from 'src/app/interfaces/conjuro';
@@ -17,6 +16,12 @@ import { Clase } from 'src/app/interfaces/clase';
 import { ClaseService } from 'src/app/services/clase.service';
 import { take } from 'rxjs';
 import { ConjuroService } from 'src/app/services/conjuro.service';
+import { DoteService } from 'src/app/services/dote.service';
+import { EspecialClaseDetalle } from 'src/app/interfaces/especial';
+import { EspecialService } from 'src/app/services/especial.service';
+import { RacialDetalle } from 'src/app/interfaces/racial';
+import { RacialService } from 'src/app/services/racial.service';
+import { NuevoPersonajeService } from 'src/app/services/nuevo-personaje.service';
 
 @Component({
     selector: 'app-tab-control',
@@ -37,13 +42,19 @@ export class TabControlComponent implements OnInit {
     detallesRasgoAbiertos: Rasgo[] = [];
     detallesDoteAbiertos: DoteContextual[] = [];
     detallesClaseAbiertos: Clase[] = [];
+    detallesEspecialAbiertos: EspecialClaseDetalle[] = [];
+    detallesRacialAbiertos: RacialDetalle[] = [];
 
     constructor(
         private usrSvc: UserService,
         private pSvc: PersonajeService,
         private rSvc: RazaService,
         private clSvc: ClaseService,
-        private conjuroSvc: ConjuroService
+        private conjuroSvc: ConjuroService,
+        private doteSvc: DoteService,
+        private especialSvc: EspecialService,
+        private racialSvc: RacialService,
+        private nuevoPSvc: NuevoPersonajeService,
     ) { }
 
     @ViewChild(MatTabGroup) TabGroup!: MatTabGroup;
@@ -126,6 +137,10 @@ export class TabControlComponent implements OnInit {
             return;
         else if (this.detallesDoteAbiertos.map(d => this.getEtiquetaDote(d)).includes(tabLabel) && this.quitarDetallesDotePorLabel(tabLabel))
             return;
+        else if (this.detallesEspecialAbiertos.map(e => this.getEtiquetaEspecial(e)).includes(tabLabel) && this.quitarDetallesEspecial(tabLabel))
+            return;
+        else if (this.detallesRacialAbiertos.map(r => this.getEtiquetaRacial(r)).includes(tabLabel) && this.quitarDetallesRacial(tabLabel))
+            return;
         else if (tabLabel.includes('Nuevo personaje'))
             this.quitarNuevoPersonaje();
         else if (tabLabel.includes('Lista de'))
@@ -185,6 +200,10 @@ export class TabControlComponent implements OnInit {
             this.abrirDetallesClase(value.item);
         } else if (value.tipo === 'dotes') {
             this.abrirDetallesDote(value.item);
+        } else if (value.tipo === 'especiales') {
+            this.abrirDetallesEspecial(value.item);
+        } else if (value.tipo === 'raciales') {
+            this.abrirDetallesRacial(value.item);
         }
     }
 
@@ -305,6 +324,14 @@ export class TabControlComponent implements OnInit {
         return `${clase.Nombre} (Clase)`;
     }
 
+    getEtiquetaEspecial(especial: EspecialClaseDetalle): string {
+        return `${especial.Nombre} (Especial)`;
+    }
+
+    getEtiquetaRacial(racial: RacialDetalle): string {
+        return `${racial.Nombre} (Racial)`;
+    }
+
     async abrirDetallesClase(clase: Clase) {
         const abierto = this.detallesClaseAbiertos.find(c => c.Id === clase.Id);
         if (abierto)
@@ -330,6 +357,22 @@ export class TabControlComponent implements OnInit {
 
         this.conjuroSvc.getConjuro(id).pipe(take(1)).subscribe(conjuro => {
             this.abrirDetallesConjuro(conjuro);
+        });
+    }
+
+    abrirDetallesDotePorId(idDote: number) {
+        const id = Number(idDote);
+        if (!Number.isFinite(id) || id <= 0)
+            return;
+
+        const abierto = this.detallesDoteAbiertos.find(d => Number(d?.Dote?.Id) === id);
+        if (abierto) {
+            this.cambiarA(true, this.TabGroup._tabs.find(tab => tab.textLabel === this.getEtiquetaDote(abierto)));
+            return;
+        }
+
+        this.doteSvc.getDote(id).pipe(take(1)).subscribe(dote => {
+            this.abrirDetallesDote(dote);
         });
     }
 
@@ -363,6 +406,134 @@ export class TabControlComponent implements OnInit {
             return false;
         const indexTab = this.detallesClaseAbiertos.indexOf(tab);
         this.detallesClaseAbiertos.splice(indexTab, 1);
+        this.cambiarA(false);
+        return true;
+    }
+
+    async abrirDetallesEspecial(especial: EspecialClaseDetalle) {
+        const abierto = this.detallesEspecialAbiertos.find(e => e.Id === especial.Id);
+        if (abierto)
+            this.cambiarA(true, this.TabGroup._tabs.find(tab => tab.textLabel === this.getEtiquetaEspecial(abierto)));
+        else {
+            this.detallesEspecialAbiertos.push(especial);
+            setTimeout(() => {
+                this.cambiarA(true, this.TabGroup._tabs.find(tab => tab.textLabel === this.getEtiquetaEspecial(especial)));
+            }, 100);
+        }
+    }
+
+    abrirDetallesEspecialPorId(idEspecial: number) {
+        const id = Number(idEspecial);
+        if (!Number.isFinite(id) || id <= 0)
+            return;
+
+        const abierto = this.detallesEspecialAbiertos.find(e => e.Id === id);
+        if (abierto) {
+            this.cambiarA(true, this.TabGroup._tabs.find(tab => tab.textLabel === this.getEtiquetaEspecial(abierto)));
+            return;
+        }
+
+        this.especialSvc.getEspecial(id).pipe(take(1)).subscribe(especial => {
+            this.abrirDetallesEspecial(especial);
+        });
+    }
+
+    abrirDetallesEspecialPorNombre(nombreEspecial: string) {
+        if (this.esNombreNoAplicable(nombreEspecial))
+            return;
+
+        const abierto = this.detallesEspecialAbiertos.find(e => this.normalizar(e.Nombre) === this.normalizar(nombreEspecial));
+        if (abierto) {
+            this.cambiarA(true, this.TabGroup._tabs.find(tab => tab.textLabel === this.getEtiquetaEspecial(abierto)));
+            return;
+        }
+
+        this.especialSvc.getEspeciales().pipe(take(1)).subscribe(especiales => {
+            const encontrado = especiales.find(e => this.normalizar(e.Nombre) === this.normalizar(nombreEspecial));
+            if (encontrado) {
+                this.abrirDetallesEspecial(encontrado);
+                return;
+            }
+
+            Swal.fire({
+                icon: 'warning',
+                title: 'Especial no encontrado',
+                text: `No se encontró un especial catalogado para "${nombreEspecial}"`,
+                showConfirmButton: true
+            });
+        });
+    }
+
+    quitarDetallesEspecial(label: string): boolean {
+        const tab = this.detallesEspecialAbiertos.find(e => this.getEtiquetaEspecial(e) === label);
+        if (!tab)
+            return false;
+        const indexTab = this.detallesEspecialAbiertos.indexOf(tab);
+        this.detallesEspecialAbiertos.splice(indexTab, 1);
+        this.cambiarA(false);
+        return true;
+    }
+
+    async abrirDetallesRacial(racial: RacialDetalle) {
+        const abierto = this.detallesRacialAbiertos.find(r => r.Id === racial.Id);
+        if (abierto)
+            this.cambiarA(true, this.TabGroup._tabs.find(tab => tab.textLabel === this.getEtiquetaRacial(abierto)));
+        else {
+            this.detallesRacialAbiertos.push(racial);
+            setTimeout(() => {
+                this.cambiarA(true, this.TabGroup._tabs.find(tab => tab.textLabel === this.getEtiquetaRacial(racial)));
+            }, 100);
+        }
+    }
+
+    abrirDetallesRacialPorId(idRacial: number) {
+        const id = Number(idRacial);
+        if (!Number.isFinite(id) || id <= 0)
+            return;
+
+        const abierto = this.detallesRacialAbiertos.find(r => r.Id === id);
+        if (abierto) {
+            this.cambiarA(true, this.TabGroup._tabs.find(tab => tab.textLabel === this.getEtiquetaRacial(abierto)));
+            return;
+        }
+
+        this.racialSvc.getRacial(id).pipe(take(1)).subscribe(racial => {
+            this.abrirDetallesRacial(racial);
+        });
+    }
+
+    abrirDetallesRacialPorNombre(nombreRacial: string) {
+        if (this.esNombreNoAplicable(nombreRacial))
+            return;
+
+        const abierto = this.detallesRacialAbiertos.find(r => this.normalizar(r.Nombre) === this.normalizar(nombreRacial));
+        if (abierto) {
+            this.cambiarA(true, this.TabGroup._tabs.find(tab => tab.textLabel === this.getEtiquetaRacial(abierto)));
+            return;
+        }
+
+        this.racialSvc.getRaciales().pipe(take(1)).subscribe(raciales => {
+            const encontrada = raciales.find(r => this.normalizar(r.Nombre) === this.normalizar(nombreRacial));
+            if (encontrada) {
+                this.abrirDetallesRacial(encontrada);
+                return;
+            }
+
+            Swal.fire({
+                icon: 'warning',
+                title: 'Racial no encontrada',
+                text: `No se encontró una racial catalogada para "${nombreRacial}"`,
+                showConfirmButton: true
+            });
+        });
+    }
+
+    quitarDetallesRacial(label: string): boolean {
+        const tab = this.detallesRacialAbiertos.find(r => this.getEtiquetaRacial(r) === label);
+        if (!tab)
+            return false;
+        const indexTab = this.detallesRacialAbiertos.indexOf(tab);
+        this.detallesRacialAbiertos.splice(indexTab, 1);
         this.cambiarA(false);
         return true;
     }
@@ -430,6 +601,7 @@ export class TabControlComponent implements OnInit {
 
     @Output() CerrarNuevoPersonajeTab: EventEmitter<void> = new EventEmitter();
     quitarNuevoPersonaje() {
+        this.nuevoPSvc.resetearCreacionNuevoPersonaje();
         this.cambiarA(false);
         this.CerrarNuevoPersonajeTab.emit();
     }
@@ -446,5 +618,14 @@ export class TabControlComponent implements OnInit {
             .replace(/[\u0300-\u036f]/g, '')
             .trim()
             .toLowerCase();
+    }
+
+    private esNombreNoAplicable(value: string): boolean {
+        const normalizado = this.normalizar(value).replace(/[.]/g, '');
+        return normalizado.length < 1
+            || normalizado === 'no aplica'
+            || normalizado === 'no especifica'
+            || normalizado === 'no se especifica'
+            || normalizado === 'nada';
     }
 }

@@ -1,0 +1,99 @@
+<div class="modal-local-backdrop" (click)="cerrarModal()"></div>
+
+<div class="modal-local-panel" (click)="$event.stopPropagation()">
+    <mat-card class="h-100">
+        <mat-card-header class="modal-header">
+            <div class="header-text">
+                <mat-card-title>Generador de características</mat-card-title>
+                <mat-card-subtitle>{{subtitulo}}</mat-card-subtitle>
+            </div>
+            <div class="header-actions">
+                <mat-form-field appearance="fill" class="minimo-selector">
+                    <mat-label>Tirada mínima</mat-label>
+                    <mat-select [value]="estado.minimoSeleccionado" [disabled]="estado.tablaFijada" (selectionChange)="onMinimoChange($event.value)">
+                        <mat-option *ngFor="let minimo of minimos" [value]="minimo">{{minimo}}</mat-option>
+                    </mat-select>
+                </mat-form-field>
+                <button mat-icon-button (click)="cerrarModal()" aria-label="Cerrar modal">
+                    <mat-icon>close</mat-icon>
+                </button>
+            </div>
+        </mat-card-header>
+
+        <mat-card-content class="modal-content">
+            <section class="bloque">
+                <div class="tablas-scroll">
+                    <div class="tablas-grid">
+                        <div class="tabla-card" [class.tabla-seleccionada]="isTablaSeleccionada(1)" [class.tabla-bloqueada]="estado.tablaFijada" (click)="seleccionarTabla(1)">
+                            <h4>Tabla 1</h4>
+                            <div class="valores">
+                                <span class="valor" *ngFor="let valor of tabla1">{{valor}}</span>
+                            </div>
+                        </div>
+
+                        <div class="tabla-card" [class.tabla-seleccionada]="isTablaSeleccionada(2)" [class.tabla-bloqueada]="estado.tablaFijada" (click)="seleccionarTabla(2)">
+                            <h4>Tabla 2</h4>
+                            <div class="valores">
+                                <span class="valor" *ngFor="let valor of tabla2">{{valor}}</span>
+                            </div>
+                        </div>
+
+                        <div class="tabla-card" [class.tabla-seleccionada]="isTablaSeleccionada(3)" [class.tabla-bloqueada]="estado.tablaFijada" (click)="seleccionarTabla(3)">
+                            <h4>Tabla 3</h4>
+                            <div class="valores">
+                                <span class="valor" *ngFor="let valor of tabla3">{{valor}}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="acciones-tabla">
+                    <button mat-raised-button color="primary" (click)="fijarOReiniciar()">
+                        {{estado.tablaFijada ? 'Reiniciar' : 'Fijar elección'}}
+                    </button>
+                    <span class="texto-ayuda" *ngIf="!estado.tablaFijada">Selecciona una tabla y pulsa "Fijar elección".</span>
+                    <span class="texto-ayuda" *ngIf="estado.tablaFijada">Arrastra cada valor a una característica.</span>
+                </div>
+            </section>
+
+            <section class="bloque" *ngIf="estado.tablaFijada">
+                <h4 class="m-0">Pool disponible</h4>
+                <div class="pool-grid">
+                    <button
+                        mat-stroked-button
+                        class="pool-item"
+                        *ngFor="let _ of estado.poolDisponible; let i = index"
+                        [disabled]="estado.poolDisponible[i] < 0"
+                        [draggable]="estado.poolDisponible[i] >= 0"
+                        [class.pool-item-usado]="estado.poolDisponible[i] < 0"
+                        (dragstart)="iniciarArrastre(i, $event)">
+                        {{getPoolValor(i)}}
+                    </button>
+                </div>
+            </section>
+
+            <section class="bloque">
+                <h4 class="m-0">Asignación</h4>
+                <div class="atributos-grid">
+                    <div class="atributo-item" *ngFor="let item of caracteristicas">
+                        <div class="atributo-label">{{item.label}}</div>
+                        <div class="atributo-mod">Mod. racial: {{formatMod(getModRacial(item.key))}}</div>
+                        <div
+                            class="atributo-drop"
+                            [class.atributo-drop-bloqueado]="caracteristicaBloqueada(item.key)"
+                            [class.atributo-drop-completo]="estado.asignaciones[item.key] !== null"
+                            (dragover)="permitirSoltar($event)"
+                            (drop)="soltarEnCaracteristica(item.key, $event)">
+                            {{getValorAsignado(item.key)}}
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </mat-card-content>
+
+        <mat-card-actions class="d-flex justify-content-end gap-2 p-3">
+            <button mat-raised-button color="accent" (click)="cerrarModal()">Cerrar</button>
+            <button mat-raised-button color="primary" [disabled]="!puedeFinalizar" (click)="finalizarAsignacion()">Finalizar</button>
+        </mat-card-actions>
+    </mat-card>
+</div>

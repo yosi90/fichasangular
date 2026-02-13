@@ -10,6 +10,11 @@ mat-chip.h-auto
 mat-chip.warm
     background-color: #f44336
 
+.detalle-view
+    mat-chip:not(.chip-titulo):not(.w-100):not(.h-auto):not(.chip-celda):not(.chip-multilinea)
+        --mdc-chip-container-height: 32px
+        min-height: 32px
+
 ::ng-deep .tt-accent *
     background-color: $active
 
@@ -83,9 +88,12 @@ mat-chip.warm
         button:nth-child(odd):not([disabled]):not([mat-raised-button])
             background-color: lightgray
 
-    mat-chip-set::ng-deep.mdc-evolution-chip-set__chips
+    ::ng-deep .mdc-evolution-chip-set__chips
         display: flex
         align-items: center
+
+:host ::ng-deep .mat-accordion .mat-expansion-panel .mat-expansion-panel-body .mdc-evolution-chip-set__chips
+    padding-left: 12px
 
 .chip-multilinea
     height: auto

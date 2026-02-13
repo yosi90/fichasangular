@@ -27,9 +27,12 @@
             [pj]="detallesPersonajeAbiertos[index]" 
             (conjuroDetalles)="abrirDetallesConjuro($event);"
             (sortilegaDetalles)="abrirDetallesSortilega($event, pj.Nombre);"
+            (razaDetalles)="abrirDetallesRazaPorId($event);"
             (tipoDetalles)="abrirDetallesTipoCriatura($event);"
             (rasgoDetalles)="abrirDetallesRasgo($event);"
             (claseDetalles)="abrirDetallesClasePorNombre($event);"
+            (especialDetallesPorNombre)="abrirDetallesEspecialPorNombre($event);"
+            (racialDetallesPorNombre)="abrirDetallesRacialPorNombre($event);"
             (doteDetalles)="abrirDetallesDote($event);">
         </app-detalles-personaje>
     </mat-tab>
@@ -55,7 +58,10 @@
             {{tab.Nombre}} (Raza)
             <button (click)="quitarDetallesRaza(tab.Nombre)" mat-icon-button class="ms-2"><mat-icon>close</mat-icon></button>
         </ng-template>
-        <app-detalles-raza [raza]="detallesRazaAbiertos[index]"></app-detalles-raza>
+        <app-detalles-raza
+            [raza]="detallesRazaAbiertos[index]"
+            (racialDetallesPorNombre)="abrirDetallesRacialPorNombre($event)">
+        </app-detalles-raza>
     </mat-tab>
     <mat-tab *ngFor="let tab of detallesConjuroAbiertos; let index = index" [label]="tab.Nombre">
         <ng-template mat-tab-label>
@@ -100,8 +106,26 @@
         </ng-template>
         <app-detalles-clase
             [clase]="detallesClaseAbiertos[index]"
-            (conjuroDetalles)="abrirDetallesConjuroPorId($event)">
+            (conjuroDetalles)="abrirDetallesConjuroPorId($event)"
+            (especialDetalles)="abrirDetallesEspecialPorId($event)"
+            (doteDetalles)="abrirDetallesDotePorId($event)">
         </app-detalles-clase>
+    </mat-tab>
+    <mat-tab *ngFor="let especial of detallesEspecialAbiertos; let index = index" [label]="getEtiquetaEspecial(especial)">
+        <ng-template mat-tab-label>
+            <mat-icon class="me-2">find_in_page</mat-icon>
+            {{getEtiquetaEspecial(especial)}}
+            <button (click)="quitarDetallesEspecial(getEtiquetaEspecial(especial))" mat-icon-button class="ms-2"><mat-icon>close</mat-icon></button>
+        </ng-template>
+        <app-detalles-especial [especial]="detallesEspecialAbiertos[index]"></app-detalles-especial>
+    </mat-tab>
+    <mat-tab *ngFor="let racial of detallesRacialAbiertos; let index = index" [label]="getEtiquetaRacial(racial)">
+        <ng-template mat-tab-label>
+            <mat-icon class="me-2">find_in_page</mat-icon>
+            {{getEtiquetaRacial(racial)}}
+            <button (click)="quitarDetallesRacial(getEtiquetaRacial(racial))" mat-icon-button class="ms-2"><mat-icon>close</mat-icon></button>
+        </ng-template>
+        <app-detalles-racial [racial]="detallesRacialAbiertos[index]"></app-detalles-racial>
     </mat-tab>
     <mat-tab *ngFor="let doteCtx of detallesDoteAbiertos; let index = index" [label]="getEtiquetaDote(doteCtx)">
         <ng-template mat-tab-label>

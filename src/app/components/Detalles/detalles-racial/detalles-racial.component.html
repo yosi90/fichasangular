@@ -1,0 +1,21 @@
+<div class="container-fluid detalle-view" *ngIf="racial">
+    <div class="row">
+        <div class="col-md-4 col-12 p-2">
+            <div class="d-flex flex-wrap align-items-center sombra-caja-sm rounded p-2 my-2">
+                <mat-chip class="h-auto warm w-100 sombra-caja-sm py-2 m-1 chip-titulo">
+                    {{racial.Nombre}}
+                </mat-chip>
+            </div>
+        </div>
+        <div class="col-md-4 col-12 p-2">
+            <div class="d-flex flex-wrap align-items-center sombra-caja-sm rounded p-2 my-2" *ngIf="tieneTextoVisible(racial.Descripcion)">
+                <mat-chip class="w-100 sombra-caja-sm m-1 mb-2 chip-titulo">
+                    Descripcion
+                    <mat-icon class="ms-2">short_text</mat-icon>
+                </mat-chip>
+                <p class="m-1">{{racial.Descripcion}}</p>
+            </div>
+        </div>
+        <div class="col-md-4 col-12 p-2"></div>
+    </div>
+</div>

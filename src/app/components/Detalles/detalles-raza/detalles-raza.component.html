@@ -1,8 +1,8 @@
-<div class="container-fluid" *ngIf="raza">
+<div class="container-fluid detalle-view" *ngIf="raza">
     <div class="row">
         <div class="col-md-4 col-12 p-2">
             <div class="d-flex flex-wrap align-items-center sombra-caja-sm rounded p-2 my-2">
-                <mat-chip class="h-auto warm w-100 sombra-caja-sm py-2 m-1">
+                <mat-chip class="h-auto warm w-100 sombra-caja-sm py-2 m-1 chip-titulo">
                     {{raza.Nombre}}
                     <mat-chip class="sombra3d-sm m-1 ms-4" *ngIf="raza.Tamano">{{raza.Tamano.Nombre}}</mat-chip>
                     <mat-chip class="sombra3d-sm m-1" *ngIf="raza.Tipo_criatura">{{raza.Tipo_criatura.Nombre}}</mat-chip>
@@ -27,7 +27,7 @@
                 </mat-chip>
             </div>
             <div class="d-flex flex-wrap align-items-center sombra-caja-sm rounded p-2 my-2">
-                <mat-chip class="h-auto w-100 sombra-caja-sm py-2 m-1 mb-2">
+                <mat-chip class="h-auto w-100 sombra-caja-sm py-2 m-1 mb-2 chip-titulo">
                     Modificadores
                     <mat-icon class="ms-2">tune</mat-icon>
                 </mat-chip>
@@ -53,7 +53,7 @@
         </div>
         <div class="col-md-4 col-12 p-2">
             <div class="d-flex flex-wrap align-items-center sombra-caja-sm rounded p-2 my-2">
-                <mat-chip class="h-auto w-100 sombra-caja-sm py-2 m-1 mb-2">
+                <mat-chip class="h-auto w-100 sombra-caja-sm py-2 m-1 mb-2 chip-titulo">
                     Detalles
                     <mat-icon class="ms-2">format_list_numbered</mat-icon>
                 </mat-chip>
@@ -73,16 +73,9 @@
                 <mat-chip class="sombra3d-sm m-1" *ngIf="raza.Trepar > 0">Trepar {{raza.Trepar}}'</mat-chip>
                 <mat-chip class="sombra3d-sm m-1" *ngIf="raza.Escalar > 0">Escalar {{raza.Escalar}}'</mat-chip>
                 <mat-chip class="sombra3d-sm m-1" *ngIf="raza.Maniobrabilidad && raza.Volar > 0">Maniobrabilidad {{raza.Maniobrabilidad.Nombre}}</mat-chip>
-                <mat-chip class="sombra3d-sm m-1" *ngIf="raza.Ataques_naturales && raza.Ataques_naturales !== 'No especifica'">Ataques naturales: {{raza.Ataques_naturales}}</mat-chip>
-                <mat-chip class="sombra3d-sm m-1" *ngIf="raza.Reduccion_dano && raza.Reduccion_dano !== 'No especifica'">Reduccion de dano: {{raza.Reduccion_dano}}</mat-chip>
-                <mat-chip class="sombra3d-sm m-1" *ngIf="raza.Resistencia_magica && raza.Resistencia_magica !== 'No especifica'">Resistencia magica: {{raza.Resistencia_magica}}</mat-chip>
-                <mat-chip class="sombra3d-sm m-1" *ngIf="raza.Resistencia_energia && raza.Resistencia_energia !== 'No especifica'">Resistencia a la energia: {{raza.Resistencia_energia}}</mat-chip>
-                <mat-chip class="sombra3d-sm m-1" *ngIf="raza.Heredada">Plantilla heredada</mat-chip>
-                <mat-chip class="sombra3d-sm m-1" *ngIf="raza.Mutada">Plantilla mutada</mat-chip>
-                <mat-chip class="sombra3d-sm m-1" *ngIf="raza.Tamano_mutacion_dependiente">Tamano dependiente de mutacion</mat-chip>
             </div>
             <div class="d-flex flex-wrap align-items-center sombra-caja-sm rounded p-2 my-2">
-                <mat-chip class="h-auto w-100 sombra-caja-sm py-2 m-1 mb-2">
+                <mat-chip class="h-auto w-100 sombra-caja-sm py-2 m-1 mb-2 chip-titulo">
                     Rangos
                     <mat-icon class="ms-2">straighten</mat-icon>
                 </mat-chip>
@@ -119,6 +112,21 @@
                         <mat-chip class="sombra3d-sm m-1">Dotes extra {{raza.Dgs_adicionales.Dotes_extra}}</mat-chip>
                         <mat-chip class="sombra3d-sm m-1">Puntos de habilidad {{raza.Dgs_adicionales.Puntos_habilidad}}</mat-chip>
                         <mat-chip class="sombra3d-sm m-1">Multiplicador x{{raza.Dgs_adicionales.Multiplicador_puntos_habilidad}}</mat-chip>
+                    </mat-chip-set>
+                </mat-expansion-panel>
+                <mat-expansion-panel *ngIf="getRacialesActivos().length > 0">
+                    <mat-expansion-panel-header>
+                        <button mat-stroked-button color="accent" class="rounded-0">
+                            <h2 class="mb-0">Raciales</h2>
+                        </button>
+                    </mat-expansion-panel-header>
+                    <mat-chip-set class="m-1">
+                        <mat-chip class="h-auto sombra3d-sm m-1" [ngClass]="racial.clicable ? 'chip-clic' : ''"
+                            matTooltip="Pulsa para ver detalles de esta racial" [matTooltipShowDelay]="250"
+                            matTooltipClass="tt-accent" (click)="abrirDetalleRacialPorNombre(racial.nombreBase)"
+                            *ngFor="let racial of getRacialesActivos()">
+                            {{racial.texto}}
+                        </mat-chip>
                     </mat-chip-set>
                 </mat-expansion-panel>
                 <mat-expansion-panel *ngIf="raza.Sortilegas && raza.Sortilegas.length > 0">

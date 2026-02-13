@@ -14,7 +14,25 @@
                 <button mat-button color="primary">Conjuro</button>
                 <button mat-button color="primary">Monstruo</button>
                 <button mat-button color="primary">Plantilla</button>
-                <button mat-button color="primary">Otros</button>
+                <button mat-button color="primary" cdkOverlayOrigin #origenInsertar="cdkOverlayOrigin"
+                    (mouseenter)="abrirOtros('insertar')" (mouseleave)="programarCierreOtros()"
+                    (click)="toggleOtros('insertar', $event)">
+                    Otros
+                    <mat-icon iconPositionEnd>arrow_right</mat-icon>
+                </button>
+                <ng-template cdkConnectedOverlay [cdkConnectedOverlayOrigin]="origenInsertar"
+                    [cdkConnectedOverlayOpen]="otrosAbierto === 'insertar'"
+                    [cdkConnectedOverlayPositions]="posicionesOtros" [cdkConnectedOverlayHasBackdrop]="true"
+                    [cdkConnectedOverlayBackdropClass]="'cdk-overlay-transparent-backdrop'"
+                    (backdropClick)="cerrarOtros()" (detach)="cerrarOtros()" (overlayKeydown)="onOverlayKeydown($event)">
+                    <div class="menu-otros-panel" (mouseenter)="cancelarCierreOtros()" (mouseleave)="programarCierreOtros()">
+                        <button mat-button color="primary" (click)="cerrarOtros()">Tipos de criatura</button>
+                        <button mat-button color="primary" (click)="cerrarOtros()">Subtipos de criatura</button>
+                        <button mat-button color="primary" (click)="cerrarOtros()">Rasgos</button>
+                        <button mat-button color="primary" (click)="cerrarOtros()">Especiales</button>
+                        <button mat-button color="primary" (click)="cerrarOtros()">Raciales</button>
+                    </div>
+                </ng-template>
             </mat-expansion-panel>
             <mat-expansion-panel #segundo>
                 <mat-expansion-panel-header>
@@ -28,15 +46,25 @@
                 <button mat-button color="primary">Conjuro</button>
                 <button mat-button color="primary">Monstruo</button>
                 <button mat-button color="primary">Plantilla</button>
-                <button mat-button color="primary" #triggerModificar="matMenuTrigger" [matMenuTriggerFor]="menuModificar" (mouseenter)="openMenu(triggerModificar)">
+                <button mat-button color="primary" cdkOverlayOrigin #origenModificar="cdkOverlayOrigin"
+                    (mouseenter)="abrirOtros('modificar')" (mouseleave)="programarCierreOtros()"
+                    (click)="toggleOtros('modificar', $event)">
                     Otros
                     <mat-icon iconPositionEnd>arrow_right</mat-icon>
                 </button>
-                <mat-menu #menuModificar="matMenu" [class]="'menuOscuro'" yPosition="above" xPosition="before">
-                    <button mat-menu-item>Tipos de criatura</button>
-                    <button mat-menu-item>Subtipos de criatura</button>
-                    <button mat-menu-item>Rasgos raciales</button>
-                </mat-menu>
+                <ng-template cdkConnectedOverlay [cdkConnectedOverlayOrigin]="origenModificar"
+                    [cdkConnectedOverlayOpen]="otrosAbierto === 'modificar'"
+                    [cdkConnectedOverlayPositions]="posicionesOtros" [cdkConnectedOverlayHasBackdrop]="true"
+                    [cdkConnectedOverlayBackdropClass]="'cdk-overlay-transparent-backdrop'"
+                    (backdropClick)="cerrarOtros()" (detach)="cerrarOtros()" (overlayKeydown)="onOverlayKeydown($event)">
+                    <div class="menu-otros-panel" (mouseenter)="cancelarCierreOtros()" (mouseleave)="programarCierreOtros()">
+                        <button mat-button color="primary" (click)="cerrarOtros()">Tipos de criatura</button>
+                        <button mat-button color="primary" (click)="cerrarOtros()">Subtipos de criatura</button>
+                        <button mat-button color="primary" (click)="cerrarOtros()">Rasgos raciales</button>
+                        <button mat-button color="primary" (click)="cerrarOtros()">Especiales</button>
+                        <button mat-button color="primary" (click)="cerrarOtros()">Raciales</button>
+                    </div>
+                </ng-template>
             </mat-expansion-panel>
             <mat-expansion-panel class="rounded-0 rounded-bottom" #tercero>
                 <mat-expansion-panel-header>
@@ -50,15 +78,29 @@
                 <button mat-button color="primary" (click)="AbrirListado('conjuros', 'detalles'); closeAcordion();">Conjuro</button>
                 <button mat-button color="primary">Monstruo</button>
                 <button mat-button color="primary">Plantilla</button>
-                <button mat-button color="primary" #triggerDetalles="matMenuTrigger" [matMenuTriggerFor]="menuDetalles" (mouseenter)="openMenu(triggerDetalles)">
+                <button mat-button color="primary" cdkOverlayOrigin #origenDetalles="cdkOverlayOrigin"
+                    (mouseenter)="abrirOtros('detalles')" (mouseleave)="programarCierreOtros()"
+                    (click)="toggleOtros('detalles', $event)">
                     Otros
                     <mat-icon iconPositionEnd>arrow_right</mat-icon>
                 </button>
-                <mat-menu #menuDetalles="matMenu" [class]="'menuOscuro'" yPosition="above" xPosition="before">
-                    <button mat-menu-item (click)="AbrirListado('tipos de criatura', 'detalles'); closeAcordion();">Tipos de criatura</button>
-                    <button mat-menu-item>Subtipos de criatura</button>
-                    <button mat-menu-item (click)="AbrirListado('rasgos', 'detalles'); closeAcordion();">Rasgos</button>
-                </mat-menu>
+                <ng-template cdkConnectedOverlay [cdkConnectedOverlayOrigin]="origenDetalles"
+                    [cdkConnectedOverlayOpen]="otrosAbierto === 'detalles'"
+                    [cdkConnectedOverlayPositions]="posicionesOtros" [cdkConnectedOverlayHasBackdrop]="true"
+                    [cdkConnectedOverlayBackdropClass]="'cdk-overlay-transparent-backdrop'"
+                    (backdropClick)="cerrarOtros()" (detach)="cerrarOtros()" (overlayKeydown)="onOverlayKeydown($event)">
+                    <div class="menu-otros-panel" (mouseenter)="cancelarCierreOtros()" (mouseleave)="programarCierreOtros()">
+                        <button mat-button color="primary"
+                            (click)="AbrirListado('tipos de criatura', 'detalles'); closeAcordion(); cerrarOtros();">Tipos de criatura</button>
+                        <button mat-button color="primary" (click)="cerrarOtros()">Subtipos de criatura</button>
+                        <button mat-button color="primary"
+                            (click)="AbrirListado('rasgos', 'detalles'); closeAcordion(); cerrarOtros();">Rasgos</button>
+                        <button mat-button color="primary"
+                            (click)="AbrirListado('especiales', 'detalles'); closeAcordion(); cerrarOtros();">Especiales</button>
+                        <button mat-button color="primary"
+                            (click)="AbrirListado('raciales', 'detalles'); closeAcordion(); cerrarOtros();">Raciales</button>
+                    </div>
+                </ng-template>
             </mat-expansion-panel>
             <mat-expansion-panel hideToggle="true" #cuarto>
                 <mat-expansion-panel-header>

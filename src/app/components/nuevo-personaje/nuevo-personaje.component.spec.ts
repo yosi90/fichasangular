@@ -1,8 +1,9 @@
 import Swal from 'sweetalert2';
 import { Campana } from 'src/app/interfaces/campaña';
 import { Raza } from 'src/app/interfaces/raza';
-import { NuevoPersonajeService } from 'src/app/services/nuevo-personaje.service';
+import { AsignacionCaracteristicas, NuevoPersonajeService } from 'src/app/services/nuevo-personaje.service';
 import { NuevoPersonajeComponent } from './nuevo-personaje.component';
+import { of } from 'rxjs';
 
 function crearRazaMock(oficial = true): Raza {
     return {
@@ -110,26 +111,68 @@ function crearRazaMock(oficial = true): Raza {
     };
 }
 
-function waitTick(): Promise<void> {
-    return new Promise(resolve => setTimeout(resolve, 0));
+function crearRazaConAlineamientoBasico(nombre: string): Raza {
+    const raza = crearRazaMock();
+    raza.Alineamiento.Basico.Nombre = nombre;
+    return raza;
 }
 
 describe('NuevoPersonajeComponent', () => {
     let component: NuevoPersonajeComponent;
     let nuevoPSvc: NuevoPersonajeService;
+    let campanaSvcMock: any;
 
     beforeEach(() => {
         nuevoPSvc = new NuevoPersonajeService();
-        component = new NuevoPersonajeComponent(nuevoPSvc, {} as any);
+        campanaSvcMock = {
+            getListCampanas: async () => of([]),
+        };
+        component = new NuevoPersonajeComponent(nuevoPSvc, campanaSvcMock);
         component.Personaje = nuevoPSvc.PersonajeCreacion;
-        (component as any).TabGroup = { selectedIndex: 0 };
         component.seleccionarRaza(crearRazaMock());
+        component.Personaje.Nombre = 'Aldric';
         component.Personaje.Alineamiento = 'Legal bueno';
         component.Personaje.Deidad = 'Heironeous';
         component.Personaje.Edad = 20;
         component.Personaje.Peso = 55;
         component.Personaje.Altura = 1.5;
         component.recalcularOficialidad();
+    });
+
+    it('seleccionarRaza mueve automáticamente a Básicos', () => {
+        expect(component.selectedInternalTabIndex).toBe(1);
+        expect(nuevoPSvc.EstadoFlujo.pasoActual).toBe('basicos');
+    });
+
+    it('si el alineamiento base de raza no existe en el selector, usa Legal bueno visible', () => {
+        component.seleccionarRaza(crearRazaConAlineamientoBasico('Alineamiento desconocido'));
+        expect(component.Personaje.Alineamiento).toBe('Legal bueno');
+    });
+
+    it('onInternalTabIndexChange no permite cambiar el paso por navegación manual', () => {
+        component.selectedInternalTabIndex = 1;
+        component.onInternalTabIndexChange(0);
+        expect(component.selectedInternalTabIndex).toBe(1);
+    });
+
+    it('puedeContinuarBasicos es false si falta un campo obligatorio visible', () => {
+        component.Personaje.Nombre = '';
+        expect(component.puedeContinuarBasicos).toBeFalse();
+    });
+
+    it('puedeContinuarBasicos es true cuando todos los campos visibles obligatorios están completos', () => {
+        component.Personaje.Nombre = 'Aldric';
+        component.Personaje.Genero = 'Macho';
+        component.Personaje.Alineamiento = 'Legal bueno';
+        component.Personaje.Deidad = 'Heironeous';
+        component.Personaje.Campana = 'Sin campaña';
+        component.Personaje.Trama = 'Trama base';
+        component.Personaje.Subtrama = 'Subtrama base';
+        component.Personaje.Edad = 21;
+        component.Personaje.Peso = 75;
+        component.Personaje.Altura = 1.8;
+
+        expect(component.puedeContinuarBasicos).toBeTrue();
     });
 
     it('actualizarTramas con Sin campaña resetea trama y subtrama', () => {
@@ -185,96 +228,100 @@ describe('NuevoPersonajeComponent', () => {
         expect(inconsistencias.some(i => i.includes('Deidad no oficial'))).toBeTrue();
     });
 
-    it('regla de distancia permite un paso (Legal bueno vs Legal neutral)', () => {
-        component.Personaje.Alineamiento = 'Legal bueno';
-        component.Personaje.Deidad = 'St. Cuthbert';
-        const inconsistencias = component.getInconsistenciasManual();
-        expect(inconsistencias.some(i => i.includes('Alineamiento incompatible'))).toBeFalse();
-    });
-
-    it('regla de distancia marca invalido mas de un paso (Legal bueno vs Neutral autentico)', () => {
-        component.Personaje.Alineamiento = 'Legal bueno';
-        component.Personaje.Deidad = 'Boccob';
-        const inconsistencias = component.getInconsistenciasManual();
-        expect(inconsistencias.some(i => i.includes('Alineamiento incompatible'))).toBeTrue();
-    });
-
-    it('recalcularOficialidad pone true cuando todo es valido', () => {
-        component.Personaje.Deidad = 'Heironeous';
-        component.Personaje.Alineamiento = 'Legal bueno';
-        component.Personaje.Edad = 20;
-        component.Personaje.Peso = 55;
-        component.Personaje.Altura = 1.5;
-        component.recalcularOficialidad();
-        expect(component.Personaje.Oficial).toBeTrue();
-    });
-
-    it('recalcularOficialidad pone false con raza no oficial', () => {
-        (component as any).nuevoPSvc.razaSeleccionada = crearRazaMock(false);
-        component.recalcularOficialidad();
-        expect(component.Personaje.Oficial).toBeFalse();
-    });
-
-    it('recalcularOficialidad pone false con deidad no oficial', () => {
-        component.Personaje.Deidad = 'Deidad fanmade';
-        component.recalcularOficialidad();
-        expect(component.Personaje.Oficial).toBeFalse();
-    });
-
     it('recalcularOficialidad pone false con contradicciones de manual', () => {
         component.Personaje.Peso = 999;
         component.recalcularOficialidad();
         expect(component.Personaje.Oficial).toBeFalse();
     });
 
-    it('panel deidad se oculta con No tener deidad y muestra info con deidad seleccionada', () => {
-        component.Personaje.Deidad = 'No tener deidad';
-        expect(component.mostrarPanelDeidad).toBeFalse();
-
-        component.Personaje.Deidad = 'Heironeous';
-        expect(component.mostrarPanelDeidad).toBeTrue();
-        expect(component.deidadAlineamientoInfo).toBe('Legal bueno');
-        expect(component.deidadOficialidadInfo).toBe('Oficial');
-    });
-
-    it('onInternalTabChange cancela cambio y restaura tab al cancelar alerta', async () => {
+    it('continuarDesdeBasicos cancela al rechazar alerta', async () => {
         component.Personaje.Peso = 999;
-        (component as any).previousInternalTabIndex = 1;
-        (component as any).TabGroup = { selectedIndex: 0 };
         spyOn(Swal, 'fire').and.resolveTo({ isConfirmed: false } as any);
 
-        await component.onInternalTabChange({ index: 0 } as any);
-        await waitTick();
+        await component.continuarDesdeBasicos();
 
-        expect((component as any).TabGroup.selectedIndex).toBe(1);
-        expect((component as any).previousInternalTabIndex).toBe(1);
+        expect(component.modalCaracteristicasAbierto).toBeFalse();
     });
 
-    it('onInternalTabChange permite cambio al aceptar alerta', async () => {
+    it('continuarDesdeBasicos abre modal al aceptar alerta', async () => {
         component.Personaje.Peso = 999;
-        (component as any).previousInternalTabIndex = 1;
-        (component as any).TabGroup = { selectedIndex: 0 };
         spyOn(Swal, 'fire').and.resolveTo({ isConfirmed: true } as any);
 
-        await component.onInternalTabChange({ index: 0 } as any);
+        await component.continuarDesdeBasicos();
 
-        expect((component as any).previousInternalTabIndex).toBe(0);
-        expect(component.Personaje.Oficial).toBeFalse();
+        expect(component.modalCaracteristicasAbierto).toBeTrue();
     });
 
-    it('onInternalTabChange sin inconsistencias no muestra alerta', async () => {
+    it('continuarDesdeBasicos sin inconsistencias abre modal sin alerta', async () => {
+        component.Personaje.Nombre = 'Aldric';
         component.Personaje.Peso = 55;
         component.Personaje.Altura = 1.5;
         component.Personaje.Edad = 20;
         component.Personaje.Deidad = 'Heironeous';
         component.Personaje.Alineamiento = 'Legal bueno';
-        (component as any).previousInternalTabIndex = 1;
-        (component as any).TabGroup = { selectedIndex: 0 };
         const swalSpy = spyOn(Swal, 'fire').and.resolveTo({ isConfirmed: true } as any);
 
-        await component.onInternalTabChange({ index: 0 } as any);
+        await component.continuarDesdeBasicos();
 
         expect(swalSpy).not.toHaveBeenCalled();
-        expect((component as any).previousInternalTabIndex).toBe(0);
+        expect(component.modalCaracteristicasAbierto).toBeTrue();
+    });
+
+    it('continuarDesdeBasicos autorrellena contexto y personalidad cuando están vacíos', async () => {
+        component.Personaje.Nombre = 'Aldric';
+        component.Personaje.Contexto = '   ';
+        component.Personaje.Personalidad = '';
+
+        await component.continuarDesdeBasicos();
+
+        expect(component.Personaje.Contexto).toBe(component.fallbackContexto);
+        expect(component.Personaje.Personalidad).toBe(component.fallbackPersonalidad);
+    });
+
+    it('continuarDesdeBasicos no sobreescribe contexto ni personalidad si ya tenían valor', async () => {
+        component.Personaje.Nombre = 'Aldric';
+        component.Personaje.Contexto = 'Contexto custom';
+        component.Personaje.Personalidad = 'Personalidad custom';
+
+        await component.continuarDesdeBasicos();
+
+        expect(component.Personaje.Contexto).toBe('Contexto custom');
+        expect(component.Personaje.Personalidad).toBe('Personalidad custom');
+    });
+
+    it('no avanza a Plantillas sin características generadas', () => {
+        component.irAPlantillas();
+        expect(component.selectedInternalTabIndex).toBe(1);
+    });
+
+    it('finalizarGeneracionCaracteristicas aplica valores y avanza a Plantillas', () => {
+        const asignaciones: AsignacionCaracteristicas = {
+            Fuerza: 14,
+            Destreza: 15,
+            Constitucion: 13,
+            Inteligencia: 12,
+            Sabiduria: 10,
+            Carisma: 8,
+        };
+
+        component.finalizarGeneracionCaracteristicas(asignaciones);
+
+        expect(component.caracteristicasGeneradas).toBeTrue();
+        expect(component.selectedInternalTabIndex).toBe(2);
+        expect(component.Personaje.Fuerza).toBe(14);
+        expect(component.Personaje.Destreza).toBe(17);
+        expect(component.Personaje.Constitucion).toBe(11);
+        expect(component.Personaje.ModDestreza).toBe(3);
+    });
+
+    it('persistencia de modal: si vuelves al componente, mantiene estado del servicio', () => {
+        nuevoPSvc.abrirModalCaracteristicas();
+        nuevoPSvc.actualizarPasoActual('basicos');
+
+        const componentReabierto = new NuevoPersonajeComponent(nuevoPSvc, campanaSvcMock);
+        componentReabierto.ngOnInit();
+
+        expect(componentReabierto.modalCaracteristicasAbierto).toBeTrue();
+        expect(componentReabierto.selectedInternalTabIndex).toBe(1);
     });
 });

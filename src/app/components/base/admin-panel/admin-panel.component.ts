@@ -14,6 +14,8 @@ import { AlineamientoService } from 'src/app/services/alineamiento.service';
 import { PlantillaService } from 'src/app/services/plantilla.service';
 import { DoteService } from 'src/app/services/dote.service';
 import { ClaseService } from 'src/app/services/clase.service';
+import { EspecialService } from 'src/app/services/especial.service';
+import { RacialService } from 'src/app/services/racial.service';
 
 @Component({
     selector: 'app-admin-panel',
@@ -27,7 +29,7 @@ export class AdminPanelComponent implements OnInit {
 
     constructor(private conSvc: VerifyConnectionService, private pSvc: PersonajeService, private lpSvc: ListaPersonajesService, private cSvc: CampanaService, private rSvc: RazaService, private mSvc: ManualService,
         private tcSvc: TipoCriaturaService, private raSvc: RasgoService, private coSvc: ConjuroService, private escSvc: EscuelaConjurosService, private disSvc: DisciplinaConjurosService, private aSvc: AlineamientoService,
-        private plSvc: PlantillaService, private doSvc: DoteService, private clSvc: ClaseService,
+        private plSvc: PlantillaService, private doSvc: DoteService, private clSvc: ClaseService, private espSvc: EspecialService, private racialSvc: RacialService,
     ) { }
 
     ngOnInit(): void {
@@ -61,6 +63,10 @@ export class AdminPanelComponent implements OnInit {
     sincronizarDotes() { this.doSvc.RenovarDotes(); }
 
     sincronizarClases() { this.clSvc.RenovarClases(); }
+
+    sincronizarEspeciales() { this.espSvc.RenovarEspeciales(); }
+
+    sincronizarRaciales() { this.racialSvc.RenovarRaciales(); }
 
     verificar() {
         this.serverStatusIcon = 'question_mark';

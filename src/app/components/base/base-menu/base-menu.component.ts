@@ -1,24 +1,31 @@
-import { Component, EventEmitter, OnInit, Output, QueryList, ViewChild, ViewChildren } from '@angular/core';
+import { Component, EventEmitter, OnDestroy, OnInit, Output, ViewChild } from '@angular/core';
 import { MatDialog } from '@angular/material/dialog';
 import { SesionDialogComponent } from '../../sesion-dialog/sesion-dialog.component';
 import { UserService } from '../../../services/user.service';
 import { MatExpansionPanel } from '@angular/material/expansion';
-import { MatMenuTrigger } from '@angular/material/menu';
+import { ConnectedPosition } from '@angular/cdk/overlay';
+
+type SeccionOtros = 'insertar' | 'modificar' | 'detalles';
 
 @Component({
     selector: 'app-base-menu',
     templateUrl: './base-menu.component.html',
     styleUrls: ['./base-menu.component.sass']
 })
-export class BaseMenuComponent implements OnInit {
+export class BaseMenuComponent implements OnInit, OnDestroy {
     @ViewChild('primero') primero!: MatExpansionPanel;
     @ViewChild('segundo') segundo!: MatExpansionPanel;
     @ViewChild('tercero') tercero!: MatExpansionPanel;
     @ViewChild('cuarto') cuarto!: MatExpansionPanel;
 
-    @ViewChildren(MatMenuTrigger) menuTriggers!: QueryList<MatMenuTrigger>;
-
     usr: string = 'Invitado';
+    otrosAbierto: SeccionOtros | null = null;
+    private timerCierreOtros: ReturnType<typeof setTimeout> | null = null;
+    readonly posicionesOtros: ConnectedPosition[] = [
+        { originX: 'end', overlayX: 'start', originY: 'top', overlayY: 'top', offsetX: 4 },
+        { originX: 'end', overlayX: 'start', originY: 'bottom', overlayY: 'bottom', offsetX: 4 },
+        { originX: 'start', overlayX: 'end', originY: 'top', overlayY: 'top', offsetX: -4 },
+    ];
 
     constructor(public dSesion: MatDialog, private usrService: UserService) { }
 
@@ -34,6 +41,10 @@ export class BaseMenuComponent implements OnInit {
             this.usrService.recuperarSesion(tokenViejo);
     }
 
+    ngOnDestroy(): void {
+        this.cancelarCierreOtros();
+    }
+
     closeAcordion() {
         if (this.primero.expanded)
             this.primero.close();
@@ -45,8 +56,38 @@ export class BaseMenuComponent implements OnInit {
             this.cuarto.close();
     }
 
-    openMenu(menu: MatMenuTrigger) {
-        menu.openMenu();
+    abrirOtros(seccion: SeccionOtros) {
+        this.cancelarCierreOtros();
+        this.otrosAbierto = seccion;
+    }
+
+    toggleOtros(seccion: SeccionOtros, event: MouseEvent) {
+        event.preventDefault();
+        event.stopPropagation();
+        this.cancelarCierreOtros();
+        this.otrosAbierto = this.otrosAbierto === seccion ? null : seccion;
+    }
+
+    programarCierreOtros() {
+        this.cancelarCierreOtros();
+        this.timerCierreOtros = setTimeout(() => this.cerrarOtros(), 150);
+    }
+
+    cancelarCierreOtros() {
+        if (this.timerCierreOtros) {
+            clearTimeout(this.timerCierreOtros);
+            this.timerCierreOtros = null;
+        }
+    }
+
+    cerrarOtros() {
+        this.cancelarCierreOtros();
+        this.otrosAbierto = null;
+    }
+
+    onOverlayKeydown(event: KeyboardEvent) {
+        if (event.key === 'Escape')
+            this.cerrarOtros();
     }
 
     @Output() NuevoPersonajeTab: EventEmitter<any> = new EventEmitter();

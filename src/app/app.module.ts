@@ -9,6 +9,7 @@ import { AppComponent } from './app.component';
 import { NavbarComponent } from './components/base/navbar/navbar.component';
 import { ContPrincipalComponent } from './components/base/cont-principal/cont-principal.component';
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
+import { OverlayModule } from '@angular/cdk/overlay';
 
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
@@ -56,6 +57,11 @@ import { ListadoDotesComponent } from './components/shared/listado-dotes/listado
 import { DetallesDoteComponent } from './components/detalles/detalles-dote/detalles-dote.component';
 import { ListadoClasesComponent } from './components/shared/listado-clases/listado-clases.component';
 import { DetallesClaseComponent } from './components/detalles/detalles-clase/detalles-clase.component';
+import { ListadoEspecialesComponent } from './components/shared/listado-especiales/listado-especiales.component';
+import { DetallesEspecialComponent } from './components/detalles/detalles-especial/detalles-especial.component';
+import { ListadoRacialesComponent } from './components/shared/listado-raciales/listado-raciales.component';
+import { DetallesRacialComponent } from './components/detalles/detalles-racial/detalles-racial.component';
+import { GeneradorCaracteristicasModalComponent } from './components/nuevo-personaje/generador-caracteristicas-modal/generador-caracteristicas-modal.component';
 
 @NgModule({
     declarations: [
@@ -83,11 +89,17 @@ import { DetallesClaseComponent } from './components/detalles/detalles-clase/det
         DetallesDoteComponent,
         ListadoClasesComponent,
         DetallesClaseComponent,
+        ListadoEspecialesComponent,
+        DetallesEspecialComponent,
+        ListadoRacialesComponent,
+        DetallesRacialComponent,
+        GeneradorCaracteristicasModalComponent,
     ],
     imports: [
         BrowserModule,
         FormsModule,
         BrowserAnimationsModule,
+        OverlayModule,
         MatIconModule,
         MatInputModule,
         MatFormFieldModule,

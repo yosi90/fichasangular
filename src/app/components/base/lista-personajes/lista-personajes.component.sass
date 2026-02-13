@@ -79,7 +79,7 @@
             mat-paginator
                 align-self: flex-end
 
-::ng-deep div[id*="mat-menu-panel"]
+::ng-deep .mat-mdc-menu-panel.menu-filtros-personajes
     max-width: 300px
 
     background-color: lightgray
@@ -87,7 +87,7 @@
 
     padding: 5px
 
-    ::ng-deep .mat-mdc-menu-content 
+    .mat-mdc-menu-content
         display: flex
         flex-wrap: wrap
         justify-content: center
@@ -120,6 +120,7 @@
     min-width: 0 !important
     width: fit-content !important
     padding: 0 !important
+    background-color: #373C41 !important
 
     .mat-mdc-menu-content
         display: block !important

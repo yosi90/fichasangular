@@ -10,6 +10,11 @@ import { ListadoDotesComponent } from '../listado-dotes/listado-dotes.component'
 import { Dote } from 'src/app/interfaces/dote';
 import { ListadoClasesComponent } from '../listado-clases/listado-clases.component';
 import { Clase } from 'src/app/interfaces/clase';
+import { ListadoEspecialesComponent } from '../listado-especiales/listado-especiales.component';
+import { EspecialClaseDetalle } from 'src/app/interfaces/especial';
+import { ListadoRacialesComponent } from '../listado-raciales/listado-raciales.component';
+import { RacialDetalle } from 'src/app/interfaces/racial';
+import { Rasgo } from 'src/app/interfaces/rasgo';
 
 @Component({
     selector: 'app-listado',
@@ -29,6 +34,8 @@ export class ListadoComponent {
         'rasgos': ListadoRasgoRacialComponent,
         'dotes': ListadoDotesComponent,
         'clases': ListadoClasesComponent,
+        'especiales': ListadoEspecialesComponent,
+        'raciales': ListadoRacialesComponent,
     };
 
     constructor(private cdr: ChangeDetectorRef) { }
@@ -72,10 +79,10 @@ export class ListadoComponent {
                 this.handleItemSeleccionado(item);
             });
         } else if (componentRef.instance instanceof ListadoRasgoRacialComponent) {
-            componentRef.instance.rasgoDetalles.subscribe((item: TipoCriatura) => {
+            componentRef.instance.rasgoDetalles.subscribe((item: Rasgo) => {
                 this.handleItemDetalles(item);
             });
-            componentRef.instance.rasgoSeleccionado.subscribe((item: TipoCriatura) => {
+            componentRef.instance.rasgoSeleccionado.subscribe((item: Rasgo) => {
                 this.handleItemSeleccionado(item);
             });
         } else if (componentRef.instance instanceof ListadoDotesComponent) {
@@ -90,6 +97,20 @@ export class ListadoComponent {
                 this.handleItemDetalles(item);
             });
             componentRef.instance.claseSeleccionada.subscribe((item: Clase) => {
+                this.handleItemSeleccionado(item);
+            });
+        } else if (componentRef.instance instanceof ListadoEspecialesComponent) {
+            componentRef.instance.especialDetalles.subscribe((item: EspecialClaseDetalle) => {
+                this.handleItemDetalles(item);
+            });
+            componentRef.instance.especialSeleccionado.subscribe((item: EspecialClaseDetalle) => {
+                this.handleItemSeleccionado(item);
+            });
+        } else if (componentRef.instance instanceof ListadoRacialesComponent) {
+            componentRef.instance.racialDetalles.subscribe((item: RacialDetalle) => {
+                this.handleItemDetalles(item);
+            });
+            componentRef.instance.racialSeleccionada.subscribe((item: RacialDetalle) => {
                 this.handleItemSeleccionado(item);
             });
         }

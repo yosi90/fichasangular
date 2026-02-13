@@ -4,7 +4,7 @@
             [matMenuTriggerFor]="menuRazas" class="filtros bg-accent">
             <mat-icon>filter_alt</mat-icon>
         </button>
-        <mat-menu id="containerMenu" #menuRazas="matMenu" class="me-1">
+        <mat-menu id="containerMenu" #menuRazas="matMenu" class="me-1 menu-filtros-estandar">
             <div id="menu">
                 <mat-form-field (click)="$event.stopPropagation();" (keyup)="filtroRazas();">
                     <mat-label>Incluye texto</mat-label>

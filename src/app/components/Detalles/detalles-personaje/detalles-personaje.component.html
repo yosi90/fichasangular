@@ -1,4 +1,4 @@
-<div class="container-fluid">
+<div class="container-fluid detalle-view">
     <div class="row">
         <div class="col-md-4 col-12 p-2">
             <div class="d-flex flex-wrap align-items-center sombra-caja-sm rounded p-2 my-2">
@@ -6,7 +6,8 @@
                 <mat-chip class="warm m-1">{{pj.Nombre}}</mat-chip>
                 <mat-chip class="m-1">{{pj.Genero}}</mat-chip>
                 <mat-chip class="m-1">{{pj.Alineamiento}}</mat-chip>
-                <mat-chip class="m-1" [matTooltip]="nepDisclaimer" matTooltipClass="tt-accent tt-multiline">Nivel {{pj.NEP}}</mat-chip>
+                <mat-chip class="m-1" [matTooltip]="nivelDisclaimer" matTooltipClass="tt-accent tt-multiline">Nivel {{nivelPersonaje}}</mat-chip>
+                <mat-chip class="m-1" [matTooltip]="nepDisclaimer" matTooltipClass="tt-accent tt-multiline">NEP {{pj.NEP}}</mat-chip>
                 <mat-chip class="m-1">Exp {{pj.Experiencia}}</mat-chip>
                 <mat-chip class="warm m-1">Ataque base {{pj.Ataque_base}}</mat-chip>
                 <mat-chip class="m-1">Pg {{pj.Vida}}</mat-chip>
@@ -34,9 +35,10 @@
             </div>
             <div class="d-flex flex-wrap align-items-center sombra-caja-sm rounded p-2 my-2">
                 <mat-icon class="me-1">settings_accessibility</mat-icon>
-                <mat-chip class="h-auto warm m-1">{{pj.Raza.Nombre}}
+                <mat-chip class="h-auto warm chip-clic m-1" matTooltip="Pulsa para ver los detalles de esta raza"
+                    [matTooltipShowDelay]="250" matTooltipClass="tt-accent" (click)="verDetallesRaza(pj.Raza.Id)">{{pj.Raza.Nombre}}
                     <mat-chip class="ms-3 m-1">{{pj.Raza.Tamano.Nombre}}</mat-chip>
-                    <mat-chip class="chip-clic m-1" (click)="verDetallesTipoCriatura(pj.Tipo_criatura);">{{pj.Tipo_criatura.Nombre}}</mat-chip>
+                    <mat-chip class="chip-clic m-1" (click)="verDetallesTipoCriatura(pj.Tipo_criatura); $event.stopPropagation();">{{pj.Tipo_criatura.Nombre}}</mat-chip>
                     <mat-chip class="m-1" *ngIf="pj.Raza.Dgs_adicionales.Cantidad">+{{pj.Raza.Dgs_adicionales.Cantidad}}{{pj.Raza.Dgs_adicionales.Dado}} Dgs de {{pj.Raza.Dgs_adicionales.Tipo_criatura}}</mat-chip>
                     <mat-chip class="m-1" *ngIf="pj.Raza.Ajuste_nivel">Ajuste de nivel +{{pj.Raza.Ajuste_nivel}}</mat-chip>
                 </mat-chip>
@@ -63,7 +65,7 @@
             <div class="d-flex flex-wrap align-items-center sombra-caja-sm rounded p-2 my-2">
                 <mat-icon class="me-1">style</mat-icon>
                 <mat-chip-set class="m-1" *ngIf="(pj.desgloseClases?.length ?? 0) > 0; else sinClase">
-                    <mat-chip class="warm chip-clic sombra3d-sm" *ngFor="let c of pj.desgloseClases" matTooltip="Pulsa para ver los detalles de esta clase"
+                    <mat-chip class="warm chip-clic sombra3d-sm" *ngFor="let c of pj.desgloseClases" matTooltip="Pulsa para ver los detalles"
                         [matTooltipShowDelay]="250" matTooltipClass="tt-accent" (click)="verDetallesClase(c.Nombre)">
                         {{c.Nombre}} {{c.Nivel}}
                     </mat-chip>
@@ -71,7 +73,10 @@
                 <ng-template #sinClase>
                     <mat-chip class="warm m-1">No tiene clase</mat-chip>
                 </ng-template>
-                <mat-chip class="warm m-1" *ngIf="pj.Escuela_especialista.Nombre != 'Cualquiera'">{{pj.Escuela_especialista.Calificativo}}</mat-chip>
+                <mat-chip class="h-auto m-1" *ngIf="pj.Escuela_especialista?.Nombre && pj.Escuela_especialista.Nombre != 'Cualquiera'">
+                    <p class="m-0 me-2">Especialización:</p>
+                    <mat-chip class="m-1">{{pj.Escuela_especialista.Nombre}}</mat-chip>
+                </mat-chip>
                 <mat-chip class="h-auto m-1" *ngIf="pj.Escuelas_prohibidas && pj.Escuelas_prohibidas.length > 0"><p class="m-0 me-2">Escuelas prohibidas:</p>
                     <mat-chip class="m-1" *ngFor="let e of pj.Escuelas_prohibidas">{{e}}</mat-chip>
                 </mat-chip>
@@ -116,11 +121,11 @@
                 <mat-chip [ngClass]="pj.Carisma > 18 ? 'warm' : ''" class="m-1">{{pj.ModCarisma > 0 ? '+' : ''}}{{pj.ModCarisma}}</mat-chip>
             </div>
             <div class="sombra-caja-sm rounded p-2 my-2">
-                <mat-chip class="w-100 sombra-caja-sm mb-2">Personalidad</mat-chip>
+                <mat-chip class="w-100 sombra-caja-sm mb-2 chip-titulo">Personalidad</mat-chip>
                 <p>{{pj.Personalidad}}</p>
             </div>
             <div class="sombra-caja-sm rounded p-2 my-2">
-                <mat-chip class="w-100 sombra-caja-sm mb-2">Contexto</mat-chip>
+                <mat-chip class="w-100 sombra-caja-sm mb-2 chip-titulo">Contexto</mat-chip>
                 <p>{{pj.Contexto}}</p>
             </div>
         </div>
@@ -129,26 +134,30 @@
                 Generar pdf
             </button>
             <mat-accordion>
-                <mat-expansion-panel *ngIf="pj.Claseas">
+                <mat-expansion-panel *ngIf="getClaseasVisibles().length > 0">
                     <mat-expansion-panel-header>
                         <button mat-stroked-button color="accent" class="rounded-0 rounded-top">
                             <h2 class="mb-0">Habilidades cláseas</h2>
                         </button>
                     </mat-expansion-panel-header>
                     <mat-chip-set class="m-1">
-                        <mat-chip *ngFor="let c of pj.Claseas">
-                            {{c.Nombre}}{{c.Extra != 'Nada' ? ' ' + c.Extra : ''}}
+                        <mat-chip *ngFor="let c of getClaseasVisibles()" class="chip-clic sombra3d-sm"
+                            matTooltip="Pulsa para ver los detalles" [matTooltipShowDelay]="250" matTooltipClass="tt-accent"
+                            (click)="verDetallesEspecialPorNombre(c.Nombre)">
+                            {{c.Nombre}}{{tieneTextoVisible(c.Extra) ? ' ' + c.Extra : ''}}
                         </mat-chip>
                     </mat-chip-set>
                 </mat-expansion-panel>
-                <mat-expansion-panel *ngIf="pj.Raciales">
+                <mat-expansion-panel *ngIf="getRacialesVisibles().length > 0">
                     <mat-expansion-panel-header>
                         <button mat-stroked-button color="accent" class="rounded-0">
                             <h2 class="mb-0">Habilidades raciales</h2>
                         </button>
                     </mat-expansion-panel-header>
                     <mat-chip-set class="m-1">
-                        <mat-chip *ngFor="let r of pj.Raciales">
+                        <mat-chip *ngFor="let r of getRacialesVisibles()" class="chip-clic sombra3d-sm"
+                            matTooltip="Pulsa para ver los detalles" [matTooltipShowDelay]="250" matTooltipClass="tt-accent"
+                            (click)="verDetallesRacialPorNombre(r)">
                             {{r}}
                         </mat-chip>
                     </mat-chip-set>
@@ -160,9 +169,11 @@
                         </button>
                     </mat-expansion-panel-header>
                     <mat-chip-set class="m-1">
-                        <mat-chip *ngFor="let d of pj.Dotes" [matTooltip]="getTooltip_Dotes(d)" matTooltipClass="tt-accent tt-multiline" [ngClass]="d.Extra != 'No aplica' ? 'h-auto chip-clic sombra3d-sm' : 'chip-clic sombra3d-sm'" (click)="verDetallesDote(d);">
+                        <mat-chip *ngFor="let d of pj.Dotes" [ngClass]="tieneTextoVisible(d.Extra) ? 'h-auto chip-clic sombra3d-sm' : 'chip-clic sombra3d-sm'"
+                            matTooltip="Pulsa para ver los detalles" [matTooltipShowDelay]="250" matTooltipClass="tt-accent"
+                            (click)="verDetallesDote(d);">
                             {{d.Nombre}}
-                            <mat-chip class="m-1" *ngIf="d.Extra != 'No aplica'">{{d.Extra}}</mat-chip>
+                            <mat-chip class="m-1" *ngIf="tieneTextoVisible(d.Extra)">{{d.Extra}}</mat-chip>
                         </mat-chip>
                     </mat-chip-set>
                 </mat-expansion-panel>

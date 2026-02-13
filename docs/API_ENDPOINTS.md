@@ -4,7 +4,7 @@ Fecha de generacion: 2026-02-09
 
 Resumen
 - Base URL (local): `http://127.0.0.1:5000`
-- Prefijos registrados: `/verify`, `/personajes`, `/razas`, `/campanas`, `/tramas`, `/subtramas`, `/manuales`, `/tiposCriatura`, `/rasgos`, `/conjuros`, `/escuelas`, `/disciplinas`, `/alineamientos`, `/dotes`, `/clases`, `/plantillas`
+- Prefijos registrados: `/verify`, `/personajes`, `/razas`, `/razas/raciales`, `/campanas`, `/tramas`, `/subtramas`, `/manuales`, `/tiposCriatura`, `/rasgos`, `/conjuros`, `/escuelas`, `/disciplinas`, `/alineamientos`, `/dotes`, `/clases`, `/clases/habilidades`, `/plantillas`
 - Autenticacion: no hay autenticacion en el backend.
 - Content-Type esperado: `application/json`
 - CORS habilitado para: `https://rol.yosiftware.es/`, `https://www.rol.yosiftware.es/`, `https://62.43.222.28`, `http://192.168.0.34`
@@ -19,6 +19,8 @@ Lista de endpoints
 | GET | /personajes/simplificados | Lista simplificada de personajes | Implementado |
 | POST | /personajes/add | Crear personaje | No implementado (funcion `pass`) |
 | GET | /razas | Lista completa de razas | Implementado |
+| GET | /razas/raciales | Lista de raciales | Implementado |
+| GET | /razas/raciales/<id_racial> | Racial por id | Implementado |
 | POST | /razas/add | Crear raza | No implementado (funcion `pass`) |
 | GET | /campanas | Lista de campanas | Implementado |
 | POST | /campanas/add | Crear campana | No implementado (funcion `pass`) |
@@ -44,6 +46,8 @@ Lista de endpoints
 | GET | /dotes/<id_dote> | Dote completa por id | Implementado |
 | GET | /clases | Lista completa de clases | Implementado |
 | GET | /clases/<id_clase> | Clase completa por id | Implementado |
+| GET | /clases/habilidades | Lista de habilidades claseas (especiales) | Implementado |
+| GET | /clases/habilidades/<id_especial> | Habilidad clasea (especial) por id | Implementado |
 | GET | /plantillas | Lista de plantillas | Implementado |
 | POST | /plantillas/add | Crear plantilla | No implementado (funcion `pass`) |
 
@@ -595,6 +599,73 @@ Prerrequisitos (ClaseDetalle.Prerrequisitos) - claves fijas
 | tamano_minimo |
 | raza |
 | no_raza |
+
+Endpoint: GET /clases/habilidades
+Respuesta: array de `EspecialClaseDetalle`
+
+Endpoint: GET /clases/habilidades/<id_especial>
+Respuesta: objeto `EspecialClaseDetalle`
+Respuesta 404
+```json
+{
+  "error": "Especial no encontrado",
+  "id_especial": 123
+}
+```
+
+EspecialClaseDetalle
+| Campo | Tipo | Descripcion |
+| --- | --- | --- |
+| Id | number | Id de especial |
+| Nombre | string | Nombre |
+| Descripcion | string | Descripcion |
+| Extra | boolean | Si usa extra |
+| Repetible | boolean | Si se puede repetir |
+| Repite_mismo_extra | boolean | Si permite repetir mismo extra |
+| Repite_combinacion | boolean | Si permite repetir combinacion |
+| Activa_extra | boolean | Si activa extra |
+| Caracteristica | object | { Id, Nombre } |
+| Bonificadores | object | { Fuerza, Destreza, Constitucion, Inteligencia, Sabiduria, Carisma, CA, Armadura_natural, RD } |
+| Flags_extra | object | { No_aplica, Da_CA, Da_armadura_natural, Da_RD, Da_velocidad } |
+| Subtipo | object | { Id, Nombre } |
+| Extras | array | Lista de `EspecialExtraRef` |
+| Habilidades | array | Lista de `EspecialHabilidadRef` |
+
+EspecialExtraRef
+| Campo | Tipo | Descripcion |
+| --- | --- | --- |
+| Id_extra | number | Id del extra |
+| Extra | string | Nombre del extra |
+| Orden | number | Orden definido para el especial |
+
+EspecialHabilidadRef
+| Campo | Tipo | Descripcion |
+| --- | --- | --- |
+| Id_habilidad | number | Id de habilidad |
+| Habilidad | string | Nombre de habilidad |
+| Id_extra | number | Id del extra asociado |
+| Extra | string | Nombre del extra asociado |
+| Rangos | number | Rangos asociados |
+
+Endpoint: GET /razas/raciales
+Respuesta: array de `RacialDetalle`
+
+Endpoint: GET /razas/raciales/<id_racial>
+Respuesta: objeto `RacialDetalle`
+Respuesta 404
+```json
+{
+  "error": "Racial no encontrado",
+  "id_racial": 123
+}
+```
+
+RacialDetalle
+| Campo | Tipo | Descripcion |
+| --- | --- | --- |
+| Id | number | Id de racial |
+| Nombre | string | Nombre |
+| Descripcion | string | Descripcion |
 
 Endpoint: GET /plantillas
 Respuesta: array de `PlantillaDetalle`

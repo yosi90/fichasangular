@@ -144,26 +144,26 @@ export class PersonajeService {
                     rcs: any; res: any; ccl: any; ccm: any; ccp: any; espa: any; espan: any; espp: any; esppn: any; disp: any; ecp: any;
                 }) => {
                     const tempcla = (element.cla ?? "").split("|");
-                    let nep: number = 0 + element.ra.Dgs_adicionales.Cantidad;
+                    let nep = toNumber(element?.ra?.Dgs_adicionales?.Cantidad);
                     let clas: { Nombre: string; Nivel: number }[] = [];
                     tempcla.forEach((el: string) => {
-                        let datos = el.split(";");
+                        const datos = el.split(";");
+                        const nivelClase = toNumber(datos[1]);
                         if (datos[0] != "") {
                             clas.push({
                                 Nombre: datos[0].trim(),
-                                Nivel: +datos[1]
+                                Nivel: nivelClase
                             });
-                            nep += +datos[1];
+                            nep += nivelClase;
                         }
                     });
-                    if (element.ra.Ajuste_nivel && element.ra.Ajuste_nivel > 0)
-                        nep += +element.ra.Ajuste_nivel;
-                    element.pla.forEach((el: { Ajuste_nivel: number; Multiplicador_dgs_lic: number }) => {
-                        nep += el.Ajuste_nivel + el.Multiplicador_dgs_lic;
+                    const ajusteNivelRaza = toNumber(element?.ra?.Ajuste_nivel);
+                    if (ajusteNivelRaza > 0)
+                        nep += ajusteNivelRaza;
+                    (element.pla ?? []).forEach((el: { Ajuste_nivel: number; Multiplicador_dgs_lic: number }) => {
+                        nep += toNumber(el.Ajuste_nivel) + toNumber(el.Multiplicador_dgs_lic);
                     });
-                    let experiencia: number = 0;
-                    for (let i = 0; i < nep; i++)
-                        experiencia += i * 1000;
+                    const experiencia = nep > 0 ? ((nep - 1) * nep / 2) * 1000 : 0;
                     const dotesContextuales = toDoteContextualArray(element.dotes);
                     const dotes = toDoteLegacyArray(dotesContextuales);
                     let claseas: { Nombre: string; Extra: string; }[] = [];
@@ -265,8 +265,8 @@ export class PersonajeService {
                         ModSabiduria: element.ms,
                         Carisma: element.car,
                         ModCarisma: element.mcar,
-                        NEP: nep,
-                        Experiencia: experiencia,
+                        NEP: toNumber(nep),
+                        Experiencia: toNumber(experiencia),
                         Deidad: element.de,
                         Alineamiento: element.ali,
                         Genero: element.g,
@@ -304,7 +304,7 @@ export class PersonajeService {
                         Rcs: rcs,
                         Res: res,
                         Capacidad_carga: cargas,
-                        Oro_inicial: calc_oro(nep),
+                        Oro_inicial: toNumber(calc_oro(nep)),
                         Escuela_especialista: escuela_esp,
                         Disciplina_especialista: disciplina_esp,
                         Disciplina_prohibida: element.disp,
@@ -332,6 +332,7 @@ export class PersonajeService {
 }
 
 function calc_oro(nep: number) {
+    const nepValue = Math.trunc(toNumber(nep));
     const valoresOro: { [key: number]: number } = {
         1: 0,
         2: 900,
@@ -354,8 +355,13 @@ function calc_oro(nep: number) {
         19: 580000,
         20: 760000,
     };
-    if (nep <= 20)
-        return valoresOro[nep] || 0;
+    if (nepValue <= 20)
+        return valoresOro[nepValue] || 0;
     else
-        return 760000 * (1.3 * (nep - 20));
+        return Math.round(760000 * (1.3 * (nepValue - 20)));
+}
+
+function toNumber(value: any): number {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : 0;
 }

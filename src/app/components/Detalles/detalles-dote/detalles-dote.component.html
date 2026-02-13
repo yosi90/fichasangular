@@ -1,8 +1,8 @@
-<div class="container-fluid" *ngIf="doteData">
+<div class="container-fluid detalle-view" *ngIf="doteData">
     <div class="row">
         <div class="col-md-4 col-12 p-2">
             <div class="d-flex flex-wrap align-items-center sombra-caja-sm rounded p-2 my-2">
-                <mat-chip class="h-auto warm w-100 sombra-caja-sm py-2 m-1">
+                <mat-chip class="h-auto warm w-100 sombra-caja-sm py-2 m-1 chip-titulo">
                     {{doteData.Nombre}}
                 </mat-chip>
                 <mat-chip class="sombra3d-sm m-1">
@@ -24,21 +24,21 @@
                 </mat-chip>
             </div>
             <div class="d-flex flex-wrap align-items-center sombra-caja-sm rounded p-2 my-2" *ngIf="tieneTextoVisible(doteData.Descripcion)">
-                <mat-chip class="h-auto w-100 sombra-caja-sm py-2 m-1 mb-2">Descripción</mat-chip>
+                <mat-chip class="h-auto w-100 sombra-caja-sm py-2 m-1 mb-2 chip-titulo">Descripción</mat-chip>
                 <p class="m-1">{{doteData.Descripcion}}</p>
             </div>
         </div>
         <div class="col-md-4 col-12 p-2">
             <div class="d-flex flex-wrap align-items-center sombra-caja-sm rounded p-2 my-2" *ngIf="tieneTextoVisible(doteData.Beneficio)">
-                <mat-chip class="h-auto w-100 sombra-caja-sm py-2 m-1 mb-2">Beneficio</mat-chip>
+                <mat-chip class="h-auto w-100 sombra-caja-sm py-2 m-1 mb-2 chip-titulo">Beneficio</mat-chip>
                 <p class="m-1">{{doteData.Beneficio}}</p>
             </div>
             <div class="d-flex flex-wrap align-items-center sombra-caja-sm rounded p-2 my-2" *ngIf="tieneTextoVisible(doteData.Normal)">
-                <mat-chip class="h-auto w-100 sombra-caja-sm py-2 m-1 mb-2">Normal</mat-chip>
+                <mat-chip class="h-auto w-100 sombra-caja-sm py-2 m-1 mb-2 chip-titulo">Normal</mat-chip>
                 <p class="m-1">{{doteData.Normal}}</p>
             </div>
             <div class="d-flex flex-wrap align-items-center sombra-caja-sm rounded p-2 my-2" *ngIf="tieneTextoVisible(doteData.Especial)">
-                <mat-chip class="h-auto w-100 sombra-caja-sm py-2 m-1 mb-2">Especial</mat-chip>
+                <mat-chip class="h-auto w-100 sombra-caja-sm py-2 m-1 mb-2 chip-titulo">Especial</mat-chip>
                 <p class="m-1">{{doteData.Especial}}</p>
             </div>
         </div>
@@ -54,7 +54,7 @@
                         <mat-chip class="sombra3d-sm m-1" *ngFor="let extra of getExtrasSoportadosActivos()">{{extra.nombre}}</mat-chip>
                     </mat-chip-set>
                     <div class="p-2" *ngFor="let extra of getExtrasDisponibles()">
-                        <mat-chip class="w-100 sombra-caja-sm m-1 mb-2">{{extra.nombre}}</mat-chip>
+                        <mat-chip class="w-100 sombra-caja-sm m-1 mb-2 chip-titulo">{{extra.nombre}}</mat-chip>
                         <mat-chip-set class="m-1">
                             <mat-chip class="sombra3d-sm m-1" *ngFor="let item of extra.items">{{item.Nombre}}</mat-chip>
                         </mat-chip-set>
@@ -80,7 +80,7 @@
                     </mat-expansion-panel-header>
                     <div *ngIf="getPrerrequisitosConDatos().length > 0; else sinPrerrequisitos">
                         <div class="prerrequisito-bloque p-2" *ngFor="let key of getPrerrequisitosConDatos()">
-                            <mat-chip class="w-100 sombra-caja-sm m-1 mb-2">{{getEtiquetaPrerrequisito(key)}}</mat-chip>
+                            <mat-chip class="w-100 sombra-caja-sm m-1 mb-2 chip-titulo">{{getEtiquetaPrerrequisito(key)}}</mat-chip>
                             <div class="prerrequisito-condicion sombra-caja-sm m-1 p-2"
                                 *ngFor="let item of doteData.Prerrequisitos[key]; let i = index">
                                 <p class="mb-2 fw-bold">Condicion {{i + 1}}</p>

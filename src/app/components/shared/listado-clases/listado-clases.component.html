@@ -4,7 +4,7 @@
             [matMenuTriggerFor]="menuClases" class="filtros bg-accent">
             <mat-icon>filter_alt</mat-icon>
         </button>
-        <mat-menu id="containerMenu" #menuClases="matMenu" class="me-1 menu-clases-filtros">
+        <mat-menu id="containerMenu" #menuClases="matMenu" class="me-1 menu-filtros-estandar menu-clases-filtros">
             <div id="menu">
                 <mat-form-field (click)="$event.stopPropagation();" (keyup)="filtroClases();">
                     <mat-label>Incluye texto</mat-label>
@@ -22,13 +22,15 @@
                     (click)="$event.stopPropagation(); alternarHomebrew();">{{anuncioHomebrew}}</mat-chip-option>
                 <mat-chip-option color="accent" class="filtro-chip" [selected]="soloPrestigio"
                     (click)="$event.stopPropagation(); alternarPrestigio();">{{anuncioPrestigio}}</mat-chip-option>
+                <mat-chip-option color="accent" class="filtro-chip" [selected]="ocultarConPrerrequisitos"
+                    (click)="$event.stopPropagation(); alternarFiltroPrerrequisitos();">{{anuncioPrerrequisitos}}</mat-chip-option>
             </div>
         </mat-menu>
 
         <table id="clases" #tablaClases mat-table [dataSource]="clasesDS" matSort *ngIf="clases.length > 0; else cargando">
             <ng-container matColumnDef="{{column}}" *ngFor="let column of claseColumns">
                 <th class="lead" mat-header-cell *matHeaderCellDef mat-sort-header sortActionDescription="Ordenar por {{column}}">
-                    {{column.replace('_', ' ')}}
+                    {{column == 'Nivel_max_claseo' ? 'Nivel máximo' : column == 'Prestigio' ? 'De prestigio' : column.replace('_', ' ')}}
                 </th>
                 <td mat-cell *matCellDef="let element">
                     <button mat-stroked-button matTooltip="Clic para ver esta clase" [matTooltipShowDelay]="200" *ngIf="column == 'Nombre'" color="accent"
@@ -50,6 +52,10 @@
                     </p>
                     <div class="d-flex justify-content-center align-items-center" *ngIf="column == 'Prestigio'">
                         <mat-checkbox [checked]="element.Prestigio" [disableRipple]="true"
+                            (click)="$event.preventDefault(); $event.stopPropagation();"></mat-checkbox>
+                    </div>
+                    <div class="d-flex justify-content-center align-items-center" *ngIf="column == 'Prerrequisitos'">
+                        <mat-checkbox [checked]="tienePrerrequisitos(element)" [disableRipple]="true"
                             (click)="$event.preventDefault(); $event.stopPropagation();"></mat-checkbox>
                     </div>
                 </td>

@@ -17,6 +17,18 @@ type ResumenDote = {
     texto: string;
     opcional: boolean;
     tooltip: string;
+    idEntidad: number | null;
+};
+
+type TipoResumenEspecial = 'especial' | 'dote' | 'grupo';
+
+type ResumenEspecial = {
+    texto: string;
+    opcional: boolean;
+    tooltip: string;
+    tipo: TipoResumenEspecial;
+    idEntidad: number | null;
+    clicable: boolean;
 };
 
 @Component({
@@ -35,7 +47,6 @@ export class DetallesClaseComponent {
     mostrarReflejos: boolean = false;
     mostrarVoluntad: boolean = false;
     mostrarEspeciales: boolean = false;
-    mostrarDotes: boolean = false;
     mostrarNivelMaxConjuro: boolean = false;
     mostrarReservaPsionica: boolean = false;
     mostrarAumentosClaseLanzadora: boolean = false;
@@ -128,10 +139,32 @@ export class DetallesClaseComponent {
     }
 
     @Output() conjuroDetalles: EventEmitter<number> = new EventEmitter<number>();
+    @Output() especialDetalles: EventEmitter<number> = new EventEmitter<number>();
+    @Output() doteDetalles: EventEmitter<number> = new EventEmitter<number>();
 
     abrirDetallesConjuro(idConjuro: number) {
         if (Number.isFinite(Number(idConjuro)) && Number(idConjuro) > 0)
             this.conjuroDetalles.emit(Number(idConjuro));
+    }
+
+    abrirDetalleEspecialFila(especial: ResumenEspecial) {
+        if (!especial.clicable || !especial.idEntidad || especial.idEntidad <= 0)
+            return;
+
+        if (especial.tipo === 'especial') {
+            this.especialDetalles.emit(especial.idEntidad);
+            return;
+        }
+
+        if (especial.tipo === 'dote')
+            this.doteDetalles.emit(especial.idEntidad);
+    }
+
+    getTooltipEspecial(especial: ResumenEspecial): string {
+        const detalle = this.tieneTextoVisible(especial.tooltip) ? especial.tooltip : '';
+        if (especial.clicable)
+            return detalle ? `Pulsa para ver detalles | ${detalle}` : 'Pulsa para ver detalles';
+        return detalle;
     }
 
     get rolesActivos(): string[] {
@@ -221,18 +254,20 @@ export class DetallesClaseComponent {
             .filter(campo => campo.valor.trim().length > 0);
     }
 
-    getResumenDotes(nivel: ClaseNivelDetalle): ResumenDote[] {
+    private getResumenDotes(nivel: ClaseNivelDetalle): ResumenDote[] {
         if (!nivel?.Dotes)
             return [];
 
-        const agrupadas = new Map<string, { nombre: string, opcional: boolean, extras: Set<string>, tooltipExtras: Set<string> }>();
+        const agrupadas = new Map<string, { nombre: string, opcional: boolean, extras: Set<string>, tooltipExtras: Set<string>, idEntidad: number | null }>();
 
         nivel.Dotes.forEach((doteNivel) => {
             const nombre = this.tieneTextoVisible(doteNivel?.Dote?.Nombre)
                 ? doteNivel.Dote.Nombre
                 : 'Dote';
             const opcional = !!doteNivel?.Opcional;
-            const clave = `${doteNivel?.Dote?.Id ?? nombre}|${opcional ? 1 : 0}`;
+            const idDote = Number(doteNivel?.Dote?.Id);
+            const idEntidad = Number.isFinite(idDote) && idDote > 0 ? idDote : null;
+            const clave = `${idEntidad ?? nombre}|${opcional ? 1 : 0}`;
             const extra = this.getExtraVisibleDoteNivel(doteNivel);
             const tooltipExtra = this.getTooltipExtrasDoteNivel(doteNivel);
 
@@ -242,6 +277,7 @@ export class DetallesClaseComponent {
                     opcional,
                     extras: new Set<string>(),
                     tooltipExtras: new Set<string>(),
+                    idEntidad,
                 });
             }
 
@@ -260,9 +296,38 @@ export class DetallesClaseComponent {
                 texto: `${item.nombre}${extraTxt}`,
                 opcional: item.opcional,
                 tooltip,
+                idEntidad: item.idEntidad,
             };
         });
 
+        return base;
+    }
+
+    getResumenEspeciales(nivel: ClaseNivelDetalle): ResumenEspecial[] {
+        const especiales = (nivel?.Especiales ?? []).map(especial => {
+            const nombre = this.getNombreEspecial(especial.Especial);
+            const extra = this.tieneTextoVisible(especial?.Extra) && especial.Extra !== 'No aplica' ? ` (${especial.Extra})` : '';
+            const idEntidad = this.getIdEspecial(especial?.Especial);
+            return {
+                texto: `${nombre}${extra}`,
+                opcional: !!especial?.Opcional,
+                tooltip: '',
+                tipo: 'especial' as TipoResumenEspecial,
+                idEntidad,
+                clicable: idEntidad !== null,
+            };
+        });
+
+        const dotes = this.getResumenDotes(nivel).map(dote => ({
+            texto: dote.texto,
+            opcional: dote.opcional,
+            tooltip: dote.tooltip,
+            tipo: 'dote' as TipoResumenEspecial,
+            idEntidad: dote.idEntidad,
+            clicable: dote.idEntidad !== null,
+        }));
+
+        const base = [...especiales, ...dotes];
         const obligatorias = base.filter(item => !item.opcional);
         const opcionales = base.filter(item => item.opcional);
         if (opcionales.length > 1) {
@@ -272,25 +337,15 @@ export class DetallesClaseComponent {
                 tooltip: opcionales
                     .filter(item => this.tieneTextoVisible(item.tooltip))
                     .map(item => `${item.texto}: ${item.tooltip}`)
-                    .join(' | ')
+                    .join(' | '),
+                tipo: 'grupo',
+                idEntidad: null,
+                clicable: false,
             });
             return obligatorias;
         }
 
         return [...obligatorias, ...opcionales];
-    }
-
-    getResumenEspeciales(nivel: ClaseNivelDetalle): { texto: string, opcional: boolean }[] {
-        if (!nivel?.Especiales)
-            return [];
-        return nivel.Especiales.map(especial => {
-            const nombre = this.getNombreEspecial(especial.Especial);
-            const extra = this.tieneTextoVisible(especial?.Extra) && especial.Extra !== 'No aplica' ? ` (${especial.Extra})` : '';
-            return {
-                texto: `${nombre}${extra}`,
-                opcional: !!especial?.Opcional
-            };
-        });
     }
 
     getAumentosLanzadora(nivel: ClaseNivelDetalle): string[] {
@@ -302,20 +357,20 @@ export class DetallesClaseComponent {
     getValorDiarios(nivel: ClaseNivelDetalle, nivelConjuro: number): string {
         const valor = nivel.Conjuros_diarios?.[`Nivel_${nivelConjuro}`];
         if (valor === undefined || valor === null || Number(valor) < 0)
-            return '-';
+            return '';
         return `${valor}`;
     }
 
     getValorConocidos(nivel: ClaseNivelDetalle, nivelConjuro: number): string {
         const valor = nivel.Conjuros_conocidos_nivel_a_nivel?.[`Nivel_${nivelConjuro}`];
         if (valor === undefined || valor === null || Number(valor) <= 0)
-            return '-';
+            return '';
         return `${valor}`;
     }
 
     getValorConocidosTotal(nivel: ClaseNivelDetalle): string {
         if (!nivel?.Conjuros_conocidos_total || nivel.Conjuros_conocidos_total <= 0)
-            return '-';
+            return '';
         return `${nivel.Conjuros_conocidos_total}`;
     }
 
@@ -336,7 +391,6 @@ export class DetallesClaseComponent {
             this.mostrarReflejos = false;
             this.mostrarVoluntad = false;
             this.mostrarEspeciales = false;
-            this.mostrarDotes = false;
             this.mostrarNivelMaxConjuro = false;
             this.mostrarReservaPsionica = false;
             this.mostrarAumentosClaseLanzadora = false;
@@ -368,7 +422,6 @@ export class DetallesClaseComponent {
         this.mostrarReflejos = this.filasNivel.some(n => this.tieneTextoVisible(n.Salvaciones?.Reflejos));
         this.mostrarVoluntad = this.filasNivel.some(n => this.tieneTextoVisible(n.Salvaciones?.Voluntad));
         this.mostrarEspeciales = this.filasNivel.some(n => this.getResumenEspeciales(n).length > 0);
-        this.mostrarDotes = this.filasNivel.some(n => this.getResumenDotes(n).length > 0);
         this.mostrarNivelMaxConjuro = this.filasNivel.some(n => (n.Nivel_max_conjuro ?? -1) >= 0);
         this.mostrarReservaPsionica = this.filasNivel.some(n => (n.Reserva_psionica ?? 0) > 0);
         this.mostrarAumentosClaseLanzadora = this.filasNivel.some(n => this.getAumentosLanzadora(n).length > 0);
@@ -546,6 +599,26 @@ export class DetallesClaseComponent {
         if (claves.length < 1)
             return 'Especial';
         return this.formatearValor(especial[claves[0]]);
+    }
+
+    private getIdEspecial(especial: Record<string, any>): number | null {
+        if (!especial || typeof especial !== 'object')
+            return null;
+
+        const candidatos = [
+            especial['Id'],
+            especial['id'],
+            especial['Id_especial'],
+            especial['id_especial'],
+        ];
+
+        for (const candidato of candidatos) {
+            const id = Number(candidato);
+            if (Number.isFinite(id) && id > 0)
+                return id;
+        }
+
+        return null;
     }
 
     private tieneValorMostrable(valor: unknown): boolean {

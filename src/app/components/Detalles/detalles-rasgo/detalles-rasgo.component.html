@@ -1,8 +1,8 @@
-<div class="container-fluid" *ngIf="rasgo">
+<div class="container-fluid detalle-view" *ngIf="rasgo">
     <div class="row">
         <div class="col-md-4 col-12 p-2">
             <div class="d-flex flex-wrap align-items-center sombra-caja-sm rounded p-2 my-2">
-                <mat-chip class="h-auto warm w-100 sombra-caja-sm py-2 m-1">
+                <mat-chip class="h-auto warm w-100 sombra-caja-sm py-2 m-1 chip-titulo">
                     {{rasgo.Nombre}}
                 </mat-chip>
                 <mat-chip class="warm sombra3d-sm m-1" *ngIf="!rasgo.Oficial" matTooltip="Este tipo de criatura es homebrew" matTooltipClass="tt-accent">No es oficial</mat-chip>
@@ -10,7 +10,7 @@
         </div>
         <div class="col-md-4 col-12 p-2">
             <div class="d-flex flex-wrap align-items-center sombra-caja-sm rounded p-2 my-2">
-                <mat-chip class="w-100 sombra-caja-sm m-1 mb-2">Descripción<mat-icon class="ms-2">short_text</mat-icon></mat-chip>
+                <mat-chip class="w-100 sombra-caja-sm m-1 mb-2 chip-titulo">Descripción<mat-icon class="ms-2">short_text</mat-icon></mat-chip>
                 <p class="m-1">{{rasgo.Descripcion}}</p>
             </div>
         </div>

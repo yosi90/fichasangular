@@ -13,11 +13,12 @@ import { ClaseService } from 'src/app/services/clase.service';
 export class ListadoClasesComponent {
     clases: Clase[] = [];
     clasesDS = new MatTableDataSource(this.clases);
-    claseColumns = ['Nombre', 'Manual', 'Tipo_dado', 'Puntos_habilidad', 'Nivel_max_claseo', 'Prestigio'];
+    claseColumns = ['Nombre', 'Manual', 'Tipo_dado', 'Puntos_habilidad', 'Nivel_max_claseo', 'Prestigio', 'Prerrequisitos'];
     manuales: string[] = [];
     defaultManual: string = 'Cualquiera';
     incluirHomebrew: boolean = false;
     soloPrestigio: boolean = false;
+    ocultarConPrerrequisitos: boolean = false;
 
     constructor(private cdr: ChangeDetectorRef, private claseSvc: ClaseService) { }
 
@@ -47,6 +48,7 @@ export class ListadoClasesComponent {
                 || clase.Descripcion.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().includes(texto))
             && (this.defaultManual === 'Cualquiera' || clase.Manual?.Nombre === this.defaultManual)
             && (!this.soloPrestigio || clase.Prestigio)
+            && (!this.ocultarConPrerrequisitos || !this.tienePrerrequisitos(clase))
             && (this.incluirHomebrew || clase.Oficial)
         );
 
@@ -75,6 +77,31 @@ export class ListadoClasesComponent {
     alternarPrestigio() {
         this.soloPrestigio = !this.soloPrestigio;
         this.filtroClases();
+    }
+
+    get anuncioPrerrequisitos(): string {
+        return this.ocultarConPrerrequisitos ? 'Solo sin prerrequisitos' : 'Ocultar prerrequisitos';
+    }
+
+    alternarFiltroPrerrequisitos() {
+        this.ocultarConPrerrequisitos = !this.ocultarConPrerrequisitos;
+        this.filtroClases();
+    }
+
+    tienePrerrequisitos(clase: Clase): boolean {
+        const pr = clase?.Prerrequisitos;
+        if (!pr || typeof pr !== 'object')
+            return false;
+
+        return Object.values(pr).some(valor => {
+            if (Array.isArray(valor))
+                return valor.length > 0;
+
+            if (valor && typeof valor === 'object')
+                return Object.keys(valor).length > 0;
+
+            return !!valor;
+        });
     }
 
     @Output() claseDetalles: EventEmitter<Clase> = new EventEmitter<Clase>();

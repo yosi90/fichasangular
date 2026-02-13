@@ -108,6 +108,44 @@ paths:
                 items:
                   $ref: '#/components/schemas/RazaCompleta'
 
+  /razas/raciales:
+    get:
+      tags: [razas]
+      summary: Lista de raciales
+      responses:
+        '200':
+          description: Lista de raciales
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/RacialDetalle'
+
+  /razas/raciales/{id_racial}:
+    get:
+      tags: [razas]
+      summary: Racial por id
+      parameters:
+        - name: id_racial
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Racial encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RacialDetalle'
+        '404':
+          description: Racial no encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
   /razas/add:
     post:
       tags: [razas]
@@ -455,6 +493,44 @@ paths:
                 $ref: '#/components/schemas/ClaseDetalle'
         '404':
           description: Clase no encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /clases/habilidades:
+    get:
+      tags: [clases]
+      summary: Lista de habilidades claseas (especiales)
+      responses:
+        '200':
+          description: Lista de especiales
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/EspecialClaseDetalle'
+
+  /clases/habilidades/{id_especial}:
+    get:
+      tags: [clases]
+      summary: Habilidad clasea (especial) por id
+      parameters:
+        - name: id_especial
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Especial encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EspecialClaseDetalle'
+        '404':
+          description: Especial no encontrado
           content:
             application/json:
               schema:
@@ -1069,6 +1145,13 @@ components:
           items:
             $ref: '#/components/schemas/DoteContextual'
 
+    RacialDetalle:
+      type: object
+      properties:
+        Id: { type: integer }
+        Nombre: { type: string }
+        Descripcion: { type: string }
+
     Idioma:
       type: object
       properties:
@@ -1451,6 +1534,72 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/ClaseEspecialNivel'
+
+    EspecialExtraRef:
+      type: object
+      properties:
+        Id_extra: { type: integer }
+        Extra: { type: string }
+        Orden: { type: integer }
+
+    EspecialHabilidadRef:
+      type: object
+      properties:
+        Id_habilidad: { type: integer }
+        Habilidad: { type: string }
+        Id_extra: { type: integer }
+        Extra: { type: string }
+        Rangos: { type: integer }
+
+    EspecialClaseDetalle:
+      type: object
+      properties:
+        Id: { type: integer }
+        Nombre: { type: string }
+        Descripcion: { type: string }
+        Extra: { type: boolean }
+        Repetible: { type: boolean }
+        Repite_mismo_extra: { type: boolean }
+        Repite_combinacion: { type: boolean }
+        Activa_extra: { type: boolean }
+        Caracteristica:
+          type: object
+          properties:
+            Id: { type: integer }
+            Nombre: { type: string }
+        Bonificadores:
+          type: object
+          properties:
+            Fuerza: { type: integer }
+            Destreza: { type: integer }
+            Constitucion: { type: integer }
+            Inteligencia: { type: integer }
+            Sabiduria: { type: integer }
+            Carisma: { type: integer }
+            CA: { type: integer }
+            Armadura_natural: { type: integer }
+            RD: { type: integer }
+        Flags_extra:
+          type: object
+          properties:
+            No_aplica: { type: boolean }
+            Da_CA: { type: boolean }
+            Da_armadura_natural: { type: boolean }
+            Da_RD: { type: boolean }
+            Da_velocidad: { type: boolean }
+        Subtipo:
+          type: object
+          properties:
+            Id: { type: integer }
+            Nombre: { type: string }
+        Extras:
+          type: array
+          items:
+            $ref: '#/components/schemas/EspecialExtraRef'
+        Habilidades:
+          type: array
+          items:
+            $ref: '#/components/schemas/EspecialHabilidadRef'
 
     ClasePrerrequisitos:
       type: object

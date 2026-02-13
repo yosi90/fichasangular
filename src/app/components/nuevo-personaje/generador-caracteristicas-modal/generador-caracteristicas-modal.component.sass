@@ -1,0 +1,204 @@
+:host
+    position: absolute
+    inset: 0
+    display: block
+
+.modal-local-backdrop
+    position: absolute
+    inset: 0
+    background: rgba(0, 0, 0, 0.58)
+
+.modal-local-panel
+    position: absolute
+    inset: 4% 6%
+    z-index: 1
+
+    mat-card
+        height: 100%
+        display: flex
+        flex-direction: column
+
+.modal-header
+    display: flex
+    justify-content: space-between
+    align-items: flex-start
+    gap: 14px
+    border-bottom: 1px solid rgba(255, 255, 255, 0.15)
+    padding-bottom: 8px
+
+.header-text
+    min-width: 0
+
+    .mat-mdc-card-title
+        color: #f4f8ff
+        font-weight: 700
+
+    .mat-mdc-card-subtitle
+        color: #d9e7ff
+        font-weight: 500
+
+.header-actions
+    display: flex
+    align-items: flex-start
+    gap: 14px
+    margin-left: auto
+
+.minimo-selector
+    width: 210px
+
+.modal-content
+    flex: 1 1 auto
+    overflow: auto
+    display: flex
+    flex-direction: column
+    gap: 16px
+
+.bloque
+    background: rgba(29, 38, 56, 0.62)
+    border: 1px solid rgba(123, 168, 255, 0.45)
+    border-radius: 8px
+    padding: 12px
+    display: flex
+    flex-direction: column
+    gap: 10px
+
+    > h4
+        color: #f2f8ff
+        font-weight: 700
+
+.tablas-scroll
+    overflow-x: auto
+    padding-bottom: 2px
+
+.tablas-grid
+    display: inline-grid
+    grid-template-columns: repeat(3, minmax(210px, max-content))
+    gap: 10px
+
+.tabla-card
+    border: 1px solid rgba(130, 182, 255, 0.4)
+    border-radius: 8px
+    padding: 10px
+    cursor: pointer
+    background: rgba(12, 19, 33, 0.45)
+    min-width: 230px
+
+    h4
+        margin: 0 0 8px 0
+        font-size: 1rem
+        color: #edf5ff
+
+.tabla-seleccionada
+    border-color: #16c6ff
+    box-shadow: 0 0 0 1px #16c6ff inset
+    background: rgba(10, 44, 79, 0.5)
+
+.tabla-bloqueada
+    cursor: default
+
+.valores
+    display: flex
+    flex-wrap: wrap
+    gap: 6px
+
+.valor
+    display: inline-flex
+    align-items: center
+    justify-content: center
+    min-width: 34px
+    min-height: 30px
+    border-radius: 4px
+    background: rgba(51, 83, 138, 0.55)
+    border: 1px solid rgba(168, 209, 255, 0.4)
+    color: #f2f8ff
+    font-weight: 600
+
+.acciones-tabla
+    display: flex
+    align-items: center
+    gap: 10px
+
+.texto-ayuda
+    font-size: 0.9rem
+    opacity: 0.94
+    color: #d7e8ff
+
+.pool-grid
+    display: grid
+    grid-template-columns: repeat(auto-fit, minmax(110px, 1fr))
+    gap: 8px
+
+.pool-item
+    min-height: 40px
+    background: rgba(28, 50, 90, 0.55)
+    color: #f3f8ff
+
+.pool-item-usado
+    opacity: 0.6
+
+.atributos-grid
+    display: grid
+    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr))
+    gap: 10px
+
+.atributo-item
+    border: 1px solid rgba(130, 182, 255, 0.38)
+    border-radius: 8px
+    padding: 10px
+    display: flex
+    flex-direction: column
+    gap: 6px
+    background: rgba(14, 27, 46, 0.5)
+
+.atributo-label
+    font-weight: 600
+    color: #eaf4ff
+
+.atributo-mod
+    font-size: 0.85rem
+    opacity: 0.95
+    color: #d8e8ff
+
+.atributo-drop
+    min-height: 42px
+    border: 1px dashed rgba(158, 206, 255, 0.65)
+    border-radius: 6px
+    display: flex
+    align-items: center
+    justify-content: center
+    text-align: center
+    padding: 4px
+    color: #f1f8ff
+
+.atributo-drop-completo
+    border-style: solid
+    border-color: #16c6ff
+    background: rgba(26, 76, 125, 0.38)
+
+.atributo-drop-bloqueado
+    opacity: 0.9
+
+@media (max-width: 992px)
+    .modal-local-panel
+        inset: 2%
+
+    .modal-header
+        flex-direction: column
+        align-items: stretch
+        gap: 8px
+
+    .header-actions
+        width: 100%
+        margin-left: 0
+        justify-content: space-between
+
+    .minimo-selector
+        width: 180px
+
+    .tablas-grid
+        grid-template-columns: 1fr
+        display: grid
+
+    .acciones-tabla
+        flex-direction: column
+        align-items: flex-start

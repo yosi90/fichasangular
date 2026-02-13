@@ -112,3 +112,24 @@
         span
             color: #B0BEC5
             font-weight: 500 !important
+
+::ng-deep .menu-otros-panel
+    display: flex
+    flex-direction: column
+
+    width: 250px
+    overflow: hidden
+
+    box-shadow: 3px 3px 10px black
+
+    button
+        justify-content: right
+
+        width: 100%
+        border-radius: 0
+
+    button:nth-child(odd):not([disabled])
+        background-color: lightgray
+
+    button:nth-child(even):not([disabled])
+        background-color: #ccc

@@ -8,19 +8,59 @@
     display: flex
     height: 100%
     padding: 5px
+    position: relative
+
+.nuevo-personaje-shell
+    position: relative
+    display: flex
+    flex: 1 0 100%
+    min-height: 0
 
     mat-tab-group
         flex: 1 0 100%
 
         ::ng-deep mat-tab-header
             background-color: #353538
+            pointer-events: none
 
         ::ng-deep .mdc-tab__text-label
             font-size: 15px
             font-weight: 300
 
+    app-generador-caracteristicas-modal
+        position: absolute
+        inset: 0
+        z-index: 50
+
     .col-md-4 div, .col-12 div
         border: 0
+
+.basicos-view
+    position: relative
+    height: 100%
+    overflow: auto
+
+.basicos-content
+    padding-bottom: 76px
+
+.basicos-col
+    min-height: min-content
+
+.basicos-action-fixed
+    position: absolute
+    right: 16px
+    bottom: 12px
+    z-index: 6
+    display: flex
+    justify-content: flex-end
+
+    button
+        display: inline-flex
+        align-items: center
+        gap: 6px
+
+    button[disabled]
+        opacity: 0.55
 
 .field-grid
     display: grid
@@ -106,6 +146,9 @@
     font-size: 0.9rem
     line-height: 1.4
 
+.plantillas-skeleton
+    background-color: rgba(255, 255, 255, 0.03)
+
 .chip-alerta
     height: auto
     white-space: normal
@@ -122,6 +165,13 @@ textarea
     padding: 0 2px
 
 @media (max-width: 768px)
+    .basicos-content
+        padding-bottom: 88px
+
+    .basicos-action-fixed
+        right: 10px
+        bottom: 10px
+
     .nombre-hero__field
         ::ng-deep .mdc-text-field
             min-height: 60px

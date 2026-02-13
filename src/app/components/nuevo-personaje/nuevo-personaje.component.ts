@@ -1,11 +1,11 @@
 import { Component, EventEmitter, Output, ViewChild } from '@angular/core';
-import { MatTabChangeEvent, MatTabGroup } from '@angular/material/tabs';
+import { MatTabGroup } from '@angular/material/tabs';
 import { Subscription } from 'rxjs';
 import { Campana, Super } from 'src/app/interfaces/campaña';
 import { Personaje } from 'src/app/interfaces/personaje';
 import { Raza } from 'src/app/interfaces/raza';
 import { CampanaService } from 'src/app/services/campana.service';
-import { NuevoPersonajeService } from 'src/app/services/nuevo-personaje.service';
+import { AsignacionCaracteristicas, NuevoPersonajeService, StepNuevoPersonaje } from 'src/app/services/nuevo-personaje.service';
 import Swal from 'sweetalert2';
 
 @Component({
@@ -16,6 +16,8 @@ import Swal from 'sweetalert2';
 export class NuevoPersonajeComponent {
     readonly placeholderContexto = 'De donde viene tu personaje, cual es su familia, linaje, maestros, etc. Esto te ayudara a saber como deberia reaccionar tu personaje ante diversos estimulos.';
     readonly placeholderPersonalidad = 'Altivo, compasivo, incapaz de estarse quieto, maduro o incomprendido. Dale adjetivos a tu personaje para reforzar su interpretacion.';
+    readonly fallbackContexto = 'Eres totalmente antirol hijo mio.';
+    readonly fallbackPersonalidad = 'Rellena un fisco puto vago.';
     readonly alineamientos: string[] = [
         'Legal bueno',
         'Legal neutral',
@@ -88,29 +90,41 @@ export class NuevoPersonajeComponent {
         'gruumsh': 'Deidad orca de la conquista y la destruccion.',
         'yondalla': 'Deidad halfling de la proteccion y la prosperidad.',
     };
+
     Personaje!: Personaje;
     Campanas: Campana[] = [];
     Tramas: Super[] = [];
     Subtramas: Super[] = [];
+    selectedInternalTabIndex = 0;
     private campanasSub?: Subscription;
-    private previousInternalTabIndex = 0;
-    private restoringTab = false;
-
-    @ViewChild(MatTabGroup) TabGroup!: MatTabGroup;
+    @ViewChild(MatTabGroup) TabGroup?: MatTabGroup;
 
     constructor(private nuevoPSvc: NuevoPersonajeService, private campanaSvc: CampanaService) {
         this.Personaje = this.nuevoPSvc.PersonajeCreacion;
     }
 
     ngOnInit(): void {
-        this.nuevoPSvc.reiniciar();
         this.Personaje = this.nuevoPSvc.PersonajeCreacion;
+        this.normalizarAlineamientoSeleccionado();
+        this.sincronizarTabConPaso();
         this.recalcularOficialidad();
         this.cargarCampanas();
     }
 
     ngOnDestroy(): void {
         this.campanasSub?.unsubscribe();
+    }
+
+    get flujo() {
+        return this.nuevoPSvc.EstadoFlujo;
+    }
+
+    get caracteristicasGeneradas(): boolean {
+        return this.flujo.caracteristicasGeneradas;
+    }
+
+    get modalCaracteristicasAbierto(): boolean {
+        return this.flujo.modalCaracteristicasAbierto;
     }
 
     get razaElegida(): boolean {
@@ -127,6 +141,18 @@ export class NuevoPersonajeComponent {
             return this.deidadesSugeridas;
         }
         return this.deidadesSugeridas.filter(d => d.toLowerCase().includes(texto));
+    }
+
+    get puedeContinuarBasicos(): boolean {
+        return this.esTextoNoVacio(this.Personaje.Nombre)
+            && this.esTextoNoVacio(this.Personaje.Genero)
+            && this.esTextoNoVacio(this.Personaje.Deidad)
+            && this.esTextoNoVacio(this.Personaje.Campana)
+            && this.esTextoNoVacio(this.Personaje.Trama)
+            && this.esTextoNoVacio(this.Personaje.Subtrama)
+            && this.esNumeroValidoPositivo(this.Personaje.Edad)
+            && this.esNumeroValidoPositivo(this.Personaje.Peso)
+            && this.esNumeroValidoPositivo(this.Personaje.Altura);
     }
 
     get campanaTieneTramas(): boolean {
@@ -361,46 +387,129 @@ export class NuevoPersonajeComponent {
         this.Personaje.Oficial = razaEsOficial && deidadEsOficial && inconsistencias.length === 0;
     }
 
-    async onInternalTabChange(event: MatTabChangeEvent): Promise<void> {
-        if (this.restoringTab) {
-            this.previousInternalTabIndex = event.index;
+    async continuarDesdeBasicos(): Promise<void> {
+        if (!this.razaElegida || !this.puedeContinuarBasicos) {
             return;
         }
 
-        const leavingBasicos = this.previousInternalTabIndex === 1 && event.index !== 1;
-        if (!leavingBasicos) {
-            this.previousInternalTabIndex = event.index;
-            return;
+        this.normalizarAlineamientoSeleccionado();
+        if (!this.esTextoNoVacio(this.Personaje.Contexto)) {
+            this.Personaje.Contexto = this.fallbackContexto;
+        }
+        if (!this.esTextoNoVacio(this.Personaje.Personalidad)) {
+            this.Personaje.Personalidad = this.fallbackPersonalidad;
         }
 
         this.recalcularOficialidad();
         const inconsistencias = this.getInconsistenciasManual();
-        if (inconsistencias.length < 1) {
-            this.previousInternalTabIndex = event.index;
-            return;
+        if (inconsistencias.length > 0) {
+            const htmlListado = `<ul style="text-align:left; margin-top: 8px;">${inconsistencias.map(i => `<li>${i}</li>`).join('')}</ul>`;
+            const result = await Swal.fire({
+                title: 'Tus elecciones van en contra de los manuales',
+                html: `Cancelar para cambiarlas o aceptar si tu master lo permite.${htmlListado}`,
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText: 'Aceptar y continuar',
+                cancelButtonText: 'Cancelar',
+            });
+
+            if (!result.isConfirmed) {
+                return;
+            }
         }
 
-        const htmlListado = `<ul style="text-align:left; margin-top: 8px;">${inconsistencias.map(i => `<li>${i}</li>`).join('')}</ul>`;
-        const result = await Swal.fire({
-            title: 'Tus elecciones van en contra de los manuales',
-            html: `Cancelar para cambiarlas o aceptar si tu master lo permite.${htmlListado}`,
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonText: 'Aceptar y continuar',
-            cancelButtonText: 'Cancelar',
-        });
+        this.abrirModalCaracteristicas();
+    }
 
-        if (!result.isConfirmed) {
-            this.restoringTab = true;
-            this.TabGroup.selectedIndex = this.previousInternalTabIndex;
-            setTimeout(() => {
-                this.restoringTab = false;
-            }, 0);
+    abrirModalCaracteristicas(): void {
+        this.nuevoPSvc.abrirModalCaracteristicas();
+    }
+
+    cerrarModalCaracteristicas(): void {
+        this.nuevoPSvc.cerrarModalCaracteristicas();
+    }
+
+    finalizarGeneracionCaracteristicas(asignaciones: AsignacionCaracteristicas): void {
+        const aplicado = this.nuevoPSvc.aplicarCaracteristicasGeneradas(asignaciones);
+        if (!aplicado) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'No se puede finalizar',
+                text: 'Faltan características por asignar.',
+                showConfirmButton: true,
+            });
             return;
         }
 
         this.recalcularOficialidad();
-        this.previousInternalTabIndex = event.index;
+        this.sincronizarTabConPaso();
+    }
+
+    irABasicos(): void {
+        if (!this.razaElegida) {
+            return;
+        }
+        this.nuevoPSvc.actualizarPasoActual('basicos');
+        this.sincronizarTabConPaso();
+    }
+
+    irAPlantillas(): void {
+        if (!this.caracteristicasGeneradas) {
+            return;
+        }
+        this.nuevoPSvc.actualizarPasoActual('plantillas');
+        this.sincronizarTabConPaso();
+    }
+
+    private sincronizarTabConPaso(): void {
+        this.selectedInternalTabIndex = this.mapearPasoAIndex(this.flujo.pasoActual);
+    }
+
+    onInternalTabIndexChange(index: number): void {
+        if (index === this.selectedInternalTabIndex) {
+            return;
+        }
+        Promise.resolve().then(() => {
+            if (this.TabGroup) {
+                this.TabGroup.selectedIndex = this.selectedInternalTabIndex;
+            }
+        });
+    }
+
+    private mapearPasoAIndex(paso: StepNuevoPersonaje): number {
+        if (paso === 'basicos') {
+            return 1;
+        }
+        if (paso === 'plantillas') {
+            return 2;
+        }
+        return 0;
+    }
+
+    private esTextoNoVacio(value: string): boolean {
+        return (value ?? '').trim().length > 0;
+    }
+
+    private esNumeroValidoPositivo(value: number): boolean {
+        const parsed = Number(value);
+        return Number.isFinite(parsed) && parsed > 0;
+    }
+
+    compararAlineamiento = (a: string | null, b: string | null): boolean => {
+        return this.normalizarTexto(a ?? '') === this.normalizarTexto(b ?? '');
+    };
+
+    private normalizarAlineamientoSeleccionado(): void {
+        const actual = this.Personaje.Alineamiento ?? '';
+        const normalizado = this.normalizarTexto(actual);
+        const encontrado = this.alineamientos.find(a => this.normalizarTexto(a) === normalizado);
+
+        if (encontrado) {
+            this.Personaje.Alineamiento = encontrado;
+            return;
+        }
+
+        this.Personaje.Alineamiento = this.alineamientos[0] ?? 'Legal bueno';
     }
 
     private async cargarCampanas() {
@@ -471,7 +580,8 @@ export class NuevoPersonajeComponent {
     seleccionarRaza(value: Raza) {
         this.nuevoPSvc.seleccionarRaza(value);
         this.Personaje = this.nuevoPSvc.PersonajeCreacion;
+        this.normalizarAlineamientoSeleccionado();
         this.recalcularOficialidad();
-        this.TabGroup.selectedIndex = 1;
+        this.irABasicos();
     }
 }

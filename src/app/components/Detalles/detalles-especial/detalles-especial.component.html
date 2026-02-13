@@ -1,0 +1,73 @@
+<div class="container-fluid detalle-view" *ngIf="especial">
+    <div class="row">
+        <div class="col-md-4 col-12 p-2">
+            <div class="d-flex flex-wrap align-items-center sombra-caja-sm rounded p-2 my-2">
+                <mat-chip class="h-auto warm w-100 sombra-caja-sm py-2 m-1 chip-titulo">
+                    {{especial.Nombre}}
+                </mat-chip>
+                <mat-chip class="sombra3d-sm m-1" *ngIf="especial.Extra">Usa extra</mat-chip>
+                <mat-chip class="sombra3d-sm m-1" *ngIf="especial.Repetible">Repetible</mat-chip>
+                <mat-chip class="sombra3d-sm m-1" *ngIf="especial.Repite_mismo_extra">Repite mismo extra</mat-chip>
+                <mat-chip class="sombra3d-sm m-1" *ngIf="especial.Repite_combinacion">Repite combinacion</mat-chip>
+                <mat-chip class="sombra3d-sm m-1" *ngIf="especial.Activa_extra">Activa extra</mat-chip>
+                <mat-chip class="h-auto sombra3d-sm m-1" *ngIf="(especial.Caracteristica?.Id ?? 0) > 0">
+                    Caracteristica
+                    <mat-chip class="sombra3d-sm m-1">{{especial.Caracteristica.Nombre}}</mat-chip>
+                </mat-chip>
+                <mat-chip class="h-auto sombra3d-sm m-1" *ngIf="(especial.Subtipo?.Id ?? 0) > 0">
+                    Subtipo
+                    <mat-chip class="sombra3d-sm m-1">{{especial.Subtipo.Nombre}}</mat-chip>
+                </mat-chip>
+            </div>
+            <div class="d-flex flex-wrap align-items-center sombra-caja-sm rounded p-2 my-2" *ngIf="tieneTextoVisible(especial.Descripcion)">
+                <mat-chip class="h-auto w-100 sombra-caja-sm py-2 m-1 mb-2 chip-titulo">Descripcion</mat-chip>
+                <p class="m-1">{{especial.Descripcion}}</p>
+            </div>
+        </div>
+        <div class="col-md-4 col-12 p-2">
+            <div class="d-flex flex-wrap align-items-center sombra-caja-sm rounded p-2 my-2" *ngIf="getBonificadoresActivos().length > 0">
+                <mat-chip class="h-auto w-100 sombra-caja-sm py-2 m-1 mb-2 chip-titulo">Bonificadores</mat-chip>
+                <mat-chip class="sombra3d-sm m-1" *ngFor="let mod of getBonificadoresActivos()">
+                    {{mod.clave}} {{mod.valor > 0 ? '+' : ''}}{{mod.valor}}
+                </mat-chip>
+            </div>
+            <div class="d-flex flex-wrap align-items-center sombra-caja-sm rounded p-2 my-2" *ngIf="getFlagsExtraActivos().length > 0">
+                <mat-chip class="h-auto w-100 sombra-caja-sm py-2 m-1 mb-2 chip-titulo">Flags extra</mat-chip>
+                <mat-chip class="sombra3d-sm m-1" *ngFor="let flag of getFlagsExtraActivos()">
+                    {{flag}}
+                </mat-chip>
+            </div>
+        </div>
+        <div class="col-md-4 col-12 p-2">
+            <mat-accordion>
+                <mat-expansion-panel *ngIf="getExtrasOrdenados().length > 0">
+                    <mat-expansion-panel-header>
+                        <button mat-stroked-button color="accent" class="rounded-0 rounded-top">
+                            <h2 class="mb-0">Extras</h2>
+                        </button>
+                    </mat-expansion-panel-header>
+                    <mat-chip-set class="m-1">
+                        <mat-chip class="h-auto sombra3d-sm m-1" *ngFor="let extra of getExtrasOrdenados()">
+                            {{extra.Extra}}
+                            <mat-chip class="sombra3d-sm m-1">Orden {{extra.Orden}}</mat-chip>
+                        </mat-chip>
+                    </mat-chip-set>
+                </mat-expansion-panel>
+                <mat-expansion-panel *ngIf="getHabilidadesOrdenadas().length > 0">
+                    <mat-expansion-panel-header>
+                        <button mat-stroked-button color="accent" class="rounded-0 rounded-bottom">
+                            <h2 class="mb-0">Habilidades</h2>
+                        </button>
+                    </mat-expansion-panel-header>
+                    <mat-chip-set class="m-1">
+                        <mat-chip class="h-auto sombra3d-sm m-1" *ngFor="let habilidad of getHabilidadesOrdenadas()">
+                            {{habilidad.Habilidad}}
+                            <mat-chip class="sombra3d-sm m-1">Rangos {{habilidad.Rangos}}</mat-chip>
+                            <mat-chip class="sombra3d-sm m-1" *ngIf="habilidad.Id_extra > 0 && tieneTextoVisible(habilidad.Extra)">{{habilidad.Extra}}</mat-chip>
+                        </mat-chip>
+                    </mat-chip-set>
+                </mat-expansion-panel>
+            </mat-accordion>
+        </div>
+    </div>
+</div>

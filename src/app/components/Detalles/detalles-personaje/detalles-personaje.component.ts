@@ -15,6 +15,12 @@ import { FichaPersonajeService } from 'src/app/services/ficha-personaje.service'
 })
 export class DetallesPersonajeComponent implements OnInit {
     @Input() pj!: Personaje;
+    nivelPersonaje = 0;
+    nivelDisclaimer: string = `
+    Nivel de personaje
+    Suma de niveles de clase + ajustes de nivel (raza y plantillas)
+
+    No incluye DGs raciales adicionales`;
     nepDisclaimer: string = `
     NEP (Nivel efectivo de personaje)
     Suma del nivel de sus clases + DGs extra + Ajustes de nivel
@@ -48,6 +54,7 @@ export class DetallesPersonajeComponent implements OnInit {
     ngOnInit(): void {
         if(this.pj.Habilidades)
             this.Habilidades = this.pj.Habilidades.filter(h => h.Rangos + h.Rangos_varios > 0 || h.Varios != "");
+        this.nivelPersonaje = this.getNivelPersonaje();
         this.iniciativa = `${this.pj.ModDestreza}`;
         if(this.pj.Iniciativa_varios){
             const ini_v = this.pj.Iniciativa_varios.reduce((c, v) => c + v.Valor, 0);
@@ -58,18 +65,18 @@ export class DetallesPersonajeComponent implements OnInit {
             const pr_v = this.pj.Presa_varios.reduce((c, v) => c + v.Valor, 0);
             this.presa = pr_v > 0 ? ` +${pr_v}` : ` ${pr_v}`;
         }
-        this.fortaleza = this.pj.Salvaciones.fortaleza.modsClaseos.map(m => m.valor).reduce((c, v) => c + v, 0) ?? 0;
-        this.fortaleza_origenes = this.pj.Salvaciones.fortaleza.modsClaseos.filter(m => m.origen != "" && m.origen != "Placeholder").map(m => m.origen).join(', ') ?? "";
-        this.fortaleza_varios = this.pj.Salvaciones.fortaleza.modsVarios.map(m => m.valor).reduce((c, v) => c + v, 0) ?? 0;
-        this.fortaleza_varios_origenes = this.pj.Salvaciones.fortaleza.modsVarios.filter(m => m.origen != "" && m.origen != "Placeholder").map(m => m.origen).join(', ') ?? "";
-        this.reflejos = this.pj.Salvaciones.reflejos.modsClaseos.map(m => m.valor).reduce((c, v) => c + v, 0) ?? 0;
-        this.reflejos_origenes = this.pj.Salvaciones.reflejos.modsClaseos.filter(m => m.origen != "" && m.origen != "Placeholder").map(m => m.origen).join(', ') ?? "";
-        this.reflejos_varios = this.pj.Salvaciones.reflejos.modsVarios.map(m => m.valor).reduce((c, v) => c + v, 0) ?? 0;
-        this.reflejos_varios_origenes = this.pj.Salvaciones.reflejos.modsVarios.filter(m => m.origen != "" && m.origen != "Placeholder").map(m => m.origen).join(', ') ?? "";
-        this.voluntad = this.pj.Salvaciones.voluntad.modsClaseos.map(m => m.valor).reduce((c, v) => c + v, 0) ?? 0;
-        this.voluntad_origenes = this.pj.Salvaciones.voluntad.modsClaseos.filter(m => m.origen != "" && m.origen != "Placeholder").map(m => m.origen).join(', ') ?? "";
-        this.voluntad_varios = this.pj.Salvaciones.voluntad.modsVarios.map(m => m.valor).reduce((c, v) => c + v, 0) ?? 0;
-        this.voluntad_varios_origenes = this.pj.Salvaciones.voluntad.modsVarios.filter(m => m.origen != "" && m.origen != "Placeholder").map(m => m.origen).join(', ') ?? "";
+        this.fortaleza = this.sumarMods(this.pj.Salvaciones?.fortaleza?.modsClaseos);
+        this.fortaleza_origenes = (this.pj.Salvaciones?.fortaleza?.modsClaseos ?? []).filter(m => m.origen != "" && m.origen != "Placeholder").map(m => m.origen).join(', ') ?? "";
+        this.fortaleza_varios = this.sumarMods(this.pj.Salvaciones?.fortaleza?.modsVarios);
+        this.fortaleza_varios_origenes = (this.pj.Salvaciones?.fortaleza?.modsVarios ?? []).filter(m => m.origen != "" && m.origen != "Placeholder").map(m => m.origen).join(', ') ?? "";
+        this.reflejos = this.sumarMods(this.pj.Salvaciones?.reflejos?.modsClaseos);
+        this.reflejos_origenes = (this.pj.Salvaciones?.reflejos?.modsClaseos ?? []).filter(m => m.origen != "" && m.origen != "Placeholder").map(m => m.origen).join(', ') ?? "";
+        this.reflejos_varios = this.sumarMods(this.pj.Salvaciones?.reflejos?.modsVarios);
+        this.reflejos_varios_origenes = (this.pj.Salvaciones?.reflejos?.modsVarios ?? []).filter(m => m.origen != "" && m.origen != "Placeholder").map(m => m.origen).join(', ') ?? "";
+        this.voluntad = this.sumarMods(this.pj.Salvaciones?.voluntad?.modsClaseos);
+        this.voluntad_origenes = (this.pj.Salvaciones?.voluntad?.modsClaseos ?? []).filter(m => m.origen != "" && m.origen != "Placeholder").map(m => m.origen).join(', ') ?? "";
+        this.voluntad_varios = this.sumarMods(this.pj.Salvaciones?.voluntad?.modsVarios);
+        this.voluntad_varios_origenes = (this.pj.Salvaciones?.voluntad?.modsVarios ?? []).filter(m => m.origen != "" && m.origen != "Placeholder").map(m => m.origen).join(', ') ?? "";
         this.cLigera = `${parseFloat((this.pj.Capacidad_carga.Ligera * 0.453592).toFixed(2))} Kilogramos`;
         this.cMedia = `${parseFloat((this.pj.Capacidad_carga.Media * 0.453592).toFixed(2))} Kilogramos`;
         const carga_pesada = parseFloat((this.pj.Capacidad_carga.Pesada * 0.453592).toFixed(2));
@@ -96,12 +103,46 @@ export class DetallesPersonajeComponent implements OnInit {
         return `${titular} ${texto}`;
     }
 
-    getTooltip_Dotes(dote: DoteLegacy): string {
-        return `${dote.Descripcion}
+    private toNumber(value: any): number {
+        const parsed = Number(value);
+        return Number.isFinite(parsed) ? parsed : 0;
+    }
 
-        Beneficio: ${dote.Beneficio}
+    private sumarMods(mods: { valor: number, origen: string }[] | undefined): number {
+        return (mods ?? []).reduce((c, v) => c + this.toNumber(v?.valor), 0);
+    }
 
-        Origen: ${dote.Origen}`;
+    private getNivelPersonaje(): number {
+        const nivelesClase = (this.pj?.desgloseClases ?? []).reduce((c, clase) => c + this.toNumber(clase?.Nivel), 0);
+        const ajusteRaza = this.toNumber(this.pj?.Raza?.Ajuste_nivel);
+        const ajustesPlantillas = (this.pj?.Plantillas ?? []).reduce((c, p) => c + this.toNumber(p?.Ajuste_nivel), 0);
+        return nivelesClase + ajusteRaza + ajustesPlantillas;
+    }
+
+    tieneTextoVisible(texto: string | undefined | null): boolean {
+        if (!texto)
+            return false;
+        const base = texto.normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase();
+        if (!base)
+            return false;
+        const limpiado = base.replace(/[.]/g, '');
+        return limpiado !== 'no especifica' && limpiado !== 'no se especifica' && limpiado !== 'no aplica' && limpiado !== 'nada';
+    }
+
+    getClaseasVisibles() {
+        return (this.pj?.Claseas ?? []).filter(c => this.tieneTextoVisible(c?.Nombre));
+    }
+
+    getNombreRacial(racial: any): string {
+        if (typeof racial === 'string')
+            return racial;
+        return racial?.Nombre ?? '';
+    }
+
+    getRacialesVisibles() {
+        return (this.pj?.Raciales ?? [])
+            .map(racial => this.getNombreRacial(racial))
+            .filter(nombre => this.tieneTextoVisible(nombre));
     }
 
     toDoteContextualFallback(dote: DoteLegacy): DoteContextual {
@@ -182,6 +223,12 @@ export class DetallesPersonajeComponent implements OnInit {
         this.tipoDetalles.emit(value);
     }
 
+    @Output() razaDetalles: EventEmitter<number> = new EventEmitter<number>();
+    verDetallesRaza(idRaza: number) {
+        if (Number.isFinite(idRaza) && idRaza > 0)
+            this.razaDetalles.emit(idRaza);
+    }
+
     @Output() rasgoDetalles: EventEmitter<Rasgo> = new EventEmitter<Rasgo>();
     verDetallesRasgo(value: Rasgo) {
         this.rasgoDetalles.emit(value);
@@ -191,5 +238,19 @@ export class DetallesPersonajeComponent implements OnInit {
     verDetallesClase(nombreClase: string) {
         if (nombreClase && nombreClase.trim().length > 0)
             this.claseDetalles.emit(nombreClase.trim());
+    }
+
+    @Output() especialDetallesPorNombre: EventEmitter<string> = new EventEmitter<string>();
+    verDetallesEspecialPorNombre(nombreEspecial: string) {
+        if (!this.tieneTextoVisible(nombreEspecial))
+            return;
+        this.especialDetallesPorNombre.emit(nombreEspecial.trim());
+    }
+
+    @Output() racialDetallesPorNombre: EventEmitter<string> = new EventEmitter<string>();
+    verDetallesRacialPorNombre(nombreRacial: string) {
+        if (!this.tieneTextoVisible(nombreRacial))
+            return;
+        this.racialDetallesPorNombre.emit(nombreRacial.trim());
     }
 }
