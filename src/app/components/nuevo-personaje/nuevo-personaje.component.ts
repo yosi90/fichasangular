@@ -2,12 +2,18 @@ import { Component, EventEmitter, Output, ViewChild } from '@angular/core';
 import { MatTabGroup } from '@angular/material/tabs';
 import { Subscription } from 'rxjs';
 import { Campana, Super } from 'src/app/interfaces/campaña';
+import { HabilidadBasicaDetalle } from 'src/app/interfaces/habilidad';
+import { IdiomaDetalle } from 'src/app/interfaces/idioma';
 import { Personaje } from 'src/app/interfaces/personaje';
 import { Plantilla } from 'src/app/interfaces/plantilla';
 import { Raza } from 'src/app/interfaces/raza';
+import { VentajaDetalle } from 'src/app/interfaces/ventaja';
 import { CampanaService } from 'src/app/services/campana.service';
+import { HabilidadService } from 'src/app/services/habilidad.service';
+import { IdiomaService } from 'src/app/services/idioma.service';
 import { AsignacionCaracteristicas, NuevoPersonajeService, StepNuevoPersonaje } from 'src/app/services/nuevo-personaje.service';
 import { PlantillaService } from 'src/app/services/plantilla.service';
+import { VentajaService } from 'src/app/services/ventaja.service';
 import { PlantillaEvaluacionResultado, evaluarElegibilidadPlantilla } from 'src/app/services/utils/plantilla-elegibilidad';
 import { environment } from 'src/environments/environment';
 import Swal from 'sweetalert2';
@@ -108,15 +114,41 @@ export class NuevoPersonajeComponent {
     filtroPlantillasManual: string = 'Cualquiera';
     incluirHomebrewPlantillas: boolean = false;
     cargandoPlantillas: boolean = true;
+    incluirHomebrewVentajas: boolean = false;
+    incluirHomebrewIdiomas: boolean = false;
+    private homebrewForzadoPorJugador: boolean = false;
+    private homebrewBloqueadoVentajas: boolean = false;
+    private controlHomebrewVentajasInicializado: boolean = false;
+    catalogoVentajas: VentajaDetalle[] = [];
+    catalogoDesventajas: VentajaDetalle[] = [];
+    catalogoIdiomas: IdiomaDetalle[] = [];
+    cargandoVentajas: boolean = true;
+    cargandoIdiomas: boolean = true;
+    private ventajaPendienteIdiomaId: number | null = null;
+    modalSelectorIdiomaAbierto = false;
+    private contextoSelectorIdioma: 'ventaja' | 'idiomasIniciales' | null = null;
+    selectorIdiomaTitulo = 'Seleccionar idioma extra';
+    selectorIdiomaCantidadObjetivo = 0;
+    selectorIdiomaCantidadSeleccionada = 0;
+    selectorIdiomaBloquearCierre = false;
+    private idiomasTemporalesSeleccionados: IdiomaDetalle[] = [];
     selectedInternalTabIndex = 0;
     private campanasSub?: Subscription;
     private plantillasSub?: Subscription;
+    private ventajasSub?: Subscription;
+    private desventajasSub?: Subscription;
+    private habilidadesSub?: Subscription;
+    private habilidadesCustomSub?: Subscription;
+    private idiomasSub?: Subscription;
     @ViewChild(MatTabGroup) TabGroup?: MatTabGroup;
 
     constructor(
         private nuevoPSvc: NuevoPersonajeService,
         private campanaSvc: CampanaService,
-        private plantillaSvc: PlantillaService
+        private plantillaSvc: PlantillaService,
+        private ventajaSvc: VentajaService,
+        private habilidadSvc: HabilidadService,
+        private idiomaSvc: IdiomaService
     ) {
         this.Personaje = this.nuevoPSvc.PersonajeCreacion;
     }
@@ -128,11 +160,20 @@ export class NuevoPersonajeComponent {
         this.recalcularOficialidad();
         this.cargarCampanas();
         this.cargarPlantillas();
+        this.cargarVentajasDesventajas();
+        this.cargarHabilidadesBase();
+        this.cargarHabilidadesCustom();
+        this.cargarIdiomas();
     }
 
     ngOnDestroy(): void {
         this.campanasSub?.unsubscribe();
         this.plantillasSub?.unsubscribe();
+        this.ventajasSub?.unsubscribe();
+        this.desventajasSub?.unsubscribe();
+        this.habilidadesSub?.unsubscribe();
+        this.habilidadesCustomSub?.unsubscribe();
+        this.idiomasSub?.unsubscribe();
     }
 
     get flujo() {
@@ -186,6 +227,90 @@ export class NuevoPersonajeComponent {
 
     get mostrarBloquePlantillas(): boolean {
         return this.caracteristicasGeneradas;
+    }
+
+    get flujoVentajas() {
+        return this.flujo.ventajas;
+    }
+
+    get ventajasSeleccionadasCount(): number {
+        return this.flujoVentajas.seleccionVentajas.length;
+    }
+
+    get puedeContinuarVentajas(): boolean {
+        return this.nuevoPSvc.puedeContinuarDesdeVentajas() && this.idiomasPendientesSelector < 1;
+    }
+
+    get personajeNoOficial(): boolean {
+        return this.Personaje.Oficial === false;
+    }
+
+    get homebrewForzado(): boolean {
+        return this.personajeNoOficial;
+    }
+
+    get homebrewVentajasSeleccionado(): boolean {
+        return this.homebrewBloqueadoVentajas || this.homebrewForzadoPorJugador;
+    }
+
+    get homebrewVentajasBloqueado(): boolean {
+        return this.homebrewBloqueadoVentajas;
+    }
+
+    get incluirHomebrewPlantillasEfectivo(): boolean {
+        return this.homebrewForzado || this.incluirHomebrewPlantillas;
+    }
+
+    get incluirHomebrewVentajasEfectivo(): boolean {
+        return this.homebrewForzado || this.incluirHomebrewVentajas;
+    }
+
+    get textoChipHomebrewVentajas(): string {
+        return this.homebrewBloqueadoVentajas
+            ? 'El personaje es Homebrew'
+            : this.homebrewForzadoPorJugador
+                ? 'Cancelar homebrew y limpiar ventajas'
+            : 'Convertir en personaje Homebrew para listar las ventajas';
+    }
+
+    get incluirHomebrewIdiomasEfectivo(): boolean {
+        return this.homebrewForzado || this.incluirHomebrewIdiomas;
+    }
+
+    get ventajasVisibles(): VentajaDetalle[] {
+        return this.catalogoVentajas.filter(v => this.incluirHomebrewVentajasEfectivo || v.Oficial !== false);
+    }
+
+    get desventajasVisibles(): VentajaDetalle[] {
+        return this.catalogoDesventajas.filter(v => this.incluirHomebrewVentajasEfectivo || v.Oficial !== false);
+    }
+
+    get idiomasSeleccionadosParaVentajas(): string[] {
+        return this.Personaje.Idiomas.map(i => i.Nombre);
+    }
+
+    get idiomasSeleccionadosParaSelector(): string[] {
+        const nombres = this.Personaje.Idiomas.map(i => i.Nombre);
+        if (this.contextoSelectorIdioma === 'idiomasIniciales') {
+            this.idiomasTemporalesSeleccionados.forEach((i) => nombres.push(i.Nombre));
+        }
+
+        const vistos = new Set<string>();
+        const resultado: string[] = [];
+        nombres.forEach((nombre) => {
+            const clave = this.normalizarTexto(nombre);
+            if (clave.length < 1 || vistos.has(clave))
+                return;
+            vistos.add(clave);
+            resultado.push(nombre);
+        });
+        return resultado;
+    }
+
+    get idiomasPendientesSelector(): number {
+        const objetivo = Math.max(0, Math.trunc(Number(this.selectorIdiomaCantidadObjetivo) || 0));
+        const seleccionada = Math.max(0, Math.trunc(Number(this.selectorIdiomaCantidadSeleccionada) || 0));
+        return Math.max(0, objetivo - seleccionada);
     }
 
     get deidadesFiltradas(): string[] {
@@ -437,7 +562,13 @@ export class NuevoPersonajeComponent {
         const razaEsOficial = this.razaSeleccionada?.Oficial === true;
         const deidadEsOficial = this.esDeidadOficial();
         const inconsistencias = this.getInconsistenciasManual();
-        this.Personaje.Oficial = razaEsOficial && deidadEsOficial && inconsistencias.length === 0;
+        const tieneVentajasODesventajas = this.flujoVentajas.seleccionVentajas.length > 0
+            || this.flujoVentajas.seleccionDesventajas.length > 0;
+        this.Personaje.Oficial = !this.homebrewForzadoPorJugador
+            && razaEsOficial
+            && deidadEsOficial
+            && inconsistencias.length === 0
+            && !tieneVentajasODesventajas;
     }
 
     async continuarDesdeBasicos(): Promise<void> {
@@ -517,6 +648,7 @@ export class NuevoPersonajeComponent {
     }
 
     private sincronizarTabConPaso(): void {
+        this.inicializarControlHomebrewVentajasSiAplica();
         this.selectedInternalTabIndex = this.mapearPasoAIndex(this.flujo.pasoActual);
     }
 
@@ -537,6 +669,9 @@ export class NuevoPersonajeComponent {
         }
         if (paso === 'plantillas') {
             return 2;
+        }
+        if (paso === 'ventajas') {
+            return 3;
         }
         return 0;
     }
@@ -647,6 +782,9 @@ export class NuevoPersonajeComponent {
     }
 
     alternarHomebrewPlantillas(): void {
+        if (this.homebrewForzado) {
+            return;
+        }
         this.incluirHomebrewPlantillas = !this.incluirHomebrewPlantillas;
         this.recalcularPlantillasVisibles();
     }
@@ -679,7 +817,20 @@ export class NuevoPersonajeComponent {
     }
 
     continuarDesdePlantillas(): void {
-        // Siguiente fase del flujo de creacion pendiente de integrar.
+        if (!this.caracteristicasGeneradas) {
+            return;
+        }
+
+        this.nuevoPSvc.actualizarPasoActual('ventajas');
+        this.inicializarControlHomebrewVentajasSiAplica();
+        this.sincronizarTabConPaso();
+    }
+
+    continuarDesdeVentajas(): void {
+        if (!this.puedeContinuarVentajas) {
+            return;
+        }
+        this.nuevoPSvc.actualizarPasoActual('ventajas');
     }
 
     getTooltipBloqueoUnknown(item: { plantilla: Plantilla; evaluacion: PlantillaEvaluacionResultado; }): string {
@@ -688,6 +839,287 @@ export class NuevoPersonajeComponent {
         if (razones && advertencias)
             return `${razones} | ${advertencias}`;
         return razones || advertencias || 'No se pudo evaluar por completo esta plantilla';
+    }
+
+    alternarHomebrewVentajas(): void {
+        this.inicializarControlHomebrewVentajasSiAplica();
+        if (this.homebrewBloqueadoVentajas)
+            return;
+
+        if (!this.homebrewForzadoPorJugador) {
+            this.homebrewForzadoPorJugador = true;
+            this.incluirHomebrewVentajas = true;
+            this.incluirHomebrewPlantillas = true;
+            this.incluirHomebrewIdiomas = true;
+            this.recalcularOficialidad();
+            return;
+        }
+
+        this.homebrewForzadoPorJugador = false;
+        this.incluirHomebrewVentajas = false;
+        this.incluirHomebrewPlantillas = false;
+        this.incluirHomebrewIdiomas = false;
+        this.nuevoPSvc.limpiarVentajasDesventajas();
+        this.cerrarSelectorIdiomaContexto();
+        this.recalcularOficialidad();
+    }
+
+    abrirInfoVentajasHomebrew(event?: Event): void {
+        event?.preventDefault();
+        event?.stopPropagation();
+        Swal.fire({
+            target: document.body,
+            icon: 'info',
+            title: 'Ventajas y desventajas (homebrew)',
+            width: 560,
+            html: `
+                <p style="text-align:left; margin-bottom:10px;">
+                    El sistema de ventajas y desventajas es un añadido homebrew para enriquecer la experiencia de juego
+                    y, sobre todo, el roleo de los personajes.
+                </p>
+                <p style="text-align:left; margin-bottom:10px;">
+                    La idea no es conseguir personajes más poderosos, sino darle sabor al roleo. Si solo te importan
+                    los combates, te recomendamos no usar esta funcionalidad.
+                </p>
+                <p style="text-align:left; margin-bottom:4px;"><strong>Sistema de ventajas:</strong></p>
+                <ul style="text-align:left; padding-left:18px; margin:0;">
+                    <li>Cada personaje puede tener un máximo de tres ventajas.</li>
+                    <li>Cada ventaja cuesta puntos de ventaja.</li>
+                    <li>Obtienes esos puntos eligiendo desventajas para tu personaje.</li>
+                </ul>
+            `,
+            confirmButtonText: 'Entendido',
+        });
+    }
+
+    alternarHomebrewIdiomas(): void {
+        if (this.homebrewForzado)
+            return;
+        this.incluirHomebrewIdiomas = !this.incluirHomebrewIdiomas;
+    }
+
+    isVentajaSeleccionada(idVentaja: number): boolean {
+        return this.flujoVentajas.seleccionVentajas.some(v => v.id === idVentaja);
+    }
+
+    isDesventajaSeleccionada(idDesventaja: number): boolean {
+        return this.flujoVentajas.seleccionDesventajas.some(v => v.id === idDesventaja);
+    }
+
+    tieneIdiomaPendiente(ventaja: VentajaDetalle): boolean {
+        if (!ventaja.Idioma_extra)
+            return false;
+        const seleccion = this.flujoVentajas.seleccionVentajas.find(v => v.id === ventaja.Id);
+        return !!seleccion && !seleccion.idioma;
+    }
+
+    toggleVentajaSeleccion(ventaja: VentajaDetalle): void {
+        const resultado = this.nuevoPSvc.toggleVentaja(ventaja.Id);
+        if (!resultado.toggled) {
+            if (resultado.reason === 'max_reached') {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Límite de ventajas alcanzado',
+                    text: 'Solo puedes seleccionar hasta 3 ventajas.',
+                    showConfirmButton: true,
+                });
+            }
+            return;
+        }
+
+        if (resultado.selected && resultado.requiresIdiomaSelection) {
+            this.abrirSelectorIdiomaParaVentaja(ventaja.Id);
+        }
+
+        this.recalcularOficialidad();
+    }
+
+    toggleDesventajaSeleccion(desventaja: VentajaDetalle): void {
+        this.nuevoPSvc.toggleDesventaja(desventaja.Id);
+        this.recalcularOficialidad();
+    }
+
+    onCerrarModalIdioma(): void {
+        if (this.contextoSelectorIdioma === 'idiomasIniciales' && this.idiomasPendientesSelector > 0)
+            return;
+
+        const pendiente = this.ventajaPendienteIdiomaId;
+        const eraContextoVentaja = this.contextoSelectorIdioma === 'ventaja';
+        this.cerrarSelectorIdiomaContexto();
+
+        if (!eraContextoVentaja || pendiente === null)
+            return;
+
+        const seleccion = this.flujoVentajas.seleccionVentajas.find(v => v.id === pendiente);
+        if (seleccion && !seleccion.idioma) {
+            this.nuevoPSvc.quitarSeleccionVentaja(pendiente);
+            this.recalcularOficialidad();
+        }
+    }
+
+    onConfirmarIdiomaVentaja(idioma: IdiomaDetalle): void {
+        if (this.contextoSelectorIdioma === 'idiomasIniciales') {
+            const agregado = this.agregarIdiomaInicialTemporal(idioma);
+            if (!agregado) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'No se pudo asignar el idioma',
+                    text: 'Ese idioma ya está seleccionado o no es válido para esta selección.',
+                    showConfirmButton: true,
+                });
+                return;
+            }
+
+            this.selectorIdiomaCantidadSeleccionada = this.idiomasTemporalesSeleccionados.length;
+            if (this.idiomasPendientesSelector < 1) {
+                this.cerrarSelectorIdiomaContexto();
+            }
+            return;
+        }
+
+        const pendiente = this.ventajaPendienteIdiomaId;
+        if (pendiente === null)
+            return;
+
+        const asignado = this.nuevoPSvc.seleccionarIdiomaParaVentaja(pendiente, idioma);
+        if (!asignado) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'No se pudo asignar el idioma',
+                text: 'Ese idioma ya está seleccionado o no es válido para esta ventaja.',
+                showConfirmButton: true,
+            });
+            return;
+        }
+
+        this.cerrarSelectorIdiomaContexto();
+        this.recalcularOficialidad();
+    }
+
+    onCambioHomebrewModalIdiomas(value: boolean): void {
+        if (this.homebrewForzado)
+            return;
+        this.incluirHomebrewIdiomas = value;
+    }
+
+    abrirSelectorIdiomasIniciales(cantidad: number): void {
+        const objetivo = Math.max(0, Math.trunc(Number(cantidad) || 0));
+        if (objetivo < 1) {
+            this.cerrarSelectorIdiomaContexto();
+            return;
+        }
+
+        this.contextoSelectorIdioma = 'idiomasIniciales';
+        this.selectorIdiomaTitulo = 'Seleccionar idiomas iniciales';
+        this.selectorIdiomaCantidadObjetivo = objetivo;
+        this.selectorIdiomaCantidadSeleccionada = 0;
+        this.selectorIdiomaBloquearCierre = true;
+        this.idiomasTemporalesSeleccionados = [];
+        this.modalSelectorIdiomaAbierto = true;
+    }
+
+    private abrirSelectorIdiomaParaVentaja(idVentaja: number): void {
+        this.contextoSelectorIdioma = 'ventaja';
+        this.ventajaPendienteIdiomaId = idVentaja;
+        this.selectorIdiomaTitulo = 'Seleccionar idioma de ventaja';
+        this.selectorIdiomaCantidadObjetivo = 1;
+        this.selectorIdiomaCantidadSeleccionada = 0;
+        this.selectorIdiomaBloquearCierre = false;
+        this.modalSelectorIdiomaAbierto = true;
+    }
+
+    private cerrarSelectorIdiomaContexto(): void {
+        this.modalSelectorIdiomaAbierto = false;
+        this.ventajaPendienteIdiomaId = null;
+        this.contextoSelectorIdioma = null;
+        this.selectorIdiomaTitulo = 'Seleccionar idioma extra';
+        this.selectorIdiomaCantidadObjetivo = 0;
+        this.selectorIdiomaCantidadSeleccionada = 0;
+        this.selectorIdiomaBloquearCierre = false;
+    }
+
+    private agregarIdiomaInicialTemporal(idioma: IdiomaDetalle): boolean {
+        const nombre = `${idioma?.Nombre ?? ''}`.trim();
+        if (nombre.length < 1 || !!idioma.Secreto)
+            return false;
+
+        const yaExiste = this.idiomasSeleccionadosParaSelector
+            .some((n) => this.normalizarTexto(n) === this.normalizarTexto(nombre));
+        if (yaExiste)
+            return false;
+
+        this.idiomasTemporalesSeleccionados.push({ ...idioma });
+        this.Personaje.Idiomas = [
+            ...this.Personaje.Idiomas,
+            {
+                Nombre: nombre,
+                Descripcion: `${idioma.Descripcion ?? ''}`,
+                Secreto: !!idioma.Secreto,
+                Oficial: !!idioma.Oficial,
+            },
+        ];
+        return true;
+    }
+
+    getMateriaVentaja(item: VentajaDetalle): string {
+        const caracteristicas: string[] = [];
+        if (item.Fuerza)
+            caracteristicas.push('Fuerza');
+        if (item.Destreza)
+            caracteristicas.push('Destreza');
+        if (item.Constitucion)
+            caracteristicas.push('Constitucion');
+        if (item.Inteligencia)
+            caracteristicas.push('Inteligencia');
+        if (item.Sabiduria)
+            caracteristicas.push('Sabiduria');
+        if (item.Carisma)
+            caracteristicas.push('Carisma');
+        if (caracteristicas.length > 0)
+            return caracteristicas.join(', ');
+
+        const salvaciones: string[] = [];
+        if (item.Fortaleza)
+            salvaciones.push('Fortaleza');
+        if (item.Reflejos)
+            salvaciones.push('Reflejos');
+        if (item.Voluntad)
+            salvaciones.push('Voluntad');
+        if (salvaciones.length > 0)
+            return salvaciones.join(', ');
+
+        if (item.Iniciativa)
+            return 'Iniciativa';
+        if ((item.Habilidad?.Nombre ?? '').trim().length > 0)
+            return item.Habilidad.Nombre;
+        if ((item.Idioma?.Nombre ?? '').trim().length > 0)
+            return item.Idioma.Nombre;
+        if ((item.Rasgo?.Nombre ?? '').trim().length > 0)
+            return item.Rasgo.Nombre;
+        if (item.Duplica_oro || item.Aumenta_oro)
+            return 'Oro inicial';
+        return '-';
+    }
+
+    getMejoraTexto(item: VentajaDetalle): string {
+        const valor = Number(item.Mejora ?? 0);
+        if (!Number.isFinite(valor) || valor === 0)
+            return '-';
+        return valor > 0 ? `+${valor}` : `${valor}`;
+    }
+
+    getMateriaVisible(item: VentajaDetalle): string {
+        const materia = `${this.getMateriaVentaja(item) ?? ''}`.trim();
+        return this.normalizarTexto(materia) === 'elegir' ? '' : materia;
+    }
+
+    getMejoraVisible(item: VentajaDetalle): string {
+        const mejora = `${this.getMejoraTexto(item) ?? ''}`.trim();
+        return mejora === '-' ? '' : mejora;
+    }
+
+    getDisipableVisible(item: VentajaDetalle): string {
+        return item.Disipable ? 'Si' : '';
     }
 
     private cargarPlantillas(): void {
@@ -706,6 +1138,96 @@ export class NuevoPersonajeComponent {
                 this.plantillasBloqueadasUnknown = [];
                 this.plantillasBloqueadasFailed = [];
                 this.cargandoPlantillas = false;
+            },
+        });
+    }
+
+    private cargarVentajasDesventajas(): void {
+        this.cargandoVentajas = true;
+        this.ventajasSub?.unsubscribe();
+        this.desventajasSub?.unsubscribe();
+
+        this.ventajasSub = this.ventajaSvc.getVentajas().subscribe({
+            next: (ventajas) => {
+                this.catalogoVentajas = ventajas;
+                this.nuevoPSvc.setCatalogosVentajas(this.catalogoVentajas, this.catalogoDesventajas);
+                this.cargandoVentajas = false;
+            },
+            error: () => {
+                this.catalogoVentajas = [];
+                this.nuevoPSvc.setCatalogosVentajas([], this.catalogoDesventajas);
+                this.cargandoVentajas = false;
+            },
+        });
+
+        this.desventajasSub = this.ventajaSvc.getDesventajas().subscribe({
+            next: (desventajas) => {
+                this.catalogoDesventajas = desventajas;
+                this.nuevoPSvc.setCatalogosVentajas(this.catalogoVentajas, this.catalogoDesventajas);
+                this.cargandoVentajas = false;
+            },
+            error: () => {
+                this.catalogoDesventajas = [];
+                this.nuevoPSvc.setCatalogosVentajas(this.catalogoVentajas, []);
+                this.cargandoVentajas = false;
+            },
+        });
+    }
+
+    private inicializarControlHomebrewVentajasSiAplica(): void {
+        if (this.controlHomebrewVentajasInicializado)
+            return;
+        if (this.flujo.pasoActual !== 'ventajas')
+            return;
+
+        this.controlHomebrewVentajasInicializado = true;
+        this.homebrewBloqueadoVentajas = this.Personaje.Oficial === false;
+        this.homebrewForzadoPorJugador = false;
+
+        if (this.homebrewBloqueadoVentajas) {
+            this.incluirHomebrewVentajas = true;
+            this.incluirHomebrewPlantillas = true;
+            this.incluirHomebrewIdiomas = true;
+        }
+    }
+
+    private cargarHabilidadesBase(): void {
+        this.habilidadesSub?.unsubscribe();
+        this.habilidadesSub = this.habilidadSvc.getHabilidades().subscribe({
+            next: (habilidades: HabilidadBasicaDetalle[]) => {
+                this.nuevoPSvc.setCatalogoHabilidades(habilidades);
+            },
+            error: () => {
+                this.nuevoPSvc.setCatalogoHabilidades([]);
+            },
+        });
+    }
+
+    private cargarHabilidadesCustom(): void {
+        this.habilidadesCustomSub?.unsubscribe();
+        this.habilidadesCustomSub = this.habilidadSvc.getHabilidadesCustom().subscribe({
+            next: (habilidades: HabilidadBasicaDetalle[]) => {
+                this.nuevoPSvc.setCatalogoHabilidadesCustom(habilidades);
+            },
+            error: () => {
+                this.nuevoPSvc.setCatalogoHabilidadesCustom([]);
+            },
+        });
+    }
+
+    private cargarIdiomas(): void {
+        this.cargandoIdiomas = true;
+        this.idiomasSub?.unsubscribe();
+        this.idiomasSub = this.idiomaSvc.getIdiomas().subscribe({
+            next: (idiomas) => {
+                this.catalogoIdiomas = idiomas;
+                this.nuevoPSvc.setCatalogoIdiomas(idiomas);
+                this.cargandoIdiomas = false;
+            },
+            error: () => {
+                this.catalogoIdiomas = [];
+                this.nuevoPSvc.setCatalogoIdiomas([]);
+                this.cargandoIdiomas = false;
             },
         });
     }
@@ -735,7 +1257,7 @@ export class NuevoPersonajeComponent {
             tamanoRazaId: Number(raza.Tamano?.Id ?? 0),
             tipoCriaturaActualId: Number(this.flujo.plantillas.tipoCriaturaSimulada.Id ?? 0),
             razaHeredada: !!raza.Heredada,
-            incluirHomebrew: this.incluirHomebrewPlantillas,
+            incluirHomebrew: this.incluirHomebrewPlantillasEfectivo,
             seleccionadas: this.plantillasSeleccionadas.map(p => ({
                 Id: Number(p.Id),
                 Nombre: p.Nombre,

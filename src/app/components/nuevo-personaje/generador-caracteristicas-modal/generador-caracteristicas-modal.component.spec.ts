@@ -2,6 +2,8 @@ import { Raza } from 'src/app/interfaces/raza';
 import { NuevoPersonajeService } from 'src/app/services/nuevo-personaje.service';
 import { GeneradorCaracteristicasModalComponent } from './generador-caracteristicas-modal.component';
 
+const GENERADOR_CONFIG_STORAGE_KEY = 'fichas35.nuevoPersonaje.generador.config.v1';
+
 function crearRazaMock(pierdeConstitucion = false): Raza {
     return {
         Id: 1,
@@ -113,11 +115,17 @@ describe('GeneradorCaracteristicasModalComponent', () => {
     let component: GeneradorCaracteristicasModalComponent;
 
     beforeEach(() => {
+        localStorage.removeItem(GENERADOR_CONFIG_STORAGE_KEY);
+
         service = new NuevoPersonajeService();
         service.seleccionarRaza(crearRazaMock(false));
         component = new GeneradorCaracteristicasModalComponent(service);
         component.raza = service.RazaSeleccionada!;
         component.pierdeConstitucion = false;
+    });
+
+    afterEach(() => {
+        localStorage.removeItem(GENERADOR_CONFIG_STORAGE_KEY);
     });
 
     it('expone minimos de 3 a 13', () => {
@@ -126,39 +134,51 @@ describe('GeneradorCaracteristicasModalComponent', () => {
         expect(component.minimos.length).toBe(11);
     });
 
-    it('usa el subtítulo actualizado del generador', () => {
-        expect(component.subtitulo).toBe('Elige una de estas tres tablas de tiradas. Han sido aleatorizadas según la tirada mínima');
+    it('expone selector de tablas permitidas de 1 a 5', () => {
+        expect(component.tablasPermitidasOpciones).toEqual([1, 2, 3, 4, 5]);
     });
 
-    it('fija tabla y crea pool de 6 valores', () => {
+    it('seleccionar tabla crea pool de 6 valores inmediatamente', () => {
         component.seleccionarTabla(1);
-        component.fijarOReiniciar();
 
-        expect(component.estado.tablaFijada).toBeTrue();
+        expect(component.estado.tablaSeleccionada).toBe(1);
         expect(component.estado.poolDisponible.length).toBe(6);
     });
 
-    it('reiniciar limpia asignaciones y desbloquea tabla', () => {
+    it('seleccionar otra tabla reinicia asignaciones y cambia la selección activa', () => {
         component.seleccionarTabla(1);
-        component.fijarOReiniciar();
         service.asignarDesdePoolACaracteristica('Fuerza', 0);
 
-        component.fijarOReiniciar();
+        component.seleccionarTabla(2);
 
-        expect(component.estado.tablaFijada).toBeFalse();
+        expect(component.estado.tablaSeleccionada).toBe(2);
+        expect(component.estado.asignaciones.Fuerza).toBeNull();
+        expect(component.estado.poolDisponible).toEqual(service.getTiradasTabla(2));
+    });
+
+    it('cambiar tirada minima resetea selección, pool y asignaciones', () => {
+        component.seleccionarTabla(1);
+        service.asignarDesdePoolACaracteristica('Fuerza', 0);
+
+        component.onMinimoChange(10);
+
+        expect(component.estado.minimoSeleccionado).toBe(10);
         expect(component.estado.tablaSeleccionada).toBeNull();
+        expect(component.estado.poolDisponible.length).toBe(0);
         expect(component.estado.asignaciones.Fuerza).toBeNull();
     });
 
-    it('consumir valor evita reutilizar el mismo indice', () => {
+    it('cambiar tablas permitidas resetea selección, pool y asignaciones', () => {
         component.seleccionarTabla(1);
-        component.fijarOReiniciar();
+        service.asignarDesdePoolACaracteristica('Fuerza', 0);
 
-        const primera = service.asignarDesdePoolACaracteristica('Fuerza', 0);
-        const segunda = service.asignarDesdePoolACaracteristica('Destreza', 0);
+        component.onTablasPermitidasChange(5);
 
-        expect(primera).toBeTrue();
-        expect(segunda).toBeFalse();
+        expect(component.estado.tablasPermitidas).toBe(5);
+        expect(component.estado.tablaSeleccionada).toBeNull();
+        expect(component.estado.poolDisponible.length).toBe(0);
+        expect(component.estado.asignaciones.Fuerza).toBeNull();
+        expect(component.tablasVisibles.length).toBe(5);
     });
 
     it('pierde constitucion permite finalizar con 5 asignaciones', () => {
@@ -169,7 +189,6 @@ describe('GeneradorCaracteristicasModalComponent', () => {
         modalNoMuerto.pierdeConstitucion = true;
 
         modalNoMuerto.seleccionarTabla(1);
-        modalNoMuerto.fijarOReiniciar();
 
         servicioNoMuerto.asignarDesdePoolACaracteristica('Fuerza', 0);
         servicioNoMuerto.asignarDesdePoolACaracteristica('Destreza', 1);

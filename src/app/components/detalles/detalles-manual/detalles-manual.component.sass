@@ -18,7 +18,20 @@
 .manual-ref
     width: 100%
 
-    p
-        color: #d7dde2
-        white-space: pre-wrap
-        word-break: break-word
+.manual-ref-descripcion
+    color: #d7dde2
+    word-break: break-word
+    white-space: normal
+    overflow: hidden
+    text-overflow: ellipsis
+    display: -webkit-box
+    -webkit-box-orient: vertical
+    -webkit-line-clamp: 4
+
+.chip-seccion-toggle
+    cursor: pointer
+    transition: opacity 0.15s ease, filter 0.15s ease
+
+.chip-seccion-inactiva
+    opacity: 0.5
+    filter: grayscale(0.35)

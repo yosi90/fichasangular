@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { Database, getDatabase, Unsubscribe, onValue, ref, set } from '@angular/fire/database';
-import { Observable } from 'rxjs';
+import { Observable, firstValueFrom } from 'rxjs';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Personaje } from '../interfaces/personaje';
 import { environment } from 'src/environments/environment';
@@ -65,6 +65,14 @@ export class PersonajeService {
                     ModSabiduria: snapshot.child('ModSabiduria').val(),
                     Carisma: snapshot.child('Carisma').val(),
                     ModCarisma: snapshot.child('ModCarisma').val(),
+                    CaracteristicasVarios: snapshot.child('CaracteristicasVarios').val() ?? {
+                        Fuerza: [],
+                        Destreza: [],
+                        Constitucion: [],
+                        Inteligencia: [],
+                        Sabiduria: [],
+                        Carisma: [],
+                    },
                     NEP: snapshot.child('NEP').val(),
                     Experiencia: snapshot.child('Experiencia').val(),
                     Deidad: snapshot.child('Deidad').val(),
@@ -132,11 +140,16 @@ export class PersonajeService {
         return res;
     }
 
-    public async RenovarPersonajes() {
+    public async RenovarPersonajes(): Promise<boolean> {
         const db = getDatabase();
-        this.d_pjs().subscribe(
-            response => {
-                response.forEach((element: {
+        try {
+            const response = await firstValueFrom(this.d_pjs());
+            const personajes = Array.isArray(response)
+                ? response
+                : Object.values(response ?? {});
+
+            await Promise.all(
+                personajes.map((element: {
                     i: any; n: any; dcp: any; dh: any; tm: any; a: any; ca: any; an: any; cd: any; cv: any; ra: any; tc: TipoCriatura; f: any; mf: any; d: any; md: any; co: any; mco: any; int: any; mint: any; s: any; 
                     ms: any; car: any; mcar: any; de: any; ali: any; g: any; ncam: any; ntr: any; ju: any; nst: any; v: any; cor: any; na: any; vo: any; t: any; e: any; o: any; dg: any; cla: any; dom: any; stc: any; 
                     pla: any; con: any; esp: any; espX: any; rac: any; hab: any; habN: any; habC: any; habCa: any; habMc: any; habR: any; habRv: any; habX: any; habV: any; habCu: any; dotes: DoteContextual[]; ve: any; idi: any;
@@ -238,7 +251,7 @@ export class PersonajeService {
                     const ecp: [] = element.ecp.split("|").map((item: string) => item.trim()).filter((item: string) => item.length > 0);
                     const ataqueBase = `${element.a ?? 0}`;
                     const presaBase = +(ataqueBase.includes('/') ? ataqueBase.substring(0, ataqueBase.indexOf('/')) : ataqueBase);
-                    set(ref(db, `Personajes/${element.i}`), {
+                    return set(ref(db, `Personajes/${element.i}`), {
                         Nombre: element.n,
                         Personalidad: element.dcp,
                         Contexto: element.dh,
@@ -309,25 +322,26 @@ export class PersonajeService {
                         Disciplina_especialista: disciplina_esp,
                         Disciplina_prohibida: element.disp,
                         Escuelas_prohibidas: ecp
-                    })
-                });
-                Swal.fire({
-                    icon: 'success',
-                    title: 'Listado de personajes actualizado con éxito',
-                    showConfirmButton: true,
-                    timer: 2000
-                });
-            },
-            
-            (error: any) => {
-                Swal.fire({
-                    icon: 'warning',
-                    title: 'Error al actualizar el listado de personajes',
-                    text: error.message,
-                    showConfirmButton: true
-                });
-            }
-        );
+                    });
+                })
+            );
+
+            Swal.fire({
+                icon: 'success',
+                title: 'Listado de personajes actualizado con éxito',
+                showConfirmButton: true,
+                timer: 2000
+            });
+            return true;
+        } catch (error: any) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Error al actualizar el listado de personajes',
+                text: error?.message ?? 'Error no identificado',
+                showConfirmButton: true
+            });
+            return false;
+        }
     }
 }
 

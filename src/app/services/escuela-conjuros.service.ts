@@ -1,7 +1,7 @@
 import { HttpClient } from "@angular/common/http";
 import { Injectable } from "@angular/core";
 import { Database, getDatabase, Unsubscribe, onValue, ref, set } from '@angular/fire/database';
-import { Observable } from "rxjs";
+import { Observable, firstValueFrom } from "rxjs";
 import { environment } from "src/environments/environment";
 import Swal from "sweetalert2";
 import { EscuelaConjuros } from "../interfaces/escuela-conjuros";
@@ -75,36 +75,43 @@ export class EscuelaConjurosService {
         return res;
     }
 
-    public async RenovarEscuelas() {
+    public async RenovarEscuelas(): Promise<boolean> {
         const db_instance = getDatabase();
-        this.syncEscuelas().subscribe(
-            response => {
-                response.forEach((element: {
+        try {
+            const response = await firstValueFrom(this.syncEscuelas());
+            const escuelas = Array.isArray(response)
+                ? response
+                : Object.values(response ?? {});
+
+            await Promise.all(
+                escuelas.map((element: {
                     i: number; n: string; ne: string; p: boolean;
                 }) => {
-                    set(
+                    return set(
                         ref(db_instance, `Escuelas/${element.i}`), {
                         Id: element.i,
                         Nombre: element.n,
                         Nombre_especial: element.ne,
                         Prohibible: element.p
                     });
-                });
-                Swal.fire({
-                    icon: 'success',
-                    title: 'Listado de escuelas actualizado con éxito',
-                    showConfirmButton: true,
-                    timer: 2000
-                });
-            },
-            (error: any) => {
-                Swal.fire({
-                    icon: 'warning',
-                    title: 'Error al actualizar el listado de escuelas',
-                    text: error.message,
-                    showConfirmButton: true
-                });
-            }
-        );
+                })
+            );
+
+            Swal.fire({
+                icon: 'success',
+                title: 'Listado de escuelas actualizado con éxito',
+                showConfirmButton: true,
+                timer: 2000
+            });
+            return true;
+        } catch (error: any) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Error al actualizar el listado de escuelas',
+                text: error?.message ?? 'Error no identificado',
+                showConfirmButton: true
+            });
+            return false;
+        }
     }
 }

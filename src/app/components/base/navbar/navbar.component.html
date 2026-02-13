@@ -15,6 +15,10 @@
             {{errorState}}
         </p>
 
+        <p class="menu-estado text-warning" *ngIf="!isLoading && !errorState && fallbackNotice">
+            {{fallbackNotice}}
+        </p>
+
         <p class="menu-estado" *ngIf="!isLoading && !errorState && manuales.length === 0">
             No hay manuales en cache. Sincroniza en Admin panel.
         </p>
@@ -33,10 +37,8 @@
                 </div>
                 <div class="manual-chips">
                     <span class="chip chip-categoria" *ngFor="let categoria of getCategorias(manual)">
-                        {{categoria}}
-                    </span>
-                    <span class="chip chip-categoria" *ngIf="getCategorias(manual).length === 0">
-                        Sin categorías
+                        <mat-icon class="chip-categoria-icon">{{categoria.icono}}</mat-icon>
+                        {{categoria.label}}
                     </span>
                 </div>
             </div>

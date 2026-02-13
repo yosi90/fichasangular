@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { Database, getDatabase, Unsubscribe, onValue, ref, set } from '@angular/fire/database';
-import { Observable } from 'rxjs';
+import { Observable, firstValueFrom } from 'rxjs';
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { environment } from 'src/environments/environment';
 import Swal from 'sweetalert2';
@@ -110,29 +110,36 @@ export class ManualService {
         return this.http.get(`${environment.apiUrl}manuales`);
     }
 
-    public async RenovarManuales() {
+    public async RenovarManuales(): Promise<boolean> {
         const db = getDatabase();
-        this.syncManuales().subscribe(
-            response => {
-                response.forEach((raw: any) => {
+        try {
+            const response = await firstValueFrom(this.syncManuales());
+            const manuales = Array.isArray(response)
+                ? response
+                : Object.values(response ?? {});
+
+            await Promise.all(
+                manuales.map((raw: any) => {
                     const manual = normalizeManual(raw);
-                    set(ref(db, `Manuales/${manual.Id}`), manual);
-                });
-                Swal.fire({
-                    icon: 'success',
-                    title: 'Listado de manuales actualizado con éxito',
-                    showConfirmButton: true,
-                    timer: 2000
-                });
-            },
-            (error: any) => {
-                Swal.fire({
-                    icon: 'warning',
-                    title: 'Error al actualizar el listado de manuales',
-                    text: error.message,
-                    showConfirmButton: true
-                });
-            }
-        );
+                    return set(ref(db, `Manuales/${manual.Id}`), manual);
+                })
+            );
+
+            Swal.fire({
+                icon: 'success',
+                title: 'Listado de manuales actualizado con éxito',
+                showConfirmButton: true,
+                timer: 2000
+            });
+            return true;
+        } catch (error: any) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Error al actualizar el listado de manuales',
+                text: error?.message ?? 'Error no identificado',
+                showConfirmButton: true
+            });
+            return false;
+        }
     }
 }

@@ -19,8 +19,10 @@
                     </mat-select>
                 </mat-form-field>
             </div>
-            <mat-chip-option #razasHomebrew color="warn" class="mt-4 mb-1"
-                (click)="$event.stopPropagation(); AlternarRazasHombrew(razasHomebrew.value);">{{anuncioRazasHomebrew}}</mat-chip-option>
+            <mat-chip-option color="warn" class="mt-4 mb-1"
+                [selected]="homebrewActivo"
+                [disabled]="homebrewBloqueado"
+                (click)="$event.stopPropagation(); AlternarRazasHombrew();">{{anuncioHomebrew}}</mat-chip-option>
         </mat-menu>
 
         <table id="razas" #tablaRazas mat-table [dataSource]="razasDS" matSort
@@ -40,8 +42,8 @@
                         </p>
                     </div>
                     <div class="d-flex justify-content-center align-items-center" *ngIf="column == 'Dgs_adicionales'">
-                        <p class="text-center mb-0" [ngClass]="element[column].Cantidad > 0 ? 'd-initial sombra3d-sm rounded px-2 py-1 bad' : ''">
-                            {{element['Dgs_adicionales'].Cantidad > 0 ? '+' + element[column].Cantidad : ''}}{{element[column].Dado}}
+                        <p class="text-center mb-0" [ngClass]="getDgsCantidad(element[column]) > 0 ? 'd-initial sombra3d-sm rounded px-2 py-1 bad' : ''">
+                            {{getDgsCantidad(element[column]) > 0 ? '+' + getDgsCantidad(element[column]) : ''}}{{getDgsDado(element[column])}}
                         </p>
                     </div>
                     <button mat-stroked-button matTooltip="Click para ver esta raza" [matTooltipShowDelay]="200" *ngIf="column == 'Nombre'" color="accent" class="d-flex justify-content-start sombra3d w-100"
@@ -49,24 +51,24 @@
                         <mat-icon>read_more</mat-icon>
                         {{element[column]}}
                     </button>
-                    <div class="d-flex justify-content-center align-items-center" *ngIf="column == 'Modificadores'">
-                        <p class="d-initial sombra3d-sm rounded p-1 me-1 mb-0" *ngIf="element[column].Fuerza != 0" [ngClass]="element[column].Fuerza > 0 ? 'good' : 'bad'">
-                            {{element[column].Fuerza > 0 ? 'FUE +' + element[column].Fuerza : 'FUE ' + element[column].Fuerza}}
+                    <div class="d-flex justify-content-center align-items-center modificadores-cell" *ngIf="column == 'Modificadores'">
+                        <p class="d-initial sombra3d-sm rounded p-1 mb-0 mod-chip" *ngIf="getModificador(element[column], 'Fuerza') != 0" [ngClass]="getModificador(element[column], 'Fuerza') > 0 ? 'good' : 'bad'">
+                            {{getModificador(element[column], 'Fuerza') > 0 ? 'FUE +' + getModificador(element[column], 'Fuerza') : 'FUE ' + getModificador(element[column], 'Fuerza')}}
                         </p>
-                        <p class="d-initial sombra3d-sm rounded p-1 me-1 mb-0" *ngIf="element[column].Destreza != 0" [ngClass]="element[column].Destreza > 0 ? 'good' : 'bad'">
-                            {{element[column].Destreza > 0 ? 'DES +' + element[column].Destreza : 'DES ' + element[column].Destreza}}
+                        <p class="d-initial sombra3d-sm rounded p-1 mb-0 mod-chip" *ngIf="getModificador(element[column], 'Destreza') != 0" [ngClass]="getModificador(element[column], 'Destreza') > 0 ? 'good' : 'bad'">
+                            {{getModificador(element[column], 'Destreza') > 0 ? 'DES +' + getModificador(element[column], 'Destreza') : 'DES ' + getModificador(element[column], 'Destreza')}}
                         </p>
-                        <p class="d-initial sombra3d-sm rounded p-1 me-1 mb-0" *ngIf="element[column].Constitucion != 0" [ngClass]="element[column].Constitucion > 0 ? 'good' : 'bad'">
-                            {{element[column].Constitucion > 0 ? 'CON +' + element[column].Constitucion : 'CON ' + element[column].Constitucion}}
+                        <p class="d-initial sombra3d-sm rounded p-1 mb-0 mod-chip" *ngIf="getModificador(element[column], 'Constitucion') != 0" [ngClass]="getModificador(element[column], 'Constitucion') > 0 ? 'good' : 'bad'">
+                            {{getModificador(element[column], 'Constitucion') > 0 ? 'CON +' + getModificador(element[column], 'Constitucion') : 'CON ' + getModificador(element[column], 'Constitucion')}}
                         </p>
-                        <p class="d-initial sombra3d-sm rounded p-1 me-1 mb-0" *ngIf="element[column].Inteligencia != 0" [ngClass]="element[column].Inteligencia > 0 ? 'good' : 'bad'">
-                            {{element[column].Inteligencia > 0 ? 'INT +' + element[column].Inteligencia : 'INT ' + element[column].Inteligencia}}
+                        <p class="d-initial sombra3d-sm rounded p-1 mb-0 mod-chip" *ngIf="getModificador(element[column], 'Inteligencia') != 0" [ngClass]="getModificador(element[column], 'Inteligencia') > 0 ? 'good' : 'bad'">
+                            {{getModificador(element[column], 'Inteligencia') > 0 ? 'INT +' + getModificador(element[column], 'Inteligencia') : 'INT ' + getModificador(element[column], 'Inteligencia')}}
                         </p>
-                        <p class="d-initial sombra3d-sm rounded p-1 me-1 mb-0" *ngIf="element[column].Sabiduria != 0" [ngClass]="element[column].Sabiduria > 0 ? 'good' : 'bad'">
-                            {{element[column].Sabiduria > 0 ? 'SAB +' + element[column].Sabiduria : 'SAB ' + element[column].Sabiduria}}
+                        <p class="d-initial sombra3d-sm rounded p-1 mb-0 mod-chip" *ngIf="getModificador(element[column], 'Sabiduria') != 0" [ngClass]="getModificador(element[column], 'Sabiduria') > 0 ? 'good' : 'bad'">
+                            {{getModificador(element[column], 'Sabiduria') > 0 ? 'SAB +' + getModificador(element[column], 'Sabiduria') : 'SAB ' + getModificador(element[column], 'Sabiduria')}}
                         </p>
-                        <p class="d-initial sombra3d-sm rounded p-1 me-1 mb-0" *ngIf="element[column].Carisma != 0" [ngClass]="element[column].Carisma > 0 ? 'good' : 'bad'">
-                            {{element[column].Carisma > 0 ? 'CAR +' + element[column].Carisma : 'CAR ' + element[column].Carisma}}
+                        <p class="d-initial sombra3d-sm rounded p-1 mb-0 mod-chip" *ngIf="getModificador(element[column], 'Carisma') != 0" [ngClass]="getModificador(element[column], 'Carisma') > 0 ? 'good' : 'bad'">
+                            {{getModificador(element[column], 'Carisma') > 0 ? 'CAR +' + getModificador(element[column], 'Carisma') : 'CAR ' + getModificador(element[column], 'Carisma')}}
                         </p>
                         <!-- <p class="d-initial sombra3d-sm rounded p-1 me-1 mb-0"
                             *ngIf="element[column].Fuerza == 0 && element[column].Destreza == 0 && element[column].Constitucion == 0 

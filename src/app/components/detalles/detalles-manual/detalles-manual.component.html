@@ -9,7 +9,8 @@
                 <mat-chip class="h-auto sombra3d-sm m-1">
                     Categorías
                     <mat-chip class="sombra3d-sm m-1" *ngFor="let categoria of getCategorias(manual)">
-                        {{categoria}}
+                        <mat-icon class="me-1">{{categoria.icono}}</mat-icon>
+                        {{categoria.label}}
                     </mat-chip>
                     <mat-chip class="sombra3d-sm m-1" *ngIf="getCategorias(manual).length === 0">
                         Sin categorías
@@ -28,7 +29,10 @@
                     Resumen por sección
                     <mat-icon class="ms-2">view_module</mat-icon>
                 </mat-chip>
-                <mat-chip class="h-auto sombra3d-sm m-1" *ngFor="let seccion of seccionesRender">
+                <mat-chip class="h-auto sombra3d-sm m-1 chip-seccion-toggle"
+                    [ngClass]="!isSeccionActiva(seccion.key) ? 'chip-seccion-inactiva' : ''"
+                    (click)="toggleSeccion(seccion.key)"
+                    *ngFor="let seccion of seccionesRender">
                     {{seccion.label}}
                     <mat-chip class="sombra3d-sm m-1">{{getReferenciasValidas(manual, seccion.key).length}}</mat-chip>
                 </mat-chip>
@@ -42,7 +46,7 @@
             </div>
 
             <div class="d-flex flex-wrap align-items-center sombra-caja-sm rounded p-2 my-2 manual-bloque"
-                *ngFor="let bloque of bloquesRender"
+                *ngFor="let bloque of bloquesFiltrados"
                 >
                     <mat-chip class="h-auto w-100 sombra-caja-sm py-2 m-1 mb-2 chip-titulo">
                         {{bloque.seccion.label}}
@@ -57,7 +61,7 @@
                 </mat-chip>
 
                 <article class="manual-ref m-1 p-2">
-                    <p class="mb-1 mt-2" *ngIf="bloque.referencia.Descripcion">{{bloque.referencia.Descripcion}}</p>
+                    <p class="mb-1 mt-2 manual-ref-descripcion" *ngIf="bloque.referencia.Descripcion">{{bloque.referencia.Descripcion}}</p>
                     <mat-chip-set class="m-0" *ngIf="getCamposExtra(bloque.referencia).length > 0">
                         <mat-chip class="sombra3d-sm m-1" *ngFor="let extra of getCamposExtra(bloque.referencia)">
                             {{formatearExtraKey(extra.key)}}: {{extra.value}}

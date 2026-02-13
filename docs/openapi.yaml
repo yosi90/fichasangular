@@ -27,6 +27,8 @@ tags:
   - name: plantillas
   - name: ventajas
   - name: desventajas
+  - name: habilidades
+  - name: idiomas
 paths:
   /verify:
     get:
@@ -461,6 +463,48 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/AlineamientoResumen'
+
+  /habilidades:
+    get:
+      tags: [habilidades]
+      summary: Lista de habilidades basicas (id_habilidad > 0)
+      responses:
+        '200':
+          description: Lista de habilidades basicas
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/HabilidadBasicaDetalle'
+
+  /habilidades/custom:
+    get:
+      tags: [habilidades]
+      summary: Lista de habilidades custom (id_habilidad > 0)
+      responses:
+        '200':
+          description: Lista de habilidades custom
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/HabilidadBasicaDetalle'
+
+  /idiomas:
+    get:
+      tags: [idiomas]
+      summary: Lista de idiomas
+      responses:
+        '200':
+          description: Lista de idiomas
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/IdiomaDetalle'
 
   /dotes:
     get:
@@ -928,6 +972,37 @@ components:
           $ref: '#/components/schemas/DoteDetalle'
         Contexto:
           $ref: '#/components/schemas/DoteContexto'
+
+    HabilidadBasicaDetalle:
+      type: object
+      properties:
+        Id_habilidad: { type: integer }
+        Nombre: { type: string }
+        Id_caracteristica: { type: integer }
+        Caracteristica: { type: string }
+        Descripcion: { type: string }
+        Soporta_extra: { type: boolean }
+        Entrenada: { type: boolean }
+        Extras:
+          type: array
+          items:
+            $ref: '#/components/schemas/HabilidadExtraRef'
+
+    HabilidadExtraRef:
+      type: object
+      properties:
+        Id_extra: { type: integer }
+        Extra: { type: string }
+        Descripcion: { type: string }
+
+    IdiomaDetalle:
+      type: object
+      properties:
+        Id: { type: integer }
+        Nombre: { type: string }
+        Descripcion: { type: string }
+        Secreto: { type: boolean }
+        Oficial: { type: boolean }
 
     EscuelaDetalle:
       type: object

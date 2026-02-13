@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { Database, getDatabase, Unsubscribe, onValue, ref, set } from '@angular/fire/database';
-import { Observable } from 'rxjs';
+import { Observable, firstValueFrom } from 'rxjs';
 import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
 import { Campana } from '../interfaces/campaña';
 import { environment } from 'src/environments/environment';
@@ -67,66 +67,72 @@ export class CampanaService {
         return campañas;
     }
 
-    public async RenovarCampañasFirebase() {
+    public async RenovarCampañasFirebase(): Promise<boolean> {
         const db = getDatabase();
-        let campañas: Campana[] = [];
+        const campañas: Campana[] = [];
 
-        this.getCampanas().subscribe(
-            async (response: any) => {
-                for (const cam of response) {
-                    let tramas: { Id: any; Nombre: any; Subtramas: { Id: any; Nombre: any; }[]; }[] = [];
+        try {
+            const response = await firstValueFrom(this.getCampanas());
+            const campanasRaw = Array.isArray(response)
+                ? response
+                : Object.values(response ?? {});
 
-                    const tramasResponse = await this.getTramas(cam.i).toPromise();
+            for (const cam of campanasRaw) {
+                const tramas: { Id: any; Nombre: any; Subtramas: { Id: any; Nombre: any; }[]; }[] = [];
+                const tramasResponse = await firstValueFrom(this.getTramas(cam.i));
+                const tramasRaw = Array.isArray(tramasResponse)
+                    ? tramasResponse
+                    : Object.values(tramasResponse ?? {});
 
-                    for (const tra of tramasResponse) {
-                        let subTramas: { Id: any; Nombre: any; }[] = [];
+                for (const tra of tramasRaw) {
+                    const subTramasResponse = await firstValueFrom(this.getSubtramas(tra.i));
+                    const subTramasRaw = Array.isArray(subTramasResponse)
+                        ? subTramasResponse
+                        : Object.values(subTramasResponse ?? {});
+                    const subTramas = subTramasRaw.map((sub: any) => ({
+                        Id: sub.i,
+                        Nombre: sub.n,
+                    }));
 
-                        const subTramasResponse = await this.getSubtramas(tra.i).toPromise();
-
-                        for (const sub of subTramasResponse) {
-                            subTramas.push({
-                                Id: sub.i,
-                                Nombre: sub.n
-                            });
-                        }
-
-                        tramas.push({
-                            Id: tra.i,
-                            Nombre: tra.n,
-                            Subtramas: subTramas
-                        });
-                    }
-
-                    campañas.push({
-                        Id: cam.i,
-                        Nombre: cam.n,
-                        Tramas: tramas
+                    tramas.push({
+                        Id: tra.i,
+                        Nombre: tra.n,
+                        Subtramas: subTramas,
                     });
                 }
-                if (campañas.length > 0) {
-                    campañas.forEach((element) => {
-                        set(ref(db, `Campañas/${element.Id}`), {
-                            Nombre: element.Nombre,
-                            Tramas: element.Tramas
-                        })
-                    })
-                }
-                Swal.fire({
-                    icon: 'success',
-                    title: 'Listado de campañas, tramas y subtramas actualizado con éxito',
-                    showConfirmButton: true,
-                    timer: 2000
-                });
-            },
-            (error: any) => {
-                Swal.fire({
-                    icon: 'warning',
-                    title: 'Error al actualizar el listado de campañas, ttramas y subtramas',
-                    text: error.message,
-                    showConfirmButton: true
+
+                campañas.push({
+                    Id: cam.i,
+                    Nombre: cam.n,
+                    Tramas: tramas,
                 });
             }
-        );
+
+            await Promise.all(
+                campañas.map((element) =>
+                    set(ref(db, `Campañas/${element.Id}`), {
+                        Nombre: element.Nombre,
+                        Tramas: element.Tramas
+                    })
+                )
+            );
+
+            Swal.fire({
+                icon: 'success',
+                title: 'Listado de campañas, tramas y subtramas actualizado con éxito',
+                showConfirmButton: true,
+                timer: 2000
+            });
+            return true;
+        } catch (error: any) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Error al actualizar el listado de campañas, ttramas y subtramas',
+                text: error?.message ?? 'Error no identificado',
+                showConfirmButton: true
+            });
+            return false;
+        }
     }
 
 }

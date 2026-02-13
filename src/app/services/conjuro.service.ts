@@ -1,7 +1,7 @@
 import { HttpClient } from "@angular/common/http";
 import { Injectable } from "@angular/core";
 import { Database, getDatabase, Unsubscribe, onValue, ref, set } from '@angular/fire/database';
-import { Observable } from "rxjs";
+import { Observable, firstValueFrom } from "rxjs";
 import { environment } from "src/environments/environment";
 import Swal from "sweetalert2";
 import { Conjuro } from "../interfaces/conjuro";
@@ -125,15 +125,20 @@ export class ConjuroService {
         return res;
     }
 
-    public async RenovarConjuros() {
+    public async RenovarConjuros(): Promise<boolean> {
         const db_instance = getDatabase();
-        this.syncConjuros().subscribe(
-            response => {
-                response.forEach((element: {
+        try {
+            const response = await firstValueFrom(this.syncConjuros());
+            const conjuros = Array.isArray(response)
+                ? response
+                : Object.values(response ?? {});
+
+            await Promise.all(
+                conjuros.map((element: {
                     i: number; n: string; d: string; tl: any; ac: any; es: any; di: any; m: any; ob: any; ef: any; ar: any; arc: any; div: any; psi: any; alm: any; com: any; dur: any; t_s: any; 
                     r_c: any; r_p: any; d_c: any; per: any; pp: any; da: any; o: any; des: any; ncl: any; nd: any; ndis: any; coms: any;
                 }) => {
-                    set(
+                    return set(
                         ref(db_instance, `Conjuros/${element.i}`), {
                         Id: element.i,
                         Nombre: element.n,
@@ -165,22 +170,24 @@ export class ConjuroService {
                         Componentes: element.coms,
                         Oficial: element.o,
                     });
-                });
-                Swal.fire({
-                    icon: 'success',
-                    title: 'Listado de conjuros actualizado con éxito',
-                    showConfirmButton: true,
-                    timer: 2000
-                });
-            },
-            (error: any) => {
-                Swal.fire({
-                    icon: 'warning',
-                    title: 'Error al actualizar el listado de conjuros',
-                    text: error.message,
-                    showConfirmButton: true
-                });
-            }
-        );
+                })
+            );
+
+            Swal.fire({
+                icon: 'success',
+                title: 'Listado de conjuros actualizado con éxito',
+                showConfirmButton: true,
+                timer: 2000
+            });
+            return true;
+        } catch (error: any) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Error al actualizar el listado de conjuros',
+                text: error?.message ?? 'Error no identificado',
+                showConfirmButton: true
+            });
+            return false;
+        }
     }
 }

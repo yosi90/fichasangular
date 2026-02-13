@@ -4,7 +4,6 @@ mat-expansion-panel
     border-bottom-left-radius: 0
     border-bottom-right-radius: 0
     box-shadow: 3px 3px 10px black
-
     padding: 0
     margin-bottom: 1px
 
@@ -18,30 +17,49 @@ mat-expansion-panel
 
     mat-expansion-panel-header button
         justify-content: left
-
         position: absolute
         right: 0
         bottom: 0
         left: 0
-
         height: 100%
         width: 100%
-
         background-color: $primary
         font-weight: 500
 
     ::ng-deep .mat-expansion-panel-body
         padding: 0
 
-        button
-            // justify-content: right
+.sync-list
+    max-height: 56vh
+    overflow-y: auto
 
-            width: 100%
+.sync-item-btn
+    width: 100%
+    border-radius: 0
+    display: flex
+    justify-content: space-between
+    align-items: center
+    text-align: left
 
-            border-radius: 0
+.sync-item-label
+    flex: 1
+    text-align: left
+    white-space: nowrap
+    overflow: hidden
+    text-overflow: ellipsis
 
-        button:nth-child(even):not([disabled]):not([mat-raised-button])
-            background-color: #ccc
+.sync-item-date
+    margin-left: 12px
+    font-size: 12px
+    opacity: 0.9
+    white-space: nowrap
 
-        button:nth-child(odd):not([disabled]):not([mat-raised-button])
-            background-color: lightgray
+@media (max-width: 768px)
+    .sync-list
+        max-height: 45vh
+
+    .sync-item-btn
+        font-size: 13px
+
+    .sync-item-date
+        font-size: 11px

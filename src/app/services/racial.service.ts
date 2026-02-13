@@ -1,7 +1,7 @@
 import { HttpClient, HttpErrorResponse } from "@angular/common/http";
 import { Injectable } from "@angular/core";
 import { Database, Unsubscribe, getDatabase, onValue, ref, set } from "@angular/fire/database";
-import { Observable } from "rxjs";
+import { Observable, firstValueFrom } from "rxjs";
 import Swal from "sweetalert2";
 import { environment } from "src/environments/environment";
 import { RacialDetalle } from "../interfaces/racial";
@@ -124,39 +124,42 @@ export class RacialService {
         return this.http.get(`${environment.apiUrl}razas/raciales`);
     }
 
-    public async RenovarRaciales() {
+    public async RenovarRaciales(): Promise<boolean> {
         const dbInstance = getDatabase();
-        this.syncRaciales().subscribe(
-            response => {
-                toArray(response).forEach((raw: any) => {
+        try {
+            const response = await firstValueFrom(this.syncRaciales());
+            await Promise.all(
+                toArray(response).map((raw: any) => {
                     const racial = normalizeRacial(raw);
-                    set(ref(dbInstance, `Raciales/${racial.Id}`), racial);
-                });
+                    return set(ref(dbInstance, `Raciales/${racial.Id}`), racial);
+                })
+            );
+
+            Swal.fire({
+                icon: "success",
+                title: "Listado de raciales actualizado con éxito",
+                showConfirmButton: true,
+                timer: 2000
+            });
+            return true;
+        } catch (error: any) {
+            const httpError = error as HttpErrorResponse;
+            if (httpError.status === 404) {
                 Swal.fire({
-                    icon: "success",
-                    title: "Listado de raciales actualizado con éxito",
-                    showConfirmButton: true,
-                    timer: 2000
+                    icon: "warning",
+                    title: "Endpoint de raciales no disponible",
+                    text: "No se encontró /razas/raciales en la API",
+                    showConfirmButton: true
                 });
-            },
-            (error: any) => {
-                const httpError = error as HttpErrorResponse;
-                if (httpError.status === 404) {
-                    Swal.fire({
-                        icon: "warning",
-                        title: "Endpoint de raciales no disponible",
-                        text: "No se encontró /razas/raciales en la API",
-                        showConfirmButton: true
-                    });
-                } else {
-                    Swal.fire({
-                        icon: "warning",
-                        title: "Error al actualizar el listado de raciales",
-                        text: error.message,
-                        showConfirmButton: true
-                    });
-                }
+            } else {
+                Swal.fire({
+                    icon: "warning",
+                    title: "Error al actualizar el listado de raciales",
+                    text: error?.message ?? "Error no identificado",
+                    showConfirmButton: true
+                });
             }
-        );
+            return false;
+        }
     }
 }

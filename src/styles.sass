@@ -15,3 +15,8 @@ body
 body.swal2-height-auto
     height: 100vh !important
     max-height: 100vh !important
+
+// Evita saltos horizontales/verticales cuando SweetAlert2 añade clases al body.
+body.swal2-shown
+    overflow: auto !important
+    padding-right: 0 !important

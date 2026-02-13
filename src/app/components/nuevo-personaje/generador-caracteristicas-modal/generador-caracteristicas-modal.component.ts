@@ -16,8 +16,8 @@ export class GeneradorCaracteristicasModalComponent {
     @Output() cerrar: EventEmitter<void> = new EventEmitter<void>();
     @Output() finalizar: EventEmitter<AsignacionCaracteristicas> = new EventEmitter<AsignacionCaracteristicas>();
 
-    readonly subtitulo = 'Elige una de estas tres tablas de tiradas. Han sido aleatorizadas según la tirada mínima';
     readonly minimos: number[] = Array.from({ length: 11 }, (_, i) => i + 3);
+    readonly tablasPermitidasOpciones: number[] = [1, 2, 3, 4, 5];
     readonly caracteristicas: { key: CaracteristicaKey; label: string; }[] = [
         { key: 'Fuerza', label: 'Fuerza' },
         { key: 'Destreza', label: 'Destreza' },
@@ -39,32 +39,33 @@ export class GeneradorCaracteristicasModalComponent {
         return this.nuevoPSvc.puedeFinalizarGenerador();
     }
 
-    get tabla1(): number[] {
-        return this.nuevoPSvc.getTiradasTabla(1);
-    }
-
-    get tabla2(): number[] {
-        return this.nuevoPSvc.getTiradasTabla(2);
-    }
-
-    get tabla3(): number[] {
-        return this.nuevoPSvc.getTiradasTabla(3);
+    get tituloModal(): string {
+        const nombre = this.nuevoPSvc.PersonajeCreacion?.Nombre?.trim() ?? '';
+        return nombre.length > 0
+            ? `Repartiendo las características de ${nombre}`
+            : 'Repartiendo las características de [Nombre del personaje]';
     }
 
     onMinimoChange(value: number): void {
         this.nuevoPSvc.setMinimoGenerador(Number(value));
     }
 
-    seleccionarTabla(tabla: 1 | 2 | 3): void {
-        this.nuevoPSvc.seleccionarTablaGenerador(tabla);
+    onTablasPermitidasChange(value: number): void {
+        this.nuevoPSvc.setTablasPermitidasGenerador(Number(value));
     }
 
-    fijarOReiniciar(): void {
-        if (!this.estado.tablaFijada) {
-            this.nuevoPSvc.fijarTablaGenerador();
-            return;
-        }
-        this.nuevoPSvc.resetearGeneradorCaracteristicas();
+    get tablasVisibles(): { numero: number; valores: number[]; }[] {
+        return Array.from({ length: this.estado.tablasPermitidas }, (_, i) => {
+            const numero = i + 1;
+            return {
+                numero,
+                valores: this.nuevoPSvc.getTiradasTabla(numero),
+            };
+        });
+    }
+
+    seleccionarTabla(tabla: number): void {
+        this.nuevoPSvc.seleccionarTablaGenerador(tabla);
     }
 
     permitirSoltar(event: DragEvent): void {
@@ -93,6 +94,17 @@ export class GeneradorCaracteristicasModalComponent {
         this.nuevoPSvc.asignarDesdePoolACaracteristica(caracteristica, index);
     }
 
+    onClickCaracteristica(caracteristica: CaracteristicaKey): void {
+        this.nuevoPSvc.desasignarCaracteristicaGenerador(caracteristica);
+    }
+
+    onClickPoolItem(index: number): void {
+        if (this.estado.poolDisponible[index] >= 0) {
+            return;
+        }
+        this.nuevoPSvc.desasignarDesdeIndicePoolGenerador(index);
+    }
+
     cerrarModal(): void {
         this.cerrar.emit();
     }
@@ -105,7 +117,7 @@ export class GeneradorCaracteristicasModalComponent {
         this.finalizar.emit(this.nuevoPSvc.getAsignacionesGenerador());
     }
 
-    isTablaSeleccionada(tabla: 1 | 2 | 3): boolean {
+    isTablaSeleccionada(tabla: number): boolean {
         return this.estado.tablaSeleccionada === tabla;
     }
 
@@ -119,7 +131,7 @@ export class GeneradorCaracteristicasModalComponent {
     }
 
     caracteristicaBloqueada(caracteristica: CaracteristicaKey): boolean {
-        if (!this.estado.tablaFijada) {
+        if (this.estado.tablaSeleccionada === null) {
             return true;
         }
 
@@ -127,6 +139,10 @@ export class GeneradorCaracteristicasModalComponent {
             return true;
         }
 
+        return this.estado.asignaciones[caracteristica] !== null;
+    }
+
+    caracteristicaConValor(caracteristica: CaracteristicaKey): boolean {
         return this.estado.asignaciones[caracteristica] !== null;
     }
 
@@ -141,5 +157,9 @@ export class GeneradorCaracteristicasModalComponent {
     getPoolValor(index: number): string {
         const value = this.estado.poolDisponible[index];
         return value < 0 ? 'Usado' : `${value}`;
+    }
+
+    isPoolItemUsado(index: number): boolean {
+        return this.estado.poolDisponible[index] < 0;
     }
 }

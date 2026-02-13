@@ -158,6 +158,13 @@
     gap: 10px
     align-items: center
 
+.filtro-chip
+    align-self: center
+    display: inline-flex
+    align-items: center
+    margin-top: -22px
+    box-shadow: rgba(0, 0, 0, 0.09) 0px 1px .5px, rgba(0, 0, 0, 0.09) 0px 2px 1px, rgba(0, 0, 0, 0.09) 0px 4px 2px, rgba(0, 0, 0, 0.09) 0px 8px 4px, rgba(0, 0, 0, 0.09) 0px 16px 8px
+
 .plantillas-zonas
     flex: 1 1 auto
     min-height: 0
@@ -204,6 +211,101 @@ textarea
 .bad
     background-color: rgb(87, 66, 66)
 
+.ventajas-view
+    min-height: 0
+
+.homebrew-banner
+    height: auto
+    min-height: 40px
+    white-space: normal
+    line-height: 1.3
+
+    ::ng-deep .mdc-evolution-chip__action,
+    ::ng-deep .mdc-evolution-chip__action--primary
+        height: auto !important
+        width: 100% !important
+
+    ::ng-deep .mat-mdc-chip-action-label
+        display: flex !important
+        align-items: center
+        justify-content: space-between
+        gap: 8px
+        width: 100%
+        white-space: normal !important
+
+.homebrew-banner-text
+    flex: 1 1 auto
+    min-width: 0
+
+.homebrew-help-chip
+    flex: 0 0 auto
+    margin-left: auto
+    display: inline-flex
+    align-items: center
+    justify-content: center
+    width: 34px
+    height: 34px
+    border: 1px solid rgba(255, 255, 255, 0.28)
+    border-radius: 999px
+    background: rgba(0, 0, 0, 0.16)
+    color: inherit
+    cursor: pointer
+    padding: 0
+
+    mat-icon
+        font-size: 18px
+        width: 18px
+        height: 18px
+
+    &:hover
+        background: rgba(0, 0, 0, 0.24)
+
+.ventajas-resumen-barra
+    display: flex
+    flex-wrap: wrap
+    gap: 8px
+    align-items: center
+
+.chip-deficit
+    margin-left: auto
+    flex: 0 0 auto
+    width: auto
+    max-width: min(100%, 860px)
+    white-space: normal
+    line-height: 1.25
+
+.ventajas-listados
+    flex: 1 1 auto
+    min-height: 0
+
+.tabla-scroll
+    max-height: 55vh
+    overflow: auto
+
+.tabla-ventajas
+    width: 100%
+    border-collapse: collapse
+    font-size: .92rem
+
+    th, td
+        border-bottom: 1px solid rgba(255, 255, 255, 0.12)
+        padding: 6px
+        vertical-align: middle
+
+    th
+        position: sticky
+        top: 0
+        background: #323234
+        z-index: 2
+        white-space: nowrap
+
+.fila-pendiente
+    background: rgba(175, 125, 0, 0.15)
+
+.texto-pendiente
+    font-size: .8rem
+    color: #ffd36b
+
 ::ng-deep .mat-mdc-form-field-subscript-wrapper
     padding: 0 2px
 
@@ -224,3 +326,6 @@ textarea
 
     .plantillas-filtros
         grid-template-columns: 1fr
+
+    .tabla-scroll
+        max-height: 38vh

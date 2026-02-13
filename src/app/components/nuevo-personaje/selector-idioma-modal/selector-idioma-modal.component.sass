@@ -1,0 +1,51 @@
+:host
+    position: absolute
+    inset: 0
+    z-index: 60
+
+.selector-overlay
+    position: absolute
+    inset: 0
+    display: flex
+    justify-content: center
+    align-items: center
+    background: rgba(0, 0, 0, 0.6)
+    padding: 12px
+
+.selector-dialog
+    width: min(560px, 96vw)
+    max-height: 92vh
+    overflow: auto
+    background: #2f2f31
+    border: 1px solid #5f5f5f
+    border-radius: 8px
+    padding: 12px
+    display: flex
+    flex-direction: column
+    gap: 10px
+
+.selector-header
+    display: flex
+    justify-content: space-between
+    align-items: center
+
+.filtro-chip
+    width: max-content
+
+.detalle-idioma
+    font-size: .92rem
+    opacity: .9
+
+.chip-pendiente
+    text-align: center
+    font-weight: 500
+
+.chip-pendiente.ok
+    background: rgba(62, 146, 62, 0.25)
+    border: 1px solid rgba(104, 199, 104, 0.55)
+    color: #d2f3d2
+
+.selector-actions
+    display: flex
+    justify-content: flex-end
+    gap: 8px

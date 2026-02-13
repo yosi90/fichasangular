@@ -1,6 +1,7 @@
 import Swal from 'sweetalert2';
 import { Campana } from 'src/app/interfaces/campaña';
 import { Raza } from 'src/app/interfaces/raza';
+import { VentajaDetalle } from 'src/app/interfaces/ventaja';
 import { AsignacionCaracteristicas, NuevoPersonajeService } from 'src/app/services/nuevo-personaje.service';
 import { NuevoPersonajeComponent } from './nuevo-personaje.component';
 import { of } from 'rxjs';
@@ -122,6 +123,9 @@ describe('NuevoPersonajeComponent', () => {
     let nuevoPSvc: NuevoPersonajeService;
     let campanaSvcMock: any;
     let plantillaSvcMock: any;
+    let ventajaSvcMock: any;
+    let habilidadSvcMock: any;
+    let idiomaSvcMock: any;
 
     beforeEach(() => {
         nuevoPSvc = new NuevoPersonajeService();
@@ -131,7 +135,25 @@ describe('NuevoPersonajeComponent', () => {
         plantillaSvcMock = {
             getPlantillas: () => of([]),
         };
-        component = new NuevoPersonajeComponent(nuevoPSvc, campanaSvcMock, plantillaSvcMock);
+        ventajaSvcMock = {
+            getVentajas: () => of([]),
+            getDesventajas: () => of([]),
+        };
+        habilidadSvcMock = {
+            getHabilidades: () => of([]),
+            getHabilidadesCustom: () => of([]),
+        };
+        idiomaSvcMock = {
+            getIdiomas: () => of([]),
+        };
+        component = new NuevoPersonajeComponent(
+            nuevoPSvc,
+            campanaSvcMock,
+            plantillaSvcMock,
+            ventajaSvcMock,
+            habilidadSvcMock,
+            idiomaSvcMock
+        );
         component.Personaje = nuevoPSvc.PersonajeCreacion;
         component.seleccionarRaza(crearRazaMock());
         component.Personaje.Nombre = 'Aldric';
@@ -318,11 +340,121 @@ describe('NuevoPersonajeComponent', () => {
         expect(component.Personaje.ModDestreza).toBe(3);
     });
 
+    it('flujo de tabs: Plantillas -> Ventajas y desventajas', () => {
+        component.finalizarGeneracionCaracteristicas({
+            Fuerza: 14,
+            Destreza: 15,
+            Constitucion: 13,
+            Inteligencia: 12,
+            Sabiduria: 10,
+            Carisma: 8,
+        });
+        component.continuarDesdePlantillas();
+        expect(nuevoPSvc.EstadoFlujo.pasoActual).toBe('ventajas');
+        expect(component.selectedInternalTabIndex).toBe(3);
+    });
+
+    it('muestra contador de ventajas y puntos desde el estado del servicio', () => {
+        const ventaja: VentajaDetalle = {
+            Id: 10,
+            Nombre: 'Fuerte',
+            Descripcion: '',
+            Disipable: false,
+            Coste: -1,
+            Mejora: 1,
+            Caracteristica: false,
+            Fuerza: true,
+            Destreza: false,
+            Constitucion: false,
+            Inteligencia: false,
+            Sabiduria: false,
+            Carisma: false,
+            Fortaleza: false,
+            Reflejos: false,
+            Voluntad: false,
+            Iniciativa: false,
+            Duplica_oro: false,
+            Aumenta_oro: false,
+            Idioma_extra: false,
+            Manual: { Id: 0, Nombre: '', Pagina: 0 },
+            Rasgo: { Id: 0, Nombre: '', Descripcion: '' },
+            Idioma: { Id: 0, Nombre: '', Descripcion: '' },
+            Habilidad: { Id: 0, Nombre: '', Descripcion: '' },
+            Oficial: true,
+        };
+        const desventaja: VentajaDetalle = {
+            ...ventaja,
+            Id: 11,
+            Nombre: 'Miope',
+            Coste: 1,
+            Mejora: -1,
+            Fuerza: false,
+            Habilidad: { Id: 0, Nombre: 'Avistar', Descripcion: '' },
+        };
+
+        nuevoPSvc.setCatalogosVentajas([ventaja], [desventaja]);
+        component.toggleDesventajaSeleccion(desventaja);
+        component.toggleVentajaSeleccion(ventaja);
+
+        expect(component.ventajasSeleccionadasCount).toBe(1);
+        expect(component.flujoVentajas.puntosDisponibles).toBe(1);
+        expect(component.flujoVentajas.puntosRestantes).toBe(0);
+    });
+
+    it('bloquea continuar desde ventajas con déficit', () => {
+        const ventaja: VentajaDetalle = {
+            Id: 12,
+            Nombre: 'Caro',
+            Descripcion: '',
+            Disipable: false,
+            Coste: -3,
+            Mejora: 1,
+            Caracteristica: false,
+            Fuerza: true,
+            Destreza: false,
+            Constitucion: false,
+            Inteligencia: false,
+            Sabiduria: false,
+            Carisma: false,
+            Fortaleza: false,
+            Reflejos: false,
+            Voluntad: false,
+            Iniciativa: false,
+            Duplica_oro: false,
+            Aumenta_oro: false,
+            Idioma_extra: false,
+            Manual: { Id: 0, Nombre: '', Pagina: 0 },
+            Rasgo: { Id: 0, Nombre: '', Descripcion: '' },
+            Idioma: { Id: 0, Nombre: '', Descripcion: '' },
+            Habilidad: { Id: 0, Nombre: '', Descripcion: '' },
+            Oficial: true,
+        };
+        nuevoPSvc.setCatalogosVentajas([ventaja], []);
+        component.toggleVentajaSeleccion(ventaja);
+
+        expect(component.flujoVentajas.hayDeficit).toBeTrue();
+        expect(component.puedeContinuarVentajas).toBeFalse();
+    });
+
+    it('chip homebrew queda bloqueado cuando el personaje no es oficial', () => {
+        component.Personaje.Oficial = false;
+        expect(component.homebrewForzado).toBeTrue();
+        expect(component.incluirHomebrewPlantillasEfectivo).toBeTrue();
+        expect(component.incluirHomebrewVentajasEfectivo).toBeTrue();
+    });
+
     it('persistencia de modal: si vuelves al componente, mantiene estado del servicio', () => {
         nuevoPSvc.abrirModalCaracteristicas();
         nuevoPSvc.actualizarPasoActual('basicos');
 
-        const componentReabierto = new NuevoPersonajeComponent(nuevoPSvc, campanaSvcMock, plantillaSvcMock);
+        const componentReabierto = new NuevoPersonajeComponent(
+            nuevoPSvc,
+            campanaSvcMock,
+            plantillaSvcMock,
+            ventajaSvcMock,
+            habilidadSvcMock,
+            idiomaSvcMock
+        );
         componentReabierto.ngOnInit();
 
         expect(componentReabierto.modalCaracteristicasAbierto).toBeTrue();

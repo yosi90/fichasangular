@@ -1,7 +1,7 @@
 import { HttpClient } from "@angular/common/http";
 import { Injectable } from "@angular/core";
 import { Database, getDatabase, Unsubscribe, onValue, ref, set } from '@angular/fire/database';
-import { Observable } from "rxjs";
+import { Observable, firstValueFrom } from "rxjs";
 import { environment } from "src/environments/environment";
 import Swal from "sweetalert2";
 import { DisciplinaConjuros, Subdisciplinas } from "../interfaces/disciplina-conjuros";
@@ -75,36 +75,43 @@ export class DisciplinaConjurosService {
         return res;
     }
 
-    public async RenovarDisciplinas() {
+    public async RenovarDisciplinas(): Promise<boolean> {
         const db_instance = getDatabase();
-        this.syncConjuros().subscribe(
-            response => {
-                response.forEach((element: {
+        try {
+            const response = await firstValueFrom(this.syncConjuros());
+            const disciplinas = Array.isArray(response)
+                ? response
+                : Object.values(response ?? {});
+
+            await Promise.all(
+                disciplinas.map((element: {
                     i: number; n: string; ne: string; sd: Subdisciplinas[];
                 }) => {
-                    set(
+                    return set(
                         ref(db_instance, `Disciplinas/${element.i}`), {
                         Id: element.i,
                         Nombre: element.n,
                         Nombre_especial: element.ne,
                         Subdisciplinas: element.sd
                     });
-                });
-                Swal.fire({
-                    icon: 'success',
-                    title: 'Listado de disciplinas actualizado con éxito',
-                    showConfirmButton: true,
-                    timer: 2000
-                });
-            },
-            (error: any) => {
-                Swal.fire({
-                    icon: 'warning',
-                    title: 'Error al actualizar el listado de disciplinas',
-                    text: error.message,
-                    showConfirmButton: true
-                });
-            }
-        );
+                })
+            );
+
+            Swal.fire({
+                icon: 'success',
+                title: 'Listado de disciplinas actualizado con éxito',
+                showConfirmButton: true,
+                timer: 2000
+            });
+            return true;
+        } catch (error: any) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Error al actualizar el listado de disciplinas',
+                text: error?.message ?? 'Error no identificado',
+                showConfirmButton: true
+            });
+            return false;
+        }
     }
 }

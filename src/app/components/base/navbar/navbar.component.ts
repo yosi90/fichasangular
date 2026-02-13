@@ -1,6 +1,7 @@
 import { Component, OnDestroy, OnInit } from '@angular/core';
 import { MatMenuTrigger } from '@angular/material/menu';
 import { Subscription } from 'rxjs';
+import { getManualCategorias, ManualCategoriaConIcono } from 'src/app/config/manual-secciones.config';
 import { ManualAsociadoDetalle } from 'src/app/interfaces/manual-asociado';
 import { ManualesAsociadosService } from 'src/app/services/manuales-asociados.service';
 import { ManualVistaNavigationService } from 'src/app/services/manual-vista-navigation.service';
@@ -14,7 +15,9 @@ export class NavbarComponent implements OnInit, OnDestroy {
     manuales: ManualAsociadoDetalle[] = [];
     isLoading: boolean = true;
     errorState: string = '';
+    fallbackNotice: string = '';
     private manualesSub?: Subscription;
+    private fallbackSub?: Subscription;
 
     constructor(
         private manualesAsociadosSvc: ManualesAsociadosService,
@@ -24,6 +27,8 @@ export class NavbarComponent implements OnInit, OnDestroy {
     ngOnInit(): void {
         this.isLoading = true;
         this.errorState = '';
+        this.fallbackSub = this.manualesAsociadosSvc.fallbackNotice$
+            .subscribe((notice) => this.fallbackNotice = notice ?? '');
         this.manualesSub = this.manualesAsociadosSvc.getManualesAsociados().subscribe({
             next: (manuales) => {
                 this.manuales = manuales.filter(m => Number(m?.Id) > 0);
@@ -38,19 +43,11 @@ export class NavbarComponent implements OnInit, OnDestroy {
 
     ngOnDestroy(): void {
         this.manualesSub?.unsubscribe();
+        this.fallbackSub?.unsubscribe();
     }
 
-    getCategorias(manual: ManualAsociadoDetalle): string[] {
-        const categorias: string[] = [];
-        if (manual.Incluye_dotes) categorias.push('Dotes');
-        if (manual.Incluye_conjuros) categorias.push('Conjuros');
-        if (manual.Incluye_plantillas) categorias.push('Plantillas');
-        if (manual.Incluye_monstruos) categorias.push('Monstruos');
-        if (manual.Incluye_razas) categorias.push('Razas');
-        if (manual.Incluye_clases) categorias.push('Clases');
-        if (manual.Incluye_tipos) categorias.push('Tipos');
-        if (manual.Incluye_subtipos) categorias.push('Subtipos');
-        return categorias;
+    getCategorias(manual: ManualAsociadoDetalle): ManualCategoriaConIcono[] {
+        return getManualCategorias(manual);
     }
 
     abrirManual(manual: ManualAsociadoDetalle, event: MouseEvent, trigger?: MatMenuTrigger): void {

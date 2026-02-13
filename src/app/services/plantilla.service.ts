@@ -1,7 +1,7 @@
 import { HttpClient, HttpErrorResponse } from "@angular/common/http";
 import { Injectable } from "@angular/core";
 import { Database, Unsubscribe, getDatabase, onValue, ref, set } from "@angular/fire/database";
-import { Observable, map } from "rxjs";
+import { Observable, firstValueFrom, map } from "rxjs";
 import Swal from "sweetalert2";
 import { environment } from "src/environments/environment";
 import {
@@ -400,43 +400,44 @@ export class PlantillaService {
         return this.http.get(`${environment.apiUrl}plantillas`);
     }
 
-    public async RenovarPlantillas() {
+    public async RenovarPlantillas(): Promise<boolean> {
         const dbInstance = getDatabase();
-        this.syncPlantillas().subscribe(
-            response => {
-                toArray(response).forEach((raw: any) => {
-                    const plantilla = normalizePlantilla(raw);
-                    if (!hasValidId(plantilla))
-                        return;
-                    set(ref(dbInstance, `Plantillas/${plantilla.Id}`), plantilla);
-                });
+        try {
+            const response = await firstValueFrom(this.syncPlantillas());
+            const plantillas = toArray(response)
+                .map((raw: any) => normalizePlantilla(raw))
+                .filter((plantilla) => hasValidId(plantilla));
 
+            await Promise.all(
+                plantillas.map((plantilla) => set(ref(dbInstance, `Plantillas/${plantilla.Id}`), plantilla))
+            );
+
+            Swal.fire({
+                icon: "success",
+                title: "Listado de plantillas actualizado con exito",
+                showConfirmButton: true,
+                timer: 2000
+            });
+            return true;
+        } catch (error: any) {
+            const httpError = error as HttpErrorResponse;
+            if (httpError.status === 404) {
                 Swal.fire({
-                    icon: "success",
-                    title: "Listado de plantillas actualizado con exito",
-                    showConfirmButton: true,
-                    timer: 2000
+                    icon: "warning",
+                    title: "Endpoint de plantillas no disponible",
+                    text: "No se encontro /plantillas en la API",
+                    showConfirmButton: true
                 });
-            },
-            (error: any) => {
-                const httpError = error as HttpErrorResponse;
-                if (httpError.status === 404) {
-                    Swal.fire({
-                        icon: "warning",
-                        title: "Endpoint de plantillas no disponible",
-                        text: "No se encontro /plantillas en la API",
-                        showConfirmButton: true
-                    });
-                } else {
-                    Swal.fire({
-                        icon: "warning",
-                        title: "Error al actualizar el listado de plantillas",
-                        text: error.message,
-                        showConfirmButton: true
-                    });
-                }
+            } else {
+                Swal.fire({
+                    icon: "warning",
+                    title: "Error al actualizar el listado de plantillas",
+                    text: error?.message ?? "Error no identificado",
+                    showConfirmButton: true
+                });
             }
-        );
+            return false;
+        }
     }
 
     private normalizar(value: string): string {

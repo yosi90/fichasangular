@@ -1,7 +1,7 @@
 import { HttpClient, HttpErrorResponse } from "@angular/common/http";
 import { Injectable } from "@angular/core";
 import { Database, Unsubscribe, getDatabase, onValue, ref, set } from "@angular/fire/database";
-import { Observable, map } from "rxjs";
+import { Observable, firstValueFrom, map } from "rxjs";
 import Swal from "sweetalert2";
 import { environment } from "src/environments/environment";
 import { Alineamiento } from "../interfaces/alineamiento";
@@ -322,40 +322,43 @@ export class ClaseService {
         return this.http.get(`${environment.apiUrl}clases`);
     }
 
-    public async RenovarClases() {
+    public async RenovarClases(): Promise<boolean> {
         const dbInstance = getDatabase();
-        this.syncClases().subscribe(
-            response => {
-                toArray(response).forEach((raw: any) => {
+        try {
+            const response = await firstValueFrom(this.syncClases());
+            await Promise.all(
+                toArray(response).map((raw: any) => {
                     const clase = normalizeClase(raw);
-                    set(ref(dbInstance, `Clases/${clase.Id}`), clase);
-                });
+                    return set(ref(dbInstance, `Clases/${clase.Id}`), clase);
+                })
+            );
+
+            Swal.fire({
+                icon: "success",
+                title: "Listado de clases actualizado con éxito",
+                showConfirmButton: true,
+                timer: 2000
+            });
+            return true;
+        } catch (error: any) {
+            const httpError = error as HttpErrorResponse;
+            if (httpError.status === 404) {
                 Swal.fire({
-                    icon: "success",
-                    title: "Listado de clases actualizado con éxito",
-                    showConfirmButton: true,
-                    timer: 2000
+                    icon: "warning",
+                    title: "Endpoint de clases no disponible",
+                    text: "No se encontró /clases en la API",
+                    showConfirmButton: true
                 });
-            },
-            (error: any) => {
-                const httpError = error as HttpErrorResponse;
-                if (httpError.status === 404) {
-                    Swal.fire({
-                        icon: "warning",
-                        title: "Endpoint de clases no disponible",
-                        text: "No se encontró /clases en la API",
-                        showConfirmButton: true
-                    });
-                } else {
-                    Swal.fire({
-                        icon: "warning",
-                        title: "Error al actualizar el listado de clases",
-                        text: error.message,
-                        showConfirmButton: true
-                    });
-                }
+            } else {
+                Swal.fire({
+                    icon: "warning",
+                    title: "Error al actualizar el listado de clases",
+                    text: error?.message ?? "Error no identificado",
+                    showConfirmButton: true
+                });
             }
-        );
+            return false;
+        }
     }
 
     private normalizar(value: string): string {

@@ -1,6 +1,7 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable } from '@angular/core';
-import { Observable, catchError, combineLatest, map } from 'rxjs';
+import { Database, onValue, ref, set } from '@angular/fire/database';
+import { BehaviorSubject, Observable, Subscription, catchError, combineLatest, firstValueFrom, map } from 'rxjs';
 import { environment } from 'src/environments/environment';
 import { Clase } from '../interfaces/clase';
 import { Conjuro } from '../interfaces/conjuro';
@@ -41,8 +42,12 @@ function ordenarReferencias(items: ReferenciaCorta[]): ReferenciaCorta[] {
 })
 export class ManualesAsociadosService {
     private readonly asociadosUrl = `${environment.apiUrl}manuales/asociados`;
+    private readonly cachePath = 'ManualesAsociados';
+    private readonly fallbackNoticeSubject = new BehaviorSubject<string>('');
+    readonly fallbackNotice$ = this.fallbackNoticeSubject.asObservable();
 
     constructor(
+        private db: Database,
         private http: HttpClient,
         private manualSvc: ManualService,
         private doteSvc: DoteService,
@@ -54,16 +59,66 @@ export class ManualesAsociadosService {
     ) { }
 
     getManualesAsociados(): Observable<ManualAsociadoDetalle[]> {
-        return this.http.get<any>(this.asociadosUrl).pipe(
-            map(raw => {
-                const entrada = Array.isArray(raw) ? raw : [];
-                const normalizados = entrada
-                    .map(item => this.normalizeManualAsociado(item))
-                    .filter(item => item.Id > 0 && item.Nombre.trim().length > 0);
-                return this.sortManuales(normalizados);
-            }),
-            catchError(() => this.buildFallbackFromLocalData())
-        );
+        return new Observable((observer) => {
+            const dbRef = ref(this.db, this.cachePath);
+            let cargandoDesdeApi = false;
+            let fetchSub: Subscription | null = null;
+
+            const unsubscribe = onValue(
+                dbRef,
+                (snapshot) => {
+                    const cache = this.readFromSnapshot(snapshot);
+                    if (cache.length > 0) {
+                        this.clearFallbackNotice();
+                        observer.next(cache);
+                        return;
+                    }
+
+                    if (cargandoDesdeApi)
+                        return;
+
+                    cargandoDesdeApi = true;
+                    fetchSub?.unsubscribe();
+                    fetchSub = this.fetchFromApiWithFallback().subscribe({
+                        next: ({ manuales, source }) => {
+                            if (source === 'api') {
+                                this.persistirCacheManualesAsociados(manuales)
+                                    .then(() => this.clearFallbackNotice())
+                                    .catch(() => { });
+                                this.clearFallbackNotice();
+                            } else {
+                                this.setFallbackNotice('Aviso: no se pudo cargar /manuales/asociados. Se está usando fallback local y puede haber secciones incompletas.');
+                            }
+                            observer.next(manuales);
+                            cargandoDesdeApi = false;
+                        },
+                        error: (error) => {
+                            observer.error(error);
+                            cargandoDesdeApi = false;
+                        }
+                    });
+                },
+                (error) => observer.error(error)
+            );
+
+            return () => {
+                fetchSub?.unsubscribe();
+                unsubscribe();
+            };
+        });
+    }
+
+    async RenovarManualesAsociados(): Promise<boolean> {
+        try {
+            const response = await firstValueFrom(this.http.get<any>(this.asociadosUrl));
+            const manuales = this.normalizeApiResponse(response);
+            await this.persistirCacheManualesAsociados(manuales);
+            this.clearFallbackNotice();
+            return true;
+        } catch (error) {
+            this.setFallbackNotice('Aviso: la última sincronización de manuales asociados falló. Se seguirá usando cache/fallback local.');
+            return false;
+        }
     }
 
     private normalizeManualAsociado(raw: any): ManualAsociadoDetalle {
@@ -121,6 +176,81 @@ export class ManualesAsociadosService {
 
     private sortManuales(items: ManualAsociadoDetalle[]): ManualAsociadoDetalle[] {
         return [...items].sort((a, b) => a.Nombre.localeCompare(b.Nombre, 'es', { sensitivity: 'base' }));
+    }
+
+    private normalizeApiResponse(raw: any): ManualAsociadoDetalle[] {
+        const entrada = Array.isArray(raw) ? raw : Object.values(raw ?? {});
+        const normalizados = entrada
+            .map(item => this.normalizeManualAsociado(item))
+            .filter(item => item.Id > 0 && item.Nombre.trim().length > 0);
+        return this.sortManuales(normalizados);
+    }
+
+    private fetchFromApiWithFallback(): Observable<{ manuales: ManualAsociadoDetalle[]; source: 'api' | 'fallback'; }> {
+        return this.http.get<any>(this.asociadosUrl).pipe(
+            map((raw) => ({
+                manuales: this.normalizeApiResponse(raw),
+                source: 'api' as const,
+            })),
+            catchError(() =>
+                this.buildFallbackFromLocalData().pipe(
+                    map((manuales) => ({
+                        manuales: this.sortManuales(manuales),
+                        source: 'fallback' as const,
+                    }))
+                )
+            )
+        );
+    }
+
+    private readFromSnapshot(snapshot: any): ManualAsociadoDetalle[] {
+        if (!snapshot?.exists?.())
+            return [];
+
+        const manuales: ManualAsociadoDetalle[] = [];
+        snapshot.forEach((child: any) => {
+            const normalized = this.normalizeManualAsociado(child.val());
+            if (normalized.Id > 0 && normalized.Nombre.trim().length > 0)
+                manuales.push(normalized);
+        });
+
+        return this.sortManuales(manuales);
+    }
+
+    private async persistirCacheManualesAsociados(manuales: ManualAsociadoDetalle[]): Promise<void> {
+        const payload: Record<string, any> = {};
+        manuales.forEach((manual) => {
+            if (manual.Id <= 0)
+                return;
+            payload[String(manual.Id)] = this.sanitizarParaFirebase(manual);
+        });
+        await set(ref(this.db, this.cachePath), payload);
+    }
+
+    private sanitizarParaFirebase<T>(input: T): T {
+        if (Array.isArray(input))
+            return input.map((item) => this.sanitizarParaFirebase(item)) as any;
+
+        if (input && typeof input === 'object') {
+            const output: any = {};
+            Object.keys(input as any).forEach((key) => {
+                const value = (input as any)[key];
+                if (value === undefined)
+                    return;
+                output[key] = this.sanitizarParaFirebase(value);
+            });
+            return output as T;
+        }
+
+        return input;
+    }
+
+    private setFallbackNotice(message: string): void {
+        this.fallbackNoticeSubject.next(message);
+    }
+
+    private clearFallbackNotice(): void {
+        this.fallbackNoticeSubject.next('');
     }
 
     private buildFallbackFromLocalData(): Observable<ManualAsociadoDetalle[]> {

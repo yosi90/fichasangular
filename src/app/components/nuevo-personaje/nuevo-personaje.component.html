@@ -10,7 +10,12 @@
                 <mat-icon class="me-2">settings_accessibility</mat-icon>
                 Raza
             </ng-template>
-            <app-listado-razas (razaDetalles)="verDetallesRaza($event)" (razaSeleccionada)="seleccionarRaza($event)"></app-listado-razas>
+            <app-listado-razas
+                [homebrewSeleccionado]="homebrewForzado"
+                [homebrewBloqueado]="homebrewForzado"
+                (razaDetalles)="verDetallesRaza($event)"
+                (razaSeleccionada)="seleccionarRaza($event)">
+            </app-listado-razas>
         </mat-tab>
         <mat-tab label="datos" [disabled]="!razaElegida">
             <ng-template mat-tab-label="">
@@ -187,9 +192,10 @@
                                     <mat-option *ngFor="let manual of manualesPlantillas" [value]="manual">{{manual}}</mat-option>
                                 </mat-select>
                             </mat-form-field>
-                            <mat-chip-option color="warn" class="filtro-chip" [selected]="incluirHomebrewPlantillas"
+                            <mat-chip-option color="warn" class="filtro-chip" [selected]="incluirHomebrewPlantillasEfectivo"
+                                [disabled]="homebrewForzado"
                                 (click)="alternarHomebrewPlantillas()">
-                                {{incluirHomebrewPlantillas ? 'Homebrew incluido' : 'Incluir homebrew'}}
+                                {{incluirHomebrewPlantillasEfectivo ? 'Homebrew incluido' : 'Incluir homebrew'}}
                             </mat-chip-option>
                         </div>
 
@@ -298,6 +304,130 @@
                 </ng-template>
             </div>
         </mat-tab>
+        <mat-tab label="ventajas" [disabled]="!caracteristicasGeneradas">
+            <ng-template mat-tab-label="">
+                <mat-icon class="me-2">balance</mat-icon>
+                Ventajas y desventajas
+            </ng-template>
+            <div class="container-fluid py-3 h-100 ventajas-view">
+                <mat-card class="h-100 sombra-caja-sm p-2 d-flex flex-column gap-2">
+                    <mat-chip class="w-100 h-auto warm homebrew-banner">
+                        <span class="homebrew-banner-text">Sistema homebrew: solo con permiso del máster. Tu personaje no será oficial.</span>
+                        <button type="button" class="homebrew-help-chip" (click)="abrirInfoVentajasHomebrew($event)"
+                            matTooltip="Más info sobre este sistema" aria-label="Información sobre ventajas y desventajas homebrew">
+                            <mat-icon>help_outline</mat-icon>
+                        </button>
+                    </mat-chip>
+
+                    <div class="ventajas-resumen-barra">
+                        <mat-chip>Puntos disponibles: {{flujoVentajas.puntosDisponibles}}</mat-chip>
+                        <mat-chip>Puntos gastados: {{flujoVentajas.puntosGastados}}</mat-chip>
+                        <mat-chip [ngClass]="flujoVentajas.puntosRestantes < 0 ? 'bad' : ''">
+                            Restantes: {{flujoVentajas.puntosRestantes}}
+                        </mat-chip>
+                        <mat-chip [ngClass]="ventajasSeleccionadasCount >= 3 ? 'bad' : ''">
+                            Ventajas: {{ventajasSeleccionadasCount}}/3
+                        </mat-chip>
+                        <mat-chip-option color="warn" [selected]="homebrewVentajasSeleccionado"
+                            [disabled]="homebrewVentajasBloqueado" (click)="alternarHomebrewVentajas()">
+                            {{textoChipHomebrewVentajas}}
+                        </mat-chip-option>
+                        <mat-chip class="bad chip-deficit" *ngIf="flujoVentajas.hayDeficit">
+                            Tienes déficit de puntos de ventaja. Añade desventajas o quita ventajas para continuar.
+                        </mat-chip>
+                    </div>
+
+                    <div class="row g-2 ventajas-listados">
+                        <div class="col-lg-6 col-12">
+                            <div class="sombra-caja-sm rounded p-2 h-100">
+                                <mat-chip class="w-100 sombra-caja-sm mb-2">Desventajas</mat-chip>
+                                <div *ngIf="cargandoVentajas" class="text-center p-2">
+                                    <mat-chip>Cargando desventajas...</mat-chip>
+                                </div>
+                                <div class="tabla-scroll" *ngIf="!cargandoVentajas">
+                                    <table class="tabla-ventajas">
+                                        <thead>
+                                            <tr>
+                                                <th></th>
+                                                <th>Nombre</th>
+                                                <th>Coste</th>
+                                                <th>Descripción</th>
+                                                <th>Materia</th>
+                                                <th>Mejora</th>
+                                                <th>Disipable</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr *ngFor="let item of desventajasVisibles">
+                                                <td>
+                                                    <mat-checkbox [checked]="isDesventajaSeleccionada(item.Id)"
+                                                        (change)="toggleDesventajaSeleccion(item)">
+                                                    </mat-checkbox>
+                                                </td>
+                                                <td>{{item.Nombre}}</td>
+                                                <td>{{item.Coste > 0 ? '+' : ''}}{{item.Coste}}</td>
+                                                <td>{{item.Descripcion}}</td>
+                                                <td>{{getMateriaVisible(item)}}</td>
+                                                <td>{{getMejoraVisible(item)}}</td>
+                                                <td>{{getDisipableVisible(item)}}</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-lg-6 col-12">
+                            <div class="sombra-caja-sm rounded p-2 h-100">
+                                <mat-chip class="w-100 sombra-caja-sm mb-2">Ventajas</mat-chip>
+                                <div *ngIf="cargandoVentajas" class="text-center p-2">
+                                    <mat-chip>Cargando ventajas...</mat-chip>
+                                </div>
+                                <div class="tabla-scroll" *ngIf="!cargandoVentajas">
+                                    <table class="tabla-ventajas">
+                                        <thead>
+                                            <tr>
+                                                <th></th>
+                                                <th>Nombre</th>
+                                                <th>Coste</th>
+                                                <th>Descripción</th>
+                                                <th>Materia</th>
+                                                <th>Mejora</th>
+                                                <th>Disipable</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr *ngFor="let item of ventajasVisibles" [ngClass]="tieneIdiomaPendiente(item) ? 'fila-pendiente' : ''">
+                                                <td>
+                                                    <mat-checkbox [checked]="isVentajaSeleccionada(item.Id)"
+                                                        (change)="toggleVentajaSeleccion(item)">
+                                                    </mat-checkbox>
+                                                </td>
+                                                <td>
+                                                    {{item.Nombre}}
+                                                    <span class="ms-1 texto-pendiente" *ngIf="tieneIdiomaPendiente(item)">Selecciona idioma</span>
+                                                </td>
+                                                <td>{{item.Coste > 0 ? '+' : ''}}{{item.Coste}}</td>
+                                                <td>{{item.Descripcion}}</td>
+                                                <td>{{getMateriaVisible(item)}}</td>
+                                                <td>{{getMejoraVisible(item)}}</td>
+                                                <td>{{getDisipableVisible(item)}}</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="d-flex justify-content-end p-2">
+                        <button mat-raised-button color="primary" [disabled]="!puedeContinuarVentajas" (click)="continuarDesdeVentajas()">
+                            Siguiente
+                            <mat-icon>arrow_forward</mat-icon>
+                        </button>
+                    </div>
+                </mat-card>
+            </div>
+        </mat-tab>
     </mat-tab-group>
 
     <ng-container *ngIf="modalCaracteristicasAbierto && razaSeleccionada as razaActual">
@@ -307,5 +437,21 @@
             (cerrar)="cerrarModalCaracteristicas()"
             (finalizar)="finalizarGeneracionCaracteristicas($event)">
         </app-generador-caracteristicas-modal>
+    </ng-container>
+
+    <ng-container *ngIf="modalSelectorIdiomaAbierto">
+        <app-selector-idioma-modal
+            [idiomas]="catalogoIdiomas"
+            [idiomasYaSeleccionados]="idiomasSeleccionadosParaSelector"
+            [personajeOficial]="Personaje.Oficial"
+            [incluirHomebrew]="incluirHomebrewIdiomasEfectivo"
+            [titulo]="selectorIdiomaTitulo"
+            [cantidadObjetivo]="selectorIdiomaCantidadObjetivo"
+            [cantidadSeleccionada]="selectorIdiomaCantidadSeleccionada"
+            [bloquearCierreHastaCompletar]="selectorIdiomaBloquearCierre"
+            (incluirHomebrewChange)="onCambioHomebrewModalIdiomas($event)"
+            (cerrar)="onCerrarModalIdioma()"
+            (confirmar)="onConfirmarIdiomaVentaja($event)">
+        </app-selector-idioma-modal>
     </ng-container>
 </div>

@@ -1,4 +1,4 @@
-import { Component, EventEmitter, HostListener, Input, OnDestroy, OnInit, Output, SimpleChanges, ViewChild } from '@angular/core';
+import { Component, EventEmitter, HostListener, Input, NgZone, OnDestroy, OnInit, Output, SimpleChanges, ViewChild } from '@angular/core';
 import { UserService } from '../../../services/user.service';
 import { PersonajeService } from 'src/app/services/personaje.service';
 import { MatTab, MatTabGroup } from '@angular/material/tabs';
@@ -29,6 +29,7 @@ import { ManualAsociadoDetalle } from 'src/app/interfaces/manual-asociado';
 import { ManualVistaNavigationService } from 'src/app/services/manual-vista-navigation.service';
 import { Plantilla } from 'src/app/interfaces/plantilla';
 import { PlantillaService } from 'src/app/services/plantilla.service';
+import { CacheSyncMetadataService } from 'src/app/services/cache-sync-metadata.service';
 
 @Component({
     selector: 'app-tab-control',
@@ -53,6 +54,7 @@ export class TabControlComponent implements OnInit, OnDestroy {
     detallesRacialAbiertos: RacialDetalle[] = [];
     detallesManualAbiertos: ManualAsociadoDetalle[] = [];
     detallesPlantillaAbiertos: Plantilla[] = [];
+    private avisoCachePendienteMostrado = false;
     private readonly destroy$ = new Subject<void>();
 
     constructor(
@@ -69,6 +71,8 @@ export class TabControlComponent implements OnInit, OnDestroy {
         private nuevoPSvc: NuevoPersonajeService,
         private manualRefNavSvc: ManualReferenciaNavigationService,
         private manualVistaNavSvc: ManualVistaNavigationService,
+        private cacheSyncMetadataSvc: CacheSyncMetadataService,
+        private ngZone: NgZone,
     ) { }
 
     @ViewChild(MatTabGroup) TabGroup!: MatTabGroup;
@@ -92,6 +96,7 @@ export class TabControlComponent implements OnInit, OnDestroy {
 
     ngAfterViewInit() {
         this.previousTab = this.TabGroup._tabs.toArray()[0];
+        this.verificarPendientesCacheAdminEnInicio();
     }
 
     ngOnChanges(changes: SimpleChanges) {
@@ -144,7 +149,7 @@ export class TabControlComponent implements OnInit, OnDestroy {
         if (!currentIndex || currentIndex == 0)
             return;
         const tabLabel = this.TabGroup._tabs.toArray()[currentIndex].textLabel;
-        if (tabLabel === 'Panel de administración' || tabLabel === 'Información importante')
+        if (this.esTabAdmin(tabLabel) || tabLabel === 'Información importante')
             return;
         if (this.detallesPersonajeAbiertos.map(p => p.Nombre).includes(tabLabel) && this.quitarDetallesPersonaje(tabLabel))
             return;
@@ -236,6 +241,62 @@ export class TabControlComponent implements OnInit, OnDestroy {
         } else if (value.tipo === 'plantillas') {
             this.abrirDetallesPlantilla(value.item);
         }
+    }
+
+    private async verificarPendientesCacheAdminEnInicio(): Promise<void> {
+        if (this.usrPerm !== 1 || this.avisoCachePendienteMostrado)
+            return;
+
+        this.avisoCachePendienteMostrado = true;
+
+        try {
+            const metaSnapshot = await this.cacheSyncMetadataSvc.getSnapshotOnce();
+            const uiState = this.cacheSyncMetadataSvc.buildUiState(metaSnapshot);
+            const hayPendientes = uiState.some(item => item.isPrimary);
+            if (!hayPendientes)
+                return;
+
+            const result = await Swal.fire({
+                icon: 'warning',
+                title: 'Hay catálogos desactualizados',
+                text: 'Se detectaron sincronizaciones pendientes en el Admin panel.',
+                target: document.body,
+                heightAuto: false,
+                scrollbarPadding: false,
+                showCancelButton: true,
+                confirmButtonText: 'Ir al admin panel',
+                cancelButtonText: 'Luego',
+            });
+
+            if (!result.isConfirmed)
+                return;
+
+            this.irAlPanelAdministracion();
+        } catch (error) {
+            // Si falla la lectura de metadata, no bloqueamos el resto del flujo de tabs.
+        }
+    }
+
+    private irAlPanelAdministracion(): void {
+        if (this.usrPerm !== 1 || !this.TabGroup)
+            return;
+
+        const navegar = () => {
+            const tabs = this.TabGroup?._tabs?.toArray?.() ?? [];
+            if (tabs.length < 1)
+                return;
+
+            const tabAdmin = tabs.find(tab => this.esTabAdmin(tab.textLabel)) ?? tabs[1];
+            const indexAdmin = tabs.indexOf(tabAdmin);
+            if (indexAdmin < 0)
+                return;
+
+            this.TabGroup.selectedIndex = indexAdmin;
+        };
+
+        this.ngZone.run(() => navegar());
+        setTimeout(() => this.ngZone.run(() => navegar()), 0);
+        setTimeout(() => this.ngZone.run(() => navegar()), 80);
     }
 
     async abrirDetallesRaza(raza: Raza) {
@@ -796,6 +857,13 @@ export class TabControlComponent implements OnInit, OnDestroy {
             || normalizado === 'no especifica'
             || normalizado === 'no se especifica'
             || normalizado === 'nada';
+    }
+
+    private esTabAdmin(tabLabel: string): boolean {
+        const normalizado = this.normalizar(tabLabel);
+        return normalizado === 'panel de administracion'
+            || normalizado === 'admin panel'
+            || normalizado.includes('admin');
     }
 
     private abrirDesdeManual(payload: ManualReferenciaNavegacion): void {

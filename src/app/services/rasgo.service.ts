@@ -1,7 +1,7 @@
 import { HttpClient } from "@angular/common/http";
 import { Injectable } from "@angular/core";
 import { Database, getDatabase, Unsubscribe, onValue, ref, set } from '@angular/fire/database';
-import { Observable } from "rxjs";
+import { Observable, firstValueFrom } from "rxjs";
 import { environment } from "src/environments/environment";
 import Swal from "sweetalert2";
 import { Rasgo } from "../interfaces/rasgo";
@@ -75,36 +75,43 @@ export class RasgoService {
         return res;
     }
 
-    public async RenovarRasgos() {
+    public async RenovarRasgos(): Promise<boolean> {
         const db_instance = getDatabase();
-        this.syncRasgos().subscribe(
-            response => {
-                response.forEach((element: {
+        try {
+            const response = await firstValueFrom(this.syncRasgos());
+            const rasgos = Array.isArray(response)
+                ? response
+                : Object.values(response ?? {});
+
+            await Promise.all(
+                rasgos.map((element: {
                     i: number; n: string; d: string; o: boolean;
                 }) => {
-                    set(
+                    return set(
                         ref(db_instance, `Rasgos/${element.i}`), {
                         Id: element.i,
                         Nombre: element.n,
                         Descripcion: element.d,
                         Oficial: element.o,
                     });
-                });
-                Swal.fire({
-                    icon: 'success',
-                    title: 'Listado de rasgos actualizado con éxito',
-                    showConfirmButton: true,
-                    timer: 2000
-                });
-            },
-            (error: any) => {
-                Swal.fire({
-                    icon: 'warning',
-                    title: 'Error al actualizar el listado de rasgos',
-                    text: error.message,
-                    showConfirmButton: true
-                });
-            }
-        );
+                })
+            );
+
+            Swal.fire({
+                icon: 'success',
+                title: 'Listado de rasgos actualizado con éxito',
+                showConfirmButton: true,
+                timer: 2000
+            });
+            return true;
+        } catch (error: any) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Error al actualizar el listado de rasgos',
+                text: error?.message ?? 'Error no identificado',
+                showConfirmButton: true
+            });
+            return false;
+        }
     }
 }

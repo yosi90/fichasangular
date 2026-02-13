@@ -39,6 +39,32 @@ export interface Personaje extends PersonajeSimple {
     ModSabiduria: number;
     Carisma: number;
     ModCarisma: number;
+    CaracteristicasVarios: {
+        Fuerza: {
+            valor: number;
+            origen: string;
+        }[];
+        Destreza: {
+            valor: number;
+            origen: string;
+        }[];
+        Constitucion: {
+            valor: number;
+            origen: string;
+        }[];
+        Inteligencia: {
+            valor: number;
+            origen: string;
+        }[];
+        Sabiduria: {
+            valor: number;
+            origen: string;
+        }[];
+        Carisma: {
+            valor: number;
+            origen: string;
+        }[];
+    }
     NEP: number;
     Experiencia: number;
     Deidad: string;
@@ -172,12 +198,20 @@ export interface Personaje extends PersonajeSimple {
         Extra: string;
         Varios: string;
         Custom: boolean;
+        Soporta_extra?: boolean;
+        Extras?: {
+            Id_extra: number;
+            Extra: string;
+            Descripcion: string;
+        }[];
+        Bonos_varios?: {
+            valor: number;
+            origen: string;
+        }[];
     }[]
     Dotes: DoteLegacy[];
     DotesContextuales: DoteContextual[];
-    Ventajas: {
-        Nombre: string;
-    }[];
+    Ventajas: string[];
     Idiomas: {
         Nombre: string;
         Descripcion: string;

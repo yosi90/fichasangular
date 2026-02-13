@@ -1,7 +1,7 @@
 import { HttpClient, HttpErrorResponse } from "@angular/common/http";
 import { Injectable } from "@angular/core";
 import { Database, Unsubscribe, getDatabase, onValue, ref, set } from "@angular/fire/database";
-import { Observable } from "rxjs";
+import { Observable, firstValueFrom } from "rxjs";
 import Swal from "sweetalert2";
 import { environment } from "src/environments/environment";
 import {
@@ -195,39 +195,42 @@ export class EspecialService {
         return this.http.get(`${environment.apiUrl}clases/habilidades`);
     }
 
-    public async RenovarEspeciales() {
+    public async RenovarEspeciales(): Promise<boolean> {
         const dbInstance = getDatabase();
-        this.syncEspeciales().subscribe(
-            response => {
-                toArray(response).forEach((raw: any) => {
+        try {
+            const response = await firstValueFrom(this.syncEspeciales());
+            await Promise.all(
+                toArray(response).map((raw: any) => {
                     const especial = normalizeEspecial(raw);
-                    set(ref(dbInstance, `Especiales/${especial.Id}`), especial);
-                });
+                    return set(ref(dbInstance, `Especiales/${especial.Id}`), especial);
+                })
+            );
+
+            Swal.fire({
+                icon: "success",
+                title: "Listado de especiales actualizado con éxito",
+                showConfirmButton: true,
+                timer: 2000
+            });
+            return true;
+        } catch (error: any) {
+            const httpError = error as HttpErrorResponse;
+            if (httpError.status === 404) {
                 Swal.fire({
-                    icon: "success",
-                    title: "Listado de especiales actualizado con éxito",
-                    showConfirmButton: true,
-                    timer: 2000
+                    icon: "warning",
+                    title: "Endpoint de especiales no disponible",
+                    text: "No se encontró /clases/habilidades en la API",
+                    showConfirmButton: true
                 });
-            },
-            (error: any) => {
-                const httpError = error as HttpErrorResponse;
-                if (httpError.status === 404) {
-                    Swal.fire({
-                        icon: "warning",
-                        title: "Endpoint de especiales no disponible",
-                        text: "No se encontró /clases/habilidades en la API",
-                        showConfirmButton: true
-                    });
-                } else {
-                    Swal.fire({
-                        icon: "warning",
-                        title: "Error al actualizar el listado de especiales",
-                        text: error.message,
-                        showConfirmButton: true
-                    });
-                }
+            } else {
+                Swal.fire({
+                    icon: "warning",
+                    title: "Error al actualizar el listado de especiales",
+                    text: error?.message ?? "Error no identificado",
+                    showConfirmButton: true
+                });
             }
-        );
+            return false;
+        }
     }
 }

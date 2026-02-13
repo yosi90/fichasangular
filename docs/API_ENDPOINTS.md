@@ -4,7 +4,7 @@ Fecha de generacion: 2026-02-09
 
 Resumen
 - Base URL (local): `http://127.0.0.1:5000`
-- Prefijos registrados: `/verify`, `/personajes`, `/razas`, `/razas/raciales`, `/campanas`, `/tramas`, `/subtramas`, `/manuales`, `/manuales/asociados`, `/tiposCriatura`, `/rasgos`, `/conjuros`, `/escuelas`, `/disciplinas`, `/alineamientos`, `/dotes`, `/clases`, `/clases/habilidades`, `/plantillas`, `/ventajas`, `/desventajas`
+- Prefijos registrados: `/verify`, `/personajes`, `/razas`, `/razas/raciales`, `/campanas`, `/tramas`, `/subtramas`, `/manuales`, `/manuales/asociados`, `/tiposCriatura`, `/rasgos`, `/conjuros`, `/escuelas`, `/disciplinas`, `/alineamientos`, `/habilidades`, `/idiomas`, `/dotes`, `/clases`, `/clases/habilidades`, `/plantillas`, `/ventajas`, `/desventajas`
 - Autenticacion: no hay autenticacion en el backend.
 - Content-Type esperado: `application/json`
 - CORS habilitado para: `https://rol.yosiftware.es/`, `https://www.rol.yosiftware.es/`, `https://62.43.222.28`, `http://192.168.0.34`
@@ -44,6 +44,9 @@ Lista de endpoints
 | GET | /escuelas | Lista de escuelas de conjuros | Implementado |
 | GET | /disciplinas | Lista de disciplinas de conjuros | Implementado |
 | GET | /alineamientos | Lista de alineamientos | Implementado |
+| GET | /habilidades | Lista de habilidades basicas (id > 0) | Implementado |
+| GET | /habilidades/custom | Lista de habilidades custom (id > 0) | Implementado |
+| GET | /idiomas | Lista de idiomas | Implementado |
 | GET | /dotes | Lista de dotes completas | Implementado |
 | GET | /dotes/<id_dote> | Dote completa por id | Implementado |
 | GET | /ventajas | Lista de ventajas (coste negativo) | Implementado |
@@ -489,6 +492,52 @@ AlineamientoResumen
 | m | object | Moral: { Id_moral, Nombre } |
 | p | object | Prioridad: { Id_prioridad, Nombre } |
 | d | string | Descripcion |
+
+Endpoint: GET /habilidades
+Respuesta: array de `HabilidadBasicaDetalle`
+
+HabilidadBasicaDetalle
+| Campo | Tipo | Descripcion |
+| --- | --- | --- |
+| Id_habilidad | number | Id de habilidad (solo > 0) |
+| Nombre | string | Nombre |
+| Id_caracteristica | number | Id de caracteristica asociada |
+| Caracteristica | string | Nombre de caracteristica asociada |
+| Descripcion | string | Descripcion |
+| Soporta_extra | boolean | Si la habilidad soporta extra |
+| Entrenada | boolean | Si requiere entrenamiento |
+| Extras | array | Lista de extras disponibles para la habilidad (`HabilidadExtraRef`) |
+
+HabilidadExtraRef
+| Campo | Tipo | Descripcion |
+| --- | --- | --- |
+| Id_extra | number | Id del extra |
+| Extra | string | Nombre del extra |
+| Descripcion | string | Descripcion del extra |
+
+Endpoint: GET /habilidades/custom
+Respuesta: array de `HabilidadBasicaDetalle`
+
+Notas de este endpoint
+- Fuente: tabla `habilidades_custom`.
+- Mantiene el mismo contrato de `HabilidadBasicaDetalle`.
+- Campos sin soporte en la tabla custom se devuelven por defecto:
+  - `Descripcion = ""`
+  - `Soporta_extra = false`
+  - `Entrenada = false`
+  - `Extras = []`
+
+Endpoint: GET /idiomas
+Respuesta: array de `IdiomaDetalle`
+
+IdiomaDetalle
+| Campo | Tipo | Descripcion |
+| --- | --- | --- |
+| Id | number | Id de idioma |
+| Nombre | string | Nombre |
+| Descripcion | string | Descripcion |
+| Secreto | boolean | Marca de idioma secreto |
+| Oficial | boolean | Oficial (true=oficial, false=homebrew) |
 
 Endpoint: GET /dotes
 Respuesta: array de `DoteDetalle`

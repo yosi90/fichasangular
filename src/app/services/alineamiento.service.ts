@@ -1,7 +1,7 @@
 import { HttpClient } from "@angular/common/http";
 import { Injectable } from "@angular/core";
 import { Database, getDatabase, Unsubscribe, onValue, ref, set } from '@angular/fire/database';
-import { Observable } from "rxjs";
+import { Observable, firstValueFrom } from "rxjs";
 import { environment } from "src/environments/environment";
 import Swal from "sweetalert2";
 import { Alineamiento } from "../interfaces/alineamiento";
@@ -46,14 +46,19 @@ export class AlineamientoService {
         return res;
     }
 
-    public async RenovarAlineamientos() {
+    public async RenovarAlineamientos(): Promise<boolean> {
         const db_instance = getDatabase();
-        this.syncAlineamientos().subscribe(
-            response => {
-                response.forEach((element: {
+        try {
+            const response = await firstValueFrom(this.syncAlineamientos());
+            const alineamientos = Array.isArray(response)
+                ? response
+                : Object.values(response ?? {});
+
+            await Promise.all(
+                alineamientos.map((element: {
                     i: number; b: any; l: any; m: any; p: any; d: boolean;
                 }) => {
-                    set(
+                    return set(
                         ref(db_instance, `Alineamientos/${element.i}`), {
                         Id: element.i,
                         Basico: element.b,
@@ -62,22 +67,24 @@ export class AlineamientoService {
                         Prioridad: element.p,
                         Descripcion: element.d
                     });
-                });
-                Swal.fire({
-                    icon: 'success',
-                    title: 'Listado de alineamientos actualizado con éxito',
-                    showConfirmButton: true,
-                    timer: 2000
-                });
-            },
-            (error: any) => {
-                Swal.fire({
-                    icon: 'warning',
-                    title: 'Error al actualizar el listado de alineamientos',
-                    text: error.message,
-                    showConfirmButton: true
-                });
-            }
-        );
+                })
+            );
+
+            Swal.fire({
+                icon: 'success',
+                title: 'Listado de alineamientos actualizado con éxito',
+                showConfirmButton: true,
+                timer: 2000
+            });
+            return true;
+        } catch (error: any) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Error al actualizar el listado de alineamientos',
+                text: error?.message ?? 'Error no identificado',
+                showConfirmButton: true
+            });
+            return false;
+        }
     }
 }

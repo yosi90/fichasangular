@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { PersonajeSimple } from '../../interfaces/simplificaciones/personaje-simple';
 import { Database, getDatabase, Unsubscribe, onValue, ref, set } from '@angular/fire/database';
-import { Observable } from 'rxjs';
+import { Observable, firstValueFrom } from 'rxjs';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { environment } from 'src/environments/environment';
 import { RazaSimple } from 'src/app/interfaces/simplificaciones/raza-simple';
@@ -123,14 +123,19 @@ export class ListaPersonajesService {
         return personajes;
     }
 
-    public async RenovarPersonajesSimples() {
+    public async RenovarPersonajesSimples(): Promise<boolean> {
         const db = getDatabase();
-        this.pjs().subscribe(
-            response => {
-                response.forEach((element: { i: any; n: any; r: RazaSimple; c: any; co: any; p: any; ca: any; t: any; s: any; a: any; }) => {
+        try {
+            const response = await firstValueFrom(this.pjs());
+            const personajes = Array.isArray(response)
+                ? response
+                : Object.values(response ?? {});
+
+            await Promise.all(
+                personajes.map((element: any) =>
                     set(ref(db, `Personajes-simples/${element.i}`), {
                         Nombre: element.n,
-                        Raza: element.r,
+                        Raza: element.r as RazaSimple,
                         Clases: element.c,
                         Contexto: element.co,
                         Personalidad: element.p,
@@ -139,23 +144,24 @@ export class ListaPersonajesService {
                         Subtrama: element.s,
                         Archivado: element.a,
                     })
-                });
-                Swal.fire({
-                    icon: 'success',
-                    title: 'Listado de personajes simple actualizado con éxito',
-                    showConfirmButton: true,
-                    timer: 2000
-                });
-            },
-            
-            (error: any) => {
-                Swal.fire({
-                    icon: 'warning',
-                    title: 'Error al actualizar el listado de personajes simple',
-                    text: error.message,
-                    showConfirmButton: true
-                });
-            }
-        );
+                )
+            );
+
+            Swal.fire({
+                icon: 'success',
+                title: 'Listado de personajes simple actualizado con éxito',
+                showConfirmButton: true,
+                timer: 2000
+            });
+            return true;
+        } catch (error: any) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Error al actualizar el listado de personajes simple',
+                text: error?.message ?? 'Error no identificado',
+                showConfirmButton: true
+            });
+            return false;
+        }
     }
 }

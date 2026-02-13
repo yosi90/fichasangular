@@ -4,14 +4,19 @@
     <mat-card class="h-100">
         <mat-card-header class="modal-header">
             <div class="header-text">
-                <mat-card-title>Generador de características</mat-card-title>
-                <mat-card-subtitle>{{subtitulo}}</mat-card-subtitle>
+                <mat-card-title>{{tituloModal}}</mat-card-title>
             </div>
             <div class="header-actions">
                 <mat-form-field appearance="fill" class="minimo-selector">
                     <mat-label>Tirada mínima</mat-label>
-                    <mat-select [value]="estado.minimoSeleccionado" [disabled]="estado.tablaFijada" (selectionChange)="onMinimoChange($event.value)">
+                    <mat-select [value]="estado.minimoSeleccionado" (selectionChange)="onMinimoChange($event.value)">
                         <mat-option *ngFor="let minimo of minimos" [value]="minimo">{{minimo}}</mat-option>
+                    </mat-select>
+                </mat-form-field>
+                <mat-form-field appearance="fill" class="tablas-selector">
+                    <mat-label>Tablas permitidas</mat-label>
+                    <mat-select [value]="estado.tablasPermitidas" (selectionChange)="onTablasPermitidasChange($event.value)">
+                        <mat-option *ngFor="let cantidad of tablasPermitidasOpciones" [value]="cantidad">{{cantidad}}</mat-option>
                     </mat-select>
                 </mat-form-field>
                 <button mat-icon-button (click)="cerrarModal()" aria-label="Cerrar modal">
@@ -22,51 +27,33 @@
 
         <mat-card-content class="modal-content">
             <section class="bloque">
+                <h4 class="m-0">Tablas de tiradas disponibles</h4>
                 <div class="tablas-scroll">
                     <div class="tablas-grid">
-                        <div class="tabla-card" [class.tabla-seleccionada]="isTablaSeleccionada(1)" [class.tabla-bloqueada]="estado.tablaFijada" (click)="seleccionarTabla(1)">
-                            <h4>Tabla 1</h4>
+                        <div class="tabla-card" *ngFor="let tabla of tablasVisibles"
+                            [class.tabla-seleccionada]="isTablaSeleccionada(tabla.numero)"
+                            (click)="seleccionarTabla(tabla.numero)">
+                            <h4>Tabla {{tabla.numero}}</h4>
                             <div class="valores">
-                                <span class="valor" *ngFor="let valor of tabla1">{{valor}}</span>
-                            </div>
-                        </div>
-
-                        <div class="tabla-card" [class.tabla-seleccionada]="isTablaSeleccionada(2)" [class.tabla-bloqueada]="estado.tablaFijada" (click)="seleccionarTabla(2)">
-                            <h4>Tabla 2</h4>
-                            <div class="valores">
-                                <span class="valor" *ngFor="let valor of tabla2">{{valor}}</span>
-                            </div>
-                        </div>
-
-                        <div class="tabla-card" [class.tabla-seleccionada]="isTablaSeleccionada(3)" [class.tabla-bloqueada]="estado.tablaFijada" (click)="seleccionarTabla(3)">
-                            <h4>Tabla 3</h4>
-                            <div class="valores">
-                                <span class="valor" *ngFor="let valor of tabla3">{{valor}}</span>
+                                <span class="valor" *ngFor="let valor of tabla.valores">{{valor}}</span>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <div class="acciones-tabla">
-                    <button mat-raised-button color="primary" (click)="fijarOReiniciar()">
-                        {{estado.tablaFijada ? 'Reiniciar' : 'Fijar elección'}}
-                    </button>
-                    <span class="texto-ayuda" *ngIf="!estado.tablaFijada">Selecciona una tabla y pulsa "Fijar elección".</span>
-                    <span class="texto-ayuda" *ngIf="estado.tablaFijada">Arrastra cada valor a una característica.</span>
-                </div>
             </section>
 
-            <section class="bloque" *ngIf="estado.tablaFijada">
+            <section class="bloque" *ngIf="estado.tablaSeleccionada !== null">
                 <h4 class="m-0">Pool disponible</h4>
                 <div class="pool-grid">
                     <button
                         mat-stroked-button
                         class="pool-item"
                         *ngFor="let _ of estado.poolDisponible; let i = index"
-                        [disabled]="estado.poolDisponible[i] < 0"
                         [draggable]="estado.poolDisponible[i] >= 0"
                         [class.pool-item-usado]="estado.poolDisponible[i] < 0"
-                        (dragstart)="iniciarArrastre(i, $event)">
+                        (dragstart)="iniciarArrastre(i, $event)"
+                        (click)="onClickPoolItem(i)">
                         {{getPoolValor(i)}}
                     </button>
                 </div>
@@ -82,8 +69,10 @@
                             class="atributo-drop"
                             [class.atributo-drop-bloqueado]="caracteristicaBloqueada(item.key)"
                             [class.atributo-drop-completo]="estado.asignaciones[item.key] !== null"
+                            [class.atributo-drop-clickable]="caracteristicaConValor(item.key)"
                             (dragover)="permitirSoltar($event)"
-                            (drop)="soltarEnCaracteristica(item.key, $event)">
+                            (drop)="soltarEnCaracteristica(item.key, $event)"
+                            (click)="onClickCaracteristica(item.key)">
                             {{getValorAsignado(item.key)}}
                         </div>
                     </div>

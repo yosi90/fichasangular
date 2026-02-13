@@ -65,6 +65,7 @@ import { GeneradorCaracteristicasModalComponent } from './components/nuevo-perso
 import { DetallesManualComponent } from './components/detalles/detalles-manual/detalles-manual.component';
 import { ListadoPlantillasComponent } from './components/shared/listado-plantillas/listado-plantillas.component';
 import { DetallesPlantillaComponent } from './components/detalles/detalles-plantilla/detalles-plantilla.component';
+import { SelectorIdiomaModalComponent } from './components/nuevo-personaje/selector-idioma-modal/selector-idioma-modal.component';
 
 @NgModule({
     declarations: [
@@ -97,6 +98,7 @@ import { DetallesPlantillaComponent } from './components/detalles/detalles-plant
         ListadoRacialesComponent,
         DetallesRacialComponent,
         GeneradorCaracteristicasModalComponent,
+        SelectorIdiomaModalComponent,
         DetallesManualComponent,
         ListadoPlantillasComponent,
         DetallesPlantillaComponent,

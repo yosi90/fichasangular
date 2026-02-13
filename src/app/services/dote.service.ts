@@ -1,7 +1,7 @@
 import { HttpClient, HttpErrorResponse } from "@angular/common/http";
 import { Injectable } from "@angular/core";
 import { Database, Unsubscribe, getDatabase, onValue, ref, set } from "@angular/fire/database";
-import { Observable } from "rxjs";
+import { Observable, firstValueFrom } from "rxjs";
 import { Dote } from "../interfaces/dote";
 import { environment } from "src/environments/environment";
 import Swal from "sweetalert2";
@@ -89,39 +89,46 @@ export class DoteService {
         return this.http.get(`${environment.apiUrl}dotes`);
     }
 
-    public async RenovarDotes() {
+    public async RenovarDotes(): Promise<boolean> {
         const dbInstance = getDatabase();
-        this.syncDotes().subscribe(
-            response => {
-                response.forEach((raw: any) => {
+        try {
+            const response = await firstValueFrom(this.syncDotes());
+            const dotes = Array.isArray(response)
+                ? response
+                : Object.values(response ?? {});
+
+            await Promise.all(
+                dotes.map((raw: any) => {
                     const dote = normalizeDote(raw);
-                    set(ref(dbInstance, `Dotes/${dote.Id}`), dote);
-                });
+                    return set(ref(dbInstance, `Dotes/${dote.Id}`), dote);
+                })
+            );
+
+            Swal.fire({
+                icon: "success",
+                title: "Listado de dotes actualizado con éxito",
+                showConfirmButton: true,
+                timer: 2000
+            });
+            return true;
+        } catch (error: any) {
+            const httpError = error as HttpErrorResponse;
+            if (httpError.status === 404) {
                 Swal.fire({
-                    icon: "success",
-                    title: "Listado de dotes actualizado con éxito",
-                    showConfirmButton: true,
-                    timer: 2000
+                    icon: "warning",
+                    title: "Endpoint de dotes no disponible",
+                    text: "No se encontró /dotes en la API",
+                    showConfirmButton: true
                 });
-            },
-            (error: any) => {
-                const httpError = error as HttpErrorResponse;
-                if (httpError.status === 404) {
-                    Swal.fire({
-                        icon: "warning",
-                        title: "Endpoint de dotes no disponible",
-                        text: "No se encontró /dotes en la API",
-                        showConfirmButton: true
-                    });
-                } else {
-                    Swal.fire({
-                        icon: "warning",
-                        title: "Error al actualizar el listado de dotes",
-                        text: error.message,
-                        showConfirmButton: true
-                    });
-                }
+            } else {
+                Swal.fire({
+                    icon: "warning",
+                    title: "Error al actualizar el listado de dotes",
+                    text: error?.message ?? "Error no identificado",
+                    showConfirmButton: true
+                });
             }
-        );
+            return false;
+        }
     }
 }

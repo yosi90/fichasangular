@@ -46,12 +46,16 @@
 .minimo-selector
     width: 210px
 
+.tablas-selector
+    width: 190px
+
 .modal-content
     flex: 1 1 auto
     overflow: auto
     display: flex
     flex-direction: column
     gap: 16px
+    padding: 15px
 
 .bloque
     background: rgba(29, 38, 56, 0.62)
@@ -71,8 +75,10 @@
     padding-bottom: 2px
 
 .tablas-grid
-    display: inline-grid
-    grid-template-columns: repeat(3, minmax(210px, max-content))
+    display: flex
+    width: 100%
+    justify-content: space-evenly
+    align-items: stretch
     gap: 10px
 
 .tabla-card
@@ -93,9 +99,6 @@
     box-shadow: 0 0 0 1px #16c6ff inset
     background: rgba(10, 44, 79, 0.5)
 
-.tabla-bloqueada
-    cursor: default
-
 .valores
     display: flex
     flex-wrap: wrap
@@ -112,11 +115,6 @@
     border: 1px solid rgba(168, 209, 255, 0.4)
     color: #f2f8ff
     font-weight: 600
-
-.acciones-tabla
-    display: flex
-    align-items: center
-    gap: 10px
 
 .texto-ayuda
     font-size: 0.9rem
@@ -135,6 +133,10 @@
 
 .pool-item-usado
     opacity: 0.6
+    cursor: pointer
+
+    &:hover
+        opacity: 0.9
 
 .atributos-grid
     display: grid
@@ -175,6 +177,9 @@
     border-color: #16c6ff
     background: rgba(26, 76, 125, 0.38)
 
+.atributo-drop-clickable
+    cursor: pointer
+
 .atributo-drop-bloqueado
     opacity: 0.9
 
@@ -191,14 +196,16 @@
         width: 100%
         margin-left: 0
         justify-content: space-between
+        flex-wrap: wrap
 
     .minimo-selector
         width: 180px
 
-    .tablas-grid
-        grid-template-columns: 1fr
-        display: grid
+    .tablas-selector
+        width: 180px
 
-    .acciones-tabla
-        flex-direction: column
-        align-items: flex-start
+    .tablas-grid
+        display: grid
+        grid-auto-flow: row
+        grid-auto-columns: unset
+        grid-template-columns: 1fr

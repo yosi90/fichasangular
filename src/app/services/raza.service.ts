@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { Database, getDatabase, Unsubscribe, onValue, ref, set } from '@angular/fire/database';
-import { Observable } from 'rxjs';
+import { Observable, firstValueFrom } from 'rxjs';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Raza } from '../interfaces/raza';
 import { environment } from 'src/environments/environment';
@@ -170,11 +170,16 @@ export class RazaService {
         return res;
     }
 
-    public async RenovarRazas() {
+    public async RenovarRazas(): Promise<boolean> {
         const db = getDatabase();
-        this.syncRazas().subscribe(
-            response => {
-                response.forEach((element: {
+        try {
+            const response = await firstValueFrom(this.syncRazas());
+            const razas = Array.isArray(response)
+                ? response
+                : Object.values(response ?? {});
+
+            await Promise.all(
+                razas.map((element: {
                     i: any; n: any; m: { Fuerza: number; Destreza: number; Constitucion: number; Inteligencia: number; Sabiduria: number; Carisma: number; }; ma: any;
                     aju: any; c: any; o: boolean; an: string; t: Tamano; dg: any; rd: string; rc: string; re: string; he: boolean; mu: boolean; tmd: boolean; pr: any;
                     ant: number; va: number; co: number; na: number; vo: number; man: Maniobrabilidad; tr: number; es: number; ari: number; ars: number; pri: number; 
@@ -182,7 +187,7 @@ export class RazaService {
                     ali: Alineamiento; dotes: DoteContextual[];
                 }) => {
                     const dotesContextuales = toDoteContextualArray(element.dotes);
-                    set(
+                    return set(
                         ref(db, `Razas/${element.i}`), {
                         Nombre: element.n,
                         Modificadores: element.m,
@@ -224,22 +229,24 @@ export class RazaService {
                         Sortilegas: element.sor,
                         DotesContextuales: dotesContextuales,
                     });
-                });
-                Swal.fire({
-                    icon: 'success',
-                    title: 'Listado de razas actualizado con éxito',
-                    showConfirmButton: true,
-                    timer: 2000
-                });
-            },
-            (error: any) => {
-                Swal.fire({
-                    icon: 'warning',
-                    title: 'Error al actualizar el listado de razas',
-                    text: error.message,
-                    showConfirmButton: true
-                });
-            }
-        );
+                })
+            );
+
+            Swal.fire({
+                icon: 'success',
+                title: 'Listado de razas actualizado con éxito',
+                showConfirmButton: true,
+                timer: 2000
+            });
+            return true;
+        } catch (error: any) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Error al actualizar el listado de razas',
+                text: error?.message ?? 'Error no identificado',
+                showConfirmButton: true
+            });
+            return false;
+        }
     }
 }

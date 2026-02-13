@@ -1,4 +1,5 @@
 import { Component, Input } from '@angular/core';
+import { ICONOS_ENTIDAD, isManualSeccionIncluida, getManualCategorias, getManualTipoPorSeccion, MANUAL_SECCIONES_CONFIG, ManualCategoriaConIcono } from 'src/app/config/manual-secciones.config';
 import { ManualAsociadoDetalle, ManualAsociados, ReferenciaCorta } from 'src/app/interfaces/manual-asociado';
 import { ManualReferenciaTipo } from 'src/app/interfaces/manual-referencia-navegacion';
 import { ManualReferenciaNavigationService } from 'src/app/services/manual-referencia-navigation.service';
@@ -22,32 +23,19 @@ export class DetallesManualComponent {
         return this._manual;
     }
 
-    readonly seccionesBase: SeccionManual[] = [
-        { key: 'Dotes', label: 'Dotes', icono: 'fitness_center' },
-        { key: 'Conjuros', label: 'Conjuros', icono: 'auto_fix_high' },
-        { key: 'Clases', label: 'Clases', icono: 'school' },
-        { key: 'Razas', label: 'Razas', icono: 'group' },
-        { key: 'Tipos', label: 'Tipos', icono: 'pets' },
-        { key: 'Plantillas', label: 'Plantillas', icono: 'schema' },
-        { key: 'Monstruos', label: 'Monstruos', icono: 'forest' },
-        { key: 'Subtipos', label: 'Subtipos', icono: 'category' },
-    ];
+    readonly seccionesBase: SeccionManual[] = MANUAL_SECCIONES_CONFIG.map((seccion) => ({
+        key: seccion.key,
+        label: seccion.label,
+        icono: ICONOS_ENTIDAD[seccion.tipo],
+    }));
     seccionesRender: SeccionManual[] = [];
     bloquesRender: BloqueManualObjeto[] = [];
+    seccionesActivas: Partial<Record<SeccionManualKey, boolean>> = {};
 
     constructor(private manualRefNavSvc: ManualReferenciaNavigationService) { }
 
-    getCategorias(manual: ManualAsociadoDetalle): string[] {
-        const categorias: string[] = [];
-        if (manual.Incluye_dotes) categorias.push('Dotes');
-        if (manual.Incluye_conjuros) categorias.push('Conjuros');
-        if (manual.Incluye_plantillas) categorias.push('Plantillas');
-        if (manual.Incluye_monstruos) categorias.push('Monstruos');
-        if (manual.Incluye_razas) categorias.push('Razas');
-        if (manual.Incluye_clases) categorias.push('Clases');
-        if (manual.Incluye_tipos) categorias.push('Tipos');
-        if (manual.Incluye_subtipos) categorias.push('Subtipos');
-        return categorias;
+    getCategorias(manual: ManualAsociadoDetalle): ManualCategoriaConIcono[] {
+        return getManualCategorias(manual);
     }
 
     tieneAsociados(manual: ManualAsociadoDetalle): boolean {
@@ -94,6 +82,18 @@ export class DetallesManualComponent {
         return lista.filter((ref) => Number(ref?.Id) > 0 && `${ref?.Nombre ?? ''}`.trim().length > 0);
     }
 
+    get bloquesFiltrados(): BloqueManualObjeto[] {
+        return this.bloquesRender.filter((bloque) => this.isSeccionActiva(bloque.seccion.key));
+    }
+
+    isSeccionActiva(key: SeccionManualKey): boolean {
+        return this.seccionesActivas[key] !== false;
+    }
+
+    toggleSeccion(key: SeccionManualKey): void {
+        this.seccionesActivas[key] = !this.isSeccionActiva(key);
+    }
+
     getConteoTotalAsociados(manual: ManualAsociadoDetalle): number {
         return this.seccionesBase.reduce((total, seccion) => total + this.getReferenciasValidas(manual, seccion.key).length, 0);
     }
@@ -124,23 +124,7 @@ export class DetallesManualComponent {
     }
 
     private getTipoNavegacion(key: SeccionManualKey): ManualReferenciaTipo | null {
-        if (key === 'Dotes')
-            return 'dote';
-        if (key === 'Conjuros')
-            return 'conjuro';
-        if (key === 'Clases')
-            return 'clase';
-        if (key === 'Razas')
-            return 'raza';
-        if (key === 'Tipos')
-            return 'tipo';
-        if (key === 'Plantillas')
-            return 'plantilla';
-        if (key === 'Monstruos')
-            return 'monstruo';
-        if (key === 'Subtipos')
-            return 'subtipo';
-        return null;
+        return getManualTipoPorSeccion(key);
     }
 
     private recalcularSeccionesRender(): void {
@@ -149,9 +133,14 @@ export class DetallesManualComponent {
             return;
         }
 
-        const conDatos = this.seccionesBase.filter((seccion) => this.getReferenciasValidas(this.manual, seccion.key).length > 0);
+        const conDatos = this.seccionesBase.filter((seccion) => this.seccionIncluidaEnManual(this.manual, seccion.key));
         this.seccionesRender = this.shuffle([...conDatos]);
         this.bloquesRender = [];
+        this.seccionesActivas = {};
+
+        this.seccionesRender.forEach((seccion) => {
+            this.seccionesActivas[seccion.key] = true;
+        });
 
         this.seccionesRender.forEach((seccion) => {
             const refs = this.shuffle([...this.getReferenciasValidas(this.manual, seccion.key)]);
@@ -161,6 +150,10 @@ export class DetallesManualComponent {
         });
 
         this.bloquesRender = this.shuffle([...this.bloquesRender]);
+    }
+
+    private seccionIncluidaEnManual(manual: ManualAsociadoDetalle, key: SeccionManualKey): boolean {
+        return isManualSeccionIncluida(manual, key);
     }
 
     private shuffle<T>(items: T[]): T[] {
