@@ -15,6 +15,8 @@ import { EspecialClaseDetalle } from 'src/app/interfaces/especial';
 import { ListadoRacialesComponent } from '../listado-raciales/listado-raciales.component';
 import { RacialDetalle } from 'src/app/interfaces/racial';
 import { Rasgo } from 'src/app/interfaces/rasgo';
+import { ListadoPlantillasComponent } from '../listado-plantillas/listado-plantillas.component';
+import { Plantilla } from 'src/app/interfaces/plantilla';
 
 @Component({
     selector: 'app-listado',
@@ -36,6 +38,7 @@ export class ListadoComponent {
         'clases': ListadoClasesComponent,
         'especiales': ListadoEspecialesComponent,
         'raciales': ListadoRacialesComponent,
+        'plantillas': ListadoPlantillasComponent,
     };
 
     constructor(private cdr: ChangeDetectorRef) { }
@@ -111,6 +114,13 @@ export class ListadoComponent {
                 this.handleItemDetalles(item);
             });
             componentRef.instance.racialSeleccionada.subscribe((item: RacialDetalle) => {
+                this.handleItemSeleccionado(item);
+            });
+        } else if (componentRef.instance instanceof ListadoPlantillasComponent) {
+            componentRef.instance.plantillaDetalles.subscribe((item: Plantilla) => {
+                this.handleItemDetalles(item);
+            });
+            componentRef.instance.plantillaSeleccionada.subscribe((item: Plantilla) => {
                 this.handleItemSeleccionado(item);
             });
         }

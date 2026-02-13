@@ -4,7 +4,7 @@ Fecha de generacion: 2026-02-09
 
 Resumen
 - Base URL (local): `http://127.0.0.1:5000`
-- Prefijos registrados: `/verify`, `/personajes`, `/razas`, `/razas/raciales`, `/campanas`, `/tramas`, `/subtramas`, `/manuales`, `/tiposCriatura`, `/rasgos`, `/conjuros`, `/escuelas`, `/disciplinas`, `/alineamientos`, `/dotes`, `/clases`, `/clases/habilidades`, `/plantillas`
+- Prefijos registrados: `/verify`, `/personajes`, `/razas`, `/razas/raciales`, `/campanas`, `/tramas`, `/subtramas`, `/manuales`, `/manuales/asociados`, `/tiposCriatura`, `/rasgos`, `/conjuros`, `/escuelas`, `/disciplinas`, `/alineamientos`, `/dotes`, `/clases`, `/clases/habilidades`, `/plantillas`, `/ventajas`, `/desventajas`
 - Autenticacion: no hay autenticacion en el backend.
 - Content-Type esperado: `application/json`
 - CORS habilitado para: `https://rol.yosiftware.es/`, `https://www.rol.yosiftware.es/`, `https://62.43.222.28`, `http://192.168.0.34`
@@ -32,6 +32,8 @@ Lista de endpoints
 | POST | /subtramas/add | Crear subtrama | No implementado (funcion `pass`) |
 | GET | /manuales | Lista de manuales | Implementado |
 | GET | /manuales/<id_manual> | Manual por id | Implementado |
+| GET | /manuales/asociados | Lista de manuales con asociados | Implementado |
+| GET | /manuales/asociados/<id_manual> | Manual con asociados por id | Implementado |
 | POST | /manuales/add | Crear manual | No implementado (funcion `pass`) |
 | GET | /tiposCriatura | Lista de tipos de criatura | Implementado |
 | POST | /tiposCriatura/add | Crear tipo de criatura | No implementado (funcion `pass`) |
@@ -44,11 +46,16 @@ Lista de endpoints
 | GET | /alineamientos | Lista de alineamientos | Implementado |
 | GET | /dotes | Lista de dotes completas | Implementado |
 | GET | /dotes/<id_dote> | Dote completa por id | Implementado |
+| GET | /ventajas | Lista de ventajas (coste negativo) | Implementado |
+| GET | /ventajas/<id_ventaja> | Ventaja por id (coste negativo) | Implementado |
+| GET | /desventajas | Lista de desventajas (coste positivo) | Implementado |
+| GET | /desventajas/<id_ventaja> | Desventaja por id (coste positivo) | Implementado |
 | GET | /clases | Lista completa de clases | Implementado |
 | GET | /clases/<id_clase> | Clase completa por id | Implementado |
 | GET | /clases/habilidades | Lista de habilidades claseas (especiales) | Implementado |
 | GET | /clases/habilidades/<id_especial> | Habilidad clasea (especial) por id | Implementado |
 | GET | /plantillas | Lista de plantillas | Implementado |
+| GET | /plantillas/<id_plantilla> | Plantilla por id | Implementado |
 | POST | /plantillas/add | Crear plantilla | No implementado (funcion `pass`) |
 
 Notas generales
@@ -317,6 +324,60 @@ Respuesta 404 (ejemplo)
 }
 ```
 
+Endpoint: GET /manuales/asociados
+Respuesta: array de `ManualAsociadoDetalle`
+
+Endpoint: GET /manuales/asociados/<id_manual>
+Parametros de path
+| Campo | Tipo | Descripcion |
+| --- | --- | --- |
+| id_manual | number | Id de manual |
+
+Respuesta: objeto `ManualAsociadoDetalle`
+
+Respuesta 404 (ejemplo)
+```json
+{
+  "error": "Manual no encontrado",
+  "id_manual": 123
+}
+```
+
+ManualAsociadoDetalle
+| Campo | Tipo | Descripcion |
+| --- | --- | --- |
+| Id | number | Id |
+| Nombre | string | Nombre |
+| Incluye_dotes | number | El manual contiene definiciones de dotes (0/1) |
+| Incluye_conjuros | number | El manual contiene definiciones de conjuros (0/1) |
+| Incluye_plantillas | number | El manual contiene definiciones de plantillas (0/1) |
+| Incluye_monstruos | number | El manual contiene definiciones de monstruos (0/1) |
+| Incluye_razas | number | El manual contiene definiciones de razas (0/1) |
+| Incluye_clases | number | El manual contiene definiciones de clases (0/1) |
+| Incluye_tipos | number | El manual contiene definiciones de tipos (0/1) |
+| Incluye_subtipos | number | El manual contiene definiciones de subtipos (0/1) |
+| Oficial | boolean | Oficial (true=oficial, false=homebrew) |
+| Asociados | object | Colecciones resumidas asociadas al manual |
+
+Asociados (ManualAsociadoDetalle.Asociados)
+| Campo | Tipo | Descripcion |
+| --- | --- | --- |
+| Dotes | array | Lista de `ReferenciaCorta` |
+| Conjuros | array | Lista de `ReferenciaCorta` |
+| Plantillas | array | Lista de `ReferenciaCorta` |
+| Monstruos | array | Lista de `ReferenciaCorta` |
+| Razas | array | Lista de `ReferenciaCorta` |
+| Clases | array | Lista de `ReferenciaCorta` |
+| Tipos | array | Lista de `ReferenciaCorta` |
+| Subtipos | array | Lista de `ReferenciaCorta` |
+
+ReferenciaCorta
+| Campo | Tipo | Descripcion |
+| --- | --- | --- |
+| Id | number | Id de la entidad |
+| Nombre | string | Nombre |
+| Descripcion | string | Descripcion corta (si no aplica, vacio) |
+
 Endpoint: GET /tiposCriatura
 Respuesta: array de `TipoCriaturaResumen`
 
@@ -462,6 +523,65 @@ Respuesta 404
   "id_dote": 123
 }
 ```
+
+Endpoint: GET /ventajas
+Respuesta: array de `VentajaDetalle`
+
+Endpoint: GET /ventajas/<id_ventaja>
+Respuesta: objeto `VentajaDetalle`
+Respuesta 404
+```json
+{
+  "error": "Ventaja no encontrada",
+  "id_ventaja": 123
+}
+```
+
+Endpoint: GET /desventajas
+Respuesta: array de `VentajaDetalle`
+
+Endpoint: GET /desventajas/<id_ventaja>
+Respuesta: objeto `VentajaDetalle`
+Respuesta 404
+```json
+{
+  "error": "Desventaja no encontrada",
+  "id_ventaja": 123
+}
+```
+
+Regla de clasificacion por coste
+- `Coste < 0`: el registro aparece en `/ventajas`.
+- `Coste > 0`: el registro aparece en `/desventajas`.
+- `Coste = 0`: no aparece en ninguno de los dos recursos.
+
+VentajaDetalle
+| Campo | Tipo | Descripcion |
+| --- | --- | --- |
+| Id | number | Id de ventaja |
+| Nombre | string | Nombre |
+| Descripcion | string | Descripcion |
+| Disipable | boolean | Indica si puede perderse durante el juego |
+| Coste | number | Coste; se usa para clasificar ventaja/desventaja |
+| Mejora | number | Valor de mejora |
+| Caracteristica | boolean | Flag general de caracteristica |
+| Fuerza | boolean | Flag de fuerza |
+| Destreza | boolean | Flag de destreza |
+| Constitucion | boolean | Flag de constitucion |
+| Inteligencia | boolean | Flag de inteligencia |
+| Sabiduria | boolean | Flag de sabiduria |
+| Carisma | boolean | Flag de carisma |
+| Fortaleza | boolean | Flag de fortaleza |
+| Reflejos | boolean | Flag de reflejos |
+| Voluntad | boolean | Flag de voluntad |
+| Iniciativa | boolean | Flag de iniciativa |
+| Duplica_oro | boolean | Flag duplica oro |
+| Aumenta_oro | boolean | Flag aumenta oro |
+| Idioma_extra | boolean | Flag idioma extra |
+| Manual | object | { Id, Nombre, Pagina } |
+| Rasgo | object | `ReferenciaCorta`: { Id, Nombre, Descripcion } |
+| Idioma | object | `ReferenciaCorta`: { Id, Nombre, Descripcion } |
+| Habilidad | object | `ReferenciaCorta`: { Id, Nombre, Descripcion } |
 
 Endpoint: GET /clases
 Respuesta: array de `ClaseDetalle`
@@ -670,57 +790,57 @@ RacialDetalle
 Endpoint: GET /plantillas
 Respuesta: array de `PlantillaDetalle`
 
+Endpoint: GET /plantillas/<id_plantilla>
+Respuesta: objeto `PlantillaDetalle`
+Respuesta 404
+```json
+{
+  "error": "Plantilla no encontrada",
+  "id_plantilla": 123
+}
+```
+
 PlantillaDetalle
 | Campo | Tipo | Descripcion |
 | --- | --- | --- |
-| i | number | Id |
-| n | string | Nombre |
-| d | string | Descripcion |
-| m | string | Manual (con pagina) |
-| ta | object | Tamano: { Id, Nombre, Modificador, Modificador_presa } |
-| da | object | Dado de golpe: { Id_tipo_dado, Nombre } |
-| act_dg | number | Actualiza dados de golpe (0/1) |
-| mod_dg | object | Modificacion DG: { Id_paso_modificacion, Nombre } |
-| mod_tam | object | Modificacion tamano: { Id_paso_modificacion, Nombre } |
-| ini | number | Iniciativa |
-| vs | string | Velocidades |
-| ca | string | CA |
-| a | number | Ataque base |
-| p | number | Presa |
-| as | string | Ataques |
-| ac | string | Ataque completo |
-| rd | string | Reduccion de dano |
-| rc | string | Resistencia conjuros |
-| re | string | Resistencia elemental |
-| f | number | Fortaleza |
-| r | number | Reflejos |
-| v | number | Voluntad |
-| fue | number | Modificador fuerza |
-| de | number | Modificador destreza |
-| con | number | Modificador constitucion |
-| inte | number | Modificador inteligencia |
-| sab | number | Modificador sabiduria |
-| car | number | Modificador carisma |
-| mfue | number | Min fuerza |
-| mde | number | Min destreza |
-| mcon | number | Min constitucion |
-| minte | number | Min inteligencia |
-| msab | number | Min sabiduria |
-| mcar | number | Min carisma |
-| aju | number | Ajuste de nivel |
-| lic | object | Licantropia DG: { Id_dado, Dado, Multiplicador, Suma } |
-| cd | number | CD |
-| hab | object | Habilidad: { Suma, Suma_fija } |
-| nac | number | Nacimiento (0/1) |
-| c | number | Correr |
-| na | number | Nadar |
-| vo | number | Volar |
-| man | object | Maniobrabilidad (ver abajo) |
-| t | number | Trepar |
-| e | number | Escalar |
-| ali | object | `AlineamientoDetalle` |
-| o | boolean | Oficial (true=oficial, false=homebrew) |
-| dotes | array | Lista de `DoteContextual` |
+| Id | number | Id |
+| Nombre | string | Nombre |
+| Descripcion | string | Descripcion |
+| Manual | object | { Id, Nombre, Pagina } |
+| Tamano | object | { Id, Nombre, Modificador, Modificador_presa } |
+| Tipo_dado | object | { Id_tipo_dado, Nombre } |
+| Actualiza_dg | boolean | Actualiza dados de golpe |
+| Modificacion_dg | object | { Id_paso_modificacion, Nombre } |
+| Modificacion_tamano | object | { Id_paso_modificacion, Nombre } |
+| Iniciativa | number | Iniciativa |
+| Velocidades | string | Velocidades |
+| Ca | string | CA |
+| Ataque_base | number | Ataque base |
+| Presa | number | Presa |
+| Ataques | string | Ataques |
+| Ataque_completo | string | Ataque completo |
+| Reduccion_dano | string | Reduccion de dano |
+| Resistencia_conjuros | string | Resistencia conjuros |
+| Resistencia_elemental | string | Resistencia elemental |
+| Fortaleza | number | Fortaleza |
+| Reflejos | number | Reflejos |
+| Voluntad | number | Voluntad |
+| Modificadores_caracteristicas | object | { Fuerza, Destreza, Constitucion, Inteligencia, Sabiduria, Carisma } |
+| Minimos_caracteristicas | object | { Fuerza, Destreza, Constitucion, Inteligencia, Sabiduria, Carisma } |
+| Ajuste_nivel | number | Ajuste de nivel |
+| Licantronia_dg | object | { Id_dado, Dado, Multiplicador, Suma } |
+| Cd | number | CD |
+| Puntos_habilidad | object | { Suma, Suma_fija } |
+| Nacimiento | boolean | Nacimiento |
+| Movimientos | object | { Correr, Nadar, Volar, Trepar, Escalar } |
+| Maniobrabilidad | object | Maniobrabilidad (ver abajo) |
+| Alineamiento | object | `AlineamientoDetalle` |
+| Oficial | boolean | Oficial (true=oficial, false=homebrew) |
+| Dotes | array | Lista de `DoteContextual` |
+| Habilidades | array | Lista de `PlantillaHabilidadRef` |
+| Sortilegas | array | Lista de `PlantillaSortilega` |
+| Prerrequisitos_flags | object | Flags booleanos de `pres_p` |
+| Prerrequisitos | object | Familias de prerrequisitos de plantilla |
 
 Maniobrabilidad
 | Campo | Tipo | Descripcion |
@@ -733,12 +853,52 @@ Maniobrabilidad
 | Contramarcha | number | Contramarcha |
 | Giro | string | Giro |
 | Rotacion | string | Rotacion |
-| `Rotación` | string | Solo cuando no hay maniobrabilidad en plantillas (clave con tilde) |
 | Giro_max | string | Giro max |
 | Angulo_ascenso | string | Angulo ascenso |
 | Velocidad_ascenso | string | Velocidad ascenso |
 | Angulo_descenso | string | Angulo descenso |
 | Descenso_ascenso | number | Descenso ascenso |
+
+PlantillaHabilidadRef
+| Campo | Tipo | Descripcion |
+| --- | --- | --- |
+| Id_habilidad | number | Id de habilidad |
+| Habilidad | string | Nombre |
+| Id_caracteristica | number | Id de caracteristica asociada |
+| Caracteristica | string | Nombre de caracteristica |
+| Descripcion | string | Descripcion de habilidad |
+| Soporta_extra | boolean | Si la habilidad soporta extra |
+| Entrenada | boolean | Si requiere entrenamiento |
+| Id_extra | number | Id de extra seleccionado |
+| Extra | string | Nombre de extra |
+| Rangos | number | Rangos |
+| Varios | string | Texto varios |
+
+PlantillaSortilega
+| Campo | Tipo | Descripcion |
+| --- | --- | --- |
+| Conjuro | object | `ConjuroDetalle` completo |
+| Nivel_lanzador | number | Nivel lanzador |
+| Usos_diarios | string | Usos diarios |
+| Dg | number | DGS requeridos |
+
+Prerrequisitos_flags (PlantillaDetalle.Prerrequisitos_flags)
+| Campo |
+| --- |
+| actitud_requerido |
+| actitud_prohibido |
+| alineamiento_requerido |
+| caracteristica |
+| criaturas_compatibles |
+
+Prerrequisitos (PlantillaDetalle.Prerrequisitos)
+| Clave |
+| --- |
+| actitud_requerido |
+| actitud_prohibido |
+| alineamiento_requerido |
+| caracteristica |
+| criaturas_compatibles |
 
 Esquemas usados por /personajes, /razas, /plantillas y /dotes
 

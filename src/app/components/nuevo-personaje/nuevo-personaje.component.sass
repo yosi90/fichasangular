@@ -149,6 +149,49 @@
 .plantillas-skeleton
     background-color: rgba(255, 255, 255, 0.03)
 
+.plantillas-layout
+    min-height: 0
+
+.plantillas-filtros
+    display: grid
+    grid-template-columns: minmax(220px, 1.2fr) minmax(220px, 1.2fr) auto
+    gap: 10px
+    align-items: center
+
+.plantillas-zonas
+    flex: 1 1 auto
+    min-height: 0
+
+    ::ng-deep .mat-mdc-chip .mat-mdc-chip-action-label
+        display: inline-flex !important
+        align-items: center
+        flex-wrap: wrap
+        gap: .25rem
+
+    ::ng-deep .mat-mdc-chip .mdc-evolution-chip__action
+        overflow: visible
+
+.chip-bloqueada
+    opacity: 0.75
+
+.chip-seleccionada
+    display: inline-flex
+    align-items: center
+
+.plantillas-resumen-linea
+    display: flex
+    flex-wrap: wrap
+    gap: 8px
+
+.resumen-chip-seleccion
+    flex: 1 1 220px
+
+.resumen-chip-tipo
+    flex: 0 1 auto
+
+.plantilla-detalle-btn
+    margin-left: .25rem
+
 .chip-alerta
     height: auto
     white-space: normal
@@ -178,3 +221,6 @@ textarea
 
         input
             font-size: 1.05rem
+
+    .plantillas-filtros
+        grid-template-columns: 1fr

@@ -55,7 +55,9 @@
                     <mat-chip class="m-1" [matTooltip]="cPesada" matTooltipClass="tt-accent tt-multiline" matTooltipPosition="above">Pesada {{pj.Capacidad_carga.Pesada}}</mat-chip>
                 </mat-chip>
                 <mat-chip-set class="m-1" *ngFor="let p of pj.Plantillas">
-                    <mat-chip [ngStyle]="{'height': p.Multiplicador_dgs_lic > 0 ? 'auto' : 'initial'}" class="warm m-1">{{p.Nombre}}
+                    <mat-chip [ngStyle]="{'height': p.Multiplicador_dgs_lic > 0 ? 'auto' : 'initial'}" class="warm m-1 chip-clic"
+                        matTooltip="Pulsa para ver los detalles de esta plantilla" [matTooltipShowDelay]="250" matTooltipClass="tt-accent"
+                        (click)="verDetallesPlantilla(p)">{{p.Nombre}}
                         <mat-chip class="ms-3 m-1" *ngIf="p.Multiplicador_dgs_lic > 0">{{p.Multiplicador_dgs_lic}}{{p.Tipo_dgs_lic}}{{p.Suma_dgs_lic > 0 ? ' +' + p.Suma_dgs_lic : ''}} dgs adicionales</mat-chip>
                         <mat-chip *ngIf="p.Ajuste_nivel > 0" [ngClass]="p.Multiplicador_dgs_lic == 0 ? 'ms-3' : ''" class="m-1">Ajuste de nivel +{{p.Ajuste_nivel}}</mat-chip>
                         <mat-chip class="m-1">{{p.Heredada ? "Heredada" : "Adquirida"}}</mat-chip>

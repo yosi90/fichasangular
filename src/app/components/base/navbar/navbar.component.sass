@@ -46,11 +46,23 @@ p
     &:last-child
         border-bottom: 0
 
+.manual-item-clickable
+    cursor: pointer
+    transition: background-color .15s ease
+
+    &:hover
+        background: rgba(255, 255, 255, 0.05)
+
 .manual-linea
     display: flex
     justify-content: space-between
     align-items: center
     gap: 8px
+
+.manual-actions
+    display: flex
+    align-items: center
+    gap: 6px
 
 .manual-nombre
     font-weight: 500

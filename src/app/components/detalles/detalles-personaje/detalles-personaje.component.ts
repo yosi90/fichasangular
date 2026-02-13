@@ -253,4 +253,16 @@ export class DetallesPersonajeComponent implements OnInit {
             return;
         this.racialDetallesPorNombre.emit(nombreRacial.trim());
     }
+
+    @Output() plantillaDetalles: EventEmitter<{ id?: number | null; nombre: string; }> = new EventEmitter<{ id?: number | null; nombre: string; }>();
+    verDetallesPlantilla(plantilla: any) {
+        const nombre = `${plantilla?.Nombre ?? ''}`.trim();
+        if (!this.tieneTextoVisible(nombre))
+            return;
+        const id = Number(plantilla?.Id);
+        this.plantillaDetalles.emit({
+            id: Number.isFinite(id) && id > 0 ? id : null,
+            nombre,
+        });
+    }
 }

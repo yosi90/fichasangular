@@ -121,13 +121,17 @@ describe('NuevoPersonajeComponent', () => {
     let component: NuevoPersonajeComponent;
     let nuevoPSvc: NuevoPersonajeService;
     let campanaSvcMock: any;
+    let plantillaSvcMock: any;
 
     beforeEach(() => {
         nuevoPSvc = new NuevoPersonajeService();
         campanaSvcMock = {
             getListCampanas: async () => of([]),
         };
-        component = new NuevoPersonajeComponent(nuevoPSvc, campanaSvcMock);
+        plantillaSvcMock = {
+            getPlantillas: () => of([]),
+        };
+        component = new NuevoPersonajeComponent(nuevoPSvc, campanaSvcMock, plantillaSvcMock);
         component.Personaje = nuevoPSvc.PersonajeCreacion;
         component.seleccionarRaza(crearRazaMock());
         component.Personaje.Nombre = 'Aldric';
@@ -318,7 +322,7 @@ describe('NuevoPersonajeComponent', () => {
         nuevoPSvc.abrirModalCaracteristicas();
         nuevoPSvc.actualizarPasoActual('basicos');
 
-        const componentReabierto = new NuevoPersonajeComponent(nuevoPSvc, campanaSvcMock);
+        const componentReabierto = new NuevoPersonajeComponent(nuevoPSvc, campanaSvcMock, plantillaSvcMock);
         componentReabierto.ngOnInit();
 
         expect(componentReabierto.modalCaracteristicasAbierto).toBeTrue();

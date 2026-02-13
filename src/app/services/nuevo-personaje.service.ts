@@ -1,6 +1,8 @@
 import { Injectable } from '@angular/core';
 import { Personaje } from '../interfaces/personaje';
+import { Plantilla } from '../interfaces/plantilla';
 import { Raza } from '../interfaces/raza';
+import { simularEstadoPlantillas } from './utils/plantilla-elegibilidad';
 
 export type StepNuevoPersonaje = 'raza' | 'basicos' | 'plantillas';
 
@@ -30,6 +32,18 @@ export interface EstadoFlujoNuevoPersonaje {
     modalCaracteristicasAbierto: boolean;
     caracteristicasGeneradas: boolean;
     generador: GeneradorCaracteristicasState;
+    plantillas: PlantillasFlujoState;
+}
+
+export interface PlantillasFlujoState {
+    disponibles: Plantilla[];
+    seleccionadas: Plantilla[];
+    tipoCriaturaSimulada: {
+        Id: number;
+        Nombre: string;
+    };
+    licantropiaActiva: boolean;
+    heredadaActiva: boolean;
 }
 
 @Injectable({
@@ -84,6 +98,52 @@ export class NuevoPersonajeService {
         this.estadoFlujo.caracteristicasGeneradas = false;
         this.cerrarModalCaracteristicas();
         this.resetearGeneradorCaracteristicas();
+        this.estadoFlujo.plantillas = this.crearPlantillasFlujoBase();
+        this.estadoFlujo.plantillas.tipoCriaturaSimulada = {
+            Id: this.toNumber(raza.Tipo_criatura?.Id),
+            Nombre: `${raza.Tipo_criatura?.Nombre ?? '-'}`,
+        };
+        this.estadoFlujo.plantillas.heredadaActiva = !!raza.Heredada;
+        this.personajeCreacion.Plantillas = [];
+    }
+
+    setPlantillasDisponibles(plantillas: Plantilla[]): void {
+        this.estadoFlujo.plantillas.disponibles = [...plantillas];
+        this.recalcularSimulacionPlantillas();
+    }
+
+    agregarPlantillaSeleccion(plantilla: Plantilla): boolean {
+        if (this.estadoFlujo.plantillas.seleccionadas.some(p => p.Id === plantilla.Id))
+            return false;
+
+        this.estadoFlujo.plantillas.seleccionadas.push(plantilla);
+        this.recalcularSimulacionPlantillas();
+        return true;
+    }
+
+    quitarPlantillaSeleccion(idPlantilla: number): void {
+        this.estadoFlujo.plantillas.seleccionadas = this.estadoFlujo.plantillas.seleccionadas
+            .filter(p => p.Id !== idPlantilla);
+        this.recalcularSimulacionPlantillas();
+    }
+
+    limpiarPlantillasSeleccion(): void {
+        this.estadoFlujo.plantillas.seleccionadas = [];
+        this.recalcularSimulacionPlantillas();
+    }
+
+    recalcularSimulacionPlantillas(): void {
+        const baseTipo = this.personajeCreacion.Tipo_criatura;
+        const simulacion = simularEstadoPlantillas(baseTipo, this.estadoFlujo.plantillas.seleccionadas);
+
+        this.estadoFlujo.plantillas.tipoCriaturaSimulada = {
+            Id: simulacion.tipoCriaturaActualId,
+            Nombre: simulacion.tipoCriaturaActualNombre,
+        };
+        this.estadoFlujo.plantillas.licantropiaActiva = simulacion.licantropiaActiva;
+        this.estadoFlujo.plantillas.heredadaActiva = simulacion.heredadaActiva || !!this.razaSeleccionada?.Heredada;
+        this.personajeCreacion.Plantillas = this.estadoFlujo.plantillas.seleccionadas
+            .map(plantilla => this.mapPlantillaParaPersonaje(plantilla));
     }
 
     abrirModalCaracteristicas(): void {
@@ -268,6 +328,20 @@ export class NuevoPersonajeService {
                 asignaciones: this.crearAsignacionesVacias(),
                 poolDisponible: [],
             },
+            plantillas: this.crearPlantillasFlujoBase(),
+        };
+    }
+
+    private crearPlantillasFlujoBase(): PlantillasFlujoState {
+        return {
+            disponibles: [],
+            seleccionadas: [],
+            tipoCriaturaSimulada: {
+                Id: this.toNumber(this.personajeCreacion?.Tipo_criatura?.Id),
+                Nombre: `${this.personajeCreacion?.Tipo_criatura?.Nombre ?? '-'}`,
+            },
+            licantropiaActiva: false,
+            heredadaActiva: false,
         };
     }
 
@@ -319,6 +393,44 @@ export class NuevoPersonajeService {
     private toNumber(value: any): number {
         const parsed = Number(value);
         return Number.isFinite(parsed) ? parsed : 0;
+    }
+
+    private mapPlantillaParaPersonaje(plantilla: Plantilla) {
+        return {
+            Id: this.toNumber(plantilla.Id),
+            Nombre: `${plantilla.Nombre ?? ''}`,
+            Ataques: `${plantilla.Ataques ?? ''}`,
+            Ataque_completo: `${plantilla.Ataque_completo ?? ''}`,
+            Id_tamano: this.toNumber(plantilla.Tamano?.Id),
+            Tamano: `${plantilla.Tamano?.Nombre ?? '-'}`,
+            Id_tamano_pasos: this.toNumber(plantilla.Modificacion_tamano?.Id_paso_modificacion),
+            Tamano_pasos: `${plantilla.Modificacion_tamano?.Nombre ?? '-'}`,
+            // Pendiente para aplicacion de efectos: si Tipo_dado es "Elegir", no altera los dados de golpe del personaje.
+            Id_dados_golpe: this.toNumber(plantilla.Tipo_dado?.Id_tipo_dado),
+            Dados_golpe: `${plantilla.Tipo_dado?.Nombre ?? '-'}`,
+            Id_dados_golpe_pasos: this.toNumber(plantilla.Modificacion_dg?.Id_paso_modificacion),
+            Dados_golpe_pasos: `${plantilla.Modificacion_dg?.Nombre ?? '-'}`,
+            Actualiza_dgs: !!plantilla.Actualiza_dg,
+            Multiplicador_dgs_lic: this.toNumber(plantilla.Licantronia_dg?.Multiplicador),
+            Tipo_dgs_lic: `${plantilla.Licantronia_dg?.Dado ?? ''}`,
+            Suma_dgs_lic: this.toNumber(plantilla.Licantronia_dg?.Suma),
+            Correr: this.toNumber(plantilla.Movimientos?.Correr),
+            Nadar: this.toNumber(plantilla.Movimientos?.Nadar),
+            Volar: this.toNumber(plantilla.Movimientos?.Volar),
+            Maniobrabilidad: `${plantilla.Maniobrabilidad?.Nombre ?? '-'}`,
+            Trepar: this.toNumber(plantilla.Movimientos?.Trepar),
+            Escalar: this.toNumber(plantilla.Movimientos?.Escalar),
+            Ataque_base: this.toNumber(plantilla.Ataque_base),
+            Ca: `${plantilla.Ca ?? ''}`,
+            Reduccion_dano: `${plantilla.Reduccion_dano ?? ''}`,
+            Resistencia_conjuros: `${plantilla.Resistencia_conjuros ?? ''}`,
+            Resistencia_elemental: `${plantilla.Resistencia_elemental ?? ''}`,
+            Velocidades: `${plantilla.Velocidades ?? ''}`,
+            Iniciativa: this.toNumber(plantilla.Iniciativa),
+            Presa: this.toNumber(plantilla.Presa),
+            Ajuste_nivel: this.toNumber(plantilla.Ajuste_nivel),
+            Heredada: !!plantilla.Nacimiento,
+        };
     }
 
     private crearPersonajeBase(): Personaje {

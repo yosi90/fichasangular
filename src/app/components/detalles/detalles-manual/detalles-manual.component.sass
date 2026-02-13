@@ -1,0 +1,24 @@
+@import ../../../../assets/css/preformas/_detalles
+
+.manual-grid
+    column-count: 3
+    column-gap: 12px
+
+    @media (max-width: 1400px)
+        column-count: 2
+
+    @media (max-width: 900px)
+        column-count: 1
+
+.manual-bloque
+    display: inline-flex !important
+    width: 100%
+    break-inside: avoid
+
+.manual-ref
+    width: 100%
+
+    p
+        color: #d7dde2
+        white-space: pre-wrap
+        word-break: break-word

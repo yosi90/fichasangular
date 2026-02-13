@@ -11,9 +11,15 @@ mat-chip.warm
     background-color: #f44336
 
 .detalle-view
-    mat-chip:not(.chip-titulo):not(.w-100):not(.h-auto):not(.chip-celda):not(.chip-multilinea)
+    // Estandar global: todas las chips tienen alto minimo y padding uniforme.
+    mat-chip
         --mdc-chip-container-height: 32px
         min-height: 32px
+        padding-inline: .3rem
+
+    // Estandar global: chips internas (chips dentro de chip anidada) con sombra y tamano uniforme.
+    mat-chip mat-chip
+        box-shadow: rgba(0, 0, 0, 0.09) 0px 1px .5px, rgba(0, 0, 0, 0.09) 0px 2px 1px, rgba(0, 0, 0, 0.09) 0px 4px 2px, rgba(0, 0, 0, 0.09) 0px 8px 4px, rgba(0, 0, 0, 0.09) 0px 16px 8px
 
 ::ng-deep .tt-accent *
     background-color: $active

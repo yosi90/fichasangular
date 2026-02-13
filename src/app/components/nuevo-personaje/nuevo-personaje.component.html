@@ -174,21 +174,128 @@
                 Plantillas
             </ng-template>
             <div class="container-fluid py-3 h-100">
-                <mat-card class="h-100 sombra-caja-sm plantillas-skeleton">
-                    <mat-card-header>
-                        <mat-card-title>Plantillas (pendiente de implementación)</mat-card-title>
-                        <mat-card-subtitle>Ya puedes continuar con el flujo, pero esta pestaña aún está en esqueleto.</mat-card-subtitle>
-                    </mat-card-header>
-                    <mat-card-content class="d-flex flex-column gap-2 px-3">
-                        <mat-chip class="w-100">Selección de plantillas: pendiente</mat-chip>
-                        <mat-chip class="w-100">Aplicación de ajustes de plantilla: pendiente</mat-chip>
-                        <mat-chip class="w-100">Integración con dotes/raciales de plantilla: pendiente</mat-chip>
+                <mat-card class="h-100 sombra-caja-sm plantillas-skeleton" *ngIf="mostrarBloquePlantillas; else bloqueoPlantillas">
+                    <mat-card-content class="px-3 py-2 d-flex flex-column gap-2 plantillas-layout">
+                        <div class="plantillas-filtros">
+                            <mat-form-field appearance="fill" class="w-100">
+                                <mat-label>Buscar plantilla</mat-label>
+                                <input matInput [ngModel]="filtroPlantillasTexto" (ngModelChange)="onFiltroPlantillasTextoChange($event)" placeholder="Nombre de plantilla">
+                            </mat-form-field>
+                            <mat-form-field appearance="fill" class="w-100">
+                                <mat-label>Manual</mat-label>
+                                <mat-select [value]="filtroPlantillasManual" (selectionChange)="onFiltroPlantillasManualChange($event.value)">
+                                    <mat-option *ngFor="let manual of manualesPlantillas" [value]="manual">{{manual}}</mat-option>
+                                </mat-select>
+                            </mat-form-field>
+                            <mat-chip-option color="warn" class="filtro-chip" [selected]="incluirHomebrewPlantillas"
+                                (click)="alternarHomebrewPlantillas()">
+                                {{incluirHomebrewPlantillas ? 'Homebrew incluido' : 'Incluir homebrew'}}
+                            </mat-chip-option>
+                        </div>
+
+                        <div class="row g-2 plantillas-zonas">
+                            <div class="col-md-7 col-12">
+                                <div class="sombra-caja-sm rounded p-2 h-100">
+                                    <mat-chip class="w-100 sombra-caja-sm mb-2">Plantillas elegibles</mat-chip>
+                                    <div *ngIf="cargandoPlantillas" class="text-center p-3">
+                                        <mat-chip>Cargando plantillas...</mat-chip>
+                                    </div>
+                                    <div *ngIf="!cargandoPlantillas && plantillasElegibles.length < 1" class="text-center p-3">
+                                        <mat-chip>No hay plantillas elegibles con los filtros actuales</mat-chip>
+                                    </div>
+                                    <mat-chip-set class="m-1" *ngIf="plantillasElegibles.length > 0">
+                                        <mat-chip *ngFor="let plantilla of plantillasElegibles" class="h-auto chip-clic sombra3d-sm"
+                                            (click)="seleccionarPlantilla(plantilla)">
+                                            {{plantilla.Nombre}}
+                                            <mat-chip class="m-1" *ngIf="plantilla.Ajuste_nivel > 0">Ajuste +{{plantilla.Ajuste_nivel}}</mat-chip>
+                                            <mat-chip class="m-1" *ngIf="plantilla.Nacimiento">Heredada</mat-chip>
+                                            <mat-chip class="m-1" *ngIf="!plantilla.Oficial">Homebrew</mat-chip>
+                                            <button mat-icon-button class="plantilla-detalle-btn"
+                                                (click)="verDetallesPlantilla(plantilla); $event.stopPropagation()"
+                                                aria-label="Ver detalle de plantilla" matTooltip="Ver detalles">
+                                                <mat-icon>open_in_new</mat-icon>
+                                            </button>
+                                        </mat-chip>
+                                    </mat-chip-set>
+
+                                    <mat-chip class="w-100 sombra-caja-sm mt-3 mb-2" *ngIf="plantillasBloqueadasUnknown.length > 0">
+                                        Bloqueadas por formato de prerrequisito no soportado
+                                    </mat-chip>
+                                    <mat-chip-set class="m-1" *ngIf="plantillasBloqueadasUnknown.length > 0">
+                                        <mat-chip *ngFor="let item of plantillasBloqueadasUnknown" class="h-auto sombra3d-sm chip-bloqueada"
+                                            [matTooltip]="getTooltipBloqueoUnknown(item)" matTooltipClass="tt-accent tt-multiline">
+                                            {{item.plantilla.Nombre}}
+                                            <mat-chip class="m-1">Bloqueada</mat-chip>
+                                            <button mat-icon-button class="plantilla-detalle-btn"
+                                                (click)="verDetallesPlantilla(item.plantilla); $event.stopPropagation()"
+                                                aria-label="Ver detalle de plantilla" matTooltip="Ver detalles">
+                                                <mat-icon>open_in_new</mat-icon>
+                                            </button>
+                                        </mat-chip>
+                                    </mat-chip-set>
+
+                                    <mat-chip class="w-100 sombra-caja-sm mt-3 mb-2"
+                                        *ngIf="mostrarDiagnosticoPlantillas && plantillasBloqueadasFailed.length > 0">
+                                        Diagnostico temporal: bloqueadas por prerrequisitos no cumplidos
+                                    </mat-chip>
+                                    <mat-chip-set class="m-1" *ngIf="mostrarDiagnosticoPlantillas && plantillasBloqueadasFailed.length > 0">
+                                        <mat-chip *ngFor="let item of plantillasBloqueadasFailed" class="h-auto sombra3d-sm chip-bloqueada"
+                                            [matTooltip]="getTooltipBloqueoUnknown(item)" matTooltipClass="tt-accent tt-multiline">
+                                            {{item.plantilla.Nombre}}
+                                            <mat-chip class="m-1">No cumple</mat-chip>
+                                            <button mat-icon-button class="plantilla-detalle-btn"
+                                                (click)="verDetallesPlantilla(item.plantilla); $event.stopPropagation()"
+                                                aria-label="Ver detalle de plantilla" matTooltip="Ver detalles">
+                                                <mat-icon>open_in_new</mat-icon>
+                                            </button>
+                                        </mat-chip>
+                                    </mat-chip-set>
+                                </div>
+                            </div>
+
+                            <div class="col-md-5 col-12">
+                                <div class="sombra-caja-sm rounded p-2 h-100 d-flex flex-column gap-2">
+                                    <div class="plantillas-resumen-linea">
+                                        <mat-chip class="sombra-caja-sm resumen-chip-seleccion">Seleccion actual</mat-chip>
+                                        <mat-chip class="resumen-chip-tipo warm" *ngIf="mostrarTipoCriaturaResultante">
+                                            Tipo resultante: {{tipoCriaturaSimuladaTexto}}
+                                        </mat-chip>
+                                    </div>
+                                    <mat-chip class="w-100" *ngIf="plantillasSeleccionadas.length < 1">Sin plantillas seleccionadas</mat-chip>
+                                    <mat-chip-set class="m-1" *ngIf="plantillasSeleccionadas.length > 0">
+                                        <mat-chip *ngFor="let plantilla of plantillasSeleccionadas" class="h-auto sombra3d-sm chip-seleccionada">
+                                            {{plantilla.Nombre}}
+                                            <button mat-icon-button class="plantilla-detalle-btn"
+                                                (click)="verDetallesPlantilla(plantilla); $event.stopPropagation()"
+                                                aria-label="Ver detalle de plantilla" matTooltip="Ver detalles">
+                                                <mat-icon>open_in_new</mat-icon>
+                                            </button>
+                                            <button mat-icon-button class="ms-1" (click)="quitarPlantillaSeleccion(plantilla.Id)" aria-label="Quitar plantilla">
+                                                <mat-icon>close</mat-icon>
+                                            </button>
+                                        </mat-chip>
+                                    </mat-chip-set>
+                                    <div class="d-flex justify-content-end">
+                                        <button mat-stroked-button color="warn" (click)="limpiarSeleccionPlantillas()" [disabled]="plantillasSeleccionadas.length < 1">
+                                            Limpiar seleccion
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </mat-card-content>
-                    <mat-card-actions class="d-flex justify-content-end gap-2 p-3">
-                        <button mat-raised-button color="accent" (click)="abrirModalCaracteristicas()">Editar características</button>
-                        <button mat-raised-button color="primary" (click)="irABasicos()">Volver a básicos</button>
+                    <mat-card-actions class="d-flex justify-content-end p-3">
+                        <button mat-raised-button color="primary" (click)="continuarDesdePlantillas()">
+                            Siguiente
+                            <mat-icon>arrow_forward</mat-icon>
+                        </button>
                     </mat-card-actions>
                 </mat-card>
+                <ng-template #bloqueoPlantillas>
+                    <div class="d-flex justify-content-center align-items-center h-100 w-100 px-3">
+                        <mat-chip class="h-auto warm p-3">Genera caracteristicas para desbloquear esta pestana.</mat-chip>
+                    </div>
+                </ng-template>
             </div>
         </mat-tab>
     </mat-tab-group>

@@ -1,0 +1,77 @@
+<div id="container-lista" class="container-fluid bg-dark h-100">
+    <div class="row position-relative justify-content-center align-items-center">
+        <button id="filtros" matTooltip="Filtros de plantillas" #filtros mat-icon-button
+            [matMenuTriggerFor]="menuPlantillas" class="filtros bg-accent">
+            <mat-icon>filter_alt</mat-icon>
+        </button>
+        <mat-menu id="containerMenu" #menuPlantillas="matMenu" class="me-1 menu-filtros-estandar menu-plantillas-filtros">
+            <div id="menu">
+                <mat-form-field (click)="$event.stopPropagation();" (keyup)="filtroPlantillas();">
+                    <mat-label>Incluye texto</mat-label>
+                    <input #plantillaTextInc matInput placeholder="Texto a buscar">
+                </mat-form-field>
+                <mat-form-field (click)="$event.stopPropagation();">
+                    <mat-label>Manual</mat-label>
+                    <mat-select appearance="fill" [(value)]="defaultManual" (selectionChange)="filtroPlantillas();">
+                        <mat-option *ngFor="let m of manuales" [value]="m">{{m}}</mat-option>
+                    </mat-select>
+                </mat-form-field>
+            </div>
+            <div class="filtros-chips">
+                <mat-chip-option color="warn" class="filtro-chip" [selected]="incluirHomebrew"
+                    (click)="$event.stopPropagation(); alternarHomebrew();">{{anuncioHomebrew}}</mat-chip-option>
+            </div>
+        </mat-menu>
+
+        <table id="plantillas" #tablaPlantillas mat-table [dataSource]="plantillasDS" matSort *ngIf="plantillas.length > 0; else cargando">
+            <ng-container matColumnDef="{{column}}" *ngFor="let column of plantillaColumns">
+                <th class="lead" mat-header-cell *matHeaderCellDef mat-sort-header sortActionDescription="Ordenar por {{column}}">
+                    {{column.replace('_', ' ')}}
+                </th>
+                <td mat-cell *matCellDef="let element">
+                    <button mat-stroked-button matTooltip="Clic para ver esta plantilla" [matTooltipShowDelay]="200" *ngIf="column == 'Nombre'" color="accent"
+                        class="d-flex justify-content-start sombra3d w-100" (click)="verDetallesPlantilla(element.Id); $event.stopPropagation();">
+                        <mat-icon>read_more</mat-icon>
+                        {{element[column]}}
+                    </button>
+                    <p class="mb-0" *ngIf="column == 'Manual'">
+                        {{element.Manual?.Nombre}} (p. {{element.Manual?.Pagina}})
+                    </p>
+                    <p class="mb-0 text-center" *ngIf="column == 'Ajuste_nivel'">
+                        {{element.Ajuste_nivel > 0 ? '+' + element.Ajuste_nivel : element.Ajuste_nivel}}
+                    </p>
+                    <div class="d-flex justify-content-center align-items-center" *ngIf="column == 'Nacimiento'">
+                        <mat-checkbox [checked]="element.Nacimiento" [disableRipple]="true"
+                            (click)="$event.preventDefault(); $event.stopPropagation();"></mat-checkbox>
+                    </div>
+                    <div class="d-flex justify-content-center align-items-center" *ngIf="column == 'Prerrequisitos'">
+                        <mat-checkbox [checked]="tienePrerrequisitos(element)" [disableRipple]="true"
+                            (click)="$event.preventDefault(); $event.stopPropagation();"></mat-checkbox>
+                    </div>
+                    <div class="d-flex justify-content-center align-items-center" *ngIf="column == 'Oficial'">
+                        <mat-checkbox [checked]="element.Oficial" [disableRipple]="true"
+                            (click)="$event.preventDefault(); $event.stopPropagation();"></mat-checkbox>
+                    </div>
+                </td>
+            </ng-container>
+            <tr mat-header-row *matHeaderRowDef="plantillaColumns; sticky: true"></tr>
+            <tr mat-row *matRowDef="let element; columns: plantillaColumns;" class="element-row elegir"
+                (click)="seleccionarPlantilla(element.Id)"></tr>
+            <tr class="mat-row" *matNoDataRow>
+                <td class="mat-cell text-center text-white p-3" [attr.colspan]="plantillaColumns.length">
+                    Ninguna plantilla encaja con los filtros
+                </td>
+            </tr>
+        </table>
+        <ng-template #cargando>
+            <div class="superballs">
+                <div class="superballs__dot"></div>
+                <div class="superballs__dot"></div>
+            </div>
+        </ng-template>
+    </div>
+    <div class="row justify-content-center align-items-center">
+        <mat-paginator [pageSizeOptions]="[10, 20, 30, 40]" showFirstLastButtons aria-label="Selecciona una pagina de plantillas">
+        </mat-paginator>
+    </div>
+</div>

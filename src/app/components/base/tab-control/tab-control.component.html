@@ -33,6 +33,7 @@
             (claseDetalles)="abrirDetallesClasePorNombre($event);"
             (especialDetallesPorNombre)="abrirDetallesEspecialPorNombre($event);"
             (racialDetallesPorNombre)="abrirDetallesRacialPorNombre($event);"
+            (plantillaDetalles)="abrirDetallesPlantillaDesdeFicha($event);"
             (doteDetalles)="abrirDetallesDote($event);">
         </app-detalles-personaje>
     </mat-tab>
@@ -42,7 +43,10 @@
             Nuevo personaje
             <button (click)="quitarNuevoPersonaje()" mat-icon-button class="ms-2"><mat-icon>close</mat-icon></button>
         </ng-template>
-        <app-nuevo-personaje (razaDetalles)="abrirDetallesRaza($event)"></app-nuevo-personaje>
+        <app-nuevo-personaje
+            (razaDetalles)="abrirDetallesRaza($event)"
+            (plantillaDetalles)="abrirDetallesPlantilla($event)">
+        </app-nuevo-personaje>
     </mat-tab>
     <mat-tab label="Lista de {{ListadoTabTipo}}" *ngIf="AbrirListadoTab">
         <ng-template mat-tab-label="">
@@ -51,6 +55,14 @@
             <button (click)="quitarListado()" mat-icon-button class="ms-2"><mat-icon>close</mat-icon></button>
         </ng-template>
         <app-listado (abrirDetalles)="recibirObjetoListado($event)" (itemSeleccionado)="recibirObjetoListado($event)" [tipoLista]="ListadoTabTipo" [tipoOperacion]="ListadoTabOperacion"></app-listado>
+    </mat-tab>
+    <mat-tab *ngFor="let manual of detallesManualAbiertos; let index = index" [label]="getEtiquetaManual(manual)">
+        <ng-template mat-tab-label>
+            <mat-icon class="me-2">find_in_page</mat-icon>
+            {{getEtiquetaManual(manual)}}
+            <button (click)="quitarDetallesManual(getEtiquetaManual(manual))" mat-icon-button class="ms-2"><mat-icon>close</mat-icon></button>
+        </ng-template>
+        <app-detalles-manual [manual]="detallesManualAbiertos[index]"></app-detalles-manual>
     </mat-tab>
     <mat-tab *ngFor="let tab of detallesRazaAbiertos; let index = index" [label]="tab.Nombre">
         <ng-template mat-tab-label>
@@ -135,6 +147,18 @@
         </ng-template>
         <app-detalles-dote [dote]="detallesDoteAbiertos[index]"></app-detalles-dote>
     </mat-tab>
+    <mat-tab *ngFor="let plantilla of detallesPlantillaAbiertos; let index = index" [label]="getEtiquetaPlantilla(plantilla)">
+        <ng-template mat-tab-label>
+            <mat-icon class="me-2">find_in_page</mat-icon>
+            {{getEtiquetaPlantilla(plantilla)}}
+            <button (click)="quitarDetallesPlantilla(getEtiquetaPlantilla(plantilla))" mat-icon-button class="ms-2"><mat-icon>close</mat-icon></button>
+        </ng-template>
+        <app-detalles-plantilla
+            [plantilla]="detallesPlantillaAbiertos[index]"
+            (conjuroDetalles)="abrirDetallesConjuroPorId($event)"
+            (doteDetalles)="abrirDetallesDotePorId($event)">
+        </app-detalles-plantilla>
+    </mat-tab>
     <mat-tab label="Información importante" class="pe-3">
         <ng-template mat-tab-label="">
             <mat-icon class="me-2">info_outline</mat-icon>
@@ -163,8 +187,16 @@
                     <li><p class="d-flex align-items-center mb-0">Creada vista de tipos de criatura <mat-icon class="ms-2">done</mat-icon></p></li>
                     <li><p class="d-flex align-items-center mb-0">Creada vista de rasgos <mat-icon class="ms-2">done</mat-icon></p></li>
                     <li><p class="d-flex align-items-center mb-0">Creada vista de conjuros y sortílegas <mat-icon class="ms-2">done</mat-icon></p></li>
-                    <li><p class="d-flex align-items-center mb-0">Creada vista de clases</p></li>
+                    <li><p class="d-flex align-items-center mb-0">Creada vista de clases <mat-icon class="ms-2">done</mat-icon></p></li>
                     <li><p class="d-flex align-items-center mb-0">Creada vista de Dotes <mat-icon class="ms-2">done</mat-icon></p></li>
+                </ol>
+                <hr><hr>
+                <p class="d-flex align-items-center mb-0">Versión 0.3</p>
+                <hr>
+                <ol>
+                    <li><p class="d-flex align-items-center mb-0">Creadas vistas de faltantes</p></li>
+                    <li><p class="d-flex align-items-center mb-0">Creada la inserción de conjuros</p></li>
+                    <li><p class="d-flex align-items-center mb-0">Creada la inserción de dotes</p></li>
                 </ol>
                 <hr><hr>
                 <p class="d-flex align-items-center mb-0">¡Aclaraciones!</p>

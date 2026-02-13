@@ -1,0 +1,155 @@
+<div class="container-fluid detalle-view" *ngIf="plantillaData">
+    <div class="row">
+        <div class="col-md-4 col-12 p-2">
+            <div class="d-flex flex-wrap align-items-center sombra-caja-sm rounded p-2 my-2">
+                <mat-chip class="h-auto warm w-100 sombra-caja-sm py-2 m-1 chip-titulo">{{plantillaData.Nombre}}</mat-chip>
+                <mat-chip class="sombra3d-sm m-1">
+                    <mat-icon class="me-2">auto_stories</mat-icon>
+                    {{plantillaData.Manual.Nombre}} (p. {{plantillaData.Manual.Pagina}})
+                </mat-chip>
+                <mat-chip class="sombra3d-sm m-1" *ngIf="!plantillaData.Oficial">No oficial</mat-chip>
+                <mat-chip class="sombra3d-sm m-1" *ngIf="plantillaData.Nacimiento">Heredada</mat-chip>
+                <mat-chip class="sombra3d-sm m-1" *ngIf="plantillaData.Ajuste_nivel > 0">Ajuste de nivel +{{plantillaData.Ajuste_nivel}}</mat-chip>
+                <mat-chip class="h-auto chip-anidada sombra3d-sm m-1" *ngIf="tieneTextoVisible(plantillaData.Tamano?.Nombre)">
+                    Tamano
+                    <mat-chip class="sombra3d-sm m-1">{{plantillaData.Tamano.Nombre}}</mat-chip>
+                </mat-chip>
+                <mat-chip class="h-auto chip-anidada sombra3d-sm m-1" *ngIf="tieneTipoDadoVisible()">
+                    Tipo de dado
+                    <mat-chip class="sombra3d-sm m-1">{{plantillaData.Tipo_dado.Nombre}}</mat-chip>
+                </mat-chip>
+            </div>
+
+            <div class="d-flex flex-wrap align-items-center sombra-caja-sm rounded p-2 my-2" *ngIf="tieneCambiosCaracteristicas()">
+                <mat-chip class="w-100 sombra-caja-sm mb-2 chip-titulo">Caracteristicas</mat-chip>
+                <mat-chip class="h-auto chip-anidada sombra3d-sm m-1" *ngIf="getModificadoresCaracteristicasVisibles().length > 0">Modificadores
+                    <mat-chip class="m-1" *ngFor="let mod of getModificadoresCaracteristicasVisibles()">
+                        {{mod.etiqueta}} {{getSigno(mod.valor)}}
+                    </mat-chip>
+                </mat-chip>
+                <mat-chip class="h-auto chip-anidada sombra3d-sm m-1" *ngIf="getMinimosCaracteristicasVisibles().length > 0">Minimos
+                    <mat-chip class="m-1" *ngFor="let min of getMinimosCaracteristicasVisibles()">
+                        {{min.etiqueta}} {{min.valor}}
+                    </mat-chip>
+                </mat-chip>
+            </div>
+
+            <div class="d-flex flex-wrap align-items-center sombra-caja-sm rounded p-2 my-2" *ngIf="tieneCambiosMovimientos()">
+                <mat-chip class="w-100 sombra-caja-sm mb-2 chip-titulo">Movimientos</mat-chip>
+                <mat-chip class="sombra3d-sm m-1" *ngFor="let mov of getMovimientosVisibles()">{{mov.etiqueta}} {{mov.valor}}</mat-chip>
+                <mat-chip class="h-auto chip-anidada sombra3d-sm m-1" *ngIf="tieneManiobrabilidadVisible()">
+                    Maniobrabilidad
+                    <mat-chip class="sombra3d-sm m-1">{{plantillaData.Maniobrabilidad.Nombre}}</mat-chip>
+                </mat-chip>
+            </div>
+
+            <div class="sombra-caja-sm rounded p-2 my-2" *ngIf="tieneCambiosCombateDefensas()">
+                <mat-chip class="w-100 sombra-caja-sm mb-2 chip-titulo">Combate y defensas</mat-chip>
+                <div class="d-flex flex-wrap align-items-center mb-2 chips-row" *ngIf="getCambiosCombateNumericos().length > 0">
+                    <mat-chip class="sombra3d-sm m-1" *ngFor="let cambio of getCambiosCombateNumericos()">
+                        {{cambio.etiqueta}} {{getSigno(cambio.valor)}}
+                    </mat-chip>
+                </div>
+                <div class="detalle-texto-largo campo-texto" *ngFor="let texto of getCambiosCombateTexto()">
+                    <p class="m-1"><strong>{{texto.etiqueta}}:</strong> {{texto.valor}}</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4 col-12 p-2">
+            <div class="sombra-caja-sm rounded p-2 my-2" *ngIf="tieneTextoVisible(plantillaData.Descripcion)">
+                <mat-chip class="w-100 sombra-caja-sm mb-2 chip-titulo">Descripcion</mat-chip>
+                <p class="m-1">{{plantillaData.Descripcion}}</p>
+            </div>
+        </div>
+
+        <div class="col-md-4 col-12 p-2">
+            <mat-accordion>
+                <mat-expansion-panel *ngIf="plantillaData.Dotes.length > 0">
+                    <mat-expansion-panel-header>
+                        <button mat-stroked-button color="accent" class="rounded-0 rounded-top">
+                            <h2 class="mb-0">Dotes</h2>
+                        </button>
+                    </mat-expansion-panel-header>
+                    <mat-chip-set class="m-1">
+                        <mat-chip class="chip-clic sombra3d-sm" *ngFor="let doteCtx of plantillaData.Dotes"
+                            matTooltip="Pulsa para ver detalles" [matTooltipShowDelay]="250" matTooltipClass="tt-accent"
+                            (click)="abrirDetallesDote(doteCtx)">
+                            {{getNombreDote(doteCtx)}}
+                        </mat-chip>
+                    </mat-chip-set>
+                </mat-expansion-panel>
+
+                <mat-expansion-panel *ngIf="plantillaData.Sortilegas.length > 0">
+                    <mat-expansion-panel-header>
+                        <button mat-stroked-button color="accent" class="rounded-0">
+                            <h2 class="mb-0">Sortilegas</h2>
+                        </button>
+                    </mat-expansion-panel-header>
+                    <mat-chip-set class="m-1">
+                        <mat-chip class="h-auto chip-clic sombra3d-sm" *ngFor="let sortilega of plantillaData.Sortilegas"
+                            matTooltip="Pulsa para ver detalles del conjuro" [matTooltipShowDelay]="250" matTooltipClass="tt-accent"
+                            (click)="abrirDetallesConjuro(sortilega.Conjuro.Id)">
+                            {{sortilega.Conjuro.Nombre}}
+                            <mat-chip class="m-1">NL {{sortilega.Nivel_lanzador}}</mat-chip>
+                            <mat-chip class="m-1" *ngIf="tieneTextoVisible(sortilega.Usos_diarios)">{{sortilega.Usos_diarios}}</mat-chip>
+                        </mat-chip>
+                    </mat-chip-set>
+                </mat-expansion-panel>
+
+                <mat-expansion-panel *ngIf="getCompatibilidadesVisibles().length > 0">
+                    <mat-expansion-panel-header>
+                        <button mat-stroked-button color="accent" class="rounded-0">
+                            <h2 class="mb-0">Compatibilidad de tipo</h2>
+                        </button>
+                    </mat-expansion-panel-header>
+                    <mat-chip-set class="m-1">
+                        <mat-chip class="h-auto sombra3d-sm" *ngFor="let comp of getCompatibilidadesVisibles()">
+                            {{comp.tipoComp}}
+                            <mat-chip class="m-1">{{comp.tipoNuevo}}</mat-chip>
+                        </mat-chip>
+                    </mat-chip-set>
+                </mat-expansion-panel>
+
+                <mat-expansion-panel *ngIf="getPrerrequisitosAgrupados().length > 0">
+                    <mat-expansion-panel-header>
+                        <button mat-stroked-button color="accent" class="rounded-0 rounded-bottom">
+                            <h2 class="mb-0">Prerrequisitos</h2>
+                        </button>
+                    </mat-expansion-panel-header>
+                    <div class="prerrequisito-bloque p-2" *ngFor="let grupo of getPrerrequisitosAgrupados()">
+                        <mat-chip class="w-100 sombra-caja-sm m-1 mb-2 chip-titulo">
+                            {{grupo.titulo}}
+                            <span class="ms-2 prerrequisito-subtitulo">{{grupo.descripcion}}</span>
+                        </mat-chip>
+                        <div class="prerrequisito-condicion sombra-caja-sm m-1 p-2" *ngFor="let condicion of grupo.condiciones; let i = index">
+                            <p class="mb-2 fw-bold">{{grupo.opcional ? 'Opcion' : 'Condicion'}} {{i + 1}}</p>
+                            <mat-chip-set class="m-0">
+                                <mat-chip class="sombra3d-sm m-1 chip-familia">{{condicion.familiaEtiqueta}}</mat-chip>
+                                <ng-container *ngIf="esBloqueHabilidad(condicion.campos); else chipsCondicionGenericos">
+                                    <mat-chip class="h-auto chip-anidada sombra3d-sm m-1">
+                                        {{getValorCampo(condicion.campos, 'Habilidad')}}
+                                        <mat-chip class="m-1" *ngIf="tieneTextoVisible(getValorCampo(condicion.campos, 'Extra'))">
+                                            {{getValorCampo(condicion.campos, 'Extra')}}
+                                        </mat-chip>
+                                        <mat-chip class="m-1" *ngIf="tieneTextoVisible(getValorCampo(condicion.campos, 'Rangos'))">
+                                            {{getValorCampo(condicion.campos, 'Rangos')}}
+                                        </mat-chip>
+                                    </mat-chip>
+                                    <mat-chip class="sombra3d-sm m-1" *ngFor="let campo of getCamposSinEtiquetas(condicion.campos, ['Habilidad', 'Extra', 'Rangos'])">
+                                        {{campo.etiqueta}}: {{campo.valor}}
+                                    </mat-chip>
+                                </ng-container>
+                                <ng-template #chipsCondicionGenericos>
+                                    <mat-chip class="sombra3d-sm m-1" *ngFor="let campo of condicion.campos">
+                                        {{campo.etiqueta}}: {{campo.valor}}
+                                    </mat-chip>
+                                </ng-template>
+                            </mat-chip-set>
+                        </div>
+                    </div>
+                </mat-expansion-panel>
+            </mat-accordion>
+        </div>
+    </div>
+</div>

@@ -77,7 +77,7 @@
                 <button mat-button color="primary" (click)="AbrirListado('dotes', 'detalles'); closeAcordion();">Dote</button>
                 <button mat-button color="primary" (click)="AbrirListado('conjuros', 'detalles'); closeAcordion();">Conjuro</button>
                 <button mat-button color="primary">Monstruo</button>
-                <button mat-button color="primary">Plantilla</button>
+                <button mat-button color="primary" (click)="AbrirListado('plantillas', 'detalles'); closeAcordion();">Plantilla</button>
                 <button mat-button color="primary" cdkOverlayOrigin #origenDetalles="cdkOverlayOrigin"
                     (mouseenter)="abrirOtros('detalles')" (mouseleave)="programarCierreOtros()"
                     (click)="toggleOtros('detalles', $event)">

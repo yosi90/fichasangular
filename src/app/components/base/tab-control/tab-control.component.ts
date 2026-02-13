@@ -1,4 +1,4 @@
-import { Component, EventEmitter, HostListener, Input, OnInit, Output, SimpleChanges, ViewChild } from '@angular/core';
+import { Component, EventEmitter, HostListener, Input, OnDestroy, OnInit, Output, SimpleChanges, ViewChild } from '@angular/core';
 import { UserService } from '../../../services/user.service';
 import { PersonajeService } from 'src/app/services/personaje.service';
 import { MatTab, MatTabGroup } from '@angular/material/tabs';
@@ -14,7 +14,7 @@ import { DoteContextual } from 'src/app/interfaces/dote-contextual';
 import { RazaService } from 'src/app/services/raza.service';
 import { Clase } from 'src/app/interfaces/clase';
 import { ClaseService } from 'src/app/services/clase.service';
-import { take } from 'rxjs';
+import { Subject, take, takeUntil } from 'rxjs';
 import { ConjuroService } from 'src/app/services/conjuro.service';
 import { DoteService } from 'src/app/services/dote.service';
 import { EspecialClaseDetalle } from 'src/app/interfaces/especial';
@@ -22,13 +22,20 @@ import { EspecialService } from 'src/app/services/especial.service';
 import { RacialDetalle } from 'src/app/interfaces/racial';
 import { RacialService } from 'src/app/services/racial.service';
 import { NuevoPersonajeService } from 'src/app/services/nuevo-personaje.service';
+import { TipoCriaturaService } from 'src/app/services/tipo-criatura.service';
+import { ManualReferenciaNavegacion } from 'src/app/interfaces/manual-referencia-navegacion';
+import { ManualReferenciaNavigationService } from 'src/app/services/manual-referencia-navigation.service';
+import { ManualAsociadoDetalle } from 'src/app/interfaces/manual-asociado';
+import { ManualVistaNavigationService } from 'src/app/services/manual-vista-navigation.service';
+import { Plantilla } from 'src/app/interfaces/plantilla';
+import { PlantillaService } from 'src/app/services/plantilla.service';
 
 @Component({
     selector: 'app-tab-control',
     templateUrl: './tab-control.component.html',
     styleUrls: ['./tab-control.component.sass']
 })
-export class TabControlComponent implements OnInit {
+export class TabControlComponent implements OnInit, OnDestroy {
     @Input() AbrirNuevoPersonajeTab!: number;
     @Input() AbrirListadoTab!: number;
     @Input() ListadoTabTipo!: string;
@@ -44,17 +51,24 @@ export class TabControlComponent implements OnInit {
     detallesClaseAbiertos: Clase[] = [];
     detallesEspecialAbiertos: EspecialClaseDetalle[] = [];
     detallesRacialAbiertos: RacialDetalle[] = [];
+    detallesManualAbiertos: ManualAsociadoDetalle[] = [];
+    detallesPlantillaAbiertos: Plantilla[] = [];
+    private readonly destroy$ = new Subject<void>();
 
     constructor(
         private usrSvc: UserService,
         private pSvc: PersonajeService,
         private rSvc: RazaService,
+        private tcSvc: TipoCriaturaService,
         private clSvc: ClaseService,
         private conjuroSvc: ConjuroService,
         private doteSvc: DoteService,
         private especialSvc: EspecialService,
         private racialSvc: RacialService,
+        private plantillaSvc: PlantillaService,
         private nuevoPSvc: NuevoPersonajeService,
+        private manualRefNavSvc: ManualReferenciaNavigationService,
+        private manualVistaNavSvc: ManualVistaNavigationService,
     ) { }
 
     @ViewChild(MatTabGroup) TabGroup!: MatTabGroup;
@@ -63,6 +77,17 @@ export class TabControlComponent implements OnInit {
 
     ngOnInit() {
         this.usrPerm = this.usrSvc.Usuario.permisos;
+        this.manualRefNavSvc.aperturas$
+            .pipe(takeUntil(this.destroy$))
+            .subscribe((payload) => this.abrirDesdeManual(payload));
+        this.manualVistaNavSvc.aperturas$
+            .pipe(takeUntil(this.destroy$))
+            .subscribe((manual) => this.abrirDetallesManual(manual));
+    }
+
+    ngOnDestroy(): void {
+        this.destroy$.next();
+        this.destroy$.complete();
     }
 
     ngAfterViewInit() {
@@ -141,6 +166,10 @@ export class TabControlComponent implements OnInit {
             return;
         else if (this.detallesRacialAbiertos.map(r => this.getEtiquetaRacial(r)).includes(tabLabel) && this.quitarDetallesRacial(tabLabel))
             return;
+        else if (this.detallesPlantillaAbiertos.map(p => this.getEtiquetaPlantilla(p)).includes(tabLabel) && this.quitarDetallesPlantilla(tabLabel))
+            return;
+        else if (this.detallesManualAbiertos.map(m => this.getEtiquetaManual(m)).includes(tabLabel) && this.quitarDetallesManual(tabLabel))
+            return;
         else if (tabLabel.includes('Nuevo personaje'))
             this.quitarNuevoPersonaje();
         else if (tabLabel.includes('Lista de'))
@@ -204,6 +233,8 @@ export class TabControlComponent implements OnInit {
             this.abrirDetallesEspecial(value.item);
         } else if (value.tipo === 'raciales') {
             this.abrirDetallesRacial(value.item);
+        } else if (value.tipo === 'plantillas') {
+            this.abrirDetallesPlantilla(value.item);
         }
     }
 
@@ -332,6 +363,14 @@ export class TabControlComponent implements OnInit {
         return `${racial.Nombre} (Racial)`;
     }
 
+    getEtiquetaManual(manual: ManualAsociadoDetalle): string {
+        return `${manual.Nombre} (Manual)`;
+    }
+
+    getEtiquetaPlantilla(plantilla: Plantilla): string {
+        return `${plantilla.Nombre} (Plantilla)`;
+    }
+
     async abrirDetallesClase(clase: Clase) {
         const abierto = this.detallesClaseAbiertos.find(c => c.Id === clase.Id);
         if (abierto)
@@ -397,6 +436,22 @@ export class TabControlComponent implements OnInit {
                     showConfirmButton: true
                 });
             }
+        });
+    }
+
+    abrirDetallesClasePorId(idClase: number) {
+        const id = Number(idClase);
+        if (!Number.isFinite(id) || id <= 0)
+            return;
+
+        const abierto = this.detallesClaseAbiertos.find(c => c.Id === id);
+        if (abierto) {
+            this.cambiarA(true, this.TabGroup._tabs.find(tab => tab.textLabel === this.getEtiquetaClase(abierto)));
+            return;
+        }
+
+        this.clSvc.getClase(id).pipe(take(1)).subscribe(clase => {
+            this.abrirDetallesClase(clase);
         });
     }
 
@@ -528,12 +583,126 @@ export class TabControlComponent implements OnInit {
         });
     }
 
+    abrirDetallesTipoCriaturaPorId(idTipo: number) {
+        const id = Number(idTipo);
+        if (!Number.isFinite(id) || id <= 0)
+            return;
+
+        const abierto = this.detallesTipoCriaturaAbiertos.find(t => t.Id === id);
+        if (abierto) {
+            this.cambiarA(true, this.TabGroup._tabs.find(tab => tab.textLabel === abierto.Nombre));
+            return;
+        }
+
+        this.tcSvc.getTipoCriatura(id).pipe(take(1)).subscribe(tipo => {
+            this.abrirDetallesTipoCriatura(tipo);
+        });
+    }
+
+    async abrirDetallesPlantilla(plantilla: Plantilla) {
+        const abierto = this.detallesPlantillaAbiertos.find(p => p.Id === plantilla.Id);
+        if (abierto)
+            this.cambiarA(true, this.TabGroup._tabs.find(tab => tab.textLabel === this.getEtiquetaPlantilla(abierto)));
+        else {
+            this.detallesPlantillaAbiertos.push(plantilla);
+            setTimeout(() => {
+                this.cambiarA(true, this.TabGroup._tabs.find(tab => tab.textLabel === this.getEtiquetaPlantilla(plantilla)));
+            }, 100);
+        }
+    }
+
+    abrirDetallesPlantillaPorId(idPlantilla: number) {
+        const id = Number(idPlantilla);
+        if (!Number.isFinite(id) || id <= 0)
+            return;
+
+        const abierto = this.detallesPlantillaAbiertos.find(p => p.Id === id);
+        if (abierto) {
+            this.cambiarA(true, this.TabGroup._tabs.find(tab => tab.textLabel === this.getEtiquetaPlantilla(abierto)));
+            return;
+        }
+
+        this.plantillaSvc.getPlantilla(id).pipe(take(1)).subscribe(plantilla => {
+            this.abrirDetallesPlantilla(plantilla);
+        });
+    }
+
+    abrirDetallesPlantillaPorNombre(nombrePlantilla: string) {
+        if (!nombrePlantilla || nombrePlantilla.trim().length < 1)
+            return;
+
+        const abierta = this.detallesPlantillaAbiertos.find(p => this.normalizar(p.Nombre) === this.normalizar(nombrePlantilla));
+        if (abierta) {
+            this.cambiarA(true, this.TabGroup._tabs.find(tab => tab.textLabel === this.getEtiquetaPlantilla(abierta)));
+            return;
+        }
+
+        this.plantillaSvc.buscarPorNombre(nombrePlantilla).pipe(take(1)).subscribe(plantilla => {
+            if (plantilla) {
+                this.abrirDetallesPlantilla(plantilla);
+                return;
+            }
+
+            Swal.fire({
+                icon: 'warning',
+                title: 'Plantilla no encontrada',
+                text: `No se encontro la plantilla "${nombrePlantilla}"`,
+                showConfirmButton: true
+            });
+        });
+    }
+
+    abrirDetallesPlantillaDesdeFicha(payload: { id?: number | null; nombre: string; }) {
+        const id = Number(payload?.id ?? 0);
+        if (Number.isFinite(id) && id > 0) {
+            this.abrirDetallesPlantillaPorId(id);
+            return;
+        }
+
+        this.abrirDetallesPlantillaPorNombre(payload?.nombre ?? '');
+    }
+
     quitarDetallesRacial(label: string): boolean {
         const tab = this.detallesRacialAbiertos.find(r => this.getEtiquetaRacial(r) === label);
         if (!tab)
             return false;
         const indexTab = this.detallesRacialAbiertos.indexOf(tab);
         this.detallesRacialAbiertos.splice(indexTab, 1);
+        this.cambiarA(false);
+        return true;
+    }
+
+    quitarDetallesPlantilla(label: string): boolean {
+        const tab = this.detallesPlantillaAbiertos.find(p => this.getEtiquetaPlantilla(p) === label);
+        if (!tab)
+            return false;
+        const indexTab = this.detallesPlantillaAbiertos.indexOf(tab);
+        this.detallesPlantillaAbiertos.splice(indexTab, 1);
+        this.cambiarA(false);
+        return true;
+    }
+
+    abrirDetallesManual(manual: ManualAsociadoDetalle): void {
+        if (!manual || Number(manual.Id) <= 0)
+            return;
+        const abierto = this.detallesManualAbiertos.find(m => m.Id === manual.Id);
+        if (abierto) {
+            this.cambiarA(true, this.TabGroup._tabs.find(tab => tab.textLabel === this.getEtiquetaManual(abierto)));
+            return;
+        }
+
+        this.detallesManualAbiertos.push(manual);
+        setTimeout(() => {
+            this.cambiarA(true, this.TabGroup._tabs.find(tab => tab.textLabel === this.getEtiquetaManual(manual)));
+        }, 100);
+    }
+
+    quitarDetallesManual(label: string): boolean {
+        const tab = this.detallesManualAbiertos.find(m => this.getEtiquetaManual(m) === label);
+        if (!tab)
+            return false;
+        const indexTab = this.detallesManualAbiertos.indexOf(tab);
+        this.detallesManualAbiertos.splice(indexTab, 1);
         this.cambiarA(false);
         return true;
     }
@@ -627,5 +796,34 @@ export class TabControlComponent implements OnInit {
             || normalizado === 'no especifica'
             || normalizado === 'no se especifica'
             || normalizado === 'nada';
+    }
+
+    private abrirDesdeManual(payload: ManualReferenciaNavegacion): void {
+        if (payload.tipo === 'dote') {
+            this.abrirDetallesDotePorId(payload.id);
+            return;
+        }
+        if (payload.tipo === 'conjuro') {
+            this.abrirDetallesConjuroPorId(payload.id);
+            return;
+        }
+        if (payload.tipo === 'raza') {
+            this.abrirDetallesRazaPorId(payload.id);
+            return;
+        }
+        if (payload.tipo === 'clase') {
+            this.abrirDetallesClasePorId(payload.id);
+            return;
+        }
+        if (payload.tipo === 'tipo') {
+            this.abrirDetallesTipoCriaturaPorId(payload.id);
+            return;
+        }
+        if (payload.tipo === 'plantilla') {
+            if (Number(payload.id) > 0)
+                this.abrirDetallesPlantillaPorId(payload.id);
+            else
+                this.abrirDetallesPlantillaPorNombre(payload.nombre);
+        }
     }
 }

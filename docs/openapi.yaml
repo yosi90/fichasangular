@@ -25,6 +25,8 @@ tags:
   - name: dotes
   - name: clases
   - name: plantillas
+  - name: ventajas
+  - name: desventajas
 paths:
   /verify:
     get:
@@ -302,6 +304,44 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
+  /manuales/asociados:
+    get:
+      tags: [manuales]
+      summary: Lista de manuales con asociados
+      responses:
+        '200':
+          description: Lista de manuales enriquecidos con asociados
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ManualAsociadoDetalle'
+
+  /manuales/asociados/{id_manual}:
+    get:
+      tags: [manuales]
+      summary: Manual con asociados por id
+      parameters:
+        - name: id_manual
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Manual enriquecido encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ManualAsociadoDetalle'
+        '404':
+          description: Manual no encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
   /manuales/add:
     post:
       tags: [manuales]
@@ -460,6 +500,82 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
+  /ventajas:
+    get:
+      tags: [ventajas]
+      summary: Lista de ventajas (coste negativo)
+      responses:
+        '200':
+          description: Lista de ventajas
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/VentajaDetalle'
+
+  /ventajas/{id_ventaja}:
+    get:
+      tags: [ventajas]
+      summary: Ventaja por id (coste negativo)
+      parameters:
+        - name: id_ventaja
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Ventaja encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VentajaDetalle'
+        '404':
+          description: Ventaja no encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /desventajas:
+    get:
+      tags: [desventajas]
+      summary: Lista de desventajas (coste positivo)
+      responses:
+        '200':
+          description: Lista de desventajas
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/VentajaDetalle'
+
+  /desventajas/{id_ventaja}:
+    get:
+      tags: [desventajas]
+      summary: Desventaja por id (coste positivo)
+      parameters:
+        - name: id_ventaja
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Desventaja encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VentajaDetalle'
+        '404':
+          description: Desventaja no encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
   /clases:
     get:
       tags: [clases]
@@ -550,6 +666,30 @@ paths:
                 items:
                   $ref: '#/components/schemas/PlantillaDetalle'
 
+  /plantillas/{id_plantilla}:
+    get:
+      tags: [plantillas]
+      summary: Plantilla por id
+      parameters:
+        - name: id_plantilla
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Plantilla encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlantillaDetalle'
+        '404':
+          description: Plantilla no encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
   /plantillas/add:
     post:
       tags: [plantillas]
@@ -601,6 +741,57 @@ components:
         Incluye_tipos: { type: integer }
         Incluye_subtipos: { type: integer }
         Oficial: { type: boolean }
+
+    ReferenciaCorta:
+      type: object
+      properties:
+        Id: { type: integer }
+        Nombre: { type: string }
+        Descripcion: { type: string }
+
+    ManualAsociados:
+      type: object
+      properties:
+        Dotes:
+          type: array
+          items:
+            $ref: '#/components/schemas/ReferenciaCorta'
+        Conjuros:
+          type: array
+          items:
+            $ref: '#/components/schemas/ReferenciaCorta'
+        Plantillas:
+          type: array
+          items:
+            $ref: '#/components/schemas/ReferenciaCorta'
+        Monstruos:
+          type: array
+          items:
+            $ref: '#/components/schemas/ReferenciaCorta'
+        Razas:
+          type: array
+          items:
+            $ref: '#/components/schemas/ReferenciaCorta'
+        Clases:
+          type: array
+          items:
+            $ref: '#/components/schemas/ReferenciaCorta'
+        Tipos:
+          type: array
+          items:
+            $ref: '#/components/schemas/ReferenciaCorta'
+        Subtipos:
+          type: array
+          items:
+            $ref: '#/components/schemas/ReferenciaCorta'
+
+    ManualAsociadoDetalle:
+      allOf:
+        - $ref: '#/components/schemas/ManualDetalle'
+        - type: object
+          properties:
+            Asociados:
+              $ref: '#/components/schemas/ManualAsociados'
 
     DoteTipo:
       type: object
@@ -693,6 +884,38 @@ components:
           $ref: '#/components/schemas/DoteModificadores'
         Prerrequisitos:
           $ref: '#/components/schemas/DotePrerrequisitos'
+
+    VentajaDetalle:
+      type: object
+      properties:
+        Id: { type: integer }
+        Nombre: { type: string }
+        Descripcion: { type: string }
+        Disipable: { type: boolean }
+        Coste: { type: integer }
+        Mejora: { type: integer }
+        Caracteristica: { type: boolean }
+        Fuerza: { type: boolean }
+        Destreza: { type: boolean }
+        Constitucion: { type: boolean }
+        Inteligencia: { type: boolean }
+        Sabiduria: { type: boolean }
+        Carisma: { type: boolean }
+        Fortaleza: { type: boolean }
+        Reflejos: { type: boolean }
+        Voluntad: { type: boolean }
+        Iniciativa: { type: boolean }
+        Duplica_oro: { type: boolean }
+        Aumenta_oro: { type: boolean }
+        Idioma_extra: { type: boolean }
+        Manual:
+          $ref: '#/components/schemas/DoteManual'
+        Rasgo:
+          $ref: '#/components/schemas/ReferenciaCorta'
+        Idioma:
+          $ref: '#/components/schemas/ReferenciaCorta'
+        Habilidad:
+          $ref: '#/components/schemas/ReferenciaCorta'
 
     DoteContexto:
       type: object
@@ -1382,87 +1605,176 @@ components:
         disp: { type: string }
         ecp: { type: string }
 
+    PlantillaModificacionRef:
+      type: object
+      properties:
+        Id_paso_modificacion: { type: integer }
+        Nombre: { type: string }
+
+    PlantillaCaracteristicas:
+      type: object
+      properties:
+        Fuerza: { type: integer }
+        Destreza: { type: integer }
+        Constitucion: { type: integer }
+        Inteligencia: { type: integer }
+        Sabiduria: { type: integer }
+        Carisma: { type: integer }
+
+    PlantillaLicantroniaDg:
+      type: object
+      properties:
+        Id_dado: { type: integer }
+        Dado: { type: string }
+        Multiplicador: { type: integer }
+        Suma: { type: integer }
+
+    PlantillaPuntosHabilidad:
+      type: object
+      properties:
+        Suma: { type: integer }
+        Suma_fija: { type: integer }
+
+    PlantillaMovimientos:
+      type: object
+      properties:
+        Correr: { type: integer }
+        Nadar: { type: integer }
+        Volar: { type: integer }
+        Trepar: { type: integer }
+        Escalar: { type: integer }
+
+    PlantillaManiobrabilidad:
+      type: object
+      properties:
+        Id: { type: integer }
+        Nombre: { type: string }
+        Velocidad_avance: { type: string }
+        Flotar: { type: integer }
+        Volar_atras: { type: integer }
+        Contramarcha: { type: integer }
+        Giro: { type: string }
+        Rotacion: { type: string }
+        Giro_max: { type: string }
+        Angulo_ascenso: { type: string }
+        Velocidad_ascenso: { type: string }
+        Angulo_descenso: { type: string }
+        Descenso_ascenso: { type: integer }
+
+    PlantillaHabilidadRef:
+      type: object
+      properties:
+        Id_habilidad: { type: integer }
+        Habilidad: { type: string }
+        Id_caracteristica: { type: integer }
+        Caracteristica: { type: string }
+        Descripcion: { type: string }
+        Soporta_extra: { type: boolean }
+        Entrenada: { type: boolean }
+        Id_extra: { type: integer }
+        Extra: { type: string }
+        Rangos: { type: integer }
+        Varios: { type: string }
+
+    PlantillaSortilega:
+      type: object
+      properties:
+        Conjuro:
+          $ref: '#/components/schemas/ConjuroDetalle'
+        Nivel_lanzador: { type: integer }
+        Usos_diarios: { type: string }
+        Dg: { type: integer }
+
+    PlantillaPrerrequisitosFlags:
+      type: object
+      properties:
+        actitud_requerido: { type: boolean }
+        actitud_prohibido: { type: boolean }
+        alineamiento_requerido: { type: boolean }
+        caracteristica: { type: boolean }
+        criaturas_compatibles: { type: boolean }
+
+    PlantillaPrerrequisitos:
+      type: object
+      properties:
+        actitud_requerido: { type: array, items: { type: object, additionalProperties: true } }
+        actitud_prohibido: { type: array, items: { type: object, additionalProperties: true } }
+        alineamiento_requerido: { type: array, items: { type: object, additionalProperties: true } }
+        caracteristica: { type: array, items: { type: object, additionalProperties: true } }
+        criaturas_compatibles: { type: array, items: { type: object, additionalProperties: true } }
+
     PlantillaDetalle:
       type: object
       properties:
-        i: { type: integer }
-        n: { type: string }
-        d: { type: string }
-        m: { type: string }
-        ta:
+        Id: { type: integer }
+        Nombre: { type: string }
+        Descripcion: { type: string }
+        Manual:
+          $ref: '#/components/schemas/DoteManual'
+        Tamano:
           type: object
-          additionalProperties: true
-        da:
+          properties:
+            Id: { type: integer }
+            Nombre: { type: string }
+            Modificador: { type: integer }
+            Modificador_presa: { type: integer }
+        Tipo_dado:
           type: object
           properties:
             Id_tipo_dado: { type: integer }
             Nombre: { type: string }
-        act_dg: { type: integer }
-        mod_dg:
-          type: object
-          properties:
-            Id_paso_modificacion: { type: integer }
-            Nombre: { type: string }
-        mod_tam:
-          type: object
-          properties:
-            Id_paso_modificacion: { type: integer }
-            Nombre: { type: string }
-        ini: { type: integer }
-        vs: { type: string }
-        ca: { type: string }
-        a: { type: integer }
-        p: { type: integer }
-        as: { type: string }
-        ac: { type: string }
-        rd: { type: string }
-        rc: { type: string }
-        re: { type: string }
-        f: { type: integer }
-        r: { type: integer }
-        v: { type: integer }
-        fue: { type: integer }
-        de: { type: integer }
-        con: { type: integer }
-        inte: { type: integer }
-        sab: { type: integer }
-        car: { type: integer }
-        mfue: { type: integer }
-        mde: { type: integer }
-        mcon: { type: integer }
-        minte: { type: integer }
-        msab: { type: integer }
-        mcar: { type: integer }
-        aju: { type: integer }
-        lic:
-          type: object
-          properties:
-            Id_dado: { type: integer }
-            Dado: { type: string }
-            Multiplicador: { type: integer }
-            Suma: { type: integer }
-        cd: { type: integer }
-        hab:
-          type: object
-          properties:
-            Suma: { type: integer }
-            Suma_fija: { type: integer }
-        nac: { type: integer }
-        c: { type: integer }
-        na: { type: integer }
-        vo: { type: integer }
-        man:
-          type: object
-          additionalProperties: true
-        t: { type: integer }
-        e: { type: integer }
-        ali:
+        Actualiza_dg: { type: boolean }
+        Modificacion_dg:
+          $ref: '#/components/schemas/PlantillaModificacionRef'
+        Modificacion_tamano:
+          $ref: '#/components/schemas/PlantillaModificacionRef'
+        Iniciativa: { type: integer }
+        Velocidades: { type: string }
+        Ca: { type: string }
+        Ataque_base: { type: integer }
+        Presa: { type: integer }
+        Ataques: { type: string }
+        Ataque_completo: { type: string }
+        Reduccion_dano: { type: string }
+        Resistencia_conjuros: { type: string }
+        Resistencia_elemental: { type: string }
+        Fortaleza: { type: integer }
+        Reflejos: { type: integer }
+        Voluntad: { type: integer }
+        Modificadores_caracteristicas:
+          $ref: '#/components/schemas/PlantillaCaracteristicas'
+        Minimos_caracteristicas:
+          $ref: '#/components/schemas/PlantillaCaracteristicas'
+        Ajuste_nivel: { type: integer }
+        Licantronia_dg:
+          $ref: '#/components/schemas/PlantillaLicantroniaDg'
+        Cd: { type: integer }
+        Puntos_habilidad:
+          $ref: '#/components/schemas/PlantillaPuntosHabilidad'
+        Nacimiento: { type: boolean }
+        Movimientos:
+          $ref: '#/components/schemas/PlantillaMovimientos'
+        Maniobrabilidad:
+          $ref: '#/components/schemas/PlantillaManiobrabilidad'
+        Alineamiento:
           $ref: '#/components/schemas/AlineamientoDetalle'
-        o: { type: boolean }
-        dotes:
+        Oficial: { type: boolean }
+        Dotes:
           type: array
           items:
             $ref: '#/components/schemas/DoteContextual'
+        Habilidades:
+          type: array
+          items:
+            $ref: '#/components/schemas/PlantillaHabilidadRef'
+        Sortilegas:
+          type: array
+          items:
+            $ref: '#/components/schemas/PlantillaSortilega'
+        Prerrequisitos_flags:
+          $ref: '#/components/schemas/PlantillaPrerrequisitosFlags'
+        Prerrequisitos:
+          $ref: '#/components/schemas/PlantillaPrerrequisitos'
 
     ConjuroClaseRef:
       type: object

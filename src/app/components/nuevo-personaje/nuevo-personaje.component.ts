@@ -3,9 +3,13 @@ import { MatTabGroup } from '@angular/material/tabs';
 import { Subscription } from 'rxjs';
 import { Campana, Super } from 'src/app/interfaces/campaña';
 import { Personaje } from 'src/app/interfaces/personaje';
+import { Plantilla } from 'src/app/interfaces/plantilla';
 import { Raza } from 'src/app/interfaces/raza';
 import { CampanaService } from 'src/app/services/campana.service';
 import { AsignacionCaracteristicas, NuevoPersonajeService, StepNuevoPersonaje } from 'src/app/services/nuevo-personaje.service';
+import { PlantillaService } from 'src/app/services/plantilla.service';
+import { PlantillaEvaluacionResultado, evaluarElegibilidadPlantilla } from 'src/app/services/utils/plantilla-elegibilidad';
+import { environment } from 'src/environments/environment';
 import Swal from 'sweetalert2';
 
 @Component({
@@ -95,11 +99,25 @@ export class NuevoPersonajeComponent {
     Campanas: Campana[] = [];
     Tramas: Super[] = [];
     Subtramas: Super[] = [];
+    plantillasCatalogo: Plantilla[] = [];
+    plantillasElegibles: Plantilla[] = [];
+    plantillasBloqueadasUnknown: { plantilla: Plantilla; evaluacion: PlantillaEvaluacionResultado; }[] = [];
+    plantillasBloqueadasFailed: { plantilla: Plantilla; evaluacion: PlantillaEvaluacionResultado; }[] = [];
+    readonly mostrarDiagnosticoPlantillas = !environment.production;
+    filtroPlantillasTexto: string = '';
+    filtroPlantillasManual: string = 'Cualquiera';
+    incluirHomebrewPlantillas: boolean = false;
+    cargandoPlantillas: boolean = true;
     selectedInternalTabIndex = 0;
     private campanasSub?: Subscription;
+    private plantillasSub?: Subscription;
     @ViewChild(MatTabGroup) TabGroup?: MatTabGroup;
 
-    constructor(private nuevoPSvc: NuevoPersonajeService, private campanaSvc: CampanaService) {
+    constructor(
+        private nuevoPSvc: NuevoPersonajeService,
+        private campanaSvc: CampanaService,
+        private plantillaSvc: PlantillaService
+    ) {
         this.Personaje = this.nuevoPSvc.PersonajeCreacion;
     }
 
@@ -109,10 +127,12 @@ export class NuevoPersonajeComponent {
         this.sincronizarTabConPaso();
         this.recalcularOficialidad();
         this.cargarCampanas();
+        this.cargarPlantillas();
     }
 
     ngOnDestroy(): void {
         this.campanasSub?.unsubscribe();
+        this.plantillasSub?.unsubscribe();
     }
 
     get flujo() {
@@ -133,6 +153,39 @@ export class NuevoPersonajeComponent {
 
     get razaSeleccionada(): Raza | null {
         return this.nuevoPSvc.RazaSeleccionada;
+    }
+
+    get plantillasSeleccionadas(): Plantilla[] {
+        return this.flujo.plantillas.seleccionadas;
+    }
+
+    get tipoCriaturaSimuladaTexto(): string {
+        return this.flujo.plantillas.tipoCriaturaSimulada.Nombre;
+    }
+
+    get mostrarTipoCriaturaResultante(): boolean {
+        const raza = this.razaSeleccionada;
+        if (!raza)
+            return false;
+
+        const tipoBaseId = Number(raza.Tipo_criatura?.Id ?? 0);
+        const tipoSimuladoId = Number(this.flujo.plantillas.tipoCriaturaSimulada.Id ?? 0);
+
+        if (!Number.isFinite(tipoBaseId) || !Number.isFinite(tipoSimuladoId))
+            return false;
+
+        return tipoBaseId > 0 && tipoSimuladoId > 0 && tipoBaseId !== tipoSimuladoId;
+    }
+
+    get manualesPlantillas(): string[] {
+        const manuales = this.plantillasCatalogo
+            .map(p => p.Manual?.Nombre ?? '')
+            .filter(nombre => nombre.trim().length > 0);
+        return ['Cualquiera', ...Array.from(new Set(manuales)).sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' }))];
+    }
+
+    get mostrarBloquePlantillas(): boolean {
+        return this.caracteristicasGeneradas;
     }
 
     get deidadesFiltradas(): string[] {
@@ -442,6 +495,7 @@ export class NuevoPersonajeComponent {
         }
 
         this.recalcularOficialidad();
+        this.recalcularPlantillasVisibles();
         this.sincronizarTabConPaso();
     }
 
@@ -457,6 +511,7 @@ export class NuevoPersonajeComponent {
         if (!this.caracteristicasGeneradas) {
             return;
         }
+        this.recalcularPlantillasVisibles();
         this.nuevoPSvc.actualizarPasoActual('plantillas');
         this.sincronizarTabConPaso();
     }
@@ -577,11 +632,147 @@ export class NuevoPersonajeComponent {
         this.razaDetalles.emit(value);
     }
 
+    @Output() plantillaDetalles: EventEmitter<Plantilla> = new EventEmitter<Plantilla>();
+    verDetallesPlantilla(value: Plantilla): void {
+        this.plantillaDetalles.emit(value);
+    }
+
     seleccionarRaza(value: Raza) {
         this.nuevoPSvc.seleccionarRaza(value);
         this.Personaje = this.nuevoPSvc.PersonajeCreacion;
         this.normalizarAlineamientoSeleccionado();
         this.recalcularOficialidad();
+        this.recalcularPlantillasVisibles();
         this.irABasicos();
+    }
+
+    alternarHomebrewPlantillas(): void {
+        this.incluirHomebrewPlantillas = !this.incluirHomebrewPlantillas;
+        this.recalcularPlantillasVisibles();
+    }
+
+    onFiltroPlantillasTextoChange(value: string): void {
+        this.filtroPlantillasTexto = value ?? '';
+        this.recalcularPlantillasVisibles();
+    }
+
+    onFiltroPlantillasManualChange(value: string): void {
+        this.filtroPlantillasManual = value ?? 'Cualquiera';
+        this.recalcularPlantillasVisibles();
+    }
+
+    seleccionarPlantilla(plantilla: Plantilla): void {
+        const agregado = this.nuevoPSvc.agregarPlantillaSeleccion(plantilla);
+        if (!agregado)
+            return;
+        this.recalcularPlantillasVisibles();
+    }
+
+    quitarPlantillaSeleccion(idPlantilla: number): void {
+        this.nuevoPSvc.quitarPlantillaSeleccion(idPlantilla);
+        this.recalcularPlantillasVisibles();
+    }
+
+    limpiarSeleccionPlantillas(): void {
+        this.nuevoPSvc.limpiarPlantillasSeleccion();
+        this.recalcularPlantillasVisibles();
+    }
+
+    continuarDesdePlantillas(): void {
+        // Siguiente fase del flujo de creacion pendiente de integrar.
+    }
+
+    getTooltipBloqueoUnknown(item: { plantilla: Plantilla; evaluacion: PlantillaEvaluacionResultado; }): string {
+        const razones = item.evaluacion.razones.join(' | ');
+        const advertencias = item.evaluacion.advertencias.join(' | ');
+        if (razones && advertencias)
+            return `${razones} | ${advertencias}`;
+        return razones || advertencias || 'No se pudo evaluar por completo esta plantilla';
+    }
+
+    private cargarPlantillas(): void {
+        this.cargandoPlantillas = true;
+        this.plantillasSub?.unsubscribe();
+        this.plantillasSub = this.plantillaSvc.getPlantillas().subscribe({
+            next: (plantillas) => {
+                this.plantillasCatalogo = plantillas;
+                this.nuevoPSvc.setPlantillasDisponibles(plantillas);
+                this.recalcularPlantillasVisibles();
+                this.cargandoPlantillas = false;
+            },
+            error: () => {
+                this.plantillasCatalogo = [];
+                this.plantillasElegibles = [];
+                this.plantillasBloqueadasUnknown = [];
+                this.plantillasBloqueadasFailed = [];
+                this.cargandoPlantillas = false;
+            },
+        });
+    }
+
+    private recalcularPlantillasVisibles(): void {
+        const raza = this.razaSeleccionada;
+        if (!raza) {
+            this.plantillasElegibles = [];
+            this.plantillasBloqueadasUnknown = [];
+            this.plantillasBloqueadasFailed = [];
+            return;
+        }
+
+        const search = this.normalizarTexto(this.filtroPlantillasTexto);
+        const porManual = this.filtroPlantillasManual;
+
+        const ctx = {
+            alineamiento: this.Personaje.Alineamiento,
+            caracteristicas: {
+                Fuerza: Number(this.Personaje.Fuerza),
+                Destreza: Number(this.Personaje.Destreza),
+                Constitucion: Number(this.Personaje.Constitucion),
+                Inteligencia: Number(this.Personaje.Inteligencia),
+                Sabiduria: Number(this.Personaje.Sabiduria),
+                Carisma: Number(this.Personaje.Carisma),
+            },
+            tamanoRazaId: Number(raza.Tamano?.Id ?? 0),
+            tipoCriaturaActualId: Number(this.flujo.plantillas.tipoCriaturaSimulada.Id ?? 0),
+            razaHeredada: !!raza.Heredada,
+            incluirHomebrew: this.incluirHomebrewPlantillas,
+            seleccionadas: this.plantillasSeleccionadas.map(p => ({
+                Id: Number(p.Id),
+                Nombre: p.Nombre,
+                Nacimiento: !!p.Nacimiento,
+            })),
+        };
+
+        const elegibles: Plantilla[] = [];
+        const bloqueadasUnknown: { plantilla: Plantilla; evaluacion: PlantillaEvaluacionResultado; }[] = [];
+        const bloqueadasFailed: { plantilla: Plantilla; evaluacion: PlantillaEvaluacionResultado; }[] = [];
+
+        this.plantillasCatalogo.forEach((plantilla) => {
+            const nombre = this.normalizarTexto(plantilla.Nombre);
+            if (search.length > 0 && !nombre.includes(search))
+                return;
+
+            if (porManual !== 'Cualquiera' && (plantilla.Manual?.Nombre ?? '') !== porManual)
+                return;
+
+            const evaluacion = evaluarElegibilidadPlantilla(plantilla, ctx);
+            if (evaluacion.estado === 'eligible') {
+                elegibles.push(plantilla);
+                return;
+            }
+
+            if (evaluacion.estado === 'blocked_unknown') {
+                bloqueadasUnknown.push({ plantilla, evaluacion });
+                return;
+            }
+
+            if (evaluacion.estado === 'blocked_failed') {
+                bloqueadasFailed.push({ plantilla, evaluacion });
+            }
+        });
+
+        this.plantillasElegibles = elegibles;
+        this.plantillasBloqueadasUnknown = bloqueadasUnknown;
+        this.plantillasBloqueadasFailed = bloqueadasFailed;
     }
 }

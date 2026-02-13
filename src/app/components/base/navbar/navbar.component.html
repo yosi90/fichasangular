@@ -1,6 +1,6 @@
 <div>
     <p>Archivo</p>
-    <p [matMenuTriggerFor]="menuManuales">Manuales</p>
+    <p #menuTrigger="matMenuTrigger" [matMenuTriggerFor]="menuManuales">Manuales</p>
     <p>Opciones</p>
     <p>Ayuda</p>
 </div>
@@ -20,12 +20,16 @@
         </p>
 
         <div class="manuales-lista" *ngIf="!isLoading && !errorState && manuales.length > 0">
-            <div class="manual-item" *ngFor="let manual of manuales">
+            <div class="manual-item manual-item-clickable" *ngFor="let manual of manuales"
+                matTooltip="Abrir vista del manual" [matTooltipShowDelay]="180"
+                (click)="abrirManual(manual, $event, menuTrigger)">
                 <div class="manual-linea">
                     <div class="manual-nombre">{{manual.Nombre}}</div>
-                    <span class="chip chip-estado" [ngClass]="manual.Oficial ? 'chip-oficial' : 'chip-homebrew'">
-                        {{manual.Oficial ? 'Oficial' : 'Homebrew'}}
-                    </span>
+                    <div class="manual-actions">
+                        <span class="chip chip-estado" [ngClass]="manual.Oficial ? 'chip-oficial' : 'chip-homebrew'">
+                            {{manual.Oficial ? 'Oficial' : 'Homebrew'}}
+                        </span>
+                    </div>
                 </div>
                 <div class="manual-chips">
                     <span class="chip chip-categoria" *ngFor="let categoria of getCategorias(manual)">
