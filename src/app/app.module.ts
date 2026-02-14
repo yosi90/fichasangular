@@ -66,6 +66,7 @@ import { DetallesManualComponent } from './components/detalles/detalles-manual/d
 import { ListadoPlantillasComponent } from './components/shared/listado-plantillas/listado-plantillas.component';
 import { DetallesPlantillaComponent } from './components/detalles/detalles-plantilla/detalles-plantilla.component';
 import { SelectorIdiomaModalComponent } from './components/nuevo-personaje/selector-idioma-modal/selector-idioma-modal.component';
+import { VentanaDetalleFlotanteComponent } from './components/nuevo-personaje/ventana-detalle-flotante/ventana-detalle-flotante.component';
 
 @NgModule({
     declarations: [
@@ -99,6 +100,7 @@ import { SelectorIdiomaModalComponent } from './components/nuevo-personaje/selec
         DetallesRacialComponent,
         GeneradorCaracteristicasModalComponent,
         SelectorIdiomaModalComponent,
+        VentanaDetalleFlotanteComponent,
         DetallesManualComponent,
         ListadoPlantillasComponent,
         DetallesPlantillaComponent,

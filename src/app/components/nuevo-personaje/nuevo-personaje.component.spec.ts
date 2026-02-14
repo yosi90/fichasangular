@@ -278,6 +278,56 @@ describe('NuevoPersonajeComponent', () => {
         expect(component.modalCaracteristicasAbierto).toBeTrue();
     });
 
+    it('continuarDesdeBasicos abre ventana flotante en escritorio', async () => {
+        spyOnProperty(window, 'innerWidth', 'get').and.returnValue(1600);
+        spyOnProperty(window, 'innerHeight', 'get').and.returnValue(900);
+
+        await component.continuarDesdeBasicos();
+
+        expect(component.ventanaDetalleAbierta).toBeTrue();
+    });
+
+    it('continuarDesdeBasicos no abre ventana flotante en layout móvil/tablet', async () => {
+        spyOnProperty(window, 'innerWidth', 'get').and.returnValue(1024);
+        spyOnProperty(window, 'innerHeight', 'get').and.returnValue(800);
+
+        await component.continuarDesdeBasicos();
+
+        expect(component.ventanaDetalleAbierta).toBeFalse();
+    });
+
+    it('onSolicitarCerrarVentanaDetalle emite cierre al confirmar', async () => {
+        component.ventanaDetalleAbierta = true;
+        const emitSpy = spyOn(component.cerrarNuevoPersonajeSolicitado, 'emit');
+        spyOn(Swal, 'fire').and.resolveTo({ isConfirmed: true } as any);
+
+        await component.onSolicitarCerrarVentanaDetalle();
+
+        expect(component.ventanaDetalleAbierta).toBeFalse();
+        expect(emitSpy).toHaveBeenCalled();
+    });
+
+    it('onSolicitarCerrarVentanaDetalle mantiene ventana si cancela', async () => {
+        component.ventanaDetalleAbierta = true;
+        const emitSpy = spyOn(component.cerrarNuevoPersonajeSolicitado, 'emit');
+        spyOn(Swal, 'fire').and.resolveTo({ isConfirmed: false } as any);
+
+        await component.onSolicitarCerrarVentanaDetalle();
+
+        expect(component.ventanaDetalleAbierta).toBeTrue();
+        expect(emitSpy).not.toHaveBeenCalled();
+    });
+
+    it('tituloVentanaDetalle usa el nombre del personaje cuando existe', () => {
+        component.Personaje.Nombre = 'Pepe';
+        expect(component.tituloVentanaDetalle).toBe('Pepe - En creación');
+    });
+
+    it('tituloVentanaDetalle usa fallback cuando no hay nombre', () => {
+        component.Personaje.Nombre = '   ';
+        expect(component.tituloVentanaDetalle).toBe('Sin nombre - En creación');
+    });
+
     it('continuarDesdeBasicos sin inconsistencias abre modal sin alerta', async () => {
         component.Personaje.Nombre = 'Aldric';
         component.Personaje.Peso = 55;

@@ -1,0 +1,32 @@
+<div class="ventana-flotante" [ngStyle]="containerStyle" [class.ventana-bloqueada]="bloqueadaPorOverlay">
+    <div class="ventana-header" (pointerdown)="onTitleBarPointerDown($event)">
+        <div class="ventana-titulo">{{tituloVisible}}</div>
+        <div class="ventana-acciones no-drag">
+            <button type="button" class="ventana-accion ventana-accion--minmax" mat-icon-button (click)="toggleMinimize()" [attr.aria-label]="isMinimized ? 'Restaurar ventana' : 'Minimizar ventana'">
+                <mat-icon>{{isMinimized ? 'unfold_more' : 'remove'}}</mat-icon>
+            </button>
+            <button type="button" class="ventana-accion ventana-accion--minmax" mat-icon-button (click)="toggleMaximize()" [attr.aria-label]="isMaximized ? 'Restaurar tamaño' : 'Maximizar ventana'">
+                <mat-icon>{{isMaximized ? 'fullscreen_exit' : 'fullscreen'}}</mat-icon>
+            </button>
+            <button type="button" class="ventana-accion ventana-accion--close" mat-icon-button (click)="solicitarCierre()" aria-label="Cerrar ventana">
+                <mat-icon>close</mat-icon>
+            </button>
+        </div>
+    </div>
+
+    <div class="ventana-contenido" *ngIf="!isMinimized">
+        <ng-content></ng-content>
+    </div>
+
+    <ng-container *ngIf="!isMaximized && !isMinimized">
+        <div class="resize-handle resize-n" (pointerdown)="onResizePointerDown($event, 'n')"></div>
+        <div class="resize-handle resize-s" (pointerdown)="onResizePointerDown($event, 's')"></div>
+        <div class="resize-handle resize-e" (pointerdown)="onResizePointerDown($event, 'e')"></div>
+        <div class="resize-handle resize-w" (pointerdown)="onResizePointerDown($event, 'w')"></div>
+
+        <div class="resize-corner resize-ne" (pointerdown)="onResizePointerDown($event, 'ne')"></div>
+        <div class="resize-corner resize-nw" (pointerdown)="onResizePointerDown($event, 'nw')"></div>
+        <div class="resize-corner resize-se" (pointerdown)="onResizePointerDown($event, 'se')"></div>
+        <div class="resize-corner resize-sw" (pointerdown)="onResizePointerDown($event, 'sw')"></div>
+    </ng-container>
+</div>

@@ -430,6 +430,18 @@
         </mat-tab>
     </mat-tab-group>
 
+    <ng-container *ngIf="ventanaDetalleAbierta && !modalCaracteristicasAbierto">
+        <app-ventana-detalle-flotante
+            [titulo]="tituloVentanaDetalle"
+            [bloqueadaPorOverlay]="modalCaracteristicasAbierto"
+            (cerrarSolicitado)="onSolicitarCerrarVentanaDetalle()">
+            <app-detalles-personaje
+                [pj]="Personaje"
+                [mostrarBotonGenerarPdf]="false">
+            </app-detalles-personaje>
+        </app-ventana-detalle-flotante>
+    </ng-container>
+
     <ng-container *ngIf="modalCaracteristicasAbierto && razaSeleccionada as razaActual">
         <app-generador-caracteristicas-modal
             [raza]="razaActual"

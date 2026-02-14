@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Input, OnInit, Output } from '@angular/core';
+import { AfterViewInit, Component, ElementRef, EventEmitter, HostListener, Input, OnDestroy, OnInit, Output } from '@angular/core';
 import { AptitudSortilega } from 'src/app/interfaces/aptitud-sortilega';
 import { Conjuro } from 'src/app/interfaces/conjuro';
 import { Dote } from 'src/app/interfaces/dote';
@@ -8,13 +8,24 @@ import { Rasgo } from 'src/app/interfaces/rasgo';
 import { TipoCriatura } from 'src/app/interfaces/tipo_criatura';
 import { FichaPersonajeService } from 'src/app/services/ficha-personaje.service';
 
+interface MadurezEdadResumen {
+    id: number;
+    nombre: string;
+    modFisico: number;
+    modMental: number;
+}
+
 @Component({
     selector: 'app-detalles-personaje',
     templateUrl: './detalles-personaje.component.html',
     styleUrls: ['./detalles-personaje.component.sass']
 })
-export class DetallesPersonajeComponent implements OnInit {
+export class DetallesPersonajeComponent implements OnInit, AfterViewInit, OnDestroy {
     @Input() pj!: Personaje;
+    @Input() mostrarBotonGenerarPdf = true;
+    @Input() modoOcultarFaltantes = true;
+    modoCompactoLayout = false;
+    private resizeObserver: ResizeObserver | null = null;
     nivelPersonaje = 0;
     nivelDisclaimer: string = `
     Nivel de personaje
@@ -49,7 +60,7 @@ export class DetallesPersonajeComponent implements OnInit {
     5 pies equivalen a una casilla`;
     Habilidades: { Nombre: string; Mod_car: number; Rangos: number; Rangos_varios: number; Extra: string; Varios: string; }[] = [];
 
-    constructor(private fpSvc: FichaPersonajeService) { }
+    constructor(private fpSvc: FichaPersonajeService, private hostElement: ElementRef<HTMLElement>) { }
 
     ngOnInit(): void {
         if(this.pj.Habilidades)
@@ -93,6 +104,24 @@ export class DetallesPersonajeComponent implements OnInit {
         `;
     }
 
+    ngAfterViewInit(): void {
+        Promise.resolve().then(() => this.actualizarModoCompacto());
+        if (typeof ResizeObserver !== 'undefined') {
+            this.resizeObserver = new ResizeObserver(() => this.actualizarModoCompacto());
+            this.resizeObserver.observe(this.hostElement.nativeElement);
+        }
+    }
+
+    ngOnDestroy(): void {
+        this.resizeObserver?.disconnect();
+        this.resizeObserver = null;
+    }
+
+    @HostListener('window:resize')
+    onWindowResize(): void {
+        this.actualizarModoCompacto();
+    }
+
     generarFicha() {
         this.fpSvc.generarPDF(this.pj);
         if(this.pj.Conjuros.length > 0 || this.pj.Sortilegas.length > 0)
@@ -122,11 +151,234 @@ export class DetallesPersonajeComponent implements OnInit {
     tieneTextoVisible(texto: string | undefined | null): boolean {
         if (!texto)
             return false;
-        const base = texto.normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase();
+        const base = this.normalizarTexto(texto);
         if (!base)
             return false;
         const limpiado = base.replace(/[.]/g, '');
-        return limpiado !== 'no especifica' && limpiado !== 'no se especifica' && limpiado !== 'no aplica' && limpiado !== 'nada';
+        if (!this.modoOcultarFaltantes)
+            return limpiado.length > 0;
+        return limpiado !== 'no especifica'
+            && limpiado !== 'no se especifica'
+            && limpiado !== 'no aplica'
+            && limpiado !== 'nada'
+            && limpiado !== 'sin genero'
+            && limpiado !== 'no tener deidad'
+            && limpiado !== '-'
+            && limpiado !== 'desconocido'
+            && limpiado !== 'cualquiera'
+            && limpiado !== 'ninguna'
+            && limpiado !== 'placeholder';
+    }
+
+    tieneNumeroVisible(value: number | string | null | undefined): boolean {
+        const parsed = Number(value);
+        if (!Number.isFinite(parsed))
+            return false;
+        if (!this.modoOcultarFaltantes)
+            return true;
+        return parsed > 0;
+    }
+
+    tieneNumeroNoCero(value: number | string | null | undefined): boolean {
+        const parsed = Number(value);
+        if (!Number.isFinite(parsed))
+            return false;
+        if (!this.modoOcultarFaltantes)
+            return true;
+        return Math.abs(parsed) > 0.0001;
+    }
+
+    tieneArrayVisible<T>(arr: T[] | undefined | null): boolean {
+        return Array.isArray(arr) && arr.length > 0;
+    }
+
+    tienePersonajeNombreVisible(): boolean {
+        return this.tieneTextoVisible(this.pj?.Nombre);
+    }
+
+    tieneGeneroVisible(): boolean {
+        return this.tieneTextoVisible(this.pj?.Genero);
+    }
+
+    tieneAlineamientoVisible(): boolean {
+        return this.tieneTextoVisible(this.pj?.Alineamiento);
+    }
+
+    tieneDeidadVisible(): boolean {
+        return this.tieneTextoVisible(this.pj?.Deidad);
+    }
+
+    tieneExpVisible(): boolean {
+        return this.tieneNumeroVisible(this.pj?.Experiencia);
+    }
+
+    tieneNivelVisible(): boolean {
+        return this.tieneNumeroVisible(this.nivelPersonaje);
+    }
+
+    tieneNepVisible(): boolean {
+        return this.tieneNumeroVisible(this.pj?.NEP);
+    }
+
+    tieneAtaqueBaseVisible(): boolean {
+        return this.tieneNumeroVisible(this.pj?.Ataque_base as any);
+    }
+
+    tienePgVisible(): boolean {
+        return this.tieneNumeroVisible(this.pj?.Vida);
+    }
+
+    tieneCaVisible(): boolean {
+        return this.tieneNumeroVisible(this.pj?.Ca);
+    }
+
+    tieneOroVisible(): boolean {
+        return this.tieneNumeroVisible(this.pj?.Oro_inicial);
+    }
+
+    tieneRazaVisible(): boolean {
+        return this.tieneTextoVisible(this.pj?.Raza?.Nombre);
+    }
+
+    tieneTamanoVisible(): boolean {
+        return this.tieneTextoVisible(this.pj?.Raza?.Tamano?.Nombre);
+    }
+
+    tieneTipoCriaturaVisible(): boolean {
+        return this.tieneTextoVisible(this.pj?.Tipo_criatura?.Nombre);
+    }
+
+    tieneAjusteNivelRazaVisible(): boolean {
+        return this.tieneNumeroVisible(this.pj?.Raza?.Ajuste_nivel);
+    }
+
+    tieneDgsRazaVisible(): boolean {
+        return this.tieneNumeroVisible(this.pj?.Raza?.Dgs_adicionales?.Cantidad);
+    }
+
+    tieneIniciativaVisible(): boolean {
+        return this.tieneNumeroNoCero(this.iniciativa);
+    }
+
+    tienePresaVisible(): boolean {
+        return this.tieneNumeroNoCero(this.presa);
+    }
+
+    tieneVelocidadVisible(valor: number): boolean {
+        return this.tieneNumeroVisible(valor);
+    }
+
+    tieneCapacidadCargaVisible(): boolean {
+        return this.tieneNumeroVisible(this.pj?.Capacidad_carga?.Ligera)
+            || this.tieneNumeroVisible(this.pj?.Capacidad_carga?.Media)
+            || this.tieneNumeroVisible(this.pj?.Capacidad_carga?.Pesada);
+    }
+
+    tieneEdadVisible(): boolean {
+        return this.tieneNumeroVisible(this.pj?.Edad);
+    }
+
+    tieneAlturaVisible(): boolean {
+        return this.tieneNumeroVisible(this.pj?.Altura);
+    }
+
+    tienePesoVisible(): boolean {
+        return this.tieneNumeroVisible(this.pj?.Peso);
+    }
+
+    tieneBloqueBiometriaVisible(): boolean {
+        return this.tieneEdadVisible() || this.tieneAlturaVisible() || this.tienePesoVisible();
+    }
+
+    tieneRangosEdadRazaVisibles(): boolean {
+        const raza = this.pj?.Raza;
+        return this.tieneNumeroVisible(raza?.Edad_adulto)
+            || this.tieneNumeroVisible(raza?.Edad_mediana)
+            || this.tieneNumeroVisible(raza?.Edad_viejo)
+            || this.tieneNumeroVisible(raza?.Edad_venerable);
+    }
+
+    tieneMadurezEdadVisible(): boolean {
+        return this.tieneEdadVisible() && this.tieneRangosEdadRazaVisibles();
+    }
+
+    get madurezEdad(): MadurezEdadResumen {
+        const edadActual = Number(this.pj?.Edad ?? 0);
+        const mediana = Number(this.pj?.Raza?.Edad_mediana ?? 0);
+        const viejo = Number(this.pj?.Raza?.Edad_viejo ?? 0);
+        const venerable = Number(this.pj?.Raza?.Edad_venerable ?? 0);
+
+        const id = mediana <= 0 || edadActual < mediana
+            ? 0
+            : edadActual < viejo
+                ? 1
+                : edadActual < venerable
+                    ? 2
+                    : 3;
+
+        return {
+            id,
+            nombre: id === 0 ? 'Adulto' : id === 1 ? 'Mediana edad' : id === 2 ? 'Viejo' : 'Venerable',
+            modFisico: id === 0 ? 0 : id === 1 ? -1 : id === 2 ? -3 : -6,
+            modMental: id,
+        };
+    }
+
+    getTooltipMadurezEdad(): string {
+        const raza = this.pj?.Raza;
+        const madurez = this.madurezEdad;
+        return `Adulto: ${raza?.Edad_adulto ?? 0} | Mediana: ${raza?.Edad_mediana ?? 0} | Viejo: ${raza?.Edad_viejo ?? 0} | Venerable: ${raza?.Edad_venerable ?? 0}
+Fue/Des/Con: ${this.formatSigned(madurez.modFisico)} | Int/Sab/Car: ${this.formatSigned(madurez.modMental)}`;
+    }
+
+    formatSigned(value: number): string {
+        return value > 0 ? `+${value}` : `${value}`;
+    }
+
+    getSubtiposVisibles() {
+        return (this.pj?.Subtipos ?? []).filter((s) => this.tieneTextoVisible(s?.Nombre));
+    }
+
+    tieneSubtiposVisibles(): boolean {
+        return this.getSubtiposVisibles().length > 0;
+    }
+
+    getPlantillasVisibles() {
+        return (this.pj?.Plantillas ?? []).filter((p: any) => this.tieneTextoVisible(p?.Nombre));
+    }
+
+    tieneBloqueSalvacionesVisible(): boolean {
+        return this.fortaleza > 0
+            || this.reflejos > 0
+            || this.voluntad > 0
+            || this.fortaleza_varios > 0
+            || this.reflejos_varios > 0
+            || this.voluntad_varios > 0;
+    }
+
+    tieneCaracteristicasVisibles(): boolean {
+        if (!this.modoOcultarFaltantes)
+            return true;
+
+        const base = [this.pj.Fuerza, this.pj.Destreza, this.pj.Constitucion, this.pj.Inteligencia, this.pj.Sabiduria, this.pj.Carisma];
+        const mods = [this.pj.ModFuerza, this.pj.ModDestreza, this.pj.ModConstitucion, this.pj.ModInteligencia, this.pj.ModSabiduria, this.pj.ModCarisma];
+        const esBaseDefault = base.every(v => Number(v) === 10);
+        const esModDefault = mods.every(v => Number(v) === 0);
+        return !(esBaseDefault && esModDefault);
+    }
+
+    tienePersonalidadVisible(): boolean {
+        const value = this.normalizarTexto(this.pj?.Personalidad ?? '');
+        if (!this.tieneTextoVisible(value))
+            return false;
+        return value !== this.normalizarTexto('Rellena un fisco puto vago.');
+    }
+
+    tieneContextoVisible(): boolean {
+        const value = this.normalizarTexto(this.pj?.Contexto ?? '');
+        if (!this.tieneTextoVisible(value))
+            return false;
+        return value !== this.normalizarTexto('Eres totalmente antirol hijo mio.');
     }
 
     getClaseasVisibles() {
@@ -143,6 +395,34 @@ export class DetallesPersonajeComponent implements OnInit {
         return (this.pj?.Raciales ?? [])
             .map(racial => this.getNombreRacial(racial))
             .filter(nombre => this.tieneTextoVisible(nombre));
+    }
+
+    getDotesVisibles() {
+        return (this.pj?.Dotes ?? []).filter(d => this.tieneTextoVisible(d?.Nombre));
+    }
+
+    getIdiomasVisibles() {
+        return (this.pj?.Idiomas ?? []).filter(i => this.tieneTextoVisible(i?.Nombre));
+    }
+
+    getDominiosVisibles() {
+        return (this.pj?.Dominios ?? []).filter(d => this.tieneTextoVisible(`${d}`));
+    }
+
+    getConjurosVisibles() {
+        return (this.pj?.Conjuros ?? []).filter(c => this.tieneTextoVisible(c?.Nombre));
+    }
+
+    getSortilegasVisibles() {
+        return (this.pj?.Sortilegas ?? []).filter(s => this.tieneTextoVisible(s?.Conjuro?.Nombre));
+    }
+
+    getRasgosTipoVisibles() {
+        return (this.pj?.Tipo_criatura?.Rasgos ?? []).filter(r => this.tieneTextoVisible(r?.Nombre));
+    }
+
+    getVentajasVisibles() {
+        return (this.pj?.Ventajas ?? []).filter(v => this.tieneTextoVisible(`${v}`));
     }
 
     toDoteContextualFallback(dote: DoteLegacy): DoteContextual {
@@ -264,5 +544,19 @@ export class DetallesPersonajeComponent implements OnInit {
             id: Number.isFinite(id) && id > 0 ? id : null,
             nombre,
         });
+    }
+
+    private normalizarTexto(texto: string): string {
+        return `${texto ?? ''}`
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .trim()
+            .toLowerCase();
+    }
+
+    private actualizarModoCompacto(): void {
+        const contenedor = this.hostElement.nativeElement.querySelector('.detalle-view') as HTMLElement | null;
+        const width = (contenedor ?? this.hostElement.nativeElement).getBoundingClientRect().width;
+        this.modoCompactoLayout = width > 0 && width <= 900;
     }
 }

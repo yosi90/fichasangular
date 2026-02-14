@@ -45,7 +45,8 @@
         </ng-template>
         <app-nuevo-personaje
             (razaDetalles)="abrirDetallesRaza($event)"
-            (plantillaDetalles)="abrirDetallesPlantilla($event)">
+            (plantillaDetalles)="abrirDetallesPlantilla($event)"
+            (cerrarNuevoPersonajeSolicitado)="onCerrarNuevoPersonajeSolicitado()">
         </app-nuevo-personaje>
     </mat-tab>
     <mat-tab label="Lista de {{ListadoTabTipo}}" *ngIf="AbrirListadoTab">

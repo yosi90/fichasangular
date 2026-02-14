@@ -836,6 +836,10 @@ export class TabControlComponent implements OnInit, OnDestroy {
         this.CerrarNuevoPersonajeTab.emit();
     }
 
+    onCerrarNuevoPersonajeSolicitado(): void {
+        this.quitarNuevoPersonaje();
+    }
+
     @Output() CerrarListadoTab: EventEmitter<void> = new EventEmitter();
     quitarListado() {
         this.cambiarA(false);

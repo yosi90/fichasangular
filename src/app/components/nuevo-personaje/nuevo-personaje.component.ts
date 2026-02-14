@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Output, ViewChild } from '@angular/core';
+import { Component, EventEmitter, HostListener, Output, ViewChild } from '@angular/core';
 import { MatTabGroup } from '@angular/material/tabs';
 import { Subscription } from 'rxjs';
 import { Campana, Super } from 'src/app/interfaces/campaña';
@@ -126,6 +126,7 @@ export class NuevoPersonajeComponent {
     cargandoIdiomas: boolean = true;
     private ventajaPendienteIdiomaId: number | null = null;
     modalSelectorIdiomaAbierto = false;
+    ventanaDetalleAbierta = false;
     private contextoSelectorIdioma: 'ventaja' | 'idiomasIniciales' | null = null;
     selectorIdiomaTitulo = 'Seleccionar idioma extra';
     selectorIdiomaCantidadObjetivo = 0;
@@ -186,6 +187,11 @@ export class NuevoPersonajeComponent {
 
     get modalCaracteristicasAbierto(): boolean {
         return this.flujo.modalCaracteristicasAbierto;
+    }
+
+    get tituloVentanaDetalle(): string {
+        const nombre = `${this.Personaje?.Nombre ?? ''}`.trim();
+        return `${nombre.length > 0 ? nombre : 'Sin nombre'} - En creación`;
     }
 
     get razaElegida(): boolean {
@@ -481,6 +487,12 @@ export class NuevoPersonajeComponent {
             .toLowerCase();
     }
 
+    private isVentanaDetalleHabilitada(): boolean {
+        const width = typeof window !== 'undefined' ? window.innerWidth : 1280;
+        const height = typeof window !== 'undefined' ? window.innerHeight : 720;
+        return !(width <= 1250 || height <= 700 || height >= width);
+    }
+
     private esDeidadVaciaONeutra(): boolean {
         const deidad = this.normalizarTexto(this.Personaje.Deidad ?? '');
         return deidad.length < 1 || deidad === this.normalizarTexto('No tener deidad');
@@ -602,7 +614,38 @@ export class NuevoPersonajeComponent {
             }
         }
 
+        if (this.isVentanaDetalleHabilitada()) {
+            this.ventanaDetalleAbierta = true;
+        }
         this.abrirModalCaracteristicas();
+    }
+
+    @HostListener('window:resize')
+    onViewportResize(): void {
+        if (!this.isVentanaDetalleHabilitada() && this.ventanaDetalleAbierta) {
+            this.ventanaDetalleAbierta = false;
+        }
+    }
+
+    async onSolicitarCerrarVentanaDetalle(): Promise<void> {
+        const result = await Swal.fire({
+            icon: 'warning',
+            title: 'Cerrar nuevo personaje',
+            text: 'Si cierras esta ventana, también se cerrará la pestaña de nuevo personaje y se perderán los datos.',
+            showCancelButton: true,
+            confirmButtonText: 'Sí, cerrar todo',
+            cancelButtonText: 'Cancelar',
+            target: document.body,
+            heightAuto: false,
+            scrollbarPadding: false,
+        });
+
+        if (!result.isConfirmed) {
+            return;
+        }
+
+        this.ventanaDetalleAbierta = false;
+        this.cerrarNuevoPersonajeSolicitado.emit();
     }
 
     abrirModalCaracteristicas(): void {
@@ -772,9 +815,12 @@ export class NuevoPersonajeComponent {
         this.plantillaDetalles.emit(value);
     }
 
+    @Output() cerrarNuevoPersonajeSolicitado: EventEmitter<void> = new EventEmitter<void>();
+
     seleccionarRaza(value: Raza) {
         this.nuevoPSvc.seleccionarRaza(value);
         this.Personaje = this.nuevoPSvc.PersonajeCreacion;
+        this.ventanaDetalleAbierta = false;
         this.normalizarAlineamientoSeleccionado();
         this.recalcularOficialidad();
         this.recalcularPlantillasVisibles();
