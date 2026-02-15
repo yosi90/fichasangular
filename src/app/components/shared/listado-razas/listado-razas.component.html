@@ -37,12 +37,12 @@
                         {{element[column]}}
                     </p>
                     <div class="d-flex justify-content-center align-items-center" *ngIf="column == 'Ajuste_nivel'">
-                        <p class="text-center mb-0" [ngClass]="element[column] > 0 ? 'd-initial sombra3d-sm rounded px-2 py-1 bad' : ''">
+                        <p class="text-center mb-0" [ngClass]="element[column] > 0 ? 'd-initial sombra3d-sm rounded px-2 py-1 bad chip' : ''">
                             {{element[column] > 0 ? '+' + element[column] : ''}}
                         </p>
                     </div>
                     <div class="d-flex justify-content-center align-items-center" *ngIf="column == 'Dgs_adicionales'">
-                        <p class="text-center mb-0" [ngClass]="getDgsCantidad(element[column]) > 0 ? 'd-initial sombra3d-sm rounded px-2 py-1 bad' : ''">
+                        <p class="text-center mb-0" [ngClass]="getDgsCantidad(element[column]) > 0 ? 'd-initial sombra3d-sm rounded px-2 py-1 bad chip' : ''">
                             {{getDgsCantidad(element[column]) > 0 ? '+' + getDgsCantidad(element[column]) : ''}}{{getDgsDado(element[column])}}
                         </p>
                     </div>
@@ -52,22 +52,22 @@
                         {{element[column]}}
                     </button>
                     <div class="d-flex justify-content-center align-items-center modificadores-cell" *ngIf="column == 'Modificadores'">
-                        <p class="d-initial sombra3d-sm rounded p-1 mb-0 mod-chip" *ngIf="getModificador(element[column], 'Fuerza') != 0" [ngClass]="getModificador(element[column], 'Fuerza') > 0 ? 'good' : 'bad'">
+                        <p class="d-initial sombra3d-sm rounded p-1 mb-0 chip" *ngIf="getModificador(element[column], 'Fuerza') != 0" [ngClass]="getModificador(element[column], 'Fuerza') > 0 ? 'good' : 'bad'">
                             {{getModificador(element[column], 'Fuerza') > 0 ? 'FUE +' + getModificador(element[column], 'Fuerza') : 'FUE ' + getModificador(element[column], 'Fuerza')}}
                         </p>
-                        <p class="d-initial sombra3d-sm rounded p-1 mb-0 mod-chip" *ngIf="getModificador(element[column], 'Destreza') != 0" [ngClass]="getModificador(element[column], 'Destreza') > 0 ? 'good' : 'bad'">
+                        <p class="d-initial sombra3d-sm rounded p-1 mb-0 chip" *ngIf="getModificador(element[column], 'Destreza') != 0" [ngClass]="getModificador(element[column], 'Destreza') > 0 ? 'good' : 'bad'">
                             {{getModificador(element[column], 'Destreza') > 0 ? 'DES +' + getModificador(element[column], 'Destreza') : 'DES ' + getModificador(element[column], 'Destreza')}}
                         </p>
-                        <p class="d-initial sombra3d-sm rounded p-1 mb-0 mod-chip" *ngIf="getModificador(element[column], 'Constitucion') != 0" [ngClass]="getModificador(element[column], 'Constitucion') > 0 ? 'good' : 'bad'">
+                        <p class="d-initial sombra3d-sm rounded p-1 mb-0 chip" *ngIf="getModificador(element[column], 'Constitucion') != 0" [ngClass]="getModificador(element[column], 'Constitucion') > 0 ? 'good' : 'bad'">
                             {{getModificador(element[column], 'Constitucion') > 0 ? 'CON +' + getModificador(element[column], 'Constitucion') : 'CON ' + getModificador(element[column], 'Constitucion')}}
                         </p>
-                        <p class="d-initial sombra3d-sm rounded p-1 mb-0 mod-chip" *ngIf="getModificador(element[column], 'Inteligencia') != 0" [ngClass]="getModificador(element[column], 'Inteligencia') > 0 ? 'good' : 'bad'">
+                        <p class="d-initial sombra3d-sm rounded p-1 mb-0 chip" *ngIf="getModificador(element[column], 'Inteligencia') != 0" [ngClass]="getModificador(element[column], 'Inteligencia') > 0 ? 'good' : 'bad'">
                             {{getModificador(element[column], 'Inteligencia') > 0 ? 'INT +' + getModificador(element[column], 'Inteligencia') : 'INT ' + getModificador(element[column], 'Inteligencia')}}
                         </p>
-                        <p class="d-initial sombra3d-sm rounded p-1 mb-0 mod-chip" *ngIf="getModificador(element[column], 'Sabiduria') != 0" [ngClass]="getModificador(element[column], 'Sabiduria') > 0 ? 'good' : 'bad'">
+                        <p class="d-initial sombra3d-sm rounded p-1 mb-0 chip" *ngIf="getModificador(element[column], 'Sabiduria') != 0" [ngClass]="getModificador(element[column], 'Sabiduria') > 0 ? 'good' : 'bad'">
                             {{getModificador(element[column], 'Sabiduria') > 0 ? 'SAB +' + getModificador(element[column], 'Sabiduria') : 'SAB ' + getModificador(element[column], 'Sabiduria')}}
                         </p>
-                        <p class="d-initial sombra3d-sm rounded p-1 mb-0 mod-chip" *ngIf="getModificador(element[column], 'Carisma') != 0" [ngClass]="getModificador(element[column], 'Carisma') > 0 ? 'good' : 'bad'">
+                        <p class="d-initial sombra3d-sm rounded p-1 mb-0 chip" *ngIf="getModificador(element[column], 'Carisma') != 0" [ngClass]="getModificador(element[column], 'Carisma') > 0 ? 'good' : 'bad'">
                             {{getModificador(element[column], 'Carisma') > 0 ? 'CAR +' + getModificador(element[column], 'Carisma') : 'CAR ' + getModificador(element[column], 'Carisma')}}
                         </p>
                         <!-- <p class="d-initial sombra3d-sm rounded p-1 me-1 mb-0"
