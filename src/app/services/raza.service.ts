@@ -12,6 +12,7 @@ import { AptitudSortilega } from '../interfaces/aptitud-sortilega';
 import { Alineamiento } from '../interfaces/alineamiento';
 import { DoteContextual } from '../interfaces/dote-contextual';
 import { toDoteContextualArray } from './utils/dote-mapper';
+import { normalizeRaciales } from './utils/racial-mapper';
 
 function toBoolean(value: any): boolean {
     return value === true || value === 1 || value === "1";
@@ -70,6 +71,7 @@ export class RazaService {
                     Alcance: snapshot.child('Alcance').val(),
                     Tipo_criatura: snapshot.child('Tipo_criatura').val(),
                     Sortilegas: snapshot.child('Sortilegas').val(),
+                    Raciales: normalizeRaciales(snapshot.child('Raciales').val()),
                     DotesContextuales: dotesContextuales,
                 };
                 observador.next(raza); // Emitir el array de personajes
@@ -140,6 +142,7 @@ export class RazaService {
                         Alcance: obj.child('Alcance').val(),
                         Tipo_criatura: obj.child('Tipo_criatura').val(),
                         Sortilegas: obj.child('Sortilegas').val(),
+                        Raciales: normalizeRaciales(obj.child('Raciales').val()),
                         DotesContextuales: dotesContextuales,
                     };
                     Razas.push(raza);
@@ -183,10 +186,12 @@ export class RazaService {
                     i: any; n: any; m: { Fuerza: number; Destreza: number; Constitucion: number; Inteligencia: number; Sabiduria: number; Carisma: number; }; ma: any;
                     aju: any; c: any; o: boolean; an: string; t: Tamano; dg: any; rd: string; rc: string; re: string; he: boolean; mu: boolean; tmd: boolean; pr: any;
                     ant: number; va: number; co: number; na: number; vo: number; man: Maniobrabilidad; tr: number; es: number; ari: number; ars: number; pri: number; 
-                    prs: number; ea: number; em: number; ev: number; eve: number; esp: number; alc: number; tc: TipoCriatura; sor: AptitudSortilega[], 
+                    prs: number; ea: number; em: number; ev: number; eve: number; esp: number; alc: number; tc: TipoCriatura; sor: AptitudSortilega[],
                     ali: Alineamiento; dotes: DoteContextual[];
+                    rac: any;
                 }) => {
                     const dotesContextuales = toDoteContextualArray(element.dotes);
+                    const raciales = normalizeRaciales(element.rac);
                     return set(
                         ref(db, `Razas/${element.i}`), {
                         Nombre: element.n,
@@ -227,6 +232,7 @@ export class RazaService {
                         Alcance: element.alc,
                         Tipo_criatura: element.tc,
                         Sortilegas: element.sor,
+                        Raciales: raciales,
                         DotesContextuales: dotesContextuales,
                     });
                 })

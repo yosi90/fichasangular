@@ -5,30 +5,11 @@ import { Observable, firstValueFrom } from "rxjs";
 import Swal from "sweetalert2";
 import { environment } from "src/environments/environment";
 import { RacialDetalle } from "../interfaces/racial";
+import { normalizeRacial, normalizeRaciales } from "./utils/racial-mapper";
 
-function toNumber(value: any, fallback: number = 0): number {
-    const n = Number(value);
-    return Number.isFinite(n) ? n : fallback;
-}
-
-function toText(value: any, fallback: string = ""): string {
-    return typeof value === "string" ? value : (value ?? fallback).toString();
-}
-
-function toArray<T = any>(value: any): T[] {
-    if (Array.isArray(value))
-        return value;
-    if (value && typeof value === "object")
-        return Object.values(value) as T[];
-    return [];
-}
-
-export function normalizeRacial(raw: any): RacialDetalle {
-    return {
-        Id: toNumber(raw?.Id),
-        Nombre: toText(raw?.Nombre),
-        Descripcion: toText(raw?.Descripcion),
-    };
+function sortRaciales(raciales: RacialDetalle[]): RacialDetalle[] {
+    return [...raciales]
+        .sort((a, b) => a.Nombre.localeCompare(b.Nombre, "es", { sensitivity: "base" }));
 }
 
 @Injectable({
@@ -95,14 +76,14 @@ export class RacialService {
                     snapshot.forEach((obj: any) => {
                         raciales.push(normalizeRacial(obj.val()));
                     });
-                    observador.next(raciales);
+                    observador.next(sortRaciales(raciales));
                     return;
                 }
 
                 this.http.get(`${environment.apiUrl}razas/raciales`).subscribe({
                     next: (raw: any) => {
-                        const raciales = toArray(raw).map(normalizeRacial);
-                        observador.next(raciales);
+                        const raciales = normalizeRaciales(raw);
+                        observador.next(sortRaciales(raciales));
                     },
                     error: (error: any) => observador.error(error),
                 });
@@ -128,9 +109,9 @@ export class RacialService {
         const dbInstance = getDatabase();
         try {
             const response = await firstValueFrom(this.syncRaciales());
+            const raciales = normalizeRaciales(response);
             await Promise.all(
-                toArray(response).map((raw: any) => {
-                    const racial = normalizeRacial(raw);
+                raciales.map((racial) => {
                     return set(ref(dbInstance, `Raciales/${racial.Id}`), racial);
                 })
             );

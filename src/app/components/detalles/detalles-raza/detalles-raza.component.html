@@ -121,11 +121,14 @@
                         </button>
                     </mat-expansion-panel-header>
                     <mat-chip-set class="m-1">
-                        <mat-chip class="h-auto sombra3d-sm m-1" [ngClass]="racial.clicable ? 'chip-clic' : ''"
+                        <mat-chip class="h-auto sombra3d-sm m-1 chip-clic"
                             matTooltip="Pulsa para ver detalles de esta racial" [matTooltipShowDelay]="250"
-                            matTooltipClass="tt-accent" (click)="abrirDetalleRacialPorNombre(racial.nombreBase)"
+                            matTooltipClass="tt-accent" (click)="abrirDetalleRacial(racial)"
                             *ngFor="let racial of getRacialesActivos()">
-                            {{racial.texto}}
+                            {{racial.Nombre}}
+                            <mat-chip class="sombra3d-sm m-1" *ngIf="tieneTextoVisible(racial.Descripcion)">
+                                {{racial.Descripcion}}
+                            </mat-chip>
                         </mat-chip>
                     </mat-chip-set>
                 </mat-expansion-panel>

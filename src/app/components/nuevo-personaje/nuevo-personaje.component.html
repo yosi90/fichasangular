@@ -437,7 +437,8 @@
             (cerrarSolicitado)="onSolicitarCerrarVentanaDetalle()">
             <app-detalles-personaje
                 [pj]="Personaje"
-                [mostrarBotonGenerarPdf]="false">
+                [mostrarBotonGenerarPdf]="false"
+                (racialDetallesPorNombre)="verDetallesRacialDesdeReferencia($event)">
             </app-detalles-personaje>
         </app-ventana-detalle-flotante>
     </ng-container>

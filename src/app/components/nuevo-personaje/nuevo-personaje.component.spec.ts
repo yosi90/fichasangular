@@ -108,6 +108,7 @@ function crearRazaMock(oficial = true): Raza {
             Oficial: true,
         },
         Sortilegas: [],
+        Raciales: [],
         DotesContextuales: [],
     };
 }

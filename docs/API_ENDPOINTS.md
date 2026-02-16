@@ -131,7 +131,7 @@ PersonajeDetalle
 | con | array | Lista de `ConjuroDetalle` |
 | esp | array | Lista de especiales (nombre) |
 | espX | array | Lista de extras por especial (paralela a `esp`) |
-| rac | string | Lista serializada de raciales separada por `| ` |
+| rac | array | Lista de `RacialDetalle` (contrato ampliado) |
 | hab | array | Ids de habilidades (paralela al resto de `hab*`) |
 | habN | array | Nombres de habilidades |
 | habC | array | Booleano, es habilidad de clase |
@@ -204,7 +204,8 @@ RazaCompleta
 | rc | string | Resistencia a conjuros |
 | re | string | Resistencia elemental |
 | he | number | Heredada (0/1) |
-| mu | number | Mutada (0/1) |
+| mu | number | Mutada (valor DB) |
+| Mutada | boolean | Flag enriquecido de raza mutada (true/false) |
 | tmd | number | Tamano mutacion dependiente (0/1) |
 | pr | object | Prerrequisitos (ver abajo) |
 | ant | number | Armadura natural |
@@ -229,6 +230,7 @@ RazaCompleta
 | sor | array | Lista de `SortilegioRaza` |
 | ali | object | `AlineamientoDetalle` |
 | dotes | array | Lista de `DoteContextual` |
+| rac | array | Lista de `RacialDetalle` (contrato ampliado) |
 
 DGS adicionales (RazaCompleta.dg)
 | Campo | Tipo | Descripcion |
@@ -835,6 +837,14 @@ RacialDetalle
 | Id | number | Id de racial |
 | Nombre | string | Nombre |
 | Descripcion | string | Descripcion |
+| Dotes | array | Lista de dotes con `{ Id_dote, Dote, Id_extra, Extra }` |
+| Habilidades | object | `{ Base: [], Custom: [] }` |
+| Caracteristicas | array | Bonificadores de caracteristica |
+| Salvaciones | array | Bonificadores de salvacion |
+| Sortilegas | array | Lista de sortilegas con conjuro y metadatos |
+| Ataques | array | Lista de ataques raciales |
+| Prerrequisitos_flags | object | Flags booleanos (`raza`, `caracteristica_minima`) |
+| Prerrequisitos | object | Bloques de prerrequisitos (`raza`, `caracteristica`) |
 
 Endpoint: GET /plantillas
 Respuesta: array de `PlantillaDetalle`

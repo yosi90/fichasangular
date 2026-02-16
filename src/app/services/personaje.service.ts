@@ -9,6 +9,7 @@ import Swal from 'sweetalert2';
 import { TipoCriatura } from '../interfaces/tipo_criatura';
 import { DoteContextual } from '../interfaces/dote-contextual';
 import { toDoteContextualArray, toDoteLegacyArray } from './utils/dote-mapper';
+import { normalizeRaciales } from './utils/racial-mapper';
 
 @Injectable({
     providedIn: 'root'
@@ -91,7 +92,7 @@ export class PersonajeService {
                     Plantillas: snapshot.child('Plantillas').val(),
                     Conjuros: snapshot.child('Conjuros').val(),
                     Claseas: snapshot.child('Claseas').val(),
-                    Raciales: snapshot.child('Raciales').val(),
+                    Raciales: normalizeRaciales(snapshot.child('Raciales').val()),
                     Habilidades: snapshot.child('Habilidades').val(),
                     Dotes: dotesLegacy,
                     DotesContextuales: dotesContextuales,
@@ -246,7 +247,7 @@ export class PersonajeService {
                         }
                     const dom: [] = element.dom.split("|").map((item: string) => item.trim()).filter((item: string) => item.length > 0);
                     const stc: [] = element.stc.split("|").map((item: string) => item.trim()).filter((item: string) => item.length > 0);
-                    const rac: [] = element.rac.split("|").map((item: string) => item.trim()).filter((item: string) => item.length > 0);
+                    const raciales = normalizeRaciales(element.rac);
                     const ve: [] = element.ve.split("|").map((item: string) => item.trim()).filter((item: string) => item.length > 0);
                     const ecp: [] = element.ecp.split("|").map((item: string) => item.trim()).filter((item: string) => item.length > 0);
                     const ataqueBase = `${element.a ?? 0}`;
@@ -305,7 +306,7 @@ export class PersonajeService {
                         Plantillas: element.pla,
                         Conjuros: element.con,
                         Claseas: claseas,
-                        Raciales: rac,
+                        Raciales: raciales,
                         Habilidades: habilidades,
                         Dotes: dotes,
                         DotesContextuales: dotesContextuales,

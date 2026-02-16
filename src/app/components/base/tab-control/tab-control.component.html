@@ -32,7 +32,7 @@
             (rasgoDetalles)="abrirDetallesRasgo($event);"
             (claseDetalles)="abrirDetallesClasePorNombre($event);"
             (especialDetallesPorNombre)="abrirDetallesEspecialPorNombre($event);"
-            (racialDetallesPorNombre)="abrirDetallesRacialPorNombre($event);"
+            (racialDetallesPorNombre)="abrirDetallesRacialDesdeReferencia($event);"
             (plantillaDetalles)="abrirDetallesPlantillaDesdeFicha($event);"
             (doteDetalles)="abrirDetallesDote($event);">
         </app-detalles-personaje>
@@ -46,6 +46,7 @@
         <app-nuevo-personaje
             (razaDetalles)="abrirDetallesRaza($event)"
             (plantillaDetalles)="abrirDetallesPlantilla($event)"
+            (racialDetallesPorNombre)="abrirDetallesRacialDesdeReferencia($event)"
             (cerrarNuevoPersonajeSolicitado)="onCerrarNuevoPersonajeSolicitado()">
         </app-nuevo-personaje>
     </mat-tab>
@@ -73,7 +74,7 @@
         </ng-template>
         <app-detalles-raza
             [raza]="detallesRazaAbiertos[index]"
-            (racialDetallesPorNombre)="abrirDetallesRacialPorNombre($event)">
+            (racialDetallesPorNombre)="abrirDetallesRacialDesdeReferencia($event)">
         </app-detalles-raza>
     </mat-tab>
     <mat-tab *ngFor="let tab of detallesConjuroAbiertos; let index = index" [label]="tab.Nombre">
@@ -138,7 +139,11 @@
             {{getEtiquetaRacial(racial)}}
             <button (click)="quitarDetallesRacial(getEtiquetaRacial(racial))" mat-icon-button class="ms-2"><mat-icon>close</mat-icon></button>
         </ng-template>
-        <app-detalles-racial [racial]="detallesRacialAbiertos[index]"></app-detalles-racial>
+        <app-detalles-racial
+            [racial]="detallesRacialAbiertos[index]"
+            (doteDetallesId)="abrirDetallesDotePorId($event)"
+            (conjuroDetallesId)="abrirDetallesConjuroPorId($event)">
+        </app-detalles-racial>
     </mat-tab>
     <mat-tab *ngFor="let doteCtx of detallesDoteAbiertos; let index = index" [label]="getEtiquetaDote(doteCtx)">
         <ng-template mat-tab-label>

@@ -166,10 +166,10 @@
                         </button>
                     </mat-expansion-panel-header>
                     <mat-chip-set class="m-1">
-                        <mat-chip *ngFor="let r of getRacialesVisibles()" class="chip-clic sombra3d-sm"
+                        <mat-chip *ngFor="let r of getRacialesVisibles(); trackBy: trackByRacial" class="chip-clic sombra3d-sm"
                             matTooltip="Pulsa para ver los detalles" [matTooltipShowDelay]="250" matTooltipClass="tt-accent"
                             (click)="verDetallesRacialPorNombre(r)">
-                            {{r}}
+                            {{r.nombre}}
                         </mat-chip>
                     </mat-chip-set>
                 </mat-expansion-panel>

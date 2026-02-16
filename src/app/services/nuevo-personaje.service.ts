@@ -3,9 +3,11 @@ import { HabilidadBasicaDetalle, HabilidadBonoVario } from '../interfaces/habili
 import { IdiomaDetalle } from '../interfaces/idioma';
 import { Personaje } from '../interfaces/personaje';
 import { Plantilla } from '../interfaces/plantilla';
+import { RacialDetalle } from '../interfaces/racial';
 import { Raza } from '../interfaces/raza';
 import { VentajaDetalle } from '../interfaces/ventaja';
 import { simularEstadoPlantillas } from './utils/plantilla-elegibilidad';
+import { createRacialPlaceholder, normalizeRaciales } from './utils/racial-mapper';
 
 export type StepNuevoPersonaje = 'raza' | 'basicos' | 'plantillas' | 'ventajas';
 
@@ -68,9 +70,7 @@ export interface VentajasFlujoState {
     pendientesOro: PendienteOroState[];
     bonosHabilidades: Record<number, HabilidadBonoVario[]>;
     baseCaracteristicas: Record<CaracteristicaKey, number> | null;
-    baseRaciales: {
-        Nombre: string;
-    }[];
+    baseRaciales: RacialDetalle[];
     baseIdiomas: {
         Nombre: string;
         Descripcion: string;
@@ -157,6 +157,7 @@ export class NuevoPersonajeService {
         this.personajeCreacion.Volar = raza.Volar ?? 0;
         this.personajeCreacion.Trepar = raza.Trepar ?? 0;
         this.personajeCreacion.Escalar = raza.Escalar ?? 0;
+        this.personajeCreacion.Raciales = this.copiarRaciales(raza.Raciales);
         this.personajeCreacion.Edad = raza.Edad_adulto ?? 0;
         this.personajeCreacion.Altura = raza.Altura_rango_inf ?? 0;
         this.personajeCreacion.Peso = raza.Peso_rango_inf ?? 0;
@@ -842,15 +843,14 @@ export class NuevoPersonajeService {
         });
     }
 
-    private aplicarRasgo(detalle: VentajaDetalle, raciales: { Nombre: string; }[]): void {
+    private aplicarRasgo(detalle: VentajaDetalle, raciales: RacialDetalle[]): void {
         const nombre = `${detalle.Rasgo?.Nombre ?? ''}`.trim();
         if (nombre.length < 1)
             return;
 
         const existe = raciales.some(r => this.normalizarTexto(r.Nombre) === this.normalizarTexto(nombre));
-        if (!existe) {
-            raciales.push({ Nombre: nombre });
-        }
+        if (!existe)
+            raciales.push(createRacialPlaceholder(nombre));
     }
 
     private aplicarIdioma(
@@ -907,10 +907,9 @@ export class NuevoPersonajeService {
         }
     }
 
-    private copiarRaciales(value: { Nombre: string; }[] | null | undefined): { Nombre: string; }[] {
-        return (value ?? [])
-            .map((r) => ({ Nombre: `${r?.Nombre ?? ''}`.trim() }))
-            .filter(r => r.Nombre.length > 0);
+    private copiarRaciales(value: RacialDetalle[] | null | undefined): RacialDetalle[] {
+        return normalizeRaciales(value)
+            .filter((r) => this.normalizarTexto(r.Nombre).length > 0);
     }
 
     private copiarIdiomas(value: { Nombre: string; Descripcion: string; Secreto: boolean; Oficial: boolean; }[] | null | undefined) {

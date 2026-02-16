@@ -1,6 +1,7 @@
 import { AptitudSortilega } from "./aptitud-sortilega";
 import { Conjuro } from "./conjuro";
 import { DoteContextual, DoteLegacy } from "./dote-contextual";
+import { RacialDetalle } from "./racial";
 import { PersonajeSimple } from "./simplificaciones/personaje-simple";
 import { TipoCriatura } from "./tipo_criatura";
 
@@ -184,9 +185,7 @@ export interface Personaje extends PersonajeSimple {
         Nombre: string;
         Extra: string;
     }[]
-    Raciales: {
-        Nombre: string;
-    }[]
+    Raciales: RacialDetalle[];
     Habilidades: {
         Id: number;
         Nombre: string;

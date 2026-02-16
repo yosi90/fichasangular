@@ -1,5 +1,9 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { NO_ERRORS_SCHEMA } from '@angular/core';
+import { MatIconModule } from '@angular/material/icon';
+import { MatMenuModule } from '@angular/material/menu';
+import { MatTooltipModule } from '@angular/material/tooltip';
+import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
 
 import { NavbarComponent } from './navbar.component';
 import { of } from 'rxjs';
@@ -12,6 +16,7 @@ describe('NavbarComponent', () => {
 
   const manualesAsociadosMock = {
     getManualesAsociados: () => of([]),
+    fallbackNotice$: of(''),
   };
 
   const navVistaMock = {
@@ -21,6 +26,12 @@ describe('NavbarComponent', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       declarations: [ NavbarComponent ],
+      imports: [
+        BrowserAnimationsModule,
+        MatMenuModule,
+        MatTooltipModule,
+        MatIconModule,
+      ],
       providers: [
         { provide: ManualesAsociadosService, useValue: manualesAsociadosMock },
         { provide: ManualVistaNavigationService, useValue: navVistaMock },

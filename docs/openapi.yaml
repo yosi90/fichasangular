@@ -1348,6 +1348,7 @@ components:
         Manual: { type: string }
         Clase_predilecta: { type: string }
         Oficial: { type: boolean }
+        Mutada: { type: boolean }
         Tamano:
           type: object
           additionalProperties: true
@@ -1406,6 +1407,7 @@ components:
         re: { type: string }
         he: { type: integer }
         mu: { type: integer }
+        Mutada: { type: boolean }
         tmd: { type: integer }
         pr:
           type: object
@@ -1442,6 +1444,10 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/DoteContextual'
+        rac:
+          type: array
+          items:
+            $ref: '#/components/schemas/RacialDetalle'
 
     RacialDetalle:
       type: object
@@ -1449,6 +1455,55 @@ components:
         Id: { type: integer }
         Nombre: { type: string }
         Descripcion: { type: string }
+        Dotes:
+          type: array
+          items:
+            type: object
+            properties:
+              Id_dote: { type: integer }
+              Dote: { type: string }
+              Id_extra: { type: integer }
+              Extra: { type: string }
+        Habilidades:
+          type: object
+          properties:
+            Base:
+              type: array
+              items: { type: object, additionalProperties: true }
+            Custom:
+              type: array
+              items: { type: object, additionalProperties: true }
+        Caracteristicas:
+          type: array
+          items: { type: object, additionalProperties: true }
+        Salvaciones:
+          type: array
+          items: { type: object, additionalProperties: true }
+        Sortilegas:
+          type: array
+          items:
+            type: object
+            properties:
+              Conjuro:
+                $ref: '#/components/schemas/ConjuroDetalle'
+              Nivel_lanzador: { type: string }
+              Usos_diarios: { type: string }
+        Ataques:
+          type: array
+          items:
+            type: object
+            properties:
+              Descripcion: { type: string }
+        Prerrequisitos_flags:
+          type: object
+          properties:
+            raza: { type: boolean }
+            caracteristica_minima: { type: boolean }
+        Prerrequisitos:
+          type: object
+          properties:
+            raza: { type: array, items: { type: object, additionalProperties: true } }
+            caracteristica: { type: array, items: { type: object, additionalProperties: true } }
 
     Idioma:
       type: object
@@ -1596,7 +1651,10 @@ components:
         espX:
           type: array
           items: { type: string }
-        rac: { type: string }
+        rac:
+          type: array
+          items:
+            $ref: '#/components/schemas/RacialDetalle'
         hab:
           type: array
           items: { type: string }

@@ -6,8 +6,6 @@
                     {{racial.Nombre}}
                 </mat-chip>
             </div>
-        </div>
-        <div class="col-md-4 col-12 p-2">
             <div class="d-flex flex-wrap align-items-center sombra-caja-sm rounded p-2 my-2" *ngIf="tieneTextoVisible(racial.Descripcion)">
                 <mat-chip class="w-100 sombra-caja-sm m-1 mb-2 chip-titulo">
                     Descripcion
@@ -15,7 +13,102 @@
                 </mat-chip>
                 <p class="m-1">{{racial.Descripcion}}</p>
             </div>
+            <div class="d-flex flex-wrap align-items-center sombra-caja-sm rounded p-2 my-2"
+                *ngIf="racial.Prerrequisitos_flags?.raza || racial.Prerrequisitos_flags?.caracteristica_minima">
+                <mat-chip class="w-100 sombra-caja-sm m-1 mb-2 chip-titulo">Flags de prerrequisitos</mat-chip>
+                <mat-chip class="sombra3d-sm m-1" *ngIf="racial.Prerrequisitos_flags?.raza">Requiere raza</mat-chip>
+                <mat-chip class="sombra3d-sm m-1" *ngIf="racial.Prerrequisitos_flags?.caracteristica_minima">Requiere caracteristica minima</mat-chip>
+            </div>
         </div>
-        <div class="col-md-4 col-12 p-2"></div>
+
+        <div class="col-md-4 col-12 p-2">
+            <div class="sombra-caja-sm rounded p-2 my-2" *ngIf="tieneColeccionVisible(racial.Dotes)">
+                <mat-chip class="w-100 sombra-caja-sm m-1 mb-2 chip-titulo">Dotes</mat-chip>
+                <mat-chip-set class="m-1">
+                    <mat-chip class="h-auto sombra3d-sm m-1"
+                        [ngClass]="dote.Id_dote > 0 ? 'chip-clic' : ''"
+                        *ngFor="let dote of racial.Dotes"
+                        (click)="emitirDote(dote.Id_dote)">
+                        {{dote.Dote}}
+                        <mat-chip class="sombra3d-sm m-1" *ngIf="tieneTextoVisible(dote.Extra)">{{dote.Extra}}</mat-chip>
+                    </mat-chip>
+                </mat-chip-set>
+            </div>
+
+            <div class="sombra-caja-sm rounded p-2 my-2" *ngIf="tieneColeccionVisible(habilidadesBase)">
+                <mat-chip class="w-100 sombra-caja-sm m-1 mb-2 chip-titulo">Habilidades base</mat-chip>
+                <mat-chip-set class="m-1">
+                    <mat-chip class="h-auto sombra3d-sm m-1" *ngFor="let item of habilidadesBase">
+                        {{formatOpenObject(item)}}
+                    </mat-chip>
+                </mat-chip-set>
+            </div>
+
+            <div class="sombra-caja-sm rounded p-2 my-2" *ngIf="tieneColeccionVisible(habilidadesCustom)">
+                <mat-chip class="w-100 sombra-caja-sm m-1 mb-2 chip-titulo">Habilidades custom</mat-chip>
+                <mat-chip-set class="m-1">
+                    <mat-chip class="h-auto sombra3d-sm m-1" *ngFor="let item of habilidadesCustom">
+                        {{formatOpenObject(item)}}
+                    </mat-chip>
+                </mat-chip-set>
+            </div>
+        </div>
+
+        <div class="col-md-4 col-12 p-2">
+            <div class="sombra-caja-sm rounded p-2 my-2" *ngIf="tieneColeccionVisible(racial.Sortilegas)">
+                <mat-chip class="w-100 sombra-caja-sm m-1 mb-2 chip-titulo">Sortilegas</mat-chip>
+                <mat-chip-set class="m-1">
+                    <mat-chip class="h-auto sombra3d-sm m-1"
+                        [ngClass]="puedeAbrirConjuro(sortilega) ? 'chip-clic' : ''"
+                        *ngFor="let sortilega of racial.Sortilegas"
+                        (click)="emitirConjuro(sortilega?.Conjuro?.Id)">
+                        {{sortilega?.Conjuro?.Nombre || 'Conjuro sin nombre'}}
+                        <mat-chip class="sombra3d-sm m-1" *ngIf="tieneTextoVisible(sortilega.Nivel_lanzador)">NL {{sortilega.Nivel_lanzador}}</mat-chip>
+                        <mat-chip class="sombra3d-sm m-1" *ngIf="tieneTextoVisible(sortilega.Usos_diarios)">Usos {{sortilega.Usos_diarios}}</mat-chip>
+                    </mat-chip>
+                </mat-chip-set>
+            </div>
+
+            <div class="sombra-caja-sm rounded p-2 my-2" *ngIf="tieneColeccionVisible(racial.Caracteristicas)">
+                <mat-chip class="w-100 sombra-caja-sm m-1 mb-2 chip-titulo">Caracteristicas</mat-chip>
+                <mat-chip-set class="m-1">
+                    <mat-chip class="h-auto sombra3d-sm m-1" *ngFor="let item of racial.Caracteristicas">
+                        {{formatOpenObject(item)}}
+                    </mat-chip>
+                </mat-chip-set>
+            </div>
+
+            <div class="sombra-caja-sm rounded p-2 my-2" *ngIf="tieneColeccionVisible(racial.Salvaciones)">
+                <mat-chip class="w-100 sombra-caja-sm m-1 mb-2 chip-titulo">Salvaciones</mat-chip>
+                <mat-chip-set class="m-1">
+                    <mat-chip class="h-auto sombra3d-sm m-1" *ngFor="let item of racial.Salvaciones">
+                        {{formatOpenObject(item)}}
+                    </mat-chip>
+                </mat-chip-set>
+            </div>
+
+            <div class="sombra-caja-sm rounded p-2 my-2" *ngIf="tieneColeccionVisible(racial.Ataques)">
+                <mat-chip class="w-100 sombra-caja-sm m-1 mb-2 chip-titulo">Ataques</mat-chip>
+                <mat-chip-set class="m-1">
+                    <mat-chip class="h-auto sombra3d-sm m-1" *ngFor="let ataque of racial.Ataques">
+                        {{ataque.Descripcion}}
+                    </mat-chip>
+                </mat-chip-set>
+            </div>
+
+            <div class="sombra-caja-sm rounded p-2 my-2" *ngIf="tieneColeccionVisible(prerrequisitosRaza) || tieneColeccionVisible(prerrequisitosCaracteristica)">
+                <mat-chip class="w-100 sombra-caja-sm m-1 mb-2 chip-titulo">Prerrequisitos</mat-chip>
+                <mat-chip-set class="m-1" *ngIf="tieneColeccionVisible(prerrequisitosRaza)">
+                    <mat-chip class="h-auto sombra3d-sm m-1" *ngFor="let item of prerrequisitosRaza">
+                        Raza: {{formatOpenObject(item)}}
+                    </mat-chip>
+                </mat-chip-set>
+                <mat-chip-set class="m-1" *ngIf="tieneColeccionVisible(prerrequisitosCaracteristica)">
+                    <mat-chip class="h-auto sombra3d-sm m-1" *ngFor="let item of prerrequisitosCaracteristica">
+                        Caracteristica: {{formatOpenObject(item)}}
+                    </mat-chip>
+                </mat-chip-set>
+            </div>
+        </div>
     </div>
 </div>

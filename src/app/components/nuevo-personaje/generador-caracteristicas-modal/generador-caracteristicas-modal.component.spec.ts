@@ -106,6 +106,7 @@ function crearRazaMock(pierdeConstitucion = false): Raza {
             Oficial: true,
         },
         Sortilegas: [],
+        Raciales: [],
         DotesContextuales: [],
     };
 }

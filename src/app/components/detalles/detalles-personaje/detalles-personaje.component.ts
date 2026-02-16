@@ -1,9 +1,10 @@
-import { AfterViewInit, Component, ElementRef, EventEmitter, HostListener, Input, OnDestroy, OnInit, Output } from '@angular/core';
+import { AfterViewInit, Component, ElementRef, EventEmitter, HostListener, Input, OnChanges, OnDestroy, OnInit, Output, SimpleChanges } from '@angular/core';
 import { AptitudSortilega } from 'src/app/interfaces/aptitud-sortilega';
 import { Conjuro } from 'src/app/interfaces/conjuro';
 import { Dote } from 'src/app/interfaces/dote';
 import { DoteContextual, DoteLegacy } from 'src/app/interfaces/dote-contextual';
 import { Personaje } from 'src/app/interfaces/personaje';
+import { RacialDetalle, RacialReferencia } from 'src/app/interfaces/racial';
 import { Rasgo } from 'src/app/interfaces/rasgo';
 import { TipoCriatura } from 'src/app/interfaces/tipo_criatura';
 import { FichaPersonajeService } from 'src/app/services/ficha-personaje.service';
@@ -20,7 +21,7 @@ interface MadurezEdadResumen {
     templateUrl: './detalles-personaje.component.html',
     styleUrls: ['./detalles-personaje.component.sass']
 })
-export class DetallesPersonajeComponent implements OnInit, AfterViewInit, OnDestroy {
+export class DetallesPersonajeComponent implements OnInit, OnChanges, AfterViewInit, OnDestroy {
     @Input() pj!: Personaje;
     @Input() mostrarBotonGenerarPdf = true;
     @Input() modoOcultarFaltantes = true;
@@ -59,12 +60,14 @@ export class DetallesPersonajeComponent implements OnInit, AfterViewInit, OnDest
     Medido en pies
     5 pies equivalen a una casilla`;
     Habilidades: { Nombre: string; Mod_car: number; Rangos: number; Rangos_varios: number; Extra: string; Varios: string; }[] = [];
+    racialesVisibles: RacialReferencia[] = [];
 
     constructor(private fpSvc: FichaPersonajeService, private hostElement: ElementRef<HTMLElement>) { }
 
     ngOnInit(): void {
         if(this.pj.Habilidades)
             this.Habilidades = this.pj.Habilidades.filter(h => h.Rangos + h.Rangos_varios > 0 || h.Varios != "");
+        this.actualizarRacialesVisibles();
         this.nivelPersonaje = this.getNivelPersonaje();
         this.iniciativa = `${this.pj.ModDestreza}`;
         if(this.pj.Iniciativa_varios){
@@ -102,6 +105,11 @@ export class DetallesPersonajeComponent implements OnInit, AfterViewInit, OnDest
         Desvio: ${this.pj.Ca_desvio > 0 ? this.pj.Ca_desvio : '0'}
         Varios: ${this.pj.Ca_varios > 0 ? this.pj.Ca_varios : '0'}
         `;
+    }
+
+    ngOnChanges(changes: SimpleChanges): void {
+        if (changes['pj'])
+            this.actualizarRacialesVisibles();
     }
 
     ngAfterViewInit(): void {
@@ -385,16 +393,18 @@ Fue/Des/Con: ${this.formatSigned(madurez.modFisico)} | Int/Sab/Car: ${this.forma
         return (this.pj?.Claseas ?? []).filter(c => this.tieneTextoVisible(c?.Nombre));
     }
 
-    getNombreRacial(racial: any): string {
-        if (typeof racial === 'string')
-            return racial;
-        return racial?.Nombre ?? '';
+    getRacialesVisibles(): RacialReferencia[] {
+        return this.racialesVisibles;
     }
 
-    getRacialesVisibles() {
-        return (this.pj?.Raciales ?? [])
-            .map(racial => this.getNombreRacial(racial))
-            .filter(nombre => this.tieneTextoVisible(nombre));
+    trackByRacial = (_index: number, racial: RacialReferencia): string => {
+        const id = Number(racial?.id);
+        const nombre = `${racial?.nombre ?? ''}`
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .trim()
+            .toLowerCase();
+        return `${Number.isFinite(id) && id > 0 ? id : 0}|${nombre}`;
     }
 
     getDotesVisibles() {
@@ -527,11 +537,16 @@ Fue/Des/Con: ${this.formatSigned(madurez.modFisico)} | Int/Sab/Car: ${this.forma
         this.especialDetallesPorNombre.emit(nombreEspecial.trim());
     }
 
-    @Output() racialDetallesPorNombre: EventEmitter<string> = new EventEmitter<string>();
-    verDetallesRacialPorNombre(nombreRacial: string) {
+    @Output() racialDetallesPorNombre: EventEmitter<RacialReferencia> = new EventEmitter<RacialReferencia>();
+    verDetallesRacialPorNombre(racial: RacialReferencia) {
+        const nombreRacial = `${racial?.nombre ?? ''}`.trim();
         if (!this.tieneTextoVisible(nombreRacial))
             return;
-        this.racialDetallesPorNombre.emit(nombreRacial.trim());
+
+        this.racialDetallesPorNombre.emit({
+            id: Number.isFinite(Number(racial?.id)) && Number(racial.id) > 0 ? Number(racial.id) : null,
+            nombre: nombreRacial,
+        });
     }
 
     @Output() plantillaDetalles: EventEmitter<{ id?: number | null; nombre: string; }> = new EventEmitter<{ id?: number | null; nombre: string; }>();
@@ -552,6 +567,24 @@ Fue/Des/Con: ${this.formatSigned(madurez.modFisico)} | Int/Sab/Car: ${this.forma
             .replace(/[\u0300-\u036f]/g, '')
             .trim()
             .toLowerCase();
+    }
+
+    private actualizarRacialesVisibles(): void {
+        this.racialesVisibles = (this.pj?.Raciales ?? [])
+            .map((racial: RacialDetalle | string) => {
+                if (typeof racial === 'string') {
+                    return {
+                        id: null,
+                        nombre: racial.trim(),
+                    };
+                }
+                const id = Number(racial?.Id);
+                return {
+                    id: Number.isFinite(id) && id > 0 ? id : null,
+                    nombre: `${racial?.Nombre ?? ''}`.trim(),
+                };
+            })
+            .filter(racial => this.tieneTextoVisible(racial.nombre));
     }
 
     private actualizarModoCompacto(): void {

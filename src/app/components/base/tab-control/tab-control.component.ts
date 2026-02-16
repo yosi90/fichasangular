@@ -19,7 +19,7 @@ import { ConjuroService } from 'src/app/services/conjuro.service';
 import { DoteService } from 'src/app/services/dote.service';
 import { EspecialClaseDetalle } from 'src/app/interfaces/especial';
 import { EspecialService } from 'src/app/services/especial.service';
-import { RacialDetalle } from 'src/app/interfaces/racial';
+import { RacialDetalle, RacialReferencia } from 'src/app/interfaces/racial';
 import { RacialService } from 'src/app/services/racial.service';
 import { NuevoPersonajeService } from 'src/app/services/nuevo-personaje.service';
 import { TipoCriaturaService } from 'src/app/services/tipo-criatura.service';
@@ -30,6 +30,7 @@ import { ManualVistaNavigationService } from 'src/app/services/manual-vista-navi
 import { Plantilla } from 'src/app/interfaces/plantilla';
 import { PlantillaService } from 'src/app/services/plantilla.service';
 import { CacheSyncMetadataService } from 'src/app/services/cache-sync-metadata.service';
+import { RasgoService } from 'src/app/services/rasgo.service';
 
 @Component({
     selector: 'app-tab-control',
@@ -67,6 +68,7 @@ export class TabControlComponent implements OnInit, OnDestroy {
         private doteSvc: DoteService,
         private especialSvc: EspecialService,
         private racialSvc: RacialService,
+        private rasgoSvc: RasgoService,
         private plantillaSvc: PlantillaService,
         private nuevoPSvc: NuevoPersonajeService,
         private manualRefNavSvc: ManualReferenciaNavigationService,
@@ -392,15 +394,65 @@ export class TabControlComponent implements OnInit, OnDestroy {
         return true;
     }
 
-    async abrirDetallesRasgo(rasgo: Rasgo) {
-        if (this.detallesRasgoAbiertos.find(r => r.Id === rasgo.Id))
-            this.cambiarA(true, this.TabGroup._tabs.find(tab => tab.textLabel === rasgo.Nombre));
-        else {
-            this.detallesRasgoAbiertos.push(rasgo);
-            setTimeout(() => {
-                this.cambiarA(true, this.TabGroup._tabs.find(tab => tab.textLabel === rasgo.Nombre));
-            }, 100);
+    abrirDetallesRasgo(rasgo: Rasgo) {
+        if (!rasgo)
+            return;
+
+        const id = Number(rasgo?.Id);
+        if (Number.isFinite(id) && id > 0) {
+            const abierto = this.detallesRasgoAbiertos.find(r => r.Id === id);
+            if (abierto) {
+                this.cambiarA(true, this.TabGroup._tabs.find(tab => tab.textLabel === abierto.Nombre));
+                return;
+            }
+
+            this.rasgoSvc.getRasgo(id).pipe(take(1)).subscribe({
+                next: detalle => this.abrirDetallesRasgoConDatos({
+                    Id: id,
+                    Nombre: `${detalle?.Nombre ?? rasgo?.Nombre ?? ''}`.trim(),
+                    Descripcion: `${detalle?.Descripcion ?? rasgo?.Descripcion ?? ''}`,
+                    Oficial: this.toBoolean(detalle?.Oficial ?? rasgo?.Oficial, true),
+                }),
+                error: () => this.abrirDetallesRasgoConDatos({
+                    Id: id,
+                    Nombre: `${rasgo?.Nombre ?? ''}`.trim(),
+                    Descripcion: `${rasgo?.Descripcion ?? ''}`,
+                    Oficial: this.toBoolean(rasgo?.Oficial, true),
+                }),
+            });
+            return;
         }
+
+        this.abrirDetallesRasgoConDatos({
+            Id: 0,
+            Nombre: `${rasgo?.Nombre ?? ''}`.trim(),
+            Descripcion: `${rasgo?.Descripcion ?? ''}`,
+            Oficial: this.toBoolean(rasgo?.Oficial, true),
+        });
+    }
+
+    private abrirDetallesRasgoConDatos(rasgo: Rasgo): void {
+        const nombre = `${rasgo?.Nombre ?? ''}`.trim();
+        if (nombre.length < 1)
+            return;
+
+        const abierto = this.detallesRasgoAbiertos.find(r =>
+            (Number(r.Id) > 0 && Number(rasgo.Id) > 0 && Number(r.Id) === Number(rasgo.Id))
+            || this.normalizar(r.Nombre) === this.normalizar(nombre));
+        if (abierto) {
+            this.cambiarA(true, this.TabGroup._tabs.find(tab => tab.textLabel === abierto.Nombre));
+            return;
+        }
+
+        this.detallesRasgoAbiertos.push({
+            Id: Number(rasgo?.Id) > 0 ? Number(rasgo.Id) : 0,
+            Nombre: nombre,
+            Descripcion: `${rasgo?.Descripcion ?? ''}`,
+            Oficial: this.toBoolean(rasgo?.Oficial, true),
+        });
+        setTimeout(() => {
+            this.cambiarA(true, this.TabGroup._tabs.find(tab => tab.textLabel === nombre));
+        }, 100);
     }
     quitarDetallesRasgo(value: string): boolean {
         const tab = this.detallesRasgoAbiertos.find(t => t.Nombre === value);
@@ -622,14 +674,14 @@ export class TabControlComponent implements OnInit, OnDestroy {
         if (this.esNombreNoAplicable(nombreRacial))
             return;
 
-        const abierto = this.detallesRacialAbiertos.find(r => this.normalizar(r.Nombre) === this.normalizar(nombreRacial));
+        const abierto = this.buscarRacialPorNombre(this.detallesRacialAbiertos, nombreRacial);
         if (abierto) {
             this.cambiarA(true, this.TabGroup._tabs.find(tab => tab.textLabel === this.getEtiquetaRacial(abierto)));
             return;
         }
 
         this.racialSvc.getRaciales().pipe(take(1)).subscribe(raciales => {
-            const encontrada = raciales.find(r => this.normalizar(r.Nombre) === this.normalizar(nombreRacial));
+            const encontrada = this.buscarRacialPorNombre(raciales, nombreRacial);
             if (encontrada) {
                 this.abrirDetallesRacial(encontrada);
                 return;
@@ -642,6 +694,21 @@ export class TabControlComponent implements OnInit, OnDestroy {
                 showConfirmButton: true
             });
         });
+    }
+
+    abrirDetallesRacialDesdeReferencia(referencia: RacialReferencia | string) {
+        if (typeof referencia === 'string') {
+            this.abrirDetallesRacialPorNombre(referencia.trim());
+            return;
+        }
+
+        const id = Number(referencia?.id);
+        if (Number.isFinite(id) && id > 0) {
+            this.abrirDetallesRacialPorId(id);
+            return;
+        }
+
+        this.abrirDetallesRacialPorNombre(`${referencia?.nombre ?? ''}`.trim());
     }
 
     abrirDetallesTipoCriaturaPorId(idTipo: number) {
@@ -854,6 +921,21 @@ export class TabControlComponent implements OnInit, OnDestroy {
             .toLowerCase();
     }
 
+    private toBoolean(value: any, fallback: boolean = false): boolean {
+        if (typeof value === 'boolean')
+            return value;
+        if (typeof value === 'number')
+            return value !== 0;
+        if (typeof value === 'string') {
+            const normalizado = value.trim().toLowerCase();
+            if (['true', '1', 'si', 'sí', 'yes'].includes(normalizado))
+                return true;
+            if (['false', '0', 'no'].includes(normalizado))
+                return false;
+        }
+        return fallback;
+    }
+
     private esNombreNoAplicable(value: string): boolean {
         const normalizado = this.normalizar(value).replace(/[.]/g, '');
         return normalizado.length < 1
@@ -861,6 +943,33 @@ export class TabControlComponent implements OnInit, OnDestroy {
             || normalizado === 'no especifica'
             || normalizado === 'no se especifica'
             || normalizado === 'nada';
+    }
+
+    private nombreRacialBase(value: string): string {
+        const sinParentesis = `${value ?? ''}`.replace(/\s*\([^)]*\)\s*/g, ' ').trim();
+        return this.normalizar(sinParentesis);
+    }
+
+    private buscarRacialPorNombre(raciales: RacialDetalle[], nombreRacial: string): RacialDetalle | undefined {
+        const objetivo = this.normalizar(nombreRacial);
+        const objetivoBase = this.nombreRacialBase(nombreRacial);
+
+        const exacta = raciales.find(r => this.normalizar(r.Nombre) === objetivo);
+        if (exacta)
+            return exacta;
+
+        const porBase = raciales.find(r => this.nombreRacialBase(r.Nombre) === objetivoBase);
+        if (porBase)
+            return porBase;
+
+        return raciales.find((r) => {
+            const actual = this.normalizar(r.Nombre);
+            const actualBase = this.nombreRacialBase(r.Nombre);
+            return actual.includes(objetivo)
+                || objetivo.includes(actual)
+                || actualBase.includes(objetivoBase)
+                || objetivoBase.includes(actualBase);
+        });
     }
 
     private esTabAdmin(tabLabel: string): boolean {

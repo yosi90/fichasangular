@@ -13,6 +13,30 @@ export class RasgoService {
 
     constructor(private db: Database, private http: HttpClient) { }
 
+    private toBoolean(value: any, fallback: boolean = false): boolean {
+        if (typeof value === 'boolean')
+            return value;
+        if (typeof value === 'number')
+            return value !== 0;
+        if (typeof value === 'string') {
+            const normalizado = value.trim().toLowerCase();
+            if (['true', '1', 'si', 'sí', 'yes'].includes(normalizado))
+                return true;
+            if (['false', '0', 'no'].includes(normalizado))
+                return false;
+        }
+        return fallback;
+    }
+
+    private readSnapshotValue(snapshot: any, keys: string[]): any {
+        for (const key of keys) {
+            const value = snapshot?.child?.(key)?.val?.();
+            if (value !== null && value !== undefined)
+                return value;
+        }
+        return null;
+    }
+
     getRasgo(id: number): Observable<Rasgo> {
         return new Observable((observador) => {
             const dbRef = ref(this.db, `Rasgos/${id}`);
@@ -21,9 +45,9 @@ export class RasgoService {
             const onNext = (snapshot: any) => {
                 let rasgo: Rasgo = {
                     Id: id,
-                    Nombre: snapshot.child('Nombre').val(),
-                    Descripcion: snapshot.child('Descripcion').val(),
-                    Oficial: snapshot.child('Oficial').val(),
+                    Nombre: this.readSnapshotValue(snapshot, ['Nombre', 'n']) ?? '',
+                    Descripcion: this.readSnapshotValue(snapshot, ['Descripcion', 'd']) ?? '',
+                    Oficial: this.toBoolean(this.readSnapshotValue(snapshot, ['Oficial', 'oficial', 'o']), true),
                 };
                 observador.next(rasgo);
             };
@@ -48,10 +72,10 @@ export class RasgoService {
                 const rasgos: Rasgo[] = [];
                 snapshot.forEach((obj: any) => {
                     const rasgo: Rasgo = {
-                        Id: obj.child('Id').val(),
-                        Nombre: obj.child('Nombre').val(),
-                        Descripcion: obj.child('Descripcion').val(),
-                        Oficial: obj.child('Oficial').val(),
+                        Id: Number(this.readSnapshotValue(obj, ['Id', 'i']) ?? 0),
+                        Nombre: this.readSnapshotValue(obj, ['Nombre', 'n']) ?? '',
+                        Descripcion: this.readSnapshotValue(obj, ['Descripcion', 'd']) ?? '',
+                        Oficial: this.toBoolean(this.readSnapshotValue(obj, ['Oficial', 'oficial', 'o']), true),
                     };
                     rasgos.push(rasgo);
                 });
@@ -84,15 +108,18 @@ export class RasgoService {
                 : Object.values(response ?? {});
 
             await Promise.all(
-                rasgos.map((element: {
-                    i: number; n: string; d: string; o: boolean;
-                }) => {
+                rasgos.map((element: any) => {
+                    const id = Number(element?.i ?? element?.Id ?? 0);
+                    const nombre = `${element?.n ?? element?.Nombre ?? ''}`.trim();
+                    const descripcion = `${element?.d ?? element?.Descripcion ?? ''}`;
+                    if (!Number.isFinite(id) || id <= 0)
+                        return Promise.resolve();
                     return set(
-                        ref(db_instance, `Rasgos/${element.i}`), {
-                        Id: element.i,
-                        Nombre: element.n,
-                        Descripcion: element.d,
-                        Oficial: element.o,
+                        ref(db_instance, `Rasgos/${id}`), {
+                        Id: id,
+                        Nombre: nombre,
+                        Descripcion: descripcion,
+                        Oficial: this.toBoolean(element?.o ?? element?.Oficial ?? element?.oficial, true),
                     });
                 })
             );

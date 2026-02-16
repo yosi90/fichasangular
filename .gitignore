@@ -49,3 +49,6 @@ Thumbs.db
 .firebase
 *-debug.log
 .runtimeconfig.json
+
+# Ejemplos para las ias
+/Ejemplos app escritorio

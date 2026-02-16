@@ -74,17 +74,19 @@ describe('DetallesPersonajeComponent', () => {
     });
 
     it('activa modo compacto cuando el ancho del host es estrecho', () => {
-        spyOn(component['hostElement'].nativeElement, 'getBoundingClientRect').and.returnValue({
-            width: 900,
-            height: 500,
-            top: 0,
-            left: 0,
-            right: 900,
-            bottom: 500,
-            x: 0,
-            y: 0,
-            toJSON: () => ({}),
-        } as DOMRect);
+        spyOn(component['hostElement'].nativeElement, 'querySelector').and.returnValue({
+            getBoundingClientRect: () => ({
+                width: 900,
+                height: 500,
+                top: 0,
+                left: 0,
+                right: 900,
+                bottom: 500,
+                x: 0,
+                y: 0,
+                toJSON: () => ({}),
+            }),
+        } as any);
 
         component['actualizarModoCompacto']();
         expect(component.modoCompactoLayout).toBeTrue();
@@ -156,5 +158,11 @@ describe('DetallesPersonajeComponent', () => {
         expect(madurez.nombre).toBe('Venerable');
         expect(madurez.modFisico).toBe(-6);
         expect(madurez.modMental).toBe(3);
+    });
+
+    it('emite referencia estructurada al abrir detalle racial', () => {
+        const emitSpy = spyOn(component.racialDetallesPorNombre, 'emit');
+        component.verDetallesRacialPorNombre({ id: 15, nombre: 'Sangre antigua' });
+        expect(emitSpy).toHaveBeenCalledWith({ id: 15, nombre: 'Sangre antigua' });
     });
 });

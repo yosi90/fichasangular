@@ -2,6 +2,8 @@ import { NuevoPersonajeService } from './nuevo-personaje.service';
 import { VentajaDetalle } from '../interfaces/ventaja';
 import { HabilidadBasicaDetalle } from '../interfaces/habilidad';
 import { IdiomaDetalle } from '../interfaces/idioma';
+import { createRacialPlaceholder } from './utils/racial-mapper';
+import { Raza } from '../interfaces/raza';
 
 const GENERADOR_CONFIG_STORAGE_KEY = 'fichas35.nuevoPersonaje.generador.config.v1';
 
@@ -282,6 +284,47 @@ describe('NuevoPersonajeService (ventajas/desventajas)', () => {
         service.toggleVentaja(ventajaRasgo.Id);
         service.toggleVentaja(ventajaRasgo.Id);
         expect(service.PersonajeCreacion.Raciales.filter(r => r.Nombre === 'Sangre antigua').length).toBe(1);
+    });
+
+    it('seleccionarRaza precarga raciales desde la raza', () => {
+        const svc = new NuevoPersonajeService();
+        const racialBase = createRacialPlaceholder('Sangre antigua', 5);
+        const razaMock = {
+            Id: 1,
+            Nombre: 'Elfo',
+            Alineamiento: {
+                Basico: { Nombre: 'Neutral autentico' },
+            },
+            Tipo_criatura: { Id: 1, Nombre: 'Humanoide' },
+            Correr: 30,
+            Nadar: 0,
+            Volar: 0,
+            Trepar: 0,
+            Escalar: 0,
+            Edad_adulto: 20,
+            Altura_rango_inf: 1.7,
+            Peso_rango_inf: 65,
+            Heredada: false,
+            Raciales: [racialBase],
+        } as unknown as Raza;
+
+        svc.seleccionarRaza(razaMock);
+
+        expect(svc.PersonajeCreacion.Raciales.length).toBe(1);
+        expect(svc.PersonajeCreacion.Raciales[0].Id).toBe(5);
+        expect(svc.PersonajeCreacion.Raciales[0].Nombre).toBe('Sangre antigua');
+    });
+
+    it('Rasgo no duplica una racial ya presente en la base', () => {
+        const svc = new NuevoPersonajeService();
+        const baseRacial = createRacialPlaceholder('Sangre antigua', 7);
+        svc.PersonajeCreacion.Raciales = [baseRacial];
+        svc.setCatalogoHabilidades([habilidadAvistar]);
+        svc.setCatalogosVentajas([ventajaRasgo], []);
+
+        svc.toggleVentaja(ventajaRasgo.Id);
+
+        expect(svc.PersonajeCreacion.Raciales.filter(r => r.Nombre === 'Sangre antigua').length).toBe(1);
     });
 
     it('Idioma_extra requiere idioma elegido para continuar', () => {

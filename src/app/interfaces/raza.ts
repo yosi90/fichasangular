@@ -2,6 +2,7 @@ import { Alineamiento } from "./alineamiento";
 import { AptitudSortilega } from "./aptitud-sortilega";
 import { DoteContextual } from "./dote-contextual";
 import { Maniobrabilidad } from "./maniobrabilidad";
+import { RacialDetalle } from "./racial";
 import { Tamano } from "./tamaño";
 import { TipoCriatura } from "./tipo_criatura";
 
@@ -62,5 +63,6 @@ export interface Raza {
     Alcance: number;
     Tipo_criatura: TipoCriatura;
     Sortilegas: AptitudSortilega[];
+    Raciales: RacialDetalle[];
     DotesContextuales: DoteContextual[];
 }

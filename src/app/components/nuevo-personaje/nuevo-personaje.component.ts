@@ -7,6 +7,7 @@ import { IdiomaDetalle } from 'src/app/interfaces/idioma';
 import { Personaje } from 'src/app/interfaces/personaje';
 import { Plantilla } from 'src/app/interfaces/plantilla';
 import { Raza } from 'src/app/interfaces/raza';
+import { RacialReferencia } from 'src/app/interfaces/racial';
 import { VentajaDetalle } from 'src/app/interfaces/ventaja';
 import { CampanaService } from 'src/app/services/campana.service';
 import { HabilidadService } from 'src/app/services/habilidad.service';
@@ -813,6 +814,19 @@ export class NuevoPersonajeComponent {
     @Output() plantillaDetalles: EventEmitter<Plantilla> = new EventEmitter<Plantilla>();
     verDetallesPlantilla(value: Plantilla): void {
         this.plantillaDetalles.emit(value);
+    }
+
+    @Output() racialDetallesPorNombre: EventEmitter<RacialReferencia> = new EventEmitter<RacialReferencia>();
+    verDetallesRacialDesdeReferencia(referencia: RacialReferencia): void {
+        const id = Number(referencia?.id);
+        const nombre = `${referencia?.nombre ?? ''}`.trim();
+        if (!Number.isFinite(id) && nombre.length < 1)
+            return;
+
+        this.racialDetallesPorNombre.emit({
+            id: Number.isFinite(id) && id > 0 ? id : null,
+            nombre,
+        });
     }
 
     @Output() cerrarNuevoPersonajeSolicitado: EventEmitter<void> = new EventEmitter<void>();
