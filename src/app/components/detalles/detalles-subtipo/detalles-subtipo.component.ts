@@ -2,6 +2,7 @@ import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { DoteContextual } from 'src/app/interfaces/dote-contextual';
 import { Rasgo } from 'src/app/interfaces/rasgo';
 import { SubtipoDetalle } from 'src/app/interfaces/subtipo';
+import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
 
 @Component({
     selector: 'app-detalles-subtipo',
@@ -9,12 +10,21 @@ import { SubtipoDetalle } from 'src/app/interfaces/subtipo';
     styleUrls: ['./detalles-subtipo.component.sass']
 })
 export class DetallesSubtipoComponent {
+    constructor(private manualDetalleNavSvc: ManualDetalleNavigationService) { }
+
     @Input() subtipo!: SubtipoDetalle;
 
     @Output() doteDetalles: EventEmitter<number> = new EventEmitter<number>();
     @Output() conjuroDetalles: EventEmitter<number> = new EventEmitter<number>();
     @Output() rasgoDetalles: EventEmitter<Rasgo> = new EventEmitter<Rasgo>();
     @Output() plantillaDetalles: EventEmitter<number> = new EventEmitter<number>();
+
+    abrirDetalleManual() {
+        this.manualDetalleNavSvc.abrirDetalleManual({
+            id: this.subtipo?.Manual?.Id,
+            nombre: this.subtipo?.Manual?.Nombre,
+        });
+    }
 
     abrirDetallesDote(doteCtx: DoteContextual) {
         const id = Number(doteCtx?.Dote?.Id);

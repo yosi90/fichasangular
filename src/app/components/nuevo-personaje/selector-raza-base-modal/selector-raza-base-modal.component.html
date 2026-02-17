@@ -36,12 +36,15 @@
         </mat-form-field>
 
         <div class="razas-listado" *ngIf="candidatasVisibles.length > 0">
-            <button
-                type="button"
+            <div
                 class="raza-row"
                 *ngFor="let item of candidatasVisibles; trackBy: trackByRazaId"
                 [class.seleccionada]="esSeleccionada(item)"
-                (click)="onSeleccionar(item)">
+                tabindex="0"
+                role="button"
+                (click)="onSeleccionar(item)"
+                (keydown.enter)="onSeleccionarTeclado(item, $event)"
+                (keydown.space)="onSeleccionarTeclado(item, $event)">
                 <div class="raza-row-main">
                     <span class="raza-row-nombre">
                         {{item.raza.Nombre}}
@@ -54,9 +57,14 @@
                     </span>
                 </div>
                 <div class="raza-row-meta">
-                    {{item.raza.Manual || 'Manual no especificado'}}
+                    <button type="button" class="raza-manual-link"
+                        (click)="abrirDetalleManual(item, $event)"
+                        (keydown.enter)="$event.stopPropagation()"
+                        (keydown.space)="$event.stopPropagation()">
+                        {{item.raza.Manual || 'Manual no especificado'}}
+                    </button>
                 </div>
-            </button>
+            </div>
         </div>
 
         <p class="m-0 detalle-raza" *ngIf="seleccionActual as seleccion">

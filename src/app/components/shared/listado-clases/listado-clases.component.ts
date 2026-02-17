@@ -4,6 +4,7 @@ import { MatSort } from '@angular/material/sort';
 import { MatTableDataSource } from '@angular/material/table';
 import { Clase } from 'src/app/interfaces/clase';
 import { ClaseService } from 'src/app/services/clase.service';
+import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
 
 @Component({
     selector: 'app-listado-clases',
@@ -20,7 +21,11 @@ export class ListadoClasesComponent {
     soloPrestigio: boolean = false;
     ocultarConPrerrequisitos: boolean = false;
 
-    constructor(private cdr: ChangeDetectorRef, private claseSvc: ClaseService) { }
+    constructor(
+        private cdr: ChangeDetectorRef,
+        private claseSvc: ClaseService,
+        private manualDetalleNavSvc: ManualDetalleNavigationService
+    ) { }
 
     @ViewChild(MatSort) claseSort!: MatSort;
     @ViewChild(MatPaginator) clasePaginator!: MatPaginator;
@@ -116,5 +121,14 @@ export class ListadoClasesComponent {
         const clase = this.clases.find(c => c.Id === id);
         if (clase)
             this.claseSeleccionada.emit(clase);
+    }
+
+    abrirDetalleManual(clase: Clase, event?: Event) {
+        event?.preventDefault();
+        event?.stopPropagation();
+        this.manualDetalleNavSvc.abrirDetalleManual({
+            id: clase?.Manual?.Id,
+            nombre: clase?.Manual?.Nombre,
+        });
     }
 }

@@ -38,9 +38,10 @@
                         <mat-icon>read_more</mat-icon>
                         {{element[column]}}
                     </button>
-                    <p class="mb-0" *ngIf="column == 'Manual'">
+                    <button type="button" class="manual-clickable" *ngIf="column == 'Manual'"
+                        (click)="abrirDetalleManual(element, $event)">
                         {{element.Manual?.Nombre}} (p. {{element.Manual?.Pagina}})
-                    </p>
+                    </button>
                     <p class="mb-0" *ngIf="column == 'Tipo_dado'">
                         {{element.Tipo_dado?.Nombre}}
                     </p>

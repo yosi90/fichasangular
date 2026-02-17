@@ -1,5 +1,6 @@
 import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { Clase, ClaseDoteNivel, ClaseNivelDetalle, ClasePrerrequisitos } from 'src/app/interfaces/clase';
+import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
 
 type PrerrequisitoActivo = {
     clave: keyof ClasePrerrequisitos;
@@ -37,6 +38,8 @@ type ResumenEspecial = {
     styleUrls: ['./detalles-clase.component.sass']
 })
 export class DetallesClaseComponent {
+    constructor(private manualDetalleNavSvc: ManualDetalleNavigationService) { }
+
     claseData!: Clase;
     filasNivel: ClaseNivelDetalle[] = [];
     columnasDiarios: number[] = [];
@@ -141,6 +144,13 @@ export class DetallesClaseComponent {
     @Output() conjuroDetalles: EventEmitter<number> = new EventEmitter<number>();
     @Output() especialDetalles: EventEmitter<number> = new EventEmitter<number>();
     @Output() doteDetalles: EventEmitter<number> = new EventEmitter<number>();
+
+    abrirDetalleManual() {
+        this.manualDetalleNavSvc.abrirDetalleManual({
+            id: this.claseData?.Manual?.Id,
+            nombre: this.claseData?.Manual?.Nombre,
+        });
+    }
 
     abrirDetallesConjuro(idConjuro: number) {
         if (Number.isFinite(Number(idConjuro)) && Number(idConjuro) > 0)

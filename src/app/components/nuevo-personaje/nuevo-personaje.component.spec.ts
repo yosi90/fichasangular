@@ -915,6 +915,12 @@ describe('NuevoPersonajeComponent', () => {
         expect(emitSpy).not.toHaveBeenCalled();
     });
 
+    it('reenvia la referencia de ventaja desde la vista previa', () => {
+        const emitSpy = spyOn(component.ventajaDetallesPorNombre, 'emit');
+        component.verDetallesVentajaDesdeReferencia({ nombre: 'Bendecido', origen: 'Ventaja' });
+        expect(emitSpy).toHaveBeenCalledWith({ nombre: 'Bendecido', origen: 'Ventaja' });
+    });
+
     it('tituloVentanaDetalle usa el nombre del personaje cuando existe', () => {
         component.Personaje.Nombre = 'Pepe';
         expect(component.tituloVentanaDetalle).toBe('Pepe - En creación');

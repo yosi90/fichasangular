@@ -5,6 +5,7 @@ import { MatTableDataSource } from '@angular/material/table';
 import { Manual } from 'src/app/interfaces/manual';
 import { SubtipoResumen } from 'src/app/interfaces/subtipo';
 import { ManualService } from 'src/app/services/manual.service';
+import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
 import { SubtipoService } from 'src/app/services/subtipo.service';
 
 @Component({
@@ -20,7 +21,12 @@ export class ListadoSubtiposComponent {
     subtipoColumns = ['Nombre', 'Manual', 'Heredada'];
     anuncioSubtiposHomebrew = 'Clic para mostar subtipos homebrew';
 
-    constructor(private cdr: ChangeDetectorRef, private subtipoSvc: SubtipoService, private manualSvc: ManualService) { }
+    constructor(
+        private cdr: ChangeDetectorRef,
+        private subtipoSvc: SubtipoService,
+        private manualSvc: ManualService,
+        private manualDetalleNavSvc: ManualDetalleNavigationService
+    ) { }
 
     @ViewChild(MatSort) subtipoSort!: MatSort;
     @ViewChild(MatPaginator) subtipoPaginator!: MatPaginator;
@@ -82,6 +88,15 @@ export class ListadoSubtiposComponent {
         const subtipo = this.subtipos.find(s => s.Id === idSubtipo);
         if (subtipo)
             this.subtipoSeleccionado.emit(subtipo);
+    }
+
+    abrirDetalleManual(subtipo: SubtipoResumen, event?: Event) {
+        event?.preventDefault();
+        event?.stopPropagation();
+        this.manualDetalleNavSvc.abrirDetalleManual({
+            id: subtipo?.Manual?.Id,
+            nombre: subtipo?.Manual?.Nombre,
+        });
     }
 
     private normalizar(value: string): string {

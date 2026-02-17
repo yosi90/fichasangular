@@ -5,6 +5,7 @@ import { MatTableDataSource } from '@angular/material/table';
 import { Manual } from 'src/app/interfaces/manual';
 import { Raza } from 'src/app/interfaces/raza';
 import { ManualService } from 'src/app/services/manual.service';
+import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
 import { RazaService } from 'src/app/services/raza.service';
 
 @Component({
@@ -22,7 +23,12 @@ export class ListadoRazasComponent {
     @Input() homebrewBloqueado = false;
     private vistaInicializada = false;
 
-    constructor(private cdr: ChangeDetectorRef, private rSvc: RazaService, private mSvc: ManualService) { }
+    constructor(
+        private cdr: ChangeDetectorRef,
+        private rSvc: RazaService,
+        private mSvc: ManualService,
+        private manualDetalleNavSvc: ManualDetalleNavigationService
+    ) { }
 
     @ViewChild(MatSort) razaSort!: MatSort;
     @ViewChild(MatPaginator) razaPaginator!: MatPaginator;
@@ -187,5 +193,11 @@ export class ListadoRazasComponent {
     private toNumber(value: any): number {
         const parsed = Number(value);
         return Number.isFinite(parsed) ? parsed : 0;
+    }
+
+    abrirDetalleManual(raza: Raza, event?: Event) {
+        event?.preventDefault();
+        event?.stopPropagation();
+        this.manualDetalleNavSvc.abrirDetalleManual(raza?.Manual);
     }
 }

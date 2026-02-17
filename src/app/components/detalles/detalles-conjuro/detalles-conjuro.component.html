@@ -24,7 +24,10 @@
                         {{getDescriptores(conjuro.Descriptores)}}
                     </mat-chip>
                 </mat-chip>
-                <mat-chip class="sombra3d-sm m-1"><mat-icon class="me-2">auto_stories</mat-icon>{{conjuro.Manual}}</mat-chip>
+                <mat-chip class="chip-clic sombra3d-sm m-1" matTooltip="Pulsa para ver el manual" [matTooltipShowDelay]="250"
+                    matTooltipClass="tt-accent" (click)="abrirDetalleManual()">
+                    <mat-icon class="me-2">auto_stories</mat-icon>{{conjuro.Manual}}
+                </mat-chip>
                 <mat-chip class="h-auto warm sombra3d-sm m-1" *ngIf="conjuro.Arcano">Arcano <mat-chip class="sombra3d-sm m-1">{{conjuro.Escuela.Nombre}}</mat-chip></mat-chip>
                 <mat-chip class="warm sombra3d-sm m-1" *ngIf="conjuro.Divino">Divino</mat-chip>
                 <mat-chip class="h-auto warm sombra3d-sm m-1" *ngIf="conjuro.Psionico">Psionico <mat-chip class="sombra3d-sm m-1">{{conjuro.Disciplina.Nombre}}</mat-chip></mat-chip>

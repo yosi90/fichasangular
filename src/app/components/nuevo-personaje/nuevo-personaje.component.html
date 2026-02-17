@@ -369,9 +369,10 @@
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            <tr *ngFor="let item of desventajasVisibles">
+                                            <tr *ngFor="let item of desventajasVisibles" (click)="toggleDesventajaSeleccion(item)">
                                                 <td>
                                                     <mat-checkbox [checked]="isDesventajaSeleccionada(item.Id)"
+                                                        (click)="$event.stopPropagation()"
                                                         (change)="toggleDesventajaSeleccion(item)">
                                                     </mat-checkbox>
                                                 </td>
@@ -407,9 +408,11 @@
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            <tr *ngFor="let item of ventajasVisibles" [ngClass]="tieneIdiomaPendiente(item) ? 'fila-pendiente' : ''">
+                                            <tr *ngFor="let item of ventajasVisibles" [ngClass]="tieneIdiomaPendiente(item) ? 'fila-pendiente' : ''"
+                                                (click)="toggleVentajaSeleccion(item)">
                                                 <td>
                                                     <mat-checkbox [checked]="isVentajaSeleccionada(item.Id)"
+                                                        (click)="$event.stopPropagation()"
                                                         (change)="toggleVentajaSeleccion(item)">
                                                     </mat-checkbox>
                                                 </td>
@@ -452,7 +455,8 @@
                 (razaDetalles)="verDetallesRazaDesdeFicha($event)"
                 (plantillaDetalles)="verDetallesPlantillaDesdeFicha($event)"
                 (rasgoDetalles)="verDetallesRasgo($event)"
-                (racialDetallesPorNombre)="verDetallesRacialDesdeReferencia($event)">
+                (racialDetallesPorNombre)="verDetallesRacialDesdeReferencia($event)"
+                (ventajaDetallesPorNombre)="verDetallesVentajaDesdeReferencia($event)">
             </app-detalles-personaje>
         </app-ventana-detalle-flotante>
     </ng-container>

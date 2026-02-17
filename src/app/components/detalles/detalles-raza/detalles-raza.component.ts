@@ -2,6 +2,7 @@ import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { RacialDetalle, RacialReferencia } from 'src/app/interfaces/racial';
 import { Raza } from 'src/app/interfaces/raza';
 import { SubtipoRef } from 'src/app/interfaces/subtipo';
+import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
 import { getGrupoOpcionalRacial } from 'src/app/services/utils/racial-opcionales';
 
 interface GrupoRacialesDetalle {
@@ -16,10 +17,16 @@ interface GrupoRacialesDetalle {
     styleUrls: ['./detalles-raza.component.sass']
 })
 export class DetallesRazaComponent {
+    constructor(private manualDetalleNavSvc: ManualDetalleNavigationService) { }
+
     @Input() raza!: Raza;
 
     @Output() racialDetallesPorNombre: EventEmitter<RacialReferencia> = new EventEmitter<RacialReferencia>();
     @Output() subtipoDetalles: EventEmitter<{ Id?: number | null; Nombre: string; }> = new EventEmitter<{ Id?: number | null; Nombre: string; }>();
+
+    abrirDetalleManual() {
+        this.manualDetalleNavSvc.abrirDetalleManual(this.raza?.Manual);
+    }
 
     abrirDetalleRacial(racial: RacialDetalle) {
         const nombre = `${racial?.Nombre ?? ''}`.trim();

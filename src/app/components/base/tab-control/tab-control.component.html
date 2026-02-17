@@ -35,6 +35,7 @@
             (racialDetallesPorNombre)="abrirDetallesRacialDesdeReferencia($event);"
             (plantillaDetalles)="abrirDetallesPlantillaDesdeFicha($event);"
             (subtipoDetalles)="abrirDetallesSubtipoDesdeReferencia($event);"
+            (ventajaDetallesPorNombre)="abrirDetallesVentajaDesdeReferencia($event);"
             (doteDetalles)="abrirDetallesDote($event);">
         </app-detalles-personaje>
     </mat-tab>
@@ -49,6 +50,7 @@
             (plantillaDetalles)="abrirDetallesPlantilla($event)"
             (rasgoDetalles)="abrirDetallesRasgo($event)"
             (racialDetallesPorNombre)="abrirDetallesRacialDesdeReferencia($event)"
+            (ventajaDetallesPorNombre)="abrirDetallesVentajaDesdeReferencia($event)"
             (cerrarNuevoPersonajeSolicitado)="onCerrarNuevoPersonajeSolicitado()">
         </app-nuevo-personaje>
     </mat-tab>
@@ -158,6 +160,14 @@
             <button (click)="quitarDetallesDote(doteCtx)" mat-icon-button class="ms-2"><mat-icon>close</mat-icon></button>
         </ng-template>
         <app-detalles-dote [dote]="detallesDoteAbiertos[index]"></app-detalles-dote>
+    </mat-tab>
+    <mat-tab *ngFor="let ventaja of detallesVentajaAbiertos; let index = index" [label]="getEtiquetaVentaja(ventaja)">
+        <ng-template mat-tab-label>
+            <mat-icon class="me-2">find_in_page</mat-icon>
+            {{getEtiquetaVentaja(ventaja)}}
+            <button (click)="quitarDetallesVentaja(getEtiquetaVentaja(ventaja))" mat-icon-button class="ms-2"><mat-icon>close</mat-icon></button>
+        </ng-template>
+        <app-detalles-ventaja [ventaja]="detallesVentajaAbiertos[index]"></app-detalles-ventaja>
     </mat-tab>
     <mat-tab *ngFor="let plantilla of detallesPlantillaAbiertos; let index = index" [label]="getEtiquetaPlantilla(plantilla)">
         <ng-template mat-tab-label>

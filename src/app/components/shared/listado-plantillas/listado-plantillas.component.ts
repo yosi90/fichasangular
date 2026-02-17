@@ -3,6 +3,7 @@ import { MatPaginator } from '@angular/material/paginator';
 import { MatSort } from '@angular/material/sort';
 import { MatTableDataSource } from '@angular/material/table';
 import { Plantilla } from 'src/app/interfaces/plantilla';
+import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
 import { PlantillaService } from 'src/app/services/plantilla.service';
 
 @Component({
@@ -18,7 +19,11 @@ export class ListadoPlantillasComponent {
     defaultManual: string = 'Cualquiera';
     incluirHomebrew: boolean = false;
 
-    constructor(private cdr: ChangeDetectorRef, private plantillaSvc: PlantillaService) { }
+    constructor(
+        private cdr: ChangeDetectorRef,
+        private plantillaSvc: PlantillaService,
+        private manualDetalleNavSvc: ManualDetalleNavigationService
+    ) { }
 
     @ViewChild(MatSort) plantillaSort!: MatSort;
     @ViewChild(MatPaginator) plantillaPaginator!: MatPaginator;
@@ -93,5 +98,14 @@ export class ListadoPlantillasComponent {
             .normalize('NFD')
             .replace(/[\u0300-\u036f]/g, '')
             .toLowerCase();
+    }
+
+    abrirDetalleManual(plantilla: Plantilla, event?: Event) {
+        event?.preventDefault();
+        event?.stopPropagation();
+        this.manualDetalleNavSvc.abrirDetalleManual({
+            id: plantilla?.Manual?.Id,
+            nombre: plantilla?.Manual?.Nombre,
+        });
     }
 }

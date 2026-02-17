@@ -2,6 +2,7 @@ import { NO_ERRORS_SCHEMA } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { DetallesRazaComponent } from './detalles-raza.component';
 import { Raza } from 'src/app/interfaces/raza';
+import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
 import { createRacialPlaceholder } from 'src/app/services/utils/racial-mapper';
 
 function crearRazaMock(): Raza {
@@ -85,6 +86,12 @@ describe('DetallesRazaComponent', () => {
     beforeEach(async () => {
         await TestBed.configureTestingModule({
             declarations: [DetallesRazaComponent],
+            providers: [
+                {
+                    provide: ManualDetalleNavigationService,
+                    useValue: jasmine.createSpyObj<ManualDetalleNavigationService>('ManualDetalleNavigationService', ['abrirDetalleManual']),
+                },
+            ],
             schemas: [NO_ERRORS_SCHEMA],
         }).compileComponents();
 

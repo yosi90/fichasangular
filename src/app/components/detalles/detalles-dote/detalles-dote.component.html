@@ -5,7 +5,8 @@
                 <mat-chip class="h-auto warm w-100 sombra-caja-sm py-2 m-1 chip-titulo">
                     {{doteData.Nombre}}
                 </mat-chip>
-                <mat-chip class="sombra3d-sm m-1">
+                <mat-chip class="chip-clic sombra3d-sm m-1" matTooltip="Pulsa para ver el manual" [matTooltipShowDelay]="250"
+                    matTooltipClass="tt-accent" (click)="abrirDetalleManual()">
                     <mat-icon class="me-2">auto_stories</mat-icon>
                     {{doteData.Manual.Nombre}} (p. {{doteData.Manual.Pagina}})
                 </mat-chip>

@@ -33,7 +33,11 @@
                     {{column.replace('_', ' ')}}
                 </th>
                 <td mat-cell *matCellDef="let element">
-                    <p class="mb-0" *ngIf="column == 'Manual' || column == 'Clase_predilecta'">
+                    <button type="button" class="manual-clickable" *ngIf="column == 'Manual'"
+                        (click)="abrirDetalleManual(element, $event)">
+                        {{element[column]}}
+                    </button>
+                    <p class="mb-0" *ngIf="column == 'Clase_predilecta'">
                         {{element[column]}}
                     </p>
                     <div class="d-flex justify-content-center align-items-center" *ngIf="column == 'Ajuste_nivel'">

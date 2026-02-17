@@ -71,6 +71,8 @@ import { SelectorRacialesOpcionalesModalComponent } from './components/nuevo-per
 import { VentanaDetalleFlotanteComponent } from './components/nuevo-personaje/ventana-detalle-flotante/ventana-detalle-flotante.component';
 import { ListadoSubtiposComponent } from './components/shared/listado-subtipos/listado-subtipos.component';
 import { DetallesSubtipoComponent } from './components/detalles/detalles-subtipo/detalles-subtipo.component';
+import { DetallesVentajaComponent } from './components/detalles/detalles-ventaja/detalles-ventaja.component';
+import { ListadoVentajasComponent } from './components/shared/listado-ventajas/listado-ventajas.component';
 
 @NgModule({
     declarations: [
@@ -112,6 +114,8 @@ import { DetallesSubtipoComponent } from './components/detalles/detalles-subtipo
         DetallesPlantillaComponent,
         ListadoSubtiposComponent,
         DetallesSubtipoComponent,
+        DetallesVentajaComponent,
+        ListadoVentajasComponent,
     ],
     imports: [
         BrowserModule,

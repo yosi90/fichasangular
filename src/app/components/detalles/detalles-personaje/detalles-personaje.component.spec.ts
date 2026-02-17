@@ -189,6 +189,18 @@ describe('DetallesPersonajeComponent', () => {
         expect(emitSpy).toHaveBeenCalledWith({ id: 15, nombre: 'Sangre antigua' });
     });
 
+    it('emite referencia estructurada al abrir detalle de ventaja', () => {
+        const emitSpy = spyOn(component.ventajaDetallesPorNombre, 'emit');
+        component.verDetallesVentajaPorNombre({ nombre: 'Voluntad de hierro', origen: 'Ventaja' });
+        expect(emitSpy).toHaveBeenCalledWith({ nombre: 'Voluntad de hierro', origen: 'Ventaja' });
+    });
+
+    it('no emite detalle de ventaja cuando el nombre no es válido', () => {
+        const emitSpy = spyOn(component.ventajaDetallesPorNombre, 'emit');
+        component.verDetallesVentajaPorNombre({ nombre: '   ' });
+        expect(emitSpy).not.toHaveBeenCalled();
+    });
+
     it('emite detalle de raza aunque el id llegue como string numerico', () => {
         const emitSpy = spyOn(component.razaDetalles, 'emit');
         component.verDetallesRaza('7' as any);

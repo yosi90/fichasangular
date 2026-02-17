@@ -7,7 +7,10 @@
                     <mat-chip class="sombra3d-sm m-1 ms-4" *ngIf="raza.Tamano">{{raza.Tamano.Nombre}}</mat-chip>
                     <mat-chip class="sombra3d-sm m-1" *ngIf="raza.Tipo_criatura">{{raza.Tipo_criatura.Nombre}}</mat-chip>
                 </mat-chip>
-                <mat-chip class="sombra3d-sm m-1"><mat-icon class="me-2">auto_stories</mat-icon>{{raza.Manual}}</mat-chip>
+                <mat-chip class="chip-clic sombra3d-sm m-1" matTooltip="Pulsa para ver el manual" [matTooltipShowDelay]="250"
+                    matTooltipClass="tt-accent" (click)="abrirDetalleManual()">
+                    <mat-icon class="me-2">auto_stories</mat-icon>{{raza.Manual}}
+                </mat-chip>
                 <mat-chip class="h-auto sombra3d-sm m-1" *ngIf="getSubtiposActivos().length > 0">
                     Subtipos
                     <mat-chip class="chip-clic sombra3d-sm m-1" *ngFor="let subtipo of getSubtiposActivos()"

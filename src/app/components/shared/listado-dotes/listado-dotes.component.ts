@@ -4,6 +4,7 @@ import { MatSort } from '@angular/material/sort';
 import { MatTableDataSource } from '@angular/material/table';
 import { Dote } from 'src/app/interfaces/dote';
 import { DoteService } from 'src/app/services/dote.service';
+import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
 
 @Component({
     selector: 'app-listado-dotes',
@@ -19,7 +20,11 @@ export class ListadoDotesComponent {
     mostrarHomebrew: boolean = false;
     soloSinPrerrequisitos: boolean = false;
 
-    constructor(private cdr: ChangeDetectorRef, private dSvc: DoteService) { }
+    constructor(
+        private cdr: ChangeDetectorRef,
+        private dSvc: DoteService,
+        private manualDetalleNavSvc: ManualDetalleNavigationService
+    ) { }
 
     @ViewChild(MatSort) doteSort!: MatSort;
     @ViewChild(MatPaginator) dotePaginator!: MatPaginator;
@@ -109,5 +114,14 @@ export class ListadoDotesComponent {
         const dote = this.dotes.find(d => d.Id === id);
         if (dote)
             this.doteSeleccionada.emit(dote);
+    }
+
+    abrirDetalleManual(dote: Dote, event?: Event) {
+        event?.preventDefault();
+        event?.stopPropagation();
+        this.manualDetalleNavSvc.abrirDetalleManual({
+            id: dote?.Manual?.Id,
+            nombre: dote?.Manual?.Nombre,
+        });
     }
 }

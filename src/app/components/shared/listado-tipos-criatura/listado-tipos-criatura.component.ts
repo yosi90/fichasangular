@@ -5,6 +5,7 @@ import { MatTableDataSource } from '@angular/material/table';
 import { Manual } from 'src/app/interfaces/manual';
 import { TipoCriatura } from 'src/app/interfaces/tipo_criatura';
 import { ManualService } from 'src/app/services/manual.service';
+import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
 import { TipoCriaturaService } from 'src/app/services/tipo-criatura.service';
 
 @Component({
@@ -19,7 +20,12 @@ export class ListadoTiposCriaturaComponent {
     tiposDS = new MatTableDataSource(this.tipos);
     tipoColumns = ['Nombre', 'Manual'];
 
-    constructor(private cdr: ChangeDetectorRef, private tSvc: TipoCriaturaService, private mSvc: ManualService) { }
+    constructor(
+        private cdr: ChangeDetectorRef,
+        private tSvc: TipoCriaturaService,
+        private mSvc: ManualService,
+        private manualDetalleNavSvc: ManualDetalleNavigationService
+    ) { }
 
     @ViewChild(MatSort) tipoSort!: MatSort;
     @ViewChild(MatPaginator) tipoPaginator!: MatPaginator;
@@ -77,5 +83,11 @@ export class ListadoTiposCriaturaComponent {
     @Output() tipoCriaturaSeleccionado: EventEmitter<TipoCriatura> = new EventEmitter<TipoCriatura>();
     seleccionarTipo(value: number) {
         this.tipoCriaturaSeleccionado.emit(this.tipos.find(c => c.Id === value));
+    }
+
+    abrirDetalleManual(tipo: TipoCriatura, event?: Event) {
+        event?.preventDefault();
+        event?.stopPropagation();
+        this.manualDetalleNavSvc.abrirDetalleManual(tipo?.Manual);
     }
 }

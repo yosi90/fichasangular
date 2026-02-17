@@ -29,9 +29,10 @@
                     {{column.replace('_', ' ')}}
                 </th>
                 <td mat-cell *matCellDef="let element">
-                    <p class="mb-0" *ngIf="column == 'Manual'">
+                    <button type="button" class="manual-clickable" *ngIf="column == 'Manual'"
+                        (click)="abrirDetalleManual(element, $event)">
                         {{element[column]}}
-                    </p>
+                    </button>
                     <button mat-stroked-button matTooltip="Clic para ver este tipo" [matTooltipShowDelay]="200" *ngIf="column == 'Nombre'" color="accent" class="d-flex justify-content-start sombra3d w-100"
                         (click)="verDetallesTipo(element.Id); $event.stopPropagation();">
                         <mat-icon>read_more</mat-icon>

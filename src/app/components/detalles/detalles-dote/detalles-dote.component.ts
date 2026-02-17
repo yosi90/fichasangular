@@ -1,6 +1,7 @@
 import { Component, Input } from '@angular/core';
 import { Dote } from 'src/app/interfaces/dote';
 import { DoteContexto, DoteContextual } from 'src/app/interfaces/dote-contextual';
+import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
 
 @Component({
     selector: 'app-detalles-dote',
@@ -8,6 +9,8 @@ import { DoteContexto, DoteContextual } from 'src/app/interfaces/dote-contextual
     styleUrls: ['./detalles-dote.component.sass']
 })
 export class DetallesDoteComponent {
+    constructor(private manualDetalleNavSvc: ManualDetalleNavigationService) { }
+
     doteData!: Dote;
     contexto?: DoteContexto;
     private readonly etiquetasPrerrequisitos: Record<string, string> = {
@@ -32,6 +35,13 @@ export class DetallesDoteComponent {
         }
         this.doteData = value as Dote;
         this.contexto = undefined;
+    }
+
+    abrirDetalleManual() {
+        this.manualDetalleNavSvc.abrirDetalleManual({
+            id: this.doteData?.Manual?.Id,
+            nombre: this.doteData?.Manual?.Nombre,
+        });
     }
 
     getTipos(): string {

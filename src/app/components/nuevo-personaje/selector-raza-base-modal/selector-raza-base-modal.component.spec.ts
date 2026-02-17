@@ -1,20 +1,24 @@
 import { SimpleChange } from '@angular/core';
 import { SelectorRazaBaseModalComponent } from './selector-raza-base-modal.component';
 import { Raza } from 'src/app/interfaces/raza';
+import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
 
 function crearRaza(id: number, nombre: string, oficial = true): Raza {
     return {
         Id: id,
         Nombre: nombre,
         Oficial: oficial,
+        Manual: `Manual ${id}`,
     } as unknown as Raza;
 }
 
 describe('SelectorRazaBaseModalComponent', () => {
     let component: SelectorRazaBaseModalComponent;
+    let manualDetalleNavSvcMock: jasmine.SpyObj<ManualDetalleNavigationService>;
 
     beforeEach(() => {
-        component = new SelectorRazaBaseModalComponent();
+        manualDetalleNavSvcMock = jasmine.createSpyObj<ManualDetalleNavigationService>('ManualDetalleNavigationService', ['abrirDetalleManual']);
+        component = new SelectorRazaBaseModalComponent(manualDetalleNavSvcMock);
         component.candidatas = [
             {
                 raza: crearRaza(1, 'Humano', true),
@@ -90,5 +94,23 @@ describe('SelectorRazaBaseModalComponent', () => {
         expect(component.getDgsExtra(conBonos)).toBe(3);
         expect(component.getAjusteNivel(sinBonos)).toBe(0);
         expect(component.getDgsExtra(sinBonos)).toBe(0);
+    });
+
+    it('abrir manual no confirma ni cambia seleccion', () => {
+        component.incluirHomebrew = true;
+        component.onFiltroChange('');
+        const candidata = component.candidatasVisibles.find((c) => c.raza.Id === 2)!;
+        component.onSeleccionar(candidata);
+        const confirmarSpy = spyOn(component.confirmar, 'emit');
+        const event = jasmine.createSpyObj<MouseEvent>('MouseEvent', ['preventDefault', 'stopPropagation']);
+
+        component.abrirDetalleManual(candidata, event);
+
+        expect(event.preventDefault).toHaveBeenCalled();
+        expect(event.stopPropagation).toHaveBeenCalled();
+        expect(component.razaSeleccionadaId).toBe(2);
+        expect(component.seleccionActual).toBe(candidata);
+        expect(confirmarSpy).not.toHaveBeenCalled();
+        expect(manualDetalleNavSvcMock.abrirDetalleManual).toHaveBeenCalledWith('Manual 2');
     });
 });

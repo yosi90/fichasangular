@@ -6,6 +6,7 @@ import { Conjuro } from 'src/app/interfaces/conjuro';
 import { Manual } from 'src/app/interfaces/manual';
 import { ConjuroService } from 'src/app/services/conjuro.service';
 import { ManualService } from 'src/app/services/manual.service';
+import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
 
 @Component({
     selector: 'app-listado-conjuros',
@@ -19,7 +20,12 @@ export class ListadoConjurosComponent {
     conjurosDS = new MatTableDataSource(this.conjuros);
     conjuroColumns = ['Nombre', 'Manual', 'Arcano', 'Divino', 'Psionico', 'Alma'];
 
-    constructor(private cdr: ChangeDetectorRef, private cSvc: ConjuroService, private mSvc: ManualService) { }
+    constructor(
+        private cdr: ChangeDetectorRef,
+        private cSvc: ConjuroService,
+        private mSvc: ManualService,
+        private manualDetalleNavSvc: ManualDetalleNavigationService
+    ) { }
 
     @ViewChild(MatSort) conjuroSort!: MatSort;
     @ViewChild(MatPaginator) conjuroPaginator!: MatPaginator;
@@ -77,5 +83,11 @@ export class ListadoConjurosComponent {
     @Output() conjuroSeleccionado: EventEmitter<Conjuro> = new EventEmitter<Conjuro>();
     seleccionarConjuro(value: number) {
         this.conjuroSeleccionado.emit(this.conjuros.find(c => c.Id === value));
+    }
+
+    abrirDetalleManual(conjuro: Conjuro, event?: Event) {
+        event?.preventDefault();
+        event?.stopPropagation();
+        this.manualDetalleNavSvc.abrirDetalleManual(conjuro?.Manual);
     }
 }

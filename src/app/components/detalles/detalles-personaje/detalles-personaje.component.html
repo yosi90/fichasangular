@@ -312,9 +312,12 @@
                         </button>
                     </mat-expansion-panel-header>
                     <mat-chip-set class="m-1">
-                        <mat-chip *ngFor="let v of getVentajasVisibles()" class="h-auto">
+                        <mat-chip *ngFor="let v of getVentajasVisibles()" class="h-auto chip-clic sombra3d-sm"
+                            matTooltip="Pulsa para ver los detalles" [matTooltipShowDelay]="250" matTooltipClass="tt-accent"
+                            (click)="verDetallesVentajaPorNombre(v)">
                             {{v.nombre}}
-                            <mat-chip class="ms-2 m-1 chip-origen" *ngIf="getOrigenVentaja(v) as origenVentaja">{{origenVentaja}}</mat-chip>
+                            <mat-chip class="ms-2 m-1 chip-origen" *ngIf="getOrigenVentaja(v) as origenVentaja"
+                                (click)="verDetallesVentajaPorNombre(v); $event.stopPropagation()">{{origenVentaja}}</mat-chip>
                         </mat-chip>
                     </mat-chip-set>
                 </mat-expansion-panel>

@@ -2,6 +2,7 @@ import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { DoteContextual } from 'src/app/interfaces/dote-contextual';
 import { Plantilla, PlantillaPrerrequisitos } from 'src/app/interfaces/plantilla';
 import { SubtipoRef } from 'src/app/interfaces/subtipo';
+import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
 
 type PrerrequisitoCondicion = {
     familiaEtiqueta: string;
@@ -31,6 +32,8 @@ type CambioTexto = {
     styleUrls: ['./detalles-plantilla.component.sass']
 })
 export class DetallesPlantillaComponent {
+    constructor(private manualDetalleNavSvc: ManualDetalleNavigationService) { }
+
     plantillaData!: Plantilla;
 
     private readonly ordenPrerrequisitos: (keyof PlantillaPrerrequisitos)[] = [
@@ -57,6 +60,13 @@ export class DetallesPlantillaComponent {
     @Output() conjuroDetalles: EventEmitter<number> = new EventEmitter<number>();
     @Output() doteDetalles: EventEmitter<number> = new EventEmitter<number>();
     @Output() subtipoDetalles: EventEmitter<{ Id?: number | null; Nombre: string; }> = new EventEmitter<{ Id?: number | null; Nombre: string; }>();
+
+    abrirDetalleManual() {
+        this.manualDetalleNavSvc.abrirDetalleManual({
+            id: this.plantillaData?.Manual?.Id,
+            nombre: this.plantillaData?.Manual?.Nombre,
+        });
+    }
 
     abrirDetallesConjuro(idConjuro: number) {
         const id = Number(idConjuro);

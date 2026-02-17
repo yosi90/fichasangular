@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, EventEmitter, Input, OnChanges, Output, SimpleChanges } from '@angular/core';
 import { Raza } from 'src/app/interfaces/raza';
+import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
 import { EstadoElegibilidadRazaBase } from 'src/app/services/utils/raza-mutacion';
 
 interface CandidataRazaBaseView {
@@ -15,6 +16,8 @@ interface CandidataRazaBaseView {
     changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class SelectorRazaBaseModalComponent implements OnChanges {
+    constructor(private manualDetalleNavSvc: ManualDetalleNavigationService) { }
+
     @Input() candidatas: CandidataRazaBaseView[] = [];
     @Input() incluirHomebrew = false;
     @Input() titulo = 'Seleccionar raza base';
@@ -60,6 +63,17 @@ export class SelectorRazaBaseModalComponent implements OnChanges {
     onSeleccionar(item: CandidataRazaBaseView): void {
         this.razaSeleccionadaId = Number(item.raza.Id);
         this.seleccionActual = item;
+    }
+
+    onSeleccionarTeclado(item: CandidataRazaBaseView, event: Event): void {
+        event.preventDefault();
+        this.onSeleccionar(item);
+    }
+
+    abrirDetalleManual(item: CandidataRazaBaseView, event?: Event): void {
+        event?.preventDefault();
+        event?.stopPropagation();
+        this.manualDetalleNavSvc.abrirDetalleManual(item?.raza?.Manual);
     }
 
     esSeleccionada(item: CandidataRazaBaseView): boolean {

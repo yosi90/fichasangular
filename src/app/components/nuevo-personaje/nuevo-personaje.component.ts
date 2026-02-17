@@ -1254,6 +1254,19 @@ export class NuevoPersonajeComponent {
         });
     }
 
+    @Output() ventajaDetallesPorNombre: EventEmitter<{ nombre: string; origen?: string; }> = new EventEmitter<{ nombre: string; origen?: string; }>();
+    verDetallesVentajaDesdeReferencia(referencia: { nombre: string; origen?: string; }): void {
+        const nombre = `${referencia?.nombre ?? ''}`.trim();
+        if (nombre.length < 1)
+            return;
+
+        const origen = `${referencia?.origen ?? ''}`.trim();
+        this.ventajaDetallesPorNombre.emit({
+            nombre,
+            origen: origen.length > 0 ? origen : undefined,
+        });
+    }
+
     @Output() rasgoDetalles: EventEmitter<Rasgo> = new EventEmitter<Rasgo>();
     verDetallesRasgo(value: Rasgo): void {
         const nombre = `${value?.Nombre ?? ''}`.trim();

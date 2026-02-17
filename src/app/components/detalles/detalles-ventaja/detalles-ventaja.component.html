@@ -1,0 +1,68 @@
+<div class="container-fluid detalle-view" *ngIf="ventaja">
+    <div class="row">
+        <div class="col-md-4 col-12 p-2">
+            <div class="d-flex flex-wrap align-items-center sombra-caja-sm rounded p-2 my-2">
+                <mat-chip class="h-auto warm w-100 sombra-caja-sm py-2 m-1 chip-titulo">
+                    {{ventaja.Nombre}}
+                </mat-chip>
+                <mat-chip class="sombra3d-sm m-1" [ngClass]="esDesventaja ? 'bad' : 'warm'">{{tipoTexto}}</mat-chip>
+                <mat-chip class="sombra3d-sm m-1">Coste {{costeTexto}}</mat-chip>
+                <mat-chip class="sombra3d-sm m-1" *ngIf="tieneMejoraVisible">Mejora {{mejoraTexto}}</mat-chip>
+                <mat-chip class="warm sombra3d-sm m-1" *ngIf="!ventaja.Oficial" matTooltip="Elemento homebrew" matTooltipClass="tt-accent">No es oficial</mat-chip>
+                <mat-chip class="chip-clic sombra3d-sm m-1" *ngIf="tieneManualVisible()"
+                    matTooltip="Pulsa para ver el manual" [matTooltipShowDelay]="250" matTooltipClass="tt-accent"
+                    (click)="abrirDetalleManual()">
+                    <mat-icon class="me-2">auto_stories</mat-icon>
+                    {{ventaja.Manual.Nombre}} <span *ngIf="(ventaja.Manual.Pagina ?? 0) > 0">(p. {{ventaja.Manual.Pagina}})</span>
+                </mat-chip>
+            </div>
+        </div>
+        <div class="col-md-4 col-12 p-2">
+            <div class="d-flex flex-wrap align-items-center sombra-caja-sm rounded p-2 my-2" *ngIf="tieneTextoVisible(ventaja.Descripcion)">
+                <mat-chip class="w-100 sombra-caja-sm m-1 mb-2 chip-titulo">Descripción</mat-chip>
+                <p class="m-1">{{ventaja.Descripcion}}</p>
+            </div>
+            <div class="d-flex flex-wrap align-items-center sombra-caja-sm rounded p-2 my-2"
+                *ngIf="getMateriaCaracteristica().length > 0 || getMateriaSalvacion().length > 0">
+                <mat-chip class="w-100 sombra-caja-sm m-1 mb-2 chip-titulo">Materia afectada</mat-chip>
+                <mat-chip class="sombra3d-sm m-1" *ngFor="let car of getMateriaCaracteristica()">{{car}}</mat-chip>
+                <mat-chip class="sombra3d-sm m-1" *ngFor="let salv of getMateriaSalvacion()">{{salv}}</mat-chip>
+            </div>
+        </div>
+        <div class="col-md-4 col-12 p-2">
+            <mat-accordion>
+                <mat-expansion-panel *ngIf="getFlagsActivos().length > 0">
+                    <mat-expansion-panel-header>
+                        <button mat-stroked-button color="accent" class="rounded-0 rounded-top">
+                            <h2 class="mb-0">Flags</h2>
+                        </button>
+                    </mat-expansion-panel-header>
+                    <mat-chip-set class="m-1">
+                        <mat-chip class="sombra3d-sm m-1" *ngFor="let flag of getFlagsActivos()">{{flag}}</mat-chip>
+                    </mat-chip-set>
+                </mat-expansion-panel>
+                <mat-expansion-panel *ngIf="tieneRasgoVisible() || tieneIdiomaVisible() || tieneHabilidadVisible()">
+                    <mat-expansion-panel-header>
+                        <button mat-stroked-button color="accent" class="rounded-0 rounded-bottom">
+                            <h2 class="mb-0">Referencias</h2>
+                        </button>
+                    </mat-expansion-panel-header>
+                    <mat-chip-set class="m-1">
+                        <mat-chip class="h-auto sombra3d-sm m-1" *ngIf="tieneRasgoVisible()">
+                            Rasgo
+                            <mat-chip class="sombra3d-sm m-1">{{ventaja.Rasgo.Nombre}}</mat-chip>
+                        </mat-chip>
+                        <mat-chip class="h-auto sombra3d-sm m-1" *ngIf="tieneIdiomaVisible()">
+                            Idioma
+                            <mat-chip class="sombra3d-sm m-1">{{ventaja.Idioma.Nombre}}</mat-chip>
+                        </mat-chip>
+                        <mat-chip class="h-auto sombra3d-sm m-1" *ngIf="tieneHabilidadVisible()">
+                            Habilidad
+                            <mat-chip class="sombra3d-sm m-1">{{ventaja.Habilidad.Nombre}}</mat-chip>
+                        </mat-chip>
+                    </mat-chip-set>
+                </mat-expansion-panel>
+            </mat-accordion>
+        </div>
+    </div>
+</div>

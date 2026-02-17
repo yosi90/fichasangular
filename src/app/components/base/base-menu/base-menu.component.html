@@ -27,11 +27,11 @@
                     (backdropClick)="cerrarOtros()" (detach)="cerrarOtros()" (overlayKeydown)="onOverlayKeydown($event)">
                     <div class="menu-otros-panel" (mouseenter)="cancelarCierreOtros()" (mouseleave)="programarCierreOtros()">
                         <button mat-button color="primary" (click)="cerrarOtros()">Tipos de criatura</button>
-                        <button mat-button color="primary"
-                            (click)="AbrirListado('subtipos', 'detalles'); closeAcordion(); cerrarOtros();">Subtipos de criatura</button>
+                        <button mat-button color="primary" (click)="cerrarOtros()">Subtipos de criatura</button>
                         <button mat-button color="primary" (click)="cerrarOtros()">Rasgos</button>
                         <button mat-button color="primary" (click)="cerrarOtros()">Especiales</button>
                         <button mat-button color="primary" (click)="cerrarOtros()">Raciales</button>
+                        <button mat-button color="primary" (click)="cerrarOtros()">Ventajas y desventajas</button>
                     </div>
                 </ng-template>
             </mat-expansion-panel>
@@ -60,11 +60,11 @@
                     (backdropClick)="cerrarOtros()" (detach)="cerrarOtros()" (overlayKeydown)="onOverlayKeydown($event)">
                     <div class="menu-otros-panel" (mouseenter)="cancelarCierreOtros()" (mouseleave)="programarCierreOtros()">
                         <button mat-button color="primary" (click)="cerrarOtros()">Tipos de criatura</button>
-                        <button mat-button color="primary"
-                            (click)="AbrirListado('subtipos', 'detalles'); closeAcordion(); cerrarOtros();">Subtipos de criatura</button>
+                        <button mat-button color="primary" (click)="cerrarOtros()">Subtipos de criatura</button>
                         <button mat-button color="primary" (click)="cerrarOtros()">Rasgos raciales</button>
                         <button mat-button color="primary" (click)="cerrarOtros()">Especiales</button>
                         <button mat-button color="primary" (click)="cerrarOtros()">Raciales</button>
+                        <button mat-button color="primary" (click)="cerrarOtros()">Ventajas y desventajas</button>
                     </div>
                 </ng-template>
             </mat-expansion-panel>
@@ -102,6 +102,8 @@
                             (click)="AbrirListado('especiales', 'detalles'); closeAcordion(); cerrarOtros();">Especiales</button>
                         <button mat-button color="primary"
                             (click)="AbrirListado('raciales', 'detalles'); closeAcordion(); cerrarOtros();">Raciales</button>
+                        <button mat-button color="primary"
+                            (click)="AbrirListado('ventajas', 'detalles'); closeAcordion(); cerrarOtros();">Ventajas y desventajas</button>
                     </div>
                 </ng-template>
             </mat-expansion-panel>

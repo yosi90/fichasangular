@@ -66,7 +66,12 @@
     padding: 8px 10px
     text-align: left
     color: #edf1fb
+    cursor: pointer
     transition: background .15s ease, border-color .15s ease
+
+.raza-row:focus-visible
+    outline: 2px solid #9fb3ff
+    outline-offset: 2px
 
 .raza-row:hover
     background: rgba(255, 255, 255, 0.12)
@@ -94,6 +99,25 @@
     margin-top: 4px
     font-size: .84rem
     opacity: .85
+
+.raza-manual-link
+    border: 0
+    background: transparent
+    color: #9fd4ff
+    text-decoration: underline
+    text-underline-offset: 2px
+    cursor: pointer
+    padding: 0
+    margin: 0
+    font: inherit
+    line-height: inherit
+
+.raza-manual-link:hover
+    color: #c4e7ff
+
+.raza-manual-link:focus-visible
+    outline: 1px solid rgba(159, 212, 255, 0.9)
+    outline-offset: 2px
 
 .chip-homebrew
     font-size: .72rem

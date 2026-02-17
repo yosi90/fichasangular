@@ -33,6 +33,9 @@ import { CacheSyncMetadataService } from 'src/app/services/cache-sync-metadata.s
 import { RasgoService } from 'src/app/services/rasgo.service';
 import { SubtipoDetalle, SubtipoResumen } from 'src/app/interfaces/subtipo';
 import { SubtipoService } from 'src/app/services/subtipo.service';
+import { VentajaDetalle } from 'src/app/interfaces/ventaja';
+import { VentajaService } from 'src/app/services/ventaja.service';
+import { combineLatest } from 'rxjs';
 
 @Component({
     selector: 'app-tab-control',
@@ -58,6 +61,7 @@ export class TabControlComponent implements OnInit, OnDestroy {
     detallesManualAbiertos: ManualAsociadoDetalle[] = [];
     detallesPlantillaAbiertos: Plantilla[] = [];
     detallesSubtipoAbiertos: SubtipoDetalle[] = [];
+    detallesVentajaAbiertos: VentajaDetalle[] = [];
     private avisoCachePendienteMostrado = false;
     private readonly destroy$ = new Subject<void>();
 
@@ -74,6 +78,7 @@ export class TabControlComponent implements OnInit, OnDestroy {
         private rasgoSvc: RasgoService,
         private plantillaSvc: PlantillaService,
         private subtipoSvc: SubtipoService,
+        private ventajaSvc: VentajaService,
         private nuevoPSvc: NuevoPersonajeService,
         private manualRefNavSvc: ManualReferenciaNavigationService,
         private manualVistaNavSvc: ManualVistaNavigationService,
@@ -173,6 +178,8 @@ export class TabControlComponent implements OnInit, OnDestroy {
             return;
         else if (this.detallesDoteAbiertos.map(d => this.getEtiquetaDote(d)).includes(tabLabel) && this.quitarDetallesDotePorLabel(tabLabel))
             return;
+        else if (this.detallesVentajaAbiertos.map(v => this.getEtiquetaVentaja(v)).includes(tabLabel) && this.quitarDetallesVentaja(tabLabel))
+            return;
         else if (this.detallesEspecialAbiertos.map(e => this.getEtiquetaEspecial(e)).includes(tabLabel) && this.quitarDetallesEspecial(tabLabel))
             return;
         else if (this.detallesRacialAbiertos.map(r => this.getEtiquetaRacial(r)).includes(tabLabel) && this.quitarDetallesRacial(tabLabel))
@@ -242,6 +249,8 @@ export class TabControlComponent implements OnInit, OnDestroy {
             this.abrirDetallesClase(value.item);
         } else if (value.tipo === 'dotes') {
             this.abrirDetallesDote(value.item);
+        } else if (value.tipo === 'ventajas') {
+            this.abrirDetallesVentaja(value.item);
         } else if (value.tipo === 'especiales') {
             this.abrirDetallesEspecial(value.item);
         } else if (value.tipo === 'raciales') {
@@ -494,6 +503,14 @@ export class TabControlComponent implements OnInit, OnDestroy {
 
     getEtiquetaSubtipo(subtipo: SubtipoDetalle): string {
         return `${subtipo.Nombre} (Subtipo)`;
+    }
+
+    getEtiquetaVentaja(ventaja: VentajaDetalle): string {
+        return `${ventaja.Nombre} (${this.esDesventaja(ventaja) ? 'Desventaja' : 'Ventaja'})`;
+    }
+
+    private esDesventaja(ventaja: VentajaDetalle): boolean {
+        return Number(ventaja?.Coste) > 0;
     }
 
     async abrirDetallesClase(clase: Clase) {
@@ -973,6 +990,56 @@ export class TabControlComponent implements OnInit, OnDestroy {
         }
     }
 
+    abrirDetallesVentaja(ventaja: VentajaDetalle) {
+        if (!ventaja || Number(ventaja.Id) <= 0)
+            return;
+
+        const abierto = this.detallesVentajaAbiertos.find(v => Number(v.Id) === Number(ventaja.Id));
+        if (abierto) {
+            this.cambiarA(true, this.TabGroup._tabs.find(tab => tab.textLabel === this.getEtiquetaVentaja(abierto)));
+            return;
+        }
+
+        this.detallesVentajaAbiertos.push(ventaja);
+        setTimeout(() => {
+            this.cambiarA(true, this.TabGroup._tabs.find(tab => tab.textLabel === this.getEtiquetaVentaja(ventaja)));
+        }, 100);
+    }
+
+    abrirDetallesVentajaDesdeReferencia(payload: { nombre: string; origen?: string; }): void {
+        const nombre = `${payload?.nombre ?? ''}`.trim();
+        if (nombre.length < 1)
+            return;
+
+        combineLatest([
+            this.ventajaSvc.getVentajas().pipe(take(1)),
+            this.ventajaSvc.getDesventajas().pipe(take(1)),
+        ]).subscribe({
+            next: ([ventajas, desventajas]) => {
+                const encontrada = this.buscarVentajaDesdeReferencia(nombre, `${payload?.origen ?? ''}`.trim(), ventajas, desventajas);
+                if (encontrada) {
+                    this.abrirDetallesVentaja(encontrada);
+                    return;
+                }
+
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Ventaja/Desventaja no encontrada',
+                    text: `No se encontró "${nombre}" en el catálogo local.`,
+                    showConfirmButton: true
+                });
+            },
+            error: () => {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'No se pudo cargar el catálogo',
+                    text: 'Error leyendo ventajas y desventajas desde cache local.',
+                    showConfirmButton: true
+                });
+            },
+        });
+    }
+
     quitarDetallesDote(doteCtx: DoteContextual): boolean {
         const clave = this.getClaveDoteTab(doteCtx);
         const tab = this.detallesDoteAbiertos.find(d => this.getClaveDoteTab(d) === clave);
@@ -989,6 +1056,16 @@ export class TabControlComponent implements OnInit, OnDestroy {
         if (!tab)
             return false;
         return this.quitarDetallesDote(tab);
+    }
+
+    quitarDetallesVentaja(label: string): boolean {
+        const tab = this.detallesVentajaAbiertos.find(v => this.getEtiquetaVentaja(v) === label);
+        if (!tab)
+            return false;
+        const indexTab = this.detallesVentajaAbiertos.indexOf(tab);
+        this.detallesVentajaAbiertos.splice(indexTab, 1);
+        this.cambiarA(false);
+        return true;
     }
 
     verPersonajes() {
@@ -1047,6 +1124,31 @@ export class TabControlComponent implements OnInit, OnDestroy {
     private nombreRacialBase(value: string): string {
         const sinParentesis = `${value ?? ''}`.replace(/\s*\([^)]*\)\s*/g, ' ').trim();
         return this.normalizar(sinParentesis);
+    }
+
+    private buscarVentajaPorNombre(coleccion: VentajaDetalle[], nombre: string): VentajaDetalle | null {
+        const objetivo = this.normalizar(nombre);
+        const candidatas = coleccion
+            .filter(v => this.normalizar(v?.Nombre ?? '') === objetivo)
+            .sort((a, b) => Number(a.Id) - Number(b.Id));
+        return candidatas[0] ?? null;
+    }
+
+    private buscarVentajaDesdeReferencia(
+        nombre: string,
+        origen: string,
+        ventajas: VentajaDetalle[],
+        desventajas: VentajaDetalle[]
+    ): VentajaDetalle | null {
+        const origenNormalizado = this.normalizar(origen);
+
+        if (origenNormalizado === 'desventaja')
+            return this.buscarVentajaPorNombre(desventajas, nombre) ?? this.buscarVentajaPorNombre(ventajas, nombre);
+
+        if (origenNormalizado === 'ventaja')
+            return this.buscarVentajaPorNombre(ventajas, nombre) ?? this.buscarVentajaPorNombre(desventajas, nombre);
+
+        return this.buscarVentajaPorNombre(ventajas, nombre) ?? this.buscarVentajaPorNombre(desventajas, nombre);
     }
 
     private buscarRacialPorNombre(raciales: RacialDetalle[], nombreRacial: string): RacialDetalle | undefined {

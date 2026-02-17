@@ -36,9 +36,10 @@
                         <mat-icon>read_more</mat-icon>
                         {{element.Nombre}}
                     </button>
-                    <p class="mb-0" *ngIf="column === 'Manual'">
+                    <button type="button" class="manual-clickable" *ngIf="column === 'Manual'"
+                        (click)="abrirDetalleManual(element, $event)">
                         {{element.Manual?.Nombre}} <span *ngIf="(element.Manual?.Pagina ?? 0) > 0">(p. {{element.Manual?.Pagina}})</span>
-                    </p>
+                    </button>
                     <div class="d-flex justify-content-center align-items-center" *ngIf="column === 'Heredada'">
                         <mat-checkbox [checked]="!!element.Heredada" [disableRipple]="true"
                             (click)="$event.preventDefault(); $event.stopPropagation();"></mat-checkbox>

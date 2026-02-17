@@ -533,6 +533,19 @@ Fue/Des/Con: ${this.formatSigned(madurez.modFisico)} | Int/Sab/Car: ${this.forma
         return this.tieneTextoVisible(origen) ? origen : null;
     }
 
+    @Output() ventajaDetallesPorNombre: EventEmitter<{ nombre: string; origen?: string; }> = new EventEmitter<{ nombre: string; origen?: string; }>();
+    verDetallesVentajaPorNombre(ventaja: VentajaVisible): void {
+        const nombre = `${ventaja?.nombre ?? ''}`.trim();
+        if (!this.tieneTextoVisible(nombre))
+            return;
+
+        const origen = `${ventaja?.origen ?? ''}`.trim();
+        this.ventajaDetallesPorNombre.emit({
+            nombre,
+            origen: this.tieneTextoVisible(origen) ? origen : undefined,
+        });
+    }
+
     toDoteContextualFallback(dote: DoteLegacy): DoteContextual {
         const fallbackDote: Dote = {
             Id: 0,
