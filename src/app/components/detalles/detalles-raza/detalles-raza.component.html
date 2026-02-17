@@ -71,8 +71,8 @@
                         +{{raza.Dgs_adicionales.Cantidad}}{{raza.Dgs_adicionales.Dado}} de {{raza.Dgs_adicionales.Tipo_criatura}}
                     </mat-chip>
                 </mat-chip>
-                <mat-chip class="sombra3d-sm m-1" *ngIf="raza.Armadura_natural !== 0">Armadura natural {{raza.Armadura_natural > 0 ? '+' : ''}}{{raza.Armadura_natural}}</mat-chip>
-                <mat-chip class="sombra3d-sm m-1" *ngIf="raza.Varios_armadura !== 0">CA varios {{raza.Varios_armadura > 0 ? '+' : ''}}{{raza.Varios_armadura}}</mat-chip>
+                <mat-chip class="sombra3d-sm m-1" *ngIf="tieneNumeroNoCero(raza.Armadura_natural)">Armadura natural {{raza.Armadura_natural > 0 ? '+' : ''}}{{raza.Armadura_natural}}</mat-chip>
+                <mat-chip class="sombra3d-sm m-1" *ngIf="tieneNumeroNoCero(raza.Varios_armadura)">CA varios {{raza.Varios_armadura > 0 ? '+' : ''}}{{raza.Varios_armadura}}</mat-chip>
                 <mat-chip class="sombra3d-sm m-1" *ngIf="raza.Espacio > 0">Espacio {{raza.Espacio}}'</mat-chip>
                 <mat-chip class="sombra3d-sm m-1" *ngIf="raza.Alcance > 0">Alcance {{raza.Alcance}}'</mat-chip>
                 <mat-chip class="sombra3d-sm m-1" *ngIf="raza.Correr > 0">Correr {{raza.Correr}}'</mat-chip>
@@ -134,9 +134,9 @@
                             matTooltipClass="tt-accent" (click)="abrirDetalleRacial(racial)"
                             *ngFor="let racial of getRacialesActivos()">
                             {{racial.Nombre}}
-                            <mat-chip class="sombra3d-sm m-1" *ngIf="tieneTextoVisible(racial.Descripcion)">
+                            <div class="chip-descripcion-bloque" *ngIf="tieneTextoVisible(racial.Descripcion)">
                                 {{racial.Descripcion}}
-                            </mat-chip>
+                            </div>
                         </mat-chip>
                     </mat-chip-set>
                 </mat-expansion-panel>
@@ -149,10 +149,10 @@
                     <mat-chip-set class="m-1">
                         <mat-chip class="h-auto sombra3d-sm m-1" *ngFor="let s of raza.Sortilegas">
                             {{s.Conjuro.Nombre}}
-                            <mat-chip class="sombra3d-sm m-1">NL {{s.Nivel_lanzador}}</mat-chip>
+                            <mat-chip class="sombra3d-sm m-1">Nivel de lanzador {{s.Nivel_lanzador}}</mat-chip>
                             <mat-chip class="sombra3d-sm m-1">Usos {{s.Usos_diarios}}</mat-chip>
                             <mat-chip class="sombra3d-sm m-1" *ngIf="s.Dgs_necesarios > 0">DGs min {{s.Dgs_necesarios}}</mat-chip>
-                            <mat-chip class="sombra3d-sm m-1" *ngIf="s.Descripcion && s.Descripcion !== 'No especifica'">{{s.Descripcion}}</mat-chip>
+                            <div class="chip-descripcion-bloque" *ngIf="s.Descripcion && s.Descripcion !== 'No especifica'">{{s.Descripcion}}</div>
                         </mat-chip>
                     </mat-chip-set>
                 </mat-expansion-panel>

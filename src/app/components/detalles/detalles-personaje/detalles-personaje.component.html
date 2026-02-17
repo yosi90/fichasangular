@@ -282,8 +282,12 @@
                         </button>
                     </mat-expansion-panel-header>
                     <mat-chip-set class="m-1">
-                        <mat-chip *ngFor="let s of getSortilegasVisibles()" matTooltip="Pulsa para ver los detalles" [matTooltipShowDelay]="250" (click)="verDetallesSortilega(s);" class="sombra3d-sm" matTooltipClass="tt-accent">
+                        <mat-chip *ngFor="let s of getSortilegasVisibles()" matTooltip="Pulsa para ver los detalles" [matTooltipShowDelay]="250" (click)="verDetallesSortilega(s);" class="h-auto sombra3d-sm" matTooltipClass="tt-accent">
                             {{s.Conjuro.Nombre}}
+                            <mat-chip class="sombra3d-sm m-1" *ngIf="tieneNumeroVisible(s.Nivel_lanzador)">Nivel de lanzador {{s.Nivel_lanzador}}</mat-chip>
+                            <mat-chip class="sombra3d-sm m-1" *ngIf="tieneTextoVisible(s.Usos_diarios)">Usos {{s.Usos_diarios}}</mat-chip>
+                            <mat-chip class="sombra3d-sm m-1" *ngIf="tieneNumeroVisible(s.Dgs_necesarios)">DGs min {{s.Dgs_necesarios}}</mat-chip>
+                            <div class="chip-descripcion-bloque" *ngIf="tieneTextoVisible(s.Descripcion)">{{s.Descripcion}}</div>
                         </mat-chip>
                     </mat-chip-set>
                 </mat-expansion-panel>

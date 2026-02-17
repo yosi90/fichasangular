@@ -50,20 +50,26 @@
                                 <div class="alineamiento-bloque full-span">
                                     <mat-form-field appearance="fill" class="w-100 m-0">
                                         <mat-label>Alineamiento</mat-label>
-                                        <mat-select [(ngModel)]="Personaje.Alineamiento" [compareWith]="compararAlineamiento" (selectionChange)="recalcularOficialidad()">
-                                            <mat-option *ngFor="let alineamiento of alineamientos" [value]="alineamiento">{{alineamiento}}</mat-option>
+                                        <mat-select [(ngModel)]="Personaje.Alineamiento" [compareWith]="compararAlineamiento" (selectionChange)="onAlineamientoChange()">
+                                            <mat-option *ngFor="let alineamiento of alineamientosDisponibles" [value]="alineamiento">{{alineamiento}}</mat-option>
                                         </mat-select>
                                     </mat-form-field>
                                     <div class="alineamiento-preferencias">
-                                        <p class="m-0"><strong>Base de la raza:</strong> {{alineamientoBaseRaza}}</p>
-                                        <p class="m-0"><strong>Preferencia de la raza (ley/normas):</strong> {{preferenciaLeyRaza}}</p>
-                                        <p class="m-0"><strong>Preferencia de la raza (moral/trato):</strong> {{preferenciaMoralRaza}}</p>
+                                        <p class="m-0"><strong>Preferencias de la raza</strong></p>
+                                        <p class="m-0" *ngFor="let pref of preferenciasRazaItems"><strong>{{pref.etiqueta}}:</strong> {{pref.valor}}</p>
+                                        <p class="m-0" *ngIf="!tienePreferenciasRazaVisibles">Sin preferencias de alineamiento aplicables.</p>
+                                    </div>
+                                    <div class="alineamiento-feedback" *ngIf="tieneFeedbackRazaBasicos">
+                                        <p class="m-0"><strong>Estado del alineamiento racial</strong></p>
+                                        <p class="m-0" *ngFor="let info of advertenciasRazaPreview">{{info}}</p>
+                                        <p class="m-0" *ngFor="let info of conflictosDurosRazaPreview">{{info}}</p>
+                                        <p class="m-0" *ngIf="tieneConflictoDuroRazaBasicos">Si continúas con esta combinación, el personaje se marcará como homebrew (no oficial).</p>
                                     </div>
                                 </div>
                                 <div class="deidad-bloque full-span">
                                     <mat-form-field appearance="fill" class="w-100 m-0">
                                         <mat-label>Deidad</mat-label>
-                                        <input matInput [(ngModel)]="Personaje.Deidad" (ngModelChange)="recalcularOficialidad()" [matAutocomplete]="deidadAuto" placeholder="No tener deidad">
+                                        <input matInput [(ngModel)]="Personaje.Deidad" (ngModelChange)="onDeidadChange()" [matAutocomplete]="deidadAuto" placeholder="No tener deidad">
                                         <mat-autocomplete #deidadAuto="matAutocomplete">
                                             <mat-option *ngFor="let deidad of deidadesFiltradas" [value]="deidad">{{deidad}}</mat-option>
                                         </mat-autocomplete>
@@ -73,6 +79,11 @@
                                         <p class="m-0"><strong>Alineamiento de referencia:</strong> {{deidadAlineamientoInfo}}</p>
                                         <p class="m-0"><strong>Estado en catalogo:</strong> {{deidadOficialidadInfo}}</p>
                                         <p class="m-0">{{deidadDescripcionInfo}}</p>
+                                    </div>
+                                    <div class="alineamiento-feedback" *ngIf="tieneFeedbackDeidadBasicos">
+                                        <p class="m-0"><strong>Conflicto con la deidad</strong></p>
+                                        <p class="m-0" *ngFor="let info of conflictosDurosDeidadPreview">{{info}}</p>
+                                        <p class="m-0">Si continúas con esta combinación, el personaje se marcará como homebrew (no oficial).</p>
                                     </div>
                                 </div>
                             </div>

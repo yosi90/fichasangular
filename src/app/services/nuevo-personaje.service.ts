@@ -1,4 +1,5 @@
 import { Injectable } from '@angular/core';
+import { AptitudSortilega } from '../interfaces/aptitud-sortilega';
 import { HabilidadBasicaDetalle, HabilidadBonoVario } from '../interfaces/habilidad';
 import { IdiomaDetalle } from '../interfaces/idioma';
 import { Personaje } from '../interfaces/personaje';
@@ -9,6 +10,7 @@ import { SubtipoRef } from '../interfaces/subtipo';
 import { TipoCriatura } from '../interfaces/tipo_criatura';
 import { VentajaDetalle } from '../interfaces/ventaja';
 import { resolverAlineamientoPlantillas, simularEstadoPlantillas } from './utils/plantilla-elegibilidad';
+import { extraerEjesAlineamientoDesdeContrato } from './utils/alineamiento-contrato';
 import { createRacialPlaceholder, normalizeRaciales } from './utils/racial-mapper';
 import { normalizeSubtipoRefArray } from './utils/subtipo-mapper';
 
@@ -166,6 +168,10 @@ export class NuevoPersonajeService {
         this.personajeCreacion.Escalar = raza.Escalar ?? 0;
         this.personajeCreacion.Raciales = this.asignarOrigenRaciales(
             this.copiarRaciales(raza.Raciales),
+            raza.Nombre
+        );
+        this.personajeCreacion.Sortilegas = this.asignarOrigenSortilegas(
+            this.copiarSortilegas(raza.Sortilegas),
             raza.Nombre
         );
         if (raza?.Tipo_criatura) {
@@ -1225,19 +1231,8 @@ export class NuevoPersonajeService {
         if (this.toNumber(plantilla?.Alineamiento?.Prioridad?.Id_prioridad) <= 0)
             return false;
 
-        const ley = this.normalizarTexto(`${plantilla?.Alineamiento?.Ley?.Nombre ?? ''}`);
-        if (ley.length > 0 && !ley.includes('ninguna preferencia') && !ley.includes('no aplica'))
-            return true;
-
-        const moral = this.normalizarTexto(`${plantilla?.Alineamiento?.Moral?.Nombre ?? ''}`);
-        if (moral.length > 0 && !moral.includes('ninguna preferencia') && !moral.includes('no aplica'))
-            return true;
-
-        const basico = this.normalizarTexto(`${plantilla?.Alineamiento?.Basico?.Nombre ?? ''}`);
-        if (basico.length > 0 && !basico.includes('ninguna preferencia') && !basico.includes('no aplica'))
-            return true;
-
-        return false;
+        const ejes = extraerEjesAlineamientoDesdeContrato(plantilla?.Alineamiento);
+        return ejes.ley !== null || ejes.moral !== null;
     }
 
     private asegurarHabilidadDesdePlantilla(habilidadRef: Plantilla['Habilidades'][number]): Personaje['Habilidades'][number] | null {
@@ -1297,6 +1292,23 @@ export class NuevoPersonajeService {
                 };
             })
             .filter((r) => this.normalizarTexto(r.Nombre).length > 0);
+    }
+
+    private copiarSortilegas(value: AptitudSortilega[] | null | undefined): AptitudSortilega[] {
+        const listado = Array.isArray(value)
+            ? value
+            : (value && typeof value === 'object' ? Object.values(value as any) : []);
+
+        return listado
+            .map((s: any) => ({
+                Conjuro: { ...(s?.Conjuro ?? {}) } as any,
+                Nivel_lanzador: this.toNumber(s?.Nivel_lanzador),
+                Usos_diarios: `${s?.Usos_diarios ?? ''}`.trim(),
+                Descripcion: `${s?.Descripcion ?? ''}`.trim(),
+                Dgs_necesarios: this.toNumber(s?.Dgs_necesarios),
+                Origen: `${s?.Origen ?? ''}`.trim(),
+            }))
+            .filter((s) => this.normalizarTexto(`${s?.Conjuro?.Nombre ?? ''}`).length > 0);
     }
 
     private copiarIdiomas(value: { Nombre: string; Descripcion: string; Secreto: boolean; Oficial: boolean; Origen?: string; }[] | null | undefined) {
@@ -1744,6 +1756,16 @@ export class NuevoPersonajeService {
         return raciales.map((racial) => ({
             ...racial,
             Origen: `${racial?.Origen ?? ''}`.trim() || origenNormalizado,
+        }));
+    }
+
+    private asignarOrigenSortilegas(sortilegas: AptitudSortilega[], origen: string): AptitudSortilega[] {
+        const origenNormalizado = `${origen ?? ''}`.trim();
+        if (origenNormalizado.length < 1)
+            return sortilegas;
+        return sortilegas.map((sortilega) => ({
+            ...sortilega,
+            Origen: `${sortilega?.Origen ?? ''}`.trim() || origenNormalizado,
         }));
     }
 

@@ -22,6 +22,16 @@ function toArray<T = any>(value: any): T[] {
     return [];
 }
 
+function pick(raw: any, ...keys: string[]): any {
+    if (!raw || typeof raw !== "object")
+        return undefined;
+    for (const key of keys) {
+        if (Object.prototype.hasOwnProperty.call(raw, key))
+            return raw[key];
+    }
+    return undefined;
+}
+
 function normalizeConjuro(raw: any): Conjuro {
     return {
         Id: toNumber(raw?.Id),
@@ -91,38 +101,49 @@ function normalizeConjuro(raw: any): Conjuro {
 }
 
 export function normalizeRacial(raw: any): RacialDetalle {
+    const dotesRaw = pick(raw, "Dotes", "dotes", "dot");
+    const habilidadesRaw = pick(raw, "Habilidades", "habilidades", "hab");
+    const baseHabilidadesRaw = pick(habilidadesRaw, "Base", "base", "b");
+    const customHabilidadesRaw = pick(habilidadesRaw, "Custom", "custom", "c");
+    const caracteristicasRaw = pick(raw, "Caracteristicas", "caracteristicas", "car");
+    const salvacionesRaw = pick(raw, "Salvaciones", "salvaciones", "sal");
+    const sortilegasRaw = pick(raw, "Sortilegas", "sortilegas", "sor");
+    const ataquesRaw = pick(raw, "Ataques", "ataques", "ata");
+    const flagsRaw = pick(raw, "Prerrequisitos_flags", "prerrequisitos_flags", "pres_c", "prf");
+    const prerrequisitosRaw = pick(raw, "Prerrequisitos", "prerrequisitos", "pres", "pre");
+
     return {
-        Id: toNumber(raw?.Id),
-        Nombre: toText(raw?.Nombre),
-        Descripcion: toText(raw?.Descripcion),
+        Id: toNumber(pick(raw, "Id", "id", "i")),
+        Nombre: toText(pick(raw, "Nombre", "nombre", "n")),
+        Descripcion: toText(pick(raw, "Descripcion", "descripcion", "d")),
         Origen: toText(raw?.Origen ?? raw?.origen).trim(),
-        Dotes: toArray(raw?.Dotes).map((item: any) => ({
-            Id_dote: toNumber(item?.Id_dote),
-            Dote: toText(item?.Dote),
-            Id_extra: toNumber(item?.Id_extra),
-            Extra: toText(item?.Extra),
+        Dotes: toArray(dotesRaw).map((item: any) => ({
+            Id_dote: toNumber(pick(item, "Id_dote", "id_dote", "id_d", "id")),
+            Dote: toText(pick(item, "Dote", "dote", "Nombre", "nombre", "n")),
+            Id_extra: toNumber(pick(item, "Id_extra", "id_extra", "i_ex", "ie")),
+            Extra: toText(pick(item, "Extra", "extra", "x")),
         })),
         Habilidades: {
-            Base: toArray(raw?.Habilidades?.Base),
-            Custom: toArray(raw?.Habilidades?.Custom),
+            Base: toArray(baseHabilidadesRaw),
+            Custom: toArray(customHabilidadesRaw),
         },
-        Caracteristicas: toArray(raw?.Caracteristicas),
-        Salvaciones: toArray(raw?.Salvaciones),
-        Sortilegas: toArray(raw?.Sortilegas).map((item: any) => ({
-            Conjuro: normalizeConjuro(item?.Conjuro),
-            Nivel_lanzador: toText(item?.Nivel_lanzador),
-            Usos_diarios: toText(item?.Usos_diarios),
+        Caracteristicas: toArray(caracteristicasRaw),
+        Salvaciones: toArray(salvacionesRaw),
+        Sortilegas: toArray(sortilegasRaw).map((item: any) => ({
+            Conjuro: normalizeConjuro(pick(item, "Conjuro", "conjuro", "c")),
+            Nivel_lanzador: toText(pick(item, "Nivel_lanzador", "nivel_lanzador", "nl")),
+            Usos_diarios: toText(pick(item, "Usos_diarios", "usos_diarios", "ud")),
         })),
-        Ataques: toArray(raw?.Ataques).map((item: any) => ({
-            Descripcion: toText(item?.Descripcion),
+        Ataques: toArray(ataquesRaw).map((item: any) => ({
+            Descripcion: toText(pick(item, "Descripcion", "descripcion", "d")),
         })),
         Prerrequisitos_flags: {
-            raza: toBoolean(raw?.Prerrequisitos_flags?.raza),
-            caracteristica_minima: toBoolean(raw?.Prerrequisitos_flags?.caracteristica_minima),
+            raza: toBoolean(pick(flagsRaw, "raza", "r")),
+            caracteristica_minima: toBoolean(pick(flagsRaw, "caracteristica_minima", "caracteristica", "c")),
         },
         Prerrequisitos: {
-            raza: toArray(raw?.Prerrequisitos?.raza),
-            caracteristica: toArray(raw?.Prerrequisitos?.caracteristica),
+            raza: toArray(pick(prerrequisitosRaw, "raza", "r")),
+            caracteristica: toArray(pick(prerrequisitosRaw, "caracteristica", "caracteristicas", "c")),
         },
     };
 }

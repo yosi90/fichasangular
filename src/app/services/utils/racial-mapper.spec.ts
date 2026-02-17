@@ -71,6 +71,36 @@ describe('racial-mapper', () => {
         expect(desdeArray.map(r => r.Id)).toEqual([3, 4]);
     });
 
+    it('normaliza claves legacy/minificadas en raciales', () => {
+        const racial = normalizeRacial({
+            i: 7,
+            n: 'Sangre ancestral',
+            d: 'Descripcion corta',
+            dot: [{ id_d: 3, n: 'Alerta', ie: -1, x: 'No aplica' }],
+            hab: {
+                b: [{ Id_habilidad: 1, Habilidad: 'Avistar' }],
+                c: [{ Id_habilidad: 2, Habilidad: 'Saber local' }],
+            },
+            sor: [{ c: { Id: 5, Nombre: 'Luz' }, nl: '1', ud: '1/dia' }],
+            ata: [{ d: 'Mordisco 1d4' }],
+            prf: { r: 1, c: 0 },
+            pre: { r: [{ id_raza: 2 }], c: [{ id_caracteristica: 4, cantidad: 13 }] },
+        });
+
+        expect(racial.Id).toBe(7);
+        expect(racial.Nombre).toBe('Sangre ancestral');
+        expect(racial.Descripcion).toBe('Descripcion corta');
+        expect(racial.Dotes[0].Id_dote).toBe(3);
+        expect(racial.Habilidades.Base.length).toBe(1);
+        expect(racial.Habilidades.Custom.length).toBe(1);
+        expect(racial.Sortilegas[0].Conjuro.Id).toBe(5);
+        expect(racial.Ataques[0].Descripcion).toBe('Mordisco 1d4');
+        expect(racial.Prerrequisitos_flags.raza).toBeTrue();
+        expect(racial.Prerrequisitos_flags.caracteristica_minima).toBeFalse();
+        expect(racial.Prerrequisitos.raza.length).toBe(1);
+        expect(racial.Prerrequisitos.caracteristica.length).toBe(1);
+    });
+
     it('genera placeholder valido para raciales parciales', () => {
         const racial = createRacialPlaceholder('Sangre antigua');
         expect(racial.Id).toBe(0);

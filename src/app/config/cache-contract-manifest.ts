@@ -16,6 +16,11 @@ export type CacheEntityKey =
     | "escuelas_conjuros"
     | "disciplinas_conjuros"
     | "alineamientos"
+    | "alineamientos_basicos"
+    | "alineamientos_combinaciones"
+    | "alineamientos_prioridades"
+    | "alineamientos_preferencia_ley"
+    | "alineamientos_preferencia_moral"
     | "habilidades"
     | "habilidades_custom"
     | "idiomas"
@@ -46,6 +51,11 @@ export const CACHE_CONTRACT_MANIFEST: CacheContractEntry[] = [
     { key: "escuelas_conjuros", label: "Escuelas de conjuros", schemaVersion: 1 },
     { key: "disciplinas_conjuros", label: "Disciplinas de conjuros", schemaVersion: 1 },
     { key: "alineamientos", label: "Alineamientos", schemaVersion: 1 },
+    { key: "alineamientos_basicos", label: "Alineamientos básicos", schemaVersion: 1 },
+    { key: "alineamientos_combinaciones", label: "Combinaciones de alineamiento", schemaVersion: 1 },
+    { key: "alineamientos_prioridades", label: "Prioridades de alineamiento", schemaVersion: 1 },
+    { key: "alineamientos_preferencia_ley", label: "Preferencia legal de alineamiento", schemaVersion: 1 },
+    { key: "alineamientos_preferencia_moral", label: "Preferencia moral de alineamiento", schemaVersion: 1 },
     { key: "habilidades", label: "Habilidades", schemaVersion: 1 },
     { key: "habilidades_custom", label: "Habilidades custom", schemaVersion: 1 },
     { key: "idiomas", label: "Idiomas", schemaVersion: 1 },

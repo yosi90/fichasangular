@@ -40,7 +40,21 @@ mat-chip.warm
     border: 1px ridge #747474
 
     mat-chip ::ng-deep .mat-mdc-chip-action-label
-        display: contents
+        display: inline-flex
+        flex-wrap: wrap
+        align-items: center
+        column-gap: 6px
+        row-gap: 2px
+        padding-top: .22rem
+        padding-bottom: .22rem
+        line-height: 1.25
+        max-width: 100%
+        white-space: normal
+        overflow-wrap: anywhere
+
+    mat-chip ::ng-deep .mat-mdc-chip-action-label .mat-mdc-chip
+        margin-top: 1px !important
+        margin-bottom: 1px !important
 
 .mat-accordion .mat-expansion-panel
     border: 1px ridge #747474
@@ -100,6 +114,29 @@ mat-chip.warm
 
 :host ::ng-deep .mat-accordion .mat-expansion-panel .mat-expansion-panel-body .mdc-evolution-chip-set__chips
     padding-left: 12px
+
+:host ::ng-deep .mat-accordion .mat-expansion-panel .mat-expansion-panel-body .mat-mdc-chip
+    max-width: 100%
+
+.chip-descripcion-bloque
+    width: 100%
+    margin-top: .25rem
+    padding: .45rem .6rem
+    border: 1px ridge #747474
+    border-radius: 6px
+    background-color: rgba(0, 0, 0, 0.12)
+    overflow-wrap: anywhere
+    word-break: break-word
+    line-height: 1.4
+    font-size: 1.02rem
+    font-weight: 500
+
+:host ::ng-deep .mat-accordion .mat-expansion-panel .mat-expansion-panel-body .chip-descripcion-bloque
+    display: -webkit-box
+    -webkit-line-clamp: 3
+    -webkit-box-orient: vertical
+    max-height: calc(1.4em * 3)
+    overflow: hidden
 
 .chip-multilinea
     height: auto

@@ -46,6 +46,11 @@ Lista de endpoints
 | GET | /escuelas | Lista de escuelas de conjuros | Implementado |
 | GET | /disciplinas | Lista de disciplinas de conjuros | Implementado |
 | GET | /alineamientos | Lista de alineamientos | Implementado |
+| GET | /alineamientos/combinaciones | Lista semantica de combinaciones de alineamiento | Implementado |
+| GET | /alineamientos/basicos | Lista de alineamientos basicos | Implementado |
+| GET | /alineamientos/prioridades | Lista de prioridades de alineamiento | Implementado |
+| GET | /alineamientos/preferencia-ley | Lista de preferencias de ley | Implementado |
+| GET | /alineamientos/preferencia-moral | Lista de preferencias de moral | Implementado |
 | GET | /habilidades | Lista de habilidades basicas (id > 0) | Implementado |
 | GET | /habilidades/custom | Lista de habilidades custom (id > 0) | Implementado |
 | GET | /idiomas | Lista de idiomas | Implementado |
@@ -561,6 +566,57 @@ AlineamientoResumen
 | m | object | Moral: { Id_moral, Nombre } |
 | p | object | Prioridad: { Id_prioridad, Nombre } |
 | d | string | Descripcion |
+
+Endpoint: GET /alineamientos/combinaciones
+Respuesta: array de `AlineamientoCombinacion`
+
+AlineamientoCombinacion
+| Campo | Tipo | Descripcion |
+| --- | --- | --- |
+| Id | number | Id de la combinacion |
+| Basico | object | { Id, Nombre } |
+| Ley | object | { Id, Nombre } |
+| Moral | object | { Id, Nombre } |
+| Prioridad | object | { Id, Nombre, Descripcion } |
+
+Endpoint: GET /alineamientos/basicos
+Respuesta: array de `AlineamientoBasico`
+
+AlineamientoBasico
+| Campo | Tipo | Descripcion |
+| --- | --- | --- |
+| Id | number | Id de alineamiento basico |
+| Nombre | string | Nombre |
+
+Endpoint: GET /alineamientos/prioridades
+Respuesta: array de `PrioridadAlineamiento`
+
+PrioridadAlineamiento
+| Campo | Tipo | Descripcion |
+| --- | --- | --- |
+| Id | number | Id de prioridad |
+| Nombre | string | Nombre |
+| Descripcion | string | Descripcion |
+
+Endpoint: GET /alineamientos/preferencia-ley
+Respuesta: array de `PreferenciaLey`
+
+PreferenciaLey
+| Campo | Tipo | Descripcion |
+| --- | --- | --- |
+| Id | number | Id de preferencia legal |
+| Nombre | string | Nombre |
+| Descripcion | string | Descripcion |
+
+Endpoint: GET /alineamientos/preferencia-moral
+Respuesta: array de `PreferenciaMoral`
+
+PreferenciaMoral
+| Campo | Tipo | Descripcion |
+| --- | --- | --- |
+| Id | number | Id de preferencia moral |
+| Nombre | string | Nombre |
+| Descripcion | string | Descripcion |
 
 Endpoint: GET /habilidades
 Respuesta: array de `HabilidadBasicaDetalle`

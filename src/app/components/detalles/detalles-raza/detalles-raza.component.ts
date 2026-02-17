@@ -63,4 +63,9 @@ export class DetallesRazaComponent {
             && limpiado !== 'no vuela'
             && limpiado !== '-';
     }
+
+    tieneNumeroNoCero(valor: number | string | null | undefined): boolean {
+        const parsed = Number(valor);
+        return Number.isFinite(parsed) && Math.abs(parsed) > 0.0001;
+    }
 }

@@ -166,6 +166,12 @@ describe('DetallesPersonajeComponent', () => {
         expect(emitSpy).toHaveBeenCalledWith({ id: 15, nombre: 'Sangre antigua' });
     });
 
+    it('emite detalle de raza aunque el id llegue como string numerico', () => {
+        const emitSpy = spyOn(component.razaDetalles, 'emit');
+        component.verDetallesRaza('7' as any);
+        expect(emitSpy).toHaveBeenCalledWith(7);
+    });
+
     it('muestra subchips de origen en rasgos/raciales/dotes/idiomas/ventajas', () => {
         component.pj.Tipo_criatura.Nombre = 'Muerto viviente';
         component.pj.Tipo_criatura.Rasgos = [
@@ -214,6 +220,77 @@ describe('DetallesPersonajeComponent', () => {
         expect(html).toContain('Elfo');
         expect(html).toContain('Nivel');
         expect(html).toContain('Ventaja');
+    });
+
+    it('actualiza raciales visibles cuando cambian tras inicializar el componente', () => {
+        fixture.detectChanges();
+        component.pj.Raciales = [
+            {
+                Id: 20,
+                Nombre: 'Telepatia',
+                Descripcion: '',
+                Origen: 'Azotamentes',
+                Dotes: [],
+                Habilidades: { Base: [], Custom: [] },
+                Caracteristicas: [],
+                Salvaciones: [],
+                Sortilegas: [],
+                Ataques: [],
+                Prerrequisitos_flags: { raza: false, caracteristica_minima: false },
+                Prerrequisitos: { raza: [], caracteristica: [] },
+            } as any,
+        ];
+
+        fixture.detectChanges();
+
+        const html = `${fixture.nativeElement.textContent ?? ''}`;
+        expect(html).toContain('Habilidades raciales');
+        expect(html).toContain('Telepatia');
+        expect(html).toContain('Azotamentes');
+    });
+
+    it('renderiza raciales con claves legacy y fallback desde raza', () => {
+        fixture.detectChanges();
+
+        component.pj.Raciales = [] as any;
+        (component.pj as any).Raza = {
+            ...(component.pj as any).Raza,
+            Raciales: [{
+                i: 31,
+                n: 'Olfato',
+                o: 'Licantropo',
+            }],
+        };
+
+        fixture.detectChanges();
+
+        const html = `${fixture.nativeElement.textContent ?? ''}`;
+        expect(html).toContain('Habilidades raciales');
+        expect(html).toContain('Olfato');
+        expect(html).toContain('Licantropo');
+    });
+
+    it('muestra metadatos de sortilegas en la preview del personaje', () => {
+        component.pj.Sortilegas = [
+            {
+                Conjuro: { Id: 1, Nombre: 'Levitar' },
+                Nivel_lanzador: 9,
+                Usos_diarios: 'A voluntad',
+                Dgs_necesarios: 4,
+                Descripcion: 'Innato',
+                Origen: 'Azotamentes',
+            } as any,
+        ];
+
+        fixture.detectChanges();
+
+        const html = `${fixture.nativeElement.textContent ?? ''}`;
+        expect(html).toContain('Habilidades sortílegas');
+        expect(html).toContain('Levitar');
+        expect(html).toContain('Nivel de lanzador 9');
+        expect(html).toContain('Usos A voluntad');
+        expect(html).toContain('DGs min 4');
+        expect(html).toContain('Innato');
     });
 
     it('no muestra origen en legacy sin origen, salvo fallback del rasgo de tipo', () => {

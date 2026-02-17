@@ -1,12 +1,8 @@
-<app-navbar #nav
-    [ngStyle]="{'display':width > 1250 && height > 700 && height < width ? 'initial' : 'none'}"></app-navbar>
-<app-cont-principal
-    [ngStyle]="{'display':width > 1250 && height > 700 && height < width ? 'initial' : 'none'}"></app-cont-principal>
-<app-responsive-base
-    [ngStyle]="{'display':width <= 1250 || height <= 700 || height >= width ? 'block' : 'none'}"></app-responsive-base>
+<ng-container *ngIf="isDesktopLayout; else mobileLayout">
+    <app-navbar></app-navbar>
+    <app-cont-principal></app-cont-principal>
+</ng-container>
 
-<!-- <app-navbar #nav></app-navbar>
-<app-cont-principal *ngIf="{'display':width > 1250 && height > 700 && height < width}; else smallScreen"></app-cont-principal>
-<ng-template #smallScreen>
+<ng-template #mobileLayout>
     <app-responsive-base></app-responsive-base>
-</ng-template> -->
+</ng-template>

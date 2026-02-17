@@ -1,5 +1,11 @@
 import { Plantilla, PlantillaCompatibilidadTipo } from "src/app/interfaces/plantilla";
 import { TipoCriatura } from "src/app/interfaces/tipo_criatura";
+import {
+    extraerEjesAlineamientoDesdeContrato,
+    getAlineamientoBasicoIdPorNombre,
+    getVectorDesdeNombreBasico,
+    nombreBasicoDesdeVector,
+} from "./alineamiento-contrato";
 
 export type EstadoElegibilidadPlantilla = "eligible" | "blocked_failed" | "blocked_unknown";
 
@@ -59,78 +65,15 @@ function esTipoNuevoSinCambio(tipoNuevo: string): boolean {
 }
 
 function getAlineamientoBasicoId(alineamiento: string): number {
-    const map: Record<string, number> = {
-        "legal bueno": 1,
-        "legal neutral": 2,
-        "legal maligno": 3,
-        "neutral bueno": 4,
-        "neutral autentico": 5,
-        "neutral maligno": 6,
-        "caotico bueno": 7,
-        "caotico neutral": 8,
-        "caotico maligno": 9,
-    };
-
-    return map[normalize(alineamiento)] ?? 0;
-}
-
-const ALINEAMIENTO_POR_VECTOR: Record<string, string> = {
-    "1,1": "Legal bueno",
-    "1,0": "Legal neutral",
-    "1,-1": "Legal maligno",
-    "0,1": "Neutral bueno",
-    "0,0": "Neutral autentico",
-    "0,-1": "Neutral maligno",
-    "-1,1": "Caotico bueno",
-    "-1,0": "Caotico neutral",
-    "-1,-1": "Caotico maligno",
-};
-
-function parseLey(value: string): number | null {
-    const n = normalize(value);
-    if (n.length < 1 || n.includes("ninguna preferencia") || n.includes("no aplica"))
-        return null;
-    if (n.includes("legal"))
-        return 1;
-    if (n.includes("caot"))
-        return -1;
-    if (n.includes("neutral"))
-        return 0;
-    return null;
-}
-
-function parseMoral(value: string): number | null {
-    const n = normalize(value);
-    if (n.length < 1 || n.includes("ninguna preferencia") || n.includes("no aplica"))
-        return null;
-    if (n.includes("malign"))
-        return -1;
-    if (n.includes("buen"))
-        return 1;
-    if (n.includes("neutral"))
-        return 0;
-    return null;
+    return getAlineamientoBasicoIdPorNombre(alineamiento);
 }
 
 function toAlineamientoFromVector(ley: number, moral: number): string {
-    const key = `${ley},${moral}`;
-    return ALINEAMIENTO_POR_VECTOR[key] ?? "Neutral autentico";
+    return nombreBasicoDesdeVector(ley, moral);
 }
 
 function getVectorFromAlineamientoNombre(nombre: string): { ley: number; moral: number; } | null {
-    const alineamientoId = getAlineamientoBasicoId(nombre);
-    const map: Record<number, { ley: number; moral: number; }> = {
-        1: { ley: 1, moral: 1 },
-        2: { ley: 1, moral: 0 },
-        3: { ley: 1, moral: -1 },
-        4: { ley: 0, moral: 1 },
-        5: { ley: 0, moral: 0 },
-        6: { ley: 0, moral: -1 },
-        7: { ley: -1, moral: 1 },
-        8: { ley: -1, moral: 0 },
-        9: { ley: -1, moral: -1 },
-    };
-    return map[alineamientoId] ?? null;
+    return getVectorDesdeNombreBasico(nombre);
 }
 
 function esPrioridadValida(prioridad: number): boolean {
@@ -147,14 +90,12 @@ function extraerRestriccionPlantilla(plantilla: Plantilla): {
     const prioridad = toNumber(alineamiento?.Prioridad?.Id_prioridad);
     const origen = `${plantilla?.Nombre ?? "Plantilla"}`.trim() || "Plantilla";
 
-    const vectorBasico = getVectorFromAlineamientoNombre(`${alineamiento?.Basico?.Nombre ?? ""}`);
-    const ley = parseLey(`${alineamiento?.Ley?.Nombre ?? ""}`) ?? vectorBasico?.ley ?? null;
-    const moral = parseMoral(`${alineamiento?.Moral?.Nombre ?? ""}`) ?? vectorBasico?.moral ?? null;
+    const ejes = extraerEjesAlineamientoDesdeContrato(alineamiento);
 
     return {
         prioridad,
-        ley,
-        moral,
+        ley: ejes.ley,
+        moral: ejes.moral,
         origen,
     };
 }

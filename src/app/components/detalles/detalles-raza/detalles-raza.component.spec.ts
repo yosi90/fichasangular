@@ -28,4 +28,10 @@ describe('DetallesRazaComponent', () => {
         const nombres = component.getRacialesActivos().map(r => r.Nombre);
         expect(nombres).toEqual(['Sangre antigua', 'Vision en la oscuridad']);
     });
+
+    it('tieneNumeroNoCero oculta 0 aunque venga como string', () => {
+        expect(component.tieneNumeroNoCero(0)).toBeFalse();
+        expect(component.tieneNumeroNoCero('0')).toBeFalse();
+        expect(component.tieneNumeroNoCero(1)).toBeTrue();
+    });
 });

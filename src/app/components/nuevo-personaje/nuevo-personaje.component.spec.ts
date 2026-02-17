@@ -120,10 +120,37 @@ function crearRazaConAlineamientoBasico(nombre: string): Raza {
     return raza;
 }
 
+function crearRazaConPreferenciasSinBasico(ley: string, moral: string): Raza {
+    const raza = crearRazaMock();
+    raza.Alineamiento.Basico.Nombre = 'No aplica';
+    raza.Alineamiento.Ley.Nombre = ley;
+    raza.Alineamiento.Moral.Nombre = moral;
+    raza.Alineamiento.Prioridad = { Id_prioridad: 3, Nombre: 'Siempre' };
+    return raza;
+}
+
+function crearRazaConConflictoDuroAlineamiento(): Raza {
+    const raza = crearRazaMock();
+    raza.Alineamiento.Basico.Nombre = 'Legal maligno';
+    raza.Alineamiento.Ley.Nombre = 'Siempre legal';
+    raza.Alineamiento.Moral.Nombre = 'Siempre maligno';
+    raza.Alineamiento.Prioridad = { Id_prioridad: 3, Nombre: 'Siempre' };
+    return raza;
+}
+
+function crearRazaConPrioridadNoDura(): Raza {
+    const raza = crearRazaConConflictoDuroAlineamiento();
+    raza.Alineamiento.Ley.Nombre = 'Casi siempre legal';
+    raza.Alineamiento.Moral.Nombre = 'Casi siempre maligno';
+    raza.Alineamiento.Prioridad = { Id_prioridad: 2, Nombre: 'Casi siempre' };
+    return raza;
+}
+
 describe('NuevoPersonajeComponent', () => {
     let component: NuevoPersonajeComponent;
     let nuevoPSvc: NuevoPersonajeService;
     let campanaSvcMock: any;
+    let alineamientoSvcMock: any;
     let plantillaSvcMock: any;
     let ventajaSvcMock: any;
     let habilidadSvcMock: any;
@@ -134,6 +161,9 @@ describe('NuevoPersonajeComponent', () => {
         nuevoPSvc = new NuevoPersonajeService();
         campanaSvcMock = {
             getListCampanas: async () => of([]),
+        };
+        alineamientoSvcMock = {
+            getAlineamientosBasicosCatalogo: () => of([]),
         };
         plantillaSvcMock = {
             getPlantillas: () => of([]),
@@ -155,6 +185,7 @@ describe('NuevoPersonajeComponent', () => {
         component = new NuevoPersonajeComponent(
             nuevoPSvc,
             campanaSvcMock,
+            alineamientoSvcMock,
             plantillaSvcMock,
             ventajaSvcMock,
             habilidadSvcMock,
@@ -180,6 +211,26 @@ describe('NuevoPersonajeComponent', () => {
     it('si el alineamiento base de raza no existe en el selector, usa Legal bueno visible', () => {
         component.seleccionarRaza(crearRazaConAlineamientoBasico('Alineamiento desconocido'));
         expect(component.Personaje.Alineamiento).toBe('Legal bueno');
+    });
+
+    it('usa catálogo cacheado de alineamientos cuando existe', () => {
+        alineamientoSvcMock.getAlineamientosBasicosCatalogo = () => of([
+            { Id: 88, Nombre: 'Alineamiento custom cacheado' },
+            { Id: 89, Nombre: 'Legal bueno' },
+        ]);
+
+        component.ngOnInit();
+
+        expect(component.alineamientosDisponibles).toContain('Alineamiento custom cacheado');
+    });
+
+    it('usa fallback local de alineamientos cuando el catálogo cacheado está vacío', () => {
+        alineamientoSvcMock.getAlineamientosBasicosCatalogo = () => of([]);
+
+        component.ngOnInit();
+
+        expect(component.alineamientosDisponibles).toContain('Legal bueno');
+        expect(component.alineamientosDisponibles.length).toBeGreaterThan(1);
     });
 
     it('onInternalTabIndexChange no permite cambiar el paso por navegación manual', () => {
@@ -261,6 +312,33 @@ describe('NuevoPersonajeComponent', () => {
         expect(inconsistencias.some(i => i.includes('Deidad no oficial'))).toBeTrue();
     });
 
+    it('getInconsistenciasManual registra conflicto duro de raza en prioridad 3 sin forzar homebrew hasta confirmar', () => {
+        component.seleccionarRaza(crearRazaConConflictoDuroAlineamiento());
+        component.Personaje.Alineamiento = 'Legal neutral';
+        component.Personaje.Deidad = 'No tener deidad';
+        const inconsistencias = component.getInconsistenciasManual();
+        expect(inconsistencias.some(i => i.includes('Alineamiento incompatible con raza'))).toBeTrue();
+        component.recalcularOficialidad();
+        expect(component.Personaje.Oficial).toBeTrue();
+    });
+
+    it('getInconsistenciasManual detecta referencia racial desde Ley/Moral cuando Basico es No aplica', () => {
+        component.seleccionarRaza(crearRazaConPreferenciasSinBasico('Casi siempre legal', 'Casi siempre maligno'));
+        component.Personaje.Alineamiento = 'Legal bueno';
+        component.Personaje.Deidad = 'No tener deidad';
+
+        const inconsistencias = component.getInconsistenciasManual();
+
+        expect(inconsistencias.some(i => i.includes('extremadamente inusual'))).toBeTrue();
+    });
+
+    it('recalcularOficialidad mantiene oficial hasta confirmar cuando hay conflicto duro de deidad', () => {
+        component.Personaje.Alineamiento = 'Legal bueno';
+        component.Personaje.Deidad = 'Gruumsh';
+        component.recalcularOficialidad();
+        expect(component.Personaje.Oficial).toBeTrue();
+    });
+
     it('recalcularOficialidad pone false con contradicciones de manual', () => {
         component.Personaje.Peso = 999;
         component.recalcularOficialidad();
@@ -283,6 +361,93 @@ describe('NuevoPersonajeComponent', () => {
         await component.continuarDesdeBasicos();
 
         expect(component.modalCaracteristicasAbierto).toBeTrue();
+    });
+
+    it('continuarDesdeBasicos con conflicto duro de raza en prioridad 3 marca homebrew al confirmar', async () => {
+        component.seleccionarRaza(crearRazaConConflictoDuroAlineamiento());
+        component.Personaje.Alineamiento = 'Legal neutral';
+        component.Personaje.Deidad = 'No tener deidad';
+        const swalSpy = spyOn(Swal, 'fire').and.resolveTo({ isConfirmed: true } as any);
+
+        await component.continuarDesdeBasicos();
+
+        expect(swalSpy).toHaveBeenCalledTimes(1);
+        const swalConfig = swalSpy.calls.mostRecent().args[0] as any;
+        expect(`${swalConfig.html ?? ''}`).toContain('Regla dura de alineamiento');
+        expect(`${swalConfig.html ?? ''}`).toContain('tu raza exige');
+        expect(`${swalConfig.html ?? ''}`).toContain('se convertirá en homebrew');
+        expect(component.Personaje.Oficial).toBeFalse();
+        expect(component.modalCaracteristicasAbierto).toBeTrue();
+    });
+
+    it('continuarDesdeBasicos con deidad incompatible marca homebrew al confirmar', async () => {
+        component.Personaje.Alineamiento = 'Legal bueno';
+        component.Personaje.Deidad = 'Gruumsh';
+        const swalSpy = spyOn(Swal, 'fire').and.resolveTo({ isConfirmed: true } as any);
+
+        await component.continuarDesdeBasicos();
+
+        expect(swalSpy).toHaveBeenCalledTimes(1);
+        const swalConfig = swalSpy.calls.mostRecent().args[0] as any;
+        expect(`${swalConfig.html ?? ''}`).toContain('Regla dura de alineamiento');
+        expect(`${swalConfig.html ?? ''}`).toContain('tu deidad exige');
+        expect(component.Personaje.Oficial).toBeFalse();
+        expect(component.modalCaracteristicasAbierto).toBeTrue();
+    });
+
+    it('deidad permite diferencia de un paso sin conflicto duro', async () => {
+        component.Personaje.Alineamiento = 'Legal bueno';
+        component.Personaje.Deidad = 'St. Cuthbert';
+        const swalSpy = spyOn(Swal, 'fire').and.resolveTo({ isConfirmed: true } as any);
+
+        await component.continuarDesdeBasicos();
+
+        expect(swalSpy).not.toHaveBeenCalled();
+        expect(component.Personaje.Oficial).toBeTrue();
+        expect(component.modalCaracteristicasAbierto).toBeTrue();
+    });
+
+    it('continuarDesdeBasicos usa swal combinado cuando coinciden advertencia de raza e impacto de deidad', async () => {
+        component.seleccionarRaza(crearRazaConPrioridadNoDura());
+        component.Personaje.Alineamiento = 'Caotico maligno';
+        component.Personaje.Deidad = 'Heironeous';
+        const swalSpy = spyOn(Swal, 'fire').and.resolveTo({ isConfirmed: true } as any);
+
+        await component.continuarDesdeBasicos();
+
+        expect(swalSpy).toHaveBeenCalledTimes(1);
+        const swalConfig = swalSpy.calls.mostRecent().args[0] as any;
+        expect(`${swalConfig.html ?? ''}`).toContain('Regla dura de alineamiento');
+        expect(`${swalConfig.html ?? ''}`).toContain('tu raza suele exigir');
+        expect(`${swalConfig.html ?? ''}`).toContain('tu deidad exige');
+        expect(`${swalConfig.html ?? ''}`).toContain('1 entre un millón');
+    });
+
+    it('continuarDesdeBasicos no marca homebrew por conflicto duro si el usuario cancela', async () => {
+        component.seleccionarRaza(crearRazaConConflictoDuroAlineamiento());
+        component.Personaje.Alineamiento = 'Legal neutral';
+        component.Personaje.Deidad = 'No tener deidad';
+        spyOn(Swal, 'fire').and.resolveTo({ isConfirmed: false } as any);
+
+        await component.continuarDesdeBasicos();
+
+        expect(component.Personaje.Oficial).toBeTrue();
+        expect(component.modalCaracteristicasAbierto).toBeFalse();
+    });
+
+    it('raza con preferencia casi siempre muestra advertencia pero no marca homebrew', async () => {
+        component.seleccionarRaza(crearRazaConPrioridadNoDura());
+        component.Personaje.Alineamiento = 'Caotico maligno';
+        component.Personaje.Deidad = 'No tener deidad';
+        const swalSpy = spyOn(Swal, 'fire').and.resolveTo({ isConfirmed: true } as any);
+
+        await component.continuarDesdeBasicos();
+
+        expect(swalSpy).toHaveBeenCalledTimes(1);
+        const swalConfig = swalSpy.calls.mostRecent().args[0] as any;
+        expect(`${swalConfig.html ?? ''}`).toContain('Advertencias');
+        expect(`${swalConfig.html ?? ''}`).toContain('1 entre un millón');
+        expect(component.Personaje.Oficial).toBeTrue();
     });
 
     it('continuarDesdeBasicos abre ventana flotante en escritorio', async () => {
@@ -507,6 +672,7 @@ describe('NuevoPersonajeComponent', () => {
         const componentReabierto = new NuevoPersonajeComponent(
             nuevoPSvc,
             campanaSvcMock,
+            alineamientoSvcMock,
             plantillaSvcMock,
             ventajaSvcMock,
             habilidadSvcMock,

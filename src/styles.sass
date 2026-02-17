@@ -20,3 +20,38 @@ body.swal2-height-auto
 body.swal2-shown
     overflow: auto !important
     padding-right: 0 !important
+
+// Regla global: chips con contenido interno deben envolver lineas sin overflow.
+.mat-mdc-chip
+    max-width: 100%
+
+.mat-mdc-chip .mdc-evolution-chip__action,
+.mat-mdc-chip .mdc-evolution-chip__action--primary
+    height: auto !important
+    min-height: 32px
+    overflow: visible !important
+
+.mat-mdc-chip .mat-mdc-chip-action-label
+    display: inline-flex !important
+    flex-wrap: wrap
+    align-items: center
+    column-gap: 6px
+    row-gap: 2px
+    padding-top: .22rem
+    padding-bottom: .22rem
+    line-height: 1.25
+    max-width: 100%
+    white-space: normal !important
+    overflow: visible !important
+    text-overflow: clip !important
+    overflow-wrap: anywhere
+
+.mat-mdc-chip .mat-mdc-chip-action-label .mat-mdc-chip
+    flex: 0 1 auto
+    max-width: 100%
+    margin-top: 1px !important
+    margin-bottom: 1px !important
+
+.mat-mdc-chip .mdc-evolution-chip__text-label
+    white-space: normal !important
+    line-height: 1.25

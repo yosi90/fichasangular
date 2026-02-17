@@ -1,5 +1,5 @@
-import { Component, OnInit } from '@angular/core';
-import { Observable, fromEvent } from 'rxjs';
+import { Component, OnDestroy, OnInit } from '@angular/core';
+import { Observable, Subject, fromEvent, takeUntil } from 'rxjs';
 import Swal from 'sweetalert2';
 
 @Component({
@@ -7,20 +7,30 @@ import Swal from 'sweetalert2';
     templateUrl: './app.component.html',
     styleUrls: ['./app.component.sass']
 })
-export class AppComponent implements OnInit {
+export class AppComponent implements OnInit, OnDestroy {
     private static swalConfigurado = false;
-    height!: number;
-    width!: number;
+    private readonly destroy$ = new Subject<void>();
+    height: number = typeof window !== 'undefined' ? window.innerHeight : 0;
+    width: number = typeof window !== 'undefined' ? window.innerWidth : 0;
     resize$: Observable<Event> = fromEvent(window, 'resize');
 
     async ngOnInit(): Promise<void> {
         this.configurarSwalGlobal();
-        this.height = window.innerHeight;
-        this.width = window.innerWidth;
-        (this.resize$).subscribe(() => {
-            this.height = window.innerHeight;
-            this.width = window.innerWidth;
-        });
+        this.resize$
+            .pipe(takeUntil(this.destroy$))
+            .subscribe(() => {
+                this.height = window.innerHeight;
+                this.width = window.innerWidth;
+            });
+    }
+
+    ngOnDestroy(): void {
+        this.destroy$.next();
+        this.destroy$.complete();
+    }
+
+    get isDesktopLayout(): boolean {
+        return this.width > 1250 && this.height > 700 && this.height < this.width;
     }
 
     private configurarSwalGlobal(): void {

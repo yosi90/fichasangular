@@ -291,6 +291,14 @@ describe('NuevoPersonajeService (ventajas/desventajas)', () => {
     it('seleccionarRaza precarga raciales desde la raza', () => {
         const svc = new NuevoPersonajeService();
         const racialBase = createRacialPlaceholder('Sangre antigua', 5);
+        const sortilegaBase = {
+            Conjuro: { Id: 9, Nombre: 'Detectar pensamientos' },
+            Nivel_lanzador: 8,
+            Usos_diarios: 'A voluntad',
+            Descripcion: 'Innata',
+            Dgs_necesarios: 0,
+            Origen: '',
+        };
         const razaMock = {
             Id: 1,
             Nombre: 'Elfo',
@@ -308,6 +316,7 @@ describe('NuevoPersonajeService (ventajas/desventajas)', () => {
             Peso_rango_inf: 65,
             Heredada: false,
             Raciales: [racialBase],
+            Sortilegas: [sortilegaBase],
         } as unknown as Raza;
 
         svc.seleccionarRaza(razaMock);
@@ -316,6 +325,43 @@ describe('NuevoPersonajeService (ventajas/desventajas)', () => {
         expect(svc.PersonajeCreacion.Raciales[0].Id).toBe(5);
         expect(svc.PersonajeCreacion.Raciales[0].Nombre).toBe('Sangre antigua');
         expect(svc.PersonajeCreacion.Raciales[0].Origen).toBe('Elfo');
+        expect(svc.PersonajeCreacion.Sortilegas.length).toBe(1);
+        expect(svc.PersonajeCreacion.Sortilegas[0].Conjuro.Nombre).toBe('Detectar pensamientos');
+        expect(svc.PersonajeCreacion.Sortilegas[0].Origen).toBe('Elfo');
+    });
+
+    it('seleccionarRaza reemplaza sortilegas previas cuando la nueva raza no aporta', () => {
+        const svc = new NuevoPersonajeService();
+        svc.PersonajeCreacion.Sortilegas = [{
+            Conjuro: { Id: 5, Nombre: 'Imagen silenciosa' } as any,
+            Nivel_lanzador: 3,
+            Usos_diarios: '1/dia',
+            Descripcion: '',
+            Dgs_necesarios: 0,
+            Origen: 'Raza vieja',
+        }];
+
+        const razaSinSortilegas = {
+            Id: 1,
+            Nombre: 'Humano',
+            Alineamiento: { Basico: { Nombre: 'Neutral autentico' } },
+            Tipo_criatura: { Id: 1, Nombre: 'Humanoide' },
+            Correr: 30,
+            Nadar: 0,
+            Volar: 0,
+            Trepar: 0,
+            Escalar: 0,
+            Edad_adulto: 20,
+            Altura_rango_inf: 1.7,
+            Peso_rango_inf: 65,
+            Heredada: false,
+            Raciales: [],
+            Sortilegas: [],
+        } as unknown as Raza;
+
+        svc.seleccionarRaza(razaSinSortilegas);
+
+        expect(svc.PersonajeCreacion.Sortilegas.length).toBe(0);
     });
 
     it('Rasgo no duplica una racial ya presente en la base', () => {

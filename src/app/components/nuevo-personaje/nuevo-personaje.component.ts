@@ -2,6 +2,7 @@ import { Component, EventEmitter, HostListener, Output, ViewChild } from '@angul
 import { MatTabGroup } from '@angular/material/tabs';
 import { Subscription } from 'rxjs';
 import { Campana, Super } from 'src/app/interfaces/campaña';
+import { AlineamientoBasicoCatalogItem } from 'src/app/interfaces/alineamiento';
 import { HabilidadBasicaDetalle } from 'src/app/interfaces/habilidad';
 import { IdiomaDetalle } from 'src/app/interfaces/idioma';
 import { Personaje } from 'src/app/interfaces/personaje';
@@ -12,6 +13,7 @@ import { Rasgo } from 'src/app/interfaces/rasgo';
 import { TipoCriatura } from 'src/app/interfaces/tipo_criatura';
 import { VentajaDetalle } from 'src/app/interfaces/ventaja';
 import { CampanaService } from 'src/app/services/campana.service';
+import { AlineamientoService } from 'src/app/services/alineamiento.service';
 import { HabilidadService } from 'src/app/services/habilidad.service';
 import { IdiomaService } from 'src/app/services/idioma.service';
 import { AsignacionCaracteristicas, NuevoPersonajeService, StepNuevoPersonaje } from 'src/app/services/nuevo-personaje.service';
@@ -19,8 +21,39 @@ import { PlantillaService } from 'src/app/services/plantilla.service';
 import { TipoCriaturaService } from 'src/app/services/tipo-criatura.service';
 import { VentajaService } from 'src/app/services/ventaja.service';
 import { PlantillaEvaluacionResultado, evaluarElegibilidadPlantilla, resolverAlineamientoPlantillas } from 'src/app/services/utils/plantilla-elegibilidad';
+import {
+    extraerEjesAlineamientoDesdeContrato,
+    getVectorDesdeNombreBasico,
+    nombreBasicoDesdeVector,
+} from 'src/app/services/utils/alineamiento-contrato';
 import { environment } from 'src/environments/environment';
 import Swal from 'sweetalert2';
+
+interface VectorAlineamiento {
+    ley: number;
+    moral: number;
+}
+
+type OrigenConflictoAlineamiento = 'raza' | 'deidad';
+
+interface ConflictoDuroAlineamiento {
+    origen: OrigenConflictoAlineamiento;
+    elegido: string;
+    requerido: string;
+    prioridad?: number;
+}
+
+interface EvaluacionConflictoRaza {
+    severidad: 'soft' | 'hard';
+    requerido: string;
+    prioridad: number;
+}
+
+interface EvaluacionInconsistenciasBasicos {
+    previewWarnings: string[];
+    hardConflicts: ConflictoDuroAlineamiento[];
+    otherOfficialBlockers: string[];
+}
 
 @Component({
     selector: 'app-nuevo-personaje',
@@ -122,10 +155,12 @@ export class NuevoPersonajeComponent {
     incluirHomebrewIdiomas: boolean = false;
     private homebrewForzadoPorJugador: boolean = false;
     private homebrewBloqueadoVentajas: boolean = false;
+    private hardAlignmentOverrideConfirmed: boolean = false;
     private controlHomebrewVentajasInicializado: boolean = false;
     catalogoVentajas: VentajaDetalle[] = [];
     catalogoDesventajas: VentajaDetalle[] = [];
     catalogoIdiomas: IdiomaDetalle[] = [];
+    catalogoAlineamientosBasicos: AlineamientoBasicoCatalogItem[] = [];
     cargandoVentajas: boolean = true;
     cargandoIdiomas: boolean = true;
     private ventajaPendienteIdiomaId: number | null = null;
@@ -146,11 +181,13 @@ export class NuevoPersonajeComponent {
     private habilidadesCustomSub?: Subscription;
     private idiomasSub?: Subscription;
     private tiposCriaturaSub?: Subscription;
+    private alineamientosBasicosSub?: Subscription;
     @ViewChild(MatTabGroup) TabGroup?: MatTabGroup;
 
     constructor(
         private nuevoPSvc: NuevoPersonajeService,
         private campanaSvc: CampanaService,
+        private alineamientoSvc: AlineamientoService,
         private plantillaSvc: PlantillaService,
         private ventajaSvc: VentajaService,
         private habilidadSvc: HabilidadService,
@@ -172,6 +209,7 @@ export class NuevoPersonajeComponent {
         this.cargarHabilidadesCustom();
         this.cargarIdiomas();
         this.cargarTiposCriatura();
+        this.cargarAlineamientosBasicos();
     }
 
     ngOnDestroy(): void {
@@ -183,6 +221,7 @@ export class NuevoPersonajeComponent {
         this.habilidadesCustomSub?.unsubscribe();
         this.idiomasSub?.unsubscribe();
         this.tiposCriaturaSub?.unsubscribe();
+        this.alineamientosBasicosSub?.unsubscribe();
     }
 
     get flujo() {
@@ -335,6 +374,24 @@ export class NuevoPersonajeComponent {
         return this.deidadesSugeridas.filter(d => d.toLowerCase().includes(texto));
     }
 
+    get alineamientosDisponibles(): string[] {
+        const nombresCatalogo = this.catalogoAlineamientosBasicos
+            .map((item) => `${item?.Nombre ?? ''}`.trim())
+            .filter((nombre) => nombre.length > 0);
+
+        const fuente = nombresCatalogo.length > 0 ? nombresCatalogo : this.alineamientos;
+        const vistos = new Set<string>();
+        const resultado: string[] = [];
+        fuente.forEach((nombre) => {
+            const normalizado = this.normalizarTexto(nombre);
+            if (normalizado.length < 1 || vistos.has(normalizado) || normalizado === 'no aplica')
+                return;
+            vistos.add(normalizado);
+            resultado.push(nombre);
+        });
+        return resultado;
+    }
+
     get puedeContinuarBasicos(): boolean {
         return this.esTextoNoVacio(this.Personaje.Nombre)
             && this.esTextoNoVacio(this.Personaje.Genero)
@@ -374,6 +431,26 @@ export class NuevoPersonajeComponent {
     get alineamientoBaseRaza(): string {
         const valor = this.razaSeleccionada?.Alineamiento?.Basico?.Nombre?.trim();
         return valor && valor.length > 0 ? valor : 'No especificado';
+    }
+
+    get preferenciasRazaItems(): { etiqueta: string; valor: string; }[] {
+        const items: { etiqueta: string; valor: string; }[] = [];
+        const base = this.razaSeleccionada?.Alineamiento?.Basico?.Nombre?.trim() ?? '';
+        const ley = this.razaSeleccionada?.Alineamiento?.Ley?.Nombre?.trim() ?? '';
+        const moral = this.razaSeleccionada?.Alineamiento?.Moral?.Nombre?.trim() ?? '';
+
+        if (this.esPreferenciaAlineamientoVisible(base))
+            items.push({ etiqueta: 'Base', valor: base });
+        if (this.esPreferenciaAlineamientoVisible(ley))
+            items.push({ etiqueta: 'Ley / normas', valor: ley });
+        if (this.esPreferenciaAlineamientoVisible(moral))
+            items.push({ etiqueta: 'Moral / trato', valor: moral });
+
+        return items;
+    }
+
+    get tienePreferenciasRazaVisibles(): boolean {
+        return this.preferenciasRazaItems.length > 0;
     }
 
     get rangoEdadTexto(): string {
@@ -487,12 +564,59 @@ export class NuevoPersonajeComponent {
         return this.descripcionPorDeidad[key] ?? 'No hay detalles adicionales de esta deidad en el catalogo local.';
     }
 
+    get evaluacionBasicosActual(): EvaluacionInconsistenciasBasicos {
+        return this.evaluarInconsistenciasBasicos();
+    }
+
+    get tieneFeedbackRazaBasicos(): boolean {
+        const evaluacion = this.evaluacionBasicosActual;
+        return evaluacion.hardConflicts.some(c => c.origen === 'raza')
+            || evaluacion.previewWarnings.length > 0;
+    }
+
+    get tieneConflictoDuroRazaBasicos(): boolean {
+        const evaluacion = this.evaluacionBasicosActual;
+        return evaluacion.hardConflicts.some(c => c.origen === 'raza');
+    }
+
+    get tieneFeedbackDeidadBasicos(): boolean {
+        const evaluacion = this.evaluacionBasicosActual;
+        return evaluacion.hardConflicts.some(c => c.origen === 'deidad');
+    }
+
+    get conflictosDurosRazaPreview(): string[] {
+        const evaluacion = this.evaluacionBasicosActual;
+        return evaluacion.hardConflicts
+            .filter(conflicto => conflicto.origen === 'raza')
+            .map(conflicto => `Has elegido ${conflicto.elegido}, mientras que tu raza exige ${conflicto.requerido} (prioridad ${conflicto.prioridad ?? 3}).`);
+    }
+
+    get advertenciasRazaPreview(): string[] {
+        return this.evaluacionBasicosActual.previewWarnings;
+    }
+
+    get conflictosDurosDeidadPreview(): string[] {
+        const evaluacion = this.evaluacionBasicosActual;
+        return evaluacion.hardConflicts
+            .filter(conflicto => conflicto.origen === 'deidad')
+            .map(conflicto => `Has elegido ${conflicto.elegido}, mientras que tu deidad exige ${conflicto.requerido}.`);
+    }
+
     private normalizarTexto(valor: string): string {
         return (valor ?? '')
             .normalize('NFD')
             .replace(/[\u0300-\u036f]/g, '')
             .trim()
             .toLowerCase();
+    }
+
+    private esPreferenciaAlineamientoVisible(valor: string): boolean {
+        const normalizado = this.normalizarTexto(valor ?? '');
+        return normalizado.length > 0
+            && normalizado !== 'no aplica'
+            && normalizado !== 'no especificado'
+            && normalizado !== 'no especificada'
+            && normalizado !== 'ninguna preferencia';
     }
 
     private isVentanaDetalleHabilitada(): boolean {
@@ -522,20 +646,95 @@ export class NuevoPersonajeComponent {
         return this.alineamientoPorDeidad[deidad] ?? null;
     }
 
-    private getVectorAlineamiento(nombre: string): { ley: number; moral: number; } | null {
-        const value = this.normalizarTexto(nombre);
-        const tabla: Record<string, { ley: number; moral: number; }> = {
-            'legal bueno': { ley: 1, moral: 1 },
-            'legal neutral': { ley: 1, moral: 0 },
-            'legal maligno': { ley: 1, moral: -1 },
-            'neutral bueno': { ley: 0, moral: 1 },
-            'neutral autentico': { ley: 0, moral: 0 },
-            'neutral maligno': { ley: 0, moral: -1 },
-            'caotico bueno': { ley: -1, moral: 1 },
-            'caotico neutral': { ley: -1, moral: 0 },
-            'caotico maligno': { ley: -1, moral: -1 },
-        };
-        return tabla[value] ?? null;
+    private getVectorAlineamiento(nombre: string): VectorAlineamiento | null {
+        return getVectorDesdeNombreBasico(nombre);
+    }
+
+    private getSeveridadPreferenciaTexto(valor: string): 'none' | 'soft' | 'hard' {
+        const normalizado = this.normalizarTexto(valor ?? '');
+        if (normalizado.includes('casi siempre'))
+            return 'soft';
+        if (normalizado.includes('siempre'))
+            return 'hard';
+        return 'none';
+    }
+
+    private getSeveridadGlobalRaza(): 'none' | 'soft' | 'hard' {
+        const prioridadNombre = `${this.razaSeleccionada?.Alineamiento?.Prioridad?.Nombre ?? ''}`;
+        const desdeNombre = this.getSeveridadPreferenciaTexto(prioridadNombre);
+        if (desdeNombre !== 'none')
+            return desdeNombre;
+
+        const prioridadId = Number(this.razaSeleccionada?.Alineamiento?.Prioridad?.Id_prioridad ?? 0);
+        if (prioridadId === 3)
+            return 'hard';
+        if (prioridadId === 2)
+            return 'soft';
+        return 'none';
+    }
+
+    private getSeveridadEjeRaza(alineamiento: any, eje: 'ley' | 'moral'): 'none' | 'soft' | 'hard' {
+        const textoEje = eje === 'ley'
+            ? `${alineamiento?.Ley?.Nombre ?? ''}`
+            : `${alineamiento?.Moral?.Nombre ?? ''}`;
+        const desdeEje = this.getSeveridadPreferenciaTexto(textoEje);
+        if (desdeEje !== 'none')
+            return desdeEje;
+
+        const textoBasico = `${alineamiento?.Basico?.Nombre ?? ''}`;
+        const desdeBasico = this.getSeveridadPreferenciaTexto(textoBasico);
+        if (desdeBasico !== 'none')
+            return desdeBasico;
+
+        return 'none';
+    }
+
+    private getEtiquetaExigenciaContrato(alineamiento: any): string {
+        const ejes = extraerEjesAlineamientoDesdeContrato(alineamiento);
+        if (ejes.ley !== null && ejes.moral !== null) {
+            return nombreBasicoDesdeVector(ejes.ley, ejes.moral);
+        }
+        if (ejes.ley !== null) {
+            const leyNombre = `${alineamiento?.Ley?.Nombre ?? ''}`.trim();
+            if (leyNombre.length > 0)
+                return leyNombre;
+            return ejes.ley > 0 ? 'Legal' : ejes.ley < 0 ? 'Caotico' : 'Neutral';
+        }
+        if (ejes.moral !== null) {
+            const moralNombre = `${alineamiento?.Moral?.Nombre ?? ''}`.trim();
+            if (moralNombre.length > 0)
+                return moralNombre;
+            return ejes.moral > 0 ? 'Bueno' : ejes.moral < 0 ? 'Maligno' : 'Neutral';
+        }
+
+        const basico = `${alineamiento?.Basico?.Nombre ?? ''}`.trim();
+        if (basico.length > 0) {
+            return basico;
+        }
+        return 'No aplica';
+    }
+
+    private distanciaAlineamientoPorEjes(a: string, ejes: { ley: number | null; moral: number | null; }): number | null {
+        const elegido = this.getVectorAlineamiento(a);
+        if (!elegido) {
+            return null;
+        }
+
+        let distancia = 0;
+        let ejesDefinidos = 0;
+        if (ejes.ley !== null) {
+            distancia += Math.abs(elegido.ley - ejes.ley);
+            ejesDefinidos += 1;
+        }
+        if (ejes.moral !== null) {
+            distancia += Math.abs(elegido.moral - ejes.moral);
+            ejesDefinidos += 1;
+        }
+
+        if (ejesDefinidos < 1) {
+            return null;
+        }
+        return distancia;
     }
 
     private distanciaAlineamiento(a: string, b: string): number | null {
@@ -547,47 +746,160 @@ export class NuevoPersonajeComponent {
         return Math.abs(a1.ley - b1.ley) + Math.abs(a1.moral - b1.moral);
     }
 
-    getInconsistenciasManual(): string[] {
-        const inconsistencias: string[] = [];
+    private getEvaluacionConflictoRaza(): EvaluacionConflictoRaza | null {
+        const alineamientoRaza = this.razaSeleccionada?.Alineamiento;
+        const elegido = this.getVectorAlineamiento(this.Personaje.Alineamiento);
+        if (!alineamientoRaza || !elegido) {
+            return null;
+        }
+
+        const ejes = extraerEjesAlineamientoDesdeContrato(alineamientoRaza);
+        let hayDiferencia = false;
+        let hayConflictoDuro = false;
+        let hayAdvertencia = false;
+
+        if (ejes.ley !== null && elegido.ley !== ejes.ley) {
+            hayDiferencia = true;
+            const severidadLey = this.getSeveridadEjeRaza(alineamientoRaza, 'ley');
+            hayConflictoDuro = hayConflictoDuro || severidadLey === 'hard';
+            hayAdvertencia = hayAdvertencia || severidadLey === 'soft';
+        }
+
+        if (ejes.moral !== null && elegido.moral !== ejes.moral) {
+            hayDiferencia = true;
+            const severidadMoral = this.getSeveridadEjeRaza(alineamientoRaza, 'moral');
+            hayConflictoDuro = hayConflictoDuro || severidadMoral === 'hard';
+            hayAdvertencia = hayAdvertencia || severidadMoral === 'soft';
+        }
+
+        if (!hayDiferencia) {
+            return null;
+        }
+
+        let severidad: 'none' | 'soft' | 'hard' = 'none';
+        if (hayConflictoDuro) {
+            severidad = 'hard';
+        } else if (hayAdvertencia) {
+            severidad = 'soft';
+        } else {
+            severidad = this.getSeveridadGlobalRaza();
+        }
+
+        if (severidad === 'none')
+            return null;
+
+        return {
+            severidad,
+            requerido: this.getEtiquetaExigenciaContrato(alineamientoRaza),
+            prioridad: Number(this.razaSeleccionada?.Alineamiento?.Prioridad?.Id_prioridad ?? 0),
+        };
+    }
+
+    private getConflictoDuroRaza(): ConflictoDuroAlineamiento | null {
+        const evaluacion = this.getEvaluacionConflictoRaza();
+        if (!evaluacion || evaluacion.severidad !== 'hard') {
+            return null;
+        }
+
+        return {
+            origen: 'raza',
+            elegido: this.Personaje.Alineamiento,
+            requerido: evaluacion.requerido,
+            prioridad: evaluacion.prioridad > 0 ? evaluacion.prioridad : undefined,
+        };
+    }
+
+    private getAdvertenciaRazaNoDura(): string | null {
+        const evaluacion = this.getEvaluacionConflictoRaza();
+        if (!evaluacion || evaluacion.severidad !== 'soft') {
+            return null;
+        }
+
+        return `Has elegido ${this.Personaje.Alineamiento}, mientras que tu raza suele exigir ${evaluacion.requerido}. Con esta combinación estarías creando un caso extremadamente inusual (aprox. 1 entre un millón).`;
+    }
+
+    private getConflictoDuroDeidad(): ConflictoDuroAlineamiento | null {
+        if (this.esDeidadVaciaONeutra()) {
+            return null;
+        }
+        const alineamientoDeidad = this.getAlineamientoDeidad();
+        if (!alineamientoDeidad) {
+            return null;
+        }
+        const distancia = this.distanciaAlineamiento(this.Personaje.Alineamiento, alineamientoDeidad);
+        if (distancia === null || distancia < 2) {
+            return null;
+        }
+        return {
+            origen: 'deidad',
+            elegido: this.Personaje.Alineamiento,
+            requerido: alineamientoDeidad,
+        };
+    }
+
+    private evaluarInconsistenciasBasicos(): EvaluacionInconsistenciasBasicos {
+        const previewWarnings: string[] = [];
+        const hardConflicts: ConflictoDuroAlineamiento[] = [];
+        const otherOfficialBlockers: string[] = [];
         const deidadIngresada = this.Personaje.Deidad?.trim() ?? '';
 
         if (this.edadFueraRango) {
-            inconsistencias.push(`Edad fuera de rango: ${this.Personaje.Edad} (tipico ${this.razaSeleccionada?.Edad_adulto}-${this.razaSeleccionada?.Edad_venerable}).`);
+            otherOfficialBlockers.push(`Edad fuera de rango: ${this.Personaje.Edad} (tipico ${this.razaSeleccionada?.Edad_adulto}-${this.razaSeleccionada?.Edad_venerable}).`);
         }
         if (this.pesoFueraRango) {
-            inconsistencias.push(`Peso fuera de rango: ${this.Personaje.Peso} kg (tipico ${this.razaSeleccionada?.Peso_rango_inf}-${this.razaSeleccionada?.Peso_rango_sup} kg).`);
+            otherOfficialBlockers.push(`Peso fuera de rango: ${this.Personaje.Peso} kg (tipico ${this.razaSeleccionada?.Peso_rango_inf}-${this.razaSeleccionada?.Peso_rango_sup} kg).`);
         }
         if (this.alturaFueraRango) {
-            inconsistencias.push(`Altura fuera de rango: ${this.Personaje.Altura} m (tipico ${this.razaSeleccionada?.Altura_rango_inf}-${this.razaSeleccionada?.Altura_rango_sup} m).`);
+            otherOfficialBlockers.push(`Altura fuera de rango: ${this.Personaje.Altura} m (tipico ${this.razaSeleccionada?.Altura_rango_inf}-${this.razaSeleccionada?.Altura_rango_sup} m).`);
         }
 
         if (!this.esDeidadOficial()) {
-            inconsistencias.push(`Deidad no oficial: ${deidadIngresada}.`);
+            otherOfficialBlockers.push(`Deidad no oficial: ${deidadIngresada}.`);
         }
 
-        if (!this.esDeidadVaciaONeutra()) {
-            const alineamientoDeidad = this.getAlineamientoDeidad();
-            if (alineamientoDeidad) {
-                const distancia = this.distanciaAlineamiento(this.Personaje.Alineamiento, alineamientoDeidad);
-                if (distancia !== null && distancia > 1) {
-                    inconsistencias.push(`Alineamiento incompatible con deidad: ${this.Personaje.Alineamiento} vs ${deidadIngresada} (${alineamientoDeidad}).`);
-                }
+        const conflictoRaza = this.getConflictoDuroRaza();
+        if (conflictoRaza) {
+            hardConflicts.push(conflictoRaza);
+        }
+
+        const advertenciaRaza = this.getAdvertenciaRazaNoDura();
+        if (advertenciaRaza) {
+            previewWarnings.push(advertenciaRaza);
+        }
+
+        const conflictoDeidad = this.getConflictoDuroDeidad();
+        if (conflictoDeidad) {
+            hardConflicts.push(conflictoDeidad);
+        }
+
+        return {
+            previewWarnings,
+            hardConflicts,
+            otherOfficialBlockers,
+        };
+    }
+
+    getInconsistenciasManual(): string[] {
+        const evaluacion = this.evaluarInconsistenciasBasicos();
+        const hard = evaluacion.hardConflicts.map((conflicto) => {
+            if (conflicto.origen === 'raza') {
+                return `Alineamiento incompatible con raza: ${conflicto.elegido} vs ${conflicto.requerido} (prioridad ${conflicto.prioridad ?? 3}).`;
             }
-        }
-
-        return inconsistencias;
+            return `Alineamiento incompatible con deidad: ${conflicto.elegido} vs ${conflicto.requerido}.`;
+        });
+        return [...evaluacion.previewWarnings, ...hard, ...evaluacion.otherOfficialBlockers];
     }
 
     recalcularOficialidad(): void {
         const razaEsOficial = this.razaSeleccionada?.Oficial === true;
-        const deidadEsOficial = this.esDeidadOficial();
-        const inconsistencias = this.getInconsistenciasManual();
+        const evaluacion = this.evaluarInconsistenciasBasicos();
+        const tieneConflictoDuroConfirmado = evaluacion.hardConflicts.length > 0 && this.hardAlignmentOverrideConfirmed;
         const tieneVentajasODesventajas = this.flujoVentajas.seleccionVentajas.length > 0
             || this.flujoVentajas.seleccionDesventajas.length > 0;
         this.Personaje.Oficial = !this.homebrewForzadoPorJugador
             && razaEsOficial
-            && deidadEsOficial
-            && inconsistencias.length === 0
+            && evaluacion.otherOfficialBlockers.length === 0
+            && !tieneConflictoDuroConfirmado
             && !tieneVentajasODesventajas;
     }
 
@@ -604,13 +916,26 @@ export class NuevoPersonajeComponent {
             this.Personaje.Personalidad = this.fallbackPersonalidad;
         }
 
-        this.recalcularOficialidad();
-        const inconsistencias = this.getInconsistenciasManual();
-        if (inconsistencias.length > 0) {
-            const htmlListado = `<ul style="text-align:left; margin-top: 8px;">${inconsistencias.map(i => `<li>${i}</li>`).join('')}</ul>`;
+        const evaluacion = this.evaluarInconsistenciasBasicos();
+        const hayPreview = evaluacion.previewWarnings.length > 0;
+        const hayConflictosDuros = evaluacion.hardConflicts.length > 0;
+        const hayOtrosBloqueos = evaluacion.otherOfficialBlockers.length > 0;
+        if (hayPreview || hayConflictosDuros || hayOtrosBloqueos) {
+            const previewHtml = hayPreview
+                ? `<p style="text-align:left; margin: 0 0 6px 0;"><strong>Advertencias</strong></p><ul style="text-align:left; margin-top: 4px;">${evaluacion.previewWarnings.map(i => `<li>${i}</li>`).join('')}</ul>`
+                : '';
+            const conflictosHtml = hayConflictosDuros
+                ? `<p style="text-align:left; margin: 8px 0 6px 0;"><strong>Regla dura de alineamiento</strong></p><ul style="text-align:left; margin-top: 4px;">${evaluacion.hardConflicts.map((c) => c.origen === 'raza'
+                    ? `<li>Has elegido <strong>${c.elegido}</strong>, mientras que tu raza exige <strong>${c.requerido}</strong>${c.prioridad ? ` (prioridad ${c.prioridad})` : ''}.</li>`
+                    : `<li>Has elegido <strong>${c.elegido}</strong>, mientras que tu deidad exige <strong>${c.requerido}</strong>.</li>`
+                ).join('')}</ul><p style="text-align:left; margin: 8px 0 0 0;"><strong>Con tus elecciones has ignorado una regla dura del manual. Si continúas, el personaje se convertirá en homebrew (no oficial) y deberías consultarlo con tu máster.</strong></p>`
+                : '';
+            const bloqueosHtml = hayOtrosBloqueos
+                ? `<p style="text-align:left; margin: 8px 0 6px 0;"><strong>Impacto en oficialidad</strong></p><ul style="text-align:left; margin-top: 4px;">${evaluacion.otherOfficialBlockers.map(i => `<li>${i}</li>`).join('')}</ul>`
+                : '';
             const result = await Swal.fire({
                 title: 'Tus elecciones van en contra de los manuales',
-                html: `Cancelar para cambiarlas o aceptar si tu master lo permite.${htmlListado}`,
+                html: `Cancelar para cambiarlas o aceptar si tu master lo permite.${previewHtml}${conflictosHtml}${bloqueosHtml}`,
                 icon: 'warning',
                 showCancelButton: true,
                 confirmButtonText: 'Aceptar y continuar',
@@ -620,7 +945,13 @@ export class NuevoPersonajeComponent {
             if (!result.isConfirmed) {
                 return;
             }
+
+            if (hayConflictosDuros) {
+                this.hardAlignmentOverrideConfirmed = true;
+            }
         }
+
+        this.recalcularOficialidad();
 
         if (this.isVentanaDetalleHabilitada()) {
             this.ventanaDetalleAbierta = true;
@@ -736,6 +1067,20 @@ export class NuevoPersonajeComponent {
         return Number.isFinite(parsed) && parsed > 0;
     }
 
+    private resetHardAlignmentOverride(): void {
+        this.hardAlignmentOverrideConfirmed = false;
+    }
+
+    onAlineamientoChange(): void {
+        this.resetHardAlignmentOverride();
+        this.recalcularOficialidad();
+    }
+
+    onDeidadChange(): void {
+        this.resetHardAlignmentOverride();
+        this.recalcularOficialidad();
+    }
+
     compararAlineamiento = (a: string | null, b: string | null): boolean => {
         return this.normalizarTexto(a ?? '') === this.normalizarTexto(b ?? '');
     };
@@ -743,14 +1088,14 @@ export class NuevoPersonajeComponent {
     private normalizarAlineamientoSeleccionado(): void {
         const actual = this.Personaje.Alineamiento ?? '';
         const normalizado = this.normalizarTexto(actual);
-        const encontrado = this.alineamientos.find(a => this.normalizarTexto(a) === normalizado);
+        const encontrado = this.alineamientosDisponibles.find(a => this.normalizarTexto(a) === normalizado);
 
         if (encontrado) {
             this.Personaje.Alineamiento = encontrado;
             return;
         }
 
-        this.Personaje.Alineamiento = this.alineamientos[0] ?? 'Legal bueno';
+        this.Personaje.Alineamiento = this.alineamientosDisponibles[0] ?? 'Legal bueno';
     }
 
     private async cargarCampanas() {
@@ -879,6 +1224,7 @@ export class NuevoPersonajeComponent {
         this.nuevoPSvc.seleccionarRaza(value);
         this.Personaje = this.nuevoPSvc.PersonajeCreacion;
         this.ventanaDetalleAbierta = false;
+        this.resetHardAlignmentOverride();
         this.normalizarAlineamientoSeleccionado();
         this.recalcularOficialidad();
         this.recalcularPlantillasVisibles();
@@ -1332,6 +1678,21 @@ export class NuevoPersonajeComponent {
                 this.catalogoIdiomas = [];
                 this.nuevoPSvc.setCatalogoIdiomas([]);
                 this.cargandoIdiomas = false;
+            },
+        });
+    }
+
+    private cargarAlineamientosBasicos(): void {
+        this.alineamientosBasicosSub?.unsubscribe();
+        this.alineamientosBasicosSub = this.alineamientoSvc.getAlineamientosBasicosCatalogo().subscribe({
+            next: (alineamientos) => {
+                this.catalogoAlineamientosBasicos = alineamientos ?? [];
+                this.normalizarAlineamientoSeleccionado();
+                this.recalcularOficialidad();
+            },
+            error: () => {
+                this.catalogoAlineamientosBasicos = [];
+                this.normalizarAlineamientoSeleccionado();
             },
         });
     }

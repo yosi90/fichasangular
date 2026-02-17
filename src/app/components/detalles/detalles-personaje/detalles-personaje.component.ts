@@ -1,4 +1,4 @@
-import { AfterViewInit, Component, ElementRef, EventEmitter, HostListener, Input, OnChanges, OnDestroy, OnInit, Output, SimpleChanges } from '@angular/core';
+import { AfterViewInit, Component, ElementRef, EventEmitter, HostListener, Input, OnDestroy, OnInit, Output } from '@angular/core';
 import { AptitudSortilega } from 'src/app/interfaces/aptitud-sortilega';
 import { Conjuro } from 'src/app/interfaces/conjuro';
 import { Dote } from 'src/app/interfaces/dote';
@@ -27,7 +27,7 @@ interface VentajaVisible {
     templateUrl: './detalles-personaje.component.html',
     styleUrls: ['./detalles-personaje.component.sass']
 })
-export class DetallesPersonajeComponent implements OnInit, OnChanges, AfterViewInit, OnDestroy {
+export class DetallesPersonajeComponent implements OnInit, AfterViewInit, OnDestroy {
     @Input() pj!: Personaje;
     @Input() mostrarBotonGenerarPdf = true;
     @Input() modoOcultarFaltantes = true;
@@ -66,14 +66,12 @@ export class DetallesPersonajeComponent implements OnInit, OnChanges, AfterViewI
     Medido en pies
     5 pies equivalen a una casilla`;
     Habilidades: { Nombre: string; Mod_car: number; Rangos: number; Rangos_varios: number; Extra: string; Varios: string; }[] = [];
-    racialesVisibles: RacialReferencia[] = [];
 
     constructor(private fpSvc: FichaPersonajeService, private hostElement: ElementRef<HTMLElement>) { }
 
     ngOnInit(): void {
         if(this.pj.Habilidades)
             this.Habilidades = this.pj.Habilidades.filter(h => h.Rangos + h.Rangos_varios > 0 || h.Varios != "");
-        this.actualizarRacialesVisibles();
         this.nivelPersonaje = this.getNivelPersonaje();
         this.iniciativa = `${this.pj.ModDestreza}`;
         if(this.pj.Iniciativa_varios){
@@ -111,11 +109,6 @@ export class DetallesPersonajeComponent implements OnInit, OnChanges, AfterViewI
         Desvio: ${this.pj.Ca_desvio > 0 ? this.pj.Ca_desvio : '0'}
         Varios: ${this.pj.Ca_varios > 0 ? this.pj.Ca_varios : '0'}
         `;
-    }
-
-    ngOnChanges(changes: SimpleChanges): void {
-        if (changes['pj'])
-            this.actualizarRacialesVisibles();
     }
 
     ngAfterViewInit(): void {
@@ -409,8 +402,48 @@ Fue/Des/Con: ${this.formatSigned(madurez.modFisico)} | Int/Sab/Car: ${this.forma
         return (this.pj?.Claseas ?? []).filter(c => this.tieneTextoVisible(c?.Nombre));
     }
 
+    private toArray(value: any): any[] {
+        if (Array.isArray(value))
+            return value;
+        if (value && typeof value === 'object')
+            return Object.values(value);
+        return [];
+    }
+
+    private toPositiveNumberOrNull(...values: any[]): number | null {
+        for (const value of values) {
+            const parsed = Number(value);
+            if (Number.isFinite(parsed) && parsed > 0)
+                return parsed;
+        }
+        return null;
+    }
+
     getRacialesVisibles(): RacialReferencia[] {
-        return this.racialesVisibles;
+        const racialesDesdePersonaje = this.toArray((this.pj as any)?.Raciales);
+        const racialesFuente = racialesDesdePersonaje.length > 0
+            ? racialesDesdePersonaje
+            : this.toArray((this.pj as any)?.Raza?.Raciales);
+
+        return racialesFuente
+            .map((racial: RacialDetalle | string | Record<string, any>) => {
+                if (typeof racial === 'string') {
+                    return {
+                        id: null,
+                        nombre: racial.trim(),
+                    };
+                }
+
+                const raw = racial as Record<string, any>;
+                const origen = `${raw?.['Origen'] ?? raw?.['origen'] ?? raw?.['o'] ?? ''}`.trim();
+
+                return {
+                    id: this.toPositiveNumberOrNull(raw?.['Id'], raw?.['id'], raw?.['i']),
+                    nombre: `${raw?.['Nombre'] ?? raw?.['nombre'] ?? raw?.['n'] ?? ''}`.trim(),
+                    origen: origen.length > 0 ? origen : undefined,
+                };
+            })
+            .filter(racial => this.tieneTextoVisible(racial.nombre));
     }
 
     trackByRacial = (_index: number, racial: RacialReferencia): string => {
@@ -576,8 +609,9 @@ Fue/Des/Con: ${this.formatSigned(madurez.modFisico)} | Int/Sab/Car: ${this.forma
 
     @Output() razaDetalles: EventEmitter<number> = new EventEmitter<number>();
     verDetallesRaza(idRaza: number) {
-        if (Number.isFinite(idRaza) && idRaza > 0)
-            this.razaDetalles.emit(idRaza);
+        const id = Number(idRaza);
+        if (Number.isFinite(id) && id > 0)
+            this.razaDetalles.emit(id);
     }
 
     @Output() rasgoDetalles: EventEmitter<Rasgo> = new EventEmitter<Rasgo>();
@@ -652,26 +686,6 @@ Fue/Des/Con: ${this.formatSigned(madurez.modFisico)} | Int/Sab/Car: ${this.forma
             return normalizado === '1' || normalizado === 'true' || normalizado === 'si' || normalizado === 'sí';
         }
         return false;
-    }
-
-    private actualizarRacialesVisibles(): void {
-        this.racialesVisibles = (this.pj?.Raciales ?? [])
-            .map((racial: RacialDetalle | string) => {
-                if (typeof racial === 'string') {
-                    return {
-                        id: null,
-                        nombre: racial.trim(),
-                    };
-                }
-                const id = Number(racial?.Id);
-                const origen = `${racial?.Origen ?? ''}`.trim();
-                return {
-                    id: Number.isFinite(id) && id > 0 ? id : null,
-                    nombre: `${racial?.Nombre ?? ''}`.trim(),
-                    origen: origen.length > 0 ? origen : undefined,
-                };
-            })
-            .filter(racial => this.tieneTextoVisible(racial.nombre));
     }
 
     private actualizarModoCompacto(): void {

@@ -503,6 +503,76 @@ paths:
                 items:
                   $ref: '#/components/schemas/AlineamientoResumen'
 
+  /alineamientos/combinaciones:
+    get:
+      tags: [alineamientos]
+      summary: Lista semantica de combinaciones de alineamiento
+      responses:
+        '200':
+          description: Lista de combinaciones de alineamiento
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AlineamientoCombinacion'
+
+  /alineamientos/basicos:
+    get:
+      tags: [alineamientos]
+      summary: Lista de alineamientos basicos
+      responses:
+        '200':
+          description: Lista de alineamientos basicos
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AlineamientoBasico'
+
+  /alineamientos/prioridades:
+    get:
+      tags: [alineamientos]
+      summary: Lista de prioridades de alineamiento
+      responses:
+        '200':
+          description: Lista de prioridades de alineamiento
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PrioridadAlineamiento'
+
+  /alineamientos/preferencia-ley:
+    get:
+      tags: [alineamientos]
+      summary: Lista de preferencias de ley
+      responses:
+        '200':
+          description: Lista de preferencias de ley
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PreferenciaLey'
+
+  /alineamientos/preferencia-moral:
+    get:
+      tags: [alineamientos]
+      summary: Lista de preferencias de moral
+      responses:
+        '200':
+          description: Lista de preferencias de moral
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PreferenciaMoral'
+
   /habilidades:
     get:
       tags: [habilidades]
@@ -1211,6 +1281,59 @@ components:
         Nombre: { type: string }
         Descripcion: { type: string }
         Oficial: { type: boolean }
+
+    AlineamientoCombinacion:
+      type: object
+      properties:
+        Id: { type: integer }
+        Basico:
+          type: object
+          properties:
+            Id: { type: integer }
+            Nombre: { type: string }
+        Ley:
+          type: object
+          properties:
+            Id: { type: integer }
+            Nombre: { type: string }
+        Moral:
+          type: object
+          properties:
+            Id: { type: integer }
+            Nombre: { type: string }
+        Prioridad:
+          type: object
+          properties:
+            Id: { type: integer }
+            Nombre: { type: string }
+            Descripcion: { type: string }
+
+    AlineamientoBasico:
+      type: object
+      properties:
+        Id: { type: integer }
+        Nombre: { type: string }
+
+    PrioridadAlineamiento:
+      type: object
+      properties:
+        Id: { type: integer }
+        Nombre: { type: string }
+        Descripcion: { type: string }
+
+    PreferenciaLey:
+      type: object
+      properties:
+        Id: { type: integer }
+        Nombre: { type: string }
+        Descripcion: { type: string }
+
+    PreferenciaMoral:
+      type: object
+      properties:
+        Id: { type: integer }
+        Nombre: { type: string }
+        Descripcion: { type: string }
 
     AlineamientoResumenParte:
       type: object
