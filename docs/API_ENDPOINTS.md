@@ -216,6 +216,9 @@ RazaCompleta
 | Mutada | boolean | Flag enriquecido de raza mutada (true/false) |
 | tmd | number | Tamano mutacion dependiente (0/1) |
 | pr | object | Prerrequisitos (ver abajo) |
+| prf | object | Flags de familias de prerrequisitos (ver abajo) |
+| Prerrequisitos_flags | object | Alias de `prf` para compatibilidad |
+| Mutacion | object | Resumen semantico de mutacion (ver abajo) |
 | ant | number | Armadura natural |
 | va | number | Varios armadura |
 | co | number | Correr |
@@ -263,6 +266,23 @@ Prerrequisitos (RazaCompleta.pr)
 | alineamiento_prohibido | array | Items: { id_alineamiento, id_alineamiento_basico, alineamiento_basico, id_ley, ley, id_moral, moral } |
 | alineamiento_requerido | array | Items: { id_alineamiento, id_alineamiento_basico, alineamiento_basico, id_ley, ley, id_moral, moral } |
 | tipo_criatura | array | Items: { id_tipo_criatura, tipo_criatura, opcional } |
+
+Prerrequisitos flags (RazaCompleta.prf / RazaCompleta.Prerrequisitos_flags)
+| Campo | Tipo | Descripcion |
+| --- | --- | --- |
+| actitud_prohibido | boolean | Hay prerequisitos de actitud prohibida en `pres_r` |
+| actitud_requerido | boolean | Hay prerequisitos de actitud requerida en `pres_r` |
+| alineamiento_prohibido | boolean | Hay prerequisitos de alineamiento prohibido en `pres_r` |
+| alineamiento_requerido | boolean | Hay prerequisitos de alineamiento requerido en `pres_r` |
+| tipo_criatura | boolean | Hay prerequisitos de tipo de criatura en `pres_r` |
+
+Mutacion (RazaCompleta.Mutacion)
+| Campo | Tipo | Descripcion |
+| --- | --- | --- |
+| Es_mutada | boolean | Estado final de raza mutada |
+| Tamano_dependiente | boolean | El tamano depende de la mutacion |
+| Tiene_prerrequisitos | boolean | La raza declara prerrequisitos |
+| Heredada | boolean | La raza es heredada |
 
 Endpoint: GET /subtipos
 Respuesta: array de `SubtipoResumen`
@@ -960,6 +980,7 @@ RacialDetalle
 | Id | number | Id de racial |
 | Nombre | string | Nombre |
 | Descripcion | string | Descripcion |
+| Opcional | number | Flag de opcion en contexto de raza (`0` = siempre se obtiene; `>0` = elegir entre raciales con el mismo valor) |
 | Dotes | array | Lista de dotes con `{ Id_dote, Dote, Id_extra, Extra }` |
 | Habilidades | object | `{ Base: [], Custom: [] }` |
 | Caracteristicas | array | Bonificadores de caracteristica |
@@ -1095,6 +1116,10 @@ RazaSimplificada
 | Manual | string | Manual (con pagina) |
 | Clase_predilecta | string | Clase predilecta |
 | Oficial | boolean | Oficial (true=oficial, false=homebrew) |
+| Mutada | boolean | Indica si la raza es mutada |
+| Tamano_mutacion_dependiente | boolean | El tamano depende de la mutacion |
+| Prerrequisitos | boolean | La raza declara prerrequisitos |
+| Mutacion | object | { Es_mutada, Tamano_dependiente, Tiene_prerrequisitos, Heredada } |
 | Tamano | object | { Id, Nombre, Modificador, Modificador_presa } |
 | Dgs_adicionales | object | { Cantidad, Dado, Tipo_criatura } |
 | Tipo_criatura | object | `TipoCriaturaDetalle` |

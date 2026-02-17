@@ -6,12 +6,15 @@ import { Personaje } from '../interfaces/personaje';
 import { Plantilla } from '../interfaces/plantilla';
 import { RacialDetalle } from '../interfaces/racial';
 import { Raza } from '../interfaces/raza';
+import { RazaSimple } from '../interfaces/simplificaciones/raza-simple';
 import { SubtipoRef } from '../interfaces/subtipo';
 import { TipoCriatura } from '../interfaces/tipo_criatura';
 import { VentajaDetalle } from '../interfaces/ventaja';
 import { resolverAlineamientoPlantillas, simularEstadoPlantillas } from './utils/plantilla-elegibilidad';
 import { extraerEjesAlineamientoDesdeContrato } from './utils/alineamiento-contrato';
 import { createRacialPlaceholder, normalizeRaciales } from './utils/racial-mapper';
+import { resolverRacialesFinales, SeleccionRacialesOpcionales } from './utils/racial-opcionales';
+import { aplicarMutacion, esRazaMutada } from './utils/raza-mutacion';
 import { normalizeSubtipoRefArray } from './utils/subtipo-mapper';
 
 export type StepNuevoPersonaje = 'raza' | 'basicos' | 'plantillas' | 'ventajas';
@@ -121,6 +124,7 @@ export interface PlantillasFlujoState {
 export class NuevoPersonajeService {
     private personajeCreacion: Personaje = this.crearPersonajeBase();
     private razaSeleccionada: Raza | null = null;
+    private razaBaseSeleccionadaCompleta: Raza | null = null;
     private catalogoTiposCriatura: TipoCriatura[] = [];
     private estadoFlujo: EstadoFlujoNuevoPersonaje = this.crearEstadoFlujoBase();
 
@@ -130,6 +134,10 @@ export class NuevoPersonajeService {
 
     get RazaSeleccionada(): Raza | null {
         return this.razaSeleccionada;
+    }
+
+    get RazaBaseSeleccionadaCompleta(): Raza | null {
+        return this.razaBaseSeleccionadaCompleta;
     }
 
     get EstadoFlujo(): EstadoFlujoNuevoPersonaje {
@@ -145,6 +153,7 @@ export class NuevoPersonajeService {
 
         this.personajeCreacion = this.crearPersonajeBase();
         this.razaSeleccionada = null;
+        this.razaBaseSeleccionadaCompleta = null;
         this.estadoFlujo = this.crearEstadoFlujoBase();
 
         this.setCatalogoHabilidades(catalogoHabilidades);
@@ -158,31 +167,57 @@ export class NuevoPersonajeService {
         this.reiniciar();
     }
 
-    seleccionarRaza(raza: Raza): void {
-        this.razaSeleccionada = raza;
-        this.personajeCreacion.Raza = raza;
-        this.personajeCreacion.Correr = raza.Correr ?? 0;
-        this.personajeCreacion.Nadar = raza.Nadar ?? 0;
-        this.personajeCreacion.Volar = raza.Volar ?? 0;
-        this.personajeCreacion.Trepar = raza.Trepar ?? 0;
-        this.personajeCreacion.Escalar = raza.Escalar ?? 0;
+    seleccionarRaza(
+        raza: Raza,
+        razaBase: Raza | null = null,
+        seleccionOpcionales: SeleccionRacialesOpcionales | null = null
+    ): boolean {
+        const usaMutacion = esRazaMutada(raza);
+        if (usaMutacion && !razaBase)
+            return false;
+
+        const razaEfectiva = usaMutacion && razaBase
+            ? aplicarMutacion(razaBase, raza)
+            : this.copiarRaza(raza);
+        const racialesEfectivos = resolverRacialesFinales(
+            this.copiarRaciales(razaEfectiva.Raciales),
+            seleccionOpcionales
+        );
+        if (!racialesEfectivos)
+            return false;
+
+        razaEfectiva.Raciales = racialesEfectivos;
+
+        this.razaSeleccionada = razaEfectiva;
+        this.razaBaseSeleccionadaCompleta = usaMutacion && razaBase
+            ? this.copiarRaza(razaBase)
+            : null;
+        this.personajeCreacion.Raza = razaEfectiva;
+        this.personajeCreacion.RazaBase = usaMutacion && razaBase
+            ? this.construirRazaSimpleDesdeRaza(razaBase)
+            : null;
+        this.personajeCreacion.Correr = razaEfectiva.Correr ?? 0;
+        this.personajeCreacion.Nadar = razaEfectiva.Nadar ?? 0;
+        this.personajeCreacion.Volar = razaEfectiva.Volar ?? 0;
+        this.personajeCreacion.Trepar = razaEfectiva.Trepar ?? 0;
+        this.personajeCreacion.Escalar = razaEfectiva.Escalar ?? 0;
         this.personajeCreacion.Raciales = this.asignarOrigenRaciales(
-            this.copiarRaciales(raza.Raciales),
-            raza.Nombre
+            this.copiarRaciales(razaEfectiva.Raciales),
+            razaEfectiva.Nombre
         );
         this.personajeCreacion.Sortilegas = this.asignarOrigenSortilegas(
-            this.copiarSortilegas(raza.Sortilegas),
-            raza.Nombre
+            this.copiarSortilegas(razaEfectiva.Sortilegas),
+            razaEfectiva.Nombre
         );
-        if (raza?.Tipo_criatura) {
-            this.personajeCreacion.Tipo_criatura = this.copiarTipoCriatura(raza.Tipo_criatura);
+        if (razaEfectiva?.Tipo_criatura) {
+            this.personajeCreacion.Tipo_criatura = this.copiarTipoCriatura(razaEfectiva.Tipo_criatura);
             this.sincronizarCaracteristicasPerdidasConTipoActual();
         }
-        this.personajeCreacion.Edad = raza.Edad_adulto ?? 0;
-        this.personajeCreacion.Altura = raza.Altura_rango_inf ?? 0;
-        this.personajeCreacion.Peso = raza.Peso_rango_inf ?? 0;
+        this.personajeCreacion.Edad = razaEfectiva.Edad_adulto ?? 0;
+        this.personajeCreacion.Altura = razaEfectiva.Altura_rango_inf ?? 0;
+        this.personajeCreacion.Peso = razaEfectiva.Peso_rango_inf ?? 0;
 
-        const alineamientoBase = raza.Alineamiento?.Basico?.Nombre;
+        const alineamientoBase = razaEfectiva.Alineamiento?.Basico?.Nombre;
         if (alineamientoBase && alineamientoBase.trim().length > 0) {
             this.personajeCreacion.Alineamiento = alineamientoBase;
         }
@@ -192,13 +227,14 @@ export class NuevoPersonajeService {
         this.cerrarModalCaracteristicas();
         this.resetearGeneradorCaracteristicas();
         this.estadoFlujo.plantillas = this.crearPlantillasFlujoBase();
-        this.estadoFlujo.plantillas.heredadaActiva = !!raza.Heredada;
+        this.estadoFlujo.plantillas.heredadaActiva = !!razaEfectiva.Heredada;
         this.personajeCreacion.Plantillas = [];
         this.recalcularTipoYSubtiposDerivados();
         this.limpiarVentajasDesventajas();
         this.estadoFlujo.ventajas.baseCaracteristicas = null;
         this.sincronizarBaseVentajasDesdePersonaje();
         this.inicializarHabilidadesBase(true);
+        return true;
     }
 
     setPlantillasDisponibles(plantillas: Plantilla[]): void {
@@ -1281,6 +1317,48 @@ export class NuevoPersonajeService {
         return this.personajeCreacion.Habilidades.find((h) => this.toNumber(h.Id) === idObjetivo) ?? null;
     }
 
+    private copiarRaza(raza: Raza): Raza {
+        return JSON.parse(JSON.stringify(raza ?? {}));
+    }
+
+    private construirRazaSimpleDesdeRaza(raza: Raza): RazaSimple {
+        return {
+            Id: this.toNumber(raza?.Id),
+            Nombre: `${raza?.Nombre ?? ''}`.trim(),
+            Ajuste_nivel: this.toNumber(raza?.Ajuste_nivel),
+            Tamano: {
+                Id: this.toNumber(raza?.Tamano?.Id),
+                Nombre: `${raza?.Tamano?.Nombre ?? '-'}`,
+                Modificador: this.toNumber(raza?.Tamano?.Modificador),
+                Modificador_presa: this.toNumber(raza?.Tamano?.Modificador_presa),
+            },
+            Dgs_adicionales: {
+                Cantidad: this.toNumber(raza?.Dgs_adicionales?.Cantidad),
+                Dado: `${raza?.Dgs_adicionales?.Dado ?? ''}`.trim(),
+                Tipo_criatura: `${raza?.Dgs_adicionales?.Tipo_criatura ?? ''}`.trim(),
+            },
+            Manual: `${raza?.Manual ?? ''}`.trim(),
+            Clase_predilecta: `${raza?.Clase_predilecta ?? ''}`.trim(),
+            Modificadores: {
+                Fuerza: this.toNumber(raza?.Modificadores?.Fuerza),
+                Destreza: this.toNumber(raza?.Modificadores?.Destreza),
+                Constitucion: this.toNumber(raza?.Modificadores?.Constitucion),
+                Inteligencia: this.toNumber(raza?.Modificadores?.Inteligencia),
+                Sabiduria: this.toNumber(raza?.Modificadores?.Sabiduria),
+                Carisma: this.toNumber(raza?.Modificadores?.Carisma),
+            },
+            Altura_rango_inf: this.toNumber(raza?.Altura_rango_inf),
+            Altura_rango_sup: this.toNumber(raza?.Altura_rango_sup),
+            Peso_rango_inf: this.toNumber(raza?.Peso_rango_inf),
+            Peso_rango_sup: this.toNumber(raza?.Peso_rango_sup),
+            Edad_adulto: this.toNumber(raza?.Edad_adulto),
+            Edad_mediana: this.toNumber(raza?.Edad_mediana),
+            Edad_viejo: this.toNumber(raza?.Edad_viejo),
+            Edad_venerable: this.toNumber(raza?.Edad_venerable),
+            Oficial: this.toBooleanValue(raza?.Oficial),
+        };
+    }
+
     private copiarRaciales(value: RacialDetalle[] | null | undefined): RacialDetalle[] {
         return normalizeRaciales(value)
             .map((r) => {
@@ -1394,7 +1472,7 @@ export class NuevoPersonajeService {
         seleccionadas.forEach((plantilla) => {
             const subtiposPlantilla = this.copiarSubtipos(plantilla?.Subtipos ?? []);
             if (subtiposPlantilla.length > 0)
-                actuales = subtiposPlantilla;
+                actuales = this.unirSubtiposDeduplicados(actuales, subtiposPlantilla);
         });
         return actuales;
     }
@@ -1470,6 +1548,26 @@ export class NuevoPersonajeService {
                 Nombre: `${subtipo?.Nombre ?? ''}`.trim(),
             }))
             .filter((subtipo) => subtipo.Nombre.length > 0 || subtipo.Id > 0);
+    }
+
+    private unirSubtiposDeduplicados(base: SubtipoRef[], extra: SubtipoRef[]): SubtipoRef[] {
+        const resultado: SubtipoRef[] = [];
+        const vistos = new Set<string>();
+
+        [...base, ...extra].forEach((subtipo) => {
+            const id = this.toNumber(subtipo?.Id);
+            const nombreNorm = this.normalizarTexto(`${subtipo?.Nombre ?? ''}`);
+            const key = id > 0 ? `id:${id}` : `n:${nombreNorm}`;
+            if ((id <= 0 && nombreNorm.length < 1) || vistos.has(key))
+                return;
+            vistos.add(key);
+            resultado.push({
+                Id: id,
+                Nombre: `${subtipo?.Nombre ?? ''}`.trim(),
+            });
+        });
+
+        return resultado;
     }
 
     private idiomaYaEnPersonajeOSeleccion(nombreIdioma: string, exceptVentajaId?: number): boolean {
@@ -1990,6 +2088,7 @@ export class NuevoPersonajeService {
                 },
                 Oficial: true,
             },
+            RazaBase: null,
             Clases: '',
             desgloseClases: [],
             Personalidad: '',

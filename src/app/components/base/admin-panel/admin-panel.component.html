@@ -19,7 +19,7 @@
                                 [disabled]="estaEjecutando(item.key)"
                                 (click)="ejecutarSync(item)">
                                 <span class="sync-item-label">{{item.label}}</span>
-                                <span class="sync-item-date">{{formatearFecha(item.lastSuccessAt)}}</span>
+                                <span class="sync-item-date">{{item.lastSuccessTexto}}</span>
                             </button>
                         </div>
                     </mat-expansion-panel>

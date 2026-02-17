@@ -1,0 +1,167 @@
+:host
+    position: absolute
+    inset: 0
+    z-index: 61
+
+.selector-overlay
+    position: absolute
+    inset: 0
+    display: flex
+    justify-content: center
+    align-items: center
+    background: rgba(0, 0, 0, 0.6)
+    padding: 12px
+
+.selector-dialog
+    width: min(640px, 96vw)
+    max-height: 92vh
+    overflow: auto
+    background: linear-gradient(180deg, #2f3137 0%, #272a30 100%)
+    border: 1px solid #6f7683
+    border-radius: 8px
+    padding: 14px
+    display: flex
+    flex-direction: column
+    gap: 12px
+
+.selector-header
+    display: flex
+    justify-content: space-between
+    align-items: center
+    gap: 8px
+
+.selector-title
+    color: #f3f6ff
+    font-size: 1.35rem
+    font-weight: 700
+
+.selector-header-actions
+    display: flex
+    align-items: center
+    gap: 4px
+
+.selector-icon-btn
+    color: #e9eefc
+    background: rgba(255, 255, 255, 0.08)
+
+.selector-icon-btn:hover
+    background: rgba(255, 255, 255, 0.16)
+
+.selector-contexto
+    font-size: .9rem
+    color: #e9eefb
+    opacity: .95
+
+.grupos-listado
+    display: flex
+    flex-direction: column
+    gap: 10px
+
+.grupo-card
+    border: 1px solid rgba(255, 255, 255, 0.18)
+    border-radius: 8px
+    padding: 10px
+
+.grupo-titulo
+    margin: 0 0 8px
+    font-weight: 700
+    font-size: .98rem
+    color: #e8ecf7
+
+.grupo-opciones
+    display: flex
+    flex-wrap: wrap
+    gap: 8px
+
+.grupo-ayuda
+    font-size: .84rem
+    opacity: .85
+    color: #ffd789
+
+.opcion-chip
+    border: 1px solid rgba(255, 255, 255, 0.24)
+    background: rgba(255, 255, 255, 0.07)
+    color: #eef3ff
+    border-radius: 20px
+    display: flex
+    align-items: center
+    gap: 2px
+    min-height: 42px
+    padding-right: 4px
+    transition: background-color .15s ease, border-color .15s ease
+
+.opcion-chip.seleccionada
+    color: #ffffff
+    background: rgba(255, 67, 56, 0.3)
+    border-color: rgba(255, 67, 56, 0.7)
+
+.opcion-chip.bloqueada
+    opacity: .6
+    border-color: rgba(255, 120, 120, 0.5)
+    background: rgba(255, 80, 80, 0.12)
+    color: #e9d9d9
+
+.opcion-chip.con-warning
+    border-color: rgba(255, 204, 112, 0.6)
+
+.opcion-select-btn
+    border: none
+    background: transparent
+    color: inherit
+    padding: 6px 10px 6px 12px
+    min-height: 36px
+    max-width: 100%
+    text-align: left
+    display: inline-flex
+    flex-direction: column
+    gap: 3px
+    cursor: pointer
+    color: #f2f6ff
+
+.opcion-select-btn:disabled
+    cursor: not-allowed
+
+.opcion-detalle-btn
+    width: 28px !important
+    height: 28px !important
+    min-width: 28px !important
+    min-height: 28px !important
+    padding: 0 !important
+    margin: 0 2px 0 0
+    align-self: center
+    color: #ffffff
+    border: 1px solid rgba(215, 226, 255, 0.55)
+    background: rgba(31, 36, 50, 0.78)
+    border-radius: 8px !important
+
+.opcion-detalle-btn:hover
+    border-color: rgba(255, 255, 255, 0.8)
+    background: rgba(49, 58, 80, 0.94)
+
+.opcion-detalle-btn .mat-icon
+    width: 18px
+    height: 18px
+    line-height: 18px
+    font-size: 18px
+
+.opcion-nombre
+    font-weight: 600
+
+.opcion-bloqueo
+    font-size: .74rem
+    color: #ffd4d4
+    white-space: normal
+
+.opcion-warning
+    font-size: .74rem
+    color: #ffe39a
+    white-space: normal
+
+.detalle
+    font-size: .92rem
+    opacity: .9
+
+.selector-actions
+    display: flex
+    justify-content: flex-end
+    gap: 8px

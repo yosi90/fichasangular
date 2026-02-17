@@ -1,0 +1,80 @@
+<div class="selector-overlay" (click)="onCerrar()">
+    <div class="selector-dialog" (click)="$event.stopPropagation()">
+        <div class="selector-header">
+            <h2 class="m-0 selector-title">{{titulo}}</h2>
+            <div class="selector-header-actions">
+                <button
+                    mat-icon-button
+                    type="button"
+                    class="selector-icon-btn"
+                    aria-label="Información sobre raza mutada"
+                    (click)="onInfo()">
+                    <mat-icon>info</mat-icon>
+                </button>
+                <button
+                    mat-icon-button
+                    type="button"
+                    class="selector-icon-btn"
+                    aria-label="Cerrar"
+                    (click)="onCerrar()">
+                    <mat-icon>close</mat-icon>
+                </button>
+            </div>
+        </div>
+
+        <mat-chip-option class="filtro-chip" color="warn" [selected]="incluirHomebrew" (click)="onToggleHomebrew()">
+            {{incluirHomebrew ? 'Homebrew incluido' : 'Incluir homebrew'}}
+        </mat-chip-option>
+
+        <mat-form-field appearance="fill" class="w-100">
+            <mat-label>Filtrar raza base</mat-label>
+            <input
+                matInput
+                [value]="filtroTexto"
+                (input)="onFiltroChange(($any($event.target).value ?? '').toString())"
+                placeholder="Nombre o manual">
+        </mat-form-field>
+
+        <div class="razas-listado" *ngIf="candidatasVisibles.length > 0">
+            <button
+                type="button"
+                class="raza-row"
+                *ngFor="let item of candidatasVisibles; trackBy: trackByRazaId"
+                [class.seleccionada]="esSeleccionada(item)"
+                (click)="onSeleccionar(item)">
+                <div class="raza-row-main">
+                    <span class="raza-row-nombre">
+                        {{item.raza.Nombre}}
+                    </span>
+                    <span class="raza-row-tags">
+                        <span *ngIf="!item.raza.Oficial" class="chip-homebrew">Homebrew</span>
+                        <span *ngIf="getAjusteNivel(item.raza) > 0" class="chip-ajuste">Ajuste +{{getAjusteNivel(item.raza)}}</span>
+                        <span *ngIf="getDgsExtra(item.raza) > 0" class="chip-dgs">+{{getDgsExtra(item.raza)}} DGs</span>
+                        <span *ngIf="item.estado === 'eligible_with_warning'" class="chip-warning">Validación parcial</span>
+                    </span>
+                </div>
+                <div class="raza-row-meta">
+                    {{item.raza.Manual || 'Manual no especificado'}}
+                </div>
+            </button>
+        </div>
+
+        <p class="m-0 detalle-raza" *ngIf="seleccionActual as seleccion">
+            {{seleccion.raza.Manual}}
+        </p>
+        <p class="m-0 detalle-raza advertencia" *ngIf="seleccionActual?.estado === 'eligible_with_warning'">
+            Algunos prerrequisitos no se pudieron validar automáticamente.
+        </p>
+
+        <div class="selector-actions">
+            <button mat-stroked-button type="button" (click)="onCerrar()">Cancelar</button>
+            <button mat-raised-button color="primary" type="button" [disabled]="!seleccionActual" (click)="onConfirmar()">
+                Confirmar base
+            </button>
+        </div>
+
+        <p class="m-0 detalle-raza" *ngIf="candidatasVisibles.length < 1">
+            No hay razas base visibles con el filtro actual.
+        </p>
+    </div>
+</div>

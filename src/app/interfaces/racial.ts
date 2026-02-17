@@ -43,6 +43,7 @@ export interface RacialDetalle {
     Nombre: string;
     Descripcion: string;
     Origen?: string;
+    Opcional?: number;
     Dotes: RacialDoteRef[];
     Habilidades: RacialHabilidades;
     Caracteristicas: Record<string, any>[];

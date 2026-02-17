@@ -14,6 +14,13 @@ function toBoolean(value: any): boolean {
     return value === true || value === 1 || value === "1";
 }
 
+function toOptionalNumber(value: any): number {
+    const n = Number(value);
+    if (!Number.isFinite(n))
+        return 0;
+    return Math.max(0, Math.trunc(n));
+}
+
 function toArray<T = any>(value: any): T[] {
     if (Array.isArray(value))
         return value;
@@ -117,6 +124,7 @@ export function normalizeRacial(raw: any): RacialDetalle {
         Nombre: toText(pick(raw, "Nombre", "nombre", "n")),
         Descripcion: toText(pick(raw, "Descripcion", "descripcion", "d")),
         Origen: toText(raw?.Origen ?? raw?.origen).trim(),
+        Opcional: toOptionalNumber(pick(raw, "Opcional", "opcional", "o")),
         Dotes: toArray(dotesRaw).map((item: any) => ({
             Id_dote: toNumber(pick(item, "Id_dote", "id_dote", "id_d", "id")),
             Dote: toText(pick(item, "Dote", "dote", "Nombre", "nombre", "n")),

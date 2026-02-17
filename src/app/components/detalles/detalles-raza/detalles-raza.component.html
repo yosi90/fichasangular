@@ -128,17 +128,27 @@
                             <h2 class="mb-0">Raciales</h2>
                         </button>
                     </mat-expansion-panel-header>
-                    <mat-chip-set class="m-1">
-                        <mat-chip class="h-auto sombra3d-sm m-1 chip-clic"
-                            matTooltip="Pulsa para ver detalles de esta racial" [matTooltipShowDelay]="250"
-                            matTooltipClass="tt-accent" (click)="abrirDetalleRacial(racial)"
-                            *ngFor="let racial of getRacialesActivos()">
-                            {{racial.Nombre}}
-                            <div class="chip-descripcion-bloque" *ngIf="tieneTextoVisible(racial.Descripcion)">
-                                {{racial.Descripcion}}
-                            </div>
-                        </mat-chip>
-                    </mat-chip-set>
+                    <ng-container *ngFor="let grupo of getRacialesAgrupados(); trackBy: trackByGrupoRacial">
+                        <section class="racial-grupo-card" [class.opcional]="grupo.opcionales">
+                            <p class="m-2 racial-grupo-titulo" *ngIf="grupo.opcionales">
+                                Grupo de opciones {{grupo.grupo}}
+                            </p>
+                            <p class="m-2 racial-grupo-aviso" *ngIf="grupo.opcionales">
+                                Solo podrás elegir una de estas raciales.
+                            </p>
+                            <mat-chip-set class="m-1">
+                                <mat-chip class="h-auto sombra3d-sm m-1 chip-clic"
+                                    matTooltip="Pulsa para ver detalles de esta racial" [matTooltipShowDelay]="250"
+                                    matTooltipClass="tt-accent" (click)="abrirDetalleRacial(racial)"
+                                    *ngFor="let racial of grupo.raciales">
+                                    {{racial.Nombre}}
+                                    <div class="chip-descripcion-bloque" *ngIf="tieneTextoVisible(racial.Descripcion)">
+                                        {{racial.Descripcion}}
+                                    </div>
+                                </mat-chip>
+                            </mat-chip-set>
+                        </section>
+                    </ng-container>
                 </mat-expansion-panel>
                 <mat-expansion-panel *ngIf="raza.Sortilegas && raza.Sortilegas.length > 0">
                     <mat-expansion-panel-header>

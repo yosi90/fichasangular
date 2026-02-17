@@ -92,7 +92,7 @@ function crearContextoBase(): PlantillaEvaluacionContexto {
             Carisma: 10,
         },
         tamanoRazaId: 0,
-        tipoCriaturaActualId: 1,
+        tiposCriaturaMiembroIds: [1],
         razaHeredada: false,
         incluirHomebrew: true,
         seleccionadas: [],
@@ -231,5 +231,59 @@ describe("plantilla-elegibilidad", () => {
         const res = resolverAlineamientoPlantillas("Neutral autentico", [plantillaBuena, plantillaMaligna]);
         expect(res.conflicto).toBeTrue();
         expect(res.razones.length).toBeGreaterThan(0);
+    });
+
+    it("criaturas_compatibles se cumple por tipo base aunque el tipo actual sea distinto", () => {
+        const plantilla = crearPlantillaMock({
+            Prerrequisitos_flags: { criaturas_compatibles: true },
+            Prerrequisitos: {
+                actitud_requerido: [],
+                actitud_prohibido: [],
+                alineamiento_requerido: [],
+                caracteristica: [],
+                criaturas_compatibles: [{ Id_tipo_compatible: 1, opcional: 0 }],
+            },
+        });
+        const ctx = crearContextoBase();
+        ctx.tiposCriaturaMiembroIds = [9, 1];
+
+        const res = evaluarElegibilidadPlantilla(plantilla, ctx);
+        expect(res.estado).toBe("eligible");
+    });
+
+    it("criaturas_compatibles se cumple por tipo mutado", () => {
+        const plantilla = crearPlantillaMock({
+            Prerrequisitos_flags: { criaturas_compatibles: true },
+            Prerrequisitos: {
+                actitud_requerido: [],
+                actitud_prohibido: [],
+                alineamiento_requerido: [],
+                caracteristica: [],
+                criaturas_compatibles: [{ Id_tipo_compatible: 9, opcional: 0 }],
+            },
+        });
+        const ctx = crearContextoBase();
+        ctx.tiposCriaturaMiembroIds = [1, 9];
+
+        const res = evaluarElegibilidadPlantilla(plantilla, ctx);
+        expect(res.estado).toBe("eligible");
+    });
+
+    it("criaturas_compatibles falla si no coincide ningun tipo miembro", () => {
+        const plantilla = crearPlantillaMock({
+            Prerrequisitos_flags: { criaturas_compatibles: true },
+            Prerrequisitos: {
+                actitud_requerido: [],
+                actitud_prohibido: [],
+                alineamiento_requerido: [],
+                caracteristica: [],
+                criaturas_compatibles: [{ Id_tipo_compatible: 15, opcional: 0 }],
+            },
+        });
+        const ctx = crearContextoBase();
+        ctx.tiposCriaturaMiembroIds = [1, 9];
+
+        const res = evaluarElegibilidadPlantilla(plantilla, ctx);
+        expect(res.estado).toBe("blocked_failed");
     });
 });

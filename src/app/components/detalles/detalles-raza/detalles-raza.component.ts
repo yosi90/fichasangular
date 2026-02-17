@@ -2,6 +2,13 @@ import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { RacialDetalle, RacialReferencia } from 'src/app/interfaces/racial';
 import { Raza } from 'src/app/interfaces/raza';
 import { SubtipoRef } from 'src/app/interfaces/subtipo';
+import { getGrupoOpcionalRacial } from 'src/app/services/utils/racial-opcionales';
+
+interface GrupoRacialesDetalle {
+    grupo: number;
+    opcionales: boolean;
+    raciales: RacialDetalle[];
+}
 
 @Component({
     selector: 'app-detalles-raza',
@@ -30,6 +37,25 @@ export class DetallesRazaComponent {
         return (this.raza?.Raciales ?? [])
             .filter(racial => this.tieneTextoVisible(racial?.Nombre))
             .sort((a, b) => a.Nombre.localeCompare(b.Nombre, 'es', { sensitivity: 'base' }));
+    }
+
+    getRacialesAgrupados(): GrupoRacialesDetalle[] {
+        const grupos = new Map<number, RacialDetalle[]>();
+
+        this.getRacialesActivos().forEach((racial) => {
+            const grupo = getGrupoOpcionalRacial(racial);
+            if (!grupos.has(grupo))
+                grupos.set(grupo, []);
+            grupos.get(grupo)?.push(racial);
+        });
+
+        return Array.from(grupos.entries())
+            .sort(([grupoA], [grupoB]) => grupoA - grupoB)
+            .map(([grupo, raciales]) => ({
+                grupo,
+                opcionales: grupo > 0,
+                raciales,
+            }));
     }
 
     getSubtiposActivos(): SubtipoRef[] {
@@ -67,5 +93,9 @@ export class DetallesRazaComponent {
     tieneNumeroNoCero(valor: number | string | null | undefined): boolean {
         const parsed = Number(valor);
         return Number.isFinite(parsed) && Math.abs(parsed) > 0.0001;
+    }
+
+    trackByGrupoRacial(_index: number, grupo: GrupoRacialesDetalle): number {
+        return Number(grupo.grupo);
     }
 }

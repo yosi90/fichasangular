@@ -2,7 +2,7 @@ import { Injectable } from '@angular/core';
 import { Database, getDatabase, Unsubscribe, onValue, ref, set } from '@angular/fire/database';
 import { Observable, firstValueFrom } from 'rxjs';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
-import { Raza } from '../interfaces/raza';
+import { MutacionRaza, Raza, RazaPrerrequisitos, RazaPrerrequisitosFlags } from '../interfaces/raza';
 import { environment } from 'src/environments/environment';
 import Swal from 'sweetalert2';
 import { Maniobrabilidad } from '../interfaces/maniobrabilidad';
@@ -17,6 +17,141 @@ import { normalizeSubtipoRefArray } from './utils/subtipo-mapper';
 
 function toBoolean(value: any): boolean {
     return value === true || value === 1 || value === "1";
+}
+
+function toNumber(value: any): number {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function toArray<T = any>(value: any): T[] {
+    if (Array.isArray(value))
+        return value;
+    if (value && typeof value === 'object')
+        return Object.values(value) as T[];
+    return [];
+}
+
+function normalizePrerrequisitos(raw: any): RazaPrerrequisitos {
+    const source = raw ?? {};
+    return {
+        actitud_prohibido: toArray(source?.actitud_prohibido),
+        actitud_requerido: toArray(source?.actitud_requerido),
+        alineamiento_prohibido: toArray(source?.alineamiento_prohibido),
+        alineamiento_requerido: toArray(source?.alineamiento_requerido),
+        tipo_criatura: toArray(source?.tipo_criatura),
+    };
+}
+
+function normalizePrerrequisitosFlags(raw: any, prer: RazaPrerrequisitos): RazaPrerrequisitosFlags {
+    const source = raw ?? {};
+    return {
+        actitud_prohibido: toBoolean(source?.actitud_prohibido) || (prer?.actitud_prohibido?.length ?? 0) > 0,
+        actitud_requerido: toBoolean(source?.actitud_requerido) || (prer?.actitud_requerido?.length ?? 0) > 0,
+        alineamiento_prohibido: toBoolean(source?.alineamiento_prohibido) || (prer?.alineamiento_prohibido?.length ?? 0) > 0,
+        alineamiento_requerido: toBoolean(source?.alineamiento_requerido) || (prer?.alineamiento_requerido?.length ?? 0) > 0,
+        tipo_criatura: toBoolean(source?.tipo_criatura) || (prer?.tipo_criatura?.length ?? 0) > 0,
+    };
+}
+
+function normalizeMutacion(raw: any, mutada: any, tmd: any, heredada: any, prer: RazaPrerrequisitos): MutacionRaza {
+    const source = raw ?? {};
+    const tienePrerrequisitos = (prer?.actitud_prohibido?.length ?? 0) > 0
+        || (prer?.actitud_requerido?.length ?? 0) > 0
+        || (prer?.alineamiento_prohibido?.length ?? 0) > 0
+        || (prer?.alineamiento_requerido?.length ?? 0) > 0
+        || (prer?.tipo_criatura?.length ?? 0) > 0;
+    return {
+        Es_mutada: toBoolean(source?.Es_mutada) || toBoolean(mutada),
+        Tamano_dependiente: toBoolean(source?.Tamano_dependiente) || toBoolean(tmd),
+        Tiene_prerrequisitos: toBoolean(source?.Tiene_prerrequisitos) || tienePrerrequisitos,
+        Heredada: toBoolean(source?.Heredada) || toBoolean(heredada),
+    };
+}
+
+function normalizeModificadores(raw: any): Raza['Modificadores'] {
+    return {
+        Fuerza: toNumber(raw?.Fuerza),
+        Destreza: toNumber(raw?.Destreza),
+        Constitucion: toNumber(raw?.Constitucion),
+        Inteligencia: toNumber(raw?.Inteligencia),
+        Sabiduria: toNumber(raw?.Sabiduria),
+        Carisma: toNumber(raw?.Carisma),
+    };
+}
+
+function normalizeDgsAdicionales(raw: any): Raza['Dgs_adicionales'] {
+    return {
+        Cantidad: toNumber(raw?.Cantidad),
+        Dado: `${raw?.Dado ?? ''}`,
+        Tipo_criatura: `${raw?.Tipo_criatura ?? ''}`,
+        Ataque_base: toNumber(raw?.Ataque_base),
+        Dotes_extra: toNumber(raw?.Dotes_extra),
+        Puntos_habilidad: toNumber(raw?.Puntos_habilidad),
+        Multiplicador_puntos_habilidad: toNumber(raw?.Multiplicador_puntos_habilidad),
+        Fortaleza: toNumber(raw?.Fortaleza),
+        Reflejos: toNumber(raw?.Reflejos),
+        Voluntad: toNumber(raw?.Voluntad),
+    };
+}
+
+function mapRazaDesdeRaw(raw: any, id: any, dotesContextuales: DoteContextual[], subtipos: any[], raciales: any[]): Raza {
+    const prerrequisitos = normalizePrerrequisitos(raw?.Prerrequisitos ?? raw?.pr ?? raw?.PR);
+    const prerrequisitosFlags = normalizePrerrequisitosFlags(
+        raw?.Prerrequisitos_flags ?? raw?.prf ?? raw?.PrerrequisitosFlags,
+        prerrequisitos
+    );
+
+    const mutadaRaw = raw?.Mutada ?? raw?.mu;
+    const tmdRaw = raw?.Tamano_mutacion_dependiente ?? raw?.Tamano_mutacion_pendiente ?? raw?.tmd;
+    const heredadaRaw = raw?.Heredada ?? raw?.he;
+    const mutacion = normalizeMutacion(raw?.Mutacion, mutadaRaw, tmdRaw, heredadaRaw, prerrequisitos);
+
+    return {
+        Id: toNumber(id),
+        Nombre: `${raw?.Nombre ?? raw?.n ?? ''}`,
+        Modificadores: normalizeModificadores(raw?.Modificadores ?? raw?.m),
+        Alineamiento: raw?.Alineamiento ?? raw?.ali ?? ({} as any),
+        Manual: `${raw?.Manual ?? raw?.ma ?? ''}`,
+        Ajuste_nivel: toNumber(raw?.Ajuste_nivel ?? raw?.aju),
+        Clase_predilecta: `${raw?.Clase_predilecta ?? raw?.c ?? ''}`,
+        Oficial: toBoolean(raw?.Oficial ?? raw?.o),
+        Ataques_naturales: `${raw?.Ataques_naturales ?? raw?.an ?? ''}`,
+        Tamano: raw?.Tamano ?? raw?.t ?? ({} as any),
+        Dgs_adicionales: normalizeDgsAdicionales(raw?.Dgs_adicionales ?? raw?.dg),
+        Reduccion_dano: `${raw?.Reduccion_dano ?? raw?.rd ?? ''}`,
+        Resistencia_magica: `${raw?.Resistencia_magica ?? raw?.Resistencia_magia ?? raw?.rc ?? ''}`,
+        Resistencia_energia: `${raw?.Resistencia_energia ?? raw?.re ?? ''}`,
+        Heredada: toBoolean(heredadaRaw),
+        Mutada: mutacion.Es_mutada === true,
+        Tamano_mutacion_dependiente: mutacion.Tamano_dependiente === true,
+        Prerrequisitos: prerrequisitos,
+        Prerrequisitos_flags: prerrequisitosFlags,
+        Mutacion: mutacion,
+        Armadura_natural: toNumber(raw?.Armadura_natural ?? raw?.ant),
+        Varios_armadura: toNumber(raw?.Varios_armadura ?? raw?.va),
+        Correr: toNumber(raw?.Correr ?? raw?.co),
+        Nadar: toNumber(raw?.Nadar ?? raw?.na),
+        Volar: toNumber(raw?.Volar ?? raw?.vo),
+        Maniobrabilidad: raw?.Maniobrabilidad ?? raw?.man ?? ({} as any),
+        Trepar: toNumber(raw?.Trepar ?? raw?.tr),
+        Escalar: toNumber(raw?.Escalar ?? raw?.es),
+        Altura_rango_inf: toNumber(raw?.Altura_rango_inf ?? raw?.ari),
+        Altura_rango_sup: toNumber(raw?.Altura_rango_sup ?? raw?.ars),
+        Peso_rango_inf: toNumber(raw?.Peso_rango_inf ?? raw?.pri),
+        Peso_rango_sup: toNumber(raw?.Peso_rango_sup ?? raw?.prs),
+        Edad_adulto: toNumber(raw?.Edad_adulto ?? raw?.ea),
+        Edad_mediana: toNumber(raw?.Edad_mediana ?? raw?.em),
+        Edad_viejo: toNumber(raw?.Edad_viejo ?? raw?.ev),
+        Edad_venerable: toNumber(raw?.Edad_venerable ?? raw?.eve),
+        Espacio: toNumber(raw?.Espacio ?? raw?.esp),
+        Alcance: toNumber(raw?.Alcance ?? raw?.alc),
+        Tipo_criatura: raw?.Tipo_criatura ?? raw?.tc ?? ({} as any),
+        Subtipos: subtipos,
+        Sortilegas: toArray(raw?.Sortilegas ?? raw?.sor),
+        Raciales: normalizeRaciales(raciales),
+        DotesContextuales: dotesContextuales,
+    };
 }
 
 @Injectable({
@@ -34,49 +169,13 @@ export class RazaService {
             const onNext = (snapshot: any) => {
                 const dotesContextuales = toDoteContextualArray(snapshot.child('DotesContextuales').val());
                 const subtipos = normalizeSubtipoRefArray(snapshot.child('Subtipos').val() ?? snapshot.child('subtipos').val());
-                let raza: Raza = {
-                    Id: id,
-                    Nombre: snapshot.child('Nombre').val(),
-                    Modificadores: snapshot.child('Modificadores').val(),
-                    Alineamiento: snapshot.child('Alineamiento').val(),
-                    Manual: snapshot.child('Manual').val(),
-                    Ajuste_nivel: snapshot.child('Ajuste_nivel').val(),
-                    Clase_predilecta: snapshot.child('Clase_predilecta').val(),
-                    Oficial: toBoolean(snapshot.child('Oficial').val()),
-                    Ataques_naturales: snapshot.child('Ataques_naturales').val(),
-                    Tamano: snapshot.child('Tamano').val(),
-                    Dgs_adicionales: snapshot.child('Dgs_adicionales').val(),
-                    Reduccion_dano: snapshot.child('Reduccion_dano').val(),
-                    Resistencia_magica: snapshot.child('Resistencia_magica').val() ?? snapshot.child('Resistencia_magia').val(),
-                    Resistencia_energia: snapshot.child('Resistencia_energia').val(),
-                    Heredada: snapshot.child('Heredada').val(),
-                    Mutada: snapshot.child('Mutada').val(),
-                    Tamano_mutacion_dependiente: snapshot.child('Tamano_mutacion_dependiente').val() ?? snapshot.child('Tamano_mutacion_pendiente').val(),
-                    Prerrequisitos: snapshot.child('Prerrequisitos').val(),
-                    Armadura_natural: snapshot.child('Armadura_natural').val(),
-                    Varios_armadura: snapshot.child('Varios_armadura').val(),
-                    Correr: snapshot.child('Correr').val(),
-                    Nadar: snapshot.child('Nadar').val(),
-                    Volar: snapshot.child('Volar').val(),
-                    Maniobrabilidad: snapshot.child('Maniobrabilidad').val(),
-                    Trepar: snapshot.child('Trepar').val(),
-                    Escalar: snapshot.child('Escalar').val(),
-                    Altura_rango_inf: snapshot.child('Altura_rango_inf').val(),
-                    Altura_rango_sup: snapshot.child('Altura_rango_sup').val(),
-                    Peso_rango_inf: snapshot.child('Peso_rango_inf').val(),
-                    Peso_rango_sup: snapshot.child('Peso_rango_sup').val(),
-                    Edad_adulto: snapshot.child('Edad_adulto').val(),
-                    Edad_mediana: snapshot.child('Edad_mediana').val(),
-                    Edad_viejo: snapshot.child('Edad_viejo').val(),
-                    Edad_venerable: snapshot.child('Edad_venerable').val(),
-                    Espacio: snapshot.child('Espacio').val(),
-                    Alcance: snapshot.child('Alcance').val(),
-                    Tipo_criatura: snapshot.child('Tipo_criatura').val(),
-                    Subtipos: subtipos,
-                    Sortilegas: snapshot.child('Sortilegas').val(),
-                    Raciales: normalizeRaciales(snapshot.child('Raciales').val()),
-                    DotesContextuales: dotesContextuales,
-                };
+                const raza: Raza = mapRazaDesdeRaw(
+                    snapshot.val() ?? {},
+                    id,
+                    dotesContextuales,
+                    subtipos,
+                    snapshot.child('Raciales').val()
+                );
                 observador.next(raza); // Emitir el array de personajes
             };
 
@@ -107,49 +206,13 @@ export class RazaService {
                 snapshot.forEach((obj: any) => {
                     const dotesContextuales = toDoteContextualArray(obj.child('DotesContextuales').val());
                     const subtipos = normalizeSubtipoRefArray(obj.child('Subtipos').val() ?? obj.child('subtipos').val());
-                    const raza: Raza = {
-                        Id: obj.key,
-                        Nombre: obj.child('Nombre').val(),
-                        Modificadores: obj.child('Modificadores').val(),
-                        Alineamiento: obj.child('Alineamiento').val(),
-                        Manual: obj.child('Manual').val(),
-                        Ajuste_nivel: obj.child('Ajuste_nivel').val(),
-                        Clase_predilecta: obj.child('Clase_predilecta').val(),
-                        Oficial: toBoolean(obj.child('Oficial').val()),
-                        Ataques_naturales: obj.child('Ataques_naturales').val(),
-                        Tamano: obj.child('Tamano').val(),
-                        Dgs_adicionales: obj.child('Dgs_adicionales').val(),
-                        Reduccion_dano: obj.child('Reduccion_dano').val(),
-                        Resistencia_magica: obj.child('Resistencia_magica').val() ?? obj.child('Resistencia_magia').val(),
-                        Resistencia_energia: obj.child('Resistencia_energia').val(),
-                        Heredada: obj.child('Heredada').val(),
-                        Mutada: obj.child('Mutada').val(),
-                        Tamano_mutacion_dependiente: obj.child('Tamano_mutacion_dependiente').val() ?? obj.child('Tamano_mutacion_pendiente').val(),
-                        Prerrequisitos: obj.child('Prerrequisitos').val(),
-                        Armadura_natural: obj.child('Armadura_natural').val(),
-                        Varios_armadura: obj.child('Varios_armadura').val(),
-                        Correr: obj.child('Correr').val(),
-                        Nadar: obj.child('Nadar').val(),
-                        Volar: obj.child('Volar').val(),
-                        Maniobrabilidad: obj.child('Maniobrabilidad').val(),
-                        Trepar: obj.child('Trepar').val(),
-                        Escalar: obj.child('Escalar').val(),
-                        Altura_rango_inf: obj.child('Altura_rango_inf').val(),
-                        Altura_rango_sup: obj.child('Altura_rango_sup').val(),
-                        Peso_rango_inf: obj.child('Peso_rango_inf').val(),
-                        Peso_rango_sup: obj.child('Peso_rango_sup').val(),
-                        Edad_adulto: obj.child('Edad_adulto').val(),
-                        Edad_mediana: obj.child('Edad_mediana').val(),
-                        Edad_viejo: obj.child('Edad_viejo').val(),
-                        Edad_venerable: obj.child('Edad_venerable').val(),
-                        Espacio: obj.child('Espacio').val(),
-                        Alcance: obj.child('Alcance').val(),
-                        Tipo_criatura: obj.child('Tipo_criatura').val(),
-                        Subtipos: subtipos,
-                        Sortilegas: obj.child('Sortilegas').val(),
-                        Raciales: normalizeRaciales(obj.child('Raciales').val()),
-                        DotesContextuales: dotesContextuales,
-                    };
+                    const raza: Raza = mapRazaDesdeRaw(
+                        obj.val() ?? {},
+                        obj.key,
+                        dotesContextuales,
+                        subtipos,
+                        obj.child('Raciales').val()
+                    );
                     Razas.push(raza);
                 });
                 observador.next(Razas); // Emitir el array de personajes
@@ -192,12 +255,24 @@ export class RazaService {
                     aju: any; c: any; o: boolean; an: string; t: Tamano; dg: any; rd: string; rc: string; re: string; he: boolean; mu: boolean; tmd: boolean; pr: any;
                     ant: number; va: number; co: number; na: number; vo: number; man: Maniobrabilidad; tr: number; es: number; ari: number; ars: number; pri: number; 
                     prs: number; ea: number; em: number; ev: number; eve: number; esp: number; alc: number; tc: TipoCriatura; sor: AptitudSortilega[],
-                    ali: Alineamiento; dotes: DoteContextual[]; subtipos?: any;
+                    ali: Alineamiento; dotes: DoteContextual[]; subtipos?: any; prf?: any; Prerrequisitos_flags?: any; Mutacion?: any;
                     rac: any;
                 }) => {
                     const dotesContextuales = toDoteContextualArray(element.dotes);
                     const raciales = normalizeRaciales(element.rac);
                     const subtipos = normalizeSubtipoRefArray(element.subtipos ?? "");
+                    const prerrequisitos = normalizePrerrequisitos(element.pr);
+                    const prerrequisitosFlags = normalizePrerrequisitosFlags(
+                        element.prf ?? element.Prerrequisitos_flags,
+                        prerrequisitos
+                    );
+                    const mutacion = normalizeMutacion(
+                        element.Mutacion,
+                        element.mu,
+                        element.tmd,
+                        element.he,
+                        prerrequisitos
+                    );
                     return set(
                         ref(db, `Razas/${element.i}`), {
                         Nombre: element.n,
@@ -215,9 +290,11 @@ export class RazaService {
                         Resistencia_magia: element.rc,
                         Resistencia_energia: element.re,
                         Heredada: element.he,
-                        Mutada: element.mu,
-                        Tamano_mutacion_dependiente: element.tmd,
-                        Prerrequisitos: element.pr,
+                        Mutada: mutacion.Es_mutada,
+                        Tamano_mutacion_dependiente: mutacion.Tamano_dependiente,
+                        Prerrequisitos: prerrequisitos,
+                        Prerrequisitos_flags: prerrequisitosFlags,
+                        Mutacion: mutacion,
                         Armadura_natural: element.ant,
                         Varios_armadura: element.va,
                         Correr: element.co,

@@ -22,7 +22,9 @@ export interface PlantillaEvaluacionContexto {
     alineamiento: string;
     caracteristicas: CaracteristicasEvaluacion;
     tamanoRazaId: number;
-    tipoCriaturaActualId: number;
+    tiposCriaturaMiembroIds: number[];
+    // Compatibilidad temporal con contexto legacy.
+    tipoCriaturaActualId?: number;
     razaHeredada: boolean;
     incluirHomebrew: boolean;
     seleccionadas: { Id: number; Nombre: string; Nacimiento: boolean }[];
@@ -496,6 +498,13 @@ export function evaluarElegibilidadPlantilla(
         op2: null,
         op3: null,
     };
+    const tiposMiembroRaw = Array.isArray(ctx.tiposCriaturaMiembroIds)
+        ? ctx.tiposCriaturaMiembroIds
+        : [];
+    const tiposCriaturaMiembroIds = Array.from(new Set([
+        ...tiposMiembroRaw.map((id: number) => toNumber(id)).filter((id: number) => id > 0),
+        toNumber(ctx.tipoCriaturaActualId),
+    ].filter((id: number) => id > 0)));
 
     if (flags.actitud_prohibido) {
         (prer.actitud_prohibido ?? []).forEach((entry) => {
@@ -579,8 +588,8 @@ export function evaluarElegibilidadPlantilla(
         (prer.criaturas_compatibles ?? []).forEach((entry) => {
             const tipoCompId = parseTipoCompId(entry);
             const opcional = parseOpcional(entry);
-            const evaluable = tipoCompId > 0 && ctx.tipoCriaturaActualId > 0;
-            const cumple = evaluable ? tipoCompId === ctx.tipoCriaturaActualId : false;
+            const evaluable = tipoCompId > 0 && tiposCriaturaMiembroIds.length > 0;
+            const cumple = evaluable ? tiposCriaturaMiembroIds.includes(tipoCompId) : false;
             registrarResultadoOpcionalLiteral(
                 opcional,
                 evaluable,

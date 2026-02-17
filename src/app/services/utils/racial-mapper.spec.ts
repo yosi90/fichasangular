@@ -6,6 +6,7 @@ describe('racial-mapper', () => {
             Id: 10,
             Nombre: 'Vision en la oscuridad',
             Descripcion: 'Descripcion de prueba',
+            Opcional: 2,
             Dotes: [{ Id_dote: 5, Dote: 'Alerta', Id_extra: -1, Extra: 'No aplica' }],
             Habilidades: {
                 Base: [{ Id_habilidad: 1, Habilidad: 'Avistar' }],
@@ -28,6 +29,7 @@ describe('racial-mapper', () => {
 
         expect(racial.Id).toBe(10);
         expect(racial.Nombre).toBe('Vision en la oscuridad');
+        expect(racial.Opcional).toBe(2);
         expect(racial.Dotes.length).toBe(1);
         expect(racial.Habilidades.Base.length).toBe(1);
         expect(racial.Habilidades.Custom.length).toBe(1);
@@ -44,6 +46,7 @@ describe('racial-mapper', () => {
         expect(racial.Id).toBe(0);
         expect(racial.Nombre).toBe('Sin detalles');
         expect(racial.Descripcion).toBe('');
+        expect(racial.Opcional).toBe(0);
         expect(racial.Dotes).toEqual([]);
         expect(racial.Habilidades.Base).toEqual([]);
         expect(racial.Habilidades.Custom).toEqual([]);
@@ -76,6 +79,7 @@ describe('racial-mapper', () => {
             i: 7,
             n: 'Sangre ancestral',
             d: 'Descripcion corta',
+            o: 3,
             dot: [{ id_d: 3, n: 'Alerta', ie: -1, x: 'No aplica' }],
             hab: {
                 b: [{ Id_habilidad: 1, Habilidad: 'Avistar' }],
@@ -90,6 +94,7 @@ describe('racial-mapper', () => {
         expect(racial.Id).toBe(7);
         expect(racial.Nombre).toBe('Sangre ancestral');
         expect(racial.Descripcion).toBe('Descripcion corta');
+        expect(racial.Opcional).toBe(3);
         expect(racial.Dotes[0].Id_dote).toBe(3);
         expect(racial.Habilidades.Base.length).toBe(1);
         expect(racial.Habilidades.Custom.length).toBe(1);
@@ -107,5 +112,11 @@ describe('racial-mapper', () => {
         expect(racial.Nombre).toBe('Sangre antigua');
         expect(racial.Dotes.length).toBe(0);
         expect(racial.Habilidades.Base.length).toBe(0);
+    });
+
+    it('fallback opcional desde alias legado o cuando no es numerico', () => {
+        expect(normalizeRacial({ Nombre: 'A', opcional: '2' }).Opcional).toBe(2);
+        expect(normalizeRacial({ Nombre: 'B', o: 4 }).Opcional).toBe(4);
+        expect(normalizeRacial({ Nombre: 'C', o: 'x' }).Opcional).toBe(0);
     });
 });

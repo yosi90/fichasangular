@@ -32,6 +32,10 @@ interface SyncItemConfig {
     run: () => Promise<boolean>;
 }
 
+interface SyncItemUi extends SyncItemConfig, CacheSyncUiState {
+    lastSuccessTexto: string;
+}
+
 @Component({
     selector: 'app-admin-panel',
     templateUrl: './admin-panel.component.html',
@@ -41,10 +45,19 @@ export class AdminPanelComponent implements OnInit, OnDestroy {
     hasCon?: boolean;
     serverStatusIcon: string = 'question_mark';
     serverStatus: string = 'Verificar conexión';
-    syncItems: (SyncItemConfig & CacheSyncUiState)[] = [];
+    syncItems: SyncItemUi[] = [];
+    syncItemsOrdenados: SyncItemUi[] = [];
 
     private readonly destroy$ = new Subject<void>();
     private readonly keysEjecutando = new Set<CacheEntityKey>();
+    private readonly dateFormatter = new Intl.DateTimeFormat('es-ES', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false,
+    });
     private readonly syncRunners: Record<CacheEntityKey, () => Promise<boolean>>;
 
     constructor(
@@ -124,8 +137,10 @@ export class AdminPanelComponent implements OnInit, OnDestroy {
                         lastSuccessAt: state?.lastSuccessAt ?? null,
                         lastSuccessIso: state?.lastSuccessIso ?? null,
                         isPrimary: state?.isPrimary ?? true,
+                        lastSuccessTexto: this.formatearFecha(state?.lastSuccessAt ?? null),
                     };
                 });
+                this.syncItemsOrdenados = this.ordenarSyncItems(this.syncItems);
             });
     }
 
@@ -148,15 +163,15 @@ export class AdminPanelComponent implements OnInit, OnDestroy {
         });
     }
 
-    get syncItemsOrdenados(): (SyncItemConfig & CacheSyncUiState)[] {
-        return [...this.syncItems].sort((a, b) => {
+    private ordenarSyncItems(items: SyncItemUi[]): SyncItemUi[] {
+        return [...items].sort((a, b) => {
             if (a.isPrimary !== b.isPrimary)
                 return a.isPrimary ? -1 : 1;
             return a.label.localeCompare(b.label, 'es', { sensitivity: 'base' });
         });
     }
 
-    async ejecutarSync(item: SyncItemConfig & CacheSyncUiState): Promise<void> {
+    async ejecutarSync(item: SyncItemUi): Promise<void> {
         if (this.keysEjecutando.has(item.key))
             return;
 
@@ -174,21 +189,14 @@ export class AdminPanelComponent implements OnInit, OnDestroy {
         return this.keysEjecutando.has(key);
     }
 
-    formatearFecha(lastSuccessAt: number | null): string {
+    private formatearFecha(lastSuccessAt: number | null): string {
         if (!lastSuccessAt)
             return 'Sin cacheo';
 
-        return new Intl.DateTimeFormat('es-ES', {
-            day: '2-digit',
-            month: '2-digit',
-            year: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit',
-            hour12: false,
-        }).format(new Date(lastSuccessAt)).replace(',', '');
+        return this.dateFormatter.format(new Date(lastSuccessAt)).replace(',', '');
     }
 
-    trackBySyncItem(index: number, item: SyncItemConfig & CacheSyncUiState): CacheEntityKey {
+    trackBySyncItem(index: number, item: SyncItemUi): CacheEntityKey {
         return item.key;
     }
 }

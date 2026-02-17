@@ -1,0 +1,137 @@
+:host
+    position: absolute
+    inset: 0
+    z-index: 61
+
+.selector-overlay
+    position: absolute
+    inset: 0
+    display: flex
+    justify-content: center
+    align-items: center
+    background: rgba(0, 0, 0, 0.6)
+    padding: 12px
+
+.selector-dialog
+    width: min(560px, 96vw)
+    max-height: 92vh
+    overflow: auto
+    background: linear-gradient(180deg, #2f3137 0%, #272a30 100%)
+    border: 1px solid #6f7683
+    border-radius: 10px
+    padding: 14px
+    display: flex
+    flex-direction: column
+    gap: 12px
+
+.selector-header
+    display: flex
+    justify-content: space-between
+    align-items: center
+    gap: 8px
+
+.selector-title
+    color: #f3f6ff
+    font-size: 1.45rem
+    font-weight: 700
+
+.selector-header-actions
+    display: flex
+    align-items: center
+    gap: 4px
+
+.selector-icon-btn
+    color: #e9eefc
+    background: rgba(255, 255, 255, 0.08)
+
+.selector-icon-btn:hover
+    background: rgba(255, 255, 255, 0.16)
+
+.filtro-chip
+    width: max-content
+
+.razas-listado
+    display: flex
+    flex-direction: column
+    gap: 8px
+    max-height: 42vh
+    overflow: auto
+    padding-right: 4px
+
+.raza-row
+    width: 100%
+    background: rgba(255, 255, 255, 0.05)
+    border: 1px solid rgba(255, 255, 255, 0.18)
+    border-radius: 8px
+    padding: 8px 10px
+    text-align: left
+    color: #edf1fb
+    transition: background .15s ease, border-color .15s ease
+
+.raza-row:hover
+    background: rgba(255, 255, 255, 0.12)
+
+.raza-row.seleccionada
+    border-color: #9fb3ff
+    background: rgba(122, 154, 255, 0.2)
+
+.raza-row-main
+    display: flex
+    justify-content: space-between
+    gap: 12px
+
+.raza-row-nombre
+    font-weight: 600
+    line-height: 1.2
+
+.raza-row-tags
+    display: inline-flex
+    align-items: center
+    gap: 6px
+    flex-wrap: wrap
+
+.raza-row-meta
+    margin-top: 4px
+    font-size: .84rem
+    opacity: .85
+
+.chip-homebrew
+    font-size: .72rem
+    color: #101318
+    background: #e9b86a
+    border-radius: 999px
+    padding: 2px 8px
+
+.chip-warning
+    font-size: .72rem
+    color: #1d1400
+    background: #f3d36f
+    border-radius: 999px
+    padding: 2px 8px
+
+.chip-ajuste
+    font-size: .72rem
+    color: #081319
+    background: #9adbf0
+    border-radius: 999px
+    padding: 2px 8px
+
+.chip-dgs
+    font-size: .72rem
+    color: #11250f
+    background: #b9eca7
+    border-radius: 999px
+    padding: 2px 8px
+
+.detalle-raza
+    font-size: .92rem
+    opacity: .9
+    color: #e7ebf6
+
+.detalle-raza.advertencia
+    color: #ffd984
+
+.selector-actions
+    display: flex
+    justify-content: flex-end
+    gap: 8px

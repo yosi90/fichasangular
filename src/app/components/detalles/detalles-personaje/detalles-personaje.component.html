@@ -39,6 +39,7 @@
                     [matTooltipShowDelay]="250" matTooltipClass="tt-accent" (click)="verDetallesRaza(pj.Raza.Id)">{{pj.Raza.Nombre}}
                     <mat-chip class="ms-3 m-1" *ngIf="tieneTamanoVisible()">{{pj.Raza.Tamano.Nombre}}</mat-chip>
                     <mat-chip class="chip-clic m-1" *ngIf="tieneTipoCriaturaVisible()" (click)="verDetallesTipoCriatura(pj.Tipo_criatura); $event.stopPropagation();">{{pj.Tipo_criatura.Nombre}}</mat-chip>
+                    <mat-chip class="m-1" *ngIf="tieneRazaBaseVisible()">Base: {{pj.RazaBase?.Nombre}}</mat-chip>
                     <mat-chip class="m-1" *ngIf="tieneDgsRazaVisible()">+{{pj.Raza.Dgs_adicionales.Cantidad}}{{pj.Raza.Dgs_adicionales.Dado}} Dgs de {{pj.Raza.Dgs_adicionales.Tipo_criatura}}</mat-chip>
                     <mat-chip class="m-1" *ngIf="tieneAjusteNivelRazaVisible()">Ajuste de nivel +{{pj.Raza.Ajuste_nivel}}</mat-chip>
                 </mat-chip>

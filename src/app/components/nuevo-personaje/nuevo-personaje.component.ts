@@ -8,7 +8,7 @@ import { IdiomaDetalle } from 'src/app/interfaces/idioma';
 import { Personaje } from 'src/app/interfaces/personaje';
 import { Plantilla } from 'src/app/interfaces/plantilla';
 import { Raza } from 'src/app/interfaces/raza';
-import { RacialReferencia } from 'src/app/interfaces/racial';
+import { RacialDetalle, RacialReferencia } from 'src/app/interfaces/racial';
 import { Rasgo } from 'src/app/interfaces/rasgo';
 import { TipoCriatura } from 'src/app/interfaces/tipo_criatura';
 import { VentajaDetalle } from 'src/app/interfaces/ventaja';
@@ -18,9 +18,14 @@ import { HabilidadService } from 'src/app/services/habilidad.service';
 import { IdiomaService } from 'src/app/services/idioma.service';
 import { AsignacionCaracteristicas, NuevoPersonajeService, StepNuevoPersonaje } from 'src/app/services/nuevo-personaje.service';
 import { PlantillaService } from 'src/app/services/plantilla.service';
+import { RazaService } from 'src/app/services/raza.service';
 import { TipoCriaturaService } from 'src/app/services/tipo-criatura.service';
 import { VentajaService } from 'src/app/services/ventaja.service';
 import { PlantillaEvaluacionResultado, evaluarElegibilidadPlantilla, resolverAlineamientoPlantillas } from 'src/app/services/utils/plantilla-elegibilidad';
+import { buildIdentidadPrerrequisitos, extraerIdsPositivos } from 'src/app/services/utils/identidad-prerrequisitos';
+import { GrupoRacialesOpcionales, SeleccionRacialesOpcionales, agruparRacialesPorOpcional, getClaveSeleccionRacial } from 'src/app/services/utils/racial-opcionales';
+import { RacialEvaluacionResultado, evaluarRacialParaSeleccion } from 'src/app/services/utils/racial-prerrequisitos';
+import { EvaluacionElegibilidadRazaBase, aplicarMutacion, esRazaMutada, evaluarElegibilidadRazaBase } from 'src/app/services/utils/raza-mutacion';
 import {
     extraerEjesAlineamientoDesdeContrato,
     getVectorDesdeNombreBasico,
@@ -53,6 +58,30 @@ interface EvaluacionInconsistenciasBasicos {
     previewWarnings: string[];
     hardConflicts: ConflictoDuroAlineamiento[];
     otherOfficialBlockers: string[];
+}
+
+interface CandidataRazaBase {
+    raza: Raza;
+    evaluacion: EvaluacionElegibilidadRazaBase;
+}
+
+interface CandidataRazaBaseModal {
+    raza: Raza;
+    estado: EvaluacionElegibilidadRazaBase['estado'];
+    advertencias: string[];
+}
+
+interface OpcionRacialOpcionalModal {
+    clave: string;
+    racial: RacialDetalle;
+    estado: RacialEvaluacionResultado['estado'];
+    razones: string[];
+    advertencias: string[];
+}
+
+interface GrupoRacialOpcionalModal {
+    grupo: number;
+    opciones: OpcionRacialOpcionalModal[];
 }
 
 @Component({
@@ -142,6 +171,7 @@ export class NuevoPersonajeComponent {
     Campanas: Campana[] = [];
     Tramas: Super[] = [];
     Subtramas: Super[] = [];
+    razasCatalogo: Raza[] = [];
     plantillasCatalogo: Plantilla[] = [];
     plantillasElegibles: Plantilla[] = [];
     plantillasBloqueadasUnknown: { plantilla: Plantilla; evaluacion: PlantillaEvaluacionResultado; }[] = [];
@@ -165,7 +195,17 @@ export class NuevoPersonajeComponent {
     cargandoIdiomas: boolean = true;
     private ventajaPendienteIdiomaId: number | null = null;
     modalSelectorIdiomaAbierto = false;
+    modalSelectorRazaBaseAbierto = false;
+    modalSelectorRacialesOpcionalesAbierto = false;
     ventanaDetalleAbierta = false;
+    incluirHomebrewRazaBase = false;
+    private razaMutadaPendiente: Raza | null = null;
+    private candidatasRazaBase: CandidataRazaBase[] = [];
+    candidatasRazaBaseModal: CandidataRazaBaseModal[] = [];
+    gruposRacialesOpcionalesModal: GrupoRacialOpcionalModal[] = [];
+    razaContextoOpcionalesNombre = '';
+    private seleccionRacialesOpcionalesPendiente: SeleccionRacialesOpcionales = {};
+    private contextoRazaPendienteOpcionales: { raza: Raza; razaBase: Raza | null; } | null = null;
     private contextoSelectorIdioma: 'ventaja' | 'idiomasIniciales' | null = null;
     selectorIdiomaTitulo = 'Seleccionar idioma extra';
     selectorIdiomaCantidadObjetivo = 0;
@@ -180,6 +220,7 @@ export class NuevoPersonajeComponent {
     private habilidadesSub?: Subscription;
     private habilidadesCustomSub?: Subscription;
     private idiomasSub?: Subscription;
+    private razasSub?: Subscription;
     private tiposCriaturaSub?: Subscription;
     private alineamientosBasicosSub?: Subscription;
     @ViewChild(MatTabGroup) TabGroup?: MatTabGroup;
@@ -188,6 +229,7 @@ export class NuevoPersonajeComponent {
         private nuevoPSvc: NuevoPersonajeService,
         private campanaSvc: CampanaService,
         private alineamientoSvc: AlineamientoService,
+        private razaSvc: RazaService,
         private plantillaSvc: PlantillaService,
         private ventajaSvc: VentajaService,
         private habilidadSvc: HabilidadService,
@@ -203,6 +245,7 @@ export class NuevoPersonajeComponent {
         this.sincronizarTabConPaso();
         this.recalcularOficialidad();
         this.cargarCampanas();
+        this.cargarRazasCatalogo();
         this.cargarPlantillas();
         this.cargarVentajasDesventajas();
         this.cargarHabilidadesBase();
@@ -220,6 +263,7 @@ export class NuevoPersonajeComponent {
         this.habilidadesSub?.unsubscribe();
         this.habilidadesCustomSub?.unsubscribe();
         this.idiomasSub?.unsubscribe();
+        this.razasSub?.unsubscribe();
         this.tiposCriaturaSub?.unsubscribe();
         this.alineamientosBasicosSub?.unsubscribe();
     }
@@ -1221,14 +1265,307 @@ export class NuevoPersonajeComponent {
     @Output() cerrarNuevoPersonajeSolicitado: EventEmitter<void> = new EventEmitter<void>();
 
     seleccionarRaza(value: Raza) {
-        this.nuevoPSvc.seleccionarRaza(value);
+        this.cerrarSelectorRacialesOpcionalesContexto();
+        if (!esRazaMutada(value)) {
+            this.cerrarSelectorRazaBaseContexto();
+            this.prepararSeleccionRazaFinal(value, null);
+            return;
+        }
+
+        this.abrirSelectorRazaBase(value);
+    }
+
+    onToggleHomebrewRazaBase(value: boolean): void {
+        this.incluirHomebrewRazaBase = value;
+    }
+
+    onInformacionRazaMutada(): void {
+        Swal.fire({
+            icon: 'info',
+            title: 'Raza mutada',
+            html: `
+                <p style="text-align:left; margin-bottom:8px;">
+                    Has seleccionado una <strong>raza mutada</strong>.
+                </p>
+                <p style="text-align:left; margin-bottom:8px;">
+                    Ahora debes elegir una <strong>raza base</strong>, que será el origen de la mutación.
+                </p>
+                <p style="text-align:left; margin:0;">
+                    El personaje se crea aplicando <strong>raza base -> mutación</strong>.
+                </p>
+            `,
+            confirmButtonText: 'Entendido',
+            target: document.body,
+            heightAuto: false,
+            scrollbarPadding: false,
+        });
+    }
+
+    onCerrarModalRazaBase(): void {
+        this.cerrarSelectorRazaBaseContexto();
+    }
+
+    async onConfirmarRazaBase(razaBase: Raza): Promise<void> {
+        const item = this.candidatasRazaBase.find((c) => Number(c.raza.Id) === Number(razaBase.Id));
+        if (!item || !this.razaMutadaPendiente)
+            return;
+        const razaMutadaConfirmada = this.razaMutadaPendiente;
+        if (!this.incluirHomebrewRazaBase && !item.raza.Oficial)
+            return;
+
+        if (item.evaluacion.estado === 'blocked')
+            return;
+
+        if (item.evaluacion.estado === 'eligible_with_warning' && item.evaluacion.advertencias.length > 0) {
+            const result = await Swal.fire({
+                icon: 'warning',
+                title: 'Validación parcial de prerrequisitos',
+                html: `<p style="text-align:left; margin:0;">${item.evaluacion.advertencias.join('<br>')}</p>`,
+                showCancelButton: true,
+                confirmButtonText: 'Usar esta base',
+                cancelButtonText: 'Cancelar',
+                target: document.body,
+                heightAuto: false,
+                scrollbarPadding: false,
+            });
+            if (!result.isConfirmed)
+                return;
+        }
+
+        this.cerrarSelectorRazaBaseContexto();
+        this.prepararSeleccionRazaFinal(razaMutadaConfirmada, item.raza);
+    }
+
+    private abrirSelectorRazaBase(razaMutada: Raza): void {
+        if (this.razasCatalogo.length < 1) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'No se pudo abrir el selector de base',
+                text: 'Aún no está disponible el catálogo de razas. Inténtalo de nuevo en unos segundos.',
+                showConfirmButton: true,
+            });
+            return;
+        }
+
+        this.razaMutadaPendiente = razaMutada;
+        this.incluirHomebrewRazaBase = false;
+        this.candidatasRazaBase = this.razasCatalogo
+            .filter((candidata) => Number(candidata.Id) > 0 && Number(candidata.Id) !== Number(razaMutada.Id))
+            .map((candidata) => ({
+                raza: candidata,
+                evaluacion: evaluarElegibilidadRazaBase(razaMutada, candidata),
+            }))
+            .filter((item) => item.evaluacion.estado !== 'blocked');
+        this.reconstruirCandidatasRazaBaseModal();
+
+        if (this.candidatasRazaBase.length < 1) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Sin razas base compatibles',
+                text: 'No existe ninguna raza base que cumpla los prerrequisitos de esta raza mutada.',
+                showConfirmButton: true,
+            });
+            this.cerrarSelectorRazaBaseContexto();
+            return;
+        }
+
+        this.modalSelectorRazaBaseAbierto = true;
+    }
+
+    private cerrarSelectorRazaBaseContexto(): void {
+        this.modalSelectorRazaBaseAbierto = false;
+        this.razaMutadaPendiente = null;
+        this.candidatasRazaBase = [];
+        this.candidatasRazaBaseModal = [];
+        this.incluirHomebrewRazaBase = false;
+    }
+
+    private prepararSeleccionRazaFinal(raza: Raza, razaBase: Raza | null): void {
+        const razaEfectiva = esRazaMutada(raza) && razaBase
+            ? aplicarMutacion(razaBase, raza)
+            : JSON.parse(JSON.stringify(raza ?? {}));
+        const agrupacion = agruparRacialesPorOpcional(razaEfectiva?.Raciales ?? []);
+
+        if (agrupacion.grupos.length < 1) {
+            this.aplicarSeleccionRazaFinal(raza, razaBase, null);
+            return;
+        }
+
+        const gruposEvaluados = this.evaluarGruposRacialesOpcionales(
+            razaEfectiva,
+            razaBase,
+            agrupacion.grupos
+        );
+        const gruposSinOpciones = gruposEvaluados.filter((grupo) => grupo.opciones.every((opcion) => opcion.estado === 'blocked'));
+        if (gruposSinOpciones.length > 0) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Sin opciones raciales válidas',
+                html: gruposSinOpciones
+                    .map((grupo) => {
+                        const motivos = grupo.opciones
+                            .flatMap((opcion) => opcion.razones)
+                            .filter((motivo, idx, arr) => arr.indexOf(motivo) === idx);
+                        const detalle = motivos.length > 0
+                            ? `<br><small>${motivos.join('<br>')}</small>`
+                            : '';
+                        return `El grupo opcional ${grupo.grupo} no tiene opciones habilitadas.${detalle}`;
+                    })
+                    .join('<br><br>'),
+                confirmButtonText: 'Entendido',
+                target: document.body,
+                heightAuto: false,
+                scrollbarPadding: false,
+            });
+            return;
+        }
+
+        this.abrirSelectorRacialesOpcionales(raza, razaBase, gruposEvaluados);
+    }
+
+    onCerrarModalRacialesOpcionales(): void {
+        this.cerrarSelectorRacialesOpcionalesContexto();
+    }
+
+    onInformacionRacialesOpcionales(): void {
+        const nombreRaza = `${this.razaContextoOpcionalesNombre ?? ''}`.trim() || 'esta raza';
+        Swal.fire({
+            icon: 'info',
+            title: 'Raciales opcionales',
+            html: `
+                <p style="text-align:left; margin-bottom:8px;">
+                    Estas opciones aparecen porque tu personaje cuenta como <strong>${nombreRaza}</strong>.
+                </p>
+                <p style="text-align:left; margin:0;">
+                    Debes elegir una opción válida por cada grupo para completar la raza.
+                </p>
+            `,
+            confirmButtonText: 'Entendido',
+            target: document.body,
+            heightAuto: false,
+            scrollbarPadding: false,
+        });
+    }
+
+    onVerDetalleRacialOpcional(referencia: RacialReferencia): void {
+        this.verDetallesRacialDesdeReferencia(referencia);
+    }
+
+    onConfirmarRacialesOpcionales(seleccion: SeleccionRacialesOpcionales): void {
+        if (!this.contextoRazaPendienteOpcionales)
+            return;
+        const seleccionValida = this.gruposRacialesOpcionalesModal.every((grupo) => {
+            const clave = `${seleccion?.[grupo.grupo] ?? ''}`.trim();
+            if (clave.length < 1)
+                return false;
+            return grupo.opciones.some((opcion) => opcion.clave === clave && opcion.estado !== 'blocked');
+        });
+        if (!seleccionValida) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Selección incompleta',
+                text: 'Debes elegir una opción válida en cada grupo opcional.',
+                showConfirmButton: true,
+            });
+            return;
+        }
+
+        this.seleccionRacialesOpcionalesPendiente = { ...seleccion };
+        this.aplicarSeleccionRazaFinal(
+            this.contextoRazaPendienteOpcionales.raza,
+            this.contextoRazaPendienteOpcionales.razaBase,
+            this.seleccionRacialesOpcionalesPendiente
+        );
+    }
+
+    private abrirSelectorRacialesOpcionales(
+        raza: Raza,
+        razaBase: Raza | null,
+        grupos: GrupoRacialOpcionalModal[]
+    ): void {
+        this.contextoRazaPendienteOpcionales = { raza, razaBase };
+        this.razaContextoOpcionalesNombre = `${raza?.Nombre ?? ''}`.trim();
+        this.seleccionRacialesOpcionalesPendiente = {};
+        this.gruposRacialesOpcionalesModal = grupos.map((grupo) => ({
+            grupo: grupo.grupo,
+            opciones: grupo.opciones.map((opcion) => ({
+                clave: opcion.clave,
+                racial: opcion.racial,
+                estado: opcion.estado,
+                razones: [...(opcion.razones ?? [])],
+                advertencias: [...(opcion.advertencias ?? [])],
+            })),
+        }));
+        this.modalSelectorRacialesOpcionalesAbierto = true;
+    }
+
+    private evaluarGruposRacialesOpcionales(
+        razaEfectiva: Raza,
+        razaBase: Raza | null,
+        grupos: GrupoRacialesOpcionales[],
+    ): GrupoRacialOpcionalModal[] {
+        const identidad = buildIdentidadPrerrequisitos(
+            razaEfectiva,
+            razaBase,
+            razaEfectiva?.Subtipos ?? []
+        );
+        const caracteristicas = {
+            Fuerza: Number(this.Personaje?.Fuerza),
+            Destreza: Number(this.Personaje?.Destreza),
+            Constitucion: Number(this.Personaje?.Constitucion),
+            Inteligencia: Number(this.Personaje?.Inteligencia),
+            Sabiduria: Number(this.Personaje?.Sabiduria),
+            Carisma: Number(this.Personaje?.Carisma),
+        };
+
+        return grupos.map((grupo) => ({
+            grupo: grupo.grupo,
+            opciones: grupo.opciones.map((racial) => {
+                const evaluacion = evaluarRacialParaSeleccion(racial, identidad, caracteristicas);
+                return {
+                    clave: getClaveSeleccionRacial(racial),
+                    racial,
+                    estado: evaluacion.estado,
+                    razones: [...(evaluacion.razones ?? [])],
+                    advertencias: [...(evaluacion.advertencias ?? [])],
+                };
+            }),
+        }));
+    }
+
+    private cerrarSelectorRacialesOpcionalesContexto(): void {
+        this.modalSelectorRacialesOpcionalesAbierto = false;
+        this.contextoRazaPendienteOpcionales = null;
+        this.razaContextoOpcionalesNombre = '';
+        this.gruposRacialesOpcionalesModal = [];
+        this.seleccionRacialesOpcionalesPendiente = {};
+    }
+
+    private aplicarSeleccionRazaFinal(
+        raza: Raza,
+        razaBase: Raza | null,
+        seleccionOpcionales: SeleccionRacialesOpcionales | null
+    ): void {
+        const aplicado = this.nuevoPSvc.seleccionarRaza(raza, razaBase, seleccionOpcionales);
+        if (!aplicado)
+            return;
+
         this.Personaje = this.nuevoPSvc.PersonajeCreacion;
+        this.cerrarSelectorRacialesOpcionalesContexto();
         this.ventanaDetalleAbierta = false;
         this.resetHardAlignmentOverride();
         this.normalizarAlineamientoSeleccionado();
         this.recalcularOficialidad();
         this.recalcularPlantillasVisibles();
         this.irABasicos();
+    }
+
+    private reconstruirCandidatasRazaBaseModal(): void {
+        this.candidatasRazaBaseModal = this.candidatasRazaBase.map((item) => ({
+            raza: item.raza,
+            estado: item.evaluacion.estado,
+            advertencias: item.evaluacion.advertencias ?? [],
+        }));
     }
 
     alternarHomebrewPlantillas(): void {
@@ -1572,6 +1909,18 @@ export class NuevoPersonajeComponent {
         return item.Disipable ? 'Si' : '';
     }
 
+    private cargarRazasCatalogo(): void {
+        this.razasSub?.unsubscribe();
+        this.razasSub = this.razaSvc.getRazas().subscribe({
+            next: (razas) => {
+                this.razasCatalogo = razas ?? [];
+            },
+            error: () => {
+                this.razasCatalogo = [];
+            },
+        });
+    }
+
     private cargarPlantillas(): void {
         this.cargandoPlantillas = true;
         this.plantillasSub?.unsubscribe();
@@ -1720,6 +2069,11 @@ export class NuevoPersonajeComponent {
 
         const search = this.normalizarTexto(this.filtroPlantillasTexto);
         const porManual = this.filtroPlantillasManual;
+        const identidad = buildIdentidadPrerrequisitos(
+            raza,
+            this.nuevoPSvc.RazaBaseSeleccionadaCompleta,
+            this.Personaje.Subtipos
+        );
 
         const ctx = {
             alineamiento: this.Personaje.Alineamiento,
@@ -1732,6 +2086,7 @@ export class NuevoPersonajeComponent {
                 Carisma: Number(this.Personaje.Carisma),
             },
             tamanoRazaId: Number(raza.Tamano?.Id ?? 0),
+            tiposCriaturaMiembroIds: extraerIdsPositivos(identidad.tiposCriatura),
             tipoCriaturaActualId: Number(this.Personaje.Tipo_criatura?.Id ?? 0),
             razaHeredada: !!raza.Heredada,
             incluirHomebrew: this.incluirHomebrewPlantillasEfectivo,

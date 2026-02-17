@@ -50,7 +50,13 @@ function crearRazaMock(oficial = true): Raza {
         Heredada: false,
         Mutada: false,
         Tamano_mutacion_dependiente: false,
-        Prerrequisitos: [],
+        Prerrequisitos: {
+            actitud_prohibido: [],
+            actitud_requerido: [],
+            alineamiento_prohibido: [],
+            alineamiento_requerido: [],
+            tipo_criatura: [],
+        },
         Armadura_natural: 0,
         Varios_armadura: 0,
         Correr: 30,
@@ -146,11 +152,169 @@ function crearRazaConPrioridadNoDura(): Raza {
     return raza;
 }
 
+function crearRazaMutadaConPrerequisito(): Raza {
+    const raza = crearRazaMock();
+    raza.Id = 99;
+    raza.Nombre = 'Mutada celestial';
+    raza.Mutada = true;
+    (raza as any).Mutacion = { Es_mutada: true, Tiene_prerrequisitos: true };
+    (raza as any).Prerrequisitos_flags = {
+        alineamiento_requerido: true,
+    };
+    (raza as any).Prerrequisitos = {
+        alineamiento_requerido: [{ id_alineamiento: 1, opcional: 0 }],
+    };
+    return raza;
+}
+
+function crearRazaMutadaConWarning(): Raza {
+    const raza = crearRazaMock();
+    raza.Id = 199;
+    raza.Nombre = 'Mutada incierta';
+    raza.Mutada = true;
+    (raza as any).Mutacion = { Es_mutada: true, Tiene_prerrequisitos: true };
+    (raza as any).Prerrequisitos_flags = {
+        alineamiento_requerido: true,
+    };
+    (raza as any).Prerrequisitos = {
+        alineamiento_requerido: [{ id_ley: 99, opcional: 0 }],
+    };
+    return raza;
+}
+
+function crearRazaConRacialesOpcionales(): Raza {
+    const raza = crearRazaMock();
+    raza.Id = 300;
+    raza.Nombre = 'Prole de bahamut';
+    raza.Raciales = [
+        {
+            Id: 1,
+            Nombre: 'Vision en la oscuridad',
+            Descripcion: '',
+            Opcional: 0,
+            Dotes: [],
+            Habilidades: { Base: [], Custom: [] },
+            Caracteristicas: [],
+            Salvaciones: [],
+            Sortilegas: [],
+            Ataques: [],
+            Prerrequisitos_flags: { raza: false, caracteristica_minima: false },
+            Prerrequisitos: { raza: [], caracteristica: [] },
+        } as any,
+        {
+            Id: 2,
+            Nombre: 'Linaje de plata',
+            Descripcion: '',
+            Opcional: 1,
+            Dotes: [],
+            Habilidades: { Base: [], Custom: [] },
+            Caracteristicas: [],
+            Salvaciones: [],
+            Sortilegas: [],
+            Ataques: [],
+            Prerrequisitos_flags: { raza: false, caracteristica_minima: false },
+            Prerrequisitos: { raza: [], caracteristica: [] },
+        } as any,
+        {
+            Id: 3,
+            Nombre: 'Linaje de bronce',
+            Descripcion: '',
+            Opcional: 1,
+            Dotes: [],
+            Habilidades: { Base: [], Custom: [] },
+            Caracteristicas: [],
+            Salvaciones: [],
+            Sortilegas: [],
+            Ataques: [],
+            Prerrequisitos_flags: { raza: false, caracteristica_minima: false },
+            Prerrequisitos: { raza: [], caracteristica: [] },
+        } as any,
+    ];
+    return raza;
+}
+
+function crearRazaMutadaConRacialesOpcionalesPrereq(): Raza {
+    const raza = crearRazaConRacialesOpcionales();
+    raza.Id = 301;
+    raza.Nombre = 'Prole mutada';
+    raza.Mutada = true;
+    (raza as any).Mutacion = { Es_mutada: true, Tiene_prerrequisitos: false };
+    raza.Raciales = [
+        {
+            Id: 2,
+            Nombre: 'Linaje de plata',
+            Descripcion: '',
+            Opcional: 1,
+            Dotes: [],
+            Habilidades: { Base: [], Custom: [] },
+            Caracteristicas: [],
+            Salvaciones: [],
+            Sortilegas: [],
+            Ataques: [],
+            Prerrequisitos_flags: { raza: true, caracteristica_minima: false },
+            Prerrequisitos: { raza: [{ id_raza: 301 }], caracteristica: [] },
+        } as any,
+        {
+            Id: 3,
+            Nombre: 'Linaje de bronce',
+            Descripcion: '',
+            Opcional: 1,
+            Dotes: [],
+            Habilidades: { Base: [], Custom: [] },
+            Caracteristicas: [],
+            Salvaciones: [],
+            Sortilegas: [],
+            Ataques: [],
+            Prerrequisitos_flags: { raza: true, caracteristica_minima: false },
+            Prerrequisitos: { raza: [{ id_raza: 10 }], caracteristica: [] },
+        } as any,
+    ];
+    return raza;
+}
+
+function crearRazaMutadaConOpcionalesBloqueadas(): Raza {
+    const raza = crearRazaMutadaConRacialesOpcionalesPrereq();
+    raza.Id = 302;
+    raza.Nombre = 'Mutada bloqueada';
+    raza.Raciales = [
+        {
+            Id: 40,
+            Nombre: 'Linaje imposible A',
+            Descripcion: '',
+            Opcional: 1,
+            Dotes: [],
+            Habilidades: { Base: [], Custom: [] },
+            Caracteristicas: [],
+            Salvaciones: [],
+            Sortilegas: [],
+            Ataques: [],
+            Prerrequisitos_flags: { raza: true, caracteristica_minima: false },
+            Prerrequisitos: { raza: [{ id_raza: 999 }], caracteristica: [] },
+        } as any,
+        {
+            Id: 41,
+            Nombre: 'Linaje imposible B',
+            Descripcion: '',
+            Opcional: 1,
+            Dotes: [],
+            Habilidades: { Base: [], Custom: [] },
+            Caracteristicas: [],
+            Salvaciones: [],
+            Sortilegas: [],
+            Ataques: [],
+            Prerrequisitos_flags: { raza: true, caracteristica_minima: false },
+            Prerrequisitos: { raza: [{ id_raza: 998 }], caracteristica: [] },
+        } as any,
+    ];
+    return raza;
+}
+
 describe('NuevoPersonajeComponent', () => {
     let component: NuevoPersonajeComponent;
     let nuevoPSvc: NuevoPersonajeService;
     let campanaSvcMock: any;
     let alineamientoSvcMock: any;
+    let razaSvcMock: any;
     let plantillaSvcMock: any;
     let ventajaSvcMock: any;
     let habilidadSvcMock: any;
@@ -164,6 +328,20 @@ describe('NuevoPersonajeComponent', () => {
         };
         alineamientoSvcMock = {
             getAlineamientosBasicosCatalogo: () => of([]),
+        };
+        razaSvcMock = {
+            getRazas: () => of([
+                crearRazaMock(),
+                {
+                    ...crearRazaMock(),
+                    Id: 2,
+                    Nombre: 'Humano base',
+                    Alineamiento: {
+                        ...crearRazaMock().Alineamiento,
+                        Basico: { Id_basico: 1, Nombre: 'Legal bueno' },
+                    },
+                },
+            ]),
         };
         plantillaSvcMock = {
             getPlantillas: () => of([]),
@@ -186,6 +364,7 @@ describe('NuevoPersonajeComponent', () => {
             nuevoPSvc,
             campanaSvcMock,
             alineamientoSvcMock,
+            razaSvcMock,
             plantillaSvcMock,
             ventajaSvcMock,
             habilidadSvcMock,
@@ -211,6 +390,252 @@ describe('NuevoPersonajeComponent', () => {
     it('si el alineamiento base de raza no existe en el selector, usa Legal bueno visible', () => {
         component.seleccionarRaza(crearRazaConAlineamientoBasico('Alineamiento desconocido'));
         expect(component.Personaje.Alineamiento).toBe('Legal bueno');
+    });
+
+    it('al seleccionar una raza mutada abre selector de base y no aplica hasta confirmar', () => {
+        nuevoPSvc.reiniciar();
+        component.Personaje = nuevoPSvc.PersonajeCreacion;
+        component.selectedInternalTabIndex = 0;
+        component.razasCatalogo = [
+            crearRazaMock(),
+            {
+                ...crearRazaMock(),
+                Id: 2,
+                Nombre: 'Humano base',
+                Alineamiento: {
+                    ...crearRazaMock().Alineamiento,
+                    Basico: { Id_basico: 1, Nombre: 'Legal bueno' },
+                },
+            },
+        ];
+
+        component.seleccionarRaza(crearRazaMutadaConPrerequisito());
+
+        expect(component.modalSelectorRazaBaseAbierto).toBeTrue();
+        expect(nuevoPSvc.RazaSeleccionada).toBeNull();
+    });
+
+    it('confirmar base en mutada aplica la seleccion y cierra modal', async () => {
+        nuevoPSvc.reiniciar();
+        component.Personaje = nuevoPSvc.PersonajeCreacion;
+        component.selectedInternalTabIndex = 0;
+        component.razasCatalogo = [
+            crearRazaMock(),
+            {
+                ...crearRazaMock(),
+                Id: 2,
+                Nombre: 'Humano base',
+                Alineamiento: {
+                    ...crearRazaMock().Alineamiento,
+                    Basico: { Id_basico: 1, Nombre: 'Legal bueno' },
+                },
+            },
+        ];
+        spyOn(Swal, 'fire').and.resolveTo({ isConfirmed: true } as any);
+
+        component.seleccionarRaza(crearRazaMutadaConPrerequisito());
+        await component.onConfirmarRazaBase({
+            ...crearRazaMock(),
+            Id: 2,
+            Nombre: 'Humano base',
+            Alineamiento: {
+                ...crearRazaMock().Alineamiento,
+                Basico: { Id_basico: 1, Nombre: 'Legal bueno' },
+            },
+        });
+
+        expect(component.modalSelectorRazaBaseAbierto).toBeFalse();
+        expect(nuevoPSvc.PersonajeCreacion.RazaBase?.Id).toBe(2);
+        expect(component.selectedInternalTabIndex).toBe(1);
+    });
+
+    it('permite base homebrew solo cuando se activa el toggle', async () => {
+        nuevoPSvc.reiniciar();
+        component.Personaje = nuevoPSvc.PersonajeCreacion;
+        component.selectedInternalTabIndex = 0;
+        const baseOficial = {
+            ...crearRazaMock(),
+            Id: 2,
+            Nombre: 'Humano base',
+            Oficial: true,
+        };
+        const baseHomebrew = {
+            ...crearRazaMock(false),
+            Id: 3,
+            Nombre: 'Bestial homebrew',
+            Oficial: false,
+        };
+        component.razasCatalogo = [baseOficial, baseHomebrew];
+        spyOn(Swal, 'fire').and.resolveTo({ isConfirmed: true } as any);
+
+        component.seleccionarRaza(crearRazaMutadaConWarning());
+        await component.onConfirmarRazaBase(baseHomebrew);
+        expect(nuevoPSvc.PersonajeCreacion.RazaBase).toBeNull();
+
+        component.incluirHomebrewRazaBase = true;
+        await component.onConfirmarRazaBase(baseHomebrew);
+        expect(nuevoPSvc.PersonajeCreacion.RazaBase?.Id).toBe(3);
+    });
+
+    it('base con warning muestra aviso y permite continuar', async () => {
+        nuevoPSvc.reiniciar();
+        component.Personaje = nuevoPSvc.PersonajeCreacion;
+        component.selectedInternalTabIndex = 0;
+        const base = {
+            ...crearRazaMock(),
+            Id: 2,
+            Nombre: 'Humano base',
+        };
+        component.razasCatalogo = [base];
+        const swalSpy = spyOn(Swal, 'fire').and.resolveTo({ isConfirmed: true } as any);
+
+        component.seleccionarRaza(crearRazaMutadaConWarning());
+        await component.onConfirmarRazaBase(base);
+
+        expect(swalSpy).toHaveBeenCalled();
+        expect(nuevoPSvc.PersonajeCreacion.RazaBase?.Id).toBe(2);
+        expect(component.selectedInternalTabIndex).toBe(1);
+    });
+
+    it('si no hay candidatas elegibles muestra alerta y no aplica seleccion', () => {
+        nuevoPSvc.reiniciar();
+        component.Personaje = nuevoPSvc.PersonajeCreacion;
+        component.selectedInternalTabIndex = 0;
+        component.razasCatalogo = [{
+            ...crearRazaMock(),
+            Id: 2,
+            Nombre: 'Base caotica',
+            Alineamiento: {
+                ...crearRazaMock().Alineamiento,
+                Basico: { Id_basico: 1, Nombre: 'Caotico bueno' },
+            },
+        }];
+        const mutadaExigente = crearRazaMutadaConPrerequisito();
+        const swalSpy = spyOn(Swal, 'fire').and.resolveTo({ isConfirmed: true } as any);
+
+        component.seleccionarRaza(mutadaExigente);
+
+        expect(swalSpy).toHaveBeenCalled();
+        expect(component.modalSelectorRazaBaseAbierto).toBeFalse();
+        expect(nuevoPSvc.RazaSeleccionada).toBeNull();
+    });
+
+    it('seleccionar raza con opcionales abre modal y bloquea avance', () => {
+        nuevoPSvc.reiniciar();
+        component.Personaje = nuevoPSvc.PersonajeCreacion;
+        component.selectedInternalTabIndex = 0;
+
+        component.seleccionarRaza(crearRazaConRacialesOpcionales());
+
+        expect(component.modalSelectorRacialesOpcionalesAbierto).toBeTrue();
+        expect(nuevoPSvc.RazaSeleccionada).toBeNull();
+        expect(component.selectedInternalTabIndex).toBe(0);
+    });
+
+    it('confirmar raciales opcionales aplica raza y avanza', () => {
+        nuevoPSvc.reiniciar();
+        component.Personaje = nuevoPSvc.PersonajeCreacion;
+        component.selectedInternalTabIndex = 0;
+
+        component.seleccionarRaza(crearRazaConRacialesOpcionales());
+        component.onConfirmarRacialesOpcionales({ 1: 'id:2' });
+
+        expect(component.modalSelectorRacialesOpcionalesAbierto).toBeFalse();
+        expect(nuevoPSvc.RazaSeleccionada?.Id).toBe(300);
+        expect(component.selectedInternalTabIndex).toBe(1);
+    });
+
+    it('cancelar raciales opcionales no aplica selección', () => {
+        nuevoPSvc.reiniciar();
+        component.Personaje = nuevoPSvc.PersonajeCreacion;
+        component.selectedInternalTabIndex = 0;
+
+        component.seleccionarRaza(crearRazaConRacialesOpcionales());
+        component.onCerrarModalRacialesOpcionales();
+
+        expect(component.modalSelectorRacialesOpcionalesAbierto).toBeFalse();
+        expect(nuevoPSvc.RazaSeleccionada).toBeNull();
+        expect(component.selectedInternalTabIndex).toBe(0);
+    });
+
+    it('mutada + base con opcionales abre modal y habilita opciones por identidad dual', async () => {
+        nuevoPSvc.reiniciar();
+        component.Personaje = nuevoPSvc.PersonajeCreacion;
+        component.selectedInternalTabIndex = 0;
+        const base = {
+            ...crearRazaMock(),
+            Id: 10,
+            Nombre: 'Elfo base',
+        };
+        component.razasCatalogo = [base];
+
+        component.seleccionarRaza(crearRazaMutadaConRacialesOpcionalesPrereq());
+        await component.onConfirmarRazaBase(base);
+
+        expect(component.modalSelectorRacialesOpcionalesAbierto).toBeTrue();
+        const grupoUno = component.gruposRacialesOpcionalesModal.find((g) => g.grupo === 1);
+        expect(grupoUno).toBeTruthy();
+        expect((grupoUno?.opciones ?? []).every((opcion) => opcion.estado !== 'blocked')).toBeTrue();
+    });
+
+    it('muestra opciones raciales bloqueadas cuando no cumplen prerrequisitos', async () => {
+        nuevoPSvc.reiniciar();
+        component.Personaje = nuevoPSvc.PersonajeCreacion;
+        component.selectedInternalTabIndex = 0;
+        const base = {
+            ...crearRazaMock(),
+            Id: 10,
+            Nombre: 'Elfo base',
+        };
+        const mutada = crearRazaMutadaConRacialesOpcionalesPrereq();
+        mutada.Raciales = [
+            ...(mutada.Raciales ?? []),
+            {
+                Id: 99,
+                Nombre: 'Linaje vetado',
+                Descripcion: '',
+                Opcional: 1,
+                Dotes: [],
+                Habilidades: { Base: [], Custom: [] },
+                Caracteristicas: [],
+                Salvaciones: [],
+                Sortilegas: [],
+                Ataques: [],
+                Prerrequisitos_flags: { raza: true, caracteristica_minima: false },
+                Prerrequisitos: { raza: [{ id_raza: 999 }], caracteristica: [] },
+            } as any,
+        ];
+        component.razasCatalogo = [base];
+
+        component.seleccionarRaza(mutada);
+        await component.onConfirmarRazaBase(base);
+
+        const bloqueada = component.gruposRacialesOpcionalesModal
+            .flatMap((g) => g.opciones)
+            .find((opcion) => opcion.racial.Nombre === 'Linaje vetado');
+        expect(bloqueada?.estado).toBe('blocked');
+        expect((bloqueada?.razones ?? []).length).toBeGreaterThan(0);
+    });
+
+    it('si un grupo opcional queda sin opciones habilitadas muestra alerta y no avanza', async () => {
+        nuevoPSvc.reiniciar();
+        component.Personaje = nuevoPSvc.PersonajeCreacion;
+        component.selectedInternalTabIndex = 0;
+        const base = {
+            ...crearRazaMock(),
+            Id: 10,
+            Nombre: 'Elfo base',
+        };
+        component.razasCatalogo = [base];
+        const swalSpy = spyOn(Swal, 'fire').and.resolveTo({ isConfirmed: true } as any);
+
+        component.seleccionarRaza(crearRazaMutadaConOpcionalesBloqueadas());
+        await component.onConfirmarRazaBase(base);
+
+        expect(swalSpy).toHaveBeenCalled();
+        expect(component.modalSelectorRacialesOpcionalesAbierto).toBeFalse();
+        expect(nuevoPSvc.RazaSeleccionada).toBeNull();
+        expect(component.selectedInternalTabIndex).toBe(0);
     });
 
     it('usa catálogo cacheado de alineamientos cuando existe', () => {
@@ -673,6 +1098,7 @@ describe('NuevoPersonajeComponent', () => {
             nuevoPSvc,
             campanaSvcMock,
             alineamientoSvcMock,
+            razaSvcMock,
             plantillaSvcMock,
             ventajaSvcMock,
             habilidadSvcMock,

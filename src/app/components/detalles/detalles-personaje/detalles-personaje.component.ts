@@ -249,6 +249,10 @@ export class DetallesPersonajeComponent implements OnInit, AfterViewInit, OnDest
         return this.tieneTextoVisible(this.pj?.Raza?.Nombre);
     }
 
+    tieneRazaBaseVisible(): boolean {
+        return this.tieneTextoVisible(this.pj?.RazaBase?.Nombre);
+    }
+
     tieneTamanoVisible(): boolean {
         return this.tieneTextoVisible(this.pj?.Raza?.Tamano?.Nombre);
     }

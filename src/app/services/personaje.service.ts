@@ -45,6 +45,7 @@ export class PersonajeService {
                     Id: id,
                     Nombre: snapshot.child('Nombre').val(),
                     Raza: snapshot.child('Raza').val(),
+                    RazaBase: snapshot.child('RazaBase').val() ?? snapshot.child('raza_base').val() ?? null,
                     desgloseClases: clasesArray,
                     Clases: clasesArray.map((c: { Nombre: any; Nivel: any; }) => `${c.Nombre} (${c.Nivel})`).join(", "),
                     Personalidad: snapshot.child('Personalidad').val(),
@@ -161,7 +162,7 @@ export class PersonajeService {
 
             await Promise.all(
                 personajes.map((element: {
-                    i: any; n: any; dcp: any; dh: any; tm: any; a: any; ca: any; an: any; cd: any; cv: any; ra: any; tc: TipoCriatura; f: any; mf: any; d: any; md: any; co: any; mco: any; int: any; mint: any; s: any; 
+                    i: any; n: any; dcp: any; dh: any; tm: any; a: any; ca: any; an: any; cd: any; cv: any; ra: any; rb?: any; raza_base?: any; RazaBase?: any; tc: TipoCriatura; f: any; mf: any; d: any; md: any; co: any; mco: any; int: any; mint: any; s: any; 
                     ms: any; car: any; mcar: any; de: any; ali: any; g: any; ncam: any; ntr: any; ju: any; nst: any; v: any; cor: any; na: any; vo: any; t: any; e: any; o: any; dg: any; cla: any; dom: any; stc: any; subtipos?: any;
                     pla: any; con: any; esp: any; espX: any; rac: any; hab: any; habN: any; habC: any; habCa: any; habMc: any; habR: any; habRv: any; habX: any; habV: any; habCu: any; dotes: DoteContextual[]; ve: any; idi: any;
                     sor: any; pgl: any; ini_v: any; pr_v: { Valor: number; Origen: string; }[]; edad: any; alt: any; peso: any; salv: any; rds: any; 
@@ -263,6 +264,7 @@ export class PersonajeService {
                     const ecp: [] = element.ecp.split("|").map((item: string) => item.trim()).filter((item: string) => item.length > 0);
                     const ataqueBase = `${element.a ?? 0}`;
                     const presaBase = +(ataqueBase.includes('/') ? ataqueBase.substring(0, ataqueBase.indexOf('/')) : ataqueBase);
+                    const razaBase = element.RazaBase ?? element.rb ?? element.raza_base ?? null;
                     return set(ref(db, `Personajes/${element.i}`), {
                         Nombre: element.n,
                         Personalidad: element.dcp,
@@ -277,6 +279,7 @@ export class PersonajeService {
                         Presa: Number(presaBase + +element.mf + +element.ra.Tamano.Modificador_presa + +(element.pr_v ?? []).reduce((c: number, v: { Valor: number; }) => c + Number(v.Valor), 0)),
                         Presa_varios: element.pr_v ?? [],
                         Raza: element.ra,
+                        RazaBase: razaBase,
                         Tipo_criatura: element.tc,
                         Fuerza: element.f,
                         ModFuerza: element.mf,

@@ -147,6 +147,29 @@ describe('DetallesPersonajeComponent', () => {
         expect(html).not.toContain('Placeholder');
     });
 
+    it('muestra raza base cuando existe', () => {
+        component.pj.Raza.Nombre = 'Prole de Bahamut';
+        component.pj.RazaBase = {
+            Id: 10,
+            Nombre: 'Humano',
+        } as any;
+
+        fixture.detectChanges();
+
+        const html = `${fixture.nativeElement.textContent ?? ''}`;
+        expect(html).toContain('Base: Humano');
+    });
+
+    it('no muestra raza base cuando es null', () => {
+        component.pj.Raza.Nombre = 'Elfo';
+        component.pj.RazaBase = null;
+
+        fixture.detectChanges();
+
+        const html = `${fixture.nativeElement.textContent ?? ''}`;
+        expect(html).not.toContain('Base:');
+    });
+
     it('calcula madurez venerable y modificadores de edad como en C#', () => {
         component.pj.Edad = 95;
         component.pj.Raza.Edad_mediana = 40;

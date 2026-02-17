@@ -66,6 +66,8 @@ import { DetallesManualComponent } from './components/detalles/detalles-manual/d
 import { ListadoPlantillasComponent } from './components/shared/listado-plantillas/listado-plantillas.component';
 import { DetallesPlantillaComponent } from './components/detalles/detalles-plantilla/detalles-plantilla.component';
 import { SelectorIdiomaModalComponent } from './components/nuevo-personaje/selector-idioma-modal/selector-idioma-modal.component';
+import { SelectorRazaBaseModalComponent } from './components/nuevo-personaje/selector-raza-base-modal/selector-raza-base-modal.component';
+import { SelectorRacialesOpcionalesModalComponent } from './components/nuevo-personaje/selector-raciales-opcionales-modal/selector-raciales-opcionales-modal.component';
 import { VentanaDetalleFlotanteComponent } from './components/nuevo-personaje/ventana-detalle-flotante/ventana-detalle-flotante.component';
 import { ListadoSubtiposComponent } from './components/shared/listado-subtipos/listado-subtipos.component';
 import { DetallesSubtipoComponent } from './components/detalles/detalles-subtipo/detalles-subtipo.component';
@@ -102,6 +104,8 @@ import { DetallesSubtipoComponent } from './components/detalles/detalles-subtipo
         DetallesRacialComponent,
         GeneradorCaracteristicasModalComponent,
         SelectorIdiomaModalComponent,
+        SelectorRazaBaseModalComponent,
+        SelectorRacialesOpcionalesModalComponent,
         VentanaDetalleFlotanteComponent,
         DetallesManualComponent,
         ListadoPlantillasComponent,

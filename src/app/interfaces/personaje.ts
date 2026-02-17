@@ -11,6 +11,7 @@ export type CaracteristicaPerdidaKey = 'Fuerza' | 'Destreza' | 'Constitucion' | 
 export type CaracteristicasPerdidas = Partial<Record<CaracteristicaPerdidaKey, boolean>>;
 
 export interface Personaje extends PersonajeSimple {
+    RazaBase?: PersonajeSimple['Raza'] | null;
     desgloseClases: {
         Nombre: string;
         Nivel: number;

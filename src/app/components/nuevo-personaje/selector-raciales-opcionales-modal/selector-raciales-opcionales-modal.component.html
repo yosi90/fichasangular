@@ -1,0 +1,70 @@
+<div class="selector-overlay" (click)="onCerrar()">
+    <div class="selector-dialog" (click)="$event.stopPropagation()">
+        <div class="selector-header">
+            <h2 class="m-0 selector-title">{{titulo}}</h2>
+            <div class="selector-header-actions">
+                <button mat-icon-button type="button" class="selector-icon-btn" aria-label="Información" (click)="onInfo()">
+                    <mat-icon>info</mat-icon>
+                </button>
+                <button mat-icon-button type="button" class="selector-icon-btn" aria-label="Cerrar" (click)="onCerrar()">
+                    <mat-icon>close</mat-icon>
+                </button>
+            </div>
+        </div>
+        <p class="selector-contexto m-0" *ngIf="razaContextoNombre.trim().length > 0">
+            Opciones disponibles para <strong>{{razaContextoNombre}}</strong>.
+        </p>
+
+        <div class="grupos-listado" *ngIf="requiereSeleccion; else sinOpcionalesTpl">
+            <section class="grupo-card" *ngFor="let grupo of grupos; trackBy: trackByGrupo">
+                <p class="grupo-titulo">Grupo de opciones {{grupo.grupo}}</p>
+                <p class="grupo-ayuda m-0" *ngIf="grupoSinOpcionesHabilitadas(grupo)">
+                    Este grupo no tiene opciones habilitadas con la identidad actual.
+                </p>
+                <div class="grupo-opciones">
+                    <div
+                        class="opcion-chip"
+                        *ngFor="let opcion of grupo.opciones; trackBy: trackByOpcion"
+                        [class.seleccionada]="esSeleccionada(grupo.grupo, opcion.clave)"
+                        [class.bloqueada]="!esOpcionHabilitada(opcion)"
+                        [class.con-warning]="opcion.estado === 'eligible_with_warning'">
+                        <button
+                            type="button"
+                            class="opcion-select-btn"
+                            [disabled]="!esOpcionHabilitada(opcion)"
+                            (click)="onSeleccionar(grupo.grupo, opcion.clave, esOpcionHabilitada(opcion))">
+                            <span class="opcion-nombre">{{opcion.racial.Nombre}}</span>
+                            <span class="opcion-bloqueo" *ngIf="!esOpcionHabilitada(opcion)">
+                                {{getTextoBloqueo(opcion)}}
+                            </span>
+                            <span class="opcion-warning" *ngIf="opcion.estado === 'eligible_with_warning' && getTextoAdvertencia(opcion).length > 0">
+                                {{getTextoAdvertencia(opcion)}}
+                            </span>
+                        </button>
+                        <button
+                            mat-icon-button
+                            type="button"
+                            class="opcion-detalle-btn"
+                            [disabled]="!tieneDetalleRacial(opcion.racial)"
+                            (click)="onVerDetalleRacial(opcion.racial, $event)"
+                            aria-label="Ver detalle de racial"
+                            matTooltip="Ver detalle completo">
+                            <mat-icon>open_in_new</mat-icon>
+                        </button>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <ng-template #sinOpcionalesTpl>
+            <p class="m-0 detalle">Esta raza no tiene raciales opcionales que resolver.</p>
+        </ng-template>
+
+        <div class="selector-actions">
+            <button mat-stroked-button type="button" (click)="onCerrar()">Cancelar</button>
+            <button mat-raised-button color="primary" type="button" [disabled]="requiereSeleccion && !seleccionCompleta" (click)="onConfirmar()">
+                Confirmar selección
+            </button>
+        </div>
+    </div>
+</div>

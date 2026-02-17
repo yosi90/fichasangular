@@ -557,6 +557,173 @@ describe('NuevoPersonajeService (tipo y subtipos derivados)', () => {
         expect(svc.PersonajeCreacion.Subtipos).toEqual([{ Id: 11, Nombre: 'Humano' }]);
     });
 
+    it('seleccionarRaza mutada sin base no aplica cambios', () => {
+        const svc = new NuevoPersonajeService();
+        const tipoHumanoide = crearTipo(1, 'Humanoide');
+        const mutada = {
+            ...crearRazaMock(tipoHumanoide, [{ Id: 11, Nombre: 'Humano' }]),
+            Id: 77,
+            Nombre: 'Mutada',
+            Mutada: true,
+            Mutacion: { Es_mutada: true },
+        } as unknown as Raza;
+
+        const aplicado = svc.seleccionarRaza(mutada);
+
+        expect(aplicado).toBeFalse();
+        expect(svc.RazaSeleccionada).toBeNull();
+        expect(svc.PersonajeCreacion.Raza.Id).toBe(0);
+        expect(svc.PersonajeCreacion.RazaBase).toBeNull();
+    });
+
+    it('seleccionarRaza mutada con base guarda RazaBase y aplica raza efectiva', () => {
+        const svc = new NuevoPersonajeService();
+        const tipoHumanoide = crearTipo(1, 'Humanoide');
+        svc.setCatalogoTiposCriatura([tipoHumanoide]);
+        const base = {
+            ...crearRazaMock(tipoHumanoide, [{ Id: 11, Nombre: 'Humano' }]),
+            Id: 10,
+            Nombre: 'Humano base',
+            Correr: 30,
+            Modificadores: { Fuerza: 0, Destreza: 0, Constitucion: 0, Inteligencia: 0, Sabiduria: 0, Carisma: 0 },
+            Dgs_adicionales: {
+                Cantidad: 1,
+                Dado: 'd8',
+                Tipo_criatura: 'Humanoide',
+                Ataque_base: 0,
+                Dotes_extra: 0,
+                Puntos_habilidad: 0,
+                Multiplicador_puntos_habilidad: 1,
+                Fortaleza: 0,
+                Reflejos: 0,
+                Voluntad: 0,
+            },
+        } as unknown as Raza;
+        const mutada = {
+            ...crearRazaMock(tipoHumanoide, [{ Id: 12, Nombre: 'Celestial' }]),
+            Id: 20,
+            Nombre: 'Mutada',
+            Mutada: true,
+            Mutacion: { Es_mutada: true },
+            Correr: 40,
+            Modificadores: { Fuerza: 4, Destreza: 0, Constitucion: 2, Inteligencia: 0, Sabiduria: 0, Carisma: 0 },
+            Dgs_adicionales: {
+                Cantidad: 2,
+                Dado: 'd10',
+                Tipo_criatura: 'Ajeno',
+                Ataque_base: 0,
+                Dotes_extra: 0,
+                Puntos_habilidad: 0,
+                Multiplicador_puntos_habilidad: 1,
+                Fortaleza: 0,
+                Reflejos: 0,
+                Voluntad: 0,
+            },
+        } as unknown as Raza;
+
+        const aplicado = svc.seleccionarRaza(mutada, base);
+
+        expect(aplicado).toBeTrue();
+        expect(svc.PersonajeCreacion.RazaBase?.Id).toBe(10);
+        expect(svc.PersonajeCreacion.Raza.Id).toBe(20);
+        expect(svc.PersonajeCreacion.Raza.Modificadores.Fuerza).toBe(4);
+        expect(svc.PersonajeCreacion.Correr).toBe(40);
+        expect(svc.PersonajeCreacion.Raza.Dgs_adicionales.Cantidad).toBe(3);
+    });
+
+    it('seleccionarRaza requiere resolver grupos de raciales opcionales', () => {
+        const svc = new NuevoPersonajeService();
+        const tipoHumanoide = crearTipo(1, 'Humanoide');
+        const raza = {
+            ...crearRazaMock(tipoHumanoide, []),
+            Id: 40,
+            Nombre: 'Prole de bahamut',
+            Raciales: [
+                createRacialPlaceholder('Vision en la oscuridad', 1),
+                {
+                    ...createRacialPlaceholder('Linaje de cobre', 2),
+                    Opcional: 1,
+                },
+                {
+                    ...createRacialPlaceholder('Linaje de plata', 3),
+                    Opcional: 1,
+                },
+            ],
+        } as unknown as Raza;
+
+        const sinSeleccion = svc.seleccionarRaza(raza);
+        expect(sinSeleccion).toBeFalse();
+        expect(svc.RazaSeleccionada).toBeNull();
+
+        const aplicado = svc.seleccionarRaza(raza, null, { 1: 'id:3' });
+        expect(aplicado).toBeTrue();
+        expect(svc.PersonajeCreacion.Raciales.map((r) => r.Id)).toEqual([1, 3]);
+    });
+
+    it('seleccionar una raza no mutada limpia RazaBase tras una mutada', () => {
+        const svc = new NuevoPersonajeService();
+        const tipoHumanoide = crearTipo(1, 'Humanoide');
+        svc.setCatalogoTiposCriatura([tipoHumanoide]);
+
+        const base = {
+            ...crearRazaMock(tipoHumanoide, [{ Id: 11, Nombre: 'Humano' }]),
+            Id: 10,
+            Nombre: 'Humano base',
+        } as unknown as Raza;
+        const mutada = {
+            ...crearRazaMock(tipoHumanoide, [{ Id: 12, Nombre: 'Celestial' }]),
+            Id: 20,
+            Nombre: 'Mutada',
+            Mutada: true,
+            Mutacion: { Es_mutada: true },
+        } as unknown as Raza;
+        const noMutada = {
+            ...crearRazaMock(tipoHumanoide, [{ Id: 13, Nombre: 'Terrestre' }]),
+            Id: 30,
+            Nombre: 'Enano',
+            Mutada: false,
+            Mutacion: { Es_mutada: false },
+        } as unknown as Raza;
+
+        svc.seleccionarRaza(mutada, base);
+        expect(svc.PersonajeCreacion.RazaBase?.Id).toBe(10);
+
+        svc.seleccionarRaza(noMutada);
+        expect(svc.PersonajeCreacion.Raza.Id).toBe(30);
+        expect(svc.PersonajeCreacion.RazaBase).toBeNull();
+    });
+
+    it('mutada + base + opcionales aplica raza efectiva y conserva RazaBase', () => {
+        const svc = new NuevoPersonajeService();
+        const tipoHumanoide = crearTipo(1, 'Humanoide');
+        svc.setCatalogoTiposCriatura([tipoHumanoide]);
+
+        const base = {
+            ...crearRazaMock(tipoHumanoide, [{ Id: 11, Nombre: 'Humano' }]),
+            Id: 10,
+            Nombre: 'Humano base',
+            Raciales: [createRacialPlaceholder('Base obligatoria', 1)],
+        } as unknown as Raza;
+        const mutada = {
+            ...crearRazaMock(tipoHumanoide, [{ Id: 12, Nombre: 'Sangre de dragon' }]),
+            Id: 20,
+            Nombre: 'Prole de bahamut',
+            Mutada: true,
+            Mutacion: { Es_mutada: true },
+            Raciales: [
+                { ...createRacialPlaceholder('Linaje de cobre', 2), Opcional: 1 },
+                { ...createRacialPlaceholder('Linaje de plata', 3), Opcional: 1 },
+            ],
+        } as unknown as Raza;
+
+        const aplicado = svc.seleccionarRaza(mutada, base, { 1: 'id:2' });
+
+        expect(aplicado).toBeTrue();
+        expect(svc.PersonajeCreacion.RazaBase?.Id).toBe(10);
+        expect(svc.PersonajeCreacion.Raza.Id).toBe(20);
+        expect(svc.PersonajeCreacion.Raciales.map((r) => r.Id)).toEqual([1, 2]);
+    });
+
     it('agregar plantilla que cambia tipo actualiza Personaje.Tipo_criatura', () => {
         const svc = new NuevoPersonajeService();
         const tipoHumanoide = crearTipo(1, 'Humanoide');
@@ -581,7 +748,7 @@ describe('NuevoPersonajeService (tipo y subtipos derivados)', () => {
         expect(svc.EstadoFlujo.plantillas.tipoCriaturaSimulada.Id).toBe(5);
     });
 
-    it('subtipos: reemplazo por ultima plantilla y restauracion al quitar', () => {
+    it('subtipos: acumulativos con union deduplicada y restauracion al quitar', () => {
         const svc = new NuevoPersonajeService();
         const tipoHumanoide = crearTipo(1, 'Humanoide');
         svc.setCatalogoTiposCriatura([tipoHumanoide]);
@@ -599,13 +766,23 @@ describe('NuevoPersonajeService (tipo y subtipos derivados)', () => {
         });
 
         svc.agregarPlantillaSeleccion(plantillaA);
-        expect(svc.PersonajeCreacion.Subtipos).toEqual([{ Id: 21, Nombre: 'Fuego' }]);
+        expect(svc.PersonajeCreacion.Subtipos).toEqual([
+            { Id: 11, Nombre: 'Humano' },
+            { Id: 21, Nombre: 'Fuego' },
+        ]);
 
         svc.agregarPlantillaSeleccion(plantillaB);
-        expect(svc.PersonajeCreacion.Subtipos).toEqual([{ Id: 22, Nombre: 'Frio' }]);
+        expect(svc.PersonajeCreacion.Subtipos).toEqual([
+            { Id: 11, Nombre: 'Humano' },
+            { Id: 21, Nombre: 'Fuego' },
+            { Id: 22, Nombre: 'Frio' },
+        ]);
 
         svc.quitarPlantillaSeleccion(302);
-        expect(svc.PersonajeCreacion.Subtipos).toEqual([{ Id: 21, Nombre: 'Fuego' }]);
+        expect(svc.PersonajeCreacion.Subtipos).toEqual([
+            { Id: 11, Nombre: 'Humano' },
+            { Id: 21, Nombre: 'Fuego' },
+        ]);
     });
 
     it('limpiar plantillas restaura tipo y subtipos de la raza', () => {
@@ -629,7 +806,10 @@ describe('NuevoPersonajeService (tipo y subtipos derivados)', () => {
         }));
 
         expect(svc.PersonajeCreacion.Tipo_criatura.Id).toBe(5);
-        expect(svc.PersonajeCreacion.Subtipos).toEqual([{ Id: 41, Nombre: 'Celestial' }]);
+        expect(svc.PersonajeCreacion.Subtipos).toEqual([
+            { Id: 11, Nombre: 'Humano' },
+            { Id: 41, Nombre: 'Celestial' },
+        ]);
 
         svc.limpiarPlantillasSeleccion();
         expect(svc.PersonajeCreacion.Tipo_criatura.Id).toBe(1);

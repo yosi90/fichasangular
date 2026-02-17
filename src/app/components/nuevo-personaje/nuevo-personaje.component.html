@@ -482,4 +482,28 @@
             (confirmar)="onConfirmarIdiomaVentaja($event)">
         </app-selector-idioma-modal>
     </ng-container>
+
+    <ng-container *ngIf="modalSelectorRazaBaseAbierto">
+        <app-selector-raza-base-modal
+            [candidatas]="candidatasRazaBaseModal"
+            [incluirHomebrew]="incluirHomebrewRazaBase"
+            [titulo]="'Seleccionar raza base'"
+            (incluirHomebrewChange)="onToggleHomebrewRazaBase($event)"
+            (info)="onInformacionRazaMutada()"
+            (cerrar)="onCerrarModalRazaBase()"
+            (confirmar)="onConfirmarRazaBase($event)">
+        </app-selector-raza-base-modal>
+    </ng-container>
+
+    <ng-container *ngIf="modalSelectorRacialesOpcionalesAbierto">
+        <app-selector-raciales-opcionales-modal
+            [grupos]="gruposRacialesOpcionalesModal"
+            [titulo]="'Seleccionar raciales opcionales'"
+            [razaContextoNombre]="razaContextoOpcionalesNombre"
+            (info)="onInformacionRacialesOpcionales()"
+            (verDetalleRacial)="onVerDetalleRacialOpcional($event)"
+            (cerrar)="onCerrarModalRacialesOpcionales()"
+            (confirmar)="onConfirmarRacialesOpcionales($event)">
+        </app-selector-raciales-opcionales-modal>
+    </ng-container>
 </div>

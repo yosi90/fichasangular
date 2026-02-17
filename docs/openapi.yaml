@@ -1628,6 +1628,10 @@ components:
         Clase_predilecta: { type: string }
         Oficial: { type: boolean }
         Mutada: { type: boolean }
+        Tamano_mutacion_dependiente: { type: boolean }
+        Prerrequisitos: { type: boolean }
+        Mutacion:
+          $ref: '#/components/schemas/MutacionRaza'
         Tamano:
           type: object
           additionalProperties: true
@@ -1640,6 +1644,23 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/SubtipoRef'
+
+    MutacionRaza:
+      type: object
+      properties:
+        Es_mutada: { type: boolean }
+        Tamano_dependiente: { type: boolean }
+        Tiene_prerrequisitos: { type: boolean }
+        Heredada: { type: boolean }
+
+    RazaPrerrequisitosFlags:
+      type: object
+      properties:
+        actitud_prohibido: { type: boolean }
+        actitud_requerido: { type: boolean }
+        alineamiento_prohibido: { type: boolean }
+        alineamiento_requerido: { type: boolean }
+        tipo_criatura: { type: boolean }
 
     SortilegioRaza:
       type: object
@@ -1695,6 +1716,12 @@ components:
         pr:
           type: object
           additionalProperties: true
+        prf:
+          $ref: '#/components/schemas/RazaPrerrequisitosFlags'
+        Prerrequisitos_flags:
+          $ref: '#/components/schemas/RazaPrerrequisitosFlags'
+        Mutacion:
+          $ref: '#/components/schemas/MutacionRaza'
         ant: { type: integer }
         va: { type: integer }
         co: { type: integer }
@@ -1742,6 +1769,7 @@ components:
         Id: { type: integer }
         Nombre: { type: string }
         Descripcion: { type: string }
+        Opcional: { type: integer }
         Dotes:
           type: array
           items:
