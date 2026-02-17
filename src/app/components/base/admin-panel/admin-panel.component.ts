@@ -18,6 +18,7 @@ import { PlantillaService } from 'src/app/services/plantilla.service';
 import { RacialService } from 'src/app/services/racial.service';
 import { RasgoService } from 'src/app/services/rasgo.service';
 import { RazaService } from 'src/app/services/raza.service';
+import { SubtipoService } from 'src/app/services/subtipo.service';
 import { TipoCriaturaService } from 'src/app/services/tipo-criatura.service';
 import { VerifyConnectionService } from 'src/app/services/utils/verify-connection.service';
 import { VentajaService } from 'src/app/services/ventaja.service';
@@ -55,6 +56,7 @@ export class AdminPanelComponent implements OnInit, OnDestroy {
         private mSvc: ManualService,
         private manualesAsociadosSvc: ManualesAsociadosService,
         private tcSvc: TipoCriaturaService,
+        private subtipoSvc: SubtipoService,
         private raSvc: RasgoService,
         private coSvc: ConjuroService,
         private escSvc: EscuelaConjurosService,
@@ -78,6 +80,7 @@ export class AdminPanelComponent implements OnInit, OnDestroy {
             manuales: () => this.mSvc.RenovarManuales(),
             manuales_asociados: () => this.manualesAsociadosSvc.RenovarManualesAsociados(),
             tipos_criatura: () => this.tcSvc.RenovarTiposCriatura(),
+            subtipos: () => this.subtipoSvc.RenovarSubtipos(),
             rasgos: () => this.raSvc.RenovarRasgos(),
             conjuros: () => this.coSvc.RenovarConjuros(),
             dotes: () => this.doSvc.RenovarDotes(),

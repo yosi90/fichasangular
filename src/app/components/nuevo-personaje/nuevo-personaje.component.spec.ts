@@ -107,6 +107,7 @@ function crearRazaMock(oficial = true): Raza {
             Rasgos: [],
             Oficial: true,
         },
+        Subtipos: [],
         Sortilegas: [],
         Raciales: [],
         DotesContextuales: [],
@@ -127,6 +128,7 @@ describe('NuevoPersonajeComponent', () => {
     let ventajaSvcMock: any;
     let habilidadSvcMock: any;
     let idiomaSvcMock: any;
+    let tipoCriaturaSvcMock: any;
 
     beforeEach(() => {
         nuevoPSvc = new NuevoPersonajeService();
@@ -147,13 +149,17 @@ describe('NuevoPersonajeComponent', () => {
         idiomaSvcMock = {
             getIdiomas: () => of([]),
         };
+        tipoCriaturaSvcMock = {
+            getTiposCriatura: () => of([]),
+        };
         component = new NuevoPersonajeComponent(
             nuevoPSvc,
             campanaSvcMock,
             plantillaSvcMock,
             ventajaSvcMock,
             habilidadSvcMock,
-            idiomaSvcMock
+            idiomaSvcMock,
+            tipoCriaturaSvcMock
         );
         component.Personaje = nuevoPSvc.PersonajeCreacion;
         component.seleccionarRaza(crearRazaMock());
@@ -504,7 +510,8 @@ describe('NuevoPersonajeComponent', () => {
             plantillaSvcMock,
             ventajaSvcMock,
             habilidadSvcMock,
-            idiomaSvcMock
+            idiomaSvcMock,
+            tipoCriaturaSvcMock
         );
         componentReabierto.ngOnInit();
 

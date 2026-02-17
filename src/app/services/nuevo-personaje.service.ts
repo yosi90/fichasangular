@@ -5,14 +5,19 @@ import { Personaje } from '../interfaces/personaje';
 import { Plantilla } from '../interfaces/plantilla';
 import { RacialDetalle } from '../interfaces/racial';
 import { Raza } from '../interfaces/raza';
+import { SubtipoRef } from '../interfaces/subtipo';
+import { TipoCriatura } from '../interfaces/tipo_criatura';
 import { VentajaDetalle } from '../interfaces/ventaja';
-import { simularEstadoPlantillas } from './utils/plantilla-elegibilidad';
+import { resolverAlineamientoPlantillas, simularEstadoPlantillas } from './utils/plantilla-elegibilidad';
 import { createRacialPlaceholder, normalizeRaciales } from './utils/racial-mapper';
+import { normalizeSubtipoRefArray } from './utils/subtipo-mapper';
 
 export type StepNuevoPersonaje = 'raza' | 'basicos' | 'plantillas' | 'ventajas';
 
 type CaracteristicaKey = 'Fuerza' | 'Destreza' | 'Constitucion' | 'Inteligencia' | 'Sabiduria' | 'Carisma';
 type SalvacionKey = 'fortaleza' | 'reflejos' | 'voluntad';
+
+const CARACTERISTICAS_KEYS: CaracteristicaKey[] = ['Fuerza', 'Destreza', 'Constitucion', 'Inteligencia', 'Sabiduria', 'Carisma'];
 
 const MIN_TIRADA = 3;
 const MAX_TIRADA = 13;
@@ -24,6 +29,7 @@ const TIRADAS_POR_TABLA = 6;
 const FILAS_TIRADAS = MAX_TIRADA - MIN_TIRADA + 1;
 const GENERADOR_CONFIG_STORAGE_KEY = 'fichas35.nuevoPersonaje.generador.config.v1';
 const MAX_VENTAJAS_SELECCIONABLES = 3;
+const DADOS_PROGRESION = [4, 6, 8, 10, 12];
 
 export interface AsignacionCaracteristicas {
     Fuerza: number | null;
@@ -76,6 +82,7 @@ export interface VentajasFlujoState {
         Descripcion: string;
         Secreto: boolean;
         Oficial: boolean;
+        Origen?: string;
     }[];
 }
 
@@ -112,6 +119,7 @@ export interface PlantillasFlujoState {
 export class NuevoPersonajeService {
     private personajeCreacion: Personaje = this.crearPersonajeBase();
     private razaSeleccionada: Raza | null = null;
+    private catalogoTiposCriatura: TipoCriatura[] = [];
     private estadoFlujo: EstadoFlujoNuevoPersonaje = this.crearEstadoFlujoBase();
 
     get PersonajeCreacion(): Personaje {
@@ -151,13 +159,19 @@ export class NuevoPersonajeService {
     seleccionarRaza(raza: Raza): void {
         this.razaSeleccionada = raza;
         this.personajeCreacion.Raza = raza;
-        this.personajeCreacion.Tipo_criatura = raza.Tipo_criatura;
         this.personajeCreacion.Correr = raza.Correr ?? 0;
         this.personajeCreacion.Nadar = raza.Nadar ?? 0;
         this.personajeCreacion.Volar = raza.Volar ?? 0;
         this.personajeCreacion.Trepar = raza.Trepar ?? 0;
         this.personajeCreacion.Escalar = raza.Escalar ?? 0;
-        this.personajeCreacion.Raciales = this.copiarRaciales(raza.Raciales);
+        this.personajeCreacion.Raciales = this.asignarOrigenRaciales(
+            this.copiarRaciales(raza.Raciales),
+            raza.Nombre
+        );
+        if (raza?.Tipo_criatura) {
+            this.personajeCreacion.Tipo_criatura = this.copiarTipoCriatura(raza.Tipo_criatura);
+            this.sincronizarCaracteristicasPerdidasConTipoActual();
+        }
         this.personajeCreacion.Edad = raza.Edad_adulto ?? 0;
         this.personajeCreacion.Altura = raza.Altura_rango_inf ?? 0;
         this.personajeCreacion.Peso = raza.Peso_rango_inf ?? 0;
@@ -172,12 +186,9 @@ export class NuevoPersonajeService {
         this.cerrarModalCaracteristicas();
         this.resetearGeneradorCaracteristicas();
         this.estadoFlujo.plantillas = this.crearPlantillasFlujoBase();
-        this.estadoFlujo.plantillas.tipoCriaturaSimulada = {
-            Id: this.toNumber(raza.Tipo_criatura?.Id),
-            Nombre: `${raza.Tipo_criatura?.Nombre ?? '-'}`,
-        };
         this.estadoFlujo.plantillas.heredadaActiva = !!raza.Heredada;
         this.personajeCreacion.Plantillas = [];
+        this.recalcularTipoYSubtiposDerivados();
         this.limpiarVentajasDesventajas();
         this.estadoFlujo.ventajas.baseCaracteristicas = null;
         this.sincronizarBaseVentajasDesdePersonaje();
@@ -210,17 +221,8 @@ export class NuevoPersonajeService {
     }
 
     recalcularSimulacionPlantillas(): void {
-        const baseTipo = this.personajeCreacion.Tipo_criatura;
-        const simulacion = simularEstadoPlantillas(baseTipo, this.estadoFlujo.plantillas.seleccionadas);
-
-        this.estadoFlujo.plantillas.tipoCriaturaSimulada = {
-            Id: simulacion.tipoCriaturaActualId,
-            Nombre: simulacion.tipoCriaturaActualNombre,
-        };
-        this.estadoFlujo.plantillas.licantropiaActiva = simulacion.licantropiaActiva;
-        this.estadoFlujo.plantillas.heredadaActiva = simulacion.heredadaActiva || !!this.razaSeleccionada?.Heredada;
-        this.personajeCreacion.Plantillas = this.estadoFlujo.plantillas.seleccionadas
-            .map(plantilla => this.mapPlantillaParaPersonaje(plantilla));
+        this.recalcularTipoYSubtiposDerivados();
+        this.recalcularEfectosVentajas();
     }
 
     setCatalogosVentajas(ventajas: VentajaDetalle[], desventajas: VentajaDetalle[]): void {
@@ -244,6 +246,11 @@ export class NuevoPersonajeService {
         this.estadoFlujo.ventajas.catalogoIdiomas = [...idiomas];
         this.sanitizarIdiomasEnVentajas();
         this.recalcularEfectosVentajas();
+    }
+
+    setCatalogoTiposCriatura(tipos: TipoCriatura[]): void {
+        this.catalogoTiposCriatura = [...tipos];
+        this.recalcularTipoYSubtiposDerivados();
     }
 
     toggleVentaja(idVentaja: number): ToggleVentajaResult {
@@ -421,9 +428,10 @@ export class NuevoPersonajeService {
         this.estadoFlujo.generador.asignaciones = this.crearAsignacionesVacias();
         this.estadoFlujo.generador.origenesAsignacion = this.crearOrigenesAsignacionVacios();
 
-        if (this.razaSeleccionada?.Tipo_criatura?.Pierde_constitucion) {
-            this.estadoFlujo.generador.asignaciones.Constitucion = 0;
-        }
+        CARACTERISTICAS_KEYS.forEach((key) => {
+            if (this.esCaracteristicaPerdida(key))
+                this.estadoFlujo.generador.asignaciones[key] = 0;
+        });
 
         return true;
     }
@@ -437,9 +445,10 @@ export class NuevoPersonajeService {
         this.estadoFlujo.generador.poolDisponible = [];
         this.estadoFlujo.generador.asignaciones = this.crearAsignacionesVacias();
         this.estadoFlujo.generador.origenesAsignacion = this.crearOrigenesAsignacionVacios();
-        if (this.razaSeleccionada?.Tipo_criatura?.Pierde_constitucion) {
-            this.estadoFlujo.generador.asignaciones.Constitucion = 0;
-        }
+        CARACTERISTICAS_KEYS.forEach((key) => {
+            if (this.esCaracteristicaPerdida(key))
+                this.estadoFlujo.generador.asignaciones[key] = 0;
+        });
     }
 
     getTiradasTabla(tabla: number): number[] {
@@ -463,7 +472,7 @@ export class NuevoPersonajeService {
             return false;
         }
 
-        if (caracteristica === 'Constitucion' && this.razaSeleccionada?.Tipo_criatura?.Pierde_constitucion) {
+        if (this.esCaracteristicaPerdida(caracteristica)) {
             return false;
         }
 
@@ -483,7 +492,7 @@ export class NuevoPersonajeService {
             return false;
         }
 
-        if (caracteristica === 'Constitucion' && this.razaSeleccionada?.Tipo_criatura?.Pierde_constitucion) {
+        if (this.esCaracteristicaPerdida(caracteristica)) {
             return false;
         }
 
@@ -516,8 +525,7 @@ export class NuevoPersonajeService {
             return false;
         }
 
-        const keys: CaracteristicaKey[] = ['Fuerza', 'Destreza', 'Constitucion', 'Inteligencia', 'Sabiduria', 'Carisma'];
-        const caracteristica = keys.find((key) =>
+        const caracteristica = CARACTERISTICAS_KEYS.find((key) =>
             this.estadoFlujo.generador.origenesAsignacion[key] === indexPool
             && this.estadoFlujo.generador.asignaciones[key] !== null
         );
@@ -531,15 +539,7 @@ export class NuevoPersonajeService {
 
     puedeFinalizarGenerador(): boolean {
         const asigs = this.estadoFlujo.generador.asignaciones;
-        if (!this.razaSeleccionada?.Tipo_criatura?.Pierde_constitucion && asigs.Constitucion === null) {
-            return false;
-        }
-
-        return asigs.Fuerza !== null
-            && asigs.Destreza !== null
-            && asigs.Inteligencia !== null
-            && asigs.Sabiduria !== null
-            && asigs.Carisma !== null;
+        return CARACTERISTICAS_KEYS.every((key) => this.esCaracteristicaPerdida(key) || asigs[key] !== null);
     }
 
     getAsignacionesGenerador(): AsignacionCaracteristicas {
@@ -554,45 +554,20 @@ export class NuevoPersonajeService {
     }
 
     aplicarCaracteristicasGeneradas(asignaciones: AsignacionCaracteristicas): boolean {
-        const pierdeConstitucion = this.razaSeleccionada?.Tipo_criatura?.Pierde_constitucion === true;
         const razaMods = this.personajeCreacion.Raza?.Modificadores;
 
-        if (asignaciones.Fuerza === null
-            || asignaciones.Destreza === null
-            || asignaciones.Inteligencia === null
-            || asignaciones.Sabiduria === null
-            || asignaciones.Carisma === null
-            || (!pierdeConstitucion && asignaciones.Constitucion === null)) {
+        if (CARACTERISTICAS_KEYS.some((key) => !this.esCaracteristicaPerdida(key) && asignaciones[key] === null)) {
             return false;
         }
 
-        const baseFuerza = asignaciones.Fuerza;
-        const baseDestreza = asignaciones.Destreza;
-        const baseConstitucion = pierdeConstitucion ? 0 : (asignaciones.Constitucion ?? 0);
-        const baseInteligencia = asignaciones.Inteligencia;
-        const baseSabiduria = asignaciones.Sabiduria;
-        const baseCarisma = asignaciones.Carisma;
-
-        const finalFuerza = baseFuerza + this.toNumber(razaMods?.Fuerza);
-        const finalDestreza = baseDestreza + this.toNumber(razaMods?.Destreza);
-        const finalConstitucion = pierdeConstitucion ? 0 : baseConstitucion + this.toNumber(razaMods?.Constitucion);
-        const finalInteligencia = baseInteligencia + this.toNumber(razaMods?.Inteligencia);
-        const finalSabiduria = baseSabiduria + this.toNumber(razaMods?.Sabiduria);
-        const finalCarisma = baseCarisma + this.toNumber(razaMods?.Carisma);
-
-        this.personajeCreacion.Fuerza = finalFuerza;
-        this.personajeCreacion.Destreza = finalDestreza;
-        this.personajeCreacion.Constitucion = finalConstitucion;
-        this.personajeCreacion.Inteligencia = finalInteligencia;
-        this.personajeCreacion.Sabiduria = finalSabiduria;
-        this.personajeCreacion.Carisma = finalCarisma;
-
-        this.personajeCreacion.ModFuerza = this.calcularModificador(finalFuerza);
-        this.personajeCreacion.ModDestreza = this.calcularModificador(finalDestreza);
-        this.personajeCreacion.ModConstitucion = pierdeConstitucion ? 0 : this.calcularModificador(finalConstitucion);
-        this.personajeCreacion.ModInteligencia = this.calcularModificador(finalInteligencia);
-        this.personajeCreacion.ModSabiduria = this.calcularModificador(finalSabiduria);
-        this.personajeCreacion.ModCarisma = this.calcularModificador(finalCarisma);
+        CARACTERISTICAS_KEYS.forEach((key) => {
+            const perdida = this.esCaracteristicaPerdida(key);
+            const base = perdida ? 0 : this.toNumber(asignaciones[key]);
+            const final = perdida ? 0 : base + this.toNumber(razaMods?.[key]);
+            this.setValorCaracteristica(key, final);
+            this.setModCaracteristica(key, perdida ? 0 : this.calcularModificador(final));
+        });
+        this.sincronizarAliasConstitucionPerdida();
 
         this.estadoFlujo.caracteristicasGeneradas = true;
         this.estadoFlujo.modalCaracteristicasAbierto = false;
@@ -614,20 +589,23 @@ export class NuevoPersonajeService {
         const nuevosIdiomas = this.copiarIdiomas(this.estadoFlujo.ventajas.baseIdiomas);
         const bonosHabilidades: Record<number, HabilidadBonoVario[]> = {};
         const pendientesOro: PendienteOroState[] = [];
+        this.aplicarEfectosPlantillasFase2(caracteristicasVarios, nuevosRaciales, bonosHabilidades);
 
-        const todasLasSelecciones: Array<{ detalle: VentajaDetalle; seleccion: SeleccionVentajaState; }> = [
+        const todasLasSelecciones: Array<{ detalle: VentajaDetalle; seleccion: SeleccionVentajaState; claseOrigen: 'Ventaja' | 'Desventaja'; }> = [
             ...this.estadoFlujo.ventajas.seleccionDesventajas
                 .map((seleccion) => ({
                     detalle: this.estadoFlujo.ventajas.catalogoDesventajas.find(v => v.Id === seleccion.id),
                     seleccion,
+                    claseOrigen: 'Desventaja' as const,
                 }))
-                .filter((x): x is { detalle: VentajaDetalle; seleccion: SeleccionVentajaState; } => !!x.detalle),
+                .filter((x): x is { detalle: VentajaDetalle; seleccion: SeleccionVentajaState; claseOrigen: 'Desventaja'; } => !!x.detalle),
             ...this.estadoFlujo.ventajas.seleccionVentajas
                 .map((seleccion) => ({
                     detalle: this.estadoFlujo.ventajas.catalogoVentajas.find(v => v.Id === seleccion.id),
                     seleccion,
+                    claseOrigen: 'Ventaja' as const,
                 }))
-                .filter((x): x is { detalle: VentajaDetalle; seleccion: SeleccionVentajaState; } => !!x.detalle),
+                .filter((x): x is { detalle: VentajaDetalle; seleccion: SeleccionVentajaState; claseOrigen: 'Ventaja'; } => !!x.detalle),
         ];
 
         todasLasSelecciones.forEach(({ detalle, seleccion }) => {
@@ -636,7 +614,7 @@ export class NuevoPersonajeService {
             this.aplicarModificadoresSalvacion(detalle, origen);
             this.aplicarModificadorIniciativa(detalle, origen);
             this.aplicarModificadorHabilidad(detalle, origen, bonosHabilidades);
-            this.aplicarRasgo(detalle, nuevosRaciales);
+            this.aplicarRasgo(detalle, nuevosRaciales, origen);
             this.aplicarIdioma(detalle, seleccion, nuevosIdiomas, origen);
             this.registrarPendienteOro(detalle, origen, pendientesOro);
         });
@@ -648,7 +626,12 @@ export class NuevoPersonajeService {
         this.personajeCreacion.Raciales = nuevosRaciales;
         this.personajeCreacion.Idiomas = nuevosIdiomas;
         this.estadoFlujo.ventajas.pendientesOro = pendientesOro;
-        this.personajeCreacion.Ventajas = todasLasSelecciones.map(x => x.detalle.Nombre).filter(v => `${v}`.trim().length > 0);
+        this.personajeCreacion.Ventajas = todasLasSelecciones
+            .map((x) => ({
+                Nombre: `${x.detalle.Nombre ?? ''}`.trim(),
+                Origen: x.claseOrigen,
+            }))
+            .filter((v) => v.Nombre.length > 0);
 
         if (this.personajeCreacion.Ventajas.length > 0) {
             this.personajeCreacion.Oficial = false;
@@ -682,6 +665,7 @@ export class NuevoPersonajeService {
         this.personajeCreacion.Salvaciones.reflejos.modsVarios = [];
         this.personajeCreacion.Salvaciones.voluntad.modsVarios = [];
         this.personajeCreacion.Iniciativa_varios = [];
+        this.personajeCreacion.Presa_varios = [];
         this.estadoFlujo.ventajas.bonosHabilidades = {};
         this.estadoFlujo.ventajas.pendientesOro = [];
     }
@@ -707,22 +691,20 @@ export class NuevoPersonajeService {
         if (!base)
             return;
 
-        const suma = (key: CaracteristicaKey): number => (this.personajeCreacion.CaracteristicasVarios[key] ?? [])
-            .reduce((acc, mod) => acc + this.toNumber(mod.valor), 0);
-
-        this.personajeCreacion.Fuerza = base.Fuerza + suma('Fuerza');
-        this.personajeCreacion.Destreza = base.Destreza + suma('Destreza');
-        this.personajeCreacion.Constitucion = base.Constitucion + suma('Constitucion');
-        this.personajeCreacion.Inteligencia = base.Inteligencia + suma('Inteligencia');
-        this.personajeCreacion.Sabiduria = base.Sabiduria + suma('Sabiduria');
-        this.personajeCreacion.Carisma = base.Carisma + suma('Carisma');
-
-        this.personajeCreacion.ModFuerza = this.calcularModificador(this.personajeCreacion.Fuerza);
-        this.personajeCreacion.ModDestreza = this.calcularModificador(this.personajeCreacion.Destreza);
-        this.personajeCreacion.ModConstitucion = this.calcularModificador(this.personajeCreacion.Constitucion);
-        this.personajeCreacion.ModInteligencia = this.calcularModificador(this.personajeCreacion.Inteligencia);
-        this.personajeCreacion.ModSabiduria = this.calcularModificador(this.personajeCreacion.Sabiduria);
-        this.personajeCreacion.ModCarisma = this.calcularModificador(this.personajeCreacion.Carisma);
+        CARACTERISTICAS_KEYS.forEach((key) => {
+            const perdida = this.esCaracteristicaPerdida(key);
+            const minimoPlantilla = this.obtenerMinimoCaracteristicaPorPlantillas(key);
+            const suma = perdida
+                ? 0
+                : (this.personajeCreacion.CaracteristicasVarios[key] ?? [])
+                    .reduce((acc, mod) => acc + this.toNumber(mod.valor), 0);
+            const finalSinMin = perdida ? 0 : this.toNumber(base[key]) + suma;
+            const final = perdida ? 0 : Math.max(finalSinMin, minimoPlantilla);
+            this.setValorCaracteristica(key, final);
+            this.setModCaracteristica(key, perdida ? 0 : this.calcularModificador(final));
+        });
+        this.recalcularDefensasYPresa();
+        this.sincronizarAliasConstitucionPerdida();
     }
 
     private aplicarModificadoresCaracteristica(
@@ -843,20 +825,23 @@ export class NuevoPersonajeService {
         });
     }
 
-    private aplicarRasgo(detalle: VentajaDetalle, raciales: RacialDetalle[]): void {
+    private aplicarRasgo(detalle: VentajaDetalle, raciales: RacialDetalle[], origen: string): void {
         const nombre = `${detalle.Rasgo?.Nombre ?? ''}`.trim();
         if (nombre.length < 1)
             return;
 
         const existe = raciales.some(r => this.normalizarTexto(r.Nombre) === this.normalizarTexto(nombre));
-        if (!existe)
-            raciales.push(createRacialPlaceholder(nombre));
+        if (!existe) {
+            const nuevoRasgo = createRacialPlaceholder(nombre);
+            nuevoRasgo.Origen = origen;
+            raciales.push(nuevoRasgo);
+        }
     }
 
     private aplicarIdioma(
         detalle: VentajaDetalle,
         seleccion: SeleccionVentajaState,
-        idiomas: { Nombre: string; Descripcion: string; Secreto: boolean; Oficial: boolean; }[],
+        idiomas: { Nombre: string; Descripcion: string; Secreto: boolean; Oficial: boolean; Origen?: string; }[],
         origen: string
     ): void {
         if (detalle.Idioma_extra) {
@@ -871,9 +856,10 @@ export class NuevoPersonajeService {
 
             idiomas.push({
                 Nombre: nombre,
-                Descripcion: this.agregarOrigenDescripcion(seleccion.idioma.Descripcion, origen),
+                Descripcion: `${seleccion.idioma.Descripcion ?? ''}`.trim(),
                 Secreto: !!seleccion.idioma.Secreto,
                 Oficial: !!seleccion.idioma.Oficial,
+                Origen: origen,
             });
             return;
         }
@@ -886,9 +872,10 @@ export class NuevoPersonajeService {
 
         idiomas.push({
             Nombre: nombreIdioma,
-            Descripcion: this.agregarOrigenDescripcion(detalle.Idioma?.Descripcion, origen),
+            Descripcion: `${detalle.Idioma?.Descripcion ?? ''}`.trim(),
             Secreto: false,
             Oficial: detalle.Oficial !== false,
+            Origen: origen,
         });
     }
 
@@ -907,20 +894,570 @@ export class NuevoPersonajeService {
         }
     }
 
+    private aplicarEfectosPlantillasFase2(
+        caracteristicasVarios: Record<CaracteristicaKey, { valor: number; origen: string; }[]>,
+        raciales: RacialDetalle[],
+        bonosHabilidades: Record<number, HabilidadBonoVario[]>
+    ): void {
+        const seleccionadas = this.estadoFlujo.plantillas.seleccionadas;
+        const raza = this.razaSeleccionada;
+
+        this.personajeCreacion.Correr = this.toNumber(raza?.Correr);
+        this.personajeCreacion.Nadar = this.toNumber(raza?.Nadar);
+        this.personajeCreacion.Volar = this.toNumber(raza?.Volar);
+        this.personajeCreacion.Trepar = this.toNumber(raza?.Trepar);
+        this.personajeCreacion.Escalar = this.toNumber(raza?.Escalar);
+
+        this.personajeCreacion.Rds = [];
+        this.personajeCreacion.Rcs = [];
+        this.personajeCreacion.Res = [];
+
+        if (this.esTextoReglaValido(`${raza?.Reduccion_dano ?? ''}`)) {
+            this.personajeCreacion.Rds.push({
+                Modificador: `${raza?.Reduccion_dano ?? ''}`.trim(),
+                Origen: `${raza?.Nombre ?? 'Raza'}`.trim(),
+            });
+        }
+        if (this.esTextoReglaValido(`${raza?.Resistencia_magica ?? ''}`)) {
+            this.personajeCreacion.Rcs.push({
+                Modificador: `${raza?.Resistencia_magica ?? ''}`.trim(),
+                Origen: `${raza?.Nombre ?? 'Raza'}`.trim(),
+            });
+        }
+        if (this.esTextoReglaValido(`${raza?.Resistencia_energia ?? ''}`)) {
+            this.personajeCreacion.Res.push({
+                Modificador: `${raza?.Resistencia_energia ?? ''}`.trim(),
+                Origen: `${raza?.Nombre ?? 'Raza'}`.trim(),
+            });
+        }
+
+        let ataqueBase = this.toNumber(raza?.Dgs_adicionales?.Ataque_base);
+        let armaduraNatural = this.toNumber(raza?.Armadura_natural);
+        let caVarios = this.toNumber(raza?.Varios_armadura);
+        let dadoGolpe = this.resolverDadoGolpeTipoActual();
+
+        const hayReglasAlineamiento = seleccionadas.some((plantilla) => this.tieneRestriccionAlineamientoPlantilla(plantilla));
+        if (hayReglasAlineamiento) {
+            const alineamientoResuelto = resolverAlineamientoPlantillas(this.personajeCreacion.Alineamiento, seleccionadas);
+            if (!alineamientoResuelto.conflicto && this.normalizarTexto(alineamientoResuelto.alineamiento).length > 0)
+                this.personajeCreacion.Alineamiento = alineamientoResuelto.alineamiento;
+        }
+
+        seleccionadas.forEach((plantilla) => {
+            const origen = `${plantilla?.Nombre ?? ''}`.trim() || `Plantilla ${this.toNumber(plantilla?.Id)}`;
+            ataqueBase += this.toNumber(plantilla?.Ataque_base);
+
+            if (this.toNumber(plantilla?.Movimientos?.Correr) > 0)
+                this.personajeCreacion.Correr = this.toNumber(plantilla.Movimientos.Correr);
+            if (this.toNumber(plantilla?.Movimientos?.Nadar) > 0)
+                this.personajeCreacion.Nadar = this.toNumber(plantilla.Movimientos.Nadar);
+            if (this.toNumber(plantilla?.Movimientos?.Volar) > 0)
+                this.personajeCreacion.Volar = this.toNumber(plantilla.Movimientos.Volar);
+            if (this.toNumber(plantilla?.Movimientos?.Trepar) > 0)
+                this.personajeCreacion.Trepar = this.toNumber(plantilla.Movimientos.Trepar);
+            if (this.toNumber(plantilla?.Movimientos?.Escalar) > 0)
+                this.personajeCreacion.Escalar = this.toNumber(plantilla.Movimientos.Escalar);
+
+            if (this.toNumber(plantilla?.Fortaleza) !== 0) {
+                this.personajeCreacion.Salvaciones.fortaleza.modsVarios.push({
+                    valor: this.toNumber(plantilla.Fortaleza),
+                    origen,
+                });
+            }
+            if (this.toNumber(plantilla?.Reflejos) !== 0) {
+                this.personajeCreacion.Salvaciones.reflejos.modsVarios.push({
+                    valor: this.toNumber(plantilla.Reflejos),
+                    origen,
+                });
+            }
+            if (this.toNumber(plantilla?.Voluntad) !== 0) {
+                this.personajeCreacion.Salvaciones.voluntad.modsVarios.push({
+                    valor: this.toNumber(plantilla.Voluntad),
+                    origen,
+                });
+            }
+            if (this.toNumber(plantilla?.Iniciativa) !== 0) {
+                this.personajeCreacion.Iniciativa_varios.push({
+                    Valor: this.toNumber(plantilla.Iniciativa),
+                    Origen: origen,
+                });
+            }
+            if (this.toNumber(plantilla?.Presa) !== 0) {
+                this.personajeCreacion.Presa_varios.push({
+                    Valor: this.toNumber(plantilla.Presa),
+                    Origen: origen,
+                });
+            }
+
+            CARACTERISTICAS_KEYS.forEach((key) => {
+                const valor = this.toNumber((plantilla?.Modificadores_caracteristicas as Record<string, any>)?.[key]);
+                if (valor !== 0) {
+                    caracteristicasVarios[key].push({
+                        valor,
+                        origen,
+                    });
+                }
+            });
+
+            const textoCa = `${plantilla?.Ca ?? ''}`.trim();
+            const valorCa = this.extraerPrimerEnteroConSigno(textoCa);
+            if (valorCa !== 0) {
+                const normalizado = this.normalizarTexto(textoCa);
+                if (normalizado.includes('natural'))
+                    armaduraNatural += valorCa;
+                else
+                    caVarios += valorCa;
+            }
+
+            if (this.esTextoReglaValido(`${plantilla?.Reduccion_dano ?? ''}`)) {
+                this.personajeCreacion.Rds.push({
+                    Modificador: `${plantilla?.Reduccion_dano ?? ''}`.trim(),
+                    Origen: origen,
+                });
+            }
+            if (this.esTextoReglaValido(`${plantilla?.Resistencia_conjuros ?? ''}`)) {
+                this.personajeCreacion.Rcs.push({
+                    Modificador: `${plantilla?.Resistencia_conjuros ?? ''}`.trim(),
+                    Origen: origen,
+                });
+            }
+            if (this.esTextoReglaValido(`${plantilla?.Resistencia_elemental ?? ''}`)) {
+                this.personajeCreacion.Res.push({
+                    Modificador: `${plantilla?.Resistencia_elemental ?? ''}`.trim(),
+                    Origen: origen,
+                });
+            }
+
+            this.agregarRacialPlantillaTexto(raciales, `${plantilla?.Ataques ?? ''}`, origen, 'Ataques');
+            this.agregarRacialPlantillaTexto(raciales, `${plantilla?.Ataque_completo ?? ''}`, origen, 'Ataque completo');
+
+            (plantilla?.Habilidades ?? []).forEach((habilidadRef) => {
+                const rangos = this.toNumber(habilidadRef?.Rangos);
+                if (rangos === 0)
+                    return;
+
+                const habilidad = this.asegurarHabilidadDesdePlantilla(habilidadRef);
+                if (!habilidad)
+                    return;
+
+                const idHabilidad = this.toNumber(habilidad.Id);
+                if (idHabilidad <= 0)
+                    return;
+
+                if (!bonosHabilidades[idHabilidad])
+                    bonosHabilidades[idHabilidad] = [];
+                bonosHabilidades[idHabilidad].push({
+                    valor: rangos,
+                    origen,
+                });
+            });
+
+            const dadoDirecto = this.resolverDadoDesdePlantilla(plantilla);
+            if (dadoDirecto > 0)
+                dadoGolpe = dadoDirecto;
+            const pasoDado = this.toNumber(plantilla?.Modificacion_dg?.Id_paso_modificacion);
+            if (pasoDado !== 0)
+                dadoGolpe = this.aplicarPasoDado(dadoGolpe, pasoDado);
+        });
+
+        this.personajeCreacion.Ataque_base = `${ataqueBase}`;
+        this.personajeCreacion.Armadura_natural = armaduraNatural;
+        this.personajeCreacion.Ca_varios = caVarios;
+        this.personajeCreacion.Dados_golpe = dadoGolpe;
+
+        const ajusteRaza = this.toNumber(raza?.Ajuste_nivel);
+        const ajustePlantillas = seleccionadas.reduce((acc, plantilla) => acc + this.toNumber(plantilla?.Ajuste_nivel), 0);
+        const nivelClases = (this.personajeCreacion?.desgloseClases ?? [])
+            .reduce((acc, clase) => acc + this.toNumber(clase?.Nivel), 0);
+        const dgsRaza = this.toNumber(raza?.Dgs_adicionales?.Cantidad);
+        const nivelEfectivo = nivelClases + ajusteRaza + ajustePlantillas + dgsRaza;
+        this.personajeCreacion.NEP = nivelEfectivo;
+        this.personajeCreacion.Experiencia = this.calcularExperienciaPorNivel(nivelClases + ajusteRaza + ajustePlantillas);
+        this.personajeCreacion.Oro_inicial = this.calcularOroPorNep(nivelEfectivo);
+    }
+
+    private esTextoReglaValido(valor: string): boolean {
+        const normalizado = this.normalizarTexto(valor);
+        if (normalizado.length < 1)
+            return false;
+        return normalizado !== 'no especifica'
+            && normalizado !== 'no se especifica'
+            && normalizado !== 'no modifica'
+            && normalizado !== 'no aplica'
+            && normalizado !== '-'
+            && normalizado !== 'ninguna';
+    }
+
+    private extraerPrimerEnteroConSigno(valor: string): number {
+        const match = `${valor ?? ''}`.match(/[+-]?\d+/);
+        if (!match || match.length < 1)
+            return 0;
+        return this.toNumber(match[0]);
+    }
+
+    private resolverDadoGolpeTipoActual(): number {
+        const tipoActual = this.personajeCreacion.Tipo_criatura;
+        const dadoPorTipo = this.toNumber(tipoActual?.Tipo_dado);
+        if (dadoPorTipo > 0)
+            return dadoPorTipo;
+
+        const idTipo = this.toNumber(tipoActual?.Id_tipo_dado);
+        if (idTipo <= 0)
+            return 0;
+
+        const idx = Math.max(0, Math.min(DADOS_PROGRESION.length - 1, idTipo - 1));
+        return DADOS_PROGRESION[idx];
+    }
+
+    private resolverDadoDesdePlantilla(plantilla: Plantilla): number {
+        const porNombre = `${plantilla?.Tipo_dado?.Nombre ?? ''}`.match(/d\s*(\d+)/i);
+        if (porNombre && porNombre[1]) {
+            const dado = this.toNumber(porNombre[1]);
+            if (DADOS_PROGRESION.includes(dado))
+                return dado;
+        }
+
+        const idTipoDado = this.toNumber(plantilla?.Tipo_dado?.Id_tipo_dado);
+        if (idTipoDado <= 0)
+            return 0;
+
+        const idx = Math.max(0, Math.min(DADOS_PROGRESION.length - 1, idTipoDado - 1));
+        return DADOS_PROGRESION[idx];
+    }
+
+    private aplicarPasoDado(actual: number, pasos: number): number {
+        if (actual <= 0 || pasos === 0)
+            return actual;
+
+        let idxActual = DADOS_PROGRESION.indexOf(actual);
+        if (idxActual < 0)
+            idxActual = 0;
+        const idxFinal = Math.max(0, Math.min(DADOS_PROGRESION.length - 1, idxActual + pasos));
+        return DADOS_PROGRESION[idxFinal];
+    }
+
+    private calcularExperienciaPorNivel(nivelAjustado: number): number {
+        const nivel = Math.max(0, Math.trunc(this.toNumber(nivelAjustado)));
+        let acumulado = 0;
+        for (let i = 0; i < nivel; i++)
+            acumulado += i * 1000;
+        return acumulado;
+    }
+
+    private calcularOroPorNep(nep: number): number {
+        const valorNep = Math.max(0, Math.trunc(this.toNumber(nep)));
+        const tabla: Record<number, number> = {
+            1: 0,
+            2: 900,
+            3: 2700,
+            4: 5400,
+            5: 9000,
+            6: 13000,
+            7: 19000,
+            8: 27000,
+            9: 36000,
+            10: 49000,
+            11: 66000,
+            12: 88000,
+            13: 110000,
+            14: 150000,
+            15: 200000,
+            16: 260000,
+            17: 340000,
+            18: 440000,
+            19: 580000,
+            20: 760000,
+        };
+        if (valorNep <= 20)
+            return tabla[valorNep] || 0;
+        return Math.round(760000 * (1.3 * (valorNep - 20)));
+    }
+
+    private obtenerMinimoCaracteristicaPorPlantillas(key: CaracteristicaKey): number {
+        return this.estadoFlujo.plantillas.seleccionadas.reduce((maximo, plantilla) => {
+            const valor = this.toNumber((plantilla?.Minimos_caracteristicas as Record<string, any>)?.[key]);
+            if (valor <= 0)
+                return maximo;
+            return Math.max(maximo, valor);
+        }, 0);
+    }
+
+    private recalcularDefensasYPresa(): void {
+        const modTamanoCa = this.toNumber(this.personajeCreacion?.Raza?.Tamano?.Modificador);
+        const modTamanoPresa = this.toNumber(this.personajeCreacion?.Raza?.Tamano?.Modificador_presa);
+        const presaVarios = (this.personajeCreacion?.Presa_varios ?? [])
+            .reduce((acc, mod) => acc + this.toNumber(mod?.Valor), 0);
+
+        this.personajeCreacion.Ca = 10
+            + this.toNumber(this.personajeCreacion.ModDestreza)
+            + modTamanoCa
+            + this.toNumber(this.personajeCreacion.Armadura_natural)
+            + this.toNumber(this.personajeCreacion.Ca_desvio)
+            + this.toNumber(this.personajeCreacion.Ca_varios);
+
+        const ataqueBase = this.toNumber(this.personajeCreacion.Ataque_base);
+        this.personajeCreacion.Presa = ataqueBase
+            + this.toNumber(this.personajeCreacion.ModFuerza)
+            + modTamanoPresa
+            + presaVarios;
+    }
+
+    private agregarRacialPlantillaTexto(
+        raciales: RacialDetalle[],
+        texto: string,
+        origen: string,
+        prefijo: string
+    ): void {
+        const limpio = `${texto ?? ''}`.trim();
+        if (!this.esTextoReglaValido(limpio))
+            return;
+        const nombreRacial = `${prefijo}: ${limpio}`.trim();
+        const existe = raciales.some(r => this.normalizarTexto(r.Nombre) === this.normalizarTexto(nombreRacial));
+        if (existe)
+            return;
+
+        const racial = createRacialPlaceholder(nombreRacial);
+        racial.Origen = origen;
+        raciales.push(racial);
+    }
+
+    private tieneRestriccionAlineamientoPlantilla(plantilla: Plantilla): boolean {
+        if (this.toNumber(plantilla?.Alineamiento?.Prioridad?.Id_prioridad) <= 0)
+            return false;
+
+        const ley = this.normalizarTexto(`${plantilla?.Alineamiento?.Ley?.Nombre ?? ''}`);
+        if (ley.length > 0 && !ley.includes('ninguna preferencia') && !ley.includes('no aplica'))
+            return true;
+
+        const moral = this.normalizarTexto(`${plantilla?.Alineamiento?.Moral?.Nombre ?? ''}`);
+        if (moral.length > 0 && !moral.includes('ninguna preferencia') && !moral.includes('no aplica'))
+            return true;
+
+        const basico = this.normalizarTexto(`${plantilla?.Alineamiento?.Basico?.Nombre ?? ''}`);
+        if (basico.length > 0 && !basico.includes('ninguna preferencia') && !basico.includes('no aplica'))
+            return true;
+
+        return false;
+    }
+
+    private asegurarHabilidadDesdePlantilla(habilidadRef: Plantilla['Habilidades'][number]): Personaje['Habilidades'][number] | null {
+        const idObjetivo = this.toNumber(habilidadRef?.Id_habilidad);
+        const nombreObjetivo = `${habilidadRef?.Habilidad ?? ''}`.trim();
+
+        if (idObjetivo > 0) {
+            const existentePorId = this.personajeCreacion.Habilidades.find((h) => this.toNumber(h.Id) === idObjetivo);
+            if (existentePorId)
+                return existentePorId;
+        }
+
+        if (nombreObjetivo.length > 0) {
+            const existentePorNombre = this.personajeCreacion.Habilidades
+                .find((h) => this.normalizarTexto(h.Nombre) === this.normalizarTexto(nombreObjetivo));
+            if (existentePorNombre)
+                return existentePorNombre;
+        }
+
+        if (idObjetivo <= 0 || nombreObjetivo.length < 1)
+            return null;
+
+        const carKey = this.resolverCaracteristicaPorIdOTexto(
+            this.toNumber(habilidadRef?.Id_caracteristica),
+            `${habilidadRef?.Caracteristica ?? ''}`
+        );
+        const nuevaHabilidad: Personaje['Habilidades'][number] = {
+            Id: idObjetivo,
+            Nombre: nombreObjetivo,
+            Clasea: false,
+            Car: this.etiquetaCaracteristica(carKey, `${habilidadRef?.Caracteristica ?? ''}`),
+            Mod_car: this.modificadorPorCaracteristica(carKey),
+            Rangos: 0,
+            Rangos_varios: 0,
+            Extra: `${habilidadRef?.Extra ?? ''}`,
+            Varios: `${habilidadRef?.Varios ?? ''}`,
+            Custom: false,
+            Soporta_extra: !!habilidadRef?.Soporta_extra,
+            Extras: [],
+            Bonos_varios: [],
+        };
+        this.personajeCreacion.Habilidades = [
+            ...this.personajeCreacion.Habilidades,
+            nuevaHabilidad,
+        ].sort((a, b) => a.Nombre.localeCompare(b.Nombre, 'es', { sensitivity: 'base' }));
+        return this.personajeCreacion.Habilidades.find((h) => this.toNumber(h.Id) === idObjetivo) ?? null;
+    }
+
     private copiarRaciales(value: RacialDetalle[] | null | undefined): RacialDetalle[] {
         return normalizeRaciales(value)
+            .map((r) => {
+                const origen = `${r?.Origen ?? ''}`.trim();
+                return {
+                    ...r,
+                    Nombre: `${r?.Nombre ?? ''}`.trim(),
+                    Origen: origen.length > 0 ? origen : undefined,
+                };
+            })
             .filter((r) => this.normalizarTexto(r.Nombre).length > 0);
     }
 
-    private copiarIdiomas(value: { Nombre: string; Descripcion: string; Secreto: boolean; Oficial: boolean; }[] | null | undefined) {
+    private copiarIdiomas(value: { Nombre: string; Descripcion: string; Secreto: boolean; Oficial: boolean; Origen?: string; }[] | null | undefined) {
         return (value ?? [])
             .map((i) => ({
                 Nombre: `${i?.Nombre ?? ''}`.trim(),
                 Descripcion: `${i?.Descripcion ?? ''}`.trim(),
                 Secreto: !!i?.Secreto,
                 Oficial: !!i?.Oficial,
+                Origen: `${i?.Origen ?? ''}`.trim() || undefined,
             }))
             .filter(i => i.Nombre.length > 0);
+    }
+
+    private recalcularTipoYSubtiposDerivados(): void {
+        const tipoBase = this.resolverTipoBaseRaza();
+        const seleccionadas = this.estadoFlujo.plantillas.seleccionadas;
+        const simulacion = simularEstadoPlantillas(tipoBase, seleccionadas);
+        const tipoResultante = this.resolverTipoCriaturaResultante(
+            tipoBase,
+            simulacion.tipoCriaturaActualId,
+            simulacion.tipoCriaturaActualNombre
+        );
+        const subtiposBase = this.copiarSubtipos(this.razaSeleccionada?.Subtipos ?? []);
+        const subtiposResultantes = this.resolverSubtiposResultantes(subtiposBase, seleccionadas);
+        const rasgosTipoConOrigen = this.asignarOrigenRasgosTipo(
+            tipoResultante.Rasgos,
+            tipoResultante.Nombre
+        );
+
+        this.personajeCreacion.Tipo_criatura = {
+            ...tipoResultante,
+            Rasgos: rasgosTipoConOrigen,
+        };
+        this.personajeCreacion.Subtipos = subtiposResultantes;
+        this.estadoFlujo.plantillas.tipoCriaturaSimulada = {
+            Id: this.toNumber(tipoResultante?.Id),
+            Nombre: `${tipoResultante?.Nombre ?? '-'}`,
+        };
+        this.estadoFlujo.plantillas.licantropiaActiva = simulacion.licantropiaActiva;
+        this.estadoFlujo.plantillas.heredadaActiva = simulacion.heredadaActiva || !!this.razaSeleccionada?.Heredada;
+        this.personajeCreacion.Plantillas = seleccionadas.map(plantilla => this.mapPlantillaParaPersonaje(plantilla));
+        this.sincronizarCaracteristicasPerdidasConTipoActual();
+        if (this.estadoFlujo.caracteristicasGeneradas) {
+            this.aplicarCaracteristicasFinalesDesdeBase();
+        } else {
+            this.aplicarPerdidasSinGenerador();
+        }
+    }
+
+    private resolverTipoBaseRaza(): TipoCriatura {
+        if (this.razaSeleccionada?.Tipo_criatura)
+            return this.copiarTipoCriatura(this.razaSeleccionada.Tipo_criatura);
+        if (this.personajeCreacion?.Tipo_criatura)
+            return this.copiarTipoCriatura(this.personajeCreacion.Tipo_criatura);
+        return this.crearTipoCriaturaFallback(0, '-');
+    }
+
+    private resolverTipoCriaturaResultante(tipoBase: TipoCriatura, tipoResultanteIdRaw: number, tipoResultanteNombreRaw: string): TipoCriatura {
+        const tipoResultanteId = this.toNumber(tipoResultanteIdRaw);
+        const tipoBaseId = this.toNumber(tipoBase?.Id);
+        const tipoFinalId = tipoResultanteId > 0 ? tipoResultanteId : tipoBaseId;
+
+        const fromCatalog = this.buscarTipoCriaturaPorId(tipoFinalId);
+        if (fromCatalog)
+            return this.copiarTipoCriatura(fromCatalog);
+
+        if (tipoFinalId > 0 && tipoBaseId > 0 && tipoFinalId === tipoBaseId)
+            return this.copiarTipoCriatura(tipoBase);
+
+        const nombreResultado = `${tipoResultanteNombreRaw ?? ''}`.trim();
+        if (nombreResultado.length > 0)
+            return this.crearTipoCriaturaFallback(tipoFinalId, nombreResultado);
+
+        if (tipoFinalId > 0)
+            return this.crearTipoCriaturaFallback(tipoFinalId, `Tipo #${tipoFinalId}`);
+
+        return this.copiarTipoCriatura(tipoBase);
+    }
+
+    private resolverSubtiposResultantes(subtiposBase: SubtipoRef[], seleccionadas: Plantilla[]): SubtipoRef[] {
+        let actuales = this.copiarSubtipos(subtiposBase);
+        seleccionadas.forEach((plantilla) => {
+            const subtiposPlantilla = this.copiarSubtipos(plantilla?.Subtipos ?? []);
+            if (subtiposPlantilla.length > 0)
+                actuales = subtiposPlantilla;
+        });
+        return actuales;
+    }
+
+    private buscarTipoCriaturaPorId(idTipo: number): TipoCriatura | null {
+        const id = this.toNumber(idTipo);
+        if (id <= 0)
+            return null;
+        return this.catalogoTiposCriatura.find((tipo) => this.toNumber(tipo?.Id) === id) ?? null;
+    }
+
+    private copiarTipoCriatura(tipo: TipoCriatura | null | undefined): TipoCriatura {
+        if (!tipo)
+            return this.crearTipoCriaturaFallback(0, '-');
+
+        return {
+            Id: this.toNumber(tipo.Id),
+            Nombre: `${tipo.Nombre ?? '-'}`,
+            Descripcion: `${tipo.Descripcion ?? ''}`,
+            Manual: `${tipo.Manual ?? ''}`,
+            Id_tipo_dado: this.toNumber(tipo.Id_tipo_dado),
+            Tipo_dado: this.toNumber(tipo.Tipo_dado),
+            Id_ataque: this.toNumber(tipo.Id_ataque),
+            Id_fortaleza: this.toNumber(tipo.Id_fortaleza),
+            Id_reflejos: this.toNumber(tipo.Id_reflejos),
+            Id_voluntad: this.toNumber(tipo.Id_voluntad),
+            Id_puntos_habilidad: this.toNumber(tipo.Id_puntos_habilidad),
+            Come: this.toBooleanValue(tipo.Come),
+            Respira: this.toBooleanValue(tipo.Respira),
+            Duerme: this.toBooleanValue(tipo.Duerme),
+            Recibe_criticos: this.toBooleanValue(tipo.Recibe_criticos),
+            Puede_ser_flanqueado: this.toBooleanValue(tipo.Puede_ser_flanqueado),
+            Pierde_constitucion: this.toBooleanValue(tipo.Pierde_constitucion),
+            Limite_inteligencia: this.toNumber(tipo.Limite_inteligencia),
+            Tesoro: `${tipo.Tesoro ?? ''}`,
+            Id_alineamiento: this.toNumber(tipo.Id_alineamiento),
+            Rasgos: this.asignarOrigenRasgosTipo(tipo.Rasgos, tipo.Nombre),
+            Oficial: this.toBooleanValue(tipo.Oficial),
+        };
+    }
+
+    private crearTipoCriaturaFallback(id: number, nombre: string): TipoCriatura {
+        return {
+            Id: this.toNumber(id),
+            Nombre: `${nombre ?? '-'}`,
+            Descripcion: '',
+            Manual: '',
+            Id_tipo_dado: 0,
+            Tipo_dado: 0,
+            Id_ataque: 0,
+            Id_fortaleza: 0,
+            Id_reflejos: 0,
+            Id_voluntad: 0,
+            Id_puntos_habilidad: 0,
+            Come: true,
+            Respira: true,
+            Duerme: true,
+            Recibe_criticos: true,
+            Puede_ser_flanqueado: true,
+            Pierde_constitucion: false,
+            Limite_inteligencia: 0,
+            Tesoro: '',
+            Id_alineamiento: 0,
+            Rasgos: [],
+            Oficial: false,
+        };
+    }
+
+    private copiarSubtipos(value: SubtipoRef[] | null | undefined): SubtipoRef[] {
+        return normalizeSubtipoRefArray(value)
+            .map((subtipo) => ({
+                Id: this.toNumber(subtipo?.Id),
+                Nombre: `${subtipo?.Nombre ?? ''}`.trim(),
+            }))
+            .filter((subtipo) => subtipo.Nombre.length > 0 || subtipo.Id > 0);
     }
 
     private idiomaYaEnPersonajeOSeleccion(nombreIdioma: string, exceptVentajaId?: number): boolean {
@@ -935,13 +1472,6 @@ export class NuevoPersonajeService {
         return this.estadoFlujo.ventajas.seleccionVentajas
             .filter(v => v.id !== exceptVentajaId)
             .some((v) => this.normalizarTexto(v.idioma?.Nombre ?? '') === normalizado);
-    }
-
-    private agregarOrigenDescripcion(descripcion: string | undefined, origen: string): string {
-        const base = `${descripcion ?? ''}`.trim();
-        if (base.length < 1)
-            return `Origen: ${origen}`;
-        return `${base} (Origen: ${origen})`;
     }
 
     private crearEstadoFlujoBase(): EstadoFlujoNuevoPersonaje {
@@ -1141,12 +1671,94 @@ export class NuevoPersonajeService {
         return Number.isFinite(parsed) ? parsed : 0;
     }
 
+    private toBooleanValue(value: any): boolean {
+        if (typeof value === 'boolean')
+            return value;
+        if (typeof value === 'number')
+            return value === 1;
+        if (typeof value === 'string') {
+            const normalizado = value.trim().toLowerCase();
+            return normalizado === '1' || normalizado === 'true' || normalizado === 'si' || normalizado === 'sí';
+        }
+        return false;
+    }
+
+    private esCaracteristicaPerdida(key: CaracteristicaKey): boolean {
+        const mapa = this.personajeCreacion?.Caracteristicas_perdidas ?? {};
+        const valorMapa = this.toBooleanValue((mapa as Record<string, any>)?.[key]);
+        if (key === 'Constitucion') {
+            const legado = this.toBooleanValue(this.personajeCreacion?.Constitucion_perdida);
+            return valorMapa || legado;
+        }
+        return valorMapa;
+    }
+
+    private setCaracteristicaPerdida(key: CaracteristicaKey, estado: any, _origen?: string): void {
+        const valor = this.toBooleanValue(estado);
+        const perdidasActuales = {
+            ...this.personajeCreacion.Caracteristicas_perdidas,
+            [key]: valor,
+        };
+        this.personajeCreacion.Caracteristicas_perdidas = perdidasActuales;
+
+        if (key === 'Constitucion')
+            this.personajeCreacion.Constitucion_perdida = valor;
+    }
+
+    private sincronizarAliasConstitucionPerdida(): void {
+        this.personajeCreacion.Constitucion_perdida = this.esCaracteristicaPerdida('Constitucion');
+        this.personajeCreacion.Caracteristicas_perdidas = {
+            ...this.personajeCreacion.Caracteristicas_perdidas,
+            Constitucion: this.personajeCreacion.Constitucion_perdida,
+        };
+    }
+
+    private sincronizarCaracteristicasPerdidasConTipoActual(): void {
+        const tipoActual = this.personajeCreacion?.Tipo_criatura;
+        const pierdeConstitucion = this.toBooleanValue(tipoActual?.Pierde_constitucion);
+        this.setCaracteristicaPerdida('Constitucion', pierdeConstitucion, 'tipo_criatura');
+    }
+
+    private aplicarPerdidasSinGenerador(): void {
+        CARACTERISTICAS_KEYS.forEach((key) => {
+            if (!this.esCaracteristicaPerdida(key))
+                return;
+            this.setValorCaracteristica(key, 0);
+            this.setModCaracteristica(key, 0);
+        });
+        this.sincronizarAliasConstitucionPerdida();
+    }
+
     private normalizarTexto(valor: string): string {
         return `${valor ?? ''}`
             .normalize('NFD')
             .replace(/[\u0300-\u036f]/g, '')
             .trim()
             .toLowerCase();
+    }
+
+    private asignarOrigenRaciales(raciales: RacialDetalle[], origen: string): RacialDetalle[] {
+        const origenNormalizado = `${origen ?? ''}`.trim();
+        if (origenNormalizado.length < 1)
+            return raciales;
+        return raciales.map((racial) => ({
+            ...racial,
+            Origen: `${racial?.Origen ?? ''}`.trim() || origenNormalizado,
+        }));
+    }
+
+    private asignarOrigenRasgosTipo(rasgos: any, nombreTipo: string): any[] {
+        const origenTipo = `${nombreTipo ?? ''}`.trim();
+        const listado = Array.isArray(rasgos)
+            ? rasgos
+            : (rasgos && typeof rasgos === 'object' ? Object.values(rasgos) : []);
+        return listado.map((rasgo: any) => {
+            const origen = `${rasgo?.Origen ?? rasgo?.origen ?? ''}`.trim();
+            return {
+                ...rasgo,
+                Origen: origen.length > 0 ? origen : (origenTipo.length > 0 ? origenTipo : undefined),
+            };
+        });
     }
 
     private crearCaracteristicasVariosVacias() {
@@ -1278,6 +1890,15 @@ export class NuevoPersonajeService {
         return this.personajeCreacion.ModCarisma;
     }
 
+    private setValorCaracteristica(key: CaracteristicaKey, valor: number): void {
+        (this.personajeCreacion as Record<string, any>)[key] = this.toNumber(valor);
+    }
+
+    private setModCaracteristica(key: CaracteristicaKey, mod: number): void {
+        const prop = `Mod${key}`;
+        (this.personajeCreacion as Record<string, any>)[prop] = this.toNumber(mod);
+    }
+
     private mapPlantillaParaPersonaje(plantilla: Plantilla) {
         return {
             Id: this.toNumber(plantilla.Id),
@@ -1394,6 +2015,15 @@ export class NuevoPersonajeService {
             ModDestreza: 0,
             Constitucion: 10,
             ModConstitucion: 0,
+            Caracteristicas_perdidas: {
+                Fuerza: false,
+                Destreza: false,
+                Constitucion: false,
+                Inteligencia: false,
+                Sabiduria: false,
+                Carisma: false,
+            },
+            Constitucion_perdida: false,
             Inteligencia: 10,
             ModInteligencia: 0,
             Sabiduria: 10,

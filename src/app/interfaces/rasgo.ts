@@ -3,4 +3,5 @@ export interface Rasgo {
     Nombre: string;
     Descripcion: string;
     Oficial: boolean;
+    Origen?: string;
 }

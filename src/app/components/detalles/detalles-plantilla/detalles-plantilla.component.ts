@@ -1,6 +1,7 @@
 import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { DoteContextual } from 'src/app/interfaces/dote-contextual';
 import { Plantilla, PlantillaPrerrequisitos } from 'src/app/interfaces/plantilla';
+import { SubtipoRef } from 'src/app/interfaces/subtipo';
 
 type PrerrequisitoCondicion = {
     familiaEtiqueta: string;
@@ -55,6 +56,7 @@ export class DetallesPlantillaComponent {
 
     @Output() conjuroDetalles: EventEmitter<number> = new EventEmitter<number>();
     @Output() doteDetalles: EventEmitter<number> = new EventEmitter<number>();
+    @Output() subtipoDetalles: EventEmitter<{ Id?: number | null; Nombre: string; }> = new EventEmitter<{ Id?: number | null; Nombre: string; }>();
 
     abrirDetallesConjuro(idConjuro: number) {
         const id = Number(idConjuro);
@@ -79,6 +81,7 @@ export class DetallesPlantillaComponent {
             && limpiado !== 'no se especifica'
             && limpiado !== 'no aplica'
             && limpiado !== 'no modifica'
+            && limpiado !== 'no vuela'
             && limpiado !== '-';
     }
 
@@ -311,6 +314,23 @@ export class DetallesPlantillaComponent {
         if (this.tieneTextoVisible(extra) && this.normalizar(extra) !== 'no aplica')
             return `${doteCtx.Dote.Nombre} (${extra})`;
         return doteCtx.Dote.Nombre;
+    }
+
+    getSubtiposActivos(): SubtipoRef[] {
+        return (this.plantillaData?.Subtipos ?? [])
+            .filter(subtipo => this.tieneTextoVisible(subtipo?.Nombre))
+            .sort((a, b) => a.Nombre.localeCompare(b.Nombre, 'es', { sensitivity: 'base' }));
+    }
+
+    abrirDetalleSubtipo(subtipo: SubtipoRef) {
+        const nombre = `${subtipo?.Nombre ?? ''}`.trim();
+        if (!this.tieneTextoVisible(nombre))
+            return;
+        const id = Number(subtipo?.Id);
+        this.subtipoDetalles.emit({
+            Id: Number.isFinite(id) && id > 0 ? id : null,
+            Nombre: nombre,
+        });
     }
 
     private formatearValor(valor: unknown): string {

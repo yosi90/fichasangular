@@ -150,7 +150,10 @@ export class DetallesDoteComponent {
         if (!base)
             return false;
         const limpiado = base.replace(/[.]/g, '');
-        return limpiado !== 'no especifica' && limpiado !== 'no se especifica';
+        return limpiado !== 'no especifica'
+            && limpiado !== 'no se especifica'
+            && limpiado !== 'no modifica'
+            && limpiado !== 'no vuela';
     }
 
     getOrigenContexto(): string {

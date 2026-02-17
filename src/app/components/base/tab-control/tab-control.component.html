@@ -34,6 +34,7 @@
             (especialDetallesPorNombre)="abrirDetallesEspecialPorNombre($event);"
             (racialDetallesPorNombre)="abrirDetallesRacialDesdeReferencia($event);"
             (plantillaDetalles)="abrirDetallesPlantillaDesdeFicha($event);"
+            (subtipoDetalles)="abrirDetallesSubtipoDesdeReferencia($event);"
             (doteDetalles)="abrirDetallesDote($event);">
         </app-detalles-personaje>
     </mat-tab>
@@ -46,6 +47,7 @@
         <app-nuevo-personaje
             (razaDetalles)="abrirDetallesRaza($event)"
             (plantillaDetalles)="abrirDetallesPlantilla($event)"
+            (rasgoDetalles)="abrirDetallesRasgo($event)"
             (racialDetallesPorNombre)="abrirDetallesRacialDesdeReferencia($event)"
             (cerrarNuevoPersonajeSolicitado)="onCerrarNuevoPersonajeSolicitado()">
         </app-nuevo-personaje>
@@ -74,7 +76,8 @@
         </ng-template>
         <app-detalles-raza
             [raza]="detallesRazaAbiertos[index]"
-            (racialDetallesPorNombre)="abrirDetallesRacialDesdeReferencia($event)">
+            (racialDetallesPorNombre)="abrirDetallesRacialDesdeReferencia($event)"
+            (subtipoDetalles)="abrirDetallesSubtipoDesdeReferencia($event)">
         </app-detalles-raza>
     </mat-tab>
     <mat-tab *ngFor="let tab of detallesConjuroAbiertos; let index = index" [label]="tab.Nombre">
@@ -131,7 +134,10 @@
             {{getEtiquetaEspecial(especial)}}
             <button (click)="quitarDetallesEspecial(getEtiquetaEspecial(especial))" mat-icon-button class="ms-2"><mat-icon>close</mat-icon></button>
         </ng-template>
-        <app-detalles-especial [especial]="detallesEspecialAbiertos[index]"></app-detalles-especial>
+        <app-detalles-especial
+            [especial]="detallesEspecialAbiertos[index]"
+            (subtipoDetalles)="abrirDetallesSubtipoDesdeReferencia($event)">
+        </app-detalles-especial>
     </mat-tab>
     <mat-tab *ngFor="let racial of detallesRacialAbiertos; let index = index" [label]="getEtiquetaRacial(racial)">
         <ng-template mat-tab-label>
@@ -162,8 +168,23 @@
         <app-detalles-plantilla
             [plantilla]="detallesPlantillaAbiertos[index]"
             (conjuroDetalles)="abrirDetallesConjuroPorId($event)"
-            (doteDetalles)="abrirDetallesDotePorId($event)">
+            (doteDetalles)="abrirDetallesDotePorId($event)"
+            (subtipoDetalles)="abrirDetallesSubtipoDesdeReferencia($event)">
         </app-detalles-plantilla>
+    </mat-tab>
+    <mat-tab *ngFor="let subtipo of detallesSubtipoAbiertos; let index = index" [label]="getEtiquetaSubtipo(subtipo)">
+        <ng-template mat-tab-label>
+            <mat-icon class="me-2">find_in_page</mat-icon>
+            {{getEtiquetaSubtipo(subtipo)}}
+            <button (click)="quitarDetallesSubtipo(getEtiquetaSubtipo(subtipo))" mat-icon-button class="ms-2"><mat-icon>close</mat-icon></button>
+        </ng-template>
+        <app-detalles-subtipo
+            [subtipo]="detallesSubtipoAbiertos[index]"
+            (doteDetalles)="abrirDetallesDotePorId($event)"
+            (conjuroDetalles)="abrirDetallesConjuroPorId($event)"
+            (rasgoDetalles)="abrirDetallesRasgo($event)"
+            (plantillaDetalles)="abrirDetallesPlantillaPorId($event)">
+        </app-detalles-subtipo>
     </mat-tab>
     <mat-tab label="Información importante" class="pe-3">
         <ng-template mat-tab-label="">
@@ -200,7 +221,7 @@
                 <p class="d-flex align-items-center mb-0">Versión 0.3</p>
                 <hr>
                 <ol>
-                    <li><p class="d-flex align-items-center mb-0">Creadas vistas de faltantes</p></li>
+                    <li><p class="d-flex align-items-center mb-0">Creadas vistas de faltantes <mat-icon class="ms-2">done</mat-icon></p></li>
                     <li><p class="d-flex align-items-center mb-0">Creada la inserción de conjuros</p></li>
                     <li><p class="d-flex align-items-center mb-0">Creada la inserción de dotes</p></li>
                 </ol>

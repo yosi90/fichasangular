@@ -18,6 +18,14 @@
                     Tipo de dado
                     <mat-chip class="sombra3d-sm m-1">{{plantillaData.Tipo_dado.Nombre}}</mat-chip>
                 </mat-chip>
+                <mat-chip class="h-auto chip-anidada sombra3d-sm m-1" *ngIf="getSubtiposActivos().length > 0">
+                    Subtipos
+                    <mat-chip class="chip-clic sombra3d-sm m-1" *ngFor="let subtipo of getSubtiposActivos()"
+                        matTooltip="Pulsa para ver detalles de este subtipo" [matTooltipShowDelay]="250"
+                        matTooltipClass="tt-accent" (click)="abrirDetalleSubtipo(subtipo)">
+                        {{subtipo.Nombre}}
+                    </mat-chip>
+                </mat-chip>
             </div>
 
             <div class="d-flex flex-wrap align-items-center sombra-caja-sm rounded p-2 my-2" *ngIf="tieneCambiosCaracteristicas()">

@@ -35,6 +35,12 @@ export interface SimulacionPlantillasResultado {
     heredadaActiva: boolean;
 }
 
+export interface ResolucionAlineamientoPlantillas {
+    alineamiento: string;
+    conflicto: boolean;
+    razones: string[];
+}
+
 function toNumber(value: any, fallback: number = 0): number {
     const n = Number(value);
     return Number.isFinite(n) ? n : fallback;
@@ -66,6 +72,157 @@ function getAlineamientoBasicoId(alineamiento: string): number {
     };
 
     return map[normalize(alineamiento)] ?? 0;
+}
+
+const ALINEAMIENTO_POR_VECTOR: Record<string, string> = {
+    "1,1": "Legal bueno",
+    "1,0": "Legal neutral",
+    "1,-1": "Legal maligno",
+    "0,1": "Neutral bueno",
+    "0,0": "Neutral autentico",
+    "0,-1": "Neutral maligno",
+    "-1,1": "Caotico bueno",
+    "-1,0": "Caotico neutral",
+    "-1,-1": "Caotico maligno",
+};
+
+function parseLey(value: string): number | null {
+    const n = normalize(value);
+    if (n.length < 1 || n.includes("ninguna preferencia") || n.includes("no aplica"))
+        return null;
+    if (n.includes("legal"))
+        return 1;
+    if (n.includes("caot"))
+        return -1;
+    if (n.includes("neutral"))
+        return 0;
+    return null;
+}
+
+function parseMoral(value: string): number | null {
+    const n = normalize(value);
+    if (n.length < 1 || n.includes("ninguna preferencia") || n.includes("no aplica"))
+        return null;
+    if (n.includes("malign"))
+        return -1;
+    if (n.includes("buen"))
+        return 1;
+    if (n.includes("neutral"))
+        return 0;
+    return null;
+}
+
+function toAlineamientoFromVector(ley: number, moral: number): string {
+    const key = `${ley},${moral}`;
+    return ALINEAMIENTO_POR_VECTOR[key] ?? "Neutral autentico";
+}
+
+function getVectorFromAlineamientoNombre(nombre: string): { ley: number; moral: number; } | null {
+    const alineamientoId = getAlineamientoBasicoId(nombre);
+    const map: Record<number, { ley: number; moral: number; }> = {
+        1: { ley: 1, moral: 1 },
+        2: { ley: 1, moral: 0 },
+        3: { ley: 1, moral: -1 },
+        4: { ley: 0, moral: 1 },
+        5: { ley: 0, moral: 0 },
+        6: { ley: 0, moral: -1 },
+        7: { ley: -1, moral: 1 },
+        8: { ley: -1, moral: 0 },
+        9: { ley: -1, moral: -1 },
+    };
+    return map[alineamientoId] ?? null;
+}
+
+function esPrioridadValida(prioridad: number): boolean {
+    return Number.isFinite(prioridad) && prioridad > 0;
+}
+
+function extraerRestriccionPlantilla(plantilla: Plantilla): {
+    prioridad: number;
+    ley: number | null;
+    moral: number | null;
+    origen: string;
+} {
+    const alineamiento = plantilla?.Alineamiento;
+    const prioridad = toNumber(alineamiento?.Prioridad?.Id_prioridad);
+    const origen = `${plantilla?.Nombre ?? "Plantilla"}`.trim() || "Plantilla";
+
+    const vectorBasico = getVectorFromAlineamientoNombre(`${alineamiento?.Basico?.Nombre ?? ""}`);
+    const ley = parseLey(`${alineamiento?.Ley?.Nombre ?? ""}`) ?? vectorBasico?.ley ?? null;
+    const moral = parseMoral(`${alineamiento?.Moral?.Nombre ?? ""}`) ?? vectorBasico?.moral ?? null;
+
+    return {
+        prioridad,
+        ley,
+        moral,
+        origen,
+    };
+}
+
+export function resolverAlineamientoPlantillas(
+    alineamientoBase: string,
+    seleccionadas: Plantilla[]
+): ResolucionAlineamientoPlantillas {
+    const baseVector = getVectorFromAlineamientoNombre(alineamientoBase) ?? { ley: 0, moral: 0 };
+    const razones: string[] = [];
+    let restriccionLeyValor: number | null = null;
+    let restriccionLeyPrioridad = -1;
+    let restriccionLeyOrigen = "";
+    let restriccionMoralValor: number | null = null;
+    let restriccionMoralPrioridad = -1;
+    let restriccionMoralOrigen = "";
+
+    const aplicarRestriccion = (
+        eje: "ley" | "moral",
+        valor: number | null,
+        prioridad: number,
+        origen: string
+    ) => {
+        if (valor === null || !esPrioridadValida(prioridad))
+            return;
+
+        if (eje === "ley") {
+            if (restriccionLeyValor === null || prioridad > restriccionLeyPrioridad) {
+                restriccionLeyValor = valor;
+                restriccionLeyPrioridad = prioridad;
+                restriccionLeyOrigen = origen;
+                return;
+            }
+            if (prioridad === restriccionLeyPrioridad && valor !== restriccionLeyValor) {
+                razones.push(
+                    `Conflicto de alineamiento (${eje}) entre "${restriccionLeyOrigen}" y "${origen}" (prioridad ${prioridad})`
+                );
+            }
+            return;
+        }
+
+        if (restriccionMoralValor === null || prioridad > restriccionMoralPrioridad) {
+            restriccionMoralValor = valor;
+            restriccionMoralPrioridad = prioridad;
+            restriccionMoralOrigen = origen;
+            return;
+        }
+        if (prioridad === restriccionMoralPrioridad && valor !== restriccionMoralValor) {
+            razones.push(
+                `Conflicto de alineamiento (${eje}) entre "${restriccionMoralOrigen}" y "${origen}" (prioridad ${prioridad})`
+            );
+        }
+    };
+
+    seleccionadas.forEach((plantilla) => {
+        const restriccion = extraerRestriccionPlantilla(plantilla);
+        aplicarRestriccion("ley", restriccion.ley, restriccion.prioridad, restriccion.origen);
+        aplicarRestriccion("moral", restriccion.moral, restriccion.prioridad, restriccion.origen);
+    });
+
+    const leyFinal = restriccionLeyValor ?? baseVector.ley;
+    const moralFinal = restriccionMoralValor ?? baseVector.moral;
+
+    return {
+        alineamiento: toAlineamientoFromVector(leyFinal, moralFinal),
+        conflicto: razones.length > 0,
+        razones,
+    };
 }
 
 function cumpleActitud(actitudId: number, alineamientoBasicoId: number): boolean {

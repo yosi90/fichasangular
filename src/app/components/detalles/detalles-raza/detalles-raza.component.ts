@@ -1,6 +1,7 @@
 import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { RacialDetalle, RacialReferencia } from 'src/app/interfaces/racial';
 import { Raza } from 'src/app/interfaces/raza';
+import { SubtipoRef } from 'src/app/interfaces/subtipo';
 
 @Component({
     selector: 'app-detalles-raza',
@@ -11,6 +12,7 @@ export class DetallesRazaComponent {
     @Input() raza!: Raza;
 
     @Output() racialDetallesPorNombre: EventEmitter<RacialReferencia> = new EventEmitter<RacialReferencia>();
+    @Output() subtipoDetalles: EventEmitter<{ Id?: number | null; Nombre: string; }> = new EventEmitter<{ Id?: number | null; Nombre: string; }>();
 
     abrirDetalleRacial(racial: RacialDetalle) {
         const nombre = `${racial?.Nombre ?? ''}`.trim();
@@ -30,6 +32,23 @@ export class DetallesRazaComponent {
             .sort((a, b) => a.Nombre.localeCompare(b.Nombre, 'es', { sensitivity: 'base' }));
     }
 
+    getSubtiposActivos(): SubtipoRef[] {
+        return (this.raza?.Subtipos ?? [])
+            .filter(subtipo => this.tieneTextoVisible(subtipo?.Nombre))
+            .sort((a, b) => a.Nombre.localeCompare(b.Nombre, 'es', { sensitivity: 'base' }));
+    }
+
+    abrirDetalleSubtipo(subtipo: SubtipoRef) {
+        const nombre = `${subtipo?.Nombre ?? ''}`.trim();
+        if (!this.tieneTextoVisible(nombre))
+            return;
+        const id = Number(subtipo?.Id);
+        this.subtipoDetalles.emit({
+            Id: Number.isFinite(id) && id > 0 ? id : null,
+            Nombre: nombre,
+        });
+    }
+
     tieneTextoVisible(texto: string | undefined | null): boolean {
         if (!texto)
             return false;
@@ -37,6 +56,11 @@ export class DetallesRazaComponent {
         if (!base)
             return false;
         const limpiado = base.replace(/[.]/g, '');
-        return limpiado !== 'no especifica' && limpiado !== 'no se especifica' && limpiado !== 'no aplica' && limpiado !== '-';
+        return limpiado !== 'no especifica'
+            && limpiado !== 'no se especifica'
+            && limpiado !== 'no aplica'
+            && limpiado !== 'no modifica'
+            && limpiado !== 'no vuela'
+            && limpiado !== '-';
     }
 }

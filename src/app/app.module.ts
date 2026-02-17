@@ -67,6 +67,8 @@ import { ListadoPlantillasComponent } from './components/shared/listado-plantill
 import { DetallesPlantillaComponent } from './components/detalles/detalles-plantilla/detalles-plantilla.component';
 import { SelectorIdiomaModalComponent } from './components/nuevo-personaje/selector-idioma-modal/selector-idioma-modal.component';
 import { VentanaDetalleFlotanteComponent } from './components/nuevo-personaje/ventana-detalle-flotante/ventana-detalle-flotante.component';
+import { ListadoSubtiposComponent } from './components/shared/listado-subtipos/listado-subtipos.component';
+import { DetallesSubtipoComponent } from './components/detalles/detalles-subtipo/detalles-subtipo.component';
 
 @NgModule({
     declarations: [
@@ -104,6 +106,8 @@ import { VentanaDetalleFlotanteComponent } from './components/nuevo-personaje/ve
         DetallesManualComponent,
         ListadoPlantillasComponent,
         DetallesPlantillaComponent,
+        ListadoSubtiposComponent,
+        DetallesSubtipoComponent,
     ],
     imports: [
         BrowserModule,

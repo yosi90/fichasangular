@@ -95,6 +95,7 @@ export function normalizeRacial(raw: any): RacialDetalle {
         Id: toNumber(raw?.Id),
         Nombre: toText(raw?.Nombre),
         Descripcion: toText(raw?.Descripcion),
+        Origen: toText(raw?.Origen ?? raw?.origen).trim(),
         Dotes: toArray(raw?.Dotes).map((item: any) => ({
             Id_dote: toNumber(item?.Id_dote),
             Dote: toText(item?.Dote),

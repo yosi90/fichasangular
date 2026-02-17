@@ -16,7 +16,11 @@
                 </mat-chip>
                 <mat-chip class="h-auto sombra3d-sm m-1" *ngIf="(especial.Subtipo?.Id ?? 0) > 0">
                     Subtipo
-                    <mat-chip class="sombra3d-sm m-1">{{especial.Subtipo.Nombre}}</mat-chip>
+                    <mat-chip class="chip-clic sombra3d-sm m-1" matTooltip="Pulsa para ver detalles"
+                        [matTooltipShowDelay]="250" matTooltipClass="tt-accent"
+                        (click)="abrirDetalleSubtipo()">
+                        {{especial.Subtipo.Nombre}}
+                    </mat-chip>
                 </mat-chip>
             </div>
             <div class="d-flex flex-wrap align-items-center sombra-caja-sm rounded p-2 my-2" *ngIf="tieneTextoVisible(especial.Descripcion)">

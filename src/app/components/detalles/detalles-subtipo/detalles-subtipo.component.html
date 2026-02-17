@@ -1,0 +1,117 @@
+<div class="container-fluid detalle-view" *ngIf="subtipo">
+    <div class="row">
+        <div class="col-md-4 col-12 p-2">
+            <div class="d-flex flex-wrap align-items-center sombra-caja-sm rounded p-2 my-2" *ngIf="tieneResumenSubtipo">
+                <mat-chip class="h-auto warm w-100 sombra-caja-sm py-2 m-1 chip-titulo">
+                    {{subtipo.Nombre}}
+                </mat-chip>
+                <mat-chip class="sombra3d-sm m-1">
+                    <mat-icon class="me-2">auto_stories</mat-icon>
+                    {{manualNombre}} <span *ngIf="manualPagina > 0">(p. {{manualPagina}})</span>
+                </mat-chip>
+                <mat-chip class="sombra3d-sm m-1" *ngIf="subtipo.Heredada">Heredado</mat-chip>
+                <mat-chip class="sombra3d-sm m-1" *ngIf="!subtipo.Oficial">No oficial</mat-chip>
+                <mat-chip class="sombra3d-sm m-1" *ngIf="subtipo.Ajuste_nivel !== 0">Ajuste de nivel {{subtipo.Ajuste_nivel > 0 ? '+' : ''}}{{subtipo.Ajuste_nivel}}</mat-chip>
+                <mat-chip class="sombra3d-sm m-1" *ngIf="subtipo.Ataque_base !== 0">Ataque base {{subtipo.Ataque_base > 0 ? '+' : ''}}{{subtipo.Ataque_base}}</mat-chip>
+                <mat-chip class="sombra3d-sm m-1" *ngIf="subtipo.Presa !== 0">Presa {{subtipo.Presa > 0 ? '+' : ''}}{{subtipo.Presa}}</mat-chip>
+                <mat-chip class="sombra3d-sm m-1" *ngIf="subtipo.Iniciativa !== 0">Iniciativa {{subtipo.Iniciativa > 0 ? '+' : ''}}{{subtipo.Iniciativa}}</mat-chip>
+                <mat-chip class="sombra3d-sm m-1" *ngIf="tieneTextoVisible(getAlineamientoResumen())">Alineamiento {{getAlineamientoResumen()}}</mat-chip>
+            </div>
+
+            <div class="sombra-caja-sm rounded p-2 my-2" *ngIf="tieneSeccionCombateDefensas">
+                <mat-chip class="w-100 sombra-caja-sm mb-2 chip-titulo">Combate y defensas</mat-chip>
+                <div class="d-flex flex-wrap align-items-center mb-2 chips-row" *ngIf="tieneBonosCombateDefensas">
+                    <mat-chip class="sombra3d-sm m-1" *ngIf="subtipo.Fortaleza !== 0">Fortaleza {{subtipo.Fortaleza > 0 ? '+' : ''}}{{subtipo.Fortaleza}}</mat-chip>
+                    <mat-chip class="sombra3d-sm m-1" *ngIf="subtipo.Reflejos !== 0">Reflejos {{subtipo.Reflejos > 0 ? '+' : ''}}{{subtipo.Reflejos}}</mat-chip>
+                    <mat-chip class="sombra3d-sm m-1" *ngIf="subtipo.Voluntad !== 0">Voluntad {{subtipo.Voluntad > 0 ? '+' : ''}}{{subtipo.Voluntad}}</mat-chip>
+                </div>
+                <div class="detalle-texto-largo campo-texto" *ngFor="let texto of getTextosCombateDefensas()">
+                    <p class="m-1"><strong>{{texto.etiqueta}}:</strong> {{texto.valor}}</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4 col-12 p-2">
+            <div class="sombra-caja-sm rounded p-2 my-2" *ngIf="tieneTextoVisible(subtipo.Descripcion)">
+                <mat-chip class="w-100 sombra-caja-sm mb-2 chip-titulo">Descripcion</mat-chip>
+                <p class="m-1">{{subtipo.Descripcion}}</p>
+            </div>
+
+            <div class="d-flex flex-wrap align-items-center sombra-caja-sm rounded p-2 my-2" *ngIf="tieneSeccionMovimientos">
+                <mat-chip class="w-100 sombra-caja-sm mb-2 chip-titulo">Movimientos y maniobrabilidad</mat-chip>
+                <mat-chip class="sombra3d-sm m-1" *ngIf="getMovimientoValor('Correr') > 0">Correr {{getMovimientoValor('Correr')}}</mat-chip>
+                <mat-chip class="sombra3d-sm m-1" *ngIf="getMovimientoValor('Nadar') > 0">Nadar {{getMovimientoValor('Nadar')}}</mat-chip>
+                <mat-chip class="sombra3d-sm m-1" *ngIf="getMovimientoValor('Volar') > 0">Volar {{getMovimientoValor('Volar')}}</mat-chip>
+                <mat-chip class="sombra3d-sm m-1" *ngIf="getMovimientoValor('Trepar') > 0">Trepar {{getMovimientoValor('Trepar')}}</mat-chip>
+                <mat-chip class="sombra3d-sm m-1" *ngIf="getMovimientoValor('Escalar') > 0">Escalar {{getMovimientoValor('Escalar')}}</mat-chip>
+                <mat-chip class="sombra3d-sm m-1" *ngIf="tieneTextoVisible(maniobrabilidadNombre)">Maniobrabilidad {{maniobrabilidadNombre}}</mat-chip>
+            </div>
+        </div>
+
+        <div class="col-md-4 col-12 p-2" *ngIf="tienePanelesRelacionados">
+            <mat-accordion>
+                <mat-expansion-panel *ngIf="(subtipo.Dotes ?? []).length > 0">
+                    <mat-expansion-panel-header>
+                        <button mat-stroked-button color="accent" class="rounded-0 rounded-top">
+                            <h2 class="mb-0">Dotes</h2>
+                        </button>
+                    </mat-expansion-panel-header>
+                    <mat-chip-set class="m-1">
+                        <mat-chip class="chip-clic sombra3d-sm" *ngFor="let doteCtx of subtipo.Dotes"
+                            matTooltip="Pulsa para ver detalles" [matTooltipShowDelay]="250" matTooltipClass="tt-accent"
+                            (click)="abrirDetallesDote(doteCtx)">
+                            {{getNombreDote(doteCtx)}}
+                        </mat-chip>
+                    </mat-chip-set>
+                </mat-expansion-panel>
+
+                <mat-expansion-panel *ngIf="(subtipo.Sortilegas ?? []).length > 0">
+                    <mat-expansion-panel-header>
+                        <button mat-stroked-button color="accent" class="rounded-0">
+                            <h2 class="mb-0">Sortilegas</h2>
+                        </button>
+                    </mat-expansion-panel-header>
+                    <mat-chip-set class="m-1">
+                        <mat-chip class="h-auto chip-clic sombra3d-sm" *ngFor="let sortilega of subtipo.Sortilegas"
+                            matTooltip="Pulsa para ver detalles del conjuro" [matTooltipShowDelay]="250" matTooltipClass="tt-accent"
+                            (click)="abrirDetallesConjuro(sortilega.Conjuro.Id)">
+                            {{sortilega.Conjuro.Nombre}}
+                            <mat-chip class="m-1">NL {{sortilega.Nivel_lanzador}}</mat-chip>
+                            <mat-chip class="m-1" *ngIf="tieneTextoVisible(sortilega.Usos_diarios)">{{sortilega.Usos_diarios}}</mat-chip>
+                        </mat-chip>
+                    </mat-chip-set>
+                </mat-expansion-panel>
+
+                <mat-expansion-panel *ngIf="(subtipo.Rasgos ?? []).length > 0">
+                    <mat-expansion-panel-header>
+                        <button mat-stroked-button color="accent" class="rounded-0">
+                            <h2 class="mb-0">Rasgos</h2>
+                        </button>
+                    </mat-expansion-panel-header>
+                    <mat-chip-set class="m-1">
+                        <mat-chip class="chip-clic sombra3d-sm" *ngFor="let rasgo of subtipo.Rasgos"
+                            matTooltip="Pulsa para ver detalles" [matTooltipShowDelay]="250" matTooltipClass="tt-accent"
+                            (click)="abrirDetallesRasgo(rasgo)">
+                            {{rasgo.Nombre}}
+                        </mat-chip>
+                    </mat-chip-set>
+                </mat-expansion-panel>
+
+                <mat-expansion-panel *ngIf="(subtipo.Plantillas ?? []).length > 0">
+                    <mat-expansion-panel-header>
+                        <button mat-stroked-button color="accent" class="rounded-0 rounded-bottom">
+                            <h2 class="mb-0">Plantillas relacionadas</h2>
+                        </button>
+                    </mat-expansion-panel-header>
+                    <mat-chip-set class="m-1">
+                        <mat-chip class="chip-clic sombra3d-sm" *ngFor="let plantilla of subtipo.Plantillas"
+                            matTooltip="Pulsa para ver detalles" [matTooltipShowDelay]="250" matTooltipClass="tt-accent"
+                            (click)="abrirDetallesPlantilla(plantilla.Id)">
+                            {{plantilla.Nombre}}
+                        </mat-chip>
+                    </mat-chip-set>
+                </mat-expansion-panel>
+            </mat-accordion>
+        </div>
+    </div>
+</div>

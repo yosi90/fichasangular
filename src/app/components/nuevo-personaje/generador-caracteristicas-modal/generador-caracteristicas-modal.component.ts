@@ -3,6 +3,11 @@ import { Raza } from 'src/app/interfaces/raza';
 import { AsignacionCaracteristicas, NuevoPersonajeService } from 'src/app/services/nuevo-personaje.service';
 
 type CaracteristicaKey = keyof AsignacionCaracteristicas;
+type CaracteristicasPerdidasState = Partial<Record<CaracteristicaKey, boolean>>;
+interface PreviewCaracteristica {
+    valorFinal: number;
+    modificador: number;
+}
 
 @Component({
     selector: 'app-generador-caracteristicas-modal',
@@ -11,6 +16,7 @@ type CaracteristicaKey = keyof AsignacionCaracteristicas;
 })
 export class GeneradorCaracteristicasModalComponent {
     @Input() raza!: Raza;
+    @Input() caracteristicasPerdidas: CaracteristicasPerdidasState | null = null;
     @Input() pierdeConstitucion = false;
 
     @Output() cerrar: EventEmitter<void> = new EventEmitter<void>();
@@ -122,7 +128,7 @@ export class GeneradorCaracteristicasModalComponent {
     }
 
     getValorAsignado(caracteristica: CaracteristicaKey): string {
-        if (caracteristica === 'Constitucion' && this.pierdeConstitucion) {
+        if (this.esCaracteristicaPerdida(caracteristica)) {
             return '-';
         }
 
@@ -135,7 +141,7 @@ export class GeneradorCaracteristicasModalComponent {
             return true;
         }
 
-        if (caracteristica === 'Constitucion' && this.pierdeConstitucion) {
+        if (this.esCaracteristicaPerdida(caracteristica)) {
             return true;
         }
 
@@ -161,5 +167,43 @@ export class GeneradorCaracteristicasModalComponent {
 
     isPoolItemUsado(index: number): boolean {
         return this.estado.poolDisponible[index] < 0;
+    }
+
+    getPreviewCaracteristica(caracteristica: CaracteristicaKey): PreviewCaracteristica | null {
+        if (this.esCaracteristicaPerdida(caracteristica))
+            return null;
+
+        const baseAsignada = this.estado.asignaciones[caracteristica];
+        if (baseAsignada === null)
+            return null;
+
+        const valorFinal = Number(baseAsignada) + this.getModRacial(caracteristica);
+        return {
+            valorFinal,
+            modificador: this.getModCaracteristica(valorFinal),
+        };
+    }
+
+    private getModCaracteristica(valor: number): number {
+        return Math.floor((Number(valor) - 10) / 2);
+    }
+
+    private esCaracteristicaPerdida(caracteristica: CaracteristicaKey): boolean {
+        const perdidaPorMapa = this.toBoolean((this.caracteristicasPerdidas as Record<string, any> | null)?.[caracteristica]);
+        if (caracteristica === 'Constitucion')
+            return perdidaPorMapa || this.toBoolean(this.pierdeConstitucion);
+        return perdidaPorMapa;
+    }
+
+    private toBoolean(value: any): boolean {
+        if (typeof value === 'boolean')
+            return value;
+        if (typeof value === 'number')
+            return value === 1;
+        if (typeof value === 'string') {
+            const normalizado = value.trim().toLowerCase();
+            return normalizado === '1' || normalizado === 'true' || normalizado === 'si' || normalizado === 'sí';
+        }
+        return false;
     }
 }

@@ -2,6 +2,7 @@ import { Alineamiento } from "./alineamiento";
 import { Conjuro } from "./conjuro";
 import { DoteContextual } from "./dote-contextual";
 import { Maniobrabilidad } from "./maniobrabilidad";
+import { SubtipoRef } from "./subtipo";
 import { Tamano } from "./tamaño";
 
 export interface PlantillaManual {
@@ -131,6 +132,7 @@ export interface Plantilla {
     Alineamiento: Alineamiento;
     Oficial: boolean;
     Dotes: DoteContextual[];
+    Subtipos: SubtipoRef[];
     Habilidades: PlantillaHabilidadRef[];
     Sortilegas: PlantillaSortilega[];
     Prerrequisitos_flags: PlantillaPrerrequisitosFlags;

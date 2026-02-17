@@ -13,6 +13,7 @@ import {
     PlantillaPrerrequisitosFlags,
 } from "../interfaces/plantilla";
 import { toDoteContextualArray } from "./utils/dote-mapper";
+import { normalizeSubtipoRefArray } from "./utils/subtipo-mapper";
 
 function toNumber(value: any, fallback: number = 0): number {
     const n = Number(value);
@@ -282,6 +283,7 @@ export function normalizePlantilla(raw: any): Plantilla {
         },
         Oficial: toBoolean(raw?.Oficial),
         Dotes: toDoteContextualArray(raw?.Dotes ?? raw?.DotesContextuales),
+        Subtipos: normalizeSubtipoRefArray(raw?.Subtipos ?? raw?.subtipos),
         Habilidades: toArray(raw?.Habilidades).map((h: any) => ({
             Id_habilidad: toNumber(h?.Id_habilidad),
             Habilidad: toText(h?.Habilidad),

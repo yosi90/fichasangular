@@ -31,6 +31,8 @@ import { Plantilla } from 'src/app/interfaces/plantilla';
 import { PlantillaService } from 'src/app/services/plantilla.service';
 import { CacheSyncMetadataService } from 'src/app/services/cache-sync-metadata.service';
 import { RasgoService } from 'src/app/services/rasgo.service';
+import { SubtipoDetalle, SubtipoResumen } from 'src/app/interfaces/subtipo';
+import { SubtipoService } from 'src/app/services/subtipo.service';
 
 @Component({
     selector: 'app-tab-control',
@@ -55,6 +57,7 @@ export class TabControlComponent implements OnInit, OnDestroy {
     detallesRacialAbiertos: RacialDetalle[] = [];
     detallesManualAbiertos: ManualAsociadoDetalle[] = [];
     detallesPlantillaAbiertos: Plantilla[] = [];
+    detallesSubtipoAbiertos: SubtipoDetalle[] = [];
     private avisoCachePendienteMostrado = false;
     private readonly destroy$ = new Subject<void>();
 
@@ -70,6 +73,7 @@ export class TabControlComponent implements OnInit, OnDestroy {
         private racialSvc: RacialService,
         private rasgoSvc: RasgoService,
         private plantillaSvc: PlantillaService,
+        private subtipoSvc: SubtipoService,
         private nuevoPSvc: NuevoPersonajeService,
         private manualRefNavSvc: ManualReferenciaNavigationService,
         private manualVistaNavSvc: ManualVistaNavigationService,
@@ -175,6 +179,8 @@ export class TabControlComponent implements OnInit, OnDestroy {
             return;
         else if (this.detallesPlantillaAbiertos.map(p => this.getEtiquetaPlantilla(p)).includes(tabLabel) && this.quitarDetallesPlantilla(tabLabel))
             return;
+        else if (this.detallesSubtipoAbiertos.map(s => this.getEtiquetaSubtipo(s)).includes(tabLabel) && this.quitarDetallesSubtipo(tabLabel))
+            return;
         else if (this.detallesManualAbiertos.map(m => this.getEtiquetaManual(m)).includes(tabLabel) && this.quitarDetallesManual(tabLabel))
             return;
         else if (tabLabel.includes('Nuevo personaje'))
@@ -242,6 +248,8 @@ export class TabControlComponent implements OnInit, OnDestroy {
             this.abrirDetallesRacial(value.item);
         } else if (value.tipo === 'plantillas') {
             this.abrirDetallesPlantilla(value.item);
+        } else if (value.tipo === 'subtipos') {
+            this.abrirDetallesSubtipoDesdeResumen(value.item);
         }
     }
 
@@ -482,6 +490,10 @@ export class TabControlComponent implements OnInit, OnDestroy {
 
     getEtiquetaPlantilla(plantilla: Plantilla): string {
         return `${plantilla.Nombre} (Plantilla)`;
+    }
+
+    getEtiquetaSubtipo(subtipo: SubtipoDetalle): string {
+        return `${subtipo.Nombre} (Subtipo)`;
     }
 
     async abrirDetallesClase(clase: Clase) {
@@ -790,6 +802,83 @@ export class TabControlComponent implements OnInit, OnDestroy {
         this.abrirDetallesPlantillaPorNombre(payload?.nombre ?? '');
     }
 
+    async abrirDetallesSubtipo(subtipo: SubtipoDetalle) {
+        const abierto = this.detallesSubtipoAbiertos.find(s => s.Id === subtipo.Id);
+        if (abierto)
+            this.cambiarA(true, this.TabGroup._tabs.find(tab => tab.textLabel === this.getEtiquetaSubtipo(abierto)));
+        else {
+            this.detallesSubtipoAbiertos.push(subtipo);
+            setTimeout(() => {
+                this.cambiarA(true, this.TabGroup._tabs.find(tab => tab.textLabel === this.getEtiquetaSubtipo(subtipo)));
+            }, 100);
+        }
+    }
+
+    abrirDetallesSubtipoPorId(idSubtipo: number) {
+        const id = Number(idSubtipo);
+        if (!Number.isFinite(id) || id <= 0)
+            return;
+
+        const abierto = this.detallesSubtipoAbiertos.find(s => s.Id === id);
+        if (abierto) {
+            this.cambiarA(true, this.TabGroup._tabs.find(tab => tab.textLabel === this.getEtiquetaSubtipo(abierto)));
+            return;
+        }
+
+        this.subtipoSvc.getSubtipo(id).pipe(take(1)).subscribe(subtipo => {
+            this.abrirDetallesSubtipo(subtipo);
+        });
+    }
+
+    abrirDetallesSubtipoPorNombre(nombreSubtipo: string) {
+        if (!nombreSubtipo || nombreSubtipo.trim().length < 1)
+            return;
+
+        const abierto = this.detallesSubtipoAbiertos.find(s => this.normalizar(s.Nombre) === this.normalizar(nombreSubtipo));
+        if (abierto) {
+            this.cambiarA(true, this.TabGroup._tabs.find(tab => tab.textLabel === this.getEtiquetaSubtipo(abierto)));
+            return;
+        }
+
+        this.subtipoSvc.buscarPorNombre(nombreSubtipo).pipe(take(1)).subscribe(subtipo => {
+            if (subtipo) {
+                this.abrirDetallesSubtipoPorId(subtipo.Id);
+                return;
+            }
+
+            Swal.fire({
+                icon: 'warning',
+                title: 'Subtipo no encontrado',
+                text: `No se encontro el subtipo "${nombreSubtipo}"`,
+                showConfirmButton: true
+            });
+        });
+    }
+
+    abrirDetallesSubtipoDesdeResumen(subtipo: SubtipoResumen) {
+        const id = Number(subtipo?.Id ?? 0);
+        if (Number.isFinite(id) && id > 0) {
+            this.abrirDetallesSubtipoPorId(id);
+            return;
+        }
+        this.abrirDetallesSubtipoPorNombre(subtipo?.Nombre ?? '');
+    }
+
+    abrirDetallesSubtipoDesdeReferencia(payload: { Id?: number | null; Nombre?: string; } | string) {
+        if (typeof payload === 'string') {
+            this.abrirDetallesSubtipoPorNombre(payload.trim());
+            return;
+        }
+
+        const id = Number(payload?.Id ?? 0);
+        if (Number.isFinite(id) && id > 0) {
+            this.abrirDetallesSubtipoPorId(id);
+            return;
+        }
+
+        this.abrirDetallesSubtipoPorNombre(`${payload?.Nombre ?? ''}`.trim());
+    }
+
     quitarDetallesRacial(label: string): boolean {
         const tab = this.detallesRacialAbiertos.find(r => this.getEtiquetaRacial(r) === label);
         if (!tab)
@@ -806,6 +895,16 @@ export class TabControlComponent implements OnInit, OnDestroy {
             return false;
         const indexTab = this.detallesPlantillaAbiertos.indexOf(tab);
         this.detallesPlantillaAbiertos.splice(indexTab, 1);
+        this.cambiarA(false);
+        return true;
+    }
+
+    quitarDetallesSubtipo(label: string): boolean {
+        const tab = this.detallesSubtipoAbiertos.find(s => this.getEtiquetaSubtipo(s) === label);
+        if (!tab)
+            return false;
+        const indexTab = this.detallesSubtipoAbiertos.indexOf(tab);
+        this.detallesSubtipoAbiertos.splice(indexTab, 1);
         this.cambiarA(false);
         return true;
     }
@@ -1005,6 +1104,13 @@ export class TabControlComponent implements OnInit, OnDestroy {
                 this.abrirDetallesPlantillaPorId(payload.id);
             else
                 this.abrirDetallesPlantillaPorNombre(payload.nombre);
+            return;
+        }
+        if (payload.tipo === 'subtipo') {
+            if (Number(payload.id) > 0)
+                this.abrirDetallesSubtipoPorId(payload.id);
+            else
+                this.abrirDetallesSubtipoPorNombre(payload.nombre);
         }
     }
 }

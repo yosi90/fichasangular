@@ -438,6 +438,9 @@
             <app-detalles-personaje
                 [pj]="Personaje"
                 [mostrarBotonGenerarPdf]="false"
+                (razaDetalles)="verDetallesRazaDesdeFicha($event)"
+                (plantillaDetalles)="verDetallesPlantillaDesdeFicha($event)"
+                (rasgoDetalles)="verDetallesRasgo($event)"
                 (racialDetallesPorNombre)="verDetallesRacialDesdeReferencia($event)">
             </app-detalles-personaje>
         </app-ventana-detalle-flotante>
@@ -446,6 +449,7 @@
     <ng-container *ngIf="modalCaracteristicasAbierto && razaSeleccionada as razaActual">
         <app-generador-caracteristicas-modal
             [raza]="razaActual"
+            [caracteristicasPerdidas]="Personaje.Caracteristicas_perdidas ?? null"
             [pierdeConstitucion]="razaActual.Tipo_criatura.Pierde_constitucion"
             (cerrar)="cerrarModalCaracteristicas()"
             (finalizar)="finalizarGeneracionCaracteristicas($event)">

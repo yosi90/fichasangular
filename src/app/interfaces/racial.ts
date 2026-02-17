@@ -3,6 +3,7 @@ import { Conjuro } from "./conjuro";
 export interface RacialReferencia {
     id?: number | null;
     nombre: string;
+    origen?: string;
 }
 
 export interface RacialDoteRef {
@@ -41,6 +42,7 @@ export interface RacialDetalle {
     Id: number;
     Nombre: string;
     Descripcion: string;
+    Origen?: string;
     Dotes: RacialDoteRef[];
     Habilidades: RacialHabilidades;
     Caracteristicas: Record<string, any>[];

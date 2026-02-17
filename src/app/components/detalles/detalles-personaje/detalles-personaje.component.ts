@@ -3,9 +3,10 @@ import { AptitudSortilega } from 'src/app/interfaces/aptitud-sortilega';
 import { Conjuro } from 'src/app/interfaces/conjuro';
 import { Dote } from 'src/app/interfaces/dote';
 import { DoteContextual, DoteLegacy } from 'src/app/interfaces/dote-contextual';
-import { Personaje } from 'src/app/interfaces/personaje';
+import { CaracteristicaPerdidaKey, Personaje } from 'src/app/interfaces/personaje';
 import { RacialDetalle, RacialReferencia } from 'src/app/interfaces/racial';
 import { Rasgo } from 'src/app/interfaces/rasgo';
+import { SubtipoRef } from 'src/app/interfaces/subtipo';
 import { TipoCriatura } from 'src/app/interfaces/tipo_criatura';
 import { FichaPersonajeService } from 'src/app/services/ficha-personaje.service';
 
@@ -14,6 +15,11 @@ interface MadurezEdadResumen {
     nombre: string;
     modFisico: number;
     modMental: number;
+}
+
+interface VentajaVisible {
+    nombre: string;
+    origen?: string;
 }
 
 @Component({
@@ -163,6 +169,8 @@ export class DetallesPersonajeComponent implements OnInit, OnChanges, AfterViewI
         if (!base)
             return false;
         const limpiado = base.replace(/[.]/g, '');
+        if (limpiado === 'no modifica' || limpiado === 'no vuela')
+            return false;
         if (!this.modoOcultarFaltantes)
             return limpiado.length > 0;
         return limpiado !== 'no especifica'
@@ -343,7 +351,7 @@ Fue/Des/Con: ${this.formatSigned(madurez.modFisico)} | Int/Sab/Car: ${this.forma
         return value > 0 ? `+${value}` : `${value}`;
     }
 
-    getSubtiposVisibles() {
+    getSubtiposVisibles(): SubtipoRef[] {
         return (this.pj?.Subtipos ?? []).filter((s) => this.tieneTextoVisible(s?.Nombre));
     }
 
@@ -373,6 +381,14 @@ Fue/Des/Con: ${this.formatSigned(madurez.modFisico)} | Int/Sab/Car: ${this.forma
         const esBaseDefault = base.every(v => Number(v) === 10);
         const esModDefault = mods.every(v => Number(v) === 0);
         return !(esBaseDefault && esModDefault);
+    }
+
+    tieneCaracteristicaPerdida(key: CaracteristicaPerdidaKey): boolean {
+        const perdidas = this.pj?.Caracteristicas_perdidas ?? {};
+        const perdidaPorMapa = this.toBoolean((perdidas as Record<string, any>)?.[key]);
+        if (key === 'Constitucion')
+            return perdidaPorMapa || this.toBoolean(this.pj?.Constitucion_perdida);
+        return perdidaPorMapa;
     }
 
     tienePersonalidadVisible(): boolean {
@@ -431,8 +447,53 @@ Fue/Des/Con: ${this.formatSigned(madurez.modFisico)} | Int/Sab/Car: ${this.forma
         return (this.pj?.Tipo_criatura?.Rasgos ?? []).filter(r => this.tieneTextoVisible(r?.Nombre));
     }
 
-    getVentajasVisibles() {
-        return (this.pj?.Ventajas ?? []).filter(v => this.tieneTextoVisible(`${v}`));
+    getVentajasVisibles(): VentajaVisible[] {
+        return (this.pj?.Ventajas ?? [])
+            .map((ventaja) => {
+                if (typeof ventaja === 'string') {
+                    return {
+                        nombre: ventaja.trim(),
+                    };
+                }
+
+                return {
+                    nombre: `${ventaja?.Nombre ?? ''}`.trim(),
+                    origen: `${ventaja?.Origen ?? ''}`.trim() || undefined,
+                };
+            })
+            .filter((v) => this.tieneTextoVisible(v.nombre));
+    }
+
+    getOrigenRasgoTipo(rasgo: Rasgo): string | null {
+        const origen = `${rasgo?.Origen ?? ''}`.trim();
+        if (this.tieneTextoVisible(origen))
+            return origen;
+
+        const origenTipo = `${this.pj?.Tipo_criatura?.Nombre ?? ''}`.trim();
+        if (this.tieneTextoVisible(origenTipo))
+            return origenTipo;
+
+        return null;
+    }
+
+    getOrigenRacial(racial: RacialReferencia): string | null {
+        const origen = `${racial?.origen ?? ''}`.trim();
+        return this.tieneTextoVisible(origen) ? origen : null;
+    }
+
+    getOrigenDote(dote: DoteLegacy): string | null {
+        const origen = `${dote?.Origen ?? ''}`.trim();
+        return this.tieneTextoVisible(origen) ? origen : null;
+    }
+
+    getOrigenIdioma(idioma: { Origen?: string; }): string | null {
+        const origen = `${idioma?.Origen ?? ''}`.trim();
+        return this.tieneTextoVisible(origen) ? origen : null;
+    }
+
+    getOrigenVentaja(ventaja: VentajaVisible): string | null {
+        const origen = `${ventaja?.origen ?? ''}`.trim();
+        return this.tieneTextoVisible(origen) ? origen : null;
     }
 
     toDoteContextualFallback(dote: DoteLegacy): DoteContextual {
@@ -561,12 +622,36 @@ Fue/Des/Con: ${this.formatSigned(madurez.modFisico)} | Int/Sab/Car: ${this.forma
         });
     }
 
+    @Output() subtipoDetalles: EventEmitter<{ Id?: number | null; Nombre: string; }> = new EventEmitter<{ Id?: number | null; Nombre: string; }>();
+    verDetallesSubtipo(subtipo: SubtipoRef) {
+        const nombre = `${subtipo?.Nombre ?? ''}`.trim();
+        if (!this.tieneTextoVisible(nombre))
+            return;
+        const id = Number(subtipo?.Id);
+        this.subtipoDetalles.emit({
+            Id: Number.isFinite(id) && id > 0 ? id : null,
+            Nombre: nombre,
+        });
+    }
+
     private normalizarTexto(texto: string): string {
         return `${texto ?? ''}`
             .normalize('NFD')
             .replace(/[\u0300-\u036f]/g, '')
             .trim()
             .toLowerCase();
+    }
+
+    private toBoolean(value: any): boolean {
+        if (typeof value === 'boolean')
+            return value;
+        if (typeof value === 'number')
+            return value === 1;
+        if (typeof value === 'string') {
+            const normalizado = value.trim().toLowerCase();
+            return normalizado === '1' || normalizado === 'true' || normalizado === 'si' || normalizado === 'sí';
+        }
+        return false;
     }
 
     private actualizarRacialesVisibles(): void {
@@ -579,9 +664,11 @@ Fue/Des/Con: ${this.formatSigned(madurez.modFisico)} | Int/Sab/Car: ${this.forma
                     };
                 }
                 const id = Number(racial?.Id);
+                const origen = `${racial?.Origen ?? ''}`.trim();
                 return {
                     id: Number.isFinite(id) && id > 0 ? id : null,
                     nombre: `${racial?.Nombre ?? ''}`.trim(),
+                    origen: origen.length > 0 ? origen : undefined,
                 };
             })
             .filter(racial => this.tieneTextoVisible(racial.nombre));

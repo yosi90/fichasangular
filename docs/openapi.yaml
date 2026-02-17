@@ -12,6 +12,7 @@ tags:
   - name: verify
   - name: personajes
   - name: razas
+  - name: subtipos
   - name: campanas
   - name: tramas
   - name: subtramas
@@ -158,6 +159,44 @@ paths:
       responses:
         '501':
           description: No implementado
+
+  /subtipos:
+    get:
+      tags: [subtipos]
+      summary: Lista de subtipos
+      responses:
+        '200':
+          description: Lista de subtipos
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SubtipoResumen'
+
+  /subtipos/{id_subtipo}:
+    get:
+      tags: [subtipos]
+      summary: Subtipo por id
+      parameters:
+        - name: id_subtipo
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Subtipo encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubtipoDetalle'
+        '404':
+          description: Subtipo no encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 
   /campanas:
     get:
@@ -793,6 +832,123 @@ components:
         Nombre: { type: string }
         Descripcion: { type: string }
 
+    SubtipoRef:
+      type: object
+      properties:
+        Id: { type: integer }
+        Nombre: { type: string }
+
+    SubtipoResumen:
+      type: object
+      properties:
+        Id: { type: integer }
+        Nombre: { type: string }
+        Descripcion: { type: string }
+        Manual:
+          $ref: '#/components/schemas/DoteManual'
+        Heredada: { type: boolean }
+        Oficial: { type: boolean }
+
+    SubtipoHabilidadBase:
+      type: object
+      properties:
+        Id_habilidad: { type: integer }
+        Habilidad: { type: string }
+        Id_caracteristica: { type: integer }
+        Caracteristica: { type: string }
+        Descripcion: { type: string }
+        Soporta_extra: { type: boolean }
+        Entrenada: { type: boolean }
+        Id_extra: { type: integer }
+        Extra: { type: string }
+        Cantidad: { type: integer }
+        Varios: { type: string }
+
+    SubtipoHabilidadCustom:
+      type: object
+      properties:
+        Id_habilidad: { type: integer }
+        Habilidad: { type: string }
+        Id_caracteristica: { type: integer }
+        Caracteristica: { type: string }
+        Cantidad: { type: integer }
+
+    SubtipoHabilidades:
+      type: object
+      properties:
+        Base:
+          type: array
+          items:
+            $ref: '#/components/schemas/SubtipoHabilidadBase'
+        Custom:
+          type: array
+          items:
+            $ref: '#/components/schemas/SubtipoHabilidadCustom'
+
+    SubtipoSortilega:
+      type: object
+      properties:
+        Conjuro:
+          $ref: '#/components/schemas/ConjuroDetalle'
+        Nivel_lanzador: { type: integer }
+        Usos_diarios: { type: string }
+
+    SubtipoDetalle:
+      type: object
+      properties:
+        Id: { type: integer }
+        Nombre: { type: string }
+        Descripcion: { type: string }
+        Manual:
+          $ref: '#/components/schemas/DoteManual'
+        Heredada: { type: boolean }
+        Oficial: { type: boolean }
+        Modificadores_caracteristicas:
+          $ref: '#/components/schemas/PlantillaCaracteristicas'
+        Minimos_caracteristicas:
+          $ref: '#/components/schemas/PlantillaCaracteristicas'
+        Ajuste_nivel: { type: integer }
+        Presa: { type: integer }
+        Fortaleza: { type: integer }
+        Reflejos: { type: integer }
+        Voluntad: { type: integer }
+        Iniciativa: { type: integer }
+        Ataque_base: { type: integer }
+        Ca: { type: string }
+        Rd: { type: string }
+        Rc: { type: string }
+        Re: { type: string }
+        Cd: { type: string }
+        Tesoro: { type: string }
+        Movimientos:
+          $ref: '#/components/schemas/PlantillaMovimientos'
+        Maniobrabilidad:
+          $ref: '#/components/schemas/PlantillaManiobrabilidad'
+        Alineamiento:
+          $ref: '#/components/schemas/AlineamientoDetalle'
+        Idiomas:
+          type: array
+          items:
+            $ref: '#/components/schemas/IdiomaDetalle'
+        Dotes:
+          type: array
+          items:
+            $ref: '#/components/schemas/DoteContextual'
+        Habilidades:
+          $ref: '#/components/schemas/SubtipoHabilidades'
+        Sortilegas:
+          type: array
+          items:
+            $ref: '#/components/schemas/SubtipoSortilega'
+        Rasgos:
+          type: array
+          items:
+            $ref: '#/components/schemas/RasgoTipo'
+        Plantillas:
+          type: array
+          items:
+            $ref: '#/components/schemas/ReferenciaCorta'
+
     ManualAsociados:
       type: object
       properties:
@@ -1357,6 +1513,10 @@ components:
           additionalProperties: true
         Tipo_criatura:
           $ref: '#/components/schemas/TipoCriaturaDetalle'
+        Subtipos:
+          type: array
+          items:
+            $ref: '#/components/schemas/SubtipoRef'
 
     SortilegioRaza:
       type: object
@@ -1448,6 +1608,10 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/RacialDetalle'
+        subtipos:
+          type: array
+          items:
+            $ref: '#/components/schemas/SubtipoRef'
 
     RacialDetalle:
       type: object
@@ -1637,6 +1801,10 @@ components:
         cla: { type: string }
         dom: { type: string }
         stc: { type: string }
+        subtipos:
+          type: array
+          items:
+            $ref: '#/components/schemas/SubtipoRef'
         pla:
           type: array
           items:
@@ -1896,6 +2064,10 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/DoteContextual'
+        Subtipos:
+          type: array
+          items:
+            $ref: '#/components/schemas/SubtipoRef'
         Habilidades:
           type: array
           items:

@@ -135,8 +135,8 @@ describe('DetallesPersonajeComponent', () => {
     it('muestra subtipos válidos y oculta placeholders', () => {
         component.pj.Raza.Nombre = 'Aasimar';
         component.pj.Subtipos = [
-            { Nombre: 'Angelical' },
-            { Nombre: 'Placeholder' },
+            { Id: 1, Nombre: 'Angelical' },
+            { Id: 2, Nombre: 'Placeholder' },
         ];
 
         fixture.detectChanges();
@@ -164,5 +164,119 @@ describe('DetallesPersonajeComponent', () => {
         const emitSpy = spyOn(component.racialDetallesPorNombre, 'emit');
         component.verDetallesRacialPorNombre({ id: 15, nombre: 'Sangre antigua' });
         expect(emitSpy).toHaveBeenCalledWith({ id: 15, nombre: 'Sangre antigua' });
+    });
+
+    it('muestra subchips de origen en rasgos/raciales/dotes/idiomas/ventajas', () => {
+        component.pj.Tipo_criatura.Nombre = 'Muerto viviente';
+        component.pj.Tipo_criatura.Rasgos = [
+            { Id: 1, Nombre: 'Inmunidad al veneno', Descripcion: '', Oficial: true },
+        ];
+        component.pj.Raciales = [
+            {
+                Id: 10,
+                Nombre: 'Sangre antigua',
+                Descripcion: '',
+                Origen: 'Elfo',
+                Dotes: [],
+                Habilidades: { Base: [], Custom: [] },
+                Caracteristicas: [],
+                Salvaciones: [],
+                Sortilegas: [],
+                Ataques: [],
+                Prerrequisitos_flags: { raza: false, caracteristica_minima: false },
+                Prerrequisitos: { raza: [], caracteristica: [] },
+            } as any,
+        ];
+        component.pj.Dotes = [{
+            Nombre: 'Alerta',
+            Descripcion: '',
+            Beneficio: '',
+            Pagina: 1,
+            Extra: '',
+            Origen: 'Nivel',
+        }];
+        component.pj.Idiomas = [{
+            Nombre: 'Abisal',
+            Descripcion: '',
+            Secreto: false,
+            Oficial: true,
+            Origen: 'Ventaja',
+        }];
+        component.pj.Ventajas = [{
+            Nombre: 'Voluntad de hierro',
+            Origen: 'Ventaja',
+        }];
+
+        fixture.detectChanges();
+
+        const html = `${fixture.nativeElement.textContent ?? ''}`;
+        expect(html).toContain('Muerto viviente');
+        expect(html).toContain('Elfo');
+        expect(html).toContain('Nivel');
+        expect(html).toContain('Ventaja');
+    });
+
+    it('no muestra origen en legacy sin origen, salvo fallback del rasgo de tipo', () => {
+        component.pj.Tipo_criatura.Nombre = 'Humanoide';
+        component.pj.Tipo_criatura.Rasgos = [
+            { Id: 1, Nombre: 'Rasgo base', Descripcion: '', Oficial: true },
+        ];
+        component.pj.Raciales = [
+            {
+                Id: 10,
+                Nombre: 'Sangre antigua',
+                Descripcion: '',
+                Dotes: [],
+                Habilidades: { Base: [], Custom: [] },
+                Caracteristicas: [],
+                Salvaciones: [],
+                Sortilegas: [],
+                Ataques: [],
+                Prerrequisitos_flags: { raza: false, caracteristica_minima: false },
+                Prerrequisitos: { raza: [], caracteristica: [] },
+            } as any,
+        ];
+        component.pj.Dotes = [{
+            Nombre: 'Alerta',
+            Descripcion: '',
+            Beneficio: '',
+            Pagina: 1,
+            Extra: '',
+            Origen: '',
+        }];
+        component.pj.Idiomas = [{
+            Nombre: 'Común',
+            Descripcion: '',
+            Secreto: false,
+            Oficial: true,
+        }];
+        component.pj.Ventajas = ['Voluntad de hierro'];
+
+        fixture.detectChanges();
+
+        const origenes = fixture.debugElement.queryAll(By.css('.chip-origen'))
+            .map((el) => `${el.nativeElement.textContent ?? ''}`.trim())
+            .filter(Boolean);
+        expect(origenes).toContain('Humanoide');
+        expect(origenes).not.toContain('Elfo');
+        expect(origenes).not.toContain('Nivel');
+    });
+
+    it('muestra el estado perdida por clave y oculta chips numéricas', () => {
+        component.pj.Fuerza = 0;
+        component.pj.ModFuerza = 0;
+        component.pj.Constitucion = 13;
+        component.pj.ModConstitucion = 1;
+        component.pj.Caracteristicas_perdidas = {
+            Fuerza: true,
+        };
+
+        fixture.detectChanges();
+
+        const chipPerdida = fixture.debugElement.query(By.css('.chip-caracteristica-perdida'));
+        expect(chipPerdida).not.toBeNull();
+        expect(`${chipPerdida.nativeElement.textContent ?? ''}`).toContain('Perdida');
+        expect(`${fixture.nativeElement.textContent ?? ''}`).toContain('Constitución');
+        expect(`${fixture.nativeElement.textContent ?? ''}`).toContain('13');
     });
 });

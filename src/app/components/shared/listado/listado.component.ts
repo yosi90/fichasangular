@@ -17,6 +17,8 @@ import { RacialDetalle } from 'src/app/interfaces/racial';
 import { Rasgo } from 'src/app/interfaces/rasgo';
 import { ListadoPlantillasComponent } from '../listado-plantillas/listado-plantillas.component';
 import { Plantilla } from 'src/app/interfaces/plantilla';
+import { ListadoSubtiposComponent } from '../listado-subtipos/listado-subtipos.component';
+import { SubtipoResumen } from 'src/app/interfaces/subtipo';
 
 @Component({
     selector: 'app-listado',
@@ -39,6 +41,7 @@ export class ListadoComponent {
         'especiales': ListadoEspecialesComponent,
         'raciales': ListadoRacialesComponent,
         'plantillas': ListadoPlantillasComponent,
+        'subtipos': ListadoSubtiposComponent,
     };
 
     constructor(private cdr: ChangeDetectorRef) { }
@@ -121,6 +124,13 @@ export class ListadoComponent {
                 this.handleItemDetalles(item);
             });
             componentRef.instance.plantillaSeleccionada.subscribe((item: Plantilla) => {
+                this.handleItemSeleccionado(item);
+            });
+        } else if (componentRef.instance instanceof ListadoSubtiposComponent) {
+            componentRef.instance.subtipoDetalles.subscribe((item: SubtipoResumen) => {
+                this.handleItemDetalles(item);
+            });
+            componentRef.instance.subtipoSeleccionado.subscribe((item: SubtipoResumen) => {
                 this.handleItemSeleccionado(item);
             });
         }

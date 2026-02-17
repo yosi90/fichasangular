@@ -3,7 +3,12 @@ import { Conjuro } from "./conjuro";
 import { DoteContextual, DoteLegacy } from "./dote-contextual";
 import { RacialDetalle } from "./racial";
 import { PersonajeSimple } from "./simplificaciones/personaje-simple";
+import { SubtipoRef } from "./subtipo";
 import { TipoCriatura } from "./tipo_criatura";
+
+export type CaracteristicaPerdidaKey = 'Fuerza' | 'Destreza' | 'Constitucion' | 'Inteligencia' | 'Sabiduria' | 'Carisma';
+
+export type CaracteristicasPerdidas = Partial<Record<CaracteristicaPerdidaKey, boolean>>;
 
 export interface Personaje extends PersonajeSimple {
     desgloseClases: {
@@ -25,15 +30,15 @@ export interface Personaje extends PersonajeSimple {
         Origen: string;
     }[]
     Tipo_criatura: TipoCriatura;
-    Subtipos: {
-        Nombre: string;
-    }[]
+    Subtipos: SubtipoRef[]
     Fuerza: number;
     ModFuerza: number;
     Destreza: number;
     ModDestreza: number;
     Constitucion: number;
     ModConstitucion: number;
+    Caracteristicas_perdidas?: CaracteristicasPerdidas;
+    Constitucion_perdida?: boolean;
     Inteligencia: number;
     ModInteligencia: number;
     Sabiduria: number;
@@ -210,12 +215,16 @@ export interface Personaje extends PersonajeSimple {
     }[]
     Dotes: DoteLegacy[];
     DotesContextuales: DoteContextual[];
-    Ventajas: string[];
+    Ventajas: (string | {
+        Nombre: string;
+        Origen?: string;
+    })[];
     Idiomas: {
         Nombre: string;
         Descripcion: string;
         Secreto: boolean;
         Oficial: boolean;
+        Origen?: string;
     }[];
     Sortilegas: AptitudSortilega[];
     Escuelas_prohibidas: {

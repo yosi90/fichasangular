@@ -34,7 +34,11 @@ export class DetallesRacialComponent {
         if (!base)
             return false;
         const limpiado = base.replace(/[.]/g, '');
-        return limpiado !== 'no especifica' && limpiado !== 'no se especifica' && limpiado !== 'no aplica';
+        return limpiado !== 'no especifica'
+            && limpiado !== 'no se especifica'
+            && limpiado !== 'no aplica'
+            && limpiado !== 'no modifica'
+            && limpiado !== 'no vuela';
     }
 
     tieneColeccionVisible<T>(value: T[] | null | undefined): boolean {

@@ -9,6 +9,7 @@ import { Dote } from '../interfaces/dote';
 import { ManualAsociadoDetalle, ManualAsociados, ReferenciaCorta } from '../interfaces/manual-asociado';
 import { Plantilla } from '../interfaces/plantilla';
 import { Raza } from '../interfaces/raza';
+import { SubtipoResumen } from '../interfaces/subtipo';
 import { TipoCriatura } from '../interfaces/tipo_criatura';
 import { ClaseService } from './clase.service';
 import { ConjuroService } from './conjuro.service';
@@ -16,6 +17,7 @@ import { DoteService } from './dote.service';
 import { ManualService } from './manual.service';
 import { PlantillaService } from './plantilla.service';
 import { RazaService } from './raza.service';
+import { SubtipoService } from './subtipo.service';
 import { TipoCriaturaService } from './tipo-criatura.service';
 
 type ColeccionAsociadosKey = keyof ManualAsociados;
@@ -55,6 +57,7 @@ export class ManualesAsociadosService {
         private claseSvc: ClaseService,
         private razaSvc: RazaService,
         private tipoSvc: TipoCriaturaService,
+        private subtipoSvc: SubtipoService,
         private plantillaSvc: PlantillaService,
     ) { }
 
@@ -261,9 +264,10 @@ export class ManualesAsociadosService {
             this.claseSvc.getClases(),
             this.razaSvc.getRazas(),
             this.tipoSvc.getTiposCriatura(),
+            this.subtipoSvc.getSubtipos(),
             this.plantillaSvc.getPlantillas(),
         ]).pipe(
-            map(([manuales, dotes, conjuros, clases, razas, tipos, plantillas]) => {
+            map(([manuales, dotes, conjuros, clases, razas, tipos, subtipos, plantillas]) => {
                 const base = manuales
                     .map((m) => ({
                     Id: Number(m.Id),
@@ -331,6 +335,16 @@ export class ManualesAsociadosService {
                     if (!manualId)
                         return;
                     this.pushReferencia(byId.get(manualId), 'Tipos', this.toReferencia(item.Id, item.Nombre, item.Descripcion));
+                });
+
+                subtipos.forEach((item: SubtipoResumen) => {
+                    const manualId = this.resolveManualIdByObject(item?.Manual, byId, byName)
+                        ?? this.resolveManualIdByText(item?.Manual?.Nombre, manualesPorLongitud);
+                    if (!manualId)
+                        return;
+                    this.pushReferencia(byId.get(manualId), 'Subtipos', this.toReferencia(item.Id, item.Nombre, item.Descripcion, {
+                        Pagina: item?.Manual?.Pagina ?? null,
+                    }));
                 });
 
                 plantillas.forEach((item) => {

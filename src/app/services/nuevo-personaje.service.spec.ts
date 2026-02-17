@@ -3,7 +3,9 @@ import { VentajaDetalle } from '../interfaces/ventaja';
 import { HabilidadBasicaDetalle } from '../interfaces/habilidad';
 import { IdiomaDetalle } from '../interfaces/idioma';
 import { createRacialPlaceholder } from './utils/racial-mapper';
+import { Plantilla } from '../interfaces/plantilla';
 import { Raza } from '../interfaces/raza';
+import { TipoCriatura } from '../interfaces/tipo_criatura';
 
 const GENERADOR_CONFIG_STORAGE_KEY = 'fichas35.nuevoPersonaje.generador.config.v1';
 
@@ -313,6 +315,7 @@ describe('NuevoPersonajeService (ventajas/desventajas)', () => {
         expect(svc.PersonajeCreacion.Raciales.length).toBe(1);
         expect(svc.PersonajeCreacion.Raciales[0].Id).toBe(5);
         expect(svc.PersonajeCreacion.Raciales[0].Nombre).toBe('Sangre antigua');
+        expect(svc.PersonajeCreacion.Raciales[0].Origen).toBe('Elfo');
     });
 
     it('Rasgo no duplica una racial ya presente en la base', () => {
@@ -338,6 +341,26 @@ describe('NuevoPersonajeService (ventajas/desventajas)', () => {
         expect(service.puedeContinuarDesdeVentajas()).toBeTrue();
     });
 
+    it('guarda origen en rasgos obtenidos, idiomas y lista de ventajas', () => {
+        service.toggleDesventaja(desventajaPuntos.Id);
+        service.toggleVentaja(ventajaRasgo.Id);
+        service.toggleVentaja(ventajaIdioma.Id);
+        service.seleccionarIdiomaParaVentaja(ventajaIdioma.Id, idiomaComun);
+
+        const rasgo = service.PersonajeCreacion.Raciales.find((r) => r.Nombre === 'Sangre antigua');
+        const idioma = service.PersonajeCreacion.Idiomas.find((i) => i.Nombre === 'Comun');
+        const ventajaIdiomaGuardada = service.PersonajeCreacion.Ventajas
+            .find((v) => typeof v !== 'string' && v.Nombre === 'Linguista');
+        const desventajaGuardada = service.PersonajeCreacion.Ventajas
+            .find((v) => typeof v !== 'string' && v.Nombre === 'Miope');
+
+        expect(rasgo?.Origen).toBe('Rasgo raro');
+        expect(idioma?.Origen).toBe('Linguista');
+        expect(idioma?.Descripcion).toBe('Idioma comun');
+        expect(typeof ventajaIdiomaGuardada !== 'string' ? ventajaIdiomaGuardada?.Origen : '').toBe('Ventaja');
+        expect(typeof desventajaGuardada !== 'string' ? desventajaGuardada?.Origen : '').toBe('Desventaja');
+    });
+
     it('pendientesOro se acumula y no altera Oro_inicial', () => {
         const oroBase = service.PersonajeCreacion.Oro_inicial;
         service.toggleDesventaja(desventajaPuntos.Id);
@@ -345,5 +368,557 @@ describe('NuevoPersonajeService (ventajas/desventajas)', () => {
 
         expect(service.EstadoFlujo.ventajas.pendientesOro.length).toBe(2);
         expect(service.PersonajeCreacion.Oro_inicial).toBe(oroBase);
+    });
+});
+
+describe('NuevoPersonajeService (tipo y subtipos derivados)', () => {
+    function crearTipo(id: number, nombre: string): TipoCriatura {
+        return {
+            Id: id,
+            Nombre: nombre,
+            Descripcion: `Tipo ${nombre}`,
+            Manual: 'Manual test',
+            Id_tipo_dado: 1,
+            Tipo_dado: 8,
+            Id_ataque: 1,
+            Id_fortaleza: 1,
+            Id_reflejos: 1,
+            Id_voluntad: 1,
+            Id_puntos_habilidad: 1,
+            Come: true,
+            Respira: true,
+            Duerme: true,
+            Recibe_criticos: true,
+            Puede_ser_flanqueado: true,
+            Pierde_constitucion: false,
+            Limite_inteligencia: 0,
+            Tesoro: 'Normal',
+            Id_alineamiento: 0,
+            Rasgos: [],
+            Oficial: true,
+        };
+    }
+
+    function crearRazaMock(tipo: TipoCriatura, subtipos: { Id: number; Nombre: string; }[]): Raza {
+        return {
+            Id: 1,
+            Nombre: 'Raza base',
+            Alineamiento: {
+                Basico: { Nombre: 'Neutral autentico' },
+            },
+            Tipo_criatura: tipo,
+            Subtipos: subtipos,
+            Correr: 30,
+            Nadar: 0,
+            Volar: 0,
+            Trepar: 0,
+            Escalar: 0,
+            Edad_adulto: 20,
+            Altura_rango_inf: 1.7,
+            Peso_rango_inf: 65,
+            Heredada: false,
+            Raciales: [],
+        } as unknown as Raza;
+    }
+
+    function crearPlantillaMock(partial?: Partial<Plantilla>): Plantilla {
+        return {
+            Id: 100,
+            Nombre: 'Plantilla test',
+            Descripcion: '',
+            Manual: { Id: 1, Nombre: 'Manual', Pagina: 1 },
+            Tamano: { Id: 0, Nombre: '-', Modificador: 0, Modificador_presa: 0 },
+            Tipo_dado: { Id_tipo_dado: 0, Nombre: '' },
+            Actualiza_dg: false,
+            Modificacion_dg: { Id_paso_modificacion: 0, Nombre: '' },
+            Modificacion_tamano: { Id_paso_modificacion: 0, Nombre: '' },
+            Iniciativa: 0,
+            Velocidades: '',
+            Ca: '',
+            Ataque_base: 0,
+            Presa: 0,
+            Ataques: '',
+            Ataque_completo: '',
+            Reduccion_dano: '',
+            Resistencia_conjuros: '',
+            Resistencia_elemental: '',
+            Fortaleza: 0,
+            Reflejos: 0,
+            Voluntad: 0,
+            Modificadores_caracteristicas: { Fuerza: 0, Destreza: 0, Constitucion: 0, Inteligencia: 0, Sabiduria: 0, Carisma: 0 },
+            Minimos_caracteristicas: { Fuerza: 0, Destreza: 0, Constitucion: 0, Inteligencia: 0, Sabiduria: 0, Carisma: 0 },
+            Ajuste_nivel: 0,
+            Licantronia_dg: { Id_dado: 0, Dado: '', Multiplicador: 0, Suma: 0 },
+            Cd: 0,
+            Puntos_habilidad: { Suma: 0, Suma_fija: 0 },
+            Nacimiento: false,
+            Movimientos: { Correr: 0, Nadar: 0, Volar: 0, Trepar: 0, Escalar: 0 },
+            Maniobrabilidad: {
+                Id: 0,
+                Nombre: '',
+                Velocidad_avance: '',
+                Flotar: 0,
+                Volar_atras: 0,
+                Contramarcha: 0,
+                Giro: '',
+                Rotacion: '',
+                Giro_max: '',
+                Angulo_ascenso: '',
+                Velocidad_ascenso: '',
+                Angulo_descenso: '',
+                Descenso_ascenso: 0,
+            },
+            Alineamiento: {
+                Id: 0,
+                Basico: { Id_basico: 0, Nombre: '' },
+                Ley: { Id_ley: 0, Nombre: '' },
+                Moral: { Id_moral: 0, Nombre: '' },
+                Prioridad: { Id_prioridad: 0, Nombre: '' },
+                Descripcion: '',
+            },
+            Oficial: true,
+            Dotes: [],
+            Subtipos: [],
+            Habilidades: [],
+            Sortilegas: [],
+            Prerrequisitos_flags: {
+                actitud_requerido: false,
+                actitud_prohibido: false,
+                alineamiento_requerido: false,
+                caracteristica: false,
+                criaturas_compatibles: false,
+            },
+            Prerrequisitos: {
+                actitud_requerido: [],
+                actitud_prohibido: [],
+                alineamiento_requerido: [],
+                caracteristica: [],
+                criaturas_compatibles: [],
+            },
+            Compatibilidad_tipos: [],
+            ...partial,
+        };
+    }
+
+    it('seleccionarRaza fija tipo y subtipos base', () => {
+        const svc = new NuevoPersonajeService();
+        const tipoHumanoide = crearTipo(1, 'Humanoide');
+        svc.setCatalogoTiposCriatura([tipoHumanoide]);
+        svc.seleccionarRaza(crearRazaMock(tipoHumanoide, [{ Id: 11, Nombre: 'Humano' }]));
+
+        expect(svc.PersonajeCreacion.Tipo_criatura.Id).toBe(1);
+        expect(svc.PersonajeCreacion.Tipo_criatura.Nombre).toBe('Humanoide');
+        expect(svc.PersonajeCreacion.Subtipos).toEqual([{ Id: 11, Nombre: 'Humano' }]);
+    });
+
+    it('agregar plantilla que cambia tipo actualiza Personaje.Tipo_criatura', () => {
+        const svc = new NuevoPersonajeService();
+        const tipoHumanoide = crearTipo(1, 'Humanoide');
+        const tipoExterno = crearTipo(5, 'Extraplanar');
+        svc.setCatalogoTiposCriatura([tipoHumanoide, tipoExterno]);
+        svc.seleccionarRaza(crearRazaMock(tipoHumanoide, [{ Id: 11, Nombre: 'Humano' }]));
+
+        svc.agregarPlantillaSeleccion(crearPlantillaMock({
+            Id: 201,
+            Nombre: 'Medio celestial',
+            Compatibilidad_tipos: [{
+                Id_tipo_comp: 1,
+                Id_tipo_nuevo: 5,
+                Tipo_comp: 'Humanoide',
+                Tipo_nuevo: 'Extraplanar',
+                Opcional: 0,
+            }],
+        }));
+
+        expect(svc.PersonajeCreacion.Tipo_criatura.Id).toBe(5);
+        expect(svc.PersonajeCreacion.Tipo_criatura.Nombre).toBe('Extraplanar');
+        expect(svc.EstadoFlujo.plantillas.tipoCriaturaSimulada.Id).toBe(5);
+    });
+
+    it('subtipos: reemplazo por ultima plantilla y restauracion al quitar', () => {
+        const svc = new NuevoPersonajeService();
+        const tipoHumanoide = crearTipo(1, 'Humanoide');
+        svc.setCatalogoTiposCriatura([tipoHumanoide]);
+        svc.seleccionarRaza(crearRazaMock(tipoHumanoide, [{ Id: 11, Nombre: 'Humano' }]));
+
+        const plantillaA = crearPlantillaMock({
+            Id: 301,
+            Nombre: 'Tocada por fuego',
+            Subtipos: [{ Id: 21, Nombre: 'Fuego' }],
+        });
+        const plantillaB = crearPlantillaMock({
+            Id: 302,
+            Nombre: 'Tocada por frio',
+            Subtipos: [{ Id: 22, Nombre: 'Frio' }],
+        });
+
+        svc.agregarPlantillaSeleccion(plantillaA);
+        expect(svc.PersonajeCreacion.Subtipos).toEqual([{ Id: 21, Nombre: 'Fuego' }]);
+
+        svc.agregarPlantillaSeleccion(plantillaB);
+        expect(svc.PersonajeCreacion.Subtipos).toEqual([{ Id: 22, Nombre: 'Frio' }]);
+
+        svc.quitarPlantillaSeleccion(302);
+        expect(svc.PersonajeCreacion.Subtipos).toEqual([{ Id: 21, Nombre: 'Fuego' }]);
+    });
+
+    it('limpiar plantillas restaura tipo y subtipos de la raza', () => {
+        const svc = new NuevoPersonajeService();
+        const tipoHumanoide = crearTipo(1, 'Humanoide');
+        const tipoExterno = crearTipo(5, 'Extraplanar');
+        svc.setCatalogoTiposCriatura([tipoHumanoide, tipoExterno]);
+        svc.seleccionarRaza(crearRazaMock(tipoHumanoide, [{ Id: 11, Nombre: 'Humano' }]));
+
+        svc.agregarPlantillaSeleccion(crearPlantillaMock({
+            Id: 401,
+            Nombre: 'Medio celestial',
+            Compatibilidad_tipos: [{
+                Id_tipo_comp: 1,
+                Id_tipo_nuevo: 5,
+                Tipo_comp: 'Humanoide',
+                Tipo_nuevo: 'Extraplanar',
+                Opcional: 0,
+            }],
+            Subtipos: [{ Id: 41, Nombre: 'Celestial' }],
+        }));
+
+        expect(svc.PersonajeCreacion.Tipo_criatura.Id).toBe(5);
+        expect(svc.PersonajeCreacion.Subtipos).toEqual([{ Id: 41, Nombre: 'Celestial' }]);
+
+        svc.limpiarPlantillasSeleccion();
+        expect(svc.PersonajeCreacion.Tipo_criatura.Id).toBe(1);
+        expect(svc.PersonajeCreacion.Tipo_criatura.Nombre).toBe('Humanoide');
+        expect(svc.PersonajeCreacion.Subtipos).toEqual([{ Id: 11, Nombre: 'Humano' }]);
+    });
+
+    it('pierde Constitución al cambiar el tipo resultante a no-muerto', () => {
+        const svc = new NuevoPersonajeService();
+        const tipoHumanoide = crearTipo(1, 'Humanoide');
+        const tipoNoMuerto = crearTipo(6, 'Muerto viviente');
+        tipoNoMuerto.Pierde_constitucion = true;
+
+        svc.setCatalogoTiposCriatura([tipoHumanoide, tipoNoMuerto]);
+        svc.seleccionarRaza(crearRazaMock(tipoHumanoide, []));
+        svc.aplicarCaracteristicasGeneradas({
+            Fuerza: 14,
+            Destreza: 12,
+            Constitucion: 13,
+            Inteligencia: 10,
+            Sabiduria: 11,
+            Carisma: 9,
+        });
+
+        svc.agregarPlantillaSeleccion(crearPlantillaMock({
+            Id: 501,
+            Nombre: 'Plantilla no-muerta',
+            Compatibilidad_tipos: [{
+                Id_tipo_comp: 1,
+                Id_tipo_nuevo: 6,
+                Tipo_comp: 'Humanoide',
+                Tipo_nuevo: 'Muerto viviente',
+                Opcional: 0,
+            }],
+        }));
+
+        expect(svc.PersonajeCreacion.Constitucion_perdida).toBeTrue();
+        expect(svc.PersonajeCreacion.Caracteristicas_perdidas?.Constitucion).toBeTrue();
+        expect(svc.PersonajeCreacion.Constitucion).toBe(0);
+        expect(svc.PersonajeCreacion.ModConstitucion).toBe(0);
+    });
+
+    it('restaura Constitución al quitar plantilla que causaba pérdida', () => {
+        const svc = new NuevoPersonajeService();
+        const tipoHumanoide = crearTipo(1, 'Humanoide');
+        const tipoNoMuerto = crearTipo(6, 'Muerto viviente');
+        tipoNoMuerto.Pierde_constitucion = true;
+
+        svc.setCatalogoTiposCriatura([tipoHumanoide, tipoNoMuerto]);
+        svc.seleccionarRaza(crearRazaMock(tipoHumanoide, []));
+        svc.aplicarCaracteristicasGeneradas({
+            Fuerza: 14,
+            Destreza: 12,
+            Constitucion: 13,
+            Inteligencia: 10,
+            Sabiduria: 11,
+            Carisma: 9,
+        });
+
+        const plantillaNoMuerta = crearPlantillaMock({
+            Id: 502,
+            Nombre: 'Plantilla no-muerta',
+            Compatibilidad_tipos: [{
+                Id_tipo_comp: 1,
+                Id_tipo_nuevo: 6,
+                Tipo_comp: 'Humanoide',
+                Tipo_nuevo: 'Muerto viviente',
+                Opcional: 0,
+            }],
+        });
+
+        svc.agregarPlantillaSeleccion(plantillaNoMuerta);
+        expect(svc.PersonajeCreacion.Constitucion).toBe(0);
+        expect(svc.PersonajeCreacion.Constitucion_perdida).toBeTrue();
+        expect(svc.PersonajeCreacion.Caracteristicas_perdidas?.Constitucion).toBeTrue();
+
+        svc.quitarPlantillaSeleccion(plantillaNoMuerta.Id);
+        expect(svc.PersonajeCreacion.Constitucion_perdida).toBeFalse();
+        expect(svc.PersonajeCreacion.Caracteristicas_perdidas?.Constitucion).toBeFalse();
+        expect(svc.PersonajeCreacion.Constitucion).toBe(13);
+        expect(svc.PersonajeCreacion.ModConstitucion).toBe(1);
+    });
+
+    it('interpreta Pierde_constitucion=1 como activo', () => {
+        const svc = new NuevoPersonajeService();
+        const tipoNoMuerto = {
+            ...crearTipo(6, 'Muerto viviente'),
+            Pierde_constitucion: 1 as unknown as boolean,
+        };
+
+        svc.setCatalogoTiposCriatura([tipoNoMuerto as unknown as TipoCriatura]);
+        svc.seleccionarRaza(crearRazaMock(tipoNoMuerto as unknown as TipoCriatura, []));
+        const aplicado = svc.aplicarCaracteristicasGeneradas({
+            Fuerza: 14,
+            Destreza: 12,
+            Constitucion: null,
+            Inteligencia: 10,
+            Sabiduria: 11,
+            Carisma: 9,
+        });
+
+        expect(aplicado).toBeTrue();
+        expect(svc.PersonajeCreacion.Constitucion_perdida).toBeTrue();
+        expect(svc.PersonajeCreacion.Caracteristicas_perdidas?.Constitucion).toBeTrue();
+        expect(svc.PersonajeCreacion.Constitucion).toBe(0);
+        expect(svc.PersonajeCreacion.ModConstitucion).toBe(0);
+    });
+
+    it('ignora modificadores de CON mientras está perdida', () => {
+        const svc = new NuevoPersonajeService();
+        const tipoNoMuerto = crearTipo(6, 'Muerto viviente');
+        tipoNoMuerto.Pierde_constitucion = true;
+        const ventajaCon = crearVentajaBase({
+            Id: 901,
+            Nombre: 'Fortaleza antinatural',
+            Coste: -1,
+            Mejora: 2,
+            Constitucion: true,
+        });
+
+        svc.setCatalogoTiposCriatura([tipoNoMuerto]);
+        svc.seleccionarRaza(crearRazaMock(tipoNoMuerto, []));
+        svc.aplicarCaracteristicasGeneradas({
+            Fuerza: 14,
+            Destreza: 12,
+            Constitucion: null,
+            Inteligencia: 10,
+            Sabiduria: 11,
+            Carisma: 9,
+        });
+        svc.setCatalogosVentajas([ventajaCon], []);
+        svc.toggleVentaja(ventajaCon.Id);
+
+        expect(svc.PersonajeCreacion.CaracteristicasVarios.Constitucion.length).toBe(1);
+        expect(svc.PersonajeCreacion.Constitucion_perdida).toBeTrue();
+        expect(svc.PersonajeCreacion.Caracteristicas_perdidas?.Constitucion).toBeTrue();
+        expect(svc.PersonajeCreacion.Constitucion).toBe(0);
+        expect(svc.PersonajeCreacion.ModConstitucion).toBe(0);
+    });
+
+    it('mecanismo de perdida por clave funciona en una caracteristica distinta de CON', () => {
+        const svc = new NuevoPersonajeService();
+        const tipoHumanoide = crearTipo(1, 'Humanoide');
+        svc.setCatalogoTiposCriatura([tipoHumanoide]);
+        svc.seleccionarRaza(crearRazaMock(tipoHumanoide, []));
+        svc.aplicarCaracteristicasGeneradas({
+            Fuerza: 14,
+            Destreza: 12,
+            Constitucion: 13,
+            Inteligencia: 10,
+            Sabiduria: 11,
+            Carisma: 9,
+        });
+
+        (svc as any).setCaracteristicaPerdida('Fuerza', true, 'test');
+        (svc as any).aplicarCaracteristicasFinalesDesdeBase();
+
+        expect(svc.PersonajeCreacion.Caracteristicas_perdidas?.Fuerza).toBeTrue();
+        expect(svc.PersonajeCreacion.Fuerza).toBe(0);
+        expect(svc.PersonajeCreacion.ModFuerza).toBe(0);
+
+        (svc as any).setCaracteristicaPerdida('Fuerza', false, 'test');
+        (svc as any).aplicarCaracteristicasFinalesDesdeBase();
+
+        expect(svc.PersonajeCreacion.Caracteristicas_perdidas?.Fuerza).toBeFalse();
+        expect(svc.PersonajeCreacion.Fuerza).toBe(14);
+        expect(svc.PersonajeCreacion.ModFuerza).toBe(2);
+    });
+
+    it('fase 2: aplica modificadores/minimos de plantilla y defensas', () => {
+        const svc = new NuevoPersonajeService();
+        const tipoHumanoide = crearTipo(1, 'Humanoide');
+        svc.setCatalogoTiposCriatura([tipoHumanoide]);
+        const raza = crearRazaMock(tipoHumanoide, []);
+        (raza as any).Armadura_natural = 1;
+        (raza as any).Varios_armadura = 0;
+        (raza as any).Reduccion_dano = '5/frio';
+        svc.seleccionarRaza(raza);
+        svc.aplicarCaracteristicasGeneradas({
+            Fuerza: 14,
+            Destreza: 12,
+            Constitucion: 13,
+            Inteligencia: 10,
+            Sabiduria: 11,
+            Carisma: 9,
+        });
+
+        svc.agregarPlantillaSeleccion(crearPlantillaMock({
+            Id: 810,
+            Nombre: 'Liche',
+            Ataque_base: 1,
+            Ca: '+5 armadura natural',
+            Iniciativa: 2,
+            Presa: 4,
+            Reduccion_dano: '15/contundente y magia',
+            Resistencia_conjuros: '32',
+            Resistencia_elemental: 'Frio 10',
+            Modificadores_caracteristicas: {
+                Fuerza: 2,
+                Destreza: 0,
+                Constitucion: 0,
+                Inteligencia: 0,
+                Sabiduria: 0,
+                Carisma: 0,
+            },
+            Minimos_caracteristicas: {
+                Fuerza: 18,
+                Destreza: 0,
+                Constitucion: 0,
+                Inteligencia: 0,
+                Sabiduria: 0,
+                Carisma: 0,
+            },
+        }));
+
+        expect(svc.PersonajeCreacion.Fuerza).toBe(18);
+        expect(svc.PersonajeCreacion.ModFuerza).toBe(4);
+        expect(svc.PersonajeCreacion.Armadura_natural).toBe(6);
+        expect(svc.PersonajeCreacion.Ca).toBe(17);
+        expect(svc.PersonajeCreacion.Ataque_base).toBe('1');
+        expect(svc.PersonajeCreacion.Rds.length).toBe(2);
+        expect(svc.PersonajeCreacion.Rcs.length).toBe(1);
+        expect(svc.PersonajeCreacion.Res.length).toBe(1);
+    });
+
+    it('fase 2: aplica NEP/experiencia/oro con ajuste de nivel de plantilla', () => {
+        const svc = new NuevoPersonajeService();
+        const tipoHumanoide = crearTipo(1, 'Humanoide');
+        svc.setCatalogoTiposCriatura([tipoHumanoide]);
+        svc.seleccionarRaza(crearRazaMock(tipoHumanoide, []));
+        svc.aplicarCaracteristicasGeneradas({
+            Fuerza: 14,
+            Destreza: 12,
+            Constitucion: 13,
+            Inteligencia: 10,
+            Sabiduria: 11,
+            Carisma: 9,
+        });
+
+        svc.agregarPlantillaSeleccion(crearPlantillaMock({
+            Id: 811,
+            Nombre: 'Liche',
+            Ajuste_nivel: 4,
+        }));
+
+        expect(svc.PersonajeCreacion.NEP).toBe(4);
+        expect(svc.PersonajeCreacion.Experiencia).toBe(6000);
+        expect(svc.PersonajeCreacion.Oro_inicial).toBe(5400);
+    });
+
+    it('fase 2: aplica alineamiento por prioridad de plantilla', () => {
+        const svc = new NuevoPersonajeService();
+        const tipoHumanoide = crearTipo(1, 'Humanoide');
+        const raza = crearRazaMock(tipoHumanoide, []);
+        (raza as any).Alineamiento = {
+            Basico: { Nombre: 'Legal bueno' },
+        };
+        svc.setCatalogoTiposCriatura([tipoHumanoide]);
+        svc.seleccionarRaza(raza);
+        svc.aplicarCaracteristicasGeneradas({
+            Fuerza: 14,
+            Destreza: 12,
+            Constitucion: 13,
+            Inteligencia: 10,
+            Sabiduria: 11,
+            Carisma: 9,
+        });
+
+        svc.agregarPlantillaSeleccion(crearPlantillaMock({
+            Id: 812,
+            Nombre: 'Liche',
+            Alineamiento: {
+                Id: 32,
+                Basico: { Id_basico: 0, Nombre: 'No aplica' },
+                Ley: { Id_ley: 10, Nombre: 'Ninguna preferencia' },
+                Moral: { Id_moral: 6, Nombre: 'Siempre maligno' },
+                Prioridad: { Id_prioridad: 3, Nombre: 'Siempre' },
+                Descripcion: 'Se debe respetar a raja tabla.',
+            },
+        }));
+
+        expect(svc.PersonajeCreacion.Alineamiento).toBe('Legal maligno');
+    });
+
+    it('fase 2: aplica habilidades/ataques/dado de golpe de plantilla', () => {
+        const svc = new NuevoPersonajeService();
+        const tipoHumanoide = crearTipo(1, 'Humanoide');
+        svc.setCatalogoTiposCriatura([tipoHumanoide]);
+        svc.setCatalogoHabilidades([{
+            Id_habilidad: 6,
+            Nombre: 'Avistar',
+            Id_caracteristica: 5,
+            Caracteristica: 'Sabiduria',
+            Descripcion: '',
+            Soporta_extra: false,
+            Entrenada: false,
+            Extras: [],
+        }]);
+        svc.seleccionarRaza(crearRazaMock(tipoHumanoide, []));
+        svc.aplicarCaracteristicasGeneradas({
+            Fuerza: 14,
+            Destreza: 12,
+            Constitucion: 13,
+            Inteligencia: 10,
+            Sabiduria: 11,
+            Carisma: 9,
+        });
+
+        svc.agregarPlantillaSeleccion(crearPlantillaMock({
+            Id: 813,
+            Nombre: 'Liche',
+            Tipo_dado: {
+                Id_tipo_dado: 5,
+                Nombre: 'd12',
+            },
+            Habilidades: [{
+                Id_habilidad: 6,
+                Habilidad: 'Avistar',
+                Id_caracteristica: 5,
+                Caracteristica: 'Sabiduria',
+                Descripcion: '',
+                Soporta_extra: false,
+                Entrenada: false,
+                Id_extra: -1,
+                Extra: '-',
+                Rangos: 8,
+                Varios: 'No especifica',
+            }],
+            Ataques: 'Toque corruptor',
+        }));
+
+        const avistar = svc.PersonajeCreacion.Habilidades.find((h) => h.Id === 6);
+        expect(avistar?.Rangos_varios).toBe(8);
+        expect(svc.PersonajeCreacion.Dados_golpe).toBe(12);
+        const ataqueRacial = svc.PersonajeCreacion.Raciales.find((r) => r.Nombre.includes('Toque corruptor'));
+        expect(ataqueRacial?.Origen).toBe('Liche');
     });
 });

@@ -4,7 +4,7 @@ Fecha de generacion: 2026-02-09
 
 Resumen
 - Base URL (local): `http://127.0.0.1:5000`
-- Prefijos registrados: `/verify`, `/personajes`, `/razas`, `/razas/raciales`, `/campanas`, `/tramas`, `/subtramas`, `/manuales`, `/manuales/asociados`, `/tiposCriatura`, `/rasgos`, `/conjuros`, `/escuelas`, `/disciplinas`, `/alineamientos`, `/habilidades`, `/idiomas`, `/dotes`, `/clases`, `/clases/habilidades`, `/plantillas`, `/ventajas`, `/desventajas`
+- Prefijos registrados: `/verify`, `/personajes`, `/razas`, `/razas/raciales`, `/subtipos`, `/campanas`, `/tramas`, `/subtramas`, `/manuales`, `/manuales/asociados`, `/tiposCriatura`, `/rasgos`, `/conjuros`, `/escuelas`, `/disciplinas`, `/alineamientos`, `/habilidades`, `/idiomas`, `/dotes`, `/clases`, `/clases/habilidades`, `/plantillas`, `/ventajas`, `/desventajas`
 - Autenticacion: no hay autenticacion en el backend.
 - Content-Type esperado: `application/json`
 - CORS habilitado para: `https://rol.yosiftware.es/`, `https://www.rol.yosiftware.es/`, `https://62.43.222.28`, `http://192.168.0.34`
@@ -21,6 +21,8 @@ Lista de endpoints
 | GET | /razas | Lista completa de razas | Implementado |
 | GET | /razas/raciales | Lista de raciales | Implementado |
 | GET | /razas/raciales/<id_racial> | Racial por id | Implementado |
+| GET | /subtipos | Lista de subtipos | Implementado |
+| GET | /subtipos/<id_subtipo> | Subtipo completo por id | Implementado |
 | POST | /razas/add | Crear raza | No implementado (funcion `pass`) |
 | GET | /campanas | Lista de campanas | Implementado |
 | POST | /campanas/add | Crear campana | No implementado (funcion `pass`) |
@@ -127,6 +129,7 @@ PersonajeDetalle
 | cla | string | Lista serializada "Clase;Nivel" separada por `| ` |
 | dom | string | Lista serializada de dominios separada por `| ` |
 | stc | string | Lista serializada de subtipos separada por `| ` |
+| subtipos | array | Lista de `SubtipoRef` (`{ Id, Nombre }`) |
 | pla | array | Lista de `PlantillaPersonaje` |
 | con | array | Lista de `ConjuroDetalle` |
 | esp | array | Lista de especiales (nombre) |
@@ -231,6 +234,7 @@ RazaCompleta
 | ali | object | `AlineamientoDetalle` |
 | dotes | array | Lista de `DoteContextual` |
 | rac | array | Lista de `RacialDetalle` (contrato ampliado) |
+| subtipos | array | Lista de `SubtipoRef` (`{ Id, Nombre }`) |
 
 DGS adicionales (RazaCompleta.dg)
 | Campo | Tipo | Descripcion |
@@ -254,6 +258,63 @@ Prerrequisitos (RazaCompleta.pr)
 | alineamiento_prohibido | array | Items: { id_alineamiento, id_alineamiento_basico, alineamiento_basico, id_ley, ley, id_moral, moral } |
 | alineamiento_requerido | array | Items: { id_alineamiento, id_alineamiento_basico, alineamiento_basico, id_ley, ley, id_moral, moral } |
 | tipo_criatura | array | Items: { id_tipo_criatura, tipo_criatura, opcional } |
+
+Endpoint: GET /subtipos
+Respuesta: array de `SubtipoResumen`
+
+SubtipoResumen
+| Campo | Tipo | Descripcion |
+| --- | --- | --- |
+| Id | number | Id de subtipo |
+| Nombre | string | Nombre |
+| Descripcion | string | Descripcion |
+| Manual | object | { Id, Nombre, Pagina } |
+| Heredada | boolean | Si el subtipo es heredado |
+| Oficial | boolean | Oficial (derivado de manual) |
+
+Endpoint: GET /subtipos/<id_subtipo>
+Respuesta: objeto `SubtipoDetalle`
+Respuesta 404
+```json
+{
+  "error": "Subtipo no encontrado",
+  "id_subtipo": 123
+}
+```
+
+SubtipoDetalle
+| Campo | Tipo | Descripcion |
+| --- | --- | --- |
+| Id | number | Id de subtipo |
+| Nombre | string | Nombre |
+| Descripcion | string | Descripcion |
+| Manual | object | { Id, Nombre, Pagina } |
+| Heredada | boolean | Si el subtipo es heredado |
+| Oficial | boolean | Oficial (derivado de manual) |
+| Modificadores_caracteristicas | object | { Fuerza, Destreza, Constitucion, Inteligencia, Sabiduria, Carisma } |
+| Minimos_caracteristicas | object | { Fuerza, Destreza, Constitucion, Inteligencia, Sabiduria, Carisma } |
+| Ajuste_nivel | number | Ajuste de nivel |
+| Presa | number | Modificador a presa |
+| Fortaleza | number | Modificador de fortaleza |
+| Reflejos | number | Modificador de reflejos |
+| Voluntad | number | Modificador de voluntad |
+| Iniciativa | number | Modificador de iniciativa |
+| Ataque_base | number | Modificador de ataque base |
+| Ca | string | Modificador de CA |
+| Rd | string | Reduccion de dano |
+| Rc | string | Resistencia a conjuros |
+| Re | string | Resistencia elemental |
+| Cd | string | Modificador de CD |
+| Tesoro | string | Ajuste de tesoro |
+| Movimientos | object | { Correr, Nadar, Volar, Trepar, Escalar } |
+| Maniobrabilidad | object | Mismo shape de `PlantillaDetalle.Maniobrabilidad` |
+| Alineamiento | object | `AlineamientoDetalle` |
+| Idiomas | array | Lista de `IdiomaDetalle` |
+| Dotes | array | Lista de `DoteContextual` |
+| Habilidades | object | { Base: [], Custom: [] } |
+| Sortilegas | array | Lista de sortilegas `{ Conjuro, Nivel_lanzador, Usos_diarios }` |
+| Rasgos | array | Lista de `RasgoTipo` |
+| Plantillas | array | Lista de `ReferenciaCorta` |
 
 Endpoint: GET /campanas
 Respuesta
@@ -382,6 +443,12 @@ ReferenciaCorta
 | Id | number | Id de la entidad |
 | Nombre | string | Nombre |
 | Descripcion | string | Descripcion corta (si no aplica, vacio) |
+
+SubtipoRef
+| Campo | Tipo | Descripcion |
+| --- | --- | --- |
+| Id | number | Id de subtipo |
+| Nombre | string | Nombre |
 
 Endpoint: GET /tiposCriatura
 Respuesta: array de `TipoCriaturaResumen`
@@ -896,6 +963,7 @@ PlantillaDetalle
 | Alineamiento | object | `AlineamientoDetalle` |
 | Oficial | boolean | Oficial (true=oficial, false=homebrew) |
 | Dotes | array | Lista de `DoteContextual` |
+| Subtipos | array | Lista de `SubtipoRef` (`{ Id, Nombre }`) |
 | Habilidades | array | Lista de `PlantillaHabilidadRef` |
 | Sortilegas | array | Lista de `PlantillaSortilega` |
 | Prerrequisitos_flags | object | Flags booleanos de `pres_p` |
@@ -974,6 +1042,7 @@ RazaSimplificada
 | Tamano | object | { Id, Nombre, Modificador, Modificador_presa } |
 | Dgs_adicionales | object | { Cantidad, Dado, Tipo_criatura } |
 | Tipo_criatura | object | `TipoCriaturaDetalle` |
+| Subtipos | array | Lista de `SubtipoRef` (`{ Id, Nombre }`) |
 
 TipoCriaturaDetalle
 | Campo | Tipo | Descripcion |

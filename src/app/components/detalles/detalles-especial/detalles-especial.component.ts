@@ -1,4 +1,4 @@
-import { Component, Input } from '@angular/core';
+import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { EspecialClaseDetalle } from 'src/app/interfaces/especial';
 
 @Component({
@@ -8,6 +8,7 @@ import { EspecialClaseDetalle } from 'src/app/interfaces/especial';
 })
 export class DetallesEspecialComponent {
     @Input() especial!: EspecialClaseDetalle;
+    @Output() subtipoDetalles: EventEmitter<{ Id?: number | null; Nombre: string; }> = new EventEmitter<{ Id?: number | null; Nombre: string; }>();
 
     getBonificadoresActivos(): { clave: string, valor: number }[] {
         if (!this.especial?.Bonificadores)
@@ -49,6 +50,21 @@ export class DetallesEspecialComponent {
         if (!base)
             return false;
         const limpiado = base.replace(/[.]/g, '');
-        return limpiado !== 'no especifica' && limpiado !== 'no se especifica' && limpiado !== 'no aplica';
+        return limpiado !== 'no especifica'
+            && limpiado !== 'no se especifica'
+            && limpiado !== 'no aplica'
+            && limpiado !== 'no modifica'
+            && limpiado !== 'no vuela';
+    }
+
+    abrirDetalleSubtipo() {
+        const nombre = `${this.especial?.Subtipo?.Nombre ?? ''}`.trim();
+        if (!this.tieneTextoVisible(nombre))
+            return;
+        const id = Number(this.especial?.Subtipo?.Id);
+        this.subtipoDetalles.emit({
+            Id: Number.isFinite(id) && id > 0 ? id : null,
+            Nombre: nombre,
+        });
     }
 }

@@ -75,6 +75,10 @@
                             (click)="onClickCaracteristica(item.key)">
                             {{getValorAsignado(item.key)}}
                         </div>
+                        <div class="atributo-preview" *ngIf="getPreviewCaracteristica(item.key) as preview">
+                            <span>Resultado: {{preview.valorFinal}}</span>
+                            <span>Mod: {{formatMod(preview.modificador)}}</span>
+                        </div>
                     </div>
                 </div>
             </section>

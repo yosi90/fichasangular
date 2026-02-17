@@ -1,5 +1,5 @@
 import { Plantilla } from "src/app/interfaces/plantilla";
-import { evaluarElegibilidadPlantilla, PlantillaEvaluacionContexto, simularEstadoPlantillas } from "./plantilla-elegibilidad";
+import { evaluarElegibilidadPlantilla, PlantillaEvaluacionContexto, resolverAlineamientoPlantillas, simularEstadoPlantillas } from "./plantilla-elegibilidad";
 
 function crearPlantillaMock(overrides?: Partial<Plantilla>): Plantilla {
     return {
@@ -58,6 +58,7 @@ function crearPlantillaMock(overrides?: Partial<Plantilla>): Plantilla {
         },
         Oficial: true,
         Dotes: [],
+        Subtipos: [],
         Habilidades: [],
         Sortilegas: [],
         Prerrequisitos_flags: {
@@ -180,5 +181,55 @@ describe("plantilla-elegibilidad", () => {
         const sim = simularEstadoPlantillas({ Id: 1, Nombre: "Humanoide" } as any, [plantilla]);
         expect(sim.tipoCriaturaActualId).toBe(1);
         expect(sim.tipoCriaturaActualNombre).toBe("Humanoide");
+    });
+
+    it("resuelve alineamiento por prioridad de plantillas", () => {
+        const liche = crearPlantillaMock({
+            Id: 501,
+            Nombre: "Liche",
+            Alineamiento: {
+                Id: 32,
+                Basico: { Id_basico: 0, Nombre: "No aplica" },
+                Ley: { Id_ley: 10, Nombre: "Ninguna preferencia" },
+                Moral: { Id_moral: 6, Nombre: "Siempre maligno" },
+                Prioridad: { Id_prioridad: 3, Nombre: "Siempre" },
+                Descripcion: "Se debe respetar a raja tabla.",
+            },
+        });
+
+        const res = resolverAlineamientoPlantillas("Legal bueno", [liche]);
+        expect(res.conflicto).toBeFalse();
+        expect(res.alineamiento).toBe("Legal maligno");
+    });
+
+    it("detecta conflicto de alineamiento al mismo nivel de prioridad", () => {
+        const plantillaBuena = crearPlantillaMock({
+            Id: 601,
+            Nombre: "Plantilla santa",
+            Alineamiento: {
+                Id: 0,
+                Basico: { Id_basico: 0, Nombre: "No aplica" },
+                Ley: { Id_ley: 10, Nombre: "Ninguna preferencia" },
+                Moral: { Id_moral: 0, Nombre: "Siempre bueno" },
+                Prioridad: { Id_prioridad: 3, Nombre: "Siempre" },
+                Descripcion: "",
+            },
+        });
+        const plantillaMaligna = crearPlantillaMock({
+            Id: 602,
+            Nombre: "Plantilla profana",
+            Alineamiento: {
+                Id: 0,
+                Basico: { Id_basico: 0, Nombre: "No aplica" },
+                Ley: { Id_ley: 10, Nombre: "Ninguna preferencia" },
+                Moral: { Id_moral: 0, Nombre: "Siempre maligno" },
+                Prioridad: { Id_prioridad: 3, Nombre: "Siempre" },
+                Descripcion: "",
+            },
+        });
+
+        const res = resolverAlineamientoPlantillas("Neutral autentico", [plantillaBuena, plantillaMaligna]);
+        expect(res.conflicto).toBeTrue();
+        expect(res.razones.length).toBeGreaterThan(0);
     });
 });

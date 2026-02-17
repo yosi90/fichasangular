@@ -208,6 +208,7 @@ export class DetallesClaseComponent {
             && limpiado !== 'no se especifica'
             && limpiado !== 'no aplica'
             && limpiado !== 'no modifica'
+            && limpiado !== 'no vuela'
             && limpiado !== '-';
     }
 

@@ -105,6 +105,7 @@ function crearRazaMock(pierdeConstitucion = false): Raza {
             Rasgos: [],
             Oficial: true,
         },
+        Subtipos: [],
         Sortilegas: [],
         Raciales: [],
         DotesContextuales: [],
@@ -122,6 +123,7 @@ describe('GeneradorCaracteristicasModalComponent', () => {
         service.seleccionarRaza(crearRazaMock(false));
         component = new GeneradorCaracteristicasModalComponent(service);
         component.raza = service.RazaSeleccionada!;
+        component.caracteristicasPerdidas = service.PersonajeCreacion.Caracteristicas_perdidas ?? null;
         component.pierdeConstitucion = false;
     });
 
@@ -199,5 +201,42 @@ describe('GeneradorCaracteristicasModalComponent', () => {
 
         expect(modalNoMuerto.puedeFinalizar).toBeTrue();
         expect(modalNoMuerto.estado.asignaciones.Constitucion).toBe(0);
+    });
+
+    it('muestra preview con estadistica final y modificador cuando hay valor asignado', () => {
+        component.seleccionarTabla(1);
+        service.asignarDesdePoolACaracteristica('Fuerza', 0);
+
+        const preview = component.getPreviewCaracteristica('Fuerza');
+        const base = component.estado.asignaciones.Fuerza as number;
+        const esperadoFinal = base + component.getModRacial('Fuerza');
+        const esperadoMod = Math.floor((esperadoFinal - 10) / 2);
+
+        expect(preview).not.toBeNull();
+        expect(preview?.valorFinal).toBe(esperadoFinal);
+        expect(preview?.modificador).toBe(esperadoMod);
+    });
+
+    it('no muestra preview de constitucion cuando está perdida', () => {
+        const servicioNoMuerto = new NuevoPersonajeService();
+        servicioNoMuerto.seleccionarRaza(crearRazaMock(true));
+        const modalNoMuerto = new GeneradorCaracteristicasModalComponent(servicioNoMuerto);
+        modalNoMuerto.raza = servicioNoMuerto.RazaSeleccionada!;
+        modalNoMuerto.caracteristicasPerdidas = servicioNoMuerto.PersonajeCreacion.Caracteristicas_perdidas ?? null;
+        modalNoMuerto.pierdeConstitucion = true;
+        modalNoMuerto.seleccionarTabla(1);
+
+        expect(modalNoMuerto.getPreviewCaracteristica('Constitucion')).toBeNull();
+    });
+
+    it('bloquea drop y preview en cualquier caracteristica perdida', () => {
+        (service as any).setCaracteristicaPerdida('Fuerza', true, 'test');
+        component.caracteristicasPerdidas = service.PersonajeCreacion.Caracteristicas_perdidas ?? null;
+        component.seleccionarTabla(1);
+
+        expect(component.getValorAsignado('Fuerza')).toBe('-');
+        expect(component.caracteristicaBloqueada('Fuerza')).toBeTrue();
+        expect(component.getPreviewCaracteristica('Fuerza')).toBeNull();
+        expect(component.estado.asignaciones.Fuerza).toBe(0);
     });
 });

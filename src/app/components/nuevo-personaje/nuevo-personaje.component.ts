@@ -8,14 +8,17 @@ import { Personaje } from 'src/app/interfaces/personaje';
 import { Plantilla } from 'src/app/interfaces/plantilla';
 import { Raza } from 'src/app/interfaces/raza';
 import { RacialReferencia } from 'src/app/interfaces/racial';
+import { Rasgo } from 'src/app/interfaces/rasgo';
+import { TipoCriatura } from 'src/app/interfaces/tipo_criatura';
 import { VentajaDetalle } from 'src/app/interfaces/ventaja';
 import { CampanaService } from 'src/app/services/campana.service';
 import { HabilidadService } from 'src/app/services/habilidad.service';
 import { IdiomaService } from 'src/app/services/idioma.service';
 import { AsignacionCaracteristicas, NuevoPersonajeService, StepNuevoPersonaje } from 'src/app/services/nuevo-personaje.service';
 import { PlantillaService } from 'src/app/services/plantilla.service';
+import { TipoCriaturaService } from 'src/app/services/tipo-criatura.service';
 import { VentajaService } from 'src/app/services/ventaja.service';
-import { PlantillaEvaluacionResultado, evaluarElegibilidadPlantilla } from 'src/app/services/utils/plantilla-elegibilidad';
+import { PlantillaEvaluacionResultado, evaluarElegibilidadPlantilla, resolverAlineamientoPlantillas } from 'src/app/services/utils/plantilla-elegibilidad';
 import { environment } from 'src/environments/environment';
 import Swal from 'sweetalert2';
 
@@ -142,6 +145,7 @@ export class NuevoPersonajeComponent {
     private habilidadesSub?: Subscription;
     private habilidadesCustomSub?: Subscription;
     private idiomasSub?: Subscription;
+    private tiposCriaturaSub?: Subscription;
     @ViewChild(MatTabGroup) TabGroup?: MatTabGroup;
 
     constructor(
@@ -150,7 +154,8 @@ export class NuevoPersonajeComponent {
         private plantillaSvc: PlantillaService,
         private ventajaSvc: VentajaService,
         private habilidadSvc: HabilidadService,
-        private idiomaSvc: IdiomaService
+        private idiomaSvc: IdiomaService,
+        private tipoCriaturaSvc: TipoCriaturaService
     ) {
         this.Personaje = this.nuevoPSvc.PersonajeCreacion;
     }
@@ -166,6 +171,7 @@ export class NuevoPersonajeComponent {
         this.cargarHabilidadesBase();
         this.cargarHabilidadesCustom();
         this.cargarIdiomas();
+        this.cargarTiposCriatura();
     }
 
     ngOnDestroy(): void {
@@ -176,6 +182,7 @@ export class NuevoPersonajeComponent {
         this.habilidadesSub?.unsubscribe();
         this.habilidadesCustomSub?.unsubscribe();
         this.idiomasSub?.unsubscribe();
+        this.tiposCriaturaSub?.unsubscribe();
     }
 
     get flujo() {
@@ -208,7 +215,7 @@ export class NuevoPersonajeComponent {
     }
 
     get tipoCriaturaSimuladaTexto(): string {
-        return this.flujo.plantillas.tipoCriaturaSimulada.Nombre;
+        return `${this.Personaje?.Tipo_criatura?.Nombre ?? this.flujo.plantillas.tipoCriaturaSimulada.Nombre ?? '-'}`;
     }
 
     get mostrarTipoCriaturaResultante(): boolean {
@@ -217,7 +224,7 @@ export class NuevoPersonajeComponent {
             return false;
 
         const tipoBaseId = Number(raza.Tipo_criatura?.Id ?? 0);
-        const tipoSimuladoId = Number(this.flujo.plantillas.tipoCriaturaSimulada.Id ?? 0);
+        const tipoSimuladoId = Number(this.Personaje?.Tipo_criatura?.Id ?? 0);
 
         if (!Number.isFinite(tipoBaseId) || !Number.isFinite(tipoSimuladoId))
             return false;
@@ -811,9 +818,38 @@ export class NuevoPersonajeComponent {
         this.razaDetalles.emit(value);
     }
 
+    verDetallesRazaDesdeFicha(idRaza: number): void {
+        const raza = this.razaSeleccionada;
+        if (!raza)
+            return;
+        if (Number(raza.Id) !== Number(idRaza))
+            return;
+        this.razaDetalles.emit(raza);
+    }
+
     @Output() plantillaDetalles: EventEmitter<Plantilla> = new EventEmitter<Plantilla>();
     verDetallesPlantilla(value: Plantilla): void {
         this.plantillaDetalles.emit(value);
+    }
+
+    verDetallesPlantillaDesdeFicha(payload: { id?: number | null; nombre: string; }): void {
+        const id = Number(payload?.id ?? 0);
+        if (Number.isFinite(id) && id > 0) {
+            const porId = this.plantillasCatalogo.find((p) => Number(p.Id) === id)
+                ?? this.plantillasSeleccionadas.find((p) => Number(p.Id) === id);
+            if (porId) {
+                this.plantillaDetalles.emit(porId);
+                return;
+            }
+        }
+
+        const nombreBuscado = this.normalizarTexto(payload?.nombre ?? '');
+        if (nombreBuscado.length < 1)
+            return;
+        const porNombre = this.plantillasCatalogo.find((p) => this.normalizarTexto(p.Nombre) === nombreBuscado)
+            ?? this.plantillasSeleccionadas.find((p) => this.normalizarTexto(p.Nombre) === nombreBuscado);
+        if (porNombre)
+            this.plantillaDetalles.emit(porNombre);
     }
 
     @Output() racialDetallesPorNombre: EventEmitter<RacialReferencia> = new EventEmitter<RacialReferencia>();
@@ -827,6 +863,14 @@ export class NuevoPersonajeComponent {
             id: Number.isFinite(id) && id > 0 ? id : null,
             nombre,
         });
+    }
+
+    @Output() rasgoDetalles: EventEmitter<Rasgo> = new EventEmitter<Rasgo>();
+    verDetallesRasgo(value: Rasgo): void {
+        const nombre = `${value?.Nombre ?? ''}`.trim();
+        if (nombre.length < 1)
+            return;
+        this.rasgoDetalles.emit(value);
     }
 
     @Output() cerrarNuevoPersonajeSolicitado: EventEmitter<void> = new EventEmitter<void>();
@@ -1292,6 +1336,18 @@ export class NuevoPersonajeComponent {
         });
     }
 
+    private cargarTiposCriatura(): void {
+        this.tiposCriaturaSub?.unsubscribe();
+        this.tiposCriaturaSub = this.tipoCriaturaSvc.getTiposCriatura().subscribe({
+            next: (tipos: TipoCriatura[]) => {
+                this.nuevoPSvc.setCatalogoTiposCriatura(tipos ?? []);
+            },
+            error: () => {
+                this.nuevoPSvc.setCatalogoTiposCriatura([]);
+            },
+        });
+    }
+
     private recalcularPlantillasVisibles(): void {
         const raza = this.razaSeleccionada;
         if (!raza) {
@@ -1315,7 +1371,7 @@ export class NuevoPersonajeComponent {
                 Carisma: Number(this.Personaje.Carisma),
             },
             tamanoRazaId: Number(raza.Tamano?.Id ?? 0),
-            tipoCriaturaActualId: Number(this.flujo.plantillas.tipoCriaturaSimulada.Id ?? 0),
+            tipoCriaturaActualId: Number(this.Personaje.Tipo_criatura?.Id ?? 0),
             razaHeredada: !!raza.Heredada,
             incluirHomebrew: this.incluirHomebrewPlantillasEfectivo,
             seleccionadas: this.plantillasSeleccionadas.map(p => ({
@@ -1339,6 +1395,21 @@ export class NuevoPersonajeComponent {
 
             const evaluacion = evaluarElegibilidadPlantilla(plantilla, ctx);
             if (evaluacion.estado === 'eligible') {
+                const alineamientoResuelto = resolverAlineamientoPlantillas(
+                    this.Personaje.Alineamiento,
+                    [...this.plantillasSeleccionadas, plantilla]
+                );
+                if (alineamientoResuelto.conflicto) {
+                    bloqueadasFailed.push({
+                        plantilla,
+                        evaluacion: {
+                            estado: 'blocked_failed',
+                            razones: alineamientoResuelto.razones,
+                            advertencias: [],
+                        },
+                    });
+                    return;
+                }
                 elegibles.push(plantilla);
                 return;
             }

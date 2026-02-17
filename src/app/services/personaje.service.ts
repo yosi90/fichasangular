@@ -10,6 +10,7 @@ import { TipoCriatura } from '../interfaces/tipo_criatura';
 import { DoteContextual } from '../interfaces/dote-contextual';
 import { toDoteContextualArray, toDoteLegacyArray } from './utils/dote-mapper';
 import { normalizeRaciales } from './utils/racial-mapper';
+import { normalizeSubtipoRefArray } from './utils/subtipo-mapper';
 
 @Injectable({
     providedIn: 'root'
@@ -28,6 +29,13 @@ export class PersonajeService {
                 const clasesArray = Array.isArray(clasesVal) ? clasesVal : [];
                 const dotesContextuales = toDoteContextualArray(snapshot.child('DotesContextuales').val());
                 const dotesLegacyRaw = snapshot.child('Dotes').val();
+                const subtipos = normalizeSubtipoRefArray(snapshot.child('Subtipos').val() ?? snapshot.child('stc').val());
+                const ventajas = normalizeVentajasPersonaje(snapshot.child('Ventajas').val());
+                const idiomas = normalizeIdiomasPersonaje(snapshot.child('Idiomas').val());
+                const caracteristicasPerdidas = normalizeCaracteristicasPerdidasPersonaje(
+                    snapshot.child('Caracteristicas_perdidas').val(),
+                    snapshot.child('Constitucion_perdida').val()
+                );
                 const dotesLegacy = Array.isArray(dotesLegacyRaw)
                     ? dotesLegacyRaw
                     : (dotesLegacyRaw && typeof dotesLegacyRaw === 'object'
@@ -53,13 +61,15 @@ export class PersonajeService {
                     Presa: snapshot.child('Presa').val(),
                     Presa_varios: snapshot.child('Presa_varios').val(),
                     Tipo_criatura: snapshot.child('Tipo_criatura').val(),
-                    Subtipos: snapshot.child('Subtipos').val(),
+                    Subtipos: subtipos,
                     Fuerza: snapshot.child('Fuerza').val(),
                     ModFuerza: snapshot.child('ModFuerza').val(),
                     Destreza: snapshot.child('Destreza').val(),
                     ModDestreza: snapshot.child('ModDestreza').val(),
                     Constitucion: snapshot.child('Constitucion').val(),
                     ModConstitucion: snapshot.child('ModConstitucion').val(),
+                    Caracteristicas_perdidas: caracteristicasPerdidas,
+                    Constitucion_perdida: caracteristicasPerdidas.Constitucion === true,
                     Inteligencia: snapshot.child('Inteligencia').val(),
                     ModInteligencia: snapshot.child('ModInteligencia').val(),
                     Sabiduria: snapshot.child('Sabiduria').val(),
@@ -96,8 +106,8 @@ export class PersonajeService {
                     Habilidades: snapshot.child('Habilidades').val(),
                     Dotes: dotesLegacy,
                     DotesContextuales: dotesContextuales,
-                    Ventajas: snapshot.child('Ventajas').val(),
-                    Idiomas: snapshot.child('Idiomas').val(),
+                    Ventajas: ventajas,
+                    Idiomas: idiomas,
                     Sortilegas: snapshot.child('Sortilegas').val(),
                     Archivado: false,
                     Jugador: snapshot.child('Jugador').val(),
@@ -152,10 +162,10 @@ export class PersonajeService {
             await Promise.all(
                 personajes.map((element: {
                     i: any; n: any; dcp: any; dh: any; tm: any; a: any; ca: any; an: any; cd: any; cv: any; ra: any; tc: TipoCriatura; f: any; mf: any; d: any; md: any; co: any; mco: any; int: any; mint: any; s: any; 
-                    ms: any; car: any; mcar: any; de: any; ali: any; g: any; ncam: any; ntr: any; ju: any; nst: any; v: any; cor: any; na: any; vo: any; t: any; e: any; o: any; dg: any; cla: any; dom: any; stc: any; 
+                    ms: any; car: any; mcar: any; de: any; ali: any; g: any; ncam: any; ntr: any; ju: any; nst: any; v: any; cor: any; na: any; vo: any; t: any; e: any; o: any; dg: any; cla: any; dom: any; stc: any; subtipos?: any;
                     pla: any; con: any; esp: any; espX: any; rac: any; hab: any; habN: any; habC: any; habCa: any; habMc: any; habR: any; habRv: any; habX: any; habV: any; habCu: any; dotes: DoteContextual[]; ve: any; idi: any;
                     sor: any; pgl: any; ini_v: any; pr_v: { Valor: number; Origen: string; }[]; edad: any; alt: any; peso: any; salv: any; rds: any; 
-                    rcs: any; res: any; ccl: any; ccm: any; ccp: any; espa: any; espan: any; espp: any; esppn: any; disp: any; ecp: any;
+                    rcs: any; res: any; ccl: any; ccm: any; ccp: any; espa: any; espan: any; espp: any; esppn: any; disp: any; ecp: any; cper?: any; cperd?: any;
                 }) => {
                     const tempcla = (element.cla ?? "").split("|");
                     let nep = toNumber(element?.ra?.Dgs_adicionales?.Cantidad);
@@ -246,9 +256,10 @@ export class PersonajeService {
                             });
                         }
                     const dom: [] = element.dom.split("|").map((item: string) => item.trim()).filter((item: string) => item.length > 0);
-                    const stc: [] = element.stc.split("|").map((item: string) => item.trim()).filter((item: string) => item.length > 0);
+                    const subtipos = normalizeSubtipoRefArray(element.subtipos ?? element.stc ?? "");
                     const raciales = normalizeRaciales(element.rac);
-                    const ve: [] = element.ve.split("|").map((item: string) => item.trim()).filter((item: string) => item.length > 0);
+                    const ve = normalizeVentajasPersonaje(element.ve);
+                    const idiomas = normalizeIdiomasPersonaje(element.idi);
                     const ecp: [] = element.ecp.split("|").map((item: string) => item.trim()).filter((item: string) => item.length > 0);
                     const ataqueBase = `${element.a ?? 0}`;
                     const presaBase = +(ataqueBase.includes('/') ? ataqueBase.substring(0, ataqueBase.indexOf('/')) : ataqueBase);
@@ -273,6 +284,8 @@ export class PersonajeService {
                         ModDestreza: element.md,
                         Constitucion: element.co,
                         ModConstitucion: element.mco,
+                        Caracteristicas_perdidas: normalizeCaracteristicasPerdidasPersonaje(element.cper, element.cperd),
+                        Constitucion_perdida: toBoolean(element.cperd),
                         Inteligencia: element.int,
                         ModInteligencia: element.mint,
                         Sabiduria: element.s,
@@ -302,7 +315,7 @@ export class PersonajeService {
                         Peso: element.peso,
                         Clases: clas,
                         Dominios: dom,
-                        Subtipos: stc,
+                        Subtipos: subtipos,
                         Plantillas: element.pla,
                         Conjuros: element.con,
                         Claseas: claseas,
@@ -311,7 +324,7 @@ export class PersonajeService {
                         Dotes: dotes,
                         DotesContextuales: dotesContextuales,
                         Ventajas: ve,
-                        Idiomas: element.idi,
+                        Idiomas: idiomas,
                         Sortilegas: element.sor,
                         Salvaciones: element.salv,
                         Rds: rds,
@@ -379,4 +392,113 @@ function calc_oro(nep: number) {
 function toNumber(value: any): number {
     const parsed = Number(value);
     return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function toText(value: any): string {
+    if (value === null || value === undefined)
+        return '';
+    return `${value}`;
+}
+
+function toBoolean(value: any): boolean {
+    if (typeof value === 'boolean')
+        return value;
+    if (typeof value === 'number')
+        return value === 1;
+    if (typeof value === 'string') {
+        const normalizado = value.trim().toLowerCase();
+        return normalizado === '1' || normalizado === 'true' || normalizado === 'si' || normalizado === 'sí';
+    }
+    return false;
+}
+
+function toArray<T = any>(value: any): T[] {
+    if (Array.isArray(value))
+        return value;
+    if (value && typeof value === 'object')
+        return Object.values(value) as T[];
+    return [];
+}
+
+function normalizeVentajasPersonaje(raw: any): (string | { Nombre: string; Origen?: string; })[] {
+    if (typeof raw === 'string') {
+        return raw
+            .split('|')
+            .map((item) => item.trim())
+            .filter((item) => item.length > 0);
+    }
+
+    const output: (string | { Nombre: string; Origen?: string; })[] = [];
+    toArray(raw).forEach((item) => {
+        if (typeof item === 'string') {
+            const nombre = item.trim();
+            if (nombre.length > 0)
+                output.push(nombre);
+            return;
+        }
+
+        const nombre = toText(item?.Nombre ?? item?.nombre).trim();
+        if (nombre.length < 1)
+            return;
+
+        const origen = toText(item?.Origen ?? item?.origen).trim();
+        if (origen.length > 0) {
+            output.push({
+                Nombre: nombre,
+                Origen: origen,
+            });
+            return;
+        }
+
+        output.push({
+            Nombre: nombre,
+        });
+    });
+    return output;
+}
+
+function normalizeIdiomasPersonaje(raw: any): { Nombre: string; Descripcion: string; Secreto: boolean; Oficial: boolean; Origen?: string; }[] {
+    const output: { Nombre: string; Descripcion: string; Secreto: boolean; Oficial: boolean; Origen?: string; }[] = [];
+    toArray(raw).forEach((item) => {
+        const nombre = toText(item?.Nombre).trim();
+        if (nombre.length < 1)
+            return;
+
+        const idiomaNormalizado: { Nombre: string; Descripcion: string; Secreto: boolean; Oficial: boolean; Origen?: string; } = {
+            Nombre: nombre,
+            Descripcion: toText(item?.Descripcion).trim(),
+            Secreto: toBoolean(item?.Secreto),
+            Oficial: toBoolean(item?.Oficial),
+        };
+
+        const origen = toText(item?.Origen ?? item?.origen).trim();
+        if (origen.length > 0)
+            idiomaNormalizado.Origen = origen;
+
+        output.push(idiomaNormalizado);
+    });
+    return output;
+}
+
+function normalizeCaracteristicasPerdidasPersonaje(raw: any, constitucionPerdidaLegacy: any): {
+    Fuerza?: boolean;
+    Destreza?: boolean;
+    Constitucion?: boolean;
+    Inteligencia?: boolean;
+    Sabiduria?: boolean;
+    Carisma?: boolean;
+} {
+    const output = {
+        Fuerza: toBoolean(raw?.Fuerza),
+        Destreza: toBoolean(raw?.Destreza),
+        Constitucion: toBoolean(raw?.Constitucion),
+        Inteligencia: toBoolean(raw?.Inteligencia),
+        Sabiduria: toBoolean(raw?.Sabiduria),
+        Carisma: toBoolean(raw?.Carisma),
+    };
+
+    if (toBoolean(constitucionPerdidaLegacy))
+        output.Constitucion = true;
+
+    return output;
 }
