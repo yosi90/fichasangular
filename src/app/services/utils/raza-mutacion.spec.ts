@@ -125,6 +125,7 @@ function crearRazaMock(partial?: Partial<Raza>): Raza {
         Subtipos: [],
         Sortilegas: [],
         Raciales: [],
+        Habilidades: { Base: [], Custom: [] },
         DotesContextuales: [],
         ...partial,
     } as Raza;
@@ -307,5 +308,72 @@ describe("raza-mutacion utils", () => {
         expect(efectiva.Sortilegas.length).toBe(2);
         expect(efectiva.DotesContextuales.length).toBe(2);
         expect(efectiva.Tamano.Id).toBe(base.Tamano.Id);
+    });
+
+    it("mergea habilidades de raza sumando cantidades y priorizando metadata de mutada", () => {
+        const base = crearRazaMock({
+            Habilidades: {
+                Base: [
+                    {
+                        Id_habilidad: 8,
+                        Habilidad: "Avistar",
+                        Id_caracteristica: 5,
+                        Caracteristica: "Sabiduria",
+                        Soporta_extra: true,
+                        Id_extra: 0,
+                        Extra: "Elegir",
+                        Cantidad: 2,
+                        Varios: "+2 base",
+                    },
+                ],
+                Custom: [
+                    {
+                        Id_habilidad: 99,
+                        Habilidad: "Conocimiento prohibido",
+                        Id_caracteristica: 4,
+                        Caracteristica: "Inteligencia",
+                        Cantidad: 1,
+                        Custom: true,
+                    },
+                ],
+            },
+        });
+        const mutada = crearRazaMock({
+            Habilidades: {
+                Base: [
+                    {
+                        Id_habilidad: 8,
+                        Habilidad: "Avistar",
+                        Id_caracteristica: 5,
+                        Caracteristica: "Sabiduria",
+                        Soporta_extra: true,
+                        Id_extra: 0,
+                        Extra: "Elegir",
+                        Cantidad: 3,
+                        Varios: "+3 mutada",
+                    },
+                ],
+                Custom: [
+                    {
+                        Id_habilidad: 99,
+                        Habilidad: "Conocimiento prohibido",
+                        Id_caracteristica: 4,
+                        Caracteristica: "Inteligencia",
+                        Cantidad: 2,
+                        Custom: true,
+                    },
+                ],
+            },
+        });
+
+        const efectiva = aplicarMutacion(base, mutada);
+        const baseAvistar = efectiva.Habilidades.Base.find((h) => h.Id_habilidad === 8);
+        const custom = efectiva.Habilidades.Custom.find((h) => h.Id_habilidad === 99);
+
+        expect(baseAvistar?.Cantidad).toBe(5);
+        expect(baseAvistar?.Varios).toBe("+3 mutada");
+        expect(baseAvistar?.Extra).toBe("Elegir");
+        expect(baseAvistar?.Soporta_extra).toBeTrue();
+        expect(custom?.Cantidad).toBe(3);
     });
 });

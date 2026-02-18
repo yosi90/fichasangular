@@ -3,6 +3,7 @@ import { DoteContextual } from 'src/app/interfaces/dote-contextual';
 import { Plantilla, PlantillaPrerrequisitos } from 'src/app/interfaces/plantilla';
 import { SubtipoRef } from 'src/app/interfaces/subtipo';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
+import { resolverExtraHabilidadVisible } from 'src/app/services/utils/habilidad-extra-visible';
 
 type PrerrequisitoCondicion = {
     familiaEtiqueta: string;
@@ -437,7 +438,7 @@ export class DetallesPlantillaComponent {
         if (base === 'extra' || base === 'extras') {
             return {
                 etiqueta: 'Extra',
-                valor: this.extraerValorSimple(valor),
+                valor: this.getExtraVisibleDesdeRegistro(item, valor),
             };
         }
 
@@ -475,11 +476,28 @@ export class DetallesPlantillaComponent {
 
     private formatearHabilidadPrerrequisito(valor: unknown, item: Record<string, any>): string {
         const habilidad = this.extraerValorSimple(valor);
-        const extra = this.extraerValorSimple(item?.['Extra'] ?? item?.['extra'] ?? item?.['Extras'] ?? item?.['extras']);
+        const extra = this.getExtraVisibleDesdeRegistro(
+            item,
+            item?.['Extra'] ?? item?.['extra'] ?? item?.['Extras'] ?? item?.['extras'],
+        );
         const matchSaberGenerico = /^saber\s*\d+$/i.test(habilidad);
         if (matchSaberGenerico && this.tieneTextoVisible(extra))
             return 'Saber';
         return habilidad;
+    }
+
+    private getExtraVisibleDesdeRegistro(item: Record<string, any>, extraRaw: unknown): string {
+        const hasIdExtra = Object.prototype.hasOwnProperty.call(item ?? {}, 'Id_extra')
+            || Object.prototype.hasOwnProperty.call(item ?? {}, 'id_extra')
+            || Object.prototype.hasOwnProperty.call(item ?? {}, 'i_ex')
+            || Object.prototype.hasOwnProperty.call(item ?? {}, 'ie');
+
+        return resolverExtraHabilidadVisible({
+            extra: this.extraerValorSimple(extraRaw),
+            idExtra: item?.['Id_extra'] ?? item?.['id_extra'] ?? item?.['i_ex'] ?? item?.['ie'],
+            soportaExtra: item?.['Soporta_extra'] ?? item?.['soporta_extra'],
+            allowIdZeroAsChoose: hasIdExtra,
+        });
     }
 
     private extraerValorSimple(valor: unknown): string {

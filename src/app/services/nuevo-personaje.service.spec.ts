@@ -478,6 +478,82 @@ describe('NuevoPersonajeService (ventajas/desventajas)', () => {
         expect(svc.PersonajeCreacion.Sortilegas.length).toBe(0);
     });
 
+    it('seleccionarRaza aplica habilidades otorgadas como Rangos_varios y las marca claseas', () => {
+        const svc = new NuevoPersonajeService();
+        svc.setCatalogoHabilidades([{
+            Id_habilidad: 1,
+            Nombre: 'Avistar',
+            Id_caracteristica: 5,
+            Caracteristica: 'Sabiduria',
+            Descripcion: '',
+            Soporta_extra: false,
+            Entrenada: false,
+            Extras: [],
+        }]);
+        const razaConHabilidades = {
+            Id: 1,
+            Nombre: 'Elfo',
+            Alineamiento: { Basico: { Nombre: 'Neutral autentico' } },
+            Tipo_criatura: { Id: 1, Nombre: 'Humanoide' },
+            Correr: 30,
+            Nadar: 0,
+            Volar: 0,
+            Trepar: 0,
+            Escalar: 0,
+            Edad_adulto: 20,
+            Altura_rango_inf: 1.7,
+            Peso_rango_inf: 65,
+            Heredada: false,
+            Raciales: [],
+            Sortilegas: [],
+            Habilidades: {
+                Base: [{ Id_habilidad: 1, Habilidad: 'Avistar', Cantidad: 2, Varios: '+2 racial' }],
+                Custom: [],
+            },
+        } as unknown as Raza;
+
+        svc.seleccionarRaza(razaConHabilidades);
+
+        const avistar = svc.PersonajeCreacion.Habilidades.find((h) => h.Id === 1);
+        expect(avistar?.Clasea).toBeTrue();
+        expect(avistar?.Rangos_varios).toBe(2);
+        expect(`${avistar?.Varios ?? ''}`).toContain('Elfo');
+    });
+
+    it('seleccionarRaza suma duplicados de habilidades y custom prevalece en flag', () => {
+        const svc = new NuevoPersonajeService();
+        svc.setCatalogoHabilidades([]);
+        const razaConDuplicadas = {
+            Id: 1,
+            Nombre: 'Elfo',
+            Alineamiento: { Basico: { Nombre: 'Neutral autentico' } },
+            Tipo_criatura: { Id: 1, Nombre: 'Humanoide' },
+            Correr: 30,
+            Nadar: 0,
+            Volar: 0,
+            Trepar: 0,
+            Escalar: 0,
+            Edad_adulto: 20,
+            Altura_rango_inf: 1.7,
+            Peso_rango_inf: 65,
+            Heredada: false,
+            Raciales: [],
+            Sortilegas: [],
+            Habilidades: {
+                Base: [{ Id_habilidad: 90, Habilidad: 'Navegar astral', Cantidad: 1, Varios: '' }],
+                Custom: [{ Id_habilidad: 90, Habilidad: 'Navegar astral', Cantidad: 2 }],
+            },
+        } as unknown as Raza;
+
+        svc.seleccionarRaza(razaConDuplicadas);
+
+        const habilidad = svc.PersonajeCreacion.Habilidades.find((h) => h.Id === 90);
+        expect(svc.PersonajeCreacion.Habilidades.filter((h) => h.Id === 90).length).toBe(1);
+        expect(habilidad?.Clasea).toBeTrue();
+        expect(habilidad?.Custom).toBeTrue();
+        expect(habilidad?.Rangos_varios).toBe(3);
+    });
+
     it('Rasgo no duplica una racial ya presente en la base', () => {
         const svc = new NuevoPersonajeService();
         const baseRacial = createRacialPlaceholder('Sangre antigua', 7);
@@ -649,6 +725,7 @@ describe('NuevoPersonajeService (clases)', () => {
             Subtipos: [],
             Sortilegas: [],
             Raciales: [],
+            Habilidades: { Base: [], Custom: [] },
             DotesContextuales: [],
         } as unknown as Raza;
     }
@@ -1088,6 +1165,7 @@ describe('NuevoPersonajeService (tipo y subtipos derivados)', () => {
             Peso_rango_inf: 65,
             Heredada: false,
             Raciales: [],
+            Habilidades: { Base: [], Custom: [] },
         } as unknown as Raza;
     }
 

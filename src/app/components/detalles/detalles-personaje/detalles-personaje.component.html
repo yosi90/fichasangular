@@ -232,9 +232,9 @@
                         </button>
                     </mat-expansion-panel-header>
                     <mat-chip-set class="m-1">
-                        <mat-chip *ngFor="let h of Habilidades" [ngClass]="h.Extra != '' ? 'h-auto' : ''">
+                        <mat-chip *ngFor="let h of Habilidades" [ngClass]="tieneTextoVisible(getExtraVisibleHabilidad(h)) ? 'h-auto' : ''">
                             {{h.Nombre}}
-                            <mat-chip class="m-1" *ngIf="h.Extra != ''">{{h.Extra}}</mat-chip>
+                            <mat-chip class="m-1" *ngIf="tieneTextoVisible(getExtraVisibleHabilidad(h))">{{getExtraVisibleHabilidad(h)}}</mat-chip>
                             +{{h.Rangos + h.Rangos_varios + h.Mod_car}} {{h.Varios != '' ? ' [' + h.Varios + ']' : ''}}
                         </mat-chip>
                     </mat-chip-set>

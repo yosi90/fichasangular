@@ -30,10 +30,10 @@
                 <mat-chip class="warm sombra3d-sm m-1" *ngIf="!raza.Oficial" matTooltip="Esta raza es homebrew" matTooltipClass="tt-accent">
                     No es oficial
                 </mat-chip>
-                <mat-chip class="h-auto sombra3d-sm m-1" *ngIf="raza.Alineamiento">
+                <mat-chip class="h-auto sombra3d-sm m-1" *ngIf="tieneAlineamientoVisible()">
                     Alineamiento
                     <mat-chip class="sombra3d-sm m-1">
-                        {{raza.Alineamiento.Basico.Nombre}} ({{raza.Alineamiento.Ley.Nombre}}/{{raza.Alineamiento.Moral.Nombre}})
+                        {{getAlineamientoResumen()}}
                     </mat-chip>
                 </mat-chip>
             </div>
@@ -124,6 +124,46 @@
                         <mat-chip class="sombra3d-sm m-1">Puntos de habilidad {{raza.Dgs_adicionales.Puntos_habilidad}}</mat-chip>
                         <mat-chip class="sombra3d-sm m-1">Multiplicador x{{raza.Dgs_adicionales.Multiplicador_puntos_habilidad}}</mat-chip>
                     </mat-chip-set>
+                </mat-expansion-panel>
+                <mat-expansion-panel *ngIf="getHabilidadesBaseOtorgadas().length > 0 || getHabilidadesCustomOtorgadas().length > 0">
+                    <mat-expansion-panel-header>
+                        <button mat-stroked-button color="accent" class="rounded-0">
+                            <h2 class="mb-0">Habilidades otorgadas</h2>
+                        </button>
+                    </mat-expansion-panel-header>
+                    <section *ngIf="getHabilidadesBaseOtorgadas().length > 0">
+                        <mat-chip-set class="m-1">
+                            <mat-chip class="h-auto sombra3d-sm m-1" *ngFor="let habilidad of getHabilidadesBaseOtorgadas()">
+                                {{habilidad.Habilidad}}
+                                <mat-chip class="sombra3d-sm m-1" *ngIf="tieneTextoVisible(getExtraVisibleHabilidad(habilidad))">
+                                    {{getExtraVisibleHabilidad(habilidad)}}
+                                </mat-chip>
+                                <mat-chip class="sombra3d-sm m-1" *ngIf="habilidad.Cantidad !== 0">
+                                    {{habilidad.Cantidad > 0 ? '+' : ''}}{{habilidad.Cantidad}}
+                                </mat-chip>
+                                <div class="chip-descripcion-bloque" *ngIf="tieneTextoVisible(habilidad.Varios)">
+                                    {{habilidad.Varios}}
+                                </div>
+                            </mat-chip>
+                        </mat-chip-set>
+                    </section>
+                    <section *ngIf="getHabilidadesCustomOtorgadas().length > 0">
+                        <p class="m-2"><strong>Custom</strong></p>
+                        <mat-chip-set class="m-1">
+                            <mat-chip class="h-auto sombra3d-sm m-1" *ngFor="let habilidad of getHabilidadesCustomOtorgadas()">
+                                {{habilidad.Habilidad}}
+                                <mat-chip class="sombra3d-sm m-1" *ngIf="tieneTextoVisible(getExtraVisibleHabilidad(habilidad))">
+                                    {{getExtraVisibleHabilidad(habilidad)}}
+                                </mat-chip>
+                                <mat-chip class="sombra3d-sm m-1" *ngIf="habilidad.Cantidad !== 0">
+                                    {{habilidad.Cantidad > 0 ? '+' : ''}}{{habilidad.Cantidad}}
+                                </mat-chip>
+                                <div class="chip-descripcion-bloque" *ngIf="tieneTextoVisible(habilidad.Varios)">
+                                    {{habilidad.Varios}}
+                                </div>
+                            </mat-chip>
+                        </mat-chip-set>
+                    </section>
                 </mat-expansion-panel>
                 <mat-expansion-panel *ngIf="getIdiomasOtorgados().length > 0">
                     <mat-expansion-panel-header>

@@ -1,5 +1,6 @@
 import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { RacialDetalle } from 'src/app/interfaces/racial';
+import { resolverExtraHabilidadVisible } from 'src/app/services/utils/habilidad-extra-visible';
 
 @Component({
     selector: 'app-detalles-racial',
@@ -43,6 +44,21 @@ export class DetallesRacialComponent {
 
     tieneColeccionVisible<T>(value: T[] | null | undefined): boolean {
         return Array.isArray(value) && value.length > 0;
+    }
+
+    getExtraVisibleHabilidad(raw: Record<string, any> | null | undefined): string {
+        const item = raw ?? {};
+        const hasIdExtra = Object.prototype.hasOwnProperty.call(item, 'Id_extra')
+            || Object.prototype.hasOwnProperty.call(item, 'id_extra')
+            || Object.prototype.hasOwnProperty.call(item, 'i_ex')
+            || Object.prototype.hasOwnProperty.call(item, 'ie');
+
+        return resolverExtraHabilidadVisible({
+            extra: item['Extra'] ?? item['extra'] ?? item['x'],
+            idExtra: item['Id_extra'] ?? item['id_extra'] ?? item['i_ex'] ?? item['ie'],
+            soportaExtra: item['Soporta_extra'] ?? item['soporta_extra'],
+            allowIdZeroAsChoose: hasIdExtra,
+        });
     }
 
     formatOpenObject(value: Record<string, any> | null | undefined): string {

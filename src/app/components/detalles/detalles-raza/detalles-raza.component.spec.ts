@@ -75,6 +75,7 @@ function crearRazaMock(): Raza {
         Subtipos: [],
         Sortilegas: [],
         Raciales: [],
+        Habilidades: { Base: [], Custom: [] },
         DotesContextuales: [],
     } as unknown as Raza;
 }
@@ -144,5 +145,85 @@ describe('DetallesRazaComponent', () => {
         fixture.detectChanges();
         const html = `${fixture.nativeElement.textContent ?? ''}`;
         expect(html).not.toContain('Solo podrás elegir una de estas raciales');
+    });
+
+    it('normaliza habilidades otorgadas y suma duplicados por id', () => {
+        component.raza.Habilidades = {
+            Base: [
+                { Id_habilidad: 1, Habilidad: 'Avistar', Cantidad: 2, Varios: 'Raza' } as any,
+                { Id_habilidad: 1, Habilidad: 'Avistar', Cantidad: 1, Varios: 'Raza' } as any,
+            ],
+            Custom: [],
+        };
+
+        const base = component.getHabilidadesBaseOtorgadas();
+        expect(base.length).toBe(1);
+        expect(base[0].Habilidad).toBe('Avistar');
+        expect(base[0].Cantidad).toBe(3);
+    });
+
+    it('renderiza panel de habilidades otorgadas con base y custom', () => {
+        component.raza.Habilidades = {
+            Base: [{ Id_habilidad: 1, Habilidad: 'Avistar', Id_extra: 0, Extra: 'Elegir', Cantidad: 2, Varios: '' } as any],
+            Custom: [{ Id_habilidad: 99, Habilidad: 'Navegar astral', Cantidad: 1 } as any],
+        };
+
+        fixture.detectChanges();
+        const html = `${fixture.nativeElement.textContent ?? ''}`;
+        expect(html).toContain('Habilidades otorgadas');
+        expect(html).toContain('Custom');
+        expect(html).toContain('Avistar');
+        expect(html).toContain('Elegir');
+        expect(html).toContain('Navegar astral');
+    });
+
+    it('muestra "Elegir" en habilidades tipo Saber con extra vacío si soporta extra', () => {
+        component.raza.Habilidades = {
+            Base: [{ Id_habilidad: 23, Habilidad: 'Saber 1', Soporta_extra: true, Id_extra: 0, Extra: '', Cantidad: 1, Varios: '' } as any],
+            Custom: [],
+        };
+
+        fixture.detectChanges();
+        const html = `${fixture.nativeElement.textContent ?? ''}`;
+        expect(html).toContain('Saber 1');
+        expect(html).toContain('Elegir');
+    });
+
+    it('no muestra "Elegir" cuando Id_extra es -1', () => {
+        component.raza.Habilidades = {
+            Base: [{ Id_habilidad: 23, Habilidad: 'Saber 1', Soporta_extra: true, Id_extra: -1, Extra: 'Elegir', Cantidad: 1, Varios: '' } as any],
+            Custom: [],
+        };
+
+        fixture.detectChanges();
+        const html = `${fixture.nativeElement.textContent ?? ''}`;
+        expect(html).toContain('Saber 1');
+        expect(component.getExtraVisibleHabilidad(component.getHabilidadesBaseOtorgadas()[0])).toBe('');
+        expect(html).not.toContain('Elegir');
+    });
+
+    it('renderiza alineamiento parcial cuando falta Basico', () => {
+        component.raza.Alineamiento = {
+            Ley: { Nombre: 'Siempre legal' },
+            Moral: { Nombre: 'Casi siempre maligno' },
+        } as any;
+
+        expect(() => fixture.detectChanges()).not.toThrow();
+        const html = `${fixture.nativeElement.textContent ?? ''}`;
+        expect(html).toContain('Alineamiento');
+        expect(html).toContain('Siempre legal/Casi siempre maligno');
+    });
+
+    it('oculta el chip de alineamiento cuando no hay datos visibles', () => {
+        component.raza.Alineamiento = {
+            Basico: { Nombre: 'No aplica' },
+            Ley: { Nombre: '-' },
+            Moral: { Nombre: '' },
+        } as any;
+
+        fixture.detectChanges();
+        const html = `${fixture.nativeElement.textContent ?? ''}`;
+        expect(component.tieneAlineamientoVisible()).toBeFalse();
+        expect(html).not.toContain('Alineamiento');
     });
 });

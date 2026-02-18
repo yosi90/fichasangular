@@ -334,6 +334,7 @@ export class NuevoPersonajeService {
         this.estadoFlujo.ventajas.baseCaracteristicas = null;
         this.sincronizarBaseVentajasDesdePersonaje();
         this.inicializarHabilidadesBase(true);
+        this.recalcularEfectosVentajas();
         return true;
     }
 
@@ -1361,6 +1362,7 @@ export class NuevoPersonajeService {
                 Origen: `${raza?.Nombre ?? 'Raza'}`.trim(),
             });
         }
+        this.aplicarHabilidadesOtorgadasPorRaza(raza, bonosHabilidades);
 
         const ataqueClases = this.calcularAtaqueBaseDesdeClases();
         let ataqueBase = this.toNumber(raza?.Dgs_adicionales?.Ataque_base) + ataqueClases;
@@ -1498,6 +1500,114 @@ export class NuevoPersonajeService {
         this.personajeCreacion.Dados_golpe = dadoGolpe;
 
         this.recalcularNepExperienciaOro(seleccionadas);
+    }
+
+    private aplicarHabilidadesOtorgadasPorRaza(
+        raza: Raza | null,
+        bonosHabilidades: Record<number, HabilidadBonoVario[]>
+    ): void {
+        const origen = `${raza?.Nombre ?? 'Raza'}`.trim() || 'Raza';
+        const habilidadesRaza = raza?.Habilidades;
+        const baseRefs = (habilidadesRaza?.Base ?? []) as Record<string, any>[];
+        const customRefs = (habilidadesRaza?.Custom ?? []) as Record<string, any>[];
+        const refs = [
+            ...baseRefs.map((ref) => ({ raw: ref, custom: false })),
+            ...customRefs.map((ref) => ({ raw: ref, custom: true })),
+        ];
+        if (refs.length < 1)
+            return;
+
+        refs.forEach(({ raw, custom }) => {
+            const habilidad = this.asegurarHabilidadDesdeRaza(raw, custom);
+            if (!habilidad)
+                return;
+
+            habilidad.Clasea = true;
+            if (custom)
+                habilidad.Custom = true;
+
+            const cantidad = this.toNumber(raw['Cantidad'] ?? raw['cantidad'] ?? raw['Rangos'] ?? raw['rangos']);
+            if (cantidad === 0)
+                return;
+
+            const idHabilidad = this.toNumber(habilidad.Id);
+            if (idHabilidad <= 0)
+                return;
+            if (!bonosHabilidades[idHabilidad])
+                bonosHabilidades[idHabilidad] = [];
+            bonosHabilidades[idHabilidad].push({
+                valor: cantidad,
+                origen,
+            });
+        });
+    }
+
+    private asegurarHabilidadDesdeRaza(
+        habilidadRef: Record<string, any>,
+        customPreferido: boolean
+    ): Personaje['Habilidades'][number] | null {
+        const idObjetivo = this.toNumber(
+            habilidadRef?.['Id_habilidad'] ?? habilidadRef?.['id_habilidad'] ?? habilidadRef?.['Id'] ?? habilidadRef?.['id']
+        );
+        const nombreObjetivo = `${habilidadRef?.['Habilidad'] ?? habilidadRef?.['habilidad'] ?? habilidadRef?.['Nombre'] ?? habilidadRef?.['nombre'] ?? ''}`.trim();
+        const nombreNorm = this.normalizarTexto(nombreObjetivo);
+
+        if (idObjetivo > 0) {
+            const existentePorId = this.personajeCreacion.Habilidades.find((h) => this.toNumber(h.Id) === idObjetivo);
+            if (existentePorId) {
+                existentePorId.Clasea = true;
+                if (customPreferido || !!(habilidadRef?.['Custom'] ?? habilidadRef?.['custom']))
+                    existentePorId.Custom = true;
+                return existentePorId;
+            }
+        }
+
+        if (nombreNorm.length > 0) {
+            const existentePorNombre = this.personajeCreacion.Habilidades
+                .find((h) => this.normalizarTexto(h.Nombre) === nombreNorm);
+            if (existentePorNombre) {
+                existentePorNombre.Clasea = true;
+                if (customPreferido || !!(habilidadRef?.['Custom'] ?? habilidadRef?.['custom']))
+                    existentePorNombre.Custom = true;
+                return existentePorNombre;
+            }
+        }
+
+        if (idObjetivo <= 0 && nombreNorm.length < 1)
+            return null;
+
+        const idCaracteristica = this.toNumber(
+            habilidadRef?.['Id_caracteristica'] ?? habilidadRef?.['id_caracteristica']
+            ?? habilidadRef?.['IdCaracteristica'] ?? habilidadRef?.['idCaracteristica']
+        );
+        const textoCaracteristica = `${habilidadRef?.['Caracteristica'] ?? habilidadRef?.['caracteristica'] ?? ''}`.trim();
+        const keyCar = this.resolverCaracteristicaPorIdOTexto(idCaracteristica, textoCaracteristica);
+        const nuevoId = idObjetivo > 0 ? idObjetivo : this.getNuevoIdHabilidad();
+        const nuevoNombre = nombreObjetivo.length > 0 ? nombreObjetivo : `Habilidad ${nuevoId}`;
+        const nuevaHabilidad: Personaje['Habilidades'][number] = {
+            Id: nuevoId,
+            Nombre: nuevoNombre,
+            Clasea: true,
+            Car: this.etiquetaCaracteristica(keyCar, textoCaracteristica),
+            Mod_car: this.modificadorPorCaracteristica(keyCar),
+            Rangos: 0,
+            Rangos_varios: 0,
+            Extra: `${habilidadRef?.['Extra'] ?? habilidadRef?.['extra'] ?? ''}`,
+            Varios: `${habilidadRef?.['Varios'] ?? habilidadRef?.['varios'] ?? ''}`,
+            Custom: customPreferido || !!(habilidadRef?.['Custom'] ?? habilidadRef?.['custom']),
+            Soporta_extra: !!(habilidadRef?.['Soporta_extra'] ?? habilidadRef?.['soporta_extra']),
+            Extras: [],
+            Bonos_varios: [],
+        };
+
+        this.personajeCreacion.Habilidades = [
+            ...this.personajeCreacion.Habilidades,
+            nuevaHabilidad,
+        ].sort((a, b) => a.Nombre.localeCompare(b.Nombre, 'es', { sensitivity: 'base' }));
+
+        return this.personajeCreacion.Habilidades
+            .find((h) => this.toNumber(h.Id) === nuevoId || this.normalizarTexto(h.Nombre) === this.normalizarTexto(nuevoNombre))
+            ?? null;
     }
 
     private obtenerNivelActualClase(nombreClase: string): number {

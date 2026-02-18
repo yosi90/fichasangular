@@ -31,6 +31,44 @@ export interface MutacionRaza {
     Heredada?: boolean;
 }
 
+export interface RazaHabilidadBase {
+    Id_habilidad: number;
+    Habilidad: string;
+    Id_caracteristica: number;
+    Caracteristica: string;
+    Descripcion?: string;
+    Entrenada?: boolean;
+    Id_extra?: number;
+    Extra?: string;
+    Cantidad: number;
+    Varios: string;
+    Soporta_extra?: boolean;
+    Custom?: boolean;
+    Clasea?: boolean;
+    Clase?: boolean;
+    classSkill?: boolean;
+}
+
+export interface RazaHabilidadCustom {
+    Id_habilidad: number;
+    Habilidad: string;
+    Id_caracteristica: number;
+    Caracteristica: string;
+    Id_extra?: number;
+    Extra?: string;
+    Cantidad: number;
+    Soporta_extra?: boolean;
+    Custom?: boolean;
+    Clasea?: boolean;
+    Clase?: boolean;
+    classSkill?: boolean;
+}
+
+export interface RazaHabilidades {
+    Base: RazaHabilidadBase[];
+    Custom: RazaHabilidadCustom[];
+}
+
 export interface Raza {
     Id: number;
     Nombre: string;
@@ -92,6 +130,7 @@ export interface Raza {
     Subtipos: SubtipoRef[];
     Sortilegas: AptitudSortilega[];
     Raciales: RacialDetalle[];
+    Habilidades: RazaHabilidades;
     DotesContextuales: DoteContextual[];
     Idiomas?: IdiomaDetalle[];
 }

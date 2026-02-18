@@ -9,6 +9,7 @@ import { Rasgo } from 'src/app/interfaces/rasgo';
 import { SubtipoRef } from 'src/app/interfaces/subtipo';
 import { TipoCriatura } from 'src/app/interfaces/tipo_criatura';
 import { FichaPersonajeService } from 'src/app/services/ficha-personaje.service';
+import { resolverExtraHabilidadVisible } from 'src/app/services/utils/habilidad-extra-visible';
 
 interface MadurezEdadResumen {
     id: number;
@@ -404,6 +405,21 @@ Fue/Des/Con: ${this.formatSigned(madurez.modFisico)} | Int/Sab/Car: ${this.forma
 
     getClaseasVisibles() {
         return (this.pj?.Claseas ?? []).filter(c => this.tieneTextoVisible(c?.Nombre));
+    }
+
+    getExtraVisibleHabilidad(habilidad: Record<string, any> | null | undefined): string {
+        const item = habilidad ?? {};
+        const hasIdExtra = Object.prototype.hasOwnProperty.call(item, 'Id_extra')
+            || Object.prototype.hasOwnProperty.call(item, 'id_extra')
+            || Object.prototype.hasOwnProperty.call(item, 'i_ex')
+            || Object.prototype.hasOwnProperty.call(item, 'ie');
+
+        return resolverExtraHabilidadVisible({
+            extra: item['Extra'] ?? item['extra'] ?? '',
+            idExtra: item['Id_extra'] ?? item['id_extra'] ?? item['i_ex'] ?? item['ie'],
+            soportaExtra: item['Soporta_extra'] ?? item['soporta_extra'] ?? ((item['Extras'] ?? item['extras'] ?? []).length > 0),
+            allowIdZeroAsChoose: hasIdExtra,
+        });
     }
 
     private toArray(value: any): any[] {

@@ -67,7 +67,9 @@
                         <mat-chip class="h-auto sombra3d-sm m-1" *ngFor="let habilidad of getHabilidadesOrdenadas()">
                             {{habilidad.Habilidad}}
                             <mat-chip class="sombra3d-sm m-1">Rangos {{habilidad.Rangos}}</mat-chip>
-                            <mat-chip class="sombra3d-sm m-1" *ngIf="habilidad.Id_extra > 0 && tieneTextoVisible(habilidad.Extra)">{{habilidad.Extra}}</mat-chip>
+                            <mat-chip class="sombra3d-sm m-1" *ngIf="tieneTextoVisible(getExtraVisibleHabilidad(habilidad))">
+                                {{getExtraVisibleHabilidad(habilidad)}}
+                            </mat-chip>
                         </mat-chip>
                     </mat-chip-set>
                 </mat-expansion-panel>

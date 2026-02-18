@@ -114,6 +114,7 @@ function crearRazaMock(pierdeConstitucion = false): Raza {
         Subtipos: [],
         Sortilegas: [],
         Raciales: [],
+        Habilidades: { Base: [], Custom: [] },
         DotesContextuales: [],
     };
 }

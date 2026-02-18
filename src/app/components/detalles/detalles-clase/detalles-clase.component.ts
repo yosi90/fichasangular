@@ -1,6 +1,7 @@
 import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { Clase, ClaseDoteNivel, ClaseNivelDetalle, ClasePrerrequisitos } from 'src/app/interfaces/clase';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
+import { resolverExtraHabilidadVisible } from 'src/app/services/utils/habilidad-extra-visible';
 
 type PrerrequisitoActivo = {
     clave: keyof ClasePrerrequisitos;
@@ -564,6 +565,10 @@ export class DetallesClaseComponent {
 
         const nombre = this.detectarNombre(entradas);
         const extras = this.detectarExtras(entradas);
+        const esHabilidad = this.esRegistroHabilidad(item);
+        const extraVisible = esHabilidad ? this.getExtraVisibleRegistroHabilidad(item) : '';
+        if (this.tieneTextoVisible(extraVisible) && !extras.valores.some((extra) => this.normalizar(extra) === this.normalizar(extraVisible)))
+            extras.valores.unshift(extraVisible);
         const detalle = this.detectarDetalle(entradas, nombre.origen, extras.clavesOrigen);
 
         return {
@@ -598,6 +603,8 @@ export class DetallesClaseComponent {
         entradas.forEach(([clave, valor]) => {
             if (!this.esCampoExtra(clave))
                 return;
+            if (this.esCampoExtraTecnico(clave))
+                return;
 
             clavesOrigen.push(clave);
             if (Array.isArray(valor)) {
@@ -630,6 +637,53 @@ export class DetallesClaseComponent {
         return base.includes('extra');
     }
 
+    private esCampoExtraTecnico(clave: string): boolean {
+        const base = clave.replace(/[_\s]/g, '').toLowerCase();
+        return base === 'soportaextra'
+            || base === 'idextra'
+            || base === 'idextraelegido'
+            || base === 'extrasdisponibles'
+            || base === 'extras';
+    }
+
+    private esRegistroHabilidad(item: Record<string, any>): boolean {
+        if (!item || typeof item !== 'object')
+            return false;
+        return this.tieneTextoVisible(this.extraerValorSimple(item?.['Habilidad'] ?? item?.['habilidad']))
+            || this.tieneTextoVisible(this.extraerValorSimple(item?.['Nombre'] ?? item?.['nombre']));
+    }
+
+    private getExtraVisibleRegistroHabilidad(item: Record<string, any>): string {
+        if (!item || typeof item !== 'object')
+            return '';
+
+        const hasIdExtra = Object.prototype.hasOwnProperty.call(item, 'Id_extra')
+            || Object.prototype.hasOwnProperty.call(item, 'id_extra')
+            || Object.prototype.hasOwnProperty.call(item, 'i_ex')
+            || Object.prototype.hasOwnProperty.call(item, 'ie');
+
+        return resolverExtraHabilidadVisible({
+            extra: item?.['Extra'] ?? item?.['extra'] ?? item?.['x'],
+            idExtra: item?.['Id_extra'] ?? item?.['id_extra'] ?? item?.['i_ex'] ?? item?.['ie'],
+            soportaExtra: item?.['Soporta_extra'] ?? item?.['soporta_extra'],
+            allowIdZeroAsChoose: hasIdExtra,
+        });
+    }
+
+    private getExtraVisibleDesdeRegistro(item: Record<string, any>, extraRaw: unknown): string {
+        const hasIdExtra = Object.prototype.hasOwnProperty.call(item ?? {}, 'Id_extra')
+            || Object.prototype.hasOwnProperty.call(item ?? {}, 'id_extra')
+            || Object.prototype.hasOwnProperty.call(item ?? {}, 'i_ex')
+            || Object.prototype.hasOwnProperty.call(item ?? {}, 'ie');
+
+        return resolverExtraHabilidadVisible({
+            extra: this.extraerValorSimple(extraRaw),
+            idExtra: item?.['Id_extra'] ?? item?.['id_extra'] ?? item?.['i_ex'] ?? item?.['ie'],
+            soportaExtra: item?.['Soporta_extra'] ?? item?.['soporta_extra'],
+            allowIdZeroAsChoose: hasIdExtra,
+        });
+    }
+
     private esCampoTecnicoPrerrequisito(clave: string): boolean {
         const base = clave.replace(/[_\s]/g, '').toLowerCase();
         return base === 'opcional'
@@ -652,7 +706,7 @@ export class DetallesClaseComponent {
         if (base === 'extra' || base === 'extras') {
             return {
                 etiqueta: 'Extra',
-                valor: this.extraerValorSimple(valor),
+                valor: this.getExtraVisibleDesdeRegistro(item, valor),
             };
         }
 
@@ -866,11 +920,15 @@ export class DetallesClaseComponent {
     }
 
     private esExtraDesconocido(extra: string): boolean {
-        const base = extra
+        const base = this.normalizar(extra);
+        return base === 'desconocido' || base === 'sin especificar';
+    }
+
+    private normalizar(value: string): string {
+        return `${value ?? ''}`
             .normalize('NFD')
             .replace(/[\u0300-\u036f]/g, '')
             .trim()
             .toLowerCase();
-        return base === 'desconocido' || base === 'sin especificar';
     }
 }

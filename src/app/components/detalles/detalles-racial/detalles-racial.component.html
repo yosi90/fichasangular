@@ -39,6 +39,9 @@
                 <mat-chip class="w-100 sombra-caja-sm m-1 mb-2 chip-titulo">Habilidades base</mat-chip>
                 <mat-chip-set class="m-1">
                     <mat-chip class="h-auto sombra3d-sm m-1" *ngFor="let item of habilidadesBase">
+                        <mat-chip class="sombra3d-sm m-1" *ngIf="tieneTextoVisible(getExtraVisibleHabilidad(item))">
+                            {{getExtraVisibleHabilidad(item)}}
+                        </mat-chip>
                         {{formatOpenObject(item)}}
                     </mat-chip>
                 </mat-chip-set>
@@ -48,6 +51,9 @@
                 <mat-chip class="w-100 sombra-caja-sm m-1 mb-2 chip-titulo">Habilidades custom</mat-chip>
                 <mat-chip-set class="m-1">
                     <mat-chip class="h-auto sombra3d-sm m-1" *ngFor="let item of habilidadesCustom">
+                        <mat-chip class="sombra3d-sm m-1" *ngIf="tieneTextoVisible(getExtraVisibleHabilidad(item))">
+                            {{getExtraVisibleHabilidad(item)}}
+                        </mat-chip>
                         {{formatOpenObject(item)}}
                     </mat-chip>
                 </mat-chip-set>

@@ -1,5 +1,6 @@
 import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { EspecialClaseDetalle } from 'src/app/interfaces/especial';
+import { resolverExtraHabilidadVisible } from 'src/app/services/utils/habilidad-extra-visible';
 
 @Component({
     selector: 'app-detalles-especial',
@@ -41,6 +42,20 @@ export class DetallesEspecialComponent {
         return [...(this.especial?.Habilidades ?? [])]
             .filter(habilidad => this.tieneTextoVisible(habilidad?.Habilidad))
             .sort((a, b) => `${a.Habilidad}`.localeCompare(`${b.Habilidad}`, 'es', { sensitivity: 'base' }));
+    }
+
+    getExtraVisibleHabilidad(habilidad: { Id_extra?: number; Extra?: string; }): string {
+        const hasIdExtra = Object.prototype.hasOwnProperty.call(habilidad ?? {}, 'Id_extra')
+            || Object.prototype.hasOwnProperty.call(habilidad ?? {}, 'id_extra')
+            || Object.prototype.hasOwnProperty.call(habilidad ?? {}, 'i_ex')
+            || Object.prototype.hasOwnProperty.call(habilidad ?? {}, 'ie');
+
+        return resolverExtraHabilidadVisible({
+            extra: habilidad?.Extra,
+            idExtra: habilidad?.Id_extra,
+            soportaExtra: this.especial?.Extra || this.especial?.Activa_extra,
+            allowIdZeroAsChoose: hasIdExtra,
+        });
     }
 
     tieneTextoVisible(texto: string | undefined | null): boolean {

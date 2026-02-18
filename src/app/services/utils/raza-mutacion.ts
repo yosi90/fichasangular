@@ -41,6 +41,13 @@ function toBoolean(value: any): boolean {
     return value === true || value === 1 || value === "1";
 }
 
+function parseIdExtra(value: any): number {
+    if (value === undefined || value === null || `${value}`.trim() === "")
+        return -1;
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : -1;
+}
+
 function toArray<T = any>(value: any): T[] {
     if (Array.isArray(value))
         return value;
@@ -350,6 +357,113 @@ function normalizeSortilegaKey(sortilega: AptitudSortilega): string {
     return normalizeText(`${sortilega?.Conjuro?.Nombre ?? ""}`);
 }
 
+function normalizeHabilidadRazaKey(raw: any): string {
+    const id = toNumber(raw?.Id_habilidad ?? raw?.id_habilidad ?? raw?.Id ?? raw?.id);
+    const nombre = normalizeText(`${raw?.Habilidad ?? raw?.habilidad ?? raw?.Nombre ?? raw?.nombre ?? ""}`);
+    if (id > 0)
+        return `id:${id}`;
+    if (nombre.length > 0)
+        return `n:${nombre}`;
+    return "";
+}
+
+function normalizeRazaHabilidad(raw: any, forceCustom: boolean): any {
+    const rawSoportaExtra = raw?.Soporta_extra ?? raw?.soporta_extra;
+    return {
+        Id_habilidad: toNumber(raw?.Id_habilidad ?? raw?.id_habilidad ?? raw?.Id ?? raw?.id),
+        Habilidad: `${raw?.Habilidad ?? raw?.habilidad ?? raw?.Nombre ?? raw?.nombre ?? ""}`.trim(),
+        Id_caracteristica: toNumber(
+            raw?.Id_caracteristica ?? raw?.id_caracteristica ?? raw?.IdCaracteristica ?? raw?.idCaracteristica
+        ),
+        Caracteristica: `${raw?.Caracteristica ?? raw?.caracteristica ?? ""}`.trim(),
+        Descripcion: `${raw?.Descripcion ?? raw?.descripcion ?? raw?.d ?? ""}`.trim(),
+        Entrenada: toBoolean(raw?.Entrenada ?? raw?.entrenada),
+        Id_extra: parseIdExtra(raw?.Id_extra ?? raw?.id_extra ?? raw?.IdExtra ?? raw?.idExtra ?? raw?.i_ex ?? raw?.ie),
+        Extra: `${raw?.Extra ?? raw?.extra ?? raw?.x ?? ""}`.trim(),
+        Cantidad: toNumber(raw?.Cantidad ?? raw?.cantidad ?? raw?.Rangos ?? raw?.rangos),
+        Varios: `${raw?.Varios ?? raw?.varios ?? ""}`.trim(),
+        Soporta_extra: rawSoportaExtra === undefined ? undefined : toBoolean(rawSoportaExtra),
+        Custom: forceCustom || toBoolean(raw?.Custom ?? raw?.custom),
+        Clasea: toBoolean(raw?.Clasea ?? raw?.clasea),
+        Clase: toBoolean(raw?.Clase ?? raw?.clase),
+        classSkill: toBoolean(raw?.classSkill ?? raw?.classskill ?? raw?.class_skill),
+    };
+}
+
+function mergeRazaHabilidades(
+    base: any[],
+    extra: any[],
+    forceCustom: boolean
+): any[] {
+    const merged = new Map<string, any>();
+
+    const mergeOne = (itemRaw: any, preferIncomingMeta: boolean) => {
+        const item = normalizeRazaHabilidad(itemRaw ?? {}, forceCustom);
+        const key = normalizeHabilidadRazaKey(item);
+        if (key.length < 1)
+            return;
+
+        const existente = merged.get(key);
+        if (!existente) {
+            merged.set(key, {
+                ...item,
+            });
+            return;
+        }
+
+        existente.Cantidad = toNumber(existente.Cantidad) + toNumber(item.Cantidad);
+        existente.Custom = !!existente.Custom || !!item.Custom;
+        existente.Clasea = !!existente.Clasea || !!item.Clasea;
+        existente.Clase = !!existente.Clase || !!item.Clase;
+        existente.classSkill = !!existente.classSkill || !!item.classSkill;
+        if (existente.Soporta_extra !== undefined || item.Soporta_extra !== undefined)
+            existente.Soporta_extra = !!existente.Soporta_extra || !!item.Soporta_extra;
+        existente.Entrenada = !!existente.Entrenada || !!item.Entrenada;
+
+        if (toNumber(existente.Id_habilidad) <= 0 && toNumber(item.Id_habilidad) > 0)
+            existente.Id_habilidad = toNumber(item.Id_habilidad);
+        if (`${existente.Habilidad ?? ""}`.trim().length < 1 && `${item.Habilidad ?? ""}`.trim().length > 0)
+            existente.Habilidad = `${item.Habilidad ?? ""}`.trim();
+        if (toNumber(existente.Id_caracteristica) <= 0 && toNumber(item.Id_caracteristica) > 0)
+            existente.Id_caracteristica = toNumber(item.Id_caracteristica);
+        if (`${existente.Caracteristica ?? ""}`.trim().length < 1 && `${item.Caracteristica ?? ""}`.trim().length > 0)
+            existente.Caracteristica = `${item.Caracteristica ?? ""}`.trim();
+        if (`${existente.Descripcion ?? ""}`.trim().length < 1 && `${item.Descripcion ?? ""}`.trim().length > 0)
+            existente.Descripcion = `${item.Descripcion ?? ""}`.trim();
+        if (toNumber(existente.Id_extra) <= 0 && toNumber(item.Id_extra) > 0)
+            existente.Id_extra = toNumber(item.Id_extra);
+        if (`${existente.Extra ?? ""}`.trim().length < 1 && `${item.Extra ?? ""}`.trim().length > 0)
+            existente.Extra = `${item.Extra ?? ""}`.trim();
+        if (`${existente.Varios ?? ""}`.trim().length < 1 && `${item.Varios ?? ""}`.trim().length > 0)
+            existente.Varios = `${item.Varios ?? ""}`.trim();
+
+        if (!preferIncomingMeta)
+            return;
+
+        if (toNumber(item.Id_habilidad) > 0)
+            existente.Id_habilidad = toNumber(item.Id_habilidad);
+        if (`${item.Habilidad ?? ""}`.trim().length > 0)
+            existente.Habilidad = `${item.Habilidad ?? ""}`.trim();
+        if (toNumber(item.Id_caracteristica) > 0)
+            existente.Id_caracteristica = toNumber(item.Id_caracteristica);
+        if (`${item.Caracteristica ?? ""}`.trim().length > 0)
+            existente.Caracteristica = `${item.Caracteristica ?? ""}`.trim();
+        if (`${item.Descripcion ?? ""}`.trim().length > 0)
+            existente.Descripcion = `${item.Descripcion ?? ""}`.trim();
+        if (toNumber(item.Id_extra) > 0)
+            existente.Id_extra = toNumber(item.Id_extra);
+        if (`${item.Extra ?? ""}`.trim().length > 0)
+            existente.Extra = `${item.Extra ?? ""}`.trim();
+        if (`${item.Varios ?? ""}`.trim().length > 0)
+            existente.Varios = `${item.Varios ?? ""}`.trim();
+    };
+
+    toArray(base).forEach((item) => mergeOne(item, false));
+    toArray(extra).forEach((item) => mergeOne(item, true));
+
+    return Array.from(merged.values());
+}
+
 function construirMutacionRaza(base: Raza, mutada: Raza): Raza["Mutacion"] {
     const tamanoDependiente = toBoolean(mutada?.Mutacion?.Tamano_dependiente)
         || toBoolean(mutada?.Tamano_mutacion_dependiente);
@@ -655,6 +769,18 @@ export function aplicarMutacion(base: Raza, mutada: Raza): Raza {
         toArray(mutadaClone?.DotesContextuales),
         normalizeDoteKey
     );
+    resultado.Habilidades = {
+        Base: mergeRazaHabilidades(
+            toArray(baseClone?.Habilidades?.Base),
+            toArray(mutadaClone?.Habilidades?.Base),
+            false
+        ) as any[],
+        Custom: mergeRazaHabilidades(
+            toArray(baseClone?.Habilidades?.Custom),
+            toArray(mutadaClone?.Habilidades?.Custom),
+            true
+        ) as any[],
+    };
     resultado.Subtipos = mergeByKey(
         toArray(baseClone?.Subtipos),
         toArray(mutadaClone?.Subtipos),
