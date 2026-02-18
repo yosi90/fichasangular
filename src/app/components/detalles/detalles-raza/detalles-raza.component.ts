@@ -1,4 +1,5 @@
 import { Component, EventEmitter, Input, Output } from '@angular/core';
+import { IdiomaDetalle } from 'src/app/interfaces/idioma';
 import { RacialDetalle, RacialReferencia } from 'src/app/interfaces/racial';
 import { Raza } from 'src/app/interfaces/raza';
 import { SubtipoRef } from 'src/app/interfaces/subtipo';
@@ -68,6 +69,20 @@ export class DetallesRazaComponent {
     getSubtiposActivos(): SubtipoRef[] {
         return (this.raza?.Subtipos ?? [])
             .filter(subtipo => this.tieneTextoVisible(subtipo?.Nombre))
+            .sort((a, b) => a.Nombre.localeCompare(b.Nombre, 'es', { sensitivity: 'base' }));
+    }
+
+    getIdiomasOtorgados(): IdiomaDetalle[] {
+        const vistos = new Set<string>();
+        return (this.raza?.Idiomas ?? [])
+            .filter(idioma => this.tieneTextoVisible(idioma?.Nombre))
+            .filter((idioma) => {
+                const key = idioma.Nombre.normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase();
+                if (!key || vistos.has(key))
+                    return false;
+                vistos.add(key);
+                return true;
+            })
             .sort((a, b) => a.Nombre.localeCompare(b.Nombre, 'es', { sensitivity: 'base' }));
     }
 

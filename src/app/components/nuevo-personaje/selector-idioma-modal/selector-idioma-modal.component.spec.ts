@@ -37,9 +37,10 @@ describe('SelectorIdiomaModalComponent', () => {
 
     it('al confirmar emite el idioma seleccionado', () => {
         const emitSpy = spyOn(component.confirmar, 'emit');
-        component.idiomaSeleccionadoId = 1;
+        component.cantidadObjetivo = 1;
+        component.onToggleIdioma(1, true);
         component.onConfirmar();
-        expect(emitSpy).toHaveBeenCalledWith(jasmine.objectContaining({ Id: 1, Nombre: 'Comun' }));
+        expect(emitSpy).toHaveBeenCalledWith([jasmine.objectContaining({ Id: 1, Nombre: 'Comun' })]);
     });
 
     it('evita duplicados de idiomas ya seleccionados', () => {
@@ -49,7 +50,7 @@ describe('SelectorIdiomaModalComponent', () => {
 
     it('calcula idiomas pendientes según objetivo y seleccionados', () => {
         component.cantidadObjetivo = 3;
-        component.cantidadSeleccionada = 1;
+        component.onToggleIdioma(1, true);
         expect(component.cantidadPendiente).toBe(2);
         expect(component.textoPendiente).toBe('Faltan 2 idiomas por elegir');
     });
@@ -64,5 +65,20 @@ describe('SelectorIdiomaModalComponent', () => {
 
         expect(closeSpy).not.toHaveBeenCalled();
         expect(component.puedeCerrar).toBeFalse();
+    });
+
+    it('permite seleccionar y deseleccionar idioma al pulsar fila', () => {
+        component.onToggleIdiomaRow(1);
+        expect(component.isIdiomaSeleccionado(1)).toBeTrue();
+
+        component.onToggleIdiomaRow(1);
+        expect(component.isIdiomaSeleccionado(1)).toBeFalse();
+    });
+
+    it('no permite seleccionar más idiomas que el objetivo', () => {
+        component.cantidadObjetivo = 1;
+        component.onToggleIdioma(1, true);
+        component.onToggleIdioma(2, true);
+        expect(component.seleccionActual.map((i) => i.Id)).toEqual([1]);
     });
 });

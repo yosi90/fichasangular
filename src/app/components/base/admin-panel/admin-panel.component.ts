@@ -24,6 +24,10 @@ import { VerifyConnectionService } from 'src/app/services/utils/verify-connectio
 import { VentajaService } from 'src/app/services/ventaja.service';
 import { AlineamientoService } from 'src/app/services/alineamiento.service';
 import { CacheSyncMetadataService, CacheSyncUiState } from 'src/app/services/cache-sync-metadata.service';
+import { AmbitoService } from 'src/app/services/ambito.service';
+import { DeidadService } from 'src/app/services/deidad.service';
+import { DominioService } from 'src/app/services/dominio.service';
+import { PabellonService } from 'src/app/services/pabellon.service';
 
 interface SyncItemConfig {
     key: CacheEntityKey;
@@ -82,6 +86,10 @@ export class AdminPanelComponent implements OnInit, OnDestroy {
         private racialSvc: RacialService,
         private habSvc: HabilidadService,
         private idiSvc: IdiomaService,
+        private dominioSvc: DominioService,
+        private ambitoSvc: AmbitoService,
+        private pabellonSvc: PabellonService,
+        private deidadSvc: DeidadService,
         private ventajaSvc: VentajaService,
         private cacheSyncMetadataSvc: CacheSyncMetadataService,
     ) {
@@ -111,6 +119,10 @@ export class AdminPanelComponent implements OnInit, OnDestroy {
             habilidades: () => this.habSvc.RenovarHabilidades(),
             habilidades_custom: () => this.habSvc.RenovarHabilidadesCustom(),
             idiomas: () => this.idiSvc.RenovarIdiomas(),
+            dominios: () => this.dominioSvc.RenovarDominios(),
+            ambitos: () => this.ambitoSvc.RenovarAmbitos(),
+            pabellones: () => this.pabellonSvc.RenovarPabellones(),
+            deidades: () => this.deidadSvc.RenovarDeidades(),
             plantillas: () => this.plSvc.RenovarPlantillas(),
             ventajas_desventajas: () => this.ventajaSvc.RenovarVentajasYDesventajas(),
         };

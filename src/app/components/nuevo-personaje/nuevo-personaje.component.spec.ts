@@ -1,5 +1,7 @@
 import Swal from 'sweetalert2';
 import { Campana } from 'src/app/interfaces/campaña';
+import { Clase } from 'src/app/interfaces/clase';
+import { DeidadDetalle } from 'src/app/interfaces/deidad';
 import { Raza } from 'src/app/interfaces/raza';
 import { VentajaDetalle } from 'src/app/interfaces/ventaja';
 import { AsignacionCaracteristicas, NuevoPersonajeService } from 'src/app/services/nuevo-personaje.service';
@@ -309,16 +311,156 @@ function crearRazaMutadaConOpcionalesBloqueadas(): Raza {
     return raza;
 }
 
+function crearClaseMock(partial?: Partial<Clase>): Clase {
+    return {
+        Id: 1,
+        Nombre: 'Guerrero',
+        Descripcion: 'Clase base',
+        Manual: { Id: 1, Nombre: 'Manual base', Pagina: 10 },
+        Tipo_dado: { Id: 1, Nombre: 'd10' },
+        Puntos_habilidad: { Id: 1, Valor: 2 },
+        Nivel_max_claseo: 20,
+        Mod_salv_conjuros: '',
+        Conjuros: {
+            Dependientes_alineamiento: false,
+            Divinos: false,
+            Arcanos: false,
+            Psionicos: false,
+            Alma: false,
+            Conocidos_total: false,
+            Conocidos_nivel_a_nivel: false,
+            Dominio: false,
+            Escuela: false,
+            Lanzamiento_espontaneo: false,
+            Clase_origen: { Id: 0, Nombre: '' },
+            Listado: [],
+        },
+        Roles: { Dps: true, Tanque: false, Support: false, Utilidad: false },
+        Aumenta_clase_lanzadora: false,
+        Es_predilecta: false,
+        Prestigio: false,
+        Tiene_prerrequisitos: false,
+        Alineamiento: {
+            Id: 0,
+            Basico: { Id_basico: 0, Nombre: 'No aplica' },
+            Ley: { Id_ley: 0, Nombre: 'No aplica' },
+            Moral: { Id_moral: 0, Nombre: 'No aplica' },
+            Prioridad: { Id_prioridad: 0, Nombre: 'No aplica' },
+            Descripcion: '',
+        },
+        Oficial: true,
+        Competencias: { Armas: [], Armaduras: [], Grupos_arma: [], Grupos_armadura: [] },
+        Habilidades: { Base: [], Custom: [] },
+        Idiomas: [],
+        Desglose_niveles: [{
+            Nivel: 1,
+            Ataque_base: '+1',
+            Salvaciones: { Fortaleza: '+2', Reflejos: '+0', Voluntad: '+0' },
+            Nivel_max_conjuro: -1,
+            Reserva_psionica: 0,
+            Aumentos_clase_lanzadora: [],
+            Conjuros_diarios: {},
+            Conjuros_conocidos_nivel_a_nivel: {},
+            Conjuros_conocidos_total: 0,
+            Dotes: [],
+            Especiales: [],
+        }],
+        Prerrequisitos_flags: {},
+        Prerrequisitos: {
+            subtipo: [],
+            caracteristica: [],
+            dg: [],
+            dominio: [],
+            nivel_escuela: [],
+            ataque_base: [],
+            reserva_psionica: [],
+            lanzar_poder_psionico_nivel: [],
+            conocer_poder_psionico: [],
+            genero: [],
+            competencia_arma: [],
+            competencia_armadura: [],
+            competencia_grupo_arma: [],
+            competencia_grupo_armadura: [],
+            dote_elegida: [],
+            rangos_habilidad: [],
+            idioma: [],
+            alineamiento_requerido: [],
+            alineamiento_prohibido: [],
+            actitud_requerido: [],
+            actitud_prohibido: [],
+            lanzador_arcano: [],
+            lanzador_divino: [],
+            lanzar_conjuros_arcanos_nivel: [],
+            lanzar_conjuros_divinos_nivel: [],
+            conjuro_conocido: [],
+            inherente: [],
+            clase_especial: [],
+            tamano_maximo: [],
+            tamano_minimo: [],
+            raza: [],
+            no_raza: [],
+        },
+        ...partial,
+    };
+}
+
+function crearDeidadesMock(): DeidadDetalle[] {
+    return [
+        {
+            Id: 1,
+            Nombre: 'Heironeous',
+            Descripcion: 'Deidad del valor y la justicia.',
+            Manual: { Id: 1, Nombre: 'Manual base', Pagina: 110 },
+            Alineamiento: { Id: 1, Id_basico: 1, Nombre: 'Legal bueno' },
+            Arma: { Id: 1, Nombre: 'Espada larga' },
+            Pabellon: { Id: 1, Nombre: 'Guerra' },
+            Genero: { Id: 1, Nombre: 'Masculino' },
+            Ambitos: [{ Id: 1, Nombre: 'Guerra' }],
+            Dominios: [{ Id: 1, Nombre: 'Bien', Oficial: true }],
+            Oficial: true,
+        },
+        {
+            Id: 2,
+            Nombre: 'Gruumsh',
+            Descripcion: 'Deidad orca de la conquista.',
+            Manual: { Id: 1, Nombre: 'Manual base', Pagina: 111 },
+            Alineamiento: { Id: 9, Id_basico: 9, Nombre: 'Caotico maligno' },
+            Arma: { Id: 2, Nombre: 'Lanza' },
+            Pabellon: { Id: 2, Nombre: 'Conquista' },
+            Genero: { Id: 1, Nombre: 'Masculino' },
+            Ambitos: [{ Id: 2, Nombre: 'Destrucción' }],
+            Dominios: [{ Id: 2, Nombre: 'Guerra', Oficial: true }],
+            Oficial: true,
+        },
+        {
+            Id: 3,
+            Nombre: 'St. Cuthbert',
+            Descripcion: 'Deidad del orden y la disciplina.',
+            Manual: { Id: 1, Nombre: 'Manual base', Pagina: 112 },
+            Alineamiento: { Id: 2, Id_basico: 2, Nombre: 'Legal neutral' },
+            Arma: { Id: 3, Nombre: 'Maza' },
+            Pabellon: { Id: 3, Nombre: 'Orden' },
+            Genero: { Id: 1, Nombre: 'Masculino' },
+            Ambitos: [{ Id: 3, Nombre: 'Protección' }],
+            Dominios: [{ Id: 3, Nombre: 'Ley', Oficial: true }],
+            Oficial: true,
+        },
+    ];
+}
+
 describe('NuevoPersonajeComponent', () => {
     let component: NuevoPersonajeComponent;
     let nuevoPSvc: NuevoPersonajeService;
     let campanaSvcMock: any;
     let alineamientoSvcMock: any;
+    let claseSvcMock: any;
     let razaSvcMock: any;
     let plantillaSvcMock: any;
     let ventajaSvcMock: any;
     let habilidadSvcMock: any;
     let idiomaSvcMock: any;
+    let dominioSvcMock: any;
+    let deidadSvcMock: any;
     let tipoCriaturaSvcMock: any;
 
     beforeEach(() => {
@@ -328,6 +470,9 @@ describe('NuevoPersonajeComponent', () => {
         };
         alineamientoSvcMock = {
             getAlineamientosBasicosCatalogo: () => of([]),
+        };
+        claseSvcMock = {
+            getClases: () => of([]),
         };
         razaSvcMock = {
             getRazas: () => of([
@@ -357,6 +502,12 @@ describe('NuevoPersonajeComponent', () => {
         idiomaSvcMock = {
             getIdiomas: () => of([]),
         };
+        dominioSvcMock = {
+            getDominios: () => of([]),
+        };
+        deidadSvcMock = {
+            getDeidades: () => of(crearDeidadesMock()),
+        };
         tipoCriaturaSvcMock = {
             getTiposCriatura: () => of([]),
         };
@@ -364,14 +515,19 @@ describe('NuevoPersonajeComponent', () => {
             nuevoPSvc,
             campanaSvcMock,
             alineamientoSvcMock,
+            claseSvcMock,
             razaSvcMock,
             plantillaSvcMock,
             ventajaSvcMock,
             habilidadSvcMock,
             idiomaSvcMock,
+            dominioSvcMock,
+            deidadSvcMock,
             tipoCriaturaSvcMock
         );
         component.Personaje = nuevoPSvc.PersonajeCreacion;
+        component.catalogoDeidades = crearDeidadesMock();
+        nuevoPSvc.setCatalogoDeidades(component.catalogoDeidades);
         component.seleccionarRaza(crearRazaMock());
         component.Personaje.Nombre = 'Aldric';
         component.Personaje.Alineamiento = 'Legal bueno';
@@ -1007,6 +1163,320 @@ describe('NuevoPersonajeComponent', () => {
         expect(component.selectedInternalTabIndex).toBe(3);
     });
 
+    it('continuarDesdeVentajas avanza al paso clases', () => {
+        component.continuarDesdeVentajas();
+        expect(nuevoPSvc.EstadoFlujo.pasoActual).toBe('clases');
+        expect(component.selectedInternalTabIndex).toBe(4);
+    });
+
+    it('mapearPasoAIndex incluye el paso habilidades', () => {
+        expect((component as any).mapearPasoAIndex('habilidades')).toBe(5);
+    });
+
+    it('filtros combinados de clases devuelven solo coincidencias válidas', () => {
+        const mago = crearClaseMock({
+            Id: 2,
+            Nombre: 'Mago',
+            Descripcion: 'Lanzador arcano de soporte',
+            Manual: { Id: 2, Nombre: 'Manual arcano', Pagina: 20 },
+            Conjuros: {
+                ...crearClaseMock().Conjuros,
+                Arcanos: true,
+            },
+            Roles: { Dps: false, Tanque: false, Support: true, Utilidad: true },
+        });
+        const guerrero = crearClaseMock({
+            Id: 3,
+            Nombre: 'Guerrero',
+            Manual: { Id: 1, Nombre: 'Manual base', Pagina: 10 },
+            Roles: { Dps: true, Tanque: true, Support: false, Utilidad: false },
+        });
+        component.catalogoClases = [mago, guerrero];
+        nuevoPSvc.setCatalogoClases(component.catalogoClases);
+
+        component.onFiltroClasesTextoChange('mago');
+        component.onFiltroClasesManualChange('Manual arcano');
+        component.onFiltroClasesTipoLanzadorChange('arcano');
+        component.onFiltroClasesRolChange('support');
+        component.onFiltroClasesPrestigioChange('basica');
+
+        expect(component.clasesListadoFiltrado.length).toBe(1);
+        expect(component.clasesListadoFiltrado[0].clase.Nombre).toBe('Mago');
+    });
+
+    it('oculta clases con prerrequisitos no cumplidos y mantiene visibles las elegibles', () => {
+        const elegida = crearClaseMock({ Id: 11, Nombre: 'Guerrero' });
+        const elegible = crearClaseMock({ Id: 12, Nombre: 'Mago' });
+        const bloqueada = crearClaseMock({
+            Id: 13,
+            Nombre: 'Titán',
+            Prerrequisitos_flags: { caracteristica: true },
+            Prerrequisitos: {
+                ...crearClaseMock().Prerrequisitos,
+                caracteristica: [{ Id_caracteristica: 1, Cantidad: 99, opcional: 0 }],
+            },
+        });
+        const unknown = crearClaseMock({
+            Id: 14,
+            Nombre: 'No evaluable',
+            Prerrequisitos_flags: { competencia_arma: true },
+            Prerrequisitos: {
+                ...crearClaseMock().Prerrequisitos,
+                competencia_arma: [{ Id_arma: 1, opcional: 0 }],
+            },
+        });
+        component.Personaje.desgloseClases = [{ Nombre: 'Guerrero', Nivel: 1 }];
+        component.catalogoClases = [unknown, bloqueada, elegible, elegida];
+        nuevoPSvc.setCatalogoClases(component.catalogoClases);
+        (component as any).recalcularClasesVisibles();
+
+        const orden = component.clasesListadoFiltrado.map((item) => item.clase.Nombre);
+        expect(orden[0]).toBe('Guerrero');
+        expect(orden[1]).toBe('Mago');
+        expect(orden).not.toContain('Titán');
+        expect(orden).not.toContain('No evaluable');
+    });
+
+    it('habilita Siguiente en clases solo con selección elegible', () => {
+        const elegible = crearClaseMock({ Id: 21, Nombre: 'Explorador' });
+        const bloqueada = crearClaseMock({
+            Id: 22,
+            Nombre: 'Coloso',
+            Prerrequisitos_flags: { caracteristica: true },
+            Prerrequisitos: {
+                ...crearClaseMock().Prerrequisitos,
+                caracteristica: [{ Id_caracteristica: 1, Cantidad: 99, opcional: 0 }],
+            },
+        });
+        component.catalogoClases = [elegible, bloqueada];
+        nuevoPSvc.setCatalogoClases(component.catalogoClases);
+        (component as any).recalcularClasesVisibles();
+
+        component.seleccionarClaseParaAplicar(bloqueada);
+        expect(component.puedeAplicarClaseSeleccionada).toBeFalse();
+
+        component.seleccionarClaseParaAplicar(elegible);
+        expect(component.puedeAplicarClaseSeleccionada).toBeTrue();
+    });
+
+    it('mantiene visible una clase incompatible por alineamiento y la marca como aplicable con aviso', () => {
+        const barbaro = crearClaseMock({
+            Id: 31,
+            Nombre: 'Bárbaro',
+            Alineamiento: {
+                Id: 100,
+                Basico: { Id_basico: 0, Nombre: 'No aplica' },
+                Ley: { Id_ley: 0, Nombre: 'Nunca legal' },
+                Moral: { Id_moral: 0, Nombre: 'No aplica' },
+                Prioridad: { Id_prioridad: 3, Nombre: 'Siempre' },
+                Descripcion: '',
+            },
+        });
+        component.Personaje.Alineamiento = 'Legal bueno';
+        component.catalogoClases = [barbaro];
+        nuevoPSvc.setCatalogoClases(component.catalogoClases);
+
+        (component as any).recalcularClasesVisibles();
+
+        expect(component.clasesListadoFiltrado.length).toBe(1);
+        expect(component.clasesListadoFiltrado[0].compatAlineamiento.estado).toBe('incompatible');
+        expect(component.clasesListadoFiltrado[0].puedeAplicarse).toBeTrue();
+    });
+
+    it('incompatibilidad P3: al confirmar, aplica clase y deja personaje no oficial', async () => {
+        const barbaro = crearClaseMock({
+            Id: 32,
+            Nombre: 'Bárbaro',
+            Alineamiento: {
+                Id: 100,
+                Basico: { Id_basico: 0, Nombre: 'No aplica' },
+                Ley: { Id_ley: 0, Nombre: 'Nunca legal' },
+                Moral: { Id_moral: 0, Nombre: 'No aplica' },
+                Prioridad: { Id_prioridad: 3, Nombre: 'Siempre' },
+                Descripcion: '',
+            },
+        });
+        component.Personaje.Alineamiento = 'Legal bueno';
+        component.catalogoClases = [barbaro];
+        nuevoPSvc.setCatalogoClases(component.catalogoClases);
+        (component as any).recalcularClasesVisibles();
+        component.seleccionarClaseParaAplicar(barbaro);
+        spyOn(Swal, 'fire').and.resolveTo({ isConfirmed: true } as any);
+
+        await component.continuarDesdeClases();
+
+        expect(component.Personaje.desgloseClases.some((c) => c.Nombre === 'Bárbaro' && c.Nivel === 1)).toBeTrue();
+        expect(component.Personaje.Oficial).toBeFalse();
+    });
+
+    it('incompatibilidad P2: al confirmar, aplica clase sin forzar homebrew por prioridad', async () => {
+        const claseP2 = crearClaseMock({
+            Id: 33,
+            Nombre: 'Monje estricto',
+            Alineamiento: {
+                Id: 101,
+                Basico: { Id_basico: 0, Nombre: 'No aplica' },
+                Ley: { Id_ley: 0, Nombre: 'Nunca legal' },
+                Moral: { Id_moral: 0, Nombre: 'No aplica' },
+                Prioridad: { Id_prioridad: 2, Nombre: 'Casi siempre' },
+                Descripcion: '',
+            },
+        });
+        component.Personaje.Alineamiento = 'Legal bueno';
+        component.catalogoClases = [claseP2];
+        nuevoPSvc.setCatalogoClases(component.catalogoClases);
+        (component as any).recalcularClasesVisibles();
+        component.seleccionarClaseParaAplicar(claseP2);
+        spyOn(Swal, 'fire').and.resolveTo({ isConfirmed: true } as any);
+
+        await component.continuarDesdeClases();
+
+        expect(component.Personaje.desgloseClases.some((c) => c.Nombre === 'Monje estricto' && c.Nivel === 1)).toBeTrue();
+        expect(component.Personaje.Oficial).toBeTrue();
+    });
+
+    it('aplicar clase homebrew marca personaje como no oficial', async () => {
+        const claseHomebrew = crearClaseMock({
+            Id: 34,
+            Nombre: 'Ejemplo homebrew',
+            Oficial: false,
+        });
+        component.incluirHomebrewClases = true;
+        component.catalogoClases = [claseHomebrew];
+        nuevoPSvc.setCatalogoClases(component.catalogoClases);
+        (component as any).recalcularClasesVisibles();
+        component.seleccionarClaseParaAplicar(claseHomebrew);
+
+        await component.continuarDesdeClases();
+
+        expect(component.Personaje.desgloseClases.some((c) => c.Nombre === 'Ejemplo homebrew' && c.Nivel === 1)).toBeTrue();
+        expect(component.Personaje.Oficial).toBeFalse();
+    });
+
+    it('continuarDesdeClases avanza a habilidades cuando aplica correctamente', async () => {
+        const clase = crearClaseMock({ Id: 340, Nombre: 'Guardabosques' });
+        component.Personaje.ModInteligencia = 0;
+        component.catalogoClases = [clase];
+        nuevoPSvc.setCatalogoClases(component.catalogoClases);
+        (component as any).recalcularClasesVisibles();
+        component.seleccionarClaseParaAplicar(clase);
+
+        await component.continuarDesdeClases();
+
+        expect(nuevoPSvc.EstadoFlujo.pasoActual).toBe('habilidades');
+        expect(component.selectedInternalTabIndex).toBe(5);
+    });
+
+    it('si hay idiomas pendientes tras aplicar clase, abre el selector de idiomas iniciales', async () => {
+        const clase = crearClaseMock({ Id: 341, Nombre: 'Explorador' });
+        component.Personaje.ModInteligencia = 2;
+        component.catalogoClases = [clase];
+        nuevoPSvc.setCatalogoClases(component.catalogoClases);
+        const abrirIdiomasSpy = spyOn(component, 'abrirSelectorIdiomasIniciales').and.resolveTo(true);
+        (component as any).recalcularClasesVisibles();
+        component.seleccionarClaseParaAplicar(clase);
+
+        await component.continuarDesdeClases();
+
+        expect(abrirIdiomasSpy).toHaveBeenCalledWith(2);
+        expect(nuevoPSvc.EstadoFlujo.pasoActual).toBe('habilidades');
+    });
+
+    it('si la clase requiere dominio, usa el flujo de selector de dominios', async () => {
+        const claseConDominio = crearClaseMock({
+            Id: 342,
+            Nombre: 'Clérigo',
+            Conjuros: {
+                ...crearClaseMock().Conjuros,
+                Dominio: true,
+            },
+        });
+        nuevoPSvc.setCatalogoDominios([{ Id: 1, Nombre: 'Guerra', Oficial: true } as any]);
+        component.Personaje.Deidad = 'No tener deidad';
+        component.Personaje.ModInteligencia = 0;
+        component.catalogoClases = [claseConDominio];
+        nuevoPSvc.setCatalogoClases(component.catalogoClases);
+        const dominiosSpy = spyOn<any>(component, 'solicitarSeleccionesDominiosClase').and.resolveTo([1]);
+        (component as any).recalcularClasesVisibles();
+        component.seleccionarClaseParaAplicar(claseConDominio);
+
+        await component.continuarDesdeClases();
+
+        expect(dominiosSpy).toHaveBeenCalled();
+        expect(component.Personaje.Dominios.some((d) => d.Nombre === 'Guerra')).toBeTrue();
+    });
+
+    it('regla de visibilidad de columna homebrew se calcula correctamente', () => {
+        component.Personaje.Oficial = true;
+        component.incluirHomebrewClases = false;
+        expect(component.mostrarColumnaHomebrewClases).toBeFalse();
+
+        component.incluirHomebrewClases = true;
+        expect(component.mostrarColumnaHomebrewClases).toBeTrue();
+
+        component.Personaje.Oficial = false;
+        component.incluirHomebrewClases = false;
+        expect(component.mostrarColumnaHomebrewClases).toBeTrue();
+    });
+
+    it('beneficios de siguiente nivel generan chips y emiten detalle de dote/especial', () => {
+        const claseConBeneficios = crearClaseMock({
+            Id: 35,
+            Nombre: 'Campeón',
+            Desglose_niveles: [{
+                Nivel: 1,
+                Ataque_base: '+1',
+                Salvaciones: { Fortaleza: '+2', Reflejos: '+0', Voluntad: '+0' },
+                Nivel_max_conjuro: -1,
+                Reserva_psionica: 0,
+                Aumentos_clase_lanzadora: [],
+                Conjuros_diarios: {},
+                Conjuros_conocidos_nivel_a_nivel: {},
+                Conjuros_conocidos_total: 0,
+                Dotes: [{
+                    Dote: { Id: 400, Nombre: 'Ataque poderoso' } as any,
+                    Nivel: 1,
+                    Id_extra: 0,
+                    Extra: 'Espada larga',
+                    Opcional: 1,
+                    Id_interno: 0,
+                    Id_especial_requerido: 0,
+                    Id_dote_requerida: 0,
+                }],
+                Especiales: [{
+                    Especial: { Nombre: 'Furia marcial' },
+                    Nivel: 1,
+                    Id_extra: 0,
+                    Extra: 'versión base',
+                    Opcional: 0,
+                    Id_interno: 0,
+                    Id_especial_requerido: 0,
+                    Id_dote_requerida: 0,
+                }],
+            }],
+        });
+        component.catalogoClases = [claseConBeneficios];
+        nuevoPSvc.setCatalogoClases(component.catalogoClases);
+        (component as any).recalcularClasesVisibles();
+        const fila = component.clasesListadoFiltrado[0];
+        expect(fila.beneficios.length).toBe(2);
+        expect(fila.beneficios.some((b) => b.tipo === 'dote' && b.extra === 'Espada larga')).toBeTrue();
+        expect(fila.beneficios.some((b) => b.tipo === 'especial' && b.nombre === 'Furia marcial')).toBeTrue();
+
+        const doteSpy = spyOn(component.doteDetalles, 'emit');
+        const especialSpy = spyOn(component.especialDetallesPorNombre, 'emit');
+
+        const doteBeneficio = fila.beneficios.find((b) => b.tipo === 'dote');
+        const especialBeneficio = fila.beneficios.find((b) => b.tipo === 'especial');
+        if (doteBeneficio)
+            component.abrirDetalleBeneficioClase(doteBeneficio);
+        if (especialBeneficio)
+            component.abrirDetalleBeneficioClase(especialBeneficio);
+
+        expect(doteSpy).toHaveBeenCalled();
+        expect(especialSpy).toHaveBeenCalledWith('Furia marcial');
+    });
+
     it('muestra contador de ventajas y puntos desde el estado del servicio', () => {
         const ventaja: VentajaDetalle = {
             Id: 10,
@@ -1104,11 +1574,14 @@ describe('NuevoPersonajeComponent', () => {
             nuevoPSvc,
             campanaSvcMock,
             alineamientoSvcMock,
+            claseSvcMock,
             razaSvcMock,
             plantillaSvcMock,
             ventajaSvcMock,
             habilidadSvcMock,
             idiomaSvcMock,
+            dominioSvcMock,
+            deidadSvcMock,
             tipoCriaturaSvcMock
         );
         componentReabierto.ngOnInit();

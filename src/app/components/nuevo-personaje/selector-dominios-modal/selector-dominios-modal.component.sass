@@ -51,26 +51,7 @@
     color: rgba(233, 238, 252, 0.45)
     background: rgba(255, 255, 255, 0.03)
 
-.filtro-chip
-    width: max-content
-
-.selector-top-row
-    display: flex
-    align-items: center
-    gap: 8px
-
-.filtro-chip--expand
-    flex: 1 1 240px
-    min-width: 180px
-    text-align: center
-
-.detalle-idioma
-    font-size: .92rem
-    opacity: .9
-    color: #e7ebf6
-
 .chip-pendiente
-    flex: 1 1 240px
     text-align: center
     font-weight: 500
 
@@ -79,7 +60,7 @@
     border: 1px solid rgba(104, 199, 104, 0.55)
     color: #d2f3d2
 
-.idiomas-listado
+.dominios-listado
     display: flex
     flex-direction: column
     gap: 8px
@@ -87,7 +68,7 @@
     overflow: auto
     padding-right: 4px
 
-.idioma-row
+.dominio-row
     background: rgba(255, 255, 255, 0.05)
     border: 1px solid rgba(255, 255, 255, 0.18)
     border-radius: 8px
@@ -95,65 +76,29 @@
     cursor: pointer
     transition: background .15s ease, border-color .15s ease
 
-.idioma-row:hover
+.dominio-row:hover
     background: rgba(255, 255, 255, 0.12)
 
-.idioma-row:focus-visible
+.dominio-row:focus-visible
     outline: 2px solid #9fb3ff
     outline-offset: 2px
 
-.idioma-row.seleccionada
+.dominio-row.seleccionada
     border-color: #9fb3ff
     background: rgba(122, 154, 255, 0.2)
 
-.idioma-row.bloqueada
+.dominio-row.bloqueada
     opacity: .7
     cursor: not-allowed
     border-color: rgba(255, 177, 132, 0.5)
     background: rgba(255, 152, 102, 0.12)
 
-.idioma-row mat-checkbox
-    width: 100%
-
-.idioma-row ::ng-deep .mdc-form-field
-    width: 100%
-
-.idioma-row ::ng-deep .mdc-label
-    width: 100%
-
-.idioma-row-content
-    display: flex
-    justify-content: space-between
-    align-items: baseline
-    gap: 12px
-    width: 100%
-    white-space: normal
-
-.idioma-row-nombre
-    font-weight: 600
-
-.idioma-row-descripcion
-    font-size: .86rem
-    opacity: .85
-    text-align: right
+.detalle
+    font-size: .92rem
+    opacity: .9
+    color: #e7ebf6
 
 .selector-actions
     display: flex
     justify-content: flex-end
     gap: 8px
-
-@media (max-width: 600px)
-    .selector-top-row
-        flex-direction: column
-        align-items: stretch
-
-    .chip-pendiente,
-    .filtro-chip--expand
-        width: 100%
-
-    .idioma-row-content
-        flex-direction: column
-        gap: 4px
-
-    .idioma-row-descripcion
-        text-align: left

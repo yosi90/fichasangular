@@ -94,6 +94,12 @@ export class ListadoClasesComponent {
     }
 
     tienePrerrequisitos(clase: Clase): boolean {
+        if (clase?.Tiene_prerrequisitos)
+            return true;
+
+        if (clase?.Prerrequisitos_flags?.habilidad_clase)
+            return true;
+
         const pr = clase?.Prerrequisitos;
         if (!pr || typeof pr !== 'object')
             return false;

@@ -30,10 +30,6 @@
                     <mat-chip class="sombra3d-sm m-1" *ngFor="let rol of rolesActivos">{{rol}}</mat-chip>
                 </mat-chip>
             </div>
-            <div class="d-flex flex-wrap align-items-center sombra-caja-sm rounded p-2 my-2" *ngIf="(claseData.Idiomas?.length ?? 0) > 0">
-                <mat-chip class="h-auto w-100 sombra-caja-sm py-2 m-1 mb-2 chip-titulo">Idiomas</mat-chip>
-                <mat-chip class="sombra3d-sm m-1" *ngFor="let idioma of claseData.Idiomas">{{idioma.Nombre}}</mat-chip>
-            </div>
         </div>
 
         <div class="col-md-4 col-12 p-2">
@@ -70,6 +66,20 @@
                             </mat-chip>
                         </mat-chip-set>
                     </div>
+                </mat-expansion-panel>
+                <mat-expansion-panel *ngIf="getIdiomasOtorgados().length > 0">
+                    <mat-expansion-panel-header>
+                        <button mat-stroked-button color="accent" class="rounded-0">
+                            <h2 class="mb-0">Idiomas otorgados</h2>
+                        </button>
+                    </mat-expansion-panel-header>
+                    <mat-chip-set class="m-1">
+                        <mat-chip class="sombra3d-sm m-1" *ngFor="let idioma of getIdiomasOtorgados()"
+                            [matTooltip]="idioma.Descripcion" [matTooltipShowDelay]="250"
+                            [matTooltipDisabled]="!tieneTextoVisible(idioma.Descripcion)" matTooltipClass="tt-accent">
+                            {{idioma.Nombre}}
+                        </mat-chip>
+                    </mat-chip-set>
                 </mat-expansion-panel>
                 <mat-expansion-panel *ngIf="tieneCompetenciasVisibles()">
                     <mat-expansion-panel-header>
@@ -145,12 +155,15 @@
                         </mat-chip-set>
                     </div>
                 </mat-expansion-panel>
-                <mat-expansion-panel *ngIf="getPrerrequisitosActivos().length > 0">
+                <mat-expansion-panel *ngIf="getPrerrequisitosActivos().length > 0 || getPrerrequisitosFlagsActivos().length > 0">
                     <mat-expansion-panel-header>
                         <button mat-stroked-button color="accent" class="rounded-0 rounded-top">
                             <h2 class="mb-0">Prerrequisitos</h2>
                         </button>
                     </mat-expansion-panel-header>
+                    <div class="w-100 p-2" *ngIf="getPrerrequisitosFlagsActivos().length > 0">
+                        <mat-chip class="sombra3d-sm m-1" *ngFor="let flag of getPrerrequisitosFlagsActivos()">{{flag}}</mat-chip>
+                    </div>
                     <div class="prerrequisito-bloque p-2" *ngFor="let familia of getPrerrequisitosActivos()">
                         <mat-chip class="w-100 sombra-caja-sm m-1 mb-2 chip-titulo">{{familia.etiqueta}}</mat-chip>
                         <div class="prerrequisito-condicion sombra-caja-sm m-1 p-2" *ngFor="let item of familia.items; let i = index">

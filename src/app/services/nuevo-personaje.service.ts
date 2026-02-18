@@ -1,5 +1,9 @@
 import { Injectable } from '@angular/core';
 import { AptitudSortilega } from '../interfaces/aptitud-sortilega';
+import { Clase, ClaseConjuroRef, ClaseDoteNivel, ClaseEspecialNivel, ClaseNivelDetalle } from '../interfaces/clase';
+import { Conjuro } from '../interfaces/conjuro';
+import { DeidadDetalle } from '../interfaces/deidad';
+import { DominioDetalle } from '../interfaces/dominio';
 import { HabilidadBasicaDetalle, HabilidadBonoVario } from '../interfaces/habilidad';
 import { IdiomaDetalle } from '../interfaces/idioma';
 import { Personaje } from '../interfaces/personaje';
@@ -12,12 +16,14 @@ import { TipoCriatura } from '../interfaces/tipo_criatura';
 import { VentajaDetalle } from '../interfaces/ventaja';
 import { resolverAlineamientoPlantillas, simularEstadoPlantillas } from './utils/plantilla-elegibilidad';
 import { extraerEjesAlineamientoDesdeContrato } from './utils/alineamiento-contrato';
+import { buildIdentidadPrerrequisitos } from './utils/identidad-prerrequisitos';
 import { createRacialPlaceholder, normalizeRaciales } from './utils/racial-mapper';
 import { resolverRacialesFinales, SeleccionRacialesOpcionales } from './utils/racial-opcionales';
 import { aplicarMutacion, esRazaMutada } from './utils/raza-mutacion';
 import { normalizeSubtipoRefArray } from './utils/subtipo-mapper';
+import { ClaseEvaluacionResultado, evaluarElegibilidadClase } from './utils/clase-elegibilidad';
 
-export type StepNuevoPersonaje = 'raza' | 'basicos' | 'plantillas' | 'ventajas';
+export type StepNuevoPersonaje = 'raza' | 'basicos' | 'plantillas' | 'ventajas' | 'clases' | 'habilidades';
 
 type CaracteristicaKey = 'Fuerza' | 'Destreza' | 'Constitucion' | 'Inteligencia' | 'Sabiduria' | 'Carisma';
 type SalvacionKey = 'fortaleza' | 'reflejos' | 'voluntad';
@@ -35,6 +41,7 @@ const FILAS_TIRADAS = MAX_TIRADA - MIN_TIRADA + 1;
 const GENERADOR_CONFIG_STORAGE_KEY = 'fichas35.nuevoPersonaje.generador.config.v1';
 const MAX_VENTAJAS_SELECCIONABLES = 3;
 const DADOS_PROGRESION = [4, 6, 8, 10, 12];
+const EXTRA_IDIOMAS_INICIALES = 0;
 
 export interface AsignacionCaracteristicas {
     Fuerza: number | null;
@@ -98,6 +105,74 @@ export interface ToggleVentajaResult {
     reason?: 'not_found' | 'max_reached';
 }
 
+export interface AplicacionClaseResultado {
+    aplicado: boolean;
+    razon?: string;
+    evaluacion?: ClaseEvaluacionResultado;
+    nivelAplicado?: number;
+    advertencias?: string[];
+    gruposOpcionalesPendientes?: ClaseGrupoOpcionalPendiente[];
+    dominiosPendientes?: ClaseDominiosPendientes;
+}
+
+export interface ClaseOpcionInternaPendiente {
+    clave: string;
+    tipo: 'dote' | 'especial';
+    nombre: string;
+    descripcion: string;
+    extra: string;
+    idInterno: number;
+    idEspecialRequerido: number;
+    idDoteRequerida: number;
+}
+
+export interface ClaseGrupoOpcionalPendiente {
+    grupo: number;
+    opciones: ClaseOpcionInternaPendiente[];
+}
+
+export type SeleccionOpcionalesClase = Record<number, string>;
+export type SeleccionDominiosClase = Array<number | string>;
+
+export interface ClaseDominioPendiente {
+    id: number;
+    nombre: string;
+    oficial: boolean;
+}
+
+export interface ClaseDominiosPendientes {
+    cantidad: number;
+    opciones: ClaseDominioPendiente[];
+}
+
+export interface IdiomasPendientesPostClase {
+    cantidad: number;
+    motivo: string;
+}
+
+interface ClaseNivelOpcionInterna {
+    tipo: 'dote' | 'especial';
+    clave: string;
+    grupoOpcional: number;
+    nombre: string;
+    descripcion: string;
+    extra: string;
+    idInterno: number;
+    idEspecialRequerido: number;
+    idDoteRequerida: number;
+    doteNivel: ClaseDoteNivel | null;
+    especialNivel: ClaseEspecialNivel | null;
+}
+
+interface ResolucionOpcionalesNivelClase {
+    obligatoriasDote: ClaseDoteNivel[];
+    obligatoriasEspecial: ClaseEspecialNivel[];
+    seleccionadasDote: ClaseDoteNivel[];
+    seleccionadasEspecial: ClaseEspecialNivel[];
+    gruposPendientes: ClaseGrupoOpcionalPendiente[];
+    advertencias: string[];
+}
+
 export interface EstadoFlujoNuevoPersonaje {
     pasoActual: StepNuevoPersonaje;
     modalCaracteristicasAbierto: boolean;
@@ -126,6 +201,11 @@ export class NuevoPersonajeService {
     private razaSeleccionada: Raza | null = null;
     private razaBaseSeleccionadaCompleta: Raza | null = null;
     private catalogoTiposCriatura: TipoCriatura[] = [];
+    private catalogoClases: Clase[] = [];
+    private catalogoDominios: DominioDetalle[] = [];
+    private catalogoDeidades: DeidadDetalle[] = [];
+    private idsEspecialesInternosActivos = new Set<number>();
+    private idsDotesInternosActivos = new Set<number>();
     private estadoFlujo: EstadoFlujoNuevoPersonaje = this.crearEstadoFlujoBase();
 
     get PersonajeCreacion(): Personaje {
@@ -150,16 +230,24 @@ export class NuevoPersonajeService {
         const catalogoIdiomas = this.estadoFlujo.ventajas.catalogoIdiomas.slice();
         const catalogoVentajas = this.estadoFlujo.ventajas.catalogoVentajas.slice();
         const catalogoDesventajas = this.estadoFlujo.ventajas.catalogoDesventajas.slice();
+        const catalogoClases = this.catalogoClases.slice();
+        const catalogoDominios = this.catalogoDominios.slice();
+        const catalogoDeidades = this.catalogoDeidades.slice();
 
         this.personajeCreacion = this.crearPersonajeBase();
         this.razaSeleccionada = null;
         this.razaBaseSeleccionadaCompleta = null;
+        this.idsEspecialesInternosActivos.clear();
+        this.idsDotesInternosActivos.clear();
         this.estadoFlujo = this.crearEstadoFlujoBase();
 
         this.setCatalogoHabilidades(catalogoHabilidades);
         this.setCatalogoHabilidadesCustom(catalogoHabilidadesCustom);
         this.setCatalogoIdiomas(catalogoIdiomas);
         this.setCatalogosVentajas(catalogoVentajas, catalogoDesventajas);
+        this.setCatalogoClases(catalogoClases);
+        this.setCatalogoDominios(catalogoDominios);
+        this.setCatalogoDeidades(catalogoDeidades);
         this.sincronizarBaseVentajasDesdePersonaje();
     }
 
@@ -209,6 +297,8 @@ export class NuevoPersonajeService {
             this.copiarSortilegas(razaEfectiva.Sortilegas),
             razaEfectiva.Nombre
         );
+        this.personajeCreacion.Idiomas = [];
+        this.aplicarIdiomasAutomaticos(razaEfectiva.Nombre, razaEfectiva?.Idiomas ?? []);
         if (razaEfectiva?.Tipo_criatura) {
             this.personajeCreacion.Tipo_criatura = this.copiarTipoCriatura(razaEfectiva.Tipo_criatura);
             this.sincronizarCaracteristicasPerdidasConTipoActual();
@@ -229,6 +319,16 @@ export class NuevoPersonajeService {
         this.estadoFlujo.plantillas = this.crearPlantillasFlujoBase();
         this.estadoFlujo.plantillas.heredadaActiva = !!razaEfectiva.Heredada;
         this.personajeCreacion.Plantillas = [];
+        this.personajeCreacion.desgloseClases = [];
+        this.personajeCreacion.Clases = '';
+        this.personajeCreacion.Claseas = [];
+        this.personajeCreacion.Dotes = [];
+        this.personajeCreacion.DotesContextuales = [];
+        this.idsEspecialesInternosActivos.clear();
+        this.idsDotesInternosActivos.clear();
+        this.personajeCreacion.Salvaciones.fortaleza.modsClaseos = [];
+        this.personajeCreacion.Salvaciones.reflejos.modsClaseos = [];
+        this.personajeCreacion.Salvaciones.voluntad.modsClaseos = [];
         this.recalcularTipoYSubtiposDerivados();
         this.limpiarVentajasDesventajas();
         this.estadoFlujo.ventajas.baseCaracteristicas = null;
@@ -293,6 +393,295 @@ export class NuevoPersonajeService {
     setCatalogoTiposCriatura(tipos: TipoCriatura[]): void {
         this.catalogoTiposCriatura = [...tipos];
         this.recalcularTipoYSubtiposDerivados();
+    }
+
+    setCatalogoClases(clases: Clase[]): void {
+        this.catalogoClases = [...clases];
+    }
+
+    setCatalogoDominios(dominios: DominioDetalle[]): void {
+        this.catalogoDominios = [...dominios];
+    }
+
+    setCatalogoDeidades(deidades: DeidadDetalle[]): void {
+        this.catalogoDeidades = [...deidades];
+    }
+
+    evaluarClaseParaSeleccion(clase: Clase): ClaseEvaluacionResultado {
+        const siguienteNivel = this.obtenerSiguienteNivelClase(clase.Nombre);
+        const nivelMaximo = this.toNumber(clase?.Nivel_max_claseo);
+        if (nivelMaximo > 0 && siguienteNivel > nivelMaximo) {
+            return {
+                estado: 'blocked_failed',
+                razones: ['Nivel máximo alcanzado para esta clase'],
+                advertencias: [],
+            };
+        }
+
+        const identidad = buildIdentidadPrerrequisitos(
+            this.razaSeleccionada,
+            this.razaBaseSeleccionadaCompleta,
+            this.personajeCreacion.Subtipos
+        );
+
+        const idiomas = (this.personajeCreacion.Idiomas ?? [])
+            .map((idioma) => {
+                const nombre = `${idioma?.Nombre ?? ''}`.trim();
+                if (nombre.length < 1)
+                    return null;
+                return {
+                    id: this.resolverIdIdiomaPorNombre(nombre),
+                    nombre,
+                };
+            })
+            .filter((item): item is { id: number | null; nombre: string; } => !!item);
+
+        const dotesDesdeContexto = (this.personajeCreacion.DotesContextuales ?? [])
+            .map((item) => {
+                const nombre = `${item?.Dote?.Nombre ?? ''}`.trim();
+                if (nombre.length < 1)
+                    return null;
+                return {
+                    id: this.toNumber(item?.Dote?.Id) > 0 ? this.toNumber(item?.Dote?.Id) : null,
+                    nombre,
+                };
+            })
+            .filter((item): item is { id: number | null; nombre: string; } => !!item);
+        const dotesLegacy = (this.personajeCreacion.Dotes ?? [])
+            .map((item) => {
+                const nombre = `${item?.Nombre ?? ''}`.trim();
+                if (nombre.length < 1)
+                    return null;
+                return {
+                    id: null,
+                    nombre,
+                };
+            })
+            .filter((item): item is { id: null; nombre: string; } => !!item);
+        const dominios = (this.personajeCreacion.Dominios ?? [])
+            .map((item) => {
+                const nombre = `${item?.Nombre ?? ''}`.trim();
+                if (nombre.length < 1)
+                    return null;
+                return {
+                    id: this.resolverIdDominioPorNombre(nombre),
+                    nombre,
+                };
+            })
+            .filter((item): item is { id: number | null; nombre: string; } => !!item);
+
+        return evaluarElegibilidadClase(clase, {
+            identidad,
+            caracteristicas: {
+                Fuerza: this.toNumber(this.personajeCreacion.Fuerza),
+                Destreza: this.toNumber(this.personajeCreacion.Destreza),
+                Constitucion: this.toNumber(this.personajeCreacion.Constitucion),
+                Inteligencia: this.toNumber(this.personajeCreacion.Inteligencia),
+                Sabiduria: this.toNumber(this.personajeCreacion.Sabiduria),
+                Carisma: this.toNumber(this.personajeCreacion.Carisma),
+            },
+            ataqueBase: this.extraerPrimerEnteroConSigno(this.personajeCreacion.Ataque_base),
+            alineamiento: `${this.personajeCreacion.Alineamiento ?? ''}`,
+            genero: `${this.personajeCreacion.Genero ?? ''}`,
+            dotes: [...dotesDesdeContexto, ...dotesLegacy],
+            idiomas,
+            dominios,
+        });
+    }
+
+    esBloqueoSoloPorAlineamiento(evaluacion: ClaseEvaluacionResultado | null | undefined): boolean {
+        if (!evaluacion || evaluacion.estado === 'eligible')
+            return false;
+
+        const mensajes = [
+            ...(evaluacion.razones ?? []),
+            ...(evaluacion.advertencias ?? []),
+        ].map((msg) => `${msg ?? ''}`.trim()).filter((msg) => msg.length > 0);
+        if (mensajes.length < 1)
+            return false;
+
+        return mensajes.every((mensaje) => this.esMensajeRelacionAlineamiento(mensaje));
+    }
+
+    obtenerOpcionalesSiguienteNivelClase(clase: Clase): ClaseGrupoOpcionalPendiente[] {
+        const nivelActual = this.obtenerNivelActualClase(clase.Nombre);
+        const siguienteNivel = nivelActual + 1;
+        const detalleSiguiente = this.obtenerDetalleNivelClase(clase, siguienteNivel);
+        if (!detalleSiguiente)
+            return [];
+
+        const resolucion = this.resolverOpcionalesNivelClase(detalleSiguiente, null);
+        return resolucion.gruposPendientes;
+    }
+
+    obtenerDominiosPendientesSiguienteNivelClase(clase: Clase): ClaseDominiosPendientes | null {
+        const nivelActual = this.obtenerNivelActualClase(clase.Nombre);
+        const siguienteNivel = nivelActual + 1;
+        const detalleSiguiente = this.obtenerDetalleNivelClase(clase, siguienteNivel);
+        if (!detalleSiguiente)
+            return null;
+
+        const cantidad = this.resolverCantidadDominiosNivelClase(clase, detalleSiguiente, siguienteNivel);
+        if (cantidad < 1)
+            return null;
+
+        const opciones = this.resolverDominiosDisponiblesClase(clase);
+        return {
+            cantidad,
+            opciones,
+        };
+    }
+
+    getIdiomasPendientesPostClase(): IdiomasPendientesPostClase {
+        const nivelClases = (this.personajeCreacion?.desgloseClases ?? [])
+            .reduce((acc, clase) => acc + this.toNumber(clase?.Nivel), 0);
+        if (nivelClases !== 1) {
+            return {
+                cantidad: 0,
+                motivo: 'Solo se eligen idiomas adicionales en el primer nivel global del personaje',
+            };
+        }
+
+        const cantidad = Math.max(0, this.toNumber(this.personajeCreacion.ModInteligencia) + EXTRA_IDIOMAS_INICIALES);
+        return {
+            cantidad,
+            motivo: 'Idiomas iniciales por modificador de Inteligencia',
+        };
+    }
+
+    aplicarIdiomasAutomaticos(origen: string, idiomas: IdiomaDetalle[]): void {
+        const origenNormalizado = `${origen ?? ''}`.trim();
+        const existentes = new Set(
+            (this.personajeCreacion.Idiomas ?? [])
+                .map((idioma) => this.normalizarTexto(idioma?.Nombre ?? ''))
+                .filter((nombre) => nombre.length > 0)
+        );
+
+        const idiomaLista = Array.isArray(idiomas)
+            ? idiomas
+            : (idiomas && typeof idiomas === 'object' ? Object.values(idiomas as any) : []);
+        idiomaLista.forEach((idiomaRaw: any) => {
+            const nombre = `${idiomaRaw?.Nombre ?? ''}`.trim();
+            if (nombre.length < 1)
+                return;
+
+            const nombreNorm = this.normalizarTexto(nombre);
+            if (existentes.has(nombreNorm))
+                return;
+
+            const idioma = {
+                Nombre: nombre,
+                Descripcion: `${idiomaRaw?.Descripcion ?? ''}`.trim(),
+                Secreto: !!idiomaRaw?.Secreto,
+                Oficial: idiomaRaw?.Oficial !== false,
+                Origen: origenNormalizado.length > 0 ? origenNormalizado : undefined,
+            };
+            this.personajeCreacion.Idiomas.push(idioma);
+            this.agregarIdiomaABaseVentajas(idioma);
+            existentes.add(nombreNorm);
+        });
+    }
+
+    aplicarSiguienteNivelClase(
+        clase: Clase,
+        seleccionesOpcionales: SeleccionOpcionalesClase | null = null,
+        seleccionesDominios: SeleccionDominiosClase | null = null,
+        permitirBloqueoSoloAlineamiento: boolean = false
+    ): AplicacionClaseResultado {
+        const evaluacion = this.evaluarClaseParaSeleccion(clase);
+        const bloqueoSoloAlineamiento = this.esBloqueoSoloPorAlineamiento(evaluacion);
+        if (evaluacion.estado !== 'eligible' && !(permitirBloqueoSoloAlineamiento && bloqueoSoloAlineamiento)) {
+            return {
+                aplicado: false,
+                razon: evaluacion.razones[0] ?? 'La clase no cumple los prerrequisitos actuales',
+                evaluacion,
+            };
+        }
+
+        const nivelActual = this.obtenerNivelActualClase(clase.Nombre);
+        const siguienteNivel = nivelActual + 1;
+        const detalleSiguiente = this.obtenerDetalleNivelClase(clase, siguienteNivel);
+        if (!detalleSiguiente) {
+            return {
+                aplicado: false,
+                razon: `No existe desglose de nivel ${siguienteNivel} para la clase ${clase.Nombre}`,
+                evaluacion,
+            };
+        }
+
+        const detalleAnterior = nivelActual > 0
+            ? this.obtenerDetalleNivelClase(clase, nivelActual)
+            : null;
+        const dominiosPendientes = this.obtenerDominiosPendientesSiguienteNivelClase(clase);
+        const seleccionDominios = this.resolverSeleccionesDominiosClase(dominiosPendientes, seleccionesDominios);
+        if (dominiosPendientes && seleccionDominios.length < dominiosPendientes.cantidad) {
+            return {
+                aplicado: false,
+                razon: 'Falta seleccionar dominios de clase',
+                evaluacion,
+                dominiosPendientes,
+            };
+        }
+
+        this.actualizarDesgloseClase(clase.Nombre, siguienteNivel);
+        this.aplicarDeltaAtaqueBaseClase(clase.Nombre, siguienteNivel, detalleSiguiente, detalleAnterior);
+        this.aplicarDeltaSalvacionesClase(clase.Nombre, siguienteNivel, detalleSiguiente, detalleAnterior);
+
+        if (siguienteNivel === 1) {
+            this.aplicarHabilidadesPrimerNivelClase(clase);
+            this.aplicarIdiomasPrimerNivelClase(clase);
+        }
+
+        const resolucionOpcionales = this.resolverOpcionalesNivelClase(detalleSiguiente, seleccionesOpcionales);
+        const habiaSelecciones = !!seleccionesOpcionales && Object.keys(seleccionesOpcionales).length > 0;
+        if (habiaSelecciones && resolucionOpcionales.gruposPendientes.length > 0) {
+            return {
+                aplicado: false,
+                razon: 'No se pudo resolver una o más elecciones opcionales de clase',
+                evaluacion,
+                advertencias: resolucionOpcionales.advertencias,
+                gruposOpcionalesPendientes: resolucionOpcionales.gruposPendientes,
+            };
+        }
+
+        const dotesAplicar = [
+            ...resolucionOpcionales.obligatoriasDote,
+            ...resolucionOpcionales.seleccionadasDote,
+        ];
+        const especialesAplicar = [
+            ...resolucionOpcionales.obligatoriasEspecial,
+            ...resolucionOpcionales.seleccionadasEspecial,
+        ];
+        this.aplicarDotesNivelClase(clase, siguienteNivel, dotesAplicar);
+        this.aplicarEspecialesNivelClase(especialesAplicar);
+        this.aplicarDominiosNivelClase(clase, siguienteNivel, seleccionDominios);
+        this.aplicarConjurosNivelClase(clase, siguienteNivel, detalleSiguiente, detalleAnterior);
+        this.recalcularNepExperienciaOro();
+
+        return {
+            aplicado: true,
+            nivelAplicado: siguienteNivel,
+            evaluacion,
+            advertencias: resolucionOpcionales.advertencias,
+            gruposOpcionalesPendientes: resolucionOpcionales.gruposPendientes,
+        };
+    }
+
+    private esMensajeRelacionAlineamiento(mensaje: string): boolean {
+        const normalizado = this.normalizarTexto(mensaje);
+        if (normalizado.length < 1)
+            return false;
+        if (normalizado.includes('alineamiento') || normalizado.includes('actitud'))
+            return true;
+        if (normalizado.includes('alineamiento_requerido'))
+            return true;
+        if (normalizado.includes('alineamiento_prohibido'))
+            return true;
+        if (normalizado.includes('actitud_requerido'))
+            return true;
+        if (normalizado.includes('actitud_prohibido'))
+            return true;
+        return false;
     }
 
     toggleVentaja(idVentaja: number): ToggleVentajaResult {
@@ -973,7 +1362,8 @@ export class NuevoPersonajeService {
             });
         }
 
-        let ataqueBase = this.toNumber(raza?.Dgs_adicionales?.Ataque_base);
+        const ataqueClases = this.calcularAtaqueBaseDesdeClases();
+        let ataqueBase = this.toNumber(raza?.Dgs_adicionales?.Ataque_base) + ataqueClases;
         let armaduraNatural = this.toNumber(raza?.Armadura_natural);
         let caVarios = this.toNumber(raza?.Varios_armadura);
         let dadoGolpe = this.resolverDadoGolpeTipoActual();
@@ -1107,12 +1497,790 @@ export class NuevoPersonajeService {
         this.personajeCreacion.Ca_varios = caVarios;
         this.personajeCreacion.Dados_golpe = dadoGolpe;
 
+        this.recalcularNepExperienciaOro(seleccionadas);
+    }
+
+    private obtenerNivelActualClase(nombreClase: string): number {
+        const nombreNorm = this.normalizarTexto(nombreClase);
+        if (nombreNorm.length < 1)
+            return 0;
+        const encontrada = (this.personajeCreacion.desgloseClases ?? [])
+            .find((clase) => this.normalizarTexto(clase?.Nombre ?? '') === nombreNorm);
+        return this.toNumber(encontrada?.Nivel);
+    }
+
+    private obtenerSiguienteNivelClase(nombreClase: string): number {
+        return this.obtenerNivelActualClase(nombreClase) + 1;
+    }
+
+    private obtenerDetalleNivelClase(clase: Clase, nivel: number): ClaseNivelDetalle | null {
+        const nivelNormalizado = Math.max(1, Math.trunc(this.toNumber(nivel)));
+        return (clase?.Desglose_niveles ?? [])
+            .find((item) => this.toNumber(item?.Nivel) === nivelNormalizado) ?? null;
+    }
+
+    private actualizarDesgloseClase(nombreClase: string, nivel: number): void {
+        const nombre = `${nombreClase ?? ''}`.trim();
+        if (nombre.length < 1)
+            return;
+
+        const nombreNorm = this.normalizarTexto(nombre);
+        const nivelNormalizado = Math.max(1, Math.trunc(this.toNumber(nivel)));
+        const desglose = [...(this.personajeCreacion.desgloseClases ?? [])];
+        const index = desglose.findIndex((item) => this.normalizarTexto(item?.Nombre ?? '') === nombreNorm);
+
+        if (index >= 0) {
+            desglose[index] = {
+                Nombre: desglose[index].Nombre,
+                Nivel: nivelNormalizado,
+            };
+        } else {
+            desglose.push({
+                Nombre: nombre,
+                Nivel: nivelNormalizado,
+            });
+        }
+
+        this.personajeCreacion.desgloseClases = desglose;
+        this.regenerarTextoClasesDesdeDesglose();
+    }
+
+    private regenerarTextoClasesDesdeDesglose(): void {
+        const texto = (this.personajeCreacion.desgloseClases ?? [])
+            .map((clase) => {
+                const nombre = `${clase?.Nombre ?? ''}`.trim();
+                const nivel = this.toNumber(clase?.Nivel);
+                if (nombre.length < 1 || nivel <= 0)
+                    return '';
+                return `${nombre} (${nivel})`;
+            })
+            .filter((item) => item.length > 0)
+            .join(', ');
+        this.personajeCreacion.Clases = texto;
+    }
+
+    private aplicarDeltaAtaqueBaseClase(
+        nombreClase: string,
+        nivel: number,
+        detalleSiguiente: ClaseNivelDetalle,
+        detalleAnterior: ClaseNivelDetalle | null
+    ): void {
+        const ataqueSiguiente = this.extraerPrimerEnteroConSigno(detalleSiguiente?.Ataque_base ?? '');
+        const ataqueAnterior = detalleAnterior
+            ? this.extraerPrimerEnteroConSigno(detalleAnterior?.Ataque_base ?? '')
+            : 0;
+        const delta = ataqueSiguiente - ataqueAnterior;
+        if (delta === 0)
+            return;
+
+        const ataqueActual = this.extraerPrimerEnteroConSigno(this.personajeCreacion.Ataque_base);
+        this.personajeCreacion.Ataque_base = `${ataqueActual + delta}`;
+    }
+
+    private aplicarDeltaSalvacionesClase(
+        nombreClase: string,
+        nivel: number,
+        detalleSiguiente: ClaseNivelDetalle,
+        detalleAnterior: ClaseNivelDetalle | null
+    ): void {
+        const origen = `${nombreClase} nivel ${nivel}`;
+        const definiciones: Array<{ key: SalvacionKey; campo: 'Fortaleza' | 'Reflejos' | 'Voluntad'; }> = [
+            { key: 'fortaleza', campo: 'Fortaleza' },
+            { key: 'reflejos', campo: 'Reflejos' },
+            { key: 'voluntad', campo: 'Voluntad' },
+        ];
+
+        definiciones.forEach(({ key, campo }) => {
+            const siguiente = this.extraerPrimerEnteroConSigno(detalleSiguiente?.Salvaciones?.[campo] ?? '');
+            const previo = detalleAnterior
+                ? this.extraerPrimerEnteroConSigno(detalleAnterior?.Salvaciones?.[campo] ?? '')
+                : 0;
+            const delta = siguiente - previo;
+            if (delta === 0)
+                return;
+            this.personajeCreacion.Salvaciones[key].modsClaseos.push({
+                valor: delta,
+                origen,
+            });
+        });
+    }
+
+    private aplicarHabilidadesPrimerNivelClase(clase: Clase): void {
+        const refs = [
+            ...(clase?.Habilidades?.Base ?? []),
+            ...(clase?.Habilidades?.Custom ?? []),
+        ];
+        if (refs.length < 1)
+            return;
+
+        refs.forEach((ref) => {
+            const raw = ref as Record<string, any>;
+            const idHabilidad = this.toNumber(
+                raw['Id_habilidad'] ?? raw['id_habilidad'] ?? raw['Id'] ?? raw['id']
+            );
+            const nombre = `${raw['Habilidad'] ?? raw['habilidad'] ?? raw['Nombre'] ?? raw['nombre'] ?? ''}`.trim();
+            const nombreNorm = this.normalizarTexto(nombre);
+            if (idHabilidad <= 0 && nombreNorm.length < 1)
+                return;
+
+            const existente = this.personajeCreacion.Habilidades
+                .find((habilidad) => (idHabilidad > 0 && this.toNumber(habilidad.Id) === idHabilidad)
+                    || (nombreNorm.length > 0 && this.normalizarTexto(habilidad.Nombre) === nombreNorm));
+            if (existente) {
+                existente.Clasea = true;
+                return;
+            }
+
+            const idCaracteristica = this.toNumber(
+                raw['Id_caracteristica'] ?? raw['id_caracteristica'] ?? raw['IdCaracteristica'] ?? raw['idCaracteristica']
+            );
+            const textoCaracteristica = `${raw['Caracteristica'] ?? raw['caracteristica'] ?? ''}`.trim();
+            const keyCar = this.resolverCaracteristicaPorIdOTexto(idCaracteristica, textoCaracteristica);
+            const nuevoId = idHabilidad > 0 ? idHabilidad : this.getNuevoIdHabilidad();
+
+            this.personajeCreacion.Habilidades.push({
+                Id: nuevoId,
+                Nombre: nombre.length > 0 ? nombre : `Habilidad ${nuevoId}`,
+                Clasea: true,
+                Car: this.etiquetaCaracteristica(keyCar, textoCaracteristica),
+                Mod_car: this.modificadorPorCaracteristica(keyCar),
+                Rangos: 0,
+                Rangos_varios: 0,
+                Extra: '',
+                Varios: '',
+                Custom: !!(raw['Custom'] ?? raw['custom']),
+                Soporta_extra: !!(raw['Soporta_extra'] ?? raw['soporta_extra']),
+                Extras: [],
+                Bonos_varios: [],
+            });
+        });
+
+        this.personajeCreacion.Habilidades = this.personajeCreacion.Habilidades
+            .slice()
+            .sort((a, b) => a.Nombre.localeCompare(b.Nombre, 'es', { sensitivity: 'base' }));
+    }
+
+    private getNuevoIdHabilidad(): number {
+        return (this.personajeCreacion.Habilidades ?? [])
+            .reduce((maximo, habilidad) => Math.max(maximo, this.toNumber(habilidad?.Id)), 0) + 1;
+    }
+
+    private aplicarIdiomasPrimerNivelClase(clase: Clase): void {
+        this.aplicarIdiomasAutomaticos(`${clase.Nombre} nivel 1`, clase?.Idiomas ?? []);
+    }
+
+    private resolverCantidadDominiosNivelClase(
+        clase: Clase,
+        detalleSiguiente: ClaseNivelDetalle,
+        siguienteNivel: number
+    ): number {
+        const detalleRaw = detalleSiguiente as Record<string, any>;
+        const claseRaw = clase as Record<string, any>;
+        const conjurosRaw = (clase?.Conjuros ?? {}) as Record<string, any>;
+        const candidatos = [
+            detalleRaw?.['Dominio'],
+            detalleRaw?.['Dominio_cantidad'],
+            detalleRaw?.['Cantidad_dominio'],
+            detalleRaw?.['Dominios'],
+            detalleRaw?.['Cantidad_dominios'],
+            conjurosRaw?.['Dominio_cantidad'],
+            conjurosRaw?.['Cantidad_dominio'],
+            conjurosRaw?.['Dominios'],
+            conjurosRaw?.['Cantidad_dominios'],
+            claseRaw?.['Dominio'],
+            claseRaw?.['Dominios'],
+            claseRaw?.['Dominio_cantidad'],
+            claseRaw?.['Cantidad_dominio'],
+            claseRaw?.['Cantidad_dominios'],
+        ];
+
+        for (const candidato of candidatos) {
+            const valor = Math.trunc(this.toNumber(candidato));
+            if (valor > 0)
+                return valor;
+        }
+
+        if (siguienteNivel === 1 && !!clase?.Conjuros?.Dominio)
+            return 1;
+        return 0;
+    }
+
+    private resolverDominiosDisponiblesClase(_clase: Clase): ClaseDominioPendiente[] {
+        const dominiosPropiosDeidad = this.obtenerDominiosDeidadSeleccionada();
+        const fuente = dominiosPropiosDeidad.length > 0
+            ? dominiosPropiosDeidad
+            : this.catalogoDominios;
+        const excluirHomebrew = this.personajeCreacion.Oficial !== false;
+        const dominiosActuales = new Set(
+            (this.personajeCreacion.Dominios ?? [])
+                .map((dominio) => this.normalizarTexto(dominio?.Nombre ?? ''))
+                .filter((nombre) => nombre.length > 0)
+        );
+
+        return fuente
+            .filter((dominio) => this.toNumber(dominio?.Id) > 0 && `${dominio?.Nombre ?? ''}`.trim().length > 0)
+            .filter((dominio) => !excluirHomebrew || dominio?.Oficial !== false)
+            .filter((dominio) => !dominiosActuales.has(this.normalizarTexto(dominio?.Nombre ?? '')))
+            .map((dominio) => ({
+                id: this.toNumber(dominio.Id),
+                nombre: `${dominio.Nombre ?? ''}`.trim(),
+                oficial: dominio.Oficial !== false,
+            }))
+            .sort((a, b) => a.nombre.localeCompare(b.nombre, 'es', { sensitivity: 'base' }));
+    }
+
+    private resolverSeleccionesDominiosClase(
+        pendientes: ClaseDominiosPendientes | null,
+        selecciones: SeleccionDominiosClase | null
+    ): ClaseDominioPendiente[] {
+        if (!pendientes || pendientes.cantidad < 1)
+            return [];
+
+        const candidatas = pendientes.opciones;
+        if (candidatas.length < 1)
+            return [];
+
+        const parsearEntrada = (value: number | string): ClaseDominioPendiente | null => {
+            const id = Math.trunc(this.toNumber(value));
+            if (id > 0)
+                return candidatas.find((opcion) => opcion.id === id) ?? null;
+            const nombreNorm = this.normalizarTexto(`${value ?? ''}`);
+            if (nombreNorm.length < 1)
+                return null;
+            return candidatas.find((opcion) => this.normalizarTexto(opcion.nombre) === nombreNorm) ?? null;
+        };
+
+        const unicos = new Set<number>();
+        const resultado: ClaseDominioPendiente[] = [];
+        const seleccionLista = Array.isArray(selecciones) ? selecciones : [];
+        seleccionLista.forEach((seleccion) => {
+            const dominio = parsearEntrada(seleccion);
+            if (!dominio || unicos.has(dominio.id))
+                return;
+            unicos.add(dominio.id);
+            resultado.push(dominio);
+        });
+
+        if (resultado.length >= pendientes.cantidad)
+            return resultado.slice(0, pendientes.cantidad);
+
+        if (candidatas.length <= pendientes.cantidad)
+            return candidatas.slice(0, pendientes.cantidad);
+
+        return resultado;
+    }
+
+    private aplicarDominiosNivelClase(_clase: Clase, _nivel: number, dominios: ClaseDominioPendiente[]): void {
+        if (dominios.length < 1)
+            return;
+
+        const nombresActuales = new Set(
+            (this.personajeCreacion.Dominios ?? [])
+                .map((dominio) => this.normalizarTexto(dominio?.Nombre ?? ''))
+                .filter((nombre) => nombre.length > 0)
+        );
+
+        dominios.forEach((dominio) => {
+            const nombre = `${dominio?.nombre ?? ''}`.trim();
+            if (nombre.length < 1)
+                return;
+            const nombreNorm = this.normalizarTexto(nombre);
+            if (nombresActuales.has(nombreNorm))
+                return;
+            this.personajeCreacion.Dominios.push({ Nombre: nombre });
+            nombresActuales.add(nombreNorm);
+        });
+    }
+
+    private obtenerDominiosDeidadSeleccionada(): DominioDetalle[] {
+        const deidadActual = this.obtenerDeidadSeleccionada();
+        return deidadActual?.Dominios ?? [];
+    }
+
+    private obtenerDeidadSeleccionada(): DeidadDetalle | null {
+        const deidadNorm = this.normalizarTexto(this.personajeCreacion.Deidad ?? '');
+        if (deidadNorm.length < 1 || deidadNorm === this.normalizarTexto('No tener deidad'))
+            return null;
+        return this.catalogoDeidades.find((deidad) => this.normalizarTexto(deidad?.Nombre ?? '') === deidadNorm) ?? null;
+    }
+
+    private agregarIdiomaABaseVentajas(idioma: {
+        Nombre: string;
+        Descripcion: string;
+        Secreto: boolean;
+        Oficial: boolean;
+        Origen?: string;
+    }): void {
+        const nombreNorm = this.normalizarTexto(idioma?.Nombre ?? '');
+        if (nombreNorm.length < 1)
+            return;
+        if (this.estadoFlujo.ventajas.baseIdiomas
+            .some((item) => this.normalizarTexto(item?.Nombre ?? '') === nombreNorm)) {
+            return;
+        }
+        this.estadoFlujo.ventajas.baseIdiomas.push({ ...idioma });
+    }
+
+    private extraerOpcionesNivelClase(detalleNivel: ClaseNivelDetalle): ClaseNivelOpcionInterna[] {
+        const opciones: ClaseNivelOpcionInterna[] = [];
+        let contador = 0;
+
+        (detalleNivel?.Dotes ?? []).forEach((doteNivel) => {
+            const nombre = `${doteNivel?.Dote?.Nombre ?? ''}`.trim();
+            if (nombre.length < 1)
+                return;
+            const grupoOpcional = Math.max(0, Math.trunc(this.toNumber(doteNivel?.Opcional)));
+            opciones.push({
+                tipo: 'dote',
+                clave: `dote:${contador++}`,
+                grupoOpcional,
+                nombre,
+                descripcion: `${doteNivel?.Dote?.Descripcion ?? ''}`.trim(),
+                extra: `${doteNivel?.Extra ?? ''}`.trim(),
+                idInterno: this.toNumber(doteNivel?.Id_interno),
+                idEspecialRequerido: this.toNumber(doteNivel?.Id_especial_requerido),
+                idDoteRequerida: this.toNumber(doteNivel?.Id_dote_requerida),
+                doteNivel,
+                especialNivel: null,
+            });
+        });
+
+        (detalleNivel?.Especiales ?? []).forEach((especialNivel) => {
+            const nombre = `${(especialNivel?.Especial as Record<string, any>)?.['Nombre'] ?? ''}`.trim();
+            if (nombre.length < 1)
+                return;
+            const grupoOpcional = Math.max(0, Math.trunc(this.toNumber(especialNivel?.Opcional)));
+            opciones.push({
+                tipo: 'especial',
+                clave: `especial:${contador++}`,
+                grupoOpcional,
+                nombre,
+                descripcion: `${(especialNivel?.Especial as Record<string, any>)?.['Descripcion'] ?? ''}`.trim(),
+                extra: `${especialNivel?.Extra ?? ''}`.trim(),
+                idInterno: this.toNumber(especialNivel?.Id_interno),
+                idEspecialRequerido: this.toNumber(especialNivel?.Id_especial_requerido),
+                idDoteRequerida: this.toNumber(especialNivel?.Id_dote_requerida),
+                doteNivel: null,
+                especialNivel,
+            });
+        });
+
+        return opciones;
+    }
+
+    private cumplePrerequisitosInternosOpcion(
+        opcion: ClaseNivelOpcionInterna,
+        idsEspeciales: Set<number>,
+        idsDotes: Set<number>
+    ): boolean {
+        if (opcion.idEspecialRequerido > 0 && !idsEspeciales.has(opcion.idEspecialRequerido))
+            return false;
+        if (opcion.idDoteRequerida > 0 && !idsDotes.has(opcion.idDoteRequerida))
+            return false;
+        return true;
+    }
+
+    private registrarIdInternoTemporal(
+        opcion: ClaseNivelOpcionInterna,
+        idsEspeciales: Set<number>,
+        idsDotes: Set<number>
+    ): void {
+        if (opcion.idInterno <= 0)
+            return;
+        if (opcion.tipo === 'dote') {
+            idsDotes.add(opcion.idInterno);
+            return;
+        }
+        idsEspeciales.add(opcion.idInterno);
+    }
+
+    private mapearOpcionesPendientes(opciones: ClaseNivelOpcionInterna[]): ClaseOpcionInternaPendiente[] {
+        return opciones.map((opcion) => ({
+            clave: opcion.clave,
+            tipo: opcion.tipo,
+            nombre: opcion.nombre,
+            descripcion: opcion.descripcion,
+            extra: opcion.extra,
+            idInterno: opcion.idInterno,
+            idEspecialRequerido: opcion.idEspecialRequerido,
+            idDoteRequerida: opcion.idDoteRequerida,
+        }));
+    }
+
+    private resolverOpcionalesNivelClase(
+        detalleNivel: ClaseNivelDetalle,
+        seleccionesOpcionales: SeleccionOpcionalesClase | null
+    ): ResolucionOpcionalesNivelClase {
+        const opciones = this.extraerOpcionesNivelClase(detalleNivel);
+        const idsEspeciales = new Set<number>(this.idsEspecialesInternosActivos);
+        const idsDotes = new Set<number>(this.idsDotesInternosActivos);
+        const advertencias: string[] = [];
+        const obligatoriasDote: ClaseDoteNivel[] = [];
+        const obligatoriasEspecial: ClaseEspecialNivel[] = [];
+        const seleccionadasDote: ClaseDoteNivel[] = [];
+        const seleccionadasEspecial: ClaseEspecialNivel[] = [];
+        const gruposPendientes: ClaseGrupoOpcionalPendiente[] = [];
+
+        opciones
+            .filter((opcion) => opcion.grupoOpcional === 0)
+            .forEach((opcion) => {
+                if (!this.cumplePrerequisitosInternosOpcion(opcion, idsEspeciales, idsDotes)) {
+                    advertencias.push(`No se aplicó ${opcion.tipo} "${opcion.nombre}" por prerrequisito interno no cumplido`);
+                    return;
+                }
+
+                if (opcion.tipo === 'dote' && opcion.doteNivel)
+                    obligatoriasDote.push(opcion.doteNivel);
+                if (opcion.tipo === 'especial' && opcion.especialNivel)
+                    obligatoriasEspecial.push(opcion.especialNivel);
+                this.registrarIdInternoTemporal(opcion, idsEspeciales, idsDotes);
+            });
+
+        const grupos = Array.from(
+            new Set(opciones.filter((opcion) => opcion.grupoOpcional > 0).map((opcion) => opcion.grupoOpcional))
+        ).sort((a, b) => a - b);
+
+        grupos.forEach((grupo) => {
+            const opcionesGrupo = opciones.filter((opcion) => opcion.grupoOpcional === grupo);
+            const elegibles = opcionesGrupo.filter((opcion) => this.cumplePrerequisitosInternosOpcion(opcion, idsEspeciales, idsDotes));
+            if (elegibles.length < 1) {
+                advertencias.push(`No hay opciones habilitadas para el grupo opcional ${grupo}`);
+                return;
+            }
+
+            const claveSeleccionada = `${seleccionesOpcionales?.[grupo] ?? ''}`.trim();
+            if (claveSeleccionada.length < 1 && elegibles.length > 1) {
+                gruposPendientes.push({
+                    grupo,
+                    opciones: this.mapearOpcionesPendientes(elegibles),
+                });
+                return;
+            }
+
+            const elegida = claveSeleccionada.length > 0
+                ? elegibles.find((opcion) => opcion.clave === claveSeleccionada) ?? null
+                : elegibles[0];
+            if (!elegida) {
+                gruposPendientes.push({
+                    grupo,
+                    opciones: this.mapearOpcionesPendientes(elegibles),
+                });
+                advertencias.push(`Selección no válida para el grupo opcional ${grupo}`);
+                return;
+            }
+
+            if (elegida.tipo === 'dote' && elegida.doteNivel)
+                seleccionadasDote.push(elegida.doteNivel);
+            if (elegida.tipo === 'especial' && elegida.especialNivel)
+                seleccionadasEspecial.push(elegida.especialNivel);
+            this.registrarIdInternoTemporal(elegida, idsEspeciales, idsDotes);
+        });
+
+        return {
+            obligatoriasDote,
+            obligatoriasEspecial,
+            seleccionadasDote,
+            seleccionadasEspecial,
+            gruposPendientes,
+            advertencias,
+        };
+    }
+
+    private registrarIdInternoDote(idInterno: number): void {
+        const id = Math.trunc(this.toNumber(idInterno));
+        if (id > 0)
+            this.idsDotesInternosActivos.add(id);
+    }
+
+    private registrarIdInternoEspecial(idInterno: number): void {
+        const id = Math.trunc(this.toNumber(idInterno));
+        if (id > 0)
+            this.idsEspecialesInternosActivos.add(id);
+    }
+
+    private aplicarDotesNivelClase(clase: Clase, nivel: number, dotesNivel: ClaseDoteNivel[]): void {
+        const origen = `${clase.Nombre} nivel ${nivel}`;
+        dotesNivel.forEach((doteNivel) => {
+            const nombre = `${doteNivel?.Dote?.Nombre ?? ''}`.trim();
+            if (nombre.length < 1)
+                return;
+
+            const extra = `${doteNivel?.Extra ?? ''}`.trim();
+            const duplicada = (this.personajeCreacion.Dotes ?? []).some((dote) =>
+                this.normalizarTexto(dote?.Nombre ?? '') === this.normalizarTexto(nombre)
+                && this.normalizarTexto(dote?.Extra ?? '') === this.normalizarTexto(extra)
+                && this.normalizarTexto(dote?.Origen ?? '') === this.normalizarTexto(origen)
+            );
+            if (!duplicada) {
+                this.personajeCreacion.Dotes.push({
+                    Nombre: nombre,
+                    Descripcion: `${doteNivel?.Dote?.Descripcion ?? ''}`.trim(),
+                    Beneficio: `${doteNivel?.Dote?.Beneficio ?? ''}`.trim(),
+                    Pagina: this.toNumber(doteNivel?.Dote?.Manual?.Pagina),
+                    Extra: extra,
+                    Origen: origen,
+                });
+            }
+
+            const idDote = this.toNumber(doteNivel?.Dote?.Id);
+            const idExtra = this.toNumber(doteNivel?.Id_extra);
+            if (idDote > 0) {
+                const yaContextual = (this.personajeCreacion.DotesContextuales ?? []).some((dote) =>
+                    this.toNumber(dote?.Dote?.Id) === idDote
+                    && this.normalizarTexto(`${(dote?.Contexto as { Origen?: string; } | undefined)?.Origen ?? ''}`) === this.normalizarTexto(origen)
+                    && this.toNumber(dote?.Contexto?.Id_extra) === idExtra
+                );
+                if (!yaContextual) {
+                    this.personajeCreacion.DotesContextuales.push({
+                        Dote: doteNivel.Dote,
+                        Contexto: {
+                            Entidad: 'personaje',
+                            Id_personaje: this.toNumber(this.personajeCreacion.Id),
+                            Extra: extra,
+                            Id_extra: idExtra,
+                            Origen: origen,
+                        },
+                    });
+                }
+            }
+
+            this.registrarIdInternoDote(this.toNumber(doteNivel?.Id_interno));
+        });
+    }
+
+    private aplicarEspecialesNivelClase(especialesNivel: ClaseEspecialNivel[]): void {
+        especialesNivel.forEach((especialNivel) => {
+            const nombre = `${(especialNivel?.Especial as Record<string, any>)?.['Nombre'] ?? ''}`.trim();
+            if (nombre.length < 1)
+                return;
+            const extra = `${especialNivel?.Extra ?? ''}`.trim();
+            const duplicado = (this.personajeCreacion.Claseas ?? []).some((especial) =>
+                this.normalizarTexto(especial?.Nombre ?? '') === this.normalizarTexto(nombre)
+                && this.normalizarTexto(especial?.Extra ?? '') === this.normalizarTexto(extra)
+            );
+            if (!duplicado) {
+                this.personajeCreacion.Claseas.push({
+                    Nombre: nombre,
+                    Extra: extra,
+                });
+            }
+            this.registrarIdInternoEspecial(this.toNumber(especialNivel?.Id_interno));
+        });
+    }
+
+    private aplicarConjurosNivelClase(
+        clase: Clase,
+        nivel: number,
+        detalleSiguiente: ClaseNivelDetalle,
+        detalleAnterior: ClaseNivelDetalle | null
+    ): void {
+        const refsDisponibles = this.obtenerConjurosDisponiblesNivelClase(clase, detalleSiguiente);
+        if (refsDisponibles.length < 1)
+            return;
+
+        if (clase?.Conjuros?.Conocidos_total) {
+            const objetivoActual = Math.max(0, this.toNumber(detalleSiguiente?.Conjuros_conocidos_total));
+            const objetivoAnterior = detalleAnterior
+                ? Math.max(0, this.toNumber(detalleAnterior?.Conjuros_conocidos_total))
+                : 0;
+            const delta = objetivoActual - objetivoAnterior;
+            if (delta <= 0)
+                return;
+
+            const candidatos = refsDisponibles
+                .filter((ref) => !this.esConjuroYaConocidoPorClase(clase.Nombre, this.toNumber(ref?.Id)));
+            candidatos.slice(0, delta).forEach((ref) => this.agregarConjuroConocidoClase(clase, ref, nivel));
+            return;
+        }
+
+        if (clase?.Conjuros?.Conocidos_nivel_a_nivel) {
+            const actuales = this.normalizarMapaConjurosPorNivel(detalleSiguiente?.Conjuros_conocidos_nivel_a_nivel);
+            const previos = this.normalizarMapaConjurosPorNivel(detalleAnterior?.Conjuros_conocidos_nivel_a_nivel);
+            Object.keys(actuales)
+                .map((key) => this.toNumber(key))
+                .filter((nivelConjuro) => Number.isFinite(nivelConjuro) && nivelConjuro >= 0)
+                .sort((a, b) => a - b)
+                .forEach((nivelConjuro) => {
+                    const actual = this.toNumber(actuales[nivelConjuro]);
+                    const previo = this.toNumber(previos[nivelConjuro]);
+                    const delta = actual - previo;
+                    if (delta <= 0)
+                        return;
+
+                    const candidatosNivel = refsDisponibles
+                        .filter((ref) => this.toNumber(ref?.Nivel) === nivelConjuro)
+                        .filter((ref) => !this.esConjuroYaConocidoPorClase(clase.Nombre, this.toNumber(ref?.Id)));
+                    candidatosNivel.slice(0, delta).forEach((ref) => this.agregarConjuroConocidoClase(clase, ref, nivel));
+                });
+            return;
+        }
+
+        refsDisponibles
+            .filter((ref) => !this.esConjuroYaConocidoPorClase(clase.Nombre, this.toNumber(ref?.Id)))
+            .forEach((ref) => this.agregarConjuroConocidoClase(clase, ref, nivel));
+    }
+
+    private obtenerConjurosDisponiblesNivelClase(clase: Clase, detalleNivel: ClaseNivelDetalle): ClaseConjuroRef[] {
+        const nivelMaxConjuro = this.toNumber(detalleNivel?.Nivel_max_conjuro);
+        return (clase?.Conjuros?.Listado ?? [])
+            .filter((ref) => this.toNumber(ref?.Id) > 0 && `${ref?.Nombre ?? ''}`.trim().length > 0)
+            .filter((ref) => nivelMaxConjuro < 0 || this.toNumber(ref?.Nivel) <= nivelMaxConjuro)
+            .sort((a, b) => this.toNumber(a?.Nivel) - this.toNumber(b?.Nivel)
+                || `${a?.Nombre ?? ''}`.localeCompare(`${b?.Nombre ?? ''}`, 'es', { sensitivity: 'base' }));
+    }
+
+    private normalizarMapaConjurosPorNivel(mapa: Record<string, number> | undefined | null): Record<number, number> {
+        const resultado: Record<number, number> = {};
+        if (!mapa)
+            return resultado;
+
+        Object.keys(mapa).forEach((key) => {
+            const nivel = Math.trunc(this.toNumber(key));
+            if (!Number.isFinite(nivel) || nivel < 0)
+                return;
+            resultado[nivel] = Math.max(0, this.toNumber((mapa as Record<string, any>)[key]));
+        });
+        return resultado;
+    }
+
+    private esConjuroYaConocidoPorClase(nombreClase: string, idConjuro: number): boolean {
+        const id = Math.trunc(this.toNumber(idConjuro));
+        if (id <= 0)
+            return false;
+
+        const claseNorm = this.normalizarTexto(nombreClase);
+        return (this.personajeCreacion.Conjuros ?? []).some((conjuro) => {
+            if (this.toNumber(conjuro?.Id) !== id)
+                return false;
+            const origenClase = this.normalizarTexto(
+                `${(conjuro as Record<string, any>)?.['Clase_origen'] ?? (conjuro as Record<string, any>)?.['Origen_clase'] ?? ''}`
+            );
+            if (origenClase.length < 1)
+                return true;
+            return origenClase === claseNorm;
+        });
+    }
+
+    private agregarConjuroConocidoClase(clase: Clase, ref: ClaseConjuroRef, nivelClase: number): void {
+        const idConjuro = Math.trunc(this.toNumber(ref?.Id));
+        if (idConjuro <= 0 || this.esConjuroYaConocidoPorClase(clase.Nombre, idConjuro))
+            return;
+
+        const conjuro = this.crearConjuroPlaceholderDesdeClase(clase, ref, nivelClase);
+        this.personajeCreacion.Conjuros.push(conjuro);
+    }
+
+    private crearConjuroPlaceholderDesdeClase(clase: Clase, ref: ClaseConjuroRef, nivelClase: number): Conjuro {
+        const nombreClase = `${clase?.Nombre ?? ''}`.trim();
+        const nombre = `${ref?.Nombre ?? ''}`.trim();
+        const nivelConjuro = Math.max(0, Math.trunc(this.toNumber(ref?.Nivel)));
+        const base: Conjuro = {
+            Id: Math.trunc(this.toNumber(ref?.Id)),
+            Nombre: nombre.length > 0 ? nombre : `Conjuro ${this.toNumber(ref?.Id)}`,
+            Descripcion: 'No especifica',
+            Tiempo_lanzamiento: 'No especifica',
+            Alcance: 'No especifica',
+            Escuela: {
+                Id: 0,
+                Nombre: 'No especifica',
+                Nombre_especial: 'No especifica',
+                Prohibible: false,
+            },
+            Disciplina: {
+                Id: 0,
+                Nombre: 'No especifica',
+                Nombre_especial: 'No especifica',
+                Subdisciplinas: [],
+            },
+            Manual: `${clase?.Manual?.Nombre ?? ''}`.trim() || 'No especifica',
+            Objetivo: 'No especifica',
+            Efecto: 'No especifica',
+            Area: 'No especifica',
+            Arcano: !!clase?.Conjuros?.Arcanos,
+            Divino: !!clase?.Conjuros?.Divinos,
+            Psionico: !!clase?.Conjuros?.Psionicos,
+            Alma: !!clase?.Conjuros?.Alma,
+            Duracion: 'No especifica',
+            Tipo_salvacion: 'No especifica',
+            Resistencia_conjuros: false,
+            Resistencia_poderes: false,
+            Descripcion_componentes: 'No especifica',
+            Permanente: false,
+            Puntos_poder: 0,
+            Descripcion_aumentos: 'No especifica',
+            Descriptores: [],
+            Nivel_clase: [{
+                Id_clase: this.toNumber(clase?.Id),
+                Clase: nombreClase,
+                Nivel: nivelConjuro,
+                Espontaneo: !!ref?.Espontaneo,
+            }],
+            Nivel_dominio: [],
+            Nivel_disciplinas: [],
+            Componentes: [],
+            Oficial: clase?.Oficial !== false,
+        };
+
+        const conjuroConOrigen = base as Record<string, any>;
+        conjuroConOrigen['Origen'] = `${nombreClase} nivel ${nivelClase}`;
+        conjuroConOrigen['Clase_origen'] = nombreClase;
+        conjuroConOrigen['Origen_clase'] = nombreClase;
+        return base;
+    }
+
+    private resolverIdIdiomaPorNombre(nombreIdioma: string): number | null {
+        const nombreNorm = this.normalizarTexto(nombreIdioma);
+        if (nombreNorm.length < 1)
+            return null;
+        const idioma = (this.estadoFlujo.ventajas.catalogoIdiomas ?? [])
+            .find((item) => this.normalizarTexto(item?.Nombre ?? '') === nombreNorm);
+        const id = this.toNumber(idioma?.Id);
+        return id > 0 ? id : null;
+    }
+
+    private resolverIdDominioPorNombre(nombreDominio: string): number | null {
+        const nombreNorm = this.normalizarTexto(nombreDominio);
+        if (nombreNorm.length < 1)
+            return null;
+        const dominio = (this.catalogoDominios ?? [])
+            .find((item) => this.normalizarTexto(item?.Nombre ?? '') === nombreNorm);
+        const id = this.toNumber(dominio?.Id);
+        return id > 0 ? id : null;
+    }
+
+    private calcularAtaqueBaseDesdeClases(): number {
+        return (this.personajeCreacion?.desgloseClases ?? []).reduce((acumulado, claseDesglose) => {
+            const nombre = `${claseDesglose?.Nombre ?? ''}`.trim();
+            if (nombre.length < 1)
+                return acumulado;
+            const nivel = this.toNumber(claseDesglose?.Nivel);
+            if (nivel <= 0)
+                return acumulado;
+
+            const claseCatalogo = this.catalogoClases
+                .find((clase) => this.normalizarTexto(clase?.Nombre ?? '') === this.normalizarTexto(nombre));
+            if (!claseCatalogo)
+                return acumulado;
+
+            const detalleNivel = this.obtenerDetalleNivelClase(claseCatalogo, nivel);
+            if (!detalleNivel)
+                return acumulado;
+
+            return acumulado + this.extraerPrimerEnteroConSigno(detalleNivel?.Ataque_base ?? '');
+        }, 0);
+    }
+
+    private recalcularNepExperienciaOro(plantillasSeleccionadas?: Plantilla[]): void {
+        const raza = this.razaSeleccionada;
+        const seleccionadas = plantillasSeleccionadas ?? this.estadoFlujo.plantillas.seleccionadas;
         const ajusteRaza = this.toNumber(raza?.Ajuste_nivel);
-        const ajustePlantillas = seleccionadas.reduce((acc, plantilla) => acc + this.toNumber(plantilla?.Ajuste_nivel), 0);
+        const ajustePlantillas = (seleccionadas ?? [])
+            .reduce((acc, plantilla) => acc + this.toNumber(plantilla?.Ajuste_nivel), 0);
         const nivelClases = (this.personajeCreacion?.desgloseClases ?? [])
             .reduce((acc, clase) => acc + this.toNumber(clase?.Nivel), 0);
         const dgsRaza = this.toNumber(raza?.Dgs_adicionales?.Cantidad);
         const nivelEfectivo = nivelClases + ajusteRaza + ajustePlantillas + dgsRaza;
+
         this.personajeCreacion.NEP = nivelEfectivo;
         this.personajeCreacion.Experiencia = this.calcularExperienciaPorNivel(nivelClases + ajusteRaza + ajustePlantillas);
         this.personajeCreacion.Oro_inicial = this.calcularOroPorNep(nivelEfectivo);

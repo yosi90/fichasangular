@@ -33,6 +33,7 @@ export interface ClaseConjurosConfig {
     Conocidos_total: boolean;
     Conocidos_nivel_a_nivel: boolean;
     Dominio: boolean;
+    Dominio_cantidad?: number;
     Escuela: boolean;
     Lanzamiento_espontaneo: boolean;
     Clase_origen: {
@@ -152,18 +153,18 @@ export interface ClasePrerrequisitos {
     caracteristica: Record<string, any>[];
     dg: Record<string, any>[];
     dominio: Record<string, any>[];
-    nivel_minimo_escuela: Record<string, any>[];
+    nivel_escuela: Record<string, any>[];
     ataque_base: Record<string, any>[];
-    reserva_psionica_minima: Record<string, any>[];
-    lanzar_conjuros_psionicos_nivel: Record<string, any>[];
-    poder_psionico_conocido: Record<string, any>[];
+    reserva_psionica: Record<string, any>[];
+    lanzar_poder_psionico_nivel: Record<string, any>[];
+    conocer_poder_psionico: Record<string, any>[];
     genero: Record<string, any>[];
     competencia_arma: Record<string, any>[];
     competencia_armadura: Record<string, any>[];
     competencia_grupo_arma: Record<string, any>[];
     competencia_grupo_armadura: Record<string, any>[];
-    dote: Record<string, any>[];
-    habilidad: Record<string, any>[];
+    dote_elegida: Record<string, any>[];
+    rangos_habilidad: Record<string, any>[];
     idioma: Record<string, any>[];
     alineamiento_requerido: Record<string, any>[];
     alineamiento_prohibido: Record<string, any>[];
@@ -196,6 +197,7 @@ export interface Clase {
     Aumenta_clase_lanzadora: boolean;
     Es_predilecta: boolean;
     Prestigio: boolean;
+    Tiene_prerrequisitos: boolean;
     Alineamiento: Alineamiento;
     Oficial: boolean;
     Competencias: ClaseCompetencias;

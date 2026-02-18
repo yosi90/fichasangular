@@ -24,6 +24,10 @@ export type CacheEntityKey =
     | "habilidades"
     | "habilidades_custom"
     | "idiomas"
+    | "dominios"
+    | "ambitos"
+    | "pabellones"
+    | "deidades"
     | "plantillas"
     | "ventajas_desventajas";
 
@@ -37,7 +41,7 @@ export const CACHE_CONTRACT_MANIFEST: CacheContractEntry[] = [
     { key: "lista_personajes", label: "Lista de personajes", schemaVersion: 1 },
     { key: "campanas_tramas_subtramas", label: "Campañas, tramas y subtramas", schemaVersion: 1 },
     { key: "personajes", label: "Personajes", schemaVersion: 3 },
-    { key: "razas", label: "Razas", schemaVersion: 3 },
+    { key: "razas", label: "Razas", schemaVersion: 4 },
     { key: "manuales", label: "Manuales", schemaVersion: 1 },
     { key: "manuales_asociados", label: "Manuales asociados", schemaVersion: 2 },
     { key: "tipos_criatura", label: "Tipos de criatura", schemaVersion: 1 },
@@ -45,7 +49,7 @@ export const CACHE_CONTRACT_MANIFEST: CacheContractEntry[] = [
     { key: "rasgos", label: "Rasgos", schemaVersion: 1 },
     { key: "conjuros", label: "Conjuros", schemaVersion: 1 },
     { key: "dotes", label: "Dotes", schemaVersion: 1 },
-    { key: "clases", label: "Clases", schemaVersion: 1 },
+    { key: "clases", label: "Clases", schemaVersion: 2 },
     { key: "especiales", label: "Especiales", schemaVersion: 1 },
     { key: "raciales", label: "Raciales", schemaVersion: 2 },
     { key: "escuelas_conjuros", label: "Escuelas de conjuros", schemaVersion: 1 },
@@ -59,6 +63,10 @@ export const CACHE_CONTRACT_MANIFEST: CacheContractEntry[] = [
     { key: "habilidades", label: "Habilidades", schemaVersion: 1 },
     { key: "habilidades_custom", label: "Habilidades custom", schemaVersion: 1 },
     { key: "idiomas", label: "Idiomas", schemaVersion: 1 },
+    { key: "dominios", label: "Dominios", schemaVersion: 1 },
+    { key: "ambitos", label: "Ambitos", schemaVersion: 1 },
+    { key: "pabellones", label: "Pabellones", schemaVersion: 1 },
+    { key: "deidades", label: "Deidades", schemaVersion: 1 },
     { key: "plantillas", label: "Plantillas", schemaVersion: 2 },
     { key: "ventajas_desventajas", label: "Ventajas y desventajas", schemaVersion: 1 },
 ];

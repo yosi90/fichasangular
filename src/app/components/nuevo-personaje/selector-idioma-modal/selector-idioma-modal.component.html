@@ -1,37 +1,57 @@
 <div class="selector-overlay" (click)="onCerrar()">
     <div class="selector-dialog" (click)="$event.stopPropagation()">
         <div class="selector-header">
-            <h2 class="m-0">{{titulo}}</h2>
-            <button mat-icon-button type="button" aria-label="Cerrar" [disabled]="!puedeCerrar" (click)="onCerrar()">
-                <mat-icon>close</mat-icon>
-            </button>
+            <h2 class="m-0 selector-title">{{titulo}}</h2>
+            <div class="selector-header-actions">
+                <button mat-icon-button type="button" class="selector-icon-btn" aria-label="Cerrar" [disabled]="!puedeCerrar" (click)="onCerrar()">
+                    <mat-icon>close</mat-icon>
+                </button>
+            </div>
         </div>
 
-        <mat-chip class="w-100 chip-pendiente" [ngClass]="cantidadPendiente > 0 ? 'warm' : 'ok'">
-            {{textoPendiente}}
-        </mat-chip>
+        <div class="selector-top-row">
+            <mat-chip class="chip-pendiente" [ngClass]="cantidadPendiente > 0 ? 'warm' : 'ok'">
+                {{textoPendiente}}
+            </mat-chip>
+            <mat-chip-option class="filtro-chip filtro-chip--expand" color="warn" [selected]="incluirHomebrewEfectivo"
+                [disabled]="!personajeOficial" (click)="onToggleHomebrew()">
+                {{incluirHomebrewEfectivo ? 'Homebrew incluido' : 'Incluir homebrew'}}
+            </mat-chip-option>
+        </div>
 
-        <mat-chip-option class="filtro-chip" color="warn" [selected]="incluirHomebrewEfectivo"
-            [disabled]="!personajeOficial" (click)="onToggleHomebrew()">
-            {{incluirHomebrewEfectivo ? 'Homebrew incluido' : 'Incluir homebrew'}}
-        </mat-chip-option>
+        <div class="idiomas-listado" *ngIf="idiomasDisponibles.length > 0; else sinIdiomasTpl">
+            <div class="idioma-row"
+                *ngFor="let idioma of idiomasDisponibles; trackBy: trackByIdiomaId"
+                [class.seleccionada]="isIdiomaSeleccionado(idioma.Id)"
+                [class.bloqueada]="isIdiomaBloqueadoPorLimite(idioma.Id)"
+                tabindex="0"
+                role="checkbox"
+                [attr.aria-checked]="isIdiomaSeleccionado(idioma.Id)"
+                [attr.aria-disabled]="isIdiomaBloqueadoPorLimite(idioma.Id)"
+                (click)="onToggleIdiomaRow(idioma.Id)"
+                (keydown.enter)="onToggleIdiomaRowTeclado(idioma.Id, $event)"
+                (keydown.space)="onToggleIdiomaRowTeclado(idioma.Id, $event)">
+                <mat-checkbox
+                    [checked]="isIdiomaSeleccionado(idioma.Id)"
+                    (change)="onToggleIdioma(idioma.Id, $event.checked)"
+                    [disabled]="isIdiomaBloqueadoPorLimite(idioma.Id)"
+                    (click)="$event.stopPropagation()">
+                    <span class="idioma-row-content">
+                        <span class="idioma-row-nombre">{{idioma.Nombre}} {{idioma.Oficial ? '' : '(Homebrew)'}}</span>
+                        <span class="idioma-row-descripcion" *ngIf="idioma.Descripcion?.trim()?.length">{{idioma.Descripcion}}</span>
+                    </span>
+                </mat-checkbox>
+            </div>
+        </div>
 
-        <mat-form-field appearance="fill" class="w-100">
-            <mat-label>Idioma</mat-label>
-            <mat-select [(value)]="idiomaSeleccionadoId">
-                <mat-option *ngFor="let idioma of idiomasDisponibles" [value]="idioma.Id">
-                    {{idioma.Nombre}} {{idioma.Oficial ? '' : '(Homebrew)'}}
-                </mat-option>
-            </mat-select>
-        </mat-form-field>
-
-        <p class="m-0 detalle-idioma" *ngIf="idiomaSeleccionado as idioma">{{idioma.Descripcion}}</p>
-        <p class="m-0 detalle-idioma" *ngIf="idiomasDisponibles.length < 1">No hay idiomas disponibles con el filtro actual.</p>
+        <ng-template #sinIdiomasTpl>
+            <p class="m-0 detalle-idioma">No hay idiomas disponibles con el filtro actual.</p>
+        </ng-template>
 
         <div class="selector-actions">
             <button mat-stroked-button type="button" [disabled]="!puedeCerrar" (click)="onCerrar()">Cancelar</button>
-            <button mat-raised-button color="primary" type="button" [disabled]="!idiomaSeleccionado" (click)="onConfirmar()">
-                Añadir idioma
+            <button mat-raised-button color="primary" type="button" [disabled]="!puedeConfirmar" (click)="onConfirmar()">
+                Continuar
             </button>
         </div>
     </div>

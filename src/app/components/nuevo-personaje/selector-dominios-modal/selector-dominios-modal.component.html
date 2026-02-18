@@ -1,0 +1,49 @@
+<div class="selector-overlay" (click)="onCerrar()">
+    <div class="selector-dialog" (click)="$event.stopPropagation()">
+        <div class="selector-header">
+            <h2 class="m-0 selector-title">{{titulo}}</h2>
+            <div class="selector-header-actions">
+                <button mat-icon-button type="button" class="selector-icon-btn" aria-label="Cerrar" [disabled]="!puedeCerrar" (click)="onCerrar()">
+                    <mat-icon>close</mat-icon>
+                </button>
+            </div>
+        </div>
+
+        <mat-chip class="w-100 chip-pendiente" [ngClass]="cantidadPendiente > 0 ? 'warm' : 'ok'">
+            {{textoPendiente}}
+        </mat-chip>
+
+        <div class="dominios-listado" *ngIf="opciones.length > 0; else sinDominiosTpl">
+            <div class="dominio-row"
+                *ngFor="let dominio of opciones; trackBy: trackByDominioId"
+                [class.seleccionada]="isSeleccionado(dominio.id)"
+                [class.bloqueada]="isBloqueadoPorLimite(dominio.id)"
+                tabindex="0"
+                role="checkbox"
+                [attr.aria-checked]="isSeleccionado(dominio.id)"
+                [attr.aria-disabled]="isBloqueadoPorLimite(dominio.id)"
+                (click)="onToggleDominioRow(dominio.id)"
+                (keydown.enter)="onToggleDominioRowTeclado(dominio.id, $event)"
+                (keydown.space)="onToggleDominioRowTeclado(dominio.id, $event)">
+                <mat-checkbox
+                    [checked]="isSeleccionado(dominio.id)"
+                    (change)="onToggleDominio(dominio.id, $event.checked)"
+                    (click)="$event.stopPropagation()"
+                    [disabled]="isBloqueadoPorLimite(dominio.id)">
+                    {{dominio.nombre}} {{dominio.oficial ? '' : '(Homebrew)'}}
+                </mat-checkbox>
+            </div>
+        </div>
+
+        <ng-template #sinDominiosTpl>
+            <p class="m-0 detalle">No hay dominios disponibles para esta selección.</p>
+        </ng-template>
+
+        <div class="selector-actions">
+            <button mat-stroked-button type="button" [disabled]="!puedeCerrar" (click)="onCerrar()">Cancelar</button>
+            <button mat-raised-button color="primary" type="button" [disabled]="!puedeConfirmar" (click)="onConfirmar()">
+                Confirmar dominios
+            </button>
+        </div>
+    </div>
+</div>

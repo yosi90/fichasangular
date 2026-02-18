@@ -1,6 +1,7 @@
 import { Alineamiento } from "./alineamiento";
 import { AptitudSortilega } from "./aptitud-sortilega";
 import { DoteContextual } from "./dote-contextual";
+import { IdiomaDetalle } from "./idioma";
 import { Maniobrabilidad } from "./maniobrabilidad";
 import { RacialDetalle } from "./racial";
 import { SubtipoRef } from "./subtipo";
@@ -92,4 +93,5 @@ export interface Raza {
     Sortilegas: AptitudSortilega[];
     Raciales: RacialDetalle[];
     DotesContextuales: DoteContextual[];
+    Idiomas?: IdiomaDetalle[];
 }

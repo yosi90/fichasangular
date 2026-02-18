@@ -30,6 +30,7 @@
                     <p class="m-1"><strong>{{texto.etiqueta}}:</strong> {{texto.valor}}</p>
                 </div>
             </div>
+
         </div>
 
         <div class="col-md-4 col-12 p-2">
@@ -49,7 +50,7 @@
             </div>
         </div>
 
-        <div class="col-md-4 col-12 p-2" *ngIf="tienePanelesRelacionados">
+        <div class="col-md-4 col-12 p-2" *ngIf="tienePanelesRelacionados || getIdiomasOtorgados().length > 0">
             <mat-accordion>
                 <mat-expansion-panel *ngIf="(subtipo.Dotes ?? []).length > 0">
                     <mat-expansion-panel-header>
@@ -94,6 +95,21 @@
                             matTooltip="Pulsa para ver detalles" [matTooltipShowDelay]="250" matTooltipClass="tt-accent"
                             (click)="abrirDetallesRasgo(rasgo)">
                             {{rasgo.Nombre}}
+                        </mat-chip>
+                    </mat-chip-set>
+                </mat-expansion-panel>
+
+                <mat-expansion-panel *ngIf="getIdiomasOtorgados().length > 0">
+                    <mat-expansion-panel-header>
+                        <button mat-stroked-button color="accent" class="rounded-0">
+                            <h2 class="mb-0">Idiomas otorgados</h2>
+                        </button>
+                    </mat-expansion-panel-header>
+                    <mat-chip-set class="m-1">
+                        <mat-chip class="sombra3d-sm m-1" *ngFor="let idioma of getIdiomasOtorgados()"
+                            [matTooltip]="idioma.Descripcion" [matTooltipShowDelay]="250"
+                            [matTooltipDisabled]="!tieneTextoVisible(idioma.Descripcion)" matTooltipClass="tt-accent">
+                            {{idioma.Nombre}}
                         </mat-chip>
                     </mat-chip-set>
                 </mat-expansion-panel>

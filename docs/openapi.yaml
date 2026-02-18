@@ -30,6 +30,10 @@ tags:
   - name: desventajas
   - name: habilidades
   - name: idiomas
+  - name: dominios
+  - name: ambitos
+  - name: pabellones
+  - name: deidades
 paths:
   /verify:
     get:
@@ -615,6 +619,198 @@ paths:
                 items:
                   $ref: '#/components/schemas/IdiomaDetalle'
 
+  /dominios:
+    get:
+      tags: [dominios]
+      summary: Lista de dominios
+      responses:
+        '200':
+          description: Lista de dominios
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/DominioDetalle'
+
+  /dominios/{id_dominio}:
+    get:
+      tags: [dominios]
+      summary: Dominio por id
+      parameters:
+        - name: id_dominio
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Dominio encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DominioDetalle'
+        '404':
+          description: Dominio no encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /ambitos:
+    get:
+      tags: [ambitos]
+      summary: Lista de ambitos de poder
+      responses:
+        '200':
+          description: Lista de ambitos
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AmbitoDetalle'
+
+  /ambitos/{id_ambito}:
+    get:
+      tags: [ambitos]
+      summary: Ambito por id
+      parameters:
+        - name: id_ambito
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Ambito encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AmbitoDetalle'
+        '404':
+          description: Ambito no encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /pabellones:
+    get:
+      tags: [pabellones]
+      summary: Lista de pabellones
+      responses:
+        '200':
+          description: Lista de pabellones
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PabellonDetalle'
+
+  /pabellones/{id_pabellon}:
+    get:
+      tags: [pabellones]
+      summary: Pabellon por id
+      parameters:
+        - name: id_pabellon
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Pabellon encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PabellonDetalle'
+        '404':
+          description: Pabellon no encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /deidades:
+    get:
+      tags: [deidades]
+      summary: Lista completa de deidades
+      responses:
+        '200':
+          description: Lista de deidades
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/DeidadDetalle'
+
+  /deidades/{id_deidad}:
+    get:
+      tags: [deidades]
+      summary: Deidad por id
+      parameters:
+        - name: id_deidad
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Deidad encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeidadDetalle'
+        '404':
+          description: Deidad no encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /deidades/pabellon/{id_pabellon}:
+    get:
+      tags: [deidades]
+      summary: Lista de deidades por pabellon
+      parameters:
+        - name: id_pabellon
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Lista de deidades filtradas por pabellon
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/DeidadDetalle'
+
+  /deidades/alineamiento/{id_alineamiento}:
+    get:
+      tags: [deidades]
+      summary: Lista de deidades por alineamiento
+      parameters:
+        - name: id_alineamiento
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Lista de deidades filtradas por alineamiento
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/DeidadDetalle'
+
   /dotes:
     get:
       tags: [dotes]
@@ -918,6 +1114,11 @@ components:
           $ref: '#/components/schemas/DoteManual'
         Heredada: { type: boolean }
         Oficial: { type: boolean }
+        Idiomas:
+          type: array
+          description: Idiomas que el personaje obtiene automaticamente por tener este subtipo.
+          items:
+            $ref: '#/components/schemas/IdiomaDetalle'
 
     SubtipoHabilidadBase:
       type: object
@@ -998,6 +1199,7 @@ components:
           $ref: '#/components/schemas/AlineamientoDetalle'
         Idiomas:
           type: array
+          description: Idiomas que el personaje obtiene automaticamente por tener este subtipo.
           items:
             $ref: '#/components/schemas/IdiomaDetalle'
         Dotes:
@@ -1228,6 +1430,77 @@ components:
         Nombre: { type: string }
         Descripcion: { type: string }
         Secreto: { type: boolean }
+        Oficial: { type: boolean }
+
+    DominioDetalle:
+      type: object
+      properties:
+        Id: { type: integer }
+        Nombre: { type: string }
+        Oficial: { type: boolean }
+
+    AmbitoDetalle:
+      type: object
+      properties:
+        Id: { type: integer }
+        Nombre: { type: string }
+
+    PabellonDetalle:
+      type: object
+      properties:
+        Id: { type: integer }
+        Nombre: { type: string }
+
+    DeidadManualRef:
+      type: object
+      properties:
+        Id: { type: integer }
+        Nombre: { type: string }
+        Pagina: { type: integer }
+
+    DeidadAlineamientoRef:
+      type: object
+      properties:
+        Id: { type: integer }
+        Id_basico: { type: integer }
+        Nombre: { type: string }
+
+    DeidadArmaRef:
+      type: object
+      properties:
+        Id: { type: integer }
+        Nombre: { type: string }
+
+    DeidadGeneroRef:
+      type: object
+      properties:
+        Id: { type: integer }
+        Nombre: { type: string }
+
+    DeidadDetalle:
+      type: object
+      properties:
+        Id: { type: integer }
+        Nombre: { type: string }
+        Descripcion: { type: string }
+        Manual:
+          $ref: '#/components/schemas/DeidadManualRef'
+        Alineamiento:
+          $ref: '#/components/schemas/DeidadAlineamientoRef'
+        Arma:
+          $ref: '#/components/schemas/DeidadArmaRef'
+        Pabellon:
+          $ref: '#/components/schemas/PabellonDetalle'
+        Genero:
+          $ref: '#/components/schemas/DeidadGeneroRef'
+        Ambitos:
+          type: array
+          items:
+            $ref: '#/components/schemas/AmbitoDetalle'
+        Dominios:
+          type: array
+          items:
+            $ref: '#/components/schemas/DominioDetalle'
         Oficial: { type: boolean }
 
     EscuelaDetalle:
@@ -1758,6 +2031,14 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/RacialDetalle'
+        Habilidades:
+          description: Habilidades que la raza otorga directamente (no incluye las habilidades de sus raciales).
+          $ref: '#/components/schemas/SubtipoHabilidades'
+        Idiomas:
+          type: array
+          description: Idiomas que el personaje obtiene automaticamente por pertenecer a esta raza.
+          items:
+            $ref: '#/components/schemas/IdiomaDetalle'
         subtipos:
           type: array
           items:
@@ -2376,18 +2657,18 @@ components:
         caracteristica: { type: array, items: { type: object, additionalProperties: true } }
         dg: { type: array, items: { type: object, additionalProperties: true } }
         dominio: { type: array, items: { type: object, additionalProperties: true } }
-        nivel_minimo_escuela: { type: array, items: { type: object, additionalProperties: true } }
+        nivel_escuela: { type: array, items: { type: object, additionalProperties: true } }
         ataque_base: { type: array, items: { type: object, additionalProperties: true } }
-        reserva_psionica_minima: { type: array, items: { type: object, additionalProperties: true } }
-        lanzar_conjuros_psionicos_nivel: { type: array, items: { type: object, additionalProperties: true } }
-        poder_psionico_conocido: { type: array, items: { type: object, additionalProperties: true } }
+        reserva_psionica: { type: array, items: { type: object, additionalProperties: true } }
+        lanzar_poder_psionico_nivel: { type: array, items: { type: object, additionalProperties: true } }
+        conocer_poder_psionico: { type: array, items: { type: object, additionalProperties: true } }
         genero: { type: array, items: { type: object, additionalProperties: true } }
         competencia_arma: { type: array, items: { type: object, additionalProperties: true } }
         competencia_armadura: { type: array, items: { type: object, additionalProperties: true } }
         competencia_grupo_arma: { type: array, items: { type: object, additionalProperties: true } }
         competencia_grupo_armadura: { type: array, items: { type: object, additionalProperties: true } }
-        dote: { type: array, items: { type: object, additionalProperties: true } }
-        habilidad: { type: array, items: { type: object, additionalProperties: true } }
+        dote_elegida: { type: array, items: { type: object, additionalProperties: true } }
+        rangos_habilidad: { type: array, items: { type: object, additionalProperties: true } }
         idioma: { type: array, items: { type: object, additionalProperties: true } }
         alineamiento_requerido: { type: array, items: { type: object, additionalProperties: true } }
         alineamiento_prohibido: { type: array, items: { type: object, additionalProperties: true } }
@@ -2494,6 +2775,7 @@ components:
         Aumenta_clase_lanzadora: { type: boolean }
         Es_predilecta: { type: boolean }
         Prestigio: { type: boolean }
+        Tiene_prerrequisitos: { type: boolean }
         Alineamiento:
           $ref: '#/components/schemas/AlineamientoDetalle'
         Oficial: { type: boolean }
@@ -2511,8 +2793,9 @@ components:
             Custom: { type: array, items: { type: object, additionalProperties: true } }
         Idiomas:
           type: array
+          description: Idiomas que el personaje obtiene automaticamente por tener esta clase.
           items:
-            $ref: '#/components/schemas/Idioma'
+            $ref: '#/components/schemas/IdiomaDetalle'
         Desglose_niveles:
           type: array
           items:

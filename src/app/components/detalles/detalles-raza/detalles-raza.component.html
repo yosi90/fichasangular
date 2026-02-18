@@ -125,6 +125,20 @@
                         <mat-chip class="sombra3d-sm m-1">Multiplicador x{{raza.Dgs_adicionales.Multiplicador_puntos_habilidad}}</mat-chip>
                     </mat-chip-set>
                 </mat-expansion-panel>
+                <mat-expansion-panel *ngIf="getIdiomasOtorgados().length > 0">
+                    <mat-expansion-panel-header>
+                        <button mat-stroked-button color="accent" class="rounded-0">
+                            <h2 class="mb-0">Idiomas otorgados</h2>
+                        </button>
+                    </mat-expansion-panel-header>
+                    <mat-chip-set class="m-1">
+                        <mat-chip class="sombra3d-sm m-1" *ngFor="let idioma of getIdiomasOtorgados()"
+                            [matTooltip]="idioma.Descripcion" [matTooltipShowDelay]="250"
+                            [matTooltipDisabled]="!tieneTextoVisible(idioma.Descripcion)" matTooltipClass="tt-accent">
+                            {{idioma.Nombre}}
+                        </mat-chip>
+                    </mat-chip-set>
+                </mat-expansion-panel>
                 <mat-expansion-panel *ngIf="getRacialesActivos().length > 0">
                     <mat-expansion-panel-header>
                         <button mat-stroked-button color="accent" class="rounded-0">

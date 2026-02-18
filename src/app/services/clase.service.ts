@@ -12,18 +12,18 @@ const CLAVES_PRERREQUISITOS: (keyof ClasePrerrequisitos)[] = [
     "caracteristica",
     "dg",
     "dominio",
-    "nivel_minimo_escuela",
+    "nivel_escuela",
     "ataque_base",
-    "reserva_psionica_minima",
-    "lanzar_conjuros_psionicos_nivel",
-    "poder_psionico_conocido",
+    "reserva_psionica",
+    "lanzar_poder_psionico_nivel",
+    "conocer_poder_psionico",
     "genero",
     "competencia_arma",
     "competencia_armadura",
     "competencia_grupo_arma",
     "competencia_grupo_armadura",
-    "dote",
-    "habilidad",
+    "dote_elegida",
+    "rangos_habilidad",
     "idioma",
     "alineamiento_requerido",
     "alineamiento_prohibido",
@@ -42,8 +42,51 @@ const CLAVES_PRERREQUISITOS: (keyof ClasePrerrequisitos)[] = [
     "no_raza",
 ];
 
+const ALIAS_PRERREQUISITOS: Record<keyof ClasePrerrequisitos, string[]> = {
+    subtipo: ["subtipo"],
+    caracteristica: ["caracteristica"],
+    dg: ["dg"],
+    dominio: ["dominio"],
+    nivel_escuela: ["nivel_escuela", "nivel_minimo_escuela"],
+    ataque_base: ["ataque_base"],
+    reserva_psionica: ["reserva_psionica", "reserva_psionica_minima"],
+    lanzar_poder_psionico_nivel: ["lanzar_poder_psionico_nivel", "lanzar_conjuros_psionicos_nivel"],
+    conocer_poder_psionico: ["conocer_poder_psionico", "poder_psionico_conocido"],
+    genero: ["genero"],
+    competencia_arma: ["competencia_arma"],
+    competencia_armadura: ["competencia_armadura"],
+    competencia_grupo_arma: ["competencia_grupo_arma"],
+    competencia_grupo_armadura: ["competencia_grupo_armadura"],
+    dote_elegida: ["dote_elegida", "dote"],
+    rangos_habilidad: ["rangos_habilidad", "habilidad"],
+    idioma: ["idioma"],
+    alineamiento_requerido: ["alineamiento_requerido"],
+    alineamiento_prohibido: ["alineamiento_prohibido"],
+    actitud_requerido: ["actitud_requerido"],
+    actitud_prohibido: ["actitud_prohibido"],
+    lanzador_arcano: ["lanzador_arcano"],
+    lanzador_divino: ["lanzador_divino"],
+    lanzar_conjuros_arcanos_nivel: ["lanzar_conjuros_arcanos_nivel"],
+    lanzar_conjuros_divinos_nivel: ["lanzar_conjuros_divinos_nivel"],
+    conjuro_conocido: ["conjuro_conocido"],
+    inherente: ["inherente"],
+    clase_especial: ["clase_especial"],
+    tamano_maximo: ["tamano_maximo"],
+    tamano_minimo: ["tamano_minimo"],
+    raza: ["raza"],
+    no_raza: ["no_raza"],
+};
+
 function toBoolean(value: any): boolean {
-    return value === true || value === 1 || value === "1";
+    if (typeof value === "boolean")
+        return value;
+    if (typeof value === "number")
+        return value > 0;
+    if (typeof value === "string") {
+        const normalized = value.trim().toLowerCase();
+        return normalized === "1" || normalized === "true" || normalized === "si" || normalized === "sí";
+    }
+    return false;
 }
 
 function toNumber(value: any, fallback: number = 0): number {
@@ -63,7 +106,27 @@ function toArray<T = any>(value: any): T[] {
     return [];
 }
 
+function hasVisiblePrerrequisitos(prerrequisitos: ClasePrerrequisitos): boolean {
+    return CLAVES_PRERREQUISITOS.some((key) => {
+        const value = prerrequisitos?.[key];
+        if (Array.isArray(value))
+            return value.length > 0;
+        if (value && typeof value === "object")
+            return Object.keys(value).length > 0;
+        return !!value;
+    });
+}
+
 function normalizeConjuros(raw: any): ClaseConjurosConfig {
+    const dominioRaw = raw?.Dominio;
+    const dominioCantidad = Number.isFinite(Number(dominioRaw))
+        ? Math.max(0, Math.trunc(Number(dominioRaw)))
+        : Number.isFinite(Number(raw?.Dominio_cantidad))
+            ? Math.max(0, Math.trunc(Number(raw?.Dominio_cantidad)))
+            : Number.isFinite(Number(raw?.Cantidad_dominios))
+                ? Math.max(0, Math.trunc(Number(raw?.Cantidad_dominios)))
+                : undefined;
+
     return {
         Dependientes_alineamiento: toBoolean(raw?.Dependientes_alineamiento),
         Divinos: toBoolean(raw?.Divinos),
@@ -73,6 +136,7 @@ function normalizeConjuros(raw: any): ClaseConjurosConfig {
         Conocidos_total: toBoolean(raw?.Conocidos_total),
         Conocidos_nivel_a_nivel: toBoolean(raw?.Conocidos_nivel_a_nivel),
         Dominio: toBoolean(raw?.Dominio),
+        Dominio_cantidad: dominioCantidad,
         Escuela: toBoolean(raw?.Escuela),
         Lanzamiento_espontaneo: toBoolean(raw?.Lanzamiento_espontaneo),
         Clase_origen: {
@@ -162,9 +226,13 @@ function normalizeNivel(raw: any): ClaseNivelDetalle {
 
 function normalizePrerrequisitos(raw: any): ClasePrerrequisitos {
     const base = {} as ClasePrerrequisitos;
+
     CLAVES_PRERREQUISITOS.forEach((key) => {
-        (base[key] as any) = toArray(raw?.[key]);
+        const aliases = ALIAS_PRERREQUISITOS[key] ?? [key];
+        const sourceKey = aliases.find((alias) => raw?.[alias] !== undefined && raw?.[alias] !== null);
+        (base[key] as any) = toArray(sourceKey ? raw?.[sourceKey] : undefined);
     });
+
     return base;
 }
 
@@ -178,6 +246,13 @@ function normalizePrerrequisitosFlags(raw: any): ClasePrerrequisitosFlags {
 }
 
 export function normalizeClase(raw: any): Clase {
+    const prerrequisitos = normalizePrerrequisitos(raw?.Prerrequisitos);
+    const prerrequisitosFlags = normalizePrerrequisitosFlags(raw?.Prerrequisitos_flags);
+    const tienePrerrequisitos = toBoolean(raw?.Tiene_prerrequisitos)
+        || toBoolean(raw?.tiene_prerrequisitos)
+        || toBoolean(prerrequisitosFlags?.habilidad_clase)
+        || hasVisiblePrerrequisitos(prerrequisitos);
+
     return {
         Id: toNumber(raw?.Id),
         Nombre: toText(raw?.Nombre),
@@ -207,6 +282,7 @@ export function normalizeClase(raw: any): Clase {
         Aumenta_clase_lanzadora: toBoolean(raw?.Aumenta_clase_lanzadora),
         Es_predilecta: toBoolean(raw?.Es_predilecta),
         Prestigio: toBoolean(raw?.Prestigio),
+        Tiene_prerrequisitos: tienePrerrequisitos,
         Alineamiento: normalizeAlineamiento(raw?.Alineamiento),
         Oficial: toBoolean(raw?.Oficial),
         Competencias: {
@@ -227,8 +303,8 @@ export function normalizeClase(raw: any): Clase {
             Oficial: toBoolean(item?.Oficial),
         })),
         Desglose_niveles: toArray(raw?.Desglose_niveles).map(normalizeNivel),
-        Prerrequisitos_flags: normalizePrerrequisitosFlags(raw?.Prerrequisitos_flags),
-        Prerrequisitos: normalizePrerrequisitos(raw?.Prerrequisitos),
+        Prerrequisitos_flags: prerrequisitosFlags,
+        Prerrequisitos: prerrequisitos,
     };
 }
 

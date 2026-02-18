@@ -32,6 +32,16 @@ function toArray<T = any>(value: any): T[] {
     return [];
 }
 
+export function normalizeIdiomasRaza(raw: any) {
+    return toArray(raw).map((item: any) => ({
+        Id: toNumber(item?.Id ?? item?.id),
+        Nombre: `${item?.Nombre ?? item?.nombre ?? ''}`,
+        Descripcion: `${item?.Descripcion ?? item?.descripcion ?? ''}`,
+        Secreto: toBoolean(item?.Secreto ?? item?.secreto),
+        Oficial: toBoolean(item?.Oficial ?? item?.oficial),
+    })).filter((idioma) => idioma.Nombre.trim().length > 0);
+}
+
 function normalizePrerrequisitos(raw: any): RazaPrerrequisitos {
     const source = raw ?? {};
     return {
@@ -151,6 +161,7 @@ function mapRazaDesdeRaw(raw: any, id: any, dotesContextuales: DoteContextual[],
         Sortilegas: toArray(raw?.Sortilegas ?? raw?.sor),
         Raciales: normalizeRaciales(raciales),
         DotesContextuales: dotesContextuales,
+        Idiomas: normalizeIdiomasRaza(raw?.Idiomas ?? raw?.idiomas ?? raw?.idi),
     };
 }
 
@@ -256,10 +267,11 @@ export class RazaService {
                     ant: number; va: number; co: number; na: number; vo: number; man: Maniobrabilidad; tr: number; es: number; ari: number; ars: number; pri: number; 
                     prs: number; ea: number; em: number; ev: number; eve: number; esp: number; alc: number; tc: TipoCriatura; sor: AptitudSortilega[],
                     ali: Alineamiento; dotes: DoteContextual[]; subtipos?: any; prf?: any; Prerrequisitos_flags?: any; Mutacion?: any;
-                    rac: any;
+                    rac: any; Idiomas?: any; idiomas?: any; idi?: any;
                 }) => {
                     const dotesContextuales = toDoteContextualArray(element.dotes);
                     const raciales = normalizeRaciales(element.rac);
+                    const idiomas = normalizeIdiomasRaza(element.Idiomas ?? element.idiomas ?? element.idi);
                     const subtipos = normalizeSubtipoRefArray(element.subtipos ?? "");
                     const prerrequisitos = normalizePrerrequisitos(element.pr);
                     const prerrequisitosFlags = normalizePrerrequisitosFlags(
@@ -318,6 +330,7 @@ export class RazaService {
                         Sortilegas: element.sor,
                         Raciales: raciales,
                         DotesContextuales: dotesContextuales,
+                        Idiomas: idiomas,
                     });
                 })
             );

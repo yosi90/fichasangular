@@ -17,10 +17,10 @@ export class SelectorIdiomaModalComponent {
     @Input() bloquearCierreHastaCompletar = false;
 
     @Output() cerrar = new EventEmitter<void>();
-    @Output() confirmar = new EventEmitter<IdiomaDetalle>();
+    @Output() confirmar = new EventEmitter<IdiomaDetalle[]>();
     @Output() incluirHomebrewChange = new EventEmitter<boolean>();
 
-    idiomaSeleccionadoId: number | null = null;
+    private seleccionados = new Set<number>();
 
     get incluirHomebrewEfectivo(): boolean {
         return !this.personajeOficial || this.incluirHomebrew;
@@ -35,27 +35,80 @@ export class SelectorIdiomaModalComponent {
             .sort((a, b) => a.Nombre.localeCompare(b.Nombre, 'es', { sensitivity: 'base' }));
     }
 
-    get idiomaSeleccionado(): IdiomaDetalle | null {
-        if (this.idiomaSeleccionadoId === null)
-            return null;
-        return this.idiomasDisponibles.find(i => i.Id === this.idiomaSeleccionadoId) ?? null;
+    get seleccionActual(): IdiomaDetalle[] {
+        const seleccionados = this.idiomasDisponibles
+            .filter((idioma) => this.seleccionados.has(Number(idioma.Id)));
+        return seleccionados;
+    }
+
+    get cantidadSeleccionActual(): number {
+        return this.seleccionActual.length;
     }
 
     get cantidadPendiente(): number {
         const objetivo = Math.max(0, Math.trunc(Number(this.cantidadObjetivo) || 0));
-        const seleccionada = Math.max(0, Math.trunc(Number(this.cantidadSeleccionada) || 0));
-        return Math.max(0, objetivo - seleccionada);
+        return Math.max(0, objetivo - this.cantidadSeleccionActual);
     }
 
     get puedeCerrar(): boolean {
         return !this.bloquearCierreHastaCompletar || this.cantidadPendiente < 1;
     }
 
+    get puedeConfirmar(): boolean {
+        return this.cantidadPendiente < 1 && this.cantidadSeleccionActual > 0;
+    }
+
     get textoPendiente(): string {
         const pendiente = this.cantidadPendiente;
+        if (pendiente < 1)
+            return 'Selección completa';
         if (pendiente === 1)
             return 'Falta 1 idioma por elegir';
         return `Faltan ${pendiente} idiomas por elegir`;
+    }
+
+    trackByIdiomaId(_index: number, idioma: IdiomaDetalle): number {
+        return Number(idioma?.Id ?? 0);
+    }
+
+    isIdiomaSeleccionado(idIdioma: number): boolean {
+        return this.seleccionados.has(Number(idIdioma));
+    }
+
+    isIdiomaBloqueadoPorLimite(idIdioma: number): boolean {
+        return !this.isIdiomaSeleccionado(idIdioma) && this.cantidadPendiente < 1;
+    }
+
+    onToggleIdioma(idIdioma: number, checked: boolean): void {
+        const id = Number(idIdioma);
+        if (!Number.isFinite(id) || id <= 0)
+            return;
+
+        if (!checked) {
+            this.seleccionados.delete(id);
+            return;
+        }
+
+        if (this.isIdiomaBloqueadoPorLimite(id))
+            return;
+
+        this.seleccionados.add(id);
+    }
+
+    onToggleIdiomaRow(idIdioma: number): void {
+        const id = Number(idIdioma);
+        if (!Number.isFinite(id) || id <= 0)
+            return;
+
+        if (this.isIdiomaBloqueadoPorLimite(id))
+            return;
+
+        this.onToggleIdioma(id, !this.isIdiomaSeleccionado(id));
+    }
+
+    onToggleIdiomaRowTeclado(idIdioma: number, event: Event): void {
+        event.preventDefault();
+        this.onToggleIdiomaRow(idIdioma);
     }
 
     onToggleHomebrew(): void {
@@ -64,15 +117,15 @@ export class SelectorIdiomaModalComponent {
 
         const siguiente = !this.incluirHomebrew;
         this.incluirHomebrew = siguiente;
-        this.idiomaSeleccionadoId = null;
+        this.seleccionados.clear();
         this.incluirHomebrewChange.emit(siguiente);
     }
 
     onConfirmar(): void {
-        if (!this.idiomaSeleccionado)
+        if (!this.puedeConfirmar)
             return;
-        this.confirmar.emit(this.idiomaSeleccionado);
-        this.idiomaSeleccionadoId = null;
+        this.confirmar.emit(this.seleccionActual);
+        this.seleccionados.clear();
     }
 
     onCerrar(): void {

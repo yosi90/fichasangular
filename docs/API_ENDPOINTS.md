@@ -4,7 +4,7 @@ Fecha de generacion: 2026-02-09
 
 Resumen
 - Base URL (local): `http://127.0.0.1:5000`
-- Prefijos registrados: `/verify`, `/personajes`, `/razas`, `/razas/raciales`, `/subtipos`, `/campanas`, `/tramas`, `/subtramas`, `/manuales`, `/manuales/asociados`, `/tiposCriatura`, `/rasgos`, `/conjuros`, `/escuelas`, `/disciplinas`, `/alineamientos`, `/habilidades`, `/idiomas`, `/dotes`, `/clases`, `/clases/habilidades`, `/plantillas`, `/ventajas`, `/desventajas`
+- Prefijos registrados: `/verify`, `/personajes`, `/razas`, `/razas/raciales`, `/subtipos`, `/campanas`, `/tramas`, `/subtramas`, `/manuales`, `/manuales/asociados`, `/tiposCriatura`, `/rasgos`, `/conjuros`, `/escuelas`, `/disciplinas`, `/alineamientos`, `/habilidades`, `/idiomas`, `/dominios`, `/ambitos`, `/pabellones`, `/deidades`, `/dotes`, `/clases`, `/clases/habilidades`, `/plantillas`, `/ventajas`, `/desventajas`
 - Autenticacion: no hay autenticacion en el backend.
 - Content-Type esperado: `application/json`
 - CORS habilitado para: `https://rol.yosiftware.es/`, `https://www.rol.yosiftware.es/`, `https://62.43.222.28`, `http://192.168.0.34`
@@ -54,6 +54,16 @@ Lista de endpoints
 | GET | /habilidades | Lista de habilidades basicas (id > 0) | Implementado |
 | GET | /habilidades/custom | Lista de habilidades custom (id > 0) | Implementado |
 | GET | /idiomas | Lista de idiomas | Implementado |
+| GET | /dominios | Lista de dominios | Implementado |
+| GET | /dominios/<id_dominio> | Dominio por id | Implementado |
+| GET | /ambitos | Lista de ambitos de poder | Implementado |
+| GET | /ambitos/<id_ambito> | Ambito por id | Implementado |
+| GET | /pabellones | Lista de pabellones | Implementado |
+| GET | /pabellones/<id_pabellon> | Pabellon por id | Implementado |
+| GET | /deidades | Lista completa de deidades | Implementado |
+| GET | /deidades/<id_deidad> | Deidad por id | Implementado |
+| GET | /deidades/pabellon/<id_pabellon> | Deidades por pabellon | Implementado |
+| GET | /deidades/alineamiento/<id_alineamiento> | Deidades por alineamiento | Implementado |
 | GET | /dotes | Lista de dotes completas | Implementado |
 | GET | /dotes/<id_dote> | Dote completa por id | Implementado |
 | GET | /ventajas | Lista de ventajas (coste negativo) | Implementado |
@@ -71,7 +81,8 @@ Lista de endpoints
 Notas generales
 - Las respuestas suelen ser arrays JSON.
 - En varios campos se usan listas serializadas como string con separador `| `.
-- No hay paginacion ni filtros desde la API (los procedimientos aceptan parametros pero no se exponen).
+- No hay paginacion en la API.
+- Existen filtros puntuales en `GET /deidades/pabellon/<id_pabellon>` y `GET /deidades/alineamiento/<id_alineamiento>`.
 
 Endpoint: GET /verify
 Respuesta 200
@@ -242,6 +253,8 @@ RazaCompleta
 | ali | object | `AlineamientoDetalle` |
 | dotes | array | Lista de `DoteContextual` |
 | rac | array | Lista de `RacialDetalle` (contrato ampliado) |
+| Habilidades | object | Habilidades que la raza otorga directamente: `{ Base[], Custom[] }` (`Base[]` incluye `Cantidad` y `Varios`; `Custom[]` incluye `Cantidad`) |
+| Idiomas | array | Idiomas que el personaje obtiene automaticamente por pertenecer a esta raza (`IdiomaDetalle[]`) |
 | subtipos | array | Lista de `SubtipoRef` (`{ Id, Nombre }`) |
 
 DGS adicionales (RazaCompleta.dg)
@@ -296,6 +309,7 @@ SubtipoResumen
 | Manual | object | { Id, Nombre, Pagina } |
 | Heredada | boolean | Si el subtipo es heredado |
 | Oficial | boolean | Oficial (derivado de manual) |
+| Idiomas | array | Idiomas que el personaje obtiene automaticamente por tener este subtipo (`IdiomaDetalle[]`) |
 
 Endpoint: GET /subtipos/<id_subtipo>
 Respuesta: objeto `SubtipoDetalle`
@@ -334,7 +348,7 @@ SubtipoDetalle
 | Movimientos | object | { Correr, Nadar, Volar, Trepar, Escalar } |
 | Maniobrabilidad | object | Mismo shape de `PlantillaDetalle.Maniobrabilidad` |
 | Alineamiento | object | `AlineamientoDetalle` |
-| Idiomas | array | Lista de `IdiomaDetalle` |
+| Idiomas | array | Idiomas que el personaje obtiene automaticamente por tener este subtipo (`IdiomaDetalle[]`) |
 | Dotes | array | Lista de `DoteContextual` |
 | Habilidades | object | { Base: [], Custom: [] } |
 | Sortilegas | array | Lista de sortilegas `{ Conjuro, Nivel_lanzador, Usos_diarios }` |
@@ -684,6 +698,98 @@ IdiomaDetalle
 | Secreto | boolean | Marca de idioma secreto |
 | Oficial | boolean | Oficial (true=oficial, false=homebrew) |
 
+Endpoint: GET /dominios
+Respuesta: array de `DominioDetalle`
+
+DominioDetalle
+| Campo | Tipo | Descripcion |
+| --- | --- | --- |
+| Id | number | Id de dominio |
+| Nombre | string | Nombre |
+| Oficial | boolean | Oficial (true=oficial, false=homebrew) |
+
+Endpoint: GET /dominios/<id_dominio>
+Respuesta: objeto `DominioDetalle`
+Respuesta 404
+```json
+{
+  "error": "Dominio no encontrado",
+  "id_dominio": 123
+}
+```
+
+Endpoint: GET /ambitos
+Respuesta: array de `AmbitoDetalle`
+
+AmbitoDetalle
+| Campo | Tipo | Descripcion |
+| --- | --- | --- |
+| Id | number | Id de ambito |
+| Nombre | string | Nombre |
+
+Endpoint: GET /ambitos/<id_ambito>
+Respuesta: objeto `AmbitoDetalle`
+Respuesta 404
+```json
+{
+  "error": "Ambito no encontrado",
+  "id_ambito": 123
+}
+```
+
+Endpoint: GET /pabellones
+Respuesta: array de `PabellonDetalle`
+
+PabellonDetalle
+| Campo | Tipo | Descripcion |
+| --- | --- | --- |
+| Id | number | Id de pabellon |
+| Nombre | string | Nombre |
+
+Endpoint: GET /pabellones/<id_pabellon>
+Respuesta: objeto `PabellonDetalle`
+Respuesta 404
+```json
+{
+  "error": "Pabellon no encontrado",
+  "id_pabellon": 123
+}
+```
+
+Endpoint: GET /deidades
+Respuesta: array de `DeidadDetalle`
+
+Endpoint: GET /deidades/<id_deidad>
+Respuesta: objeto `DeidadDetalle`
+Respuesta 404
+```json
+{
+  "error": "Deidad no encontrada",
+  "id_deidad": 123
+}
+```
+
+Endpoint: GET /deidades/pabellon/<id_pabellon>
+Respuesta: array de `DeidadDetalle`
+
+Endpoint: GET /deidades/alineamiento/<id_alineamiento>
+Respuesta: array de `DeidadDetalle`
+
+DeidadDetalle
+| Campo | Tipo | Descripcion |
+| --- | --- | --- |
+| Id | number | Id de deidad |
+| Nombre | string | Nombre |
+| Descripcion | string | Descripcion |
+| Manual | object | `{ Id, Nombre, Pagina }` |
+| Alineamiento | object | `{ Id, Id_basico, Nombre }` |
+| Arma | object | `{ Id, Nombre }` |
+| Pabellon | object | `{ Id, Nombre }` |
+| Genero | object | `{ Id, Nombre }` |
+| Ambitos | array | Lista de `AmbitoDetalle` |
+| Dominios | array | Lista de `DominioDetalle` |
+| Oficial | boolean | Oficial (true=oficial, false=homebrew) |
+
 Endpoint: GET /dotes
 Respuesta: array de `DoteDetalle`
 
@@ -806,11 +912,12 @@ ClaseDetalle
 | Aumenta_clase_lanzadora | boolean | Si aumenta clase lanzadora |
 | Es_predilecta | boolean | Si puede ser clase predilecta |
 | Prestigio | boolean | Si es clase de prestigio |
+| Tiene_prerrequisitos | boolean | Flag de `clases.prerrequisitos` |
 | Alineamiento | object | `AlineamientoDetalle` |
 | Oficial | boolean | Oficial (true=oficial, false=homebrew) |
 | Competencias | object | { Armas[], Armaduras[], Grupos_arma[], Grupos_armadura[] } |
 | Habilidades | object | { Base[], Custom[] } |
-| Idiomas | array | Lista de `{ Id, Nombre, Descripcion, Secreto, Oficial }` |
+| Idiomas | array | Idiomas que el personaje obtiene automaticamente por tener esta clase (`{ Id, Nombre, Descripcion, Secreto, Oficial }`) |
 | Desglose_niveles | array | Lista de `ClaseNivelDetalle` (hasta 20 niveles) |
 | Prerrequisitos_flags | object | Flags booleanos de `pres_c` |
 | Prerrequisitos | object | Todas las familias de prerrequisitos (claves fijas; vacio=`[]`) |
@@ -885,18 +992,18 @@ Prerrequisitos (ClaseDetalle.Prerrequisitos) - claves fijas
 | caracteristica |
 | dg |
 | dominio |
-| nivel_minimo_escuela |
+| nivel_escuela |
 | ataque_base |
-| reserva_psionica_minima |
-| lanzar_conjuros_psionicos_nivel |
-| poder_psionico_conocido |
+| reserva_psionica |
+| lanzar_poder_psionico_nivel |
+| conocer_poder_psionico |
 | genero |
 | competencia_arma |
 | competencia_armadura |
 | competencia_grupo_arma |
 | competencia_grupo_armadura |
-| dote |
-| habilidad |
+| dote_elegida |
+| rangos_habilidad |
 | idioma |
 | alineamiento_requerido |
 | alineamiento_prohibido |
@@ -913,6 +1020,8 @@ Prerrequisitos (ClaseDetalle.Prerrequisitos) - claves fijas
 | tamano_minimo |
 | raza |
 | no_raza |
+
+Nota: `habilidad_clase` se mantiene como flag en `Prerrequisitos_flags`; no existe bloque dedicado en `Prerrequisitos`.
 
 Endpoint: GET /clases/habilidades
 Respuesta: array de `EspecialClaseDetalle`

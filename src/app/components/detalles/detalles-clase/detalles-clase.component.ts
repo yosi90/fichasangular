@@ -69,18 +69,18 @@ export class DetallesClaseComponent {
         'caracteristica',
         'dg',
         'dominio',
-        'nivel_minimo_escuela',
+        'nivel_escuela',
         'ataque_base',
-        'reserva_psionica_minima',
-        'lanzar_conjuros_psionicos_nivel',
-        'poder_psionico_conocido',
+        'reserva_psionica',
+        'lanzar_poder_psionico_nivel',
+        'conocer_poder_psionico',
         'genero',
         'competencia_arma',
         'competencia_armadura',
         'competencia_grupo_arma',
         'competencia_grupo_armadura',
-        'dote',
-        'habilidad',
+        'dote_elegida',
+        'rangos_habilidad',
         'idioma',
         'alineamiento_requerido',
         'alineamiento_prohibido',
@@ -104,18 +104,18 @@ export class DetallesClaseComponent {
         caracteristica: 'Caracteristica',
         dg: 'Dados de golpe',
         dominio: 'Dominio',
-        nivel_minimo_escuela: 'Nivel minimo de escuela',
+        nivel_escuela: 'Nivel de escuela',
         ataque_base: 'Ataque base',
-        reserva_psionica_minima: 'Reserva psionica minima',
-        lanzar_conjuros_psionicos_nivel: 'Conjuros psionicos de nivel',
-        poder_psionico_conocido: 'Poder psionico conocido',
+        reserva_psionica: 'Reserva psionica',
+        lanzar_poder_psionico_nivel: 'Poder psionico de nivel',
+        conocer_poder_psionico: 'Poder psionico conocido',
         genero: 'Genero',
         competencia_arma: 'Competencia de arma',
         competencia_armadura: 'Competencia de armadura',
         competencia_grupo_arma: 'Competencia de grupo de armas',
         competencia_grupo_armadura: 'Competencia de grupo de armaduras',
-        dote: 'Dote',
-        habilidad: 'Habilidad',
+        dote_elegida: 'Dote elegida',
+        rangos_habilidad: 'Rangos en habilidad',
         idioma: 'Idioma',
         alineamiento_requerido: 'Alineamiento requerido',
         alineamiento_prohibido: 'Alineamiento prohibido',
@@ -201,6 +201,28 @@ export class DetallesClaseComponent {
             .map(item => item.etiqueta);
     }
 
+    getIdiomasOtorgados(): { Nombre: string; Descripcion: string; }[] {
+        const vistos = new Set<string>();
+        return (this.claseData?.Idiomas ?? [])
+            .filter(idioma => this.tieneTextoVisible(idioma?.Nombre))
+            .filter((idioma) => {
+                const key = `${idioma.Nombre ?? ''}`
+                    .normalize('NFD')
+                    .replace(/[\u0300-\u036f]/g, '')
+                    .trim()
+                    .toLowerCase();
+                if (!key || vistos.has(key))
+                    return false;
+                vistos.add(key);
+                return true;
+            })
+            .map(idioma => ({
+                Nombre: `${idioma.Nombre ?? ''}`.trim(),
+                Descripcion: `${idioma.Descripcion ?? ''}`.trim(),
+            }))
+            .sort((a, b) => a.Nombre.localeCompare(b.Nombre, 'es', { sensitivity: 'base' }));
+    }
+
     tieneBloqueConjuros(): boolean {
         return this.flagsConjurosActivos.length > 0
             || this.tieneTextoVisible(this.claseData?.Mod_salv_conjuros)
@@ -253,6 +275,18 @@ export class DetallesClaseComponent {
                 };
             })
             .filter(f => Array.isArray(f.items) && f.items.length > 0);
+    }
+
+    getPrerrequisitosFlagsActivos(): string[] {
+        const flags = this.claseData?.Prerrequisitos_flags;
+        if (!flags)
+            return [];
+
+        const activos: string[] = [];
+        if (flags.habilidad_clase)
+            activos.push('Habilidad de clase');
+
+        return activos;
     }
 
     getCamposVisibles(item: any): { etiqueta: string, valor: string }[] {

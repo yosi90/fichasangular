@@ -130,6 +130,28 @@ export class DetallesSubtipoComponent {
             || (this.subtipo.Plantillas?.length ?? 0) > 0;
     }
 
+    getIdiomasOtorgados(): { Nombre: string; Descripcion: string; }[] {
+        const vistos = new Set<string>();
+        return (this.subtipo?.Idiomas ?? [])
+            .filter(idioma => this.tieneTextoVisible(idioma?.Nombre))
+            .filter((idioma) => {
+                const key = `${idioma.Nombre ?? ''}`
+                    .normalize('NFD')
+                    .replace(/[\u0300-\u036f]/g, '')
+                    .trim()
+                    .toLowerCase();
+                if (!key || vistos.has(key))
+                    return false;
+                vistos.add(key);
+                return true;
+            })
+            .map(idioma => ({
+                Nombre: `${idioma.Nombre ?? ''}`.trim(),
+                Descripcion: `${idioma.Descripcion ?? ''}`.trim(),
+            }))
+            .sort((a, b) => a.Nombre.localeCompare(b.Nombre, 'es', { sensitivity: 'base' }));
+    }
+
     get tieneResumenSubtipo(): boolean {
         return this.subtipo.Heredada
             || !this.subtipo.Oficial
