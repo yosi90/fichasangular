@@ -555,17 +555,37 @@
                                             <mat-chip class="sombra3d-sm">Nivel {{item.siguienteNivel}}</mat-chip>
                                         </td>
                                         <td>
-                                            <mat-chip *ngIf="item.beneficios.length < 1" class="sombra-caja-sm">Sin beneficios directos</mat-chip>
-                                            <mat-chip-set class="beneficios-clase-chips" *ngIf="item.beneficios.length > 0">
-                                                <mat-chip *ngFor="let beneficio of item.beneficios"
-                                                    class="h-auto chip-clic sombra3d-sm"
-                                                    matTooltip="Pulsa para abrir el detalle"
-                                                    matTooltipClass="tt-accent"
-                                                    (click)="abrirDetalleBeneficioClase(beneficio, $event)">
-                                                    <span>{{beneficio.nombre}}</span>
-                                                    <mat-chip class="m-1" *ngIf="beneficio.extra.length > 0">{{beneficio.extra}}</mat-chip>
-                                                    <mat-chip class="m-1" *ngIf="beneficio.opcional > 0">Opcional G{{beneficio.opcional}}</mat-chip>
-                                                </mat-chip>
+                                            <mat-chip *ngIf="item.beneficiosRender.length < 1" class="sombra-caja-sm">Sin beneficios directos</mat-chip>
+                                            <mat-chip-set class="beneficios-clase-chips" *ngIf="item.beneficiosRender.length > 0">
+                                                <ng-container *ngFor="let renderItem of item.beneficiosRender">
+                                                    <mat-chip *ngIf="renderItem.tipoRender === 'simple'"
+                                                        class="h-auto chip-clic sombra3d-sm"
+                                                        matTooltip="Pulsa para abrir el detalle"
+                                                        matTooltipClass="tt-accent"
+                                                        (click)="abrirDetalleBeneficioClase(renderItem.beneficio, $event)">
+                                                        <span>{{renderItem.beneficio.nombre}}</span>
+                                                        <mat-chip class="m-1" *ngIf="renderItem.beneficio.extra.length > 0">{{renderItem.beneficio.extra}}</mat-chip>
+                                                    </mat-chip>
+
+                                                    <mat-chip *ngIf="renderItem.tipoRender === 'grupo_opcional'"
+                                                        class="h-auto sombra3d-sm chip-opcional-grupo"
+                                                        (click)="$event.stopPropagation()">
+                                                        <span class="chip-opcional-grupo-label">Elige entre</span>
+                                                        <span class="chip-opcional-grupo-opciones">
+                                                            <ng-container *ngFor="let opcion of renderItem.opciones; let ultima = last">
+                                                                <mat-chip
+                                                                    class="h-auto chip-clic sombra3d-sm chip-opcional-subchip"
+                                                                    matTooltip="Pulsa para abrir el detalle"
+                                                                    matTooltipClass="tt-accent"
+                                                                    (click)="abrirDetalleBeneficioClase(opcion, $event)">
+                                                                    <span>{{opcion.nombre}}</span>
+                                                                    <mat-chip class="m-1" *ngIf="opcion.extra.length > 0">{{opcion.extra}}</mat-chip>
+                                                                </mat-chip>
+                                                                <span class="chip-opcional-separador" *ngIf="!ultima">o</span>
+                                                            </ng-container>
+                                                        </span>
+                                                    </mat-chip>
+                                                </ng-container>
                                             </mat-chip-set>
                                         </td>
                                         <td>

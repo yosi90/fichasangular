@@ -4,7 +4,7 @@ info:
   version: 1.0.0
   description: |
     Documentacion OpenAPI del backend Flask.
-    Fecha: 2026-02-09.
+    Fecha: 2026-02-23.
 servers:
   - url: http://127.0.0.1:5000
     description: Local
@@ -30,6 +30,10 @@ tags:
   - name: desventajas
   - name: habilidades
   - name: idiomas
+  - name: armas
+  - name: armaduras
+  - name: grupos-armas
+  - name: grupos-armaduras
   - name: dominios
   - name: ambitos
   - name: pabellones
@@ -618,6 +622,158 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/IdiomaDetalle'
+
+  /armas:
+    get:
+      tags: [armas]
+      summary: Lista completa de armas
+      responses:
+        '200':
+          description: Lista de armas
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ArmaDetalle'
+
+  /armas/{id_arma}:
+    get:
+      tags: [armas]
+      summary: Arma por id
+      parameters:
+        - name: id_arma
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Arma encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ArmaDetalle'
+        '404':
+          description: Arma no encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /armaduras:
+    get:
+      tags: [armaduras]
+      summary: Lista completa de armaduras
+      responses:
+        '200':
+          description: Lista de armaduras
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ArmaduraDetalle'
+
+  /armaduras/{id_armadura}:
+    get:
+      tags: [armaduras]
+      summary: Armadura por id
+      parameters:
+        - name: id_armadura
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Armadura encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ArmaduraDetalle'
+        '404':
+          description: Armadura no encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /grupos-armas:
+    get:
+      tags: [grupos-armas]
+      summary: Lista de grupos de armas
+      responses:
+        '200':
+          description: Lista de grupos de armas
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/GrupoCompetencia'
+
+  /grupos-armas/{id_grupo_arma}:
+    get:
+      tags: [grupos-armas]
+      summary: Grupo de arma por id
+      parameters:
+        - name: id_grupo_arma
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Grupo de arma encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GrupoCompetencia'
+        '404':
+          description: Grupo de arma no encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /grupos-armaduras:
+    get:
+      tags: [grupos-armaduras]
+      summary: Lista de grupos de armaduras
+      responses:
+        '200':
+          description: Lista de grupos de armaduras
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/GrupoCompetencia'
+
+  /grupos-armaduras/{id_grupo_armadura}:
+    get:
+      tags: [grupos-armaduras]
+      summary: Grupo de armadura por id
+      parameters:
+        - name: id_grupo_armadura
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Grupo de armadura encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GrupoCompetencia'
+        '404':
+          description: Grupo de armadura no encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 
   /dominios:
     get:
@@ -1431,6 +1587,125 @@ components:
         Descripcion: { type: string }
         Secreto: { type: boolean }
         Oficial: { type: boolean }
+
+    TamanoRef:
+      type: object
+      properties:
+        Id: { type: integer }
+        Nombre: { type: string }
+        Modificador: { type: number }
+        Modificador_presa: { type: number }
+
+    ArmaTipoDanoRef:
+      type: object
+      properties:
+        Id: { type: integer }
+        Nombre: { type: string }
+
+    ArmaTipoRef:
+      type: object
+      properties:
+        Id: { type: integer }
+        Nombre: { type: string }
+
+    ArmaMaterialRef:
+      type: object
+      properties:
+        Id: { type: integer }
+        Nombre: { type: string }
+
+    ArmaEncantamientoRef:
+      type: object
+      properties:
+        Id: { type: integer }
+        Nombre: { type: string }
+        Descripcion: { type: string }
+        Modificador: { type: number }
+        Coste: { type: number }
+        Tipo: { type: integer }
+
+    ArmaDetalle:
+      type: object
+      properties:
+        Id: { type: integer }
+        Nombre: { type: string }
+        Descripcion: { type: string }
+        Manual:
+          $ref: '#/components/schemas/DoteManual'
+        Dano: { type: string }
+        Tipo_dano:
+          $ref: '#/components/schemas/ArmaTipoDanoRef'
+        Tipo_arma:
+          $ref: '#/components/schemas/ArmaTipoRef'
+        Precio: { type: number }
+        Material:
+          $ref: '#/components/schemas/ArmaMaterialRef'
+        Tamano:
+          $ref: '#/components/schemas/TamanoRef'
+        Peso: { type: number }
+        Critico: { type: string }
+        Incremento_distancia: { type: number }
+        Oficial: { type: boolean }
+        Encantamientos:
+          type: array
+          items:
+            $ref: '#/components/schemas/ArmaEncantamientoRef'
+
+    ArmaduraTipoRef:
+      type: object
+      properties:
+        Id: { type: integer }
+        Nombre: { type: string }
+
+    ArmaduraPesoRef:
+      type: object
+      properties:
+        Id: { type: integer }
+        Nombre: { type: string }
+
+    ArmaduraEncantamientoRef:
+      type: object
+      properties:
+        Id: { type: integer }
+        Nombre: { type: string }
+        Descripcion: { type: string }
+        Modificador: { type: number }
+        Coste: { type: number }
+        Tipo: { type: integer }
+
+    ArmaduraDetalle:
+      type: object
+      properties:
+        Id: { type: integer }
+        Nombre: { type: string }
+        Descripcion: { type: string }
+        Manual:
+          $ref: '#/components/schemas/DoteManual'
+        Ca: { type: number }
+        Bon_des: { type: number }
+        Penalizador: { type: number }
+        Tipo_armadura:
+          $ref: '#/components/schemas/ArmaduraTipoRef'
+        Precio: { type: number }
+        Material:
+          $ref: '#/components/schemas/ArmaMaterialRef'
+        Peso_armadura:
+          $ref: '#/components/schemas/ArmaduraPesoRef'
+        Peso: { type: number }
+        Tamano:
+          $ref: '#/components/schemas/TamanoRef'
+        Fallo_arcano: { type: number }
+        Oficial: { type: boolean }
+        Encantamientos:
+          type: array
+          items:
+            $ref: '#/components/schemas/ArmaduraEncantamientoRef'
+
+    GrupoCompetencia:
+      type: object
+      properties:
+        Id: { type: integer }
+        Nombre: { type: string }
 
     DominioDetalle:
       type: object

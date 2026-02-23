@@ -3,8 +3,11 @@ import { MatTabGroup } from '@angular/material/tabs';
 import { Subscription } from 'rxjs';
 import { Campana, Super } from 'src/app/interfaces/campaña';
 import { AlineamientoBasicoCatalogItem } from 'src/app/interfaces/alineamiento';
+import { ArmaDetalle } from 'src/app/interfaces/arma';
+import { ArmaduraDetalle } from 'src/app/interfaces/armadura';
 import { DeidadDetalle } from 'src/app/interfaces/deidad';
 import { DominioDetalle } from 'src/app/interfaces/dominio';
+import { GrupoCompetencia } from 'src/app/interfaces/grupo-competencia';
 import { Clase, ClaseDoteNivel, ClaseEspecialNivel } from 'src/app/interfaces/clase';
 import { Dote } from 'src/app/interfaces/dote';
 import { DoteContextual } from 'src/app/interfaces/dote-contextual';
@@ -19,9 +22,13 @@ import { TipoCriatura } from 'src/app/interfaces/tipo_criatura';
 import { VentajaDetalle } from 'src/app/interfaces/ventaja';
 import { CampanaService } from 'src/app/services/campana.service';
 import { AlineamientoService } from 'src/app/services/alineamiento.service';
+import { ArmaService } from 'src/app/services/arma.service';
+import { ArmaduraService } from 'src/app/services/armadura.service';
 import { ClaseService } from 'src/app/services/clase.service';
 import { DeidadService } from 'src/app/services/deidad.service';
 import { DominioService } from 'src/app/services/dominio.service';
+import { GrupoArmaService } from 'src/app/services/grupo-arma.service';
+import { GrupoArmaduraService } from 'src/app/services/grupo-armadura.service';
 import { HabilidadService } from 'src/app/services/habilidad.service';
 import { IdiomaService } from 'src/app/services/idioma.service';
 import {
@@ -114,10 +121,24 @@ interface ClaseBeneficioNivelItem {
     nombre: string;
     extra: string;
     opcional: number;
+    idExtra: number;
     idDote: number;
     nombreEspecial: string;
     rawDote: Dote | null;
 }
+
+interface ClaseBeneficioRenderSimpleItem {
+    tipoRender: 'simple';
+    beneficio: ClaseBeneficioNivelItem;
+}
+
+interface ClaseBeneficioRenderGrupoItem {
+    tipoRender: 'grupo_opcional';
+    grupo: number;
+    opciones: ClaseBeneficioNivelItem[];
+}
+
+type ClaseBeneficioRenderItem = ClaseBeneficioRenderSimpleItem | ClaseBeneficioRenderGrupoItem;
 
 interface ClaseCompatibilidadAlineamientoItem {
     estado: EstadoCompatibilidadAlineamientoClase;
@@ -136,6 +157,7 @@ interface ClaseListadoItem {
     puedeAplicarse: boolean;
     bloqueoSoloAlineamiento: boolean;
     beneficios: ClaseBeneficioNivelItem[];
+    beneficiosRender: ClaseBeneficioRenderItem[];
     roles: ClaseRolChip[];
     compatAlineamiento: ClaseCompatibilidadAlineamientoItem;
     esHomebrew: boolean;
@@ -193,6 +215,10 @@ export class NuevoPersonajeComponent {
     catalogoVentajas: VentajaDetalle[] = [];
     catalogoDesventajas: VentajaDetalle[] = [];
     catalogoIdiomas: IdiomaDetalle[] = [];
+    catalogoArmas: ArmaDetalle[] = [];
+    catalogoArmaduras: ArmaduraDetalle[] = [];
+    catalogoGruposArmas: GrupoCompetencia[] = [];
+    catalogoGruposArmaduras: GrupoCompetencia[] = [];
     catalogoClases: Clase[] = [];
     catalogoDominios: DominioDetalle[] = [];
     catalogoDeidades: DeidadDetalle[] = [];
@@ -246,6 +272,10 @@ export class NuevoPersonajeComponent {
     private habilidadesSub?: Subscription;
     private habilidadesCustomSub?: Subscription;
     private idiomasSub?: Subscription;
+    private armasSub?: Subscription;
+    private armadurasSub?: Subscription;
+    private gruposArmasSub?: Subscription;
+    private gruposArmadurasSub?: Subscription;
     private razasSub?: Subscription;
     private clasesSub?: Subscription;
     private dominiosSub?: Subscription;
@@ -264,6 +294,10 @@ export class NuevoPersonajeComponent {
         private ventajaSvc: VentajaService,
         private habilidadSvc: HabilidadService,
         private idiomaSvc: IdiomaService,
+        private armaSvc: ArmaService,
+        private armaduraSvc: ArmaduraService,
+        private grupoArmaSvc: GrupoArmaService,
+        private grupoArmaduraSvc: GrupoArmaduraService,
         private dominioSvc: DominioService,
         private deidadSvc: DeidadService,
         private tipoCriaturaSvc: TipoCriaturaService
@@ -283,6 +317,10 @@ export class NuevoPersonajeComponent {
         this.cargarHabilidadesBase();
         this.cargarHabilidadesCustom();
         this.cargarIdiomas();
+        this.cargarArmas();
+        this.cargarArmaduras();
+        this.cargarGruposArmas();
+        this.cargarGruposArmaduras();
         this.cargarDominios();
         this.cargarDeidades();
         this.cargarClases();
@@ -298,6 +336,10 @@ export class NuevoPersonajeComponent {
         this.habilidadesSub?.unsubscribe();
         this.habilidadesCustomSub?.unsubscribe();
         this.idiomasSub?.unsubscribe();
+        this.armasSub?.unsubscribe();
+        this.armadurasSub?.unsubscribe();
+        this.gruposArmasSub?.unsubscribe();
+        this.gruposArmadurasSub?.unsubscribe();
         this.razasSub?.unsubscribe();
         this.clasesSub?.unsubscribe();
         this.dominiosSub?.unsubscribe();
@@ -2499,6 +2541,62 @@ export class NuevoPersonajeComponent {
         });
     }
 
+    private cargarArmas(): void {
+        this.armasSub?.unsubscribe();
+        this.armasSub = this.armaSvc.getArmas().subscribe({
+            next: (armas) => {
+                this.catalogoArmas = armas ?? [];
+                this.recalcularClasesVisibles();
+            },
+            error: () => {
+                this.catalogoArmas = [];
+                this.recalcularClasesVisibles();
+            },
+        });
+    }
+
+    private cargarArmaduras(): void {
+        this.armadurasSub?.unsubscribe();
+        this.armadurasSub = this.armaduraSvc.getArmaduras().subscribe({
+            next: (armaduras) => {
+                this.catalogoArmaduras = armaduras ?? [];
+                this.recalcularClasesVisibles();
+            },
+            error: () => {
+                this.catalogoArmaduras = [];
+                this.recalcularClasesVisibles();
+            },
+        });
+    }
+
+    private cargarGruposArmas(): void {
+        this.gruposArmasSub?.unsubscribe();
+        this.gruposArmasSub = this.grupoArmaSvc.getGruposArmas().subscribe({
+            next: (grupos) => {
+                this.catalogoGruposArmas = grupos ?? [];
+                this.recalcularClasesVisibles();
+            },
+            error: () => {
+                this.catalogoGruposArmas = [];
+                this.recalcularClasesVisibles();
+            },
+        });
+    }
+
+    private cargarGruposArmaduras(): void {
+        this.gruposArmadurasSub?.unsubscribe();
+        this.gruposArmadurasSub = this.grupoArmaduraSvc.getGruposArmaduras().subscribe({
+            next: (grupos) => {
+                this.catalogoGruposArmaduras = grupos ?? [];
+                this.recalcularClasesVisibles();
+            },
+            error: () => {
+                this.catalogoGruposArmaduras = [];
+                this.recalcularClasesVisibles();
+            },
+        });
+    }
+
     private cargarDominios(): void {
         this.dominiosSub?.unsubscribe();
         this.dominiosSub = this.dominioSvc.getDominios().subscribe({
@@ -2618,6 +2716,7 @@ export class NuevoPersonajeComponent {
 
             const nivelActual = this.getNivelActualClasePorNombre(clase.Nombre);
             const siguienteNivel = nivelActual + 1;
+            const beneficios = this.getBeneficiosSiguienteNivelClase(clase, siguienteNivel);
             evaluadas.push({
                 clase,
                 evaluacion,
@@ -2625,7 +2724,8 @@ export class NuevoPersonajeComponent {
                 elegida: nivelActual > 0,
                 puedeAplicarse,
                 bloqueoSoloAlineamiento,
-                beneficios: this.getBeneficiosSiguienteNivelClase(clase, siguienteNivel),
+                beneficios,
+                beneficiosRender: this.construirRenderBeneficiosClase(beneficios),
                 roles: this.getRolesClase(clase),
                 compatAlineamiento: this.evaluarCompatibilidadAlineamientoClase(clase),
                 esHomebrew: clase?.Oficial === false,
@@ -2736,11 +2836,16 @@ export class NuevoPersonajeComponent {
             const nombre = `${doteNivel?.Dote?.Nombre ?? ''}`.trim();
             if (nombre.length < 1)
                 return;
+            const extraRaw = `${doteNivel?.Extra ?? ''}`;
+            if (this.esExtraCeroBeneficio(extraRaw))
+                return;
+            const idExtra = Number(doteNivel?.Id_extra ?? 0);
             beneficios.push({
                 tipo: 'dote',
                 nombre,
-                extra: this.normalizarExtraBeneficio(`${doteNivel?.Extra ?? ''}`),
+                extra: this.resolverExtraBeneficioClase(extraRaw, idExtra, doteNivel?.Dote ?? null, null),
                 opcional: Number(doteNivel?.Opcional ?? 0),
+                idExtra,
                 idDote: Number(doteNivel?.Dote?.Id ?? 0),
                 nombreEspecial: '',
                 rawDote: doteNivel?.Dote ?? null,
@@ -2750,11 +2855,16 @@ export class NuevoPersonajeComponent {
             const nombreEspecial = this.resolverNombreEspecial(especialNivel?.Especial);
             if (nombreEspecial.length < 1)
                 return;
+            const extraRaw = `${especialNivel?.Extra ?? ''}`;
+            if (this.esExtraCeroBeneficio(extraRaw))
+                return;
+            const idExtra = Number(especialNivel?.Id_extra ?? 0);
             beneficios.push({
                 tipo: 'especial',
                 nombre: nombreEspecial,
-                extra: this.normalizarExtraBeneficio(`${especialNivel?.Extra ?? ''}`, true),
+                extra: this.resolverExtraBeneficioClase(extraRaw, idExtra, null, especialNivel?.Especial ?? null),
                 opcional: Number(especialNivel?.Opcional ?? 0),
+                idExtra,
                 idDote: 0,
                 nombreEspecial,
                 rawDote: null,
@@ -2771,17 +2881,72 @@ export class NuevoPersonajeComponent {
         return beneficios;
     }
 
+    private construirRenderBeneficiosClase(beneficios: ClaseBeneficioNivelItem[]): ClaseBeneficioRenderItem[] {
+        if (beneficios.length < 1)
+            return [];
+
+        const opcionesPorGrupo = new Map<number, ClaseBeneficioNivelItem[]>();
+        beneficios.forEach((beneficio) => {
+            const grupo = Number(beneficio?.opcional ?? 0);
+            if (!Number.isFinite(grupo) || grupo <= 0)
+                return;
+            const opciones = opcionesPorGrupo.get(grupo) ?? [];
+            opciones.push(beneficio);
+            opcionesPorGrupo.set(grupo, opciones);
+        });
+
+        const render: ClaseBeneficioRenderItem[] = [];
+        const gruposEmitidos = new Set<number>();
+        beneficios.forEach((beneficio) => {
+            const grupo = Number(beneficio?.opcional ?? 0);
+            if (!Number.isFinite(grupo) || grupo <= 0) {
+                render.push({
+                    tipoRender: 'simple',
+                    beneficio,
+                });
+                return;
+            }
+
+            if (gruposEmitidos.has(grupo))
+                return;
+            gruposEmitidos.add(grupo);
+
+            const opciones = opcionesPorGrupo.get(grupo) ?? [];
+            if (opciones.length > 1) {
+                render.push({
+                    tipoRender: 'grupo_opcional',
+                    grupo,
+                    opciones,
+                });
+                return;
+            }
+
+            const unica = opciones[0] ?? beneficio;
+            render.push({
+                tipoRender: 'simple',
+                beneficio: unica,
+            });
+        });
+
+        return render;
+    }
+
     private resolverNombreEspecial(rawEspecial: any): string {
         const nombre = `${rawEspecial?.Nombre ?? rawEspecial?.nombre ?? rawEspecial?.Especial ?? rawEspecial?.especial ?? ''}`.trim();
         return nombre;
     }
 
-    private normalizarExtraBeneficio(extraRaw: string, ocultarNoAplica: boolean = false): string {
+    private esExtraCeroBeneficio(extraRaw: string): boolean {
+        const compactado = `${extraRaw ?? ''}`.replace(/\s+/g, '').trim();
+        return compactado === '+0' || compactado === '0';
+    }
+
+    private normalizarExtraBeneficio(extraRaw: string): string {
         const extra = `${extraRaw ?? ''}`.trim();
-        if (!ocultarNoAplica || extra.length < 1)
+        if (extra.length < 1)
             return extra;
 
-        const extraNorm = this.normalizarTexto(extra);
+        const extraNorm = this.normalizarTexto(extra).replace(/\s+/g, ' ');
         if (extraNorm === 'no aplica'
             || extraNorm === 'n a'
             || extraNorm === 'na'
@@ -2790,6 +2955,132 @@ export class NuevoPersonajeComponent {
             return '';
         }
         return extra;
+    }
+
+    private resolverExtraBeneficioClase(extraRaw: string, idExtra: number, rawDote: Dote | null, rawEspecial: any): string {
+        const extraNormalizado = this.normalizarExtraBeneficio(extraRaw);
+        if (this.esExtraBeneficioConValor(extraNormalizado))
+            return extraNormalizado;
+
+        const id = Number.isFinite(Number(idExtra)) ? Number(idExtra) : 0;
+        if (id <= 0)
+            return extraNormalizado;
+
+        const extraDesdeDote = this.resolverExtraDesdeDote(rawDote, id);
+        if (this.esExtraBeneficioConValor(extraDesdeDote))
+            return extraDesdeDote;
+
+        const extraDesdeEspecial = this.resolverExtraDesdeEspecial(rawEspecial, id);
+        if (this.esExtraBeneficioConValor(extraDesdeEspecial))
+            return extraDesdeEspecial;
+
+        const extraDesdeCatalogoFuente = this.resolverExtraDesdeCatalogoPorFuente(rawDote, id);
+        if (this.esExtraBeneficioConValor(extraDesdeCatalogoFuente))
+            return extraDesdeCatalogoFuente;
+
+        const extraUnico = this.resolverExtraUnicoEnCatalogos(id);
+        if (this.esExtraBeneficioConValor(extraUnico))
+            return extraUnico;
+
+        return extraNormalizado;
+    }
+
+    private resolverExtraDesdeDote(rawDote: Dote | null, idExtra: number): string {
+        if (!rawDote)
+            return '';
+
+        const disponibles = rawDote.Extras_disponibles;
+        const fuentes = [
+            ...(disponibles?.Armas ?? []),
+            ...(disponibles?.Armaduras ?? []),
+            ...(disponibles?.Escuelas ?? []),
+            ...(disponibles?.Habilidades ?? []),
+        ];
+        const encontrado = fuentes.find((item) => Number(item?.Id ?? 0) === idExtra);
+        return `${encontrado?.Nombre ?? ''}`.trim();
+    }
+
+    private resolverExtraDesdeEspecial(rawEspecial: any, idExtra: number): string {
+        if (!rawEspecial || typeof rawEspecial !== 'object')
+            return '';
+
+        const extrasRaw = Array.isArray(rawEspecial?.Extras)
+            ? rawEspecial.Extras
+            : (rawEspecial?.Extras && typeof rawEspecial.Extras === 'object')
+                ? Object.values(rawEspecial.Extras)
+                : [];
+
+        const encontrado = extrasRaw.find((item: any) => {
+            const id = Number(item?.Id_extra ?? item?.Id ?? item?.id_extra ?? item?.id ?? 0);
+            return id === idExtra;
+        });
+        return `${encontrado?.Extra ?? encontrado?.Nombre ?? ''}`.trim();
+    }
+
+    private resolverExtraDesdeCatalogoPorFuente(rawDote: Dote | null, idExtra: number): string {
+        if (!rawDote)
+            return '';
+
+        const candidatos: string[] = [];
+        const pushUnico = (valor: string) => {
+            const limpio = `${valor ?? ''}`.trim();
+            if (limpio.length < 1)
+                return;
+            if (!candidatos.includes(limpio))
+                candidatos.push(limpio);
+        };
+
+        const extraEnArmas = (rawDote.Extras_disponibles?.Armas ?? []).some((item) => Number(item?.Id ?? 0) === idExtra);
+        const extraEnArmaduras = (rawDote.Extras_disponibles?.Armaduras ?? []).some((item) => Number(item?.Id ?? 0) === idExtra);
+        const extraEnEscuelas = (rawDote.Extras_disponibles?.Escuelas ?? []).some((item) => Number(item?.Id ?? 0) === idExtra);
+        const extraEnHabilidades = (rawDote.Extras_disponibles?.Habilidades ?? []).some((item) => Number(item?.Id ?? 0) === idExtra);
+
+        if (extraEnArmas || Number(rawDote.Extras_soportados?.Extra_arma ?? 0) > 0) {
+            pushUnico(this.resolverNombreCatalogoPorId(this.catalogoArmas, idExtra));
+            pushUnico(this.resolverNombreCatalogoPorId(this.catalogoGruposArmas, idExtra));
+        }
+        if (extraEnArmaduras || Number(rawDote.Extras_soportados?.Extra_armadura ?? 0) > 0) {
+            pushUnico(this.resolverNombreCatalogoPorId(this.catalogoArmaduras, idExtra));
+            pushUnico(this.resolverNombreCatalogoPorId(this.catalogoGruposArmaduras, idExtra));
+        }
+
+        if (extraEnEscuelas || extraEnHabilidades)
+            return '';
+
+        return candidatos.length === 1 ? candidatos[0] : '';
+    }
+
+    private resolverExtraUnicoEnCatalogos(idExtra: number): string {
+        const coincidencias: string[] = [];
+        const pushCoincidencia = (valor: string) => {
+            const limpio = `${valor ?? ''}`.trim();
+            if (limpio.length < 1)
+                return;
+            coincidencias.push(limpio);
+        };
+
+        pushCoincidencia(this.resolverNombreCatalogoPorId(this.catalogoArmas, idExtra));
+        pushCoincidencia(this.resolverNombreCatalogoPorId(this.catalogoArmaduras, idExtra));
+        pushCoincidencia(this.resolverNombreCatalogoPorId(this.catalogoGruposArmas, idExtra));
+        pushCoincidencia(this.resolverNombreCatalogoPorId(this.catalogoGruposArmaduras, idExtra));
+
+        return coincidencias.length === 1 ? coincidencias[0] : '';
+    }
+
+    private resolverNombreCatalogoPorId(catalogo: Array<{ Id: number; Nombre: string; }>, idExtra: number): string {
+        const encontrado = catalogo.find((item) => Number(item?.Id ?? 0) === idExtra);
+        return `${encontrado?.Nombre ?? ''}`.trim();
+    }
+
+    private esExtraBeneficioConValor(extra: string): boolean {
+        const limpio = `${extra ?? ''}`.trim();
+        if (limpio.length < 1)
+            return false;
+        const normalizado = this.normalizarTexto(limpio).replace(/\s+/g, ' ');
+        return normalizado !== 'desconocido'
+            && normalizado !== 'sin especificar'
+            && normalizado !== 'sin especificacion'
+            && normalizado !== 'unknown';
     }
 
     private evaluarCompatibilidadAlineamientoClase(clase: Clase): ClaseCompatibilidadAlineamientoItem {

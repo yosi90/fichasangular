@@ -24,6 +24,10 @@ export type CacheEntityKey =
     | "habilidades"
     | "habilidades_custom"
     | "idiomas"
+    | "armas"
+    | "armaduras"
+    | "grupos_armas"
+    | "grupos_armaduras"
     | "dominios"
     | "ambitos"
     | "pabellones"
@@ -63,6 +67,10 @@ export const CACHE_CONTRACT_MANIFEST: CacheContractEntry[] = [
     { key: "habilidades", label: "Habilidades", schemaVersion: 1 },
     { key: "habilidades_custom", label: "Habilidades custom", schemaVersion: 1 },
     { key: "idiomas", label: "Idiomas", schemaVersion: 1 },
+    { key: "armas", label: "Armas", schemaVersion: 1 },
+    { key: "armaduras", label: "Armaduras", schemaVersion: 1 },
+    { key: "grupos_armas", label: "Grupos de armas", schemaVersion: 1 },
+    { key: "grupos_armaduras", label: "Grupos de armaduras", schemaVersion: 1 },
     { key: "dominios", label: "Dominios", schemaVersion: 1 },
     { key: "ambitos", label: "Ambitos", schemaVersion: 1 },
     { key: "pabellones", label: "Pabellones", schemaVersion: 1 },

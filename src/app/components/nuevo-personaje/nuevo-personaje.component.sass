@@ -368,7 +368,10 @@ textarea
         color: #f6f7f9
         white-space: normal
         overflow-wrap: anywhere
-        vertical-align: top
+        vertical-align: middle
+
+    tbody td
+        vertical-align: middle !important
 
     th:nth-child(1), td:nth-child(1)
         width: 22%
@@ -439,10 +442,60 @@ textarea
     display: inline-flex
     flex-wrap: wrap
     gap: 4px
+    align-items: center
+    align-content: center
 
 .beneficios-clase-chips
+    display: flex
+    width: 100%
+
     ::ng-deep .mdc-evolution-chip__text-label
         white-space: normal !important
+
+    ::ng-deep .mdc-evolution-chip__action,
+    ::ng-deep .mdc-evolution-chip__action--primary
+        height: auto !important
+        min-height: 32px
+
+    ::ng-deep .mat-mdc-chip-action-label
+        display: inline-flex !important
+        align-items: center
+        flex-wrap: wrap
+        gap: 4px
+        white-space: normal !important
+
+.chip-opcional-grupo
+    height: auto
+    min-height: 36px
+    cursor: default
+
+    ::ng-deep .mdc-evolution-chip__action,
+    ::ng-deep .mdc-evolution-chip__action--primary
+        height: auto !important
+
+    ::ng-deep .mat-mdc-chip-action-label
+        display: inline-flex !important
+        align-items: center
+        flex-wrap: wrap
+        gap: 6px
+        white-space: normal !important
+
+.chip-opcional-grupo-label
+    font-weight: 600
+
+.chip-opcional-grupo-opciones
+    display: inline-flex
+    flex-wrap: wrap
+    align-items: center
+    gap: 4px
+
+.chip-opcional-subchip
+    height: auto
+
+.chip-opcional-separador
+    font-weight: 600
+    opacity: 0.9
+    padding: 0 2px
 
 .fila-pendiente
     background: rgba(175, 125, 0, 0.15)

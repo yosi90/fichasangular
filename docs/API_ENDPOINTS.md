@@ -1,10 +1,10 @@
 # API Endpoints (Programa de fichas - Backend)
 
-Fecha de generacion: 2026-02-09
+Fecha de generacion: 2026-02-23
 
 Resumen
 - Base URL (local): `http://127.0.0.1:5000`
-- Prefijos registrados: `/verify`, `/personajes`, `/razas`, `/razas/raciales`, `/subtipos`, `/campanas`, `/tramas`, `/subtramas`, `/manuales`, `/manuales/asociados`, `/tiposCriatura`, `/rasgos`, `/conjuros`, `/escuelas`, `/disciplinas`, `/alineamientos`, `/habilidades`, `/idiomas`, `/dominios`, `/ambitos`, `/pabellones`, `/deidades`, `/dotes`, `/clases`, `/clases/habilidades`, `/plantillas`, `/ventajas`, `/desventajas`
+- Prefijos registrados: `/verify`, `/personajes`, `/razas`, `/razas/raciales`, `/subtipos`, `/campanas`, `/tramas`, `/subtramas`, `/manuales`, `/manuales/asociados`, `/tiposCriatura`, `/rasgos`, `/conjuros`, `/escuelas`, `/disciplinas`, `/alineamientos`, `/habilidades`, `/idiomas`, `/armas`, `/armaduras`, `/grupos-armas`, `/grupos-armaduras`, `/dominios`, `/ambitos`, `/pabellones`, `/deidades`, `/dotes`, `/clases`, `/clases/habilidades`, `/plantillas`, `/ventajas`, `/desventajas`
 - Autenticacion: no hay autenticacion en el backend.
 - Content-Type esperado: `application/json`
 - CORS habilitado para: `https://rol.yosiftware.es/`, `https://www.rol.yosiftware.es/`, `https://62.43.222.28`, `http://192.168.0.34`
@@ -54,6 +54,14 @@ Lista de endpoints
 | GET | /habilidades | Lista de habilidades basicas (id > 0) | Implementado |
 | GET | /habilidades/custom | Lista de habilidades custom (id > 0) | Implementado |
 | GET | /idiomas | Lista de idiomas | Implementado |
+| GET | /armas | Lista completa de armas | Implementado |
+| GET | /armas/<id_arma> | Arma por id | Implementado |
+| GET | /armaduras | Lista completa de armaduras | Implementado |
+| GET | /armaduras/<id_armadura> | Armadura por id | Implementado |
+| GET | /grupos-armas | Lista de grupos de armas | Implementado |
+| GET | /grupos-armas/<id_grupo_arma> | Grupo de arma por id | Implementado |
+| GET | /grupos-armaduras | Lista de grupos de armaduras | Implementado |
+| GET | /grupos-armaduras/<id_grupo_armadura> | Grupo de armadura por id | Implementado |
 | GET | /dominios | Lista de dominios | Implementado |
 | GET | /dominios/<id_dominio> | Dominio por id | Implementado |
 | GET | /ambitos | Lista de ambitos de poder | Implementado |
@@ -697,6 +705,103 @@ IdiomaDetalle
 | Descripcion | string | Descripcion |
 | Secreto | boolean | Marca de idioma secreto |
 | Oficial | boolean | Oficial (true=oficial, false=homebrew) |
+
+Endpoint: GET /armas
+Respuesta: array de `ArmaDetalle`
+
+Endpoint: GET /armas/<id_arma>
+Respuesta: objeto `ArmaDetalle`
+Respuesta 404
+```json
+{
+  "error": "Arma no encontrada",
+  "id_arma": 123
+}
+```
+
+ArmaDetalle
+| Campo | Tipo | Descripcion |
+| --- | --- | --- |
+| Id | number | Id de arma |
+| Nombre | string | Nombre |
+| Descripcion | string | Descripcion |
+| Manual | object | `{ Id, Nombre, Pagina }` |
+| Dano | string | Dano del arma |
+| Tipo_dano | object | `{ Id, Nombre }` |
+| Tipo_arma | object | `{ Id, Nombre }` |
+| Precio | number | Precio |
+| Material | object | `{ Id, Nombre }` |
+| Tamano | object | `{ Id, Nombre, Modificador, Modificador_presa }` |
+| Peso | number | Peso |
+| Critico | string | Rango/multiplicador de critico |
+| Incremento_distancia | number | Incremento de distancia |
+| Oficial | boolean | Oficial (true=oficial, false=homebrew) |
+| Encantamientos | array | Lista de encantamientos `{ Id, Nombre, Descripcion, Modificador, Coste, Tipo }` |
+
+Endpoint: GET /armaduras
+Respuesta: array de `ArmaduraDetalle`
+
+Endpoint: GET /armaduras/<id_armadura>
+Respuesta: objeto `ArmaduraDetalle`
+Respuesta 404
+```json
+{
+  "error": "Armadura no encontrada",
+  "id_armadura": 123
+}
+```
+
+ArmaduraDetalle
+| Campo | Tipo | Descripcion |
+| --- | --- | --- |
+| Id | number | Id de armadura |
+| Nombre | string | Nombre |
+| Descripcion | string | Descripcion |
+| Manual | object | `{ Id, Nombre, Pagina }` |
+| Ca | number | Bonificador de CA |
+| Bon_des | number | Maximo bonificador de destreza |
+| Penalizador | number | Penalizador de armadura |
+| Tipo_armadura | object | `{ Id, Nombre }` |
+| Precio | number | Precio |
+| Material | object | `{ Id, Nombre }` |
+| Peso_armadura | object | `{ Id, Nombre }` |
+| Peso | number | Peso |
+| Tamano | object | `{ Id, Nombre, Modificador, Modificador_presa }` |
+| Fallo_arcano | number | Probabilidad de fallo arcano |
+| Oficial | boolean | Oficial (true=oficial, false=homebrew) |
+| Encantamientos | array | Lista de encantamientos `{ Id, Nombre, Descripcion, Modificador, Coste, Tipo }` |
+
+Endpoint: GET /grupos-armas
+Respuesta: array de `GrupoCompetencia`
+
+Endpoint: GET /grupos-armas/<id_grupo_arma>
+Respuesta: objeto `GrupoCompetencia`
+Respuesta 404
+```json
+{
+  "error": "Grupo de arma no encontrado",
+  "id_grupo_arma": 123
+}
+```
+
+Endpoint: GET /grupos-armaduras
+Respuesta: array de `GrupoCompetencia`
+
+Endpoint: GET /grupos-armaduras/<id_grupo_armadura>
+Respuesta: objeto `GrupoCompetencia`
+Respuesta 404
+```json
+{
+  "error": "Grupo de armadura no encontrado",
+  "id_grupo_armadura": 123
+}
+```
+
+GrupoCompetencia
+| Campo | Tipo | Descripcion |
+| --- | --- | --- |
+| Id | number | Id del grupo |
+| Nombre | string | Nombre del grupo |
 
 Endpoint: GET /dominios
 Respuesta: array de `DominioDetalle`

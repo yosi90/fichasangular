@@ -28,6 +28,10 @@ import { AmbitoService } from 'src/app/services/ambito.service';
 import { DeidadService } from 'src/app/services/deidad.service';
 import { DominioService } from 'src/app/services/dominio.service';
 import { PabellonService } from 'src/app/services/pabellon.service';
+import { ArmaService } from 'src/app/services/arma.service';
+import { ArmaduraService } from 'src/app/services/armadura.service';
+import { GrupoArmaService } from 'src/app/services/grupo-arma.service';
+import { GrupoArmaduraService } from 'src/app/services/grupo-armadura.service';
 
 interface SyncItemConfig {
     key: CacheEntityKey;
@@ -86,6 +90,10 @@ export class AdminPanelComponent implements OnInit, OnDestroy {
         private racialSvc: RacialService,
         private habSvc: HabilidadService,
         private idiSvc: IdiomaService,
+        private armaSvc: ArmaService,
+        private armaduraSvc: ArmaduraService,
+        private grupoArmaSvc: GrupoArmaService,
+        private grupoArmaduraSvc: GrupoArmaduraService,
         private dominioSvc: DominioService,
         private ambitoSvc: AmbitoService,
         private pabellonSvc: PabellonService,
@@ -119,6 +127,10 @@ export class AdminPanelComponent implements OnInit, OnDestroy {
             habilidades: () => this.habSvc.RenovarHabilidades(),
             habilidades_custom: () => this.habSvc.RenovarHabilidadesCustom(),
             idiomas: () => this.idiSvc.RenovarIdiomas(),
+            armas: () => this.armaSvc.RenovarArmas(),
+            armaduras: () => this.armaduraSvc.RenovarArmaduras(),
+            grupos_armas: () => this.grupoArmaSvc.RenovarGruposArmas(),
+            grupos_armaduras: () => this.grupoArmaduraSvc.RenovarGruposArmaduras(),
             dominios: () => this.dominioSvc.RenovarDominios(),
             ambitos: () => this.ambitoSvc.RenovarAmbitos(),
             pabellones: () => this.pabellonSvc.RenovarPabellones(),

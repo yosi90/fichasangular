@@ -460,6 +460,10 @@ describe('NuevoPersonajeComponent', () => {
     let ventajaSvcMock: any;
     let habilidadSvcMock: any;
     let idiomaSvcMock: any;
+    let armaSvcMock: any;
+    let armaduraSvcMock: any;
+    let grupoArmaSvcMock: any;
+    let grupoArmaduraSvcMock: any;
     let dominioSvcMock: any;
     let deidadSvcMock: any;
     let tipoCriaturaSvcMock: any;
@@ -503,6 +507,18 @@ describe('NuevoPersonajeComponent', () => {
         idiomaSvcMock = {
             getIdiomas: () => of([]),
         };
+        armaSvcMock = {
+            getArmas: () => of([]),
+        };
+        armaduraSvcMock = {
+            getArmaduras: () => of([]),
+        };
+        grupoArmaSvcMock = {
+            getGruposArmas: () => of([]),
+        };
+        grupoArmaduraSvcMock = {
+            getGruposArmaduras: () => of([]),
+        };
         dominioSvcMock = {
             getDominios: () => of([]),
         };
@@ -522,6 +538,10 @@ describe('NuevoPersonajeComponent', () => {
             ventajaSvcMock,
             habilidadSvcMock,
             idiomaSvcMock,
+            armaSvcMock,
+            armaduraSvcMock,
+            grupoArmaSvcMock,
+            grupoArmaduraSvcMock,
             dominioSvcMock,
             deidadSvcMock,
             tipoCriaturaSvcMock
@@ -1478,6 +1498,325 @@ describe('NuevoPersonajeComponent', () => {
         expect(especialSpy).toHaveBeenCalledWith('Furia marcial');
     });
 
+    it('oculta no aplica y filtra beneficios con extra +0 o 0 en la tabla de clases', () => {
+        const claseConFiltrosExtra = crearClaseMock({
+            Id: 36,
+            Nombre: 'Psi guerrero',
+            Desglose_niveles: [{
+                Nivel: 1,
+                Ataque_base: '+1',
+                Salvaciones: { Fortaleza: '+2', Reflejos: '+0', Voluntad: '+0' },
+                Nivel_max_conjuro: -1,
+                Reserva_psionica: 0,
+                Aumentos_clase_lanzadora: [],
+                Conjuros_diarios: {},
+                Conjuros_conocidos_nivel_a_nivel: {},
+                Conjuros_conocidos_total: 0,
+                Dotes: [
+                    {
+                        Dote: { Id: 410, Nombre: 'Talento innato' } as any,
+                        Nivel: 1,
+                        Id_extra: 0,
+                        Extra: 'No aplica',
+                        Opcional: 0,
+                        Id_interno: 0,
+                        Id_especial_requerido: 0,
+                        Id_dote_requerida: 0,
+                    },
+                    {
+                        Dote: { Id: 411, Nombre: 'Cuchilla mental' } as any,
+                        Nivel: 1,
+                        Id_extra: 0,
+                        Extra: ' +0 ',
+                        Opcional: 0,
+                        Id_interno: 0,
+                        Id_especial_requerido: 0,
+                        Id_dote_requerida: 0,
+                    },
+                    {
+                        Dote: { Id: 412, Nombre: 'Soltura con un arma' } as any,
+                        Nivel: 1,
+                        Id_extra: 0,
+                        Extra: 'Desconocido',
+                        Opcional: 0,
+                        Id_interno: 0,
+                        Id_especial_requerido: 0,
+                        Id_dote_requerida: 0,
+                    },
+                ],
+                Especiales: [
+                    {
+                        Especial: { Nombre: 'Talento innato mejorado' },
+                        Nivel: 1,
+                        Id_extra: 0,
+                        Extra: 'No aplica',
+                        Opcional: 0,
+                        Id_interno: 0,
+                        Id_especial_requerido: 0,
+                        Id_dote_requerida: 0,
+                    },
+                    {
+                        Especial: { Nombre: 'Talento latente' },
+                        Nivel: 1,
+                        Id_extra: 0,
+                        Extra: '0',
+                        Opcional: 0,
+                        Id_interno: 0,
+                        Id_especial_requerido: 0,
+                        Id_dote_requerida: 0,
+                    },
+                    {
+                        Especial: { Nombre: 'Dominio mental' },
+                        Nivel: 1,
+                        Id_extra: 0,
+                        Extra: 'Desconocido',
+                        Opcional: 0,
+                        Id_interno: 0,
+                        Id_especial_requerido: 0,
+                        Id_dote_requerida: 0,
+                    },
+                ],
+            }],
+        });
+        component.catalogoClases = [claseConFiltrosExtra];
+        nuevoPSvc.setCatalogoClases(component.catalogoClases);
+        (component as any).recalcularClasesVisibles();
+
+        const fila = component.clasesListadoFiltrado[0];
+        expect(fila.beneficios.length).toBe(4);
+        expect(fila.beneficios.some((b) => b.nombre === 'Cuchilla mental')).toBeFalse();
+        expect(fila.beneficios.some((b) => b.nombre === 'Talento latente')).toBeFalse();
+
+        const doteNoAplica = fila.beneficios.find((b) => b.tipo === 'dote' && b.nombre === 'Talento innato');
+        const especialNoAplica = fila.beneficios.find((b) => b.tipo === 'especial' && b.nombre === 'Talento innato mejorado');
+        expect(doteNoAplica?.extra).toBe('');
+        expect(especialNoAplica?.extra).toBe('');
+
+        expect(fila.beneficios.some((b) => b.tipo === 'dote' && b.nombre === 'Soltura con un arma' && b.extra === 'Desconocido')).toBeTrue();
+        expect(fila.beneficios.some((b) => b.tipo === 'especial' && b.nombre === 'Dominio mental' && b.extra === 'Desconocido')).toBeTrue();
+        expect(fila.beneficios.every((b) => b.extra.toLowerCase() !== 'no aplica')).toBeTrue();
+    });
+
+    it('resuelve extra desconocido usando catalogo cuando hay Id_extra y soporte de dote', () => {
+        component.catalogoArmas = [
+            {
+                Id: 77,
+                Nombre: 'Espada bastarda',
+            } as any,
+        ];
+        const claseConExtraDesconocido = crearClaseMock({
+            Id: 370,
+            Nombre: 'Guerrero experto',
+            Desglose_niveles: [{
+                Nivel: 1,
+                Ataque_base: '+1',
+                Salvaciones: { Fortaleza: '+2', Reflejos: '+0', Voluntad: '+0' },
+                Nivel_max_conjuro: -1,
+                Reserva_psionica: 0,
+                Aumentos_clase_lanzadora: [],
+                Conjuros_diarios: {},
+                Conjuros_conocidos_nivel_a_nivel: {},
+                Conjuros_conocidos_total: 0,
+                Dotes: [{
+                    Dote: {
+                        Id: 701,
+                        Nombre: 'Soltura con un arma',
+                        Extras_soportados: {
+                            Extra_arma: 1,
+                            Extra_armadura: 0,
+                            Extra_escuela: 0,
+                            Extra_habilidad: 0,
+                        },
+                        Extras_disponibles: {
+                            Armas: [{ Id: 77, Nombre: 'Desconocido' }],
+                            Armaduras: [],
+                            Escuelas: [],
+                            Habilidades: [],
+                        },
+                    } as any,
+                    Nivel: 1,
+                    Id_extra: 77,
+                    Extra: 'Desconocido',
+                    Opcional: 0,
+                    Id_interno: 0,
+                    Id_especial_requerido: 0,
+                    Id_dote_requerida: 0,
+                }],
+                Especiales: [],
+            }],
+        });
+
+        component.catalogoClases = [claseConExtraDesconocido];
+        nuevoPSvc.setCatalogoClases(component.catalogoClases);
+        (component as any).recalcularClasesVisibles();
+
+        const fila = component.clasesListadoFiltrado[0];
+        expect(fila.beneficios.length).toBe(1);
+        expect(fila.beneficios[0].extra).toBe('Espada bastarda');
+    });
+
+    it('mantiene extra desconocido cuando no hay correspondencia fiable en catalogos', () => {
+        component.catalogoArmas = [];
+        component.catalogoArmaduras = [];
+        component.catalogoGruposArmas = [];
+        component.catalogoGruposArmaduras = [];
+        const claseSinResolucion = crearClaseMock({
+            Id: 371,
+            Nombre: 'Monje incierto',
+            Desglose_niveles: [{
+                Nivel: 1,
+                Ataque_base: '+0',
+                Salvaciones: { Fortaleza: '+2', Reflejos: '+2', Voluntad: '+2' },
+                Nivel_max_conjuro: -1,
+                Reserva_psionica: 0,
+                Aumentos_clase_lanzadora: [],
+                Conjuros_diarios: {},
+                Conjuros_conocidos_nivel_a_nivel: {},
+                Conjuros_conocidos_total: 0,
+                Dotes: [{
+                    Dote: {
+                        Id: 702,
+                        Nombre: 'Talento dudoso',
+                        Extras_soportados: {
+                            Extra_arma: 1,
+                            Extra_armadura: 0,
+                            Extra_escuela: 0,
+                            Extra_habilidad: 0,
+                        },
+                        Extras_disponibles: {
+                            Armas: [],
+                            Armaduras: [],
+                            Escuelas: [],
+                            Habilidades: [],
+                        },
+                    } as any,
+                    Nivel: 1,
+                    Id_extra: 909,
+                    Extra: 'Desconocido',
+                    Opcional: 0,
+                    Id_interno: 0,
+                    Id_especial_requerido: 0,
+                    Id_dote_requerida: 0,
+                }],
+                Especiales: [],
+            }],
+        });
+
+        component.catalogoClases = [claseSinResolucion];
+        nuevoPSvc.setCatalogoClases(component.catalogoClases);
+        (component as any).recalcularClasesVisibles();
+
+        const fila = component.clasesListadoFiltrado[0];
+        expect(fila.beneficios.length).toBe(1);
+        expect(fila.beneficios[0].extra).toBe('Desconocido');
+    });
+
+    it('agrupa opcionales del mismo grupo como un bloque Elige entre', () => {
+        const claseOpcionalDoble = crearClaseMock({
+            Id: 372,
+            Nombre: 'Monje',
+            Desglose_niveles: [{
+                Nivel: 1,
+                Ataque_base: '+0',
+                Salvaciones: { Fortaleza: '+2', Reflejos: '+2', Voluntad: '+2' },
+                Nivel_max_conjuro: -1,
+                Reserva_psionica: 0,
+                Aumentos_clase_lanzadora: [],
+                Conjuros_diarios: {},
+                Conjuros_conocidos_nivel_a_nivel: {},
+                Conjuros_conocidos_total: 0,
+                Dotes: [
+                    {
+                        Dote: { Id: 801, Nombre: 'Presa mejorada' } as any,
+                        Nivel: 1,
+                        Id_extra: 0,
+                        Extra: 'No aplica',
+                        Opcional: 1,
+                        Id_interno: 0,
+                        Id_especial_requerido: 0,
+                        Id_dote_requerida: 0,
+                    },
+                    {
+                        Dote: { Id: 802, Nombre: 'Puñetazo aturdidor' } as any,
+                        Nivel: 1,
+                        Id_extra: 0,
+                        Extra: 'No aplica',
+                        Opcional: 1,
+                        Id_interno: 0,
+                        Id_especial_requerido: 0,
+                        Id_dote_requerida: 0,
+                    },
+                ],
+                Especiales: [],
+            }],
+        });
+
+        component.catalogoClases = [claseOpcionalDoble];
+        nuevoPSvc.setCatalogoClases(component.catalogoClases);
+        (component as any).recalcularClasesVisibles();
+
+        const fila = component.clasesListadoFiltrado[0];
+        expect(fila.beneficios.length).toBe(2);
+        expect(fila.beneficiosRender.length).toBe(1);
+        expect(fila.beneficiosRender[0].tipoRender).toBe('grupo_opcional');
+        if (fila.beneficiosRender[0].tipoRender === 'grupo_opcional') {
+            expect(fila.beneficiosRender[0].opciones.length).toBe(2);
+            expect(fila.beneficiosRender[0].opciones.some((o) => o.nombre === 'Presa mejorada')).toBeTrue();
+            expect(fila.beneficiosRender[0].opciones.some((o) => o.nombre === 'Puñetazo aturdidor')).toBeTrue();
+        }
+    });
+
+    it('agrupa opcionales mixtos dote/especial en el mismo bloque', () => {
+        const claseOpcionalMixta = crearClaseMock({
+            Id: 373,
+            Nombre: 'Adepto marcial',
+            Desglose_niveles: [{
+                Nivel: 1,
+                Ataque_base: '+0',
+                Salvaciones: { Fortaleza: '+2', Reflejos: '+2', Voluntad: '+2' },
+                Nivel_max_conjuro: -1,
+                Reserva_psionica: 0,
+                Aumentos_clase_lanzadora: [],
+                Conjuros_diarios: {},
+                Conjuros_conocidos_nivel_a_nivel: {},
+                Conjuros_conocidos_total: 0,
+                Dotes: [{
+                    Dote: { Id: 803, Nombre: 'Presa mejorada' } as any,
+                    Nivel: 1,
+                    Id_extra: 0,
+                    Extra: 'No aplica',
+                    Opcional: 1,
+                    Id_interno: 0,
+                    Id_especial_requerido: 0,
+                    Id_dote_requerida: 0,
+                }],
+                Especiales: [{
+                    Especial: { Nombre: 'Golpe sin armas mejorado' },
+                    Nivel: 1,
+                    Id_extra: 0,
+                    Extra: 'No aplica',
+                    Opcional: 1,
+                    Id_interno: 0,
+                    Id_especial_requerido: 0,
+                    Id_dote_requerida: 0,
+                }],
+            }],
+        });
+
+        component.catalogoClases = [claseOpcionalMixta];
+        nuevoPSvc.setCatalogoClases(component.catalogoClases);
+        (component as any).recalcularClasesVisibles();
+
+        const fila = component.clasesListadoFiltrado[0];
+        expect(fila.beneficiosRender.length).toBe(1);
+        expect(fila.beneficiosRender[0].tipoRender).toBe('grupo_opcional');
+        if (fila.beneficiosRender[0].tipoRender === 'grupo_opcional') {
+            expect(fila.beneficiosRender[0].opciones.length).toBe(2);
+            expect(fila.beneficiosRender[0].opciones.some((o) => o.tipo === 'dote')).toBeTrue();
+            expect(fila.beneficiosRender[0].opciones.some((o) => o.tipo === 'especial')).toBeTrue();
+        }
+    });
+
     it('muestra contador de ventajas y puntos desde el estado del servicio', () => {
         const ventaja: VentajaDetalle = {
             Id: 10,
@@ -1581,6 +1920,10 @@ describe('NuevoPersonajeComponent', () => {
             ventajaSvcMock,
             habilidadSvcMock,
             idiomaSvcMock,
+            armaSvcMock,
+            armaduraSvcMock,
+            grupoArmaSvcMock,
+            grupoArmaduraSvcMock,
             dominioSvcMock,
             deidadSvcMock,
             tipoCriaturaSvcMock
