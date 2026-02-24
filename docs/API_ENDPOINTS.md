@@ -1135,7 +1135,7 @@ Conjuros (ClaseDetalle.Conjuros)
 | Conocidos_total | boolean | Usa progresion de conocidos total |
 | Conocidos_nivel_a_nivel | boolean | Usa progresion de conocidos por nivel |
 | Dominio | boolean | Usa dominios |
-| Escuela | boolean | Usa escuela |
+| puede_elegir_especialidad | boolean | Puede elegir especialidad |
 | Lanzamiento_espontaneo | boolean | Lanza espontaneamente |
 | Clase_origen | object | { Id, Nombre } |
 | Listado | array | `ConjuroClaseRef[]` |

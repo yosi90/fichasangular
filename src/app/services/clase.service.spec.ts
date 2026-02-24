@@ -51,4 +51,26 @@ describe('ClaseService normalizeClase', () => {
 
         expect(clase.Desglose_niveles[0].Nivel_max_poder_accesible_nivel_lanzadorPsionico).toBe(-1);
     });
+
+    it('normaliza puede_elegir_especialidad desde el nuevo campo', () => {
+        const clase = normalizeClase({
+            ...crearRawClaseConNivel(crearRawNivel()),
+            Conjuros: {
+                puede_elegir_especialidad: true,
+            },
+        });
+
+        expect(clase.Conjuros.puede_elegir_especialidad).toBeTrue();
+    });
+
+    it('mantiene compatibilidad de cache con el campo legado Escuela', () => {
+        const clase = normalizeClase({
+            ...crearRawClaseConNivel(crearRawNivel()),
+            Conjuros: {
+                Escuela: 1,
+            },
+        });
+
+        expect(clase.Conjuros.puede_elegir_especialidad).toBeTrue();
+    });
 });

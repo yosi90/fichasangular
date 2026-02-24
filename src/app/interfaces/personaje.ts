@@ -285,7 +285,7 @@ export interface Personaje extends PersonajeSimple {
         Origen?: string;
     }[];
     Sortilegas: AptitudSortilega[];
-    Escuelas_prohibidas: {
+    Escuelas_prohibidas: Array<string | {
         Nombre: string;
-    }[];
+    }>;
 }

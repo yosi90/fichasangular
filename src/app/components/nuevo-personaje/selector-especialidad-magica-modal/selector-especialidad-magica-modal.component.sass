@@ -1,0 +1,93 @@
+:host
+    position: absolute
+    inset: 0
+    z-index: 62
+
+.selector-overlay
+    position: absolute
+    inset: 0
+    display: flex
+    justify-content: center
+    align-items: center
+    background: rgba(0, 0, 0, 0.65)
+    padding: 12px
+
+.selector-dialog
+    width: min(760px, 96vw)
+    max-height: 92vh
+    overflow: auto
+    background: linear-gradient(180deg, #2f3137 0%, #272a30 100%)
+    border: 1px solid #6f7683
+    border-radius: 10px
+    padding: 14px
+    display: flex
+    flex-direction: column
+    gap: 12px
+
+.selector-header
+    display: flex
+    justify-content: space-between
+    align-items: center
+    gap: 8px
+
+.selector-title
+    color: #f3f6ff
+    font-size: 1.35rem
+    font-weight: 700
+
+.selector-chip-clase
+    background: rgba(159, 179, 255, 0.16)
+    border: 1px solid rgba(159, 179, 255, 0.45)
+    color: #dce6ff
+
+.selector-bloque
+    border: 1px solid rgba(255, 255, 255, 0.2)
+    border-radius: 8px
+    padding: 10px
+    display: flex
+    flex-direction: column
+    gap: 10px
+
+.bloque-titulo
+    font-size: 1rem
+    font-weight: 700
+    color: #eff3ff
+
+.chip-estado
+    width: fit-content
+
+.chip-estado.ok
+    background: rgba(62, 146, 62, 0.25)
+    border: 1px solid rgba(104, 199, 104, 0.55)
+    color: #d2f3d2
+
+.selector-listado
+    display: grid
+    grid-template-columns: repeat(2, minmax(0, 1fr))
+    gap: 8px 10px
+
+.selector-subtitulo
+    font-size: .9rem
+    color: #dde5fa
+    grid-column: 1 / -1
+
+.selector-row
+    border: 1px solid rgba(255, 255, 255, 0.18)
+    border-radius: 7px
+    padding: 7px 10px
+    background: rgba(255, 255, 255, 0.05)
+    min-width: 0
+
+.selector-row.bloqueada
+    opacity: .65
+    background: rgba(255, 152, 102, 0.08)
+    border-color: rgba(255, 177, 132, 0.45)
+
+.selector-actions
+    display: flex
+    justify-content: flex-end
+    gap: 8px
+
+@media (max-width: 720px)
+    .selector-listado
+        grid-template-columns: 1fr

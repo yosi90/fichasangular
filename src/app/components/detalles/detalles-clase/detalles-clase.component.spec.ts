@@ -23,7 +23,7 @@ function crearClaseMock(partial?: Partial<Clase>): Clase {
             Conocidos_total: false,
             Conocidos_nivel_a_nivel: false,
             Dominio: false,
-            Escuela: false,
+            puede_elegir_especialidad: false,
             Lanzamiento_espontaneo: false,
             Clase_origen: { Id: 0, Nombre: '' },
             Listado: [],

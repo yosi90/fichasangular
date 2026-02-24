@@ -332,7 +332,7 @@ function crearClaseMock(partial?: Partial<Clase>): Clase {
             Conocidos_total: false,
             Conocidos_nivel_a_nivel: false,
             Dominio: false,
-            Escuela: false,
+            puede_elegir_especialidad: false,
             Lanzamiento_espontaneo: false,
             Clase_origen: { Id: 0, Nombre: '' },
             Listado: [],
@@ -544,6 +544,8 @@ describe('NuevoPersonajeComponent', () => {
     let alineamientoSvcMock: any;
     let claseSvcMock: any;
     let conjuroSvcMock: any;
+    let escuelaSvcMock: any;
+    let disciplinaSvcMock: any;
     let razaSvcMock: any;
     let plantillaSvcMock: any;
     let ventajaSvcMock: any;
@@ -570,6 +572,12 @@ describe('NuevoPersonajeComponent', () => {
         };
         conjuroSvcMock = {
             getConjuros: () => of([]),
+        };
+        escuelaSvcMock = {
+            getEscuelas: () => of([]),
+        };
+        disciplinaSvcMock = {
+            getDisciplinas: () => of([]),
         };
         razaSvcMock = {
             getRazas: () => of([
@@ -626,6 +634,8 @@ describe('NuevoPersonajeComponent', () => {
             alineamientoSvcMock,
             claseSvcMock,
             conjuroSvcMock,
+            escuelaSvcMock,
+            disciplinaSvcMock,
             razaSvcMock,
             plantillaSvcMock,
             ventajaSvcMock,
@@ -2198,6 +2208,153 @@ describe('NuevoPersonajeComponent', () => {
         expect(component.entradaConjurosActual?.nivelMaxPoderAccesiblePsionico).toBe(-1);
     });
 
+    it('al aplicar clase con especialidad, resuelve especialidad antes de idiomas', async () => {
+        const clase = crearClaseMock({
+            Id: 370,
+            Nombre: 'Mago',
+            Conjuros: {
+                ...crearClaseMock().Conjuros,
+                Arcanos: true,
+                puede_elegir_especialidad: true,
+            },
+        });
+        component.Personaje.ModInteligencia = 2;
+        component.catalogoClases = [clase];
+        nuevoPSvc.setCatalogoClases(component.catalogoClases);
+        (component as any).recalcularClasesVisibles();
+        component.seleccionarClaseParaAplicar(clase);
+
+        const orden: string[] = [];
+        spyOn<any>(component, 'solicitarEspecialidadMagicaClase').and.callFake(async () => {
+            orden.push('especialidad');
+            return {
+                arcana: {
+                    especializar: false,
+                    escuelaEspecialistaId: null,
+                    escuelasProhibidasIds: [],
+                },
+            };
+        });
+        spyOn(component, 'abrirSelectorIdiomasIniciales').and.callFake(async () => {
+            orden.push('idiomas');
+            return true;
+        });
+
+        await component.continuarDesdeClases();
+
+        expect(orden).toEqual(['especialidad', 'idiomas']);
+    });
+
+    it('el modal de especialidad bloquea avance hasta confirmación válida', async () => {
+        const clase = crearClaseMock({
+            Id: 371,
+            Nombre: 'Mago',
+            Conjuros: {
+                ...crearClaseMock().Conjuros,
+                Arcanos: true,
+                puede_elegir_especialidad: true,
+            },
+        });
+        component.Personaje.ModInteligencia = 2;
+        component.catalogoClases = [clase];
+        nuevoPSvc.setCatalogoClases(component.catalogoClases);
+        (component as any).recalcularClasesVisibles();
+        component.seleccionarClaseParaAplicar(clase);
+
+        let resolverEspecialidad: ((value: any) => void) | null = null;
+        spyOn<any>(component, 'solicitarEspecialidadMagicaClase').and.returnValue(
+            new Promise((resolve) => {
+                resolverEspecialidad = resolve;
+            })
+        );
+        const abrirIdiomasSpy = spyOn(component, 'abrirSelectorIdiomasIniciales').and.resolveTo(true);
+        const promise = component.continuarDesdeClases();
+        await Promise.resolve();
+
+        expect(abrirIdiomasSpy).not.toHaveBeenCalled();
+        expect(resolverEspecialidad).not.toBeNull();
+
+        if (!resolverEspecialidad)
+            fail('Resolver de especialidad no inicializado');
+
+        const resolverEspecialidadFn = resolverEspecialidad!;
+        resolverEspecialidadFn({
+            arcana: {
+                especializar: false,
+                escuelaEspecialistaId: null,
+                escuelasProhibidasIds: [],
+            },
+        });
+        await promise;
+
+        expect(abrirIdiomasSpy).toHaveBeenCalledWith(2);
+    });
+
+    it('mago puede confirmar no especializarse y continuar el flujo', async () => {
+        const clase = crearClaseMock({
+            Id: 372,
+            Nombre: 'Mago',
+            Puntos_habilidad: { Id: 1, Valor: 0 },
+            Conjuros: {
+                ...crearClaseMock().Conjuros,
+                Arcanos: true,
+                puede_elegir_especialidad: true,
+            },
+        });
+        component.catalogoClases = [clase];
+        nuevoPSvc.setCatalogoClases(component.catalogoClases);
+        (component as any).recalcularClasesVisibles();
+        component.seleccionarClaseParaAplicar(clase);
+        spyOn<any>(component, 'solicitarEspecialidadMagicaClase').and.resolveTo({
+            arcana: {
+                especializar: false,
+                escuelaEspecialistaId: null,
+                escuelasProhibidasIds: [],
+            },
+        });
+
+        await component.continuarDesdeClases();
+
+        expect(component.Personaje.Escuela_especialista.Nombre).toBe('Cualquiera');
+        expect(component.Personaje.Escuelas_prohibidas).toEqual([]);
+        expect(nuevoPSvc.EstadoFlujo.pasoActual).toBe('habilidades');
+    });
+
+    it('psiónico no continúa a idiomas si la selección de especialidad es inválida', async () => {
+        disciplinaSvcMock.getDisciplinas = () => of([
+            { Id: 1, Nombre: 'Metacreatividad', Nombre_especial: 'Metacreador', Subdisciplinas: [] },
+            { Id: 2, Nombre: 'Psicoquinesis', Nombre_especial: 'Psicoquineta', Subdisciplinas: [] },
+        ]);
+        const clase = crearClaseMock({
+            Id: 373,
+            Nombre: 'Psiónico',
+            Conjuros: {
+                ...crearClaseMock().Conjuros,
+                Psionicos: true,
+                puede_elegir_especialidad: true,
+            },
+        });
+        component.Personaje.ModInteligencia = 2;
+        component.catalogoClases = [clase];
+        nuevoPSvc.setCatalogoClases(component.catalogoClases);
+        (component as any).recalcularClasesVisibles();
+        component.seleccionarClaseParaAplicar(clase);
+
+        spyOn<any>(component, 'solicitarEspecialidadMagicaClase').and.resolveTo({
+            psionica: {
+                disciplinaEspecialistaId: null,
+                disciplinaProhibidaId: null,
+            },
+        });
+        spyOn(Swal, 'fire').and.resolveTo({ isConfirmed: true } as any);
+        const abrirIdiomasSpy = spyOn(component, 'abrirSelectorIdiomasIniciales').and.resolveTo(true);
+
+        await component.continuarDesdeClases();
+
+        expect(abrirIdiomasSpy).not.toHaveBeenCalled();
+        expect(component.Personaje.Disciplina_especialista.Nombre).toBe('Ninguna');
+    });
+
     it('si hay idiomas pendientes tras aplicar clase, abre el selector de idiomas iniciales', async () => {
         const clase = crearClaseMock({ Id: 341, Nombre: 'Explorador' });
         component.Personaje.ModInteligencia = 2;
@@ -2825,6 +2982,8 @@ describe('NuevoPersonajeComponent', () => {
             alineamientoSvcMock,
             claseSvcMock,
             conjuroSvcMock,
+            escuelaSvcMock,
+            disciplinaSvcMock,
             razaSvcMock,
             plantillaSvcMock,
             ventajaSvcMock,

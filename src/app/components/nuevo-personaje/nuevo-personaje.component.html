@@ -941,6 +941,18 @@
         </app-generador-caracteristicas-modal>
     </ng-container>
 
+    <ng-container *ngIf="modalSelectorEspecialidadMagicaAbierto">
+        <app-selector-especialidad-magica-modal
+            [titulo]="'Especialización mágica'"
+            [nombreClase]="selectorEspecialidadClaseNombre"
+            [mostrarArcano]="selectorEspecialidadRequiereArcano"
+            [mostrarPsionico]="selectorEspecialidadRequierePsionico"
+            [escuelas]="catalogoEscuelas"
+            [disciplinas]="catalogoDisciplinas"
+            (confirmar)="onConfirmarEspecialidadMagica($event)">
+        </app-selector-especialidad-magica-modal>
+    </ng-container>
+
     <ng-container *ngIf="modalSelectorIdiomaAbierto">
         <app-selector-idioma-modal
             [idiomas]="catalogoIdiomas"

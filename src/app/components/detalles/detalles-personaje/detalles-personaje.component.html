@@ -99,8 +99,8 @@
                     <p class="m-0 me-2">Especialización:</p>
                     <mat-chip class="m-1">{{pj.Escuela_especialista.Nombre}}</mat-chip>
                 </mat-chip>
-                <mat-chip class="h-auto m-1" *ngIf="pj.Escuelas_prohibidas && pj.Escuelas_prohibidas.length > 0"><p class="m-0 me-2">Escuelas prohibidas:</p>
-                    <mat-chip class="m-1" *ngFor="let e of pj.Escuelas_prohibidas">{{e}}</mat-chip>
+                <mat-chip class="h-auto m-1" *ngIf="tieneEscuelasProhibidasVisibles()"><p class="m-0 me-2">Escuelas prohibidas:</p>
+                    <mat-chip class="m-1" *ngFor="let e of getEscuelasProhibidasVisibles()">{{e}}</mat-chip>
                 </mat-chip>
                 <mat-chip class="warm m-1" *ngIf="pj.Disciplina_especialista.Nombre != 'Ninguna'">{{pj.Disciplina_especialista.Calificativo}}</mat-chip>
                 <mat-chip class="warm m-1" *ngIf="pj.Disciplina_prohibida != 'Ninguna'">{{pj.Disciplina_prohibida}}</mat-chip>

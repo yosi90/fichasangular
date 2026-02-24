@@ -2,6 +2,8 @@ import { Injectable } from '@angular/core';
 import { AptitudSortilega } from '../interfaces/aptitud-sortilega';
 import { Clase, ClaseConjuroRef, ClaseDoteNivel, ClaseEspecialNivel, ClaseNivelDetalle } from '../interfaces/clase';
 import { Conjuro } from '../interfaces/conjuro';
+import { DisciplinaConjuros } from '../interfaces/disciplina-conjuros';
+import { EscuelaConjuros } from '../interfaces/escuela-conjuros';
 import { DeidadDetalle } from '../interfaces/deidad';
 import { DominioDetalle } from '../interfaces/dominio';
 import { HabilidadBasicaDetalle, HabilidadBonoVario } from '../interfaces/habilidad';
@@ -513,6 +515,27 @@ export interface AplicacionClaseResultado {
     dominiosPendientes?: ClaseDominiosPendientes;
     aumentosClaseLanzadoraPendientes?: ClaseAumentoLanzadorPendiente[];
     especialesAplicados?: ClaseEspecialNivel[];
+}
+
+export interface EspecialidadMagicaPendiente {
+    requiereArcano: boolean;
+    requierePsionico: boolean;
+}
+
+export interface EspecialidadArcanaSeleccion {
+    especializar: boolean;
+    escuelaEspecialistaId: number | null;
+    escuelasProhibidasIds: number[];
+}
+
+export interface EspecialidadPsionicaSeleccion {
+    disciplinaEspecialistaId: number | null;
+    disciplinaProhibidaId: number | null;
+}
+
+export interface EspecialidadMagicaSeleccion {
+    arcana?: EspecialidadArcanaSeleccion;
+    psionica?: EspecialidadPsionicaSeleccion;
 }
 
 export interface AumentoCaracteristicaPendiente {
@@ -1609,6 +1632,175 @@ export class NuevoPersonajeService {
             this.agregarIdiomaABaseVentajas(idioma);
             existentes.add(nombreNorm);
         });
+    }
+
+    getEspecialidadMagicaPendiente(clase: Clase, nivelAplicado: number): EspecialidadMagicaPendiente | null {
+        const nivel = Math.max(0, Math.trunc(this.toNumber(nivelAplicado)));
+        if (nivel !== 1)
+            return null;
+        if (!this.toBooleanValue(clase?.Conjuros?.puede_elegir_especialidad))
+            return null;
+
+        const requiereArcano = !!clase?.Conjuros?.Arcanos;
+        const requierePsionico = !!clase?.Conjuros?.Psionicos;
+        if (!requiereArcano && !requierePsionico)
+            return null;
+
+        return {
+            requiereArcano,
+            requierePsionico,
+        };
+    }
+
+    aplicarEspecialidadMagicaClase(
+        clase: Clase,
+        nivelAplicado: number,
+        seleccion: EspecialidadMagicaSeleccion,
+        escuelasCatalogo: EscuelaConjuros[],
+        disciplinasCatalogo: DisciplinaConjuros[]
+    ): { aplicado: boolean; razon?: string; } {
+        const pendiente = this.getEspecialidadMagicaPendiente(clase, nivelAplicado);
+        if (!pendiente)
+            return { aplicado: true };
+
+        if (pendiente.requiereArcano) {
+            const arcana = seleccion?.arcana;
+            const especializar = this.toBooleanValue(arcana?.especializar);
+            if (!especializar) {
+                this.personajeCreacion.Escuela_especialista = {
+                    Nombre: 'Cualquiera',
+                    Calificativo: 'Cualquiera',
+                };
+                this.personajeCreacion.Escuelas_prohibidas = [];
+            } else {
+                const escuelasEspecializables = this.obtenerCatalogoEscuelasEspecializables(escuelasCatalogo);
+                const idEspecialista = Math.trunc(this.toNumber(arcana?.escuelaEspecialistaId));
+                const escuelaEspecialista = escuelasEspecializables.find((escuela) => this.toNumber(escuela?.Id) === idEspecialista);
+                if (!escuelaEspecialista) {
+                    return {
+                        aplicado: false,
+                        razon: 'Debes seleccionar una escuela válida para especializarte.',
+                    };
+                }
+
+                const escuelasProhibibles = this.obtenerCatalogoEscuelasProhibibles(escuelasCatalogo, idEspecialista);
+                const idsProhibidas = Array.from(new Set(
+                    (arcana?.escuelasProhibidasIds ?? [])
+                        .map((id) => Math.trunc(this.toNumber(id)))
+                        .filter((id) => id > 0 && id !== idEspecialista)
+                ));
+                const prohibidasSeleccionadas = escuelasProhibibles
+                    .filter((escuela) => idsProhibidas.includes(this.toNumber(escuela?.Id)));
+                const prohibidasRequeridas = this.esNombreAdivinacion(escuelaEspecialista?.Nombre ?? '') ? 1 : 2;
+                if (prohibidasSeleccionadas.length !== prohibidasRequeridas) {
+                    return {
+                        aplicado: false,
+                        razon: prohibidasRequeridas === 1
+                            ? 'Debes seleccionar exactamente 1 escuela prohibida.'
+                            : 'Debes seleccionar exactamente 2 escuelas prohibidas.',
+                    };
+                }
+
+                this.personajeCreacion.Escuela_especialista = {
+                    Nombre: `${escuelaEspecialista?.Nombre ?? ''}`.trim() || 'Cualquiera',
+                    Calificativo: `${escuelaEspecialista?.Nombre_especial ?? ''}`.trim()
+                        || `${escuelaEspecialista?.Nombre ?? ''}`.trim()
+                        || 'Cualquiera',
+                };
+                this.personajeCreacion.Escuelas_prohibidas = prohibidasSeleccionadas.map((escuela) => ({
+                    Nombre: `${escuela?.Nombre ?? ''}`.trim(),
+                }));
+            }
+        }
+
+        if (pendiente.requierePsionico) {
+            const psionica = seleccion?.psionica;
+            const disciplinasEspecializables = this.obtenerCatalogoDisciplinasEspecializables(disciplinasCatalogo);
+            const idEspecialista = Math.trunc(this.toNumber(psionica?.disciplinaEspecialistaId));
+            const idProhibida = Math.trunc(this.toNumber(psionica?.disciplinaProhibidaId));
+            const disciplinaEspecialista = disciplinasEspecializables
+                .find((disciplina) => this.toNumber(disciplina?.Id) === idEspecialista);
+            if (!disciplinaEspecialista) {
+                return {
+                    aplicado: false,
+                    razon: 'Debes seleccionar una disciplina válida para especializarte.',
+                };
+            }
+            if (idProhibida <= 0 || idProhibida === idEspecialista) {
+                return {
+                    aplicado: false,
+                    razon: 'Debes seleccionar una disciplina prohibida distinta a la especialista.',
+                };
+            }
+            const disciplinaProhibida = disciplinasEspecializables
+                .find((disciplina) => this.toNumber(disciplina?.Id) === idProhibida);
+            if (!disciplinaProhibida) {
+                return {
+                    aplicado: false,
+                    razon: 'La disciplina prohibida seleccionada no es válida.',
+                };
+            }
+
+            this.personajeCreacion.Disciplina_especialista = {
+                Nombre: `${disciplinaEspecialista?.Nombre ?? ''}`.trim() || 'Ninguna',
+                Calificativo: `${disciplinaEspecialista?.Nombre_especial ?? ''}`.trim()
+                    || `${disciplinaEspecialista?.Nombre ?? ''}`.trim()
+                    || 'Ninguna',
+            };
+            this.personajeCreacion.Disciplina_prohibida = `${disciplinaProhibida?.Nombre ?? ''}`.trim() || 'Ninguna';
+        }
+
+        return { aplicado: true };
+    }
+
+    refrescarSesionConjurosPorEspecialidad(): void {
+        if (!this.estadoFlujo.conjuros.activa)
+            return;
+
+        const entradasActuales = this.estadoFlujo.conjuros.entradas ?? [];
+        const entradasRecalculadas: ConjurosSesionStateEntrada[] = [];
+        const avisos: string[] = [];
+
+        entradasActuales.forEach((entradaActual) => {
+            const idClase = this.toNumber(entradaActual?.claseObjetivo?.id);
+            const nombreClase = `${entradaActual?.claseObjetivo?.nombre ?? ''}`.trim();
+            const claseObjetivo = this.catalogoClases.find((clase) =>
+                (idClase > 0 && this.toNumber(clase?.Id) === idClase)
+                || (nombreClase.length > 0 && this.normalizarTexto(clase?.Nombre ?? '') === this.normalizarTexto(nombreClase))
+            ) ?? null;
+
+            if (!claseObjetivo) {
+                avisos.push(`No se pudo recalcular conjuros para ${nombreClase || 'clase desconocida'}.`);
+                entradasRecalculadas.push({ ...entradaActual });
+                return;
+            }
+
+            const recalculo = this.crearEntradaSesionConjuros(
+                claseObjetivo,
+                `${entradaActual?.origen ?? ''}`.trim(),
+                this.toNumber(entradaActual?.nivelLanzadorPrevio),
+                this.toNumber(entradaActual?.nivelLanzadorActual)
+            );
+            if (!recalculo.entrada) {
+                avisos.push(...(recalculo.avisos ?? []));
+                entradasRecalculadas.push({ ...entradaActual });
+                return;
+            }
+
+            avisos.push(...(recalculo.avisos ?? []));
+            entradasRecalculadas.push(recalculo.entrada);
+        });
+
+        this.estadoFlujo.conjuros = {
+            ...this.estadoFlujo.conjuros,
+            activa: entradasRecalculadas.length > 0,
+            indiceEntradaActual: 0,
+            entradas: entradasRecalculadas,
+            avisos: [
+                ...(this.estadoFlujo.conjuros.avisos ?? []),
+                ...avisos,
+            ],
+        };
     }
 
     aplicarSiguienteNivelClase(
@@ -4149,7 +4341,7 @@ export class NuevoPersonajeService {
         );
         const escuelasProhibidas = new Set(
             (this.personajeCreacion?.Escuelas_prohibidas ?? [])
-                .map((escuela) => this.normalizarTexto(escuela?.Nombre ?? ''))
+                .map((escuela) => this.normalizarTexto(this.extraerNombreEscuelaProhibida(escuela)))
                 .filter((nombre) => nombre.length > 0)
         );
         const disciplinaProhibida = this.normalizarTexto(this.personajeCreacion?.Disciplina_prohibida ?? '');
@@ -4303,6 +4495,54 @@ export class NuevoPersonajeService {
             || !!clase?.Conjuros?.Divinos
             || !!clase?.Conjuros?.Psionicos
             || !!clase?.Conjuros?.Alma;
+    }
+
+    private obtenerCatalogoEscuelasEspecializables(escuelasCatalogo: EscuelaConjuros[]): EscuelaConjuros[] {
+        const usadas = new Set<number>();
+        return (escuelasCatalogo ?? [])
+            .filter((escuela) => this.toNumber(escuela?.Id) > 0)
+            .filter((escuela) => {
+                const id = this.toNumber(escuela?.Id);
+                if (usadas.has(id))
+                    return false;
+                usadas.add(id);
+                return true;
+            })
+            .sort((a, b) => `${a?.Nombre ?? ''}`.localeCompare(`${b?.Nombre ?? ''}`, 'es', { sensitivity: 'base' }));
+    }
+
+    private obtenerCatalogoEscuelasProhibibles(escuelasCatalogo: EscuelaConjuros[], idEspecialista: number): EscuelaConjuros[] {
+        const idEspecialistaNum = this.toNumber(idEspecialista);
+        return this.obtenerCatalogoEscuelasEspecializables(escuelasCatalogo)
+            .filter((escuela) => this.toNumber(escuela?.Id) !== idEspecialistaNum)
+            .filter((escuela) => this.toBooleanValue(escuela?.Prohibible))
+            .filter((escuela) => !this.esNombreAdivinacion(`${escuela?.Nombre ?? ''}`));
+    }
+
+    private obtenerCatalogoDisciplinasEspecializables(disciplinasCatalogo: DisciplinaConjuros[]): DisciplinaConjuros[] {
+        const usadas = new Set<number>();
+        return (disciplinasCatalogo ?? [])
+            .filter((disciplina) => this.toNumber(disciplina?.Id) > 0)
+            .filter((disciplina) => {
+                const id = this.toNumber(disciplina?.Id);
+                if (usadas.has(id))
+                    return false;
+                usadas.add(id);
+                return true;
+            })
+            .sort((a, b) => `${a?.Nombre ?? ''}`.localeCompare(`${b?.Nombre ?? ''}`, 'es', { sensitivity: 'base' }));
+    }
+
+    private esNombreAdivinacion(value: string): boolean {
+        return this.normalizarTexto(value ?? '') === 'adivinacion';
+    }
+
+    private extraerNombreEscuelaProhibida(value: string | { Nombre?: string; } | null | undefined): string {
+        if (typeof value === 'string')
+            return value;
+        if (value && typeof value === 'object')
+            return `${(value as { Nombre?: string; })?.Nombre ?? ''}`;
+        return '';
     }
 
     private resolverTipoLanzamientoClase(clase: Clase): TipoLanzamientoConjuros {

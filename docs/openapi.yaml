@@ -3201,7 +3201,7 @@ components:
             Conocidos_total: { type: boolean }
             Conocidos_nivel_a_nivel: { type: boolean }
             Dominio: { type: boolean }
-            Escuela: { type: boolean }
+            puede_elegir_especialidad: { type: boolean }
             Lanzamiento_espontaneo: { type: boolean }
             Clase_origen:
               type: object

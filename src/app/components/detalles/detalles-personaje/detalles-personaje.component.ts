@@ -619,6 +619,21 @@ Fue/Des/Con: ${this.formatSigned(madurez.modFisico)} | Int/Sab/Car: ${this.forma
         return (this.pj?.Dominios ?? []).filter(d => this.tieneTextoVisible(`${d}`));
     }
 
+    getEscuelasProhibidasVisibles(): string[] {
+        const crudas = Array.isArray(this.pj?.Escuelas_prohibidas) ? this.pj.Escuelas_prohibidas : [];
+        return crudas
+            .map((item: string | { Nombre?: string; }) => {
+                if (typeof item === 'string')
+                    return item.trim();
+                return `${item?.Nombre ?? ''}`.trim();
+            })
+            .filter((nombre) => this.tieneTextoVisible(nombre));
+    }
+
+    tieneEscuelasProhibidasVisibles(): boolean {
+        return this.getEscuelasProhibidasVisibles().length > 0;
+    }
+
     getConjurosVisibles() {
         return (this.pj?.Conjuros ?? []).filter(c => this.tieneTextoVisible(c?.Nombre));
     }

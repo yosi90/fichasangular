@@ -34,7 +34,7 @@ export interface ClaseConjurosConfig {
     Conocidos_nivel_a_nivel: boolean;
     Dominio: boolean;
     Dominio_cantidad?: number;
-    Escuela: boolean;
+    puede_elegir_especialidad: boolean;
     Lanzamiento_espontaneo: boolean;
     Clase_origen: {
         Id: number;

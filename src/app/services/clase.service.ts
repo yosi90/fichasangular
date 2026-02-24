@@ -137,7 +137,12 @@ function normalizeConjuros(raw: any): ClaseConjurosConfig {
         Conocidos_nivel_a_nivel: toBoolean(raw?.Conocidos_nivel_a_nivel),
         Dominio: toBoolean(raw?.Dominio),
         Dominio_cantidad: dominioCantidad,
-        Escuela: toBoolean(raw?.Escuela),
+        puede_elegir_especialidad: toBoolean(
+            raw?.puede_elegir_especialidad
+            ?? raw?.Puede_elegir_especialidad
+            ?? raw?.Escuela
+            ?? raw?.escuela
+        ),
         Lanzamiento_espontaneo: toBoolean(raw?.Lanzamiento_espontaneo),
         Clase_origen: {
             Id: toNumber(raw?.Clase_origen?.Id),

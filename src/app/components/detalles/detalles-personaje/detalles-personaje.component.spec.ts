@@ -343,7 +343,7 @@ describe('DetallesPersonajeComponent', () => {
                 Conocidos_total: true,
                 Conocidos_nivel_a_nivel: false,
                 Dominio: false,
-                Escuela: true,
+                puede_elegir_especialidad: true,
                 Clase_origen: { Id: 0, Nombre: '' },
                 Listado: [],
             },
@@ -446,5 +446,16 @@ describe('DetallesPersonajeComponent', () => {
         expect(`${chipPerdida.nativeElement.textContent ?? ''}`).toContain('Perdida');
         expect(`${fixture.nativeElement.textContent ?? ''}`).toContain('Constitución');
         expect(`${fixture.nativeElement.textContent ?? ''}`).toContain('13');
+    });
+
+    it('normaliza escuelas prohibidas cuando llegan como string y objeto', () => {
+        component.pj.Escuelas_prohibidas = [
+            'Evocación',
+            { Nombre: 'Ilusión' },
+            { Nombre: '  ' } as any,
+        ];
+
+        expect(component.getEscuelasProhibidasVisibles()).toEqual(['Evocación', 'Ilusión']);
+        expect(component.tieneEscuelasProhibidasVisibles()).toBeTrue();
     });
 });

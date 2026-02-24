@@ -10,8 +10,10 @@ import { DominioDetalle } from 'src/app/interfaces/dominio';
 import { GrupoCompetencia } from 'src/app/interfaces/grupo-competencia';
 import { Clase, ClaseDoteNivel, ClaseEspecialNivel } from 'src/app/interfaces/clase';
 import { Conjuro } from 'src/app/interfaces/conjuro';
+import { DisciplinaConjuros } from 'src/app/interfaces/disciplina-conjuros';
 import { Dote } from 'src/app/interfaces/dote';
 import { DoteContextual } from 'src/app/interfaces/dote-contextual';
+import { EscuelaConjuros } from 'src/app/interfaces/escuela-conjuros';
 import { HabilidadBasicaDetalle } from 'src/app/interfaces/habilidad';
 import { IdiomaDetalle } from 'src/app/interfaces/idioma';
 import { Personaje } from 'src/app/interfaces/personaje';
@@ -27,12 +29,14 @@ import { ArmaService } from 'src/app/services/arma.service';
 import { ArmaduraService } from 'src/app/services/armadura.service';
 import { ClaseService } from 'src/app/services/clase.service';
 import { ConjuroService } from 'src/app/services/conjuro.service';
+import { DisciplinaConjurosService } from 'src/app/services/disciplina-conjuros.service';
 import { DeidadService } from 'src/app/services/deidad.service';
 import { DominioService } from 'src/app/services/dominio.service';
 import { GrupoArmaService } from 'src/app/services/grupo-arma.service';
 import { GrupoArmaduraService } from 'src/app/services/grupo-armadura.service';
 import { HabilidadService } from 'src/app/services/habilidad.service';
 import { IdiomaService } from 'src/app/services/idioma.service';
+import { EscuelaConjurosService } from 'src/app/services/escuela-conjuros.service';
 import {
     AsignacionAumentoCaracteristica,
     AsignacionCaracteristicas,
@@ -42,12 +46,15 @@ import {
     ClaseDominiosPendientes,
     ClaseGrupoOpcionalPendiente,
     ConjurosSesionStateEntrada,
+    EspecialidadMagicaPendiente,
+    EspecialidadMagicaSeleccion,
     NuevoPersonajeService,
     SeleccionAumentosClaseLanzadora,
     SeleccionDominiosClase,
     SeleccionOpcionalesClase,
     StepNuevoPersonaje,
 } from 'src/app/services/nuevo-personaje.service';
+import { SelectorEspecialidadMagicaConfirmacion } from './selector-especialidad-magica-modal/selector-especialidad-magica-modal.component';
 import { PlantillaService } from 'src/app/services/plantilla.service';
 import { RazaService } from 'src/app/services/raza.service';
 import { TipoCriaturaService } from 'src/app/services/tipo-criatura.service';
@@ -244,6 +251,8 @@ export class NuevoPersonajeComponent {
     catalogoGruposArmaduras: GrupoCompetencia[] = [];
     catalogoClases: Clase[] = [];
     catalogoConjuros: Conjuro[] = [];
+    catalogoEscuelas: EscuelaConjuros[] = [];
+    catalogoDisciplinas: DisciplinaConjuros[] = [];
     catalogoDominios: DominioDetalle[] = [];
     catalogoDeidades: DeidadDetalle[] = [];
     clasesListadoFiltrado: ClaseListadoItem[] = [];
@@ -267,8 +276,12 @@ export class NuevoPersonajeComponent {
     modalSelectorIdiomaAbierto = false;
     modalSelectorDominiosAbierto = false;
     modalSelectorAumentosAbierto = false;
+    modalSelectorEspecialidadMagicaAbierto = false;
     modalSelectorRazaBaseAbierto = false;
     modalSelectorRacialesOpcionalesAbierto = false;
+    selectorEspecialidadClaseNombre = '';
+    selectorEspecialidadRequiereArcano = false;
+    selectorEspecialidadRequierePsionico = false;
     ventanaDetalleAbierta = false;
     incluirHomebrewRazaBase = false;
     private razaMutadaPendiente: Raza | null = null;
@@ -299,6 +312,7 @@ export class NuevoPersonajeComponent {
     selectorAumentosCaracteristicasPerdidas: Partial<Record<CaracteristicaAumentoKey, boolean>> = {};
     selectorAumentosTopes: Partial<Record<CaracteristicaAumentoKey, number>> = {};
     private resolverSelectorAumentos: ((completado: boolean) => void) | null = null;
+    private resolverSelectorEspecialidadMagica: ((seleccion: SelectorEspecialidadMagicaConfirmacion | null) => void) | null = null;
     selectorIdiomaTitulo = 'Seleccionar idioma extra';
     selectorIdiomaCantidadObjetivo = 0;
     selectorIdiomaCantidadSeleccionada = 0;
@@ -319,6 +333,8 @@ export class NuevoPersonajeComponent {
     private razasSub?: Subscription;
     private clasesSub?: Subscription;
     private conjurosCatalogoCargado = false;
+    private escuelasCatalogoCargado = false;
+    private disciplinasCatalogoCargado = false;
     private dominiosSub?: Subscription;
     private deidadesSub?: Subscription;
     private tiposCriaturaSub?: Subscription;
@@ -331,6 +347,8 @@ export class NuevoPersonajeComponent {
         private alineamientoSvc: AlineamientoService,
         private claseSvc: ClaseService,
         private conjuroSvc: ConjuroService,
+        private escSvc: EscuelaConjurosService,
+        private disSvc: DisciplinaConjurosService,
         private razaSvc: RazaService,
         private plantillaSvc: PlantillaService,
         private ventajaSvc: VentajaService,
@@ -1589,6 +1607,7 @@ export class NuevoPersonajeComponent {
             || this.modalSelectorIdiomaAbierto
             || this.modalSelectorDominiosAbierto
             || this.modalSelectorAumentosAbierto
+            || this.modalSelectorEspecialidadMagicaAbierto
             || this.modalSelectorRazaBaseAbierto
             || this.modalSelectorRacialesOpcionalesAbierto;
     }
@@ -2299,6 +2318,15 @@ export class NuevoPersonajeComponent {
             return;
         }
 
+        const especialidadAplicada = await this.resolverEspecialidadMagicaTrasAplicarClase(
+            seleccion.clase,
+            Number(resultado.nivelAplicado ?? 0)
+        );
+        if (!especialidadAplicada) {
+            this.recalcularClasesVisibles();
+            return;
+        }
+
         if ((resultado.advertencias ?? []).length > 0) {
             await Swal.fire({
                 icon: 'info',
@@ -2345,6 +2373,72 @@ export class NuevoPersonajeComponent {
         this.Personaje = this.nuevoPSvc.PersonajeCreacion;
         this.recalcularClasesVisibles();
         this.sincronizarTabConPaso();
+    }
+
+    private async resolverEspecialidadMagicaTrasAplicarClase(clase: Clase, nivelAplicado: number): Promise<boolean> {
+        const pendiente = this.nuevoPSvc.getEspecialidadMagicaPendiente(clase, nivelAplicado);
+        if (!pendiente)
+            return true;
+
+        await this.asegurarCatalogoEscuelas();
+        await this.asegurarCatalogoDisciplinas();
+
+        if (pendiente.requierePsionico) {
+            const disciplinasValidas = (this.catalogoDisciplinas ?? [])
+                .map((disciplina) => Number(disciplina?.Id ?? 0))
+                .filter((id) => Number.isFinite(id) && id > 0);
+            const distintas = Array.from(new Set(disciplinasValidas));
+            if (distintas.length < 2) {
+                await Swal.fire({
+                    icon: 'warning',
+                    title: 'No se puede resolver especialización psiónica',
+                    text: 'No hay suficientes disciplinas válidas para seleccionar especialista y disciplina prohibida.',
+                    showConfirmButton: true,
+                });
+                return false;
+            }
+        }
+
+        const seleccion = await this.solicitarEspecialidadMagicaClase(clase, pendiente);
+        if (!seleccion)
+            return false;
+
+        const payload: EspecialidadMagicaSeleccion = {
+            arcana: pendiente.requiereArcano
+                ? {
+                    especializar: !!seleccion?.arcana?.especializar,
+                    escuelaEspecialistaId: seleccion?.arcana?.escuelaEspecialistaId ?? null,
+                    escuelasProhibidasIds: [...(seleccion?.arcana?.escuelasProhibidasIds ?? [])],
+                }
+                : undefined,
+            psionica: pendiente.requierePsionico
+                ? {
+                    disciplinaEspecialistaId: seleccion?.psionica?.disciplinaEspecialistaId ?? null,
+                    disciplinaProhibidaId: seleccion?.psionica?.disciplinaProhibidaId ?? null,
+                }
+                : undefined,
+        };
+
+        const resultado = this.nuevoPSvc.aplicarEspecialidadMagicaClase(
+            clase,
+            nivelAplicado,
+            payload,
+            this.catalogoEscuelas,
+            this.catalogoDisciplinas
+        );
+        if (!resultado.aplicado) {
+            await Swal.fire({
+                icon: 'warning',
+                title: 'Especialización inválida',
+                text: `${resultado.razon ?? 'No se pudo aplicar la especialización seleccionada.'}`,
+                showConfirmButton: true,
+            });
+            return false;
+        }
+
+        this.nuevoPSvc.refrescarSesionConjurosPorEspecialidad();
+        this.Personaje = this.nuevoPSvc.PersonajeCreacion;
+        return true;
     }
 
     esHabilidadClaseaEfectiva(idHabilidad: number): boolean {
@@ -2711,6 +2805,38 @@ export class NuevoPersonajeComponent {
 
     onCerrarModalAumentosCaracteristica(): void {
         return;
+    }
+
+    onConfirmarEspecialidadMagica(seleccion: SelectorEspecialidadMagicaConfirmacion): void {
+        this.cerrarSelectorEspecialidadMagicaContexto(seleccion ?? null);
+    }
+
+    private solicitarEspecialidadMagicaClase(
+        clase: Clase,
+        pendiente: EspecialidadMagicaPendiente
+    ): Promise<SelectorEspecialidadMagicaConfirmacion | null> {
+        this.selectorEspecialidadClaseNombre = `${clase?.Nombre ?? ''}`.trim();
+        this.selectorEspecialidadRequiereArcano = !!pendiente?.requiereArcano;
+        this.selectorEspecialidadRequierePsionico = !!pendiente?.requierePsionico;
+        this.modalSelectorEspecialidadMagicaAbierto = true;
+
+        return new Promise<SelectorEspecialidadMagicaConfirmacion | null>((resolve) => {
+            this.resolverSelectorEspecialidadMagica = resolve;
+        });
+    }
+
+    private cerrarSelectorEspecialidadMagicaContexto(
+        resultado: SelectorEspecialidadMagicaConfirmacion | null
+    ): void {
+        this.modalSelectorEspecialidadMagicaAbierto = false;
+        this.selectorEspecialidadClaseNombre = '';
+        this.selectorEspecialidadRequiereArcano = false;
+        this.selectorEspecialidadRequierePsionico = false;
+
+        const resolver = this.resolverSelectorEspecialidadMagica;
+        this.resolverSelectorEspecialidadMagica = null;
+        if (resolver)
+            resolver(resultado);
     }
 
     private cerrarSelectorDominiosContexto(resultado: SeleccionDominiosClase | null): void {
@@ -3435,6 +3561,34 @@ export class NuevoPersonajeComponent {
             this.nuevoPSvc.setCatalogoConjuros([]);
         } finally {
             this.conjurosCatalogoCargado = true;
+        }
+    }
+
+    private async asegurarCatalogoEscuelas(): Promise<void> {
+        if (this.escuelasCatalogoCargado)
+            return;
+
+        try {
+            const escuelas = await firstValueFrom(this.escSvc.getEscuelas().pipe(take(1)));
+            this.catalogoEscuelas = escuelas ?? [];
+        } catch {
+            this.catalogoEscuelas = [];
+        } finally {
+            this.escuelasCatalogoCargado = true;
+        }
+    }
+
+    private async asegurarCatalogoDisciplinas(): Promise<void> {
+        if (this.disciplinasCatalogoCargado)
+            return;
+
+        try {
+            const disciplinas = await firstValueFrom(this.disSvc.getDisciplinas().pipe(take(1)));
+            this.catalogoDisciplinas = disciplinas ?? [];
+        } catch {
+            this.catalogoDisciplinas = [];
+        } finally {
+            this.disciplinasCatalogoCargado = true;
         }
     }
 

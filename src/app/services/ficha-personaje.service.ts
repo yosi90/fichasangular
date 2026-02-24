@@ -151,7 +151,12 @@ export class FichaPersonajeService {
             form.getTextField('escuela1').setText(`${pj.Escuela_especialista.Nombre}, eres un ${pj.Escuela_especialista.Calificativo}`);
             contador = 1;
             pj.Escuelas_prohibidas.forEach(e => {
-                form.getTextField(`escuela_pro${contador}`).setText(`${e}`);
+                const escuela = typeof e === 'string'
+                    ? `${e}`.trim()
+                    : `${e?.Nombre ?? ''}`.trim();
+                if (escuela.length < 1)
+                    return;
+                form.getTextField(`escuela_pro${contador}`).setText(escuela);
                 contador++;
             });
         }
