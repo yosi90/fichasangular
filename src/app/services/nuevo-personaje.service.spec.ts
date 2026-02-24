@@ -906,6 +906,89 @@ describe('NuevoPersonajeService (clases)', () => {
         expect(service.registrarAumentosPendientesPorProgresion('Clase 2').length).toBe(1);
     });
 
+    it('DGs de plantilla (multiplicador) cuentan para la progresion de aumentos', () => {
+        const casos = [
+            { dgsPlantilla: 3, esperado: 1 },
+            { dgsPlantilla: 6, esperado: 2 },
+        ];
+
+        casos.forEach(({ dgsPlantilla, esperado }, index) => {
+            const tipo = crearTipoBase();
+            const raza = crearRazaBase(tipo);
+            raza.Dgs_adicionales.Cantidad = 2;
+            service.seleccionarRaza(raza);
+            service.aplicarCaracteristicasGeneradas({
+                Fuerza: 14,
+                Destreza: 12,
+                Constitucion: 13,
+                Inteligencia: 10,
+                Sabiduria: 11,
+                Carisma: 9,
+            });
+            service.agregarPlantillaSeleccion({
+                Id: 950 + index,
+                Nombre: `Lic test ${index + 1}`,
+                Licantronia_dg: {
+                    Id_dado: 3,
+                    Dado: 'D8',
+                    Multiplicador: dgsPlantilla,
+                    Suma: 99,
+                },
+            } as any);
+
+            const creados = service.registrarAumentosPendientesPorProgresion('Plantillas');
+            expect(creados.length).withContext(`DGs plantilla ${dgsPlantilla}`).toBe(esperado);
+        });
+    });
+
+    it('NEP incluye DGs adicionales por multiplicador de plantillas', () => {
+        const tipo = crearTipoBase();
+        const raza = crearRazaBase(tipo);
+        raza.Ajuste_nivel = 0;
+        raza.Dgs_adicionales.Cantidad = 2;
+        service.seleccionarRaza(raza);
+        service.aplicarCaracteristicasGeneradas({
+            Fuerza: 14,
+            Destreza: 12,
+            Constitucion: 13,
+            Inteligencia: 10,
+            Sabiduria: 11,
+            Carisma: 9,
+        });
+        service.agregarPlantillaSeleccion({
+            Id: 981,
+            Nombre: 'Lic de NEP',
+            Licantronia_dg: { Id_dado: 3, Dado: 'D8', Multiplicador: 3, Suma: 4 },
+        } as any);
+
+        service.aplicarSiguienteNivelClase(claseBase);
+        expect(service.PersonajeCreacion.NEP).toBe(6);
+    });
+
+    it('suma licantrópica aporta PGs y no DGs para progresion', () => {
+        const tipo = crearTipoBase();
+        const raza = crearRazaBase(tipo);
+        raza.Dgs_adicionales.Cantidad = 2;
+        service.seleccionarRaza(raza);
+        service.aplicarCaracteristicasGeneradas({
+            Fuerza: 14,
+            Destreza: 12,
+            Constitucion: 13,
+            Inteligencia: 10,
+            Sabiduria: 11,
+            Carisma: 9,
+        });
+        service.agregarPlantillaSeleccion({
+            Id: 982,
+            Nombre: 'Lic de PGs',
+            Licantronia_dg: { Id_dado: 3, Dado: 'D8', Multiplicador: 1, Suma: 15 },
+        } as any);
+
+        const creados = service.registrarAumentosPendientesPorProgresion('Plantillas');
+        expect(creados.length).toBe(0);
+        expect(service.PersonajeCreacion.Pgs_lic).toBe(15);
+    });
+
     it('el ajuste de nivel racial y de plantillas no afecta la progresion de aumentos', () => {
         const tipo = crearTipoBase();
         const raza = crearRazaBase(tipo);
@@ -1655,6 +1738,49 @@ describe('NuevoPersonajeService (tipo y subtipos derivados)', () => {
             { Id: 11, Nombre: 'Humano' },
             { Id: 21, Nombre: 'Fuego' },
         ]);
+    });
+
+    it('plantillas confirmadas no se pueden quitar', () => {
+        const svc = new NuevoPersonajeService();
+        const tipoHumanoide = crearTipo(1, 'Humanoide');
+        svc.setCatalogoTiposCriatura([tipoHumanoide]);
+        svc.seleccionarRaza(crearRazaMock(tipoHumanoide, [{ Id: 11, Nombre: 'Humano' }]));
+
+        const plantilla = crearPlantillaMock({
+            Id: 333,
+            Nombre: 'Fijada',
+        });
+        svc.agregarPlantillaSeleccion(plantilla);
+        svc.confirmarSeleccionActualPlantillas();
+
+        svc.quitarPlantillaSeleccion(plantilla.Id);
+        expect(svc.PersonajeCreacion.Plantillas.some((p) => p.Id === plantilla.Id)).toBeTrue();
+        expect(svc.esPlantillaConfirmada(plantilla.Id)).toBeTrue();
+    });
+
+    it('limpiar selección elimina solo plantillas no confirmadas', () => {
+        const svc = new NuevoPersonajeService();
+        const tipoHumanoide = crearTipo(1, 'Humanoide');
+        svc.setCatalogoTiposCriatura([tipoHumanoide]);
+        svc.seleccionarRaza(crearRazaMock(tipoHumanoide, [{ Id: 11, Nombre: 'Humano' }]));
+
+        const plantillaFijada = crearPlantillaMock({
+            Id: 334,
+            Nombre: 'Fijada',
+        });
+        const plantillaTemporal = crearPlantillaMock({
+            Id: 335,
+            Nombre: 'Temporal',
+        });
+
+        svc.agregarPlantillaSeleccion(plantillaFijada);
+        svc.confirmarSeleccionActualPlantillas();
+        svc.agregarPlantillaSeleccion(plantillaTemporal);
+
+        svc.limpiarPlantillasSeleccion();
+        const idsRestantes = svc.PersonajeCreacion.Plantillas.map((p) => p.Id);
+        expect(idsRestantes).toContain(plantillaFijada.Id);
+        expect(idsRestantes).not.toContain(plantillaTemporal.Id);
     });
 
     it('limpiar plantillas restaura tipo y subtipos de la raza', () => {

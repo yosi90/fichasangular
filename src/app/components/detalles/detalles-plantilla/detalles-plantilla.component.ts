@@ -152,6 +152,29 @@ export class DetallesPlantillaComponent {
             && normalizado !== 'elige';
     }
 
+    getDgsOtorgadosPlantilla(): number {
+        return this.toNumber(this.plantillaData?.Licantronia_dg?.Multiplicador);
+    }
+
+    getMultiplicadorDgsPlantilla(): number {
+        return this.toNumber(this.plantillaData?.Licantronia_dg?.Multiplicador);
+    }
+
+    getSumaPgsPlantilla(): number {
+        return this.toNumber(this.plantillaData?.Licantronia_dg?.Suma);
+    }
+
+    getDadoDgsPlantilla(): string {
+        const dado = `${this.plantillaData?.Licantronia_dg?.Dado ?? ''}`.trim();
+        return this.tieneTextoVisible(dado) ? dado : '-';
+    }
+
+    tieneBloqueDgsPlantilla(): boolean {
+        return this.getDgsOtorgadosPlantilla() > 0
+            || this.getSumaPgsPlantilla() !== 0
+            || this.getDadoDgsPlantilla() !== '-';
+    }
+
     getCambiosCombateNumericos(): CambioNumerico[] {
         return [
             { etiqueta: 'Ataque base', valor: this.toNumber(this.plantillaData?.Ataque_base) },

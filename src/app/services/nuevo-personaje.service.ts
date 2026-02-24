@@ -201,6 +201,7 @@ export interface EstadoFlujoNuevoPersonaje {
 export interface PlantillasFlujoState {
     disponibles: Plantilla[];
     seleccionadas: Plantilla[];
+    confirmadasIds: number[];
     tipoCriaturaSimulada: {
         Id: number;
         Nombre: string;
@@ -405,14 +406,39 @@ export class NuevoPersonajeService {
     }
 
     quitarPlantillaSeleccion(idPlantilla: number): void {
+        const idObjetivo = this.toNumber(idPlantilla);
+        if (idObjetivo <= 0 || this.esPlantillaConfirmada(idObjetivo))
+            return;
+
         this.estadoFlujo.plantillas.seleccionadas = this.estadoFlujo.plantillas.seleccionadas
-            .filter(p => p.Id !== idPlantilla);
+            .filter((p) => this.toNumber(p.Id) !== idObjetivo);
         this.recalcularSimulacionPlantillas();
     }
 
     limpiarPlantillasSeleccion(): void {
-        this.estadoFlujo.plantillas.seleccionadas = [];
+        const idsConfirmadas = this.getIdsPlantillasConfirmadasSet();
+        this.estadoFlujo.plantillas.seleccionadas = idsConfirmadas.size < 1
+            ? []
+            : this.estadoFlujo.plantillas.seleccionadas
+                .filter((plantilla) => idsConfirmadas.has(this.toNumber(plantilla?.Id)));
         this.recalcularSimulacionPlantillas();
+    }
+
+    confirmarSeleccionActualPlantillas(): void {
+        const merged = this.getIdsPlantillasConfirmadasSet();
+        this.estadoFlujo.plantillas.seleccionadas.forEach((plantilla) => {
+            const id = this.toNumber(plantilla?.Id);
+            if (id > 0)
+                merged.add(id);
+        });
+        this.estadoFlujo.plantillas.confirmadasIds = Array.from(merged);
+    }
+
+    esPlantillaConfirmada(idPlantilla: number): boolean {
+        const idObjetivo = this.toNumber(idPlantilla);
+        if (idObjetivo <= 0)
+            return false;
+        return this.getIdsPlantillasConfirmadasSet().has(idObjetivo);
     }
 
     recalcularSimulacionPlantillas(): void {
@@ -1546,6 +1572,7 @@ export class NuevoPersonajeService {
         let armaduraNatural = this.toNumber(raza?.Armadura_natural);
         let caVarios = this.toNumber(raza?.Varios_armadura);
         let dadoGolpe = this.resolverDadoGolpeTipoActual();
+        let pgsLicantronia = 0;
 
         const hayReglasAlineamiento = seleccionadas.some((plantilla) => this.tieneRestriccionAlineamientoPlantilla(plantilla));
         if (hayReglasAlineamiento) {
@@ -1669,12 +1696,16 @@ export class NuevoPersonajeService {
             const pasoDado = this.toNumber(plantilla?.Modificacion_dg?.Id_paso_modificacion);
             if (pasoDado !== 0)
                 dadoGolpe = this.aplicarPasoDado(dadoGolpe, pasoDado);
+
+            // Regla de negocio: Suma licantrópica incrementa PGs finales, no DGs adicionales.
+            pgsLicantronia += this.toNumber(plantilla?.Licantronia_dg?.Suma);
         });
 
         this.personajeCreacion.Ataque_base = `${ataqueBase}`;
         this.personajeCreacion.Armadura_natural = armaduraNatural;
         this.personajeCreacion.Ca_varios = caVarios;
         this.personajeCreacion.Dados_golpe = dadoGolpe;
+        this.personajeCreacion.Pgs_lic = Math.max(0, pgsLicantronia);
 
         this.recalcularNepExperienciaOro(seleccionadas);
     }
@@ -2566,7 +2597,8 @@ export class NuevoPersonajeService {
         const nivelClases = (this.personajeCreacion?.desgloseClases ?? [])
             .reduce((acc, clase) => acc + this.toNumber(clase?.Nivel), 0);
         const dgsRaza = this.toNumber(raza?.Dgs_adicionales?.Cantidad);
-        const nivelEfectivo = nivelClases + ajusteRaza + ajustePlantillas + dgsRaza;
+        const dgsPlantillas = this.getDgsAdicionalesDesdePlantillas(seleccionadas);
+        const nivelEfectivo = nivelClases + ajusteRaza + ajustePlantillas + dgsRaza + dgsPlantillas;
 
         this.personajeCreacion.NEP = nivelEfectivo;
         this.personajeCreacion.Experiencia = this.calcularExperienciaPorNivel(nivelClases + ajusteRaza + ajustePlantillas);
@@ -3065,6 +3097,7 @@ export class NuevoPersonajeService {
         return {
             disponibles: [],
             seleccionadas: [],
+            confirmadasIds: [],
             tipoCriaturaSimulada: {
                 Id: this.toNumber(this.personajeCreacion?.Tipo_criatura?.Id),
                 Nombre: `${this.personajeCreacion?.Tipo_criatura?.Nombre ?? '-'}`,
@@ -3072,6 +3105,19 @@ export class NuevoPersonajeService {
             licantropiaActiva: false,
             heredadaActiva: false,
         };
+    }
+
+    private getIdsPlantillasConfirmadasSet(): Set<number> {
+        return new Set(
+            (this.estadoFlujo?.plantillas?.confirmadasIds ?? [])
+                .map((id) => this.toNumber(id))
+                .filter((id) => id > 0)
+        );
+    }
+
+    private getDgsAdicionalesDesdePlantillas(plantillas: Plantilla[] | null | undefined): number {
+        return (plantillas ?? [])
+            .reduce((acc, plantilla) => acc + this.toNumber(plantilla?.Licantronia_dg?.Multiplicador), 0);
     }
 
     private crearVentajasFlujoBase(): VentajasFlujoState {
@@ -3230,7 +3276,8 @@ export class NuevoPersonajeService {
         const nivelClases = (this.personajeCreacion?.desgloseClases ?? [])
             .reduce((acc, clase) => acc + this.toNumber(clase?.Nivel), 0);
         const dgsRaza = this.toNumber(this.razaSeleccionada?.Dgs_adicionales?.Cantidad);
-        return Math.max(0, nivelClases + dgsRaza);
+        const dgsPlantillas = this.getDgsAdicionalesDesdePlantillas(this.estadoFlujo.plantillas.seleccionadas);
+        return Math.max(0, nivelClases + dgsRaza + dgsPlantillas);
     }
 
     private crearPendienteAumento(valor: number, origen: string, descripcion: string): AumentoCaracteristicaPendiente {

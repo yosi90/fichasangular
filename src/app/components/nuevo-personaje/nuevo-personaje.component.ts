@@ -396,6 +396,11 @@ export class NuevoPersonajeComponent {
         return this.flujo.plantillas.seleccionadas;
     }
 
+    get puedeLimpiarSeleccionPlantillas(): boolean {
+        return this.plantillasSeleccionadas
+            .some((plantilla) => !this.esPlantillaConfirmada(plantilla));
+    }
+
     get tipoCriaturaSimuladaTexto(): string {
         return `${this.Personaje?.Tipo_criatura?.Nombre ?? this.flujo.plantillas.tipoCriaturaSimulada.Nombre ?? '-'}`;
     }
@@ -1829,6 +1834,21 @@ export class NuevoPersonajeComponent {
         this.recalcularClasesVisibles();
     }
 
+    getEtiquetaDgsAdicionalesPlantilla(plantilla: Plantilla): string {
+        const mult = Number(plantilla?.Licantronia_dg?.Multiplicador ?? 0);
+        const dado = `${plantilla?.Licantronia_dg?.Dado ?? ''}`.trim().toUpperCase();
+        if (!Number.isFinite(mult) || mult <= 0 || dado.length < 1)
+            return '';
+
+        const suma = Number(plantilla?.Licantronia_dg?.Suma ?? 0);
+        const sumaTxt = Number.isFinite(suma) && suma >= 0 ? `+${suma}` : `${suma}`;
+        return `${mult}${dado}${sumaTxt} PGs`;
+    }
+
+    esPlantillaConfirmada(plantilla: Plantilla): boolean {
+        return this.nuevoPSvc.esPlantillaConfirmada(Number(plantilla?.Id));
+    }
+
     quitarPlantillaSeleccion(idPlantilla: number): void {
         this.nuevoPSvc.quitarPlantillaSeleccion(idPlantilla);
         this.recalcularPlantillasVisibles();
@@ -1841,12 +1861,20 @@ export class NuevoPersonajeComponent {
         this.recalcularClasesVisibles();
     }
 
-    continuarDesdePlantillas(): void {
+    async continuarDesdePlantillas(): Promise<void> {
         if (!this.caracteristicasGeneradas) {
             return;
         }
 
+        this.nuevoPSvc.registrarAumentosPendientesPorProgresion('Plantillas confirmadas');
+        const aumentosCompletados = await this.abrirSelectorAumentosCaracteristica();
+        if (!aumentosCompletados)
+            return;
+
+        this.nuevoPSvc.confirmarSeleccionActualPlantillas();
         this.nuevoPSvc.actualizarPasoActual('ventajas');
+        this.recalcularPlantillasVisibles();
+        this.recalcularClasesVisibles();
         this.inicializarControlHomebrewVentajasSiAplica();
         this.sincronizarTabConPaso();
     }

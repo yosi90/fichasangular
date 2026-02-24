@@ -22,8 +22,9 @@
                 <mat-icon class="me-2">badge</mat-icon>
                 Básicos
             </ng-template>
-            <div class="container-fluid h-100 py-2 basicos-view" *ngIf="razaSeleccionada as raza; else sinRazaSeleccionada">
-                <div class="row basicos-content">
+            <div class="container-fluid h-100 py-2 basicos-view tab-frame" *ngIf="razaSeleccionada as raza; else sinRazaSeleccionada">
+                <div class="tab-scroll basicos-scroll">
+                    <div class="row basicos-content">
                     <div class="col-md-4 col-12 p-2 basicos-col">
                         <div class="sombra-caja-sm rounded p-2 my-2 seccion-form">
                             <mat-chip class="h-auto w-100 sombra-caja-sm py-2 m-1 mb-3">
@@ -184,7 +185,8 @@
                         </div>
                     </div>
                 </div>
-                <div class="basicos-action-fixed">
+                </div>
+                <div class="tab-footer basicos-action-bar">
                     <button mat-raised-button color="primary" [disabled]="!puedeContinuarBasicos" (click)="continuarDesdeBasicos()">
                         Siguiente
                         <mat-icon>arrow_forward</mat-icon>
@@ -205,8 +207,8 @@
                 Plantillas
             </ng-template>
             <div class="container-fluid py-3 h-100">
-                <mat-card class="h-100 sombra-caja-sm plantillas-skeleton" *ngIf="mostrarBloquePlantillas; else bloqueoPlantillas">
-                    <mat-card-content class="px-3 py-2 d-flex flex-column gap-2 plantillas-layout">
+                <mat-card class="h-100 sombra-caja-sm plantillas-skeleton tab-frame" *ngIf="mostrarBloquePlantillas; else bloqueoPlantillas">
+                    <div class="tab-head px-3 pt-2">
                         <div class="plantillas-filtros">
                             <mat-form-field appearance="fill" class="w-100">
                                 <mat-label>Buscar plantilla</mat-label>
@@ -224,7 +226,9 @@
                                 {{incluirHomebrewPlantillasEfectivo ? 'Homebrew incluido' : 'Incluir homebrew'}}
                             </mat-chip-option>
                         </div>
+                    </div>
 
+                    <mat-card-content class="px-3 py-2 d-flex flex-column gap-2 plantillas-layout tab-scroll">
                         <div class="row g-2 plantillas-zonas">
                             <div class="col-md-7 col-12">
                                 <div class="sombra-caja-sm rounded p-2 h-100">
@@ -240,6 +244,7 @@
                                             (click)="seleccionarPlantilla(plantilla)">
                                             {{plantilla.Nombre}}
                                             <mat-chip class="m-1" *ngIf="plantilla.Ajuste_nivel > 0">Ajuste +{{plantilla.Ajuste_nivel}}</mat-chip>
+                                            <mat-chip class="m-1" *ngIf="getEtiquetaDgsAdicionalesPlantilla(plantilla) as etiquetaDgs">{{etiquetaDgs}}</mat-chip>
                                             <mat-chip class="m-1" *ngIf="plantilla.Nacimiento">Heredada</mat-chip>
                                             <mat-chip class="m-1" *ngIf="!plantilla.Oficial">Homebrew</mat-chip>
                                             <button mat-icon-button class="plantilla-detalle-btn"
@@ -297,18 +302,22 @@
                                     <mat-chip-set class="m-1" *ngIf="plantillasSeleccionadas.length > 0">
                                         <mat-chip *ngFor="let plantilla of plantillasSeleccionadas" class="h-auto sombra3d-sm chip-seleccionada">
                                             {{plantilla.Nombre}}
+                                            <mat-chip class="m-1" *ngIf="esPlantillaConfirmada(plantilla)">Fijada</mat-chip>
                                             <button mat-icon-button class="plantilla-detalle-btn"
                                                 (click)="verDetallesPlantilla(plantilla); $event.stopPropagation()"
                                                 aria-label="Ver detalle de plantilla" matTooltip="Ver detalles">
                                                 <mat-icon>open_in_new</mat-icon>
                                             </button>
-                                            <button mat-icon-button class="ms-1" (click)="quitarPlantillaSeleccion(plantilla.Id)" aria-label="Quitar plantilla">
+                                            <button mat-icon-button class="ms-1" (click)="quitarPlantillaSeleccion(plantilla.Id)"
+                                                [disabled]="esPlantillaConfirmada(plantilla)"
+                                                [matTooltip]="esPlantillaConfirmada(plantilla) ? 'Plantilla fijada en una vuelta anterior' : ''"
+                                                aria-label="Quitar plantilla">
                                                 <mat-icon>close</mat-icon>
                                             </button>
                                         </mat-chip>
                                     </mat-chip-set>
                                     <div class="d-flex justify-content-end">
-                                        <button mat-stroked-button color="warn" (click)="limpiarSeleccionPlantillas()" [disabled]="plantillasSeleccionadas.length < 1">
+                                        <button mat-stroked-button color="warn" (click)="limpiarSeleccionPlantillas()" [disabled]="!puedeLimpiarSeleccionPlantillas">
                                             Limpiar seleccion
                                         </button>
                                     </div>
@@ -316,12 +325,12 @@
                             </div>
                         </div>
                     </mat-card-content>
-                    <mat-card-actions class="d-flex justify-content-end p-3">
+                    <div class="tab-footer p-3">
                         <button mat-raised-button color="primary" (click)="continuarDesdePlantillas()">
                             Siguiente
                             <mat-icon>arrow_forward</mat-icon>
                         </button>
-                    </mat-card-actions>
+                    </div>
                 </mat-card>
                 <ng-template #bloqueoPlantillas>
                     <div class="d-flex justify-content-center align-items-center h-100 w-100 px-3">
@@ -336,7 +345,8 @@
                 Ventajas y desventajas
             </ng-template>
             <div class="container-fluid py-3 h-100 ventajas-view">
-                <mat-card class="h-100 sombra-caja-sm p-2 d-flex flex-column gap-2">
+                <mat-card class="h-100 sombra-caja-sm p-2 d-flex flex-column gap-2 tab-frame">
+                    <div class="tab-head d-flex flex-column gap-2">
                     <mat-chip class="w-100 h-auto warm homebrew-banner">
                         <span class="homebrew-banner-text">Sistema homebrew: solo con permiso del máster. Tu personaje no será oficial.</span>
                         <button type="button" class="homebrew-help-chip" (click)="abrirInfoVentajasHomebrew($event)"
@@ -362,8 +372,10 @@
                             Tienes déficit de puntos de ventaja. Añade desventajas o quita ventajas para continuar.
                         </mat-chip>
                     </div>
+                    </div>
 
-                    <div class="row g-2 ventajas-listados">
+                    <div class="tab-scroll">
+                        <div class="row g-2 ventajas-listados">
                         <div class="col-lg-6 col-12">
                             <div class="sombra-caja-sm rounded p-2 h-100">
                                 <mat-chip class="w-100 sombra-caja-sm mb-2">Desventajas</mat-chip>
@@ -447,8 +459,9 @@
                             </div>
                         </div>
                     </div>
+                    </div>
 
-                    <div class="d-flex justify-content-end p-2">
+                    <div class="tab-footer p-2">
                         <button mat-raised-button color="primary" [disabled]="!puedeContinuarVentajas" (click)="continuarDesdeVentajas()">
                             Siguiente
                             <mat-icon>arrow_forward</mat-icon>
@@ -463,7 +476,8 @@
                 Clases
             </ng-template>
             <div class="container-fluid py-3 h-100 clases-view">
-                <mat-card class="h-100 sombra-caja-sm p-2 d-flex flex-column gap-2">
+                <mat-card class="h-100 sombra-caja-sm p-2 d-flex flex-column gap-2 tab-frame">
+                    <div class="tab-head">
                     <div class="clases-filtros">
                         <mat-form-field appearance="fill">
                             <mat-label>Buscar clase</mat-label>
@@ -510,7 +524,9 @@
                             {{incluirHomebrewClasesEfectivo ? 'Homebrew incluido' : 'Incluir homebrew'}}
                         </mat-chip-option>
                     </div>
+                    </div>
 
+                    <div class="tab-scroll">
                     <div class="clases-resultados">
                         <div *ngIf="cargandoClases" class="text-center p-3 clases-placeholder">
                             <mat-chip>Cargando clases...</mat-chip>
@@ -618,8 +634,9 @@
                             </table>
                         </div>
                     </div>
+                    </div>
 
-                    <div class="clases-acciones">
+                    <div class="tab-footer clases-acciones">
                         <button mat-raised-button color="primary" [disabled]="!puedeAplicarClaseSeleccionada" (click)="continuarDesdeClases()">
                             Siguiente
                             <mat-icon>arrow_forward</mat-icon>

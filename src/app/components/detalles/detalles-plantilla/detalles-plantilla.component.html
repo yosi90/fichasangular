@@ -19,6 +19,13 @@
                     Tipo de dado
                     <mat-chip class="sombra3d-sm m-1">{{plantillaData.Tipo_dado.Nombre}}</mat-chip>
                 </mat-chip>
+                <mat-chip class="h-auto chip-anidada sombra3d-sm m-1" *ngIf="tieneBloqueDgsPlantilla()">
+                    DGs adicionales
+                    <mat-chip class="sombra3d-sm m-1">DGs otorgados {{getDgsOtorgadosPlantilla()}}</mat-chip>
+                    <mat-chip class="sombra3d-sm m-1">Multiplicador {{getMultiplicadorDgsPlantilla()}}</mat-chip>
+                    <mat-chip class="sombra3d-sm m-1">Dado {{getDadoDgsPlantilla()}}</mat-chip>
+                    <mat-chip class="sombra3d-sm m-1">Suma PGs {{getSigno(getSumaPgsPlantilla())}}</mat-chip>
+                </mat-chip>
                 <mat-chip class="h-auto chip-anidada sombra3d-sm m-1" *ngIf="getSubtiposActivos().length > 0">
                     Subtipos
                     <mat-chip class="chip-clic sombra3d-sm m-1" *ngFor="let subtipo of getSubtiposActivos()"

@@ -2,6 +2,7 @@ import Swal from 'sweetalert2';
 import { Campana } from 'src/app/interfaces/campaña';
 import { Clase } from 'src/app/interfaces/clase';
 import { DeidadDetalle } from 'src/app/interfaces/deidad';
+import { Plantilla } from 'src/app/interfaces/plantilla';
 import { Raza } from 'src/app/interfaces/raza';
 import { VentajaDetalle } from 'src/app/interfaces/ventaja';
 import { AsignacionCaracteristicas, NuevoPersonajeService } from 'src/app/services/nuevo-personaje.service';
@@ -401,6 +402,79 @@ function crearClaseMock(partial?: Partial<Clase>): Clase {
             raza: [],
             no_raza: [],
         },
+        ...partial,
+    };
+}
+
+function crearPlantillaMock(partial?: Partial<Plantilla>): Plantilla {
+    return {
+        Id: 1,
+        Nombre: 'Plantilla mock',
+        Descripcion: '',
+        Manual: { Id: 1, Nombre: 'Manual base', Pagina: 10 },
+        Tamano: { Id: 0, Nombre: '-', Modificador: 0, Modificador_presa: 0 },
+        Tipo_dado: { Id_tipo_dado: 0, Nombre: 'Elegir' },
+        Actualiza_dg: false,
+        Modificacion_dg: { Id_paso_modificacion: 0, Nombre: 'No modifica' },
+        Modificacion_tamano: { Id_paso_modificacion: 0, Nombre: 'No modifica' },
+        Iniciativa: 0,
+        Velocidades: '',
+        Ca: '',
+        Ataque_base: 0,
+        Presa: 0,
+        Ataques: '',
+        Ataque_completo: '',
+        Reduccion_dano: '',
+        Resistencia_conjuros: '',
+        Resistencia_elemental: '',
+        Fortaleza: 0,
+        Reflejos: 0,
+        Voluntad: 0,
+        Modificadores_caracteristicas: { Fuerza: 0, Destreza: 0, Constitucion: 0, Inteligencia: 0, Sabiduria: 0, Carisma: 0 },
+        Minimos_caracteristicas: { Fuerza: 0, Destreza: 0, Constitucion: 0, Inteligencia: 0, Sabiduria: 0, Carisma: 0 },
+        Ajuste_nivel: 0,
+        Licantronia_dg: { Id_dado: 3, Dado: 'D8', Multiplicador: 0, Suma: 0 },
+        Cd: 0,
+        Puntos_habilidad: { Suma: 0, Suma_fija: 0 },
+        Nacimiento: false,
+        Movimientos: { Correr: 0, Nadar: 0, Volar: 0, Trepar: 0, Escalar: 0 },
+        Maniobrabilidad: {
+            Id: 0,
+            Nombre: '-',
+            Velocidad_avance: '',
+            Flotar: 0,
+            Volar_atras: 0,
+            Contramarcha: 0,
+            Giro: '',
+            Rotacion: '',
+            Giro_max: '',
+            Angulo_ascenso: '',
+            Velocidad_ascenso: '',
+            Angulo_descenso: '',
+            Descenso_ascenso: 0,
+        },
+        Alineamiento: {
+            Id: 0,
+            Basico: { Id_basico: 0, Nombre: 'No aplica' },
+            Ley: { Id_ley: 0, Nombre: 'No aplica' },
+            Moral: { Id_moral: 0, Nombre: 'No aplica' },
+            Prioridad: { Id_prioridad: 0, Nombre: 'No aplica' },
+            Descripcion: '',
+        },
+        Oficial: true,
+        Dotes: [],
+        Subtipos: [],
+        Habilidades: [],
+        Sortilegas: [],
+        Prerrequisitos_flags: {},
+        Prerrequisitos: {
+            actitud_requerido: [],
+            actitud_prohibido: [],
+            alineamiento_requerido: [],
+            caracteristica: [],
+            criaturas_compatibles: [],
+        },
+        Compatibilidad_tipos: [],
         ...partial,
     };
 }
@@ -1179,9 +1253,82 @@ describe('NuevoPersonajeComponent', () => {
             Sabiduria: 10,
             Carisma: 8,
         });
-        component.continuarDesdePlantillas();
+        await component.continuarDesdePlantillas();
         expect(nuevoPSvc.EstadoFlujo.pasoActual).toBe('ventajas');
         expect(component.selectedInternalTabIndex).toBe(3);
+    });
+
+    it('al salir de plantillas, DGs por plantilla pueden disparar selector de aumentos', async () => {
+        const razaConDgs = crearRazaMock();
+        razaConDgs.Dgs_adicionales.Cantidad = 2;
+        component.seleccionarRaza(razaConDgs);
+        await component.finalizarGeneracionCaracteristicas({
+            Fuerza: 14,
+            Destreza: 15,
+            Constitucion: 13,
+            Inteligencia: 12,
+            Sabiduria: 10,
+            Carisma: 8,
+        });
+        const plantillaLic = crearPlantillaMock({
+            Id: 800,
+            Nombre: 'Lic de test',
+            Licantronia_dg: { Id_dado: 3, Dado: 'D8', Multiplicador: 3, Suma: 4 },
+        });
+        component.seleccionarPlantilla(plantillaLic);
+        const abrirAumentosSpy = spyOn<any>(component, 'abrirSelectorAumentosCaracteristica').and.resolveTo(true);
+
+        await component.continuarDesdePlantillas();
+
+        expect(abrirAumentosSpy).toHaveBeenCalled();
+        expect(nuevoPSvc.esPlantillaConfirmada(plantillaLic.Id)).toBeTrue();
+        expect(nuevoPSvc.EstadoFlujo.pasoActual).toBe('ventajas');
+    });
+
+    it('tras confirmar plantillas, las confirmadas quedan inmutables', async () => {
+        await component.finalizarGeneracionCaracteristicas({
+            Fuerza: 14,
+            Destreza: 15,
+            Constitucion: 13,
+            Inteligencia: 12,
+            Sabiduria: 10,
+            Carisma: 8,
+        });
+        const plantillaFijada = crearPlantillaMock({ Id: 801, Nombre: 'Fijada' });
+        component.seleccionarPlantilla(plantillaFijada);
+        spyOn<any>(component, 'abrirSelectorAumentosCaracteristica').and.resolveTo(true);
+
+        await component.continuarDesdePlantillas();
+        component.quitarPlantillaSeleccion(plantillaFijada.Id);
+
+        expect(component.plantillasSeleccionadas.some((p) => p.Id === plantillaFijada.Id)).toBeTrue();
+        expect(component.esPlantillaConfirmada(plantillaFijada)).toBeTrue();
+    });
+
+    it('en vueltas posteriores solo limpia plantillas nuevas no confirmadas', async () => {
+        await component.finalizarGeneracionCaracteristicas({
+            Fuerza: 14,
+            Destreza: 15,
+            Constitucion: 13,
+            Inteligencia: 12,
+            Sabiduria: 10,
+            Carisma: 8,
+        });
+        const plantillaFijada = crearPlantillaMock({ Id: 802, Nombre: 'Fijada' });
+        component.seleccionarPlantilla(plantillaFijada);
+        spyOn<any>(component, 'abrirSelectorAumentosCaracteristica').and.resolveTo(true);
+        await component.continuarDesdePlantillas();
+
+        const plantillaNuevaA = crearPlantillaMock({ Id: 803, Nombre: 'Nueva A' });
+        const plantillaNuevaB = crearPlantillaMock({ Id: 804, Nombre: 'Nueva B' });
+        component.seleccionarPlantilla(plantillaNuevaA);
+        component.seleccionarPlantilla(plantillaNuevaB);
+
+        component.limpiarSeleccionPlantillas();
+        const ids = component.plantillasSeleccionadas.map((p) => p.Id);
+        expect(ids).toContain(plantillaFijada.Id);
+        expect(ids).not.toContain(plantillaNuevaA.Id);
+        expect(ids).not.toContain(plantillaNuevaB.Id);
     });
 
     it('continuarDesdeVentajas avanza al paso clases', () => {
