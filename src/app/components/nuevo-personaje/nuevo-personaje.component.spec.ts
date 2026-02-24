@@ -1044,6 +1044,39 @@ describe('NuevoPersonajeComponent', () => {
         expect(component.Personaje.Oficial).toBeTrue();
     });
 
+    it('selector de deidad muestra listado completo y conserva No tener deidad como primera opción', () => {
+        component.Personaje.Deidad = component.deidadSinSeleccion;
+
+        const deidades = component.deidadesFiltradas;
+        expect(deidades[0]).toBe(component.deidadSinSeleccion);
+        expect(deidades).toContain('Heironeous');
+        expect(deidades).toContain('Gruumsh');
+        expect(deidades).toContain('St. Cuthbert');
+    });
+
+    it('onDeidadChange normaliza vacío a No tener deidad', () => {
+        component.Personaje.Deidad = '';
+
+        component.onDeidadChange();
+
+        expect(component.Personaje.Deidad).toBe(component.deidadSinSeleccion);
+    });
+
+    it('onDeidadChange mantiene la deidad seleccionada', () => {
+        component.Personaje.Deidad = 'Gruumsh';
+
+        component.onDeidadChange();
+
+        expect(component.Personaje.Deidad).toBe('Gruumsh');
+    });
+
+    it('si existe una deidad custom en el personaje, también aparece en el selector', () => {
+        component.Personaje.Deidad = 'Dios inventado';
+
+        const deidades = component.deidadesFiltradas;
+        expect(deidades).toContain('Dios inventado');
+    });
+
     it('recalcularOficialidad pone false con contradicciones de manual', () => {
         component.Personaje.Peso = 999;
         component.recalcularOficialidad();
@@ -2562,6 +2595,86 @@ describe('NuevoPersonajeComponent', () => {
 
         expect(doteSpy).toHaveBeenCalled();
         expect(especialSpy).toHaveBeenCalledWith('Furia marcial');
+    });
+
+    it('calcula salvaciones de siguiente nivel como delta y conserva +0 en el texto', () => {
+        const claseConSalvaciones = crearClaseMock({
+            Id: 374,
+            Nombre: 'Defensor',
+            Desglose_niveles: [{
+                Nivel: 1,
+                Ataque_base: '+1',
+                Salvaciones: { Fortaleza: '+2', Reflejos: '+0', Voluntad: '+0' },
+                Nivel_max_poder_accesible_nivel_lanzadorPsionico: -1,
+                Reserva_psionica: 0,
+                Aumentos_clase_lanzadora: [],
+                Conjuros_diarios: crearConjurosDiariosMock(),
+                Conjuros_conocidos_nivel_a_nivel: {},
+                Conjuros_conocidos_total: 0,
+                Dotes: [],
+                Especiales: [],
+            }],
+        });
+
+        component.catalogoClases = [claseConSalvaciones];
+        nuevoPSvc.setCatalogoClases(component.catalogoClases);
+        (component as any).recalcularClasesVisibles();
+
+        const fila = component.clasesListadoFiltrado[0];
+        expect(fila.salvacionesDelta).toEqual({
+            fortaleza: 2,
+            reflejos: 0,
+            voluntad: 0,
+        });
+        expect(component.getTextoSalvacionesDeltaClase(fila)).toBe('Fort +2 | Ref +0 | Vol +0');
+    });
+
+    it('calcula delta de salvaciones respecto al nivel anterior cuando la clase ya está elegida', () => {
+        const claseConDosNiveles = crearClaseMock({
+            Id: 375,
+            Nombre: 'Custodio',
+            Desglose_niveles: [
+                {
+                    Nivel: 1,
+                    Ataque_base: '+1',
+                    Salvaciones: { Fortaleza: '+2', Reflejos: '+0', Voluntad: '+0' },
+                    Nivel_max_poder_accesible_nivel_lanzadorPsionico: -1,
+                    Reserva_psionica: 0,
+                    Aumentos_clase_lanzadora: [],
+                    Conjuros_diarios: crearConjurosDiariosMock(),
+                    Conjuros_conocidos_nivel_a_nivel: {},
+                    Conjuros_conocidos_total: 0,
+                    Dotes: [],
+                    Especiales: [],
+                },
+                {
+                    Nivel: 2,
+                    Ataque_base: '+2',
+                    Salvaciones: { Fortaleza: '+3', Reflejos: '+1', Voluntad: '+0' },
+                    Nivel_max_poder_accesible_nivel_lanzadorPsionico: -1,
+                    Reserva_psionica: 0,
+                    Aumentos_clase_lanzadora: [],
+                    Conjuros_diarios: crearConjurosDiariosMock(),
+                    Conjuros_conocidos_nivel_a_nivel: {},
+                    Conjuros_conocidos_total: 0,
+                    Dotes: [],
+                    Especiales: [],
+                },
+            ],
+        });
+        component.Personaje.desgloseClases = [{ Nombre: 'Custodio', Nivel: 1 }];
+        component.catalogoClases = [claseConDosNiveles];
+        nuevoPSvc.setCatalogoClases(component.catalogoClases);
+        (component as any).recalcularClasesVisibles();
+
+        const fila = component.clasesListadoFiltrado[0];
+        expect(fila.siguienteNivel).toBe(2);
+        expect(fila.salvacionesDelta).toEqual({
+            fortaleza: 1,
+            reflejos: 1,
+            voluntad: 0,
+        });
+        expect(component.getTextoSalvacionesDeltaClase(fila)).toBe('Fort +1 | Ref +1 | Vol +0');
     });
 
     it('oculta no aplica y filtra beneficios con extra +0 o 0 en la tabla de clases', () => {

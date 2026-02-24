@@ -150,6 +150,58 @@ const FILAS_TIRADAS = MAX_TIRADA - MIN_TIRADA + 1;
 const GENERADOR_CONFIG_STORAGE_KEY = 'fichas35.nuevoPersonaje.generador.config.v1';
 const MAX_VENTAJAS_SELECCIONABLES = 3;
 const DADOS_PROGRESION = [4, 6, 8, 10, 12];
+const CARGA_PESADA_BASE_POR_FUERZA: Record<number, number> = {
+    1: 3,
+    2: 6,
+    3: 10,
+    4: 13,
+    5: 16,
+    6: 20,
+    7: 23,
+    8: 26,
+    9: 30,
+    10: 33,
+    11: 38,
+    12: 43,
+    13: 50,
+    14: 58,
+    15: 66,
+    16: 76,
+    17: 86,
+    18: 100,
+    19: 116,
+    20: 133,
+    21: 153,
+    22: 173,
+    23: 200,
+    24: 233,
+    25: 266,
+    26: 306,
+    27: 346,
+    28: 400,
+    29: 466,
+    30: 533,
+    31: 613,
+    32: 693,
+    33: 800,
+    34: 933,
+    35: 1066,
+    36: 1233,
+    37: 1400,
+    38: 1600,
+    39: 1866,
+};
+const CARGA_MULTIPLICADOR_BIPEDO_POR_MOD_PRESA: Record<number, number> = {
+    [-16]: 0.125,
+    [-12]: 0.25,
+    [-8]: 0.5,
+    [-4]: 0.75,
+    [0]: 1,
+    [4]: 2,
+    [8]: 4,
+    [12]: 8,
+    [16]: 16,
+};
 const EXTRA_IDIOMAS_INICIALES = 0;
 const GENERADOR_AUTO_Q4_THRESHOLD = 1;
 const GENERADOR_AUTO_CON_FLOOR = 1;
@@ -693,6 +745,11 @@ export class NuevoPersonajeService {
 
     get EstadoFlujo(): EstadoFlujoNuevoPersonaje {
         return this.estadoFlujo;
+    }
+
+    refrescarDerivadasPreviewNuevoPersonaje(): void {
+        this.recalcularDerivadasPorCaracteristicas();
+        this.recalcularDerivadasEconomiaYProgresion();
     }
 
     async sincronizarConfigGeneradorDesdeCuenta(): Promise<void> {
@@ -1583,8 +1640,7 @@ export class NuevoPersonajeService {
             this.setModCaracteristica(key, this.calcularModificador(final));
         });
 
-        this.recalcularDefensasYPresa();
-        this.actualizarModsHabilidadesPorCaracteristica();
+        this.recalcularDerivadasPorCaracteristicas();
         this.sincronizarAliasConstitucionPerdida();
         this.estadoFlujo.ventajas.baseCaracteristicas = null;
         this.sincronizarBaseVentajasDesdePersonaje();
@@ -1875,6 +1931,7 @@ export class NuevoPersonajeService {
 
         this.actualizarDesgloseClase(clase.Nombre, siguienteNivel);
         this.aplicarDeltaAtaqueBaseClase(clase.Nombre, siguienteNivel, detalleSiguiente, detalleAnterior);
+        this.recalcularDerivadasPorCombate();
         this.aplicarDeltaSalvacionesClase(clase.Nombre, siguienteNivel, detalleSiguiente, detalleAnterior);
 
         if (siguienteNivel === 1) {
@@ -1912,7 +1969,7 @@ export class NuevoPersonajeService {
             resolucionAumentosClaseLanzadora.selecciones,
             resolucionAumentosClaseLanzadora.advertencias
         );
-        this.recalcularNepExperienciaOro();
+        this.recalcularDerivadasEconomiaYProgresion();
 
         return {
             aplicado: true,
@@ -2416,7 +2473,7 @@ export class NuevoPersonajeService {
         this.estadoFlujo.pasoActual = 'plantillas';
         this.estadoFlujo.ventajas.baseCaracteristicas = null;
         this.sincronizarBaseVentajasDesdePersonaje();
-        this.actualizarModsHabilidadesPorCaracteristica();
+        this.recalcularDerivadasPorCaracteristicas();
         this.recalcularEfectosVentajas();
         return true;
     }
@@ -2545,7 +2602,7 @@ export class NuevoPersonajeService {
             this.setValorCaracteristica(key, final);
             this.setModCaracteristica(key, perdida ? 0 : this.calcularModificador(final));
         });
-        this.recalcularDefensasYPresa();
+        this.recalcularDerivadasPorCaracteristicas();
         this.sincronizarAliasConstitucionPerdida();
     }
 
@@ -2598,6 +2655,88 @@ export class NuevoPersonajeService {
             registrar('reflejos');
         if (detalle.Voluntad)
             registrar('voluntad');
+    }
+
+    private aplicarSalvacionesRaza(raza: Raza | null): void {
+        const nombreRaza = `${raza?.Nombre ?? 'Raza'}`.trim() || 'Raza';
+        const registrar = (tipo: SalvacionKey, valor: number, origen: string) => {
+            if (!Number.isFinite(valor) || valor === 0)
+                return;
+            this.personajeCreacion.Salvaciones[tipo].modsVarios.push({
+                valor,
+                origen,
+            });
+        };
+
+        registrar('fortaleza', this.toNumber(raza?.Dgs_adicionales?.Fortaleza), `${nombreRaza} DG racial`);
+        registrar('reflejos', this.toNumber(raza?.Dgs_adicionales?.Reflejos), `${nombreRaza} DG racial`);
+        registrar('voluntad', this.toNumber(raza?.Dgs_adicionales?.Voluntad), `${nombreRaza} DG racial`);
+
+        const racialesRaw = raza?.Raciales;
+        const raciales = Array.isArray(racialesRaw)
+            ? racialesRaw
+            : (racialesRaw && typeof racialesRaw === 'object' ? Object.values(racialesRaw as any) : []);
+        raciales.forEach((racial: any) => {
+            const nombreRacial = `${racial?.Nombre ?? racial?.nombre ?? 'Racial'}`.trim() || 'Racial';
+            const origen = `${nombreRaza} - ${nombreRacial}`;
+            const salvaciones = Array.isArray(racial?.Salvaciones)
+                ? racial.Salvaciones
+                : (racial?.Salvaciones && typeof racial.Salvaciones === 'object'
+                    ? Object.values(racial.Salvaciones as any)
+                    : []);
+
+            salvaciones.forEach((item: any) => {
+                const tipo = this.resolverTipoSalvacionRacial(item);
+                const valor = this.resolverValorSalvacionRacial(item);
+                if (!tipo || valor === null || valor === 0)
+                    return;
+                registrar(tipo, valor, origen);
+            });
+        });
+    }
+
+    private resolverTipoSalvacionRacial(item: any): SalvacionKey | null {
+        const raw = `${item?.Salvacion ?? item?.salvacion ?? item?.Nombre ?? item?.nombre ?? item?.Tipo ?? item?.tipo ?? ''}`.trim();
+        const normalizado = this.normalizarTexto(raw);
+        if (normalizado.length < 1)
+            return null;
+        if (normalizado.includes('fort') || normalizado.includes('fortitude'))
+            return 'fortaleza';
+        if (normalizado.includes('ref') || normalizado.includes('reflex'))
+            return 'reflejos';
+        if (normalizado.includes('vol') || normalizado.includes('will'))
+            return 'voluntad';
+        return null;
+    }
+
+    private resolverValorSalvacionRacial(item: any): number | null {
+        const candidatos = [
+            item?.Valor,
+            item?.valor,
+            item?.Cantidad,
+            item?.cantidad,
+            item?.Modificador,
+            item?.modificador,
+            item?.Mejora,
+            item?.mejora,
+        ];
+
+        for (const candidato of candidatos) {
+            const directo = Number(candidato);
+            if (Number.isFinite(directo))
+                return directo;
+
+            if (typeof candidato === 'string') {
+                const match = candidato.match(/[+-]?\d+/);
+                if (match && match[0]) {
+                    const parsed = Number(match[0]);
+                    if (Number.isFinite(parsed))
+                        return parsed;
+                }
+            }
+        }
+
+        return null;
     }
 
     private aplicarModificadorIniciativa(detalle: VentajaDetalle, origen: string): void {
@@ -2773,6 +2912,7 @@ export class NuevoPersonajeService {
             });
         }
         this.aplicarHabilidadesOtorgadasPorRaza(raza, bonosHabilidades);
+        this.aplicarSalvacionesRaza(raza);
 
         const ataqueClases = this.calcularAtaqueBaseDesdeClases();
         let ataqueBase = this.toNumber(raza?.Dgs_adicionales?.Ataque_base) + ataqueClases;
@@ -2914,7 +3054,7 @@ export class NuevoPersonajeService {
         this.personajeCreacion.Dados_golpe = dadoGolpe;
         this.personajeCreacion.Pgs_lic = Math.max(0, pgsLicantronia);
 
-        this.recalcularNepExperienciaOro(seleccionadas);
+        this.recalcularDerivadasEconomiaYProgresion(seleccionadas);
     }
 
     private esHabilidadClaseaParaSesion(habilidad: Personaje['Habilidades'][number]): boolean {
@@ -4898,6 +5038,20 @@ export class NuevoPersonajeService {
         this.personajeCreacion.Oro_inicial = this.calcularOroPorNep(nivelEfectivo);
     }
 
+    private recalcularDerivadasPorCaracteristicas(): void {
+        this.recalcularDerivadasPorCombate();
+        this.recalcularCapacidadCarga();
+        this.actualizarModsHabilidadesPorCaracteristica();
+    }
+
+    private recalcularDerivadasPorCombate(): void {
+        this.recalcularDefensasYPresa();
+    }
+
+    private recalcularDerivadasEconomiaYProgresion(plantillasSeleccionadas?: Plantilla[]): void {
+        this.recalcularNepExperienciaOro(plantillasSeleccionadas);
+    }
+
     private esTextoReglaValido(valor: string): boolean {
         const normalizado = this.normalizarTexto(valor);
         if (normalizado.length < 1)
@@ -4993,6 +5147,64 @@ export class NuevoPersonajeService {
         if (valorNep <= 20)
             return tabla[valorNep] || 0;
         return Math.round(760000 * (1.3 * (valorNep - 20)));
+    }
+
+    private recalcularCapacidadCarga(): void {
+        const fuerza = Math.max(0, Math.trunc(this.toNumber(this.personajeCreacion?.Fuerza)));
+        const pesadaBase = this.calcularCargaPesadaPorFuerza(fuerza);
+        const multiplicadorTamano = this.obtenerMultiplicadorCargaBipedoPorTamano();
+        const pesada = Math.max(0, Math.floor(pesadaBase * multiplicadorTamano));
+        const media = Math.max(0, Math.floor((pesada * 2) / 3));
+        const ligera = Math.max(0, Math.floor(pesada / 3));
+
+        this.personajeCreacion.Capacidad_carga = {
+            Ligera: ligera,
+            Media: media,
+            Pesada: pesada,
+        };
+    }
+
+    private calcularCargaPesadaPorFuerza(fuerza: number): number {
+        const valorFuerza = Math.max(0, Math.trunc(this.toNumber(fuerza)));
+        if (valorFuerza <= 0)
+            return 0;
+
+        if (valorFuerza <= 39)
+            return CARGA_PESADA_BASE_POR_FUERZA[valorFuerza] ?? 0;
+
+        let fuerzaBase = valorFuerza;
+        let factor = 1;
+        while (fuerzaBase > 39) {
+            fuerzaBase -= 10;
+            factor *= 4;
+        }
+        const cargaBase = CARGA_PESADA_BASE_POR_FUERZA[fuerzaBase] ?? 0;
+        return Math.floor(cargaBase * factor);
+    }
+
+    private obtenerMultiplicadorCargaBipedoPorTamano(): number {
+        const modPresa = this.toNumber(this.personajeCreacion?.Raza?.Tamano?.Modificador_presa);
+        if (Object.prototype.hasOwnProperty.call(CARGA_MULTIPLICADOR_BIPEDO_POR_MOD_PRESA, modPresa))
+            return CARGA_MULTIPLICADOR_BIPEDO_POR_MOD_PRESA[modPresa];
+
+        const nombreTamano = this.normalizarTexto(this.personajeCreacion?.Raza?.Tamano?.Nombre ?? '');
+        if (nombreTamano.includes('colosal'))
+            return 16;
+        if (nombreTamano.includes('gargantuesc'))
+            return 8;
+        if (nombreTamano.includes('enorme') || nombreTamano.includes('huge'))
+            return 4;
+        if (nombreTamano.includes('grande') || nombreTamano.includes('large'))
+            return 2;
+        if (nombreTamano.includes('pequeno') || nombreTamano.includes('small'))
+            return 0.75;
+        if (nombreTamano.includes('diminuto') || nombreTamano.includes('diminutive'))
+            return 0.25;
+        if (nombreTamano.includes('minusculo') || nombreTamano.includes('tiny'))
+            return 0.5;
+        if (nombreTamano.includes('menudo') || nombreTamano.includes('fine'))
+            return 0.125;
+        return 1;
     }
 
     private obtenerMinimoCaracteristicaPorPlantillas(key: CaracteristicaKey): number {

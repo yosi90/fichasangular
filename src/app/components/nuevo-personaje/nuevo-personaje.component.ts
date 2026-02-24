@@ -156,6 +156,12 @@ interface ClaseBeneficioRenderGrupoItem {
 
 type ClaseBeneficioRenderItem = ClaseBeneficioRenderSimpleItem | ClaseBeneficioRenderGrupoItem;
 
+interface ClaseSalvacionesDeltaItem {
+    fortaleza: number;
+    reflejos: number;
+    voluntad: number;
+}
+
 const EXTRA_PENDIENTE_PLACEHOLDERS = new Set([
     '-',
     'no aplica',
@@ -183,6 +189,7 @@ interface ClaseListadoItem {
     clase: Clase;
     evaluacion: ClaseEvaluacionResultado;
     siguienteNivel: number;
+    salvacionesDelta: ClaseSalvacionesDeltaItem;
     elegida: boolean;
     puedeAplicarse: boolean;
     bloqueoSoloAlineamiento: boolean;
@@ -366,7 +373,9 @@ export class NuevoPersonajeComponent {
     }
 
     ngOnInit(): void {
+        this.nuevoPSvc.refrescarDerivadasPreviewNuevoPersonaje();
         this.Personaje = this.nuevoPSvc.PersonajeCreacion;
+        this.normalizarDeidadSeleccionada();
         this.nuevoPSvc.sincronizarConfigGeneradorDesdeCuenta().catch(() => undefined);
         this.normalizarAlineamientoSeleccionado();
         this.sincronizarTabConPaso();
@@ -730,7 +739,6 @@ export class NuevoPersonajeComponent {
     }
 
     get deidadesFiltradas(): string[] {
-        const texto = this.normalizarTexto(this.Personaje.Deidad ?? '');
         const candidatas = this.catalogoDeidades
             .filter((deidad) => `${deidad?.Nombre ?? ''}`.trim().length > 0)
             .filter((deidad) => this.personajeNoOficial || deidad?.Oficial !== false)
@@ -742,7 +750,6 @@ export class NuevoPersonajeComponent {
                 ),
                 oficial: deidad.Oficial !== false,
             }))
-            .filter((item) => texto.length < 1 || this.normalizarTexto(item.nombre).includes(texto))
             .sort((a, b) => {
                 const distA = Number.isFinite(a.distancia) ? Number(a.distancia) : 99;
                 const distB = Number.isFinite(b.distancia) ? Number(b.distancia) : 99;
@@ -753,8 +760,14 @@ export class NuevoPersonajeComponent {
                 return a.nombre.localeCompare(b.nombre, 'es', { sensitivity: 'base' });
             })
             .map((item) => item.nombre);
-
-        return [this.deidadSinSeleccion, ...candidatas];
+        const lista = [this.deidadSinSeleccion, ...candidatas];
+        const deidadActual = `${this.Personaje.Deidad ?? ''}`.trim();
+        if (deidadActual.length > 0) {
+            const existe = lista.some((item) => this.normalizarTexto(item) === this.normalizarTexto(deidadActual));
+            if (!existe)
+                lista.push(deidadActual);
+        }
+        return lista;
     }
 
     get alineamientosDisponibles(): string[] {
@@ -1384,6 +1397,7 @@ export class NuevoPersonajeComponent {
         this.recalcularOficialidad();
 
         if (this.isVentanaDetalleHabilitada()) {
+            this.nuevoPSvc.refrescarDerivadasPreviewNuevoPersonaje();
             this.ventanaDetalleAbierta = true;
         }
         this.limpiarFocoActivoAntesDeModal();
@@ -1567,6 +1581,11 @@ export class NuevoPersonajeComponent {
         active.blur();
     }
 
+    private normalizarDeidadSeleccionada(): void {
+        const deidad = `${this.Personaje?.Deidad ?? ''}`.trim();
+        this.Personaje.Deidad = deidad.length > 0 ? deidad : this.deidadSinSeleccion;
+    }
+
     private resetHardAlignmentOverride(): void {
         this.hardAlignmentOverrideConfirmed = false;
     }
@@ -1578,9 +1597,7 @@ export class NuevoPersonajeComponent {
     }
 
     onDeidadChange(): void {
-        const deidad = `${this.Personaje.Deidad ?? ''}`.trim();
-        if (deidad.length < 1)
-            this.Personaje.Deidad = this.deidadSinSeleccion;
+        this.normalizarDeidadSeleccionada();
         this.resetHardAlignmentOverride();
         this.recalcularOficialidad();
     }
@@ -2095,6 +2112,7 @@ export class NuevoPersonajeComponent {
             return;
 
         this.Personaje = this.nuevoPSvc.PersonajeCreacion;
+        this.normalizarDeidadSeleccionada();
         this.cerrarSelectorRacialesOpcionalesContexto();
         this.ventanaDetalleAbierta = false;
         this.resetHardAlignmentOverride();
@@ -3716,6 +3734,7 @@ export class NuevoPersonajeComponent {
                 clase,
                 evaluacion,
                 siguienteNivel,
+                salvacionesDelta: this.getSalvacionesDeltaSiguienteNivelClase(clase, nivelActual, siguienteNivel),
                 elegida: nivelActual > 0,
                 puedeAplicarse,
                 bloqueoSoloAlineamiento,
@@ -3811,13 +3830,67 @@ export class NuevoPersonajeComponent {
         return roles;
     }
 
-    private getDetalleNivelClase(clase: Clase, nivel: number): { Dotes: ClaseDoteNivel[]; Especiales: ClaseEspecialNivel[]; } | null {
+    getTextoSalvacionesDeltaClase(item: ClaseListadoItem): string {
+        return `Fort ${this.formatSignedDeltaClase(item.salvacionesDelta.fortaleza)} | `
+            + `Ref ${this.formatSignedDeltaClase(item.salvacionesDelta.reflejos)} | `
+            + `Vol ${this.formatSignedDeltaClase(item.salvacionesDelta.voluntad)}`;
+    }
+
+    formatSignedDeltaClase(value: number): string {
+        return value >= 0 ? `+${value}` : `${value}`;
+    }
+
+    private getSalvacionesDeltaSiguienteNivelClase(clase: Clase, nivelActual: number, siguienteNivel: number): ClaseSalvacionesDeltaItem {
+        const detalleSiguiente = this.getDetalleNivelClase(clase, siguienteNivel);
+        if (!detalleSiguiente) {
+            return {
+                fortaleza: 0,
+                reflejos: 0,
+                voluntad: 0,
+            };
+        }
+
+        const detalleAnterior = nivelActual > 0
+            ? this.getDetalleNivelClase(clase, nivelActual)
+            : null;
+        const fortaleza = this.parseValorSalvacionClase(detalleSiguiente.Salvaciones?.Fortaleza)
+            - this.parseValorSalvacionClase(detalleAnterior?.Salvaciones?.Fortaleza);
+        const reflejos = this.parseValorSalvacionClase(detalleSiguiente.Salvaciones?.Reflejos)
+            - this.parseValorSalvacionClase(detalleAnterior?.Salvaciones?.Reflejos);
+        const voluntad = this.parseValorSalvacionClase(detalleSiguiente.Salvaciones?.Voluntad)
+            - this.parseValorSalvacionClase(detalleAnterior?.Salvaciones?.Voluntad);
+
+        return {
+            fortaleza,
+            reflejos,
+            voluntad,
+        };
+    }
+
+    private parseValorSalvacionClase(texto: string | null | undefined): number {
+        const raw = `${texto ?? ''}`;
+        const match = raw.match(/[+-]?\d+/);
+        if (!match || !match[0])
+            return 0;
+        const parsed = Number(match[0]);
+        return Number.isFinite(parsed) ? parsed : 0;
+    }
+
+    private getDetalleNivelClase(
+        clase: Clase,
+        nivel: number
+    ): { Dotes: ClaseDoteNivel[]; Especiales: ClaseEspecialNivel[]; Salvaciones: { Fortaleza: string; Reflejos: string; Voluntad: string; }; } | null {
         const detalle = (clase?.Desglose_niveles ?? []).find((item) => Number(item?.Nivel ?? 0) === Number(nivel));
         if (!detalle)
             return null;
         return {
             Dotes: detalle.Dotes ?? [],
             Especiales: detalle.Especiales ?? [],
+            Salvaciones: {
+                Fortaleza: `${detalle?.Salvaciones?.Fortaleza ?? ''}`,
+                Reflejos: `${detalle?.Salvaciones?.Reflejos ?? ''}`,
+                Voluntad: `${detalle?.Salvaciones?.Voluntad ?? ''}`,
+            },
         };
     }
 
@@ -4167,7 +4240,7 @@ export class NuevoPersonajeComponent {
             ];
             return {
                 estado: 'incompatible',
-                etiqueta: 'No compatible',
+                etiqueta: 'Incompatible',
                 tooltip: mensajes.join(' | '),
                 prioridad,
                 requiereConfirmacion: true,

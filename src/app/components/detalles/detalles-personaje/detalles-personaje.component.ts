@@ -1,4 +1,4 @@
-import { AfterViewInit, Component, ElementRef, EventEmitter, HostListener, Input, OnDestroy, OnInit, Output } from '@angular/core';
+import { AfterViewInit, Component, DoCheck, ElementRef, EventEmitter, HostListener, Input, OnDestroy, OnInit, Output } from '@angular/core';
 import { AptitudSortilega } from 'src/app/interfaces/aptitud-sortilega';
 import { Clase } from 'src/app/interfaces/clase';
 import { Conjuro } from 'src/app/interfaces/conjuro';
@@ -29,11 +29,13 @@ interface VentajaVisible {
     templateUrl: './detalles-personaje.component.html',
     styleUrls: ['./detalles-personaje.component.sass']
 })
-export class DetallesPersonajeComponent implements OnInit, AfterViewInit, OnDestroy {
+export class DetallesPersonajeComponent implements OnInit, AfterViewInit, OnDestroy, DoCheck {
     @Input() pj!: Personaje;
     @Input() clasesCatalogo: Clase[] = [];
     @Input() mostrarBotonGenerarPdf = true;
     @Input() modoOcultarFaltantes = true;
+    @Input() esPreviewNuevoPersonaje = false;
+    @Input() caracteristicasConfirmadas = false;
     modoCompactoLayout = false;
     private resizeObserver: ResizeObserver | null = null;
     nivelPersonaje = 0;
@@ -76,42 +78,18 @@ export class DetallesPersonajeComponent implements OnInit, AfterViewInit, OnDest
         if(this.pj.Habilidades)
             this.Habilidades = this.pj.Habilidades.filter(h => h.Rangos + h.Rangos_varios > 0 || h.Varios != "");
         this.nivelPersonaje = this.getNivelPersonaje();
-        this.iniciativa = `${this.pj.ModDestreza}`;
-        if(this.pj.Iniciativa_varios){
-            const ini_v = this.pj.Iniciativa_varios.reduce((c, v) => c + v.Valor, 0);
-            this.iniciativa = ini_v > 0 ? ` +${ini_v}` : ` ${ini_v}`;
-        }
-        this.presa = `${this.pj.Presa}`;
-        if(this.pj.Presa_varios){
-            const pr_v = this.pj.Presa_varios.reduce((c, v) => c + v.Valor, 0);
-            this.presa = pr_v > 0 ? ` +${pr_v}` : ` ${pr_v}`;
-        }
-        this.fortaleza = this.sumarMods(this.pj.Salvaciones?.fortaleza?.modsClaseos);
-        this.fortaleza_origenes = (this.pj.Salvaciones?.fortaleza?.modsClaseos ?? []).filter(m => m.origen != "" && m.origen != "Placeholder").map(m => m.origen).join(', ') ?? "";
-        this.fortaleza_varios = this.sumarMods(this.pj.Salvaciones?.fortaleza?.modsVarios);
-        this.fortaleza_varios_origenes = (this.pj.Salvaciones?.fortaleza?.modsVarios ?? []).filter(m => m.origen != "" && m.origen != "Placeholder").map(m => m.origen).join(', ') ?? "";
-        this.reflejos = this.sumarMods(this.pj.Salvaciones?.reflejos?.modsClaseos);
-        this.reflejos_origenes = (this.pj.Salvaciones?.reflejos?.modsClaseos ?? []).filter(m => m.origen != "" && m.origen != "Placeholder").map(m => m.origen).join(', ') ?? "";
-        this.reflejos_varios = this.sumarMods(this.pj.Salvaciones?.reflejos?.modsVarios);
-        this.reflejos_varios_origenes = (this.pj.Salvaciones?.reflejos?.modsVarios ?? []).filter(m => m.origen != "" && m.origen != "Placeholder").map(m => m.origen).join(', ') ?? "";
-        this.voluntad = this.sumarMods(this.pj.Salvaciones?.voluntad?.modsClaseos);
-        this.voluntad_origenes = (this.pj.Salvaciones?.voluntad?.modsClaseos ?? []).filter(m => m.origen != "" && m.origen != "Placeholder").map(m => m.origen).join(', ') ?? "";
-        this.voluntad_varios = this.sumarMods(this.pj.Salvaciones?.voluntad?.modsVarios);
-        this.voluntad_varios_origenes = (this.pj.Salvaciones?.voluntad?.modsVarios ?? []).filter(m => m.origen != "" && m.origen != "Placeholder").map(m => m.origen).join(', ') ?? "";
-        this.cLigera = `${parseFloat((this.pj.Capacidad_carga.Ligera * 0.453592).toFixed(2))} Kilogramos`;
-        this.cMedia = `${parseFloat((this.pj.Capacidad_carga.Media * 0.453592).toFixed(2))} Kilogramos`;
-        const carga_pesada = parseFloat((this.pj.Capacidad_carga.Pesada * 0.453592).toFixed(2));
-        this.cPesada = `
-        ${carga_pesada} Kilogramos
-        Levantar sobre la cabeza: ${this.pj.Capacidad_carga.Pesada} (${carga_pesada}KG)
-        Levantar del suelo: ${this.pj.Capacidad_carga.Pesada * 2} (${(carga_pesada * 2).toFixed(2)}KG)
-        Empujar/Arrastrar: ${this.pj.Capacidad_carga.Pesada * 5} (${(carga_pesada * 5).toFixed(2)}KG)
-        `;
+        this.actualizarValoresDerivadosVisuales();
+        this.actualizarResumenSalvaciones();
         this.caDisclaimer = `
         Armadura natural: ${this.pj.Armadura_natural > 0 ? this.pj.Armadura_natural : '0'}
         Desvio: ${this.pj.Ca_desvio > 0 ? this.pj.Ca_desvio : '0'}
         Varios: ${this.pj.Ca_varios > 0 ? this.pj.Ca_varios : '0'}
         `;
+    }
+
+    ngDoCheck(): void {
+        this.actualizarValoresDerivadosVisuales();
+        this.actualizarResumenSalvaciones();
     }
 
     ngAfterViewInit(): void {
@@ -221,6 +199,8 @@ export class DetallesPersonajeComponent implements OnInit, AfterViewInit, OnDest
     }
 
     tieneExpVisible(): boolean {
+        if (this.esPreviewNuevoPersonaje && this.tieneContextoNepParaPreview())
+            return true;
         return this.tieneNumeroVisible(this.pj?.Experiencia);
     }
 
@@ -245,6 +225,8 @@ export class DetallesPersonajeComponent implements OnInit, AfterViewInit, OnDest
     }
 
     tieneOroVisible(): boolean {
+        if (this.esPreviewNuevoPersonaje && this.tieneContextoNepParaPreview())
+            return true;
         return this.tieneNumeroVisible(this.pj?.Oro_inicial);
     }
 
@@ -273,6 +255,8 @@ export class DetallesPersonajeComponent implements OnInit, AfterViewInit, OnDest
     }
 
     tieneIniciativaVisible(): boolean {
+        if (this.esPreviewNuevoPersonaje && this.tieneCaracteristicasParaPreview())
+            return true;
         return this.tieneNumeroNoCero(this.iniciativa);
     }
 
@@ -285,9 +269,19 @@ export class DetallesPersonajeComponent implements OnInit, AfterViewInit, OnDest
     }
 
     tieneCapacidadCargaVisible(): boolean {
+        if (this.esPreviewNuevoPersonaje && this.tieneCaracteristicasParaPreview())
+            return true;
         return this.tieneNumeroVisible(this.pj?.Capacidad_carga?.Ligera)
             || this.tieneNumeroVisible(this.pj?.Capacidad_carga?.Media)
             || this.tieneNumeroVisible(this.pj?.Capacidad_carga?.Pesada);
+    }
+
+    tieneValorCargaVisible(valor: number | string | null | undefined): boolean {
+        if (this.esPreviewNuevoPersonaje && this.tieneCaracteristicasParaPreview()) {
+            const parsed = Number(valor);
+            return Number.isFinite(parsed);
+        }
+        return this.tieneNumeroVisible(valor);
     }
 
     tieneEdadVisible(): boolean {
@@ -493,12 +487,7 @@ Fue/Des/Con: ${this.formatSigned(madurez.modFisico)} | Int/Sab/Car: ${this.forma
     }
 
     tieneBloqueSalvacionesVisible(): boolean {
-        return this.fortaleza > 0
-            || this.reflejos > 0
-            || this.voluntad > 0
-            || this.fortaleza_varios > 0
-            || this.reflejos_varios > 0
-            || this.voluntad_varios > 0;
+        return true;
     }
 
     tieneCaracteristicasVisibles(): boolean {
@@ -615,8 +604,91 @@ Fue/Des/Con: ${this.formatSigned(madurez.modFisico)} | Int/Sab/Car: ${this.forma
         return (this.pj?.Idiomas ?? []).filter(i => this.tieneTextoVisible(i?.Nombre));
     }
 
-    getDominiosVisibles() {
-        return (this.pj?.Dominios ?? []).filter(d => this.tieneTextoVisible(`${d}`));
+    getDominiosVisibles(): string[] {
+        const fuente = this.toArray((this.pj as any)?.Dominios);
+        return fuente
+            .map((dominio: string | Record<string, any>) => {
+                if (typeof dominio === 'string')
+                    return dominio.trim();
+
+                return `${dominio?.['Nombre'] ?? dominio?.['nombre'] ?? dominio?.['N'] ?? dominio?.['n'] ?? ''}`.trim();
+            })
+            .filter((nombre) => this.tieneTextoVisible(nombre));
+    }
+
+    private actualizarValoresDerivadosVisuales(): void {
+        const iniciativaTotal = this.toNumber(this.pj?.ModDestreza)
+            + (this.pj?.Iniciativa_varios ?? []).reduce((c, v) => c + this.toNumber(v?.Valor), 0);
+        this.iniciativa = this.formatSigned(iniciativaTotal);
+
+        const presaTotal = this.toNumber(this.pj?.Presa);
+        this.presa = this.formatSigned(presaTotal);
+
+        const ligera = this.toNumber(this.pj?.Capacidad_carga?.Ligera);
+        const media = this.toNumber(this.pj?.Capacidad_carga?.Media);
+        const pesada = this.toNumber(this.pj?.Capacidad_carga?.Pesada);
+        this.cLigera = `${parseFloat((ligera * 0.453592).toFixed(2))} Kilogramos`;
+        this.cMedia = `${parseFloat((media * 0.453592).toFixed(2))} Kilogramos`;
+        const cargaPesadaKg = parseFloat((pesada * 0.453592).toFixed(2));
+        this.cPesada = `
+        ${cargaPesadaKg} Kilogramos
+        Levantar sobre la cabeza: ${pesada} (${cargaPesadaKg}KG)
+        Levantar del suelo: ${pesada * 2} (${(cargaPesadaKg * 2).toFixed(2)}KG)
+        Empujar/Arrastrar: ${pesada * 5} (${(cargaPesadaKg * 5).toFixed(2)}KG)
+        `;
+    }
+
+    private actualizarResumenSalvaciones(): void {
+        this.fortaleza = this.sumarMods(this.pj?.Salvaciones?.fortaleza?.modsClaseos);
+        this.fortaleza_origenes = (this.pj?.Salvaciones?.fortaleza?.modsClaseos ?? [])
+            .filter(m => m.origen != "" && m.origen != "Placeholder")
+            .map(m => m.origen)
+            .join(', ') ?? "";
+        this.fortaleza_varios = this.sumarMods(this.pj?.Salvaciones?.fortaleza?.modsVarios);
+        this.fortaleza_varios_origenes = (this.pj?.Salvaciones?.fortaleza?.modsVarios ?? [])
+            .filter(m => m.origen != "" && m.origen != "Placeholder")
+            .map(m => m.origen)
+            .join(', ') ?? "";
+
+        this.reflejos = this.sumarMods(this.pj?.Salvaciones?.reflejos?.modsClaseos);
+        this.reflejos_origenes = (this.pj?.Salvaciones?.reflejos?.modsClaseos ?? [])
+            .filter(m => m.origen != "" && m.origen != "Placeholder")
+            .map(m => m.origen)
+            .join(', ') ?? "";
+        this.reflejos_varios = this.sumarMods(this.pj?.Salvaciones?.reflejos?.modsVarios);
+        this.reflejos_varios_origenes = (this.pj?.Salvaciones?.reflejos?.modsVarios ?? [])
+            .filter(m => m.origen != "" && m.origen != "Placeholder")
+            .map(m => m.origen)
+            .join(', ') ?? "";
+
+        this.voluntad = this.sumarMods(this.pj?.Salvaciones?.voluntad?.modsClaseos);
+        this.voluntad_origenes = (this.pj?.Salvaciones?.voluntad?.modsClaseos ?? [])
+            .filter(m => m.origen != "" && m.origen != "Placeholder")
+            .map(m => m.origen)
+            .join(', ') ?? "";
+        this.voluntad_varios = this.sumarMods(this.pj?.Salvaciones?.voluntad?.modsVarios);
+        this.voluntad_varios_origenes = (this.pj?.Salvaciones?.voluntad?.modsVarios ?? [])
+            .filter(m => m.origen != "" && m.origen != "Placeholder")
+            .map(m => m.origen)
+            .join(', ') ?? "";
+    }
+
+    private tieneContextoNepParaPreview(): boolean {
+        if (!this.esPreviewNuevoPersonaje)
+            return false;
+
+        const nivelClases = (this.pj?.desgloseClases ?? []).reduce((acc, clase) => acc + this.toNumber(clase?.Nivel), 0);
+        const ajusteRaza = this.toNumber(this.pj?.Raza?.Ajuste_nivel);
+        const ajustePlantillas = (this.pj?.Plantillas ?? [])
+            .reduce((acc, plantilla) => acc + this.toNumber(plantilla?.Ajuste_nivel), 0);
+        const dgsRaza = this.toNumber(this.pj?.Raza?.Dgs_adicionales?.Cantidad);
+        const dgsPlantillas = (this.pj?.Plantillas ?? [])
+            .reduce((acc, plantilla) => acc + this.toNumber(plantilla?.Multiplicador_dgs_lic), 0);
+        return nivelClases > 0 || ajusteRaza > 0 || ajustePlantillas > 0 || dgsRaza > 0 || dgsPlantillas > 0;
+    }
+
+    private tieneCaracteristicasParaPreview(): boolean {
+        return this.caracteristicasConfirmadas || this.tieneCaracteristicasVisibles();
     }
 
     getEscuelasProhibidasVisibles(): string[] {

@@ -1084,11 +1084,227 @@ describe('NuevoPersonajeService (clases)', () => {
         expect(service.PersonajeCreacion.Salvaciones.fortaleza.modsClaseos[1].valor).toBe(1);
     });
 
+    it('agrega salvaciones de raza desde DG y raciales', () => {
+        const tipo = crearTipoBase();
+        const razaConSalvaciones = crearRazaBase(tipo);
+        razaConSalvaciones.Dgs_adicionales.Fortaleza = 1;
+        razaConSalvaciones.Dgs_adicionales.Reflejos = 2;
+        razaConSalvaciones.Dgs_adicionales.Voluntad = -1;
+        razaConSalvaciones.Raciales = [
+            {
+                Id: 501,
+                Nombre: 'Sangre antigua',
+                Descripcion: '',
+                Origen: '',
+                Opcional: 0,
+                Dotes: [],
+                Habilidades: { Base: [], Custom: [] },
+                Caracteristicas: [],
+                Salvaciones: [
+                    { Salvacion: 'Fortaleza', Valor: 2 },
+                    { salvacion: 'Reflejos', cantidad: 1 },
+                    { Nombre: 'Voluntad', modificador: '-2' },
+                ],
+                Sortilegas: [],
+                Ataques: [],
+                Prerrequisitos_flags: { raza: false, caracteristica_minima: false },
+                Prerrequisitos: { raza: [], caracteristica: [] },
+            } as any,
+        ];
+
+        service.seleccionarRaza(razaConSalvaciones);
+        service.aplicarCaracteristicasGeneradas({
+            Fuerza: 14,
+            Destreza: 12,
+            Constitucion: 13,
+            Inteligencia: 10,
+            Sabiduria: 11,
+            Carisma: 9,
+        });
+
+        const fortTotal = service.PersonajeCreacion.Salvaciones.fortaleza.modsVarios.reduce((acc, item) => acc + item.valor, 0);
+        const refTotal = service.PersonajeCreacion.Salvaciones.reflejos.modsVarios.reduce((acc, item) => acc + item.valor, 0);
+        const volTotal = service.PersonajeCreacion.Salvaciones.voluntad.modsVarios.reduce((acc, item) => acc + item.valor, 0);
+        expect(fortTotal).toBe(3);
+        expect(refTotal).toBe(3);
+        expect(volTotal).toBe(-3);
+        expect(service.PersonajeCreacion.Salvaciones.fortaleza.modsVarios.some((item) => item.origen === 'Humano DG racial')).toBeTrue();
+        expect(service.PersonajeCreacion.Salvaciones.fortaleza.modsVarios.some((item) => item.origen === 'Humano - Sangre antigua')).toBeTrue();
+    });
+
+    it('ignora entradas raciales de salvaciones malformadas o no numéricas', () => {
+        const tipo = crearTipoBase();
+        const razaConSalvacionesInvalidas = crearRazaBase(tipo);
+        razaConSalvacionesInvalidas.Dgs_adicionales.Fortaleza = 0;
+        razaConSalvacionesInvalidas.Dgs_adicionales.Reflejos = 0;
+        razaConSalvacionesInvalidas.Dgs_adicionales.Voluntad = 0;
+        razaConSalvacionesInvalidas.Raciales = [
+            {
+                Id: 601,
+                Nombre: 'Herencia extraña',
+                Descripcion: '',
+                Origen: '',
+                Opcional: 0,
+                Dotes: [],
+                Habilidades: { Base: [], Custom: [] },
+                Caracteristicas: [],
+                Salvaciones: [
+                    { Salvacion: 'Fortaleza', Valor: 'abc' },
+                    { Salvacion: 'Desconocida', Valor: 2 },
+                    { Nombre: 'Voluntad', Valor: '+2' },
+                ],
+                Sortilegas: [],
+                Ataques: [],
+                Prerrequisitos_flags: { raza: false, caracteristica_minima: false },
+                Prerrequisitos: { raza: [], caracteristica: [] },
+            } as any,
+        ];
+
+        service.seleccionarRaza(razaConSalvacionesInvalidas);
+        service.aplicarCaracteristicasGeneradas({
+            Fuerza: 14,
+            Destreza: 12,
+            Constitucion: 13,
+            Inteligencia: 10,
+            Sabiduria: 11,
+            Carisma: 9,
+        });
+
+        expect(service.PersonajeCreacion.Salvaciones.fortaleza.modsVarios.length).toBe(0);
+        expect(service.PersonajeCreacion.Salvaciones.reflejos.modsVarios.length).toBe(0);
+        expect(service.PersonajeCreacion.Salvaciones.voluntad.modsVarios.length).toBe(1);
+        expect(service.PersonajeCreacion.Salvaciones.voluntad.modsVarios[0].valor).toBe(2);
+    });
+
     it('recalcula NEP, experiencia y oro tras aplicar clase', () => {
         service.aplicarSiguienteNivelClase(claseBase);
         expect(service.PersonajeCreacion.NEP).toBe(3);
         expect(service.PersonajeCreacion.Experiencia).toBe(1000);
         expect(service.PersonajeCreacion.Oro_inicial).toBe(2700);
+    });
+
+    it('recalcula capacidad de carga base con fuerza 14 en tamaño mediano', () => {
+        expect(service.PersonajeCreacion.Capacidad_carga).toEqual({
+            Ligera: 19,
+            Media: 38,
+            Pesada: 58,
+        });
+    });
+
+    it('recalcula presa al cambiar ataque base por subida de clase', () => {
+        expect(service.PersonajeCreacion.Presa).toBe(2);
+
+        service.aplicarSiguienteNivelClase(claseBase);
+
+        expect(service.PersonajeCreacion.Ataque_base).toBe('1');
+        expect(service.PersonajeCreacion.Presa).toBe(3);
+    });
+
+    it('recalcula CA al cambiar ModDestreza por aumentos de característica', () => {
+        expect(service.PersonajeCreacion.Ca).toBe(11);
+
+        (service as any).aumentosPendientesCaracteristica = [
+            { id: 901, valor: 2, origen: 'Test', descripcion: 'Destreza +2' },
+        ];
+        const aplicado = service.aplicarAumentosCaracteristica([
+            { idPendiente: 901, caracteristica: 'Destreza' },
+        ]);
+
+        expect(aplicado).toBeTrue();
+        expect(service.PersonajeCreacion.Destreza).toBe(14);
+        expect(service.PersonajeCreacion.ModDestreza).toBe(2);
+        expect(service.PersonajeCreacion.Ca).toBe(12);
+    });
+
+    it('recalcula carga y presa al cambiar ModFuerza por aumentos de característica', () => {
+        expect(service.PersonajeCreacion.Presa).toBe(2);
+
+        (service as any).aumentosPendientesCaracteristica = [
+            { id: 902, valor: 2, origen: 'Test', descripcion: 'Fuerza +2' },
+        ];
+        const aplicado = service.aplicarAumentosCaracteristica([
+            { idPendiente: 902, caracteristica: 'Fuerza' },
+        ]);
+
+        expect(aplicado).toBeTrue();
+        expect(service.PersonajeCreacion.Fuerza).toBe(16);
+        expect(service.PersonajeCreacion.ModFuerza).toBe(3);
+        expect(service.PersonajeCreacion.Presa).toBe(3);
+        expect(service.PersonajeCreacion.Capacidad_carga).toEqual({
+            Ligera: 25,
+            Media: 50,
+            Pesada: 76,
+        });
+    });
+
+    it('aplica multiplicador de carga por tamaño pequeño y grande', () => {
+        const tipo = crearTipoBase();
+
+        const svcSmall = new NuevoPersonajeService();
+        svcSmall.setCatalogoTiposCriatura([tipo]);
+        const razaSmall = crearRazaBase(tipo);
+        razaSmall.Ajuste_nivel = 0;
+        razaSmall.Dgs_adicionales.Cantidad = 0;
+        razaSmall.Tamano = { Id: 0, Nombre: 'Pequeno', Modificador: 1, Modificador_presa: -4 } as any;
+        svcSmall.seleccionarRaza(razaSmall);
+        svcSmall.aplicarCaracteristicasGeneradas({
+            Fuerza: 14,
+            Destreza: 12,
+            Constitucion: 13,
+            Inteligencia: 10,
+            Sabiduria: 11,
+            Carisma: 9,
+        });
+        expect(svcSmall.PersonajeCreacion.Capacidad_carga).toEqual({
+            Ligera: 14,
+            Media: 28,
+            Pesada: 43,
+        });
+
+        const svcLarge = new NuevoPersonajeService();
+        svcLarge.setCatalogoTiposCriatura([tipo]);
+        const razaLarge = crearRazaBase(tipo);
+        razaLarge.Ajuste_nivel = 0;
+        razaLarge.Dgs_adicionales.Cantidad = 0;
+        razaLarge.Tamano = { Id: 0, Nombre: 'Grande', Modificador: -1, Modificador_presa: 4 } as any;
+        svcLarge.seleccionarRaza(razaLarge);
+        svcLarge.aplicarCaracteristicasGeneradas({
+            Fuerza: 14,
+            Destreza: 12,
+            Constitucion: 13,
+            Inteligencia: 10,
+            Sabiduria: 11,
+            Carisma: 9,
+        });
+        expect(svcLarge.PersonajeCreacion.Capacidad_carga).toEqual({
+            Ligera: 38,
+            Media: 77,
+            Pesada: 116,
+        });
+    });
+
+    it('calcula carga oficial para fuerza alta (30)', () => {
+        const tipo = crearTipoBase();
+        const svc = new NuevoPersonajeService();
+        const raza = crearRazaBase(tipo);
+        raza.Ajuste_nivel = 0;
+        raza.Dgs_adicionales.Cantidad = 0;
+        svc.setCatalogoTiposCriatura([tipo]);
+        svc.seleccionarRaza(raza);
+        svc.aplicarCaracteristicasGeneradas({
+            Fuerza: 30,
+            Destreza: 12,
+            Constitucion: 13,
+            Inteligencia: 10,
+            Sabiduria: 11,
+            Carisma: 9,
+        });
+
+        expect(svc.PersonajeCreacion.Capacidad_carga).toEqual({
+            Ligera: 177,
+            Media: 355,
+            Pesada: 533,
+        });
     });
 
     it('getIdiomasPendientesPostClase calcula por ModInt solo en primer nivel global', () => {

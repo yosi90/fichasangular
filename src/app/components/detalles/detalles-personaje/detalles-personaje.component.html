@@ -67,9 +67,9 @@
                 <mat-chip class="m-1" *ngIf="tieneVelocidadVisible(pj.Trepar)" [matTooltip]="velDisclaimer" matTooltipClass="tt-accent tt-multiline">Trepar {{pj.Trepar}}'</mat-chip>
                 <mat-chip class="m-1" *ngIf="tieneVelocidadVisible(pj.Escalar)" [matTooltip]="velDisclaimer" matTooltipClass="tt-accent tt-multiline">Escalar {{pj.Escalar}}'</mat-chip>
                 <mat-chip class="h-auto m-1" *ngIf="tieneCapacidadCargaVisible()" matTooltip="Medida en libras" matTooltipClass="tt-accent">Capacidad de carga
-                    <mat-chip class="ms-3 m-1" *ngIf="tieneNumeroVisible(pj.Capacidad_carga.Ligera)" [matTooltip]="cLigera" matTooltipClass="tt-accent" matTooltipPosition="above">Ligera {{pj.Capacidad_carga.Ligera}}</mat-chip>
-                    <mat-chip class="m-1" *ngIf="tieneNumeroVisible(pj.Capacidad_carga.Media)" [matTooltip]="cMedia" matTooltipClass="tt-accent" matTooltipPosition="above">Media {{pj.Capacidad_carga.Media}}</mat-chip>
-                    <mat-chip class="m-1" *ngIf="tieneNumeroVisible(pj.Capacidad_carga.Pesada)" [matTooltip]="cPesada" matTooltipClass="tt-accent tt-multiline" matTooltipPosition="above">Pesada {{pj.Capacidad_carga.Pesada}}</mat-chip>
+                    <mat-chip class="ms-3 m-1" *ngIf="tieneValorCargaVisible(pj.Capacidad_carga.Ligera)" [matTooltip]="cLigera" matTooltipClass="tt-accent" matTooltipPosition="above">Ligera {{pj.Capacidad_carga.Ligera}}</mat-chip>
+                    <mat-chip class="m-1" *ngIf="tieneValorCargaVisible(pj.Capacidad_carga.Media)" [matTooltip]="cMedia" matTooltipClass="tt-accent" matTooltipPosition="above">Media {{pj.Capacidad_carga.Media}}</mat-chip>
+                    <mat-chip class="m-1" *ngIf="tieneValorCargaVisible(pj.Capacidad_carga.Pesada)" [matTooltip]="cPesada" matTooltipClass="tt-accent tt-multiline" matTooltipPosition="above">Pesada {{pj.Capacidad_carga.Pesada}}</mat-chip>
                 </mat-chip>
                 <mat-chip-set class="m-1" *ngFor="let p of getPlantillasVisibles()">
                     <mat-chip [ngStyle]="{'height': p.Multiplicador_dgs_lic > 0 ? 'auto' : 'initial'}" class="warm m-1 chip-clic"
@@ -107,15 +107,15 @@
                 <mat-chip class="h-auto m-1" *ngIf="tieneBloqueSalvacionesVisible()">Salvaciones
                     <mat-chip class="ms-3 m-1">Fortaleza: 
                         <p class="m-0 ms-1" [matTooltip]="fortaleza_origenes" matTooltipClass="tt-accent">{{fortaleza}}</p>
-                        <p class="m-0 ms-1" [matTooltip]="fortaleza_varios_origenes" matTooltipClass="tt-accent" *ngIf="fortaleza_varios > 0"> + {{fortaleza_varios}}</p>
+                        <p class="m-0 ms-1" [matTooltip]="fortaleza_varios_origenes" matTooltipClass="tt-accent" *ngIf="tieneNumeroNoCero(fortaleza_varios)">{{formatSigned(fortaleza_varios)}}</p>
                     </mat-chip>
                     <mat-chip class="m-1">Reflejos:
                         <p class="m-0 ms-1" [matTooltip]="reflejos_origenes" matTooltipClass="tt-accent">{{reflejos}}</p>
-                        <p class="m-0 ms-1" [matTooltip]="reflejos_varios_origenes" matTooltipClass="tt-accent" *ngIf="reflejos_varios > 0"> + {{reflejos_varios}}</p>
+                        <p class="m-0 ms-1" [matTooltip]="reflejos_varios_origenes" matTooltipClass="tt-accent" *ngIf="tieneNumeroNoCero(reflejos_varios)">{{formatSigned(reflejos_varios)}}</p>
                     </mat-chip>
                     <mat-chip class="m-1">Voluntad:
                         <p class="m-0 ms-1" [matTooltip]="voluntad_origenes" matTooltipClass="tt-accent">{{voluntad}}</p>
-                        <p class="m-0 ms-1" [matTooltip]="voluntad_varios_origenes" matTooltipClass="tt-accent" *ngIf="voluntad_varios > 0"> + {{voluntad_varios}}</p>
+                        <p class="m-0 ms-1" [matTooltip]="voluntad_varios_origenes" matTooltipClass="tt-accent" *ngIf="tieneNumeroNoCero(voluntad_varios)">{{formatSigned(voluntad_varios)}}</p>
                     </mat-chip>
                 </mat-chip>
             </div>

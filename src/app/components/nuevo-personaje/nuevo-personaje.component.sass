@@ -517,9 +517,20 @@ textarea
 
 .habilidad-clasea-check
     pointer-events: none
+    display: inline-flex
+    align-items: center
+    justify-content: center
+    line-height: 0
 
     ::ng-deep .mdc-checkbox
         padding: 0
+        width: 40px
+        height: 40px
+
+    ::ng-deep .mdc-form-field
+        display: inline-flex
+        align-items: center
+        justify-content: center
 
     &.mat-mdc-checkbox-disabled
         ::ng-deep .mdc-checkbox__background
@@ -545,6 +556,7 @@ textarea
     display: flex
     align-items: center
     justify-content: center
+    line-height: 0
 
 .clases-tabla-scroll
     border: 1px solid rgba(255, 255, 255, 0.16)
@@ -596,22 +608,25 @@ textarea
         vertical-align: middle !important
 
     th:nth-child(1), td:nth-child(1)
-        width: 22%
+        width: 20%
 
     th:nth-child(2), td:nth-child(2)
-        width: 10%
+        width: 7%
 
     th:nth-child(3), td:nth-child(3)
-        width: 24%
+        width: 22%
 
     th:nth-child(4), td:nth-child(4)
         width: 11%
 
     th:nth-child(5), td:nth-child(5)
-        width: 15%
+        width: 10%
 
-    th:last-child, td:last-child
-        width: 14%
+    th:nth-child(6), td:nth-child(6)
+        width: 20%
+
+    th:nth-child(7), td:nth-child(7)
+        width: 10%
 
     .fila-clase:nth-child(odd)
         background: rgba(255, 255, 255, 0.035)
@@ -660,12 +675,16 @@ textarea
     background: rgba(255, 107, 107, 0.25) !important
 
 .beneficios-clase-chips,
-.roles-clase-chips
+.roles-clase-chips,
+.salvaciones-clase-chips
     display: inline-flex
     flex-wrap: wrap
     gap: 4px
     align-items: center
     align-content: center
+
+.salvaciones-clase-chips
+    min-width: 0
 
 .beneficios-clase-chips
     display: flex
@@ -673,6 +692,31 @@ textarea
 
     ::ng-deep .mdc-evolution-chip__text-label
         white-space: normal !important
+
+.tabla-clases--homebrew
+    th:nth-child(1), td:nth-child(1)
+        width: 20%
+
+    th:nth-child(2), td:nth-child(2)
+        width: 7%
+
+    th:nth-child(3), td:nth-child(3)
+        width: 20%
+
+    th:nth-child(4), td:nth-child(4)
+        width: 11%
+
+    th:nth-child(5), td:nth-child(5)
+        width: 9%
+
+    th:nth-child(6), td:nth-child(6)
+        width: 18%
+
+    th:nth-child(7), td:nth-child(7)
+        width: 5%
+
+    th:nth-child(8), td:nth-child(8)
+        width: 10%
 
     ::ng-deep .mdc-evolution-chip__action,
     ::ng-deep .mdc-evolution-chip__action--primary

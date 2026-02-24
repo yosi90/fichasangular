@@ -458,4 +458,122 @@ describe('DetallesPersonajeComponent', () => {
         expect(component.getEscuelasProhibidasVisibles()).toEqual(['Evocación', 'Ilusión']);
         expect(component.tieneEscuelasProhibidasVisibles()).toBeTrue();
     });
+
+    it('normaliza dominios cuando llegan como objetos y evita [object Object]', () => {
+        (component.pj as any).Dominios = [
+            { Nombre: 'Guerra' },
+            { nombre: 'Bien' },
+            'Magia',
+        ];
+
+        fixture.detectChanges();
+
+        const html = `${fixture.nativeElement.textContent ?? ''}`;
+        expect(component.getDominiosVisibles()).toEqual(['Guerra', 'Bien', 'Magia']);
+        expect(html).toContain('Dominios');
+        expect(html).toContain('Guerra');
+        expect(html).toContain('Bien');
+        expect(html).toContain('Magia');
+        expect(html).not.toContain('[object Object]');
+    });
+
+    it('preview nuevo personaje muestra iniciativa y carga aunque valgan 0 al confirmar características', () => {
+        component.esPreviewNuevoPersonaje = true;
+        component.caracteristicasConfirmadas = true;
+        component.pj.Raza.Nombre = 'Humano';
+        component.pj.ModDestreza = 0;
+        component.pj.Iniciativa_varios = [];
+        component.pj.Capacidad_carga = {
+            Ligera: 0,
+            Media: 0,
+            Pesada: 0,
+        };
+
+        fixture.detectChanges();
+
+        const html = `${fixture.nativeElement.textContent ?? ''}`;
+        expect(html).toContain('Iniciativa 0');
+        expect(html).toContain('Capacidad de carga');
+        expect(html).toContain('Ligera 0');
+        expect(html).toContain('Media 0');
+        expect(html).toContain('Pesada 0');
+    });
+
+    it('preview nuevo personaje muestra experiencia y oro en 0 cuando ya aplica NEP', () => {
+        component.esPreviewNuevoPersonaje = true;
+        component.pj.Raza.Ajuste_nivel = 1;
+        component.pj.Experiencia = 0;
+        component.pj.Oro_inicial = 0;
+
+        fixture.detectChanges();
+
+        const html = `${fixture.nativeElement.textContent ?? ''}`;
+        expect(html).toContain('Exp 0');
+        expect(html).toContain('Oro inicial');
+        expect(html).toContain('0');
+    });
+
+    it('calcula iniciativa como ModDestreza + bonos varios', () => {
+        component.pj.Raza.Nombre = 'Humano';
+        component.pj.ModDestreza = 2;
+        component.pj.Iniciativa_varios = [
+            { Valor: 3, Origen: 'Ventaja' },
+        ];
+
+        fixture.detectChanges();
+
+        const html = `${fixture.nativeElement.textContent ?? ''}`;
+        expect(html).toContain('Iniciativa +5');
+    });
+
+    it('muestra bloque de salvaciones en preview aunque estén a 0', () => {
+        component.esPreviewNuevoPersonaje = true;
+        component.pj.Salvaciones.fortaleza.modsClaseos = [];
+        component.pj.Salvaciones.reflejos.modsClaseos = [];
+        component.pj.Salvaciones.voluntad.modsClaseos = [];
+        component.pj.Salvaciones.fortaleza.modsVarios = [];
+        component.pj.Salvaciones.reflejos.modsVarios = [];
+        component.pj.Salvaciones.voluntad.modsVarios = [];
+
+        fixture.detectChanges();
+
+        const html = `${fixture.nativeElement.textContent ?? ''}`;
+        expect(component.tieneBloqueSalvacionesVisible()).toBeTrue();
+        expect(component.fortaleza).toBe(0);
+        expect(component.reflejos).toBe(0);
+        expect(component.voluntad).toBe(0);
+        expect(html).toContain('Salvaciones');
+    });
+
+    it('muestra bloque de salvaciones en detalle normal aunque estén a 0', () => {
+        component.esPreviewNuevoPersonaje = false;
+        component.pj.Salvaciones.fortaleza.modsClaseos = [];
+        component.pj.Salvaciones.reflejos.modsClaseos = [];
+        component.pj.Salvaciones.voluntad.modsClaseos = [];
+        component.pj.Salvaciones.fortaleza.modsVarios = [];
+        component.pj.Salvaciones.reflejos.modsVarios = [];
+        component.pj.Salvaciones.voluntad.modsVarios = [];
+
+        fixture.detectChanges();
+
+        const html = `${fixture.nativeElement.textContent ?? ''}`;
+        expect(component.tieneBloqueSalvacionesVisible()).toBeTrue();
+        expect(html).toContain('Salvaciones');
+    });
+
+    it('actualiza resumen de salvaciones cuando cambian mods tras inicializar', () => {
+        component.pj.Salvaciones.fortaleza.modsClaseos = [];
+        component.pj.Salvaciones.fortaleza.modsVarios = [];
+
+        fixture.detectChanges();
+        expect(component.fortaleza).toBe(0);
+        expect(component.fortaleza_varios).toBe(0);
+
+        component.pj.Salvaciones.fortaleza.modsClaseos = [{ valor: 2, origen: 'Clase test' }];
+        component.pj.Salvaciones.fortaleza.modsVarios = [{ valor: -1, origen: 'Plantilla test' }];
+        fixture.detectChanges();
+
+        expect(component.fortaleza).toBe(2);
+        expect(component.fortaleza_varios).toBe(-1);
+    });
 });

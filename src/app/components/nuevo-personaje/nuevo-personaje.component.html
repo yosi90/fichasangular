@@ -70,10 +70,9 @@
                                 <div class="deidad-bloque full-span">
                                     <mat-form-field appearance="fill" class="w-100 m-0">
                                         <mat-label>Deidad</mat-label>
-                                        <input matInput [(ngModel)]="Personaje.Deidad" (ngModelChange)="onDeidadChange()" [matAutocomplete]="deidadAuto" placeholder="No tener deidad">
-                                        <mat-autocomplete #deidadAuto="matAutocomplete">
+                                        <mat-select [(ngModel)]="Personaje.Deidad" (selectionChange)="onDeidadChange()">
                                             <mat-option *ngFor="let deidad of deidadesFiltradas" [value]="deidad">{{deidad}}</mat-option>
-                                        </mat-autocomplete>
+                                        </mat-select>
                                     </mat-form-field>
                                     <div class="deidad-contexto" *ngIf="mostrarPanelDeidad">
                                         <p class="m-0"><strong>Deidad:</strong> {{deidadSeleccionadaTexto}}</p>
@@ -536,12 +535,14 @@
                         </div>
 
                         <div class="tabla-scroll clases-tabla-scroll" *ngIf="!cargandoClases && clasesListadoFiltrado.length > 0">
-                            <table class="tabla-ventajas tabla-clases">
+                            <table class="tabla-ventajas tabla-clases"
+                                [class.tabla-clases--homebrew]="mostrarColumnaHomebrewClases">
                                 <thead>
                                     <tr>
                                         <th>Clase</th>
-                                        <th>Siguiente nivel</th>
+                                        <th>Nivel</th>
                                         <th>Siguientes dotes/especiales</th>
+                                        <th>Salvaciones</th>
                                         <th>Rol</th>
                                         <th>Manual</th>
                                         <th *ngIf="mostrarColumnaHomebrewClases">Homebrew</th>
@@ -602,6 +603,13 @@
                                                         </span>
                                                     </mat-chip>
                                                 </ng-container>
+                                            </mat-chip-set>
+                                        </td>
+                                        <td>
+                                            <mat-chip-set class="salvaciones-clase-chips">
+                                                <mat-chip class="sombra3d-sm">Fort {{formatSignedDeltaClase(item.salvacionesDelta.fortaleza)}}</mat-chip>
+                                                <mat-chip class="sombra3d-sm">Ref {{formatSignedDeltaClase(item.salvacionesDelta.reflejos)}}</mat-chip>
+                                                <mat-chip class="sombra3d-sm">Vol {{formatSignedDeltaClase(item.salvacionesDelta.voluntad)}}</mat-chip>
                                             </mat-chip-set>
                                         </td>
                                         <td>
@@ -921,6 +929,8 @@
                 [pj]="Personaje"
                 [clasesCatalogo]="catalogoClases"
                 [mostrarBotonGenerarPdf]="false"
+                [esPreviewNuevoPersonaje]="true"
+                [caracteristicasConfirmadas]="caracteristicasGeneradas"
                 (razaDetalles)="verDetallesRazaDesdeFicha($event)"
                 (claseDetalles)="verDetallesClaseDesdeFicha($event)"
                 (plantillaDetalles)="verDetallesPlantillaDesdeFicha($event)"
