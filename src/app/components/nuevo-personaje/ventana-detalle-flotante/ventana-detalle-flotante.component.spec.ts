@@ -9,9 +9,13 @@ describe('VentanaDetalleFlotanteComponent', () => {
         userSettingsSvc = jasmine.createSpyObj<UserSettingsService>('UserSettingsService', [
             'loadPreviewMinimizada',
             'savePreviewMinimizada',
+            'loadPreviewRestaurada',
+            'savePreviewRestaurada',
         ]);
         userSettingsSvc.loadPreviewMinimizada.and.resolveTo(null);
         userSettingsSvc.savePreviewMinimizada.and.resolveTo();
+        userSettingsSvc.loadPreviewRestaurada.and.resolveTo(null);
+        userSettingsSvc.savePreviewRestaurada.and.resolveTo();
 
         component = new VentanaDetalleFlotanteComponent(userSettingsSvc);
         component.ngOnInit();
@@ -66,6 +70,30 @@ describe('VentanaDetalleFlotanteComponent', () => {
 
         expect(component.rect.x).toBe(start.x + 30);
         expect(component.rect.y).toBe(start.y + 30);
+    });
+
+    it('guarda geometría al soltar arrastre en estado normal', () => {
+        component.rect = {
+            x: 20,
+            y: 20,
+            width: component.minWidth,
+            height: component.minHeight,
+        };
+        component.onTitleBarPointerDown({
+            button: 0,
+            clientX: 200,
+            clientY: 120,
+            target: null,
+            preventDefault: () => undefined,
+        } as any);
+
+        component.onDocumentPointerMove({
+            clientX: 240,
+            clientY: 170,
+        } as PointerEvent);
+        component.onDocumentPointerUp();
+
+        expect(userSettingsSvc.savePreviewRestaurada).toHaveBeenCalledTimes(1);
     });
 
     it('resize respeta tamaños mínimos', () => {
@@ -184,6 +212,7 @@ describe('VentanaDetalleFlotanteComponent', () => {
         component = new VentanaDetalleFlotanteComponent(userSettingsSvc);
         component.ngOnInit();
         await Promise.resolve();
+        await Promise.resolve();
 
         component.toggleMinimize();
 
@@ -194,6 +223,84 @@ describe('VentanaDetalleFlotanteComponent', () => {
 
         expect(left).toBe(viewportWidth - width - 12);
         expect(top).toBe(200);
+    });
+
+    it('al restaurar desde minimizada vuelve a la geometría guardada', async () => {
+        userSettingsSvc.loadPreviewRestaurada.and.resolveTo({
+            version: 1,
+            left: 140,
+            top: 96,
+            width: 780,
+            height: 520,
+            updatedAt: Date.now(),
+        });
+
+        component = new VentanaDetalleFlotanteComponent(userSettingsSvc);
+        component.ngOnInit();
+        await Promise.resolve();
+        await Promise.resolve();
+
+        component.toggleMinimize();
+        component.rect = {
+            ...component.rect,
+            x: 12,
+            y: 230,
+        };
+        component.toggleMinimize();
+
+        expect(component.isMinimized).toBeFalse();
+        expect(component.rect.x).toBe(140);
+        expect(component.rect.y).toBe(96);
+        expect(component.rect.width).toBe(780);
+        expect(component.rect.height).toBe(520);
+    });
+
+    it('aplica geometría restaurada guardada por cuenta al iniciar', async () => {
+        userSettingsSvc.loadPreviewRestaurada.and.resolveTo({
+            version: 1,
+            left: 80,
+            top: 70,
+            width: 800,
+            height: 500,
+            updatedAt: Date.now(),
+        });
+
+        component = new VentanaDetalleFlotanteComponent(userSettingsSvc);
+        component.ngOnInit();
+        await Promise.resolve();
+        await Promise.resolve();
+
+        expect(component.rect.x).toBe(80);
+        expect(component.rect.y).toBe(70);
+        expect(component.rect.width).toBe(800);
+        expect(component.rect.height).toBe(500);
+    });
+
+    it('si se maximiza desde minimizada, al restaurar usa geometría guardada', async () => {
+        userSettingsSvc.loadPreviewRestaurada.and.resolveTo({
+            version: 1,
+            left: 88,
+            top: 66,
+            width: 820,
+            height: 540,
+            updatedAt: Date.now(),
+        });
+
+        component = new VentanaDetalleFlotanteComponent(userSettingsSvc);
+        component.ngOnInit();
+        await Promise.resolve();
+        await Promise.resolve();
+
+        component.toggleMinimize();
+        component.toggleMaximize();
+        component.toggleMaximize();
+
+        expect(component.isMaximized).toBeFalse();
+        expect(component.isMinimized).toBeFalse();
+        expect(component.rect.x).toBe(88);
+        expect(component.rect.y).toBe(66);
+        expect(component.rect.width).toBe(820);
+        expect(component.rect.height).toBe(540);
     });
 
     it('guarda placement al soltar arrastre mientras está minimizada', () => {

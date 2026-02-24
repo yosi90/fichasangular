@@ -62,7 +62,7 @@
 
         <div class="selector-actions">
             <button mat-stroked-button type="button" (click)="onCerrar()">Cancelar</button>
-            <button mat-raised-button color="primary" type="button" [disabled]="requiereSeleccion && !seleccionCompleta" (click)="onConfirmar()">
+            <button mat-raised-button color="primary" type="button" [disabled]="!puedeConfirmar" (click)="onConfirmar()">
                 Confirmar selección
             </button>
         </div>

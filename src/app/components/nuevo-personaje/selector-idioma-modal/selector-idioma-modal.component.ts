@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Input, Output } from '@angular/core';
+import { Component, EventEmitter, HostListener, Input, Output } from '@angular/core';
 import { IdiomaDetalle } from 'src/app/interfaces/idioma';
 
 @Component({
@@ -111,6 +111,17 @@ export class SelectorIdiomaModalComponent {
         this.onToggleIdiomaRow(idIdioma);
     }
 
+    @HostListener('document:keydown.enter', ['$event'])
+    onEnterPresionado(event: KeyboardEvent): void {
+        if (event.repeat || this.esElementoInteractivoParaEnter(event.target as HTMLElement | null))
+            return;
+        if (!this.puedeConfirmar)
+            return;
+
+        event.preventDefault();
+        this.onConfirmar();
+    }
+
     onToggleHomebrew(): void {
         if (!this.personajeOficial)
             return;
@@ -140,5 +151,15 @@ export class SelectorIdiomaModalComponent {
             .replace(/[\u0300-\u036f]/g, '')
             .trim()
             .toLowerCase();
+    }
+
+    private esElementoInteractivoParaEnter(target: HTMLElement | null): boolean {
+        if (!target)
+            return false;
+        if (target.isContentEditable)
+            return true;
+
+        const selectorBloqueado = 'input, textarea, select, button, a, [role="button"], [role="checkbox"], [role="option"], [role="listbox"], [role="menuitem"], .cdk-overlay-pane';
+        return !!target.closest(selectorBloqueado);
     }
 }

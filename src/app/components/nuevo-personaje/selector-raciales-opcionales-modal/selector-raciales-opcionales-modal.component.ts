@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, EventEmitter, Input, OnChanges, Output, SimpleChanges } from '@angular/core';
+import { ChangeDetectionStrategy, Component, EventEmitter, HostListener, Input, OnChanges, Output, SimpleChanges } from '@angular/core';
 import { RacialDetalle, RacialReferencia } from 'src/app/interfaces/racial';
 import { SeleccionRacialesOpcionales } from 'src/app/services/utils/racial-opcionales';
 import { RacialEvaluacionResultado } from 'src/app/services/utils/racial-prerrequisitos';
@@ -51,6 +51,10 @@ export class SelectorRacialesOpcionalesModalComponent implements OnChanges {
         });
     }
 
+    get puedeConfirmar(): boolean {
+        return !this.requiereSeleccion || this.seleccionCompleta;
+    }
+
     onSeleccionar(grupo: number, clave: string, habilitada: boolean): void {
         if (!habilitada)
             return;
@@ -73,10 +77,21 @@ export class SelectorRacialesOpcionalesModalComponent implements OnChanges {
     }
 
     onConfirmar(): void {
-        if (this.requiereSeleccion && !this.seleccionCompleta)
+        if (!this.puedeConfirmar)
             return;
 
         this.confirmar.emit({ ...this.seleccion });
+    }
+
+    @HostListener('document:keydown.enter', ['$event'])
+    onEnterPresionado(event: KeyboardEvent): void {
+        if (event.repeat || this.esElementoInteractivoParaEnter(event.target as HTMLElement | null))
+            return;
+        if (!this.puedeConfirmar)
+            return;
+
+        event.preventDefault();
+        this.onConfirmar();
     }
 
     trackByGrupo(_index: number, item: GrupoRacialOpcionalModal): number {
@@ -149,5 +164,15 @@ export class SelectorRacialesOpcionalesModalComponent implements OnChanges {
         });
 
         this.seleccion = siguiente;
+    }
+
+    private esElementoInteractivoParaEnter(target: HTMLElement | null): boolean {
+        if (!target)
+            return false;
+        if (target.isContentEditable)
+            return true;
+
+        const selectorBloqueado = 'input, textarea, select, button, a, [role="button"], [role="checkbox"], [role="option"], [role="listbox"], [role="menuitem"], .cdk-overlay-pane';
+        return !!target.closest(selectorBloqueado);
     }
 }

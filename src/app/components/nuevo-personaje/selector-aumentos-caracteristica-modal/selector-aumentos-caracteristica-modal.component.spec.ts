@@ -57,4 +57,19 @@ describe('SelectorAumentosCaracteristicaModalComponent', () => {
             { idPendiente: 2, caracteristica: 'Fuerza' },
         ]);
     });
+
+    it('Enter confirma solo cuando está habilitado', () => {
+        const emitSpy = spyOn(component.confirmar, 'emit');
+
+        component.onEnterPresionado(new KeyboardEvent('keydown', { key: 'Enter' }));
+        expect(emitSpy).not.toHaveBeenCalled();
+
+        component.onAsignarPendiente(1, 'Fuerza');
+        component.onAsignarPendiente(2, 'Destreza');
+        component.onEnterPresionado(new KeyboardEvent('keydown', { key: 'Enter' }));
+        expect(emitSpy).toHaveBeenCalledWith([
+            { idPendiente: 1, caracteristica: 'Fuerza' },
+            { idPendiente: 2, caracteristica: 'Destreza' },
+        ]);
+    });
 });

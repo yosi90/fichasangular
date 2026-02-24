@@ -113,4 +113,15 @@ describe('SelectorRazaBaseModalComponent', () => {
         expect(confirmarSpy).not.toHaveBeenCalled();
         expect(manualDetalleNavSvcMock.abrirDetalleManual).toHaveBeenCalledWith('Manual 2');
     });
+
+    it('Enter confirma solo cuando hay selección activa', () => {
+        const spy = spyOn(component.confirmar, 'emit');
+
+        component.onEnterPresionado(new KeyboardEvent('keydown', { key: 'Enter' }));
+        expect(spy).not.toHaveBeenCalled();
+
+        component.onSeleccionar(component.candidatasVisibles[0]);
+        component.onEnterPresionado(new KeyboardEvent('keydown', { key: 'Enter' }));
+        expect(spy).toHaveBeenCalledWith(jasmine.objectContaining({ Id: 1, Nombre: 'Humano' }));
+    });
 });

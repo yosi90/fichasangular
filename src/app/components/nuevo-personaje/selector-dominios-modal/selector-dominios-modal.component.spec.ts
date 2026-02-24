@@ -54,4 +54,16 @@ describe('SelectorDominiosModalComponent', () => {
         component.onToggleDominioRow(1);
         expect(component.isSeleccionado(1)).toBeFalse();
     });
+
+    it('Enter confirma solo cuando está habilitado', () => {
+        const spy = spyOn(component.confirmar, 'emit');
+
+        component.onEnterPresionado(new KeyboardEvent('keydown', { key: 'Enter' }));
+        expect(spy).not.toHaveBeenCalled();
+
+        component.onToggleDominio(1, true);
+        component.onToggleDominio(2, true);
+        component.onEnterPresionado(new KeyboardEvent('keydown', { key: 'Enter' }));
+        expect(spy).toHaveBeenCalledWith([1, 2]);
+    });
 });

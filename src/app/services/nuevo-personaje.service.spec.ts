@@ -1,4 +1,4 @@
-import { NuevoPersonajeService } from './nuevo-personaje.service';
+import { GeneradorAutoPerfil, NuevoPersonajeService } from './nuevo-personaje.service';
 import { Clase } from '../interfaces/clase';
 import { DeidadDetalle } from '../interfaces/deidad';
 import { DominioDetalle } from '../interfaces/dominio';
@@ -156,6 +156,22 @@ function crearClaseBase(partial?: Partial<Clase>): Clase {
 }
 
 describe('NuevoPersonajeService (generador)', () => {
+    function setTiradasTabla(service: NuevoPersonajeService, tabla: number, valores: number[]): void {
+        const estado = service.EstadoFlujo.generador;
+        const fila = estado.tiradasCache[estado.indiceMinimo];
+        const inicio = (tabla - 1) * 6;
+        for (let i = 0; i < 6; i++) {
+            fila[inicio + i] = Number(valores[i] ?? 3);
+        }
+    }
+
+    function autoPerfil(detalle: GeneradorAutoPerfil['detalle']): GeneradorAutoPerfil {
+        const enfoque = detalle === 'carismatico' || detalle === 'erudito' || detalle === 'perceptivo'
+            ? 'roleo'
+            : 'combate';
+        return { enfoque, detalle };
+    }
+
     it('usa defaults cuando no hay configuración persistida', () => {
         const service = new NuevoPersonajeService();
         const estado = service.EstadoFlujo.generador;
@@ -267,6 +283,101 @@ describe('NuevoPersonajeService (generador)', () => {
         expect(estado.tablaSeleccionada).toBeNull();
         expect(estado.poolDisponible.length).toBe(0);
         expect(estado.asignaciones.Fuerza).toBeNull();
+    });
+
+    it('autoRepartirGenerador elige la tabla con mayor total', () => {
+        const service = new NuevoPersonajeService();
+        service.setTablasPermitidasGenerador(3);
+        setTiradasTabla(service, 1, [10, 10, 10, 10, 10, 10]);
+        setTiradasTabla(service, 2, [15, 15, 15, 15, 15, 15]);
+        setTiradasTabla(service, 3, [13, 13, 13, 13, 13, 13]);
+
+        const resultado = service.autoRepartirGenerador(autoPerfil('tanque'));
+
+        expect(resultado.aplicado).toBeTrue();
+        expect(resultado.tablaSeleccionada).toBe(2);
+    });
+
+    it('autoRepartirGenerador desempata por mayor valor máximo y luego por menor número de tabla', () => {
+        const service = new NuevoPersonajeService();
+        service.setTablasPermitidasGenerador(2);
+        setTiradasTabla(service, 1, [18, 12, 12, 12, 12, 12]);
+        setTiradasTabla(service, 2, [17, 13, 12, 12, 12, 12]);
+
+        let resultado = service.autoRepartirGenerador(autoPerfil('tanque'));
+        expect(resultado.tablaSeleccionada).toBe(1);
+
+        service.resetearGeneradorCaracteristicas();
+        setTiradasTabla(service, 1, [16, 16, 16, 14, 14, 14]);
+        setTiradasTabla(service, 2, [16, 16, 16, 14, 14, 14]);
+        resultado = service.autoRepartirGenerador(autoPerfil('tanque'));
+        expect(resultado.tablaSeleccionada).toBe(1);
+    });
+
+    it('autoRepartirGenerador asigna según el perfil seleccionado', () => {
+        const service = new NuevoPersonajeService();
+        service.setTablasPermitidasGenerador(1);
+        setTiradasTabla(service, 1, [18, 17, 16, 15, 14, 13]);
+
+        service.autoRepartirGenerador(autoPerfil('tanque'));
+
+        const asigs = service.EstadoFlujo.generador.asignaciones;
+        expect(asigs.Constitucion).toBe(18);
+        expect(asigs.Fuerza).toBe(17);
+        expect(asigs.Destreza).toBe(16);
+        expect(asigs.Sabiduria).toBe(15);
+        expect(asigs.Carisma).toBe(14);
+        expect(asigs.Inteligencia).toBe(13);
+    });
+
+    it('autoRepartirGenerador ajusta prioridad por modificadores raciales', () => {
+        const service = new NuevoPersonajeService();
+        service.setTablasPermitidasGenerador(1);
+        service.PersonajeCreacion.Raza = {
+            Modificadores: {
+                Fuerza: 0,
+                Destreza: 4,
+                Constitucion: 0,
+                Inteligencia: 0,
+                Sabiduria: 0,
+                Carisma: 0,
+            },
+        } as any;
+        setTiradasTabla(service, 1, [18, 17, 16, 15, 14, 13]);
+
+        service.autoRepartirGenerador(autoPerfil('atacante_fisico'));
+
+        const asigs = service.EstadoFlujo.generador.asignaciones;
+        expect(asigs.Destreza).toBe(18);
+        expect(asigs.Fuerza).toBe(17);
+    });
+
+    it('autoRepartirGenerador respeta características perdidas', () => {
+        const service = new NuevoPersonajeService();
+        service.setTablasPermitidasGenerador(1);
+        service.PersonajeCreacion.Caracteristicas_perdidas = {
+            ...service.PersonajeCreacion.Caracteristicas_perdidas,
+            Constitucion: true,
+        };
+        service.PersonajeCreacion.Constitucion_perdida = true;
+        setTiradasTabla(service, 1, [18, 17, 16, 15, 14, 13]);
+
+        service.autoRepartirGenerador(autoPerfil('tanque'));
+
+        const asigs = service.EstadoFlujo.generador.asignaciones;
+        expect(asigs.Constitucion).toBe(0);
+        expect(asigs.Fuerza).toBe(18);
+    });
+
+    it('autoRepartirGenerador deja el estado listo para finalizar', () => {
+        const service = new NuevoPersonajeService();
+        service.setTablasPermitidasGenerador(1);
+        setTiradasTabla(service, 1, [18, 17, 16, 15, 14, 13]);
+
+        const resultado = service.autoRepartirGenerador(autoPerfil('erudito'));
+
+        expect(resultado.aplicado).toBeTrue();
+        expect(service.puedeFinalizarGenerador()).toBeTrue();
     });
 });
 
@@ -1368,6 +1479,256 @@ describe('NuevoPersonajeService (clases)', () => {
         service.PersonajeCreacion.Dominios.push({ Nombre: 'Guerra' });
         const despues = service.evaluarClaseParaSeleccion(claseConPrereqDominio);
         expect(despues.estado).toBe('eligible');
+    });
+});
+
+describe('NuevoPersonajeService (habilidades flujo)', () => {
+    function crearRazaConDgs(partial?: Partial<Raza>): Raza {
+        return {
+            Id: 1,
+            Nombre: 'Raza base',
+            Ajuste_nivel: 0,
+            Manual: 'Manual',
+            Clase_predilecta: '',
+            Modificadores: {
+                Fuerza: 0,
+                Destreza: 0,
+                Constitucion: 0,
+                Inteligencia: 0,
+                Sabiduria: 0,
+                Carisma: 0,
+            },
+            Alineamiento: {
+                Id: 0,
+                Basico: { Id_basico: 0, Nombre: 'No aplica' },
+                Ley: { Id_ley: 0, Nombre: 'No aplica' },
+                Moral: { Id_moral: 0, Nombre: 'No aplica' },
+                Prioridad: { Id_prioridad: 0, Nombre: 'No aplica' },
+                Descripcion: '',
+            },
+            Oficial: true,
+            Ataques_naturales: '',
+            Tamano: { Id: 1, Nombre: 'Mediano', Modificador: 0, Modificador_presa: 0 } as any,
+            Dgs_adicionales: {
+                Cantidad: 2,
+                Dado: 'd8',
+                Tipo_criatura: 'Humanoide',
+                Ataque_base: 0,
+                Dotes_extra: 0,
+                Puntos_habilidad: 2,
+                Multiplicador_puntos_habilidad: 1,
+                Fortaleza: 0,
+                Reflejos: 0,
+                Voluntad: 0,
+            },
+            Reduccion_dano: '',
+            Resistencia_magica: '',
+            Resistencia_energia: '',
+            Heredada: false,
+            Mutada: false,
+            Tamano_mutacion_dependiente: false,
+            Prerrequisitos: {
+                actitud_prohibido: [],
+                actitud_requerido: [],
+                alineamiento_prohibido: [],
+                alineamiento_requerido: [],
+                tipo_criatura: [],
+            },
+            Armadura_natural: 0,
+            Varios_armadura: 0,
+            Correr: 30,
+            Nadar: 0,
+            Volar: 0,
+            Maniobrabilidad: {
+                Id: 0, Nombre: '-', Velocidad_avance: '-', Flotar: 0, Volar_atras: 0, Contramarcha: 0, Giro: '-', Rotacion: '-', Giro_max: '-', Angulo_ascenso: '-', Velocidad_ascenso: '-', Angulo_descenso: '-', Descenso_ascenso: 0,
+            } as any,
+            Trepar: 0,
+            Escalar: 0,
+            Altura_rango_inf: 1.7,
+            Altura_rango_sup: 1.9,
+            Peso_rango_inf: 60,
+            Peso_rango_sup: 90,
+            Edad_adulto: 20,
+            Edad_mediana: 40,
+            Edad_viejo: 60,
+            Edad_venerable: 80,
+            Espacio: 5,
+            Alcance: 5,
+            Tipo_criatura: {
+                Id: 1,
+                Nombre: 'Humanoide',
+                Descripcion: '',
+                Manual: '',
+                Id_tipo_dado: 1,
+                Tipo_dado: 8,
+                Id_ataque: 1,
+                Id_fortaleza: 1,
+                Id_reflejos: 1,
+                Id_voluntad: 1,
+                Id_puntos_habilidad: 1,
+                Come: true,
+                Respira: true,
+                Duerme: true,
+                Recibe_criticos: true,
+                Puede_ser_flanqueado: true,
+                Pierde_constitucion: false,
+                Limite_inteligencia: 0,
+                Tesoro: '',
+                Id_alineamiento: 0,
+                Rasgos: [],
+                Oficial: true,
+            },
+            Subtipos: [],
+            Sortilegas: [],
+            Raciales: [],
+            Habilidades: { Base: [], Custom: [] },
+            DotesContextuales: [],
+            ...partial,
+        } as unknown as Raza;
+    }
+
+    it('raza: calcula puntos con ModInt positivo y negativo', () => {
+        const svc = new NuevoPersonajeService();
+        const raza = crearRazaConDgs({
+            Dgs_adicionales: {
+                Cantidad: 2,
+                Dado: 'd8',
+                Tipo_criatura: 'Humanoide',
+                Ataque_base: 0,
+                Dotes_extra: 0,
+                Puntos_habilidad: 2,
+                Multiplicador_puntos_habilidad: 1,
+                Fortaleza: 0,
+                Reflejos: 0,
+                Voluntad: 0,
+            },
+        } as any);
+        svc.seleccionarRaza(raza);
+
+        svc.PersonajeCreacion.ModInteligencia = 2;
+        expect(svc.iniciarDistribucionHabilidadesPorRazaDG()).toBeTrue();
+        expect(svc.EstadoFlujo.habilidades.puntosTotales).toBe(6);
+
+        svc.cerrarDistribucionHabilidades();
+        svc.PersonajeCreacion.ModInteligencia = -2;
+        expect(svc.iniciarDistribucionHabilidadesPorRazaDG()).toBeTrue();
+        expect(svc.EstadoFlujo.habilidades.puntosTotales).toBe(2);
+    });
+
+    it('plantillas: usa Suma_fija con mínimo 1 por plantilla con DG extra', () => {
+        const svc = new NuevoPersonajeService();
+        svc.seleccionarRaza(crearRazaConDgs());
+        svc.agregarPlantillaSeleccion({
+            Id: 100,
+            Nombre: 'Plantilla A',
+            Licantronia_dg: { Id_dado: 3, Dado: 'd8', Multiplicador: 1, Suma: 0 },
+            Puntos_habilidad: { Suma: 0, Suma_fija: 0 },
+            Habilidades: [],
+        } as any);
+        svc.agregarPlantillaSeleccion({
+            Id: 101,
+            Nombre: 'Plantilla B',
+            Licantronia_dg: { Id_dado: 3, Dado: 'd8', Multiplicador: 2, Suma: 0 },
+            Puntos_habilidad: { Suma: 0, Suma_fija: 2 },
+            Habilidades: [],
+        } as any);
+
+        expect(svc.iniciarDistribucionHabilidadesPorPlantillasDG()).toBeTrue();
+        expect(svc.EstadoFlujo.habilidades.puntosTotales).toBe(3);
+    });
+
+    it('clase: aplica x4 en nivel 1 y no en nivel > 1', () => {
+        const svc = new NuevoPersonajeService();
+        svc.seleccionarRaza(crearRazaConDgs());
+
+        const clase = crearClaseBase({
+            Id: 80,
+            Nombre: 'Explorador',
+            Puntos_habilidad: { Id: 1, Valor: 2 },
+        });
+        svc.setCatalogoClases([clase]);
+
+        svc.iniciarDistribucionHabilidadesPorClase(clase, 1);
+        expect(svc.EstadoFlujo.habilidades.puntosTotales).toBe(8);
+
+        svc.cerrarDistribucionHabilidades();
+        svc.iniciarDistribucionHabilidadesPorClase(clase, 2);
+        expect(svc.EstadoFlujo.habilidades.puntosTotales).toBe(2);
+    });
+
+    it('límites de rangos: class skill = 3+nivelRef y no class = nivelRef', () => {
+        const svc = new NuevoPersonajeService();
+        svc.setCatalogoHabilidades([
+            { Id_habilidad: 6, Nombre: 'Avistar', Id_caracteristica: 5, Caracteristica: 'Sabiduria', Descripcion: '', Soporta_extra: false, Entrenada: false, Extras: [] },
+            { Id_habilidad: 7, Nombre: 'Nadar', Id_caracteristica: 2, Caracteristica: 'Destreza', Descripcion: '', Soporta_extra: false, Entrenada: false, Extras: [] },
+        ]);
+        const raza = crearRazaConDgs({
+            Habilidades: {
+                Base: [{ Id_habilidad: 6, Habilidad: 'Avistar', Cantidad: 1 }],
+                Custom: [],
+            },
+        } as any);
+        svc.seleccionarRaza(raza);
+
+        expect(svc.iniciarDistribucionHabilidadesPorRazaDG()).toBeTrue();
+        expect(svc.obtenerLimiteRangoHabilidad(6)).toBe(5);
+        expect(svc.obtenerLimiteRangoHabilidad(7)).toBe(2);
+    });
+
+    it('no permite cerrar distribución si quedan puntos', () => {
+        const svc = new NuevoPersonajeService();
+        svc.seleccionarRaza(crearRazaConDgs());
+        svc.iniciarDistribucionHabilidadesPorRazaDG();
+        expect(svc.puedeCerrarDistribucionHabilidades()).toBeFalse();
+        expect(svc.cerrarDistribucionHabilidades()).toBeNull();
+    });
+
+    it('reparto manual actualiza Rangos y no Rangos_varios', () => {
+        const svc = new NuevoPersonajeService();
+        svc.setCatalogoHabilidades([
+            { Id_habilidad: 6, Nombre: 'Avistar', Id_caracteristica: 5, Caracteristica: 'Sabiduria', Descripcion: '', Soporta_extra: false, Entrenada: false, Extras: [] },
+        ]);
+        svc.seleccionarRaza(crearRazaConDgs());
+        svc.iniciarDistribucionHabilidadesPorRazaDG();
+
+        expect(svc.ajustarRangoHabilidad(6, 1)).toBeTrue();
+        const avistar = svc.PersonajeCreacion.Habilidades.find((h) => h.Id === 6);
+        expect(avistar?.Rangos).toBe(1);
+        expect(avistar?.Rangos_varios).toBe(0);
+    });
+
+    it('familias repetibles: artesanía reparte slots y pierde exceso sobre 3', () => {
+        const svc = new NuevoPersonajeService();
+        svc.setCatalogoHabilidades([
+            { Id_habilidad: 2, Nombre: 'Artesania 1', Id_caracteristica: 4, Caracteristica: 'Inteligencia', Descripcion: '', Soporta_extra: true, Entrenada: false, Extras: [] },
+            { Id_habilidad: 3, Nombre: 'Artesania 2', Id_caracteristica: 4, Caracteristica: 'Inteligencia', Descripcion: '', Soporta_extra: true, Entrenada: false, Extras: [] },
+            { Id_habilidad: 4, Nombre: 'Artesania 3', Id_caracteristica: 4, Caracteristica: 'Inteligencia', Descripcion: '', Soporta_extra: true, Entrenada: false, Extras: [] },
+        ]);
+        svc.seleccionarRaza(crearRazaConDgs({
+            Habilidades: {
+                Base: [{ Id_habilidad: 2, Habilidad: 'Artesania 1', Cantidad: 1 }],
+                Custom: [],
+            },
+        } as any));
+
+        const clase = crearClaseBase({
+            Id: 81,
+            Nombre: 'Artesano',
+            Habilidades: {
+                Base: [
+                    { Id_habilidad: 2, Habilidad: 'Artesania 1' },
+                    { Id_habilidad: 2, Habilidad: 'Artesania 1' },
+                    { Id_habilidad: 2, Habilidad: 'Artesania 1' },
+                ],
+                Custom: [],
+            },
+        });
+        svc.setCatalogoClases([clase]);
+        svc.aplicarSiguienteNivelClase(clase);
+
+        const claseas = svc.PersonajeCreacion.Habilidades
+            .filter((h) => [2, 3, 4].includes(Number(h.Id)) && h.Clasea);
+        expect(claseas.length).toBe(3);
     });
 });
 

@@ -434,6 +434,45 @@ export class NuevoPersonajeComponent {
         return this.flujo.ventajas;
     }
 
+    get flujoHabilidades() {
+        return this.flujo.habilidades;
+    }
+
+    get origenHabilidadesTexto(): string {
+        const origen = this.flujoHabilidades?.origen;
+        if (!origen)
+            return '-';
+
+        if (origen === 'raza_dg') {
+            const nombreRaza = `${this.razaSeleccionada?.Nombre ?? ''}`.trim();
+            return nombreRaza.length > 0 ? nombreRaza : 'Raza';
+        }
+
+        if (origen === 'plantilla_dg') {
+            const plantillasConDg = this.plantillasSeleccionadas
+                .filter((plantilla) => this.aportaDgPlantilla(plantilla));
+            if (plantillasConDg.length === 1) {
+                const nombrePlantilla = `${plantillasConDg[0]?.Nombre ?? ''}`.trim();
+                return nombrePlantilla.length > 0 ? nombrePlantilla : 'Plantilla';
+            }
+            return 'Plantillas';
+        }
+
+        if (origen === 'clase_nivel')
+            return 'Nivel';
+
+        return `${origen}`;
+    }
+
+    get habilidadesOrdenadas(): Personaje['Habilidades'] {
+        return [...(this.Personaje?.Habilidades ?? [])]
+            .sort((a, b) => `${a?.Nombre ?? ''}`.localeCompare(`${b?.Nombre ?? ''}`, 'es', { sensitivity: 'base' }));
+    }
+
+    get puedeContinuarHabilidades(): boolean {
+        return this.nuevoPSvc.puedeCerrarDistribucionHabilidades();
+    }
+
     get manualesClases(): string[] {
         const manuales = this.catalogoClases
             .map((clase) => `${clase?.Manual?.Nombre ?? ''}`.trim())
@@ -1197,6 +1236,7 @@ export class NuevoPersonajeComponent {
         if (this.isVentanaDetalleHabilitada()) {
             this.ventanaDetalleAbierta = true;
         }
+        this.limpiarFocoActivoAntesDeModal();
         this.abrirModalCaracteristicas();
     }
 
@@ -1205,6 +1245,37 @@ export class NuevoPersonajeComponent {
         if (!this.isVentanaDetalleHabilitada() && this.ventanaDetalleAbierta) {
             this.ventanaDetalleAbierta = false;
         }
+    }
+
+    @HostListener('document:keydown.enter', ['$event'])
+    onEnterPresionado(event: KeyboardEvent): void {
+        if (event.repeat || this.hayModalBloqueandoAtajos())
+            return;
+
+        const target = event.target as HTMLElement | null;
+        if (this.esElementoInteractivoParaEnter(target))
+            return;
+
+        let accionAplicada = false;
+        if (this.flujo.pasoActual === 'basicos' && this.puedeContinuarBasicos) {
+            void this.continuarDesdeBasicos();
+            accionAplicada = true;
+        } else if (this.flujo.pasoActual === 'plantillas') {
+            void this.continuarDesdePlantillas();
+            accionAplicada = true;
+        } else if (this.flujo.pasoActual === 'ventajas' && this.puedeContinuarVentajas) {
+            this.continuarDesdeVentajas();
+            accionAplicada = true;
+        } else if (this.flujo.pasoActual === 'clases' && this.puedeAplicarClaseSeleccionada) {
+            void this.continuarDesdeClases();
+            accionAplicada = true;
+        } else if (this.flujo.pasoActual === 'habilidades' && this.puedeContinuarHabilidades) {
+            this.continuarDesdeHabilidades();
+            accionAplicada = true;
+        }
+
+        if (accionAplicada)
+            event.preventDefault();
     }
 
     async onSolicitarCerrarVentanaDetalle(): Promise<void> {
@@ -1256,6 +1327,11 @@ export class NuevoPersonajeComponent {
         this.recalcularOficialidad();
         this.recalcularPlantillasVisibles();
         this.recalcularClasesVisibles();
+        if (this.nuevoPSvc.iniciarDistribucionHabilidadesPorRazaDG()) {
+            this.Personaje = this.nuevoPSvc.PersonajeCreacion;
+            this.sincronizarTabConPaso();
+            return;
+        }
         this.sincronizarTabConPaso();
     }
 
@@ -1308,6 +1384,9 @@ export class NuevoPersonajeComponent {
         if (paso === 'habilidades') {
             return 5;
         }
+        if (paso === 'conjuros') {
+            return 6;
+        }
         return 0;
     }
 
@@ -1318,6 +1397,18 @@ export class NuevoPersonajeComponent {
     private esNumeroValidoPositivo(value: number): boolean {
         const parsed = Number(value);
         return Number.isFinite(parsed) && parsed > 0;
+    }
+
+    private limpiarFocoActivoAntesDeModal(): void {
+        if (typeof document === 'undefined') {
+            return;
+        }
+
+        const active = document.activeElement as HTMLElement | null;
+        if (!active || active === document.body || typeof active.blur !== 'function') {
+            return;
+        }
+        active.blur();
     }
 
     private resetHardAlignmentOverride(): void {
@@ -1353,6 +1444,33 @@ export class NuevoPersonajeComponent {
         }
 
         this.Personaje.Alineamiento = this.alineamientosDisponibles[0] ?? 'Legal bueno';
+    }
+
+    private hayModalBloqueandoAtajos(): boolean {
+        return this.modalCaracteristicasAbierto
+            || this.modalSelectorIdiomaAbierto
+            || this.modalSelectorDominiosAbierto
+            || this.modalSelectorAumentosAbierto
+            || this.modalSelectorRazaBaseAbierto
+            || this.modalSelectorRacialesOpcionalesAbierto;
+    }
+
+    private esElementoInteractivoParaEnter(target: HTMLElement | null): boolean {
+        if (!target)
+            return false;
+
+        if (target.isContentEditable)
+            return true;
+
+        // Permitimos Enter en casi toda la UI para avanzar por pestañas,
+        // pero evitamos interferir en controles donde Enter tiene semántica propia.
+        const selectorBloqueado = 'textarea, button, a, [role="button"], [role="option"], [role="listbox"], [role="menuitem"], .cdk-overlay-pane';
+        return !!target.closest(selectorBloqueado);
+    }
+
+    private aportaDgPlantilla(plantilla: Plantilla | null | undefined): boolean {
+        const multiplicador = Number(plantilla?.Licantronia_dg?.Multiplicador ?? 0);
+        return Number.isFinite(multiplicador) && Math.trunc(multiplicador) > 0;
     }
 
     private async cargarCampanas() {
@@ -1872,6 +1990,14 @@ export class NuevoPersonajeComponent {
             return;
 
         this.nuevoPSvc.confirmarSeleccionActualPlantillas();
+        if (this.nuevoPSvc.iniciarDistribucionHabilidadesPorPlantillasDG()) {
+            this.Personaje = this.nuevoPSvc.PersonajeCreacion;
+            this.recalcularPlantillasVisibles();
+            this.recalcularClasesVisibles();
+            this.sincronizarTabConPaso();
+            return;
+        }
+
         this.nuevoPSvc.actualizarPasoActual('ventajas');
         this.recalcularPlantillasVisibles();
         this.recalcularClasesVisibles();
@@ -2021,8 +2147,92 @@ export class NuevoPersonajeComponent {
         if (!aumentosCompletados)
             return;
 
-        this.nuevoPSvc.actualizarPasoActual('habilidades');
+        this.nuevoPSvc.iniciarDistribucionHabilidadesPorClase(
+            seleccion.clase,
+            Number(resultado.nivelAplicado ?? 0)
+        );
+        this.Personaje = this.nuevoPSvc.PersonajeCreacion;
         this.recalcularClasesVisibles();
+        this.sincronizarTabConPaso();
+    }
+
+    esHabilidadClaseaEfectiva(idHabilidad: number): boolean {
+        return this.nuevoPSvc.esHabilidadClaseaEfectiva(idHabilidad);
+    }
+
+    getLimiteRangoHabilidad(idHabilidad: number): number {
+        return this.nuevoPSvc.obtenerLimiteRangoHabilidad(idHabilidad);
+    }
+
+    puedeSubirRangoHabilidad(habilidad: Personaje['Habilidades'][number]): boolean {
+        if (!habilidad)
+            return false;
+        const actual = Number(habilidad?.Rangos ?? 0);
+        const limite = this.getLimiteRangoHabilidad(Number(habilidad?.Id));
+        return this.flujoHabilidades.puntosRestantes > 0 && actual < limite;
+    }
+
+    puedeBajarRangoHabilidad(habilidad: Personaje['Habilidades'][number]): boolean {
+        if (!habilidad)
+            return false;
+        return Number(habilidad?.Rangos ?? 0) > 0;
+    }
+
+    puedeMaxearRangoHabilidad(habilidad: Personaje['Habilidades'][number]): boolean {
+        if (!habilidad)
+            return false;
+        const actual = Number(habilidad?.Rangos ?? 0);
+        const limite = this.getLimiteRangoHabilidad(Number(habilidad?.Id));
+        return this.flujoHabilidades.puntosRestantes > 0 && actual < limite;
+    }
+
+    ajustarRangoHabilidad(idHabilidad: number, delta: number): void {
+        const aplicado = this.nuevoPSvc.ajustarRangoHabilidad(idHabilidad, delta);
+        if (!aplicado)
+            return;
+        this.Personaje = this.nuevoPSvc.PersonajeCreacion;
+    }
+
+    maxearRangoHabilidad(habilidad: Personaje['Habilidades'][number]): void {
+        if (!habilidad)
+            return;
+
+        const idHabilidad = Number(habilidad?.Id ?? 0);
+        const actual = Number(habilidad?.Rangos ?? 0);
+        const limite = this.getLimiteRangoHabilidad(idHabilidad);
+        const margenLimite = Math.max(0, limite - actual);
+        const delta = Math.min(margenLimite, Math.max(0, Number(this.flujoHabilidades.puntosRestantes ?? 0)));
+        if (idHabilidad <= 0 || delta < 1)
+            return;
+
+        const aplicado = this.nuevoPSvc.ajustarRangoHabilidad(idHabilidad, delta);
+        if (!aplicado)
+            return;
+        this.Personaje = this.nuevoPSvc.PersonajeCreacion;
+    }
+
+    getTextoVariosHabilidad(habilidad: Personaje['Habilidades'][number]): string {
+        const texto = `${habilidad?.Varios ?? ''}`.trim();
+        if (texto.length > 0)
+            return texto;
+        const bonos = habilidad?.Bonos_varios ?? [];
+        if (bonos.length < 1)
+            return '-';
+        return bonos
+            .map((bono) => `${bono?.origen ?? ''} ${Number(bono?.valor ?? 0) >= 0 ? '+' : ''}${Number(bono?.valor ?? 0)}`.trim())
+            .filter((item) => item.length > 0)
+            .join(', ');
+    }
+
+    continuarDesdeHabilidades(): void {
+        if (!this.nuevoPSvc.puedeCerrarDistribucionHabilidades())
+            return;
+
+        const returnStep = this.nuevoPSvc.cerrarDistribucionHabilidades();
+        if (!returnStep)
+            return;
+
+        this.nuevoPSvc.actualizarPasoActual(returnStep);
         this.sincronizarTabConPaso();
     }
 

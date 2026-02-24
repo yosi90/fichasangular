@@ -1,5 +1,6 @@
 import { Raza } from 'src/app/interfaces/raza';
 import { NuevoPersonajeService } from 'src/app/services/nuevo-personaje.service';
+import Swal from 'sweetalert2';
 import { GeneradorCaracteristicasModalComponent } from './generador-caracteristicas-modal.component';
 
 function crearRazaMock(pierdeConstitucion = false): Raza {
@@ -237,5 +238,84 @@ describe('GeneradorCaracteristicasModalComponent', () => {
         expect(component.caracteristicaBloqueada('Fuerza')).toBeTrue();
         expect(component.getPreviewCaracteristica('Fuerza')).toBeNull();
         expect(component.estado.asignaciones.Fuerza).toBe(0);
+    });
+
+    it('Enter finaliza solo cuando está habilitado', () => {
+        const finalizeSpy = spyOn(component.finalizar, 'emit');
+
+        component.onEnterPresionado(new KeyboardEvent('keydown', { key: 'Enter' }));
+        expect(finalizeSpy).not.toHaveBeenCalled();
+
+        component.seleccionarTabla(1);
+        service.asignarDesdePoolACaracteristica('Fuerza', 0);
+        service.asignarDesdePoolACaracteristica('Destreza', 1);
+        service.asignarDesdePoolACaracteristica('Constitucion', 2);
+        service.asignarDesdePoolACaracteristica('Inteligencia', 3);
+        service.asignarDesdePoolACaracteristica('Sabiduria', 4);
+        service.asignarDesdePoolACaracteristica('Carisma', 5);
+
+        component.onEnterPresionado(new KeyboardEvent('keydown', { key: 'Enter' }));
+        expect(finalizeSpy).toHaveBeenCalled();
+    });
+
+    it('repartirAutomaticamente sin asignaciones previas ejecuta mini test y llama al servicio', async () => {
+        const swalSpy = spyOn(Swal, 'fire').and.returnValues(
+            Promise.resolve({ isConfirmed: true, value: 'combate' } as any),
+            Promise.resolve({ isConfirmed: true, value: 'tanque' } as any)
+        );
+        const autoSpy = spyOn(service, 'autoRepartirGenerador').and.returnValue({
+            aplicado: true,
+            tablaSeleccionada: 1,
+        });
+
+        await component.repartirAutomaticamente();
+
+        expect(swalSpy).toHaveBeenCalledTimes(2);
+        expect(autoSpy).toHaveBeenCalledWith({ enfoque: 'combate', detalle: 'tanque' });
+    });
+
+    it('repartirAutomaticamente no modifica si cancelas la confirmación de sobrescritura', async () => {
+        component.seleccionarTabla(1);
+        service.asignarDesdePoolACaracteristica('Fuerza', 0);
+        spyOn(Swal, 'fire').and.resolveTo({ isConfirmed: false } as any);
+        const autoSpy = spyOn(service, 'autoRepartirGenerador');
+
+        await component.repartirAutomaticamente();
+
+        expect(autoSpy).not.toHaveBeenCalled();
+    });
+
+    it('repartirAutomaticamente confirma sobrescritura y aplica reparto automático', async () => {
+        component.seleccionarTabla(1);
+        service.asignarDesdePoolACaracteristica('Fuerza', 0);
+        spyOn(Swal, 'fire').and.returnValues(
+            Promise.resolve({ isConfirmed: true } as any),
+            Promise.resolve({ isConfirmed: true, value: 'roleo' } as any),
+            Promise.resolve({ isConfirmed: true, value: 'erudito' } as any)
+        );
+        const autoSpy = spyOn(service, 'autoRepartirGenerador').and.returnValue({
+            aplicado: true,
+            tablaSeleccionada: 1,
+        });
+
+        await component.repartirAutomaticamente();
+
+        expect(autoSpy).toHaveBeenCalledWith({ enfoque: 'roleo', detalle: 'erudito' });
+    });
+
+    it('repartirAutomaticamente no finaliza automáticamente', async () => {
+        spyOn(Swal, 'fire').and.returnValues(
+            Promise.resolve({ isConfirmed: true, value: 'combate' } as any),
+            Promise.resolve({ isConfirmed: true, value: 'agil' } as any)
+        );
+        spyOn(service, 'autoRepartirGenerador').and.returnValue({
+            aplicado: true,
+            tablaSeleccionada: 1,
+        });
+        const finalizeSpy = spyOn(component, 'finalizarAsignacion');
+
+        await component.repartirAutomaticamente();
+
+        expect(finalizeSpy).not.toHaveBeenCalled();
     });
 });

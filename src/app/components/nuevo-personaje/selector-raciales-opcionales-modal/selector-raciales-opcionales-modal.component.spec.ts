@@ -66,4 +66,16 @@ describe('SelectorRacialesOpcionalesModalComponent', () => {
         expect(infoSpy).toHaveBeenCalled();
         expect(detalleSpy).toHaveBeenCalledWith({ id: 10, nombre: 'A' });
     });
+
+    it('Enter confirma solo cuando está habilitado', () => {
+        const confirmarSpy = spyOn(component.confirmar, 'emit');
+
+        component.onEnterPresionado(new KeyboardEvent('keydown', { key: 'Enter' }));
+        expect(confirmarSpy).not.toHaveBeenCalled();
+
+        component.onSeleccionar(1, 'id:10', true);
+        component.onSeleccionar(2, 'id:20', true);
+        component.onEnterPresionado(new KeyboardEvent('keydown', { key: 'Enter' }));
+        expect(confirmarSpy).toHaveBeenCalledWith({ 1: 'id:10', 2: 'id:20' });
+    });
 });

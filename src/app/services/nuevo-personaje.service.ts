@@ -25,7 +25,29 @@ import { ClaseEvaluacionResultado, evaluarElegibilidadClase } from './utils/clas
 import { UserSettingsService } from './user-settings.service';
 import { NuevoPersonajeGeneradorConfig } from '../interfaces/user-settings';
 
-export type StepNuevoPersonaje = 'raza' | 'basicos' | 'plantillas' | 'ventajas' | 'clases' | 'habilidades';
+export type StepNuevoPersonaje = 'raza' | 'basicos' | 'plantillas' | 'ventajas' | 'clases' | 'habilidades' | 'conjuros';
+export type HabilidadesFlujoOrigen = 'raza_dg' | 'plantilla_dg' | 'clase_nivel';
+export type GeneradorAutoEnfoque = 'combate' | 'roleo';
+export type GeneradorAutoDetalle =
+    | 'atacante_fisico'
+    | 'tanque'
+    | 'agil'
+    | 'lanzador_arcano'
+    | 'lanzador_divino'
+    | 'lanzador_psionico'
+    | 'carismatico'
+    | 'erudito'
+    | 'perceptivo';
+
+export interface GeneradorAutoPerfil {
+    enfoque: GeneradorAutoEnfoque;
+    detalle: GeneradorAutoDetalle;
+}
+
+export interface GeneradorAutoResultado {
+    aplicado: boolean;
+    tablaSeleccionada?: number;
+}
 
 export type CaracteristicaKeyAumento = 'Fuerza' | 'Destreza' | 'Constitucion' | 'Inteligencia' | 'Sabiduria' | 'Carisma';
 type CaracteristicaKey = CaracteristicaKeyAumento;
@@ -45,6 +67,39 @@ const GENERADOR_CONFIG_STORAGE_KEY = 'fichas35.nuevoPersonaje.generador.config.v
 const MAX_VENTAJAS_SELECCIONABLES = 3;
 const DADOS_PROGRESION = [4, 6, 8, 10, 12];
 const EXTRA_IDIOMAS_INICIALES = 0;
+const HABILIDAD_FAMILIAS_REPETIBLES = {
+    artesania: {
+        ids: [2, 3, 4],
+        maxSlots: 3,
+        nombreBase: 'Artesania',
+        patrones: ['artesania'],
+    },
+    saberes: {
+        ids: [32, 33, 34, 35, 36],
+        maxSlots: 5,
+        nombreBase: 'Saber',
+        patrones: ['saber', 'conocimiento'],
+    },
+} as const;
+
+const GENERADOR_AUTO_PESOS_POR_POSICION: number[] = [60, 50, 40, 30, 20, 10];
+const GENERADOR_AUTO_ORDEN_BASE: Record<GeneradorAutoDetalle, CaracteristicaKey[]> = {
+    atacante_fisico: ['Fuerza', 'Constitucion', 'Destreza', 'Sabiduria', 'Inteligencia', 'Carisma'],
+    tanque: ['Constitucion', 'Fuerza', 'Destreza', 'Sabiduria', 'Carisma', 'Inteligencia'],
+    agil: ['Destreza', 'Constitucion', 'Fuerza', 'Sabiduria', 'Inteligencia', 'Carisma'],
+    lanzador_arcano: ['Inteligencia', 'Destreza', 'Constitucion', 'Sabiduria', 'Carisma', 'Fuerza'],
+    lanzador_divino: ['Sabiduria', 'Constitucion', 'Destreza', 'Carisma', 'Inteligencia', 'Fuerza'],
+    lanzador_psionico: ['Inteligencia', 'Sabiduria', 'Destreza', 'Constitucion', 'Carisma', 'Fuerza'],
+    carismatico: ['Carisma', 'Sabiduria', 'Inteligencia', 'Destreza', 'Constitucion', 'Fuerza'],
+    erudito: ['Inteligencia', 'Sabiduria', 'Carisma', 'Destreza', 'Constitucion', 'Fuerza'],
+    perceptivo: ['Sabiduria', 'Inteligencia', 'Carisma', 'Destreza', 'Constitucion', 'Fuerza'],
+};
+const GENERADOR_AUTO_DETALLES_POR_ENFOQUE: Record<GeneradorAutoEnfoque, GeneradorAutoDetalle[]> = {
+    combate: ['atacante_fisico', 'tanque', 'agil', 'lanzador_arcano', 'lanzador_divino', 'lanzador_psionico'],
+    roleo: ['carismatico', 'erudito', 'perceptivo'],
+};
+
+type HabilidadFamiliaRepetibleKey = keyof typeof HABILIDAD_FAMILIAS_REPETIBLES;
 
 export interface AsignacionCaracteristicas {
     Fuerza: number | null;
@@ -99,6 +154,16 @@ export interface VentajasFlujoState {
         Oficial: boolean;
         Origen?: string;
     }[];
+}
+
+export interface HabilidadesFlujoState {
+    activa: boolean;
+    origen: HabilidadesFlujoOrigen | null;
+    returnStep: StepNuevoPersonaje | null;
+    puntosTotales: number;
+    puntosRestantes: number;
+    nivelPersonajeReferencia: number;
+    classSkillTemporales: number[];
 }
 
 export interface ToggleVentajaResult {
@@ -196,6 +261,7 @@ export interface EstadoFlujoNuevoPersonaje {
     generador: GeneradorCaracteristicasState;
     plantillas: PlantillasFlujoState;
     ventajas: VentajasFlujoState;
+    habilidades: HabilidadesFlujoState;
 }
 
 export interface PlantillasFlujoState {
@@ -368,6 +434,7 @@ export class NuevoPersonajeService {
         this.resetearGeneradorCaracteristicas();
         this.estadoFlujo.plantillas = this.crearPlantillasFlujoBase();
         this.estadoFlujo.plantillas.heredadaActiva = !!razaEfectiva.Heredada;
+        this.estadoFlujo.habilidades = this.crearHabilidadesFlujoBase();
         this.personajeCreacion.Plantillas = [];
         this.personajeCreacion.desgloseClases = [];
         this.personajeCreacion.Clases = '';
@@ -626,6 +693,195 @@ export class NuevoPersonajeService {
             cantidad,
             motivo: 'Idiomas iniciales por modificador de Inteligencia',
         };
+    }
+
+    iniciarDistribucionHabilidadesPorRazaDG(): boolean {
+        const raza = this.razaSeleccionada;
+        if (!raza)
+            return false;
+
+        const dgsExtra = this.toNumber(raza?.Dgs_adicionales?.Cantidad);
+        if (dgsExtra < 1)
+            return false;
+
+        const puntosBase = this.toNumber(raza?.Dgs_adicionales?.Puntos_habilidad);
+        const multiplicador = this.toNumber(raza?.Dgs_adicionales?.Multiplicador_puntos_habilidad);
+        const modInt = this.toNumber(this.personajeCreacion?.ModInteligencia);
+        const puntos = modInt >= 0
+            ? puntosBase * (multiplicador + modInt)
+            : puntosBase * multiplicador;
+
+        const total = Math.max(0, Math.trunc(puntos));
+        if (total < 1)
+            return false;
+
+        this.iniciarDistribucionHabilidadesInterna('raza_dg', 'plantillas', total, []);
+        return true;
+    }
+
+    iniciarDistribucionHabilidadesPorPlantillasDG(): boolean {
+        const seleccionadas = this.estadoFlujo.plantillas.seleccionadas ?? [];
+        if (seleccionadas.length < 1)
+            return false;
+
+        const plantillasConDg = seleccionadas
+            .filter((plantilla) => this.toNumber(plantilla?.Licantronia_dg?.Multiplicador) > 0);
+        if (plantillasConDg.length < 1)
+            return false;
+
+        const total = plantillasConDg.reduce((acc, plantilla) => {
+            const sumaFija = Math.max(1, Math.trunc(this.toNumber(plantilla?.Puntos_habilidad?.Suma_fija)));
+            return acc + sumaFija;
+        }, 0);
+
+        if (total < 1)
+            return false;
+
+        const classSkillTemporales = new Set<number>();
+        plantillasConDg.forEach((plantilla) => {
+            (plantilla?.Habilidades ?? []).forEach((habilidadRef) => {
+                const habilidad = this.asegurarHabilidadDesdePlantilla(habilidadRef);
+                const id = this.toNumber(habilidad?.Id);
+                if (id > 0)
+                    classSkillTemporales.add(id);
+            });
+        });
+
+        const nivelClases = (this.personajeCreacion?.desgloseClases ?? [])
+            .reduce((acc, clase) => acc + this.toNumber(clase?.Nivel), 0);
+        const returnStep: StepNuevoPersonaje = nivelClases > 0 ? 'clases' : 'ventajas';
+        this.iniciarDistribucionHabilidadesInterna(
+            'plantilla_dg',
+            returnStep,
+            total,
+            Array.from(classSkillTemporales)
+        );
+        return true;
+    }
+
+    iniciarDistribucionHabilidadesPorClase(clase: Clase, nivelAplicado: number): boolean {
+        const nivel = Math.max(1, Math.trunc(this.toNumber(nivelAplicado)));
+        const puntosBase = this.toNumber(clase?.Puntos_habilidad?.Valor);
+        const modInt = Math.max(0, this.toNumber(this.personajeCreacion?.ModInteligencia));
+        const puntos = nivel === 1
+            ? 4 * (puntosBase + modInt)
+            : puntosBase + modInt;
+        const total = Math.max(0, Math.trunc(puntos));
+
+        this.iniciarDistribucionHabilidadesInterna('clase_nivel', 'conjuros', total, []);
+        return true;
+    }
+
+    ajustarRangoHabilidad(idHabilidad: number, delta: number): boolean {
+        if (!this.estadoFlujo.habilidades.activa)
+            return false;
+
+        const id = this.toNumber(idHabilidad);
+        const cambio = Math.trunc(this.toNumber(delta));
+        if (id <= 0 || cambio === 0)
+            return false;
+
+        const habilidad = this.personajeCreacion.Habilidades.find((item) => this.toNumber(item?.Id) === id);
+        if (!habilidad)
+            return false;
+
+        const actual = Math.max(0, this.toNumber(habilidad.Rangos));
+
+        if (cambio > 0) {
+            const limite = this.obtenerLimiteRangoHabilidad(id);
+            const maxSubida = limite - actual;
+            const subida = Math.min(cambio, maxSubida);
+            if (subida < 1)
+                return false;
+            if (this.estadoFlujo.habilidades.puntosRestantes < subida)
+                return false;
+
+            habilidad.Rangos = actual + subida;
+            this.estadoFlujo.habilidades.puntosRestantes -= subida;
+            return true;
+        }
+
+        const bajada = Math.min(Math.abs(cambio), actual);
+        if (bajada < 1)
+            return false;
+
+        habilidad.Rangos = actual - bajada;
+        this.estadoFlujo.habilidades.puntosRestantes = Math.min(
+            this.estadoFlujo.habilidades.puntosTotales,
+            this.estadoFlujo.habilidades.puntosRestantes + bajada
+        );
+        return true;
+    }
+
+    puedeCerrarDistribucionHabilidades(): boolean {
+        if (!this.estadoFlujo.habilidades.activa)
+            return true;
+        return this.toNumber(this.estadoFlujo.habilidades.puntosRestantes) === 0;
+    }
+
+    cerrarDistribucionHabilidades(): StepNuevoPersonaje | null {
+        if (!this.puedeCerrarDistribucionHabilidades())
+            return null;
+
+        const returnStep = this.estadoFlujo.habilidades.returnStep;
+        this.estadoFlujo.habilidades = this.crearHabilidadesFlujoBase();
+        return returnStep;
+    }
+
+    esHabilidadClaseaEfectiva(idHabilidad: number): boolean {
+        const id = this.toNumber(idHabilidad);
+        if (id <= 0)
+            return false;
+
+        const habilidad = this.personajeCreacion.Habilidades.find((item) => this.toNumber(item?.Id) === id);
+        if (!habilidad)
+            return false;
+
+        return this.esHabilidadClaseaParaSesion(habilidad);
+    }
+
+    obtenerLimiteRangoHabilidad(idHabilidad: number): number {
+        const id = this.toNumber(idHabilidad);
+        if (id <= 0)
+            return 0;
+
+        const habilidad = this.personajeCreacion.Habilidades.find((item) => this.toNumber(item?.Id) === id);
+        if (!habilidad)
+            return 0;
+
+        const nivelReferencia = Math.max(
+            0,
+            this.toNumber(this.estadoFlujo.habilidades.nivelPersonajeReferencia) || this.getNivelEfectivoParaAumentos()
+        );
+        return this.esHabilidadClaseaParaSesion(habilidad)
+            ? 3 + nivelReferencia
+            : nivelReferencia;
+    }
+
+    private iniciarDistribucionHabilidadesInterna(
+        origen: HabilidadesFlujoOrigen,
+        returnStep: StepNuevoPersonaje,
+        puntosTotales: number,
+        classSkillTemporales: number[]
+    ): void {
+        const total = Math.max(0, Math.trunc(this.toNumber(puntosTotales)));
+        const nivelReferencia = this.getNivelEfectivoParaAumentos();
+        const temporales = Array.from(new Set(
+            (classSkillTemporales ?? [])
+                .map((id) => this.toNumber(id))
+                .filter((id) => id > 0)
+        ));
+
+        this.estadoFlujo.habilidades = {
+            activa: true,
+            origen,
+            returnStep,
+            puntosTotales: total,
+            puntosRestantes: total,
+            nivelPersonajeReferencia: nivelReferencia,
+            classSkillTemporales: temporales,
+        };
+        this.estadoFlujo.pasoActual = 'habilidades';
     }
 
     registrarAumentosPendientesPorProgresion(origen: string): AumentoCaracteristicaPendiente[] {
@@ -1092,6 +1348,47 @@ export class NuevoPersonajeService {
         const fila = this.estadoFlujo.generador.tiradasCache[this.estadoFlujo.generador.indiceMinimo];
         const inicio = (tablaNormalizada - 1) * TIRADAS_POR_TABLA;
         return fila.slice(inicio, inicio + TIRADAS_POR_TABLA);
+    }
+
+    autoRepartirGenerador(perfil: GeneradorAutoPerfil): GeneradorAutoResultado {
+        if (!this.esPerfilAutoGeneradorValido(perfil))
+            return { aplicado: false };
+
+        this.asegurarTiradasPorIndice(this.estadoFlujo.generador.indiceMinimo);
+        const tablasDisponibles = Array.from({ length: this.estadoFlujo.generador.tablasPermitidas }, (_, i) => i + 1);
+        if (tablasDisponibles.length < 1)
+            return { aplicado: false };
+
+        const rankingGlobal = this.getRankingCaracteristicasAutoGenerador(perfil);
+        const rankingActivas = rankingGlobal.filter((key) => !this.esCaracteristicaPerdida(key));
+        if (rankingActivas.length < 1)
+            return { aplicado: false };
+
+        const tablaSeleccionada = this.seleccionarMejorTablaAutoGenerador(tablasDisponibles, rankingActivas);
+        if (tablaSeleccionada === null || !this.seleccionarTablaGenerador(tablaSeleccionada))
+            return { aplicado: false };
+
+        const poolOrdenado = this.estadoFlujo.generador.poolDisponible
+            .map((valor, index) => ({ valor, index }))
+            .filter((item) => item.valor >= 0)
+            .sort((a, b) => {
+                if (b.valor !== a.valor)
+                    return b.valor - a.valor;
+                return a.index - b.index;
+            });
+
+        if (poolOrdenado.length < rankingActivas.length)
+            return { aplicado: false };
+
+        for (let i = 0; i < rankingActivas.length; i++) {
+            if (!this.asignarDesdePoolACaracteristica(rankingActivas[i], poolOrdenado[i].index))
+                return { aplicado: false };
+        }
+
+        return {
+            aplicado: this.puedeFinalizarGenerador(),
+            tablaSeleccionada,
+        };
     }
 
     asignarDesdePoolACaracteristica(caracteristica: CaracteristicaKey, indexPool: number): boolean {
@@ -1710,6 +2007,165 @@ export class NuevoPersonajeService {
         this.recalcularNepExperienciaOro(seleccionadas);
     }
 
+    private esHabilidadClaseaParaSesion(habilidad: Personaje['Habilidades'][number]): boolean {
+        if (habilidad.Clasea)
+            return true;
+        const id = this.toNumber(habilidad?.Id);
+        if (id <= 0)
+            return false;
+        return this.estadoFlujo.habilidades.classSkillTemporales.includes(id);
+    }
+
+    private resolverFamiliaRepetiblePorReferencia(idHabilidad: number, nombre: string): HabilidadFamiliaRepetibleKey | null {
+        const id = this.toNumber(idHabilidad);
+        const nombreNorm = this.normalizarTexto(nombre);
+
+        const familias = Object.entries(HABILIDAD_FAMILIAS_REPETIBLES) as Array<[
+            HabilidadFamiliaRepetibleKey,
+            typeof HABILIDAD_FAMILIAS_REPETIBLES[HabilidadFamiliaRepetibleKey]
+        ]>;
+
+        for (const [key, config] of familias) {
+            const ids = (config.ids as readonly number[]);
+            if (ids.includes(id))
+                return key;
+            if (config.patrones.some((patron) => nombreNorm.startsWith(patron)))
+                return key;
+        }
+
+        return null;
+    }
+
+    private obtenerSlotsFamiliaRepetible(familia: HabilidadFamiliaRepetibleKey): Personaje['Habilidades'][number][] {
+        const config = HABILIDAD_FAMILIAS_REPETIBLES[familia];
+        const ids = [...(config.ids as readonly number[])];
+
+        const slots = this.personajeCreacion.Habilidades.filter((habilidad) => {
+            const id = this.toNumber(habilidad?.Id);
+            if (ids.includes(id))
+                return true;
+            return this.resolverFamiliaRepetiblePorReferencia(id, `${habilidad?.Nombre ?? ''}`) === familia;
+        });
+
+        return slots.sort((a, b) => {
+            const idxA = ids.indexOf(this.toNumber(a?.Id));
+            const idxB = ids.indexOf(this.toNumber(b?.Id));
+            if (idxA !== idxB)
+                return idxA - idxB;
+            return `${a?.Nombre ?? ''}`.localeCompare(`${b?.Nombre ?? ''}`, 'es', { sensitivity: 'base' });
+        }).slice(0, config.maxSlots);
+    }
+
+    private esSlotHabilidadOcupado(habilidad: Personaje['Habilidades'][number] | null | undefined): boolean {
+        if (!habilidad)
+            return true;
+        return this.toNumber(habilidad?.Rangos) > 0
+            || this.toNumber(habilidad?.Rangos_varios) > 0
+            || !!habilidad?.Clasea;
+    }
+
+    private resolverSlotFamiliaParaOtorgamiento(
+        familia: HabilidadFamiliaRepetibleKey,
+        preferida: Personaje['Habilidades'][number] | null
+    ): Personaje['Habilidades'][number] | null {
+        const slots = this.obtenerSlotsFamiliaRepetible(familia);
+        if (slots.length < 1)
+            return preferida;
+
+        const preferidaId = this.toNumber(preferida?.Id);
+        if (preferida && slots.some((item) => this.toNumber(item?.Id) === preferidaId) && !this.esSlotHabilidadOcupado(preferida))
+            return preferida;
+
+        const libre = slots.find((slot) => !this.esSlotHabilidadOcupado(slot));
+        return libre ?? null;
+    }
+
+    private asegurarHabilidadDesdeReferencia(
+        referencia: Record<string, any>,
+        opciones: {
+            customPreferido?: boolean;
+            marcarClasea?: boolean;
+            extraFallback?: string;
+            variosFallback?: string;
+        } = {}
+    ): Personaje['Habilidades'][number] | null {
+        const idObjetivo = this.toNumber(
+            referencia?.['Id_habilidad'] ?? referencia?.['id_habilidad'] ?? referencia?.['Id'] ?? referencia?.['id']
+        );
+        const nombreObjetivo = `${referencia?.['Habilidad'] ?? referencia?.['habilidad'] ?? referencia?.['Nombre'] ?? referencia?.['nombre'] ?? ''}`.trim();
+        const nombreNorm = this.normalizarTexto(nombreObjetivo);
+        const custom = !!(opciones.customPreferido || referencia?.['Custom'] || referencia?.['custom']);
+        const marcarClasea = opciones.marcarClasea !== false;
+
+        let existente: Personaje['Habilidades'][number] | null = null;
+        if (idObjetivo > 0) {
+            existente = this.personajeCreacion.Habilidades.find((h) => this.toNumber(h.Id) === idObjetivo) ?? null;
+        }
+        if (!existente && nombreNorm.length > 0) {
+            existente = this.personajeCreacion.Habilidades
+                .find((h) => this.normalizarTexto(h.Nombre) === nombreNorm) ?? null;
+        }
+
+        const familia = this.resolverFamiliaRepetiblePorReferencia(idObjetivo, nombreObjetivo);
+        if (familia) {
+            const slotFamilia = this.resolverSlotFamiliaParaOtorgamiento(familia, existente);
+            if (slotFamilia) {
+                if (marcarClasea)
+                    slotFamilia.Clasea = true;
+                if (custom)
+                    slotFamilia.Custom = true;
+                return slotFamilia;
+            }
+            if (existente && this.esSlotHabilidadOcupado(existente))
+                return null;
+        }
+
+        if (existente) {
+            if (marcarClasea)
+                existente.Clasea = true;
+            if (custom)
+                existente.Custom = true;
+            return existente;
+        }
+
+        if (idObjetivo <= 0 && nombreNorm.length < 1)
+            return null;
+
+        const idCaracteristica = this.toNumber(
+            referencia?.['Id_caracteristica'] ?? referencia?.['id_caracteristica']
+            ?? referencia?.['IdCaracteristica'] ?? referencia?.['idCaracteristica']
+        );
+        const textoCaracteristica = `${referencia?.['Caracteristica'] ?? referencia?.['caracteristica'] ?? ''}`.trim();
+        const keyCar = this.resolverCaracteristicaPorIdOTexto(idCaracteristica, textoCaracteristica);
+        const nuevoId = idObjetivo > 0 ? idObjetivo : this.getNuevoIdHabilidad();
+        const nuevoNombre = nombreObjetivo.length > 0 ? nombreObjetivo : `Habilidad ${nuevoId}`;
+
+        const nuevaHabilidad: Personaje['Habilidades'][number] = {
+            Id: nuevoId,
+            Nombre: nuevoNombre,
+            Clasea: marcarClasea,
+            Car: this.etiquetaCaracteristica(keyCar, textoCaracteristica),
+            Mod_car: this.modificadorPorCaracteristica(keyCar),
+            Rangos: 0,
+            Rangos_varios: 0,
+            Extra: `${referencia?.['Extra'] ?? referencia?.['extra'] ?? opciones.extraFallback ?? ''}`,
+            Varios: `${referencia?.['Varios'] ?? referencia?.['varios'] ?? opciones.variosFallback ?? ''}`,
+            Custom: custom,
+            Soporta_extra: !!(referencia?.['Soporta_extra'] ?? referencia?.['soporta_extra']),
+            Extras: [],
+            Bonos_varios: [],
+        };
+
+        this.personajeCreacion.Habilidades = [
+            ...this.personajeCreacion.Habilidades,
+            nuevaHabilidad,
+        ].sort((a, b) => a.Nombre.localeCompare(b.Nombre, 'es', { sensitivity: 'base' }));
+
+        return this.personajeCreacion.Habilidades
+            .find((h) => this.toNumber(h.Id) === nuevoId || this.normalizarTexto(h.Nombre) === this.normalizarTexto(nuevoNombre))
+            ?? null;
+    }
+
     private aplicarHabilidadesOtorgadasPorRaza(
         raza: Raza | null,
         bonosHabilidades: Record<number, HabilidadBonoVario[]>
@@ -1754,68 +2210,10 @@ export class NuevoPersonajeService {
         habilidadRef: Record<string, any>,
         customPreferido: boolean
     ): Personaje['Habilidades'][number] | null {
-        const idObjetivo = this.toNumber(
-            habilidadRef?.['Id_habilidad'] ?? habilidadRef?.['id_habilidad'] ?? habilidadRef?.['Id'] ?? habilidadRef?.['id']
-        );
-        const nombreObjetivo = `${habilidadRef?.['Habilidad'] ?? habilidadRef?.['habilidad'] ?? habilidadRef?.['Nombre'] ?? habilidadRef?.['nombre'] ?? ''}`.trim();
-        const nombreNorm = this.normalizarTexto(nombreObjetivo);
-
-        if (idObjetivo > 0) {
-            const existentePorId = this.personajeCreacion.Habilidades.find((h) => this.toNumber(h.Id) === idObjetivo);
-            if (existentePorId) {
-                existentePorId.Clasea = true;
-                if (customPreferido || !!(habilidadRef?.['Custom'] ?? habilidadRef?.['custom']))
-                    existentePorId.Custom = true;
-                return existentePorId;
-            }
-        }
-
-        if (nombreNorm.length > 0) {
-            const existentePorNombre = this.personajeCreacion.Habilidades
-                .find((h) => this.normalizarTexto(h.Nombre) === nombreNorm);
-            if (existentePorNombre) {
-                existentePorNombre.Clasea = true;
-                if (customPreferido || !!(habilidadRef?.['Custom'] ?? habilidadRef?.['custom']))
-                    existentePorNombre.Custom = true;
-                return existentePorNombre;
-            }
-        }
-
-        if (idObjetivo <= 0 && nombreNorm.length < 1)
-            return null;
-
-        const idCaracteristica = this.toNumber(
-            habilidadRef?.['Id_caracteristica'] ?? habilidadRef?.['id_caracteristica']
-            ?? habilidadRef?.['IdCaracteristica'] ?? habilidadRef?.['idCaracteristica']
-        );
-        const textoCaracteristica = `${habilidadRef?.['Caracteristica'] ?? habilidadRef?.['caracteristica'] ?? ''}`.trim();
-        const keyCar = this.resolverCaracteristicaPorIdOTexto(idCaracteristica, textoCaracteristica);
-        const nuevoId = idObjetivo > 0 ? idObjetivo : this.getNuevoIdHabilidad();
-        const nuevoNombre = nombreObjetivo.length > 0 ? nombreObjetivo : `Habilidad ${nuevoId}`;
-        const nuevaHabilidad: Personaje['Habilidades'][number] = {
-            Id: nuevoId,
-            Nombre: nuevoNombre,
-            Clasea: true,
-            Car: this.etiquetaCaracteristica(keyCar, textoCaracteristica),
-            Mod_car: this.modificadorPorCaracteristica(keyCar),
-            Rangos: 0,
-            Rangos_varios: 0,
-            Extra: `${habilidadRef?.['Extra'] ?? habilidadRef?.['extra'] ?? ''}`,
-            Varios: `${habilidadRef?.['Varios'] ?? habilidadRef?.['varios'] ?? ''}`,
-            Custom: customPreferido || !!(habilidadRef?.['Custom'] ?? habilidadRef?.['custom']),
-            Soporta_extra: !!(habilidadRef?.['Soporta_extra'] ?? habilidadRef?.['soporta_extra']),
-            Extras: [],
-            Bonos_varios: [],
-        };
-
-        this.personajeCreacion.Habilidades = [
-            ...this.personajeCreacion.Habilidades,
-            nuevaHabilidad,
-        ].sort((a, b) => a.Nombre.localeCompare(b.Nombre, 'es', { sensitivity: 'base' }));
-
-        return this.personajeCreacion.Habilidades
-            .find((h) => this.toNumber(h.Id) === nuevoId || this.normalizarTexto(h.Nombre) === this.normalizarTexto(nuevoNombre))
-            ?? null;
+        return this.asegurarHabilidadDesdeReferencia(habilidadRef, {
+            customPreferido,
+            marcarClasea: true,
+        });
     }
 
     private obtenerNivelActualClase(nombreClase: string): number {
@@ -1933,43 +2331,9 @@ export class NuevoPersonajeService {
 
         refs.forEach((ref) => {
             const raw = ref as Record<string, any>;
-            const idHabilidad = this.toNumber(
-                raw['Id_habilidad'] ?? raw['id_habilidad'] ?? raw['Id'] ?? raw['id']
-            );
-            const nombre = `${raw['Habilidad'] ?? raw['habilidad'] ?? raw['Nombre'] ?? raw['nombre'] ?? ''}`.trim();
-            const nombreNorm = this.normalizarTexto(nombre);
-            if (idHabilidad <= 0 && nombreNorm.length < 1)
-                return;
-
-            const existente = this.personajeCreacion.Habilidades
-                .find((habilidad) => (idHabilidad > 0 && this.toNumber(habilidad.Id) === idHabilidad)
-                    || (nombreNorm.length > 0 && this.normalizarTexto(habilidad.Nombre) === nombreNorm));
-            if (existente) {
-                existente.Clasea = true;
-                return;
-            }
-
-            const idCaracteristica = this.toNumber(
-                raw['Id_caracteristica'] ?? raw['id_caracteristica'] ?? raw['IdCaracteristica'] ?? raw['idCaracteristica']
-            );
-            const textoCaracteristica = `${raw['Caracteristica'] ?? raw['caracteristica'] ?? ''}`.trim();
-            const keyCar = this.resolverCaracteristicaPorIdOTexto(idCaracteristica, textoCaracteristica);
-            const nuevoId = idHabilidad > 0 ? idHabilidad : this.getNuevoIdHabilidad();
-
-            this.personajeCreacion.Habilidades.push({
-                Id: nuevoId,
-                Nombre: nombre.length > 0 ? nombre : `Habilidad ${nuevoId}`,
-                Clasea: true,
-                Car: this.etiquetaCaracteristica(keyCar, textoCaracteristica),
-                Mod_car: this.modificadorPorCaracteristica(keyCar),
-                Rangos: 0,
-                Rangos_varios: 0,
-                Extra: '',
-                Varios: '',
-                Custom: !!(raw['Custom'] ?? raw['custom']),
-                Soporta_extra: !!(raw['Soporta_extra'] ?? raw['soporta_extra']),
-                Extras: [],
-                Bonos_varios: [],
+            this.asegurarHabilidadDesdeReferencia(raw, {
+                marcarClasea: true,
+                customPreferido: !!(raw['Custom'] ?? raw['custom']),
             });
         });
 
@@ -2759,49 +3123,20 @@ export class NuevoPersonajeService {
     }
 
     private asegurarHabilidadDesdePlantilla(habilidadRef: Plantilla['Habilidades'][number]): Personaje['Habilidades'][number] | null {
-        const idObjetivo = this.toNumber(habilidadRef?.Id_habilidad);
-        const nombreObjetivo = `${habilidadRef?.Habilidad ?? ''}`.trim();
-
-        if (idObjetivo > 0) {
-            const existentePorId = this.personajeCreacion.Habilidades.find((h) => this.toNumber(h.Id) === idObjetivo);
-            if (existentePorId)
-                return existentePorId;
-        }
-
-        if (nombreObjetivo.length > 0) {
-            const existentePorNombre = this.personajeCreacion.Habilidades
-                .find((h) => this.normalizarTexto(h.Nombre) === this.normalizarTexto(nombreObjetivo));
-            if (existentePorNombre)
-                return existentePorNombre;
-        }
-
-        if (idObjetivo <= 0 || nombreObjetivo.length < 1)
-            return null;
-
-        const carKey = this.resolverCaracteristicaPorIdOTexto(
-            this.toNumber(habilidadRef?.Id_caracteristica),
-            `${habilidadRef?.Caracteristica ?? ''}`
-        );
-        const nuevaHabilidad: Personaje['Habilidades'][number] = {
-            Id: idObjetivo,
-            Nombre: nombreObjetivo,
-            Clasea: false,
-            Car: this.etiquetaCaracteristica(carKey, `${habilidadRef?.Caracteristica ?? ''}`),
-            Mod_car: this.modificadorPorCaracteristica(carKey),
-            Rangos: 0,
-            Rangos_varios: 0,
-            Extra: `${habilidadRef?.Extra ?? ''}`,
-            Varios: `${habilidadRef?.Varios ?? ''}`,
-            Custom: false,
+        const raw = {
+            Id_habilidad: this.toNumber(habilidadRef?.Id_habilidad),
+            Habilidad: `${habilidadRef?.Habilidad ?? ''}`.trim(),
+            Id_caracteristica: this.toNumber(habilidadRef?.Id_caracteristica),
+            Caracteristica: `${habilidadRef?.Caracteristica ?? ''}`.trim(),
+            Extra: `${habilidadRef?.Extra ?? ''}`.trim(),
+            Varios: `${habilidadRef?.Varios ?? ''}`.trim(),
             Soporta_extra: !!habilidadRef?.Soporta_extra,
-            Extras: [],
-            Bonos_varios: [],
         };
-        this.personajeCreacion.Habilidades = [
-            ...this.personajeCreacion.Habilidades,
-            nuevaHabilidad,
-        ].sort((a, b) => a.Nombre.localeCompare(b.Nombre, 'es', { sensitivity: 'base' }));
-        return this.personajeCreacion.Habilidades.find((h) => this.toNumber(h.Id) === idObjetivo) ?? null;
+
+        return this.asegurarHabilidadDesdeReferencia(raw, {
+            marcarClasea: false,
+            customPreferido: false,
+        });
     }
 
     private copiarRaza(raza: Raza): Raza {
@@ -3090,6 +3425,7 @@ export class NuevoPersonajeService {
             },
             plantillas: this.crearPlantillasFlujoBase(),
             ventajas: this.crearVentajasFlujoBase(),
+            habilidades: this.crearHabilidadesFlujoBase(),
         };
     }
 
@@ -3138,6 +3474,18 @@ export class NuevoPersonajeService {
             baseCaracteristicas: null,
             baseRaciales: [],
             baseIdiomas: [],
+        };
+    }
+
+    private crearHabilidadesFlujoBase(): HabilidadesFlujoState {
+        return {
+            activa: false,
+            origen: null,
+            returnStep: null,
+            puntosTotales: 0,
+            puntosRestantes: 0,
+            nivelPersonajeReferencia: 0,
+            classSkillTemporales: [],
         };
     }
 
@@ -3221,6 +3569,91 @@ export class NuevoPersonajeService {
             return MIN_TABLAS;
         }
         return Math.max(MIN_TABLAS, Math.min(MAX_TABLAS, normalizada));
+    }
+
+    private esPerfilAutoGeneradorValido(perfil: GeneradorAutoPerfil | null | undefined): perfil is GeneradorAutoPerfil {
+        if (!perfil)
+            return false;
+        const detalles = GENERADOR_AUTO_DETALLES_POR_ENFOQUE[perfil.enfoque];
+        return Array.isArray(detalles) && detalles.includes(perfil.detalle);
+    }
+
+    private getRankingCaracteristicasAutoGenerador(perfil: GeneradorAutoPerfil): CaracteristicaKey[] {
+        const ordenBase = GENERADOR_AUTO_ORDEN_BASE[perfil.detalle];
+        const pesosPorCaracteristica = new Map<CaracteristicaKey, number>();
+        const posicionPorCaracteristica = new Map<CaracteristicaKey, number>();
+        ordenBase.forEach((key, index) => {
+            posicionPorCaracteristica.set(key, index);
+            pesosPorCaracteristica.set(key, GENERADOR_AUTO_PESOS_POR_POSICION[index] ?? 0);
+        });
+
+        return [...CARACTERISTICAS_KEYS].sort((a, b) => {
+            const pesoA = pesosPorCaracteristica.get(a) ?? 0;
+            const pesoB = pesosPorCaracteristica.get(b) ?? 0;
+            const modA = this.getModRacialGenerador(a);
+            const modB = this.getModRacialGenerador(b);
+            const scoreA = pesoA + (modA * 6);
+            const scoreB = pesoB + (modB * 6);
+            if (scoreB !== scoreA)
+                return scoreB - scoreA;
+            if (pesoB !== pesoA)
+                return pesoB - pesoA;
+            if (modB !== modA)
+                return modB - modA;
+
+            const posA = posicionPorCaracteristica.get(a) ?? Number.MAX_SAFE_INTEGER;
+            const posB = posicionPorCaracteristica.get(b) ?? Number.MAX_SAFE_INTEGER;
+            if (posA !== posB)
+                return posA - posB;
+            return a.localeCompare(b, 'es', { sensitivity: 'base' });
+        });
+    }
+
+    private seleccionarMejorTablaAutoGenerador(
+        tablasDisponibles: number[],
+        rankingActivas: CaracteristicaKey[]
+    ): number | null {
+        const evaluadas = tablasDisponibles.map((tabla) => {
+            const tiradas = this.getTiradasTabla(tabla);
+            const total = tiradas.reduce((acc, valor) => acc + this.toNumber(valor), 0);
+            const maximo = tiradas.reduce((acc, valor) => Math.max(acc, this.toNumber(valor)), 0);
+            const utilidad = this.calcularUtilidadTablaAutoGenerador(tiradas, rankingActivas);
+            return { tabla, total, maximo, utilidad };
+        });
+
+        evaluadas.sort((a, b) => {
+            if (b.total !== a.total)
+                return b.total - a.total;
+            if (b.maximo !== a.maximo)
+                return b.maximo - a.maximo;
+            if (b.utilidad !== a.utilidad)
+                return b.utilidad - a.utilidad;
+            return a.tabla - b.tabla;
+        });
+
+        return evaluadas[0]?.tabla ?? null;
+    }
+
+    private calcularUtilidadTablaAutoGenerador(
+        tiradasTabla: number[],
+        rankingActivas: CaracteristicaKey[]
+    ): number {
+        const valoresOrdenados = [...tiradasTabla]
+            .map((valor) => this.toNumber(valor))
+            .sort((a, b) => b - a);
+        const limite = Math.min(valoresOrdenados.length, rankingActivas.length);
+        let utilidad = 0;
+        for (let i = 0; i < limite; i++) {
+            const caracteristica = rankingActivas[i];
+            const peso = GENERADOR_AUTO_PESOS_POR_POSICION[i] ?? 0;
+            const valorFinal = valoresOrdenados[i] + this.getModRacialGenerador(caracteristica);
+            utilidad += valorFinal * peso;
+        }
+        return utilidad;
+    }
+
+    private getModRacialGenerador(caracteristica: CaracteristicaKey): number {
+        return this.toNumber(this.personajeCreacion?.Raza?.Modificadores?.[caracteristica]);
     }
 
     private persistirConfigGenerador(): void {

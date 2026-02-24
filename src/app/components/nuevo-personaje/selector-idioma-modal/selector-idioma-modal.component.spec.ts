@@ -81,4 +81,16 @@ describe('SelectorIdiomaModalComponent', () => {
         component.onToggleIdioma(2, true);
         expect(component.seleccionActual.map((i) => i.Id)).toEqual([1]);
     });
+
+    it('Enter confirma solo cuando el selector está habilitado', () => {
+        const emitSpy = spyOn(component.confirmar, 'emit');
+
+        component.cantidadObjetivo = 1;
+        component.onEnterPresionado(new KeyboardEvent('keydown', { key: 'Enter' }));
+        expect(emitSpy).not.toHaveBeenCalled();
+
+        component.onToggleIdioma(1, true);
+        component.onEnterPresionado(new KeyboardEvent('keydown', { key: 'Enter' }));
+        expect(emitSpy).toHaveBeenCalledWith([jasmine.objectContaining({ Id: 1, Nombre: 'Comun' })]);
+    });
 });

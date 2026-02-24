@@ -1244,6 +1244,26 @@ describe('NuevoPersonajeComponent', () => {
         expect(component.Personaje.ModDestreza).toBe(3);
     });
 
+    it('si la raza aporta DGs con puntos de habilidad, tras básicos entra en habilidades', async () => {
+        const razaConDgs = crearRazaMock();
+        razaConDgs.Dgs_adicionales.Cantidad = 2;
+        razaConDgs.Dgs_adicionales.Puntos_habilidad = 2;
+        razaConDgs.Dgs_adicionales.Multiplicador_puntos_habilidad = 1;
+        component.seleccionarRaza(razaConDgs);
+
+        await component.finalizarGeneracionCaracteristicas({
+            Fuerza: 14,
+            Destreza: 15,
+            Constitucion: 13,
+            Inteligencia: 12,
+            Sabiduria: 10,
+            Carisma: 8,
+        });
+
+        expect(nuevoPSvc.EstadoFlujo.pasoActual).toBe('habilidades');
+        expect(component.selectedInternalTabIndex).toBe(5);
+    });
+
     it('flujo de tabs: Plantillas -> Ventajas y desventajas', async () => {
         await component.finalizarGeneracionCaracteristicas({
             Fuerza: 14,
@@ -1282,7 +1302,8 @@ describe('NuevoPersonajeComponent', () => {
 
         expect(abrirAumentosSpy).toHaveBeenCalled();
         expect(nuevoPSvc.esPlantillaConfirmada(plantillaLic.Id)).toBeTrue();
-        expect(nuevoPSvc.EstadoFlujo.pasoActual).toBe('ventajas');
+        expect(nuevoPSvc.EstadoFlujo.pasoActual).toBe('habilidades');
+        expect(component.selectedInternalTabIndex).toBe(5);
     });
 
     it('tras confirmar plantillas, las confirmadas quedan inmutables', async () => {
@@ -1337,8 +1358,50 @@ describe('NuevoPersonajeComponent', () => {
         expect(component.selectedInternalTabIndex).toBe(4);
     });
 
-    it('mapearPasoAIndex incluye el paso habilidades', () => {
+    it('mapearPasoAIndex incluye habilidades y conjuros', () => {
         expect((component as any).mapearPasoAIndex('habilidades')).toBe(5);
+        expect((component as any).mapearPasoAIndex('conjuros')).toBe(6);
+    });
+
+    it('muestra nombre de raza en origen de habilidades cuando viene de DG racial', () => {
+        const raza = crearRazaMock();
+        raza.Nombre = 'Semielfo';
+        component.seleccionarRaza(raza);
+        nuevoPSvc.EstadoFlujo.habilidades.origen = 'raza_dg';
+
+        expect(component.origenHabilidadesTexto).toBe('Semielfo');
+    });
+
+    it('muestra nombre de plantilla en origen de habilidades cuando solo hay una con DG', () => {
+        const plantilla = crearPlantillaMock({
+            Nombre: 'Liche',
+            Licantronia_dg: { Id_dado: 3, Dado: 'D8', Multiplicador: 2, Suma: 0 },
+        });
+        nuevoPSvc.EstadoFlujo.plantillas.seleccionadas = [plantilla];
+        nuevoPSvc.EstadoFlujo.habilidades.origen = 'plantilla_dg';
+
+        expect(component.origenHabilidadesTexto).toBe('Liche');
+    });
+
+    it('muestra Plantillas en origen de habilidades cuando hay varias con DG', () => {
+        const plantillaA = crearPlantillaMock({
+            Nombre: 'A',
+            Licantronia_dg: { Id_dado: 3, Dado: 'D8', Multiplicador: 1, Suma: 0 },
+        });
+        const plantillaB = crearPlantillaMock({
+            Id: 2,
+            Nombre: 'B',
+            Licantronia_dg: { Id_dado: 3, Dado: 'D8', Multiplicador: 2, Suma: 0 },
+        });
+        nuevoPSvc.EstadoFlujo.plantillas.seleccionadas = [plantillaA, plantillaB];
+        nuevoPSvc.EstadoFlujo.habilidades.origen = 'plantilla_dg';
+
+        expect(component.origenHabilidadesTexto).toBe('Plantillas');
+    });
+
+    it('muestra Nivel en origen de habilidades cuando viene de clase', () => {
+        nuevoPSvc.EstadoFlujo.habilidades.origen = 'clase_nivel';
+        expect(component.origenHabilidadesTexto).toBe('Nivel');
     });
 
     it('filtros combinados de clases devuelven solo coincidencias válidas', () => {
@@ -1533,6 +1596,42 @@ describe('NuevoPersonajeComponent', () => {
 
         expect(nuevoPSvc.EstadoFlujo.pasoActual).toBe('habilidades');
         expect(component.selectedInternalTabIndex).toBe(5);
+    });
+
+    it('habilidades bloquea continuar si quedan puntos por repartir', async () => {
+        const clase = crearClaseMock({
+            Id: 346,
+            Nombre: 'Rastreador',
+            Puntos_habilidad: { Id: 1, Valor: 2 },
+        });
+        component.Personaje.ModInteligencia = 0;
+        component.catalogoClases = [clase];
+        nuevoPSvc.setCatalogoClases(component.catalogoClases);
+        (component as any).recalcularClasesVisibles();
+        component.seleccionarClaseParaAplicar(clase);
+
+        await component.continuarDesdeClases();
+
+        expect(component.puedeContinuarHabilidades).toBeFalse();
+    });
+
+    it('continuarDesdeHabilidades salta a conjuros tras reparto de clase', async () => {
+        const clase = crearClaseMock({
+            Id: 347,
+            Nombre: 'Iniciado',
+            Puntos_habilidad: { Id: 1, Valor: 0 },
+        });
+        component.Personaje.ModInteligencia = 0;
+        component.catalogoClases = [clase];
+        nuevoPSvc.setCatalogoClases(component.catalogoClases);
+        (component as any).recalcularClasesVisibles();
+        component.seleccionarClaseParaAplicar(clase);
+
+        await component.continuarDesdeClases();
+        component.continuarDesdeHabilidades();
+
+        expect(nuevoPSvc.EstadoFlujo.pasoActual).toBe('conjuros');
+        expect(component.selectedInternalTabIndex).toBe(6);
     });
 
     it('si hay idiomas pendientes tras aplicar clase, abre el selector de idiomas iniciales', async () => {

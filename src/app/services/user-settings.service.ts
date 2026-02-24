@@ -4,6 +4,7 @@ import { Database, get, ref, set } from '@angular/fire/database';
 import {
     NuevoPersonajeGeneradorConfig,
     NuevoPersonajePreviewMinimizada,
+    NuevoPersonajePreviewRestaurada,
 } from '../interfaces/user-settings';
 
 const USER_SETTINGS_ROOT = 'UserSettings';
@@ -74,6 +75,31 @@ export class UserSettingsService {
         await set(ref(this.db, `${USER_SETTINGS_ROOT}/${uid}/nuevo_personaje/preview_minimizada`), payload);
     }
 
+    async loadPreviewRestaurada(): Promise<NuevoPersonajePreviewRestaurada | null> {
+        const uid = await this.getCurrentUid();
+        if (!uid)
+            return null;
+
+        const snapshot = await get(ref(this.db, `${USER_SETTINGS_ROOT}/${uid}/nuevo_personaje/preview_restaurada`));
+        return this.normalizePreviewRestaurada(snapshot.val());
+    }
+
+    async savePreviewRestaurada(data: Pick<NuevoPersonajePreviewRestaurada, 'left' | 'top' | 'width' | 'height'>): Promise<void> {
+        const uid = await this.getCurrentUid();
+        if (!uid)
+            return;
+
+        const payload: NuevoPersonajePreviewRestaurada = {
+            version: 1,
+            left: Number(data.left),
+            top: Number(data.top),
+            width: Number(data.width),
+            height: Number(data.height),
+            updatedAt: Date.now(),
+        };
+        await set(ref(this.db, `${USER_SETTINGS_ROOT}/${uid}/nuevo_personaje/preview_restaurada`), payload);
+    }
+
     async migrateLegacyLocalConfigOnce(legacyStorageKey: string): Promise<void> {
         const uid = await this.getCurrentUid();
         if (!uid)
@@ -142,6 +168,34 @@ export class UserSettingsService {
             version: 1,
             side,
             top,
+            updatedAt: Math.trunc(updatedAt),
+        };
+    }
+
+    private normalizePreviewRestaurada(raw: any): NuevoPersonajePreviewRestaurada | null {
+        if (!raw || typeof raw !== 'object')
+            return null;
+
+        const version = Number(raw?.version);
+        const left = Number(raw?.left);
+        const top = Number(raw?.top);
+        const width = Number(raw?.width);
+        const height = Number(raw?.height);
+        const updatedAt = Number(raw?.updatedAt);
+
+        if (version !== 1)
+            return null;
+        if (!Number.isFinite(left) || !Number.isFinite(top) || !Number.isFinite(width) || !Number.isFinite(height) || !Number.isFinite(updatedAt))
+            return null;
+        if (width <= 0 || height <= 0)
+            return null;
+
+        return {
+            version: 1,
+            left,
+            top,
+            width,
+            height,
             updatedAt: Math.trunc(updatedAt),
         };
     }

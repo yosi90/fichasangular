@@ -11,10 +11,20 @@ export interface NuevoPersonajePreviewMinimizada {
     updatedAt: number;
 }
 
+export interface NuevoPersonajePreviewRestaurada {
+    version: 1;
+    left: number;
+    top: number;
+    width: number;
+    height: number;
+    updatedAt: number;
+}
+
 export interface UserSettingsV1 {
     version: 1;
     nuevo_personaje: {
         generador_config: NuevoPersonajeGeneradorConfig | null;
         preview_minimizada: NuevoPersonajePreviewMinimizada | null;
+        preview_restaurada: NuevoPersonajePreviewRestaurada | null;
     };
 }

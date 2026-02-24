@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, EventEmitter, Input, OnChanges, Output, SimpleChanges } from '@angular/core';
+import { ChangeDetectionStrategy, Component, EventEmitter, HostListener, Input, OnChanges, Output, SimpleChanges } from '@angular/core';
 import { Raza } from 'src/app/interfaces/raza';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
 import { EstadoElegibilidadRazaBase } from 'src/app/services/utils/raza-mutacion';
@@ -80,6 +80,10 @@ export class SelectorRazaBaseModalComponent implements OnChanges {
         return Number(item.raza.Id) === Number(this.razaSeleccionadaId);
     }
 
+    get puedeConfirmar(): boolean {
+        return !!this.seleccionActual;
+    }
+
     getAjusteNivel(raza: Raza): number {
         const value = Number((raza as any)?.Ajuste_nivel);
         if (!Number.isFinite(value))
@@ -95,9 +99,20 @@ export class SelectorRazaBaseModalComponent implements OnChanges {
     }
 
     onConfirmar(): void {
-        if (!this.seleccionActual)
+        if (!this.puedeConfirmar || !this.seleccionActual)
             return;
         this.confirmar.emit(this.seleccionActual.raza);
+    }
+
+    @HostListener('document:keydown.enter', ['$event'])
+    onEnterPresionado(event: KeyboardEvent): void {
+        if (event.repeat || this.esElementoInteractivoParaEnter(event.target as HTMLElement | null))
+            return;
+        if (!this.puedeConfirmar)
+            return;
+
+        event.preventDefault();
+        this.onConfirmar();
     }
 
     trackByRazaId(index: number, item: CandidataRazaBaseView): number {
@@ -126,5 +141,15 @@ export class SelectorRazaBaseModalComponent implements OnChanges {
         this.seleccionActual = seleccion;
         if (!seleccion)
             this.razaSeleccionadaId = null;
+    }
+
+    private esElementoInteractivoParaEnter(target: HTMLElement | null): boolean {
+        if (!target)
+            return false;
+        if (target.isContentEditable)
+            return true;
+
+        const selectorBloqueado = 'input, textarea, select, button, a, [role="button"], [role="checkbox"], [role="option"], [role="listbox"], [role="menuitem"], .cdk-overlay-pane';
+        return !!target.closest(selectorBloqueado);
     }
 }

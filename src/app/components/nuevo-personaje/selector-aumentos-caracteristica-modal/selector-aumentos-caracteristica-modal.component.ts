@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Input, Output } from '@angular/core';
+import { Component, EventEmitter, HostListener, Input, Output } from '@angular/core';
 import {
     AsignacionAumentoCaracteristica,
     AumentoCaracteristicaPendiente,
@@ -104,6 +104,17 @@ export class SelectorAumentosCaracteristicaModalComponent {
         this.asignaciones.delete(id);
     }
 
+    @HostListener('document:keydown.enter', ['$event'])
+    onEnterPresionado(event: KeyboardEvent): void {
+        if (event.repeat || this.esElementoInteractivoParaEnter(event.target as HTMLElement | null))
+            return;
+        if (!this.puedeConfirmar)
+            return;
+
+        event.preventDefault();
+        this.onConfirmar();
+    }
+
     onCerrar(): void {
         if (!this.puedeCerrar)
             return;
@@ -193,5 +204,15 @@ export class SelectorAumentosCaracteristicaModalComponent {
             return normalizado === '1' || normalizado === 'true' || normalizado === 'si' || normalizado === 'sí';
         }
         return false;
+    }
+
+    private esElementoInteractivoParaEnter(target: HTMLElement | null): boolean {
+        if (!target)
+            return false;
+        if (target.isContentEditable)
+            return true;
+
+        const selectorBloqueado = 'input, textarea, select, button, a, [role="button"], [role="checkbox"], [role="option"], [role="listbox"], [role="menuitem"], .cdk-overlay-pane';
+        return !!target.closest(selectorBloqueado);
     }
 }
