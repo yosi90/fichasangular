@@ -637,6 +637,14 @@
                     </div>
 
                     <div class="tab-footer clases-acciones">
+                        <button type="button" class="clases-recomendaciones-btn"
+                            *ngIf="mostrarInfoRecomendacionesClase"
+                            (click)="abrirInfoRecomendacionesClase($event)"
+                            matTooltip="Recordar recomendación de auto-reparto"
+                            aria-label="Recomendaciones de clase">
+                            <mat-icon>info</mat-icon>
+                            <span>Recomendaciones</span>
+                        </button>
                         <button mat-raised-button color="primary" [disabled]="!puedeAplicarClaseSeleccionada" (click)="continuarDesdeClases()">
                             Siguiente
                             <mat-icon>arrow_forward</mat-icon>
@@ -650,94 +658,255 @@
                 <mat-icon class="me-2">build</mat-icon>
                 Habilidades
             </ng-template>
-            <div class="container-fluid py-3 h-100 habilidades-view">
-                <mat-card class="h-100 sombra-caja-sm p-2 d-flex flex-column gap-2 tab-frame">
-                    <div class="tab-head habilidades-resumen">
-                        <mat-chip>Origen: {{origenHabilidadesTexto}}</mat-chip>
-                        <mat-chip>Nivel referencia: {{flujoHabilidades.nivelPersonajeReferencia}}</mat-chip>
-                        <mat-chip>Puntos: {{flujoHabilidades.puntosRestantes}} / {{flujoHabilidades.puntosTotales}}</mat-chip>
-                    </div>
-
-                    <div class="tab-scroll">
-                        <div class="tabla-scroll habilidades-tabla-scroll">
-                            <table class="tabla-ventajas tabla-habilidades">
-                                <thead>
-                                    <tr>
-                                        <th>Clásea</th>
-                                        <th>Habilidad</th>
-                                        <th>Car</th>
-                                        <th>Rangos</th>
-                                        <th>Rangos varios</th>
-                                        <th>Varios</th>
-                                        <th>Límite</th>
-                                        <th>Acciones</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr *ngFor="let habilidad of habilidadesOrdenadas">
-                                        <td class="habilidad-clasea-col">
-                                            <div class="habilidad-clasea-wrap">
-                                                <mat-checkbox class="habilidad-clasea-check"
-                                                    [checked]="esHabilidadClaseaEfectiva(habilidad.Id)"
-                                                    [disabled]="true"
-                                                    aria-label="Habilidad clásea">
-                                                </mat-checkbox>
-                                            </div>
-                                        </td>
-                                        <td>{{habilidad.Nombre}}</td>
-                                        <td>{{habilidad.Car}}</td>
-                                        <td>{{habilidad.Rangos}}</td>
-                                        <td>{{habilidad.Rangos_varios}}</td>
-                                        <td [matTooltip]="getTextoVariosHabilidad(habilidad)" matTooltipClass="tt-accent tt-multiline">
-                                            {{getTextoVariosHabilidad(habilidad)}}
-                                        </td>
-                                        <td>{{getLimiteRangoHabilidad(habilidad.Id)}}</td>
-                                        <td>
-                                            <div class="habilidad-acciones">
-                                                <button mat-icon-button color="warn"
-                                                    [disabled]="!puedeBajarRangoHabilidad(habilidad)"
-                                                    (click)="ajustarRangoHabilidad(habilidad.Id, -1)"
-                                                    aria-label="Bajar rango">
-                                                    <mat-icon>remove</mat-icon>
-                                                </button>
-                                                <button mat-icon-button color="primary"
-                                                    [disabled]="!puedeSubirRangoHabilidad(habilidad)"
-                                                    (click)="ajustarRangoHabilidad(habilidad.Id, 1)"
-                                                    aria-label="Subir rango">
-                                                    <mat-icon>add</mat-icon>
-                                                </button>
-                                                <button mat-icon-button color="accent"
-                                                    [disabled]="!puedeMaxearRangoHabilidad(habilidad)"
-                                                    (click)="maxearRangoHabilidad(habilidad)"
-                                                    aria-label="Maxear rango"
-                                                    matTooltip="Subir al máximo posible">
-                                                    <mat-icon>keyboard_double_arrow_up</mat-icon>
-                                                </button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                </tbody>
-                            </table>
+            <ng-template matTabContent>
+                <div class="container-fluid py-3 h-100 habilidades-view">
+                    <mat-card class="h-100 sombra-caja-sm p-2 d-flex flex-column gap-2 tab-frame">
+                        <div class="tab-head habilidades-resumen">
+                            <div class="habilidades-resumen-principal">
+                                <mat-chip>Origen: {{origenHabilidadesTexto}}</mat-chip>
+                                <mat-chip>Nivel referencia: {{flujoHabilidades.nivelPersonajeReferencia}}</mat-chip>
+                                <mat-chip>Puntos: {{flujoHabilidades.puntosRestantes}} / {{flujoHabilidades.puntosTotales}}</mat-chip>
+                            </div>
+                            <mat-chip class="habilidad-entrenada-info-chip">
+                                * Las habilidades entrenadas no cláseas no pueden subir rangos.
+                            </mat-chip>
                         </div>
-                    </div>
 
-                    <div class="tab-footer habilidades-acciones">
-                        <button mat-raised-button color="primary" [disabled]="!puedeContinuarHabilidades" (click)="continuarDesdeHabilidades()">
-                            Siguiente
-                            <mat-icon>arrow_forward</mat-icon>
-                        </button>
-                    </div>
-                </mat-card>
-            </div>
+                        <div class="tab-scroll">
+                            <div class="tabla-scroll habilidades-tabla-scroll">
+                                <table class="tabla-ventajas tabla-habilidades">
+                                    <thead>
+                                        <tr>
+                                            <th>Clásea</th>
+                                            <th>Habilidad</th>
+                                            <th>Car</th>
+                                            <th>Extra</th>
+                                            <th>Rangos</th>
+                                            <th>Rangos varios</th>
+                                            <th>Varios</th>
+                                            <th>Límite</th>
+                                            <th>Acciones</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr *ngFor="let habilidad of habilidadesOrdenadas; trackBy: trackByHabilidadId">
+                                            <td class="habilidad-clasea-col">
+                                                <div class="habilidad-clasea-wrap">
+                                                    <mat-checkbox class="habilidad-clasea-check"
+                                                        [checked]="esHabilidadClaseaEfectiva(habilidad.Id)"
+                                                        [disabled]="true"
+                                                        aria-label="Habilidad clásea">
+                                                    </mat-checkbox>
+                                                </div>
+                                            </td>
+                                            <td>{{getNombreHabilidadConMarcaEntrenada(habilidad)}}</td>
+                                            <td>{{getCaracteristicaAbreviada(habilidad.Car)}}</td>
+                                            <td class="habilidad-extra-col"
+                                                [class.habilidad-extra-pendiente]="esExtraPendienteHabilidad(habilidad)"
+                                                [matTooltip]="esExtraPendienteHabilidad(habilidad) ? 'Debes elegir un extra para esta habilidad clásea.' : ''"
+                                                matTooltipClass="tt-accent">
+                                                <ng-container *ngIf="esExtraEditableHabilidad(habilidad); else extraSoloTexto">
+                                                    <div class="habilidad-extra-inline">
+                                                        <span class="habilidad-extra-valor">{{getTextoExtraHabilidad(habilidad)}}</span>
+                                                        <button mat-icon-button color="primary"
+                                                            (click)="abrirSelectorExtraHabilidad(habilidad)"
+                                                            aria-label="Elegir extra"
+                                                            matTooltip="Elegir extra">
+                                                            <mat-icon>tune</mat-icon>
+                                                        </button>
+                                                    </div>
+                                                </ng-container>
+                                                <ng-template #extraSoloTexto>
+                                                    <span>{{getTextoExtraHabilidad(habilidad)}}</span>
+                                                </ng-template>
+                                            </td>
+                                            <td>{{habilidad.Rangos}}</td>
+                                            <td>{{habilidad.Rangos_varios}}</td>
+                                            <td [matTooltip]="getTextoVariosHabilidad(habilidad)" matTooltipClass="tt-accent tt-multiline">
+                                                {{getTextoVariosHabilidad(habilidad)}}
+                                            </td>
+                                            <td>{{getLimiteRangoHabilidad(habilidad.Id)}}</td>
+                                            <td>
+                                                <div class="habilidad-acciones">
+                                                    <button mat-icon-button color="warn"
+                                                        [disabled]="!puedeBajarRangoHabilidad(habilidad)"
+                                                        (click)="ajustarRangoHabilidad(habilidad.Id, -1)"
+                                                        aria-label="Bajar rango">
+                                                        <mat-icon>remove</mat-icon>
+                                                    </button>
+                                                    <button mat-icon-button color="primary"
+                                                        [disabled]="!puedeSubirRangoHabilidad(habilidad)"
+                                                        (click)="ajustarRangoHabilidad(habilidad.Id, 1)"
+                                                        aria-label="Subir rango">
+                                                        <mat-icon>add</mat-icon>
+                                                    </button>
+                                                    <button mat-icon-button color="accent"
+                                                        [disabled]="!puedeMaxearRangoHabilidad(habilidad)"
+                                                        (click)="maxearRangoHabilidad(habilidad)"
+                                                        aria-label="Maxear rango"
+                                                        matTooltip="Subir al máximo posible">
+                                                        <mat-icon>keyboard_double_arrow_up</mat-icon>
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <div class="tab-footer habilidades-acciones">
+                            <button mat-raised-button color="primary" [disabled]="!puedeContinuarHabilidades" (click)="continuarDesdeHabilidades()">
+                                Siguiente
+                                <mat-icon>arrow_forward</mat-icon>
+                            </button>
+                        </div>
+                    </mat-card>
+                </div>
+            </ng-template>
         </mat-tab>
         <mat-tab label="conjuros" [disabled]="flujo.pasoActual !== 'conjuros'">
             <ng-template mat-tab-label="">
                 <mat-icon class="me-2">auto_fix_high</mat-icon>
                 Conjuros
             </ng-template>
+            <ng-template matTabContent>
+                <div class="container-fluid py-3 h-100 conjuros-view">
+                    <mat-card class="h-100 sombra-caja-sm p-2 d-flex flex-column gap-2 tab-frame">
+                        <div class="tab-head" *ngIf="entradaConjurosActual as entrada; else sinSesionConjuros">
+                            <div class="conjuros-resumen">
+                                <mat-chip class="conjuros-chip">Origen: {{entrada.origen}}</mat-chip>
+                                <mat-chip class="conjuros-chip">Clase objetivo: {{entrada.claseObjetivo.nombre}}</mat-chip>
+                                <mat-chip class="conjuros-chip">Nivel lanzador: {{entrada.nivelLanzadorPrevio}} -> {{entrada.nivelLanzadorActual}}</mat-chip>
+                                <mat-chip class="conjuros-chip" *ngIf="entrada.tipoLanzamiento === 'psionico' && entrada.nivelMaxPoderAccesiblePsionico >= 0">
+                                    Nivel máximo de poder accesible: {{entrada.nivelMaxPoderAccesiblePsionico}}
+                                </mat-chip>
+                                <mat-chip class="conjuros-chip" [class.chip-alerta]="entrada.sinElegibles || entrada.almaPendiente">{{mensajeProgresoConjuros}}</mat-chip>
+                            </div>
+                            <div class="conjuros-avisos" *ngIf="(entrada.avisos ?? []).length > 0">
+                                <mat-chip class="h-auto warm conjuros-chip" *ngFor="let aviso of entrada.avisos">{{aviso}}</mat-chip>
+                            </div>
+                        </div>
+
+                        <div class="conjuros-resumen-auto" *ngIf="entradaConjurosActual as entrada">
+                            <p class="m-0" *ngIf="entrada.autoadicion">Este avance no requiere selección manual. Los conjuros elegibles se añadirán automáticamente al continuar.</p>
+                            <p class="m-0" *ngIf="entrada.almaPendiente">La selección para conjuros de alma aún no está implementada y no bloquea el flujo.</p>
+                            <p class="m-0" *ngIf="entrada.sinElegibles">No hay conjuros elegibles para este avance. Puedes continuar sin bloquear el proceso.</p>
+                            <p class="m-0" *ngIf="!entrada.autoadicion && !entrada.almaPendiente && !entrada.sinElegibles && !entrada.seleccionManual">Este avance no otorga nuevos conjuros conocidos.</p>
+                        </div>
+
+                        <div class="tab-scroll" *ngIf="entradaConjurosActual as entrada">
+                            <div class="conjuros-filtros" *ngIf="entrada.seleccionManual && !entrada.almaPendiente && !entrada.sinElegibles">
+                                <mat-form-field appearance="fill" class="w-100">
+                                    <mat-label>Buscar conjuro</mat-label>
+                                    <input matInput [ngModel]="filtroConjurosTexto" (ngModelChange)="onFiltroConjurosTextoChange($event)" placeholder="Nombre de conjuro">
+                                </mat-form-field>
+                                <mat-form-field appearance="fill" class="w-100">
+                                    <mat-label>Nivel</mat-label>
+                                    <mat-select [value]="filtroConjurosNivel" (selectionChange)="onFiltroConjurosNivelChange($event.value)">
+                                        <mat-option [value]="null">Todos</mat-option>
+                                        <mat-option *ngFor="let nivel of nivelesConjurosDisponibles" [value]="nivel">{{nivel}}</mat-option>
+                                    </mat-select>
+                                </mat-form-field>
+                            </div>
+
+                            <div class="conjuros-tablas" [class.conjuros-tablas--single]="!entrada.seleccionManual || entrada.almaPendiente || entrada.sinElegibles">
+                                <div class="tabla-scroll" *ngIf="entrada.seleccionManual && !entrada.almaPendiente && !entrada.sinElegibles">
+                                    <table class="tabla-ventajas tabla-conjuros">
+                                        <thead>
+                                            <tr>
+                                                <th>Disponibles</th>
+                                                <th>Nivel</th>
+                                                <th>Acción</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr *ngFor="let conjuro of conjurosDisponiblesActuales">
+                                                <td>
+                                                    {{conjuro.Nombre}}
+                                                    <button mat-icon-button class="conjuro-detalle-btn"
+                                                        (click)="verDetallesConjuro(conjuro); $event.stopPropagation()"
+                                                        aria-label="Ver detalle de conjuro" matTooltip="Ver detalles">
+                                                        <mat-icon>open_in_new</mat-icon>
+                                                    </button>
+                                                </td>
+                                                <td>{{getNivelConjuroEntrada(conjuro)}}</td>
+                                                <td>
+                                                    <button mat-icon-button color="primary" (click)="agregarConjuroSesion(conjuro)" aria-label="Añadir conjuro">
+                                                        <mat-icon>add</mat-icon>
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                            <tr *ngIf="conjurosDisponiblesActuales.length < 1">
+                                                <td colspan="3">No hay conjuros disponibles con el filtro actual.</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+
+                                <div class="tabla-scroll tabla-scroll--obtenidos">
+                                    <table class="tabla-ventajas tabla-conjuros">
+                                        <thead>
+                                            <tr>
+                                                <th>Recién obtenidos en este avance</th>
+                                                <th>Nivel</th>
+                                                <th>Acción</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr *ngFor="let conjuro of conjurosSeleccionadosActuales">
+                                                <td>
+                                                    {{conjuro.Nombre}}
+                                                    <span class="conjuro-auto-tag" *ngIf="esConjuroAutoadicionado(conjuro)">auto</span>
+                                                    <button mat-icon-button class="conjuro-detalle-btn"
+                                                        (click)="verDetallesConjuro(conjuro); $event.stopPropagation()"
+                                                        aria-label="Ver detalle de conjuro" matTooltip="Ver detalles">
+                                                        <mat-icon>open_in_new</mat-icon>
+                                                    </button>
+                                                </td>
+                                                <td>{{getNivelConjuroEntrada(conjuro)}}</td>
+                                                <td>
+                                                    <button mat-icon-button color="warn"
+                                                        [disabled]="esConjuroAutoadicionado(conjuro) || !entrada.seleccionManual"
+                                                        (click)="quitarConjuroSesion(conjuro)"
+                                                        aria-label="Quitar conjuro">
+                                                        <mat-icon>remove</mat-icon>
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                            <tr *ngIf="conjurosSeleccionadosActuales.length < 1">
+                                                <td colspan="3">No se han obtenido conjuros en este avance.</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="tab-footer habilidades-acciones">
+                            <button mat-raised-button color="primary" [disabled]="!puedeContinuarConjuros" (click)="continuarDesdeConjuros()">
+                                Siguiente
+                                <mat-icon>arrow_forward</mat-icon>
+                            </button>
+                        </div>
+
+                        <ng-template #sinSesionConjuros>
+                            <div class="d-flex h-100 w-100 align-items-center justify-content-center px-3">
+                                <mat-chip class="h-auto warm">No hay sesión de conjuros activa para este paso.</mat-chip>
+                            </div>
+                        </ng-template>
+                    </mat-card>
+                </div>
+            </ng-template>
+        </mat-tab>
+        <mat-tab label="dotes" [disabled]="flujo.pasoActual !== 'dotes'">
+            <ng-template mat-tab-label="">
+                <mat-icon class="me-2">military_tech</mat-icon>
+                Dotes
+            </ng-template>
             <div class="container-fluid py-3 h-100">
                 <mat-card class="h-100 sombra-caja-sm p-3 d-flex align-items-center justify-content-center">
-                    <mat-chip class="h-auto">Pendiente de implementación</mat-chip>
+                    <mat-chip class="h-auto">Placeholder: esta pestaña será el siguiente bloque funcional tras conjuros.</mat-chip>
                 </mat-card>
             </div>
         </mat-tab>
@@ -750,8 +919,10 @@
             (cerrarSolicitado)="onSolicitarCerrarVentanaDetalle()">
             <app-detalles-personaje
                 [pj]="Personaje"
+                [clasesCatalogo]="catalogoClases"
                 [mostrarBotonGenerarPdf]="false"
                 (razaDetalles)="verDetallesRazaDesdeFicha($event)"
+                (claseDetalles)="verDetallesClaseDesdeFicha($event)"
                 (plantillaDetalles)="verDetallesPlantillaDesdeFicha($event)"
                 (rasgoDetalles)="verDetallesRasgo($event)"
                 (racialDetallesPorNombre)="verDetallesRacialDesdeReferencia($event)"

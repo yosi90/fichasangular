@@ -215,7 +215,7 @@
                                 <th *ngIf="mostrarReflejos">Ref</th>
                                 <th *ngIf="mostrarVoluntad">Vol</th>
                                 <th *ngIf="mostrarEspeciales">Especiales</th>
-                                <th *ngIf="mostrarNivelMaxConjuro">Nivel max conjuro</th>
+                                <th *ngIf="mostrarNivelMaxPoderAccesible">Nivel max poder accesible</th>
                                 <th *ngIf="mostrarReservaPsionica">Reserva psiónica</th>
                                 <th *ngIf="mostrarAumentosClaseLanzadora">Aumentos clase lanzadora</th>
                                 <th *ngFor="let nivelConjuro of columnasDiarios">Diarios {{nivelConjuro}}</th>
@@ -244,7 +244,7 @@
                                     </div>
                                     <ng-template #sinEspeciales></ng-template>
                                 </td>
-                                <td *ngIf="mostrarNivelMaxConjuro">{{nivel.Nivel_max_conjuro >= 0 ? nivel.Nivel_max_conjuro : ''}}</td>
+                                <td *ngIf="mostrarNivelMaxPoderAccesible">{{nivel.Nivel_max_poder_accesible_nivel_lanzadorPsionico >= 0 ? nivel.Nivel_max_poder_accesible_nivel_lanzadorPsionico : ''}}</td>
                                 <td *ngIf="mostrarReservaPsionica">{{nivel.Reserva_psionica}}</td>
                                 <td *ngIf="mostrarAumentosClaseLanzadora">
                                     <div class="chips-celda" *ngIf="getAumentosLanzadora(nivel).length > 0; else sinAumentos">

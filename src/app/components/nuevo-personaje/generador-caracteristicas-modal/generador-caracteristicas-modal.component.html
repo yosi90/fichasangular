@@ -84,10 +84,114 @@
             </section>
         </mat-card-content>
 
-        <mat-card-actions class="d-flex justify-content-end gap-2 p-3">
+        <mat-card-actions class="modal-actions p-3">
+            <button mat-raised-button class="auto-reparto-btn" (click)="repartirAutomaticamente()">
+                <mat-icon>quiz</mat-icon>
+                <span>Repartir automáticamente</span>
+            </button>
             <button mat-raised-button color="accent" (click)="cerrarModal()">Cerrar</button>
-            <button mat-stroked-button color="primary" (click)="repartirAutomaticamente()">Repartir automáticamente</button>
             <button mat-raised-button color="primary" [disabled]="!puedeFinalizar" (click)="finalizarAsignacion()">Finalizar</button>
         </mat-card-actions>
     </mat-card>
+
+    <div class="auto-quiz-overlay" *ngIf="modalCuestionarioAutoAbierto" (click)="cancelarCuestionarioAuto()">
+        <div class="auto-quiz-dialog" (click)="$event.stopPropagation()">
+            <div class="auto-quiz-header">
+                <h3 class="m-0">Mini test de enfoque</h3>
+                <button
+                    mat-icon-button
+                    type="button"
+                    aria-label="Cerrar mini test"
+                    (click)="cancelarCuestionarioAuto()">
+                    <mat-icon>close</mat-icon>
+                </button>
+            </div>
+
+            <mat-horizontal-stepper
+                [linear]="true"
+                [selectedIndex]="autoStepperIndex"
+                (selectionChange)="autoStepperIndex = $event.selectedIndex"
+                class="auto-stepper">
+                <mat-step [completed]="q1Respondida">
+                    <ng-template matStepLabel>Arma principal</ng-template>
+                    <p class="m-0 auto-quiz-text">En una pelea, ¿qué te apetece que sea tu arma principal?</p>
+                    <div class="auto-opciones-grid">
+                        <button type="button" class="auto-opcion auto-opcion-boton" [class.auto-opcion-seleccionada]="cuestionarioAuto.q1 === opcion.key" *ngFor="let opcion of opcionesQ1" (click)="onSeleccionarQ1(opcion.key)">
+                            <span class="auto-opcion-main">{{opcion.label}}</span>
+                            <small>{{opcion.description}}</small>
+                        </button>
+                    </div>
+                    <div class="auto-quiz-actions">
+                        <button mat-stroked-button type="button" (click)="cancelarCuestionarioAuto()">Cancelar</button>
+                        <button mat-raised-button color="primary" matStepperNext [disabled]="!q1Respondida">Siguiente</button>
+                    </div>
+                </mat-step>
+
+                <mat-step [completed]="q2Respondida">
+                    <ng-template matStepLabel>Posición en combate</ng-template>
+                    <p class="m-0 auto-quiz-text">{{textoPregunta2}}</p>
+                    <div class="auto-opciones-grid">
+                        <button type="button" class="auto-opcion auto-opcion-boton" [class.auto-opcion-seleccionada]="cuestionarioAuto.q2 === opcion.key" *ngFor="let opcion of q2Opciones" (click)="onSeleccionarQ2(opcion.key)">
+                            <span class="auto-opcion-main">{{opcion.label}}</span>
+                            <small>{{opcion.description}}</small>
+                        </button>
+                    </div>
+                    <div class="auto-quiz-actions">
+                        <button mat-stroked-button matStepperPrevious type="button">Anterior</button>
+                        <button mat-raised-button color="primary" matStepperNext [disabled]="!q2Respondida">Siguiente</button>
+                    </div>
+                </mat-step>
+
+                <mat-step [completed]="q3Respondida">
+                    <ng-template matStepLabel>Fuera de combate</ng-template>
+                    <p class="m-0 auto-quiz-text">{{textoPregunta3}}</p>
+                    <div class="auto-opciones-grid">
+                        <button type="button" class="auto-opcion auto-opcion-boton" [class.auto-opcion-seleccionada]="cuestionarioAuto.q3 === opcion.key" *ngFor="let opcion of q3Opciones" (click)="onSeleccionarQ3(opcion.key)">
+                            <span class="auto-opcion-main">{{opcion.label}}</span>
+                            <small>{{opcion.description}}</small>
+                        </button>
+                    </div>
+                    <div class="auto-quiz-actions">
+                        <button mat-stroked-button matStepperPrevious type="button">Anterior</button>
+                        <button mat-raised-button color="primary" matStepperNext [disabled]="!q3Respondida">Siguiente</button>
+                    </div>
+                </mat-step>
+
+                <mat-step *ngIf="mostrarPregunta4" [completed]="q4Respondida">
+                    <ng-template matStepLabel>Desempate</ng-template>
+                    <p class="m-0 auto-quiz-text">¿Qué te fastidiaría más que tu personaje hiciera mal?</p>
+                    <div class="auto-opciones-grid">
+                        <button type="button" class="auto-opcion auto-opcion-boton" [class.auto-opcion-seleccionada]="cuestionarioAuto.q4 === opcion.key" *ngFor="let opcion of opcionesQ4" (click)="onSeleccionarQ4(opcion.key)">
+                            <span class="auto-opcion-main">{{opcion.label}}</span>
+                            <small>{{opcion.description}}</small>
+                        </button>
+                    </div>
+                    <div class="auto-quiz-actions">
+                        <button mat-stroked-button matStepperPrevious type="button">Anterior</button>
+                        <button mat-raised-button color="primary" matStepperNext [disabled]="!q4Respondida">Siguiente</button>
+                    </div>
+                </mat-step>
+
+                <mat-step>
+                    <ng-template matStepLabel>Aplicar reparto</ng-template>
+                    <p class="m-0 auto-quiz-text">Pues yo de ti, elegiría esto…</p>
+
+                    <div class="auto-recomendacion-card" *ngIf="recomendacionAuto as recomendacion">
+                        <div class="auto-recomendacion-clases">
+                            <mat-chip class="auto-recomendacion-chip">{{recomendacion.clases[0]}}</mat-chip>
+                            <mat-chip class="auto-recomendacion-chip">{{recomendacion.clases[1]}}</mat-chip>
+                        </div>
+                        <p class="m-0 auto-recomendacion-texto">{{recomendacion.explicacion}}</p>
+                    </div>
+
+                    <div class="auto-quiz-actions">
+                        <button mat-stroked-button matStepperPrevious type="button">Anterior</button>
+                        <button mat-raised-button color="primary" type="button" [disabled]="!puedeAplicarCuestionarioAuto" (click)="confirmarCuestionarioAuto()">
+                            Aplicar reparto
+                        </button>
+                    </div>
+                </mat-step>
+            </mat-horizontal-stepper>
+        </div>
+    </div>
 </div>

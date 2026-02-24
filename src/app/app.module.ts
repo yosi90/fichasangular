@@ -30,6 +30,7 @@ import { MatSortModule } from '@angular/material/sort';
 import { MatPaginatorModule } from '@angular/material/paginator';
 import { MatSidenavModule } from '@angular/material/sidenav';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { MatStepperModule } from '@angular/material/stepper';
 import { FormsModule } from '@angular/forms';
 import { ListaPersonajesComponent } from './components/base/lista-personajes/lista-personajes.component';
 import { HttpClientModule } from '@angular/common/http';
@@ -145,6 +146,7 @@ import { ListadoVentajasComponent } from './components/shared/listado-ventajas/l
         MatPaginatorModule,
         MatSidenavModule,
         MatTooltipModule,
+        MatStepperModule,
         HttpClientModule,
         NgbModule,
         ReactiveFormsModule,

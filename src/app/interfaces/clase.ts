@@ -100,7 +100,7 @@ export interface ClaseNivelDetalle {
         Reflejos: string;
         Voluntad: string;
     };
-    Nivel_max_conjuro: number;
+    Nivel_max_poder_accesible_nivel_lanzadorPsionico: number;
     Reserva_psionica: number;
     Aumentos_clase_lanzadora: {
         Id: number;

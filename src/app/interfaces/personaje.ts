@@ -9,6 +9,51 @@ import { TipoCriatura } from "./tipo_criatura";
 export type CaracteristicaPerdidaKey = 'Fuerza' | 'Destreza' | 'Constitucion' | 'Inteligencia' | 'Sabiduria' | 'Carisma';
 
 export type CaracteristicasPerdidas = Partial<Record<CaracteristicaPerdidaKey, boolean>>;
+export type AutoRepartoRespuestaQ1 =
+    | 'acero_musculo'
+    | 'rapidez_precision'
+    | 'magia_arcana'
+    | 'fe_naturaleza_espiritu'
+    | 'voluntad_psionica'
+    | 'labia_presencia';
+export type AutoRepartoRespuestaQ2 =
+    | 'delante'
+    | 'primera_segunda_linea'
+    | 'atras_control_apoyo'
+    | 'evitar_contacto';
+export type AutoRepartoRespuestaQ3 =
+    | 'social'
+    | 'investigar'
+    | 'explorar'
+    | 'manitas';
+export type AutoRepartoRespuestaQ4 =
+    | 'aguante'
+    | 'acierto'
+    | 'potencia_conjuros'
+    | 'percepcion'
+    | 'social';
+export interface AutoRepartoCuestionario {
+    q1?: AutoRepartoRespuestaQ1;
+    q2?: AutoRepartoRespuestaQ2;
+    q3?: AutoRepartoRespuestaQ3;
+    q4?: AutoRepartoRespuestaQ4;
+}
+export interface AutoRepartoScore {
+    Fuerza: number;
+    Destreza: number;
+    Constitucion: number;
+    Inteligencia: number;
+    Sabiduria: number;
+    Carisma: number;
+}
+export interface AutoRepartoRecomendacion {
+    clases: string[];
+    explicacion: string;
+    top1: CaracteristicaPerdidaKey;
+    top2: CaracteristicaPerdidaKey;
+    top3: CaracteristicaPerdidaKey;
+    afinadaPorTop3: boolean;
+}
 
 export interface Personaje extends PersonajeSimple {
     RazaBase?: PersonajeSimple['Raza'] | null;
@@ -196,6 +241,7 @@ export interface Personaje extends PersonajeSimple {
         Id: number;
         Nombre: string;
         Clasea: boolean;
+        Entrenada?: boolean;
         Car: string;
         Mod_car: number;
         Rangos: number;
@@ -216,6 +262,17 @@ export interface Personaje extends PersonajeSimple {
     }[]
     Dotes: DoteLegacy[];
     DotesContextuales: DoteContextual[];
+    Auto_reparto?: {
+        version: 'quiz_v1';
+        respuestas: AutoRepartoCuestionario;
+        score: AutoRepartoScore;
+        ranking: CaracteristicaPerdidaKey[];
+        top2: CaracteristicaPerdidaKey[];
+        recomendacion: AutoRepartoRecomendacion | null;
+        pregunta4Aplicada: boolean;
+        aplicadoAutomaticamente: boolean;
+        updatedAt: number;
+    } | null;
     Ventajas: (string | {
         Nombre: string;
         Origen?: string;

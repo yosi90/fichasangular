@@ -328,6 +328,62 @@ describe('DetallesPersonajeComponent', () => {
         expect(html).toContain('Innato');
     });
 
+    it('muestra subchips de lanzador en el chip de clase cuando hay catálogo', () => {
+        component.pj.desgloseClases = [{ Nombre: 'Mago', Nivel: 1 }];
+        component.clasesCatalogo = [{
+            Id: 1,
+            Nombre: 'Mago',
+            Conjuros: {
+                Arcanos: true,
+                Divinos: false,
+                Psionicos: false,
+                Alma: false,
+                Dependientes_alineamiento: true,
+                Lanzamiento_espontaneo: false,
+                Conocidos_total: true,
+                Conocidos_nivel_a_nivel: false,
+                Dominio: false,
+                Escuela: true,
+                Clase_origen: { Id: 0, Nombre: '' },
+                Listado: [],
+            },
+            Mod_salv_conjuros: 'Inteligencia',
+            Desglose_niveles: [{
+                Nivel: 1,
+                Nivel_max_poder_accesible_nivel_lanzadorPsionico: -1,
+                Reserva_psionica: 0,
+                Conjuros_diarios: {
+                    Nivel_0: 0,
+                    Nivel_1: 1,
+                    Nivel_2: -1,
+                },
+                Conjuros_conocidos_nivel_a_nivel: {},
+                Conjuros_conocidos_total: 3,
+                Ataque_base: '+0',
+                Salvaciones: { Fortaleza: '+0', Reflejos: '+0', Voluntad: '+2' },
+                Aumentos_clase_lanzadora: [],
+                Dotes: [],
+                Especiales: [],
+            }],
+        } as any];
+
+        fixture.detectChanges();
+
+        const html = `${fixture.nativeElement.textContent ?? ''}`;
+        expect(html).toContain('Mago 1');
+        expect(html).toContain('Lanzador arcano');
+        expect(html).toContain('Salvación (Inteligencia)');
+        expect(html).toContain('Niveles diarios 0, 1');
+        expect(html).toContain('Conocidos 3');
+        expect(html).toContain('Dependiente de alineamiento');
+    });
+
+    it('emite claseDetalles al solicitar detalle de clase desde preview', () => {
+        const emitSpy = spyOn(component.claseDetalles, 'emit');
+        component.verDetallesClase('Mago');
+        expect(emitSpy).toHaveBeenCalledWith('Mago');
+    });
+
     it('no muestra origen en legacy sin origen, salvo fallback del rasgo de tipo', () => {
         component.pj.Tipo_criatura.Nombre = 'Humanoide';
         component.pj.Tipo_criatura.Rasgos = [

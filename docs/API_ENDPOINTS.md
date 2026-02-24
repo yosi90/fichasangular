@@ -204,11 +204,6 @@ Respuesta 201/200 (ejemplo)
 }
 ```
 
-Nota de consumo frontend (RTDB runtime + backup SQL + sync manual)
-- Fuente de verdad en tiempo real para usuarios/ACL: Firebase Realtime Database (`UserProfiles` y `Acl/users`).
-- API SQL (`POST /usuarios`) se usa como backup de persistencia de usuarios/ACL, sin bloquear la sesion si falla.
-- Sincronizacion manual disponible en Admin Panel: `Usuarios y ACL (API -> Firebase)`, que sobreescribe RTDB con datos de SQL.
-
 Endpoint: GET /personajes
 Respuesta: array de `PersonajeDetalle`
 
@@ -1159,7 +1154,7 @@ ClaseNivelDetalle
 | Nivel | number | Nivel de clase |
 | Ataque_base | string | Progresion de ataque base en ese nivel |
 | Salvaciones | object | { Fortaleza, Reflejos, Voluntad } |
-| Nivel_max_conjuro | number | Nivel maximo de conjuro en ese nivel (`-1` por defecto) |
+| nivel_max_poder_accesible_nivel_lanzadorPsionico | number | Nivel maximo de poder accesible segun nivel de lanzador psionico (`-1` por defecto) |
 | Reserva_psionica | number | Reserva psionica acumulada (`0` por defecto) |
 | Aumentos_clase_lanzadora | array | { Id, Nombre } |
 | Conjuros_diarios | object | { Nivel_0..Nivel_9 } (`-1` por defecto) |

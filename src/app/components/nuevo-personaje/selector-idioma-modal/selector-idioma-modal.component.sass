@@ -93,6 +93,7 @@
     border-radius: 8px
     padding: 8px 10px
     cursor: pointer
+    user-select: none
     transition: background .15s ease, border-color .15s ease
 
 .idioma-row:hover
@@ -114,12 +115,16 @@
 
 .idioma-row mat-checkbox
     width: 100%
+    pointer-events: none
 
 .idioma-row ::ng-deep .mdc-form-field
     width: 100%
+    pointer-events: none
 
 .idioma-row ::ng-deep .mdc-label
     width: 100%
+    user-select: none
+    pointer-events: none
 
 .idioma-row-content
     display: flex

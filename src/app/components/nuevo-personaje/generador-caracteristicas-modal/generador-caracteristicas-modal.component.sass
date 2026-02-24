@@ -33,10 +33,6 @@
         color: #f4f8ff
         font-weight: 700
 
-    .mat-mdc-card-subtitle
-        color: #d9e7ff
-        font-weight: 500
-
 .header-actions
     display: flex
     align-items: flex-start
@@ -116,11 +112,6 @@
     color: #f2f8ff
     font-weight: 600
 
-.texto-ayuda
-    font-size: 0.9rem
-    opacity: 0.94
-    color: #d7e8ff
-
 .pool-grid
     display: grid
     grid-template-columns: repeat(auto-fit, minmax(110px, 1fr))
@@ -195,6 +186,142 @@
     span
         white-space: nowrap
 
+.modal-actions
+    display: flex
+    align-items: center
+    gap: 8px
+
+.auto-reparto-btn
+    margin-right: auto
+    min-height: 40px
+    background: linear-gradient(135deg, #0f8ec0, #2f5cc6)
+    border: 1px solid rgba(151, 215, 255, 0.35)
+    color: #f5fbff
+    font-weight: 600
+    display: inline-flex
+    align-items: center
+    gap: 6px
+
+    .mat-icon
+        width: 19px
+        height: 19px
+        font-size: 19px
+
+.auto-quiz-overlay
+    position: absolute
+    inset: 0
+    z-index: 5
+    background: rgba(0, 0, 0, 0.62)
+    display: flex
+    justify-content: center
+    align-items: center
+    padding: 16px
+
+.auto-quiz-dialog
+    width: min(920px, 100%)
+    max-height: 90vh
+    overflow: auto
+    background: linear-gradient(180deg, #2f3137 0%, #272a30 100%)
+    border: 1px solid #6f7683
+    border-radius: 10px
+    padding: 14px
+    display: flex
+    flex-direction: column
+    gap: 12px
+
+.auto-quiz-header
+    display: flex
+    justify-content: space-between
+    align-items: center
+    gap: 8px
+
+    h3
+        color: #f3f6ff
+        font-size: 1.5rem
+        font-weight: 700
+
+.auto-quiz-text
+    color: #e7ebf6
+    font-size: 1.08rem
+    line-height: 1.35
+    margin-bottom: 10px !important
+
+.auto-opciones-grid
+    display: grid
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr))
+    gap: 10px
+
+.auto-opcion
+    display: flex
+    flex-direction: column
+    gap: 4px
+    margin: 0
+    padding: 8px 10px
+    border-radius: 8px
+    border: 1px solid rgba(255, 255, 255, 0.2)
+    background: rgba(255, 255, 255, 0.05)
+    color: #edf1fb
+    min-width: 0
+    cursor: pointer
+
+    small
+        color: #d0d8ee
+        line-height: 1.25
+
+.auto-opcion-boton
+    width: 100%
+    text-align: left
+    font: inherit
+    border-width: 1px
+
+.auto-opcion-main
+    font-weight: 600
+    line-height: 1.25
+
+.auto-opcion-seleccionada
+    border-color: #9fb3ff
+    background: rgba(122, 154, 255, 0.2)
+
+.auto-quiz-actions
+    margin-top: 12px
+    display: flex
+    justify-content: flex-end
+    gap: 8px
+
+.auto-recomendacion-card
+    border: 1px solid rgba(150, 178, 240, 0.4)
+    border-radius: 10px
+    padding: 12px
+    background: rgba(18, 26, 44, 0.55)
+    color: #edf1fb
+    display: flex
+    flex-direction: column
+    gap: 10px
+
+.auto-recomendacion-clases
+    display: flex
+    flex-wrap: wrap
+    gap: 8px
+
+.auto-recomendacion-chip
+    font-weight: 700
+
+.auto-recomendacion-texto
+    color: #e2e9ff
+    line-height: 1.4
+
+::ng-deep .auto-stepper
+    background: transparent !important
+
+::ng-deep .auto-stepper .mat-horizontal-content-container
+    padding: 14px 0 0 0
+
+::ng-deep .auto-stepper .mat-step-label
+    color: #d8e1fb !important
+
+::ng-deep .auto-stepper .mat-step-label-active
+    color: #f4f7ff !important
+
 @media (max-width: 992px)
     .modal-local-panel
         inset: 2%
@@ -220,4 +347,14 @@
         display: grid
         grid-auto-flow: row
         grid-auto-columns: unset
+        grid-template-columns: 1fr
+
+    .modal-actions
+        flex-wrap: wrap
+
+    .auto-reparto-btn
+        flex: 1 1 100%
+        margin-right: 0
+
+    .auto-opciones-grid
         grid-template-columns: 1fr

@@ -33,9 +33,7 @@
                 (keydown.space)="onToggleIdiomaRowTeclado(idioma.Id, $event)">
                 <mat-checkbox
                     [checked]="isIdiomaSeleccionado(idioma.Id)"
-                    (change)="onToggleIdioma(idioma.Id, $event.checked)"
-                    [disabled]="isIdiomaBloqueadoPorLimite(idioma.Id)"
-                    (click)="$event.stopPropagation()">
+                    [disabled]="isIdiomaBloqueadoPorLimite(idioma.Id)">
                     <span class="idioma-row-content">
                         <span class="idioma-row-nombre">{{idioma.Nombre}} {{idioma.Oficial ? '' : '(Homebrew)'}}</span>
                         <span class="idioma-row-descripcion" *ngIf="idioma.Descripcion?.trim()?.length">{{idioma.Descripcion}}</span>

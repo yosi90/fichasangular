@@ -15,8 +15,19 @@ import { toDoteContextualArray } from './utils/dote-mapper';
 import { normalizeRaciales } from './utils/racial-mapper';
 import { normalizeSubtipoRefArray } from './utils/subtipo-mapper';
 
-function toBoolean(value: any): boolean {
-    return value === true || value === 1 || value === "1";
+function toBoolean(value: any, fallback: boolean = false): boolean {
+    if (typeof value === 'boolean')
+        return value;
+    if (typeof value === 'number')
+        return value !== 0;
+    if (typeof value === 'string') {
+        const normalizado = value.trim().toLowerCase();
+        if (['true', '1', 'si', 'sí', 'yes'].includes(normalizado))
+            return true;
+        if (['false', '0', 'no'].includes(normalizado))
+            return false;
+    }
+    return fallback;
 }
 
 function toNumber(value: any): number {
@@ -254,7 +265,7 @@ function mapRazaDesdeRaw(raw: any, id: any, dotesContextuales: DoteContextual[],
         Manual: `${raw?.Manual ?? raw?.ma ?? ''}`,
         Ajuste_nivel: toNumber(raw?.Ajuste_nivel ?? raw?.aju),
         Clase_predilecta: `${raw?.Clase_predilecta ?? raw?.c ?? ''}`,
-        Oficial: toBoolean(raw?.Oficial ?? raw?.o),
+        Oficial: toBoolean(raw?.Oficial ?? raw?.oficial ?? raw?.o, true),
         Ataques_naturales: `${raw?.Ataques_naturales ?? raw?.an ?? ''}`,
         Tamano: raw?.Tamano ?? raw?.t ?? ({} as any),
         Dgs_adicionales: normalizeDgsAdicionales(raw?.Dgs_adicionales ?? raw?.dg),
@@ -425,7 +436,7 @@ export class RazaService {
                         Manual: element.ma,
                         Ajuste_nivel: element.aju,
                         Clase_predilecta: element.c,
-                        Oficial: toBoolean(element.o),
+                        Oficial: toBoolean(element.o ?? (element as any)?.Oficial ?? (element as any)?.oficial, true),
                         Ataques_naturales: element.an,
                         Tamano: element.t,
                         Dgs_adicionales: element.dg,

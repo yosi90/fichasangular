@@ -1,5 +1,6 @@
 import { AfterViewInit, Component, ElementRef, EventEmitter, HostListener, Input, OnDestroy, OnInit, Output } from '@angular/core';
 import { AptitudSortilega } from 'src/app/interfaces/aptitud-sortilega';
+import { Clase } from 'src/app/interfaces/clase';
 import { Conjuro } from 'src/app/interfaces/conjuro';
 import { Dote } from 'src/app/interfaces/dote';
 import { DoteContextual, DoteLegacy } from 'src/app/interfaces/dote-contextual';
@@ -30,6 +31,7 @@ interface VentajaVisible {
 })
 export class DetallesPersonajeComponent implements OnInit, AfterViewInit, OnDestroy {
     @Input() pj!: Personaje;
+    @Input() clasesCatalogo: Clase[] = [];
     @Input() mostrarBotonGenerarPdf = true;
     @Input() modoOcultarFaltantes = true;
     modoCompactoLayout = false;
@@ -359,6 +361,135 @@ Fue/Des/Con: ${this.formatSigned(madurez.modFisico)} | Int/Sab/Car: ${this.forma
 
     getPlantillasVisibles() {
         return (this.pj?.Plantillas ?? []).filter((p: any) => this.tieneTextoVisible(p?.Nombre));
+    }
+
+    getSubchipsLanzadorClase(claseDesglose: { Nombre: string; Nivel: number; }): string[] {
+        const nombreClase = `${claseDesglose?.Nombre ?? ''}`.trim();
+        if (!this.tieneTextoVisible(nombreClase))
+            return [];
+
+        const claseCatalogo = this.obtenerClaseCatalogoPorNombre(nombreClase);
+        if (!claseCatalogo?.Conjuros)
+            return [];
+
+        const conjuros = claseCatalogo.Conjuros;
+        const esLanzador = !!conjuros.Arcanos || !!conjuros.Divinos || !!conjuros.Psionicos || !!conjuros.Alma;
+        if (!esLanzador)
+            return [];
+
+        const chips: string[] = [];
+        if (conjuros.Arcanos)
+            chips.push('Lanzador arcano');
+        if (conjuros.Divinos)
+            chips.push('Lanzador divino');
+        if (conjuros.Psionicos)
+            chips.push('Lanzador psiónico');
+        if (conjuros.Alma)
+            chips.push('Lanzador de alma');
+        if (conjuros.Lanzamiento_espontaneo)
+            chips.push('Lanzamiento espontáneo');
+        if (conjuros.Dependientes_alineamiento)
+            chips.push('Dependiente de alineamiento');
+        if (this.tieneTextoVisible(claseCatalogo.Mod_salv_conjuros))
+            chips.push(`Salvación (${claseCatalogo.Mod_salv_conjuros})`);
+
+        const nivelClase = Math.max(0, this.toNumber(claseDesglose?.Nivel));
+        const detalleNivel = this.obtenerDetalleNivelClase(claseCatalogo, nivelClase);
+        if (detalleNivel) {
+            if (conjuros.Psionicos) {
+                const reserva = this.toNumber(detalleNivel?.Reserva_psionica);
+                if (reserva > 0)
+                    chips.push(`Reserva ${reserva}`);
+                const poderMax = this.toNumber(detalleNivel?.Nivel_max_poder_accesible_nivel_lanzadorPsionico);
+                if (poderMax >= 0)
+                    chips.push(`Poder máximo ${poderMax}`);
+            }
+
+            if (conjuros.Arcanos || conjuros.Divinos) {
+                const nivelesDiarios = this.formatearNivelesDiariosAccesibles(detalleNivel?.Conjuros_diarios);
+                if (nivelesDiarios.length > 0)
+                    chips.push(`Niveles diarios ${nivelesDiarios}`);
+            }
+
+            if (conjuros.Conocidos_total) {
+                const totalConocidos = this.toNumber(detalleNivel?.Conjuros_conocidos_total);
+                if (totalConocidos > 0)
+                    chips.push(`Conocidos ${totalConocidos}`);
+            }
+
+            if (conjuros.Conocidos_nivel_a_nivel) {
+                const conocidosPorNivel = this.formatearConocidosPorNivel(detalleNivel?.Conjuros_conocidos_nivel_a_nivel);
+                if (conocidosPorNivel.length > 0)
+                    chips.push(`Conocidos por nivel ${conocidosPorNivel}`);
+            }
+        }
+
+        return Array.from(new Set(chips));
+    }
+
+    private obtenerClaseCatalogoPorNombre(nombreClase: string): Clase | null {
+        const nombreNormalizado = this.normalizarTexto(nombreClase);
+        if (nombreNormalizado.length < 1)
+            return null;
+        return (this.clasesCatalogo ?? []).find((clase) =>
+            this.normalizarTexto(clase?.Nombre ?? '') === nombreNormalizado
+        ) ?? null;
+    }
+
+    private obtenerDetalleNivelClase(clase: Clase, nivelClase: number): any | null {
+        const nivelObjetivo = Math.max(1, Math.trunc(this.toNumber(nivelClase)));
+        if (nivelObjetivo <= 0)
+            return null;
+
+        const desglose = Array.isArray(clase?.Desglose_niveles) ? clase.Desglose_niveles : [];
+        return desglose.find((nivel) => Math.trunc(this.toNumber(nivel?.Nivel)) === nivelObjetivo) ?? null;
+    }
+
+    private formatearNivelesDiariosAccesibles(mapa: Record<string, number> | null | undefined): string {
+        if (!mapa)
+            return '';
+        const niveles = Object.keys(mapa)
+            .map((key) => ({
+                nivel: this.parseNivelConjuroKey(key),
+                valor: this.toNumber((mapa as Record<string, any>)[key]),
+            }))
+            .filter((item) => Number.isFinite(item.nivel) && item.nivel >= 0)
+            .filter((item) => item.valor >= 0)
+            .map((item) => item.nivel)
+            .filter((nivel, indice, lista) => lista.indexOf(nivel) === indice)
+            .sort((a, b) => a - b);
+        return niveles.join(', ');
+    }
+
+    private formatearConocidosPorNivel(mapa: Record<string, number> | null | undefined): string {
+        if (!mapa)
+            return '';
+        const entradas = Object.keys(mapa)
+            .map((key) => {
+                const nivel = this.parseNivelConjuroKey(key);
+                const valor = this.toNumber((mapa as Record<string, any>)[key]);
+                return { nivel, valor };
+            })
+            .filter((item) => Number.isFinite(item.nivel) && item.nivel >= 0 && item.valor > 0)
+            .sort((a, b) => a.nivel - b.nivel)
+            .map((item) => `${item.nivel}:${item.valor}`);
+        return entradas.join(' ');
+    }
+
+    private parseNivelConjuroKey(key: string): number {
+        const raw = `${key ?? ''}`.trim();
+        if (raw.length < 1)
+            return -1;
+
+        const directo = Number(raw);
+        if (Number.isFinite(directo))
+            return Math.trunc(directo);
+
+        const match = raw.match(/nivel[_\s-]*(\d+)/i);
+        if (match && match[1])
+            return Math.trunc(Number(match[1]));
+
+        return -1;
     }
 
     tieneBloqueSalvacionesVisible(): boolean {

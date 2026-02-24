@@ -20,7 +20,7 @@
                 <mat-chip class="h-auto warm w-100 sombra-caja-sm py-2 m-1 chip-titulo" [ngClass]="conjuro.Descriptores ? 'titulo' : ''">
                     {{conjuro.Nombre}}
                     <mat-icon class="ms-2">auto_awesome</mat-icon>
-                    <mat-chip class="sombra3d-sm m-1 ms-4" *ngIf="conjuro.Descriptores">
+                    <mat-chip class="sombra3d-sm m-1" *ngIf="conjuro.Descriptores">
                         {{getDescriptores(conjuro.Descriptores)}}
                     </mat-chip>
                 </mat-chip>

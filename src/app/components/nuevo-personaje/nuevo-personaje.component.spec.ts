@@ -358,10 +358,10 @@ function crearClaseMock(partial?: Partial<Clase>): Clase {
             Nivel: 1,
             Ataque_base: '+1',
             Salvaciones: { Fortaleza: '+2', Reflejos: '+0', Voluntad: '+0' },
-            Nivel_max_conjuro: -1,
+            Nivel_max_poder_accesible_nivel_lanzadorPsionico: -1,
             Reserva_psionica: 0,
             Aumentos_clase_lanzadora: [],
-            Conjuros_diarios: {},
+            Conjuros_diarios: crearConjurosDiariosMock(),
             Conjuros_conocidos_nivel_a_nivel: {},
             Conjuros_conocidos_total: 0,
             Dotes: [],
@@ -404,6 +404,20 @@ function crearClaseMock(partial?: Partial<Clase>): Clase {
         },
         ...partial,
     };
+}
+
+function crearConjurosDiariosMock(nivelesAccesibles: number[] = []): Record<string, number> {
+    const diarios: Record<string, number> = {};
+    for (let nivel = 0; nivel <= 9; nivel++) {
+        diarios[`Nivel_${nivel}`] = -1;
+    }
+    (nivelesAccesibles ?? [])
+        .map((nivel) => Number(nivel))
+        .filter((nivel) => Number.isFinite(nivel) && nivel >= 0 && nivel <= 9)
+        .forEach((nivel) => {
+            diarios[`Nivel_${Math.trunc(nivel)}`] = 0;
+        });
+    return diarios;
 }
 
 function crearPlantillaMock(partial?: Partial<Plantilla>): Plantilla {
@@ -529,6 +543,7 @@ describe('NuevoPersonajeComponent', () => {
     let campanaSvcMock: any;
     let alineamientoSvcMock: any;
     let claseSvcMock: any;
+    let conjuroSvcMock: any;
     let razaSvcMock: any;
     let plantillaSvcMock: any;
     let ventajaSvcMock: any;
@@ -552,6 +567,9 @@ describe('NuevoPersonajeComponent', () => {
         };
         claseSvcMock = {
             getClases: () => of([]),
+        };
+        conjuroSvcMock = {
+            getConjuros: () => of([]),
         };
         razaSvcMock = {
             getRazas: () => of([
@@ -607,6 +625,7 @@ describe('NuevoPersonajeComponent', () => {
             campanaSvcMock,
             alineamientoSvcMock,
             claseSvcMock,
+            conjuroSvcMock,
             razaSvcMock,
             plantillaSvcMock,
             ventajaSvcMock,
@@ -1172,6 +1191,16 @@ describe('NuevoPersonajeComponent', () => {
         expect(emitSpy).toHaveBeenCalledWith({ nombre: 'Bendecido', origen: 'Ventaja' });
     });
 
+    it('resuelve clase desde la preview y emite detalle de clase', () => {
+        const clase = crearClaseMock({ Id: 901, Nombre: 'Mago' });
+        component.catalogoClases = [clase];
+        const emitSpy = spyOn(component.claseDetalles, 'emit');
+
+        component.verDetallesClaseDesdeFicha('Mago');
+
+        expect(emitSpy).toHaveBeenCalledWith(clase);
+    });
+
     it('tituloVentanaDetalle usa el nombre del personaje cuando existe', () => {
         component.Personaje.Nombre = 'Pepe';
         expect(component.tituloVentanaDetalle).toBe('Pepe - En creación');
@@ -1358,9 +1387,10 @@ describe('NuevoPersonajeComponent', () => {
         expect(component.selectedInternalTabIndex).toBe(4);
     });
 
-    it('mapearPasoAIndex incluye habilidades y conjuros', () => {
+    it('mapearPasoAIndex incluye habilidades, conjuros y dotes', () => {
         expect((component as any).mapearPasoAIndex('habilidades')).toBe(5);
         expect((component as any).mapearPasoAIndex('conjuros')).toBe(6);
+        expect((component as any).mapearPasoAIndex('dotes')).toBe(7);
     });
 
     it('muestra nombre de raza en origen de habilidades cuando viene de DG racial', () => {
@@ -1490,6 +1520,86 @@ describe('NuevoPersonajeComponent', () => {
         expect(component.puedeAplicarClaseSeleccionada).toBeTrue();
     });
 
+    it('muestra recomendaciones de clase solo con auto-reparto aplicado y sin clases previas', () => {
+        component.Personaje.Auto_reparto = {
+            version: 'quiz_v1',
+            respuestas: {
+                q1: 'magia_arcana',
+                q2: 'delante',
+                q3: 'investigar',
+            },
+            score: {
+                Fuerza: 2,
+                Destreza: 1,
+                Constitucion: 7,
+                Inteligencia: 9,
+                Sabiduria: 3,
+                Carisma: 0,
+            },
+            ranking: ['Inteligencia', 'Constitucion', 'Sabiduria', 'Fuerza', 'Destreza', 'Carisma'],
+            top2: ['Inteligencia', 'Constitucion'],
+            recomendacion: {
+                clases: ['Mago', 'Guerrero psíquico'],
+                explicacion: 'Poder mental combinado con resistencia te permite mantener el control incluso en situaciones prolongadas.',
+                top1: 'Inteligencia',
+                top2: 'Constitucion',
+                top3: 'Sabiduria',
+                afinadaPorTop3: false,
+            },
+            pregunta4Aplicada: false,
+            aplicadoAutomaticamente: true,
+            updatedAt: Date.now(),
+        };
+        component.Personaje.desgloseClases = [];
+        expect(component.mostrarInfoRecomendacionesClase).toBeTrue();
+
+        component.Personaje.desgloseClases = [{ Nombre: 'Mago', Nivel: 1 }];
+        expect(component.mostrarInfoRecomendacionesClase).toBeFalse();
+
+        component.Personaje.desgloseClases = [];
+        component.Personaje.Auto_reparto.aplicadoAutomaticamente = false;
+        expect(component.mostrarInfoRecomendacionesClase).toBeFalse();
+    });
+
+    it('abre modal de recomendaciones en pestaña clases', () => {
+        component.Personaje.Auto_reparto = {
+            version: 'quiz_v1',
+            respuestas: {
+                q1: 'rapidez_precision',
+                q2: 'evitar_contacto',
+                q3: 'manitas',
+            },
+            score: {
+                Fuerza: 0,
+                Destreza: 11,
+                Constitucion: 3,
+                Inteligencia: 4,
+                Sabiduria: 0,
+                Carisma: 0,
+            },
+            ranking: ['Destreza', 'Inteligencia', 'Constitucion', 'Fuerza', 'Sabiduria', 'Carisma'],
+            top2: ['Destreza', 'Inteligencia'],
+            recomendacion: {
+                clases: ['Pícaro', 'Mago'],
+                explicacion: 'Tu perfil mezcla precisión y mente estratégica. Eres eficaz tanto resolviendo situaciones complejas como explotando debilidades enemigas.',
+                top1: 'Destreza',
+                top2: 'Inteligencia',
+                top3: 'Constitucion',
+                afinadaPorTop3: false,
+            },
+            pregunta4Aplicada: false,
+            aplicadoAutomaticamente: true,
+            updatedAt: Date.now(),
+        };
+        component.Personaje.desgloseClases = [];
+
+        const swalSpy = spyOn(Swal, 'fire').and.resolveTo({ isConfirmed: true } as any);
+        component.abrirInfoRecomendacionesClase();
+
+        expect(swalSpy).toHaveBeenCalled();
+        expect((swalSpy.calls.mostRecent().args[0] as any).title).toBe('Recomendaciones');
+    });
+
     it('mantiene visible una clase incompatible por alineamiento y la marca como aplicable con aviso', () => {
         const barbaro = crearClaseMock({
             Id: 31,
@@ -1615,7 +1725,64 @@ describe('NuevoPersonajeComponent', () => {
         expect(component.puedeContinuarHabilidades).toBeFalse();
     });
 
-    it('continuarDesdeHabilidades salta a conjuros tras reparto de clase', async () => {
+    it('habilidadesOrdenadas filtra Crear 1/2 y ordena normales antes de custom', () => {
+        component.Personaje.Habilidades = [
+            { Id: 1, Nombre: 'Crear 1', Clasea: false, Entrenada: false, Car: 'Inteligencia', Mod_car: 0, Rangos: 0, Rangos_varios: 0, Extra: '', Varios: '', Custom: false, Soporta_extra: false, Extras: [], Bonos_varios: [] },
+            { Id: 2, Nombre: 'Conocimiento oscuro', Clasea: false, Entrenada: false, Car: 'Inteligencia', Mod_car: 0, Rangos: 0, Rangos_varios: 0, Extra: '', Varios: '', Custom: true, Soporta_extra: false, Extras: [], Bonos_varios: [] },
+            { Id: 3, Nombre: 'Avistar', Clasea: false, Entrenada: false, Car: 'Sabiduria', Mod_car: 0, Rangos: 0, Rangos_varios: 0, Extra: '', Varios: '', Custom: false, Soporta_extra: false, Extras: [], Bonos_varios: [] },
+            { Id: 4, Nombre: 'Abrir cerraduras', Clasea: false, Entrenada: false, Car: 'Destreza', Mod_car: 0, Rangos: 0, Rangos_varios: 0, Extra: '', Varios: '', Custom: false, Soporta_extra: false, Extras: [], Bonos_varios: [] },
+            { Id: 5, Nombre: 'Crear 2', Clasea: false, Entrenada: false, Car: 'Inteligencia', Mod_car: 0, Rangos: 0, Rangos_varios: 0, Extra: '', Varios: '', Custom: true, Soporta_extra: false, Extras: [], Bonos_varios: [] },
+        ] as any;
+
+        const nombres = component.habilidadesOrdenadas.map((h) => h.Nombre);
+        expect(nombres).toEqual(['Abrir cerraduras', 'Avistar', 'Conocimiento oscuro']);
+    });
+
+    it('abrevia característica en la tabla de habilidades', () => {
+        expect(component.getCaracteristicaAbreviada('Fuerza')).toBe('Fue');
+        expect(component.getCaracteristicaAbreviada('Destreza')).toBe('Des');
+        expect(component.getCaracteristicaAbreviada('Constitución')).toBe('Con');
+        expect(component.getCaracteristicaAbreviada('Inteligencia')).toBe('Int');
+        expect(component.getCaracteristicaAbreviada('Sabiduría')).toBe('Sab');
+        expect(component.getCaracteristicaAbreviada('Carisma')).toBe('Car');
+    });
+
+    it('onExtraHabilidadChange actualiza extra y desbloquea continuar si era obligatorio', () => {
+        component.Personaje.Habilidades = [
+            {
+                Id: 55,
+                Nombre: 'Conocimiento arcano',
+                Clasea: true,
+                Entrenada: false,
+                Car: 'Inteligencia',
+                Mod_car: 0,
+                Rangos: 0,
+                Rangos_varios: 0,
+                Extra: '',
+                Varios: '',
+                Custom: false,
+                Soporta_extra: true,
+                Extras: [{ Id_extra: 1, Extra: 'Planos', Descripcion: '' }],
+                Bonos_varios: [],
+            },
+        ] as any;
+        nuevoPSvc.EstadoFlujo.habilidades = {
+            activa: true,
+            origen: 'clase_nivel',
+            returnStep: 'dotes',
+            puntosTotales: 0,
+            puntosRestantes: 0,
+            nivelPersonajeReferencia: 1,
+            classSkillTemporales: [],
+        };
+
+        expect(component.puedeContinuarHabilidades).toBeFalse();
+        component.onExtraHabilidadChange(55, 'Planos');
+        expect(component.Personaje.Habilidades[0].Extra).toBe('Planos');
+        expect(component.puedeContinuarHabilidades).toBeTrue();
+    });
+
+    it('continuarDesdeHabilidades salta a dotes cuando no hay sesión de conjuros', async () => {
         const clase = crearClaseMock({
             Id: 347,
             Nombre: 'Iniciado',
@@ -1630,8 +1797,405 @@ describe('NuevoPersonajeComponent', () => {
         await component.continuarDesdeClases();
         component.continuarDesdeHabilidades();
 
+        expect(nuevoPSvc.EstadoFlujo.pasoActual).toBe('dotes');
+        expect(component.selectedInternalTabIndex).toBe(7);
+    });
+
+    it('continuarDesdeHabilidades salta a conjuros cuando hay sesión activa', async () => {
+        const claseConConjuros = crearClaseMock({
+            Id: 348,
+            Nombre: 'Aspirante arcano',
+            Puntos_habilidad: { Id: 1, Valor: 0 },
+            Conjuros: {
+                ...crearClaseMock().Conjuros,
+                Arcanos: true,
+                Conocidos_total: true,
+                Listado: [
+                    { Id: 4001, Nombre: 'Luz', Nivel: 0, Espontaneo: true },
+                ],
+            },
+            Desglose_niveles: [{
+                Nivel: 1,
+                Ataque_base: '+0',
+                Salvaciones: { Fortaleza: '+0', Reflejos: '+0', Voluntad: '+2' },
+                Nivel_max_poder_accesible_nivel_lanzadorPsionico: -1,
+                Reserva_psionica: 0,
+                Aumentos_clase_lanzadora: [],
+                Conjuros_diarios: crearConjurosDiariosMock([0]),
+                Conjuros_conocidos_nivel_a_nivel: {},
+                Conjuros_conocidos_total: 1,
+                Dotes: [],
+                Especiales: [],
+            }],
+        });
+        component.catalogoConjuros = [{
+            Id: 4001,
+            Nombre: 'Luz',
+            Descripcion: '',
+            Tiempo_lanzamiento: '',
+            Alcance: '',
+            Escuela: { Id: 1, Nombre: 'Evocacion', Nombre_especial: '', Prohibible: true },
+            Disciplina: { Id: 0, Nombre: '', Nombre_especial: '', Subdisciplinas: [] },
+            Manual: '',
+            Objetivo: '',
+            Efecto: '',
+            Area: '',
+            Arcano: true,
+            Divino: false,
+            Psionico: false,
+            Alma: false,
+            Duracion: '',
+            Tipo_salvacion: '',
+            Resistencia_conjuros: false,
+            Resistencia_poderes: false,
+            Descripcion_componentes: '',
+            Permanente: false,
+            Puntos_poder: 0,
+            Descripcion_aumentos: '',
+            Descriptores: [],
+            Nivel_clase: [{ Id_clase: 348, Clase: 'Aspirante arcano', Nivel: 0, Espontaneo: true }],
+            Nivel_dominio: [],
+            Nivel_disciplinas: [],
+            Componentes: [],
+            Oficial: true,
+        } as any];
+        nuevoPSvc.setCatalogoConjuros(component.catalogoConjuros);
+        component.catalogoClases = [claseConConjuros];
+        nuevoPSvc.setCatalogoClases(component.catalogoClases);
+        (component as any).recalcularClasesVisibles();
+        component.seleccionarClaseParaAplicar(claseConConjuros);
+
+        await component.continuarDesdeClases();
+        component.continuarDesdeHabilidades();
+
         expect(nuevoPSvc.EstadoFlujo.pasoActual).toBe('conjuros');
         expect(component.selectedInternalTabIndex).toBe(6);
+    });
+
+    it('continuarDesdeConjuros persiste selección y avanza a dotes', async () => {
+        const claseConConjuros = crearClaseMock({
+            Id: 349,
+            Nombre: 'Adepto místico',
+            Puntos_habilidad: { Id: 1, Valor: 0 },
+            Conjuros: {
+                ...crearClaseMock().Conjuros,
+                Arcanos: true,
+                Conocidos_total: true,
+                Listado: [
+                    { Id: 4002, Nombre: 'Detectar magia', Nivel: 0, Espontaneo: true },
+                ],
+            },
+            Desglose_niveles: [{
+                Nivel: 1,
+                Ataque_base: '+0',
+                Salvaciones: { Fortaleza: '+0', Reflejos: '+0', Voluntad: '+2' },
+                Nivel_max_poder_accesible_nivel_lanzadorPsionico: -1,
+                Reserva_psionica: 0,
+                Aumentos_clase_lanzadora: [],
+                Conjuros_diarios: crearConjurosDiariosMock([0]),
+                Conjuros_conocidos_nivel_a_nivel: {},
+                Conjuros_conocidos_total: 1,
+                Dotes: [],
+                Especiales: [],
+            }],
+        });
+        const conjuro = {
+            Id: 4002,
+            Nombre: 'Detectar magia',
+            Descripcion: '',
+            Tiempo_lanzamiento: '',
+            Alcance: '',
+            Escuela: { Id: 1, Nombre: 'Adivinacion', Nombre_especial: '', Prohibible: true },
+            Disciplina: { Id: 0, Nombre: '', Nombre_especial: '', Subdisciplinas: [] },
+            Manual: '',
+            Objetivo: '',
+            Efecto: '',
+            Area: '',
+            Arcano: true,
+            Divino: false,
+            Psionico: false,
+            Alma: false,
+            Duracion: '',
+            Tipo_salvacion: '',
+            Resistencia_conjuros: false,
+            Resistencia_poderes: false,
+            Descripcion_componentes: '',
+            Permanente: false,
+            Puntos_poder: 0,
+            Descripcion_aumentos: '',
+            Descriptores: [],
+            Nivel_clase: [{ Id_clase: 349, Clase: 'Adepto místico', Nivel: 0, Espontaneo: true }],
+            Nivel_dominio: [],
+            Nivel_disciplinas: [],
+            Componentes: [],
+            Oficial: true,
+        } as any;
+        component.catalogoConjuros = [conjuro];
+        nuevoPSvc.setCatalogoConjuros(component.catalogoConjuros);
+        component.catalogoClases = [claseConConjuros];
+        nuevoPSvc.setCatalogoClases(component.catalogoClases);
+        (component as any).recalcularClasesVisibles();
+        component.seleccionarClaseParaAplicar(claseConConjuros);
+
+        await component.continuarDesdeClases();
+        component.continuarDesdeHabilidades();
+        component.agregarConjuroSesion(conjuro);
+        component.continuarDesdeConjuros();
+
+        expect(nuevoPSvc.EstadoFlujo.pasoActual).toBe('dotes');
+        expect(component.selectedInternalTabIndex).toBe(7);
+        expect(component.Personaje.Conjuros.some((item) => item.Nombre === 'Detectar magia')).toBeTrue();
+    });
+
+    it('mensaje de progreso no afirma autoadición en conocidos nivel a nivel sin delta', async () => {
+        const claseSinDelta = crearClaseMock({
+            Id: 350,
+            Nombre: 'Mago sin delta',
+            Puntos_habilidad: { Id: 1, Valor: 0 },
+            Conjuros: {
+                ...crearClaseMock().Conjuros,
+                Arcanos: true,
+                Conocidos_total: false,
+                Conocidos_nivel_a_nivel: true,
+                Listado: [{ Id: 4003, Nombre: 'Luz', Nivel: 0, Espontaneo: false }],
+            },
+            Desglose_niveles: [{
+                Nivel: 1,
+                Ataque_base: '+0',
+                Salvaciones: { Fortaleza: '+0', Reflejos: '+0', Voluntad: '+2' },
+                Nivel_max_poder_accesible_nivel_lanzadorPsionico: -1,
+                Reserva_psionica: 0,
+                Aumentos_clase_lanzadora: [],
+                Conjuros_diarios: crearConjurosDiariosMock([0]),
+                Conjuros_conocidos_nivel_a_nivel: { Nivel_0: 0 } as any,
+                Conjuros_conocidos_total: 0,
+                Dotes: [],
+                Especiales: [],
+            }],
+        });
+        component.catalogoConjuros = [{
+            Id: 4003,
+            Nombre: 'Luz',
+            Descripcion: '',
+            Tiempo_lanzamiento: '',
+            Alcance: '',
+            Escuela: { Id: 1, Nombre: 'Evocacion', Nombre_especial: '', Prohibible: true },
+            Disciplina: { Id: 0, Nombre: '', Nombre_especial: '', Subdisciplinas: [] },
+            Manual: '',
+            Objetivo: '',
+            Efecto: '',
+            Area: '',
+            Arcano: true,
+            Divino: false,
+            Psionico: false,
+            Alma: false,
+            Duracion: '',
+            Tipo_salvacion: '',
+            Resistencia_conjuros: false,
+            Resistencia_poderes: false,
+            Descripcion_componentes: '',
+            Permanente: false,
+            Puntos_poder: 0,
+            Descripcion_aumentos: '',
+            Descriptores: [],
+            Nivel_clase: [{ Id_clase: 350, Clase: 'Mago sin delta', Nivel: 0, Espontaneo: false }],
+            Nivel_dominio: [],
+            Nivel_disciplinas: [],
+            Componentes: [],
+            Oficial: true,
+        } as any];
+        nuevoPSvc.setCatalogoConjuros(component.catalogoConjuros);
+        component.catalogoClases = [claseSinDelta];
+        nuevoPSvc.setCatalogoClases(component.catalogoClases);
+        (component as any).recalcularClasesVisibles();
+        component.seleccionarClaseParaAplicar(claseSinDelta);
+
+        await component.continuarDesdeClases();
+        component.continuarDesdeHabilidades();
+
+        expect(component.mensajeProgresoConjuros.toLowerCase()).not.toContain('automatic');
+        expect(component.mensajeProgresoConjuros).toContain('no otorga nuevos conjuros conocidos');
+    });
+
+    it('expone recién obtenidos vacío cuando no hay obtención en el avance', async () => {
+        const claseSinObtencion = crearClaseMock({
+            Id: 351,
+            Nombre: 'Sin obtención',
+            Puntos_habilidad: { Id: 1, Valor: 0 },
+            Conjuros: {
+                ...crearClaseMock().Conjuros,
+                Arcanos: true,
+                Conocidos_total: false,
+                Conocidos_nivel_a_nivel: true,
+                Listado: [],
+            },
+            Desglose_niveles: [{
+                Nivel: 1,
+                Ataque_base: '+0',
+                Salvaciones: { Fortaleza: '+0', Reflejos: '+0', Voluntad: '+2' },
+                Nivel_max_poder_accesible_nivel_lanzadorPsionico: -1,
+                Reserva_psionica: 0,
+                Aumentos_clase_lanzadora: [],
+                Conjuros_diarios: crearConjurosDiariosMock([0]),
+                Conjuros_conocidos_nivel_a_nivel: { Nivel_0: 0 } as any,
+                Conjuros_conocidos_total: 0,
+                Dotes: [],
+                Especiales: [],
+            }],
+        });
+        component.catalogoConjuros = [];
+        nuevoPSvc.setCatalogoConjuros(component.catalogoConjuros);
+        component.catalogoClases = [claseSinObtencion];
+        nuevoPSvc.setCatalogoClases(component.catalogoClases);
+        (component as any).recalcularClasesVisibles();
+        component.seleccionarClaseParaAplicar(claseSinObtencion);
+
+        await component.continuarDesdeClases();
+        component.continuarDesdeHabilidades();
+
+        expect(component.conjurosSeleccionadosActuales.length).toBe(0);
+    });
+
+    it('entrada psiónica expone nivel máximo de poder accesible para la UI', async () => {
+        const clasePsionica = crearClaseMock({
+            Id: 352,
+            Nombre: 'Psiónico base',
+            Puntos_habilidad: { Id: 1, Valor: 0 },
+            Conjuros: {
+                ...crearClaseMock().Conjuros,
+                Arcanos: false,
+                Divinos: false,
+                Psionicos: true,
+                Conocidos_total: false,
+                Conocidos_nivel_a_nivel: false,
+                Listado: [{ Id: 4004, Nombre: 'Empuje mental', Nivel: 0, Espontaneo: true }],
+            },
+            Desglose_niveles: [{
+                Nivel: 1,
+                Ataque_base: '+0',
+                Salvaciones: { Fortaleza: '+0', Reflejos: '+0', Voluntad: '+2' },
+                Nivel_max_poder_accesible_nivel_lanzadorPsionico: 0,
+                Reserva_psionica: 2,
+                Aumentos_clase_lanzadora: [],
+                Conjuros_diarios: {},
+                Conjuros_conocidos_nivel_a_nivel: {},
+                Conjuros_conocidos_total: 0,
+                Dotes: [],
+                Especiales: [],
+            }],
+        });
+        component.catalogoConjuros = [{
+            Id: 4004,
+            Nombre: 'Empuje mental',
+            Descripcion: '',
+            Tiempo_lanzamiento: '',
+            Alcance: '',
+            Escuela: { Id: 1, Nombre: 'Psionica', Nombre_especial: '', Prohibible: false },
+            Disciplina: { Id: 1, Nombre: 'Telepatia', Nombre_especial: '', Subdisciplinas: [] },
+            Manual: '',
+            Objetivo: '',
+            Efecto: '',
+            Area: '',
+            Arcano: false,
+            Divino: false,
+            Psionico: true,
+            Alma: false,
+            Duracion: '',
+            Tipo_salvacion: '',
+            Resistencia_conjuros: false,
+            Resistencia_poderes: false,
+            Descripcion_componentes: '',
+            Permanente: false,
+            Puntos_poder: 1,
+            Descripcion_aumentos: '',
+            Descriptores: [],
+            Nivel_clase: [{ Id_clase: 352, Clase: 'Psiónico base', Nivel: 0, Espontaneo: true }],
+            Nivel_dominio: [],
+            Nivel_disciplinas: [],
+            Componentes: [],
+            Oficial: true,
+        } as any];
+        nuevoPSvc.setCatalogoConjuros(component.catalogoConjuros);
+        component.catalogoClases = [clasePsionica];
+        nuevoPSvc.setCatalogoClases(component.catalogoClases);
+        (component as any).recalcularClasesVisibles();
+        component.seleccionarClaseParaAplicar(clasePsionica);
+
+        await component.continuarDesdeClases();
+        component.continuarDesdeHabilidades();
+
+        expect(component.entradaConjurosActual?.tipoLanzamiento).toBe('psionico');
+        expect(component.entradaConjurosActual?.nivelMaxPoderAccesiblePsionico).toBe(0);
+    });
+
+    it('entrada arcana no expone nivel máximo de poder psiónico', async () => {
+        const claseArcana = crearClaseMock({
+            Id: 353,
+            Nombre: 'Arcano base',
+            Puntos_habilidad: { Id: 1, Valor: 0 },
+            Conjuros: {
+                ...crearClaseMock().Conjuros,
+                Arcanos: true,
+                Conocidos_total: false,
+                Conocidos_nivel_a_nivel: false,
+                Listado: [{ Id: 4005, Nombre: 'Luz', Nivel: 0, Espontaneo: true }],
+            },
+            Desglose_niveles: [{
+                Nivel: 1,
+                Ataque_base: '+0',
+                Salvaciones: { Fortaleza: '+0', Reflejos: '+0', Voluntad: '+2' },
+                Nivel_max_poder_accesible_nivel_lanzadorPsionico: -1,
+                Reserva_psionica: 0,
+                Aumentos_clase_lanzadora: [],
+                Conjuros_diarios: crearConjurosDiariosMock([0]),
+                Conjuros_conocidos_nivel_a_nivel: {},
+                Conjuros_conocidos_total: 0,
+                Dotes: [],
+                Especiales: [],
+            }],
+        });
+        component.catalogoConjuros = [{
+            Id: 4005,
+            Nombre: 'Luz',
+            Descripcion: '',
+            Tiempo_lanzamiento: '',
+            Alcance: '',
+            Escuela: { Id: 1, Nombre: 'Evocacion', Nombre_especial: '', Prohibible: true },
+            Disciplina: { Id: 0, Nombre: '', Nombre_especial: '', Subdisciplinas: [] },
+            Manual: '',
+            Objetivo: '',
+            Efecto: '',
+            Area: '',
+            Arcano: true,
+            Divino: false,
+            Psionico: false,
+            Alma: false,
+            Duracion: '',
+            Tipo_salvacion: '',
+            Resistencia_conjuros: false,
+            Resistencia_poderes: false,
+            Descripcion_componentes: '',
+            Permanente: false,
+            Puntos_poder: 0,
+            Descripcion_aumentos: '',
+            Descriptores: [],
+            Nivel_clase: [{ Id_clase: 353, Clase: 'Arcano base', Nivel: 0, Espontaneo: true }],
+            Nivel_dominio: [],
+            Nivel_disciplinas: [],
+            Componentes: [],
+            Oficial: true,
+        } as any];
+        nuevoPSvc.setCatalogoConjuros(component.catalogoConjuros);
+        component.catalogoClases = [claseArcana];
+        nuevoPSvc.setCatalogoClases(component.catalogoClases);
+        (component as any).recalcularClasesVisibles();
+        component.seleccionarClaseParaAplicar(claseArcana);
+
+        await component.continuarDesdeClases();
+        component.continuarDesdeHabilidades();
+
+        expect(component.entradaConjurosActual?.tipoLanzamiento).toBe('arcano');
+        expect(component.entradaConjurosActual?.nivelMaxPoderAccesiblePsionico).toBe(-1);
     });
 
     it('si hay idiomas pendientes tras aplicar clase, abre el selector de idiomas iniciales', async () => {
@@ -1710,10 +2274,10 @@ describe('NuevoPersonajeComponent', () => {
                 Nivel: 1,
                 Ataque_base: '+1',
                 Salvaciones: { Fortaleza: '+2', Reflejos: '+0', Voluntad: '+0' },
-                Nivel_max_conjuro: -1,
+                Nivel_max_poder_accesible_nivel_lanzadorPsionico: -1,
                 Reserva_psionica: 0,
                 Aumentos_clase_lanzadora: [],
-                Conjuros_diarios: {},
+                Conjuros_diarios: crearConjurosDiariosMock(),
                 Conjuros_conocidos_nivel_a_nivel: {},
                 Conjuros_conocidos_total: 0,
                 Dotes: [],
@@ -1793,10 +2357,10 @@ describe('NuevoPersonajeComponent', () => {
                 Nivel: 1,
                 Ataque_base: '+1',
                 Salvaciones: { Fortaleza: '+2', Reflejos: '+0', Voluntad: '+0' },
-                Nivel_max_conjuro: -1,
+                Nivel_max_poder_accesible_nivel_lanzadorPsionico: -1,
                 Reserva_psionica: 0,
                 Aumentos_clase_lanzadora: [],
-                Conjuros_diarios: {},
+                Conjuros_diarios: crearConjurosDiariosMock(),
                 Conjuros_conocidos_nivel_a_nivel: {},
                 Conjuros_conocidos_total: 0,
                 Dotes: [{
@@ -1851,10 +2415,10 @@ describe('NuevoPersonajeComponent', () => {
                 Nivel: 1,
                 Ataque_base: '+1',
                 Salvaciones: { Fortaleza: '+2', Reflejos: '+0', Voluntad: '+0' },
-                Nivel_max_conjuro: -1,
+                Nivel_max_poder_accesible_nivel_lanzadorPsionico: -1,
                 Reserva_psionica: 0,
                 Aumentos_clase_lanzadora: [],
-                Conjuros_diarios: {},
+                Conjuros_diarios: crearConjurosDiariosMock(),
                 Conjuros_conocidos_nivel_a_nivel: {},
                 Conjuros_conocidos_total: 0,
                 Dotes: [
@@ -1956,10 +2520,10 @@ describe('NuevoPersonajeComponent', () => {
                 Nivel: 1,
                 Ataque_base: '+1',
                 Salvaciones: { Fortaleza: '+2', Reflejos: '+0', Voluntad: '+0' },
-                Nivel_max_conjuro: -1,
+                Nivel_max_poder_accesible_nivel_lanzadorPsionico: -1,
                 Reserva_psionica: 0,
                 Aumentos_clase_lanzadora: [],
-                Conjuros_diarios: {},
+                Conjuros_diarios: crearConjurosDiariosMock(),
                 Conjuros_conocidos_nivel_a_nivel: {},
                 Conjuros_conocidos_total: 0,
                 Dotes: [{
@@ -2012,10 +2576,10 @@ describe('NuevoPersonajeComponent', () => {
                 Nivel: 1,
                 Ataque_base: '+0',
                 Salvaciones: { Fortaleza: '+2', Reflejos: '+2', Voluntad: '+2' },
-                Nivel_max_conjuro: -1,
+                Nivel_max_poder_accesible_nivel_lanzadorPsionico: -1,
                 Reserva_psionica: 0,
                 Aumentos_clase_lanzadora: [],
-                Conjuros_diarios: {},
+                Conjuros_diarios: crearConjurosDiariosMock(),
                 Conjuros_conocidos_nivel_a_nivel: {},
                 Conjuros_conocidos_total: 0,
                 Dotes: [{
@@ -2064,10 +2628,10 @@ describe('NuevoPersonajeComponent', () => {
                 Nivel: 1,
                 Ataque_base: '+0',
                 Salvaciones: { Fortaleza: '+2', Reflejos: '+2', Voluntad: '+2' },
-                Nivel_max_conjuro: -1,
+                Nivel_max_poder_accesible_nivel_lanzadorPsionico: -1,
                 Reserva_psionica: 0,
                 Aumentos_clase_lanzadora: [],
-                Conjuros_diarios: {},
+                Conjuros_diarios: crearConjurosDiariosMock(),
                 Conjuros_conocidos_nivel_a_nivel: {},
                 Conjuros_conocidos_total: 0,
                 Dotes: [
@@ -2119,10 +2683,10 @@ describe('NuevoPersonajeComponent', () => {
                 Nivel: 1,
                 Ataque_base: '+0',
                 Salvaciones: { Fortaleza: '+2', Reflejos: '+2', Voluntad: '+2' },
-                Nivel_max_conjuro: -1,
+                Nivel_max_poder_accesible_nivel_lanzadorPsionico: -1,
                 Reserva_psionica: 0,
                 Aumentos_clase_lanzadora: [],
-                Conjuros_diarios: {},
+                Conjuros_diarios: crearConjurosDiariosMock(),
                 Conjuros_conocidos_nivel_a_nivel: {},
                 Conjuros_conocidos_total: 0,
                 Dotes: [{
@@ -2260,6 +2824,7 @@ describe('NuevoPersonajeComponent', () => {
             campanaSvcMock,
             alineamientoSvcMock,
             claseSvcMock,
+            conjuroSvcMock,
             razaSvcMock,
             plantillaSvcMock,
             ventajaSvcMock,

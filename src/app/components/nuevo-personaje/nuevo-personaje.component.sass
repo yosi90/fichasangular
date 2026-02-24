@@ -376,6 +376,44 @@ textarea
 .clases-acciones
     margin-top: 0
     padding: 8px
+    display: flex
+    align-items: center
+    justify-content: flex-end
+    gap: 10px
+
+.clases-recomendaciones-btn
+    margin-right: auto
+    display: inline-flex
+    align-items: center
+    gap: 6px
+    border: 1px solid rgba(255, 255, 255, 0.45)
+    border-radius: 999px
+    background: linear-gradient(135deg, #e91e63, #ff4f9a)
+    color: #ffffff
+    font-weight: 700
+    min-height: 38px
+    padding: 0 14px
+    cursor: pointer
+    box-shadow: 0 8px 18px rgba(233, 30, 99, 0.35), 0 0 0 1px rgba(255, 120, 180, 0.35) inset
+    transition: transform 120ms ease, filter 120ms ease, box-shadow 120ms ease
+
+    mat-icon
+        width: 18px
+        height: 18px
+        font-size: 18px
+        color: #ffffff
+
+    &:hover
+        filter: brightness(1.08)
+        transform: translateY(-1px)
+        box-shadow: 0 10px 22px rgba(233, 30, 99, 0.45), 0 0 0 1px rgba(255, 120, 180, 0.45) inset
+
+    &:active
+        transform: translateY(0)
+
+    &:focus-visible
+        outline: 2px solid rgba(255, 180, 215, 0.95)
+        outline-offset: 2px
 
 .habilidades-view
     min-height: 0
@@ -388,6 +426,16 @@ textarea
     flex-wrap: wrap
     gap: 8px
     align-items: center
+
+.habilidades-resumen-principal
+    display: flex
+    flex-wrap: wrap
+    gap: 8px
+    align-items: center
+
+.habilidad-entrenada-info-chip
+    margin-left: auto
+    white-space: normal
 
 .habilidades-tabla-scroll
     border: 1px solid rgba(255, 255, 255, 0.16)
@@ -418,25 +466,46 @@ textarea
     th:nth-child(1), td:nth-child(1)
         width: 7%
     th:nth-child(2), td:nth-child(2)
-        width: 22%
+        width: 21%
     th:nth-child(3), td:nth-child(3)
-        width: 10%
+        width: 7%
     th:nth-child(4), td:nth-child(4)
-        width: 8%
+        width: 16%
     th:nth-child(5), td:nth-child(5)
-        width: 10%
+        width: 7%
     th:nth-child(6), td:nth-child(6)
-        width: 24%
+        width: 10%
     th:nth-child(7), td:nth-child(7)
-        width: 8%
+        width: 17%
     th:nth-child(8), td:nth-child(8)
-        width: 11%
+        width: 7%
+    th:nth-child(9), td:nth-child(9)
+        width: 8%
 
-    td:nth-child(6)
+    td:nth-child(7)
         max-width: 0
         white-space: nowrap
         overflow: hidden
         text-overflow: ellipsis
+
+.habilidad-extra-col
+    min-width: 130px
+
+.habilidad-extra-inline
+    display: inline-flex
+    align-items: center
+    gap: 4px
+    width: 100%
+    justify-content: space-between
+
+.habilidad-extra-valor
+    min-width: 0
+    white-space: nowrap
+    overflow: hidden
+    text-overflow: ellipsis
+
+.habilidad-extra-pendiente
+    background: rgba(220, 38, 38, 0.2) !important
 
 .habilidad-acciones
     display: inline-flex
@@ -653,6 +722,90 @@ textarea
 .fila-pendiente
     background: rgba(175, 125, 0, 0.15)
 
+.conjuros-resumen
+    display: flex
+    flex-wrap: wrap
+    gap: 8px
+
+.conjuros-chip
+    border: 1px solid rgba(255, 255, 255, 0.22)
+    background: rgba(255, 255, 255, 0.14)
+    color: #f4f7ff
+
+    ::ng-deep .mdc-evolution-chip__text-label
+        color: #f4f7ff !important
+
+.conjuros-avisos
+    display: flex
+    flex-wrap: wrap
+    gap: 8px
+    margin-top: 8px
+
+.conjuros-filtros
+    display: grid
+    grid-template-columns: 1fr 220px
+    gap: 12px
+    margin-bottom: 12px
+
+.conjuros-tablas
+    display: grid
+    grid-template-columns: 1fr 1fr
+    gap: 12px
+
+.conjuros-tablas--single
+    grid-template-columns: 1fr
+
+.conjuros-view
+    .tab-scroll
+        color: #eef2ff
+
+    .conjuros-tablas .tabla-scroll
+        border: 1px solid rgba(255, 255, 255, 0.16)
+        border-radius: 8px
+        background: #2c313b
+
+.tabla-conjuros th,
+.tabla-conjuros td
+    vertical-align: middle
+
+.tabla-conjuros
+    th
+        background: #20242c
+        color: #f2f6ff
+        font-weight: 700
+
+    td
+        background: #2b313b
+        color: #e7edf9
+
+    tbody tr:nth-child(even) td
+        background: #29303a
+
+    tbody tr:hover td
+        background: #323a47
+
+.conjuro-auto-tag
+    display: inline-block
+    font-size: 0.75rem
+    padding: 1px 6px
+    margin-left: 6px
+    border-radius: 10px
+    border: 1px solid rgba(187, 247, 208, 0.38)
+    background: rgba(34, 197, 94, 0.22)
+    color: #d4ffe0
+
+.conjuro-detalle-btn
+    margin-left: .25rem
+    vertical-align: middle
+
+.conjuros-resumen-auto
+    margin: 0
+    padding: 6px 8px
+    border: 1px solid rgba(255, 255, 255, 0.14)
+    border-radius: 8px
+    background: rgba(255, 255, 255, 0.06)
+    color: #dbe4f4
+
 ::ng-deep .mat-mdc-form-field-subscript-wrapper
     padding: 0 2px
 
@@ -668,6 +821,12 @@ textarea
         grid-template-columns: 1fr
 
     .clases-filtros
+        grid-template-columns: 1fr
+
+    .conjuros-filtros
+        grid-template-columns: 1fr
+
+    .conjuros-tablas
         grid-template-columns: 1fr
 
     .clase-homebrew-chip

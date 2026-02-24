@@ -186,7 +186,7 @@ function normalizeNivel(raw: any): ClaseNivelDetalle {
             Reflejos: toText(raw?.Salvaciones?.Reflejos),
             Voluntad: toText(raw?.Salvaciones?.Voluntad),
         },
-        Nivel_max_conjuro: toNumber(raw?.Nivel_max_conjuro, -1),
+        Nivel_max_poder_accesible_nivel_lanzadorPsionico: toNumber(raw?.nivel_max_poder_accesible_nivel_lanzadorPsionico, -1),
         Reserva_psionica: toNumber(raw?.Reserva_psionica, 0),
         Aumentos_clase_lanzadora: toArray(raw?.Aumentos_clase_lanzadora).map((item: any) => ({
             Id: toNumber(item?.Id),

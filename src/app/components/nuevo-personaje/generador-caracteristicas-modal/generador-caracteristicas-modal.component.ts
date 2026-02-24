@@ -2,9 +2,14 @@ import { Component, EventEmitter, HostListener, Input, Output } from '@angular/c
 import { Raza } from 'src/app/interfaces/raza';
 import {
     AsignacionCaracteristicas,
-    GeneradorAutoDetalle,
-    GeneradorAutoEnfoque,
-    GeneradorAutoPerfil,
+    GeneradorAutoCuestionario,
+    GeneradorAutoDiagnostico,
+    GeneradorAutoPreguntaOpcion,
+    GeneradorAutoRecomendacion,
+    GeneradorAutoRespuestaQ1,
+    GeneradorAutoRespuestaQ2,
+    GeneradorAutoRespuestaQ3,
+    GeneradorAutoRespuestaQ4,
     NuevoPersonajeService
 } from 'src/app/services/nuevo-personaje.service';
 import Swal from 'sweetalert2';
@@ -39,6 +44,71 @@ export class GeneradorCaracteristicasModalComponent {
         { key: 'Sabiduria', label: 'Sabiduría' },
         { key: 'Carisma', label: 'Carisma' },
     ];
+    readonly opcionesQ1: GeneradorAutoPreguntaOpcion<GeneradorAutoRespuestaQ1>[] = [
+        {
+            key: 'acero_musculo',
+            label: 'Acero y músculo',
+            description: 'Me flipa pegar, empujar o partir cosas.',
+        },
+        {
+            key: 'rapidez_precision',
+            label: 'Rapidez y precisión',
+            description: 'Esquivar, moverme y atacar donde duele.',
+        },
+        {
+            key: 'magia_arcana',
+            label: 'Magia arcana',
+            description: 'Hechizos, control, explosiones y trucos.',
+        },
+        {
+            key: 'fe_naturaleza_espiritu',
+            label: 'Fe / naturaleza / espíritu',
+            description: 'Milagros, bendiciones y comunión.',
+        },
+        {
+            key: 'voluntad_psionica',
+            label: 'Voluntad mental / psiónica',
+            description: 'Disciplina y poder interior.',
+        },
+        {
+            key: 'labia_presencia',
+            label: 'Labia / presencia',
+            description: 'Inspirar, manipular, liderar o intimidar.',
+        },
+    ];
+    readonly opcionesQ4: GeneradorAutoPreguntaOpcion<GeneradorAutoRespuestaQ4>[] = [
+        {
+            key: 'aguante',
+            label: 'Caerme o aguantar poco',
+            description: 'Necesito más resistencia.',
+        },
+        {
+            key: 'acierto',
+            label: 'No acertar golpes/disparos',
+            description: 'Quiero fiabilidad al impactar.',
+        },
+        {
+            key: 'potencia_conjuros',
+            label: 'Conjuros flojos o fallando',
+            description: 'Quiero potencia mágica consistente.',
+        },
+        {
+            key: 'percepcion',
+            label: 'No enterarme de nada',
+            description: 'No quiero caer en trampas o sorpresas.',
+        },
+        {
+            key: 'social',
+            label: 'Quedar mal socialmente',
+            description: 'Quiero presencia y solvencia social.',
+        },
+    ];
+
+    modalCuestionarioAutoAbierto = false;
+    cuestionarioAuto: GeneradorAutoCuestionario = {};
+    diagnosticoAuto: GeneradorAutoDiagnostico | null = null;
+    autoStepperIndex = 0;
+    private resolverCuestionarioAuto: ((respuesta: GeneradorAutoCuestionario | null) => void) | null = null;
 
     constructor(private nuevoPSvc: NuevoPersonajeService) {
         this.nuevoPSvc.abrirModalCaracteristicas();
@@ -57,6 +127,66 @@ export class GeneradorCaracteristicasModalComponent {
         return nombre.length > 0
             ? `Repartiendo las características de ${nombre}`
             : 'Repartiendo las características de [Nombre del personaje]';
+    }
+
+    get q2Opciones(): GeneradorAutoPreguntaOpcion<GeneradorAutoRespuestaQ2>[] {
+        return this.nuevoPSvc.getOpcionesQ2(this.cuestionarioAuto.q1 ?? null);
+    }
+
+    get q3Opciones(): GeneradorAutoPreguntaOpcion<GeneradorAutoRespuestaQ3>[] {
+        return this.nuevoPSvc.getOpcionesQ3(this.cuestionarioAuto.q1 ?? null);
+    }
+
+    get mostrarPregunta4(): boolean {
+        return !!this.diagnosticoAuto?.requierePregunta4;
+    }
+
+    get puedeAplicarCuestionarioAuto(): boolean {
+        if (!this.cuestionarioAuto.q1 || !this.cuestionarioAuto.q2 || !this.cuestionarioAuto.q3)
+            return false;
+        if (this.mostrarPregunta4)
+            return !!this.cuestionarioAuto.q4;
+        return true;
+    }
+
+    get q1Respondida(): boolean {
+        return !!this.cuestionarioAuto.q1;
+    }
+
+    get q2Respondida(): boolean {
+        return !!this.cuestionarioAuto.q2;
+    }
+
+    get q3Respondida(): boolean {
+        return !!this.cuestionarioAuto.q3;
+    }
+
+    get q4Respondida(): boolean {
+        return !!this.cuestionarioAuto.q4;
+    }
+
+    get recomendacionAuto(): GeneradorAutoRecomendacion | null {
+        return this.diagnosticoAuto?.recomendacion ?? null;
+    }
+
+    get textoPregunta2(): string {
+        const q1 = this.cuestionarioAuto.q1;
+        if (q1 === 'magia_arcana')
+            return 'Cuando se lía, ¿cómo prefieres canalizar magia y posicionarte?';
+        if (q1 === 'acero_musculo')
+            return 'Cuando se lía, ¿entras a romper líneas o juegas más táctico?';
+        if (q1 === 'labia_presencia')
+            return 'Cuando se lía, ¿lideras desde delante o desde retaguardia?';
+        return 'Cuando se lía, tú…';
+    }
+
+    get textoPregunta3(): string {
+        const q1 = this.cuestionarioAuto.q1;
+        if (q1 === 'labia_presencia')
+            return 'Fuera de combate, lo que más disfrutas explotar es…';
+        if (q1 === 'magia_arcana' || q1 === 'voluntad_psionica')
+            return 'Fuera de combate, ¿dónde quieres destacar además de tu poder?';
+        return 'Fuera de combate, lo que más disfruto es…';
     }
 
     onMinimoChange(value: number): void {
@@ -118,7 +248,38 @@ export class GeneradorCaracteristicasModalComponent {
         this.nuevoPSvc.desasignarDesdeIndicePoolGenerador(index);
     }
 
+    onSeleccionarQ1(q1: GeneradorAutoRespuestaQ1): void {
+        this.cuestionarioAuto = { q1 };
+        this.recalcularDiagnosticoYPersistir();
+    }
+
+    onSeleccionarQ2(q2: GeneradorAutoRespuestaQ2): void {
+        this.cuestionarioAuto = {
+            ...this.cuestionarioAuto,
+            q2,
+        };
+        this.recalcularDiagnosticoYPersistir();
+    }
+
+    onSeleccionarQ3(q3: GeneradorAutoRespuestaQ3): void {
+        this.cuestionarioAuto = {
+            ...this.cuestionarioAuto,
+            q3,
+        };
+        this.recalcularDiagnosticoYPersistir();
+    }
+
+    onSeleccionarQ4(q4: GeneradorAutoRespuestaQ4): void {
+        this.cuestionarioAuto = {
+            ...this.cuestionarioAuto,
+            q4,
+        };
+        this.recalcularDiagnosticoYPersistir();
+    }
+
     cerrarModal(): void {
+        if (this.modalCuestionarioAutoAbierto)
+            this.cancelarCuestionarioAuto();
         this.cerrar.emit();
     }
 
@@ -131,6 +292,9 @@ export class GeneradorCaracteristicasModalComponent {
     }
 
     async repartirAutomaticamente(): Promise<void> {
+        if (this.modalCuestionarioAutoAbierto)
+            return;
+
         if (this.tieneAsignacionesPrevias()) {
             const confirmar = await Swal.fire({
                 icon: 'warning',
@@ -144,11 +308,11 @@ export class GeneradorCaracteristicasModalComponent {
                 return;
         }
 
-        const perfil = await this.solicitarPerfilAuto();
-        if (!perfil)
+        const cuestionario = await this.solicitarCuestionarioAuto();
+        if (!cuestionario)
             return;
 
-        const resultado = this.nuevoPSvc.autoRepartirGenerador(perfil);
+        const resultado = this.nuevoPSvc.autoRepartirGenerador(cuestionario);
         if (!resultado.aplicado) {
             await Swal.fire({
                 icon: 'warning',
@@ -159,8 +323,35 @@ export class GeneradorCaracteristicasModalComponent {
         }
     }
 
+    cancelarCuestionarioAuto(): void {
+        this.cerrarCuestionarioAuto(null);
+    }
+
+    confirmarCuestionarioAuto(): void {
+        if (!this.puedeAplicarCuestionarioAuto)
+            return;
+
+        const payload: GeneradorAutoCuestionario = {
+            q1: this.cuestionarioAuto.q1,
+            q2: this.cuestionarioAuto.q2,
+            q3: this.cuestionarioAuto.q3,
+        };
+        if (this.mostrarPregunta4)
+            payload.q4 = this.cuestionarioAuto.q4;
+
+        this.nuevoPSvc.setAutoRepartoGuardado(payload, this.diagnosticoAuto ?? undefined);
+        this.cerrarCuestionarioAuto(payload);
+    }
+
     @HostListener('document:keydown.enter', ['$event'])
     onEnterPresionado(event: KeyboardEvent): void {
+        if (this.modalCuestionarioAutoAbierto) {
+            event.preventDefault();
+            if (this.puedeAplicarCuestionarioAuto)
+                this.confirmarCuestionarioAuto();
+            return;
+        }
+
         if (event.repeat || this.esElementoInteractivoParaEnter(event.target as HTMLElement | null))
             return;
         if (!this.puedeFinalizar)
@@ -259,66 +450,55 @@ export class GeneradorCaracteristicasModalComponent {
             .some((item) => !this.esCaracteristicaPerdida(item.key) && this.estado.asignaciones[item.key] !== null);
     }
 
-    private async solicitarPerfilAuto(): Promise<GeneradorAutoPerfil | null> {
-        const enfoqueResult = await Swal.fire({
-            title: 'Reparto automático',
-            text: '¿Tu enfoque principal será combate o roleo/exploración?',
-            input: 'radio',
-            inputOptions: {
-                combate: 'Combate',
-                roleo: 'Roleo / Exploración',
-            },
-            showCancelButton: true,
-            confirmButtonText: 'Siguiente',
-            cancelButtonText: 'Cancelar',
-            inputValidator: (value) => !value ? 'Selecciona una opción.' : null,
+    private async solicitarCuestionarioAuto(): Promise<GeneradorAutoCuestionario | null> {
+        this.modalCuestionarioAutoAbierto = true;
+        this.hidratarCuestionarioAuto();
+        return new Promise((resolve) => {
+            this.resolverCuestionarioAuto = resolve;
         });
-
-        if (!enfoqueResult.isConfirmed)
-            return null;
-
-        const enfoque = `${enfoqueResult.value ?? ''}` as GeneradorAutoEnfoque;
-        const opcionesDetalle = this.getOpcionesDetallePorEnfoque(enfoque);
-        if (Object.keys(opcionesDetalle).length < 1)
-            return null;
-
-        const detalleResult = await Swal.fire({
-            title: 'Detalle del enfoque',
-            text: 'Elige el estilo que mejor encaja con tu personaje.',
-            input: 'radio',
-            inputOptions: opcionesDetalle,
-            showCancelButton: true,
-            confirmButtonText: 'Aplicar reparto',
-            cancelButtonText: 'Cancelar',
-            inputValidator: (value) => !value ? 'Selecciona una opción.' : null,
-        });
-
-        if (!detalleResult.isConfirmed)
-            return null;
-
-        const detalle = `${detalleResult.value ?? ''}` as GeneradorAutoDetalle;
-        if (!(detalle in opcionesDetalle))
-            return null;
-        return { enfoque, detalle };
     }
 
-    private getOpcionesDetallePorEnfoque(enfoque: GeneradorAutoEnfoque): Record<string, string> {
-        if (enfoque === 'combate') {
-            return {
-                atacante_fisico: 'Atacante físico (corta distancia)',
-                tanque: 'Tanque',
-                agil: 'Ágil (destreza)',
-                lanzador_arcano: 'Lanzador arcano',
-                lanzador_divino: 'Lanzador divino',
-                lanzador_psionico: 'Lanzador psiónico',
+    private hidratarCuestionarioAuto(): void {
+        const guardado = this.nuevoPSvc.getAutoRepartoGuardado();
+        this.cuestionarioAuto = guardado?.respuestas
+            ? { ...guardado.respuestas }
+            : {};
+        this.recalcularDiagnosticoYPersistir(false);
+        this.autoStepperIndex = this.getPrimerPasoPendiente();
+    }
+
+    private recalcularDiagnosticoYPersistir(persistir = true): void {
+        this.diagnosticoAuto = this.nuevoPSvc.evaluarCuestionarioAuto(this.cuestionarioAuto);
+        if (!this.mostrarPregunta4 && this.cuestionarioAuto.q4) {
+            this.cuestionarioAuto = {
+                ...this.cuestionarioAuto,
+                q4: undefined,
             };
+            this.diagnosticoAuto = this.nuevoPSvc.evaluarCuestionarioAuto(this.cuestionarioAuto);
         }
 
-        return {
-            carismatico: 'Carismático (cara)',
-            erudito: 'Erudito (conocimiento)',
-            perceptivo: 'Perceptivo / intuición',
-        };
+        if (persistir)
+            this.nuevoPSvc.setAutoRepartoGuardado(this.cuestionarioAuto, this.diagnosticoAuto);
+    }
+
+    private getPrimerPasoPendiente(): number {
+        if (!this.cuestionarioAuto.q1)
+            return 0;
+        if (!this.cuestionarioAuto.q2)
+            return 1;
+        if (!this.cuestionarioAuto.q3)
+            return 2;
+        if (this.mostrarPregunta4 && !this.cuestionarioAuto.q4)
+            return 3;
+        return this.mostrarPregunta4 ? 4 : 3;
+    }
+
+    private cerrarCuestionarioAuto(respuesta: GeneradorAutoCuestionario | null): void {
+        this.modalCuestionarioAutoAbierto = false;
+        const resolver = this.resolverCuestionarioAuto;
+        this.resolverCuestionarioAuto = null;
+        if (resolver)
+            resolver(respuesta);
     }
 
     private esElementoInteractivoParaEnter(target: HTMLElement | null): boolean {

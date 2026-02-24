@@ -51,7 +51,7 @@ export class DetallesClaseComponent {
     mostrarReflejos: boolean = false;
     mostrarVoluntad: boolean = false;
     mostrarEspeciales: boolean = false;
-    mostrarNivelMaxConjuro: boolean = false;
+    mostrarNivelMaxPoderAccesible: boolean = false;
     mostrarReservaPsionica: boolean = false;
     mostrarAumentosClaseLanzadora: boolean = false;
     competenciasVisibles: Record<keyof Clase['Competencias'], ElementoVisual[]> = {
@@ -455,7 +455,7 @@ export class DetallesClaseComponent {
             this.mostrarReflejos = false;
             this.mostrarVoluntad = false;
             this.mostrarEspeciales = false;
-            this.mostrarNivelMaxConjuro = false;
+            this.mostrarNivelMaxPoderAccesible = false;
             this.mostrarReservaPsionica = false;
             this.mostrarAumentosClaseLanzadora = false;
             return;
@@ -486,7 +486,7 @@ export class DetallesClaseComponent {
         this.mostrarReflejos = this.filasNivel.some(n => this.tieneTextoVisible(n.Salvaciones?.Reflejos));
         this.mostrarVoluntad = this.filasNivel.some(n => this.tieneTextoVisible(n.Salvaciones?.Voluntad));
         this.mostrarEspeciales = this.filasNivel.some(n => this.getResumenEspeciales(n).length > 0);
-        this.mostrarNivelMaxConjuro = this.filasNivel.some(n => (n.Nivel_max_conjuro ?? -1) >= 0);
+        this.mostrarNivelMaxPoderAccesible = this.filasNivel.some(n => (n.Nivel_max_poder_accesible_nivel_lanzadorPsionico ?? -1) >= 0);
         this.mostrarReservaPsionica = this.filasNivel.some(n => (n.Reserva_psionica ?? 0) > 0);
         this.mostrarAumentosClaseLanzadora = this.filasNivel.some(n => this.getAumentosLanzadora(n).length > 0);
     }
@@ -517,7 +517,7 @@ export class DetallesClaseComponent {
                 Reflejos: '',
                 Voluntad: '',
             },
-            Nivel_max_conjuro: -1,
+            Nivel_max_poder_accesible_nivel_lanzadorPsionico: -1,
             Reserva_psionica: 0,
             Aumentos_clase_lanzadora: [],
             Conjuros_diarios: {},

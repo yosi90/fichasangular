@@ -31,6 +31,7 @@ export class UserService {
     private permisosSubject = new BehaviorSubject<number>(0);
     private isBannedSubject = new BehaviorSubject<boolean>(false);
     private aclSubject = new BehaviorSubject<UserAcl>({ ...EMPTY_USER_ACL });
+    private upsertApiDeshabilitadoEnSesion = false;
     public isLoggedIn$ = this.isLoggedInSubject.asObservable();
     public permisos$ = this.permisosSubject.asObservable();
     public isBanned$ = this.isBannedSubject.asObservable();
@@ -276,11 +277,15 @@ export class UserService {
         if (uid.length < 1)
             return;
 
-        try {
-            const upsertPayload = this.buildUpsertPayload(firebaseUser);
-            await this.upsertUserApi(upsertPayload);
-        } catch {
-            // Backup best-effort: el runtime de permisos vive en RTDB.
+        if (!this.upsertApiDeshabilitadoEnSesion) {
+            try {
+                const upsertPayload = this.buildUpsertPayload(firebaseUser);
+                await this.upsertUserApi(upsertPayload);
+            } catch (error: any) {
+                if (this.debeDeshabilitarUpsertApi(error))
+                    this.upsertApiDeshabilitadoEnSesion = true;
+                // Backup best-effort: el runtime de permisos vive en RTDB.
+            }
         }
 
         if (!this.isActiveUser(uid))
@@ -290,6 +295,15 @@ export class UserService {
         } catch {
             // Mantiene sesión y permisos aunque falle escritura de perfil.
         }
+    }
+
+    private debeDeshabilitarUpsertApi(error: any): boolean {
+        const message = `${error?.message ?? error ?? ''}`.toLowerCase();
+        // HTTP 0 suele indicar CORS/bloqueo de red en navegador.
+        return message.includes('http 0')
+            || message.includes('cors')
+            || message.includes('failed to fetch')
+            || message.includes('network');
     }
 
     private buildUpsertPayload(firebaseUser: User): UsuarioUpsertRequestDto {

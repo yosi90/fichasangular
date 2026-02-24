@@ -85,9 +85,14 @@
             <div class="d-flex flex-wrap align-items-center sombra-caja-sm rounded p-2 my-2">
                 <mat-icon class="me-1">style</mat-icon>
                 <mat-chip-set class="m-1" *ngIf="(pj.desgloseClases?.length ?? 0) > 0">
-                    <mat-chip class="warm chip-clic sombra3d-sm" *ngFor="let c of pj.desgloseClases" matTooltip="Pulsa para ver los detalles"
+                    <mat-chip class="h-auto warm chip-clic sombra3d-sm chip-clase-resumen" *ngFor="let c of pj.desgloseClases" matTooltip="Pulsa para ver los detalles"
                         [matTooltipShowDelay]="250" matTooltipClass="tt-accent" (click)="verDetallesClase(c.Nombre)">
-                        {{c.Nombre}} {{c.Nivel}}
+                        <span class="chip-clase-titulo">{{c.Nombre}} {{c.Nivel}}</span>
+                        <mat-chip class="m-1 chip-clase-subinfo"
+                            *ngFor="let subchip of getSubchipsLanzadorClase(c)"
+                            (click)="verDetallesClase(c.Nombre); $event.stopPropagation()">
+                            {{subchip}}
+                        </mat-chip>
                     </mat-chip>
                 </mat-chip-set>
                 <mat-chip class="h-auto m-1" *ngIf="pj.Escuela_especialista?.Nombre && pj.Escuela_especialista.Nombre != 'Cualquiera'">

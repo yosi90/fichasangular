@@ -258,20 +258,25 @@ describe('GeneradorCaracteristicasModalComponent', () => {
         expect(finalizeSpy).toHaveBeenCalled();
     });
 
-    it('repartirAutomaticamente sin asignaciones previas ejecuta mini test y llama al servicio', async () => {
-        const swalSpy = spyOn(Swal, 'fire').and.returnValues(
-            Promise.resolve({ isConfirmed: true, value: 'combate' } as any),
-            Promise.resolve({ isConfirmed: true, value: 'tanque' } as any)
-        );
+    it('repartirAutomaticamente sin asignaciones previas abre cuestionario y llama al servicio', async () => {
         const autoSpy = spyOn(service, 'autoRepartirGenerador').and.returnValue({
             aplicado: true,
             tablaSeleccionada: 1,
         });
 
-        await component.repartirAutomaticamente();
+        const repartoPromise = component.repartirAutomaticamente();
+        expect(component.modalCuestionarioAutoAbierto).toBeTrue();
+        component.onSeleccionarQ1('magia_arcana');
+        component.onSeleccionarQ2('atras_control_apoyo');
+        component.onSeleccionarQ3('investigar');
+        component.confirmarCuestionarioAuto();
+        await repartoPromise;
 
-        expect(swalSpy).toHaveBeenCalledTimes(2);
-        expect(autoSpy).toHaveBeenCalledWith({ enfoque: 'combate', detalle: 'tanque' });
+        expect(autoSpy).toHaveBeenCalledWith({
+            q1: 'magia_arcana',
+            q2: 'atras_control_apoyo',
+            q3: 'investigar',
+        });
     });
 
     it('repartirAutomaticamente no modifica si cancelas la confirmación de sobrescritura', async () => {
@@ -288,34 +293,55 @@ describe('GeneradorCaracteristicasModalComponent', () => {
     it('repartirAutomaticamente confirma sobrescritura y aplica reparto automático', async () => {
         component.seleccionarTabla(1);
         service.asignarDesdePoolACaracteristica('Fuerza', 0);
-        spyOn(Swal, 'fire').and.returnValues(
-            Promise.resolve({ isConfirmed: true } as any),
-            Promise.resolve({ isConfirmed: true, value: 'roleo' } as any),
-            Promise.resolve({ isConfirmed: true, value: 'erudito' } as any)
-        );
+        const swalSpy = spyOn(Swal, 'fire').and.resolveTo({ isConfirmed: true } as any);
         const autoSpy = spyOn(service, 'autoRepartirGenerador').and.returnValue({
             aplicado: true,
             tablaSeleccionada: 1,
         });
 
-        await component.repartirAutomaticamente();
+        const repartoPromise = component.repartirAutomaticamente();
+        await Promise.resolve();
+        expect(component.modalCuestionarioAutoAbierto).toBeTrue();
+        component.onSeleccionarQ1('magia_arcana');
+        component.onSeleccionarQ2('atras_control_apoyo');
+        component.onSeleccionarQ3('investigar');
+        component.confirmarCuestionarioAuto();
+        await repartoPromise;
 
-        expect(autoSpy).toHaveBeenCalledWith({ enfoque: 'roleo', detalle: 'erudito' });
+        expect(swalSpy).toHaveBeenCalledTimes(1);
+        expect(autoSpy).toHaveBeenCalledWith({
+            q1: 'magia_arcana',
+            q2: 'atras_control_apoyo',
+            q3: 'investigar',
+        });
     });
 
     it('repartirAutomaticamente no finaliza automáticamente', async () => {
-        spyOn(Swal, 'fire').and.returnValues(
-            Promise.resolve({ isConfirmed: true, value: 'combate' } as any),
-            Promise.resolve({ isConfirmed: true, value: 'agil' } as any)
-        );
         spyOn(service, 'autoRepartirGenerador').and.returnValue({
             aplicado: true,
             tablaSeleccionada: 1,
         });
         const finalizeSpy = spyOn(component, 'finalizarAsignacion');
 
-        await component.repartirAutomaticamente();
+        const repartoPromise = component.repartirAutomaticamente();
+        component.onSeleccionarQ1('rapidez_precision');
+        component.onSeleccionarQ2('evitar_contacto');
+        component.onSeleccionarQ3('manitas');
+        component.onSeleccionarQ4('acierto');
+        component.confirmarCuestionarioAuto();
+        await repartoPromise;
 
         expect(finalizeSpy).not.toHaveBeenCalled();
+    });
+
+    it('repartirAutomaticamente no aplica si cancelas el cuestionario', async () => {
+        const autoSpy = spyOn(service, 'autoRepartirGenerador');
+
+        const repartoPromise = component.repartirAutomaticamente();
+        expect(component.modalCuestionarioAutoAbierto).toBeTrue();
+        component.cancelarCuestionarioAuto();
+        await repartoPromise;
+
+        expect(autoSpy).not.toHaveBeenCalled();
     });
 });

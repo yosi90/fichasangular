@@ -1,4 +1,4 @@
-import { GeneradorAutoPerfil, NuevoPersonajeService } from './nuevo-personaje.service';
+import { GeneradorAutoCuestionario, NuevoPersonajeService } from './nuevo-personaje.service';
 import { Clase } from '../interfaces/clase';
 import { DeidadDetalle } from '../interfaces/deidad';
 import { DominioDetalle } from '../interfaces/dominio';
@@ -93,10 +93,10 @@ function crearClaseBase(partial?: Partial<Clase>): Clase {
                 Nivel: 1,
                 Ataque_base: '+1',
                 Salvaciones: { Fortaleza: '+2', Reflejos: '+0', Voluntad: '+0' },
-                Nivel_max_conjuro: -1,
+                Nivel_max_poder_accesible_nivel_lanzadorPsionico: -1,
                 Reserva_psionica: 0,
                 Aumentos_clase_lanzadora: [],
-                Conjuros_diarios: {},
+                Conjuros_diarios: crearConjurosDiariosMock(),
                 Conjuros_conocidos_nivel_a_nivel: {},
                 Conjuros_conocidos_total: 0,
                 Dotes: [],
@@ -106,10 +106,10 @@ function crearClaseBase(partial?: Partial<Clase>): Clase {
                 Nivel: 2,
                 Ataque_base: '+2',
                 Salvaciones: { Fortaleza: '+3', Reflejos: '+0', Voluntad: '+0' },
-                Nivel_max_conjuro: -1,
+                Nivel_max_poder_accesible_nivel_lanzadorPsionico: -1,
                 Reserva_psionica: 0,
                 Aumentos_clase_lanzadora: [],
-                Conjuros_diarios: {},
+                Conjuros_diarios: crearConjurosDiariosMock(),
                 Conjuros_conocidos_nivel_a_nivel: {},
                 Conjuros_conocidos_total: 0,
                 Dotes: [],
@@ -155,6 +155,20 @@ function crearClaseBase(partial?: Partial<Clase>): Clase {
     };
 }
 
+function crearConjurosDiariosMock(nivelesAccesibles: number[] = []): Record<string, number> {
+    const diarios: Record<string, number> = {};
+    for (let nivel = 0; nivel <= 9; nivel++) {
+        diarios[`Nivel_${nivel}`] = -1;
+    }
+    (nivelesAccesibles ?? [])
+        .map((nivel) => Number(nivel))
+        .filter((nivel) => Number.isFinite(nivel) && nivel >= 0 && nivel <= 9)
+        .forEach((nivel) => {
+            diarios[`Nivel_${Math.trunc(nivel)}`] = 0;
+        });
+    return diarios;
+}
+
 describe('NuevoPersonajeService (generador)', () => {
     function setTiradasTabla(service: NuevoPersonajeService, tabla: number, valores: number[]): void {
         const estado = service.EstadoFlujo.generador;
@@ -165,11 +179,13 @@ describe('NuevoPersonajeService (generador)', () => {
         }
     }
 
-    function autoPerfil(detalle: GeneradorAutoPerfil['detalle']): GeneradorAutoPerfil {
-        const enfoque = detalle === 'carismatico' || detalle === 'erudito' || detalle === 'perceptivo'
-            ? 'roleo'
-            : 'combate';
-        return { enfoque, detalle };
+    function autoCuestionario(parcial?: Partial<GeneradorAutoCuestionario>): GeneradorAutoCuestionario {
+        return {
+            q1: 'acero_musculo',
+            q2: 'primera_segunda_linea',
+            q3: 'social',
+            ...parcial,
+        };
     }
 
     it('usa defaults cuando no hay configuración persistida', () => {
@@ -285,6 +301,78 @@ describe('NuevoPersonajeService (generador)', () => {
         expect(estado.asignaciones.Fuerza).toBeNull();
     });
 
+    it('evaluarCuestionarioAuto aplica suelo de constitución y activa Q4 cuando hay empate cercano', () => {
+        const service = new NuevoPersonajeService();
+        const diagnostico = service.evaluarCuestionarioAuto(autoCuestionario({
+            q1: 'acero_musculo',
+            q2: 'evitar_contacto',
+            q3: 'explorar',
+        }));
+
+        expect(diagnostico.score.Constitucion).toBeGreaterThan(0);
+        expect(diagnostico.requierePregunta4).toBeTrue();
+        expect(diagnostico.recomendacion).not.toBeNull();
+    });
+
+    it('evaluarCuestionarioAuto recomienda clases por combinaciones representativas', () => {
+        const service = new NuevoPersonajeService();
+
+        const desInt = service.evaluarCuestionarioAuto(autoCuestionario({
+            q1: 'rapidez_precision',
+            q2: 'evitar_contacto',
+            q3: 'manitas',
+        }));
+        expect(desInt.recomendacion?.clases).toEqual(['Pícaro', 'Mago']);
+
+        const intCon = service.evaluarCuestionarioAuto(autoCuestionario({
+            q1: 'magia_arcana',
+            q2: 'delante',
+            q3: 'investigar',
+        }));
+        expect(intCon.recomendacion?.clases).toEqual(['Mago', 'Guerrero psíquico']);
+    });
+
+    it('evaluarCuestionarioAuto usa fallback por top1 cuando no hay combinación exacta', () => {
+        const service = new NuevoPersonajeService();
+        const diagnostico = service.evaluarCuestionarioAuto(autoCuestionario({
+            q1: 'rapidez_precision',
+            q2: 'delante',
+            q3: 'explorar',
+        }));
+
+        expect(diagnostico.recomendacion?.top1).toBe('Constitucion');
+        expect(diagnostico.recomendacion?.clases).toEqual(['Guerrero', 'Clérigo']);
+    });
+
+    it('evaluarCuestionarioAuto afina orden por top3 cuando top2 y top3 están muy cerca', () => {
+        const service = new NuevoPersonajeService();
+        const diagnostico = service.evaluarCuestionarioAuto(autoCuestionario({
+            q1: 'labia_presencia',
+            q2: 'atras_control_apoyo',
+            q3: 'manitas',
+        }));
+
+        expect(diagnostico.recomendacion?.top1).toBe('Carisma');
+        expect(diagnostico.recomendacion?.top2).toBe('Inteligencia');
+        expect(diagnostico.recomendacion?.top3).toBe('Destreza');
+        expect(diagnostico.recomendacion?.afinadaPorTop3).toBeTrue();
+        expect(diagnostico.recomendacion?.clases).toEqual(['Bardo', 'Hechicero']);
+    });
+
+    it('autoRepartirGenerador exige Q4 cuando el score queda en zona de desempate', () => {
+        const service = new NuevoPersonajeService();
+        service.setTablasPermitidasGenerador(1);
+        setTiradasTabla(service, 1, [18, 17, 16, 15, 14, 13]);
+
+        const resultado = service.autoRepartirGenerador(autoCuestionario({
+            q1: 'acero_musculo',
+            q2: 'evitar_contacto',
+            q3: 'explorar',
+        }));
+
+        expect(resultado.aplicado).toBeFalse();
+    });
+
     it('autoRepartirGenerador elige la tabla con mayor total', () => {
         const service = new NuevoPersonajeService();
         service.setTablasPermitidasGenerador(3);
@@ -292,7 +380,11 @@ describe('NuevoPersonajeService (generador)', () => {
         setTiradasTabla(service, 2, [15, 15, 15, 15, 15, 15]);
         setTiradasTabla(service, 3, [13, 13, 13, 13, 13, 13]);
 
-        const resultado = service.autoRepartirGenerador(autoPerfil('tanque'));
+        const resultado = service.autoRepartirGenerador(autoCuestionario({
+            q1: 'fe_naturaleza_espiritu',
+            q2: 'delante',
+            q3: 'social',
+        }));
 
         expect(resultado.aplicado).toBeTrue();
         expect(resultado.tablaSeleccionada).toBe(2);
@@ -304,29 +396,41 @@ describe('NuevoPersonajeService (generador)', () => {
         setTiradasTabla(service, 1, [18, 12, 12, 12, 12, 12]);
         setTiradasTabla(service, 2, [17, 13, 12, 12, 12, 12]);
 
-        let resultado = service.autoRepartirGenerador(autoPerfil('tanque'));
+        let resultado = service.autoRepartirGenerador(autoCuestionario({
+            q1: 'fe_naturaleza_espiritu',
+            q2: 'delante',
+            q3: 'social',
+        }));
         expect(resultado.tablaSeleccionada).toBe(1);
 
         service.resetearGeneradorCaracteristicas();
         setTiradasTabla(service, 1, [16, 16, 16, 14, 14, 14]);
         setTiradasTabla(service, 2, [16, 16, 16, 14, 14, 14]);
-        resultado = service.autoRepartirGenerador(autoPerfil('tanque'));
+        resultado = service.autoRepartirGenerador(autoCuestionario({
+            q1: 'fe_naturaleza_espiritu',
+            q2: 'delante',
+            q3: 'social',
+        }));
         expect(resultado.tablaSeleccionada).toBe(1);
     });
 
-    it('autoRepartirGenerador asigna según el perfil seleccionado', () => {
+    it('autoRepartirGenerador asigna según scoring del cuestionario', () => {
         const service = new NuevoPersonajeService();
         service.setTablasPermitidasGenerador(1);
         setTiradasTabla(service, 1, [18, 17, 16, 15, 14, 13]);
 
-        service.autoRepartirGenerador(autoPerfil('tanque'));
+        service.autoRepartirGenerador(autoCuestionario({
+            q1: 'fe_naturaleza_espiritu',
+            q2: 'delante',
+            q3: 'social',
+        }));
 
         const asigs = service.EstadoFlujo.generador.asignaciones;
         expect(asigs.Constitucion).toBe(18);
-        expect(asigs.Fuerza).toBe(17);
-        expect(asigs.Destreza).toBe(16);
-        expect(asigs.Sabiduria).toBe(15);
-        expect(asigs.Carisma).toBe(14);
+        expect(asigs.Sabiduria).toBe(17);
+        expect(asigs.Carisma).toBe(16);
+        expect(asigs.Fuerza).toBe(15);
+        expect(asigs.Destreza).toBe(14);
         expect(asigs.Inteligencia).toBe(13);
     });
 
@@ -345,11 +449,15 @@ describe('NuevoPersonajeService (generador)', () => {
         } as any;
         setTiradasTabla(service, 1, [18, 17, 16, 15, 14, 13]);
 
-        service.autoRepartirGenerador(autoPerfil('atacante_fisico'));
+        service.autoRepartirGenerador(autoCuestionario({
+            q1: 'acero_musculo',
+            q2: 'evitar_contacto',
+            q3: 'explorar',
+            q4: 'percepcion',
+        }));
 
         const asigs = service.EstadoFlujo.generador.asignaciones;
-        expect(asigs.Destreza).toBe(18);
-        expect(asigs.Fuerza).toBe(17);
+        expect((asigs.Destreza ?? 0)).toBeGreaterThan(asigs.Fuerza ?? 0);
     });
 
     it('autoRepartirGenerador respeta características perdidas', () => {
@@ -362,11 +470,32 @@ describe('NuevoPersonajeService (generador)', () => {
         service.PersonajeCreacion.Constitucion_perdida = true;
         setTiradasTabla(service, 1, [18, 17, 16, 15, 14, 13]);
 
-        service.autoRepartirGenerador(autoPerfil('tanque'));
+        service.autoRepartirGenerador(autoCuestionario({
+            q1: 'fe_naturaleza_espiritu',
+            q2: 'delante',
+            q3: 'social',
+        }));
 
         const asigs = service.EstadoFlujo.generador.asignaciones;
         expect(asigs.Constitucion).toBe(0);
-        expect(asigs.Fuerza).toBe(18);
+        expect(asigs.Sabiduria).toBe(18);
+    });
+
+    it('autoRepartirGenerador guarda progreso de Auto_reparto en personaje', () => {
+        const service = new NuevoPersonajeService();
+        const respuestas = autoCuestionario({
+            q1: 'rapidez_precision',
+            q2: 'primera_segunda_linea',
+            q3: 'manitas',
+        });
+
+        service.setAutoRepartoGuardado(respuestas);
+        const guardado = service.getAutoRepartoGuardado();
+
+        expect(guardado).not.toBeNull();
+        expect(guardado?.respuestas.q1).toBe('rapidez_precision');
+        expect(guardado?.aplicadoAutomaticamente).toBeFalse();
+        expect(guardado?.recomendacion).not.toBeNull();
     });
 
     it('autoRepartirGenerador deja el estado listo para finalizar', () => {
@@ -374,10 +503,15 @@ describe('NuevoPersonajeService (generador)', () => {
         service.setTablasPermitidasGenerador(1);
         setTiradasTabla(service, 1, [18, 17, 16, 15, 14, 13]);
 
-        const resultado = service.autoRepartirGenerador(autoPerfil('erudito'));
+        const resultado = service.autoRepartirGenerador(autoCuestionario({
+            q1: 'magia_arcana',
+            q2: 'atras_control_apoyo',
+            q3: 'investigar',
+        }));
 
         expect(resultado.aplicado).toBeTrue();
         expect(service.puedeFinalizarGenerador()).toBeTrue();
+        expect(service.getAutoRepartoGuardado()?.aplicadoAutomaticamente).toBeTrue();
     });
 });
 
@@ -1231,6 +1365,38 @@ describe('NuevoPersonajeService (clases)', () => {
         expect(service.PersonajeCreacion.Idiomas.find((i) => i.Nombre === 'Dracónico')?.Origen).toBe('Mago nivel 1');
     });
 
+    it('en nivel 1 marca habilidades custom de clase como Custom=true aunque el raw no lo indique', () => {
+        service.setCatalogoHabilidades([]);
+        service.setCatalogoHabilidadesCustom([{
+            Id_habilidad: 199,
+            Nombre: 'Saber prohibido',
+            Id_caracteristica: 4,
+            Caracteristica: 'Inteligencia',
+            Descripcion: '',
+            Soporta_extra: true,
+            Entrenada: false,
+            Extras: [{ Id_extra: 1, Extra: 'Abismo', Descripcion: '' }],
+        }]);
+        const claseConCustom = crearClaseBase({
+            Id: 55,
+            Nombre: 'Ocultista',
+            Habilidades: {
+                Base: [],
+                Custom: [{ Id_habilidad: 199, Habilidad: 'Saber prohibido' }],
+            },
+        });
+        service.setCatalogoClases([claseConCustom]);
+
+        service.aplicarSiguienteNivelClase(claseConCustom);
+
+        const habilidad = service.PersonajeCreacion.Habilidades.find((h) => h.Id === 199);
+        expect(habilidad?.Clasea).toBeTrue();
+        expect(habilidad?.Custom).toBeTrue();
+        expect(habilidad?.Car).toBe('Inteligencia');
+        expect(habilidad?.Soporta_extra).toBeTrue();
+        expect((habilidad?.Extras ?? []).length).toBe(1);
+    });
+
     it('añade por nivel solo dotes y especiales no opcionales', () => {
         const claseConExtras = crearClaseBase({
             Id: 60,
@@ -1240,10 +1406,10 @@ describe('NuevoPersonajeService (clases)', () => {
                     Nivel: 1,
                     Ataque_base: '+0',
                     Salvaciones: { Fortaleza: '+0', Reflejos: '+2', Voluntad: '+0' },
-                    Nivel_max_conjuro: -1,
+                    Nivel_max_poder_accesible_nivel_lanzadorPsionico: -1,
                     Reserva_psionica: 0,
                     Aumentos_clase_lanzadora: [],
-                    Conjuros_diarios: {},
+                    Conjuros_diarios: crearConjurosDiariosMock([0]),
                     Conjuros_conocidos_nivel_a_nivel: {},
                     Conjuros_conocidos_total: 0,
                     Dotes: [
@@ -1259,10 +1425,10 @@ describe('NuevoPersonajeService (clases)', () => {
                     Nivel: 2,
                     Ataque_base: '+1',
                     Salvaciones: { Fortaleza: '+0', Reflejos: '+3', Voluntad: '+0' },
-                    Nivel_max_conjuro: -1,
+                    Nivel_max_poder_accesible_nivel_lanzadorPsionico: -1,
                     Reserva_psionica: 0,
                     Aumentos_clase_lanzadora: [],
-                    Conjuros_diarios: {},
+                    Conjuros_diarios: crearConjurosDiariosMock([0]),
                     Conjuros_conocidos_nivel_a_nivel: {},
                     Conjuros_conocidos_total: 0,
                     Dotes: [
@@ -1298,10 +1464,10 @@ describe('NuevoPersonajeService (clases)', () => {
                     Nivel: 1,
                     Ataque_base: '+0',
                     Salvaciones: { Fortaleza: '+0', Reflejos: '+0', Voluntad: '+2' },
-                    Nivel_max_conjuro: -1,
+                    Nivel_max_poder_accesible_nivel_lanzadorPsionico: -1,
                     Reserva_psionica: 0,
                     Aumentos_clase_lanzadora: [],
-                    Conjuros_diarios: {},
+                    Conjuros_diarios: crearConjurosDiariosMock([0]),
                     Conjuros_conocidos_nivel_a_nivel: {},
                     Conjuros_conocidos_total: 0,
                     Dotes: [
@@ -1326,7 +1492,7 @@ describe('NuevoPersonajeService (clases)', () => {
         expect(service.PersonajeCreacion.Dotes.some((d) => d.Nombre === 'Talento A')).toBeFalse();
     });
 
-    it('añade conjuros por delta de Conjuros_conocidos_total al subir niveles de clase', () => {
+    it('sesión de conjuros usa delta de Conjuros_conocidos_total al subir niveles de clase', () => {
         const claseConConjuros = crearClaseBase({
             Id: 80,
             Nombre: 'Hechicero',
@@ -1346,10 +1512,10 @@ describe('NuevoPersonajeService (clases)', () => {
                     Nivel: 1,
                     Ataque_base: '+0',
                     Salvaciones: { Fortaleza: '+0', Reflejos: '+0', Voluntad: '+2' },
-                    Nivel_max_conjuro: 0,
+                    Nivel_max_poder_accesible_nivel_lanzadorPsionico: -1,
                     Reserva_psionica: 0,
                     Aumentos_clase_lanzadora: [],
-                    Conjuros_diarios: {},
+                    Conjuros_diarios: crearConjurosDiariosMock([0, 1]),
                     Conjuros_conocidos_nivel_a_nivel: {},
                     Conjuros_conocidos_total: 1,
                     Dotes: [],
@@ -1359,10 +1525,10 @@ describe('NuevoPersonajeService (clases)', () => {
                     Nivel: 2,
                     Ataque_base: '+1',
                     Salvaciones: { Fortaleza: '+0', Reflejos: '+0', Voluntad: '+3' },
-                    Nivel_max_conjuro: 1,
+                    Nivel_max_poder_accesible_nivel_lanzadorPsionico: -1,
                     Reserva_psionica: 0,
                     Aumentos_clase_lanzadora: [],
-                    Conjuros_diarios: {},
+                    Conjuros_diarios: crearConjurosDiariosMock([0, 1]),
                     Conjuros_conocidos_nivel_a_nivel: {},
                     Conjuros_conocidos_total: 3,
                     Dotes: [],
@@ -1371,11 +1537,70 @@ describe('NuevoPersonajeService (clases)', () => {
             ],
         });
         service.setCatalogoClases([claseConConjuros]);
+        service.setCatalogoConjuros([
+            {
+                Id: 1001,
+                Nombre: 'Luz',
+                Arcano: true,
+                Divino: false,
+                Psionico: false,
+                Alma: false,
+                Escuela: { Id: 1, Nombre: 'Evocacion' } as any,
+                Disciplina: { Id: 0, Nombre: '' } as any,
+                Descriptores: [],
+                Nivel_clase: [{ Id_clase: 80, Clase: 'Hechicero', Nivel: 0, Espontaneo: true }],
+                Nivel_dominio: [],
+                Nivel_disciplinas: [],
+                Oficial: true,
+            } as any,
+            {
+                Id: 1002,
+                Nombre: 'Armadura de mago',
+                Arcano: true,
+                Divino: false,
+                Psionico: false,
+                Alma: false,
+                Escuela: { Id: 1, Nombre: 'Abjuracion' } as any,
+                Disciplina: { Id: 0, Nombre: '' } as any,
+                Descriptores: [],
+                Nivel_clase: [{ Id_clase: 80, Clase: 'Hechicero', Nivel: 1, Espontaneo: true }],
+                Nivel_dominio: [],
+                Nivel_disciplinas: [],
+                Oficial: true,
+            } as any,
+            {
+                Id: 1003,
+                Nombre: 'Proyectil mágico',
+                Arcano: true,
+                Divino: false,
+                Psionico: false,
+                Alma: false,
+                Escuela: { Id: 1, Nombre: 'Evocacion' } as any,
+                Disciplina: { Id: 0, Nombre: '' } as any,
+                Descriptores: [],
+                Nivel_clase: [{ Id_clase: 80, Clase: 'Hechicero', Nivel: 1, Espontaneo: true }],
+                Nivel_dominio: [],
+                Nivel_disciplinas: [],
+                Oficial: true,
+            } as any,
+        ]);
 
         service.aplicarSiguienteNivelClase(claseConConjuros);
+        let sesion = service.getConjurosSesionActual();
+        expect(sesion.activa).toBeTrue();
+        expect(sesion.entradas[0].cupoPendiente.total).toBe(1);
+        expect(service.puedeCerrarSesionConjuros()).toBeFalse();
+        expect(service.seleccionarConjuroSesion(1001)).toBeTrue();
+        expect(service.puedeCerrarSesionConjuros()).toBeTrue();
+        expect(service.cerrarSesionConjuros()).toBe('dotes');
         expect(service.PersonajeCreacion.Conjuros.map((c) => c.Nombre)).toEqual(['Luz']);
 
         service.aplicarSiguienteNivelClase(claseConConjuros);
+        sesion = service.getConjurosSesionActual();
+        expect(sesion.entradas[0].cupoPendiente.total).toBe(2);
+        expect(service.seleccionarConjuroSesion(1002)).toBeTrue();
+        expect(service.seleccionarConjuroSesion(1003)).toBeTrue();
+        expect(service.cerrarSesionConjuros()).toBe('dotes');
         const nombres = service.PersonajeCreacion.Conjuros.map((c) => c.Nombre);
         expect(nombres).toContain('Luz');
         expect(nombres).toContain('Armadura de mago');
@@ -1383,7 +1608,7 @@ describe('NuevoPersonajeService (clases)', () => {
         expect(service.PersonajeCreacion.Conjuros.length).toBe(3);
     });
 
-    it('añade conjuros por nivel cuando la clase usa Conjuros_conocidos_nivel_a_nivel', () => {
+    it('sesión de conjuros usa delta por nivel cuando la clase usa Conjuros_conocidos_nivel_a_nivel', () => {
         const clasePorNivel = crearClaseBase({
             Id: 81,
             Nombre: 'Mago',
@@ -1403,10 +1628,10 @@ describe('NuevoPersonajeService (clases)', () => {
                     Nivel: 1,
                     Ataque_base: '+0',
                     Salvaciones: { Fortaleza: '+0', Reflejos: '+0', Voluntad: '+2' },
-                    Nivel_max_conjuro: 0,
+                    Nivel_max_poder_accesible_nivel_lanzadorPsionico: -1,
                     Reserva_psionica: 0,
                     Aumentos_clase_lanzadora: [],
-                    Conjuros_diarios: {},
+                    Conjuros_diarios: crearConjurosDiariosMock([0]),
                     Conjuros_conocidos_nivel_a_nivel: { 0: 2, 1: 0 },
                     Conjuros_conocidos_total: 0,
                     Dotes: [],
@@ -1416,10 +1641,10 @@ describe('NuevoPersonajeService (clases)', () => {
                     Nivel: 2,
                     Ataque_base: '+1',
                     Salvaciones: { Fortaleza: '+0', Reflejos: '+0', Voluntad: '+3' },
-                    Nivel_max_conjuro: 1,
+                    Nivel_max_poder_accesible_nivel_lanzadorPsionico: -1,
                     Reserva_psionica: 0,
                     Aumentos_clase_lanzadora: [],
-                    Conjuros_diarios: {},
+                    Conjuros_diarios: crearConjurosDiariosMock([0, 1]),
                     Conjuros_conocidos_nivel_a_nivel: { 0: 2, 1: 1 },
                     Conjuros_conocidos_total: 0,
                     Dotes: [],
@@ -1428,12 +1653,915 @@ describe('NuevoPersonajeService (clases)', () => {
             ],
         });
         service.setCatalogoClases([clasePorNivel]);
+        service.setCatalogoConjuros([
+            {
+                Id: 1101,
+                Nombre: 'Detectar magia',
+                Arcano: true,
+                Divino: false,
+                Psionico: false,
+                Alma: false,
+                Escuela: { Id: 1, Nombre: 'Adivinacion' } as any,
+                Disciplina: { Id: 0, Nombre: '' } as any,
+                Descriptores: [],
+                Nivel_clase: [{ Id_clase: 81, Clase: 'Mago', Nivel: 0, Espontaneo: false }],
+                Nivel_dominio: [],
+                Nivel_disciplinas: [],
+                Oficial: true,
+            } as any,
+            {
+                Id: 1102,
+                Nombre: 'Mano de mago',
+                Arcano: true,
+                Divino: false,
+                Psionico: false,
+                Alma: false,
+                Escuela: { Id: 1, Nombre: 'Transmutacion' } as any,
+                Disciplina: { Id: 0, Nombre: '' } as any,
+                Descriptores: [],
+                Nivel_clase: [{ Id_clase: 81, Clase: 'Mago', Nivel: 0, Espontaneo: false }],
+                Nivel_dominio: [],
+                Nivel_disciplinas: [],
+                Oficial: true,
+            } as any,
+            {
+                Id: 1103,
+                Nombre: 'Escudo',
+                Arcano: true,
+                Divino: false,
+                Psionico: false,
+                Alma: false,
+                Escuela: { Id: 1, Nombre: 'Abjuracion' } as any,
+                Disciplina: { Id: 0, Nombre: '' } as any,
+                Descriptores: [],
+                Nivel_clase: [{ Id_clase: 81, Clase: 'Mago', Nivel: 1, Espontaneo: false }],
+                Nivel_dominio: [],
+                Nivel_disciplinas: [],
+                Oficial: true,
+            } as any,
+        ]);
 
         service.aplicarSiguienteNivelClase(clasePorNivel);
+        let sesion = service.getConjurosSesionActual();
+        expect(sesion.activa).toBeTrue();
+        expect(sesion.entradas[0].cupoPendiente.porNivel[0]).toBe(2);
+        expect(service.seleccionarConjuroSesion(1101)).toBeTrue();
+        expect(service.seleccionarConjuroSesion(1102)).toBeTrue();
+        expect(service.cerrarSesionConjuros()).toBe('dotes');
         expect(service.PersonajeCreacion.Conjuros.map((c) => c.Nombre)).toEqual(['Detectar magia', 'Mano de mago']);
 
         service.aplicarSiguienteNivelClase(clasePorNivel);
+        sesion = service.getConjurosSesionActual();
+        expect(sesion.entradas[0].cupoPendiente.porNivel[1]).toBe(1);
+        expect(service.seleccionarConjuroSesion(1103)).toBeTrue();
+        expect(service.cerrarSesionConjuros()).toBe('dotes');
         expect(service.PersonajeCreacion.Conjuros.map((c) => c.Nombre)).toEqual(['Detectar magia', 'Mano de mago', 'Escudo']);
+    });
+
+    it('interpreta claves Nivel_X en Conjuros_conocidos_nivel_a_nivel', () => {
+        const clasePorNivel = crearClaseBase({
+            Id: 811,
+            Nombre: 'Mago Clave Nivel',
+            Conjuros: {
+                ...crearClaseBase().Conjuros,
+                Arcanos: true,
+                Conocidos_total: false,
+                Conocidos_nivel_a_nivel: true,
+                Listado: [{ Id: 1111, Nombre: 'Detectar magia', Nivel: 0, Espontaneo: false }],
+            },
+            Desglose_niveles: [
+                {
+                    Nivel: 1,
+                    Ataque_base: '+0',
+                    Salvaciones: { Fortaleza: '+0', Reflejos: '+0', Voluntad: '+2' },
+                    Nivel_max_poder_accesible_nivel_lanzadorPsionico: -1,
+                    Reserva_psionica: 0,
+                    Aumentos_clase_lanzadora: [],
+                    Conjuros_diarios: crearConjurosDiariosMock([0]),
+                    Conjuros_conocidos_nivel_a_nivel: { Nivel_0: 1 } as any,
+                    Conjuros_conocidos_total: 0,
+                    Dotes: [],
+                    Especiales: [],
+                },
+            ],
+        });
+        service.setCatalogoClases([clasePorNivel]);
+        service.setCatalogoConjuros([{
+            Id: 1111,
+            Nombre: 'Detectar magia',
+            Arcano: true,
+            Divino: false,
+            Psionico: false,
+            Alma: false,
+            Escuela: { Id: 1, Nombre: 'Adivinacion' } as any,
+            Disciplina: { Id: 0, Nombre: '' } as any,
+            Descriptores: [],
+            Nivel_clase: [{ Id_clase: 811, Clase: 'Mago Clave Nivel', Nivel: 0, Espontaneo: false }],
+            Nivel_dominio: [],
+            Nivel_disciplinas: [],
+            Oficial: true,
+        } as any]);
+
+        const res = service.aplicarSiguienteNivelClase(clasePorNivel);
+        expect(res.aplicado).toBeTrue();
+        const sesion = service.getConjurosSesionActual();
+        expect(sesion.activa).toBeTrue();
+        expect(sesion.entradas[0].seleccionManual).toBeTrue();
+        expect(sesion.entradas[0].cupoPendiente.porNivel[0]).toBe(1);
+    });
+
+    it('si usa conocidos nivel a nivel pero delta es 0, no marca autoadicion', () => {
+        const claseSinDelta = crearClaseBase({
+            Id: 812,
+            Nombre: 'Mago sin delta',
+            Conjuros: {
+                ...crearClaseBase().Conjuros,
+                Arcanos: true,
+                Conocidos_total: false,
+                Conocidos_nivel_a_nivel: true,
+                Listado: [{ Id: 1112, Nombre: 'Luz', Nivel: 0, Espontaneo: false }],
+            },
+            Desglose_niveles: [
+                {
+                    Nivel: 1,
+                    Ataque_base: '+0',
+                    Salvaciones: { Fortaleza: '+0', Reflejos: '+0', Voluntad: '+2' },
+                    Nivel_max_poder_accesible_nivel_lanzadorPsionico: -1,
+                    Reserva_psionica: 0,
+                    Aumentos_clase_lanzadora: [],
+                    Conjuros_diarios: crearConjurosDiariosMock([0]),
+                    Conjuros_conocidos_nivel_a_nivel: { Nivel_0: 0 } as any,
+                    Conjuros_conocidos_total: 0,
+                    Dotes: [],
+                    Especiales: [],
+                },
+            ],
+        });
+        service.setCatalogoClases([claseSinDelta]);
+        service.setCatalogoConjuros([{
+            Id: 1112,
+            Nombre: 'Luz',
+            Arcano: true,
+            Divino: false,
+            Psionico: false,
+            Alma: false,
+            Escuela: { Id: 1, Nombre: 'Evocacion' } as any,
+            Disciplina: { Id: 0, Nombre: '' } as any,
+            Descriptores: [],
+            Nivel_clase: [{ Id_clase: 812, Clase: 'Mago sin delta', Nivel: 0, Espontaneo: false }],
+            Nivel_dominio: [],
+            Nivel_disciplinas: [],
+            Oficial: true,
+        } as any]);
+
+        service.aplicarSiguienteNivelClase(claseSinDelta);
+        const sesion = service.getConjurosSesionActual();
+        expect(sesion.entradas[0].seleccionManual).toBeFalse();
+        expect(sesion.entradas[0].autoadicion).toBeFalse();
+        expect(sesion.entradas[0].autoadicionadosIds.length).toBe(0);
+    });
+
+    it('autoadicion: si la clase no limita conocidos, añade todos los elegibles al cerrar sesión', () => {
+        const claseAuto = crearClaseBase({
+            Id: 82,
+            Nombre: 'Invocador',
+            Conjuros: {
+                ...crearClaseBase().Conjuros,
+                Arcanos: true,
+                Conocidos_total: false,
+                Conocidos_nivel_a_nivel: false,
+                Listado: [
+                    { Id: 1201, Nombre: 'Prestidigitación', Nivel: 0, Espontaneo: true },
+                    { Id: 1202, Nombre: 'Escudo', Nivel: 1, Espontaneo: true },
+                ],
+            },
+            Desglose_niveles: [{
+                Nivel: 1,
+                Ataque_base: '+0',
+                Salvaciones: { Fortaleza: '+0', Reflejos: '+0', Voluntad: '+2' },
+                Nivel_max_poder_accesible_nivel_lanzadorPsionico: -1,
+                Reserva_psionica: 0,
+                Aumentos_clase_lanzadora: [],
+                Conjuros_diarios: crearConjurosDiariosMock([0, 1]),
+                Conjuros_conocidos_nivel_a_nivel: {},
+                Conjuros_conocidos_total: 0,
+                Dotes: [],
+                Especiales: [],
+            }],
+        });
+        service.setCatalogoClases([claseAuto]);
+        service.setCatalogoConjuros([
+            {
+                Id: 1201,
+                Nombre: 'Prestidigitación',
+                Arcano: true,
+                Escuela: { Id: 1, Nombre: 'Universal' } as any,
+                Disciplina: { Id: 0, Nombre: '' } as any,
+                Descriptores: [],
+                Nivel_clase: [{ Id_clase: 82, Clase: 'Invocador', Nivel: 0, Espontaneo: true }],
+                Nivel_dominio: [],
+                Nivel_disciplinas: [],
+                Oficial: true,
+            } as any,
+            {
+                Id: 1202,
+                Nombre: 'Escudo',
+                Arcano: true,
+                Escuela: { Id: 1, Nombre: 'Abjuracion' } as any,
+                Disciplina: { Id: 0, Nombre: '' } as any,
+                Descriptores: [],
+                Nivel_clase: [{ Id_clase: 82, Clase: 'Invocador', Nivel: 1, Espontaneo: true }],
+                Nivel_dominio: [],
+                Nivel_disciplinas: [],
+                Oficial: true,
+            } as any,
+        ]);
+
+        service.aplicarSiguienteNivelClase(claseAuto);
+        const sesion = service.getConjurosSesionActual();
+        expect(sesion.activa).toBeTrue();
+        expect(sesion.entradas[0].autoadicion).toBeTrue();
+        expect(service.puedeCerrarSesionConjuros()).toBeTrue();
+        expect(service.cerrarSesionConjuros()).toBe('dotes');
+        expect(service.PersonajeCreacion.Conjuros.length).toBe(2);
+    });
+
+    it('sin elegibles: permite continuar sin bloquear la sesión', () => {
+        const claseSinElegibles = crearClaseBase({
+            Id: 83,
+            Nombre: 'Conjurador vacío',
+            Conjuros: {
+                ...crearClaseBase().Conjuros,
+                Arcanos: true,
+                Conocidos_total: true,
+                Listado: [],
+            },
+            Desglose_niveles: [{
+                Nivel: 1,
+                Ataque_base: '+0',
+                Salvaciones: { Fortaleza: '+0', Reflejos: '+0', Voluntad: '+2' },
+                Nivel_max_poder_accesible_nivel_lanzadorPsionico: -1,
+                Reserva_psionica: 0,
+                Aumentos_clase_lanzadora: [],
+                Conjuros_diarios: crearConjurosDiariosMock([0]),
+                Conjuros_conocidos_nivel_a_nivel: {},
+                Conjuros_conocidos_total: 1,
+                Dotes: [],
+                Especiales: [],
+            }],
+        });
+        service.setCatalogoClases([claseSinElegibles]);
+        service.setCatalogoConjuros([]);
+
+        service.aplicarSiguienteNivelClase(claseSinElegibles);
+        const sesion = service.getConjurosSesionActual();
+        expect(sesion.activa).toBeTrue();
+        expect(sesion.entradas[0].sinElegibles).toBeTrue();
+        expect(service.puedeCerrarSesionConjuros()).toBeTrue();
+        expect(service.cerrarSesionConjuros()).toBe('dotes');
+    });
+
+    it('aplica aumento de clase lanzadora sobre clase previa', () => {
+        const claseBaseLanzadora = crearClaseBase({
+            Id: 84,
+            Nombre: 'Mago base',
+            Conjuros: {
+                ...crearClaseBase().Conjuros,
+                Arcanos: true,
+                Conocidos_total: true,
+                Listado: [
+                    { Id: 1301, Nombre: 'Leer magia', Nivel: 0, Espontaneo: false },
+                    { Id: 1302, Nombre: 'Escudo', Nivel: 1, Espontaneo: false },
+                ],
+            },
+            Desglose_niveles: [
+                {
+                    Nivel: 1,
+                    Ataque_base: '+0',
+                    Salvaciones: { Fortaleza: '+0', Reflejos: '+0', Voluntad: '+2' },
+                    Nivel_max_poder_accesible_nivel_lanzadorPsionico: -1,
+                    Reserva_psionica: 0,
+                    Aumentos_clase_lanzadora: [],
+                    Conjuros_diarios: crearConjurosDiariosMock([0]),
+                    Conjuros_conocidos_nivel_a_nivel: {},
+                    Conjuros_conocidos_total: 1,
+                    Dotes: [],
+                    Especiales: [],
+                },
+                {
+                    Nivel: 2,
+                    Ataque_base: '+1',
+                    Salvaciones: { Fortaleza: '+0', Reflejos: '+0', Voluntad: '+3' },
+                    Nivel_max_poder_accesible_nivel_lanzadorPsionico: -1,
+                    Reserva_psionica: 0,
+                    Aumentos_clase_lanzadora: [],
+                    Conjuros_diarios: crearConjurosDiariosMock([0, 1]),
+                    Conjuros_conocidos_nivel_a_nivel: {},
+                    Conjuros_conocidos_total: 2,
+                    Dotes: [],
+                    Especiales: [],
+                },
+            ],
+        });
+        const clasePrestigio = crearClaseBase({
+            Id: 85,
+            Nombre: 'Teurgo',
+            Conjuros: {
+                ...crearClaseBase().Conjuros,
+                Arcanos: false,
+                Divinos: false,
+                Psionicos: false,
+                Alma: false,
+            },
+            Desglose_niveles: [{
+                Nivel: 1,
+                Ataque_base: '+0',
+                Salvaciones: { Fortaleza: '+0', Reflejos: '+0', Voluntad: '+2' },
+                Nivel_max_poder_accesible_nivel_lanzadorPsionico: -1,
+                Reserva_psionica: 0,
+                Aumentos_clase_lanzadora: [{ Id: 0, Nombre: '' }],
+                Conjuros_diarios: crearConjurosDiariosMock([0]),
+                Conjuros_conocidos_nivel_a_nivel: {},
+                Conjuros_conocidos_total: 0,
+                Dotes: [],
+                Especiales: [],
+            }],
+        });
+        service.setCatalogoClases([claseBaseLanzadora, clasePrestigio]);
+        service.setCatalogoConjuros([
+            {
+                Id: 1301,
+                Nombre: 'Leer magia',
+                Arcano: true,
+                Escuela: { Id: 1, Nombre: 'Universal' } as any,
+                Disciplina: { Id: 0, Nombre: '' } as any,
+                Descriptores: [],
+                Nivel_clase: [{ Id_clase: 84, Clase: 'Mago base', Nivel: 0, Espontaneo: false }],
+                Nivel_dominio: [],
+                Nivel_disciplinas: [],
+                Oficial: true,
+            } as any,
+            {
+                Id: 1302,
+                Nombre: 'Escudo',
+                Arcano: true,
+                Escuela: { Id: 1, Nombre: 'Abjuracion' } as any,
+                Disciplina: { Id: 0, Nombre: '' } as any,
+                Descriptores: [],
+                Nivel_clase: [{ Id_clase: 84, Clase: 'Mago base', Nivel: 1, Espontaneo: false }],
+                Nivel_dominio: [],
+                Nivel_disciplinas: [],
+                Oficial: true,
+            } as any,
+        ]);
+
+        service.aplicarSiguienteNivelClase(claseBaseLanzadora);
+        service.seleccionarConjuroSesion(1301);
+        service.cerrarSesionConjuros();
+
+        const res = service.aplicarSiguienteNivelClase(clasePrestigio);
+        expect(res.aplicado).toBeTrue();
+        const sesion = service.getConjurosSesionActual();
+        expect(sesion.activa).toBeTrue();
+        expect(sesion.entradas[0].claseObjetivo.nombre).toBe('Mago base');
+        expect(sesion.entradas[0].nivelLanzadorActual).toBe(2);
+    });
+
+    it('si hay varias clases lanzadoras previas, devuelve aumento de lanzador pendiente de selección', () => {
+        const arcano = crearClaseBase({
+            Id: 87,
+            Nombre: 'Arcano',
+            Conjuros: {
+                ...crearClaseBase().Conjuros,
+                Arcanos: true,
+                Conocidos_total: true,
+                Listado: [{ Id: 1501, Nombre: 'Luz', Nivel: 0, Espontaneo: true }],
+            },
+            Desglose_niveles: [{
+                Nivel: 1,
+                Ataque_base: '+0',
+                Salvaciones: { Fortaleza: '+0', Reflejos: '+0', Voluntad: '+2' },
+                Nivel_max_poder_accesible_nivel_lanzadorPsionico: -1,
+                Reserva_psionica: 0,
+                Aumentos_clase_lanzadora: [],
+                Conjuros_diarios: crearConjurosDiariosMock([0]),
+                Conjuros_conocidos_nivel_a_nivel: {},
+                Conjuros_conocidos_total: 1,
+                Dotes: [],
+                Especiales: [],
+            }],
+        });
+        const divino = crearClaseBase({
+            Id: 88,
+            Nombre: 'Divino',
+            Conjuros: {
+                ...crearClaseBase().Conjuros,
+                Divinos: true,
+                Conocidos_total: true,
+                Listado: [{ Id: 1502, Nombre: 'Oración menor', Nivel: 0, Espontaneo: true }],
+            },
+            Desglose_niveles: [{
+                Nivel: 1,
+                Ataque_base: '+0',
+                Salvaciones: { Fortaleza: '+0', Reflejos: '+0', Voluntad: '+2' },
+                Nivel_max_poder_accesible_nivel_lanzadorPsionico: -1,
+                Reserva_psionica: 0,
+                Aumentos_clase_lanzadora: [],
+                Conjuros_diarios: crearConjurosDiariosMock([0]),
+                Conjuros_conocidos_nivel_a_nivel: {},
+                Conjuros_conocidos_total: 1,
+                Dotes: [],
+                Especiales: [],
+            }],
+        });
+        const prestige = crearClaseBase({
+            Id: 89,
+            Nombre: 'Teurgo dual',
+            Desglose_niveles: [{
+                Nivel: 1,
+                Ataque_base: '+0',
+                Salvaciones: { Fortaleza: '+0', Reflejos: '+0', Voluntad: '+2' },
+                Nivel_max_poder_accesible_nivel_lanzadorPsionico: -1,
+                Reserva_psionica: 0,
+                Aumentos_clase_lanzadora: [{ Id: 0, Nombre: '' }],
+                Conjuros_diarios: crearConjurosDiariosMock([0]),
+                Conjuros_conocidos_nivel_a_nivel: {},
+                Conjuros_conocidos_total: 0,
+                Dotes: [],
+                Especiales: [],
+            }],
+        });
+        service.setCatalogoClases([arcano, divino, prestige]);
+        service.setCatalogoConjuros([
+            {
+                Id: 1501,
+                Nombre: 'Luz',
+                Arcano: true,
+                Escuela: { Id: 1, Nombre: 'Evocacion' } as any,
+                Disciplina: { Id: 0, Nombre: '' } as any,
+                Descriptores: [],
+                Nivel_clase: [{ Id_clase: 87, Clase: 'Arcano', Nivel: 0, Espontaneo: true }],
+                Nivel_dominio: [],
+                Nivel_disciplinas: [],
+                Oficial: true,
+            } as any,
+            {
+                Id: 1502,
+                Nombre: 'Oración menor',
+                Divino: true,
+                Escuela: { Id: 1, Nombre: 'Abjuracion' } as any,
+                Disciplina: { Id: 0, Nombre: '' } as any,
+                Descriptores: [],
+                Nivel_clase: [{ Id_clase: 88, Clase: 'Divino', Nivel: 0, Espontaneo: true }],
+                Nivel_dominio: [],
+                Nivel_disciplinas: [],
+                Oficial: true,
+            } as any,
+        ]);
+
+        service.aplicarSiguienteNivelClase(arcano);
+        service.seleccionarConjuroSesion(1501);
+        service.cerrarSesionConjuros();
+        service.aplicarSiguienteNivelClase(divino);
+        service.seleccionarConjuroSesion(1502);
+        service.cerrarSesionConjuros();
+
+        const res = service.aplicarSiguienteNivelClase(prestige);
+        expect(res.aplicado).toBeFalse();
+        expect((res.aumentosClaseLanzadoraPendientes ?? []).length).toBe(1);
+        expect((res.aumentosClaseLanzadoraPendientes?.[0]?.opciones ?? []).length).toBe(2);
+    });
+
+    it('arcano/divino válido: permite aplicar nivel cuando Conjuros_diarios está informado', () => {
+        const claseArcana = crearClaseBase({
+            Id: 890,
+            Nombre: 'Arcano válido',
+            Conjuros: {
+                ...crearClaseBase().Conjuros,
+                Arcanos: true,
+                Conocidos_total: false,
+                Conocidos_nivel_a_nivel: false,
+                Listado: [{ Id: 1591, Nombre: 'Luz', Nivel: 0, Espontaneo: true }],
+            },
+            Desglose_niveles: [{
+                Nivel: 1,
+                Ataque_base: '+0',
+                Salvaciones: { Fortaleza: '+0', Reflejos: '+0', Voluntad: '+2' },
+                Nivel_max_poder_accesible_nivel_lanzadorPsionico: -1,
+                Reserva_psionica: 0,
+                Aumentos_clase_lanzadora: [],
+                Conjuros_diarios: crearConjurosDiariosMock([0]),
+                Conjuros_conocidos_nivel_a_nivel: {},
+                Conjuros_conocidos_total: 0,
+                Dotes: [],
+                Especiales: [],
+            }],
+        });
+        service.setCatalogoClases([claseArcana]);
+        service.setCatalogoConjuros([{
+            Id: 1591,
+            Nombre: 'Luz',
+            Arcano: true,
+            Divino: false,
+            Psionico: false,
+            Alma: false,
+            Escuela: { Id: 1, Nombre: 'Evocacion' } as any,
+            Disciplina: { Id: 0, Nombre: '' } as any,
+            Descriptores: [],
+            Nivel_clase: [{ Id_clase: 890, Clase: 'Arcano válido', Nivel: 0, Espontaneo: true }],
+            Nivel_dominio: [],
+            Nivel_disciplinas: [],
+            Oficial: true,
+        } as any]);
+
+        const res = service.aplicarSiguienteNivelClase(claseArcana);
+        expect(res.aplicado).toBeTrue();
+    });
+
+    it('arcano/divino inválido sin Conjuros_diarios: bloquea con error de integridad', () => {
+        const claseArcanaInvalida = crearClaseBase({
+            Id: 891,
+            Nombre: 'Arcano sin diarios',
+            Conjuros: {
+                ...crearClaseBase().Conjuros,
+                Arcanos: true,
+                Conocidos_total: false,
+                Conocidos_nivel_a_nivel: false,
+                Listado: [{ Id: 1592, Nombre: 'Luz', Nivel: 0, Espontaneo: true }],
+            },
+            Desglose_niveles: [{
+                Nivel: 1,
+                Ataque_base: '+0',
+                Salvaciones: { Fortaleza: '+0', Reflejos: '+0', Voluntad: '+2' },
+                Nivel_max_poder_accesible_nivel_lanzadorPsionico: -1,
+                Reserva_psionica: 0,
+                Aumentos_clase_lanzadora: [],
+                Conjuros_diarios: {},
+                Conjuros_conocidos_nivel_a_nivel: {},
+                Conjuros_conocidos_total: 0,
+                Dotes: [],
+                Especiales: [],
+            }],
+        });
+        service.setCatalogoClases([claseArcanaInvalida]);
+        service.setCatalogoConjuros([]);
+
+        const res = service.aplicarSiguienteNivelClase(claseArcanaInvalida);
+        expect(res.aplicado).toBeFalse();
+        expect(`${res.razon ?? ''}`).toContain('sin Conjuros_diarios');
+    });
+
+    it('arcano/divino inválido con nivel psiónico informado: bloquea con error de integridad', () => {
+        const claseArcanaInvalida = crearClaseBase({
+            Id: 892,
+            Nombre: 'Arcano con campo psiónico',
+            Conjuros: {
+                ...crearClaseBase().Conjuros,
+                Arcanos: true,
+                Conocidos_total: false,
+                Conocidos_nivel_a_nivel: false,
+                Listado: [{ Id: 1593, Nombre: 'Luz', Nivel: 0, Espontaneo: true }],
+            },
+            Desglose_niveles: [{
+                Nivel: 1,
+                Ataque_base: '+0',
+                Salvaciones: { Fortaleza: '+0', Reflejos: '+0', Voluntad: '+2' },
+                Nivel_max_poder_accesible_nivel_lanzadorPsionico: 0,
+                Reserva_psionica: 0,
+                Aumentos_clase_lanzadora: [],
+                Conjuros_diarios: crearConjurosDiariosMock([0]),
+                Conjuros_conocidos_nivel_a_nivel: {},
+                Conjuros_conocidos_total: 0,
+                Dotes: [],
+                Especiales: [],
+            }],
+        });
+        service.setCatalogoClases([claseArcanaInvalida]);
+        service.setCatalogoConjuros([]);
+
+        const res = service.aplicarSiguienteNivelClase(claseArcanaInvalida);
+        expect(res.aplicado).toBeFalse();
+        expect(`${res.razon ?? ''}`).toContain('no debe informarse en lanzadores arcanos/divinos');
+    });
+
+    it('psiónico válido: usa nivel_max_poder_accesible_nivel_lanzadorPsionico sin Conjuros_diarios', () => {
+        const clasePsionica = crearClaseBase({
+            Id: 893,
+            Nombre: 'Psiónico válido',
+            Conjuros: {
+                ...crearClaseBase().Conjuros,
+                Arcanos: false,
+                Divinos: false,
+                Psionicos: true,
+                Conocidos_total: false,
+                Conocidos_nivel_a_nivel: false,
+                Listado: [{ Id: 1594, Nombre: 'Rayo mental', Nivel: 0, Espontaneo: true }],
+            },
+            Desglose_niveles: [{
+                Nivel: 1,
+                Ataque_base: '+0',
+                Salvaciones: { Fortaleza: '+0', Reflejos: '+0', Voluntad: '+2' },
+                Nivel_max_poder_accesible_nivel_lanzadorPsionico: 0,
+                Reserva_psionica: 2,
+                Aumentos_clase_lanzadora: [],
+                Conjuros_diarios: {},
+                Conjuros_conocidos_nivel_a_nivel: {},
+                Conjuros_conocidos_total: 0,
+                Dotes: [],
+                Especiales: [],
+            }],
+        });
+        service.setCatalogoClases([clasePsionica]);
+        service.setCatalogoConjuros([{
+            Id: 1594,
+            Nombre: 'Rayo mental',
+            Arcano: false,
+            Divino: false,
+            Psionico: true,
+            Alma: false,
+            Escuela: { Id: 1, Nombre: 'Psionica' } as any,
+            Disciplina: { Id: 1, Nombre: 'Telepatia' } as any,
+            Descriptores: [],
+            Nivel_clase: [{ Id_clase: 893, Clase: 'Psiónico válido', Nivel: 0, Espontaneo: true }],
+            Nivel_dominio: [],
+            Nivel_disciplinas: [],
+            Oficial: true,
+        } as any]);
+
+        const res = service.aplicarSiguienteNivelClase(clasePsionica);
+        expect(res.aplicado).toBeTrue();
+        const sesion = service.getConjurosSesionActual();
+        expect(sesion.entradas[0].tipoLanzamiento).toBe('psionico');
+        expect(sesion.entradas[0].nivelMaxPoderAccesiblePsionico).toBe(0);
+    });
+
+    it('psiónico inválido sin nivel máximo de poder: bloquea con error de integridad', () => {
+        const clasePsionicaInvalida = crearClaseBase({
+            Id: 894,
+            Nombre: 'Psiónico sin nivel máximo',
+            Conjuros: {
+                ...crearClaseBase().Conjuros,
+                Arcanos: false,
+                Divinos: false,
+                Psionicos: true,
+                Conocidos_total: false,
+                Conocidos_nivel_a_nivel: false,
+                Listado: [{ Id: 1595, Nombre: 'Empuje', Nivel: 0, Espontaneo: true }],
+            },
+            Desglose_niveles: [{
+                Nivel: 1,
+                Ataque_base: '+0',
+                Salvaciones: { Fortaleza: '+0', Reflejos: '+0', Voluntad: '+2' },
+                Nivel_max_poder_accesible_nivel_lanzadorPsionico: -1,
+                Reserva_psionica: 2,
+                Aumentos_clase_lanzadora: [],
+                Conjuros_diarios: {},
+                Conjuros_conocidos_nivel_a_nivel: {},
+                Conjuros_conocidos_total: 0,
+                Dotes: [],
+                Especiales: [],
+            }],
+        });
+        service.setCatalogoClases([clasePsionicaInvalida]);
+        service.setCatalogoConjuros([]);
+
+        const res = service.aplicarSiguienteNivelClase(clasePsionicaInvalida);
+        expect(res.aplicado).toBeFalse();
+        expect(`${res.razon ?? ''}`).toContain('falta nivel_max_poder_accesible_nivel_lanzadorPsionico');
+    });
+
+    it('psiónico inválido con Conjuros_diarios informado: bloquea con error de integridad', () => {
+        const clasePsionicaInvalida = crearClaseBase({
+            Id: 895,
+            Nombre: 'Psiónico con diarios',
+            Conjuros: {
+                ...crearClaseBase().Conjuros,
+                Arcanos: false,
+                Divinos: false,
+                Psionicos: true,
+                Conocidos_total: false,
+                Conocidos_nivel_a_nivel: false,
+                Listado: [{ Id: 1596, Nombre: 'Empuje', Nivel: 0, Espontaneo: true }],
+            },
+            Desglose_niveles: [{
+                Nivel: 1,
+                Ataque_base: '+0',
+                Salvaciones: { Fortaleza: '+0', Reflejos: '+0', Voluntad: '+2' },
+                Nivel_max_poder_accesible_nivel_lanzadorPsionico: 0,
+                Reserva_psionica: 2,
+                Aumentos_clase_lanzadora: [],
+                Conjuros_diarios: crearConjurosDiariosMock([0]),
+                Conjuros_conocidos_nivel_a_nivel: {},
+                Conjuros_conocidos_total: 0,
+                Dotes: [],
+                Especiales: [],
+            }],
+        });
+        service.setCatalogoClases([clasePsionicaInvalida]);
+        service.setCatalogoConjuros([]);
+
+        const res = service.aplicarSiguienteNivelClase(clasePsionicaInvalida);
+        expect(res.aplicado).toBeFalse();
+        expect(`${res.razon ?? ''}`).toContain('Conjuros_diarios no debe informarse en clases psiónicas');
+    });
+
+    it('autoadición psiónica usa solo niveles recién desbloqueados por nivel máximo de poder', () => {
+        const clasePsionica = crearClaseBase({
+            Id: 896,
+            Nombre: 'Psiónico progresivo',
+            Conjuros: {
+                ...crearClaseBase().Conjuros,
+                Arcanos: false,
+                Divinos: false,
+                Psionicos: true,
+                Conocidos_total: false,
+                Conocidos_nivel_a_nivel: false,
+                Listado: [
+                    { Id: 1597, Nombre: 'Toque mental', Nivel: 0, Espontaneo: true },
+                    { Id: 1598, Nombre: 'Arremetida mental', Nivel: 1, Espontaneo: true },
+                ],
+            },
+            Desglose_niveles: [
+                {
+                    Nivel: 1,
+                    Ataque_base: '+0',
+                    Salvaciones: { Fortaleza: '+0', Reflejos: '+0', Voluntad: '+2' },
+                    Nivel_max_poder_accesible_nivel_lanzadorPsionico: 0,
+                    Reserva_psionica: 2,
+                    Aumentos_clase_lanzadora: [],
+                    Conjuros_diarios: {},
+                    Conjuros_conocidos_nivel_a_nivel: {},
+                    Conjuros_conocidos_total: 0,
+                    Dotes: [],
+                    Especiales: [],
+                },
+                {
+                    Nivel: 2,
+                    Ataque_base: '+1',
+                    Salvaciones: { Fortaleza: '+0', Reflejos: '+0', Voluntad: '+3' },
+                    Nivel_max_poder_accesible_nivel_lanzadorPsionico: 1,
+                    Reserva_psionica: 4,
+                    Aumentos_clase_lanzadora: [],
+                    Conjuros_diarios: {},
+                    Conjuros_conocidos_nivel_a_nivel: {},
+                    Conjuros_conocidos_total: 0,
+                    Dotes: [],
+                    Especiales: [],
+                },
+            ],
+        });
+        service.setCatalogoClases([clasePsionica]);
+        service.setCatalogoConjuros([
+            {
+                Id: 1597,
+                Nombre: 'Toque mental',
+                Arcano: false,
+                Divino: false,
+                Psionico: true,
+                Alma: false,
+                Escuela: { Id: 1, Nombre: 'Psionica' } as any,
+                Disciplina: { Id: 1, Nombre: 'Psicometabolismo' } as any,
+                Descriptores: [],
+                Nivel_clase: [{ Id_clase: 896, Clase: 'Psiónico progresivo', Nivel: 0, Espontaneo: true }],
+                Nivel_dominio: [],
+                Nivel_disciplinas: [],
+                Oficial: true,
+            } as any,
+            {
+                Id: 1598,
+                Nombre: 'Arremetida mental',
+                Arcano: false,
+                Divino: false,
+                Psionico: true,
+                Alma: false,
+                Escuela: { Id: 1, Nombre: 'Psionica' } as any,
+                Disciplina: { Id: 1, Nombre: 'Psicoquinesis' } as any,
+                Descriptores: [],
+                Nivel_clase: [{ Id_clase: 896, Clase: 'Psiónico progresivo', Nivel: 1, Espontaneo: true }],
+                Nivel_dominio: [],
+                Nivel_disciplinas: [],
+                Oficial: true,
+            } as any,
+        ]);
+
+        service.aplicarSiguienteNivelClase(clasePsionica);
+        let sesion = service.getConjurosSesionActual();
+        expect(sesion.entradas[0].autoadicion).toBeTrue();
+        expect(sesion.entradas[0].autoadicionadosIds).toEqual([1597]);
+        expect(service.cerrarSesionConjuros()).toBe('dotes');
+        expect(service.PersonajeCreacion.Conjuros.map((c) => c.Id)).toEqual([1597]);
+
+        service.aplicarSiguienteNivelClase(clasePsionica);
+        sesion = service.getConjurosSesionActual();
+        expect(sesion.entradas[0].autoadicion).toBeTrue();
+        expect(sesion.entradas[0].autoadicionadosIds).toEqual([1598]);
+        expect(service.cerrarSesionConjuros()).toBe('dotes');
+        expect(service.PersonajeCreacion.Conjuros.map((c) => c.Id)).toEqual([1597, 1598]);
+    });
+
+    it('filtros de conjuros aplican oficialidad, alineamiento, escuela y disciplina prohibida', () => {
+        service.PersonajeCreacion.Oficial = true;
+        service.PersonajeCreacion.Alineamiento = 'Legal bueno';
+        service.PersonajeCreacion.Escuelas_prohibidas = [{ Nombre: 'Evocacion' }];
+        service.PersonajeCreacion.Disciplina_prohibida = 'Telepatia';
+
+        const claseFiltrada = crearClaseBase({
+            Id: 86,
+            Nombre: 'Teúrgo arcano',
+            Conjuros: {
+                ...crearClaseBase().Conjuros,
+                Arcanos: true,
+                Dependientes_alineamiento: true,
+                Conocidos_total: true,
+                Listado: [
+                    { Id: 1401, Nombre: 'Valido', Nivel: 0, Espontaneo: false },
+                    { Id: 1402, Nombre: 'No oficial', Nivel: 0, Espontaneo: false },
+                    { Id: 1403, Nombre: 'Maligno', Nivel: 0, Espontaneo: false },
+                    { Id: 1404, Nombre: 'Escuela prohibida', Nivel: 0, Espontaneo: false },
+                    { Id: 1405, Nombre: 'Disciplina prohibida', Nivel: 0, Espontaneo: false },
+                ],
+            },
+            Desglose_niveles: [{
+                Nivel: 1,
+                Ataque_base: '+0',
+                Salvaciones: { Fortaleza: '+0', Reflejos: '+0', Voluntad: '+2' },
+                Nivel_max_poder_accesible_nivel_lanzadorPsionico: -1,
+                Reserva_psionica: 0,
+                Aumentos_clase_lanzadora: [],
+                Conjuros_diarios: crearConjurosDiariosMock([0]),
+                Conjuros_conocidos_nivel_a_nivel: {},
+                Conjuros_conocidos_total: 1,
+                Dotes: [],
+                Especiales: [],
+            }],
+        });
+        service.setCatalogoClases([claseFiltrada]);
+        service.setCatalogoConjuros([
+            {
+                Id: 1401,
+                Nombre: 'Valido',
+                Arcano: true,
+                Escuela: { Id: 1, Nombre: 'Abjuracion' } as any,
+                Disciplina: { Id: 1, Nombre: 'Metacreatividad' } as any,
+                Descriptores: [],
+                Nivel_clase: [{ Id_clase: 86, Clase: 'Teúrgo arcano', Nivel: 0, Espontaneo: false }],
+                Nivel_dominio: [],
+                Nivel_disciplinas: [],
+                Oficial: true,
+            } as any,
+            {
+                Id: 1402,
+                Nombre: 'No oficial',
+                Arcano: true,
+                Escuela: { Id: 1, Nombre: 'Abjuracion' } as any,
+                Disciplina: { Id: 1, Nombre: 'Metacreatividad' } as any,
+                Descriptores: [],
+                Nivel_clase: [{ Id_clase: 86, Clase: 'Teúrgo arcano', Nivel: 0, Espontaneo: false }],
+                Nivel_dominio: [],
+                Nivel_disciplinas: [],
+                Oficial: false,
+            } as any,
+            {
+                Id: 1403,
+                Nombre: 'Maligno',
+                Arcano: true,
+                Escuela: { Id: 1, Nombre: 'Abjuracion' } as any,
+                Disciplina: { Id: 1, Nombre: 'Metacreatividad' } as any,
+                Descriptores: [{ Id: 1, Nombre: 'Maligno' }],
+                Nivel_clase: [{ Id_clase: 86, Clase: 'Teúrgo arcano', Nivel: 0, Espontaneo: false }],
+                Nivel_dominio: [],
+                Nivel_disciplinas: [],
+                Oficial: true,
+            } as any,
+            {
+                Id: 1404,
+                Nombre: 'Escuela prohibida',
+                Arcano: true,
+                Escuela: { Id: 2, Nombre: 'Evocacion' } as any,
+                Disciplina: { Id: 1, Nombre: 'Metacreatividad' } as any,
+                Descriptores: [],
+                Nivel_clase: [{ Id_clase: 86, Clase: 'Teúrgo arcano', Nivel: 0, Espontaneo: false }],
+                Nivel_dominio: [],
+                Nivel_disciplinas: [],
+                Oficial: true,
+            } as any,
+            {
+                Id: 1405,
+                Nombre: 'Disciplina prohibida',
+                Arcano: true,
+                Escuela: { Id: 1, Nombre: 'Abjuracion' } as any,
+                Disciplina: { Id: 9, Nombre: 'Telepatia' } as any,
+                Descriptores: [],
+                Nivel_clase: [{ Id_clase: 86, Clase: 'Teúrgo arcano', Nivel: 0, Espontaneo: false }],
+                Nivel_dominio: [],
+                Nivel_disciplinas: [],
+                Oficial: true,
+            } as any,
+        ]);
+
+        service.aplicarSiguienteNivelClase(claseFiltrada);
+        const disponibles = service.filtrarConjurosDisponibles();
+        expect(disponibles.map((c) => c.Nombre)).toEqual(['Valido']);
     });
 
     it('solicita y aplica dominios al subir primer nivel de clase con dominio', () => {
@@ -1656,7 +2784,66 @@ describe('NuevoPersonajeService (habilidades flujo)', () => {
         expect(svc.EstadoFlujo.habilidades.puntosTotales).toBe(2);
     });
 
-    it('límites de rangos: class skill = 3+nivelRef y no class = nivelRef', () => {
+    it('clase sin lanzamiento: habilidades vuelve a dotes', () => {
+        const svc = new NuevoPersonajeService();
+        svc.seleccionarRaza(crearRazaConDgs());
+        const clase = crearClaseBase({ Id: 82, Nombre: 'Guerrero', Puntos_habilidad: { Id: 1, Valor: 0 } });
+        svc.setCatalogoClases([clase]);
+
+        svc.aplicarSiguienteNivelClase(clase);
+        svc.iniciarDistribucionHabilidadesPorClase(clase, 1);
+
+        expect(svc.EstadoFlujo.habilidades.returnStep).toBe('dotes');
+    });
+
+    it('clase lanzadora: habilidades vuelve a conjuros cuando hay sesión activa', () => {
+        const svc = new NuevoPersonajeService();
+        svc.seleccionarRaza(crearRazaConDgs());
+        const clase = crearClaseBase({
+            Id: 83,
+            Nombre: 'Aprendiz',
+            Puntos_habilidad: { Id: 1, Valor: 0 },
+            Conjuros: {
+                ...crearClaseBase().Conjuros,
+                Arcanos: true,
+                Conocidos_total: true,
+                Listado: [{ Id: 9001, Nombre: 'Luz', Nivel: 0, Espontaneo: true }],
+            },
+            Desglose_niveles: [{
+                Nivel: 1,
+                Ataque_base: '+0',
+                Salvaciones: { Fortaleza: '+0', Reflejos: '+0', Voluntad: '+2' },
+                Nivel_max_poder_accesible_nivel_lanzadorPsionico: -1,
+                Reserva_psionica: 0,
+                Aumentos_clase_lanzadora: [],
+                Conjuros_diarios: crearConjurosDiariosMock([0]),
+                Conjuros_conocidos_nivel_a_nivel: {},
+                Conjuros_conocidos_total: 1,
+                Dotes: [],
+                Especiales: [],
+            }],
+        });
+        svc.setCatalogoClases([clase]);
+        svc.setCatalogoConjuros([{
+            Id: 9001,
+            Nombre: 'Luz',
+            Arcano: true,
+            Escuela: { Id: 1, Nombre: 'Evocacion' } as any,
+            Disciplina: { Id: 0, Nombre: '' } as any,
+            Descriptores: [],
+            Nivel_clase: [{ Id_clase: 83, Clase: 'Aprendiz', Nivel: 0, Espontaneo: true }],
+            Nivel_dominio: [],
+            Nivel_disciplinas: [],
+            Oficial: true,
+        } as any]);
+
+        svc.aplicarSiguienteNivelClase(clase);
+        svc.iniciarDistribucionHabilidadesPorClase(clase, 1);
+
+        expect(svc.EstadoFlujo.habilidades.returnStep).toBe('conjuros');
+    });
+
+    it('límites de rangos: class skill = 3+nivelRef y no class = nivelRef+1', () => {
         const svc = new NuevoPersonajeService();
         svc.setCatalogoHabilidades([
             { Id_habilidad: 6, Nombre: 'Avistar', Id_caracteristica: 5, Caracteristica: 'Sabiduria', Descripcion: '', Soporta_extra: false, Entrenada: false, Extras: [] },
@@ -1672,7 +2859,32 @@ describe('NuevoPersonajeService (habilidades flujo)', () => {
 
         expect(svc.iniciarDistribucionHabilidadesPorRazaDG()).toBeTrue();
         expect(svc.obtenerLimiteRangoHabilidad(6)).toBe(5);
-        expect(svc.obtenerLimiteRangoHabilidad(7)).toBe(2);
+        expect(svc.obtenerLimiteRangoHabilidad(7)).toBe(3);
+    });
+
+    it('habilidades entrenadas no cláseas no permiten subir rangos, pero sí si son cláseas', () => {
+        const svcNoClasea = new NuevoPersonajeService();
+        svcNoClasea.setCatalogoHabilidades([
+            { Id_habilidad: 6, Nombre: 'Avistar', Id_caracteristica: 5, Caracteristica: 'Sabiduria', Descripcion: '', Soporta_extra: false, Entrenada: true, Extras: [] },
+        ]);
+        svcNoClasea.seleccionarRaza(crearRazaConDgs());
+        svcNoClasea.iniciarDistribucionHabilidadesPorRazaDG();
+
+        expect(svcNoClasea.ajustarRangoHabilidad(6, 1)).toBeFalse();
+
+        const svcClasea = new NuevoPersonajeService();
+        svcClasea.setCatalogoHabilidades([
+            { Id_habilidad: 6, Nombre: 'Avistar', Id_caracteristica: 5, Caracteristica: 'Sabiduria', Descripcion: '', Soporta_extra: false, Entrenada: true, Extras: [] },
+        ]);
+        svcClasea.seleccionarRaza(crearRazaConDgs({
+            Habilidades: {
+                Base: [{ Id_habilidad: 6, Habilidad: 'Avistar', Cantidad: 1 }],
+                Custom: [],
+            },
+        } as any));
+        svcClasea.iniciarDistribucionHabilidadesPorRazaDG();
+
+        expect(svcClasea.ajustarRangoHabilidad(6, 1)).toBeTrue();
     });
 
     it('no permite cerrar distribución si quedan puntos', () => {
@@ -1681,6 +2893,123 @@ describe('NuevoPersonajeService (habilidades flujo)', () => {
         svc.iniciarDistribucionHabilidadesPorRazaDG();
         expect(svc.puedeCerrarDistribucionHabilidades()).toBeFalse();
         expect(svc.cerrarDistribucionHabilidades()).toBeNull();
+    });
+
+    it('bloquea cierre si una habilidad clásea con soporte de extra no tiene extra seleccionado', () => {
+        const svc = new NuevoPersonajeService();
+        svc.setCatalogoHabilidades([
+            {
+                Id_habilidad: 6,
+                Nombre: 'Conocimiento arcano',
+                Id_caracteristica: 4,
+                Caracteristica: 'Inteligencia',
+                Descripcion: '',
+                Soporta_extra: true,
+                Entrenada: false,
+                Extras: [{ Id_extra: 1, Extra: 'Planos', Descripcion: '' }],
+            },
+        ]);
+        svc.seleccionarRaza(crearRazaConDgs({
+            Habilidades: {
+                Base: [{ Id_habilidad: 6, Habilidad: 'Conocimiento arcano', Cantidad: 1 }],
+                Custom: [],
+            },
+        } as any));
+        svc.iniciarDistribucionHabilidadesPorRazaDG();
+        svc.EstadoFlujo.habilidades.puntosRestantes = 0;
+
+        expect(svc.puedeCerrarDistribucionHabilidades()).toBeFalse();
+        expect(svc.setExtraHabilidad(6, 'Planos')).toBeTrue();
+        expect(svc.puedeCerrarDistribucionHabilidades()).toBeTrue();
+    });
+
+    it('no bloquea cierre por extra pendiente en habilidades no cláseas', () => {
+        const svc = new NuevoPersonajeService();
+        svc.setCatalogoHabilidades([
+            {
+                Id_habilidad: 7,
+                Nombre: 'Oficio',
+                Id_caracteristica: 4,
+                Caracteristica: 'Inteligencia',
+                Descripcion: '',
+                Soporta_extra: true,
+                Entrenada: false,
+                Extras: [{ Id_extra: 2, Extra: 'Alquimia', Descripcion: '' }],
+            },
+        ]);
+        svc.seleccionarRaza(crearRazaConDgs());
+        svc.iniciarDistribucionHabilidadesPorRazaDG();
+        svc.EstadoFlujo.habilidades.puntosRestantes = 0;
+
+        expect(svc.puedeCerrarDistribucionHabilidades()).toBeTrue();
+    });
+
+    it('no permite seleccionar extra en habilidades no cláseas', () => {
+        const svc = new NuevoPersonajeService();
+        svc.setCatalogoHabilidades([
+            {
+                Id_habilidad: 7,
+                Nombre: 'Oficio',
+                Id_caracteristica: 4,
+                Caracteristica: 'Inteligencia',
+                Descripcion: '',
+                Soporta_extra: true,
+                Entrenada: false,
+                Extras: [{ Id_extra: 2, Extra: 'Alquimia', Descripcion: '' }],
+            },
+        ]);
+        svc.seleccionarRaza(crearRazaConDgs());
+        svc.iniciarDistribucionHabilidadesPorRazaDG();
+
+        expect(svc.setExtraHabilidad(7, 'Alquimia')).toBeFalse();
+    });
+
+    it('prohíbe repetir extra en habilidades cláseas de la misma familia', () => {
+        const svc = new NuevoPersonajeService();
+        svc.setCatalogoHabilidades([
+            {
+                Id_habilidad: 2,
+                Nombre: 'Artesania 1',
+                Id_caracteristica: 4,
+                Caracteristica: 'Inteligencia',
+                Descripcion: '',
+                Soporta_extra: true,
+                Entrenada: false,
+                Extras: [
+                    { Id_extra: 1, Extra: 'Alquimia', Descripcion: '' },
+                    { Id_extra: 2, Extra: 'Carpinteria', Descripcion: '' },
+                ],
+            },
+            {
+                Id_habilidad: 3,
+                Nombre: 'Artesania 2',
+                Id_caracteristica: 4,
+                Caracteristica: 'Inteligencia',
+                Descripcion: '',
+                Soporta_extra: true,
+                Entrenada: false,
+                Extras: [
+                    { Id_extra: 1, Extra: 'Alquimia', Descripcion: '' },
+                    { Id_extra: 2, Extra: 'Carpinteria', Descripcion: '' },
+                ],
+            },
+        ]);
+        svc.seleccionarRaza(crearRazaConDgs({
+            Habilidades: {
+                Base: [
+                    { Id_habilidad: 2, Habilidad: 'Artesania 1', Cantidad: 1 },
+                    { Id_habilidad: 3, Habilidad: 'Artesania 2', Cantidad: 1 },
+                ],
+                Custom: [],
+            },
+        } as any));
+        svc.iniciarDistribucionHabilidadesPorRazaDG();
+        svc.EstadoFlujo.habilidades.puntosRestantes = 0;
+
+        expect(svc.setExtraHabilidad(2, 'Alquimia')).toBeTrue();
+        expect(svc.setExtraHabilidad(3, 'Alquimia')).toBeFalse();
+        expect(svc.setExtraHabilidad(3, 'Carpinteria')).toBeTrue();
+        expect(svc.puedeCerrarDistribucionHabilidades()).toBeTrue();
     });
 
     it('reparto manual actualiza Rangos y no Rangos_varios', () => {

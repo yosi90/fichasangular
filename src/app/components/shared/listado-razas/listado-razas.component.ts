@@ -1,7 +1,8 @@
-import { ChangeDetectorRef, Component, ElementRef, EventEmitter, Input, Output, ViewChild } from '@angular/core';
+import { ChangeDetectorRef, Component, ElementRef, EventEmitter, Input, OnDestroy, Output, ViewChild } from '@angular/core';
 import { MatPaginator } from '@angular/material/paginator';
 import { MatSort } from '@angular/material/sort';
 import { MatTableDataSource } from '@angular/material/table';
+import { Subscription, combineLatest } from 'rxjs';
 import { Manual } from 'src/app/interfaces/manual';
 import { Raza } from 'src/app/interfaces/raza';
 import { ManualService } from 'src/app/services/manual.service';
@@ -13,7 +14,7 @@ import { RazaService } from 'src/app/services/raza.service';
     templateUrl: './listado-razas.component.html',
     styleUrls: ['./listado-razas.component.sass']
 })
-export class ListadoRazasComponent {
+export class ListadoRazasComponent implements OnDestroy {
     razas: Raza[] = [];
     Manuales: Manual[] = [];
     defaultManual: string = 'Cualquiera';
@@ -22,6 +23,7 @@ export class ListadoRazasComponent {
     @Input() homebrewSeleccionado?: boolean;
     @Input() homebrewBloqueado = false;
     private vistaInicializada = false;
+    private catalogosSub?: Subscription;
 
     constructor(
         private cdr: ChangeDetectorRef,
@@ -36,24 +38,28 @@ export class ListadoRazasComponent {
 
     ngAfterViewInit() {
         this.vistaInicializada = true;
-        (this.rSvc.getRazas()).subscribe(razas => {
+        this.catalogosSub?.unsubscribe();
+        this.catalogosSub = combineLatest([
+            this.rSvc.getRazas(),
+            this.mSvc.getManuales(),
+        ]).subscribe(([razas, manuales]) => {
             this.razas = (razas ?? []).map((raza) => this.normalizarRaza(raza));
-            (this.mSvc.getManuales()).subscribe(manuales => {
-                this.Manuales = [...manuales].sort((a, b) => a.Nombre.localeCompare(b.Nombre, 'es', { sensitivity: 'base' }));
-                this.defaultManual = 'Cualquiera';
-                this.cdr.detectChanges();
-                this.sincronizarColumnaHomebrew();
-                this.filtroRazas();
-                this.cdr.detectChanges();
-            });
+            this.Manuales = [...(manuales ?? [])].sort((a, b) => a.Nombre.localeCompare(b.Nombre, 'es', { sensitivity: 'base' }));
+            this.defaultManual = 'Cualquiera';
+            this.sincronizarColumnaHomebrew();
+            this.filtroRazas();
+            this.cdr.detectChanges();
         });
-
     }
 
     ngOnChanges() {
         this.sincronizarColumnaHomebrew();
         if (this.vistaInicializada)
             this.filtroRazas();
+    }
+
+    ngOnDestroy(): void {
+        this.catalogosSub?.unsubscribe();
     }
 
     filtroRazas() {
@@ -65,7 +71,7 @@ export class ListadoRazasComponent {
                 this.toNumber((raza as any).Id) > 0
                 && (texto === '' || this.coincideConTexto(raza, texto))
                 && (this.defaultManual == 'Cualquiera' || `${raza.Manual ?? ''}`.includes(this.defaultManual))
-                && (homebrew || !homebrew && raza.Oficial)
+                && (homebrew || this.esOficialParaFiltro(raza))
             )
             .sort((a, b) => {
                 const nombreA = this.normalizarTexto(a?.Nombre ?? '');
@@ -190,9 +196,28 @@ export class ListadoRazasComponent {
             .toLowerCase();
     }
 
+    private esOficialParaFiltro(raza: Raza): boolean {
+        return this.toBoolean((raza as any)?.Oficial, true);
+    }
+
     private toNumber(value: any): number {
         const parsed = Number(value);
         return Number.isFinite(parsed) ? parsed : 0;
+    }
+
+    private toBoolean(value: any, fallback: boolean = false): boolean {
+        if (typeof value === 'boolean')
+            return value;
+        if (typeof value === 'number')
+            return value !== 0;
+        if (typeof value === 'string') {
+            const normalizado = value.trim().toLowerCase();
+            if (['true', '1', 'si', 'sí', 'yes'].includes(normalizado))
+                return true;
+            if (['false', '0', 'no'].includes(normalizado))
+                return false;
+        }
+        return fallback;
     }
 
     abrirDetalleManual(raza: Raza, event?: Event) {

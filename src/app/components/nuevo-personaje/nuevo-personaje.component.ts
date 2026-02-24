@@ -1,6 +1,6 @@
 import { Component, EventEmitter, HostListener, Output, ViewChild } from '@angular/core';
 import { MatTabGroup } from '@angular/material/tabs';
-import { Subscription } from 'rxjs';
+import { Subscription, firstValueFrom, take } from 'rxjs';
 import { Campana, Super } from 'src/app/interfaces/campaña';
 import { AlineamientoBasicoCatalogItem } from 'src/app/interfaces/alineamiento';
 import { ArmaDetalle } from 'src/app/interfaces/arma';
@@ -9,6 +9,7 @@ import { DeidadDetalle } from 'src/app/interfaces/deidad';
 import { DominioDetalle } from 'src/app/interfaces/dominio';
 import { GrupoCompetencia } from 'src/app/interfaces/grupo-competencia';
 import { Clase, ClaseDoteNivel, ClaseEspecialNivel } from 'src/app/interfaces/clase';
+import { Conjuro } from 'src/app/interfaces/conjuro';
 import { Dote } from 'src/app/interfaces/dote';
 import { DoteContextual } from 'src/app/interfaces/dote-contextual';
 import { HabilidadBasicaDetalle } from 'src/app/interfaces/habilidad';
@@ -25,6 +26,7 @@ import { AlineamientoService } from 'src/app/services/alineamiento.service';
 import { ArmaService } from 'src/app/services/arma.service';
 import { ArmaduraService } from 'src/app/services/armadura.service';
 import { ClaseService } from 'src/app/services/clase.service';
+import { ConjuroService } from 'src/app/services/conjuro.service';
 import { DeidadService } from 'src/app/services/deidad.service';
 import { DominioService } from 'src/app/services/dominio.service';
 import { GrupoArmaService } from 'src/app/services/grupo-arma.service';
@@ -36,9 +38,12 @@ import {
     AsignacionCaracteristicas,
     AumentoCaracteristicaPendiente,
     CaracteristicaKeyAumento,
+    ClaseAumentoLanzadorPendiente,
     ClaseDominiosPendientes,
     ClaseGrupoOpcionalPendiente,
+    ConjurosSesionStateEntrada,
     NuevoPersonajeService,
+    SeleccionAumentosClaseLanzadora,
     SeleccionDominiosClase,
     SeleccionOpcionalesClase,
     StepNuevoPersonaje,
@@ -144,6 +149,20 @@ interface ClaseBeneficioRenderGrupoItem {
 
 type ClaseBeneficioRenderItem = ClaseBeneficioRenderSimpleItem | ClaseBeneficioRenderGrupoItem;
 
+const EXTRA_PENDIENTE_PLACEHOLDERS = new Set([
+    '-',
+    'no aplica',
+    'no especifica',
+    'no se especifica',
+    'ninguna',
+    'nada',
+    'desconocido',
+    'placeholder',
+    'elegir',
+    'a elegir',
+    'elige',
+]);
+
 interface ClaseCompatibilidadAlineamientoItem {
     estado: EstadoCompatibilidadAlineamientoClase;
     etiqueta: string;
@@ -224,6 +243,7 @@ export class NuevoPersonajeComponent {
     catalogoGruposArmas: GrupoCompetencia[] = [];
     catalogoGruposArmaduras: GrupoCompetencia[] = [];
     catalogoClases: Clase[] = [];
+    catalogoConjuros: Conjuro[] = [];
     catalogoDominios: DominioDetalle[] = [];
     catalogoDeidades: DeidadDetalle[] = [];
     clasesListadoFiltrado: ClaseListadoItem[] = [];
@@ -233,6 +253,8 @@ export class NuevoPersonajeComponent {
     filtroClasesTipoLanzador: FiltroTipoLanzadorClase = 'todas';
     filtroClasesRol: FiltroRolClase = 'todas';
     filtroClasesPrestigio: FiltroPrestigioClase = 'todas';
+    filtroConjurosTexto: string = '';
+    filtroConjurosNivel: number | null = null;
     incluirHomebrewClases: boolean = false;
     private hardAlignmentClassOverrideConfirmed: boolean = false;
     private homebrewPorClaseAplicada: boolean = false;
@@ -296,6 +318,7 @@ export class NuevoPersonajeComponent {
     private gruposArmadurasSub?: Subscription;
     private razasSub?: Subscription;
     private clasesSub?: Subscription;
+    private conjurosCatalogoCargado = false;
     private dominiosSub?: Subscription;
     private deidadesSub?: Subscription;
     private tiposCriaturaSub?: Subscription;
@@ -307,6 +330,7 @@ export class NuevoPersonajeComponent {
         private campanaSvc: CampanaService,
         private alineamientoSvc: AlineamientoService,
         private claseSvc: ClaseService,
+        private conjuroSvc: ConjuroService,
         private razaSvc: RazaService,
         private plantillaSvc: PlantillaService,
         private ventajaSvc: VentajaService,
@@ -465,12 +489,104 @@ export class NuevoPersonajeComponent {
     }
 
     get habilidadesOrdenadas(): Personaje['Habilidades'] {
-        return [...(this.Personaje?.Habilidades ?? [])]
-            .sort((a, b) => `${a?.Nombre ?? ''}`.localeCompare(`${b?.Nombre ?? ''}`, 'es', { sensitivity: 'base' }));
+        const visibles = [...(this.Personaje?.Habilidades ?? [])]
+            .filter((habilidad) => !this.esNombreHabilidadOcultaEnTabla(`${habilidad?.Nombre ?? ''}`));
+        return visibles.sort((a, b) => {
+            const customA = !!a?.Custom;
+            const customB = !!b?.Custom;
+            if (customA !== customB)
+                return customA ? 1 : -1;
+            return `${a?.Nombre ?? ''}`.localeCompare(`${b?.Nombre ?? ''}`, 'es', { sensitivity: 'base' });
+        });
     }
 
     get puedeContinuarHabilidades(): boolean {
         return this.nuevoPSvc.puedeCerrarDistribucionHabilidades();
+    }
+
+    get flujoConjuros() {
+        return this.nuevoPSvc.getConjurosSesionActual();
+    }
+
+    get entradaConjurosActual(): ConjurosSesionStateEntrada | null {
+        const sesion = this.flujoConjuros;
+        if (!sesion.activa || sesion.entradas.length < 1)
+            return null;
+        const indice = Number(sesion.indiceEntradaActual ?? 0);
+        return sesion.entradas[indice] ?? sesion.entradas[0] ?? null;
+    }
+
+    get conjurosDisponiblesActuales(): Conjuro[] {
+        return this.nuevoPSvc.filtrarConjurosDisponibles(this.filtroConjurosTexto, this.filtroConjurosNivel);
+    }
+
+    get conjurosSeleccionadosActuales(): Conjuro[] {
+        const entrada = this.entradaConjurosActual;
+        if (!entrada)
+            return [];
+        const ids = new Set<number>([
+            ...(entrada.autoadicionadosIds ?? []),
+            ...(entrada.seleccionadosIds ?? []),
+        ].map((id) => Number(id)).filter((id) => Number.isFinite(id) && id > 0));
+        return Array.from(ids)
+            .map((id) => this.catalogoConjuros.find((conjuro) => Number(conjuro?.Id) === id)
+                ?? (this.Personaje?.Conjuros ?? []).find((conjuro) => Number(conjuro?.Id) === id)
+                ?? {
+                    Id: id,
+                    Nombre: `Conjuro ${id}`,
+                } as Conjuro)
+            .sort((a, b) => {
+                const nivelA = Number(entrada.nivelesPorConjuro?.[Number(a?.Id)] ?? 0);
+                const nivelB = Number(entrada.nivelesPorConjuro?.[Number(b?.Id)] ?? 0);
+                if (nivelA !== nivelB)
+                    return nivelA - nivelB;
+                return `${a?.Nombre ?? ''}`.localeCompare(`${b?.Nombre ?? ''}`, 'es', { sensitivity: 'base' });
+            });
+    }
+
+    get nivelesConjurosDisponibles(): number[] {
+        const entrada = this.entradaConjurosActual;
+        if (!entrada)
+            return [];
+        return Object.values(entrada.nivelesPorConjuro ?? {})
+            .map((nivel) => Number(nivel))
+            .filter((nivel) => Number.isFinite(nivel) && nivel >= 0)
+            .filter((nivel, index, lista) => lista.indexOf(nivel) === index)
+            .sort((a, b) => a - b);
+    }
+
+    get mensajeProgresoConjuros(): string {
+        const entrada = this.entradaConjurosActual;
+        if (!entrada)
+            return '';
+
+        if (entrada.almaPendiente)
+            return 'La selección de conjuros de alma se añadirá en una fase posterior.';
+        if (entrada.autoadicion)
+            return `Se añadirán automáticamente ${entrada.autoadicionadosIds.length} conjuros.`;
+        if (entrada.sinElegibles)
+            return 'No hay conjuros elegibles para este avance.';
+        if (!entrada.seleccionManual)
+            return 'Este avance no otorga nuevos conjuros conocidos.';
+
+        if (Number(entrada.cupoInicial?.total ?? 0) > 0) {
+            const pendiente = Number(entrada.cupoPendiente?.total ?? 0);
+            return `Te quedan ${pendiente} conjuros por elegir.`;
+        }
+
+        const pendientesPorNivel = Object.keys(entrada.cupoPendiente?.porNivel ?? {})
+            .map((nivel) => Number(nivel))
+            .filter((nivel) => Number.isFinite(nivel) && nivel >= 0)
+            .sort((a, b) => a - b)
+            .map((nivel) => `${entrada.cupoPendiente.porNivel[nivel]} de nivel ${nivel}`)
+            .join(', ');
+        return pendientesPorNivel.length > 0
+            ? `Te quedan ${pendientesPorNivel}.`
+            : 'Selección de conjuros completada.';
+    }
+
+    get puedeContinuarConjuros(): boolean {
+        return this.nuevoPSvc.puedeCerrarSesionConjuros();
     }
 
     get manualesClases(): string[] {
@@ -489,6 +605,17 @@ export class NuevoPersonajeComponent {
     get puedeAplicarClaseSeleccionada(): boolean {
         const seleccionada = this.claseSeleccionadaActual;
         return !!seleccionada && seleccionada.puedeAplicarse;
+    }
+
+    get mostrarInfoRecomendacionesClase(): boolean {
+        const autoReparto = this.Personaje?.Auto_reparto;
+        if (!autoReparto || autoReparto.version !== 'quiz_v1')
+            return false;
+        if (autoReparto.aplicadoAutomaticamente !== true)
+            return false;
+        if (!autoReparto.recomendacion)
+            return false;
+        return this.totalNivelesClaseActual <= 0;
     }
 
     get incluirHomebrewClasesEfectivo(): boolean {
@@ -521,6 +648,11 @@ export class NuevoPersonajeComponent {
 
     get homebrewVentajasBloqueado(): boolean {
         return this.homebrewBloqueadoVentajas;
+    }
+
+    get totalNivelesClaseActual(): number {
+        return (this.Personaje?.desgloseClases ?? [])
+            .reduce((acc, entrada) => acc + Math.max(0, Number(entrada?.Nivel ?? 0)), 0);
     }
 
     get incluirHomebrewPlantillasEfectivo(): boolean {
@@ -1272,6 +1404,9 @@ export class NuevoPersonajeComponent {
         } else if (this.flujo.pasoActual === 'habilidades' && this.puedeContinuarHabilidades) {
             this.continuarDesdeHabilidades();
             accionAplicada = true;
+        } else if (this.flujo.pasoActual === 'conjuros' && this.puedeContinuarConjuros) {
+            this.continuarDesdeConjuros();
+            accionAplicada = true;
         }
 
         if (accionAplicada)
@@ -1386,6 +1521,9 @@ export class NuevoPersonajeComponent {
         }
         if (paso === 'conjuros') {
             return 6;
+        }
+        if (paso === 'dotes') {
+            return 7;
         }
         return 0;
     }
@@ -1558,6 +1696,38 @@ export class NuevoPersonajeComponent {
         if (nombre.length < 1)
             return;
         this.claseDetalles.emit(value);
+    }
+
+    @Output() conjuroDetalles: EventEmitter<Conjuro> = new EventEmitter<Conjuro>();
+    verDetallesConjuro(value: Conjuro): void {
+        const id = Number(value?.Id ?? 0);
+        const porId = (this.catalogoConjuros ?? []).find((conjuro) => Number(conjuro?.Id) === id)
+            ?? (this.Personaje?.Conjuros ?? []).find((conjuro) => Number(conjuro?.Id) === id);
+        if (porId) {
+            this.conjuroDetalles.emit(porId);
+            return;
+        }
+
+        const nombreBuscado = this.normalizarTexto(value?.Nombre ?? '');
+        if (nombreBuscado.length < 1)
+            return;
+        const porNombre = (this.catalogoConjuros ?? []).find((conjuro) => this.normalizarTexto(conjuro?.Nombre ?? '') === nombreBuscado)
+            ?? (this.Personaje?.Conjuros ?? []).find((conjuro) => this.normalizarTexto(conjuro?.Nombre ?? '') === nombreBuscado);
+        if (porNombre)
+            this.conjuroDetalles.emit(porNombre);
+    }
+
+    verDetallesClaseDesdeFicha(nombreClase: string): void {
+        const nombreBuscado = this.normalizarTexto(nombreClase ?? '');
+        if (nombreBuscado.length < 1)
+            return;
+
+        const clase = (this.catalogoClases ?? [])
+            .find((item) => this.normalizarTexto(item?.Nombre ?? '') === nombreBuscado);
+        if (!clase)
+            return;
+
+        this.claseDetalles.emit(clase);
     }
 
     @Output() doteDetalles: EventEmitter<Dote | DoteContextual> = new EventEmitter<Dote | DoteContextual>();
@@ -2092,12 +2262,31 @@ export class NuevoPersonajeComponent {
                 return;
         }
 
-        const resultado = this.nuevoPSvc.aplicarSiguienteNivelClase(
+        await this.asegurarCatalogoConjuros();
+
+        let seleccionesAumentosClaseLanzadora: SeleccionAumentosClaseLanzadora | null = null;
+        let resultado = this.nuevoPSvc.aplicarSiguienteNivelClase(
             seleccion.clase,
             seleccionesOpcionales,
             seleccionesDominios,
-            seleccion.bloqueoSoloAlineamiento
+            seleccion.bloqueoSoloAlineamiento,
+            seleccionesAumentosClaseLanzadora
         );
+        if (!resultado.aplicado && (resultado.aumentosClaseLanzadoraPendientes ?? []).length > 0) {
+            seleccionesAumentosClaseLanzadora = await this.solicitarSeleccionesAumentosClaseLanzadora(
+                resultado.aumentosClaseLanzadoraPendientes ?? [],
+                seleccion.clase
+            );
+            if (!seleccionesAumentosClaseLanzadora)
+                return;
+            resultado = this.nuevoPSvc.aplicarSiguienteNivelClase(
+                seleccion.clase,
+                seleccionesOpcionales,
+                seleccionesDominios,
+                seleccion.bloqueoSoloAlineamiento,
+                seleccionesAumentosClaseLanzadora
+            );
+        }
         if (!resultado.aplicado) {
             const razones = resultado.evaluacion?.razones?.join(' | ') || resultado.razon || 'No se pudo aplicar el nivel de clase';
             Swal.fire({
@@ -2151,6 +2340,8 @@ export class NuevoPersonajeComponent {
             seleccion.clase,
             Number(resultado.nivelAplicado ?? 0)
         );
+        this.filtroConjurosTexto = '';
+        this.filtroConjurosNivel = null;
         this.Personaje = this.nuevoPSvc.PersonajeCreacion;
         this.recalcularClasesVisibles();
         this.sincronizarTabConPaso();
@@ -2164,8 +2355,178 @@ export class NuevoPersonajeComponent {
         return this.nuevoPSvc.obtenerLimiteRangoHabilidad(idHabilidad);
     }
 
+    esHabilidadEntrenada(habilidad: Personaje['Habilidades'][number]): boolean {
+        return !!habilidad?.Entrenada;
+    }
+
+    getNombreHabilidadConMarcaEntrenada(habilidad: Personaje['Habilidades'][number]): string {
+        const nombre = `${habilidad?.Nombre ?? ''}`;
+        return this.esHabilidadEntrenada(habilidad) ? `${nombre}*` : nombre;
+    }
+
+    getCaracteristicaAbreviada(caracteristica: string): string {
+        const normalizada = this.normalizarTexto(caracteristica ?? '');
+        if (normalizada.startsWith('fue') || normalizada.includes('fuerza'))
+            return 'Fue';
+        if (normalizada.startsWith('des') || normalizada.includes('destreza'))
+            return 'Des';
+        if (normalizada.startsWith('con') || normalizada.includes('constitucion'))
+            return 'Con';
+        if (normalizada.startsWith('int') || normalizada.includes('inteligencia'))
+            return 'Int';
+        if (normalizada.startsWith('sab') || normalizada.includes('sabiduria'))
+            return 'Sab';
+        if (normalizada.startsWith('car') || normalizada.includes('carisma'))
+            return 'Car';
+        return `${caracteristica ?? ''}`.trim();
+    }
+
+    getOpcionesExtraHabilidad(habilidad: Personaje['Habilidades'][number]): Array<{ Id_extra: number; Extra: string; Descripcion: string; }> {
+        const idHabilidad = Number(habilidad?.Id ?? 0);
+        if (!this.esHabilidadClaseaEfectiva(idHabilidad))
+            return [];
+
+        const opciones = (habilidad?.Extras ?? [])
+            .map((extra) => ({
+                Id_extra: Number(extra?.Id_extra ?? 0),
+                Extra: `${extra?.Extra ?? ''}`.trim(),
+                Descripcion: `${extra?.Descripcion ?? ''}`.trim(),
+            }))
+            .filter((extra) => extra.Extra.length > 0);
+        if (opciones.length < 1)
+            return [];
+
+        const claveGrupo = this.getClaveGrupoExtraHabilidad(habilidad);
+        const extraActualNorm = this.normalizarTexto(`${habilidad?.Extra ?? ''}`);
+        const usados = new Set(
+            (this.Personaje?.Habilidades ?? [])
+                .filter((otra) => Number(otra?.Id) !== idHabilidad)
+                .filter((otra) => !!otra?.Soporta_extra)
+                .filter((otra) => this.esHabilidadClaseaEfectiva(Number(otra?.Id)))
+                .filter((otra) => this.getClaveGrupoExtraHabilidad(otra) === claveGrupo)
+                .map((otra) => this.normalizarTexto(`${otra?.Extra ?? ''}`))
+                .filter((extraNorm) => !this.esExtraPendienteValor(extraNorm))
+        );
+
+        return opciones.filter((opcion) => {
+            const extraNorm = this.normalizarTexto(opcion.Extra);
+            return !usados.has(extraNorm) || extraNorm === extraActualNorm;
+        });
+    }
+
+    esExtraObligatorioHabilidad(habilidad: Personaje['Habilidades'][number]): boolean {
+        if (!habilidad)
+            return false;
+        return this.esHabilidadClaseaEfectiva(Number(habilidad?.Id)) && !!habilidad?.Soporta_extra;
+    }
+
+    esExtraPendienteHabilidad(habilidad: Personaje['Habilidades'][number]): boolean {
+        if (!this.esExtraObligatorioHabilidad(habilidad))
+            return false;
+
+        const extraNormalizado = this.normalizarTexto(`${habilidad?.Extra ?? ''}`);
+        if (extraNormalizado.length < 1)
+            return true;
+        return EXTRA_PENDIENTE_PLACEHOLDERS.has(extraNormalizado);
+    }
+
+    getTextoExtraHabilidad(habilidad: Personaje['Habilidades'][number]): string {
+        const extra = `${habilidad?.Extra ?? ''}`.trim();
+        if (extra.length > 0)
+            return extra;
+        if (this.esExtraPendienteHabilidad(habilidad))
+            return 'Elegir';
+        return '-';
+    }
+
+    onExtraHabilidadChange(idHabilidad: number, value: string): void {
+        const aplicado = this.nuevoPSvc.setExtraHabilidad(idHabilidad, `${value ?? ''}`);
+        if (!aplicado)
+            return;
+        this.Personaje = this.nuevoPSvc.PersonajeCreacion;
+    }
+
+    async abrirSelectorExtraHabilidad(habilidad: Personaje['Habilidades'][number]): Promise<void> {
+        if (!habilidad?.Soporta_extra || !this.esHabilidadClaseaEfectiva(Number(habilidad?.Id)))
+            return;
+
+        const opciones = this.getOpcionesExtraHabilidad(habilidad)
+            .map((extra) => ({
+                valor: extra.Extra,
+                descripcion: extra.Descripcion,
+            }))
+            .filter((opcion) => opcion.valor.length > 0);
+        if (opciones.length < 1)
+            return;
+
+        const inputOptions: Record<string, string> = {};
+        opciones.forEach((opcion) => {
+            const sufijo = opcion.descripcion.length > 0 ? ` - ${opcion.descripcion}` : '';
+            inputOptions[opcion.valor] = `${opcion.valor}${sufijo}`;
+        });
+
+        const result = await Swal.fire({
+            icon: 'question',
+            title: `${habilidad?.Nombre ?? 'Habilidad'}: extra`,
+            text: 'Selecciona el extra para esta habilidad.',
+            input: 'select',
+            inputOptions,
+            inputValue: `${habilidad?.Extra ?? ''}`.trim(),
+            inputPlaceholder: 'Elegir extra',
+            showCancelButton: true,
+            confirmButtonText: 'Aplicar',
+            cancelButtonText: 'Cancelar',
+            target: document.body,
+            heightAuto: false,
+            scrollbarPadding: false,
+            inputValidator: (value) => value ? undefined : 'Debes seleccionar un extra',
+        });
+
+        if (!result.isConfirmed || !result.value)
+            return;
+
+        this.onExtraHabilidadChange(Number(habilidad?.Id), `${result.value}`);
+    }
+
+    trackByHabilidadId(index: number, habilidad: Personaje['Habilidades'][number]): number {
+        return Number(habilidad?.Id ?? index);
+    }
+
+    esExtraEditableHabilidad(habilidad: Personaje['Habilidades'][number]): boolean {
+        if (!habilidad?.Soporta_extra)
+            return false;
+        if (!this.esHabilidadClaseaEfectiva(Number(habilidad?.Id)))
+            return false;
+        return this.getOpcionesExtraHabilidad(habilidad).length > 0;
+    }
+
+    private esExtraPendienteValor(extraNormalizado: string): boolean {
+        return extraNormalizado.length < 1 || EXTRA_PENDIENTE_PLACEHOLDERS.has(extraNormalizado);
+    }
+
+    private getClaveGrupoExtraHabilidad(habilidad: Personaje['Habilidades'][number]): string {
+        const nombre = this.normalizarTexto(`${habilidad?.Nombre ?? ''}`);
+        if (nombre.startsWith('artesania'))
+            return 'familia:artesania';
+        if (nombre.startsWith('saber') || nombre.startsWith('conocimiento'))
+            return 'familia:saberes';
+        const base = nombre.replace(/\s+\d+$/, '').trim();
+        if (base.length > 0)
+            return `nombre:${base}`;
+        const id = Number(habilidad?.Id ?? 0);
+        return Number.isFinite(id) && id > 0 ? `id:${id}` : '';
+    }
+
+    private esHabilidadEntrenadaNoClasea(habilidad: Personaje['Habilidades'][number]): boolean {
+        if (!this.esHabilidadEntrenada(habilidad))
+            return false;
+        return !this.esHabilidadClaseaEfectiva(Number(habilidad?.Id));
+    }
+
     puedeSubirRangoHabilidad(habilidad: Personaje['Habilidades'][number]): boolean {
         if (!habilidad)
+            return false;
+        if (this.esHabilidadEntrenadaNoClasea(habilidad))
             return false;
         const actual = Number(habilidad?.Rangos ?? 0);
         const limite = this.getLimiteRangoHabilidad(Number(habilidad?.Id));
@@ -2180,6 +2541,8 @@ export class NuevoPersonajeComponent {
 
     puedeMaxearRangoHabilidad(habilidad: Personaje['Habilidades'][number]): boolean {
         if (!habilidad)
+            return false;
+        if (this.esHabilidadEntrenadaNoClasea(habilidad))
             return false;
         const actual = Number(habilidad?.Rangos ?? 0);
         const limite = this.getLimiteRangoHabilidad(Number(habilidad?.Id));
@@ -2224,6 +2587,11 @@ export class NuevoPersonajeComponent {
             .join(', ');
     }
 
+    private esNombreHabilidadOcultaEnTabla(nombre: string): boolean {
+        const normalizado = this.normalizarTexto(nombre ?? '');
+        return normalizado === 'crear 1' || normalizado === 'crear 2';
+    }
+
     continuarDesdeHabilidades(): void {
         if (!this.nuevoPSvc.puedeCerrarDistribucionHabilidades())
             return;
@@ -2233,6 +2601,48 @@ export class NuevoPersonajeComponent {
             return;
 
         this.nuevoPSvc.actualizarPasoActual(returnStep);
+        this.sincronizarTabConPaso();
+    }
+
+    onFiltroConjurosTextoChange(value: string): void {
+        this.filtroConjurosTexto = `${value ?? ''}`;
+    }
+
+    onFiltroConjurosNivelChange(value: number | null): void {
+        if (value === null || value === undefined || `${value}` === '')
+            this.filtroConjurosNivel = null;
+        else
+            this.filtroConjurosNivel = Number(value);
+    }
+
+    getNivelConjuroEntrada(conjuro: Conjuro): number {
+        const entrada = this.entradaConjurosActual;
+        if (!entrada)
+            return 0;
+        return Number(entrada.nivelesPorConjuro?.[Number(conjuro?.Id)] ?? 0);
+    }
+
+    esConjuroAutoadicionado(conjuro: Conjuro): boolean {
+        const entrada = this.entradaConjurosActual;
+        if (!entrada)
+            return false;
+        return (entrada.autoadicionadosIds ?? []).some((id) => Number(id) === Number(conjuro?.Id));
+    }
+
+    agregarConjuroSesion(conjuro: Conjuro): void {
+        this.nuevoPSvc.seleccionarConjuroSesion(Number(conjuro?.Id));
+    }
+
+    quitarConjuroSesion(conjuro: Conjuro): void {
+        this.nuevoPSvc.quitarConjuroSesion(Number(conjuro?.Id));
+    }
+
+    continuarDesdeConjuros(): void {
+        if (!this.nuevoPSvc.puedeCerrarSesionConjuros())
+            return;
+        const nextStep = this.nuevoPSvc.cerrarSesionConjuros();
+        this.Personaje = this.nuevoPSvc.PersonajeCreacion;
+        this.nuevoPSvc.actualizarPasoActual(nextStep);
         this.sincronizarTabConPaso();
     }
 
@@ -2357,6 +2767,47 @@ export class NuevoPersonajeComponent {
         return selecciones;
     }
 
+    private async solicitarSeleccionesAumentosClaseLanzadora(
+        pendientes: ClaseAumentoLanzadorPendiente[],
+        clase: Clase
+    ): Promise<SeleccionAumentosClaseLanzadora | null> {
+        const selecciones: SeleccionAumentosClaseLanzadora = [];
+        for (const pendiente of (pendientes ?? [])) {
+            const opciones = pendiente.opciones ?? [];
+            if (opciones.length < 1)
+                continue;
+
+            const inputOptions: Record<string, string> = {};
+            opciones.forEach((opcion) => {
+                inputOptions[`${opcion.idClase}`] = `${opcion.nombreClase} (${opcion.tipoLanzamiento})`;
+            });
+
+            const result = await Swal.fire({
+                icon: 'question',
+                title: `${clase?.Nombre ?? 'Clase'}: aumento de lanzador`,
+                text: pendiente.descripcion || 'Selecciona la clase objetivo para aplicar el aumento de nivel de lanzador.',
+                input: 'select',
+                inputOptions,
+                inputPlaceholder: 'Selecciona una clase',
+                showCancelButton: true,
+                confirmButtonText: 'Aplicar',
+                cancelButtonText: 'Cancelar',
+                target: document.body,
+                heightAuto: false,
+                scrollbarPadding: false,
+                inputValidator: (value) => value ? undefined : 'Debes elegir una clase objetivo',
+            });
+
+            if (!result.isConfirmed || !result.value)
+                return null;
+
+            const indice = Math.max(0, Number(pendiente.indice ?? 1) - 1);
+            selecciones[indice] = Number(result.value);
+        }
+
+        return selecciones;
+    }
+
     private getEtiquetaOpcionInternaClase(opcion: {
         tipo: 'dote' | 'especial';
         nombre: string;
@@ -2449,6 +2900,36 @@ export class NuevoPersonajeComponent {
                     <li>Cada ventaja cuesta puntos de ventaja.</li>
                     <li>Obtienes esos puntos eligiendo desventajas para tu personaje.</li>
                 </ul>
+            `,
+            confirmButtonText: 'Entendido',
+        });
+    }
+
+    abrirInfoRecomendacionesClase(event?: Event): void {
+        event?.preventDefault();
+        event?.stopPropagation();
+        if (!this.mostrarInfoRecomendacionesClase)
+            return;
+
+        const recomendacion = this.Personaje?.Auto_reparto?.recomendacion;
+        if (!recomendacion || recomendacion.clases.length < 2)
+            return;
+
+        Swal.fire({
+            target: document.body,
+            icon: 'info',
+            title: 'Recomendaciones',
+            width: 560,
+            html: `
+                <p style="text-align:left; margin-bottom:10px;">
+                    Pues yo de ti, elegiría esto…
+                </p>
+                <p style="text-align:left; margin-bottom:8px;">
+                    <strong>${recomendacion.clases[0]}</strong> o <strong>${recomendacion.clases[1]}</strong>
+                </p>
+                <p style="text-align:left; margin:0;">
+                    ${recomendacion.explicacion}
+                </p>
             `,
             confirmButtonText: 'Entendido',
         });
@@ -2586,6 +3067,7 @@ export class NuevoPersonajeComponent {
             return Promise.resolve(true);
         }
 
+        this.limpiarFocoActivoAntesDeModal();
         this.contextoSelectorIdioma = 'idiomasIniciales';
         this.selectorIdiomaTitulo = 'Seleccionar idiomas iniciales';
         this.selectorIdiomaCantidadObjetivo = objetivo;
@@ -2620,6 +3102,7 @@ export class NuevoPersonajeComponent {
     }
 
     private abrirSelectorIdiomaParaVentaja(idVentaja: number): void {
+        this.limpiarFocoActivoAntesDeModal();
         this.contextoSelectorIdioma = 'ventaja';
         this.resolverSelectorIdioma = null;
         this.ventajaPendienteIdiomaId = idVentaja;
@@ -2937,6 +3420,22 @@ export class NuevoPersonajeComponent {
                 this.recalcularClasesVisibles();
             },
         });
+    }
+
+    private async asegurarCatalogoConjuros(): Promise<void> {
+        if (this.conjurosCatalogoCargado)
+            return;
+
+        try {
+            const conjuros = await firstValueFrom(this.conjuroSvc.getConjuros().pipe(take(1)));
+            this.catalogoConjuros = conjuros ?? [];
+            this.nuevoPSvc.setCatalogoConjuros(this.catalogoConjuros);
+        } catch {
+            this.catalogoConjuros = [];
+            this.nuevoPSvc.setCatalogoConjuros([]);
+        } finally {
+            this.conjurosCatalogoCargado = true;
+        }
     }
 
     private cargarDominios(): void {

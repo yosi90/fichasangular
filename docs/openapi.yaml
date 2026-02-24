@@ -1374,9 +1374,7 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/UsuarioPermissionCreate'
-      oneOf:
-        - required: [uid, displayName, email]
-        - required: [firebaseUid, displayName, email]
+      required: [displayName, email]
 
     UsuarioLegacyPlayer:
       type: object
@@ -3008,7 +3006,7 @@ components:
             Fortaleza: { type: string }
             Reflejos: { type: string }
             Voluntad: { type: string }
-        Nivel_max_conjuro: { type: integer }
+        nivel_max_poder_accesible_nivel_lanzadorPsionico: { type: integer }
         Reserva_psionica: { type: integer }
         Aumentos_clase_lanzadora:
           type: array
