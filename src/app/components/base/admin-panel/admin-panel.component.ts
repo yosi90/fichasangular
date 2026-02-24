@@ -32,6 +32,9 @@ import { ArmaService } from 'src/app/services/arma.service';
 import { ArmaduraService } from 'src/app/services/armadura.service';
 import { GrupoArmaService } from 'src/app/services/grupo-arma.service';
 import { GrupoArmaduraService } from 'src/app/services/grupo-armadura.service';
+import { UserService } from 'src/app/services/user.service';
+import { AdminUserRow, AdminUsersService } from 'src/app/services/admin-users.service';
+import { PERMISSION_RESOURCES, PermissionResource, UserRole } from 'src/app/interfaces/user-acl';
 
 interface SyncItemConfig {
     key: CacheEntityKey;
@@ -51,6 +54,13 @@ interface SyncItemUi extends SyncItemConfig, CacheSyncUiState {
 })
 export class AdminPanelComponent implements OnInit, OnDestroy {
     hasCon?: boolean;
+    esAdmin: boolean = false;
+    cargandoUsuarios: boolean = true;
+    errorUsuarios: string = '';
+    filtroUsuarios: string = '';
+    usuariosAdmin: AdminUserRow[] = [];
+    readonly permissionResources = PERMISSION_RESOURCES;
+    readonly roleOptions: UserRole[] = ['usuario', 'colaborador', 'admin'];
     serverStatusIcon: string = 'question_mark';
     serverStatus: string = 'Verificar conexión';
     syncItems: SyncItemUi[] = [];
@@ -58,6 +68,7 @@ export class AdminPanelComponent implements OnInit, OnDestroy {
 
     private readonly destroy$ = new Subject<void>();
     private readonly keysEjecutando = new Set<CacheEntityKey>();
+    private readonly userOpsInFlight = new Set<string>();
     private readonly dateFormatter = new Intl.DateTimeFormat('es-ES', {
         day: '2-digit',
         month: '2-digit',
@@ -100,6 +111,8 @@ export class AdminPanelComponent implements OnInit, OnDestroy {
         private deidadSvc: DeidadService,
         private ventajaSvc: VentajaService,
         private cacheSyncMetadataSvc: CacheSyncMetadataService,
+        private userSvc: UserService,
+        private adminUsersSvc: AdminUsersService,
     ) {
         this.syncRunners = {
             lista_personajes: () => this.lpSvc.RenovarPersonajesSimples(),
@@ -137,10 +150,31 @@ export class AdminPanelComponent implements OnInit, OnDestroy {
             deidades: () => this.deidadSvc.RenovarDeidades(),
             plantillas: () => this.plSvc.RenovarPlantillas(),
             ventajas_desventajas: () => this.ventajaSvc.RenovarVentajasYDesventajas(),
+            usuarios_acl_cache: () => this.adminUsersSvc.syncUsersCacheFromApi(),
         };
     }
 
     ngOnInit(): void {
+        this.userSvc.esAdmin$
+            .pipe(takeUntil(this.destroy$))
+            .subscribe((estado) => {
+                this.esAdmin = estado === true;
+                if (this.esAdmin)
+                    void this.validarAccesoAdmin();
+            });
+        this.adminUsersSvc.watchUsersAdminView()
+            .pipe(takeUntil(this.destroy$))
+            .subscribe({
+                next: (rows: AdminUserRow[]) => {
+                    this.usuariosAdmin = rows;
+                    this.cargandoUsuarios = false;
+                    this.errorUsuarios = '';
+                },
+                error: (error: any) => {
+                    this.errorUsuarios = error?.message ?? 'No se pudieron cargar los usuarios';
+                    this.cargandoUsuarios = false;
+                }
+            });
         this.verificar();
         this.cacheSyncMetadataSvc.watchAll()
             .pipe(takeUntil(this.destroy$))
@@ -196,14 +230,26 @@ export class AdminPanelComponent implements OnInit, OnDestroy {
     }
 
     async ejecutarSync(item: SyncItemUi): Promise<void> {
+        if (!this.esAdmin)
+            return;
         if (this.keysEjecutando.has(item.key))
             return;
+
+        try {
+            await this.adminUsersSvc.assertAdminAccess();
+        } catch (error: any) {
+            this.errorUsuarios = error?.message ?? 'No autorizado';
+            this.esAdmin = false;
+            return;
+        }
 
         this.keysEjecutando.add(item.key);
         try {
             const ok = await item.run();
             if (ok)
                 await this.cacheSyncMetadataSvc.markSuccess(item.key, item.schemaVersion);
+        } catch (error: any) {
+            this.errorUsuarios = error?.message ?? 'No se pudo ejecutar la sincronización';
         } finally {
             this.keysEjecutando.delete(item.key);
         }
@@ -222,5 +268,164 @@ export class AdminPanelComponent implements OnInit, OnDestroy {
 
     trackBySyncItem(index: number, item: SyncItemUi): CacheEntityKey {
         return item.key;
+    }
+
+    get usuariosFiltrados(): AdminUserRow[] {
+        const filtro = this.normalizarTexto(this.filtroUsuarios);
+        if (filtro.length < 1)
+            return this.usuariosAdmin;
+
+        return this.usuariosAdmin.filter((row) => {
+            const nombre = this.normalizarTexto(row.displayName);
+            const correo = this.normalizarTexto(row.email);
+            const uid = this.normalizarTexto(row.uid);
+            return nombre.includes(filtro) || correo.includes(filtro) || uid.includes(filtro);
+        });
+    }
+
+    get etiquetaEstadoUsuarios(): string {
+        if (this.cargandoUsuarios)
+            return 'Cargando usuarios...';
+        if (this.errorUsuarios.length > 0)
+            return this.errorUsuarios;
+        if (this.usuariosFiltrados.length < 1)
+            return 'No hay usuarios que coincidan con el filtro actual';
+        return '';
+    }
+
+    providerLabel(provider: string): string {
+        const normalizado = this.normalizarTexto(provider);
+        if (normalizado === 'correo')
+            return 'Correo';
+        if (normalizado === 'google')
+            return 'Google';
+        return 'Otro';
+    }
+
+    roleLabel(role: UserRole): string {
+        if (role === 'admin')
+            return 'Admin';
+        if (role === 'colaborador')
+            return 'Colaborador';
+        return 'Usuario';
+    }
+
+    isSelfRow(row: AdminUserRow): boolean {
+        const uidActual = this.userSvc.CurrentUserUid;
+        return uidActual.length > 0 && uidActual === row.uid;
+    }
+
+    canToggleBan(row: AdminUserRow): boolean {
+        if (!this.esAdmin)
+            return false;
+        if (this.isUserOpRunning(row.uid, 'ban'))
+            return false;
+        if (this.isSelfRow(row))
+            return false;
+        return true;
+    }
+
+    canChangeRole(row: AdminUserRow): boolean {
+        if (!this.esAdmin)
+            return false;
+        if (this.isUserOpRunning(row.uid, 'role'))
+            return false;
+        if (this.isSelfRow(row))
+            return false;
+        if (row.role === 'admin')
+            return false;
+        return true;
+    }
+
+    canTogglePermission(row: AdminUserRow, resource: PermissionResource): boolean {
+        if (!this.esAdmin)
+            return false;
+        if (resource === 'personajes')
+            return false;
+        if (row.role === 'admin' || row.role === 'usuario')
+            return false;
+        if (this.isUserOpRunning(row.uid, `perm:${resource}`))
+            return false;
+        return true;
+    }
+
+    async onToggleBanned(row: AdminUserRow, value: boolean): Promise<void> {
+        if (!this.canToggleBan(row))
+            return;
+
+        const opKey = this.userOpKey(row.uid, 'ban');
+        this.userOpsInFlight.add(opKey);
+        try {
+            await this.adminUsersSvc.setBanned(row.uid, value);
+        } catch (error: any) {
+            this.errorUsuarios = error?.message ?? 'No se pudo actualizar el estado de ban';
+        } finally {
+            this.userOpsInFlight.delete(opKey);
+        }
+    }
+
+    async onRoleChange(row: AdminUserRow, value: UserRole): Promise<void> {
+        if (!this.canChangeRole(row))
+            return;
+        if (row.role === value)
+            return;
+
+        const opKey = this.userOpKey(row.uid, 'role');
+        this.userOpsInFlight.add(opKey);
+        try {
+            await this.adminUsersSvc.setRole(row.uid, value);
+        } catch (error: any) {
+            this.errorUsuarios = error?.message ?? 'No se pudo actualizar el rol del usuario';
+        } finally {
+            this.userOpsInFlight.delete(opKey);
+        }
+    }
+
+    async onToggleCreatePermission(row: AdminUserRow, resource: PermissionResource, value: boolean): Promise<void> {
+        if (!this.canTogglePermission(row, resource))
+            return;
+
+        const opKey = this.userOpKey(row.uid, `perm:${resource}`);
+        this.userOpsInFlight.add(opKey);
+        try {
+            await this.adminUsersSvc.setCreatePermission(row.uid, resource, value);
+        } catch (error: any) {
+            this.errorUsuarios = error?.message ?? `No se pudo actualizar permiso ${resource}.create`;
+        } finally {
+            this.userOpsInFlight.delete(opKey);
+        }
+    }
+
+    trackByUser(index: number, item: AdminUserRow): string {
+        return item.uid;
+    }
+
+    trackByPermissionResource(index: number, item: PermissionResource): string {
+        return item;
+    }
+
+    private normalizarTexto(value: string): string {
+        return `${value ?? ''}`
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .trim()
+            .toLowerCase();
+    }
+
+    private userOpKey(uid: string, action: string): string {
+        return `${uid}::${action}`;
+    }
+
+    private isUserOpRunning(uid: string, action: string): boolean {
+        return this.userOpsInFlight.has(this.userOpKey(uid, action));
+    }
+
+    private async validarAccesoAdmin(): Promise<void> {
+        try {
+            await this.adminUsersSvc.assertAdminAccess();
+        } catch (error: any) {
+            this.errorUsuarios = error?.message ?? 'No autorizado';
+            this.esAdmin = false;
+        }
     }
 }

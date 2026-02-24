@@ -1,0 +1,530 @@
+import { Injectable } from '@angular/core';
+import { Auth } from '@angular/fire/auth';
+import { Database, get, onValue, ref, set } from '@angular/fire/database';
+import { Observable, combineLatest, map } from 'rxjs';
+import {
+    EMPTY_USER_ACL,
+    PERMISSION_RESOURCES,
+    PermissionResource,
+    UserRole,
+    normalizeUserAcl,
+} from '../interfaces/user-acl';
+import { AuthProviderType, UserProfile } from '../interfaces/user-profile';
+import { UsuarioListadoItemDto, UsuarioPermissionCreateDto, UsuarioUpsertRequestDto, UsuarioUpsertResponseDto } from '../interfaces/usuarios-api';
+import { UsuariosApiService } from './usuarios-api.service';
+
+export interface AdminUserRow {
+    uid: string;
+    displayName: string;
+    email: string;
+    authProvider: AuthProviderType;
+    role: UserRole;
+    banned: boolean;
+    admin: boolean;
+    permissions: Record<PermissionResource, boolean>;
+    updatedAt: number | null;
+}
+
+@Injectable({
+    providedIn: 'root'
+})
+export class AdminUsersService {
+    constructor(private db: Database, private auth: Auth, private usuariosApiSvc: UsuariosApiService) { }
+
+    watchUsersAdminView(): Observable<AdminUserRow[]> {
+        return combineLatest([
+            this.watchPath('UserProfiles'),
+            this.watchPath('Acl/users'),
+        ]).pipe(
+            map(([profilesRaw, aclRaw]) => this.buildRows(profilesRaw, aclRaw))
+        );
+    }
+
+    async setBanned(uid: string, value: boolean): Promise<void> {
+        const actorUid = await this.ensureActorAdmin();
+        const uidObjetivo = `${uid ?? ''}`.trim();
+        if (uidObjetivo.length < 1)
+            throw new Error('UID inválido');
+        if (value === true && uidObjetivo === actorUid)
+            throw new Error('No puedes banear tu propia cuenta');
+
+        const rawAcl = await this.getPath(`Acl/users/${uidObjetivo}`);
+        const acl = normalizeUserAcl(rawAcl);
+        const permissions = this.toPermissionsMap(
+            this.buildEffectivePermissionsCreate(
+                acl.roles.type,
+                this.permissionsArrayFromAclPermissions(acl.permissions)
+            )
+        );
+        const payload = this.buildAclWritePayload(
+            acl.roles.type,
+            value,
+            permissions,
+            rawAcl,
+            actorUid
+        );
+
+        await this.setPath(`Acl/users/${uidObjetivo}`, payload);
+        await this.backupUserToApi(uidObjetivo);
+    }
+
+    async setAdmin(uid: string, value: boolean): Promise<void> {
+        if (value !== true)
+            throw new Error('El rol admin no se puede quitar manualmente');
+        await this.setRole(uid, 'admin');
+    }
+
+    async setRole(uid: string, role: UserRole): Promise<void> {
+        const actorUid = await this.ensureActorAdmin();
+        const uidObjetivo = `${uid ?? ''}`.trim();
+        if (uidObjetivo.length < 1)
+            throw new Error('UID inválido');
+
+        const rawAcl = await this.getPath(`Acl/users/${uidObjetivo}`);
+        const acl = normalizeUserAcl(rawAcl);
+        if (acl.roles.type === 'admin' && role !== 'admin')
+            throw new Error('No se puede degradar manualmente una cuenta admin');
+
+        const permissions = this.toPermissionsMap(
+            this.buildEffectivePermissionsCreate(
+                role,
+                this.permissionsArrayFromAclPermissions(acl.permissions)
+            )
+        );
+        const payload = this.buildAclWritePayload(
+            role,
+            acl.status.banned === true,
+            permissions,
+            rawAcl,
+            actorUid
+        );
+
+        await this.setPath(`Acl/users/${uidObjetivo}`, payload);
+        await this.backupUserToApi(uidObjetivo);
+    }
+
+    async setCreatePermission(uid: string, resource: PermissionResource, value: boolean): Promise<void> {
+        const actorUid = await this.ensureActorAdmin();
+        const uidObjetivo = `${uid ?? ''}`.trim();
+        if (uidObjetivo.length < 1)
+            throw new Error('UID inválido');
+        if (!PERMISSION_RESOURCES.includes(resource))
+            throw new Error('Recurso de permiso inválido');
+
+        const rawAcl = await this.getPath(`Acl/users/${uidObjetivo}`);
+        const acl = normalizeUserAcl(rawAcl);
+        if (acl.roles.type === 'admin')
+            throw new Error('Los permisos de un admin son fijos y siempre están activos');
+        if (acl.roles.type === 'usuario')
+            throw new Error('El rol usuario no admite permisos adicionales');
+        if (resource === 'personajes' && value !== true)
+            throw new Error('El permiso personajes.create es obligatorio');
+
+        const permissions = this.toPermissionsMap(this.permissionsArrayFromAclPermissions(acl.permissions));
+        permissions[resource] = resource === 'personajes' ? true : value;
+        const permissionsEfectivos = this.toPermissionsMap(
+            this.buildEffectivePermissionsCreate(acl.roles.type, this.mapToPermissionsArray(permissions))
+        );
+        const payload = this.buildAclWritePayload(
+            acl.roles.type,
+            acl.status.banned === true,
+            permissionsEfectivos,
+            rawAcl,
+            actorUid
+        );
+
+        await this.setPath(`Acl/users/${uidObjetivo}`, payload);
+        await this.backupUserToApi(uidObjetivo);
+    }
+
+    async assertAdminAccess(): Promise<void> {
+        await this.ensureActorAdmin();
+    }
+
+    async syncUsersCacheFromApi(): Promise<boolean> {
+        const usuarios = await this.listUsersApi();
+        const cachePayload = this.buildCachePayloadFromApi(usuarios);
+        await this.setPath('UserProfiles', cachePayload.userProfilesByUid);
+        await this.setPath('Acl/users', cachePayload.aclByUid);
+        return true;
+    }
+
+    protected watchPath(path: string): Observable<any> {
+        return new Observable((observer) => {
+            const dbRef = ref(this.db, path);
+            const unsubscribe = onValue(
+                dbRef,
+                (snapshot) => observer.next(snapshot.val()),
+                (error) => observer.error(error)
+            );
+
+            return () => unsubscribe();
+        });
+    }
+
+    protected async getPath(path: string): Promise<any> {
+        const snapshot = await get(ref(this.db, path));
+        return snapshot.val();
+    }
+
+    protected async setPath(path: string, payload: any): Promise<void> {
+        await set(ref(this.db, path), payload);
+    }
+
+    protected listUsersApi(): Promise<UsuarioListadoItemDto[]> {
+        return this.usuariosApiSvc.listUsers();
+    }
+
+    protected upsertUserApi(payload: UsuarioUpsertRequestDto): Promise<UsuarioUpsertResponseDto> {
+        return this.usuariosApiSvc.upsertUser(payload);
+    }
+
+    private async ensureActorAdmin(): Promise<string> {
+        const actorUid = `${this.auth.currentUser?.uid ?? ''}`.trim();
+        if (actorUid.length < 1)
+            throw new Error('Sesión no iniciada');
+
+        const aclRaw = await this.getPath('Acl/users');
+        const aclByUid = this.toAclByUid(aclRaw);
+        this.assertNoDuplicateAdminsInCache(aclByUid);
+
+        const actorAcl = aclByUid[actorUid] ?? { ...EMPTY_USER_ACL };
+        if (actorAcl.status?.banned === true)
+            throw new Error('No autorizado');
+        if (actorAcl.roles?.type !== 'admin' || actorAcl.roles?.admin !== true)
+            throw new Error('No autorizado');
+
+        return actorUid;
+    }
+
+    private buildRows(profilesRaw: any, aclRaw: any): AdminUserRow[] {
+        const perfiles = this.toProfilesByUid(profilesRaw);
+        const aclByUid = this.toAclByUid(aclRaw);
+
+        const uids = new Set<string>([
+            ...Object.keys(perfiles),
+            ...Object.keys(aclByUid),
+        ]);
+
+        const rows: AdminUserRow[] = [];
+        uids.forEach((uid) => {
+            const profile = perfiles[uid];
+            const acl = aclByUid[uid] ?? { ...EMPTY_USER_ACL };
+            const role = acl.roles?.type ?? 'usuario';
+
+            rows.push({
+                uid,
+                displayName: `${profile?.displayName ?? ''}`.trim(),
+                email: `${profile?.email ?? ''}`.trim(),
+                authProvider: this.normalizeProvider(profile?.authProvider),
+                role,
+                banned: acl.status?.banned === true,
+                admin: role === 'admin',
+                permissions: this.getPermissionsByResource(role, acl.permissions),
+                updatedAt: this.toOptionalNumber((aclRaw?.[uid] as Record<string, any>)?.['updatedAt']),
+            });
+        });
+
+        return rows.sort((a, b) => this.sortRows(a, b));
+    }
+
+    private toProfilesByUid(raw: any): Record<string, UserProfile> {
+        if (!raw || typeof raw !== 'object')
+            return {};
+
+        const output: Record<string, UserProfile> = {};
+        Object.entries(raw as Record<string, any>).forEach(([uid, value]) => {
+            const uidNormalizado = `${uid ?? ''}`.trim();
+            if (uidNormalizado.length < 1)
+                return;
+            if (!value || typeof value !== 'object')
+                return;
+
+            const profile: UserProfile = {
+                uid: uidNormalizado,
+                displayName: `${value?.displayName ?? ''}`.trim(),
+                email: `${value?.email ?? ''}`.trim(),
+                authProvider: this.normalizeProvider(value?.authProvider),
+                createdAt: this.toNumber(value?.createdAt),
+                lastSeenAt: this.toNumber(value?.lastSeenAt),
+            };
+            output[uidNormalizado] = profile;
+        });
+        return output;
+    }
+
+    private toAclByUid(raw: any): Record<string, ReturnType<typeof normalizeUserAcl>> {
+        if (!raw || typeof raw !== 'object')
+            return {};
+
+        const output: Record<string, ReturnType<typeof normalizeUserAcl>> = {};
+        Object.entries(raw as Record<string, any>).forEach(([uid, value]) => {
+            const uidNormalizado = `${uid ?? ''}`.trim();
+            if (uidNormalizado.length < 1)
+                return;
+            output[uidNormalizado] = normalizeUserAcl(value);
+        });
+        return output;
+    }
+
+    private getPermissionsByResource(role: UserRole, rawPermissions: Record<string, Record<string, boolean>>): Record<PermissionResource, boolean> {
+        const base = {} as Record<PermissionResource, boolean>;
+        PERMISSION_RESOURCES.forEach((resource) => {
+            if (role === 'admin') {
+                base[resource] = true;
+                return;
+            }
+
+            if (resource === 'personajes') {
+                base[resource] = true;
+                return;
+            }
+
+            if (role === 'usuario') {
+                base[resource] = false;
+                return;
+            }
+
+            base[resource] = rawPermissions?.[resource]?.['create'] === true;
+        });
+        return base;
+    }
+
+    private normalizeProvider(raw: any): AuthProviderType {
+        const value = `${raw ?? ''}`.trim().toLowerCase();
+        if (value === 'correo')
+            return 'correo';
+        if (value === 'google')
+            return 'google';
+        return 'otro';
+    }
+
+    private sortRows(a: AdminUserRow, b: AdminUserRow): number {
+        const aKey = `${a.displayName || a.email || a.uid}`.toLowerCase();
+        const bKey = `${b.displayName || b.email || b.uid}`.toLowerCase();
+        if (aKey === bKey)
+            return a.uid.localeCompare(b.uid);
+        return aKey.localeCompare(bKey);
+    }
+
+    private toNumber(value: any): number {
+        const parsed = Number(value);
+        return Number.isFinite(parsed) ? Math.trunc(parsed) : 0;
+    }
+
+    private toOptionalNumber(value: any): number | null {
+        const parsed = Number(value);
+        return Number.isFinite(parsed) ? Math.trunc(parsed) : null;
+    }
+
+    private assertNoDuplicateAdminsInCache(aclByUid: Record<string, ReturnType<typeof normalizeUserAcl>>): void {
+        const adminCount = Object.values(aclByUid)
+            .filter((acl) => acl.roles?.type === 'admin' || acl.roles?.admin === true)
+            .length;
+        if (adminCount > 1)
+            throw new Error('Salvaguarda activada: hay múltiples admins en Firebase. Operación bloqueada.');
+    }
+
+    private buildAclWritePayload(
+        role: UserRole,
+        banned: boolean,
+        permissionsMap: Record<PermissionResource, boolean>,
+        currentRaw: any,
+        actorUid: string
+    ): any {
+        const permissionsRaw: Record<string, Record<string, boolean>> = {};
+        PERMISSION_RESOURCES.forEach((resource) => {
+            permissionsRaw[resource] = { create: permissionsMap[resource] === true };
+        });
+
+        const base = currentRaw && typeof currentRaw === 'object' ? currentRaw : {};
+        return {
+            ...base,
+            roles: {
+                type: role,
+                admin: role === 'admin',
+            },
+            status: {
+                ...((base as Record<string, any>)?.['status'] ?? {}),
+                banned: banned === true,
+            },
+            permissions: permissionsRaw,
+            updatedAt: Date.now(),
+            updatedBy: actorUid,
+        };
+    }
+
+    private permissionsArrayFromAclPermissions(rawPermissions: Record<string, Record<string, boolean>>): UsuarioPermissionCreateDto[] {
+        return PERMISSION_RESOURCES.map((resource) => ({
+            resource,
+            allowed: rawPermissions?.[resource]?.['create'] === true,
+        }));
+    }
+
+    private async backupUserToApi(uid: string): Promise<void> {
+        const payload = await this.buildUpsertPayloadFromCache(uid);
+        if (!payload)
+            return;
+
+        try {
+            await this.upsertUserApi(payload);
+        } catch {
+            // Backup best-effort: no bloquea la gestión en tiempo real de RTDB.
+        }
+    }
+
+    private async buildUpsertPayloadFromCache(uid: string): Promise<UsuarioUpsertRequestDto | null> {
+        const uidNormalizado = `${uid ?? ''}`.trim();
+        if (uidNormalizado.length < 1)
+            return null;
+
+        const [profileRaw, aclRaw] = await Promise.all([
+            this.getPath(`UserProfiles/${uidNormalizado}`),
+            this.getPath(`Acl/users/${uidNormalizado}`),
+        ]);
+        const acl = normalizeUserAcl(aclRaw);
+        const role = acl.roles?.type ?? 'usuario';
+        const permissionsCreate = this.buildEffectivePermissionsCreate(
+            role,
+            this.permissionsArrayFromAclPermissions(acl.permissions)
+        );
+
+        const emailBase = `${profileRaw?.email ?? ''}`.trim();
+        const email = this.truncate(emailBase.length > 0 ? emailBase : `${uidNormalizado}@sin-email.local`, 60);
+        const displayNameBase = `${profileRaw?.displayName ?? ''}`.trim();
+        const displayName = this.truncate(
+            displayNameBase.length > 0 ? displayNameBase : this.fallbackDisplayName(email, uidNormalizado),
+            20
+        );
+
+        return {
+            uid: uidNormalizado,
+            displayName,
+            email,
+            authProvider: this.normalizeProvider(profileRaw?.authProvider),
+            role,
+            banned: acl.status?.banned === true,
+            permissionsCreate,
+        };
+    }
+
+    private buildEffectivePermissionsCreate(
+        role: UserRole,
+        permissions: UsuarioPermissionCreateDto[] | null | undefined
+    ): UsuarioPermissionCreateDto[] {
+        const map = this.toPermissionsMap(permissions);
+
+        if (role === 'admin') {
+            PERMISSION_RESOURCES.forEach((resource) => map[resource] = true);
+            return this.mapToPermissionsArray(map);
+        }
+
+        map.personajes = true;
+        if (role === 'usuario') {
+            PERMISSION_RESOURCES
+                .filter((resource) => resource !== 'personajes')
+                .forEach((resource) => map[resource] = false);
+            return this.mapToPermissionsArray(map);
+        }
+
+        return this.mapToPermissionsArray(map);
+    }
+
+    private toPermissionsMap(
+        permissions: UsuarioPermissionCreateDto[] | null | undefined
+    ): Record<PermissionResource, boolean> {
+        const output = {} as Record<PermissionResource, boolean>;
+        PERMISSION_RESOURCES.forEach((resource) => {
+            output[resource] = false;
+        });
+
+        (permissions ?? []).forEach((item) => {
+            const resource = `${item?.resource ?? ''}`.trim().toLowerCase();
+            if (!PERMISSION_RESOURCES.includes(resource as PermissionResource))
+                return;
+            output[resource as PermissionResource] = item?.allowed === true;
+        });
+
+        return output;
+    }
+
+    private mapToPermissionsArray(map: Record<PermissionResource, boolean>): UsuarioPermissionCreateDto[] {
+        return PERMISSION_RESOURCES.map((resource) => ({
+            resource,
+            allowed: map[resource] === true,
+        }));
+    }
+
+    private buildCachePayloadFromApi(usuarios: UsuarioListadoItemDto[]): {
+        userProfilesByUid: Record<string, UserProfile>;
+        aclByUid: Record<string, any>;
+    } {
+        const now = Date.now();
+        const userProfilesByUid: Record<string, UserProfile> = {};
+        const aclByUid: Record<string, any> = {};
+
+        usuarios.forEach((row) => {
+            const uid = `${row?.uid ?? ''}`.trim();
+            if (uid.length < 1)
+                return;
+
+            const role = (row?.role ?? 'usuario') as UserRole;
+            const permissionsCreate = this.buildEffectivePermissionsCreate(role, row.permissionsCreate);
+            const permissionsMap = this.toPermissionsMap(permissionsCreate);
+            const permissionsRaw: Record<string, Record<string, boolean>> = {};
+            PERMISSION_RESOURCES.forEach((resource) => {
+                permissionsRaw[resource] = { create: permissionsMap[resource] === true };
+            });
+
+            const updatedAtParsed = Date.parse(`${row?.updatedAtUtc ?? ''}`.trim());
+            const updatedAt = Number.isFinite(updatedAtParsed) ? updatedAtParsed : now;
+
+            userProfilesByUid[uid] = {
+                uid,
+                displayName: `${row?.displayName ?? ''}`.trim(),
+                email: `${row?.email ?? ''}`.trim(),
+                authProvider: this.normalizeProvider(row?.authProvider),
+                createdAt: now,
+                lastSeenAt: now,
+            };
+
+            aclByUid[uid] = {
+                roles: {
+                    type: role,
+                    admin: role === 'admin' || row?.admin === true,
+                },
+                status: {
+                    banned: row?.banned === true,
+                },
+                permissions: permissionsRaw,
+                updatedAt,
+                updatedBy: `${row?.updatedByUserId ?? ''}`.trim(),
+            };
+        });
+
+        return { userProfilesByUid, aclByUid };
+    }
+
+    private fallbackDisplayName(email: string, uid: string): string {
+        const emailNormalizado = `${email ?? ''}`.trim();
+        if (emailNormalizado.length > 0) {
+            const atPos = emailNormalizado.indexOf('@');
+            if (atPos > 0)
+                return emailNormalizado.substring(0, atPos);
+            return emailNormalizado;
+        }
+
+        const uidNormalizado = `${uid ?? ''}`.trim();
+        if (uidNormalizado.length > 0)
+            return uidNormalizado.substring(0, Math.min(uidNormalizado.length, 20));
+
+        return 'Usuario';
+    }
+
+    private truncate(value: string, maxLength: number): string {
+        const text = `${value ?? ''}`.trim();
+        if (text.length <= maxLength)
+            return text;
+        return text.substring(0, maxLength).trim();
+    }
+}

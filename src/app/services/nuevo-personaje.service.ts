@@ -22,10 +22,13 @@ import { resolverRacialesFinales, SeleccionRacialesOpcionales } from './utils/ra
 import { aplicarMutacion, esRazaMutada } from './utils/raza-mutacion';
 import { normalizeSubtipoRefArray } from './utils/subtipo-mapper';
 import { ClaseEvaluacionResultado, evaluarElegibilidadClase } from './utils/clase-elegibilidad';
+import { UserSettingsService } from './user-settings.service';
+import { NuevoPersonajeGeneradorConfig } from '../interfaces/user-settings';
 
 export type StepNuevoPersonaje = 'raza' | 'basicos' | 'plantillas' | 'ventajas' | 'clases' | 'habilidades';
 
-type CaracteristicaKey = 'Fuerza' | 'Destreza' | 'Constitucion' | 'Inteligencia' | 'Sabiduria' | 'Carisma';
+export type CaracteristicaKeyAumento = 'Fuerza' | 'Destreza' | 'Constitucion' | 'Inteligencia' | 'Sabiduria' | 'Carisma';
+type CaracteristicaKey = CaracteristicaKeyAumento;
 type SalvacionKey = 'fortaleza' | 'reflejos' | 'voluntad';
 
 const CARACTERISTICAS_KEYS: CaracteristicaKey[] = ['Fuerza', 'Destreza', 'Constitucion', 'Inteligencia', 'Sabiduria', 'Carisma'];
@@ -113,6 +116,19 @@ export interface AplicacionClaseResultado {
     advertencias?: string[];
     gruposOpcionalesPendientes?: ClaseGrupoOpcionalPendiente[];
     dominiosPendientes?: ClaseDominiosPendientes;
+    especialesAplicados?: ClaseEspecialNivel[];
+}
+
+export interface AumentoCaracteristicaPendiente {
+    id: number;
+    valor: number;
+    origen: string;
+    descripcion: string;
+}
+
+export interface AsignacionAumentoCaracteristica {
+    idPendiente: number;
+    caracteristica: CaracteristicaKeyAumento;
 }
 
 export interface ClaseOpcionInternaPendiente {
@@ -206,7 +222,12 @@ export class NuevoPersonajeService {
     private catalogoDeidades: DeidadDetalle[] = [];
     private idsEspecialesInternosActivos = new Set<number>();
     private idsDotesInternosActivos = new Set<number>();
+    private aumentosPendientesCaracteristica: AumentoCaracteristicaPendiente[] = [];
+    private aumentosProgresionConcedidos = 0;
+    private secuenciaAumentoPendiente = 1;
     private estadoFlujo: EstadoFlujoNuevoPersonaje = this.crearEstadoFlujoBase();
+
+    constructor(private userSettingsSvc?: UserSettingsService) { }
 
     get PersonajeCreacion(): Personaje {
         return this.personajeCreacion;
@@ -224,6 +245,31 @@ export class NuevoPersonajeService {
         return this.estadoFlujo;
     }
 
+    async sincronizarConfigGeneradorDesdeCuenta(): Promise<void> {
+        if (!this.userSettingsSvc)
+            return;
+
+        try {
+            await this.userSettingsSvc.migrateLegacyLocalConfigOnce(GENERADOR_CONFIG_STORAGE_KEY);
+            const remota = await this.userSettingsSvc.loadGeneradorConfig();
+            if (!remota)
+                return;
+
+            const minimoRaw = Number(remota.minimoSeleccionado);
+            const tablasRaw = Number(remota.tablasPermitidas);
+            const minimo = this.normalizarMinimo(Number.isFinite(minimoRaw) ? minimoRaw : DEFAULT_TIRADA);
+            const tablasPermitidas = this.normalizarTablasPermitidas(Number.isFinite(tablasRaw) ? tablasRaw : DEFAULT_TABLAS);
+            const indiceMinimo = this.getIndexByMinimo(minimo);
+
+            this.estadoFlujo.generador.minimoSeleccionado = this.getMinimoByIndex(indiceMinimo);
+            this.estadoFlujo.generador.indiceMinimo = indiceMinimo;
+            this.estadoFlujo.generador.tablasPermitidas = tablasPermitidas;
+            this.resetearGeneradorCaracteristicas();
+        } catch {
+            // Si falla la lectura de settings remotos, mantenemos configuración en memoria.
+        }
+    }
+
     reiniciar(): void {
         const catalogoHabilidades = this.estadoFlujo.ventajas.catalogoHabilidades.slice();
         const catalogoHabilidadesCustom = this.estadoFlujo.ventajas.catalogoHabilidadesCustom.slice();
@@ -239,6 +285,9 @@ export class NuevoPersonajeService {
         this.razaBaseSeleccionadaCompleta = null;
         this.idsEspecialesInternosActivos.clear();
         this.idsDotesInternosActivos.clear();
+        this.aumentosPendientesCaracteristica = [];
+        this.aumentosProgresionConcedidos = 0;
+        this.secuenciaAumentoPendiente = 1;
         this.estadoFlujo = this.crearEstadoFlujoBase();
 
         this.setCatalogoHabilidades(catalogoHabilidades);
@@ -326,6 +375,9 @@ export class NuevoPersonajeService {
         this.personajeCreacion.DotesContextuales = [];
         this.idsEspecialesInternosActivos.clear();
         this.idsDotesInternosActivos.clear();
+        this.aumentosPendientesCaracteristica = [];
+        this.aumentosProgresionConcedidos = 0;
+        this.secuenciaAumentoPendiente = 1;
         this.personajeCreacion.Salvaciones.fortaleza.modsClaseos = [];
         this.personajeCreacion.Salvaciones.reflejos.modsClaseos = [];
         this.personajeCreacion.Salvaciones.voluntad.modsClaseos = [];
@@ -550,6 +602,130 @@ export class NuevoPersonajeService {
         };
     }
 
+    registrarAumentosPendientesPorProgresion(origen: string): AumentoCaracteristicaPendiente[] {
+        const nivelEfectivoAumentos = this.getNivelEfectivoParaAumentos();
+        const totalPorProgresion = Math.max(0, Math.floor(nivelEfectivoAumentos / 4));
+        const nuevos = Math.max(0, totalPorProgresion - this.aumentosProgresionConcedidos);
+        if (nuevos < 1)
+            return [];
+
+        const origenNormalizado = `${origen ?? ''}`.trim() || 'Progresion de nivel';
+        const creados = Array.from({ length: nuevos }, () => this.crearPendienteAumento(
+            1,
+            origenNormalizado,
+            'Aumento por progresion cada 4 niveles efectivos'
+        ));
+
+        this.aumentosPendientesCaracteristica = [
+            ...this.aumentosPendientesCaracteristica,
+            ...creados,
+        ];
+        this.aumentosProgresionConcedidos += nuevos;
+        return creados.map((item) => ({ ...item }));
+    }
+
+    registrarAumentosPendientesPorEspeciales(especiales: ClaseEspecialNivel[], origen: string): AumentoCaracteristicaPendiente[] {
+        const listaEspeciales = Array.isArray(especiales) ? especiales : [];
+        const origenNormalizado = `${origen ?? ''}`.trim() || 'Especial de clase';
+        const creados: AumentoCaracteristicaPendiente[] = [];
+        listaEspeciales.forEach((especialNivel) => {
+            const valor = this.resolverValorAumentoDesdeEspecial(especialNivel);
+            if (valor < 1)
+                return;
+
+            const especialRaw = (especialNivel?.Especial ?? {}) as Record<string, any>;
+            const nombreEspecial = `${especialRaw?.['Nombre'] ?? especialRaw?.['nombre'] ?? ''}`.trim() || 'Especial';
+            creados.push(this.crearPendienteAumento(
+                valor,
+                origenNormalizado,
+                `Aumento por especial: ${nombreEspecial}`
+            ));
+        });
+
+        if (creados.length < 1)
+            return [];
+
+        this.aumentosPendientesCaracteristica = [
+            ...this.aumentosPendientesCaracteristica,
+            ...creados,
+        ];
+        return creados.map((item) => ({ ...item }));
+    }
+
+    getAumentosCaracteristicaPendientes(): AumentoCaracteristicaPendiente[] {
+        return this.aumentosPendientesCaracteristica.map((item) => ({ ...item }));
+    }
+
+    aplicarAumentosCaracteristica(asignaciones: AsignacionAumentoCaracteristica[]): boolean {
+        const pendientes = this.aumentosPendientesCaracteristica;
+        if (pendientes.length < 1)
+            return true;
+
+        const asignacionesLista = Array.isArray(asignaciones) ? asignaciones : [];
+        const pendientesPorId = new Set(pendientes.map((item) => this.toNumber(item?.id)));
+        const seleccionPorPendiente = new Map<number, CaracteristicaKey>();
+
+        for (const asignacion of asignacionesLista) {
+            const idPendiente = this.toNumber(asignacion?.idPendiente);
+            if (!pendientesPorId.has(idPendiente))
+                return false;
+
+            const caracteristicaRaw = `${asignacion?.caracteristica ?? ''}`.trim();
+            if (!this.esCaracteristicaAumentoValida(caracteristicaRaw))
+                return false;
+
+            if (seleccionPorPendiente.has(idPendiente))
+                return false;
+            seleccionPorPendiente.set(idPendiente, caracteristicaRaw);
+        }
+
+        const incrementos: Record<CaracteristicaKey, number> = {
+            Fuerza: 0,
+            Destreza: 0,
+            Constitucion: 0,
+            Inteligencia: 0,
+            Sabiduria: 0,
+            Carisma: 0,
+        };
+
+        for (const pendiente of pendientes) {
+            const idPendiente = this.toNumber(pendiente?.id);
+            const caracteristica = seleccionPorPendiente.get(idPendiente);
+            if (!caracteristica)
+                return false;
+            if (this.esCaracteristicaPerdida(caracteristica))
+                return false;
+            incrementos[caracteristica] += Math.max(0, this.toNumber(pendiente?.valor));
+        }
+
+        CARACTERISTICAS_KEYS.forEach((key) => {
+            const aumento = this.toNumber(incrementos[key]);
+            if (aumento < 1)
+                return;
+            const actual = this.toNumber((this.personajeCreacion as Record<string, any>)[key]);
+            const final = actual + aumento;
+            this.setValorCaracteristica(key, final);
+            this.setModCaracteristica(key, this.calcularModificador(final));
+        });
+
+        this.recalcularDefensasYPresa();
+        this.actualizarModsHabilidadesPorCaracteristica();
+        this.sincronizarAliasConstitucionPerdida();
+        this.estadoFlujo.ventajas.baseCaracteristicas = null;
+        this.sincronizarBaseVentajasDesdePersonaje();
+
+        this.aumentosPendientesCaracteristica = [];
+        return true;
+    }
+
+    getTopesCaracteristicas(): Partial<Record<CaracteristicaKeyAumento, number>> {
+        const topes: Partial<Record<CaracteristicaKeyAumento, number>> = {};
+        const limiteInteligencia = this.toNumber(this.personajeCreacion?.Tipo_criatura?.Limite_inteligencia);
+        if (limiteInteligencia > 0)
+            topes.Inteligencia = limiteInteligencia;
+        return topes;
+    }
+
     aplicarIdiomasAutomaticos(origen: string, idiomas: IdiomaDetalle[]): void {
         const origenNormalizado = `${origen ?? ''}`.trim();
         const existentes = new Set(
@@ -665,6 +841,7 @@ export class NuevoPersonajeService {
             evaluacion,
             advertencias: resolucionOpcionales.advertencias,
             gruposOpcionalesPendientes: resolucionOpcionales.gruposPendientes,
+            especialesAplicados: especialesAplicar.map((especialNivel) => ({ ...especialNivel })),
         };
     }
 
@@ -2863,7 +3040,7 @@ export class NuevoPersonajeService {
     }
 
     private crearEstadoFlujoBase(): EstadoFlujoNuevoPersonaje {
-        const config = this.leerConfigGenerador();
+        const config = this.getConfigGeneradorDefault();
         const indiceMinimo = this.getIndexByMinimo(config.minimoSeleccionado);
         return {
             pasoActual: 'raza',
@@ -3001,49 +3178,23 @@ export class NuevoPersonajeService {
     }
 
     private persistirConfigGenerador(): void {
-        const payload = {
+        if (!this.userSettingsSvc)
+            return;
+
+        const payload: Pick<NuevoPersonajeGeneradorConfig, 'minimoSeleccionado' | 'tablasPermitidas'> = {
             minimoSeleccionado: this.estadoFlujo.generador.minimoSeleccionado,
             tablasPermitidas: this.estadoFlujo.generador.tablasPermitidas,
         };
-        this.guardarEnLocalStorage(GENERADOR_CONFIG_STORAGE_KEY, payload);
+        this.userSettingsSvc.saveGeneradorConfig(payload).catch(() => {
+            // Si falla la escritura remota, mantenemos la configuración actual en memoria.
+        });
     }
 
-    private leerConfigGenerador(): { minimoSeleccionado: number; tablasPermitidas: number; } {
-        const defaults = {
+    private getConfigGeneradorDefault(): { minimoSeleccionado: number; tablasPermitidas: number; } {
+        return {
             minimoSeleccionado: DEFAULT_TIRADA,
             tablasPermitidas: DEFAULT_TABLAS,
         };
-
-        const raw = this.leerDeLocalStorage(GENERADOR_CONFIG_STORAGE_KEY);
-        if (!raw) {
-            return defaults;
-        }
-
-        try {
-            const parsed = JSON.parse(raw);
-            return {
-                minimoSeleccionado: this.normalizarMinimo(this.toNumber(parsed?.minimoSeleccionado) || DEFAULT_TIRADA),
-                tablasPermitidas: this.normalizarTablasPermitidas(this.toNumber(parsed?.tablasPermitidas) || DEFAULT_TABLAS),
-            };
-        } catch {
-            return defaults;
-        }
-    }
-
-    private guardarEnLocalStorage(key: string, value: unknown): void {
-        try {
-            localStorage.setItem(key, JSON.stringify(value));
-        } catch {
-            // Si localStorage no está disponible, se mantiene configuración en memoria.
-        }
-    }
-
-    private leerDeLocalStorage(key: string): string | null {
-        try {
-            return localStorage.getItem(key);
-        } catch {
-            return null;
-        }
     }
 
     private randomInt(min: number, max: number): number {
@@ -3069,6 +3220,46 @@ export class NuevoPersonajeService {
             return normalizado === '1' || normalizado === 'true' || normalizado === 'si' || normalizado === 'sí';
         }
         return false;
+    }
+
+    private esCaracteristicaAumentoValida(value: string): value is CaracteristicaKey {
+        return (CARACTERISTICAS_KEYS as string[]).includes(`${value ?? ''}`.trim());
+    }
+
+    private getNivelEfectivoParaAumentos(): number {
+        const nivelClases = (this.personajeCreacion?.desgloseClases ?? [])
+            .reduce((acc, clase) => acc + this.toNumber(clase?.Nivel), 0);
+        const dgsRaza = this.toNumber(this.razaSeleccionada?.Dgs_adicionales?.Cantidad);
+        return Math.max(0, nivelClases + dgsRaza);
+    }
+
+    private crearPendienteAumento(valor: number, origen: string, descripcion: string): AumentoCaracteristicaPendiente {
+        return {
+            id: this.secuenciaAumentoPendiente++,
+            valor: Math.max(1, Math.trunc(this.toNumber(valor))),
+            origen: `${origen ?? ''}`.trim(),
+            descripcion: `${descripcion ?? ''}`.trim(),
+        };
+    }
+
+    private resolverValorAumentoDesdeEspecial(especialNivel: ClaseEspecialNivel): number {
+        const especialRaw = (especialNivel?.Especial ?? {}) as Record<string, any>;
+        const candidatos = [
+            especialRaw?.['Modificadores']?.['Caracteristica'],
+            especialRaw?.['modificadores']?.['caracteristica'],
+            especialRaw?.['Bonificadores']?.['Caracteristica'],
+            especialRaw?.['bonificadores']?.['caracteristica'],
+            especialRaw?.['Caracteristica'],
+            especialRaw?.['caracteristica'],
+        ];
+
+        for (const candidato of candidatos) {
+            const valor = Math.trunc(this.toNumber(candidato));
+            if (valor > 0)
+                return valor;
+        }
+
+        return 0;
     }
 
     private esCaracteristicaPerdida(key: CaracteristicaKey): boolean {

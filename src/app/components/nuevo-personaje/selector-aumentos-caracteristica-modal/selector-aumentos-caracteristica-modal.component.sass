@@ -1,0 +1,160 @@
+:host
+    position: absolute
+    inset: 0
+    z-index: 60
+
+.selector-overlay
+    position: absolute
+    inset: 0
+    display: flex
+    justify-content: center
+    align-items: center
+    background: rgba(0, 0, 0, 0.6)
+    padding: 12px
+
+.selector-dialog
+    width: min(700px, 96vw)
+    max-height: 92vh
+    overflow: auto
+    background: linear-gradient(180deg, #2f3137 0%, #272a30 100%)
+    border: 1px solid #6f7683
+    border-radius: 10px
+    padding: 14px
+    display: flex
+    flex-direction: column
+    gap: 12px
+
+.selector-header
+    display: flex
+    justify-content: flex-start
+    align-items: center
+    gap: 8px
+
+.selector-title
+    color: #f3f6ff
+    font-size: 1.35rem
+    font-weight: 700
+
+.selector-header-actions
+    display: flex
+    align-items: center
+    gap: 4px
+
+.selector-icon-btn
+    color: #e9eefc
+    background: rgba(255, 255, 255, 0.08)
+
+.selector-icon-btn:hover
+    background: rgba(255, 255, 255, 0.16)
+
+.selector-icon-btn[disabled]
+    color: rgba(233, 238, 252, 0.45)
+    background: rgba(255, 255, 255, 0.03)
+
+.chip-pendiente
+    text-align: center
+    font-weight: 500
+
+.chip-pendiente.ok
+    background: rgba(62, 146, 62, 0.25)
+    border: 1px solid rgba(104, 199, 104, 0.55)
+    color: #d2f3d2
+
+.aumentos-listado
+    display: flex
+    flex-direction: column
+    gap: 10px
+    max-height: 44vh
+    overflow: auto
+    padding-right: 4px
+
+.aumento-row
+    border: 1px solid rgba(255, 255, 255, 0.16)
+    background: rgba(255, 255, 255, 0.05)
+    border-radius: 8px
+    padding: 10px
+    display: grid
+    grid-template-columns: 1fr minmax(240px, 300px)
+    gap: 12px
+    align-items: center
+
+.aumento-titulo
+    font-weight: 700
+    color: #f3f6ff
+
+.aumento-desc
+    color: #d9e1f0
+    font-size: .9rem
+    opacity: .95
+
+.aumento-origen
+    color: #b7c2d6
+    font-size: .82rem
+    opacity: .9
+
+.aumento-controles
+    display: flex
+    align-items: center
+    justify-content: center
+    width: 100%
+
+.aumento-select
+    flex: 1 1 100%
+    margin: 0
+
+.aumento-select ::ng-deep .mat-mdc-form-field-subscript-wrapper
+    display: none
+
+.preview-panel
+    display: grid
+    grid-template-columns: repeat(2, minmax(0, 1fr))
+    gap: 8px
+
+.preview-item
+    border: 1px solid rgba(255, 255, 255, 0.16)
+    border-radius: 8px
+    padding: 8px 10px
+    background: rgba(255, 255, 255, 0.04)
+
+.preview-item.warning
+    border-color: rgba(255, 177, 132, 0.65)
+    background: rgba(255, 152, 102, 0.12)
+
+.preview-main
+    display: flex
+    justify-content: space-between
+    align-items: center
+    gap: 8px
+
+.preview-nombre
+    font-weight: 700
+    color: #f0f4ff
+
+.preview-valor
+    color: #dbe3f8
+
+.preview-warning
+    font-size: .8rem
+    color: #ffd8bf
+    margin-top: 4px
+
+.detalle
+    font-size: .92rem
+    opacity: .9
+    color: #e7ebf6
+
+.selector-actions
+    display: flex
+    justify-content: flex-end
+    gap: 8px
+
+@media (max-width: 700px)
+    .aumento-row
+        grid-template-columns: 1fr
+
+    .aumento-controles
+        flex-direction: column
+        align-items: stretch
+
+    .preview-panel
+        grid-template-columns: 1fr

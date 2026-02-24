@@ -1150,7 +1150,7 @@ describe('NuevoPersonajeComponent', () => {
         expect(component.selectedInternalTabIndex).toBe(1);
     });
 
-    it('finalizarGeneracionCaracteristicas aplica valores y avanza a Plantillas', () => {
+    it('finalizarGeneracionCaracteristicas aplica valores y avanza a Plantillas', async () => {
         const asignaciones: AsignacionCaracteristicas = {
             Fuerza: 14,
             Destreza: 15,
@@ -1160,7 +1160,7 @@ describe('NuevoPersonajeComponent', () => {
             Carisma: 8,
         };
 
-        component.finalizarGeneracionCaracteristicas(asignaciones);
+        await component.finalizarGeneracionCaracteristicas(asignaciones);
 
         expect(component.caracteristicasGeneradas).toBeTrue();
         expect(component.selectedInternalTabIndex).toBe(2);
@@ -1170,8 +1170,8 @@ describe('NuevoPersonajeComponent', () => {
         expect(component.Personaje.ModDestreza).toBe(3);
     });
 
-    it('flujo de tabs: Plantillas -> Ventajas y desventajas', () => {
-        component.finalizarGeneracionCaracteristicas({
+    it('flujo de tabs: Plantillas -> Ventajas y desventajas', async () => {
+        await component.finalizarGeneracionCaracteristicas({
             Fuerza: 14,
             Destreza: 15,
             Constitucion: 13,
@@ -1401,6 +1401,105 @@ describe('NuevoPersonajeComponent', () => {
 
         expect(abrirIdiomasSpy).toHaveBeenCalledWith(2);
         expect(nuevoPSvc.EstadoFlujo.pasoActual).toBe('habilidades');
+    });
+
+    it('tras generar caracteristicas con DGs suficientes, dispara selector de aumentos', async () => {
+        const razaConDgs = crearRazaMock();
+        razaConDgs.Dgs_adicionales.Cantidad = 4;
+        component.seleccionarRaza(razaConDgs);
+        const abrirAumentosSpy = spyOn<any>(component, 'abrirSelectorAumentosCaracteristica').and.resolveTo(true);
+
+        await component.finalizarGeneracionCaracteristicas({
+            Fuerza: 14,
+            Destreza: 15,
+            Constitucion: 13,
+            Inteligencia: 12,
+            Sabiduria: 10,
+            Carisma: 8,
+        });
+
+        expect(abrirAumentosSpy).toHaveBeenCalled();
+        expect(nuevoPSvc.getAumentosCaracteristicaPendientes().length).toBe(1);
+    });
+
+    it('si coinciden idiomas y aumentos, resuelve idiomas antes de aumentos', async () => {
+        const razaConDgs = crearRazaMock();
+        razaConDgs.Dgs_adicionales.Cantidad = 3;
+        component.seleccionarRaza(razaConDgs);
+        component.Personaje.ModInteligencia = 2;
+
+        const clase = crearClaseMock({ Id: 360, Nombre: 'Cazador' });
+        component.catalogoClases = [clase];
+        nuevoPSvc.setCatalogoClases(component.catalogoClases);
+        (component as any).recalcularClasesVisibles();
+        component.seleccionarClaseParaAplicar(clase);
+
+        const ordenLlamadas: string[] = [];
+        const abrirIdiomasSpy = spyOn(component, 'abrirSelectorIdiomasIniciales').and.callFake(async (_cantidad: number) => {
+            ordenLlamadas.push('idiomas');
+            return true;
+        });
+        const abrirAumentosSpy = spyOn<any>(component, 'abrirSelectorAumentosCaracteristica').and.callFake(async () => {
+            ordenLlamadas.push('aumentos');
+            return true;
+        });
+
+        await component.continuarDesdeClases();
+
+        expect(abrirIdiomasSpy).toHaveBeenCalled();
+        expect(abrirAumentosSpy).toHaveBeenCalledTimes(1);
+        expect(ordenLlamadas).toEqual(['idiomas', 'aumentos']);
+    });
+
+    it('si coinciden aumento por multiplo de 4 y por especial, abre una sola vez con ambos', async () => {
+        const razaConDgs = crearRazaMock();
+        razaConDgs.Dgs_adicionales.Cantidad = 3;
+        component.seleccionarRaza(razaConDgs);
+        component.Personaje.ModInteligencia = 0;
+
+        const claseConEspecialAumento = crearClaseMock({
+            Id: 361,
+            Nombre: 'Adepto del poder',
+            Desglose_niveles: [{
+                Nivel: 1,
+                Ataque_base: '+1',
+                Salvaciones: { Fortaleza: '+2', Reflejos: '+0', Voluntad: '+0' },
+                Nivel_max_conjuro: -1,
+                Reserva_psionica: 0,
+                Aumentos_clase_lanzadora: [],
+                Conjuros_diarios: {},
+                Conjuros_conocidos_nivel_a_nivel: {},
+                Conjuros_conocidos_total: 0,
+                Dotes: [],
+                Especiales: [{
+                    Especial: {
+                        Nombre: 'Caracteristica +2',
+                        Modificadores: { Caracteristica: 2 },
+                    },
+                    Nivel: 1,
+                    Id_extra: 0,
+                    Extra: '',
+                    Opcional: 0,
+                    Id_interno: 0,
+                    Id_especial_requerido: 0,
+                    Id_dote_requerida: 0,
+                }],
+            }],
+        });
+        component.catalogoClases = [claseConEspecialAumento];
+        nuevoPSvc.setCatalogoClases(component.catalogoClases);
+        (component as any).recalcularClasesVisibles();
+        component.seleccionarClaseParaAplicar(claseConEspecialAumento);
+
+        const abrirAumentosSpy = spyOn<any>(component, 'abrirSelectorAumentosCaracteristica').and.resolveTo(true);
+
+        await component.continuarDesdeClases();
+
+        expect(abrirAumentosSpy).toHaveBeenCalledTimes(1);
+        const pendientes = nuevoPSvc.getAumentosCaracteristicaPendientes();
+        expect(pendientes.length).toBe(2);
+        expect(pendientes.some((pendiente) => pendiente.valor === 1)).toBeTrue();
+        expect(pendientes.some((pendiente) => pendiente.valor === 2)).toBeTrue();
     });
 
     it('si la clase requiere dominio, usa el flujo de selector de dominios', async () => {

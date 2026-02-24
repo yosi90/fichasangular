@@ -10,6 +10,7 @@ servers:
     description: Local
 tags:
   - name: verify
+  - name: usuarios
   - name: personajes
   - name: razas
   - name: subtipos
@@ -52,6 +53,96 @@ paths:
                 $ref: '#/components/schemas/VerifyResponse'
         '500':
           description: Error de conexion
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /usuarios:
+    get:
+      tags: [usuarios]
+      summary: Lista de usuarios para admin panel
+      responses:
+        '200':
+          description: Lista de usuarios
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/UsuarioListadoItem'
+        '500':
+          description: Error interno
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    post:
+      tags: [usuarios]
+      summary: Crear o actualizar usuario (upsert) con replica legacy
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UsuarioUpsertRequest'
+      responses:
+        '201':
+          description: Usuario creado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UsuarioUpsertResponse'
+        '200':
+          description: Usuario actualizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UsuarioUpsertResponse'
+        '400':
+          description: Error de validacion
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Conflicto de datos legacy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error interno
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /usuarios/acl/{uid}:
+    get:
+      tags: [usuarios]
+      summary: ACL bootstrap por Firebase UID
+      parameters:
+        - name: uid
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: ACL del usuario
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UsuarioAclResponse'
+        '404':
+          description: Usuario no encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error interno
           content:
             application/json:
               schema:
@@ -1221,6 +1312,89 @@ components:
       type: object
       additionalProperties: true
       description: Error no estandarizado (varia segun controlador/pyodbc).
+
+    UsuarioPermissionCreate:
+      type: object
+      properties:
+        resource: { type: string }
+        allowed: { type: boolean }
+      required: [resource, allowed]
+
+    UsuarioAclResponse:
+      type: object
+      properties:
+        uid: { type: string }
+        role: { type: string, enum: [usuario, colaborador, admin] }
+        admin: { type: boolean }
+        banned: { type: boolean }
+        permissionsCreate:
+          type: array
+          items:
+            $ref: '#/components/schemas/UsuarioPermissionCreate'
+      required: [uid, role, admin, banned, permissionsCreate]
+
+    UsuarioListadoItem:
+      type: object
+      properties:
+        userId: { type: string, format: uuid }
+        uid: { type: string }
+        displayName: { type: string, nullable: true }
+        email: { type: string, nullable: true }
+        authProvider: { type: string, enum: [correo, google, otro] }
+        role: { type: string, enum: [usuario, colaborador, admin] }
+        admin: { type: boolean }
+        banned: { type: boolean }
+        updatedAtUtc: { type: string, format: date-time, nullable: true }
+        updatedByUserId: { type: string, format: uuid, nullable: true }
+        permissionsCreate:
+          type: array
+          items:
+            $ref: '#/components/schemas/UsuarioPermissionCreate'
+      required:
+        - userId
+        - uid
+        - authProvider
+        - role
+        - admin
+        - banned
+        - permissionsCreate
+
+    UsuarioUpsertRequest:
+      type: object
+      properties:
+        uid: { type: string }
+        firebaseUid: { type: string }
+        displayName: { type: string, maxLength: 20 }
+        email: { type: string, maxLength: 60 }
+        authProvider: { type: string, enum: [correo, google, otro], default: correo }
+        actorUserId: { type: string, format: uuid }
+        role: { type: string, enum: [usuario, colaborador, admin] }
+        banned: { type: boolean }
+        permissionsCreate:
+          type: array
+          items:
+            $ref: '#/components/schemas/UsuarioPermissionCreate'
+      oneOf:
+        - required: [uid, displayName, email]
+        - required: [firebaseUid, displayName, email]
+
+    UsuarioLegacyPlayer:
+      type: object
+      properties:
+        idJugador: { type: integer }
+      required: [idJugador]
+
+    UsuarioUpsertResponse:
+      type: object
+      properties:
+        status: { type: string, enum: [created, updated] }
+        userId: { type: string, format: uuid }
+        uid: { type: string }
+        acl:
+          $ref: '#/components/schemas/UsuarioAclResponse'
+        legacyPlayer:
+          $ref: '#/components/schemas/UsuarioLegacyPlayer'
+      required: [status, userId, uid, acl, legacyPlayer]
 
     IdNombre:
       type: object

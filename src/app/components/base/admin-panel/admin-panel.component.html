@@ -1,8 +1,21 @@
-<div class="container fluid">
+<div class="container-fluid admin-panel-shell">
     <div class="row">
-        <div class="col-6">
+        <div class="col-12">
+            <mat-card class="m-2 p-3 admin-connection-card">
+                <button
+                    mat-raised-button
+                    class="admin-connection-btn"
+                    color="{{serverStatusIcon === 'thumb_up' ? 'accent' : 'warn'}}"
+                    (click)="verificar()">
+                    <mat-icon class="me-2">{{serverStatusIcon}}</mat-icon>
+                    {{serverStatus}}
+                </button>
+            </mat-card>
+        </div>
+
+        <div class="col-12">
             <mat-card class="m-2 p-3">
-                <mat-accordion>
+                <mat-accordion class="admin-accordion">
                     <mat-expansion-panel #primero>
                         <mat-expansion-panel-header class="rounded-0 rounded-top">
                             <button mat-stroked-button color="accent" class="rounded-0 rounded-top"
@@ -23,16 +36,88 @@
                             </button>
                         </div>
                     </mat-expansion-panel>
+
+                    <mat-expansion-panel #segundo>
+                        <mat-expansion-panel-header class="rounded-0 rounded-top">
+                            <button mat-stroked-button color="accent" class="rounded-0 rounded-top"
+                                matTooltip="Gestionar usuarios, baneos y permisos granulares de creación">
+                                <mat-icon>manage_accounts</mat-icon>Gestionar usuarios y permisos
+                            </button>
+                        </mat-expansion-panel-header>
+
+                        <div class="usuarios-admin-panel p-2">
+                            <mat-form-field appearance="fill" class="w-100 mb-2">
+                                <mat-label>Buscar usuario</mat-label>
+                                <input
+                                    matInput
+                                    [ngModel]="filtroUsuarios"
+                                    (ngModelChange)="filtroUsuarios = $event"
+                                    placeholder="Nombre, correo o UID">
+                            </mat-form-field>
+
+                            <div class="usuarios-admin-estado text-center p-2" *ngIf="etiquetaEstadoUsuarios.length > 0">
+                                <mat-chip>{{etiquetaEstadoUsuarios}}</mat-chip>
+                            </div>
+
+                            <div class="tabla-scroll usuarios-admin-tabla-scroll" *ngIf="etiquetaEstadoUsuarios.length < 1">
+                                <table class="tabla-usuarios-admin">
+                                    <thead>
+                                        <tr>
+                                            <th>Usuario</th>
+                                            <th>Proveedor</th>
+                                            <th>Baneado</th>
+                                            <th>Rol</th>
+                                            <th>Permisos create</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr *ngFor="let user of usuariosFiltrados; trackBy: trackByUser">
+                                            <td>
+                                                <div class="usuario-principal">{{user.displayName || 'Sin nombre'}}</div>
+                                                <div class="usuario-secundario">{{user.email || '-'}}</div>
+                                                <div class="usuario-secundario">UID: {{user.uid}}</div>
+                                            </td>
+                                            <td>{{providerLabel(user.authProvider)}}</td>
+                                            <td>
+                                                <mat-slide-toggle
+                                                    [checked]="user.banned"
+                                                    [disabled]="!canToggleBan(user)"
+                                                    (change)="onToggleBanned(user, $event.checked)">
+                                                    {{user.banned ? 'Sí' : 'No'}}
+                                                </mat-slide-toggle>
+                                            </td>
+                                            <td>
+                                                <mat-form-field appearance="outline" class="rol-field">
+                                                    <mat-select
+                                                        [value]="user.role"
+                                                        [disabled]="!canChangeRole(user)"
+                                                        (selectionChange)="onRoleChange(user, $event.value)">
+                                                        <mat-option *ngFor="let role of roleOptions" [value]="role">
+                                                            {{roleLabel(role)}}
+                                                        </mat-option>
+                                                    </mat-select>
+                                                </mat-form-field>
+                                                <div class="usuario-secundario" *ngIf="user.role === 'admin'">Rol inmutable</div>
+                                            </td>
+                                            <td>
+                                                <div class="perm-grid">
+                                                    <div class="perm-item" *ngFor="let resource of permissionResources; trackBy: trackByPermissionResource">
+                                                        <span class="perm-label">{{resource}}</span>
+                                                        <mat-slide-toggle
+                                                            [checked]="user.permissions[resource]"
+                                                            [disabled]="!canTogglePermission(user, resource)"
+                                                            (change)="onToggleCreatePermission(user, resource, $event.checked)">
+                                                        </mat-slide-toggle>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </mat-expansion-panel>
                 </mat-accordion>
-            </mat-card>
-        </div>
-        <div class="col-6">
-            <mat-card class="m-2 p-3">
-                <button mat-raised-button color="{{serverStatusIcon === 'thumb_up' ? 'accent' : 'warn'}}"
-                    (click)="verificar()">
-                    {{serverStatus}}
-                    <mat-icon class="me-5">{{serverStatusIcon}}</mat-icon>
-                </button>
             </mat-card>
         </div>
     </div>

@@ -1,4 +1,6 @@
 import { Component, EventEmitter, HostListener, Input, OnChanges, Output, SimpleChanges } from '@angular/core';
+import { NuevoPersonajePreviewMinimizada } from 'src/app/interfaces/user-settings';
+import { UserSettingsService } from 'src/app/services/user-settings.service';
 
 type ResizeDirection = 'n' | 's' | 'e' | 'w' | 'ne' | 'nw' | 'se' | 'sw';
 
@@ -54,9 +56,14 @@ export class VentanaDetalleFlotanteComponent {
     isMaximized = false;
     private restoreRect: WindowRect | null = null;
     private activeInteraction: ActiveInteraction = null;
+    private minimizedPlacement: NuevoPersonajePreviewMinimizada | null = null;
+    private moveHasDelta = false;
+
+    constructor(private userSettingsSvc?: UserSettingsService) { }
 
     ngOnInit(): void {
         this.rect = this.getInitialRect();
+        this.cargarPlacementMinimizado();
     }
 
     ngOnChanges(changes: SimpleChanges): void {
@@ -79,6 +86,7 @@ export class VentanaDetalleFlotanteComponent {
             startPointerY: event.clientY,
             startRect: { ...this.rect },
         };
+        this.moveHasDelta = false;
         event.preventDefault();
     }
 
@@ -111,6 +119,8 @@ export class VentanaDetalleFlotanteComponent {
         }
 
         this.isMinimized = !this.isMinimized;
+        if (this.isMinimized)
+            this.aplicarPlacementMinimizadoGuardado();
         this.rect = this.clampRectToViewport(this.rect);
     }
 
@@ -175,12 +185,16 @@ export class VentanaDetalleFlotanteComponent {
 
     @HostListener('document:pointerup')
     onDocumentPointerUp(): void {
+        if (this.activeInteraction?.type === 'move' && this.isMinimized && this.moveHasDelta)
+            this.guardarPlacementMinimizado();
         this.activeInteraction = null;
+        this.moveHasDelta = false;
     }
 
     @HostListener('window:blur')
     onWindowBlur(): void {
         this.activeInteraction = null;
+        this.moveHasDelta = false;
     }
 
     private restoreFromSnapshot(): void {
@@ -202,6 +216,7 @@ export class VentanaDetalleFlotanteComponent {
             x: this.activeInteraction.startRect.x + dx,
             y: this.activeInteraction.startRect.y + dy,
         };
+        this.moveHasDelta = this.moveHasDelta || dx !== 0 || dy !== 0;
         this.rect = this.clampRectToViewport(nextRect);
     }
 
@@ -331,5 +346,57 @@ export class VentanaDetalleFlotanteComponent {
 
         ctx.font = '600 14px "Segoe UI", "Roboto", sans-serif';
         return ctx.measureText(this.tituloVisible).width;
+    }
+
+    private async cargarPlacementMinimizado(): Promise<void> {
+        if (!this.userSettingsSvc)
+            return;
+
+        try {
+            this.minimizedPlacement = await this.userSettingsSvc.loadPreviewMinimizada();
+        } catch {
+            this.minimizedPlacement = null;
+        }
+    }
+
+    private aplicarPlacementMinimizadoGuardado(): void {
+        if (!this.minimizedPlacement)
+            return;
+
+        const width = this.getMinimizedWidth();
+        const viewport = this.getViewport();
+        const x = this.minimizedPlacement.side === 'right'
+            ? viewport.width - width - this.viewportPadding
+            : this.viewportPadding;
+
+        this.rect = {
+            ...this.rect,
+            x,
+            y: this.minimizedPlacement.top,
+        };
+    }
+
+    private guardarPlacementMinimizado(): void {
+        if (!this.userSettingsSvc)
+            return;
+
+        const viewport = this.getViewport();
+        const width = this.getMinimizedWidth();
+        const centerX = this.rect.x + (width / 2);
+        const side: 'left' | 'right' = centerX <= (viewport.width / 2) ? 'left' : 'right';
+        const top = this.rect.y;
+
+        this.minimizedPlacement = {
+            version: 1,
+            side,
+            top,
+            updatedAt: Date.now(),
+        };
+        this.userSettingsSvc.savePreviewMinimizada({
+            side,
+            top,
+        }).catch(() => {
+            // Ignorado: si falla el guardado remoto, se mantiene la última posición local.
+        });
     }
 }

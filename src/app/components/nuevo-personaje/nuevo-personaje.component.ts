@@ -32,7 +32,10 @@ import { GrupoArmaduraService } from 'src/app/services/grupo-armadura.service';
 import { HabilidadService } from 'src/app/services/habilidad.service';
 import { IdiomaService } from 'src/app/services/idioma.service';
 import {
+    AsignacionAumentoCaracteristica,
     AsignacionCaracteristicas,
+    AumentoCaracteristicaPendiente,
+    CaracteristicaKeyAumento,
     ClaseDominiosPendientes,
     ClaseGrupoOpcionalPendiente,
     NuevoPersonajeService,
@@ -115,6 +118,7 @@ type FiltroPrestigioClase = 'todas' | 'basica' | 'prestigio';
 type ClaseRolChip = 'DPS' | 'Tanque' | 'Support' | 'Utilidad';
 type ClaseBeneficioTipo = 'dote' | 'especial';
 type EstadoCompatibilidadAlineamientoClase = 'compatible' | 'incompatible' | 'neutro';
+type CaracteristicaAumentoKey = CaracteristicaKeyAumento;
 
 interface ClaseBeneficioNivelItem {
     tipo: ClaseBeneficioTipo;
@@ -240,6 +244,7 @@ export class NuevoPersonajeComponent {
     private ventajaPendienteIdiomaId: number | null = null;
     modalSelectorIdiomaAbierto = false;
     modalSelectorDominiosAbierto = false;
+    modalSelectorAumentosAbierto = false;
     modalSelectorRazaBaseAbierto = false;
     modalSelectorRacialesOpcionalesAbierto = false;
     ventanaDetalleAbierta = false;
@@ -259,6 +264,19 @@ export class NuevoPersonajeComponent {
     selectorDominiosBloquearCierre = false;
     selectorDominiosOpciones: { id: number; nombre: string; oficial: boolean; }[] = [];
     private resolverSelectorDominios: ((seleccion: SeleccionDominiosClase | null) => void) | null = null;
+    selectorAumentosTitulo = 'Seleccionar aumentos de caracteristica';
+    selectorAumentosPendientes: AumentoCaracteristicaPendiente[] = [];
+    selectorAumentosCaracteristicasActuales: Record<CaracteristicaAumentoKey, number> = {
+        Fuerza: 0,
+        Destreza: 0,
+        Constitucion: 0,
+        Inteligencia: 0,
+        Sabiduria: 0,
+        Carisma: 0,
+    };
+    selectorAumentosCaracteristicasPerdidas: Partial<Record<CaracteristicaAumentoKey, boolean>> = {};
+    selectorAumentosTopes: Partial<Record<CaracteristicaAumentoKey, number>> = {};
+    private resolverSelectorAumentos: ((completado: boolean) => void) | null = null;
     selectorIdiomaTitulo = 'Seleccionar idioma extra';
     selectorIdiomaCantidadObjetivo = 0;
     selectorIdiomaCantidadSeleccionada = 0;
@@ -307,6 +325,7 @@ export class NuevoPersonajeComponent {
 
     ngOnInit(): void {
         this.Personaje = this.nuevoPSvc.PersonajeCreacion;
+        this.nuevoPSvc.sincronizarConfigGeneradorDesdeCuenta().catch(() => undefined);
         this.normalizarAlineamientoSeleccionado();
         this.sincronizarTabConPaso();
         this.recalcularOficialidad();
@@ -1212,7 +1231,7 @@ export class NuevoPersonajeComponent {
         this.nuevoPSvc.cerrarModalCaracteristicas();
     }
 
-    finalizarGeneracionCaracteristicas(asignaciones: AsignacionCaracteristicas): void {
+    async finalizarGeneracionCaracteristicas(asignaciones: AsignacionCaracteristicas): Promise<void> {
         const aplicado = this.nuevoPSvc.aplicarCaracteristicasGeneradas(asignaciones);
         if (!aplicado) {
             Swal.fire({
@@ -1223,6 +1242,11 @@ export class NuevoPersonajeComponent {
             });
             return;
         }
+
+        this.nuevoPSvc.registrarAumentosPendientesPorProgresion('Progresion inicial por DGs raciales');
+        const aumentosCompletados = await this.abrirSelectorAumentosCaracteristica();
+        if (!aumentosCompletados)
+            return;
 
         this.recalcularOficialidad();
         this.recalcularPlantillasVisibles();
@@ -1962,6 +1986,13 @@ export class NuevoPersonajeComponent {
                 return;
         }
 
+        const contextoAumentos = `${seleccion.clase?.Nombre ?? 'Clase'} nivel ${Number(resultado.nivelAplicado ?? 0)}`;
+        this.nuevoPSvc.registrarAumentosPendientesPorEspeciales(resultado.especialesAplicados ?? [], contextoAumentos);
+        this.nuevoPSvc.registrarAumentosPendientesPorProgresion(contextoAumentos);
+        const aumentosCompletados = await this.abrirSelectorAumentosCaracteristica();
+        if (!aumentosCompletados)
+            return;
+
         this.nuevoPSvc.actualizarPasoActual('habilidades');
         this.recalcularClasesVisibles();
         this.sincronizarTabConPaso();
@@ -2011,6 +2042,27 @@ export class NuevoPersonajeComponent {
         if (this.selectorDominiosBloquearCierre && this.selectorDominiosCantidadSeleccionada < this.selectorDominiosCantidadObjetivo)
             return;
         this.cerrarSelectorDominiosContexto(null);
+    }
+
+    onConfirmarAumentosCaracteristica(asignaciones: AsignacionAumentoCaracteristica[]): void {
+        const aplicado = this.nuevoPSvc.aplicarAumentosCaracteristica(asignaciones);
+        if (!aplicado) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'No se pudieron aplicar los aumentos',
+                text: 'Revisa que todas las asignaciones sean validas y vuelve a intentarlo.',
+                showConfirmButton: true,
+            });
+            return;
+        }
+
+        this.Personaje = this.nuevoPSvc.PersonajeCreacion;
+        this.cerrarSelectorAumentosContexto('completado');
+        this.recalcularClasesVisibles();
+    }
+
+    onCerrarModalAumentosCaracteristica(): void {
+        return;
     }
 
     private cerrarSelectorDominiosContexto(resultado: SeleccionDominiosClase | null): void {
@@ -2308,6 +2360,27 @@ export class NuevoPersonajeComponent {
         });
     }
 
+    private abrirSelectorAumentosCaracteristica(): Promise<boolean> {
+        const pendientes = this.nuevoPSvc.getAumentosCaracteristicaPendientes();
+        if (pendientes.length < 1) {
+            this.cerrarSelectorAumentosContexto('completado');
+            return Promise.resolve(true);
+        }
+
+        this.selectorAumentosPendientes = pendientes;
+        this.selectorAumentosCaracteristicasActuales = this.construirSnapshotCaracteristicasAumentos();
+        this.selectorAumentosCaracteristicasPerdidas = {
+            ...(this.Personaje?.Caracteristicas_perdidas ?? {}),
+            Constitucion: !!(this.Personaje?.Caracteristicas_perdidas?.Constitucion || this.Personaje?.Constitucion_perdida),
+        };
+        this.selectorAumentosTopes = this.nuevoPSvc.getTopesCaracteristicas();
+        this.modalSelectorAumentosAbierto = true;
+
+        return new Promise<boolean>((resolve) => {
+            this.resolverSelectorAumentos = resolve;
+        });
+    }
+
     private abrirSelectorIdiomaParaVentaja(idVentaja: number): void {
         this.contextoSelectorIdioma = 'ventaja';
         this.resolverSelectorIdioma = null;
@@ -2331,6 +2404,37 @@ export class NuevoPersonajeComponent {
         this.resolverSelectorIdioma = null;
         if (resolver)
             resolver(resultado === 'completado');
+    }
+
+    private cerrarSelectorAumentosContexto(resultado: 'completado' | 'cancelado' = 'cancelado'): void {
+        this.modalSelectorAumentosAbierto = false;
+        this.selectorAumentosPendientes = [];
+        this.selectorAumentosTitulo = 'Seleccionar aumentos de caracteristica';
+        this.selectorAumentosCaracteristicasActuales = {
+            Fuerza: 0,
+            Destreza: 0,
+            Constitucion: 0,
+            Inteligencia: 0,
+            Sabiduria: 0,
+            Carisma: 0,
+        };
+        this.selectorAumentosCaracteristicasPerdidas = {};
+        this.selectorAumentosTopes = {};
+        const resolver = this.resolverSelectorAumentos;
+        this.resolverSelectorAumentos = null;
+        if (resolver)
+            resolver(resultado === 'completado');
+    }
+
+    private construirSnapshotCaracteristicasAumentos(): Record<CaracteristicaAumentoKey, number> {
+        return {
+            Fuerza: Number(this.Personaje?.Fuerza ?? 0),
+            Destreza: Number(this.Personaje?.Destreza ?? 0),
+            Constitucion: Number(this.Personaje?.Constitucion ?? 0),
+            Inteligencia: Number(this.Personaje?.Inteligencia ?? 0),
+            Sabiduria: Number(this.Personaje?.Sabiduria ?? 0),
+            Carisma: Number(this.Personaje?.Carisma ?? 0),
+        };
     }
 
     private agregarIdiomaInicialTemporal(idioma: IdiomaDetalle): boolean {

@@ -69,6 +69,7 @@ import { SelectorIdiomaModalComponent } from './components/nuevo-personaje/selec
 import { SelectorDominiosModalComponent } from './components/nuevo-personaje/selector-dominios-modal/selector-dominios-modal.component';
 import { SelectorRazaBaseModalComponent } from './components/nuevo-personaje/selector-raza-base-modal/selector-raza-base-modal.component';
 import { SelectorRacialesOpcionalesModalComponent } from './components/nuevo-personaje/selector-raciales-opcionales-modal/selector-raciales-opcionales-modal.component';
+import { SelectorAumentosCaracteristicaModalComponent } from './components/nuevo-personaje/selector-aumentos-caracteristica-modal/selector-aumentos-caracteristica-modal.component';
 import { VentanaDetalleFlotanteComponent } from './components/nuevo-personaje/ventana-detalle-flotante/ventana-detalle-flotante.component';
 import { ListadoSubtiposComponent } from './components/shared/listado-subtipos/listado-subtipos.component';
 import { DetallesSubtipoComponent } from './components/detalles/detalles-subtipo/detalles-subtipo.component';
@@ -108,6 +109,7 @@ import { ListadoVentajasComponent } from './components/shared/listado-ventajas/l
         GeneradorCaracteristicasModalComponent,
         SelectorIdiomaModalComponent,
         SelectorDominiosModalComponent,
+        SelectorAumentosCaracteristicaModalComponent,
         SelectorRazaBaseModalComponent,
         SelectorRacialesOpcionalesModalComponent,
         VentanaDetalleFlotanteComponent,

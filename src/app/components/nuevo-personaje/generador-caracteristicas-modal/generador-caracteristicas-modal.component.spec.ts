@@ -2,8 +2,6 @@ import { Raza } from 'src/app/interfaces/raza';
 import { NuevoPersonajeService } from 'src/app/services/nuevo-personaje.service';
 import { GeneradorCaracteristicasModalComponent } from './generador-caracteristicas-modal.component';
 
-const GENERADOR_CONFIG_STORAGE_KEY = 'fichas35.nuevoPersonaje.generador.config.v1';
-
 function crearRazaMock(pierdeConstitucion = false): Raza {
     return {
         Id: 1,
@@ -124,18 +122,12 @@ describe('GeneradorCaracteristicasModalComponent', () => {
     let component: GeneradorCaracteristicasModalComponent;
 
     beforeEach(() => {
-        localStorage.removeItem(GENERADOR_CONFIG_STORAGE_KEY);
-
         service = new NuevoPersonajeService();
         service.seleccionarRaza(crearRazaMock(false));
         component = new GeneradorCaracteristicasModalComponent(service);
         component.raza = service.RazaSeleccionada!;
         component.caracteristicasPerdidas = service.PersonajeCreacion.Caracteristicas_perdidas ?? null;
         component.pierdeConstitucion = false;
-    });
-
-    afterEach(() => {
-        localStorage.removeItem(GENERADOR_CONFIG_STORAGE_KEY);
     });
 
     it('expone minimos de 3 a 13', () => {

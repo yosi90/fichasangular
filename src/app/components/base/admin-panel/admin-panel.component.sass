@@ -1,5 +1,18 @@
 @import '../../../../assets/css/_variables'
 
+.admin-panel-shell
+    .admin-connection-card
+        .admin-connection-btn
+            width: 100%
+            display: flex
+            align-items: center
+            justify-content: center
+            min-height: 44px
+            font-weight: 600
+
+    .admin-accordion
+        width: 100%
+
 mat-expansion-panel
     border-bottom-left-radius: 0
     border-bottom-right-radius: 0
@@ -54,6 +67,57 @@ mat-expansion-panel
     opacity: 0.9
     white-space: nowrap
 
+.usuarios-admin-panel
+    background: rgba(0, 0, 0, 0.08)
+
+.usuarios-admin-tabla-scroll
+    max-height: 56vh
+    overflow: auto
+
+.tabla-usuarios-admin
+    width: 100%
+    min-width: 1200px
+    border-collapse: collapse
+
+    th, td
+        border: 1px solid rgba(255, 255, 255, 0.12)
+        padding: 10px
+        vertical-align: top
+
+    th
+        position: sticky
+        top: 0
+        background: #111
+        z-index: 1
+        font-weight: 600
+
+.usuario-principal
+    font-weight: 600
+    margin-bottom: 2px
+
+.usuario-secundario
+    font-size: 12px
+    opacity: 0.85
+
+.perm-grid
+    display: grid
+    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr))
+    gap: 6px 12px
+
+.perm-item
+    display: flex
+    align-items: center
+    justify-content: space-between
+    gap: 8px
+
+.perm-label
+    font-size: 12px
+    opacity: 0.95
+
+.rol-field
+    width: 150px
+    margin: 0
+
 @media (max-width: 768px)
     .sync-list
         max-height: 45vh
@@ -63,3 +127,16 @@ mat-expansion-panel
 
     .sync-item-date
         font-size: 11px
+
+    .usuarios-admin-tabla-scroll
+        max-height: 45vh
+
+    .tabla-usuarios-admin
+        min-width: 980px
+
+        th, td
+            padding: 8px
+            font-size: 12px
+
+    .perm-grid
+        grid-template-columns: 1fr

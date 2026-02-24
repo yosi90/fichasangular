@@ -1,6 +1,58 @@
 {
   "rules": {
-    ".read": "true", 
-    ".write": "auth != null"
+    ".read": "false",
+    ".write": "false",
+    "Acl": {
+      ".read": "false",
+      ".write": "false",
+      "users": {
+        "$uid": {
+          ".read": "auth != null && (auth.uid === $uid || (root.child('Acl/users/' + auth.uid + '/roles/admin').val() === true && root.child('Acl/users/' + auth.uid + '/roles/type').val() === 'admin'))",
+          ".write": "auth != null && root.child('Acl/users/' + auth.uid + '/roles/admin').val() === true && root.child('Acl/users/' + auth.uid + '/roles/type').val() === 'admin'",
+          "roles": {
+            "admin": {
+              ".validate": "(newData.val() === true && newData.parent().child('type').val() === 'admin') || (newData.val() === false && newData.parent().child('type').val() !== 'admin')"
+            },
+            "type": {
+              ".validate": "(newData.val() === 'admin' && newData.parent().child('admin').val() === true && newData.parent().parent().child('permissions/personajes/create').val() === true && newData.parent().parent().child('permissions/conjuros/create').val() === true && newData.parent().parent().child('permissions/dotes/create').val() === true && newData.parent().parent().child('permissions/razas/create').val() === true && newData.parent().parent().child('permissions/clases/create').val() === true && newData.parent().parent().child('permissions/plantillas/create').val() === true && newData.parent().parent().child('permissions/manuales/create').val() === true && newData.parent().parent().child('permissions/tipos_criatura/create').val() === true && newData.parent().parent().child('permissions/subtipos/create').val() === true && newData.parent().parent().child('permissions/rasgos/create').val() === true && newData.parent().parent().child('permissions/ventajas/create').val() === true && newData.parent().parent().child('permissions/desventajas/create').val() === true) || (newData.val() === 'usuario' && newData.parent().child('admin').val() === false && newData.parent().parent().child('permissions/personajes/create').val() === true && newData.parent().parent().child('permissions/conjuros/create').val() !== true && newData.parent().parent().child('permissions/dotes/create').val() !== true && newData.parent().parent().child('permissions/razas/create').val() !== true && newData.parent().parent().child('permissions/clases/create').val() !== true && newData.parent().parent().child('permissions/plantillas/create').val() !== true && newData.parent().parent().child('permissions/manuales/create').val() !== true && newData.parent().parent().child('permissions/tipos_criatura/create').val() !== true && newData.parent().parent().child('permissions/subtipos/create').val() !== true && newData.parent().parent().child('permissions/rasgos/create').val() !== true && newData.parent().parent().child('permissions/ventajas/create').val() !== true && newData.parent().parent().child('permissions/desventajas/create').val() !== true) || (newData.val() === 'colaborador' && newData.parent().child('admin').val() === false && newData.parent().parent().child('permissions/personajes/create').val() === true)"
+            }
+          },
+          "permissions": {
+            "$resource": {
+              "create": {
+                ".validate": "(newData.parent().parent().parent().child('roles/type').val() === 'admin' && newData.val() === true) || (newData.parent().parent().parent().child('roles/type').val() === 'usuario' && (($resource === 'personajes' && newData.val() === true) || ($resource !== 'personajes' && newData.val() !== true))) || (newData.parent().parent().parent().child('roles/type').val() === 'colaborador' && (($resource === 'personajes' && newData.val() === true) || ($resource !== 'personajes' && (newData.val() === true || newData.val() === false))))"
+              }
+            }
+          },
+          "status": {
+            "banned": {
+              ".validate": "newData.val() === true || newData.val() === false"
+            }
+          }
+        }
+      }
+    },
+    "UserProfiles": {
+      "$uid": {
+        ".read": "auth != null && (auth.uid === $uid || (root.child('Acl/users/' + auth.uid + '/roles/admin').val() === true && root.child('Acl/users/' + auth.uid + '/roles/type').val() === 'admin'))",
+        ".write": "auth != null && (auth.uid === $uid || (root.child('Acl/users/' + auth.uid + '/roles/admin').val() === true && root.child('Acl/users/' + auth.uid + '/roles/type').val() === 'admin'))"
+      }
+    },
+    "UserSettings": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": "auth != null && auth.uid === $uid && root.child('Acl/users/' + auth.uid + '/status/banned').val() !== true"
+      }
+    },
+    "Personajes": {
+      "$id": {
+        ".read": "true",
+        ".write": "auth != null && ((root.child('Acl/users/' + auth.uid + '/roles/admin').val() === true && root.child('Acl/users/' + auth.uid + '/roles/type').val() === 'admin') || (!data.exists() && root.child('Acl/users/' + auth.uid + '/status/banned').val() !== true && (root.child('Acl/users/' + auth.uid + '/roles/type').val() === 'usuario' || root.child('Acl/users/' + auth.uid + '/roles/type').val() === 'colaborador' || root.child('Acl/users/' + auth.uid + '/permissions/personajes/create').val() === true)))"
+      }
+    },
+    "$other": {
+      ".read": "true",
+      ".write": "auth != null && root.child('Acl/users/' + auth.uid + '/roles/admin').val() === true && root.child('Acl/users/' + auth.uid + '/roles/type').val() === 'admin'"
+    }
   }
 }

@@ -1,0 +1,58 @@
+<div class="selector-overlay">
+    <div class="selector-dialog" (click)="$event.stopPropagation()">
+        <div class="selector-header">
+            <h2 class="m-0 selector-title">{{titulo}}</h2>
+        </div>
+
+        <mat-chip class="w-100 chip-pendiente" [ngClass]="cantidadPendiente > 0 ? 'warm' : 'ok'">
+            {{textoPendiente}}
+        </mat-chip>
+
+        <div class="aumentos-listado" *ngIf="pendientesNormalizados.length > 0; else sinPendientesTpl">
+            <div class="aumento-row" *ngFor="let pendiente of pendientesNormalizados; trackBy: trackByPendienteId">
+                <div class="aumento-detalle">
+                    <div class="aumento-titulo">+{{pendiente.valor}} a una caracteristica</div>
+                    <div class="aumento-desc" *ngIf="pendiente.descripcion.length > 0">{{pendiente.descripcion}}</div>
+                    <div class="aumento-origen" *ngIf="pendiente.origen.length > 0">Origen: {{pendiente.origen}}</div>
+                </div>
+                <div class="aumento-controles">
+                    <mat-form-field appearance="outline" class="aumento-select" subscriptSizing="dynamic">
+                        <mat-label>Caracteristica</mat-label>
+                        <mat-select [value]="getAsignacionPendiente(pendiente.id)" (selectionChange)="onAsignarPendiente(pendiente.id, $event.value)">
+                            <mat-option value="">Sin asignar</mat-option>
+                            <mat-option *ngFor="let caracteristica of caracteristicas"
+                                [value]="caracteristica.key"
+                                [disabled]="isCaracteristicaOpcionDeshabilitada(caracteristica.key)">
+                                {{caracteristica.label}} {{isCaracteristicaOpcionDeshabilitada(caracteristica.key) ? '(Perdida)' : ''}}
+                            </mat-option>
+                        </mat-select>
+                    </mat-form-field>
+                </div>
+            </div>
+        </div>
+
+        <ng-template #sinPendientesTpl>
+            <p class="m-0 detalle">No hay aumentos pendientes en este momento.</p>
+        </ng-template>
+
+        <div class="preview-panel">
+            <div class="preview-item" *ngFor="let caracteristica of caracteristicas" [class.warning]="tieneAvisoTope(caracteristica.key)">
+                <div class="preview-main">
+                    <span class="preview-nombre">{{caracteristica.label}}</span>
+                    <span class="preview-valor">
+                        {{caracteristicasActuales[caracteristica.key]}} -> {{getValorProyectado(caracteristica.key)}}
+                    </span>
+                </div>
+                <div class="preview-warning" *ngIf="tieneAvisoTope(caracteristica.key)">
+                    {{getAvisoTope(caracteristica.key)}}
+                </div>
+            </div>
+        </div>
+
+        <div class="selector-actions">
+            <button mat-raised-button color="primary" type="button" [disabled]="!puedeConfirmar" (click)="onConfirmar()">
+                Confirmar aumentos
+            </button>
+        </div>
+    </div>
+</div>

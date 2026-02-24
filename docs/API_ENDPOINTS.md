@@ -1,10 +1,10 @@
 # API Endpoints (Programa de fichas - Backend)
 
-Fecha de generacion: 2026-02-23
+Fecha de generacion: 2026-02-24
 
 Resumen
 - Base URL (local): `http://127.0.0.1:5000`
-- Prefijos registrados: `/verify`, `/personajes`, `/razas`, `/razas/raciales`, `/subtipos`, `/campanas`, `/tramas`, `/subtramas`, `/manuales`, `/manuales/asociados`, `/tiposCriatura`, `/rasgos`, `/conjuros`, `/escuelas`, `/disciplinas`, `/alineamientos`, `/habilidades`, `/idiomas`, `/armas`, `/armaduras`, `/grupos-armas`, `/grupos-armaduras`, `/dominios`, `/ambitos`, `/pabellones`, `/deidades`, `/dotes`, `/clases`, `/clases/habilidades`, `/plantillas`, `/ventajas`, `/desventajas`
+- Prefijos registrados: `/verify`, `/usuarios`, `/personajes`, `/razas`, `/razas/raciales`, `/subtipos`, `/campanas`, `/tramas`, `/subtramas`, `/manuales`, `/manuales/asociados`, `/tiposCriatura`, `/rasgos`, `/conjuros`, `/escuelas`, `/disciplinas`, `/alineamientos`, `/habilidades`, `/idiomas`, `/armas`, `/armaduras`, `/grupos-armas`, `/grupos-armaduras`, `/dominios`, `/ambitos`, `/pabellones`, `/deidades`, `/dotes`, `/clases`, `/clases/habilidades`, `/plantillas`, `/ventajas`, `/desventajas`
 - Autenticacion: no hay autenticacion en el backend.
 - Content-Type esperado: `application/json`
 - CORS habilitado para: `https://rol.yosiftware.es/`, `https://www.rol.yosiftware.es/`, `https://62.43.222.28`, `http://192.168.0.34`
@@ -15,6 +15,9 @@ Lista de endpoints
 | Metodo | Path | Descripcion | Estado |
 | --- | --- | --- | --- |
 | GET | /verify | Verifica conexion DB | Implementado |
+| GET | /usuarios | Lista de usuarios (admin panel) | Implementado |
+| GET | /usuarios/acl/<uid> | ACL bootstrap por Firebase UID | Implementado |
+| POST | /usuarios | Upsert usuario + replica a jugadores legacy | Implementado |
 | GET | /personajes | Lista detallada de personajes | Implementado |
 | GET | /personajes/simplificados | Lista simplificada de personajes | Implementado |
 | POST | /personajes/add | Crear personaje | No implementado (funcion `pass`) |
@@ -106,6 +109,105 @@ Respuesta 500 (ejemplo)
   "No pudo establecerse conexion con la base de datos": "<detalle pyodbc>"
 }
 ```
+
+Endpoint: GET /usuarios
+Respuesta: array de `UsuarioListadoItem`
+
+UsuarioListadoItem
+| Campo | Tipo | Descripcion |
+| --- | --- | --- |
+| userId | string (uuid) | Id interno de `AppUser` |
+| uid | string | Firebase UID |
+| displayName | string/null | Nombre visible |
+| email | string/null | Email |
+| authProvider | string | `correo` \| `google` \| `otro` |
+| role | string | `usuario` \| `colaborador` \| `admin` |
+| admin | boolean | `true` cuando `role=admin` |
+| banned | boolean | Estado de baneo |
+| updatedAtUtc | string/null | Fecha UTC de ultima actualizacion ACL |
+| updatedByUserId | string/null | UUID del actor que actualizo ACL |
+| permissionsCreate | array | Lista `{ resource, allowed }` |
+
+Endpoint: GET /usuarios/acl/<uid>
+Parametros de path
+| Campo | Tipo | Descripcion |
+| --- | --- | --- |
+| uid | string | Firebase UID |
+
+Respuesta 200: `UsuarioAclResponse`
+```json
+{
+  "uid": "firebase-uid",
+  "role": "usuario",
+  "admin": false,
+  "banned": false,
+  "permissionsCreate": [
+    { "resource": "personajes", "allowed": true },
+    { "resource": "conjuros", "allowed": false }
+  ]
+}
+```
+
+Respuesta 404 (ejemplo)
+```json
+{
+  "error": "Usuario no encontrado.",
+  "uid": "firebase-uid"
+}
+```
+
+Endpoint: POST /usuarios
+Descripcion: Upsert transaccional en `AppUser` + ACL opcional + replica en `jugadores`.
+
+Body (`application/json`)
+```json
+{
+  "uid": "firebase-uid",
+  "displayName": "Nombre",
+  "email": "mail@dominio.com",
+  "authProvider": "correo",
+  "actorUserId": "00000000-0000-0000-0000-000000000000",
+  "role": "colaborador",
+  "banned": false,
+  "permissionsCreate": [
+    { "resource": "conjuros", "allowed": true }
+  ]
+}
+```
+
+Reglas de validacion
+- `uid` o `firebaseUid`: obligatorio.
+- `displayName`: obligatorio, maximo 20.
+- `email`: obligatorio, maximo 60.
+- `authProvider`: `correo|google|otro`.
+- `permissionsCreate`: array de `{ resource, allowed }`.
+- Si existen multiples `jugadores` con el mismo `correo`, responde `409` y hace rollback.
+
+Respuesta 201/200 (ejemplo)
+```json
+{
+  "status": "created",
+  "userId": "00000000-0000-0000-0000-000000000000",
+  "uid": "firebase-uid",
+  "acl": {
+    "uid": "firebase-uid",
+    "role": "usuario",
+    "admin": false,
+    "banned": false,
+    "permissionsCreate": [
+      { "resource": "personajes", "allowed": true }
+    ]
+  },
+  "legacyPlayer": {
+    "idJugador": 123
+  }
+}
+```
+
+Nota de consumo frontend (RTDB runtime + backup SQL + sync manual)
+- Fuente de verdad en tiempo real para usuarios/ACL: Firebase Realtime Database (`UserProfiles` y `Acl/users`).
+- API SQL (`POST /usuarios`) se usa como backup de persistencia de usuarios/ACL, sin bloquear la sesion si falla.
+- Sincronizacion manual disponible en Admin Panel: `Usuarios y ACL (API -> Firebase)`, que sobreescribe RTDB con datos de SQL.
 
 Endpoint: GET /personajes
 Respuesta: array de `PersonajeDetalle`

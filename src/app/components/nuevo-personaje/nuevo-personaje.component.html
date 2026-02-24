@@ -696,6 +696,18 @@
         </app-selector-dominios-modal>
     </ng-container>
 
+    <ng-container *ngIf="modalSelectorAumentosAbierto">
+        <app-selector-aumentos-caracteristica-modal
+            [titulo]="selectorAumentosTitulo"
+            [pendientes]="selectorAumentosPendientes"
+            [caracteristicasActuales]="selectorAumentosCaracteristicasActuales"
+            [caracteristicasPerdidas]="selectorAumentosCaracteristicasPerdidas"
+            [topesCaracteristicas]="selectorAumentosTopes"
+            (cerrar)="onCerrarModalAumentosCaracteristica()"
+            (confirmar)="onConfirmarAumentosCaracteristica($event)">
+        </app-selector-aumentos-caracteristica-modal>
+    </ng-container>
+
     <ng-container *ngIf="modalSelectorRazaBaseAbierto">
         <app-selector-raza-base-modal
             [candidatas]="candidatasRazaBaseModal"

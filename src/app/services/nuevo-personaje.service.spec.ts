@@ -9,6 +9,7 @@ import { createRacialPlaceholder } from './utils/racial-mapper';
 import { Plantilla } from '../interfaces/plantilla';
 import { Raza } from '../interfaces/raza';
 import { TipoCriatura } from '../interfaces/tipo_criatura';
+import { UserSettingsService } from './user-settings.service';
 
 const GENERADOR_CONFIG_STORAGE_KEY = 'fichas35.nuevoPersonaje.generador.config.v1';
 
@@ -155,14 +156,6 @@ function crearClaseBase(partial?: Partial<Clase>): Clase {
 }
 
 describe('NuevoPersonajeService (generador)', () => {
-    beforeEach(() => {
-        localStorage.removeItem(GENERADOR_CONFIG_STORAGE_KEY);
-    });
-
-    afterEach(() => {
-        localStorage.removeItem(GENERADOR_CONFIG_STORAGE_KEY);
-    });
-
     it('usa defaults cuando no hay configuración persistida', () => {
         const service = new NuevoPersonajeService();
         const estado = service.EstadoFlujo.generador;
@@ -171,40 +164,68 @@ describe('NuevoPersonajeService (generador)', () => {
         expect(estado.tablasPermitidas).toBe(3);
     });
 
-    it('carga mínimo y tablas desde localStorage cuando son válidos', () => {
-        localStorage.setItem(GENERADOR_CONFIG_STORAGE_KEY, JSON.stringify({
+    it('sincroniza mínimo y tablas desde settings remotos cuando son válidos', async () => {
+        const userSettingsSvc = jasmine.createSpyObj<UserSettingsService>('UserSettingsService', [
+            'loadGeneradorConfig',
+            'saveGeneradorConfig',
+            'migrateLegacyLocalConfigOnce',
+        ]);
+        userSettingsSvc.loadGeneradorConfig.and.resolveTo({
             minimoSeleccionado: 8,
             tablasPermitidas: 5,
-        }));
+            updatedAt: Date.now(),
+        });
+        userSettingsSvc.saveGeneradorConfig.and.resolveTo();
+        userSettingsSvc.migrateLegacyLocalConfigOnce.and.resolveTo();
 
-        const service = new NuevoPersonajeService();
+        const service = new NuevoPersonajeService(userSettingsSvc);
+        await service.sincronizarConfigGeneradorDesdeCuenta();
+
         const estado = service.EstadoFlujo.generador;
 
         expect(estado.minimoSeleccionado).toBe(8);
         expect(estado.tablasPermitidas).toBe(5);
+        expect(userSettingsSvc.migrateLegacyLocalConfigOnce).toHaveBeenCalledWith(GENERADOR_CONFIG_STORAGE_KEY);
     });
 
-    it('si localStorage está corrupto usa defaults', () => {
-        localStorage.setItem(GENERADOR_CONFIG_STORAGE_KEY, '{esto-no-es-json');
+    it('si no hay configuración remota mantiene defaults', async () => {
+        const userSettingsSvc = jasmine.createSpyObj<UserSettingsService>('UserSettingsService', [
+            'loadGeneradorConfig',
+            'saveGeneradorConfig',
+            'migrateLegacyLocalConfigOnce',
+        ]);
+        userSettingsSvc.loadGeneradorConfig.and.resolveTo(null);
+        userSettingsSvc.saveGeneradorConfig.and.resolveTo();
+        userSettingsSvc.migrateLegacyLocalConfigOnce.and.resolveTo();
 
-        const service = new NuevoPersonajeService();
+        const service = new NuevoPersonajeService(userSettingsSvc);
+        await service.sincronizarConfigGeneradorDesdeCuenta();
         const estado = service.EstadoFlujo.generador;
 
         expect(estado.minimoSeleccionado).toBe(13);
         expect(estado.tablasPermitidas).toBe(3);
     });
 
-    it('si localStorage tiene valores inválidos usa defaults', () => {
-        localStorage.setItem(GENERADOR_CONFIG_STORAGE_KEY, JSON.stringify({
-            minimoSeleccionado: 'invalido',
-            tablasPermitidas: null,
-        }));
+    it('normaliza configuración remota inválida hacia límites válidos', async () => {
+        const userSettingsSvc = jasmine.createSpyObj<UserSettingsService>('UserSettingsService', [
+            'loadGeneradorConfig',
+            'saveGeneradorConfig',
+            'migrateLegacyLocalConfigOnce',
+        ]);
+        userSettingsSvc.loadGeneradorConfig.and.resolveTo({
+            minimoSeleccionado: 50,
+            tablasPermitidas: 0,
+            updatedAt: Date.now(),
+        });
+        userSettingsSvc.saveGeneradorConfig.and.resolveTo();
+        userSettingsSvc.migrateLegacyLocalConfigOnce.and.resolveTo();
 
-        const service = new NuevoPersonajeService();
+        const service = new NuevoPersonajeService(userSettingsSvc);
+        await service.sincronizarConfigGeneradorDesdeCuenta();
         const estado = service.EstadoFlujo.generador;
 
         expect(estado.minimoSeleccionado).toBe(13);
-        expect(estado.tablasPermitidas).toBe(3);
+        expect(estado.tablasPermitidas).toBe(1);
     });
 
     it('seleccionar tabla activa la pool y cambiar a otra resetea asignaciones', () => {
@@ -262,7 +283,6 @@ describe('NuevoPersonajeService (ventajas/desventajas)', () => {
     let idiomaComun: IdiomaDetalle;
 
     beforeEach(() => {
-        localStorage.removeItem(GENERADOR_CONFIG_STORAGE_KEY);
         service = new NuevoPersonajeService();
 
         habilidadAvistar = {
@@ -836,6 +856,156 @@ describe('NuevoPersonajeService (clases)', () => {
         service.aplicarSiguienteNivelClase(claseBase);
         const segundoNivel = service.getIdiomasPendientesPostClase();
         expect(segundoNivel.cantidad).toBe(0);
+    });
+
+    it('DGs raciales 4/8/12 generan 1/2/3 aumentos por progresion', () => {
+        const casos = [
+            { dgs: 4, esperado: 1 },
+            { dgs: 8, esperado: 2 },
+            { dgs: 12, esperado: 3 },
+        ];
+
+        casos.forEach(({ dgs, esperado }) => {
+            const tipo = crearTipoBase();
+            const raza = crearRazaBase(tipo);
+            raza.Dgs_adicionales.Cantidad = dgs;
+            service.seleccionarRaza(raza);
+            service.aplicarCaracteristicasGeneradas({
+                Fuerza: 14,
+                Destreza: 12,
+                Constitucion: 13,
+                Inteligencia: 10,
+                Sabiduria: 11,
+                Carisma: 9,
+            });
+
+            const creados = service.registrarAumentosPendientesPorProgresion('Prueba DGs');
+            expect(creados.length).withContext(`DGs ${dgs}`).toBe(esperado);
+            expect(service.getAumentosCaracteristicaPendientes().length).withContext(`DGs ${dgs}`).toBe(esperado);
+        });
+    });
+
+    it('DGs raciales 2 y dos niveles de clase generan aumento al cruzar 4', () => {
+        const tipo = crearTipoBase();
+        const raza = crearRazaBase(tipo);
+        raza.Dgs_adicionales.Cantidad = 2;
+        service.seleccionarRaza(raza);
+        service.aplicarCaracteristicasGeneradas({
+            Fuerza: 14,
+            Destreza: 12,
+            Constitucion: 13,
+            Inteligencia: 10,
+            Sabiduria: 11,
+            Carisma: 9,
+        });
+
+        expect(service.registrarAumentosPendientesPorProgresion('Inicio').length).toBe(0);
+        service.aplicarSiguienteNivelClase(claseBase);
+        expect(service.registrarAumentosPendientesPorProgresion('Clase 1').length).toBe(0);
+        service.aplicarSiguienteNivelClase(claseBase);
+        expect(service.registrarAumentosPendientesPorProgresion('Clase 2').length).toBe(1);
+    });
+
+    it('el ajuste de nivel racial y de plantillas no afecta la progresion de aumentos', () => {
+        const tipo = crearTipoBase();
+        const raza = crearRazaBase(tipo);
+        raza.Dgs_adicionales.Cantidad = 0;
+        raza.Ajuste_nivel = 3;
+        service.seleccionarRaza(raza);
+        service.aplicarCaracteristicasGeneradas({
+            Fuerza: 14,
+            Destreza: 12,
+            Constitucion: 13,
+            Inteligencia: 10,
+            Sabiduria: 11,
+            Carisma: 9,
+        });
+        (service.EstadoFlujo.plantillas as any).seleccionadas = [{ Ajuste_nivel: 10 }];
+
+        service.aplicarSiguienteNivelClase(claseBase);
+        const creados = service.registrarAumentosPendientesPorProgresion('Clase 1');
+        expect(creados.length).toBe(0);
+    });
+
+    it('especial con Modificadores.Caracteristica = N genera aumento de valor N', () => {
+        const creados = service.registrarAumentosPendientesPorEspeciales([{
+            Especial: {
+                Nombre: 'Caracteristica +3',
+                Modificadores: { Caracteristica: 3 },
+            },
+            Nivel: 1,
+            Id_extra: 0,
+            Extra: '',
+            Opcional: 0,
+            Id_interno: 0,
+            Id_especial_requerido: 0,
+            Id_dote_requerida: 0,
+        } as any], 'Especial de prueba');
+
+        expect(creados.length).toBe(1);
+        expect(creados[0].valor).toBe(3);
+    });
+
+    it('aplicarAumentosCaracteristica incrementa estadisticas y modificadores', () => {
+        const creados = service.registrarAumentosPendientesPorEspeciales([
+            {
+                Especial: { Nombre: 'Caracteristica +2', Modificadores: { Caracteristica: 2 } },
+                Nivel: 1,
+                Id_extra: 0,
+                Extra: '',
+                Opcional: 0,
+                Id_interno: 0,
+                Id_especial_requerido: 0,
+                Id_dote_requerida: 0,
+            } as any,
+            {
+                Especial: { Nombre: 'Caracteristica +1', Modificadores: { Caracteristica: 1 } },
+                Nivel: 1,
+                Id_extra: 0,
+                Extra: '',
+                Opcional: 0,
+                Id_interno: 0,
+                Id_especial_requerido: 0,
+                Id_dote_requerida: 0,
+            } as any,
+        ], 'Especiales');
+
+        const aplicado = service.aplicarAumentosCaracteristica(
+            creados.map((pendiente) => ({
+                idPendiente: pendiente.id,
+                caracteristica: 'Fuerza',
+            }))
+        );
+
+        expect(aplicado).toBeTrue();
+        expect(service.PersonajeCreacion.Fuerza).toBe(17);
+        expect(service.PersonajeCreacion.ModFuerza).toBe(3);
+        expect(service.getAumentosCaracteristicaPendientes().length).toBe(0);
+    });
+
+    it('bloquea aumentos en caracteristicas perdidas', () => {
+        service.PersonajeCreacion.Caracteristicas_perdidas = {
+            ...service.PersonajeCreacion.Caracteristicas_perdidas,
+            Constitucion: true,
+        };
+        service.PersonajeCreacion.Constitucion_perdida = true;
+
+        const creados = service.registrarAumentosPendientesPorEspeciales([{
+            Especial: { Nombre: 'Caracteristica +1', Modificadores: { Caracteristica: 1 } },
+            Nivel: 1,
+            Id_extra: 0,
+            Extra: '',
+            Opcional: 0,
+            Id_interno: 0,
+            Id_especial_requerido: 0,
+            Id_dote_requerida: 0,
+        } as any], 'Especiales');
+
+        const aplicado = service.aplicarAumentosCaracteristica([{
+            idPendiente: creados[0].id,
+            caracteristica: 'Constitucion',
+        }]);
+        expect(aplicado).toBeFalse();
     });
 
     it('en nivel 1 marca habilidades de clase y añade idiomas fijos', () => {

@@ -92,6 +92,9 @@ export class TabControlComponent implements OnInit, OnDestroy {
 
     ngOnInit() {
         this.usrPerm = this.usrSvc.Usuario.permisos;
+        this.usrSvc.permisos$
+            .pipe(takeUntil(this.destroy$))
+            .subscribe((permisos) => this.usrPerm = Number(permisos) === 1 ? 1 : 0);
         this.manualRefNavSvc.aperturas$
             .pipe(takeUntil(this.destroy$))
             .subscribe((payload) => this.abrirDesdeManual(payload));

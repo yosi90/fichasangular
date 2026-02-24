@@ -35,10 +35,6 @@ export class BaseMenuComponent implements OnInit, OnDestroy {
             const correo = this.usrService.Usuario.correo;
             this.usr = nombre != '' ? nombre : correo != '' ? correo : 'Invitado';
         });
-
-        const tokenViejo = localStorage.getItem('sesionFichas');
-        if (tokenViejo)
-            this.usrService.recuperarSesion(tokenViejo);
     }
 
     ngOnDestroy(): void {

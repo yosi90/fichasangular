@@ -1,10 +1,19 @@
 import { VentanaDetalleFlotanteComponent } from './ventana-detalle-flotante.component';
+import { UserSettingsService } from 'src/app/services/user-settings.service';
 
 describe('VentanaDetalleFlotanteComponent', () => {
     let component: VentanaDetalleFlotanteComponent;
+    let userSettingsSvc: jasmine.SpyObj<UserSettingsService>;
 
     beforeEach(() => {
-        component = new VentanaDetalleFlotanteComponent();
+        userSettingsSvc = jasmine.createSpyObj<UserSettingsService>('UserSettingsService', [
+            'loadPreviewMinimizada',
+            'savePreviewMinimizada',
+        ]);
+        userSettingsSvc.loadPreviewMinimizada.and.resolveTo(null);
+        userSettingsSvc.savePreviewMinimizada.and.resolveTo();
+
+        component = new VentanaDetalleFlotanteComponent(userSettingsSvc);
         component.ngOnInit();
     });
 
@@ -162,5 +171,60 @@ describe('VentanaDetalleFlotanteComponent', () => {
         expect(component.isMinimized).toBeTrue();
         expect(component.isMaximized).toBeFalse();
         expect(component.containerStyle['height']).toBe(`${component.titleBarHeight}px`);
+    });
+
+    it('al minimizar aplica placement guardado por cuenta', async () => {
+        userSettingsSvc.loadPreviewMinimizada.and.resolveTo({
+            version: 1,
+            side: 'right',
+            top: 200,
+            updatedAt: Date.now(),
+        });
+
+        component = new VentanaDetalleFlotanteComponent(userSettingsSvc);
+        component.ngOnInit();
+        await Promise.resolve();
+
+        component.toggleMinimize();
+
+        const viewportWidth = Math.max(640, window.innerWidth);
+        const width = Number(component.containerStyle['width'].replace('px', ''));
+        const left = Number(component.containerStyle['left'].replace('px', ''));
+        const top = Number(component.containerStyle['top'].replace('px', ''));
+
+        expect(left).toBe(viewportWidth - width - 12);
+        expect(top).toBe(200);
+    });
+
+    it('guarda placement al soltar arrastre mientras está minimizada', () => {
+        component.toggleMinimize();
+        component.onTitleBarPointerDown({
+            button: 0,
+            clientX: 100,
+            clientY: 100,
+            target: null,
+            preventDefault: () => undefined,
+        } as any);
+        component.onDocumentPointerMove({
+            clientX: 220,
+            clientY: 210,
+        } as PointerEvent);
+        component.onDocumentPointerUp();
+
+        expect(userSettingsSvc.savePreviewMinimizada).toHaveBeenCalledTimes(1);
+    });
+
+    it('no guarda placement si no hubo desplazamiento al soltar', () => {
+        component.toggleMinimize();
+        component.onTitleBarPointerDown({
+            button: 0,
+            clientX: 100,
+            clientY: 100,
+            target: null,
+            preventDefault: () => undefined,
+        } as any);
+        component.onDocumentPointerUp();
+
+        expect(userSettingsSvc.savePreviewMinimizada).not.toHaveBeenCalled();
     });
 });
