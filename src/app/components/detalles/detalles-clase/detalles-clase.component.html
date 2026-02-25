@@ -224,24 +224,62 @@
                             </tr>
                         </thead>
                         <tbody>
-                            <tr *ngFor="let nivel of filasNivel">
+                            <tr *ngFor="let nivel of filasNivel; trackBy: trackByNivel">
                                 <td>{{nivel.Nivel}}</td>
                                 <td *ngIf="mostrarAtaqueBase">{{tieneTextoVisible(nivel.Ataque_base) ? nivel.Ataque_base : ''}}</td>
                                 <td *ngIf="mostrarFortaleza">{{tieneTextoVisible(nivel.Salvaciones.Fortaleza) ? nivel.Salvaciones.Fortaleza : ''}}</td>
                                 <td *ngIf="mostrarReflejos">{{tieneTextoVisible(nivel.Salvaciones.Reflejos) ? nivel.Salvaciones.Reflejos : ''}}</td>
                                 <td *ngIf="mostrarVoluntad">{{tieneTextoVisible(nivel.Salvaciones.Voluntad) ? nivel.Salvaciones.Voluntad : ''}}</td>
                                 <td *ngIf="mostrarEspeciales">
-                                    <div class="chips-celda" *ngIf="getResumenEspeciales(nivel).length > 0; else sinEspeciales">
-                                        <mat-chip class="chip-celda sombra3d-sm" [ngClass]="especial.clicable ? 'chip-clic' : ''"
-                                            [matTooltip]="getTooltipEspecial(especial)"
-                                            [matTooltipDisabled]="!tieneTextoVisible(getTooltipEspecial(especial))"
-                                            matTooltipClass="tt-accent tt-multiline"
-                                            (click)="abrirDetalleEspecialFila(especial)"
-                                            *ngFor="let especial of getResumenEspeciales(nivel)">
-                                            {{especial.texto}}
-                                            <span *ngIf="especial.opcional"> (Opcional)</span>
-                                        </mat-chip>
-                                    </div>
+                                    <ng-container *ngIf="getRenderEspecialesFila(nivel) as renderEspeciales">
+                                        <div class="chips-celda" *ngIf="renderEspeciales.length > 0; else sinEspeciales">
+                                            <ng-container *ngFor="let renderItem of renderEspeciales; trackBy: trackByRenderEspecial">
+                                                <mat-chip *ngIf="renderItem.tipoRender === 'simple'"
+                                                    class="h-auto chip-celda sombra3d-sm"
+                                                    [ngClass]="esChipEspecialInteractivo(renderItem.item) ? 'chip-clic' : ''"
+                                                    [matTooltip]="getTooltipEspecial(renderItem.item)"
+                                                    [matTooltipShowDelay]="250"
+                                                    [matTooltipDisabled]="!esChipEspecialInteractivo(renderItem.item)"
+                                                    matTooltipClass="tt-accent tt-multiline"
+                                                    [attr.title]="esChipEspecialInteractivo(renderItem.item) ? getTooltipEspecial(renderItem.item) : null"
+                                                    [style.cursor]="esChipEspecialInteractivo(renderItem.item) ? 'pointer' : 'default'"
+                                                    (click)="abrirDetalleEspecialFila(renderItem.item)">
+                                                    <span>{{renderItem.item.texto}}</span>
+                                                    <mat-chip class="m-1" *ngFor="let extra of renderItem.item.extras; trackBy: trackByTexto"
+                                                        [ngClass]="esChipEspecialInteractivo(renderItem.item) ? 'chip-clic' : ''"
+                                                        [style.cursor]="esChipEspecialInteractivo(renderItem.item) ? 'pointer' : 'default'"
+                                                        (click)="abrirDetalleEspecialFila(renderItem.item); $event.stopPropagation()">{{extra}}</mat-chip>
+                                                    <mat-chip class="m-1" *ngIf="renderItem.item.grupoOpcional > 0">Opcional</mat-chip>
+                                                </mat-chip>
+
+                                                <mat-chip *ngIf="renderItem.tipoRender === 'grupo_opcional'"
+                                                    class="h-auto chip-celda sombra3d-sm chip-opcional-grupo"
+                                                    (click)="$event.stopPropagation()">
+                                                    <span class="chip-opcional-grupo-label">Elige entre</span>
+                                                    <span class="chip-opcional-grupo-opciones">
+                                                        <ng-container *ngFor="let opcion of renderItem.opciones; let ultima = last; trackBy: trackByResumenEspecial">
+                                                            <mat-chip class="h-auto chip-celda sombra3d-sm chip-opcional-subchip"
+                                                                [ngClass]="esChipEspecialInteractivo(opcion) ? 'chip-clic' : ''"
+                                                                [matTooltip]="getTooltipEspecial(opcion)"
+                                                                [matTooltipShowDelay]="250"
+                                                                [matTooltipDisabled]="!esChipEspecialInteractivo(opcion)"
+                                                                matTooltipClass="tt-accent tt-multiline"
+                                                                [attr.title]="esChipEspecialInteractivo(opcion) ? getTooltipEspecial(opcion) : null"
+                                                                [style.cursor]="esChipEspecialInteractivo(opcion) ? 'pointer' : 'default'"
+                                                                (click)="abrirDetalleEspecialFila(opcion); $event.stopPropagation()">
+                                                                <span>{{opcion.texto}}</span>
+                                                                <mat-chip class="m-1" *ngFor="let extra of opcion.extras; trackBy: trackByTexto"
+                                                                    [ngClass]="esChipEspecialInteractivo(opcion) ? 'chip-clic' : ''"
+                                                                    [style.cursor]="esChipEspecialInteractivo(opcion) ? 'pointer' : 'default'"
+                                                                    (click)="abrirDetalleEspecialFila(opcion); $event.stopPropagation()">{{extra}}</mat-chip>
+                                                            </mat-chip>
+                                                            <span class="chip-opcional-separador" *ngIf="!ultima">o</span>
+                                                        </ng-container>
+                                                    </span>
+                                                </mat-chip>
+                                            </ng-container>
+                                        </div>
+                                    </ng-container>
                                     <ng-template #sinEspeciales></ng-template>
                                 </td>
                                 <td *ngIf="mostrarNivelMaxPoderAccesible">{{nivel.Nivel_max_poder_accesible_nivel_lanzadorPsionico >= 0 ? nivel.Nivel_max_poder_accesible_nivel_lanzadorPsionico : ''}}</td>

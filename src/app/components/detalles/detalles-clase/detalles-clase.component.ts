@@ -17,20 +17,32 @@ type ElementoVisual = {
 
 type ResumenDote = {
     texto: string;
-    opcional: boolean;
+    grupoOpcional: number;
+    extras: string[];
     tooltip: string;
     idEntidad: number | null;
 };
 
-type TipoResumenEspecial = 'especial' | 'dote' | 'grupo';
+type TipoResumenEspecial = 'especial' | 'dote';
 
 type ResumenEspecial = {
     texto: string;
-    opcional: boolean;
+    grupoOpcional: number;
+    extras: string[];
     tooltip: string;
     tipo: TipoResumenEspecial;
     idEntidad: number | null;
+    nombreEntidad: string;
     clicable: boolean;
+};
+
+type ResumenEspecialRenderItem = {
+    tipoRender: 'simple';
+    item: ResumenEspecial;
+} | {
+    tipoRender: 'grupo_opcional';
+    grupo: number;
+    opciones: ResumenEspecial[];
 };
 
 @Component({
@@ -54,6 +66,7 @@ export class DetallesClaseComponent {
     mostrarNivelMaxPoderAccesible: boolean = false;
     mostrarReservaPsionica: boolean = false;
     mostrarAumentosClaseLanzadora: boolean = false;
+    renderEspecialesPorNivel: Record<number, ResumenEspecialRenderItem[]> = {};
     competenciasVisibles: Record<keyof Clase['Competencias'], ElementoVisual[]> = {
         Armas: [],
         Armaduras: [],
@@ -144,7 +157,9 @@ export class DetallesClaseComponent {
 
     @Output() conjuroDetalles: EventEmitter<number> = new EventEmitter<number>();
     @Output() especialDetalles: EventEmitter<number> = new EventEmitter<number>();
+    @Output() especialDetallesPorNombre: EventEmitter<string> = new EventEmitter<string>();
     @Output() doteDetalles: EventEmitter<number> = new EventEmitter<number>();
+    @Output() doteDetallesPorNombre: EventEmitter<string> = new EventEmitter<string>();
 
     abrirDetalleManual() {
         this.manualDetalleNavSvc.abrirDetalleManual({
@@ -159,21 +174,35 @@ export class DetallesClaseComponent {
     }
 
     abrirDetalleEspecialFila(especial: ResumenEspecial) {
-        if (!especial.clicable || !especial.idEntidad || especial.idEntidad <= 0)
-            return;
+        const idEntidad = Number(especial?.idEntidad ?? 0);
+        const tieneId = Number.isFinite(idEntidad) && idEntidad > 0;
+        const nombreEntidad = `${especial?.nombreEntidad ?? ''}`.trim();
+        const nombreFallback = this.tieneTextoVisible(nombreEntidad)
+            ? nombreEntidad
+            : `${especial?.texto ?? ''}`.trim();
 
         if (especial.tipo === 'especial') {
-            this.especialDetalles.emit(especial.idEntidad);
+            if (tieneId) {
+                this.especialDetalles.emit(idEntidad);
+                return;
+            }
+            if (this.tieneTextoVisible(nombreFallback))
+                this.especialDetallesPorNombre.emit(nombreFallback);
             return;
         }
 
-        if (especial.tipo === 'dote')
-            this.doteDetalles.emit(especial.idEntidad);
+        if (tieneId) {
+            this.doteDetalles.emit(idEntidad);
+            return;
+        }
+
+        if (this.tieneTextoVisible(nombreFallback))
+            this.doteDetallesPorNombre.emit(nombreFallback);
     }
 
     getTooltipEspecial(especial: ResumenEspecial): string {
         const detalle = this.tieneTextoVisible(especial.tooltip) ? especial.tooltip : '';
-        if (especial.clicable)
+        if (this.esChipEspecialInteractivo(especial))
             return detalle ? `Pulsa para ver detalles | ${detalle}` : 'Pulsa para ver detalles';
         return detalle;
     }
@@ -322,23 +351,22 @@ export class DetallesClaseComponent {
         if (!nivel?.Dotes)
             return [];
 
-        const agrupadas = new Map<string, { nombre: string, opcional: boolean, extras: Set<string>, tooltipExtras: Set<string>, idEntidad: number | null }>();
+        const agrupadas = new Map<string, { nombre: string, grupoOpcional: number, extras: Set<string>, tooltipExtras: Set<string>, idEntidad: number | null }>();
 
         nivel.Dotes.forEach((doteNivel) => {
             const nombre = this.tieneTextoVisible(doteNivel?.Dote?.Nombre)
                 ? doteNivel.Dote.Nombre
                 : 'Dote';
-            const opcional = !!doteNivel?.Opcional;
-            const idDote = Number(doteNivel?.Dote?.Id);
-            const idEntidad = Number.isFinite(idDote) && idDote > 0 ? idDote : null;
-            const clave = `${idEntidad ?? nombre}|${opcional ? 1 : 0}`;
+            const grupoOpcional = this.getGrupoOpcional(doteNivel?.Opcional);
+            const idEntidad = this.getIdDoteNivel(doteNivel);
+            const clave = `${idEntidad ?? nombre}|${grupoOpcional}`;
             const extra = this.getExtraVisibleDoteNivel(doteNivel);
             const tooltipExtra = this.getTooltipExtrasDoteNivel(doteNivel);
 
             if (!agrupadas.has(clave)) {
                 agrupadas.set(clave, {
                     nombre,
-                    opcional,
+                    grupoOpcional,
                     extras: new Set<string>(),
                     tooltipExtras: new Set<string>(),
                     idEntidad,
@@ -354,12 +382,11 @@ export class DetallesClaseComponent {
 
         const base = Array.from(agrupadas.values()).map((item) => {
             const extras = Array.from(item.extras.values());
-            const extraTxt = extras.length > 0 ? ` (${extras.join(' / ')})` : '';
-            const tooltip = Array.from(item.tooltipExtras.values()).join(' | ');
             return {
-                texto: `${item.nombre}${extraTxt}`,
-                opcional: item.opcional,
-                tooltip,
+                texto: item.nombre,
+                grupoOpcional: item.grupoOpcional,
+                extras,
+                tooltip: Array.from(item.tooltipExtras.values()).join(' | '),
                 idEntidad: item.idEntidad,
             };
         });
@@ -368,49 +395,122 @@ export class DetallesClaseComponent {
     }
 
     getResumenEspeciales(nivel: ClaseNivelDetalle): ResumenEspecial[] {
-        const especiales = (nivel?.Especiales ?? []).map(especial => {
-            const nombre = this.getNombreEspecial(especial.Especial);
-            const extra = this.tieneTextoVisible(especial?.Extra) && especial.Extra !== 'No aplica' ? ` (${especial.Extra})` : '';
-            const idEntidad = this.getIdEspecial(especial?.Especial);
+        const especiales = (nivel?.Especiales ?? []).map(especialNivel => {
+            const nombre = this.getNombreEspecialNivel(especialNivel);
+            const extra = this.getExtraVisibleEspecialNivel(especialNivel);
+            const idEntidad = this.getIdEspecialNivel(especialNivel);
             return {
-                texto: `${nombre}${extra}`,
-                opcional: !!especial?.Opcional,
+                texto: nombre,
+                grupoOpcional: this.getGrupoOpcional(especialNivel?.Opcional),
+                extras: this.tieneTextoVisible(extra) ? [extra] : [],
                 tooltip: '',
-                tipo: 'especial' as TipoResumenEspecial,
+                tipo: 'especial' as const,
                 idEntidad,
-                clicable: idEntidad !== null,
+                nombreEntidad: nombre,
+                clicable: idEntidad !== null || this.tieneTextoVisible(nombre),
             };
         });
 
         const dotes = this.getResumenDotes(nivel).map(dote => ({
             texto: dote.texto,
-            opcional: dote.opcional,
+            grupoOpcional: dote.grupoOpcional,
+            extras: dote.extras,
             tooltip: dote.tooltip,
-            tipo: 'dote' as TipoResumenEspecial,
+            tipo: 'dote' as const,
             idEntidad: dote.idEntidad,
-            clicable: dote.idEntidad !== null,
+            nombreEntidad: dote.texto,
+            clicable: dote.idEntidad !== null || this.tieneTextoVisible(dote.texto),
         }));
 
-        const base = [...especiales, ...dotes];
-        const obligatorias = base.filter(item => !item.opcional);
-        const opcionales = base.filter(item => item.opcional);
-        if (opcionales.length > 1) {
-            obligatorias.push({
-                texto: `Elige una: ${opcionales.map(item => item.texto).join(' o ')}`,
-                opcional: false,
-                tooltip: opcionales
-                    .filter(item => this.tieneTextoVisible(item.tooltip))
-                    .map(item => `${item.texto}: ${item.tooltip}`)
-                    .join(' | '),
-                tipo: 'grupo',
-                idEntidad: null,
-                clicable: false,
+        return [...especiales, ...dotes];
+    }
+
+    getRenderEspeciales(nivel: ClaseNivelDetalle): ResumenEspecialRenderItem[] {
+        const base = this.getResumenEspeciales(nivel);
+        if (base.length < 1)
+            return [];
+
+        const opcionesPorGrupo = new Map<number, ResumenEspecial[]>();
+        base.forEach((item) => {
+            const grupo = Number(item?.grupoOpcional ?? 0);
+            if (!Number.isFinite(grupo) || grupo <= 0)
+                return;
+            const opciones = opcionesPorGrupo.get(grupo) ?? [];
+            opciones.push(item);
+            opcionesPorGrupo.set(grupo, opciones);
+        });
+
+        const render: ResumenEspecialRenderItem[] = [];
+        const gruposEmitidos = new Set<number>();
+        base.forEach((item) => {
+            const grupo = Number(item?.grupoOpcional ?? 0);
+            if (!Number.isFinite(grupo) || grupo <= 0) {
+                render.push({
+                    tipoRender: 'simple',
+                    item,
+                });
+                return;
+            }
+
+            if (gruposEmitidos.has(grupo))
+                return;
+            gruposEmitidos.add(grupo);
+
+            const opciones = opcionesPorGrupo.get(grupo) ?? [];
+            if (opciones.length > 1) {
+                render.push({
+                    tipoRender: 'grupo_opcional',
+                    grupo,
+                    opciones,
+                });
+                return;
+            }
+
+            render.push({
+                tipoRender: 'simple',
+                item: opciones[0] ?? item,
             });
-            return obligatorias;
+        });
+
+        return render;
+    }
+
+    getRenderEspecialesFila(nivel: ClaseNivelDetalle): ResumenEspecialRenderItem[] {
+        const key = Number(nivel?.Nivel ?? 0);
+        return this.renderEspecialesPorNivel[key] ?? [];
+    }
+
+    trackByNivel = (index: number, nivel: ClaseNivelDetalle): number => {
+        const key = Number(nivel?.Nivel ?? 0);
+        return Number.isFinite(key) ? key : index;
+    };
+
+    trackByRenderEspecial = (index: number, item: ResumenEspecialRenderItem): string => {
+        if (item.tipoRender === 'simple') {
+            const nombre = this.normalizar(item.item.nombreEntidad || item.item.texto || '');
+            const id = Number(item.item.idEntidad ?? 0);
+            return `s|${item.item.tipo}|${id}|${nombre}|${item.item.grupoOpcional}|${item.item.extras.join('|')}`;
         }
 
-        return [...obligatorias, ...opcionales];
-    }
+        const opciones = item.opciones
+            .map((opcion) => {
+                const id = Number(opcion.idEntidad ?? 0);
+                const nombre = this.normalizar(opcion.nombreEntidad || opcion.texto || '');
+                return `${opcion.tipo}:${id}:${nombre}:${opcion.extras.join('|')}`;
+            })
+            .join('||');
+        return `g|${item.grupo}|${opciones}`;
+    };
+
+    trackByResumenEspecial = (index: number, item: ResumenEspecial): string => {
+        const id = Number(item?.idEntidad ?? 0);
+        const nombre = this.normalizar(item?.nombreEntidad || item?.texto || '');
+        return `${item?.tipo ?? 'especial'}|${id}|${nombre}|${item?.grupoOpcional ?? 0}|${(item?.extras ?? []).join('|')}`;
+    };
+
+    trackByTexto = (index: number, texto: string): string => {
+        return `${index}|${texto ?? ''}`;
+    };
 
     getAumentosLanzadora(nivel: ClaseNivelDetalle): string[] {
         return (nivel?.Aumentos_clase_lanzadora ?? [])
@@ -449,6 +549,7 @@ export class DetallesClaseComponent {
             this.filasNivel = [];
             this.columnasDiarios = [];
             this.columnasConocidos = [];
+            this.renderEspecialesPorNivel = {};
             this.mostrarConocidosTotal = false;
             this.mostrarAtaqueBase = false;
             this.mostrarFortaleza = false;
@@ -478,6 +579,11 @@ export class DetallesClaseComponent {
             this.filasNivel.push(nivelMap.get(i) ?? this.crearNivelVacio(i));
         }
 
+        this.renderEspecialesPorNivel = this.filasNivel.reduce((acc, nivel) => {
+            acc[nivel.Nivel] = this.getRenderEspeciales(nivel);
+            return acc;
+        }, {} as Record<number, ResumenEspecialRenderItem[]>);
+
         this.columnasDiarios = this.getColumnasDinamicas('Conjuros_diarios', (v: number) => v >= 0);
         this.columnasConocidos = this.getColumnasDinamicas('Conjuros_conocidos_nivel_a_nivel', (v: number) => v > 0);
         this.mostrarConocidosTotal = this.filasNivel.some(n => (n.Conjuros_conocidos_total ?? 0) > 0);
@@ -485,7 +591,7 @@ export class DetallesClaseComponent {
         this.mostrarFortaleza = this.filasNivel.some(n => this.tieneTextoVisible(n.Salvaciones?.Fortaleza));
         this.mostrarReflejos = this.filasNivel.some(n => this.tieneTextoVisible(n.Salvaciones?.Reflejos));
         this.mostrarVoluntad = this.filasNivel.some(n => this.tieneTextoVisible(n.Salvaciones?.Voluntad));
-        this.mostrarEspeciales = this.filasNivel.some(n => this.getResumenEspeciales(n).length > 0);
+        this.mostrarEspeciales = Object.values(this.renderEspecialesPorNivel).some(items => items.length > 0);
         this.mostrarNivelMaxPoderAccesible = this.filasNivel.some(n => (n.Nivel_max_poder_accesible_nivel_lanzadorPsionico ?? -1) >= 0);
         this.mostrarReservaPsionica = this.filasNivel.some(n => (n.Reserva_psionica ?? 0) > 0);
         this.mostrarAumentosClaseLanzadora = this.filasNivel.some(n => this.getAumentosLanzadora(n).length > 0);
@@ -799,6 +905,29 @@ export class DetallesClaseComponent {
         return this.formatearValor(especial[claves[0]]);
     }
 
+    private getNombreEspecialNivel(especialNivel: any): string {
+        const nombreDesdeEspecial = this.getNombreEspecial(especialNivel?.Especial ?? {});
+        if (this.tieneTextoVisible(nombreDesdeEspecial) && this.normalizar(nombreDesdeEspecial) !== 'especial')
+            return nombreDesdeEspecial;
+
+        const candidatos = [
+            especialNivel?.Nombre,
+            especialNivel?.nombre,
+            especialNivel?.Especial_nombre,
+            especialNivel?.especial_nombre,
+            especialNivel?.Especial,
+            especialNivel?.especial,
+        ];
+
+        for (const candidato of candidatos) {
+            const nombre = `${candidato ?? ''}`.trim();
+            if (this.tieneTextoVisible(nombre))
+                return nombre;
+        }
+
+        return nombreDesdeEspecial;
+    }
+
     private getIdEspecial(especial: Record<string, any>): number | null {
         if (!especial || typeof especial !== 'object')
             return null;
@@ -817,6 +946,100 @@ export class DetallesClaseComponent {
         }
 
         return null;
+    }
+
+    private getIdEspecialNivel(especialNivel: any): number | null {
+        const desdeEspecial = this.getIdEspecial(especialNivel?.Especial ?? {});
+        if (desdeEspecial && desdeEspecial > 0)
+            return desdeEspecial;
+
+        const candidatos = [
+            especialNivel?.Id_especial,
+            especialNivel?.id_especial,
+            especialNivel?.Id,
+            especialNivel?.id,
+        ];
+
+        for (const candidato of candidatos) {
+            const id = Number(candidato);
+            if (Number.isFinite(id) && id > 0)
+                return id;
+        }
+
+        return null;
+    }
+
+    private getIdDoteNivel(doteNivel: ClaseDoteNivel): number | null {
+        const candidatos = [
+            doteNivel?.Dote?.Id,
+            (doteNivel as any)?.Id_dote,
+            (doteNivel as any)?.id_dote,
+            (doteNivel as any)?.Id,
+            (doteNivel as any)?.id,
+        ];
+
+        for (const candidato of candidatos) {
+            const id = Number(candidato);
+            if (Number.isFinite(id) && id > 0)
+                return id;
+        }
+
+        return null;
+    }
+
+    private getGrupoOpcional(value: unknown): number {
+        const grupo = Number(value);
+        return Number.isFinite(grupo) && grupo > 0 ? Math.trunc(grupo) : 0;
+    }
+
+    private getExtraVisibleEspecialNivel(especialNivel: any): string {
+        const extraRaw = `${especialNivel?.Extra ?? ''}`.trim();
+        if (this.tieneTextoVisible(extraRaw) && !this.esExtraDesconocido(extraRaw))
+            return extraRaw;
+
+        const idExtra = Number(especialNivel?.Id_extra ?? 0);
+        if (!Number.isFinite(idExtra) || idExtra <= 0)
+            return '';
+
+        const encontrada = this.getExtrasDisponiblesEspecial(especialNivel?.Especial)
+            .find(extra => extra.Id === idExtra);
+        if (encontrada && this.tieneTextoVisible(encontrada.Nombre))
+            return encontrada.Nombre;
+
+        return '';
+    }
+
+    private getExtrasDisponiblesEspecial(especial: Record<string, any>): { Id: number, Nombre: string }[] {
+        if (!especial || typeof especial !== 'object')
+            return [];
+
+        const extrasRaw = Array.isArray(especial?.['Extras'])
+            ? especial['Extras']
+            : (especial?.['Extras'] && typeof especial['Extras'] === 'object')
+                ? Object.values(especial['Extras'])
+                : [];
+
+        return extrasRaw
+            .map((item: any) => {
+                const id = Number(item?.Id_extra ?? item?.Id ?? item?.id_extra ?? item?.id ?? 0);
+                const nombre = `${item?.Extra ?? item?.Nombre ?? item?.extra ?? item?.nombre ?? ''}`.trim();
+                return {
+                    Id: Number.isFinite(id) ? id : 0,
+                    Nombre: nombre,
+                };
+            })
+            .filter(extra => extra.Id > 0 && this.tieneTextoVisible(extra.Nombre));
+    }
+
+    tieneReferenciaDetalle(especial: ResumenEspecial): boolean {
+        const id = Number(especial?.idEntidad ?? 0);
+        if (Number.isFinite(id) && id > 0)
+            return true;
+        return this.tieneTextoVisible(especial?.nombreEntidad ?? '');
+    }
+
+    esChipEspecialInteractivo(especial: ResumenEspecial): boolean {
+        return this.tieneTextoVisible(especial?.texto ?? '');
     }
 
     private tieneValorMostrable(valor: unknown): boolean {

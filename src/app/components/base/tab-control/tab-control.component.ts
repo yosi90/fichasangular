@@ -1,7 +1,7 @@
 import { Component, EventEmitter, HostListener, Input, NgZone, OnDestroy, OnInit, Output, SimpleChanges, ViewChild } from '@angular/core';
 import { UserService } from '../../../services/user.service';
 import { PersonajeService } from 'src/app/services/personaje.service';
-import { MatTab, MatTabGroup } from '@angular/material/tabs';
+import { MatTabGroup } from '@angular/material/tabs';
 import { Personaje } from 'src/app/interfaces/personaje';
 import { Raza } from 'src/app/interfaces/raza';
 import { Conjuro } from 'src/app/interfaces/conjuro';
@@ -62,6 +62,13 @@ export class TabControlComponent implements OnInit, OnDestroy {
     detallesPlantillaAbiertos: Plantilla[] = [];
     detallesSubtipoAbiertos: SubtipoDetalle[] = [];
     detallesVentajaAbiertos: VentajaDetalle[] = [];
+    private readonly TAB_PERSONAJES = 'base:personajes';
+    private readonly TAB_ADMIN = 'base:admin';
+    private readonly TAB_NUEVO = 'base:nuevo';
+    private readonly TAB_LISTADO = 'base:listado';
+    private readonly TAB_IMPORTANTE = 'base:importante';
+    private activeTabKey: string = this.TAB_PERSONAJES;
+    private openerByTab = new Map<string, string>();
     private avisoCachePendienteMostrado = false;
     private readonly destroy$ = new Subject<void>();
 
@@ -87,8 +94,6 @@ export class TabControlComponent implements OnInit, OnDestroy {
     ) { }
 
     @ViewChild(MatTabGroup) TabGroup!: MatTabGroup;
-    previousTab!: MatTab;
-    actualTab!: MatTab;
 
     ngOnInit() {
         this.usrPerm = this.usrSvc.Usuario.permisos;
@@ -109,31 +114,27 @@ export class TabControlComponent implements OnInit, OnDestroy {
     }
 
     ngAfterViewInit() {
-        this.previousTab = this.TabGroup._tabs.toArray()[0];
+        this.activeTabKey = this.TAB_PERSONAJES;
         this.verificarPendientesCacheAdminEnInicio();
     }
 
     ngOnChanges(changes: SimpleChanges) {
         if (changes['AbrirNuevoPersonajeTab'] && changes['AbrirNuevoPersonajeTab'].currentValue) {
             setTimeout(() => {
-                this.cambiarA(true, this.TabGroup._tabs.find(t => t.textLabel === 'Nuevo personaje'));
+                this.registerOpenContext(this.TAB_NUEVO, this.getSafeOpenerKey());
+                this.selectTabByKey(this.TAB_NUEVO);
             }, 100);
         } else if (changes['AbrirListadoTab'] && changes['AbrirListadoTab'].currentValue) {
             setTimeout(() => {
-                this.cambiarA(true, this.TabGroup._tabs.find(t => t.textLabel === `Lista de ${this.ListadoTabTipo}`));
+                this.registerOpenContext(this.TAB_LISTADO, this.getSafeOpenerKey());
+                this.selectTabByKey(this.TAB_LISTADO);
             }, 100);
         }
     }
 
     onTabChange(event: any) {
-        if (!this.actualTab) {
-            this.actualTab = this.TabGroup._tabs.toArray()[event.index];
-        } else if (!this.TabGroup._tabs.toArray().includes(this.previousTab) || this.TabGroup._tabs.toArray()[event.index] === this.actualTab) {
-            this.previousTab = this.TabGroup._tabs.toArray()[0];
-        } else {
-            this.previousTab = this.actualTab;
-            this.actualTab = this.TabGroup._tabs.toArray()[event.index];
-        }
+        const key = this.tabKeyByIndex(Number(event?.index ?? 0));
+        this.activeTabKey = key ?? this.TAB_PERSONAJES;
     }
 
     @HostListener('document:keydown', ['$event'])
@@ -199,44 +200,127 @@ export class TabControlComponent implements OnInit, OnDestroy {
             this.quitarListado();
     }
 
-    cambiarA(modo: boolean, pestaña?: MatTab) {
-        if (modo && pestaña && !pestaña.isActive)
-            this.TabGroup.selectedIndex = this.TabGroup._tabs.toArray().indexOf(pestaña);
-        else if (!modo) {
-            if (!this.TabGroup._tabs.toArray().includes(this.previousTab) || this.previousTab === this.actualTab)
-                this.TabGroup.selectedIndex = 0;
-            else if ((this.previousTab.position ?? 0) < 0)
-                this.TabGroup.selectedIndex = (this.previousTab.origin ?? 0)
-            else {
-                let moverA = (this.previousTab.position ?? 0) > 0 ? (this.previousTab.position ?? 0) - 1 : (this.previousTab.position ?? 0);
-                this.TabGroup.selectedIndex = (this.actualTab.origin ?? 0) + moverA;
-            }
-            this.actualTab = this.previousTab;
-            this.previousTab = this.TabGroup._tabs.toArray()[0];
+    private buildOrderedTabKeys(): string[] {
+        const keys: string[] = [this.TAB_PERSONAJES];
+        if (this.usrPerm === 1)
+            keys.push(this.TAB_ADMIN);
+        keys.push(...this.detallesPersonajeAbiertos.map((pj) => this.getPersonajeTabKey(pj)));
+        if (this.AbrirNuevoPersonajeTab)
+            keys.push(this.TAB_NUEVO);
+        if (this.AbrirListadoTab)
+            keys.push(this.TAB_LISTADO);
+        keys.push(...this.detallesManualAbiertos.map((manual) => this.getManualTabKey(manual)));
+        keys.push(...this.detallesRazaAbiertos.map((raza) => this.getRazaTabKey(raza)));
+        keys.push(...this.detallesConjuroAbiertos.map((conjuro) => this.getConjuroTabKey(conjuro)));
+        keys.push(...this.detallesSortilegaAbiertos.map((tupla) => this.getSortilegaTabKey(tupla)));
+        keys.push(...this.detallesTipoCriaturaAbiertos.map((tipo) => this.getTipoTabKey(tipo)));
+        keys.push(...this.detallesRasgoAbiertos.map((rasgo) => this.getRasgoTabKey(rasgo)));
+        keys.push(...this.detallesClaseAbiertos.map((clase) => this.getClaseTabKey(clase)));
+        keys.push(...this.detallesEspecialAbiertos.map((especial) => this.getEspecialTabKey(especial)));
+        keys.push(...this.detallesRacialAbiertos.map((racial) => this.getRacialTabKey(racial)));
+        keys.push(...this.detallesDoteAbiertos.map((doteCtx) => this.getDoteTabKey(doteCtx)));
+        keys.push(...this.detallesVentajaAbiertos.map((ventaja) => this.getVentajaTabKey(ventaja)));
+        keys.push(...this.detallesPlantillaAbiertos.map((plantilla) => this.getPlantillaTabKey(plantilla)));
+        keys.push(...this.detallesSubtipoAbiertos.map((subtipo) => this.getSubtipoTabKey(subtipo)));
+        keys.push(this.TAB_IMPORTANTE);
+        return keys;
+    }
+
+    private tabKeyByIndex(index: number): string | null {
+        const keys = this.buildOrderedTabKeys();
+        if (!Number.isFinite(index) || index < 0 || index >= keys.length)
+            return null;
+        return keys[index];
+    }
+
+    private tabIndexByKey(key: string): number {
+        const keys = this.buildOrderedTabKeys();
+        return keys.indexOf(key);
+    }
+
+    private isTabKeyOpen(key: string): boolean {
+        return this.tabIndexByKey(key) >= 0;
+    }
+
+    private getSafeOpenerKey(): string {
+        if (this.isTabKeyOpen(this.activeTabKey))
+            return this.activeTabKey;
+        return this.TAB_PERSONAJES;
+    }
+
+    private registerOpenContext(targetKey: string, openerKey: string): void {
+        if (!targetKey || this.openerByTab.has(targetKey))
+            return;
+        const opener = this.isTabKeyOpen(openerKey) ? openerKey : this.TAB_PERSONAJES;
+        this.openerByTab.set(targetKey, opener);
+    }
+
+    private selectTabByKey(key: string, fallbackToPersonajes: boolean = true): void {
+        if (!this.TabGroup)
+            return;
+        const idx = this.tabIndexByKey(key);
+        if (idx >= 0) {
+            this.TabGroup.selectedIndex = idx;
+            this.activeTabKey = key;
+            return;
         }
+        if (fallbackToPersonajes) {
+            const idxFallback = this.tabIndexByKey(this.TAB_PERSONAJES);
+            if (idxFallback >= 0) {
+                this.TabGroup.selectedIndex = idxFallback;
+                this.activeTabKey = this.TAB_PERSONAJES;
+            }
+        }
+    }
+
+    private focusOpenedTab(targetKey: string): void {
+        setTimeout(() => this.selectTabByKey(targetKey), 100);
+    }
+
+    private closeTabWithNavigation(closingKey: string, removeFn: () => boolean): boolean {
+        const wasActive = this.activeTabKey === closingKey;
+        const opener = this.openerByTab.get(closingKey) ?? this.TAB_PERSONAJES;
+        const removed = removeFn();
+        if (!removed)
+            return false;
+
+        this.openerByTab.delete(closingKey);
+
+        if (!wasActive)
+            return true;
+
+        const target = this.isTabKeyOpen(opener) ? opener : this.TAB_PERSONAJES;
+        this.selectTabByKey(target, true);
+        return true;
     }
 
     async abrirDetallesPersonaje(value: number) {
         const abierto = this.detallesPersonajeAbiertos.find(p => p.Id == value);
         if (abierto)
-            this.cambiarA(true, this.TabGroup._tabs.find(tab => tab.textLabel === abierto.Nombre));
+            this.selectTabByKey(this.getPersonajeTabKey(abierto));
         else {
             (await this.pSvc.getDetallesPersonaje(value)).subscribe(personaje => {
+                const targetKey = this.getPersonajeTabKey(personaje);
                 this.detallesPersonajeAbiertos.push(personaje);
-                setTimeout(() => {
-                    this.cambiarA(true, this.TabGroup._tabs.find(tab => tab.textLabel === personaje.Nombre));
-                }, 100);
+                this.registerOpenContext(targetKey, this.getSafeOpenerKey());
+                this.focusOpenedTab(targetKey);
             });
         }
     }
-    quitarDetallesPersonaje(value: string): boolean {
-        const tab = this.detallesPersonajeAbiertos.find(p => p.Nombre === value);
+    quitarDetallesPersonaje(value: string | Personaje): boolean {
+        const tab = typeof value === 'string'
+            ? this.detallesPersonajeAbiertos.find(p => p.Nombre === value)
+            : this.detallesPersonajeAbiertos.find(p => Number(p.Id) === Number(value.Id));
         if (!tab)
             return false;
-        const indexTab = this.detallesPersonajeAbiertos.indexOf(tab);
-        this.detallesPersonajeAbiertos.splice(indexTab, 1);
-        this.cambiarA(false);
-        return true;
+        const closingKey = this.getPersonajeTabKey(tab);
+        return this.closeTabWithNavigation(closingKey, () => {
+            const indexTab = this.detallesPersonajeAbiertos.indexOf(tab);
+            if (indexTab < 0)
+                return false;
+            this.detallesPersonajeAbiertos.splice(indexTab, 1);
+            return true;
+        });
     }
 
     recibirObjetoListado(value: { item: any, tipo: string }) {
@@ -303,39 +387,29 @@ export class TabControlComponent implements OnInit, OnDestroy {
         if (this.usrPerm !== 1 || !this.TabGroup)
             return;
 
-        const navegar = () => {
-            const tabs = this.TabGroup?._tabs?.toArray?.() ?? [];
-            if (tabs.length < 1)
-                return;
+        const navegar = () => this.selectTabByKey(this.TAB_ADMIN, false);
 
-            const tabAdmin = tabs.find(tab => this.esTabAdmin(tab.textLabel)) ?? tabs[1];
-            const indexAdmin = tabs.indexOf(tabAdmin);
-            if (indexAdmin < 0)
-                return;
-
-            this.TabGroup.selectedIndex = indexAdmin;
-        };
-
-        this.ngZone.run(() => navegar());
-        setTimeout(() => this.ngZone.run(() => navegar()), 0);
-        setTimeout(() => this.ngZone.run(() => navegar()), 80);
+        this.ngZone.run(navegar);
+        setTimeout(() => this.ngZone.run(navegar), 0);
+        setTimeout(() => this.ngZone.run(navegar), 80);
     }
 
     async abrirDetallesRaza(raza: Raza) {
-        if (this.detallesRazaAbiertos.find(r => r.Id === raza.Id))
-            this.cambiarA(true, this.TabGroup._tabs.find(tab => tab.textLabel === raza.Nombre));
+        const abierto = this.detallesRazaAbiertos.find(r => r.Id === raza.Id);
+        if (abierto)
+            this.selectTabByKey(this.getRazaTabKey(abierto));
         else {
+            const targetKey = this.getRazaTabKey(raza);
             this.detallesRazaAbiertos.push(raza);
-            setTimeout(() => {
-                this.cambiarA(true, this.TabGroup._tabs.find(tab => tab.textLabel === raza.Nombre));
-            }, 100);
+            this.registerOpenContext(targetKey, this.getSafeOpenerKey());
+            this.focusOpenedTab(targetKey);
         }
     }
 
     async abrirDetallesRazaPorId(idRaza: number) {
         const abierto = this.detallesRazaAbiertos.find(r => r.Id === idRaza);
         if (abierto) {
-            this.cambiarA(true, this.TabGroup._tabs.find(tab => tab.textLabel === abierto.Nombre));
+            this.selectTabByKey(this.getRazaTabKey(abierto));
             return;
         }
 
@@ -344,74 +418,102 @@ export class TabControlComponent implements OnInit, OnDestroy {
         });
     }
 
-    quitarDetallesRaza(value: string): boolean {
-        const tab = this.detallesRazaAbiertos.find(r => r.Nombre === value);
+    quitarDetallesRaza(value: string | Raza): boolean {
+        const tab = typeof value === 'string'
+            ? this.detallesRazaAbiertos.find(r => r.Nombre === value)
+            : this.detallesRazaAbiertos.find(r => Number(r.Id) === Number(value.Id));
         if (!tab)
             return false;
-        const indexTab = this.detallesRazaAbiertos.indexOf(tab);
-        this.detallesRazaAbiertos.splice(indexTab, 1);
-        this.cambiarA(false);
-        return true;
+        const closingKey = this.getRazaTabKey(tab);
+        return this.closeTabWithNavigation(closingKey, () => {
+            const indexTab = this.detallesRazaAbiertos.indexOf(tab);
+            if (indexTab < 0)
+                return false;
+            this.detallesRazaAbiertos.splice(indexTab, 1);
+            return true;
+        });
     }
 
     async abrirDetallesConjuro(conjuro: Conjuro) {
-        if (this.detallesConjuroAbiertos.find(c => c.Id === conjuro.Id))
-            this.cambiarA(true, this.TabGroup._tabs.find(tab => tab.textLabel === conjuro.Nombre));
+        const abierto = this.detallesConjuroAbiertos.find(c => c.Id === conjuro.Id);
+        if (abierto)
+            this.selectTabByKey(this.getConjuroTabKey(abierto));
         else {
+            const targetKey = this.getConjuroTabKey(conjuro);
             this.detallesConjuroAbiertos.push(conjuro);
-            setTimeout(() => {
-                this.cambiarA(true, this.TabGroup._tabs.find(tab => tab.textLabel === conjuro.Nombre));
-            }, 100);
+            this.registerOpenContext(targetKey, this.getSafeOpenerKey());
+            this.focusOpenedTab(targetKey);
         }
     }
-    quitarDetallesConjuro(value: string): boolean {
-        const tab = this.detallesConjuroAbiertos.find(c => c.Nombre === value);
+    quitarDetallesConjuro(value: string | Conjuro): boolean {
+        const tab = typeof value === 'string'
+            ? this.detallesConjuroAbiertos.find(c => c.Nombre === value)
+            : this.detallesConjuroAbiertos.find(c => Number(c.Id) === Number(value.Id));
         if (!tab)
             return false;
-        const indexTab = this.detallesConjuroAbiertos.indexOf(tab);
-        this.detallesConjuroAbiertos.splice(indexTab, 1);
-        this.cambiarA(false);
-        return true;
+        const closingKey = this.getConjuroTabKey(tab);
+        return this.closeTabWithNavigation(closingKey, () => {
+            const indexTab = this.detallesConjuroAbiertos.indexOf(tab);
+            if (indexTab < 0)
+                return false;
+            this.detallesConjuroAbiertos.splice(indexTab, 1);
+            return true;
+        });
     }
 
     async abrirDetallesSortilega(ap: AptitudSortilega, fuente: string) {
-        if (this.detallesSortilegaAbiertos.find(c => c.ap.Conjuro.Id === ap.Conjuro.Id))
-            this.cambiarA(true, this.TabGroup._tabs.find(tab => tab.textLabel === ap.Conjuro.Nombre));
+        const abierto = this.detallesSortilegaAbiertos.find(c => c.ap.Conjuro.Id === ap.Conjuro.Id);
+        if (abierto)
+            this.selectTabByKey(this.getSortilegaTabKey(abierto));
         else {
-            this.detallesSortilegaAbiertos.push({ ap, fuente });
-            setTimeout(() => {
-                this.cambiarA(true, this.TabGroup._tabs.find(tab => tab.textLabel === ap.Conjuro.Nombre));
-            }, 100);
+            const tupla = { ap, fuente };
+            const targetKey = this.getSortilegaTabKey(tupla);
+            this.detallesSortilegaAbiertos.push(tupla);
+            this.registerOpenContext(targetKey, this.getSafeOpenerKey());
+            this.focusOpenedTab(targetKey);
         }
     }
-    quitarDetallesSortilega(value: string): boolean {
-        const tab = this.detallesSortilegaAbiertos.find(c => c.ap.Conjuro.Nombre === value);
+    quitarDetallesSortilega(value: string | { ap: AptitudSortilega, fuente: string }): boolean {
+        const tab = typeof value === 'string'
+            ? this.detallesSortilegaAbiertos.find(c => c.ap.Conjuro.Nombre === value)
+            : this.detallesSortilegaAbiertos.find(c => Number(c.ap.Conjuro.Id) === Number(value.ap.Conjuro.Id));
         if (!tab)
             return false;
-        const indexTab = this.detallesSortilegaAbiertos.indexOf(tab);
-        this.detallesSortilegaAbiertos.splice(indexTab, 1);
-        this.cambiarA(false);
-        return true;
+        const closingKey = this.getSortilegaTabKey(tab);
+        return this.closeTabWithNavigation(closingKey, () => {
+            const indexTab = this.detallesSortilegaAbiertos.indexOf(tab);
+            if (indexTab < 0)
+                return false;
+            this.detallesSortilegaAbiertos.splice(indexTab, 1);
+            return true;
+        });
     }
 
     async abrirDetallesTipoCriatura(tipo: TipoCriatura) {
-        if (this.detallesTipoCriaturaAbiertos.find(t => t.Id === tipo.Id))
-            this.cambiarA(true, this.TabGroup._tabs.find(tab => tab.textLabel === tipo.Nombre));
+        const abierto = this.detallesTipoCriaturaAbiertos.find(t => t.Id === tipo.Id);
+        if (abierto)
+            this.selectTabByKey(this.getTipoTabKey(abierto));
         else {
+            const targetKey = this.getTipoTabKey(tipo);
             this.detallesTipoCriaturaAbiertos.push(tipo);
-            setTimeout(() => {
-                this.cambiarA(true, this.TabGroup._tabs.find(tab => tab.textLabel === tipo.Nombre));
-            }, 100);
+            this.registerOpenContext(targetKey, this.getSafeOpenerKey());
+            this.focusOpenedTab(targetKey);
         }
     }
-    quitarDetallesTipoCriatura(value: string): boolean {
-        const tab = this.detallesTipoCriaturaAbiertos.find(t => t.Nombre === value);
+    quitarDetallesTipoCriatura(value: string | TipoCriatura): boolean {
+        const tab = typeof value === 'string'
+            ? this.detallesTipoCriaturaAbiertos.find(t => t.Nombre === value)
+            : this.detallesTipoCriaturaAbiertos.find(t => Number(t.Id) === Number(value.Id));
         if (!tab)
             return false;
-        const indexTab = this.detallesTipoCriaturaAbiertos.indexOf(tab);
-        this.detallesTipoCriaturaAbiertos.splice(indexTab, 1);
-        this.cambiarA(false);
-        return true;
+        const closingKey = this.getTipoTabKey(tab);
+        return this.closeTabWithNavigation(closingKey, () => {
+            const indexTab = this.detallesTipoCriaturaAbiertos.indexOf(tab);
+            if (indexTab < 0)
+                return false;
+            this.detallesTipoCriaturaAbiertos.splice(indexTab, 1);
+            return true;
+        });
     }
 
     abrirDetallesRasgo(rasgo: Rasgo) {
@@ -422,7 +524,7 @@ export class TabControlComponent implements OnInit, OnDestroy {
         if (Number.isFinite(id) && id > 0) {
             const abierto = this.detallesRasgoAbiertos.find(r => r.Id === id);
             if (abierto) {
-                this.cambiarA(true, this.TabGroup._tabs.find(tab => tab.textLabel === abierto.Nombre));
+                this.selectTabByKey(this.getRasgoTabKey(abierto));
                 return;
             }
 
@@ -460,28 +562,37 @@ export class TabControlComponent implements OnInit, OnDestroy {
             (Number(r.Id) > 0 && Number(rasgo.Id) > 0 && Number(r.Id) === Number(rasgo.Id))
             || this.normalizar(r.Nombre) === this.normalizar(nombre));
         if (abierto) {
-            this.cambiarA(true, this.TabGroup._tabs.find(tab => tab.textLabel === abierto.Nombre));
+            this.selectTabByKey(this.getRasgoTabKey(abierto));
             return;
         }
 
-        this.detallesRasgoAbiertos.push({
+        const creado: Rasgo = {
             Id: Number(rasgo?.Id) > 0 ? Number(rasgo.Id) : 0,
             Nombre: nombre,
             Descripcion: `${rasgo?.Descripcion ?? ''}`,
             Oficial: this.toBoolean(rasgo?.Oficial, true),
+        };
+        const targetKey = this.getRasgoTabKey(creado);
+        this.detallesRasgoAbiertos.push({
+            ...creado,
         });
-        setTimeout(() => {
-            this.cambiarA(true, this.TabGroup._tabs.find(tab => tab.textLabel === nombre));
-        }, 100);
+        this.registerOpenContext(targetKey, this.getSafeOpenerKey());
+        this.focusOpenedTab(targetKey);
     }
-    quitarDetallesRasgo(value: string): boolean {
-        const tab = this.detallesRasgoAbiertos.find(t => t.Nombre === value);
+    quitarDetallesRasgo(value: string | Rasgo): boolean {
+        const tab = typeof value === 'string'
+            ? this.detallesRasgoAbiertos.find(t => t.Nombre === value)
+            : this.detallesRasgoAbiertos.find(t => Number(t.Id) > 0 && Number(t.Id) === Number(value.Id));
         if (!tab)
             return false;
-        const indexTab = this.detallesRasgoAbiertos.indexOf(tab);
-        this.detallesRasgoAbiertos.splice(indexTab, 1);
-        this.cambiarA(false);
-        return true;
+        const closingKey = this.getRasgoTabKey(tab);
+        return this.closeTabWithNavigation(closingKey, () => {
+            const indexTab = this.detallesRasgoAbiertos.indexOf(tab);
+            if (indexTab < 0)
+                return false;
+            this.detallesRasgoAbiertos.splice(indexTab, 1);
+            return true;
+        });
     }
 
     getEtiquetaClase(clase: Clase): string {
@@ -512,6 +623,66 @@ export class TabControlComponent implements OnInit, OnDestroy {
         return `${ventaja.Nombre} (${this.esDesventaja(ventaja) ? 'Desventaja' : 'Ventaja'})`;
     }
 
+    private getPersonajeTabKey(personaje: Personaje): string {
+        return `personaje:${Number(personaje?.Id ?? 0)}`;
+    }
+
+    private getRazaTabKey(raza: Raza): string {
+        return `raza:${Number(raza?.Id ?? 0)}`;
+    }
+
+    private getConjuroTabKey(conjuro: Conjuro): string {
+        return `conjuro:${Number(conjuro?.Id ?? 0)}`;
+    }
+
+    private getSortilegaTabKey(tupla: { ap: AptitudSortilega, fuente: string }): string {
+        return `sortilega:${Number(tupla?.ap?.Conjuro?.Id ?? 0)}`;
+    }
+
+    private getTipoTabKey(tipo: TipoCriatura): string {
+        return `tipo:${Number(tipo?.Id ?? 0)}`;
+    }
+
+    private getRasgoTabKey(rasgo: Rasgo): string {
+        const id = Number(rasgo?.Id ?? 0);
+        if (Number.isFinite(id) && id > 0)
+            return `rasgo:${id}`;
+        return `rasgo:name:${this.normalizar(rasgo?.Nombre ?? '')}`;
+    }
+
+    private getClaseTabKey(clase: Clase): string {
+        return `clase:${Number(clase?.Id ?? 0)}`;
+    }
+
+    private getEspecialTabKey(especial: EspecialClaseDetalle): string {
+        return `especial:${Number(especial?.Id ?? 0)}`;
+    }
+
+    private getRacialTabKey(racial: RacialDetalle): string {
+        return `racial:${Number(racial?.Id ?? 0)}`;
+    }
+
+    private getDoteTabKey(doteCtx: DoteContextual): string {
+        return `dote:${this.getClaveDoteTab(doteCtx)}`;
+    }
+
+    private getVentajaTabKey(ventaja: VentajaDetalle): string {
+        const variante = this.esDesventaja(ventaja) ? 'd' : 'v';
+        return `ventaja:${Number(ventaja?.Id ?? 0)}:${variante}`;
+    }
+
+    private getPlantillaTabKey(plantilla: Plantilla): string {
+        return `plantilla:${Number(plantilla?.Id ?? 0)}`;
+    }
+
+    private getSubtipoTabKey(subtipo: SubtipoDetalle): string {
+        return `subtipo:${Number(subtipo?.Id ?? 0)}`;
+    }
+
+    private getManualTabKey(manual: ManualAsociadoDetalle): string {
+        return `manual:${Number(manual?.Id ?? 0)}`;
+    }
+
     private esDesventaja(ventaja: VentajaDetalle): boolean {
         return Number(ventaja?.Coste) > 0;
     }
@@ -519,12 +690,12 @@ export class TabControlComponent implements OnInit, OnDestroy {
     async abrirDetallesClase(clase: Clase) {
         const abierto = this.detallesClaseAbiertos.find(c => c.Id === clase.Id);
         if (abierto)
-            this.cambiarA(true, this.TabGroup._tabs.find(tab => tab.textLabel === this.getEtiquetaClase(abierto)));
+            this.selectTabByKey(this.getClaseTabKey(abierto));
         else {
+            const targetKey = this.getClaseTabKey(clase);
             this.detallesClaseAbiertos.push(clase);
-            setTimeout(() => {
-                this.cambiarA(true, this.TabGroup._tabs.find(tab => tab.textLabel === this.getEtiquetaClase(clase)));
-            }, 100);
+            this.registerOpenContext(targetKey, this.getSafeOpenerKey());
+            this.focusOpenedTab(targetKey);
         }
     }
 
@@ -535,7 +706,7 @@ export class TabControlComponent implements OnInit, OnDestroy {
 
         const abierto = this.detallesConjuroAbiertos.find(c => c.Id === id);
         if (abierto) {
-            this.cambiarA(true, this.TabGroup._tabs.find(tab => tab.textLabel === abierto.Nombre));
+            this.selectTabByKey(this.getConjuroTabKey(abierto));
             return;
         }
 
@@ -551,12 +722,38 @@ export class TabControlComponent implements OnInit, OnDestroy {
 
         const abierto = this.detallesDoteAbiertos.find(d => Number(d?.Dote?.Id) === id);
         if (abierto) {
-            this.cambiarA(true, this.TabGroup._tabs.find(tab => tab.textLabel === this.getEtiquetaDote(abierto)));
+            this.selectTabByKey(this.getDoteTabKey(abierto));
             return;
         }
 
         this.doteSvc.getDote(id).pipe(take(1)).subscribe(dote => {
             this.abrirDetallesDote(dote);
+        });
+    }
+
+    abrirDetallesDotePorNombre(nombreDote: string) {
+        if (this.esNombreNoAplicable(nombreDote))
+            return;
+
+        const abierto = this.detallesDoteAbiertos.find(d => this.normalizar(d?.Dote?.Nombre ?? '') === this.normalizar(nombreDote));
+        if (abierto) {
+            this.selectTabByKey(this.getDoteTabKey(abierto));
+            return;
+        }
+
+        this.doteSvc.getDotes().pipe(take(1)).subscribe(dotes => {
+            const encontrada = dotes.find(d => this.normalizar(d?.Nombre ?? '') === this.normalizar(nombreDote));
+            if (encontrada) {
+                this.abrirDetallesDote(encontrada);
+                return;
+            }
+
+            Swal.fire({
+                icon: 'warning',
+                title: 'Dote no encontrada',
+                text: `No se encontró una dote catalogada para "${nombreDote}"`,
+                showConfirmButton: true
+            });
         });
     }
 
@@ -566,7 +763,7 @@ export class TabControlComponent implements OnInit, OnDestroy {
 
         const encontrado = this.detallesClaseAbiertos.find(c => this.normalizar(c.Nombre) === this.normalizar(nombreClase));
         if (encontrado) {
-            this.cambiarA(true, this.TabGroup._tabs.find(tab => tab.textLabel === this.getEtiquetaClase(encontrado)));
+            this.selectTabByKey(this.getClaseTabKey(encontrado));
             return;
         }
 
@@ -591,7 +788,7 @@ export class TabControlComponent implements OnInit, OnDestroy {
 
         const abierto = this.detallesClaseAbiertos.find(c => c.Id === id);
         if (abierto) {
-            this.cambiarA(true, this.TabGroup._tabs.find(tab => tab.textLabel === this.getEtiquetaClase(abierto)));
+            this.selectTabByKey(this.getClaseTabKey(abierto));
             return;
         }
 
@@ -600,25 +797,31 @@ export class TabControlComponent implements OnInit, OnDestroy {
         });
     }
 
-    quitarDetallesClase(label: string): boolean {
-        const tab = this.detallesClaseAbiertos.find(c => this.getEtiquetaClase(c) === label);
+    quitarDetallesClase(value: string | Clase): boolean {
+        const tab = typeof value === 'string'
+            ? this.detallesClaseAbiertos.find(c => this.getEtiquetaClase(c) === value)
+            : this.detallesClaseAbiertos.find(c => Number(c.Id) === Number(value.Id));
         if (!tab)
             return false;
-        const indexTab = this.detallesClaseAbiertos.indexOf(tab);
-        this.detallesClaseAbiertos.splice(indexTab, 1);
-        this.cambiarA(false);
-        return true;
+        const closingKey = this.getClaseTabKey(tab);
+        return this.closeTabWithNavigation(closingKey, () => {
+            const indexTab = this.detallesClaseAbiertos.indexOf(tab);
+            if (indexTab < 0)
+                return false;
+            this.detallesClaseAbiertos.splice(indexTab, 1);
+            return true;
+        });
     }
 
     async abrirDetallesEspecial(especial: EspecialClaseDetalle) {
         const abierto = this.detallesEspecialAbiertos.find(e => e.Id === especial.Id);
         if (abierto)
-            this.cambiarA(true, this.TabGroup._tabs.find(tab => tab.textLabel === this.getEtiquetaEspecial(abierto)));
+            this.selectTabByKey(this.getEspecialTabKey(abierto));
         else {
+            const targetKey = this.getEspecialTabKey(especial);
             this.detallesEspecialAbiertos.push(especial);
-            setTimeout(() => {
-                this.cambiarA(true, this.TabGroup._tabs.find(tab => tab.textLabel === this.getEtiquetaEspecial(especial)));
-            }, 100);
+            this.registerOpenContext(targetKey, this.getSafeOpenerKey());
+            this.focusOpenedTab(targetKey);
         }
     }
 
@@ -629,7 +832,7 @@ export class TabControlComponent implements OnInit, OnDestroy {
 
         const abierto = this.detallesEspecialAbiertos.find(e => e.Id === id);
         if (abierto) {
-            this.cambiarA(true, this.TabGroup._tabs.find(tab => tab.textLabel === this.getEtiquetaEspecial(abierto)));
+            this.selectTabByKey(this.getEspecialTabKey(abierto));
             return;
         }
 
@@ -644,7 +847,7 @@ export class TabControlComponent implements OnInit, OnDestroy {
 
         const abierto = this.detallesEspecialAbiertos.find(e => this.normalizar(e.Nombre) === this.normalizar(nombreEspecial));
         if (abierto) {
-            this.cambiarA(true, this.TabGroup._tabs.find(tab => tab.textLabel === this.getEtiquetaEspecial(abierto)));
+            this.selectTabByKey(this.getEspecialTabKey(abierto));
             return;
         }
 
@@ -655,34 +858,48 @@ export class TabControlComponent implements OnInit, OnDestroy {
                 return;
             }
 
-            Swal.fire({
-                icon: 'warning',
-                title: 'Especial no encontrado',
-                text: `No se encontró un especial catalogado para "${nombreEspecial}"`,
-                showConfirmButton: true
+            this.doteSvc.getDotes().pipe(take(1)).subscribe(dotes => {
+                const doteEncontrada = dotes.find(d => this.normalizar(d?.Nombre ?? '') === this.normalizar(nombreEspecial));
+                if (doteEncontrada) {
+                    this.abrirDetallesDote(doteEncontrada);
+                    return;
+                }
+
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Especial no encontrado',
+                    text: `No se encontró un especial catalogado para "${nombreEspecial}"`,
+                    showConfirmButton: true
+                });
             });
         });
     }
 
-    quitarDetallesEspecial(label: string): boolean {
-        const tab = this.detallesEspecialAbiertos.find(e => this.getEtiquetaEspecial(e) === label);
+    quitarDetallesEspecial(value: string | EspecialClaseDetalle): boolean {
+        const tab = typeof value === 'string'
+            ? this.detallesEspecialAbiertos.find(e => this.getEtiquetaEspecial(e) === value)
+            : this.detallesEspecialAbiertos.find(e => Number(e.Id) === Number(value.Id));
         if (!tab)
             return false;
-        const indexTab = this.detallesEspecialAbiertos.indexOf(tab);
-        this.detallesEspecialAbiertos.splice(indexTab, 1);
-        this.cambiarA(false);
-        return true;
+        const closingKey = this.getEspecialTabKey(tab);
+        return this.closeTabWithNavigation(closingKey, () => {
+            const indexTab = this.detallesEspecialAbiertos.indexOf(tab);
+            if (indexTab < 0)
+                return false;
+            this.detallesEspecialAbiertos.splice(indexTab, 1);
+            return true;
+        });
     }
 
     async abrirDetallesRacial(racial: RacialDetalle) {
         const abierto = this.detallesRacialAbiertos.find(r => r.Id === racial.Id);
         if (abierto)
-            this.cambiarA(true, this.TabGroup._tabs.find(tab => tab.textLabel === this.getEtiquetaRacial(abierto)));
+            this.selectTabByKey(this.getRacialTabKey(abierto));
         else {
+            const targetKey = this.getRacialTabKey(racial);
             this.detallesRacialAbiertos.push(racial);
-            setTimeout(() => {
-                this.cambiarA(true, this.TabGroup._tabs.find(tab => tab.textLabel === this.getEtiquetaRacial(racial)));
-            }, 100);
+            this.registerOpenContext(targetKey, this.getSafeOpenerKey());
+            this.focusOpenedTab(targetKey);
         }
     }
 
@@ -693,7 +910,7 @@ export class TabControlComponent implements OnInit, OnDestroy {
 
         const abierto = this.detallesRacialAbiertos.find(r => r.Id === id);
         if (abierto) {
-            this.cambiarA(true, this.TabGroup._tabs.find(tab => tab.textLabel === this.getEtiquetaRacial(abierto)));
+            this.selectTabByKey(this.getRacialTabKey(abierto));
             return;
         }
 
@@ -708,7 +925,7 @@ export class TabControlComponent implements OnInit, OnDestroy {
 
         const abierto = this.buscarRacialPorNombre(this.detallesRacialAbiertos, nombreRacial);
         if (abierto) {
-            this.cambiarA(true, this.TabGroup._tabs.find(tab => tab.textLabel === this.getEtiquetaRacial(abierto)));
+            this.selectTabByKey(this.getRacialTabKey(abierto));
             return;
         }
 
@@ -750,7 +967,7 @@ export class TabControlComponent implements OnInit, OnDestroy {
 
         const abierto = this.detallesTipoCriaturaAbiertos.find(t => t.Id === id);
         if (abierto) {
-            this.cambiarA(true, this.TabGroup._tabs.find(tab => tab.textLabel === abierto.Nombre));
+            this.selectTabByKey(this.getTipoTabKey(abierto));
             return;
         }
 
@@ -762,12 +979,12 @@ export class TabControlComponent implements OnInit, OnDestroy {
     async abrirDetallesPlantilla(plantilla: Plantilla) {
         const abierto = this.detallesPlantillaAbiertos.find(p => p.Id === plantilla.Id);
         if (abierto)
-            this.cambiarA(true, this.TabGroup._tabs.find(tab => tab.textLabel === this.getEtiquetaPlantilla(abierto)));
+            this.selectTabByKey(this.getPlantillaTabKey(abierto));
         else {
+            const targetKey = this.getPlantillaTabKey(plantilla);
             this.detallesPlantillaAbiertos.push(plantilla);
-            setTimeout(() => {
-                this.cambiarA(true, this.TabGroup._tabs.find(tab => tab.textLabel === this.getEtiquetaPlantilla(plantilla)));
-            }, 100);
+            this.registerOpenContext(targetKey, this.getSafeOpenerKey());
+            this.focusOpenedTab(targetKey);
         }
     }
 
@@ -778,7 +995,7 @@ export class TabControlComponent implements OnInit, OnDestroy {
 
         const abierto = this.detallesPlantillaAbiertos.find(p => p.Id === id);
         if (abierto) {
-            this.cambiarA(true, this.TabGroup._tabs.find(tab => tab.textLabel === this.getEtiquetaPlantilla(abierto)));
+            this.selectTabByKey(this.getPlantillaTabKey(abierto));
             return;
         }
 
@@ -793,7 +1010,7 @@ export class TabControlComponent implements OnInit, OnDestroy {
 
         const abierta = this.detallesPlantillaAbiertos.find(p => this.normalizar(p.Nombre) === this.normalizar(nombrePlantilla));
         if (abierta) {
-            this.cambiarA(true, this.TabGroup._tabs.find(tab => tab.textLabel === this.getEtiquetaPlantilla(abierta)));
+            this.selectTabByKey(this.getPlantillaTabKey(abierta));
             return;
         }
 
@@ -825,12 +1042,12 @@ export class TabControlComponent implements OnInit, OnDestroy {
     async abrirDetallesSubtipo(subtipo: SubtipoDetalle) {
         const abierto = this.detallesSubtipoAbiertos.find(s => s.Id === subtipo.Id);
         if (abierto)
-            this.cambiarA(true, this.TabGroup._tabs.find(tab => tab.textLabel === this.getEtiquetaSubtipo(abierto)));
+            this.selectTabByKey(this.getSubtipoTabKey(abierto));
         else {
+            const targetKey = this.getSubtipoTabKey(subtipo);
             this.detallesSubtipoAbiertos.push(subtipo);
-            setTimeout(() => {
-                this.cambiarA(true, this.TabGroup._tabs.find(tab => tab.textLabel === this.getEtiquetaSubtipo(subtipo)));
-            }, 100);
+            this.registerOpenContext(targetKey, this.getSafeOpenerKey());
+            this.focusOpenedTab(targetKey);
         }
     }
 
@@ -841,7 +1058,7 @@ export class TabControlComponent implements OnInit, OnDestroy {
 
         const abierto = this.detallesSubtipoAbiertos.find(s => s.Id === id);
         if (abierto) {
-            this.cambiarA(true, this.TabGroup._tabs.find(tab => tab.textLabel === this.getEtiquetaSubtipo(abierto)));
+            this.selectTabByKey(this.getSubtipoTabKey(abierto));
             return;
         }
 
@@ -856,7 +1073,7 @@ export class TabControlComponent implements OnInit, OnDestroy {
 
         const abierto = this.detallesSubtipoAbiertos.find(s => this.normalizar(s.Nombre) === this.normalizar(nombreSubtipo));
         if (abierto) {
-            this.cambiarA(true, this.TabGroup._tabs.find(tab => tab.textLabel === this.getEtiquetaSubtipo(abierto)));
+            this.selectTabByKey(this.getSubtipoTabKey(abierto));
             return;
         }
 
@@ -899,34 +1116,52 @@ export class TabControlComponent implements OnInit, OnDestroy {
         this.abrirDetallesSubtipoPorNombre(`${payload?.Nombre ?? ''}`.trim());
     }
 
-    quitarDetallesRacial(label: string): boolean {
-        const tab = this.detallesRacialAbiertos.find(r => this.getEtiquetaRacial(r) === label);
+    quitarDetallesRacial(value: string | RacialDetalle): boolean {
+        const tab = typeof value === 'string'
+            ? this.detallesRacialAbiertos.find(r => this.getEtiquetaRacial(r) === value)
+            : this.detallesRacialAbiertos.find(r => Number(r.Id) === Number(value.Id));
         if (!tab)
             return false;
-        const indexTab = this.detallesRacialAbiertos.indexOf(tab);
-        this.detallesRacialAbiertos.splice(indexTab, 1);
-        this.cambiarA(false);
-        return true;
+        const closingKey = this.getRacialTabKey(tab);
+        return this.closeTabWithNavigation(closingKey, () => {
+            const indexTab = this.detallesRacialAbiertos.indexOf(tab);
+            if (indexTab < 0)
+                return false;
+            this.detallesRacialAbiertos.splice(indexTab, 1);
+            return true;
+        });
     }
 
-    quitarDetallesPlantilla(label: string): boolean {
-        const tab = this.detallesPlantillaAbiertos.find(p => this.getEtiquetaPlantilla(p) === label);
+    quitarDetallesPlantilla(value: string | Plantilla): boolean {
+        const tab = typeof value === 'string'
+            ? this.detallesPlantillaAbiertos.find(p => this.getEtiquetaPlantilla(p) === value)
+            : this.detallesPlantillaAbiertos.find(p => Number(p.Id) === Number(value.Id));
         if (!tab)
             return false;
-        const indexTab = this.detallesPlantillaAbiertos.indexOf(tab);
-        this.detallesPlantillaAbiertos.splice(indexTab, 1);
-        this.cambiarA(false);
-        return true;
+        const closingKey = this.getPlantillaTabKey(tab);
+        return this.closeTabWithNavigation(closingKey, () => {
+            const indexTab = this.detallesPlantillaAbiertos.indexOf(tab);
+            if (indexTab < 0)
+                return false;
+            this.detallesPlantillaAbiertos.splice(indexTab, 1);
+            return true;
+        });
     }
 
-    quitarDetallesSubtipo(label: string): boolean {
-        const tab = this.detallesSubtipoAbiertos.find(s => this.getEtiquetaSubtipo(s) === label);
+    quitarDetallesSubtipo(value: string | SubtipoDetalle): boolean {
+        const tab = typeof value === 'string'
+            ? this.detallesSubtipoAbiertos.find(s => this.getEtiquetaSubtipo(s) === value)
+            : this.detallesSubtipoAbiertos.find(s => Number(s.Id) === Number(value.Id));
         if (!tab)
             return false;
-        const indexTab = this.detallesSubtipoAbiertos.indexOf(tab);
-        this.detallesSubtipoAbiertos.splice(indexTab, 1);
-        this.cambiarA(false);
-        return true;
+        const closingKey = this.getSubtipoTabKey(tab);
+        return this.closeTabWithNavigation(closingKey, () => {
+            const indexTab = this.detallesSubtipoAbiertos.indexOf(tab);
+            if (indexTab < 0)
+                return false;
+            this.detallesSubtipoAbiertos.splice(indexTab, 1);
+            return true;
+        });
     }
 
     abrirDetallesManual(manual: ManualAsociadoDetalle): void {
@@ -934,24 +1169,30 @@ export class TabControlComponent implements OnInit, OnDestroy {
             return;
         const abierto = this.detallesManualAbiertos.find(m => m.Id === manual.Id);
         if (abierto) {
-            this.cambiarA(true, this.TabGroup._tabs.find(tab => tab.textLabel === this.getEtiquetaManual(abierto)));
+            this.selectTabByKey(this.getManualTabKey(abierto));
             return;
         }
 
+        const targetKey = this.getManualTabKey(manual);
         this.detallesManualAbiertos.push(manual);
-        setTimeout(() => {
-            this.cambiarA(true, this.TabGroup._tabs.find(tab => tab.textLabel === this.getEtiquetaManual(manual)));
-        }, 100);
+        this.registerOpenContext(targetKey, this.getSafeOpenerKey());
+        this.focusOpenedTab(targetKey);
     }
 
-    quitarDetallesManual(label: string): boolean {
-        const tab = this.detallesManualAbiertos.find(m => this.getEtiquetaManual(m) === label);
+    quitarDetallesManual(value: string | ManualAsociadoDetalle): boolean {
+        const tab = typeof value === 'string'
+            ? this.detallesManualAbiertos.find(m => this.getEtiquetaManual(m) === value)
+            : this.detallesManualAbiertos.find(m => Number(m.Id) === Number(value.Id));
         if (!tab)
             return false;
-        const indexTab = this.detallesManualAbiertos.indexOf(tab);
-        this.detallesManualAbiertos.splice(indexTab, 1);
-        this.cambiarA(false);
-        return true;
+        const closingKey = this.getManualTabKey(tab);
+        return this.closeTabWithNavigation(closingKey, () => {
+            const indexTab = this.detallesManualAbiertos.indexOf(tab);
+            if (indexTab < 0)
+                return false;
+            this.detallesManualAbiertos.splice(indexTab, 1);
+            return true;
+        });
     }
 
     getEtiquetaDote(doteCtx: DoteContextual): string {
@@ -984,12 +1225,12 @@ export class TabControlComponent implements OnInit, OnDestroy {
         const abierto = this.detallesDoteAbiertos.find(tab => this.getClaveDoteTab(tab) === clave);
 
         if (abierto)
-            this.cambiarA(true, this.TabGroup._tabs.find(tab => tab.textLabel === this.getEtiquetaDote(abierto)));
+            this.selectTabByKey(this.getDoteTabKey(abierto));
         else {
+            const targetKey = this.getDoteTabKey(doteCtx);
             this.detallesDoteAbiertos.push(doteCtx);
-            setTimeout(() => {
-                this.cambiarA(true, this.TabGroup._tabs.find(tab => tab.textLabel === this.getEtiquetaDote(doteCtx)));
-            }, 100);
+            this.registerOpenContext(targetKey, this.getSafeOpenerKey());
+            this.focusOpenedTab(targetKey);
         }
     }
 
@@ -999,14 +1240,14 @@ export class TabControlComponent implements OnInit, OnDestroy {
 
         const abierto = this.detallesVentajaAbiertos.find(v => Number(v.Id) === Number(ventaja.Id));
         if (abierto) {
-            this.cambiarA(true, this.TabGroup._tabs.find(tab => tab.textLabel === this.getEtiquetaVentaja(abierto)));
+            this.selectTabByKey(this.getVentajaTabKey(abierto));
             return;
         }
 
+        const targetKey = this.getVentajaTabKey(ventaja);
         this.detallesVentajaAbiertos.push(ventaja);
-        setTimeout(() => {
-            this.cambiarA(true, this.TabGroup._tabs.find(tab => tab.textLabel === this.getEtiquetaVentaja(ventaja)));
-        }, 100);
+        this.registerOpenContext(targetKey, this.getSafeOpenerKey());
+        this.focusOpenedTab(targetKey);
     }
 
     abrirDetallesVentajaDesdeReferencia(payload: { nombre: string; origen?: string; }): void {
@@ -1048,10 +1289,14 @@ export class TabControlComponent implements OnInit, OnDestroy {
         const tab = this.detallesDoteAbiertos.find(d => this.getClaveDoteTab(d) === clave);
         if (!tab)
             return false;
-        const indexTab = this.detallesDoteAbiertos.indexOf(tab);
-        this.detallesDoteAbiertos.splice(indexTab, 1);
-        this.cambiarA(false);
-        return true;
+        const closingKey = this.getDoteTabKey(tab);
+        return this.closeTabWithNavigation(closingKey, () => {
+            const indexTab = this.detallesDoteAbiertos.indexOf(tab);
+            if (indexTab < 0)
+                return false;
+            this.detallesDoteAbiertos.splice(indexTab, 1);
+            return true;
+        });
     }
 
     quitarDetallesDotePorLabel(label: string): boolean {
@@ -1061,25 +1306,33 @@ export class TabControlComponent implements OnInit, OnDestroy {
         return this.quitarDetallesDote(tab);
     }
 
-    quitarDetallesVentaja(label: string): boolean {
-        const tab = this.detallesVentajaAbiertos.find(v => this.getEtiquetaVentaja(v) === label);
+    quitarDetallesVentaja(value: string | VentajaDetalle): boolean {
+        const tab = typeof value === 'string'
+            ? this.detallesVentajaAbiertos.find(v => this.getEtiquetaVentaja(v) === value)
+            : this.detallesVentajaAbiertos.find(v => Number(v.Id) === Number(value.Id));
         if (!tab)
             return false;
-        const indexTab = this.detallesVentajaAbiertos.indexOf(tab);
-        this.detallesVentajaAbiertos.splice(indexTab, 1);
-        this.cambiarA(false);
-        return true;
+        const closingKey = this.getVentajaTabKey(tab);
+        return this.closeTabWithNavigation(closingKey, () => {
+            const indexTab = this.detallesVentajaAbiertos.indexOf(tab);
+            if (indexTab < 0)
+                return false;
+            this.detallesVentajaAbiertos.splice(indexTab, 1);
+            return true;
+        });
     }
 
     verPersonajes() {
-        this.TabGroup.selectedIndex = 0;
+        this.selectTabByKey(this.TAB_PERSONAJES, true);
     }
 
     @Output() CerrarNuevoPersonajeTab: EventEmitter<void> = new EventEmitter();
     quitarNuevoPersonaje() {
-        this.nuevoPSvc.resetearCreacionNuevoPersonaje();
-        this.cambiarA(false);
-        this.CerrarNuevoPersonajeTab.emit();
+        this.closeTabWithNavigation(this.TAB_NUEVO, () => {
+            this.nuevoPSvc.resetearCreacionNuevoPersonaje();
+            this.CerrarNuevoPersonajeTab.emit();
+            return true;
+        });
     }
 
     onCerrarNuevoPersonajeSolicitado(): void {
@@ -1088,8 +1341,10 @@ export class TabControlComponent implements OnInit, OnDestroy {
 
     @Output() CerrarListadoTab: EventEmitter<void> = new EventEmitter();
     quitarListado() {
-        this.cambiarA(false);
-        this.CerrarListadoTab.emit();
+        this.closeTabWithNavigation(this.TAB_LISTADO, () => {
+            this.CerrarListadoTab.emit();
+            return true;
+        });
     }
 
     private normalizar(value: string): string {

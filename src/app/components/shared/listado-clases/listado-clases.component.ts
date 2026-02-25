@@ -35,8 +35,8 @@ export class ListadoClasesComponent {
         this.clasesDS.paginator = this.clasePaginator;
         this.clasesDS.sort = this.claseSort;
         this.claseSvc.getClases().subscribe(clases => {
-            this.clases = clases;
-            this.manuales = ['Cualquiera', ...Array.from(new Set(clases.map(c => c.Manual?.Nombre).filter(Boolean)))];
+            this.clases = clases.filter((clase) => Number(clase?.Id ?? 0) > 0);
+            this.manuales = ['Cualquiera', ...Array.from(new Set(this.clases.map(c => c.Manual?.Nombre).filter(Boolean)))];
             this.defaultManual = this.manuales[0];
             this.cdr.detectChanges();
             this.filtroClases();

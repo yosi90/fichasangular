@@ -21,7 +21,7 @@
         <ng-template mat-tab-label>
             <mat-icon class="me-2">person_search</mat-icon>
             {{pj.Nombre}}
-            <button (click)="quitarDetallesPersonaje(pj.Nombre)" mat-icon-button class="ms-2"><mat-icon>close</mat-icon></button>
+            <button (click)="quitarDetallesPersonaje(pj)" mat-icon-button class="ms-2"><mat-icon>close</mat-icon></button>
         </ng-template>
         <app-detalles-personaje 
             [pj]="detallesPersonajeAbiertos[index]" 
@@ -70,7 +70,7 @@
         <ng-template mat-tab-label>
             <mat-icon class="me-2">find_in_page</mat-icon>
             {{getEtiquetaManual(manual)}}
-            <button (click)="quitarDetallesManual(getEtiquetaManual(manual))" mat-icon-button class="ms-2"><mat-icon>close</mat-icon></button>
+            <button (click)="quitarDetallesManual(manual)" mat-icon-button class="ms-2"><mat-icon>close</mat-icon></button>
         </ng-template>
         <app-detalles-manual [manual]="detallesManualAbiertos[index]"></app-detalles-manual>
     </mat-tab>
@@ -78,7 +78,7 @@
         <ng-template mat-tab-label>
             <mat-icon class="me-2">find_in_page</mat-icon>
             {{tab.Nombre}} (Raza)
-            <button (click)="quitarDetallesRaza(tab.Nombre)" mat-icon-button class="ms-2"><mat-icon>close</mat-icon></button>
+            <button (click)="quitarDetallesRaza(tab)" mat-icon-button class="ms-2"><mat-icon>close</mat-icon></button>
         </ng-template>
         <app-detalles-raza
             [raza]="detallesRazaAbiertos[index]"
@@ -90,7 +90,7 @@
         <ng-template mat-tab-label>
             <mat-icon class="me-2">find_in_page</mat-icon>
             {{tab.Nombre}} (Conjuro)
-            <button (click)="quitarDetallesConjuro(tab.Nombre)" mat-icon-button class="ms-2"><mat-icon>close</mat-icon></button>
+            <button (click)="quitarDetallesConjuro(tab)" mat-icon-button class="ms-2"><mat-icon>close</mat-icon></button>
         </ng-template>
         <app-detalles-conjuro [conjuro]="detallesConjuroAbiertos[index]"></app-detalles-conjuro>
     </mat-tab>
@@ -98,7 +98,7 @@
         <ng-template mat-tab-label>
             <mat-icon class="me-2">find_in_page</mat-icon>
             {{tupla.ap.Conjuro.Nombre}} (Sortílega)
-            <button (click)="quitarDetallesSortilega(tupla.ap.Conjuro.Nombre)" mat-icon-button class="ms-2"><mat-icon>close</mat-icon></button>
+            <button (click)="quitarDetallesSortilega(tupla)" mat-icon-button class="ms-2"><mat-icon>close</mat-icon></button>
         </ng-template>
         <app-detalles-conjuro [sortilega]="detallesSortilegaAbiertos[index]"></app-detalles-conjuro>
     </mat-tab>
@@ -106,7 +106,7 @@
         <ng-template mat-tab-label>
             <mat-icon class="me-2">find_in_page</mat-icon>
             {{tipo.Nombre}} (Tipo)
-            <button (click)="quitarDetallesTipoCriatura(tipo.Nombre)" mat-icon-button class="ms-2"><mat-icon>close</mat-icon></button>
+            <button (click)="quitarDetallesTipoCriatura(tipo)" mat-icon-button class="ms-2"><mat-icon>close</mat-icon></button>
         </ng-template>
         <app-detalles-tipo-criatura 
             [tipo]="detallesTipoCriaturaAbiertos[index]"
@@ -117,7 +117,7 @@
         <ng-template mat-tab-label>
             <mat-icon class="me-2">find_in_page</mat-icon>
             {{rasgo.Nombre}} (Rasgo)
-            <button (click)="quitarDetallesRasgo(rasgo.Nombre)" mat-icon-button class="ms-2"><mat-icon>close</mat-icon></button>
+            <button (click)="quitarDetallesRasgo(rasgo)" mat-icon-button class="ms-2"><mat-icon>close</mat-icon></button>
         </ng-template>
         <app-detalles-rasgo [rasgo]="detallesRasgoAbiertos[index]"></app-detalles-rasgo>
     </mat-tab>
@@ -125,20 +125,22 @@
         <ng-template mat-tab-label>
             <mat-icon class="me-2">find_in_page</mat-icon>
             {{getEtiquetaClase(clase)}}
-            <button (click)="quitarDetallesClase(getEtiquetaClase(clase))" mat-icon-button class="ms-2"><mat-icon>close</mat-icon></button>
+            <button (click)="quitarDetallesClase(clase)" mat-icon-button class="ms-2"><mat-icon>close</mat-icon></button>
         </ng-template>
         <app-detalles-clase
             [clase]="detallesClaseAbiertos[index]"
             (conjuroDetalles)="abrirDetallesConjuroPorId($event)"
             (especialDetalles)="abrirDetallesEspecialPorId($event)"
-            (doteDetalles)="abrirDetallesDotePorId($event)">
+            (especialDetallesPorNombre)="abrirDetallesEspecialPorNombre($event)"
+            (doteDetalles)="abrirDetallesDotePorId($event)"
+            (doteDetallesPorNombre)="abrirDetallesDotePorNombre($event)">
         </app-detalles-clase>
     </mat-tab>
     <mat-tab *ngFor="let especial of detallesEspecialAbiertos; let index = index" [label]="getEtiquetaEspecial(especial)">
         <ng-template mat-tab-label>
             <mat-icon class="me-2">find_in_page</mat-icon>
             {{getEtiquetaEspecial(especial)}}
-            <button (click)="quitarDetallesEspecial(getEtiquetaEspecial(especial))" mat-icon-button class="ms-2"><mat-icon>close</mat-icon></button>
+            <button (click)="quitarDetallesEspecial(especial)" mat-icon-button class="ms-2"><mat-icon>close</mat-icon></button>
         </ng-template>
         <app-detalles-especial
             [especial]="detallesEspecialAbiertos[index]"
@@ -149,7 +151,7 @@
         <ng-template mat-tab-label>
             <mat-icon class="me-2">find_in_page</mat-icon>
             {{getEtiquetaRacial(racial)}}
-            <button (click)="quitarDetallesRacial(getEtiquetaRacial(racial))" mat-icon-button class="ms-2"><mat-icon>close</mat-icon></button>
+            <button (click)="quitarDetallesRacial(racial)" mat-icon-button class="ms-2"><mat-icon>close</mat-icon></button>
         </ng-template>
         <app-detalles-racial
             [racial]="detallesRacialAbiertos[index]"
@@ -169,7 +171,7 @@
         <ng-template mat-tab-label>
             <mat-icon class="me-2">find_in_page</mat-icon>
             {{getEtiquetaVentaja(ventaja)}}
-            <button (click)="quitarDetallesVentaja(getEtiquetaVentaja(ventaja))" mat-icon-button class="ms-2"><mat-icon>close</mat-icon></button>
+            <button (click)="quitarDetallesVentaja(ventaja)" mat-icon-button class="ms-2"><mat-icon>close</mat-icon></button>
         </ng-template>
         <app-detalles-ventaja [ventaja]="detallesVentajaAbiertos[index]"></app-detalles-ventaja>
     </mat-tab>
@@ -177,7 +179,7 @@
         <ng-template mat-tab-label>
             <mat-icon class="me-2">find_in_page</mat-icon>
             {{getEtiquetaPlantilla(plantilla)}}
-            <button (click)="quitarDetallesPlantilla(getEtiquetaPlantilla(plantilla))" mat-icon-button class="ms-2"><mat-icon>close</mat-icon></button>
+            <button (click)="quitarDetallesPlantilla(plantilla)" mat-icon-button class="ms-2"><mat-icon>close</mat-icon></button>
         </ng-template>
         <app-detalles-plantilla
             [plantilla]="detallesPlantillaAbiertos[index]"
@@ -190,7 +192,7 @@
         <ng-template mat-tab-label>
             <mat-icon class="me-2">find_in_page</mat-icon>
             {{getEtiquetaSubtipo(subtipo)}}
-            <button (click)="quitarDetallesSubtipo(getEtiquetaSubtipo(subtipo))" mat-icon-button class="ms-2"><mat-icon>close</mat-icon></button>
+            <button (click)="quitarDetallesSubtipo(subtipo)" mat-icon-button class="ms-2"><mat-icon>close</mat-icon></button>
         </ng-template>
         <app-detalles-subtipo
             [subtipo]="detallesSubtipoAbiertos[index]"

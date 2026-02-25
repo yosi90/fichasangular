@@ -46,8 +46,36 @@
 
     .chip-celda
         height: auto
+
+    .chip-celda:not(.chip-clic)
         border: none !important
         box-shadow: none !important
+
+    .chip-celda.chip-clic
+        cursor: pointer
+        transition: filter .15s ease-in-out
+
+        &:hover
+            filter: brightness(1.08)
+
+.chip-opcional-grupo
+    cursor: default
+
+    .chip-opcional-grupo-label
+        margin-right: .35rem
+        font-weight: 600
+
+    .chip-opcional-grupo-opciones
+        display: inline-flex
+        flex-wrap: wrap
+        align-items: center
+        gap: .25rem
+
+.chip-opcional-subchip
+    margin: .1rem
+
+.chip-opcional-separador
+    opacity: .85
 
 .chip-anidada
     height: auto

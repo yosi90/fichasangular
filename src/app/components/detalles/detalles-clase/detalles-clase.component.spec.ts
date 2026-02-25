@@ -161,4 +161,128 @@ describe('DetallesClaseComponent', () => {
         expect(component.mostrarNivelMaxPoderAccesible).toBeFalse();
         expect(texto).not.toContain('Nivel max poder accesible');
     });
+
+    it('separa el extra de especial en subchip y navega por nombre cuando falta id', () => {
+        component.clase = crearClaseMock({
+            Desglose_niveles: [{
+                Nivel: 1,
+                Ataque_base: '+0',
+                Salvaciones: { Fortaleza: '+0', Reflejos: '+0', Voluntad: '+0' },
+                Nivel_max_poder_accesible_nivel_lanzadorPsionico: -1,
+                Reserva_psionica: 0,
+                Aumentos_clase_lanzadora: [],
+                Conjuros_diarios: {},
+                Conjuros_conocidos_nivel_a_nivel: {},
+                Conjuros_conocidos_total: 0,
+                Dotes: [],
+                Especiales: [{
+                    Especial: { Nombre: 'Dote adicional' },
+                    Nivel: 1,
+                    Id_extra: -1,
+                    Extra: 'Guerrero',
+                    Opcional: 0,
+                    Id_interno: 0,
+                    Id_especial_requerido: 0,
+                    Id_dote_requerida: 0,
+                }],
+            }],
+        });
+
+        const resumen = component.getResumenEspeciales(component.filasNivel[0]);
+        const especial = resumen.find(item => item.tipo === 'especial');
+        expect(especial).toBeTruthy();
+        expect(especial?.texto).toBe('Dote adicional');
+        expect(especial?.extras).toEqual(['Guerrero']);
+        expect(especial?.clicable).toBeTrue();
+
+        const especialNombreSpy = spyOn(component.especialDetallesPorNombre, 'emit');
+        component.abrirDetalleEspecialFila(especial!);
+        expect(especialNombreSpy).toHaveBeenCalledWith('Dote adicional');
+    });
+
+    it('navega por nombre de dote cuando no hay id', () => {
+        component.clase = crearClaseMock({
+            Desglose_niveles: [{
+                Nivel: 1,
+                Ataque_base: '+0',
+                Salvaciones: { Fortaleza: '+0', Reflejos: '+0', Voluntad: '+0' },
+                Nivel_max_poder_accesible_nivel_lanzadorPsionico: -1,
+                Reserva_psionica: 0,
+                Aumentos_clase_lanzadora: [],
+                Conjuros_diarios: {},
+                Conjuros_conocidos_nivel_a_nivel: {},
+                Conjuros_conocidos_total: 0,
+                Dotes: [{
+                    Dote: {
+                        Id: 0,
+                        Nombre: 'Ataque poderoso',
+                        Extras_disponibles: { Armas: [], Armaduras: [], Escuelas: [], Habilidades: [] },
+                        Extras_soportados: { Extra_arma: 0, Extra_armadura: 0, Extra_escuela: 0, Extra_habilidad: 0 },
+                    } as any,
+                    Nivel: 1,
+                    Id_extra: -1,
+                    Extra: 'No aplica',
+                    Opcional: 0,
+                    Id_interno: 0,
+                    Id_especial_requerido: 0,
+                    Id_dote_requerida: 0,
+                }],
+                Especiales: [],
+            }],
+        });
+
+        const resumen = component.getResumenEspeciales(component.filasNivel[0]);
+        const dote = resumen.find(item => item.tipo === 'dote');
+        expect(dote).toBeTruthy();
+        expect(dote?.texto).toBe('Ataque poderoso');
+        expect(dote?.clicable).toBeTrue();
+
+        const doteNombreSpy = spyOn(component.doteDetallesPorNombre, 'emit');
+        component.abrirDetalleEspecialFila(dote!);
+        expect(doteNombreSpy).toHaveBeenCalledWith('Ataque poderoso');
+    });
+
+    it('agrupa opciones opcionales en chip de grupo con subchips clicables', () => {
+        component.clase = crearClaseMock({
+            Desglose_niveles: [{
+                Nivel: 1,
+                Ataque_base: '+0',
+                Salvaciones: { Fortaleza: '+0', Reflejos: '+0', Voluntad: '+0' },
+                Nivel_max_poder_accesible_nivel_lanzadorPsionico: -1,
+                Reserva_psionica: 0,
+                Aumentos_clase_lanzadora: [],
+                Conjuros_diarios: {},
+                Conjuros_conocidos_nivel_a_nivel: {},
+                Conjuros_conocidos_total: 0,
+                Dotes: [],
+                Especiales: [
+                    {
+                        Especial: { Id: 1, Nombre: 'Talento latente' },
+                        Nivel: 1,
+                        Id_extra: -1,
+                        Extra: 'No aplica',
+                        Opcional: 1,
+                        Id_interno: 0,
+                        Id_especial_requerido: 0,
+                        Id_dote_requerida: 0,
+                    },
+                    {
+                        Especial: { Id: 2, Nombre: 'Dominio mental' },
+                        Nivel: 1,
+                        Id_extra: -1,
+                        Extra: 'No aplica',
+                        Opcional: 1,
+                        Id_interno: 0,
+                        Id_especial_requerido: 0,
+                        Id_dote_requerida: 0,
+                    },
+                ],
+            }],
+        });
+
+        const render = component.getRenderEspeciales(component.filasNivel[0]) as any[];
+        expect(render.length).toBe(1);
+        expect(render[0].tipoRender).toBe('grupo_opcional');
+        expect(render[0].opciones.length).toBe(2);
+    });
 });
