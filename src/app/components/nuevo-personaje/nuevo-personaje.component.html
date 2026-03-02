@@ -627,15 +627,15 @@
                                             </button>
                                         </td>
                                         <td>
-                                            <mat-chip class="chip-alineamiento-clase"
-                                                [ngClass]="{
-                                                    'chip-ali-compatible': item.compatAlineamiento.estado === 'compatible',
-                                                    'chip-ali-incompatible': item.compatAlineamiento.estado === 'incompatible'
-                                                }"
-                                                [matTooltip]="item.compatAlineamiento.tooltip"
-                                                matTooltipClass="tt-accent tt-multiline">
-                                                {{item.compatAlineamiento.etiqueta}}
-                                            </mat-chip>
+                                            <div class="d-flex justify-content-center align-items-center">
+                                                <p
+                                                    class="d-initial sombra3d-sm rounded p-1 mb-0 chip text-center"
+                                                    [ngClass]="item.compatAlineamiento.estado === 'compatible' ? 'good' : 'bad'"
+                                                    [matTooltip]="item.compatAlineamiento.tooltip"
+                                                    matTooltipClass="tt-accent tt-multiline">
+                                                    {{item.compatAlineamiento.etiqueta}}
+                                                </p>
+                                            </div>
                                         </td>
                                     </tr>
                                 </tbody>
@@ -907,17 +907,6 @@
                 </div>
             </ng-template>
         </mat-tab>
-        <mat-tab label="dotes" [disabled]="flujo.pasoActual !== 'dotes'">
-            <ng-template mat-tab-label="">
-                <mat-icon class="me-2">military_tech</mat-icon>
-                Dotes
-            </ng-template>
-            <div class="container-fluid py-3 h-100">
-                <mat-card class="h-100 sombra-caja-sm p-3 d-flex align-items-center justify-content-center">
-                    <mat-chip class="h-auto">Placeholder: esta pestaña será el siguiente bloque funcional tras conjuros.</mat-chip>
-                </mat-card>
-            </div>
-        </mat-tab>
     </mat-tab-group>
 
     <ng-container *ngIf="ventanaDetalleAbierta && !modalCaracteristicasAbierto">
@@ -961,6 +950,29 @@
             [disciplinas]="catalogoDisciplinas"
             (confirmar)="onConfirmarEspecialidadMagica($event)">
         </app-selector-especialidad-magica-modal>
+    </ng-container>
+
+    <ng-container *ngIf="modalSelectorDotesAbierto">
+        <app-selector-dotes-modal
+            [titulo]="'Seleccionar dote'"
+            [pendiente]="selectorDotePendienteActual"
+            [candidatos]="selectorDoteCandidatos"
+            [pendientesRestantes]="selectorDotePendientesRestantes"
+            (detalle)="verDetallesDote($event)"
+            (confirmar)="onConfirmarDotePendiente($event)"
+            (omitir)="onOmitirDotePendiente()">
+        </app-selector-dotes-modal>
+    </ng-container>
+
+    <ng-container *ngIf="modalSelectorExtraHabilidadAbierto">
+        <app-selector-extra-habilidad-modal
+            [titulo]="selectorExtraHabilidadTitulo"
+            [habilidadNombre]="selectorExtraHabilidadNombre"
+            [opciones]="selectorExtraHabilidadOpciones"
+            [valorSeleccionadoInicial]="selectorExtraHabilidadValorInicial"
+            (confirmar)="onConfirmarSelectorExtraHabilidad($event)"
+            (cerrar)="onCerrarSelectorExtraHabilidad()">
+        </app-selector-extra-habilidad-modal>
     </ng-container>
 
     <ng-container *ngIf="modalSelectorIdiomaAbierto">

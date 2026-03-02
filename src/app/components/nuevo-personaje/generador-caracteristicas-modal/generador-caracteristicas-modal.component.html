@@ -1,6 +1,6 @@
 <div class="modal-local-backdrop" (click)="cerrarModal()"></div>
 
-<div class="modal-local-panel" (click)="$event.stopPropagation()">
+<div class="modal-local-panel" #modalPanel tabindex="-1" (click)="$event.stopPropagation()">
     <mat-card class="h-100">
         <mat-card-header class="modal-header">
             <div class="header-text">

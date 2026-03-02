@@ -195,6 +195,12 @@ describe('DetallesPersonajeComponent', () => {
         expect(emitSpy).toHaveBeenCalledWith({ nombre: 'Voluntad de hierro', origen: 'Ventaja' });
     });
 
+    it('normaliza referencia de ventaja con prefijo en el nombre al emitir detalle', () => {
+        const emitSpy = spyOn(component.ventajaDetallesPorNombre, 'emit');
+        component.verDetallesVentajaPorNombre({ nombre: 'Desventaja: Miopia' });
+        expect(emitSpy).toHaveBeenCalledWith({ nombre: 'Miopia', origen: 'Desventaja' });
+    });
+
     it('no emite detalle de ventaja cuando el nombre no es válido', () => {
         const emitSpy = spyOn(component.ventajaDetallesPorNombre, 'emit');
         component.verDetallesVentajaPorNombre({ nombre: '   ' });
@@ -255,6 +261,27 @@ describe('DetallesPersonajeComponent', () => {
         expect(html).toContain('Elfo');
         expect(html).toContain('Nivel');
         expect(html).toContain('Ventaja');
+    });
+
+    it('aplica warm solo a chips de ventajas y mantiene click en preview', () => {
+        component.pj.Ventajas = [
+            { Nombre: 'Voluntad de hierro', Origen: 'Ventaja' } as any,
+            { Nombre: 'Miopia', Origen: 'Desventaja' } as any,
+        ];
+        const emitSpy = spyOn(component.ventajaDetallesPorNombre, 'emit');
+        fixture.detectChanges();
+
+        const chips = fixture.debugElement.queryAll(By.css('mat-chip.chip-clic.sombra3d-sm'));
+        const chipVentaja = chips.find((chip) => `${chip.nativeElement.textContent ?? ''}`.includes('Voluntad de hierro'));
+        const chipDesventaja = chips.find((chip) => `${chip.nativeElement.textContent ?? ''}`.includes('Miopia'));
+
+        expect(chipVentaja).toBeDefined();
+        expect(chipDesventaja).toBeDefined();
+        expect(chipVentaja!.nativeElement.classList.contains('warm')).toBeTrue();
+        expect(chipDesventaja!.nativeElement.classList.contains('warm')).toBeFalse();
+
+        chipVentaja!.triggerEventHandler('click', new MouseEvent('click'));
+        expect(emitSpy).toHaveBeenCalledWith({ nombre: 'Voluntad de hierro', origen: 'Ventaja' });
     });
 
     it('actualiza raciales visibles cuando cambian tras inicializar el componente', () => {

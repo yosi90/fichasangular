@@ -1,0 +1,231 @@
+:host
+    position: absolute
+    inset: 0
+    z-index: 65
+
+.selector-overlay
+    position: absolute
+    inset: 0
+    display: flex
+    justify-content: center
+    align-items: center
+    background: rgba(0, 0, 0, 0.64)
+    padding: 12px
+
+.selector-dialog
+    width: min(1160px, 98vw)
+    max-height: 92vh
+    overflow: auto
+    background: linear-gradient(180deg, #2f3137 0%, #272a30 100%)
+    border: 1px solid #6f7683
+    border-radius: 10px
+    padding: 14px
+    display: flex
+    flex-direction: column
+    gap: 10px
+    color: #edf2ff
+
+.selector-header
+    display: flex
+    justify-content: space-between
+    gap: 10px
+    align-items: flex-start
+
+.selector-header-main
+    display: flex
+    flex-direction: column
+    gap: 4px
+
+.selector-title
+    color: #f3f6ff
+    font-size: 1.25rem
+    font-weight: 700
+
+.selector-subtitle
+    color: #d5dcef
+    font-size: 0.86rem
+
+.chip-pendientes
+    background: rgba(122, 154, 255, 0.2)
+    border: 1px solid rgba(159, 179, 255, 0.5)
+    color: #d9e4ff
+    height: auto
+    border-radius: 8px
+    padding: 6px 10px
+
+.selector-filtros
+    display: grid
+    grid-template-columns: 1.5fr 1fr 1fr auto
+    gap: 8px
+    align-items: center
+    margin-top: 4px
+
+.filtro-chip
+    white-space: nowrap
+    justify-self: end
+    color: #e8eeff
+    border: 1px solid rgba(203, 216, 255, 0.55)
+    background: rgba(255, 255, 255, 0.08)
+    border-radius: 8px
+
+.chip-estado
+    border-radius: 8px
+    padding: 8px 12px
+    font-weight: 600
+
+.chip-estado.ok
+    background: rgba(62, 146, 62, 0.25)
+    border: 1px solid rgba(104, 199, 104, 0.55)
+    color: #d2f3d2
+
+.chip-estado.warm
+    background: rgba(160, 95, 45, 0.26)
+    border: 1px solid rgba(255, 173, 111, 0.62)
+    color: #ffe2ce
+
+.dotes-listado
+    display: grid
+    grid-template-columns: repeat(2, minmax(0, 1fr))
+    gap: 8px
+    max-height: 44vh
+    overflow-y: auto
+    overflow-x: hidden
+    padding-right: 4px
+
+.dotes-columna
+    display: flex
+    flex-direction: column
+    gap: 8px
+    min-width: 0
+
+.dote-item
+    width: 100%
+    box-sizing: border-box
+    border-radius: 8px
+    border: 1px solid rgba(255, 255, 255, 0.18)
+    background: rgba(255, 255, 255, 0.05)
+    padding: 9px 10px
+    cursor: pointer
+    transition: border-color .15s ease, background .15s ease
+
+.dote-item:hover
+    background: rgba(255, 255, 255, 0.1)
+
+.dote-item.seleccionada
+    border-color: #9fb3ff
+    background: rgba(122, 154, 255, 0.2)
+
+.dote-item.bloqueada
+    border-color: rgba(255, 152, 102, 0.6)
+
+.dote-item-head
+    display: flex
+    justify-content: space-between
+    gap: 8px
+    align-items: flex-start
+
+.dote-head-actions
+    display: flex
+    align-items: center
+    gap: 6px
+
+.dote-detalle-btn
+    width: 30px
+    height: 30px
+    line-height: 30px
+    color: #d6e3ff
+    border: 1px solid rgba(203, 216, 255, 0.4)
+    border-radius: 7px
+    background: rgba(255, 255, 255, 0.05)
+    padding: 2px
+
+.dote-nombre
+    color: #f6f8ff
+    font-weight: 600
+
+.dote-meta
+    color: #d4dcef
+    font-size: 0.84rem
+
+.dote-beneficio
+    color: #e8ecf9
+    font-size: 0.9rem
+    margin-top: 3px
+    display: -webkit-box
+    -webkit-box-orient: vertical
+    -webkit-line-clamp: 2
+    line-clamp: 2
+    overflow: hidden
+
+.dote-chip-estado.ok
+    background: rgba(62, 146, 62, 0.25)
+    border: 1px solid rgba(104, 199, 104, 0.55)
+    color: #d2f3d2
+
+.dote-chip-estado.warm
+    background: rgba(160, 95, 45, 0.26)
+    border: 1px solid rgba(255, 173, 111, 0.62)
+    color: #ffe2ce
+
+.dote-motivos
+    margin-top: 4px
+    color: #ffd3c2
+    font-size: 0.84rem
+    display: flex
+    flex-direction: column
+    gap: 2px
+
+.selector-extra
+    margin-top: 2px
+
+.detalle
+    color: #e7ebf6
+    font-size: .92rem
+    opacity: .9
+
+.selector-actions
+    display: flex
+    justify-content: flex-end
+    gap: 8px
+    padding-top: 4px
+
+:host ::ng-deep .selector-dialog .mat-form-field-appearance-fill .mat-form-field-flex
+    background: rgba(255, 255, 255, 0.09)
+    border-radius: 8px 8px 0 0
+
+:host ::ng-deep .selector-dialog .mat-form-field-label
+    color: #dbe5ff
+
+:host ::ng-deep .selector-dialog .mat-input-element
+    color: #f6f8ff
+
+:host ::ng-deep .selector-dialog .mat-select-value
+    color: #f6f8ff
+
+:host ::ng-deep .selector-dialog .mat-select-arrow
+    color: #dbe5ff
+
+:host ::ng-deep .selector-dialog .mat-form-field-underline
+    background-color: rgba(203, 216, 255, 0.5)
+
+:host ::ng-deep .selector-dialog .mat-chip.filtro-chip .mat-chip-trailing-icon,
+:host ::ng-deep .selector-dialog .mat-chip.filtro-chip .mat-chip-remove
+    color: #e8eeff
+
+:host ::ng-deep .selector-dialog .mat-stroked-button
+    border-color: rgba(203, 216, 255, 0.45)
+    color: #f1f5ff
+
+:host ::ng-deep .selector-dialog .mat-raised-button.mat-primary
+    background: linear-gradient(135deg, #d61a73 0%, #b8105f 100%)
+    color: #fff
+
+@media (max-width: 880px)
+    .selector-filtros
+        grid-template-columns: 1fr
+
+    .filtro-chip
+        justify-self: start
+
+    .dotes-listado
+        grid-template-columns: 1fr

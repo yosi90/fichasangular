@@ -551,6 +551,7 @@ describe('NuevoPersonajeComponent', () => {
     let ventajaSvcMock: any;
     let habilidadSvcMock: any;
     let idiomaSvcMock: any;
+    let doteSvcMock: any;
     let armaSvcMock: any;
     let armaduraSvcMock: any;
     let grupoArmaSvcMock: any;
@@ -607,6 +608,9 @@ describe('NuevoPersonajeComponent', () => {
         idiomaSvcMock = {
             getIdiomas: () => of([]),
         };
+        doteSvcMock = {
+            getDotes: () => of([]),
+        };
         armaSvcMock = {
             getArmas: () => of([]),
         };
@@ -641,6 +645,7 @@ describe('NuevoPersonajeComponent', () => {
             ventajaSvcMock,
             habilidadSvcMock,
             idiomaSvcMock,
+            doteSvcMock,
             armaSvcMock,
             armaduraSvcMock,
             grupoArmaSvcMock,
@@ -1101,6 +1106,17 @@ describe('NuevoPersonajeComponent', () => {
         expect(component.modalCaracteristicasAbierto).toBeTrue();
     });
 
+    it('continuarDesdeBasicos configura Swal de inconsistencias con returnFocus desactivado', async () => {
+        component.Personaje.Peso = 999;
+        const swalSpy = spyOn(Swal, 'fire').and.resolveTo({ isConfirmed: true } as any);
+
+        await component.continuarDesdeBasicos();
+
+        expect(swalSpy).toHaveBeenCalled();
+        const swalConfig = swalSpy.calls.mostRecent().args[0] as any;
+        expect(swalConfig.returnFocus).toBeFalse();
+    });
+
     it('continuarDesdeBasicos con conflicto duro de raza en prioridad 3 marca homebrew al confirmar', async () => {
         component.seleccionarRaza(crearRazaConConflictoDuroAlineamiento());
         component.Personaje.Alineamiento = 'Legal neutral';
@@ -1424,6 +1440,85 @@ describe('NuevoPersonajeComponent', () => {
         expect(ids).not.toContain(plantillaNuevaB.Id);
     });
 
+    it('no muestra en bloqueadas plantillas ya seleccionadas o confirmadas', async () => {
+        await component.finalizarGeneracionCaracteristicas({
+            Fuerza: 14,
+            Destreza: 15,
+            Constitucion: 13,
+            Inteligencia: 12,
+            Sabiduria: 10,
+            Carisma: 8,
+        });
+        const plantilla = crearPlantillaMock({ Id: 910, Nombre: 'No duplicar en bloqueadas' });
+        component.plantillasCatalogo = [plantilla];
+        nuevoPSvc.setPlantillasDisponibles(component.plantillasCatalogo);
+
+        component.seleccionarPlantilla(plantilla);
+
+        expect(component.plantillasBloqueadasUnknown.some((item) => item.plantilla.Id === plantilla.Id)).toBeFalse();
+        expect(component.plantillasBloqueadasFailed.some((item) => item.plantilla.Id === plantilla.Id)).toBeFalse();
+
+        spyOn<any>(component, 'abrirSelectorAumentosCaracteristica').and.resolveTo(true);
+        await component.continuarDesdePlantillas();
+        (component as any).recalcularPlantillasVisibles();
+
+        expect(component.plantillasBloqueadasUnknown.some((item) => item.plantilla.Id === plantilla.Id)).toBeFalse();
+        expect(component.plantillasBloqueadasFailed.some((item) => item.plantilla.Id === plantilla.Id)).toBeFalse();
+    });
+
+    it('al mutar tipo de criatura, reevaluá compatibilidad de plantillas y mantiene otros prerrequisitos', async () => {
+        await component.finalizarGeneracionCaracteristicas({
+            Fuerza: 14,
+            Destreza: 15,
+            Constitucion: 13,
+            Inteligencia: 12,
+            Sabiduria: 10,
+            Carisma: 8,
+        });
+
+        const liche = crearPlantillaMock({
+            Id: 920,
+            Nombre: 'Liche',
+            Compatibilidad_tipos: [{
+                Id_tipo_comp: 1,
+                Id_tipo_nuevo: 9,
+                Tipo_comp: 'Humanoide',
+                Tipo_nuevo: 'No muerto',
+                Opcional: 0,
+            }],
+        });
+        const licantropo = crearPlantillaMock({
+            Id: 921,
+            Nombre: 'Licántropo',
+            Prerrequisitos_flags: { criaturas_compatibles: true },
+            Prerrequisitos: {
+                ...crearPlantillaMock().Prerrequisitos,
+                criaturas_compatibles: [{ Id_tipo_compatible: 1, opcional: 0 }],
+            },
+        });
+        const exigeCarismaAlto = crearPlantillaMock({
+            Id: 922,
+            Nombre: 'Exige Carisma 99',
+            Prerrequisitos_flags: { caracteristica: true },
+            Prerrequisitos: {
+                ...crearPlantillaMock().Prerrequisitos,
+                caracteristica: [{ Id_caracteristica: 6, Cantidad: 99, opcional: 0 }],
+            },
+        });
+
+        component.plantillasCatalogo = [liche, licantropo, exigeCarismaAlto];
+        nuevoPSvc.setPlantillasDisponibles(component.plantillasCatalogo);
+        (component as any).recalcularPlantillasVisibles();
+        expect(component.plantillasElegibles.some((p) => p.Id === licantropo.Id)).toBeTrue();
+
+        component.seleccionarPlantilla(liche);
+
+        expect(component.Personaje.Tipo_criatura?.Id).toBe(9);
+        expect(component.plantillasElegibles.some((p) => p.Id === licantropo.Id)).toBeFalse();
+        expect(component.plantillasBloqueadasFailed.some((item) => item.plantilla.Id === licantropo.Id)).toBeTrue();
+        expect(component.plantillasBloqueadasFailed.some((item) => item.plantilla.Id === exigeCarismaAlto.Id)).toBeTrue();
+    });
+
     it('continuarDesdeVentajas avanza al paso clases', () => {
         component.continuarDesdeVentajas();
         expect(nuevoPSvc.EstadoFlujo.pasoActual).toBe('clases');
@@ -1433,7 +1528,7 @@ describe('NuevoPersonajeComponent', () => {
     it('mapearPasoAIndex incluye habilidades, conjuros y dotes', () => {
         expect((component as any).mapearPasoAIndex('habilidades')).toBe(5);
         expect((component as any).mapearPasoAIndex('conjuros')).toBe(6);
-        expect((component as any).mapearPasoAIndex('dotes')).toBe(7);
+        expect((component as any).mapearPasoAIndex('dotes')).toBe(6);
     });
 
     it('muestra nombre de raza en origen de habilidades cuando viene de DG racial', () => {
@@ -1825,10 +1920,141 @@ describe('NuevoPersonajeComponent', () => {
         expect(component.puedeContinuarHabilidades).toBeTrue();
     });
 
-    it('continuarDesdeHabilidades salta a dotes cuando no hay sesión de conjuros', async () => {
+    it('getOpcionesExtraHabilidad no filtra extras de Saber por selección en Conocimiento', () => {
+        component.Personaje.Habilidades = [
+            {
+                Id: 32,
+                Nombre: 'Saber 1',
+                Clasea: true,
+                Entrenada: false,
+                Car: 'Inteligencia',
+                Mod_car: 0,
+                Rangos: 0,
+                Rangos_varios: 0,
+                Extra: '',
+                Varios: '',
+                Custom: false,
+                Soporta_extra: true,
+                Extras: [
+                    { Id_extra: 1, Extra: 'Planos', Descripcion: '' },
+                    { Id_extra: 2, Extra: 'Religion', Descripcion: '' },
+                ],
+                Bonos_varios: [],
+            },
+            {
+                Id: 6,
+                Nombre: 'Conocimiento de conjuros',
+                Clasea: true,
+                Entrenada: false,
+                Car: 'Inteligencia',
+                Mod_car: 0,
+                Rangos: 0,
+                Rangos_varios: 0,
+                Extra: 'Planos',
+                Varios: '',
+                Custom: false,
+                Soporta_extra: true,
+                Extras: [
+                    { Id_extra: 1, Extra: 'Planos', Descripcion: '' },
+                    { Id_extra: 2, Extra: 'Religion', Descripcion: '' },
+                ],
+                Bonos_varios: [],
+            },
+        ] as any;
+
+        const opciones = component.getOpcionesExtraHabilidad(component.Personaje.Habilidades[0] as any);
+        expect(opciones.some((opcion) => opcion.Extra === 'Planos')).toBeTrue();
+    });
+
+    it('abrirSelectorExtraHabilidad abre modal y aplica selección al confirmar', async () => {
+        component.Personaje.Habilidades = [
+            {
+                Id: 55,
+                Nombre: 'Saber 1',
+                Clasea: true,
+                Entrenada: false,
+                Car: 'Inteligencia',
+                Mod_car: 0,
+                Rangos: 0,
+                Rangos_varios: 0,
+                Extra: '',
+                Varios: '',
+                Custom: false,
+                Soporta_extra: true,
+                Extras: [{ Id_extra: 1, Extra: 'Planos', Descripcion: '' }],
+                Bonos_varios: [],
+            },
+        ] as any;
+
+        const apertura = component.abrirSelectorExtraHabilidad(component.Personaje.Habilidades[0] as any);
+        expect(component.modalSelectorExtraHabilidadAbierto).toBeTrue();
+
+        component.onConfirmarSelectorExtraHabilidad('Planos');
+        await apertura;
+
+        expect(component.Personaje.Habilidades[0].Extra).toBe('Planos');
+        expect(component.modalSelectorExtraHabilidadAbierto).toBeFalse();
+    });
+
+    it('abrirSelectorExtraHabilidad no cambia extra al cancelar modal', async () => {
+        component.Personaje.Habilidades = [
+            {
+                Id: 56,
+                Nombre: 'Saber 2',
+                Clasea: true,
+                Entrenada: false,
+                Car: 'Inteligencia',
+                Mod_car: 0,
+                Rangos: 0,
+                Rangos_varios: 0,
+                Extra: 'Religion',
+                Varios: '',
+                Custom: false,
+                Soporta_extra: true,
+                Extras: [
+                    { Id_extra: 1, Extra: 'Planos', Descripcion: '' },
+                    { Id_extra: 2, Extra: 'Religion', Descripcion: '' },
+                ],
+                Bonos_varios: [],
+            },
+        ] as any;
+
+        const apertura = component.abrirSelectorExtraHabilidad(component.Personaje.Habilidades[0] as any);
+        expect(component.modalSelectorExtraHabilidadAbierto).toBeTrue();
+
+        component.onCerrarSelectorExtraHabilidad();
+        await apertura;
+
+        expect(component.Personaje.Habilidades[0].Extra).toBe('Religion');
+        expect(component.modalSelectorExtraHabilidadAbierto).toBeFalse();
+    });
+
+    it('continuarDesdeHabilidades muestra aviso temporal cuando el retorno sería dotes', async () => {
         const clase = crearClaseMock({
             Id: 347,
             Nombre: 'Iniciado',
+            Puntos_habilidad: { Id: 1, Valor: 0 },
+        });
+        const swalSpy = spyOn(Swal, 'fire').and.resolveTo({ isConfirmed: true } as any);
+        spyOn<any>(component, 'resolverDotesPendientes').and.resolveTo(true);
+        component.Personaje.ModInteligencia = 0;
+        component.catalogoClases = [clase];
+        nuevoPSvc.setCatalogoClases(component.catalogoClases);
+        (component as any).recalcularClasesVisibles();
+        component.seleccionarClaseParaAplicar(clase);
+
+        await component.continuarDesdeClases();
+        await component.continuarDesdeHabilidades();
+
+        expect(nuevoPSvc.EstadoFlujo.pasoActual).toBe('habilidades');
+        expect(component.selectedInternalTabIndex).toBe(5);
+        expect(swalSpy).toHaveBeenCalled();
+    });
+
+    it('en clase_nivel resuelve dotes pendientes al continuar desde habilidades, no al aplicar clase', async () => {
+        const clase = crearClaseMock({
+            Id: 374,
+            Nombre: 'Cazador marcial',
             Puntos_habilidad: { Id: 1, Valor: 0 },
         });
         component.Personaje.ModInteligencia = 0;
@@ -1837,11 +2063,16 @@ describe('NuevoPersonajeComponent', () => {
         (component as any).recalcularClasesVisibles();
         component.seleccionarClaseParaAplicar(clase);
 
-        await component.continuarDesdeClases();
-        component.continuarDesdeHabilidades();
+        spyOn<any>(component, 'abrirSelectorAumentosCaracteristica').and.resolveTo(true);
+        const resolverDotesSpy = spyOn<any>(component, 'resolverDotesPendientes').and.resolveTo(true);
+        const swalSpy = spyOn(Swal, 'fire').and.resolveTo({ isConfirmed: true } as any);
 
-        expect(nuevoPSvc.EstadoFlujo.pasoActual).toBe('dotes');
-        expect(component.selectedInternalTabIndex).toBe(7);
+        await component.continuarDesdeClases();
+        expect(resolverDotesSpy).not.toHaveBeenCalled();
+
+        await component.continuarDesdeHabilidades();
+        expect(resolverDotesSpy).toHaveBeenCalledTimes(1);
+        expect(swalSpy).toHaveBeenCalled();
     });
 
     it('continuarDesdeHabilidades salta a conjuros cuando hay sesión activa', async () => {
@@ -1909,13 +2140,13 @@ describe('NuevoPersonajeComponent', () => {
         component.seleccionarClaseParaAplicar(claseConConjuros);
 
         await component.continuarDesdeClases();
-        component.continuarDesdeHabilidades();
+        await component.continuarDesdeHabilidades();
 
         expect(nuevoPSvc.EstadoFlujo.pasoActual).toBe('conjuros');
         expect(component.selectedInternalTabIndex).toBe(6);
     });
 
-    it('continuarDesdeConjuros persiste selección y avanza a dotes', async () => {
+    it('continuarDesdeConjuros muestra aviso temporal cuando el retorno sería dotes', async () => {
         const claseConConjuros = crearClaseMock({
             Id: 349,
             Nombre: 'Adepto místico',
@@ -1942,6 +2173,8 @@ describe('NuevoPersonajeComponent', () => {
                 Especiales: [],
             }],
         });
+        const swalSpy = spyOn(Swal, 'fire').and.resolveTo({ isConfirmed: true } as any);
+        spyOn<any>(component, 'resolverDotesPendientes').and.resolveTo(true);
         const conjuro = {
             Id: 4002,
             Nombre: 'Detectar magia',
@@ -1981,13 +2214,13 @@ describe('NuevoPersonajeComponent', () => {
         component.seleccionarClaseParaAplicar(claseConConjuros);
 
         await component.continuarDesdeClases();
-        component.continuarDesdeHabilidades();
+        await component.continuarDesdeHabilidades();
         component.agregarConjuroSesion(conjuro);
         component.continuarDesdeConjuros();
 
-        expect(nuevoPSvc.EstadoFlujo.pasoActual).toBe('dotes');
-        expect(component.selectedInternalTabIndex).toBe(7);
-        expect(component.Personaje.Conjuros.some((item) => item.Nombre === 'Detectar magia')).toBeTrue();
+        expect(nuevoPSvc.EstadoFlujo.pasoActual).toBe('conjuros');
+        expect(component.selectedInternalTabIndex).toBe(6);
+        expect(swalSpy).toHaveBeenCalled();
     });
 
     it('mensaje de progreso no afirma autoadición en conocidos nivel a nivel sin delta', async () => {
@@ -2054,7 +2287,7 @@ describe('NuevoPersonajeComponent', () => {
         component.seleccionarClaseParaAplicar(claseSinDelta);
 
         await component.continuarDesdeClases();
-        component.continuarDesdeHabilidades();
+        await component.continuarDesdeHabilidades();
 
         expect(component.mensajeProgresoConjuros.toLowerCase()).not.toContain('automatic');
         expect(component.mensajeProgresoConjuros).toContain('no otorga nuevos conjuros conocidos');
@@ -2094,7 +2327,7 @@ describe('NuevoPersonajeComponent', () => {
         component.seleccionarClaseParaAplicar(claseSinObtencion);
 
         await component.continuarDesdeClases();
-        component.continuarDesdeHabilidades();
+        await component.continuarDesdeHabilidades();
 
         expect(component.conjurosSeleccionadosActuales.length).toBe(0);
     });
@@ -2165,7 +2398,7 @@ describe('NuevoPersonajeComponent', () => {
         component.seleccionarClaseParaAplicar(clasePsionica);
 
         await component.continuarDesdeClases();
-        component.continuarDesdeHabilidades();
+        await component.continuarDesdeHabilidades();
 
         expect(component.entradaConjurosActual?.tipoLanzamiento).toBe('psionico');
         expect(component.entradaConjurosActual?.nivelMaxPoderAccesiblePsionico).toBe(0);
@@ -2235,7 +2468,7 @@ describe('NuevoPersonajeComponent', () => {
         component.seleccionarClaseParaAplicar(claseArcana);
 
         await component.continuarDesdeClases();
-        component.continuarDesdeHabilidades();
+        await component.continuarDesdeHabilidades();
 
         expect(component.entradaConjurosActual?.tipoLanzamiento).toBe('arcano');
         expect(component.entradaConjurosActual?.nivelMaxPoderAccesiblePsionico).toBe(-1);
@@ -2443,6 +2676,7 @@ describe('NuevoPersonajeComponent', () => {
             ordenLlamadas.push('aumentos');
             return true;
         });
+        spyOn<any>(component, 'resolverDotesPendientes').and.resolveTo(true);
 
         await component.continuarDesdeClases();
 
@@ -2492,14 +2726,15 @@ describe('NuevoPersonajeComponent', () => {
         component.seleccionarClaseParaAplicar(claseConEspecialAumento);
 
         const abrirAumentosSpy = spyOn<any>(component, 'abrirSelectorAumentosCaracteristica').and.resolveTo(true);
+        const registrarEspecialesSpy = spyOn(nuevoPSvc, 'registrarAumentosPendientesPorEspeciales').and.callThrough();
+        const registrarProgresionSpy = spyOn(nuevoPSvc, 'registrarAumentosPendientesPorProgresion').and.callThrough();
+        spyOn<any>(component, 'resolverDotesPendientes').and.resolveTo(true);
 
         await component.continuarDesdeClases();
 
         expect(abrirAumentosSpy).toHaveBeenCalledTimes(1);
-        const pendientes = nuevoPSvc.getAumentosCaracteristicaPendientes();
-        expect(pendientes.length).toBe(2);
-        expect(pendientes.some((pendiente) => pendiente.valor === 1)).toBeTrue();
-        expect(pendientes.some((pendiente) => pendiente.valor === 2)).toBeTrue();
+        expect(registrarEspecialesSpy).toHaveBeenCalled();
+        expect(registrarProgresionSpy).toHaveBeenCalled();
     });
 
     it('si la clase requiere dominio, usa el flujo de selector de dominios', async () => {
@@ -3102,6 +3337,7 @@ describe('NuevoPersonajeComponent', () => {
             ventajaSvcMock,
             habilidadSvcMock,
             idiomaSvcMock,
+            doteSvcMock,
             armaSvcMock,
             armaduraSvcMock,
             grupoArmaSvcMock,

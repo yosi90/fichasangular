@@ -1,4 +1,4 @@
-import { Component, EventEmitter, HostListener, Input, Output } from '@angular/core';
+import { AfterViewInit, Component, ElementRef, EventEmitter, HostListener, Input, Output, ViewChild } from '@angular/core';
 import { Raza } from 'src/app/interfaces/raza';
 import {
     AsignacionCaracteristicas,
@@ -26,13 +26,14 @@ interface PreviewCaracteristica {
     templateUrl: './generador-caracteristicas-modal.component.html',
     styleUrls: ['./generador-caracteristicas-modal.component.sass']
 })
-export class GeneradorCaracteristicasModalComponent {
+export class GeneradorCaracteristicasModalComponent implements AfterViewInit {
     @Input() raza!: Raza;
     @Input() caracteristicasPerdidas: CaracteristicasPerdidasState | null = null;
     @Input() pierdeConstitucion = false;
 
     @Output() cerrar: EventEmitter<void> = new EventEmitter<void>();
     @Output() finalizar: EventEmitter<AsignacionCaracteristicas> = new EventEmitter<AsignacionCaracteristicas>();
+    @ViewChild('modalPanel') modalPanelRef?: ElementRef<HTMLElement>;
 
     readonly minimos: number[] = Array.from({ length: 11 }, (_, i) => i + 3);
     readonly tablasPermitidasOpciones: number[] = [1, 2, 3, 4, 5];
@@ -112,6 +113,12 @@ export class GeneradorCaracteristicasModalComponent {
 
     constructor(private nuevoPSvc: NuevoPersonajeService) {
         this.nuevoPSvc.abrirModalCaracteristicas();
+    }
+
+    ngAfterViewInit(): void {
+        // Fuerza que el foco quede dentro del modal al abrirse.
+        setTimeout(() => this.forzarFocoEnModal());
+        setTimeout(() => this.forzarFocoEnModal(), 40);
     }
 
     get estado() {
@@ -499,6 +506,17 @@ export class GeneradorCaracteristicasModalComponent {
         this.resolverCuestionarioAuto = null;
         if (resolver)
             resolver(respuesta);
+    }
+
+    private forzarFocoEnModal(): void {
+        if (typeof document === 'undefined')
+            return;
+
+        const active = document.activeElement as HTMLElement | null;
+        if (active && typeof active.blur === 'function')
+            active.blur();
+
+        this.modalPanelRef?.nativeElement?.focus({ preventScroll: true });
     }
 
     private esElementoInteractivoParaEnter(target: HTMLElement | null): boolean {

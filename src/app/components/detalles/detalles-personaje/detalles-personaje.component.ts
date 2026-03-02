@@ -24,6 +24,11 @@ interface VentajaVisible {
     origen?: string;
 }
 
+interface VentajaReferenciaNormalizada {
+    nombre: string;
+    origen?: string;
+}
+
 @Component({
     selector: 'app-detalles-personaje',
     templateUrl: './detalles-personaje.component.html',
@@ -763,21 +768,58 @@ Fue/Des/Con: ${this.formatSigned(madurez.modFisico)} | Int/Sab/Car: ${this.forma
     }
 
     getOrigenVentaja(ventaja: VentajaVisible): string | null {
-        const origen = `${ventaja?.origen ?? ''}`.trim();
+        const origen = `${this.normalizarVentajaReferencia(ventaja).origen ?? ''}`.trim();
         return this.tieneTextoVisible(origen) ? origen : null;
+    }
+
+    esVentajaConEstiloWarm(ventaja: VentajaVisible): boolean {
+        const origen = this.normalizarTexto(`${this.normalizarVentajaReferencia(ventaja).origen ?? ''}`);
+        return origen === 'ventaja';
     }
 
     @Output() ventajaDetallesPorNombre: EventEmitter<{ nombre: string; origen?: string; }> = new EventEmitter<{ nombre: string; origen?: string; }>();
     verDetallesVentajaPorNombre(ventaja: VentajaVisible): void {
-        const nombre = `${ventaja?.nombre ?? ''}`.trim();
+        const referencia = this.normalizarVentajaReferencia(ventaja);
+        const nombre = `${referencia.nombre ?? ''}`.trim();
         if (!this.tieneTextoVisible(nombre))
             return;
 
-        const origen = `${ventaja?.origen ?? ''}`.trim();
+        const origen = `${referencia.origen ?? ''}`.trim();
         this.ventajaDetallesPorNombre.emit({
             nombre,
             origen: this.tieneTextoVisible(origen) ? origen : undefined,
         });
+    }
+
+    private normalizarVentajaReferencia(ventaja: VentajaVisible): VentajaReferenciaNormalizada {
+        const origenRaw = `${ventaja?.origen ?? ''}`.trim();
+        const nombreRaw = `${ventaja?.nombre ?? ''}`.trim();
+        if (nombreRaw.length < 1) {
+            return {
+                nombre: '',
+                origen: this.tieneTextoVisible(origenRaw) ? origenRaw : undefined,
+            };
+        }
+
+        const origenExplicitoNormalizado = this.normalizarTexto(origenRaw);
+        if (origenExplicitoNormalizado === 'ventaja' || origenExplicitoNormalizado === 'desventaja') {
+            return {
+                nombre: nombreRaw,
+                origen: origenExplicitoNormalizado === 'ventaja' ? 'Ventaja' : 'Desventaja',
+            };
+        }
+
+        const prefijo = nombreRaw.match(/^\s*(ventaja|desventaja)\s*[:\-]\s*(.+)$/i);
+        if (prefijo) {
+            const origen = this.normalizarTexto(prefijo[1]) === 'ventaja' ? 'Ventaja' : 'Desventaja';
+            const nombre = `${prefijo[2] ?? ''}`.trim();
+            return { nombre, origen };
+        }
+
+        return {
+            nombre: nombreRaw,
+            origen: this.tieneTextoVisible(origenRaw) ? origenRaw : undefined,
+        };
     }
 
     toDoteContextualFallback(dote: DoteLegacy): DoteContextual {

@@ -1,0 +1,46 @@
+<div class="selector-overlay" (click)="onCerrar()">
+    <div class="selector-dialog" (click)="$event.stopPropagation()">
+        <div class="selector-header">
+            <div class="selector-header-main">
+                <h2 class="m-0 selector-title">{{titulo}}</h2>
+                <p class="m-0 selector-subtitle" *ngIf="habilidadNombre.length > 0">
+                    Selecciona el extra para {{habilidadNombre}}.
+                </p>
+            </div>
+            <button mat-icon-button type="button" class="selector-icon-btn" aria-label="Cerrar" (click)="onCerrar()">
+                <mat-icon>close</mat-icon>
+            </button>
+        </div>
+
+        <mat-form-field appearance="fill" class="w-100">
+            <mat-label>Buscar extra</mat-label>
+            <input matInput [(ngModel)]="filtroTexto" placeholder="Nombre o descripción">
+        </mat-form-field>
+
+        <div class="extras-listado" *ngIf="opcionesFiltradas.length > 0; else sinExtrasTpl">
+            <div class="extra-row"
+                *ngFor="let opcion of opcionesFiltradas"
+                [class.seleccionada]="esOpcionSeleccionada(opcion.valor)"
+                tabindex="0"
+                role="option"
+                [attr.aria-selected]="esOpcionSeleccionada(opcion.valor)"
+                (click)="seleccionarOpcion(opcion.valor)"
+                (keydown.enter)="seleccionarOpcion(opcion.valor); $event.preventDefault()"
+                (keydown.space)="seleccionarOpcion(opcion.valor); $event.preventDefault()">
+                <p class="m-0 extra-nombre">{{opcion.valor}}</p>
+                <p class="m-0 extra-descripcion" *ngIf="opcion.descripcion.length > 0">{{opcion.descripcion}}</p>
+            </div>
+        </div>
+
+        <ng-template #sinExtrasTpl>
+            <p class="m-0 detalle">No hay extras que encajen con el filtro actual.</p>
+        </ng-template>
+
+        <div class="selector-actions">
+            <button mat-stroked-button type="button" (click)="onCerrar()">Cancelar</button>
+            <button mat-raised-button color="primary" type="button" [disabled]="!puedeConfirmar" (click)="onConfirmar()">
+                Confirmar extra
+            </button>
+        </div>
+    </div>
+</div>

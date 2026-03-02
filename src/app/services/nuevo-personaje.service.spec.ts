@@ -1319,6 +1319,76 @@ describe('NuevoPersonajeService (clases)', () => {
         expect(segundoNivel.cantidad).toBe(0);
     });
 
+    it('no vuelve a conceder por progresion las dotes ya dadas por DGs raciales', () => {
+        const tipo = crearTipoBase();
+        const raza = crearRazaBase(tipo);
+        raza.Dgs_adicionales.Cantidad = 6;
+        raza.Dgs_adicionales.Dotes_extra = 2;
+        service.seleccionarRaza(raza);
+        service.aplicarCaracteristicasGeneradas({
+            Fuerza: 14,
+            Destreza: 12,
+            Constitucion: 13,
+            Inteligencia: 10,
+            Sabiduria: 11,
+            Carisma: 9,
+        });
+
+        const dotesRaza = service.registrarDotesPendientesPorRazaExtras('Humano');
+        expect(dotesRaza.length).toBe(2);
+
+        service.aplicarSiguienteNivelClase(claseBase);
+        const dotesProgresion = service.registrarDotesPendientesPorProgresion('Guerrero nivel 1');
+        expect(dotesProgresion.length).toBe(0);
+    });
+
+    it('la progresion de dotes sigue funcionando por niveles de clase aunque haya DGs raciales', () => {
+        const tipo = crearTipoBase();
+        const raza = crearRazaBase(tipo);
+        raza.Dgs_adicionales.Cantidad = 6;
+        raza.Dgs_adicionales.Dotes_extra = 2;
+        service.seleccionarRaza(raza);
+        service.aplicarCaracteristicasGeneradas({
+            Fuerza: 14,
+            Destreza: 12,
+            Constitucion: 13,
+            Inteligencia: 10,
+            Sabiduria: 11,
+            Carisma: 9,
+        });
+
+        service.registrarDotesPendientesPorRazaExtras('Humano');
+
+        const claseConNivel3 = crearClaseBase({
+            Id: 777,
+            Nombre: 'Guerrero de prueba',
+            Desglose_niveles: [
+                ...(claseBase.Desglose_niveles ?? []),
+                {
+                    Nivel: 3,
+                    Ataque_base: '+3',
+                    Salvaciones: { Fortaleza: '+3', Reflejos: '+1', Voluntad: '+1' },
+                    Nivel_max_poder_accesible_nivel_lanzadorPsionico: -1,
+                    Reserva_psionica: 0,
+                    Aumentos_clase_lanzadora: [],
+                    Conjuros_diarios: crearConjurosDiariosMock(),
+                    Conjuros_conocidos_nivel_a_nivel: {},
+                    Conjuros_conocidos_total: 0,
+                    Dotes: [],
+                    Especiales: [],
+                },
+            ],
+        });
+        service.setCatalogoClases([claseConNivel3]);
+
+        service.aplicarSiguienteNivelClase(claseConNivel3);
+        expect(service.registrarDotesPendientesPorProgresion('Guerrero nivel 1').length).toBe(0);
+        service.aplicarSiguienteNivelClase(claseConNivel3);
+        expect(service.registrarDotesPendientesPorProgresion('Guerrero nivel 2').length).toBe(0);
+        service.aplicarSiguienteNivelClase(claseConNivel3);
+        expect(service.registrarDotesPendientesPorProgresion('Guerrero nivel 3').length).toBe(1);
+    });
+
     it('DGs raciales 4/8/12 generan 1/2/3 aumentos por progresion', () => {
         const casos = [
             { dgs: 4, esperado: 1 },
@@ -3629,6 +3699,47 @@ describe('NuevoPersonajeService (habilidades flujo)', () => {
         expect(svc.puedeCerrarDistribucionHabilidades()).toBeTrue();
     });
 
+    it('permite reutilizar extra entre Conocimiento y Saber porque no comparten familia', () => {
+        const svc = new NuevoPersonajeService();
+        svc.setCatalogoHabilidades([
+            {
+                Id_habilidad: 6,
+                Nombre: 'Conocimiento de conjuros',
+                Id_caracteristica: 4,
+                Caracteristica: 'Inteligencia',
+                Descripcion: '',
+                Soporta_extra: true,
+                Entrenada: false,
+                Extras: [{ Id_extra: 1, Extra: 'Planos', Descripcion: '' }],
+            },
+            {
+                Id_habilidad: 32,
+                Nombre: 'Saber 1',
+                Id_caracteristica: 4,
+                Caracteristica: 'Inteligencia',
+                Descripcion: '',
+                Soporta_extra: true,
+                Entrenada: false,
+                Extras: [{ Id_extra: 1, Extra: 'Planos', Descripcion: '' }],
+            },
+        ]);
+        svc.seleccionarRaza(crearRazaConDgs({
+            Habilidades: {
+                Base: [
+                    { Id_habilidad: 6, Habilidad: 'Conocimiento de conjuros', Cantidad: 1 },
+                    { Id_habilidad: 32, Habilidad: 'Saber 1', Cantidad: 1 },
+                ],
+                Custom: [],
+            },
+        } as any));
+        svc.iniciarDistribucionHabilidadesPorRazaDG();
+        svc.EstadoFlujo.habilidades.puntosRestantes = 0;
+
+        expect(svc.setExtraHabilidad(32, 'Planos')).toBeTrue();
+        expect(svc.setExtraHabilidad(6, 'Planos')).toBeTrue();
+        expect(svc.puedeCerrarDistribucionHabilidades()).toBeTrue();
+    });
+
     it('reparto manual actualiza Rangos y no Rangos_varios', () => {
         const svc = new NuevoPersonajeService();
         svc.setCatalogoHabilidades([
@@ -3675,6 +3786,47 @@ describe('NuevoPersonajeService (habilidades flujo)', () => {
         const claseas = svc.PersonajeCreacion.Habilidades
             .filter((h) => [2, 3, 4].includes(Number(h.Id)) && h.Clasea);
         expect(claseas.length).toBe(3);
+    });
+
+    it('familia saberes ocupa Saber 1..5 aunque exista un Conocimiento de conjuros', () => {
+        const svc = new NuevoPersonajeService();
+        svc.setCatalogoHabilidades([
+            { Id_habilidad: 6, Nombre: 'Conocimiento de conjuros', Id_caracteristica: 4, Caracteristica: 'Inteligencia', Descripcion: '', Soporta_extra: true, Entrenada: false, Extras: [] },
+            { Id_habilidad: 32, Nombre: 'Saber 1', Id_caracteristica: 4, Caracteristica: 'Inteligencia', Descripcion: '', Soporta_extra: true, Entrenada: false, Extras: [] },
+            { Id_habilidad: 33, Nombre: 'Saber 2', Id_caracteristica: 4, Caracteristica: 'Inteligencia', Descripcion: '', Soporta_extra: true, Entrenada: false, Extras: [] },
+            { Id_habilidad: 34, Nombre: 'Saber 3', Id_caracteristica: 4, Caracteristica: 'Inteligencia', Descripcion: '', Soporta_extra: true, Entrenada: false, Extras: [] },
+            { Id_habilidad: 35, Nombre: 'Saber 4', Id_caracteristica: 4, Caracteristica: 'Inteligencia', Descripcion: '', Soporta_extra: true, Entrenada: false, Extras: [] },
+            { Id_habilidad: 36, Nombre: 'Saber 5', Id_caracteristica: 4, Caracteristica: 'Inteligencia', Descripcion: '', Soporta_extra: true, Entrenada: false, Extras: [] },
+        ]);
+        svc.seleccionarRaza(crearRazaConDgs({
+            Habilidades: {
+                Base: [{ Id_habilidad: 6, Habilidad: 'Conocimiento de conjuros', Cantidad: 1 }],
+                Custom: [],
+            },
+        } as any));
+
+        const clase = crearClaseBase({
+            Id: 82,
+            Nombre: 'Cazador de secretos',
+            Habilidades: {
+                Base: [
+                    { Id_habilidad: 32, Habilidad: 'Saber 1' },
+                    { Id_habilidad: 32, Habilidad: 'Saber 1' },
+                    { Id_habilidad: 32, Habilidad: 'Saber 1' },
+                    { Id_habilidad: 32, Habilidad: 'Saber 1' },
+                    { Id_habilidad: 32, Habilidad: 'Saber 1' },
+                ],
+                Custom: [],
+            },
+        });
+
+        const resultado = svc.aplicarSiguienteNivelClase(clase);
+        expect(resultado.aplicado).toBeTrue();
+
+        const saberesClaseos = svc.PersonajeCreacion.Habilidades
+            .filter((h) => [32, 33, 34, 35, 36].includes(Number(h.Id)) && h.Clasea);
+        expect(saberesClaseos.length).toBe(5);
+        expect(saberesClaseos.some((h) => Number(h.Id) === 36)).toBeTrue();
     });
 });
 

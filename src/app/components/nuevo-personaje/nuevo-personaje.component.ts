@@ -36,6 +36,7 @@ import { GrupoArmaService } from 'src/app/services/grupo-arma.service';
 import { GrupoArmaduraService } from 'src/app/services/grupo-armadura.service';
 import { HabilidadService } from 'src/app/services/habilidad.service';
 import { IdiomaService } from 'src/app/services/idioma.service';
+import { DoteService } from 'src/app/services/dote.service';
 import { EscuelaConjurosService } from 'src/app/services/escuela-conjuros.service';
 import {
     AsignacionAumentoCaracteristica,
@@ -46,6 +47,9 @@ import {
     ClaseDominiosPendientes,
     ClaseGrupoOpcionalPendiente,
     ConjurosSesionStateEntrada,
+    DotePendienteState,
+    DoteSeleccionConfirmada,
+    DoteSelectorCandidato,
     EspecialidadMagicaPendiente,
     EspecialidadMagicaSeleccion,
     NuevoPersonajeService,
@@ -162,6 +166,11 @@ interface ClaseSalvacionesDeltaItem {
     voluntad: number;
 }
 
+interface ExtraHabilidadSelectorOpcion {
+    valor: string;
+    descripcion: string;
+}
+
 const EXTRA_PENDIENTE_PLACEHOLDERS = new Set([
     '-',
     'no aplica',
@@ -257,6 +266,7 @@ export class NuevoPersonajeComponent {
     catalogoGruposArmas: GrupoCompetencia[] = [];
     catalogoGruposArmaduras: GrupoCompetencia[] = [];
     catalogoClases: Clase[] = [];
+    catalogoDotes: Dote[] = [];
     catalogoConjuros: Conjuro[] = [];
     catalogoEscuelas: EscuelaConjuros[] = [];
     catalogoDisciplinas: DisciplinaConjuros[] = [];
@@ -284,8 +294,17 @@ export class NuevoPersonajeComponent {
     modalSelectorDominiosAbierto = false;
     modalSelectorAumentosAbierto = false;
     modalSelectorEspecialidadMagicaAbierto = false;
+    modalSelectorDotesAbierto = false;
+    modalSelectorExtraHabilidadAbierto = false;
     modalSelectorRazaBaseAbierto = false;
     modalSelectorRacialesOpcionalesAbierto = false;
+    selectorDotePendienteActual: DotePendienteState | null = null;
+    selectorDoteCandidatos: DoteSelectorCandidato[] = [];
+    selectorDotePendientesRestantes = 0;
+    selectorExtraHabilidadTitulo = 'Seleccionar extra';
+    selectorExtraHabilidadNombre = '';
+    selectorExtraHabilidadOpciones: ExtraHabilidadSelectorOpcion[] = [];
+    selectorExtraHabilidadValorInicial = '';
     selectorEspecialidadClaseNombre = '';
     selectorEspecialidadRequiereArcano = false;
     selectorEspecialidadRequierePsionico = false;
@@ -320,6 +339,8 @@ export class NuevoPersonajeComponent {
     selectorAumentosTopes: Partial<Record<CaracteristicaAumentoKey, number>> = {};
     private resolverSelectorAumentos: ((completado: boolean) => void) | null = null;
     private resolverSelectorEspecialidadMagica: ((seleccion: SelectorEspecialidadMagicaConfirmacion | null) => void) | null = null;
+    private resolverSelectorDotes: ((seleccion: DoteSeleccionConfirmada | 'omitir' | null) => void) | null = null;
+    private resolverSelectorExtraHabilidad: ((valor: string | null) => void) | null = null;
     selectorIdiomaTitulo = 'Seleccionar idioma extra';
     selectorIdiomaCantidadObjetivo = 0;
     selectorIdiomaCantidadSeleccionada = 0;
@@ -339,6 +360,7 @@ export class NuevoPersonajeComponent {
     private gruposArmadurasSub?: Subscription;
     private razasSub?: Subscription;
     private clasesSub?: Subscription;
+    private dotesSub?: Subscription;
     private conjurosCatalogoCargado = false;
     private escuelasCatalogoCargado = false;
     private disciplinasCatalogoCargado = false;
@@ -361,6 +383,7 @@ export class NuevoPersonajeComponent {
         private ventajaSvc: VentajaService,
         private habilidadSvc: HabilidadService,
         private idiomaSvc: IdiomaService,
+        private doteSvc: DoteService,
         private armaSvc: ArmaService,
         private armaduraSvc: ArmaduraService,
         private grupoArmaSvc: GrupoArmaService,
@@ -394,6 +417,7 @@ export class NuevoPersonajeComponent {
         this.cargarDominios();
         this.cargarDeidades();
         this.cargarClases();
+        this.cargarDotes();
         this.cargarTiposCriatura();
         this.cargarAlineamientosBasicos();
     }
@@ -412,6 +436,7 @@ export class NuevoPersonajeComponent {
         this.gruposArmadurasSub?.unsubscribe();
         this.razasSub?.unsubscribe();
         this.clasesSub?.unsubscribe();
+        this.dotesSub?.unsubscribe();
         this.dominiosSub?.unsubscribe();
         this.deidadesSub?.unsubscribe();
         this.tiposCriaturaSub?.unsubscribe();
@@ -1346,11 +1371,12 @@ export class NuevoPersonajeComponent {
             && !tieneVentajasODesventajas;
     }
 
-    async continuarDesdeBasicos(): Promise<void> {
+    async continuarDesdeBasicos(desdeAtajoTeclado = false): Promise<void> {
         if (!this.razaElegida || !this.puedeContinuarBasicos) {
             return;
         }
 
+        let mostroAlertaInconsistencias = false;
         this.normalizarAlineamientoSeleccionado();
         if (!this.esTextoNoVacio(this.Personaje.Contexto)) {
             this.Personaje.Contexto = this.fallbackContexto;
@@ -1364,6 +1390,7 @@ export class NuevoPersonajeComponent {
         const hayConflictosDuros = evaluacion.hardConflicts.length > 0;
         const hayOtrosBloqueos = evaluacion.otherOfficialBlockers.length > 0;
         if (hayPreview || hayConflictosDuros || hayOtrosBloqueos) {
+            mostroAlertaInconsistencias = true;
             const previewHtml = hayPreview
                 ? `<p style="text-align:left; margin: 0 0 6px 0;"><strong>Advertencias</strong></p><ul style="text-align:left; margin-top: 4px;">${evaluacion.previewWarnings.map(i => `<li>${i}</li>`).join('')}</ul>`
                 : '';
@@ -1383,6 +1410,7 @@ export class NuevoPersonajeComponent {
                 showCancelButton: true,
                 confirmButtonText: 'Aceptar y continuar',
                 cancelButtonText: 'Cancelar',
+                returnFocus: false,
             });
 
             if (!result.isConfirmed) {
@@ -1400,6 +1428,11 @@ export class NuevoPersonajeComponent {
             this.nuevoPSvc.refrescarDerivadasPreviewNuevoPersonaje();
             this.ventanaDetalleAbierta = true;
         }
+        if (mostroAlertaInconsistencias)
+            await this.esperarSiguienteTickUi();
+        if (desdeAtajoTeclado)
+            await this.esperarSiguienteTickUi();
+
         this.limpiarFocoActivoAntesDeModal();
         this.abrirModalCaracteristicas();
     }
@@ -1422,7 +1455,7 @@ export class NuevoPersonajeComponent {
 
         let accionAplicada = false;
         if (this.flujo.pasoActual === 'basicos' && this.puedeContinuarBasicos) {
-            void this.continuarDesdeBasicos();
+            void this.continuarDesdeBasicos(true);
             accionAplicada = true;
         } else if (this.flujo.pasoActual === 'plantillas') {
             void this.continuarDesdePlantillas();
@@ -1434,7 +1467,7 @@ export class NuevoPersonajeComponent {
             void this.continuarDesdeClases();
             accionAplicada = true;
         } else if (this.flujo.pasoActual === 'habilidades' && this.puedeContinuarHabilidades) {
-            this.continuarDesdeHabilidades();
+            void this.continuarDesdeHabilidades();
             accionAplicada = true;
         } else if (this.flujo.pasoActual === 'conjuros' && this.puedeContinuarConjuros) {
             this.continuarDesdeConjuros();
@@ -1499,6 +1532,12 @@ export class NuevoPersonajeComponent {
             this.sincronizarTabConPaso();
             return;
         }
+
+        this.nuevoPSvc.registrarDotesPendientesPorRazaExtras(`${this.razaSeleccionada?.Nombre ?? 'Raza'}`);
+        const dotesCompletadas = await this.resolverDotesPendientes();
+        if (!dotesCompletadas)
+            return;
+
         this.sincronizarTabConPaso();
     }
 
@@ -1555,7 +1594,7 @@ export class NuevoPersonajeComponent {
             return 6;
         }
         if (paso === 'dotes') {
-            return 7;
+            return 6;
         }
         return 0;
     }
@@ -1567,6 +1606,10 @@ export class NuevoPersonajeComponent {
     private esNumeroValidoPositivo(value: number): boolean {
         const parsed = Number(value);
         return Number.isFinite(parsed) && parsed > 0;
+    }
+
+    private esperarSiguienteTickUi(): Promise<void> {
+        return new Promise((resolve) => setTimeout(resolve, 0));
     }
 
     private limpiarFocoActivoAntesDeModal(): void {
@@ -1625,6 +1668,8 @@ export class NuevoPersonajeComponent {
             || this.modalSelectorDominiosAbierto
             || this.modalSelectorAumentosAbierto
             || this.modalSelectorEspecialidadMagicaAbierto
+            || this.modalSelectorDotesAbierto
+            || this.modalSelectorExtraHabilidadAbierto
             || this.modalSelectorRazaBaseAbierto
             || this.modalSelectorRacialesOpcionalesAbierto;
     }
@@ -1768,6 +1813,13 @@ export class NuevoPersonajeComponent {
 
     @Output() doteDetalles: EventEmitter<Dote | DoteContextual> = new EventEmitter<Dote | DoteContextual>();
     @Output() especialDetallesPorNombre: EventEmitter<string> = new EventEmitter<string>();
+
+    verDetallesDote(value: Dote): void {
+        const nombre = `${value?.Nombre ?? ''}`.trim();
+        if (nombre.length < 1)
+            return;
+        this.doteDetalles.emit(value);
+    }
 
     verDetallesPlantillaDesdeFicha(payload: { id?: number | null; nombre: string; }): void {
         const id = Number(payload?.id ?? 0);
@@ -1948,7 +2000,7 @@ export class NuevoPersonajeComponent {
         const agrupacion = agruparRacialesPorOpcional(razaEfectiva?.Raciales ?? []);
 
         if (agrupacion.grupos.length < 1) {
-            this.aplicarSeleccionRazaFinal(raza, razaBase, null);
+            void this.aplicarSeleccionRazaFinal(raza, razaBase, null);
             return;
         }
 
@@ -2032,7 +2084,7 @@ export class NuevoPersonajeComponent {
         }
 
         this.seleccionRacialesOpcionalesPendiente = { ...seleccion };
-        this.aplicarSeleccionRazaFinal(
+        void this.aplicarSeleccionRazaFinal(
             this.contextoRazaPendienteOpcionales.raza,
             this.contextoRazaPendienteOpcionales.razaBase,
             this.seleccionRacialesOpcionalesPendiente
@@ -2382,6 +2434,10 @@ export class NuevoPersonajeComponent {
         if (!aumentosCompletados)
             return;
 
+        this.nuevoPSvc.registrarDotesPendientesPorRazaExtras(`${this.razaSeleccionada?.Nombre ?? 'Raza'}`);
+        this.nuevoPSvc.registrarDotesPendientesPorEspeciales(resultado.especialesAplicados ?? [], contextoAumentos);
+        this.nuevoPSvc.registrarDotesPendientesPorProgresion(contextoAumentos);
+
         this.nuevoPSvc.iniciarDistribucionHabilidadesPorClase(
             seleccion.clase,
             Number(resultado.nivelAplicado ?? 0)
@@ -2571,33 +2627,11 @@ export class NuevoPersonajeComponent {
         if (opciones.length < 1)
             return;
 
-        const inputOptions: Record<string, string> = {};
-        opciones.forEach((opcion) => {
-            const sufijo = opcion.descripcion.length > 0 ? ` - ${opcion.descripcion}` : '';
-            inputOptions[opcion.valor] = `${opcion.valor}${sufijo}`;
-        });
-
-        const result = await Swal.fire({
-            icon: 'question',
-            title: `${habilidad?.Nombre ?? 'Habilidad'}: extra`,
-            text: 'Selecciona el extra para esta habilidad.',
-            input: 'select',
-            inputOptions,
-            inputValue: `${habilidad?.Extra ?? ''}`.trim(),
-            inputPlaceholder: 'Elegir extra',
-            showCancelButton: true,
-            confirmButtonText: 'Aplicar',
-            cancelButtonText: 'Cancelar',
-            target: document.body,
-            heightAuto: false,
-            scrollbarPadding: false,
-            inputValidator: (value) => value ? undefined : 'Debes seleccionar un extra',
-        });
-
-        if (!result.isConfirmed || !result.value)
+        const seleccionado = await this.abrirSelectorModalExtraHabilidad(habilidad, opciones);
+        if (!seleccionado)
             return;
 
-        this.onExtraHabilidadChange(Number(habilidad?.Id), `${result.value}`);
+        this.onExtraHabilidadChange(Number(habilidad?.Id), seleccionado);
     }
 
     trackByHabilidadId(index: number, habilidad: Personaje['Habilidades'][number]): number {
@@ -2620,13 +2654,52 @@ export class NuevoPersonajeComponent {
         const nombre = this.normalizarTexto(`${habilidad?.Nombre ?? ''}`);
         if (nombre.startsWith('artesania'))
             return 'familia:artesania';
-        if (nombre.startsWith('saber') || nombre.startsWith('conocimiento'))
+        if (nombre.startsWith('saber'))
             return 'familia:saberes';
         const base = nombre.replace(/\s+\d+$/, '').trim();
         if (base.length > 0)
             return `nombre:${base}`;
         const id = Number(habilidad?.Id ?? 0);
         return Number.isFinite(id) && id > 0 ? `id:${id}` : '';
+    }
+
+    onConfirmarSelectorExtraHabilidad(valor: string): void {
+        const seleccionado = `${valor ?? ''}`.trim();
+        if (seleccionado.length < 1)
+            return;
+        this.cerrarSelectorExtraHabilidadContexto(seleccionado);
+    }
+
+    onCerrarSelectorExtraHabilidad(): void {
+        this.cerrarSelectorExtraHabilidadContexto(null);
+    }
+
+    private abrirSelectorModalExtraHabilidad(
+        habilidad: Personaje['Habilidades'][number],
+        opciones: ExtraHabilidadSelectorOpcion[]
+    ): Promise<string | null> {
+        this.limpiarFocoActivoAntesDeModal();
+        this.selectorExtraHabilidadTitulo = `${habilidad?.Nombre ?? 'Habilidad'}: extra`;
+        this.selectorExtraHabilidadNombre = `${habilidad?.Nombre ?? ''}`.trim();
+        this.selectorExtraHabilidadOpciones = [...(opciones ?? [])];
+        this.selectorExtraHabilidadValorInicial = `${habilidad?.Extra ?? ''}`.trim();
+        this.modalSelectorExtraHabilidadAbierto = true;
+
+        return new Promise<string | null>((resolve) => {
+            this.resolverSelectorExtraHabilidad = resolve;
+        });
+    }
+
+    private cerrarSelectorExtraHabilidadContexto(resultado: string | null): void {
+        this.modalSelectorExtraHabilidadAbierto = false;
+        this.selectorExtraHabilidadTitulo = 'Seleccionar extra';
+        this.selectorExtraHabilidadNombre = '';
+        this.selectorExtraHabilidadOpciones = [];
+        this.selectorExtraHabilidadValorInicial = '';
+
+        const resolver = this.resolverSelectorExtraHabilidad;
+        this.resolverSelectorExtraHabilidad = null;
+        resolver?.(resultado);
     }
 
     private esHabilidadEntrenadaNoClasea(habilidad: Personaje['Habilidades'][number]): boolean {
@@ -2704,9 +2777,21 @@ export class NuevoPersonajeComponent {
         return normalizado === 'crear 1' || normalizado === 'crear 2';
     }
 
-    continuarDesdeHabilidades(): void {
+    async continuarDesdeHabilidades(): Promise<void> {
         if (!this.nuevoPSvc.puedeCerrarDistribucionHabilidades())
             return;
+        const origenHabilidades = this.flujoHabilidades?.origen;
+
+        if (origenHabilidades === 'raza_dg' || origenHabilidades === 'clase_nivel') {
+            const dotesCompletadas = await this.resolverDotesPendientes();
+            if (!dotesCompletadas)
+                return;
+        }
+
+        if (this.flujoHabilidades?.returnStep === 'dotes') {
+            void this.mostrarCreacionNoFinalizadaTemporal();
+            return;
+        }
 
         const returnStep = this.nuevoPSvc.cerrarDistribucionHabilidades();
         if (!returnStep)
@@ -2752,10 +2837,122 @@ export class NuevoPersonajeComponent {
     continuarDesdeConjuros(): void {
         if (!this.nuevoPSvc.puedeCerrarSesionConjuros())
             return;
+        if (this.flujoConjuros?.returnStep === 'dotes') {
+            void this.mostrarCreacionNoFinalizadaTemporal();
+            return;
+        }
         const nextStep = this.nuevoPSvc.cerrarSesionConjuros();
         this.Personaje = this.nuevoPSvc.PersonajeCreacion;
         this.nuevoPSvc.actualizarPasoActual(nextStep);
         this.sincronizarTabConPaso();
+    }
+
+    private async mostrarCreacionNoFinalizadaTemporal(): Promise<void> {
+        await Swal.fire({
+            icon: 'info',
+            title: 'Creación no finalizada',
+            text: 'Aún no está finalizada la creación de personaje.',
+            confirmButtonText: 'Entendido',
+            target: document.body,
+            heightAuto: false,
+            scrollbarPadding: false,
+        });
+    }
+
+    private esCandidatoDoteElegible(candidato: DoteSelectorCandidato): boolean {
+        if (!candidato || candidato.restringidaPorTipo || !candidato.repeticionValida)
+            return false;
+        return candidato.evaluacion?.estado === 'eligible';
+    }
+
+    private getCantidadDotesPendientes(): number {
+        return this.nuevoPSvc.getDotesPendientes()
+            .filter((pendiente) => pendiente.estado === 'pendiente')
+            .length;
+    }
+
+    private async resolverDotesPendientes(): Promise<boolean> {
+        await this.asegurarCatalogoEscuelas();
+
+        while (true) {
+            const pendiente = this.nuevoPSvc.getSiguienteDotePendiente();
+            if (!pendiente)
+                return true;
+
+            const candidatos = this.nuevoPSvc.obtenerCandidatosDotePendiente(pendiente.id);
+            const elegibles = candidatos.filter((candidato) => this.esCandidatoDoteElegible(candidato));
+            if (elegibles.length < 1) {
+                await Swal.fire({
+                    icon: 'info',
+                    title: 'Sin dotes elegibles',
+                    text: `No hay dotes elegibles para la pendiente (${pendiente.origen || pendiente.fuente}). Se omitirá automáticamente.`,
+                    confirmButtonText: 'Continuar',
+                    target: document.body,
+                    heightAuto: false,
+                    scrollbarPadding: false,
+                });
+                this.nuevoPSvc.omitirDotePendiente(pendiente.id);
+                continue;
+            }
+
+            const seleccion = await this.abrirSelectorDotePendiente(pendiente, candidatos);
+            if (seleccion === null)
+                return false;
+            if (seleccion === 'omitir') {
+                this.nuevoPSvc.omitirDotePendiente(pendiente.id);
+                continue;
+            }
+
+            const aplicado = this.nuevoPSvc.aplicarDotePendiente(pendiente.id, seleccion);
+            if (!aplicado) {
+                await Swal.fire({
+                    icon: 'warning',
+                    title: 'No se pudo aplicar la dote',
+                    text: 'La selección ya no es válida con el estado actual del personaje. Elige otra opción.',
+                    confirmButtonText: 'Entendido',
+                    target: document.body,
+                    heightAuto: false,
+                    scrollbarPadding: false,
+                });
+                continue;
+            }
+
+            this.Personaje = this.nuevoPSvc.PersonajeCreacion;
+        }
+    }
+
+    private async abrirSelectorDotePendiente(
+        pendiente: DotePendienteState,
+        candidatos: DoteSelectorCandidato[]
+    ): Promise<DoteSeleccionConfirmada | 'omitir' | null> {
+        this.selectorDotePendienteActual = pendiente;
+        this.selectorDoteCandidatos = [...(candidatos ?? [])];
+        this.selectorDotePendientesRestantes = this.getCantidadDotesPendientes();
+        this.modalSelectorDotesAbierto = true;
+
+        return new Promise<DoteSeleccionConfirmada | 'omitir' | null>((resolve) => {
+            this.resolverSelectorDotes = resolve;
+        });
+    }
+
+    onConfirmarDotePendiente(seleccion: DoteSeleccionConfirmada): void {
+        const resolver = this.resolverSelectorDotes;
+        this.cerrarSelectorDotesContexto();
+        resolver?.(seleccion);
+    }
+
+    onOmitirDotePendiente(): void {
+        const resolver = this.resolverSelectorDotes;
+        this.cerrarSelectorDotesContexto();
+        resolver?.('omitir');
+    }
+
+    private cerrarSelectorDotesContexto(): void {
+        this.modalSelectorDotesAbierto = false;
+        this.selectorDotePendienteActual = null;
+        this.selectorDoteCandidatos = [];
+        this.selectorDotePendientesRestantes = 0;
+        this.resolverSelectorDotes = null;
     }
 
     private async solicitarSeleccionesDominiosClase(
@@ -3515,10 +3712,17 @@ export class NuevoPersonajeComponent {
         this.armasSub = this.armaSvc.getArmas().subscribe({
             next: (armas) => {
                 this.catalogoArmas = armas ?? [];
+                this.nuevoPSvc.setCatalogoArmasDotes(
+                    this.catalogoArmas.map((arma) => ({
+                        Id: Number(arma?.Id ?? 0),
+                        Nombre: `${arma?.Nombre ?? ''}`.trim(),
+                    }))
+                );
                 this.recalcularClasesVisibles();
             },
             error: () => {
                 this.catalogoArmas = [];
+                this.nuevoPSvc.setCatalogoArmasDotes([]);
                 this.recalcularClasesVisibles();
             },
         });
@@ -3529,10 +3733,17 @@ export class NuevoPersonajeComponent {
         this.armadurasSub = this.armaduraSvc.getArmaduras().subscribe({
             next: (armaduras) => {
                 this.catalogoArmaduras = armaduras ?? [];
+                this.nuevoPSvc.setCatalogoArmadurasDotes(
+                    this.catalogoArmaduras.map((armadura) => ({
+                        Id: Number(armadura?.Id ?? 0),
+                        Nombre: `${armadura?.Nombre ?? ''}`.trim(),
+                    }))
+                );
                 this.recalcularClasesVisibles();
             },
             error: () => {
                 this.catalogoArmaduras = [];
+                this.nuevoPSvc.setCatalogoArmadurasDotes([]);
                 this.recalcularClasesVisibles();
             },
         });
@@ -3543,10 +3754,17 @@ export class NuevoPersonajeComponent {
         this.gruposArmasSub = this.grupoArmaSvc.getGruposArmas().subscribe({
             next: (grupos) => {
                 this.catalogoGruposArmas = grupos ?? [];
+                this.nuevoPSvc.setCatalogoGruposArmasDotes(
+                    this.catalogoGruposArmas.map((grupo) => ({
+                        Id: Number(grupo?.Id ?? 0),
+                        Nombre: `${grupo?.Nombre ?? ''}`.trim(),
+                    }))
+                );
                 this.recalcularClasesVisibles();
             },
             error: () => {
                 this.catalogoGruposArmas = [];
+                this.nuevoPSvc.setCatalogoGruposArmasDotes([]);
                 this.recalcularClasesVisibles();
             },
         });
@@ -3557,10 +3775,17 @@ export class NuevoPersonajeComponent {
         this.gruposArmadurasSub = this.grupoArmaduraSvc.getGruposArmaduras().subscribe({
             next: (grupos) => {
                 this.catalogoGruposArmaduras = grupos ?? [];
+                this.nuevoPSvc.setCatalogoGruposArmadurasDotes(
+                    this.catalogoGruposArmaduras.map((grupo) => ({
+                        Id: Number(grupo?.Id ?? 0),
+                        Nombre: `${grupo?.Nombre ?? ''}`.trim(),
+                    }))
+                );
                 this.recalcularClasesVisibles();
             },
             error: () => {
                 this.catalogoGruposArmaduras = [];
+                this.nuevoPSvc.setCatalogoGruposArmadurasDotes([]);
                 this.recalcularClasesVisibles();
             },
         });
@@ -3589,11 +3814,32 @@ export class NuevoPersonajeComponent {
         try {
             const escuelas = await firstValueFrom(this.escSvc.getEscuelas().pipe(take(1)));
             this.catalogoEscuelas = escuelas ?? [];
+            this.nuevoPSvc.setCatalogoEscuelasDotes(
+                this.catalogoEscuelas.map((escuela) => ({
+                    Id: Number(escuela?.Id ?? 0),
+                    Nombre: `${escuela?.Nombre ?? ''}`.trim(),
+                }))
+            );
         } catch {
             this.catalogoEscuelas = [];
+            this.nuevoPSvc.setCatalogoEscuelasDotes([]);
         } finally {
             this.escuelasCatalogoCargado = true;
         }
+    }
+
+    private cargarDotes(): void {
+        this.dotesSub?.unsubscribe();
+        this.dotesSub = this.doteSvc.getDotes().subscribe({
+            next: (dotes) => {
+                this.catalogoDotes = dotes ?? [];
+                this.nuevoPSvc.setCatalogoDotes(this.catalogoDotes);
+            },
+            error: () => {
+                this.catalogoDotes = [];
+                this.nuevoPSvc.setCatalogoDotes([]);
+            },
+        });
     }
 
     private async asegurarCatalogoDisciplinas(): Promise<void> {
@@ -4355,11 +4601,18 @@ export class NuevoPersonajeComponent {
 
         const search = this.normalizarTexto(this.filtroPlantillasTexto);
         const porManual = this.filtroPlantillasManual;
-        const identidad = buildIdentidadPrerrequisitos(
-            raza,
-            this.nuevoPSvc.RazaBaseSeleccionadaCompleta,
-            this.Personaje.Subtipos
+        const tipoCriaturaActualId = Number(this.Personaje.Tipo_criatura?.Id ?? 0);
+        const subtiposActualesIds = extraerIdsPositivos(
+            buildIdentidadPrerrequisitos(
+                raza,
+                this.nuevoPSvc.RazaBaseSeleccionadaCompleta,
+                this.Personaje.Subtipos
+            ).subtipos
         );
+        const identidadCriaturaActualIds = Array.from(new Set([
+            tipoCriaturaActualId,
+            ...subtiposActualesIds,
+        ].filter((id) => Number.isFinite(id) && id > 0)));
 
         const ctx = {
             alineamiento: this.Personaje.Alineamiento,
@@ -4372,8 +4625,8 @@ export class NuevoPersonajeComponent {
                 Carisma: Number(this.Personaje.Carisma),
             },
             tamanoRazaId: Number(raza.Tamano?.Id ?? 0),
-            tiposCriaturaMiembroIds: extraerIdsPositivos(identidad.tiposCriatura),
-            tipoCriaturaActualId: Number(this.Personaje.Tipo_criatura?.Id ?? 0),
+            tiposCriaturaMiembroIds: identidadCriaturaActualIds,
+            tipoCriaturaActualId,
             razaHeredada: !!raza.Heredada,
             incluirHomebrew: this.incluirHomebrewPlantillasEfectivo,
             seleccionadas: this.plantillasSeleccionadas.map(p => ({
@@ -4386,8 +4639,16 @@ export class NuevoPersonajeComponent {
         const elegibles: Plantilla[] = [];
         const bloqueadasUnknown: { plantilla: Plantilla; evaluacion: PlantillaEvaluacionResultado; }[] = [];
         const bloqueadasFailed: { plantilla: Plantilla; evaluacion: PlantillaEvaluacionResultado; }[] = [];
+        const idsNoDisponibles = new Set<number>(this.plantillasSeleccionadas
+            .map((plantilla) => Number(plantilla?.Id))
+            .filter((id) => Number.isFinite(id) && id > 0));
 
         this.plantillasCatalogo.forEach((plantilla) => {
+            const idPlantilla = Number(plantilla?.Id);
+            if ((Number.isFinite(idPlantilla) && idsNoDisponibles.has(idPlantilla))
+                || this.nuevoPSvc.esPlantillaConfirmada(idPlantilla))
+                return;
+
             const nombre = this.normalizarTexto(plantilla.Nombre);
             if (search.length > 0 && !nombre.includes(search))
                 return;

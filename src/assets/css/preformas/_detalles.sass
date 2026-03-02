@@ -91,6 +91,7 @@ mat-chip.warm
 
         background-color: $primary
         font-weight: 500
+        pointer-events: none
 
     ::ng-deep .mat-expansion-panel-body
         padding: 0
@@ -150,6 +151,8 @@ mat-chip.warm
         word-wrap: break-word
 
 .chip-clic
-    ::ng-deep.mdc-evolution-chip__action
-        &:hover
-            cursor: pointer
+    cursor: pointer
+
+    ::ng-deep .mdc-evolution-chip__action,
+    ::ng-deep .mdc-evolution-chip__action--primary
+        cursor: pointer

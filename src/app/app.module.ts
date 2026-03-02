@@ -72,6 +72,8 @@ import { SelectorRazaBaseModalComponent } from './components/nuevo-personaje/sel
 import { SelectorRacialesOpcionalesModalComponent } from './components/nuevo-personaje/selector-raciales-opcionales-modal/selector-raciales-opcionales-modal.component';
 import { SelectorAumentosCaracteristicaModalComponent } from './components/nuevo-personaje/selector-aumentos-caracteristica-modal/selector-aumentos-caracteristica-modal.component';
 import { SelectorEspecialidadMagicaModalComponent } from './components/nuevo-personaje/selector-especialidad-magica-modal/selector-especialidad-magica-modal.component';
+import { SelectorDotesModalComponent } from './components/nuevo-personaje/selector-dotes-modal/selector-dotes-modal.component';
+import { SelectorExtraHabilidadModalComponent } from './components/nuevo-personaje/selector-extra-habilidad-modal/selector-extra-habilidad-modal.component';
 import { VentanaDetalleFlotanteComponent } from './components/nuevo-personaje/ventana-detalle-flotante/ventana-detalle-flotante.component';
 import { ListadoSubtiposComponent } from './components/shared/listado-subtipos/listado-subtipos.component';
 import { DetallesSubtipoComponent } from './components/detalles/detalles-subtipo/detalles-subtipo.component';
@@ -113,6 +115,8 @@ import { ListadoVentajasComponent } from './components/shared/listado-ventajas/l
         SelectorDominiosModalComponent,
         SelectorAumentosCaracteristicaModalComponent,
         SelectorEspecialidadMagicaModalComponent,
+        SelectorDotesModalComponent,
+        SelectorExtraHabilidadModalComponent,
         SelectorRazaBaseModalComponent,
         SelectorRacialesOpcionalesModalComponent,
         VentanaDetalleFlotanteComponent,

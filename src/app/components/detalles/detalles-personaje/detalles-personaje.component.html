@@ -129,7 +129,7 @@
                     <mat-chip [ngClass]="pj.Fuerza > 18 ? 'warm' : ''" class="m-1">{{pj.ModFuerza > 0 ? '+' : ''}}{{pj.ModFuerza}}</mat-chip>
                 </ng-container>
                 <ng-template #fuerzaPerdidaTpl>
-                    <mat-chip class="m-1 bad chip-caracteristica-perdida">Perdida</mat-chip>
+                    <mat-chip class="bad chip-caracteristica-perdida">Perdida</mat-chip>
                 </ng-template>
                 Destreza
                 <ng-container *ngIf="!tieneCaracteristicaPerdida('Destreza'); else destrezaPerdidaTpl">
@@ -137,7 +137,7 @@
                     <mat-chip [ngClass]="pj.Destreza > 18 ? 'warm' : ''" class="m-1">{{pj.ModDestreza > 0 ? '+' : ''}}{{pj.ModDestreza}}</mat-chip>
                 </ng-container>
                 <ng-template #destrezaPerdidaTpl>
-                    <mat-chip class="m-1 bad chip-caracteristica-perdida">Perdida</mat-chip>
+                    <mat-chip class="bad chip-caracteristica-perdida">Perdida</mat-chip>
                 </ng-template>
                 Constitución
                 <ng-container *ngIf="!tieneCaracteristicaPerdida('Constitucion'); else constitucionPerdidaTpl">
@@ -145,7 +145,7 @@
                     <mat-chip [ngClass]="pj.Constitucion > 18 ? 'warm' : ''" class="m-1">{{pj.ModConstitucion > 0 ? '+' : ''}}{{pj.ModConstitucion}}</mat-chip>
                 </ng-container>
                 <ng-template #constitucionPerdidaTpl>
-                    <mat-chip class="m-1 bad chip-caracteristica-perdida">Perdida</mat-chip>
+                    <mat-chip class="bad chip-caracteristica-perdida">Perdida</mat-chip>
                 </ng-template>
                 Inteligencia
                 <ng-container *ngIf="!tieneCaracteristicaPerdida('Inteligencia'); else inteligenciaPerdidaTpl">
@@ -153,7 +153,7 @@
                     <mat-chip [ngClass]="pj.Inteligencia > 18 ? 'warm' : ''" class="m-1">{{pj.ModInteligencia > 0 ? '+' : ''}}{{pj.ModInteligencia}}</mat-chip>
                 </ng-container>
                 <ng-template #inteligenciaPerdidaTpl>
-                    <mat-chip class="m-1 bad chip-caracteristica-perdida">Perdida</mat-chip>
+                    <mat-chip class="bad chip-caracteristica-perdida">Perdida</mat-chip>
                 </ng-template>
                 Sabiduría
                 <ng-container *ngIf="!tieneCaracteristicaPerdida('Sabiduria'); else sabiduriaPerdidaTpl">
@@ -161,7 +161,7 @@
                     <mat-chip [ngClass]="pj.Sabiduria > 18 ? 'warm' : ''" class="m-1">{{pj.ModSabiduria > 0 ? '+' : ''}}{{pj.ModSabiduria}}</mat-chip>
                 </ng-container>
                 <ng-template #sabiduriaPerdidaTpl>
-                    <mat-chip class="m-1 bad chip-caracteristica-perdida">Perdida</mat-chip>
+                    <mat-chip class="bad chip-caracteristica-perdida">Perdida</mat-chip>
                 </ng-template>
                 Carisma
                 <ng-container *ngIf="!tieneCaracteristicaPerdida('Carisma'); else carismaPerdidaTpl">
@@ -169,7 +169,7 @@
                     <mat-chip [ngClass]="pj.Carisma > 18 ? 'warm' : ''" class="m-1">{{pj.ModCarisma > 0 ? '+' : ''}}{{pj.ModCarisma}}</mat-chip>
                 </ng-container>
                 <ng-template #carismaPerdidaTpl>
-                    <mat-chip class="m-1 bad chip-caracteristica-perdida">Perdida</mat-chip>
+                    <mat-chip class="bad chip-caracteristica-perdida">Perdida</mat-chip>
                 </ng-template>
             </div>
             <div class="sombra-caja-sm rounded p-2 my-2" *ngIf="tienePersonalidadVisible()">
@@ -319,11 +319,11 @@
                     </mat-expansion-panel-header>
                     <mat-chip-set class="m-1">
                         <mat-chip *ngFor="let v of getVentajasVisibles()" class="h-auto chip-clic sombra3d-sm"
+                            [ngClass]="esVentajaConEstiloWarm(v) ? 'warm' : ''"
                             matTooltip="Pulsa para ver los detalles" [matTooltipShowDelay]="250" matTooltipClass="tt-accent"
                             (click)="verDetallesVentajaPorNombre(v)">
                             {{v.nombre}}
-                            <mat-chip class="ms-2 m-1 chip-origen" *ngIf="getOrigenVentaja(v) as origenVentaja"
-                                (click)="verDetallesVentajaPorNombre(v); $event.stopPropagation()">{{origenVentaja}}</mat-chip>
+                            <span class="ms-2 m-1 chip-origen chip-origen-pill" *ngIf="getOrigenVentaja(v) as origenVentaja">{{origenVentaja}}</span>
                         </mat-chip>
                     </mat-chip-set>
                 </mat-expansion-panel>

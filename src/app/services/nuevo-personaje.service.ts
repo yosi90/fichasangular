@@ -3,6 +3,7 @@ import { AptitudSortilega } from '../interfaces/aptitud-sortilega';
 import { Clase, ClaseConjuroRef, ClaseDoteNivel, ClaseEspecialNivel, ClaseNivelDetalle } from '../interfaces/clase';
 import { Conjuro } from '../interfaces/conjuro';
 import { DisciplinaConjuros } from '../interfaces/disciplina-conjuros';
+import { Dote, DoteExtraItem } from '../interfaces/dote';
 import { EscuelaConjuros } from '../interfaces/escuela-conjuros';
 import { DeidadDetalle } from '../interfaces/deidad';
 import { DominioDetalle } from '../interfaces/dominio';
@@ -24,6 +25,7 @@ import { resolverRacialesFinales, SeleccionRacialesOpcionales } from './utils/ra
 import { aplicarMutacion, esRazaMutada } from './utils/raza-mutacion';
 import { normalizeSubtipoRefArray } from './utils/subtipo-mapper';
 import { ClaseEvaluacionResultado, evaluarElegibilidadClase } from './utils/clase-elegibilidad';
+import { DoteEvaluacionContexto, evaluarElegibilidadDote } from './utils/dote-elegibilidad';
 import { UserSettingsService } from './user-settings.service';
 import { NuevoPersonajeGeneradorConfig } from '../interfaces/user-settings';
 
@@ -217,7 +219,7 @@ const HABILIDAD_FAMILIAS_REPETIBLES = {
         ids: [32, 33, 34, 35, 36],
         maxSlots: 5,
         nombreBase: 'Saber',
-        patrones: ['saber', 'conocimiento'],
+        patrones: ['saber'],
     },
 } as const;
 const EXTRA_HABILIDAD_VALORES_PENDIENTES = new Set([
@@ -602,6 +604,44 @@ export interface AsignacionAumentoCaracteristica {
     caracteristica: CaracteristicaKeyAumento;
 }
 
+export type DoteFuentePendiente = 'nivel' | 'adicional' | 'raza_dg';
+export type DoteEstadoPendiente = 'pendiente' | 'resuelta' | 'omitida';
+export type EstadoElegibilidadDote = 'eligible' | 'blocked_failed' | 'blocked_unknown';
+
+export interface DotePendienteState {
+    id: number;
+    fuente: DoteFuentePendiente;
+    origen: string;
+    tipoPermitido: string | null;
+    estado: DoteEstadoPendiente;
+}
+
+export interface DoteEvaluacionResultado {
+    estado: EstadoElegibilidadDote;
+    razones: string[];
+    advertencias: string[];
+}
+
+export interface DoteExtraOpcion {
+    Id: number;
+    Nombre: string;
+}
+
+export interface DoteSelectorCandidato {
+    dote: Dote;
+    evaluacion: DoteEvaluacionResultado;
+    repeticionValida: boolean;
+    restringidaPorTipo: boolean;
+    requiereExtra: boolean;
+    extrasDisponibles: DoteExtraOpcion[];
+}
+
+export interface DoteSeleccionConfirmada {
+    idDote: number;
+    idExtra: number;
+    extra: string;
+}
+
 export interface ClaseOpcionInternaPendiente {
     clave: string;
     tipo: 'dote' | 'especial';
@@ -717,6 +757,12 @@ export class NuevoPersonajeService {
     private razaBaseSeleccionadaCompleta: Raza | null = null;
     private catalogoTiposCriatura: TipoCriatura[] = [];
     private catalogoClases: Clase[] = [];
+    private catalogoDotes: Dote[] = [];
+    private catalogoArmasDotes: { Id: number; Nombre: string; }[] = [];
+    private catalogoArmadurasDotes: { Id: number; Nombre: string; }[] = [];
+    private catalogoGruposArmasDotes: { Id: number; Nombre: string; }[] = [];
+    private catalogoGruposArmadurasDotes: { Id: number; Nombre: string; }[] = [];
+    private catalogoEscuelasDotes: { Id: number; Nombre: string; }[] = [];
     private catalogoConjuros: Conjuro[] = [];
     private conjurosSesionPlaceholderPorId: Record<number, Conjuro> = {};
     private catalogoDominios: DominioDetalle[] = [];
@@ -724,6 +770,10 @@ export class NuevoPersonajeService {
     private bonusNivelLanzadorPorClase: Record<string, number> = {};
     private idsEspecialesInternosActivos = new Set<number>();
     private idsDotesInternosActivos = new Set<number>();
+    private dotesPendientes: DotePendienteState[] = [];
+    private secuenciaDotePendiente = 1;
+    private dotesProgresionConcedidas = 0;
+    private dotesExtraRazaConcedidas = 0;
     private aumentosPendientesCaracteristica: AumentoCaracteristicaPendiente[] = [];
     private aumentosProgresionConcedidos = 0;
     private secuenciaAumentoPendiente = 1;
@@ -784,6 +834,7 @@ export class NuevoPersonajeService {
         const catalogoVentajas = this.estadoFlujo.ventajas.catalogoVentajas.slice();
         const catalogoDesventajas = this.estadoFlujo.ventajas.catalogoDesventajas.slice();
         const catalogoClases = this.catalogoClases.slice();
+        const catalogoDotes = this.catalogoDotes.slice();
         const catalogoConjuros = this.catalogoConjuros.slice();
         const catalogoDominios = this.catalogoDominios.slice();
         const catalogoDeidades = this.catalogoDeidades.slice();
@@ -795,6 +846,10 @@ export class NuevoPersonajeService {
         this.idsDotesInternosActivos.clear();
         this.conjurosSesionPlaceholderPorId = {};
         this.bonusNivelLanzadorPorClase = {};
+        this.dotesPendientes = [];
+        this.secuenciaDotePendiente = 1;
+        this.dotesProgresionConcedidas = 0;
+        this.dotesExtraRazaConcedidas = 0;
         this.aumentosPendientesCaracteristica = [];
         this.aumentosProgresionConcedidos = 0;
         this.secuenciaAumentoPendiente = 1;
@@ -805,6 +860,7 @@ export class NuevoPersonajeService {
         this.setCatalogoIdiomas(catalogoIdiomas);
         this.setCatalogosVentajas(catalogoVentajas, catalogoDesventajas);
         this.setCatalogoClases(catalogoClases);
+        this.setCatalogoDotes(catalogoDotes);
         this.setCatalogoConjuros(catalogoConjuros);
         this.setCatalogoDominios(catalogoDominios);
         this.setCatalogoDeidades(catalogoDeidades);
@@ -890,6 +946,10 @@ export class NuevoPersonajeService {
         this.personajeCreacion.DotesContextuales = [];
         this.idsEspecialesInternosActivos.clear();
         this.idsDotesInternosActivos.clear();
+        this.dotesPendientes = [];
+        this.secuenciaDotePendiente = 1;
+        this.dotesProgresionConcedidas = 0;
+        this.dotesExtraRazaConcedidas = 0;
         this.conjurosSesionPlaceholderPorId = {};
         this.bonusNivelLanzadorPorClase = {};
         this.aumentosPendientesCaracteristica = [];
@@ -993,6 +1053,30 @@ export class NuevoPersonajeService {
 
     setCatalogoClases(clases: Clase[]): void {
         this.catalogoClases = [...clases];
+    }
+
+    setCatalogoDotes(dotes: Dote[]): void {
+        this.catalogoDotes = [...(dotes ?? [])];
+    }
+
+    setCatalogoArmasDotes(catalogo: Array<{ Id: number; Nombre: string; }>): void {
+        this.catalogoArmasDotes = this.normalizarCatalogoExtras(catalogo);
+    }
+
+    setCatalogoArmadurasDotes(catalogo: Array<{ Id: number; Nombre: string; }>): void {
+        this.catalogoArmadurasDotes = this.normalizarCatalogoExtras(catalogo);
+    }
+
+    setCatalogoGruposArmasDotes(catalogo: Array<{ Id: number; Nombre: string; }>): void {
+        this.catalogoGruposArmasDotes = this.normalizarCatalogoExtras(catalogo);
+    }
+
+    setCatalogoGruposArmadurasDotes(catalogo: Array<{ Id: number; Nombre: string; }>): void {
+        this.catalogoGruposArmadurasDotes = this.normalizarCatalogoExtras(catalogo);
+    }
+
+    setCatalogoEscuelasDotes(catalogo: Array<{ Id: number; Nombre: string; }>): void {
+        this.catalogoEscuelasDotes = this.normalizarCatalogoExtras(catalogo);
     }
 
     setCatalogoConjuros(conjuros: Conjuro[]): void {
@@ -1655,6 +1739,797 @@ export class NuevoPersonajeService {
         if (limiteInteligencia > 0)
             topes.Inteligencia = limiteInteligencia;
         return topes;
+    }
+
+    registrarDotesPendientesPorProgresion(origen: string): DotePendienteState[] {
+        const nivelEfectivoDotes = this.getNivelEfectivoParaDotesProgresion();
+        const totalPorProgresion = Math.max(0, Math.floor(nivelEfectivoDotes / 3));
+        const nuevas = Math.max(0, totalPorProgresion - this.dotesProgresionConcedidas);
+        if (nuevas < 1)
+            return [];
+
+        const origenNormalizado = `${origen ?? ''}`.trim() || 'Progresion de nivel';
+        const creadas = Array.from({ length: nuevas }, () =>
+            this.crearDotePendiente('nivel', origenNormalizado, null)
+        );
+        this.dotesPendientes = [
+            ...this.dotesPendientes,
+            ...creadas,
+        ];
+        this.dotesProgresionConcedidas += nuevas;
+        return creadas.map((item) => ({ ...item }));
+    }
+
+    registrarDotesPendientesPorRazaExtras(origen: string): DotePendienteState[] {
+        const totalRaza = Math.max(0, this.toNumber(this.razaSeleccionada?.Dgs_adicionales?.Dotes_extra));
+        const nuevas = Math.max(0, totalRaza - this.dotesExtraRazaConcedidas);
+        if (nuevas < 1)
+            return [];
+        const origenNormalizado = `${origen ?? ''}`.trim() || `${this.razaSeleccionada?.Nombre ?? 'Raza'}`;
+        const creadas = Array.from({ length: nuevas }, () =>
+            this.crearDotePendiente('raza_dg', origenNormalizado, null)
+        );
+        this.dotesPendientes = [
+            ...this.dotesPendientes,
+            ...creadas,
+        ];
+        this.dotesExtraRazaConcedidas += nuevas;
+        return creadas.map((item) => ({ ...item }));
+    }
+
+    registrarDotesPendientesPorEspeciales(especiales: ClaseEspecialNivel[], origen: string): DotePendienteState[] {
+        const listaEspeciales = Array.isArray(especiales) ? especiales : [];
+        const origenNormalizado = `${origen ?? ''}`.trim() || 'Especial de clase';
+        const creadas: DotePendienteState[] = [];
+
+        listaEspeciales.forEach((especialNivel) => {
+            const especial = (especialNivel?.Especial ?? {}) as Record<string, any>;
+            const nombreEspecial = this.normalizarTexto(`${especial?.['Nombre'] ?? especial?.['nombre'] ?? ''}`);
+            if (nombreEspecial !== this.normalizarTexto('Dote adicional'))
+                return;
+
+            const extra = `${especialNivel?.Extra ?? ''}`.trim();
+            const tipoPermitido = this.normalizarTexto(extra) === this.normalizarTexto('No aplica')
+                || extra.length < 1
+                ? null
+                : extra;
+            creadas.push(this.crearDotePendiente('adicional', origenNormalizado, tipoPermitido));
+        });
+
+        if (creadas.length < 1)
+            return [];
+        this.dotesPendientes = [
+            ...this.dotesPendientes,
+            ...creadas,
+        ];
+        return creadas.map((item) => ({ ...item }));
+    }
+
+    getDotesPendientes(): DotePendienteState[] {
+        return this.dotesPendientes.map((item) => ({ ...item }));
+    }
+
+    getSiguienteDotePendiente(): DotePendienteState | null {
+        const siguiente = this.dotesPendientes.find((pendiente) => pendiente.estado === 'pendiente') ?? null;
+        return siguiente ? { ...siguiente } : null;
+    }
+
+    obtenerCandidatosDotePendiente(idPendiente: number): DoteSelectorCandidato[] {
+        const pendiente = this.dotesPendientes.find((item) => this.toNumber(item?.id) === this.toNumber(idPendiente));
+        if (!pendiente || pendiente.estado !== 'pendiente')
+            return [];
+
+        const candidatos = (this.catalogoDotes ?? [])
+            .map((dote) => this.crearCandidatoDote(dote, pendiente))
+            .filter((item) => !!item) as DoteSelectorCandidato[];
+
+        return candidatos.sort((a, b) =>
+            `${a?.dote?.Nombre ?? ''}`.localeCompare(`${b?.dote?.Nombre ?? ''}`, 'es', { sensitivity: 'base' })
+        );
+    }
+
+    omitirDotePendiente(idPendiente: number): boolean {
+        const id = this.toNumber(idPendiente);
+        const pendiente = this.dotesPendientes.find((item) => this.toNumber(item?.id) === id);
+        if (!pendiente || pendiente.estado !== 'pendiente')
+            return false;
+        pendiente.estado = 'omitida';
+        return true;
+    }
+
+    aplicarDotePendiente(idPendiente: number, seleccion: DoteSeleccionConfirmada): boolean {
+        const pendiente = this.dotesPendientes.find((item) => this.toNumber(item?.id) === this.toNumber(idPendiente));
+        if (!pendiente || pendiente.estado !== 'pendiente')
+            return false;
+
+        const idDote = this.toNumber(seleccion?.idDote);
+        if (idDote <= 0)
+            return false;
+        const dote = (this.catalogoDotes ?? []).find((item) => this.toNumber(item?.Id) === idDote);
+        if (!dote)
+            return false;
+
+        const idExtraSeleccion = Math.max(0, this.toNumber(seleccion?.idExtra));
+        const extraSeleccion = `${seleccion?.extra ?? ''}`.trim();
+        const candidato = this.crearCandidatoDote(dote, pendiente, idExtraSeleccion, extraSeleccion);
+        if (!candidato || candidato.restringidaPorTipo || !candidato.repeticionValida)
+            return false;
+        if (candidato.evaluacion.estado !== 'eligible')
+            return false;
+
+        const requiereExtra = candidato.requiereExtra;
+        const idExtra = requiereExtra ? idExtraSeleccion : 0;
+        if (requiereExtra && idExtra <= 0)
+            return false;
+        if (requiereExtra && !candidato.extrasDisponibles.some((extra) => this.toNumber(extra?.Id) === idExtra))
+            return false;
+
+        const extraTexto = this.resolverExtraTextoDote(dote, idExtra, extraSeleccion);
+        if (requiereExtra && this.normalizarTexto(extraTexto).length < 1)
+            return false;
+
+        const origen = this.construirOrigenDoteDesdePendiente(pendiente);
+        const agregado = this.agregarDoteAlPersonaje(dote, origen, idExtra, extraTexto);
+        if (!agregado)
+            return false;
+
+        this.aplicarModificadoresDote(dote, origen, idExtra, extraTexto);
+        this.recalcularDerivadasPorCaracteristicas();
+        this.recalcularDerivadasPorCombate();
+        pendiente.estado = 'resuelta';
+        return true;
+    }
+
+    private crearDotePendiente(
+        fuente: DoteFuentePendiente,
+        origen: string,
+        tipoPermitido: string | null
+    ): DotePendienteState {
+        const tipoNormalizado = `${tipoPermitido ?? ''}`.trim();
+        return {
+            id: this.secuenciaDotePendiente++,
+            fuente,
+            origen: `${origen ?? ''}`.trim(),
+            tipoPermitido: tipoNormalizado.length > 0 ? tipoNormalizado : null,
+            estado: 'pendiente',
+        };
+    }
+
+    private normalizarCatalogoExtras(catalogo: Array<{ Id: number; Nombre: string; }> | null | undefined): Array<{ Id: number; Nombre: string; }> {
+        const lista = Array.isArray(catalogo)
+            ? catalogo
+            : (catalogo && typeof catalogo === 'object' ? Object.values(catalogo as any) : []);
+        const seen = new Set<string>();
+        const normalizado = lista
+            .map((item: any) => ({
+                Id: this.toNumber(item?.Id ?? item?.id ?? item?.Id_habilidad ?? item?.IdHabilidad),
+                Nombre: `${item?.Nombre ?? item?.nombre ?? ''}`.trim(),
+            }))
+            .filter((item) => item.Id > 0 || this.normalizarTexto(item.Nombre).length > 0)
+            .filter((item) => {
+                const clave = item.Id > 0
+                    ? `id:${item.Id}`
+                    : `nombre:${this.normalizarTexto(item.Nombre)}`;
+                if (seen.has(clave))
+                    return false;
+                seen.add(clave);
+                return true;
+            });
+
+        return normalizado.sort((a, b) =>
+            `${a?.Nombre ?? ''}`.localeCompare(`${b?.Nombre ?? ''}`, 'es', { sensitivity: 'base' })
+        );
+    }
+
+    private crearCandidatoDote(
+        dote: Dote,
+        pendiente: DotePendienteState,
+        idExtraSeleccionado: number = 0,
+        extraSeleccionado: string = ''
+    ): DoteSelectorCandidato | null {
+        if (!dote || !pendiente)
+            return null;
+
+        const restringidaPorTipo = !this.cumpleRestriccionTipoDote(dote, pendiente.tipoPermitido);
+        const requiereExtra = !!(
+            this.toBooleanValue(dote?.Extras_soportados?.Extra_arma)
+            || this.toBooleanValue(dote?.Extras_soportados?.Extra_armadura)
+            || this.toBooleanValue(dote?.Extras_soportados?.Extra_escuela)
+            || this.toBooleanValue(dote?.Extras_soportados?.Extra_habilidad)
+        );
+        const extrasBase = this.resolverExtrasDisponiblesDote(dote);
+        const extrasDisponibles = this.filtrarExtrasPorRepeticionDote(dote, extrasBase);
+
+        if (requiereExtra && extrasDisponibles.length < 1) {
+            return {
+                dote,
+                restringidaPorTipo,
+                requiereExtra,
+                extrasDisponibles: [],
+                repeticionValida: false,
+                evaluacion: {
+                    estado: 'blocked_failed',
+                    razones: ['No hay extras válidos disponibles para esta dote'],
+                    advertencias: [],
+                },
+            };
+        }
+
+        if (!requiereExtra) {
+            const repeticionValida = this.validarRepeticionDote(dote, 0, '');
+            const evaluacion = this.evaluarPrerrequisitosDote(dote, 0, '');
+            return {
+                dote,
+                restringidaPorTipo,
+                requiereExtra,
+                extrasDisponibles: [],
+                repeticionValida,
+                evaluacion,
+            };
+        }
+
+        const idExtra = Math.max(0, this.toNumber(idExtraSeleccionado));
+        const extraTexto = `${extraSeleccionado ?? ''}`.trim();
+        if (idExtra > 0) {
+            const extra = extrasDisponibles.find((item) => this.toNumber(item?.Id) === idExtra);
+            const extraNombre = `${extra?.Nombre ?? extraTexto}`.trim();
+            const repeticionValida = this.validarRepeticionDote(dote, idExtra, extraNombre);
+            const evaluacion = this.evaluarPrerrequisitosDote(dote, idExtra, extraNombre);
+            return {
+                dote,
+                restringidaPorTipo,
+                requiereExtra,
+                extrasDisponibles,
+                repeticionValida,
+                evaluacion,
+            };
+        }
+
+        let hayElegible = false;
+        let hayUnknown = false;
+        const razones: string[] = [];
+        const advertencias: string[] = [];
+        extrasDisponibles.forEach((extra) => {
+            const id = this.toNumber(extra?.Id);
+            const nombre = `${extra?.Nombre ?? ''}`.trim();
+            const repeticionValida = this.validarRepeticionDote(dote, id, nombre);
+            const evaluacion = this.evaluarPrerrequisitosDote(dote, id, nombre);
+            if (repeticionValida && evaluacion.estado === 'eligible')
+                hayElegible = true;
+            if (evaluacion.estado === 'blocked_unknown')
+                hayUnknown = true;
+            razones.push(...(evaluacion.razones ?? []));
+            advertencias.push(...(evaluacion.advertencias ?? []));
+        });
+
+        return {
+            dote,
+            restringidaPorTipo,
+            requiereExtra,
+            extrasDisponibles,
+            repeticionValida: hayElegible,
+            evaluacion: hayElegible
+                ? {
+                    estado: 'eligible',
+                    razones: [],
+                    advertencias: Array.from(new Set(advertencias)),
+                }
+                : {
+                    estado: hayUnknown ? 'blocked_unknown' : 'blocked_failed',
+                    razones: Array.from(new Set(razones)),
+                    advertencias: Array.from(new Set(advertencias)),
+                },
+        };
+    }
+
+    private cumpleRestriccionTipoDote(dote: Dote, tipoPermitido: string | null): boolean {
+        const tipoNorm = this.normalizarTexto(`${tipoPermitido ?? ''}`);
+        if (tipoNorm.length < 1)
+            return true;
+        const tipos = Array.isArray(dote?.Tipos) ? dote.Tipos : [];
+        return tipos.some((tipo) => this.normalizarTexto(`${tipo?.Nombre ?? ''}`) === tipoNorm);
+    }
+
+    private resolverExtrasDisponiblesDote(dote: Dote): DoteExtraOpcion[] {
+        const fuenteHabilidades = (this.estadoFlujo.ventajas.catalogoHabilidades ?? [])
+            .map((habilidad) => ({
+                Id: this.toNumber(habilidad?.Id_habilidad),
+                Nombre: `${habilidad?.Nombre ?? ''}`.trim(),
+            }))
+            .filter((item) => item.Id > 0 && item.Nombre.length > 0);
+
+        const normalizar = (items: DoteExtraItem[] | null | undefined): DoteExtraOpcion[] =>
+            this.normalizarCatalogoExtras(items as Array<{ Id: number; Nombre: string; }>);
+        const contieneElegir = (items: DoteExtraOpcion[]): boolean =>
+            items.some((item) => this.normalizarTexto(item?.Nombre ?? '') === this.normalizarTexto('Elegir'));
+
+        const extras: DoteExtraOpcion[] = [];
+        if (this.toBooleanValue(dote?.Extras_soportados?.Extra_arma)) {
+            const directos = normalizar(dote?.Extras_disponibles?.Armas ?? []);
+            const usarCatalogo = directos.length < 1 || contieneElegir(directos);
+            extras.push(...(usarCatalogo ? this.catalogoArmasDotes : directos));
+        }
+        if (this.toBooleanValue(dote?.Extras_soportados?.Extra_armadura)) {
+            const directos = normalizar(dote?.Extras_disponibles?.Armaduras ?? []);
+            const usarCatalogo = directos.length < 1 || contieneElegir(directos);
+            extras.push(...(usarCatalogo ? this.catalogoArmadurasDotes : directos));
+        }
+        if (this.toBooleanValue(dote?.Extras_soportados?.Extra_escuela)) {
+            const directos = normalizar(dote?.Extras_disponibles?.Escuelas ?? []);
+            const usarCatalogo = directos.length < 1 || contieneElegir(directos);
+            extras.push(...(usarCatalogo ? this.catalogoEscuelasDotes : directos));
+        }
+        if (this.toBooleanValue(dote?.Extras_soportados?.Extra_habilidad)) {
+            const directos = normalizar(dote?.Extras_disponibles?.Habilidades ?? []);
+            const usarCatalogo = directos.length < 1 || contieneElegir(directos);
+            extras.push(...(usarCatalogo ? fuenteHabilidades : directos));
+        }
+
+        return this.normalizarCatalogoExtras(extras);
+    }
+
+    private filtrarExtrasPorRepeticionDote(dote: Dote, extras: DoteExtraOpcion[]): DoteExtraOpcion[] {
+        if (!this.toBooleanValue(dote?.Repetible_distinto_extra))
+            return extras;
+
+        const doteNorm = this.normalizarTexto(`${dote?.Nombre ?? ''}`);
+        const idDote = this.toNumber(dote?.Id);
+        const usadosId = new Set<number>();
+        const usadosNombre = new Set<string>();
+
+        (this.personajeCreacion.DotesContextuales ?? [])
+            .filter((item) => {
+                const idActual = this.toNumber(item?.Dote?.Id);
+                const nombreActual = this.normalizarTexto(item?.Dote?.Nombre ?? '');
+                return (idDote > 0 && idActual === idDote) || (doteNorm.length > 0 && nombreActual === doteNorm);
+            })
+            .forEach((item) => {
+                const idExtra = this.toNumber(item?.Contexto?.Id_extra);
+                if (idExtra > 0)
+                    usadosId.add(idExtra);
+                const extra = this.normalizarTexto(item?.Contexto?.Extra ?? '');
+                if (extra.length > 0)
+                    usadosNombre.add(extra);
+            });
+
+        return extras.filter((extra) => {
+            const id = this.toNumber(extra?.Id);
+            const nombreNorm = this.normalizarTexto(extra?.Nombre ?? '');
+            if (id > 0 && usadosId.has(id))
+                return false;
+            if (nombreNorm.length > 0 && usadosNombre.has(nombreNorm))
+                return false;
+            return true;
+        });
+    }
+
+    private validarRepeticionDote(dote: Dote, idExtra: number, extraTexto: string): boolean {
+        const idDote = this.toNumber(dote?.Id);
+        const nombreNorm = this.normalizarTexto(`${dote?.Nombre ?? ''}`);
+        const contextuales = (this.personajeCreacion.DotesContextuales ?? []).filter((item) => {
+            const id = this.toNumber(item?.Dote?.Id);
+            const nombre = this.normalizarTexto(item?.Dote?.Nombre ?? '');
+            return (idDote > 0 && id === idDote) || (nombreNorm.length > 0 && nombre === nombreNorm);
+        });
+
+        const legacy = (this.personajeCreacion.Dotes ?? []).filter((item) =>
+            this.normalizarTexto(item?.Nombre ?? '') === nombreNorm
+        );
+        const yaExiste = contextuales.length > 0 || legacy.length > 0;
+
+        if (!yaExiste)
+            return true;
+        if (this.toBooleanValue(dote?.Repetible))
+            return true;
+
+        if (this.toBooleanValue(dote?.Repetible_distinto_extra)) {
+            const idExtraNorm = Math.max(0, this.toNumber(idExtra));
+            const extraNorm = this.normalizarTexto(extraTexto ?? '');
+            if (idExtraNorm <= 0 && extraNorm.length < 1)
+                return false;
+
+            const repetidaContextual = contextuales.some((item) => {
+                const existenteIdExtra = this.toNumber(item?.Contexto?.Id_extra);
+                const existenteExtraNorm = this.normalizarTexto(item?.Contexto?.Extra ?? '');
+                if (idExtraNorm > 0 && existenteIdExtra > 0)
+                    return existenteIdExtra === idExtraNorm;
+                if (extraNorm.length > 0 && existenteExtraNorm.length > 0)
+                    return existenteExtraNorm === extraNorm;
+                return existenteIdExtra === idExtraNorm;
+            });
+            const repetidaLegacy = legacy.some((item) =>
+                this.normalizarTexto(item?.Extra ?? '') === extraNorm
+            );
+            return !repetidaContextual && !repetidaLegacy;
+        }
+
+        return false;
+    }
+
+    private evaluarPrerrequisitosDote(dote: Dote, idExtra: number, extraTexto: string): DoteEvaluacionResultado {
+        const identidad = buildIdentidadPrerrequisitos(
+            this.razaSeleccionada,
+            this.razaBaseSeleccionadaCompleta,
+            this.personajeCreacion.Subtipos
+        );
+
+        const nivelesClase = (this.personajeCreacion.desgloseClases ?? []).map((clase) => {
+            const nombre = `${clase?.Nombre ?? ''}`.trim();
+            const idClase = this.catalogoClases.find((item) =>
+                this.normalizarTexto(item?.Nombre ?? '') === this.normalizarTexto(nombre)
+            );
+            return {
+                id: this.toNumber(idClase?.Id) > 0 ? this.toNumber(idClase?.Id) : null,
+                nombre,
+                nivel: Math.max(0, this.toNumber(clase?.Nivel)),
+            };
+        }).filter((item) => item.nombre.length > 0);
+
+        const dotes = (this.personajeCreacion.DotesContextuales ?? [])
+            .map((item) => ({
+                id: this.toNumber(item?.Dote?.Id) > 0 ? this.toNumber(item?.Dote?.Id) : null,
+                nombre: `${item?.Dote?.Nombre ?? ''}`.trim(),
+                idExtra: this.toNumber(item?.Contexto?.Id_extra),
+                extra: `${item?.Contexto?.Extra ?? ''}`.trim(),
+            }))
+            .filter((item) => item.nombre.length > 0);
+        const legacySinContexto = (this.personajeCreacion.Dotes ?? [])
+            .filter((item) => {
+                const nombre = this.normalizarTexto(item?.Nombre ?? '');
+                return !dotes.some((ctxDote) => this.normalizarTexto(ctxDote.nombre) === nombre);
+            })
+            .map((item) => ({
+                id: null,
+                nombre: `${item?.Nombre ?? ''}`.trim(),
+                idExtra: 0,
+                extra: `${item?.Extra ?? ''}`.trim(),
+            }))
+            .filter((item) => item.nombre.length > 0);
+
+        const idiomas = (this.personajeCreacion.Idiomas ?? [])
+            .map((idioma) => ({
+                id: this.resolverIdIdiomaPorNombre(`${idioma?.Nombre ?? ''}`),
+                nombre: `${idioma?.Nombre ?? ''}`.trim(),
+            }))
+            .filter((item) => item.nombre.length > 0);
+
+        const habilidades = (this.personajeCreacion.Habilidades ?? [])
+            .map((habilidad) => ({
+                id: this.toNumber(habilidad?.Id) > 0 ? this.toNumber(habilidad?.Id) : null,
+                nombre: `${habilidad?.Nombre ?? ''}`.trim(),
+                rangos: this.toNumber(habilidad?.Rangos),
+                extra: `${habilidad?.Extra ?? ''}`.trim(),
+            }))
+            .filter((item) => item.nombre.length > 0);
+
+        const conjuros = (this.personajeCreacion.Conjuros ?? [])
+            .map((conjuro) => ({
+                id: this.toNumber(conjuro?.Id) > 0 ? this.toNumber(conjuro?.Id) : null,
+                nombre: `${conjuro?.Nombre ?? ''}`.trim(),
+                idEscuela: this.toNumber(conjuro?.Escuela?.Id) > 0 ? this.toNumber(conjuro?.Escuela?.Id) : null,
+                escuela: `${conjuro?.Escuela?.Nombre ?? ''}`.trim(),
+            }))
+            .filter((item) => item.nombre.length > 0);
+
+        const catalogoIdiomas = (this.estadoFlujo.ventajas.catalogoIdiomas ?? [])
+            .map((idioma) => ({
+                id: this.toNumber(idioma?.Id) > 0 ? this.toNumber(idioma?.Id) : null,
+                nombre: `${idioma?.Nombre ?? ''}`.trim(),
+            }))
+            .filter((item) => item.nombre.length > 0);
+        const catalogoHabilidades = [
+            ...(this.estadoFlujo.ventajas.catalogoHabilidades ?? []),
+            ...(this.estadoFlujo.ventajas.catalogoHabilidadesCustom ?? []),
+        ]
+            .map((habilidad) => ({
+                id: this.toNumber(habilidad?.Id_habilidad) > 0 ? this.toNumber(habilidad?.Id_habilidad) : null,
+                nombre: `${habilidad?.Nombre ?? ''}`.trim(),
+            }))
+            .filter((item) => item.nombre.length > 0);
+        const catalogoClases = (this.catalogoClases ?? [])
+            .map((clase) => ({
+                id: this.toNumber(clase?.Id) > 0 ? this.toNumber(clase?.Id) : null,
+                nombre: `${clase?.Nombre ?? ''}`.trim(),
+            }))
+            .filter((item) => item.nombre.length > 0);
+        const catalogoDotes = (this.catalogoDotes ?? [])
+            .map((doteCatalogo) => ({
+                id: this.toNumber(doteCatalogo?.Id) > 0 ? this.toNumber(doteCatalogo?.Id) : null,
+                nombre: `${doteCatalogo?.Nombre ?? ''}`.trim(),
+            }))
+            .filter((item) => item.nombre.length > 0);
+
+        const contexto: DoteEvaluacionContexto = {
+            identidad,
+            caracteristicas: {
+                Fuerza: this.toNumber(this.personajeCreacion.Fuerza),
+                Destreza: this.toNumber(this.personajeCreacion.Destreza),
+                Constitucion: this.toNumber(this.personajeCreacion.Constitucion),
+                Inteligencia: this.toNumber(this.personajeCreacion.Inteligencia),
+                Sabiduria: this.toNumber(this.personajeCreacion.Sabiduria),
+                Carisma: this.toNumber(this.personajeCreacion.Carisma),
+            },
+            ataqueBase: this.extraerPrimerEnteroConSigno(this.personajeCreacion.Ataque_base),
+            nivelesClase,
+            dotes: [...dotes, ...legacySinContexto],
+            idiomas,
+            habilidades,
+            conjuros,
+            competenciasArmas: this.resolverCompetenciasArmasActuales(),
+            lanzador: {
+                arcano: this.resolverNivelLanzadorMaximoPorTipo('arcano'),
+                divino: this.resolverNivelLanzadorMaximoPorTipo('divino'),
+                psionico: this.resolverNivelLanzadorMaximoPorTipo('psionico'),
+            },
+            salvaciones: this.resolverSalvacionesTotales(),
+            alineamiento: `${this.personajeCreacion.Alineamiento ?? ''}`.trim(),
+            puedeSeleccionarCompanero: this.tieneClaseaPorNombre('Compañero animal'),
+            puedeSeleccionarFamiliar: this.tieneClaseaPorNombre('Convocar a un familiar') || this.tieneClaseaPorNombre('Familiar'),
+            catalogoIdiomas,
+            catalogoHabilidades,
+            catalogoClases,
+            catalogoDotes,
+        };
+
+        const evaluacion = evaluarElegibilidadDote({
+            dote,
+            contexto,
+            idExtraSeleccionado: Math.max(0, this.toNumber(idExtra)),
+            extraSeleccionado: `${extraTexto ?? ''}`.trim(),
+        });
+
+        return {
+            estado: evaluacion.estado,
+            razones: [...(evaluacion.razones ?? [])],
+            advertencias: [...(evaluacion.advertencias ?? [])],
+        };
+    }
+
+    private resolverNivelLanzadorMaximoPorTipo(tipo: 'arcano' | 'divino' | 'psionico'): number {
+        let maximo = 0;
+        (this.personajeCreacion?.desgloseClases ?? []).forEach((entrada) => {
+            const nombre = `${entrada?.Nombre ?? ''}`.trim();
+            if (nombre.length < 1)
+                return;
+            const clase = this.catalogoClases.find((item) =>
+                this.normalizarTexto(item?.Nombre ?? '') === this.normalizarTexto(nombre)
+            );
+            if (!clase || !this.esClaseLanzadora(clase))
+                return;
+
+            const tipoClase = this.resolverTipoLanzamientoClase(clase);
+            const coincide = tipoClase === tipo || (tipoClase === 'mixto' && (tipo === 'arcano' || tipo === 'divino'));
+            if (!coincide)
+                return;
+            maximo = Math.max(maximo, this.getNivelLanzadorEfectivoClase(nombre));
+        });
+        return Math.max(0, maximo);
+    }
+
+    private resolverSalvacionesTotales(): { fortaleza: number; reflejos: number; voluntad: number; } {
+        const fortaleza = this.toNumber(this.personajeCreacion.ModConstitucion)
+            + (this.personajeCreacion.Salvaciones?.fortaleza?.modsClaseos ?? []).reduce((acc, item) => acc + this.toNumber(item?.valor), 0)
+            + (this.personajeCreacion.Salvaciones?.fortaleza?.modsVarios ?? []).reduce((acc, item) => acc + this.toNumber(item?.valor), 0);
+        const reflejos = this.toNumber(this.personajeCreacion.ModDestreza)
+            + (this.personajeCreacion.Salvaciones?.reflejos?.modsClaseos ?? []).reduce((acc, item) => acc + this.toNumber(item?.valor), 0)
+            + (this.personajeCreacion.Salvaciones?.reflejos?.modsVarios ?? []).reduce((acc, item) => acc + this.toNumber(item?.valor), 0);
+        const voluntad = this.toNumber(this.personajeCreacion.ModSabiduria)
+            + (this.personajeCreacion.Salvaciones?.voluntad?.modsClaseos ?? []).reduce((acc, item) => acc + this.toNumber(item?.valor), 0)
+            + (this.personajeCreacion.Salvaciones?.voluntad?.modsVarios ?? []).reduce((acc, item) => acc + this.toNumber(item?.valor), 0);
+
+        return {
+            fortaleza,
+            reflejos,
+            voluntad,
+        };
+    }
+
+    private resolverCompetenciasArmasActuales(): Array<{ id: number | null; nombre: string; }> {
+        const competencias: Array<{ id: number | null; nombre: string; }> = [];
+        (this.personajeCreacion?.desgloseClases ?? []).forEach((entrada) => {
+            const nombre = `${entrada?.Nombre ?? ''}`.trim();
+            if (nombre.length < 1)
+                return;
+            const clase = this.catalogoClases.find((item) =>
+                this.normalizarTexto(item?.Nombre ?? '') === this.normalizarTexto(nombre)
+            );
+            if (!clase)
+                return;
+            const armas = Array.isArray(clase?.Competencias?.Armas) ? clase.Competencias.Armas : [];
+            armas.forEach((arma: Record<string, any>) => {
+                const id = this.toNumber(arma?.['Id'] ?? arma?.['id'] ?? arma?.['Id_arma'] ?? arma?.['id_arma']);
+                const nombreArma = `${arma?.['Nombre'] ?? arma?.['nombre'] ?? arma?.['Arma'] ?? arma?.['arma'] ?? ''}`.trim();
+                if (id <= 0 && nombreArma.length < 1)
+                    return;
+                competencias.push({
+                    id: id > 0 ? id : null,
+                    nombre: nombreArma,
+                });
+            });
+        });
+
+        return this.normalizarCatalogoExtras(
+            competencias.map((item) => ({
+                Id: this.toNumber(item.id),
+                Nombre: `${item?.nombre ?? ''}`.trim(),
+            }))
+        ).map((item) => ({
+            id: item.Id > 0 ? item.Id : null,
+            nombre: item.Nombre,
+        }));
+    }
+
+    private tieneClaseaPorNombre(texto: string): boolean {
+        const objetivo = this.normalizarTexto(`${texto ?? ''}`);
+        if (objetivo.length < 1)
+            return false;
+        return (this.personajeCreacion.Claseas ?? []).some((especial) =>
+            this.normalizarTexto(especial?.Nombre ?? '').includes(objetivo)
+        );
+    }
+
+    private construirOrigenDoteDesdePendiente(pendiente: DotePendienteState): string {
+        const prefijo = pendiente.fuente === 'nivel'
+            ? 'Dote por nivel'
+            : (pendiente.fuente === 'raza_dg' ? 'DGs de raza' : 'Dote adicional');
+        const origen = `${pendiente?.origen ?? ''}`.trim();
+        return origen.length > 0 ? `${prefijo}: ${origen}` : prefijo;
+    }
+
+    private resolverExtraTextoDote(dote: Dote, idExtra: number, extraSeleccionado: string): string {
+        const requiereExtra = !!(
+            this.toBooleanValue(dote?.Extras_soportados?.Extra_arma)
+            || this.toBooleanValue(dote?.Extras_soportados?.Extra_armadura)
+            || this.toBooleanValue(dote?.Extras_soportados?.Extra_escuela)
+            || this.toBooleanValue(dote?.Extras_soportados?.Extra_habilidad)
+        );
+        if (!requiereExtra)
+            return 'No aplica';
+
+        const id = Math.max(0, this.toNumber(idExtra));
+        if (id > 0) {
+            const extra = this.resolverExtrasDisponiblesDote(dote)
+                .find((item) => this.toNumber(item?.Id) === id);
+            if (extra)
+                return `${extra?.Nombre ?? ''}`.trim();
+        }
+
+        const extraTexto = `${extraSeleccionado ?? ''}`.trim();
+        return extraTexto.length > 0 ? extraTexto : 'No aplica';
+    }
+
+    private agregarDoteAlPersonaje(dote: Dote, origen: string, idExtra: number, extraTexto: string): boolean {
+        const nombre = `${dote?.Nombre ?? ''}`.trim();
+        if (nombre.length < 1)
+            return false;
+        const extra = `${extraTexto ?? ''}`.trim() || 'No aplica';
+        const idExtraNormalizado = Math.max(0, this.toNumber(idExtra));
+        const origenNormalizado = `${origen ?? ''}`.trim();
+
+        const duplicadaLegacy = (this.personajeCreacion.Dotes ?? []).some((item) =>
+            this.normalizarTexto(item?.Nombre ?? '') === this.normalizarTexto(nombre)
+            && this.normalizarTexto(item?.Extra ?? '') === this.normalizarTexto(extra)
+            && this.normalizarTexto(item?.Origen ?? '') === this.normalizarTexto(origenNormalizado)
+        );
+        let agregadoLegacy = false;
+        if (!duplicadaLegacy) {
+            this.personajeCreacion.Dotes.push({
+                Nombre: nombre,
+                Descripcion: `${dote?.Descripcion ?? ''}`.trim(),
+                Beneficio: `${dote?.Beneficio ?? ''}`.trim(),
+                Pagina: this.toNumber(dote?.Manual?.Pagina),
+                Extra: extra,
+                Origen: origenNormalizado,
+            });
+            agregadoLegacy = true;
+        }
+
+        const idDote = this.toNumber(dote?.Id);
+        let agregadoContextual = false;
+        if (idDote > 0) {
+            const duplicadaContextual = (this.personajeCreacion.DotesContextuales ?? []).some((item) =>
+                this.toNumber(item?.Dote?.Id) === idDote
+                && this.toNumber(item?.Contexto?.Id_extra) === idExtraNormalizado
+                && this.normalizarTexto((item?.Contexto as any)?.Origen ?? '') === this.normalizarTexto(origenNormalizado)
+            );
+            if (!duplicadaContextual) {
+                this.personajeCreacion.DotesContextuales.push({
+                    Dote: dote,
+                    Contexto: {
+                        Entidad: 'personaje',
+                        Id_personaje: this.toNumber(this.personajeCreacion?.Id),
+                        Extra: extra,
+                        Id_extra: idExtraNormalizado,
+                        Origen: origenNormalizado,
+                    },
+                });
+                agregadoContextual = true;
+            }
+        }
+
+        return agregadoLegacy || agregadoContextual;
+    }
+
+    private aplicarModificadoresDote(dote: Dote, _origen: string, idExtra: number, extraTexto: string): void {
+        const origen = `Dote: ${`${dote?.Nombre ?? ''}`.trim() || 'Sin nombre'}`;
+        const mods = (dote?.Modificadores ?? {}) as Record<string, any>;
+        const get = (clave: string): number => this.toNumber(mods?.[clave]);
+
+        CARACTERISTICAS_KEYS.forEach((key) => {
+            const valor = get(key);
+            if (valor === 0)
+                return;
+            (this.personajeCreacion.CaracteristicasVarios[key] ?? []).push({
+                valor,
+                origen,
+            });
+        });
+
+        const aplicarSalvacion = (tipo: SalvacionKey, clave: string) => {
+            const valor = get(clave);
+            if (valor === 0)
+                return;
+            this.personajeCreacion.Salvaciones[tipo].modsVarios.push({
+                valor,
+                origen,
+            });
+        };
+        aplicarSalvacion('fortaleza', 'Fortaleza');
+        aplicarSalvacion('reflejos', 'Reflejos');
+        aplicarSalvacion('voluntad', 'Voluntad');
+
+        const iniciativa = get('Iniciativa');
+        if (iniciativa !== 0) {
+            this.personajeCreacion.Iniciativa_varios.push({
+                Valor: iniciativa,
+                Origen: origen,
+            });
+        }
+
+        const presa = get('Presa');
+        if (presa !== 0) {
+            this.personajeCreacion.Presa_varios.push({
+                Valor: presa,
+                Origen: origen,
+            });
+        }
+
+        const bonusHabilidad = get('Habilidad');
+        if (bonusHabilidad !== 0)
+            this.aplicarModificadorHabilidadDesdeDote(dote, bonusHabilidad, origen, idExtra, extraTexto);
+    }
+
+    private aplicarModificadorHabilidadDesdeDote(
+        dote: Dote,
+        valor: number,
+        origen: string,
+        idExtra: number,
+        extraTexto: string
+    ): void {
+        const requiereExtraHabilidad = this.toBooleanValue(dote?.Extras_soportados?.Extra_habilidad);
+        const idObjetivo = requiereExtraHabilidad ? Math.max(0, this.toNumber(idExtra)) : 0;
+        const extraNorm = this.normalizarTexto(extraTexto ?? '');
+
+        const objetivo = (this.personajeCreacion.Habilidades ?? []).find((habilidad) => {
+            if (idObjetivo > 0 && this.toNumber(habilidad?.Id) === idObjetivo)
+                return true;
+            if (!requiereExtraHabilidad)
+                return false;
+            return extraNorm.length > 0 && this.normalizarTexto(habilidad?.Nombre ?? '') === extraNorm;
+        });
+        if (!objetivo)
+            return;
+
+        const bonos = Array.isArray(objetivo.Bonos_varios) ? [...objetivo.Bonos_varios] : [];
+        bonos.push({
+            valor,
+            origen,
+        });
+        objetivo.Bonos_varios = bonos;
+        objetivo.Rangos_varios = bonos.reduce((acc, bono) => acc + this.toNumber(bono?.valor), 0);
+        objetivo.Varios = bonos
+            .map((bono) => `${bono?.origen ?? ''} ${this.toNumber(bono?.valor) >= 0 ? '+' : ''}${this.toNumber(bono?.valor)}`.trim())
+            .join(', ');
     }
 
     aplicarIdiomasAutomaticos(origen: string, idiomas: IdiomaDetalle[]): void {
@@ -3926,44 +4801,11 @@ export class NuevoPersonajeService {
             if (nombre.length < 1)
                 return;
 
-            const extra = `${doteNivel?.Extra ?? ''}`.trim();
-            const duplicada = (this.personajeCreacion.Dotes ?? []).some((dote) =>
-                this.normalizarTexto(dote?.Nombre ?? '') === this.normalizarTexto(nombre)
-                && this.normalizarTexto(dote?.Extra ?? '') === this.normalizarTexto(extra)
-                && this.normalizarTexto(dote?.Origen ?? '') === this.normalizarTexto(origen)
-            );
-            if (!duplicada) {
-                this.personajeCreacion.Dotes.push({
-                    Nombre: nombre,
-                    Descripcion: `${doteNivel?.Dote?.Descripcion ?? ''}`.trim(),
-                    Beneficio: `${doteNivel?.Dote?.Beneficio ?? ''}`.trim(),
-                    Pagina: this.toNumber(doteNivel?.Dote?.Manual?.Pagina),
-                    Extra: extra,
-                    Origen: origen,
-                });
-            }
-
-            const idDote = this.toNumber(doteNivel?.Dote?.Id);
             const idExtra = this.toNumber(doteNivel?.Id_extra);
-            if (idDote > 0) {
-                const yaContextual = (this.personajeCreacion.DotesContextuales ?? []).some((dote) =>
-                    this.toNumber(dote?.Dote?.Id) === idDote
-                    && this.normalizarTexto(`${(dote?.Contexto as { Origen?: string; } | undefined)?.Origen ?? ''}`) === this.normalizarTexto(origen)
-                    && this.toNumber(dote?.Contexto?.Id_extra) === idExtra
-                );
-                if (!yaContextual) {
-                    this.personajeCreacion.DotesContextuales.push({
-                        Dote: doteNivel.Dote,
-                        Contexto: {
-                            Entidad: 'personaje',
-                            Id_personaje: this.toNumber(this.personajeCreacion.Id),
-                            Extra: extra,
-                            Id_extra: idExtra,
-                            Origen: origen,
-                        },
-                    });
-                }
-            }
+            const extra = `${doteNivel?.Extra ?? ''}`.trim() || 'No aplica';
+            const agregado = this.agregarDoteAlPersonaje(doteNivel.Dote, origen, idExtra, extra);
+            if (agregado)
+                this.aplicarModificadoresDote(doteNivel.Dote, origen, idExtra, extra);
 
             this.registrarIdInternoDote(this.toNumber(doteNivel?.Id_interno));
         });
@@ -6034,6 +6876,13 @@ export class NuevoPersonajeService {
         const dgsRaza = this.toNumber(this.razaSeleccionada?.Dgs_adicionales?.Cantidad);
         const dgsPlantillas = this.getDgsAdicionalesDesdePlantillas(this.estadoFlujo.plantillas.seleccionadas);
         return Math.max(0, nivelClases + dgsRaza + dgsPlantillas);
+    }
+
+    private getNivelEfectivoParaDotesProgresion(): number {
+        const nivelClases = (this.personajeCreacion?.desgloseClases ?? [])
+            .reduce((acc, clase) => acc + this.toNumber(clase?.Nivel), 0);
+        const dgsPlantillas = this.getDgsAdicionalesDesdePlantillas(this.estadoFlujo.plantillas.seleccionadas);
+        return Math.max(0, nivelClases + dgsPlantillas);
     }
 
     private crearPendienteAumento(valor: number, origen: string, descripcion: string): AumentoCaracteristicaPendiente {
