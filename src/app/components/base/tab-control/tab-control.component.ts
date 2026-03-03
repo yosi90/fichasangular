@@ -1408,6 +1408,14 @@ export class TabControlComponent implements OnInit, OnDestroy {
         this.quitarNuevoPersonaje();
     }
 
+    onNuevoPersonajeFinalizado(idPersonaje: number): void {
+        const id = Math.trunc(Number(idPersonaje));
+        if (!Number.isFinite(id) || id <= 0)
+            return;
+        this.quitarNuevoPersonaje();
+        void this.abrirDetallesPersonaje(id);
+    }
+
     @Output() CerrarListadoTab: EventEmitter<void> = new EventEmitter();
     quitarListado() {
         this.closeTabWithNavigation(this.TAB_LISTADO, () => {

@@ -25,6 +25,13 @@ export interface AdminUserRow {
     updatedAt: number | null;
 }
 
+export interface SyncUsuariosApiResult {
+    total: number;
+    success: number;
+    failed: number;
+    failedUids: string[];
+}
+
 @Injectable({
     providedIn: 'root'
 })
@@ -147,6 +154,51 @@ export class AdminUsersService {
         await this.setPath('UserProfiles', cachePayload.userProfilesByUid);
         await this.setPath('Acl/users', cachePayload.aclByUid);
         return true;
+    }
+
+    async syncAllUsersToApiFromCache(): Promise<SyncUsuariosApiResult> {
+        await this.ensureActorAdmin();
+
+        const [profilesRaw, aclRaw] = await Promise.all([
+            this.getPath('UserProfiles'),
+            this.getPath('Acl/users'),
+        ]);
+
+        const profilesByUid = this.toProfilesByUid(profilesRaw);
+        const aclByUid = this.toAclByUid(aclRaw);
+        const uidSet = new Set<string>([
+            ...Object.keys(profilesByUid),
+            ...Object.keys(aclByUid),
+        ]);
+        const uids = [...uidSet].filter((uid) => uid.trim().length > 0).sort((a, b) => a.localeCompare(b));
+
+        let success = 0;
+        let failed = 0;
+        const failedUids: string[] = [];
+
+        for (const uid of uids) {
+            const payload = this.buildUpsertPayloadFromRaw(uid, profilesByUid[uid], aclByUid[uid]);
+            if (!payload) {
+                failed++;
+                failedUids.push(uid);
+                continue;
+            }
+
+            try {
+                await this.upsertUserApi(payload);
+                success++;
+            } catch {
+                failed++;
+                failedUids.push(uid);
+            }
+        }
+
+        return {
+            total: uids.length,
+            success,
+            failed,
+            failedUids,
+        };
     }
 
     protected watchPath(path: string): Observable<any> {
@@ -382,6 +434,14 @@ export class AdminUsersService {
             this.getPath(`UserProfiles/${uidNormalizado}`),
             this.getPath(`Acl/users/${uidNormalizado}`),
         ]);
+        return this.buildUpsertPayloadFromRaw(uidNormalizado, profileRaw, aclRaw);
+    }
+
+    private buildUpsertPayloadFromRaw(uid: string, profileRaw: any, aclRaw: any): UsuarioUpsertRequestDto | null {
+        const uidNormalizado = `${uid ?? ''}`.trim();
+        if (uidNormalizado.length < 1)
+            return null;
+
         const acl = normalizeUserAcl(aclRaw);
         const role = acl.roles?.type ?? 'usuario';
         const permissionsCreate = this.buildEffectivePermissionsCreate(
@@ -397,15 +457,17 @@ export class AdminUsersService {
             20
         );
 
-        return {
+        const payload: UsuarioUpsertRequestDto = {
             uid: uidNormalizado,
             displayName,
             email,
             authProvider: this.normalizeProvider(profileRaw?.authProvider),
             role,
             banned: acl.status?.banned === true,
-            permissionsCreate,
         };
+        if (role !== 'admin')
+            payload.permissionsCreate = permissionsCreate;
+        return payload;
     }
 
     private buildEffectivePermissionsCreate(

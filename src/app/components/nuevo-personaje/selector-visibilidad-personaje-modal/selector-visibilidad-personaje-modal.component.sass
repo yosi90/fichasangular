@@ -1,0 +1,63 @@
+:host
+    position: absolute
+    inset: 0
+    z-index: 66
+
+.selector-overlay
+    position: absolute
+    inset: 0
+    display: flex
+    justify-content: center
+    align-items: center
+    background: rgba(0, 0, 0, 0.6)
+    padding: 12px
+
+.selector-dialog
+    width: min(520px, 96vw)
+    max-height: 90vh
+    overflow: auto
+    background: linear-gradient(180deg, #2f3137 0%, #272a30 100%)
+    border: 1px solid #6f7683
+    border-radius: 10px
+    padding: 14px
+    display: flex
+    flex-direction: column
+    gap: 12px
+    color: #f3f6ff
+
+.selector-title
+    font-size: 1.4rem
+    font-weight: 700
+
+.descripcion
+    margin: 0
+    opacity: 0.9
+
+.opciones
+    display: grid
+    grid-template-columns: 1fr 1fr
+    gap: 8px
+
+.opcion
+    border: 1px solid rgba(255, 255, 255, 0.2)
+    border-radius: 8px
+    background: rgba(255, 255, 255, 0.05)
+    color: #f3f6ff
+    padding: 12px
+    cursor: pointer
+
+.opcion:hover
+    background: rgba(255, 255, 255, 0.12)
+
+.opcion.activa
+    border-color: #9fb3ff
+    background: rgba(122, 154, 255, 0.2)
+
+.selector-actions
+    display: flex
+    justify-content: flex-end
+    gap: 8px
+
+@media (max-width: 640px)
+    .opciones
+        grid-template-columns: 1fr

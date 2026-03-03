@@ -55,6 +55,18 @@
                                     placeholder="Nombre, correo o UID">
                             </mat-form-field>
 
+                            <div class="usuarios-admin-actions mb-2">
+                                <button
+                                    mat-raised-button
+                                    color="primary"
+                                    [disabled]="sincronizandoUsuariosApi"
+                                    (click)="onSincronizarUsuariosApi()">
+                                    <mat-icon>{{sincronizandoUsuariosApi ? 'hourglass_top' : 'upload'}}</mat-icon>
+                                    {{sincronizandoUsuariosApi ? 'Resincronizando...' : 'Reenviar usuarios a SQL'}}
+                                </button>
+                                <mat-chip *ngIf="estadoSyncUsuariosApi.length > 0">{{estadoSyncUsuariosApi}}</mat-chip>
+                            </div>
+
                             <div class="usuarios-admin-estado text-center p-2" *ngIf="etiquetaEstadoUsuarios.length > 0">
                                 <mat-chip>{{etiquetaEstadoUsuarios}}</mat-chip>
                             </div>

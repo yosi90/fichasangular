@@ -60,6 +60,8 @@ export class AdminPanelComponent implements OnInit, OnDestroy {
     cargandoUsuarios: boolean = true;
     errorUsuarios: string = '';
     filtroUsuarios: string = '';
+    sincronizandoUsuariosApi: boolean = false;
+    estadoSyncUsuariosApi: string = '';
     usuariosAdmin: AdminUserRow[] = [];
     readonly permissionResources = PERMISSION_RESOURCES;
     readonly roleOptions: UserRole[] = ['usuario', 'colaborador', 'admin'];
@@ -401,6 +403,37 @@ export class AdminPanelComponent implements OnInit, OnDestroy {
             this.errorUsuarios = error?.message ?? `No se pudo actualizar permiso ${resource}.create`;
         } finally {
             this.userOpsInFlight.delete(opKey);
+        }
+    }
+
+    async onSincronizarUsuariosApi(): Promise<void> {
+        if (!this.esAdmin || this.sincronizandoUsuariosApi)
+            return;
+
+        this.estadoSyncUsuariosApi = '';
+        this.errorUsuarios = '';
+        this.sincronizandoUsuariosApi = true;
+        try {
+            await this.adminUsersSvc.assertAdminAccess();
+            const result = await this.adminUsersSvc.syncAllUsersToApiFromCache();
+            if (result.total < 1) {
+                this.estadoSyncUsuariosApi = 'No hay usuarios en cache para resincronizar.';
+                return;
+            }
+
+            if (result.failed > 0) {
+                const listadoFallidos = result.failedUids.slice(0, 8).join(', ');
+                const sufijo = result.failedUids.length > 8 ? '...' : '';
+                this.estadoSyncUsuariosApi = `Resincronización parcial: ${result.success}/${result.total} ok. Fallos (${result.failed}): ${listadoFallidos}${sufijo}`;
+                return;
+            }
+
+            this.estadoSyncUsuariosApi = `Resincronización completada: ${result.success}/${result.total} usuarios enviados a SQL.`;
+        } catch (error: any) {
+            this.errorUsuarios = error?.message ?? 'No se pudieron resincronizar los usuarios en SQL';
+            this.estadoSyncUsuariosApi = '';
+        } finally {
+            this.sincronizandoUsuariosApi = false;
         }
     }
 

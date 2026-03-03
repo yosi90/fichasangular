@@ -1,4 +1,5 @@
 import { NO_ERRORS_SCHEMA } from '@angular/core';
+import { Database } from '@angular/fire/database';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
 import { NuevoPersonajeService } from 'src/app/services/nuevo-personaje.service';
@@ -38,6 +39,10 @@ describe('DetallesPersonajeComponent', () => {
                         CurrentUserUid: 'test-uid',
                     },
                 },
+                {
+                    provide: Database,
+                    useValue: {},
+                },
             ],
             schemas: [NO_ERRORS_SCHEMA],
         }).compileComponents();
@@ -53,6 +58,14 @@ describe('DetallesPersonajeComponent', () => {
         const botones = fixture.debugElement.queryAll(By.css('button'));
         const existeBoton = botones.some((btn) => `${btn.nativeElement.textContent ?? ''}`.includes('Generar pdf'));
         expect(existeBoton).toBeTrue();
+    });
+
+    it('muestra "Creador: Tú" cuando el ownerUid coincide con la sesión activa', () => {
+        component.pj.ownerUid = 'test-uid';
+        fixture.detectChanges();
+
+        const html = `${fixture.nativeElement.textContent ?? ''}`;
+        expect(html).toContain('Creador: Tú');
     });
 
     it('oculta botón Generar pdf cuando mostrarBotonGenerarPdf es false', () => {

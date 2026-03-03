@@ -1,0 +1,157 @@
+:host
+    position: absolute
+    inset: 0
+    z-index: 65
+
+.selector-overlay
+    position: absolute
+    inset: 0
+    display: flex
+    justify-content: center
+    align-items: center
+    background: rgba(0, 0, 0, 0.6)
+    padding: 12px
+
+.selector-dialog
+    width: min(720px, 96vw)
+    max-height: 92vh
+    overflow: auto
+    background: linear-gradient(180deg, #2f3137 0%, #272a30 100%)
+    border: 1px solid #6f7683
+    border-radius: 10px
+    padding: 14px
+    display: flex
+    flex-direction: column
+    gap: 12px
+    color: #f3f6ff
+
+.selector-title
+    font-size: 1.45rem
+    font-weight: 700
+
+.selector-header
+    display: flex
+    flex-direction: column
+    gap: 8px
+
+.chip-estado
+    width: 100%
+    min-height: 40px
+    white-space: normal
+    line-height: 1.25
+    padding: 8px 12px
+    box-sizing: border-box
+    display: flex
+    align-items: center
+
+.chip-estado.ok
+    background: rgba(62, 146, 62, 0.25)
+    border: 1px solid rgba(104, 199, 104, 0.55)
+    color: #d2f3d2
+
+.chip-estado.warm
+    background: rgba(255, 152, 102, 0.2)
+    border: 1px solid rgba(255, 177, 132, 0.55)
+    color: #ffe5d8
+
+.contenido
+    display: flex
+    flex-direction: column
+    gap: 10px
+
+.subtitulo
+    margin: 0
+    font-weight: 600
+    opacity: 0.95
+
+.subtitulo-final
+    margin-bottom: 2px
+    opacity: 0.9
+
+.factores-grid
+    display: grid
+    grid-template-columns: 1fr 1fr
+    gap: 8px
+
+.factor-item
+    display: flex
+    align-items: center
+    gap: 8px
+    border: 1px solid rgba(255, 255, 255, 0.15)
+    border-radius: 8px
+    background: rgba(255, 255, 255, 0.05)
+    padding: 8px 10px
+    font-size: 0.9rem
+    opacity: 0.82
+
+.factor-item mat-icon
+    font-size: 18px
+    width: 18px
+    height: 18px
+    color: rgba(255, 255, 255, 0.55)
+
+.factor-item.activo
+    opacity: 1
+    border-color: rgba(122, 154, 255, 0.55)
+    background: rgba(122, 154, 255, 0.18)
+
+.factor-item.activo mat-icon
+    color: #b8c8ff
+
+.resultado-section
+    margin-top: 6px
+    padding-top: 12px
+    border-top: 1px solid rgba(255, 255, 255, 0.18)
+    display: flex
+    flex-direction: column
+    gap: 8px
+
+.resultado-grid
+    display: grid
+    grid-template-columns: 1fr 1fr
+    gap: 10px
+
+.resultado-box
+    border: 1px solid rgba(255, 255, 255, 0.15)
+    border-radius: 10px
+    background: rgba(255, 255, 255, 0.04)
+    padding: 10px
+    display: flex
+    flex-direction: column
+    gap: 4px
+
+.resultado-box.total
+    border-color: rgba(122, 154, 255, 0.55)
+    background: rgba(122, 154, 255, 0.22)
+
+.resultado-label
+    font-size: 0.82rem
+    opacity: 0.82
+
+.resultado-valor
+    font-size: 1.7rem
+    line-height: 1
+    font-weight: 800
+
+.selector-actions
+    display: flex
+    justify-content: flex-end
+    flex-wrap: wrap
+    gap: 8px
+
+@media (max-width: 640px)
+    .selector-title
+        font-size: 1.25rem
+
+    .chip-estado
+        min-height: 36px
+        padding: 6px 10px
+
+    .factores-grid
+        grid-template-columns: 1fr
+
+    .resultado-grid
+        grid-template-columns: 1fr
+
+    .resultado-valor
+        font-size: 1.45rem

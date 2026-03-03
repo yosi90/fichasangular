@@ -137,7 +137,7 @@ export class ListaPersonajesService {
                 personajes.map((element: any) =>
                     set(ref(db, `Personajes-simples/${element.i}`), {
                         Nombre: element.n,
-                        ownerUid: `${element.ownerUid ?? ''}`.trim() || null,
+                        ownerUid: extractOwnerUid(element),
                         visible_otros_usuarios: toBoolean(element.visible_otros_usuarios),
                         Raza: element.r as RazaSimple,
                         Clases: element.c,
@@ -180,4 +180,12 @@ function toBoolean(value: any): boolean {
         return normalizado === '1' || normalizado === 'true' || normalizado === 'si' || normalizado === 'sí';
     }
     return false;
+}
+
+function extractOwnerUid(value: any): string | null {
+    if (!value || typeof value !== 'object')
+        return null;
+
+    const text = `${value.ownerUid ?? value.owneruid ?? value.owner_uid ?? value.uid ?? ''}`.trim();
+    return text.length > 0 ? text : null;
 }

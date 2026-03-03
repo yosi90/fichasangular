@@ -44,6 +44,8 @@ import { EnemigoPredilectoService } from 'src/app/services/enemigo-predilecto.se
 import { EscuelaConjurosService } from 'src/app/services/escuela-conjuros.service';
 import { EspecialService } from 'src/app/services/especial.service';
 import { MonstruoService } from 'src/app/services/monstruo.service';
+import { FichaPersonajeService } from 'src/app/services/ficha-personaje.service';
+import { PersonajeService } from 'src/app/services/personaje.service';
 import {
     AsignacionAumentoCaracteristica,
     AsignacionCaracteristicas,
@@ -62,6 +64,7 @@ import {
     EspecialidadMagicaPendiente,
     EspecialidadMagicaSeleccion,
     NuevoPersonajeService,
+    ResultadoCalculoVidaFinal,
     SeleccionAumentosClaseLanzadora,
     SeleccionDominiosClase,
     SeleccionOpcionalesClase,
@@ -95,6 +98,7 @@ import {
     getVectorDesdeNombreBasico,
     nombreBasicoDesdeVector,
 } from 'src/app/services/utils/alineamiento-contrato';
+import { CatalogoNombreIdDto, PersonajeContextoIdsDto } from 'src/app/interfaces/personajes-api';
 import { environment } from 'src/environments/environment';
 import Swal from 'sweetalert2';
 
@@ -323,6 +327,8 @@ export class NuevoPersonajeComponent {
     modalSelectorCompaneroAbierto = false;
     modalSelectorRazaBaseAbierto = false;
     modalSelectorRacialesOpcionalesAbierto = false;
+    modalSelectorPuntosGolpeAbierto = false;
+    modalSelectorVisibilidadAbierto = false;
     selectorDotePendienteActual: DotePendienteState | null = null;
     selectorDoteCandidatos: DoteSelectorCandidato[] = [];
     selectorDotePendientesRestantes = 0;
@@ -397,6 +403,20 @@ export class NuevoPersonajeComponent {
     private resolverSelectorCompanero: ((seleccion: SelectorCompaneroConfirmacion | 'omitir' | null) => void) | null = null;
     private nombresEspecialesCompanero: Record<number, string> | null = null;
     private idiomasTemporalesSeleccionados: IdiomaDetalle[] = [];
+    resultadoVidaActual: ResultadoCalculoVidaFinal | null = null;
+    tiradasVidaTotales = 3;
+    tiradasVidaRestantes = 0;
+    selectorVisibilidadValorInicial: boolean | null = null;
+    finalizacionEnCurso = false;
+    finalizacionState: {
+        idPersonaje: number | null;
+        sqlOk: boolean;
+        firebaseOk: boolean;
+    } = {
+            idPersonaje: null,
+            sqlOk: false,
+            firebaseOk: false,
+        };
     selectedInternalTabIndex = 0;
     private campanasSub?: Subscription;
     private plantillasSub?: Subscription;
@@ -421,6 +441,7 @@ export class NuevoPersonajeComponent {
     private tiposCriaturaSub?: Subscription;
     private alineamientosBasicosSub?: Subscription;
     @ViewChild(MatTabGroup) TabGroup?: MatTabGroup;
+    @Output() personajeFinalizado = new EventEmitter<number>();
 
     constructor(
         private nuevoPSvc: NuevoPersonajeService,
@@ -445,7 +466,9 @@ export class NuevoPersonajeComponent {
         private deidadSvc: DeidadService,
         private tipoCriaturaSvc: TipoCriaturaService,
         private monstruoSvc: MonstruoService,
-        private especialSvc: EspecialService
+        private especialSvc: EspecialService,
+        private personajeSvc: PersonajeService,
+        private fichaPersonajeSvc: FichaPersonajeService
     ) {
         this.Personaje = this.nuevoPSvc.PersonajeCreacion;
     }
@@ -1735,7 +1758,9 @@ export class NuevoPersonajeComponent {
             || this.modalSelectorFamiliarAbierto
             || this.modalSelectorExtraHabilidadAbierto
             || this.modalSelectorRazaBaseAbierto
-            || this.modalSelectorRacialesOpcionalesAbierto;
+            || this.modalSelectorRacialesOpcionalesAbierto
+            || this.modalSelectorPuntosGolpeAbierto
+            || this.modalSelectorVisibilidadAbierto;
     }
 
     private esElementoInteractivoParaEnter(target: HTMLElement | null): boolean {
@@ -2980,6 +3005,7 @@ export class NuevoPersonajeComponent {
         if (!this.nuevoPSvc.puedeCerrarDistribucionHabilidades())
             return;
         const origenHabilidades = this.flujoHabilidades?.origen;
+        const returnStepHabilidades = this.flujoHabilidades?.returnStep;
 
         if (this.flujoHabilidades?.returnStep === 'dotes') {
             const completado = await this.resolverFlujoPostDotesFinNivel();
@@ -2996,7 +3022,10 @@ export class NuevoPersonajeComponent {
             return;
         }
 
-        if (origenHabilidades === 'raza_dg' || origenHabilidades === 'clase_nivel') {
+        if (
+            (origenHabilidades === 'raza_dg' || origenHabilidades === 'clase_nivel')
+            && returnStepHabilidades !== 'conjuros'
+        ) {
             const dotesCompletadas = await this.resolverDotesPendientes();
             if (!dotesCompletadas)
                 return;
@@ -3373,37 +3402,309 @@ export class NuevoPersonajeComponent {
     }
 
     async onFinalizarCreacionTemporal(): Promise<void> {
-        const seleccion = await Swal.fire({
-            icon: 'question',
-            title: 'Visibilidad del personaje',
-            text: '¿Quieres que este personaje sea visible solo para ti o para todo el mundo?',
-            showCancelButton: true,
-            showDenyButton: true,
-            confirmButtonText: 'Solo para mí',
-            denyButtonText: 'Todo el mundo',
-            cancelButtonText: 'Cancelar',
-            target: document.body,
-            heightAuto: false,
-            scrollbarPadding: false,
-        });
-
-        if (!seleccion.isConfirmed && !seleccion.isDenied)
+        if (!this.mostrarBotonFinalizarCreacion)
             return;
+        this.abrirSelectorPuntosGolpe();
+    }
 
-        this.Personaje.visible_otros_usuarios = !!seleccion.isDenied;
+    onRecalcularPuntosGolpe(): void {
+        if (!this.modalSelectorPuntosGolpeAbierto || this.tiradasVidaRestantes < 1)
+            return;
+        this.resultadoVidaActual = this.nuevoPSvc.calcularVidaFinalAleatoria();
+        this.tiradasVidaRestantes = Math.max(0, this.tiradasVidaRestantes - 1);
+    }
+
+    onSiguientePuntosGolpe(): void {
+        if (!this.modalSelectorPuntosGolpeAbierto || !this.resultadoVidaActual)
+            return;
+        this.Personaje.Vida = this.resultadoVidaActual.total;
+        this.modalSelectorPuntosGolpeAbierto = false;
+        this.abrirSelectorVisibilidad();
+    }
+
+    onCerrarSelectorPuntosGolpe(): void {
+        this.modalSelectorPuntosGolpeAbierto = false;
+        this.resultadoVidaActual = null;
+        this.tiradasVidaRestantes = 0;
+        this.resetearEstadoFinalizacion();
+    }
+
+    async onConfirmarSelectorVisibilidad(visibleOtros: boolean): Promise<void> {
+        if (this.finalizacionEnCurso)
+            return;
+        this.Personaje.visible_otros_usuarios = !!visibleOtros;
         this.sincronizarOwnerUidEnCreacion();
+        await this.finalizarPersonajeCompleto();
+    }
 
-        await Swal.fire({
-            icon: 'success',
-            title: 'Preferencia guardada',
-            text: this.Personaje.visible_otros_usuarios
-                ? 'El personaje quedará marcado como visible para todo el mundo cuando se implemente el guardado final.'
-                : 'El personaje quedará marcado como visible solo para su creador cuando se implemente el guardado final.',
-            confirmButtonText: 'Entendido',
-            target: document.body,
-            heightAuto: false,
-            scrollbarPadding: false,
+    onCerrarSelectorVisibilidad(): void {
+        if (this.finalizacionEnCurso)
+            return;
+        if (this.finalizacionState.sqlOk) {
+            void Swal.fire({
+                icon: 'warning',
+                title: 'Finalizacion pendiente',
+                text: 'La creación ya comenzó y no se puede cerrar hasta completar Firebase, PDFs y apertura de detalles.',
+                showConfirmButton: true,
+                target: document.body,
+                heightAuto: false,
+                scrollbarPadding: false,
+            });
+            return;
+        }
+        this.modalSelectorVisibilidadAbierto = false;
+        this.selectorVisibilidadValorInicial = null;
+    }
+
+    private abrirSelectorPuntosGolpe(): void {
+        this.resetearEstadoFinalizacion();
+        this.tiradasVidaTotales = 3;
+        this.tiradasVidaRestantes = Math.max(0, this.tiradasVidaTotales - 1);
+        this.resultadoVidaActual = this.nuevoPSvc.calcularVidaFinalAleatoria();
+        this.modalSelectorVisibilidadAbierto = false;
+        this.modalSelectorPuntosGolpeAbierto = true;
+    }
+
+    private abrirSelectorVisibilidad(): void {
+        this.selectorVisibilidadValorInicial = this.Personaje.visible_otros_usuarios ?? false;
+        this.modalSelectorVisibilidadAbierto = true;
+    }
+
+    private async finalizarPersonajeCompleto(): Promise<void> {
+        let etapa: 'sql' | 'firebase' | 'pdf' | 'navegacion' = 'sql';
+        this.finalizacionEnCurso = true;
+        try {
+            let idPersonaje = Math.trunc(Number(this.finalizacionState.idPersonaje ?? 0));
+
+            if (!this.finalizacionState.sqlOk) {
+                etapa = 'sql';
+                const contextoIds = this.resolverContextoIdsCreacion();
+                const payload = this.personajeSvc.construirPayloadCreacionDesdePersonaje(
+                    this.Personaje,
+                    this.obtenerUidSesionActiva(),
+                    contextoIds
+                );
+                const response = await this.personajeSvc.crearPersonajeApiDesdeCreacion(payload);
+                idPersonaje = Math.trunc(Number(response?.idPersonaje ?? 0));
+                if (!Number.isFinite(idPersonaje) || idPersonaje <= 0)
+                    throw new Error('La API no devolvio un id de personaje valido.');
+                this.finalizacionState.idPersonaje = idPersonaje;
+                this.finalizacionState.sqlOk = true;
+            }
+
+            if (!Number.isFinite(idPersonaje) || idPersonaje <= 0)
+                throw new Error('No hay id de personaje para continuar la finalizacion.');
+
+            this.Personaje.Id = idPersonaje;
+
+            if (!this.finalizacionState.firebaseOk) {
+                etapa = 'firebase';
+                await this.personajeSvc.guardarPersonajeEnFirebase(idPersonaje, this.Personaje);
+                this.finalizacionState.firebaseOk = true;
+            }
+
+            etapa = 'pdf';
+            await this.generarPdfsFinalizacion(idPersonaje);
+
+            etapa = 'navegacion';
+            this.modalSelectorVisibilidadAbierto = false;
+            this.selectorVisibilidadValorInicial = null;
+            this.personajeFinalizado.emit(idPersonaje);
+            this.resetearEstadoFinalizacion();
+        } catch (error: any) {
+            const texto = `${error?.message ?? 'Error no identificado'}`.trim();
+            const titulo = etapa === 'sql'
+                ? 'No se pudo guardar en SQL'
+                : etapa === 'firebase'
+                    ? 'No se pudo guardar en Firebase'
+                    : etapa === 'pdf'
+                        ? 'No se pudieron generar los PDFs'
+                        : 'No se pudo finalizar el personaje';
+            await Swal.fire({
+                icon: 'warning',
+                title: titulo,
+                text: texto.length > 0 ? texto : 'Reintenta la finalización.',
+                showConfirmButton: true,
+                target: document.body,
+                heightAuto: false,
+                scrollbarPadding: false,
+            });
+        } finally {
+            this.finalizacionEnCurso = false;
+        }
+    }
+
+    private async generarPdfsFinalizacion(idPersonaje: number): Promise<void> {
+        const pjNormalizado = this.personajeSvc.normalizarPersonajeParaPersistenciaFinal(this.Personaje, idPersonaje);
+        this.Personaje = pjNormalizado;
+
+        await this.fichaPersonajeSvc.generarPDF(pjNormalizado);
+
+        const tieneConjuros = (pjNormalizado.Conjuros ?? []).length > 0 || (pjNormalizado.Sortilegas ?? []).length > 0;
+        if (tieneConjuros)
+            await this.fichaPersonajeSvc.generarPDF_Conjuros(pjNormalizado);
+
+        const familiares = Array.isArray(pjNormalizado.Familiares) ? pjNormalizado.Familiares : [];
+        for (let i = 0; i < familiares.length; i++)
+            await this.fichaPersonajeSvc.generarPDF_Familiar(pjNormalizado, familiares[i], i);
+
+        const companeros = Array.isArray(pjNormalizado.Companeros) ? pjNormalizado.Companeros : [];
+        for (let i = 0; i < companeros.length; i++)
+            await this.fichaPersonajeSvc.generarPDF_Companero(pjNormalizado, companeros[i], i);
+    }
+
+    private resolverContextoIdsCreacion(): PersonajeContextoIdsDto {
+        const campanaNorm = this.normalizarTexto(this.Personaje.Campana ?? '');
+        const tramaNorm = this.normalizarTexto(this.Personaje.Trama ?? '');
+        const subtramaNorm = this.normalizarTexto(this.Personaje.Subtrama ?? '');
+        const campana = (this.Campanas ?? [])
+            .find((item) => this.normalizarTexto(item?.Nombre ?? '') === campanaNorm);
+
+        const trama = (campana?.Tramas ?? [])
+            .find((item) => this.normalizarTexto(item?.Nombre ?? '') === tramaNorm);
+        const subtrama = (trama?.Subtramas ?? [])
+            .find((item) => this.normalizarTexto(item?.Nombre ?? '') === subtramaNorm);
+
+        const idCampana = this.toPositiveInt(campana?.Id) ?? 1;
+        const idTrama = this.toPositiveInt(trama?.Id) ?? 1;
+        const idSubtrama = this.toPositiveInt(subtrama?.Id) ?? 1;
+        const ventajasCatalogo = [
+            ...(this.catalogoVentajas ?? []),
+            ...(this.catalogoDesventajas ?? []),
+        ];
+        return {
+            idCampana,
+            idTrama,
+            idSubtrama,
+            idAlineamiento: this.resolverIdAlineamientoCreacion(),
+            idDeidad: this.resolverIdDeidadCreacion(),
+            idGenero: this.resolverIdGeneroCreacion(),
+            idCarga: this.resolverIdCargaCreacion(),
+            idManiobrabilidad: this.toPositiveInt((this.Personaje as any)?.Raza?.Maniobrabilidad?.Id) ?? 0,
+            idEspArcana: this.resolverIdEscuelaEspecialistaCreacion(),
+            idEspPsionica: this.resolverIdDisciplinaEspecialistaCreacion(),
+            idDisProhibida: this.resolverIdDisciplinaProhibidaCreacion(),
+            catalogos: {
+                clases: this.mapearCatalogoNombreId(this.catalogoClases, (item) => item?.Id, (item) => item?.Nombre),
+                dominios: this.mapearCatalogoNombreId(this.catalogoDominios, (item) => item?.Id, (item) => item?.Nombre),
+                idiomas: this.mapearCatalogoNombreId(this.catalogoIdiomas, (item) => item?.Id, (item) => item?.Nombre),
+                ventajas: this.mapearCatalogoNombreId(ventajasCatalogo, (item) => item?.Id, (item) => item?.Nombre),
+                escuelas: this.mapearCatalogoNombreId(this.catalogoEscuelas, (item) => item?.Id, (item) => item?.Nombre),
+                disciplinas: this.mapearCatalogoNombreId(this.catalogoDisciplinas, (item) => item?.Id, (item) => item?.Nombre),
+            },
+        };
+    }
+
+    private mapearCatalogoNombreId<T>(
+        items: T[] | null | undefined,
+        getId: (item: T) => any,
+        getNombre: (item: T) => any
+    ): CatalogoNombreIdDto[] {
+        const salida: CatalogoNombreIdDto[] = [];
+        (items ?? []).forEach((item) => {
+            const id = this.toPositiveInt(getId(item));
+            const nombre = `${getNombre(item) ?? ''}`.trim();
+            if (!id || nombre.length < 1)
+                return;
+            salida.push({ id, nombre });
         });
+        return salida;
+    }
+
+    private resolverIdAlineamientoCreacion(): number | null {
+        const nombreNorm = this.normalizarTexto(this.Personaje?.Alineamiento ?? '');
+        const desdeCatalogo = (this.catalogoAlineamientosBasicos ?? [])
+            .find((item) => this.normalizarTexto(item?.Nombre ?? '') === nombreNorm);
+        const idCatalogo = this.toPositiveInt(desdeCatalogo?.Id);
+        if (idCatalogo)
+            return idCatalogo;
+
+        const fallback: Record<string, number> = {
+            'legal bueno': 1,
+            'legal neutral': 2,
+            'legal maligno': 3,
+            'neutral bueno': 4,
+            'neutral autentico': 5,
+            'neutral maligno': 6,
+            'caotico bueno': 7,
+            'caotico neutral': 8,
+            'caotico maligno': 9,
+        };
+        const idFallback = fallback[nombreNorm];
+        return this.toPositiveInt(idFallback);
+    }
+
+    private resolverIdDeidadCreacion(): number {
+        const deidadNorm = this.normalizarTexto(this.Personaje?.Deidad ?? '');
+        if (deidadNorm.length < 1 || deidadNorm === this.normalizarTexto(this.deidadSinSeleccion))
+            return 0;
+        const encontrada = (this.catalogoDeidades ?? [])
+            .find((item) => this.normalizarTexto(item?.Nombre ?? '') === deidadNorm);
+        return this.toPositiveInt(encontrada?.Id) ?? 0;
+    }
+
+    private resolverIdGeneroCreacion(): number | null {
+        const genero = this.normalizarTexto(this.Personaje?.Genero ?? '');
+        if (genero === 'macho')
+            return 1;
+        if (genero === 'hembra')
+            return 2;
+        if (genero === 'hermafrodita')
+            return 3;
+        if (genero === 'sin genero')
+            return 4;
+        return null;
+    }
+
+    private resolverIdCargaCreacion(): number {
+        const fuerza = Math.trunc(Number(this.Personaje?.Fuerza ?? 0));
+        if (!Number.isFinite(fuerza))
+            return 1;
+        if (fuerza >= 10)
+            return Math.min(fuerza - 9, 20);
+        return 1;
+    }
+
+    private resolverIdEscuelaEspecialistaCreacion(): number {
+        const nombreNorm = this.normalizarTexto((this.Personaje?.Escuela_especialista as any)?.Nombre ?? '');
+        if (nombreNorm.length < 1 || nombreNorm === 'no especifica')
+            return 0;
+        const escuela = (this.catalogoEscuelas ?? [])
+            .find((item) => this.normalizarTexto(item?.Nombre ?? '') === nombreNorm);
+        return this.toPositiveInt((escuela as any)?.Id) ?? 0;
+    }
+
+    private resolverIdDisciplinaEspecialistaCreacion(): number {
+        const nombreNorm = this.normalizarTexto((this.Personaje?.Disciplina_especialista as any)?.Nombre ?? '');
+        if (nombreNorm.length < 1 || nombreNorm === 'no especifica')
+            return 0;
+        const disciplina = (this.catalogoDisciplinas ?? [])
+            .find((item) => this.normalizarTexto(item?.Nombre ?? '') === nombreNorm);
+        return this.toPositiveInt((disciplina as any)?.Id) ?? 0;
+    }
+
+    private resolverIdDisciplinaProhibidaCreacion(): number {
+        const nombreNorm = this.normalizarTexto(this.Personaje?.Disciplina_prohibida ?? '');
+        if (nombreNorm.length < 1 || nombreNorm === 'ninguna' || nombreNorm === 'no especifica')
+            return 0;
+        const disciplina = (this.catalogoDisciplinas ?? [])
+            .find((item) => this.normalizarTexto(item?.Nombre ?? '') === nombreNorm);
+        return this.toPositiveInt((disciplina as any)?.Id) ?? 0;
+    }
+
+    private toPositiveInt(value: any): number | null {
+        const parsed = Math.trunc(Number(value));
+        if (!Number.isFinite(parsed) || parsed <= 0)
+            return null;
+        return parsed;
+    }
+
+    private resetearEstadoFinalizacion(): void {
+        this.finalizacionState = {
+            idPersonaje: null,
+            sqlOk: false,
+            firebaseOk: false,
+        };
     }
 
     onCambioPlantillaSelectorFamiliar(plantilla: FamiliarPlantillaId): void {
@@ -3434,8 +3735,11 @@ export class NuevoPersonajeComponent {
 
     private sincronizarOwnerUidEnCreacion(): void {
         const uid = this.obtenerUidSesionActiva();
+        const nombreSesion = this.obtenerNombreSesionActiva();
         if (uid.length > 0) {
             this.Personaje.ownerUid = uid;
+            if (nombreSesion.length > 0)
+                this.Personaje.Jugador = nombreSesion;
             return;
         }
 
@@ -3446,6 +3750,25 @@ export class NuevoPersonajeComponent {
     private obtenerUidSesionActiva(): string {
         try {
             return `${getAuth()?.currentUser?.uid ?? ''}`.trim();
+        } catch {
+            return '';
+        }
+    }
+
+    private obtenerNombreSesionActiva(): string {
+        try {
+            const user = getAuth()?.currentUser;
+            const displayName = `${user?.displayName ?? ''}`.trim();
+            if (displayName.length > 0)
+                return displayName;
+            const email = `${user?.email ?? ''}`.trim();
+            if (email.length > 0) {
+                const arroba = email.indexOf('@');
+                if (arroba > 0)
+                    return email.substring(0, arroba).trim();
+                return email;
+            }
+            return '';
         } catch {
             return '';
         }

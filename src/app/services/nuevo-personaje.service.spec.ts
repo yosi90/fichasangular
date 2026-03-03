@@ -5106,3 +5106,202 @@ describe('NuevoPersonajeService (tipo y subtipos derivados)', () => {
         expect(enemigos[0].veces).toBe(2);
     });
 });
+
+describe('NuevoPersonajeService (vida final)', () => {
+    function crearTipoVida(pierdeConstitucion = false): TipoCriatura {
+        return {
+            Id: 1,
+            Nombre: 'Humanoide',
+            Descripcion: '',
+            Manual: 'Manual',
+            Id_tipo_dado: 1,
+            Tipo_dado: 8,
+            Id_ataque: 1,
+            Id_fortaleza: 1,
+            Id_reflejos: 1,
+            Id_voluntad: 1,
+            Id_puntos_habilidad: 1,
+            Come: true,
+            Respira: true,
+            Duerme: true,
+            Recibe_criticos: true,
+            Puede_ser_flanqueado: true,
+            Pierde_constitucion: pierdeConstitucion,
+            Limite_inteligencia: 0,
+            Tesoro: 'Normal',
+            Id_alineamiento: 0,
+            Rasgos: [],
+            Oficial: true,
+        };
+    }
+
+    function crearRazaVida(tipo: TipoCriatura, dgs = 1): Raza {
+        return {
+            Id: 1,
+            Nombre: 'Raza vida',
+            Ajuste_nivel: 0,
+            Manual: 'Manual',
+            Clase_predilecta: '',
+            Modificadores: {
+                Fuerza: 0,
+                Destreza: 0,
+                Constitucion: 0,
+                Inteligencia: 0,
+                Sabiduria: 0,
+                Carisma: 0,
+            },
+            Alineamiento: {
+                Id: 0,
+                Basico: { Id_basico: 0, Nombre: 'Neutral autentico' },
+                Ley: { Id_ley: 0, Nombre: 'No aplica' },
+                Moral: { Id_moral: 0, Nombre: 'No aplica' },
+                Prioridad: { Id_prioridad: 0, Nombre: 'No aplica' },
+                Descripcion: '',
+            },
+            Oficial: true,
+            Ataques_naturales: '',
+            Tamano: { Id: 1, Nombre: 'Mediano', Modificador: 0, Modificador_presa: 0 } as any,
+            Dgs_adicionales: {
+                Cantidad: dgs,
+                Dado: 'd8',
+                Tipo_criatura: 'Humanoide',
+                Ataque_base: 0,
+                Dotes_extra: 0,
+                Puntos_habilidad: 0,
+                Multiplicador_puntos_habilidad: 1,
+                Fortaleza: 0,
+                Reflejos: 0,
+                Voluntad: 0,
+            },
+            Reduccion_dano: '',
+            Resistencia_magica: '',
+            Resistencia_energia: '',
+            Heredada: false,
+            Mutada: false,
+            Tamano_mutacion_dependiente: false,
+            Prerrequisitos: {
+                actitud_prohibido: [],
+                actitud_requerido: [],
+                alineamiento_prohibido: [],
+                alineamiento_requerido: [],
+                tipo_criatura: [],
+            },
+            Armadura_natural: 0,
+            Varios_armadura: 0,
+            Correr: 30,
+            Nadar: 0,
+            Volar: 0,
+            Maniobrabilidad: {
+                Id: 0,
+                Nombre: '-',
+                Velocidad_avance: '',
+                Flotar: 0,
+                Volar_atras: 0,
+                Contramarcha: 0,
+                Giro: '',
+                Rotacion: '',
+                Giro_max: '',
+                Angulo_ascenso: '',
+                Velocidad_ascenso: '',
+                Angulo_descenso: '',
+                Descenso_ascenso: 0,
+            },
+            Trepar: 0,
+            Escalar: 0,
+            Altura_rango_inf: 1.6,
+            Altura_rango_sup: 1.9,
+            Peso_rango_inf: 50,
+            Peso_rango_sup: 80,
+            Edad_adulto: 20,
+            Edad_mediana: 40,
+            Edad_viejo: 60,
+            Edad_venerable: 80,
+            Espacio: 5,
+            Alcance: 5,
+            Tipo_criatura: tipo,
+            Subtipos: [],
+            Sortilegas: [],
+            Raciales: [],
+            Habilidades: { Base: [], Custom: [] },
+            DotesContextuales: [],
+            Idiomas: [],
+        };
+    }
+
+    it('calcula vida con DG racial, clases y bonos de dote Pg_a/Pg_a_n', () => {
+        const svc = new NuevoPersonajeService();
+        const tipo = crearTipoVida(false);
+        const raza = crearRazaVida(tipo, 1);
+        const clase = crearClaseBase({
+            Id: 10,
+            Nombre: 'Guerrero',
+            Tipo_dado: { Id: 4, Nombre: 'd10' },
+        });
+        const randomSpy = spyOn<any>(svc, 'randomInt').and.returnValues(5, 7);
+
+        svc.setCatalogoClases([clase]);
+        svc.seleccionarRaza(raza);
+        svc.PersonajeCreacion.ModConstitucion = 2;
+        svc.PersonajeCreacion.desgloseClases = [{ Nombre: 'Guerrero', Nivel: 2 } as any];
+        svc.PersonajeCreacion.DotesContextuales = [{
+            Dote: { Modificadores: { Pg_a: 3, Pg_a_n: 1 } } as any,
+            Contexto: { Entidad: 'personaje', Id_personaje: 1, Id_extra: 0, Extra: 'No aplica', Origen: 'test' } as any,
+        }];
+
+        const resultado = svc.calcularVidaFinalAleatoria();
+
+        expect(randomSpy).toHaveBeenCalledTimes(2);
+        expect(resultado.total).toBe(45);
+        expect(resultado.maximo).toBe(73);
+        expect(resultado.detalle.bonoPlanoDotes).toBe(3);
+        expect(resultado.detalle.bonoPorDadoClaseDotes).toBe(1);
+    });
+
+    it('no aplica CON cuando el tipo pierde constitucion', () => {
+        const svc = new NuevoPersonajeService();
+        const tipo = crearTipoVida(true);
+        const raza = crearRazaVida(tipo, 0);
+        const clase = crearClaseBase({
+            Id: 11,
+            Nombre: 'Monje',
+            Tipo_dado: { Id: 3, Nombre: 'd8' },
+        });
+
+        svc.setCatalogoClases([clase]);
+        svc.seleccionarRaza(raza);
+        svc.PersonajeCreacion.ModConstitucion = 5;
+        svc.PersonajeCreacion.desgloseClases = [{ Nombre: 'Monje', Nivel: 1 } as any];
+
+        const resultado = svc.calcularVidaFinalAleatoria();
+
+        expect(resultado.total).toBe(18);
+        expect(resultado.maximo).toBe(18);
+        expect(resultado.detalle.constitucionAplicada).toBeFalse();
+        expect(resultado.detalle.modificadorConstitucion).toBe(0);
+    });
+
+    it('aplica clamp minimo de 1 a total y maximo', () => {
+        const svc = new NuevoPersonajeService();
+        const tipo = crearTipoVida(false);
+        const raza = crearRazaVida(tipo, 0);
+        const clase = crearClaseBase({
+            Id: 12,
+            Nombre: 'Mago',
+            Tipo_dado: { Id: 1, Nombre: 'd4' },
+        });
+
+        svc.setCatalogoClases([clase]);
+        svc.seleccionarRaza(raza);
+        svc.PersonajeCreacion.ModConstitucion = -10;
+        svc.PersonajeCreacion.desgloseClases = [{ Nombre: 'Mago', Nivel: 1 } as any];
+        svc.PersonajeCreacion.DotesContextuales = [{
+            Dote: { Modificadores: { Pg_a: -5 } } as any,
+            Contexto: { Entidad: 'personaje', Id_personaje: 1, Id_extra: 0, Extra: 'No aplica', Origen: 'test' } as any,
+        }];
+
+        const resultado = svc.calcularVidaFinalAleatoria();
+
+        expect(resultado.total).toBe(1);
+        expect(resultado.maximo).toBe(1);
+    });
+});

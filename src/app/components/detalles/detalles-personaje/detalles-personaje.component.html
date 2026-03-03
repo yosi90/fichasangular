@@ -4,6 +4,7 @@
             <div class="d-flex flex-wrap align-items-center sombra-caja-sm rounded p-2 my-2">
                 <mat-icon class="me-1">account_box</mat-icon>
                 <mat-chip class="warm m-1" *ngIf="tienePersonajeNombreVisible()">{{pj.Nombre}}</mat-chip>
+                <mat-chip class="warm m-1" *ngIf="mostrarChipCreador">Creador: {{etiquetaCreador}}</mat-chip>
                 <mat-chip class="m-1" *ngIf="tieneGeneroVisible()">{{pj.Genero}}</mat-chip>
                 <mat-chip class="m-1" *ngIf="tieneAlineamientoVisible()">{{pj.Alineamiento}}</mat-chip>
                 <mat-chip class="m-1" *ngIf="tieneNivelVisible()" [matTooltip]="nivelDisclaimer" matTooltipClass="tt-accent tt-multiline">Nivel {{nivelPersonaje}}</mat-chip>

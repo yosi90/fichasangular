@@ -1,0 +1,32 @@
+<div class="selector-overlay" (click)="onCerrar()">
+    <div class="selector-dialog" (click)="$event.stopPropagation()">
+        <h2 class="m-0 selector-title">Visibilidad del personaje</h2>
+        <p class="descripcion">Decide si este personaje sera visible solo para su creador o para todo el mundo.</p>
+
+        <div class="opciones">
+            <button
+                type="button"
+                class="opcion"
+                [class.activa]="seleccion === false"
+                [disabled]="bloqueado"
+                (click)="onSeleccionar(false)">
+                Solo para mi
+            </button>
+            <button
+                type="button"
+                class="opcion"
+                [class.activa]="seleccion === true"
+                [disabled]="bloqueado"
+                (click)="onSeleccionar(true)">
+                Todo el mundo
+            </button>
+        </div>
+
+        <div class="selector-actions">
+            <button mat-stroked-button type="button" [disabled]="bloqueado" (click)="onCerrar()">Cancelar</button>
+            <button mat-raised-button color="primary" type="button" [disabled]="!puedeConfirmar" (click)="onConfirmar()">
+                Confirmar
+            </button>
+        </div>
+    </div>
+</div>

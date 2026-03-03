@@ -1,4 +1,5 @@
-import { AfterViewInit, Component, DoCheck, ElementRef, EventEmitter, HostListener, Input, OnDestroy, OnInit, Output } from '@angular/core';
+import { AfterViewInit, Component, DoCheck, ElementRef, EventEmitter, HostListener, Input, OnChanges, OnDestroy, OnInit, Output, SimpleChanges } from '@angular/core';
+import { Database, get, ref } from '@angular/fire/database';
 import { AptitudSortilega } from 'src/app/interfaces/aptitud-sortilega';
 import { Clase } from 'src/app/interfaces/clase';
 import { Conjuro } from 'src/app/interfaces/conjuro';
@@ -39,7 +40,7 @@ interface VentajaReferenciaNormalizada {
     templateUrl: './detalles-personaje.component.html',
     styleUrls: ['./detalles-personaje.component.sass']
 })
-export class DetallesPersonajeComponent implements OnInit, AfterViewInit, OnDestroy, DoCheck {
+export class DetallesPersonajeComponent implements OnInit, OnChanges, AfterViewInit, OnDestroy, DoCheck {
     @Input() pj!: Personaje;
     @Input() clasesCatalogo: Clase[] = [];
     @Input() mostrarBotonGenerarPdf = true;
@@ -78,6 +79,8 @@ export class DetallesPersonajeComponent implements OnInit, AfterViewInit, OnDest
     cMedia: string = "0 Kilogramos";
     cPesada: string = "0 Kilogramos";
     actualizandoVisibilidad = false;
+    etiquetaCreador = 'Desconocido';
+    private ownerUidCargado = '';
     velDisclaimer: string = `
     Medido en pies
     5 pies equivalen a una casilla`;
@@ -87,6 +90,7 @@ export class DetallesPersonajeComponent implements OnInit, AfterViewInit, OnDest
         private fpSvc: FichaPersonajeService,
         private pSvc: PersonajeService,
         private userSvc: UserService,
+        private db: Database,
         private hostElement: ElementRef<HTMLElement>
     ) { }
 
@@ -101,6 +105,12 @@ export class DetallesPersonajeComponent implements OnInit, AfterViewInit, OnDest
         Desvio: ${this.pj.Ca_desvio > 0 ? this.pj.Ca_desvio : '0'}
         Varios: ${this.pj.Ca_varios > 0 ? this.pj.Ca_varios : '0'}
         `;
+        void this.actualizarEtiquetaCreador();
+    }
+
+    ngOnChanges(changes: SimpleChanges): void {
+        if (changes['pj'])
+            void this.actualizarEtiquetaCreador();
     }
 
     ngDoCheck(): void {
@@ -127,9 +137,16 @@ export class DetallesPersonajeComponent implements OnInit, AfterViewInit, OnDest
     }
 
     generarFicha() {
-        this.fpSvc.generarPDF(this.pj);
-        if(this.pj.Conjuros.length > 0 || this.pj.Sortilegas.length > 0)
-            this.fpSvc.generarPDF_Conjuros(this.pj);
+        const jugadorFicha = this.resolverNombreJugadorFicha();
+        const pjFicha: Personaje = {
+            ...this.pj,
+            Jugador: jugadorFicha,
+        };
+        this.fpSvc.generarPDF(pjFicha);
+        const conjuros = this.pj?.Conjuros ?? [];
+        const sortilegas = this.pj?.Sortilegas ?? [];
+        if (conjuros.length > 0 || sortilegas.length > 0)
+            this.fpSvc.generarPDF_Conjuros(pjFicha);
     }
 
     get mostrarControlVisibilidad(): boolean {
@@ -138,6 +155,10 @@ export class DetallesPersonajeComponent implements OnInit, AfterViewInit, OnDest
 
     get personajeVisiblePublicamente(): boolean {
         return this.toBoolean(this.pj?.visible_otros_usuarios);
+    }
+
+    get mostrarChipCreador(): boolean {
+        return !this.esPreviewNuevoPersonaje;
     }
 
     async actualizarVisibilidad(visible: boolean): Promise<void> {
@@ -179,6 +200,60 @@ export class DetallesPersonajeComponent implements OnInit, AfterViewInit, OnDest
 
     getTooltip_simples(titular: string, texto: string): string {
         return `${titular} ${texto}`;
+    }
+
+    private ownerUidNormalizado(): string {
+        return `${this.pj?.ownerUid ?? ''}`.trim();
+    }
+
+    private resolverNombreJugadorFicha(): string {
+        const jugadorActual = `${this.pj?.Jugador ?? ''}`.trim();
+        if (jugadorActual.length > 0)
+            return jugadorActual;
+
+        const etiqueta = `${this.etiquetaCreador ?? ''}`.trim();
+        if (etiqueta.length > 0 && etiqueta !== 'Desconocido' && etiqueta !== 'Tú')
+            return etiqueta;
+
+        const nombreSesion = `${this.userSvc?.Usuario?.nombre ?? ''}`.trim();
+        if (nombreSesion.length > 0 && nombreSesion !== 'Invitado')
+            return nombreSesion;
+
+        return '';
+    }
+
+    private async actualizarEtiquetaCreador(): Promise<void> {
+        const ownerUid = this.ownerUidNormalizado();
+        if (ownerUid.length < 1) {
+            this.etiquetaCreador = 'Desconocido';
+            this.ownerUidCargado = '';
+            return;
+        }
+
+        const uidActual = `${this.userSvc.CurrentUserUid ?? ''}`.trim();
+        if (uidActual.length > 0 && ownerUid === uidActual) {
+            this.etiquetaCreador = 'Tú';
+            this.ownerUidCargado = ownerUid;
+            return;
+        }
+
+        if (this.ownerUidCargado === ownerUid && this.etiquetaCreador.length > 0 && this.etiquetaCreador !== 'Tú')
+            return;
+
+        this.ownerUidCargado = ownerUid;
+        this.etiquetaCreador = ownerUid;
+
+        try {
+            const profileSnapshot = await get(ref(this.db, `UserProfiles/${ownerUid}`));
+            if (this.ownerUidNormalizado() !== ownerUid)
+                return;
+
+            const displayName = `${profileSnapshot.child('displayName').val() ?? ''}`.trim();
+            this.etiquetaCreador = displayName.length > 0 ? displayName : ownerUid;
+        } catch {
+            if (this.ownerUidNormalizado() === ownerUid)
+                this.etiquetaCreador = ownerUid;
+        }
     }
 
     private toNumber(value: any): number {

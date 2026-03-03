@@ -186,4 +186,15 @@ describe('TabControlComponent navegación por origen', () => {
         expect(component.detallesMonstruoAbiertos.length).toBe(0);
         expect((component as any).activeTabKey).toBe('raza:4');
     }));
+
+    it('onNuevoPersonajeFinalizado cierra nuevo personaje y abre detalles', () => {
+        const component = crearComponente();
+        const cerrarSpy = spyOn(component, 'quitarNuevoPersonaje');
+        const abrirSpy = spyOn(component, 'abrirDetallesPersonaje').and.resolveTo();
+
+        component.onNuevoPersonajeFinalizado(123);
+
+        expect(cerrarSpy).toHaveBeenCalled();
+        expect(abrirSpy).toHaveBeenCalledWith(123);
+    });
 });

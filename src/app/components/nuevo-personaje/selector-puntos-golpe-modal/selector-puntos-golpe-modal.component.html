@@ -1,0 +1,64 @@
+<div class="selector-overlay" (click)="onCerrar()">
+    <div class="selector-dialog" (click)="$event.stopPropagation()">
+        <div class="selector-header">
+            <h2 class="m-0 selector-title">Puntos de golpe</h2>
+            <mat-chip class="chip-estado" [ngClass]="tiradasAleatorias > 0 ? 'ok' : 'warm'">
+                {{mensajeAleatoriedad}}
+            </mat-chip>
+        </div>
+
+        <div class="contenido">
+            <p class="subtitulo">Parametros tomados en cuenta</p>
+            <div class="factores-grid">
+                <div class="factor-item" [class.activo]="factores.dadosGolpe">
+                    <mat-icon>{{factores.dadosGolpe ? 'check_circle' : 'radio_button_unchecked'}}</mat-icon>
+                    <span>Dados de golpe</span>
+                </div>
+                <div class="factor-item" [class.activo]="factores.dgsRacialesExtra">
+                    <mat-icon>{{factores.dgsRacialesExtra ? 'check_circle' : 'radio_button_unchecked'}}</mat-icon>
+                    <span>DGs raciales extra</span>
+                </div>
+                <div class="factor-item" [class.activo]="factores.plantillasDgsAdicionales">
+                    <mat-icon>{{factores.plantillasDgsAdicionales ? 'check_circle' : 'radio_button_unchecked'}}</mat-icon>
+                    <span>(Plantillas) DGs adicionales</span>
+                </div>
+                <div class="factor-item" [class.activo]="factores.plantillasAumentoReduccionDgs">
+                    <mat-icon>{{factores.plantillasAumentoReduccionDgs ? 'check_circle' : 'radio_button_unchecked'}}</mat-icon>
+                    <span>(Plantillas) Aumento/reduccion en DGs</span>
+                </div>
+                <div class="factor-item" [class.activo]="factores.plantillasActualizacionDgsRazaClase">
+                    <mat-icon>{{factores.plantillasActualizacionDgsRazaClase ? 'check_circle' : 'radio_button_unchecked'}}</mat-icon>
+                    <span>(Plantillas) Actualizacion DGs raza/clase</span>
+                </div>
+                <div class="factor-item" [class.activo]="factores.dotesSumaAdicionalDgs">
+                    <mat-icon>{{factores.dotesSumaAdicionalDgs ? 'check_circle' : 'radio_button_unchecked'}}</mat-icon>
+                    <span>(Dotes) Suma adicional de DGs</span>
+                </div>
+            </div>
+
+            <section class="resultado-section">
+                <p class="subtitulo subtitulo-final">Resultado final</p>
+                <div class="resultado-grid">
+                    <div class="resultado-box">
+                        <span class="resultado-label">Max. posible</span>
+                        <strong class="resultado-valor">{{maximo}}</strong>
+                    </div>
+                    <div class="resultado-box total">
+                        <span class="resultado-label">Total</span>
+                        <strong class="resultado-valor">{{total}}</strong>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <div class="selector-actions">
+            <button mat-stroked-button type="button" (click)="onCerrar()">Cancelar</button>
+            <button mat-stroked-button color="accent" type="button" [disabled]="!puedeRecalcular" (click)="onRecalcular()">
+                {{textoRecalcular}}
+            </button>
+            <button mat-raised-button color="primary" type="button" [disabled]="!puedeSiguiente" (click)="onSiguiente()">
+                Siguiente
+            </button>
+        </div>
+    </div>
+</div>

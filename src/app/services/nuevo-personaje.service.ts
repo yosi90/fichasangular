@@ -146,6 +146,28 @@ export interface GeneradorAutoResultado {
     tablaSeleccionada?: number;
 }
 
+export interface ResultadoCalculoVidaFinal {
+    total: number;
+    maximo: number;
+    detalle: {
+        constitucionAplicada: boolean;
+        modificadorConstitucion: number;
+        tiradasAleatorias: number;
+        dgsRaciales: number;
+        nivelesClase: number;
+        bonoPlanoDotes: number;
+        bonoPorDadoClaseDotes: number;
+        flags: {
+            dadosGolpe: boolean;
+            dgsRacialesExtra: boolean;
+            plantillasDgsAdicionales: boolean;
+            plantillasAumentoReduccionDgs: boolean;
+            plantillasActualizacionDgsRazaClase: boolean;
+            dotesSumaAdicionalDgs: boolean;
+        };
+    };
+}
+
 export type CaracteristicaKeyAumento = 'Fuerza' | 'Destreza' | 'Constitucion' | 'Inteligencia' | 'Sabiduria' | 'Carisma';
 type CaracteristicaKey = CaracteristicaKeyAumento;
 type SalvacionKey = 'fortaleza' | 'reflejos' | 'voluntad';
@@ -170,6 +192,19 @@ const FILAS_TIRADAS = MAX_TIRADA - MIN_TIRADA + 1;
 const GENERADOR_CONFIG_STORAGE_KEY = 'fichas35.nuevoPersonaje.generador.config.v1';
 const MAX_VENTAJAS_SELECCIONABLES = 3;
 const DADOS_PROGRESION = [4, 6, 8, 10, 12];
+const CLAVES_MOD_DOTE_PGS_PLANO = new Set<string>([
+    'pga',
+    'pgaadicional',
+    'puntosgolpe',
+    'puntosdegolpe',
+]);
+const CLAVES_MOD_DOTE_PGS_POR_DADO = new Set<string>([
+    'pgan',
+    'pgpornivel',
+    'pgpordg',
+    'pgadicionalpornivel',
+    'pgadicionalpordg',
+]);
 const CARGA_PESADA_BASE_POR_FUERZA: Record<number, number> = {
     1: 3,
     2: 6,
@@ -7484,8 +7519,230 @@ export class NuevoPersonajeService {
         };
     }
 
+    calcularVidaFinalAleatoria(): ResultadoCalculoVidaFinal {
+        const raza = this.razaSeleccionada;
+        const plantillas = this.estadoFlujo.plantillas.seleccionadas ?? [];
+        const dgsRaciales = Math.max(0, Math.trunc(this.toNumber(raza?.Dgs_adicionales?.Cantidad)));
+        const bonoDotes = this.resolverBonosPgsDesdeDotes();
+        const reglaConstitucion = this.resolverModConstitucionParaVida();
+
+        const flags = {
+            dadosGolpe: false,
+            dgsRacialesExtra: dgsRaciales > 0,
+            plantillasDgsAdicionales: false,
+            plantillasAumentoReduccionDgs: false,
+            plantillasActualizacionDgsRazaClase: false,
+            dotesSumaAdicionalDgs: bonoDotes.bonoPlano !== 0 || bonoDotes.bonoPorDadoClase !== 0,
+        };
+
+        let vida = 0;
+        let vidaMax = 0;
+        let tiradasAleatorias = 0;
+        let dadoRacial = this.resolverCarasDadoRacialParaVida(raza);
+        let overrideDadoClase: number | null = null;
+
+        plantillas.forEach((plantilla) => {
+            const dadoDirecto = this.resolverDadoDesdePlantilla(plantilla);
+            const pasoDado = Math.trunc(this.toNumber(plantilla?.Modificacion_dg?.Id_paso_modificacion));
+            const actualizaDg = this.toBooleanValue(plantilla?.Actualiza_dg);
+            const multiplicadorLic = Math.max(0, Math.trunc(this.toNumber(plantilla?.Licantronia_dg?.Multiplicador)));
+            const sumaLic = this.toNumber(plantilla?.Licantronia_dg?.Suma);
+
+            if (dadoDirecto > 0 && dadoDirecto > dadoRacial) {
+                dadoRacial = dadoDirecto;
+            } else if (pasoDado !== 0) {
+                // Paridad C#: tanto + como - terminan moviendo el dado hacia arriba.
+                dadoRacial = this.aplicarPasoDado(dadoRacial, Math.abs(pasoDado));
+            }
+
+            if (actualizaDg && dadoDirecto > 0)
+                overrideDadoClase = dadoDirecto;
+
+            flags.plantillasAumentoReduccionDgs = flags.plantillasAumentoReduccionDgs || pasoDado !== 0;
+            flags.plantillasActualizacionDgsRazaClase = flags.plantillasActualizacionDgsRazaClase || actualizaDg;
+            flags.plantillasDgsAdicionales = flags.plantillasDgsAdicionales || multiplicadorLic > 0 || sumaLic !== 0;
+        });
+
+        const dadoRacialCalculado = Math.max(1, Math.trunc(dadoRacial));
+        const maximoRacialPorDg = dadoRacialCalculado * 2 + 2 + reglaConstitucion.modificador;
+        for (let i = 0; i < dgsRaciales; i++) {
+            const tirada = this.randomInt(1, dadoRacialCalculado * 2 + 2);
+            vida += tirada + reglaConstitucion.modificador;
+            vidaMax += maximoRacialPorDg;
+            tiradasAleatorias++;
+        }
+
+        let nivelesClase = 0;
+        (this.personajeCreacion.desgloseClases ?? []).forEach((claseDesglose) => {
+            const nivel = Math.max(0, Math.trunc(this.toNumber(claseDesglose?.Nivel)));
+            if (nivel < 1)
+                return;
+
+            const nombreClase = `${claseDesglose?.Nombre ?? ''}`.trim();
+            const dadoClase = overrideDadoClase && overrideDadoClase > 0
+                ? overrideDadoClase
+                : this.resolverCarasDadoClaseParaVida(nombreClase, dadoRacialCalculado);
+            const dadoClaseCalculado = Math.max(1, Math.trunc(dadoClase));
+            const maximoClasePorDg = dadoClaseCalculado * 2 + 2 + reglaConstitucion.modificador + bonoDotes.bonoPorDadoClase;
+
+            vida += maximoClasePorDg;
+            vidaMax += maximoClasePorDg;
+            for (let i = 1; i < nivel; i++) {
+                const tirada = this.randomInt(1, dadoClaseCalculado * 2 + 2);
+                vida += tirada + reglaConstitucion.modificador + bonoDotes.bonoPorDadoClase;
+                vidaMax += maximoClasePorDg;
+                tiradasAleatorias++;
+            }
+
+            nivelesClase += nivel;
+            flags.dadosGolpe = true;
+        });
+
+        plantillas.forEach((plantilla) => {
+            const cantidadDgLic = Math.max(0, Math.trunc(this.toNumber(plantilla?.Licantronia_dg?.Multiplicador)));
+            const sumaDgLic = this.toNumber(plantilla?.Licantronia_dg?.Suma);
+            const dadoLic = this.resolverCarasDadoLicantronia(plantilla, dadoRacialCalculado);
+            const dadoLicCalculado = Math.max(1, Math.trunc(dadoLic));
+            const maximoLicPorDg = dadoLicCalculado * 2 + 2 + reglaConstitucion.modificador;
+
+            for (let i = 1; i < cantidadDgLic; i++)
+                vidaMax += maximoLicPorDg;
+
+            vidaMax += sumaDgLic;
+        });
+
+        vida += bonoDotes.bonoPlano;
+        vidaMax += bonoDotes.bonoPlano;
+
+        return {
+            total: Math.max(1, Math.trunc(vida)),
+            maximo: Math.max(1, Math.trunc(vidaMax)),
+            detalle: {
+                constitucionAplicada: reglaConstitucion.aplica,
+                modificadorConstitucion: reglaConstitucion.modificador,
+                tiradasAleatorias,
+                dgsRaciales,
+                nivelesClase,
+                bonoPlanoDotes: bonoDotes.bonoPlano,
+                bonoPorDadoClaseDotes: bonoDotes.bonoPorDadoClase,
+                flags,
+            },
+        };
+    }
+
     private randomInt(min: number, max: number): number {
         return Math.floor(Math.random() * (max - min + 1)) + min;
+    }
+
+    private resolverModConstitucionParaVida(): { aplica: boolean; modificador: number; } {
+        const pierdeConstitucion = this.toBooleanValue(this.personajeCreacion?.Tipo_criatura?.Pierde_constitucion)
+            || this.toBooleanValue(this.personajeCreacion?.Constitucion_perdida);
+        if (pierdeConstitucion)
+            return { aplica: false, modificador: 0 };
+        return {
+            aplica: true,
+            modificador: this.toNumber(this.personajeCreacion?.ModConstitucion),
+        };
+    }
+
+    private resolverCarasDadoRacialParaVida(raza: Raza | null): number {
+        const dadoRaza = this.resolverCarasDadoDesdeTexto(`${raza?.Dgs_adicionales?.Dado ?? ''}`);
+        if (dadoRaza > 0)
+            return dadoRaza;
+
+        const dadoPreview = Math.trunc(this.toNumber(this.personajeCreacion?.Dados_golpe));
+        if (dadoPreview > 0)
+            return dadoPreview;
+
+        const dadoTipo = this.resolverDadoGolpeTipoActual();
+        if (dadoTipo > 0)
+            return dadoTipo;
+
+        return 8;
+    }
+
+    private resolverCarasDadoClaseParaVida(nombreClase: string, fallback: number): number {
+        const nombreNorm = this.normalizarTexto(nombreClase);
+        const clase = (this.catalogoClases ?? [])
+            .find((item) => this.normalizarTexto(item?.Nombre ?? '') === nombreNorm) ?? null;
+        const dadoClase = this.resolverCarasDadoClase(clase);
+        if (dadoClase > 0)
+            return dadoClase;
+        return Math.max(1, Math.trunc(this.toNumber(fallback)));
+    }
+
+    private resolverCarasDadoClase(clase: Clase | null): number {
+        if (!clase)
+            return 0;
+
+        const porNombre = this.resolverCarasDadoDesdeTexto(`${clase?.Tipo_dado?.Nombre ?? ''}`);
+        if (porNombre > 0)
+            return porNombre;
+
+        const idTipo = Math.trunc(this.toNumber(clase?.Tipo_dado?.Id));
+        if (idTipo > 0) {
+            const idx = Math.max(0, Math.min(DADOS_PROGRESION.length - 1, idTipo - 1));
+            return DADOS_PROGRESION[idx];
+        }
+
+        return 0;
+    }
+
+    private resolverCarasDadoLicantronia(plantilla: Plantilla, fallback: number): number {
+        const porNombre = this.resolverCarasDadoDesdeTexto(`${plantilla?.Licantronia_dg?.Dado ?? ''}`);
+        if (porNombre > 0)
+            return porNombre;
+
+        const idDado = Math.trunc(this.toNumber(plantilla?.Licantronia_dg?.Id_dado));
+        if (idDado > 0) {
+            const idx = Math.max(0, Math.min(DADOS_PROGRESION.length - 1, idDado - 1));
+            return DADOS_PROGRESION[idx];
+        }
+
+        const porPlantilla = this.resolverDadoDesdePlantilla(plantilla);
+        if (porPlantilla > 0)
+            return porPlantilla;
+
+        return Math.max(1, Math.trunc(this.toNumber(fallback)));
+    }
+
+    private resolverCarasDadoDesdeTexto(valor: string): number {
+        const match = `${valor ?? ''}`.match(/d\s*(\d+)/i);
+        if (!match || !match[1])
+            return 0;
+        const caras = Math.trunc(this.toNumber(match[1]));
+        if (caras <= 0)
+            return 0;
+        return caras;
+    }
+
+    private resolverBonosPgsDesdeDotes(): { bonoPlano: number; bonoPorDadoClase: number; } {
+        let bonoPlano = 0;
+        let bonoPorDadoClase = 0;
+
+        (this.personajeCreacion.DotesContextuales ?? []).forEach((entrada) => {
+            const mods = (entrada?.Dote?.Modificadores ?? {}) as Record<string, any>;
+            bonoPlano += this.sumarModificadorDotePorClaves(mods, CLAVES_MOD_DOTE_PGS_PLANO);
+            bonoPorDadoClase += this.sumarModificadorDotePorClaves(mods, CLAVES_MOD_DOTE_PGS_POR_DADO);
+        });
+
+        return {
+            bonoPlano: Math.trunc(bonoPlano),
+            bonoPorDadoClase: Math.trunc(bonoPorDadoClase),
+        };
+    }
+
+    private sumarModificadorDotePorClaves(mods: Record<string, any>, claves: Set<string>): number {
+        return Object.entries(mods ?? {}).reduce((acumulado, [clave, valor]) => {
+            const claveNormalizada = this.normalizarClaveModificadorDote(clave);
+            if (!claves.has(claveNormalizada))
+                return acumulado;
+            return acumulado + this.toNumber(valor);
+        }, 0);
+    }
+
+    private normalizarClaveModificadorDote(clave: string): string {
+        return this.normalizarTexto(`${clave ?? ''}`).replace(/[^a-z0-9]/g, '');
     }
 
     private calcularModificador(valor: number): number {

@@ -1095,4 +1095,24 @@
             (confirmar)="onConfirmarRacialesOpcionales($event)">
         </app-selector-raciales-opcionales-modal>
     </ng-container>
+
+    <ng-container *ngIf="modalSelectorPuntosGolpeAbierto">
+        <app-selector-puntos-golpe-modal
+            [resultado]="resultadoVidaActual"
+            [tiradasRestantes]="tiradasVidaRestantes"
+            [tiradasTotales]="tiradasVidaTotales"
+            (recalcular)="onRecalcularPuntosGolpe()"
+            (siguiente)="onSiguientePuntosGolpe()"
+            (cerrar)="onCerrarSelectorPuntosGolpe()">
+        </app-selector-puntos-golpe-modal>
+    </ng-container>
+
+    <ng-container *ngIf="modalSelectorVisibilidadAbierto">
+        <app-selector-visibilidad-personaje-modal
+            [seleccionInicial]="selectorVisibilidadValorInicial"
+            [bloqueado]="finalizacionEnCurso"
+            (confirmar)="onConfirmarSelectorVisibilidad($event)"
+            (cerrar)="onCerrarSelectorVisibilidad()">
+        </app-selector-visibilidad-personaje-modal>
+    </ng-container>
 </div>

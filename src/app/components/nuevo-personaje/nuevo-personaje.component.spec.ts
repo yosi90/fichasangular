@@ -562,6 +562,8 @@ describe('NuevoPersonajeComponent', () => {
     let tipoCriaturaSvcMock: any;
     let monstruoSvcMock: any;
     let especialSvcMock: any;
+    let personajeSvcMock: any;
+    let fichaPersonajeSvcMock: any;
 
     beforeEach(() => {
         nuevoPSvc = new NuevoPersonajeService();
@@ -644,6 +646,26 @@ describe('NuevoPersonajeComponent', () => {
         especialSvcMock = {
             getEspeciales: () => of([]),
         };
+        personajeSvcMock = {
+            construirPayloadCreacionDesdePersonaje: jasmine.createSpy('construirPayloadCreacionDesdePersonaje').and.returnValue({ uid: 'uid-1' }),
+            crearPersonajeApiDesdeCreacion: jasmine.createSpy('crearPersonajeApiDesdeCreacion').and.resolveTo({
+                message: 'ok',
+                idPersonaje: 123,
+                idJugador: 10,
+                uid: 'uid-1',
+            }),
+            guardarPersonajeEnFirebase: jasmine.createSpy('guardarPersonajeEnFirebase').and.resolveTo(),
+            normalizarPersonajeParaPersistenciaFinal: jasmine.createSpy('normalizarPersonajeParaPersistenciaFinal').and.callFake((pj: any, id: number) => ({
+                ...pj,
+                Id: id,
+            })),
+        };
+        fichaPersonajeSvcMock = {
+            generarPDF: jasmine.createSpy('generarPDF').and.resolveTo(),
+            generarPDF_Conjuros: jasmine.createSpy('generarPDF_Conjuros').and.resolveTo(),
+            generarPDF_Familiar: jasmine.createSpy('generarPDF_Familiar').and.resolveTo(),
+            generarPDF_Companero: jasmine.createSpy('generarPDF_Companero').and.resolveTo(),
+        };
         component = new NuevoPersonajeComponent(
             nuevoPSvc,
             campanaSvcMock,
@@ -667,7 +689,9 @@ describe('NuevoPersonajeComponent', () => {
             deidadSvcMock,
             tipoCriaturaSvcMock,
             monstruoSvcMock,
-            especialSvcMock
+            especialSvcMock,
+            personajeSvcMock,
+            fichaPersonajeSvcMock
         );
         component.Personaje = nuevoPSvc.PersonajeCreacion;
         component.catalogoDeidades = crearDeidadesMock();
@@ -3532,14 +3556,213 @@ describe('NuevoPersonajeComponent', () => {
         expect(component.mostrarBotonFinalizarCreacion).toBeTrue();
     });
 
-    it('onFinalizarCreacionTemporal pregunta visibilidad y guarda preferencia', async () => {
-        const swalSpy = spyOn(Swal, 'fire').and.resolveTo({ isConfirmed: true, isDenied: false } as any);
+    it('onFinalizarCreacionTemporal abre selector de PG y realiza tirada inicial', async () => {
+        component.Personaje.desgloseClases = [{ Nombre: 'Mago', Nivel: 1 } as any];
+        const vidaSpy = spyOn(nuevoPSvc, 'calcularVidaFinalAleatoria').and.returnValue({
+            total: 18,
+            maximo: 18,
+            detalle: {
+                constitucionAplicada: true,
+                modificadorConstitucion: 1,
+                tiradasAleatorias: 1,
+                dgsRaciales: 0,
+                nivelesClase: 1,
+                bonoPlanoDotes: 0,
+                bonoPorDadoClaseDotes: 0,
+                flags: {
+                    dadosGolpe: true,
+                    dgsRacialesExtra: false,
+                    plantillasDgsAdicionales: false,
+                    plantillasAumentoReduccionDgs: false,
+                    plantillasActualizacionDgsRazaClase: false,
+                    dotesSumaAdicionalDgs: false,
+                },
+            },
+        });
 
         await component.onFinalizarCreacionTemporal();
 
-        expect(swalSpy).toHaveBeenCalled();
-        expect((swalSpy.calls.first().args[0] as any).title).toContain('Visibilidad');
+        expect(vidaSpy).toHaveBeenCalledTimes(1);
+        expect(component.modalSelectorPuntosGolpeAbierto).toBeTrue();
+        expect(component.tiradasVidaRestantes).toBe(2);
+        expect(component.resultadoVidaActual?.total).toBe(18);
+    });
+
+    it('recalcular PG consume intentos y se bloquea al llegar a cero', () => {
+        component.modalSelectorPuntosGolpeAbierto = true;
+        component.tiradasVidaRestantes = 2;
+        spyOn(nuevoPSvc, 'calcularVidaFinalAleatoria').and.returnValues(
+            {
+                total: 15,
+                maximo: 20,
+                detalle: {
+                    constitucionAplicada: true,
+                    modificadorConstitucion: 0,
+                    tiradasAleatorias: 1,
+                    dgsRaciales: 0,
+                    nivelesClase: 1,
+                    bonoPlanoDotes: 0,
+                    bonoPorDadoClaseDotes: 0,
+                    flags: {
+                        dadosGolpe: true,
+                        dgsRacialesExtra: false,
+                        plantillasDgsAdicionales: false,
+                        plantillasAumentoReduccionDgs: false,
+                        plantillasActualizacionDgsRazaClase: false,
+                        dotesSumaAdicionalDgs: false,
+                    },
+                },
+            } as any,
+            {
+                total: 16,
+                maximo: 20,
+                detalle: {
+                    constitucionAplicada: true,
+                    modificadorConstitucion: 0,
+                    tiradasAleatorias: 1,
+                    dgsRaciales: 0,
+                    nivelesClase: 1,
+                    bonoPlanoDotes: 0,
+                    bonoPorDadoClaseDotes: 0,
+                    flags: {
+                        dadosGolpe: true,
+                        dgsRacialesExtra: false,
+                        plantillasDgsAdicionales: false,
+                        plantillasAumentoReduccionDgs: false,
+                        plantillasActualizacionDgsRazaClase: false,
+                        dotesSumaAdicionalDgs: false,
+                    },
+                },
+            } as any
+        );
+
+        component.onRecalcularPuntosGolpe();
+        expect(component.tiradasVidaRestantes).toBe(1);
+
+        component.onRecalcularPuntosGolpe();
+        expect(component.tiradasVidaRestantes).toBe(0);
+
+        component.onRecalcularPuntosGolpe();
+        expect(component.tiradasVidaRestantes).toBe(0);
+    });
+
+    it('Siguiente en PG abre selector de visibilidad y confirmar visibilidad dispara finalizacion completa', async () => {
+        component.modalSelectorPuntosGolpeAbierto = true;
+        component.resultadoVidaActual = {
+            total: 27,
+            maximo: 31,
+            detalle: {
+                constitucionAplicada: true,
+                modificadorConstitucion: 2,
+                tiradasAleatorias: 1,
+                dgsRaciales: 1,
+                nivelesClase: 1,
+                bonoPlanoDotes: 0,
+                bonoPorDadoClaseDotes: 0,
+                flags: {
+                    dadosGolpe: true,
+                    dgsRacialesExtra: true,
+                    plantillasDgsAdicionales: false,
+                    plantillasAumentoReduccionDgs: false,
+                    plantillasActualizacionDgsRazaClase: false,
+                    dotesSumaAdicionalDgs: false,
+                },
+            },
+        };
+
+        component.onSiguientePuntosGolpe();
+        expect(component.Personaje.Vida).toBe(27);
+        expect(component.modalSelectorPuntosGolpeAbierto).toBeFalse();
+        expect(component.modalSelectorVisibilidadAbierto).toBeTrue();
+
+        const emitSpy = spyOn(component.personajeFinalizado, 'emit');
+        await component.onConfirmarSelectorVisibilidad(true);
+        expect(component.Personaje.visible_otros_usuarios).toBeTrue();
+        expect(personajeSvcMock.crearPersonajeApiDesdeCreacion).toHaveBeenCalledTimes(1);
+        expect(personajeSvcMock.guardarPersonajeEnFirebase).toHaveBeenCalledTimes(1);
+        expect(fichaPersonajeSvcMock.generarPDF).toHaveBeenCalledTimes(1);
+        expect(emitSpy).toHaveBeenCalledWith(123);
+        expect(component.modalSelectorVisibilidadAbierto).toBeFalse();
+    });
+
+    it('cerrar selector visibilidad no altera la preferencia actual', () => {
+        component.Personaje.visible_otros_usuarios = false;
+        component.modalSelectorVisibilidadAbierto = true;
+        component.onCerrarSelectorVisibilidad();
         expect(component.Personaje.visible_otros_usuarios).toBeFalse();
+        expect(component.modalSelectorVisibilidadAbierto).toBeFalse();
+    });
+
+    it('si falla Firebase tras SQL ok, reintentar no repite POST /personajes/add', async () => {
+        component.modalSelectorVisibilidadAbierto = true;
+        personajeSvcMock.crearPersonajeApiDesdeCreacion.and.resolveTo({
+            message: 'ok',
+            idPersonaje: 456,
+            idJugador: 9,
+            uid: 'uid-1',
+        });
+        personajeSvcMock.guardarPersonajeEnFirebase.and.returnValues(
+            Promise.reject(new Error('firebase caido')),
+            Promise.resolve()
+        );
+        spyOn(Swal, 'fire').and.resolveTo({ isConfirmed: true } as any);
+        const emitSpy = spyOn(component.personajeFinalizado, 'emit');
+
+        await component.onConfirmarSelectorVisibilidad(true);
+        expect(personajeSvcMock.crearPersonajeApiDesdeCreacion).toHaveBeenCalledTimes(1);
+        expect(component.finalizacionState.sqlOk).toBeTrue();
+        expect(component.finalizacionState.firebaseOk).toBeFalse();
+        expect(emitSpy).not.toHaveBeenCalled();
+
+        await component.onConfirmarSelectorVisibilidad(true);
+        expect(personajeSvcMock.crearPersonajeApiDesdeCreacion).toHaveBeenCalledTimes(1);
+        expect(personajeSvcMock.guardarPersonajeEnFirebase).toHaveBeenCalledTimes(2);
+        expect(emitSpy).toHaveBeenCalledWith(456);
+    });
+
+    it('genera solo ficha cuando no hay conjuros, familiares ni compañeros', async () => {
+        component.modalSelectorVisibilidadAbierto = true;
+        component.Personaje.Conjuros = [];
+        component.Personaje.Sortilegas = [];
+        component.Personaje.Familiares = [];
+        component.Personaje.Companeros = [];
+
+        await component.onConfirmarSelectorVisibilidad(true);
+
+        expect(fichaPersonajeSvcMock.generarPDF).toHaveBeenCalledTimes(1);
+        expect(fichaPersonajeSvcMock.generarPDF_Conjuros).not.toHaveBeenCalled();
+        expect(fichaPersonajeSvcMock.generarPDF_Familiar).not.toHaveBeenCalled();
+        expect(fichaPersonajeSvcMock.generarPDF_Companero).not.toHaveBeenCalled();
+    });
+
+    it('genera PDFs condicionales de conjuros, familiar y compañero cuando existen', async () => {
+        component.modalSelectorVisibilidadAbierto = true;
+        component.Personaje.Conjuros = [{ Id: 1, Nombre: 'Luz' } as any];
+        component.Personaje.Sortilegas = [];
+        component.Personaje.Familiares = [{ Id: 11, Nombre: 'Cuervo' } as any];
+        component.Personaje.Companeros = [{ Id: 21, Nombre: 'Lobo' } as any];
+
+        await component.onConfirmarSelectorVisibilidad(true);
+
+        expect(fichaPersonajeSvcMock.generarPDF).toHaveBeenCalledTimes(1);
+        expect(fichaPersonajeSvcMock.generarPDF_Conjuros).toHaveBeenCalledTimes(1);
+        expect(fichaPersonajeSvcMock.generarPDF_Familiar).toHaveBeenCalledTimes(1);
+        expect(fichaPersonajeSvcMock.generarPDF_Companero).toHaveBeenCalledTimes(1);
+    });
+
+    it('bloquea cierre del modal de visibilidad cuando hay finalizacion parcial', () => {
+        const swalSpy = spyOn(Swal, 'fire').and.resolveTo({ isConfirmed: true } as any);
+        component.modalSelectorVisibilidadAbierto = true;
+        component.finalizacionState = {
+            idPersonaje: 123,
+            sqlOk: true,
+            firebaseOk: false,
+        };
+
+        component.onCerrarSelectorVisibilidad();
+
+        expect(component.modalSelectorVisibilidadAbierto).toBeTrue();
+        expect(swalSpy).toHaveBeenCalled();
     });
 
     it('chip homebrew queda bloqueado cuando el personaje no es oficial', () => {
@@ -3576,7 +3799,9 @@ describe('NuevoPersonajeComponent', () => {
             deidadSvcMock,
             tipoCriaturaSvcMock,
             monstruoSvcMock,
-            especialSvcMock
+            especialSvcMock,
+            personajeSvcMock,
+            fichaPersonajeSvcMock
         );
         componentReabierto.ngOnInit();
 

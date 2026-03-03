@@ -14,6 +14,7 @@ class AdminUsersServiceTestDouble extends AdminUsersService {
     setCalls: Array<{ path: string; payload: any; }> = [];
     upsertCalls: UsuarioUpsertRequestDto[] = [];
     upsertError: Error | null = null;
+    upsertErrorByUid: Record<string, Error> = {};
 
     constructor(authMock: Partial<Auth> = {}) {
         super({} as Database, authMock as Auth, {} as UsuariosApiService);
@@ -71,15 +72,19 @@ class AdminUsersServiceTestDouble extends AdminUsersService {
     }
 
     protected override async upsertUserApi(payload: UsuarioUpsertRequestDto): Promise<UsuarioUpsertResponseDto> {
+        const uid = `${payload.uid ?? payload.firebaseUid ?? ''}`.trim();
+        const errorByUid = this.upsertErrorByUid[uid];
+        if (errorByUid)
+            throw errorByUid;
         if (this.upsertError)
             throw this.upsertError;
         this.upsertCalls.push(payload);
         return {
             status: 'updated',
             userId: 'u-test',
-            uid: `${payload.uid ?? payload.firebaseUid ?? ''}`,
+            uid,
             acl: {
-                uid: `${payload.uid ?? payload.firebaseUid ?? ''}`,
+                uid,
                 role: (payload.role ?? 'usuario'),
                 admin: payload.role === 'admin',
                 banned: payload.banned === true,
@@ -326,5 +331,94 @@ describe('AdminUsersService', () => {
 
         await expectAsync(service.assertAdminAccess())
             .toBeRejectedWithError('Salvaguarda activada: hay múltiples admins en Firebase. Operación bloqueada.');
+    });
+
+    it('syncAllUsersToApiFromCache reenvia todos los usuarios cacheados a API', async () => {
+        const service = new AdminUsersServiceTestDouble({ currentUser: { uid: 'admin-1' } as any });
+        service.seedPath('Acl/users', {
+            'admin-1': {
+                roles: { admin: true, type: 'admin' },
+                status: { banned: false },
+                permissions: { personajes: { create: true } },
+            },
+            'u2': {
+                roles: { admin: false, type: 'colaborador' },
+                status: { banned: false },
+                permissions: { personajes: { create: true }, dotes: { create: true } },
+            },
+        });
+        service.seedPath('UserProfiles', {
+            'admin-1': {
+                uid: 'admin-1',
+                displayName: 'Admin',
+                email: 'admin@test.com',
+                authProvider: 'correo',
+            },
+            'u2': {
+                uid: 'u2',
+                displayName: 'Usuario Dos',
+                email: 'u2@test.com',
+                authProvider: 'google',
+            },
+            'u3': {
+                uid: 'u3',
+                displayName: 'Usuario Tres',
+                email: 'u3@test.com',
+                authProvider: 'correo',
+            },
+        });
+
+        const result = await service.syncAllUsersToApiFromCache();
+
+        expect(result.total).toBe(3);
+        expect(result.success).toBe(3);
+        expect(result.failed).toBe(0);
+        expect(service.upsertCalls.length).toBe(3);
+        const adminPayload = service.upsertCalls.find((item) => item.uid === 'admin-1');
+        expect(adminPayload?.role).toBe('admin');
+        expect(adminPayload?.permissionsCreate).toBeUndefined();
+        const u2Payload = service.upsertCalls.find((item) => item.uid === 'u2');
+        const dotes = u2Payload?.permissionsCreate?.find((item) => item.resource === 'dotes');
+        expect(dotes?.allowed).toBeTrue();
+    });
+
+    it('syncAllUsersToApiFromCache informa fallos parciales y continua', async () => {
+        const service = new AdminUsersServiceTestDouble({ currentUser: { uid: 'admin-1' } as any });
+        service.seedPath('Acl/users', {
+            'admin-1': {
+                roles: { admin: true, type: 'admin' },
+                status: { banned: false },
+                permissions: { personajes: { create: true } },
+            },
+            'u2': {
+                roles: { admin: false, type: 'usuario' },
+                status: { banned: false },
+                permissions: { personajes: { create: true } },
+            },
+        });
+        service.seedPath('UserProfiles', {
+            'admin-1': {
+                uid: 'admin-1',
+                displayName: 'Admin',
+                email: 'admin@test.com',
+                authProvider: 'correo',
+            },
+            'u2': {
+                uid: 'u2',
+                displayName: 'Usuario Dos',
+                email: 'u2@test.com',
+                authProvider: 'correo',
+            },
+        });
+        service.upsertErrorByUid['u2'] = new Error('Error forzado');
+
+        const result = await service.syncAllUsersToApiFromCache();
+
+        expect(result.total).toBe(2);
+        expect(result.success).toBe(1);
+        expect(result.failed).toBe(1);
+        expect(result.failedUids).toEqual(['u2']);
+        expect(service.upsertCalls.length).toBe(1);
+        expect(service.upsertCalls[0].uid).toBe('admin-1');
     });
 });
