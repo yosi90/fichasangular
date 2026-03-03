@@ -7407,6 +7407,8 @@ export class NuevoPersonajeService {
             },
             Dominios: [],
             Plantillas: [],
+            Familiares: [],
+            Companeros: [],
             Conjuros: [],
             Claseas: [],
             Raciales: [],

@@ -4,7 +4,7 @@ Fecha de generacion: 2026-02-24
 
 Resumen
 - Base URL (local): `http://127.0.0.1:5000`
-- Prefijos registrados: `/verify`, `/usuarios`, `/personajes`, `/razas`, `/razas/raciales`, `/subtipos`, `/campanas`, `/tramas`, `/subtramas`, `/manuales`, `/manuales/asociados`, `/tiposCriatura`, `/rasgos`, `/conjuros`, `/escuelas`, `/disciplinas`, `/alineamientos`, `/habilidades`, `/idiomas`, `/enemigos-predilectos`, `/armas`, `/armaduras`, `/grupos-armas`, `/grupos-armaduras`, `/dominios`, `/ambitos`, `/pabellones`, `/deidades`, `/dotes`, `/clases`, `/clases/habilidades`, `/plantillas`, `/ventajas`, `/desventajas`
+- Prefijos registrados: `/verify`, `/usuarios`, `/personajes`, `/razas`, `/razas/raciales`, `/subtipos`, `/campanas`, `/tramas`, `/subtramas`, `/manuales`, `/manuales/asociados`, `/monstruos`, `/familiares`, `/companeros`, `/tiposCriatura`, `/rasgos`, `/conjuros`, `/escuelas`, `/disciplinas`, `/alineamientos`, `/habilidades`, `/idiomas`, `/enemigos-predilectos`, `/armas`, `/armaduras`, `/grupos-armas`, `/grupos-armaduras`, `/dominios`, `/ambitos`, `/pabellones`, `/deidades`, `/dotes`, `/clases`, `/clases/habilidades`, `/plantillas`, `/ventajas`, `/desventajas`
 - Autenticacion: no hay autenticacion en el backend.
 - Content-Type esperado: `application/json`
 - CORS habilitado para: `https://rol.yosiftware.es/`, `https://www.rol.yosiftware.es/`, `https://62.43.222.28`, `http://192.168.0.34`
@@ -40,6 +40,14 @@ Lista de endpoints
 | GET | /manuales/asociados | Lista de manuales con asociados | Implementado |
 | GET | /manuales/asociados/<id_manual> | Manual con asociados por id | Implementado |
 | POST | /manuales/add | Crear manual | No implementado (funcion `pass`) |
+| GET | /monstruos | Lista completa de monstruos | Implementado |
+| GET | /monstruos/<id_monstruo> | Monstruo completo por id | Implementado |
+| GET | /familiares | Lista completa de familiares mergeados | Implementado |
+| GET | /familiares/<id_familiar> | Familiar mergeado por id | Implementado |
+| GET | /familiares/personaje/<id_personaje> | Familiares de un personaje | Implementado |
+| GET | /companeros | Lista completa de companeros mergeados | Implementado |
+| GET | /companeros/<id_companero> | Companero mergeado por id | Implementado |
+| GET | /companeros/personaje/<id_personaje> | Companeros de un personaje | Implementado |
 | GET | /tiposCriatura | Lista de tipos de criatura | Implementado |
 | POST | /tiposCriatura/add | Crear tipo de criatura | No implementado (funcion `pass`) |
 | GET | /rasgos | Lista de rasgos | Implementado |
@@ -252,6 +260,8 @@ PersonajeDetalle
 | dom | string | Lista serializada de dominios separada por `| ` |
 | stc | string | Lista serializada de subtipos separada por `| ` |
 | subtipos | array | Lista de `SubtipoRef` (`{ Id, Nombre }`) |
+| familiares | array | Lista de `FamiliarMonstruoDetalle` asociados al personaje |
+| companeros | array | Lista de `CompaneroMonstruoDetalle` asociados al personaje |
 | pla | array | Lista de `PlantillaPersonaje` |
 | con | array | Lista de `ConjuroDetalle` |
 | esp | array | Lista de especiales (nombre) |
@@ -593,6 +603,204 @@ SubtipoRef
 | Campo | Tipo | Descripcion |
 | --- | --- | --- |
 | Id | number | Id de subtipo |
+| Nombre | string | Nombre |
+
+Endpoint: GET /monstruos
+Respuesta: array de `MonstruoDetalle`
+
+Endpoint: GET /monstruos/<id_monstruo>
+Parametros de path
+| Campo | Tipo | Descripcion |
+| --- | --- | --- |
+| id_monstruo | number | Id de monstruo |
+
+Respuesta: objeto `MonstruoDetalle`
+
+Respuesta 404 (ejemplo)
+```json
+{
+  "error": "Monstruo no encontrado",
+  "id_monstruo": 123
+}
+```
+
+Endpoint: GET /familiares
+Respuesta: array de `FamiliarMonstruoDetalle`
+
+Endpoint: GET /familiares/<id_familiar>
+Parametros de path
+| Campo | Tipo | Descripcion |
+| --- | --- | --- |
+| id_familiar | number | Id de familiar |
+
+Respuesta: objeto `FamiliarMonstruoDetalle`
+
+Respuesta 404 (ejemplo)
+```json
+{
+  "error": "Familiar no encontrado",
+  "id_familiar": 123
+}
+```
+
+Endpoint: GET /familiares/personaje/<id_personaje>
+Respuesta: array de `FamiliarMonstruoDetalle` filtrado por personaje.
+En este endpoint, `Personajes` solo contiene el personaje solicitado.
+
+Endpoint: GET /companeros
+Respuesta: array de `CompaneroMonstruoDetalle`
+
+Endpoint: GET /companeros/<id_companero>
+Parametros de path
+| Campo | Tipo | Descripcion |
+| --- | --- | --- |
+| id_companero | number | Id de companero |
+
+Respuesta: objeto `CompaneroMonstruoDetalle`
+
+Respuesta 404 (ejemplo)
+```json
+{
+  "error": "Companero no encontrado",
+  "id_companero": 123
+}
+```
+
+Endpoint: GET /companeros/personaje/<id_personaje>
+Respuesta: array de `CompaneroMonstruoDetalle` filtrado por personaje.
+En este endpoint, `Personajes` solo contiene el personaje solicitado.
+
+MonstruoDetalle
+| Campo | Tipo | Descripcion |
+| --- | --- | --- |
+| Id | number | Id del monstruo |
+| Nombre | string | Nombre |
+| Descripcion | string | Descripcion |
+| Manual | object | `{ Id, Nombre, Pagina }` |
+| Tipo | object | `{ Id, Nombre, Descripcion, Oficial }` |
+| Tamano | object | `{ Id, Nombre, Modificador, Modificador_presa }` |
+| Dados_golpe | object | `{ Cantidad, Tipo_dado, Suma }` |
+| Movimientos | object | `{ Correr, Nadar, Volar, Trepar, Escalar }` |
+| Maniobrabilidad | object | Detalle de maniobrabilidad de vuelo |
+| Alineamiento | object | `AlineamientoDetalle` |
+| Iniciativa | number | Modificador de iniciativa |
+| Defensa | object | `{ Ca, Toque, Desprevenido, Armadura_natural, Reduccion_dano, Resistencia_conjuros, Resistencia_elemental }` |
+| Ataque | object | `{ Ataque_base, Presa, Ataques, Ataque_completo }` |
+| Espacio | number | Espacio |
+| Alcance | number | Alcance |
+| Salvaciones | object | `{ Fortaleza, Reflejos, Voluntad }` |
+| Caracteristicas | object | `{ Fuerza, Destreza, Constitucion, Inteligencia, Sabiduria, Carisma }` |
+| Cd_sortilegas | string | CD de sortilegas |
+| Valor_desafio | string | Valor de desafio |
+| Tesoro | string | Tesoro |
+| Familiar | boolean | Puede actuar como familiar |
+| Companero | boolean | Puede actuar como companero |
+| Oficial | boolean | Oficial (true=oficial, false=homebrew) |
+| Idiomas | array | Lista de `IdiomaDetalle` |
+| Alineamientos_requeridos | object | `{ Familiar: [AlineamientoBasicoRef], Companero: [AlineamientoBasicoRef] }` |
+| Sortilegas | array | Lista de `MonstruoSortilega` |
+| Habilidades | array | Lista de `MonstruoHabilidad` |
+| Dotes | array | Lista de `DoteContextual` |
+| Niveles_clase | array | Lista de `MonstruoNivelClase` |
+| Subtipos | array | Lista de `ReferenciaCorta` (subtipo) |
+| Raciales | array | Lista de `RacialDetalle` |
+| Ataques_especiales | array | Lista de `RacialDetalle` |
+| Familiares | array | Lista de `FamiliarMonstruoDetalle` |
+| Companeros | array | Lista de `CompaneroMonstruoDetalle` |
+| Personajes_relacionados | object | Backrefs por familiar/companero (`PersonajeRefMonstruo`) |
+
+AlineamientoBasicoRef
+| Campo | Tipo | Descripcion |
+| --- | --- | --- |
+| Id | number | Id de alineamiento basico |
+| Nombre | string | Nombre |
+
+MonstruoSortilega
+| Campo | Tipo | Descripcion |
+| --- | --- | --- |
+| Conjuro | object | `ConjuroDetalle` |
+| Nivel_lanzador | number | Nivel de lanzador |
+| Usos_diarios | string | Usos diarios |
+
+MonstruoHabilidad
+| Campo | Tipo | Descripcion |
+| --- | --- | --- |
+| Id_habilidad | number | Id de habilidad |
+| Habilidad | string | Nombre |
+| Id_caracteristica | number | Id de caracteristica |
+| Caracteristica | string | Nombre de caracteristica |
+| Descripcion | string | Descripcion |
+| Soporta_extra | boolean | Si soporta extra |
+| Entrenada | boolean | Si requiere entrenamiento |
+| Id_extra | number | Id de extra (si aplica) |
+| Extra | string | Nombre de extra |
+| Rangos | number | Rangos |
+
+MonstruoNivelClase
+| Campo | Tipo | Descripcion |
+| --- | --- | --- |
+| Clase | object | `{ Id, Nombre }` |
+| Nivel | number | Nivel en esa clase |
+| Plantilla | object | `{ Id, Nombre }` |
+| Preferencia_legal | object | `{ Id, Nombre }` |
+| Preferencia_moral | object | `{ Id, Nombre }` |
+| Dote | object | `{ Id, Nombre }` |
+
+FamiliarMonstruoDetalle
+| Campo | Tipo | Descripcion |
+| --- | --- | --- |
+| *Base* | object | Es una ficha final mergeada: `MonstruoDetalle` + sobreescrituras de `familiares` |
+| Monstruo_origen | object | `{ Id, Nombre }` del monstruo base usado para el merge |
+| Id_familiar | number | Id de familiar |
+| Vida | number | Vida |
+| Plantilla | object | `{ Id, Nombre }` |
+| Personajes | array | Lista de `PersonajeRefMonstruo` |
+| Especiales | array | Lista de objetos con `Especial` + `Contexto` |
+
+Sobrescrituras de escalares en familiar
+- `Nombre`
+- `Ataque.Ataque_base`
+- `Salvaciones.Fortaleza`, `Salvaciones.Reflejos`, `Salvaciones.Voluntad`
+- `Defensa.Armadura_natural`
+- `Caracteristicas.Inteligencia`
+- `Defensa.Resistencia_conjuros` (desde `rc`)
+
+Merge de colecciones (base + derivadas, con deduplicacion)
+- `Habilidades` por (`Id_habilidad`, `Id_extra`)
+- `Dotes` por (`Dote.Id`, `Contexto.Id_extra`)
+- `Especiales` por (`Especial.Id`, `Contexto.Id_extra`)
+- `Raciales` por (`Id`)
+- `Sortilegas` por (`Conjuro.Id`, `Nivel_lanzador`, `Usos_diarios`)
+
+CompaneroMonstruoDetalle
+| Campo | Tipo | Descripcion |
+| --- | --- | --- |
+| *Base* | object | Es una ficha final mergeada: `MonstruoDetalle` + sobreescrituras de `companeros` |
+| Monstruo_origen | object | `{ Id, Nombre }` del monstruo base usado para el merge |
+| Id_companero | number | Id de companero |
+| Vida | number | Vida |
+| Dg_adi | number | Dados de golpe adicionales |
+| Trucos_adi | number | Trucos adicionales |
+| Plantilla | object | `{ Id, Nombre }` |
+| Personajes | array | Lista de `PersonajeRefMonstruo` |
+| Especiales | array | Lista de objetos con `Especial` + `Contexto` |
+
+Sobrescrituras de escalares en companero
+- `Nombre`
+- `Defensa.Armadura_natural`
+- `Caracteristicas.Fuerza`, `Caracteristicas.Destreza`, `Caracteristicas.Inteligencia`
+
+Merge de colecciones (base + derivadas, con deduplicacion)
+- `Habilidades` por (`Id_habilidad`, `Id_extra`)
+- `Dotes` por (`Dote.Id`, `Contexto.Id_extra`)
+- `Especiales` por (`Especial.Id`, `Contexto.Id_extra`)
+- `Raciales` por (`Id`)
+- `Sortilegas` por (`Conjuro.Id`, `Nivel_lanzador`, `Usos_diarios`)
+
+PersonajeRefMonstruo
+| Campo | Tipo | Descripcion |
+| --- | --- | --- |
+| Id_personaje | number | Id de personaje |
 | Nombre | string | Nombre |
 
 Endpoint: GET /tiposCriatura

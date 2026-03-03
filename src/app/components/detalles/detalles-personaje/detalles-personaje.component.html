@@ -245,6 +245,37 @@
                         </mat-chip>
                     </mat-chip-set>
                 </mat-expansion-panel>
+                <mat-expansion-panel *ngIf="tieneCompaniaMonstruoVisible()">
+                    <mat-expansion-panel-header>
+                        <button mat-stroked-button color="accent" class="rounded-0">
+                            <h2 class="mb-0">Familiares y companeros animales</h2>
+                        </button>
+                    </mat-expansion-panel-header>
+                    <p class="m-2" *ngIf="getFamiliaresVisibles().length > 0"><strong>Familiares</strong></p>
+                    <mat-chip-set class="m-1" *ngIf="getFamiliaresVisibles().length > 0">
+                        <mat-chip
+                            *ngFor="let familiar of getFamiliaresVisibles()"
+                            class="chip-clic sombra3d-sm"
+                            matTooltip="Pulsa para ver los detalles del monstruo"
+                            [matTooltipShowDelay]="250"
+                            matTooltipClass="tt-accent"
+                            (click)="verDetallesMonstruo(familiar)">
+                            {{familiar.Nombre}}
+                        </mat-chip>
+                    </mat-chip-set>
+                    <p class="m-2" *ngIf="getCompanerosVisibles().length > 0"><strong>Companeros animales</strong></p>
+                    <mat-chip-set class="m-1" *ngIf="getCompanerosVisibles().length > 0">
+                        <mat-chip
+                            *ngFor="let companero of getCompanerosVisibles()"
+                            class="chip-clic sombra3d-sm"
+                            matTooltip="Pulsa para ver los detalles del monstruo"
+                            [matTooltipShowDelay]="250"
+                            matTooltipClass="tt-accent"
+                            (click)="verDetallesMonstruo(companero)">
+                            {{companero.Nombre}}
+                        </mat-chip>
+                    </mat-chip-set>
+                </mat-expansion-panel>
                 <mat-expansion-panel *ngIf="getIdiomasVisibles().length > 0">
                     <mat-expansion-panel-header>
                         <button mat-stroked-button color="accent" class="rounded-0">

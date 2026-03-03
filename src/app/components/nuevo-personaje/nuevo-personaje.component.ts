@@ -17,6 +17,7 @@ import { EnemigoPredilectoDetalle } from 'src/app/interfaces/enemigo-predilecto-
 import { EscuelaConjuros } from 'src/app/interfaces/escuela-conjuros';
 import { HabilidadBasicaDetalle } from 'src/app/interfaces/habilidad';
 import { IdiomaDetalle } from 'src/app/interfaces/idioma';
+import { MonstruoDetalle } from 'src/app/interfaces/monstruo';
 import { Personaje } from 'src/app/interfaces/personaje';
 import { Plantilla } from 'src/app/interfaces/plantilla';
 import { Raza } from 'src/app/interfaces/raza';
@@ -1886,6 +1887,14 @@ export class NuevoPersonajeComponent {
         if (nombre.length < 1)
             return;
         this.rasgoDetalles.emit(value);
+    }
+
+    @Output() monstruoDetalles: EventEmitter<MonstruoDetalle> = new EventEmitter<MonstruoDetalle>();
+    verDetallesMonstruoDesdeFicha(monstruo: MonstruoDetalle): void {
+        const id = Number(monstruo?.Id ?? 0);
+        if (!Number.isFinite(id) || id <= 0)
+            return;
+        this.monstruoDetalles.emit(monstruo);
     }
 
     @Output() cerrarNuevoPersonajeSolicitado: EventEmitter<void> = new EventEmitter<void>();

@@ -18,6 +18,9 @@ tags:
   - name: tramas
   - name: subtramas
   - name: manuales
+  - name: monstruos
+  - name: familiares
+  - name: companeros
   - name: tiposCriatura
   - name: rasgos
   - name: conjuros
@@ -491,6 +494,160 @@ paths:
       responses:
         '501':
           description: No implementado
+
+  /monstruos:
+    get:
+      tags: [monstruos]
+      summary: Lista completa de monstruos
+      responses:
+        '200':
+          description: Lista de monstruos
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/MonstruoDetalle'
+
+  /monstruos/{id_monstruo}:
+    get:
+      tags: [monstruos]
+      summary: Monstruo completo por id
+      parameters:
+        - name: id_monstruo
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Monstruo encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MonstruoDetalle'
+        '404':
+          description: Monstruo no encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /familiares:
+    get:
+      tags: [familiares]
+      summary: Lista completa de familiares mergeados
+      responses:
+        '200':
+          description: Lista de familiares
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/FamiliarMonstruoDetalle'
+
+  /familiares/{id_familiar}:
+    get:
+      tags: [familiares]
+      summary: Familiar mergeado por id
+      parameters:
+        - name: id_familiar
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Familiar encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FamiliarMonstruoDetalle'
+        '404':
+          description: Familiar no encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /familiares/personaje/{id_personaje}:
+    get:
+      tags: [familiares]
+      summary: Familiares asociados a un personaje
+      parameters:
+        - name: id_personaje
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Lista de familiares del personaje
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/FamiliarMonstruoDetalle'
+
+  /companeros:
+    get:
+      tags: [companeros]
+      summary: Lista completa de companeros mergeados
+      responses:
+        '200':
+          description: Lista de companeros
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CompaneroMonstruoDetalle'
+
+  /companeros/{id_companero}:
+    get:
+      tags: [companeros]
+      summary: Companero mergeado por id
+      parameters:
+        - name: id_companero
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Companero encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CompaneroMonstruoDetalle'
+        '404':
+          description: Companero no encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /companeros/personaje/{id_personaje}:
+    get:
+      tags: [companeros]
+      summary: Companeros asociados a un personaje
+      parameters:
+        - name: id_personaje
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Lista de companeros del personaje
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CompaneroMonstruoDetalle'
 
   /tiposCriatura:
     get:
@@ -2705,6 +2862,14 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/SubtipoRef'
+        familiares:
+          type: array
+          items:
+            $ref: '#/components/schemas/FamiliarMonstruoDetalle'
+        companeros:
+          type: array
+          items:
+            $ref: '#/components/schemas/CompaneroMonstruoDetalle'
         pla:
           type: array
           items:
@@ -3272,3 +3437,308 @@ components:
           $ref: '#/components/schemas/ClasePrerrequisitosFlags'
         Prerrequisitos:
           $ref: '#/components/schemas/ClasePrerrequisitos'
+
+    MonstruoAlineamientoBasicoRef:
+      type: object
+      properties:
+        Id: { type: integer }
+        Nombre: { type: string }
+
+    MonstruoAlineamientosRequeridos:
+      type: object
+      properties:
+        Familiar:
+          type: array
+          items:
+            $ref: '#/components/schemas/MonstruoAlineamientoBasicoRef'
+        Companero:
+          type: array
+          items:
+            $ref: '#/components/schemas/MonstruoAlineamientoBasicoRef'
+
+    MonstruoTipoDadoRef:
+      type: object
+      properties:
+        Id: { type: integer }
+        Nombre: { type: string }
+
+    MonstruoDadosGolpe:
+      type: object
+      properties:
+        Cantidad: { type: string }
+        Tipo_dado:
+          $ref: '#/components/schemas/MonstruoTipoDadoRef'
+        Suma: { type: integer }
+
+    MonstruoMovimientos:
+      type: object
+      properties:
+        Correr: { type: integer }
+        Nadar: { type: integer }
+        Volar: { type: integer }
+        Trepar: { type: integer }
+        Escalar: { type: integer }
+
+    MonstruoDefensa:
+      type: object
+      properties:
+        Ca: { type: integer }
+        Toque: { type: integer }
+        Desprevenido: { type: integer }
+        Armadura_natural: { type: integer }
+        Reduccion_dano: { type: string }
+        Resistencia_conjuros: { type: string }
+        Resistencia_elemental: { type: string }
+
+    MonstruoAtaque:
+      type: object
+      properties:
+        Ataque_base: { type: integer }
+        Presa: { type: integer }
+        Ataques: { type: string }
+        Ataque_completo: { type: string }
+
+    MonstruoSalvaciones:
+      type: object
+      properties:
+        Fortaleza: { type: integer }
+        Reflejos: { type: integer }
+        Voluntad: { type: integer }
+
+    MonstruoCaracteristicas:
+      type: object
+      properties:
+        Fuerza: { type: integer }
+        Destreza: { type: integer }
+        Constitucion: { type: integer }
+        Inteligencia: { type: integer }
+        Sabiduria: { type: integer }
+        Carisma: { type: integer }
+
+    MonstruoSortilega:
+      type: object
+      properties:
+        Conjuro:
+          $ref: '#/components/schemas/ConjuroDetalle'
+        Nivel_lanzador: { type: integer }
+        Usos_diarios: { type: string }
+
+    MonstruoHabilidad:
+      type: object
+      properties:
+        Id_habilidad: { type: integer }
+        Habilidad: { type: string }
+        Id_caracteristica: { type: integer }
+        Caracteristica: { type: string }
+        Descripcion: { type: string }
+        Soporta_extra: { type: boolean }
+        Entrenada: { type: boolean }
+        Id_extra: { type: integer }
+        Extra: { type: string }
+        Rangos: { type: integer }
+
+    MonstruoNivelClase:
+      type: object
+      properties:
+        Clase:
+          type: object
+          properties:
+            Id: { type: integer }
+            Nombre: { type: string }
+        Nivel: { type: integer }
+        Plantilla:
+          type: object
+          properties:
+            Id: { type: integer }
+            Nombre: { type: string }
+        Preferencia_legal:
+          type: object
+          properties:
+            Id: { type: integer }
+            Nombre: { type: string }
+        Preferencia_moral:
+          type: object
+          properties:
+            Id: { type: integer }
+            Nombre: { type: string }
+        Dote:
+          type: object
+          properties:
+            Id: { type: integer }
+            Nombre: { type: string }
+
+    PersonajeRefMonstruo:
+      type: object
+      properties:
+        Id_personaje: { type: integer }
+        Nombre: { type: string }
+
+    MonstruoOrigenRef:
+      type: object
+      properties:
+        Id: { type: integer }
+        Nombre: { type: string }
+
+    MonstruoPersonajesRelacionados:
+      type: object
+      properties:
+        Por_familiar:
+          type: array
+          items:
+            type: object
+            properties:
+              Id_personaje: { type: integer }
+              Nombre: { type: string }
+              Id_familiar: { type: integer }
+        Por_companero:
+          type: array
+          items:
+            type: object
+            properties:
+              Id_personaje: { type: integer }
+              Nombre: { type: string }
+              Id_companero: { type: integer }
+
+    EspecialContextualMonstruo:
+      type: object
+      properties:
+        Especial:
+          $ref: '#/components/schemas/EspecialClaseDetalle'
+        Contexto:
+          type: object
+          additionalProperties: true
+
+    FamiliarMonstruoDetalle:
+      allOf:
+        - $ref: '#/components/schemas/MonstruoDetalle'
+        - type: object
+          properties:
+            Monstruo_origen:
+              $ref: '#/components/schemas/MonstruoOrigenRef'
+            Id_familiar: { type: integer }
+            Vida: { type: integer }
+            Plantilla:
+              type: object
+              properties:
+                Id: { type: integer }
+                Nombre: { type: string }
+            Especiales:
+              type: array
+              items:
+                $ref: '#/components/schemas/EspecialContextualMonstruo'
+            Personajes:
+              type: array
+              items:
+                $ref: '#/components/schemas/PersonajeRefMonstruo'
+
+    CompaneroMonstruoDetalle:
+      allOf:
+        - $ref: '#/components/schemas/MonstruoDetalle'
+        - type: object
+          properties:
+            Monstruo_origen:
+              $ref: '#/components/schemas/MonstruoOrigenRef'
+            Id_companero: { type: integer }
+            Vida: { type: integer }
+            Dg_adi: { type: integer }
+            Trucos_adi: { type: integer }
+            Plantilla:
+              type: object
+              properties:
+                Id: { type: integer }
+                Nombre: { type: string }
+            Especiales:
+              type: array
+              items:
+                $ref: '#/components/schemas/EspecialContextualMonstruo'
+            Personajes:
+              type: array
+              items:
+                $ref: '#/components/schemas/PersonajeRefMonstruo'
+
+    MonstruoDetalle:
+      type: object
+      properties:
+        Id: { type: integer }
+        Nombre: { type: string }
+        Descripcion: { type: string }
+        Manual:
+          $ref: '#/components/schemas/DoteManual'
+        Tipo:
+          type: object
+          properties:
+            Id: { type: integer }
+            Nombre: { type: string }
+            Descripcion: { type: string }
+            Oficial: { type: boolean }
+        Tamano:
+          $ref: '#/components/schemas/TamanoRef'
+        Dados_golpe:
+          $ref: '#/components/schemas/MonstruoDadosGolpe'
+        Movimientos:
+          $ref: '#/components/schemas/MonstruoMovimientos'
+        Maniobrabilidad:
+          $ref: '#/components/schemas/PlantillaManiobrabilidad'
+        Alineamiento:
+          $ref: '#/components/schemas/AlineamientoDetalle'
+        Iniciativa: { type: integer }
+        Defensa:
+          $ref: '#/components/schemas/MonstruoDefensa'
+        Ataque:
+          $ref: '#/components/schemas/MonstruoAtaque'
+        Espacio: { type: number }
+        Alcance: { type: number }
+        Salvaciones:
+          $ref: '#/components/schemas/MonstruoSalvaciones'
+        Caracteristicas:
+          $ref: '#/components/schemas/MonstruoCaracteristicas'
+        Cd_sortilegas: { type: string }
+        Valor_desafio: { type: string }
+        Tesoro: { type: string }
+        Familiar: { type: boolean }
+        Companero: { type: boolean }
+        Oficial: { type: boolean }
+        Idiomas:
+          type: array
+          items:
+            $ref: '#/components/schemas/IdiomaDetalle'
+        Alineamientos_requeridos:
+          $ref: '#/components/schemas/MonstruoAlineamientosRequeridos'
+        Sortilegas:
+          type: array
+          items:
+            $ref: '#/components/schemas/MonstruoSortilega'
+        Habilidades:
+          type: array
+          items:
+            $ref: '#/components/schemas/MonstruoHabilidad'
+        Dotes:
+          type: array
+          items:
+            $ref: '#/components/schemas/DoteContextual'
+        Niveles_clase:
+          type: array
+          items:
+            $ref: '#/components/schemas/MonstruoNivelClase'
+        Subtipos:
+          type: array
+          items:
+            $ref: '#/components/schemas/ReferenciaCorta'
+        Raciales:
+          type: array
+          items:
+            $ref: '#/components/schemas/RacialDetalle'
+        Ataques_especiales:
+          type: array
+          items:
+            $ref: '#/components/schemas/RacialDetalle'
+        Familiares:
+          type: array
+          items:
+            $ref: '#/components/schemas/FamiliarMonstruoDetalle'
+        Companeros:
+          type: array
+          items:
+            $ref: '#/components/schemas/CompaneroMonstruoDetalle'
+        Personajes_relacionados:
+          $ref: '#/components/schemas/MonstruoPersonajesRelacionados'

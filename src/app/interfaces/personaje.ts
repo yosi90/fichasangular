@@ -2,6 +2,7 @@ import { AptitudSortilega } from "./aptitud-sortilega";
 import { Conjuro } from "./conjuro";
 import { DoteContextual, DoteLegacy } from "./dote-contextual";
 import { EnemigoPredilectoSeleccion } from "./enemigo-predilecto-seleccion";
+import { CompaneroMonstruoDetalle, FamiliarMonstruoDetalle } from "./monstruo";
 import { RacialDetalle } from "./racial";
 import { PersonajeSimple } from "./simplificaciones/personaje-simple";
 import { SubtipoRef } from "./subtipo";
@@ -232,6 +233,8 @@ export interface Personaje extends PersonajeSimple {
         Ajuste_nivel: number;
         Heredada: boolean;
     }[]
+    Familiares: FamiliarMonstruoDetalle[];
+    Companeros: CompaneroMonstruoDetalle[];
     Conjuros: Conjuro[];
     Claseas: {
         Nombre: string;

@@ -1,0 +1,78 @@
+<div id="container-lista" class="container-fluid bg-dark h-100">
+    <div class="row position-relative justify-content-center align-items-center">
+        <button id="filtros" matTooltip="Filtros de monstruos" #filtros mat-icon-button
+            [matMenuTriggerFor]="menuMonstruos" class="filtros bg-accent">
+            <mat-icon>filter_alt</mat-icon>
+        </button>
+        <mat-menu id="containerMenu" #menuMonstruos="matMenu" class="me-1 menu-filtros-estandar">
+            <div id="menu">
+                <mat-form-field (click)="$event.stopPropagation();" (keyup)="filtroMonstruos();">
+                    <mat-label>Incluye texto</mat-label>
+                    <input #monstruoTextInc matInput placeholder="Texto a buscar">
+                </mat-form-field>
+                <mat-form-field (click)="$event.stopPropagation();">
+                    <mat-label>Manual</mat-label>
+                    <mat-select appearance="fill" [(value)]="defaultManual" (selectionChange)="filtroMonstruos();">
+                        <mat-option [value]="'Cualquiera'">Cualquiera</mat-option>
+                        <mat-option *ngFor="let m of Manuales" [value]="m.Nombre">{{m.Nombre}}</mat-option>
+                    </mat-select>
+                </mat-form-field>
+            </div>
+            <mat-chip-option color="warn" class="mt-4 mb-1"
+                [selected]="monstruoColumns.includes('Homebrew')"
+                (click)="$event.stopPropagation(); AlternarMonstruosHombrew();">{{anuncioHomebrew}}</mat-chip-option>
+        </mat-menu>
+
+        <table id="monstruos" #tablaMonstruos mat-table [dataSource]="monstruosDS" matSort
+            *ngIf="monstruos.length > 0; else cargando">
+            <ng-container matColumnDef="{{column}}" *ngFor="let column of monstruoColumns">
+                <th class="lead" mat-header-cell *matHeaderCellDef mat-sort-header
+                    sortActionDescription="Ordenar por {{column}}">
+                    {{column.replace('_', ' ')}}
+                </th>
+                <td mat-cell *matCellDef="let element">
+                    <button type="button" class="manual-clickable" *ngIf="column == 'Manual'"
+                        (click)="abrirDetalleManual(element, $event)">
+                        {{getManualVisible(element)}}
+                    </button>
+                    <button mat-stroked-button matTooltip="Clic para ver este monstruo" [matTooltipShowDelay]="200"
+                        *ngIf="column == 'Nombre'" color="accent" class="d-flex justify-content-start sombra3d w-100"
+                        (click)="verDetallesMonstruo(element.Id); $event.stopPropagation();">
+                        <mat-icon>read_more</mat-icon>
+                        {{element[column]}}
+                    </button>
+                    <div class="d-flex justify-content-center align-items-center" *ngIf="column == 'Valor_desafio'">
+                        <p class="d-initial sombra3d-sm rounded px-2 py-1 mb-0 chip">{{element[column]}}</p>
+                    </div>
+                    <div class="d-flex justify-content-center align-items-center" *ngIf="column == 'Familiar' || column == 'Companero'">
+                        <mat-checkbox [checked]="isFlagActiva(element[column])" [disableRipple]="true"
+                            (click)="$event.preventDefault(); $event.stopPropagation();"></mat-checkbox>
+                    </div>
+                    <div class="d-flex justify-content-center align-items-center" *ngIf="column == 'Homebrew'">
+                        <mat-checkbox [checked]="!element.Oficial" [disableRipple]="true"
+                            (click)="$event.preventDefault(); $event.stopPropagation();"></mat-checkbox>
+                    </div>
+                </td>
+            </ng-container>
+            <tr mat-header-row *matHeaderRowDef="monstruoColumns; sticky: true"></tr>
+            <tr mat-row *matRowDef="let element; columns: monstruoColumns;" class="element-row elegir"
+                (click)="seleccionarMonstruo(element.Id)"></tr>
+            <tr class="mat-row" *matNoDataRow>
+                <td class="mat-cell text-center text-white p-3" [attr.colspan]="monstruoColumns.length">
+                    Ningún monstruo encaja con los filtros
+                </td>
+            </tr>
+        </table>
+        <ng-template #cargando>
+            <div class="superballs">
+                <div class="superballs__dot"></div>
+                <div class="superballs__dot"></div>
+            </div>
+        </ng-template>
+    </div>
+    <div class="row justify-content-center align-items-center">
+        <mat-paginator [pageSizeOptions]="[10, 20, 30, 40]" showFirstLastButtons
+            aria-label="Selecciona una página de monstruos">
+        </mat-paginator>
+    </div>
+</div>

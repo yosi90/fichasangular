@@ -411,6 +411,31 @@ describe('DetallesPersonajeComponent', () => {
         expect(emitSpy).toHaveBeenCalledWith('Mago');
     });
 
+    it('renderiza familiares y companeros animales cuando existen en el personaje', () => {
+        component.pj.Familiares = [
+            { Id: 101, Nombre: 'Cuervo sabio' } as any,
+        ];
+        component.pj.Companeros = [
+            { Id: 202, Nombre: 'Lobo fiel' } as any,
+        ];
+
+        fixture.detectChanges();
+
+        const html = `${fixture.nativeElement.textContent ?? ''}`;
+        expect(html).toContain('Familiares y companeros animales');
+        expect(html).toContain('Cuervo sabio');
+        expect(html).toContain('Lobo fiel');
+    });
+
+    it('emite detalle de monstruo al abrir un familiar o companero', () => {
+        const emitSpy = spyOn(component.monstruoDetalles, 'emit');
+        const monstruo = { Id: 77, Nombre: 'Gato infernal' } as any;
+
+        component.verDetallesMonstruo(monstruo);
+
+        expect(emitSpy).toHaveBeenCalledWith(monstruo);
+    });
+
     it('no muestra origen en legacy sin origen, salvo fallback del rasgo de tipo', () => {
         component.pj.Tipo_criatura.Nombre = 'Humanoide';
         component.pj.Tipo_criatura.Rasgos = [

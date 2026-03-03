@@ -36,6 +36,7 @@
             (plantillaDetalles)="abrirDetallesPlantillaDesdeFicha($event);"
             (subtipoDetalles)="abrirDetallesSubtipoDesdeReferencia($event);"
             (ventajaDetallesPorNombre)="abrirDetallesVentajaDesdeReferencia($event);"
+            (monstruoDetalles)="abrirDetallesMonstruo($event);"
             (doteDetalles)="abrirDetallesDote($event);">
         </app-detalles-personaje>
     </mat-tab>
@@ -54,6 +55,7 @@
             (especialDetallesPorNombre)="abrirDetallesEspecialPorNombre($event)"
             (rasgoDetalles)="abrirDetallesRasgo($event)"
             (racialDetallesPorNombre)="abrirDetallesRacialDesdeReferencia($event)"
+            (monstruoDetalles)="abrirDetallesMonstruo($event)"
             (ventajaDetallesPorNombre)="abrirDetallesVentajaDesdeReferencia($event)"
             (cerrarNuevoPersonajeSolicitado)="onCerrarNuevoPersonajeSolicitado()">
         </app-nuevo-personaje>
@@ -201,6 +203,23 @@
             (rasgoDetalles)="abrirDetallesRasgo($event)"
             (plantillaDetalles)="abrirDetallesPlantillaPorId($event)">
         </app-detalles-subtipo>
+    </mat-tab>
+    <mat-tab *ngFor="let monstruo of detallesMonstruoAbiertos; let index = index" [label]="getEtiquetaMonstruo(monstruo)">
+        <ng-template mat-tab-label>
+            <mat-icon class="me-2">find_in_page</mat-icon>
+            {{getEtiquetaMonstruo(monstruo)}}
+            <button (click)="quitarDetallesMonstruo(monstruo)" mat-icon-button class="ms-2"><mat-icon>close</mat-icon></button>
+        </ng-template>
+        <app-detalles-monstruo
+            [monstruo]="detallesMonstruoAbiertos[index]"
+            (conjuroDetallesId)="abrirDetallesConjuroPorId($event)"
+            (doteDetalles)="abrirDetallesDote($event)"
+            (racialDetalles)="abrirDetallesRacial($event)"
+            (claseDetallesId)="abrirDetallesClasePorId($event)"
+            (subtipoDetalles)="abrirDetallesSubtipoDesdeReferencia($event)"
+            (tipoCriaturaDetallesId)="abrirDetallesTipoCriaturaPorId($event)"
+            (monstruoRelacionadoDetalles)="abrirDetallesMonstruo($event)">
+        </app-detalles-monstruo>
     </mat-tab>
     <mat-tab label="Información importante" class="pe-3">
         <ng-template mat-tab-label="">

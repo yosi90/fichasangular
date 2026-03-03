@@ -36,6 +36,7 @@ import { UserService } from 'src/app/services/user.service';
 import { AdminUserRow, AdminUsersService } from 'src/app/services/admin-users.service';
 import { PERMISSION_RESOURCES, PermissionResource, UserRole } from 'src/app/interfaces/user-acl';
 import { EnemigoPredilectoService } from 'src/app/services/enemigo-predilecto.service';
+import { MonstruoService } from 'src/app/services/monstruo.service';
 
 interface SyncItemConfig {
     key: CacheEntityKey;
@@ -103,6 +104,7 @@ export class AdminPanelComponent implements OnInit, OnDestroy {
         private habSvc: HabilidadService,
         private idiSvc: IdiomaService,
         private enemigoPredilectoSvc: EnemigoPredilectoService,
+        private monstruoSvc: MonstruoService,
         private armaSvc: ArmaService,
         private armaduraSvc: ArmaduraService,
         private grupoArmaSvc: GrupoArmaService,
@@ -120,6 +122,9 @@ export class AdminPanelComponent implements OnInit, OnDestroy {
             lista_personajes: () => this.lpSvc.RenovarPersonajesSimples(),
             campanas_tramas_subtramas: () => this.cSvc.RenovarCampañasFirebase(),
             personajes: () => this.pSvc.RenovarPersonajes(),
+            monstruos: () => this.monstruoSvc.RenovarMonstruos(),
+            familiares: () => this.monstruoSvc.RenovarFamiliares(),
+            companeros: () => this.monstruoSvc.RenovarCompaneros(),
             razas: () => this.rSvc.RenovarRazas(),
             manuales: () => this.mSvc.RenovarManuales(),
             manuales_asociados: () => this.manualesAsociadosSvc.RenovarManualesAsociados(),

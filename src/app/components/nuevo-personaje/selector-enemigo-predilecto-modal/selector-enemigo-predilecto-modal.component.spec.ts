@@ -40,10 +40,10 @@ describe('SelectorEnemigoPredilectoModalComponent', () => {
         ];
         component.filtroTexto = 'g';
 
-        expect(component.enemigosFiltrados.map((x) => x.Nombre)).toEqual(['Dragón', 'Gigante']);
-        expect(component.enemigosColumnaA.map((x) => x.Nombre)).toEqual(['Dragón']);
-        expect(component.enemigosColumnaB.map((x) => x.Nombre)).toEqual(['Gigante']);
-        expect(component.enemigosColumnaC.length).toBe(0);
+        expect(component.enemigosFiltrados.map((x) => x.Nombre)).toEqual(['Bestia mágica', 'Dragón', 'Gigante']);
+        expect(component.enemigosColumnaA.map((x) => x.Nombre)).toEqual(['Bestia mágica']);
+        expect(component.enemigosColumnaB.map((x) => x.Nombre)).toEqual(['Dragón']);
+        expect(component.enemigosColumnaC.map((x) => x.Nombre)).toEqual(['Gigante']);
     });
 
     it('preview suma +2 al enemigo repetido según la selección actual', () => {

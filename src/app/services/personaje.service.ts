@@ -9,6 +9,10 @@ import Swal from 'sweetalert2';
 import { TipoCriatura } from '../interfaces/tipo_criatura';
 import { DoteContextual } from '../interfaces/dote-contextual';
 import { toDoteContextualArray, toDoteLegacyArray } from './utils/dote-mapper';
+import {
+    normalizeCompaneroMonstruoDetalleArray,
+    normalizeFamiliarMonstruoDetalleArray
+} from './utils/monstruo-mapper';
 import { normalizeRaciales } from './utils/racial-mapper';
 import { normalizeSubtipoRefArray } from './utils/subtipo-mapper';
 
@@ -32,6 +36,8 @@ export class PersonajeService {
                 const subtipos = normalizeSubtipoRefArray(snapshot.child('Subtipos').val() ?? snapshot.child('stc').val());
                 const ventajas = normalizeVentajasPersonaje(snapshot.child('Ventajas').val());
                 const idiomas = normalizeIdiomasPersonaje(snapshot.child('Idiomas').val());
+                const familiares = normalizeFamiliarMonstruoDetalleArray(snapshot.child('Familiares').val() ?? snapshot.child('familiares').val(), 1);
+                const companeros = normalizeCompaneroMonstruoDetalleArray(snapshot.child('Companeros').val() ?? snapshot.child('companeros').val(), 1);
                 const caracteristicasPerdidas = normalizeCaracteristicasPerdidasPersonaje(
                     snapshot.child('Caracteristicas_perdidas').val(),
                     snapshot.child('Constitucion_perdida').val()
@@ -101,6 +107,8 @@ export class PersonajeService {
                     Pgs_lic: snapshot.child('Pgs_lic').val(),
                     Dominios: snapshot.child('Dominios').val(),
                     Plantillas: snapshot.child('Plantillas').val(),
+                    Familiares: familiares,
+                    Companeros: companeros,
                     Conjuros: snapshot.child('Conjuros').val(),
                     Claseas: snapshot.child('Claseas').val(),
                     Raciales: normalizeRaciales(snapshot.child('Raciales').val()),
@@ -165,6 +173,7 @@ export class PersonajeService {
                     i: any; n: any; dcp: any; dh: any; tm: any; a: any; ca: any; an: any; cd: any; cv: any; ra: any; rb?: any; raza_base?: any; RazaBase?: any; tc: TipoCriatura; f: any; mf: any; d: any; md: any; co: any; mco: any; int: any; mint: any; s: any; 
                     ms: any; car: any; mcar: any; de: any; ali: any; g: any; ncam: any; ntr: any; ju: any; nst: any; v: any; cor: any; na: any; vo: any; t: any; e: any; o: any; dg: any; cla: any; dom: any; stc: any; subtipos?: any;
                     pla: any; con: any; esp: any; espX: any; rac: any; hab: any; habN: any; habC: any; habCa: any; habMc: any; habR: any; habRv: any; habX: any; habV: any; habCu: any; dotes: DoteContextual[]; ve: any; idi: any;
+                    familiares?: any; companeros?: any;
                     sor: any; pgl: any; ini_v: any; pr_v: { Valor: number; Origen: string; }[]; edad: any; alt: any; peso: any; salv: any; rds: any; 
                     rcs: any; res: any; ccl: any; ccm: any; ccp: any; espa: any; espan: any; espp: any; esppn: any; disp: any; ecp: any; cper?: any; cperd?: any;
                 }) => {
@@ -320,6 +329,8 @@ export class PersonajeService {
                         Dominios: dom,
                         Subtipos: subtipos,
                         Plantillas: element.pla,
+                        Familiares: normalizeFamiliarMonstruoDetalleArray(element.familiares, 1),
+                        Companeros: normalizeCompaneroMonstruoDetalleArray(element.companeros, 1),
                         Conjuros: element.con,
                         Claseas: claseas,
                         Raciales: raciales,

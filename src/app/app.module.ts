@@ -80,6 +80,8 @@ import { ListadoSubtiposComponent } from './components/shared/listado-subtipos/l
 import { DetallesSubtipoComponent } from './components/detalles/detalles-subtipo/detalles-subtipo.component';
 import { DetallesVentajaComponent } from './components/detalles/detalles-ventaja/detalles-ventaja.component';
 import { ListadoVentajasComponent } from './components/shared/listado-ventajas/listado-ventajas.component';
+import { ListadoMonstruosComponent } from './components/shared/listado-monstruos/listado-monstruos.component';
+import { DetallesMonstruoComponent } from './components/detalles/detalles-monstruo/detalles-monstruo.component';
 
 @NgModule({
     declarations: [
@@ -129,6 +131,8 @@ import { ListadoVentajasComponent } from './components/shared/listado-ventajas/l
         DetallesSubtipoComponent,
         DetallesVentajaComponent,
         ListadoVentajasComponent,
+        ListadoMonstruosComponent,
+        DetallesMonstruoComponent,
     ],
     imports: [
         BrowserModule,

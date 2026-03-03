@@ -5,6 +5,7 @@ import { TabControlComponent } from './tab-control.component';
 function crearComponente(): TabControlComponent {
     const userSvc = { Usuario: { permisos: 0 }, permisos$: of(0) } as any;
     const ngZone = { run: (fn: () => void) => fn() } as any;
+    const monstruoSvc = { getMonstruo: jasmine.createSpy('getMonstruo').and.returnValue(of({ Id: 90, Nombre: 'Grifo' })) } as any;
     const component = new TabControlComponent(
         userSvc,
         {} as any,
@@ -20,6 +21,7 @@ function crearComponente(): TabControlComponent {
         {} as any,
         {} as any,
         {} as any,
+        monstruoSvc,
         {} as any,
         {} as any,
         {} as any,
@@ -48,6 +50,7 @@ function crearComponente(): TabControlComponent {
         (component.detallesVentajaAbiertos ?? []).forEach((ventaja: any) => tabs.push({ textLabel: component.getEtiquetaVentaja(ventaja) }));
         (component.detallesPlantillaAbiertos ?? []).forEach((plantilla: any) => tabs.push({ textLabel: component.getEtiquetaPlantilla(plantilla) }));
         (component.detallesSubtipoAbiertos ?? []).forEach((subtipo: any) => tabs.push({ textLabel: component.getEtiquetaSubtipo(subtipo) }));
+        (component.detallesMonstruoAbiertos ?? []).forEach((monstruo: any) => tabs.push({ textLabel: component.getEtiquetaMonstruo(monstruo) }));
         tabs.push({ textLabel: 'Información importante' });
         return tabs;
     };
@@ -57,6 +60,7 @@ function crearComponente(): TabControlComponent {
         _tabs: { toArray: () => buildTabs() },
     };
     (component as any).activeTabKey = 'base:personajes';
+    (component as any).__monstruoSvc = monstruoSvc;
 
     return component;
 }
@@ -65,6 +69,7 @@ describe('TabControlComponent navegación por origen', () => {
     const crearClase = (id: number, nombre: string) => ({ Id: id, Nombre: nombre } as any);
     const crearConjuro = (id: number, nombre: string) => ({ Id: id, Nombre: nombre } as any);
     const crearRaza = (id: number, nombre: string) => ({ Id: id, Nombre: nombre } as any);
+    const crearMonstruo = (id: number, nombre: string) => ({ Id: id, Nombre: nombre } as any);
 
     it('cierra pestaña activa y vuelve a su origen inmediato', fakeAsync(() => {
         const component = crearComponente();
@@ -144,5 +149,41 @@ describe('TabControlComponent navegación por origen', () => {
 
         expect((component as any).activeTabKey).toBe('clase:14');
         expect(component.detallesConjuroAbiertos.length).toBe(0);
+    }));
+
+    it('abre detalle de monstruo desde listado dinámico', fakeAsync(() => {
+        const component = crearComponente();
+        const monstruo = crearMonstruo(21, 'Hidra');
+
+        component.recibirObjetoListado({ item: monstruo, tipo: 'monstruos' });
+        tick(120);
+
+        expect(component.detallesMonstruoAbiertos.length).toBe(1);
+        expect((component as any).activeTabKey).toBe('monstruo:21');
+    }));
+
+    it('navegación desde manual enruta tipo monstruo por id', () => {
+        const component = crearComponente();
+        const spy = spyOn(component, 'abrirDetallesMonstruoPorId');
+
+        (component as any).abrirDesdeManual({ tipo: 'monstruo', id: 44, nombre: 'Mantícora', manualId: 2 });
+
+        expect(spy).toHaveBeenCalledWith(44);
+    });
+
+    it('ESC cierra monstruo y vuelve al origen', fakeAsync(() => {
+        const component = crearComponente();
+        const raza = crearRaza(4, 'Elfo');
+        const monstruo = crearMonstruo(66, 'Lobo terrible');
+
+        component.abrirDetallesRaza(raza);
+        tick(120);
+        component.abrirDetallesMonstruo(monstruo);
+        tick(120);
+
+        component.onEscPressed();
+
+        expect(component.detallesMonstruoAbiertos.length).toBe(0);
+        expect((component as any).activeTabKey).toBe('raza:4');
     }));
 });

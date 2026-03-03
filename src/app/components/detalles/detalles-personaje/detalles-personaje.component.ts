@@ -5,6 +5,7 @@ import { Conjuro } from 'src/app/interfaces/conjuro';
 import { Dote } from 'src/app/interfaces/dote';
 import { DoteContextual, DoteLegacy } from 'src/app/interfaces/dote-contextual';
 import { EnemigoPredilectoSeleccion } from 'src/app/interfaces/enemigo-predilecto-seleccion';
+import { CompaneroMonstruoDetalle, FamiliarMonstruoDetalle, MonstruoDetalle } from 'src/app/interfaces/monstruo';
 import { CaracteristicaPerdidaKey, Personaje } from 'src/app/interfaces/personaje';
 import { RacialDetalle, RacialReferencia } from 'src/app/interfaces/racial';
 import { Rasgo } from 'src/app/interfaces/rasgo';
@@ -737,6 +738,24 @@ Fue/Des/Con: ${this.formatSigned(madurez.modFisico)} | Int/Sab/Car: ${this.forma
         return (this.pj?.Sortilegas ?? []).filter(s => this.tieneTextoVisible(s?.Conjuro?.Nombre));
     }
 
+    getFamiliaresVisibles(): FamiliarMonstruoDetalle[] {
+        return this.toArray((this.pj as any)?.Familiares)
+            .map((item) => item as FamiliarMonstruoDetalle)
+            .filter((familiar) => this.toNumber((familiar as any)?.Id) > 0 && this.tieneTextoVisible(familiar?.Nombre))
+            .sort((a, b) => `${a?.Nombre ?? ''}`.localeCompare(`${b?.Nombre ?? ''}`, 'es', { sensitivity: 'base' }));
+    }
+
+    getCompanerosVisibles(): CompaneroMonstruoDetalle[] {
+        return this.toArray((this.pj as any)?.Companeros)
+            .map((item) => item as CompaneroMonstruoDetalle)
+            .filter((companero) => this.toNumber((companero as any)?.Id) > 0 && this.tieneTextoVisible(companero?.Nombre))
+            .sort((a, b) => `${a?.Nombre ?? ''}`.localeCompare(`${b?.Nombre ?? ''}`, 'es', { sensitivity: 'base' }));
+    }
+
+    tieneCompaniaMonstruoVisible(): boolean {
+        return this.getFamiliaresVisibles().length > 0 || this.getCompanerosVisibles().length > 0;
+    }
+
     getRasgosTipoVisibles() {
         return (this.pj?.Tipo_criatura?.Rasgos ?? []).filter(r => this.tieneTextoVisible(r?.Nombre));
     }
@@ -965,6 +984,14 @@ Fue/Des/Con: ${this.formatSigned(madurez.modFisico)} | Int/Sab/Car: ${this.forma
             id: Number.isFinite(id) && id > 0 ? id : null,
             nombre,
         });
+    }
+
+    @Output() monstruoDetalles: EventEmitter<MonstruoDetalle> = new EventEmitter<MonstruoDetalle>();
+    verDetallesMonstruo(monstruo: MonstruoDetalle): void {
+        const id = this.toNumber(monstruo?.Id);
+        if (!Number.isFinite(id) || id <= 0)
+            return;
+        this.monstruoDetalles.emit(monstruo);
     }
 
     @Output() subtipoDetalles: EventEmitter<{ Id?: number | null; Nombre: string; }> = new EventEmitter<{ Id?: number | null; Nombre: string; }>();

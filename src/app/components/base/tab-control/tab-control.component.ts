@@ -36,6 +36,8 @@ import { SubtipoService } from 'src/app/services/subtipo.service';
 import { VentajaDetalle } from 'src/app/interfaces/ventaja';
 import { VentajaService } from 'src/app/services/ventaja.service';
 import { combineLatest } from 'rxjs';
+import { MonstruoDetalle } from 'src/app/interfaces/monstruo';
+import { MonstruoService } from 'src/app/services/monstruo.service';
 
 @Component({
     selector: 'app-tab-control',
@@ -62,6 +64,7 @@ export class TabControlComponent implements OnInit, OnDestroy {
     detallesPlantillaAbiertos: Plantilla[] = [];
     detallesSubtipoAbiertos: SubtipoDetalle[] = [];
     detallesVentajaAbiertos: VentajaDetalle[] = [];
+    detallesMonstruoAbiertos: MonstruoDetalle[] = [];
     private readonly TAB_PERSONAJES = 'base:personajes';
     private readonly TAB_ADMIN = 'base:admin';
     private readonly TAB_NUEVO = 'base:nuevo';
@@ -86,6 +89,7 @@ export class TabControlComponent implements OnInit, OnDestroy {
         private plantillaSvc: PlantillaService,
         private subtipoSvc: SubtipoService,
         private ventajaSvc: VentajaService,
+        private monstruoSvc: MonstruoService,
         private nuevoPSvc: NuevoPersonajeService,
         private manualRefNavSvc: ManualReferenciaNavigationService,
         private manualVistaNavSvc: ManualVistaNavigationService,
@@ -196,6 +200,8 @@ export class TabControlComponent implements OnInit, OnDestroy {
             return;
         else if (this.detallesSubtipoAbiertos.map(s => this.getEtiquetaSubtipo(s)).includes(tabLabel) && this.quitarDetallesSubtipo(tabLabel))
             return;
+        else if (this.detallesMonstruoAbiertos.map(m => this.getEtiquetaMonstruo(m)).includes(tabLabel) && this.quitarDetallesMonstruo(tabLabel))
+            return;
         else if (this.detallesManualAbiertos.map(m => this.getEtiquetaManual(m)).includes(tabLabel) && this.quitarDetallesManual(tabLabel))
             return;
         else if (tabLabel.includes('Nuevo personaje'))
@@ -226,6 +232,7 @@ export class TabControlComponent implements OnInit, OnDestroy {
         keys.push(...this.detallesVentajaAbiertos.map((ventaja) => this.getVentajaTabKey(ventaja)));
         keys.push(...this.detallesPlantillaAbiertos.map((plantilla) => this.getPlantillaTabKey(plantilla)));
         keys.push(...this.detallesSubtipoAbiertos.map((subtipo) => this.getSubtipoTabKey(subtipo)));
+        keys.push(...this.detallesMonstruoAbiertos.map((monstruo) => this.getMonstruoTabKey(monstruo)));
         keys.push(this.TAB_IMPORTANTE);
         return keys;
     }
@@ -350,6 +357,8 @@ export class TabControlComponent implements OnInit, OnDestroy {
             this.abrirDetallesPlantilla(value.item);
         } else if (value.tipo === 'subtipos') {
             this.abrirDetallesSubtipoDesdeResumen(value.item);
+        } else if (value.tipo === 'monstruos') {
+            this.abrirDetallesMonstruo(value.item);
         }
     }
 
@@ -627,6 +636,10 @@ export class TabControlComponent implements OnInit, OnDestroy {
         return `${ventaja.Nombre} (${this.esDesventaja(ventaja) ? 'Desventaja' : 'Ventaja'})`;
     }
 
+    getEtiquetaMonstruo(monstruo: MonstruoDetalle): string {
+        return `${monstruo.Nombre} (Monstruo)`;
+    }
+
     private getPersonajeTabKey(personaje: Personaje): string {
         return `personaje:${Number(personaje?.Id ?? 0)}`;
     }
@@ -681,6 +694,10 @@ export class TabControlComponent implements OnInit, OnDestroy {
 
     private getSubtipoTabKey(subtipo: SubtipoDetalle): string {
         return `subtipo:${Number(subtipo?.Id ?? 0)}`;
+    }
+
+    private getMonstruoTabKey(monstruo: MonstruoDetalle): string {
+        return `monstruo:${Number(monstruo?.Id ?? 0)}`;
     }
 
     private getManualTabKey(manual: ManualAsociadoDetalle): string {
@@ -1120,6 +1137,54 @@ export class TabControlComponent implements OnInit, OnDestroy {
         this.abrirDetallesSubtipoPorNombre(`${payload?.Nombre ?? ''}`.trim());
     }
 
+    abrirDetallesMonstruo(monstruo: MonstruoDetalle) {
+        if (!monstruo || Number(monstruo?.Id) <= 0)
+            return;
+
+        const abierto = this.detallesMonstruoAbiertos.find(m => Number(m.Id) === Number(monstruo.Id));
+        if (abierto) {
+            this.selectTabByKey(this.getMonstruoTabKey(abierto));
+            return;
+        }
+
+        const targetKey = this.getMonstruoTabKey(monstruo);
+        this.detallesMonstruoAbiertos.push(monstruo);
+        this.registerOpenContext(targetKey, this.getSafeOpenerKey());
+        this.focusOpenedTab(targetKey);
+    }
+
+    abrirDetallesMonstruoPorId(idMonstruo: number) {
+        const id = Number(idMonstruo);
+        if (!Number.isFinite(id) || id <= 0)
+            return;
+
+        const abierto = this.detallesMonstruoAbiertos.find(m => Number(m.Id) === id);
+        if (abierto) {
+            this.selectTabByKey(this.getMonstruoTabKey(abierto));
+            return;
+        }
+
+        this.monstruoSvc.getMonstruo(id).pipe(take(1)).subscribe(monstruo => {
+            this.abrirDetallesMonstruo(monstruo);
+        });
+    }
+
+    quitarDetallesMonstruo(value: string | MonstruoDetalle): boolean {
+        const tab = typeof value === 'string'
+            ? this.detallesMonstruoAbiertos.find(m => this.getEtiquetaMonstruo(m) === value)
+            : this.detallesMonstruoAbiertos.find(m => Number(m.Id) === Number(value.Id));
+        if (!tab)
+            return false;
+        const closingKey = this.getMonstruoTabKey(tab);
+        return this.closeTabWithNavigation(closingKey, () => {
+            const indexTab = this.detallesMonstruoAbiertos.indexOf(tab);
+            if (indexTab < 0)
+                return false;
+            this.detallesMonstruoAbiertos.splice(indexTab, 1);
+            return true;
+        });
+    }
+
     quitarDetallesRacial(value: string | RacialDetalle): boolean {
         const tab = typeof value === 'string'
             ? this.detallesRacialAbiertos.find(r => this.getEtiquetaRacial(r) === value)
@@ -1475,6 +1540,10 @@ export class TabControlComponent implements OnInit, OnDestroy {
                 this.abrirDetallesSubtipoPorId(payload.id);
             else
                 this.abrirDetallesSubtipoPorNombre(payload.nombre);
+            return;
+        }
+        if (payload.tipo === 'monstruo') {
+            this.abrirDetallesMonstruoPorId(payload.id);
         }
     }
 }
