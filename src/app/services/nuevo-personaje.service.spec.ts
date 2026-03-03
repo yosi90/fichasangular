@@ -1342,6 +1342,27 @@ describe('NuevoPersonajeService (clases)', () => {
         expect(dotesProgresion.length).toBe(0);
     });
 
+    it('concede dote de progresión en nivel 1 cuando no hay DGs adicionales', () => {
+        const tipo = crearTipoBase();
+        const raza = crearRazaBase(tipo);
+        raza.Dgs_adicionales.Cantidad = 0;
+        raza.Dgs_adicionales.Dotes_extra = 0;
+        service.seleccionarRaza(raza);
+        service.aplicarCaracteristicasGeneradas({
+            Fuerza: 14,
+            Destreza: 12,
+            Constitucion: 13,
+            Inteligencia: 10,
+            Sabiduria: 11,
+            Carisma: 9,
+        });
+
+        service.aplicarSiguienteNivelClase(claseBase);
+        const dotesProgresion = service.registrarDotesPendientesPorProgresion('Guerrero nivel 1');
+        expect(dotesProgresion.length).toBe(1);
+        expect(dotesProgresion[0].fuente).toBe('nivel');
+    });
+
     it('la progresion de dotes sigue funcionando por niveles de clase aunque haya DGs raciales', () => {
         const tipo = crearTipoBase();
         const raza = crearRazaBase(tipo);
@@ -3297,6 +3318,230 @@ describe('NuevoPersonajeService (clases)', () => {
     });
 });
 
+describe('NuevoPersonajeService (familiar)', () => {
+    function crearEspecialNivel(idEspecial: number, nombre: string) {
+        return {
+            Especial: { Id: idEspecial, Nombre: nombre },
+            Nivel: 1,
+            Id_extra: -1,
+            Extra: '',
+            Opcional: 0,
+            Id_interno: idEspecial,
+            Id_especial_requerido: 0,
+            Id_dote_requerida: 0,
+        };
+    }
+
+    function crearFamiliarSeleccionable(idFamiliar: number, nombre = 'Cuervo'): any {
+        return {
+            Id: idFamiliar + 500,
+            Id_familiar: idFamiliar,
+            Nombre: nombre,
+            Plantilla: { Id: 1, Nombre: 'Basica' },
+            Manual: { Id: 1, Nombre: 'Manual base', Pagina: 20 },
+            Niveles_clase: [],
+            Alineamientos_requeridos: { Familiar: [], Companero: [] },
+            Oficial: true,
+        };
+    }
+
+    it('getEstadoCuposFamiliarEspecial47 calcula fuentes, cupos y nivel lanzador', () => {
+        const svc = new NuevoPersonajeService();
+        const claseMago = crearClaseBase({
+            Id: 10,
+            Nombre: 'Mago',
+            Desglose_niveles: [
+                {
+                    Nivel: 1,
+                    Ataque_base: '+0',
+                    Salvaciones: { Fortaleza: '+0', Reflejos: '+0', Voluntad: '+2' },
+                    Nivel_max_poder_accesible_nivel_lanzadorPsionico: -1,
+                    Reserva_psionica: 0,
+                    Aumentos_clase_lanzadora: [],
+                    Conjuros_diarios: crearConjurosDiariosMock(),
+                    Conjuros_conocidos_nivel_a_nivel: {},
+                    Conjuros_conocidos_total: 0,
+                    Dotes: [],
+                    Especiales: [crearEspecialNivel(47, 'Convocar a un familiar')],
+                },
+            ],
+        });
+        const claseGuerrero = crearClaseBase({ Id: 11, Nombre: 'Guerrero' });
+
+        svc.setCatalogoClases([claseMago, claseGuerrero]);
+        svc.PersonajeCreacion.desgloseClases = [
+            { Nombre: 'Mago', Nivel: 5 } as any,
+            { Nombre: 'Guerrero', Nivel: 3 } as any,
+        ];
+        svc.PersonajeCreacion.Familiares = [crearFamiliarSeleccionable(900)];
+
+        const estado = svc.getEstadoCuposFamiliarEspecial47();
+        expect(estado.fuentesClaseIds).toEqual([10]);
+        expect(estado.fuentesTotales).toBe(1);
+        expect(estado.cuposConsumidos).toBe(1);
+        expect(estado.cuposDisponibles).toBe(0);
+        expect(estado.nivelLanzadorFamiliar).toBe(5);
+    });
+
+    it('registrarFamiliarSeleccionado agrega familiar y aplica 17, 81, 82 y 83 si corresponde', () => {
+        const svc = new NuevoPersonajeService();
+        const claseMago = crearClaseBase({
+            Id: 10,
+            Nombre: 'Mago',
+            Desglose_niveles: [
+                {
+                    Nivel: 1,
+                    Ataque_base: '+0',
+                    Salvaciones: { Fortaleza: '+0', Reflejos: '+0', Voluntad: '+2' },
+                    Nivel_max_poder_accesible_nivel_lanzadorPsionico: -1,
+                    Reserva_psionica: 0,
+                    Aumentos_clase_lanzadora: [],
+                    Conjuros_diarios: crearConjurosDiariosMock(),
+                    Conjuros_conocidos_nivel_a_nivel: {},
+                    Conjuros_conocidos_total: 0,
+                    Dotes: [],
+                    Especiales: [crearEspecialNivel(47, 'Convocar a un familiar')],
+                },
+            ],
+        });
+        svc.setCatalogoClases([claseMago]);
+        svc.PersonajeCreacion.desgloseClases = [{ Nombre: 'Mago', Nivel: 4 } as any];
+
+        const resultado = svc.registrarFamiliarSeleccionado(
+            crearFamiliarSeleccionable(1001, 'Cuervo'),
+            1,
+            {
+                81: 'Empatia vinculada',
+                82: 'Vinculo de alerta',
+                83: 'Mensajero',
+                87: 'Transferencia de hechizo',
+            },
+            'Familiar de Aldric'
+        );
+
+        expect(resultado.registrado).toBeTrue();
+        expect(resultado.dote17Agregada).toBeTrue();
+        expect(resultado.especialesAgregadosIds).toContain(81);
+        expect(resultado.especialesAgregadosIds).toContain(82);
+        expect(resultado.especialesAgregadosIds).toContain(83);
+        expect(resultado.especialesAgregadosIds).not.toContain(87);
+        expect(svc.PersonajeCreacion.Familiares.length).toBe(1);
+        expect(svc.PersonajeCreacion.Familiares[0].Plantilla.Id).toBe(1);
+        expect(svc.PersonajeCreacion.Familiares[0].Nombre).toBe('Familiar de Aldric');
+        expect(svc.PersonajeCreacion.DotesContextuales.some((d) => d.Dote?.Id === 17)).toBeTrue();
+    });
+
+    it('registrarFamiliarSeleccionado respeta umbrales de plantilla draconica', () => {
+        const svc = new NuevoPersonajeService();
+        const claseMago = crearClaseBase({
+            Id: 10,
+            Nombre: 'Mago',
+            Desglose_niveles: [
+                {
+                    Nivel: 1,
+                    Ataque_base: '+0',
+                    Salvaciones: { Fortaleza: '+0', Reflejos: '+0', Voluntad: '+2' },
+                    Nivel_max_poder_accesible_nivel_lanzadorPsionico: -1,
+                    Reserva_psionica: 0,
+                    Aumentos_clase_lanzadora: [],
+                    Conjuros_diarios: crearConjurosDiariosMock(),
+                    Conjuros_conocidos_nivel_a_nivel: {},
+                    Conjuros_conocidos_total: 0,
+                    Dotes: [],
+                    Especiales: [crearEspecialNivel(47, 'Convocar a un familiar')],
+                },
+            ],
+        });
+        svc.setCatalogoClases([claseMago]);
+        svc.PersonajeCreacion.desgloseClases = [{ Nombre: 'Mago', Nivel: 9 } as any];
+
+        const resultado = svc.registrarFamiliarSeleccionado(
+            crearFamiliarSeleccionable(1002, 'Pseudodragon'),
+            2,
+            { 81: 'E81', 82: 'E82', 83: 'E83', 87: 'E87' }
+        );
+
+        expect(resultado.registrado).toBeTrue();
+        expect(resultado.especialesAgregadosIds).toContain(83);
+        expect(resultado.especialesAgregadosIds).not.toContain(87);
+    });
+
+    it('registrarFamiliarSeleccionado rechaza duplicados y falta de cupo', () => {
+        const svc = new NuevoPersonajeService();
+        const claseMago = crearClaseBase({
+            Id: 10,
+            Nombre: 'Mago',
+            Desglose_niveles: [
+                {
+                    Nivel: 1,
+                    Ataque_base: '+0',
+                    Salvaciones: { Fortaleza: '+0', Reflejos: '+0', Voluntad: '+2' },
+                    Nivel_max_poder_accesible_nivel_lanzadorPsionico: -1,
+                    Reserva_psionica: 0,
+                    Aumentos_clase_lanzadora: [],
+                    Conjuros_diarios: crearConjurosDiariosMock(),
+                    Conjuros_conocidos_nivel_a_nivel: {},
+                    Conjuros_conocidos_total: 0,
+                    Dotes: [],
+                    Especiales: [crearEspecialNivel(47, 'Convocar a un familiar')],
+                },
+            ],
+        });
+        const claseBrujo = crearClaseBase({
+            Id: 11,
+            Nombre: 'Brujo',
+            Desglose_niveles: [
+                {
+                    Nivel: 1,
+                    Ataque_base: '+0',
+                    Salvaciones: { Fortaleza: '+0', Reflejos: '+0', Voluntad: '+2' },
+                    Nivel_max_poder_accesible_nivel_lanzadorPsionico: -1,
+                    Reserva_psionica: 0,
+                    Aumentos_clase_lanzadora: [],
+                    Conjuros_diarios: crearConjurosDiariosMock(),
+                    Conjuros_conocidos_nivel_a_nivel: {},
+                    Conjuros_conocidos_total: 0,
+                    Dotes: [],
+                    Especiales: [crearEspecialNivel(47, 'Convocar a un familiar')],
+                },
+            ],
+        });
+        svc.setCatalogoClases([claseMago, claseBrujo]);
+        svc.PersonajeCreacion.desgloseClases = [{ Nombre: 'Mago', Nivel: 5 } as any];
+        svc.PersonajeCreacion.desgloseClases.push({ Nombre: 'Brujo', Nivel: 1 } as any);
+        const familiar = crearFamiliarSeleccionable(1003, 'Huron');
+
+        const primera = svc.registrarFamiliarSeleccionado(familiar, 1, {});
+        const segunda = svc.registrarFamiliarSeleccionado(familiar, 1, {});
+
+        expect(primera.registrado).toBeTrue();
+        expect(segunda.registrado).toBeFalse();
+        expect((segunda.razon ?? '').toLowerCase()).toContain('misma plantilla');
+
+        const svcSinFuente = new NuevoPersonajeService();
+        const sinCupo = svcSinFuente.registrarFamiliarSeleccionado(
+            crearFamiliarSeleccionable(1004, 'Sapo'),
+            1,
+            {}
+        );
+        expect(sinCupo.registrado).toBeFalse();
+        expect((sinCupo.razon ?? '').toLowerCase()).toContain('cupos');
+    });
+
+    it('tieneCompaneroPendienteSinSelector depende de especial y del estado actual', () => {
+        const svc = new NuevoPersonajeService();
+        svc.PersonajeCreacion.Claseas = [
+            { Nombre: 'Compañero animal', Extra: '' },
+        ] as any;
+        svc.PersonajeCreacion.Companeros = [];
+
+        expect(svc.tieneCompaneroPendienteSinSelector()).toBeTrue();
+
+        svc.PersonajeCreacion.Companeros = [{ Id_companero: 1, Nombre: 'Lobo' } as any];
+        expect(svc.tieneCompaneroPendienteSinSelector()).toBeFalse();
+    });
+});
+
 describe('NuevoPersonajeService (habilidades flujo)', () => {
     function crearRazaConDgs(partial?: Partial<Raza>): Raza {
         return {
@@ -4215,6 +4460,18 @@ describe('NuevoPersonajeService (tipo y subtipos derivados)', () => {
         svc.quitarPlantillaSeleccion(plantilla.Id);
         expect(svc.PersonajeCreacion.Plantillas.some((p) => p.Id === plantilla.Id)).toBeTrue();
         expect(svc.esPlantillaConfirmada(plantilla.Id)).toBeTrue();
+    });
+
+    it('retornoFinNivelPendiente de plantillas se consume una sola vez', () => {
+        const svc = new NuevoPersonajeService();
+
+        expect(svc.EstadoFlujo.plantillas.retornoFinNivelPendiente).toBeFalse();
+
+        svc.setRetornoFinNivelPendientePlantillas(true);
+        expect(svc.EstadoFlujo.plantillas.retornoFinNivelPendiente).toBeTrue();
+        expect(svc.consumirRetornoFinNivelPendientePlantillas()).toBeTrue();
+        expect(svc.EstadoFlujo.plantillas.retornoFinNivelPendiente).toBeFalse();
+        expect(svc.consumirRetornoFinNivelPendientePlantillas()).toBeFalse();
     });
 
     it('limpiar selección elimina solo plantillas no confirmadas', () => {

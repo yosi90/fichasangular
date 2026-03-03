@@ -560,6 +560,8 @@ describe('NuevoPersonajeComponent', () => {
     let dominioSvcMock: any;
     let deidadSvcMock: any;
     let tipoCriaturaSvcMock: any;
+    let monstruoSvcMock: any;
+    let especialSvcMock: any;
 
     beforeEach(() => {
         nuevoPSvc = new NuevoPersonajeService();
@@ -636,6 +638,12 @@ describe('NuevoPersonajeComponent', () => {
         tipoCriaturaSvcMock = {
             getTiposCriatura: () => of([]),
         };
+        monstruoSvcMock = {
+            getMonstruos: () => of([]),
+        };
+        especialSvcMock = {
+            getEspeciales: () => of([]),
+        };
         component = new NuevoPersonajeComponent(
             nuevoPSvc,
             campanaSvcMock,
@@ -657,7 +665,9 @@ describe('NuevoPersonajeComponent', () => {
             grupoArmaduraSvcMock,
             dominioSvcMock,
             deidadSvcMock,
-            tipoCriaturaSvcMock
+            tipoCriaturaSvcMock,
+            monstruoSvcMock,
+            especialSvcMock
         );
         component.Personaje = nuevoPSvc.PersonajeCreacion;
         component.catalogoDeidades = crearDeidadesMock();
@@ -2034,13 +2044,12 @@ describe('NuevoPersonajeComponent', () => {
         expect(component.modalSelectorExtraHabilidadAbierto).toBeFalse();
     });
 
-    it('continuarDesdeHabilidades muestra aviso temporal cuando el retorno sería dotes', async () => {
+    it('continuarDesdeHabilidades con retorno dotes completa pipeline y vuelve a clases', async () => {
         const clase = crearClaseMock({
             Id: 347,
             Nombre: 'Iniciado',
             Puntos_habilidad: { Id: 1, Valor: 0 },
         });
-        const swalSpy = spyOn(Swal, 'fire').and.resolveTo({ isConfirmed: true } as any);
         spyOn<any>(component, 'resolverDotesPendientes').and.resolveTo(true);
         component.Personaje.ModInteligencia = 0;
         component.catalogoClases = [clase];
@@ -2051,9 +2060,8 @@ describe('NuevoPersonajeComponent', () => {
         await component.continuarDesdeClases();
         await component.continuarDesdeHabilidades();
 
-        expect(nuevoPSvc.EstadoFlujo.pasoActual).toBe('habilidades');
-        expect(component.selectedInternalTabIndex).toBe(5);
-        expect(swalSpy).toHaveBeenCalled();
+        expect(nuevoPSvc.EstadoFlujo.pasoActual).toBe('clases');
+        expect(component.selectedInternalTabIndex).toBe(4);
     });
 
     it('en clase_nivel resuelve dotes pendientes al continuar desde habilidades, no al aplicar clase', async () => {
@@ -2070,14 +2078,12 @@ describe('NuevoPersonajeComponent', () => {
 
         spyOn<any>(component, 'abrirSelectorAumentosCaracteristica').and.resolveTo(true);
         const resolverDotesSpy = spyOn<any>(component, 'resolverDotesPendientes').and.resolveTo(true);
-        const swalSpy = spyOn(Swal, 'fire').and.resolveTo({ isConfirmed: true } as any);
 
         await component.continuarDesdeClases();
         expect(resolverDotesSpy).not.toHaveBeenCalled();
 
         await component.continuarDesdeHabilidades();
         expect(resolverDotesSpy).toHaveBeenCalledTimes(1);
-        expect(swalSpy).toHaveBeenCalled();
     });
 
     it('continuarDesdeHabilidades salta a conjuros cuando hay sesión activa', async () => {
@@ -2145,13 +2151,14 @@ describe('NuevoPersonajeComponent', () => {
         component.seleccionarClaseParaAplicar(claseConConjuros);
 
         await component.continuarDesdeClases();
+        (nuevoPSvc.EstadoFlujo.habilidades as any).returnStep = 'conjuros';
         await component.continuarDesdeHabilidades();
 
         expect(nuevoPSvc.EstadoFlujo.pasoActual).toBe('conjuros');
         expect(component.selectedInternalTabIndex).toBe(6);
     });
 
-    it('continuarDesdeConjuros muestra aviso temporal cuando el retorno sería dotes', async () => {
+    it('continuarDesdeConjuros con retorno dotes completa pipeline y vuelve a clases', async () => {
         const claseConConjuros = crearClaseMock({
             Id: 349,
             Nombre: 'Adepto místico',
@@ -2178,8 +2185,8 @@ describe('NuevoPersonajeComponent', () => {
                 Especiales: [],
             }],
         });
-        const swalSpy = spyOn(Swal, 'fire').and.resolveTo({ isConfirmed: true } as any);
-        spyOn<any>(component, 'resolverDotesPendientes').and.resolveTo(true);
+        spyOn<any>(component, 'resolverFlujoPostDotesFinNivel').and.resolveTo(true);
+        spyOn<any>(component, 'resolverPasoPostDotesFinNivel').and.returnValue('clases');
         const conjuro = {
             Id: 4002,
             Nombre: 'Detectar magia',
@@ -2219,13 +2226,16 @@ describe('NuevoPersonajeComponent', () => {
         component.seleccionarClaseParaAplicar(claseConConjuros);
 
         await component.continuarDesdeClases();
+        (nuevoPSvc.EstadoFlujo.habilidades as any).returnStep = 'conjuros';
         await component.continuarDesdeHabilidades();
+        (nuevoPSvc.EstadoFlujo.conjuros as any).returnStep = 'dotes';
         component.agregarConjuroSesion(conjuro);
         component.continuarDesdeConjuros();
+        await Promise.resolve();
+        await Promise.resolve();
 
-        expect(nuevoPSvc.EstadoFlujo.pasoActual).toBe('conjuros');
-        expect(component.selectedInternalTabIndex).toBe(6);
-        expect(swalSpy).toHaveBeenCalled();
+        expect(nuevoPSvc.EstadoFlujo.pasoActual).toBe('clases');
+        expect(component.selectedInternalTabIndex).toBe(4);
     });
 
     it('mensaje de progreso no afirma autoadición en conocidos nivel a nivel sin delta', async () => {
@@ -2292,6 +2302,7 @@ describe('NuevoPersonajeComponent', () => {
         component.seleccionarClaseParaAplicar(claseSinDelta);
 
         await component.continuarDesdeClases();
+        (nuevoPSvc.EstadoFlujo.habilidades as any).returnStep = 'conjuros';
         await component.continuarDesdeHabilidades();
 
         expect(component.mensajeProgresoConjuros.toLowerCase()).not.toContain('automatic');
@@ -2332,6 +2343,7 @@ describe('NuevoPersonajeComponent', () => {
         component.seleccionarClaseParaAplicar(claseSinObtencion);
 
         await component.continuarDesdeClases();
+        (nuevoPSvc.EstadoFlujo.habilidades as any).returnStep = 'conjuros';
         await component.continuarDesdeHabilidades();
 
         expect(component.conjurosSeleccionadosActuales.length).toBe(0);
@@ -2403,6 +2415,7 @@ describe('NuevoPersonajeComponent', () => {
         component.seleccionarClaseParaAplicar(clasePsionica);
 
         await component.continuarDesdeClases();
+        (nuevoPSvc.EstadoFlujo.habilidades as any).returnStep = 'conjuros';
         await component.continuarDesdeHabilidades();
 
         expect(component.entradaConjurosActual?.tipoLanzamiento).toBe('psionico');
@@ -2473,6 +2486,7 @@ describe('NuevoPersonajeComponent', () => {
         component.seleccionarClaseParaAplicar(claseArcana);
 
         await component.continuarDesdeClases();
+        (nuevoPSvc.EstadoFlujo.habilidades as any).returnStep = 'conjuros';
         await component.continuarDesdeHabilidades();
 
         expect(component.entradaConjurosActual?.tipoLanzamiento).toBe('arcano');
@@ -3318,6 +3332,134 @@ describe('NuevoPersonajeComponent', () => {
         expect(component.puedeContinuarVentajas).toBeFalse();
     });
 
+    it('returnStep dotes en habilidades ejecuta pipeline post-dotes y vuelve a clases', async () => {
+        spyOn<any>(component, 'resolverDotesPendientes').and.resolveTo(true);
+        spyOn(nuevoPSvc, 'getEstadoCuposFamiliarEspecial47').and.returnValue({
+            especialId: 47,
+            fuentes: [],
+            fuentesClaseIds: [],
+            fuentesTotales: 0,
+            cuposConsumidos: 0,
+            cuposDisponibles: 0,
+            nivelLanzadorFamiliar: 0,
+        } as any);
+        spyOn(nuevoPSvc, 'tieneCompaneroPendienteSinSelector').and.returnValue(false);
+        spyOn(nuevoPSvc, 'cerrarDistribucionHabilidades').and.returnValue('dotes');
+        const pasoSpy = spyOn(nuevoPSvc, 'actualizarPasoActual');
+        spyOn<any>(component, 'sincronizarTabConPaso');
+
+        (nuevoPSvc.EstadoFlujo.habilidades as any) = {
+            activa: true,
+            origen: 'clase_nivel',
+            returnStep: 'dotes',
+            puntosTotales: 0,
+            puntosRestantes: 0,
+            nivelPersonajeReferencia: 0,
+            classSkillTemporales: [],
+        };
+
+        await component.continuarDesdeHabilidades();
+
+        expect(pasoSpy).toHaveBeenCalledWith('clases');
+    });
+
+    it('returnStep dotes en habilidades usa destino plantillas cuando quedan elegibles', async () => {
+        spyOn<any>(component, 'resolverFlujoPostDotesFinNivel').and.resolveTo(true);
+        spyOn<any>(component, 'resolverPasoPostDotesFinNivel').and.returnValue('plantillas');
+        spyOn(nuevoPSvc, 'cerrarDistribucionHabilidades').and.returnValue('dotes');
+        const pasoSpy = spyOn(nuevoPSvc, 'actualizarPasoActual');
+        spyOn<any>(component, 'sincronizarTabConPaso');
+
+        (nuevoPSvc.EstadoFlujo.habilidades as any) = {
+            activa: true,
+            origen: 'clase_nivel',
+            returnStep: 'dotes',
+            puntosTotales: 0,
+            puntosRestantes: 0,
+            nivelPersonajeReferencia: 0,
+            classSkillTemporales: [],
+        };
+
+        await component.continuarDesdeHabilidades();
+
+        expect(pasoSpy).toHaveBeenCalledWith('plantillas');
+    });
+
+    it('returnStep dotes en conjuros cierra sesión y vuelve a clases', async () => {
+        spyOn(nuevoPSvc, 'puedeCerrarSesionConjuros').and.returnValue(true);
+        spyOn<any>(component, 'resolverFlujoPostDotesFinNivel').and.resolveTo(true);
+        const cerrarSpy = spyOn(nuevoPSvc, 'cerrarSesionConjuros').and.returnValue('dotes');
+        const pasoSpy = spyOn(nuevoPSvc, 'actualizarPasoActual');
+        spyOn<any>(component, 'sincronizarTabConPaso');
+
+        (nuevoPSvc.EstadoFlujo.conjuros as any) = {
+            activa: true,
+            indiceEntradaActual: 0,
+            returnStep: 'dotes',
+            entradas: [],
+            avisos: [],
+        };
+
+        component.continuarDesdeConjuros();
+        await Promise.resolve();
+        await Promise.resolve();
+
+        expect(cerrarSpy).toHaveBeenCalled();
+        expect(pasoSpy).toHaveBeenCalledWith('clases');
+    });
+
+    it('returnStep dotes en conjuros usa destino plantillas cuando quedan elegibles', async () => {
+        spyOn(nuevoPSvc, 'puedeCerrarSesionConjuros').and.returnValue(true);
+        spyOn<any>(component, 'resolverFlujoPostDotesFinNivel').and.resolveTo(true);
+        spyOn<any>(component, 'resolverPasoPostDotesFinNivel').and.returnValue('plantillas');
+        const cerrarSpy = spyOn(nuevoPSvc, 'cerrarSesionConjuros').and.returnValue('dotes');
+        const pasoSpy = spyOn(nuevoPSvc, 'actualizarPasoActual');
+        spyOn<any>(component, 'sincronizarTabConPaso');
+
+        (nuevoPSvc.EstadoFlujo.conjuros as any) = {
+            activa: true,
+            indiceEntradaActual: 0,
+            returnStep: 'dotes',
+            entradas: [],
+            avisos: [],
+        };
+
+        component.continuarDesdeConjuros();
+        await Promise.resolve();
+        await Promise.resolve();
+
+        expect(cerrarSpy).toHaveBeenCalled();
+        expect(pasoSpy).toHaveBeenCalledWith('plantillas');
+    });
+
+    it('continuarDesdePlantillas salta ventajas si viene de retorno de fin de nivel', async () => {
+        (nuevoPSvc.EstadoFlujo as any).caracteristicasGeneradas = true;
+        nuevoPSvc.setRetornoFinNivelPendientePlantillas(true);
+        spyOn<any>(component, 'abrirSelectorAumentosCaracteristica').and.resolveTo(true);
+        spyOn<any>(component, 'sincronizarTabConPaso');
+
+        await component.continuarDesdePlantillas();
+
+        expect(nuevoPSvc.EstadoFlujo.pasoActual).toBe('clases');
+    });
+
+    it('mostrarBotonFinalizarCreacion depende de tener niveles de clase', () => {
+        component.Personaje.desgloseClases = [];
+        expect(component.mostrarBotonFinalizarCreacion).toBeFalse();
+
+        component.Personaje.desgloseClases = [{ Nombre: 'Mago', Nivel: 1 } as any];
+        expect(component.mostrarBotonFinalizarCreacion).toBeTrue();
+    });
+
+    it('onFinalizarCreacionTemporal muestra aviso informativo', () => {
+        const swalSpy = spyOn(Swal, 'fire').and.resolveTo({ isConfirmed: true } as any);
+
+        component.onFinalizarCreacionTemporal();
+
+        expect(swalSpy).toHaveBeenCalled();
+        expect((swalSpy.calls.mostRecent().args[0] as any).title).toContain('pendiente');
+    });
+
     it('chip homebrew queda bloqueado cuando el personaje no es oficial', () => {
         component.Personaje.Oficial = false;
         expect(component.homebrewForzado).toBeTrue();
@@ -3350,7 +3492,9 @@ describe('NuevoPersonajeComponent', () => {
             grupoArmaduraSvcMock,
             dominioSvcMock,
             deidadSvcMock,
-            tipoCriaturaSvcMock
+            tipoCriaturaSvcMock,
+            monstruoSvcMock,
+            especialSvcMock
         );
         componentReabierto.ngOnInit();
 

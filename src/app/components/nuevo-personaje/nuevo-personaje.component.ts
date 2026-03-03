@@ -17,7 +17,7 @@ import { EnemigoPredilectoDetalle } from 'src/app/interfaces/enemigo-predilecto-
 import { EscuelaConjuros } from 'src/app/interfaces/escuela-conjuros';
 import { HabilidadBasicaDetalle } from 'src/app/interfaces/habilidad';
 import { IdiomaDetalle } from 'src/app/interfaces/idioma';
-import { MonstruoDetalle } from 'src/app/interfaces/monstruo';
+import { FamiliarMonstruoDetalle, MonstruoDetalle } from 'src/app/interfaces/monstruo';
 import { Personaje } from 'src/app/interfaces/personaje';
 import { Plantilla } from 'src/app/interfaces/plantilla';
 import { Raza } from 'src/app/interfaces/raza';
@@ -41,10 +41,13 @@ import { IdiomaService } from 'src/app/services/idioma.service';
 import { DoteService } from 'src/app/services/dote.service';
 import { EnemigoPredilectoService } from 'src/app/services/enemigo-predilecto.service';
 import { EscuelaConjurosService } from 'src/app/services/escuela-conjuros.service';
+import { EspecialService } from 'src/app/services/especial.service';
+import { MonstruoService } from 'src/app/services/monstruo.service';
 import {
     AsignacionAumentoCaracteristica,
     AsignacionCaracteristicas,
     AumentoCaracteristicaPendiente,
+    EstadoCuposFamiliar,
     CaracteristicaKeyAumento,
     ClaseAumentoLanzadorPendiente,
     ClaseDominiosPendientes,
@@ -61,6 +64,12 @@ import {
     SeleccionOpcionalesClase,
     StepNuevoPersonaje,
 } from 'src/app/services/nuevo-personaje.service';
+import {
+    construirCatalogoFamiliaresDesdeMonstruos,
+    FamiliarPlantillaId,
+    filtrarFamiliaresElegibles
+} from 'src/app/services/utils/familiar-reglas';
+import { SelectorFamiliarConfirmacion } from './selector-familiar-modal/selector-familiar-modal.component';
 import { SelectorEspecialidadMagicaConfirmacion } from './selector-especialidad-magica-modal/selector-especialidad-magica-modal.component';
 import { PlantillaService } from 'src/app/services/plantilla.service';
 import { RazaService } from 'src/app/services/raza.service';
@@ -301,6 +310,7 @@ export class NuevoPersonajeComponent {
     modalSelectorDotesAbierto = false;
     modalSelectorExtraHabilidadAbierto = false;
     modalSelectorEnemigoPredilectoAbierto = false;
+    modalSelectorFamiliarAbierto = false;
     modalSelectorRazaBaseAbierto = false;
     modalSelectorRacialesOpcionalesAbierto = false;
     selectorDotePendienteActual: DotePendienteState | null = null;
@@ -354,6 +364,16 @@ export class NuevoPersonajeComponent {
     selectorEnemigoPredilectoTitulo = 'Seleccionar enemigo predilecto';
     selectorEnemigoPredilectoIndice = 1;
     selectorEnemigoPredilectoTotal = 1;
+    selectorFamiliarTitulo = 'Seleccionar familiar';
+    selectorFamiliarPlantillaSeleccionada: FamiliarPlantillaId = 1;
+    selectorFamiliarIncluirHomebrew = false;
+    selectorFamiliarCuposDisponibles = 0;
+    selectorFamiliarNombre = '';
+    selectorFamiliarEstadoCupos: EstadoCuposFamiliar | null = null;
+    selectorFamiliarCatalogoCompleto: FamiliarMonstruoDetalle[] = [];
+    selectorFamiliarElegibles: FamiliarMonstruoDetalle[] = [];
+    private resolverSelectorFamiliar: ((seleccion: SelectorFamiliarConfirmacion | 'omitir' | null) => void) | null = null;
+    private nombresEspecialesFamiliar: Record<number, string> | null = null;
     private idiomasTemporalesSeleccionados: IdiomaDetalle[] = [];
     selectedInternalTabIndex = 0;
     private campanasSub?: Subscription;
@@ -401,7 +421,9 @@ export class NuevoPersonajeComponent {
         private grupoArmaduraSvc: GrupoArmaduraService,
         private dominioSvc: DominioService,
         private deidadSvc: DeidadService,
-        private tipoCriaturaSvc: TipoCriaturaService
+        private tipoCriaturaSvc: TipoCriaturaService,
+        private monstruoSvc: MonstruoService,
+        private especialSvc: EspecialService
     ) {
         this.Personaje = this.nuevoPSvc.PersonajeCreacion;
     }
@@ -718,6 +740,10 @@ export class NuevoPersonajeComponent {
     get totalNivelesClaseActual(): number {
         return (this.Personaje?.desgloseClases ?? [])
             .reduce((acc, entrada) => acc + Math.max(0, Number(entrada?.Nivel ?? 0)), 0);
+    }
+
+    get mostrarBotonFinalizarCreacion(): boolean {
+        return this.totalNivelesClaseActual > 0;
     }
 
     get incluirHomebrewPlantillasEfectivo(): boolean {
@@ -1683,6 +1709,7 @@ export class NuevoPersonajeComponent {
             || this.modalSelectorEspecialidadMagicaAbierto
             || this.modalSelectorDotesAbierto
             || this.modalSelectorEnemigoPredilectoAbierto
+            || this.modalSelectorFamiliarAbierto
             || this.modalSelectorExtraHabilidadAbierto
             || this.modalSelectorRazaBaseAbierto
             || this.modalSelectorRacialesOpcionalesAbierto;
@@ -2264,6 +2291,7 @@ export class NuevoPersonajeComponent {
         if (!this.caracteristicasGeneradas) {
             return;
         }
+        const retornoFinNivelPendiente = this.nuevoPSvc.consumirRetornoFinNivelPendientePlantillas();
 
         this.nuevoPSvc.registrarAumentosPendientesPorProgresion('Plantillas confirmadas');
         const aumentosCompletados = await this.abrirSelectorAumentosCaracteristica();
@@ -2279,10 +2307,12 @@ export class NuevoPersonajeComponent {
             return;
         }
 
-        this.nuevoPSvc.actualizarPasoActual('ventajas');
+        const siguientePaso: StepNuevoPersonaje = retornoFinNivelPendiente ? 'clases' : 'ventajas';
+        this.nuevoPSvc.actualizarPasoActual(siguientePaso);
         this.recalcularPlantillasVisibles();
         this.recalcularClasesVisibles();
-        this.inicializarControlHomebrewVentajasSiAplica();
+        if (siguientePaso === 'ventajas')
+            this.inicializarControlHomebrewVentajasSiAplica();
         this.sincronizarTabConPaso();
     }
 
@@ -2928,15 +2958,25 @@ export class NuevoPersonajeComponent {
             return;
         const origenHabilidades = this.flujoHabilidades?.origen;
 
+        if (this.flujoHabilidades?.returnStep === 'dotes') {
+            const completado = await this.resolverFlujoPostDotesFinNivel();
+            if (!completado)
+                return;
+
+            const returnStep = this.nuevoPSvc.cerrarDistribucionHabilidades();
+            if (!returnStep)
+                return;
+            this.Personaje = this.nuevoPSvc.PersonajeCreacion;
+            const siguientePaso = this.resolverPasoPostDotesFinNivel();
+            this.nuevoPSvc.actualizarPasoActual(siguientePaso);
+            this.sincronizarTabConPaso();
+            return;
+        }
+
         if (origenHabilidades === 'raza_dg' || origenHabilidades === 'clase_nivel') {
             const dotesCompletadas = await this.resolverDotesPendientes();
             if (!dotesCompletadas)
                 return;
-        }
-
-        if (this.flujoHabilidades?.returnStep === 'dotes') {
-            void this.mostrarCreacionNoFinalizadaTemporal();
-            return;
         }
 
         const returnStep = this.nuevoPSvc.cerrarDistribucionHabilidades();
@@ -2984,7 +3024,7 @@ export class NuevoPersonajeComponent {
         if (!this.nuevoPSvc.puedeCerrarSesionConjuros())
             return;
         if (this.flujoConjuros?.returnStep === 'dotes') {
-            void this.mostrarCreacionNoFinalizadaTemporal();
+            void this.continuarDesdeConjurosPostDotes();
             return;
         }
         const nextStep = this.nuevoPSvc.cerrarSesionConjuros();
@@ -2993,12 +3033,80 @@ export class NuevoPersonajeComponent {
         this.sincronizarTabConPaso();
     }
 
-    private async mostrarCreacionNoFinalizadaTemporal(): Promise<void> {
+    private async continuarDesdeConjurosPostDotes(): Promise<void> {
+        const completado = await this.resolverFlujoPostDotesFinNivel();
+        if (!completado)
+            return;
+
+        this.nuevoPSvc.cerrarSesionConjuros();
+        this.Personaje = this.nuevoPSvc.PersonajeCreacion;
+        const siguientePaso = this.resolverPasoPostDotesFinNivel();
+        this.nuevoPSvc.actualizarPasoActual(siguientePaso);
+        this.sincronizarTabConPaso();
+    }
+
+    private async resolverFlujoPostDotesFinNivel(): Promise<boolean> {
+        const dotesCompletadas = await this.resolverDotesPendientes();
+        if (!dotesCompletadas)
+            return false;
+
+        const familiarResuelto = await this.resolverFamiliarPendienteFinNivel();
+        if (!familiarResuelto)
+            return false;
+
+        await this.avisarCompaneroPendienteSinSelectorSiAplica();
+        return true;
+    }
+
+    private resolverPasoPostDotesFinNivel(): StepNuevoPersonaje {
+        const hayPlantillasElegibles = this.hayPlantillasElegiblesPostDotes();
+        this.nuevoPSvc.setRetornoFinNivelPendientePlantillas(hayPlantillasElegibles);
+        return hayPlantillasElegibles ? 'plantillas' : 'clases';
+    }
+
+    private async resolverFamiliarPendienteFinNivel(): Promise<boolean> {
+        const estado = this.nuevoPSvc.getEstadoCuposFamiliarEspecial47();
+        if (estado.cuposDisponibles < 1)
+            return true;
+
+        const seleccion = await this.abrirSelectorFamiliar(estado);
+        if (seleccion === null)
+            return false;
+        if (seleccion === 'omitir')
+            return true;
+
+        const nombresEspeciales = await this.cargarNombresEspecialesFamiliar();
+        const resultado = this.nuevoPSvc.registrarFamiliarSeleccionado(
+            seleccion.familiar,
+            seleccion.plantilla,
+            nombresEspeciales,
+            seleccion.nombre
+        );
+        if (!resultado.registrado) {
+            await Swal.fire({
+                icon: 'warning',
+                title: 'No se pudo registrar el familiar',
+                text: resultado.razon || 'No se pudo aplicar la selección de familiar con el estado actual.',
+                confirmButtonText: 'Entendido',
+                target: document.body,
+                heightAuto: false,
+                scrollbarPadding: false,
+            });
+            return false;
+        }
+
+        this.Personaje = this.nuevoPSvc.PersonajeCreacion;
+        return true;
+    }
+
+    private async avisarCompaneroPendienteSinSelectorSiAplica(): Promise<void> {
+        if (!this.nuevoPSvc.tieneCompaneroPendienteSinSelector())
+            return;
         await Swal.fire({
             icon: 'info',
-            title: 'Creación no finalizada',
-            text: 'Aún no está finalizada la creación de personaje.',
-            confirmButtonText: 'Entendido',
+            title: 'Compañero animal pendiente',
+            text: 'Tu personaje puede obtener compañero animal, pero su selector aún no está implementado en esta fase.',
+            confirmButtonText: 'Continuar',
             target: document.body,
             heightAuto: false,
             scrollbarPadding: false,
@@ -3099,6 +3207,169 @@ export class NuevoPersonajeComponent {
         this.selectorDoteCandidatos = [];
         this.selectorDotePendientesRestantes = 0;
         this.resolverSelectorDotes = null;
+    }
+
+    private async abrirSelectorFamiliar(
+        estado: EstadoCuposFamiliar
+    ): Promise<SelectorFamiliarConfirmacion | 'omitir' | null> {
+        const catalogoCargado = await this.cargarCatalogoFamiliaresSelector();
+        if (!catalogoCargado)
+            return null;
+
+        this.selectorFamiliarEstadoCupos = estado;
+        this.selectorFamiliarTitulo = 'Seleccionar familiar';
+        this.selectorFamiliarPlantillaSeleccionada = 1;
+        this.selectorFamiliarIncluirHomebrew = !this.Personaje.Oficial;
+        this.selectorFamiliarNombre = this.getNombreDefectoFamiliar();
+        this.selectorFamiliarCuposDisponibles = Math.max(0, Number(estado?.cuposDisponibles ?? 0));
+        this.recalcularFamiliaresElegiblesSelector();
+        this.modalSelectorFamiliarAbierto = true;
+
+        return new Promise<SelectorFamiliarConfirmacion | 'omitir' | null>((resolve) => {
+            this.resolverSelectorFamiliar = resolve;
+        });
+    }
+
+    onConfirmarSelectorFamiliar(seleccion: SelectorFamiliarConfirmacion): void {
+        const idFamiliar = Number(seleccion?.familiar?.Id_familiar ?? 0);
+        const plantilla = Number(seleccion?.plantilla ?? 0);
+        const familiar = this.selectorFamiliarElegibles.find((item) =>
+            Number(item?.Id_familiar) === idFamiliar
+            && Number(item?.Plantilla?.Id) === plantilla
+        );
+        if (!familiar)
+            return;
+        this.cerrarSelectorFamiliarContexto({
+            familiar,
+            plantilla: plantilla as FamiliarPlantillaId,
+            nombre: `${seleccion?.nombre ?? ''}`,
+        });
+    }
+
+    onOmitirSelectorFamiliar(): void {
+        this.cerrarSelectorFamiliarContexto('omitir');
+    }
+
+    onDetalleSelectorFamiliar(familiar: FamiliarMonstruoDetalle): void {
+        this.verDetallesMonstruoDesdeFicha(familiar);
+    }
+
+    onFinalizarCreacionTemporal(): void {
+        void Swal.fire({
+            icon: 'info',
+            title: 'Finalizar pendiente de implementación',
+            text: 'En la siguiente fase este botón calculará vida, guardará el personaje y descargará la ficha en PDF.',
+            confirmButtonText: 'Entendido',
+            target: document.body,
+            heightAuto: false,
+            scrollbarPadding: false,
+        });
+    }
+
+    onCambioPlantillaSelectorFamiliar(plantilla: FamiliarPlantillaId): void {
+        const parsed = Number(plantilla);
+        if (!Number.isFinite(parsed) || parsed < 1 || parsed > 5)
+            return;
+        this.selectorFamiliarPlantillaSeleccionada = parsed as FamiliarPlantillaId;
+        this.recalcularFamiliaresElegiblesSelector();
+    }
+
+    onCambioHomebrewSelectorFamiliar(value: boolean): void {
+        this.selectorFamiliarIncluirHomebrew = !!value;
+        this.recalcularFamiliaresElegiblesSelector();
+    }
+
+    onCambioNombreSelectorFamiliar(value: string): void {
+        this.selectorFamiliarNombre = `${value ?? ''}`;
+    }
+
+    private async cargarCatalogoFamiliaresSelector(): Promise<boolean> {
+        try {
+            const monstruos = await firstValueFrom(this.monstruoSvc.getMonstruos().pipe(take(1)));
+            this.selectorFamiliarCatalogoCompleto = construirCatalogoFamiliaresDesdeMonstruos(
+                Array.isArray(monstruos) ? monstruos : []
+            );
+            return true;
+        } catch {
+            await Swal.fire({
+                icon: 'warning',
+                title: 'No se pudo cargar el catálogo de monstruos familiares',
+                text: 'Revisa la conexión o vuelve a intentarlo en unos segundos.',
+                confirmButtonText: 'Entendido',
+                target: document.body,
+                heightAuto: false,
+                scrollbarPadding: false,
+            });
+            return false;
+        }
+    }
+
+    private recalcularFamiliaresElegiblesSelector(): void {
+        if (!this.selectorFamiliarEstadoCupos) {
+            this.selectorFamiliarElegibles = [];
+            return;
+        }
+        const incluirHomebrewEfectivo = this.selectorFamiliarIncluirHomebrew || !this.Personaje.Oficial;
+        this.selectorFamiliarElegibles = filtrarFamiliaresElegibles({
+            familiares: this.selectorFamiliarCatalogoCompleto,
+            estado: this.selectorFamiliarEstadoCupos,
+            alineamientoPersonaje: `${this.Personaje?.Alineamiento ?? ''}`.trim(),
+            plantillaSeleccionada: this.selectorFamiliarPlantillaSeleccionada,
+            incluirHomebrew: incluirHomebrewEfectivo,
+        });
+    }
+
+    private async cargarNombresEspecialesFamiliar(): Promise<Record<number, string>> {
+        if (this.nombresEspecialesFamiliar)
+            return { ...this.nombresEspecialesFamiliar };
+
+        const objetivos = [81, 82, 83, 87];
+        const nombres: Record<number, string> = {};
+        objetivos.forEach((id) => {
+            nombres[id] = `Especial ${id} (Familiar)`;
+        });
+
+        try {
+            const especiales = await firstValueFrom(this.especialSvc.getEspeciales().pipe(take(1)));
+            (especiales ?? []).forEach((especial) => {
+                const id = Number(especial?.Id ?? 0);
+                if (!objetivos.includes(id))
+                    return;
+                const nombre = `${especial?.Nombre ?? ''}`.trim();
+                if (nombre.length > 0)
+                    nombres[id] = nombre;
+            });
+        } catch {
+            // fallback ya aplicado
+        }
+
+        this.nombresEspecialesFamiliar = { ...nombres };
+        return { ...nombres };
+    }
+
+    private cerrarSelectorFamiliarContexto(
+        resultado: SelectorFamiliarConfirmacion | 'omitir' | null
+    ): void {
+        this.modalSelectorFamiliarAbierto = false;
+        this.selectorFamiliarTitulo = 'Seleccionar familiar';
+        this.selectorFamiliarPlantillaSeleccionada = 1;
+        this.selectorFamiliarIncluirHomebrew = false;
+        this.selectorFamiliarNombre = '';
+        this.selectorFamiliarCuposDisponibles = 0;
+        this.selectorFamiliarEstadoCupos = null;
+        this.selectorFamiliarCatalogoCompleto = [];
+        this.selectorFamiliarElegibles = [];
+
+        const resolver = this.resolverSelectorFamiliar;
+        this.resolverSelectorFamiliar = null;
+        resolver?.(resultado);
+    }
+
+    private getNombreDefectoFamiliar(): string {
+        const nombrePj = `${this.Personaje?.Nombre ?? ''}`.trim();
+        if (nombrePj.length < 1)
+            return 'Familiar';
+        return `Familiar de ${nombrePj}`;
     }
 
     private async solicitarSeleccionesDominiosClase(
@@ -4759,40 +5030,7 @@ export class NuevoPersonajeComponent {
 
         const search = this.normalizarTexto(this.filtroPlantillasTexto);
         const porManual = this.filtroPlantillasManual;
-        const tipoCriaturaActualId = Number(this.Personaje.Tipo_criatura?.Id ?? 0);
-        const subtiposActualesIds = extraerIdsPositivos(
-            buildIdentidadPrerrequisitos(
-                raza,
-                this.nuevoPSvc.RazaBaseSeleccionadaCompleta,
-                this.Personaje.Subtipos
-            ).subtipos
-        );
-        const identidadCriaturaActualIds = Array.from(new Set([
-            tipoCriaturaActualId,
-            ...subtiposActualesIds,
-        ].filter((id) => Number.isFinite(id) && id > 0)));
-
-        const ctx = {
-            alineamiento: this.Personaje.Alineamiento,
-            caracteristicas: {
-                Fuerza: Number(this.Personaje.Fuerza),
-                Destreza: Number(this.Personaje.Destreza),
-                Constitucion: Number(this.Personaje.Constitucion),
-                Inteligencia: Number(this.Personaje.Inteligencia),
-                Sabiduria: Number(this.Personaje.Sabiduria),
-                Carisma: Number(this.Personaje.Carisma),
-            },
-            tamanoRazaId: Number(raza.Tamano?.Id ?? 0),
-            tiposCriaturaMiembroIds: identidadCriaturaActualIds,
-            tipoCriaturaActualId,
-            razaHeredada: !!raza.Heredada,
-            incluirHomebrew: this.incluirHomebrewPlantillasEfectivo,
-            seleccionadas: this.plantillasSeleccionadas.map(p => ({
-                Id: Number(p.Id),
-                Nombre: p.Nombre,
-                Nacimiento: !!p.Nacimiento,
-            })),
-        };
+        const ctx = this.getContextoEvaluacionPlantillas(raza, this.incluirHomebrewPlantillasEfectivo);
 
         const elegibles: Plantilla[] = [];
         const bloqueadasUnknown: { plantilla: Plantilla; evaluacion: PlantillaEvaluacionResultado; }[] = [];
@@ -4848,5 +5086,70 @@ export class NuevoPersonajeComponent {
         this.plantillasElegibles = elegibles;
         this.plantillasBloqueadasUnknown = bloqueadasUnknown;
         this.plantillasBloqueadasFailed = bloqueadasFailed;
+    }
+
+    private hayPlantillasElegiblesPostDotes(): boolean {
+        const raza = this.razaSeleccionada;
+        if (!raza)
+            return false;
+
+        const ctx = this.getContextoEvaluacionPlantillas(raza, this.incluirHomebrewPlantillasEfectivo);
+        const idsNoDisponibles = new Set<number>(this.plantillasSeleccionadas
+            .map((plantilla) => Number(plantilla?.Id))
+            .filter((id) => Number.isFinite(id) && id > 0));
+
+        return this.plantillasCatalogo.some((plantilla) => {
+            const idPlantilla = Number(plantilla?.Id);
+            if ((Number.isFinite(idPlantilla) && idsNoDisponibles.has(idPlantilla))
+                || this.nuevoPSvc.esPlantillaConfirmada(idPlantilla))
+                return false;
+
+            const evaluacion = evaluarElegibilidadPlantilla(plantilla, ctx);
+            if (evaluacion.estado !== 'eligible')
+                return false;
+
+            const alineamientoResuelto = resolverAlineamientoPlantillas(
+                this.Personaje.Alineamiento,
+                [...this.plantillasSeleccionadas, plantilla]
+            );
+            return !alineamientoResuelto.conflicto;
+        });
+    }
+
+    private getContextoEvaluacionPlantillas(raza: Raza, incluirHomebrew: boolean) {
+        const tipoCriaturaActualId = Number(this.Personaje.Tipo_criatura?.Id ?? 0);
+        const subtiposActualesIds = extraerIdsPositivos(
+            buildIdentidadPrerrequisitos(
+                raza,
+                this.nuevoPSvc.RazaBaseSeleccionadaCompleta,
+                this.Personaje.Subtipos
+            ).subtipos
+        );
+        const identidadCriaturaActualIds = Array.from(new Set([
+            tipoCriaturaActualId,
+            ...subtiposActualesIds,
+        ].filter((id) => Number.isFinite(id) && id > 0)));
+
+        return {
+            alineamiento: this.Personaje.Alineamiento,
+            caracteristicas: {
+                Fuerza: Number(this.Personaje.Fuerza),
+                Destreza: Number(this.Personaje.Destreza),
+                Constitucion: Number(this.Personaje.Constitucion),
+                Inteligencia: Number(this.Personaje.Inteligencia),
+                Sabiduria: Number(this.Personaje.Sabiduria),
+                Carisma: Number(this.Personaje.Carisma),
+            },
+            tamanoRazaId: Number(raza.Tamano?.Id ?? 0),
+            tiposCriaturaMiembroIds: identidadCriaturaActualIds,
+            tipoCriaturaActualId,
+            razaHeredada: !!raza.Heredada,
+            incluirHomebrew,
+            seleccionadas: this.plantillasSeleccionadas.map((plantilla) => ({
+                Id: Number(plantilla.Id),
+                Nombre: plantilla.Nombre,
+                Nacimiento: !!plantilla.Nacimiento,
+            })),
+        };
     }
 }

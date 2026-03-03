@@ -211,10 +211,8 @@
                             <tr>
                                 <th>Nivel</th>
                                 <th *ngIf="mostrarAtaqueBase">Ataque base</th>
-                                <th *ngIf="mostrarFortaleza">Fort</th>
-                                <th *ngIf="mostrarReflejos">Ref</th>
-                                <th *ngIf="mostrarVoluntad">Vol</th>
-                                <th *ngIf="mostrarEspeciales">Especiales</th>
+                                <th *ngIf="mostrarFortaleza || mostrarReflejos || mostrarVoluntad">Salvaciones</th>
+                                <th *ngIf="mostrarEspeciales" class="columna-especiales">Especiales</th>
                                 <th *ngIf="mostrarNivelMaxPoderAccesible">Nivel max poder accesible</th>
                                 <th *ngIf="mostrarReservaPsionica">Reserva psiónica</th>
                                 <th *ngIf="mostrarAumentosClaseLanzadora">Aumentos clase lanzadora</th>
@@ -227,10 +225,8 @@
                             <tr *ngFor="let nivel of filasNivel; trackBy: trackByNivel">
                                 <td>{{nivel.Nivel}}</td>
                                 <td *ngIf="mostrarAtaqueBase">{{tieneTextoVisible(nivel.Ataque_base) ? nivel.Ataque_base : ''}}</td>
-                                <td *ngIf="mostrarFortaleza">{{tieneTextoVisible(nivel.Salvaciones.Fortaleza) ? nivel.Salvaciones.Fortaleza : ''}}</td>
-                                <td *ngIf="mostrarReflejos">{{tieneTextoVisible(nivel.Salvaciones.Reflejos) ? nivel.Salvaciones.Reflejos : ''}}</td>
-                                <td *ngIf="mostrarVoluntad">{{tieneTextoVisible(nivel.Salvaciones.Voluntad) ? nivel.Salvaciones.Voluntad : ''}}</td>
-                                <td *ngIf="mostrarEspeciales">
+                                <td *ngIf="mostrarFortaleza || mostrarReflejos || mostrarVoluntad">{{getTextoSalvaciones(nivel)}}</td>
+                                <td *ngIf="mostrarEspeciales" class="columna-especiales">
                                     <ng-container *ngIf="getRenderEspecialesFila(nivel) as renderEspeciales">
                                         <div class="chips-celda" *ngIf="renderEspeciales.length > 0; else sinEspeciales">
                                             <ng-container *ngFor="let renderItem of renderEspeciales; trackBy: trackByRenderEspecial">

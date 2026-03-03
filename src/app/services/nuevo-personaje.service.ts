@@ -11,6 +11,7 @@ import { DeidadDetalle } from '../interfaces/deidad';
 import { DominioDetalle } from '../interfaces/dominio';
 import { HabilidadBasicaDetalle, HabilidadBonoVario } from '../interfaces/habilidad';
 import { IdiomaDetalle } from '../interfaces/idioma';
+import { FamiliarMonstruoDetalle } from '../interfaces/monstruo';
 import { Personaje } from '../interfaces/personaje';
 import { Plantilla } from '../interfaces/plantilla';
 import { RacialDetalle } from '../interfaces/racial';
@@ -28,12 +29,19 @@ import { aplicarMutacion, esRazaMutada } from './utils/raza-mutacion';
 import { normalizeSubtipoRefArray } from './utils/subtipo-mapper';
 import { ClaseEvaluacionResultado, evaluarElegibilidadClase } from './utils/clase-elegibilidad';
 import { DoteEvaluacionContexto, evaluarElegibilidadDote } from './utils/dote-elegibilidad';
+import {
+    EstadoCuposFamiliar as EstadoCuposFamiliarUtil,
+    FamiliarPlantillaId as FamiliarPlantillaIdUtil,
+    resolverEstadoCuposFamiliarEspecial47
+} from './utils/familiar-reglas';
 import { UserSettingsService } from './user-settings.service';
 import { NuevoPersonajeGeneradorConfig } from '../interfaces/user-settings';
 
 export type StepNuevoPersonaje = 'raza' | 'basicos' | 'plantillas' | 'ventajas' | 'clases' | 'habilidades' | 'conjuros' | 'dotes';
 export type HabilidadesFlujoOrigen = 'raza_dg' | 'plantilla_dg' | 'clase_nivel';
 export type TipoLanzamientoConjuros = 'arcano' | 'divino' | 'psionico' | 'alma' | 'mixto';
+export type FamiliarPlantillaId = FamiliarPlantillaIdUtil;
+export type EstadoCuposFamiliar = EstadoCuposFamiliarUtil;
 export type GeneradorAutoRespuestaQ1 =
     | 'acero_musculo'
     | 'rapidez_precision'
@@ -208,6 +216,11 @@ const CARGA_MULTIPLICADOR_BIPEDO_POR_MOD_PRESA: Record<number, number> = {
 };
 const EXTRA_IDIOMAS_INICIALES = 0;
 const GENERADOR_AUTO_Q4_THRESHOLD = 1;
+const DOTE_FAMILIAR_ID = 17;
+const ESPECIAL_FAMILIAR_CONVOCAR_ID = 47;
+const ESPECIALES_BONUS_FAMILIAR_FIJOS = [81, 82];
+const ESPECIAL_BONUS_FAMILIAR_MENSAJERO = 83;
+const ESPECIAL_BONUS_FAMILIAR_HECHIZO = 87;
 const GENERADOR_AUTO_CON_FLOOR = 1;
 const GENERADOR_AUTO_RECOMENDACION_UMBRAL_TOP3 = 1;
 const HABILIDAD_FAMILIAS_REPETIBLES = {
@@ -638,6 +651,14 @@ export interface DoteSelectorCandidato {
     extrasDisponibles: DoteExtraOpcion[];
 }
 
+export interface RegistroFamiliarResultado {
+    registrado: boolean;
+    razon?: string;
+    familiarAgregado?: FamiliarMonstruoDetalle;
+    dote17Agregada: boolean;
+    especialesAgregadosIds: number[];
+}
+
 export interface DoteSeleccionConfirmada {
     idDote: number;
     idExtra: number;
@@ -742,6 +763,7 @@ export interface PlantillasFlujoState {
     disponibles: Plantilla[];
     seleccionadas: Plantilla[];
     confirmadasIds: number[];
+    retornoFinNivelPendiente: boolean;
     tipoCriaturaSimulada: {
         Id: number;
         Nombre: string;
@@ -1018,6 +1040,16 @@ export class NuevoPersonajeService {
         if (idObjetivo <= 0)
             return false;
         return this.getIdsPlantillasConfirmadasSet().has(idObjetivo);
+    }
+
+    setRetornoFinNivelPendientePlantillas(activo: boolean): void {
+        this.estadoFlujo.plantillas.retornoFinNivelPendiente = !!activo;
+    }
+
+    consumirRetornoFinNivelPendientePlantillas(): boolean {
+        const activo = !!this.estadoFlujo.plantillas.retornoFinNivelPendiente;
+        this.estadoFlujo.plantillas.retornoFinNivelPendiente = false;
+        return activo;
     }
 
     recalcularSimulacionPlantillas(): void {
@@ -1746,7 +1778,8 @@ export class NuevoPersonajeService {
 
     registrarDotesPendientesPorProgresion(origen: string): DotePendienteState[] {
         const nivelEfectivoDotes = this.getNivelEfectivoParaDotesProgresion();
-        const totalPorProgresion = Math.max(0, Math.floor(nivelEfectivoDotes / 3));
+        const doteInicialNivel = nivelEfectivoDotes > 0 && !this.tieneDgsAdicionalesParaDoteInicial() ? 1 : 0;
+        const totalPorProgresion = Math.max(0, doteInicialNivel + Math.floor(nivelEfectivoDotes / 3));
         const nuevas = Math.max(0, totalPorProgresion - this.dotesProgresionConcedidas);
         if (nuevas < 1)
             return [];
@@ -1890,6 +1923,94 @@ export class NuevoPersonajeService {
                 return total;
             return total + 1;
         }, 0);
+    }
+
+    getEstadoCuposFamiliarEspecial47(): EstadoCuposFamiliar {
+        return resolverEstadoCuposFamiliarEspecial47(this.personajeCreacion, this.catalogoClases);
+    }
+
+    tieneCompaneroPendienteSinSelector(): boolean {
+        const tieneFuenteCompanero = this.tieneClaseaPorNombre('Compañero animal') || this.tieneClaseaPorNombre('Compañero');
+        if (!tieneFuenteCompanero)
+            return false;
+        const companerosActuales = Array.isArray(this.personajeCreacion?.Companeros)
+            ? this.personajeCreacion.Companeros.length
+            : 0;
+        return companerosActuales < 1;
+    }
+
+    registrarFamiliarSeleccionado(
+        familiar: FamiliarMonstruoDetalle | null | undefined,
+        plantillaSeleccionada: FamiliarPlantillaId,
+        nombresEspecialesPorId: Record<number, string> = {},
+        nombrePersonalizado: string = ''
+    ): RegistroFamiliarResultado {
+        const estado = this.getEstadoCuposFamiliarEspecial47();
+        if (estado.cuposDisponibles < 1) {
+            return {
+                registrado: false,
+                razon: 'No hay cupos disponibles de familiar',
+                dote17Agregada: false,
+                especialesAgregadosIds: [],
+            };
+        }
+
+        const idFamiliar = this.toNumber(familiar?.Id_familiar);
+        if (idFamiliar <= 0 || !familiar) {
+            return {
+                registrado: false,
+                razon: 'Familiar inválido',
+                dote17Agregada: false,
+                especialesAgregadosIds: [],
+            };
+        }
+
+        const plantillaId = Math.max(1, Math.min(5, this.toNumber(plantillaSeleccionada))) as FamiliarPlantillaId;
+        const yaExiste = (this.personajeCreacion.Familiares ?? []).some((item) =>
+            this.toNumber(item?.Id_familiar) === idFamiliar
+            && this.toNumber(item?.Plantilla?.Id) === plantillaId
+        );
+        if (yaExiste) {
+            return {
+                registrado: false,
+                razon: 'Ese familiar con la misma plantilla ya está seleccionado',
+                dote17Agregada: false,
+                especialesAgregadosIds: [],
+            };
+        }
+
+        const familiarGuardar = this.clonarFamiliarParaPersonaje(familiar, plantillaId, nombrePersonalizado);
+        this.personajeCreacion.Familiares = [
+            ...(this.personajeCreacion.Familiares ?? []),
+            familiarGuardar,
+        ];
+
+        const dote17Agregada = this.asegurarDoteFamiliar17();
+        const especialesAgregadosIds: number[] = [];
+        ESPECIALES_BONUS_FAMILIAR_FIJOS.forEach((idEspecial) => {
+            if (this.asegurarEspecialFamiliar(idEspecial, nombresEspecialesPorId))
+                especialesAgregadosIds.push(idEspecial);
+        });
+
+        const nivelLanzador = Math.max(0, this.toNumber(estado.nivelLanzadorFamiliar));
+        if (this.debeAgregarEspecialFamiliar83(plantillaId, nivelLanzador)
+            && this.asegurarEspecialFamiliar(ESPECIAL_BONUS_FAMILIAR_MENSAJERO, nombresEspecialesPorId)) {
+            especialesAgregadosIds.push(ESPECIAL_BONUS_FAMILIAR_MENSAJERO);
+        }
+        if (this.debeAgregarEspecialFamiliar87(plantillaId, nivelLanzador)
+            && this.asegurarEspecialFamiliar(ESPECIAL_BONUS_FAMILIAR_HECHIZO, nombresEspecialesPorId)) {
+            especialesAgregadosIds.push(ESPECIAL_BONUS_FAMILIAR_HECHIZO);
+        }
+
+        this.recalcularDerivadasPorCaracteristicas();
+        this.recalcularDerivadasPorCombate();
+
+        return {
+            registrado: true,
+            familiarAgregado: familiarGuardar,
+            dote17Agregada,
+            especialesAgregadosIds,
+        };
     }
 
     getEnemigosPredilectos(): EnemigoPredilectoSeleccion[] {
@@ -2438,6 +2559,122 @@ export class NuevoPersonajeService {
         return (this.personajeCreacion.Claseas ?? []).some((especial) =>
             this.normalizarTexto(especial?.Nombre ?? '').includes(objetivo)
         );
+    }
+
+    private clonarFamiliarParaPersonaje(
+        familiar: FamiliarMonstruoDetalle,
+        plantillaSeleccionada: FamiliarPlantillaId,
+        nombrePersonalizado: string = ''
+    ): FamiliarMonstruoDetalle {
+        const nombrePlantillaOriginal = `${familiar?.Plantilla?.Nombre ?? ''}`.trim();
+        const nombreVisible = `${nombrePersonalizado ?? ''}`.trim();
+        return {
+            ...familiar,
+            Nombre: nombreVisible.length > 0 ? nombreVisible : `${familiar?.Nombre ?? ''}`.trim(),
+            Plantilla: {
+                Id: plantillaSeleccionada,
+                Nombre: nombrePlantillaOriginal.length > 0
+                    ? nombrePlantillaOriginal
+                    : this.getNombrePlantillaFamiliar(plantillaSeleccionada),
+            },
+        };
+    }
+
+    private getNombrePlantillaFamiliar(plantilla: FamiliarPlantillaId): string {
+        if (plantilla === 2)
+            return 'Draconica';
+        if (plantilla === 3)
+            return 'Celestial';
+        if (plantilla === 4)
+            return 'Remendado';
+        if (plantilla === 5)
+            return 'Mejorado';
+        return 'Basica';
+    }
+
+    private crearDotePlaceholder(idDote: number, nombre: string): Dote {
+        return {
+            Id: idDote,
+            Nombre: nombre,
+            Descripcion: '',
+            Beneficio: '',
+            Normal: '',
+            Especial: '',
+            Manual: { Id: 0, Nombre: 'No especificado', Pagina: 0 },
+            Tipos: [],
+            Repetible: 0,
+            Repetible_distinto_extra: 0,
+            Repetible_comb: 0,
+            Comp_arma: 0,
+            Oficial: true,
+            Extras_soportados: {
+                Extra_arma: 0,
+                Extra_armadura: 0,
+                Extra_escuela: 0,
+                Extra_habilidad: 0,
+            },
+            Extras_disponibles: {
+                Armas: [],
+                Armaduras: [],
+                Escuelas: [],
+                Habilidades: [],
+            },
+            Modificadores: {},
+            Prerrequisitos: {},
+        };
+    }
+
+    private asegurarDoteFamiliar17(): boolean {
+        const yaExiste = (this.personajeCreacion.DotesContextuales ?? []).some((item) =>
+            this.toNumber(item?.Dote?.Id) === DOTE_FAMILIAR_ID
+        ) || (this.personajeCreacion.Dotes ?? []).some((item) =>
+            this.normalizarTexto(item?.Nombre ?? '') === this.normalizarTexto('Alerta')
+            || this.toNumber((item as Record<string, any>)?.['Id']) === DOTE_FAMILIAR_ID
+        );
+        if (yaExiste)
+            return false;
+
+        const dote = (this.catalogoDotes ?? []).find((item) => this.toNumber(item?.Id) === DOTE_FAMILIAR_ID)
+            ?? this.crearDotePlaceholder(DOTE_FAMILIAR_ID, 'Alerta');
+        const origen = 'Familiar';
+        const agregado = this.agregarDoteAlPersonaje(dote, origen, 0, 'No aplica');
+        if (!agregado)
+            return false;
+        this.aplicarModificadoresDote(dote, origen, 0, 'No aplica');
+        return true;
+    }
+
+    private asegurarEspecialFamiliar(idEspecial: number, nombresEspecialesPorId: Record<number, string>): boolean {
+        const nombreFallback = `Especial ${idEspecial} (Familiar)`;
+        const nombreEspecial = `${nombresEspecialesPorId?.[idEspecial] ?? nombreFallback}`.trim() || nombreFallback;
+        const extra = 'Familiar';
+        const duplicado = (this.personajeCreacion.Claseas ?? []).some((especial) =>
+            this.normalizarTexto(especial?.Nombre ?? '') === this.normalizarTexto(nombreEspecial)
+            && this.normalizarTexto(especial?.Extra ?? '') === this.normalizarTexto(extra)
+        );
+        if (duplicado)
+            return false;
+        this.personajeCreacion.Claseas.push({
+            Nombre: nombreEspecial,
+            Extra: extra,
+        });
+        return true;
+    }
+
+    private debeAgregarEspecialFamiliar83(plantilla: FamiliarPlantillaId, nivelLanzador: number): boolean {
+        if (plantilla === 2)
+            return nivelLanzador >= 9;
+        if (plantilla === 5)
+            return false;
+        return nivelLanzador >= 4;
+    }
+
+    private debeAgregarEspecialFamiliar87(plantilla: FamiliarPlantillaId, nivelLanzador: number): boolean {
+        if (plantilla === 2)
+            return nivelLanzador >= 17;
+        if (plantilla === 5)
+            return false;
+        return nivelLanzador >= 14;
     }
 
     private construirOrigenDoteDesdePendiente(pendiente: DotePendienteState): string {
@@ -6490,6 +6727,7 @@ export class NuevoPersonajeService {
             disponibles: [],
             seleccionadas: [],
             confirmadasIds: [],
+            retornoFinNivelPendiente: false,
             tipoCriaturaSimulada: {
                 Id: this.toNumber(this.personajeCreacion?.Tipo_criatura?.Id),
                 Nombre: `${this.personajeCreacion?.Tipo_criatura?.Nombre ?? '-'}`,
@@ -6955,6 +7193,12 @@ export class NuevoPersonajeService {
             .reduce((acc, clase) => acc + this.toNumber(clase?.Nivel), 0);
         const dgsPlantillas = this.getDgsAdicionalesDesdePlantillas(this.estadoFlujo.plantillas.seleccionadas);
         return Math.max(0, nivelClases + dgsPlantillas);
+    }
+
+    private tieneDgsAdicionalesParaDoteInicial(): boolean {
+        const dgsRaza = this.toNumber(this.razaSeleccionada?.Dgs_adicionales?.Cantidad);
+        const dgsPlantillas = this.getDgsAdicionalesDesdePlantillas(this.estadoFlujo.plantillas.seleccionadas);
+        return dgsRaza > 0 || dgsPlantillas > 0;
     }
 
     private crearPendienteAumento(valor: number, origen: string, descripcion: string): AumentoCaracteristicaPendiente {

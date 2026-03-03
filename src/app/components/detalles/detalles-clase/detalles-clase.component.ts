@@ -538,6 +538,13 @@ export class DetallesClaseComponent {
         return `${nivel.Conjuros_conocidos_total}`;
     }
 
+    getTextoSalvaciones(nivel: ClaseNivelDetalle): string {
+        const fortaleza = this.tieneTextoVisible(nivel?.Salvaciones?.Fortaleza) ? `${nivel.Salvaciones.Fortaleza}` : '-';
+        const reflejos = this.tieneTextoVisible(nivel?.Salvaciones?.Reflejos) ? `${nivel.Salvaciones.Reflejos}` : '-';
+        const voluntad = this.tieneTextoVisible(nivel?.Salvaciones?.Voluntad) ? `${nivel.Salvaciones.Voluntad}` : '-';
+        return `Fort ${fortaleza} / Ref ${reflejos} / Vol ${voluntad}`;
+    }
+
     getEtiquetaNivelConjuro(nivel: number): string {
         if (Number(nivel) === 0)
             return 'Truco';

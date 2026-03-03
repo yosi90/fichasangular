@@ -324,7 +324,11 @@
                             </div>
                         </div>
                     </mat-card-content>
-                    <div class="tab-footer p-3">
+                    <div class="tab-footer p-3 tab-footer--dual-actions">
+                        <button mat-stroked-button color="accent" *ngIf="mostrarBotonFinalizarCreacion" (click)="onFinalizarCreacionTemporal()">
+                            Finalizar
+                            <mat-icon>task_alt</mat-icon>
+                        </button>
                         <button mat-raised-button color="primary" (click)="continuarDesdePlantillas()">
                             Siguiente
                             <mat-icon>arrow_forward</mat-icon>
@@ -653,6 +657,10 @@
                             <mat-icon>info</mat-icon>
                             <span>Recomendaciones</span>
                         </button>
+                        <button mat-stroked-button color="accent" *ngIf="mostrarBotonFinalizarCreacion" (click)="onFinalizarCreacionTemporal()">
+                            Finalizar
+                            <mat-icon>task_alt</mat-icon>
+                        </button>
                         <button mat-raised-button color="primary" [disabled]="!puedeAplicarClaseSeleccionada" (click)="continuarDesdeClases()">
                             Siguiente
                             <mat-icon>arrow_forward</mat-icon>
@@ -972,6 +980,24 @@
             [enemigosYaElegidos]="Personaje.enemigosPredilectos ?? []"
             (confirmar)="onConfirmarEnemigoPredilecto($event)">
         </app-selector-enemigo-predilecto-modal>
+    </ng-container>
+
+    <ng-container *ngIf="modalSelectorFamiliarAbierto">
+        <app-selector-familiar-modal
+            [titulo]="selectorFamiliarTitulo"
+            [familiaresElegibles]="selectorFamiliarElegibles"
+            [familiaresSeleccionados]="Personaje.Familiares"
+            [plantillaSeleccionada]="selectorFamiliarPlantillaSeleccionada"
+            [incluirHomebrew]="selectorFamiliarIncluirHomebrew"
+            [cuposDisponibles]="selectorFamiliarCuposDisponibles"
+            [nombreFamiliar]="selectorFamiliarNombre"
+            (confirmar)="onConfirmarSelectorFamiliar($event)"
+            (omitir)="onOmitirSelectorFamiliar()"
+            (detalle)="onDetalleSelectorFamiliar($event)"
+            (plantillaChange)="onCambioPlantillaSelectorFamiliar($event)"
+            (incluirHomebrewChange)="onCambioHomebrewSelectorFamiliar($event)"
+            (nombreFamiliarChange)="onCambioNombreSelectorFamiliar($event)">
+        </app-selector-familiar-modal>
     </ng-container>
 
     <ng-container *ngIf="modalSelectorExtraHabilidadAbierto">
