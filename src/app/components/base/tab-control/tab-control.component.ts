@@ -99,7 +99,11 @@ export class TabControlComponent implements OnInit, OnDestroy {
         this.usrPerm = this.usrSvc.Usuario.permisos;
         this.usrSvc.permisos$
             .pipe(takeUntil(this.destroy$))
-            .subscribe((permisos) => this.usrPerm = Number(permisos) === 1 ? 1 : 0);
+            .subscribe((permisos) => {
+                this.usrPerm = Number(permisos) === 1 ? 1 : 0;
+                if (this.usrPerm === 1 && this.TabGroup)
+                    void this.verificarPendientesCacheAdminEnInicio();
+            });
         this.manualRefNavSvc.aperturas$
             .pipe(takeUntil(this.destroy$))
             .subscribe((payload) => this.abrirDesdeManual(payload));

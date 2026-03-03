@@ -4,6 +4,7 @@ import { Clase } from 'src/app/interfaces/clase';
 import { Conjuro } from 'src/app/interfaces/conjuro';
 import { Dote } from 'src/app/interfaces/dote';
 import { DoteContextual, DoteLegacy } from 'src/app/interfaces/dote-contextual';
+import { EnemigoPredilectoSeleccion } from 'src/app/interfaces/enemigo-predilecto-seleccion';
 import { CaracteristicaPerdidaKey, Personaje } from 'src/app/interfaces/personaje';
 import { RacialDetalle, RacialReferencia } from 'src/app/interfaces/racial';
 import { Rasgo } from 'src/app/interfaces/rasgo';
@@ -619,6 +620,23 @@ Fue/Des/Con: ${this.formatSigned(madurez.modFisico)} | Int/Sab/Car: ${this.forma
                 return `${dominio?.['Nombre'] ?? dominio?.['nombre'] ?? dominio?.['N'] ?? dominio?.['n'] ?? ''}`.trim();
             })
             .filter((nombre) => this.tieneTextoVisible(nombre));
+    }
+
+    getEnemigosPredilectosVisibles(): EnemigoPredilectoSeleccion[] {
+        const fuente = this.toArray((this.pj as any)?.enemigosPredilectos);
+        return fuente
+            .map((item: Record<string, any>) => ({
+                id: this.toNumber(item?.['id'] ?? item?.['Id']),
+                nombre: `${item?.['nombre'] ?? item?.['Nombre'] ?? ''}`.trim(),
+                bono: Math.max(0, this.toNumber(item?.['bono'] ?? item?.['Bono'])),
+                veces: Math.max(0, this.toNumber(item?.['veces'] ?? item?.['Veces'])),
+            }))
+            .filter((item) => item.id > 0 && this.tieneTextoVisible(item.nombre) && item.bono > 0)
+            .sort((a, b) => a.nombre.localeCompare(b.nombre, 'es', { sensitivity: 'base' }));
+    }
+
+    getTextoBonoEnemigoPredilecto(item: EnemigoPredilectoSeleccion): string {
+        return `+${Math.max(0, this.toNumber(item?.bono))}`;
     }
 
     private actualizarValoresDerivadosVisuales(): void {

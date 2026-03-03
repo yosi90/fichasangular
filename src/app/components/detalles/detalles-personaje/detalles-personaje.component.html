@@ -270,6 +270,20 @@
                         </mat-chip>
                     </mat-chip-set>
                 </mat-expansion-panel>
+                <mat-expansion-panel *ngIf="getEnemigosPredilectosVisibles().length > 0">
+                    <mat-expansion-panel-header>
+                        <button mat-stroked-button color="accent" class="rounded-0">
+                            <h2 class="mb-0">Enemigos predilectos</h2>
+                        </button>
+                    </mat-expansion-panel-header>
+                    <mat-chip-set class="m-1">
+                        <mat-chip *ngFor="let enemigo of getEnemigosPredilectosVisibles()" class="h-auto sombra3d-sm">
+                            {{enemigo.nombre}}
+                            <mat-chip class="m-1">{{getTextoBonoEnemigoPredilecto(enemigo)}}</mat-chip>
+                            <mat-chip class="m-1" *ngIf="enemigo.veces > 1">{{enemigo.veces}} veces</mat-chip>
+                        </mat-chip>
+                    </mat-chip-set>
+                </mat-expansion-panel>
                 <mat-expansion-panel *ngIf="getConjurosVisibles().length > 0">
                     <mat-expansion-panel-header>
                         <button mat-stroked-button color="accent" class="rounded-0">

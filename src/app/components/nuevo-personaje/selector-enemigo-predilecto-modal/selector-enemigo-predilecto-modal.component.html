@@ -1,0 +1,81 @@
+<div class="selector-overlay">
+    <div class="selector-dialog" (click)="$event.stopPropagation()">
+        <div class="selector-header">
+            <h2 class="m-0 selector-title">{{titulo}}</h2>
+        </div>
+
+        <div class="preview-bloque">
+            <div class="preview-titulo">Resultado tras confirmar</div>
+            <mat-chip-set class="preview-chips" *ngIf="previewEnemigos.length > 0; else sinPreviewTpl">
+                <mat-chip *ngFor="let item of previewEnemigos; trackBy: trackByPreviewEnemigoId" class="h-auto sombra3d-sm">
+                    {{item.nombre}}
+                    <mat-chip class="m-1">+{{item.bono}}</mat-chip>
+                </mat-chip>
+            </mat-chip-set>
+            <ng-template #sinPreviewTpl>
+                <p class="m-0 detalle">Aún no hay enemigos predilectos seleccionados.</p>
+            </ng-template>
+        </div>
+
+        <mat-form-field appearance="fill" class="w-100 filtro-field">
+            <mat-label>Filtrar enemigos</mat-label>
+            <input matInput type="text" [(ngModel)]="filtroTexto" placeholder="Escribe para filtrar por nombre">
+        </mat-form-field>
+
+        <div class="enemigos-listado" *ngIf="enemigosFiltrados.length > 0; else sinEnemigosTpl">
+            <div class="enemigos-grid">
+                <div class="enemigos-columna">
+                    <button
+                        type="button"
+                        class="enemigo-item"
+                        *ngFor="let enemigo of enemigosColumnaA; trackBy: trackByEnemigoId"
+                        [class.seleccionado]="esSeleccionado(enemigo.Id)"
+                        (click)="onSeleccionar(enemigo.Id)"
+                        (keydown.enter)="onSeleccionarFilaTeclado(enemigo.Id, $event)"
+                        (keydown.space)="onSeleccionarFilaTeclado(enemigo.Id, $event)">
+                        {{enemigo.Nombre}}
+                    </button>
+                </div>
+                <div class="enemigos-columna">
+                    <button
+                        type="button"
+                        class="enemigo-item"
+                        *ngFor="let enemigo of enemigosColumnaB; trackBy: trackByEnemigoId"
+                        [class.seleccionado]="esSeleccionado(enemigo.Id)"
+                        (click)="onSeleccionar(enemigo.Id)"
+                        (keydown.enter)="onSeleccionarFilaTeclado(enemigo.Id, $event)"
+                        (keydown.space)="onSeleccionarFilaTeclado(enemigo.Id, $event)">
+                        {{enemigo.Nombre}}
+                    </button>
+                </div>
+                <div class="enemigos-columna">
+                    <button
+                        type="button"
+                        class="enemigo-item"
+                        *ngFor="let enemigo of enemigosColumnaC; trackBy: trackByEnemigoId"
+                        [class.seleccionado]="esSeleccionado(enemigo.Id)"
+                        (click)="onSeleccionar(enemigo.Id)"
+                        (keydown.enter)="onSeleccionarFilaTeclado(enemigo.Id, $event)"
+                        (keydown.space)="onSeleccionarFilaTeclado(enemigo.Id, $event)">
+                        {{enemigo.Nombre}}
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <ng-template #sinEnemigosTpl>
+            <p class="m-0 detalle" *ngIf="enemigosDisponibles.length < 1">
+                No hay enemigos predilectos disponibles en catálogo.
+            </p>
+            <p class="m-0 detalle" *ngIf="enemigosDisponibles.length > 0">
+                No hay resultados para "{{filtroTexto}}".
+            </p>
+        </ng-template>
+
+        <div class="selector-actions">
+            <button mat-raised-button color="primary" type="button" [disabled]="!puedeConfirmar" (click)="onConfirmar()">
+                Confirmar enemigo
+            </button>
+        </div>
+    </div>
+</div>

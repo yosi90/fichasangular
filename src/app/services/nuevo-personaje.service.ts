@@ -4,6 +4,8 @@ import { Clase, ClaseConjuroRef, ClaseDoteNivel, ClaseEspecialNivel, ClaseNivelD
 import { Conjuro } from '../interfaces/conjuro';
 import { DisciplinaConjuros } from '../interfaces/disciplina-conjuros';
 import { Dote, DoteExtraItem } from '../interfaces/dote';
+import { EnemigoPredilectoDetalle } from '../interfaces/enemigo-predilecto-detalle';
+import { EnemigoPredilectoSeleccion } from '../interfaces/enemigo-predilecto-seleccion';
 import { EscuelaConjuros } from '../interfaces/escuela-conjuros';
 import { DeidadDetalle } from '../interfaces/deidad';
 import { DominioDetalle } from '../interfaces/dominio';
@@ -944,6 +946,7 @@ export class NuevoPersonajeService {
         this.personajeCreacion.Claseas = [];
         this.personajeCreacion.Dotes = [];
         this.personajeCreacion.DotesContextuales = [];
+        this.personajeCreacion.enemigosPredilectos = [];
         this.idsEspecialesInternosActivos.clear();
         this.idsDotesInternosActivos.clear();
         this.dotesPendientes = [];
@@ -1878,6 +1881,75 @@ export class NuevoPersonajeService {
         this.recalcularDerivadasPorCombate();
         pendiente.estado = 'resuelta';
         return true;
+    }
+
+    contarSeleccionesEnemigoPredilectoPorEspeciales(especiales: ClaseEspecialNivel[]): number {
+        const listaEspeciales = Array.isArray(especiales) ? especiales : [];
+        return listaEspeciales.reduce((total, especialNivel) => {
+            if (!this.esEspecialEnemigoPredilecto(especialNivel))
+                return total;
+            return total + 1;
+        }, 0);
+    }
+
+    getEnemigosPredilectos(): EnemigoPredilectoSeleccion[] {
+        const lista = Array.isArray(this.personajeCreacion?.enemigosPredilectos)
+            ? this.personajeCreacion.enemigosPredilectos
+            : [];
+        return lista.map((item) => ({
+            id: this.toNumber(item?.id),
+            nombre: `${item?.nombre ?? ''}`.trim(),
+            bono: this.toNumber(item?.bono),
+            veces: this.toNumber(item?.veces),
+        }));
+    }
+
+    aplicarSeleccionEnemigoPredilecto(enemigo: EnemigoPredilectoDetalle | null | undefined): boolean {
+        const id = this.toNumber(enemigo?.Id);
+        const nombre = `${enemigo?.Nombre ?? ''}`.trim();
+        if (id <= 0 || nombre.length < 1)
+            return false;
+
+        const actuales = this.getEnemigosPredilectos();
+        this.personajeCreacion.enemigosPredilectos = this.mergeEnemigoPredilectoSeleccion(
+            actuales,
+            { Id: id, Nombre: nombre }
+        );
+        return true;
+    }
+
+    mergeEnemigoPredilectoSeleccion(
+        actuales: EnemigoPredilectoSeleccion[],
+        enemigo: EnemigoPredilectoDetalle
+    ): EnemigoPredilectoSeleccion[] {
+        const id = this.toNumber(enemigo?.Id);
+        const nombre = `${enemigo?.Nombre ?? ''}`.trim();
+        if (id <= 0 || nombre.length < 1)
+            return Array.isArray(actuales) ? [...actuales] : [];
+
+        const lista = Array.isArray(actuales)
+            ? actuales.map((item) => ({
+                id: this.toNumber(item?.id),
+                nombre: `${item?.nombre ?? ''}`.trim(),
+                bono: Math.max(0, this.toNumber(item?.bono)),
+                veces: Math.max(0, this.toNumber(item?.veces)),
+            }))
+            : [];
+        const existente = lista.find((item) => this.toNumber(item?.id) === id);
+        if (!existente) {
+            lista.push({
+                id,
+                nombre,
+                bono: 2,
+                veces: 1,
+            });
+            return lista.sort((a, b) => a.nombre.localeCompare(b.nombre, 'es', { sensitivity: 'base' }));
+        }
+
+        existente.nombre = nombre;
+        existente.bono = Math.max(0, this.toNumber(existente.bono)) + 2;
+        existente.veces = Math.max(0, this.toNumber(existente.veces)) + 1;
+        return lista.sort((a, b) => a.nombre.localeCompare(b.nombre, 'es', { sensitivity: 'base' }));
     }
 
     private crearDotePendiente(
@@ -6914,6 +6986,15 @@ export class NuevoPersonajeService {
         return 0;
     }
 
+    private esEspecialEnemigoPredilecto(especialNivel: ClaseEspecialNivel): boolean {
+        const especialRaw = (especialNivel?.Especial ?? {}) as Record<string, any>;
+        const nombre = this.normalizarTexto(`${especialRaw?.['Nombre'] ?? especialRaw?.['nombre'] ?? ''}`);
+        if (nombre.length < 1)
+            return false;
+        return nombre.includes('enemigo predilecto')
+            || nombre.includes('enemigos predilectos');
+    }
+
     private esCaracteristicaPerdida(key: CaracteristicaKey): boolean {
         const mapa = this.personajeCreacion?.Caracteristicas_perdidas ?? {};
         const valorMapa = this.toBooleanValue((mapa as Record<string, any>)?.[key]);
@@ -7332,6 +7413,7 @@ export class NuevoPersonajeService {
             Habilidades: [],
             Dotes: [],
             DotesContextuales: [],
+            enemigosPredilectos: [],
             Auto_reparto: null,
             Ventajas: [],
             Idiomas: [],

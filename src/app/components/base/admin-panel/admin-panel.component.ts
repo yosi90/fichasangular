@@ -35,6 +35,7 @@ import { GrupoArmaduraService } from 'src/app/services/grupo-armadura.service';
 import { UserService } from 'src/app/services/user.service';
 import { AdminUserRow, AdminUsersService } from 'src/app/services/admin-users.service';
 import { PERMISSION_RESOURCES, PermissionResource, UserRole } from 'src/app/interfaces/user-acl';
+import { EnemigoPredilectoService } from 'src/app/services/enemigo-predilecto.service';
 
 interface SyncItemConfig {
     key: CacheEntityKey;
@@ -101,6 +102,7 @@ export class AdminPanelComponent implements OnInit, OnDestroy {
         private racialSvc: RacialService,
         private habSvc: HabilidadService,
         private idiSvc: IdiomaService,
+        private enemigoPredilectoSvc: EnemigoPredilectoService,
         private armaSvc: ArmaService,
         private armaduraSvc: ArmaduraService,
         private grupoArmaSvc: GrupoArmaService,
@@ -140,6 +142,7 @@ export class AdminPanelComponent implements OnInit, OnDestroy {
             habilidades: () => this.habSvc.RenovarHabilidades(),
             habilidades_custom: () => this.habSvc.RenovarHabilidadesCustom(),
             idiomas: () => this.idiSvc.RenovarIdiomas(),
+            enemigos_predilectos: () => this.enemigoPredilectoSvc.RenovarEnemigosPredilectos(),
             armas: () => this.armaSvc.RenovarArmas(),
             armaduras: () => this.armaduraSvc.RenovarArmaduras(),
             grupos_armas: () => this.grupoArmaSvc.RenovarGruposArmas(),

@@ -31,6 +31,7 @@ tags:
   - name: desventajas
   - name: habilidades
   - name: idiomas
+  - name: enemigos-predilectos
   - name: armas
   - name: armaduras
   - name: grupos-armas
@@ -713,6 +714,20 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/IdiomaDetalle'
+
+  /enemigos-predilectos:
+    get:
+      tags: [enemigos-predilectos]
+      summary: Lista de enemigos predilectos
+      responses:
+        '200':
+          description: Lista de enemigos predilectos
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/EnemigoPredilectoDetalle'
 
   /armas:
     get:
@@ -1759,6 +1774,12 @@ components:
         Descripcion: { type: string }
         Secreto: { type: boolean }
         Oficial: { type: boolean }
+
+    EnemigoPredilectoDetalle:
+      type: object
+      properties:
+        Id: { type: integer }
+        Nombre: { type: string }
 
     TamanoRef:
       type: object

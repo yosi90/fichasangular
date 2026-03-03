@@ -964,6 +964,15 @@
         </app-selector-dotes-modal>
     </ng-container>
 
+    <ng-container *ngIf="modalSelectorEnemigoPredilectoAbierto">
+        <app-selector-enemigo-predilecto-modal
+            [titulo]="selectorEnemigoPredilectoTitulo"
+            [enemigos]="catalogoEnemigosPredilectos"
+            [enemigosYaElegidos]="Personaje.enemigosPredilectos ?? []"
+            (confirmar)="onConfirmarEnemigoPredilecto($event)">
+        </app-selector-enemigo-predilecto-modal>
+    </ng-container>
+
     <ng-container *ngIf="modalSelectorExtraHabilidadAbierto">
         <app-selector-extra-habilidad-modal
             [titulo]="selectorExtraHabilidadTitulo"

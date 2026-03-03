@@ -1,0 +1,116 @@
+:host
+    position: absolute
+    inset: 0
+    z-index: 60
+
+.selector-overlay
+    position: absolute
+    inset: 0
+    display: flex
+    justify-content: center
+    align-items: center
+    background: rgba(0, 0, 0, 0.6)
+    padding: 12px
+
+.selector-dialog
+    width: min(980px, 96vw)
+    max-height: 92vh
+    overflow: auto
+    background: linear-gradient(180deg, #2f3137 0%, #272a30 100%)
+    border: 1px solid #6f7683
+    border-radius: 10px
+    padding: 14px
+    display: flex
+    flex-direction: column
+    gap: 8px
+
+.selector-header
+    display: flex
+    justify-content: space-between
+    align-items: center
+    gap: 8px
+
+.selector-title
+    color: #f3f6ff
+    font-size: 1.35rem
+    font-weight: 700
+
+.preview-bloque
+    border: 1px solid rgba(255, 255, 255, 0.16)
+    border-radius: 8px
+    background: rgba(255, 255, 255, 0.03)
+    padding: 8px
+
+.preview-titulo
+    color: #f0f4ff
+    font-weight: 600
+    font-size: .92rem
+    margin-bottom: 6px
+
+.preview-chips
+    margin: 0
+
+.filtro-field
+    margin: 0
+
+:host ::ng-deep .filtro-field .mat-mdc-form-field-subscript-wrapper
+    display: none
+
+.enemigos-listado
+    max-height: 46vh
+    overflow: auto
+    padding-right: 4px
+    border: 1px solid rgba(255, 255, 255, 0.16)
+    border-radius: 8px
+    background: rgba(255, 255, 255, 0.03)
+    margin-top: -4px
+
+.enemigos-grid
+    display: grid
+    grid-template-columns: repeat(3, minmax(0, 1fr))
+    gap: 8px
+    padding: 8px
+
+.enemigos-columna
+    display: flex
+    flex-direction: column
+    gap: 8px
+
+.enemigo-item
+    border: 1px solid rgba(255, 255, 255, 0.18)
+    border-radius: 8px
+    background: rgba(255, 255, 255, 0.05)
+    color: #eef2ff
+    padding: 8px 10px
+    text-align: left
+    cursor: pointer
+    transition: background .15s ease, border-color .15s ease
+
+.enemigo-item:hover
+    background: rgba(255, 255, 255, 0.12)
+
+.enemigo-item:focus-visible
+    outline: 2px solid #9fb3ff
+    outline-offset: 2px
+
+.enemigo-item.seleccionado
+    border-color: #9fb3ff
+    background: rgba(122, 154, 255, 0.2)
+
+.detalle
+    font-size: .92rem
+    opacity: .9
+    color: #e7ebf6
+
+.selector-actions
+    display: flex
+    justify-content: flex-end
+    gap: 8px
+
+@media (max-width: 900px)
+    .enemigos-grid
+        grid-template-columns: repeat(2, minmax(0, 1fr))
+
+@media (max-width: 600px)
+    .enemigos-grid
+        grid-template-columns: minmax(0, 1fr)

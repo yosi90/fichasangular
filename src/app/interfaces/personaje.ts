@@ -1,6 +1,7 @@
 import { AptitudSortilega } from "./aptitud-sortilega";
 import { Conjuro } from "./conjuro";
 import { DoteContextual, DoteLegacy } from "./dote-contextual";
+import { EnemigoPredilectoSeleccion } from "./enemigo-predilecto-seleccion";
 import { RacialDetalle } from "./racial";
 import { PersonajeSimple } from "./simplificaciones/personaje-simple";
 import { SubtipoRef } from "./subtipo";
@@ -262,6 +263,7 @@ export interface Personaje extends PersonajeSimple {
     }[]
     Dotes: DoteLegacy[];
     DotesContextuales: DoteContextual[];
+    enemigosPredilectos?: EnemigoPredilectoSeleccion[];
     Auto_reparto?: {
         version: 'quiz_v1';
         respuestas: AutoRepartoCuestionario;

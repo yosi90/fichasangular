@@ -73,6 +73,7 @@ import { SelectorRacialesOpcionalesModalComponent } from './components/nuevo-per
 import { SelectorAumentosCaracteristicaModalComponent } from './components/nuevo-personaje/selector-aumentos-caracteristica-modal/selector-aumentos-caracteristica-modal.component';
 import { SelectorEspecialidadMagicaModalComponent } from './components/nuevo-personaje/selector-especialidad-magica-modal/selector-especialidad-magica-modal.component';
 import { SelectorDotesModalComponent } from './components/nuevo-personaje/selector-dotes-modal/selector-dotes-modal.component';
+import { SelectorEnemigoPredilectoModalComponent } from './components/nuevo-personaje/selector-enemigo-predilecto-modal/selector-enemigo-predilecto-modal.component';
 import { SelectorExtraHabilidadModalComponent } from './components/nuevo-personaje/selector-extra-habilidad-modal/selector-extra-habilidad-modal.component';
 import { VentanaDetalleFlotanteComponent } from './components/nuevo-personaje/ventana-detalle-flotante/ventana-detalle-flotante.component';
 import { ListadoSubtiposComponent } from './components/shared/listado-subtipos/listado-subtipos.component';
@@ -116,6 +117,7 @@ import { ListadoVentajasComponent } from './components/shared/listado-ventajas/l
         SelectorAumentosCaracteristicaModalComponent,
         SelectorEspecialidadMagicaModalComponent,
         SelectorDotesModalComponent,
+        SelectorEnemigoPredilectoModalComponent,
         SelectorExtraHabilidadModalComponent,
         SelectorRazaBaseModalComponent,
         SelectorRacialesOpcionalesModalComponent,

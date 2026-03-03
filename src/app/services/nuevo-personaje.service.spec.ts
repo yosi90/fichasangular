@@ -4604,4 +4604,54 @@ describe('NuevoPersonajeService (tipo y subtipos derivados)', () => {
         const ataqueRacial = svc.PersonajeCreacion.Raciales.find((r) => r.Nombre.includes('Toque corruptor'));
         expect(ataqueRacial?.Origen).toBe('Liche');
     });
+
+    it('contarSeleccionesEnemigoPredilectoPorEspeciales detecta ocurrencias del especial', () => {
+        const svc = new NuevoPersonajeService();
+        const total = svc.contarSeleccionesEnemigoPredilectoPorEspeciales([
+            {
+                Especial: { Nombre: 'Enemigo predilecto' },
+                Nivel: 1,
+                Id_extra: -1,
+                Extra: '',
+                Opcional: 0,
+                Id_interno: 1,
+                Id_especial_requerido: 0,
+                Id_dote_requerida: 0,
+            },
+            {
+                Especial: { Nombre: 'Rastreo' },
+                Nivel: 1,
+                Id_extra: -1,
+                Extra: '',
+                Opcional: 0,
+                Id_interno: 2,
+                Id_especial_requerido: 0,
+                Id_dote_requerida: 0,
+            },
+            {
+                Especial: { Nombre: 'Enemigo Predilecto superior' },
+                Nivel: 5,
+                Id_extra: -1,
+                Extra: '',
+                Opcional: 0,
+                Id_interno: 3,
+                Id_especial_requerido: 0,
+                Id_dote_requerida: 0,
+            },
+        ]);
+
+        expect(total).toBe(2);
+    });
+
+    it('aplicarSeleccionEnemigoPredilecto acumula +2 al repetir el mismo enemigo', () => {
+        const svc = new NuevoPersonajeService();
+        expect(svc.aplicarSeleccionEnemigoPredilecto({ Id: 7, Nombre: 'No muerto' })).toBeTrue();
+        expect(svc.aplicarSeleccionEnemigoPredilecto({ Id: 7, Nombre: 'No muerto' })).toBeTrue();
+
+        const enemigos = svc.getEnemigosPredilectos();
+        expect(enemigos.length).toBe(1);
+        expect(enemigos[0].id).toBe(7);
+        expect(enemigos[0].bono).toBe(4);
+        expect(enemigos[0].veces).toBe(2);
+    });
 });

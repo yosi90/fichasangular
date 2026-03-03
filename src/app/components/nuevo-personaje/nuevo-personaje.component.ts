@@ -13,6 +13,7 @@ import { Conjuro } from 'src/app/interfaces/conjuro';
 import { DisciplinaConjuros } from 'src/app/interfaces/disciplina-conjuros';
 import { Dote } from 'src/app/interfaces/dote';
 import { DoteContextual } from 'src/app/interfaces/dote-contextual';
+import { EnemigoPredilectoDetalle } from 'src/app/interfaces/enemigo-predilecto-detalle';
 import { EscuelaConjuros } from 'src/app/interfaces/escuela-conjuros';
 import { HabilidadBasicaDetalle } from 'src/app/interfaces/habilidad';
 import { IdiomaDetalle } from 'src/app/interfaces/idioma';
@@ -37,6 +38,7 @@ import { GrupoArmaduraService } from 'src/app/services/grupo-armadura.service';
 import { HabilidadService } from 'src/app/services/habilidad.service';
 import { IdiomaService } from 'src/app/services/idioma.service';
 import { DoteService } from 'src/app/services/dote.service';
+import { EnemigoPredilectoService } from 'src/app/services/enemigo-predilecto.service';
 import { EscuelaConjurosService } from 'src/app/services/escuela-conjuros.service';
 import {
     AsignacionAumentoCaracteristica,
@@ -271,6 +273,7 @@ export class NuevoPersonajeComponent {
     catalogoEscuelas: EscuelaConjuros[] = [];
     catalogoDisciplinas: DisciplinaConjuros[] = [];
     catalogoDominios: DominioDetalle[] = [];
+    catalogoEnemigosPredilectos: EnemigoPredilectoDetalle[] = [];
     catalogoDeidades: DeidadDetalle[] = [];
     clasesListadoFiltrado: ClaseListadoItem[] = [];
     claseSeleccionadaId: number | null = null;
@@ -296,6 +299,7 @@ export class NuevoPersonajeComponent {
     modalSelectorEspecialidadMagicaAbierto = false;
     modalSelectorDotesAbierto = false;
     modalSelectorExtraHabilidadAbierto = false;
+    modalSelectorEnemigoPredilectoAbierto = false;
     modalSelectorRazaBaseAbierto = false;
     modalSelectorRacialesOpcionalesAbierto = false;
     selectorDotePendienteActual: DotePendienteState | null = null;
@@ -340,11 +344,15 @@ export class NuevoPersonajeComponent {
     private resolverSelectorAumentos: ((completado: boolean) => void) | null = null;
     private resolverSelectorEspecialidadMagica: ((seleccion: SelectorEspecialidadMagicaConfirmacion | null) => void) | null = null;
     private resolverSelectorDotes: ((seleccion: DoteSeleccionConfirmada | 'omitir' | null) => void) | null = null;
+    private resolverSelectorEnemigoPredilecto: ((seleccionId: number | null) => void) | null = null;
     private resolverSelectorExtraHabilidad: ((valor: string | null) => void) | null = null;
     selectorIdiomaTitulo = 'Seleccionar idioma extra';
     selectorIdiomaCantidadObjetivo = 0;
     selectorIdiomaCantidadSeleccionada = 0;
     selectorIdiomaBloquearCierre = false;
+    selectorEnemigoPredilectoTitulo = 'Seleccionar enemigo predilecto';
+    selectorEnemigoPredilectoIndice = 1;
+    selectorEnemigoPredilectoTotal = 1;
     private idiomasTemporalesSeleccionados: IdiomaDetalle[] = [];
     selectedInternalTabIndex = 0;
     private campanasSub?: Subscription;
@@ -365,6 +373,7 @@ export class NuevoPersonajeComponent {
     private escuelasCatalogoCargado = false;
     private disciplinasCatalogoCargado = false;
     private dominiosSub?: Subscription;
+    private enemigosPredilectosSub?: Subscription;
     private deidadesSub?: Subscription;
     private tiposCriaturaSub?: Subscription;
     private alineamientosBasicosSub?: Subscription;
@@ -384,6 +393,7 @@ export class NuevoPersonajeComponent {
         private habilidadSvc: HabilidadService,
         private idiomaSvc: IdiomaService,
         private doteSvc: DoteService,
+        private enemigoPredilectoSvc: EnemigoPredilectoService,
         private armaSvc: ArmaService,
         private armaduraSvc: ArmaduraService,
         private grupoArmaSvc: GrupoArmaService,
@@ -415,6 +425,7 @@ export class NuevoPersonajeComponent {
         this.cargarGruposArmas();
         this.cargarGruposArmaduras();
         this.cargarDominios();
+        this.cargarEnemigosPredilectos();
         this.cargarDeidades();
         this.cargarClases();
         this.cargarDotes();
@@ -438,6 +449,7 @@ export class NuevoPersonajeComponent {
         this.clasesSub?.unsubscribe();
         this.dotesSub?.unsubscribe();
         this.dominiosSub?.unsubscribe();
+        this.enemigosPredilectosSub?.unsubscribe();
         this.deidadesSub?.unsubscribe();
         this.tiposCriaturaSub?.unsubscribe();
         this.alineamientosBasicosSub?.unsubscribe();
@@ -1669,6 +1681,7 @@ export class NuevoPersonajeComponent {
             || this.modalSelectorAumentosAbierto
             || this.modalSelectorEspecialidadMagicaAbierto
             || this.modalSelectorDotesAbierto
+            || this.modalSelectorEnemigoPredilectoAbierto
             || this.modalSelectorExtraHabilidadAbierto
             || this.modalSelectorRazaBaseAbierto
             || this.modalSelectorRacialesOpcionalesAbierto;
@@ -2397,6 +2410,17 @@ export class NuevoPersonajeComponent {
             return;
         }
 
+        const enemigosPredilectosPendientes = this.nuevoPSvc.contarSeleccionesEnemigoPredilectoPorEspeciales(
+            resultado.especialesAplicados ?? []
+        );
+        if (enemigosPredilectosPendientes > 0) {
+            const completado = await this.resolverEnemigosPredilectosPendientes(enemigosPredilectosPendientes);
+            if (!completado) {
+                this.recalcularClasesVisibles();
+                return;
+            }
+        }
+
         if ((resultado.advertencias ?? []).length > 0) {
             await Swal.fire({
                 icon: 'info',
@@ -2513,6 +2537,119 @@ export class NuevoPersonajeComponent {
         this.nuevoPSvc.refrescarSesionConjurosPorEspecialidad();
         this.Personaje = this.nuevoPSvc.PersonajeCreacion;
         return true;
+    }
+
+    private async resolverEnemigosPredilectosPendientes(cantidadPendiente: number): Promise<boolean> {
+        const total = Math.max(0, Math.trunc(Number(cantidadPendiente ?? 0)));
+        if (total < 1)
+            return true;
+
+        for (let indice = 1; indice <= total; indice++) {
+            const seleccionId = await this.abrirSelectorEnemigoPredilecto(indice, total);
+            if (!Number.isFinite(Number(seleccionId)) || Number(seleccionId) <= 0)
+                return false;
+
+            const enemigo = this.catalogoEnemigosPredilectos.find((item) => Number(item?.Id) === Number(seleccionId));
+            if (!enemigo) {
+                await Swal.fire({
+                    icon: 'warning',
+                    title: 'Selección inválida',
+                    text: 'El enemigo predilecto seleccionado no existe en el catálogo.',
+                    showConfirmButton: true,
+                });
+                return false;
+            }
+
+            const aplicado = this.nuevoPSvc.aplicarSeleccionEnemigoPredilecto(enemigo);
+            if (!aplicado) {
+                await Swal.fire({
+                    icon: 'warning',
+                    title: 'No se pudo aplicar enemigo predilecto',
+                    text: 'Revisa el catálogo de enemigos predilectos y vuelve a intentarlo.',
+                    showConfirmButton: true,
+                });
+                return false;
+            }
+
+            this.Personaje = this.nuevoPSvc.PersonajeCreacion;
+        }
+
+        return true;
+    }
+
+    private async abrirSelectorEnemigoPredilecto(indice: number, total: number): Promise<number | null> {
+        const opciones = [...(this.catalogoEnemigosPredilectos ?? [])]
+            .map((item) => ({
+                Id: Number(item?.Id ?? 0),
+                Nombre: `${item?.Nombre ?? ''}`.trim(),
+            }))
+            .filter((item) => item.Id > 0 && item.Nombre.length > 0)
+            .sort((a, b) => a.Nombre.localeCompare(b.Nombre, 'es', { sensitivity: 'base' }));
+
+        if (opciones.length < 1) {
+            await Swal.fire({
+                icon: 'error',
+                title: 'Catálogo de enemigos predilectos no disponible',
+                text: 'No hay enemigos predilectos cargados en caché. Sin catálogo no se puede continuar.',
+                showConfirmButton: true,
+            });
+            return null;
+        }
+
+        this.selectorEnemigoPredilectoIndice = Math.max(1, Math.trunc(Number(indice ?? 1)));
+        this.selectorEnemigoPredilectoTotal = Math.max(1, Math.trunc(Number(total ?? 1)));
+        this.selectorEnemigoPredilectoTitulo = this.getTituloSelectorEnemigoPredilecto(
+            this.selectorEnemigoPredilectoIndice,
+            this.selectorEnemigoPredilectoTotal
+        );
+        this.modalSelectorEnemigoPredilectoAbierto = true;
+
+        return new Promise<number | null>((resolve) => {
+            this.resolverSelectorEnemigoPredilecto = resolve;
+        });
+    }
+
+    onConfirmarEnemigoPredilecto(idEnemigo: number): void {
+        const id = Math.trunc(Number(idEnemigo ?? 0));
+        if (!Number.isFinite(id) || id <= 0)
+            return;
+
+        this.cerrarSelectorEnemigoPredilectoContexto(id);
+    }
+
+    private cerrarSelectorEnemigoPredilectoContexto(seleccionId: number | null): void {
+        this.modalSelectorEnemigoPredilectoAbierto = false;
+        this.selectorEnemigoPredilectoTitulo = 'Seleccionar enemigo predilecto';
+        this.selectorEnemigoPredilectoIndice = 1;
+        this.selectorEnemigoPredilectoTotal = 1;
+
+        const resolver = this.resolverSelectorEnemigoPredilecto;
+        this.resolverSelectorEnemigoPredilecto = null;
+        if (resolver)
+            resolver(seleccionId);
+    }
+
+    private getTituloSelectorEnemigoPredilecto(indice: number, total: number): string {
+        const indiceLimpio = Math.max(1, Math.trunc(Number(indice ?? 1)));
+        const totalLimpio = Math.max(1, Math.trunc(Number(total ?? 1)));
+        const ordinal = this.getOrdinalEnemigoPredilecto(indiceLimpio);
+        if (totalLimpio <= 1)
+            return 'Seleccionar enemigo predilecto';
+        return `Seleccionar ${ordinal} enemigo predilecto (${indiceLimpio}/${totalLimpio})`;
+    }
+
+    private getOrdinalEnemigoPredilecto(indice: number): string {
+        if (indice === 1)
+            return 'primer';
+        if (indice === 2)
+            return 'segundo';
+        if (indice === 3)
+            return 'tercer';
+        if (indice === 4)
+            return 'cuarto';
+        if (indice === 5)
+            return 'quinto';
+        return `${indice}º`;
     }
 
     esHabilidadClaseaEfectiva(idHabilidad: number): boolean {
@@ -3866,6 +4003,18 @@ export class NuevoPersonajeComponent {
             error: () => {
                 this.catalogoDominios = [];
                 this.nuevoPSvc.setCatalogoDominios([]);
+            },
+        });
+    }
+
+    private cargarEnemigosPredilectos(): void {
+        this.enemigosPredilectosSub?.unsubscribe();
+        this.enemigosPredilectosSub = this.enemigoPredilectoSvc.getEnemigosPredilectos().subscribe({
+            next: (enemigos) => {
+                this.catalogoEnemigosPredilectos = enemigos ?? [];
+            },
+            error: () => {
+                this.catalogoEnemigosPredilectos = [];
             },
         });
     }

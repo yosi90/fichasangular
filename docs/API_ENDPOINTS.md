@@ -4,7 +4,7 @@ Fecha de generacion: 2026-02-24
 
 Resumen
 - Base URL (local): `http://127.0.0.1:5000`
-- Prefijos registrados: `/verify`, `/usuarios`, `/personajes`, `/razas`, `/razas/raciales`, `/subtipos`, `/campanas`, `/tramas`, `/subtramas`, `/manuales`, `/manuales/asociados`, `/tiposCriatura`, `/rasgos`, `/conjuros`, `/escuelas`, `/disciplinas`, `/alineamientos`, `/habilidades`, `/idiomas`, `/armas`, `/armaduras`, `/grupos-armas`, `/grupos-armaduras`, `/dominios`, `/ambitos`, `/pabellones`, `/deidades`, `/dotes`, `/clases`, `/clases/habilidades`, `/plantillas`, `/ventajas`, `/desventajas`
+- Prefijos registrados: `/verify`, `/usuarios`, `/personajes`, `/razas`, `/razas/raciales`, `/subtipos`, `/campanas`, `/tramas`, `/subtramas`, `/manuales`, `/manuales/asociados`, `/tiposCriatura`, `/rasgos`, `/conjuros`, `/escuelas`, `/disciplinas`, `/alineamientos`, `/habilidades`, `/idiomas`, `/enemigos-predilectos`, `/armas`, `/armaduras`, `/grupos-armas`, `/grupos-armaduras`, `/dominios`, `/ambitos`, `/pabellones`, `/deidades`, `/dotes`, `/clases`, `/clases/habilidades`, `/plantillas`, `/ventajas`, `/desventajas`
 - Autenticacion: no hay autenticacion en el backend.
 - Content-Type esperado: `application/json`
 - CORS habilitado para: `https://rol.yosiftware.es/`, `https://www.rol.yosiftware.es/`, `https://62.43.222.28`, `http://192.168.0.34`
@@ -57,6 +57,7 @@ Lista de endpoints
 | GET | /habilidades | Lista de habilidades basicas (id > 0) | Implementado |
 | GET | /habilidades/custom | Lista de habilidades custom (id > 0) | Implementado |
 | GET | /idiomas | Lista de idiomas | Implementado |
+| GET | /enemigos-predilectos | Lista de enemigos predilectos | Implementado |
 | GET | /armas | Lista completa de armas | Implementado |
 | GET | /armas/<id_arma> | Arma por id | Implementado |
 | GET | /armaduras | Lista completa de armaduras | Implementado |
@@ -802,6 +803,15 @@ IdiomaDetalle
 | Descripcion | string | Descripcion |
 | Secreto | boolean | Marca de idioma secreto |
 | Oficial | boolean | Oficial (true=oficial, false=homebrew) |
+
+Endpoint: GET /enemigos-predilectos
+Respuesta: array de `EnemigoPredilectoDetalle`
+
+EnemigoPredilectoDetalle
+| Campo | Tipo | Descripcion |
+| --- | --- | --- |
+| Id | number | Id de enemigo predilecto |
+| Nombre | string | Nombre |
 
 Endpoint: GET /armas
 Respuesta: array de `ArmaDetalle`

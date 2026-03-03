@@ -552,6 +552,7 @@ describe('NuevoPersonajeComponent', () => {
     let habilidadSvcMock: any;
     let idiomaSvcMock: any;
     let doteSvcMock: any;
+    let enemigoPredilectoSvcMock: any;
     let armaSvcMock: any;
     let armaduraSvcMock: any;
     let grupoArmaSvcMock: any;
@@ -611,6 +612,9 @@ describe('NuevoPersonajeComponent', () => {
         doteSvcMock = {
             getDotes: () => of([]),
         };
+        enemigoPredilectoSvcMock = {
+            getEnemigosPredilectos: () => of([]),
+        };
         armaSvcMock = {
             getArmas: () => of([]),
         };
@@ -646,6 +650,7 @@ describe('NuevoPersonajeComponent', () => {
             habilidadSvcMock,
             idiomaSvcMock,
             doteSvcMock,
+            enemigoPredilectoSvcMock,
             armaSvcMock,
             armaduraSvcMock,
             grupoArmaSvcMock,
@@ -3338,6 +3343,7 @@ describe('NuevoPersonajeComponent', () => {
             habilidadSvcMock,
             idiomaSvcMock,
             doteSvcMock,
+            enemigoPredilectoSvcMock,
             armaSvcMock,
             armaduraSvcMock,
             grupoArmaSvcMock,
