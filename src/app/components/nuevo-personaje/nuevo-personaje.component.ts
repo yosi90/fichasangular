@@ -17,7 +17,7 @@ import { EnemigoPredilectoDetalle } from 'src/app/interfaces/enemigo-predilecto-
 import { EscuelaConjuros } from 'src/app/interfaces/escuela-conjuros';
 import { HabilidadBasicaDetalle } from 'src/app/interfaces/habilidad';
 import { IdiomaDetalle } from 'src/app/interfaces/idioma';
-import { FamiliarMonstruoDetalle, MonstruoDetalle } from 'src/app/interfaces/monstruo';
+import { CompaneroMonstruoDetalle, FamiliarMonstruoDetalle, MonstruoDetalle } from 'src/app/interfaces/monstruo';
 import { Personaje } from 'src/app/interfaces/personaje';
 import { Plantilla } from 'src/app/interfaces/plantilla';
 import { Raza } from 'src/app/interfaces/raza';
@@ -47,7 +47,9 @@ import {
     AsignacionAumentoCaracteristica,
     AsignacionCaracteristicas,
     AumentoCaracteristicaPendiente,
+    CompaneroPlantillaSelector,
     EstadoCuposFamiliar,
+    EstadoCuposCompanero,
     CaracteristicaKeyAumento,
     ClaseAumentoLanzadorPendiente,
     ClaseDominiosPendientes,
@@ -69,7 +71,13 @@ import {
     FamiliarPlantillaId,
     filtrarFamiliaresElegibles
 } from 'src/app/services/utils/familiar-reglas';
+import {
+    construirCatalogoCompanerosDesdeMonstruos,
+    filtrarCompanerosElegibles,
+    resolverNivelesCompaneroDisponibles
+} from 'src/app/services/utils/companero-reglas';
 import { SelectorFamiliarConfirmacion } from './selector-familiar-modal/selector-familiar-modal.component';
+import { SelectorCompaneroConfirmacion } from './selector-companero-modal/selector-companero-modal.component';
 import { SelectorEspecialidadMagicaConfirmacion } from './selector-especialidad-magica-modal/selector-especialidad-magica-modal.component';
 import { PlantillaService } from 'src/app/services/plantilla.service';
 import { RazaService } from 'src/app/services/raza.service';
@@ -311,6 +319,7 @@ export class NuevoPersonajeComponent {
     modalSelectorExtraHabilidadAbierto = false;
     modalSelectorEnemigoPredilectoAbierto = false;
     modalSelectorFamiliarAbierto = false;
+    modalSelectorCompaneroAbierto = false;
     modalSelectorRazaBaseAbierto = false;
     modalSelectorRacialesOpcionalesAbierto = false;
     selectorDotePendienteActual: DotePendienteState | null = null;
@@ -374,6 +383,18 @@ export class NuevoPersonajeComponent {
     selectorFamiliarElegibles: FamiliarMonstruoDetalle[] = [];
     private resolverSelectorFamiliar: ((seleccion: SelectorFamiliarConfirmacion | 'omitir' | null) => void) | null = null;
     private nombresEspecialesFamiliar: Record<number, string> | null = null;
+    selectorCompaneroTitulo = 'Seleccionar compañero animal';
+    selectorCompaneroPlantillaSeleccionada: CompaneroPlantillaSelector = 'base';
+    selectorCompaneroIncluirHomebrew = false;
+    selectorCompaneroCuposDisponibles = 0;
+    selectorCompaneroNombre = '';
+    selectorCompaneroEstadoCupos: EstadoCuposCompanero | null = null;
+    selectorCompaneroCatalogoCompleto: CompaneroMonstruoDetalle[] = [];
+    selectorCompaneroElegibles: CompaneroMonstruoDetalle[] = [];
+    selectorCompaneroNivelesDisponibles: number[] = [];
+    selectorCompaneroNivelSeleccionado: number | null = null;
+    private resolverSelectorCompanero: ((seleccion: SelectorCompaneroConfirmacion | 'omitir' | null) => void) | null = null;
+    private nombresEspecialesCompanero: Record<number, string> | null = null;
     private idiomasTemporalesSeleccionados: IdiomaDetalle[] = [];
     selectedInternalTabIndex = 0;
     private campanasSub?: Subscription;
@@ -3050,11 +3071,14 @@ export class NuevoPersonajeComponent {
         if (!dotesCompletadas)
             return false;
 
+        const companeroResuelto = await this.resolverCompaneroPendienteFinNivel();
+        if (!companeroResuelto)
+            return false;
+
         const familiarResuelto = await this.resolverFamiliarPendienteFinNivel();
         if (!familiarResuelto)
             return false;
 
-        await this.avisarCompaneroPendienteSinSelectorSiAplica();
         return true;
     }
 
@@ -3099,18 +3123,86 @@ export class NuevoPersonajeComponent {
         return true;
     }
 
-    private async avisarCompaneroPendienteSinSelectorSiAplica(): Promise<void> {
-        if (!this.nuevoPSvc.tieneCompaneroPendienteSinSelector())
-            return;
-        await Swal.fire({
-            icon: 'info',
-            title: 'Compañero animal pendiente',
-            text: 'Tu personaje puede obtener compañero animal, pero su selector aún no está implementado en esta fase.',
-            confirmButtonText: 'Continuar',
-            target: document.body,
-            heightAuto: false,
-            scrollbarPadding: false,
+    private async resolverCompaneroPendienteFinNivel(): Promise<boolean> {
+        const estado = this.nuevoPSvc.getEstadoCuposCompaneroEspecial29();
+        if (estado.cuposDisponibles < 1)
+            return true;
+
+        const seleccion = await this.abrirSelectorCompanero(estado);
+        if (seleccion === null)
+            return false;
+        if (seleccion === 'omitir')
+            return true;
+
+        const nombresEspeciales = await this.cargarNombresEspecialesCompanero();
+        const resultado = this.nuevoPSvc.registrarCompaneroSeleccionado(
+            seleccion.companero,
+            seleccion.plantilla,
+            nombresEspeciales,
+            seleccion.nombre
+        );
+        if (!resultado.registrado) {
+            await Swal.fire({
+                icon: 'warning',
+                title: 'No se pudo registrar el compañero animal',
+                text: resultado.razon || 'No se pudo aplicar la selección de compañero animal con el estado actual.',
+                confirmButtonText: 'Entendido',
+                target: document.body,
+                heightAuto: false,
+                scrollbarPadding: false,
+            });
+            return false;
+        }
+
+        this.Personaje = this.nuevoPSvc.PersonajeCreacion;
+        return true;
+    }
+
+    private async abrirSelectorCompanero(
+        estado: EstadoCuposCompanero
+    ): Promise<SelectorCompaneroConfirmacion | 'omitir' | null> {
+        const catalogoCargado = await this.cargarCatalogoCompanerosSelector();
+        if (!catalogoCargado)
+            return null;
+
+        this.selectorCompaneroEstadoCupos = estado;
+        this.selectorCompaneroTitulo = 'Seleccionar compañero animal';
+        this.selectorCompaneroPlantillaSeleccionada = 'base';
+        this.selectorCompaneroIncluirHomebrew = !this.Personaje.Oficial;
+        this.selectorCompaneroNombre = this.getNombreDefectoCompanero();
+        this.selectorCompaneroCuposDisponibles = Math.max(0, Number(estado?.cuposDisponibles ?? 0));
+        this.selectorCompaneroNivelSeleccionado = Math.max(0, Number(estado?.nivelEfectivoCompanero ?? 0)) || null;
+        this.recalcularCompanerosElegiblesSelector();
+        this.modalSelectorCompaneroAbierto = true;
+
+        return new Promise<SelectorCompaneroConfirmacion | 'omitir' | null>((resolve) => {
+            this.resolverSelectorCompanero = resolve;
         });
+    }
+
+    onConfirmarSelectorCompanero(seleccion: SelectorCompaneroConfirmacion): void {
+        const idCompanero = Number(seleccion?.companero?.Id_companero ?? 0);
+        const idPlantilla = this.getIdPlantillaCompaneroSeleccionada(seleccion?.plantilla);
+        const companero = this.selectorCompaneroElegibles.find((item) =>
+            Number(item?.Id_companero) === idCompanero
+            && Number(item?.Plantilla?.Id) === idPlantilla
+        );
+        if (!companero)
+            return;
+        this.cerrarSelectorCompaneroContexto({
+            companero,
+            plantilla: seleccion?.plantilla ?? 'base',
+            nombre: `${seleccion?.nombre ?? ''}`,
+            nivel: seleccion?.nivel ?? null,
+        });
+    }
+
+    onOmitirSelectorCompanero(): void {
+        this.cerrarSelectorCompaneroContexto('omitir');
+    }
+
+    onDetalleSelectorCompanero(companero: CompaneroMonstruoDetalle): void {
+        this.verDetallesMonstruoDesdeFicha(companero);
     }
 
     private esCandidatoDoteElegible(candidato: DoteSelectorCandidato): boolean {
@@ -3254,6 +3346,30 @@ export class NuevoPersonajeComponent {
         this.verDetallesMonstruoDesdeFicha(familiar);
     }
 
+    onCambioPlantillaSelectorCompanero(plantilla: CompaneroPlantillaSelector): void {
+        this.selectorCompaneroPlantillaSeleccionada = this.normalizarPlantillaCompanero(plantilla);
+        this.recalcularCompanerosElegiblesSelector();
+    }
+
+    onCambioHomebrewSelectorCompanero(value: boolean): void {
+        this.selectorCompaneroIncluirHomebrew = !!value;
+        this.recalcularCompanerosElegiblesSelector();
+    }
+
+    onCambioNombreSelectorCompanero(value: string): void {
+        this.selectorCompaneroNombre = `${value ?? ''}`;
+    }
+
+    onCambioNivelSelectorCompanero(value: number | null): void {
+        const parsed = Number(value);
+        if (value === null || value === undefined || !Number.isFinite(parsed) || parsed < 0) {
+            this.selectorCompaneroNivelSeleccionado = null;
+        } else {
+            this.selectorCompaneroNivelSeleccionado = Math.trunc(parsed);
+        }
+        this.recalcularCompanerosElegiblesSelector();
+    }
+
     onFinalizarCreacionTemporal(): void {
         void Swal.fire({
             icon: 'info',
@@ -3281,6 +3397,23 @@ export class NuevoPersonajeComponent {
 
     onCambioNombreSelectorFamiliar(value: string): void {
         this.selectorFamiliarNombre = `${value ?? ''}`;
+    }
+
+    private normalizarPlantillaCompanero(value: CompaneroPlantillaSelector | string): CompaneroPlantillaSelector {
+        const normalizada = this.normalizarTexto(`${value ?? ''}`);
+        if (normalizada.includes('elevado'))
+            return 'elevado';
+        if (normalizada.includes('sabandija'))
+            return 'sabandija';
+        return 'base';
+    }
+
+    private getIdPlantillaCompaneroSeleccionada(plantilla: CompaneroPlantillaSelector): number {
+        if (plantilla === 'elevado')
+            return 2;
+        if (plantilla === 'sabandija')
+            return 3;
+        return 1;
     }
 
     private async cargarCatalogoFamiliaresSelector(): Promise<boolean> {
@@ -3347,6 +3480,96 @@ export class NuevoPersonajeComponent {
         return { ...nombres };
     }
 
+    private async cargarCatalogoCompanerosSelector(): Promise<boolean> {
+        try {
+            const monstruos = await firstValueFrom(this.monstruoSvc.getMonstruos().pipe(take(1)));
+            this.selectorCompaneroCatalogoCompleto = construirCatalogoCompanerosDesdeMonstruos(
+                Array.isArray(monstruos) ? monstruos : []
+            );
+            return true;
+        } catch {
+            await Swal.fire({
+                icon: 'warning',
+                title: 'No se pudo cargar el catálogo de monstruos compañeros',
+                text: 'Revisa la conexión o vuelve a intentarlo en unos segundos.',
+                confirmButtonText: 'Entendido',
+                target: document.body,
+                heightAuto: false,
+                scrollbarPadding: false,
+            });
+            return false;
+        }
+    }
+
+    private recalcularCompanerosElegiblesSelector(): void {
+        if (!this.selectorCompaneroEstadoCupos) {
+            this.selectorCompaneroElegibles = [];
+            this.selectorCompaneroNivelesDisponibles = [];
+            return;
+        }
+
+        const incluirHomebrewEfectivo = this.selectorCompaneroIncluirHomebrew || !this.Personaje.Oficial;
+        const tieneDoteElevado = this.nuevoPSvc.PersonajeCreacion.DotesContextuales
+            .some((item) => Number(item?.Dote?.Id) === 53)
+            || this.nuevoPSvc.PersonajeCreacion.Dotes.some((item) => Number((item as any)?.Id) === 53);
+        const tieneDoteSabandija = this.nuevoPSvc.PersonajeCreacion.DotesContextuales
+            .some((item) => Number(item?.Dote?.Id) === 56)
+            || this.nuevoPSvc.PersonajeCreacion.Dotes.some((item) => Number((item as any)?.Id) === 56);
+
+        this.selectorCompaneroNivelesDisponibles = resolverNivelesCompaneroDisponibles({
+            companeros: this.selectorCompaneroCatalogoCompleto,
+            estado: this.selectorCompaneroEstadoCupos,
+            alineamientoPersonaje: `${this.Personaje?.Alineamiento ?? ''}`.trim(),
+            plantillaSeleccionada: this.selectorCompaneroPlantillaSeleccionada,
+            incluirHomebrew: incluirHomebrewEfectivo,
+            tieneDoteElevado,
+            tieneDoteSabandija,
+        });
+        if (this.selectorCompaneroNivelSeleccionado !== null
+            && !this.selectorCompaneroNivelesDisponibles.includes(this.selectorCompaneroNivelSeleccionado)) {
+            this.selectorCompaneroNivelSeleccionado = null;
+        }
+
+        this.selectorCompaneroElegibles = filtrarCompanerosElegibles({
+            companeros: this.selectorCompaneroCatalogoCompleto,
+            estado: this.selectorCompaneroEstadoCupos,
+            alineamientoPersonaje: `${this.Personaje?.Alineamiento ?? ''}`.trim(),
+            plantillaSeleccionada: this.selectorCompaneroPlantillaSeleccionada,
+            incluirHomebrew: incluirHomebrewEfectivo,
+            tieneDoteElevado,
+            tieneDoteSabandija,
+            nivelSeleccionado: this.selectorCompaneroNivelSeleccionado,
+        });
+    }
+
+    private async cargarNombresEspecialesCompanero(): Promise<Record<number, string>> {
+        if (this.nombresEspecialesCompanero)
+            return { ...this.nombresEspecialesCompanero };
+
+        const objetivos = [157, 158, 159, 57];
+        const nombres: Record<number, string> = {};
+        objetivos.forEach((id) => {
+            nombres[id] = `Especial ${id} (Compañero)`;
+        });
+
+        try {
+            const especiales = await firstValueFrom(this.especialSvc.getEspeciales().pipe(take(1)));
+            (especiales ?? []).forEach((especial) => {
+                const id = Number(especial?.Id ?? 0);
+                if (!objetivos.includes(id))
+                    return;
+                const nombre = `${especial?.Nombre ?? ''}`.trim();
+                if (nombre.length > 0)
+                    nombres[id] = nombre;
+            });
+        } catch {
+            // fallback ya aplicado
+        }
+
+        this.nombresEspecialesCompanero = { ...nombres };
+        return { ...nombres };
+    }
+
     private cerrarSelectorFamiliarContexto(
         resultado: SelectorFamiliarConfirmacion | 'omitir' | null
     ): void {
@@ -3365,11 +3588,38 @@ export class NuevoPersonajeComponent {
         resolver?.(resultado);
     }
 
+    private cerrarSelectorCompaneroContexto(
+        resultado: SelectorCompaneroConfirmacion | 'omitir' | null
+    ): void {
+        this.modalSelectorCompaneroAbierto = false;
+        this.selectorCompaneroTitulo = 'Seleccionar compañero animal';
+        this.selectorCompaneroPlantillaSeleccionada = 'base';
+        this.selectorCompaneroIncluirHomebrew = false;
+        this.selectorCompaneroNombre = '';
+        this.selectorCompaneroCuposDisponibles = 0;
+        this.selectorCompaneroEstadoCupos = null;
+        this.selectorCompaneroCatalogoCompleto = [];
+        this.selectorCompaneroElegibles = [];
+        this.selectorCompaneroNivelesDisponibles = [];
+        this.selectorCompaneroNivelSeleccionado = null;
+
+        const resolver = this.resolverSelectorCompanero;
+        this.resolverSelectorCompanero = null;
+        resolver?.(resultado);
+    }
+
     private getNombreDefectoFamiliar(): string {
         const nombrePj = `${this.Personaje?.Nombre ?? ''}`.trim();
         if (nombrePj.length < 1)
             return 'Familiar';
         return `Familiar de ${nombrePj}`;
+    }
+
+    private getNombreDefectoCompanero(): string {
+        const nombrePj = `${this.Personaje?.Nombre ?? ''}`.trim();
+        if (nombrePj.length < 1)
+            return 'Compañero';
+        return `Compañero de ${nombrePj}`;
     }
 
     private async solicitarSeleccionesDominiosClase(

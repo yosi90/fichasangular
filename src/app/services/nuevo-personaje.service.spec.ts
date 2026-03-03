@@ -3345,6 +3345,38 @@ describe('NuevoPersonajeService (familiar)', () => {
         };
     }
 
+    function crearCompaneroSeleccionable(idCompanero: number, nombre = 'Lobo', plantilla = 1): any {
+        return {
+            Id: idCompanero + 700,
+            Id_companero: idCompanero,
+            Nombre: nombre,
+            Plantilla: { Id: plantilla, Nombre: plantilla === 2 ? 'Elevado' : (plantilla === 3 ? 'Sabandija' : 'Base') },
+            Manual: { Id: 1, Nombre: 'Manual base', Pagina: 20 },
+            Niveles_clase: [],
+            Alineamientos_requeridos: { Familiar: [], Companero: [] },
+            Oficial: true,
+            Caracteristicas: {
+                Fuerza: 12,
+                Destreza: 14,
+                Constitucion: 10,
+                Inteligencia: 2,
+                Sabiduria: 10,
+                Carisma: 6,
+            },
+            Defensa: {
+                Ca: 14,
+                Toque: 12,
+                Desprevenido: 12,
+                Armadura_natural: 2,
+                Reduccion_dano: '',
+                Resistencia_conjuros: '',
+                Resistencia_elemental: '',
+            },
+            Dotes: [],
+            Especiales: [],
+        };
+    }
+
     it('getEstadoCuposFamiliarEspecial47 calcula fuentes, cupos y nivel lanzador', () => {
         const svc = new NuevoPersonajeService();
         const claseMago = crearClaseBase({
@@ -3528,17 +3560,179 @@ describe('NuevoPersonajeService (familiar)', () => {
         expect((sinCupo.razon ?? '').toLowerCase()).toContain('cupos');
     });
 
-    it('tieneCompaneroPendienteSinSelector depende de especial y del estado actual', () => {
+    it('tieneCompaneroPendienteSinSelector depende de cupos reales', () => {
         const svc = new NuevoPersonajeService();
-        svc.PersonajeCreacion.Claseas = [
-            { Nombre: 'Compañero animal', Extra: '' },
-        ] as any;
+        const claseDruida = crearClaseBase({
+            Id: 5,
+            Nombre: 'Druida',
+            Desglose_niveles: [{
+                Nivel: 1,
+                Ataque_base: '+0',
+                Salvaciones: { Fortaleza: '+2', Reflejos: '+0', Voluntad: '+2' },
+                Nivel_max_poder_accesible_nivel_lanzadorPsionico: -1,
+                Reserva_psionica: 0,
+                Aumentos_clase_lanzadora: [],
+                Conjuros_diarios: crearConjurosDiariosMock(),
+                Conjuros_conocidos_nivel_a_nivel: {},
+                Conjuros_conocidos_total: 0,
+                Dotes: [],
+                Especiales: [crearEspecialNivel(29, 'Compañero animal')],
+            }],
+        });
+        svc.setCatalogoClases([claseDruida]);
+        svc.PersonajeCreacion.desgloseClases = [{ Nombre: 'Druida', Nivel: 1 } as any];
         svc.PersonajeCreacion.Companeros = [];
 
         expect(svc.tieneCompaneroPendienteSinSelector()).toBeTrue();
 
-        svc.PersonajeCreacion.Companeros = [{ Id_companero: 1, Nombre: 'Lobo' } as any];
+        svc.PersonajeCreacion.Companeros = [crearCompaneroSeleccionable(1, 'Lobo')];
         expect(svc.tieneCompaneroPendienteSinSelector()).toBeFalse();
+    });
+
+    it('getEstadoCuposCompaneroEspecial29 calcula fuentes, cupos y nivel efectivo', () => {
+        const svc = new NuevoPersonajeService();
+        const druida = crearClaseBase({
+            Id: 5,
+            Nombre: 'Druida',
+            Desglose_niveles: [{
+                Nivel: 1,
+                Ataque_base: '+0',
+                Salvaciones: { Fortaleza: '+2', Reflejos: '+0', Voluntad: '+2' },
+                Nivel_max_poder_accesible_nivel_lanzadorPsionico: -1,
+                Reserva_psionica: 0,
+                Aumentos_clase_lanzadora: [],
+                Conjuros_diarios: crearConjurosDiariosMock(),
+                Conjuros_conocidos_nivel_a_nivel: {},
+                Conjuros_conocidos_total: 0,
+                Dotes: [],
+                Especiales: [crearEspecialNivel(29, 'Compañero animal')],
+            }],
+        });
+        const ranger = crearClaseBase({
+            Id: 6,
+            Nombre: 'Ranger',
+            Desglose_niveles: [{
+                Nivel: 1,
+                Ataque_base: '+1',
+                Salvaciones: { Fortaleza: '+2', Reflejos: '+2', Voluntad: '+0' },
+                Nivel_max_poder_accesible_nivel_lanzadorPsionico: -1,
+                Reserva_psionica: 0,
+                Aumentos_clase_lanzadora: [],
+                Conjuros_diarios: crearConjurosDiariosMock(),
+                Conjuros_conocidos_nivel_a_nivel: {},
+                Conjuros_conocidos_total: 0,
+                Dotes: [],
+                Especiales: [crearEspecialNivel(29, 'Compañero animal')],
+            }],
+        });
+        svc.setCatalogoClases([druida, ranger]);
+        svc.PersonajeCreacion.desgloseClases = [
+            { Nombre: 'Druida', Nivel: 4 } as any,
+            { Nombre: 'Ranger', Nivel: 5 } as any,
+        ];
+
+        const estado = svc.getEstadoCuposCompaneroEspecial29();
+        expect(estado.fuentesClaseIds.sort((a, b) => a - b)).toEqual([5, 6]);
+        expect(estado.fuentesTotales).toBe(2);
+        expect(estado.cuposDisponibles).toBe(2);
+        expect(estado.nivelEfectivoCompanero).toBe(6); // 4 + floor(5/2)
+    });
+
+    it('registrarCompaneroSeleccionado aplica beneficios y rechaza duplicados', () => {
+        const svc = new NuevoPersonajeService();
+        const druida = crearClaseBase({
+            Id: 5,
+            Nombre: 'Druida',
+            Desglose_niveles: [{
+                Nivel: 1,
+                Ataque_base: '+0',
+                Salvaciones: { Fortaleza: '+2', Reflejos: '+0', Voluntad: '+2' },
+                Nivel_max_poder_accesible_nivel_lanzadorPsionico: -1,
+                Reserva_psionica: 0,
+                Aumentos_clase_lanzadora: [],
+                Conjuros_diarios: crearConjurosDiariosMock(),
+                Conjuros_conocidos_nivel_a_nivel: {},
+                Conjuros_conocidos_total: 0,
+                Dotes: [],
+                Especiales: [crearEspecialNivel(29, 'Compañero animal')],
+            }],
+        });
+        const bestiario = crearClaseBase({
+            Id: 30,
+            Nombre: 'Bestiario',
+            Desglose_niveles: [{
+                Nivel: 1,
+                Ataque_base: '+0',
+                Salvaciones: { Fortaleza: '+0', Reflejos: '+0', Voluntad: '+2' },
+                Nivel_max_poder_accesible_nivel_lanzadorPsionico: -1,
+                Reserva_psionica: 0,
+                Aumentos_clase_lanzadora: [],
+                Conjuros_diarios: crearConjurosDiariosMock(),
+                Conjuros_conocidos_nivel_a_nivel: {},
+                Conjuros_conocidos_total: 0,
+                Dotes: [],
+                Especiales: [crearEspecialNivel(29, 'Compañero animal')],
+            }],
+        });
+        svc.setCatalogoClases([druida, bestiario]);
+        svc.PersonajeCreacion.desgloseClases = [
+            { Nombre: 'Druida', Nivel: 15 } as any,
+            { Nombre: 'Bestiario', Nivel: 1 } as any,
+        ];
+        svc.setCatalogoDotes([{
+            Id: 49,
+            Nombre: 'Evasión mejorada',
+            Descripcion: '',
+            Beneficio: '',
+            Normal: '',
+            Especial: '',
+            Manual: { Id: 0, Nombre: '', Pagina: 0 },
+            Tipos: [],
+            Repetible: 0,
+            Repetible_distinto_extra: 0,
+            Repetible_comb: 0,
+            Comp_arma: 0,
+            Oficial: true,
+            Extras_soportados: {
+                Extra_arma: 0,
+                Extra_armadura: 0,
+                Extra_escuela: 0,
+                Extra_habilidad: 0,
+            },
+            Extras_disponibles: {
+                Armas: [],
+                Armaduras: [],
+                Escuelas: [],
+                Habilidades: [],
+            },
+            Modificadores: {},
+            Prerrequisitos: {},
+        } as any]);
+
+        const primero = svc.registrarCompaneroSeleccionado(
+            crearCompaneroSeleccionable(100, 'Lobo', 1),
+            'base',
+            { 157: 'Compañero animal', 158: 'Vínculo con compañero', 159: 'Devoción', 57: 'Vínculo maestro' },
+            'Compañero de Aldric'
+        );
+        const segundo = svc.registrarCompaneroSeleccionado(
+            crearCompaneroSeleccionable(100, 'Lobo', 1),
+            'base',
+            {}
+        );
+
+        expect(primero.registrado).toBeTrue();
+        expect(primero.dote49Agregada).toBeTrue();
+        expect(primero.especialesAgregadosIds).toContain(157);
+        expect(primero.especialesAgregadosIds).toContain(158);
+        expect(primero.especialesAgregadosIds).toContain(159);
+        expect(primero.especialesAgregadosIds).toContain(57);
+        expect(primero.bonosAplicados.dgAdi).toBe(10);
+        expect(primero.bonosAplicados.trucosAdi).toBe(6);
+        expect(svc.PersonajeCreacion.Companeros.length).toBe(1);
+        expect(svc.PersonajeCreacion.Companeros[0].Nombre).toBe('Compañero de Aldric');
+        expect(segundo.registrado).toBeFalse();
+        expect((segundo.razon ?? '').toLowerCase()).toContain('misma plantilla');
     });
 });
 

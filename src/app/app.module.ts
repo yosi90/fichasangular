@@ -76,6 +76,7 @@ import { SelectorDotesModalComponent } from './components/nuevo-personaje/select
 import { SelectorEnemigoPredilectoModalComponent } from './components/nuevo-personaje/selector-enemigo-predilecto-modal/selector-enemigo-predilecto-modal.component';
 import { SelectorExtraHabilidadModalComponent } from './components/nuevo-personaje/selector-extra-habilidad-modal/selector-extra-habilidad-modal.component';
 import { SelectorFamiliarModalComponent } from './components/nuevo-personaje/selector-familiar-modal/selector-familiar-modal.component';
+import { SelectorCompaneroModalComponent } from './components/nuevo-personaje/selector-companero-modal/selector-companero-modal.component';
 import { VentanaDetalleFlotanteComponent } from './components/nuevo-personaje/ventana-detalle-flotante/ventana-detalle-flotante.component';
 import { ListadoSubtiposComponent } from './components/shared/listado-subtipos/listado-subtipos.component';
 import { DetallesSubtipoComponent } from './components/detalles/detalles-subtipo/detalles-subtipo.component';
@@ -123,6 +124,7 @@ import { DetallesMonstruoComponent } from './components/detalles/detalles-monstr
         SelectorEnemigoPredilectoModalComponent,
         SelectorExtraHabilidadModalComponent,
         SelectorFamiliarModalComponent,
+        SelectorCompaneroModalComponent,
         SelectorRazaBaseModalComponent,
         SelectorRacialesOpcionalesModalComponent,
         VentanaDetalleFlotanteComponent,

@@ -1000,6 +1000,27 @@
         </app-selector-familiar-modal>
     </ng-container>
 
+    <ng-container *ngIf="modalSelectorCompaneroAbierto">
+        <app-selector-companero-modal
+            [titulo]="selectorCompaneroTitulo"
+            [companerosElegibles]="selectorCompaneroElegibles"
+            [companerosSeleccionados]="Personaje.Companeros"
+            [plantillaSeleccionada]="selectorCompaneroPlantillaSeleccionada"
+            [incluirHomebrew]="selectorCompaneroIncluirHomebrew"
+            [cuposDisponibles]="selectorCompaneroCuposDisponibles"
+            [nombreCompanero]="selectorCompaneroNombre"
+            [nivelesDisponibles]="selectorCompaneroNivelesDisponibles"
+            [nivelSeleccionado]="selectorCompaneroNivelSeleccionado"
+            (confirmar)="onConfirmarSelectorCompanero($event)"
+            (omitir)="onOmitirSelectorCompanero()"
+            (detalle)="onDetalleSelectorCompanero($event)"
+            (plantillaChange)="onCambioPlantillaSelectorCompanero($event)"
+            (incluirHomebrewChange)="onCambioHomebrewSelectorCompanero($event)"
+            (nombreCompaneroChange)="onCambioNombreSelectorCompanero($event)"
+            (nivelChange)="onCambioNivelSelectorCompanero($event)">
+        </app-selector-companero-modal>
+    </ng-container>
+
     <ng-container *ngIf="modalSelectorExtraHabilidadAbierto">
         <app-selector-extra-habilidad-modal
             [titulo]="selectorExtraHabilidadTitulo"

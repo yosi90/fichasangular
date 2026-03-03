@@ -11,7 +11,7 @@ import { DeidadDetalle } from '../interfaces/deidad';
 import { DominioDetalle } from '../interfaces/dominio';
 import { HabilidadBasicaDetalle, HabilidadBonoVario } from '../interfaces/habilidad';
 import { IdiomaDetalle } from '../interfaces/idioma';
-import { FamiliarMonstruoDetalle } from '../interfaces/monstruo';
+import { CompaneroMonstruoDetalle, FamiliarMonstruoDetalle } from '../interfaces/monstruo';
 import { Personaje } from '../interfaces/personaje';
 import { Plantilla } from '../interfaces/plantilla';
 import { RacialDetalle } from '../interfaces/racial';
@@ -34,6 +34,12 @@ import {
     FamiliarPlantillaId as FamiliarPlantillaIdUtil,
     resolverEstadoCuposFamiliarEspecial47
 } from './utils/familiar-reglas';
+import {
+    CompaneroPlantillaSelector as CompaneroPlantillaSelectorUtil,
+    EstadoCuposCompanero as EstadoCuposCompaneroUtil,
+    getPlantillaIdCompanero,
+    resolverEstadoCuposCompaneroEspecial29
+} from './utils/companero-reglas';
 import { UserSettingsService } from './user-settings.service';
 import { NuevoPersonajeGeneradorConfig } from '../interfaces/user-settings';
 
@@ -42,6 +48,8 @@ export type HabilidadesFlujoOrigen = 'raza_dg' | 'plantilla_dg' | 'clase_nivel';
 export type TipoLanzamientoConjuros = 'arcano' | 'divino' | 'psionico' | 'alma' | 'mixto';
 export type FamiliarPlantillaId = FamiliarPlantillaIdUtil;
 export type EstadoCuposFamiliar = EstadoCuposFamiliarUtil;
+export type CompaneroPlantillaSelector = CompaneroPlantillaSelectorUtil;
+export type EstadoCuposCompanero = EstadoCuposCompaneroUtil;
 export type GeneradorAutoRespuestaQ1 =
     | 'acero_musculo'
     | 'rapidez_precision'
@@ -221,6 +229,12 @@ const ESPECIAL_FAMILIAR_CONVOCAR_ID = 47;
 const ESPECIALES_BONUS_FAMILIAR_FIJOS = [81, 82];
 const ESPECIAL_BONUS_FAMILIAR_MENSAJERO = 83;
 const ESPECIAL_BONUS_FAMILIAR_HECHIZO = 87;
+const DOTE_COMPANERO_ELEVADO_ID = 53;
+const DOTE_COMPANERO_SABANDIJA_ID = 56;
+const DOTE_COMPANERO_BONUS_ID = 49;
+const ESPECIALES_BONUS_COMPANERO_PERSONAJE = [157, 158];
+const ESPECIAL_BONUS_COMPANERO_AVANZADO = 159;
+const ESPECIAL_BONUS_COMPANERO_MAESTRO = 57;
 const GENERADOR_AUTO_CON_FLOOR = 1;
 const GENERADOR_AUTO_RECOMENDACION_UMBRAL_TOP3 = 1;
 const HABILIDAD_FAMILIAS_REPETIBLES = {
@@ -657,6 +671,20 @@ export interface RegistroFamiliarResultado {
     familiarAgregado?: FamiliarMonstruoDetalle;
     dote17Agregada: boolean;
     especialesAgregadosIds: number[];
+}
+
+export interface RegistroCompaneroResultado {
+    registrado: boolean;
+    razon?: string;
+    companeroAgregado?: CompaneroMonstruoDetalle;
+    dote49Agregada: boolean;
+    especialesAgregadosIds: number[];
+    bonosAplicados: {
+        dgAdi: number;
+        trucosAdi: number;
+        bonoFueDes: number;
+        bonoArmaduraNatural: number;
+    };
 }
 
 export interface DoteSeleccionConfirmada {
@@ -1929,14 +1957,12 @@ export class NuevoPersonajeService {
         return resolverEstadoCuposFamiliarEspecial47(this.personajeCreacion, this.catalogoClases);
     }
 
+    getEstadoCuposCompaneroEspecial29(): EstadoCuposCompanero {
+        return resolverEstadoCuposCompaneroEspecial29(this.personajeCreacion, this.catalogoClases);
+    }
+
     tieneCompaneroPendienteSinSelector(): boolean {
-        const tieneFuenteCompanero = this.tieneClaseaPorNombre('Compañero animal') || this.tieneClaseaPorNombre('Compañero');
-        if (!tieneFuenteCompanero)
-            return false;
-        const companerosActuales = Array.isArray(this.personajeCreacion?.Companeros)
-            ? this.personajeCreacion.Companeros.length
-            : 0;
-        return companerosActuales < 1;
+        return this.getEstadoCuposCompaneroEspecial29().cuposDisponibles > 0;
     }
 
     registrarFamiliarSeleccionado(
@@ -2010,6 +2036,134 @@ export class NuevoPersonajeService {
             familiarAgregado: familiarGuardar,
             dote17Agregada,
             especialesAgregadosIds,
+        };
+    }
+
+    registrarCompaneroSeleccionado(
+        companero: CompaneroMonstruoDetalle | null | undefined,
+        plantillaSeleccionada: CompaneroPlantillaSelector,
+        nombresEspecialesPorId: Record<number, string> = {},
+        nombrePersonalizado: string = ''
+    ): RegistroCompaneroResultado {
+        const estado = this.getEstadoCuposCompaneroEspecial29();
+        if (estado.cuposDisponibles < 1) {
+            return {
+                registrado: false,
+                razon: 'No hay cupos disponibles de compañero animal',
+                dote49Agregada: false,
+                especialesAgregadosIds: [],
+                bonosAplicados: {
+                    dgAdi: 0,
+                    trucosAdi: 0,
+                    bonoFueDes: 0,
+                    bonoArmaduraNatural: 0,
+                },
+            };
+        }
+
+        const idCompanero = this.toNumber(companero?.Id_companero);
+        if (idCompanero <= 0 || !companero) {
+            return {
+                registrado: false,
+                razon: 'Compañero inválido',
+                dote49Agregada: false,
+                especialesAgregadosIds: [],
+                bonosAplicados: {
+                    dgAdi: 0,
+                    trucosAdi: 0,
+                    bonoFueDes: 0,
+                    bonoArmaduraNatural: 0,
+                },
+            };
+        }
+
+        const plantilla = this.normalizarPlantillaCompanero(plantillaSeleccionada);
+        if (plantilla === 'elevado' && !this.personajeTieneDotePorId(DOTE_COMPANERO_ELEVADO_ID)) {
+            return {
+                registrado: false,
+                razon: 'Falta la dote requerida para plantilla elevado',
+                dote49Agregada: false,
+                especialesAgregadosIds: [],
+                bonosAplicados: {
+                    dgAdi: 0,
+                    trucosAdi: 0,
+                    bonoFueDes: 0,
+                    bonoArmaduraNatural: 0,
+                },
+            };
+        }
+        if (plantilla === 'sabandija' && !this.personajeTieneDotePorId(DOTE_COMPANERO_SABANDIJA_ID)) {
+            return {
+                registrado: false,
+                razon: 'Falta la dote requerida para plantilla sabandija',
+                dote49Agregada: false,
+                especialesAgregadosIds: [],
+                bonosAplicados: {
+                    dgAdi: 0,
+                    trucosAdi: 0,
+                    bonoFueDes: 0,
+                    bonoArmaduraNatural: 0,
+                },
+            };
+        }
+
+        const idPlantilla = getPlantillaIdCompanero(plantilla);
+        const yaExiste = (this.personajeCreacion.Companeros ?? []).some((item) =>
+            this.toNumber(item?.Id_companero) === idCompanero
+            && this.toNumber(item?.Plantilla?.Id) === idPlantilla
+        );
+        if (yaExiste) {
+            return {
+                registrado: false,
+                razon: 'Ese compañero con la misma plantilla ya está seleccionado',
+                dote49Agregada: false,
+                especialesAgregadosIds: [],
+                bonosAplicados: {
+                    dgAdi: 0,
+                    trucosAdi: 0,
+                    bonoFueDes: 0,
+                    bonoArmaduraNatural: 0,
+                },
+            };
+        }
+
+        const escala = this.calcularEscalaCompanero(Math.max(0, this.toNumber(estado?.nivelEfectivoCompanero)));
+        const companeroGuardar = this.clonarCompaneroParaPersonaje(companero, plantilla, nombrePersonalizado, escala);
+        this.personajeCreacion.Companeros = [
+            ...(this.personajeCreacion.Companeros ?? []),
+            companeroGuardar,
+        ];
+
+        const especialesAgregadosIds: number[] = [];
+        ESPECIALES_BONUS_COMPANERO_PERSONAJE.forEach((idEspecial) => {
+            if (this.asegurarEspecialPersonajeCompanero(idEspecial, nombresEspecialesPorId))
+                especialesAgregadosIds.push(idEspecial);
+        });
+
+        const nivelEfectivo = Math.max(0, this.toNumber(estado?.nivelEfectivoCompanero));
+        if (nivelEfectivo >= 6 && this.asegurarEspecialCompanero(companeroGuardar, ESPECIAL_BONUS_COMPANERO_AVANZADO, nombresEspecialesPorId))
+            especialesAgregadosIds.push(ESPECIAL_BONUS_COMPANERO_AVANZADO);
+        if (nivelEfectivo >= 15 && this.asegurarEspecialCompanero(companeroGuardar, ESPECIAL_BONUS_COMPANERO_MAESTRO, nombresEspecialesPorId))
+            especialesAgregadosIds.push(ESPECIAL_BONUS_COMPANERO_MAESTRO);
+
+        const dote49Agregada = nivelEfectivo >= 9
+            ? this.asegurarDoteCompanero(companeroGuardar, DOTE_COMPANERO_BONUS_ID)
+            : false;
+
+        this.recalcularDerivadasPorCaracteristicas();
+        this.recalcularDerivadasPorCombate();
+
+        return {
+            registrado: true,
+            companeroAgregado: companeroGuardar,
+            dote49Agregada,
+            especialesAgregadosIds,
+            bonosAplicados: {
+                dgAdi: escala.dgAdi,
+                trucosAdi: escala.trucosAdi,
+                bonoFueDes: escala.bonoFueDes,
+                bonoArmaduraNatural: escala.bonoArmaduraNatural,
+            },
         };
     }
 
@@ -2561,6 +2715,17 @@ export class NuevoPersonajeService {
         );
     }
 
+    private personajeTieneDotePorId(idDote: number): boolean {
+        const id = this.toNumber(idDote);
+        if (id <= 0)
+            return false;
+        if ((this.personajeCreacion.DotesContextuales ?? []).some((item) => this.toNumber(item?.Dote?.Id) === id))
+            return true;
+        return (this.personajeCreacion.Dotes ?? []).some((item) =>
+            this.toNumber((item as any)?.Id) === id
+        );
+    }
+
     private clonarFamiliarParaPersonaje(
         familiar: FamiliarMonstruoDetalle,
         plantillaSeleccionada: FamiliarPlantillaId,
@@ -2590,6 +2755,102 @@ export class NuevoPersonajeService {
         if (plantilla === 5)
             return 'Mejorado';
         return 'Basica';
+    }
+
+    private normalizarPlantillaCompanero(plantilla: CompaneroPlantillaSelector | string): CompaneroPlantillaSelector {
+        const normalizada = this.normalizarTexto(`${plantilla ?? ''}`);
+        if (normalizada.includes('elevado'))
+            return 'elevado';
+        if (normalizada.includes('sabandija'))
+            return 'sabandija';
+        return 'base';
+    }
+
+    private getNombrePlantillaCompanero(plantilla: CompaneroPlantillaSelector): string {
+        if (plantilla === 'elevado')
+            return 'Elevado';
+        if (plantilla === 'sabandija')
+            return 'Sabandija';
+        return 'Base';
+    }
+
+    private calcularEscalaCompanero(nivelEfectivoCompanero: number): {
+        dgAdi: number;
+        trucosAdi: number;
+        bonoFueDes: number;
+        bonoArmaduraNatural: number;
+    } {
+        const nivel = Math.max(0, Math.trunc(this.toNumber(nivelEfectivoCompanero)));
+        if (nivel >= 18)
+            return { dgAdi: 12, trucosAdi: 7, bonoFueDes: 6, bonoArmaduraNatural: 12 };
+        if (nivel >= 15)
+            return { dgAdi: 10, trucosAdi: 6, bonoFueDes: 5, bonoArmaduraNatural: 10 };
+        if (nivel >= 12)
+            return { dgAdi: 8, trucosAdi: 5, bonoFueDes: 4, bonoArmaduraNatural: 8 };
+        if (nivel >= 9)
+            return { dgAdi: 6, trucosAdi: 4, bonoFueDes: 3, bonoArmaduraNatural: 6 };
+        if (nivel >= 6)
+            return { dgAdi: 4, trucosAdi: 3, bonoFueDes: 2, bonoArmaduraNatural: 4 };
+        if (nivel >= 3)
+            return { dgAdi: 2, trucosAdi: 2, bonoFueDes: 1, bonoArmaduraNatural: 2 };
+        return { dgAdi: 0, trucosAdi: 1, bonoFueDes: 0, bonoArmaduraNatural: 0 };
+    }
+
+    private clonarCompaneroParaPersonaje(
+        companero: CompaneroMonstruoDetalle,
+        plantillaSeleccionada: CompaneroPlantillaSelector,
+        nombrePersonalizado: string = '',
+        escala: {
+            dgAdi: number;
+            trucosAdi: number;
+            bonoFueDes: number;
+            bonoArmaduraNatural: number;
+        }
+    ): CompaneroMonstruoDetalle {
+        const nombreVisible = `${nombrePersonalizado ?? ''}`.trim();
+        const idPlantilla = getPlantillaIdCompanero(plantillaSeleccionada);
+        const nombrePlantilla = `${companero?.Plantilla?.Nombre ?? ''}`.trim()
+            || this.getNombrePlantillaCompanero(plantillaSeleccionada);
+        const caracteristicas = {
+            ...(companero?.Caracteristicas ?? {
+                Fuerza: 0,
+                Destreza: 0,
+                Constitucion: 0,
+                Inteligencia: 0,
+                Sabiduria: 0,
+                Carisma: 0,
+            }),
+        };
+        const defensa = {
+            ...(companero?.Defensa ?? {
+                Ca: 0,
+                Toque: 0,
+                Desprevenido: 0,
+                Armadura_natural: 0,
+                Reduccion_dano: '',
+                Resistencia_conjuros: '',
+                Resistencia_elemental: '',
+            }),
+        };
+
+        caracteristicas.Fuerza = this.toNumber(caracteristicas.Fuerza) + this.toNumber(escala?.bonoFueDes);
+        caracteristicas.Destreza = this.toNumber(caracteristicas.Destreza) + this.toNumber(escala?.bonoFueDes);
+        if (plantillaSeleccionada === 'sabandija' && this.toNumber(caracteristicas.Inteligencia) < 1)
+            caracteristicas.Inteligencia = 1;
+        defensa.Armadura_natural = this.toNumber(defensa.Armadura_natural) + this.toNumber(escala?.bonoArmaduraNatural);
+
+        return {
+            ...companero,
+            Nombre: nombreVisible.length > 0 ? nombreVisible : `${companero?.Nombre ?? ''}`.trim(),
+            Plantilla: {
+                Id: idPlantilla,
+                Nombre: nombrePlantilla,
+            },
+            Caracteristicas: caracteristicas,
+            Defensa: defensa,
+            Dg_adi: this.toNumber(escala?.dgAdi),
+            Trucos_adi: this.toNumber(escala?.trucosAdi),
+        };
     }
 
     private crearDotePlaceholder(idDote: number, nombre: string): Dote {
@@ -2658,6 +2919,78 @@ export class NuevoPersonajeService {
             Nombre: nombreEspecial,
             Extra: extra,
         });
+        return true;
+    }
+
+    private asegurarEspecialPersonajeCompanero(idEspecial: number, nombresEspecialesPorId: Record<number, string>): boolean {
+        const nombreFallback = `Especial ${idEspecial} (Compañero animal)`;
+        const nombreEspecial = `${nombresEspecialesPorId?.[idEspecial] ?? nombreFallback}`.trim() || nombreFallback;
+        const extra = 'Compañero animal';
+        const duplicado = (this.personajeCreacion.Claseas ?? []).some((especial) =>
+            this.normalizarTexto(especial?.Nombre ?? '') === this.normalizarTexto(nombreEspecial)
+            && this.normalizarTexto(especial?.Extra ?? '') === this.normalizarTexto(extra)
+        );
+        if (duplicado)
+            return false;
+        this.personajeCreacion.Claseas.push({
+            Nombre: nombreEspecial,
+            Extra: extra,
+        });
+        return true;
+    }
+
+    private asegurarEspecialCompanero(
+        companero: CompaneroMonstruoDetalle,
+        idEspecial: number,
+        nombresEspecialesPorId: Record<number, string>
+    ): boolean {
+        const nombreFallback = `Especial ${idEspecial} (Compañero)`;
+        const nombreEspecial = `${nombresEspecialesPorId?.[idEspecial] ?? nombreFallback}`.trim() || nombreFallback;
+        const especiales = Array.isArray(companero?.Especiales) ? [...companero.Especiales] : [];
+        const duplicado = especiales.some((item) =>
+            this.toNumber((item as any)?.Especial?.Id) === idEspecial
+            || this.normalizarTexto((item as any)?.Especial?.Nombre ?? '') === this.normalizarTexto(nombreEspecial)
+        );
+        if (duplicado)
+            return false;
+
+        especiales.push({
+            Especial: {
+                Id: idEspecial,
+                Nombre: nombreEspecial,
+                Descripcion: '',
+                Manual: { Id: 0, Nombre: 'No especificado', Pagina: 0 },
+                Id_posicion: 0,
+                Orden: 0,
+                Tiene_prerrequisitos: false,
+                Oficial: true,
+            } as any,
+            Contexto: {
+                Entidad: 'companero',
+            },
+        });
+        companero.Especiales = especiales;
+        return true;
+    }
+
+    private asegurarDoteCompanero(companero: CompaneroMonstruoDetalle, idDote: number): boolean {
+        const dote = (this.catalogoDotes ?? []).find((item) => this.toNumber(item?.Id) === idDote)
+            ?? this.crearDotePlaceholder(idDote, `Dote ${idDote} (Compañero)`);
+        const dotes = Array.isArray(companero?.Dotes) ? [...companero.Dotes] : [];
+        const duplicado = dotes.some((item) => this.toNumber(item?.Dote?.Id) === idDote);
+        if (duplicado)
+            return false;
+        dotes.push({
+            Dote: dote,
+            Contexto: {
+                Entidad: 'personaje',
+                Id_personaje: this.toNumber(this.personajeCreacion?.Id),
+                Extra: 'Compañero animal',
+                Id_extra: 0,
+                Origen: 'Compañero animal',
+            } as any,
+        });
+        companero.Dotes = dotes;
         return true;
     }
 

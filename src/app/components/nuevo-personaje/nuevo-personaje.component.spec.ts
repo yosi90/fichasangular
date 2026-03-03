@@ -3363,6 +3363,87 @@ describe('NuevoPersonajeComponent', () => {
         expect(pasoSpy).toHaveBeenCalledWith('clases');
     });
 
+    it('pipeline post-dotes resuelve en orden compañero antes de familiar', async () => {
+        const orden: string[] = [];
+        spyOn<any>(component, 'resolverDotesPendientes').and.callFake(async () => {
+            orden.push('dotes');
+            return true;
+        });
+        spyOn<any>(component, 'resolverCompaneroPendienteFinNivel').and.callFake(async () => {
+            orden.push('companero');
+            return true;
+        });
+        spyOn<any>(component, 'resolverFamiliarPendienteFinNivel').and.callFake(async () => {
+            orden.push('familiar');
+            return true;
+        });
+
+        const resultado = await (component as any).resolverFlujoPostDotesFinNivel();
+        expect(resultado).toBeTrue();
+        expect(orden).toEqual(['dotes', 'companero', 'familiar']);
+    });
+
+    it('resolverCompaneroPendienteFinNivel persiste selección al confirmar', async () => {
+        const estadoMock = {
+            especialId: 29,
+            fuentes: [{ idClase: 5, nombreClase: 'Druida', nivelActual: 6 }],
+            fuentesClaseIds: [5],
+            fuentesTotales: 1,
+            cuposConsumidos: 0,
+            cuposDisponibles: 1,
+            nivelEfectivoCompanero: 6,
+        } as any;
+        spyOn(nuevoPSvc, 'getEstadoCuposCompaneroEspecial29').and.returnValue(estadoMock);
+        const companero = {
+            Id: 110,
+            Id_companero: 10,
+            Nombre: 'Lobo',
+            Plantilla: { Id: 1, Nombre: 'Base' },
+        } as any;
+        spyOn<any>(component, 'abrirSelectorCompanero').and.resolveTo({
+            companero,
+            plantilla: 'base',
+            nombre: 'Compañero de prueba',
+            nivel: 1,
+        });
+        spyOn<any>(component, 'cargarNombresEspecialesCompanero').and.resolveTo({
+            157: 'Compañero animal',
+            158: 'Vínculo',
+            159: 'Devoción',
+            57: 'Vínculo maestro',
+        });
+        const registrarSpy = spyOn(nuevoPSvc, 'registrarCompaneroSeleccionado').and.returnValue({
+            registrado: true,
+            companeroAgregado: companero,
+            dote49Agregada: false,
+            especialesAgregadosIds: [157, 158],
+            bonosAplicados: { dgAdi: 4, trucosAdi: 3, bonoFueDes: 2, bonoArmaduraNatural: 4 },
+        } as any);
+
+        const resultado = await (component as any).resolverCompaneroPendienteFinNivel();
+        expect(resultado).toBeTrue();
+        expect(registrarSpy).toHaveBeenCalled();
+    });
+
+    it('resolverCompaneroPendienteFinNivel permite omitir y continuar', async () => {
+        const estadoMock = {
+            especialId: 29,
+            fuentes: [{ idClase: 5, nombreClase: 'Druida', nivelActual: 6 }],
+            fuentesClaseIds: [5],
+            fuentesTotales: 1,
+            cuposConsumidos: 0,
+            cuposDisponibles: 1,
+            nivelEfectivoCompanero: 6,
+        } as any;
+        spyOn(nuevoPSvc, 'getEstadoCuposCompaneroEspecial29').and.returnValue(estadoMock);
+        spyOn<any>(component, 'abrirSelectorCompanero').and.resolveTo('omitir');
+        const registrarSpy = spyOn(nuevoPSvc, 'registrarCompaneroSeleccionado');
+
+        const resultado = await (component as any).resolverCompaneroPendienteFinNivel();
+        expect(resultado).toBeTrue();
+        expect(registrarSpy).not.toHaveBeenCalled();
+    });
+
     it('returnStep dotes en habilidades usa destino plantillas cuando quedan elegibles', async () => {
         spyOn<any>(component, 'resolverFlujoPostDotesFinNivel').and.resolveTo(true);
         spyOn<any>(component, 'resolverPasoPostDotesFinNivel').and.returnValue('plantillas');

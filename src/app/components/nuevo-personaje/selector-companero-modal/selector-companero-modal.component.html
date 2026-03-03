@@ -1,0 +1,136 @@
+<div class="selector-overlay">
+    <div class="selector-dialog" (click)="$event.stopPropagation()">
+        <div class="selector-header">
+            <h2 class="m-0 selector-title">{{titulo}}</h2>
+            <mat-chip class="h-auto warm" *ngIf="cuposDisponibles > 0">Cupos disponibles: {{cuposDisponibles}}</mat-chip>
+        </div>
+
+        <div class="preview-bloque">
+            <div class="preview-titulo">Compañeros tras confirmar</div>
+            <mat-chip-set class="preview-chips" *ngIf="previewCompaneros.length > 0; else sinPreviewTpl">
+                <mat-chip *ngFor="let item of previewCompaneros; trackBy: trackByCompanero" class="h-auto sombra3d-sm">
+                    {{item.Nombre}}
+                    <mat-chip class="m-1">{{getEtiquetaPlantilla(item?.Plantilla?.Id ?? 1)}}</mat-chip>
+                </mat-chip>
+            </mat-chip-set>
+            <ng-template #sinPreviewTpl>
+                <p class="m-0 detalle">Aún no hay compañeros seleccionados.</p>
+            </ng-template>
+        </div>
+
+        <mat-form-field appearance="fill" class="nombre-companero">
+            <mat-label>Nombre del compañero</mat-label>
+            <input
+                matInput
+                type="text"
+                [ngModel]="nombreCompanero"
+                (ngModelChange)="onCambiarNombreCompanero($event)"
+                placeholder="Compañero de ...">
+        </mat-form-field>
+
+        <div class="selector-filtros">
+            <mat-form-field appearance="fill" class="filtro-texto">
+                <mat-label>Filtrar compañeros</mat-label>
+                <input matInput type="text" [(ngModel)]="filtroTexto" placeholder="Escribe para filtrar por nombre">
+            </mat-form-field>
+
+            <mat-form-field appearance="fill" class="filtro-plantilla">
+                <mat-label>Plantilla</mat-label>
+                <mat-select [value]="plantillaSeleccionada" (valueChange)="onCambiarPlantilla($event)">
+                    <mat-option [value]="'base'">Base</mat-option>
+                    <mat-option [value]="'elevado'">Elevado</mat-option>
+                    <mat-option [value]="'sabandija'">Sabandija</mat-option>
+                </mat-select>
+            </mat-form-field>
+
+            <mat-form-field appearance="fill" class="filtro-nivel">
+                <mat-label>Nivel</mat-label>
+                <mat-select [value]="nivelSeleccionado" (valueChange)="onCambiarNivel($event)">
+                    <mat-option [value]="null">Cualquiera</mat-option>
+                    <mat-option *ngFor="let nivel of nivelesDisponibles" [value]="nivel">{{nivel}}</mat-option>
+                </mat-select>
+            </mat-form-field>
+
+            <mat-slide-toggle
+                class="homebrew-toggle"
+                [checked]="incluirHomebrew"
+                (change)="onCambiarHomebrew($event.checked)">
+                Incluir homebrew
+            </mat-slide-toggle>
+        </div>
+
+        <div class="companeros-listado" *ngIf="companerosFiltrados.length > 0; else sinCompanerosTpl">
+            <div class="companeros-grid">
+                <div class="companeros-columna">
+                    <button
+                        type="button"
+                        class="companero-item"
+                        *ngFor="let companero of companerosColumnaA; trackBy: trackByCompanero"
+                        [class.seleccionado]="esSeleccionado(companero)"
+                        (click)="onSeleccionarCompanero(companero)">
+                        <span class="companero-nombre">{{companero.Nombre}}</span>
+                        <span class="companero-manual">{{companero.Manual.Nombre || '-'}}</span>
+                        <span class="companero-acciones">
+                            <mat-chip class="m-0">{{getEtiquetaPlantilla(companero?.Plantilla?.Id ?? 1)}}</mat-chip>
+                            <button mat-icon-button type="button" (click)="onAbrirDetalle(companero, $event)" aria-label="Ver detalle">
+                                <mat-icon>open_in_new</mat-icon>
+                            </button>
+                        </span>
+                    </button>
+                </div>
+
+                <div class="companeros-columna">
+                    <button
+                        type="button"
+                        class="companero-item"
+                        *ngFor="let companero of companerosColumnaB; trackBy: trackByCompanero"
+                        [class.seleccionado]="esSeleccionado(companero)"
+                        (click)="onSeleccionarCompanero(companero)">
+                        <span class="companero-nombre">{{companero.Nombre}}</span>
+                        <span class="companero-manual">{{companero.Manual.Nombre || '-'}}</span>
+                        <span class="companero-acciones">
+                            <mat-chip class="m-0">{{getEtiquetaPlantilla(companero?.Plantilla?.Id ?? 1)}}</mat-chip>
+                            <button mat-icon-button type="button" (click)="onAbrirDetalle(companero, $event)" aria-label="Ver detalle">
+                                <mat-icon>open_in_new</mat-icon>
+                            </button>
+                        </span>
+                    </button>
+                </div>
+
+                <div class="companeros-columna">
+                    <button
+                        type="button"
+                        class="companero-item"
+                        *ngFor="let companero of companerosColumnaC; trackBy: trackByCompanero"
+                        [class.seleccionado]="esSeleccionado(companero)"
+                        (click)="onSeleccionarCompanero(companero)">
+                        <span class="companero-nombre">{{companero.Nombre}}</span>
+                        <span class="companero-manual">{{companero.Manual.Nombre || '-'}}</span>
+                        <span class="companero-acciones">
+                            <mat-chip class="m-0">{{getEtiquetaPlantilla(companero?.Plantilla?.Id ?? 1)}}</mat-chip>
+                            <button mat-icon-button type="button" (click)="onAbrirDetalle(companero, $event)" aria-label="Ver detalle">
+                                <mat-icon>open_in_new</mat-icon>
+                            </button>
+                        </span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <ng-template #sinCompanerosTpl>
+            <p class="m-0 detalle" *ngIf="companerosElegibles.length < 1">
+                No hay compañeros elegibles con las reglas actuales.
+            </p>
+            <p class="m-0 detalle" *ngIf="companerosElegibles.length > 0">
+                No hay resultados para "{{filtroTexto}}".
+            </p>
+        </ng-template>
+
+        <div class="selector-actions">
+            <button mat-stroked-button type="button" (click)="onOmitir()">Omitir por ahora</button>
+            <button mat-raised-button color="primary" type="button" [disabled]="!puedeConfirmar" (click)="onConfirmar()">
+                Confirmar compañero
+            </button>
+        </div>
+    </div>
+</div>
