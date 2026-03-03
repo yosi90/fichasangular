@@ -8,7 +8,7 @@ Resumen
 - Autenticacion: no hay autenticacion en el backend.
 - Content-Type esperado: `application/json`
 - CORS habilitado para: `https://rol.yosiftware.es/`, `https://www.rol.yosiftware.es/`, `https://62.43.222.28`, `http://192.168.0.34`
-- Metodos usados: `GET`, `POST`, `OPTIONS` (preflight en varias rutas).
+- Metodos usados: `GET`, `POST`, `PATCH`, `OPTIONS` (preflight en varias rutas).
 - Errores: la mayoria de controladores retorna el error de `pyodbc` sin estandarizar.
 
 Lista de endpoints
@@ -20,7 +20,8 @@ Lista de endpoints
 | POST | /usuarios | Upsert usuario + replica a jugadores legacy | Implementado |
 | GET | /personajes | Lista detallada de personajes | Implementado |
 | GET | /personajes/simplificados | Lista simplificada de personajes | Implementado |
-| POST | /personajes/add | Crear personaje | No implementado (funcion `pass`) |
+| POST | /personajes/add | Crear personaje | Implementado |
+| PATCH | /personajes/<id_personaje>/visible | Actualizar visibilidad de personaje | Implementado |
 | GET | /razas | Lista completa de razas | Implementado |
 | GET | /razas/raciales | Lista de raciales | Implementado |
 | GET | /razas/raciales/<id_racial> | Racial por id | Implementado |
@@ -221,6 +222,7 @@ PersonajeDetalle
 | --- | --- | --- |
 | i | number | Id del personaje |
 | n | string | Nombre |
+| ownerUid | string/null | Firebase UID del creador (AppUser relacionado) |
 | dcp | string | Descripcion de personalidad |
 | dh | string | Descripcion de historia |
 | a | number | Ataque base |
@@ -255,6 +257,7 @@ PersonajeDetalle
 | t | number | Velocidad trepar |
 | e | number | Velocidad escalar |
 | o | boolean | Oficial (true=oficial, false=homebrew) |
+| visible_otros_usuarios | boolean | Si otros usuarios pueden ver este personaje |
 | dg | number | DGS extra totales |
 | cla | string | Lista serializada "Clase;Nivel" separada por `| ` |
 | dom | string | Lista serializada de dominios separada por `| ` |
@@ -310,6 +313,7 @@ PersonajeSimplificado
 | --- | --- | --- |
 | i | number | Id del personaje |
 | n | string | Nombre |
+| ownerUid | string/null | Firebase UID del creador (AppUser relacionado) |
 | r | object | `RazaSimplificada` |
 | c | string | Lista serializada "Clase Nivel" separada por `, ` |
 | p | string | Descripcion de personalidad |
@@ -318,6 +322,82 @@ PersonajeSimplificado
 | t | string | Trama |
 | s | string | Subtrama |
 | a | number | Archivado (0/1) |
+| visible_otros_usuarios | boolean | Si otros usuarios pueden ver este personaje |
+
+Endpoint: POST /personajes/add
+Descripcion: Crea personaje completo en una transaccion y lo vincula al `jugador` legacy asociado al `AppUser` (`uid/firebaseUid`).
+
+Body minimo (ejemplo)
+```json
+{
+  "uid": "firebase-uid",
+  "personaje": {
+    "nombre": "Nombre",
+    "ataqueBase": "0",
+    "idRaza": 1,
+    "idTipoCriatura": 1,
+    "campana": { "id": 1 },
+    "trama": { "id": 1 },
+    "subtrama": { "id": 1 },
+    "visible_otros_usuarios": false,
+    "oficial": true
+  },
+  "caracteristicas": {
+    "fuerza": { "valor": 10, "minimo": 0, "perdido": false },
+    "destreza": { "valor": 10, "minimo": 0, "perdido": false },
+    "constitucion": { "valor": 10, "minimo": 0, "perdido": false },
+    "inteligencia": { "valor": 10, "minimo": 0, "perdido": false },
+    "sabiduria": { "valor": 10, "minimo": 0, "perdido": false },
+    "carisma": { "valor": 10, "minimo": 0, "perdido": false }
+  },
+  "tamano": { "idTamano": 0, "origen": "API" }
+}
+```
+
+Respuesta 201
+```json
+{
+  "message": "Personaje creado exitosamente",
+  "idPersonaje": 123,
+  "idJugador": 45,
+  "uid": "firebase-uid"
+}
+```
+
+Errores esperados
+- `404`: AppUser no encontrado para `uid`.
+- `403`: usuario baneado o sin `personajes.create`.
+- `409`: AppUser sin jugador legacy sincronizado (o duplicado) en `jugadores`.
+- `400`: payload invalido o conflicto de integridad de datos.
+
+Endpoint: PATCH /personajes/<id_personaje>/visible
+Descripcion: Actualiza exclusivamente la flag `visible_otros_usuarios` de un personaje.
+Nota: se acepta `uid` (canonico) o `firebaseUid` (alias) para identificar al AppUser.
+
+Body (ejemplo)
+```json
+{
+  "uid": "firebase-uid",
+  "visible_otros_usuarios": true
+}
+```
+
+Respuesta 200
+```json
+{
+  "message": "Visibilidad actualizada correctamente",
+  "idPersonaje": 123,
+  "visible_otros_usuarios": true,
+  "uid": "firebase-uid"
+}
+```
+
+Errores esperados
+- `400`: body invalido o `visible_otros_usuarios` no booleano.
+- `403`: usuario baneado o no propietario (si no es admin).
+- `404`: AppUser no encontrado o personaje inexistente.
+- `409`: AppUser sin jugador legacy sincronizado (o duplicado) para validar ownership.
+- `500`: error interno no controlado.
 
 Endpoint: GET /razas
 Respuesta: array de `RazaCompleta`

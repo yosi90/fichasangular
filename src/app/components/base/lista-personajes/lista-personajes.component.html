@@ -47,6 +47,7 @@
                         <mat-icon *ngIf="column == 'Nombre'">portrait</mat-icon>
                         <mat-icon *ngIf="column == 'Clases'">style</mat-icon>
                         <mat-icon *ngIf="column == 'Raza'">settings_accessibility</mat-icon>
+                        <mat-icon *ngIf="column == 'Visibilidad'">visibility</mat-icon>
                         <mat-icon *ngIf="column == '¿Archivado?'">archive</mat-icon>
                         &nbsp;{{column}}
                     </ng-container>
@@ -88,6 +89,13 @@
                                 <mat-icon>read_more</mat-icon>
                                 {{element[column].Nombre}}
                             </button>
+                        </ng-container>
+
+                        <ng-container *ngSwitchCase="'Visibilidad'">
+                            <div class="d-flex justify-content-center align-items-center gap-1">
+                                <mat-icon>{{esPublicoPersonaje(element) ? 'public' : 'lock'}}</mat-icon>
+                                <span>{{esPublicoPersonaje(element) ? 'Público' : 'Privado'}}</span>
+                            </div>
                         </ng-container>
 
                         <ng-container *ngSwitchCase="'¿Archivado?'">
@@ -152,7 +160,7 @@
             </tr>
             <tr mat-row *matRowDef="let row; columns: ['expandedDetail']" class="details-row"></tr>
             <tr class="mat-row" *matNoDataRow>
-                <td class="mat-cell text-center text-white p-3" colspan="6">
+                <td class="mat-cell text-center text-white p-3" [attr.colspan]="columnsToDisplayWithExpand.length">
                     Ningún personaje encaja con los filtros
                 </td>
             </tr>

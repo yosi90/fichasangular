@@ -190,17 +190,104 @@ paths:
     post:
       tags: [personajes]
       summary: Crear personaje
-      description: Endpoint definido en rutas, no implementado en controller.
+      description: Crea un personaje completo y lo vincula al jugador legacy asociado al AppUser.
       requestBody:
-        required: false
+        required: true
         content:
           application/json:
             schema:
-              type: object
-              additionalProperties: true
+              $ref: '#/components/schemas/PersonajeCreateRequest'
       responses:
-        '501':
-          description: No implementado
+        '201':
+          description: Personaje creado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PersonajeCreateResponse'
+        '400':
+          description: Error de validacion o integridad de datos
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Usuario baneado o sin permiso de creacion
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: AppUser no encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: AppUser sin jugador legacy sincronizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error interno
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /personajes/{id_personaje}/visible:
+    patch:
+      tags: [personajes]
+      summary: Actualizar visibilidad de un personaje
+      parameters:
+        - in: path
+          name: id_personaje
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PersonajeVisibilityUpdateRequest'
+      responses:
+        '200':
+          description: Visibilidad actualizada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PersonajeVisibilityUpdateResponse'
+        '400':
+          description: Body inválido o tipo incorrecto
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Usuario baneado o sin propiedad del personaje
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: AppUser o personaje no encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Usuario sin jugador legacy sincronizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error interno
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 
   /razas:
     get:
@@ -1484,6 +1571,136 @@ components:
       type: object
       additionalProperties: true
       description: Error no estandarizado (varia segun controlador/pyodbc).
+
+    StoryEntityRef:
+      oneOf:
+        - type: integer
+        - type: string
+        - type: object
+          properties:
+            id: { type: integer }
+            nombre: { type: string }
+          additionalProperties: true
+
+    PersonajeCreateStat:
+      type: object
+      properties:
+        valor: { type: integer }
+        minimo: { type: integer, default: 0 }
+        perdido: { type: boolean, default: false }
+      required: [valor]
+
+    PersonajeCreateCaracteristicas:
+      type: object
+      properties:
+        fuerza: { $ref: '#/components/schemas/PersonajeCreateStat' }
+        destreza: { $ref: '#/components/schemas/PersonajeCreateStat' }
+        constitucion: { $ref: '#/components/schemas/PersonajeCreateStat' }
+        inteligencia: { $ref: '#/components/schemas/PersonajeCreateStat' }
+        sabiduria: { $ref: '#/components/schemas/PersonajeCreateStat' }
+        carisma: { $ref: '#/components/schemas/PersonajeCreateStat' }
+      required: [fuerza, destreza, constitucion, inteligencia, sabiduria, carisma]
+
+    PersonajeCreateTamano:
+      type: object
+      properties:
+        idTamano: { type: integer }
+        origen: { type: string }
+      required: [idTamano]
+
+    PersonajeCreateCore:
+      type: object
+      properties:
+        nombre: { type: string, maxLength: 100 }
+        descripcionPersonalidad: { type: string }
+        descripcionHistoria: { type: string }
+        ataqueBase: { type: string, maxLength: 50 }
+        armaduraNatural: { type: integer }
+        caDesvio: { type: integer }
+        idRaza: { type: integer }
+        idRazaBase: { type: integer, nullable: true }
+        idTipoCriatura: { type: integer }
+        altura: { type: number }
+        edad: { type: integer }
+        peso: { type: number }
+        ajuste: { type: integer }
+        idDeidad: { type: integer }
+        idAlineamiento: { type: integer }
+        idGenero: { type: integer }
+        idCarga: { type: integer }
+        puntosGolpe: { type: integer }
+        madurez: { type: integer }
+        archivado: { type: boolean }
+        pgsLic: { type: integer }
+        correr: { type: integer }
+        nadar: { type: integer }
+        volar: { type: integer }
+        idManiobrabilidad: { type: integer }
+        trepar: { type: integer }
+        escalar: { type: integer }
+        espacio: { type: integer }
+        alcance: { type: integer }
+        idEspArcana: { type: integer }
+        idEspPsionica: { type: integer }
+        idDisProhibida: { type: integer }
+        visible_otros_usuarios: { type: boolean, default: false }
+        oficial: { type: boolean }
+        campana: { $ref: '#/components/schemas/StoryEntityRef' }
+        trama: { $ref: '#/components/schemas/StoryEntityRef' }
+        subtrama: { $ref: '#/components/schemas/StoryEntityRef' }
+      required: [nombre, ataqueBase, idRaza, idTipoCriatura]
+      additionalProperties: true
+
+    PersonajeCreateRequest:
+      type: object
+      properties:
+        uid: { type: string }
+        firebaseUid: { type: string }
+        personaje: { $ref: '#/components/schemas/PersonajeCreateCore' }
+        caracteristicas: { $ref: '#/components/schemas/PersonajeCreateCaracteristicas' }
+        tamano: { $ref: '#/components/schemas/PersonajeCreateTamano' }
+        modificadores:
+          type: object
+          additionalProperties: true
+        colecciones:
+          type: object
+          additionalProperties: true
+        familiar:
+          type: object
+          additionalProperties: true
+        companero:
+          type: object
+          additionalProperties: true
+      required: [personaje, caracteristicas, tamano]
+
+    PersonajeCreateResponse:
+      type: object
+      properties:
+        message: { type: string }
+        idPersonaje: { type: integer }
+        idJugador: { type: integer }
+        uid: { type: string }
+      required: [message, idPersonaje, idJugador, uid]
+
+    PersonajeVisibilityUpdateRequest:
+      type: object
+      properties:
+        uid: { type: string }
+        firebaseUid: { type: string }
+        visible_otros_usuarios: { type: boolean }
+      required: [visible_otros_usuarios]
+      oneOf:
+        - required: [uid]
+        - required: [firebaseUid]
+
+    PersonajeVisibilityUpdateResponse:
+      type: object
+      properties:
+        message: { type: string }
+        idPersonaje: { type: integer }
+        visible_otros_usuarios: { type: boolean }
+        uid: { type: string }
+      required: [message, idPersonaje, visible_otros_usuarios, uid]
 
     UsuarioPermissionCreate:
       type: object
@@ -2803,6 +3020,7 @@ components:
       properties:
         i: { type: integer }
         n: { type: string }
+        ownerUid: { type: string, nullable: true }
         r:
           $ref: '#/components/schemas/RazaSimplificada'
         c: { type: string }
@@ -2812,12 +3030,14 @@ components:
         t: { type: string }
         s: { type: string }
         a: { type: integer }
+        visible_otros_usuarios: { type: boolean }
 
     PersonajeDetalle:
       type: object
       properties:
         i: { type: integer }
         n: { type: string }
+        ownerUid: { type: string, nullable: true }
         dcp: { type: string }
         dh: { type: string }
         a: { type: integer }
@@ -2854,6 +3074,7 @@ components:
         t: { type: integer }
         e: { type: integer }
         o: { type: boolean }
+        visible_otros_usuarios: { type: boolean }
         dg: { type: integer }
         cla: { type: string }
         dom: { type: string }

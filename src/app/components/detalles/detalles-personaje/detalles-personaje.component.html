@@ -182,6 +182,14 @@
             </div>
         </div>
         <div class="col-md-4 col-12 p-2">
+            <div class="sombra-caja-sm rounded p-2 my-2" *ngIf="mostrarControlVisibilidad">
+                <mat-slide-toggle
+                    [checked]="personajeVisiblePublicamente"
+                    [disabled]="actualizandoVisibilidad"
+                    (change)="actualizarVisibilidad($event.checked)">
+                    {{personajeVisiblePublicamente ? 'Visible para todos' : 'Visible solo para el creador'}}
+                </mat-slide-toggle>
+            </div>
             <button *ngIf="mostrarBotonGenerarPdf" mat-stroked-button color="accent" class="w-100 sombra-caja-sm rounded my-2" (click)="generarFicha();">
                 Generar pdf
             </button>

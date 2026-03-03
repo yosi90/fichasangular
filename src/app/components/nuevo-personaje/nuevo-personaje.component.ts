@@ -1,4 +1,5 @@
 import { Component, EventEmitter, HostListener, Output, ViewChild } from '@angular/core';
+import { getAuth } from '@angular/fire/auth';
 import { MatTabGroup } from '@angular/material/tabs';
 import { Subscription, firstValueFrom, take } from 'rxjs';
 import { Campana, Super } from 'src/app/interfaces/campaña';
@@ -452,6 +453,7 @@ export class NuevoPersonajeComponent {
     ngOnInit(): void {
         this.nuevoPSvc.refrescarDerivadasPreviewNuevoPersonaje();
         this.Personaje = this.nuevoPSvc.PersonajeCreacion;
+        this.sincronizarOwnerUidEnCreacion();
         this.normalizarDeidadSeleccionada();
         this.nuevoPSvc.sincronizarConfigGeneradorDesdeCuenta().catch(() => undefined);
         this.normalizarAlineamientoSeleccionado();
@@ -3370,11 +3372,33 @@ export class NuevoPersonajeComponent {
         this.recalcularCompanerosElegiblesSelector();
     }
 
-    onFinalizarCreacionTemporal(): void {
-        void Swal.fire({
-            icon: 'info',
-            title: 'Finalizar pendiente de implementación',
-            text: 'En la siguiente fase este botón calculará vida, guardará el personaje y descargará la ficha en PDF.',
+    async onFinalizarCreacionTemporal(): Promise<void> {
+        const seleccion = await Swal.fire({
+            icon: 'question',
+            title: 'Visibilidad del personaje',
+            text: '¿Quieres que este personaje sea visible solo para ti o para todo el mundo?',
+            showCancelButton: true,
+            showDenyButton: true,
+            confirmButtonText: 'Solo para mí',
+            denyButtonText: 'Todo el mundo',
+            cancelButtonText: 'Cancelar',
+            target: document.body,
+            heightAuto: false,
+            scrollbarPadding: false,
+        });
+
+        if (!seleccion.isConfirmed && !seleccion.isDenied)
+            return;
+
+        this.Personaje.visible_otros_usuarios = !!seleccion.isDenied;
+        this.sincronizarOwnerUidEnCreacion();
+
+        await Swal.fire({
+            icon: 'success',
+            title: 'Preferencia guardada',
+            text: this.Personaje.visible_otros_usuarios
+                ? 'El personaje quedará marcado como visible para todo el mundo cuando se implemente el guardado final.'
+                : 'El personaje quedará marcado como visible solo para su creador cuando se implemente el guardado final.',
             confirmButtonText: 'Entendido',
             target: document.body,
             heightAuto: false,
@@ -3406,6 +3430,25 @@ export class NuevoPersonajeComponent {
         if (normalizada.includes('sabandija'))
             return 'sabandija';
         return 'base';
+    }
+
+    private sincronizarOwnerUidEnCreacion(): void {
+        const uid = this.obtenerUidSesionActiva();
+        if (uid.length > 0) {
+            this.Personaje.ownerUid = uid;
+            return;
+        }
+
+        if (`${this.Personaje.ownerUid ?? ''}`.trim().length < 1)
+            this.Personaje.ownerUid = null;
+    }
+
+    private obtenerUidSesionActiva(): string {
+        try {
+            return `${getAuth()?.currentUser?.uid ?? ''}`.trim();
+        } catch {
+            return '';
+        }
     }
 
     private getIdPlantillaCompaneroSeleccionada(plantilla: CompaneroPlantillaSelector): number {

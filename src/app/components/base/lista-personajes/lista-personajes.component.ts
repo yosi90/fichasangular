@@ -8,6 +8,7 @@ import { MatPaginator } from '@angular/material/paginator';
 import { LiveAnnouncer } from '@angular/cdk/a11y';
 import { Campana, Tramas, Super } from 'src/app/interfaces/campaña';
 import { CampanaService } from 'src/app/services/campana.service';
+import { UserService } from 'src/app/services/user.service';
 
 @Component({
     selector: 'app-lista-personajes',
@@ -32,11 +33,16 @@ export class ListaPersonajesComponent implements OnInit, AfterViewInit {
     defaultSubtrama!: string;
     columns = this.listaPjs.ceateDataTable();
     personajesDS = new MatTableDataSource(this.Personajes);
-    columnsToDisplay = ['Nombre', 'Clases', 'Raza'];
+    columnsToDisplay = ['Nombre', 'Clases', 'Raza', 'Visibilidad'];
     columnsToDisplayWithExpand = [...this.columnsToDisplay, 'expand'];
     expandedElement!: PersonajeSimple;
 
-    constructor(private listaPjs: ListaPersonajesService, private csrv: CampanaService, private lva: LiveAnnouncer) { }
+    constructor(
+        private listaPjs: ListaPersonajesService,
+        private csrv: CampanaService,
+        private lva: LiveAnnouncer,
+        private userSvc: UserService
+    ) { }
 
     @ViewChild(MatSort) sort!: MatSort;
     @ViewChild(MatPaginator) paginator!: MatPaginator;
@@ -77,17 +83,23 @@ export class ListaPersonajesComponent implements OnInit, AfterViewInit {
 
     filtroPersonajes() {
         if (this.inputText) {
-            const texto = this.inputText.nativeElement.value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+            const texto = this.normalizarTexto(this.inputText.nativeElement.value);
             const archivo = !(this.anuncioArchivo === 'Clic para mostar pjs archivados');
-            const pjFiltrados = this.Personajes.filter(pj => (texto === undefined || texto === '' || pj.Nombre.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().includes(texto) || pj.Contexto.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().includes(texto) ||
-                pj.Personalidad.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().includes(texto) || pj.Clases.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().includes(texto) || pj.Raza.Nombre.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().includes(texto) ||
-                pj.Campana.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().includes(texto) || pj.Trama.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().includes(texto) || pj.Subtrama.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().includes(texto))
+            const pjFiltrados = this.Personajes.filter(pj => this.esVisibleParaUsuarioActual(pj)
+                && (texto === '' || this.coincideConTextoFiltro(pj, texto))
                 && (this.defaultCampana === undefined || this.defaultCampana === 'Sin campaña' || pj.Campana === this.defaultCampana)
                 && (this.defaultTrama === undefined || this.defaultTrama === 'Trama base' || pj.Trama === this.defaultTrama)
                 && (this.defaultSubtrama === undefined || this.defaultSubtrama === 'Subtrama base' || pj.Subtrama === this.defaultSubtrama)
                 && (archivo || !archivo && !pj.Archivado)
             );
             this.personajesDS = new MatTableDataSource(pjFiltrados);
+            this.personajesDS.sortingDataAccessor = (item: PersonajeSimple, property: string) => {
+                if (property === 'Visibilidad')
+                    return this.esPublicoPersonaje(item) ? 1 : 0;
+                if (property === '¿Archivado?')
+                    return item?.Archivado ? 1 : 0;
+                return (item as any)?.[property];
+            };
             this.personajesDS.sort = this.sort;
             this.personajesDS.paginator = this.paginator;
         }
@@ -158,5 +170,42 @@ export class ListaPersonajesComponent implements OnInit, AfterViewInit {
     CrearDetallesClase(nombreClase: string) {
         if (nombreClase && nombreClase.trim().length > 0)
             this.ClaseDetallesTab.emit(nombreClase.trim());
+    }
+
+    esPublicoPersonaje(personaje: PersonajeSimple): boolean {
+        return personaje?.visible_otros_usuarios === true;
+    }
+
+    private coincideConTextoFiltro(pj: PersonajeSimple, texto: string): boolean {
+        return this.normalizarTexto(pj?.Nombre).includes(texto)
+            || this.normalizarTexto(pj?.Contexto).includes(texto)
+            || this.normalizarTexto(pj?.Personalidad).includes(texto)
+            || this.normalizarTexto(pj?.Clases).includes(texto)
+            || this.normalizarTexto(pj?.Raza?.Nombre).includes(texto)
+            || this.normalizarTexto(pj?.Campana).includes(texto)
+            || this.normalizarTexto(pj?.Trama).includes(texto)
+            || this.normalizarTexto(pj?.Subtrama).includes(texto);
+    }
+
+    private esVisibleParaUsuarioActual(pj: PersonajeSimple): boolean {
+        if (pj?.visible_otros_usuarios === true)
+            return true;
+
+        const ownerUid = `${pj?.ownerUid ?? ''}`.trim();
+        if (ownerUid.length < 1)
+            return false;
+
+        const uidActual = `${this.userSvc.CurrentUserUid ?? ''}`.trim();
+        if (uidActual.length < 1)
+            return false;
+
+        return ownerUid === uidActual;
+    }
+
+    private normalizarTexto(value: any): string {
+        return `${value ?? ''}`
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "")
+            .toLowerCase();
     }
 }

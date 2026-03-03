@@ -3532,13 +3532,14 @@ describe('NuevoPersonajeComponent', () => {
         expect(component.mostrarBotonFinalizarCreacion).toBeTrue();
     });
 
-    it('onFinalizarCreacionTemporal muestra aviso informativo', () => {
-        const swalSpy = spyOn(Swal, 'fire').and.resolveTo({ isConfirmed: true } as any);
+    it('onFinalizarCreacionTemporal pregunta visibilidad y guarda preferencia', async () => {
+        const swalSpy = spyOn(Swal, 'fire').and.resolveTo({ isConfirmed: true, isDenied: false } as any);
 
-        component.onFinalizarCreacionTemporal();
+        await component.onFinalizarCreacionTemporal();
 
         expect(swalSpy).toHaveBeenCalled();
-        expect((swalSpy.calls.mostRecent().args[0] as any).title).toContain('pendiente');
+        expect((swalSpy.calls.first().args[0] as any).title).toContain('Visibilidad');
+        expect(component.Personaje.visible_otros_usuarios).toBeFalse();
     });
 
     it('chip homebrew queda bloqueado cuando el personaje no es oficial', () => {

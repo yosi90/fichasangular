@@ -12,7 +12,10 @@ import { Rasgo } from 'src/app/interfaces/rasgo';
 import { SubtipoRef } from 'src/app/interfaces/subtipo';
 import { TipoCriatura } from 'src/app/interfaces/tipo_criatura';
 import { FichaPersonajeService } from 'src/app/services/ficha-personaje.service';
+import { PersonajeService } from 'src/app/services/personaje.service';
+import { UserService } from 'src/app/services/user.service';
 import { resolverExtraHabilidadVisible } from 'src/app/services/utils/habilidad-extra-visible';
+import Swal from 'sweetalert2';
 
 interface MadurezEdadResumen {
     id: number;
@@ -74,12 +77,18 @@ export class DetallesPersonajeComponent implements OnInit, AfterViewInit, OnDest
     cLigera: string = "0 Kilogramos";
     cMedia: string = "0 Kilogramos";
     cPesada: string = "0 Kilogramos";
+    actualizandoVisibilidad = false;
     velDisclaimer: string = `
     Medido en pies
     5 pies equivalen a una casilla`;
     Habilidades: { Nombre: string; Mod_car: number; Rangos: number; Rangos_varios: number; Extra: string; Varios: string; }[] = [];
 
-    constructor(private fpSvc: FichaPersonajeService, private hostElement: ElementRef<HTMLElement>) { }
+    constructor(
+        private fpSvc: FichaPersonajeService,
+        private pSvc: PersonajeService,
+        private userSvc: UserService,
+        private hostElement: ElementRef<HTMLElement>
+    ) { }
 
     ngOnInit(): void {
         if(this.pj.Habilidades)
@@ -121,6 +130,51 @@ export class DetallesPersonajeComponent implements OnInit, AfterViewInit, OnDest
         this.fpSvc.generarPDF(this.pj);
         if(this.pj.Conjuros.length > 0 || this.pj.Sortilegas.length > 0)
             this.fpSvc.generarPDF_Conjuros(this.pj);
+    }
+
+    get mostrarControlVisibilidad(): boolean {
+        return !this.esPreviewNuevoPersonaje && this.toNumber(this.pj?.Id) > 0;
+    }
+
+    get personajeVisiblePublicamente(): boolean {
+        return this.toBoolean(this.pj?.visible_otros_usuarios);
+    }
+
+    async actualizarVisibilidad(visible: boolean): Promise<void> {
+        if (!this.mostrarControlVisibilidad || this.actualizandoVisibilidad)
+            return;
+
+        const actorUid = `${this.userSvc.CurrentUserUid ?? ''}`.trim();
+        if (actorUid.length < 1) {
+            await Swal.fire({
+                icon: 'warning',
+                title: 'No hay sesión activa',
+                text: 'Inicia sesión para poder cambiar la visibilidad del personaje.',
+                showConfirmButton: true,
+                target: document.body,
+                heightAuto: false,
+                scrollbarPadding: false,
+            });
+            return;
+        }
+
+        this.actualizandoVisibilidad = true;
+        try {
+            await this.pSvc.actualizarVisibilidadPersonaje(this.pj.Id, visible, actorUid);
+            this.pj.visible_otros_usuarios = visible;
+        } catch (error: any) {
+            await Swal.fire({
+                icon: 'warning',
+                title: 'No se pudo actualizar la visibilidad',
+                text: error?.message ?? 'Error no identificado',
+                showConfirmButton: true,
+                target: document.body,
+                heightAuto: false,
+                scrollbarPadding: false,
+            });
+        } finally {
+            this.actualizandoVisibilidad = false;
+        }
     }
 
     getTooltip_simples(titular: string, texto: string): string {

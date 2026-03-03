@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { Database, getDatabase, Unsubscribe, onValue, ref, set } from '@angular/fire/database';
+import { Database, getDatabase, Unsubscribe, onValue, ref, set, update } from '@angular/fire/database';
 import { Observable, firstValueFrom } from 'rxjs';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Personaje } from '../interfaces/personaje';
@@ -15,6 +15,13 @@ import {
 } from './utils/monstruo-mapper';
 import { normalizeRaciales } from './utils/racial-mapper';
 import { normalizeSubtipoRefArray } from './utils/subtipo-mapper';
+
+interface PersonajeVisibilityUpdateResponse {
+    message: string;
+    idPersonaje: number;
+    visible_otros_usuarios: boolean;
+    uid: string;
+}
 
 @Injectable({
     providedIn: 'root'
@@ -50,6 +57,8 @@ export class PersonajeService {
                 let pj: Personaje = {
                     Id: id,
                     Nombre: snapshot.child('Nombre').val(),
+                    ownerUid: toNullableText(snapshot.child('ownerUid').val() ?? snapshot.child('uid').val()),
+                    visible_otros_usuarios: toBoolean(snapshot.child('visible_otros_usuarios').val()),
                     Raza: snapshot.child('Raza').val(),
                     RazaBase: snapshot.child('RazaBase').val() ?? snapshot.child('raza_base').val() ?? null,
                     desgloseClases: clasesArray,
@@ -160,6 +169,51 @@ export class PersonajeService {
         return res;
     }
 
+    public async actualizarVisibilidadPersonaje(
+        idPersonaje: number,
+        visible: boolean,
+        actorUid: string
+    ): Promise<PersonajeVisibilityUpdateResponse> {
+        const id = Math.trunc(toNumber(idPersonaje));
+        const uid = `${actorUid ?? ''}`.trim();
+        if (id <= 0)
+            throw new Error('Id de personaje no válido');
+        if (uid.length < 1)
+            throw new Error('No hay sesión activa para actualizar visibilidad');
+
+        const payload = {
+            uid,
+            visible_otros_usuarios: !!visible,
+        };
+
+        const response = await firstValueFrom(
+            this.http.patch<PersonajeVisibilityUpdateResponse>(
+                `${environment.apiUrl}personajes/${id}/visible`,
+                payload
+            )
+        );
+
+        try {
+            await Promise.all([
+                update(ref(this.db, `Personajes/${id}`), {
+                    visible_otros_usuarios: !!visible,
+                }),
+                update(ref(this.db, `Personajes-simples/${id}`), {
+                    visible_otros_usuarios: !!visible,
+                }),
+            ]);
+        } catch {
+            // Usuarios no-admin pueden no tener permisos de escritura en RTDB.
+        }
+
+        return {
+            ...response,
+            idPersonaje: Math.trunc(toNumber(response?.idPersonaje)),
+            visible_otros_usuarios: !!visible,
+            uid,
+        };
+    }
+
     public async RenovarPersonajes(): Promise<boolean> {
         const db = getDatabase();
         try {
@@ -170,7 +224,7 @@ export class PersonajeService {
 
             await Promise.all(
                 personajes.map((element: {
-                    i: any; n: any; dcp: any; dh: any; tm: any; a: any; ca: any; an: any; cd: any; cv: any; ra: any; rb?: any; raza_base?: any; RazaBase?: any; tc: TipoCriatura; f: any; mf: any; d: any; md: any; co: any; mco: any; int: any; mint: any; s: any; 
+                    i: any; n: any; ownerUid?: any; visible_otros_usuarios?: any; dcp: any; dh: any; tm: any; a: any; ca: any; an: any; cd: any; cv: any; ra: any; rb?: any; raza_base?: any; RazaBase?: any; tc: TipoCriatura; f: any; mf: any; d: any; md: any; co: any; mco: any; int: any; mint: any; s: any; 
                     ms: any; car: any; mcar: any; de: any; ali: any; g: any; ncam: any; ntr: any; ju: any; nst: any; v: any; cor: any; na: any; vo: any; t: any; e: any; o: any; dg: any; cla: any; dom: any; stc: any; subtipos?: any;
                     pla: any; con: any; esp: any; espX: any; rac: any; hab: any; habN: any; habC: any; habCa: any; habMc: any; habR: any; habRv: any; habX: any; habV: any; habCu: any; dotes: DoteContextual[]; ve: any; idi: any;
                     familiares?: any; companeros?: any;
@@ -276,6 +330,8 @@ export class PersonajeService {
                     const razaBase = element.RazaBase ?? element.rb ?? element.raza_base ?? null;
                     return set(ref(db, `Personajes/${element.i}`), {
                         Nombre: element.n,
+                        ownerUid: toNullableText(element.ownerUid),
+                        visible_otros_usuarios: toBoolean(element.visible_otros_usuarios),
                         Personalidad: element.dcp,
                         Contexto: element.dh,
                         Ataque_base: element.a,
@@ -412,6 +468,11 @@ function toText(value: any): string {
     if (value === null || value === undefined)
         return '';
     return `${value}`;
+}
+
+function toNullableText(value: any): string | null {
+    const text = toText(value).trim();
+    return text.length > 0 ? text : null;
 }
 
 function toBoolean(value: any): boolean {

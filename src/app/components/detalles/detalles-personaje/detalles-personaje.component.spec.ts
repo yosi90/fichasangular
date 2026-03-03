@@ -3,6 +3,8 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
 import { NuevoPersonajeService } from 'src/app/services/nuevo-personaje.service';
 import { FichaPersonajeService } from 'src/app/services/ficha-personaje.service';
+import { PersonajeService } from 'src/app/services/personaje.service';
+import { UserService } from 'src/app/services/user.service';
 import { DetallesPersonajeComponent } from './detalles-personaje.component';
 
 describe('DetallesPersonajeComponent', () => {
@@ -18,6 +20,22 @@ describe('DetallesPersonajeComponent', () => {
                     useValue: {
                         generarPDF: () => undefined,
                         generarPDF_Conjuros: () => undefined,
+                    },
+                },
+                {
+                    provide: PersonajeService,
+                    useValue: {
+                        actualizarVisibilidadPersonaje: async () => ({
+                            idPersonaje: 1,
+                            visible_otros_usuarios: false,
+                            uid: 'test-uid',
+                        }),
+                    },
+                },
+                {
+                    provide: UserService,
+                    useValue: {
+                        CurrentUserUid: 'test-uid',
                     },
                 },
             ],

@@ -25,6 +25,8 @@ export class ListaPersonajesService {
                     const pj: PersonajeSimple = {
                         Id: obj.key,
                         Nombre: obj.child('Nombre').val(),
+                        ownerUid: obj.child('ownerUid').val() ?? null,
+                        visible_otros_usuarios: toBoolean(obj.child('visible_otros_usuarios').val()),
                         Raza: obj.child('Raza').val(),
                         Clases: obj.child('Clases').val(),
                         Personalidad: obj.child('Personalidad').val(),
@@ -135,6 +137,8 @@ export class ListaPersonajesService {
                 personajes.map((element: any) =>
                     set(ref(db, `Personajes-simples/${element.i}`), {
                         Nombre: element.n,
+                        ownerUid: `${element.ownerUid ?? ''}`.trim() || null,
+                        visible_otros_usuarios: toBoolean(element.visible_otros_usuarios),
                         Raza: element.r as RazaSimple,
                         Clases: element.c,
                         Contexto: element.co,
@@ -164,4 +168,16 @@ export class ListaPersonajesService {
             return false;
         }
     }
+}
+
+function toBoolean(value: any): boolean {
+    if (typeof value === 'boolean')
+        return value;
+    if (typeof value === 'number')
+        return value === 1;
+    if (typeof value === 'string') {
+        const normalizado = value.trim().toLowerCase();
+        return normalizado === '1' || normalizado === 'true' || normalizado === 'si' || normalizado === 'sí';
+    }
+    return false;
 }

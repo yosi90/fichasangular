@@ -7841,6 +7841,8 @@ export class NuevoPersonajeService {
         return {
             Id: 0,
             Nombre: '',
+            ownerUid: null,
+            visible_otros_usuarios: false,
             Raza: {
                 Id: 0,
                 Nombre: '',
