@@ -24,8 +24,21 @@ export interface FiltroFamiliaresElegiblesInput {
     familiares: FamiliarMonstruoDetalle[];
     estado: EstadoCuposFamiliar;
     alineamientoPersonaje: string;
-    plantillaSeleccionada: FamiliarPlantillaId;
+    plantillaSeleccionada: FamiliarPlantillaId | null;
     incluirHomebrew: boolean;
+}
+
+export interface FamiliarElegibilidadEvaluadaItem {
+    familiar: FamiliarMonstruoDetalle;
+    elegible: boolean;
+    razones: string[];
+    nivelMinimoRequerido: number | null;
+}
+
+interface AlineamientoRequeridoNormalizado {
+    id: number;
+    nombre: string;
+    nombreNormalizado: string;
 }
 
 function getNombrePlantilla(idPlantilla: number): string {
@@ -117,6 +130,18 @@ const ALIGNMENT_NAME_TO_ID: Record<string, number> = {
     'caótico maligno': 9,
 };
 
+const ALIGNMENT_ID_TO_NAME: Record<number, string> = {
+    1: 'Legal bueno',
+    2: 'Legal neutral',
+    3: 'Legal maligno',
+    4: 'Neutral bueno',
+    5: 'Neutral auténtico',
+    6: 'Neutral maligno',
+    7: 'Caótico bueno',
+    8: 'Caótico neutral',
+    9: 'Caótico maligno',
+};
+
 function toNumber(value: any, fallback = 0): number {
     const parsed = Number(value);
     return Number.isFinite(parsed) ? parsed : fallback;
@@ -178,6 +203,67 @@ function resolveAlineamientoBasicoId(nombre: string): number {
     return ALIGNMENT_NAME_TO_ID[normalized] ?? 0;
 }
 
+function resolveAlineamientoBasicoIdFromRaw(item: any): number {
+    return toNumber(
+        item?.Id
+        ?? item?.id
+        ?? item?.Id_basico
+        ?? item?.id_basico
+        ?? item?.Id_alineamiento
+        ?? item?.id_alineamiento
+    );
+}
+
+function isAlineamientoNombreVisible(nombre: string): boolean {
+    if (!nombre)
+        return false;
+    return nombre !== 'no aplica'
+        && nombre !== 'no especifica'
+        && nombre !== 'no se especifica'
+        && nombre !== '-'
+        && nombre !== 'cualquiera'
+        && nombre !== 'ninguno';
+}
+
+function normalizeAlineamientosRequeridos(raw: any[]): AlineamientoRequeridoNormalizado[] {
+    const items = Array.isArray(raw) ? raw : [];
+    const dedupe = new Map<string, AlineamientoRequeridoNormalizado>();
+
+    items.forEach((item) => {
+        const id = resolveAlineamientoBasicoIdFromRaw(item);
+        const nombreRaw = `${item?.Nombre ?? item?.nombre ?? ''}`.trim();
+        const nombreNormalizado = normalizeText(nombreRaw);
+        const nombreVisible = isAlineamientoNombreVisible(nombreNormalizado) ? nombreRaw : '';
+        if (id <= 0 && nombreVisible.length < 1)
+            return;
+        const clave = `${id}:${normalizeText(nombreVisible)}`;
+        if (dedupe.has(clave))
+            return;
+        dedupe.set(clave, {
+            id: Math.max(0, id),
+            nombre: nombreVisible,
+            nombreNormalizado: normalizeText(nombreVisible),
+        });
+    });
+
+    return Array.from(dedupe.values());
+}
+
+function getAlineamientosRequeridosLabel(items: AlineamientoRequeridoNormalizado[]): string {
+    const labels = items.map((item) => {
+        if (`${item?.nombre ?? ''}`.trim().length > 0)
+            return `${item.nombre}`.trim();
+        const nombreCatalogo = ALIGNMENT_ID_TO_NAME[toNumber(item?.id)];
+        if (`${nombreCatalogo ?? ''}`.trim().length > 0)
+            return `${nombreCatalogo}`.trim();
+        return '';
+    }).filter((item) => item.length > 0);
+
+    if (labels.length < 1)
+        return 'desconocido';
+    return labels.join(', ');
+}
+
 function cumplePreferenciaLegal(idPreferencia: number, idAlineamientoBasico: number): boolean {
     if (idPreferencia < 4 || idPreferencia > 9)
         return true;
@@ -222,6 +308,90 @@ function cumpleAlineamientoPorPreferencias(
     const idMoral = toNumber(nivelClase?.Preferencia_moral?.Id);
     return cumplePreferenciaLegal(idLegal, idAlineamientoBasico)
         && cumplePreferenciaMoral(idMoral, idAlineamientoBasico);
+}
+
+function getPreferenciaEjeLabel(
+    idPreferencia: number,
+    nombrePreferencia: string,
+    eje: 'legal' | 'moral'
+): string | null {
+    const nombre = `${nombrePreferencia ?? ''}`.trim();
+    const nombreNormalizado = normalizeText(nombre);
+    const nombreVisible = nombre.length > 0
+        && nombreNormalizado !== 'ninguna preferencia'
+        && nombreNormalizado !== 'no aplica'
+        && nombreNormalizado !== 'no especifica'
+        && nombreNormalizado !== '-'
+        && nombreNormalizado !== 'cualquiera';
+    if (nombreVisible)
+        return nombre;
+
+    if (idPreferencia < 4 || idPreferencia > 9)
+        return null;
+
+    if (eje === 'legal') {
+        if (idPreferencia === 4)
+            return 'Legal';
+        if (idPreferencia === 5)
+            return 'Neutral';
+        if (idPreferencia === 6)
+            return 'Caótico';
+        if (idPreferencia === 7)
+            return 'No legal';
+        if (idPreferencia === 8)
+            return 'No neutral';
+        if (idPreferencia === 9)
+            return 'No caótico';
+    } else {
+        if (idPreferencia === 4)
+            return 'Bueno';
+        if (idPreferencia === 5)
+            return 'Neutral';
+        if (idPreferencia === 6)
+            return 'Maligno';
+        if (idPreferencia === 7)
+            return 'No bueno';
+        if (idPreferencia === 8)
+            return 'No neutral';
+        if (idPreferencia === 9)
+            return 'No maligno';
+    }
+
+    return null;
+}
+
+function getDetallePreferenciasAlineamiento(nivelesClase: MonstruoNivelClase[]): string {
+    const lista = Array.isArray(nivelesClase) ? nivelesClase : [];
+    const detalles = new Set<string>();
+
+    lista.forEach((nivelClase) => {
+        const legal = getPreferenciaEjeLabel(
+            toNumber(nivelClase?.Preferencia_legal?.Id),
+            `${nivelClase?.Preferencia_legal?.Nombre ?? ''}`,
+            'legal'
+        );
+        const moral = getPreferenciaEjeLabel(
+            toNumber(nivelClase?.Preferencia_moral?.Id),
+            `${nivelClase?.Preferencia_moral?.Nombre ?? ''}`,
+            'moral'
+        );
+        const partes: string[] = [];
+        if (legal)
+            partes.push(`legal: ${legal}`);
+        if (moral)
+            partes.push(`moral: ${moral}`);
+        if (partes.length < 1)
+            return;
+
+        const nombreClase = `${nivelClase?.Clase?.Nombre ?? ''}`.trim();
+        const nivel = Math.max(0, Math.trunc(toNumber(nivelClase?.Nivel)));
+        const prefijo = nombreClase.length > 0
+            ? `${nombreClase} nivel ${nivel}`
+            : `Nivel ${nivel}`;
+        detalles.add(`${prefijo} (${partes.join(', ')})`);
+    });
+
+    return Array.from(detalles.values()).join('; ');
 }
 
 function dedupeFuentes(fuentes: FamiliarFuenteClase[]): FamiliarFuenteClase[] {
@@ -288,6 +458,12 @@ export function resolverEstadoCuposFamiliarEspecial47(
 }
 
 export function filtrarFamiliaresElegibles(input: FiltroFamiliaresElegiblesInput): FamiliarMonstruoDetalle[] {
+    return evaluarFamiliaresElegibilidad(input)
+        .filter((item) => item.elegible)
+        .map((item) => item.familiar);
+}
+
+export function evaluarFamiliaresElegibilidad(input: FiltroFamiliaresElegiblesInput): FamiliarElegibilidadEvaluadaItem[] {
     const familiares = Array.isArray(input?.familiares) ? input.familiares : [];
     const fuentesClaseIds = new Set(
         (input?.estado?.fuentesClaseIds ?? [])
@@ -295,58 +471,102 @@ export function filtrarFamiliaresElegibles(input: FiltroFamiliaresElegiblesInput
             .filter((id) => id > 0)
     );
     const nivelLanzadorFamiliar = Math.max(0, toNumber(input?.estado?.nivelLanzadorFamiliar));
-    const plantillaSeleccionada = Math.max(1, Math.min(5, toNumber(input?.plantillaSeleccionada, 1))) as FamiliarPlantillaId;
+    const plantillaRaw = toNumber(input?.plantillaSeleccionada, 0);
+    const plantillaSeleccionada = plantillaRaw >= 1 && plantillaRaw <= 5
+        ? (Math.trunc(plantillaRaw) as FamiliarPlantillaId)
+        : null;
     const includeHomebrew = !!input?.incluirHomebrew;
     const alineamientoPersonaje = normalizeText(input?.alineamientoPersonaje ?? '');
     const idAlineamientoBasico = resolveAlineamientoBasicoId(input?.alineamientoPersonaje ?? '');
 
-    const dedupe = new Set<string>();
-    const resultado: FamiliarMonstruoDetalle[] = [];
+    const dedupe = new Map<string, FamiliarElegibilidadEvaluadaItem>();
 
     familiares.forEach((familiar) => {
         const idFamiliar = toNumber(familiar?.Id_familiar);
         const idPlantilla = toNumber(familiar?.Plantilla?.Id);
         if (idFamiliar <= 0 || idPlantilla <= 0)
             return;
-        if (idPlantilla !== plantillaSeleccionada)
-            return;
-        if (!includeHomebrew && familiar?.Oficial === false)
+        if (plantillaSeleccionada !== null && idPlantilla !== plantillaSeleccionada)
             return;
 
-        const nivelesClase = (familiar?.Niveles_clase ?? []).filter((nivelClase) =>
+        const razones: string[] = [];
+        if (!includeHomebrew && familiar?.Oficial === false)
+            razones.push('Es una opción homebrew y el filtro Homebrew está desactivado.');
+
+        const nivelesClaseFuente = (familiar?.Niveles_clase ?? []).filter((nivelClase) =>
             fuentesClaseIds.has(toNumber(nivelClase?.Clase?.Id))
             && toNumber(nivelClase?.Nivel) >= 0
-            && toNumber(nivelClase?.Nivel) <= nivelLanzadorFamiliar
         );
-        if (nivelesClase.length < 1)
-            return;
-
-        const requeridosExplicitos = (familiar?.Alineamientos_requeridos?.Familiar ?? [])
-            .map((item) => normalizeText(item?.Nombre ?? ''))
-            .filter((nombre) => nombre.length > 0);
-
-        let cumpleAlineamiento = false;
-        if (requeridosExplicitos.length > 0) {
-            cumpleAlineamiento = alineamientoPersonaje.length > 0
-                && requeridosExplicitos.some((nombre) => nombre === alineamientoPersonaje);
-        } else if (idAlineamientoBasico > 0) {
-            cumpleAlineamiento = nivelesClase.some((nivelClase) =>
-                cumpleAlineamientoPorPreferencias(nivelClase, idAlineamientoBasico)
-            );
+        const nivelesClasePlantilla = (familiar?.Niveles_clase ?? []).filter((nivelClase) =>
+            toNumber(nivelClase?.Plantilla?.Id) === idPlantilla
+            && toNumber(nivelClase?.Nivel) >= 0
+        );
+        const nivelesClase = nivelesClaseFuente.filter((nivelClase) => toNumber(nivelClase?.Nivel) <= nivelLanzadorFamiliar);
+        const nivelMinimoRequerido = nivelesClaseFuente.length > 0
+            ? Math.min(...nivelesClaseFuente.map((nivelClase) => Math.max(0, Math.trunc(toNumber(nivelClase?.Nivel)))))
+            : null;
+        if (nivelesClaseFuente.length < 1) {
+            razones.push('Esta criatura no tiene progresión válida para tus clases con familiar.');
+        } else if (nivelesClase.length < 1) {
+            if (nivelMinimoRequerido !== null && nivelMinimoRequerido > nivelLanzadorFamiliar)
+                razones.push(`Necesitas al menos nivel ${nivelMinimoRequerido} de lanzador de familiar para esta opción.`);
+            else
+                razones.push('No tiene niveles de clase compatibles con tus fuentes actuales de familiar.');
         }
 
-        if (!cumpleAlineamiento)
-            return;
+        const requeridosExplicitos = normalizeAlineamientosRequeridos(familiar?.Alineamientos_requeridos?.Familiar ?? []);
+        if (requeridosExplicitos.length > 0 || nivelesClasePlantilla.length > 0) {
+            let cumpleAlineamiento = false;
+            if (requeridosExplicitos.length > 0) {
+                cumpleAlineamiento = requeridosExplicitos.some((item) => {
+                    const idRequerido = toNumber(item?.id);
+                    if (idRequerido > 0 && idAlineamientoBasico > 0 && idRequerido === idAlineamientoBasico)
+                        return true;
+                    if (alineamientoPersonaje.length > 0 && `${item?.nombreNormalizado ?? ''}`.length > 0)
+                        return item.nombreNormalizado === alineamientoPersonaje;
+                    return false;
+                });
+                if (!cumpleAlineamiento) {
+                    const requeridosTexto = getAlineamientosRequeridosLabel(requeridosExplicitos);
+                    razones.push(`Requiere alineamiento ${requeridosTexto}.`);
+                }
+            } else if (idAlineamientoBasico > 0) {
+                cumpleAlineamiento = nivelesClasePlantilla.some((nivelClase) =>
+                    cumpleAlineamientoPorPreferencias(nivelClase, idAlineamientoBasico)
+                );
+                if (!cumpleAlineamiento) {
+                    const detalle = getDetallePreferenciasAlineamiento(nivelesClasePlantilla);
+                    if (detalle.length > 0)
+                        razones.push(`No cumple las preferencias de alineamiento para este familiar. Exigencias del monstruo: ${detalle}.`);
+                    else
+                        razones.push('No cumple las preferencias de alineamiento para este familiar.');
+                }
+            } else {
+                razones.push('No se pudo interpretar el alineamiento actual del personaje.');
+            }
+        }
 
         const dedupeKey = `${idFamiliar}:${idPlantilla}`;
-        if (dedupe.has(dedupeKey))
+        const evaluacion: FamiliarElegibilidadEvaluadaItem = {
+            familiar,
+            elegible: razones.length < 1,
+            razones: Array.from(new Set(razones)),
+            nivelMinimoRequerido,
+        };
+        const previa = dedupe.get(dedupeKey);
+        if (!previa || (!previa.elegible && evaluacion.elegible)) {
+            dedupe.set(dedupeKey, evaluacion);
             return;
-        dedupe.add(dedupeKey);
-        resultado.push(familiar);
+        }
+        if (!previa.elegible && !evaluacion.elegible) {
+            dedupe.set(dedupeKey, {
+                ...previa,
+                razones: Array.from(new Set([...(previa.razones ?? []), ...(evaluacion.razones ?? [])])),
+                nivelMinimoRequerido: previa.nivelMinimoRequerido ?? evaluacion.nivelMinimoRequerido,
+            });
+        }
     });
 
-    resultado.sort((a, b) =>
-        `${a?.Nombre ?? ''}`.localeCompare(`${b?.Nombre ?? ''}`, 'es', { sensitivity: 'base' })
-    );
-    return resultado;
+    return Array.from(dedupe.values())
+        .sort((a, b) => `${a?.familiar?.Nombre ?? ''}`.localeCompare(`${b?.familiar?.Nombre ?? ''}`, 'es', { sensitivity: 'base' }));
 }

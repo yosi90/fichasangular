@@ -42,6 +42,7 @@ describe('SelectorFamiliarModalComponent', () => {
 
     it('emite confirmar con familiar y plantilla seleccionados', () => {
         const spy = spyOn(component.confirmar, 'emit');
+        component.familiaresElegibles[1] = crearFamiliar(2, 'Cuervo', 3);
         component.plantillaSeleccionada = 3;
         component.nombreFamiliar = 'Nimbo';
         component.onSeleccionarFamiliar(component.familiaresElegibles[1]);
@@ -81,5 +82,37 @@ describe('SelectorFamiliarModalComponent', () => {
         const spy = spyOn(component.nombreFamiliarChange, 'emit');
         component.onCambiarNombreFamiliar('Familiar de Aramil');
         expect(spy).toHaveBeenCalledWith('Familiar de Aramil');
+    });
+
+    it('muestra bloqueadas con motivos al desactivar solo elegibles', () => {
+        const bloqueado = crearFamiliar(9, 'Serpiente');
+        component.familiaresBloqueados = [{
+            familiar: bloqueado,
+            razones: ['No cumple las preferencias de alineamiento para este familiar.'],
+            nivelMinimoRequerido: 4,
+        }];
+
+        expect(component.familiaresFiltrados.some((item) => item.Id_familiar === 9)).toBeFalse();
+        component.onAlternarSoloElegibles();
+        expect(component.familiaresFiltrados.some((item) => item.Id_familiar === 9)).toBeTrue();
+        expect(component.getEtiquetaEstado(bloqueado)).toBe('Bloqueada');
+        expect(component.getMotivosBloqueo(bloqueado)).toContain('No cumple las preferencias de alineamiento para este familiar.');
+    });
+
+    it('no confirma un familiar bloqueado aunque esté seleccionado', () => {
+        const bloqueado = crearFamiliar(10, 'Sapo');
+        component.familiaresElegibles = [];
+        component.familiaresBloqueados = [{
+            familiar: bloqueado,
+            razones: ['No tiene niveles de clase compatibles con tus fuentes actuales de familiar.'],
+            nivelMinimoRequerido: 6,
+        }];
+        component.onAlternarSoloElegibles();
+        component.onSeleccionarFamiliar(bloqueado);
+        const spy = spyOn(component.confirmar, 'emit');
+
+        component.onConfirmar();
+
+        expect(spy).not.toHaveBeenCalled();
     });
 });

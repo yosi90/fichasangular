@@ -172,4 +172,40 @@ describe('DetallesMonstruoComponent', () => {
             nombre: 'Manual base',
         });
     });
+
+    it('separa niveles de requisitos entre familiar y compañero', () => {
+        component.monstruo = crearMonstruoMock({
+            Familiar: true,
+            Companero: true,
+            Niveles_clase: [
+                {
+                    Clase: { Id: 5, Nombre: 'Druida' },
+                    Nivel: 4,
+                    Plantilla: { Id: 0, Nombre: 'No aplica' },
+                    Preferencia_legal: { Id: 10, Nombre: 'Ninguna preferencia' },
+                    Preferencia_moral: { Id: 10, Nombre: 'Ninguna preferencia' },
+                    Dote: { Id: 53, Nombre: 'Compañero elevado' },
+                },
+                {
+                    Clase: { Id: 9, Nombre: 'Mago' },
+                    Nivel: 5,
+                    Plantilla: { Id: 5, Nombre: 'Mejorado' },
+                    Preferencia_legal: { Id: 10, Nombre: 'Ninguna preferencia' },
+                    Preferencia_moral: { Id: 10, Nombre: 'Ninguna preferencia' },
+                    Dote: { Id: 48, Nombre: 'Familiar mejorado' },
+                },
+            ] as any,
+        });
+
+        const nivelesCompanero = component.getNivelesClaseRequeridosCompanero();
+        const nivelesFamiliar = component.getNivelesClaseRequeridosFamiliar();
+
+        expect(nivelesCompanero.length).toBe(1);
+        expect(nivelesCompanero[0].nombreClase).toBe('Druida');
+        expect(nivelesCompanero[0].dote).toBe('Compañero elevado');
+
+        expect(nivelesFamiliar.length).toBe(1);
+        expect(nivelesFamiliar[0].nombreClase).toBe('Mago');
+        expect(nivelesFamiliar[0].dote).toBe('Familiar mejorado');
+    });
 });

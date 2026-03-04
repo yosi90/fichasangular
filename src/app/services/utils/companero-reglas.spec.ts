@@ -5,6 +5,7 @@ import {
     CompaneroPlantillaSelector,
     EstadoCuposCompanero,
     construirCatalogoCompanerosDesdeMonstruos,
+    evaluarCompanerosElegibilidad,
     filtrarCompanerosElegibles,
     resolverEstadoCuposCompaneroEspecial29,
     resolverNivelesCompaneroDisponibles
@@ -304,5 +305,78 @@ describe('companero-reglas', () => {
 
         expect(filtrados.length).toBe(1);
         expect(filtrados[0].Id_companero).toBe(20);
+    });
+
+    it('muestra motivo de alineamiento explícito aunque no haya fuentes de clase actuales', () => {
+        const estado: EstadoCuposCompanero = {
+            especialId: 29,
+            fuentes: [],
+            fuentesClaseIds: [],
+            fuentesTotales: 0,
+            cuposConsumidos: 0,
+            cuposDisponibles: 0,
+            nivelEfectivoCompanero: 0,
+        };
+        const companero = crearCompaneroMock({
+            Id_companero: 40,
+            Nombre: 'Perro intermitente',
+            Plantilla: { Id: 2, Nombre: 'Elevado' },
+            Alineamientos_requeridos: {
+                Familiar: [],
+                Companero: [{ Id: 1, Nombre: 'Legal bueno' }],
+            },
+            Niveles_clase: [crearNivelClase(5, 4, 53, 10, 10)],
+        });
+
+        const evaluaciones = evaluarCompanerosElegibilidad({
+            companeros: [companero],
+            estado,
+            alineamientoPersonaje: 'Caotico maligno',
+            plantillaSeleccionada: 'elevado',
+            incluirHomebrew: true,
+            tieneDoteElevado: true,
+            tieneDoteSabandija: false,
+            nivelSeleccionado: null,
+        });
+
+        expect(evaluaciones.length).toBe(1);
+        expect(evaluaciones[0].elegible).toBeFalse();
+        expect(evaluaciones[0].razones).toContain('Requiere alineamiento Legal bueno.');
+    });
+
+    it('detalla exigencias de alineamiento cuando viene por preferencias de clase', () => {
+        const estado: EstadoCuposCompanero = {
+            especialId: 29,
+            fuentes: [{ idClase: 5, nombreClase: 'Druida', nivelActual: 4 }],
+            fuentesClaseIds: [5],
+            fuentesTotales: 1,
+            cuposConsumidos: 0,
+            cuposDisponibles: 1,
+            nivelEfectivoCompanero: 4,
+        };
+        const companero = crearCompaneroMock({
+            Id_companero: 60,
+            Nombre: 'Caballo ligero',
+            Plantilla: { Id: 1, Nombre: 'Base' },
+            Alineamientos_requeridos: { Familiar: [], Companero: [] },
+            Niveles_clase: [crearNivelClase(5, 1, 0, 4, 9)],
+        });
+
+        const evaluaciones = evaluarCompanerosElegibilidad({
+            companeros: [companero],
+            estado,
+            alineamientoPersonaje: 'Caotico bueno',
+            plantillaSeleccionada: 'base',
+            incluirHomebrew: true,
+            tieneDoteElevado: false,
+            tieneDoteSabandija: false,
+            nivelSeleccionado: null,
+        });
+
+        expect(evaluaciones.length).toBe(1);
+        expect(evaluaciones[0].elegible).toBeFalse();
+        expect(evaluaciones[0].razones.some((item) => item.includes('Exigencias del monstruo:'))).toBeTrue();
+        expect(evaluaciones[0].razones.some((item) => item.includes('legal:'))).toBeTrue();
+        expect(evaluaciones[0].razones.some((item) => item.includes('moral:'))).toBeTrue();
     });
 });

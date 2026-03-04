@@ -72,12 +72,14 @@ import {
 } from 'src/app/services/nuevo-personaje.service';
 import {
     construirCatalogoFamiliaresDesdeMonstruos,
+    evaluarFamiliaresElegibilidad,
     FamiliarPlantillaId,
-    filtrarFamiliaresElegibles
+    FamiliarElegibilidadEvaluadaItem,
 } from 'src/app/services/utils/familiar-reglas';
 import {
     construirCatalogoCompanerosDesdeMonstruos,
-    filtrarCompanerosElegibles,
+    CompaneroElegibilidadEvaluadaItem,
+    evaluarCompanerosElegibilidad,
     resolverNivelesCompaneroDisponibles
 } from 'src/app/services/utils/companero-reglas';
 import { SelectorFamiliarConfirmacion } from './selector-familiar-modal/selector-familiar-modal.component';
@@ -234,6 +236,18 @@ interface ClaseListadoItem {
     esHomebrew: boolean;
 }
 
+interface SelectorFamiliarBloqueadoItem {
+    familiar: FamiliarMonstruoDetalle;
+    razones: string[];
+    nivelMinimoRequerido: number | null;
+}
+
+interface SelectorCompaneroBloqueadoItem {
+    companero: CompaneroMonstruoDetalle;
+    razones: string[];
+    nivelMinimoRequerido: number | null;
+}
+
 @Component({
     selector: 'app-nuevo-personaje',
     templateUrl: './nuevo-personaje.component.html',
@@ -381,23 +395,27 @@ export class NuevoPersonajeComponent {
     selectorEnemigoPredilectoIndice = 1;
     selectorEnemigoPredilectoTotal = 1;
     selectorFamiliarTitulo = 'Seleccionar familiar';
-    selectorFamiliarPlantillaSeleccionada: FamiliarPlantillaId = 1;
+    selectorFamiliarPlantillaSeleccionada: FamiliarPlantillaId | null = null;
     selectorFamiliarIncluirHomebrew = false;
     selectorFamiliarCuposDisponibles = 0;
     selectorFamiliarNombre = '';
     selectorFamiliarEstadoCupos: EstadoCuposFamiliar | null = null;
     selectorFamiliarCatalogoCompleto: FamiliarMonstruoDetalle[] = [];
     selectorFamiliarElegibles: FamiliarMonstruoDetalle[] = [];
+    selectorFamiliarBloqueados: SelectorFamiliarBloqueadoItem[] = [];
+    selectorFamiliarNivelesRequeridos: Record<string, number> = {};
     private resolverSelectorFamiliar: ((seleccion: SelectorFamiliarConfirmacion | 'omitir' | null) => void) | null = null;
     private nombresEspecialesFamiliar: Record<number, string> | null = null;
     selectorCompaneroTitulo = 'Seleccionar compañero animal';
-    selectorCompaneroPlantillaSeleccionada: CompaneroPlantillaSelector = 'base';
+    selectorCompaneroPlantillaSeleccionada: CompaneroPlantillaSelector | null = null;
     selectorCompaneroIncluirHomebrew = false;
     selectorCompaneroCuposDisponibles = 0;
     selectorCompaneroNombre = '';
     selectorCompaneroEstadoCupos: EstadoCuposCompanero | null = null;
     selectorCompaneroCatalogoCompleto: CompaneroMonstruoDetalle[] = [];
     selectorCompaneroElegibles: CompaneroMonstruoDetalle[] = [];
+    selectorCompaneroBloqueados: SelectorCompaneroBloqueadoItem[] = [];
+    selectorCompaneroNivelesRequeridos: Record<string, number> = {};
     selectorCompaneroNivelesDisponibles: number[] = [];
     selectorCompaneroNivelSeleccionado: number | null = null;
     private resolverSelectorCompanero: ((seleccion: SelectorCompaneroConfirmacion | 'omitir' | null) => void) | null = null;
@@ -2414,7 +2432,9 @@ export class NuevoPersonajeComponent {
         if (!seleccion || !seleccion.puedeAplicarse)
             return;
 
-        const requiereAvisoAlineamiento = seleccion.compatAlineamiento.requiereConfirmacion || seleccion.bloqueoSoloAlineamiento;
+        const primerNivelClase = Number(seleccion.siguienteNivel ?? 0) === 1;
+        const requiereAvisoAlineamiento = primerNivelClase
+            && (seleccion.compatAlineamiento.requiereConfirmacion || seleccion.bloqueoSoloAlineamiento);
         if (requiereAvisoAlineamiento) {
             const detalleAlineamiento = seleccion.compatAlineamiento.tooltip;
             const avisoHomebrew = seleccion.compatAlineamiento.marcaHomebrew
@@ -2751,6 +2771,29 @@ export class NuevoPersonajeComponent {
         return !!habilidad?.Entrenada;
     }
 
+    tieneRangosHabilidad(habilidad: Personaje['Habilidades'][number]): boolean {
+        const rangos = Number(habilidad?.Rangos ?? 0);
+        return Number.isFinite(rangos) && rangos > 0;
+    }
+
+    esRangoNuevoHabilidad(habilidad: Personaje['Habilidades'][number]): boolean {
+        const idHabilidad = Number(habilidad?.Id ?? 0);
+        const rangosActuales = Math.max(0, Math.trunc(Number(habilidad?.Rangos ?? 0)));
+        if (idHabilidad <= 0 || rangosActuales <= 0)
+            return false;
+        const rangosIniciales = this.getRangosInicialesSesionHabilidad(idHabilidad);
+        return rangosActuales > rangosIniciales;
+    }
+
+    getTooltipRangoHabilidad(habilidad: Personaje['Habilidades'][number]): string {
+        const idHabilidad = Number(habilidad?.Id ?? 0);
+        const actuales = Math.max(0, Math.trunc(Number(habilidad?.Rangos ?? 0)));
+        const iniciales = this.getRangosInicialesSesionHabilidad(idHabilidad);
+        if (this.esRangoNuevoHabilidad(habilidad))
+            return `Rangos nuevos en esta distribución: ${actuales - iniciales}.`;
+        return 'Rangos previos (sin nuevos en esta distribución).';
+    }
+
     getNombreHabilidadConMarcaEntrenada(habilidad: Personaje['Habilidades'][number]): string {
         const nombre = `${habilidad?.Nombre ?? ''}`;
         return this.esHabilidadEntrenada(habilidad) ? `${nombre}*` : nombre;
@@ -3001,6 +3044,17 @@ export class NuevoPersonajeComponent {
         return normalizado === 'crear 1' || normalizado === 'crear 2';
     }
 
+    private getRangosInicialesSesionHabilidad(idHabilidad: number): number {
+        const id = Math.max(0, Math.trunc(Number(idHabilidad ?? 0)));
+        if (id <= 0)
+            return 0;
+        const mapa = this.flujoHabilidades?.rangosIniciales ?? {};
+        const valor = Number((mapa as Record<number, number>)?.[id] ?? 0);
+        if (!Number.isFinite(valor))
+            return 0;
+        return Math.max(0, Math.trunc(valor));
+    }
+
     async continuarDesdeHabilidades(): Promise<void> {
         if (!this.nuevoPSvc.puedeCerrarDistribucionHabilidades())
             return;
@@ -3198,11 +3252,11 @@ export class NuevoPersonajeComponent {
 
         this.selectorCompaneroEstadoCupos = estado;
         this.selectorCompaneroTitulo = 'Seleccionar compañero animal';
-        this.selectorCompaneroPlantillaSeleccionada = 'base';
+        this.selectorCompaneroPlantillaSeleccionada = null;
         this.selectorCompaneroIncluirHomebrew = !this.Personaje.Oficial;
         this.selectorCompaneroNombre = this.getNombreDefectoCompanero();
         this.selectorCompaneroCuposDisponibles = Math.max(0, Number(estado?.cuposDisponibles ?? 0));
-        this.selectorCompaneroNivelSeleccionado = Math.max(0, Number(estado?.nivelEfectivoCompanero ?? 0)) || null;
+        this.selectorCompaneroNivelSeleccionado = null;
         this.recalcularCompanerosElegiblesSelector();
         this.modalSelectorCompaneroAbierto = true;
 
@@ -3341,7 +3395,7 @@ export class NuevoPersonajeComponent {
 
         this.selectorFamiliarEstadoCupos = estado;
         this.selectorFamiliarTitulo = 'Seleccionar familiar';
-        this.selectorFamiliarPlantillaSeleccionada = 1;
+        this.selectorFamiliarPlantillaSeleccionada = null;
         this.selectorFamiliarIncluirHomebrew = !this.Personaje.Oficial;
         this.selectorFamiliarNombre = this.getNombreDefectoFamiliar();
         this.selectorFamiliarCuposDisponibles = Math.max(0, Number(estado?.cuposDisponibles ?? 0));
@@ -3377,8 +3431,8 @@ export class NuevoPersonajeComponent {
         this.verDetallesMonstruoDesdeFicha(familiar);
     }
 
-    onCambioPlantillaSelectorCompanero(plantilla: CompaneroPlantillaSelector): void {
-        this.selectorCompaneroPlantillaSeleccionada = this.normalizarPlantillaCompanero(plantilla);
+    onCambioPlantillaSelectorCompanero(plantilla: CompaneroPlantillaSelector | null): void {
+        this.selectorCompaneroPlantillaSeleccionada = plantilla ? this.normalizarPlantillaCompanero(plantilla) : null;
         this.recalcularCompanerosElegiblesSelector();
     }
 
@@ -3707,7 +3761,12 @@ export class NuevoPersonajeComponent {
         };
     }
 
-    onCambioPlantillaSelectorFamiliar(plantilla: FamiliarPlantillaId): void {
+    onCambioPlantillaSelectorFamiliar(plantilla: FamiliarPlantillaId | null): void {
+        if (plantilla === null || plantilla === undefined) {
+            this.selectorFamiliarPlantillaSeleccionada = null;
+            this.recalcularFamiliaresElegiblesSelector();
+            return;
+        }
         const parsed = Number(plantilla);
         if (!Number.isFinite(parsed) || parsed < 1 || parsed > 5)
             return;
@@ -3774,7 +3833,9 @@ export class NuevoPersonajeComponent {
         }
     }
 
-    private getIdPlantillaCompaneroSeleccionada(plantilla: CompaneroPlantillaSelector): number {
+    private getIdPlantillaCompaneroSeleccionada(plantilla: CompaneroPlantillaSelector | null): number {
+        if (!plantilla)
+            return 1;
         if (plantilla === 'elevado')
             return 2;
         if (plantilla === 'sabandija')
@@ -3806,16 +3867,37 @@ export class NuevoPersonajeComponent {
     private recalcularFamiliaresElegiblesSelector(): void {
         if (!this.selectorFamiliarEstadoCupos) {
             this.selectorFamiliarElegibles = [];
+            this.selectorFamiliarBloqueados = [];
+            this.selectorFamiliarNivelesRequeridos = {};
             return;
         }
         const incluirHomebrewEfectivo = this.selectorFamiliarIncluirHomebrew || !this.Personaje.Oficial;
-        this.selectorFamiliarElegibles = filtrarFamiliaresElegibles({
+        const evaluaciones = evaluarFamiliaresElegibilidad({
             familiares: this.selectorFamiliarCatalogoCompleto,
             estado: this.selectorFamiliarEstadoCupos,
             alineamientoPersonaje: `${this.Personaje?.Alineamiento ?? ''}`.trim(),
             plantillaSeleccionada: this.selectorFamiliarPlantillaSeleccionada,
             incluirHomebrew: incluirHomebrewEfectivo,
         });
+        const nivelesRequeridos: Record<string, number> = {};
+        evaluaciones.forEach((item) => {
+            const nivel = Number(item?.nivelMinimoRequerido ?? 0);
+            if (!Number.isFinite(nivel) || nivel <= 0)
+                return;
+            const clave = this.getClaveFamiliarSelector(item.familiar);
+            nivelesRequeridos[clave] = Math.trunc(nivel);
+        });
+        this.selectorFamiliarNivelesRequeridos = nivelesRequeridos;
+        this.selectorFamiliarElegibles = evaluaciones
+            .filter((item) => item.elegible)
+            .map((item: FamiliarElegibilidadEvaluadaItem) => item.familiar);
+        this.selectorFamiliarBloqueados = evaluaciones
+            .filter((item) => !item.elegible)
+            .map((item: FamiliarElegibilidadEvaluadaItem) => ({
+                familiar: item.familiar,
+                razones: [...(item.razones ?? [])],
+                nivelMinimoRequerido: item.nivelMinimoRequerido ?? null,
+            }));
     }
 
     private async cargarNombresEspecialesFamiliar(): Promise<Record<number, string>> {
@@ -3870,6 +3952,8 @@ export class NuevoPersonajeComponent {
     private recalcularCompanerosElegiblesSelector(): void {
         if (!this.selectorCompaneroEstadoCupos) {
             this.selectorCompaneroElegibles = [];
+            this.selectorCompaneroBloqueados = [];
+            this.selectorCompaneroNivelesRequeridos = {};
             this.selectorCompaneroNivelesDisponibles = [];
             return;
         }
@@ -3896,7 +3980,7 @@ export class NuevoPersonajeComponent {
             this.selectorCompaneroNivelSeleccionado = null;
         }
 
-        this.selectorCompaneroElegibles = filtrarCompanerosElegibles({
+        const evaluaciones = evaluarCompanerosElegibilidad({
             companeros: this.selectorCompaneroCatalogoCompleto,
             estado: this.selectorCompaneroEstadoCupos,
             alineamientoPersonaje: `${this.Personaje?.Alineamiento ?? ''}`.trim(),
@@ -3906,6 +3990,25 @@ export class NuevoPersonajeComponent {
             tieneDoteSabandija,
             nivelSeleccionado: this.selectorCompaneroNivelSeleccionado,
         });
+        const nivelesRequeridos: Record<string, number> = {};
+        evaluaciones.forEach((item) => {
+            const nivel = Number(item?.nivelMinimoRequerido ?? 0);
+            if (!Number.isFinite(nivel) || nivel <= 0)
+                return;
+            const clave = this.getClaveCompaneroSelector(item.companero);
+            nivelesRequeridos[clave] = Math.trunc(nivel);
+        });
+        this.selectorCompaneroNivelesRequeridos = nivelesRequeridos;
+        this.selectorCompaneroElegibles = evaluaciones
+            .filter((item) => item.elegible)
+            .map((item: CompaneroElegibilidadEvaluadaItem) => item.companero);
+        this.selectorCompaneroBloqueados = evaluaciones
+            .filter((item) => !item.elegible)
+            .map((item: CompaneroElegibilidadEvaluadaItem) => ({
+                companero: item.companero,
+                razones: [...(item.razones ?? [])],
+                nivelMinimoRequerido: item.nivelMinimoRequerido ?? null,
+            }));
     }
 
     private async cargarNombresEspecialesCompanero(): Promise<Record<number, string>> {
@@ -3936,18 +4039,28 @@ export class NuevoPersonajeComponent {
         return { ...nombres };
     }
 
+    private getClaveFamiliarSelector(familiar: FamiliarMonstruoDetalle | null | undefined): string {
+        return `${Number(familiar?.Id_familiar ?? 0)}:${Number(familiar?.Plantilla?.Id ?? 0)}`;
+    }
+
+    private getClaveCompaneroSelector(companero: CompaneroMonstruoDetalle | null | undefined): string {
+        return `${Number(companero?.Id_companero ?? 0)}:${Number(companero?.Plantilla?.Id ?? 0)}`;
+    }
+
     private cerrarSelectorFamiliarContexto(
         resultado: SelectorFamiliarConfirmacion | 'omitir' | null
     ): void {
         this.modalSelectorFamiliarAbierto = false;
         this.selectorFamiliarTitulo = 'Seleccionar familiar';
-        this.selectorFamiliarPlantillaSeleccionada = 1;
+        this.selectorFamiliarPlantillaSeleccionada = null;
         this.selectorFamiliarIncluirHomebrew = false;
         this.selectorFamiliarNombre = '';
         this.selectorFamiliarCuposDisponibles = 0;
         this.selectorFamiliarEstadoCupos = null;
         this.selectorFamiliarCatalogoCompleto = [];
         this.selectorFamiliarElegibles = [];
+        this.selectorFamiliarBloqueados = [];
+        this.selectorFamiliarNivelesRequeridos = {};
 
         const resolver = this.resolverSelectorFamiliar;
         this.resolverSelectorFamiliar = null;
@@ -3959,13 +4072,15 @@ export class NuevoPersonajeComponent {
     ): void {
         this.modalSelectorCompaneroAbierto = false;
         this.selectorCompaneroTitulo = 'Seleccionar compañero animal';
-        this.selectorCompaneroPlantillaSeleccionada = 'base';
+        this.selectorCompaneroPlantillaSeleccionada = null;
         this.selectorCompaneroIncluirHomebrew = false;
         this.selectorCompaneroNombre = '';
         this.selectorCompaneroCuposDisponibles = 0;
         this.selectorCompaneroEstadoCupos = null;
         this.selectorCompaneroCatalogoCompleto = [];
         this.selectorCompaneroElegibles = [];
+        this.selectorCompaneroBloqueados = [];
+        this.selectorCompaneroNivelesRequeridos = {};
         this.selectorCompaneroNivelesDisponibles = [];
         this.selectorCompaneroNivelSeleccionado = null;
 

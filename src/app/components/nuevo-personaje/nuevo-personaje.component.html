@@ -681,7 +681,9 @@
                             <div class="habilidades-resumen-principal">
                                 <mat-chip>Origen: {{origenHabilidadesTexto}}</mat-chip>
                                 <mat-chip>Nivel referencia: {{flujoHabilidades.nivelPersonajeReferencia}}</mat-chip>
-                                <mat-chip>Puntos: {{flujoHabilidades.puntosRestantes}} / {{flujoHabilidades.puntosTotales}}</mat-chip>
+                                <mat-chip [ngClass]="flujoHabilidades.puntosRestantes > 0 ? 'good' : 'bad'">
+                                    Puntos por distribuir: {{flujoHabilidades.puntosRestantes}} / {{flujoHabilidades.puntosTotales}}
+                                </mat-chip>
                             </div>
                             <mat-chip class="habilidad-entrenada-info-chip">
                                 * Las habilidades entrenadas no cláseas no pueden subir rangos.
@@ -736,7 +738,20 @@
                                                     <span>{{getTextoExtraHabilidad(habilidad)}}</span>
                                                 </ng-template>
                                             </td>
-                                            <td>{{habilidad.Rangos}}</td>
+                                            <td>
+                                                <ng-container *ngIf="tieneRangosHabilidad(habilidad); else sinRangosHabilidadTpl">
+                                                    <div class="d-flex justify-content-center align-items-center">
+                                                        <p
+                                                            class="d-initial sombra3d-sm rounded p-1 mb-0 chip text-center habilidad-rango-chip"
+                                                            [ngClass]="esRangoNuevoHabilidad(habilidad) ? 'good' : 'bad'"
+                                                            [matTooltip]="getTooltipRangoHabilidad(habilidad)"
+                                                            matTooltipClass="tt-accent">
+                                                            {{habilidad.Rangos}}
+                                                        </p>
+                                                    </div>
+                                                </ng-container>
+                                                <ng-template #sinRangosHabilidadTpl>0</ng-template>
+                                            </td>
                                             <td>{{habilidad.Rangos_varios}}</td>
                                             <td [matTooltip]="getTextoVariosHabilidad(habilidad)" matTooltipClass="tt-accent tt-multiline">
                                                 {{getTextoVariosHabilidad(habilidad)}}
@@ -986,6 +1001,8 @@
         <app-selector-familiar-modal
             [titulo]="selectorFamiliarTitulo"
             [familiaresElegibles]="selectorFamiliarElegibles"
+            [familiaresBloqueados]="selectorFamiliarBloqueados"
+            [nivelesRequeridos]="selectorFamiliarNivelesRequeridos"
             [familiaresSeleccionados]="Personaje.Familiares"
             [plantillaSeleccionada]="selectorFamiliarPlantillaSeleccionada"
             [incluirHomebrew]="selectorFamiliarIncluirHomebrew"
@@ -1004,6 +1021,8 @@
         <app-selector-companero-modal
             [titulo]="selectorCompaneroTitulo"
             [companerosElegibles]="selectorCompaneroElegibles"
+            [companerosBloqueados]="selectorCompaneroBloqueados"
+            [nivelesRequeridos]="selectorCompaneroNivelesRequeridos"
             [companerosSeleccionados]="Personaje.Companeros"
             [plantillaSeleccionada]="selectorCompaneroPlantillaSeleccionada"
             [incluirHomebrew]="selectorCompaneroIncluirHomebrew"

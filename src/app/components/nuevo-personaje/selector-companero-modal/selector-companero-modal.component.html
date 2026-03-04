@@ -37,6 +37,7 @@
             <mat-form-field appearance="fill" class="filtro-plantilla">
                 <mat-label>Plantilla</mat-label>
                 <mat-select [value]="plantillaSeleccionada" (valueChange)="onCambiarPlantilla($event)">
+                    <mat-option [value]="null">Cualquiera</mat-option>
                     <mat-option [value]="'base'">Base</mat-option>
                     <mat-option [value]="'elevado'">Elevado</mat-option>
                     <mat-option [value]="'sabandija'">Sabandija</mat-option>
@@ -57,6 +58,10 @@
                 (change)="onCambiarHomebrew($event.checked)">
                 Incluir homebrew
             </mat-slide-toggle>
+
+            <mat-chip-option color="accent" class="filtro-chip" [selected]="mostrarSoloElegibles" (click)="onAlternarSoloElegibles()">
+                {{mostrarSoloElegibles ? 'Solo elegibles' : 'Mostrar bloqueadas'}}
+            </mat-chip-option>
         </div>
 
         <div class="companeros-listado" *ngIf="companerosFiltrados.length > 0; else sinCompanerosTpl">
@@ -67,15 +72,26 @@
                         class="companero-item"
                         *ngFor="let companero of companerosColumnaA; trackBy: trackByCompanero"
                         [class.seleccionado]="esSeleccionado(companero)"
+                        [class.elegible]="esCompaneroElegible(companero)"
                         (click)="onSeleccionarCompanero(companero)">
                         <span class="companero-nombre">{{companero.Nombre}}</span>
                         <span class="companero-manual">{{companero.Manual.Nombre || '-'}}</span>
                         <span class="companero-acciones">
+                            <mat-chip class="m-0" *ngIf="getNivelRequerido(companero) as nivel"
+                                [matTooltip]="getTooltipNivelDruida(nivel)" matTooltipClass="tt-accent">
+                                Nivel {{nivel}}
+                            </mat-chip>
                             <mat-chip class="m-0">{{getEtiquetaPlantilla(companero?.Plantilla?.Id ?? 1)}}</mat-chip>
+                            <mat-chip class="companero-chip-estado" [ngClass]="esCompaneroElegible(companero) ? 'good' : 'bad'">
+                                {{getEtiquetaEstado(companero)}}
+                            </mat-chip>
                             <button mat-icon-button type="button" (click)="onAbrirDetalle(companero, $event)" aria-label="Ver detalle">
                                 <mat-icon>open_in_new</mat-icon>
                             </button>
                         </span>
+                        <div class="companero-motivos" *ngIf="!esCompaneroElegible(companero)">
+                            <p class="m-0" *ngFor="let motivo of getMotivosBloqueo(companero)">• {{motivo}}</p>
+                        </div>
                     </button>
                 </div>
 
@@ -85,15 +101,26 @@
                         class="companero-item"
                         *ngFor="let companero of companerosColumnaB; trackBy: trackByCompanero"
                         [class.seleccionado]="esSeleccionado(companero)"
+                        [class.elegible]="esCompaneroElegible(companero)"
                         (click)="onSeleccionarCompanero(companero)">
                         <span class="companero-nombre">{{companero.Nombre}}</span>
                         <span class="companero-manual">{{companero.Manual.Nombre || '-'}}</span>
                         <span class="companero-acciones">
+                            <mat-chip class="m-0" *ngIf="getNivelRequerido(companero) as nivel"
+                                [matTooltip]="getTooltipNivelDruida(nivel)" matTooltipClass="tt-accent">
+                                Nivel {{nivel}}
+                            </mat-chip>
                             <mat-chip class="m-0">{{getEtiquetaPlantilla(companero?.Plantilla?.Id ?? 1)}}</mat-chip>
+                            <mat-chip class="companero-chip-estado" [ngClass]="esCompaneroElegible(companero) ? 'good' : 'bad'">
+                                {{getEtiquetaEstado(companero)}}
+                            </mat-chip>
                             <button mat-icon-button type="button" (click)="onAbrirDetalle(companero, $event)" aria-label="Ver detalle">
                                 <mat-icon>open_in_new</mat-icon>
                             </button>
                         </span>
+                        <div class="companero-motivos" *ngIf="!esCompaneroElegible(companero)">
+                            <p class="m-0" *ngFor="let motivo of getMotivosBloqueo(companero)">• {{motivo}}</p>
+                        </div>
                     </button>
                 </div>
 
@@ -103,25 +130,36 @@
                         class="companero-item"
                         *ngFor="let companero of companerosColumnaC; trackBy: trackByCompanero"
                         [class.seleccionado]="esSeleccionado(companero)"
+                        [class.elegible]="esCompaneroElegible(companero)"
                         (click)="onSeleccionarCompanero(companero)">
                         <span class="companero-nombre">{{companero.Nombre}}</span>
                         <span class="companero-manual">{{companero.Manual.Nombre || '-'}}</span>
                         <span class="companero-acciones">
+                            <mat-chip class="m-0" *ngIf="getNivelRequerido(companero) as nivel"
+                                [matTooltip]="getTooltipNivelDruida(nivel)" matTooltipClass="tt-accent">
+                                Nivel {{nivel}}
+                            </mat-chip>
                             <mat-chip class="m-0">{{getEtiquetaPlantilla(companero?.Plantilla?.Id ?? 1)}}</mat-chip>
+                            <mat-chip class="companero-chip-estado" [ngClass]="esCompaneroElegible(companero) ? 'good' : 'bad'">
+                                {{getEtiquetaEstado(companero)}}
+                            </mat-chip>
                             <button mat-icon-button type="button" (click)="onAbrirDetalle(companero, $event)" aria-label="Ver detalle">
                                 <mat-icon>open_in_new</mat-icon>
                             </button>
                         </span>
+                        <div class="companero-motivos" *ngIf="!esCompaneroElegible(companero)">
+                            <p class="m-0" *ngFor="let motivo of getMotivosBloqueo(companero)">• {{motivo}}</p>
+                        </div>
                     </button>
                 </div>
             </div>
         </div>
 
         <ng-template #sinCompanerosTpl>
-            <p class="m-0 detalle" *ngIf="companerosElegibles.length < 1">
+            <p class="m-0 detalle" *ngIf="cantidadCompanerosListado < 1">
                 No hay compañeros elegibles con las reglas actuales.
             </p>
-            <p class="m-0 detalle" *ngIf="companerosElegibles.length > 0">
+            <p class="m-0 detalle" *ngIf="cantidadCompanerosListado > 0">
                 No hay resultados para "{{filtroTexto}}".
             </p>
         </ng-template>

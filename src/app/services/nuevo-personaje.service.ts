@@ -568,6 +568,7 @@ export interface HabilidadesFlujoState {
     puntosRestantes: number;
     nivelPersonajeReferencia: number;
     classSkillTemporales: number[];
+    rangosIniciales?: Record<number, number>;
 }
 
 export interface ConjurosCupoPendiente {
@@ -1703,6 +1704,13 @@ export class NuevoPersonajeService {
                 .map((id) => this.toNumber(id))
                 .filter((id) => id > 0)
         ));
+        const rangosIniciales: Record<number, number> = {};
+        (this.personajeCreacion?.Habilidades ?? []).forEach((habilidad) => {
+            const id = this.toNumber(habilidad?.Id);
+            if (id <= 0)
+                return;
+            rangosIniciales[id] = Math.max(0, Math.trunc(this.toNumber(habilidad?.Rangos)));
+        });
 
         this.estadoFlujo.habilidades = {
             activa: true,
@@ -1712,6 +1720,7 @@ export class NuevoPersonajeService {
             puntosRestantes: total,
             nivelPersonajeReferencia: nivelReferencia,
             classSkillTemporales: temporales,
+            rangosIniciales,
         };
         this.estadoFlujo.pasoActual = 'habilidades';
     }
@@ -7148,6 +7157,7 @@ export class NuevoPersonajeService {
             puntosRestantes: 0,
             nivelPersonajeReferencia: 0,
             classSkillTemporales: [],
+            rangosIniciales: {},
         };
     }
 

@@ -169,11 +169,11 @@
                             </mat-chip>
                         </mat-chip-set>
                     </div>
-                    <ng-container *ngIf="mostrarNivelesEnPanelFamiliar()">
+                    <ng-container *ngIf="getNivelesClaseRequeridosFamiliar().length > 0">
                         <div class="requisito-bloque p-2">
                             <p class="mb-2 fw-bold">Niveles de clase requeridos</p>
                             <mat-chip-set class="m-0">
-                                <mat-chip class="h-auto chip-clic sombra3d-sm m-1" *ngFor="let nivel of getNivelesClaseActivos()"
+                                <mat-chip class="h-auto chip-clic sombra3d-sm m-1" *ngFor="let nivel of getNivelesClaseRequeridosFamiliar()"
                                     matTooltip="Pulsa para ver detalles de la clase" [matTooltipShowDelay]="250"
                                     matTooltipClass="tt-accent" (click)="abrirDetallesClase(nivel.idClase)">
                                     {{nivel.nombreClase}} {{nivel.nivel}}
@@ -199,11 +199,11 @@
                             </mat-chip>
                         </mat-chip-set>
                     </div>
-                    <ng-container *ngIf="mostrarNivelesEnPanelCompanero()">
+                    <ng-container *ngIf="getNivelesClaseRequeridosCompanero().length > 0">
                         <div class="requisito-bloque p-2">
                             <p class="mb-2 fw-bold">Niveles de clase requeridos</p>
                             <mat-chip-set class="m-0">
-                                <mat-chip class="h-auto chip-clic sombra3d-sm m-1" *ngFor="let nivel of getNivelesClaseActivos()"
+                                <mat-chip class="h-auto chip-clic sombra3d-sm m-1" *ngFor="let nivel of getNivelesClaseRequeridosCompanero()"
                                     matTooltip="Pulsa para ver detalles de la clase" [matTooltipShowDelay]="250"
                                     matTooltipClass="tt-accent" (click)="abrirDetallesClase(nivel.idClase)">
                                     {{nivel.nombreClase}} {{nivel.nivel}}

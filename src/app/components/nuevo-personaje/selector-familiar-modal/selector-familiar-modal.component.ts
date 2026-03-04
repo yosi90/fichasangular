@@ -8,6 +8,12 @@ export interface SelectorFamiliarConfirmacion {
     nombre: string;
 }
 
+export interface SelectorFamiliarBloqueadoItem {
+    familiar: FamiliarMonstruoDetalle;
+    razones: string[];
+    nivelMinimoRequerido: number | null;
+}
+
 @Component({
     selector: 'app-selector-familiar-modal',
     templateUrl: './selector-familiar-modal.component.html',
@@ -16,8 +22,10 @@ export interface SelectorFamiliarConfirmacion {
 export class SelectorFamiliarModalComponent {
     @Input() titulo = 'Seleccionar familiar';
     @Input() familiaresElegibles: FamiliarMonstruoDetalle[] = [];
+    @Input() familiaresBloqueados: SelectorFamiliarBloqueadoItem[] = [];
+    @Input() nivelesRequeridos: Record<string, number> = {};
     @Input() familiaresSeleccionados: FamiliarMonstruoDetalle[] = [];
-    @Input() plantillaSeleccionada: FamiliarPlantillaId = 1;
+    @Input() plantillaSeleccionada: FamiliarPlantillaId | null = null;
     @Input() incluirHomebrew = false;
     @Input() cuposDisponibles = 0;
     @Input() nombreFamiliar = '';
@@ -25,21 +33,27 @@ export class SelectorFamiliarModalComponent {
     @Output() confirmar = new EventEmitter<SelectorFamiliarConfirmacion>();
     @Output() omitir = new EventEmitter<void>();
     @Output() detalle = new EventEmitter<FamiliarMonstruoDetalle>();
-    @Output() plantillaChange = new EventEmitter<FamiliarPlantillaId>();
+    @Output() plantillaChange = new EventEmitter<FamiliarPlantillaId | null>();
     @Output() incluirHomebrewChange = new EventEmitter<boolean>();
     @Output() nombreFamiliarChange = new EventEmitter<string>();
 
     filtroTexto = '';
+    mostrarSoloElegibles = true;
     idFamiliarSeleccionado = 0;
     idPlantillaSeleccionada = 0;
 
     get familiaresFiltrados(): FamiliarMonstruoDetalle[] {
         const filtro = this.normalizarTexto(this.filtroTexto);
+        const listado = this.familiaresListado;
         if (filtro.length < 1)
-            return [...(this.familiaresElegibles ?? [])];
-        return (this.familiaresElegibles ?? []).filter((familiar) =>
+            return listado;
+        return listado.filter((familiar) =>
             this.normalizarTexto(familiar?.Nombre ?? '').includes(filtro)
         );
+    }
+
+    get cantidadFamiliaresListado(): number {
+        return this.familiaresListado.length;
     }
 
     get familiaresColumnaA(): FamiliarMonstruoDetalle[] {
@@ -56,7 +70,7 @@ export class SelectorFamiliarModalComponent {
 
     get puedeConfirmar(): boolean {
         return this.familiaresFiltrados.some((familiar) =>
-            this.esSeleccionado(familiar)
+            this.esSeleccionado(familiar) && this.esFamiliarElegible(familiar)
         );
     }
 
@@ -81,7 +95,13 @@ export class SelectorFamiliarModalComponent {
         this.idPlantillaSeleccionada = Number(familiar?.Plantilla?.Id ?? 0);
     }
 
-    onCambiarPlantilla(value: FamiliarPlantillaId): void {
+    onCambiarPlantilla(value: FamiliarPlantillaId | null): void {
+        if (value === null || value === undefined) {
+            this.plantillaChange.emit(null);
+            this.idFamiliarSeleccionado = 0;
+            this.idPlantillaSeleccionada = 0;
+            return;
+        }
         const parsed = Number(value);
         if (parsed < 1 || parsed > 5)
             return;
@@ -106,13 +126,19 @@ export class SelectorFamiliarModalComponent {
         this.detalle.emit(familiar);
     }
 
+    onAlternarSoloElegibles(): void {
+        this.mostrarSoloElegibles = !this.mostrarSoloElegibles;
+        this.idFamiliarSeleccionado = 0;
+        this.idPlantillaSeleccionada = 0;
+    }
+
     onConfirmar(): void {
         const familiar = this.familiaresFiltrados.find((item) => this.esSeleccionado(item));
-        if (!familiar)
+        if (!familiar || !this.esFamiliarElegible(familiar))
             return;
         this.confirmar.emit({
             familiar,
-            plantilla: this.plantillaSeleccionada,
+            plantilla: this.getIdPlantillaFamiliarSeguro(Number(familiar?.Plantilla?.Id ?? 1)),
             nombre: `${this.nombreFamiliar ?? ''}`.trim(),
         });
     }
@@ -138,6 +164,28 @@ export class SelectorFamiliarModalComponent {
         return 'Basica';
     }
 
+    esFamiliarElegible(familiar: FamiliarMonstruoDetalle): boolean {
+        return (this.familiaresElegibles ?? []).some((item) => this.sonMismoFamiliar(item, familiar));
+    }
+
+    getEtiquetaEstado(familiar: FamiliarMonstruoDetalle): string {
+        return this.esFamiliarElegible(familiar) ? 'Elegible' : 'Bloqueada';
+    }
+
+    getMotivosBloqueo(familiar: FamiliarMonstruoDetalle): string[] {
+        const bloqueado = (this.familiaresBloqueados ?? []).find((item) => this.sonMismoFamiliar(item?.familiar, familiar));
+        if (!bloqueado)
+            return [];
+        return Array.from(new Set((bloqueado.razones ?? []).filter((motivo) => `${motivo ?? ''}`.trim().length > 0)));
+    }
+
+    getNivelRequerido(familiar: FamiliarMonstruoDetalle): number | null {
+        const nivel = Number(this.nivelesRequeridos?.[this.getClaveFamiliar(familiar)] ?? 0);
+        if (!Number.isFinite(nivel) || nivel <= 0)
+            return null;
+        return Math.trunc(nivel);
+    }
+
     trackByFamiliar(index: number, familiar: FamiliarMonstruoDetalle): string {
         return `${index}:${Number(familiar?.Id_familiar ?? 0)}:${Number(familiar?.Plantilla?.Id ?? 0)}`;
     }
@@ -159,6 +207,45 @@ export class SelectorFamiliarModalComponent {
             return true;
         const selector = 'input, textarea, select, button, a, [role="button"], [role="checkbox"], [role="option"], [role="listbox"], [role="menuitem"], .cdk-overlay-pane';
         return !!target.closest(selector);
+    }
+
+    private get familiaresListado(): FamiliarMonstruoDetalle[] {
+        const elegibles = [...(this.familiaresElegibles ?? [])];
+        if (this.mostrarSoloElegibles)
+            return elegibles;
+        const dedupe = new Map<string, FamiliarMonstruoDetalle>();
+        elegibles.forEach((familiar) => {
+            dedupe.set(this.getClaveFamiliar(familiar), familiar);
+        });
+        (this.familiaresBloqueados ?? []).forEach((item) => {
+            const familiar = item?.familiar;
+            if (!familiar)
+                return;
+            const clave = this.getClaveFamiliar(familiar);
+            if (!dedupe.has(clave))
+                dedupe.set(clave, familiar);
+        });
+        return Array.from(dedupe.values());
+    }
+
+    private getClaveFamiliar(familiar: FamiliarMonstruoDetalle | null | undefined): string {
+        return `${Number(familiar?.Id_familiar ?? 0)}:${Number(familiar?.Plantilla?.Id ?? 0)}`;
+    }
+
+    private sonMismoFamiliar(a: FamiliarMonstruoDetalle | null | undefined, b: FamiliarMonstruoDetalle | null | undefined): boolean {
+        return this.getClaveFamiliar(a) === this.getClaveFamiliar(b);
+    }
+
+    private getIdPlantillaFamiliarSeguro(idPlantilla: number): FamiliarPlantillaId {
+        if (idPlantilla === 2)
+            return 2;
+        if (idPlantilla === 3)
+            return 3;
+        if (idPlantilla === 4)
+            return 4;
+        if (idPlantilla === 5)
+            return 5;
+        return 1;
     }
 
     private normalizarTexto(value: string): string {

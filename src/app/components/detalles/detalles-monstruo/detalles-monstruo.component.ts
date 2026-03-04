@@ -10,6 +10,10 @@ import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-
     styleUrls: ['./detalles-monstruo.component.sass']
 })
 export class DetallesMonstruoComponent {
+    private static readonly DOTE_IDS_COMPANERO = new Set<number>([53, 56]);
+    private static readonly DOTE_IDS_FAMILIAR = new Set<number>([45, 46, 48]);
+    private static readonly CLASE_IDS_COMPANERO = new Set<number>([5, 6]);
+    private static readonly CLASE_IDS_FAMILIAR = new Set<number>([8, 9]);
     private monstruoData!: MonstruoDetalle;
 
     constructor(private manualDetalleNavSvc: ManualDetalleNavigationService) { }
@@ -239,30 +243,14 @@ export class DetallesMonstruoComponent {
         return this.getAlineamientosRequeridosLabel(tipo) !== '-';
     }
 
-    tieneNivelesClaseRequeridos(): boolean {
-        return this.getNivelesClaseActivos().length > 0;
-    }
-
     tieneRequisitosFamiliar(): boolean {
         return this.tieneAlineamientosRequeridos('Familiar')
-            || this.mostrarNivelesEnPanelFamiliar();
+            || this.getNivelesClaseRequeridosFamiliar().length > 0;
     }
 
     tieneRequisitosCompanero(): boolean {
         return this.tieneAlineamientosRequeridos('Companero')
-            || this.mostrarNivelesEnPanelCompanero();
-    }
-
-    mostrarNivelesEnPanelFamiliar(): boolean {
-        if (!this.tieneNivelesClaseRequeridos())
-            return false;
-
-        return this.tieneAlineamientosRequeridos('Familiar')
-            || !this.tieneAlineamientosRequeridos('Companero');
-    }
-
-    mostrarNivelesEnPanelCompanero(): boolean {
-        return this.tieneNivelesClaseRequeridos() && !this.mostrarNivelesEnPanelFamiliar();
+            || this.getNivelesClaseRequeridosCompanero().length > 0;
     }
 
     getPersonajesRelacionadosFamiliarLabel(): string {
@@ -294,14 +282,36 @@ export class DetallesMonstruoComponent {
     }
 
     getNivelesClaseActivos(): Array<{ idClase: number; nombreClase: string; nivel: number; plantilla: string; dote: string; }> {
-        return (this.monstruo?.Niveles_clase ?? [])
-            .filter(item => this.toNumber(item?.Clase?.Id) > 0 && this.tieneTextoVisible(item?.Clase?.Nombre))
-            .map(item => ({
-                idClase: this.toNumber(item?.Clase?.Id),
-                nombreClase: `${item?.Clase?.Nombre ?? ''}`.trim(),
-                nivel: this.toNumber(item?.Nivel),
-                plantilla: `${item?.Plantilla?.Nombre ?? ''}`.trim(),
-                dote: `${item?.Dote?.Nombre ?? ''}`.trim(),
+        return this.getNivelesClaseNormalizados().map((item) => ({
+            idClase: item.idClase,
+            nombreClase: item.nombreClase,
+            nivel: item.nivel,
+            plantilla: item.plantilla,
+            dote: item.dote,
+        }));
+    }
+
+    getNivelesClaseRequeridosFamiliar(): Array<{ idClase: number; nombreClase: string; nivel: number; plantilla: string; dote: string; }> {
+        return this.getNivelesClaseNormalizados()
+            .filter((item) => this.getContextosNivelClase(item).includes('Familiar'))
+            .map((item) => ({
+                idClase: item.idClase,
+                nombreClase: item.nombreClase,
+                nivel: item.nivel,
+                plantilla: item.plantilla,
+                dote: item.dote,
+            }));
+    }
+
+    getNivelesClaseRequeridosCompanero(): Array<{ idClase: number; nombreClase: string; nivel: number; plantilla: string; dote: string; }> {
+        return this.getNivelesClaseNormalizados()
+            .filter((item) => this.getContextosNivelClase(item).includes('Companero'))
+            .map((item) => ({
+                idClase: item.idClase,
+                nombreClase: item.nombreClase,
+                nivel: item.nivel,
+                plantilla: item.plantilla,
+                dote: item.dote,
             }));
     }
 
@@ -361,6 +371,82 @@ export class DetallesMonstruoComponent {
     private toNumber(value: any): number {
         const parsed = Number(value);
         return Number.isFinite(parsed) ? parsed : 0;
+    }
+
+    private getNivelesClaseNormalizados(): Array<{
+        idClase: number;
+        nombreClase: string;
+        nivel: number;
+        plantillaId: number;
+        plantilla: string;
+        doteId: number;
+        dote: string;
+    }> {
+        return (this.monstruo?.Niveles_clase ?? [])
+            .filter(item => this.toNumber(item?.Clase?.Id) > 0 && this.tieneTextoVisible(item?.Clase?.Nombre))
+            .map((item) => ({
+                idClase: this.toNumber(item?.Clase?.Id),
+                nombreClase: `${item?.Clase?.Nombre ?? ''}`.trim(),
+                nivel: this.toNumber(item?.Nivel),
+                plantillaId: this.toNumber(item?.Plantilla?.Id),
+                plantilla: `${item?.Plantilla?.Nombre ?? ''}`.trim(),
+                doteId: this.toNumber(item?.Dote?.Id),
+                dote: `${item?.Dote?.Nombre ?? ''}`.trim(),
+            }));
+    }
+
+    private getContextosNivelClase(nivel: {
+        idClase: number;
+        nombreClase: string;
+        plantillaId: number;
+        plantilla: string;
+        doteId: number;
+        dote: string;
+    }): Array<'Familiar' | 'Companero'> {
+        const contextos = new Set<'Familiar' | 'Companero'>();
+        const doteNormalizada = this.normalizar(nivel?.dote ?? '');
+        const claseNormalizada = this.normalizar(nivel?.nombreClase ?? '');
+        const plantillaNormalizada = this.normalizar(nivel?.plantilla ?? '');
+
+        if (DetallesMonstruoComponent.DOTE_IDS_COMPANERO.has(this.toNumber(nivel?.doteId))
+            || doteNormalizada.includes('companero')
+            || doteNormalizada.includes('compañero')) {
+            contextos.add('Companero');
+        }
+        if (DetallesMonstruoComponent.DOTE_IDS_FAMILIAR.has(this.toNumber(nivel?.doteId))
+            || doteNormalizada.includes('familiar')) {
+            contextos.add('Familiar');
+        }
+
+        if (DetallesMonstruoComponent.CLASE_IDS_COMPANERO.has(this.toNumber(nivel?.idClase))
+            || claseNormalizada === 'druida'
+            || claseNormalizada === 'explorador'
+            || claseNormalizada === 'ranger') {
+            contextos.add('Companero');
+        }
+        if (DetallesMonstruoComponent.CLASE_IDS_FAMILIAR.has(this.toNumber(nivel?.idClase))
+            || claseNormalizada === 'mago'
+            || claseNormalizada === 'hechicero'
+            || claseNormalizada === 'wizard'
+            || claseNormalizada === 'sorcerer') {
+            contextos.add('Familiar');
+        }
+
+        if (this.toNumber(nivel?.plantillaId) > 0 || plantillaNormalizada !== 'no aplica')
+            contextos.add('Familiar');
+
+        if (contextos.size < 1) {
+            if (this.monstruo?.Familiar && !this.monstruo?.Companero)
+                contextos.add('Familiar');
+            else if (this.monstruo?.Companero && !this.monstruo?.Familiar)
+                contextos.add('Companero');
+            else {
+                contextos.add('Familiar');
+                contextos.add('Companero');
+            }
+        }
+
+        return Array.from(contextos.values());
     }
 
     private normalizar(value: string): string {

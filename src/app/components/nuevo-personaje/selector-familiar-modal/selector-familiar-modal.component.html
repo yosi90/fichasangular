@@ -37,6 +37,7 @@
             <mat-form-field appearance="fill" class="filtro-plantilla">
                 <mat-label>Plantilla</mat-label>
                 <mat-select [value]="plantillaSeleccionada" (valueChange)="onCambiarPlantilla($event)">
+                    <mat-option [value]="null">Cualquiera</mat-option>
                     <mat-option [value]="1">Básica</mat-option>
                     <mat-option [value]="2">Dracónica</mat-option>
                     <mat-option [value]="3">Celestial</mat-option>
@@ -51,6 +52,10 @@
                 (change)="onCambiarHomebrew($event.checked)">
                 Incluir homebrew
             </mat-slide-toggle>
+
+            <mat-chip-option color="accent" class="filtro-chip" [selected]="mostrarSoloElegibles" (click)="onAlternarSoloElegibles()">
+                {{mostrarSoloElegibles ? 'Solo elegibles' : 'Mostrar bloqueadas'}}
+            </mat-chip-option>
         </div>
 
         <div class="familiares-listado" *ngIf="familiaresFiltrados.length > 0; else sinFamiliaresTpl">
@@ -61,15 +66,22 @@
                         class="familiar-item"
                         *ngFor="let familiar of familiaresColumnaA; trackBy: trackByFamiliar"
                         [class.seleccionado]="esSeleccionado(familiar)"
+                        [class.elegible]="esFamiliarElegible(familiar)"
                         (click)="onSeleccionarFamiliar(familiar)">
                         <span class="familiar-nombre">{{familiar.Nombre}}</span>
                         <span class="familiar-manual">{{familiar.Manual.Nombre || '-'}}</span>
                         <span class="familiar-acciones">
                             <mat-chip class="m-0">{{getEtiquetaPlantilla(familiar?.Plantilla?.Id ?? 1)}}</mat-chip>
+                            <mat-chip class="familiar-chip-estado" [ngClass]="esFamiliarElegible(familiar) ? 'good' : 'bad'">
+                                {{getEtiquetaEstado(familiar)}}
+                            </mat-chip>
                             <button mat-icon-button type="button" (click)="onAbrirDetalle(familiar, $event)" aria-label="Ver detalle">
                                 <mat-icon>open_in_new</mat-icon>
                             </button>
                         </span>
+                        <div class="familiar-motivos" *ngIf="!esFamiliarElegible(familiar)">
+                            <p class="m-0" *ngFor="let motivo of getMotivosBloqueo(familiar)">• {{motivo}}</p>
+                        </div>
                     </button>
                 </div>
 
@@ -79,15 +91,22 @@
                         class="familiar-item"
                         *ngFor="let familiar of familiaresColumnaB; trackBy: trackByFamiliar"
                         [class.seleccionado]="esSeleccionado(familiar)"
+                        [class.elegible]="esFamiliarElegible(familiar)"
                         (click)="onSeleccionarFamiliar(familiar)">
                         <span class="familiar-nombre">{{familiar.Nombre}}</span>
                         <span class="familiar-manual">{{familiar.Manual.Nombre || '-'}}</span>
                         <span class="familiar-acciones">
                             <mat-chip class="m-0">{{getEtiquetaPlantilla(familiar?.Plantilla?.Id ?? 1)}}</mat-chip>
+                            <mat-chip class="familiar-chip-estado" [ngClass]="esFamiliarElegible(familiar) ? 'good' : 'bad'">
+                                {{getEtiquetaEstado(familiar)}}
+                            </mat-chip>
                             <button mat-icon-button type="button" (click)="onAbrirDetalle(familiar, $event)" aria-label="Ver detalle">
                                 <mat-icon>open_in_new</mat-icon>
                             </button>
                         </span>
+                        <div class="familiar-motivos" *ngIf="!esFamiliarElegible(familiar)">
+                            <p class="m-0" *ngFor="let motivo of getMotivosBloqueo(familiar)">• {{motivo}}</p>
+                        </div>
                     </button>
                 </div>
 
@@ -97,25 +116,32 @@
                         class="familiar-item"
                         *ngFor="let familiar of familiaresColumnaC; trackBy: trackByFamiliar"
                         [class.seleccionado]="esSeleccionado(familiar)"
+                        [class.elegible]="esFamiliarElegible(familiar)"
                         (click)="onSeleccionarFamiliar(familiar)">
                         <span class="familiar-nombre">{{familiar.Nombre}}</span>
                         <span class="familiar-manual">{{familiar.Manual.Nombre || '-'}}</span>
                         <span class="familiar-acciones">
                             <mat-chip class="m-0">{{getEtiquetaPlantilla(familiar?.Plantilla?.Id ?? 1)}}</mat-chip>
+                            <mat-chip class="familiar-chip-estado" [ngClass]="esFamiliarElegible(familiar) ? 'good' : 'bad'">
+                                {{getEtiquetaEstado(familiar)}}
+                            </mat-chip>
                             <button mat-icon-button type="button" (click)="onAbrirDetalle(familiar, $event)" aria-label="Ver detalle">
                                 <mat-icon>open_in_new</mat-icon>
                             </button>
                         </span>
+                        <div class="familiar-motivos" *ngIf="!esFamiliarElegible(familiar)">
+                            <p class="m-0" *ngFor="let motivo of getMotivosBloqueo(familiar)">• {{motivo}}</p>
+                        </div>
                     </button>
                 </div>
             </div>
         </div>
 
         <ng-template #sinFamiliaresTpl>
-            <p class="m-0 detalle" *ngIf="familiaresElegibles.length < 1">
+            <p class="m-0 detalle" *ngIf="cantidadFamiliaresListado < 1">
                 No hay familiares elegibles con las reglas actuales.
             </p>
-            <p class="m-0 detalle" *ngIf="familiaresElegibles.length > 0">
+            <p class="m-0 detalle" *ngIf="cantidadFamiliaresListado > 0">
                 No hay resultados para "{{filtroTexto}}".
             </p>
         </ng-template>

@@ -4,6 +4,7 @@ import { Personaje } from 'src/app/interfaces/personaje';
 import {
     construirCatalogoFamiliaresDesdeMonstruos,
     EstadoCuposFamiliar,
+    evaluarFamiliaresElegibilidad,
     filtrarFamiliaresElegibles,
     resolverEstadoCuposFamiliarEspecial47
 } from './familiar-reglas';
@@ -275,5 +276,72 @@ describe('familiar-reglas', () => {
 
         const catalogo = construirCatalogoFamiliaresDesdeMonstruos(monstruos as any);
         expect(catalogo.map((item) => `${item.Id_familiar}:${item.Plantilla.Id}`)).toEqual(['50:1', '50:3']);
+    });
+
+    it('muestra motivo de alineamiento explícito aunque no haya fuentes de clase actuales', () => {
+        const estado: EstadoCuposFamiliar = {
+            especialId: 47,
+            fuentes: [],
+            fuentesClaseIds: [],
+            fuentesTotales: 0,
+            cuposConsumidos: 0,
+            cuposDisponibles: 0,
+            nivelLanzadorFamiliar: 0,
+        };
+        const familiar = crearFamiliarMock({
+            Id_familiar: 40,
+            Nombre: 'Perro intermitente',
+            Plantilla: { Id: 5, Nombre: 'Mejorado' },
+            Alineamientos_requeridos: {
+                Familiar: [{ Id: 1, Nombre: 'Legal bueno' }],
+                Companero: [],
+            },
+            Niveles_clase: [crearNivelClase(9, 5, 5, 10, 10)],
+        });
+
+        const evaluaciones = evaluarFamiliaresElegibilidad({
+            familiares: [familiar],
+            estado,
+            alineamientoPersonaje: 'Caotico maligno',
+            plantillaSeleccionada: 5,
+            incluirHomebrew: true,
+        });
+
+        expect(evaluaciones.length).toBe(1);
+        expect(evaluaciones[0].elegible).toBeFalse();
+        expect(evaluaciones[0].razones).toContain('Requiere alineamiento Legal bueno.');
+    });
+
+    it('detalla exigencias de alineamiento cuando viene por preferencias de clase', () => {
+        const estado: EstadoCuposFamiliar = {
+            especialId: 47,
+            fuentes: [{ idClase: 9, nombreClase: 'Mago', nivelActual: 3 }],
+            fuentesClaseIds: [9],
+            fuentesTotales: 1,
+            cuposConsumidos: 0,
+            cuposDisponibles: 1,
+            nivelLanzadorFamiliar: 3,
+        };
+        const familiar = crearFamiliarMock({
+            Id_familiar: 61,
+            Nombre: 'Murciélago',
+            Plantilla: { Id: 1, Nombre: 'Básica' },
+            Alineamientos_requeridos: { Familiar: [], Companero: [] },
+            Niveles_clase: [crearNivelClase(9, 1, 1, 4, 9)],
+        });
+
+        const evaluaciones = evaluarFamiliaresElegibilidad({
+            familiares: [familiar],
+            estado,
+            alineamientoPersonaje: 'Caotico bueno',
+            plantillaSeleccionada: 1,
+            incluirHomebrew: true,
+        });
+
+        expect(evaluaciones.length).toBe(1);
+        expect(evaluaciones[0].elegible).toBeFalse();
+        expect(evaluaciones[0].razones.some((item) => item.includes('Exigencias del monstruo:'))).toBeTrue();
+        expect(evaluaciones[0].razones.some((item) => item.includes('legal:'))).toBeTrue();
+        expect(evaluaciones[0].razones.some((item) => item.includes('moral:'))).toBeTrue();
     });
 });

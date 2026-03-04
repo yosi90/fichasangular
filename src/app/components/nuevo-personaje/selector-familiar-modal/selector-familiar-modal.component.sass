@@ -55,7 +55,7 @@
 
 .selector-filtros
     display: grid
-    grid-template-columns: minmax(0, 1fr) minmax(180px, 220px) auto
+    grid-template-columns: minmax(0, 1fr) minmax(180px, 220px) auto auto
     gap: 8px
     align-items: center
 
@@ -68,6 +68,9 @@
 .homebrew-toggle
     color: #e7ebf6
     margin-left: 8px
+
+.filtro-chip
+    cursor: pointer
 
 :host ::ng-deep .filtro-texto .mat-mdc-form-field-subscript-wrapper,
 :host ::ng-deep .filtro-plantilla .mat-mdc-form-field-subscript-wrapper
@@ -126,6 +129,22 @@
     display: flex
     align-items: center
     justify-content: space-between
+
+.familiar-chip-estado
+    font-size: .72rem
+
+.familiar-chip-estado.good
+    background-color: rgb(78, 87, 66)
+
+.familiar-chip-estado.bad
+    background-color: rgb(87, 66, 66)
+
+.familiar-motivos
+    border-top: 1px solid rgba(255, 255, 255, 0.14)
+    padding-top: 4px
+    font-size: .8rem
+    opacity: .92
+    color: #ffd3c2
 
 .detalle
     font-size: .92rem

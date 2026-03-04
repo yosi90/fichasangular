@@ -24,11 +24,24 @@ export interface FiltroCompanerosElegiblesInput {
     companeros: CompaneroMonstruoDetalle[];
     estado: EstadoCuposCompanero;
     alineamientoPersonaje: string;
-    plantillaSeleccionada: CompaneroPlantillaSelector;
+    plantillaSeleccionada: CompaneroPlantillaSelector | null;
     incluirHomebrew: boolean;
     tieneDoteElevado: boolean;
     tieneDoteSabandija: boolean;
     nivelSeleccionado?: number | null;
+}
+
+export interface CompaneroElegibilidadEvaluadaItem {
+    companero: CompaneroMonstruoDetalle;
+    elegible: boolean;
+    razones: string[];
+    nivelMinimoRequerido: number | null;
+}
+
+interface AlineamientoRequeridoNormalizado {
+    id: number;
+    nombre: string;
+    nombreNormalizado: string;
 }
 
 const ESPECIAL_COMPANERO_ID = 29;
@@ -51,6 +64,18 @@ const ALIGNMENT_NAME_TO_ID: Record<string, number> = {
     'caótico neutral': 8,
     'caotico maligno': 9,
     'caótico maligno': 9,
+};
+
+const ALIGNMENT_ID_TO_NAME: Record<number, string> = {
+    1: 'Legal bueno',
+    2: 'Legal neutral',
+    3: 'Legal maligno',
+    4: 'Neutral bueno',
+    5: 'Neutral auténtico',
+    6: 'Neutral maligno',
+    7: 'Caótico bueno',
+    8: 'Caótico neutral',
+    9: 'Caótico maligno',
 };
 
 const PLANTILLA_SELECTOR_TO_ID: Record<CompaneroPlantillaSelector, number> = {
@@ -107,6 +132,67 @@ function resolveDoteIdFromNivelClase(nivelClase: MonstruoNivelClase | null | und
         ?? (nivelClase as any)?.Id_dote
         ?? (nivelClase as any)?.id_dote
     );
+}
+
+function resolveAlineamientoBasicoIdFromRaw(item: any): number {
+    return toNumber(
+        item?.Id
+        ?? item?.id
+        ?? item?.Id_basico
+        ?? item?.id_basico
+        ?? item?.Id_alineamiento
+        ?? item?.id_alineamiento
+    );
+}
+
+function isAlineamientoNombreVisible(nombre: string): boolean {
+    if (!nombre)
+        return false;
+    return nombre !== 'no aplica'
+        && nombre !== 'no especifica'
+        && nombre !== 'no se especifica'
+        && nombre !== '-'
+        && nombre !== 'cualquiera'
+        && nombre !== 'ninguno';
+}
+
+function normalizeAlineamientosRequeridos(raw: any[]): AlineamientoRequeridoNormalizado[] {
+    const items = Array.isArray(raw) ? raw : [];
+    const dedupe = new Map<string, AlineamientoRequeridoNormalizado>();
+
+    items.forEach((item) => {
+        const id = resolveAlineamientoBasicoIdFromRaw(item);
+        const nombreRaw = `${item?.Nombre ?? item?.nombre ?? ''}`.trim();
+        const nombreNormalizado = normalizeText(nombreRaw);
+        const nombreVisible = isAlineamientoNombreVisible(nombreNormalizado) ? nombreRaw : '';
+        if (id <= 0 && nombreVisible.length < 1)
+            return;
+        const clave = `${id}:${normalizeText(nombreVisible)}`;
+        if (dedupe.has(clave))
+            return;
+        dedupe.set(clave, {
+            id: Math.max(0, id),
+            nombre: nombreVisible,
+            nombreNormalizado: normalizeText(nombreVisible),
+        });
+    });
+
+    return Array.from(dedupe.values());
+}
+
+function getAlineamientosRequeridosLabel(items: AlineamientoRequeridoNormalizado[]): string {
+    const labels = items.map((item) => {
+        if (`${item?.nombre ?? ''}`.trim().length > 0)
+            return `${item.nombre}`.trim();
+        const nombreCatalogo = ALIGNMENT_ID_TO_NAME[toNumber(item?.id)];
+        if (`${nombreCatalogo ?? ''}`.trim().length > 0)
+            return `${nombreCatalogo}`.trim();
+        return '';
+    }).filter((item) => item.length > 0);
+
+    if (labels.length < 1)
+        return 'desconocido';
+    return labels.join(', ');
 }
 
 function getPlantillaNombreBySelector(selector: CompaneroPlantillaSelector): string {
@@ -217,6 +303,90 @@ function cumpleAlineamientoPorPreferencias(
         && cumplePreferenciaMoral(idMoral, idAlineamientoBasico);
 }
 
+function getPreferenciaEjeLabel(
+    idPreferencia: number,
+    nombrePreferencia: string,
+    eje: 'legal' | 'moral'
+): string | null {
+    const nombre = `${nombrePreferencia ?? ''}`.trim();
+    const nombreNormalizado = normalizeText(nombre);
+    const nombreVisible = nombre.length > 0
+        && nombreNormalizado !== 'ninguna preferencia'
+        && nombreNormalizado !== 'no aplica'
+        && nombreNormalizado !== 'no especifica'
+        && nombreNormalizado !== '-'
+        && nombreNormalizado !== 'cualquiera';
+    if (nombreVisible)
+        return nombre;
+
+    if (idPreferencia < 4 || idPreferencia > 9)
+        return null;
+
+    if (eje === 'legal') {
+        if (idPreferencia === 4)
+            return 'Legal';
+        if (idPreferencia === 5)
+            return 'Neutral';
+        if (idPreferencia === 6)
+            return 'Caótico';
+        if (idPreferencia === 7)
+            return 'No legal';
+        if (idPreferencia === 8)
+            return 'No neutral';
+        if (idPreferencia === 9)
+            return 'No caótico';
+    } else {
+        if (idPreferencia === 4)
+            return 'Bueno';
+        if (idPreferencia === 5)
+            return 'Neutral';
+        if (idPreferencia === 6)
+            return 'Maligno';
+        if (idPreferencia === 7)
+            return 'No bueno';
+        if (idPreferencia === 8)
+            return 'No neutral';
+        if (idPreferencia === 9)
+            return 'No maligno';
+    }
+
+    return null;
+}
+
+function getDetallePreferenciasAlineamiento(nivelesClase: MonstruoNivelClase[]): string {
+    const lista = Array.isArray(nivelesClase) ? nivelesClase : [];
+    const detalles = new Set<string>();
+
+    lista.forEach((nivelClase) => {
+        const legal = getPreferenciaEjeLabel(
+            toNumber(nivelClase?.Preferencia_legal?.Id),
+            `${nivelClase?.Preferencia_legal?.Nombre ?? ''}`,
+            'legal'
+        );
+        const moral = getPreferenciaEjeLabel(
+            toNumber(nivelClase?.Preferencia_moral?.Id),
+            `${nivelClase?.Preferencia_moral?.Nombre ?? ''}`,
+            'moral'
+        );
+        const partes: string[] = [];
+        if (legal)
+            partes.push(`legal: ${legal}`);
+        if (moral)
+            partes.push(`moral: ${moral}`);
+        if (partes.length < 1)
+            return;
+
+        const nombreClase = `${nivelClase?.Clase?.Nombre ?? ''}`.trim();
+        const nivel = Math.max(0, Math.trunc(toNumber(nivelClase?.Nivel)));
+        const prefijo = nombreClase.length > 0
+            ? `${nombreClase} nivel ${nivel}`
+            : `Nivel ${nivel}`;
+        detalles.add(`${prefijo} (${partes.join(', ')})`);
+    });
+
+    return Array.from(detalles.values()).join('; ');
+}
+
 export function getPlantillaIdCompanero(selector: CompaneroPlantillaSelector): number {
     return PLANTILLA_SELECTOR_TO_ID[selector];
 }
@@ -270,6 +440,12 @@ export function resolverEstadoCuposCompaneroEspecial29(
 }
 
 export function filtrarCompanerosElegibles(input: FiltroCompanerosElegiblesInput): CompaneroMonstruoDetalle[] {
+    return evaluarCompanerosElegibilidad(input)
+        .filter((item) => item.elegible)
+        .map((item) => item.companero);
+}
+
+export function evaluarCompanerosElegibilidad(input: FiltroCompanerosElegiblesInput): CompaneroElegibilidadEvaluadaItem[] {
     const companeros = Array.isArray(input?.companeros) ? input.companeros : [];
     const fuentesClaseIds = new Set(
         (input?.estado?.fuentesClaseIds ?? [])
@@ -277,77 +453,128 @@ export function filtrarCompanerosElegibles(input: FiltroCompanerosElegiblesInput
             .filter((id) => id > 0)
     );
     const nivelEfectivoCompanero = Math.max(0, toNumber(input?.estado?.nivelEfectivoCompanero));
-    const plantillaSeleccionada = input?.plantillaSeleccionada ?? 'base';
+    const plantillaSeleccionada = input?.plantillaSeleccionada ?? null;
     const includeHomebrew = !!input?.incluirHomebrew;
     const alineamientoPersonaje = normalizeText(input?.alineamientoPersonaje ?? '');
     const idAlineamientoBasico = resolveAlineamientoBasicoId(input?.alineamientoPersonaje ?? '');
     const nivelSeleccionado = Math.max(0, Math.trunc(toNumber(input?.nivelSeleccionado)));
-    const doteRequerida = getDoteIdRequeridaCompanero(plantillaSeleccionada);
-    const plantillaIdEsperada = getPlantillaIdCompanero(plantillaSeleccionada);
-
-    if (doteRequerida === DOTE_PLANTILLA_ELEVADO && !input?.tieneDoteElevado)
-        return [];
-    if (doteRequerida === DOTE_PLANTILLA_SABANDIJA && !input?.tieneDoteSabandija)
-        return [];
-
-    const dedupe = new Set<string>();
-    const resultado: CompaneroMonstruoDetalle[] = [];
+    const plantillaIdEsperada = plantillaSeleccionada ? getPlantillaIdCompanero(plantillaSeleccionada) : 0;
+    const dedupe = new Map<string, CompaneroElegibilidadEvaluadaItem>();
 
     companeros.forEach((companero) => {
         const idCompanero = toNumber(companero?.Id_companero);
         const idPlantilla = toNumber(companero?.Plantilla?.Id);
         if (idCompanero <= 0 || idPlantilla <= 0)
             return;
-        if (idPlantilla !== plantillaIdEsperada)
+        if (plantillaIdEsperada > 0 && idPlantilla !== plantillaIdEsperada)
             return;
+        const razones: string[] = [];
+        const selectorPlantillaItem: CompaneroPlantillaSelector = idPlantilla === 2 ? 'elevado' : idPlantilla === 3 ? 'sabandija' : 'base';
+        const doteRequeridaItem = getDoteIdRequeridaCompanero(selectorPlantillaItem);
+        const dotePlantillaDisponible = (doteRequeridaItem !== DOTE_PLANTILLA_ELEVADO || !!input?.tieneDoteElevado)
+            && (doteRequeridaItem !== DOTE_PLANTILLA_SABANDIJA || !!input?.tieneDoteSabandija);
+        if (!dotePlantillaDisponible) {
+            if (doteRequeridaItem === DOTE_PLANTILLA_ELEVADO)
+                razones.push('Requiere la dote Compañero elevado para esta plantilla.');
+            else if (doteRequeridaItem === DOTE_PLANTILLA_SABANDIJA)
+                razones.push('Requiere la dote Compañero sabandija para esta plantilla.');
+        }
         if (!includeHomebrew && companero?.Oficial === false)
-            return;
+            razones.push('Es una opción homebrew y el filtro Homebrew está desactivado.');
 
-        const nivelesClase = (companero?.Niveles_clase ?? []).filter((nivelClase) => {
+        const nivelesClaseFuenteYDote = (companero?.Niveles_clase ?? []).filter((nivelClase) => {
             const idClase = toNumber(nivelClase?.Clase?.Id);
-            const nivel = toNumber(nivelClase?.Nivel);
             const idDote = resolveDoteIdFromNivelClase(nivelClase);
             if (!fuentesClaseIds.has(idClase))
                 return false;
-            if (idDote !== doteRequerida)
+            if (idDote !== doteRequeridaItem)
                 return false;
-            if (nivel < 0 || nivel > nivelEfectivoCompanero)
+            if (toNumber(nivelClase?.Nivel) < 0)
+                return false;
+            return true;
+        });
+        const nivelesClaseContextoDote = (companero?.Niveles_clase ?? []).filter((nivelClase) => {
+            const idDote = resolveDoteIdFromNivelClase(nivelClase);
+            return idDote === doteRequeridaItem && toNumber(nivelClase?.Nivel) >= 0;
+        });
+        const nivelesClase = nivelesClaseFuenteYDote.filter((nivelClase) => {
+            const nivel = toNumber(nivelClase?.Nivel);
+            if (nivel > nivelEfectivoCompanero)
                 return false;
             if (nivelSeleccionado > 0 && nivel !== nivelSeleccionado)
                 return false;
             return true;
         });
-        if (nivelesClase.length < 1)
-            return;
-
-        const requeridosExplicitos = (companero?.Alineamientos_requeridos?.Companero ?? [])
-            .map((item) => normalizeText(item?.Nombre ?? ''))
-            .filter((nombre) => nombre.length > 0);
-
-        let cumpleAlineamiento = false;
-        if (requeridosExplicitos.length > 0) {
-            cumpleAlineamiento = alineamientoPersonaje.length > 0
-                && requeridosExplicitos.some((nombre) => nombre === alineamientoPersonaje);
-        } else if (idAlineamientoBasico > 0) {
-            cumpleAlineamiento = nivelesClase.some((nivelClase) =>
-                cumpleAlineamientoPorPreferencias(nivelClase, idAlineamientoBasico)
-            );
+        const nivelMinimoRequerido = nivelesClaseFuenteYDote.length > 0
+            ? Math.min(...nivelesClaseFuenteYDote.map((nivelClase) => Math.max(0, Math.trunc(toNumber(nivelClase?.Nivel)))))
+            : null;
+        if (nivelesClaseFuenteYDote.length < 1) {
+            razones.push('Esta criatura no tiene progresión válida para tus clases con compañero animal.');
+        } else if (nivelesClase.length < 1) {
+            if (nivelSeleccionado > 0)
+                razones.push(`No cumple el filtro de nivel ${nivelSeleccionado}.`);
+            if (nivelMinimoRequerido !== null && nivelMinimoRequerido > nivelEfectivoCompanero)
+                razones.push(`Necesitas al menos nivel ${nivelMinimoRequerido} de druida equivalente para esta opción.`);
+            else if (razones.length < 1) {
+                razones.push('No tiene niveles de clase compatibles con tus fuentes actuales de compañero.');
+            }
         }
 
-        if (!cumpleAlineamiento)
-            return;
+        const requeridosExplicitos = normalizeAlineamientosRequeridos(companero?.Alineamientos_requeridos?.Companero ?? []);
+        if (requeridosExplicitos.length > 0 || nivelesClaseContextoDote.length > 0) {
+            let cumpleAlineamiento = false;
+            if (requeridosExplicitos.length > 0) {
+                cumpleAlineamiento = requeridosExplicitos.some((item) => {
+                    const idRequerido = toNumber(item?.id);
+                    if (idRequerido > 0 && idAlineamientoBasico > 0 && idRequerido === idAlineamientoBasico)
+                        return true;
+                    if (alineamientoPersonaje.length > 0 && `${item?.nombreNormalizado ?? ''}`.length > 0)
+                        return item.nombreNormalizado === alineamientoPersonaje;
+                    return false;
+                });
+                if (!cumpleAlineamiento) {
+                    const requeridosTexto = getAlineamientosRequeridosLabel(requeridosExplicitos);
+                    razones.push(`Requiere alineamiento ${requeridosTexto}.`);
+                }
+            } else if (idAlineamientoBasico > 0) {
+                cumpleAlineamiento = nivelesClaseContextoDote.some((nivelClase) =>
+                    cumpleAlineamientoPorPreferencias(nivelClase, idAlineamientoBasico)
+                );
+                if (!cumpleAlineamiento) {
+                    const detalle = getDetallePreferenciasAlineamiento(nivelesClaseContextoDote);
+                    if (detalle.length > 0)
+                        razones.push(`No cumple las preferencias de alineamiento para este compañero. Exigencias del monstruo: ${detalle}.`);
+                    else
+                        razones.push('No cumple las preferencias de alineamiento para este compañero.');
+                }
+            } else {
+                razones.push('No se pudo interpretar el alineamiento actual del personaje.');
+            }
+        }
 
         const dedupeKey = `${idCompanero}:${idPlantilla}`;
-        if (dedupe.has(dedupeKey))
+        const evaluacion: CompaneroElegibilidadEvaluadaItem = {
+            companero,
+            elegible: razones.length < 1,
+            razones: Array.from(new Set(razones)),
+            nivelMinimoRequerido,
+        };
+        const previa = dedupe.get(dedupeKey);
+        if (!previa || (!previa.elegible && evaluacion.elegible)) {
+            dedupe.set(dedupeKey, evaluacion);
             return;
-        dedupe.add(dedupeKey);
-        resultado.push(companero);
+        }
+        if (!previa.elegible && !evaluacion.elegible) {
+            dedupe.set(dedupeKey, {
+                ...previa,
+                razones: Array.from(new Set([...(previa.razones ?? []), ...(evaluacion.razones ?? [])])),
+                nivelMinimoRequerido: previa.nivelMinimoRequerido ?? evaluacion.nivelMinimoRequerido,
+            });
+        }
     });
 
-    resultado.sort((a, b) =>
-        `${a?.Nombre ?? ''}`.localeCompare(`${b?.Nombre ?? ''}`, 'es', { sensitivity: 'base' })
-    );
-    return resultado;
+    return Array.from(dedupe.values())
+        .sort((a, b) => `${a?.companero?.Nombre ?? ''}`.localeCompare(`${b?.companero?.Nombre ?? ''}`, 'es', { sensitivity: 'base' }));
 }
 
 export function resolverNivelesCompaneroDisponibles(input: Omit<FiltroCompanerosElegiblesInput, 'nivelSeleccionado'>): number[] {
@@ -357,7 +584,9 @@ export function resolverNivelesCompaneroDisponibles(input: Omit<FiltroCompaneros
     });
     const fuentesClaseIds = new Set((input?.estado?.fuentesClaseIds ?? []).map((id) => toNumber(id)).filter((id) => id > 0));
     const nivelEfectivoCompanero = Math.max(0, toNumber(input?.estado?.nivelEfectivoCompanero));
-    const doteRequerida = getDoteIdRequeridaCompanero(input?.plantillaSeleccionada ?? 'base');
+    const doteRequerida = input?.plantillaSeleccionada
+        ? getDoteIdRequeridaCompanero(input.plantillaSeleccionada)
+        : null;
     const niveles = new Set<number>();
 
     companeros.forEach((companero) => {
@@ -367,7 +596,7 @@ export function resolverNivelesCompaneroDisponibles(input: Omit<FiltroCompaneros
             const idDote = resolveDoteIdFromNivelClase(nivelClase);
             if (!fuentesClaseIds.has(idClase))
                 return;
-            if (idDote !== doteRequerida)
+            if (doteRequerida !== null && idDote !== doteRequerida)
                 return;
             if (nivel < 0 || nivel > nivelEfectivoCompanero)
                 return;

@@ -92,4 +92,36 @@ describe('SelectorCompaneroModalComponent', () => {
         component.onCambiarNombreCompanero('Compañero de Tarek');
         expect(spy).toHaveBeenCalledWith('Compañero de Tarek');
     });
+
+    it('muestra bloqueadas con motivos al desactivar solo elegibles', () => {
+        const bloqueado = crearCompanero(9, 'Pantera base', 1);
+        component.companerosBloqueados = [{
+            companero: bloqueado,
+            razones: ['No cumple las preferencias de alineamiento para este compañero.'],
+            nivelMinimoRequerido: 4,
+        }];
+
+        expect(component.companerosFiltrados.some((item) => item.Id_companero === 9)).toBeFalse();
+        component.onAlternarSoloElegibles();
+        expect(component.companerosFiltrados.some((item) => item.Id_companero === 9)).toBeTrue();
+        expect(component.getEtiquetaEstado(bloqueado)).toBe('Bloqueada');
+        expect(component.getMotivosBloqueo(bloqueado)).toContain('No cumple las preferencias de alineamiento para este compañero.');
+    });
+
+    it('no confirma un compañero bloqueado aunque esté seleccionado', () => {
+        const bloqueado = crearCompanero(10, 'Tejón base', 1);
+        component.companerosElegibles = [];
+        component.companerosBloqueados = [{
+            companero: bloqueado,
+            razones: ['No tiene niveles de clase compatibles con tus fuentes actuales de compañero.'],
+            nivelMinimoRequerido: 6,
+        }];
+        component.onAlternarSoloElegibles();
+        component.onSeleccionarCompanero(bloqueado);
+        const spy = spyOn(component.confirmar, 'emit');
+
+        component.onConfirmar();
+
+        expect(spy).not.toHaveBeenCalled();
+    });
 });

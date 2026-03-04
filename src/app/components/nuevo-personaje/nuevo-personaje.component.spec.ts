@@ -1853,6 +1853,83 @@ describe('NuevoPersonajeComponent', () => {
         expect(component.Personaje.Oficial).toBeTrue();
     });
 
+    it('avisa por alineamiento solo al nivel 1 de cada clase incompatible', async () => {
+        const detalleNivelBase = {
+            Ataque_base: '+1',
+            Salvaciones: { Fortaleza: '+2', Reflejos: '+0', Voluntad: '+0' },
+            Nivel_max_poder_accesible_nivel_lanzadorPsionico: -1,
+            Reserva_psionica: 0,
+            Aumentos_clase_lanzadora: [],
+            Conjuros_diarios: crearConjurosDiariosMock(),
+            Conjuros_conocidos_nivel_a_nivel: {},
+            Conjuros_conocidos_total: 0,
+            Dotes: [],
+            Especiales: [],
+        };
+        const barbaro = crearClaseMock({
+            Id: 381,
+            Nombre: 'Bárbaro',
+            Puntos_habilidad: { Id: 1, Valor: 0 },
+            Alineamiento: {
+                Id: 100,
+                Basico: { Id_basico: 0, Nombre: 'No aplica' },
+                Ley: { Id_ley: 0, Nombre: 'Nunca legal' },
+                Moral: { Id_moral: 0, Nombre: 'No aplica' },
+                Prioridad: { Id_prioridad: 3, Nombre: 'Siempre' },
+                Descripcion: '',
+            },
+            Desglose_niveles: [
+                {
+                    ...detalleNivelBase,
+                    Nivel: 1,
+                } as any,
+                {
+                    ...detalleNivelBase,
+                    Nivel: 2,
+                    Ataque_base: '+2',
+                    Salvaciones: { Fortaleza: '+3', Reflejos: '+0', Voluntad: '+0' },
+                } as any,
+            ],
+        });
+        const monje = crearClaseMock({
+            Id: 382,
+            Nombre: 'Monje estricto',
+            Puntos_habilidad: { Id: 1, Valor: 0 },
+            Alineamiento: {
+                Id: 101,
+                Basico: { Id_basico: 0, Nombre: 'No aplica' },
+                Ley: { Id_ley: 0, Nombre: 'Nunca legal' },
+                Moral: { Id_moral: 0, Nombre: 'No aplica' },
+                Prioridad: { Id_prioridad: 3, Nombre: 'Siempre' },
+                Descripcion: '',
+            },
+        });
+        component.Personaje.Alineamiento = 'Legal bueno';
+        component.catalogoClases = [barbaro, monje];
+        nuevoPSvc.setCatalogoClases(component.catalogoClases);
+        spyOn<any>(component, 'abrirSelectorAumentosCaracteristica').and.resolveTo(true);
+        const swalSpy = spyOn(Swal, 'fire').and.resolveTo({ isConfirmed: true } as any);
+
+        (component as any).recalcularClasesVisibles();
+        component.seleccionarClaseParaAplicar(barbaro);
+        await component.continuarDesdeClases();
+        (component as any).recalcularClasesVisibles();
+
+        component.seleccionarClaseParaAplicar(barbaro);
+        await component.continuarDesdeClases();
+        (component as any).recalcularClasesVisibles();
+
+        component.seleccionarClaseParaAplicar(monje);
+        await component.continuarDesdeClases();
+
+        const avisosAlineamiento = swalSpy.calls.allArgs()
+            .map((args) => args[0] as any)
+            .filter((config) => config?.title === 'Aviso de alineamiento de clase');
+        expect(avisosAlineamiento.length).toBe(2);
+        expect(component.Personaje.desgloseClases.some((c) => c.Nombre === 'Bárbaro' && c.Nivel === 2)).toBeTrue();
+        expect(component.Personaje.desgloseClases.some((c) => c.Nombre === 'Monje estricto' && c.Nivel === 1)).toBeTrue();
+    });
+
     it('aplicar clase homebrew marca personaje como no oficial', async () => {
         const claseHomebrew = crearClaseMock({
             Id: 34,
@@ -1922,6 +1999,34 @@ describe('NuevoPersonajeComponent', () => {
         expect(component.getCaracteristicaAbreviada('Inteligencia')).toBe('Int');
         expect(component.getCaracteristicaAbreviada('Sabiduría')).toBe('Sab');
         expect(component.getCaracteristicaAbreviada('Carisma')).toBe('Car');
+    });
+
+    it('marca como rango nuevo solo cuando supera el valor inicial de la sesión', () => {
+        const habilidad = {
+            Id: 10,
+            Nombre: 'Avistar',
+            Rangos: 2,
+            Clasea: true,
+            Entrenada: false,
+        } as any;
+        nuevoPSvc.EstadoFlujo.habilidades.rangosIniciales = { 10: 1 };
+
+        expect(component.tieneRangosHabilidad(habilidad)).toBeTrue();
+        expect(component.esRangoNuevoHabilidad(habilidad)).toBeTrue();
+    });
+
+    it('marca como rango previo cuando no supera el valor inicial', () => {
+        const habilidad = {
+            Id: 11,
+            Nombre: 'Escuchar',
+            Rangos: 1,
+            Clasea: true,
+            Entrenada: false,
+        } as any;
+        nuevoPSvc.EstadoFlujo.habilidades.rangosIniciales = { 11: 1 };
+
+        expect(component.tieneRangosHabilidad(habilidad)).toBeTrue();
+        expect(component.esRangoNuevoHabilidad(habilidad)).toBeFalse();
     });
 
     it('onExtraHabilidadChange actualiza extra y desbloquea continuar si era obligatorio', () => {
