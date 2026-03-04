@@ -58,6 +58,8 @@ export interface AutoRepartoRecomendacion {
 }
 
 export interface Personaje extends PersonajeSimple {
+    Id_region?: number;
+    Region?: { Id: number; Nombre: string; } | null;
     RazaBase?: PersonajeSimple['Raza'] | null;
     desgloseClases: {
         Nombre: string;
@@ -237,6 +239,8 @@ export interface Personaje extends PersonajeSimple {
     Companeros: CompaneroMonstruoDetalle[];
     Conjuros: Conjuro[];
     Claseas: {
+        Id?: number;
+        Id_extra?: number;
         Nombre: string;
         Extra: string;
     }[]

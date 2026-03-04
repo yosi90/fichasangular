@@ -135,7 +135,7 @@ describe("plantilla-elegibilidad", () => {
         expect(res.estado).toBe("eligible");
     });
 
-    it("ignora opcional mayor que 3 para paridad C# literal", () => {
+    it("evalua grupos opcionales mayores que 3", () => {
         const plantilla = crearPlantillaMock({
             Prerrequisitos_flags: { caracteristica: true },
             Prerrequisitos: {
@@ -143,6 +143,26 @@ describe("plantilla-elegibilidad", () => {
                 actitud_prohibido: [],
                 alineamiento_requerido: [],
                 caracteristica: [{ Id_caracteristica: 1, Cantidad: 18, opcional: 4 }],
+                criaturas_compatibles: [],
+            },
+        });
+
+        const res = evaluarElegibilidadPlantilla(plantilla, crearContextoBase());
+        expect(res.estado).toBe("blocked_failed");
+        expect(res.razones.some((r) => r.includes("grupo opcional 4"))).toBeTrue();
+    });
+
+    it("grupo opcional mayor que 3 cumple si alguna fila del grupo pasa", () => {
+        const plantilla = crearPlantillaMock({
+            Prerrequisitos_flags: { caracteristica: true },
+            Prerrequisitos: {
+                actitud_requerido: [],
+                actitud_prohibido: [],
+                alineamiento_requerido: [],
+                caracteristica: [
+                    { Id_caracteristica: 1, Cantidad: 18, opcional: 4 },
+                    { Id_caracteristica: 2, Cantidad: 10, opcional: 4 },
+                ],
                 criaturas_compatibles: [],
             },
         });

@@ -198,6 +198,82 @@ describe("raza-mutacion utils", () => {
         expect(evaluacion.estado).toBe("eligible");
     });
 
+    it("soporta grupos opcionales mayores que 3", () => {
+        const mutada = crearRazaMock({
+            Mutada: true,
+            Mutacion: { Es_mutada: true },
+            Prerrequisitos_flags: {
+                actitud_requerido: true,
+            },
+            Prerrequisitos: {
+                actitud_requerido: [
+                    { id_actitud: 3, opcional: 4 },
+                    { id_actitud: 1, opcional: 4 },
+                ],
+            },
+        });
+        const base = crearRazaMock({
+            Alineamiento: {
+                ...crearRazaMock().Alineamiento,
+                Basico: { Id_basico: 1, Nombre: "Legal neutral" },
+            },
+        });
+
+        const evaluacion = evaluarElegibilidadRazaBase(mutada, base);
+
+        expect(evaluacion.estado).toBe("eligible");
+    });
+
+    it("interpreta ids legacy de ejes de alineamiento (4..6)", () => {
+        const mutada = crearRazaMock({
+            Mutada: true,
+            Mutacion: { Es_mutada: true },
+            Prerrequisitos_flags: {
+                alineamiento_requerido: true,
+            },
+            Prerrequisitos: {
+                alineamiento_requerido: [{ id_ley: 4, id_moral: 4, opcional: 0 }],
+            },
+        });
+        const base = crearRazaMock({
+            Alineamiento: {
+                ...crearRazaMock().Alineamiento,
+                Basico: { Id_basico: 1, Nombre: "Legal bueno" },
+                Ley: { Id_ley: 4, Nombre: "Legal" },
+                Moral: { Id_moral: 4, Nombre: "Bueno" },
+            },
+        });
+
+        const evaluacion = evaluarElegibilidadRazaBase(mutada, base);
+
+        expect(evaluacion.estado).toBe("eligible");
+        expect(evaluacion.advertencias.length).toBe(0);
+    });
+
+    it("prioriza fallback textual cuando id_ley/id_moral no son reconocidos", () => {
+        const mutada = crearRazaMock({
+            Mutada: true,
+            Mutacion: { Es_mutada: true },
+            Prerrequisitos_flags: {
+                alineamiento_requerido: true,
+            },
+            Prerrequisitos: {
+                alineamiento_requerido: [{ id_ley: 99, ley: "Legal", id_moral: 99, moral: "Bueno", opcional: 0 }],
+            },
+        });
+        const base = crearRazaMock({
+            Alineamiento: {
+                ...crearRazaMock().Alineamiento,
+                Basico: { Id_basico: 1, Nombre: "Legal bueno" },
+            },
+        });
+
+        const evaluacion = evaluarElegibilidadRazaBase(mutada, base);
+
+        expect(evaluacion.estado).toBe("eligible");
+        expect(evaluacion.advertencias.length).toBe(0);
+    });
+
     it("prerrequisito no soportado devuelve elegible con warning", () => {
         const mutada = crearRazaMock({
             Mutada: true,

@@ -1,6 +1,6 @@
 # API Endpoints (Programa de fichas - Backend)
 
-Fecha de generacion: 2026-02-24
+Fecha de generacion: 2026-03-04
 
 Resumen
 - Base URL (local): `http://127.0.0.1:5000`
@@ -223,6 +223,7 @@ PersonajeDetalle
 | i | number | Id del personaje |
 | n | string | Nombre |
 | ownerUid | string/null | Firebase UID del creador (AppUser relacionado) |
+| id_region | number | Id de region de origen (`0` = Sin región) |
 | dcp | string | Descripcion de personalidad |
 | dh | string | Descripcion de historia |
 | a | number | Ataque base |
@@ -314,6 +315,7 @@ PersonajeSimplificado
 | i | number | Id del personaje |
 | n | string | Nombre |
 | ownerUid | string/null | Firebase UID del creador (AppUser relacionado) |
+| id_region | number | Id de region de origen (`0` = Sin región) |
 | r | object | `RazaSimplificada` |
 | c | string | Lista serializada "Clase Nivel" separada por `, ` |
 | p | string | Descripcion de personalidad |
@@ -336,6 +338,7 @@ Body minimo (ejemplo)
     "ataqueBase": "0",
     "idRaza": 1,
     "idTipoCriatura": 1,
+    "idRegion": 0,
     "campana": { "id": 1 },
     "trama": { "id": 1 },
     "subtrama": { "id": 1 },
@@ -353,6 +356,10 @@ Body minimo (ejemplo)
   "tamano": { "idTamano": 0, "origen": "API" }
 }
 ```
+
+Validaciones relevantes
+- `personaje.idRegion` (o `personaje.id_region`) es obligatorio y debe existir en `regiones`.
+- Se permite `idRegion=0` para "Sin región".
 
 Respuesta 201
 ```json

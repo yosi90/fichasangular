@@ -21,6 +21,7 @@ import { IdiomaDetalle } from 'src/app/interfaces/idioma';
 import { CompaneroMonstruoDetalle, FamiliarMonstruoDetalle, MonstruoDetalle } from 'src/app/interfaces/monstruo';
 import { Personaje } from 'src/app/interfaces/personaje';
 import { Plantilla } from 'src/app/interfaces/plantilla';
+import { RegionDetalle } from 'src/app/interfaces/region';
 import { Raza } from 'src/app/interfaces/raza';
 import { RacialDetalle, RacialReferencia } from 'src/app/interfaces/racial';
 import { Rasgo } from 'src/app/interfaces/rasgo';
@@ -44,6 +45,7 @@ import { EnemigoPredilectoService } from 'src/app/services/enemigo-predilecto.se
 import { EscuelaConjurosService } from 'src/app/services/escuela-conjuros.service';
 import { EspecialService } from 'src/app/services/especial.service';
 import { MonstruoService } from 'src/app/services/monstruo.service';
+import { RegionService } from 'src/app/services/region.service';
 import { FichasDescargaBackgroundService } from 'src/app/services/fichas-descarga-background.service';
 import { PersonajeService } from 'src/app/services/personaje.service';
 import {
@@ -90,7 +92,7 @@ import { RazaService } from 'src/app/services/raza.service';
 import { TipoCriaturaService } from 'src/app/services/tipo-criatura.service';
 import { VentajaService } from 'src/app/services/ventaja.service';
 import { PlantillaEvaluacionResultado, evaluarElegibilidadPlantilla, resolverAlineamientoPlantillas } from 'src/app/services/utils/plantilla-elegibilidad';
-import { buildIdentidadPrerrequisitos, extraerIdsPositivos } from 'src/app/services/utils/identidad-prerrequisitos';
+import { buildIdentidadPrerrequisitos } from 'src/app/services/utils/identidad-prerrequisitos';
 import { GrupoRacialesOpcionales, SeleccionRacialesOpcionales, agruparRacialesPorOpcional, getClaveSeleccionRacial } from 'src/app/services/utils/racial-opcionales';
 import { RacialEvaluacionResultado, evaluarRacialParaSeleccion } from 'src/app/services/utils/racial-prerrequisitos';
 import { ClaseEvaluacionResultado } from 'src/app/services/utils/clase-elegibilidad';
@@ -310,6 +312,7 @@ export class NuevoPersonajeComponent {
     catalogoEscuelas: EscuelaConjuros[] = [];
     catalogoDisciplinas: DisciplinaConjuros[] = [];
     catalogoDominios: DominioDetalle[] = [];
+    catalogoRegiones: RegionDetalle[] = [];
     catalogoEnemigosPredilectos: EnemigoPredilectoDetalle[] = [];
     catalogoDeidades: DeidadDetalle[] = [];
     clasesListadoFiltrado: ClaseListadoItem[] = [];
@@ -454,6 +457,7 @@ export class NuevoPersonajeComponent {
     private escuelasCatalogoCargado = false;
     private disciplinasCatalogoCargado = false;
     private dominiosSub?: Subscription;
+    private regionesSub?: Subscription;
     private enemigosPredilectosSub?: Subscription;
     private deidadesSub?: Subscription;
     private tiposCriaturaSub?: Subscription;
@@ -481,6 +485,7 @@ export class NuevoPersonajeComponent {
         private grupoArmaSvc: GrupoArmaService,
         private grupoArmaduraSvc: GrupoArmaduraService,
         private dominioSvc: DominioService,
+        private regionSvc: RegionService,
         private deidadSvc: DeidadService,
         private tipoCriaturaSvc: TipoCriaturaService,
         private monstruoSvc: MonstruoService,
@@ -496,6 +501,7 @@ export class NuevoPersonajeComponent {
         this.Personaje = this.nuevoPSvc.PersonajeCreacion;
         this.sincronizarOwnerUidEnCreacion();
         this.normalizarDeidadSeleccionada();
+        this.normalizarRegionSeleccionada();
         this.nuevoPSvc.sincronizarConfigGeneradorDesdeCuenta().catch(() => undefined);
         this.normalizarAlineamientoSeleccionado();
         this.sincronizarTabConPaso();
@@ -512,6 +518,7 @@ export class NuevoPersonajeComponent {
         this.cargarGruposArmas();
         this.cargarGruposArmaduras();
         this.cargarDominios();
+        this.cargarRegiones();
         this.cargarEnemigosPredilectos();
         this.cargarDeidades();
         this.cargarClases();
@@ -536,6 +543,7 @@ export class NuevoPersonajeComponent {
         this.clasesSub?.unsubscribe();
         this.dotesSub?.unsubscribe();
         this.dominiosSub?.unsubscribe();
+        this.regionesSub?.unsubscribe();
         this.enemigosPredilectosSub?.unsubscribe();
         this.deidadesSub?.unsubscribe();
         this.tiposCriaturaSub?.unsubscribe();
@@ -926,6 +934,19 @@ export class NuevoPersonajeComponent {
             && this.esNumeroValidoPositivo(this.Personaje.Edad)
             && this.esNumeroValidoPositivo(this.Personaje.Peso)
             && this.esNumeroValidoPositivo(this.Personaje.Altura);
+    }
+
+    get idRegionSeleccionadaBasicos(): number {
+        const raw = (this.Personaje as any)?.Id_region
+            ?? (this.Personaje as any)?.id_region
+            ?? (this.Personaje as any)?.Region?.Id
+            ?? (this.Personaje as any)?.Region?.id
+            ?? (this.Personaje as any)?.region?.Id
+            ?? (this.Personaje as any)?.region?.id;
+        const parsed = Math.trunc(Number(raw));
+        if (!Number.isFinite(parsed) || parsed < 0)
+            return 0;
+        return parsed;
     }
 
     get campanaTieneTramas(): boolean {
@@ -1732,6 +1753,64 @@ export class NuevoPersonajeComponent {
         this.Personaje.Deidad = deidad.length > 0 ? deidad : this.deidadSinSeleccion;
     }
 
+    private normalizarRegionSeleccionada(): void {
+        const rawId = (this.Personaje as any)?.Id_region
+            ?? (this.Personaje as any)?.id_region
+            ?? (this.Personaje as any)?.Region?.Id
+            ?? (this.Personaje as any)?.Region?.id
+            ?? (this.Personaje as any)?.region?.Id
+            ?? (this.Personaje as any)?.region?.id;
+        const rawIdText = `${rawId ?? ''}`.trim();
+        const idParsed = Math.trunc(Number(rawIdText));
+        const idRawValido = rawIdText.length > 0 && Number.isFinite(idParsed) && idParsed >= 0;
+
+        const nombreRaw = `${(this.Personaje as any)?.Region?.Nombre
+            ?? (this.Personaje as any)?.Region?.nombre
+            ?? (this.Personaje as any)?.region?.Nombre
+            ?? (this.Personaje as any)?.region?.nombre
+            ?? ''}`.trim();
+
+        let idRegion: number;
+        if (idRawValido) {
+            idRegion = idParsed;
+        } else {
+            const idPorNombre = this.resolverIdRegionCatalogoPorNombre(nombreRaw);
+            idRegion = idPorNombre ?? 0;
+        }
+
+        const nombreCatalogo = this.resolverNombreRegionCatalogoPorId(idRegion);
+        const nombreRegion = idRegion === 0
+            ? 'Sin región'
+            : (nombreRaw.length > 0 ? nombreRaw : nombreCatalogo);
+
+        (this.Personaje as any).Id_region = idRegion;
+        (this.Personaje as any).Region = {
+            Id: idRegion,
+            Nombre: nombreRegion,
+        };
+    }
+
+    private resolverIdRegionCatalogoPorNombre(nombreRegion: string): number | null {
+        const nombreNorm = this.normalizarTexto(nombreRegion ?? '');
+        if (nombreNorm.length < 1)
+            return null;
+        const region = (this.catalogoRegiones ?? [])
+            .find((item) => this.normalizarTexto(item?.Nombre ?? '') === nombreNorm);
+        const id = Math.trunc(Number(region?.Id ?? 0));
+        if (!Number.isFinite(id) || id <= 0)
+            return null;
+        return id;
+    }
+
+    private resolverNombreRegionCatalogoPorId(idRegion: number): string {
+        const id = Math.trunc(Number(idRegion));
+        if (!Number.isFinite(id) || id <= 0)
+            return '';
+        const region = (this.catalogoRegiones ?? [])
+            .find((item) => Math.trunc(Number(item?.Id ?? 0)) === id);
+        return `${region?.Nombre ?? ''}`.trim();
+    }
+
     private resetHardAlignmentOverride(): void {
         this.hardAlignmentOverrideConfirmed = false;
     }
@@ -1745,6 +1824,22 @@ export class NuevoPersonajeComponent {
     onDeidadChange(): void {
         this.normalizarDeidadSeleccionada();
         this.resetHardAlignmentOverride();
+        this.recalcularOficialidad();
+    }
+
+    onRegionOrigenChange(value: any): void {
+        const parsed = Math.trunc(Number(value));
+        const idRegion = Number.isFinite(parsed) && parsed >= 0 ? parsed : 0;
+        const nombreCatalogo = this.resolverNombreRegionCatalogoPorId(idRegion);
+        const nombreRegion = idRegion === 0
+            ? 'Sin región'
+            : (nombreCatalogo.length > 0 ? nombreCatalogo : `${(this.Personaje as any)?.Region?.Nombre ?? ''}`.trim());
+
+        (this.Personaje as any).Id_region = idRegion;
+        (this.Personaje as any).Region = {
+            Id: idRegion,
+            Nombre: nombreRegion,
+        };
         this.recalcularOficialidad();
     }
 
@@ -3614,6 +3709,7 @@ export class NuevoPersonajeComponent {
             idCampana,
             idTrama,
             idSubtrama,
+            idRegion: this.resolverIdRegionCreacion(),
             idAlineamiento: this.resolverIdAlineamientoCreacion(),
             idDeidad: this.resolverIdDeidadCreacion(),
             idGenero: this.resolverIdGeneroCreacion(),
@@ -3629,6 +3725,7 @@ export class NuevoPersonajeComponent {
                 ventajas: this.mapearCatalogoNombreId(ventajasCatalogo, (item) => item?.Id, (item) => item?.Nombre),
                 escuelas: this.mapearCatalogoNombreId(this.catalogoEscuelas, (item) => item?.Id, (item) => item?.Nombre),
                 disciplinas: this.mapearCatalogoNombreId(this.catalogoDisciplinas, (item) => item?.Id, (item) => item?.Nombre),
+                regiones: this.mapearCatalogoNombreId(this.catalogoRegiones, (item) => item?.Id, (item) => item?.Nombre),
             },
         };
     }
@@ -3679,6 +3776,29 @@ export class NuevoPersonajeComponent {
         const encontrada = (this.catalogoDeidades ?? [])
             .find((item) => this.normalizarTexto(item?.Nombre ?? '') === deidadNorm);
         return this.toPositiveInt(encontrada?.Id) ?? 0;
+    }
+
+    private resolverIdRegionCreacion(): number {
+        const rawId = (this.Personaje as any)?.Id_region
+            ?? (this.Personaje as any)?.id_region
+            ?? (this.Personaje as any)?.Region?.Id
+            ?? (this.Personaje as any)?.Region?.id
+            ?? (this.Personaje as any)?.region?.Id
+            ?? (this.Personaje as any)?.region?.id;
+        const rawText = `${rawId ?? ''}`.trim();
+        if (rawText.length > 0) {
+            const idParsed = Math.trunc(Number(rawText));
+            if (Number.isFinite(idParsed) && idParsed >= 0)
+                return idParsed;
+        }
+
+        const nombreRegion = `${(this.Personaje as any)?.Region?.Nombre
+            ?? (this.Personaje as any)?.Region?.nombre
+            ?? (this.Personaje as any)?.region?.Nombre
+            ?? (this.Personaje as any)?.region?.nombre
+            ?? ''}`.trim();
+        const idPorNombre = this.resolverIdRegionCatalogoPorNombre(nombreRegion);
+        return idPorNombre ?? 0;
     }
 
     private resolverIdGeneroCreacion(): number | null {
@@ -5002,6 +5122,22 @@ export class NuevoPersonajeComponent {
         });
     }
 
+    private cargarRegiones(): void {
+        this.regionesSub?.unsubscribe();
+        this.regionesSub = this.regionSvc.getRegiones().subscribe({
+            next: (regiones) => {
+                this.catalogoRegiones = regiones ?? [];
+                this.nuevoPSvc.setCatalogoRegiones(this.catalogoRegiones);
+                this.normalizarRegionSeleccionada();
+            },
+            error: () => {
+                this.catalogoRegiones = [];
+                this.nuevoPSvc.setCatalogoRegiones([]);
+                this.normalizarRegionSeleccionada();
+            },
+        });
+    }
+
     private cargarEnemigosPredilectos(): void {
         this.enemigosPredilectosSub?.unsubscribe();
         this.enemigosPredilectosSub = this.enemigoPredilectoSvc.getEnemigosPredilectos().subscribe({
@@ -5833,16 +5969,16 @@ export class NuevoPersonajeComponent {
 
     private getContextoEvaluacionPlantillas(raza: Raza, incluirHomebrew: boolean) {
         const tipoCriaturaActualId = Number(this.Personaje.Tipo_criatura?.Id ?? 0);
-        const subtiposActualesIds = extraerIdsPositivos(
-            buildIdentidadPrerrequisitos(
-                raza,
-                this.nuevoPSvc.RazaBaseSeleccionadaCompleta,
-                this.Personaje.Subtipos
-            ).subtipos
-        );
+        const tiposCriaturaIdentidadIds = buildIdentidadPrerrequisitos(
+            raza,
+            this.nuevoPSvc.RazaBaseSeleccionadaCompleta,
+            this.Personaje.Subtipos
+        ).tiposCriatura
+            .map((tipo) => Number(tipo.id))
+            .filter((id) => Number.isFinite(id) && id > 0);
         const identidadCriaturaActualIds = Array.from(new Set([
             tipoCriaturaActualId,
-            ...subtiposActualesIds,
+            ...tiposCriaturaIdentidadIds,
         ].filter((id) => Number.isFinite(id) && id > 0)));
 
         return {

@@ -8,6 +8,11 @@ function crearPersonajeMock(): Personaje {
         Nombre: 'Aldric',
         ownerUid: 'uid-1',
         visible_otros_usuarios: false,
+        Id_region: 0,
+        Region: {
+            Id: 0,
+            Nombre: 'Sin región',
+        },
         Raza: {
             Id: 1,
             Nombre: 'Humano',
@@ -226,8 +231,26 @@ describe('PersonajeService', () => {
         expect(payload.personaje.nombre).toBe('Aldric');
         expect(payload.personaje.idRaza).toBe(1);
         expect(payload.personaje.idTipoCriatura).toBe(1);
+        expect(payload.personaje.idRegion).toBe(0);
         expect(payload.caracteristicas.fuerza.valor).toBe(10);
         expect(payload.tamano.idTamano).toBe(1);
+    });
+
+    it('prioriza idRegion de contexto cuando está presente', () => {
+        const httpMock = {
+            post: jasmine.createSpy('post').and.returnValue(of({})),
+        } as any;
+        const service = new PersonajeService({} as any, httpMock);
+        const pj = crearPersonajeMock();
+        pj.Id_region = 3;
+
+        const payload = service.construirPayloadCreacionDesdePersonaje(
+            pj,
+            'uid-1',
+            { idCampana: 1, idTrama: 1, idSubtrama: 1, idRegion: 7 }
+        );
+
+        expect(payload.personaje.idRegion).toBe(7);
     });
 
     it('crearPersonajeApiDesdeCreacion usa POST y normaliza respuesta', async () => {
@@ -248,6 +271,7 @@ describe('PersonajeService', () => {
                 ataqueBase: '1',
                 idRaza: 1,
                 idTipoCriatura: 1,
+                idRegion: 0,
                 campana: { id: 1 },
                 trama: { id: 1 },
                 subtrama: { id: 1 },
@@ -277,6 +301,8 @@ describe('PersonajeService', () => {
         } as any;
         const service = new PersonajeService({} as any, httpMock);
         const pj = crearPersonajeMock();
+        pj.Id_region = 4;
+        pj.Region = { Id: 4, Nombre: 'Rashemen' } as any;
         const writeSpy = spyOn<any>(service, 'escribirRutaFirebase').and.resolveTo();
 
         await service.guardarPersonajeEnFirebase(321, pj);
@@ -291,5 +317,8 @@ describe('PersonajeService', () => {
         expect(listado).toBeDefined();
         expect((detalle?.[1] as any)?.DotesContextuales?.[0]?.Contexto?.Id_personaje).toBe(321);
         expect((simple?.[1] as any)?.Campaña).toBe('Sin campaña');
+        expect((detalle?.[1] as any)?.Id_region).toBe(4);
+        expect((simple?.[1] as any)?.Id_region).toBe(4);
+        expect((listado?.[1] as any)?.Id_region).toBe(4);
     });
 });

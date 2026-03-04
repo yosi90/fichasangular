@@ -32,6 +32,7 @@ import { ArmaService } from 'src/app/services/arma.service';
 import { ArmaduraService } from 'src/app/services/armadura.service';
 import { GrupoArmaService } from 'src/app/services/grupo-arma.service';
 import { GrupoArmaduraService } from 'src/app/services/grupo-armadura.service';
+import { RegionService } from 'src/app/services/region.service';
 import { UserService } from 'src/app/services/user.service';
 import { AdminUserRow, AdminUsersService } from 'src/app/services/admin-users.service';
 import { PERMISSION_RESOURCES, PermissionResource, UserRole } from 'src/app/interfaces/user-acl';
@@ -112,6 +113,7 @@ export class AdminPanelComponent implements OnInit, OnDestroy {
         private grupoArmaSvc: GrupoArmaService,
         private grupoArmaduraSvc: GrupoArmaduraService,
         private dominioSvc: DominioService,
+        private regionSvc: RegionService,
         private ambitoSvc: AmbitoService,
         private pabellonSvc: PabellonService,
         private deidadSvc: DeidadService,
@@ -155,6 +157,7 @@ export class AdminPanelComponent implements OnInit, OnDestroy {
             grupos_armas: () => this.grupoArmaSvc.RenovarGruposArmas(),
             grupos_armaduras: () => this.grupoArmaduraSvc.RenovarGruposArmaduras(),
             dominios: () => this.dominioSvc.RenovarDominios(),
+            regiones: () => this.regionSvc.RenovarRegiones(),
             ambitos: () => this.ambitoSvc.RenovarAmbitos(),
             pabellones: () => this.pabellonSvc.RenovarPabellones(),
             deidades: () => this.deidadSvc.RenovarDeidades(),

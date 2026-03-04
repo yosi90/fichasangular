@@ -1643,12 +1643,16 @@ components:
         idEspArcana: { type: integer }
         idEspPsionica: { type: integer }
         idDisProhibida: { type: integer }
+        idRegion:
+          type: integer
+          minimum: 0
+          description: Id de region de origen (`0` = Sin region).
         visible_otros_usuarios: { type: boolean, default: false }
         oficial: { type: boolean }
         campana: { $ref: '#/components/schemas/StoryEntityRef' }
         trama: { $ref: '#/components/schemas/StoryEntityRef' }
         subtrama: { $ref: '#/components/schemas/StoryEntityRef' }
-      required: [nombre, ataqueBase, idRaza, idTipoCriatura]
+      required: [nombre, ataqueBase, idRaza, idTipoCriatura, idRegion]
       additionalProperties: true
 
     PersonajeCreateRequest:
@@ -3021,6 +3025,9 @@ components:
         i: { type: integer }
         n: { type: string }
         ownerUid: { type: string, nullable: true }
+        id_region:
+          type: integer
+          description: Id de region de origen (`0` = Sin region).
         r:
           $ref: '#/components/schemas/RazaSimplificada'
         c: { type: string }
@@ -3038,6 +3045,9 @@ components:
         i: { type: integer }
         n: { type: string }
         ownerUid: { type: string, nullable: true }
+        id_region:
+          type: integer
+          description: Id de region de origen (`0` = Sin region).
         dcp: { type: string }
         dh: { type: string }
         a: { type: integer }

@@ -2,9 +2,11 @@ import { NO_ERRORS_SCHEMA } from '@angular/core';
 import { Database } from '@angular/fire/database';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
+import { of } from 'rxjs';
 import { NuevoPersonajeService } from 'src/app/services/nuevo-personaje.service';
 import { FichasDescargaBackgroundService } from 'src/app/services/fichas-descarga-background.service';
 import { PersonajeService } from 'src/app/services/personaje.service';
+import { RegionService } from 'src/app/services/region.service';
 import { UserService } from 'src/app/services/user.service';
 import { DetallesPersonajeComponent } from './detalles-personaje.component';
 
@@ -12,10 +14,14 @@ describe('DetallesPersonajeComponent', () => {
     let component: DetallesPersonajeComponent;
     let fixture: ComponentFixture<DetallesPersonajeComponent>;
     let fichasDescargaBgSvcMock: any;
+    let regionSvcMock: any;
 
     beforeEach(async () => {
         fichasDescargaBgSvcMock = {
             descargarFichas: jasmine.createSpy('descargarFichas').and.callFake(() => undefined),
+        };
+        regionSvcMock = {
+            getRegiones: () => of([]),
         };
         await TestBed.configureTestingModule({
             declarations: [DetallesPersonajeComponent],
@@ -39,6 +45,10 @@ describe('DetallesPersonajeComponent', () => {
                     useValue: {
                         CurrentUserUid: 'test-uid',
                     },
+                },
+                {
+                    provide: RegionService,
+                    useValue: regionSvcMock,
                 },
                 {
                     provide: Database,
@@ -103,6 +113,27 @@ describe('DetallesPersonajeComponent', () => {
         const html = `${fixture.nativeElement.textContent ?? ''}`;
         expect(html).not.toContain('Sin genero');
         expect(html).not.toContain('Deidad No tener deidad');
+    });
+
+    it('muestra la región cuando Id_region es mayor que 0', () => {
+        regionSvcMock.getRegiones = () => of([{ Id: 2, Nombre: 'Costa de la espada', Oficial: true }]);
+        component.pj.Id_region = 2;
+        component.pj.Region = { Id: 2, Nombre: '' } as any;
+
+        fixture.detectChanges();
+
+        const html = `${fixture.nativeElement.textContent ?? ''}`;
+        expect(html).toContain('Región Costa de la espada');
+    });
+
+    it('no muestra región cuando Id_region es 0', () => {
+        component.pj.Id_region = 0;
+        component.pj.Region = { Id: 0, Nombre: 'Sin región' } as any;
+
+        fixture.detectChanges();
+
+        const html = `${fixture.nativeElement.textContent ?? ''}`;
+        expect(html).not.toContain('Región');
     });
 
     it('no renderiza el bloque "No tiene clase"', () => {

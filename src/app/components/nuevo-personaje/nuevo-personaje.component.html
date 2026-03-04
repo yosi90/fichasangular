@@ -168,6 +168,16 @@
                         </div>
                     </div>
                     <div class="col-md-4 col-12 p-2 basicos-col">
+                        <div class="sombra-caja-sm rounded p-2 my-2 seccion-form">
+                            <mat-chip class="w-100 sombra-caja-sm mb-2">Región de origen</mat-chip>
+                            <mat-form-field appearance="fill" class="w-100">
+                                <mat-label>Región</mat-label>
+                                <mat-select [value]="idRegionSeleccionadaBasicos" (selectionChange)="onRegionOrigenChange($event.value)">
+                                    <mat-option [value]="0">Sin región</mat-option>
+                                    <mat-option *ngFor="let region of catalogoRegiones" [value]="region.Id">{{region.Nombre}}</mat-option>
+                                </mat-select>
+                            </mat-form-field>
+                        </div>
                         <div class="sombra-caja-sm rounded p-2 my-2">
                             <mat-chip class="w-100 sombra-caja-sm mb-2">Contexto</mat-chip>
                             <mat-form-field appearance="fill" class="w-100">

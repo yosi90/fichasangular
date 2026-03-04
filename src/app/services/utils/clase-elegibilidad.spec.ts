@@ -100,9 +100,22 @@ function crearContextoBase(): ClaseEvaluacionContexto {
         ataqueBase: 6,
         alineamiento: 'Legal bueno',
         genero: 'Macho',
-        dotes: [{ id: 100, nombre: 'Ataque poderoso' }],
+        claseas: [{ id: 700, nombre: 'Furia', idExtra: 5, extra: 'Basica' }],
+        habilidades: [{ id: 600, nombre: 'Acrobacias', rangos: 8, idExtra: 9, extra: 'Saltos' }],
+        conjuros: [{ id: 500, nombre: 'Misil magico', idEscuela: 11, escuela: 'Evocacion' }],
+        dotes: [{ id: 100, nombre: 'Ataque poderoso', idExtra: 0, extra: '' }],
         idiomas: [{ id: 200, nombre: 'Dracónico' }],
         dominios: [{ id: 300, nombre: 'Guerra' }],
+        competenciasArmas: [{ id: 1, nombre: 'Espada larga' }],
+        competenciasArmaduras: [{ id: 2, nombre: 'Armadura ligera' }],
+        competenciasGrupoArmas: [{ id: 3, nombre: 'Armas marciales' }],
+        competenciasGrupoArmaduras: [{ id: 4, nombre: 'Escudos' }],
+        lanzador: { arcano: 6, divino: 4, psionico: 3 },
+        nivelesConjuroMaximos: { arcano: 3, divino: 2, psionico: 2 },
+        dgTotal: 7,
+        reservaPsionica: 12,
+        escuelaEspecialista: { id: 11, nombre: 'Evocacion', nivelArcano: 6 },
+        tamanoId: 5,
     };
 }
 
@@ -151,14 +164,11 @@ describe('clase-elegibilidad', () => {
         expect(res.estado).toBe('blocked_failed');
     });
 
-    it('retorna blocked_unknown cuando hay familia activa no soportada', () => {
+    it('retorna blocked_unknown cuando hay una flag desconocida activa', () => {
         const clase = crearClaseBase({
-            Prerrequisitos_flags: {
-                competencia_arma: true,
-            },
+            Prerrequisitos_flags: { foo_no_soportado: true } as any,
             Prerrequisitos: {
                 ...crearClaseBase().Prerrequisitos,
-                competencia_arma: [{ Id_arma: 1, opcional: 0 }],
             },
         });
 
@@ -205,6 +215,23 @@ describe('clase-elegibilidad', () => {
         expect(res.estado).toBe('blocked_failed');
     });
 
+    it('resuelve grupo opcional global entre familias distintas', () => {
+        const clase = crearClaseBase({
+            Prerrequisitos_flags: {
+                idioma: true,
+                dote_elegida: true,
+            },
+            Prerrequisitos: {
+                ...crearClaseBase().Prerrequisitos,
+                idioma: [{ Id_idioma: 999, opcional: 1 }],
+                dote_elegida: [{ Id_dote: 100, opcional: 1 }],
+            },
+        });
+
+        const res = evaluarElegibilidadClase(clase, crearContextoBase());
+        expect(res.estado).toBe('eligible');
+    });
+
     it('evalúa prerrequisito de dominio cuando está soportado', () => {
         const clase = crearClaseBase({
             Prerrequisitos_flags: {
@@ -224,5 +251,120 @@ describe('clase-elegibilidad', () => {
             dominios: [{ id: 301, nombre: 'Ley' }],
         });
         expect(fallo.estado).toBe('blocked_failed');
+    });
+
+    it('evalúa repetido en dote_elegida', () => {
+        const clase = crearClaseBase({
+            Prerrequisitos_flags: {
+                dote_elegida: true,
+            },
+            Prerrequisitos: {
+                ...crearClaseBase().Prerrequisitos,
+                dote_elegida: [{ Id_dote: 100, Repetido: 2, opcional: 0 }],
+            },
+        });
+
+        const fallo = evaluarElegibilidadClase(clase, crearContextoBase());
+        expect(fallo.estado).toBe('blocked_failed');
+
+        const ok = evaluarElegibilidadClase(clase, {
+            ...crearContextoBase(),
+            dotes: [
+                { id: 100, nombre: 'Ataque poderoso', idExtra: 0, extra: '' },
+                { id: 100, nombre: 'Ataque poderoso', idExtra: 0, extra: '' },
+            ],
+        });
+        expect(ok.estado).toBe('eligible');
+    });
+
+    it('evalúa id_extra en dote_elegida', () => {
+        const clase = crearClaseBase({
+            Prerrequisitos_flags: {
+                dote_elegida: true,
+            },
+            Prerrequisitos: {
+                ...crearClaseBase().Prerrequisitos,
+                dote_elegida: [{ Id_dote: 100, Id_extra: 0, opcional: 0 }],
+            },
+        });
+
+        const okConExtra = evaluarElegibilidadClase(clase, {
+            ...crearContextoBase(),
+            dotes: [{ id: 100, nombre: 'Ataque poderoso', idExtra: 7, extra: 'Espada larga' }],
+        });
+        expect(okConExtra.estado).toBe('eligible');
+
+        const falloSinExtra = evaluarElegibilidadClase(clase, {
+            ...crearContextoBase(),
+            dotes: [{ id: 100, nombre: 'Ataque poderoso', idExtra: 0, extra: '' }],
+        });
+        expect(falloSinExtra.estado).toBe('blocked_failed');
+    });
+
+    it('evalua familias extendidas de prerrequisitos de clase', () => {
+        const clase = crearClaseBase({
+            Prerrequisitos_flags: {
+                habilidad_clase: true,
+                clase_especial: true as any,
+                competencia_arma: true,
+                competencia_armadura: true,
+                competencia_grupo_arma: true,
+                competencia_grupo_armadura: true,
+                conjuro_conocido: true,
+                conocer_poder_psionico: true,
+                dg: true,
+                nivel_escuela: true,
+                rangos_habilidad: true,
+                lanzador_arcano: true,
+                lanzador_divino: true,
+                lanzar_conjuros_arcanos_nivel: true,
+                lanzar_conjuros_divinos_nivel: true,
+                lanzar_poder_psionico_nivel: true,
+                reserva_psionica: true,
+                tamano_maximo: true,
+                tamano_minimo: true,
+                inherente: true,
+            } as any,
+            Prerrequisitos: {
+                ...crearClaseBase().Prerrequisitos,
+                clase_especial: [{ Id_especial: 700, Id_extra: 5, opcional: 0 }],
+                competencia_arma: [{ Id_arma: 1, opcional: 0 }],
+                competencia_armadura: [{ Id_armadura: 2, opcional: 0 }],
+                competencia_grupo_arma: [{ Id_grupo: 3, opcional: 0 }],
+                competencia_grupo_armadura: [{ Id_grupo: 4, opcional: 0 }],
+                conjuro_conocido: [{ Id_conjuro: 500, opcional: 0 }],
+                conocer_poder_psionico: [{ Id_conjuro: 500, opcional: 0 }],
+                dg: [{ Cantidad: 7, opcional: 0 }],
+                nivel_escuela: [{ Id_escuela: 11, Cantidad: 6, opcional: 0 }],
+                rangos_habilidad: [{ Id_habilidad: 600, Rangos: 8, Id_extra: 9, opcional: 0 }],
+                lanzador_arcano: [{ Nivel: 6, opcional: 0 }],
+                lanzador_divino: [{ Nivel: 4, opcional: 0 }],
+                lanzar_conjuros_arcanos_nivel: [{ Nivel: 3, opcional: 0 }],
+                lanzar_conjuros_divinos_nivel: [{ Nivel: 2, opcional: 0 }],
+                lanzar_poder_psionico_nivel: [{ Nivel: 2, opcional: 0 }],
+                reserva_psionica: [{ Cantidad: 12, opcional: 0 }],
+                tamano_maximo: [{ Id_tamano: 5, opcional: 0 }],
+                tamano_minimo: [{ Id_tamano: 4, opcional: 0 }],
+                inherente: [],
+            },
+        });
+
+        const res = evaluarElegibilidadClase(clase, crearContextoBase());
+        expect(res.estado).toBe('eligible');
+    });
+
+    it('bloquea por tamano_maximo cuando no cumple el limite', () => {
+        const clase = crearClaseBase({
+            Prerrequisitos_flags: {
+                tamano_maximo: true,
+            },
+            Prerrequisitos: {
+                ...crearClaseBase().Prerrequisitos,
+                tamano_maximo: [{ Id_tamano: 4, opcional: 0 }],
+            },
+        });
+
+        const res = evaluarElegibilidadClase(clase, crearContextoBase());
+        expect(res.estado).toBe('blocked_failed');
     });
 });

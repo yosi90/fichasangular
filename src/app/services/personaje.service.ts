@@ -57,6 +57,21 @@ export class PersonajeService {
                     snapshot.child('Caracteristicas_perdidas').val(),
                     snapshot.child('Constitucion_perdida').val()
                 );
+                const idRegion = Math.max(0, Math.trunc(toNumber(
+                    snapshot.child('Id_region').val()
+                    ?? snapshot.child('id_region').val()
+                    ?? snapshot.child('idRegion').val()
+                    ?? snapshot.child('Region').child('Id').val()
+                    ?? snapshot.child('Region').child('id').val()
+                    ?? snapshot.child('region').child('Id').val()
+                    ?? snapshot.child('region').child('id').val()
+                )));
+                const nombreRegion = toText(
+                    snapshot.child('Region').child('Nombre').val()
+                    ?? snapshot.child('Region').child('nombre').val()
+                    ?? snapshot.child('region').child('Nombre').val()
+                    ?? snapshot.child('region').child('nombre').val()
+                ).trim();
                 const dotesLegacy = Array.isArray(dotesLegacyRaw)
                     ? dotesLegacyRaw
                     : (dotesLegacyRaw && typeof dotesLegacyRaw === 'object'
@@ -67,6 +82,11 @@ export class PersonajeService {
                     Nombre: snapshot.child('Nombre').val(),
                     ownerUid: toNullableText(snapshot.child('ownerUid').val() ?? snapshot.child('uid').val()),
                     visible_otros_usuarios: toBoolean(snapshot.child('visible_otros_usuarios').val()),
+                    Id_region: idRegion,
+                    Region: {
+                        Id: idRegion,
+                        Nombre: nombreRegion.length > 0 ? nombreRegion : (idRegion === 0 ? 'Sin región' : ''),
+                    },
                     Raza: snapshot.child('Raza').val(),
                     RazaBase: snapshot.child('RazaBase').val() ?? snapshot.child('raza_base').val() ?? null,
                     desgloseClases: clasesArray,
@@ -243,6 +263,7 @@ export class PersonajeService {
             ventajas: this.construirMapaNombreId(contextoIds?.catalogos?.ventajas),
             escuelas: this.construirMapaNombreId(contextoIds?.catalogos?.escuelas),
             disciplinas: this.construirMapaNombreId(contextoIds?.catalogos?.disciplinas),
+            regiones: this.construirMapaNombreId(contextoIds?.catalogos?.regiones),
         };
 
         if (uid.length < 1)
@@ -274,6 +295,7 @@ export class PersonajeService {
             || this.resolverIdPorNombre((personaje?.Disciplina_especialista as any)?.Nombre, mapasCatalogo.disciplinas);
         const idDisProhibida = Math.trunc(toNumber(contextoIds?.idDisProhibida))
             || this.resolverIdPorNombre(personaje?.Disciplina_prohibida, mapasCatalogo.disciplinas);
+        const idRegion = this.resolverIdRegionParaPayload(personaje, contextoIds, mapasCatalogo.regiones);
         const deidadSeleccionada = normalizeLookupKey(personaje?.Deidad);
 
         if (idAlineamiento <= 0)
@@ -299,6 +321,7 @@ export class PersonajeService {
             ataqueBase: `${personaje?.Ataque_base ?? '0'}`.trim() || '0',
             idRaza,
             idTipoCriatura,
+            idRegion,
             campana: { id: idCampana },
             trama: { id: idTrama },
             subtrama: { id: idSubtrama },
@@ -698,6 +721,37 @@ export class PersonajeService {
         return colecciones;
     }
 
+    private resolverIdRegionParaPayload(
+        personaje: Personaje,
+        contextoIds: PersonajeContextoIdsDto,
+        mapaRegiones: Map<string, number>
+    ): number {
+        const idDesdeContexto = this.toNonNegativeIntOrNull((contextoIds as any)?.idRegion);
+        if (idDesdeContexto !== null)
+            return idDesdeContexto;
+
+        const idDesdePersonaje = this.toNonNegativeIntOrNull((personaje as any)?.Id_region ?? (personaje as any)?.id_region);
+        if (idDesdePersonaje !== null)
+            return idDesdePersonaje;
+
+        const idDesdeRegion = this.toNonNegativeIntOrNull(
+            (personaje as any)?.Region?.Id
+            ?? (personaje as any)?.Region?.id
+            ?? (personaje as any)?.region?.Id
+            ?? (personaje as any)?.region?.id
+        );
+        if (idDesdeRegion !== null)
+            return idDesdeRegion;
+
+        const nombreRegion = `${(personaje as any)?.Region?.Nombre
+            ?? (personaje as any)?.Region?.nombre
+            ?? (personaje as any)?.region?.Nombre
+            ?? (personaje as any)?.region?.nombre
+            ?? ''}`.trim();
+        const idPorNombre = this.resolverIdPorNombre(nombreRegion, mapaRegiones);
+        return idPorNombre > 0 ? idPorNombre : 0;
+    }
+
     private mapearResistencias(
         values: any,
         key: 'rd' | 'rc' | 're'
@@ -761,6 +815,18 @@ export class PersonajeService {
         if (key.length < 1)
             return 0;
         return Math.trunc(toNumber(mapa.get(key)));
+    }
+
+    private toNonNegativeIntOrNull(value: any): number | null {
+        if (value === null || value === undefined)
+            return null;
+        const text = `${value}`.trim();
+        if (text.length < 1)
+            return null;
+        const parsed = Math.trunc(Number(text));
+        if (!Number.isFinite(parsed) || parsed < 0)
+            return null;
+        return parsed;
     }
 
     private resolverIdGeneroDesdeNombre(nombreGenero: any): number {
@@ -866,6 +932,25 @@ export class PersonajeService {
             clonado?.Constitucion_perdida
         );
         clonado.Constitucion_perdida = !!clonado?.Caracteristicas_perdidas?.Constitucion;
+        const idRegion = this.toNonNegativeIntOrNull(
+            (clonado as any)?.Id_region
+            ?? (clonado as any)?.id_region
+            ?? (clonado as any)?.idRegion
+            ?? (clonado as any)?.Region?.Id
+            ?? (clonado as any)?.Region?.id
+            ?? (clonado as any)?.region?.Id
+            ?? (clonado as any)?.region?.id
+        ) ?? 0;
+        const nombreRegion = `${(clonado as any)?.Region?.Nombre
+            ?? (clonado as any)?.Region?.nombre
+            ?? (clonado as any)?.region?.Nombre
+            ?? (clonado as any)?.region?.nombre
+            ?? ''}`.trim();
+        (clonado as any).Id_region = idRegion;
+        (clonado as any).Region = {
+            Id: idRegion,
+            Nombre: nombreRegion.length > 0 ? nombreRegion : (idRegion === 0 ? 'Sin región' : ''),
+        };
         return clonado;
     }
 
@@ -893,6 +978,8 @@ export class PersonajeService {
             visible_otros_usuarios: !!normalizado?.visible_otros_usuarios,
             Raza: normalizado?.Raza ?? null,
             RazaBase: normalizado?.RazaBase ?? null,
+            Id_region: Math.max(0, Math.trunc(toNumber((normalizado as any)?.Id_region))),
+            Region: (normalizado as any)?.Region ?? { Id: 0, Nombre: 'Sin región' },
             Clases: `${normalizado?.Clases ?? ''}`.trim(),
             Contexto: `${normalizado?.Contexto ?? ''}`,
             Personalidad: `${normalizado?.Personalidad ?? ''}`,
@@ -941,7 +1028,7 @@ export class PersonajeService {
 
             await Promise.all(
                 personajes.map((element: {
-                    i: any; n: any; ownerUid?: any; visible_otros_usuarios?: any; dcp: any; dh: any; tm: any; a: any; ca: any; an: any; cd: any; cv: any; ra: any; rb?: any; raza_base?: any; RazaBase?: any; tc: TipoCriatura; f: any; mf: any; d: any; md: any; co: any; mco: any; int: any; mint: any; s: any; 
+                    i: any; n: any; ownerUid?: any; visible_otros_usuarios?: any; id_region?: any; idRegion?: any; region?: any; Region?: any; dcp: any; dh: any; tm: any; a: any; ca: any; an: any; cd: any; cv: any; ra: any; rb?: any; raza_base?: any; RazaBase?: any; tc: TipoCriatura; f: any; mf: any; d: any; md: any; co: any; mco: any; int: any; mint: any; s: any; 
                     ms: any; car: any; mcar: any; de: any; ali: any; g: any; ncam: any; ntr: any; ju: any; nst: any; v: any; cor: any; na: any; vo: any; t: any; e: any; o: any; dg: any; cla: any; dom: any; stc: any; subtipos?: any;
                     pla: any; con: any; esp: any; espX: any; rac: any; hab: any; habN: any; habC: any; habCa: any; habMc: any; habR: any; habRv: any; habX: any; habV: any; habCu: any; dotes: DoteContextual[]; ve: any; idi: any;
                     familiares?: any; companeros?: any;
@@ -1045,10 +1132,28 @@ export class PersonajeService {
                     const ataqueBase = `${element.a ?? 0}`;
                     const presaBase = +(ataqueBase.includes('/') ? ataqueBase.substring(0, ataqueBase.indexOf('/')) : ataqueBase);
                     const razaBase = element.RazaBase ?? element.rb ?? element.raza_base ?? null;
+                    const idRegion = Math.max(0, Math.trunc(toNumber(
+                        element.id_region
+                        ?? element.idRegion
+                        ?? element.Region?.Id
+                        ?? element.Region?.id
+                        ?? element.region?.Id
+                        ?? element.region?.id
+                    )));
+                    const nombreRegion = `${element.Region?.Nombre
+                        ?? element.Region?.nombre
+                        ?? element.region?.Nombre
+                        ?? element.region?.nombre
+                        ?? ''}`.trim();
                     return set(ref(db, `Personajes/${element.i}`), {
                         Nombre: element.n,
                         ownerUid: extractOwnerUid(element),
                         visible_otros_usuarios: toBoolean(element.visible_otros_usuarios),
+                        Id_region: idRegion,
+                        Region: {
+                            Id: idRegion,
+                            Nombre: nombreRegion.length > 0 ? nombreRegion : (idRegion === 0 ? 'Sin región' : ''),
+                        },
                         Personalidad: element.dcp,
                         Contexto: element.dh,
                         Ataque_base: element.a,

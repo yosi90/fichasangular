@@ -33,6 +33,7 @@ export type CacheEntityKey =
     | "grupos_armas"
     | "grupos_armaduras"
     | "dominios"
+    | "regiones"
     | "ambitos"
     | "pabellones"
     | "deidades"
@@ -81,6 +82,7 @@ export const CACHE_CONTRACT_MANIFEST: CacheContractEntry[] = [
     { key: "grupos_armas", label: "Grupos de armas", schemaVersion: 1 },
     { key: "grupos_armaduras", label: "Grupos de armaduras", schemaVersion: 1 },
     { key: "dominios", label: "Dominios", schemaVersion: 1 },
+    { key: "regiones", label: "Regiones", schemaVersion: 1 },
     { key: "ambitos", label: "Ambitos", schemaVersion: 1 },
     { key: "pabellones", label: "Pabellones", schemaVersion: 1 },
     { key: "deidades", label: "Deidades", schemaVersion: 1 },

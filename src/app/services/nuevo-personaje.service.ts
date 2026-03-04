@@ -14,6 +14,7 @@ import { IdiomaDetalle } from '../interfaces/idioma';
 import { CompaneroMonstruoDetalle, FamiliarMonstruoDetalle } from '../interfaces/monstruo';
 import { Personaje } from '../interfaces/personaje';
 import { Plantilla } from '../interfaces/plantilla';
+import { RegionDetalle } from '../interfaces/region';
 import { RacialDetalle } from '../interfaces/racial';
 import { Raza } from '../interfaces/raza';
 import { RazaSimple } from '../interfaces/simplificaciones/raza-simple';
@@ -854,6 +855,7 @@ export class NuevoPersonajeService {
     private catalogoConjuros: Conjuro[] = [];
     private conjurosSesionPlaceholderPorId: Record<number, Conjuro> = {};
     private catalogoDominios: DominioDetalle[] = [];
+    private catalogoRegiones: RegionDetalle[] = [];
     private catalogoDeidades: DeidadDetalle[] = [];
     private bonusNivelLanzadorPorClase: Record<string, number> = {};
     private idsEspecialesInternosActivos = new Set<number>();
@@ -925,6 +927,7 @@ export class NuevoPersonajeService {
         const catalogoDotes = this.catalogoDotes.slice();
         const catalogoConjuros = this.catalogoConjuros.slice();
         const catalogoDominios = this.catalogoDominios.slice();
+        const catalogoRegiones = this.catalogoRegiones.slice();
         const catalogoDeidades = this.catalogoDeidades.slice();
 
         this.personajeCreacion = this.crearPersonajeBase();
@@ -951,6 +954,7 @@ export class NuevoPersonajeService {
         this.setCatalogoDotes(catalogoDotes);
         this.setCatalogoConjuros(catalogoConjuros);
         this.setCatalogoDominios(catalogoDominios);
+        this.setCatalogoRegiones(catalogoRegiones);
         this.setCatalogoDeidades(catalogoDeidades);
         this.sincronizarBaseVentajasDesdePersonaje();
     }
@@ -1187,6 +1191,10 @@ export class NuevoPersonajeService {
         this.catalogoDominios = [...dominios];
     }
 
+    setCatalogoRegiones(regiones: RegionDetalle[]): void {
+        this.catalogoRegiones = [...(regiones ?? [])];
+    }
+
     setCatalogoDeidades(deidades: DeidadDetalle[]): void {
         this.catalogoDeidades = [...deidades];
     }
@@ -1220,28 +1228,98 @@ export class NuevoPersonajeService {
             })
             .filter((item): item is { id: number | null; nombre: string; } => !!item);
 
+        type DoteEvaluacionClase = { id: number | null; nombre: string; idExtra: number | null; extra: string; };
         const dotesDesdeContexto = (this.personajeCreacion.DotesContextuales ?? [])
-            .map((item) => {
+            .reduce<DoteEvaluacionClase[]>((acc, item) => {
                 const nombre = `${item?.Dote?.Nombre ?? ''}`.trim();
                 if (nombre.length < 1)
-                    return null;
-                return {
+                    return acc;
+                const idExtra = this.toNumber(item?.Contexto?.Id_extra);
+                acc.push({
                     id: this.toNumber(item?.Dote?.Id) > 0 ? this.toNumber(item?.Dote?.Id) : null,
                     nombre,
-                };
-            })
-            .filter((item): item is { id: number | null; nombre: string; } => !!item);
+                    idExtra: idExtra > 0 ? idExtra : null,
+                    extra: `${item?.Contexto?.Extra ?? ''}`.trim(),
+                });
+                return acc;
+            }, []);
         const dotesLegacy = (this.personajeCreacion.Dotes ?? [])
-            .map((item) => {
+            .reduce<DoteEvaluacionClase[]>((acc, item) => {
                 const nombre = `${item?.Nombre ?? ''}`.trim();
                 if (nombre.length < 1)
-                    return null;
-                return {
+                    return acc;
+                acc.push({
                     id: null,
                     nombre,
-                };
-            })
-            .filter((item): item is { id: null; nombre: string; } => !!item);
+                    idExtra: null,
+                    extra: '',
+                });
+                return acc;
+            }, []);
+        type ClaseEspecialEvaluacionClase = { id: number | null; nombre: string; idExtra: number | null; extra: string; };
+        const claseas = (this.personajeCreacion.Claseas ?? [])
+            .reduce<ClaseEspecialEvaluacionClase[]>((acc, item) => {
+                const nombre = `${item?.Nombre ?? ''}`.trim();
+                if (nombre.length < 1)
+                    return acc;
+                const idExtra = this.toNumber((item as any)?.Id_extra);
+                acc.push({
+                    id: this.toNumber((item as any)?.Id) > 0 ? this.toNumber((item as any)?.Id) : null,
+                    nombre,
+                    idExtra: idExtra > 0 ? idExtra : null,
+                    extra: `${item?.Extra ?? ''}`.trim(),
+                });
+                return acc;
+            }, []);
+        type HabilidadEvaluacionClase = { id: number | null; nombre: string; rangos: number; idExtra: number | null; extra: string; };
+        const habilidades = (this.personajeCreacion.Habilidades ?? [])
+            .reduce<HabilidadEvaluacionClase[]>((acc, habilidad) => {
+                const nombre = `${habilidad?.Nombre ?? ''}`.trim();
+                if (nombre.length < 1)
+                    return acc;
+
+                const extra = `${habilidad?.Extra ?? ''}`.trim();
+                const extraNorm = this.normalizarTexto(extra);
+                let idExtra: number | null = null;
+                const extrasDisponibles = Array.isArray(habilidad?.Extras) ? habilidad.Extras : [];
+                if (extraNorm.length > 0) {
+                    const extraEncontrado = extrasDisponibles.find((item) =>
+                        this.normalizarTexto(item?.Extra ?? '') === extraNorm
+                    );
+                    const idExtraEncontrado = this.toNumber(extraEncontrado?.Id_extra);
+                    if (idExtraEncontrado > 0)
+                        idExtra = idExtraEncontrado;
+                    else {
+                        const parseExtra = this.toNumber(extra);
+                        if (parseExtra > 0)
+                            idExtra = parseExtra;
+                    }
+                }
+
+                acc.push({
+                    id: this.toNumber(habilidad?.Id) > 0 ? this.toNumber(habilidad?.Id) : null,
+                    nombre,
+                    rangos: this.toNumber(habilidad?.Rangos),
+                    idExtra,
+                    extra,
+                });
+                return acc;
+            }, []);
+        type ConjuroEvaluacionClase = { id: number | null; nombre: string; idEscuela: number | null; escuela: string; };
+        const conjuros = (this.personajeCreacion.Conjuros ?? [])
+            .reduce<ConjuroEvaluacionClase[]>((acc, conjuro) => {
+                const nombre = `${conjuro?.Nombre ?? ''}`.trim();
+                if (nombre.length < 1)
+                    return acc;
+                const idEscuela = this.toNumber(conjuro?.Escuela?.Id);
+                acc.push({
+                    id: this.toNumber(conjuro?.Id) > 0 ? this.toNumber(conjuro?.Id) : null,
+                    nombre,
+                    idEscuela: idEscuela > 0 ? idEscuela : null,
+                    escuela: `${conjuro?.Escuela?.Nombre ?? ''}`.trim(),
+                });
+                return acc;
+            }, []);
         const dominios = (this.personajeCreacion.Dominios ?? [])
             .map((item) => {
                 const nombre = `${item?.Nombre ?? ''}`.trim();
@@ -1253,6 +1331,10 @@ export class NuevoPersonajeService {
                 };
             })
             .filter((item): item is { id: number | null; nombre: string; } => !!item);
+        const nivelLanzadorArcano = this.resolverNivelLanzadorMaximoPorTipo('arcano');
+        const nivelLanzadorDivino = this.resolverNivelLanzadorMaximoPorTipo('divino');
+        const nivelLanzadorPsionico = this.resolverNivelLanzadorMaximoPorTipo('psionico');
+        const nombreEscuelaEspecialista = `${this.personajeCreacion?.Escuela_especialista?.Nombre ?? ''}`.trim();
 
         return evaluarElegibilidadClase(clase, {
             identidad,
@@ -1268,8 +1350,33 @@ export class NuevoPersonajeService {
             alineamiento: `${this.personajeCreacion.Alineamiento ?? ''}`,
             genero: `${this.personajeCreacion.Genero ?? ''}`,
             dotes: [...dotesDesdeContexto, ...dotesLegacy],
+            claseas,
+            habilidades,
+            conjuros,
             idiomas,
             dominios,
+            competenciasArmas: this.resolverCompetenciasArmasActuales(),
+            competenciasArmaduras: this.resolverCompetenciasArmadurasActuales(),
+            competenciasGrupoArmas: this.resolverCompetenciasGrupoArmasActuales(),
+            competenciasGrupoArmaduras: this.resolverCompetenciasGrupoArmadurasActuales(),
+            lanzador: {
+                arcano: nivelLanzadorArcano,
+                divino: nivelLanzadorDivino,
+                psionico: nivelLanzadorPsionico,
+            },
+            nivelesConjuroMaximos: {
+                arcano: this.resolverNivelConjuroMaximoPorTipo('arcano'),
+                divino: this.resolverNivelConjuroMaximoPorTipo('divino'),
+                psionico: this.resolverNivelPoderPsionicoMaximo(),
+            },
+            dgTotal: this.resolverDgTotalActual(),
+            reservaPsionica: this.resolverReservaPsionicaActual(),
+            escuelaEspecialista: {
+                id: this.resolverIdEscuelaPorNombre(nombreEscuelaEspecialista),
+                nombre: nombreEscuelaEspecialista,
+                nivelArcano: nivelLanzadorArcano,
+            },
+            tamanoId: this.resolverTamanoActualId(),
         });
     }
 
@@ -2577,12 +2684,33 @@ export class NuevoPersonajeService {
             }))
             .filter((item) => item.nombre.length > 0);
 
+        const claseas = (this.personajeCreacion.Claseas ?? [])
+            .map((item) => ({
+                id: this.toNumber((item as any)?.Id) > 0 ? this.toNumber((item as any)?.Id) : null,
+                nombre: `${item?.Nombre ?? ''}`.trim(),
+                idExtra: this.toNumber((item as any)?.Id_extra) > 0 ? this.toNumber((item as any)?.Id_extra) : null,
+                extra: `${(item as any)?.Extra ?? ''}`.trim(),
+            }))
+            .filter((item) => item.nombre.length > 0);
+
         const idiomas = (this.personajeCreacion.Idiomas ?? [])
             .map((idioma) => ({
                 id: this.resolverIdIdiomaPorNombre(`${idioma?.Nombre ?? ''}`),
                 nombre: `${idioma?.Nombre ?? ''}`.trim(),
             }))
             .filter((item) => item.nombre.length > 0);
+
+        const dominios = (this.personajeCreacion.Dominios ?? [])
+            .map((item) => {
+                const nombre = `${item?.Nombre ?? ''}`.trim();
+                if (nombre.length < 1)
+                    return null;
+                return {
+                    id: this.resolverIdDominioPorNombre(nombre),
+                    nombre,
+                };
+            })
+            .filter((item): item is { id: number | null; nombre: string; } => !!item);
 
         const habilidades = (this.personajeCreacion.Habilidades ?? [])
             .map((habilidad) => ({
@@ -2629,6 +2757,81 @@ export class NuevoPersonajeService {
                 nombre: `${doteCatalogo?.Nombre ?? ''}`.trim(),
             }))
             .filter((item) => item.nombre.length > 0);
+        const catalogoRegiones = (this.catalogoRegiones ?? [])
+            .map((regionCatalogo) => ({
+                id: this.toNumber(regionCatalogo?.Id) > 0 ? this.toNumber(regionCatalogo?.Id) : null,
+                nombre: `${regionCatalogo?.Nombre ?? ''}`.trim(),
+            }))
+            .filter((item) => item.nombre.length > 0);
+        const catalogoDotesRaw = this.catalogoDotes ?? [];
+
+        const tiposDote = (() => {
+            const resultado: { id: number | null; nombre: string; }[] = [];
+            const ids = new Set<number>();
+            const nombres = new Set<string>();
+            const registrar = (tipo: any) => {
+                const id = this.toNumber(tipo?.Id) > 0 ? this.toNumber(tipo?.Id) : null;
+                const nombre = `${tipo?.Nombre ?? ''}`.trim();
+                const nombreNorm = this.normalizarTexto(nombre);
+                if (id === null && nombreNorm.length < 1)
+                    return;
+                if (id !== null) {
+                    if (ids.has(id))
+                        return;
+                    ids.add(id);
+                    resultado.push({ id, nombre });
+                    return;
+                }
+                if (nombres.has(nombreNorm))
+                    return;
+                nombres.add(nombreNorm);
+                resultado.push({ id: null, nombre });
+            };
+            const buscarCatalogo = (idDote: number, nombreDote: string) => {
+                const nombreNorm = this.normalizarTexto(nombreDote);
+                return catalogoDotesRaw.find((item) =>
+                    (idDote > 0 && this.toNumber(item?.Id) === idDote)
+                    || (nombreNorm.length > 0 && this.normalizarTexto(item?.Nombre ?? '') === nombreNorm)
+                );
+            };
+            (this.personajeCreacion.DotesContextuales ?? []).forEach((item) => {
+                const idDote = this.toNumber(item?.Dote?.Id);
+                const nombreDote = `${item?.Dote?.Nombre ?? ''}`.trim();
+                const doteCatalogo = buscarCatalogo(idDote, nombreDote);
+                (item?.Dote?.Tipos ?? doteCatalogo?.Tipos ?? []).forEach((tipo: any) => registrar(tipo));
+            });
+            legacySinContexto.forEach((item) => {
+                const doteCatalogo = buscarCatalogo(this.toNumber(item?.id), item?.nombre ?? '');
+                (doteCatalogo?.Tipos ?? []).forEach((tipo: any) => registrar(tipo));
+            });
+            return resultado;
+        })();
+
+        const regionRaw = (this.personajeCreacion as any)?.Region ?? (this.personajeCreacion as any)?.region ?? null;
+        const regionIdRaw = (regionRaw as any)?.Id
+            ?? (regionRaw as any)?.id
+            ?? (this.personajeCreacion as any)?.Id_region
+            ?? (this.personajeCreacion as any)?.id_region;
+        const regionIdTieneDato = regionIdRaw !== null && regionIdRaw !== undefined && `${regionIdRaw}`.trim().length > 0;
+        const regionId = this.toNumber(
+            (regionRaw as any)?.Id
+            ?? (regionRaw as any)?.id
+            ?? (this.personajeCreacion as any)?.Id_region
+            ?? (this.personajeCreacion as any)?.id_region
+        );
+        const regionNombreRaw = `${(regionRaw as any)?.Nombre ?? (regionRaw as any)?.nombre ?? (typeof regionRaw === 'string' ? regionRaw : '') ?? ''}`.trim();
+        const regionIdResuelto = regionId > 0 ? regionId : this.toNumber(this.resolverIdRegionPorNombre(regionNombreRaw));
+        const regionIdContexto = regionIdResuelto > 0
+            ? regionIdResuelto
+            : (regionIdTieneDato && regionId === 0 ? 0 : null);
+        const regionNombre = regionNombreRaw.length > 0
+            ? regionNombreRaw
+            : (regionIdContexto === 0 ? 'Sin región' : this.resolverNombreRegionPorId(regionIdResuelto));
+        const nombreEscuelaEspecialista = `${this.personajeCreacion?.Escuela_especialista?.Nombre ?? ''}`.trim();
+        const nivelTotal = nivelesClase.reduce((acc, clase) => acc + Math.max(0, this.toNumber(clase?.nivel)), 0);
+        const nivelLanzadorArcano = this.resolverNivelLanzadorMaximoPorTipo('arcano');
+        const nivelLanzadorDivino = this.resolverNivelLanzadorMaximoPorTipo('divino');
+        const nivelLanzadorPsionico = this.resolverNivelLanzadorMaximoPorTipo('psionico');
 
         const contexto: DoteEvaluacionContexto = {
             identidad,
@@ -2643,14 +2846,40 @@ export class NuevoPersonajeService {
             ataqueBase: this.extraerPrimerEnteroConSigno(this.personajeCreacion.Ataque_base),
             nivelesClase,
             dotes: [...dotes, ...legacySinContexto],
+            claseas,
+            dominios,
             idiomas,
             habilidades,
             conjuros,
             competenciasArmas: this.resolverCompetenciasArmasActuales(),
+            competenciasArmaduras: this.resolverCompetenciasArmadurasActuales(),
+            competenciasGrupoArmas: this.resolverCompetenciasGrupoArmasActuales(),
+            competenciasGrupoArmaduras: this.resolverCompetenciasGrupoArmadurasActuales(),
             lanzador: {
-                arcano: this.resolverNivelLanzadorMaximoPorTipo('arcano'),
-                divino: this.resolverNivelLanzadorMaximoPorTipo('divino'),
-                psionico: this.resolverNivelLanzadorMaximoPorTipo('psionico'),
+                arcano: nivelLanzadorArcano,
+                divino: nivelLanzadorDivino,
+                psionico: nivelLanzadorPsionico,
+            },
+            nivelesConjuroMaximos: {
+                arcano: this.resolverNivelConjuroMaximoPorTipo('arcano'),
+                divino: this.resolverNivelConjuroMaximoPorTipo('divino'),
+            },
+            escuelaEspecialista: {
+                id: this.resolverIdEscuelaPorNombre(nombreEscuelaEspecialista),
+                nombre: nombreEscuelaEspecialista,
+                nivelArcano: nivelLanzadorArcano,
+            },
+            dgTotal: this.resolverDgTotalActual(),
+            nivelTotal,
+            tamanoId: this.resolverTamanoActualId(),
+            tipoCriaturaId: this.toNumber(this.personajeCreacion?.Tipo_criatura?.Id) > 0
+                ? this.toNumber(this.personajeCreacion?.Tipo_criatura?.Id)
+                : null,
+            tipoCriaturaNombre: `${this.personajeCreacion?.Tipo_criatura?.Nombre ?? ''}`.trim(),
+            tiposDote,
+            region: {
+                id: regionIdContexto,
+                nombre: regionNombre,
             },
             salvaciones: this.resolverSalvacionesTotales(),
             alineamiento: `${this.personajeCreacion.Alineamiento ?? ''}`.trim(),
@@ -2660,6 +2889,7 @@ export class NuevoPersonajeService {
             catalogoHabilidades,
             catalogoClases,
             catalogoDotes,
+            catalogoRegiones,
         };
 
         const evaluacion = evaluarElegibilidadDote({
@@ -2697,6 +2927,108 @@ export class NuevoPersonajeService {
         return Math.max(0, maximo);
     }
 
+    private resolverNivelConjuroMaximoPorTipo(tipo: 'arcano' | 'divino'): number {
+        let maximo = -1;
+        (this.personajeCreacion?.desgloseClases ?? []).forEach((entrada) => {
+            const nombre = `${entrada?.Nombre ?? ''}`.trim();
+            const nivelActual = Math.max(0, this.toNumber(entrada?.Nivel));
+            if (nombre.length < 1 || nivelActual < 1)
+                return;
+
+            const clase = this.catalogoClases.find((item) =>
+                this.normalizarTexto(item?.Nombre ?? '') === this.normalizarTexto(nombre)
+            );
+            if (!clase)
+                return;
+            if (tipo === 'arcano' && !clase?.Conjuros?.Arcanos)
+                return;
+            if (tipo === 'divino' && !clase?.Conjuros?.Divinos)
+                return;
+
+            const detalleActual = this.obtenerDetalleNivelClase(clase, nivelActual);
+            if (!detalleActual)
+                return;
+            const detallePrevio = nivelActual > 1 ? this.obtenerDetalleNivelClase(clase, nivelActual - 1) : null;
+            const acceso = this.resolverAccesoConjurosPorTipo(clase, detalleActual, detallePrevio);
+            const niveles = acceso.nivelesAccesibles;
+            if (!niveles || niveles.size < 1)
+                return;
+
+            const maxClase = Array.from(niveles.values()).reduce((acc, nivel) => Math.max(acc, this.toNumber(nivel)), -1);
+            maximo = Math.max(maximo, maxClase);
+        });
+        return Math.max(0, maximo);
+    }
+
+    private resolverNivelPoderPsionicoMaximo(): number {
+        let maximo = -1;
+        (this.personajeCreacion?.desgloseClases ?? []).forEach((entrada) => {
+            const nombre = `${entrada?.Nombre ?? ''}`.trim();
+            const nivelActual = Math.max(0, this.toNumber(entrada?.Nivel));
+            if (nombre.length < 1 || nivelActual < 1)
+                return;
+
+            const clase = this.catalogoClases.find((item) =>
+                this.normalizarTexto(item?.Nombre ?? '') === this.normalizarTexto(nombre)
+            );
+            if (!clase?.Conjuros?.Psionicos)
+                return;
+
+            const detalleActual = this.obtenerDetalleNivelClase(clase, nivelActual);
+            if (!detalleActual)
+                return;
+            maximo = Math.max(
+                maximo,
+                Math.trunc(this.toNumber(detalleActual?.Nivel_max_poder_accesible_nivel_lanzadorPsionico))
+            );
+        });
+        return Math.max(0, maximo);
+    }
+
+    private resolverReservaPsionicaActual(): number {
+        let total = 0;
+        (this.personajeCreacion?.desgloseClases ?? []).forEach((entrada) => {
+            const nombre = `${entrada?.Nombre ?? ''}`.trim();
+            const nivelActual = Math.max(0, this.toNumber(entrada?.Nivel));
+            if (nombre.length < 1 || nivelActual < 1)
+                return;
+
+            const clase = this.catalogoClases.find((item) =>
+                this.normalizarTexto(item?.Nombre ?? '') === this.normalizarTexto(nombre)
+            );
+            if (!clase?.Conjuros?.Psionicos)
+                return;
+
+            const detalleActual = this.obtenerDetalleNivelClase(clase, nivelActual);
+            if (!detalleActual)
+                return;
+            total += Math.max(0, Math.trunc(this.toNumber(detalleActual?.Reserva_psionica)));
+        });
+        return Math.max(0, total);
+    }
+
+    private resolverDgTotalActual(): number {
+        const nivelClases = (this.personajeCreacion?.desgloseClases ?? [])
+            .reduce((acc, clase) => acc + Math.max(0, this.toNumber(clase?.Nivel)), 0);
+        const dgsRaza = this.toNumber(this.razaSeleccionada?.Dgs_adicionales?.Cantidad ?? this.personajeCreacion?.Raza?.Dgs_adicionales?.Cantidad);
+        return Math.max(0, Math.trunc(nivelClases + Math.max(0, dgsRaza)));
+    }
+
+    private resolverTamanoActualId(): number | null {
+        const id = Math.trunc(this.toNumber(this.personajeCreacion?.Raza?.Tamano?.Id));
+        return id > 0 ? id : null;
+    }
+
+    private resolverIdEscuelaPorNombre(nombreEscuela: string): number | null {
+        const nombreNorm = this.normalizarTexto(nombreEscuela);
+        if (nombreNorm.length < 1)
+            return null;
+        const escuela = (this.catalogoEscuelasDotes ?? [])
+            .find((item) => this.normalizarTexto(item?.Nombre ?? '') === nombreNorm);
+        const id = this.toNumber(escuela?.Id);
+        return id > 0 ? id : null;
+    }
+
     private resolverSalvacionesTotales(): { fortaleza: number; reflejos: number; voluntad: number; } {
         const fortaleza = this.toNumber(this.personajeCreacion.ModConstitucion)
             + (this.personajeCreacion.Salvaciones?.fortaleza?.modsClaseos ?? []).reduce((acc, item) => acc + this.toNumber(item?.valor), 0)
@@ -2715,7 +3047,11 @@ export class NuevoPersonajeService {
         };
     }
 
-    private resolverCompetenciasArmasActuales(): Array<{ id: number | null; nombre: string; }> {
+    private resolverCompetenciasClaseActuales(
+        fuente: keyof Clase['Competencias'],
+        idKeys: string[],
+        nombreKeys: string[]
+    ): Array<{ id: number | null; nombre: string; }> {
         const competencias: Array<{ id: number | null; nombre: string; }> = [];
         (this.personajeCreacion?.desgloseClases ?? []).forEach((entrada) => {
             const nombre = `${entrada?.Nombre ?? ''}`.trim();
@@ -2726,15 +3062,25 @@ export class NuevoPersonajeService {
             );
             if (!clase)
                 return;
-            const armas = Array.isArray(clase?.Competencias?.Armas) ? clase.Competencias.Armas : [];
-            armas.forEach((arma: Record<string, any>) => {
-                const id = this.toNumber(arma?.['Id'] ?? arma?.['id'] ?? arma?.['Id_arma'] ?? arma?.['id_arma']);
-                const nombreArma = `${arma?.['Nombre'] ?? arma?.['nombre'] ?? arma?.['Arma'] ?? arma?.['arma'] ?? ''}`.trim();
-                if (id <= 0 && nombreArma.length < 1)
+            const referencias = Array.isArray(clase?.Competencias?.[fuente])
+                ? (clase.Competencias[fuente] as Record<string, any>[])
+                : [];
+            referencias.forEach((ref: Record<string, any>) => {
+                const id = idKeys.reduce((actual, key) => {
+                    if (actual > 0)
+                        return actual;
+                    return this.toNumber(ref?.[key]);
+                }, 0);
+                const nombreRef = nombreKeys.reduce((actual, key) => {
+                    if (actual.length > 0)
+                        return actual;
+                    return `${ref?.[key] ?? ''}`.trim();
+                }, "");
+                if (id <= 0 && nombreRef.length < 1)
                     return;
                 competencias.push({
                     id: id > 0 ? id : null,
-                    nombre: nombreArma,
+                    nombre: nombreRef,
                 });
             });
         });
@@ -2748,6 +3094,38 @@ export class NuevoPersonajeService {
             id: item.Id > 0 ? item.Id : null,
             nombre: item.Nombre,
         }));
+    }
+
+    private resolverCompetenciasArmasActuales(): Array<{ id: number | null; nombre: string; }> {
+        return this.resolverCompetenciasClaseActuales(
+            'Armas',
+            ['Id', 'id', 'Id_arma', 'id_arma'],
+            ['Nombre', 'nombre', 'Arma', 'arma']
+        );
+    }
+
+    private resolverCompetenciasArmadurasActuales(): Array<{ id: number | null; nombre: string; }> {
+        return this.resolverCompetenciasClaseActuales(
+            'Armaduras',
+            ['Id', 'id', 'Id_armadura', 'id_armadura', 'Id_arma', 'id_arma'],
+            ['Nombre', 'nombre', 'Armadura', 'armadura', 'Arma', 'arma']
+        );
+    }
+
+    private resolverCompetenciasGrupoArmasActuales(): Array<{ id: number | null; nombre: string; }> {
+        return this.resolverCompetenciasClaseActuales(
+            'Grupos_arma',
+            ['Id', 'id', 'Id_grupo', 'id_grupo'],
+            ['Nombre', 'nombre', 'Grupo', 'grupo']
+        );
+    }
+
+    private resolverCompetenciasGrupoArmadurasActuales(): Array<{ id: number | null; nombre: string; }> {
+        return this.resolverCompetenciasClaseActuales(
+            'Grupos_armadura',
+            ['Id', 'id', 'Id_grupo', 'id_grupo'],
+            ['Nombre', 'nombre', 'Grupo', 'grupo']
+        );
     }
 
     private tieneClaseaPorNombre(texto: string): boolean {
@@ -2960,6 +3338,8 @@ export class NuevoPersonajeService {
         if (duplicado)
             return false;
         this.personajeCreacion.Claseas.push({
+            Id: this.toNumber(idEspecial),
+            Id_extra: 0,
             Nombre: nombreEspecial,
             Extra: extra,
         });
@@ -2977,6 +3357,8 @@ export class NuevoPersonajeService {
         if (duplicado)
             return false;
         this.personajeCreacion.Claseas.push({
+            Id: this.toNumber(idEspecial),
+            Id_extra: 0,
             Nombre: nombreEspecial,
             Extra: extra,
         });
@@ -5508,7 +5890,11 @@ export class NuevoPersonajeService {
                 && this.normalizarTexto(especial?.Extra ?? '') === this.normalizarTexto(extra)
             );
             if (!duplicado) {
+                const especialRaw = (especialNivel?.Especial as Record<string, any>) ?? {};
+                const idEspecial = this.toNumber(especialRaw?.['Id'] ?? especialRaw?.['id']);
                 this.personajeCreacion.Claseas.push({
+                    Id: idEspecial > 0 ? idEspecial : undefined,
+                    Id_extra: this.toNumber(especialNivel?.Id_extra),
                     Nombre: nombre,
                     Extra: extra,
                 });
@@ -6525,6 +6911,25 @@ export class NuevoPersonajeService {
             .find((item) => this.normalizarTexto(item?.Nombre ?? '') === nombreNorm);
         const id = this.toNumber(dominio?.Id);
         return id > 0 ? id : null;
+    }
+
+    private resolverIdRegionPorNombre(nombreRegion: string): number | null {
+        const nombreNorm = this.normalizarTexto(nombreRegion);
+        if (nombreNorm.length < 1)
+            return null;
+        const region = (this.catalogoRegiones ?? [])
+            .find((item) => this.normalizarTexto(item?.Nombre ?? '') === nombreNorm);
+        const id = this.toNumber(region?.Id);
+        return id > 0 ? id : null;
+    }
+
+    private resolverNombreRegionPorId(idRegion: number): string {
+        const id = this.toNumber(idRegion);
+        if (id <= 0)
+            return '';
+        const region = (this.catalogoRegiones ?? [])
+            .find((item) => this.toNumber(item?.Id) === id);
+        return `${region?.Nombre ?? ''}`.trim();
     }
 
     private calcularAtaqueBaseDesdeClases(): number {
@@ -8110,6 +8515,11 @@ export class NuevoPersonajeService {
             Nombre: '',
             ownerUid: null,
             visible_otros_usuarios: false,
+            Id_region: 0,
+            Region: {
+                Id: 0,
+                Nombre: 'Sin región',
+            },
             Raza: {
                 Id: 0,
                 Nombre: '',

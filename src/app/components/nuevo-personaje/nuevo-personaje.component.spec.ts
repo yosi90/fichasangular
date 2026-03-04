@@ -558,6 +558,7 @@ describe('NuevoPersonajeComponent', () => {
     let grupoArmaSvcMock: any;
     let grupoArmaduraSvcMock: any;
     let dominioSvcMock: any;
+    let regionSvcMock: any;
     let deidadSvcMock: any;
     let tipoCriaturaSvcMock: any;
     let monstruoSvcMock: any;
@@ -634,6 +635,9 @@ describe('NuevoPersonajeComponent', () => {
         dominioSvcMock = {
             getDominios: () => of([]),
         };
+        regionSvcMock = {
+            getRegiones: () => of([]),
+        };
         deidadSvcMock = {
             getDeidades: () => of(crearDeidadesMock()),
         };
@@ -683,6 +687,7 @@ describe('NuevoPersonajeComponent', () => {
             grupoArmaSvcMock,
             grupoArmaduraSvcMock,
             dominioSvcMock,
+            regionSvcMock,
             deidadSvcMock,
             tipoCriaturaSvcMock,
             monstruoSvcMock,
@@ -1003,6 +1008,38 @@ describe('NuevoPersonajeComponent', () => {
         component.Personaje.Altura = 1.8;
 
         expect(component.puedeContinuarBasicos).toBeTrue();
+    });
+
+    it('mantiene Sin región por defecto al normalizar básicos', () => {
+        component.ngOnInit();
+
+        expect((component.Personaje as any).Id_region).toBe(0);
+        expect((component.Personaje as any).Region?.Nombre).toBe('Sin región');
+        expect(component.idRegionSeleccionadaBasicos).toBe(0);
+    });
+
+    it('onRegionOrigenChange actualiza id y nombre de región en personaje', () => {
+        component.catalogoRegiones = [
+            { Id: 3, Nombre: 'Costa de la espada', Oficial: true } as any,
+        ];
+
+        component.onRegionOrigenChange(3);
+
+        expect((component.Personaje as any).Id_region).toBe(3);
+        expect((component.Personaje as any).Region?.Nombre).toBe('Costa de la espada');
+        expect(component.idRegionSeleccionadaBasicos).toBe(3);
+    });
+
+    it('resolverContextoIdsCreacion incluye idRegion y catalogo de regiones', () => {
+        component.catalogoRegiones = [
+            { Id: 4, Nombre: 'Rashemen', Oficial: true } as any,
+        ];
+        component.onRegionOrigenChange(4);
+
+        const contexto = (component as any).resolverContextoIdsCreacion();
+
+        expect(contexto.idRegion).toBe(4);
+        expect((contexto.catalogos?.regiones ?? []).some((item: any) => item.id === 4 && item.nombre === 'Rashemen')).toBeTrue();
     });
 
     it('actualizarTramas con Sin campaña resetea trama y subtrama', () => {
@@ -1553,6 +1590,41 @@ describe('NuevoPersonajeComponent', () => {
         expect(component.plantillasElegibles.some((p) => p.Id === licantropo.Id)).toBeFalse();
         expect(component.plantillasBloqueadasFailed.some((item) => item.plantilla.Id === licantropo.Id)).toBeTrue();
         expect(component.plantillasBloqueadasFailed.some((item) => item.plantilla.Id === exigeCarismaAlto.Id)).toBeTrue();
+    });
+
+    it('criaturas_compatibles no se cumple por colision numerica con id de subtipo', async () => {
+        await component.finalizarGeneracionCaracteristicas({
+            Fuerza: 14,
+            Destreza: 15,
+            Constitucion: 13,
+            Inteligencia: 12,
+            Sabiduria: 10,
+            Carisma: 8,
+        });
+
+        component.Personaje.Tipo_criatura = {
+            ...component.Personaje.Tipo_criatura!,
+            Id: 1,
+            Nombre: 'Humanoide',
+        } as any;
+        component.Personaje.Subtipos = [{ Id: 77, Nombre: 'Fuego' } as any];
+
+        const requiereTipo77 = crearPlantillaMock({
+            Id: 923,
+            Nombre: 'Solo tipo 77',
+            Prerrequisitos_flags: { criaturas_compatibles: true },
+            Prerrequisitos: {
+                ...crearPlantillaMock().Prerrequisitos,
+                criaturas_compatibles: [{ Id_tipo_compatible: 77, opcional: 0 }],
+            },
+        });
+
+        component.plantillasCatalogo = [requiereTipo77];
+        nuevoPSvc.setPlantillasDisponibles(component.plantillasCatalogo);
+        (component as any).recalcularPlantillasVisibles();
+
+        expect(component.plantillasElegibles.some((p) => p.Id === requiereTipo77.Id)).toBeFalse();
+        expect(component.plantillasBloqueadasFailed.some((item) => item.plantilla.Id === requiereTipo77.Id)).toBeTrue();
     });
 
     it('continuarDesdeVentajas avanza al paso clases', () => {
@@ -3902,6 +3974,7 @@ describe('NuevoPersonajeComponent', () => {
             grupoArmaSvcMock,
             grupoArmaduraSvcMock,
             dominioSvcMock,
+            regionSvcMock,
             deidadSvcMock,
             tipoCriaturaSvcMock,
             monstruoSvcMock,

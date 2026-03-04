@@ -22,11 +22,30 @@ export class ListaPersonajesService {
             const onNext = (snapshot: any) => {
                 const Personajes: PersonajeSimple[] = [];
                 snapshot.forEach((obj: any) => {
+                    const idRegion = Math.max(0, Math.trunc(toNumber(
+                        obj.child('Id_region').val()
+                        ?? obj.child('id_region').val()
+                        ?? obj.child('idRegion').val()
+                        ?? obj.child('Region').child('Id').val()
+                        ?? obj.child('Region').child('id').val()
+                        ?? obj.child('region').child('Id').val()
+                        ?? obj.child('region').child('id').val()
+                    )));
+                    const nombreRegion = `${obj.child('Region').child('Nombre').val()
+                        ?? obj.child('Region').child('nombre').val()
+                        ?? obj.child('region').child('Nombre').val()
+                        ?? obj.child('region').child('nombre').val()
+                        ?? ''}`.trim();
                     const pj: PersonajeSimple = {
                         Id: obj.key,
                         Nombre: obj.child('Nombre').val(),
                         ownerUid: obj.child('ownerUid').val() ?? null,
                         visible_otros_usuarios: toBoolean(obj.child('visible_otros_usuarios').val()),
+                        Id_region: idRegion,
+                        Region: {
+                            Id: idRegion,
+                            Nombre: nombreRegion.length > 0 ? nombreRegion : (idRegion === 0 ? 'Sin región' : ''),
+                        },
                         Raza: obj.child('Raza').val(),
                         Clases: obj.child('Clases').val(),
                         Personalidad: obj.child('Personalidad').val(),
@@ -134,11 +153,29 @@ export class ListaPersonajesService {
                 : Object.values(response ?? {});
 
             await Promise.all(
-                personajes.map((element: any) =>
-                    set(ref(db, `Personajes-simples/${element.i}`), {
+                personajes.map((element: any) => {
+                    const idRegion = Math.max(0, Math.trunc(toNumber(
+                        element?.id_region
+                        ?? element?.idRegion
+                        ?? element?.Region?.Id
+                        ?? element?.Region?.id
+                        ?? element?.region?.Id
+                        ?? element?.region?.id
+                    )));
+                    const nombreRegion = `${element?.Region?.Nombre
+                        ?? element?.Region?.nombre
+                        ?? element?.region?.Nombre
+                        ?? element?.region?.nombre
+                        ?? ''}`.trim();
+                    return set(ref(db, `Personajes-simples/${element.i}`), {
                         Nombre: element.n,
                         ownerUid: extractOwnerUid(element),
                         visible_otros_usuarios: toBoolean(element.visible_otros_usuarios),
+                        Id_region: idRegion,
+                        Region: {
+                            Id: idRegion,
+                            Nombre: nombreRegion.length > 0 ? nombreRegion : (idRegion === 0 ? 'Sin región' : ''),
+                        },
                         Raza: element.r as RazaSimple,
                         Clases: element.c,
                         Contexto: element.co,
@@ -147,8 +184,8 @@ export class ListaPersonajesService {
                         Trama: element.t,
                         Subtrama: element.s,
                         Archivado: element.a,
-                    })
-                )
+                    });
+                })
             );
 
             Swal.fire({
@@ -180,6 +217,11 @@ function toBoolean(value: any): boolean {
         return normalizado === '1' || normalizado === 'true' || normalizado === 'si' || normalizado === 'sí';
     }
     return false;
+}
+
+function toNumber(value: any): number {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : 0;
 }
 
 function extractOwnerUid(value: any): string | null {

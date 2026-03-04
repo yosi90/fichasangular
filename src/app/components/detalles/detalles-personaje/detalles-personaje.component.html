@@ -19,6 +19,7 @@
                     <mat-chip class="m-1">Subtrama {{pj.Subtrama}}</mat-chip>
                 </ng-template>
                 <mat-chip class="m-1" *ngIf="tieneDeidadVisible()">Deidad {{pj.Deidad}}</mat-chip>
+                <mat-chip class="m-1" *ngIf="tieneRegionVisible()">Región {{nombreRegionPrincipal}}</mat-chip>
                 <mat-chip class="h-auto m-1" *ngIf="pj.Rds && pj.Rds.length > 0"><p class="m-0 me-2">Reducción de daño</p>
                     <mat-chip class="m-1" *ngFor="let r of pj.Rds" [matTooltip]="getTooltip_simples('Origen:', r.Origen)" matTooltipClass="tt-accent" >{{r.Modificador}}</mat-chip>
                 </mat-chip>

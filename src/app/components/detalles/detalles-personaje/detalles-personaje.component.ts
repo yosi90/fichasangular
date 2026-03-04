@@ -1,5 +1,6 @@
 import { AfterViewInit, Component, DoCheck, ElementRef, EventEmitter, HostListener, Input, OnChanges, OnDestroy, OnInit, Output, SimpleChanges } from '@angular/core';
 import { Database, get, ref } from '@angular/fire/database';
+import { Subscription } from 'rxjs';
 import { AptitudSortilega } from 'src/app/interfaces/aptitud-sortilega';
 import { Clase } from 'src/app/interfaces/clase';
 import { Conjuro } from 'src/app/interfaces/conjuro';
@@ -9,11 +10,13 @@ import { EnemigoPredilectoSeleccion } from 'src/app/interfaces/enemigo-predilect
 import { CompaneroMonstruoDetalle, FamiliarMonstruoDetalle, MonstruoDetalle } from 'src/app/interfaces/monstruo';
 import { CaracteristicaPerdidaKey, Personaje } from 'src/app/interfaces/personaje';
 import { RacialDetalle, RacialReferencia } from 'src/app/interfaces/racial';
+import { RegionDetalle } from 'src/app/interfaces/region';
 import { Rasgo } from 'src/app/interfaces/rasgo';
 import { SubtipoRef } from 'src/app/interfaces/subtipo';
 import { TipoCriatura } from 'src/app/interfaces/tipo_criatura';
 import { FichasDescargaBackgroundService } from 'src/app/services/fichas-descarga-background.service';
 import { PersonajeService } from 'src/app/services/personaje.service';
+import { RegionService } from 'src/app/services/region.service';
 import { UserService } from 'src/app/services/user.service';
 import { resolverExtraHabilidadVisible } from 'src/app/services/utils/habilidad-extra-visible';
 import Swal from 'sweetalert2';
@@ -81,6 +84,8 @@ export class DetallesPersonajeComponent implements OnInit, OnChanges, AfterViewI
     actualizandoVisibilidad = false;
     etiquetaCreador = 'Desconocido';
     private ownerUidCargado = '';
+    private regionesSub?: Subscription;
+    private catalogoRegiones: RegionDetalle[] = [];
     velDisclaimer: string = `
     Medido en pies
     5 pies equivalen a una casilla`;
@@ -89,6 +94,7 @@ export class DetallesPersonajeComponent implements OnInit, OnChanges, AfterViewI
     constructor(
         private fichasDescargaBgSvc: FichasDescargaBackgroundService,
         private pSvc: PersonajeService,
+        private regionSvc: RegionService,
         private userSvc: UserService,
         private db: Database,
         private hostElement: ElementRef<HTMLElement>
@@ -105,6 +111,7 @@ export class DetallesPersonajeComponent implements OnInit, OnChanges, AfterViewI
         Desvio: ${this.pj.Ca_desvio > 0 ? this.pj.Ca_desvio : '0'}
         Varios: ${this.pj.Ca_varios > 0 ? this.pj.Ca_varios : '0'}
         `;
+        this.cargarCatalogoRegiones();
         void this.actualizarEtiquetaCreador();
     }
 
@@ -129,6 +136,7 @@ export class DetallesPersonajeComponent implements OnInit, OnChanges, AfterViewI
     ngOnDestroy(): void {
         this.resizeObserver?.disconnect();
         this.resizeObserver = null;
+        this.regionesSub?.unsubscribe();
     }
 
     @HostListener('window:resize')
@@ -159,6 +167,25 @@ export class DetallesPersonajeComponent implements OnInit, OnChanges, AfterViewI
 
     get mostrarChipCreador(): boolean {
         return !this.esPreviewNuevoPersonaje;
+    }
+
+    get nombreRegionPrincipal(): string {
+        const nombreDirecto = `${(this.pj as any)?.Region?.Nombre
+            ?? (this.pj as any)?.Region?.nombre
+            ?? (this.pj as any)?.region?.Nombre
+            ?? (this.pj as any)?.region?.nombre
+            ?? ''}`.trim();
+        if (nombreDirecto.length > 0)
+            return nombreDirecto;
+
+        const idRegion = this.obtenerIdRegionPersonaje();
+        if (idRegion <= 0)
+            return '';
+
+        const catalogo = (this.catalogoRegiones ?? [])
+            .find((item) => this.toNumber(item?.Id) === idRegion);
+        const nombreCatalogo = `${catalogo?.Nombre ?? ''}`.trim();
+        return nombreCatalogo.length > 0 ? nombreCatalogo : `#${idRegion}`;
     }
 
     async actualizarVisibilidad(visible: boolean): Promise<void> {
@@ -200,6 +227,18 @@ export class DetallesPersonajeComponent implements OnInit, OnChanges, AfterViewI
 
     getTooltip_simples(titular: string, texto: string): string {
         return `${titular} ${texto}`;
+    }
+
+    private cargarCatalogoRegiones(): void {
+        this.regionesSub?.unsubscribe();
+        this.regionesSub = this.regionSvc.getRegiones().subscribe({
+            next: (regiones) => {
+                this.catalogoRegiones = regiones ?? [];
+            },
+            error: () => {
+                this.catalogoRegiones = [];
+            },
+        });
     }
 
     private ownerUidNormalizado(): string {
@@ -334,6 +373,10 @@ export class DetallesPersonajeComponent implements OnInit, OnChanges, AfterViewI
         return this.tieneTextoVisible(this.pj?.Deidad);
     }
 
+    tieneRegionVisible(): boolean {
+        return this.obtenerIdRegionPersonaje() > 0;
+    }
+
     tieneExpVisible(): boolean {
         if (this.esPreviewNuevoPersonaje && this.tieneContextoNepParaPreview())
             return true;
@@ -380,6 +423,20 @@ export class DetallesPersonajeComponent implements OnInit, OnChanges, AfterViewI
 
     tieneTipoCriaturaVisible(): boolean {
         return this.tieneTextoVisible(this.pj?.Tipo_criatura?.Nombre);
+    }
+
+    private obtenerIdRegionPersonaje(): number {
+        const raw = (this.pj as any)?.Id_region
+            ?? (this.pj as any)?.id_region
+            ?? (this.pj as any)?.idRegion
+            ?? (this.pj as any)?.Region?.Id
+            ?? (this.pj as any)?.Region?.id
+            ?? (this.pj as any)?.region?.Id
+            ?? (this.pj as any)?.region?.id;
+        const parsed = Math.trunc(Number(raw));
+        if (!Number.isFinite(parsed) || parsed <= 0)
+            return 0;
+        return parsed;
     }
 
     tieneAjusteNivelRazaVisible(): boolean {

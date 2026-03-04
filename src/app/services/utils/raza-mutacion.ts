@@ -18,10 +18,10 @@ export interface EvaluacionElegibilidadRazaBase {
     advertencias: string[];
 }
 
-interface EstadoOpcionalLiteral {
-    op1: boolean | null;
-    op2: boolean | null;
-    op3: boolean | null;
+interface EstadoGrupoOpcional {
+    cumple: boolean;
+    falla: boolean;
+    unknown: boolean;
 }
 
 interface RestriccionAlineamientoRaza {
@@ -131,31 +131,13 @@ function parseOpcional(entry: Record<string, any>): { value: number; unknown: bo
     return { value: 0, unknown: true };
 }
 
-function setGrupoOpcionalTrue(estado: EstadoOpcionalLiteral, grupo: number): void {
-    if (grupo === 1)
-        estado.op1 = true;
-    else if (grupo === 2)
-        estado.op2 = true;
-    else if (grupo === 3)
-        estado.op3 = true;
-}
-
-function setGrupoOpcionalFalseSiNull(estado: EstadoOpcionalLiteral, grupo: number): void {
-    if (grupo === 1)
-        estado.op1 ??= false;
-    else if (grupo === 2)
-        estado.op2 ??= false;
-    else if (grupo === 3)
-        estado.op3 ??= false;
-}
-
 function registrarResultadoOpcionalLiteral(
     opcional: { value: number; unknown: boolean },
     evaluable: boolean,
     cumple: boolean,
     razonFail: string,
     razonUnknown: string,
-    estado: EstadoOpcionalLiteral,
+    gruposOpcionales: Map<number, EstadoGrupoOpcional>,
     fail: string[],
     warnings: string[]
 ): void {
@@ -164,26 +146,51 @@ function registrarResultadoOpcionalLiteral(
         return;
     }
 
-    if (opcional.value > 3)
-        return;
-
-    if (!evaluable) {
-        warnings.push(razonUnknown);
-        return;
-    }
-
-    if (cumple) {
-        if (opcional.value > 0)
-            setGrupoOpcionalTrue(estado, opcional.value);
-        return;
-    }
-
     if (opcional.value === 0) {
+        if (!evaluable) {
+            warnings.push(razonUnknown);
+            return;
+        }
+
+        if (cumple)
+            return;
+
         fail.push(razonFail);
         return;
     }
 
-    setGrupoOpcionalFalseSiNull(estado, opcional.value);
+    const estado = gruposOpcionales.get(opcional.value) ?? {
+        cumple: false,
+        falla: false,
+        unknown: false,
+    };
+    if (!evaluable)
+        estado.unknown = true;
+    else if (cumple)
+        estado.cumple = true;
+    else
+        estado.falla = true;
+
+    gruposOpcionales.set(opcional.value, estado);
+}
+
+function resolverGruposOpcionales(
+    gruposOpcionales: Map<number, EstadoGrupoOpcional>,
+    fail: string[],
+    warnings: string[]
+): void {
+    gruposOpcionales.forEach((estado, grupo) => {
+        if (estado.cumple)
+            return;
+
+        if (estado.unknown) {
+            warnings.push(`No se pudo validar por completo el grupo opcional ${grupo}`);
+            return;
+        }
+
+        if (estado.falla)
+            fail.push(`No se cumple el grupo opcional ${grupo}`);
+    });
 }
 
 function cumpleActitud(actitudId: number, alineamientoBasicoId: number): boolean {
@@ -242,6 +249,12 @@ function parseTipoCriaturaId(entry: Record<string, any>): number {
 }
 
 function idLeyToAxis(value: number): number | null {
+    if (value === 4)
+        return 1;
+    if (value === 5)
+        return 0;
+    if (value === 6)
+        return -1;
     if (value === 1)
         return 1;
     if (value === 2)
@@ -252,6 +265,12 @@ function idLeyToAxis(value: number): number | null {
 }
 
 function idMoralToAxis(value: number): number | null {
+    if (value === 4)
+        return 1;
+    if (value === 5)
+        return 0;
+    if (value === 6)
+        return -1;
     if (value === 1)
         return 1;
     if (value === 2)
@@ -282,8 +301,8 @@ function parseRestriccionAlineamiento(entry: Record<string, any>): RestriccionAl
     const moral = moralById ?? moralByText;
 
     const hasAny = alineamientoBasicoId > 0 || ley !== null || moral !== null;
-    const unknown = (rawIdLey > 0 && leyById === null)
-        || (rawIdMoral > 0 && moralById === null)
+    const unknown = (rawIdLey > 0 && leyById === null && leyByText === null)
+        || (rawIdMoral > 0 && moralById === null && moralByText === null)
         || !hasAny;
 
     return {
@@ -528,7 +547,7 @@ export function evaluarElegibilidadRazaBase(
 
     const prerrequisitos = normalizeRazaPrerrequisitos(mutada?.Prerrequisitos);
     const flags = normalizeRazaPrerrequisitosFlags(mutada?.Prerrequisitos_flags, prerrequisitos);
-    const opcionales: EstadoOpcionalLiteral = { op1: null, op2: null, op3: null };
+    const gruposOpcionales = new Map<number, EstadoGrupoOpcional>();
 
     const alineamientoBasicoId = getAlineamientoBasicoIdPorNombre(`${candidata?.Alineamiento?.Basico?.Nombre ?? ""}`);
     const vectorAlineamiento = getVectorDesdeNombreBasico(`${candidata?.Alineamiento?.Basico?.Nombre ?? ""}`);
@@ -548,7 +567,7 @@ export function evaluarElegibilidadRazaBase(
                 cumple,
                 `Actitud requerida no cumplida (${actitudId})`,
                 "Actitud requerida con formato no reconocido",
-                opcionales,
+                gruposOpcionales,
                 fail,
                 warnings
             );
@@ -567,7 +586,7 @@ export function evaluarElegibilidadRazaBase(
                 cumple,
                 `Actitud prohibida incumplida (${actitudId})`,
                 "Actitud prohibida con formato no reconocido",
-                opcionales,
+                gruposOpcionales,
                 fail,
                 warnings
             );
@@ -592,7 +611,7 @@ export function evaluarElegibilidadRazaBase(
                 cumple,
                 "Alineamiento requerido no cumplido",
                 "Alineamiento requerido con formato no reconocido",
-                opcionales,
+                gruposOpcionales,
                 fail,
                 warnings
             );
@@ -617,7 +636,7 @@ export function evaluarElegibilidadRazaBase(
                 cumple,
                 "Alineamiento prohibido incumplido",
                 "Alineamiento prohibido con formato no reconocido",
-                opcionales,
+                gruposOpcionales,
                 fail,
                 warnings
             );
@@ -636,19 +655,14 @@ export function evaluarElegibilidadRazaBase(
                 cumple,
                 `Tipo de criatura incompatible (${tipoId})`,
                 "Tipo de criatura con formato no reconocido",
-                opcionales,
+                gruposOpcionales,
                 fail,
                 warnings
             );
         });
     }
 
-    if (opcionales.op1 === false)
-        fail.push("No se cumple el grupo opcional 1");
-    if (opcionales.op2 === false)
-        fail.push("No se cumple el grupo opcional 2");
-    if (opcionales.op3 === false)
-        fail.push("No se cumple el grupo opcional 3");
+    resolverGruposOpcionales(gruposOpcionales, fail, warnings);
 
     if (fail.length > 0) {
         return {

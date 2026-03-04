@@ -149,4 +149,268 @@ describe('dote-elegibilidad', () => {
 
         expect(resultado.estado).toBe('eligible');
     });
+
+    it('evalúa repetido para prerrequisito de dote', () => {
+        const dote = crearDoteBase({
+            Prerrequisitos: {
+                dote: [{
+                    Id_dote_prerrequisito: 4,
+                    Id_extra: -1,
+                    Repetido: 2,
+                    Opcional: 0,
+                }],
+            },
+        });
+
+        const fallo = evaluarElegibilidadDote({
+            dote,
+            contexto: crearContextoBase({
+                dotes: [{
+                    id: 4,
+                    nombre: 'Soltura con un arma',
+                    idExtra: -1,
+                    extra: '',
+                }],
+            }),
+        });
+        expect(fallo.estado).toBe('blocked_failed');
+
+        const ok = evaluarElegibilidadDote({
+            dote,
+            contexto: crearContextoBase({
+                dotes: [
+                    { id: 4, nombre: 'Soltura con un arma', idExtra: -1, extra: '' },
+                    { id: 4, nombre: 'Soltura con un arma', idExtra: -1, extra: '' },
+                ],
+            }),
+        });
+        expect(ok.estado).toBe('eligible');
+    });
+
+    it('acepta aliases legacy para id_extra y repetido en prerrequisito de dote', () => {
+        const dote = crearDoteBase({
+            Prerrequisitos: {
+                dote: [{
+                    Id_dote_prerrequisito: 4,
+                    e: 2,
+                    r: 1,
+                    Opcional: 0,
+                }],
+            },
+        });
+
+        const resultado = evaluarElegibilidadDote({
+            dote,
+            contexto: crearContextoBase({
+                dotes: [{
+                    id: 4,
+                    nombre: 'Soltura con un arma',
+                    idExtra: 2,
+                    extra: 'Lanza',
+                }],
+            }),
+        });
+
+        expect(resultado.estado).toBe('eligible');
+    });
+
+    it('id_extra negativo exige dote sin extra', () => {
+        const dote = crearDoteBase({
+            Prerrequisitos: {
+                dote: [{
+                    Id_dote_prerrequisito: 4,
+                    Id_extra: -1,
+                    Opcional: 0,
+                }],
+            },
+        });
+
+        const ok = evaluarElegibilidadDote({
+            dote,
+            contexto: crearContextoBase({
+                dotes: [{
+                    id: 4,
+                    nombre: 'Soltura con un arma',
+                    idExtra: 0,
+                    extra: '',
+                }],
+            }),
+        });
+        expect(ok.estado).toBe('eligible');
+
+        const fallo = evaluarElegibilidadDote({
+            dote,
+            contexto: crearContextoBase({
+                dotes: [{
+                    id: 4,
+                    nombre: 'Soltura con un arma',
+                    idExtra: 9,
+                    extra: 'Lanza',
+                }],
+            }),
+        });
+        expect(fallo.estado).toBe('blocked_failed');
+    });
+
+    it('soporta alineamiento_requerido y alineamiento_prohibido', () => {
+        const dote = crearDoteBase({
+            Prerrequisitos: {
+                alineamiento_requerido: [{ Id_alineamiento: 1, Opcional: 0 }],
+                alineamiento_prohibido: [{ Id_alineamiento: 9, Opcional: 0 }],
+            },
+        });
+        const resultado = evaluarElegibilidadDote({
+            dote,
+            contexto: crearContextoBase({ alineamiento: 'Legal bueno' }),
+        });
+        expect(resultado.estado).toBe('eligible');
+    });
+
+    it('soporta competencia_armadura y competencia_grupo_arma', () => {
+        const dote = crearDoteBase({
+            Prerrequisitos: {
+                competencia_armadura: [{ Id_armadura: 2, Opcional: 0 }],
+                competencia_grupo_arma: [{ Id_grupo: 7, Opcional: 0 }],
+            },
+        });
+        const resultado = evaluarElegibilidadDote({
+            dote,
+            contexto: crearContextoBase({
+                competenciasArmaduras: [{ id: 2, nombre: 'Escudos' }],
+                competenciasGrupoArmas: [{ id: 7, nombre: 'Armas exóticas' }],
+            }),
+        });
+        expect(resultado.estado).toBe('eligible');
+    });
+
+    it('soporta dg, nivel y nivel_max', () => {
+        const dote = crearDoteBase({
+            Prerrequisitos: {
+                dg: [{ Cantidad: 4, Opcional: 0 }],
+                nivel: [{ Nivel: 3, Opcional: 0 }],
+                nivel_max: [{ Nivel: 5, Opcional: 0 }],
+            },
+        });
+        const resultado = evaluarElegibilidadDote({
+            dote,
+            contexto: crearContextoBase({
+                dgTotal: 4,
+                nivelTotal: 5,
+            }),
+        });
+        expect(resultado.estado).toBe('eligible');
+    });
+
+    it('soporta dominio y tipo_criatura', () => {
+        const dote = crearDoteBase({
+            Prerrequisitos: {
+                dominio: [{ Id_dominio: 3, Opcional: 0 }],
+                tipo_criatura: [{ Id_tipo: 1, Opcional: 0 }],
+            },
+        });
+        const resultado = evaluarElegibilidadDote({
+            dote,
+            contexto: crearContextoBase({
+                dominios: [{ id: 3, nombre: 'Ley' }],
+                tipoCriaturaId: 1,
+            }),
+        });
+        expect(resultado.estado).toBe('eligible');
+    });
+
+    it('soporta escuela_nivel y lanzar_conjuros_arcanos_nivel', () => {
+        const dote = crearDoteBase({
+            Prerrequisitos: {
+                escuela_nivel: [{ Id_escuela: 4, Nivel: 5, Opcional: 0 }],
+                lanzar_conjuros_arcanos_nivel: [{ Nivel: 3, Opcional: 0 }],
+            },
+        });
+        const resultado = evaluarElegibilidadDote({
+            dote,
+            contexto: crearContextoBase({
+                lanzador: { arcano: 6, divino: 0, psionico: 0 },
+                escuelaEspecialista: { id: 4, nombre: 'Evocación', nivelArcano: 6 },
+                nivelesConjuroMaximos: { arcano: 3, divino: 0 },
+            }),
+        });
+        expect(resultado.estado).toBe('eligible');
+    });
+
+    it('soporta tamano_maximo/tamano_minimo y tipo_dote', () => {
+        const dote = crearDoteBase({
+            Prerrequisitos: {
+                tamano_maximo: [{ Id_tamano: 5, Opcional: 0 }],
+                tamano_minimo: [{ Id_tamano: 3, Opcional: 0 }],
+                tipo_dote: [{ Id_tipo: 8, Opcional: 0 }],
+                limite_tipo_dote: [{ Id_tipo: 8, Opcional: 0 }],
+            },
+        });
+        const resultado = evaluarElegibilidadDote({
+            dote,
+            contexto: crearContextoBase({
+                tamanoId: 4,
+                tiposDote: [{ id: 8, nombre: 'Metamágica' }],
+            }),
+        });
+        expect(resultado.estado).toBe('eligible');
+    });
+
+    it('soporta clase_especial con Id_extra 0 como comodin', () => {
+        const dote = crearDoteBase({
+            Prerrequisitos: {
+                clase_especial: [{ Id_especial: 99, Id_extra: 0, Opcional: 0 }],
+            },
+        });
+        const resultado = evaluarElegibilidadDote({
+            dote,
+            contexto: crearContextoBase({
+                claseas: [{ id: 99, nombre: 'Forma salvaje', idExtra: 3, extra: 'Lobo' }],
+            }),
+        });
+        expect(resultado.estado).toBe('eligible');
+    });
+
+    it('region queda en unknown cuando no hay contexto suficiente', () => {
+        const dote = crearDoteBase({
+            Prerrequisitos: {
+                region: [{ Id_region: 2, Opcional: 0 }],
+            },
+        });
+        const resultado = evaluarElegibilidadDote({
+            dote,
+            contexto: crearContextoBase(),
+        });
+        expect(resultado.estado).toBe('blocked_unknown');
+    });
+
+    it('region se valida por catalogo cuando solo hay nombre actual e id requerido', () => {
+        const dote = crearDoteBase({
+            Prerrequisitos: {
+                region: [{ Id_region: 2, Opcional: 0 }],
+            },
+        });
+        const resultado = evaluarElegibilidadDote({
+            dote,
+            contexto: crearContextoBase({
+                region: { id: null, nombre: 'Costa de la espada' },
+                catalogoRegiones: [{ id: 2, nombre: 'Costa de la espada' }],
+            }),
+        });
+        expect(resultado.estado).toBe('eligible');
+    });
+
+    it('region con id actual 0 falla cuando la dote requiere una region concreta', () => {
+        const dote = crearDoteBase({
+            Prerrequisitos: {
+                region: [{ Id_region: 2, Opcional: 0 }],
+            },
+        });
+        const resultado = evaluarElegibilidadDote({
+            dote,
+            contexto: crearContextoBase({
+                region: { id: 0, nombre: 'Sin región' },
+            }),
+        });
+        expect(resultado.estado).toBe('blocked_failed');
+    });
 });

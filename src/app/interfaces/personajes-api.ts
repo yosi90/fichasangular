@@ -2,6 +2,7 @@ export interface PersonajeContextoIdsDto {
     idCampana: number;
     idTrama: number;
     idSubtrama: number;
+    idRegion?: number | null;
     idAlineamiento?: number | null;
     idDeidad?: number | null;
     idGenero?: number | null;
@@ -17,6 +18,7 @@ export interface PersonajeContextoIdsDto {
         ventajas?: CatalogoNombreIdDto[];
         escuelas?: CatalogoNombreIdDto[];
         disciplinas?: CatalogoNombreIdDto[];
+        regiones?: CatalogoNombreIdDto[];
     };
 }
 
@@ -102,6 +104,7 @@ export interface PersonajeCreateRequestDto {
         idRaza: number;
         idRazaBase?: number | null;
         idTipoCriatura: number;
+        idRegion: number;
         campana: { id: number; };
         trama: { id: number; };
         subtrama: { id: number; };

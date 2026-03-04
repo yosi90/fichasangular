@@ -201,28 +201,10 @@ function parseOpcional(entry: Record<string, any>): { value: number; unknown: bo
     return { value: 0, unknown: true };
 }
 
-interface EstadoOpcionalLiteral {
-    op1: boolean | null;
-    op2: boolean | null;
-    op3: boolean | null;
-}
-
-function setGrupoOpcionalTrue(estado: EstadoOpcionalLiteral, grupo: number): void {
-    if (grupo === 1)
-        estado.op1 = true;
-    else if (grupo === 2)
-        estado.op2 = true;
-    else if (grupo === 3)
-        estado.op3 = true;
-}
-
-function setGrupoOpcionalFalseSiNull(estado: EstadoOpcionalLiteral, grupo: number): void {
-    if (grupo === 1)
-        estado.op1 ??= false;
-    else if (grupo === 2)
-        estado.op2 ??= false;
-    else if (grupo === 3)
-        estado.op3 ??= false;
+interface EstadoGrupoOpcional {
+    cumple: boolean;
+    falla: boolean;
+    unknown: boolean;
 }
 
 function registrarResultadoOpcionalLiteral(
@@ -231,7 +213,7 @@ function registrarResultadoOpcionalLiteral(
     cumple: boolean,
     razonFail: string,
     razonUnknown: string,
-    estado: EstadoOpcionalLiteral,
+    gruposOpcionales: Map<number, EstadoGrupoOpcional>,
     fail: string[],
     unknown: string[]
 ): void {
@@ -240,27 +222,51 @@ function registrarResultadoOpcionalLiteral(
         return;
     }
 
-    // Paridad C# literal: solo existen Op1/Op2/Op3. Cualquier opcional > 3 no condiciona.
-    if (opcional.value > 3)
-        return;
-
-    if (!evaluable) {
-        unknown.push(razonUnknown);
-        return;
-    }
-
-    if (cumple) {
-        if (opcional.value > 0)
-            setGrupoOpcionalTrue(estado, opcional.value);
-        return;
-    }
-
     if (opcional.value === 0) {
+        if (!evaluable) {
+            unknown.push(razonUnknown);
+            return;
+        }
+
+        if (cumple)
+            return;
+
         fail.push(razonFail);
         return;
     }
 
-    setGrupoOpcionalFalseSiNull(estado, opcional.value);
+    const estado = gruposOpcionales.get(opcional.value) ?? {
+        cumple: false,
+        falla: false,
+        unknown: false,
+    };
+    if (!evaluable)
+        estado.unknown = true;
+    else if (cumple)
+        estado.cumple = true;
+    else
+        estado.falla = true;
+
+    gruposOpcionales.set(opcional.value, estado);
+}
+
+function resolverGruposOpcionales(
+    gruposOpcionales: Map<number, EstadoGrupoOpcional>,
+    fail: string[],
+    unknown: string[]
+): void {
+    gruposOpcionales.forEach((estado, grupo) => {
+        if (estado.cumple)
+            return;
+
+        if (estado.unknown) {
+            unknown.push(`No se pudo validar por completo el grupo opcional ${grupo}`);
+            return;
+        }
+
+        if (estado.falla)
+            fail.push(`No se cumple el grupo opcional ${grupo}`);
+    });
 }
 
 function parseCaracteristicaId(entry: Record<string, any>): number {
@@ -493,11 +499,7 @@ export function evaluarElegibilidadPlantilla(
         caracteristica: [],
         criaturas_compatibles: [],
     };
-    const opcionales: EstadoOpcionalLiteral = {
-        op1: null,
-        op2: null,
-        op3: null,
-    };
+    const gruposOpcionales = new Map<number, EstadoGrupoOpcional>();
     const tiposMiembroRaw = Array.isArray(ctx.tiposCriaturaMiembroIds)
         ? ctx.tiposCriaturaMiembroIds
         : [];
@@ -518,7 +520,7 @@ export function evaluarElegibilidadPlantilla(
                 cumple,
                 `Actitud prohibida incumplida (${actitudId})`,
                 "Actitud prohibida con formato no reconocido",
-                opcionales,
+                gruposOpcionales,
                 fail,
                 unknown
             );
@@ -537,7 +539,7 @@ export function evaluarElegibilidadPlantilla(
                 cumple,
                 `Actitud requerida no cumplida (${actitudId})`,
                 "Actitud requerida con formato no reconocido",
-                opcionales,
+                gruposOpcionales,
                 fail,
                 unknown
             );
@@ -556,7 +558,7 @@ export function evaluarElegibilidadPlantilla(
                 cumple,
                 `Alineamiento requerido no cumplido (${requiredId})`,
                 "Alineamiento requerido con formato no reconocido",
-                opcionales,
+                gruposOpcionales,
                 fail,
                 unknown
             );
@@ -577,7 +579,7 @@ export function evaluarElegibilidadPlantilla(
                 cumple,
                 `Caracteristica minima no cumplida (${carId} >= ${valorMin})`,
                 "Caracteristica requerida con formato no reconocido",
-                opcionales,
+                gruposOpcionales,
                 fail,
                 unknown
             );
@@ -596,19 +598,14 @@ export function evaluarElegibilidadPlantilla(
                 cumple,
                 `Tipo de criatura incompatible (${tipoCompId})`,
                 "Compatibilidad de criatura con formato no reconocido",
-                opcionales,
+                gruposOpcionales,
                 fail,
                 unknown
             );
         });
     }
 
-    if (opcionales.op1 === false)
-        fail.push("No se cumple el grupo opcional 1");
-    if (opcionales.op2 === false)
-        fail.push("No se cumple el grupo opcional 2");
-    if (opcionales.op3 === false)
-        fail.push("No se cumple el grupo opcional 3");
+    resolverGruposOpcionales(gruposOpcionales, fail, unknown);
 
     if (unknown.length > 0) {
         return {

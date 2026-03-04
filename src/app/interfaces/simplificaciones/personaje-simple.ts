@@ -5,6 +5,8 @@ export interface PersonajeSimple {
     Nombre: string;
     ownerUid?: string | null;
     visible_otros_usuarios?: boolean;
+    Id_region?: number;
+    Region?: { Id: number; Nombre: string; } | null;
     Raza: RazaSimple;
     RazaBase?: RazaSimple | null;
     Clases: string;
