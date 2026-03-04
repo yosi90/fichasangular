@@ -563,7 +563,7 @@ describe('NuevoPersonajeComponent', () => {
     let monstruoSvcMock: any;
     let especialSvcMock: any;
     let personajeSvcMock: any;
-    let fichaPersonajeSvcMock: any;
+    let fichasDescargaBgSvcMock: any;
 
     beforeEach(() => {
         nuevoPSvc = new NuevoPersonajeService();
@@ -660,11 +660,8 @@ describe('NuevoPersonajeComponent', () => {
                 Id: id,
             })),
         };
-        fichaPersonajeSvcMock = {
-            generarPDF: jasmine.createSpy('generarPDF').and.resolveTo(),
-            generarPDF_Conjuros: jasmine.createSpy('generarPDF_Conjuros').and.resolveTo(),
-            generarPDF_Familiar: jasmine.createSpy('generarPDF_Familiar').and.resolveTo(),
-            generarPDF_Companero: jasmine.createSpy('generarPDF_Companero').and.resolveTo(),
+        fichasDescargaBgSvcMock = {
+            descargarFichas: jasmine.createSpy('descargarFichas').and.callFake(() => undefined),
         };
         component = new NuevoPersonajeComponent(
             nuevoPSvc,
@@ -691,7 +688,7 @@ describe('NuevoPersonajeComponent', () => {
             monstruoSvcMock,
             especialSvcMock,
             personajeSvcMock,
-            fichaPersonajeSvcMock
+            fichasDescargaBgSvcMock
         );
         component.Personaje = nuevoPSvc.PersonajeCreacion;
         component.catalogoDeidades = crearDeidadesMock();
@@ -3785,7 +3782,7 @@ describe('NuevoPersonajeComponent', () => {
         expect(component.Personaje.visible_otros_usuarios).toBeTrue();
         expect(personajeSvcMock.crearPersonajeApiDesdeCreacion).toHaveBeenCalledTimes(1);
         expect(personajeSvcMock.guardarPersonajeEnFirebase).toHaveBeenCalledTimes(1);
-        expect(fichaPersonajeSvcMock.generarPDF).toHaveBeenCalledTimes(1);
+        expect(fichasDescargaBgSvcMock.descargarFichas).toHaveBeenCalledTimes(1);
         expect(emitSpy).toHaveBeenCalledWith(123);
         expect(component.modalSelectorVisibilidadAbierto).toBeFalse();
     });
@@ -3825,7 +3822,7 @@ describe('NuevoPersonajeComponent', () => {
         expect(emitSpy).toHaveBeenCalledWith(456);
     });
 
-    it('genera solo ficha cuando no hay conjuros, familiares ni compañeros', async () => {
+    it('lanza descarga background con pack completo aunque no haya secundarios', async () => {
         component.modalSelectorVisibilidadAbierto = true;
         component.Personaje.Conjuros = [];
         component.Personaje.Sortilegas = [];
@@ -3834,13 +3831,15 @@ describe('NuevoPersonajeComponent', () => {
 
         await component.onConfirmarSelectorVisibilidad(true);
 
-        expect(fichaPersonajeSvcMock.generarPDF).toHaveBeenCalledTimes(1);
-        expect(fichaPersonajeSvcMock.generarPDF_Conjuros).not.toHaveBeenCalled();
-        expect(fichaPersonajeSvcMock.generarPDF_Familiar).not.toHaveBeenCalled();
-        expect(fichaPersonajeSvcMock.generarPDF_Companero).not.toHaveBeenCalled();
+        expect(fichasDescargaBgSvcMock.descargarFichas).toHaveBeenCalledTimes(1);
+        expect(fichasDescargaBgSvcMock.descargarFichas).toHaveBeenCalledWith(jasmine.any(Object), {
+            incluirConjuros: true,
+            incluirFamiliares: true,
+            incluirCompaneros: true,
+        });
     });
 
-    it('genera PDFs condicionales de conjuros, familiar y compañero cuando existen', async () => {
+    it('lanza descarga background tras finalizar cuando hay secundarios', async () => {
         component.modalSelectorVisibilidadAbierto = true;
         component.Personaje.Conjuros = [{ Id: 1, Nombre: 'Luz' } as any];
         component.Personaje.Sortilegas = [];
@@ -3849,10 +3848,12 @@ describe('NuevoPersonajeComponent', () => {
 
         await component.onConfirmarSelectorVisibilidad(true);
 
-        expect(fichaPersonajeSvcMock.generarPDF).toHaveBeenCalledTimes(1);
-        expect(fichaPersonajeSvcMock.generarPDF_Conjuros).toHaveBeenCalledTimes(1);
-        expect(fichaPersonajeSvcMock.generarPDF_Familiar).toHaveBeenCalledTimes(1);
-        expect(fichaPersonajeSvcMock.generarPDF_Companero).toHaveBeenCalledTimes(1);
+        expect(fichasDescargaBgSvcMock.descargarFichas).toHaveBeenCalledTimes(1);
+        expect(fichasDescargaBgSvcMock.descargarFichas).toHaveBeenCalledWith(jasmine.any(Object), {
+            incluirConjuros: true,
+            incluirFamiliares: true,
+            incluirCompaneros: true,
+        });
     });
 
     it('bloquea cierre del modal de visibilidad cuando hay finalizacion parcial', () => {
@@ -3906,7 +3907,7 @@ describe('NuevoPersonajeComponent', () => {
             monstruoSvcMock,
             especialSvcMock,
             personajeSvcMock,
-            fichaPersonajeSvcMock
+            fichasDescargaBgSvcMock
         );
         componentReabierto.ngOnInit();
 

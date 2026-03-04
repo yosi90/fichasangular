@@ -44,7 +44,7 @@ import { EnemigoPredilectoService } from 'src/app/services/enemigo-predilecto.se
 import { EscuelaConjurosService } from 'src/app/services/escuela-conjuros.service';
 import { EspecialService } from 'src/app/services/especial.service';
 import { MonstruoService } from 'src/app/services/monstruo.service';
-import { FichaPersonajeService } from 'src/app/services/ficha-personaje.service';
+import { FichasDescargaBackgroundService } from 'src/app/services/fichas-descarga-background.service';
 import { PersonajeService } from 'src/app/services/personaje.service';
 import {
     AsignacionAumentoCaracteristica,
@@ -486,7 +486,7 @@ export class NuevoPersonajeComponent {
         private monstruoSvc: MonstruoService,
         private especialSvc: EspecialService,
         private personajeSvc: PersonajeService,
-        private fichaPersonajeSvc: FichaPersonajeService
+        private fichasDescargaBgSvc: FichasDescargaBackgroundService
     ) {
         this.Personaje = this.nuevoPSvc.PersonajeCreacion;
     }
@@ -3498,7 +3498,7 @@ export class NuevoPersonajeComponent {
             void Swal.fire({
                 icon: 'warning',
                 title: 'Finalizacion pendiente',
-                text: 'La creación ya comenzó y no se puede cerrar hasta completar Firebase, PDFs y apertura de detalles.',
+                text: 'La creación ya comenzó y no se puede cerrar hasta completar Firebase y apertura de detalles.',
                 showConfirmButton: true,
                 target: document.body,
                 heightAuto: false,
@@ -3525,7 +3525,7 @@ export class NuevoPersonajeComponent {
     }
 
     private async finalizarPersonajeCompleto(): Promise<void> {
-        let etapa: 'sql' | 'firebase' | 'pdf' | 'navegacion' = 'sql';
+        let etapa: 'sql' | 'firebase' | 'navegacion' = 'sql';
         this.finalizacionEnCurso = true;
         try {
             let idPersonaje = Math.trunc(Number(this.finalizacionState.idPersonaje ?? 0));
@@ -3557,13 +3557,18 @@ export class NuevoPersonajeComponent {
                 this.finalizacionState.firebaseOk = true;
             }
 
-            etapa = 'pdf';
-            await this.generarPdfsFinalizacion(idPersonaje);
+            const pjNormalizado = this.personajeSvc.normalizarPersonajeParaPersistenciaFinal(this.Personaje, idPersonaje);
+            this.Personaje = pjNormalizado;
 
             etapa = 'navegacion';
             this.modalSelectorVisibilidadAbierto = false;
             this.selectorVisibilidadValorInicial = null;
             this.personajeFinalizado.emit(idPersonaje);
+            this.fichasDescargaBgSvc.descargarFichas(pjNormalizado, {
+                incluirConjuros: true,
+                incluirFamiliares: true,
+                incluirCompaneros: true,
+            });
             this.resetearEstadoFinalizacion();
         } catch (error: any) {
             const texto = `${error?.message ?? 'Error no identificado'}`.trim();
@@ -3571,9 +3576,7 @@ export class NuevoPersonajeComponent {
                 ? 'No se pudo guardar en SQL'
                 : etapa === 'firebase'
                     ? 'No se pudo guardar en Firebase'
-                    : etapa === 'pdf'
-                        ? 'No se pudieron generar los PDFs'
-                        : 'No se pudo finalizar el personaje';
+                    : 'No se pudo finalizar el personaje';
             await Swal.fire({
                 icon: 'warning',
                 title: titulo,
@@ -3586,25 +3589,6 @@ export class NuevoPersonajeComponent {
         } finally {
             this.finalizacionEnCurso = false;
         }
-    }
-
-    private async generarPdfsFinalizacion(idPersonaje: number): Promise<void> {
-        const pjNormalizado = this.personajeSvc.normalizarPersonajeParaPersistenciaFinal(this.Personaje, idPersonaje);
-        this.Personaje = pjNormalizado;
-
-        await this.fichaPersonajeSvc.generarPDF(pjNormalizado);
-
-        const tieneConjuros = (pjNormalizado.Conjuros ?? []).length > 0 || (pjNormalizado.Sortilegas ?? []).length > 0;
-        if (tieneConjuros)
-            await this.fichaPersonajeSvc.generarPDF_Conjuros(pjNormalizado);
-
-        const familiares = Array.isArray(pjNormalizado.Familiares) ? pjNormalizado.Familiares : [];
-        for (let i = 0; i < familiares.length; i++)
-            await this.fichaPersonajeSvc.generarPDF_Familiar(pjNormalizado, familiares[i], i);
-
-        const companeros = Array.isArray(pjNormalizado.Companeros) ? pjNormalizado.Companeros : [];
-        for (let i = 0; i < companeros.length; i++)
-            await this.fichaPersonajeSvc.generarPDF_Companero(pjNormalizado, companeros[i], i);
     }
 
     private resolverContextoIdsCreacion(): PersonajeContextoIdsDto {

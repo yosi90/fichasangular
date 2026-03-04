@@ -12,7 +12,7 @@ import { RacialDetalle, RacialReferencia } from 'src/app/interfaces/racial';
 import { Rasgo } from 'src/app/interfaces/rasgo';
 import { SubtipoRef } from 'src/app/interfaces/subtipo';
 import { TipoCriatura } from 'src/app/interfaces/tipo_criatura';
-import { FichaPersonajeService } from 'src/app/services/ficha-personaje.service';
+import { FichasDescargaBackgroundService } from 'src/app/services/fichas-descarga-background.service';
 import { PersonajeService } from 'src/app/services/personaje.service';
 import { UserService } from 'src/app/services/user.service';
 import { resolverExtraHabilidadVisible } from 'src/app/services/utils/habilidad-extra-visible';
@@ -87,7 +87,7 @@ export class DetallesPersonajeComponent implements OnInit, OnChanges, AfterViewI
     Habilidades: { Nombre: string; Mod_car: number; Rangos: number; Rangos_varios: number; Extra: string; Varios: string; }[] = [];
 
     constructor(
-        private fpSvc: FichaPersonajeService,
+        private fichasDescargaBgSvc: FichasDescargaBackgroundService,
         private pSvc: PersonajeService,
         private userSvc: UserService,
         private db: Database,
@@ -142,11 +142,11 @@ export class DetallesPersonajeComponent implements OnInit, OnChanges, AfterViewI
             ...this.pj,
             Jugador: jugadorFicha,
         };
-        this.fpSvc.generarPDF(pjFicha);
-        const conjuros = this.pj?.Conjuros ?? [];
-        const sortilegas = this.pj?.Sortilegas ?? [];
-        if (conjuros.length > 0 || sortilegas.length > 0)
-            this.fpSvc.generarPDF_Conjuros(pjFicha);
+        this.fichasDescargaBgSvc.descargarFichas(pjFicha, {
+            incluirConjuros: true,
+            incluirFamiliares: false,
+            incluirCompaneros: false,
+        });
     }
 
     get mostrarControlVisibilidad(): boolean {

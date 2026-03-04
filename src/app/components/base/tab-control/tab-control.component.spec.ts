@@ -1,14 +1,15 @@
 import { fakeAsync, tick } from '@angular/core/testing';
-import { of } from 'rxjs';
+import { of, Subject } from 'rxjs';
 import { TabControlComponent } from './tab-control.component';
 
-function crearComponente(): TabControlComponent {
+function crearComponente(overrides?: { pSvc?: any; }): TabControlComponent {
     const userSvc = { Usuario: { permisos: 0 }, permisos$: of(0) } as any;
     const ngZone = { run: (fn: () => void) => fn() } as any;
     const monstruoSvc = { getMonstruo: jasmine.createSpy('getMonstruo').and.returnValue(of({ Id: 90, Nombre: 'Grifo' })) } as any;
+    const pSvc = overrides?.pSvc ?? {} as any;
     const component = new TabControlComponent(
         userSvc,
-        {} as any,
+        pSvc,
         {} as any,
         {} as any,
         {} as any,
@@ -197,4 +198,23 @@ describe('TabControlComponent navegación por origen', () => {
         expect(cerrarSpy).toHaveBeenCalled();
         expect(abrirSpy).toHaveBeenCalledWith(123);
     });
+
+    it('abrirDetallesPersonaje no duplica pestañas ante nuevas emisiones del mismo observable', fakeAsync(() => {
+        const subject = new Subject<any>();
+        const pSvc = {
+            getDetallesPersonaje: jasmine.createSpy('getDetallesPersonaje').and.resolveTo(subject.asObservable()),
+        };
+        const component = crearComponente({ pSvc });
+
+        void component.abrirDetallesPersonaje(42);
+        tick();
+
+        subject.next({ Id: 42, Nombre: 'Druida' } as any);
+        tick(120);
+        expect(component.detallesPersonajeAbiertos.length).toBe(1);
+
+        subject.next({ Id: 42, Nombre: 'Druida actualizado' } as any);
+        tick(120);
+        expect(component.detallesPersonajeAbiertos.length).toBe(1);
+    }));
 });

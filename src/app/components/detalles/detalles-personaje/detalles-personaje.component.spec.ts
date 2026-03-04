@@ -3,7 +3,7 @@ import { Database } from '@angular/fire/database';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
 import { NuevoPersonajeService } from 'src/app/services/nuevo-personaje.service';
-import { FichaPersonajeService } from 'src/app/services/ficha-personaje.service';
+import { FichasDescargaBackgroundService } from 'src/app/services/fichas-descarga-background.service';
 import { PersonajeService } from 'src/app/services/personaje.service';
 import { UserService } from 'src/app/services/user.service';
 import { DetallesPersonajeComponent } from './detalles-personaje.component';
@@ -11,17 +11,18 @@ import { DetallesPersonajeComponent } from './detalles-personaje.component';
 describe('DetallesPersonajeComponent', () => {
     let component: DetallesPersonajeComponent;
     let fixture: ComponentFixture<DetallesPersonajeComponent>;
+    let fichasDescargaBgSvcMock: any;
 
     beforeEach(async () => {
+        fichasDescargaBgSvcMock = {
+            descargarFichas: jasmine.createSpy('descargarFichas').and.callFake(() => undefined),
+        };
         await TestBed.configureTestingModule({
             declarations: [DetallesPersonajeComponent],
             providers: [
                 {
-                    provide: FichaPersonajeService,
-                    useValue: {
-                        generarPDF: () => undefined,
-                        generarPDF_Conjuros: () => undefined,
-                    },
+                    provide: FichasDescargaBackgroundService,
+                    useValue: fichasDescargaBgSvcMock,
                 },
                 {
                     provide: PersonajeService,
@@ -58,6 +59,23 @@ describe('DetallesPersonajeComponent', () => {
         const botones = fixture.debugElement.queryAll(By.css('button'));
         const existeBoton = botones.some((btn) => `${btn.nativeElement.textContent ?? ''}`.includes('Generar pdf'));
         expect(existeBoton).toBeTrue();
+    });
+
+    it('generarFicha delega en descarga background con alcance de detalles', () => {
+        component.pj.Nombre = 'Druida de prueba';
+        component.pj.Conjuros = [{ Id: 1, Nombre: 'Luz' } as any];
+        component.pj.Sortilegas = [];
+
+        component.generarFicha();
+
+        expect(fichasDescargaBgSvcMock.descargarFichas).toHaveBeenCalledTimes(1);
+        expect(fichasDescargaBgSvcMock.descargarFichas).toHaveBeenCalledWith(jasmine.objectContaining({
+            Nombre: 'Druida de prueba',
+        }), {
+            incluirConjuros: true,
+            incluirFamiliares: false,
+            incluirCompaneros: false,
+        });
     });
 
     it('muestra "Creador: Tú" cuando el ownerUid coincide con la sesión activa', () => {

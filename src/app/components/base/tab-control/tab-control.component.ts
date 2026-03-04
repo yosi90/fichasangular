@@ -310,7 +310,7 @@ export class TabControlComponent implements OnInit, OnDestroy {
         if (abierto)
             this.selectTabByKey(this.getPersonajeTabKey(abierto));
         else {
-            (await this.pSvc.getDetallesPersonaje(value)).subscribe(personaje => {
+            (await this.pSvc.getDetallesPersonaje(value)).pipe(take(1)).subscribe(personaje => {
                 const targetKey = this.getPersonajeTabKey(personaje);
                 this.detallesPersonajeAbiertos.push(personaje);
                 this.registerOpenContext(targetKey, this.getSafeOpenerKey());

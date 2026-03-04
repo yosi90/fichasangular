@@ -86,6 +86,7 @@ import { DetallesVentajaComponent } from './components/detalles/detalles-ventaja
 import { ListadoVentajasComponent } from './components/shared/listado-ventajas/listado-ventajas.component';
 import { ListadoMonstruosComponent } from './components/shared/listado-monstruos/listado-monstruos.component';
 import { DetallesMonstruoComponent } from './components/detalles/detalles-monstruo/detalles-monstruo.component';
+import { FichasDescargaToastHostComponent } from './components/shared/fichas-descarga-toast-host/fichas-descarga-toast-host.component';
 
 @NgModule({
     declarations: [
@@ -141,6 +142,7 @@ import { DetallesMonstruoComponent } from './components/detalles/detalles-monstr
         ListadoVentajasComponent,
         ListadoMonstruosComponent,
         DetallesMonstruoComponent,
+        FichasDescargaToastHostComponent,
     ],
     imports: [
         BrowserModule,

@@ -1,0 +1,10 @@
+<div class="fichas-toast-host" aria-live="polite" aria-atomic="false">
+    <div
+        class="fichas-toast"
+        *ngFor="let job of jobs$ | async; trackBy: trackByJobId"
+        [ngClass]="job.estado === 'error' ? 'fichas-toast--error' : 'fichas-toast--running'">
+        <div class="fichas-toast__spinner" *ngIf="job.estado === 'running'"></div>
+        <mat-icon class="fichas-toast__icon" *ngIf="job.estado === 'error'">error_outline</mat-icon>
+        <span class="fichas-toast__text">{{job.mensaje}}</span>
+    </div>
+</div>
