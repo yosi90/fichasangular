@@ -1,190 +1,190 @@
-<div class="container-fluid detalle-view" [class.detalle-view--compact]="modoCompactoLayout">
-    <div class="row">
-        <div class="col-md-4 col-12 p-2">
-            <div class="d-flex flex-wrap align-items-center sombra-caja-sm rounded p-2 my-2">
-                <mat-icon class="me-1">account_box</mat-icon>
-                <mat-chip class="warm m-1" *ngIf="tienePersonajeNombreVisible()">{{pj.Nombre}}</mat-chip>
-                <mat-chip class="warm m-1" *ngIf="mostrarChipCreador">Creador: {{etiquetaCreador}}</mat-chip>
-                <mat-chip class="m-1" *ngIf="tieneGeneroVisible()">{{pj.Genero}}</mat-chip>
-                <mat-chip class="m-1" *ngIf="tieneAlineamientoVisible()">{{pj.Alineamiento}}</mat-chip>
-                <mat-chip class="m-1" *ngIf="tieneNivelVisible()" [matTooltip]="nivelDisclaimer" matTooltipClass="tt-accent tt-multiline">Nivel {{nivelPersonaje}}</mat-chip>
-                <mat-chip class="m-1" *ngIf="tieneNepVisible()" [matTooltip]="nepDisclaimer" matTooltipClass="tt-accent tt-multiline">NEP {{pj.NEP}}</mat-chip>
-                <mat-chip class="m-1" *ngIf="tieneExpVisible()">Exp {{pj.Experiencia}}</mat-chip>
-                <mat-chip class="warm m-1" *ngIf="tieneAtaqueBaseVisible()">Ataque base {{pj.Ataque_base}}</mat-chip>
-                <mat-chip class="m-1" *ngIf="tienePgVisible()">Pg {{pj.Vida}}</mat-chip>
-                <mat-chip class="m-1" *ngIf="tieneCaVisible()" [matTooltip]="caDisclaimer"  matTooltipClass="tt-accent tt-multiline">Ca {{pj.Ca}}</mat-chip>
+<div class="tw-w-full tw-px-3 detalle-view" [class.detalle-view--compact]="modoCompactoLayout">
+    <div class="tw-flex tw-flex-wrap">
+        <div class="detalle-col tw-w-full md:tw-w-1/3 tw-p-2">
+            <div class="tw-flex tw-flex-wrap tw-items-center sombra-caja-sm tw-rounded-md tw-p-2 tw-my-2">
+                <mat-icon class="tw-me-1">account_box</mat-icon>
+                <mat-chip class="warm tw-m-1" *ngIf="tienePersonajeNombreVisible()">{{pj.Nombre}}</mat-chip>
+                <mat-chip class="warm tw-m-1" *ngIf="mostrarChipCreador">Creador: {{etiquetaCreador}}</mat-chip>
+                <mat-chip class="tw-m-1" *ngIf="tieneGeneroVisible()">{{pj.Genero}}</mat-chip>
+                <mat-chip class="tw-m-1" *ngIf="tieneAlineamientoVisible()">{{pj.Alineamiento}}</mat-chip>
+                <mat-chip class="tw-m-1" *ngIf="tieneNivelVisible()" [matTooltip]="nivelDisclaimer" matTooltipClass="tt-accent tt-multiline">Nivel {{nivelPersonaje}}</mat-chip>
+                <mat-chip class="tw-m-1" *ngIf="tieneNepVisible()" [matTooltip]="nepDisclaimer" matTooltipClass="tt-accent tt-multiline">NEP {{pj.NEP}}</mat-chip>
+                <mat-chip class="tw-m-1" *ngIf="tieneExpVisible()">Exp {{pj.Experiencia}}</mat-chip>
+                <mat-chip class="warm tw-m-1" *ngIf="tieneAtaqueBaseVisible()">Ataque base {{pj.Ataque_base}}</mat-chip>
+                <mat-chip class="tw-m-1" *ngIf="tienePgVisible()">Pg {{pj.Vida}}</mat-chip>
+                <mat-chip class="tw-m-1" *ngIf="tieneCaVisible()" [matTooltip]="caDisclaimer"  matTooltipClass="tt-accent tt-multiline">Ca {{pj.Ca}}</mat-chip>
                 <ng-template *ngIf="pj.Campana != 'Sin campaña'">
-                    <mat-chip class="m-1">Campaña {{pj.Campana}}</mat-chip>
-                    <mat-chip class="m-1">Trama {{pj.Trama}}</mat-chip>
-                    <mat-chip class="m-1">Subtrama {{pj.Subtrama}}</mat-chip>
+                    <mat-chip class="tw-m-1">Campaña {{pj.Campana}}</mat-chip>
+                    <mat-chip class="tw-m-1">Trama {{pj.Trama}}</mat-chip>
+                    <mat-chip class="tw-m-1">Subtrama {{pj.Subtrama}}</mat-chip>
                 </ng-template>
-                <mat-chip class="m-1" *ngIf="tieneDeidadVisible()">Deidad {{pj.Deidad}}</mat-chip>
-                <mat-chip class="m-1" *ngIf="tieneRegionVisible()">Región {{nombreRegionPrincipal}}</mat-chip>
-                <mat-chip class="h-auto m-1" *ngIf="pj.Rds && pj.Rds.length > 0"><p class="m-0 me-2">Reducción de daño</p>
-                    <mat-chip class="m-1" *ngFor="let r of pj.Rds" [matTooltip]="getTooltip_simples('Origen:', r.Origen)" matTooltipClass="tt-accent" >{{r.Modificador}}</mat-chip>
+                <mat-chip class="tw-m-1" *ngIf="tieneDeidadVisible()">Deidad {{pj.Deidad}}</mat-chip>
+                <mat-chip class="tw-m-1" *ngIf="tieneRegionVisible()">Región {{nombreRegionPrincipal}}</mat-chip>
+                <mat-chip class="tw-h-auto tw-m-1" *ngIf="pj.Rds && pj.Rds.length > 0"><p class="tw-m-0 tw-me-2">Reducción de daño</p>
+                    <mat-chip class="tw-m-1" *ngFor="let r of pj.Rds" [matTooltip]="getTooltip_simples('Origen:', r.Origen)" matTooltipClass="tt-accent" >{{r.Modificador}}</mat-chip>
                 </mat-chip>
-                <mat-chip class="h-auto m-1" *ngIf="pj.Rcs && pj.Rcs.length > 0"><p class="m-0 me-2">Resistencia a conjuros</p>
-                    <mat-chip class="m-1" *ngFor="let r of pj.Rcs" [matTooltip]="getTooltip_simples('Origen:', r.Origen)" matTooltipClass="tt-accent" >{{r.Modificador}}</mat-chip>
+                <mat-chip class="tw-h-auto tw-m-1" *ngIf="pj.Rcs && pj.Rcs.length > 0"><p class="tw-m-0 tw-me-2">Resistencia a conjuros</p>
+                    <mat-chip class="tw-m-1" *ngFor="let r of pj.Rcs" [matTooltip]="getTooltip_simples('Origen:', r.Origen)" matTooltipClass="tt-accent" >{{r.Modificador}}</mat-chip>
                 </mat-chip>
-                <mat-chip class="h-auto m-1" *ngIf="pj.Res && pj.Res.length > 0"><p class="m-0 me-2">Resistencia a la energía</p>
-                    <mat-chip class="m-1" *ngFor="let r of pj.Res" [matTooltip]="getTooltip_simples('Origen:', r.Origen)" matTooltipClass="tt-accent" >{{r.Modificador}}</mat-chip>
+                <mat-chip class="tw-h-auto tw-m-1" *ngIf="pj.Res && pj.Res.length > 0"><p class="tw-m-0 tw-me-2">Resistencia a la energía</p>
+                    <mat-chip class="tw-m-1" *ngFor="let r of pj.Res" [matTooltip]="getTooltip_simples('Origen:', r.Origen)" matTooltipClass="tt-accent" >{{r.Modificador}}</mat-chip>
                 </mat-chip>
-                <mat-chip class="m-1" *ngIf="tieneOroVisible()" matTooltip="Monedas de oro" matTooltipClass="tt-accent">
+                <mat-chip class="tw-m-1" *ngIf="tieneOroVisible()" matTooltip="Monedas de oro" matTooltipClass="tt-accent">
                     Oro inicial &nbsp;{{pj.Oro_inicial}}
                     <mat-icon style="width: 20px; height: 20px; font-size: 20px;">currency_bitcoin</mat-icon>
                 </mat-chip>
-                <mat-chip class="warm m-1" *ngIf="!pj.Oficial" matTooltip="Este personaje tiene elementos homebrew" matTooltipClass="tt-accent">No es oficial</mat-chip>
+                <mat-chip class="warm tw-m-1" *ngIf="!pj.Oficial" matTooltip="Este personaje tiene elementos homebrew" matTooltipClass="tt-accent">No es oficial</mat-chip>
             </div>
-            <div class="d-flex flex-wrap align-items-center sombra-caja-sm rounded p-2 my-2" *ngIf="tieneRazaVisible()">
-                <mat-icon class="me-1">settings_accessibility</mat-icon>
-                <mat-chip class="h-auto warm chip-clic m-1" matTooltip="Pulsa para ver los detalles de esta raza"
+            <div class="tw-flex tw-flex-wrap tw-items-center sombra-caja-sm tw-rounded-md tw-p-2 tw-my-2" *ngIf="tieneRazaVisible()">
+                <mat-icon class="tw-me-1">settings_accessibility</mat-icon>
+                <mat-chip class="tw-h-auto warm chip-clic tw-m-1" matTooltip="Pulsa para ver los detalles de esta raza"
                     [matTooltipShowDelay]="250" matTooltipClass="tt-accent" (click)="verDetallesRaza(pj.Raza.Id)">{{pj.Raza.Nombre}}
-                    <mat-chip class="ms-3 m-1" *ngIf="tieneTamanoVisible()">{{pj.Raza.Tamano.Nombre}}</mat-chip>
-                    <mat-chip class="chip-clic m-1" *ngIf="tieneTipoCriaturaVisible()" (click)="verDetallesTipoCriatura(pj.Tipo_criatura); $event.stopPropagation();">{{pj.Tipo_criatura.Nombre}}</mat-chip>
-                    <mat-chip class="m-1" *ngIf="tieneRazaBaseVisible()">Base: {{pj.RazaBase?.Nombre}}</mat-chip>
-                    <mat-chip class="m-1" *ngIf="tieneDgsRazaVisible()">+{{pj.Raza.Dgs_adicionales.Cantidad}}{{pj.Raza.Dgs_adicionales.Dado}} Dgs de {{pj.Raza.Dgs_adicionales.Tipo_criatura}}</mat-chip>
-                    <mat-chip class="m-1" *ngIf="tieneAjusteNivelRazaVisible()">Ajuste de nivel +{{pj.Raza.Ajuste_nivel}}</mat-chip>
+                    <mat-chip class="tw-ms-3 tw-m-1" *ngIf="tieneTamanoVisible()">{{pj.Raza.Tamano.Nombre}}</mat-chip>
+                    <mat-chip class="chip-clic tw-m-1" *ngIf="tieneTipoCriaturaVisible()" (click)="verDetallesTipoCriatura(pj.Tipo_criatura); $event.stopPropagation();">{{pj.Tipo_criatura.Nombre}}</mat-chip>
+                    <mat-chip class="tw-m-1" *ngIf="tieneRazaBaseVisible()">Base: {{pj.RazaBase?.Nombre}}</mat-chip>
+                    <mat-chip class="tw-m-1" *ngIf="tieneDgsRazaVisible()">+{{pj.Raza.Dgs_adicionales.Cantidad}}{{pj.Raza.Dgs_adicionales.Dado}} Dgs de {{pj.Raza.Dgs_adicionales.Tipo_criatura}}</mat-chip>
+                    <mat-chip class="tw-m-1" *ngIf="tieneAjusteNivelRazaVisible()">Ajuste de nivel +{{pj.Raza.Ajuste_nivel}}</mat-chip>
                 </mat-chip>
-                <mat-chip class="h-auto m-1" *ngIf="tieneSubtiposVisibles()">
+                <mat-chip class="tw-h-auto tw-m-1" *ngIf="tieneSubtiposVisibles()">
                     Subtipos
-                    <mat-chip class="ms-3 m-1 chip-clic" *ngFor="let subtipo of getSubtiposVisibles()"
+                    <mat-chip class="tw-ms-3 tw-m-1 chip-clic" *ngFor="let subtipo of getSubtiposVisibles()"
                         matTooltip="Pulsa para ver los detalles" [matTooltipShowDelay]="250" matTooltipClass="tt-accent"
                         (click)="verDetallesSubtipo(subtipo)">
                         {{subtipo.Nombre}}
                     </mat-chip>
                 </mat-chip>
-                <mat-chip class="m-1" *ngIf="tieneEdadVisible()">Edad {{pj.Edad}} años</mat-chip>
-                <mat-chip class="m-1" *ngIf="tieneAlturaVisible()">Altura {{pj.Altura}} m</mat-chip>
-                <mat-chip class="m-1" *ngIf="tienePesoVisible()">Peso {{pj.Peso}} kg</mat-chip>
-                <mat-chip class="h-auto m-1" *ngIf="tieneMadurezEdadVisible()" [matTooltip]="getTooltipMadurezEdad()" matTooltipClass="tt-accent tt-multiline">
+                <mat-chip class="tw-m-1" *ngIf="tieneEdadVisible()">Edad {{pj.Edad}} años</mat-chip>
+                <mat-chip class="tw-m-1" *ngIf="tieneAlturaVisible()">Altura {{pj.Altura}} m</mat-chip>
+                <mat-chip class="tw-m-1" *ngIf="tienePesoVisible()">Peso {{pj.Peso}} kg</mat-chip>
+                <mat-chip class="tw-h-auto tw-m-1" *ngIf="tieneMadurezEdadVisible()" [matTooltip]="getTooltipMadurezEdad()" matTooltipClass="tt-accent tt-multiline">
                     Madurez {{madurezEdad.nombre}}
-                    <mat-chip class="ms-3 m-1">Fue/Des/Con {{formatSigned(madurezEdad.modFisico)}}</mat-chip>
-                    <mat-chip class="m-1">Int/Sab/Car {{formatSigned(madurezEdad.modMental)}}</mat-chip>
+                    <mat-chip class="tw-ms-3 tw-m-1">Fue/Des/Con {{formatSigned(madurezEdad.modFisico)}}</mat-chip>
+                    <mat-chip class="tw-m-1">Int/Sab/Car {{formatSigned(madurezEdad.modMental)}}</mat-chip>
                 </mat-chip>
-                <mat-chip class="m-1" *ngIf="tieneIniciativaVisible()">Iniciativa {{iniciativa}}</mat-chip>
-                <mat-chip class="m-1" *ngIf="tienePresaVisible()">Presa {{presa}}</mat-chip>
-                <mat-chip class="m-1" *ngIf="tieneVelocidadVisible(pj.Correr)" [matTooltip]="velDisclaimer" matTooltipClass="tt-accent tt-multiline">Velocidad {{pj.Correr}}'</mat-chip>
-                <mat-chip class="m-1" *ngIf="tieneVelocidadVisible(pj.Nadar)" [matTooltip]="velDisclaimer" matTooltipClass="tt-accent tt-multiline">Nadar {{pj.Nadar}}'</mat-chip>
-                <mat-chip class="m-1" *ngIf="tieneVelocidadVisible(pj.Volar)" [matTooltip]="velDisclaimer" matTooltipClass="tt-accent tt-multiline">Volar {{pj.Volar}}'</mat-chip>
-                <mat-chip class="m-1" *ngIf="tieneVelocidadVisible(pj.Trepar)" [matTooltip]="velDisclaimer" matTooltipClass="tt-accent tt-multiline">Trepar {{pj.Trepar}}'</mat-chip>
-                <mat-chip class="m-1" *ngIf="tieneVelocidadVisible(pj.Escalar)" [matTooltip]="velDisclaimer" matTooltipClass="tt-accent tt-multiline">Escalar {{pj.Escalar}}'</mat-chip>
-                <mat-chip class="h-auto m-1" *ngIf="tieneCapacidadCargaVisible()" matTooltip="Medida en libras" matTooltipClass="tt-accent">Capacidad de carga
-                    <mat-chip class="ms-3 m-1" *ngIf="tieneValorCargaVisible(pj.Capacidad_carga.Ligera)" [matTooltip]="cLigera" matTooltipClass="tt-accent" matTooltipPosition="above">Ligera {{pj.Capacidad_carga.Ligera}}</mat-chip>
-                    <mat-chip class="m-1" *ngIf="tieneValorCargaVisible(pj.Capacidad_carga.Media)" [matTooltip]="cMedia" matTooltipClass="tt-accent" matTooltipPosition="above">Media {{pj.Capacidad_carga.Media}}</mat-chip>
-                    <mat-chip class="m-1" *ngIf="tieneValorCargaVisible(pj.Capacidad_carga.Pesada)" [matTooltip]="cPesada" matTooltipClass="tt-accent tt-multiline" matTooltipPosition="above">Pesada {{pj.Capacidad_carga.Pesada}}</mat-chip>
+                <mat-chip class="tw-m-1" *ngIf="tieneIniciativaVisible()">Iniciativa {{iniciativa}}</mat-chip>
+                <mat-chip class="tw-m-1" *ngIf="tienePresaVisible()">Presa {{presa}}</mat-chip>
+                <mat-chip class="tw-m-1" *ngIf="tieneVelocidadVisible(pj.Correr)" [matTooltip]="velDisclaimer" matTooltipClass="tt-accent tt-multiline">Velocidad {{pj.Correr}}'</mat-chip>
+                <mat-chip class="tw-m-1" *ngIf="tieneVelocidadVisible(pj.Nadar)" [matTooltip]="velDisclaimer" matTooltipClass="tt-accent tt-multiline">Nadar {{pj.Nadar}}'</mat-chip>
+                <mat-chip class="tw-m-1" *ngIf="tieneVelocidadVisible(pj.Volar)" [matTooltip]="velDisclaimer" matTooltipClass="tt-accent tt-multiline">Volar {{pj.Volar}}'</mat-chip>
+                <mat-chip class="tw-m-1" *ngIf="tieneVelocidadVisible(pj.Trepar)" [matTooltip]="velDisclaimer" matTooltipClass="tt-accent tt-multiline">Trepar {{pj.Trepar}}'</mat-chip>
+                <mat-chip class="tw-m-1" *ngIf="tieneVelocidadVisible(pj.Escalar)" [matTooltip]="velDisclaimer" matTooltipClass="tt-accent tt-multiline">Escalar {{pj.Escalar}}'</mat-chip>
+                <mat-chip class="tw-h-auto tw-m-1" *ngIf="tieneCapacidadCargaVisible()" matTooltip="Medida en libras" matTooltipClass="tt-accent">Capacidad de carga
+                    <mat-chip class="tw-ms-3 tw-m-1" *ngIf="tieneValorCargaVisible(pj.Capacidad_carga.Ligera)" [matTooltip]="cLigera" matTooltipClass="tt-accent" matTooltipPosition="above">Ligera {{pj.Capacidad_carga.Ligera}}</mat-chip>
+                    <mat-chip class="tw-m-1" *ngIf="tieneValorCargaVisible(pj.Capacidad_carga.Media)" [matTooltip]="cMedia" matTooltipClass="tt-accent" matTooltipPosition="above">Media {{pj.Capacidad_carga.Media}}</mat-chip>
+                    <mat-chip class="tw-m-1" *ngIf="tieneValorCargaVisible(pj.Capacidad_carga.Pesada)" [matTooltip]="cPesada" matTooltipClass="tt-accent tt-multiline" matTooltipPosition="above">Pesada {{pj.Capacidad_carga.Pesada}}</mat-chip>
                 </mat-chip>
-                <mat-chip-set class="m-1" *ngFor="let p of getPlantillasVisibles()">
-                    <mat-chip [ngStyle]="{'height': p.Multiplicador_dgs_lic > 0 ? 'auto' : 'initial'}" class="warm m-1 chip-clic"
+                <mat-chip-set class="tw-m-1" *ngFor="let p of getPlantillasVisibles()">
+                    <mat-chip [ngStyle]="{'height': p.Multiplicador_dgs_lic > 0 ? 'auto' : 'initial'}" class="warm tw-m-1 chip-clic"
                         matTooltip="Pulsa para ver los detalles de esta plantilla" [matTooltipShowDelay]="250" matTooltipClass="tt-accent"
                         (click)="verDetallesPlantilla(p)">{{p.Nombre}}
-                        <mat-chip class="ms-3 m-1" *ngIf="p.Multiplicador_dgs_lic > 0">{{p.Multiplicador_dgs_lic}}{{p.Tipo_dgs_lic}} DGs adicionales</mat-chip>
-                        <mat-chip class="m-1" *ngIf="p.Suma_dgs_lic > 0">+{{p.Suma_dgs_lic}} PGs</mat-chip>
-                        <mat-chip *ngIf="p.Ajuste_nivel > 0" [ngClass]="p.Multiplicador_dgs_lic == 0 ? 'ms-3' : ''" class="m-1">Ajuste de nivel +{{p.Ajuste_nivel}}</mat-chip>
-                        <mat-chip class="m-1">{{p.Heredada ? "Heredada" : "Adquirida"}}</mat-chip>
+                        <mat-chip class="tw-ms-3 tw-m-1" *ngIf="p.Multiplicador_dgs_lic > 0">{{p.Multiplicador_dgs_lic}}{{p.Tipo_dgs_lic}} DGs adicionales</mat-chip>
+                        <mat-chip class="tw-m-1" *ngIf="p.Suma_dgs_lic > 0">+{{p.Suma_dgs_lic}} PGs</mat-chip>
+                        <mat-chip *ngIf="p.Ajuste_nivel > 0" [ngClass]="p.Multiplicador_dgs_lic == 0 ? 'tw-ms-3' : ''" class="tw-m-1">Ajuste de nivel +{{p.Ajuste_nivel}}</mat-chip>
+                        <mat-chip class="tw-m-1">{{p.Heredada ? "Heredada" : "Adquirida"}}</mat-chip>
                     </mat-chip>
                 </mat-chip-set>
             </div>
-            <div class="d-flex flex-wrap align-items-center sombra-caja-sm rounded p-2 my-2">
-                <mat-icon class="me-1">style</mat-icon>
-                <mat-chip-set class="m-1" *ngIf="(pj.desgloseClases?.length ?? 0) > 0">
-                    <mat-chip class="h-auto warm chip-clic sombra3d-sm chip-clase-resumen" *ngFor="let c of pj.desgloseClases" matTooltip="Pulsa para ver los detalles"
+            <div class="tw-flex tw-flex-wrap tw-items-center sombra-caja-sm tw-rounded-md tw-p-2 tw-my-2">
+                <mat-icon class="tw-me-1">style</mat-icon>
+                <mat-chip-set class="tw-m-1" *ngIf="(pj.desgloseClases?.length ?? 0) > 0">
+                    <mat-chip class="tw-h-auto warm chip-clic sombra3d-sm chip-clase-resumen" *ngFor="let c of pj.desgloseClases" matTooltip="Pulsa para ver los detalles"
                         [matTooltipShowDelay]="250" matTooltipClass="tt-accent" (click)="verDetallesClase(c.Nombre)">
                         <span class="chip-clase-titulo">{{c.Nombre}} {{c.Nivel}}</span>
-                        <mat-chip class="m-1 chip-clase-subinfo"
+                        <mat-chip class="tw-m-1 chip-clase-subinfo"
                             *ngFor="let subchip of getSubchipsLanzadorClase(c)"
                             (click)="verDetallesClase(c.Nombre); $event.stopPropagation()">
                             {{subchip}}
                         </mat-chip>
                     </mat-chip>
                 </mat-chip-set>
-                <mat-chip class="h-auto m-1" *ngIf="pj.Escuela_especialista?.Nombre && pj.Escuela_especialista.Nombre != 'Cualquiera'">
-                    <p class="m-0 me-2">Especialización:</p>
-                    <mat-chip class="m-1">{{pj.Escuela_especialista.Nombre}}</mat-chip>
+                <mat-chip class="tw-h-auto tw-m-1" *ngIf="pj.Escuela_especialista?.Nombre && pj.Escuela_especialista.Nombre != 'Cualquiera'">
+                    <p class="tw-m-0 tw-me-2">Especialización:</p>
+                    <mat-chip class="tw-m-1">{{pj.Escuela_especialista.Nombre}}</mat-chip>
                 </mat-chip>
-                <mat-chip class="h-auto m-1" *ngIf="tieneEscuelasProhibidasVisibles()"><p class="m-0 me-2">Escuelas prohibidas:</p>
-                    <mat-chip class="m-1" *ngFor="let e of getEscuelasProhibidasVisibles()">{{e}}</mat-chip>
+                <mat-chip class="tw-h-auto tw-m-1" *ngIf="tieneEscuelasProhibidasVisibles()"><p class="tw-m-0 tw-me-2">Escuelas prohibidas:</p>
+                    <mat-chip class="tw-m-1" *ngFor="let e of getEscuelasProhibidasVisibles()">{{e}}</mat-chip>
                 </mat-chip>
-                <mat-chip class="warm m-1" *ngIf="pj.Disciplina_especialista.Nombre != 'Ninguna'">{{pj.Disciplina_especialista.Calificativo}}</mat-chip>
-                <mat-chip class="warm m-1" *ngIf="pj.Disciplina_prohibida != 'Ninguna'">{{pj.Disciplina_prohibida}}</mat-chip>
-                <mat-chip class="h-auto m-1" *ngIf="tieneBloqueSalvacionesVisible()">Salvaciones
-                    <mat-chip class="ms-3 m-1">Fortaleza: 
-                        <p class="m-0 ms-1" [matTooltip]="fortaleza_origenes" matTooltipClass="tt-accent">{{fortaleza}}</p>
-                        <p class="m-0 ms-1" [matTooltip]="fortaleza_varios_origenes" matTooltipClass="tt-accent" *ngIf="tieneNumeroNoCero(fortaleza_varios)">{{formatSigned(fortaleza_varios)}}</p>
+                <mat-chip class="warm tw-m-1" *ngIf="pj.Disciplina_especialista.Nombre != 'Ninguna'">{{pj.Disciplina_especialista.Calificativo}}</mat-chip>
+                <mat-chip class="warm tw-m-1" *ngIf="pj.Disciplina_prohibida != 'Ninguna'">{{pj.Disciplina_prohibida}}</mat-chip>
+                <mat-chip class="tw-h-auto tw-m-1" *ngIf="tieneBloqueSalvacionesVisible()">Salvaciones
+                    <mat-chip class="tw-ms-3 tw-m-1">Fortaleza: 
+                        <p class="tw-m-0 tw-ms-1" [matTooltip]="fortaleza_origenes" matTooltipClass="tt-accent">{{fortaleza}}</p>
+                        <p class="tw-m-0 tw-ms-1" [matTooltip]="fortaleza_varios_origenes" matTooltipClass="tt-accent" *ngIf="tieneNumeroNoCero(fortaleza_varios)">{{formatSigned(fortaleza_varios)}}</p>
                     </mat-chip>
-                    <mat-chip class="m-1">Reflejos:
-                        <p class="m-0 ms-1" [matTooltip]="reflejos_origenes" matTooltipClass="tt-accent">{{reflejos}}</p>
-                        <p class="m-0 ms-1" [matTooltip]="reflejos_varios_origenes" matTooltipClass="tt-accent" *ngIf="tieneNumeroNoCero(reflejos_varios)">{{formatSigned(reflejos_varios)}}</p>
+                    <mat-chip class="tw-m-1">Reflejos:
+                        <p class="tw-m-0 tw-ms-1" [matTooltip]="reflejos_origenes" matTooltipClass="tt-accent">{{reflejos}}</p>
+                        <p class="tw-m-0 tw-ms-1" [matTooltip]="reflejos_varios_origenes" matTooltipClass="tt-accent" *ngIf="tieneNumeroNoCero(reflejos_varios)">{{formatSigned(reflejos_varios)}}</p>
                     </mat-chip>
-                    <mat-chip class="m-1">Voluntad:
-                        <p class="m-0 ms-1" [matTooltip]="voluntad_origenes" matTooltipClass="tt-accent">{{voluntad}}</p>
-                        <p class="m-0 ms-1" [matTooltip]="voluntad_varios_origenes" matTooltipClass="tt-accent" *ngIf="tieneNumeroNoCero(voluntad_varios)">{{formatSigned(voluntad_varios)}}</p>
+                    <mat-chip class="tw-m-1">Voluntad:
+                        <p class="tw-m-0 tw-ms-1" [matTooltip]="voluntad_origenes" matTooltipClass="tt-accent">{{voluntad}}</p>
+                        <p class="tw-m-0 tw-ms-1" [matTooltip]="voluntad_varios_origenes" matTooltipClass="tt-accent" *ngIf="tieneNumeroNoCero(voluntad_varios)">{{formatSigned(voluntad_varios)}}</p>
                     </mat-chip>
                 </mat-chip>
             </div>
         </div>
-        <div class="col-md-4 col-12 p-2">
-            <div id="caracteristicas" class="sombra-caja-sm rounded p-2 my-2" *ngIf="tieneCaracteristicasVisibles()">
+        <div class="detalle-col tw-w-full md:tw-w-1/3 tw-p-2">
+            <div id="caracteristicas" class="sombra-caja-sm tw-rounded-md tw-p-2 tw-my-2" *ngIf="tieneCaracteristicasVisibles()">
                 <mat-chip class="warm sombra-caja-sm">Características</mat-chip>
                 Fuerza
                 <ng-container *ngIf="!tieneCaracteristicaPerdida('Fuerza'); else fuerzaPerdidaTpl">
-                    <mat-chip [ngClass]="pj.Fuerza > 18 ? 'warm' : ''" class="m-1">{{pj.Fuerza}}</mat-chip>
-                    <mat-chip [ngClass]="pj.Fuerza > 18 ? 'warm' : ''" class="m-1">{{pj.ModFuerza > 0 ? '+' : ''}}{{pj.ModFuerza}}</mat-chip>
+                    <mat-chip [ngClass]="pj.Fuerza > 18 ? 'warm' : ''" class="tw-m-1">{{pj.Fuerza}}</mat-chip>
+                    <mat-chip [ngClass]="pj.Fuerza > 18 ? 'warm' : ''" class="tw-m-1">{{pj.ModFuerza > 0 ? '+' : ''}}{{pj.ModFuerza}}</mat-chip>
                 </ng-container>
                 <ng-template #fuerzaPerdidaTpl>
                     <mat-chip class="bad chip-caracteristica-perdida">Perdida</mat-chip>
                 </ng-template>
                 Destreza
                 <ng-container *ngIf="!tieneCaracteristicaPerdida('Destreza'); else destrezaPerdidaTpl">
-                    <mat-chip [ngClass]="pj.Destreza > 18 ? 'warm' : ''" class="m-1">{{pj.Destreza}}</mat-chip>
-                    <mat-chip [ngClass]="pj.Destreza > 18 ? 'warm' : ''" class="m-1">{{pj.ModDestreza > 0 ? '+' : ''}}{{pj.ModDestreza}}</mat-chip>
+                    <mat-chip [ngClass]="pj.Destreza > 18 ? 'warm' : ''" class="tw-m-1">{{pj.Destreza}}</mat-chip>
+                    <mat-chip [ngClass]="pj.Destreza > 18 ? 'warm' : ''" class="tw-m-1">{{pj.ModDestreza > 0 ? '+' : ''}}{{pj.ModDestreza}}</mat-chip>
                 </ng-container>
                 <ng-template #destrezaPerdidaTpl>
                     <mat-chip class="bad chip-caracteristica-perdida">Perdida</mat-chip>
                 </ng-template>
                 Constitución
                 <ng-container *ngIf="!tieneCaracteristicaPerdida('Constitucion'); else constitucionPerdidaTpl">
-                    <mat-chip [ngClass]="pj.Constitucion > 18 ? 'warm' : ''" class="m-1">{{pj.Constitucion}}</mat-chip>
-                    <mat-chip [ngClass]="pj.Constitucion > 18 ? 'warm' : ''" class="m-1">{{pj.ModConstitucion > 0 ? '+' : ''}}{{pj.ModConstitucion}}</mat-chip>
+                    <mat-chip [ngClass]="pj.Constitucion > 18 ? 'warm' : ''" class="tw-m-1">{{pj.Constitucion}}</mat-chip>
+                    <mat-chip [ngClass]="pj.Constitucion > 18 ? 'warm' : ''" class="tw-m-1">{{pj.ModConstitucion > 0 ? '+' : ''}}{{pj.ModConstitucion}}</mat-chip>
                 </ng-container>
                 <ng-template #constitucionPerdidaTpl>
                     <mat-chip class="bad chip-caracteristica-perdida">Perdida</mat-chip>
                 </ng-template>
                 Inteligencia
                 <ng-container *ngIf="!tieneCaracteristicaPerdida('Inteligencia'); else inteligenciaPerdidaTpl">
-                    <mat-chip [ngClass]="pj.Inteligencia > 18 ? 'warm' : ''" class="m-1">{{pj.Inteligencia}}</mat-chip>
-                    <mat-chip [ngClass]="pj.Inteligencia > 18 ? 'warm' : ''" class="m-1">{{pj.ModInteligencia > 0 ? '+' : ''}}{{pj.ModInteligencia}}</mat-chip>
+                    <mat-chip [ngClass]="pj.Inteligencia > 18 ? 'warm' : ''" class="tw-m-1">{{pj.Inteligencia}}</mat-chip>
+                    <mat-chip [ngClass]="pj.Inteligencia > 18 ? 'warm' : ''" class="tw-m-1">{{pj.ModInteligencia > 0 ? '+' : ''}}{{pj.ModInteligencia}}</mat-chip>
                 </ng-container>
                 <ng-template #inteligenciaPerdidaTpl>
                     <mat-chip class="bad chip-caracteristica-perdida">Perdida</mat-chip>
                 </ng-template>
                 Sabiduría
                 <ng-container *ngIf="!tieneCaracteristicaPerdida('Sabiduria'); else sabiduriaPerdidaTpl">
-                    <mat-chip [ngClass]="pj.Sabiduria > 18 ? 'warm' : ''" class="m-1">{{pj.Sabiduria}}</mat-chip>
-                    <mat-chip [ngClass]="pj.Sabiduria > 18 ? 'warm' : ''" class="m-1">{{pj.ModSabiduria > 0 ? '+' : ''}}{{pj.ModSabiduria}}</mat-chip>
+                    <mat-chip [ngClass]="pj.Sabiduria > 18 ? 'warm' : ''" class="tw-m-1">{{pj.Sabiduria}}</mat-chip>
+                    <mat-chip [ngClass]="pj.Sabiduria > 18 ? 'warm' : ''" class="tw-m-1">{{pj.ModSabiduria > 0 ? '+' : ''}}{{pj.ModSabiduria}}</mat-chip>
                 </ng-container>
                 <ng-template #sabiduriaPerdidaTpl>
                     <mat-chip class="bad chip-caracteristica-perdida">Perdida</mat-chip>
                 </ng-template>
                 Carisma
                 <ng-container *ngIf="!tieneCaracteristicaPerdida('Carisma'); else carismaPerdidaTpl">
-                    <mat-chip [ngClass]="pj.Carisma > 18 ? 'warm' : ''" class="m-1">{{pj.Carisma}}</mat-chip>
-                    <mat-chip [ngClass]="pj.Carisma > 18 ? 'warm' : ''" class="m-1">{{pj.ModCarisma > 0 ? '+' : ''}}{{pj.ModCarisma}}</mat-chip>
+                    <mat-chip [ngClass]="pj.Carisma > 18 ? 'warm' : ''" class="tw-m-1">{{pj.Carisma}}</mat-chip>
+                    <mat-chip [ngClass]="pj.Carisma > 18 ? 'warm' : ''" class="tw-m-1">{{pj.ModCarisma > 0 ? '+' : ''}}{{pj.ModCarisma}}</mat-chip>
                 </ng-container>
                 <ng-template #carismaPerdidaTpl>
                     <mat-chip class="bad chip-caracteristica-perdida">Perdida</mat-chip>
                 </ng-template>
             </div>
-            <div class="sombra-caja-sm rounded p-2 my-2" *ngIf="tienePersonalidadVisible()">
-                <mat-chip class="w-100 sombra-caja-sm mb-2 chip-titulo">Personalidad</mat-chip>
+            <div class="sombra-caja-sm tw-rounded-md tw-p-2 tw-my-2" *ngIf="tienePersonalidadVisible()">
+                <mat-chip class="tw-w-full sombra-caja-sm tw-mb-2 chip-titulo">Personalidad</mat-chip>
                 <p>{{pj.Personalidad}}</p>
             </div>
-            <div class="sombra-caja-sm rounded p-2 my-2" *ngIf="tieneContextoVisible()">
-                <mat-chip class="w-100 sombra-caja-sm mb-2 chip-titulo">Contexto</mat-chip>
+            <div class="sombra-caja-sm tw-rounded-md tw-p-2 tw-my-2" *ngIf="tieneContextoVisible()">
+                <mat-chip class="tw-w-full sombra-caja-sm tw-mb-2 chip-titulo">Contexto</mat-chip>
                 <p>{{pj.Contexto}}</p>
             </div>
         </div>
-        <div class="col-md-4 col-12 p-2">
-            <div class="sombra-caja-sm rounded p-2 my-2" *ngIf="mostrarControlVisibilidad">
+        <div class="detalle-col tw-w-full md:tw-w-1/3 tw-p-2">
+            <div class="sombra-caja-sm tw-rounded-md tw-p-2 tw-my-2" *ngIf="mostrarControlVisibilidad">
                 <mat-slide-toggle
                     [checked]="personajeVisiblePublicamente"
                     [disabled]="actualizandoVisibilidad"
@@ -192,17 +192,17 @@
                     {{personajeVisiblePublicamente ? 'Visible para todos' : 'Visible solo para el creador'}}
                 </mat-slide-toggle>
             </div>
-            <button *ngIf="mostrarBotonGenerarPdf" mat-stroked-button color="accent" class="w-100 sombra-caja-sm rounded my-2" (click)="generarFicha();">
+            <button *ngIf="mostrarBotonGenerarPdf" mat-stroked-button color="accent" class="tw-w-full sombra-caja-sm tw-rounded-md tw-my-2" (click)="generarFicha();">
                 Generar pdf
             </button>
             <mat-accordion>
                 <mat-expansion-panel *ngIf="getClaseasVisibles().length > 0">
                     <mat-expansion-panel-header>
-                        <button mat-stroked-button color="accent" class="rounded-0 rounded-top">
-                            <h2 class="mb-0">Habilidades cláseas</h2>
+                        <button mat-stroked-button color="accent" class="tw-rounded-none tw-rounded-t-md">
+                            <h2 class="tw-mb-0">Habilidades cláseas</h2>
                         </button>
                     </mat-expansion-panel-header>
-                    <mat-chip-set class="m-1">
+                    <mat-chip-set class="tw-m-1">
                         <mat-chip *ngFor="let c of getClaseasVisibles()" class="chip-clic sombra3d-sm"
                             matTooltip="Pulsa para ver los detalles" [matTooltipShowDelay]="250" matTooltipClass="tt-accent"
                             (click)="verDetallesEspecialPorNombre(c.Nombre)">
@@ -212,57 +212,57 @@
                 </mat-expansion-panel>
                 <mat-expansion-panel *ngIf="getRacialesVisibles().length > 0">
                     <mat-expansion-panel-header>
-                        <button mat-stroked-button color="accent" class="rounded-0">
-                            <h2 class="mb-0">Habilidades raciales</h2>
+                        <button mat-stroked-button color="accent" class="tw-rounded-none">
+                            <h2 class="tw-mb-0">Habilidades raciales</h2>
                         </button>
                     </mat-expansion-panel-header>
-                    <mat-chip-set class="m-1">
-                        <mat-chip *ngFor="let r of getRacialesVisibles(); trackBy: trackByRacial" class="h-auto chip-clic sombra3d-sm"
+                    <mat-chip-set class="tw-m-1">
+                        <mat-chip *ngFor="let r of getRacialesVisibles(); trackBy: trackByRacial" class="tw-h-auto chip-clic sombra3d-sm"
                             matTooltip="Pulsa para ver los detalles" [matTooltipShowDelay]="250" matTooltipClass="tt-accent"
                             (click)="verDetallesRacialPorNombre(r)">
                             {{r.nombre}}
-                            <mat-chip class="ms-2 m-1 chip-origen" *ngIf="getOrigenRacial(r) as origenRacial">{{origenRacial}}</mat-chip>
+                            <mat-chip class="tw-ms-2 tw-m-1 chip-origen" *ngIf="getOrigenRacial(r) as origenRacial">{{origenRacial}}</mat-chip>
                         </mat-chip>
                     </mat-chip-set>
                 </mat-expansion-panel>
                 <mat-expansion-panel *ngIf="getDotesVisibles().length > 0">
                     <mat-expansion-panel-header>
-                        <button mat-stroked-button color="accent" class="rounded-0">
-                            <h2 class="mb-0">Dotes obtenidas</h2>
+                        <button mat-stroked-button color="accent" class="tw-rounded-none">
+                            <h2 class="tw-mb-0">Dotes obtenidas</h2>
                         </button>
                     </mat-expansion-panel-header>
-                    <mat-chip-set class="m-1">
-                        <mat-chip *ngFor="let d of getDotesVisibles()" class="h-auto chip-clic sombra3d-sm"
+                    <mat-chip-set class="tw-m-1">
+                        <mat-chip *ngFor="let d of getDotesVisibles()" class="tw-h-auto chip-clic sombra3d-sm"
                             matTooltip="Pulsa para ver los detalles" [matTooltipShowDelay]="250" matTooltipClass="tt-accent"
                             (click)="verDetallesDote(d);">
                             {{d.Nombre}}
-                            <mat-chip class="m-1" *ngIf="tieneTextoVisible(d.Extra)">{{d.Extra}}</mat-chip>
-                            <mat-chip class="ms-2 m-1 chip-origen" *ngIf="getOrigenDote(d) as origenDote">{{origenDote}}</mat-chip>
+                            <mat-chip class="tw-m-1" *ngIf="tieneTextoVisible(d.Extra)">{{d.Extra}}</mat-chip>
+                            <mat-chip class="tw-ms-2 tw-m-1 chip-origen" *ngIf="getOrigenDote(d) as origenDote">{{origenDote}}</mat-chip>
                         </mat-chip>
                     </mat-chip-set>
                 </mat-expansion-panel>
                 <mat-expansion-panel *ngIf="Habilidades.length > 0">
                     <mat-expansion-panel-header>
-                        <button mat-stroked-button color="accent" class="rounded-0">
-                            <h2 class="mb-0">Habilidades</h2>
+                        <button mat-stroked-button color="accent" class="tw-rounded-none">
+                            <h2 class="tw-mb-0">Habilidades</h2>
                         </button>
                     </mat-expansion-panel-header>
-                    <mat-chip-set class="m-1">
-                        <mat-chip *ngFor="let h of Habilidades" class="h-auto m-1 sombra3d-sm chip-habilidad-resumen">
+                    <mat-chip-set class="tw-m-1">
+                        <mat-chip *ngFor="let h of Habilidades" class="tw-h-auto tw-m-1 sombra3d-sm chip-habilidad-resumen">
                             {{h.Nombre}} +{{h.Rangos + h.Rangos_varios + h.Mod_car}}
-                            <mat-chip class="m-1" *ngIf="tieneTextoVisible(getExtraVisibleHabilidad(h))">{{getExtraVisibleHabilidad(h)}}</mat-chip>
-                            <mat-chip class="m-1 chip-habilidad-varios" *ngIf="tieneTextoVisible(h.Varios)">{{h.Varios}}</mat-chip>
+                            <mat-chip class="tw-m-1" *ngIf="tieneTextoVisible(getExtraVisibleHabilidad(h))">{{getExtraVisibleHabilidad(h)}}</mat-chip>
+                            <mat-chip class="tw-m-1 chip-habilidad-varios" *ngIf="tieneTextoVisible(h.Varios)">{{h.Varios}}</mat-chip>
                         </mat-chip>
                     </mat-chip-set>
                 </mat-expansion-panel>
                 <mat-expansion-panel *ngIf="tieneCompaniaMonstruoVisible()">
                     <mat-expansion-panel-header>
-                        <button mat-stroked-button color="accent" class="rounded-0">
-                            <h2 class="mb-0">Familiares y companeros animales</h2>
+                        <button mat-stroked-button color="accent" class="tw-rounded-none">
+                            <h2 class="tw-mb-0">Familiares y companeros animales</h2>
                         </button>
                     </mat-expansion-panel-header>
-                    <p class="m-2" *ngIf="getFamiliaresVisibles().length > 0"><strong>Familiares</strong></p>
-                    <mat-chip-set class="m-1" *ngIf="getFamiliaresVisibles().length > 0">
+                    <p class="tw-m-2" *ngIf="getFamiliaresVisibles().length > 0"><strong>Familiares</strong></p>
+                    <mat-chip-set class="tw-m-1" *ngIf="getFamiliaresVisibles().length > 0">
                         <mat-chip
                             *ngFor="let familiar of getFamiliaresVisibles()"
                             class="chip-clic sombra3d-sm"
@@ -273,8 +273,8 @@
                             {{familiar.Nombre}}
                         </mat-chip>
                     </mat-chip-set>
-                    <p class="m-2" *ngIf="getCompanerosVisibles().length > 0"><strong>Companeros animales</strong></p>
-                    <mat-chip-set class="m-1" *ngIf="getCompanerosVisibles().length > 0">
+                    <p class="tw-m-2" *ngIf="getCompanerosVisibles().length > 0"><strong>Companeros animales</strong></p>
+                    <mat-chip-set class="tw-m-1" *ngIf="getCompanerosVisibles().length > 0">
                         <mat-chip
                             *ngFor="let companero of getCompanerosVisibles()"
                             class="chip-clic sombra3d-sm"
@@ -288,24 +288,24 @@
                 </mat-expansion-panel>
                 <mat-expansion-panel *ngIf="getIdiomasVisibles().length > 0">
                     <mat-expansion-panel-header>
-                        <button mat-stroked-button color="accent" class="rounded-0">
-                            <h2 class="mb-0">Idiomas conocidos</h2>
+                        <button mat-stroked-button color="accent" class="tw-rounded-none">
+                            <h2 class="tw-mb-0">Idiomas conocidos</h2>
                         </button>
                     </mat-expansion-panel-header>
-                    <mat-chip-set class="m-1">
-                        <mat-chip *ngFor="let i of getIdiomasVisibles()" class="h-auto" matTooltip="{{i.Descripcion}}">
+                    <mat-chip-set class="tw-m-1">
+                        <mat-chip *ngFor="let i of getIdiomasVisibles()" class="tw-h-auto" matTooltip="{{i.Descripcion}}">
                             {{i.Nombre}}
-                            <mat-chip class="ms-2 m-1 chip-origen" *ngIf="getOrigenIdioma(i) as origenIdioma">{{origenIdioma}}</mat-chip>
+                            <mat-chip class="tw-ms-2 tw-m-1 chip-origen" *ngIf="getOrigenIdioma(i) as origenIdioma">{{origenIdioma}}</mat-chip>
                         </mat-chip>
                     </mat-chip-set>
                 </mat-expansion-panel>
                 <mat-expansion-panel *ngIf="getDominiosVisibles().length > 0">
                     <mat-expansion-panel-header>
-                        <button mat-stroked-button color="accent" class="rounded-0">
-                            <h2 class="mb-0">Dominios</h2>
+                        <button mat-stroked-button color="accent" class="tw-rounded-none">
+                            <h2 class="tw-mb-0">Dominios</h2>
                         </button>
                     </mat-expansion-panel-header>
-                    <mat-chip-set class="m-1">
+                    <mat-chip-set class="tw-m-1">
                         <mat-chip *ngFor="let d of getDominiosVisibles()">
                             {{d}}
                         </mat-chip>
@@ -313,25 +313,25 @@
                 </mat-expansion-panel>
                 <mat-expansion-panel *ngIf="getEnemigosPredilectosVisibles().length > 0">
                     <mat-expansion-panel-header>
-                        <button mat-stroked-button color="accent" class="rounded-0">
-                            <h2 class="mb-0">Enemigos predilectos</h2>
+                        <button mat-stroked-button color="accent" class="tw-rounded-none">
+                            <h2 class="tw-mb-0">Enemigos predilectos</h2>
                         </button>
                     </mat-expansion-panel-header>
-                    <mat-chip-set class="m-1">
-                        <mat-chip *ngFor="let enemigo of getEnemigosPredilectosVisibles()" class="h-auto sombra3d-sm">
+                    <mat-chip-set class="tw-m-1">
+                        <mat-chip *ngFor="let enemigo of getEnemigosPredilectosVisibles()" class="tw-h-auto sombra3d-sm">
                             {{enemigo.nombre}}
-                            <mat-chip class="m-1">{{getTextoBonoEnemigoPredilecto(enemigo)}}</mat-chip>
-                            <mat-chip class="m-1" *ngIf="enemigo.veces > 1">{{enemigo.veces}} veces</mat-chip>
+                            <mat-chip class="tw-m-1">{{getTextoBonoEnemigoPredilecto(enemigo)}}</mat-chip>
+                            <mat-chip class="tw-m-1" *ngIf="enemigo.veces > 1">{{enemigo.veces}} veces</mat-chip>
                         </mat-chip>
                     </mat-chip-set>
                 </mat-expansion-panel>
                 <mat-expansion-panel *ngIf="getConjurosVisibles().length > 0">
                     <mat-expansion-panel-header>
-                        <button mat-stroked-button color="accent" class="rounded-0">
-                            <h2 class="mb-0">Conjuros conocidos</h2>
+                        <button mat-stroked-button color="accent" class="tw-rounded-none">
+                            <h2 class="tw-mb-0">Conjuros conocidos</h2>
                         </button>
                     </mat-expansion-panel-header>
-                    <mat-chip-set class="m-1">
+                    <mat-chip-set class="tw-m-1">
                         <mat-chip *ngFor="let c of getConjurosVisibles()" matTooltip="Pulsa para ver los detalles" [matTooltipShowDelay]="250" (click)="verDetallesConjuro(c);" class="sombra3d-sm" matTooltipClass="tt-accent">
                             {{c.Nombre}}
                         </mat-chip>
@@ -339,46 +339,46 @@
                 </mat-expansion-panel>
                 <mat-expansion-panel *ngIf="getSortilegasVisibles().length > 0">
                     <mat-expansion-panel-header>
-                        <button mat-stroked-button color="accent" class="rounded-0">
-                            <h2 class="mb-0">Habilidades sortílegas</h2>
+                        <button mat-stroked-button color="accent" class="tw-rounded-none">
+                            <h2 class="tw-mb-0">Habilidades sortílegas</h2>
                         </button>
                     </mat-expansion-panel-header>
-                    <mat-chip-set class="m-1">
-                        <mat-chip *ngFor="let s of getSortilegasVisibles()" matTooltip="Pulsa para ver los detalles" [matTooltipShowDelay]="250" (click)="verDetallesSortilega(s);" class="h-auto sombra3d-sm" matTooltipClass="tt-accent">
+                    <mat-chip-set class="tw-m-1">
+                        <mat-chip *ngFor="let s of getSortilegasVisibles()" matTooltip="Pulsa para ver los detalles" [matTooltipShowDelay]="250" (click)="verDetallesSortilega(s);" class="tw-h-auto sombra3d-sm" matTooltipClass="tt-accent">
                             {{s.Conjuro.Nombre}}
-                            <mat-chip class="sombra3d-sm m-1" *ngIf="tieneNumeroVisible(s.Nivel_lanzador)">Nivel de lanzador {{s.Nivel_lanzador}}</mat-chip>
-                            <mat-chip class="sombra3d-sm m-1" *ngIf="tieneTextoVisible(s.Usos_diarios)">Usos {{s.Usos_diarios}}</mat-chip>
-                            <mat-chip class="sombra3d-sm m-1" *ngIf="tieneNumeroVisible(s.Dgs_necesarios)">DGs min {{s.Dgs_necesarios}}</mat-chip>
+                            <mat-chip class="sombra3d-sm tw-m-1" *ngIf="tieneNumeroVisible(s.Nivel_lanzador)">Nivel de lanzador {{s.Nivel_lanzador}}</mat-chip>
+                            <mat-chip class="sombra3d-sm tw-m-1" *ngIf="tieneTextoVisible(s.Usos_diarios)">Usos {{s.Usos_diarios}}</mat-chip>
+                            <mat-chip class="sombra3d-sm tw-m-1" *ngIf="tieneNumeroVisible(s.Dgs_necesarios)">DGs min {{s.Dgs_necesarios}}</mat-chip>
                             <div class="chip-descripcion-bloque" *ngIf="tieneTextoVisible(s.Descripcion)">{{s.Descripcion}}</div>
                         </mat-chip>
                     </mat-chip-set>
                 </mat-expansion-panel>
                 <mat-expansion-panel *ngIf="getRasgosTipoVisibles().length > 0">
                     <mat-expansion-panel-header>
-                        <button mat-stroked-button color="accent" class="rounded-0">
-                            <h2 class="mb-0">Rasgos del tipo de criatura</h2>
+                        <button mat-stroked-button color="accent" class="tw-rounded-none">
+                            <h2 class="tw-mb-0">Rasgos del tipo de criatura</h2>
                         </button>
                     </mat-expansion-panel-header>
-                    <mat-chip-set class="m-1">
-                        <mat-chip *ngFor="let r of getRasgosTipoVisibles()" matTooltip="Pulsa para ver los detalles" [matTooltipShowDelay]="250" (click)="verDetallesRasgo(r);" class="h-auto chip-clic sombra3d-sm" matTooltipClass="tt-accent">
+                    <mat-chip-set class="tw-m-1">
+                        <mat-chip *ngFor="let r of getRasgosTipoVisibles()" matTooltip="Pulsa para ver los detalles" [matTooltipShowDelay]="250" (click)="verDetallesRasgo(r);" class="tw-h-auto chip-clic sombra3d-sm" matTooltipClass="tt-accent">
                             {{r.Nombre}}
-                            <mat-chip class="ms-2 m-1 chip-origen" *ngIf="getOrigenRasgoTipo(r) as origenRasgo" (click)="verDetallesRasgo(r); $event.stopPropagation()">{{origenRasgo}}</mat-chip>
+                            <mat-chip class="tw-ms-2 tw-m-1 chip-origen" *ngIf="getOrigenRasgoTipo(r) as origenRasgo" (click)="verDetallesRasgo(r); $event.stopPropagation()">{{origenRasgo}}</mat-chip>
                         </mat-chip>
                     </mat-chip-set>
                 </mat-expansion-panel>
                 <mat-expansion-panel *ngIf="getVentajasVisibles().length > 0">
                     <mat-expansion-panel-header>
-                        <button mat-stroked-button color="accent" class="rounded-0">
-                            <h2 class="mb-0">Ventajas y desventajas obtenidas</h2>
+                        <button mat-stroked-button color="accent" class="tw-rounded-none">
+                            <h2 class="tw-mb-0">Ventajas y desventajas obtenidas</h2>
                         </button>
                     </mat-expansion-panel-header>
-                    <mat-chip-set class="m-1">
-                        <mat-chip *ngFor="let v of getVentajasVisibles()" class="h-auto chip-clic sombra3d-sm"
+                    <mat-chip-set class="tw-m-1">
+                        <mat-chip *ngFor="let v of getVentajasVisibles()" class="tw-h-auto chip-clic sombra3d-sm"
                             [ngClass]="esVentajaConEstiloWarm(v) ? 'warm' : ''"
                             matTooltip="Pulsa para ver los detalles" [matTooltipShowDelay]="250" matTooltipClass="tt-accent"
                             (click)="verDetallesVentajaPorNombre(v)">
                             {{v.nombre}}
-                            <span class="ms-2 m-1 chip-origen chip-origen-pill" *ngIf="getOrigenVentaja(v) as origenVentaja">{{origenVentaja}}</span>
+                            <span class="tw-ms-2 tw-m-1 chip-origen chip-origen-pill" *ngIf="getOrigenVentaja(v) as origenVentaja">{{origenVentaja}}</span>
                         </mat-chip>
                     </mat-chip-set>
                 </mat-expansion-panel>
@@ -386,3 +386,4 @@
         </div>
     </div>
 </div>
+

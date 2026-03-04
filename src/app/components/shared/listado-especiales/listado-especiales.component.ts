@@ -25,7 +25,7 @@ export class ListadoEspecialesComponent {
         this.especialesDS.paginator = this.especialPaginator;
         this.especialesDS.sort = this.especialSort;
         this.eSvc.getEspeciales().subscribe(especiales => {
-            this.especiales = especiales;
+            this.especiales = (especiales ?? []).filter((especial) => this.esEspecialValido(especial));
             this.cdr.detectChanges();
             this.filtroEspeciales();
             this.cdr.detectChanges();
@@ -34,11 +34,14 @@ export class ListadoEspecialesComponent {
 
     filtroEspeciales() {
         const texto = this.normalizar(this.nombreText?.nativeElement.value);
-        const especialesFiltrados = this.especiales.filter(especial =>
-            texto === ''
-            || this.normalizar(especial.Nombre).includes(texto)
-            || this.normalizar(especial.Descripcion).includes(texto)
-        );
+        const especialesFiltrados = this.especiales.filter((especial) => {
+            if (!this.esEspecialValido(especial))
+                return false;
+
+            return texto === ''
+                || this.normalizar(especial.Nombre).includes(texto)
+                || this.normalizar(especial.Descripcion).includes(texto);
+        });
 
         this.especialesDS = new MatTableDataSource(especialesFiltrados);
         setTimeout(() => {
@@ -69,5 +72,10 @@ export class ListadoEspecialesComponent {
             .replace(/[\u0300-\u036f]/g, '')
             .trim()
             .toLowerCase();
+    }
+
+    private esEspecialValido(especial: EspecialClaseDetalle | null | undefined): boolean {
+        const id = Number(especial?.Id ?? 0);
+        return Number.isFinite(id) && id > 0;
     }
 }

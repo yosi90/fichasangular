@@ -1,7 +1,7 @@
 <mat-tab-group #TabControl mat-stretch-tabs="false" mat-align-tabs="start" (selectedTabChange)="onTabChange($event)">
     <mat-tab label="Personajes">
         <ng-template mat-tab-label="">
-            <mat-icon class="me-2">people_alt</mat-icon>
+            <mat-icon class="tw-me-2">people_alt</mat-icon>
             Personajes
         </ng-template>
         <app-lista-personajes
@@ -12,16 +12,16 @@
     </mat-tab>
     <mat-tab label="Panel de administración" *ngIf="usrPerm === 1">
         <ng-template mat-tab-label="">
-            <mat-icon class="me-2">admin_panel_settings</mat-icon>
+            <mat-icon class="tw-me-2">admin_panel_settings</mat-icon>
             Admin panel
         </ng-template>
         <app-admin-panel></app-admin-panel>
     </mat-tab>
     <mat-tab *ngFor="let pj of detallesPersonajeAbiertos; let index = index" [label]="pj.Nombre">
         <ng-template mat-tab-label>
-            <mat-icon class="me-2">person_search</mat-icon>
+            <mat-icon class="tw-me-2">person_search</mat-icon>
             {{pj.Nombre}}
-            <button (click)="quitarDetallesPersonaje(pj)" mat-icon-button class="ms-2"><mat-icon>close</mat-icon></button>
+            <button (click)="quitarDetallesPersonaje(pj)" mat-icon-button class="tw-ms-2"><mat-icon>close</mat-icon></button>
         </ng-template>
         <app-detalles-personaje 
             [pj]="detallesPersonajeAbiertos[index]" 
@@ -42,9 +42,9 @@
     </mat-tab>
     <mat-tab label="Nuevo personaje" *ngIf="AbrirNuevoPersonajeTab">
         <ng-template mat-tab-label="">
-            <mat-icon class="me-2">person_add</mat-icon>
+            <mat-icon class="tw-me-2">person_add</mat-icon>
             Nuevo personaje
-            <button (click)="quitarNuevoPersonaje()" mat-icon-button class="ms-2"><mat-icon>close</mat-icon></button>
+            <button (click)="quitarNuevoPersonaje()" mat-icon-button class="tw-ms-2"><mat-icon>close</mat-icon></button>
         </ng-template>
         <app-nuevo-personaje
             (razaDetalles)="abrirDetallesRaza($event)"
@@ -63,25 +63,25 @@
     </mat-tab>
     <mat-tab label="Lista de {{ListadoTabTipo}}" *ngIf="AbrirListadoTab">
         <ng-template mat-tab-label="">
-            <mat-icon class="me-2">view_list</mat-icon>
+            <mat-icon class="tw-me-2">view_list</mat-icon>
             Lista de {{ListadoTabTipo}}
-            <button (click)="quitarListado()" mat-icon-button class="ms-2"><mat-icon>close</mat-icon></button>
+            <button (click)="quitarListado()" mat-icon-button class="tw-ms-2"><mat-icon>close</mat-icon></button>
         </ng-template>
         <app-listado (abrirDetalles)="recibirObjetoListado($event)" (itemSeleccionado)="recibirObjetoListado($event)" [tipoLista]="ListadoTabTipo" [tipoOperacion]="ListadoTabOperacion"></app-listado>
     </mat-tab>
     <mat-tab *ngFor="let manual of detallesManualAbiertos; let index = index" [label]="getEtiquetaManual(manual)">
         <ng-template mat-tab-label>
-            <mat-icon class="me-2">find_in_page</mat-icon>
+            <mat-icon class="tw-me-2">find_in_page</mat-icon>
             {{getEtiquetaManual(manual)}}
-            <button (click)="quitarDetallesManual(manual)" mat-icon-button class="ms-2"><mat-icon>close</mat-icon></button>
+            <button (click)="quitarDetallesManual(manual)" mat-icon-button class="tw-ms-2"><mat-icon>close</mat-icon></button>
         </ng-template>
         <app-detalles-manual [manual]="detallesManualAbiertos[index]"></app-detalles-manual>
     </mat-tab>
     <mat-tab *ngFor="let tab of detallesRazaAbiertos; let index = index" [label]="tab.Nombre">
         <ng-template mat-tab-label>
-            <mat-icon class="me-2">find_in_page</mat-icon>
+            <mat-icon class="tw-me-2">find_in_page</mat-icon>
             {{tab.Nombre}} (Raza)
-            <button (click)="quitarDetallesRaza(tab)" mat-icon-button class="ms-2"><mat-icon>close</mat-icon></button>
+            <button (click)="quitarDetallesRaza(tab)" mat-icon-button class="tw-ms-2"><mat-icon>close</mat-icon></button>
         </ng-template>
         <app-detalles-raza
             [raza]="detallesRazaAbiertos[index]"
@@ -91,25 +91,25 @@
     </mat-tab>
     <mat-tab *ngFor="let tab of detallesConjuroAbiertos; let index = index" [label]="tab.Nombre">
         <ng-template mat-tab-label>
-            <mat-icon class="me-2">find_in_page</mat-icon>
+            <mat-icon class="tw-me-2">find_in_page</mat-icon>
             {{tab.Nombre}} (Conjuro)
-            <button (click)="quitarDetallesConjuro(tab)" mat-icon-button class="ms-2"><mat-icon>close</mat-icon></button>
+            <button (click)="quitarDetallesConjuro(tab)" mat-icon-button class="tw-ms-2"><mat-icon>close</mat-icon></button>
         </ng-template>
         <app-detalles-conjuro [conjuro]="detallesConjuroAbiertos[index]"></app-detalles-conjuro>
     </mat-tab>
     <mat-tab *ngFor="let tupla of detallesSortilegaAbiertos; let index = index" [label]="tupla.ap.Conjuro.Nombre">
         <ng-template mat-tab-label>
-            <mat-icon class="me-2">find_in_page</mat-icon>
+            <mat-icon class="tw-me-2">find_in_page</mat-icon>
             {{tupla.ap.Conjuro.Nombre}} (Sortílega)
-            <button (click)="quitarDetallesSortilega(tupla)" mat-icon-button class="ms-2"><mat-icon>close</mat-icon></button>
+            <button (click)="quitarDetallesSortilega(tupla)" mat-icon-button class="tw-ms-2"><mat-icon>close</mat-icon></button>
         </ng-template>
         <app-detalles-conjuro [sortilega]="detallesSortilegaAbiertos[index]"></app-detalles-conjuro>
     </mat-tab>
     <mat-tab *ngFor="let tipo of detallesTipoCriaturaAbiertos; let index = index" [label]="tipo.Nombre">
         <ng-template mat-tab-label>
-            <mat-icon class="me-2">find_in_page</mat-icon>
+            <mat-icon class="tw-me-2">find_in_page</mat-icon>
             {{tipo.Nombre}} (Tipo)
-            <button (click)="quitarDetallesTipoCriatura(tipo)" mat-icon-button class="ms-2"><mat-icon>close</mat-icon></button>
+            <button (click)="quitarDetallesTipoCriatura(tipo)" mat-icon-button class="tw-ms-2"><mat-icon>close</mat-icon></button>
         </ng-template>
         <app-detalles-tipo-criatura 
             [tipo]="detallesTipoCriaturaAbiertos[index]"
@@ -118,17 +118,17 @@
     </mat-tab>
     <mat-tab *ngFor="let rasgo of detallesRasgoAbiertos; let index = index" [label]="rasgo.Nombre">
         <ng-template mat-tab-label>
-            <mat-icon class="me-2">find_in_page</mat-icon>
+            <mat-icon class="tw-me-2">find_in_page</mat-icon>
             {{rasgo.Nombre}} (Rasgo)
-            <button (click)="quitarDetallesRasgo(rasgo)" mat-icon-button class="ms-2"><mat-icon>close</mat-icon></button>
+            <button (click)="quitarDetallesRasgo(rasgo)" mat-icon-button class="tw-ms-2"><mat-icon>close</mat-icon></button>
         </ng-template>
         <app-detalles-rasgo [rasgo]="detallesRasgoAbiertos[index]"></app-detalles-rasgo>
     </mat-tab>
     <mat-tab *ngFor="let clase of detallesClaseAbiertos; let index = index" [label]="getEtiquetaClase(clase)">
         <ng-template mat-tab-label>
-            <mat-icon class="me-2">find_in_page</mat-icon>
+            <mat-icon class="tw-me-2">find_in_page</mat-icon>
             {{getEtiquetaClase(clase)}}
-            <button (click)="quitarDetallesClase(clase)" mat-icon-button class="ms-2"><mat-icon>close</mat-icon></button>
+            <button (click)="quitarDetallesClase(clase)" mat-icon-button class="tw-ms-2"><mat-icon>close</mat-icon></button>
         </ng-template>
         <app-detalles-clase
             [clase]="detallesClaseAbiertos[index]"
@@ -141,9 +141,9 @@
     </mat-tab>
     <mat-tab *ngFor="let especial of detallesEspecialAbiertos; let index = index" [label]="getEtiquetaEspecial(especial)">
         <ng-template mat-tab-label>
-            <mat-icon class="me-2">find_in_page</mat-icon>
+            <mat-icon class="tw-me-2">find_in_page</mat-icon>
             {{getEtiquetaEspecial(especial)}}
-            <button (click)="quitarDetallesEspecial(especial)" mat-icon-button class="ms-2"><mat-icon>close</mat-icon></button>
+            <button (click)="quitarDetallesEspecial(especial)" mat-icon-button class="tw-ms-2"><mat-icon>close</mat-icon></button>
         </ng-template>
         <app-detalles-especial
             [especial]="detallesEspecialAbiertos[index]"
@@ -152,9 +152,9 @@
     </mat-tab>
     <mat-tab *ngFor="let racial of detallesRacialAbiertos; let index = index" [label]="getEtiquetaRacial(racial)">
         <ng-template mat-tab-label>
-            <mat-icon class="me-2">find_in_page</mat-icon>
+            <mat-icon class="tw-me-2">find_in_page</mat-icon>
             {{getEtiquetaRacial(racial)}}
-            <button (click)="quitarDetallesRacial(racial)" mat-icon-button class="ms-2"><mat-icon>close</mat-icon></button>
+            <button (click)="quitarDetallesRacial(racial)" mat-icon-button class="tw-ms-2"><mat-icon>close</mat-icon></button>
         </ng-template>
         <app-detalles-racial
             [racial]="detallesRacialAbiertos[index]"
@@ -164,25 +164,25 @@
     </mat-tab>
     <mat-tab *ngFor="let doteCtx of detallesDoteAbiertos; let index = index" [label]="getEtiquetaDote(doteCtx)">
         <ng-template mat-tab-label>
-            <mat-icon class="me-2">find_in_page</mat-icon>
+            <mat-icon class="tw-me-2">find_in_page</mat-icon>
             {{getEtiquetaDote(doteCtx)}}
-            <button (click)="quitarDetallesDote(doteCtx)" mat-icon-button class="ms-2"><mat-icon>close</mat-icon></button>
+            <button (click)="quitarDetallesDote(doteCtx)" mat-icon-button class="tw-ms-2"><mat-icon>close</mat-icon></button>
         </ng-template>
         <app-detalles-dote [dote]="detallesDoteAbiertos[index]"></app-detalles-dote>
     </mat-tab>
     <mat-tab *ngFor="let ventaja of detallesVentajaAbiertos; let index = index" [label]="getEtiquetaVentaja(ventaja)">
         <ng-template mat-tab-label>
-            <mat-icon class="me-2">find_in_page</mat-icon>
+            <mat-icon class="tw-me-2">find_in_page</mat-icon>
             {{getEtiquetaVentaja(ventaja)}}
-            <button (click)="quitarDetallesVentaja(ventaja)" mat-icon-button class="ms-2"><mat-icon>close</mat-icon></button>
+            <button (click)="quitarDetallesVentaja(ventaja)" mat-icon-button class="tw-ms-2"><mat-icon>close</mat-icon></button>
         </ng-template>
         <app-detalles-ventaja [ventaja]="detallesVentajaAbiertos[index]"></app-detalles-ventaja>
     </mat-tab>
     <mat-tab *ngFor="let plantilla of detallesPlantillaAbiertos; let index = index" [label]="getEtiquetaPlantilla(plantilla)">
         <ng-template mat-tab-label>
-            <mat-icon class="me-2">find_in_page</mat-icon>
+            <mat-icon class="tw-me-2">find_in_page</mat-icon>
             {{getEtiquetaPlantilla(plantilla)}}
-            <button (click)="quitarDetallesPlantilla(plantilla)" mat-icon-button class="ms-2"><mat-icon>close</mat-icon></button>
+            <button (click)="quitarDetallesPlantilla(plantilla)" mat-icon-button class="tw-ms-2"><mat-icon>close</mat-icon></button>
         </ng-template>
         <app-detalles-plantilla
             [plantilla]="detallesPlantillaAbiertos[index]"
@@ -193,9 +193,9 @@
     </mat-tab>
     <mat-tab *ngFor="let subtipo of detallesSubtipoAbiertos; let index = index" [label]="getEtiquetaSubtipo(subtipo)">
         <ng-template mat-tab-label>
-            <mat-icon class="me-2">find_in_page</mat-icon>
+            <mat-icon class="tw-me-2">find_in_page</mat-icon>
             {{getEtiquetaSubtipo(subtipo)}}
-            <button (click)="quitarDetallesSubtipo(subtipo)" mat-icon-button class="ms-2"><mat-icon>close</mat-icon></button>
+            <button (click)="quitarDetallesSubtipo(subtipo)" mat-icon-button class="tw-ms-2"><mat-icon>close</mat-icon></button>
         </ng-template>
         <app-detalles-subtipo
             [subtipo]="detallesSubtipoAbiertos[index]"
@@ -207,9 +207,9 @@
     </mat-tab>
     <mat-tab *ngFor="let monstruo of detallesMonstruoAbiertos; let index = index" [label]="getEtiquetaMonstruo(monstruo)">
         <ng-template mat-tab-label>
-            <mat-icon class="me-2">find_in_page</mat-icon>
+            <mat-icon class="tw-me-2">find_in_page</mat-icon>
             {{getEtiquetaMonstruo(monstruo)}}
-            <button (click)="quitarDetallesMonstruo(monstruo)" mat-icon-button class="ms-2"><mat-icon>close</mat-icon></button>
+            <button (click)="quitarDetallesMonstruo(monstruo)" mat-icon-button class="tw-ms-2"><mat-icon>close</mat-icon></button>
         </ng-template>
         <app-detalles-monstruo
             [monstruo]="detallesMonstruoAbiertos[index]"
@@ -222,101 +222,105 @@
             (monstruoRelacionadoDetalles)="abrirDetallesMonstruo($event)">
         </app-detalles-monstruo>
     </mat-tab>
-    <mat-tab label="Información importante" class="pe-3">
+    <mat-tab label="Información importante" class="tw-pe-4">
         <ng-template mat-tab-label="">
-            <mat-icon class="me-2">info_outline</mat-icon>
+            <mat-icon class="tw-me-2">info_outline</mat-icon>
             Importante leer
         </ng-template>
-        <mat-card class="mh-90 m-5">
+        <mat-card class="mh-90 tw-m-12">
             <mat-card-header>
-                <mat-card-title class="text-white"><mat-icon class="me-2">construction</mat-icon> En construcción <mat-icon class="ms-2">construction</mat-icon></mat-card-title>
+                <mat-card-title class="tw-text-white"><mat-icon class="tw-me-2">construction</mat-icon> En construcción <mat-icon class="tw-ms-2">construction</mat-icon></mat-card-title>
                 <mat-card-subtitle>Esta web está siendo desarrollada por <a href="https://yosiftware.es" target="_blank">Yosiftware.es</a></mat-card-subtitle>
             </mat-card-header>
-            <mat-card-content class="text-white p-5">
-                <p class="d-flex align-items-center mb-0">Versión 0.1 - Estos son los personajes <mat-icon class="ms-2">done_all</mat-icon></p>
+            <mat-card-content class="tw-text-white tw-p-12">
+                <p class="tw-flex tw-items-center tw-mb-0">Versión 0.1 - Estos son los personajes <mat-icon class="tw-ms-2">done_all</mat-icon></p>
                 <hr>
                 <ol>
-                    <li><p class="d-flex align-items-center mb-0">Base de la web creada <mat-icon class="ms-2">done</mat-icon></p></li> 
-                    <li><p class="d-flex align-items-center mb-0">Creada lista de personajes <mat-icon class="ms-2">done</mat-icon></p></li>
-                    <li><p class="d-flex align-items-center mb-0">Creada Vista de personajes <mat-icon class="ms-2">done</mat-icon></p></li>
-                    <li><p class="d-flex align-items-center mb-0">Creada funcionalidad para descargar la ficha en pdf <mat-icon class="ms-2">done</mat-icon></p></li>
-                    <li><p class="d-flex align-items-center mb-0">Creada base del admin panel <mat-icon class="ms-2">done</mat-icon></p></li>
+                    <li><p class="tw-flex tw-items-center tw-mb-0">Base de la web creada <mat-icon class="tw-ms-2">done</mat-icon></p></li> 
+                    <li><p class="tw-flex tw-items-center tw-mb-0">Creada lista de personajes <mat-icon class="tw-ms-2">done</mat-icon></p></li>
+                    <li><p class="tw-flex tw-items-center tw-mb-0">Creada Vista de personajes <mat-icon class="tw-ms-2">done</mat-icon></p></li>
+                    <li><p class="tw-flex tw-items-center tw-mb-0">Creada funcionalidad para descargar la ficha en pdf <mat-icon class="tw-ms-2">done</mat-icon></p></li>
+                    <li><p class="tw-flex tw-items-center tw-mb-0">Creada base del admin panel <mat-icon class="tw-ms-2">done</mat-icon></p></li>
                 </ol>
                 <hr><hr>
-                <p class="d-flex align-items-center mb-0">Versión 0.2 - Creemos nuevos personajes <mat-icon class="ms-2">done_all</mat-icon></p>
+                <p class="tw-flex tw-items-center tw-mb-0">Versión 0.2 - Creemos nuevos personajes <mat-icon class="tw-ms-2">done_all</mat-icon></p>
                 <hr>
                 <ol>
-                    <li><p class="d-flex align-items-center mb-0">Creada creación de personajes <mat-icon class="ms-2">done</mat-icon></p></li>
-                    <li><p class="d-flex align-items-center mb-0">Creada vista de Razas <mat-icon class="ms-2">done</mat-icon></p></li>
-                    <li><p class="d-flex align-items-center mb-0">Creada vista de tipos de criatura <mat-icon class="ms-2">done</mat-icon></p></li>
-                    <li><p class="d-flex align-items-center mb-0">Creada vista de rasgos <mat-icon class="ms-2">done</mat-icon></p></li>
-                    <li><p class="d-flex align-items-center mb-0">Creada vista de conjuros y sortílegas <mat-icon class="ms-2">done</mat-icon></p></li>
-                    <li><p class="d-flex align-items-center mb-0">Creada vista de clases <mat-icon class="ms-2">done</mat-icon></p></li>
-                    <li><p class="d-flex align-items-center mb-0">Creada vista de Dotes <mat-icon class="ms-2">done</mat-icon></p></li>
+                    <li><p class="tw-flex tw-items-center tw-mb-0">Creada creación de personajes <mat-icon class="tw-ms-2">done</mat-icon></p></li>
+                    <li><p class="tw-flex tw-items-center tw-mb-0">Creada vista de Razas <mat-icon class="tw-ms-2">done</mat-icon></p></li>
+                    <li><p class="tw-flex tw-items-center tw-mb-0">Creada vista de tipos de criatura <mat-icon class="tw-ms-2">done</mat-icon></p></li>
+                    <li><p class="tw-flex tw-items-center tw-mb-0">Creada vista de rasgos <mat-icon class="tw-ms-2">done</mat-icon></p></li>
+                    <li><p class="tw-flex tw-items-center tw-mb-0">Creada vista de conjuros y sortílegas <mat-icon class="tw-ms-2">done</mat-icon></p></li>
+                    <li><p class="tw-flex tw-items-center tw-mb-0">Creada vista de clases <mat-icon class="tw-ms-2">done</mat-icon></p></li>
+                    <li><p class="tw-flex tw-items-center tw-mb-0">Creada vista de Dotes <mat-icon class="tw-ms-2">done</mat-icon></p></li>
                 </ol>
                 <hr><hr>
-                <p class="d-flex align-items-center mb-0">Versión 0.3 - Un personaje mal creado no es un personaje <mat-icon class="ms-2">done_all</mat-icon></p>
+                <p class="tw-flex tw-items-center tw-mb-0">Versión 0.3 - Un personaje mal creado no es un personaje <mat-icon class="tw-ms-2">done_all</mat-icon></p>
                 <hr>
                 <ol>
-                    <li><p class="d-flex align-items-center mb-0">Repaso de bugs en Nuevo personaje <mat-icon class="ms-2">done</mat-icon></p></li>
-                    <li><p class="d-flex align-items-center mb-0">Revisión de filtros de razas <mat-icon class="ms-2">done</mat-icon></p></li>
-                    <li><p class="d-flex align-items-center mb-0">Revisión de filtros de clases <mat-icon class="ms-2">done</mat-icon></p></li>
-                    <li><p class="d-flex align-items-center mb-0">Revisión de filtros de conjuros <mat-icon class="ms-2">done</mat-icon></p></li>
-                    <li><p class="d-flex align-items-center mb-0">Revisión de filtros de dotes <mat-icon class="ms-2">done</mat-icon></p></li>
-                    <li><p class="d-flex align-items-center mb-0">Revisión de filtros de plantillas <mat-icon class="ms-2">done</mat-icon></p></li>
+                    <li><p class="tw-flex tw-items-center tw-mb-0">Repaso de bugs en Nuevo personaje <mat-icon class="tw-ms-2">done</mat-icon></p></li>
+                    <li><p class="tw-flex tw-items-center tw-mb-0">Revisión de filtros de razas <mat-icon class="tw-ms-2">done</mat-icon></p></li>
+                    <li><p class="tw-flex tw-items-center tw-mb-0">Revisión de filtros de clases <mat-icon class="tw-ms-2">done</mat-icon></p></li>
+                    <li><p class="tw-flex tw-items-center tw-mb-0">Revisión de filtros de conjuros <mat-icon class="tw-ms-2">done</mat-icon></p></li>
+                    <li><p class="tw-flex tw-items-center tw-mb-0">Revisión de filtros de dotes <mat-icon class="tw-ms-2">done</mat-icon></p></li>
+                    <li><p class="tw-flex tw-items-center tw-mb-0">Revisión de filtros de plantillas <mat-icon class="tw-ms-2">done</mat-icon></p></li>
                 </ol>
                 <hr><hr>
-                <p class="d-flex align-items-center mb-0">Versión 0.4 - Pasado pisado (Actual)</p>
+                <p class="tw-flex tw-items-center tw-mb-0">Versión 0.4 - Pasado pisado (Actual)</p>
                 <hr>
                 <ol>
-                    <li><p class="d-flex align-items-center mb-0">Eliminar bootstrap de la app e integrar en su lugar tailwind</p></li>
-                    <li><p class="d-flex align-items-center mb-0">Upgradear a angular 20</p></li>
-                    <li><p class="d-flex align-items-center mb-0">Upgradear todos los módulos anticuados</p></li>
+                    <li><p class="tw-flex tw-items-center tw-mb-0">Eliminar bootstrap de la app e integrar en su lugar tailwind</p></li>
+                    <li><p class="tw-flex tw-items-center tw-mb-0">Upgradear a angular 20</p></li>
+                    <li><p class="tw-flex tw-items-center tw-mb-0">Upgradear todos los módulos anticuados</p></li>
                 </ol>
                 <hr><hr>
-                <p class="d-flex align-items-center mb-0">Versión 0.5 - Gestión, revisión, adición</p>
+                <p class="tw-flex tw-items-center tw-mb-0">Versión 0.5 - Gestión, revisión, adición</p>
                 <hr>
                 <ol>
-                    <li><p class="d-flex align-items-center mb-0">Creadas las vistas faltantes <mat-icon class="ms-2">done</mat-icon></p></li>
-                    <li><p class="d-flex align-items-center mb-0">Creada la inserción de conjuros</p></li>
-                    <li><p class="d-flex align-items-center mb-0">Creada la inserción de dotes</p></li>
-                    <li><p class="d-flex align-items-center mb-0">Mejoras en el sistema de permisos <mat-icon class="ms-2">done</mat-icon></p></li>
-                    <li><p class="d-flex align-items-center mb-0">Creada la gestión de usuarios en admin panel <mat-icon class="ms-2">done</mat-icon></p></li>
+                    <li><p class="tw-flex tw-items-center tw-mb-0">Creadas las vistas faltantes <mat-icon class="tw-ms-2">done</mat-icon></p></li>
+                    <li><p class="tw-flex tw-items-center tw-mb-0">Creada la inserción de conjuros</p></li>
+                    <li><p class="tw-flex tw-items-center tw-mb-0">Creada la inserción de dotes</p></li>
+                    <li><p class="tw-flex tw-items-center tw-mb-0">Mejoras en el sistema de permisos <mat-icon class="tw-ms-2">done</mat-icon></p></li>
+                    <li><p class="tw-flex tw-items-center tw-mb-0">Creada la gestión de usuarios en admin panel <mat-icon class="tw-ms-2">done</mat-icon></p></li>
                 </ol>
                 <hr><hr>
-                <p class="d-flex align-items-center mb-0">Versión 0.6 - Usuario importa</p>
+                <p class="tw-flex tw-items-center tw-mb-0">Versión 0.6 - Usuario importa</p>
                 <hr>
                 <ol>
-                    <li><p class="d-flex align-items-center mb-0">Mejorada la gestión de usuarios</p></li>
-                    <li><p class="d-flex align-items-center mb-0">Creada funcionalidad de "Archivo"</p></li>
-                    <li><p class="d-flex align-items-center mb-0">Creada funcionalidad de "Opciones"</p></li>
-                    <li><p class="d-flex align-items-center mb-0">Creada funcionalidad de "Ayuda"</p></li>
-                    <li><p class="d-flex align-items-center mb-0">Creado el perfil de usuario</p></li>
+                    <li><p class="tw-flex tw-items-center tw-mb-0">Mejorada la gestión de usuarios</p></li>
+                    <li><p class="tw-flex tw-items-center tw-mb-0">Creada funcionalidad de "Archivo"</p></li>
+                    <li><p class="tw-flex tw-items-center tw-mb-0">Creada funcionalidad de "Opciones"</p></li>
+                    <li><p class="tw-flex tw-items-center tw-mb-0">Creada funcionalidad de "Ayuda"</p></li>
+                    <li><p class="tw-flex tw-items-center tw-mb-0">Creado el perfil de usuario</p></li>
                 </ol>
                 <hr><hr>
-                <p class="d-flex align-items-center mb-0">Versión 0.7 - Las inserciones son complejas</p>
+                <p class="tw-flex tw-items-center tw-mb-0">Versión 0.7 - Las inserciones son complejas</p>
                 <hr>
                 <ol>
-                    <li><p class="d-flex align-items-center mb-0">Creada la inserción de Razas</p></li>
-                    <li><p class="d-flex align-items-center mb-0">Creada la inserción de clases</p></li>
+                    <li><p class="tw-flex tw-items-center tw-mb-0">Creada la inserción de Razas</p></li>
+                    <li><p class="tw-flex tw-items-center tw-mb-0">Creada la inserción de clases</p></li>
                 </ol>
                 <hr><hr>
-                <p class="d-flex align-items-center mb-0">¡Aclaraciones!</p>
+                <p class="tw-flex tw-items-center tw-mb-0">¡Aclaraciones!</p>
                 <ul>
                     <li>
-                        <p class="d-flex align-items-center mb-0">
+                        <p class="tw-flex tw-items-center tw-mb-0">
                         Esta web no es, ni pretende ser, una demostración de conocimientos 
-                        <mat-icon class="ms-2">done_all</mat-icon><mat-icon class="ms-2">done_all</mat-icon><mat-icon class="ms-2">done_all</mat-icon>
+                        <mat-icon class="tw-ms-2">done_all</mat-icon><mat-icon class="tw-ms-2">done_all</mat-icon><mat-icon class="tw-ms-2">done_all</mat-icon>
                         </p>
                     </li>
-                    <li><p class="d-flex align-items-center mb-0">Actualmente los personajes existentes han sido creados con la versión de escritorio de la app</p></li>
-                    <li><p class="d-flex align-items-center mb-0">No todos los botones de la cinta están programados.</p></li>
-                    <li><p class="d-flex align-items-center mb-0">Los botones de insertar y modificar NO están programados.</p></li>
+                    <li><p class="tw-flex tw-items-center tw-mb-0"><s>Actualmente los personajes existentes han sido creados con la versión de escritorio de la app</s></p></li>
+                    <li><p class="tw-flex tw-items-center tw-mb-0">No todos los botones de la cinta están programados.</p></li>
+                    <li><p class="tw-flex tw-items-center tw-mb-0">Los botones de insertar y modificar NO están programados.</p></li>
                 </ul>
             </mat-card-content>
             <mat-card-actions>
-                <button mat-raised-button color="primary" class="w-100" (click)="verPersonajes()">Ok</button>
+                <button mat-raised-button color="primary" class="tw-w-full" (click)="verPersonajes()">Ok</button>
             </mat-card-actions>
         </mat-card>
     </mat-tab>
 </mat-tab-group>
+
+
+
+

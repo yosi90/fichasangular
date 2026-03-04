@@ -1,20 +1,20 @@
-<div class="container-fluid detalle-view" *ngIf="rasgo">
-    <div class="row">
-        <div class="col-md-4 col-12 p-2">
-            <div class="d-flex flex-wrap align-items-center sombra-caja-sm rounded p-2 my-2">
-                <mat-chip class="h-auto warm w-100 sombra-caja-sm py-2 m-1 chip-titulo">
+<div class="tw-w-full tw-px-3 detalle-view" *ngIf="rasgo">
+    <div class="tw-flex tw-flex-wrap">
+        <div class="detalle-col tw-w-full md:tw-w-1/3 tw-p-2">
+            <div class="tw-flex tw-flex-wrap tw-items-center sombra-caja-sm tw-rounded-md tw-p-2 tw-my-2">
+                <mat-chip class="tw-h-auto warm tw-w-full sombra-caja-sm tw-py-2 tw-m-1 chip-titulo">
                     {{rasgo.Nombre}}
                 </mat-chip>
-                <mat-chip class="warm sombra3d-sm m-1" *ngIf="!rasgo.Oficial" matTooltip="Este tipo de criatura es homebrew" matTooltipClass="tt-accent">No es oficial</mat-chip>
+                <mat-chip class="warm sombra3d-sm tw-m-1" *ngIf="!rasgo.Oficial" matTooltip="Este tipo de criatura es homebrew" matTooltipClass="tt-accent">No es oficial</mat-chip>
             </div>
         </div>
-        <div class="col-md-4 col-12 p-2">
-            <div class="d-flex flex-wrap align-items-center sombra-caja-sm rounded p-2 my-2">
-                <mat-chip class="w-100 sombra-caja-sm m-1 mb-2 chip-titulo">Descripción<mat-icon class="ms-2">short_text</mat-icon></mat-chip>
-                <p class="m-1">{{rasgo.Descripcion}}</p>
+        <div class="detalle-col tw-w-full md:tw-w-1/3 tw-p-2">
+            <div class="tw-flex tw-flex-wrap tw-items-center sombra-caja-sm tw-rounded-md tw-p-2 tw-my-2">
+                <mat-chip class="tw-w-full sombra-caja-sm tw-m-1 tw-mb-2 chip-titulo">Descripción<mat-icon class="tw-ms-2">short_text</mat-icon></mat-chip>
+                <p class="tw-m-1">{{rasgo.Descripcion}}</p>
             </div>
         </div>
-        <div class="col-md-4 col-12 p-2">
+        <div class="detalle-col tw-w-full md:tw-w-1/3 tw-p-2">
         </div>
     </div>
 </div>

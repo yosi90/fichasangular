@@ -5976,10 +5976,9 @@ export class NuevoPersonajeComponent {
         ).tiposCriatura
             .map((tipo) => Number(tipo.id))
             .filter((id) => Number.isFinite(id) && id > 0);
-        const identidadCriaturaActualIds = Array.from(new Set([
-            tipoCriaturaActualId,
-            ...tiposCriaturaIdentidadIds,
-        ].filter((id) => Number.isFinite(id) && id > 0)));
+        const identidadCriaturaActualIds = tipoCriaturaActualId > 0
+            ? [tipoCriaturaActualId]
+            : Array.from(new Set(tiposCriaturaIdentidadIds));
 
         return {
             alineamiento: this.Personaje.Alineamiento,

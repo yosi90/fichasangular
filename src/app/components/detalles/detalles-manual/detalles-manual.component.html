@@ -1,57 +1,57 @@
-<div class="container-fluid detalle-view" *ngIf="manual">
-    <div class="row">
-        <div class="col-12 p-2 manual-grid">
-            <div class="d-flex flex-wrap align-items-center sombra-caja-sm rounded p-2 my-2 manual-bloque">
-                <mat-chip class="h-auto warm w-100 sombra-caja-sm py-2 m-1 chip-titulo">
+<div class="tw-w-full tw-px-3 detalle-view" *ngIf="manual">
+    <div class="tw-flex tw-flex-wrap">
+        <div class="detalle-col tw-w-full tw-p-2 manual-grid">
+            <div class="tw-flex tw-flex-wrap tw-items-center sombra-caja-sm tw-rounded-md tw-p-2 tw-my-2 manual-bloque">
+                <mat-chip class="tw-h-auto warm tw-w-full sombra-caja-sm tw-py-2 tw-m-1 chip-titulo">
                     {{manual.Nombre}}
-                    <mat-chip class="sombra3d-sm m-1 ms-4">{{manual.Oficial ? 'Oficial' : 'Homebrew'}}</mat-chip>
+                    <mat-chip class="sombra3d-sm tw-m-1 tw-ms-6">{{manual.Oficial ? 'Oficial' : 'Homebrew'}}</mat-chip>
                 </mat-chip>
-                <mat-chip class="h-auto sombra3d-sm m-1">
+                <mat-chip class="tw-h-auto sombra3d-sm tw-m-1">
                     Categorías
-                    <mat-chip class="sombra3d-sm m-1" *ngFor="let categoria of getCategorias(manual)">
-                        <mat-icon class="me-1">{{categoria.icono}}</mat-icon>
+                    <mat-chip class="sombra3d-sm tw-m-1" *ngFor="let categoria of getCategorias(manual)">
+                        <mat-icon class="tw-me-1">{{categoria.icono}}</mat-icon>
                         {{categoria.label}}
                     </mat-chip>
-                    <mat-chip class="sombra3d-sm m-1" *ngIf="getCategorias(manual).length === 0">
+                    <mat-chip class="sombra3d-sm tw-m-1" *ngIf="getCategorias(manual).length === 0">
                         Sin categorías
                     </mat-chip>
                 </mat-chip>
-                <mat-chip class="sombra3d-sm m-1">
+                <mat-chip class="sombra3d-sm tw-m-1">
                     Secciones {{seccionesRender.length}}
                 </mat-chip>
-                <mat-chip class="sombra3d-sm m-1">
+                <mat-chip class="sombra3d-sm tw-m-1">
                     Objetos {{getConteoTotalAsociados(manual)}}
                 </mat-chip>
             </div>
 
-            <div class="d-flex flex-wrap align-items-center sombra-caja-sm rounded p-2 my-2 manual-bloque" *ngIf="tieneAsociados(manual)">
-                <mat-chip class="h-auto w-100 sombra-caja-sm py-2 m-1 mb-2 chip-titulo">
+            <div class="tw-flex tw-flex-wrap tw-items-center sombra-caja-sm tw-rounded-md tw-p-2 tw-my-2 manual-bloque" *ngIf="tieneAsociados(manual)">
+                <mat-chip class="tw-h-auto tw-w-full sombra-caja-sm tw-py-2 tw-m-1 tw-mb-2 chip-titulo">
                     Resumen por sección
-                    <mat-icon class="ms-2">view_module</mat-icon>
+                    <mat-icon class="tw-ms-2">view_module</mat-icon>
                 </mat-chip>
-                <mat-chip class="h-auto sombra3d-sm m-1 chip-seccion-toggle"
+                <mat-chip class="tw-h-auto sombra3d-sm tw-m-1 chip-seccion-toggle"
                     [ngClass]="!isSeccionActiva(seccion.key) ? 'chip-seccion-inactiva' : ''"
                     (click)="toggleSeccion(seccion.key)"
                     *ngFor="let seccion of seccionesRender">
                     {{seccion.label}}
-                    <mat-chip class="sombra3d-sm m-1">{{getReferenciasValidas(manual, seccion.key).length}}</mat-chip>
+                    <mat-chip class="sombra3d-sm tw-m-1">{{getReferenciasValidas(manual, seccion.key).length}}</mat-chip>
                 </mat-chip>
             </div>
 
-            <div class="d-flex flex-wrap align-items-center sombra-caja-sm rounded p-2 my-2 manual-bloque" *ngIf="!tieneAsociados(manual)">
-                <mat-chip class="h-auto w-100 sombra-caja-sm py-2 m-1 chip-titulo">
+            <div class="tw-flex tw-flex-wrap tw-items-center sombra-caja-sm tw-rounded-md tw-p-2 tw-my-2 manual-bloque" *ngIf="!tieneAsociados(manual)">
+                <mat-chip class="tw-h-auto tw-w-full sombra-caja-sm tw-py-2 tw-m-1 chip-titulo">
                     Sin asociados
                 </mat-chip>
-                <p class="m-2">Este manual no tiene objetos asociados válidos.</p>
+                <p class="tw-m-2">Este manual no tiene objetos asociados válidos.</p>
             </div>
 
-            <div class="d-flex flex-wrap align-items-center sombra-caja-sm rounded p-2 my-2 manual-bloque"
+            <div class="tw-flex tw-flex-wrap tw-items-center sombra-caja-sm tw-rounded-md tw-p-2 tw-my-2 manual-bloque"
                 *ngFor="let bloque of bloquesFiltrados"
                 >
-                    <mat-chip class="h-auto w-100 sombra-caja-sm py-2 m-1 mb-2 chip-titulo">
+                    <mat-chip class="tw-h-auto tw-w-full sombra-caja-sm tw-py-2 tw-m-1 tw-mb-2 chip-titulo">
                         {{bloque.seccion.label}}
-                        <mat-icon class="ms-2">{{bloque.seccion.icono}}</mat-icon>
-                    <mat-chip class="sombra3d-sm m-1 ms-3"
+                        <mat-icon class="tw-ms-2">{{bloque.seccion.icono}}</mat-icon>
+                    <mat-chip class="sombra3d-sm tw-m-1 tw-ms-4"
                         [ngClass]="esReferenciaNavegable(bloque.seccion.key, bloque.referencia) ? 'chip-clic' : ''"
                         [matTooltip]="getTooltipReferencia(bloque.seccion.key, bloque.referencia)"
                         [matTooltipShowDelay]="250"
@@ -60,10 +60,10 @@
                     </mat-chip>
                 </mat-chip>
 
-                <article class="manual-ref m-1 p-2">
-                    <p class="mb-1 mt-2 manual-ref-descripcion" *ngIf="bloque.referencia.Descripcion">{{bloque.referencia.Descripcion}}</p>
-                    <mat-chip-set class="m-0" *ngIf="getCamposExtra(bloque.referencia).length > 0">
-                        <mat-chip class="sombra3d-sm m-1" *ngFor="let extra of getCamposExtra(bloque.referencia)">
+                <article class="manual-ref tw-m-1 tw-p-2">
+                    <p class="tw-mb-1 tw-mt-2 manual-ref-descripcion" *ngIf="bloque.referencia.Descripcion">{{bloque.referencia.Descripcion}}</p>
+                    <mat-chip-set class="tw-m-0" *ngIf="getCamposExtra(bloque.referencia).length > 0">
+                        <mat-chip class="sombra3d-sm tw-m-1" *ngFor="let extra of getCamposExtra(bloque.referencia)">
                             {{formatearExtraKey(extra.key)}}: {{extra.value}}
                         </mat-chip>
                     </mat-chip-set>
@@ -72,3 +72,4 @@
         </div>
     </div>
 </div>
+

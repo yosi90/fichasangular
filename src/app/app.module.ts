@@ -35,7 +35,6 @@ import { FormsModule } from '@angular/forms';
 import { ListaPersonajesComponent } from './components/base/lista-personajes/lista-personajes.component';
 import { HttpClientModule } from '@angular/common/http';
 import { DataServices } from './data.services';
-import { NgbModule } from '@ng-bootstrap/ng-bootstrap';
 import { provideAuth, getAuth } from '@angular/fire/auth';
 import { provideDatabase, getDatabase } from '@angular/fire/database';
 import { SesionDialogComponent } from './components/sesion-dialog/sesion-dialog.component';
@@ -170,7 +169,6 @@ import { FichasDescargaToastHostComponent } from './components/shared/fichas-des
         MatTooltipModule,
         MatStepperModule,
         HttpClientModule,
-        NgbModule,
         ReactiveFormsModule,
         provideFirebaseApp(() => initializeApp(environment.firebase)),
         provideAuth(() => getAuth()),
