@@ -1,7 +1,7 @@
 <div class="selector-overlay" (click)="onCerrar()">
     <div class="selector-dialog" (click)="$event.stopPropagation()">
         <div class="selector-header">
-            <h2 class="m-0 selector-title">{{titulo}}</h2>
+            <h2 class="tw-m-0 selector-title">{{titulo}}</h2>
             <div class="selector-header-actions">
                 <button mat-icon-button type="button" class="selector-icon-btn" aria-label="Información" (click)="onInfo()">
                     <mat-icon>info</mat-icon>
@@ -11,14 +11,14 @@
                 </button>
             </div>
         </div>
-        <p class="selector-contexto m-0" *ngIf="razaContextoNombre.trim().length > 0">
+        <p class="selector-contexto tw-m-0" *ngIf="razaContextoNombre.trim().length > 0">
             Opciones disponibles para <strong>{{razaContextoNombre}}</strong>.
         </p>
 
         <div class="grupos-listado" *ngIf="requiereSeleccion; else sinOpcionalesTpl">
             <section class="grupo-card" *ngFor="let grupo of grupos; trackBy: trackByGrupo">
                 <p class="grupo-titulo">Grupo de opciones {{grupo.grupo}}</p>
-                <p class="grupo-ayuda m-0" *ngIf="grupoSinOpcionesHabilitadas(grupo)">
+                <p class="grupo-ayuda tw-m-0" *ngIf="grupoSinOpcionesHabilitadas(grupo)">
                     Este grupo no tiene opciones habilitadas con la identidad actual.
                 </p>
                 <div class="grupo-opciones">
@@ -57,7 +57,7 @@
         </div>
 
         <ng-template #sinOpcionalesTpl>
-            <p class="m-0 detalle">Esta raza no tiene raciales opcionales que resolver.</p>
+            <p class="tw-m-0 detalle">Esta raza no tiene raciales opcionales que resolver.</p>
         </ng-template>
 
         <div class="selector-actions">

@@ -130,6 +130,12 @@
     font-size: 0.92rem
 
 .seccion-form
+    .seccion-titulo-chip
+        display: block
+        width: auto
+        margin: 4px 4px 12px 4px
+        box-sizing: border-box
+
     .field-grid
         ::ng-deep .mdc-text-field
             border: none !important
@@ -233,8 +239,9 @@
 .plantillas-zonas
     min-height: 0
 
-    > [class*='col-']
+    > [class*='col-'], > .tw-w-full
         min-height: 0
+        min-width: 0
 
     ::ng-deep .mat-mdc-chip .mat-mdc-chip-action-label
         display: inline-flex !important
@@ -345,8 +352,9 @@ textarea
 .ventajas-listados
     min-height: 0
 
-    > [class*='col-']
+    > [class*='col-'], > .tw-w-full
         min-height: 0
+        min-width: 0
 
     .sombra-caja-sm
         display: flex

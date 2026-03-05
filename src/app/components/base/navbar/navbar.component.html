@@ -11,11 +11,11 @@
             Cargando manuales...
         </p>
 
-        <p class="menu-estado text-danger" *ngIf="!isLoading && errorState">
+        <p class="menu-estado tw-text-[#dc3545]" *ngIf="!isLoading && errorState">
             {{errorState}}
         </p>
 
-        <p class="menu-estado text-warning" *ngIf="!isLoading && !errorState && fallbackNotice">
+        <p class="menu-estado tw-text-[#ffc107]" *ngIf="!isLoading && !errorState && fallbackNotice">
             {{fallbackNotice}}
         </p>
 

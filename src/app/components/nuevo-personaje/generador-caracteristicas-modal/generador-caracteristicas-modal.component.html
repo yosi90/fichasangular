@@ -1,7 +1,7 @@
 <div class="modal-local-backdrop" (click)="cerrarModal()"></div>
 
 <div class="modal-local-panel" #modalPanel tabindex="-1" (click)="$event.stopPropagation()">
-    <mat-card class="h-100">
+    <mat-card class="tw-h-full">
         <mat-card-header class="modal-header">
             <div class="header-text">
                 <mat-card-title>{{tituloModal}}</mat-card-title>
@@ -27,7 +27,7 @@
 
         <mat-card-content class="modal-content">
             <section class="bloque">
-                <h4 class="m-0">Tablas de tiradas disponibles</h4>
+                <h4 class="tw-m-0">Tablas de tiradas disponibles</h4>
                 <div class="tablas-scroll">
                     <div class="tablas-grid">
                         <div class="tabla-card" *ngFor="let tabla of tablasVisibles"
@@ -44,7 +44,7 @@
             </section>
 
             <section class="bloque" *ngIf="estado.tablaSeleccionada !== null">
-                <h4 class="m-0">Pool disponible</h4>
+                <h4 class="tw-m-0">Pool disponible</h4>
                 <div class="pool-grid">
                     <button
                         mat-stroked-button
@@ -60,7 +60,7 @@
             </section>
 
             <section class="bloque">
-                <h4 class="m-0">Asignación</h4>
+                <h4 class="tw-m-0">Asignación</h4>
                 <div class="atributos-grid">
                     <div class="atributo-item" *ngFor="let item of caracteristicas">
                         <div class="atributo-label">{{item.label}}</div>
@@ -84,7 +84,7 @@
             </section>
         </mat-card-content>
 
-        <mat-card-actions class="modal-actions p-3">
+        <mat-card-actions class="modal-actions tw-p-3">
             <button mat-raised-button class="auto-reparto-btn" (click)="repartirAutomaticamente()">
                 <mat-icon>quiz</mat-icon>
                 <span>Repartir automáticamente</span>
@@ -97,7 +97,7 @@
     <div class="auto-quiz-overlay" *ngIf="modalCuestionarioAutoAbierto" (click)="cancelarCuestionarioAuto()">
         <div class="auto-quiz-dialog" (click)="$event.stopPropagation()">
             <div class="auto-quiz-header">
-                <h3 class="m-0">Mini test de enfoque</h3>
+                <h3 class="tw-m-0">Mini test de enfoque</h3>
                 <button
                     mat-icon-button
                     type="button"
@@ -114,7 +114,7 @@
                 class="auto-stepper">
                 <mat-step [completed]="q1Respondida">
                     <ng-template matStepLabel>Arma principal</ng-template>
-                    <p class="m-0 auto-quiz-text">En una pelea, ¿qué te apetece que sea tu arma principal?</p>
+                    <p class="tw-m-0 auto-quiz-text">En una pelea, ¿qué te apetece que sea tu arma principal?</p>
                     <div class="auto-opciones-grid">
                         <button type="button" class="auto-opcion auto-opcion-boton" [class.auto-opcion-seleccionada]="cuestionarioAuto.q1 === opcion.key" *ngFor="let opcion of opcionesQ1" (click)="onSeleccionarQ1(opcion.key)">
                             <span class="auto-opcion-main">{{opcion.label}}</span>
@@ -129,7 +129,7 @@
 
                 <mat-step [completed]="q2Respondida">
                     <ng-template matStepLabel>Posición en combate</ng-template>
-                    <p class="m-0 auto-quiz-text">{{textoPregunta2}}</p>
+                    <p class="tw-m-0 auto-quiz-text">{{textoPregunta2}}</p>
                     <div class="auto-opciones-grid">
                         <button type="button" class="auto-opcion auto-opcion-boton" [class.auto-opcion-seleccionada]="cuestionarioAuto.q2 === opcion.key" *ngFor="let opcion of q2Opciones" (click)="onSeleccionarQ2(opcion.key)">
                             <span class="auto-opcion-main">{{opcion.label}}</span>
@@ -144,7 +144,7 @@
 
                 <mat-step [completed]="q3Respondida">
                     <ng-template matStepLabel>Fuera de combate</ng-template>
-                    <p class="m-0 auto-quiz-text">{{textoPregunta3}}</p>
+                    <p class="tw-m-0 auto-quiz-text">{{textoPregunta3}}</p>
                     <div class="auto-opciones-grid">
                         <button type="button" class="auto-opcion auto-opcion-boton" [class.auto-opcion-seleccionada]="cuestionarioAuto.q3 === opcion.key" *ngFor="let opcion of q3Opciones" (click)="onSeleccionarQ3(opcion.key)">
                             <span class="auto-opcion-main">{{opcion.label}}</span>
@@ -159,7 +159,7 @@
 
                 <mat-step *ngIf="mostrarPregunta4" [completed]="q4Respondida">
                     <ng-template matStepLabel>Desempate</ng-template>
-                    <p class="m-0 auto-quiz-text">¿Qué te fastidiaría más que tu personaje hiciera mal?</p>
+                    <p class="tw-m-0 auto-quiz-text">¿Qué te fastidiaría más que tu personaje hiciera mal?</p>
                     <div class="auto-opciones-grid">
                         <button type="button" class="auto-opcion auto-opcion-boton" [class.auto-opcion-seleccionada]="cuestionarioAuto.q4 === opcion.key" *ngFor="let opcion of opcionesQ4" (click)="onSeleccionarQ4(opcion.key)">
                             <span class="auto-opcion-main">{{opcion.label}}</span>
@@ -174,14 +174,14 @@
 
                 <mat-step>
                     <ng-template matStepLabel>Aplicar reparto</ng-template>
-                    <p class="m-0 auto-quiz-text">Pues yo de ti, elegiría esto…</p>
+                    <p class="tw-m-0 auto-quiz-text">Pues yo de ti, elegiría esto…</p>
 
                     <div class="auto-recomendacion-card" *ngIf="recomendacionAuto as recomendacion">
                         <div class="auto-recomendacion-clases">
                             <mat-chip class="auto-recomendacion-chip">{{recomendacion.clases[0]}}</mat-chip>
                             <mat-chip class="auto-recomendacion-chip">{{recomendacion.clases[1]}}</mat-chip>
                         </div>
-                        <p class="m-0 auto-recomendacion-texto">{{recomendacion.explicacion}}</p>
+                        <p class="tw-m-0 auto-recomendacion-texto">{{recomendacion.explicacion}}</p>
                     </div>
 
                     <div class="auto-quiz-actions">
