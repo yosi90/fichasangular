@@ -1,10 +1,10 @@
-<div id="container-lista" class="container-fluid bg-dark h-100">
-    <div class="row position-relative justify-content-center align-items-center">
+<div id="container-lista" class="tw-w-full tw-bg-[#212529] tw-h-full">
+    <div class="lista-row tw-w-full tw-relative tw-flex tw-justify-center tw-items-center">
         <button id="filtros" matTooltip="Filtros de razas" #filtros mat-icon-button
-            [matMenuTriggerFor]="menuRazas" class="filtros bg-accent">
+            [matMenuTriggerFor]="menuRazas" class="filtros">
             <mat-icon>filter_alt</mat-icon>
         </button>
-        <mat-menu id="containerMenu" #menuRazas="matMenu" class="me-1 menu-filtros-estandar">
+        <mat-menu id="containerMenu" #menuRazas="matMenu" class="tw-me-1 menu-filtros-estandar">
             <div id="menu">
                 <mat-form-field (click)="$event.stopPropagation();" (keyup)="filtroRazas();">
                     <mat-label>Incluye texto</mat-label>
@@ -19,7 +19,7 @@
                     </mat-select>
                 </mat-form-field>
             </div>
-            <mat-chip-option color="warn" class="mt-4 mb-1"
+            <mat-chip-option color="warn" class="tw-mt-4 tw-mb-1"
                 [selected]="homebrewActivo"
                 [disabled]="homebrewBloqueado"
                 (click)="$event.stopPropagation(); AlternarRazasHombrew();">{{anuncioHomebrew}}</mat-chip-option>
@@ -28,7 +28,7 @@
         <table id="razas" #tablaRazas mat-table [dataSource]="razasDS" matSort
             *ngIf="razas.length > 0; else cargando">
             <ng-container matColumnDef="{{column}}" *ngFor="let column of razaColumns">
-                <th class="lead" mat-header-cell *matHeaderCellDef mat-sort-header
+                <th class="tw-text-lg tw-font-medium" mat-header-cell *matHeaderCellDef mat-sort-header
                     sortActionDescription="Ordenar por {{column}}">
                     {{column.replace('_', ' ')}}
                 </th>
@@ -37,50 +37,50 @@
                         (click)="abrirDetalleManual(element, $event)">
                         {{element[column]}}
                     </button>
-                    <p class="mb-0" *ngIf="column == 'Clase_predilecta'">
+                    <p class="tw-mb-0" *ngIf="column == 'Clase_predilecta'">
                         {{element[column]}}
                     </p>
-                    <div class="d-flex justify-content-center align-items-center" *ngIf="column == 'Ajuste_nivel'">
-                        <p class="text-center mb-0" [ngClass]="element[column] > 0 ? 'd-initial sombra3d-sm rounded px-2 py-1 bad chip' : ''">
+                    <div class="tw-flex tw-justify-center tw-items-center" *ngIf="column == 'Ajuste_nivel'">
+                        <p class="tw-text-center tw-mb-0" [ngClass]="element[column] > 0 ? 'tw-inline sombra3d-sm tw-rounded-md tw-px-2 tw-py-1 bad chip' : ''">
                             {{element[column] > 0 ? '+' + element[column] : ''}}
                         </p>
                     </div>
-                    <div class="d-flex justify-content-center align-items-center" *ngIf="column == 'Dgs_adicionales'">
-                        <p class="text-center mb-0" [ngClass]="getDgsCantidad(element[column]) > 0 ? 'd-initial sombra3d-sm rounded px-2 py-1 bad chip' : ''">
+                    <div class="tw-flex tw-justify-center tw-items-center" *ngIf="column == 'Dgs_adicionales'">
+                        <p class="tw-text-center tw-mb-0" [ngClass]="getDgsCantidad(element[column]) > 0 ? 'tw-inline sombra3d-sm tw-rounded-md tw-px-2 tw-py-1 bad chip' : ''">
                             {{getDgsCantidad(element[column]) > 0 ? '+' + getDgsCantidad(element[column]) : ''}}{{getDgsDado(element[column])}}
                         </p>
                     </div>
-                    <button mat-stroked-button matTooltip="Click para ver esta raza" [matTooltipShowDelay]="200" *ngIf="column == 'Nombre'" color="accent" class="d-flex justify-content-start sombra3d w-100"
+                    <button mat-stroked-button matTooltip="Click para ver esta raza" [matTooltipShowDelay]="200" *ngIf="column == 'Nombre'" color="accent" class="tw-flex tw-justify-start sombra3d tw-w-full"
                         (click)="verDetallesRaza(element.Id); $event.stopPropagation();">
                         <mat-icon>read_more</mat-icon>
                         {{element[column]}}
                     </button>
-                    <div class="d-flex justify-content-center align-items-center modificadores-cell" *ngIf="column == 'Modificadores'">
-                        <p class="d-initial sombra3d-sm rounded p-1 mb-0 chip" *ngIf="getModificador(element[column], 'Fuerza') != 0" [ngClass]="getModificador(element[column], 'Fuerza') > 0 ? 'good' : 'bad'">
+                    <div class="tw-flex tw-justify-center tw-items-center modificadores-cell" *ngIf="column == 'Modificadores'">
+                        <p class="tw-inline sombra3d-sm tw-rounded-md tw-p-1 tw-mb-0 chip" *ngIf="getModificador(element[column], 'Fuerza') != 0" [ngClass]="getModificador(element[column], 'Fuerza') > 0 ? 'good' : 'bad'">
                             {{getModificador(element[column], 'Fuerza') > 0 ? 'FUE +' + getModificador(element[column], 'Fuerza') : 'FUE ' + getModificador(element[column], 'Fuerza')}}
                         </p>
-                        <p class="d-initial sombra3d-sm rounded p-1 mb-0 chip" *ngIf="getModificador(element[column], 'Destreza') != 0" [ngClass]="getModificador(element[column], 'Destreza') > 0 ? 'good' : 'bad'">
+                        <p class="tw-inline sombra3d-sm tw-rounded-md tw-p-1 tw-mb-0 chip" *ngIf="getModificador(element[column], 'Destreza') != 0" [ngClass]="getModificador(element[column], 'Destreza') > 0 ? 'good' : 'bad'">
                             {{getModificador(element[column], 'Destreza') > 0 ? 'DES +' + getModificador(element[column], 'Destreza') : 'DES ' + getModificador(element[column], 'Destreza')}}
                         </p>
-                        <p class="d-initial sombra3d-sm rounded p-1 mb-0 chip" *ngIf="getModificador(element[column], 'Constitucion') != 0" [ngClass]="getModificador(element[column], 'Constitucion') > 0 ? 'good' : 'bad'">
+                        <p class="tw-inline sombra3d-sm tw-rounded-md tw-p-1 tw-mb-0 chip" *ngIf="getModificador(element[column], 'Constitucion') != 0" [ngClass]="getModificador(element[column], 'Constitucion') > 0 ? 'good' : 'bad'">
                             {{getModificador(element[column], 'Constitucion') > 0 ? 'CON +' + getModificador(element[column], 'Constitucion') : 'CON ' + getModificador(element[column], 'Constitucion')}}
                         </p>
-                        <p class="d-initial sombra3d-sm rounded p-1 mb-0 chip" *ngIf="getModificador(element[column], 'Inteligencia') != 0" [ngClass]="getModificador(element[column], 'Inteligencia') > 0 ? 'good' : 'bad'">
+                        <p class="tw-inline sombra3d-sm tw-rounded-md tw-p-1 tw-mb-0 chip" *ngIf="getModificador(element[column], 'Inteligencia') != 0" [ngClass]="getModificador(element[column], 'Inteligencia') > 0 ? 'good' : 'bad'">
                             {{getModificador(element[column], 'Inteligencia') > 0 ? 'INT +' + getModificador(element[column], 'Inteligencia') : 'INT ' + getModificador(element[column], 'Inteligencia')}}
                         </p>
-                        <p class="d-initial sombra3d-sm rounded p-1 mb-0 chip" *ngIf="getModificador(element[column], 'Sabiduria') != 0" [ngClass]="getModificador(element[column], 'Sabiduria') > 0 ? 'good' : 'bad'">
+                        <p class="tw-inline sombra3d-sm tw-rounded-md tw-p-1 tw-mb-0 chip" *ngIf="getModificador(element[column], 'Sabiduria') != 0" [ngClass]="getModificador(element[column], 'Sabiduria') > 0 ? 'good' : 'bad'">
                             {{getModificador(element[column], 'Sabiduria') > 0 ? 'SAB +' + getModificador(element[column], 'Sabiduria') : 'SAB ' + getModificador(element[column], 'Sabiduria')}}
                         </p>
-                        <p class="d-initial sombra3d-sm rounded p-1 mb-0 chip" *ngIf="getModificador(element[column], 'Carisma') != 0" [ngClass]="getModificador(element[column], 'Carisma') > 0 ? 'good' : 'bad'">
+                        <p class="tw-inline sombra3d-sm tw-rounded-md tw-p-1 tw-mb-0 chip" *ngIf="getModificador(element[column], 'Carisma') != 0" [ngClass]="getModificador(element[column], 'Carisma') > 0 ? 'good' : 'bad'">
                             {{getModificador(element[column], 'Carisma') > 0 ? 'CAR +' + getModificador(element[column], 'Carisma') : 'CAR ' + getModificador(element[column], 'Carisma')}}
                         </p>
-                        <!-- <p class="d-initial sombra3d-sm rounded p-1 me-1 mb-0"
+                        <!-- <p class="tw-inline sombra3d-sm tw-rounded-md tw-p-1 tw-me-1 tw-mb-0"
                             *ngIf="element[column].Fuerza == 0 && element[column].Destreza == 0 && element[column].Constitucion == 0 
                             && element[column].Inteligencia == 0 && element[column].Sabiduria == 0 && element[column].Carisma == 0">
                             No modifica características
                         </p> -->
                     </div>
-                    <div class="d-flex justify-content-center align-items-center" *ngIf="column == 'Homebrew'">
+                    <div class="tw-flex tw-justify-center tw-items-center" *ngIf="column == 'Homebrew'">
                         <mat-checkbox #isHombrew [checked]="!element.Oficial" [disableRipple]="true"
                             (click)="$event.preventDefault(); $event.stopPropagation();"></mat-checkbox>
                     </div>
@@ -90,7 +90,7 @@
             <tr mat-row *matRowDef="let element; columns: razaColumns;" class="element-row elegir"
                 (click)="seleccionarRaza(element.Id)"></tr>
             <tr class="mat-row" *matNoDataRow>
-                <td class="mat-cell text-center text-white p-3" colspan="6">
+                <td class="mat-cell tw-text-center tw-text-white tw-p-3" colspan="6">
                     Ninguna raza encaja con los filtros
                 </td>
             </tr>
@@ -102,8 +102,8 @@
             </div>
         </ng-template>
     </div>
-    <div class="row justify-content-center align-items-center">
-        <mat-paginator [pageSizeOptions]="[10, 20, 30, 40]" showFirstLastButtons aria-label="Selecciona una página de razas">
+    <div class="lista-row tw-w-full tw-flex tw-items-center">
+        <mat-paginator class="tw-w-full" [pageSizeOptions]="[10, 20, 30, 40]" showFirstLastButtons aria-label="Selecciona una página de razas">
         </mat-paginator>
     </div>
 </div>

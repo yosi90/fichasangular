@@ -1410,6 +1410,26 @@ describe('NuevoPersonajeService (clases)', () => {
         expect(service.registrarDotesPendientesPorProgresion('Guerrero nivel 3').length).toBe(1);
     });
 
+    it('con DGs raciales altos concede dote de progresion al cruzar el siguiente multiplo de 3', () => {
+        const tipo = crearTipoBase();
+        const raza = crearRazaBase(tipo);
+        raza.Dgs_adicionales.Cantidad = 8;
+        raza.Dgs_adicionales.Dotes_extra = 3;
+        service.seleccionarRaza(raza);
+        service.aplicarCaracteristicasGeneradas({
+            Fuerza: 14,
+            Destreza: 12,
+            Constitucion: 13,
+            Inteligencia: 10,
+            Sabiduria: 11,
+            Carisma: 9,
+        });
+
+        expect(service.registrarDotesPendientesPorRazaExtras('Azotamentes').length).toBe(3);
+        service.aplicarSiguienteNivelClase(claseBase);
+        expect(service.registrarDotesPendientesPorProgresion('Guerrero nivel 1').length).toBe(1);
+    });
+
     it('DGs raciales 4/8/12 generan 1/2/3 aumentos por progresion', () => {
         const casos = [
             { dgs: 4, esperado: 1 },
@@ -4090,6 +4110,39 @@ describe('NuevoPersonajeService (habilidades flujo)', () => {
         expect(svc.setExtraHabilidad(7, 'Alquimia')).toBeFalse();
     });
 
+    it('bloquea edición de extra cuando la fuente lo trae predefinido', () => {
+        const svc = new NuevoPersonajeService();
+        svc.setCatalogoHabilidades([
+            {
+                Id_habilidad: 32,
+                Nombre: 'Saber 1',
+                Id_caracteristica: 4,
+                Caracteristica: 'Inteligencia',
+                Descripcion: '',
+                Soporta_extra: true,
+                Entrenada: false,
+                Extras: [
+                    { Id_extra: 1, Extra: 'Planos', Descripcion: '' },
+                    { Id_extra: 2, Extra: 'Religion', Descripcion: '' },
+                ],
+            },
+        ]);
+        svc.seleccionarRaza(crearRazaConDgs({
+            Habilidades: {
+                Base: [{ Id_habilidad: 32, Habilidad: 'Saber 1', Extra: 'Religion', Cantidad: 1 }],
+                Custom: [],
+            },
+        } as any));
+
+        const habilidad = svc.PersonajeCreacion.Habilidades.find((h) => Number(h.Id) === 32);
+        expect(habilidad?.Extra).toBe('Religion');
+        expect(habilidad?.Extra_bloqueado).toBeTrue();
+
+        svc.iniciarDistribucionHabilidadesPorRazaDG();
+        expect(svc.setExtraHabilidad(32, 'Planos')).toBeFalse();
+        expect(svc.PersonajeCreacion.Habilidades.find((h) => Number(h.Id) === 32)?.Extra).toBe('Religion');
+    });
+
     it('prohíbe repetir extra en habilidades cláseas de la misma familia', () => {
         const svc = new NuevoPersonajeService();
         svc.setCatalogoHabilidades([
@@ -4266,6 +4319,32 @@ describe('NuevoPersonajeService (habilidades flujo)', () => {
             .filter((h) => [32, 33, 34, 35, 36].includes(Number(h.Id)) && h.Clasea);
         expect(saberesClaseos.length).toBe(5);
         expect(saberesClaseos.some((h) => Number(h.Id) === 36)).toBeTrue();
+    });
+
+    it('raza no duplica slots de saberes cuando la misma referencia se repite', () => {
+        const svc = new NuevoPersonajeService();
+        svc.setCatalogoHabilidades([
+            { Id_habilidad: 32, Nombre: 'Saber 1', Id_caracteristica: 4, Caracteristica: 'Inteligencia', Descripcion: '', Soporta_extra: true, Entrenada: false, Extras: [] },
+            { Id_habilidad: 33, Nombre: 'Saber 2', Id_caracteristica: 4, Caracteristica: 'Inteligencia', Descripcion: '', Soporta_extra: true, Entrenada: false, Extras: [] },
+            { Id_habilidad: 34, Nombre: 'Saber 3', Id_caracteristica: 4, Caracteristica: 'Inteligencia', Descripcion: '', Soporta_extra: true, Entrenada: false, Extras: [] },
+            { Id_habilidad: 35, Nombre: 'Saber 4', Id_caracteristica: 4, Caracteristica: 'Inteligencia', Descripcion: '', Soporta_extra: true, Entrenada: false, Extras: [] },
+            { Id_habilidad: 36, Nombre: 'Saber 5', Id_caracteristica: 4, Caracteristica: 'Inteligencia', Descripcion: '', Soporta_extra: true, Entrenada: false, Extras: [] },
+        ]);
+        svc.seleccionarRaza(crearRazaConDgs({
+            Habilidades: {
+                Base: [
+                    { Id_habilidad: 32, Habilidad: 'Saber 1', Cantidad: 1 },
+                    { Id_habilidad: 32, Habilidad: 'Saber 1', Cantidad: 2 },
+                ],
+                Custom: [],
+            },
+        } as any));
+
+        const saberesClaseos = svc.PersonajeCreacion.Habilidades
+            .filter((h) => [32, 33, 34, 35, 36].includes(Number(h.Id)) && h.Clasea);
+        expect(saberesClaseos.length).toBe(1);
+        expect(saberesClaseos[0].Id).toBe(32);
+        expect(saberesClaseos[0].Rangos_varios).toBe(3);
     });
 });
 

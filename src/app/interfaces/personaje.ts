@@ -255,6 +255,7 @@ export interface Personaje extends PersonajeSimple {
         Rangos: number;
         Rangos_varios: number;
         Extra: string;
+        Extra_bloqueado?: boolean;
         Varios: string;
         Custom: boolean;
         Soporta_extra?: boolean;

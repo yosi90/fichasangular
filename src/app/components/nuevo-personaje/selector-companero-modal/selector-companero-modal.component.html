@@ -1,20 +1,20 @@
 <div class="selector-overlay">
     <div class="selector-dialog" (click)="$event.stopPropagation()">
         <div class="selector-header">
-            <h2 class="m-0 selector-title">{{titulo}}</h2>
-            <mat-chip class="h-auto warm" *ngIf="cuposDisponibles > 0">Cupos disponibles: {{cuposDisponibles}}</mat-chip>
+            <h2 class="tw-m-0 selector-title">{{titulo}}</h2>
+            <mat-chip class="tw-h-auto warm" *ngIf="cuposDisponibles > 0">Cupos disponibles: {{cuposDisponibles}}</mat-chip>
         </div>
 
         <div class="preview-bloque">
             <div class="preview-titulo">Compañeros tras confirmar</div>
             <mat-chip-set class="preview-chips" *ngIf="previewCompaneros.length > 0; else sinPreviewTpl">
-                <mat-chip *ngFor="let item of previewCompaneros; trackBy: trackByCompanero" class="h-auto sombra3d-sm">
+                <mat-chip *ngFor="let item of previewCompaneros; trackBy: trackByCompanero" class="tw-h-auto sombra3d-sm">
                     {{item.Nombre}}
-                    <mat-chip class="m-1">{{getEtiquetaPlantilla(item?.Plantilla?.Id ?? 1)}}</mat-chip>
+                    <mat-chip class="tw-m-1">{{getEtiquetaPlantilla(item?.Plantilla?.Id ?? 1)}}</mat-chip>
                 </mat-chip>
             </mat-chip-set>
             <ng-template #sinPreviewTpl>
-                <p class="m-0 detalle">Aún no hay compañeros seleccionados.</p>
+                <p class="tw-m-0 detalle">Aún no hay compañeros seleccionados.</p>
             </ng-template>
         </div>
 
@@ -77,11 +77,11 @@
                         <span class="companero-nombre">{{companero.Nombre}}</span>
                         <span class="companero-manual">{{companero.Manual.Nombre || '-'}}</span>
                         <span class="companero-acciones">
-                            <mat-chip class="m-0" *ngIf="getNivelRequerido(companero) as nivel"
+                            <mat-chip class="tw-m-0" *ngIf="getNivelRequerido(companero) as nivel"
                                 [matTooltip]="getTooltipNivelDruida(nivel)" matTooltipClass="tt-accent">
                                 Nivel {{nivel}}
                             </mat-chip>
-                            <mat-chip class="m-0">{{getEtiquetaPlantilla(companero?.Plantilla?.Id ?? 1)}}</mat-chip>
+                            <mat-chip class="tw-m-0">{{getEtiquetaPlantilla(companero?.Plantilla?.Id ?? 1)}}</mat-chip>
                             <mat-chip class="companero-chip-estado" [ngClass]="esCompaneroElegible(companero) ? 'good' : 'bad'">
                                 {{getEtiquetaEstado(companero)}}
                             </mat-chip>
@@ -90,7 +90,7 @@
                             </button>
                         </span>
                         <div class="companero-motivos" *ngIf="!esCompaneroElegible(companero)">
-                            <p class="m-0" *ngFor="let motivo of getMotivosBloqueo(companero)">• {{motivo}}</p>
+                            <p class="tw-m-0" *ngFor="let motivo of getMotivosBloqueo(companero)">• {{motivo}}</p>
                         </div>
                     </button>
                 </div>
@@ -106,11 +106,11 @@
                         <span class="companero-nombre">{{companero.Nombre}}</span>
                         <span class="companero-manual">{{companero.Manual.Nombre || '-'}}</span>
                         <span class="companero-acciones">
-                            <mat-chip class="m-0" *ngIf="getNivelRequerido(companero) as nivel"
+                            <mat-chip class="tw-m-0" *ngIf="getNivelRequerido(companero) as nivel"
                                 [matTooltip]="getTooltipNivelDruida(nivel)" matTooltipClass="tt-accent">
                                 Nivel {{nivel}}
                             </mat-chip>
-                            <mat-chip class="m-0">{{getEtiquetaPlantilla(companero?.Plantilla?.Id ?? 1)}}</mat-chip>
+                            <mat-chip class="tw-m-0">{{getEtiquetaPlantilla(companero?.Plantilla?.Id ?? 1)}}</mat-chip>
                             <mat-chip class="companero-chip-estado" [ngClass]="esCompaneroElegible(companero) ? 'good' : 'bad'">
                                 {{getEtiquetaEstado(companero)}}
                             </mat-chip>
@@ -119,7 +119,7 @@
                             </button>
                         </span>
                         <div class="companero-motivos" *ngIf="!esCompaneroElegible(companero)">
-                            <p class="m-0" *ngFor="let motivo of getMotivosBloqueo(companero)">• {{motivo}}</p>
+                            <p class="tw-m-0" *ngFor="let motivo of getMotivosBloqueo(companero)">• {{motivo}}</p>
                         </div>
                     </button>
                 </div>
@@ -135,11 +135,11 @@
                         <span class="companero-nombre">{{companero.Nombre}}</span>
                         <span class="companero-manual">{{companero.Manual.Nombre || '-'}}</span>
                         <span class="companero-acciones">
-                            <mat-chip class="m-0" *ngIf="getNivelRequerido(companero) as nivel"
+                            <mat-chip class="tw-m-0" *ngIf="getNivelRequerido(companero) as nivel"
                                 [matTooltip]="getTooltipNivelDruida(nivel)" matTooltipClass="tt-accent">
                                 Nivel {{nivel}}
                             </mat-chip>
-                            <mat-chip class="m-0">{{getEtiquetaPlantilla(companero?.Plantilla?.Id ?? 1)}}</mat-chip>
+                            <mat-chip class="tw-m-0">{{getEtiquetaPlantilla(companero?.Plantilla?.Id ?? 1)}}</mat-chip>
                             <mat-chip class="companero-chip-estado" [ngClass]="esCompaneroElegible(companero) ? 'good' : 'bad'">
                                 {{getEtiquetaEstado(companero)}}
                             </mat-chip>
@@ -148,7 +148,7 @@
                             </button>
                         </span>
                         <div class="companero-motivos" *ngIf="!esCompaneroElegible(companero)">
-                            <p class="m-0" *ngFor="let motivo of getMotivosBloqueo(companero)">• {{motivo}}</p>
+                            <p class="tw-m-0" *ngFor="let motivo of getMotivosBloqueo(companero)">• {{motivo}}</p>
                         </div>
                     </button>
                 </div>
@@ -156,10 +156,10 @@
         </div>
 
         <ng-template #sinCompanerosTpl>
-            <p class="m-0 detalle" *ngIf="cantidadCompanerosListado < 1">
+            <p class="tw-m-0 detalle" *ngIf="cantidadCompanerosListado < 1">
                 No hay compañeros elegibles con las reglas actuales.
             </p>
-            <p class="m-0 detalle" *ngIf="cantidadCompanerosListado > 0">
+            <p class="tw-m-0 detalle" *ngIf="cantidadCompanerosListado > 0">
                 No hay resultados para "{{filtroTexto}}".
             </p>
         </ng-template>

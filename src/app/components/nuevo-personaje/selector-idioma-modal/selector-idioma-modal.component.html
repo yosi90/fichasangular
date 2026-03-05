@@ -1,7 +1,7 @@
 <div class="selector-overlay" (click)="onCerrar()">
     <div class="selector-dialog" (click)="$event.stopPropagation()">
         <div class="selector-header">
-            <h2 class="m-0 selector-title">{{titulo}}</h2>
+            <h2 class="tw-m-0 selector-title">{{titulo}}</h2>
             <div class="selector-header-actions">
                 <button mat-icon-button type="button" class="selector-icon-btn" aria-label="Cerrar" [disabled]="!puedeCerrar" (click)="onCerrar()">
                     <mat-icon>close</mat-icon>
@@ -43,7 +43,7 @@
         </div>
 
         <ng-template #sinIdiomasTpl>
-            <p class="m-0 detalle-idioma">No hay idiomas disponibles con el filtro actual.</p>
+            <p class="tw-m-0 detalle-idioma">No hay idiomas disponibles con el filtro actual.</p>
         </ng-template>
 
         <div class="selector-actions">

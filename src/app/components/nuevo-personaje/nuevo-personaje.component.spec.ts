@@ -2242,6 +2242,33 @@ describe('NuevoPersonajeComponent', () => {
         expect(component.modalSelectorExtraHabilidadAbierto).toBeFalse();
     });
 
+    it('no permite editar extra cuando viene bloqueado por la fuente', () => {
+        component.Personaje.Habilidades = [
+            {
+                Id: 57,
+                Nombre: 'Saber 3',
+                Clasea: true,
+                Entrenada: false,
+                Car: 'Inteligencia',
+                Mod_car: 0,
+                Rangos: 0,
+                Rangos_varios: 0,
+                Extra: 'Religion',
+                Extra_bloqueado: true,
+                Varios: '',
+                Custom: false,
+                Soporta_extra: true,
+                Extras: [
+                    { Id_extra: 1, Extra: 'Planos', Descripcion: '' },
+                    { Id_extra: 2, Extra: 'Religion', Descripcion: '' },
+                ],
+                Bonos_varios: [],
+            },
+        ] as any;
+
+        expect(component.esExtraEditableHabilidad(component.Personaje.Habilidades[0] as any)).toBeFalse();
+    });
+
     it('continuarDesdeHabilidades con retorno dotes completa pipeline y vuelve a clases', async () => {
         const clase = crearClaseMock({
             Id: 347,
@@ -2282,6 +2309,33 @@ describe('NuevoPersonajeComponent', () => {
 
         await component.continuarDesdeHabilidades();
         expect(resolverDotesSpy).toHaveBeenCalledTimes(1);
+    });
+
+    it('en raza_dg registra dotes extras antes de resolver pendientes al continuar desde habilidades', async () => {
+        spyOn(nuevoPSvc, 'puedeCerrarDistribucionHabilidades').and.returnValue(true);
+        const registrarRazaSpy = spyOn(nuevoPSvc, 'registrarDotesPendientesPorRazaExtras').and.returnValue([]);
+        const resolverDotesSpy = spyOn<any>(component, 'resolverDotesPendientes').and.resolveTo(true);
+        const cerrarSpy = spyOn(nuevoPSvc, 'cerrarDistribucionHabilidades').and.returnValue('plantillas');
+        const pasoSpy = spyOn(nuevoPSvc, 'actualizarPasoActual');
+        spyOn<any>(component, 'sincronizarTabConPaso');
+
+        (nuevoPSvc.EstadoFlujo.habilidades as any) = {
+            activa: true,
+            origen: 'raza_dg',
+            returnStep: 'plantillas',
+            puntosTotales: 0,
+            puntosRestantes: 0,
+            nivelPersonajeReferencia: 0,
+            classSkillTemporales: [],
+        };
+
+        await component.continuarDesdeHabilidades();
+
+        expect(registrarRazaSpy).toHaveBeenCalledTimes(1);
+        expect(registrarRazaSpy).toHaveBeenCalledWith(jasmine.any(String));
+        expect(resolverDotesSpy).toHaveBeenCalledTimes(1);
+        expect(cerrarSpy).toHaveBeenCalled();
+        expect(pasoSpy).toHaveBeenCalledWith('plantillas');
     });
 
     it('continuarDesdeHabilidades salta a conjuros cuando hay sesión activa', async () => {
@@ -3722,11 +3776,16 @@ describe('NuevoPersonajeComponent', () => {
         expect(nuevoPSvc.EstadoFlujo.pasoActual).toBe('clases');
     });
 
-    it('mostrarBotonFinalizarCreacion depende de tener niveles de clase', () => {
+    it('mostrarBotonFinalizarCreacion permite finalizar con clase o con 4+ DGs raciales', () => {
         component.Personaje.desgloseClases = [];
+        component.Personaje.Raza.Dgs_adicionales.Cantidad = 0;
         expect(component.mostrarBotonFinalizarCreacion).toBeFalse();
 
         component.Personaje.desgloseClases = [{ Nombre: 'Mago', Nivel: 1 } as any];
+        expect(component.mostrarBotonFinalizarCreacion).toBeTrue();
+
+        component.Personaje.desgloseClases = [];
+        component.Personaje.Raza.Dgs_adicionales.Cantidad = 4;
         expect(component.mostrarBotonFinalizarCreacion).toBeTrue();
     });
 

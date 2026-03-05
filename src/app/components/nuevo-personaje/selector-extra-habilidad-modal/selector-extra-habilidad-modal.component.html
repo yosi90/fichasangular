@@ -2,8 +2,8 @@
     <div class="selector-dialog" (click)="$event.stopPropagation()">
         <div class="selector-header">
             <div class="selector-header-main">
-                <h2 class="m-0 selector-title">{{titulo}}</h2>
-                <p class="m-0 selector-subtitle" *ngIf="habilidadNombre.length > 0">
+                <h2 class="tw-m-0 selector-title">{{titulo}}</h2>
+                <p class="tw-m-0 selector-subtitle" *ngIf="habilidadNombre.length > 0">
                     Selecciona el extra para {{habilidadNombre}}.
                 </p>
             </div>
@@ -12,7 +12,7 @@
             </button>
         </div>
 
-        <mat-form-field appearance="fill" class="w-100">
+        <mat-form-field appearance="fill" class="tw-w-full">
             <mat-label>Buscar extra</mat-label>
             <input matInput [(ngModel)]="filtroTexto" placeholder="Nombre o descripción">
         </mat-form-field>
@@ -27,13 +27,13 @@
                 (click)="seleccionarOpcion(opcion.valor)"
                 (keydown.enter)="seleccionarOpcion(opcion.valor); $event.preventDefault()"
                 (keydown.space)="seleccionarOpcion(opcion.valor); $event.preventDefault()">
-                <p class="m-0 extra-nombre">{{opcion.valor}}</p>
-                <p class="m-0 extra-descripcion" *ngIf="opcion.descripcion.length > 0">{{opcion.descripcion}}</p>
+                <p class="tw-m-0 extra-nombre">{{opcion.valor}}</p>
+                <p class="tw-m-0 extra-descripcion" *ngIf="opcion.descripcion.length > 0">{{opcion.descripcion}}</p>
             </div>
         </div>
 
         <ng-template #sinExtrasTpl>
-            <p class="m-0 detalle">No hay extras que encajen con el filtro actual.</p>
+            <p class="tw-m-0 detalle">No hay extras que encajen con el filtro actual.</p>
         </ng-template>
 
         <div class="selector-actions">

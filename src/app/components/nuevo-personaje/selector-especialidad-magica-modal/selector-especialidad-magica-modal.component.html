@@ -1,12 +1,12 @@
 <div class="selector-overlay">
     <div class="selector-dialog" (click)="$event.stopPropagation()">
         <div class="selector-header">
-            <h2 class="m-0 selector-title">{{titulo}}</h2>
+            <h2 class="tw-m-0 selector-title">{{titulo}}</h2>
             <mat-chip class="selector-chip-clase" *ngIf="nombreClase.trim().length > 0">Clase: {{nombreClase}}</mat-chip>
         </div>
 
         <section class="selector-bloque" *ngIf="mostrarArcano">
-            <p class="bloque-titulo m-0">Especialización arcana</p>
+            <p class="bloque-titulo tw-m-0">Especialización arcana</p>
 
             <mat-checkbox [checked]="arcanoEspecializar" (change)="onToggleArcanoEspecializar($event.checked)">
                 Quiero especializarme en una escuela
@@ -15,7 +15,7 @@
             <mat-chip class="chip-estado" [ngClass]="arcanoValido ? 'ok' : 'warm'">{{textoArcanoEstado}}</mat-chip>
 
             <ng-container *ngIf="arcanoEspecializar">
-                <mat-form-field appearance="fill" class="w-100">
+                <mat-form-field appearance="fill" class="tw-w-full">
                     <mat-label>Escuela especialista</mat-label>
                     <mat-select [value]="arcanoEscuelaEspecialistaId" (selectionChange)="onChangeEscuelaEspecialista($event.value)">
                         <mat-option *ngFor="let escuela of escuelasEspecializables" [value]="toPositiveId(escuela.Id)">
@@ -25,7 +25,7 @@
                 </mat-form-field>
 
                 <div class="selector-listado" *ngIf="escuelasProhibibles.length > 0">
-                    <p class="selector-subtitulo m-0">Escuelas prohibidas (elige {{escuelasProhibidasRequeridas}})</p>
+                    <p class="selector-subtitulo tw-m-0">Escuelas prohibidas (elige {{escuelasProhibidasRequeridas}})</p>
                     <div class="selector-row"
                         *ngFor="let escuela of escuelasProhibibles"
                         [class.bloqueada]="isEscuelaProhibidaBloqueada(toPositiveId(escuela.Id))"
@@ -43,9 +43,9 @@
         </section>
 
         <section class="selector-bloque" *ngIf="mostrarPsionico">
-            <p class="bloque-titulo m-0">Especialización psiónica</p>
+            <p class="bloque-titulo tw-m-0">Especialización psiónica</p>
 
-            <mat-form-field appearance="fill" class="w-100">
+            <mat-form-field appearance="fill" class="tw-w-full">
                 <mat-label>Disciplina especialista</mat-label>
                 <mat-select [value]="psionicoDisciplinaEspecialistaId" (selectionChange)="onChangeDisciplinaEspecialista($event.value)">
                     <mat-option *ngFor="let disciplina of disciplinasEspecializables" [value]="toPositiveId(disciplina.Id)">
@@ -54,7 +54,7 @@
                 </mat-select>
             </mat-form-field>
 
-            <mat-form-field appearance="fill" class="w-100">
+            <mat-form-field appearance="fill" class="tw-w-full">
                 <mat-label>Disciplina prohibida</mat-label>
                 <mat-select [value]="psionicoDisciplinaProhibidaId" (selectionChange)="onChangeDisciplinaProhibida($event.value)">
                     <mat-option *ngFor="let disciplina of disciplinasProhibibles" [value]="toPositiveId(disciplina.Id)">

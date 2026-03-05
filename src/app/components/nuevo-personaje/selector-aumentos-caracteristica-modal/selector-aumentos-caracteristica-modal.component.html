@@ -1,10 +1,10 @@
 <div class="selector-overlay">
     <div class="selector-dialog" (click)="$event.stopPropagation()">
         <div class="selector-header">
-            <h2 class="m-0 selector-title">{{titulo}}</h2>
+            <h2 class="tw-m-0 selector-title">{{titulo}}</h2>
         </div>
 
-        <mat-chip class="w-100 chip-pendiente" [ngClass]="cantidadPendiente > 0 ? 'warm' : 'ok'">
+        <mat-chip class="tw-w-full chip-pendiente" [ngClass]="cantidadPendiente > 0 ? 'warm' : 'ok'">
             {{textoPendiente}}
         </mat-chip>
 
@@ -32,7 +32,7 @@
         </div>
 
         <ng-template #sinPendientesTpl>
-            <p class="m-0 detalle">No hay aumentos pendientes en este momento.</p>
+            <p class="tw-m-0 detalle">No hay aumentos pendientes en este momento.</p>
         </ng-template>
 
         <div class="preview-panel">

@@ -1,10 +1,10 @@
-<div id="container-lista" class="container-fluid bg-dark h-100">
-    <div class="row position-relative justify-content-center align-items-center">
+<div id="container-lista" class="tw-w-full tw-bg-[#212529] tw-h-full">
+    <div class="lista-row tw-w-full tw-relative tw-flex tw-justify-center tw-items-center">
         <button id="filtros" matTooltip="Filtros de plantillas" #filtros mat-icon-button
-            [matMenuTriggerFor]="menuPlantillas" class="filtros bg-accent">
+            [matMenuTriggerFor]="menuPlantillas" class="filtros">
             <mat-icon>filter_alt</mat-icon>
         </button>
-        <mat-menu id="containerMenu" #menuPlantillas="matMenu" class="me-1 menu-filtros-estandar menu-plantillas-filtros">
+        <mat-menu id="containerMenu" #menuPlantillas="matMenu" class="tw-me-1 menu-filtros-estandar menu-plantillas-filtros">
             <div id="menu">
                 <mat-form-field (click)="$event.stopPropagation();" (keyup)="filtroPlantillas();">
                     <mat-label>Incluye texto</mat-label>
@@ -25,12 +25,12 @@
 
         <table id="plantillas" #tablaPlantillas mat-table [dataSource]="plantillasDS" matSort *ngIf="plantillas.length > 0; else cargando">
             <ng-container matColumnDef="{{column}}" *ngFor="let column of plantillaColumns">
-                <th class="lead" mat-header-cell *matHeaderCellDef mat-sort-header sortActionDescription="Ordenar por {{column}}">
+                <th class="tw-text-lg tw-font-medium" mat-header-cell *matHeaderCellDef mat-sort-header sortActionDescription="Ordenar por {{column}}">
                     {{column.replace('_', ' ')}}
                 </th>
                 <td mat-cell *matCellDef="let element">
                     <button mat-stroked-button matTooltip="Clic para ver esta plantilla" [matTooltipShowDelay]="200" *ngIf="column == 'Nombre'" color="accent"
-                        class="d-flex justify-content-start sombra3d w-100" (click)="verDetallesPlantilla(element.Id); $event.stopPropagation();">
+                        class="tw-flex tw-justify-start sombra3d tw-w-full" (click)="verDetallesPlantilla(element.Id); $event.stopPropagation();">
                         <mat-icon>read_more</mat-icon>
                         {{element[column]}}
                     </button>
@@ -38,18 +38,18 @@
                         (click)="abrirDetalleManual(element, $event)">
                         {{element.Manual?.Nombre}} (p. {{element.Manual?.Pagina}})
                     </button>
-                    <p class="mb-0 text-center" *ngIf="column == 'Ajuste_nivel'">
+                    <p class="tw-mb-0 tw-text-center" *ngIf="column == 'Ajuste_nivel'">
                         {{element.Ajuste_nivel > 0 ? '+' + element.Ajuste_nivel : element.Ajuste_nivel}}
                     </p>
-                    <div class="d-flex justify-content-center align-items-center" *ngIf="column == 'Nacimiento'">
+                    <div class="tw-flex tw-justify-center tw-items-center" *ngIf="column == 'Nacimiento'">
                         <mat-checkbox [checked]="element.Nacimiento" [disableRipple]="true"
                             (click)="$event.preventDefault(); $event.stopPropagation();"></mat-checkbox>
                     </div>
-                    <div class="d-flex justify-content-center align-items-center" *ngIf="column == 'Prerrequisitos'">
+                    <div class="tw-flex tw-justify-center tw-items-center" *ngIf="column == 'Prerrequisitos'">
                         <mat-checkbox [checked]="tienePrerrequisitos(element)" [disableRipple]="true"
                             (click)="$event.preventDefault(); $event.stopPropagation();"></mat-checkbox>
                     </div>
-                    <div class="d-flex justify-content-center align-items-center" *ngIf="column == 'Oficial'">
+                    <div class="tw-flex tw-justify-center tw-items-center" *ngIf="column == 'Oficial'">
                         <mat-checkbox [checked]="element.Oficial" [disableRipple]="true"
                             (click)="$event.preventDefault(); $event.stopPropagation();"></mat-checkbox>
                     </div>
@@ -59,7 +59,7 @@
             <tr mat-row *matRowDef="let element; columns: plantillaColumns;" class="element-row elegir"
                 (click)="seleccionarPlantilla(element.Id)"></tr>
             <tr class="mat-row" *matNoDataRow>
-                <td class="mat-cell text-center text-white p-3" [attr.colspan]="plantillaColumns.length">
+                <td class="mat-cell tw-text-center tw-text-white tw-p-3" [attr.colspan]="plantillaColumns.length">
                     Ninguna plantilla encaja con los filtros
                 </td>
             </tr>
@@ -71,8 +71,8 @@
             </div>
         </ng-template>
     </div>
-    <div class="row justify-content-center align-items-center">
-        <mat-paginator [pageSizeOptions]="[10, 20, 30, 40]" showFirstLastButtons aria-label="Selecciona una pagina de plantillas">
+    <div class="lista-row tw-w-full tw-flex tw-items-center">
+        <mat-paginator class="tw-w-full" [pageSizeOptions]="[10, 20, 30, 40]" showFirstLastButtons aria-label="Selecciona una pagina de plantillas">
         </mat-paginator>
     </div>
 </div>

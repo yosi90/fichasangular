@@ -815,7 +815,11 @@ export class NuevoPersonajeComponent {
     }
 
     get mostrarBotonFinalizarCreacion(): boolean {
-        return this.totalNivelesClaseActual > 0;
+        const dgsRaciales = Math.max(
+            0,
+            Number(this.Personaje?.Raza?.Dgs_adicionales?.Cantidad ?? this.razaSeleccionada?.Dgs_adicionales?.Cantidad ?? 0)
+        );
+        return this.totalNivelesClaseActual > 0 || dgsRaciales >= 4;
     }
 
     get incluirHomebrewPlantillasEfectivo(): boolean {
@@ -2915,6 +2919,8 @@ export class NuevoPersonajeComponent {
         const idHabilidad = Number(habilidad?.Id ?? 0);
         if (!this.esHabilidadClaseaEfectiva(idHabilidad))
             return [];
+        if (Boolean(habilidad?.Extra_bloqueado))
+            return [];
 
         const opciones = (habilidad?.Extras ?? [])
             .map((extra) => ({
@@ -2979,6 +2985,8 @@ export class NuevoPersonajeComponent {
     async abrirSelectorExtraHabilidad(habilidad: Personaje['Habilidades'][number]): Promise<void> {
         if (!habilidad?.Soporta_extra || !this.esHabilidadClaseaEfectiva(Number(habilidad?.Id)))
             return;
+        if (Boolean(habilidad?.Extra_bloqueado))
+            return;
 
         const opciones = this.getOpcionesExtraHabilidad(habilidad)
             .map((extra) => ({
@@ -3004,6 +3012,8 @@ export class NuevoPersonajeComponent {
         if (!habilidad?.Soporta_extra)
             return false;
         if (!this.esHabilidadClaseaEfectiva(Number(habilidad?.Id)))
+            return false;
+        if (Boolean(habilidad?.Extra_bloqueado))
             return false;
         return this.getOpcionesExtraHabilidad(habilidad).length > 0;
     }
@@ -3175,6 +3185,8 @@ export class NuevoPersonajeComponent {
             (origenHabilidades === 'raza_dg' || origenHabilidades === 'clase_nivel')
             && returnStepHabilidades !== 'conjuros'
         ) {
+            if (origenHabilidades === 'raza_dg')
+                this.nuevoPSvc.registrarDotesPendientesPorRazaExtras(`${this.razaSeleccionada?.Nombre ?? 'Raza'}`);
             const dotesCompletadas = await this.resolverDotesPendientes();
             if (!dotesCompletadas)
                 return;

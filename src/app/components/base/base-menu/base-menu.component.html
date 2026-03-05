@@ -1,10 +1,10 @@
 <mat-card id="menu" class="sombra-interna">
     <aside>
-        <button id="nuevopj" mat-raised-button color="primary" (click)="AbrirNuevoPersonaje();" class="w-100 sombra mt-1 mb-3">Nuevo personaje</button>
+        <button id="nuevopj" mat-raised-button color="primary" (click)="AbrirNuevoPersonaje();" class="tw-w-full sombra tw-mt-1 tw-mb-3">Nuevo personaje</button>
         <mat-accordion>
             <mat-expansion-panel #primero>
-                <mat-expansion-panel-header class="rounded-0 rounded-top">
-                    <button mat-stroked-button color="accent" class="rounded-0 rounded-top">
+                <mat-expansion-panel-header class="tw-rounded-none tw-rounded-t-md">
+                    <button mat-stroked-button color="accent" class="tw-rounded-none tw-rounded-t-md">
                         <mat-icon>add_box</mat-icon>Insertar
                     </button>
                 </mat-expansion-panel-header>
@@ -37,7 +37,7 @@
             </mat-expansion-panel>
             <mat-expansion-panel #segundo>
                 <mat-expansion-panel-header>
-                    <button mat-stroked-button color="accent" class="rounded-0">
+                    <button mat-stroked-button color="accent" class="tw-rounded-none">
                         <mat-icon>edit_square</mat-icon>Modificar
                     </button>
                 </mat-expansion-panel-header>
@@ -68,9 +68,9 @@
                     </div>
                 </ng-template>
             </mat-expansion-panel>
-            <mat-expansion-panel class="rounded-0 rounded-bottom" #tercero>
+            <mat-expansion-panel class="tw-rounded-none tw-rounded-b-md" #tercero>
                 <mat-expansion-panel-header>
-                    <button mat-stroked-button color="accent" class="rounded-0 rounded-bottom">
+                    <button mat-stroked-button color="accent" class="tw-rounded-none tw-rounded-b-md">
                         <mat-icon>search</mat-icon>Detalles
                     </button>
                 </mat-expansion-panel-header>

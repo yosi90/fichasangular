@@ -1575,6 +1575,8 @@ export class NuevoPersonajeService {
             return false;
         if (!this.esHabilidadClaseaParaSesion(habilidad))
             return false;
+        if (this.toBooleanValue(habilidad?.Extra_bloqueado))
+            return false;
 
         const extraLimpio = `${extra ?? ''}`.trim();
         const extraNormalizado = this.normalizarTexto(extraLimpio);
@@ -1957,8 +1959,13 @@ export class NuevoPersonajeService {
 
     registrarDotesPendientesPorProgresion(origen: string): DotePendienteState[] {
         const nivelEfectivoDotes = this.getNivelEfectivoParaDotesProgresion();
+        const dgsRaciales = this.getDgsRacialesAdicionalesParaDotesProgresion();
+        const dotesBasePorDgsRaciales = Math.max(0, Math.floor(dgsRaciales / 3));
         const doteInicialNivel = nivelEfectivoDotes > 0 && !this.tieneDgsAdicionalesParaDoteInicial() ? 1 : 0;
-        const totalPorProgresion = Math.max(0, doteInicialNivel + Math.floor(nivelEfectivoDotes / 3));
+        const totalPorProgresion = Math.max(
+            0,
+            doteInicialNivel + Math.floor((nivelEfectivoDotes + dgsRaciales) / 3) - dotesBasePorDgsRaciales
+        );
         const nuevas = Math.max(0, totalPorProgresion - this.dotesProgresionConcedidas);
         if (nuevas < 1)
             return [];
@@ -5164,6 +5171,7 @@ export class NuevoPersonajeService {
         opciones: {
             customPreferido?: boolean;
             marcarClasea?: boolean;
+            expandirFamiliaConDuplicados?: boolean;
             extraFallback?: string;
             variosFallback?: string;
         } = {}
@@ -5180,6 +5188,7 @@ export class NuevoPersonajeService {
 
         const custom = !!(opciones.customPreferido || referencia?.['Custom'] || referencia?.['custom'] || catalogo.esCustom);
         const marcarClasea = opciones.marcarClasea !== false;
+        const expandirFamiliaConDuplicados = opciones.expandirFamiliaConDuplicados !== false;
         const entrenada = this.toBooleanValue(
             referencia?.['Entrenada'] ?? referencia?.['entrenada'] ?? detalleCatalogo?.Entrenada
         );
@@ -5193,6 +5202,7 @@ export class NuevoPersonajeService {
             referencia?.['Soporta_extra'] ?? referencia?.['soporta_extra'] ?? detalleCatalogo?.Soporta_extra
         );
         const extras = this.resolverExtrasHabilidadDesdeReferencia(referencia, detalleCatalogo);
+        const extraFijoReferencia = this.resolverExtraFijoDesdeReferencia(referencia, extras);
         const keyCar = this.resolverCaracteristicaPorIdOTexto(idCaracteristica, textoCaracteristica);
 
         let existente: Personaje['Habilidades'][number] | null = null;
@@ -5206,6 +5216,8 @@ export class NuevoPersonajeService {
 
         const familia = this.resolverFamiliaRepetiblePorReferencia(idObjetivo, nombreObjetivo);
         if (familia) {
+            if (!expandirFamiliaConDuplicados && existente && this.toBooleanValue(existente?.Clasea))
+                return existente;
             const slotFamilia = this.resolverSlotFamiliaParaOtorgamiento(familia, existente);
             if (slotFamilia) {
                 if (marcarClasea)
@@ -5220,6 +5232,10 @@ export class NuevoPersonajeService {
                 if (`${slotFamilia.Car ?? ''}`.trim().length < 1) {
                     slotFamilia.Car = this.etiquetaCaracteristica(keyCar, textoCaracteristica);
                     slotFamilia.Mod_car = this.modificadorPorCaracteristica(keyCar);
+                }
+                if (extraFijoReferencia.bloqueado) {
+                    slotFamilia.Extra = extraFijoReferencia.valor;
+                    slotFamilia.Extra_bloqueado = true;
                 }
                 return slotFamilia;
             }
@@ -5241,6 +5257,10 @@ export class NuevoPersonajeService {
                 existente.Car = this.etiquetaCaracteristica(keyCar, textoCaracteristica);
                 existente.Mod_car = this.modificadorPorCaracteristica(keyCar);
             }
+            if (extraFijoReferencia.bloqueado) {
+                existente.Extra = extraFijoReferencia.valor;
+                existente.Extra_bloqueado = true;
+            }
             return existente;
         }
 
@@ -5261,7 +5281,10 @@ export class NuevoPersonajeService {
             Mod_car: this.modificadorPorCaracteristica(keyCar),
             Rangos: 0,
             Rangos_varios: 0,
-            Extra: `${referencia?.['Extra'] ?? referencia?.['extra'] ?? opciones.extraFallback ?? ''}`,
+            Extra: extraFijoReferencia.bloqueado
+                ? extraFijoReferencia.valor
+                : `${referencia?.['Extra'] ?? referencia?.['extra'] ?? opciones.extraFallback ?? ''}`,
+            Extra_bloqueado: extraFijoReferencia.bloqueado,
             Varios: `${referencia?.['Varios'] ?? referencia?.['varios'] ?? opciones.variosFallback ?? ''}`,
             Custom: custom,
             Soporta_extra: soportaExtra,
@@ -5342,6 +5365,30 @@ export class NuevoPersonajeService {
         }));
     }
 
+    private resolverExtraFijoDesdeReferencia(
+        referencia: Record<string, any>,
+        extrasDisponibles: Array<{ Id_extra: number; Extra: string; Descripcion: string; }>
+    ): { bloqueado: boolean; valor: string; } {
+        const extraRaw = `${referencia?.['Extra'] ?? referencia?.['extra'] ?? ''}`.trim();
+        const extraNorm = this.normalizarTexto(extraRaw);
+        if (extraRaw.length > 0 && !this.esExtraHabilidadPendienteValor(extraNorm))
+            return { bloqueado: true, valor: extraRaw };
+
+        const idExtra = this.toNumber(
+            referencia?.['Id_extra'] ?? referencia?.['id_extra'] ?? referencia?.['IdExtra'] ?? referencia?.['idExtra']
+        );
+        if (idExtra <= 0)
+            return { bloqueado: false, valor: '' };
+
+        const encontrado = extrasDisponibles.find((item) => this.toNumber(item?.Id_extra) === idExtra);
+        const valor = `${encontrado?.Extra ?? ''}`.trim();
+        const valorNorm = this.normalizarTexto(valor);
+        if (valor.length > 0 && !this.esExtraHabilidadPendienteValor(valorNorm))
+            return { bloqueado: true, valor };
+
+        return { bloqueado: false, valor: '' };
+    }
+
     private aplicarHabilidadesOtorgadasPorRaza(
         raza: Raza | null,
         bonosHabilidades: Record<number, HabilidadBonoVario[]>
@@ -5389,6 +5436,7 @@ export class NuevoPersonajeService {
         return this.asegurarHabilidadDesdeReferencia(habilidadRef, {
             customPreferido,
             marcarClasea: true,
+            expandirFamiliaConDuplicados: false,
         });
     }
 
@@ -8200,6 +8248,10 @@ export class NuevoPersonajeService {
         return Math.max(0, nivelClases + dgsPlantillas);
     }
 
+    private getDgsRacialesAdicionalesParaDotesProgresion(): number {
+        return Math.max(0, this.toNumber(this.razaSeleccionada?.Dgs_adicionales?.Cantidad));
+    }
+
     private tieneDgsAdicionalesParaDoteInicial(): boolean {
         const dgsRaza = this.toNumber(this.razaSeleccionada?.Dgs_adicionales?.Cantidad);
         const dgsPlantillas = this.getDgsAdicionalesDesdePlantillas(this.estadoFlujo.plantillas.seleccionadas);
@@ -8363,6 +8415,7 @@ export class NuevoPersonajeService {
                     Rangos: 0,
                     Rangos_varios: 0,
                     Extra: '',
+                    Extra_bloqueado: false,
                     Varios: '',
                     Custom: false,
                     Soporta_extra: !!h.Soporta_extra,
