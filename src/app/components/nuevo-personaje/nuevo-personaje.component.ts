@@ -253,7 +253,8 @@ interface SelectorCompaneroBloqueadoItem {
 @Component({
     selector: 'app-nuevo-personaje',
     templateUrl: './nuevo-personaje.component.html',
-    styleUrls: ['./nuevo-personaje.component.sass']
+    styleUrls: ['./nuevo-personaje.component.sass'],
+    standalone: false
 })
 export class NuevoPersonajeComponent {
     readonly placeholderContexto = 'De donde viene tu personaje, cual es su familia, linaje, maestros, etc. Esto te ayudara a saber como deberia reaccionar tu personaje ante diversos estimulos.';

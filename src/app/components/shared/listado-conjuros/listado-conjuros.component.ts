@@ -11,7 +11,8 @@ import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-
 @Component({
     selector: 'app-listado-conjuros',
     templateUrl: './listado-conjuros.component.html',
-    styleUrls: ['./listado-conjuros.component.sass']
+    styleUrls: ['./listado-conjuros.component.sass'],
+    standalone: false
 })
 export class ListadoConjurosComponent {
     conjuros: Conjuro[] = [];

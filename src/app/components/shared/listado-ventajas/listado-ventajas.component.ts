@@ -15,7 +15,8 @@ interface VentajaListadoItem extends VentajaDetalle {
 @Component({
     selector: 'app-listado-ventajas',
     templateUrl: './listado-ventajas.component.html',
-    styleUrls: ['./listado-ventajas.component.sass']
+    styleUrls: ['./listado-ventajas.component.sass'],
+    standalone: false
 })
 export class ListadoVentajasComponent implements OnDestroy {
     ventajas: VentajaListadoItem[] = [];

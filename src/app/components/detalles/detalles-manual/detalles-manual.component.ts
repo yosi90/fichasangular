@@ -11,7 +11,8 @@ type BloqueManualObjeto = { seccion: SeccionManual, referencia: ReferenciaCorta 
 @Component({
     selector: 'app-detalles-manual',
     templateUrl: './detalles-manual.component.html',
-    styleUrls: ['./detalles-manual.component.sass']
+    styleUrls: ['./detalles-manual.component.sass'],
+    standalone: false
 })
 export class DetallesManualComponent {
     private _manual!: ManualAsociadoDetalle;

@@ -5,7 +5,8 @@ import Swal from 'sweetalert2';
 @Component({
     selector: 'app-root',
     templateUrl: './app.component.html',
-    styleUrls: ['./app.component.sass']
+    styleUrls: ['./app.component.sass'],
+    standalone: false
 })
 export class AppComponent implements OnInit, OnDestroy {
     private static swalConfigurado = false;

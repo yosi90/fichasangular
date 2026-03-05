@@ -11,7 +11,8 @@ import { TipoCriaturaService } from 'src/app/services/tipo-criatura.service';
 @Component({
     selector: 'app-listado-tipos-criatura',
     templateUrl: './listado-tipos-criatura.component.html',
-    styleUrls: ['./listado-tipos-criatura.component.sass']
+    styleUrls: ['./listado-tipos-criatura.component.sass'],
+    standalone: false
 })
 export class ListadoTiposCriaturaComponent {
     tipos: TipoCriatura[] = [];

@@ -27,7 +27,8 @@ import { MonstruoDetalle } from 'src/app/interfaces/monstruo';
 @Component({
     selector: 'app-listado',
     templateUrl: './listado.component.html',
-    styleUrls: ['./listado.component.sass']
+    styleUrls: ['./listado.component.sass'],
+    standalone: false
 })
 export class ListadoComponent {
     @ViewChild('contenedor', { read: ViewContainerRef }) viewContainerRef!: ViewContainerRef;

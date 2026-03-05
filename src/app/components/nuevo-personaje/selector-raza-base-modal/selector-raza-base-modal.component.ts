@@ -14,6 +14,7 @@ interface CandidataRazaBaseView {
     templateUrl: './selector-raza-base-modal.component.html',
     styleUrls: ['./selector-raza-base-modal.component.sass'],
     changeDetection: ChangeDetectionStrategy.OnPush,
+    standalone: false
 })
 export class SelectorRazaBaseModalComponent implements OnChanges {
     constructor(private manualDetalleNavSvc: ManualDetalleNavigationService) { }

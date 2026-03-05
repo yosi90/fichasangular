@@ -4,7 +4,8 @@ import { Rasgo } from 'src/app/interfaces/rasgo';
 @Component({
     selector: 'app-detalles-rasgo',
     templateUrl: './detalles-rasgo.component.html',
-    styleUrls: ['./detalles-rasgo.component.sass']
+    styleUrls: ['./detalles-rasgo.component.sass'],
+    standalone: false
 })
 export class DetallesRasgoRacialComponent {
     @Input() rasgo!: Rasgo;

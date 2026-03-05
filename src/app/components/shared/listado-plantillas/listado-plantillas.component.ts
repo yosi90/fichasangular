@@ -9,7 +9,8 @@ import { PlantillaService } from 'src/app/services/plantilla.service';
 @Component({
     selector: 'app-listado-plantillas',
     templateUrl: './listado-plantillas.component.html',
-    styleUrls: ['./listado-plantillas.component.sass']
+    styleUrls: ['./listado-plantillas.component.sass'],
+    standalone: false
 })
 export class ListadoPlantillasComponent {
     plantillas: Plantilla[] = [];

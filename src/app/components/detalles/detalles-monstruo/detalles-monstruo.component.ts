@@ -7,7 +7,8 @@ import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-
 @Component({
     selector: 'app-detalles-monstruo',
     templateUrl: './detalles-monstruo.component.html',
-    styleUrls: ['./detalles-monstruo.component.sass']
+    styleUrls: ['./detalles-monstruo.component.sass'],
+    standalone: false
 })
 export class DetallesMonstruoComponent {
     private static readonly DOTE_IDS_COMPANERO = new Set<number>([53, 56]);

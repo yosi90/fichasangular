@@ -17,7 +17,8 @@ export class MyErrorStateMatcher implements ErrorStateMatcher {
 @Component({
     selector: 'app-sesion-dialog',
     templateUrl: './sesion-dialog.component.html',
-    styleUrls: ['./sesion-dialog.component.sass']
+    styleUrls: ['./sesion-dialog.component.sass'],
+    standalone: false
 })
 export class SesionDialogComponent {
     emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;

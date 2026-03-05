@@ -12,7 +12,8 @@ import { RazaService } from 'src/app/services/raza.service';
 @Component({
     selector: 'app-listado-razas',
     templateUrl: './listado-razas.component.html',
-    styleUrls: ['./listado-razas.component.sass']
+    styleUrls: ['./listado-razas.component.sass'],
+    standalone: false
 })
 export class ListadoRazasComponent implements OnDestroy {
     razas: Raza[] = [];

@@ -27,7 +27,8 @@ interface HabilidadRazaVisible {
 @Component({
     selector: 'app-detalles-raza',
     templateUrl: './detalles-raza.component.html',
-    styleUrls: ['./detalles-raza.component.sass']
+    styleUrls: ['./detalles-raza.component.sass'],
+    standalone: false
 })
 export class DetallesRazaComponent {
     constructor(private manualDetalleNavSvc: ManualDetalleNavigationService) { }

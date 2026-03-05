@@ -11,7 +11,8 @@ import { SubtipoService } from 'src/app/services/subtipo.service';
 @Component({
     selector: 'app-listado-subtipos',
     templateUrl: './listado-subtipos.component.html',
-    styleUrls: ['./listado-subtipos.component.sass']
+    styleUrls: ['./listado-subtipos.component.sass'],
+    standalone: false
 })
 export class ListadoSubtiposComponent {
     subtipos: SubtipoResumen[] = [];

@@ -5,7 +5,8 @@ import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-
 @Component({
     selector: 'app-detalles-ventaja',
     templateUrl: './detalles-ventaja.component.html',
-    styleUrls: ['./detalles-ventaja.component.sass']
+    styleUrls: ['./detalles-ventaja.component.sass'],
+    standalone: false
 })
 export class DetallesVentajaComponent {
     constructor(private manualDetalleNavSvc: ManualDetalleNavigationService) { }

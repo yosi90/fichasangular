@@ -5,7 +5,8 @@ import { resolverExtraHabilidadVisible } from 'src/app/services/utils/habilidad-
 @Component({
     selector: 'app-detalles-especial',
     templateUrl: './detalles-especial.component.html',
-    styleUrls: ['./detalles-especial.component.sass']
+    styleUrls: ['./detalles-especial.component.sass'],
+    standalone: false
 })
 export class DetallesEspecialComponent {
     @Input() especial!: EspecialClaseDetalle;

@@ -42,7 +42,8 @@ import { MonstruoService } from 'src/app/services/monstruo.service';
 @Component({
     selector: 'app-tab-control',
     templateUrl: './tab-control.component.html',
-    styleUrls: ['./tab-control.component.sass']
+    styleUrls: ['./tab-control.component.sass'],
+    standalone: false
 })
 export class TabControlComponent implements OnInit, OnDestroy {
     @Input() AbrirNuevoPersonajeTab!: number;

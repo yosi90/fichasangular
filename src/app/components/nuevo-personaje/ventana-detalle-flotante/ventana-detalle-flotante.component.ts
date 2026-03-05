@@ -31,7 +31,8 @@ type ActiveInteraction = MoveInteraction | ResizeInteraction | null;
 @Component({
     selector: 'app-ventana-detalle-flotante',
     templateUrl: './ventana-detalle-flotante.component.html',
-    styleUrls: ['./ventana-detalle-flotante.component.sass']
+    styleUrls: ['./ventana-detalle-flotante.component.sass'],
+    standalone: false
 })
 export class VentanaDetalleFlotanteComponent {
     @Input() titulo = 'Sin nombre - En creación';

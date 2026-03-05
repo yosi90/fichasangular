@@ -34,6 +34,11 @@
               "src/styles.sass",
               "src/tailwind.css"
             ],
+            "allowedCommonJsDependencies": [
+              "pako",
+              "sweetalert2",
+              "file-saver"
+            ],
             "scripts": []
           },
           "configurations": {
@@ -46,8 +51,8 @@
                 },
                 {
                   "type": "anyComponentStyle",
-                  "maximumWarning": "20kb",
-                  "maximumError": "25kb"
+                  "maximumWarning": "24kb",
+                  "maximumError": "28kb"
                 }
               ],
               "outputHashing": "all"
@@ -67,10 +72,10 @@
           "builder": "@angular-devkit/build-angular:dev-server",
           "configurations": {
             "production": {
-              "browserTarget": "fichas3.5:build:production"
+              "buildTarget": "fichas3.5:build:production"
             },
             "development": {
-              "browserTarget": "fichas3.5:build:development"
+              "buildTarget": "fichas3.5:build:development"
             }
           },
           "defaultConfiguration": "development"
@@ -78,7 +83,7 @@
         "extract-i18n": {
           "builder": "@angular-devkit/build-angular:extract-i18n",
           "options": {
-            "browserTarget": "fichas3.5:build"
+            "buildTarget": "fichas3.5:build"
           }
         },
         "test": {
@@ -116,5 +121,31 @@
   },
   "cli": {
     "analytics": "d7ad4a72-fcc0-4ced-8355-4454568cfe9d"
+  },
+  "schematics": {
+    "@schematics/angular:component": {
+      "type": "component"
+    },
+    "@schematics/angular:directive": {
+      "type": "directive"
+    },
+    "@schematics/angular:service": {
+      "type": "service"
+    },
+    "@schematics/angular:guard": {
+      "typeSeparator": "."
+    },
+    "@schematics/angular:interceptor": {
+      "typeSeparator": "."
+    },
+    "@schematics/angular:module": {
+      "typeSeparator": "."
+    },
+    "@schematics/angular:pipe": {
+      "typeSeparator": "."
+    },
+    "@schematics/angular:resolver": {
+      "typeSeparator": "."
+    }
   }
 }

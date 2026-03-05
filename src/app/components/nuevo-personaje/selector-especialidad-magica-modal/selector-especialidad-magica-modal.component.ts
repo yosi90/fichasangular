@@ -21,7 +21,8 @@ export interface SelectorEspecialidadMagicaConfirmacion {
 @Component({
     selector: 'app-selector-especialidad-magica-modal',
     templateUrl: './selector-especialidad-magica-modal.component.html',
-    styleUrls: ['./selector-especialidad-magica-modal.component.sass']
+    styleUrls: ['./selector-especialidad-magica-modal.component.sass'],
+    standalone: false
 })
 export class SelectorEspecialidadMagicaModalComponent {
     @Input() titulo = 'Especialización mágica';

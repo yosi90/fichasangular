@@ -8,7 +8,8 @@ import { EspecialService } from 'src/app/services/especial.service';
 @Component({
     selector: 'app-listado-especiales',
     templateUrl: './listado-especiales.component.html',
-    styleUrls: ['./listado-especiales.component.sass']
+    styleUrls: ['./listado-especiales.component.sass'],
+    standalone: false
 })
 export class ListadoEspecialesComponent {
     especiales: EspecialClaseDetalle[] = [];

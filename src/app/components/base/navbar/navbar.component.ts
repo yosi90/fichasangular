@@ -9,7 +9,8 @@ import { ManualVistaNavigationService } from 'src/app/services/manual-vista-navi
 @Component({
     selector: 'app-navbar',
     templateUrl: './navbar.component.html',
-    styleUrls: ['./navbar.component.sass']
+    styleUrls: ['./navbar.component.sass'],
+    standalone: false
 })
 export class NavbarComponent implements OnInit, OnDestroy {
     manuales: ManualAsociadoDetalle[] = [];

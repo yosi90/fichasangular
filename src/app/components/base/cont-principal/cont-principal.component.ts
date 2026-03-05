@@ -4,6 +4,7 @@ import { Component } from '@angular/core';
     selector: 'app-cont-principal',
     templateUrl: './cont-principal.component.html',
     styleUrls: ['./cont-principal.component.sass'],
+    standalone: false
 })
 export class ContPrincipalComponent {
     NuevoPersonaje: number = 0;

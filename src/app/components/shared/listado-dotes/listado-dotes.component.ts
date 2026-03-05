@@ -9,7 +9,8 @@ import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-
 @Component({
     selector: 'app-listado-dotes',
     templateUrl: './listado-dotes.component.html',
-    styleUrls: ['./listado-dotes.component.sass']
+    styleUrls: ['./listado-dotes.component.sass'],
+    standalone: false
 })
 export class ListadoDotesComponent {
     dotes: Dote[] = [];

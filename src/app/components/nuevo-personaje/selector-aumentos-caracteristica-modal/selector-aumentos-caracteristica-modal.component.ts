@@ -10,7 +10,8 @@ type CaracteristicaKey = CaracteristicaKeyAumento;
 @Component({
     selector: 'app-selector-aumentos-caracteristica-modal',
     templateUrl: './selector-aumentos-caracteristica-modal.component.html',
-    styleUrls: ['./selector-aumentos-caracteristica-modal.component.sass']
+    styleUrls: ['./selector-aumentos-caracteristica-modal.component.sass'],
+    standalone: false
 })
 export class SelectorAumentosCaracteristicaModalComponent {
     @Input() titulo = 'Seleccionar aumentos de caracteristica';

@@ -7,7 +7,8 @@ import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-
 @Component({
     selector: 'app-detalles-subtipo',
     templateUrl: './detalles-subtipo.component.html',
-    styleUrls: ['./detalles-subtipo.component.sass']
+    styleUrls: ['./detalles-subtipo.component.sass'],
+    standalone: false
 })
 export class DetallesSubtipoComponent {
     constructor(private manualDetalleNavSvc: ManualDetalleNavigationService) { }

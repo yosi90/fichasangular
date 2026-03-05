@@ -17,7 +17,8 @@ export interface SelectorFamiliarBloqueadoItem {
 @Component({
     selector: 'app-selector-familiar-modal',
     templateUrl: './selector-familiar-modal.component.html',
-    styleUrls: ['./selector-familiar-modal.component.sass']
+    styleUrls: ['./selector-familiar-modal.component.sass'],
+    standalone: false
 })
 export class SelectorFamiliarModalComponent {
     @Input() titulo = 'Seleccionar familiar';

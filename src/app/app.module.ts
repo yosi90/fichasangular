@@ -33,7 +33,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatStepperModule } from '@angular/material/stepper';
 import { FormsModule } from '@angular/forms';
 import { ListaPersonajesComponent } from './components/base/lista-personajes/lista-personajes.component';
-import { HttpClientModule } from '@angular/common/http';
+import { provideHttpClient, withInterceptorsFromDi } from '@angular/common/http';
 import { DataServices } from './data.services';
 import { provideAuth, getAuth } from '@angular/fire/auth';
 import { provideDatabase, getDatabase } from '@angular/fire/database';
@@ -168,16 +168,15 @@ import { FichasDescargaToastHostComponent } from './components/shared/fichas-des
         MatSidenavModule,
         MatTooltipModule,
         MatStepperModule,
-        HttpClientModule,
         ReactiveFormsModule,
+    ],
+    providers: [
+        DataServices,
+        provideHttpClient(withInterceptorsFromDi()),
         provideFirebaseApp(() => initializeApp(environment.firebase)),
         provideAuth(() => getAuth()),
-        provideDatabase(() => getDatabase())
+        provideDatabase(() => getDatabase()),
     ],
-    entryComponents: [
-        SesionDialogComponent,
-    ],
-    providers: [DataServices],
     bootstrap: [AppComponent]
 })
 export class AppModule { }

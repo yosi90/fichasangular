@@ -4,7 +4,8 @@ import { IdiomaDetalle } from 'src/app/interfaces/idioma';
 @Component({
     selector: 'app-selector-idioma-modal',
     templateUrl: './selector-idioma-modal.component.html',
-    styleUrls: ['./selector-idioma-modal.component.sass']
+    styleUrls: ['./selector-idioma-modal.component.sass'],
+    standalone: false
 })
 export class SelectorIdiomaModalComponent {
     @Input() idiomas: IdiomaDetalle[] = [];

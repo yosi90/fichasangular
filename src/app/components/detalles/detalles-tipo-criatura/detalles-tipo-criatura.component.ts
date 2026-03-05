@@ -6,7 +6,8 @@ import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-
 @Component({
     selector: 'app-detalles-tipo-criatura',
     templateUrl: './detalles-tipo-criatura.component.html',
-    styleUrls: ['./detalles-tipo-criatura.component.sass']
+    styleUrls: ['./detalles-tipo-criatura.component.sass'],
+    standalone: false
 })
 export class DetallesTipoCriaturaComponent {
     constructor(private manualDetalleNavSvc: ManualDetalleNavigationService) { }

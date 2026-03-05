@@ -48,7 +48,8 @@ type ResumenEspecialRenderItem = {
 @Component({
     selector: 'app-detalles-clase',
     templateUrl: './detalles-clase.component.html',
-    styleUrls: ['./detalles-clase.component.sass']
+    styleUrls: ['./detalles-clase.component.sass'],
+    standalone: false
 })
 export class DetallesClaseComponent {
     constructor(private manualDetalleNavSvc: ManualDetalleNavigationService) { }

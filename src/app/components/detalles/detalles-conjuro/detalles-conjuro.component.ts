@@ -7,7 +7,8 @@ import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-
 @Component({
     selector: 'app-detalles-conjuro',
     templateUrl: './detalles-conjuro.component.html',
-    styleUrls: ['./detalles-conjuro.component.sass']
+    styleUrls: ['./detalles-conjuro.component.sass'],
+    standalone: false
 })
 export class DetallesConjuroComponent {
     constructor(private manualDetalleNavSvc: ManualDetalleNavigationService) { }

@@ -53,7 +53,8 @@ interface SyncItemUi extends SyncItemConfig, CacheSyncUiState {
 @Component({
     selector: 'app-admin-panel',
     templateUrl: './admin-panel.component.html',
-    styleUrls: ['./admin-panel.component.sass']
+    styleUrls: ['./admin-panel.component.sass'],
+    standalone: false
 })
 export class AdminPanelComponent implements OnInit, OnDestroy {
     hasCon?: boolean;

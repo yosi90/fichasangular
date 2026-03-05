@@ -9,7 +9,8 @@ export interface SelectorDominioItem {
 @Component({
     selector: 'app-selector-dominios-modal',
     templateUrl: './selector-dominios-modal.component.html',
-    styleUrls: ['./selector-dominios-modal.component.sass']
+    styleUrls: ['./selector-dominios-modal.component.sass'],
+    standalone: false
 })
 export class SelectorDominiosModalComponent {
     @Input() opciones: SelectorDominioItem[] = [];

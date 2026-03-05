@@ -18,7 +18,8 @@ export interface SelectorCompaneroBloqueadoItem {
 @Component({
     selector: 'app-selector-companero-modal',
     templateUrl: './selector-companero-modal.component.html',
-    styleUrls: ['./selector-companero-modal.component.sass']
+    styleUrls: ['./selector-companero-modal.component.sass'],
+    standalone: false
 })
 export class SelectorCompaneroModalComponent {
     @Input() titulo = 'Seleccionar compañero animal';

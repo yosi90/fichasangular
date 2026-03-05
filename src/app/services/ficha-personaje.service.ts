@@ -733,8 +733,8 @@ export class FichaPersonajeService {
             .reduce((acum, clase) => acum + Math.max(0, Math.trunc(this.toNumber(clase?.Nivel))), 0);
         if (nivelClases <= 0) {
             const clasesTexto = `${pj?.Clases ?? ''}`;
-            const coincidencias = clasesTexto.match(/\((\d+)\)/g) ?? [];
-            nivelClases = coincidencias.reduce((acum, bloque) => {
+            const coincidencias = (clasesTexto.match(/\((\d+)\)/g) ?? []) as string[];
+            nivelClases = coincidencias.reduce((acum: number, bloque: string) => {
                 const limpio = bloque.replace(/[()]/g, '');
                 return acum + Math.max(0, Math.trunc(this.toNumber(limpio)));
             }, 0);

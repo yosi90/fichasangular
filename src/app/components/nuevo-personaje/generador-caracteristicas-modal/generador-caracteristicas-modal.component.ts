@@ -24,7 +24,8 @@ interface PreviewCaracteristica {
 @Component({
     selector: 'app-generador-caracteristicas-modal',
     templateUrl: './generador-caracteristicas-modal.component.html',
-    styleUrls: ['./generador-caracteristicas-modal.component.sass']
+    styleUrls: ['./generador-caracteristicas-modal.component.sass'],
+    standalone: false
 })
 export class GeneradorCaracteristicasModalComponent implements AfterViewInit {
     @Input() raza!: Raza;

@@ -41,7 +41,8 @@ interface VentajaReferenciaNormalizada {
 @Component({
     selector: 'app-detalles-personaje',
     templateUrl: './detalles-personaje.component.html',
-    styleUrls: ['./detalles-personaje.component.sass']
+    styleUrls: ['./detalles-personaje.component.sass'],
+    standalone: false
 })
 export class DetallesPersonajeComponent implements OnInit, OnChanges, AfterViewInit, OnDestroy, DoCheck {
     @Input() pj!: Personaje;

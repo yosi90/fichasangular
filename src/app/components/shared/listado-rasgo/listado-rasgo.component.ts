@@ -8,7 +8,8 @@ import { RasgoService } from 'src/app/services/rasgo.service';
 @Component({
     selector: 'app-listado-rasgo',
     templateUrl: './listado-rasgo.component.html',
-    styleUrls: ['./listado-rasgo.component.sass']
+    styleUrls: ['./listado-rasgo.component.sass'],
+    standalone: false
 })
 export class ListadoRasgoRacialComponent {
     rasgos: Rasgo[] = [];

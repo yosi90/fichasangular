@@ -5,7 +5,8 @@ import { resolverExtraHabilidadVisible } from 'src/app/services/utils/habilidad-
 @Component({
     selector: 'app-detalles-racial',
     templateUrl: './detalles-racial.component.html',
-    styleUrls: ['./detalles-racial.component.sass']
+    styleUrls: ['./detalles-racial.component.sass'],
+    standalone: false
 })
 export class DetallesRacialComponent {
     @Input() racial!: RacialDetalle;

@@ -8,7 +8,8 @@ import { RacialService } from 'src/app/services/racial.service';
 @Component({
     selector: 'app-listado-raciales',
     templateUrl: './listado-raciales.component.html',
-    styleUrls: ['./listado-raciales.component.sass']
+    styleUrls: ['./listado-raciales.component.sass'],
+    standalone: false
 })
 export class ListadoRacialesComponent {
     raciales: RacialDetalle[] = [];

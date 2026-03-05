@@ -4,7 +4,8 @@ import { ResultadoCalculoVidaFinal } from 'src/app/services/nuevo-personaje.serv
 @Component({
     selector: 'app-selector-puntos-golpe-modal',
     templateUrl: './selector-puntos-golpe-modal.component.html',
-    styleUrls: ['./selector-puntos-golpe-modal.component.sass']
+    styleUrls: ['./selector-puntos-golpe-modal.component.sass'],
+    standalone: false
 })
 export class SelectorPuntosGolpeModalComponent {
     @Input() resultado: ResultadoCalculoVidaFinal | null = null;

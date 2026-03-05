@@ -10,7 +10,8 @@ type SeccionOtros = 'insertar' | 'modificar' | 'detalles';
 @Component({
     selector: 'app-base-menu',
     templateUrl: './base-menu.component.html',
-    styleUrls: ['./base-menu.component.sass']
+    styleUrls: ['./base-menu.component.sass'],
+    standalone: false
 })
 export class BaseMenuComponent implements OnInit, OnDestroy {
     @ViewChild('primero') primero!: MatExpansionPanel;

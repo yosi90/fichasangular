@@ -30,7 +30,8 @@ type CambioTexto = {
 @Component({
     selector: 'app-detalles-plantilla',
     templateUrl: './detalles-plantilla.component.html',
-    styleUrls: ['./detalles-plantilla.component.sass']
+    styleUrls: ['./detalles-plantilla.component.sass'],
+    standalone: false
 })
 export class DetallesPlantillaComponent {
     constructor(private manualDetalleNavSvc: ManualDetalleNavigationService) { }

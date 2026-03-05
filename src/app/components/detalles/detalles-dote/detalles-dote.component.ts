@@ -6,7 +6,8 @@ import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-
 @Component({
     selector: 'app-detalles-dote',
     templateUrl: './detalles-dote.component.html',
-    styleUrls: ['./detalles-dote.component.sass']
+    styleUrls: ['./detalles-dote.component.sass'],
+    standalone: false
 })
 export class DetallesDoteComponent {
     constructor(private manualDetalleNavSvc: ManualDetalleNavigationService) { }

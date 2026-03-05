@@ -3,7 +3,8 @@ import { Component, EventEmitter, HostListener, Input, OnChanges, Output, Simple
 @Component({
     selector: 'app-selector-visibilidad-personaje-modal',
     templateUrl: './selector-visibilidad-personaje-modal.component.html',
-    styleUrls: ['./selector-visibilidad-personaje-modal.component.sass']
+    styleUrls: ['./selector-visibilidad-personaje-modal.component.sass'],
+    standalone: false
 })
 export class SelectorVisibilidadPersonajeModalComponent implements OnChanges {
     @Input() seleccionInicial: boolean | null = null;

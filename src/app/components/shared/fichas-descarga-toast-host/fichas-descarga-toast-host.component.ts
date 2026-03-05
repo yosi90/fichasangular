@@ -5,7 +5,8 @@ import { FichasDescargaBackgroundService } from 'src/app/services/fichas-descarg
 @Component({
     selector: 'app-fichas-descarga-toast-host',
     templateUrl: './fichas-descarga-toast-host.component.html',
-    styleUrls: ['./fichas-descarga-toast-host.component.sass']
+    styleUrls: ['./fichas-descarga-toast-host.component.sass'],
+    standalone: false
 })
 export class FichasDescargaToastHostComponent {
     readonly jobs$ = this.fichasDescargaSvc.jobs$;

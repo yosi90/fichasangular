@@ -12,7 +12,8 @@ import { MonstruoService } from 'src/app/services/monstruo.service';
 @Component({
     selector: 'app-listado-monstruos',
     templateUrl: './listado-monstruos.component.html',
-    styleUrls: ['./listado-monstruos.component.sass']
+    styleUrls: ['./listado-monstruos.component.sass'],
+    standalone: false
 })
 export class ListadoMonstruosComponent implements OnDestroy {
     monstruos: MonstruoDetalle[] = [];

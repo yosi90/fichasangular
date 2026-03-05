@@ -5,7 +5,8 @@ import { DoteSeleccionConfirmada, DoteSelectorCandidato, DotePendienteState } fr
 @Component({
     selector: 'app-selector-dotes-modal',
     templateUrl: './selector-dotes-modal.component.html',
-    styleUrls: ['./selector-dotes-modal.component.sass']
+    styleUrls: ['./selector-dotes-modal.component.sass'],
+    standalone: false
 })
 export class SelectorDotesModalComponent {
     @Input() titulo: string = 'Seleccionar dote';

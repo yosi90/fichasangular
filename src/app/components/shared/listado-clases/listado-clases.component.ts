@@ -9,7 +9,8 @@ import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-
 @Component({
     selector: 'app-listado-clases',
     templateUrl: './listado-clases.component.html',
-    styleUrls: ['./listado-clases.component.sass']
+    styleUrls: ['./listado-clases.component.sass'],
+    standalone: false
 })
 export class ListadoClasesComponent {
     clases: Clase[] = [];

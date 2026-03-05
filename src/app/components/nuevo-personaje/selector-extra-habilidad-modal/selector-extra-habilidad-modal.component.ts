@@ -8,7 +8,8 @@ export interface SelectorExtraHabilidadModalOpcion {
 @Component({
     selector: 'app-selector-extra-habilidad-modal',
     templateUrl: './selector-extra-habilidad-modal.component.html',
-    styleUrls: ['./selector-extra-habilidad-modal.component.sass']
+    styleUrls: ['./selector-extra-habilidad-modal.component.sass'],
+    standalone: false
 })
 export class SelectorExtraHabilidadModalComponent implements OnChanges {
     @Input() titulo = 'Seleccionar extra';

@@ -5,7 +5,8 @@ import { EnemigoPredilectoSeleccion } from 'src/app/interfaces/enemigo-predilect
 @Component({
     selector: 'app-selector-enemigo-predilecto-modal',
     templateUrl: './selector-enemigo-predilecto-modal.component.html',
-    styleUrls: ['./selector-enemigo-predilecto-modal.component.sass']
+    styleUrls: ['./selector-enemigo-predilecto-modal.component.sass'],
+    standalone: false
 })
 export class SelectorEnemigoPredilectoModalComponent {
     @Input() titulo = 'Seleccionar enemigo predilecto';

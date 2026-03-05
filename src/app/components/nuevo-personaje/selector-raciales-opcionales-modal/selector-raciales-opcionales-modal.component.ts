@@ -19,6 +19,7 @@ export interface GrupoRacialOpcionalModal {
     templateUrl: './selector-raciales-opcionales-modal.component.html',
     styleUrls: ['./selector-raciales-opcionales-modal.component.sass'],
     changeDetection: ChangeDetectionStrategy.OnPush,
+    standalone: false
 })
 export class SelectorRacialesOpcionalesModalComponent implements OnChanges {
     @Input() grupos: GrupoRacialOpcionalModal[] = [];
