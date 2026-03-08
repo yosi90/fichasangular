@@ -45,8 +45,7 @@ function crearComponente(overrides?: { pSvc?: any; }): TabControlComponent {
         (component.detallesPersonajeAbiertos ?? []).forEach((pj: any) => tabs.push({ textLabel: pj.Nombre }));
         if (component.AbrirNuevoPersonajeTab)
             tabs.push({ textLabel: 'Nuevo personaje' });
-        if (component.AbrirListadoTab)
-            tabs.push({ textLabel: `Lista de ${component.ListadoTabTipo}` });
+        (component.listadoTabsAbiertos ?? []).forEach((tab: any) => tabs.push({ textLabel: component.getEtiquetaListadoTab(tab) }));
         (component.detallesManualAbiertos ?? []).forEach((manual: any) => tabs.push({ textLabel: component.getEtiquetaManual(manual) }));
         (component.detallesRazaAbiertos ?? []).forEach((raza: any) => tabs.push({ textLabel: raza.Nombre }));
         (component.detallesConjuroAbiertos ?? []).forEach((conjuro: any) => tabs.push({ textLabel: conjuro.Nombre }));
@@ -168,6 +167,8 @@ describe('TabControlComponent navegación por origen', () => {
         const component = crearComponente();
         const monstruo = crearMonstruo(21, 'Hidra');
 
+        component.abrirListadoTab('monstruos', 'detalles');
+        tick(120);
         component.recibirObjetoListado({ item: monstruo, tipo: 'monstruos' });
         tick(120);
 
@@ -179,6 +180,8 @@ describe('TabControlComponent navegación por origen', () => {
         const component = crearComponente();
         const arma = { Id: 31, Nombre: 'Espada larga' } as any;
 
+        component.abrirListadoTab('armas', 'detalles');
+        tick(120);
         component.recibirObjetoListado({ item: arma, tipo: 'armas' });
         tick(120);
 
@@ -263,5 +266,35 @@ describe('TabControlComponent navegación por origen', () => {
         subject.next({ Id: 42, Nombre: 'Druida actualizado' } as any);
         tick(120);
         expect(component.detallesPersonajeAbiertos.length).toBe(1);
+    }));
+
+    it('mantiene pestañas separadas para listado e insercion', fakeAsync(() => {
+        const component = crearComponente();
+
+        component.abrirListadoTab('dotes', 'detalles');
+        tick(120);
+        component.abrirListadoTab('conjuros', 'insertar');
+        tick(120);
+
+        expect(component.listadoTabsAbiertos.map((tab) => tab.key)).toEqual([
+            'listado:detalles:dotes',
+            'listado:insertar:conjuros',
+        ]);
+        expect((component as any).activeTabKey).toBe('listado:insertar:conjuros');
+    }));
+
+    it('ESC cierra la pestaña de listado activa y vuelve al origen', fakeAsync(() => {
+        const component = crearComponente();
+        const clase = crearClase(15, 'Explorador');
+
+        component.abrirDetallesClase(clase);
+        tick(120);
+        component.abrirListadoTab('dotes', 'detalles');
+        tick(120);
+
+        component.onEscPressed();
+
+        expect(component.listadoTabsAbiertos.length).toBe(0);
+        expect((component as any).activeTabKey).toBe('clase:15');
     }));
 });

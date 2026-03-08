@@ -201,6 +201,11 @@ export class AdminUsersService {
         };
     }
 
+    async downloadDatabaseBackup(): Promise<string> {
+        await this.ensureActorAdmin();
+        return this.downloadUsersBackupApi();
+    }
+
     protected watchPath(path: string): Observable<any> {
         return new Observable((observer) => {
             const dbRef = ref(this.db, path);
@@ -229,6 +234,10 @@ export class AdminUsersService {
 
     protected upsertUserApi(payload: UsuarioUpsertRequestDto): Promise<UsuarioUpsertResponseDto> {
         return this.usuariosApiSvc.upsertUser(payload);
+    }
+
+    protected downloadUsersBackupApi(): Promise<string> {
+        return this.usuariosApiSvc.downloadUsersBackupZip();
     }
 
     private async ensureActorAdmin(): Promise<string> {

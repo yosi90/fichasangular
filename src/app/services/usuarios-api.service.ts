@@ -1,5 +1,7 @@
-import { HttpErrorResponse, HttpClient } from '@angular/common/http';
+import { HttpClient, HttpErrorResponse, HttpResponse } from '@angular/common/http';
 import { Injectable } from '@angular/core';
+import { Auth } from '@angular/fire/auth';
+import { saveAs } from 'file-saver';
 import { firstValueFrom } from 'rxjs';
 import { environment } from 'src/environments/environment';
 import {
@@ -15,7 +17,7 @@ import {
 export class UsuariosApiService {
     private readonly usuariosBaseUrl = `${environment.apiUrl}usuarios`;
 
-    constructor(private http: HttpClient) { }
+    constructor(private http: HttpClient, private auth: Auth) { }
 
     async getAclByUid(uid: string): Promise<UsuarioAclResponseDto> {
         const uidNormalizado = `${uid ?? ''}`.trim();
@@ -52,6 +54,29 @@ export class UsuariosApiService {
         }
     }
 
+    async downloadUsersBackupZip(): Promise<string> {
+        const actorUid = `${this.auth.currentUser?.uid ?? ''}`.trim();
+        if (actorUid.length < 1)
+            throw new Error('Sesión no iniciada');
+
+        try {
+            const response = await firstValueFrom(
+                this.http.get(`${this.usuariosBaseUrl}/backup`, {
+                    observe: 'response',
+                    responseType: 'blob',
+                    params: { uid: actorUid },
+                    headers: { 'X-User-Uid': actorUid },
+                })
+            );
+            const filename = this.resolveDownloadFilename(response, 'rol-backup.zip');
+            const blob = response.body ?? new Blob([], { type: 'application/zip' });
+            saveAs(blob, filename);
+            return filename;
+        } catch (error) {
+            throw await this.toApiErrorAsync(error, 'No se pudo descargar el backup SQL');
+        }
+    }
+
     private toApiError(error: any, fallbackMessage: string): Error {
         if (error instanceof HttpErrorResponse) {
             const message = this.extractErrorMessage(error.error)
@@ -59,6 +84,28 @@ export class UsuariosApiService {
             return new Error(message);
         }
         return new Error(fallbackMessage);
+    }
+
+    private async toApiErrorAsync(error: any, fallbackMessage: string): Promise<Error> {
+        if (error instanceof HttpErrorResponse && error.error instanceof Blob) {
+            try {
+                const blobText = (await error.error.text()).trim();
+                if (blobText.length > 0) {
+                    try {
+                        const parsed = JSON.parse(blobText);
+                        const message = this.extractErrorMessage(parsed)
+                            || `${fallbackMessage} (HTTP ${error.status || '0'})`;
+                        return new Error(message);
+                    } catch {
+                        return new Error(blobText);
+                    }
+                }
+            } catch {
+                // Si falla la lectura del blob, se usa el fallback estándar.
+            }
+        }
+
+        return this.toApiError(error, fallbackMessage);
     }
 
     private extractErrorMessage(errorBody: any): string {
@@ -87,5 +134,23 @@ export class UsuariosApiService {
         }
 
         return '';
+    }
+
+    private resolveDownloadFilename(response: HttpResponse<Blob>, fallback: string): string {
+        const contentDisposition = `${response.headers.get('Content-Disposition') ?? ''}`.trim();
+        if (contentDisposition.length < 1)
+            return fallback;
+
+        const utf8Match = contentDisposition.match(/filename\*\s*=\s*UTF-8''([^;]+)/i);
+        if (utf8Match?.[1]) {
+            try {
+                return decodeURIComponent(utf8Match[1]).trim() || fallback;
+            } catch {
+                return utf8Match[1].trim() || fallback;
+            }
+        }
+
+        const asciiMatch = contentDisposition.match(/filename\s*=\s*"?([^\";]+)"?/i);
+        return asciiMatch?.[1]?.trim() || fallback;
     }
 }

@@ -101,10 +101,22 @@ export class BaseMenuComponent implements OnInit, OnDestroy {
         return this.usrService.can('dotes', 'create');
     }
 
+    canInsertarConjuros(): boolean {
+        return this.usrService.can('conjuros', 'create');
+    }
+
     onInsertarDote(): void {
         if (!this.canInsertarDotes())
             return;
         this.AbrirListado('dotes', 'insertar');
+        this.closeAcordion();
+        this.cerrarOtros();
+    }
+
+    onInsertarConjuro(): void {
+        if (!this.canInsertarConjuros())
+            return;
+        this.AbrirListado('conjuros', 'insertar');
         this.closeAcordion();
         this.cerrarOtros();
     }

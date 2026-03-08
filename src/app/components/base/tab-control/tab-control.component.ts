@@ -45,6 +45,12 @@ import { ArmaduraService } from 'src/app/services/armadura.service';
 import { DeidadDetalle } from 'src/app/interfaces/deidad';
 import { DeidadService } from 'src/app/services/deidad.service';
 
+interface ListadoTabAbierto {
+    key: string;
+    tipo: string;
+    operacion: string;
+}
+
 @Component({
     selector: 'app-tab-control',
     templateUrl: './tab-control.component.html',
@@ -75,10 +81,10 @@ export class TabControlComponent implements OnInit, OnDestroy {
     detallesArmaAbiertos: ArmaDetalle[] = [];
     detallesArmaduraAbiertos: ArmaduraDetalle[] = [];
     detallesDeidadAbiertos: DeidadDetalle[] = [];
+    listadoTabsAbiertos: ListadoTabAbierto[] = [];
     private readonly TAB_PERSONAJES = 'base:personajes';
     private readonly TAB_ADMIN = 'base:admin';
     private readonly TAB_NUEVO = 'base:nuevo';
-    private readonly TAB_LISTADO = 'base:listado';
     private readonly TAB_IMPORTANTE = 'base:importante';
     private activeTabKey: string = this.TAB_PERSONAJES;
     private openerByTab = new Map<string, string>();
@@ -145,10 +151,12 @@ export class TabControlComponent implements OnInit, OnDestroy {
                 this.registerOpenContext(this.TAB_NUEVO, this.getSafeOpenerKey());
                 this.selectTabByKey(this.TAB_NUEVO);
             }, 100);
-        } else if (changes['AbrirListadoTab'] && changes['AbrirListadoTab'].currentValue) {
+        }
+        if (changes['AbrirListadoTab'] && changes['AbrirListadoTab'].currentValue) {
+            const tipo = `${changes['ListadoTabTipo']?.currentValue ?? this.ListadoTabTipo ?? ''}`;
+            const operacion = `${changes['ListadoTabOperacion']?.currentValue ?? this.ListadoTabOperacion ?? ''}`;
             setTimeout(() => {
-                this.registerOpenContext(this.TAB_LISTADO, this.getSafeOpenerKey());
-                this.selectTabByKey(this.TAB_LISTADO);
+                this.abrirListadoTab(tipo, operacion);
             }, 100);
         }
     }
@@ -161,7 +169,7 @@ export class TabControlComponent implements OnInit, OnDestroy {
     @HostListener('document:keydown', ['$event'])
     handleKeyboardEvent(event: KeyboardEvent): void {
         if (event.key === 'Escape') {
-            if (this.TabGroup._tabs.toArray()[this.TabGroup.selectedIndex ?? 0].textLabel === 'Nuevo personaje') {
+            if (this.activeTabKey === this.TAB_NUEVO) {
                 Swal.fire({
                     title: "¿Estas seguro?",
                     text: "Perderás el personaje que estás creando",
@@ -184,9 +192,18 @@ export class TabControlComponent implements OnInit, OnDestroy {
         const currentIndex = this.TabGroup.selectedIndex;
         if (!currentIndex || currentIndex == 0)
             return;
+        const activeKey = this.tabKeyByIndex(currentIndex);
         const tabLabel = this.TabGroup._tabs.toArray()[currentIndex].textLabel;
-        if (this.esTabAdmin(tabLabel) || tabLabel === 'Información importante')
+        if (activeKey === this.TAB_ADMIN || activeKey === this.TAB_IMPORTANTE || this.esTabAdmin(tabLabel) || tabLabel === 'Información importante')
             return;
+        if (activeKey === this.TAB_NUEVO) {
+            this.quitarNuevoPersonaje();
+            return;
+        }
+        if (activeKey?.startsWith('listado:')) {
+            this.quitarListado(activeKey);
+            return;
+        }
         if (this.detallesPersonajeAbiertos.map(p => p.Nombre).includes(tabLabel) && this.quitarDetallesPersonaje(tabLabel))
             return;
         else if (this.detallesRazaAbiertos.map(r => r.Nombre).includes(tabLabel) && this.quitarDetallesRaza(tabLabel))
@@ -223,10 +240,6 @@ export class TabControlComponent implements OnInit, OnDestroy {
             return;
         else if (this.detallesManualAbiertos.map(m => this.getEtiquetaManual(m)).includes(tabLabel) && this.quitarDetallesManual(tabLabel))
             return;
-        else if (tabLabel.includes('Nuevo personaje'))
-            this.quitarNuevoPersonaje();
-        else if (tabLabel.includes('Lista de'))
-            this.quitarListado();
     }
 
     private buildOrderedTabKeys(): string[] {
@@ -236,8 +249,7 @@ export class TabControlComponent implements OnInit, OnDestroy {
         keys.push(...this.detallesPersonajeAbiertos.map((pj) => this.getPersonajeTabKey(pj)));
         if (this.AbrirNuevoPersonajeTab)
             keys.push(this.TAB_NUEVO);
-        if (this.AbrirListadoTab)
-            keys.push(this.TAB_LISTADO);
+        keys.push(...this.listadoTabsAbiertos.map((tab) => tab.key));
         keys.push(...this.detallesManualAbiertos.map((manual) => this.getManualTabKey(manual)));
         keys.push(...this.detallesRazaAbiertos.map((raza) => this.getRazaTabKey(raza)));
         keys.push(...this.detallesConjuroAbiertos.map((conjuro) => this.getConjuroTabKey(conjuro)));
@@ -680,6 +692,16 @@ export class TabControlComponent implements OnInit, OnDestroy {
         return `${deidad.Nombre} (Deidad)`;
     }
 
+    getEtiquetaListadoTab(tab: ListadoTabAbierto): string {
+        const tipo = `${tab?.tipo ?? ''}`.trim();
+        const operacion = this.normalizar(tab?.operacion ?? '');
+        if (operacion === 'insertar')
+            return `Insertar ${tipo}`;
+        if (operacion === 'modificar')
+            return `Modificar ${tipo}`;
+        return `Lista de ${tipo}`;
+    }
+
     private getPersonajeTabKey(personaje: Personaje): string {
         return `personaje:${Number(personaje?.Id ?? 0)}`;
     }
@@ -750,6 +772,16 @@ export class TabControlComponent implements OnInit, OnDestroy {
 
     private getDeidadTabKey(deidad: DeidadDetalle): string {
         return `deidad:${Number(deidad?.Id ?? 0)}`;
+    }
+
+    private getListadoTabKey(tipo: string, operacion: string): string {
+        const tipoKey = this.normalizar(tipo).replace(/\s+/g, '-');
+        const operacionKey = this.normalizar(operacion).replace(/\s+/g, '-');
+        return `listado:${operacionKey}:${tipoKey}`;
+    }
+
+    private getListadoTabByKey(key: string): ListadoTabAbierto | undefined {
+        return this.listadoTabsAbiertos.find((tab) => tab.key === key);
     }
 
     private getManualTabKey(manual: ManualAsociadoDetalle): string {
@@ -1651,8 +1683,41 @@ export class TabControlComponent implements OnInit, OnDestroy {
     }
 
     @Output() CerrarListadoTab: EventEmitter<void> = new EventEmitter();
-    quitarListado() {
-        this.closeTabWithNavigation(this.TAB_LISTADO, () => {
+    abrirListadoTab(tipo: string, operacion: string): void {
+        const tipoNormalizado = `${tipo ?? ''}`.trim();
+        const operacionNormalizada = `${operacion ?? ''}`.trim();
+        if (tipoNormalizado.length < 1 || operacionNormalizada.length < 1)
+            return;
+
+        const key = this.getListadoTabKey(tipoNormalizado, operacionNormalizada);
+        const abierto = this.getListadoTabByKey(key);
+        if (abierto) {
+            this.selectTabByKey(abierto.key);
+            return;
+        }
+
+        const tab: ListadoTabAbierto = {
+            key,
+            tipo: tipoNormalizado,
+            operacion: operacionNormalizada,
+        };
+        this.listadoTabsAbiertos.push(tab);
+        this.registerOpenContext(key, this.getSafeOpenerKey());
+        this.focusOpenedTab(key);
+    }
+
+    quitarListado(value?: string | ListadoTabAbierto): boolean {
+        const key = typeof value === 'string'
+            ? value
+            : value?.key ?? (this.activeTabKey.startsWith('listado:') ? this.activeTabKey : '');
+        const tab = this.getListadoTabByKey(key);
+        if (!tab)
+            return false;
+        return this.closeTabWithNavigation(tab.key, () => {
+            const indexTab = this.listadoTabsAbiertos.indexOf(tab);
+            if (indexTab < 0)
+                return false;
+            this.listadoTabsAbiertos.splice(indexTab, 1);
             this.CerrarListadoTab.emit();
             return true;
         });

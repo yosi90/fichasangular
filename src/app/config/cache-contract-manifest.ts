@@ -19,6 +19,7 @@ export type CacheEntityKey =
     | "raciales"
     | "escuelas_conjuros"
     | "disciplinas_conjuros"
+    | "subdisciplinas_conjuros"
     | "alineamientos"
     | "alineamientos_basicos"
     | "alineamientos_combinaciones"
@@ -70,6 +71,7 @@ export const CACHE_CONTRACT_MANIFEST: CacheContractEntry[] = [
     { key: "raciales", label: "Raciales", schemaVersion: 2 },
     { key: "escuelas_conjuros", label: "Escuelas de conjuros", schemaVersion: 1 },
     { key: "disciplinas_conjuros", label: "Disciplinas de conjuros", schemaVersion: 1 },
+    { key: "subdisciplinas_conjuros", label: "Subdisciplinas de conjuros", schemaVersion: 1 },
     { key: "alineamientos", label: "Alineamientos", schemaVersion: 1 },
     { key: "alineamientos_basicos", label: "Alineamientos básicos", schemaVersion: 1 },
     { key: "alineamientos_combinaciones", label: "Combinaciones de alineamiento", schemaVersion: 1 },

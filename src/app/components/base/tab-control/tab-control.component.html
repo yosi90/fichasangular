@@ -63,23 +63,24 @@
             (cerrarNuevoPersonajeSolicitado)="onCerrarNuevoPersonajeSolicitado()">
         </app-nuevo-personaje>
     </mat-tab>
-    <mat-tab [label]="ListadoTabOperacion === 'insertar' && ListadoTabTipo === 'dotes' ? 'Insertar dotes' : 'Lista de ' + ListadoTabTipo" *ngIf="AbrirListadoTab">
+    <mat-tab *ngFor="let listadoTab of listadoTabsAbiertos" [label]="getEtiquetaListadoTab(listadoTab)">
         <ng-template mat-tab-label="">
             <mat-icon class="tw-me-2">view_list</mat-icon>
-            {{ListadoTabOperacion === 'insertar' && ListadoTabTipo === 'dotes' ? 'Insertar dotes' : 'Lista de ' + ListadoTabTipo}}
-            <button (click)="quitarListado()" mat-icon-button class="tw-ms-2"><mat-icon>close</mat-icon></button>
+            {{getEtiquetaListadoTab(listadoTab)}}
+            <button (click)="quitarListado(listadoTab)" mat-icon-button class="tw-ms-2"><mat-icon>close</mat-icon></button>
         </ng-template>
-        <ng-container *ngIf="ListadoTabOperacion === 'insertar' && ListadoTabTipo === 'dotes'; else listadoGenerico">
+        <ng-container *ngIf="listadoTab.operacion === 'insertar' && (listadoTab.tipo === 'dotes' || listadoTab.tipo === 'conjuros'); else listadoGenerico">
             <div class="insercion-dotes-shell">
-                <app-nueva-dote></app-nueva-dote>
+                <app-nueva-dote *ngIf="listadoTab.tipo === 'dotes'"></app-nueva-dote>
+                <app-nueva-conjuro *ngIf="listadoTab.tipo === 'conjuros'"></app-nueva-conjuro>
             </div>
         </ng-container>
         <ng-template #listadoGenerico>
             <app-listado
                 (abrirDetalles)="recibirObjetoListado($event)"
                 (itemSeleccionado)="recibirObjetoListado($event)"
-                [tipoLista]="ListadoTabTipo"
-                [tipoOperacion]="ListadoTabOperacion">
+                [tipoLista]="listadoTab.tipo"
+                [tipoOperacion]="listadoTab.operacion">
             </app-listado>
         </ng-template>
     </mat-tab>
@@ -321,17 +322,17 @@
                     <li><p class="tw-flex tw-items-center tw-mb-0">Upgradear todos los módulos anticuados <mat-icon class="tw-ms-2">done</mat-icon></p></li>
                 </ol>
                 <hr><hr>
-                <p class="tw-flex tw-items-center tw-mb-0">Versión 0.5 - Gestión, revisión, adición (Actual)</p>
+                <p class="tw-flex tw-items-center tw-mb-0">Versión 0.5 - Gestión, revisión, adición <mat-icon class="tw-ms-2">done_all</mat-icon></p>
                 <hr>
                 <ol>
                     <li><p class="tw-flex tw-items-center tw-mb-0">Creadas las vistas faltantes <mat-icon class="tw-ms-2">done</mat-icon></p></li>
-                    <li><p class="tw-flex tw-items-center tw-mb-0">Creada la inserción de conjuros</p></li>
-                    <li><p class="tw-flex tw-items-center tw-mb-0">Creada la inserción de dotes</p></li>
+                    <li><p class="tw-flex tw-items-center tw-mb-0">Creada la inserción de conjuros <mat-icon class="tw-ms-2">done</mat-icon></p></li>
+                    <li><p class="tw-flex tw-items-center tw-mb-0">Creada la inserción de dotes <mat-icon class="tw-ms-2">done</mat-icon></p></li>
                     <li><p class="tw-flex tw-items-center tw-mb-0">Mejoras en el sistema de permisos <mat-icon class="tw-ms-2">done</mat-icon></p></li>
                     <li><p class="tw-flex tw-items-center tw-mb-0">Creada la gestión de usuarios en admin panel <mat-icon class="tw-ms-2">done</mat-icon></p></li>
                 </ol>
                 <hr><hr>
-                <p class="tw-flex tw-items-center tw-mb-0">Versión 0.6 - En las nubes</p>
+                <p class="tw-flex tw-items-center tw-mb-0">Versión 0.6 - En las nubes (Actual)</p>
                 <hr>
                 <ol>
                     <li><p class="tw-flex tw-items-center tw-mb-0">Hostear la base de datos</p></li>
@@ -357,6 +358,14 @@
                 <ol>
                     <li><p class="tw-flex tw-items-center tw-mb-0">Creada la inserción de Razas</p></li>
                     <li><p class="tw-flex tw-items-center tw-mb-0">Creada la inserción de clases</p></li>
+                </ol>
+                <hr><hr>
+                <p class="tw-flex tw-items-center tw-mb-0">Versión 0.9 - Las putas apariencias siempre</p>
+                <hr>
+                <ol>
+                    <li><p class="tw-flex tw-items-center tw-mb-0">Establecer una dirección artística del proyecto</p></li>
+                    <li><p class="tw-flex tw-items-center tw-mb-0">Establecer una paleta de colores coherente</p></li>
+                    <li><p class="tw-flex tw-items-center tw-mb-0">Establecer un estilo visual consistente</p></li>
                 </ol>
                 <hr><hr>
                 <p class="tw-flex tw-items-center tw-mb-0">¡Aclaraciones!</p>

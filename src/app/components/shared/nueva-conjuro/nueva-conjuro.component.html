@@ -1,0 +1,361 @@
+<div class="nueva-conjuro-shell">
+    <form class="nueva-conjuro-form" [formGroup]="form" (ngSubmit)="crearConjuro()">
+        <p class="permiso-msg" *ngIf="!puedeCrear">
+            No tienes permiso <b>conjuros.create</b> para insertar conjuros.
+        </p>
+
+        <section class="panel-card">
+            <mat-chip class="panel-title">
+                Datos base
+                <mat-icon class="tw-ms-2">tune</mat-icon>
+            </mat-chip>
+
+            <div class="base-layout">
+                <div class="grid-base base-main">
+                    <mat-form-field appearance="fill">
+                        <mat-label>Nombre</mat-label>
+                        <input matInput formControlName="nombre" maxlength="50" />
+                        <mat-error *ngIf="form.controls.nombre.invalid">Nombre obligatorio (mínimo 3 caracteres).</mat-error>
+                    </mat-form-field>
+
+                    <mat-form-field appearance="fill">
+                        <mat-label>Manual</mat-label>
+                        <mat-select formControlName="id_manual">
+                            <mat-option *ngFor="let manual of manuales" [value]="manual.Id">{{manual.Nombre}}</mat-option>
+                        </mat-select>
+                        <mat-error *ngIf="form.controls.id_manual.invalid">Manual obligatorio.</mat-error>
+                    </mat-form-field>
+
+                    <mat-form-field appearance="fill">
+                        <mat-label>Página</mat-label>
+                        <input matInput type="number" formControlName="pagina" />
+                        <mat-error *ngIf="form.controls.pagina.invalid">Página obligatoria (>= 0).</mat-error>
+                    </mat-form-field>
+
+                    <mat-form-field appearance="fill">
+                        <mat-label>Tiempo de lanzamiento</mat-label>
+                        <mat-select formControlName="id_tiempo_lanz">
+                            <mat-option *ngFor="let tiempo of tiemposLanzamiento" [value]="tiempo.Id">{{tiempo.Nombre}}</mat-option>
+                        </mat-select>
+                        <mat-error *ngIf="form.controls.id_tiempo_lanz.invalid">Tiempo obligatorio.</mat-error>
+                    </mat-form-field>
+
+                    <mat-form-field appearance="fill">
+                        <mat-label>Alcance</mat-label>
+                        <mat-select formControlName="id_alcance">
+                            <mat-option *ngFor="let alcance of alcances" [value]="alcance.Id">{{alcance.Nombre}}</mat-option>
+                        </mat-select>
+                        <mat-error *ngIf="form.controls.id_alcance.invalid">Alcance obligatorio.</mat-error>
+                    </mat-form-field>
+                </div>
+
+                <div class="base-status">
+                    <button type="button" class="estado-chip estado-chip--official" [class.activo]="form.controls.oficial.value === true" (click)="toggleOficial()">
+                        <mat-icon *ngIf="form.controls.oficial.value === true">done</mat-icon>
+                        <span>Oficial</span>
+                    </button>
+                </div>
+
+                <section class="variant-card">
+                    <div class="variant-card__intro">
+                        <div class="nature-row">
+                            <button type="button" class="estado-chip" [class.activo]="form.controls.arcano.value === true" (click)="toggleNaturaleza('arcano')">
+                                <mat-icon *ngIf="form.controls.arcano.value === true">done</mat-icon>
+                                <span>Arcano</span>
+                            </button>
+                            <button type="button" class="estado-chip" [class.activo]="form.controls.divino.value === true" (click)="toggleNaturaleza('divino')">
+                                <mat-icon *ngIf="form.controls.divino.value === true">done</mat-icon>
+                                <span>Divino</span>
+                            </button>
+                            <button type="button" class="estado-chip" [class.activo]="psionicoActivo" (click)="activarPsionico()">
+                                <mat-icon *ngIf="psionicoActivo">done</mat-icon>
+                                <span>Psiónico</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="variant-grid variant-grid--config">
+                        <mat-form-field *ngIf="varianteActualEsBase; else disciplinaTpl" appearance="fill">
+                            <mat-label>Escuela</mat-label>
+                            <mat-select formControlName="id_escuela">
+                                <mat-option *ngFor="let escuela of escuelas" [value]="escuela.Id">{{escuela.Nombre}}</mat-option>
+                            </mat-select>
+                        </mat-form-field>
+
+                        <ng-template #disciplinaTpl>
+                            <mat-form-field appearance="fill">
+                                <mat-label>Disciplina</mat-label>
+                                <mat-select formControlName="id_disciplina">
+                                    <mat-option *ngFor="let disciplina of disciplinas" [value]="disciplina.Id">{{disciplina.Nombre}}</mat-option>
+                                </mat-select>
+                            </mat-form-field>
+                        </ng-template>
+
+                        <mat-form-field *ngIf="!varianteActualEsBase" appearance="fill">
+                            <mat-label>Subdisciplina</mat-label>
+                            <mat-select formControlName="id_subdisciplina">
+                                <mat-option [value]="0">Sin subdisciplina</mat-option>
+                                <mat-option *ngFor="let subdisciplina of subdisciplinasActuales" [value]="subdisciplina.Id">{{subdisciplina.Nombre}}</mat-option>
+                            </mat-select>
+                        </mat-form-field>
+
+                        <mat-form-field *ngIf="!varianteActualEsBase" appearance="fill">
+                            <mat-label>Puntos de poder</mat-label>
+                            <input matInput type="number" formControlName="puntos_poder" />
+                        </mat-form-field>
+
+                        <div class="variant-flags">
+                            <button type="button" class="estado-chip" [class.activo]="resistenciaActiva" (click)="toggleResistencia()">
+                                <mat-icon *ngIf="resistenciaActiva">done</mat-icon>
+                                <span>{{etiquetaResistencia}}</span>
+                            </button>
+
+                            <button type="button" class="estado-chip" [class.activo]="form.controls.permanente.value === true" (click)="togglePermanente()">
+                                <mat-icon *ngIf="form.controls.permanente.value === true">done</mat-icon>
+                                <span>Puede hacerse permanente</span>
+                            </button>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </section>
+
+        <section class="panel-card">
+            <mat-chip class="panel-title">
+                Contenido principal
+                <mat-icon class="tw-ms-2">description</mat-icon>
+            </mat-chip>
+
+            <div class="grid-content">
+                <mat-form-field appearance="fill" class="span-2">
+                    <mat-label>Descripción</mat-label>
+                    <textarea matInput rows="4" formControlName="descripcion"></textarea>
+                    <mat-error *ngIf="form.controls.descripcion.invalid">Descripción obligatoria (mínimo 10 caracteres).</mat-error>
+                </mat-form-field>
+
+                <mat-form-field appearance="fill">
+                    <mat-label>Efecto</mat-label>
+                    <textarea matInput rows="3" formControlName="efecto"></textarea>
+                </mat-form-field>
+
+                <mat-form-field appearance="fill">
+                    <mat-label>Objetivo</mat-label>
+                    <textarea matInput rows="3" formControlName="objetivo"></textarea>
+                </mat-form-field>
+
+                <mat-form-field appearance="fill">
+                    <mat-label>Área</mat-label>
+                    <textarea matInput rows="3" formControlName="area"></textarea>
+                </mat-form-field>
+
+                <mat-form-field appearance="fill">
+                    <mat-label>Duración</mat-label>
+                    <textarea matInput rows="3" formControlName="duracion"></textarea>
+                    <mat-error *ngIf="form.controls.duracion.invalid">Duración obligatoria.</mat-error>
+                </mat-form-field>
+
+                <mat-form-field appearance="fill">
+                    <mat-label>Tiro de salvación</mat-label>
+                    <textarea matInput rows="3" formControlName="tipo_salvacion"></textarea>
+                </mat-form-field>
+
+                <mat-form-field appearance="fill">
+                    <mat-label>{{descripcionComponentesLabel}}</mat-label>
+                    <textarea matInput rows="3" formControlName="descripcion_componentes"></textarea>
+                </mat-form-field>
+
+                <mat-form-field *ngIf="!varianteActualEsBase" appearance="fill" class="span-2">
+                    <mat-label>Consumo adicional de puntos de poder</mat-label>
+                    <textarea matInput rows="3" formControlName="descripcion_aumentos"></textarea>
+                </mat-form-field>
+            </div>
+        </section>
+
+        <section class="selectors-grid">
+            <section class="panel-card subpanel">
+                <div class="subpanel-head">
+                    <mat-chip class="panel-title subpanel-title-chip">{{tituloComponentes}}</mat-chip>
+                    <mat-chip>{{componentesSeleccionados.length}} seleccionados</mat-chip>
+                </div>
+                <div class="selector-pills" *ngIf="componentesCatalogoActual.length > 0; else sinComponentesTpl">
+                    <button
+                        type="button"
+                        *ngFor="let componente of componentesCatalogoActual"
+                        class="estado-chip selector-pill"
+                        [class.activo]="isComponenteSeleccionado(componente.Id)"
+                        [attr.aria-pressed]="isComponenteSeleccionado(componente.Id)"
+                        (click)="onToggleComponente(componente.Id, !isComponenteSeleccionado(componente.Id))">
+                        <mat-icon *ngIf="isComponenteSeleccionado(componente.Id)">check</mat-icon>
+                        {{componente.Nombre}}
+                    </button>
+                </div>
+            </section>
+
+            <section class="panel-card subpanel">
+                <div class="subpanel-head">
+                    <mat-chip class="panel-title subpanel-title-chip">Descriptores</mat-chip>
+                    <mat-chip>{{descriptoresSeleccionados.length}} seleccionados</mat-chip>
+                </div>
+                <div class="selector-pills" *ngIf="descriptoresCatalogo.length > 0; else sinDescriptoresTpl">
+                    <button
+                        type="button"
+                        *ngFor="let descriptor of descriptoresCatalogo"
+                        class="estado-chip selector-pill"
+                        [class.activo]="isDescriptorSeleccionado(descriptor.Id)"
+                        [attr.aria-pressed]="isDescriptorSeleccionado(descriptor.Id)"
+                        (click)="onToggleDescriptor(descriptor.Id, !isDescriptorSeleccionado(descriptor.Id))">
+                        <mat-icon *ngIf="isDescriptorSeleccionado(descriptor.Id)">check</mat-icon>
+                        {{descriptor.Nombre}}
+                    </button>
+                </div>
+            </section>
+        </section>
+
+        <section class="panel-card">
+            <mat-chip class="panel-title">
+                Niveles y listados
+                <mat-icon class="tw-ms-2">list_alt</mat-icon>
+            </mat-chip>
+
+            <div class="valores-grid" *ngIf="varianteActualEsBase; else nivelesPsionicosTpl">
+                <section class="subpanel">
+                    <div class="subpanel-head">
+                        <h3 class="subpanel-title">Niveles por clase</h3>
+                        <button type="button" mat-stroked-button (click)="agregarNivel('baseClase')">Añadir fila</button>
+                    </div>
+                    <div class="nivel-grid head">
+                        <span>Clase</span>
+                        <span>Nivel</span>
+                        <span>Espontáneo</span>
+                        <span></span>
+                    </div>
+                    <div class="nivel-grid row" *ngFor="let row of nivelesBaseClase; let i = index">
+                        <mat-form-field appearance="fill">
+                            <mat-label>Clase</mat-label>
+                            <mat-select [value]="row.id" (selectionChange)="actualizarNivel('baseClase', i, { id: $event.value })">
+                                <mat-option [value]="0">Sin clase</mat-option>
+                                <mat-option *ngFor="let clase of clasesBase" [value]="clase.Id">{{clase.Nombre}}</mat-option>
+                            </mat-select>
+                        </mat-form-field>
+                        <mat-form-field appearance="fill">
+                            <mat-label>Nivel</mat-label>
+                            <input matInput type="number" [value]="row.nivel" (input)="actualizarNivel('baseClase', i, { nivel: +$any($event.target).value || 0 })">
+                        </mat-form-field>
+                        <mat-checkbox [checked]="row.espontaneo" (change)="actualizarNivel('baseClase', i, { espontaneo: $event.checked === true })">Sí</mat-checkbox>
+                        <button type="button" mat-icon-button class="row-action-btn" (click)="eliminarNivel('baseClase', i)">
+                            <mat-icon>delete</mat-icon>
+                        </button>
+                    </div>
+                </section>
+
+                <section class="subpanel">
+                    <div class="subpanel-head">
+                        <h3 class="subpanel-title">Niveles por dominio</h3>
+                        <button type="button" mat-stroked-button (click)="agregarNivel('baseDominio')">Añadir fila</button>
+                    </div>
+                    <div class="nivel-grid head">
+                        <span>Dominio</span>
+                        <span>Nivel</span>
+                        <span>Espontáneo</span>
+                        <span></span>
+                    </div>
+                    <div class="nivel-grid row" *ngFor="let row of nivelesBaseDominio; let i = index">
+                        <mat-form-field appearance="fill">
+                            <mat-label>Dominio</mat-label>
+                            <mat-select [value]="row.id" (selectionChange)="actualizarNivel('baseDominio', i, { id: $event.value })">
+                                <mat-option [value]="0">Sin dominio</mat-option>
+                                <mat-option *ngFor="let dominio of dominios" [value]="dominio.Id">{{dominio.Nombre}}</mat-option>
+                            </mat-select>
+                        </mat-form-field>
+                        <mat-form-field appearance="fill">
+                            <mat-label>Nivel</mat-label>
+                            <input matInput type="number" [value]="row.nivel" (input)="actualizarNivel('baseDominio', i, { nivel: +$any($event.target).value || 0 })">
+                        </mat-form-field>
+                        <mat-checkbox [checked]="row.espontaneo" (change)="actualizarNivel('baseDominio', i, { espontaneo: $event.checked === true })">Sí</mat-checkbox>
+                        <button type="button" mat-icon-button class="row-action-btn" (click)="eliminarNivel('baseDominio', i)">
+                            <mat-icon>delete</mat-icon>
+                        </button>
+                    </div>
+                </section>
+            </div>
+        </section>
+
+        <ng-template #nivelesPsionicosTpl>
+            <div class="valores-grid">
+                <section class="subpanel">
+                    <div class="subpanel-head">
+                        <h3 class="subpanel-title">Niveles por clase</h3>
+                        <button type="button" mat-stroked-button (click)="agregarNivel('psiClase')">Añadir fila</button>
+                    </div>
+                    <div class="nivel-grid head">
+                        <span>Clase</span>
+                        <span>Nivel</span>
+                        <span>Espontáneo</span>
+                        <span></span>
+                    </div>
+                    <div class="nivel-grid row" *ngFor="let row of nivelesPsiClase; let i = index">
+                        <mat-form-field appearance="fill">
+                            <mat-label>Clase</mat-label>
+                            <mat-select [value]="row.id" (selectionChange)="actualizarNivel('psiClase', i, { id: $event.value })">
+                                <mat-option [value]="0">Sin clase</mat-option>
+                                <mat-option *ngFor="let clase of clasesPsionicas" [value]="clase.Id">{{clase.Nombre}}</mat-option>
+                            </mat-select>
+                        </mat-form-field>
+                        <mat-form-field appearance="fill">
+                            <mat-label>Nivel</mat-label>
+                            <input matInput type="number" [value]="row.nivel" (input)="actualizarNivel('psiClase', i, { nivel: +$any($event.target).value || 0 })">
+                        </mat-form-field>
+                        <mat-checkbox [checked]="row.espontaneo" (change)="actualizarNivel('psiClase', i, { espontaneo: $event.checked === true })">Sí</mat-checkbox>
+                        <button type="button" mat-icon-button class="row-action-btn" (click)="eliminarNivel('psiClase', i)">
+                            <mat-icon>delete</mat-icon>
+                        </button>
+                    </div>
+                </section>
+
+                <section class="subpanel">
+                    <div class="subpanel-head">
+                        <h3 class="subpanel-title">Niveles por disciplina</h3>
+                        <button type="button" mat-stroked-button (click)="agregarNivel('psiDisciplina')">Añadir fila</button>
+                    </div>
+                    <div class="nivel-grid head">
+                        <span>Disciplina</span>
+                        <span>Nivel</span>
+                        <span>Espontáneo</span>
+                        <span></span>
+                    </div>
+                    <div class="nivel-grid row" *ngFor="let row of nivelesPsiDisciplina; let i = index">
+                        <mat-form-field appearance="fill">
+                            <mat-label>Disciplina</mat-label>
+                            <mat-select [value]="row.id" (selectionChange)="actualizarNivel('psiDisciplina', i, { id: $event.value })">
+                                <mat-option [value]="0">Sin disciplina</mat-option>
+                                <mat-option *ngFor="let disciplina of disciplinas" [value]="disciplina.Id">{{disciplina.Nombre}}</mat-option>
+                            </mat-select>
+                        </mat-form-field>
+                        <mat-form-field appearance="fill">
+                            <mat-label>Nivel</mat-label>
+                            <input matInput type="number" [value]="row.nivel" (input)="actualizarNivel('psiDisciplina', i, { nivel: +$any($event.target).value || 0 })">
+                        </mat-form-field>
+                        <mat-checkbox [checked]="row.espontaneo" (change)="actualizarNivel('psiDisciplina', i, { espontaneo: $event.checked === true })">Sí</mat-checkbox>
+                        <button type="button" mat-icon-button class="row-action-btn" (click)="eliminarNivel('psiDisciplina', i)">
+                            <mat-icon>delete</mat-icon>
+                        </button>
+                    </div>
+                </section>
+            </div>
+        </ng-template>
+
+        <section class="actions-row">
+            <button mat-raised-button color="primary" type="submit" [disabled]="guardando || !puedeCrear">
+                {{textoAccionPrincipal}}
+            </button>
+        </section>
+    </form>
+
+    <ng-template #sinComponentesTpl>
+        <p class="detalle">No hay componentes disponibles.</p>
+    </ng-template>
+
+    <ng-template #sinDescriptoresTpl>
+        <p class="detalle">No hay descriptores disponibles.</p>
+    </ng-template>
+</div>

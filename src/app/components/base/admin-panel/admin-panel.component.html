@@ -58,12 +58,21 @@
                             <div class="usuarios-admin-actions tw-mb-2">
                                 <button
                                     mat-raised-button
+                                    color="accent"
+                                    [disabled]="descargandoBackupSql || sincronizandoUsuariosApi"
+                                    (click)="onDescargarBackupSql()">
+                                    <mat-icon>{{descargandoBackupSql ? 'hourglass_top' : 'archive'}}</mat-icon>
+                                    {{descargandoBackupSql ? 'Descargando backup...' : 'Descargar backup SQL'}}
+                                </button>
+                                <button
+                                    mat-raised-button
                                     color="primary"
-                                    [disabled]="sincronizandoUsuariosApi"
+                                    [disabled]="sincronizandoUsuariosApi || descargandoBackupSql"
                                     (click)="onSincronizarUsuariosApi()">
                                     <mat-icon>{{sincronizandoUsuariosApi ? 'hourglass_top' : 'upload'}}</mat-icon>
                                     {{sincronizandoUsuariosApi ? 'Resincronizando...' : 'Reenviar usuarios a SQL'}}
                                 </button>
+                                <mat-chip *ngIf="estadoBackupSql.length > 0">{{estadoBackupSql}}</mat-chip>
                                 <mat-chip *ngIf="estadoSyncUsuariosApi.length > 0">{{estadoSyncUsuariosApi}}</mat-chip>
                             </div>
 

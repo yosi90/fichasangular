@@ -15,6 +15,8 @@ class AdminUsersServiceTestDouble extends AdminUsersService {
     upsertCalls: UsuarioUpsertRequestDto[] = [];
     upsertError: Error | null = null;
     upsertErrorByUid: Record<string, Error> = {};
+    downloadBackupCalls: number = 0;
+    downloadBackupResult: string = 'rol-backup-test.zip';
 
     constructor(authMock: Partial<Auth> = {}) {
         super({} as Database, authMock as Auth, {} as UsuariosApiService);
@@ -92,6 +94,11 @@ class AdminUsersServiceTestDouble extends AdminUsersService {
             },
             legacyPlayer: { idJugador: 0 },
         };
+    }
+
+    protected override async downloadUsersBackupApi(): Promise<string> {
+        this.downloadBackupCalls++;
+        return this.downloadBackupResult;
     }
 
     seedPath(path: 'UserProfiles' | 'Acl/users', value: any): void {
@@ -420,5 +427,21 @@ describe('AdminUsersService', () => {
         expect(result.failedUids).toEqual(['u2']);
         expect(service.upsertCalls.length).toBe(1);
         expect(service.upsertCalls[0].uid).toBe('admin-1');
+    });
+
+    it('downloadDatabaseBackup valida admin y delega en la API', async () => {
+        const service = new AdminUsersServiceTestDouble({ currentUser: { uid: 'admin-1' } as any });
+        service.seedPath('Acl/users', {
+            'admin-1': {
+                roles: { admin: true, type: 'admin' },
+                status: { banned: false },
+                permissions: { personajes: { create: true } },
+            },
+        });
+
+        const filename = await service.downloadDatabaseBackup();
+
+        expect(filename).toBe('rol-backup-test.zip');
+        expect(service.downloadBackupCalls).toBe(1);
     });
 });

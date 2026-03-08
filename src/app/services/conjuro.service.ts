@@ -1,10 +1,12 @@
-import { HttpClient } from "@angular/common/http";
+import { HttpClient, HttpErrorResponse } from "@angular/common/http";
 import { Injectable } from "@angular/core";
-import { Database, getDatabase, Unsubscribe, onValue, ref, set } from '@angular/fire/database';
+import { Database, Unsubscribe, getDatabase, onValue, ref, set } from '@angular/fire/database';
 import { Observable, firstValueFrom } from "rxjs";
 import { environment } from "src/environments/environment";
 import Swal from "sweetalert2";
 import { Conjuro } from "../interfaces/conjuro";
+import { ConjuroCreateRequest, ConjuroCreateResponse } from "../interfaces/conjuros-api";
+import { normalizeConjuro } from "./utils/conjuro-mapper";
 
 @Injectable({
     providedIn: 'root'
@@ -19,43 +21,13 @@ export class ConjuroService {
             let unsubscribe: Unsubscribe;
 
             const onNext = (snapshot: any) => {
-                let conjuro: Conjuro = {
-                    Id: id,
-                    Nombre: snapshot.child('Nombre').val(),
-                    Descripcion: snapshot.child('Descripcion').val(),
-                    Tiempo_lanzamiento: snapshot.child('Tiempo_lanzamiento').val(),
-                    Alcance: snapshot.child('Alcance').val(),
-                    Escuela: snapshot.child('Escuela').val(),
-                    Disciplina: snapshot.child('Disciplina').val(),
-                    Manual: snapshot.child('Manual').val(),
-                    Objetivo: snapshot.child('Objetivo').val(),
-                    Efecto: snapshot.child('Efecto').val(),
-                    Area: snapshot.child('Area').val(),
-                    Arcano: snapshot.child('Arcano').val(),
-                    Divino: snapshot.child('Divino').val(),
-                    Psionico: snapshot.child('Psionico').val(),
-                    Alma: snapshot.child('Alma').val(),
-                    Duracion: snapshot.child('Duracion').val(),
-                    Tipo_salvacion: snapshot.child('Tipo_salvacion').val(),
-                    Resistencia_conjuros: snapshot.child('Resistencia_conjuros').val(),
-                    Resistencia_poderes: snapshot.child('Resistencia_poderes').val(),
-                    Descripcion_componentes: snapshot.child('Descripcion_componentes').val(),
-                    Permanente: snapshot.child('Permanente').val(),
-                    Puntos_poder: snapshot.child('Puntos_poder').val(),
-                    Descripcion_aumentos: snapshot.child('Descripcion_aumentos').val(),
-                    Descriptores: snapshot.child('Descriptores').val(),
-                    Nivel_clase: snapshot.child('Nivel_clase').val(),
-                    Nivel_dominio: snapshot.child('Nivel_dominio').val(),
-                    Nivel_disciplinas: snapshot.child('Nivel_disciplinas').val(),
-                    Componentes: snapshot.child('Componentes').val(),
-                    Oficial: snapshot.child('Oficial').val(),
-                };
-                observador.next(conjuro);
+                observador.next(normalizeConjuro(snapshot?.val?.() ?? { Id: id }));
             };
 
             const onError = (error: any) => {
                 observador.error(error);
             };
+
             unsubscribe = onValue(dbRef, onNext, onError);
 
             return () => {
@@ -72,38 +44,7 @@ export class ConjuroService {
             const onNext = (snapshot: any) => {
                 const conjuros: Conjuro[] = [];
                 snapshot.forEach((obj: any) => {
-                    const conjuro: Conjuro = {
-                        Id: obj.child('Id').val(),
-                        Nombre: obj.child('Nombre').val(),
-                        Descripcion: obj.child('Descripcion').val(),
-                        Tiempo_lanzamiento: obj.child('Tiempo_lanzamiento').val(),
-                        Alcance: obj.child('Alcance').val(),
-                        Escuela: obj.child('Escuela').val(),
-                        Disciplina: obj.child('Disciplina').val(),
-                        Manual: obj.child('Manual').val(),
-                        Objetivo: obj.child('Objetivo').val(),
-                        Efecto: obj.child('Efecto').val(),
-                        Area: obj.child('Area').val(),
-                        Arcano: obj.child('Arcano').val(),
-                        Divino: obj.child('Divino').val(),
-                        Psionico: obj.child('Psionico').val(),
-                        Alma: obj.child('Alma').val(),
-                        Duracion: obj.child('Duracion').val(),
-                        Tipo_salvacion: obj.child('Tipo_salvacion').val(),
-                        Resistencia_conjuros: obj.child('Resistencia_conjuros').val(),
-                        Resistencia_poderes: obj.child('Resistencia_poderes').val(),
-                        Descripcion_componentes: obj.child('Descripcion_componentes').val(),
-                        Permanente: obj.child('Permanente').val(),
-                        Puntos_poder: obj.child('Puntos_poder').val(),
-                        Descripcion_aumentos: obj.child('Descripcion_aumentos').val(),
-                        Descriptores: obj.child('Descriptores').val(),
-                        Nivel_clase: obj.child('Nivel_clase').val(),
-                        Nivel_dominio: obj.child('Nivel_dominio').val(),
-                        Nivel_disciplinas: obj.child('Nivel_disciplinas').val(),
-                        Componentes: obj.child('Componentes').val(),
-                        Oficial: obj.child('Oficial').val(),
-                    };
-                    conjuros.push(conjuro);
+                    conjuros.push(normalizeConjuro(obj.val()));
                 });
                 observador.next(conjuros);
             };
@@ -120,13 +61,34 @@ export class ConjuroService {
         });
     }
 
+    public async crearConjuro(payload: ConjuroCreateRequest): Promise<ConjuroCreateResponse> {
+        try {
+            const response = await firstValueFrom(
+                this.http.post<ConjuroCreateResponse>(`${environment.apiUrl}conjuros/add`, payload)
+            );
+            const idConjuro = Math.trunc(Number(response?.idConjuro ?? 0));
+            if (!Number.isFinite(idConjuro) || idConjuro <= 0)
+                throw new Error("La API no devolvio un idConjuro valido");
+
+            const normalizedResponse: ConjuroCreateResponse = {
+                message: `${response?.message ?? "Conjuro creado"}`,
+                idConjuro,
+                uid: `${response?.uid ?? payload?.uid ?? payload?.firebaseUid ?? ""}`.trim(),
+            };
+
+            await this.refrescarConjuroCacheBestEffort(idConjuro);
+            return normalizedResponse;
+        } catch (error: any) {
+            throw this.mapCrearConjuroError(error);
+        }
+    }
+
     private syncConjuros(): Observable<any> {
-        const res = this.http.get(`${environment.apiUrl}conjuros`);
-        return res;
+        return this.http.get(`${environment.apiUrl}conjuros`);
     }
 
     public async RenovarConjuros(): Promise<boolean> {
-        const db_instance = getDatabase();
+        const dbInstance = getDatabase();
         try {
             const response = await firstValueFrom(this.syncConjuros());
             const conjuros = Array.isArray(response)
@@ -134,42 +96,9 @@ export class ConjuroService {
                 : Object.values(response ?? {});
 
             await Promise.all(
-                conjuros.map((element: {
-                    i: number; n: string; d: string; tl: any; ac: any; es: any; di: any; m: any; ob: any; ef: any; ar: any; arc: any; div: any; psi: any; alm: any; com: any; dur: any; t_s: any; 
-                    r_c: any; r_p: any; d_c: any; per: any; pp: any; da: any; o: any; des: any; ncl: any; nd: any; ndis: any; coms: any;
-                }) => {
-                    return set(
-                        ref(db_instance, `Conjuros/${element.i}`), {
-                        Id: element.i,
-                        Nombre: element.n,
-                        Descripcion: element.d,
-                        Tiempo_lanzamiento: element.tl,
-                        Alcance: element.ac,
-                        Escuela: element.es,
-                        Disciplina: element.di,
-                        Manual: element.m,
-                        Objetivo: element.ob,
-                        Efecto: element.ef,
-                        Area: element.ar,
-                        Arcano: element.arc,
-                        Divino: element.div,
-                        Psionico: element.psi,
-                        Alma: element.alm,
-                        Duracion: element.dur,
-                        Tipo_salvacion: element.t_s,
-                        Resistencia_conjuros: element.r_c,
-                        Resistencia_poderes: element.r_p,
-                        Descripcion_componentes: element.d_c,
-                        Permanente: element.per,
-                        Puntos_poder: element.pp,
-                        Descripcion_aumentos: element.da,
-                        Descriptores: element.des,
-                        Nivel_clase: element.ncl,
-                        Nivel_dominio: element.nd,
-                        Nivel_disciplinas: element.ndis,
-                        Componentes: element.coms,
-                        Oficial: element.o,
-                    });
+                conjuros.map((raw: any) => {
+                    const conjuro = normalizeConjuro(raw);
+                    return set(ref(dbInstance, `Conjuros/${conjuro.Id}`), conjuro);
                 })
             );
 
@@ -189,5 +118,67 @@ export class ConjuroService {
             });
             return false;
         }
+    }
+
+    private async refrescarConjuroCacheBestEffort(idConjuro: number): Promise<void> {
+        try {
+            const raw = await firstValueFrom(this.syncConjuros());
+            const conjuros = Array.isArray(raw)
+                ? raw
+                : Object.values(raw ?? {});
+            const encontrado = conjuros
+                .map((item: any) => normalizeConjuro(item))
+                .find((item) => item.Id === idConjuro);
+            if (!encontrado)
+                return;
+
+            await set(ref(this.db, `Conjuros/${encontrado.Id}`), encontrado);
+        } catch {
+            // Best-effort: no bloquea flujo de creacion.
+        }
+    }
+
+    private mapCrearConjuroError(error: any): Error {
+        if (!(error instanceof HttpErrorResponse))
+            return new Error("No se pudo crear el conjuro");
+
+        const backendMessage = this.extractErrorMessage(error.error);
+        const suffix = backendMessage.length > 0 ? ` ${backendMessage}` : "";
+
+        if (error.status === 400)
+            return new Error(`Solicitud invalida para crear el conjuro.${suffix}`.trim());
+        if (error.status === 403)
+            return new Error(`No tienes permisos para crear conjuros.${suffix}`.trim());
+        if (error.status === 404)
+            return new Error(`No se encontro el usuario asociado al uid de sesion.${suffix}`.trim());
+        if (error.status === 409) {
+            const conflictText = backendMessage.toLowerCase();
+            if (conflictText.includes("nombre") || conflictText.includes("duplic") || conflictText.includes("existe"))
+                return new Error("Ya existe un conjuro con ese nombre.");
+            return new Error(`Conflicto al crear el conjuro.${suffix}`.trim());
+        }
+
+        if (backendMessage.length > 0)
+            return new Error(backendMessage);
+
+        return new Error(`No se pudo crear el conjuro (HTTP ${error.status || 0})`);
+    }
+
+    private extractErrorMessage(errorBody: any): string {
+        if (!errorBody)
+            return "";
+
+        if (typeof errorBody === "string") {
+            const message = errorBody.trim();
+            return message.length > 0 ? message : "";
+        }
+
+        if (typeof errorBody === "object") {
+            const knownMessage = `${errorBody?.message ?? errorBody?.error ?? ""}`.trim();
+            if (knownMessage.length > 0)
+                return knownMessage;
+        }
+
+        return "";
     }
 }

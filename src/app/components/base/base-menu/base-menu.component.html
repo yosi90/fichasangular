@@ -16,7 +16,12 @@
                     <button mat-button color="primary" [disabled]="!canInsertarDotes()"
                         (click)="onInsertarDote()">Dote</button>
                 </span>
-                <button mat-button color="primary">Conjuro</button>
+                <span
+                    [matTooltip]="canInsertarConjuros() ? '' : 'Requiere permiso conjuros.create'"
+                    [matTooltipDisabled]="canInsertarConjuros()">
+                    <button mat-button color="primary" [disabled]="!canInsertarConjuros()"
+                        (click)="onInsertarConjuro()">Conjuro</button>
+                </span>
                 <button mat-button color="primary">Monstruo</button>
                 <button mat-button color="primary">Plantilla</button>
                 <button mat-button color="primary" cdkOverlayOrigin #origenInsertar="cdkOverlayOrigin"

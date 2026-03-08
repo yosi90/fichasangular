@@ -40,6 +40,7 @@ import { EnemigoPredilectoService } from 'src/app/services/enemigo-predilecto.se
 import { MonstruoService } from 'src/app/services/monstruo.service';
 import { ExtraService } from 'src/app/services/extra.service';
 import { TamanoService } from 'src/app/services/tamano.service';
+import { SubdisciplinaConjurosService } from 'src/app/services/subdisciplina-conjuros.service';
 
 interface SyncItemConfig {
     key: CacheEntityKey;
@@ -66,6 +67,8 @@ export class AdminPanelComponent implements OnInit, OnDestroy {
     filtroUsuarios: string = '';
     sincronizandoUsuariosApi: boolean = false;
     estadoSyncUsuariosApi: string = '';
+    descargandoBackupSql: boolean = false;
+    estadoBackupSql: string = '';
     usuariosAdmin: AdminUserRow[] = [];
     readonly permissionResources = PERMISSION_RESOURCES;
     readonly roleOptions: UserRole[] = ['usuario', 'colaborador', 'admin'];
@@ -101,6 +104,7 @@ export class AdminPanelComponent implements OnInit, OnDestroy {
         private coSvc: ConjuroService,
         private escSvc: EscuelaConjurosService,
         private disSvc: DisciplinaConjurosService,
+        private subdisSvc: SubdisciplinaConjurosService,
         private extraSvc: ExtraService,
         private aSvc: AlineamientoService,
         private plSvc: PlantillaService,
@@ -148,6 +152,7 @@ export class AdminPanelComponent implements OnInit, OnDestroy {
             raciales: () => this.racialSvc.RenovarRaciales(),
             escuelas_conjuros: () => this.escSvc.RenovarEscuelas(),
             disciplinas_conjuros: () => this.disSvc.RenovarDisciplinas(),
+            subdisciplinas_conjuros: () => this.subdisSvc.RenovarSubdisciplinas(),
             alineamientos: () => this.aSvc.RenovarAlineamientos(),
             alineamientos_basicos: () => this.aSvc.RenovarAlineamientosBasicos(),
             alineamientos_combinaciones: () => this.aSvc.RenovarAlineamientosCombinaciones(),
@@ -444,6 +449,26 @@ export class AdminPanelComponent implements OnInit, OnDestroy {
             this.estadoSyncUsuariosApi = '';
         } finally {
             this.sincronizandoUsuariosApi = false;
+        }
+    }
+
+    async onDescargarBackupSql(): Promise<void> {
+        if (!this.esAdmin || this.descargandoBackupSql)
+            return;
+
+        this.estadoBackupSql = '';
+        this.errorUsuarios = '';
+        this.descargandoBackupSql = true;
+        try {
+            const filename = await this.adminUsersSvc.downloadDatabaseBackup();
+            this.estadoBackupSql = filename.length > 0
+                ? `Backup descargado: ${filename}`
+                : 'Backup descargado correctamente.';
+        } catch (error: any) {
+            this.errorUsuarios = error?.message ?? 'No se pudo descargar el backup SQL';
+            this.estadoBackupSql = '';
+        } finally {
+            this.descargandoBackupSql = false;
         }
     }
 

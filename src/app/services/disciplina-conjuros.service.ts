@@ -1,10 +1,56 @@
 import { HttpClient } from "@angular/common/http";
 import { Injectable } from "@angular/core";
-import { Database, getDatabase, Unsubscribe, onValue, ref, set } from '@angular/fire/database';
+import { Database, getDatabase, onValue, ref, set } from '@angular/fire/database';
 import { Observable, firstValueFrom } from "rxjs";
 import { environment } from "src/environments/environment";
 import Swal from "sweetalert2";
 import { DisciplinaConjuros, Subdisciplinas } from "../interfaces/disciplina-conjuros";
+
+function toArray<T = any>(value: any): T[] {
+    if (Array.isArray(value))
+        return value;
+    if (value && typeof value === 'object')
+        return Object.values(value) as T[];
+    return [];
+}
+
+function toInt(value: any, fallback: number = 0): number {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? Math.trunc(parsed) : fallback;
+}
+
+function toText(value: any): string {
+    return `${value ?? ''}`.trim();
+}
+
+function normalizeSubdisciplinas(raw: any): Subdisciplinas[] {
+    return toArray(raw)
+        .map((item: any, index: number) => {
+            if (typeof item === 'string') {
+                return {
+                    Id: index + 1,
+                    Nombre: toText(item),
+                };
+            }
+            return {
+                Id: toInt(item?.Id ?? item?.id ?? item?.i, 0),
+                Nombre: toText(item?.Nombre ?? item?.nombre ?? item?.n),
+            };
+        })
+        .filter((item) => {
+            const nombre = item.Nombre.normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase();
+            return item.Nombre.length > 0 && nombre !== 'ninguna' && nombre !== 'sin subdisciplina';
+        });
+}
+
+function normalizeDisciplina(raw: any, fallbackId: number = 0): DisciplinaConjuros {
+    return {
+        Id: toInt(raw?.Id ?? raw?.id ?? raw?.i, fallbackId),
+        Nombre: toText(raw?.Nombre ?? raw?.nombre ?? raw?.n),
+        Nombre_especial: toText(raw?.Nombre_especial ?? raw?.Nombre_esp ?? raw?.nombre_especial ?? raw?.ne),
+        Subdisciplinas: normalizeSubdisciplinas(raw?.Subdisciplinas ?? raw?.subdisciplinas ?? raw?.sd),
+    };
+}
 
 @Injectable({
     providedIn: 'root'
@@ -15,57 +61,69 @@ export class DisciplinaConjurosService {
 
     getDisciplina(id: number): Observable<DisciplinaConjuros> {
         return new Observable((observador) => {
-            const dbRef = ref(this.db, `Disciplinas/${id}`);
-            let unsubscribe: Unsubscribe;
+            const dbRefLower = ref(this.db, `disciplinas/${id}`);
+            const dbRefUpper = ref(this.db, `Disciplinas/${id}`);
+            let lowerSnapshot: any = null;
+            let upperSnapshot: any = null;
 
-            const onNext = (snapshot: any) => {
-                let disciplina: DisciplinaConjuros = {
-                    Id: id,
-                    Nombre: snapshot.child('Nombre').val(),
-                    Nombre_especial: snapshot.child('Nombre_especial').val(),
-                    Subdisciplinas: snapshot.child('Subdisciplinas').val()
-                };
-                observador.next(disciplina);
+            const emitPreferred = () => {
+                const snapshot = lowerSnapshot?.exists?.() ? lowerSnapshot : upperSnapshot?.exists?.() ? upperSnapshot : null;
+                if (!snapshot)
+                    return;
+                observador.next(normalizeDisciplina(snapshot.val(), id));
             };
 
-            const onError = (error: any) => {
-                observador.error(error);
-            };
-            unsubscribe = onValue(dbRef, onNext, onError);
+            const onError = (error: any) => observador.error(error);
+            const unsubscribeLower = onValue(dbRefLower, (snapshot: any) => {
+                lowerSnapshot = snapshot;
+                emitPreferred();
+            }, onError);
+            const unsubscribeUpper = onValue(dbRefUpper, (snapshot: any) => {
+                upperSnapshot = snapshot;
+                emitPreferred();
+            }, onError);
 
             return () => {
-                unsubscribe();
+                unsubscribeLower();
+                unsubscribeUpper();
             };
         });
     }
 
     getDisciplinas(): Observable<DisciplinaConjuros[]> {
         return new Observable((observador) => {
-            const dbRef = ref(this.db, 'Disciplinas');
-            let unsubscribe: Unsubscribe;
+            const dbRefLower = ref(this.db, 'disciplinas');
+            const dbRefUpper = ref(this.db, 'Disciplinas');
+            let lowerSnapshot: any = null;
+            let upperSnapshot: any = null;
 
-            const onNext = (snapshot: any) => {
-                const disciplinas: DisciplinaConjuros[] = [];
-                snapshot.forEach((obj: any) => {
-                    const disciplina: DisciplinaConjuros = {
-                        Id: obj.child('Id').val(),
-                        Nombre: obj.child('Nombre').val(),
-                        Nombre_especial: obj.child('Nombre_especial').val(),
-                        Subdisciplinas: obj.child('Subdisciplinas').val()
-                    };
-                    disciplinas.push(disciplina);
-                });
+            const emitPreferred = () => {
+                const snapshot = lowerSnapshot?.exists?.() ? lowerSnapshot : upperSnapshot?.exists?.() ? upperSnapshot : null;
+                if (!snapshot) {
+                    observador.next([]);
+                    return;
+                }
+
+                const disciplinas = toArray(snapshot.val())
+                    .map((raw: any) => normalizeDisciplina(raw))
+                    .filter((disciplina) => disciplina.Id > 0 && disciplina.Nombre.length > 0)
+                    .sort((a, b) => a.Nombre.localeCompare(b.Nombre, 'es', { sensitivity: 'base' }));
                 observador.next(disciplinas);
             };
 
-            const onError = (error: any) => {
-                observador.error(error);
-            };
-
-            unsubscribe = onValue(dbRef, onNext, onError);
+            const onError = (error: any) => observador.error(error);
+            const unsubscribeLower = onValue(dbRefLower, (snapshot: any) => {
+                lowerSnapshot = snapshot;
+                emitPreferred();
+            }, onError);
+            const unsubscribeUpper = onValue(dbRefUpper, (snapshot: any) => {
+                upperSnapshot = snapshot;
+                emitPreferred();
+            }, onError);
 
             return () => {
-                unsubscribe();
+                unsubscribeLower();
+                unsubscribeUpper();
             };
         });
     }

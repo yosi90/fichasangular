@@ -123,6 +123,64 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
+  /usuarios/backup:
+    get:
+      tags: [usuarios]
+      summary: Descarga backup SQL completo en ZIP (solo admin)
+      description: |
+        Genera un ZIP en memoria con scripts SQL de insercion para todas las tablas
+        de usuario de la base `rol`. El admin puede identificarse con `uid` por query
+        string o con `X-User-Uid` por header. Si ambos se envian y no coinciden,
+        la API responde `400`.
+      parameters:
+        - name: uid
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: X-User-Uid
+          in: header
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: ZIP con los scripts SQL del backup
+          headers:
+            Content-Disposition:
+              description: Nombre sugerido del archivo ZIP descargable
+              schema:
+                type: string
+          content:
+            application/zip:
+              schema:
+                type: string
+                format: binary
+        '400':
+          description: `uid` ausente o conflicto entre query y header
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Usuario baneado o sin rol admin
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Usuario no encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error interno
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
   /usuarios/acl/{uid}:
     get:
       tags: [usuarios]
@@ -801,10 +859,50 @@ paths:
     post:
       tags: [conjuros]
       summary: Crear conjuro
-      description: Endpoint definido en rutas, no implementado en controller.
+      description: Crea un conjuro base o psionico con ACL obligatoria por uid y persistencia transaccional de sus relaciones.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConjuroCreateRequest'
       responses:
-        '501':
-          description: No implementado
+        '201':
+          description: Conjuro creado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConjuroCreateResponse'
+        '400':
+          description: Body invalido o error de integridad
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Usuario baneado o sin permiso de creacion
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: AppUser no encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Conflicto de negocio (por ejemplo, nombre de conjuro duplicado)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error interno
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 
   /escuelas:
     get:
@@ -833,6 +931,76 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/DisciplinaResumen'
+
+  /componentes-conjuros:
+    get:
+      tags: [conjuros]
+      summary: Lista de componentes de conjuro
+      responses:
+        '200':
+          description: Lista de componentes
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ConjuroCatalogItem'
+
+  /tiempos-lanzamiento:
+    get:
+      tags: [conjuros]
+      summary: Lista de tiempos de lanzamiento
+      responses:
+        '200':
+          description: Lista de tiempos
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ConjuroCatalogItem'
+
+  /alcances-conjuros:
+    get:
+      tags: [conjuros]
+      summary: Lista de alcances de conjuro
+      responses:
+        '200':
+          description: Lista de alcances
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ConjuroCatalogItem'
+
+  /descriptores:
+    get:
+      tags: [conjuros]
+      summary: Lista de descriptores de conjuro
+      responses:
+        '200':
+          description: Lista de descriptores
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ConjuroCatalogItem'
+
+  /subdisciplinas:
+    get:
+      tags: [conjuros]
+      summary: Lista de subdisciplinas de conjuro
+      responses:
+        '200':
+          description: Lista de subdisciplinas
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SubdisciplinaCatalogItem'
 
   /alineamientos:
     get:
@@ -1928,6 +2096,124 @@ components:
         idDote: { type: integer }
         uid: { type: string }
       required: [message, idDote, uid]
+
+    ConjuroCatalogItem:
+      type: object
+      properties:
+        i: { type: integer }
+        n: { type: string }
+      required: [i, n]
+
+    SubdisciplinaCatalogItem:
+      type: object
+      properties:
+        i: { type: integer }
+        n: { type: string }
+        id_disciplina: { type: integer }
+      required: [i, n, id_disciplina]
+
+    ConjuroCreateCore:
+      type: object
+      properties:
+        variante: { type: string, enum: [base, psionico] }
+        nombre: { type: string, maxLength: 50 }
+        descripcion: { type: string }
+        id_manual: { type: integer, minimum: 0 }
+        pagina: { type: integer, minimum: 0 }
+        id_tiempo_lanz: { type: integer, minimum: 0 }
+        id_alcance: { type: integer, minimum: 0 }
+        objetivo: { type: string, maxLength: 300 }
+        efecto: { type: string, maxLength: 300 }
+        area: { type: string, maxLength: 300 }
+        duracion: { type: string, maxLength: 300 }
+        tipo_salvacion: { type: string, maxLength: 300 }
+        descripcion_componentes: { type: string, maxLength: 1000 }
+        permanente: { type: boolean }
+        oficial: { type: boolean }
+        arcano: { type: boolean }
+        divino: { type: boolean }
+        id_escuela: { type: integer, minimum: 0 }
+        resistencia_conjuros: { type: boolean }
+        id_disciplina: { type: integer, minimum: 0 }
+        id_subdisciplina: { type: integer, minimum: 0 }
+        puntos_poder: { type: integer, minimum: 0 }
+        descripcion_aumentos: { type: string, maxLength: 1000 }
+        resistencia_poderes: { type: boolean }
+      required:
+        - variante
+        - nombre
+        - descripcion
+        - id_manual
+        - pagina
+        - id_tiempo_lanz
+        - id_alcance
+        - duracion
+        - tipo_salvacion
+        - permanente
+        - oficial
+      additionalProperties: true
+
+    ConjuroCreateIdRef:
+      oneOf:
+        - type: integer
+        - type: object
+          properties:
+            id: { type: integer }
+            id_componente: { type: integer }
+            id_descriptor: { type: integer }
+          additionalProperties: true
+
+    ConjuroCreateNivelRef:
+      type: object
+      properties:
+        id_clase: { type: integer, minimum: 0 }
+        id_dominio: { type: integer, minimum: 0 }
+        id_disciplina: { type: integer, minimum: 0 }
+        nivel: { type: integer, minimum: 0 }
+        espontaneo: { type: boolean }
+      required: [nivel, espontaneo]
+      additionalProperties: true
+
+    ConjuroCreateRequest:
+      type: object
+      properties:
+        uid: { type: string }
+        firebaseUid: { type: string }
+        conjuro:
+          $ref: '#/components/schemas/ConjuroCreateCore'
+        componentes:
+          type: array
+          items:
+            $ref: '#/components/schemas/ConjuroCreateIdRef'
+        descriptores:
+          type: array
+          items:
+            $ref: '#/components/schemas/ConjuroCreateIdRef'
+        niveles_clase:
+          type: array
+          items:
+            $ref: '#/components/schemas/ConjuroCreateNivelRef'
+        niveles_dominio:
+          type: array
+          items:
+            $ref: '#/components/schemas/ConjuroCreateNivelRef'
+        niveles_disciplina:
+          type: array
+          items:
+            $ref: '#/components/schemas/ConjuroCreateNivelRef'
+      required: [conjuro]
+      oneOf:
+        - required: [uid]
+        - required: [firebaseUid]
+      additionalProperties: true
+
+    ConjuroCreateResponse:
+      type: object
+      properties:
+        message: { type: string }
+        idConjuro: { type: integer }
+        uid: { type: string }
+      required: [message, idConjuro, uid]
 
     PersonajeVisibilityUpdateRequest:
       type: object

@@ -6,7 +6,7 @@ Resumen
 - Base URL (local): `http://127.0.0.1:5000`
 - Prefijos registrados: `/verify`, `/usuarios`, `/personajes`, `/razas`, `/razas/raciales`, `/subtipos`, `/campanas`, `/tramas`, `/subtramas`, `/manuales`, `/manuales/asociados`, `/monstruos`, `/familiares`, `/companeros`, `/tiposCriatura`, `/rasgos`, `/conjuros`, `/escuelas`, `/disciplinas`, `/alineamientos`, `/habilidades`, `/idiomas`, `/enemigos-predilectos`, `/extras`, `/tamanos`, `/armas`, `/armaduras`, `/grupos-armas`, `/grupos-armaduras`, `/dominios`, `/ambitos`, `/pabellones`, `/deidades`, `/dotes`, `/clases`, `/clases/habilidades`, `/plantillas`, `/ventajas`, `/desventajas`
 - Autenticacion: no hay autenticacion en el backend.
-- Content-Type esperado: `application/json`
+- Content-Type esperado: `application/json` (y `application/zip` en `GET /usuarios/backup`)
 - CORS habilitado para: `https://rol.yosiftware.es/`, `https://www.rol.yosiftware.es/`, `https://62.43.222.28`, `http://192.168.0.34`
 - Metodos usados: `GET`, `POST`, `PATCH`, `OPTIONS` (preflight en varias rutas).
 - Errores: la mayoria de controladores retorna el error de `pyodbc` sin estandarizar.
@@ -16,6 +16,7 @@ Lista de endpoints
 | --- | --- | --- | --- |
 | GET | /verify | Verifica conexion DB | Implementado |
 | GET | /usuarios | Lista de usuarios (admin panel) | Implementado |
+| GET | /usuarios/backup | Descarga backup SQL completo en ZIP (solo admin) | Implementado |
 | GET | /usuarios/acl/<uid> | ACL bootstrap por Firebase UID | Implementado |
 | POST | /usuarios | Upsert usuario + replica a jugadores legacy | Implementado |
 | GET | /personajes | Lista detallada de personajes | Implementado |
@@ -54,7 +55,12 @@ Lista de endpoints
 | GET | /rasgos | Lista de rasgos | Implementado |
 | POST | /rasgos/add | Crear rasgo | No implementado (funcion `pass`) |
 | GET | /conjuros | Lista de conjuros | Implementado |
-| POST | /conjuros/add | Crear conjuro | No implementado (funcion `pass`) |
+| POST | /conjuros/add | Crear conjuro | Implementado |
+| GET | /componentes-conjuros | Lista de componentes de conjuro | Implementado |
+| GET | /tiempos-lanzamiento | Lista de tiempos de lanzamiento | Implementado |
+| GET | /alcances-conjuros | Lista de alcances de conjuro | Implementado |
+| GET | /descriptores | Lista de descriptores de conjuro | Implementado |
+| GET | /subdisciplinas | Lista de subdisciplinas de conjuro | Implementado |
 | GET | /escuelas | Lista de escuelas de conjuros | Implementado |
 | GET | /disciplinas | Lista de disciplinas de conjuros | Implementado |
 | GET | /alineamientos | Lista de alineamientos | Implementado |
@@ -142,6 +148,29 @@ UsuarioListadoItem
 | updatedAtUtc | string/null | Fecha UTC de ultima actualizacion ACL |
 | updatedByUserId | string/null | UUID del actor que actualizo ACL |
 | permissionsCreate | array | Lista `{ resource, allowed }` |
+
+Endpoint: GET /usuarios/backup
+Descripcion: Genera un ZIP en memoria con scripts SQL de insercion para todas las tablas de usuario de la base `rol`.
+
+Acceso
+- Solo admins.
+- El admin se identifica con `uid` por query string o `X-User-Uid` por header.
+- Si ambos se envian y no coinciden, responde `400`.
+
+Respuesta 200
+- `Content-Type`: `application/zip`
+- `Content-Disposition`: `attachment; filename=rol-backup-YYYYMMDD-HHMMSS.zip`
+- Contenido del ZIP:
+  - `000_manifest.json`
+  - `000_pre_restore.sql`
+  - un `.sql` por tabla en orden de restauracion
+  - `999_post_restore.sql`
+
+Errores esperados
+- `400`: falta `uid` o no coincide con `X-User-Uid`.
+- `403`: usuario baneado o no admin.
+- `404`: `uid` no encontrado en `AppUser`.
+- `500`: error generando el backup o consultando la base.
 
 Endpoint: GET /usuarios/acl/<uid>
 Parametros de path
@@ -981,6 +1010,110 @@ ConjuroResumen
 | ndis | array | Niveles por disciplina: { Id_disciplina, Disciplina, Nivel, Espontaneo } |
 | coms | array | Componentes: { Id_componente, Componente } |
 | o | boolean | Oficial (true=oficial, false=homebrew) |
+
+Endpoint: POST /conjuros/add
+Descripcion: Crea un conjuro en transaccion (`conjuros` + componentes + descriptores + niveles por clase + niveles por dominio o disciplina), con ACL obligatoria por `uid`/`firebaseUid`.
+
+Body (estructura canonica)
+```json
+{
+  "uid": "firebase-uid",
+  "conjuro": {
+    "variante": "base",
+    "nombre": "Manos ardientes",
+    "descripcion": "Texto",
+    "id_manual": 1,
+    "pagina": 10,
+    "id_tiempo_lanz": 1,
+    "id_alcance": 1,
+    "objetivo": "",
+    "efecto": "Llama en cono",
+    "area": "",
+    "duracion": "Instantánea",
+    "tipo_salvacion": "Reflejos mitad",
+    "descripcion_componentes": "V, S",
+    "permanente": false,
+    "oficial": true,
+    "arcano": true,
+    "divino": false,
+    "id_escuela": 1,
+    "resistencia_conjuros": true
+  },
+  "componentes": [1, { "id_componente": 2 }],
+  "descriptores": [1],
+  "niveles_clase": [
+    { "id_clase": 1, "nivel": 1, "espontaneo": false }
+  ],
+  "niveles_dominio": [
+    { "id_dominio": 1, "nivel": 1, "espontaneo": true }
+  ]
+}
+```
+
+Variante `base`
+- Requiere `arcano` y/o `divino`; al menos uno debe ser `true`.
+- Requiere `id_escuela > 0`.
+- Requiere `resistencia_conjuros`.
+- Acepta `niveles_dominio`.
+- Rechaza `id_disciplina`, `id_subdisciplina`, `puntos_poder`, `descripcion_aumentos` y `niveles_disciplina`.
+- Guarda `id_disciplina=0`, `id_subdisciplina=0`, `psionico=0`, `alma=0`, `resistencia_poderes=0`, `puntos_poder=0`.
+
+Variante `psionico`
+- Requiere `id_disciplina > 0`.
+- `id_subdisciplina` es opcional; si se envía debe pertenecer a la disciplina indicada.
+- Requiere `puntos_poder`.
+- Requiere `resistencia_poderes`.
+- Acepta `niveles_disciplina`.
+- Rechaza `id_escuela` y `niveles_dominio`.
+- Guarda `id_escuela=0`, `arcano=0`, `divino=0`, `alma=0`, `resistencia_conjuros=0`.
+
+Validaciones clave
+- `uid` (o alias `firebaseUid`) es obligatorio.
+- AppUser debe existir, no estar baneado y tener permiso `create` en recurso `conjuros`.
+- `conjuro.variante` solo admite `base` o `psionico`; `alma` se rechaza explícitamente.
+- Validación fuerte de FKs en ids referenciados.
+- `componentes` y `descriptores` aceptan ids sueltos u objetos con el id correspondiente.
+- `componentes` determina automáticamente el bit `conjuros.componente`.
+- Las listas relacionales se deduplican por clave primaria lógica; si la misma clave llega con datos distintos, responde `400`.
+- `objetivo`, `efecto` y `area` se guardan como cadena vacía si se omiten.
+
+Respuesta 201
+```json
+{
+  "message": "Conjuro creado exitosamente",
+  "idConjuro": 123,
+  "uid": "firebase-uid"
+}
+```
+
+Errores esperados
+- `400`: payload inválido, variante no soportada, FK inexistente o mezcla inconsistente entre `base` y `psionico`.
+- `403`: usuario baneado o sin permiso de creación en `conjuros`.
+- `404`: AppUser no encontrado para el `uid`.
+- `409`: conflicto de negocio (ej. nombre de conjuro ya existente).
+- `500`: error interno no controlado.
+
+Endpoint: GET /componentes-conjuros
+Respuesta: array de `IdNombre`
+
+Endpoint: GET /tiempos-lanzamiento
+Respuesta: array de `IdNombre`
+
+Endpoint: GET /alcances-conjuros
+Respuesta: array de `IdNombre`
+
+Endpoint: GET /descriptores
+Respuesta: array de `IdNombre`
+
+Endpoint: GET /subdisciplinas
+Respuesta: array de `SubdisciplinaCatalogo`
+
+SubdisciplinaCatalogo
+| Campo | Tipo | Descripcion |
+| --- | --- | --- |
+| i | number | Id de subdisciplina |
+| n | string | Nombre |
+| id_disciplina | number | Disciplina a la que pertenece la fila |
 
 Endpoint: GET /escuelas
 Respuesta: array de `EscuelaConjuro`

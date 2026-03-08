@@ -88,6 +88,7 @@ import { ListadoMonstruosComponent } from './components/shared/listado-monstruos
 import { DetallesMonstruoComponent } from './components/detalles/detalles-monstruo/detalles-monstruo.component';
 import { FichasDescargaToastHostComponent } from './components/shared/fichas-descarga-toast-host/fichas-descarga-toast-host.component';
 import { NuevaDoteComponent } from './components/shared/nueva-dote/nueva-dote.component';
+import { NuevaConjuroComponent } from './components/shared/nueva-conjuro/nueva-conjuro.component';
 import { PrerrequisitoCatalogEditorComponent } from './components/shared/prerrequisito-editor/prerrequisito-catalog-editor.component';
 import { PrerrequisitoCatalogValueEditorComponent } from './components/shared/prerrequisito-editor/prerrequisito-catalog-value-editor.component';
 import { PrerrequisitoEditorHostComponent } from './components/shared/prerrequisito-editor/prerrequisito-editor-host.component';
@@ -163,6 +164,7 @@ import { ListadoDeidadesComponent } from './components/shared/listado-deidades/l
         ListadoDeidadesComponent,
         FichasDescargaToastHostComponent,
         NuevaDoteComponent,
+        NuevaConjuroComponent,
         PrerrequisitoEditorHostComponent,
         PrerrequisitoFlagEditorComponent,
         PrerrequisitoValueEditorComponent,
