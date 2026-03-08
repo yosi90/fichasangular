@@ -212,6 +212,17 @@ describe('DetallesPersonajeComponent', () => {
         expect(html).toContain('Int/Sab/Car +1');
     });
 
+    it('convierte altura a metros cuando llega en centímetros', () => {
+        component.pj.Raza.Nombre = 'Azotamentes';
+        component.pj.Altura = 170;
+
+        fixture.detectChanges();
+
+        const html = `${fixture.nativeElement.textContent ?? ''}`;
+        expect(html).toContain('Altura 1.70 m');
+        expect(html).not.toContain('Altura 170 m');
+    });
+
     it('muestra subtipos válidos y oculta placeholders', () => {
         component.pj.Raza.Nombre = 'Aasimar';
         component.pj.Subtipos = [
@@ -250,6 +261,26 @@ describe('DetallesPersonajeComponent', () => {
         expect(html).not.toContain('Base:');
     });
 
+    it('las subchips de plantilla no llevan estilo warm', () => {
+        component.pj.Raza.Nombre = 'Humano';
+        component.pj.Plantillas = [{
+            Id: 1,
+            Nombre: 'Liche',
+            Multiplicador_dgs_lic: 0,
+            Tipo_dgs_lic: 'd12',
+            Suma_dgs_lic: 0,
+            Ajuste_nivel: 4,
+            Heredada: false,
+        } as any];
+
+        fixture.detectChanges();
+
+        const chips = Array.from(fixture.nativeElement.querySelectorAll('mat-chip.chip-plantilla-subinfo')) as HTMLElement[];
+        const subchip = chips.find((chip) => `${chip.textContent ?? ''}`.includes('Ajuste de nivel +4'));
+        expect(subchip).withContext(fixture.nativeElement.innerHTML).toBeDefined();
+        expect(subchip?.classList.contains('warm')).toBeFalse();
+    });
+
     it('calcula madurez venerable y modificadores de edad como en C#', () => {
         component.pj.Edad = 95;
         component.pj.Raza.Edad_mediana = 40;
@@ -284,6 +315,18 @@ describe('DetallesPersonajeComponent', () => {
     it('no emite detalle de ventaja cuando el nombre no es válido', () => {
         const emitSpy = spyOn(component.ventajaDetallesPorNombre, 'emit');
         component.verDetallesVentajaPorNombre({ nombre: '   ' });
+        expect(emitSpy).not.toHaveBeenCalled();
+    });
+
+    it('emite detalle de deidad cuando el nombre es válido', () => {
+        const emitSpy = spyOn(component.deidadDetallesPorNombre, 'emit');
+        component.verDetallesDeidadPorNombre('Heironeous');
+        expect(emitSpy).toHaveBeenCalledWith('Heironeous');
+    });
+
+    it('no emite detalle de deidad cuando el nombre es no aplicable', () => {
+        const emitSpy = spyOn(component.deidadDetallesPorNombre, 'emit');
+        component.verDetallesDeidadPorNombre('No tener deidad');
         expect(emitSpy).not.toHaveBeenCalled();
     });
 
@@ -491,7 +534,7 @@ describe('DetallesPersonajeComponent', () => {
         expect(emitSpy).toHaveBeenCalledWith('Mago');
     });
 
-    it('renderiza familiares y companeros animales cuando existen en el personaje', () => {
+    it('renderiza familiares y compañeros animales cuando existen en el personaje', () => {
         component.pj.Familiares = [
             { Id: 101, Nombre: 'Cuervo sabio' } as any,
         ];
@@ -502,12 +545,12 @@ describe('DetallesPersonajeComponent', () => {
         fixture.detectChanges();
 
         const html = `${fixture.nativeElement.textContent ?? ''}`;
-        expect(html).toContain('Familiares y companeros animales');
+        expect(html).toContain('Familiares y compañeros animales');
         expect(html).toContain('Cuervo sabio');
         expect(html).toContain('Lobo fiel');
     });
 
-    it('emite detalle de monstruo al abrir un familiar o companero', () => {
+    it('emite detalle de monstruo al abrir un familiar o compañero', () => {
         const emitSpy = spyOn(component.monstruoDetalles, 'emit');
         const monstruo = { Id: 77, Nombre: 'Gato infernal' } as any;
 

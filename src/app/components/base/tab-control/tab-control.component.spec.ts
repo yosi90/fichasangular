@@ -6,6 +6,12 @@ function crearComponente(overrides?: { pSvc?: any; }): TabControlComponent {
     const userSvc = { Usuario: { permisos: 0 }, permisos$: of(0) } as any;
     const ngZone = { run: (fn: () => void) => fn() } as any;
     const monstruoSvc = { getMonstruo: jasmine.createSpy('getMonstruo').and.returnValue(of({ Id: 90, Nombre: 'Grifo' })) } as any;
+    const armaSvc = { getArma: jasmine.createSpy('getArma').and.returnValue(of({ Id: 70, Nombre: 'Espada larga' })) } as any;
+    const armaduraSvc = { getArmadura: jasmine.createSpy('getArmadura').and.returnValue(of({ Id: 71, Nombre: 'Escudo pesado', Es_escudo: true })) } as any;
+    const deidadSvc = {
+        getDeidad: jasmine.createSpy('getDeidad').and.returnValue(of({ Id: 72, Nombre: 'Heironeous' })),
+        getDeidades: jasmine.createSpy('getDeidades').and.returnValue(of([{ Id: 72, Nombre: 'Heironeous' }])),
+    } as any;
     const pSvc = overrides?.pSvc ?? {} as any;
     const component = new TabControlComponent(
         userSvc,
@@ -21,8 +27,11 @@ function crearComponente(overrides?: { pSvc?: any; }): TabControlComponent {
         {} as any,
         {} as any,
         {} as any,
-        {} as any,
         monstruoSvc,
+        armaSvc,
+        armaduraSvc,
+        deidadSvc,
+        {} as any,
         {} as any,
         {} as any,
         {} as any,
@@ -52,6 +61,9 @@ function crearComponente(overrides?: { pSvc?: any; }): TabControlComponent {
         (component.detallesPlantillaAbiertos ?? []).forEach((plantilla: any) => tabs.push({ textLabel: component.getEtiquetaPlantilla(plantilla) }));
         (component.detallesSubtipoAbiertos ?? []).forEach((subtipo: any) => tabs.push({ textLabel: component.getEtiquetaSubtipo(subtipo) }));
         (component.detallesMonstruoAbiertos ?? []).forEach((monstruo: any) => tabs.push({ textLabel: component.getEtiquetaMonstruo(monstruo) }));
+        (component.detallesArmaAbiertos ?? []).forEach((arma: any) => tabs.push({ textLabel: component.getEtiquetaArma(arma) }));
+        (component.detallesArmaduraAbiertos ?? []).forEach((armadura: any) => tabs.push({ textLabel: component.getEtiquetaArmadura(armadura) }));
+        (component.detallesDeidadAbiertos ?? []).forEach((deidad: any) => tabs.push({ textLabel: component.getEtiquetaDeidad(deidad) }));
         tabs.push({ textLabel: 'Información importante' });
         return tabs;
     };
@@ -162,6 +174,41 @@ describe('TabControlComponent navegación por origen', () => {
         expect(component.detallesMonstruoAbiertos.length).toBe(1);
         expect((component as any).activeTabKey).toBe('monstruo:21');
     }));
+
+    it('abre detalle de arma desde listado dinámico', fakeAsync(() => {
+        const component = crearComponente();
+        const arma = { Id: 31, Nombre: 'Espada larga' } as any;
+
+        component.recibirObjetoListado({ item: arma, tipo: 'armas' });
+        tick(120);
+
+        expect(component.detallesArmaAbiertos.length).toBe(1);
+        expect((component as any).activeTabKey).toBe('arma:31');
+    }));
+
+    it('abre detalle de armadura por id', () => {
+        const component = crearComponente();
+
+        component.abrirDetallesArmaduraPorId(71);
+
+        expect(component.detallesArmaduraAbiertos.length).toBe(1);
+    });
+
+    it('abre detalle de deidad por id', () => {
+        const component = crearComponente();
+
+        component.abrirDetallesDeidadPorId(72);
+
+        expect(component.detallesDeidadAbiertos.length).toBe(1);
+    });
+
+    it('abre detalle de deidad por nombre', () => {
+        const component = crearComponente();
+
+        component.abrirDetallesDeidadPorNombre('Heironeous');
+
+        expect(component.detallesDeidadAbiertos.length).toBe(1);
+    });
 
     it('navegación desde manual enruta tipo monstruo por id', () => {
         const component = crearComponente();

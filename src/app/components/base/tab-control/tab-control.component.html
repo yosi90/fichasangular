@@ -37,6 +37,7 @@
             (subtipoDetalles)="abrirDetallesSubtipoDesdeReferencia($event);"
             (ventajaDetallesPorNombre)="abrirDetallesVentajaDesdeReferencia($event);"
             (monstruoDetalles)="abrirDetallesMonstruo($event);"
+            (deidadDetallesPorNombre)="abrirDetallesDeidadPorNombre($event);"
             (doteDetalles)="abrirDetallesDote($event);">
         </app-detalles-personaje>
     </mat-tab>
@@ -56,18 +57,31 @@
             (rasgoDetalles)="abrirDetallesRasgo($event)"
             (racialDetallesPorNombre)="abrirDetallesRacialDesdeReferencia($event)"
             (monstruoDetalles)="abrirDetallesMonstruo($event)"
+            (deidadDetallesPorNombre)="abrirDetallesDeidadPorNombre($event)"
             (ventajaDetallesPorNombre)="abrirDetallesVentajaDesdeReferencia($event)"
             (personajeFinalizado)="onNuevoPersonajeFinalizado($event)"
             (cerrarNuevoPersonajeSolicitado)="onCerrarNuevoPersonajeSolicitado()">
         </app-nuevo-personaje>
     </mat-tab>
-    <mat-tab label="Lista de {{ListadoTabTipo}}" *ngIf="AbrirListadoTab">
+    <mat-tab [label]="ListadoTabOperacion === 'insertar' && ListadoTabTipo === 'dotes' ? 'Insertar dotes' : 'Lista de ' + ListadoTabTipo" *ngIf="AbrirListadoTab">
         <ng-template mat-tab-label="">
             <mat-icon class="tw-me-2">view_list</mat-icon>
-            Lista de {{ListadoTabTipo}}
+            {{ListadoTabOperacion === 'insertar' && ListadoTabTipo === 'dotes' ? 'Insertar dotes' : 'Lista de ' + ListadoTabTipo}}
             <button (click)="quitarListado()" mat-icon-button class="tw-ms-2"><mat-icon>close</mat-icon></button>
         </ng-template>
-        <app-listado (abrirDetalles)="recibirObjetoListado($event)" (itemSeleccionado)="recibirObjetoListado($event)" [tipoLista]="ListadoTabTipo" [tipoOperacion]="ListadoTabOperacion"></app-listado>
+        <ng-container *ngIf="ListadoTabOperacion === 'insertar' && ListadoTabTipo === 'dotes'; else listadoGenerico">
+            <div class="insercion-dotes-shell">
+                <app-nueva-dote></app-nueva-dote>
+            </div>
+        </ng-container>
+        <ng-template #listadoGenerico>
+            <app-listado
+                (abrirDetalles)="recibirObjetoListado($event)"
+                (itemSeleccionado)="recibirObjetoListado($event)"
+                [tipoLista]="ListadoTabTipo"
+                [tipoOperacion]="ListadoTabOperacion">
+            </app-listado>
+        </ng-template>
     </mat-tab>
     <mat-tab *ngFor="let manual of detallesManualAbiertos; let index = index" [label]="getEtiquetaManual(manual)">
         <ng-template mat-tab-label>
@@ -136,7 +150,9 @@
             (especialDetalles)="abrirDetallesEspecialPorId($event)"
             (especialDetallesPorNombre)="abrirDetallesEspecialPorNombre($event)"
             (doteDetalles)="abrirDetallesDotePorId($event)"
-            (doteDetallesPorNombre)="abrirDetallesDotePorNombre($event)">
+            (doteDetallesPorNombre)="abrirDetallesDotePorNombre($event)"
+            (armaDetallesId)="abrirDetallesArmaPorId($event)"
+            (armaduraDetallesId)="abrirDetallesArmaduraPorId($event)">
         </app-detalles-clase>
     </mat-tab>
     <mat-tab *ngFor="let especial of detallesEspecialAbiertos; let index = index" [label]="getEtiquetaEspecial(especial)">
@@ -168,7 +184,11 @@
             {{getEtiquetaDote(doteCtx)}}
             <button (click)="quitarDetallesDote(doteCtx)" mat-icon-button class="tw-ms-2"><mat-icon>close</mat-icon></button>
         </ng-template>
-        <app-detalles-dote [dote]="detallesDoteAbiertos[index]"></app-detalles-dote>
+        <app-detalles-dote
+            [dote]="detallesDoteAbiertos[index]"
+            (armaDetallesId)="abrirDetallesArmaPorId($event)"
+            (armaduraDetallesId)="abrirDetallesArmaduraPorId($event)">
+        </app-detalles-dote>
     </mat-tab>
     <mat-tab *ngFor="let ventaja of detallesVentajaAbiertos; let index = index" [label]="getEtiquetaVentaja(ventaja)">
         <ng-template mat-tab-label>
@@ -221,6 +241,33 @@
             (tipoCriaturaDetallesId)="abrirDetallesTipoCriaturaPorId($event)"
             (monstruoRelacionadoDetalles)="abrirDetallesMonstruo($event)">
         </app-detalles-monstruo>
+    </mat-tab>
+    <mat-tab *ngFor="let arma of detallesArmaAbiertos; let index = index" [label]="getEtiquetaArma(arma)">
+        <ng-template mat-tab-label>
+            <mat-icon class="tw-me-2">gavel</mat-icon>
+            {{getEtiquetaArma(arma)}}
+            <button (click)="quitarDetallesArma(arma)" mat-icon-button class="tw-ms-2"><mat-icon>close</mat-icon></button>
+        </ng-template>
+        <app-detalles-arma [arma]="detallesArmaAbiertos[index]"></app-detalles-arma>
+    </mat-tab>
+    <mat-tab *ngFor="let armadura of detallesArmaduraAbiertos; let index = index" [label]="getEtiquetaArmadura(armadura)">
+        <ng-template mat-tab-label>
+            <mat-icon class="tw-me-2">shield</mat-icon>
+            {{getEtiquetaArmadura(armadura)}}
+            <button (click)="quitarDetallesArmadura(armadura)" mat-icon-button class="tw-ms-2"><mat-icon>close</mat-icon></button>
+        </ng-template>
+        <app-detalles-armadura [armadura]="detallesArmaduraAbiertos[index]"></app-detalles-armadura>
+    </mat-tab>
+    <mat-tab *ngFor="let deidad of detallesDeidadAbiertos; let index = index" [label]="getEtiquetaDeidad(deidad)">
+        <ng-template mat-tab-label>
+            <mat-icon class="tw-me-2">church</mat-icon>
+            {{getEtiquetaDeidad(deidad)}}
+            <button (click)="quitarDetallesDeidad(deidad)" mat-icon-button class="tw-ms-2"><mat-icon>close</mat-icon></button>
+        </ng-template>
+        <app-detalles-deidad
+            [deidad]="detallesDeidadAbiertos[index]"
+            (armaDetallesId)="abrirDetallesArmaPorId($event)">
+        </app-detalles-deidad>
     </mat-tab>
     <mat-tab label="Información importante" class="tw-pe-4">
         <ng-template mat-tab-label="">
@@ -284,7 +331,18 @@
                     <li><p class="tw-flex tw-items-center tw-mb-0">Creada la gestión de usuarios en admin panel <mat-icon class="tw-ms-2">done</mat-icon></p></li>
                 </ol>
                 <hr><hr>
-                <p class="tw-flex tw-items-center tw-mb-0">Versión 0.6 - Usuario importa</p>
+                <p class="tw-flex tw-items-center tw-mb-0">Versión 0.6 - En las nubes</p>
+                <hr>
+                <ol>
+                    <li><p class="tw-flex tw-items-center tw-mb-0">Hostear la base de datos</p></li>
+                    <li><p class="tw-flex tw-items-center tw-mb-0">Hostear la api</p></li>
+                    <li><p class="tw-flex tw-items-center tw-mb-0">Configurar la api para que ataque a la base de datos hosteada</p></li>
+                    <li><p class="tw-flex tw-items-center tw-mb-0">Implementar seguridad en la api y la base de datos</p></li>
+                    <li><p class="tw-flex tw-items-center tw-mb-0">Configurar la app para que ataque a la api hosteada</p></li>
+                    <li><p class="tw-flex tw-items-center tw-mb-0">Configurar bien los permisos de firebase realtime database</p></li>
+                </ol>
+                <hr><hr>
+                <p class="tw-flex tw-items-center tw-mb-0">Versión 0.7 - Usuario importa</p>
                 <hr>
                 <ol>
                     <li><p class="tw-flex tw-items-center tw-mb-0">Mejorada la gestión de usuarios</p></li>
@@ -294,7 +352,7 @@
                     <li><p class="tw-flex tw-items-center tw-mb-0">Creado el perfil de usuario</p></li>
                 </ol>
                 <hr><hr>
-                <p class="tw-flex tw-items-center tw-mb-0">Versión 0.7 - Las inserciones son complejas</p>
+                <p class="tw-flex tw-items-center tw-mb-0">Versión 0.8 - Las inserciones son complejas</p>
                 <hr>
                 <ol>
                     <li><p class="tw-flex tw-items-center tw-mb-0">Creada la inserción de Razas</p></li>

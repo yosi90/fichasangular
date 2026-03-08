@@ -38,6 +38,8 @@ import { AdminUserRow, AdminUsersService } from 'src/app/services/admin-users.se
 import { PERMISSION_RESOURCES, PermissionResource, UserRole } from 'src/app/interfaces/user-acl';
 import { EnemigoPredilectoService } from 'src/app/services/enemigo-predilecto.service';
 import { MonstruoService } from 'src/app/services/monstruo.service';
+import { ExtraService } from 'src/app/services/extra.service';
+import { TamanoService } from 'src/app/services/tamano.service';
 
 interface SyncItemConfig {
     key: CacheEntityKey;
@@ -99,6 +101,7 @@ export class AdminPanelComponent implements OnInit, OnDestroy {
         private coSvc: ConjuroService,
         private escSvc: EscuelaConjurosService,
         private disSvc: DisciplinaConjurosService,
+        private extraSvc: ExtraService,
         private aSvc: AlineamientoService,
         private plSvc: PlantillaService,
         private doSvc: DoteService,
@@ -111,6 +114,7 @@ export class AdminPanelComponent implements OnInit, OnDestroy {
         private monstruoSvc: MonstruoService,
         private armaSvc: ArmaService,
         private armaduraSvc: ArmaduraService,
+        private tamanoSvc: TamanoService,
         private grupoArmaSvc: GrupoArmaService,
         private grupoArmaduraSvc: GrupoArmaduraService,
         private dominioSvc: DominioService,
@@ -137,6 +141,7 @@ export class AdminPanelComponent implements OnInit, OnDestroy {
             subtipos: () => this.subtipoSvc.RenovarSubtipos(),
             rasgos: () => this.raSvc.RenovarRasgos(),
             conjuros: () => this.coSvc.RenovarConjuros(),
+            extras: () => this.extraSvc.RenovarExtras(),
             dotes: () => this.doSvc.RenovarDotes(),
             clases: () => this.clSvc.RenovarClases(),
             especiales: () => this.espSvc.RenovarEspeciales(),
@@ -153,6 +158,7 @@ export class AdminPanelComponent implements OnInit, OnDestroy {
             habilidades_custom: () => this.habSvc.RenovarHabilidadesCustom(),
             idiomas: () => this.idiSvc.RenovarIdiomas(),
             enemigos_predilectos: () => this.enemigoPredilectoSvc.RenovarEnemigosPredilectos(),
+            tamanos: () => this.tamanoSvc.RenovarTamanos(),
             armas: () => this.armaSvc.RenovarArmas(),
             armaduras: () => this.armaduraSvc.RenovarArmaduras(),
             grupos_armas: () => this.grupoArmaSvc.RenovarGruposArmas(),

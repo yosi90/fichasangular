@@ -1,0 +1,21 @@
+<div class="prereq-row-grid">
+    <mat-form-field appearance="fill">
+        <mat-label>{{definition.valueLabel || 'Valor'}}</mat-label>
+        <input
+            matInput
+            type="number"
+            [value]="row.valor"
+            [disabled]="disabled"
+            (input)="patchChange.emit({ valor: +$any($event.target).value || 0 })">
+    </mat-form-field>
+
+    <mat-form-field appearance="fill">
+        <mat-label>Combinacion (opcional)</mat-label>
+        <input
+            matInput
+            type="number"
+            [value]="row.opcional"
+            [disabled]="disabled"
+            (input)="patchChange.emit({ opcional: +$any($event.target).value || 0 })">
+    </mat-form-field>
+</div>

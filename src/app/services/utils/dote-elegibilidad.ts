@@ -653,8 +653,8 @@ function buildEvaluacionTamano(entry: Record<string, any>, ctx: DoteEvaluacionCo
         cumple: evaluable ? (maximo ? actual <= requerido : actual >= requerido) : false,
         razonFail: maximo ? 'No cumple tamaño máximo' : 'No cumple tamaño mínimo',
         razonUnknown: maximo
-            ? 'Prerrequisito tamano_maximo con formato no reconocido'
-            : 'Prerrequisito tamano_minimo con formato no reconocido',
+            ? 'Prerrequisito de tamaño máximo con formato no reconocido'
+            : 'Prerrequisito de tamaño mínimo con formato no reconocido',
     };
 }
 
@@ -1080,7 +1080,7 @@ function evaluateFamily(
             evaluable: true,
             cumple: !!ctx.puedeSeleccionarCompanero,
             razonFail: 'No puede seleccionar compañero animal',
-            razonUnknown: 'Prerrequisito poder_seleccionar_companero no interpretable',
+            razonUnknown: 'Prerrequisito de poder elegir compañero no interpretable',
         }));
     }
     if (keyNorm === 'poder_seleccionar_familiar') {

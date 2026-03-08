@@ -1,0 +1,76 @@
+<div id="container-lista" class="tw-w-full tw-bg-[#212529] tw-h-full">
+    <div class="lista-row tw-w-full tw-relative tw-flex tw-justify-center tw-items-center">
+        <button id="filtros" matTooltip="Filtros de armas" #filtros mat-icon-button
+            [matMenuTriggerFor]="menuArmas" class="filtros">
+            <mat-icon>filter_alt</mat-icon>
+        </button>
+        <mat-menu id="containerMenu" #menuArmas="matMenu" class="tw-me-1 menu-filtros-estandar menu-armas-filtros">
+            <div id="menu">
+                <mat-form-field (click)="$event.stopPropagation();" (keyup)="filtroArmas();">
+                    <mat-label>Incluye texto</mat-label>
+                    <input #armaTextInc matInput placeholder="Texto a buscar">
+                </mat-form-field>
+                <mat-form-field (click)="$event.stopPropagation();">
+                    <mat-label>Manual</mat-label>
+                    <mat-select appearance="fill" [(value)]="defaultManual" (selectionChange)="filtroArmas();">
+                        <mat-option [value]="'Cualquiera'">Cualquiera</mat-option>
+                        <mat-option *ngFor="let m of manuales" [value]="m.Nombre">{{m.Nombre}}</mat-option>
+                    </mat-select>
+                </mat-form-field>
+                <mat-form-field (click)="$event.stopPropagation();">
+                    <mat-label>Tipo de arma</mat-label>
+                    <mat-select appearance="fill" [(value)]="defaultTipoArma" (selectionChange)="filtroArmas();">
+                        <mat-option *ngFor="let tipo of tiposArma" [value]="tipo">{{tipo}}</mat-option>
+                    </mat-select>
+                </mat-form-field>
+            </div>
+            <div class="filtros-chips">
+                <mat-chip-option color="warn" class="filtro-chip"
+                    [selected]="homebrewActivo"
+                    (click)="$event.stopPropagation(); AlternarArmasHombrew();">{{anuncioHomebrew}}</mat-chip-option>
+            </div>
+        </mat-menu>
+
+        <table id="armas" #tablaArmas mat-table [dataSource]="armasDS" matSort *ngIf="armas.length > 0; else cargando">
+            <ng-container matColumnDef="{{column}}" *ngFor="let column of armaColumns">
+                <th class="tw-text-lg tw-font-medium" mat-header-cell *matHeaderCellDef mat-sort-header
+                    sortActionDescription="Ordenar por {{getColumnLabel(column)}}">
+                    {{getColumnLabel(column)}}
+                </th>
+                <td mat-cell *matCellDef="let element">
+                    <button type="button" class="manual-clickable" *ngIf="column == 'Manual'"
+                        (click)="abrirDetalleManual(element, $event)">
+                        {{getManualVisible(element)}}
+                    </button>
+                    <button mat-stroked-button matTooltip="Clic para ver esta arma" [matTooltipShowDelay]="200"
+                        *ngIf="column == 'Nombre'" color="accent" class="tw-flex tw-justify-start sombra3d tw-w-full"
+                        (click)="verDetallesArma(element.Id); $event.stopPropagation();">
+                        <mat-icon>read_more</mat-icon>
+                        {{element[column]}}
+                    </button>
+                    <span *ngIf="column == 'Tipo_arma'">{{element.Tipo_arma?.Nombre}}</span>
+                    <span *ngIf="column == 'Tipo_dano'">{{element.Tipo_dano?.Nombre}}</span>
+                </td>
+            </ng-container>
+            <tr mat-header-row *matHeaderRowDef="armaColumns; sticky: true"></tr>
+            <tr mat-row *matRowDef="let element; columns: armaColumns;" class="element-row elegir"
+                (click)="seleccionarArma(element.Id)"></tr>
+            <tr class="mat-row" *matNoDataRow>
+                <td class="mat-cell tw-text-center tw-text-white tw-p-3" [attr.colspan]="armaColumns.length">
+                    Ninguna arma encaja con los filtros
+                </td>
+            </tr>
+        </table>
+        <ng-template #cargando>
+            <div class="superballs">
+                <div class="superballs__dot"></div>
+                <div class="superballs__dot"></div>
+            </div>
+        </ng-template>
+    </div>
+    <div class="lista-row tw-w-full tw-flex tw-items-center">
+        <mat-paginator class="tw-w-full" [pageSizeOptions]="[10, 20, 30, 40]" showFirstLastButtons
+            aria-label="Selecciona una página de armas">
+        </mat-paginator>
+    </div>
+</div>

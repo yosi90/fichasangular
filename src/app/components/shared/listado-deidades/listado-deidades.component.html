@@ -1,0 +1,80 @@
+<div id="container-lista" class="tw-w-full tw-bg-[#212529] tw-h-full">
+    <div class="lista-row tw-w-full tw-relative tw-flex tw-justify-center tw-items-center">
+        <button id="filtros" matTooltip="Filtros de deidades" #filtros mat-icon-button
+            [matMenuTriggerFor]="menuDeidades" class="filtros">
+            <mat-icon>filter_alt</mat-icon>
+        </button>
+        <mat-menu id="containerMenu" #menuDeidades="matMenu" class="tw-me-1 menu-filtros-estandar menu-deidades-filtros">
+            <div id="menu">
+                <mat-form-field (click)="$event.stopPropagation();" (keyup)="filtroDeidades();">
+                    <mat-label>Incluye texto</mat-label>
+                    <input #deidadTextInc matInput placeholder="Texto a buscar">
+                </mat-form-field>
+                <mat-form-field (click)="$event.stopPropagation();">
+                    <mat-label>Manual</mat-label>
+                    <mat-select appearance="fill" [(value)]="defaultManual" (selectionChange)="filtroDeidades();">
+                        <mat-option [value]="'Cualquiera'">Cualquiera</mat-option>
+                        <mat-option *ngFor="let manual of manuales" [value]="manual.Nombre">{{manual.Nombre}}</mat-option>
+                    </mat-select>
+                </mat-form-field>
+                <mat-form-field (click)="$event.stopPropagation();">
+                    <mat-label>Alineamiento</mat-label>
+                    <mat-select appearance="fill" [(value)]="defaultAlineamiento" (selectionChange)="filtroDeidades();">
+                        <mat-option *ngFor="let alineamiento of alineamientos" [value]="alineamiento">{{alineamiento}}</mat-option>
+                    </mat-select>
+                </mat-form-field>
+                <mat-form-field (click)="$event.stopPropagation();">
+                    <mat-label>Pabellón</mat-label>
+                    <mat-select appearance="fill" [(value)]="defaultPabellon" (selectionChange)="filtroDeidades();">
+                        <mat-option *ngFor="let pabellon of pabellones" [value]="pabellon">{{pabellon}}</mat-option>
+                    </mat-select>
+                </mat-form-field>
+            </div>
+            <div class="filtros-chips">
+                <mat-chip-option color="warn" class="filtro-chip" [selected]="homebrewActivo"
+                    (click)="$event.stopPropagation(); alternarHomebrew();">{{anuncioHomebrew}}</mat-chip-option>
+            </div>
+        </mat-menu>
+
+        <table id="deidades" #tablaDeidades mat-table [dataSource]="deidadesDS" matSort *ngIf="deidades.length > 0; else cargando">
+            <ng-container matColumnDef="{{column}}" *ngFor="let column of deidadColumns">
+                <th class="tw-text-lg tw-font-medium" mat-header-cell *matHeaderCellDef mat-sort-header
+                    sortActionDescription="Ordenar por {{column}}">
+                    {{column}}
+                </th>
+                <td mat-cell *matCellDef="let element">
+                    <button type="button" class="manual-clickable" *ngIf="column == 'Manual'"
+                        (click)="abrirDetalleManual(element, $event)">
+                        {{getManualVisible(element)}}
+                    </button>
+                    <button mat-stroked-button matTooltip="Clic para ver esta deidad" [matTooltipShowDelay]="200"
+                        *ngIf="column == 'Nombre'" color="accent" class="tw-flex tw-justify-start sombra3d tw-w-full"
+                        (click)="verDetallesDeidad(element.Id); $event.stopPropagation();">
+                        <mat-icon>read_more</mat-icon>
+                        {{element[column]}}
+                    </button>
+                    <span *ngIf="column == 'Alineamiento'">{{element.Alineamiento?.Nombre}}</span>
+                </td>
+            </ng-container>
+            <tr mat-header-row *matHeaderRowDef="deidadColumns; sticky: true"></tr>
+            <tr mat-row *matRowDef="let element; columns: deidadColumns;" class="element-row elegir"
+                (click)="seleccionarDeidad(element.Id)"></tr>
+            <tr class="mat-row" *matNoDataRow>
+                <td class="mat-cell tw-text-center tw-text-white tw-p-3" [attr.colspan]="deidadColumns.length">
+                    Ninguna deidad encaja con los filtros
+                </td>
+            </tr>
+        </table>
+        <ng-template #cargando>
+            <div class="superballs">
+                <div class="superballs__dot"></div>
+                <div class="superballs__dot"></div>
+            </div>
+        </ng-template>
+    </div>
+    <div class="lista-row tw-w-full tw-flex tw-items-center">
+        <mat-paginator class="tw-w-full" [pageSizeOptions]="[10, 20, 30, 40]" showFirstLastButtons
+            aria-label="Selecciona una página de deidades">
+        </mat-paginator>
+    </div>
+</div>

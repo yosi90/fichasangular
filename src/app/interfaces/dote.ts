@@ -13,10 +13,13 @@ export interface DoteManual {
 export interface DoteExtraItem {
     Id: number;
     Nombre: string;
+    Es_escudo?: boolean;
 }
 
 export interface DoteExtrasSoportados {
     Extra_arma: number;
+    Extra_armadura_armaduras?: number;
+    Extra_armadura_escudos?: number;
     Extra_armadura: number;
     Extra_escuela: number;
     Extra_habilidad: number;

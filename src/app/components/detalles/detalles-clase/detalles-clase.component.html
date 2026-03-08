@@ -90,7 +90,10 @@
                     <div class="tw-w-full tw-p-2" *ngIf="getCompetenciasVisibles('Armas').length > 0">
                         <mat-chip class="tw-w-full sombra-caja-sm tw-m-1 tw-mb-2 chip-titulo">Armas</mat-chip>
                         <mat-chip-set class="tw-m-1">
-                            <mat-chip class="tw-h-auto chip-anidada sombra3d-sm tw-m-1" *ngFor="let item of getCompetenciasVisibles('Armas')">
+                            <mat-chip class="tw-h-auto chip-anidada sombra3d-sm tw-m-1"
+                                [ngClass]="esCompetenciaNavegable('Armas', item) ? 'chip-clic' : ''"
+                                *ngFor="let item of getCompetenciasVisibles('Armas')"
+                                (click)="abrirDetalleCompetencia('Armas', item)">
                                 {{item.nombre}}
                                 <mat-chip class="sombra3d-sm tw-m-1" *ngFor="let extra of item.extras">{{extra}}</mat-chip>
                                 <mat-chip class="sombra3d-sm tw-m-1" *ngIf="tieneTextoVisible(item.detalle)">{{item.detalle}}</mat-chip>
@@ -100,7 +103,10 @@
                     <div class="tw-w-full tw-p-2" *ngIf="getCompetenciasVisibles('Armaduras').length > 0">
                         <mat-chip class="tw-w-full sombra-caja-sm tw-m-1 tw-mb-2 chip-titulo">Armaduras</mat-chip>
                         <mat-chip-set class="tw-m-1">
-                            <mat-chip class="tw-h-auto chip-anidada sombra3d-sm tw-m-1" *ngFor="let item of getCompetenciasVisibles('Armaduras')">
+                            <mat-chip class="tw-h-auto chip-anidada sombra3d-sm tw-m-1"
+                                [ngClass]="esCompetenciaNavegable('Armaduras', item) ? 'chip-clic' : ''"
+                                *ngFor="let item of getCompetenciasVisibles('Armaduras')"
+                                (click)="abrirDetalleCompetencia('Armaduras', item)">
                                 {{item.nombre}}
                                 <mat-chip class="sombra3d-sm tw-m-1" *ngFor="let extra of item.extras">{{extra}}</mat-chip>
                                 <mat-chip class="sombra3d-sm tw-m-1" *ngIf="tieneTextoVisible(item.detalle)">{{item.detalle}}</mat-chip>
@@ -185,7 +191,10 @@
                                         </mat-chip>
                                     </ng-container>
                                     <ng-template #chipsPrerrequisitoGenericos>
-                                        <mat-chip class="sombra3d-sm tw-m-1" *ngFor="let campo of campos">
+                                        <mat-chip class="sombra3d-sm tw-m-1"
+                                            [ngClass]="tienePrerrequisitoNavegable(familia.clave, item) ? 'chip-clic' : ''"
+                                            *ngFor="let campo of campos"
+                                            (click)="abrirDetallePrerrequisito(familia.clave, item)">
                                             {{campo.etiqueta}}: {{campo.valor}}
                                         </mat-chip>
                                     </ng-template>

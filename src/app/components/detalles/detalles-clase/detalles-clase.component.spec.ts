@@ -162,6 +162,18 @@ describe('DetallesClaseComponent', () => {
         expect(texto).not.toContain('Nivel max poder accesible');
     });
 
+    it('oculta inherente de los prerrequisitos visibles', () => {
+        component.clase = crearClaseMock({
+            Prerrequisitos: {
+                ...crearClaseMock().Prerrequisitos,
+                inherente: [{ Id_especial: 4, Clase_especial: 'Legado antiguo' }],
+                competencia_arma: [{ Id_arma: 8, Nombre: 'Alabarda' }],
+            },
+        });
+
+        expect(component.getPrerrequisitosActivos().map((item) => item.clave)).toEqual(['competencia_arma']);
+    });
+
     it('separa el extra de especial en subchip y navega por nombre cuando falta id', () => {
         component.clase = crearClaseMock({
             Desglose_niveles: [{
@@ -284,5 +296,36 @@ describe('DetallesClaseComponent', () => {
         expect(render.length).toBe(1);
         expect(render[0].tipoRender).toBe('grupo_opcional');
         expect(render[0].opciones.length).toBe(2);
+    });
+
+    it('emite detalle de arma desde competencia navegable', () => {
+        component.clase = crearClaseMock({
+            Competencias: {
+                Armas: [{ Id_arma: 8, Nombre: 'Espada larga' }],
+                Armaduras: [],
+                Grupos_arma: [],
+                Grupos_armadura: [],
+            },
+        });
+
+        const spy = spyOn(component.armaDetallesId, 'emit');
+        const item = component.getCompetenciasVisibles('Armas')[0];
+        component.abrirDetalleCompetencia('Armas', item);
+
+        expect(spy).toHaveBeenCalledWith(8);
+    });
+
+    it('emite detalle de armadura desde prerrequisito navegable', () => {
+        component.clase = crearClaseMock({
+            Prerrequisitos: {
+                ...crearClaseMock().Prerrequisitos,
+                competencia_armadura: [{ Id_armadura: 5, Nombre: 'Escudo pesado' }],
+            },
+        });
+
+        const spy = spyOn(component.armaduraDetallesId, 'emit');
+        component.abrirDetallePrerrequisito('competencia_armadura', { Id_armadura: 5, Nombre: 'Escudo pesado' } as any);
+
+        expect(spy).toHaveBeenCalledWith(5);
     });
 });

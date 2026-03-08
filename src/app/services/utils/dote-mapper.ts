@@ -21,7 +21,8 @@ function asArray(raw: any): any[] {
 function normalizeExtraItems(raw: any): DoteExtraItem[] {
     return asArray(raw).map(item => ({
         Id: toNumber(item?.Id, 0),
-        Nombre: item?.Nombre ?? ""
+        Nombre: item?.Nombre ?? "",
+        Es_escudo: toBoolean(item?.Es_escudo),
     }));
 }
 
@@ -34,6 +35,15 @@ function normalizeTipos(raw: any): DoteTipo[] {
 }
 
 export function normalizeDote(raw: any): Dote {
+    const extraArmaduraArmaduras = toNumber(
+        raw?.Extras_soportados?.Extra_armadura_armaduras,
+        toNumber(raw?.Extras_soportados?.Extra_armadura, 0)
+    );
+    const extraArmaduraEscudos = toNumber(
+        raw?.Extras_soportados?.Extra_armadura_escudos,
+        toNumber(raw?.Extras_soportados?.Extra_armadura, 0)
+    );
+
     let manual: DoteManual = {
         Id: 0,
         Nombre: "",
@@ -81,7 +91,9 @@ export function normalizeDote(raw: any): Dote {
         Oficial: toBoolean(raw?.Oficial),
         Extras_soportados: {
             Extra_arma: toNumber(raw?.Extras_soportados?.Extra_arma, 0),
-            Extra_armadura: toNumber(raw?.Extras_soportados?.Extra_armadura, 0),
+            Extra_armadura_armaduras: extraArmaduraArmaduras,
+            Extra_armadura_escudos: extraArmaduraEscudos,
+            Extra_armadura: Math.max(extraArmaduraArmaduras, extraArmaduraEscudos),
             Extra_escuela: toNumber(raw?.Extras_soportados?.Extra_escuela, 0),
             Extra_habilidad: toNumber(raw?.Extras_soportados?.Extra_habilidad, 0),
         },

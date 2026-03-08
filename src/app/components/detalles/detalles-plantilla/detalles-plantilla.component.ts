@@ -190,7 +190,7 @@ export class DetallesPlantillaComponent {
     getCambiosCombateTexto(): CambioTexto[] {
         const cambios: CambioTexto[] = [
             { etiqueta: 'CA', valor: `${this.plantillaData?.Ca ?? ''}` },
-            { etiqueta: 'Reduccion de dano', valor: `${this.plantillaData?.Reduccion_dano ?? ''}` },
+            { etiqueta: 'Reducción de daño', valor: `${this.plantillaData?.Reduccion_dano ?? ''}` },
             { etiqueta: 'Resistencia a conjuros', valor: `${this.plantillaData?.Resistencia_conjuros ?? ''}` },
             { etiqueta: 'Resistencia elemental', valor: `${this.plantillaData?.Resistencia_elemental ?? ''}` },
         ];

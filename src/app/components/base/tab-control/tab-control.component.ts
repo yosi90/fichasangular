@@ -38,6 +38,12 @@ import { VentajaService } from 'src/app/services/ventaja.service';
 import { combineLatest } from 'rxjs';
 import { MonstruoDetalle } from 'src/app/interfaces/monstruo';
 import { MonstruoService } from 'src/app/services/monstruo.service';
+import { ArmaDetalle } from 'src/app/interfaces/arma';
+import { ArmaduraDetalle } from 'src/app/interfaces/armadura';
+import { ArmaService } from 'src/app/services/arma.service';
+import { ArmaduraService } from 'src/app/services/armadura.service';
+import { DeidadDetalle } from 'src/app/interfaces/deidad';
+import { DeidadService } from 'src/app/services/deidad.service';
 
 @Component({
     selector: 'app-tab-control',
@@ -66,6 +72,9 @@ export class TabControlComponent implements OnInit, OnDestroy {
     detallesSubtipoAbiertos: SubtipoDetalle[] = [];
     detallesVentajaAbiertos: VentajaDetalle[] = [];
     detallesMonstruoAbiertos: MonstruoDetalle[] = [];
+    detallesArmaAbiertos: ArmaDetalle[] = [];
+    detallesArmaduraAbiertos: ArmaduraDetalle[] = [];
+    detallesDeidadAbiertos: DeidadDetalle[] = [];
     private readonly TAB_PERSONAJES = 'base:personajes';
     private readonly TAB_ADMIN = 'base:admin';
     private readonly TAB_NUEVO = 'base:nuevo';
@@ -91,6 +100,9 @@ export class TabControlComponent implements OnInit, OnDestroy {
         private subtipoSvc: SubtipoService,
         private ventajaSvc: VentajaService,
         private monstruoSvc: MonstruoService,
+        private armaSvc: ArmaService,
+        private armaduraSvc: ArmaduraService,
+        private deidadSvc: DeidadService,
         private nuevoPSvc: NuevoPersonajeService,
         private manualRefNavSvc: ManualReferenciaNavigationService,
         private manualVistaNavSvc: ManualVistaNavigationService,
@@ -203,6 +215,12 @@ export class TabControlComponent implements OnInit, OnDestroy {
             return;
         else if (this.detallesMonstruoAbiertos.map(m => this.getEtiquetaMonstruo(m)).includes(tabLabel) && this.quitarDetallesMonstruo(tabLabel))
             return;
+        else if (this.detallesArmaAbiertos.map(a => this.getEtiquetaArma(a)).includes(tabLabel) && this.quitarDetallesArma(tabLabel))
+            return;
+        else if (this.detallesArmaduraAbiertos.map(a => this.getEtiquetaArmadura(a)).includes(tabLabel) && this.quitarDetallesArmadura(tabLabel))
+            return;
+        else if (this.detallesDeidadAbiertos.map(d => this.getEtiquetaDeidad(d)).includes(tabLabel) && this.quitarDetallesDeidad(tabLabel))
+            return;
         else if (this.detallesManualAbiertos.map(m => this.getEtiquetaManual(m)).includes(tabLabel) && this.quitarDetallesManual(tabLabel))
             return;
         else if (tabLabel.includes('Nuevo personaje'))
@@ -234,6 +252,9 @@ export class TabControlComponent implements OnInit, OnDestroy {
         keys.push(...this.detallesPlantillaAbiertos.map((plantilla) => this.getPlantillaTabKey(plantilla)));
         keys.push(...this.detallesSubtipoAbiertos.map((subtipo) => this.getSubtipoTabKey(subtipo)));
         keys.push(...this.detallesMonstruoAbiertos.map((monstruo) => this.getMonstruoTabKey(monstruo)));
+        keys.push(...this.detallesArmaAbiertos.map((arma) => this.getArmaTabKey(arma)));
+        keys.push(...this.detallesArmaduraAbiertos.map((armadura) => this.getArmaduraTabKey(armadura)));
+        keys.push(...this.detallesDeidadAbiertos.map((deidad) => this.getDeidadTabKey(deidad)));
         keys.push(this.TAB_IMPORTANTE);
         return keys;
     }
@@ -360,6 +381,12 @@ export class TabControlComponent implements OnInit, OnDestroy {
             this.abrirDetallesSubtipoDesdeResumen(value.item);
         } else if (value.tipo === 'monstruos') {
             this.abrirDetallesMonstruo(value.item);
+        } else if (value.tipo === 'armas') {
+            this.abrirDetallesArma(value.item);
+        } else if (value.tipo === 'armaduras') {
+            this.abrirDetallesArmadura(value.item);
+        } else if (value.tipo === 'deidades') {
+            this.abrirDetallesDeidad(value.item);
         }
     }
 
@@ -641,6 +668,18 @@ export class TabControlComponent implements OnInit, OnDestroy {
         return `${monstruo.Nombre} (Monstruo)`;
     }
 
+    getEtiquetaArma(arma: ArmaDetalle): string {
+        return `${arma.Nombre} (Arma)`;
+    }
+
+    getEtiquetaArmadura(armadura: ArmaduraDetalle): string {
+        return `${armadura.Nombre} (${armadura.Es_escudo ? 'Escudo' : 'Armadura'})`;
+    }
+
+    getEtiquetaDeidad(deidad: DeidadDetalle): string {
+        return `${deidad.Nombre} (Deidad)`;
+    }
+
     private getPersonajeTabKey(personaje: Personaje): string {
         return `personaje:${Number(personaje?.Id ?? 0)}`;
     }
@@ -699,6 +738,18 @@ export class TabControlComponent implements OnInit, OnDestroy {
 
     private getMonstruoTabKey(monstruo: MonstruoDetalle): string {
         return `monstruo:${Number(monstruo?.Id ?? 0)}`;
+    }
+
+    private getArmaTabKey(arma: ArmaDetalle): string {
+        return `arma:${Number(arma?.Id ?? 0)}`;
+    }
+
+    private getArmaduraTabKey(armadura: ArmaduraDetalle): string {
+        return `armadura:${Number(armadura?.Id ?? 0)}`;
+    }
+
+    private getDeidadTabKey(deidad: DeidadDetalle): string {
+        return `deidad:${Number(deidad?.Id ?? 0)}`;
     }
 
     private getManualTabKey(manual: ManualAsociadoDetalle): string {
@@ -1167,6 +1218,188 @@ export class TabControlComponent implements OnInit, OnDestroy {
 
         this.monstruoSvc.getMonstruo(id).pipe(take(1)).subscribe(monstruo => {
             this.abrirDetallesMonstruo(monstruo);
+        });
+    }
+
+    abrirDetallesArma(arma: ArmaDetalle) {
+        if (!arma || Number(arma?.Id) <= 0)
+            return;
+
+        const abierto = this.detallesArmaAbiertos.find(a => Number(a.Id) === Number(arma.Id));
+        if (abierto) {
+            this.selectTabByKey(this.getArmaTabKey(abierto));
+            return;
+        }
+
+        const targetKey = this.getArmaTabKey(arma);
+        this.detallesArmaAbiertos.push(arma);
+        this.registerOpenContext(targetKey, this.getSafeOpenerKey());
+        this.focusOpenedTab(targetKey);
+    }
+
+    abrirDetallesArmaPorId(idArma: number) {
+        const id = Number(idArma);
+        if (!Number.isFinite(id) || id <= 0)
+            return;
+
+        const abierto = this.detallesArmaAbiertos.find(a => Number(a.Id) === id);
+        if (abierto) {
+            this.selectTabByKey(this.getArmaTabKey(abierto));
+            return;
+        }
+
+        this.armaSvc.getArma(id).pipe(take(1)).subscribe(arma => {
+            this.abrirDetallesArma(arma);
+        });
+    }
+
+    quitarDetallesArma(value: string | ArmaDetalle): boolean {
+        const tab = typeof value === 'string'
+            ? this.detallesArmaAbiertos.find(a => this.getEtiquetaArma(a) === value)
+            : this.detallesArmaAbiertos.find(a => Number(a.Id) === Number(value.Id));
+        if (!tab)
+            return false;
+        const closingKey = this.getArmaTabKey(tab);
+        return this.closeTabWithNavigation(closingKey, () => {
+            const indexTab = this.detallesArmaAbiertos.indexOf(tab);
+            if (indexTab < 0)
+                return false;
+            this.detallesArmaAbiertos.splice(indexTab, 1);
+            return true;
+        });
+    }
+
+    abrirDetallesArmadura(armadura: ArmaduraDetalle) {
+        if (!armadura || Number(armadura?.Id) <= 0)
+            return;
+
+        const abierto = this.detallesArmaduraAbiertos.find(a => Number(a.Id) === Number(armadura.Id));
+        if (abierto) {
+            this.selectTabByKey(this.getArmaduraTabKey(abierto));
+            return;
+        }
+
+        const targetKey = this.getArmaduraTabKey(armadura);
+        this.detallesArmaduraAbiertos.push(armadura);
+        this.registerOpenContext(targetKey, this.getSafeOpenerKey());
+        this.focusOpenedTab(targetKey);
+    }
+
+    abrirDetallesArmaduraPorId(idArmadura: number) {
+        const id = Number(idArmadura);
+        if (!Number.isFinite(id) || id <= 0)
+            return;
+
+        const abierto = this.detallesArmaduraAbiertos.find(a => Number(a.Id) === id);
+        if (abierto) {
+            this.selectTabByKey(this.getArmaduraTabKey(abierto));
+            return;
+        }
+
+        this.armaduraSvc.getArmadura(id).pipe(take(1)).subscribe(armadura => {
+            this.abrirDetallesArmadura(armadura);
+        });
+    }
+
+    abrirDetallesDeidad(deidad: DeidadDetalle) {
+        if (!deidad || Number(deidad?.Id) <= 0)
+            return;
+
+        const abierto = this.detallesDeidadAbiertos.find((item) => Number(item.Id) === Number(deidad.Id));
+        if (abierto) {
+            this.selectTabByKey(this.getDeidadTabKey(abierto));
+            return;
+        }
+
+        const targetKey = this.getDeidadTabKey(deidad);
+        this.detallesDeidadAbiertos.push(deidad);
+        this.registerOpenContext(targetKey, this.getSafeOpenerKey());
+        this.focusOpenedTab(targetKey);
+    }
+
+    abrirDetallesDeidadPorId(idDeidad: number) {
+        const id = Number(idDeidad);
+        if (!Number.isFinite(id) || id <= 0)
+            return;
+
+        const abierto = this.detallesDeidadAbiertos.find((item) => Number(item.Id) === id);
+        if (abierto) {
+            this.selectTabByKey(this.getDeidadTabKey(abierto));
+            return;
+        }
+
+        this.deidadSvc.getDeidad(id).pipe(take(1)).subscribe((deidad) => {
+            this.abrirDetallesDeidad(deidad);
+        });
+    }
+
+    abrirDetallesDeidadPorNombre(nombreDeidad: string) {
+        const nombre = `${nombreDeidad ?? ''}`.trim();
+        const nombreNormalizado = this.normalizar(nombre);
+        if (nombreNormalizado.length < 1 || nombreNormalizado === 'no tener deidad')
+            return;
+
+        const abierta = this.detallesDeidadAbiertos.find((item) => this.normalizar(item?.Nombre ?? '') === nombreNormalizado);
+        if (abierta) {
+            this.selectTabByKey(this.getDeidadTabKey(abierta));
+            return;
+        }
+
+        this.deidadSvc.getDeidades().pipe(take(1)).subscribe({
+            next: (deidades) => {
+                const encontrada = (deidades ?? []).find((item) => this.normalizar(item?.Nombre ?? '') === nombreNormalizado);
+                if (encontrada) {
+                    this.abrirDetallesDeidad(encontrada);
+                    return;
+                }
+
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Deidad no encontrada',
+                    text: `No se encontro la deidad "${nombre}"`,
+                    showConfirmButton: true
+                });
+            },
+            error: () => {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'No se pudo cargar el catálogo',
+                    text: 'Error leyendo deidades desde cache local.',
+                    showConfirmButton: true
+                });
+            },
+        });
+    }
+
+    quitarDetallesDeidad(value: string | DeidadDetalle): boolean {
+        const tab = typeof value === 'string'
+            ? this.detallesDeidadAbiertos.find((item) => this.getEtiquetaDeidad(item) === value)
+            : this.detallesDeidadAbiertos.find((item) => Number(item.Id) === Number(value.Id));
+        if (!tab)
+            return false;
+        const closingKey = this.getDeidadTabKey(tab);
+        return this.closeTabWithNavigation(closingKey, () => {
+            const indexTab = this.detallesDeidadAbiertos.indexOf(tab);
+            if (indexTab < 0)
+                return false;
+            this.detallesDeidadAbiertos.splice(indexTab, 1);
+            return true;
+        });
+    }
+
+    quitarDetallesArmadura(value: string | ArmaduraDetalle): boolean {
+        const tab = typeof value === 'string'
+            ? this.detallesArmaduraAbiertos.find(a => this.getEtiquetaArmadura(a) === value)
+            : this.detallesArmaduraAbiertos.find(a => Number(a.Id) === Number(value.Id));
+        if (!tab)
+            return false;
+        const closingKey = this.getArmaduraTabKey(tab);
+        return this.closeTabWithNavigation(closingKey, () => {
+            const indexTab = this.detallesArmaduraAbiertos.indexOf(tab);
+            if (indexTab < 0)
+                return false;
+            this.detallesArmaduraAbiertos.splice(indexTab, 1);
+            return true;
         });
     }
 

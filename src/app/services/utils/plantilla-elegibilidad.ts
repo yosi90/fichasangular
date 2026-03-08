@@ -484,7 +484,7 @@ export function evaluarElegibilidadPlantilla(
     const tamanoPlantilla = toNumber(plantilla?.Tamano?.Id);
     if (tamanoRaza > 0 && tamanoPlantilla !== 0) {
         if (tamanoPlantilla < tamanoRaza - 1 || tamanoPlantilla > tamanoRaza + 1)
-            fail.push("Tamano incompatible con la raza base");
+            fail.push("Tamaño incompatible con la raza base");
     }
 
     const alineamientoId = getAlineamientoBasicoId(ctx.alineamiento);

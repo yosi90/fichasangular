@@ -220,6 +220,24 @@ describe('NuevoPersonajeService (generador)', () => {
         expect(userSettingsSvc.migrateLegacyLocalConfigOnce).toHaveBeenCalledWith(GENERADOR_CONFIG_STORAGE_KEY);
     });
 
+    it('evaluarClaseParaSeleccion considera competencias directas persistidas en el personaje', () => {
+        const service = new NuevoPersonajeService();
+        service.PersonajeCreacion.competencia_arma = [{ Id: 7, Nombre: 'Espada larga' }];
+
+        const base = crearClaseBase();
+        const clase = crearClaseBase({
+            Prerrequisitos_flags: { competencia_arma: true },
+            Prerrequisitos: {
+                ...base.Prerrequisitos,
+                competencia_arma: [{ Id_arma: 7, opcional: 0 }],
+            },
+        });
+
+        const evaluacion = service.evaluarClaseParaSeleccion(clase);
+
+        expect(evaluacion.estado).toBe('eligible');
+    });
+
     it('si no hay configuración remota mantiene defaults', async () => {
         const userSettingsSvc = jasmine.createSpyObj<UserSettingsService>('UserSettingsService', [
             'loadGeneradorConfig',

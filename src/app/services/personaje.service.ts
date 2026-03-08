@@ -1,8 +1,12 @@
 import { Injectable } from '@angular/core';
-import { Database, getDatabase, Unsubscribe, onValue, ref, set, update } from '@angular/fire/database';
+import { Database, Unsubscribe, onValue, ref, set, update } from '@angular/fire/database';
 import { Observable, firstValueFrom } from 'rxjs';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
-import { Personaje } from '../interfaces/personaje';
+import {
+    Personaje,
+    PersonajeCompetenciaArmaduraDirecta,
+    PersonajeCompetenciaDirecta
+} from '../interfaces/personaje';
 import { environment } from 'src/environments/environment';
 import { RazaSimple } from '../interfaces/simplificaciones/raza-simple';
 import Swal from 'sweetalert2';
@@ -51,6 +55,23 @@ export class PersonajeService {
                 const subtipos = normalizeSubtipoRefArray(snapshot.child('Subtipos').val() ?? snapshot.child('stc').val());
                 const ventajas = normalizeVentajasPersonaje(snapshot.child('Ventajas').val());
                 const idiomas = normalizeIdiomasPersonaje(snapshot.child('Idiomas').val());
+                const competenciasArma = normalizeCompetenciasPersonaje(snapshot.child('competencia_arma').val(), {
+                    idKeys: ['Id', 'id', 'Id_arma', 'id_arma', 'i'],
+                    nombreKeys: ['Nombre', 'nombre', 'Arma', 'arma'],
+                });
+                const competenciasArmadura = normalizeCompetenciasPersonaje(snapshot.child('competencia_armadura').val(), {
+                    idKeys: ['Id', 'id', 'Id_armadura', 'id_armadura', 'Id_arma', 'id_arma', 'i'],
+                    nombreKeys: ['Nombre', 'nombre', 'Armadura', 'armadura', 'Arma', 'arma'],
+                    includeShield: true,
+                }) as PersonajeCompetenciaArmaduraDirecta[];
+                const competenciasGrupoArma = normalizeCompetenciasPersonaje(snapshot.child('competencia_grupo_arma').val(), {
+                    idKeys: ['Id', 'id', 'Id_grupo', 'id_grupo', 'IdGrupo', 'idGrupo', 'i'],
+                    nombreKeys: ['Nombre', 'nombre', 'Grupo', 'grupo'],
+                });
+                const competenciasGrupoArmadura = normalizeCompetenciasPersonaje(snapshot.child('competencia_grupo_armadura').val(), {
+                    idKeys: ['Id', 'id', 'Id_grupo', 'id_grupo', 'IdGrupo', 'idGrupo', 'i'],
+                    nombreKeys: ['Nombre', 'nombre', 'Grupo', 'grupo'],
+                });
                 const familiares = normalizeFamiliarMonstruoDetalleArray(snapshot.child('Familiares').val() ?? snapshot.child('familiares').val(), 1);
                 const companeros = normalizeCompaneroMonstruoDetalleArray(snapshot.child('Companeros').val() ?? snapshot.child('companeros').val(), 1);
                 const caracteristicasPerdidas = normalizeCaracteristicasPerdidasPersonaje(
@@ -143,6 +164,10 @@ export class PersonajeService {
                     Dados_golpe: snapshot.child('Dados_golpe').val(),
                     Pgs_lic: snapshot.child('Pgs_lic').val(),
                     Dominios: snapshot.child('Dominios').val(),
+                    competencia_arma: competenciasArma,
+                    competencia_armadura: competenciasArmadura,
+                    competencia_grupo_arma: competenciasGrupoArma,
+                    competencia_grupo_armadura: competenciasGrupoArmadura,
                     Plantillas: snapshot.child('Plantillas').val(),
                     Familiares: familiares,
                     Companeros: companeros,
@@ -515,6 +540,38 @@ export class PersonajeService {
             .filter((entrada): entrada is { idSubtipo: number; } => !!entrada);
         if (subtipos.length > 0)
             colecciones.subtipos = subtipos;
+
+        const competenciasArma = mapCompetenciasPayload(
+            personaje?.competencia_arma,
+            ['Id', 'id', 'Id_arma', 'id_arma'],
+            (idArma) => ({ idArma })
+        );
+        if (competenciasArma.length > 0)
+            colecciones.competencia_arma = competenciasArma;
+
+        const competenciasArmadura = mapCompetenciasPayload(
+            personaje?.competencia_armadura,
+            ['Id', 'id', 'Id_armadura', 'id_armadura', 'Id_arma', 'id_arma'],
+            (idArmadura) => ({ idArmadura })
+        );
+        if (competenciasArmadura.length > 0)
+            colecciones.competencia_armadura = competenciasArmadura;
+
+        const competenciasGrupoArma = mapCompetenciasPayload(
+            personaje?.competencia_grupo_arma,
+            ['Id', 'id', 'Id_grupo', 'id_grupo', 'IdGrupo', 'idGrupo'],
+            (idGrupoArma) => ({ idGrupoArma })
+        );
+        if (competenciasGrupoArma.length > 0)
+            colecciones.competencia_grupo_arma = competenciasGrupoArma;
+
+        const competenciasGrupoArmadura = mapCompetenciasPayload(
+            personaje?.competencia_grupo_armadura,
+            ['Id', 'id', 'Id_grupo', 'id_grupo', 'IdGrupo', 'idGrupo'],
+            (idGrupoArmadura) => ({ idGrupoArmadura })
+        );
+        if (competenciasGrupoArmadura.length > 0)
+            colecciones.competencia_grupo_armadura = competenciasGrupoArmadura;
 
         const dgsExtra: Array<{ valor: number; origen?: string; teriantropia?: boolean; }> = [];
         const dgsRaza = Math.trunc(toNumber((personaje as any)?.Raza?.Dgs_adicionales?.Cantidad));
@@ -922,6 +979,23 @@ export class PersonajeService {
             .map((entrada) => `${entrada.Nombre} (${entrada.Nivel})`)
             .join(', ');
         clonado.Subtipos = normalizeSubtipoRefArray(clonado?.Subtipos ?? []);
+        clonado.competencia_arma = normalizeCompetenciasPersonaje(clonado?.competencia_arma, {
+            idKeys: ['Id', 'id', 'Id_arma', 'id_arma', 'i'],
+            nombreKeys: ['Nombre', 'nombre', 'Arma', 'arma'],
+        }) as PersonajeCompetenciaDirecta[];
+        clonado.competencia_armadura = normalizeCompetenciasPersonaje(clonado?.competencia_armadura, {
+            idKeys: ['Id', 'id', 'Id_armadura', 'id_armadura', 'Id_arma', 'id_arma', 'i'],
+            nombreKeys: ['Nombre', 'nombre', 'Armadura', 'armadura', 'Arma', 'arma'],
+            includeShield: true,
+        }) as PersonajeCompetenciaArmaduraDirecta[];
+        clonado.competencia_grupo_arma = normalizeCompetenciasPersonaje(clonado?.competencia_grupo_arma, {
+            idKeys: ['Id', 'id', 'Id_grupo', 'id_grupo', 'IdGrupo', 'idGrupo', 'i'],
+            nombreKeys: ['Nombre', 'nombre', 'Grupo', 'grupo'],
+        }) as PersonajeCompetenciaDirecta[];
+        clonado.competencia_grupo_armadura = normalizeCompetenciasPersonaje(clonado?.competencia_grupo_armadura, {
+            idKeys: ['Id', 'id', 'Id_grupo', 'id_grupo', 'IdGrupo', 'idGrupo', 'i'],
+            nombreKeys: ['Nombre', 'nombre', 'Grupo', 'grupo'],
+        }) as PersonajeCompetenciaDirecta[];
         clonado.Raciales = normalizeRaciales(clonado?.Raciales ?? []);
         clonado.Familiares = normalizeFamiliarMonstruoDetalleArray(clonado?.Familiares ?? [], 1);
         clonado.Companeros = normalizeCompaneroMonstruoDetalleArray(clonado?.Companeros ?? [], 1);
@@ -1019,7 +1093,6 @@ export class PersonajeService {
     }
 
     public async RenovarPersonajes(): Promise<boolean> {
-        const db = getDatabase();
         try {
             const response = await firstValueFrom(this.d_pjs());
             const personajes = Array.isArray(response)
@@ -1030,6 +1103,7 @@ export class PersonajeService {
                 personajes.map((element: {
                     i: any; n: any; ownerUid?: any; visible_otros_usuarios?: any; id_region?: any; idRegion?: any; region?: any; Region?: any; dcp: any; dh: any; tm: any; a: any; ca: any; an: any; cd: any; cv: any; ra: any; rb?: any; raza_base?: any; RazaBase?: any; tc: TipoCriatura; f: any; mf: any; d: any; md: any; co: any; mco: any; int: any; mint: any; s: any; 
                     ms: any; car: any; mcar: any; de: any; ali: any; g: any; ncam: any; ntr: any; ju: any; nst: any; v: any; cor: any; na: any; vo: any; t: any; e: any; o: any; dg: any; cla: any; dom: any; stc: any; subtipos?: any;
+                    competencia_arma?: any; competencia_armadura?: any; competencia_grupo_arma?: any; competencia_grupo_armadura?: any;
                     pla: any; con: any; esp: any; espX: any; rac: any; hab: any; habN: any; habC: any; habCa: any; habMc: any; habR: any; habRv: any; habX: any; habV: any; habCu: any; dotes: DoteContextual[]; ve: any; idi: any;
                     familiares?: any; companeros?: any;
                     sor: any; pgl: any; ini_v: any; pr_v: { Valor: number; Origen: string; }[]; edad: any; alt: any; peso: any; salv: any; rds: any; 
@@ -1128,6 +1202,23 @@ export class PersonajeService {
                     const raciales = normalizeRaciales(element.rac);
                     const ve = normalizeVentajasPersonaje(element.ve);
                     const idiomas = normalizeIdiomasPersonaje(element.idi);
+                    const competenciasArma = normalizeCompetenciasPersonaje(element.competencia_arma, {
+                        idKeys: ['Id', 'id', 'Id_arma', 'id_arma', 'i'],
+                        nombreKeys: ['Nombre', 'nombre', 'Arma', 'arma'],
+                    });
+                    const competenciasArmadura = normalizeCompetenciasPersonaje(element.competencia_armadura, {
+                        idKeys: ['Id', 'id', 'Id_armadura', 'id_armadura', 'Id_arma', 'id_arma', 'i'],
+                        nombreKeys: ['Nombre', 'nombre', 'Armadura', 'armadura', 'Arma', 'arma'],
+                        includeShield: true,
+                    });
+                    const competenciasGrupoArma = normalizeCompetenciasPersonaje(element.competencia_grupo_arma, {
+                        idKeys: ['Id', 'id', 'Id_grupo', 'id_grupo', 'IdGrupo', 'idGrupo', 'i'],
+                        nombreKeys: ['Nombre', 'nombre', 'Grupo', 'grupo'],
+                    });
+                    const competenciasGrupoArmadura = normalizeCompetenciasPersonaje(element.competencia_grupo_armadura, {
+                        idKeys: ['Id', 'id', 'Id_grupo', 'id_grupo', 'IdGrupo', 'idGrupo', 'i'],
+                        nombreKeys: ['Nombre', 'nombre', 'Grupo', 'grupo'],
+                    });
                     const ecp: [] = element.ecp.split("|").map((item: string) => item.trim()).filter((item: string) => item.length > 0);
                     const ataqueBase = `${element.a ?? 0}`;
                     const presaBase = +(ataqueBase.includes('/') ? ataqueBase.substring(0, ataqueBase.indexOf('/')) : ataqueBase);
@@ -1145,7 +1236,7 @@ export class PersonajeService {
                         ?? element.region?.Nombre
                         ?? element.region?.nombre
                         ?? ''}`.trim();
-                    return set(ref(db, `Personajes/${element.i}`), {
+                    return this.escribirRutaFirebase(`Personajes/${element.i}`, {
                         Nombre: element.n,
                         ownerUid: extractOwnerUid(element),
                         visible_otros_usuarios: toBoolean(element.visible_otros_usuarios),
@@ -1206,6 +1297,10 @@ export class PersonajeService {
                         Clases: clas,
                         Dominios: dom,
                         Subtipos: subtipos,
+                        competencia_arma: competenciasArma,
+                        competencia_armadura: competenciasArmadura,
+                        competencia_grupo_arma: competenciasGrupoArma,
+                        competencia_grupo_armadura: competenciasGrupoArmadura,
                         Plantillas: element.pla,
                         Familiares: normalizeFamiliarMonstruoDetalleArray(element.familiares, 1),
                         Companeros: normalizeCompaneroMonstruoDetalleArray(element.companeros, 1),
@@ -1396,6 +1491,90 @@ function normalizeIdiomasPersonaje(raw: any): { Nombre: string; Descripcion: str
         output.push(idiomaNormalizado);
     });
     return output;
+}
+
+function normalizeCompetenciasPersonaje(
+    raw: any,
+    options: {
+        idKeys: string[];
+        nombreKeys: string[];
+        includeShield?: boolean;
+    }
+): Array<PersonajeCompetenciaDirecta | PersonajeCompetenciaArmaduraDirecta> {
+    const output: Array<PersonajeCompetenciaDirecta | PersonajeCompetenciaArmaduraDirecta> = [];
+    const seen = new Set<string>();
+
+    toArray(raw).forEach((item) => {
+        const id = resolveCompetenciaId(item, options.idKeys);
+        const nombre = resolveCompetenciaNombre(item, options.nombreKeys);
+        if (id <= 0 && nombre.length < 1)
+            return;
+
+        const dedupeKey = id > 0 ? `id:${id}` : `nombre:${normalizeLookupKey(nombre)}`;
+        if (seen.has(dedupeKey))
+            return;
+        seen.add(dedupeKey);
+
+        const normalizado: PersonajeCompetenciaDirecta | PersonajeCompetenciaArmaduraDirecta = {
+            Id: id > 0 ? id : 0,
+            Nombre: nombre,
+        };
+
+        if (options.includeShield)
+            (normalizado as PersonajeCompetenciaArmaduraDirecta).Es_escudo = toBoolean(item?.Es_escudo ?? item?.es_escudo);
+
+        output.push(normalizado);
+    });
+
+    return output;
+}
+
+function mapCompetenciasPayload<T>(raw: any, idKeys: string[], build: (id: number) => T): T[] {
+    const output: T[] = [];
+    const seen = new Set<number>();
+
+    toArray(raw).forEach((item) => {
+        const id = resolveCompetenciaId(item, idKeys);
+        if (id <= 0 || seen.has(id))
+            return;
+        seen.add(id);
+        output.push(build(id));
+    });
+
+    return output;
+}
+
+function resolveCompetenciaId(item: any, idKeys: string[]): number {
+    if (typeof item === 'number')
+        return Math.trunc(toNumber(item));
+
+    if (typeof item === 'string') {
+        const parsed = Math.trunc(Number(item));
+        return Number.isFinite(parsed) ? parsed : 0;
+    }
+
+    for (const key of idKeys) {
+        const id = Math.trunc(toNumber(item?.[key]));
+        if (id > 0)
+            return id;
+    }
+
+    return 0;
+}
+
+function resolveCompetenciaNombre(item: any, nombreKeys: string[]): string {
+    if (typeof item === 'string') {
+        const text = item.trim();
+        return Number.isFinite(Number(text)) ? '' : text;
+    }
+
+    for (const key of nombreKeys) {
+        const text = toText(item?.[key]).trim();
+        if (text.length > 0)
+            return text;
+    }
+
+    return '';
 }
 
 function normalizeCaracteristicasPerdidasPersonaje(raw: any, constitucionPerdidaLegacy: any): {

@@ -21,6 +21,14 @@ export class ListadoMonstruosComponent implements OnDestroy {
     defaultManual: string = 'Cualquiera';
     monstruosDS = new MatTableDataSource<MonstruoDetalle>([]);
     monstruoColumns = ['Nombre', 'Manual', 'Valor_desafio', 'Familiar', 'Companero'];
+    private readonly columnLabels: Record<string, string> = {
+        Nombre: 'Nombre',
+        Manual: 'Manual',
+        Valor_desafio: 'Valor desafio',
+        Familiar: 'Familiar',
+        Companero: 'Compañero',
+        Homebrew: 'Homebrew',
+    };
 
     private mostrarHomebrew = false;
     private readonly destroy$ = new Subject<void>();
@@ -126,6 +134,10 @@ export class ListadoMonstruosComponent implements OnDestroy {
         if (nombre.length < 1)
             return 'Sin manual';
         return pagina > 0 ? `${nombre} (p. ${pagina})` : nombre;
+    }
+
+    getColumnLabel(column: string): string {
+        return this.columnLabels[column] ?? column.replace('_', ' ');
     }
 
     isFlagActiva(value: any): boolean {

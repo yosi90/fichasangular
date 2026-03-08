@@ -1,0 +1,24 @@
+<div class="prereq-row-grid">
+    <mat-form-field appearance="fill">
+        <mat-label>{{definition.catalogLabel || 'Elemento'}}</mat-label>
+        <mat-select
+            [value]="row.id"
+            [disabled]="disabled"
+            (selectionChange)="patchChange.emit({ id: $event.value })">
+            <mat-option [value]="0">Seleccionar...</mat-option>
+            <mat-option *ngFor="let item of catalog" [value]="item.id">
+                {{item.nombre}}
+            </mat-option>
+        </mat-select>
+    </mat-form-field>
+
+    <mat-form-field appearance="fill">
+        <mat-label>Combinacion (opcional)</mat-label>
+        <input
+            matInput
+            type="number"
+            [value]="row.opcional"
+            [disabled]="disabled"
+            (input)="patchChange.emit({ opcional: +$any($event.target).value || 0 })">
+    </mat-form-field>
+</div>

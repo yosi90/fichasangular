@@ -2074,6 +2074,14 @@ export class NuevoPersonajeComponent {
         });
     }
 
+    @Output() deidadDetallesPorNombre: EventEmitter<string> = new EventEmitter<string>();
+    verDetallesDeidadDesdeReferencia(nombreDeidad: string): void {
+        const nombre = `${nombreDeidad ?? ''}`.trim();
+        if (nombre.length < 1)
+            return;
+        this.deidadDetallesPorNombre.emit(nombre);
+    }
+
     @Output() rasgoDetalles: EventEmitter<Rasgo> = new EventEmitter<Rasgo>();
     verDetallesRasgo(value: Rasgo): void {
         const nombre = `${value?.Nombre ?? ''}`.trim();
@@ -5646,7 +5654,9 @@ export class NuevoPersonajeComponent {
             pushUnico(this.resolverNombreCatalogoPorId(this.catalogoArmas, idExtra));
             pushUnico(this.resolverNombreCatalogoPorId(this.catalogoGruposArmas, idExtra));
         }
-        if (extraEnArmaduras || Number(rawDote.Extras_soportados?.Extra_armadura ?? 0) > 0) {
+        const soportaArmaduras = Number(rawDote.Extras_soportados?.Extra_armadura_armaduras ?? rawDote.Extras_soportados?.Extra_armadura ?? 0) > 0;
+        const soportaEscudos = Number(rawDote.Extras_soportados?.Extra_armadura_escudos ?? rawDote.Extras_soportados?.Extra_armadura ?? 0) > 0;
+        if (extraEnArmaduras || soportaArmaduras || soportaEscudos) {
             pushUnico(this.resolverNombreCatalogoPorId(this.catalogoArmaduras, idExtra));
             pushUnico(this.resolverNombreCatalogoPorId(this.catalogoGruposArmaduras, idExtra));
         }

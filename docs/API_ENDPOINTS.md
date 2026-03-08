@@ -4,7 +4,7 @@ Fecha de generacion: 2026-03-04
 
 Resumen
 - Base URL (local): `http://127.0.0.1:5000`
-- Prefijos registrados: `/verify`, `/usuarios`, `/personajes`, `/razas`, `/razas/raciales`, `/subtipos`, `/campanas`, `/tramas`, `/subtramas`, `/manuales`, `/manuales/asociados`, `/monstruos`, `/familiares`, `/companeros`, `/tiposCriatura`, `/rasgos`, `/conjuros`, `/escuelas`, `/disciplinas`, `/alineamientos`, `/habilidades`, `/idiomas`, `/enemigos-predilectos`, `/armas`, `/armaduras`, `/grupos-armas`, `/grupos-armaduras`, `/dominios`, `/ambitos`, `/pabellones`, `/deidades`, `/dotes`, `/clases`, `/clases/habilidades`, `/plantillas`, `/ventajas`, `/desventajas`
+- Prefijos registrados: `/verify`, `/usuarios`, `/personajes`, `/razas`, `/razas/raciales`, `/subtipos`, `/campanas`, `/tramas`, `/subtramas`, `/manuales`, `/manuales/asociados`, `/monstruos`, `/familiares`, `/companeros`, `/tiposCriatura`, `/rasgos`, `/conjuros`, `/escuelas`, `/disciplinas`, `/alineamientos`, `/habilidades`, `/idiomas`, `/enemigos-predilectos`, `/extras`, `/tamanos`, `/armas`, `/armaduras`, `/grupos-armas`, `/grupos-armaduras`, `/dominios`, `/ambitos`, `/pabellones`, `/deidades`, `/dotes`, `/clases`, `/clases/habilidades`, `/plantillas`, `/ventajas`, `/desventajas`
 - Autenticacion: no hay autenticacion en el backend.
 - Content-Type esperado: `application/json`
 - CORS habilitado para: `https://rol.yosiftware.es/`, `https://www.rol.yosiftware.es/`, `https://62.43.222.28`, `http://192.168.0.34`
@@ -67,6 +67,10 @@ Lista de endpoints
 | GET | /habilidades/custom | Lista de habilidades custom (id > 0) | Implementado |
 | GET | /idiomas | Lista de idiomas | Implementado |
 | GET | /enemigos-predilectos | Lista de enemigos predilectos | Implementado |
+| GET | /extras | Lista de extras | Implementado |
+| GET | /extras/<id_extra> | Extra por id | Implementado |
+| GET | /tamanos | Lista de tamaños | Implementado |
+| GET | /tamanos/<id_tamano> | Tamaño por id | Implementado |
 | GET | /armas | Lista completa de armas | Implementado |
 | GET | /armas/<id_arma> | Arma por id | Implementado |
 | GET | /armaduras | Lista completa de armaduras | Implementado |
@@ -87,6 +91,7 @@ Lista de endpoints
 | GET | /deidades/alineamiento/<id_alineamiento> | Deidades por alineamiento | Implementado |
 | GET | /dotes | Lista de dotes completas | Implementado |
 | GET | /dotes/<id_dote> | Dote completa por id | Implementado |
+| POST | /dotes/add | Crear dote | Implementado |
 | GET | /ventajas | Lista de ventajas (coste negativo) | Implementado |
 | GET | /ventajas/<id_ventaja> | Ventaja por id (coste negativo) | Implementado |
 | GET | /desventajas | Lista de desventajas (coste positivo) | Implementado |
@@ -264,6 +269,10 @@ PersonajeDetalle
 | dom | string | Lista serializada de dominios separada por `| ` |
 | stc | string | Lista serializada de subtipos separada por `| ` |
 | subtipos | array | Lista de `SubtipoRef` (`{ Id, Nombre }`) |
+| competencia_arma | array | Competencias directas del personaje sobre armas: `{ Id, Nombre }` |
+| competencia_armadura | array | Competencias directas del personaje sobre armaduras/escudos: `{ Id, Nombre, Es_escudo }` |
+| competencia_grupo_arma | array | Competencias directas del personaje sobre grupos de armas: `{ Id, Nombre }` |
+| competencia_grupo_armadura | array | Competencias directas del personaje sobre grupos de armaduras: `{ Id, Nombre }` |
 | familiares | array | Lista de `FamiliarMonstruoDetalle` asociados al personaje |
 | companeros | array | Lista de `CompaneroMonstruoDetalle` asociados al personaje |
 | pla | array | Lista de `PlantillaPersonaje` |
@@ -356,6 +365,12 @@ Body minimo (ejemplo)
   "tamano": { "idTamano": 0, "origen": "API" }
 }
 ```
+
+Colecciones soportadas adicionales
+- `colecciones.competencia_arma`: array de ids o de objetos con `idArma`/`id_arma`.
+- `colecciones.competencia_armadura`: array de ids o de objetos con `idArmadura`/`id_armadura`.
+- `colecciones.competencia_grupo_arma`: array de ids o de objetos con `idGrupoArma`, `id_grupo_arma` o `id_grupo`.
+- `colecciones.competencia_grupo_armadura`: array de ids o de objetos con `idGrupoArmadura`, `id_grupo_armadura` o `id_grupo`.
 
 Validaciones relevantes
 - `personaje.idRegion` (o `personaje.id_region`) es obligatorio y debe existir en `regiones`.
@@ -1108,6 +1123,46 @@ EnemigoPredilectoDetalle
 | Id | number | Id de enemigo predilecto |
 | Nombre | string | Nombre |
 
+Endpoint: GET /extras
+Respuesta: array de `ExtraDetalle`
+
+Endpoint: GET /extras/<id_extra>
+Respuesta: objeto `ExtraDetalle`
+Respuesta 404
+```json
+{
+  "error": "Extra no encontrado",
+  "id_extra": 123
+}
+```
+
+ExtraDetalle
+| Campo | Tipo | Descripcion |
+| --- | --- | --- |
+| Id | number | Id de extra |
+| Nombre | string | Nombre |
+
+Endpoint: GET /tamanos
+Respuesta: array de `TamanoRef`
+
+Endpoint: GET /tamanos/<id_tamano>
+Respuesta: objeto `TamanoRef`
+Respuesta 404
+```json
+{
+  "error": "Tamaño no encontrado",
+  "id_tamano": 123
+}
+```
+
+TamanoRef
+| Campo | Tipo | Descripcion |
+| --- | --- | --- |
+| Id | number | Id de tamaño |
+| Nombre | string | Nombre |
+| Modificador | number | Modificador de tamaño |
+| Modificador_presa | number | Modificador de presa por tamaño |
+
 Endpoint: GET /armas
 Respuesta: array de `ArmaDetalle`
 
@@ -1170,6 +1225,7 @@ ArmaduraDetalle
 | Peso | number | Peso |
 | Tamano | object | `{ Id, Nombre, Modificador, Modificador_presa }` |
 | Fallo_arcano | number | Probabilidad de fallo arcano |
+| Es_escudo | boolean | `true` si la entrada referencia a un escudo |
 | Oficial | boolean | Oficial (true=oficial, false=homebrew) |
 | Encantamientos | array | Lista de encantamientos `{ Id, Nombre, Descripcion, Modificador, Coste, Tipo }` |
 
@@ -1316,8 +1372,8 @@ DoteDetalle
 | Repetible_comb | number | Repetible en combinacion (0/1) |
 | Comp_arma | number | Competencia de arma (0/1) |
 | Oficial | boolean | Oficial (true=oficial, false=homebrew) |
-| Extras_soportados | object | Banderas: { Extra_arma, Extra_armadura, Extra_escuela, Extra_habilidad } |
-| Extras_disponibles | object | Catalogos validos: { Armas, Armaduras, Escuelas, Habilidades } |
+| Extras_soportados | object | Banderas: { Extra_arma, Extra_armadura, Extra_armadura_armaduras, Extra_armadura_escudos, Extra_escuela, Extra_habilidad } |
+| Extras_disponibles | object | Catalogos validos: { Armas, Armaduras, Escuelas, Habilidades }. Cada item de `Armaduras` incluye `Es_escudo` |
 | Modificadores | object | Modificadores numericos de la dote |
 | Prerrequisitos | object | Todas las familias `dote_prerrequisito_*` (si no hay filas => `[]`) |
 
@@ -1330,6 +1386,86 @@ Respuesta 404
   "id_dote": 123
 }
 ```
+
+Endpoint: POST /dotes/add
+Descripcion: Crea una dote en transaccion (`dotes` + extras + `dotes_habilidades` + todas las familias `dote_prerrequisito_*`), con ACL obligatoria por `uid`/`firebaseUid`.
+
+Body (estructura canonica)
+```json
+{
+  "uid": "firebase-uid",
+  "dote": {
+    "nombre": "Nombre de dote",
+    "beneficio": "Texto",
+    "descripcion": "Texto",
+    "normal": "Texto",
+    "especial": "Texto",
+    "id_manual": 1,
+    "pagina": 123,
+    "id_tipo": 1,
+    "id_tipo2": 2,
+    "oficial": true,
+    "repetible": false,
+    "repetible_distinto_extra": false,
+    "repetible_comb": false,
+    "comp_arma": false,
+    "extra_arma": false,
+    "extra_armadura_armaduras": false,
+    "extra_armadura_escudos": false,
+    "extra_escuela": false,
+    "extra_habilidad": false
+  },
+  "modificadores": {},
+  "habilidades_otorgadas": [],
+  "extras_disponibles": {
+    "armas": [],
+    "armaduras": [],
+    "escuelas": [],
+    "habilidades": []
+  },
+  "prerrequisitos": {}
+}
+```
+
+Validaciones clave
+- `uid` (o alias `firebaseUid`) es obligatorio.
+- AppUser debe existir, no estar baneado y tener permiso `create` en recurso `dotes`.
+- `dote.id_tipo` y `dote.id_tipo2` no pueden ser iguales.
+- Solo uno de `repetible`, `repetible_distinto_extra`, `repetible_comb` puede estar activo.
+- Solo una familia de extra puede estar activa entre `extra_arma`, `extra_armadura_*`, `extra_escuela`, `extra_habilidad`.
+- `extra_armadura_armaduras` y `extra_armadura_escudos` pueden estar activos a la vez.
+- Si un `extra_*` está activo, su lista en `extras_disponibles` debe traer al menos un id.
+- Si `extra_armadura_armaduras` o `extra_armadura_escudos` están activos, `extras_disponibles.armaduras` debe incluir ids del tipo correspondiente.
+- Si se envían listas de `extras_disponibles` sin su flag correspondiente, responde `400`.
+- Campos omitidos en `modificadores` se guardan como `0`.
+- `prerrequisitos.opcional` default `0`.
+- En `prerrequisitos.clase_especial`, `id_extra` solo es obligatorio si el especial seleccionado usa extras.
+- Si el especial no usa extras, la API acepta omitir `id_extra` y resuelve internamente el extra canónico `No aplica`.
+- En `prerrequisitos.dote`, `id_extra` solo es obligatorio si la dote prerrequisito soporta extras; si no los soporta, la API acepta omitirlo y guarda `0` como valor de "no aplica".
+- En `prerrequisitos.habilidad`, `requiere_extra` y `extras` solo aplican si la habilidad seleccionada usa extras; si no los usa, la API asume automáticamente que no aplica extra.
+- `dotes.prerrequisitos` se guarda a `1` cuando existe al menos una fila en cualquier familia; en caso contrario `0`.
+- Validación fuerte de FKs en ids referenciados.
+- Dedupe por clave primaria por tabla; si hay colisión con datos distintos, responde `400`.
+- Compatibilidad: `dote.extra_armadura` todavía se acepta como alias legado y activa ambos flags nuevos.
+
+Motivo del cambio
+- El backend ahora infiere si un extra aplica desde los datos maestros (`especiales.extra`, flags `extra_*` de `dotes`, `habilidades.extra`) para evitar que el front tenga que enviar sentinelas artificiales como `-1` o `0` cuando realmente no existe selección posible.
+
+Respuesta 201
+```json
+{
+  "message": "Dote creada exitosamente",
+  "idDote": 123,
+  "uid": "firebase-uid"
+}
+```
+
+Errores esperados
+- `400`: payload inválido, FK inexistente o integridad de datos.
+- `403`: usuario baneado o sin permiso de creación en `dotes`.
+- `404`: AppUser no encontrado para el `uid`.
+- `409`: conflicto de negocio (ej. nombre de dote ya existente).
+- `500`: error interno no controlado.
 
 Endpoint: GET /ventajas
 Respuesta: array de `VentajaDetalle`

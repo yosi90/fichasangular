@@ -97,6 +97,18 @@ export class BaseMenuComponent implements OnInit, OnDestroy {
         this.ListadoTab.emit({ tipo, operacion });
     }
 
+    canInsertarDotes(): boolean {
+        return this.usrService.can('dotes', 'create');
+    }
+
+    onInsertarDote(): void {
+        if (!this.canInsertarDotes())
+            return;
+        this.AbrirListado('dotes', 'insertar');
+        this.closeAcordion();
+        this.cerrarOtros();
+    }
+
     openSesionDialog(): void {
         const dialogRef = this.dSesion.open(SesionDialogComponent, {
             // width: '80vw',

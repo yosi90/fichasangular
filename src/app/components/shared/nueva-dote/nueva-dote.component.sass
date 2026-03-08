@@ -1,0 +1,488 @@
+.nueva-dote-shell
+    position: relative
+    width: 100%
+    min-height: 100%
+    padding-bottom: 6px
+
+.nueva-dote-form
+    display: flex
+    flex-direction: column
+    gap: 0.75rem
+    width: 100%
+    color: #e5e7eb
+
+    .permiso-msg
+        margin: 0
+        padding: 0.6rem 0.8rem
+        color: #fecaca
+        border: 1px solid rgba(248, 113, 113, 0.4)
+        border-radius: 8px
+        background: rgba(127, 29, 29, 0.25)
+
+    .panel-card
+        border: 1px solid rgba(255, 255, 255, 0.12)
+        border-radius: 8px
+        padding: 0.65rem
+        background: rgba(0, 0, 0, 0.1)
+        box-shadow: 1px 1px 3.5px rgba(0, 0, 0, 0.45), 1px 1px 3px inset rgba(0, 0, 0, 0.22)
+        color: #e5e7eb
+
+    .panel-title
+        display: inline-flex
+        align-items: center
+        min-height: 36px
+        margin-bottom: 0.5rem
+        padding: 0 0.9rem
+        font-weight: 600
+        border: 1px solid rgba(255, 255, 255, 0.14)
+        background: rgba(255, 255, 255, 0.08)
+        color: #f3f4f6
+
+    .panel-title-row
+        display: flex
+        align-items: center
+        gap: 8px
+        margin-bottom: 0.45rem
+
+        .panel-title
+            margin-bottom: 0
+
+    .help-chip-btn
+        margin-left: auto
+        display: inline-flex
+        align-items: center
+        justify-content: center
+        width: 34px
+        height: 34px
+        border: 1px solid rgba(255, 255, 255, 0.28)
+        border-radius: 999px
+        background: rgba(0, 0, 0, 0.16)
+        color: #d1d5db
+        cursor: pointer
+        padding: 0
+
+        mat-icon
+            font-size: 18px
+            width: 18px
+            height: 18px
+
+        &:hover
+            background: rgba(0, 0, 0, 0.24)
+            color: #f3f4f6
+
+    .grid-base,
+    .grid-content
+        display: grid
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr))
+        gap: 0.75rem
+
+    .grid-content
+        grid-template-columns: repeat(4, minmax(0, 1fr))
+
+    .full-span
+        grid-column: 1 / -1
+
+    .span-2
+        grid-column: span 2
+
+    .estado-row
+        display: flex
+        align-items: center
+        flex-wrap: wrap
+        gap: 0.9rem
+        min-height: 56px
+        padding: 0.2rem 0.2rem 0
+
+    .estado-chip
+        border: 1px solid rgba(255, 255, 255, 0.35)
+        background: transparent
+        color: #e5e7eb
+        border-radius: 9999px
+        min-height: 34px
+        padding: 0 0.8rem
+        display: inline-flex
+        align-items: center
+        gap: 0.35rem
+        cursor: pointer
+        transition: all 0.2s ease
+
+        &.activo
+            border-color: #22c55e
+            background: rgba(34, 197, 94, 0.2)
+            color: #86efac
+
+    .flags-grid
+        display: grid
+        grid-template-columns: repeat(2, minmax(260px, 1fr))
+        gap: 0.75rem
+
+    .option-card
+        display: flex
+        flex-direction: column
+
+    .option-list
+        display: grid
+        grid-template-columns: repeat(2, minmax(220px, 1fr))
+        gap: 0.4rem
+
+    .option-list--checks
+        mat-checkbox
+            border: 1px solid rgba(255, 255, 255, 0.1)
+            border-radius: 6px
+            background: rgba(255, 255, 255, 0.03)
+            padding: 0.35rem 0.6rem
+
+        mat-checkbox:last-child:nth-child(odd)
+            grid-column: 1 / -1
+
+    .extra-radio-card
+        display: flex
+        flex-direction: column
+        gap: 0.35rem
+        border: 1px solid rgba(255, 255, 255, 0.12)
+        border-radius: 7px
+        background: rgba(255, 255, 255, 0.03)
+        padding: 0.45rem 0.65rem
+        transition: border-color 120ms ease, background-color 120ms ease
+
+        &.selected
+            border-color: rgba(255, 255, 255, 0.28)
+            background: rgba(255, 255, 255, 0.06)
+
+        mat-radio-button
+            min-height: 28px
+
+    .extra-radio-card--full
+        grid-column: 1 / -1
+
+    .extra-competencia
+        border: 1px solid rgba(255, 255, 255, 0.12)
+        border-radius: 6px
+        background: rgba(255, 255, 255, 0.03)
+        padding: 0.25rem 0.5rem
+        margin-left: 28px
+
+    .option-list--radio
+        align-items: start
+
+    .option-extra-actions
+        margin-top: 0.55rem
+        display: flex
+        justify-content: flex-end
+
+    .valores-grid
+        display: grid
+        grid-template-columns: repeat(2, minmax(0, 1fr))
+        gap: 0.75rem
+
+    .subpanel
+        border: 1px solid rgba(255, 255, 255, 0.1)
+        border-radius: 8px
+        background: rgba(255, 255, 255, 0.03)
+        padding: 0.55rem
+
+    .subpanel-head
+        display: flex
+        align-items: center
+        justify-content: space-between
+        gap: 8px
+        margin-bottom: 0.45rem
+
+    .subpanel-title
+        margin: 0
+        font-size: 0.95rem
+        font-weight: 600
+        color: #f3f4f6
+
+    .mod-grid
+        display: grid
+        grid-template-columns: 1fr 120px 44px
+        gap: 8px
+        align-items: center
+
+        &.head
+            font-size: 0.82rem
+            font-weight: 700
+            color: #d1d5db
+            opacity: 1
+            margin-bottom: 0.25rem
+            padding: 0 4px
+
+        &.row
+            margin-bottom: 0.25rem
+            padding: 0.3rem 0.35rem
+            border: 1px solid rgba(255, 255, 255, 0.08)
+            border-radius: 6px
+            background: rgba(0, 0, 0, 0.1)
+
+    .mod-preview
+        margin-top: 0.45rem
+        display: flex
+        flex-wrap: wrap
+        gap: 6px
+
+    .mod-chip
+        border: 1px solid rgba(255, 255, 255, 0.2)
+        background: rgba(255, 255, 255, 0.08)
+
+    .mod-empty
+        margin-top: 0.45rem
+        font-size: 0.88rem
+        opacity: 0.9
+
+    .skill-grid
+        display: grid
+        grid-template-columns: 1.3fr 1fr 120px 44px
+        gap: 8px
+        align-items: center
+
+        &.head
+            font-size: 0.82rem
+            font-weight: 700
+            color: #d1d5db
+            opacity: 1
+            margin-bottom: 0.25rem
+            padding: 0 4px
+
+        &.row
+            margin-bottom: 0.25rem
+            padding: 0.3rem 0.35rem
+            border: 1px solid rgba(255, 255, 255, 0.08)
+            border-radius: 6px
+            background: rgba(0, 0, 0, 0.1)
+
+    .skill-habilidad--expand
+        grid-column: 1 / span 2
+
+    .prereq-row
+        display: grid
+        grid-template-columns: 1fr 44px
+        gap: 8px
+        align-items: stretch
+        margin-bottom: 0.35rem
+        padding: 0.35rem
+        border: 1px solid rgba(255, 255, 255, 0.08)
+        border-radius: 6px
+        background: rgba(0, 0, 0, 0.1)
+
+    .prereq-row-grid
+        display: grid
+        grid-template-columns: repeat(auto-fit, minmax(170px, 1fr))
+        gap: 8px
+        align-items: center
+
+    .prereq-extra-check
+        min-height: 56px
+        display: inline-flex
+        align-items: center
+
+    .error-form
+        margin: 0
+        color: #fecaca
+        border: 1px solid rgba(248, 113, 113, 0.4)
+        border-radius: 8px
+        background: rgba(127, 29, 29, 0.25)
+        padding: 0.55rem 0.75rem
+
+    .actions-row
+        display: flex
+        justify-content: flex-end
+        gap: 0.5rem
+        padding: 0.25rem 0.1rem 0.1rem
+
+    .row-action-btn
+        align-self: stretch
+        justify-self: stretch
+        width: 100%
+        height: 100%
+        display: inline-flex
+        align-items: center
+        justify-content: center
+        margin: 0
+        padding: 0
+        color: #d1d5db
+
+        &:hover
+            color: #fca5a5
+
+    mat-form-field
+        width: 100%
+
+    ::ng-deep .mdc-text-field
+        border-radius: 4px
+
+    ::ng-deep .mat-mdc-radio-button .mdc-form-field > label,
+    ::ng-deep .mat-mdc-checkbox .mdc-form-field > label
+        color: #e5e7eb
+
+.selector-overlay
+    position: fixed
+    inset: 0
+    display: flex
+    justify-content: center
+    align-items: center
+    background: rgba(0, 0, 0, 0.6)
+    padding: 12px
+    z-index: 1200
+
+.selector-dialog
+    width: min(720px, 96vw)
+    max-height: calc(100vh - 24px)
+    overflow: auto
+    background: linear-gradient(180deg, #2f3137 0%, #272a30 100%)
+    border: 1px solid #6f7683
+    border-radius: 10px
+    padding: 14px
+    display: flex
+    flex-direction: column
+    gap: 10px
+    color: #edf2ff
+
+.selector-header
+    display: flex
+    justify-content: space-between
+    align-items: flex-start
+    gap: 8px
+
+.selector-header-main
+    display: flex
+    flex-direction: column
+    gap: 4px
+
+.selector-title
+    color: #f3f6ff
+    font-size: 1.25rem
+    font-weight: 700
+
+.selector-subtitle
+    color: #d5dcef
+    font-size: 0.86rem
+
+.selector-icon-btn
+    color: #e9eefc
+    background: rgba(255, 255, 255, 0.08)
+
+.selector-icon-btn:hover
+    background: rgba(255, 255, 255, 0.16)
+
+.selector-tools
+    display: flex
+    justify-content: space-between
+    align-items: center
+    gap: 8px
+
+.selector-tools--inline
+    align-items: flex-start
+
+    ::ng-deep .mat-mdc-form-field
+        flex: 1 1 auto
+
+    button
+        flex: 0 0 auto
+        min-height: 56px
+
+.extras-listado
+    display: flex
+    flex-direction: column
+    gap: 8px
+    max-height: 44vh
+    overflow-y: auto
+    overflow-x: hidden
+    padding-right: 4px
+
+.extra-row
+    border-radius: 8px
+    border: 1px solid rgba(255, 255, 255, 0.18)
+    background: rgba(255, 255, 255, 0.05)
+    padding: 9px 10px
+    cursor: pointer
+    transition: border-color .15s ease, background .15s ease
+
+.extra-row:hover
+    background: rgba(255, 255, 255, 0.1)
+
+.detalle
+    color: #e7ebf6
+    font-size: .92rem
+    opacity: .9
+
+.selector-actions
+    display: flex
+    justify-content: flex-end
+    gap: 8px
+    padding-top: 4px
+
+::ng-deep .selector-dialog .mat-mdc-form-field
+    width: 100%
+
+::ng-deep .selector-dialog .mat-mdc-form-field .mdc-text-field--filled
+    background: rgba(255, 255, 255, 0.09)
+
+::ng-deep .selector-dialog .mat-mdc-form-field .mdc-floating-label
+    color: #dbe5ff !important
+
+::ng-deep .selector-dialog .mat-mdc-input-element
+    color: #f6f8ff !important
+
+::ng-deep .selector-dialog .mat-mdc-checkbox .mdc-form-field > label
+    color: #edf2ff
+
+::ng-deep .selector-dialog .mdc-label
+    color: #edf2ff
+
+::ng-deep .selector-dialog .mat-mdc-button.mat-mdc-outlined-button
+    border-color: rgba(203, 216, 255, 0.45)
+    color: #f1f5ff
+
+::ng-deep .selector-dialog .mat-mdc-raised-button.mat-primary
+    background: linear-gradient(135deg, #d61a73 0%, #b8105f 100%)
+    color: #fff
+
+::ng-deep body.nueva-dote-modal-open
+    overflow: hidden
+
+@media (max-width: 1200px)
+    .nueva-dote-form
+        .valores-grid
+            grid-template-columns: 1fr
+
+@media (max-width: 900px)
+    .nueva-dote-form
+        .grid-content
+            grid-template-columns: repeat(2, minmax(0, 1fr))
+
+        .span-2
+            grid-column: span 2
+
+        .flags-grid
+            grid-template-columns: 1fr
+
+        .skill-grid
+            grid-template-columns: 1fr 1fr 110px 44px
+
+        .actions-row
+            justify-content: stretch
+
+            button
+                width: 100%
+
+@media (max-width: 640px)
+    .nueva-dote-form
+        .grid-content,
+        .option-list
+            grid-template-columns: 1fr
+
+        .span-2
+            grid-column: span 1
+
+        .mod-grid,
+        .skill-grid,
+        .prereq-row-grid
+            grid-template-columns: 1fr
+
+    .selector-tools--inline
+        flex-direction: column
+
+        button
+            width: 100%
+            min-height: 40px

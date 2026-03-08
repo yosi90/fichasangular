@@ -1,0 +1,72 @@
+<div class="tw-w-full tw-px-3 detalle-view" *ngIf="deidad">
+    <div class="tw-flex tw-flex-wrap">
+        <div class="detalle-col tw-w-full md:tw-w-1/3 tw-p-2">
+            <div class="tw-flex tw-flex-wrap tw-items-center sombra-caja-sm tw-rounded-md tw-p-2 tw-my-2">
+                <mat-chip class="tw-h-auto warm tw-w-full sombra-caja-sm tw-py-2 tw-m-1 chip-titulo">
+                    {{deidad.Nombre}}
+                </mat-chip>
+                <mat-chip class="chip-clic sombra3d-sm tw-m-1" matTooltip="Pulsa para ver el manual"
+                    [matTooltipShowDelay]="250" matTooltipClass="tt-accent" (click)="abrirDetalleManual()">
+                    <mat-icon class="tw-me-2">auto_stories</mat-icon>
+                    {{manualLabel}}
+                </mat-chip>
+                <mat-chip class="tw-h-auto sombra3d-sm tw-m-1" *ngIf="tieneTextoVisible(deidad.Alineamiento?.Nombre)">
+                    Alineamiento
+                    <mat-chip class="sombra3d-sm tw-m-1">{{deidad.Alineamiento.Nombre}}</mat-chip>
+                </mat-chip>
+                <mat-chip class="tw-h-auto sombra3d-sm tw-m-1" *ngIf="tieneTextoVisible(deidad.Pabellon?.Nombre)">
+                    Pabellón
+                    <mat-chip class="sombra3d-sm tw-m-1">{{deidad.Pabellon.Nombre}}</mat-chip>
+                </mat-chip>
+                <mat-chip class="tw-h-auto sombra3d-sm tw-m-1" *ngIf="tieneTextoVisible(deidad.Genero?.Nombre)">
+                    Género
+                    <mat-chip class="sombra3d-sm tw-m-1">{{deidad.Genero.Nombre}}</mat-chip>
+                </mat-chip>
+                <mat-chip class="tw-h-auto chip-clic sombra3d-sm tw-m-1" *ngIf="tieneArmaVisible()"
+                    matTooltip="Pulsa para ver el arma predilecta" [matTooltipShowDelay]="250"
+                    matTooltipClass="tt-accent" (click)="abrirDetallesArma()">
+                    Arma predilecta
+                    <mat-chip class="sombra3d-sm tw-m-1">{{deidad.Arma.Nombre}}</mat-chip>
+                </mat-chip>
+                <mat-chip class="warm sombra3d-sm tw-m-1" *ngIf="!deidad.Oficial" matTooltip="Esta deidad es homebrew" matTooltipClass="tt-accent">
+                    No es oficial
+                </mat-chip>
+            </div>
+        </div>
+
+        <div class="detalle-col tw-w-full md:tw-w-1/3 tw-p-2">
+            <div class="tw-flex tw-flex-wrap tw-items-center sombra-caja-sm tw-rounded-md tw-p-2 tw-my-2"
+                *ngIf="tieneTextoVisible(deidad.Descripcion)">
+                <mat-chip class="tw-h-auto tw-w-full sombra-caja-sm tw-py-2 tw-m-1 tw-mb-2 chip-titulo">Descripción</mat-chip>
+                <p class="tw-m-1">{{deidad.Descripcion}}</p>
+            </div>
+        </div>
+
+        <div class="detalle-col tw-w-full md:tw-w-1/3 tw-p-2">
+            <mat-accordion>
+                <mat-expansion-panel *ngIf="tieneColeccionVisible(deidad.Ambitos)">
+                    <mat-expansion-panel-header>
+                        <button mat-stroked-button color="accent" class="tw-rounded-none tw-rounded-t-md">
+                            <h2 class="tw-mb-0">Ámbitos</h2>
+                        </button>
+                    </mat-expansion-panel-header>
+                    <mat-chip-set class="tw-m-1">
+                        <mat-chip class="sombra3d-sm tw-m-1" *ngFor="let ambito of deidad.Ambitos">{{ambito.Nombre}}</mat-chip>
+                    </mat-chip-set>
+                </mat-expansion-panel>
+                <mat-expansion-panel *ngIf="tieneColeccionVisible(deidad.Dominios)">
+                    <mat-expansion-panel-header>
+                        <button mat-stroked-button color="accent" class="tw-rounded-none tw-rounded-b-md">
+                            <h2 class="tw-mb-0">Dominios</h2>
+                        </button>
+                    </mat-expansion-panel-header>
+                    <mat-chip-set class="tw-m-1">
+                        <mat-chip class="sombra3d-sm tw-m-1" *ngFor="let dominio of deidad.Dominios">
+                            {{dominio.Nombre}}
+                        </mat-chip>
+                    </mat-chip-set>
+                </mat-expansion-panel>
+            </mat-accordion>
+        </div>
+    </div>
+</div>

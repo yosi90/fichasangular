@@ -10,7 +10,12 @@
                 </mat-expansion-panel-header>
                 <button mat-button color="primary">Raza</button>
                 <button mat-button color="primary">Clase</button>
-                <button mat-button color="primary">Dote</button>
+                <span
+                    [matTooltip]="canInsertarDotes() ? '' : 'Requiere permiso dotes.create'"
+                    [matTooltipDisabled]="canInsertarDotes()">
+                    <button mat-button color="primary" [disabled]="!canInsertarDotes()"
+                        (click)="onInsertarDote()">Dote</button>
+                </span>
                 <button mat-button color="primary">Conjuro</button>
                 <button mat-button color="primary">Monstruo</button>
                 <button mat-button color="primary">Plantilla</button>
@@ -27,6 +32,9 @@
                     (backdropClick)="cerrarOtros()" (detach)="cerrarOtros()" (overlayKeydown)="onOverlayKeydown($event)">
                     <div class="menu-otros-panel" (mouseenter)="cancelarCierreOtros()" (mouseleave)="programarCierreOtros()">
                         <button mat-button color="primary" (click)="cerrarOtros()">Tipos de criatura</button>
+                        <button mat-button color="primary" (click)="cerrarOtros()">Armas</button>
+                        <button mat-button color="primary" (click)="cerrarOtros()">Armaduras</button>
+                        <button mat-button color="primary" (click)="cerrarOtros()">Deidades</button>
                         <button mat-button color="primary" (click)="cerrarOtros()">Subtipos de criatura</button>
                         <button mat-button color="primary" (click)="cerrarOtros()">Rasgos</button>
                         <button mat-button color="primary" (click)="cerrarOtros()">Especiales</button>
@@ -60,6 +68,9 @@
                     (backdropClick)="cerrarOtros()" (detach)="cerrarOtros()" (overlayKeydown)="onOverlayKeydown($event)">
                     <div class="menu-otros-panel" (mouseenter)="cancelarCierreOtros()" (mouseleave)="programarCierreOtros()">
                         <button mat-button color="primary" (click)="cerrarOtros()">Tipos de criatura</button>
+                        <button mat-button color="primary" (click)="cerrarOtros()">Armas</button>
+                        <button mat-button color="primary" (click)="cerrarOtros()">Armaduras</button>
+                        <button mat-button color="primary" (click)="cerrarOtros()">Deidades</button>
                         <button mat-button color="primary" (click)="cerrarOtros()">Subtipos de criatura</button>
                         <button mat-button color="primary" (click)="cerrarOtros()">Rasgos raciales</button>
                         <button mat-button color="primary" (click)="cerrarOtros()">Especiales</button>
@@ -94,6 +105,12 @@
                     <div class="menu-otros-panel" (mouseenter)="cancelarCierreOtros()" (mouseleave)="programarCierreOtros()">
                         <button mat-button color="primary"
                             (click)="AbrirListado('tipos de criatura', 'detalles'); closeAcordion(); cerrarOtros();">Tipos de criatura</button>
+                        <button mat-button color="primary"
+                            (click)="AbrirListado('armas', 'detalles'); closeAcordion(); cerrarOtros();">Armas</button>
+                        <button mat-button color="primary"
+                            (click)="AbrirListado('armaduras', 'detalles'); closeAcordion(); cerrarOtros();">Armaduras</button>
+                        <button mat-button color="primary"
+                            (click)="AbrirListado('deidades', 'detalles'); closeAcordion(); cerrarOtros();">Deidades</button>
                         <button mat-button color="primary"
                             (click)="AbrirListado('subtipos', 'detalles'); closeAcordion(); cerrarOtros();">Subtipos de criatura</button>
                         <button mat-button color="primary"

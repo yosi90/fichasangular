@@ -1,0 +1,73 @@
+<div class="tw-w-full tw-px-3 detalle-view" *ngIf="armadura">
+    <div class="tw-flex tw-flex-wrap">
+        <div class="detalle-col tw-w-full md:tw-w-1/3 tw-p-2">
+            <div class="tw-flex tw-flex-wrap tw-items-center sombra-caja-sm tw-rounded-md tw-p-2 tw-my-2">
+                <mat-chip class="tw-h-auto warm tw-w-full sombra-caja-sm tw-py-2 tw-m-1 chip-titulo">
+                    {{armadura.Nombre}}
+                </mat-chip>
+                <mat-chip class="chip-clic sombra3d-sm tw-m-1" matTooltip="Pulsa para ver el manual"
+                    [matTooltipShowDelay]="250" matTooltipClass="tt-accent" (click)="abrirDetalleManual()">
+                    <mat-icon class="tw-me-2">auto_stories</mat-icon>
+                    {{manualLabel}}
+                </mat-chip>
+                <mat-chip class="tw-h-auto sombra3d-sm tw-m-1" *ngIf="tieneTextoVisible(armadura.Tipo_armadura?.Nombre)">
+                    Tipo
+                    <mat-chip class="sombra3d-sm tw-m-1">{{armadura.Tipo_armadura.Nombre}}</mat-chip>
+                </mat-chip>
+                <mat-chip class="tw-h-auto sombra3d-sm tw-m-1" *ngIf="tieneTextoVisible(armadura.Peso_armadura?.Nombre)">
+                    Peso de armadura
+                    <mat-chip class="sombra3d-sm tw-m-1">{{armadura.Peso_armadura.Nombre}}</mat-chip>
+                </mat-chip>
+                <mat-chip class="sombra3d-sm tw-m-1" *ngIf="tieneNumeroVisible(armadura.Ca)">CA +{{armadura.Ca}}</mat-chip>
+                <mat-chip class="sombra3d-sm tw-m-1" *ngIf="tieneTextoVisible(bonusDesLabel)">Bon. DES {{bonusDesLabel}}</mat-chip>
+                <mat-chip class="sombra3d-sm tw-m-1" *ngIf="tieneNumeroVisible(armadura.Penalizador)">Penalizador {{armadura.Penalizador}}</mat-chip>
+                <mat-chip class="sombra3d-sm tw-m-1" *ngIf="tieneNumeroVisible(armadura.Fallo_arcano)">Fallo arcano {{armadura.Fallo_arcano}}%</mat-chip>
+                <mat-chip class="warm sombra3d-sm tw-m-1" *ngIf="armadura.Es_escudo">Escudo</mat-chip>
+                <mat-chip class="warm sombra3d-sm tw-m-1" *ngIf="!armadura.Oficial" matTooltip="Esta armadura es homebrew" matTooltipClass="tt-accent">
+                    No es oficial
+                </mat-chip>
+            </div>
+        </div>
+
+        <div class="detalle-col tw-w-full md:tw-w-1/3 tw-p-2">
+            <div class="tw-flex tw-flex-wrap tw-items-center sombra-caja-sm tw-rounded-md tw-p-2 tw-my-2" *ngIf="tieneTextoVisible(armadura.Descripcion)">
+                <mat-chip class="tw-h-auto tw-w-full sombra-caja-sm tw-py-2 tw-m-1 tw-mb-2 chip-titulo">Descripción</mat-chip>
+                <p class="tw-m-1">{{armadura.Descripcion}}</p>
+            </div>
+            <div class="tw-flex tw-flex-wrap tw-items-center sombra-caja-sm tw-rounded-md tw-p-2 tw-my-2">
+                <mat-chip class="tw-h-auto tw-w-full sombra-caja-sm tw-py-2 tw-m-1 tw-mb-2 chip-titulo">Propiedades</mat-chip>
+                <mat-chip class="tw-h-auto sombra3d-sm tw-m-1" *ngIf="tieneTextoVisible(armadura.Material?.Nombre)">
+                    Material
+                    <mat-chip class="sombra3d-sm tw-m-1">{{armadura.Material.Nombre}}</mat-chip>
+                </mat-chip>
+                <mat-chip class="tw-h-auto sombra3d-sm tw-m-1" *ngIf="tieneTextoVisible(armadura.Tamano?.Nombre)">
+                    Tamaño
+                    <mat-chip class="sombra3d-sm tw-m-1">{{armadura.Tamano.Nombre}}</mat-chip>
+                </mat-chip>
+                <mat-chip class="sombra3d-sm tw-m-1" *ngIf="tieneNumeroVisible(armadura.Peso)">Peso {{armadura.Peso}}</mat-chip>
+                <mat-chip class="sombra3d-sm tw-m-1" *ngIf="tieneNumeroVisible(armadura.Precio)">Precio {{armadura.Precio}}</mat-chip>
+            </div>
+        </div>
+
+        <div class="detalle-col tw-w-full md:tw-w-1/3 tw-p-2">
+            <mat-accordion>
+                <mat-expansion-panel *ngIf="(armadura.Encantamientos?.length ?? 0) > 0">
+                    <mat-expansion-panel-header>
+                        <button mat-stroked-button color="accent" class="tw-rounded-none tw-rounded-t-md">
+                            <h2 class="tw-mb-0">Encantamientos</h2>
+                        </button>
+                    </mat-expansion-panel-header>
+                    <mat-chip-set class="tw-m-1">
+                        <mat-chip class="tw-h-auto sombra3d-sm tw-m-1" *ngFor="let encantamiento of armadura.Encantamientos">
+                            {{encantamiento.Nombre}}
+                            <mat-chip class="tw-m-1" *ngIf="tieneNumeroVisible(encantamiento.Modificador)">Mod {{encantamiento.Modificador > 0 ? '+' : ''}}{{encantamiento.Modificador}}</mat-chip>
+                            <mat-chip class="tw-m-1" *ngIf="tieneNumeroVisible(encantamiento.Coste)">Coste {{encantamiento.Coste}}</mat-chip>
+                            <mat-chip class="tw-m-1" *ngIf="tieneNumeroVisible(encantamiento.Tipo)">Tipo {{encantamiento.Tipo}}</mat-chip>
+                            <div class="chip-descripcion-bloque" *ngIf="tieneTextoVisible(encantamiento.Descripcion)">{{encantamiento.Descripcion}}</div>
+                        </mat-chip>
+                    </mat-chip-set>
+                </mat-expansion-panel>
+            </mat-accordion>
+        </div>
+    </div>
+</div>

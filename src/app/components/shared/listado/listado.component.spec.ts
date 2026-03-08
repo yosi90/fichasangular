@@ -1,4 +1,7 @@
 import { ChangeDetectorRef, EventEmitter } from '@angular/core';
+import { ListadoArmadurasComponent } from '../listado-armaduras/listado-armaduras.component';
+import { ListadoArmasComponent } from '../listado-armas/listado-armas.component';
+import { ListadoDeidadesComponent } from '../listado-deidades/listado-deidades.component';
 import { ListadoMonstruosComponent } from '../listado-monstruos/listado-monstruos.component';
 import { ListadoComponent } from './listado.component';
 
@@ -12,6 +15,15 @@ describe('ListadoComponent', () => {
 
     it('incluye monstruos en el mapa de listados dinámicos', () => {
         expect(component.componentes['monstruos']).toBe(ListadoMonstruosComponent);
+    });
+
+    it('incluye armas y armaduras en el mapa de listados dinámicos', () => {
+        expect(component.componentes['armas']).toBe(ListadoArmasComponent);
+        expect(component.componentes['armaduras']).toBe(ListadoArmadurasComponent);
+    });
+
+    it('incluye deidades en el mapa de listados dinámicos', () => {
+        expect(component.componentes['deidades']).toBe(ListadoDeidadesComponent);
     });
 
     it('carga ListadoMonstruosComponent y propaga sus eventos', () => {

@@ -35,6 +35,7 @@ tags:
   - name: habilidades
   - name: idiomas
   - name: enemigos-predilectos
+  - name: extras
   - name: armas
   - name: armaduras
   - name: grupos-armas
@@ -973,6 +974,82 @@ paths:
                 items:
                   $ref: '#/components/schemas/EnemigoPredilectoDetalle'
 
+  /extras:
+    get:
+      tags: [extras]
+      summary: Lista de extras
+      responses:
+        '200':
+          description: Lista de extras
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ExtraDetalle'
+
+  /extras/{id_extra}:
+    get:
+      tags: [extras]
+      summary: Extra por id
+      parameters:
+        - name: id_extra
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Extra encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExtraDetalle'
+        '404':
+          description: Extra no encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /tamanos:
+    get:
+      tags: [tamanos]
+      summary: Lista de tamanos
+      responses:
+        '200':
+          description: Lista de tamanos
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TamanoRef'
+
+  /tamanos/{id_tamano}:
+    get:
+      tags: [tamanos]
+      summary: Tamano por id
+      parameters:
+        - name: id_tamano
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Tamano encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TamanoRef'
+        '404':
+          description: Tamano no encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
   /armas:
     get:
       tags: [armas]
@@ -1355,6 +1432,55 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
+  /dotes/add:
+    post:
+      tags: [dotes]
+      summary: Crear dote
+      description: Crea una dote completa con ACL obligatoria por uid y persistencia transaccional de extras, habilidades y prerrequisitos. En los prerrequisitos con extras opcionales, la API infiere automáticamente cuándo el extra no aplica a partir de los datos maestros.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DoteCreateRequest'
+      responses:
+        '201':
+          description: Dote creada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DoteCreateResponse'
+        '400':
+          description: Body invalido o error de integridad
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Usuario baneado o sin permiso de creacion
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: AppUser no encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Conflicto de negocio (por ejemplo, nombre de dote duplicado)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error interno
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
   /ventajas:
     get:
       tags: [ventajas]
@@ -1668,6 +1794,19 @@ components:
           additionalProperties: true
         colecciones:
           type: object
+          properties:
+            competencia_arma:
+              type: array
+              items: { type: object, additionalProperties: true }
+            competencia_armadura:
+              type: array
+              items: { type: object, additionalProperties: true }
+            competencia_grupo_arma:
+              type: array
+              items: { type: object, additionalProperties: true }
+            competencia_grupo_armadura:
+              type: array
+              items: { type: object, additionalProperties: true }
           additionalProperties: true
         familiar:
           type: object
@@ -1685,6 +1824,110 @@ components:
         idJugador: { type: integer }
         uid: { type: string }
       required: [message, idPersonaje, idJugador, uid]
+
+    DoteCreateDote:
+      type: object
+      properties:
+        nombre: { type: string, maxLength: 50 }
+        beneficio: { type: string, maxLength: 3000 }
+        descripcion: { type: string }
+        normal: { type: string, maxLength: 3000 }
+        especial: { type: string, maxLength: 2000 }
+        id_manual: { type: integer, minimum: 0 }
+        pagina: { type: integer, minimum: 0 }
+        id_tipo: { type: integer, minimum: 0 }
+        id_tipo2: { type: integer, minimum: 0 }
+        oficial: { type: boolean }
+        repetible: { type: boolean }
+        repetible_distinto_extra: { type: boolean }
+        repetible_comb: { type: boolean }
+        comp_arma: { type: boolean }
+        extra_arma: { type: boolean }
+        extra_armadura:
+          type: boolean
+          deprecated: true
+          description: Alias legado. Si se envía, activa ambos flags nuevos.
+        extra_armadura_armaduras: { type: boolean }
+        extra_armadura_escudos: { type: boolean }
+        extra_escuela: { type: boolean }
+        extra_habilidad: { type: boolean }
+      required:
+        - nombre
+        - beneficio
+        - descripcion
+        - normal
+        - especial
+        - id_manual
+        - pagina
+        - id_tipo
+        - id_tipo2
+        - oficial
+        - repetible
+        - repetible_distinto_extra
+        - repetible_comb
+        - comp_arma
+        - extra_arma
+        - extra_armadura_armaduras
+        - extra_armadura_escudos
+        - extra_escuela
+        - extra_habilidad
+      additionalProperties: true
+
+    DoteCreateExtrasDisponibles:
+      type: object
+      properties:
+        armas:
+          type: array
+          items: { type: integer }
+        armaduras:
+          type: array
+          items: { type: integer }
+        escuelas:
+          type: array
+          items: { type: integer }
+        habilidades:
+          type: array
+          items: { type: integer }
+      additionalProperties: true
+
+    DoteCreateRequest:
+      type: object
+      properties:
+        uid: { type: string }
+        firebaseUid: { type: string }
+        dote:
+          $ref: '#/components/schemas/DoteCreateDote'
+        modificadores:
+          type: object
+          additionalProperties:
+            type: integer
+        habilidades_otorgadas:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+        extras_disponibles:
+          $ref: '#/components/schemas/DoteCreateExtrasDisponibles'
+        prerrequisitos:
+          type: object
+          additionalProperties:
+            type: array
+            items:
+              type: object
+              additionalProperties: true
+      required: [dote]
+      oneOf:
+        - required: [uid]
+        - required: [firebaseUid]
+      additionalProperties: true
+
+    DoteCreateResponse:
+      type: object
+      properties:
+        message: { type: string }
+        idDote: { type: integer }
+        uid: { type: string }
+      required: [message, idDote, uid]
 
     PersonajeVisibilityUpdateRequest:
       type: object
@@ -2005,12 +2248,15 @@ components:
       properties:
         Id: { type: integer }
         Nombre: { type: string }
+        Es_escudo: { type: boolean }
 
     DoteExtrasSoportados:
       type: object
       properties:
         Extra_arma: { type: integer }
         Extra_armadura: { type: integer }
+        Extra_armadura_armaduras: { type: integer }
+        Extra_armadura_escudos: { type: integer }
         Extra_escuela: { type: integer }
         Extra_habilidad: { type: integer }
 
@@ -2159,6 +2405,12 @@ components:
         Id: { type: integer }
         Nombre: { type: string }
 
+    ExtraDetalle:
+      type: object
+      properties:
+        Id: { type: integer }
+        Nombre: { type: string }
+
     TamanoRef:
       type: object
       properties:
@@ -2266,6 +2518,7 @@ components:
         Tamano:
           $ref: '#/components/schemas/TamanoRef'
         Fallo_arcano: { type: number }
+        Es_escudo: { type: boolean }
         Oficial: { type: boolean }
         Encantamientos:
           type: array
@@ -3093,6 +3346,22 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/SubtipoRef'
+        competencia_arma:
+          type: array
+          items:
+            $ref: '#/components/schemas/DoteExtraItem'
+        competencia_armadura:
+          type: array
+          items:
+            $ref: '#/components/schemas/DoteExtraItem'
+        competencia_grupo_arma:
+          type: array
+          items:
+            $ref: '#/components/schemas/DoteExtraItem'
+        competencia_grupo_armadura:
+          type: array
+          items:
+            $ref: '#/components/schemas/DoteExtraItem'
         familiares:
           type: array
           items:

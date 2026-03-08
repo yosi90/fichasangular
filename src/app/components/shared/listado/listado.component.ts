@@ -23,6 +23,12 @@ import { ListadoVentajasComponent } from '../listado-ventajas/listado-ventajas.c
 import { VentajaDetalle } from 'src/app/interfaces/ventaja';
 import { ListadoMonstruosComponent } from '../listado-monstruos/listado-monstruos.component';
 import { MonstruoDetalle } from 'src/app/interfaces/monstruo';
+import { ListadoArmasComponent } from '../listado-armas/listado-armas.component';
+import { ArmaDetalle } from 'src/app/interfaces/arma';
+import { ListadoArmadurasComponent } from '../listado-armaduras/listado-armaduras.component';
+import { ArmaduraDetalle } from 'src/app/interfaces/armadura';
+import { ListadoDeidadesComponent } from '../listado-deidades/listado-deidades.component';
+import { DeidadDetalle } from 'src/app/interfaces/deidad';
 
 @Component({
     selector: 'app-listado',
@@ -49,6 +55,9 @@ export class ListadoComponent {
         'subtipos': ListadoSubtiposComponent,
         'ventajas': ListadoVentajasComponent,
         'monstruos': ListadoMonstruosComponent,
+        'armas': ListadoArmasComponent,
+        'armaduras': ListadoArmadurasComponent,
+        'deidades': ListadoDeidadesComponent,
     };
 
     constructor(private cdr: ChangeDetectorRef) { }
@@ -152,6 +161,27 @@ export class ListadoComponent {
                 this.handleItemDetalles(item);
             });
             componentRef.instance.monstruoSeleccionado.subscribe((item: MonstruoDetalle) => {
+                this.handleItemSeleccionado(item);
+            });
+        } else if (componentRef.instance instanceof ListadoArmasComponent) {
+            componentRef.instance.armaDetalles.subscribe((item: ArmaDetalle) => {
+                this.handleItemDetalles(item);
+            });
+            componentRef.instance.armaSeleccionada.subscribe((item: ArmaDetalle) => {
+                this.handleItemSeleccionado(item);
+            });
+        } else if (componentRef.instance instanceof ListadoArmadurasComponent) {
+            componentRef.instance.armaduraDetalles.subscribe((item: ArmaduraDetalle) => {
+                this.handleItemDetalles(item);
+            });
+            componentRef.instance.armaduraSeleccionada.subscribe((item: ArmaduraDetalle) => {
+                this.handleItemSeleccionado(item);
+            });
+        } else if (componentRef.instance instanceof ListadoDeidadesComponent) {
+            componentRef.instance.deidadDetalles.subscribe((item: DeidadDetalle) => {
+                this.handleItemDetalles(item);
+            });
+            componentRef.instance.deidadSeleccionada.subscribe((item: DeidadDetalle) => {
                 this.handleItemSeleccionado(item);
             });
         }

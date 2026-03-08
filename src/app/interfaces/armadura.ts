@@ -48,6 +48,7 @@ export interface ArmaduraDetalle {
     Peso: number;
     Tamano: ArmaduraTamanoRef;
     Fallo_arcano: number;
+    Es_escudo: boolean;
     Oficial: boolean;
     Encantamientos: ArmaduraEncantamientoRef[];
 }

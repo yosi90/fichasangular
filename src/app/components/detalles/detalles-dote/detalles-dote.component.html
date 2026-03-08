@@ -17,7 +17,6 @@
                 <mat-chip class="sombra3d-sm tw-m-1" *ngIf="doteData.Repetible">Repetible</mat-chip>
                 <mat-chip class="sombra3d-sm tw-m-1" *ngIf="doteData.Repetible_distinto_extra">Repetible con extra distinto</mat-chip>
                 <mat-chip class="sombra3d-sm tw-m-1" *ngIf="doteData.Repetible_comb">Repetible en combinación</mat-chip>
-                <mat-chip class="sombra3d-sm tw-m-1" *ngIf="doteData.Comp_arma">Competencia de arma</mat-chip>
                 <mat-chip class="warm sombra3d-sm tw-m-1" *ngIf="!doteData.Oficial" matTooltip="Esta dote es homebrew" matTooltipClass="tt-accent">No es oficial</mat-chip>
                 <mat-chip class="tw-h-auto sombra3d-sm tw-m-1" *ngIf="getOrigenContexto()">
                     Origen
@@ -55,9 +54,17 @@
                         <mat-chip class="sombra3d-sm tw-m-1" *ngFor="let extra of getExtrasSoportadosActivos()">{{extra.nombre}}</mat-chip>
                     </mat-chip-set>
                     <div class="tw-p-2" *ngFor="let extra of getExtrasDisponibles()">
-                        <mat-chip class="tw-w-full sombra-caja-sm tw-m-1 tw-mb-2 chip-titulo">{{extra.nombre}}</mat-chip>
+                        <div class="tw-flex tw-flex-wrap tw-items-center tw-m-1 tw-mb-2">
+                            <mat-chip class="sombra-caja-sm chip-titulo">{{extra.nombre}}</mat-chip>
+                            <mat-chip class="sombra3d-sm tw-ms-2" *ngIf="bloqueExtraRequiereCompetencia(extra.nombre)">Requiere competencia</mat-chip>
+                        </div>
                         <mat-chip-set class="tw-m-1">
-                            <mat-chip class="sombra3d-sm tw-m-1" *ngFor="let item of extra.items">{{item.Nombre}}</mat-chip>
+                            <mat-chip class="sombra3d-sm tw-m-1"
+                                [ngClass]="esExtraNavegable(extra.nombre) ? 'chip-clic' : ''"
+                                *ngFor="let item of extra.items"
+                                (click)="abrirDetalleExtra(extra.nombre, item)">
+                                {{item.Nombre}}
+                            </mat-chip>
                         </mat-chip-set>
                     </div>
                 </mat-expansion-panel>
@@ -79,15 +86,22 @@
                             <h2 class="tw-mb-0">Prerrequisitos</h2>
                         </button>
                     </mat-expansion-panel-header>
-                    <div *ngIf="getPrerrequisitosConDatos().length > 0; else sinPrerrequisitos">
-                        <div class="prerrequisito-bloque tw-p-2" *ngFor="let key of getPrerrequisitosConDatos()">
-                            <mat-chip class="tw-w-full sombra-caja-sm tw-m-1 tw-mb-2 chip-titulo">{{getEtiquetaPrerrequisito(key)}}</mat-chip>
+                    <div *ngIf="getPrerrequisitosAgrupados().length > 0; else sinPrerrequisitos">
+                        <div class="prerrequisito-bloque tw-p-2" *ngFor="let grupo of getPrerrequisitosAgrupados()">
+                            <mat-chip class="tw-w-full sombra-caja-sm tw-m-1 tw-mb-2 chip-titulo">
+                                {{grupo.titulo}}
+                                <span class="tw-ms-2 prerrequisito-subtitulo">{{grupo.descripcion}}</span>
+                            </mat-chip>
                             <div class="prerrequisito-condicion sombra-caja-sm tw-m-1 tw-p-2"
-                                *ngFor="let item of doteData.Prerrequisitos[key]; let i = index">
-                                <p class="tw-mb-2 tw-font-bold">Condicion {{i + 1}}</p>
-                                <mat-chip-set class="tw-m-0" *ngIf="getCamposPrerrequisito(item).length > 0; else condicionSinCampos">
-                                    <mat-chip class="sombra3d-sm tw-m-1" *ngFor="let campo of getCamposPrerrequisito(item)">
-                                        {{campo.etiqueta}}: {{campo.valor}}
+                                *ngFor="let condicion of grupo.condiciones; let i = index">
+                                <p class="tw-mb-2 tw-font-bold">{{grupo.opcional ? 'Opcion' : 'Condicion'}} {{i + 1}}</p>
+                                <mat-chip-set class="tw-m-0" *ngIf="condicion.campos.length > 0; else condicionSinCampos">
+                                    <mat-chip class="sombra3d-sm tw-m-1 chip-familia">{{condicion.familiaEtiqueta}}</mat-chip>
+                                    <mat-chip class="sombra3d-sm tw-m-1"
+                                        [ngClass]="tienePrerrequisitoNavegable(condicion.key, condicion.item) ? 'chip-clic' : ''"
+                                        *ngFor="let texto of getTextosCondicionPrerrequisito(condicion)"
+                                        (click)="abrirDetallePrerrequisito(condicion.key, condicion.item)">
+                                        {{texto}}
                                     </mat-chip>
                                 </mat-chip-set>
                                 <ng-template #condicionSinCampos>

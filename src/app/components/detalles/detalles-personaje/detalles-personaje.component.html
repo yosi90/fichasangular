@@ -18,7 +18,11 @@
                     <mat-chip class="tw-m-1">Trama {{pj.Trama}}</mat-chip>
                     <mat-chip class="tw-m-1">Subtrama {{pj.Subtrama}}</mat-chip>
                 </ng-template>
-                <mat-chip class="tw-m-1" *ngIf="tieneDeidadVisible()">Deidad {{pj.Deidad}}</mat-chip>
+                <mat-chip class="tw-m-1 chip-clic" *ngIf="tieneDeidadVisible()"
+                    matTooltip="Pulsa para ver los detalles de la deidad" [matTooltipShowDelay]="250"
+                    matTooltipClass="tt-accent" (click)="verDetallesDeidadPorNombre(pj.Deidad)">
+                    Deidad {{pj.Deidad}}
+                </mat-chip>
                 <mat-chip class="tw-m-1" *ngIf="tieneRegionVisible()">Región {{nombreRegionPrincipal}}</mat-chip>
                 <mat-chip class="tw-h-auto tw-m-1" *ngIf="pj.Rds && pj.Rds.length > 0"><p class="tw-m-0 tw-me-2">Reducción de daño</p>
                     <mat-chip class="tw-m-1" *ngFor="let r of pj.Rds" [matTooltip]="getTooltip_simples('Origen:', r.Origen)" matTooltipClass="tt-accent" >{{r.Modificador}}</mat-chip>
@@ -54,7 +58,7 @@
                     </mat-chip>
                 </mat-chip>
                 <mat-chip class="tw-m-1" *ngIf="tieneEdadVisible()">Edad {{pj.Edad}} años</mat-chip>
-                <mat-chip class="tw-m-1" *ngIf="tieneAlturaVisible()">Altura {{pj.Altura}} m</mat-chip>
+                <mat-chip class="tw-m-1" *ngIf="tieneAlturaVisible()">Altura {{alturaVisible}} m</mat-chip>
                 <mat-chip class="tw-m-1" *ngIf="tienePesoVisible()">Peso {{pj.Peso}} kg</mat-chip>
                 <mat-chip class="tw-h-auto tw-m-1" *ngIf="tieneMadurezEdadVisible()" [matTooltip]="getTooltipMadurezEdad()" matTooltipClass="tt-accent tt-multiline">
                     Madurez {{madurezEdad.nombre}}
@@ -77,10 +81,10 @@
                     <mat-chip [ngStyle]="{'height': p.Multiplicador_dgs_lic > 0 ? 'auto' : 'initial'}" class="warm tw-m-1 chip-clic"
                         matTooltip="Pulsa para ver los detalles de esta plantilla" [matTooltipShowDelay]="250" matTooltipClass="tt-accent"
                         (click)="verDetallesPlantilla(p)">{{p.Nombre}}
-                        <mat-chip class="tw-ms-3 tw-m-1" *ngIf="p.Multiplicador_dgs_lic > 0">{{p.Multiplicador_dgs_lic}}{{p.Tipo_dgs_lic}} DGs adicionales</mat-chip>
-                        <mat-chip class="tw-m-1" *ngIf="p.Suma_dgs_lic > 0">+{{p.Suma_dgs_lic}} PGs</mat-chip>
-                        <mat-chip *ngIf="p.Ajuste_nivel > 0" [ngClass]="p.Multiplicador_dgs_lic == 0 ? 'tw-ms-3' : ''" class="tw-m-1">Ajuste de nivel +{{p.Ajuste_nivel}}</mat-chip>
-                        <mat-chip class="tw-m-1">{{p.Heredada ? "Heredada" : "Adquirida"}}</mat-chip>
+                        <mat-chip class="chip-plantilla-subinfo tw-ms-3 tw-m-1" *ngIf="p.Multiplicador_dgs_lic > 0">{{p.Multiplicador_dgs_lic}}{{p.Tipo_dgs_lic}} DGs adicionales</mat-chip>
+                        <mat-chip class="chip-plantilla-subinfo tw-m-1" *ngIf="p.Suma_dgs_lic > 0">+{{p.Suma_dgs_lic}} PGs</mat-chip>
+                        <mat-chip *ngIf="p.Ajuste_nivel > 0" [ngClass]="p.Multiplicador_dgs_lic == 0 ? 'tw-ms-3' : ''" class="chip-plantilla-subinfo tw-m-1">Ajuste de nivel +{{p.Ajuste_nivel}}</mat-chip>
+                        <mat-chip class="chip-plantilla-subinfo tw-m-1">{{p.Heredada ? "Heredada" : "Adquirida"}}</mat-chip>
                     </mat-chip>
                 </mat-chip-set>
             </div>
@@ -258,7 +262,7 @@
                 <mat-expansion-panel *ngIf="tieneCompaniaMonstruoVisible()">
                     <mat-expansion-panel-header>
                         <button mat-stroked-button color="accent" class="tw-rounded-none">
-                            <h2 class="tw-mb-0">Familiares y companeros animales</h2>
+                            <h2 class="tw-mb-0">Familiares y compañeros animales</h2>
                         </button>
                     </mat-expansion-panel-header>
                     <p class="tw-m-2" *ngIf="getFamiliaresVisibles().length > 0"><strong>Familiares</strong></p>
@@ -273,7 +277,7 @@
                             {{familiar.Nombre}}
                         </mat-chip>
                     </mat-chip-set>
-                    <p class="tw-m-2" *ngIf="getCompanerosVisibles().length > 0"><strong>Companeros animales</strong></p>
+                    <p class="tw-m-2" *ngIf="getCompanerosVisibles().length > 0"><strong>Compañeros animales</strong></p>
                     <mat-chip-set class="tw-m-1" *ngIf="getCompanerosVisibles().length > 0">
                         <mat-chip
                             *ngFor="let companero of getCompanerosVisibles()"

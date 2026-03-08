@@ -57,6 +57,15 @@ export interface AutoRepartoRecomendacion {
     afinadaPorTop3: boolean;
 }
 
+export interface PersonajeCompetenciaDirecta {
+    Id: number;
+    Nombre: string;
+}
+
+export interface PersonajeCompetenciaArmaduraDirecta extends PersonajeCompetenciaDirecta {
+    Es_escudo?: boolean;
+}
+
 export interface Personaje extends PersonajeSimple {
     Id_region?: number;
     Region?: { Id: number; Nombre: string; } | null;
@@ -201,6 +210,10 @@ export interface Personaje extends PersonajeSimple {
     Dominios: {
         Nombre: string;
     }[]
+    competencia_arma: PersonajeCompetenciaDirecta[];
+    competencia_armadura: PersonajeCompetenciaArmaduraDirecta[];
+    competencia_grupo_arma: PersonajeCompetenciaDirecta[];
+    competencia_grupo_armadura: PersonajeCompetenciaDirecta[];
     Plantillas: {
         Id: number;
         Nombre: string;

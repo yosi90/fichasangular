@@ -671,10 +671,10 @@ function buildEvaluacionTamano(entry: Record<string, any>, ctx: ClaseEvaluacionC
         grupoOpcional,
         evaluable,
         cumple,
-        razonFail: maximo ? "No cumple tamano maximo" : "No cumple tamano minimo",
+        razonFail: maximo ? "No cumple tamaño máximo" : "No cumple tamaño mínimo",
         razonUnknown: maximo
-            ? "Prerrequisito tamano_maximo con formato no reconocido"
-            : "Prerrequisito tamano_minimo con formato no reconocido",
+            ? "Prerrequisito de tamaño máximo con formato no reconocido"
+            : "Prerrequisito de tamaño mínimo con formato no reconocido",
     };
 }
 

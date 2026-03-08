@@ -15,7 +15,7 @@
                     {{getTipoSizeLabel()}}
                 </mat-chip>
                 <mat-chip class="sombra3d-sm tw-m-1" *ngIf="monstruo.Familiar && !esDetalleFamiliarOCompanero">Puede ser familiar</mat-chip>
-                <mat-chip class="sombra3d-sm tw-m-1" *ngIf="monstruo.Companero && !esDetalleFamiliarOCompanero">Puede ser companero animal</mat-chip>
+                <mat-chip class="sombra3d-sm tw-m-1" *ngIf="monstruo.Companero && !esDetalleFamiliarOCompanero">Puede ser compañero animal</mat-chip>
                 <mat-chip class="sombra3d-sm tw-m-1" *ngIf="!monstruo.Oficial">No oficial</mat-chip>
                 <mat-chip class="sombra3d-sm tw-m-1">VD {{monstruo.Valor_desafio}}</mat-chip>
                 <mat-chip class="tw-h-auto sombra3d-sm tw-m-1">
@@ -37,7 +37,7 @@
                 <mat-chip class="tw-h-auto warm sombra3d-sm tw-m-1" *ngIf="tieneRelacionFamiliarExtendida || tieneRelacionCompaneroExtendida">
                     Relacion especial
                     <mat-chip class="sombra3d-sm tw-m-1" *ngIf="idFamiliarExtendido > 0">Familiar #{{idFamiliarExtendido}}</mat-chip>
-                    <mat-chip class="sombra3d-sm tw-m-1" *ngIf="idCompaneroExtendido > 0">Companero #{{idCompaneroExtendido}}</mat-chip>
+                    <mat-chip class="sombra3d-sm tw-m-1" *ngIf="idCompaneroExtendido > 0">Compañero #{{idCompaneroExtendido}}</mat-chip>
                     <mat-chip class="sombra3d-sm tw-m-1" *ngIf="vidaRelacionExtendida > 0">Vida {{vidaRelacionExtendida}}</mat-chip>
                     <mat-chip class="sombra3d-sm tw-m-1" *ngIf="dgAdicionalCompanero > 0">DG adi {{dgAdicionalCompanero}}</mat-chip>
                     <mat-chip class="sombra3d-sm tw-m-1" *ngIf="trucosAdicionalesCompanero > 0">Trucos adi {{trucosAdicionalesCompanero}}</mat-chip>
@@ -188,7 +188,7 @@
                 <mat-expansion-panel *ngIf="!esDetalleFamiliarOCompanero && tieneRequisitosCompanero()">
                     <mat-expansion-panel-header>
                         <button mat-stroked-button color="accent" class="tw-rounded-none">
-                            <h2 class="tw-mb-0">Requisitos para obtener como companero animal</h2>
+                            <h2 class="tw-mb-0">Requisitos para obtener como compañero animal</h2>
                         </button>
                     </mat-expansion-panel-header>
                     <div class="requisito-bloque tw-p-2" *ngIf="tieneAlineamientosRequeridos('Companero')">
@@ -248,7 +248,7 @@
                 <mat-expansion-panel *ngIf="getFamiliaresRelacionados().length > 0 || getCompanerosRelacionados().length > 0">
                     <mat-expansion-panel-header>
                         <button mat-stroked-button color="accent" class="tw-rounded-none">
-                            <h2 class="tw-mb-0">Familiares y companeros</h2>
+                            <h2 class="tw-mb-0">Familiares y compañeros</h2>
                         </button>
                     </mat-expansion-panel-header>
                     <p class="tw-m-2" *ngIf="getFamiliaresRelacionados().length > 0"><strong>Familiares</strong></p>
@@ -259,7 +259,7 @@
                             {{familiar.Nombre}}
                         </mat-chip>
                     </mat-chip-set>
-                    <p class="tw-m-2" *ngIf="getCompanerosRelacionados().length > 0"><strong>Companeros animales</strong></p>
+                    <p class="tw-m-2" *ngIf="getCompanerosRelacionados().length > 0"><strong>Compañeros animales</strong></p>
                     <mat-chip-set class="tw-m-1" *ngIf="getCompanerosRelacionados().length > 0">
                         <mat-chip class="chip-clic sombra3d-sm" *ngFor="let companero of getCompanerosRelacionados()"
                             matTooltip="Pulsa para ver detalles" [matTooltipShowDelay]="250" matTooltipClass="tt-accent"
@@ -294,7 +294,7 @@
                         <mat-chip class="sombra3d-sm tw-m-1">{{getPersonajesRelacionadosFamiliarLabel()}}</mat-chip>
                     </mat-chip>
                     <mat-chip class="tw-h-auto sombra3d-sm tw-m-1" *ngIf="tieneTextoVisible(getPersonajesRelacionadosCompaneroLabel())">
-                        Por companero
+                        Por compañero
                         <mat-chip class="sombra3d-sm tw-m-1">{{getPersonajesRelacionadosCompaneroLabel()}}</mat-chip>
                     </mat-chip>
                 </mat-expansion-panel>

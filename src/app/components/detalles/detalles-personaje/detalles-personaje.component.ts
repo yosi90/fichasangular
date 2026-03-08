@@ -486,6 +486,15 @@ export class DetallesPersonajeComponent implements OnInit, OnChanges, AfterViewI
         return this.tieneNumeroVisible(this.pj?.Altura);
     }
 
+    get alturaVisible(): string {
+        const altura = Number(this.pj?.Altura);
+        if (!Number.isFinite(altura))
+            return '';
+        if (Math.abs(altura) >= 10)
+            return (altura / 100).toFixed(2);
+        return `${altura}`;
+    }
+
     tienePesoVisible(): boolean {
         return this.tieneNumeroVisible(this.pj?.Peso);
     }
@@ -1015,6 +1024,14 @@ Fue/Des/Con: ${this.formatSigned(madurez.modFisico)} | Int/Sab/Car: ${this.forma
         });
     }
 
+    @Output() deidadDetallesPorNombre: EventEmitter<string> = new EventEmitter<string>();
+    verDetallesDeidadPorNombre(nombreDeidad: string): void {
+        const nombre = `${nombreDeidad ?? ''}`.trim();
+        if (!this.tieneTextoVisible(nombre))
+            return;
+        this.deidadDetallesPorNombre.emit(nombre);
+    }
+
     private normalizarVentajaReferencia(ventaja: VentajaVisible): VentajaReferenciaNormalizada {
         const origenRaw = `${ventaja?.origen ?? ''}`.trim();
         const nombreRaw = `${ventaja?.nombre ?? ''}`.trim();
@@ -1067,6 +1084,8 @@ Fue/Des/Con: ${this.formatSigned(madurez.modFisico)} | Int/Sab/Car: ${this.forma
             Oficial: true,
             Extras_soportados: {
                 Extra_arma: 0,
+                Extra_armadura_armaduras: 0,
+                Extra_armadura_escudos: 0,
                 Extra_armadura: 0,
                 Extra_escuela: 0,
                 Extra_habilidad: 0,

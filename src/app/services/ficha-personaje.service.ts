@@ -355,7 +355,7 @@ export class FichaPersonajeService {
         const pdfTemplateBytes = await fetch('../../assets/pdf/compañero.pdf').then((res) => res.arrayBuffer());
         const pdfDoc = await PDFDocument.load(pdfTemplateBytes);
         const form = pdfDoc.getForm();
-        const nombreFicha = `${companero?.Nombre ?? ''}`.trim() || `Companero de ${pj.Nombre}`;
+        const nombreFicha = `${companero?.Nombre ?? ''}`.trim() || `Compañero de ${pj.Nombre}`;
 
         this.rellenarBasicosCompaneroOamiliar(form, companero, nombreFicha, `${pj?.Jugador ?? ''}`, false);
         this.rellenarHabilidadesMonstruo(form, companero);
@@ -365,7 +365,7 @@ export class FichaPersonajeService {
         const pdfBytes = await pdfDoc.save();
         const blob = new Blob([pdfBytes], { type: 'application/pdf' });
         const i = Math.max(0, Math.trunc(Number(index) || 0));
-        saveAs(blob, `${this.normalizarNombreArchivo(pj.Nombre)} companero ${i + 1}.pdf`);
+        saveAs(blob, `${this.normalizarNombreArchivo(pj.Nombre)} compañero ${i + 1}.pdf`);
     }
 
     private rellenarBasicosCompaneroOamiliar(form: any, monstruo: MonstruoDetalle, nombre: string, jugador: string, esFamiliar: boolean): void {

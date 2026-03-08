@@ -112,7 +112,7 @@
                             </mat-chip>
                             <div class="field-grid">
                                 <mat-form-field appearance="fill" class="full-span">
-                                    <mat-label>Campana</mat-label>
+                                    <mat-label>Campaña</mat-label>
                                     <mat-select [(value)]="Personaje.Campana" (selectionChange)="actualizarTramas()">
                                         <mat-option value="Sin campaña">Sin campaña</mat-option>
                                         <mat-option *ngFor="let campana of Campanas" [value]="campana.Nombre">{{campana.Nombre}}</mat-option>
@@ -347,7 +347,7 @@
                 </mat-card>
                 <ng-template #bloqueoPlantillas>
                     <div class="tw-flex tw-justify-center tw-items-center tw-h-full tw-w-full tw-px-3">
-                        <mat-chip class="tw-h-auto warm tw-p-3">Genera caracteristicas para desbloquear esta pestana.</mat-chip>
+                        <mat-chip class="tw-h-auto warm tw-p-3">Genera características para desbloquear esta pestaña.</mat-chip>
                     </div>
                 </ng-template>
             </div>
@@ -956,10 +956,11 @@
                 (razaDetalles)="verDetallesRazaDesdeFicha($event)"
                 (claseDetalles)="verDetallesClaseDesdeFicha($event)"
                 (plantillaDetalles)="verDetallesPlantillaDesdeFicha($event)"
-                (rasgoDetalles)="verDetallesRasgo($event)"
-                (racialDetallesPorNombre)="verDetallesRacialDesdeReferencia($event)"
-                (monstruoDetalles)="verDetallesMonstruoDesdeFicha($event)"
-                (ventajaDetallesPorNombre)="verDetallesVentajaDesdeReferencia($event)">
+            (rasgoDetalles)="verDetallesRasgo($event)"
+            (racialDetallesPorNombre)="verDetallesRacialDesdeReferencia($event)"
+            (monstruoDetalles)="verDetallesMonstruoDesdeFicha($event)"
+            (deidadDetallesPorNombre)="verDetallesDeidadDesdeReferencia($event)"
+            (ventajaDetallesPorNombre)="verDetallesVentajaDesdeReferencia($event)">
             </app-detalles-personaje>
         </app-ventana-detalle-flotante>
     </ng-container>

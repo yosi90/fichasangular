@@ -12,6 +12,7 @@ export type CacheEntityKey =
     | "subtipos"
     | "rasgos"
     | "conjuros"
+    | "extras"
     | "dotes"
     | "clases"
     | "especiales"
@@ -28,6 +29,7 @@ export type CacheEntityKey =
     | "habilidades_custom"
     | "idiomas"
     | "enemigos_predilectos"
+    | "tamanos"
     | "armas"
     | "armaduras"
     | "grupos_armas"
@@ -50,10 +52,10 @@ export interface CacheContractEntry {
 export const CACHE_CONTRACT_MANIFEST: CacheContractEntry[] = [
     { key: "lista_personajes", label: "Lista de personajes", schemaVersion: 2 },
     { key: "campanas_tramas_subtramas", label: "Campañas, tramas y subtramas", schemaVersion: 1 },
-    { key: "personajes", label: "Personajes", schemaVersion: 5 },
+    { key: "personajes", label: "Personajes", schemaVersion: 6 },
     { key: "monstruos", label: "Monstruos", schemaVersion: 1 },
     { key: "familiares", label: "Familiares", schemaVersion: 1 },
-    { key: "companeros", label: "Companeros animales", schemaVersion: 1 },
+    { key: "companeros", label: "Compañeros animales", schemaVersion: 1 },
     { key: "razas", label: "Razas", schemaVersion: 5 },
     { key: "manuales", label: "Manuales", schemaVersion: 1 },
     { key: "manuales_asociados", label: "Manuales asociados", schemaVersion: 2 },
@@ -61,7 +63,8 @@ export const CACHE_CONTRACT_MANIFEST: CacheContractEntry[] = [
     { key: "subtipos", label: "Subtipos", schemaVersion: 1 },
     { key: "rasgos", label: "Rasgos", schemaVersion: 1 },
     { key: "conjuros", label: "Conjuros", schemaVersion: 1 },
-    { key: "dotes", label: "Dotes", schemaVersion: 1 },
+    { key: "extras", label: "Extras", schemaVersion: 1 },
+    { key: "dotes", label: "Dotes", schemaVersion: 2 },
     { key: "clases", label: "Clases", schemaVersion: 3 },
     { key: "especiales", label: "Especiales", schemaVersion: 1 },
     { key: "raciales", label: "Raciales", schemaVersion: 2 },
@@ -77,8 +80,9 @@ export const CACHE_CONTRACT_MANIFEST: CacheContractEntry[] = [
     { key: "habilidades_custom", label: "Habilidades custom", schemaVersion: 1 },
     { key: "idiomas", label: "Idiomas", schemaVersion: 1 },
     { key: "enemigos_predilectos", label: "Enemigos predilectos", schemaVersion: 1 },
+    { key: "tamanos", label: "Tamaños", schemaVersion: 1 },
     { key: "armas", label: "Armas", schemaVersion: 1 },
-    { key: "armaduras", label: "Armaduras", schemaVersion: 1 },
+    { key: "armaduras", label: "Armaduras", schemaVersion: 2 },
     { key: "grupos_armas", label: "Grupos de armas", schemaVersion: 1 },
     { key: "grupos_armaduras", label: "Grupos de armaduras", schemaVersion: 1 },
     { key: "dominios", label: "Dominios", schemaVersion: 1 },

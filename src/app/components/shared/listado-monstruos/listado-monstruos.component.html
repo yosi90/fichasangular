@@ -27,8 +27,8 @@
             *ngIf="monstruos.length > 0; else cargando">
             <ng-container matColumnDef="{{column}}" *ngFor="let column of monstruoColumns">
                 <th class="tw-text-lg tw-font-medium" mat-header-cell *matHeaderCellDef mat-sort-header
-                    sortActionDescription="Ordenar por {{column}}">
-                    {{column.replace('_', ' ')}}
+                    sortActionDescription="Ordenar por {{getColumnLabel(column)}}">
+                    {{getColumnLabel(column)}}
                 </th>
                 <td mat-cell *matCellDef="let element">
                     <button type="button" class="manual-clickable" *ngIf="column == 'Manual'"

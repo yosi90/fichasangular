@@ -13,6 +13,7 @@ type ElementoVisual = {
     nombre: string;
     extras: string[];
     detalle: string;
+    idEntidad?: number | null;
 };
 
 type ResumenDote = {
@@ -106,7 +107,6 @@ export class DetallesClaseComponent {
         'lanzar_conjuros_arcanos_nivel',
         'lanzar_conjuros_divinos_nivel',
         'conjuro_conocido',
-        'inherente',
         'clase_especial',
         'tamano_maximo',
         'tamano_minimo',
@@ -141,10 +141,9 @@ export class DetallesClaseComponent {
         lanzar_conjuros_arcanos_nivel: 'Conjuros arcanos de nivel',
         lanzar_conjuros_divinos_nivel: 'Conjuros divinos de nivel',
         conjuro_conocido: 'Conjuro conocido',
-        inherente: 'Inherente',
         clase_especial: 'Clase especial',
-        tamano_maximo: 'Tamano maximo',
-        tamano_minimo: 'Tamano minimo',
+        tamano_maximo: 'Tamaño máximo',
+        tamano_minimo: 'Tamaño mínimo',
         raza: 'Raza',
         no_raza: 'No raza',
     };
@@ -161,6 +160,8 @@ export class DetallesClaseComponent {
     @Output() especialDetallesPorNombre: EventEmitter<string> = new EventEmitter<string>();
     @Output() doteDetalles: EventEmitter<number> = new EventEmitter<number>();
     @Output() doteDetallesPorNombre: EventEmitter<string> = new EventEmitter<string>();
+    @Output() armaDetallesId: EventEmitter<number> = new EventEmitter<number>();
+    @Output() armaduraDetallesId: EventEmitter<number> = new EventEmitter<number>();
 
     abrirDetalleManual() {
         this.manualDetalleNavSvc.abrirDetalleManual({
@@ -279,6 +280,22 @@ export class DetallesClaseComponent {
         return this.competenciasVisibles[grupo] ?? [];
     }
 
+    esCompetenciaNavegable(grupo: keyof Clase['Competencias'], item: ElementoVisual): boolean {
+        return (grupo === 'Armas' || grupo === 'Armaduras') && Number(item?.idEntidad ?? 0) > 0;
+    }
+
+    abrirDetalleCompetencia(grupo: keyof Clase['Competencias'], item: ElementoVisual): void {
+        const id = Number(item?.idEntidad ?? 0);
+        if (!Number.isFinite(id) || id <= 0)
+            return;
+        if (grupo === 'Armas') {
+            this.armaDetallesId.emit(id);
+            return;
+        }
+        if (grupo === 'Armaduras')
+            this.armaduraDetallesId.emit(id);
+    }
+
     tieneCompetenciasVisibles(): boolean {
         return Object.values(this.competenciasVisibles).some(items => items.length > 0);
     }
@@ -318,6 +335,24 @@ export class DetallesClaseComponent {
             activos.push('Habilidad de clase');
 
         return activos;
+    }
+
+    tienePrerrequisitoNavegable(clave: keyof ClasePrerrequisitos, item: unknown): boolean {
+        if (clave !== 'competencia_arma' && clave !== 'competencia_armadura')
+            return false;
+        return this.getIdPrerrequisito(item) > 0;
+    }
+
+    abrirDetallePrerrequisito(clave: keyof ClasePrerrequisitos, item: unknown): void {
+        const id = this.getIdPrerrequisito(item);
+        if (id <= 0)
+            return;
+        if (clave === 'competencia_arma') {
+            this.armaDetallesId.emit(id);
+            return;
+        }
+        if (clave === 'competencia_armadura')
+            this.armaduraDetallesId.emit(id);
     }
 
     getCamposVisibles(item: any): { etiqueta: string, valor: string }[] {
@@ -689,7 +724,16 @@ export class DetallesClaseComponent {
             nombre: nombre.valor || 'Elemento',
             extras: extras.valores,
             detalle,
+            idEntidad: this.detectarIdEntidad(item),
         };
+    }
+
+    private detectarIdEntidad(item: Record<string, any>): number | null {
+        const ids = Object.entries(item ?? {})
+            .filter(([clave]) => this.esCampoId(clave))
+            .map(([, valor]) => Number(valor))
+            .filter((valor) => Number.isFinite(valor) && valor > 0);
+        return ids[0] ?? null;
     }
 
     private detectarNombre(entradas: [string, any][]): { valor: string, origen: string | null } {
@@ -866,6 +910,16 @@ export class DetallesClaseComponent {
             return this.formatearValor(valor);
         }
         return '';
+    }
+
+    private getIdPrerrequisito(item: unknown): number {
+        if (!item || typeof item !== 'object')
+            return 0;
+        const ids = Object.entries(item as Record<string, unknown>)
+            .filter(([clave]) => this.esCampoId(clave))
+            .map(([, valor]) => Number(valor))
+            .filter((valor) => Number.isFinite(valor) && valor > 0);
+        return ids[0] ?? 0;
     }
 
     private getOrdenCampoPrerrequisito(etiqueta: string): number {
@@ -1143,7 +1197,8 @@ export class DetallesClaseComponent {
         const soportados = doteNivel?.Dote?.Extras_soportados;
         const soportaTipo = !!soportados && (
             Number(soportados.Extra_arma) > 0
-            || Number(soportados.Extra_armadura) > 0
+            || Number(soportados.Extra_armadura_armaduras ?? soportados.Extra_armadura) > 0
+            || Number(soportados.Extra_armadura_escudos ?? soportados.Extra_armadura) > 0
             || Number(soportados.Extra_escuela) > 0
             || Number(soportados.Extra_habilidad) > 0
         );

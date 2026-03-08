@@ -848,7 +848,7 @@ export class NuevoPersonajeService {
     private catalogoClases: Clase[] = [];
     private catalogoDotes: Dote[] = [];
     private catalogoArmasDotes: { Id: number; Nombre: string; }[] = [];
-    private catalogoArmadurasDotes: { Id: number; Nombre: string; }[] = [];
+    private catalogoArmadurasDotes: Array<{ Id: number; Nombre: string; Es_escudo?: boolean; }> = [];
     private catalogoGruposArmasDotes: { Id: number; Nombre: string; }[] = [];
     private catalogoGruposArmadurasDotes: { Id: number; Nombre: string; }[] = [];
     private catalogoEscuelasDotes: { Id: number; Nombre: string; }[] = [];
@@ -1166,7 +1166,7 @@ export class NuevoPersonajeService {
         this.catalogoArmasDotes = this.normalizarCatalogoExtras(catalogo);
     }
 
-    setCatalogoArmadurasDotes(catalogo: Array<{ Id: number; Nombre: string; }>): void {
+    setCatalogoArmadurasDotes(catalogo: Array<{ Id: number; Nombre: string; Es_escudo?: boolean; }>): void {
         this.catalogoArmadurasDotes = this.normalizarCatalogoExtras(catalogo);
     }
 
@@ -2400,7 +2400,9 @@ export class NuevoPersonajeService {
         };
     }
 
-    private normalizarCatalogoExtras(catalogo: Array<{ Id: number; Nombre: string; }> | null | undefined): Array<{ Id: number; Nombre: string; }> {
+    private normalizarCatalogoExtras(
+        catalogo: Array<{ Id: number; Nombre: string; Es_escudo?: boolean; }> | null | undefined
+    ): Array<{ Id: number; Nombre: string; Es_escudo?: boolean; }> {
         const lista = Array.isArray(catalogo)
             ? catalogo
             : (catalogo && typeof catalogo === 'object' ? Object.values(catalogo as any) : []);
@@ -2409,6 +2411,7 @@ export class NuevoPersonajeService {
             .map((item: any) => ({
                 Id: this.toNumber(item?.Id ?? item?.id ?? item?.Id_habilidad ?? item?.IdHabilidad),
                 Nombre: `${item?.Nombre ?? item?.nombre ?? ''}`.trim(),
+                Es_escudo: this.toBooleanValue(item?.Es_escudo),
             }))
             .filter((item) => item.Id > 0 || this.normalizarTexto(item.Nombre).length > 0)
             .filter((item) => {
@@ -2426,6 +2429,41 @@ export class NuevoPersonajeService {
         );
     }
 
+    private doteSoportaArmaduras(dote: Dote | null | undefined): boolean {
+        return this.toBooleanValue(
+            dote?.Extras_soportados?.Extra_armadura_armaduras ?? dote?.Extras_soportados?.Extra_armadura
+        );
+    }
+
+    private doteSoportaEscudos(dote: Dote | null | undefined): boolean {
+        return this.toBooleanValue(
+            dote?.Extras_soportados?.Extra_armadura_escudos ?? dote?.Extras_soportados?.Extra_armadura
+        );
+    }
+
+    private doteTieneExtrasSoportados(dote: Dote | null | undefined): boolean {
+        return !!(
+            this.toBooleanValue(dote?.Extras_soportados?.Extra_arma)
+            || this.doteSoportaArmaduras(dote)
+            || this.doteSoportaEscudos(dote)
+            || this.toBooleanValue(dote?.Extras_soportados?.Extra_escuela)
+            || this.toBooleanValue(dote?.Extras_soportados?.Extra_habilidad)
+        );
+    }
+
+    private filtrarExtrasArmaduraPorSoporte(
+        dote: Dote,
+        extras: Array<{ Id: number; Nombre: string; Es_escudo?: boolean; }>
+    ): Array<{ Id: number; Nombre: string; Es_escudo?: boolean; }> {
+        if (this.doteSoportaArmaduras(dote) && this.doteSoportaEscudos(dote))
+            return extras;
+        if (this.doteSoportaEscudos(dote))
+            return extras.filter((item) => item.Es_escudo === true);
+        if (this.doteSoportaArmaduras(dote))
+            return extras.filter((item) => item.Es_escudo !== true);
+        return [];
+    }
+
     private crearCandidatoDote(
         dote: Dote,
         pendiente: DotePendienteState,
@@ -2436,12 +2474,7 @@ export class NuevoPersonajeService {
             return null;
 
         const restringidaPorTipo = !this.cumpleRestriccionTipoDote(dote, pendiente.tipoPermitido);
-        const requiereExtra = !!(
-            this.toBooleanValue(dote?.Extras_soportados?.Extra_arma)
-            || this.toBooleanValue(dote?.Extras_soportados?.Extra_armadura)
-            || this.toBooleanValue(dote?.Extras_soportados?.Extra_escuela)
-            || this.toBooleanValue(dote?.Extras_soportados?.Extra_habilidad)
-        );
+        const requiereExtra = this.doteTieneExtrasSoportados(dote);
         const extrasBase = this.resolverExtrasDisponiblesDote(dote);
         const extrasDisponibles = this.filtrarExtrasPorRepeticionDote(dote, extrasBase);
 
@@ -2554,10 +2587,11 @@ export class NuevoPersonajeService {
             const usarCatalogo = directos.length < 1 || contieneElegir(directos);
             extras.push(...(usarCatalogo ? this.catalogoArmasDotes : directos));
         }
-        if (this.toBooleanValue(dote?.Extras_soportados?.Extra_armadura)) {
-            const directos = normalizar(dote?.Extras_disponibles?.Armaduras ?? []);
+        if (this.doteSoportaArmaduras(dote) || this.doteSoportaEscudos(dote)) {
+            const directos = this.filtrarExtrasArmaduraPorSoporte(dote, normalizar(dote?.Extras_disponibles?.Armaduras ?? []));
             const usarCatalogo = directos.length < 1 || contieneElegir(directos);
-            extras.push(...(usarCatalogo ? this.catalogoArmadurasDotes : directos));
+            const catalogo = this.filtrarExtrasArmaduraPorSoporte(dote, this.catalogoArmadurasDotes);
+            extras.push(...(usarCatalogo ? catalogo : directos));
         }
         if (this.toBooleanValue(dote?.Extras_soportados?.Extra_escuela)) {
             const directos = normalizar(dote?.Extras_disponibles?.Escuelas ?? []);
@@ -3103,35 +3137,105 @@ export class NuevoPersonajeService {
         }));
     }
 
+    private resolverCompetenciasDirectasPersonajeActuales(
+        values: any,
+        idKeys: string[],
+        nombreKeys: string[]
+    ): Array<{ id: number | null; nombre: string; }> {
+        const entries = Array.isArray(values)
+            ? values
+            : (values && typeof values === 'object' ? Object.values(values) : []);
+        return this.normalizarCatalogoExtras(
+            entries.map((item: any) => ({
+                Id: idKeys.reduce((acc, key) => acc > 0 ? acc : this.toNumber(item?.[key]), 0),
+                Nombre: nombreKeys.reduce((acc, key) => acc.length > 0 ? acc : `${item?.[key] ?? ''}`.trim(), ''),
+            }))
+        ).map((item) => ({
+            id: item.Id > 0 ? item.Id : null,
+            nombre: item.Nombre,
+        }));
+    }
+
+    private fusionarCompetenciasActuales(
+        fromClase: Array<{ id: number | null; nombre: string; }>,
+        fromPersonaje: Array<{ id: number | null; nombre: string; }>
+    ): Array<{ id: number | null; nombre: string; }> {
+        const resultado: Array<{ id: number | null; nombre: string; }> = [];
+        const vistos = new Set<string>();
+
+        [...fromClase, ...fromPersonaje].forEach((item) => {
+            const id = this.toNumber(item?.id) > 0 ? this.toNumber(item?.id) : null;
+            const nombre = `${item?.nombre ?? ''}`.trim();
+            if (id === null && nombre.length < 1)
+                return;
+
+            const key = id !== null ? `id:${id}` : `nombre:${this.normalizarTexto(nombre)}`;
+            if (vistos.has(key))
+                return;
+            vistos.add(key);
+            resultado.push({ id, nombre });
+        });
+
+        return resultado;
+    }
+
     private resolverCompetenciasArmasActuales(): Array<{ id: number | null; nombre: string; }> {
-        return this.resolverCompetenciasClaseActuales(
-            'Armas',
-            ['Id', 'id', 'Id_arma', 'id_arma'],
-            ['Nombre', 'nombre', 'Arma', 'arma']
+        return this.fusionarCompetenciasActuales(
+            this.resolverCompetenciasClaseActuales(
+                'Armas',
+                ['Id', 'id', 'Id_arma', 'id_arma'],
+                ['Nombre', 'nombre', 'Arma', 'arma']
+            ),
+            this.resolverCompetenciasDirectasPersonajeActuales(
+                this.personajeCreacion?.competencia_arma,
+                ['Id', 'id', 'Id_arma', 'id_arma'],
+                ['Nombre', 'nombre', 'Arma', 'arma']
+            )
         );
     }
 
     private resolverCompetenciasArmadurasActuales(): Array<{ id: number | null; nombre: string; }> {
-        return this.resolverCompetenciasClaseActuales(
-            'Armaduras',
-            ['Id', 'id', 'Id_armadura', 'id_armadura', 'Id_arma', 'id_arma'],
-            ['Nombre', 'nombre', 'Armadura', 'armadura', 'Arma', 'arma']
+        return this.fusionarCompetenciasActuales(
+            this.resolverCompetenciasClaseActuales(
+                'Armaduras',
+                ['Id', 'id', 'Id_armadura', 'id_armadura', 'Id_arma', 'id_arma'],
+                ['Nombre', 'nombre', 'Armadura', 'armadura', 'Arma', 'arma']
+            ),
+            this.resolverCompetenciasDirectasPersonajeActuales(
+                this.personajeCreacion?.competencia_armadura,
+                ['Id', 'id', 'Id_armadura', 'id_armadura', 'Id_arma', 'id_arma'],
+                ['Nombre', 'nombre', 'Armadura', 'armadura', 'Arma', 'arma']
+            )
         );
     }
 
     private resolverCompetenciasGrupoArmasActuales(): Array<{ id: number | null; nombre: string; }> {
-        return this.resolverCompetenciasClaseActuales(
-            'Grupos_arma',
-            ['Id', 'id', 'Id_grupo', 'id_grupo'],
-            ['Nombre', 'nombre', 'Grupo', 'grupo']
+        return this.fusionarCompetenciasActuales(
+            this.resolverCompetenciasClaseActuales(
+                'Grupos_arma',
+                ['Id', 'id', 'Id_grupo', 'id_grupo'],
+                ['Nombre', 'nombre', 'Grupo', 'grupo']
+            ),
+            this.resolverCompetenciasDirectasPersonajeActuales(
+                this.personajeCreacion?.competencia_grupo_arma,
+                ['Id', 'id', 'Id_grupo', 'id_grupo'],
+                ['Nombre', 'nombre', 'Grupo', 'grupo']
+            )
         );
     }
 
     private resolverCompetenciasGrupoArmadurasActuales(): Array<{ id: number | null; nombre: string; }> {
-        return this.resolverCompetenciasClaseActuales(
-            'Grupos_armadura',
-            ['Id', 'id', 'Id_grupo', 'id_grupo'],
-            ['Nombre', 'nombre', 'Grupo', 'grupo']
+        return this.fusionarCompetenciasActuales(
+            this.resolverCompetenciasClaseActuales(
+                'Grupos_armadura',
+                ['Id', 'id', 'Id_grupo', 'id_grupo'],
+                ['Nombre', 'nombre', 'Grupo', 'grupo']
+            ),
+            this.resolverCompetenciasDirectasPersonajeActuales(
+                this.personajeCreacion?.competencia_grupo_armadura,
+                ['Id', 'id', 'Id_grupo', 'id_grupo'],
+                ['Nombre', 'nombre', 'Grupo', 'grupo']
+            )
         );
     }
 
@@ -3299,6 +3403,8 @@ export class NuevoPersonajeService {
             Oficial: true,
             Extras_soportados: {
                 Extra_arma: 0,
+                Extra_armadura_armaduras: 0,
+                Extra_armadura_escudos: 0,
                 Extra_armadura: 0,
                 Extra_escuela: 0,
                 Extra_habilidad: 0,
@@ -3452,12 +3558,7 @@ export class NuevoPersonajeService {
     }
 
     private resolverExtraTextoDote(dote: Dote, idExtra: number, extraSeleccionado: string): string {
-        const requiereExtra = !!(
-            this.toBooleanValue(dote?.Extras_soportados?.Extra_arma)
-            || this.toBooleanValue(dote?.Extras_soportados?.Extra_armadura)
-            || this.toBooleanValue(dote?.Extras_soportados?.Extra_escuela)
-            || this.toBooleanValue(dote?.Extras_soportados?.Extra_habilidad)
-        );
+        const requiereExtra = this.doteTieneExtrasSoportados(dote);
         if (!requiereExtra)
             return 'No aplica';
 
@@ -8715,6 +8816,10 @@ export class NuevoPersonajeService {
                 },
             },
             Dominios: [],
+            competencia_arma: [],
+            competencia_armadura: [],
+            competencia_grupo_arma: [],
+            competencia_grupo_armadura: [],
             Plantillas: [],
             Familiares: [],
             Companeros: [],

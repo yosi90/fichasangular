@@ -62,6 +62,10 @@ export interface PersonajeCreateColeccionesDto {
     clases?: Array<{ idClase: number; nivel: number; }>;
     plantillas?: Array<{ idPlantilla: number; }>;
     subtipos?: Array<{ idSubtipo: number; }>;
+    competencia_arma?: Array<{ idArma: number; }>;
+    competencia_armadura?: Array<{ idArmadura: number; }>;
+    competencia_grupo_arma?: Array<{ idGrupoArma: number; }>;
+    competencia_grupo_armadura?: Array<{ idGrupoArmadura: number; }>;
     dgsExtra?: Array<{ valor: number; origen?: string; teriantropia?: boolean; }>;
     escuelasProhibidas?: Array<{ idEscuela: number; }>;
     rd?: Array<{ rd: string; origen?: string; }>;

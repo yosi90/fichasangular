@@ -69,6 +69,7 @@ export function normalizeArmadura(raw: any): ArmaduraDetalle {
             Nombre: toText(raw?.Tamano?.Nombre),
         },
         Fallo_arcano: toNumber(raw?.Fallo_arcano),
+        Es_escudo: toBoolean(raw?.Es_escudo),
         Oficial: toBoolean(raw?.Oficial),
         Encantamientos: toArray(raw?.Encantamientos).map((item: any) => ({
             Id: toNumber(item?.Id),

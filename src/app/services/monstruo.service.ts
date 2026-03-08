@@ -174,14 +174,14 @@ export class MonstruoService {
                         if (error.status === 404) {
                             Swal.fire({
                                 icon: "warning",
-                                title: "Companero animal no encontrado",
-                                text: `No existe el companero animal con id ${idCompanero}`,
+                                title: "Compañero animal no encontrado",
+                                text: `No existe el compañero animal con id ${idCompanero}`,
                                 showConfirmButton: true,
                             });
                         } else {
                             Swal.fire({
                                 icon: "warning",
-                                title: "Error al obtener el companero animal",
+                                title: "Error al obtener el compañero animal",
                                 text: error.message,
                                 showConfirmButton: true,
                             });
@@ -325,7 +325,7 @@ export class MonstruoService {
 
             Swal.fire({
                 icon: "success",
-                title: "Listado de companeros animales actualizado con exito",
+                title: "Listado de compañeros animales actualizado con exito",
                 showConfirmButton: true,
                 timer: 2000
             });
@@ -335,14 +335,14 @@ export class MonstruoService {
             if (httpError.status === 404) {
                 Swal.fire({
                     icon: "warning",
-                    title: "Endpoint de companeros no disponible",
+                    title: "Endpoint de compañeros no disponible",
                     text: "No se encontro /companeros en la API",
                     showConfirmButton: true
                 });
             } else {
                 Swal.fire({
                     icon: "warning",
-                    title: "Error al actualizar el listado de companeros animales",
+                    title: "Error al actualizar el listado de compañeros animales",
                     text: error?.message ?? "Error no identificado",
                     showConfirmButton: true
                 });

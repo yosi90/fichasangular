@@ -1,0 +1,71 @@
+<div class="mod-empty" *ngIf="selectedTypes.length < 1 && !loading">
+    {{emptyMessage}}
+</div>
+
+<div class="prereq-loading" *ngIf="loading">
+    <mat-icon>hourglass_top</mat-icon>
+    <span>{{loadingMessage}}</span>
+</div>
+
+<section class="subpanel tw-mt-2" *ngFor="let group of groupedRows; trackBy: trackByGroup">
+    <div class="subpanel-head">
+        <h3 class="subpanel-title">{{group.label}}</h3>
+        <button type="button" mat-stroked-button (click)="addRow(group.type)" [disabled]="disabled || loading">
+            Anadir fila
+        </button>
+    </div>
+
+    <div class="prereq-row" *ngFor="let row of group.rows; trackBy: trackByRow">
+        <ng-container [ngSwitch]="group.definition.editorKind">
+            <app-prerrequisito-flag-editor
+                *ngSwitchCase="'flag-only'"
+                [row]="row"
+                [disabled]="disabled || loading"
+                (patchChange)="updateRow(row.uid, $event)">
+            </app-prerrequisito-flag-editor>
+
+            <app-prerrequisito-value-editor
+                *ngSwitchCase="'value-only'"
+                [row]="row"
+                [definition]="group.definition"
+                [disabled]="disabled || loading"
+                (patchChange)="updateRow(row.uid, $event)">
+            </app-prerrequisito-value-editor>
+
+            <app-prerrequisito-catalog-editor
+                *ngSwitchCase="'catalog-only'"
+                [row]="row"
+                [definition]="group.definition"
+                [catalog]="getCatalog(group.type)"
+                [disabled]="disabled || loading"
+                (patchChange)="updateRow(row.uid, $event)">
+            </app-prerrequisito-catalog-editor>
+
+            <app-prerrequisito-catalog-value-editor
+                *ngSwitchCase="'catalog-plus-value'"
+                [row]="row"
+                [definition]="group.definition"
+                [catalog]="getCatalog(group.type)"
+                [allowRequiresExtra]="catalogContext.habilidadPermiteExtra(row.id) === true"
+                [disabled]="disabled || loading"
+                (patchChange)="updateRow(row.uid, $event)">
+            </app-prerrequisito-catalog-value-editor>
+
+            <app-prerrequisito-special-editor
+                *ngSwitchCase="'catalog-plus-special'"
+                [row]="row"
+                [definition]="group.definition"
+                [catalog]="getCatalog(group.type)"
+                [doteExtraOptions]="getDoteExtraOptions(row.id)"
+                [globalExtraOptions]="catalogContext.getGlobalExtraOptions()"
+                [allowExtraSelector]="group.type === 'dote' ? catalogContext.dotePermiteExtra(row.id) === true : catalogContext.especialPermiteExtra(row.id) === true"
+                [disabled]="disabled || loading"
+                (patchChange)="updateRow(row.uid, $event)">
+            </app-prerrequisito-special-editor>
+        </ng-container>
+
+        <button type="button" mat-icon-button class="row-action-btn" (click)="removeRow(row.uid)" [disabled]="disabled || loading">
+            <mat-icon>delete</mat-icon>
+        </button>
+    </div>
+</section>

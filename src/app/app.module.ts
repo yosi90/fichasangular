@@ -18,6 +18,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatSelectModule } from '@angular/material/select';
 import { MatAutocompleteModule } from '@angular/material/autocomplete';
 import { MatCheckboxModule } from '@angular/material/checkbox';
+import { MatRadioModule } from '@angular/material/radio';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { MatCardModule } from '@angular/material/card';
@@ -86,6 +87,19 @@ import { ListadoVentajasComponent } from './components/shared/listado-ventajas/l
 import { ListadoMonstruosComponent } from './components/shared/listado-monstruos/listado-monstruos.component';
 import { DetallesMonstruoComponent } from './components/detalles/detalles-monstruo/detalles-monstruo.component';
 import { FichasDescargaToastHostComponent } from './components/shared/fichas-descarga-toast-host/fichas-descarga-toast-host.component';
+import { NuevaDoteComponent } from './components/shared/nueva-dote/nueva-dote.component';
+import { PrerrequisitoCatalogEditorComponent } from './components/shared/prerrequisito-editor/prerrequisito-catalog-editor.component';
+import { PrerrequisitoCatalogValueEditorComponent } from './components/shared/prerrequisito-editor/prerrequisito-catalog-value-editor.component';
+import { PrerrequisitoEditorHostComponent } from './components/shared/prerrequisito-editor/prerrequisito-editor-host.component';
+import { PrerrequisitoFlagEditorComponent } from './components/shared/prerrequisito-editor/prerrequisito-flag-editor.component';
+import { PrerrequisitoSpecialEditorComponent } from './components/shared/prerrequisito-editor/prerrequisito-special-editor.component';
+import { PrerrequisitoValueEditorComponent } from './components/shared/prerrequisito-editor/prerrequisito-value-editor.component';
+import { DetallesArmaComponent } from './components/detalles/detalles-arma/detalles-arma.component';
+import { DetallesArmaduraComponent } from './components/detalles/detalles-armadura/detalles-armadura.component';
+import { ListadoArmasComponent } from './components/shared/listado-armas/listado-armas.component';
+import { ListadoArmadurasComponent } from './components/shared/listado-armaduras/listado-armaduras.component';
+import { DetallesDeidadComponent } from './components/detalles/detalles-deidad/detalles-deidad.component';
+import { ListadoDeidadesComponent } from './components/shared/listado-deidades/listado-deidades.component';
 
 @NgModule({
     declarations: [
@@ -141,7 +155,20 @@ import { FichasDescargaToastHostComponent } from './components/shared/fichas-des
         ListadoVentajasComponent,
         ListadoMonstruosComponent,
         DetallesMonstruoComponent,
+        DetallesArmaComponent,
+        DetallesArmaduraComponent,
+        ListadoArmasComponent,
+        ListadoArmadurasComponent,
+        DetallesDeidadComponent,
+        ListadoDeidadesComponent,
         FichasDescargaToastHostComponent,
+        NuevaDoteComponent,
+        PrerrequisitoEditorHostComponent,
+        PrerrequisitoFlagEditorComponent,
+        PrerrequisitoValueEditorComponent,
+        PrerrequisitoCatalogEditorComponent,
+        PrerrequisitoCatalogValueEditorComponent,
+        PrerrequisitoSpecialEditorComponent,
     ],
     imports: [
         BrowserModule,
@@ -155,6 +182,7 @@ import { FichasDescargaToastHostComponent } from './components/shared/fichas-des
         MatSelectModule,
         MatAutocompleteModule,
         MatCheckboxModule,
+        MatRadioModule,
         MatSlideToggleModule,
         MatExpansionModule,
         MatCardModule,

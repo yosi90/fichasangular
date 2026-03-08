@@ -1,0 +1,405 @@
+<div class="nueva-dote-shell">
+    <form class="nueva-dote-form" [formGroup]="form" (ngSubmit)="onAccionPrincipal()">
+        <p class="permiso-msg" *ngIf="!puedeCrear">
+            No tienes permiso <b>dotes.create</b> para insertar dotes.
+        </p>
+
+        <section class="panel-card">
+            <mat-chip class="panel-title">
+                Datos base de la dote
+                <mat-icon class="tw-ms-2">tune</mat-icon>
+            </mat-chip>
+
+            <div class="grid-base">
+                <mat-form-field appearance="fill">
+                    <mat-label>Nombre</mat-label>
+                    <input matInput formControlName="nombre" maxlength="50" />
+                    <mat-error *ngIf="form.controls.nombre.invalid">Nombre obligatorio (mínimo 3 caracteres).</mat-error>
+                </mat-form-field>
+
+                <mat-form-field appearance="fill">
+                    <mat-label>Manual</mat-label>
+                    <mat-select formControlName="id_manual">
+                        <mat-option *ngFor="let manual of manuales" [value]="manual.Id">{{manual.Nombre}}</mat-option>
+                    </mat-select>
+                    <mat-error *ngIf="form.controls.id_manual.invalid">Manual obligatorio.</mat-error>
+                </mat-form-field>
+
+                <mat-form-field appearance="fill">
+                    <mat-label>Página</mat-label>
+                    <input matInput type="number" formControlName="pagina" />
+                    <mat-error *ngIf="form.controls.pagina.invalid">Página obligatoria (>= 0).</mat-error>
+                </mat-form-field>
+
+                <mat-form-field appearance="fill">
+                    <mat-label>Tipo principal</mat-label>
+                    <mat-select formControlName="id_tipo">
+                        <mat-option *ngFor="let tipo of tiposPrimarios" [value]="tipo.Id">{{tipo.Nombre}}</mat-option>
+                    </mat-select>
+                    <mat-error *ngIf="form.controls.id_tipo.invalid">Tipo principal obligatorio.</mat-error>
+                </mat-form-field>
+
+                <mat-form-field appearance="fill">
+                    <mat-label>Tipo secundario</mat-label>
+                    <mat-select formControlName="id_tipo2">
+                        <mat-option *ngFor="let tipo of tiposDote" [value]="tipo.Id">{{tipo.Nombre}}</mat-option>
+                    </mat-select>
+                    <mat-error *ngIf="form.controls.id_tipo2.invalid">Tipo secundario obligatorio.</mat-error>
+                </mat-form-field>
+
+                <div class="estado-row">
+                    <button type="button" class="estado-chip" [class.activo]="oficialActivo" (click)="toggleOficial()">
+                        <mat-icon *ngIf="oficialActivo">done</mat-icon>
+                        <span>Oficial</span>
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <section class="panel-card">
+            <mat-chip class="panel-title">
+                Contenido principal
+                <mat-icon class="tw-ms-2">description</mat-icon>
+            </mat-chip>
+
+            <div class="grid-content">
+                <mat-form-field appearance="fill" class="span-2">
+                    <mat-label>Descripción</mat-label>
+                    <textarea matInput rows="4" formControlName="descripcion"></textarea>
+                    <mat-error *ngIf="form.controls.descripcion.invalid">Descripción obligatoria (mínimo 10 caracteres).</mat-error>
+                </mat-form-field>
+
+                <mat-form-field appearance="fill" class="span-2">
+                    <mat-label>Beneficio</mat-label>
+                    <textarea matInput rows="4" formControlName="beneficio"></textarea>
+                    <mat-error *ngIf="form.controls.beneficio.invalid">Beneficio obligatorio.</mat-error>
+                </mat-form-field>
+
+                <mat-form-field appearance="fill" class="span-2">
+                    <mat-label>Normal</mat-label>
+                    <textarea matInput rows="3" formControlName="normal"></textarea>
+                </mat-form-field>
+
+                <mat-form-field appearance="fill" class="span-2">
+                    <mat-label>Especial</mat-label>
+                    <textarea matInput rows="3" formControlName="especial"></textarea>
+                </mat-form-field>
+            </div>
+        </section>
+
+        <section class="flags-grid">
+            <section class="panel-card option-card">
+                <div class="panel-title-row">
+                    <mat-chip class="panel-title">Repetición</mat-chip>
+                    <button type="button" class="help-chip-btn" (click)="abrirInfoRepeticion($event)"
+                        matTooltip="Dudas sobre reglas de repetición" aria-label="Información sobre repetición de dotes">
+                        <mat-icon>help_outline</mat-icon>
+                    </button>
+                </div>
+                <mat-radio-group class="option-list option-list--radio" [value]="repeticionSeleccionada" (change)="onRepeticionSeleccionada($event.value)">
+                    <div class="extra-radio-card" [class.selected]="repeticionSeleccionada === 'repetible'">
+                        <mat-radio-button value="repetible">Repetible sin restricciones</mat-radio-button>
+                    </div>
+                    <div class="extra-radio-card" [class.selected]="repeticionSeleccionada === 'repetible_distinto_extra'">
+                        <mat-radio-button value="repetible_distinto_extra">Repetible con extra distinto</mat-radio-button>
+                    </div>
+                    <div class="extra-radio-card extra-radio-card--full" [class.selected]="repeticionSeleccionada === 'repetible_comb'">
+                        <mat-radio-button value="repetible_comb">Repetible por combinación</mat-radio-button>
+                    </div>
+                </mat-radio-group>
+                <div class="option-extra-actions">
+                    <button type="button" mat-stroked-button (click)="limpiarRepeticion()" [disabled]="repeticionSeleccionada.length < 1">
+                        Limpiar selección
+                    </button>
+                </div>
+            </section>
+
+            <section class="panel-card option-card">
+                <mat-chip class="panel-title">Tipo de extra</mat-chip>
+                <mat-radio-group class="option-list option-list--radio" [value]="extraTipoSeleccionado" (change)="onExtraTipoSeleccionado($event.value)">
+                    <div class="extra-radio-card" [class.selected]="extraTipoSeleccionado === 'extra_arma'">
+                        <mat-radio-button value="extra_arma">Extra arma</mat-radio-button>
+                        <mat-checkbox
+                            class="extra-competencia"
+                            *ngIf="extraTipoSeleccionado === 'extra_arma'"
+                            formControlName="comp_arma"
+                            (click)="$event.stopPropagation()">
+                            Requiere competencia
+                        </mat-checkbox>
+                    </div>
+                    <div class="extra-radio-card" [class.selected]="extraTipoSeleccionado === 'extra_armadura'">
+                        <mat-radio-button value="extra_armadura">Extra armadura</mat-radio-button>
+                        <div class="extra-armor-subtypes" *ngIf="extraTipoSeleccionado === 'extra_armadura'" (click)="$event.stopPropagation()">
+                            <mat-checkbox
+                                [checked]="subtipoArmaduraActivo"
+                                (change)="onSubtipoArmaduraChange('armaduras', $event.checked)">
+                                Armaduras
+                            </mat-checkbox>
+                            <mat-checkbox
+                                [checked]="subtipoEscudoActivo"
+                                (change)="onSubtipoArmaduraChange('escudos', $event.checked)">
+                                Escudos
+                            </mat-checkbox>
+                        </div>
+                        <mat-checkbox
+                            class="extra-competencia"
+                            *ngIf="extraTipoSeleccionado === 'extra_armadura'"
+                            formControlName="comp_arma"
+                            (click)="$event.stopPropagation()">
+                            Requiere competencia
+                        </mat-checkbox>
+                    </div>
+                    <div class="extra-radio-card" [class.selected]="extraTipoSeleccionado === 'extra_escuela'">
+                        <mat-radio-button value="extra_escuela">Extra escuela</mat-radio-button>
+                    </div>
+                    <div class="extra-radio-card" [class.selected]="extraTipoSeleccionado === 'extra_habilidad'">
+                        <mat-radio-button value="extra_habilidad">Extra habilidad</mat-radio-button>
+                    </div>
+                </mat-radio-group>
+                <div class="option-extra-actions">
+                    <button type="button" mat-stroked-button (click)="limpiarTipoExtra()" [disabled]="extraTipoSeleccionado.length < 1">
+                        Limpiar selección
+                    </button>
+                </div>
+            </section>
+        </section>
+
+        <p class="error-form" *ngIf="mensajeErrorFormulario.length > 0">{{mensajeErrorFormulario}}</p>
+
+        <section class="panel-card">
+            <mat-chip class="panel-title">
+                Valores aportados
+                <mat-icon class="tw-ms-2">tune</mat-icon>
+            </mat-chip>
+
+            <div class="valores-grid">
+                <section class="subpanel">
+                    <div class="subpanel-head">
+                        <h3 class="subpanel-title">Modificadores</h3>
+                        <button type="button" mat-stroked-button (click)="agregarModificador()">
+                            Añadir fila
+                        </button>
+                    </div>
+                    <div class="mod-grid head">
+                        <span>Modificador</span>
+                        <span>Valor</span>
+                        <span></span>
+                    </div>
+                    <div class="mod-grid row" *ngFor="let mod of modificadoresEditor; let i = index">
+                        <mat-form-field appearance="fill">
+                            <mat-label>Modificador</mat-label>
+                            <mat-select [value]="mod.key" (selectionChange)="onModificadorChange(i, { key: $event.value })">
+                                <mat-option value="">Sin modificador</mat-option>
+                                <mat-option *ngFor="let item of modificadoresCatalogo" [value]="item.key">{{item.label}}</mat-option>
+                            </mat-select>
+                        </mat-form-field>
+                        <mat-form-field appearance="fill">
+                            <mat-label>Valor</mat-label>
+                            <input matInput type="number" [value]="mod.value" (input)="onModificadorChange(i, { value: +$any($event.target).value || 0 })">
+                        </mat-form-field>
+                        <button type="button" mat-icon-button class="row-action-btn" (click)="eliminarModificador(i)" [disabled]="modificadoresEditor.length < 2">
+                            <mat-icon>delete</mat-icon>
+                        </button>
+                    </div>
+                    <div class="mod-preview" *ngIf="modificadoresPreview.length > 0">
+                        <mat-chip *ngFor="let mod of modificadoresPreview" class="mod-chip">
+                            {{mod.label}}: {{mod.value > 0 ? '+' : ''}}{{mod.value}}
+                        </mat-chip>
+                    </div>
+                    <div class="mod-empty" *ngIf="modificadoresEditor.length < 1">
+                        Añade modificadores para registrar valores aportados por la dote.
+                    </div>
+                </section>
+
+                <section class="subpanel">
+                    <div class="subpanel-head">
+                        <h3 class="subpanel-title">Habilidades otorgadas</h3>
+                        <button type="button" mat-stroked-button (click)="agregarHabilidadOtorgada()">
+                            Añadir fila
+                        </button>
+                    </div>
+
+                    <div class="skill-grid head">
+                        <span>Habilidad</span>
+                        <span>Extra</span>
+                        <span>Rangos</span>
+                        <span></span>
+                    </div>
+
+                    <div class="skill-grid row" *ngFor="let row of habilidadesOtorgadasEditor; let i = index">
+                        <mat-form-field appearance="fill" class="skill-habilidad" [class.skill-habilidad--expand]="!habilidadPermiteExtra(row.id_habilidad)">
+                            <mat-label>Habilidad</mat-label>
+                            <mat-select [value]="row.id_habilidad" (selectionChange)="onHabilidadOtorgadaChange(i, { id_habilidad: $event.value, id_extra: 0 })">
+                                <mat-option [value]="0">Sin habilidad</mat-option>
+                                <mat-option *ngFor="let habilidad of habilidadesCatalogo" [value]="habilidad.Id_habilidad">{{habilidad.Nombre}}</mat-option>
+                            </mat-select>
+                        </mat-form-field>
+
+                        <mat-form-field appearance="fill" *ngIf="habilidadPermiteExtra(row.id_habilidad)">
+                            <mat-label>Extra</mat-label>
+                            <mat-select
+                                [value]="row.id_extra"
+                                (selectionChange)="onHabilidadOtorgadaChange(i, { id_extra: $event.value })">
+                                <mat-option [value]="0">Sin extra</mat-option>
+                                <mat-option *ngFor="let extra of getExtrasDeHabilidad(row.id_habilidad)" [value]="extra.Id_extra">{{extra.Extra}}</mat-option>
+                            </mat-select>
+                        </mat-form-field>
+
+                        <mat-form-field appearance="fill">
+                            <mat-label>Rangos</mat-label>
+                            <input matInput type="number" [value]="row.rangos" (input)="onHabilidadOtorgadaChange(i, { rangos: +$any($event.target).value || 0 })">
+                        </mat-form-field>
+
+                        <button type="button" mat-icon-button class="row-action-btn" (click)="eliminarHabilidadOtorgada(i)" [disabled]="habilidadesOtorgadasEditor.length < 2">
+                            <mat-icon>delete</mat-icon>
+                        </button>
+                    </div>
+                </section>
+            </div>
+        </section>
+
+        <section class="panel-card">
+            <mat-chip class="panel-title">
+                Prerrequisitos
+                <mat-icon class="tw-ms-2">rule</mat-icon>
+            </mat-chip>
+
+            <div class="subpanel-head">
+                <h3 class="subpanel-title">Condiciones</h3>
+                <button type="button" mat-stroked-button (click)="abrirSelectorPrerrequisitos()">
+                    Elegir prerrequisitos
+                </button>
+            </div>
+
+            <div class="mod-preview" *ngIf="hayPrerrequisitosMarcados">
+                <mat-chip *ngFor="let tipo of prerrequisitosSeleccionados" class="mod-chip">
+                    {{getEtiquetaPrerrequisito(tipo)}}
+                </mat-chip>
+            </div>
+
+            <app-prerrequisito-editor-host
+                [selectedTypes]="prerrequisitosSeleccionados"
+                [rows]="prerrequisitosEditor"
+                [catalogContext]="prerrequisitosCatalogContext"
+                [ensureCatalogs]="ensurePrerequisiteCatalogs"
+                [disabled]="guardando || confirmandoSelectorPrerrequisitos"
+                [loadingMessage]="'Cargando configuracion de prerrequisitos...'"
+                (selectedTypesChange)="onPrerrequisitosSeleccionadosChange($event)"
+                (rowsChange)="onPrerrequisitosRowsChange($event)">
+            </app-prerrequisito-editor-host>
+        </section>
+
+        <section class="actions-row">
+            <button
+                *ngIf="requiereSelectorExtras && cantidadExtrasSeleccionadosActual > 0"
+                type="button"
+                mat-stroked-button
+                (click)="abrirSelectorExtras()"
+                [disabled]="guardando || !puedeCrear">
+                Elegir extras ({{cantidadExtrasSeleccionadosActual}})
+            </button>
+            <button mat-raised-button color="primary" type="submit" [disabled]="guardando || !puedeCrear">
+                {{ textoAccionPrincipal }}
+            </button>
+        </section>
+    </form>
+
+    <section class="selector-overlay" *ngIf="selectorPrerrequisitosVisible" (click)="!confirmandoSelectorPrerrequisitos && cerrarSelectorPrerrequisitos()">
+        <div class="selector-dialog" (click)="$event.stopPropagation()">
+            <div class="selector-header">
+                <div class="selector-header-main">
+                    <h2 class="tw-m-0 selector-title">Seleccionar prerrequisitos</h2>
+                    <p class="tw-m-0 selector-subtitle">
+                        Marca los prerrequisitos que aplican a esta dote y luego configura sus valores.
+                    </p>
+                </div>
+                <button mat-icon-button type="button" class="selector-icon-btn" aria-label="Cerrar" (click)="cerrarSelectorPrerrequisitos()" [disabled]="confirmandoSelectorPrerrequisitos">
+                    <mat-icon>close</mat-icon>
+                </button>
+            </div>
+
+            <div class="selector-tools selector-tools--inline">
+                <mat-form-field appearance="fill" class="tw-w-full">
+                    <mat-label>Buscar prerrequisito</mat-label>
+                    <input matInput [value]="selectorPrerrequisitosFiltro" (input)="selectorPrerrequisitosFiltro = $any($event.target).value" placeholder="Filtrar por nombre">
+                </mat-form-field>
+                <button type="button" mat-stroked-button (click)="limpiarPrerrequisitosTemporales()" [disabled]="confirmandoSelectorPrerrequisitos">
+                    Limpiar
+                </button>
+            </div>
+
+            <div class="extras-listado" *ngIf="prerrequisitosSelectorFiltrados.length > 0; else sinPrerreqFiltradosTpl">
+                <label class="extra-row" *ngFor="let item of prerrequisitosSelectorFiltrados">
+                    <mat-checkbox
+                        [checked]="isTipoPrerrequisitoTemporalSeleccionado(item.key)"
+                        [disabled]="confirmandoSelectorPrerrequisitos"
+                        (change)="toggleTipoPrerrequisitoTemporal(item.key, $event.checked === true)">
+                        {{item.label}}
+                    </mat-checkbox>
+                </label>
+            </div>
+
+            <ng-template #sinPrerreqFiltradosTpl>
+                <p class="tw-m-0 detalle">No hay prerrequisitos que encajen con el filtro actual.</p>
+            </ng-template>
+
+            <div class="selector-actions">
+                <button mat-stroked-button type="button" (click)="cerrarSelectorPrerrequisitos()" [disabled]="confirmandoSelectorPrerrequisitos">Cancelar</button>
+                <button mat-raised-button color="primary" type="button" (click)="confirmarSelectorPrerrequisitos()" [disabled]="confirmandoSelectorPrerrequisitos">
+                    {{confirmandoSelectorPrerrequisitos ? 'Cargando...' : 'Confirmar seleccion'}}
+                </button>
+            </div>
+        </div>
+    </section>
+
+    <section class="selector-overlay" *ngIf="selectorExtrasVisible" (click)="cerrarSelectorExtras()">
+        <div class="selector-dialog" (click)="$event.stopPropagation()">
+            <div class="selector-header">
+                <div class="selector-header-main">
+                    <h2 class="tw-m-0 selector-title">Elegir extras</h2>
+                    <p class="tw-m-0 selector-subtitle">
+                        Selecciona los {{etiquetaTipoExtraActual}} disponibles para esta dote.
+                    </p>
+                </div>
+                <button mat-icon-button type="button" class="selector-icon-btn" aria-label="Cerrar" (click)="cerrarSelectorExtras()">
+                    <mat-icon>close</mat-icon>
+                </button>
+            </div>
+
+            <mat-form-field appearance="fill" class="tw-w-full">
+                <mat-label>Buscar</mat-label>
+                <input matInput [value]="selectorExtrasFiltro" (input)="selectorExtrasFiltro = $any($event.target).value" placeholder="Filtrar por nombre">
+            </mat-form-field>
+
+            <div class="selector-tools">
+                <mat-checkbox [checked]="selectorTodosActivos" (change)="toggleTodosExtrasTemporales($event.checked === true)">
+                    Todos
+                </mat-checkbox>
+                <button type="button" mat-stroked-button (click)="seleccionarTodosExtrasTemporales()">
+                    Seleccionar todos
+                </button>
+            </div>
+
+            <div class="extras-listado" *ngIf="itemsSelectorExtrasFiltrados.length > 0; else sinExtrasFiltradosTpl">
+                <label class="extra-row" *ngFor="let item of itemsSelectorExtrasFiltrados">
+                    <mat-checkbox
+                        [checked]="isExtraTemporalSeleccionado(item.id)"
+                        (change)="toggleExtraTemporal(item.id, $event.checked === true)">
+                        {{item.nombre}}
+                    </mat-checkbox>
+                </label>
+            </div>
+
+            <ng-template #sinExtrasFiltradosTpl>
+                <p class="tw-m-0 detalle">No hay extras que encajen con el filtro actual.</p>
+            </ng-template>
+
+            <div class="selector-actions">
+                <button mat-stroked-button type="button" (click)="cerrarSelectorExtras()">Cancelar</button>
+                <button mat-raised-button color="primary" type="button" [disabled]="!puedeConfirmarSelectorExtras" (click)="confirmarSelectorExtras()">
+                    Guardar selección
+                </button>
+            </div>
+        </div>
+    </section>
+</div>
