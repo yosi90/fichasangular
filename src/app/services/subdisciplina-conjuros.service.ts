@@ -1,10 +1,11 @@
 import { HttpClient } from "@angular/common/http";
 import { Injectable } from "@angular/core";
-import { Database, getDatabase, onValue, ref, set } from '@angular/fire/database';
+import { Database, onValue, ref, set } from '@angular/fire/database';
 import { Observable, firstValueFrom } from "rxjs";
 import { environment } from "src/environments/environment";
 import Swal from "sweetalert2";
 import { SubdisciplinaCatalogItem } from "../interfaces/conjuro-catalogos";
+import { FirebaseInjectionContextService } from "./firebase-injection-context.service";
 
 function toArray<T = any>(value: any): T[] {
     if (Array.isArray(value))
@@ -36,7 +37,11 @@ function normalizeSubdisciplina(raw: any): SubdisciplinaCatalogItem {
 })
 export class SubdisciplinaConjurosService {
 
-    constructor(private db: Database, private http: HttpClient) { }
+    constructor(
+        private db: Database,
+        private http: HttpClient,
+        private firebaseContextSvc: FirebaseInjectionContextService,
+    ) { }
 
     getSubdisciplinas(): Observable<SubdisciplinaCatalogItem[]> {
         return new Observable((observador) => {
@@ -60,14 +65,14 @@ export class SubdisciplinaConjurosService {
             };
 
             const onError = (error: any) => observador.error(error);
-            const unsubscribeLower = onValue(dbRefLower, (snapshot: any) => {
+            const unsubscribeLower = this.firebaseContextSvc.run(() => onValue(dbRefLower, (snapshot: any) => {
                 lowerSnapshot = snapshot;
                 emitPreferred();
-            }, onError);
-            const unsubscribeUpper = onValue(dbRefUpper, (snapshot: any) => {
+            }, onError));
+            const unsubscribeUpper = this.firebaseContextSvc.run(() => onValue(dbRefUpper, (snapshot: any) => {
                 upperSnapshot = snapshot;
                 emitPreferred();
-            }, onError);
+            }, onError));
 
             return () => {
                 unsubscribeLower();
@@ -81,7 +86,6 @@ export class SubdisciplinaConjurosService {
     }
 
     public async RenovarSubdisciplinas(): Promise<boolean> {
-        const dbInstance = getDatabase();
         try {
             const response = await firstValueFrom(this.syncSubdisciplinas());
             const subdisciplinas = Array.isArray(response)
@@ -93,7 +97,7 @@ export class SubdisciplinaConjurosService {
                     const item = normalizeSubdisciplina(raw);
                     if (item.Id <= 0 || item.id_disciplina <= 0 || item.Nombre.length < 1)
                         return Promise.resolve();
-                    return set(ref(dbInstance, `Subdisciplinas/${item.Id}`), item);
+                    return this.firebaseContextSvc.run(() => set(ref(this.db, `Subdisciplinas/${item.Id}`), item));
                 })
             );
 

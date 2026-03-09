@@ -25,6 +25,7 @@ import {
     normalizeCompaneroMonstruoDetalleArray,
     normalizeFamiliarMonstruoDetalleArray
 } from './utils/monstruo-mapper';
+import { FirebaseInjectionContextService } from './firebase-injection-context.service';
 import { normalizeRaciales } from './utils/racial-mapper';
 import { normalizeSubtipoRefArray } from './utils/subtipo-mapper';
 
@@ -40,7 +41,11 @@ interface PersonajeVisibilityUpdateResponse {
 })
 export class PersonajeService {
 
-    constructor(private db: Database, private http: HttpClient) { }
+    constructor(
+        private db: Database,
+        private http: HttpClient,
+        private firebaseContextSvc: FirebaseInjectionContextService,
+    ) { }
 
     async getDetallesPersonaje(id: number): Promise<Observable<Personaje>> {
         return new Observable((observador) => {
@@ -213,7 +218,7 @@ export class PersonajeService {
             // };
 
             // unsubscribe = onValue(dbRef, onNext, onError, onComplete);
-            unsubscribe = onValue(dbRef, onNext, onError);
+            unsubscribe = this.firebaseContextSvc.run(() => onValue(dbRef, onNext, onError));
 
             return () => {
                 unsubscribe(); // Cancelar la suscripción al evento onValue
@@ -253,12 +258,12 @@ export class PersonajeService {
 
         try {
             await Promise.all([
-                update(ref(this.db, `Personajes/${id}`), {
+                this.firebaseContextSvc.run(() => update(ref(this.db, `Personajes/${id}`), {
                     visible_otros_usuarios: !!visible,
-                }),
-                update(ref(this.db, `Personajes-simples/${id}`), {
+                })),
+                this.firebaseContextSvc.run(() => update(ref(this.db, `Personajes-simples/${id}`), {
                     visible_otros_usuarios: !!visible,
-                }),
+                })),
             ]);
         } catch {
             // Usuarios no-admin pueden no tener permisos de escritura en RTDB.
@@ -1081,7 +1086,7 @@ export class PersonajeService {
     }
 
     private escribirRutaFirebase(path: string, payload: any): Promise<void> {
-        return set(ref(this.db, path), payload);
+        return this.firebaseContextSvc.run(() => set(ref(this.db, path), payload));
     }
 
     private obtenerMensajeErrorHttp(error: any, fallback: string): string {

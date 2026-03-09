@@ -1,7 +1,15 @@
 @use '../../../../assets/css/_variables' as *
 
+:host
+    display: block
+    height: 100%
+    min-height: 0
+
 .profile-shell
-    min-height: 24rem
+    display: flex
+    flex-direction: column
+    height: 100%
+    min-height: 100%
 
 .profile-state
     background: rgba(45, 45, 48, .96)
@@ -15,7 +23,9 @@
     display: grid
     grid-template-columns: 17rem minmax(0, 1fr)
     gap: 1rem
-    min-height: 100%
+    flex: 1 1 auto
+    min-height: 0
+    height: 100%
     align-items: stretch
 
 .profile-nav,
@@ -95,7 +105,7 @@
 
 .profile-main
     display: flex
-    align-items: center
+    align-items: stretch
     padding: 1.35rem
     min-height: 100%
 

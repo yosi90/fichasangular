@@ -16,6 +16,7 @@ import { Usuario } from '../interfaces/usuario';
 import { EMPTY_USER_ACL, UserAcl, normalizeUserAcl } from '../interfaces/user-acl';
 import { AuthProviderType, UserProfile } from '../interfaces/user-profile';
 import { UsuarioUpsertRequestDto, UsuarioUpsertResponseDto } from '../interfaces/usuarios-api';
+import { FirebaseInjectionContextService } from './firebase-injection-context.service';
 import { UserProfileApiService } from './user-profile-api.service';
 import { UsuariosApiService } from './usuarios-api.service';
 
@@ -58,6 +59,7 @@ export class UserService {
         private auth: Auth,
         private db: Database,
         private usuariosApiSvc: UsuariosApiService,
+        private firebaseContextSvc: FirebaseInjectionContextService,
         private userProfileApiSvc?: UserProfileApiService
     ) {
         this.subscribeAuthState((firebaseUser) => {
@@ -192,7 +194,7 @@ export class UserService {
     }
 
     protected subscribeAuthState(handler: (firebaseUser: User | null) => void): void {
-        onAuthStateChanged(this.auth, handler);
+        this.firebaseContextSvc.run(() => onAuthStateChanged(this.auth, handler));
     }
 
     protected ejecutarSignOut(): Promise<void> {
@@ -204,36 +206,130 @@ export class UserService {
     }
 
     protected watchAclPath(uid: string, onData: (rawAcl: any) => void, onError: () => void): () => void {
-        const aclRef = ref(this.db, `Acl/users/${uid}`);
-        return onValue(
-            aclRef,
-            (snapshot) => onData(snapshot.val()),
-            () => onError()
+        return this.firebaseContextSvc.run(() => {
+            const aclRef = ref(this.db, `Acl/users/${uid}`);
+            return onValue(
+                aclRef,
+                (snapshot) => onData(snapshot.val()),
+                () => onError()
+            );
+        });
+    }
+
+    protected runFirebaseOperation<T>(fn: () => T): T {
+        return this.firebaseContextSvc.run(fn);
+    }
+
+    protected async getProfileSnapshot(uid: string): Promise<any> {
+        const profileRef = this.runFirebaseOperation(() => ref(this.db, `UserProfiles/${uid}`));
+        return this.runFirebaseOperation(() => get(profileRef));
+    }
+
+    protected saveUserProfile(uid: string, payload: UserProfile): Promise<void> {
+        const profileRef = this.runFirebaseOperation(() => ref(this.db, `UserProfiles/${uid}`));
+        return this.runFirebaseOperation(() => set(profileRef, payload));
+    }
+
+    protected getCurrentAuthUid(): string {
+        return `${this.auth.currentUser?.uid ?? ''}`.trim();
+    }
+
+    protected getCurrentAuthEmail(): string {
+        return `${this.auth.currentUser?.email ?? ''}`.trim();
+    }
+
+    protected getCurrentAuthDisplayName(): string {
+        return `${this.auth.currentUser?.displayName ?? ''}`.trim();
+    }
+
+    protected getCurrentAuthProviderIds(): string[] {
+        return (this.auth.currentUser?.providerData ?? [])
+            .map((provider) => `${provider?.providerId ?? ''}`.trim().toLowerCase())
+            .filter((providerId) => providerId.length > 0);
+    }
+
+    protected getCurrentAuthUserLike(): Pick<User, 'uid' | 'email' | 'displayName' | 'providerData'> | null {
+        const uid = this.getCurrentAuthUid();
+        if (uid.length < 1)
+            return null;
+
+        return {
+            uid,
+            email: this.getCurrentAuthEmail(),
+            displayName: this.getCurrentAuthDisplayName(),
+            providerData: (this.auth.currentUser?.providerData ?? []) as any,
+        } as Pick<User, 'uid' | 'email' | 'displayName' | 'providerData'>;
+    }
+
+    protected resolveActiveUserUid(): string {
+        const fromAuthGetter = this.getCurrentAuthUid();
+        if (fromAuthGetter.length > 0)
+            return fromAuthGetter;
+        return `${this.auth.currentUser?.uid ?? ''}`.trim();
+    }
+
+    protected getAuthProviderIds(firebaseUser: User): string[] {
+        return (firebaseUser?.providerData ?? [])
+            .map((provider) => `${provider?.providerId ?? ''}`.trim().toLowerCase())
+            .filter((providerId) => providerId.length > 0);
+    }
+
+    protected getFirebaseUserDisplayName(firebaseUser: User): string {
+        return `${firebaseUser.displayName ?? ''}`.trim();
+    }
+
+    protected getFirebaseUserEmail(firebaseUser: User): string {
+        return `${firebaseUser.email ?? ''}`.trim();
+    }
+
+    protected getFirebaseUserUid(firebaseUser: User): string {
+        return `${firebaseUser?.uid ?? ''}`.trim();
+    }
+
+    protected getSnapshotValue(snapshot: any): any {
+        return snapshot?.val?.() ?? null;
+    }
+
+    protected toUserProfilePayload(firebaseUser: User, createdAt: number, lastSeenAt: number): UserProfile {
+        const displayName = this.getFirebaseUserDisplayName(firebaseUser);
+        const email = this.getFirebaseUserEmail(firebaseUser);
+        return {
+            uid: this.getFirebaseUserUid(firebaseUser),
+            displayName: displayName.length > 0 ? displayName : this.fallbackDisplayName(email),
+            email,
+            authProvider: this.resolveAuthProvider(firebaseUser),
+            createdAt,
+            lastSeenAt,
+        };
+    }
+
+    protected readCreatedAt(raw: any, fallback: number): number {
+        const createdAtRaw = Number(raw?.createdAt);
+        return Number.isFinite(createdAtRaw) && createdAtRaw > 0 ? Math.trunc(createdAtRaw) : fallback;
+    }
+
+    protected getCurrentUserUidForProfile(): string {
+        return this.getFirebaseUserUid(this.auth.currentUser as User);
+    }
+
+    protected createProfilePayload(firebaseUser: User, existente: any, now: number): UserProfile {
+        return this.toUserProfilePayload(
+            firebaseUser,
+            this.readCreatedAt(existente, now),
+            now
         );
     }
 
     protected async persistUserProfile(firebaseUser: User): Promise<void> {
-        const uid = `${firebaseUser?.uid ?? ''}`.trim();
+        const uid = this.getFirebaseUserUid(firebaseUser);
         if (uid.length < 1)
             return;
 
-        const profileRef = ref(this.db, `UserProfiles/${uid}`);
         const now = Date.now();
-        const snapshot = await get(profileRef);
-        const existente = snapshot.val();
-        const createdAtRaw = Number(existente?.createdAt);
-
-        const displayName = `${firebaseUser.displayName ?? ''}`.trim();
-        const email = `${firebaseUser.email ?? ''}`.trim();
-        const payload: UserProfile = {
-            uid,
-            displayName: displayName.length > 0 ? displayName : this.fallbackDisplayName(email),
-            email,
-            authProvider: this.resolveAuthProvider(firebaseUser),
-            createdAt: Number.isFinite(createdAtRaw) && createdAtRaw > 0 ? Math.trunc(createdAtRaw) : now,
-            lastSeenAt: now,
-        };
-        await set(profileRef, payload);
+        const snapshot = await this.getProfileSnapshot(uid);
+        const existente = this.getSnapshotValue(snapshot);
+        const payload = this.createProfilePayload(firebaseUser, existente, now);
+        await this.saveUserProfile(uid, payload);
     }
 
     private actualizarUsuarioSesion(value: Usuario): void {
@@ -392,9 +488,7 @@ export class UserService {
     }
 
     private resolveAuthProvider(firebaseUser: User): AuthProviderType {
-        const providerIds = (firebaseUser?.providerData ?? [])
-            .map((provider) => `${provider?.providerId ?? ''}`.trim().toLowerCase())
-            .filter((providerId) => providerId.length > 0);
+        const providerIds = this.getAuthProviderIds(firebaseUser);
 
         if (providerIds.includes('google.com'))
             return 'google';
@@ -413,7 +507,7 @@ export class UserService {
     private isActiveUser(uid: string): boolean {
         const actual = this.authUidActivo.length > 0
             ? this.authUidActivo
-            : `${this.auth.currentUser?.uid ?? ''}`.trim();
+            : this.resolveActiveUserUid();
         return actual.length > 0 && actual === `${uid ?? ''}`.trim();
     }
 }

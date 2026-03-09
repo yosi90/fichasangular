@@ -1,6 +1,6 @@
 import { HttpClient, HttpErrorResponse } from "@angular/common/http";
 import { Injectable } from "@angular/core";
-import { Database, Unsubscribe, getDatabase, onValue, ref, set } from "@angular/fire/database";
+import { Database, Unsubscribe, onValue, ref, set } from "@angular/fire/database";
 import { Observable, firstValueFrom } from "rxjs";
 import Swal from "sweetalert2";
 import { environment } from "src/environments/environment";
@@ -12,6 +12,7 @@ import {
     EspecialHabilidadRef,
     EspecialRefSimple
 } from "../interfaces/especial";
+import { FirebaseInjectionContextService } from "./firebase-injection-context.service";
 
 function toNumber(value: any, fallback: number = 0): number {
     const n = Number(value);
@@ -107,7 +108,11 @@ export function normalizeEspecial(raw: any): EspecialClaseDetalle {
 })
 export class EspecialService {
 
-    constructor(private db: Database, private http: HttpClient) { }
+    constructor(
+        private db: Database,
+        private http: HttpClient,
+        private firebaseContextSvc: FirebaseInjectionContextService,
+    ) { }
 
     getEspecial(id: number): Observable<EspecialClaseDetalle> {
         return new Observable((observador) => {
@@ -147,7 +152,7 @@ export class EspecialService {
                 observador.error(error);
             };
 
-            unsubscribe = onValue(dbRef, onNext, onError);
+            unsubscribe = this.firebaseContextSvc.run(() => onValue(dbRef, onNext, onError));
 
             return () => {
                 unsubscribe();
@@ -183,7 +188,7 @@ export class EspecialService {
                 observador.error(error);
             };
 
-            unsubscribe = onValue(dbRef, onNext, onError);
+            unsubscribe = this.firebaseContextSvc.run(() => onValue(dbRef, onNext, onError));
 
             return () => {
                 unsubscribe();
@@ -196,13 +201,12 @@ export class EspecialService {
     }
 
     public async RenovarEspeciales(): Promise<boolean> {
-        const dbInstance = getDatabase();
         try {
             const response = await firstValueFrom(this.syncEspeciales());
             await Promise.all(
                 toArray(response).map((raw: any) => {
                     const especial = normalizeEspecial(raw);
-                    return set(ref(dbInstance, `Especiales/${especial.Id}`), especial);
+                    return this.firebaseContextSvc.run(() => set(ref(this.db, `Especiales/${especial.Id}`), especial));
                 })
             );
 

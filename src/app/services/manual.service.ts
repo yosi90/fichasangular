@@ -1,10 +1,11 @@
 import { Injectable } from '@angular/core';
-import { Database, getDatabase, Unsubscribe, onValue, ref, set } from '@angular/fire/database';
+import { Database, Unsubscribe, onValue, ref, set } from '@angular/fire/database';
 import { Observable, firstValueFrom } from 'rxjs';
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { environment } from 'src/environments/environment';
 import Swal from 'sweetalert2';
 import { Manual } from '../interfaces/manual';
+import { FirebaseInjectionContextService } from './firebase-injection-context.service';
 
 function toBoolean(value: any): boolean {
     return value === true || value === 1 || value === '1';
@@ -31,7 +32,11 @@ function normalizeManual(raw: any): Manual {
 })
 export class ManualService {
 
-    constructor(private db: Database, private http: HttpClient) { }
+    constructor(
+        private db: Database,
+        private http: HttpClient,
+        private firebaseContextSvc: FirebaseInjectionContextService,
+    ) { }
 
     getManual(id: number): Observable<Manual> {
         return new Observable((observador) => {
@@ -71,7 +76,7 @@ export class ManualService {
                 observador.error(error);
             };
 
-            unsubscribe = onValue(dbRef, onNext, onError);
+            unsubscribe = this.firebaseContextSvc.run(() => onValue(dbRef, onNext, onError));
 
             return () => {
                 unsubscribe();
@@ -98,7 +103,7 @@ export class ManualService {
                 observador.error(error);
             };
 
-            unsubscribe = onValue(dbRef, onNext, onError);
+            unsubscribe = this.firebaseContextSvc.run(() => onValue(dbRef, onNext, onError));
 
             return () => {
                 unsubscribe();
@@ -111,7 +116,6 @@ export class ManualService {
     }
 
     public async RenovarManuales(): Promise<boolean> {
-        const db = getDatabase();
         try {
             const response = await firstValueFrom(this.syncManuales());
             const manuales = Array.isArray(response)
@@ -121,7 +125,7 @@ export class ManualService {
             await Promise.all(
                 manuales.map((raw: any) => {
                     const manual = normalizeManual(raw);
-                    return set(ref(db, `Manuales/${manual.Id}`), manual);
+                    return this.firebaseContextSvc.run(() => set(ref(this.db, `Manuales/${manual.Id}`), manual));
                 })
             );
 

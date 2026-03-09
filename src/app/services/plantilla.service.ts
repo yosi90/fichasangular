@@ -1,6 +1,6 @@
 import { HttpClient, HttpErrorResponse } from "@angular/common/http";
 import { Injectable } from "@angular/core";
-import { Database, Unsubscribe, getDatabase, onValue, ref, set } from "@angular/fire/database";
+import { Database, Unsubscribe, onValue, ref, set } from "@angular/fire/database";
 import { Observable, firstValueFrom, map } from "rxjs";
 import Swal from "sweetalert2";
 import { environment } from "src/environments/environment";
@@ -12,6 +12,7 @@ import {
     PlantillaPrerrequisitos,
     PlantillaPrerrequisitosFlags,
 } from "../interfaces/plantilla";
+import { FirebaseInjectionContextService } from "./firebase-injection-context.service";
 import { toDoteContextualArray } from "./utils/dote-mapper";
 import { normalizeSubtipoRefArray } from "./utils/subtipo-mapper";
 
@@ -314,7 +315,11 @@ export function normalizePlantilla(raw: any): Plantilla {
 })
 export class PlantillaService {
 
-    constructor(private db: Database, private http: HttpClient) { }
+    constructor(
+        private db: Database,
+        private http: HttpClient,
+        private firebaseContextSvc: FirebaseInjectionContextService,
+    ) { }
 
     getPlantilla(id: number): Observable<Plantilla> {
         return new Observable((observador) => {
@@ -354,7 +359,7 @@ export class PlantillaService {
                 observador.error(error);
             };
 
-            unsubscribe = onValue(dbRef, onNext, onError);
+            unsubscribe = this.firebaseContextSvc.run(() => onValue(dbRef, onNext, onError));
 
             return () => {
                 unsubscribe();
@@ -383,7 +388,7 @@ export class PlantillaService {
                 observador.error(error);
             };
 
-            unsubscribe = onValue(dbRef, onNext, onError);
+            unsubscribe = this.firebaseContextSvc.run(() => onValue(dbRef, onNext, onError));
 
             return () => {
                 unsubscribe();
@@ -403,7 +408,6 @@ export class PlantillaService {
     }
 
     public async RenovarPlantillas(): Promise<boolean> {
-        const dbInstance = getDatabase();
         try {
             const response = await firstValueFrom(this.syncPlantillas());
             const plantillas = toArray(response)
@@ -411,7 +415,7 @@ export class PlantillaService {
                 .filter((plantilla) => hasValidId(plantilla));
 
             await Promise.all(
-                plantillas.map((plantilla) => set(ref(dbInstance, `Plantillas/${plantilla.Id}`), plantilla))
+                plantillas.map((plantilla) => this.firebaseContextSvc.run(() => set(ref(this.db, `Plantillas/${plantilla.Id}`), plantilla)))
             );
 
             Swal.fire({

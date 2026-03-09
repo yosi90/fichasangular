@@ -1,17 +1,22 @@
 import { HttpClient } from "@angular/common/http";
 import { Injectable } from "@angular/core";
-import { Database, getDatabase, Unsubscribe, onValue, ref, set } from '@angular/fire/database';
+import { Database, Unsubscribe, onValue, ref, set } from '@angular/fire/database';
 import { Observable, firstValueFrom } from "rxjs";
 import { environment } from "src/environments/environment";
 import Swal from "sweetalert2";
 import { Rasgo } from "../interfaces/rasgo";
+import { FirebaseInjectionContextService } from "./firebase-injection-context.service";
 
 @Injectable({
     providedIn: 'root'
 })
 export class RasgoService {
 
-    constructor(private db: Database, private http: HttpClient) { }
+    constructor(
+        private db: Database,
+        private http: HttpClient,
+        private firebaseContextSvc: FirebaseInjectionContextService
+    ) { }
 
     private toBoolean(value: any, fallback: boolean = false): boolean {
         if (typeof value === 'boolean')
@@ -39,7 +44,6 @@ export class RasgoService {
 
     getRasgo(id: number): Observable<Rasgo> {
         return new Observable((observador) => {
-            const dbRef = ref(this.db, `Rasgos/${id}`);
             let unsubscribe: Unsubscribe;
 
             const onNext = (snapshot: any) => {
@@ -55,7 +59,10 @@ export class RasgoService {
             const onError = (error: any) => {
                 observador.error(error);
             };
-            unsubscribe = onValue(dbRef, onNext, onError);
+            unsubscribe = this.firebaseContextSvc.run(() => {
+                const dbRef = ref(this.db, `Rasgos/${id}`);
+                return onValue(dbRef, onNext, onError);
+            });
 
             return () => {
                 unsubscribe();
@@ -65,7 +72,6 @@ export class RasgoService {
 
     getRasgos(): Observable<Rasgo[]> {
         return new Observable((observador) => {
-            const dbRef = ref(this.db, 'Rasgos');
             let unsubscribe: Unsubscribe;
 
             const onNext = (snapshot: any) => {
@@ -86,7 +92,10 @@ export class RasgoService {
                 observador.error(error);
             };
 
-            unsubscribe = onValue(dbRef, onNext, onError);
+            unsubscribe = this.firebaseContextSvc.run(() => {
+                const dbRef = ref(this.db, 'Rasgos');
+                return onValue(dbRef, onNext, onError);
+            });
 
             return () => {
                 unsubscribe();
@@ -100,7 +109,6 @@ export class RasgoService {
     }
 
     public async RenovarRasgos(): Promise<boolean> {
-        const db_instance = getDatabase();
         try {
             const response = await firstValueFrom(this.syncRasgos());
             const rasgos = Array.isArray(response)
@@ -114,13 +122,13 @@ export class RasgoService {
                     const descripcion = `${element?.d ?? element?.Descripcion ?? ''}`;
                     if (!Number.isFinite(id) || id <= 0)
                         return Promise.resolve();
-                    return set(
-                        ref(db_instance, `Rasgos/${id}`), {
+                    return this.firebaseContextSvc.run(() => set(
+                        ref(this.db, `Rasgos/${id}`), {
                         Id: id,
                         Nombre: nombre,
                         Descripcion: descripcion,
                         Oficial: this.toBoolean(element?.o ?? element?.Oficial ?? element?.oficial, true),
-                    });
+                    }));
                 })
             );
 

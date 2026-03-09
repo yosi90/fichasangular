@@ -1,10 +1,11 @@
 import { HttpClient } from "@angular/common/http";
 import { Injectable } from "@angular/core";
-import { Database, getDatabase, onValue, ref, set } from '@angular/fire/database';
+import { Database, onValue, ref, set } from '@angular/fire/database';
 import { Observable, firstValueFrom } from "rxjs";
 import { environment } from "src/environments/environment";
 import Swal from "sweetalert2";
 import { DisciplinaConjuros, Subdisciplinas } from "../interfaces/disciplina-conjuros";
+import { FirebaseInjectionContextService } from "./firebase-injection-context.service";
 
 function toArray<T = any>(value: any): T[] {
     if (Array.isArray(value))
@@ -57,7 +58,11 @@ function normalizeDisciplina(raw: any, fallbackId: number = 0): DisciplinaConjur
 })
 export class DisciplinaConjurosService {
 
-    constructor(private db: Database, private http: HttpClient) { }
+    constructor(
+        private db: Database,
+        private http: HttpClient,
+        private firebaseContextSvc: FirebaseInjectionContextService,
+    ) { }
 
     getDisciplina(id: number): Observable<DisciplinaConjuros> {
         return new Observable((observador) => {
@@ -74,14 +79,14 @@ export class DisciplinaConjurosService {
             };
 
             const onError = (error: any) => observador.error(error);
-            const unsubscribeLower = onValue(dbRefLower, (snapshot: any) => {
+            const unsubscribeLower = this.firebaseContextSvc.run(() => onValue(dbRefLower, (snapshot: any) => {
                 lowerSnapshot = snapshot;
                 emitPreferred();
-            }, onError);
-            const unsubscribeUpper = onValue(dbRefUpper, (snapshot: any) => {
+            }, onError));
+            const unsubscribeUpper = this.firebaseContextSvc.run(() => onValue(dbRefUpper, (snapshot: any) => {
                 upperSnapshot = snapshot;
                 emitPreferred();
-            }, onError);
+            }, onError));
 
             return () => {
                 unsubscribeLower();
@@ -112,14 +117,14 @@ export class DisciplinaConjurosService {
             };
 
             const onError = (error: any) => observador.error(error);
-            const unsubscribeLower = onValue(dbRefLower, (snapshot: any) => {
+            const unsubscribeLower = this.firebaseContextSvc.run(() => onValue(dbRefLower, (snapshot: any) => {
                 lowerSnapshot = snapshot;
                 emitPreferred();
-            }, onError);
-            const unsubscribeUpper = onValue(dbRefUpper, (snapshot: any) => {
+            }, onError));
+            const unsubscribeUpper = this.firebaseContextSvc.run(() => onValue(dbRefUpper, (snapshot: any) => {
                 upperSnapshot = snapshot;
                 emitPreferred();
-            }, onError);
+            }, onError));
 
             return () => {
                 unsubscribeLower();
@@ -134,7 +139,6 @@ export class DisciplinaConjurosService {
     }
 
     public async RenovarDisciplinas(): Promise<boolean> {
-        const db_instance = getDatabase();
         try {
             const response = await firstValueFrom(this.syncConjuros());
             const disciplinas = Array.isArray(response)
@@ -145,13 +149,13 @@ export class DisciplinaConjurosService {
                 disciplinas.map((element: {
                     i: number; n: string; ne: string; sd: Subdisciplinas[];
                 }) => {
-                    return set(
-                        ref(db_instance, `Disciplinas/${element.i}`), {
+                    return this.firebaseContextSvc.run(() => set(
+                        ref(this.db, `Disciplinas/${element.i}`), {
                         Id: element.i,
                         Nombre: element.n,
                         Nombre_especial: element.ne,
                         Subdisciplinas: element.sd
-                    });
+                    }));
                 })
             );
 

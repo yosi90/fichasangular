@@ -1,21 +1,25 @@
 import { HttpClient } from "@angular/common/http";
 import { Injectable } from "@angular/core";
-import { Database, getDatabase, Unsubscribe, onValue, ref, set } from '@angular/fire/database';
+import { Database, Unsubscribe, onValue, ref, set } from '@angular/fire/database';
 import { Observable, firstValueFrom } from "rxjs";
 import { environment } from "src/environments/environment";
 import Swal from "sweetalert2";
 import { TipoCriatura } from "../interfaces/tipo_criatura";
+import { FirebaseInjectionContextService } from "./firebase-injection-context.service";
 
 @Injectable({
     providedIn: 'root'
 })
 export class TipoCriaturaService {
 
-    constructor(private db: Database, private http: HttpClient) { }
+    constructor(
+        private db: Database,
+        private http: HttpClient,
+        private firebaseContextSvc: FirebaseInjectionContextService
+    ) { }
 
     getTipoCriatura(id: number): Observable<TipoCriatura> {
         return new Observable((observador) => {
-            const dbRef = ref(this.db, `TiposCriatura/${id}`);
             let unsubscribe: Unsubscribe;
 
             const onNext = (snapshot: any) => {
@@ -49,7 +53,10 @@ export class TipoCriaturaService {
             const onError = (error: any) => {
                 observador.error(error);
             };
-            unsubscribe = onValue(dbRef, onNext, onError);
+            unsubscribe = this.firebaseContextSvc.run(() => {
+                const dbRef = ref(this.db, `TiposCriatura/${id}`);
+                return onValue(dbRef, onNext, onError);
+            });
 
             return () => {
                 unsubscribe();
@@ -59,7 +66,6 @@ export class TipoCriaturaService {
 
     getTiposCriatura(): Observable<TipoCriatura[]> {
         return new Observable((observador) => {
-            const dbRef = ref(this.db, 'TiposCriatura');
             let unsubscribe: Unsubscribe;
 
             const onNext = (snapshot: any) => {
@@ -98,7 +104,10 @@ export class TipoCriaturaService {
                 observador.error(error);
             };
 
-            unsubscribe = onValue(dbRef, onNext, onError);
+            unsubscribe = this.firebaseContextSvc.run(() => {
+                const dbRef = ref(this.db, 'TiposCriatura');
+                return onValue(dbRef, onNext, onError);
+            });
 
             return () => {
                 unsubscribe();
@@ -112,7 +121,6 @@ export class TipoCriaturaService {
     }
 
     public async RenovarTiposCriatura(): Promise<boolean> {
-        const db_instance = getDatabase();
         try {
             const response = await firstValueFrom(this.syncTiposCriatura());
             const tipos = Array.isArray(response)
@@ -124,8 +132,8 @@ export class TipoCriaturaService {
                     i: number; n: string; d: string; ma: any; itd: number; ntd: string; ia: number; ift: number; ir: number; iv: number; iph: number; c: boolean; r: Boolean; du: boolean; cr: boolean; f: boolean; pc: boolean;
                     li: number; t: string; ial: number; ra: any; o: boolean;
                 }) => {
-                    return set(
-                        ref(db_instance, `TiposCriatura/${element.i}`), {
+                    return this.firebaseContextSvc.run(() => set(
+                        ref(this.db, `TiposCriatura/${element.i}`), {
                         Id: element.i,
                         Nombre: element.n,
                         Descripcion: element.d,
@@ -148,7 +156,7 @@ export class TipoCriaturaService {
                         Id_alineamiento: element.ial,
                         Rasgos: element.ra,
                         Oficial: element.o
-                    });
+                    }));
                 })
             );
 

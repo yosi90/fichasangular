@@ -1,18 +1,34 @@
 @use '../../../../assets/css/variables' as *
 :host
+    display: block
     width: 100%
     height: 100%
+    min-height: 0
 
     ::ng-deep mat-tab-header
         background-color: $contrast-dark
 
     mat-tab-group
+        display: flex
+        flex-direction: column
         height: 100%
+        min-height: 0
 
         background-color: $contrast
         border-radius: 4px
 
         box-shadow: 3px 3px 10px black
+
+        ::ng-deep .mat-mdc-tab-body-wrapper
+            flex: 1 1 auto
+            min-height: 0
+
+        ::ng-deep .mat-mdc-tab-body
+            height: 100%
+
+        ::ng-deep .mat-mdc-tab-body-content
+            height: 100%
+            min-height: 0
 
         ::ng-deep mat-tab-header
             border-top-left-radius: 4px

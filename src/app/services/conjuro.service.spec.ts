@@ -1,7 +1,12 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { of, throwError } from 'rxjs';
 import { ConjuroCreateRequest } from '../interfaces/conjuros-api';
+import { FirebaseInjectionContextService } from './firebase-injection-context.service';
 import { ConjuroService } from './conjuro.service';
+
+const firebaseContextMock = {
+    run: <T>(fn: () => T) => fn(),
+} as FirebaseInjectionContextService;
 
 describe('ConjuroService crearConjuro', () => {
     function crearPayload(): ConjuroCreateRequest {
@@ -38,7 +43,7 @@ describe('ConjuroService crearConjuro', () => {
         const httpMock = jasmine.createSpyObj('HttpClient', ['post', 'get']);
         httpMock.post.and.returnValue(of({ message: 'Conjuro creado', idConjuro: 9, uid: 'uid-1' }));
         httpMock.get.and.returnValue(of([]));
-        const service = new ConjuroService({} as any, httpMock);
+        const service = new ConjuroService({} as any, httpMock, firebaseContextMock);
 
         const response = await service.crearConjuro(crearPayload());
 
@@ -51,7 +56,7 @@ describe('ConjuroService crearConjuro', () => {
         httpMock.post.and.returnValue(
             throwError(() => new HttpErrorResponse({ status: 409, error: { message: 'nombre de conjuro duplicado' } }))
         );
-        const service = new ConjuroService({} as any, httpMock);
+        const service = new ConjuroService({} as any, httpMock, firebaseContextMock);
 
         await expectAsync(service.crearConjuro(crearPayload()))
             .toBeRejectedWithError('Ya existe un conjuro con ese nombre.');
@@ -62,7 +67,7 @@ describe('ConjuroService crearConjuro', () => {
         httpMock.post.and.returnValue(
             throwError(() => new HttpErrorResponse({ status: 403, error: { message: 'forbidden' } }))
         );
-        const service = new ConjuroService({} as any, httpMock);
+        const service = new ConjuroService({} as any, httpMock, firebaseContextMock);
 
         await expectAsync(service.crearConjuro(crearPayload()))
             .toBeRejectedWithError(/No tienes permisos para crear conjuros/);

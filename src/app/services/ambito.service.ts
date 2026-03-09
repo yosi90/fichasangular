@@ -1,10 +1,11 @@
 import { HttpClient, HttpErrorResponse } from "@angular/common/http";
 import { Injectable } from "@angular/core";
-import { Database, Unsubscribe, getDatabase, onValue, ref, set } from "@angular/fire/database";
+import { Database, Unsubscribe, onValue, ref, set } from "@angular/fire/database";
 import { Observable, firstValueFrom } from "rxjs";
 import Swal from "sweetalert2";
 import { environment } from "src/environments/environment";
 import { AmbitoDetalle } from "../interfaces/ambito";
+import { FirebaseInjectionContextService } from "./firebase-injection-context.service";
 
 function toNumber(value: any, fallback = 0): number {
     const parsed = Number(value);
@@ -37,7 +38,11 @@ export function normalizeAmbito(raw: any): AmbitoDetalle {
 })
 export class AmbitoService {
 
-    constructor(private db: Database, private http: HttpClient) { }
+    constructor(
+        private db: Database,
+        private http: HttpClient,
+        private firebaseContextSvc: FirebaseInjectionContextService,
+    ) { }
 
     getAmbito(id: number): Observable<AmbitoDetalle> {
         return new Observable((observador) => {
@@ -77,7 +82,7 @@ export class AmbitoService {
                 observador.error(error);
             };
 
-            unsubscribe = onValue(dbRef, onNext, onError);
+            unsubscribe = this.firebaseContextSvc.run(() => onValue(dbRef, onNext, onError));
             return () => unsubscribe();
         });
     }
@@ -102,7 +107,7 @@ export class AmbitoService {
                 observador.error(error);
             };
 
-            unsubscribe = onValue(dbRef, onNext, onError);
+            unsubscribe = this.firebaseContextSvc.run(() => onValue(dbRef, onNext, onError));
             return () => unsubscribe();
         });
     }
@@ -112,7 +117,6 @@ export class AmbitoService {
     }
 
     public async RenovarAmbitos(): Promise<boolean> {
-        const dbInstance = getDatabase();
         try {
             const response = await firstValueFrom(this.syncAmbitos());
             const ambitos = toArray(response)
@@ -120,7 +124,7 @@ export class AmbitoService {
                 .filter((ambito) => ambito.Id > 0);
 
             await Promise.all(
-                ambitos.map((ambito) => set(ref(dbInstance, `Ambitos/${ambito.Id}`), ambito))
+                ambitos.map((ambito) => this.firebaseContextSvc.run(() => set(ref(this.db, `Ambitos/${ambito.Id}`), ambito)))
             );
 
             Swal.fire({
@@ -151,4 +155,3 @@ export class AmbitoService {
         }
     }
 }
-

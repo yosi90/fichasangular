@@ -1,17 +1,22 @@
 import { HttpClient } from "@angular/common/http";
 import { Injectable } from "@angular/core";
-import { Database, getDatabase, Unsubscribe, onValue, ref, set } from '@angular/fire/database';
+import { Database, Unsubscribe, onValue, ref, set } from '@angular/fire/database';
 import { Observable, firstValueFrom } from "rxjs";
 import { environment } from "src/environments/environment";
 import Swal from "sweetalert2";
 import { EscuelaConjuros } from "../interfaces/escuela-conjuros";
+import { FirebaseInjectionContextService } from "./firebase-injection-context.service";
 
 @Injectable({
     providedIn: 'root'
 })
 export class EscuelaConjurosService {
 
-    constructor(private db: Database, private http: HttpClient) { }
+    constructor(
+        private db: Database,
+        private http: HttpClient,
+        private firebaseContextSvc: FirebaseInjectionContextService,
+    ) { }
 
     getEscuela(id: number): Observable<EscuelaConjuros> {
         return new Observable((observador) => {
@@ -31,7 +36,7 @@ export class EscuelaConjurosService {
             const onError = (error: any) => {
                 observador.error(error);
             };
-            unsubscribe = onValue(dbRef, onNext, onError);
+            unsubscribe = this.firebaseContextSvc.run(() => onValue(dbRef, onNext, onError));
 
             return () => {
                 unsubscribe();
@@ -62,7 +67,7 @@ export class EscuelaConjurosService {
                 observador.error(error);
             };
 
-            unsubscribe = onValue(dbRef, onNext, onError);
+            unsubscribe = this.firebaseContextSvc.run(() => onValue(dbRef, onNext, onError));
 
             return () => {
                 unsubscribe();
@@ -76,7 +81,6 @@ export class EscuelaConjurosService {
     }
 
     public async RenovarEscuelas(): Promise<boolean> {
-        const db_instance = getDatabase();
         try {
             const response = await firstValueFrom(this.syncEscuelas());
             const escuelas = Array.isArray(response)
@@ -87,13 +91,13 @@ export class EscuelaConjurosService {
                 escuelas.map((element: {
                     i: number; n: string; ne: string; p: boolean;
                 }) => {
-                    return set(
-                        ref(db_instance, `Escuelas/${element.i}`), {
+                    return this.firebaseContextSvc.run(() => set(
+                        ref(this.db, `Escuelas/${element.i}`), {
                         Id: element.i,
                         Nombre: element.n,
                         Nombre_especial: element.ne,
                         Prohibible: element.p
-                    });
+                    }));
                 })
             );
 

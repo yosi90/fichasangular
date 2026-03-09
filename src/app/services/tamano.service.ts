@@ -1,10 +1,11 @@
 import { HttpClient, HttpErrorResponse } from "@angular/common/http";
 import { Injectable } from "@angular/core";
-import { Database, Unsubscribe, getDatabase, onValue, ref, set } from "@angular/fire/database";
+import { Database, Unsubscribe, onValue, ref, set } from "@angular/fire/database";
 import { Observable, firstValueFrom } from "rxjs";
 import Swal from "sweetalert2";
 import { environment } from "src/environments/environment";
 import { Tamano } from "../interfaces/tamaño";
+import { FirebaseInjectionContextService } from "./firebase-injection-context.service";
 
 function toNumber(value: any, fallback = 0): number {
     const parsed = Number(value);
@@ -39,7 +40,11 @@ export function normalizeTamano(raw: any): Tamano {
 })
 export class TamanoService {
 
-    constructor(private db: Database, private http: HttpClient) { }
+    constructor(
+        private db: Database,
+        private http: HttpClient,
+        private firebaseContextSvc: FirebaseInjectionContextService,
+    ) { }
 
     getTamano(id: number): Observable<Tamano> {
         return new Observable((observador) => {
@@ -77,7 +82,7 @@ export class TamanoService {
 
             const onError = (error: any) => observador.error(error);
 
-            unsubscribe = onValue(dbRef, onNext, onError);
+            unsubscribe = this.firebaseContextSvc.run(() => onValue(dbRef, onNext, onError));
             return () => unsubscribe();
         });
     }
@@ -100,7 +105,7 @@ export class TamanoService {
 
             const onError = (error: any) => observador.error(error);
 
-            unsubscribe = onValue(dbRef, onNext, onError);
+            unsubscribe = this.firebaseContextSvc.run(() => onValue(dbRef, onNext, onError));
             return () => unsubscribe();
         });
     }
@@ -110,7 +115,6 @@ export class TamanoService {
     }
 
     public async RenovarTamanos(): Promise<boolean> {
-        const dbInstance = getDatabase();
         try {
             const response = await firstValueFrom(this.syncTamanos());
             const tamanos = toArray(response)
@@ -118,7 +122,7 @@ export class TamanoService {
                 .filter((tamano) => tamano.Id > 0);
 
             await Promise.all(
-                tamanos.map((tamano) => set(ref(dbInstance, `Tamanos/${tamano.Id}`), tamano))
+                tamanos.map((tamano) => this.firebaseContextSvc.run(() => set(ref(this.db, `Tamanos/${tamano.Id}`), tamano)))
             );
 
             Swal.fire({

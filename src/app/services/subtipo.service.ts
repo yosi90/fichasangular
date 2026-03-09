@@ -1,10 +1,11 @@
 import { HttpClient, HttpErrorResponse } from "@angular/common/http";
 import { Injectable } from "@angular/core";
-import { Database, Unsubscribe, getDatabase, onValue, ref, set } from "@angular/fire/database";
+import { Database, Unsubscribe, onValue, ref, set } from "@angular/fire/database";
 import { Observable, firstValueFrom, map } from "rxjs";
 import Swal from "sweetalert2";
 import { environment } from "src/environments/environment";
 import { SubtipoDetalle, SubtipoResumen } from "../interfaces/subtipo";
+import { FirebaseInjectionContextService } from "./firebase-injection-context.service";
 import { normalizeSubtipoDetalle, normalizeSubtipoResumen } from "./utils/subtipo-mapper";
 
 function toArray<T = any>(raw: any): T[] {
@@ -20,7 +21,11 @@ function toArray<T = any>(raw: any): T[] {
 })
 export class SubtipoService {
 
-    constructor(private db: Database, private http: HttpClient) { }
+    constructor(
+        private db: Database,
+        private http: HttpClient,
+        private firebaseContextSvc: FirebaseInjectionContextService,
+    ) { }
 
     getSubtipos(): Observable<SubtipoResumen[]> {
         return new Observable((observador) => {
@@ -39,7 +44,7 @@ export class SubtipoService {
             };
 
             const onError = (error: any) => observador.error(error);
-            unsubscribe = onValue(dbRef, onNext, onError);
+            unsubscribe = this.firebaseContextSvc.run(() => onValue(dbRef, onNext, onError));
             return () => unsubscribe();
         });
     }
@@ -69,7 +74,7 @@ export class SubtipoService {
                     next: async (raw: any) => {
                         const detalle = normalizeSubtipoDetalle(raw);
                         try {
-                            await set(ref(this.db, `Subtipos/${detalle.Id}`), detalle);
+                            await this.firebaseContextSvc.run(() => set(ref(this.db, `Subtipos/${detalle.Id}`), detalle));
                         } catch {
                             // Si falla el cacheado no bloqueamos la apertura del detalle.
                         }
@@ -97,7 +102,7 @@ export class SubtipoService {
             };
 
             const onError = (error: any) => observador.error(error);
-            unsubscribe = onValue(dbRef, onNext, onError);
+            unsubscribe = this.firebaseContextSvc.run(() => onValue(dbRef, onNext, onError));
             return () => unsubscribe();
         });
     }
@@ -114,7 +119,6 @@ export class SubtipoService {
     }
 
     public async RenovarSubtipos(): Promise<boolean> {
-        const dbInstance = getDatabase();
         try {
             const response = await firstValueFrom(this.syncSubtipos());
             const subtipos = toArray(response)
@@ -122,7 +126,7 @@ export class SubtipoService {
                 .filter((subtipo) => subtipo.Id > 0);
 
             await Promise.all(
-                subtipos.map((subtipo) => set(ref(dbInstance, `Subtipos/${subtipo.Id}`), subtipo))
+                subtipos.map((subtipo) => this.firebaseContextSvc.run(() => set(ref(this.db, `Subtipos/${subtipo.Id}`), subtipo)))
             );
 
             Swal.fire({

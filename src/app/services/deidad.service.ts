@@ -1,6 +1,6 @@
 import { HttpClient, HttpErrorResponse } from "@angular/common/http";
 import { Injectable } from "@angular/core";
-import { Database, Unsubscribe, getDatabase, onValue, ref, set } from "@angular/fire/database";
+import { Database, Unsubscribe, onValue, ref, set } from "@angular/fire/database";
 import { Observable, firstValueFrom, map } from "rxjs";
 import Swal from "sweetalert2";
 import { environment } from "src/environments/environment";
@@ -8,6 +8,7 @@ import { AmbitoDetalle } from "../interfaces/ambito";
 import { DeidadDetalle } from "../interfaces/deidad";
 import { DominioDetalle } from "../interfaces/dominio";
 import { normalizeAmbito } from "./ambito.service";
+import { FirebaseInjectionContextService } from "./firebase-injection-context.service";
 import { normalizeDominio } from "./dominio.service";
 import { normalizePabellon } from "./pabellon.service";
 
@@ -89,7 +90,11 @@ export function normalizeDeidad(raw: any): DeidadDetalle {
 })
 export class DeidadService {
 
-    constructor(private db: Database, private http: HttpClient) { }
+    constructor(
+        private db: Database,
+        private http: HttpClient,
+        private firebaseContextSvc: FirebaseInjectionContextService,
+    ) { }
 
     getDeidad(id: number): Observable<DeidadDetalle> {
         return new Observable((observador) => {
@@ -129,7 +134,7 @@ export class DeidadService {
                 observador.error(error);
             };
 
-            unsubscribe = onValue(dbRef, onNext, onError);
+            unsubscribe = this.firebaseContextSvc.run(() => onValue(dbRef, onNext, onError));
             return () => unsubscribe();
         });
     }
@@ -154,7 +159,7 @@ export class DeidadService {
                 observador.error(error);
             };
 
-            unsubscribe = onValue(dbRef, onNext, onError);
+            unsubscribe = this.firebaseContextSvc.run(() => onValue(dbRef, onNext, onError));
             return () => unsubscribe();
         });
     }
@@ -174,7 +179,6 @@ export class DeidadService {
     }
 
     public async RenovarDeidades(): Promise<boolean> {
-        const dbInstance = getDatabase();
         try {
             const response = await firstValueFrom(this.syncDeidades());
             const deidades = toArray(response)
@@ -182,7 +186,7 @@ export class DeidadService {
                 .filter((deidad) => deidad.Id > 0);
 
             await Promise.all(
-                deidades.map((deidad) => set(ref(dbInstance, `Deidades/${deidad.Id}`), deidad))
+                deidades.map((deidad) => this.firebaseContextSvc.run(() => set(ref(this.db, `Deidades/${deidad.Id}`), deidad)))
             );
 
             Swal.fire({

@@ -1,11 +1,12 @@
 import { HttpClient, HttpErrorResponse } from "@angular/common/http";
 import { Injectable } from "@angular/core";
-import { Database, Unsubscribe, getDatabase, onValue, ref, set } from "@angular/fire/database";
+import { Database, Unsubscribe, onValue, ref, set } from "@angular/fire/database";
 import { Observable, firstValueFrom } from "rxjs";
 import { Dote } from "../interfaces/dote";
 import { DoteCreateRequest, DoteCreateResponse } from "../interfaces/dotes-api";
 import { environment } from "src/environments/environment";
 import Swal from "sweetalert2";
+import { FirebaseInjectionContextService } from "./firebase-injection-context.service";
 import { normalizeDote } from "./utils/dote-mapper";
 
 @Injectable({
@@ -13,11 +14,14 @@ import { normalizeDote } from "./utils/dote-mapper";
 })
 export class DoteService {
 
-    constructor(private db: Database, private http: HttpClient) { }
+    constructor(
+        private db: Database,
+        private http: HttpClient,
+        private firebaseContextSvc: FirebaseInjectionContextService
+    ) { }
 
     getDote(id: number): Observable<Dote> {
         return new Observable((observador) => {
-            const dbRef = ref(this.db, `Dotes/${id}`);
             let unsubscribe: Unsubscribe;
 
             const onNext = (snapshot: any) => {
@@ -53,7 +57,10 @@ export class DoteService {
                 observador.error(error);
             };
 
-            unsubscribe = onValue(dbRef, onNext, onError);
+            unsubscribe = this.firebaseContextSvc.run(() => {
+                const dbRef = ref(this.db, `Dotes/${id}`);
+                return onValue(dbRef, onNext, onError);
+            });
 
             return () => {
                 unsubscribe();
@@ -63,7 +70,6 @@ export class DoteService {
 
     getDotes(): Observable<Dote[]> {
         return new Observable((observador) => {
-            const dbRef = ref(this.db, "Dotes");
             let unsubscribe: Unsubscribe;
 
             const onNext = (snapshot: any) => {
@@ -78,7 +84,10 @@ export class DoteService {
                 observador.error(error);
             };
 
-            unsubscribe = onValue(dbRef, onNext, onError);
+            unsubscribe = this.firebaseContextSvc.run(() => {
+                const dbRef = ref(this.db, "Dotes");
+                return onValue(dbRef, onNext, onError);
+            });
 
             return () => {
                 unsubscribe();
@@ -113,7 +122,6 @@ export class DoteService {
     }
 
     public async RenovarDotes(): Promise<boolean> {
-        const dbInstance = getDatabase();
         try {
             const response = await firstValueFrom(this.syncDotes());
             const dotes = Array.isArray(response)
@@ -123,7 +131,7 @@ export class DoteService {
             await Promise.all(
                 dotes.map((raw: any) => {
                     const dote = normalizeDote(raw);
-                    return set(ref(dbInstance, `Dotes/${dote.Id}`), dote);
+                    return this.firebaseContextSvc.run(() => set(ref(this.db, `Dotes/${dote.Id}`), dote));
                 })
             );
 
@@ -159,7 +167,7 @@ export class DoteService {
         try {
             const raw = await firstValueFrom(this.http.get(`${environment.apiUrl}dotes/${idDote}`));
             const normalized = normalizeDote(raw);
-            await set(ref(this.db, `Dotes/${normalized.Id}`), normalized);
+            await this.firebaseContextSvc.run(() => set(ref(this.db, `Dotes/${normalized.Id}`), normalized));
         } catch {
             // Best-effort: no bloquea flujo de creacion.
         }

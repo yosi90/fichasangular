@@ -1,6 +1,7 @@
 import { Auth, User } from '@angular/fire/auth';
 import { Database } from '@angular/fire/database';
 import { UsuarioUpsertRequestDto, UsuarioUpsertResponseDto } from '../interfaces/usuarios-api';
+import { FirebaseInjectionContextService } from './firebase-injection-context.service';
 import { UserService } from './user.service';
 import { UsuariosApiService } from './usuarios-api.service';
 
@@ -15,7 +16,12 @@ class UserServiceTestDouble extends UserService {
     persistProfileCalls = 0;
 
     constructor() {
-        super({} as Auth, {} as Database, {} as UsuariosApiService);
+        super(
+            {} as Auth,
+            {} as Database,
+            {} as UsuariosApiService,
+            { run: <T>(fn: () => T) => fn() } as FirebaseInjectionContextService
+        );
     }
 
     protected override subscribeAuthState(handler: (firebaseUser: User | null) => void): void {

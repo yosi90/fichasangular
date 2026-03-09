@@ -1,11 +1,12 @@
 import { HttpClient, HttpErrorResponse } from "@angular/common/http";
 import { Injectable } from "@angular/core";
-import { Database, Unsubscribe, getDatabase, onValue, ref, set } from "@angular/fire/database";
+import { Database, Unsubscribe, onValue, ref, set } from "@angular/fire/database";
 import { Observable, firstValueFrom, map } from "rxjs";
 import Swal from "sweetalert2";
 import { environment } from "src/environments/environment";
 import { Alineamiento } from "../interfaces/alineamiento";
 import { Clase, ClaseConjurosConfig, ClaseNivelDetalle, ClasePrerrequisitos, ClasePrerrequisitosFlags } from "../interfaces/clase";
+import { FirebaseInjectionContextService } from "./firebase-injection-context.service";
 
 const CLAVES_PRERREQUISITOS: (keyof ClasePrerrequisitos)[] = [
     "subtipo",
@@ -318,11 +319,14 @@ export function normalizeClase(raw: any): Clase {
 })
 export class ClaseService {
 
-    constructor(private db: Database, private http: HttpClient) { }
+    constructor(
+        private db: Database,
+        private http: HttpClient,
+        private firebaseContextSvc: FirebaseInjectionContextService
+    ) { }
 
     getClase(id: number): Observable<Clase> {
         return new Observable((observador) => {
-            const dbRef = ref(this.db, `Clases/${id}`);
             let unsubscribe: Unsubscribe;
 
             const onNext = (snapshot: any) => {
@@ -358,7 +362,10 @@ export class ClaseService {
                 observador.error(error);
             };
 
-            unsubscribe = onValue(dbRef, onNext, onError);
+            unsubscribe = this.firebaseContextSvc.run(() => {
+                const dbRef = ref(this.db, `Clases/${id}`);
+                return onValue(dbRef, onNext, onError);
+            });
 
             return () => {
                 unsubscribe();
@@ -368,7 +375,6 @@ export class ClaseService {
 
     getClases(): Observable<Clase[]> {
         return new Observable((observador) => {
-            const dbRef = ref(this.db, "Clases");
             let unsubscribe: Unsubscribe;
 
             const onNext = (snapshot: any) => {
@@ -384,7 +390,10 @@ export class ClaseService {
                 observador.error(error);
             };
 
-            unsubscribe = onValue(dbRef, onNext, onError);
+            unsubscribe = this.firebaseContextSvc.run(() => {
+                const dbRef = ref(this.db, "Clases");
+                return onValue(dbRef, onNext, onError);
+            });
 
             return () => {
                 unsubscribe();
@@ -404,13 +413,12 @@ export class ClaseService {
     }
 
     public async RenovarClases(): Promise<boolean> {
-        const dbInstance = getDatabase();
         try {
             const response = await firstValueFrom(this.syncClases());
             await Promise.all(
                 toArray(response).map((raw: any) => {
                     const clase = normalizeClase(raw);
-                    return set(ref(dbInstance, `Clases/${clase.Id}`), clase);
+                    return this.firebaseContextSvc.run(() => set(ref(this.db, `Clases/${clase.Id}`), clase));
                 })
             );
 

@@ -11,6 +11,7 @@ import {
 } from '../interfaces/user-acl';
 import { AuthProviderType, UserProfile } from '../interfaces/user-profile';
 import { UsuarioListadoItemDto, UsuarioPermissionCreateDto, UsuarioUpsertRequestDto, UsuarioUpsertResponseDto } from '../interfaces/usuarios-api';
+import { FirebaseInjectionContextService } from './firebase-injection-context.service';
 import { UsuariosApiService } from './usuarios-api.service';
 
 export interface AdminUserRow {
@@ -36,7 +37,12 @@ export interface SyncUsuariosApiResult {
     providedIn: 'root'
 })
 export class AdminUsersService {
-    constructor(private db: Database, private auth: Auth, private usuariosApiSvc: UsuariosApiService) { }
+    constructor(
+        private db: Database,
+        private auth: Auth,
+        private usuariosApiSvc: UsuariosApiService,
+        private firebaseContextSvc: FirebaseInjectionContextService,
+    ) { }
 
     watchUsersAdminView(): Observable<AdminUserRow[]> {
         return combineLatest([
@@ -209,23 +215,23 @@ export class AdminUsersService {
     protected watchPath(path: string): Observable<any> {
         return new Observable((observer) => {
             const dbRef = ref(this.db, path);
-            const unsubscribe = onValue(
+            const unsubscribe = this.firebaseContextSvc.run(() => onValue(
                 dbRef,
                 (snapshot) => observer.next(snapshot.val()),
                 (error) => observer.error(error)
-            );
+            ));
 
             return () => unsubscribe();
         });
     }
 
     protected async getPath(path: string): Promise<any> {
-        const snapshot = await get(ref(this.db, path));
+        const snapshot = await this.firebaseContextSvc.run(() => get(ref(this.db, path)));
         return snapshot.val();
     }
 
     protected async setPath(path: string, payload: any): Promise<void> {
-        await set(ref(this.db, path), payload);
+        await this.firebaseContextSvc.run(() => set(ref(this.db, path), payload));
     }
 
     protected listUsersApi(): Promise<UsuarioListadoItemDto[]> {

@@ -1,10 +1,11 @@
 import { HttpClient, HttpErrorResponse } from "@angular/common/http";
 import { Injectable } from "@angular/core";
-import { Database, Unsubscribe, getDatabase, onValue, ref, set } from "@angular/fire/database";
+import { Database, Unsubscribe, onValue, ref, set } from "@angular/fire/database";
 import { Observable, firstValueFrom } from "rxjs";
 import Swal from "sweetalert2";
 import { environment } from "src/environments/environment";
 import { CompaneroMonstruoDetalle, FamiliarMonstruoDetalle, MonstruoDetalle } from "../interfaces/monstruo";
+import { FirebaseInjectionContextService } from "./firebase-injection-context.service";
 import {
     normalizeCompaneroMonstruoDetalle,
     normalizeCompaneroMonstruoDetalleArray,
@@ -19,7 +20,11 @@ import {
 })
 export class MonstruoService {
 
-    constructor(private db: Database, private http: HttpClient) { }
+    constructor(
+        private db: Database,
+        private http: HttpClient,
+        private firebaseContextSvc: FirebaseInjectionContextService,
+    ) { }
 
     getMonstruo(id: number): Observable<MonstruoDetalle> {
         return new Observable((observador) => {
@@ -59,7 +64,7 @@ export class MonstruoService {
                 observador.error(error);
             };
 
-            unsubscribe = onValue(dbRef, onNext, onError);
+            unsubscribe = this.firebaseContextSvc.run(() => onValue(dbRef, onNext, onError));
             return () => unsubscribe();
         });
     }
@@ -84,7 +89,7 @@ export class MonstruoService {
                 observador.error(error);
             };
 
-            unsubscribe = onValue(dbRef, onNext, onError);
+            unsubscribe = this.firebaseContextSvc.run(() => onValue(dbRef, onNext, onError));
             return () => unsubscribe();
         });
     }
@@ -127,7 +132,7 @@ export class MonstruoService {
                 observador.error(error);
             };
 
-            unsubscribe = onValue(dbRef, onNext, onError);
+            unsubscribe = this.firebaseContextSvc.run(() => onValue(dbRef, onNext, onError));
             return () => unsubscribe();
         });
     }
@@ -152,7 +157,7 @@ export class MonstruoService {
                 observador.error(error);
             };
 
-            unsubscribe = onValue(dbRef, onNext, onError);
+            unsubscribe = this.firebaseContextSvc.run(() => onValue(dbRef, onNext, onError));
             return () => unsubscribe();
         });
     }
@@ -195,7 +200,7 @@ export class MonstruoService {
                 observador.error(error);
             };
 
-            unsubscribe = onValue(dbRef, onNext, onError);
+            unsubscribe = this.firebaseContextSvc.run(() => onValue(dbRef, onNext, onError));
             return () => unsubscribe();
         });
     }
@@ -220,7 +225,7 @@ export class MonstruoService {
                 observador.error(error);
             };
 
-            unsubscribe = onValue(dbRef, onNext, onError);
+            unsubscribe = this.firebaseContextSvc.run(() => onValue(dbRef, onNext, onError));
             return () => unsubscribe();
         });
     }
@@ -238,13 +243,12 @@ export class MonstruoService {
     }
 
     public async RenovarMonstruos(): Promise<boolean> {
-        const dbInstance = getDatabase();
         try {
             const response = await firstValueFrom(this.syncMonstruos());
             const monstruos = normalizeMonstruoDetalleArray(response, 1);
 
             await Promise.all(
-                monstruos.map((monstruo) => set(ref(dbInstance, `Monstruos/${monstruo.Id}`), monstruo))
+                monstruos.map((monstruo) => this.firebaseContextSvc.run(() => set(ref(this.db, `Monstruos/${monstruo.Id}`), monstruo)))
             );
 
             Swal.fire({
@@ -276,13 +280,12 @@ export class MonstruoService {
     }
 
     public async RenovarFamiliares(): Promise<boolean> {
-        const dbInstance = getDatabase();
         try {
             const response = await firstValueFrom(this.syncFamiliares());
             const familiares = normalizeFamiliarMonstruoDetalleArray(response, 1);
 
             await Promise.all(
-                familiares.map((familiar) => set(ref(dbInstance, `Familiares/${familiar.Id_familiar}`), familiar))
+                familiares.map((familiar) => this.firebaseContextSvc.run(() => set(ref(this.db, `Familiares/${familiar.Id_familiar}`), familiar)))
             );
 
             Swal.fire({
@@ -314,13 +317,12 @@ export class MonstruoService {
     }
 
     public async RenovarCompaneros(): Promise<boolean> {
-        const dbInstance = getDatabase();
         try {
             const response = await firstValueFrom(this.syncCompaneros());
             const companeros = normalizeCompaneroMonstruoDetalleArray(response, 1);
 
             await Promise.all(
-                companeros.map((companero) => set(ref(dbInstance, `Companeros/${companero.Id_companero}`), companero))
+                companeros.map((companero) => this.firebaseContextSvc.run(() => set(ref(this.db, `Companeros/${companero.Id_companero}`), companero)))
             );
 
             Swal.fire({

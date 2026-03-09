@@ -2,6 +2,7 @@ import { Injectable } from "@angular/core";
 import { Database, get, onValue, ref, set } from "@angular/fire/database";
 import { Observable } from "rxjs";
 import { CACHE_CONTRACT_MANIFEST, CacheEntityKey } from "../config/cache-contract-manifest";
+import { FirebaseInjectionContextService } from "./firebase-injection-context.service";
 
 export interface CacheSyncMeta {
     lastSuccessAt: number;
@@ -25,13 +26,16 @@ export class CacheSyncMetadataService {
     private readonly path = "CacheSyncMeta/AdminPanel";
     private readonly keys = new Set<CacheEntityKey>(CACHE_CONTRACT_MANIFEST.map((entry) => entry.key));
 
-    constructor(private db: Database) { }
+    constructor(
+        private db: Database,
+        private firebaseContextSvc: FirebaseInjectionContextService,
+    ) { }
 
     watchAll(): Observable<Record<CacheEntityKey, CacheSyncMeta | null>> {
         return new Observable((observer) => {
             const dbRef = ref(this.db, this.path);
 
-            const unsubscribe = onValue(
+            const unsubscribe = this.firebaseContextSvc.run(() => onValue(
                 dbRef,
                 (snapshot) => {
                     const record = this.createEmptyRecord();
@@ -44,7 +48,7 @@ export class CacheSyncMetadataService {
                     observer.next(record);
                 },
                 (error) => observer.error(error)
-            );
+            ));
 
             return () => unsubscribe();
         });
@@ -57,11 +61,11 @@ export class CacheSyncMetadataService {
             lastSuccessIso: new Date(now).toISOString(),
             schemaVersionApplied: schemaVersion,
         };
-        await set(ref(this.db, `${this.path}/${key}`), payload);
+        await this.firebaseContextSvc.run(() => set(ref(this.db, `${this.path}/${key}`), payload));
     }
 
     async getSnapshotOnce(): Promise<Record<CacheEntityKey, CacheSyncMeta | null>> {
-        const snapshot = await get(ref(this.db, this.path));
+        const snapshot = await this.firebaseContextSvc.run(() => get(ref(this.db, this.path)));
         const record = this.createEmptyRecord();
 
         if (!snapshot.exists())

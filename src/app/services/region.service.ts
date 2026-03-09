@@ -1,10 +1,11 @@
 import { HttpClient, HttpErrorResponse } from "@angular/common/http";
 import { Injectable } from "@angular/core";
-import { Database, Unsubscribe, getDatabase, onValue, ref, set } from "@angular/fire/database";
+import { Database, Unsubscribe, onValue, ref, set } from "@angular/fire/database";
 import { Observable, firstValueFrom } from "rxjs";
 import Swal from "sweetalert2";
 import { environment } from "src/environments/environment";
 import { RegionDetalle } from "../interfaces/region";
+import { FirebaseInjectionContextService } from "./firebase-injection-context.service";
 
 function toBoolean(value: any): boolean {
     if (typeof value === "boolean")
@@ -50,7 +51,11 @@ export function normalizeRegion(raw: any): RegionDetalle {
 })
 export class RegionService {
 
-    constructor(private db: Database, private http: HttpClient) { }
+    constructor(
+        private db: Database,
+        private http: HttpClient,
+        private firebaseContextSvc: FirebaseInjectionContextService,
+    ) { }
 
     getRegiones(): Observable<RegionDetalle[]> {
         return new Observable((observador) => {
@@ -73,7 +78,7 @@ export class RegionService {
                 observador.error(error);
             };
 
-            unsubscribe = onValue(dbRef, onNext, onError);
+            unsubscribe = this.firebaseContextSvc.run(() => onValue(dbRef, onNext, onError));
             return () => unsubscribe();
         });
     }
@@ -83,7 +88,6 @@ export class RegionService {
     }
 
     public async RenovarRegiones(): Promise<boolean> {
-        const dbInstance = getDatabase();
         try {
             const response = await firstValueFrom(this.syncRegiones());
             const regiones = toArray(response)
@@ -91,7 +95,7 @@ export class RegionService {
                 .filter((region) => region.Id > 0 && region.Nombre.trim().length > 0);
 
             await Promise.all(
-                regiones.map((region) => set(ref(dbInstance, `Regiones/${region.Id}`), region))
+                regiones.map((region) => this.firebaseContextSvc.run(() => set(ref(this.db, `Regiones/${region.Id}`), region)))
             );
 
             Swal.fire({

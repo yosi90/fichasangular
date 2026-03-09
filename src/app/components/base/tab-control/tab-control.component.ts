@@ -64,29 +64,29 @@ export class TabControlComponent implements OnInit, OnDestroy {
     @Input() AbrirListadoTab!: number;
     @Input() ListadoTabTipo!: string;
     @Input() ListadoTabOperacion!: string;
-    usrLoggedIn = false;
-    usrPerm: number = 0;
-    privateProfileTabOpen = false;
-    publicProfileTabs: UserPublicProfileTab[] = [];
-    detallesPersonajeAbiertos: Personaje[] = [];
-    detallesRazaAbiertos: Raza[] = [];
-    detallesConjuroAbiertos: Conjuro[] = [];
-    detallesSortilegaAbiertos: { ap: AptitudSortilega, fuente: string }[] = [];
-    detallesTipoCriaturaAbiertos: TipoCriatura[] = [];
-    detallesRasgoAbiertos: Rasgo[] = [];
-    detallesDoteAbiertos: DoteContextual[] = [];
-    detallesClaseAbiertos: Clase[] = [];
-    detallesEspecialAbiertos: EspecialClaseDetalle[] = [];
-    detallesRacialAbiertos: RacialDetalle[] = [];
-    detallesManualAbiertos: ManualAsociadoDetalle[] = [];
-    detallesPlantillaAbiertos: Plantilla[] = [];
-    detallesSubtipoAbiertos: SubtipoDetalle[] = [];
-    detallesVentajaAbiertos: VentajaDetalle[] = [];
-    detallesMonstruoAbiertos: MonstruoDetalle[] = [];
-    detallesArmaAbiertos: ArmaDetalle[] = [];
-    detallesArmaduraAbiertos: ArmaduraDetalle[] = [];
-    detallesDeidadAbiertos: DeidadDetalle[] = [];
-    listadoTabsAbiertos: ListadoTabAbierto[] = [];
+    public usrLoggedIn = false;
+    public usrPerm: number = 0;
+    public privateProfileTabOpen = false;
+    public publicProfileTabs: UserPublicProfileTab[] = [];
+    public detallesPersonajeAbiertos: Personaje[] = [];
+    public detallesRazaAbiertos: Raza[] = [];
+    public detallesConjuroAbiertos: Conjuro[] = [];
+    public detallesSortilegaAbiertos: { ap: AptitudSortilega, fuente: string }[] = [];
+    public detallesTipoCriaturaAbiertos: TipoCriatura[] = [];
+    public detallesRasgoAbiertos: Rasgo[] = [];
+    public detallesDoteAbiertos: DoteContextual[] = [];
+    public detallesClaseAbiertos: Clase[] = [];
+    public detallesEspecialAbiertos: EspecialClaseDetalle[] = [];
+    public detallesRacialAbiertos: RacialDetalle[] = [];
+    public detallesManualAbiertos: ManualAsociadoDetalle[] = [];
+    public detallesPlantillaAbiertos: Plantilla[] = [];
+    public detallesSubtipoAbiertos: SubtipoDetalle[] = [];
+    public detallesVentajaAbiertos: VentajaDetalle[] = [];
+    public detallesMonstruoAbiertos: MonstruoDetalle[] = [];
+    public detallesArmaAbiertos: ArmaDetalle[] = [];
+    public detallesArmaduraAbiertos: ArmaduraDetalle[] = [];
+    public detallesDeidadAbiertos: DeidadDetalle[] = [];
+    public listadoTabsAbiertos: ListadoTabAbierto[] = [];
     private readonly TAB_PERSONAJES = 'base:personajes';
     private readonly TAB_PROFILE = 'base:perfil';
     private readonly TAB_ADMIN = 'base:admin';
@@ -399,7 +399,7 @@ export class TabControlComponent implements OnInit, OnDestroy {
         });
     }
 
-    abrirPerfilPrivado(): void {
+    public abrirPerfilPrivado(): void {
         if (!this.usrLoggedIn)
             return;
         if (this.privateProfileTabOpen) {
@@ -411,7 +411,7 @@ export class TabControlComponent implements OnInit, OnDestroy {
         this.focusOpenedTab(this.TAB_PROFILE);
     }
 
-    quitarPerfilPrivado(): boolean {
+    public quitarPerfilPrivado(): boolean {
         if (!this.privateProfileTabOpen)
             return false;
 
@@ -433,7 +433,7 @@ export class TabControlComponent implements OnInit, OnDestroy {
             this.selectTabByKey(this.TAB_PERSONAJES, true);
     }
 
-    abrirPerfilPublico(payload: UserPublicProfileTab): void {
+    public abrirPerfilPublico(payload: UserPublicProfileTab): void {
         const uid = `${payload?.uid ?? ''}`.trim();
         if (uid.length < 1)
             return;
@@ -456,7 +456,7 @@ export class TabControlComponent implements OnInit, OnDestroy {
         this.focusOpenedTab(targetKey);
     }
 
-    quitarPerfilPublico(value?: string | UserPublicProfileTab): boolean {
+    public quitarPerfilPublico(value?: string | UserPublicProfileTab): boolean {
         const key = typeof value === 'string'
             ? value
             : value ? this.getPublicProfileTabKey(value) : (this.activeTabKey.startsWith('perfil-publico:') ? this.activeTabKey : '');
@@ -473,7 +473,7 @@ export class TabControlComponent implements OnInit, OnDestroy {
         });
     }
 
-    actualizarEtiquetaPerfilPublico(payload: { uid: string; displayName: string | null; }): void {
+    public actualizarEtiquetaPerfilPublico(payload: { uid: string; displayName: string | null; }): void {
         const uid = `${payload?.uid ?? ''}`.trim();
         if (uid.length < 1)
             return;
@@ -823,7 +823,7 @@ export class TabControlComponent implements OnInit, OnDestroy {
         return `personaje:${Number(personaje?.Id ?? 0)}`;
     }
 
-    getEtiquetaPerfilPublico(tab: UserPublicProfileTab): string {
+    public getEtiquetaPerfilPublico(tab: UserPublicProfileTab): string {
         const label = `${tab?.initialDisplayName ?? ''}`.trim();
         return `${label.length > 0 ? label : tab.uid} (Perfil)`;
     }

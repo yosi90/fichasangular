@@ -1,11 +1,12 @@
 import { HttpClient, HttpErrorResponse } from "@angular/common/http";
 import { Injectable } from "@angular/core";
-import { Database, Unsubscribe, getDatabase, onValue, ref, set } from '@angular/fire/database';
+import { Database, Unsubscribe, onValue, ref, set } from '@angular/fire/database';
 import { Observable, firstValueFrom } from "rxjs";
 import { environment } from "src/environments/environment";
 import Swal from "sweetalert2";
 import { Conjuro } from "../interfaces/conjuro";
 import { ConjuroCreateRequest, ConjuroCreateResponse } from "../interfaces/conjuros-api";
+import { FirebaseInjectionContextService } from "./firebase-injection-context.service";
 import { normalizeConjuro } from "./utils/conjuro-mapper";
 
 @Injectable({
@@ -13,11 +14,14 @@ import { normalizeConjuro } from "./utils/conjuro-mapper";
 })
 export class ConjuroService {
 
-    constructor(private db: Database, private http: HttpClient) { }
+    constructor(
+        private db: Database,
+        private http: HttpClient,
+        private firebaseContextSvc: FirebaseInjectionContextService
+    ) { }
 
     getConjuro(id: number): Observable<Conjuro> {
         return new Observable((observador) => {
-            const dbRef = ref(this.db, `Conjuros/${id}`);
             let unsubscribe: Unsubscribe;
 
             const onNext = (snapshot: any) => {
@@ -28,7 +32,10 @@ export class ConjuroService {
                 observador.error(error);
             };
 
-            unsubscribe = onValue(dbRef, onNext, onError);
+            unsubscribe = this.firebaseContextSvc.run(() => {
+                const dbRef = ref(this.db, `Conjuros/${id}`);
+                return onValue(dbRef, onNext, onError);
+            });
 
             return () => {
                 unsubscribe();
@@ -38,7 +45,6 @@ export class ConjuroService {
 
     getConjuros(): Observable<Conjuro[]> {
         return new Observable((observador) => {
-            const dbRef = ref(this.db, 'Conjuros');
             let unsubscribe: Unsubscribe;
 
             const onNext = (snapshot: any) => {
@@ -53,7 +59,10 @@ export class ConjuroService {
                 observador.error(error);
             };
 
-            unsubscribe = onValue(dbRef, onNext, onError);
+            unsubscribe = this.firebaseContextSvc.run(() => {
+                const dbRef = ref(this.db, 'Conjuros');
+                return onValue(dbRef, onNext, onError);
+            });
 
             return () => {
                 unsubscribe();
@@ -88,7 +97,6 @@ export class ConjuroService {
     }
 
     public async RenovarConjuros(): Promise<boolean> {
-        const dbInstance = getDatabase();
         try {
             const response = await firstValueFrom(this.syncConjuros());
             const conjuros = Array.isArray(response)
@@ -98,7 +106,7 @@ export class ConjuroService {
             await Promise.all(
                 conjuros.map((raw: any) => {
                     const conjuro = normalizeConjuro(raw);
-                    return set(ref(dbInstance, `Conjuros/${conjuro.Id}`), conjuro);
+                    return this.firebaseContextSvc.run(() => set(ref(this.db, `Conjuros/${conjuro.Id}`), conjuro));
                 })
             );
 
@@ -132,7 +140,7 @@ export class ConjuroService {
             if (!encontrado)
                 return;
 
-            await set(ref(this.db, `Conjuros/${encontrado.Id}`), encontrado);
+            await this.firebaseContextSvc.run(() => set(ref(this.db, `Conjuros/${encontrado.Id}`), encontrado));
         } catch {
             // Best-effort: no bloquea flujo de creacion.
         }

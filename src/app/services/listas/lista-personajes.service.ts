@@ -1,22 +1,26 @@
 import { Injectable } from '@angular/core';
 import { PersonajeSimple } from '../../interfaces/simplificaciones/personaje-simple';
-import { Database, getDatabase, Unsubscribe, onValue, ref, set } from '@angular/fire/database';
+import { Database, Unsubscribe, onValue, ref, set } from '@angular/fire/database';
 import { Observable, firstValueFrom } from 'rxjs';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { environment } from 'src/environments/environment';
 import { RazaSimple } from 'src/app/interfaces/simplificaciones/raza-simple';
 import Swal from 'sweetalert2';
+import { FirebaseInjectionContextService } from '../firebase-injection-context.service';
 
 @Injectable({
     providedIn: 'root'
 })
 export class ListaPersonajesService {
 
-    constructor(private db: Database, private http: HttpClient) { }
+    constructor(
+        private db: Database,
+        private http: HttpClient,
+        private firebaseContextSvc: FirebaseInjectionContextService
+    ) { }
 
     async getPersonajes(): Promise<Observable<PersonajeSimple[]>> {
         return new Observable((observador) => {
-            const dbRef = ref(this.db, 'Personajes-simples');
             let unsubscribe: Unsubscribe;
 
             const onNext = (snapshot: any) => {
@@ -74,7 +78,10 @@ export class ListaPersonajesService {
             // };
 
             // unsubscribe = onValue(dbRef, onNext, onError, onComplete);
-            unsubscribe = onValue(dbRef, onNext, onError);
+            unsubscribe = this.firebaseContextSvc.run(() => {
+                const dbRef = ref(this.db, 'Personajes-simples');
+                return onValue(dbRef, onNext, onError);
+            });
 
             return () => {
                 unsubscribe(); // Cancelar la suscripción al evento onValue
@@ -150,7 +157,6 @@ export class ListaPersonajesService {
     }
 
     public async RenovarPersonajesSimples(): Promise<boolean> {
-        const db = getDatabase();
         try {
             const response = await firstValueFrom(this.pjs());
             const personajes = Array.isArray(response)
@@ -172,24 +178,26 @@ export class ListaPersonajesService {
                         ?? element?.region?.Nombre
                         ?? element?.region?.nombre
                         ?? ''}`.trim();
-                    return set(ref(db, `Personajes-simples/${element.i}`), {
-                        Nombre: element.n,
-                        ownerUid: extractOwnerUid(element),
-                        ownerDisplayName: extractOwnerDisplayName(element),
-                        visible_otros_usuarios: toBoolean(element.visible_otros_usuarios),
-                        Id_region: idRegion,
-                        Region: {
-                            Id: idRegion,
-                            Nombre: nombreRegion.length > 0 ? nombreRegion : (idRegion === 0 ? 'Sin región' : ''),
-                        },
-                        Raza: element.r as RazaSimple,
-                        Clases: element.c,
-                        Contexto: element.co,
-                        Personalidad: element.p,
-                        Campaña: element.ca,
-                        Trama: element.t,
-                        Subtrama: element.s,
-                        Archivado: element.a,
+                    return this.firebaseContextSvc.run(() => {
+                        return set(ref(this.db, `Personajes-simples/${element.i}`), {
+                            Nombre: element.n,
+                            ownerUid: extractOwnerUid(element),
+                            ownerDisplayName: extractOwnerDisplayName(element),
+                            visible_otros_usuarios: toBoolean(element.visible_otros_usuarios),
+                            Id_region: idRegion,
+                            Region: {
+                                Id: idRegion,
+                                Nombre: nombreRegion.length > 0 ? nombreRegion : (idRegion === 0 ? 'Sin región' : ''),
+                            },
+                            Raza: element.r as RazaSimple,
+                            Clases: element.c,
+                            Contexto: element.co,
+                            Personalidad: element.p,
+                            Campaña: element.ca,
+                            Trama: element.t,
+                            Subtrama: element.s,
+                            Archivado: element.a,
+                        });
                     });
                 })
             );

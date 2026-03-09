@@ -5,6 +5,7 @@ import { Observable, firstValueFrom } from "rxjs";
 import Swal from "sweetalert2";
 import { environment } from "src/environments/environment";
 import { VentajaDetalle } from "../interfaces/ventaja";
+import { FirebaseInjectionContextService } from "./firebase-injection-context.service";
 
 function toBoolean(value: any): boolean {
     return value === true || value === 1 || value === "1";
@@ -152,7 +153,11 @@ export function normalizeVentaja(raw: any): VentajaDetalle {
 })
 export class VentajaService {
 
-    constructor(private db: Database, private http: HttpClient) { }
+    constructor(
+        private db: Database,
+        private http: HttpClient,
+        private firebaseContextSvc: FirebaseInjectionContextService,
+    ) { }
 
     getVentajas(): Observable<VentajaDetalle[]> {
         return this.getColeccion("Ventajas");
@@ -182,7 +187,7 @@ export class VentajaService {
                 observador.error(error);
             };
 
-            unsubscribe = onValue(dbRef, onNext, onError);
+            unsubscribe = this.firebaseContextSvc.run(() => onValue(dbRef, onNext, onError));
 
             return () => {
                 unsubscribe();
@@ -259,7 +264,7 @@ export class VentajaService {
         await Promise.all(
             normalizadas.map((item) => {
                 const safeValue = removeUndefinedDeep(item);
-                return set(ref(this.db, `${path}/${item.Id}`), safeValue);
+                return this.firebaseContextSvc.run(() => set(ref(this.db, `${path}/${item.Id}`), safeValue));
             })
         );
 

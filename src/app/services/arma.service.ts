@@ -1,10 +1,11 @@
 import { HttpClient, HttpErrorResponse } from "@angular/common/http";
 import { Injectable } from "@angular/core";
-import { Database, Unsubscribe, getDatabase, onValue, ref, set } from "@angular/fire/database";
+import { Database, Unsubscribe, onValue, ref, set } from "@angular/fire/database";
 import { Observable, firstValueFrom } from "rxjs";
 import Swal from "sweetalert2";
 import { environment } from "src/environments/environment";
 import { ArmaDetalle } from "../interfaces/arma";
+import { FirebaseInjectionContextService } from "./firebase-injection-context.service";
 
 function toNumber(value: any, fallback = 0): number {
     const parsed = Number(value);
@@ -85,7 +86,11 @@ export function normalizeArma(raw: any): ArmaDetalle {
 })
 export class ArmaService {
 
-    constructor(private db: Database, private http: HttpClient) { }
+    constructor(
+        private db: Database,
+        private http: HttpClient,
+        private firebaseContextSvc: FirebaseInjectionContextService,
+    ) { }
 
     getArma(id: number): Observable<ArmaDetalle> {
         return new Observable((observador) => {
@@ -125,7 +130,7 @@ export class ArmaService {
                 observador.error(error);
             };
 
-            unsubscribe = onValue(dbRef, onNext, onError);
+            unsubscribe = this.firebaseContextSvc.run(() => onValue(dbRef, onNext, onError));
             return () => unsubscribe();
         });
     }
@@ -150,7 +155,7 @@ export class ArmaService {
                 observador.error(error);
             };
 
-            unsubscribe = onValue(dbRef, onNext, onError);
+            unsubscribe = this.firebaseContextSvc.run(() => onValue(dbRef, onNext, onError));
             return () => unsubscribe();
         });
     }
@@ -160,7 +165,6 @@ export class ArmaService {
     }
 
     public async RenovarArmas(): Promise<boolean> {
-        const dbInstance = getDatabase();
         try {
             const response = await firstValueFrom(this.syncArmas());
             const armas = toArray(response)
@@ -168,7 +172,7 @@ export class ArmaService {
                 .filter((arma) => arma.Id > 0);
 
             await Promise.all(
-                armas.map((arma) => set(ref(dbInstance, `Armas/${arma.Id}`), arma))
+                armas.map((arma) => this.firebaseContextSvc.run(() => set(ref(this.db, `Armas/${arma.Id}`), arma)))
             );
 
             Swal.fire({

@@ -1,10 +1,11 @@
 import { HttpClient, HttpErrorResponse } from "@angular/common/http";
 import { Injectable } from "@angular/core";
-import { Database, Unsubscribe, getDatabase, onValue, ref, set } from "@angular/fire/database";
+import { Database, Unsubscribe, onValue, ref, set } from "@angular/fire/database";
 import { Observable, firstValueFrom } from "rxjs";
 import Swal from "sweetalert2";
 import { environment } from "src/environments/environment";
 import { ExtraDetalle } from "../interfaces/extra";
+import { FirebaseInjectionContextService } from "./firebase-injection-context.service";
 
 function toNumber(value: any, fallback = 0): number {
     const parsed = Number(value);
@@ -37,7 +38,11 @@ export function normalizeExtra(raw: any): ExtraDetalle {
 })
 export class ExtraService {
 
-    constructor(private db: Database, private http: HttpClient) { }
+    constructor(
+        private db: Database,
+        private http: HttpClient,
+        private firebaseContextSvc: FirebaseInjectionContextService,
+    ) { }
 
     getExtras(): Observable<ExtraDetalle[]> {
         return new Observable((observador) => {
@@ -60,7 +65,7 @@ export class ExtraService {
                 observador.error(error);
             };
 
-            unsubscribe = onValue(dbRef, onNext, onError);
+            unsubscribe = this.firebaseContextSvc.run(() => onValue(dbRef, onNext, onError));
             return () => unsubscribe();
         });
     }
@@ -92,7 +97,7 @@ export class ExtraService {
                 observador.error(error);
             };
 
-            unsubscribe = onValue(dbRef, onNext, onError);
+            unsubscribe = this.firebaseContextSvc.run(() => onValue(dbRef, onNext, onError));
             return () => unsubscribe();
         });
     }
@@ -102,7 +107,6 @@ export class ExtraService {
     }
 
     public async RenovarExtras(): Promise<boolean> {
-        const dbInstance = getDatabase();
         try {
             const response = await firstValueFrom(this.syncExtras());
             const extras = toArray(response)
@@ -110,7 +114,7 @@ export class ExtraService {
                 .filter((extra) => extra.Id > 0 && extra.Nombre.trim().length > 0);
 
             await Promise.all(
-                extras.map((extra) => set(ref(dbInstance, `Extras/${extra.Id}`), extra))
+                extras.map((extra) => this.firebaseContextSvc.run(() => set(ref(this.db, `Extras/${extra.Id}`), extra)))
             );
 
             Swal.fire({

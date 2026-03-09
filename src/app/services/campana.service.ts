@@ -1,20 +1,24 @@
 import { Injectable } from '@angular/core';
-import { Database, getDatabase, Unsubscribe, onValue, ref, set } from '@angular/fire/database';
+import { Database, Unsubscribe, onValue, ref, set } from '@angular/fire/database';
 import { Observable, firstValueFrom } from 'rxjs';
 import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
 import { Campana } from '../interfaces/campaña';
 import { environment } from 'src/environments/environment';
 import Swal from 'sweetalert2';
+import { FirebaseInjectionContextService } from './firebase-injection-context.service';
 
 @Injectable({
     providedIn: 'root'
 })
 export class CampanaService {
-    constructor(private db: Database, private http: HttpClient) { }
+    constructor(
+        private db: Database,
+        private http: HttpClient,
+        private firebaseContextSvc: FirebaseInjectionContextService
+    ) { }
 
     async getListCampanas(): Promise<Observable<Campana[]>> {
         return new Observable((observador) => {
-            const dbRef = ref(this.db, 'Campañas');
             let unsubscribe: Unsubscribe;
 
             const onNext = (snapshot: any) => {
@@ -39,7 +43,10 @@ export class CampanaService {
             // };
 
             // unsubscribe = onValue(dbRef, onNext, onError, onComplete);
-            unsubscribe = onValue(dbRef, onNext, onError);
+            unsubscribe = this.firebaseContextSvc.run(() => {
+                const dbRef = ref(this.db, 'Campañas');
+                return onValue(dbRef, onNext, onError);
+            });
 
             return () => {
                 unsubscribe(); // Cancelar la suscripción al evento onValue
@@ -68,7 +75,6 @@ export class CampanaService {
     }
 
     public async RenovarCampañasFirebase(): Promise<boolean> {
-        const db = getDatabase();
         const campañas: Campana[] = [];
 
         try {
@@ -110,10 +116,10 @@ export class CampanaService {
 
             await Promise.all(
                 campañas.map((element) =>
-                    set(ref(db, `Campañas/${element.Id}`), {
+                    this.firebaseContextSvc.run(() => set(ref(this.db, `Campañas/${element.Id}`), {
                         Nombre: element.Nombre,
                         Tramas: element.Tramas
-                    })
+                    }))
                 )
             );
 

@@ -4,6 +4,7 @@ import { BehaviorSubject, Observable, filter, firstValueFrom } from 'rxjs';
 import { PERMISSION_RESOURCES } from '../interfaces/user-acl';
 import { UsuarioListadoItemDto, UsuarioUpsertRequestDto, UsuarioUpsertResponseDto } from '../interfaces/usuarios-api';
 import { AdminUsersService } from './admin-users.service';
+import { FirebaseInjectionContextService } from './firebase-injection-context.service';
 import { UsuariosApiService } from './usuarios-api.service';
 
 class AdminUsersServiceTestDouble extends AdminUsersService {
@@ -19,7 +20,12 @@ class AdminUsersServiceTestDouble extends AdminUsersService {
     downloadBackupResult: string = 'rol-backup-test.zip';
 
     constructor(authMock: Partial<Auth> = {}) {
-        super({} as Database, authMock as Auth, {} as UsuariosApiService);
+        super(
+            {} as Database,
+            authMock as Auth,
+            {} as UsuariosApiService,
+            { run: <T>(fn: () => T) => fn() } as FirebaseInjectionContextService,
+        );
         this.state.set('UserProfiles', {});
         this.state.set('Acl/users', {});
     }

@@ -1,10 +1,11 @@
 import { HttpClient, HttpErrorResponse } from "@angular/common/http";
 import { Injectable } from "@angular/core";
-import { Database, Unsubscribe, getDatabase, onValue, ref, set } from "@angular/fire/database";
+import { Database, Unsubscribe, onValue, ref, set } from "@angular/fire/database";
 import { Observable, firstValueFrom } from "rxjs";
 import Swal from "sweetalert2";
 import { environment } from "src/environments/environment";
 import { EnemigoPredilectoDetalle } from "../interfaces/enemigo-predilecto-detalle";
+import { FirebaseInjectionContextService } from "./firebase-injection-context.service";
 
 function toNumber(value: any, fallback = 0): number {
     const parsed = Number(value);
@@ -37,7 +38,11 @@ export function normalizeEnemigoPredilecto(raw: any): EnemigoPredilectoDetalle {
 })
 export class EnemigoPredilectoService {
 
-    constructor(private db: Database, private http: HttpClient) { }
+    constructor(
+        private db: Database,
+        private http: HttpClient,
+        private firebaseContextSvc: FirebaseInjectionContextService,
+    ) { }
 
     getEnemigosPredilectos(): Observable<EnemigoPredilectoDetalle[]> {
         return new Observable((observador) => {
@@ -60,7 +65,7 @@ export class EnemigoPredilectoService {
                 observador.error(error);
             };
 
-            unsubscribe = onValue(dbRef, onNext, onError);
+            unsubscribe = this.firebaseContextSvc.run(() => onValue(dbRef, onNext, onError));
             return () => unsubscribe();
         });
     }
@@ -70,7 +75,6 @@ export class EnemigoPredilectoService {
     }
 
     public async RenovarEnemigosPredilectos(): Promise<boolean> {
-        const dbInstance = getDatabase();
         try {
             const response = await firstValueFrom(this.syncEnemigosPredilectos());
             const enemigos = toArray(response)
@@ -78,7 +82,7 @@ export class EnemigoPredilectoService {
                 .filter((enemigo) => enemigo.Id > 0 && enemigo.Nombre.trim().length > 0);
 
             await Promise.all(
-                enemigos.map((enemigo) => set(ref(dbInstance, `EnemigosPredilectos/${enemigo.Id}`), enemigo))
+                enemigos.map((enemigo) => this.firebaseContextSvc.run(() => set(ref(this.db, `EnemigosPredilectos/${enemigo.Id}`), enemigo)))
             );
 
             Swal.fire({

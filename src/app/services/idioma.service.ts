@@ -1,10 +1,11 @@
 import { HttpClient, HttpErrorResponse } from "@angular/common/http";
 import { Injectable } from "@angular/core";
-import { Database, Unsubscribe, getDatabase, onValue, ref, set } from "@angular/fire/database";
+import { Database, Unsubscribe, onValue, ref, set } from "@angular/fire/database";
 import { Observable, firstValueFrom } from "rxjs";
 import Swal from "sweetalert2";
 import { environment } from "src/environments/environment";
 import { IdiomaDetalle } from "../interfaces/idioma";
+import { FirebaseInjectionContextService } from "./firebase-injection-context.service";
 
 function toBoolean(value: any): boolean {
     return value === true || value === 1 || value === "1";
@@ -44,7 +45,11 @@ export function normalizeIdioma(raw: any): IdiomaDetalle {
 })
 export class IdiomaService {
 
-    constructor(private db: Database, private http: HttpClient) { }
+    constructor(
+        private db: Database,
+        private http: HttpClient,
+        private firebaseContextSvc: FirebaseInjectionContextService,
+    ) { }
 
     getIdiomas(): Observable<IdiomaDetalle[]> {
         return new Observable((observador) => {
@@ -67,7 +72,7 @@ export class IdiomaService {
                 observador.error(error);
             };
 
-            unsubscribe = onValue(dbRef, onNext, onError);
+            unsubscribe = this.firebaseContextSvc.run(() => onValue(dbRef, onNext, onError));
 
             return () => {
                 unsubscribe();
@@ -80,7 +85,6 @@ export class IdiomaService {
     }
 
     public async RenovarIdiomas(): Promise<boolean> {
-        const dbInstance = getDatabase();
         try {
             const response = await firstValueFrom(this.syncIdiomas());
             const idiomas = toArray(response)
@@ -88,7 +92,7 @@ export class IdiomaService {
                 .filter((idioma) => idioma.Id > 0);
 
             await Promise.all(
-                idiomas.map((idioma) => set(ref(dbInstance, `Idiomas/${idioma.Id}`), idioma))
+                idiomas.map((idioma) => this.firebaseContextSvc.run(() => set(ref(this.db, `Idiomas/${idioma.Id}`), idioma)))
             );
 
             Swal.fire({

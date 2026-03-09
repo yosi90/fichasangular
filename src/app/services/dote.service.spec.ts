@@ -1,7 +1,12 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { of, throwError } from 'rxjs';
 import { DoteCreateRequest } from '../interfaces/dotes-api';
+import { FirebaseInjectionContextService } from './firebase-injection-context.service';
 import { DoteService } from './dote.service';
+
+const firebaseContextMock = {
+    run: <T>(fn: () => T) => fn(),
+} as FirebaseInjectionContextService;
 
 describe('DoteService crearDote', () => {
     function crearPayload(): DoteCreateRequest {
@@ -35,7 +40,7 @@ describe('DoteService crearDote', () => {
         const httpMock = jasmine.createSpyObj('HttpClient', ['post', 'get']);
         httpMock.post.and.returnValue(of({ message: 'Dote creada', idDote: 9, uid: 'uid-1' }));
         httpMock.get.and.returnValue(throwError(() => new Error('refresh fail')));
-        const service = new DoteService({} as any, httpMock);
+        const service = new DoteService({} as any, httpMock, firebaseContextMock);
 
         const response = await service.crearDote(crearPayload());
 
@@ -48,7 +53,7 @@ describe('DoteService crearDote', () => {
         httpMock.post.and.returnValue(
             throwError(() => new HttpErrorResponse({ status: 409, error: { message: 'nombre de dote duplicado' } }))
         );
-        const service = new DoteService({} as any, httpMock);
+        const service = new DoteService({} as any, httpMock, firebaseContextMock);
 
         await expectAsync(service.crearDote(crearPayload()))
             .toBeRejectedWithError('Ya existe una dote con ese nombre.');
@@ -59,7 +64,7 @@ describe('DoteService crearDote', () => {
         httpMock.post.and.returnValue(
             throwError(() => new HttpErrorResponse({ status: 403, error: { message: 'forbidden' } }))
         );
-        const service = new DoteService({} as any, httpMock);
+        const service = new DoteService({} as any, httpMock, firebaseContextMock);
 
         await expectAsync(service.crearDote(crearPayload()))
             .toBeRejectedWithError(/No tienes permisos para crear dotes/);

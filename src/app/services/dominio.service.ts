@@ -1,10 +1,11 @@
 import { HttpClient, HttpErrorResponse } from "@angular/common/http";
 import { Injectable } from "@angular/core";
-import { Database, Unsubscribe, getDatabase, onValue, ref, set } from "@angular/fire/database";
+import { Database, Unsubscribe, onValue, ref, set } from "@angular/fire/database";
 import { Observable, firstValueFrom } from "rxjs";
 import Swal from "sweetalert2";
 import { environment } from "src/environments/environment";
 import { DominioDetalle } from "../interfaces/dominio";
+import { FirebaseInjectionContextService } from "./firebase-injection-context.service";
 
 function toBoolean(value: any): boolean {
     if (typeof value === "boolean")
@@ -50,7 +51,11 @@ export function normalizeDominio(raw: any): DominioDetalle {
 })
 export class DominioService {
 
-    constructor(private db: Database, private http: HttpClient) { }
+    constructor(
+        private db: Database,
+        private http: HttpClient,
+        private firebaseContextSvc: FirebaseInjectionContextService,
+    ) { }
 
     getDominio(id: number): Observable<DominioDetalle> {
         return new Observable((observador) => {
@@ -90,7 +95,7 @@ export class DominioService {
                 observador.error(error);
             };
 
-            unsubscribe = onValue(dbRef, onNext, onError);
+            unsubscribe = this.firebaseContextSvc.run(() => onValue(dbRef, onNext, onError));
             return () => unsubscribe();
         });
     }
@@ -115,7 +120,7 @@ export class DominioService {
                 observador.error(error);
             };
 
-            unsubscribe = onValue(dbRef, onNext, onError);
+            unsubscribe = this.firebaseContextSvc.run(() => onValue(dbRef, onNext, onError));
             return () => unsubscribe();
         });
     }
@@ -125,7 +130,6 @@ export class DominioService {
     }
 
     public async RenovarDominios(): Promise<boolean> {
-        const dbInstance = getDatabase();
         try {
             const response = await firstValueFrom(this.syncDominios());
             const dominios = toArray(response)
@@ -133,7 +137,7 @@ export class DominioService {
                 .filter((dominio) => dominio.Id > 0);
 
             await Promise.all(
-                dominios.map((dominio) => set(ref(dbInstance, `Dominios/${dominio.Id}`), dominio))
+                dominios.map((dominio) => this.firebaseContextSvc.run(() => set(ref(this.db, `Dominios/${dominio.Id}`), dominio)))
             );
 
             Swal.fire({
@@ -164,4 +168,3 @@ export class DominioService {
         }
     }
 }
-

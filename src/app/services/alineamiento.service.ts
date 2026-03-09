@@ -1,6 +1,6 @@
 import { HttpClient } from "@angular/common/http";
 import { Injectable } from "@angular/core";
-import { Database, getDatabase, Unsubscribe, onValue, ref, set } from '@angular/fire/database';
+import { Database, Unsubscribe, onValue, ref, set } from '@angular/fire/database';
 import { Observable, firstValueFrom } from "rxjs";
 import { environment } from "src/environments/environment";
 import Swal from "sweetalert2";
@@ -12,13 +12,18 @@ import {
     PreferenciaMoralCatalogItem,
     PrioridadAlineamientoCatalogItem,
 } from "../interfaces/alineamiento";
+import { FirebaseInjectionContextService } from "./firebase-injection-context.service";
 
 @Injectable({
     providedIn: 'root'
 })
 export class AlineamientoService {
 
-    constructor(private db: Database, private http: HttpClient) { }
+    constructor(
+        private db: Database,
+        private http: HttpClient,
+        private firebaseContextSvc: FirebaseInjectionContextService,
+    ) { }
 
     getAlineamiento(id: number): Observable<Alineamiento> {
         return new Observable((observador) => {
@@ -40,7 +45,7 @@ export class AlineamientoService {
             const onError = (error: any) => {
                 observador.error(error);
             };
-            unsubscribe = onValue(dbRef, onNext, onError);
+            unsubscribe = this.firebaseContextSvc.run(() => onValue(dbRef, onNext, onError));
 
             return () => {
                 unsubscribe();
@@ -93,7 +98,6 @@ export class AlineamientoService {
     }
 
     public async RenovarAlineamientos(): Promise<boolean> {
-        const db_instance = getDatabase();
         try {
             const response = await firstValueFrom(this.syncAlineamientos());
             const alineamientos = this.normalizeArrayResponse(response);
@@ -102,15 +106,15 @@ export class AlineamientoService {
                 alineamientos.map((element: {
                     i: number; b: any; l: any; m: any; p: any; d: boolean;
                 }) => {
-                    return set(
-                        ref(db_instance, `Alineamientos/${element.i}`), {
+                    return this.firebaseContextSvc.run(() => set(
+                        ref(this.db, `Alineamientos/${element.i}`), {
                         Id: element.i,
                         Basico: element.b,
                         Ley: element.l,
                         Moral: element.m,
                         Prioridad: element.p,
                         Descripcion: element.d
-                    });
+                    }));
                 })
             );
 
@@ -200,7 +204,7 @@ export class AlineamientoService {
                 observador.error(error);
             };
 
-            unsubscribe = onValue(dbRef, onNext, onError);
+            unsubscribe = this.firebaseContextSvc.run(() => onValue(dbRef, onNext, onError));
             return () => unsubscribe();
         });
     }
@@ -211,11 +215,10 @@ export class AlineamientoService {
         successTitle: string;
         errorTitle: string;
     }): Promise<boolean> {
-        const db_instance = getDatabase();
         try {
             const response = await params.getter();
             const items = this.normalizeArrayResponse(response);
-            await set(ref(db_instance, params.dbPath), items);
+            await this.firebaseContextSvc.run(() => set(ref(this.db, params.dbPath), items));
             Swal.fire({
                 icon: 'success',
                 title: params.successTitle,

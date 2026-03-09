@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { Database, getDatabase, Unsubscribe, onValue, ref, set } from '@angular/fire/database';
+import { Database, Unsubscribe, onValue, ref, set } from '@angular/fire/database';
 import { Observable, firstValueFrom } from 'rxjs';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { MutacionRaza, Raza, RazaHabilidades, RazaPrerrequisitos, RazaPrerrequisitosFlags } from '../interfaces/raza';
@@ -11,6 +11,7 @@ import { TipoCriatura } from '../interfaces/tipo_criatura';
 import { AptitudSortilega } from '../interfaces/aptitud-sortilega';
 import { Alineamiento } from '../interfaces/alineamiento';
 import { DoteContextual } from '../interfaces/dote-contextual';
+import { FirebaseInjectionContextService } from './firebase-injection-context.service';
 import { toDoteContextualArray } from './utils/dote-mapper';
 import { normalizeRaciales } from './utils/racial-mapper';
 import { normalizeSubtipoRefArray } from './utils/subtipo-mapper';
@@ -311,11 +312,14 @@ function mapRazaDesdeRaw(raw: any, id: any, dotesContextuales: DoteContextual[],
 })
 export class RazaService {
 
-    constructor(private db: Database, private http: HttpClient) { }
+    constructor(
+        private db: Database,
+        private http: HttpClient,
+        private firebaseContextSvc: FirebaseInjectionContextService
+    ) { }
 
     async getRaza(id: number): Promise<Observable<Raza>> {
         return new Observable((observador) => {
-            const dbRef = ref(this.db, `Razas/${id}`);
             let unsubscribe: Unsubscribe;
 
             const onNext = (snapshot: any) => {
@@ -340,7 +344,10 @@ export class RazaService {
             // };
 
             // unsubscribe = onValue(dbRef, onNext, onError, onComplete);
-            unsubscribe = onValue(dbRef, onNext, onError);
+            unsubscribe = this.firebaseContextSvc.run(() => {
+                const dbRef = ref(this.db, `Razas/${id}`);
+                return onValue(dbRef, onNext, onError);
+            });
 
             return () => {
                 unsubscribe(); // Cancelar la suscripción al evento onValue
@@ -350,7 +357,6 @@ export class RazaService {
 
     getRazas(): Observable<Raza[]> {
         return new Observable((observador) => {
-            const dbRef = ref(this.db, 'Razas');
             let unsubscribe: Unsubscribe;
 
             const onNext = (snapshot: any) => {
@@ -379,7 +385,10 @@ export class RazaService {
             // };
 
             // unsubscribe = onValue(dbRef, onNext, onError, onComplete);
-            unsubscribe = onValue(dbRef, onNext, onError);
+            unsubscribe = this.firebaseContextSvc.run(() => {
+                const dbRef = ref(this.db, 'Razas');
+                return onValue(dbRef, onNext, onError);
+            });
 
             return () => {
                 unsubscribe(); // Cancelar la suscripción al evento onValue
@@ -394,7 +403,6 @@ export class RazaService {
     }
 
     public async RenovarRazas(): Promise<boolean> {
-        const db = getDatabase();
         try {
             const response = await firstValueFrom(this.syncRazas());
             const razas = Array.isArray(response)
@@ -428,8 +436,8 @@ export class RazaService {
                         element.he,
                         prerrequisitos
                     );
-                    return set(
-                        ref(db, `Razas/${element.i}`), {
+                    return this.firebaseContextSvc.run(() => set(
+                        ref(this.db, `Razas/${element.i}`), {
                         Nombre: element.n,
                         Modificadores: element.m,
                         Alineamiento: alineamiento,
@@ -475,7 +483,7 @@ export class RazaService {
                         Habilidades: habilidades,
                         DotesContextuales: dotesContextuales,
                         Idiomas: idiomas,
-                    });
+                    }));
                 })
             );
 

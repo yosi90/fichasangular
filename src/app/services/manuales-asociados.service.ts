@@ -14,6 +14,7 @@ import { TipoCriatura } from '../interfaces/tipo_criatura';
 import { ClaseService } from './clase.service';
 import { ConjuroService } from './conjuro.service';
 import { DoteService } from './dote.service';
+import { FirebaseInjectionContextService } from './firebase-injection-context.service';
 import { ManualService } from './manual.service';
 import { PlantillaService } from './plantilla.service';
 import { RazaService } from './raza.service';
@@ -59,50 +60,53 @@ export class ManualesAsociadosService {
         private tipoSvc: TipoCriaturaService,
         private subtipoSvc: SubtipoService,
         private plantillaSvc: PlantillaService,
+        private firebaseContextSvc: FirebaseInjectionContextService,
     ) { }
 
     getManualesAsociados(): Observable<ManualAsociadoDetalle[]> {
         return new Observable((observer) => {
-            const dbRef = ref(this.db, this.cachePath);
             let cargandoDesdeApi = false;
             let fetchSub: Subscription | null = null;
 
-            const unsubscribe = onValue(
-                dbRef,
-                (snapshot) => {
-                    const cache = this.readFromSnapshot(snapshot);
-                    if (cache.length > 0) {
-                        this.clearFallbackNotice();
-                        observer.next(cache);
-                        return;
-                    }
-
-                    if (cargandoDesdeApi)
-                        return;
-
-                    cargandoDesdeApi = true;
-                    fetchSub?.unsubscribe();
-                    fetchSub = this.fetchFromApiWithFallback().subscribe({
-                        next: ({ manuales, source }) => {
-                            if (source === 'api') {
-                                this.persistirCacheManualesAsociados(manuales)
-                                    .then(() => this.clearFallbackNotice())
-                                    .catch(() => { });
-                                this.clearFallbackNotice();
-                            } else {
-                                this.setFallbackNotice('Aviso: no se pudo cargar /manuales/asociados. Se está usando fallback local y puede haber secciones incompletas.');
-                            }
-                            observer.next(manuales);
-                            cargandoDesdeApi = false;
-                        },
-                        error: (error) => {
-                            observer.error(error);
-                            cargandoDesdeApi = false;
+            const unsubscribe = this.firebaseContextSvc.run(() => {
+                const dbRef = ref(this.db, this.cachePath);
+                return onValue(
+                    dbRef,
+                    (snapshot) => {
+                        const cache = this.readFromSnapshot(snapshot);
+                        if (cache.length > 0) {
+                            this.clearFallbackNotice();
+                            observer.next(cache);
+                            return;
                         }
-                    });
-                },
-                (error) => observer.error(error)
-            );
+
+                        if (cargandoDesdeApi)
+                            return;
+
+                        cargandoDesdeApi = true;
+                        fetchSub?.unsubscribe();
+                        fetchSub = this.fetchFromApiWithFallback().subscribe({
+                            next: ({ manuales, source }) => {
+                                if (source === 'api') {
+                                    this.persistirCacheManualesAsociados(manuales)
+                                        .then(() => this.clearFallbackNotice())
+                                        .catch(() => { });
+                                    this.clearFallbackNotice();
+                                } else {
+                                    this.setFallbackNotice('Aviso: no se pudo cargar /manuales/asociados. Se está usando fallback local y puede haber secciones incompletas.');
+                                }
+                                observer.next(manuales);
+                                cargandoDesdeApi = false;
+                            },
+                            error: (error) => {
+                                observer.error(error);
+                                cargandoDesdeApi = false;
+                            }
+                        });
+                    },
+                    (error) => observer.error(error)
+                );
+            });
 
             return () => {
                 fetchSub?.unsubscribe();
@@ -227,7 +231,7 @@ export class ManualesAsociadosService {
                 return;
             payload[String(manual.Id)] = this.sanitizarParaFirebase(manual);
         });
-        await set(ref(this.db, this.cachePath), payload);
+        await this.firebaseContextSvc.run(() => set(ref(this.db, this.cachePath), payload));
     }
 
     private sanitizarParaFirebase<T>(input: T): T {

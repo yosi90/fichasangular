@@ -1,10 +1,11 @@
 import { HttpClient, HttpErrorResponse } from "@angular/common/http";
 import { Injectable } from "@angular/core";
-import { Database, Unsubscribe, getDatabase, onValue, ref, set } from "@angular/fire/database";
+import { Database, Unsubscribe, onValue, ref, set } from "@angular/fire/database";
 import { Observable, firstValueFrom } from "rxjs";
 import Swal from "sweetalert2";
 import { environment } from "src/environments/environment";
 import { HabilidadBasicaDetalle, HabilidadExtraRef } from "../interfaces/habilidad";
+import { FirebaseInjectionContextService } from "./firebase-injection-context.service";
 
 function toBoolean(value: any): boolean {
     return value === true || value === 1 || value === "1";
@@ -62,7 +63,11 @@ export function normalizeHabilidadBasica(raw: any): HabilidadBasicaDetalle {
 })
 export class HabilidadService {
 
-    constructor(private db: Database, private http: HttpClient) { }
+    constructor(
+        private db: Database,
+        private http: HttpClient,
+        private firebaseContextSvc: FirebaseInjectionContextService,
+    ) { }
 
     getHabilidades(): Observable<HabilidadBasicaDetalle[]> {
         return this.getColeccion("Habilidades");
@@ -93,7 +98,7 @@ export class HabilidadService {
                 observador.error(error);
             };
 
-            unsubscribe = onValue(dbRef, onNext, onError);
+            unsubscribe = this.firebaseContextSvc.run(() => onValue(dbRef, onNext, onError));
 
             return () => {
                 unsubscribe();
@@ -150,13 +155,12 @@ export class HabilidadService {
     }
 
     private async persistirHabilidades(path: "Habilidades" | "HabilidadesCustom", response: any): Promise<number> {
-        const dbInstance = getDatabase();
         const habilidades = toArray(response)
             .map((raw: any) => normalizeHabilidadBasica(raw))
             .filter((h) => h.Id_habilidad > 0);
 
         await Promise.all(
-            habilidades.map((h) => set(ref(dbInstance, `${path}/${h.Id_habilidad}`), h))
+            habilidades.map((h) => this.firebaseContextSvc.run(() => set(ref(this.db, `${path}/${h.Id_habilidad}`), h)))
         );
 
         return habilidades.length;
