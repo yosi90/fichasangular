@@ -1,5 +1,4 @@
 import { AfterViewInit, Component, DoCheck, ElementRef, EventEmitter, HostListener, Input, OnChanges, OnDestroy, OnInit, Output, SimpleChanges } from '@angular/core';
-import { Database, get, ref } from '@angular/fire/database';
 import { Subscription } from 'rxjs';
 import { AptitudSortilega } from 'src/app/interfaces/aptitud-sortilega';
 import { Clase } from 'src/app/interfaces/clase';
@@ -17,6 +16,7 @@ import { TipoCriatura } from 'src/app/interfaces/tipo_criatura';
 import { FichasDescargaBackgroundService } from 'src/app/services/fichas-descarga-background.service';
 import { PersonajeService } from 'src/app/services/personaje.service';
 import { RegionService } from 'src/app/services/region.service';
+import { UserProfileApiService } from 'src/app/services/user-profile-api.service';
 import { UserService } from 'src/app/services/user.service';
 import { resolverExtraHabilidadVisible } from 'src/app/services/utils/habilidad-extra-visible';
 import Swal from 'sweetalert2';
@@ -84,7 +84,10 @@ export class DetallesPersonajeComponent implements OnInit, OnChanges, AfterViewI
     cPesada: string = "0 Kilogramos";
     actualizandoVisibilidad = false;
     etiquetaCreador = 'Desconocido';
+    perfilPublicoDisponible = false;
+    perfilPublicoComprobando = false;
     private ownerUidCargado = '';
+    private ownerProfileLookupSeq = 0;
     private regionesSub?: Subscription;
     private catalogoRegiones: RegionDetalle[] = [];
     velDisclaimer: string = `
@@ -97,7 +100,7 @@ export class DetallesPersonajeComponent implements OnInit, OnChanges, AfterViewI
         private pSvc: PersonajeService,
         private regionSvc: RegionService,
         private userSvc: UserService,
-        private db: Database,
+        private userProfileApiSvc: UserProfileApiService,
         private hostElement: ElementRef<HTMLElement>
     ) { }
 
@@ -168,6 +171,10 @@ export class DetallesPersonajeComponent implements OnInit, OnChanges, AfterViewI
 
     get mostrarChipCreador(): boolean {
         return !this.esPreviewNuevoPersonaje;
+    }
+
+    get chipCreadorClickable(): boolean {
+        return this.perfilPublicoDisponible && !this.perfilPublicoComprobando;
     }
 
     get nombreRegionPrincipal(): string {
@@ -264,9 +271,12 @@ export class DetallesPersonajeComponent implements OnInit, OnChanges, AfterViewI
 
     private async actualizarEtiquetaCreador(): Promise<void> {
         const ownerUid = this.ownerUidNormalizado();
+        const ownerDisplayName = `${this.pj?.ownerDisplayName ?? ''}`.trim();
         if (ownerUid.length < 1) {
-            this.etiquetaCreador = 'Desconocido';
+            this.etiquetaCreador = ownerDisplayName.length > 0 ? ownerDisplayName : 'Desconocido';
             this.ownerUidCargado = '';
+            this.perfilPublicoDisponible = false;
+            this.perfilPublicoComprobando = false;
             return;
         }
 
@@ -274,25 +284,29 @@ export class DetallesPersonajeComponent implements OnInit, OnChanges, AfterViewI
         if (uidActual.length > 0 && ownerUid === uidActual) {
             this.etiquetaCreador = 'Tú';
             this.ownerUidCargado = ownerUid;
+            this.perfilPublicoDisponible = false;
+            this.perfilPublicoComprobando = false;
             return;
         }
 
-        if (this.ownerUidCargado === ownerUid && this.etiquetaCreador.length > 0 && this.etiquetaCreador !== 'Tú')
-            return;
-
         this.ownerUidCargado = ownerUid;
-        this.etiquetaCreador = ownerUid;
+        this.etiquetaCreador = ownerDisplayName.length > 0 ? ownerDisplayName : 'Desconocido';
+        this.perfilPublicoDisponible = false;
+        this.perfilPublicoComprobando = true;
 
+        const lookupSeq = ++this.ownerProfileLookupSeq;
         try {
-            const profileSnapshot = await get(ref(this.db, `UserProfiles/${ownerUid}`));
-            if (this.ownerUidNormalizado() !== ownerUid)
+            const disponible = await this.userProfileApiSvc.hasPublicProfile(ownerUid);
+            if (this.ownerUidNormalizado() !== ownerUid || this.ownerProfileLookupSeq !== lookupSeq)
                 return;
-
-            const displayName = `${profileSnapshot.child('displayName').val() ?? ''}`.trim();
-            this.etiquetaCreador = displayName.length > 0 ? displayName : ownerUid;
+            this.perfilPublicoDisponible = disponible;
         } catch {
-            if (this.ownerUidNormalizado() === ownerUid)
-                this.etiquetaCreador = ownerUid;
+            if (this.ownerUidNormalizado() !== ownerUid || this.ownerProfileLookupSeq !== lookupSeq)
+                return;
+            this.perfilPublicoDisponible = false;
+        } finally {
+            if (this.ownerUidNormalizado() === ownerUid && this.ownerProfileLookupSeq === lookupSeq)
+                this.perfilPublicoComprobando = false;
         }
     }
 
@@ -1159,6 +1173,19 @@ Fue/Des/Con: ${this.formatSigned(madurez.modFisico)} | Int/Sab/Car: ${this.forma
     verDetallesClase(nombreClase: string) {
         if (nombreClase && nombreClase.trim().length > 0)
             this.claseDetalles.emit(nombreClase.trim());
+    }
+
+    @Output() perfilPublicoDetalles: EventEmitter<{ uid: string; initialDisplayName?: string | null; }> =
+        new EventEmitter<{ uid: string; initialDisplayName?: string | null; }>();
+    verPerfilPublicoCreador(): void {
+        const ownerUid = this.ownerUidNormalizado();
+        if (ownerUid.length < 1 || !this.chipCreadorClickable)
+            return;
+
+        this.perfilPublicoDetalles.emit({
+            uid: ownerUid,
+            initialDisplayName: `${this.pj?.ownerDisplayName ?? ''}`.trim() || null,
+        });
     }
 
     @Output() especialDetallesPorNombre: EventEmitter<string> = new EventEmitter<string>();

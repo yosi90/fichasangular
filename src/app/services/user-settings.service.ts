@@ -1,13 +1,14 @@
 import { Injectable } from '@angular/core';
 import { Auth, onAuthStateChanged } from '@angular/fire/auth';
-import { Database, get, ref, set } from '@angular/fire/database';
 import {
     NuevoPersonajeGeneradorConfig,
     NuevoPersonajePreviewMinimizada,
     NuevoPersonajePreviewRestaurada,
+    UserSettingsV1,
+    createDefaultUserSettings,
 } from '../interfaces/user-settings';
+import { UserProfileApiService } from './user-profile-api.service';
 
-const USER_SETTINGS_ROOT = 'UserSettings';
 const GENERADOR_MIGRATION_FLAG_PATH = 'migrations/generador_config_local_v1_done';
 
 @Injectable({
@@ -15,8 +16,10 @@ const GENERADOR_MIGRATION_FLAG_PATH = 'migrations/generador_config_local_v1_done
 })
 export class UserSettingsService {
     private readonly authReadyPromise: Promise<void>;
+    private settingsCache: UserSettingsV1 | null = null;
+    private migrationFlags = new Set<string>();
 
-    constructor(private db: Database, private auth: Auth) {
+    constructor(private auth: Auth, private userProfileApiSvc: UserProfileApiService) {
         this.authReadyPromise = new Promise((resolve) => {
             let unsubscribe: () => void = () => undefined;
             unsubscribe = onAuthStateChanged(
@@ -31,17 +34,15 @@ export class UserSettingsService {
     }
 
     async loadGeneradorConfig(): Promise<NuevoPersonajeGeneradorConfig | null> {
-        const uid = await this.getCurrentUid();
-        if (!uid)
+        if (!await this.hasCurrentUid())
             return null;
 
-        const snapshot = await get(ref(this.db, `${USER_SETTINGS_ROOT}/${uid}/nuevo_personaje/generador_config`));
-        return this.normalizeGeneradorConfig(snapshot.val());
+        const settings = await this.loadSettings();
+        return this.normalizeGeneradorConfig(settings?.nuevo_personaje?.generador_config);
     }
 
     async saveGeneradorConfig(data: Pick<NuevoPersonajeGeneradorConfig, 'minimoSeleccionado' | 'tablasPermitidas'>): Promise<void> {
-        const uid = await this.getCurrentUid();
-        if (!uid)
+        if (!await this.hasCurrentUid())
             return;
 
         const payload: NuevoPersonajeGeneradorConfig = {
@@ -49,21 +50,26 @@ export class UserSettingsService {
             tablasPermitidas: Math.trunc(Number(data.tablasPermitidas)),
             updatedAt: Date.now(),
         };
-        await set(ref(this.db, `${USER_SETTINGS_ROOT}/${uid}/nuevo_personaje/generador_config`), payload);
+        const settings = await this.loadSettings();
+        await this.saveSettings({
+            ...settings,
+            nuevo_personaje: {
+                ...settings.nuevo_personaje,
+                generador_config: payload,
+            },
+        });
     }
 
     async loadPreviewMinimizada(): Promise<NuevoPersonajePreviewMinimizada | null> {
-        const uid = await this.getCurrentUid();
-        if (!uid)
+        if (!await this.hasCurrentUid())
             return null;
 
-        const snapshot = await get(ref(this.db, `${USER_SETTINGS_ROOT}/${uid}/nuevo_personaje/preview_minimizada`));
-        return this.normalizePreviewMinimizada(snapshot.val());
+        const settings = await this.loadSettings();
+        return this.normalizePreviewMinimizada(settings?.nuevo_personaje?.preview_minimizada);
     }
 
     async savePreviewMinimizada(data: Pick<NuevoPersonajePreviewMinimizada, 'side' | 'top'>): Promise<void> {
-        const uid = await this.getCurrentUid();
-        if (!uid)
+        if (!await this.hasCurrentUid())
             return;
 
         const payload: NuevoPersonajePreviewMinimizada = {
@@ -72,21 +78,26 @@ export class UserSettingsService {
             top: Number(data.top),
             updatedAt: Date.now(),
         };
-        await set(ref(this.db, `${USER_SETTINGS_ROOT}/${uid}/nuevo_personaje/preview_minimizada`), payload);
+        const settings = await this.loadSettings();
+        await this.saveSettings({
+            ...settings,
+            nuevo_personaje: {
+                ...settings.nuevo_personaje,
+                preview_minimizada: payload,
+            },
+        });
     }
 
     async loadPreviewRestaurada(): Promise<NuevoPersonajePreviewRestaurada | null> {
-        const uid = await this.getCurrentUid();
-        if (!uid)
+        if (!await this.hasCurrentUid())
             return null;
 
-        const snapshot = await get(ref(this.db, `${USER_SETTINGS_ROOT}/${uid}/nuevo_personaje/preview_restaurada`));
-        return this.normalizePreviewRestaurada(snapshot.val());
+        const settings = await this.loadSettings();
+        return this.normalizePreviewRestaurada(settings?.nuevo_personaje?.preview_restaurada);
     }
 
     async savePreviewRestaurada(data: Pick<NuevoPersonajePreviewRestaurada, 'left' | 'top' | 'width' | 'height'>): Promise<void> {
-        const uid = await this.getCurrentUid();
-        if (!uid)
+        if (!await this.hasCurrentUid())
             return;
 
         const payload: NuevoPersonajePreviewRestaurada = {
@@ -97,7 +108,14 @@ export class UserSettingsService {
             height: Number(data.height),
             updatedAt: Date.now(),
         };
-        await set(ref(this.db, `${USER_SETTINGS_ROOT}/${uid}/nuevo_personaje/preview_restaurada`), payload);
+        const settings = await this.loadSettings();
+        await this.saveSettings({
+            ...settings,
+            nuevo_personaje: {
+                ...settings.nuevo_personaje,
+                preview_restaurada: payload,
+            },
+        });
     }
 
     async migrateLegacyLocalConfigOnce(legacyStorageKey: string): Promise<void> {
@@ -105,9 +123,8 @@ export class UserSettingsService {
         if (!uid)
             return;
 
-        const migrationRef = ref(this.db, `${USER_SETTINGS_ROOT}/${uid}/${GENERADOR_MIGRATION_FLAG_PATH}`);
-        const migrationSnapshot = await get(migrationRef);
-        const yaMigrado = this.toBoolean(migrationSnapshot.val());
+        const migrationKey = `${uid}:${GENERADOR_MIGRATION_FLAG_PATH}`;
+        const yaMigrado = this.migrationFlags.has(migrationKey);
         if (yaMigrado) {
             this.removeLegacyStorageItem(legacyStorageKey);
             return;
@@ -116,19 +133,77 @@ export class UserSettingsService {
         const legacyRaw = this.readLegacyStorageItem(legacyStorageKey);
         const legacyConfig = this.normalizeLegacyGeneradorConfig(legacyRaw);
         if (legacyConfig) {
-            const currentRemote = await this.loadGeneradorConfig();
-            if (!currentRemote)
+            const currentSettings = await this.loadSettings();
+            if (!currentSettings.nuevo_personaje.generador_config)
                 await this.saveGeneradorConfig(legacyConfig);
         }
 
-        await set(migrationRef, true);
+        this.migrationFlags.add(migrationKey);
         this.removeLegacyStorageItem(legacyStorageKey);
+    }
+
+    async loadSettings(forceRefresh: boolean = false): Promise<UserSettingsV1> {
+        if (!await this.hasCurrentUid())
+            return createDefaultUserSettings();
+
+        if (!forceRefresh && this.settingsCache)
+            return this.cloneSettings(this.settingsCache);
+
+        const settings = await this.userProfileApiSvc.getMySettings();
+        this.settingsCache = this.cloneSettings(settings);
+        return this.cloneSettings(settings);
+    }
+
+    async saveSettings(settings: UserSettingsV1): Promise<UserSettingsV1> {
+        if (!await this.hasCurrentUid())
+            return createDefaultUserSettings();
+
+        const normalizado = this.normalizeSettingsDocument(settings);
+        const response = await this.userProfileApiSvc.replaceMySettings(normalizado);
+        this.settingsCache = this.cloneSettings(response);
+        return this.cloneSettings(response);
+    }
+
+    async loadProfileSettings(): Promise<UserSettingsV1['perfil']> {
+        const settings = await this.loadSettings();
+        return {
+            visibilidadPorDefectoPersonajes: settings.perfil.visibilidadPorDefectoPersonajes === true,
+            mostrarPerfilPublico: settings.perfil.mostrarPerfilPublico !== false,
+        };
+    }
+
+    async saveProfileSettings(data: Partial<UserSettingsV1['perfil']>): Promise<UserSettingsV1['perfil']> {
+        const settings = await this.loadSettings();
+        const next = await this.saveSettings({
+            ...settings,
+            perfil: {
+                visibilidadPorDefectoPersonajes: data.visibilidadPorDefectoPersonajes ?? settings.perfil.visibilidadPorDefectoPersonajes,
+                mostrarPerfilPublico: data.mostrarPerfilPublico ?? settings.perfil.mostrarPerfilPublico,
+            },
+        });
+        return next.perfil;
+    }
+
+    async clearPreviewPlacements(): Promise<void> {
+        const settings = await this.loadSettings();
+        await this.saveSettings({
+            ...settings,
+            nuevo_personaje: {
+                ...settings.nuevo_personaje,
+                preview_minimizada: null,
+                preview_restaurada: null,
+            },
+        });
     }
 
     private async getCurrentUid(): Promise<string | null> {
         await this.authReadyPromise;
         const uid = `${this.auth.currentUser?.uid ?? ''}`.trim();
         return uid.length > 0 ? uid : null;
+    }
+
+    private async hasCurrentUid(): Promise<boolean> {
+        return (await this.getCurrentUid()) !== null;
     }
 
     private normalizeGeneradorConfig(raw: any): NuevoPersonajeGeneradorConfig | null {
@@ -247,5 +322,28 @@ export class UserSettingsService {
                 return true;
         }
         return false;
+    }
+
+    private normalizeSettingsDocument(raw: UserSettingsV1 | null | undefined): UserSettingsV1 {
+        const base = createDefaultUserSettings();
+        if (!raw || typeof raw !== 'object')
+            return base;
+
+        return {
+            version: 1,
+            nuevo_personaje: {
+                generador_config: this.normalizeGeneradorConfig(raw?.nuevo_personaje?.generador_config),
+                preview_minimizada: this.normalizePreviewMinimizada(raw?.nuevo_personaje?.preview_minimizada),
+                preview_restaurada: this.normalizePreviewRestaurada(raw?.nuevo_personaje?.preview_restaurada),
+            },
+            perfil: {
+                visibilidadPorDefectoPersonajes: raw?.perfil?.visibilidadPorDefectoPersonajes === true,
+                mostrarPerfilPublico: raw?.perfil?.mostrarPerfilPublico !== false,
+            },
+        };
+    }
+
+    private cloneSettings(settings: UserSettingsV1): UserSettingsV1 {
+        return JSON.parse(JSON.stringify(settings)) as UserSettingsV1;
     }
 }

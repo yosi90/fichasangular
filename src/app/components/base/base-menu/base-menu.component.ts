@@ -2,6 +2,7 @@ import { Component, EventEmitter, OnDestroy, OnInit, Output, ViewChild } from '@
 import { MatDialog } from '@angular/material/dialog';
 import { SesionDialogComponent } from '../../sesion-dialog/sesion-dialog.component';
 import { UserService } from '../../../services/user.service';
+import { UserProfileNavigationService } from '../../../services/user-profile-navigation.service';
 import { MatExpansionPanel } from '@angular/material/expansion';
 import { ConnectedPosition } from '@angular/cdk/overlay';
 
@@ -28,7 +29,11 @@ export class BaseMenuComponent implements OnInit, OnDestroy {
         { originX: 'start', overlayX: 'end', originY: 'top', overlayY: 'top', offsetX: -4 },
     ];
 
-    constructor(public dSesion: MatDialog, private usrService: UserService) { }
+    constructor(
+        public dSesion: MatDialog,
+        private usrService: UserService,
+        private userProfileNavSvc: UserProfileNavigationService
+    ) { }
 
     ngOnInit(): void {
         this.usrService.isLoggedIn$.subscribe(_ => {
@@ -139,6 +144,14 @@ export class BaseMenuComponent implements OnInit, OnDestroy {
                 console.log(response);
             })
             .catch(error => console.log(error));
+    }
+
+    abrirMiPerfil(): void {
+        if (this.usr === 'Invitado')
+            return;
+        this.userProfileNavSvc.openPrivateProfile();
+        this.closeAcordion();
+        this.cerrarOtros();
     }
 
 }

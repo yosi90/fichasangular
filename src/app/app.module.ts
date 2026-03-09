@@ -87,6 +87,7 @@ import { ListadoVentajasComponent } from './components/shared/listado-ventajas/l
 import { ListadoMonstruosComponent } from './components/shared/listado-monstruos/listado-monstruos.component';
 import { DetallesMonstruoComponent } from './components/detalles/detalles-monstruo/detalles-monstruo.component';
 import { FichasDescargaToastHostComponent } from './components/shared/fichas-descarga-toast-host/fichas-descarga-toast-host.component';
+import { AppToastHostComponent } from './components/shared/app-toast-host/app-toast-host.component';
 import { NuevaDoteComponent } from './components/shared/nueva-dote/nueva-dote.component';
 import { NuevaConjuroComponent } from './components/shared/nueva-conjuro/nueva-conjuro.component';
 import { PrerrequisitoCatalogEditorComponent } from './components/shared/prerrequisito-editor/prerrequisito-catalog-editor.component';
@@ -101,6 +102,8 @@ import { ListadoArmasComponent } from './components/shared/listado-armas/listado
 import { ListadoArmadurasComponent } from './components/shared/listado-armaduras/listado-armaduras.component';
 import { DetallesDeidadComponent } from './components/detalles/detalles-deidad/detalles-deidad.component';
 import { ListadoDeidadesComponent } from './components/shared/listado-deidades/listado-deidades.component';
+import { UserProfileComponent } from './components/base/user-profile/user-profile.component';
+import { PublicUserProfileComponent } from './components/base/public-user-profile/public-user-profile.component';
 
 @NgModule({
     declarations: [
@@ -112,6 +115,8 @@ import { ListadoDeidadesComponent } from './components/shared/listado-deidades/l
         TabControlComponent,
         BaseMenuResponsiveComponent,
         BaseMenuComponent,
+        UserProfileComponent,
+        PublicUserProfileComponent,
         AdminPanelComponent,
         DetallesPersonajeComponent,
         NuevoPersonajeComponent,
@@ -162,6 +167,7 @@ import { ListadoDeidadesComponent } from './components/shared/listado-deidades/l
         ListadoArmadurasComponent,
         DetallesDeidadComponent,
         ListadoDeidadesComponent,
+        AppToastHostComponent,
         FichasDescargaToastHostComponent,
         NuevaDoteComponent,
         NuevaConjuroComponent,

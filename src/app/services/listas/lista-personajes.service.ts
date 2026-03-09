@@ -40,6 +40,11 @@ export class ListaPersonajesService {
                         Id: obj.key,
                         Nombre: obj.child('Nombre').val(),
                         ownerUid: obj.child('ownerUid').val() ?? null,
+                        ownerDisplayName: extractOwnerDisplayName({
+                            ownerDisplayName: obj.child('ownerDisplayName').val(),
+                            owner_display_name: obj.child('owner_display_name').val(),
+                            odn: obj.child('odn').val(),
+                        }),
                         visible_otros_usuarios: toBoolean(obj.child('visible_otros_usuarios').val()),
                         Id_region: idRegion,
                         Region: {
@@ -170,6 +175,7 @@ export class ListaPersonajesService {
                     return set(ref(db, `Personajes-simples/${element.i}`), {
                         Nombre: element.n,
                         ownerUid: extractOwnerUid(element),
+                        ownerDisplayName: extractOwnerDisplayName(element),
                         visible_otros_usuarios: toBoolean(element.visible_otros_usuarios),
                         Id_region: idRegion,
                         Region: {
@@ -229,5 +235,13 @@ function extractOwnerUid(value: any): string | null {
         return null;
 
     const text = `${value.ownerUid ?? value.owneruid ?? value.owner_uid ?? value.uid ?? ''}`.trim();
+    return text.length > 0 ? text : null;
+}
+
+function extractOwnerDisplayName(value: any): string | null {
+    if (!value || typeof value !== 'object')
+        return null;
+
+    const text = `${value.ownerDisplayName ?? value.owner_display_name ?? value.odn ?? ''}`.trim();
     return text.length > 0 ? text : null;
 }

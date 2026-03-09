@@ -10,6 +10,14 @@
             (ClaseDetallesTab)="abrirDetallesClasePorNombre($event)">
         </app-lista-personajes>
     </mat-tab>
+    <mat-tab label="Mi perfil" *ngIf="usrLoggedIn && privateProfileTabOpen">
+        <ng-template mat-tab-label>
+            <mat-icon class="tw-me-2">account_circle</mat-icon>
+            Mi perfil
+            <button (click)="quitarPerfilPrivado()" mat-icon-button class="tw-ms-2"><mat-icon>close</mat-icon></button>
+        </ng-template>
+        <app-user-profile></app-user-profile>
+    </mat-tab>
     <mat-tab label="Panel de administración" *ngIf="usrPerm === 1">
         <ng-template mat-tab-label="">
             <mat-icon class="tw-me-2">admin_panel_settings</mat-icon>
@@ -38,8 +46,21 @@
             (ventajaDetallesPorNombre)="abrirDetallesVentajaDesdeReferencia($event);"
             (monstruoDetalles)="abrirDetallesMonstruo($event);"
             (deidadDetallesPorNombre)="abrirDetallesDeidadPorNombre($event);"
+            (perfilPublicoDetalles)="abrirPerfilPublico($event);"
             (doteDetalles)="abrirDetallesDote($event);">
         </app-detalles-personaje>
+    </mat-tab>
+    <mat-tab *ngFor="let publicProfileTab of publicProfileTabs" [label]="getEtiquetaPerfilPublico(publicProfileTab)">
+        <ng-template mat-tab-label>
+            <mat-icon class="tw-me-2">badge</mat-icon>
+            {{getEtiquetaPerfilPublico(publicProfileTab)}}
+            <button (click)="quitarPerfilPublico(publicProfileTab)" mat-icon-button class="tw-ms-2"><mat-icon>close</mat-icon></button>
+        </ng-template>
+        <app-public-user-profile
+            [uid]="publicProfileTab.uid"
+            [initialDisplayName]="publicProfileTab.initialDisplayName ?? null"
+            (profileLoaded)="actualizarEtiquetaPerfilPublico($event)">
+        </app-public-user-profile>
     </mat-tab>
     <mat-tab label="Nuevo personaje" *ngIf="AbrirNuevoPersonajeTab">
         <ng-template mat-tab-label="">
@@ -332,9 +353,11 @@
                     <li><p class="tw-flex tw-items-center tw-mb-0">Creada la gestión de usuarios en admin panel <mat-icon class="tw-ms-2">done</mat-icon></p></li>
                 </ol>
                 <hr><hr>
-                <p class="tw-flex tw-items-center tw-mb-0">Versión 0.6 - En las nubes (Actual)</p>
+                <p class="tw-flex tw-items-center tw-mb-0">Versión 0.6 - En las nubes (En espera)</p>
                 <hr>
                 <ol>
+                    <li><p class="tw-flex tw-items-center tw-mb-0">Instalar mini pc</p></li>
+                    <li><p class="tw-flex tw-items-center tw-mb-0">Configurarle una ip estática con cloudflare</p></li>
                     <li><p class="tw-flex tw-items-center tw-mb-0">Hostear la base de datos</p></li>
                     <li><p class="tw-flex tw-items-center tw-mb-0">Hostear la api</p></li>
                     <li><p class="tw-flex tw-items-center tw-mb-0">Configurar la api para que ataque a la base de datos hosteada</p></li>
@@ -343,14 +366,14 @@
                     <li><p class="tw-flex tw-items-center tw-mb-0">Configurar bien los permisos de firebase realtime database</p></li>
                 </ol>
                 <hr><hr>
-                <p class="tw-flex tw-items-center tw-mb-0">Versión 0.7 - Usuario importa</p>
+                <p class="tw-flex tw-items-center tw-mb-0">Versión 0.7 - Usuario importa (Actual)</p>
                 <hr>
                 <ol>
-                    <li><p class="tw-flex tw-items-center tw-mb-0">Mejorada la gestión de usuarios</p></li>
+                    <li><p class="tw-flex tw-items-center tw-mb-0">Mejorada la gestión de usuarios <mat-icon class="tw-ms-2">done</mat-icon></p></li>
                     <li><p class="tw-flex tw-items-center tw-mb-0">Creada funcionalidad de "Archivo"</p></li>
                     <li><p class="tw-flex tw-items-center tw-mb-0">Creada funcionalidad de "Opciones"</p></li>
                     <li><p class="tw-flex tw-items-center tw-mb-0">Creada funcionalidad de "Ayuda"</p></li>
-                    <li><p class="tw-flex tw-items-center tw-mb-0">Creado el perfil de usuario</p></li>
+                    <li><p class="tw-flex tw-items-center tw-mb-0">Creado el perfil de usuario <mat-icon class="tw-ms-2">done</mat-icon></p></li>
                 </ol>
                 <hr><hr>
                 <p class="tw-flex tw-items-center tw-mb-0">Versión 0.8 - Las inserciones son complejas</p>

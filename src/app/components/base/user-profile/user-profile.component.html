@@ -1,0 +1,254 @@
+<div class="profile-shell tw-p-4">
+    <div *ngIf="loading" class="profile-state sombra-caja-sm tw-rounded-md tw-p-6">
+        Cargando perfil...
+    </div>
+
+    <div *ngIf="!loading && loadErrorMessage.length > 0" class="profile-state profile-state--error sombra-caja-sm tw-rounded-md tw-p-6">
+        {{loadErrorMessage}}
+    </div>
+
+    <ng-container *ngIf="!loading && canShowContent">
+        <div class="profile-layout">
+            <aside class="profile-nav sombra-caja-sm tw-rounded-md">
+                <div class="profile-nav__identity">
+                    <div class="profile-nav__avatar">
+                        <img [src]="avatarUrl" alt="Avatar del usuario" />
+                    </div>
+                    <div class="profile-nav__copy">
+                        <h2>{{profile?.displayName || 'Sin nombre visible'}}</h2>
+                        <p>{{profile?.email || 'Sin email'}}</p>
+                    </div>
+                </div>
+
+                <div class="profile-nav__items">
+                    <button
+                        type="button"
+                        *ngFor="let section of sectionItems"
+                        class="profile-nav__item"
+                        [class.profile-nav__item--active]="currentSection === section.id"
+                        (click)="setSection(section.id)">
+                        <mat-icon>{{section.icon}}</mat-icon>
+                        <span>{{section.label}}</span>
+                    </button>
+                </div>
+            </aside>
+
+            <main class="profile-main sombra-caja-sm tw-rounded-md">
+                <section class="profile-section" *ngIf="currentSection === 'resumen'">
+                    <div class="profile-section__header">
+                        <div>
+                            <p class="profile-section__eyebrow">Vista general</p>
+                            <h1>Datos del usuario</h1>
+                            <p class="profile-section__subtitle">Resumen de cuenta, rol y presencia pública.</p>
+                        </div>
+                    </div>
+
+                    <div class="profile-summary">
+                        <div class="profile-summary__hero">
+                            <div class="profile-summary__avatar">
+                                <img [src]="avatarUrl" alt="Avatar del usuario" />
+                            </div>
+
+                            <div class="profile-summary__copy">
+                                <div class="profile-summary__chips">
+                                    <span class="profile-pill profile-pill--active">{{profile?.displayName || 'Sin nombre visible'}}</span>
+                                    <span class="profile-pill">{{authProviderLabel}}</span>
+                                    <span class="profile-pill">{{profile?.emailVerified ? 'Email verificado' : 'Email sin verificar'}}</span>
+                                </div>
+
+                                <h2>{{profile?.email || 'Sin email'}}</h2>
+                                <p class="profile-summary__lead">Tu perfil privado centraliza identidad, preferencias y seguridad de la cuenta.</p>
+                            </div>
+                        </div>
+
+                        <div class="profile-summary__grid">
+                            <article class="profile-stat-card">
+                                <span class="profile-stat-card__label">Alta</span>
+                                <strong>{{formattedCreatedAt}}</strong>
+                            </article>
+                            <article class="profile-stat-card">
+                                <span class="profile-stat-card__label">Última actividad</span>
+                                <strong>{{formattedLastSeenAt}}</strong>
+                            </article>
+                            <article class="profile-stat-card">
+                                <span class="profile-stat-card__label">Rol</span>
+                                <strong>{{profile?.role || 'usuario'}}</strong>
+                            </article>
+                            <article class="profile-stat-card">
+                                <span class="profile-stat-card__label">Permisos create</span>
+                                <strong>{{permisosResumen}}</strong>
+                            </article>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="profile-section" *ngIf="currentSection === 'identidad'">
+                    <div class="profile-section__header">
+                        <div>
+                            <p class="profile-section__eyebrow">Identidad</p>
+                            <h1>Nombre visible y avatar</h1>
+                            <p class="profile-section__subtitle">Lo que se usará para firmar tu perfil y tus personajes públicos.</p>
+                        </div>
+                    </div>
+
+                    <div class="profile-two-column">
+                        <article class="profile-panel profile-panel--avatar">
+                            <div class="profile-panel__header">
+                                <h2>Avatar</h2>
+                                <p>Imagen actual y preview local.</p>
+                            </div>
+
+                            <div class="profile-avatar-preview">
+                                <img [src]="avatarUrl" alt="Avatar actual" />
+                            </div>
+
+                            <p class="profile-panel__hint" *ngIf="selectedAvatarName.length > 0">
+                                Imagen lista para guardar: {{selectedAvatarName}}
+                            </p>
+                            <p class="profile-panel__hint" *ngIf="selectedAvatarName.length < 1">
+                                Formatos válidos: JPG, PNG o WEBP. Tamaño máximo: 5 MB.
+                            </p>
+
+                            <div class="profile-action-row">
+                                <label class="profile-file-trigger" for="avatar-input">Elegir imagen</label>
+                                <input id="avatar-input" type="file" accept="image/png,image/jpeg,image/webp" (change)="onAvatarSelected($event)" />
+                                <button mat-raised-button color="primary" (click)="guardarAvatar()" [disabled]="avatarUploading || !selectedAvatarFile">
+                                    {{avatarUploading ? 'Subiendo...' : 'Guardar avatar'}}
+                                </button>
+                                <button mat-stroked-button color="warn" (click)="eliminarAvatar()" [disabled]="avatarDeleting || (!hasPersistedAvatar && !selectedAvatarFile)">
+                                    {{avatarDeleting ? 'Eliminando...' : 'Eliminar avatar'}}
+                                </button>
+                            </div>
+                        </article>
+
+                        <article class="profile-panel">
+                            <div class="profile-panel__header">
+                                <h2>Nombre visible</h2>
+                                <p>Hasta 150 caracteres.</p>
+                            </div>
+
+                            <mat-form-field appearance="outline" class="profile-field">
+                                <mat-label>Nombre visible</mat-label>
+                                <input
+                                    matInput
+                                    id="display-name-input"
+                                    type="text"
+                                    maxlength="150"
+                                    [(ngModel)]="displayNameDraft"
+                                    [disabled]="displayNameSaving" />
+                                <mat-hint align="end">{{displayNameLength}}/150</mat-hint>
+                            </mat-form-field>
+
+                            <div class="profile-action-row">
+                                <button mat-raised-button color="primary" (click)="guardarDisplayName()" [disabled]="displayNameSaving">
+                                    {{displayNameSaving ? 'Guardando...' : 'Guardar nombre'}}
+                                </button>
+                            </div>
+                        </article>
+                    </div>
+                </section>
+
+                <section class="profile-section" *ngIf="currentSection === 'preferencias'">
+                    <div class="profile-section__header">
+                        <div>
+                            <p class="profile-section__eyebrow">Preferencias</p>
+                            <h1>Perfil y generador</h1>
+                            <p class="profile-section__subtitle">Ajustes por defecto para personajes nuevos y para tu perfil público.</p>
+                        </div>
+                    </div>
+
+                    <div class="profile-two-column">
+                        <article class="profile-panel">
+                            <div class="profile-panel__header">
+                                <h2>Visibilidad</h2>
+                                <p>Comportamiento público por defecto.</p>
+                            </div>
+
+                            <div class="profile-toggle-list">
+                                <mat-slide-toggle color="primary" [(ngModel)]="visibilidadPorDefectoPersonajes" [disabled]="settingsSaving">
+                                    Nuevos personajes visibles públicamente por defecto
+                                </mat-slide-toggle>
+                                <mat-slide-toggle color="primary" [(ngModel)]="mostrarPerfilPublico" [disabled]="settingsSaving">
+                                    Mostrar mi perfil público
+                                </mat-slide-toggle>
+                            </div>
+                        </article>
+
+                        <article class="profile-panel">
+                            <div class="profile-panel__header">
+                                <h2>Generador</h2>
+                                <p>Valores iniciales del creador de personajes.</p>
+                            </div>
+
+                            <mat-form-field appearance="outline" class="profile-field">
+                                <mat-label>Mínimo seleccionado</mat-label>
+                                <input
+                                    matInput
+                                    id="generador-minimo"
+                                    type="number"
+                                    min="3"
+                                    max="13"
+                                    [(ngModel)]="generadorMinimoSeleccionado"
+                                    [disabled]="settingsSaving" />
+                            </mat-form-field>
+
+                            <mat-form-field appearance="outline" class="profile-field">
+                                <mat-label>Tablas permitidas</mat-label>
+                                <input
+                                    matInput
+                                    id="generador-tablas"
+                                    type="number"
+                                    min="1"
+                                    max="5"
+                                    [(ngModel)]="generadorTablasPermitidas"
+                                    [disabled]="settingsSaving" />
+                            </mat-form-field>
+
+                            <div class="profile-action-row">
+                                <button mat-raised-button color="primary" (click)="guardarPreferencias()" [disabled]="settingsSaving">
+                                    {{settingsSaving ? 'Guardando...' : 'Guardar preferencias'}}
+                                </button>
+                                <button mat-stroked-button color="accent" (click)="resetearPosicionPreview()" [disabled]="settingsSaving">
+                                    Resetear preview flotante
+                                </button>
+                            </div>
+                        </article>
+                    </div>
+                </section>
+
+                <section class="profile-section" *ngIf="currentSection === 'seguridad' && canChangePassword">
+                    <div class="profile-section__header">
+                        <div>
+                            <p class="profile-section__eyebrow">Seguridad</p>
+                            <h1>Cambio de contraseña</h1>
+                            <p class="profile-section__subtitle">Disponible solo para cuentas con correo y contraseña.</p>
+                        </div>
+                    </div>
+
+                    <article class="profile-panel profile-panel--security">
+                        <mat-form-field appearance="outline" class="profile-field">
+                            <mat-label>Contraseña actual</mat-label>
+                            <input matInput id="current-password" type="password" [(ngModel)]="currentPassword" [disabled]="passwordSaving" />
+                        </mat-form-field>
+
+                        <mat-form-field appearance="outline" class="profile-field">
+                            <mat-label>Nueva contraseña</mat-label>
+                            <input matInput id="new-password" type="password" [(ngModel)]="newPassword" [disabled]="passwordSaving" />
+                        </mat-form-field>
+
+                        <mat-form-field appearance="outline" class="profile-field">
+                            <mat-label>Confirmar nueva contraseña</mat-label>
+                            <input matInput id="confirm-password" type="password" [(ngModel)]="confirmPassword" [disabled]="passwordSaving" />
+                        </mat-form-field>
+
+                        <div class="profile-action-row">
+                            <button mat-raised-button color="primary" (click)="cambiarPassword()" [disabled]="passwordSaving">
+                                {{passwordSaving ? 'Actualizando...' : 'Actualizar contraseña'}}
+                            </button>
+                        </div>
+                    </article>
+                </section>
+            </main>
+        </div>
+    </ng-container>
+</div>

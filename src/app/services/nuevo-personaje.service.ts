@@ -841,6 +841,7 @@ export interface PlantillasFlujoState {
     providedIn: 'root'
 })
 export class NuevoPersonajeService {
+    private visibilidadPorDefectoPersonajes = false;
     private personajeCreacion: Personaje = this.crearPersonajeBase();
     private razaSeleccionada: Raza | null = null;
     private razaBaseSeleccionadaCompleta: Raza | null = null;
@@ -898,6 +899,9 @@ export class NuevoPersonajeService {
 
         try {
             await this.userSettingsSvc.migrateLegacyLocalConfigOnce(GENERADOR_CONFIG_STORAGE_KEY);
+            const perfil = await this.userSettingsSvc.loadProfileSettings();
+            this.visibilidadPorDefectoPersonajes = perfil.visibilidadPorDefectoPersonajes === true;
+            this.personajeCreacion.visible_otros_usuarios = this.visibilidadPorDefectoPersonajes;
             const remota = await this.userSettingsSvc.loadGeneradorConfig();
             if (!remota)
                 return;
@@ -8668,7 +8672,7 @@ export class NuevoPersonajeService {
             Id: 0,
             Nombre: '',
             ownerUid: null,
-            visible_otros_usuarios: false,
+            visible_otros_usuarios: this.visibilidadPorDefectoPersonajes,
             Id_region: 0,
             Region: {
                 Id: 0,

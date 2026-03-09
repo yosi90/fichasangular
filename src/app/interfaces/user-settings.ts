@@ -27,4 +27,23 @@ export interface UserSettingsV1 {
         preview_minimizada: NuevoPersonajePreviewMinimizada | null;
         preview_restaurada: NuevoPersonajePreviewRestaurada | null;
     };
+    perfil: {
+        visibilidadPorDefectoPersonajes: boolean;
+        mostrarPerfilPublico: boolean;
+    };
+}
+
+export function createDefaultUserSettings(): UserSettingsV1 {
+    return {
+        version: 1,
+        nuevo_personaje: {
+            generador_config: null,
+            preview_minimizada: null,
+            preview_restaurada: null,
+        },
+        perfil: {
+            visibilidadPorDefectoPersonajes: false,
+            mostrarPerfilPublico: true,
+        },
+    };
 }

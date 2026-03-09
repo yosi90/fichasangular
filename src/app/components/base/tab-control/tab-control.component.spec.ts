@@ -40,6 +40,8 @@ function crearComponente(overrides?: { pSvc?: any; }): TabControlComponent {
 
     const buildTabs = () => {
         const tabs: any[] = [{ textLabel: 'Personajes' }];
+        if (component.usrLoggedIn && component.privateProfileTabOpen)
+            tabs.push({ textLabel: 'Mi perfil' });
         if (component.usrPerm === 1)
             tabs.push({ textLabel: 'Panel de administración' });
         (component.detallesPersonajeAbiertos ?? []).forEach((pj: any) => tabs.push({ textLabel: pj.Nombre }));
@@ -296,5 +298,33 @@ describe('TabControlComponent navegación por origen', () => {
 
         expect(component.listadoTabsAbiertos.length).toBe(0);
         expect((component as any).activeTabKey).toBe('clase:15');
+    }));
+
+    it('abre mi perfil como tab dinamica y la puede cerrar con ESC', fakeAsync(() => {
+        const component = crearComponente();
+        component.usrLoggedIn = true;
+
+        component.abrirPerfilPrivado();
+        tick(120);
+
+        expect(component.privateProfileTabOpen).toBeTrue();
+        expect((component as any).activeTabKey).toBe('base:perfil');
+
+        component.onEscPressed();
+
+        expect(component.privateProfileTabOpen).toBeFalse();
+        expect((component as any).activeTabKey).toBe('base:personajes');
+    }));
+
+    it('cerrar sesion elimina la tab privada abierta', fakeAsync(() => {
+        const component = crearComponente();
+        component.usrLoggedIn = true;
+        component.abrirPerfilPrivado();
+        tick(120);
+
+        (component as any).cerrarPerfilPrivadoPorLogout();
+
+        expect(component.privateProfileTabOpen).toBeFalse();
+        expect((component as any).activeTabKey).toBe('base:personajes');
     }));
 });

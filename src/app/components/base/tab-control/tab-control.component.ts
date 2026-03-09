@@ -1,4 +1,5 @@
 import { Component, EventEmitter, HostListener, Input, NgZone, OnDestroy, OnInit, Output, SimpleChanges, ViewChild } from '@angular/core';
+import { UserPublicProfileTab } from 'src/app/interfaces/user-account';
 import { UserService } from '../../../services/user.service';
 import { PersonajeService } from 'src/app/services/personaje.service';
 import { MatTabGroup } from '@angular/material/tabs';
@@ -44,6 +45,7 @@ import { ArmaService } from 'src/app/services/arma.service';
 import { ArmaduraService } from 'src/app/services/armadura.service';
 import { DeidadDetalle } from 'src/app/interfaces/deidad';
 import { DeidadService } from 'src/app/services/deidad.service';
+import { UserProfileNavigationService } from 'src/app/services/user-profile-navigation.service';
 
 interface ListadoTabAbierto {
     key: string;
@@ -62,7 +64,10 @@ export class TabControlComponent implements OnInit, OnDestroy {
     @Input() AbrirListadoTab!: number;
     @Input() ListadoTabTipo!: string;
     @Input() ListadoTabOperacion!: string;
+    usrLoggedIn = false;
     usrPerm: number = 0;
+    privateProfileTabOpen = false;
+    publicProfileTabs: UserPublicProfileTab[] = [];
     detallesPersonajeAbiertos: Personaje[] = [];
     detallesRazaAbiertos: Raza[] = [];
     detallesConjuroAbiertos: Conjuro[] = [];
@@ -83,6 +88,7 @@ export class TabControlComponent implements OnInit, OnDestroy {
     detallesDeidadAbiertos: DeidadDetalle[] = [];
     listadoTabsAbiertos: ListadoTabAbierto[] = [];
     private readonly TAB_PERSONAJES = 'base:personajes';
+    private readonly TAB_PROFILE = 'base:perfil';
     private readonly TAB_ADMIN = 'base:admin';
     private readonly TAB_NUEVO = 'base:nuevo';
     private readonly TAB_IMPORTANTE = 'base:importante';
@@ -114,11 +120,19 @@ export class TabControlComponent implements OnInit, OnDestroy {
         private manualVistaNavSvc: ManualVistaNavigationService,
         private cacheSyncMetadataSvc: CacheSyncMetadataService,
         private ngZone: NgZone,
+        private userProfileNavSvc?: UserProfileNavigationService,
     ) { }
 
     @ViewChild(MatTabGroup) TabGroup!: MatTabGroup;
 
     ngOnInit() {
+        this.usrSvc.isLoggedIn$
+            .pipe(takeUntil(this.destroy$))
+            .subscribe((loggedIn) => {
+                this.usrLoggedIn = loggedIn === true;
+                if (!this.usrLoggedIn)
+                    this.cerrarPerfilPrivadoPorLogout();
+            });
         this.usrPerm = this.usrSvc.Usuario.permisos;
         this.usrSvc.permisos$
             .pipe(takeUntil(this.destroy$))
@@ -133,6 +147,12 @@ export class TabControlComponent implements OnInit, OnDestroy {
         this.manualVistaNavSvc.aperturas$
             .pipe(takeUntil(this.destroy$))
             .subscribe((manual) => this.abrirDetallesManual(manual));
+        this.userProfileNavSvc?.privateProfileOpen$
+            .pipe(takeUntil(this.destroy$))
+            .subscribe(() => this.abrirPerfilPrivado());
+        this.userProfileNavSvc?.publicProfileOpen$
+            .pipe(takeUntil(this.destroy$))
+            .subscribe((payload) => this.abrirPerfilPublico(payload));
     }
 
     ngOnDestroy(): void {
@@ -196,6 +216,14 @@ export class TabControlComponent implements OnInit, OnDestroy {
         const tabLabel = this.TabGroup._tabs.toArray()[currentIndex].textLabel;
         if (activeKey === this.TAB_ADMIN || activeKey === this.TAB_IMPORTANTE || this.esTabAdmin(tabLabel) || tabLabel === 'Información importante')
             return;
+        if (activeKey === this.TAB_PROFILE) {
+            this.quitarPerfilPrivado();
+            return;
+        }
+        if (activeKey?.startsWith('perfil-publico:')) {
+            this.quitarPerfilPublico(activeKey);
+            return;
+        }
         if (activeKey === this.TAB_NUEVO) {
             this.quitarNuevoPersonaje();
             return;
@@ -244,9 +272,12 @@ export class TabControlComponent implements OnInit, OnDestroy {
 
     private buildOrderedTabKeys(): string[] {
         const keys: string[] = [this.TAB_PERSONAJES];
+        if (this.usrLoggedIn && this.privateProfileTabOpen)
+            keys.push(this.TAB_PROFILE);
         if (this.usrPerm === 1)
             keys.push(this.TAB_ADMIN);
         keys.push(...this.detallesPersonajeAbiertos.map((pj) => this.getPersonajeTabKey(pj)));
+        keys.push(...this.publicProfileTabs.map((tab) => this.getPublicProfileTabKey(tab)));
         if (this.AbrirNuevoPersonajeTab)
             keys.push(this.TAB_NUEVO);
         keys.push(...this.listadoTabsAbiertos.map((tab) => tab.key));
@@ -366,6 +397,92 @@ export class TabControlComponent implements OnInit, OnDestroy {
             this.detallesPersonajeAbiertos.splice(indexTab, 1);
             return true;
         });
+    }
+
+    abrirPerfilPrivado(): void {
+        if (!this.usrLoggedIn)
+            return;
+        if (this.privateProfileTabOpen) {
+            this.selectTabByKey(this.TAB_PROFILE, true);
+            return;
+        }
+        this.privateProfileTabOpen = true;
+        this.registerOpenContext(this.TAB_PROFILE, this.getSafeOpenerKey());
+        this.focusOpenedTab(this.TAB_PROFILE);
+    }
+
+    quitarPerfilPrivado(): boolean {
+        if (!this.privateProfileTabOpen)
+            return false;
+
+        return this.closeTabWithNavigation(this.TAB_PROFILE, () => {
+            this.privateProfileTabOpen = false;
+            return true;
+        });
+    }
+
+    private cerrarPerfilPrivadoPorLogout(): void {
+        if (!this.privateProfileTabOpen)
+            return;
+        const wasActive = this.activeTabKey === this.TAB_PROFILE;
+        this.privateProfileTabOpen = false;
+        this.openerByTab.delete(this.TAB_PROFILE);
+        if (wasActive)
+            this.selectTabByKey(this.TAB_PERSONAJES, true);
+        else if (!this.isTabKeyOpen(this.activeTabKey))
+            this.selectTabByKey(this.TAB_PERSONAJES, true);
+    }
+
+    abrirPerfilPublico(payload: UserPublicProfileTab): void {
+        const uid = `${payload?.uid ?? ''}`.trim();
+        if (uid.length < 1)
+            return;
+
+        const existente = this.publicProfileTabs.find((tab) => tab.uid === uid);
+        if (existente) {
+            if (!existente.initialDisplayName && payload.initialDisplayName)
+                existente.initialDisplayName = payload.initialDisplayName;
+            this.selectTabByKey(this.getPublicProfileTabKey(existente));
+            return;
+        }
+
+        const tab: UserPublicProfileTab = {
+            uid,
+            initialDisplayName: `${payload?.initialDisplayName ?? ''}`.trim() || null,
+        };
+        const targetKey = this.getPublicProfileTabKey(tab);
+        this.publicProfileTabs.push(tab);
+        this.registerOpenContext(targetKey, this.getSafeOpenerKey());
+        this.focusOpenedTab(targetKey);
+    }
+
+    quitarPerfilPublico(value?: string | UserPublicProfileTab): boolean {
+        const key = typeof value === 'string'
+            ? value
+            : value ? this.getPublicProfileTabKey(value) : (this.activeTabKey.startsWith('perfil-publico:') ? this.activeTabKey : '');
+        const tab = this.publicProfileTabs.find((item) => this.getPublicProfileTabKey(item) === key);
+        if (!tab)
+            return false;
+
+        return this.closeTabWithNavigation(this.getPublicProfileTabKey(tab), () => {
+            const indexTab = this.publicProfileTabs.indexOf(tab);
+            if (indexTab < 0)
+                return false;
+            this.publicProfileTabs.splice(indexTab, 1);
+            return true;
+        });
+    }
+
+    actualizarEtiquetaPerfilPublico(payload: { uid: string; displayName: string | null; }): void {
+        const uid = `${payload?.uid ?? ''}`.trim();
+        if (uid.length < 1)
+            return;
+
+        const tab = this.publicProfileTabs.find((item) => item.uid === uid);
+        if (!tab)
+            return;
+
+        tab.initialDisplayName = `${payload?.displayName ?? ''}`.trim() || tab.initialDisplayName || null;
     }
 
     recibirObjetoListado(value: { item: any, tipo: string }) {
@@ -704,6 +821,15 @@ export class TabControlComponent implements OnInit, OnDestroy {
 
     private getPersonajeTabKey(personaje: Personaje): string {
         return `personaje:${Number(personaje?.Id ?? 0)}`;
+    }
+
+    getEtiquetaPerfilPublico(tab: UserPublicProfileTab): string {
+        const label = `${tab?.initialDisplayName ?? ''}`.trim();
+        return `${label.length > 0 ? label : tab.uid} (Perfil)`;
+    }
+
+    private getPublicProfileTabKey(tab: UserPublicProfileTab): string {
+        return `perfil-publico:${tab.uid}`;
     }
 
     private getRazaTabKey(raza: Raza): string {

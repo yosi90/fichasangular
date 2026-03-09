@@ -1,5 +1,4 @@
 import { NO_ERRORS_SCHEMA } from '@angular/core';
-import { Database } from '@angular/fire/database';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
 import { of } from 'rxjs';
@@ -7,6 +6,7 @@ import { NuevoPersonajeService } from 'src/app/services/nuevo-personaje.service'
 import { FichasDescargaBackgroundService } from 'src/app/services/fichas-descarga-background.service';
 import { PersonajeService } from 'src/app/services/personaje.service';
 import { RegionService } from 'src/app/services/region.service';
+import { UserProfileApiService } from 'src/app/services/user-profile-api.service';
 import { UserService } from 'src/app/services/user.service';
 import { DetallesPersonajeComponent } from './detalles-personaje.component';
 
@@ -51,8 +51,10 @@ describe('DetallesPersonajeComponent', () => {
                     useValue: regionSvcMock,
                 },
                 {
-                    provide: Database,
-                    useValue: {},
+                    provide: UserProfileApiService,
+                    useValue: {
+                        hasPublicProfile: async () => false,
+                    },
                 },
             ],
             schemas: [NO_ERRORS_SCHEMA],
@@ -94,6 +96,18 @@ describe('DetallesPersonajeComponent', () => {
 
         const html = `${fixture.nativeElement.textContent ?? ''}`;
         expect(html).toContain('Creador: Tú');
+    });
+
+    it('usa ownerDisplayName cuando el personaje es de otro usuario', async () => {
+        component.pj.ownerUid = 'otro-uid';
+        component.pj.ownerDisplayName = 'Aramil';
+
+        fixture.detectChanges();
+        await fixture.whenStable();
+        fixture.detectChanges();
+
+        const html = `${fixture.nativeElement.textContent ?? ''}`;
+        expect(html).toContain('Creador: Aramil');
     });
 
     it('oculta botón Generar pdf cuando mostrarBotonGenerarPdf es false', () => {

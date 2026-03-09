@@ -4,7 +4,17 @@
             <div class="tw-flex tw-flex-wrap tw-items-center sombra-caja-sm tw-rounded-md tw-p-2 tw-my-2">
                 <mat-icon class="tw-me-1">account_box</mat-icon>
                 <mat-chip class="warm tw-m-1" *ngIf="tienePersonajeNombreVisible()">{{pj.Nombre}}</mat-chip>
-                <mat-chip class="warm tw-m-1" *ngIf="mostrarChipCreador">Creador: {{etiquetaCreador}}</mat-chip>
+                <mat-chip
+                    class="warm tw-m-1"
+                    [ngClass]="chipCreadorClickable ? 'chip-clic' : ''"
+                    *ngIf="mostrarChipCreador"
+                    [matTooltip]="chipCreadorClickable ? 'Pulsa para ver el perfil público del creador' : ''"
+                    [matTooltipDisabled]="!chipCreadorClickable"
+                    [matTooltipShowDelay]="250"
+                    matTooltipClass="tt-accent"
+                    (click)="verPerfilPublicoCreador()">
+                    Creador: {{etiquetaCreador}}
+                </mat-chip>
                 <mat-chip class="tw-m-1" *ngIf="tieneGeneroVisible()">{{pj.Genero}}</mat-chip>
                 <mat-chip class="tw-m-1" *ngIf="tieneAlineamientoVisible()">{{pj.Alineamiento}}</mat-chip>
                 <mat-chip class="tw-m-1" *ngIf="tieneNivelVisible()" [matTooltip]="nivelDisclaimer" matTooltipClass="tt-accent tt-multiline">Nivel {{nivelPersonaje}}</mat-chip>

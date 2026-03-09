@@ -1,0 +1,351 @@
+@use '../../../../assets/css/_variables' as *
+
+.profile-shell
+    min-height: 24rem
+
+.profile-state
+    background: rgba(45, 45, 48, .96)
+    color: #f5f7ff
+    border: 1px solid rgba(255, 255, 255, .08)
+
+.profile-state--error
+    border-color: rgba(255, 105, 97, .35)
+
+.profile-layout
+    display: grid
+    grid-template-columns: 17rem minmax(0, 1fr)
+    gap: 1rem
+    min-height: 100%
+    align-items: stretch
+
+.profile-nav,
+.profile-main
+    background: rgba(45, 45, 48, .96)
+    color: #f5f7ff
+    border: 1px solid rgba(255, 255, 255, .08)
+
+.profile-nav
+    display: flex
+    flex-direction: column
+    gap: 1rem
+    padding: 1rem
+    height: 100%
+    min-height: 100%
+
+.profile-nav__identity
+    display: flex
+    gap: .9rem
+    align-items: center
+    padding: .85rem
+    border-radius: 1rem
+    background: rgba(255, 255, 255, .04)
+    border: 1px solid rgba(255, 255, 255, .06)
+
+.profile-nav__avatar img
+    width: 4.5rem
+    height: 4.5rem
+    object-fit: cover
+    border-radius: 1rem
+    border: 2px solid rgba(173, 189, 196, .28)
+
+.profile-nav__copy
+    min-width: 0
+
+    h2
+        margin: 0
+        font-size: 1.05rem
+        font-weight: 700
+
+    p
+        margin: .3rem 0 0
+        color: rgba(245, 247, 255, .72)
+        word-break: break-word
+
+.profile-nav__items
+    display: flex
+    flex-direction: column
+    gap: .55rem
+
+.profile-nav__item
+    display: flex
+    align-items: center
+    gap: .75rem
+    width: 100%
+    padding: .8rem .95rem
+    border: 1px solid rgba(255, 255, 255, .08)
+    border-radius: .85rem
+    background: rgba(255, 255, 255, .04)
+    color: #f5f7ff
+    cursor: pointer
+    transition: background-color .2s ease, border-color .2s ease, transform .2s ease
+
+    &:hover
+        transform: translateY(-1px)
+        background: rgba(255, 255, 255, .08)
+
+    mat-icon
+        color: $accent
+
+.profile-nav__item--active
+    border-color: rgba(194, 24, 91, .7)
+    background: rgba(194, 24, 91, .14)
+
+    mat-icon
+        color: $active
+
+.profile-main
+    display: flex
+    align-items: center
+    padding: 1.35rem
+    min-height: 100%
+
+.profile-section
+    display: flex
+    flex-direction: column
+    gap: 1.25rem
+    width: 100%
+
+.profile-section__header
+    display: flex
+    align-items: flex-start
+    justify-content: space-between
+    gap: 1rem
+
+    h1
+        margin: 0
+        font-size: 2rem
+        font-weight: 800
+
+.profile-section__eyebrow
+    margin: 0 0 .35rem
+    color: $accent
+    text-transform: uppercase
+    letter-spacing: .08em
+    font-size: .76rem
+
+.profile-section__subtitle
+    margin: .45rem 0 0
+    color: rgba(245, 247, 255, .72)
+
+.profile-summary
+    display: flex
+    flex-direction: column
+    gap: 1rem
+
+.profile-summary__hero
+    display: grid
+    grid-template-columns: 12rem minmax(0, 1fr)
+    gap: 1.5rem
+    padding: 1.25rem
+    border-radius: 1.2rem
+    background: linear-gradient(135deg, rgba(55, 60, 65, .98), rgba(45, 45, 48, .98))
+    border: 1px solid rgba(173, 189, 196, .16)
+
+.profile-summary__avatar
+    display: flex
+    align-items: center
+    justify-content: center
+
+    img
+        width: 11rem
+        height: 11rem
+        object-fit: cover
+        border-radius: 1.6rem
+        border: 2px solid rgba(173, 189, 196, .28)
+        box-shadow: 0 18px 32px rgba(0, 0, 0, .28)
+
+.profile-summary__copy
+    display: flex
+    flex-direction: column
+    justify-content: center
+    gap: .85rem
+    min-width: 0
+
+    h2
+        margin: 0
+        font-size: 1.35rem
+        font-weight: 700
+        word-break: break-word
+
+.profile-summary__lead
+    margin: 0
+    color: rgba(245, 247, 255, .74)
+    max-width: 48rem
+
+.profile-summary__chips
+    display: flex
+    flex-wrap: wrap
+    gap: .55rem
+
+.profile-pill
+    display: inline-flex
+    align-items: center
+    padding: .35rem .75rem
+    border-radius: 999px
+    background: rgba(255, 255, 255, .06)
+    border: 1px solid rgba(255, 255, 255, .1)
+    color: #f5f7ff
+    font-size: .92rem
+
+.profile-pill--active
+    border-color: rgba(194, 24, 91, .55)
+    background: rgba(194, 24, 91, .18)
+
+.profile-summary__grid
+    display: grid
+    grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr))
+    gap: .9rem
+
+.profile-stat-card,
+.profile-panel
+    padding: 1rem
+    border-radius: 1rem
+    background: rgba(255, 255, 255, .04)
+    border: 1px solid rgba(255, 255, 255, .08)
+
+.profile-stat-card
+    display: flex
+    flex-direction: column
+    gap: .4rem
+
+    strong
+        font-size: 1.05rem
+        word-break: break-word
+
+.profile-stat-card__label
+    color: rgba(245, 247, 255, .66)
+    font-size: .86rem
+    text-transform: uppercase
+    letter-spacing: .05em
+
+.profile-two-column
+    display: grid
+    grid-template-columns: repeat(2, minmax(0, 1fr))
+    gap: 1rem
+
+.profile-panel
+    display: flex
+    flex-direction: column
+    gap: 1rem
+
+.profile-panel--avatar
+    align-items: flex-start
+
+.profile-panel--security
+    max-width: 42rem
+
+.profile-panel__header
+    h2
+        margin: 0
+        font-size: 1.1rem
+        font-weight: 700
+
+    p
+        margin: .35rem 0 0
+        color: rgba(245, 247, 255, .66)
+
+.profile-avatar-preview
+    display: flex
+    align-items: center
+    justify-content: center
+    width: 100%
+    min-height: 18rem
+    border-radius: 1rem
+    background: rgba(0, 0, 0, .12)
+    border: 1px dashed rgba(173, 189, 196, .24)
+
+    img
+        width: min(100%, 16rem)
+        aspect-ratio: 1
+        object-fit: cover
+        border-radius: 1.4rem
+        border: 2px solid rgba(173, 189, 196, .28)
+
+.profile-panel__hint
+    margin: 0
+    color: rgba(245, 247, 255, .68)
+
+.profile-field
+    width: 100%
+
+::ng-deep .profile-field .mdc-notched-outline > *
+    border-color: rgba(173, 189, 196, .2) !important
+
+::ng-deep .profile-field .mat-mdc-form-field-infix
+    min-height: 3.35rem
+
+::ng-deep .profile-field .mdc-text-field--outlined
+    background: rgba(255, 255, 255, .03)
+
+::ng-deep .profile-field .mat-mdc-form-field-subscript-wrapper,
+::ng-deep .profile-field .mdc-floating-label,
+::ng-deep .profile-field input
+    color: #f5f7ff !important
+
+::ng-deep .profile-field .mat-mdc-form-field-hint
+    color: rgba(245, 247, 255, .66) !important
+
+.profile-action-row
+    display: flex
+    flex-wrap: wrap
+    gap: .75rem
+    align-items: center
+
+.profile-file-trigger
+    display: inline-flex
+    align-items: center
+    justify-content: center
+    min-height: 2.7rem
+    padding: .7rem 1rem
+    border-radius: .8rem
+    border: 1px dashed rgba(173, 189, 196, .28)
+    background: rgba(255, 255, 255, .04)
+    color: #f5f7ff
+    font-weight: 600
+    cursor: pointer
+
+#avatar-input
+    display: none
+
+.profile-toggle-list
+    display: flex
+    flex-direction: column
+    gap: 1rem
+
+::ng-deep .profile-toggle-list .mdc-label
+    color: #f5f7ff
+
+@media (max-width: 960px)
+    .profile-layout
+        grid-template-columns: 1fr
+
+    .profile-nav
+        padding: .85rem
+        height: auto
+        min-height: 0
+
+    .profile-nav__items
+        flex-direction: row
+        flex-wrap: wrap
+
+    .profile-nav__item
+        width: auto
+        flex: 1 1 12rem
+
+    .profile-summary__hero,
+    .profile-two-column
+        grid-template-columns: 1fr
+
+    .profile-main
+        align-items: stretch
+
+@media (max-width: 640px)
+    .profile-main
+        padding: 1rem
+
+    .profile-summary__avatar img
+        width: 8.5rem
+        height: 8.5rem
+
+    .profile-section__header h1
+        font-size: 1.6rem

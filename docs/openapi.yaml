@@ -211,6 +211,334 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
+  /usuarios/me:
+    get:
+      tags: [usuarios]
+      summary: Perfil privado del usuario autenticado
+      parameters:
+        - name: Authorization
+          in: header
+          required: true
+          schema:
+            type: string
+          description: Bearer token de Firebase.
+      responses:
+        '200':
+          description: Perfil privado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UsuarioMeResponse'
+        '401':
+          description: Token ausente o inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileErrorResponse'
+        '409':
+          description: Conflicto de sincronización legacy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileErrorResponse'
+        '500':
+          description: Error interno
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileErrorResponse'
+    patch:
+      tags: [usuarios]
+      summary: Actualiza el displayName del usuario autenticado
+      parameters:
+        - name: Authorization
+          in: header
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UsuarioPatchRequest'
+      responses:
+        '200':
+          description: Perfil actualizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UsuarioMeResponse'
+        '400':
+          description: Nombre inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileErrorResponse'
+        '401':
+          description: Token ausente o inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileErrorResponse'
+        '403':
+          description: Usuario baneado en modo solo lectura
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileErrorResponse'
+        '409':
+          description: Conflicto de sincronización legacy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileErrorResponse'
+        '500':
+          description: Error interno
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileErrorResponse'
+
+  /usuarios/me/settings:
+    get:
+      tags: [usuarios]
+      summary: Recupera los settings del usuario autenticado
+      parameters:
+        - name: Authorization
+          in: header
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Settings actuales
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UsuarioSettings'
+        '401':
+          description: Token ausente o inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileErrorResponse'
+        '409':
+          description: Conflicto de sincronización legacy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileErrorResponse'
+        '500':
+          description: Error interno
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileErrorResponse'
+    put:
+      tags: [usuarios]
+      summary: Reemplaza los settings del usuario autenticado
+      parameters:
+        - name: Authorization
+          in: header
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UsuarioSettings'
+      responses:
+        '200':
+          description: Settings guardados
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UsuarioSettings'
+        '400':
+          description: Shape inválido o versión no soportada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileErrorResponse'
+        '401':
+          description: Token ausente o inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileErrorResponse'
+        '403':
+          description: Usuario baneado en modo solo lectura
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileErrorResponse'
+        '409':
+          description: Conflicto de sincronización legacy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileErrorResponse'
+        '500':
+          description: Error interno
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileErrorResponse'
+
+  /usuarios/me/avatar:
+    post:
+      tags: [usuarios]
+      summary: Sube o reemplaza el avatar del usuario autenticado
+      parameters:
+        - name: Authorization
+          in: header
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+              required: [file]
+      responses:
+        '200':
+          description: Avatar actualizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AvatarResponse'
+        '400':
+          description: Archivo inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileErrorResponse'
+        '401':
+          description: Token ausente o inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileErrorResponse'
+        '403':
+          description: Usuario baneado en modo solo lectura
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileErrorResponse'
+        '409':
+          description: Conflicto de sincronización legacy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileErrorResponse'
+        '500':
+          description: Error interno
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileErrorResponse'
+    delete:
+      tags: [usuarios]
+      summary: Elimina el avatar del usuario autenticado
+      parameters:
+        - name: Authorization
+          in: header
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Avatar eliminado o ya ausente
+        '401':
+          description: Token ausente o inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileErrorResponse'
+        '403':
+          description: Usuario baneado en modo solo lectura
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileErrorResponse'
+        '409':
+          description: Conflicto de sincronización legacy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileErrorResponse'
+        '500':
+          description: Error interno
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileErrorResponse'
+
+  /usuarios/{uid}/public:
+    get:
+      tags: [usuarios]
+      summary: Perfil público resumido por Firebase UID
+      parameters:
+        - name: uid
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Perfil público disponible
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UsuarioPublicProfile'
+        '404':
+          description: Usuario inexistente o perfil no público
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileErrorResponse'
+        '500':
+          description: Error interno
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileErrorResponse'
+
+  /media/avatars/{uid}/{filename}:
+    get:
+      tags: [usuarios]
+      summary: Recupera un avatar público servido por la API
+      parameters:
+        - name: uid
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: filename
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Avatar encontrado
+          content:
+            image/webp:
+              schema:
+                type: string
+                format: binary
+        '404':
+          description: Avatar inexistente
+
   /personajes:
     get:
       tags: [personajes]
@@ -1866,6 +2194,138 @@ components:
       additionalProperties: true
       description: Error no estandarizado (varia segun controlador/pyodbc).
 
+    ProfileErrorResponse:
+      type: object
+      properties:
+        code: { type: string }
+        message: { type: string }
+      required: [code, message]
+
+    ProfilePermission:
+      type: object
+      properties:
+        create: { type: boolean }
+      required: [create]
+
+    ProfilePermissionsMap:
+      type: object
+      additionalProperties:
+        $ref: '#/components/schemas/ProfilePermission'
+
+    AvatarResponse:
+      type: object
+      properties:
+        photoUrl: { type: string, nullable: true }
+        photoThumbUrl: { type: string, nullable: true }
+      required: [photoUrl, photoThumbUrl]
+
+    UsuarioMeResponse:
+      type: object
+      properties:
+        uid: { type: string }
+        displayName: { type: string, nullable: true }
+        email: { type: string, nullable: true }
+        emailVerified: { type: boolean }
+        authProvider: { type: string, enum: [correo, google, otro] }
+        photoUrl: { type: string, nullable: true }
+        photoThumbUrl: { type: string, nullable: true }
+        createdAt: { type: string, nullable: true }
+        lastSeenAt: { type: string, nullable: true }
+        role: { type: string, enum: [usuario, colaborador, admin] }
+        permissions:
+          $ref: '#/components/schemas/ProfilePermissionsMap'
+      required:
+        - uid
+        - emailVerified
+        - authProvider
+        - role
+        - permissions
+
+    UsuarioPatchRequest:
+      type: object
+      properties:
+        displayName: { type: string, maxLength: 150 }
+      required: [displayName]
+      additionalProperties: false
+
+    UsuarioSettingsGenerador:
+      type: object
+      properties:
+        minimoSeleccionado: { type: integer }
+        tablasPermitidas: { type: integer }
+        updatedAt: { type: integer }
+      required: [minimoSeleccionado, tablasPermitidas, updatedAt]
+      additionalProperties: false
+
+    UsuarioSettingsPreviewMin:
+      type: object
+      properties:
+        version: { type: integer, enum: [1] }
+        side: { type: string, enum: [left, right] }
+        top: { type: integer }
+        updatedAt: { type: integer }
+      required: [version, side, top, updatedAt]
+      additionalProperties: false
+
+    UsuarioSettingsPreviewRest:
+      type: object
+      properties:
+        version: { type: integer, enum: [1] }
+        left: { type: integer }
+        top: { type: integer }
+        width: { type: integer }
+        height: { type: integer }
+        updatedAt: { type: integer }
+      required: [version, left, top, width, height, updatedAt]
+      additionalProperties: false
+
+    UsuarioSettings:
+      type: object
+      properties:
+        version: { type: integer, enum: [1] }
+        nuevo_personaje:
+          type: object
+          properties:
+            generador_config:
+              $ref: '#/components/schemas/UsuarioSettingsGenerador'
+            preview_minimizada:
+              allOf:
+                - $ref: '#/components/schemas/UsuarioSettingsPreviewMin'
+              nullable: true
+            preview_restaurada:
+              allOf:
+                - $ref: '#/components/schemas/UsuarioSettingsPreviewRest'
+              nullable: true
+          required: [generador_config, preview_minimizada, preview_restaurada]
+          additionalProperties: false
+        perfil:
+          type: object
+          properties:
+            visibilidadPorDefectoPersonajes: { type: boolean }
+            mostrarPerfilPublico: { type: boolean }
+          required: [visibilidadPorDefectoPersonajes, mostrarPerfilPublico]
+          additionalProperties: false
+      required: [version, nuevo_personaje, perfil]
+      additionalProperties: false
+
+    UsuarioPublicStats:
+      type: object
+      properties:
+        totalPersonajes: { type: integer }
+        publicos: { type: integer }
+      required: [totalPersonajes, publicos]
+
+    UsuarioPublicProfile:
+      type: object
+      properties:
+        uid: { type: string }
+        displayName: { type: string, nullable: true }
+        photoThumbUrl: { type: string, nullable: true }
+        memberSince: { type: string, nullable: true }
+        stats:
+          $ref: '#/components/schemas/UsuarioPublicStats'
+      required: [uid, stats]
+
     StoryEntityRef:
       oneOf:
         - type: integer
@@ -2286,7 +2746,7 @@ components:
       properties:
         uid: { type: string }
         firebaseUid: { type: string }
-        displayName: { type: string, maxLength: 20 }
+        displayName: { type: string, maxLength: 150 }
         email: { type: string, maxLength: 60 }
         authProvider: { type: string, enum: [correo, google, otro], default: correo }
         actorUserId: { type: string, format: uuid }
@@ -3564,6 +4024,7 @@ components:
         i: { type: integer }
         n: { type: string }
         ownerUid: { type: string, nullable: true }
+        ownerDisplayName: { type: string, nullable: true }
         id_region:
           type: integer
           description: Id de region de origen (`0` = Sin region).
@@ -3584,6 +4045,7 @@ components:
         i: { type: integer }
         n: { type: string }
         ownerUid: { type: string, nullable: true }
+        ownerDisplayName: { type: string, nullable: true }
         id_region:
           type: integer
           description: Id de region de origen (`0` = Sin region).

@@ -11,10 +11,12 @@ import {
 } from '@angular/fire/auth';
 import { Database, get, onValue, ref, set } from '@angular/fire/database';
 import { BehaviorSubject, map } from 'rxjs';
+import { UserPrivateProfile } from '../interfaces/user-account';
 import { Usuario } from '../interfaces/usuario';
 import { EMPTY_USER_ACL, UserAcl, normalizeUserAcl } from '../interfaces/user-acl';
 import { AuthProviderType, UserProfile } from '../interfaces/user-profile';
 import { UsuarioUpsertRequestDto, UsuarioUpsertResponseDto } from '../interfaces/usuarios-api';
+import { UserProfileApiService } from './user-profile-api.service';
 import { UsuariosApiService } from './usuarios-api.service';
 
 @Injectable({
@@ -31,11 +33,13 @@ export class UserService {
     private permisosSubject = new BehaviorSubject<number>(0);
     private isBannedSubject = new BehaviorSubject<boolean>(false);
     private aclSubject = new BehaviorSubject<UserAcl>({ ...EMPTY_USER_ACL });
+    private privateProfileSubject = new BehaviorSubject<UserPrivateProfile | null>(null);
     private upsertApiDeshabilitadoEnSesion = false;
     public isLoggedIn$ = this.isLoggedInSubject.asObservable();
     public permisos$ = this.permisosSubject.asObservable();
     public isBanned$ = this.isBannedSubject.asObservable();
     public acl$ = this.aclSubject.asObservable();
+    public currentPrivateProfile$ = this.privateProfileSubject.asObservable();
     public esAdmin$ = this.permisos$.pipe(map((value) => value === 1));
 
     public get Usuario() {
@@ -46,7 +50,16 @@ export class UserService {
         return `${this.auth.currentUser?.uid ?? ''}`.trim();
     }
 
-    constructor(private auth: Auth, private db: Database, private usuariosApiSvc: UsuariosApiService) {
+    public get CurrentPrivateProfile(): UserPrivateProfile | null {
+        return this.privateProfileSubject.value;
+    }
+
+    constructor(
+        private auth: Auth,
+        private db: Database,
+        private usuariosApiSvc: UsuariosApiService,
+        private userProfileApiSvc?: UserProfileApiService
+    ) {
         this.subscribeAuthState((firebaseUser) => {
             this.actualizarSesionDesdeAuth(firebaseUser);
         });
@@ -128,6 +141,7 @@ export class UserService {
             this.authUidActivo = '';
             this.banSignOutInProgress = false;
             this.setAclRaw(null);
+            this.setCurrentPrivateProfile(null);
             this.setLoggedIn({ nombre: 'Invitado', correo: '', permisos: 0 });
             return;
         }
@@ -143,6 +157,38 @@ export class UserService {
 
         this.startAclSubscription(firebaseUser.uid);
         void this.hidratarSesion(firebaseUser);
+    }
+
+    public setCurrentPrivateProfile(profile: UserPrivateProfile | null): void {
+        this.privateProfileSubject.next(profile);
+
+        if (!profile || !this.sesionAbierta)
+            return;
+
+        const email = `${profile.email ?? ''}`.trim();
+        const displayName = `${profile.displayName ?? ''}`.trim();
+        const fallbackName = email.length > 0 ? this.fallbackDisplayName(email) : this.usuario.nombre;
+        this.actualizarUsuarioSesion({
+            nombre: displayName.length > 0 ? displayName : fallbackName,
+            correo: email.length > 0 ? email : this.usuario.correo,
+            permisos: this.usuario.permisos,
+        });
+    }
+
+    public async refreshCurrentPrivateProfile(): Promise<UserPrivateProfile | null> {
+        if (!this.userProfileApiSvc)
+            return this.CurrentPrivateProfile;
+
+        const uid = this.CurrentUserUid;
+        if (uid.length < 1) {
+            this.setCurrentPrivateProfile(null);
+            return null;
+        }
+
+        const profile = await this.userProfileApiSvc.getMyProfile();
+        if (this.isActiveUser(uid))
+            this.setCurrentPrivateProfile(profile);
+        return profile;
     }
 
     protected subscribeAuthState(handler: (firebaseUser: User | null) => void): void {
@@ -295,6 +341,17 @@ export class UserService {
         } catch {
             // Mantiene sesión y permisos aunque falle escritura de perfil.
         }
+
+        if (!this.userProfileApiSvc)
+            return;
+
+        try {
+            const profile = await this.userProfileApiSvc.getMyProfile();
+            if (this.isActiveUser(uid))
+                this.setCurrentPrivateProfile(profile);
+        } catch {
+            // El perfil privado mejora la UI pero no bloquea la sesión.
+        }
     }
 
     private debeDeshabilitarUpsertApi(error: any): boolean {
@@ -313,7 +370,7 @@ export class UserService {
         const displayNameRaw = `${firebaseUser.displayName ?? ''}`.trim();
         const displayName = this.truncate(
             displayNameRaw.length > 0 ? displayNameRaw : this.fallbackDisplayName(email),
-            20
+            150
         );
 
         return {

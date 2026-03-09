@@ -5,11 +5,11 @@ Fecha de generacion: 2026-03-04
 Resumen
 - Base URL (local): `http://127.0.0.1:5000`
 - Prefijos registrados: `/verify`, `/usuarios`, `/personajes`, `/razas`, `/razas/raciales`, `/subtipos`, `/campanas`, `/tramas`, `/subtramas`, `/manuales`, `/manuales/asociados`, `/monstruos`, `/familiares`, `/companeros`, `/tiposCriatura`, `/rasgos`, `/conjuros`, `/escuelas`, `/disciplinas`, `/alineamientos`, `/habilidades`, `/idiomas`, `/enemigos-predilectos`, `/extras`, `/tamanos`, `/armas`, `/armaduras`, `/grupos-armas`, `/grupos-armaduras`, `/dominios`, `/ambitos`, `/pabellones`, `/deidades`, `/dotes`, `/clases`, `/clases/habilidades`, `/plantillas`, `/ventajas`, `/desventajas`
-- Autenticacion: no hay autenticacion en el backend.
-- Content-Type esperado: `application/json` (y `application/zip` en `GET /usuarios/backup`)
+- Autenticacion: la mayoria de endpoints legacy siguen sin autenticacion backend; la vertical nueva de perfil usa `Authorization: Bearer <id_token>` de Firebase.
+- Content-Type esperado: `application/json`, `multipart/form-data` en `POST /usuarios/me/avatar`, `application/zip` en `GET /usuarios/backup` e `image/webp` en `GET /media/avatars/<uid>/<filename>`
 - CORS habilitado para: `https://rol.yosiftware.es/`, `https://www.rol.yosiftware.es/`, `https://62.43.222.28`, `http://192.168.0.34`
-- Metodos usados: `GET`, `POST`, `PATCH`, `OPTIONS` (preflight en varias rutas).
-- Errores: la mayoria de controladores retorna el error de `pyodbc` sin estandarizar.
+- Metodos usados: `GET`, `POST`, `PUT`, `PATCH`, `DELETE`, `OPTIONS` (preflight en varias rutas).
+- Errores: los endpoints legacy siguen sin estandarizacion completa; la vertical nueva de perfil usa `{ "code": "...", "message": "..." }`.
 
 Lista de endpoints
 | Metodo | Path | Descripcion | Estado |
@@ -18,7 +18,15 @@ Lista de endpoints
 | GET | /usuarios | Lista de usuarios (admin panel) | Implementado |
 | GET | /usuarios/backup | Descarga backup SQL completo en ZIP (solo admin) | Implementado |
 | GET | /usuarios/acl/<uid> | ACL bootstrap por Firebase UID | Implementado |
+| GET | /usuarios/me | Perfil privado del usuario autenticado | Implementado |
+| PATCH | /usuarios/me | Actualizar displayName del usuario autenticado | Implementado |
+| GET | /usuarios/me/settings | Recuperar settings del usuario autenticado | Implementado |
+| PUT | /usuarios/me/settings | Reemplazar settings del usuario autenticado | Implementado |
+| POST | /usuarios/me/avatar | Subir o reemplazar avatar | Implementado |
+| DELETE | /usuarios/me/avatar | Eliminar avatar | Implementado |
+| GET | /usuarios/<uid>/public | Perfil público resumido por Firebase UID | Implementado |
 | POST | /usuarios | Upsert usuario + replica a jugadores legacy | Implementado |
+| GET | /media/avatars/<uid>/<filename> | Recuperar avatar público servido por la API | Implementado |
 | GET | /personajes | Lista detallada de personajes | Implementado |
 | GET | /personajes/simplificados | Lista simplificada de personajes | Implementado |
 | POST | /personajes/add | Crear personaje | Implementado |
@@ -163,7 +171,7 @@ Respuesta 200
 - Contenido del ZIP:
   - `000_manifest.json`
   - `000_pre_restore.sql`
-  - un `.sql` por tabla en orden de restauracion
+  - entre 7 y 17 ficheros `.sql` de datos, cada uno agrupando varias tablas en orden de restauracion
   - `999_post_restore.sql`
 
 Errores esperados
@@ -221,7 +229,7 @@ Body (`application/json`)
 
 Reglas de validacion
 - `uid` o `firebaseUid`: obligatorio.
-- `displayName`: obligatorio, maximo 20.
+- `displayName`: obligatorio, maximo 150.
 - `email`: obligatorio, maximo 60.
 - `authProvider`: `correo|google|otro`.
 - `permissionsCreate`: array de `{ resource, allowed }`.
@@ -248,6 +256,144 @@ Respuesta 201/200 (ejemplo)
 }
 ```
 
+Endpoint: GET /usuarios/me
+Descripcion: Recupera el perfil privado del usuario autenticado mediante `Authorization: Bearer <id_token>` de Firebase. Si el `AppUser` no existe, la API lo bootstrappea junto con `UserAcl`, `AppUserProfile`, `AppUserSettings` y el jugador legacy asociado.
+
+Respuesta 200 (ejemplo)
+```json
+{
+  "uid": "firebase-uid",
+  "displayName": "Perfil API",
+  "email": "perfil@test.com",
+  "emailVerified": true,
+  "authProvider": "correo",
+  "photoUrl": null,
+  "photoThumbUrl": null,
+  "createdAt": "2026-03-09T12:00:00.000Z",
+  "lastSeenAt": "2026-03-09T12:00:00.000Z",
+  "role": "usuario",
+  "permissions": {
+    "personajes": { "create": true },
+    "conjuros": { "create": false }
+  }
+}
+```
+
+Errores esperados
+- `401`: `UNAUTHORIZED`, `TOKEN_INVALID`.
+- `409`: `PROFILE_EMAIL_REQUIRED`, `LEGACY_PLAYER_CONFLICT`.
+- `500`: error interno o configuración inválida de Firebase.
+
+Endpoint: PATCH /usuarios/me
+Descripcion: Actualiza exclusivamente `displayName` del usuario autenticado y sincroniza `jugadores.nombre`.
+
+Body (`application/json`)
+```json
+{
+  "displayName": "Nuevo nombre"
+}
+```
+
+Errores esperados
+- `400`: `PROFILE_NAME_INVALID`, `PROFILE_NAME_TOO_LONG`.
+- `401`: `UNAUTHORIZED`, `TOKEN_INVALID`.
+- `403`: `PROFILE_READ_ONLY_FOR_BANNED`.
+- `409`: `LEGACY_PLAYER_CONFLICT`.
+
+Endpoint: GET /usuarios/me/settings
+Descripcion: Devuelve el documento de settings V1 del usuario autenticado. Si no existe, la API genera el default y lo persiste.
+
+Endpoint: PUT /usuarios/me/settings
+Descripcion: Reemplaza por completo el documento de settings V1.
+
+Shape V1
+```json
+{
+  "version": 1,
+  "nuevo_personaje": {
+    "generador_config": {
+      "minimoSeleccionado": 0,
+      "tablasPermitidas": 0,
+      "updatedAt": 0
+    },
+    "preview_minimizada": {
+      "version": 1,
+      "side": "right",
+      "top": 0,
+      "updatedAt": 0
+    },
+    "preview_restaurada": {
+      "version": 1,
+      "left": 0,
+      "top": 0,
+      "width": 0,
+      "height": 0,
+      "updatedAt": 0
+    }
+  },
+  "perfil": {
+    "visibilidadPorDefectoPersonajes": false,
+    "mostrarPerfilPublico": true
+  }
+}
+```
+
+Notas de contrato
+- `nuevo_personaje.preview_minimizada` puede ser `null` si el usuario no tiene layout minimizado guardado.
+- `nuevo_personaje.preview_restaurada` puede ser `null` si el usuario no tiene layout restaurado guardado.
+
+Errores esperados
+- `400`: `SETTINGS_INVALID`, `SETTINGS_VERSION_UNSUPPORTED`.
+- `401`: `UNAUTHORIZED`, `TOKEN_INVALID`.
+- `403`: `PROFILE_READ_ONLY_FOR_BANNED`.
+- `409`: `LEGACY_PLAYER_CONFLICT`.
+
+Endpoint: POST /usuarios/me/avatar
+Descripcion: Sube o reemplaza el avatar del usuario autenticado. Acepta `image/jpeg`, `image/png` o `image/webp`, máximo `5 MB`, y re-encodea a `webp`.
+
+Respuesta 200 (ejemplo)
+```json
+{
+  "photoUrl": "http://127.0.0.1:5000/media/avatars/firebase-uid/original-aaaaaaaaaaaa.webp",
+  "photoThumbUrl": "http://127.0.0.1:5000/media/avatars/firebase-uid/thumb-aaaaaaaaaaaa.webp"
+}
+```
+
+Endpoint: DELETE /usuarios/me/avatar
+Descripcion: Elimina el avatar del usuario autenticado. Es idempotente y responde `204`.
+
+Errores esperados
+- `400`: `AVATAR_FILE_TOO_LARGE`, `AVATAR_FILE_TYPE_INVALID`, `AVATAR_IMAGE_INVALID`.
+- `401`: `UNAUTHORIZED`, `TOKEN_INVALID`.
+- `403`: `PROFILE_READ_ONLY_FOR_BANNED`.
+- `409`: `LEGACY_PLAYER_CONFLICT`.
+
+Endpoint: GET /usuarios/<uid>/public
+Descripcion: Recupera el perfil público mínimo por `FirebaseUid`. Si el usuario no existe o `perfil.mostrarPerfilPublico=false`, devuelve el mismo `404`.
+
+Respuesta 200 (ejemplo)
+```json
+{
+  "uid": "firebase-uid",
+  "displayName": "Perfil API",
+  "photoThumbUrl": "http://127.0.0.1:5000/media/avatars/firebase-uid/thumb-aaaaaaaaaaaa.webp",
+  "memberSince": "2026-03-09T12:00:00.000Z",
+  "stats": {
+    "totalPersonajes": 2,
+    "publicos": 1
+  }
+}
+```
+
+Errores esperados
+- `404`: `PUBLIC_PROFILE_NOT_FOUND`.
+
+Endpoint: GET /media/avatars/<uid>/<filename>
+Descripcion: Sirve el fichero público del avatar en formato `image/webp`. Solo admite nombres internos generados por la API (`original-<token>.webp`, `thumb-<token>.webp`).
+
+Nota de alcance
+- En esta iteración no existe `POST /usuarios/me/password`; el frontend debe usar Firebase Client SDK para reautenticar y cambiar contraseña.
+
 Endpoint: GET /personajes
 Respuesta: array de `PersonajeDetalle`
 
@@ -257,6 +403,7 @@ PersonajeDetalle
 | i | number | Id del personaje |
 | n | string | Nombre |
 | ownerUid | string/null | Firebase UID del creador (AppUser relacionado) |
+| ownerDisplayName | string/null | Nombre visible del creador. Se expone aunque el perfil publico esté oculto |
 | id_region | number | Id de region de origen (`0` = Sin región) |
 | dcp | string | Descripcion de personalidad |
 | dh | string | Descripcion de historia |
@@ -353,6 +500,7 @@ PersonajeSimplificado
 | i | number | Id del personaje |
 | n | string | Nombre |
 | ownerUid | string/null | Firebase UID del creador (AppUser relacionado) |
+| ownerDisplayName | string/null | Nombre visible del creador. Se expone aunque el perfil publico esté oculto |
 | id_region | number | Id de region de origen (`0` = Sin región) |
 | r | object | `RazaSimplificada` |
 | c | string | Lista serializada "Clase Nivel" separada por `, ` |

@@ -463,7 +463,7 @@ export class AdminUsersService {
         const displayNameBase = `${profileRaw?.displayName ?? ''}`.trim();
         const displayName = this.truncate(
             displayNameBase.length > 0 ? displayNameBase : this.fallbackDisplayName(email, uidNormalizado),
-            20
+            150
         );
 
         const payload: UsuarioUpsertRequestDto = {
@@ -587,7 +587,7 @@ export class AdminUsersService {
 
         const uidNormalizado = `${uid ?? ''}`.trim();
         if (uidNormalizado.length > 0)
-            return uidNormalizado.substring(0, Math.min(uidNormalizado.length, 20));
+            return uidNormalizado.substring(0, Math.min(uidNormalizado.length, 150));
 
         return 'Usuario';
     }

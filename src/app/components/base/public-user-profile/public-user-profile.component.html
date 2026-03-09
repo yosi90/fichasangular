@@ -1,0 +1,33 @@
+<div class="public-profile-shell tw-p-4">
+    <div *ngIf="loading" class="public-profile-state sombra-caja-sm tw-rounded-md tw-p-6">
+        Cargando perfil público...
+    </div>
+
+    <div *ngIf="!loading && errorMessage.length > 0" class="public-profile-state sombra-caja-sm tw-rounded-md tw-p-6">
+        {{errorMessage}}
+    </div>
+
+    <section class="public-profile-card sombra-caja-sm tw-rounded-md" *ngIf="!loading && profile">
+        <div class="public-profile-layout">
+            <div class="public-profile-avatar">
+                <img [src]="avatarUrl" alt="Avatar público del creador" />
+            </div>
+            <div class="public-profile-copy">
+                <div class="public-profile-tag">Perfil público del creador</div>
+                <h2 class="public-profile-title">{{profileLabel}}</h2>
+                <p class="public-profile-subtitle">Miembro desde {{formattedMemberSince}}</p>
+
+                <div class="public-profile-stats">
+                    <div class="public-profile-stat">
+                        <strong>{{profile.stats.totalPersonajes}}</strong>
+                        <span>Personajes totales</span>
+                    </div>
+                    <div class="public-profile-stat">
+                        <strong>{{profile.stats.publicos}}</strong>
+                        <span>Personajes públicos</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+</div>

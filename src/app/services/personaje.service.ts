@@ -102,6 +102,11 @@ export class PersonajeService {
                     Id: id,
                     Nombre: snapshot.child('Nombre').val(),
                     ownerUid: toNullableText(snapshot.child('ownerUid').val() ?? snapshot.child('uid').val()),
+                    ownerDisplayName: toNullableText(
+                        snapshot.child('ownerDisplayName').val()
+                        ?? snapshot.child('owner_display_name').val()
+                        ?? snapshot.child('odn').val()
+                    ),
                     visible_otros_usuarios: toBoolean(snapshot.child('visible_otros_usuarios').val()),
                     Id_region: idRegion,
                     Region: {
@@ -1239,6 +1244,7 @@ export class PersonajeService {
                     return this.escribirRutaFirebase(`Personajes/${element.i}`, {
                         Nombre: element.n,
                         ownerUid: extractOwnerUid(element),
+                        ownerDisplayName: extractOwnerDisplayName(element),
                         visible_otros_usuarios: toBoolean(element.visible_otros_usuarios),
                         Id_region: idRegion,
                         Region: {
@@ -1410,6 +1416,17 @@ function extractOwnerUid(value: any): string | null {
         ?? value.owneruid
         ?? value.owner_uid
         ?? value.uid
+    );
+}
+
+function extractOwnerDisplayName(value: any): string | null {
+    if (!value || typeof value !== 'object')
+        return null;
+
+    return toNullableText(
+        value.ownerDisplayName
+        ?? value.owner_display_name
+        ?? value.odn
     );
 }
 
