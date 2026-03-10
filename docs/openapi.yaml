@@ -4,7 +4,10 @@ info:
   version: 1.0.0
   description: |
     Documentacion OpenAPI del backend Flask.
-    Fecha: 2026-02-23.
+    Fecha: 2026-03-10.
+    Modelo actual de campañas:
+    - CampaignRoleCode: master | jugador
+    - MembershipStatusCode: activo | inactivo | expulsado
 servers:
   - url: http://127.0.0.1:5000
     description: Local
@@ -67,6 +70,13 @@ paths:
     get:
       tags: [usuarios]
       summary: Lista de usuarios para admin panel
+      parameters:
+        - name: Authorization
+          in: header
+          required: true
+          schema:
+            type: string
+          description: Bearer token de Firebase.
       responses:
         '200':
           description: Lista de usuarios
@@ -76,6 +86,18 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/UsuarioListadoItem'
+        '401':
+          description: Token ausente o inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileErrorResponse'
+        '403':
+          description: Usuario baneado o sin rol admin
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '500':
           description: Error interno
           content:
@@ -84,7 +106,14 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
     post:
       tags: [usuarios]
-      summary: Crear o actualizar usuario (upsert) con replica legacy
+      summary: Crear o actualizar usuario (upsert) con ACL sobre AppUser
+      parameters:
+        - name: Authorization
+          in: header
+          required: true
+          schema:
+            type: string
+          description: Bearer token de Firebase.
       requestBody:
         required: true
         content:
@@ -110,8 +139,14 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-        '409':
-          description: Conflicto de datos legacy
+        '401':
+          description: Token ausente o inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileErrorResponse'
+        '403':
+          description: Usuario baneado o sin rol admin
           content:
             application/json:
               schema:
@@ -129,20 +164,15 @@ paths:
       summary: Descarga backup SQL completo en ZIP (solo admin)
       description: |
         Genera un ZIP en memoria con scripts SQL de insercion para todas las tablas
-        de usuario de la base `rol`. El admin puede identificarse con `uid` por query
-        string o con `X-User-Uid` por header. Si ambos se envian y no coinciden,
-        la API responde `400`.
+        de usuario de la base `rol`. Requiere `Authorization: Bearer <id_token>`
+        de Firebase con rol `admin`.
       parameters:
-        - name: uid
-          in: query
-          required: false
-          schema:
-            type: string
-        - name: X-User-Uid
+        - name: Authorization
           in: header
-          required: false
+          required: true
           schema:
             type: string
+          description: Bearer token de Firebase.
       responses:
         '200':
           description: ZIP con los scripts SQL del backup
@@ -156,20 +186,14 @@ paths:
               schema:
                 type: string
                 format: binary
-        '400':
-          description: `uid` ausente o conflicto entre query y header
+        '401':
+          description: Token ausente o inválido
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: '#/components/schemas/ProfileErrorResponse'
         '403':
           description: Usuario baneado o sin rol admin
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '404':
-          description: Usuario no encontrado
           content:
             application/json:
               schema:
@@ -186,6 +210,12 @@ paths:
       tags: [usuarios]
       summary: ACL bootstrap por Firebase UID
       parameters:
+        - name: Authorization
+          in: header
+          required: true
+          schema:
+            type: string
+          description: Bearer token de Firebase.
         - name: uid
           in: path
           required: true
@@ -198,6 +228,18 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/UsuarioAclResponse'
+        '401':
+          description: Token ausente o inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileErrorResponse'
+        '403':
+          description: Usuario baneado o sin rol admin
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '404':
           description: Usuario no encontrado
           content:
@@ -236,7 +278,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ProfileErrorResponse'
         '409':
-          description: Conflicto de sincronización legacy
+          description: Perfil autenticado sin email utilizable
           content:
             application/json:
               schema:
@@ -288,7 +330,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ProfileErrorResponse'
         '409':
-          description: Conflicto de sincronización legacy
+          description: Perfil autenticado sin email utilizable
           content:
             application/json:
               schema:
@@ -324,7 +366,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ProfileErrorResponse'
         '409':
-          description: Conflicto de sincronización legacy
+          description: Perfil autenticado sin email utilizable
           content:
             application/json:
               schema:
@@ -376,7 +418,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ProfileErrorResponse'
         '409':
-          description: Conflicto de sincronización legacy
+          description: Perfil autenticado sin email utilizable
           content:
             application/json:
               schema:
@@ -435,7 +477,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ProfileErrorResponse'
         '409':
-          description: Conflicto de sincronización legacy
+          description: Perfil autenticado sin email utilizable
           content:
             application/json:
               schema:
@@ -471,11 +513,317 @@ paths:
               schema:
                 $ref: '#/components/schemas/ProfileErrorResponse'
         '409':
-          description: Conflicto de sincronización legacy
+          description: Perfil autenticado sin email utilizable
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ProfileErrorResponse'
+        '500':
+          description: Error interno
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileErrorResponse'
+
+  /usuarios/me/role-request:
+    get:
+      tags: [usuarios]
+      summary: Estado actual de la solicitud de rol del usuario autenticado
+      parameters:
+        - name: Authorization
+          in: header
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Estado actual
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserRequestStatusResponse'
+        '401':
+          description: Token ausente o inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileErrorResponse'
+        '500':
+          description: Error interno
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    post:
+      tags: [usuarios]
+      summary: Crear solicitud de rol del usuario autenticado
+      parameters:
+        - name: Authorization
+          in: header
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserRequestCreateRequest'
+      responses:
+        '201':
+          description: Solicitud creada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserRequestCreateResponse'
+        '400':
+          description: Solicitud inválida
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Token ausente o inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileErrorResponse'
+        '403':
+          description: Usuario no elegible
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Ya existe una pendiente, bloqueo vigente o solicitud obsoleta
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /usuarios/me/master-request:
+    get:
+      tags: [usuarios]
+      summary: Alias temporal del estado de solicitud a master
+      parameters:
+        - name: Authorization
+          in: header
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Estado actual
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserRequestStatusResponse'
+    post:
+      tags: [usuarios]
+      summary: Alias temporal para crear solicitud a master
+      parameters:
+        - name: Authorization
+          in: header
+          required: true
+          schema:
+            type: string
+      responses:
+        '201':
+          description: Solicitud creada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserRequestCreateResponse'
+
+  /usuarios/role-requests:
+    get:
+      tags: [usuarios]
+      summary: Listado admin de solicitudes de rol
+      parameters:
+        - name: Authorization
+          in: header
+          required: true
+          schema:
+            type: string
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [pending, approved, rejected]
+            default: pending
+        - name: requestedRole
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [master, colaborador]
+      responses:
+        '200':
+          description: Solicitudes encontradas
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/UserRequestListItem'
+        '400':
+          description: Parámetros inválidos
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Solo admins
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Token ausente o inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileErrorResponse'
+
+  /usuarios/master-requests:
+    get:
+      tags: [usuarios]
+      summary: Alias admin filtrado a solicitudes de master
+      parameters:
+        - name: Authorization
+          in: header
+          required: true
+          schema:
+            type: string
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [pending, approved, rejected]
+            default: pending
+      responses:
+        '200':
+          description: Solicitudes encontradas
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/UserRequestListItem'
+        '400':
+          description: Parámetros inválidos
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Solo admins
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Token ausente o inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileErrorResponse'
+
+  /usuarios/role-requests/{request_id}:
+    patch:
+      tags: [usuarios]
+      summary: Resolver una solicitud de rol
+      parameters:
+        - name: request_id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: Authorization
+          in: header
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserRequestResolveRequest'
+      responses:
+        '200':
+          description: Solicitud resuelta
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserRequestCreateResponse'
+        '400':
+          description: Body inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Solo admins
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Token ausente o inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileErrorResponse'
+        '404':
+          description: Solicitud no encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Solicitud obsoleta o ya resuelta
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /usuarios/search:
+    get:
+      tags: [usuarios]
+      summary: Búsqueda pública básica de usuarios
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+            minLength: 2
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 10
+            minimum: 1
+            maximum: 20
+      responses:
+        '200':
+          description: Resultados de búsqueda
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/UsuarioSearchResult'
+        '400':
+          description: Parámetros inválidos
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '500':
           description: Error interno
           content:
@@ -542,7 +890,13 @@ paths:
   /personajes:
     get:
       tags: [personajes]
-      summary: Lista detallada de personajes
+      summary: Lista detallada de personajes visible para el actor
+      parameters:
+        - name: Authorization
+          in: header
+          required: true
+          schema:
+            type: string
       responses:
         '200':
           description: Lista de personajes
@@ -558,11 +912,76 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Token ausente o inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileErrorResponse'
+        '403':
+          description: Usuario baneado o sin acceso al recurso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: AppUser no encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /personajes/{id_personaje}:
+    get:
+      tags: [personajes]
+      summary: Detalle de personaje visible para el actor
+      parameters:
+        - in: path
+          name: id_personaje
+          required: true
+          schema:
+            type: integer
+        - name: Authorization
+          in: header
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Personaje visible para el actor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PersonajeDetalle'
+        '403':
+          description: El actor no puede ver este personaje
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Personaje inexistente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Token ausente o inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileErrorResponse'
 
   /personajes/simplificados:
     get:
       tags: [personajes]
-      summary: Lista simplificada de personajes
+      summary: Lista simplificada de personajes visible para el actor
+      parameters:
+        - name: Authorization
+          in: header
+          required: true
+          schema:
+            type: string
       responses:
         '200':
           description: Lista simplificada
@@ -572,12 +991,36 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/PersonajeSimplificado'
+        '401':
+          description: Token ausente o inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileErrorResponse'
+        '403':
+          description: Usuario baneado o sin acceso al recurso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: AppUser no encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 
   /personajes/add:
     post:
       tags: [personajes]
       summary: Crear personaje
-      description: Crea un personaje completo y lo vincula al jugador legacy asociado al AppUser.
+      description: Crea un personaje completo y lo vincula al AppUser mediante personajes.OwnerUserId.
+      parameters:
+        - name: Authorization
+          in: header
+          required: true
+          schema:
+            type: string
       requestBody:
         required: true
         content:
@@ -609,12 +1052,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-        '409':
-          description: AppUser sin jugador legacy sincronizado
+        '401':
+          description: Token ausente o inválido
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: '#/components/schemas/ProfileErrorResponse'
         '500':
           description: Error interno
           content:
@@ -632,6 +1075,11 @@ paths:
           required: true
           schema:
             type: integer
+        - name: Authorization
+          in: header
+          required: true
+          schema:
+            type: string
       requestBody:
         required: true
         content:
@@ -663,12 +1111,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-        '409':
-          description: Usuario sin jugador legacy sincronizado
+        '401':
+          description: Token ausente o inválido
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: '#/components/schemas/ProfileErrorResponse'
         '500':
           description: Error interno
           content:
@@ -778,7 +1226,13 @@ paths:
   /campanas:
     get:
       tags: [campanas]
-      summary: Lista de campanas
+      summary: Lista de campañas visibles para el actor
+      parameters:
+        - name: Authorization
+          in: header
+          required: true
+          schema:
+            type: string
       responses:
         '200':
           description: Lista de campanas
@@ -787,16 +1241,407 @@ paths:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/IdNombre'
+                  $ref: '#/components/schemas/CampanaVisibleItem'
+        '401':
+          description: Token ausente o inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileErrorResponse'
+        '403':
+          description: Usuario baneado o sin acceso al recurso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: AppUser no encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    post:
+      tags: [campanas]
+      summary: Crear campana
+      parameters:
+        - name: Authorization
+          in: header
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CampanaCreateRequest'
+      responses:
+        '201':
+          description: Campana creada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CampanaCreateResponse'
+        '400':
+          description: Error de validacion
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Sin permiso para crear campanas
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Usuario no encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Token ausente o inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileErrorResponse'
+        '500':
+          description: Error interno
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 
   /campanas/add:
     post:
       tags: [campanas]
-      summary: Crear campana
-      description: Endpoint definido en rutas, no implementado en controller.
+      summary: Alias legacy para crear campana
+      description: Mismo contrato que POST /campanas.
+      parameters:
+        - name: Authorization
+          in: header
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CampanaCreateRequest'
       responses:
-        '501':
-          description: No implementado
+        '201':
+          description: Campana creada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CampanaCreateResponse'
+
+  /campanas/{id_campana}:
+    patch:
+      tags: [campanas]
+      summary: Editar campana
+      parameters:
+        - name: id_campana
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: Authorization
+          in: header
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CampanaUpdateRequest'
+      responses:
+        '200':
+          description: Campana actualizada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CampanaUpdateResponse'
+        '400':
+          description: Error de validacion
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Sin permisos sobre la campana
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Campana o usuario no encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Token ausente o inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileErrorResponse'
+        '500':
+          description: Error interno
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /campanas/{id_campana}/jugadores:
+    get:
+      tags: [campanas]
+      summary: Listar miembros de campana
+      parameters:
+        - name: id_campana
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: Authorization
+          in: header
+          required: true
+          schema:
+            type: string
+        - name: includeInactive
+          in: query
+          required: false
+          schema:
+            type: boolean
+      responses:
+        '200':
+          description: Miembros de la campana
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CampanaMemberItem'
+        '400':
+          description: Error de validacion del actor o query params
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Sin acceso a la campana
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Token ausente o inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileErrorResponse'
+        '404':
+          description: AppUser o campaña no encontrados
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error interno
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    post:
+      tags: [campanas]
+      summary: Añadir jugador a campana
+      parameters:
+        - name: id_campana
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: Authorization
+          in: header
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CampanaAddJugadorRequest'
+      responses:
+        '201':
+          description: Jugador añadido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CampanaAddJugadorResponse'
+        '400':
+          description: Error de validacion
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Sin permisos sobre la campana
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Campana o usuario no encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Token ausente o inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileErrorResponse'
+        '500':
+          description: Error interno
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /campanas/{id_campana}/jugadores/{target_uid}:
+    delete:
+      tags: [campanas]
+      summary: Retirar jugador de campana
+      parameters:
+        - name: id_campana
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: target_uid
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: Authorization
+          in: header
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CampanaRemoveJugadorRequest'
+      responses:
+        '200':
+          description: Jugador retirado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CampanaRemoveJugadorResponse'
+        '400':
+          description: Error de validacion o intento de eliminar al master
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Sin permisos sobre la campana
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Campana o usuario no encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Token ausente o inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileErrorResponse'
+        '500':
+          description: Error interno
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /campanas/{id_campana}/master:
+    patch:
+      tags: [campanas]
+      summary: Transferir master de campana
+      parameters:
+        - name: id_campana
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: Authorization
+          in: header
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CampanaTransferMasterRequest'
+      responses:
+        '200':
+          description: Master transferido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CampanaTransferMasterResponse'
+        '400':
+          description: Error de validacion
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Sin permisos sobre la campana
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Campana o usuario no encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Campana sin master actual
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Token ausente o inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileErrorResponse'
+        '500':
+          description: Error interno
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 
   /tramas:
     get:
@@ -810,7 +1655,7 @@ paths:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/IdNombre'
+                  $ref: '#/components/schemas/TramaResumen'
 
   /tramas/campana/{id_campana}:
     get:
@@ -831,15 +1676,147 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/IdNombre'
+    post:
+      tags: [tramas]
+      summary: Crear trama en campana
+      parameters:
+        - name: id_campana
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: Authorization
+          in: header
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NombreConUidRequest'
+      responses:
+        '201':
+          description: Trama creada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TramaMutationResponse'
+        '400':
+          description: Error de validacion
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Sin permisos sobre la campana
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Campana o usuario no encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Token ausente o inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileErrorResponse'
+        '500':
+          description: Error interno
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 
   /tramas/add:
     post:
       tags: [tramas]
-      summary: Crear trama
-      description: Endpoint definido en rutas, no implementado en controller.
+      summary: Alias legacy para crear trama
+      description: Mismo contrato que POST /tramas/campana/{id_campana}, pero enviando idCampana en el body.
+      parameters:
+        - name: Authorization
+          in: header
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TramaCreateLegacyRequest'
       responses:
-        '501':
-          description: No implementado
+        '201':
+          description: Trama creada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TramaMutationResponse'
+
+  /tramas/{id_trama}:
+    patch:
+      tags: [tramas]
+      summary: Editar trama
+      parameters:
+        - name: id_trama
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: Authorization
+          in: header
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NombreConUidRequest'
+      responses:
+        '200':
+          description: Trama actualizada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TramaMutationResponse'
+        '400':
+          description: Error de validacion
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Sin permisos sobre la campana
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Trama o usuario no encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Token ausente o inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileErrorResponse'
+        '500':
+          description: Error interno
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 
   /subtramas:
     get:
@@ -853,7 +1830,7 @@ paths:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/IdNombre'
+                  $ref: '#/components/schemas/SubtramaResumen'
 
   /subtramas/trama/{id_trama}:
     get:
@@ -874,15 +1851,147 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/IdNombre'
+    post:
+      tags: [subtramas]
+      summary: Crear subtrama en trama
+      parameters:
+        - name: id_trama
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: Authorization
+          in: header
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NombreConUidRequest'
+      responses:
+        '201':
+          description: Subtrama creada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubtramaMutationResponse'
+        '400':
+          description: Error de validacion
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Sin permisos sobre la campana
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Trama o usuario no encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Token ausente o inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileErrorResponse'
+        '500':
+          description: Error interno
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 
   /subtramas/add:
     post:
       tags: [subtramas]
-      summary: Crear subtrama
-      description: Endpoint definido en rutas, no implementado en controller.
+      summary: Alias legacy para crear subtrama
+      description: Mismo contrato que POST /subtramas/trama/{id_trama}, pero enviando idTrama en el body.
+      parameters:
+        - name: Authorization
+          in: header
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SubtramaCreateLegacyRequest'
       responses:
-        '501':
-          description: No implementado
+        '201':
+          description: Subtrama creada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubtramaMutationResponse'
+
+  /subtramas/{id_subtrama}:
+    patch:
+      tags: [subtramas]
+      summary: Editar subtrama
+      parameters:
+        - name: id_subtrama
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: Authorization
+          in: header
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NombreConUidRequest'
+      responses:
+        '200':
+          description: Subtrama actualizada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubtramaMutationResponse'
+        '400':
+          description: Error de validacion
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Sin permisos sobre la campana
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Subtrama o usuario no encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Token ausente o inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileErrorResponse'
+        '500':
+          description: Error interno
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 
   /manuales:
     get:
@@ -927,7 +2036,7 @@ paths:
       description: |
         Actualiza parcialmente las flags de contenido del manual.
         Solo admite cambios sobre dotes, conjuros, plantillas, monstruos, razas, clases, tipos y subtipos.
-        No permite modificar `id`, `nombre` ni `oficial`.
+        No permite modificar id, nombre ni oficial.
       parameters:
         - name: id_manual
           in: path
@@ -2275,7 +3384,7 @@ components:
         photoThumbUrl: { type: string, nullable: true }
         createdAt: { type: string, nullable: true }
         lastSeenAt: { type: string, nullable: true }
-        role: { type: string, enum: [usuario, colaborador, admin] }
+        role: { type: string, enum: [jugador, master, colaborador, admin] }
         permissions:
           $ref: '#/components/schemas/ProfilePermissionsMap'
       required:
@@ -2444,12 +3553,24 @@ components:
         idRegion:
           type: integer
           minimum: 0
-          description: Id de region de origen (`0` = Sin region).
+          description: Id de region de origen (0 = Sin region).
         visible_otros_usuarios: { type: boolean, default: false }
         oficial: { type: boolean }
-        campana: { $ref: '#/components/schemas/StoryEntityRef' }
-        trama: { $ref: '#/components/schemas/StoryEntityRef' }
-        subtrama: { $ref: '#/components/schemas/StoryEntityRef' }
+        campana:
+          allOf:
+            - $ref: '#/components/schemas/StoryEntityRef'
+          nullable: true
+          description: Omitir canónicamente para crear un personaje sin campaña. Se acepta `null` por compatibilidad.
+        trama:
+          allOf:
+            - $ref: '#/components/schemas/StoryEntityRef'
+          nullable: true
+          description: Omitir canónicamente para crear un personaje sin historia. Se acepta `null` por compatibilidad.
+        subtrama:
+          allOf:
+            - $ref: '#/components/schemas/StoryEntityRef'
+          nullable: true
+          description: Omitir canónicamente para crear un personaje sin historia. Se acepta `null` por compatibilidad.
       required: [nombre, ataqueBase, idRaza, idTipoCriatura, idRegion]
       additionalProperties: true
 
@@ -2493,9 +3614,9 @@ components:
       properties:
         message: { type: string }
         idPersonaje: { type: integer }
-        idJugador: { type: integer }
+        ownerUserId: { type: string, format: uuid }
         uid: { type: string }
-      required: [message, idPersonaje, idJugador, uid]
+      required: [message, idPersonaje, ownerUserId, uid]
 
     DoteCreateDote:
       type: object
@@ -2743,7 +3864,7 @@ components:
       type: object
       description: |
         Admite una o varias flags de contenido del manual.
-        Cada flag acepta boolean (`true`/`false`), entero (`1`/`0`) o string equivalente (`si`, `sí`, `no`, `true`, `false`, `yes`, `1`, `0`).
+        Cada flag acepta boolean (true/false), entero (1/0) o string equivalente (si, sí, no, true, false, yes, 1, 0).
       properties:
         Incluye_dotes:
           oneOf:
@@ -2855,7 +3976,7 @@ components:
       type: object
       properties:
         uid: { type: string }
-        role: { type: string, enum: [usuario, colaborador, admin] }
+        role: { type: string, enum: [jugador, master, colaborador, admin] }
         admin: { type: boolean }
         banned: { type: boolean }
         permissionsCreate:
@@ -2872,7 +3993,7 @@ components:
         displayName: { type: string, nullable: true }
         email: { type: string, nullable: true }
         authProvider: { type: string, enum: [correo, google, otro] }
-        role: { type: string, enum: [usuario, colaborador, admin] }
+        role: { type: string, enum: [jugador, master, colaborador, admin] }
         admin: { type: boolean }
         banned: { type: boolean }
         updatedAtUtc: { type: string, format: date-time, nullable: true }
@@ -2890,28 +4011,29 @@ components:
         - banned
         - permissionsCreate
 
+    UsuarioSearchResult:
+      type: object
+      properties:
+        uid: { type: string }
+        displayName: { type: string, nullable: true }
+        photoThumbUrl: { type: string, nullable: true }
+      required: [uid, displayName, photoThumbUrl]
+
     UsuarioUpsertRequest:
       type: object
       properties:
         uid: { type: string }
         firebaseUid: { type: string }
         displayName: { type: string, maxLength: 150 }
-        email: { type: string, maxLength: 60 }
+        email: { type: string, maxLength: 320 }
         authProvider: { type: string, enum: [correo, google, otro], default: correo }
-        actorUserId: { type: string, format: uuid }
-        role: { type: string, enum: [usuario, colaborador, admin] }
+        role: { type: string, enum: [jugador, master, colaborador, admin] }
         banned: { type: boolean }
         permissionsCreate:
           type: array
           items:
             $ref: '#/components/schemas/UsuarioPermissionCreate'
       required: [displayName, email]
-
-    UsuarioLegacyPlayer:
-      type: object
-      properties:
-        idJugador: { type: integer }
-      required: [idJugador]
 
     UsuarioUpsertResponse:
       type: object
@@ -2921,9 +4043,81 @@ components:
         uid: { type: string }
         acl:
           $ref: '#/components/schemas/UsuarioAclResponse'
-        legacyPlayer:
-          $ref: '#/components/schemas/UsuarioLegacyPlayer'
-      required: [status, userId, uid, acl, legacyPlayer]
+      required: [status, userId, uid, acl]
+
+    UserRequestCreateRequest:
+      type: object
+      properties:
+        requestedRole:
+          type: string
+          enum: [master, colaborador]
+      required: [requestedRole]
+
+    UserRequestStatusResponse:
+      type: object
+      properties:
+        currentRole: { type: string, enum: [jugador, master, colaborador, admin] }
+        requestedRole: { type: string, enum: [master, colaborador], nullable: true }
+        status: { type: string, enum: [none, pending, approved, rejected] }
+        blockedUntilUtc: { type: string, format: date-time, nullable: true }
+        requestId: { type: integer, nullable: true }
+        requestedAtUtc: { type: string, format: date-time, nullable: true }
+        resolvedAtUtc: { type: string, format: date-time, nullable: true }
+        eligible: { type: boolean }
+        reasonCode: { type: string, nullable: true }
+        currentRoleAtRequest: { type: string, enum: [jugador, master], nullable: true }
+        adminComment: { type: string, nullable: true }
+      required: [currentRole, status, eligible]
+
+    UserRequestItem:
+      type: object
+      properties:
+        requestId: { type: integer }
+        userId: { type: string, format: uuid }
+        status: { type: string, enum: [pending, approved, rejected] }
+        requestedRole: { type: string, enum: [master, colaborador] }
+        currentRoleAtRequest: { type: string, enum: [jugador, master] }
+        requestedAtUtc: { type: string, format: date-time, nullable: true }
+        requestedByUserId: { type: string, format: uuid, nullable: true }
+        resolvedAtUtc: { type: string, format: date-time, nullable: true }
+        resolvedByUserId: { type: string, format: uuid, nullable: true }
+        blockedUntilUtc: { type: string, format: date-time, nullable: true }
+        adminComment: { type: string, nullable: true }
+      required: [requestId, userId, status, requestedRole, currentRoleAtRequest]
+
+    UserRequestListItem:
+      allOf:
+        - $ref: '#/components/schemas/UserRequestItem'
+        - type: object
+          properties:
+            uid: { type: string }
+            displayName: { type: string, nullable: true }
+            email: { type: string, nullable: true }
+            currentRole: { type: string, enum: [jugador, master, colaborador, admin] }
+          required: [uid, currentRole]
+
+    UserRequestCreateResponse:
+      type: object
+      properties:
+        message: { type: string }
+        request:
+          $ref: '#/components/schemas/UserRequestItem'
+      required: [message, request]
+
+    UserRequestResolveRequest:
+      type: object
+      properties:
+        decision:
+          type: string
+          enum: [approve, reject]
+        blockedUntilUtc:
+          type: string
+          format: date-time
+          nullable: true
+        adminComment:
+          type: string
+          nullable: true
+      required: [decision]
 
     IdNombre:
       type: object
@@ -2933,6 +4127,201 @@ components:
         n:
           type: string
       required: [i, n]
+
+    UidOnlyRequest:
+      type: object
+      properties:
+        uid: { type: string }
+        firebaseUid: { type: string }
+      oneOf:
+        - required: [uid]
+        - required: [firebaseUid]
+
+    NombreConUidRequest:
+      type: object
+      properties:
+        uid: { type: string }
+        firebaseUid: { type: string }
+        nombre: { type: string, maxLength: 100 }
+      required: [nombre]
+      oneOf:
+        - required: [uid]
+        - required: [firebaseUid]
+
+    CampanaCreateRequest:
+      type: object
+      properties:
+        uid: { type: string }
+        firebaseUid: { type: string }
+        nombre: { type: string, maxLength: 100 }
+      required: [nombre]
+      oneOf:
+        - required: [uid]
+        - required: [firebaseUid]
+
+    CampanaCreateResponse:
+      type: object
+      properties:
+        message: { type: string }
+        idCampana: { type: integer }
+        nombre: { type: string }
+        masterUid: { type: string }
+      required: [message, idCampana, nombre, masterUid]
+
+    CampanaVisibleItem:
+      allOf:
+        - $ref: '#/components/schemas/IdNombre'
+        - type: object
+          properties:
+            campaignRole:
+              type: string
+              enum: [master, jugador]
+              nullable: true
+            membershipStatus:
+              type: string
+              enum: [activo, inactivo, expulsado]
+              nullable: true
+
+    CampanaUpdateRequest:
+      allOf:
+        - $ref: '#/components/schemas/NombreConUidRequest'
+
+    CampanaUpdateResponse:
+      type: object
+      properties:
+        message: { type: string }
+        idCampana: { type: integer }
+        nombre: { type: string }
+      required: [message, idCampana, nombre]
+
+    CampanaAddJugadorRequest:
+      type: object
+      properties:
+        uid: { type: string }
+        firebaseUid: { type: string }
+        targetUid: { type: string }
+      required: [targetUid]
+      oneOf:
+        - required: [uid]
+        - required: [firebaseUid]
+
+    CampanaRemoveJugadorRequest:
+      type: object
+      properties:
+        uid: { type: string }
+        firebaseUid: { type: string }
+        status: { type: string, enum: [inactivo, expulsado], default: expulsado }
+        memberStatus: { type: string, enum: [inactivo, expulsado] }
+      oneOf:
+        - required: [uid]
+        - required: [firebaseUid]
+
+    CampanaAddJugadorResponse:
+      type: object
+      properties:
+        message: { type: string }
+        idCampana: { type: integer }
+        targetUid: { type: string }
+        campaignRole: { type: string, enum: [jugador] }
+        membershipStatus: { type: string, enum: [activo] }
+      required: [message, idCampana, targetUid, campaignRole, membershipStatus]
+
+    CampanaMemberItem:
+      type: object
+      properties:
+        userId: { type: string, format: uuid }
+        uid: { type: string }
+        displayName: { type: string, nullable: true }
+        email: { type: string, nullable: true }
+        campaignRole: { type: string, enum: [master, jugador] }
+        membershipStatus: { type: string, enum: [activo, inactivo, expulsado] }
+        isActive: { type: boolean }
+        addedAtUtc: { type: string, format: date-time, nullable: true }
+        addedByUserId: { type: string, format: uuid, nullable: true }
+      required: [userId, uid, campaignRole, membershipStatus, isActive]
+
+    CampanaRemoveJugadorResponse:
+      type: object
+      properties:
+        message: { type: string }
+        idCampana: { type: integer }
+        targetUid: { type: string }
+        campaignRole: { type: string, enum: [jugador] }
+        membershipStatus: { type: string, enum: [inactivo, expulsado] }
+      required: [message, idCampana, targetUid, campaignRole, membershipStatus]
+
+    CampanaTransferMasterRequest:
+      type: object
+      properties:
+        uid: { type: string }
+        firebaseUid: { type: string }
+        targetUid: { type: string }
+        keepPreviousAsPlayer: { type: boolean, default: true }
+      required: [targetUid]
+      oneOf:
+        - required: [uid]
+        - required: [firebaseUid]
+
+    CampanaTransferMasterResponse:
+      type: object
+      properties:
+        message: { type: string }
+        idCampana: { type: integer }
+        newMasterUid: { type: string }
+        previousMasterDisposition: { type: string, enum: [jugador, inactivo] }
+      required: [message, idCampana, newMasterUid, previousMasterDisposition]
+
+    TramaResumen:
+      allOf:
+        - $ref: '#/components/schemas/IdNombre'
+        - type: object
+          properties:
+            idCampana: { type: integer }
+          required: [idCampana]
+
+    TramaCreateLegacyRequest:
+      allOf:
+        - $ref: '#/components/schemas/NombreConUidRequest'
+        - type: object
+          properties:
+            idCampana: { type: integer }
+            id_campana: { type: integer }
+            id_campaña: { type: integer }
+
+    TramaMutationResponse:
+      type: object
+      properties:
+        message: { type: string }
+        idTrama: { type: integer }
+        idCampana: { type: integer }
+        nombre: { type: string }
+      required: [message, idTrama, idCampana, nombre]
+
+    SubtramaResumen:
+      allOf:
+        - $ref: '#/components/schemas/IdNombre'
+        - type: object
+          properties:
+            idTrama: { type: integer }
+          required: [idTrama]
+
+    SubtramaCreateLegacyRequest:
+      allOf:
+        - $ref: '#/components/schemas/NombreConUidRequest'
+        - type: object
+          properties:
+            idTrama: { type: integer }
+            id_trama: { type: integer }
+
+    SubtramaMutationResponse:
+      type: object
+      properties:
+        message: { type: string }
+        idSubtrama: { type: integer }
+        idTrama: { type: integer }
+        idCampana: { type: integer }
+        nombre: { type: string }
+      required: [message, idSubtrama, idTrama, idCampana, nombre]
 
     ManualDetalle:
       type: object
@@ -4176,7 +5565,7 @@ components:
         ownerDisplayName: { type: string, nullable: true }
         id_region:
           type: integer
-          description: Id de region de origen (`0` = Sin region).
+          description: Id de region de origen (0 = Sin region).
         r:
           $ref: '#/components/schemas/RazaSimplificada'
         c: { type: string }
@@ -4197,7 +5586,7 @@ components:
         ownerDisplayName: { type: string, nullable: true }
         id_region:
           type: integer
-          description: Id de region de origen (`0` = Sin region).
+          description: Id de region de origen (0 = Sin region).
         dcp: { type: string }
         dh: { type: string }
         a: { type: integer }

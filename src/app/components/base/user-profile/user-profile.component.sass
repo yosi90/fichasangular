@@ -244,6 +244,13 @@
 .profile-panel--security
     max-width: 42rem
 
+.profile-panel--role-request
+    margin-top: .25rem
+
+.profile-role-request__status
+    margin: 0
+    line-height: 1.5
+
 .profile-panel__header
     h2
         margin: 0
@@ -274,6 +281,143 @@
 .profile-panel__hint
     margin: 0
     color: rgba(245, 247, 255, .68)
+
+.profile-panel__hint--error
+    color: rgba(255, 144, 144, .92)
+
+.campaigns-layout-grid,
+.campaign-detail-grid
+    display: grid
+    grid-template-columns: repeat(2, minmax(0, 1fr))
+    gap: 1rem
+
+.campaign-block,
+.campaign-detail-panel,
+.campaign-card
+    min-width: 0
+
+.campaign-detail-panel
+    gap: 1.25rem
+
+.campaign-detail-panel__header
+    align-items: center
+
+.campaign-create-form,
+.campaign-inline-form
+    display: flex
+    flex-wrap: wrap
+    gap: .75rem
+    align-items: center
+
+.campaign-inline-form--full
+    width: 100%
+
+.campaign-text-input
+    flex: 1 1 14rem
+    min-height: 2.8rem
+    padding: .75rem .9rem
+    border-radius: .85rem
+    border: 1px solid rgba(173, 189, 196, .22)
+    background: rgba(255, 255, 255, .04)
+    color: #f5f7ff
+
+    &::placeholder
+        color: rgba(245, 247, 255, .42)
+
+    &:disabled
+        opacity: .7
+
+.campaign-list,
+.campaign-member-list,
+.campaign-trama-list,
+.campaign-subtrama-list,
+.campaign-search-results
+    display: flex
+    flex-direction: column
+    gap: .75rem
+
+.campaign-list__item,
+.campaign-search-results__item
+    display: flex
+    flex-direction: column
+    align-items: flex-start
+    gap: .25rem
+    width: 100%
+    padding: .85rem .95rem
+    border-radius: .9rem
+    border: 1px solid rgba(173, 189, 196, .16)
+    background: rgba(255, 255, 255, .03)
+    color: #f5f7ff
+    text-align: left
+    cursor: pointer
+    transition: transform .2s ease, border-color .2s ease, background-color .2s ease
+
+    span
+        color: rgba(245, 247, 255, .65)
+        word-break: break-word
+
+    &:hover
+        transform: translateY(-1px)
+        border-color: rgba(194, 24, 91, .38)
+        background: rgba(255, 255, 255, .06)
+
+.campaign-list__item--active
+    border-color: rgba(194, 24, 91, .72)
+    background: rgba(194, 24, 91, .14)
+
+.campaign-card
+    padding: 1rem
+    border-radius: 1rem
+    background: rgba(255, 255, 255, .03)
+    border: 1px solid rgba(255, 255, 255, .08)
+
+.campaign-checkbox
+    display: inline-flex
+    align-items: center
+    gap: .65rem
+    color: #f5f7ff
+
+    input
+        accent-color: $active
+
+.campaign-member-row,
+.campaign-subtrama-row,
+.campaign-trama-item__header
+    display: flex
+    align-items: center
+    justify-content: space-between
+    gap: .85rem
+
+.campaign-member-row
+    padding: .85rem .95rem
+    border-radius: .9rem
+    background: rgba(255, 255, 255, .03)
+    border: 1px solid rgba(255, 255, 255, .06)
+
+.campaign-member-row__copy,
+.campaign-subtrama-row__copy
+    display: flex
+    flex-direction: column
+    gap: .2rem
+    min-width: 0
+
+    span
+        color: rgba(245, 247, 255, .65)
+        word-break: break-word
+
+.campaign-trama-item
+    display: flex
+    flex-direction: column
+    gap: .85rem
+    padding: .95rem
+    border-radius: .95rem
+    background: rgba(0, 0, 0, .1)
+    border: 1px solid rgba(255, 255, 255, .05)
+
+.campaign-transfer-selection
+    display: flex
+    flex-direction: column
+    gap: .75rem
 
 .profile-field
     width: 100%
@@ -343,7 +487,9 @@
         flex: 1 1 12rem
 
     .profile-summary__hero,
-    .profile-two-column
+    .profile-two-column,
+    .campaigns-layout-grid,
+    .campaign-detail-grid
         grid-template-columns: 1fr
 
     .profile-main
@@ -359,3 +505,10 @@
 
     .profile-section__header h1
         font-size: 1.6rem
+
+    .campaign-member-row,
+    .campaign-subtrama-row,
+    .campaign-trama-item__header,
+    .campaign-inline-form
+        flex-direction: column
+        align-items: stretch

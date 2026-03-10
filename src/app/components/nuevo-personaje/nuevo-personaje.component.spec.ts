@@ -655,7 +655,7 @@ describe('NuevoPersonajeComponent', () => {
             crearPersonajeApiDesdeCreacion: jasmine.createSpy('crearPersonajeApiDesdeCreacion').and.resolveTo({
                 message: 'ok',
                 idPersonaje: 123,
-                idJugador: 10,
+                ownerUserId: '00000000-0000-0000-0000-000000000010',
                 uid: 'uid-1',
             }),
             guardarPersonajeEnFirebase: jasmine.createSpy('guardarPersonajeEnFirebase').and.resolveTo(),
@@ -3931,7 +3931,7 @@ describe('NuevoPersonajeComponent', () => {
         personajeSvcMock.crearPersonajeApiDesdeCreacion.and.resolveTo({
             message: 'ok',
             idPersonaje: 456,
-            idJugador: 9,
+            ownerUserId: '00000000-0000-0000-0000-000000000009',
             uid: 'uid-1',
         });
         personajeSvcMock.guardarPersonajeEnFirebase.and.returnValues(

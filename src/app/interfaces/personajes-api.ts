@@ -1,7 +1,7 @@
 export interface PersonajeContextoIdsDto {
-    idCampana: number;
-    idTrama: number;
-    idSubtrama: number;
+    idCampana?: number | null;
+    idTrama?: number | null;
+    idSubtrama?: number | null;
     idRegion?: number | null;
     idAlineamiento?: number | null;
     idDeidad?: number | null;
@@ -109,9 +109,9 @@ export interface PersonajeCreateRequestDto {
         idRazaBase?: number | null;
         idTipoCriatura: number;
         idRegion: number;
-        campana: { id: number; };
-        trama: { id: number; };
-        subtrama: { id: number; };
+        campana?: { id: number; } | null;
+        trama?: { id: number; } | null;
+        subtrama?: { id: number; } | null;
         descripcionPersonalidad?: string;
         descripcionHistoria?: string;
         armaduraNatural?: number;
@@ -161,6 +161,6 @@ export interface PersonajeCreateRequestDto {
 export interface PersonajeCreateResponseDto {
     message: string;
     idPersonaje: number;
-    idJugador: number;
+    ownerUserId: string;
     uid: string;
 }

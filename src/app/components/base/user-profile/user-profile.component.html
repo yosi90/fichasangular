@@ -72,14 +72,384 @@
                             </article>
                             <article class="profile-stat-card">
                                 <span class="profile-stat-card__label">Rol</span>
-                                <strong>{{profile?.role || 'usuario'}}</strong>
+                                <strong>{{profile?.role || 'jugador'}}</strong>
                             </article>
                             <article class="profile-stat-card">
                                 <span class="profile-stat-card__label">Permisos create</span>
                                 <strong>{{permisosResumen}}</strong>
                             </article>
                         </div>
+
+                        <article class="profile-panel profile-panel--role-request">
+                            <div class="profile-panel__header">
+                                <h2>Solicitud de rol</h2>
+                                <p>Pide acceso a funciones de master para crear y gestionar tus campañas.</p>
+                            </div>
+
+                            <p class="profile-panel__hint" *ngIf="roleRequestLoading">Cargando estado de la solicitud...</p>
+
+                            <ng-container *ngIf="!roleRequestLoading">
+                                <p class="profile-role-request__status">{{roleRequestStatusLabel}}</p>
+                                <p class="profile-panel__hint" *ngIf="roleRequestAdminComment.length > 0">
+                                    Comentario del admin: {{roleRequestAdminComment}}
+                                </p>
+
+                                <div class="profile-action-row" *ngIf="canRequestMaster">
+                                    <button mat-raised-button color="primary" (click)="solicitarMaster()" [disabled]="roleRequestSubmitting">
+                                        {{roleRequestSubmitting ? 'Enviando...' : 'Solicitar ser master'}}
+                                    </button>
+                                </div>
+                            </ng-container>
+                        </article>
                     </div>
+                </section>
+
+                <section class="profile-section" *ngIf="currentSection === 'campanas'">
+                    <div class="profile-section__header">
+                        <div>
+                            <p class="profile-section__eyebrow">Campañas</p>
+                            <h1>Gestión de campañas</h1>
+                            <p class="profile-section__subtitle">Crea campañas, gestiona jugadores y organiza tramas y subtramas sin salir de tu perfil.</p>
+                        </div>
+                    </div>
+
+                    <div class="campaigns-layout-grid">
+                        <article class="profile-panel campaign-block">
+                            <div class="profile-panel__header">
+                                <h2>Mis campañas como master</h2>
+                                <p>Campañas que puedes administrar directamente.</p>
+                            </div>
+
+                            <div class="campaign-create-form" *ngIf="canCreateCampaign">
+                                <input
+                                    class="campaign-text-input"
+                                    type="text"
+                                    placeholder="Nombre de la nueva campaña"
+                                    [(ngModel)]="campaignCreateDraft"
+                                    [disabled]="campaignCreateSaving" />
+                                <button mat-raised-button color="primary" (click)="crearCampana()" [disabled]="campaignCreateSaving">
+                                    {{campaignCreateSaving ? 'Creando...' : 'Crear campaña'}}
+                                </button>
+                            </div>
+
+                            <p class="profile-panel__hint" *ngIf="!canCreateCampaign">
+                                Ahora mismo no tienes permiso para crear campañas nuevas.
+                            </p>
+
+                            <p class="profile-panel__hint" *ngIf="campaignsLoading">Cargando campañas...</p>
+                            <p class="profile-panel__hint profile-panel__hint--error" *ngIf="campaignsErrorMessage.length > 0">
+                                {{campaignsErrorMessage}}
+                            </p>
+                            <p class="profile-panel__hint" *ngIf="!campaignsLoading && masterCampaigns.length < 1 && campaignsErrorMessage.length < 1">
+                                No tienes campañas como master todavía.
+                            </p>
+
+                            <div class="campaign-list" *ngIf="masterCampaigns.length > 0">
+                                <button
+                                    type="button"
+                                    class="campaign-list__item"
+                                    *ngFor="let campaign of masterCampaigns; trackBy: trackByCampaignId"
+                                    [class.campaign-list__item--active]="isCampaignSelected(campaign.id)"
+                                    (click)="seleccionarCampana(campaign.id)">
+                                    <strong>{{campaign.nombre}}</strong>
+                                    <span>{{getCampaignRoleLabel(campaign.campaignRole)}} · {{getMembershipStatusLabel(campaign.membershipStatus)}}</span>
+                                </button>
+                            </div>
+                        </article>
+
+                        <article class="profile-panel campaign-block">
+                            <div class="profile-panel__header">
+                                <h2>Campañas donde participo</h2>
+                                <p>Vista de solo lectura de campañas donde eres jugador.</p>
+                            </div>
+
+                            <p class="profile-panel__hint" *ngIf="campaignsLoading">Cargando campañas...</p>
+                            <p class="profile-panel__hint" *ngIf="!campaignsLoading && participantCampaigns.length < 1">
+                                No participas en campañas ajenas ahora mismo.
+                            </p>
+
+                            <div class="campaign-list" *ngIf="participantCampaigns.length > 0">
+                                <button
+                                    type="button"
+                                    class="campaign-list__item"
+                                    *ngFor="let campaign of participantCampaigns; trackBy: trackByCampaignId"
+                                    [class.campaign-list__item--active]="isCampaignSelected(campaign.id)"
+                                    (click)="seleccionarCampana(campaign.id)">
+                                    <strong>{{campaign.nombre}}</strong>
+                                    <span>{{getCampaignRoleLabel(campaign.campaignRole)}} · {{getMembershipStatusLabel(campaign.membershipStatus)}}</span>
+                                </button>
+                            </div>
+                        </article>
+                    </div>
+
+                    <article class="profile-panel campaign-detail-panel" *ngIf="selectedCampaignSummary">
+                        <div class="profile-panel__header campaign-detail-panel__header">
+                            <div>
+                                <h2>{{selectedCampaignSummary?.nombre}}</h2>
+                                <p>Rol en campaña: {{getCampaignRoleLabel(selectedCampaignSummary?.campaignRole || 'jugador')}}. Estado: {{getMembershipStatusLabel(selectedCampaignSummary?.membershipStatus || 'activo')}}.</p>
+                            </div>
+                            <span class="profile-pill" *ngIf="selectedCampaignCanManage">Modo gestión</span>
+                            <span class="profile-pill" *ngIf="!selectedCampaignCanManage">Solo lectura</span>
+                        </div>
+
+                        <p class="profile-panel__hint" *ngIf="selectedCampaignLoading">Cargando detalle de campaña...</p>
+                        <p class="profile-panel__hint profile-panel__hint--error" *ngIf="selectedCampaignErrorMessage.length > 0">
+                            {{selectedCampaignErrorMessage}}
+                        </p>
+
+                        <ng-container *ngIf="!selectedCampaignLoading && selectedCampaignDetail">
+                            <div class="campaign-detail-grid">
+                                <article class="campaign-card">
+                                    <div class="profile-panel__header">
+                                        <h3>Campaña</h3>
+                                        <p>Nombre y contexto general.</p>
+                                    </div>
+
+                                    <div class="campaign-inline-form" *ngIf="selectedCampaignCanManage">
+                                        <input
+                                            class="campaign-text-input"
+                                            type="text"
+                                            placeholder="Nombre de campaña"
+                                            [(ngModel)]="campaignRenameDraft"
+                                            [disabled]="campaignRenameSaving" />
+                                        <button mat-raised-button color="primary" (click)="guardarNombreCampana()" [disabled]="campaignRenameSaving">
+                                            {{campaignRenameSaving ? 'Guardando...' : 'Guardar nombre'}}
+                                        </button>
+                                    </div>
+
+                                    <p class="profile-panel__hint" *ngIf="!selectedCampaignCanManage">
+                                        {{selectedCampaignSummary?.nombre}}
+                                    </p>
+                                    <p class="profile-panel__hint" *ngIf="selectedCampaignMaster">
+                                        Master actual: {{getUserDisplayLabel(selectedCampaignMaster?.displayName, selectedCampaignMaster?.email, selectedCampaignMaster?.uid || '')}}
+                                    </p>
+                                </article>
+
+                                <article class="campaign-card" *ngIf="selectedCampaignCanManage">
+                                    <div class="profile-panel__header">
+                                        <h3>Transferir master</h3>
+                                        <p>Cede la campaña y decide si el master saliente sigue como jugador.</p>
+                                    </div>
+
+                                    <input
+                                        class="campaign-text-input"
+                                        type="text"
+                                        placeholder="Buscar usuario por nombre o uid"
+                                        [(ngModel)]="transferSearchQuery"
+                                        (ngModelChange)="onTransferSearchQueryChange()"
+                                        [disabled]="transferSaving" />
+
+                                    <label class="campaign-checkbox">
+                                        <input type="checkbox" [(ngModel)]="keepPreviousMasterAsPlayer" [disabled]="transferSaving" />
+                                        <span>Mantener al master saliente como jugador</span>
+                                    </label>
+
+                                    <p class="profile-panel__hint" *ngIf="transferSearchLoading">Buscando usuarios...</p>
+                                    <p class="profile-panel__hint profile-panel__hint--error" *ngIf="transferSearchErrorMessage.length > 0">
+                                        {{transferSearchErrorMessage}}
+                                    </p>
+
+                                    <div class="campaign-search-results" *ngIf="transferSearchResults.length > 0">
+                                        <button
+                                            type="button"
+                                            class="campaign-search-results__item"
+                                            *ngFor="let result of transferSearchResults; trackBy: trackByUserUid"
+                                            (click)="seleccionarNuevoMaster(result)">
+                                            <strong>{{getUserDisplayLabel(result.displayName, null, result.uid)}}</strong>
+                                            <span>{{result.uid}}</span>
+                                        </button>
+                                    </div>
+
+                                    <div class="campaign-transfer-selection" *ngIf="transferSelectedUser">
+                                        <p class="profile-panel__hint">
+                                            Nuevo master: {{getUserDisplayLabel(transferSelectedUser?.displayName, null, transferSelectedUser?.uid || '')}}
+                                        </p>
+                                        <div class="profile-action-row">
+                                            <button mat-raised-button color="primary" (click)="transferirMaster()" [disabled]="transferSaving">
+                                                {{transferSaving ? 'Transfiriendo...' : 'Transferir master'}}
+                                            </button>
+                                            <button mat-stroked-button color="accent" (click)="limpiarNuevoMaster()" [disabled]="transferSaving">
+                                                Cambiar selección
+                                            </button>
+                                        </div>
+                                    </div>
+                                </article>
+                            </div>
+
+                            <div class="campaign-detail-grid">
+                                <article class="campaign-card">
+                                    <div class="profile-panel__header">
+                                        <h3>Jugadores</h3>
+                                        <p>Miembros activos y, si quieres, histórico de inactivos o expulsados.</p>
+                                    </div>
+
+                                    <label class="campaign-checkbox">
+                                        <input
+                                            type="checkbox"
+                                            [checked]="selectedCampaignDetail.includeInactiveMembers"
+                                            (change)="cambiarHistorialMiembros($any($event.target).checked)" />
+                                        <span>Mostrar historial de miembros</span>
+                                    </label>
+
+                                    <div class="campaign-inline-form" *ngIf="selectedCampaignCanManage">
+                                        <input
+                                            class="campaign-text-input"
+                                            type="text"
+                                            placeholder="Buscar usuario para añadir"
+                                            [(ngModel)]="memberSearchQuery"
+                                            (ngModelChange)="onMemberSearchQueryChange()" />
+                                    </div>
+
+                                    <p class="profile-panel__hint" *ngIf="memberSearchLoading">Buscando usuarios...</p>
+                                    <p class="profile-panel__hint profile-panel__hint--error" *ngIf="memberSearchErrorMessage.length > 0">
+                                        {{memberSearchErrorMessage}}
+                                    </p>
+
+                                    <div class="campaign-search-results" *ngIf="selectedCampaignCanManage && memberSearchResults.length > 0">
+                                        <button
+                                            type="button"
+                                            class="campaign-search-results__item"
+                                            *ngFor="let result of memberSearchResults; trackBy: trackByUserUid"
+                                            (click)="agregarJugador(result)"
+                                            [disabled]="isAddingMember(result.uid)">
+                                            <strong>{{getUserDisplayLabel(result.displayName, null, result.uid)}}</strong>
+                                            <span>{{isAddingMember(result.uid) ? 'Añadiendo...' : result.uid}}</span>
+                                        </button>
+                                    </div>
+
+                                    <div class="campaign-member-list" *ngIf="selectedCampaignMembers.length > 0">
+                                        <div class="campaign-member-row" *ngFor="let member of selectedCampaignMembers; trackBy: trackByMemberUid">
+                                            <div class="campaign-member-row__copy">
+                                                <strong>{{getUserDisplayLabel(member.displayName, member.email, member.uid)}}</strong>
+                                                <span>{{member.uid}}</span>
+                                                <span>{{getCampaignRoleLabel(member.campaignRole)}} · {{getMembershipStatusLabel(member.membershipStatus)}}</span>
+                                                <span *ngIf="member.addedAtUtc">Alta: {{formatOptionalDateTime(member.addedAtUtc)}}</span>
+                                            </div>
+                                            <button
+                                                mat-stroked-button
+                                                color="warn"
+                                                *ngIf="selectedCampaignCanManage && member.campaignRole !== 'master'"
+                                                (click)="retirarJugador(member)"
+                                                [disabled]="isRemovingMember(member.uid)">
+                                                {{isRemovingMember(member.uid) ? 'Aplicando...' : 'Quitar'}}
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <p class="profile-panel__hint" *ngIf="selectedCampaignMembers.length < 1">
+                                        No hay miembros visibles para esta campaña.
+                                    </p>
+                                </article>
+
+                                <article class="campaign-card">
+                                    <div class="profile-panel__header">
+                                        <h3>Tramas y subtramas</h3>
+                                        <p>Estructura narrativa de la campaña seleccionada.</p>
+                                    </div>
+
+                                    <div class="campaign-inline-form" *ngIf="selectedCampaignCanManage">
+                                        <input
+                                            class="campaign-text-input"
+                                            type="text"
+                                            placeholder="Nueva trama"
+                                            [(ngModel)]="tramaCreateDraft"
+                                            [disabled]="tramaCreateSaving" />
+                                        <button mat-raised-button color="primary" (click)="crearTrama()" [disabled]="tramaCreateSaving">
+                                            {{tramaCreateSaving ? 'Creando...' : 'Crear trama'}}
+                                        </button>
+                                    </div>
+
+                                    <div class="campaign-trama-list" *ngIf="selectedCampaignTramas.length > 0">
+                                        <article class="campaign-trama-item" *ngFor="let trama of selectedCampaignTramas; trackBy: trackByTramaId">
+                                            <div class="campaign-trama-item__header">
+                                                <ng-container *ngIf="!isEditingTrama(trama.id); else editarTrama">
+                                                    <strong>{{trama.nombre}}</strong>
+                                                    <button
+                                                        mat-stroked-button
+                                                        color="accent"
+                                                        *ngIf="selectedCampaignCanManage"
+                                                        (click)="iniciarEdicionTrama(trama)">
+                                                        Editar
+                                                    </button>
+                                                </ng-container>
+                                                <ng-template #editarTrama>
+                                                    <div class="campaign-inline-form">
+                                                        <input
+                                                            class="campaign-text-input"
+                                                            type="text"
+                                                            [(ngModel)]="editingTramaDraft"
+                                                            [disabled]="isSavingTrama(trama.id)" />
+                                                        <button mat-raised-button color="primary" (click)="guardarEdicionTrama()" [disabled]="isSavingTrama(trama.id)">
+                                                            {{isSavingTrama(trama.id) ? 'Guardando...' : 'Guardar'}}
+                                                        </button>
+                                                        <button mat-stroked-button color="accent" (click)="cancelarEdicionTrama()" [disabled]="isSavingTrama(trama.id)">
+                                                            Cancelar
+                                                        </button>
+                                                    </div>
+                                                </ng-template>
+                                            </div>
+
+                                            <div class="campaign-subtrama-list" *ngIf="trama.subtramas.length > 0">
+                                                <div class="campaign-subtrama-row" *ngFor="let subtrama of trama.subtramas; trackBy: trackBySubtramaId">
+                                                    <ng-container *ngIf="!isEditingSubtrama(subtrama.id); else editarSubtrama">
+                                                        <div class="campaign-subtrama-row__copy">
+                                                            <span>{{subtrama.nombre}}</span>
+                                                        </div>
+                                                        <button
+                                                            mat-stroked-button
+                                                            color="accent"
+                                                            *ngIf="selectedCampaignCanManage"
+                                                            (click)="iniciarEdicionSubtrama(subtrama)">
+                                                            Editar
+                                                        </button>
+                                                    </ng-container>
+                                                    <ng-template #editarSubtrama>
+                                                        <div class="campaign-inline-form campaign-inline-form--full">
+                                                            <input
+                                                                class="campaign-text-input"
+                                                                type="text"
+                                                                [(ngModel)]="editingSubtramaDraft"
+                                                                [disabled]="isSavingSubtrama(subtrama.id)" />
+                                                            <button mat-raised-button color="primary" (click)="guardarEdicionSubtrama()" [disabled]="isSavingSubtrama(subtrama.id)">
+                                                                {{isSavingSubtrama(subtrama.id) ? 'Guardando...' : 'Guardar'}}
+                                                            </button>
+                                                            <button mat-stroked-button color="accent" (click)="cancelarEdicionSubtrama()" [disabled]="isSavingSubtrama(subtrama.id)">
+                                                                Cancelar
+                                                            </button>
+                                                        </div>
+                                                    </ng-template>
+                                                </div>
+                                            </div>
+
+                                            <div class="campaign-inline-form" *ngIf="selectedCampaignCanManage">
+                                                <input
+                                                    class="campaign-text-input"
+                                                    type="text"
+                                                    placeholder="Nueva subtrama"
+                                                    [ngModel]="subtramaCreateDraftByTrama[trama.id] || ''"
+                                                    (ngModelChange)="actualizarNuevaSubtrama(trama.id, $event)"
+                                                    [disabled]="subtramaCreateSavingTramaId === trama.id" />
+                                                <button mat-raised-button color="primary" (click)="crearSubtrama(trama.id)" [disabled]="subtramaCreateSavingTramaId === trama.id">
+                                                    {{subtramaCreateSavingTramaId === trama.id ? 'Creando...' : 'Crear subtrama'}}
+                                                </button>
+                                            </div>
+                                        </article>
+                                    </div>
+
+                                    <p class="profile-panel__hint" *ngIf="selectedCampaignTramas.length < 1">
+                                        Esta campaña no tiene tramas todavía.
+                                    </p>
+                                </article>
+                            </div>
+                        </ng-container>
+                    </article>
+
+                    <article class="profile-panel" *ngIf="!selectedCampaignSummary && !campaignsLoading && campaignsErrorMessage.length < 1">
+                        <div class="profile-panel__header">
+                            <h2>Sin campañas visibles</h2>
+                            <p>Cuando crees una campaña o te añadan a una, aparecerá aquí.</p>
+                        </div>
+                    </article>
                 </section>
 
                 <section class="profile-section" *ngIf="currentSection === 'identidad'">

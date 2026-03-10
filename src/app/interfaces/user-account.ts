@@ -61,10 +61,17 @@ export interface UserPublicProfileTab {
     initialDisplayName?: string | null;
 }
 
-export type UserPrivateProfileSectionId = 'resumen' | 'identidad' | 'preferencias' | 'seguridad';
+export type UserPrivateProfileSectionId = 'resumen' | 'campanas' | 'identidad' | 'preferencias' | 'seguridad';
+export type AdminPanelSectionId = 'usuarios' | 'role-requests';
 
 export interface UserPrivateProfileOpenRequest {
     section: UserPrivateProfileSectionId;
+    requestId: number;
+}
+
+export interface AdminPanelOpenRequest {
+    section: AdminPanelSectionId;
+    pendingOnly?: boolean;
     requestId: number;
 }
 

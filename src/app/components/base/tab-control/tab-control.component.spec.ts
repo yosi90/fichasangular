@@ -28,7 +28,7 @@ function crearComponente(overrides?: { pSvc?: any; }): TabControlComponent {
     const userProfileNavSvc = {
         privateProfileOpen$: new Subject<any>(),
         publicProfileOpen$: new Subject<any>(),
-        adminPanelOpen$: new Subject<void>(),
+        adminPanelOpen$: new Subject<any>(),
         roadmapOpen$: new Subject<void>(),
         legalPrivacyOpen$: new Subject<void>(),
         usageAboutOpen$: new Subject<void>(),
@@ -389,6 +389,20 @@ describe('TabControlComponent navegación por origen', () => {
 
         expect(component.adminPanelTabOpen).toBeFalse();
         expect((component as any).activeTabKey).toBe('base:personajes');
+    }));
+
+    it('propaga el openRequest del panel admin cuando se abre enfocado en pendientes', fakeAsync(() => {
+        const component = crearComponente();
+        component.usrPerm = 1;
+
+        component.abrirPanelAdministracion({ section: 'role-requests', pendingOnly: true, requestId: 91 });
+        tick(120);
+
+        expect(component.adminPanelOpenRequest).toEqual({
+            section: 'role-requests',
+            pendingOnly: true,
+            requestId: 91,
+        });
     }));
 
     it('cerrar admin panel vuelve a la pestaña origen', fakeAsync(() => {

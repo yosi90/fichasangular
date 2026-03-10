@@ -93,12 +93,11 @@ class AdminUsersServiceTestDouble extends AdminUsersService {
             uid,
             acl: {
                 uid,
-                role: (payload.role ?? 'usuario'),
+                role: (payload.role ?? 'jugador'),
                 admin: payload.role === 'admin',
                 banned: payload.banned === true,
                 permissionsCreate: payload.permissionsCreate ?? [],
             },
-            legacyPlayer: { idJugador: 0 },
         };
     }
 
@@ -127,7 +126,7 @@ describe('AdminUsersService', () => {
             displayName: partial.displayName ?? 'Nombre',
             email: partial.email ?? 'mail@test.com',
             authProvider: partial.authProvider ?? 'correo',
-            role: partial.role ?? 'usuario',
+            role: partial.role ?? 'jugador',
             admin: partial.admin ?? (partial.role === 'admin'),
             banned: partial.banned ?? false,
             updatedAtUtc: partial.updatedAtUtc ?? null,
@@ -308,7 +307,7 @@ describe('AdminUsersService', () => {
         });
     });
 
-    it('impide permisos avanzados en rol usuario', async () => {
+    it('permite revocar personajes.create en un jugador', async () => {
         const service = new AdminUsersServiceTestDouble({ currentUser: { uid: 'admin-1' } as any });
         service.seedPath('Acl/users', {
             'admin-1': {
@@ -317,14 +316,16 @@ describe('AdminUsersService', () => {
                 permissions: { personajes: { create: true } },
             },
             'user-2': {
-                roles: { admin: false, type: 'usuario' },
+                roles: { admin: false, type: 'jugador' },
                 status: { banned: false },
                 permissions: { personajes: { create: true } },
             },
         });
 
-        await expectAsync(service.setCreatePermission('user-2', 'dotes', true))
-            .toBeRejectedWithError('El rol usuario no admite permisos adicionales');
+        await service.setCreatePermission('user-2', 'personajes', false);
+
+        const aclSet = service.setCalls.find((call) => call.path === 'Acl/users/user-2');
+        expect(aclSet?.payload?.permissions?.personajes?.create).toBeFalse();
     });
 
     it('activa salvaguarda cuando detecta duplicados en Firebase', async () => {
@@ -404,7 +405,7 @@ describe('AdminUsersService', () => {
                 permissions: { personajes: { create: true } },
             },
             'u2': {
-                roles: { admin: false, type: 'usuario' },
+                roles: { admin: false, type: 'jugador' },
                 status: { banned: false },
                 permissions: { personajes: { create: true } },
             },
@@ -433,6 +434,62 @@ describe('AdminUsersService', () => {
         expect(result.failedUids).toEqual(['u2']);
         expect(service.upsertCalls.length).toBe(1);
         expect(service.upsertCalls[0].uid).toBe('admin-1');
+    });
+
+    it('syncAllUsersToApiFromCache da personajes.create=true por defecto cuando no existe ACL previa', async () => {
+        const service = new AdminUsersServiceTestDouble({ currentUser: { uid: 'admin-1' } as any });
+        service.seedPath('Acl/users', {
+            'admin-1': {
+                roles: { admin: true, type: 'admin' },
+                status: { banned: false },
+                permissions: { personajes: { create: true } },
+            },
+        });
+        service.seedPath('UserProfiles', {
+            'admin-1': {
+                uid: 'admin-1',
+                displayName: 'Admin',
+                email: 'admin@test.com',
+                authProvider: 'correo',
+            },
+            'u3': {
+                uid: 'u3',
+                displayName: 'Jugador Nuevo',
+                email: 'u3@test.com',
+                authProvider: 'correo',
+            },
+        });
+
+        const result = await service.syncAllUsersToApiFromCache();
+
+        expect(result.failed).toBe(0);
+        const u3Payload = service.upsertCalls.find((item) => item.uid === 'u3');
+        expect(u3Payload?.role).toBe('jugador');
+        expect(u3Payload?.permissionsCreate?.find((item) => item.resource === 'personajes')?.allowed).toBeTrue();
+    });
+
+    it('mapea master desde API a cache RTDB y a filas del panel', async () => {
+        const service = new AdminUsersServiceTestDouble();
+        service.apiUsers = [
+            buildUser({
+                uid: 'u-master',
+                role: 'master',
+                permissionsCreate: [
+                    { resource: 'personajes', allowed: true },
+                    { resource: 'campanas', allowed: true },
+                ],
+            }),
+        ];
+
+        await service.syncUsersCacheFromApi();
+        const rows = await firstValueFrom(
+            service.watchUsersAdminView().pipe(filter((value) => value.some((row) => row.uid === 'u-master')))
+        );
+        const master = rows.find((row) => row.uid === 'u-master');
+
+        expect(master?.role).toBe('master');
+        expect(master?.permissions.personajes).toBeTrue();
+        expect(master?.permissions.campanas).toBeTrue();
     });
 
     it('downloadDatabaseBackup valida admin y delega en la API', async () => {

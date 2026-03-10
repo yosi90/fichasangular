@@ -1,5 +1,5 @@
 import { Component, EventEmitter, HostListener, Input, NgZone, OnDestroy, OnInit, Output, SimpleChanges, ViewChild } from '@angular/core';
-import { UserPrivateProfileOpenRequest, UserPrivateProfileSectionId, UserPublicProfileTab } from 'src/app/interfaces/user-account';
+import { AdminPanelOpenRequest, UserPrivateProfileOpenRequest, UserPrivateProfileSectionId, UserPublicProfileTab } from 'src/app/interfaces/user-account';
 import { UserService } from '../../../services/user.service';
 import { PersonajeService } from 'src/app/services/personaje.service';
 import { MatTabGroup } from '@angular/material/tabs';
@@ -69,6 +69,7 @@ export class TabControlComponent implements OnInit, OnDestroy {
     public privateProfileTabOpen = false;
     public privateProfileOpenRequest: UserPrivateProfileOpenRequest | null = null;
     public adminPanelTabOpen = false;
+    public adminPanelOpenRequest: AdminPanelOpenRequest | null = null;
     public roadmapTabOpen = false;
     public legalPrivacyTabOpen = false;
     public usageAboutTabOpen = false;
@@ -165,7 +166,7 @@ export class TabControlComponent implements OnInit, OnDestroy {
             .subscribe((request) => this.abrirPerfilPrivado(request));
         this.userProfileNavSvc?.adminPanelOpen$
             .pipe(takeUntil(this.destroy$))
-            .subscribe(() => this.abrirPanelAdministracion());
+            .subscribe((request) => this.abrirPanelAdministracion(request));
         this.userProfileNavSvc?.roadmapOpen$
             .pipe(takeUntil(this.destroy$))
             .subscribe(() => this.abrirRoadmap());
@@ -466,9 +467,10 @@ export class TabControlComponent implements OnInit, OnDestroy {
         });
     }
 
-    public abrirPanelAdministracion(): void {
+    public abrirPanelAdministracion(request?: AdminPanelOpenRequest | null): void {
         if (this.usrPerm !== 1)
             return;
+        this.adminPanelOpenRequest = this.buildAdminPanelOpenRequest(request);
         if (this.adminPanelTabOpen) {
             this.selectTabByKey(this.TAB_ADMIN, true);
             return;
@@ -484,6 +486,7 @@ export class TabControlComponent implements OnInit, OnDestroy {
 
         return this.closeTabWithNavigation(this.TAB_ADMIN, () => {
             this.adminPanelTabOpen = false;
+            this.adminPanelOpenRequest = null;
             return true;
         });
     }
@@ -523,6 +526,14 @@ export class TabControlComponent implements OnInit, OnDestroy {
             this.selectTabByKey(this.TAB_PERSONAJES, true);
         else if (!this.isTabKeyOpen(this.activeTabKey))
             this.selectTabByKey(this.TAB_PERSONAJES, true);
+    }
+
+    private buildAdminPanelOpenRequest(request?: AdminPanelOpenRequest | null): AdminPanelOpenRequest {
+        return {
+            section: request?.section ?? 'usuarios',
+            pendingOnly: request?.pendingOnly === true,
+            requestId: Number(request?.requestId) > 0 ? Number(request?.requestId) : Date.now(),
+        };
     }
 
     private cerrarPanelAdministracionPorPermisos(): void {

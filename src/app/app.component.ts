@@ -1,6 +1,7 @@
 import { Component, OnDestroy, OnInit } from '@angular/core';
 import { Observable, Subject, fromEvent, takeUntil } from 'rxjs';
 import Swal from 'sweetalert2';
+import { AdminRoleRequestNotifierService } from './services/admin-role-request-notifier.service';
 
 @Component({
     selector: 'app-root',
@@ -15,8 +16,11 @@ export class AppComponent implements OnInit, OnDestroy {
     width: number = typeof window !== 'undefined' ? window.innerWidth : 0;
     resize$: Observable<Event> = fromEvent(window, 'resize');
 
+    constructor(private adminRoleRequestNotifierSvc: AdminRoleRequestNotifierService) { }
+
     async ngOnInit(): Promise<void> {
         this.configurarSwalGlobal();
+        this.adminRoleRequestNotifierSvc.init();
         this.resize$
             .pipe(takeUntil(this.destroy$))
             .subscribe(() => {

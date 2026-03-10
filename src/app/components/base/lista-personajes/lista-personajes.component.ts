@@ -37,6 +37,7 @@ export class ListaPersonajesComponent implements OnInit, AfterViewInit {
     columnsToDisplay = ['Nombre', 'Clases', 'Raza', 'Visibilidad'];
     columnsToDisplayWithExpand = [...this.columnsToDisplay, 'expand'];
     expandedElement!: PersonajeSimple;
+    personajesCargados: boolean = false;
 
     constructor(
         private listaPjs: ListaPersonajesService,
@@ -52,12 +53,13 @@ export class ListaPersonajesComponent implements OnInit, AfterViewInit {
     async ngOnInit(): Promise<void> {
         (await this.listaPjs.getPersonajes()).subscribe(personajes => {
             this.Personajes = personajes;
+            this.personajesCargados = true;
             this.filtroPersonajes();
         });
         (await this.csrv.getListCampanas()).subscribe(campañas => {
             this.Campanas = campañas;
-            this.defaultCampana = this.Campanas[0].Nombre;
-            this.actualizarTramas(this.Campanas[0].Nombre);
+            this.defaultCampana = this.Campanas[0]?.Nombre ?? 'Sin campaña';
+            this.actualizarTramas(this.defaultCampana);
         });
     }
 
@@ -71,14 +73,32 @@ export class ListaPersonajesComponent implements OnInit, AfterViewInit {
     }
 
     actualizarTramas(value: string) {
-        this.Tramas = this.Campanas.filter(c => c.Nombre == value)[0].Tramas;
-        this.defaultTrama = this.Tramas[0].Nombre;
-        this.actualizarSubtramas(this.Tramas[0].Nombre);
+        if (value === 'Sin campaña') {
+            this.Tramas = [];
+            this.Subtramas = [];
+            this.defaultTrama = 'Trama base';
+            this.defaultSubtrama = 'Subtrama base';
+            this.filtroPersonajes();
+            return;
+        }
+
+        const campana = this.Campanas.find(c => c.Nombre == value);
+        this.Tramas = campana?.Tramas ?? [];
+        this.defaultTrama = this.Tramas[0]?.Nombre ?? 'Trama base';
+        this.actualizarSubtramas(this.defaultTrama);
     }
 
     actualizarSubtramas(value: string) {
-        this.Subtramas = this.Tramas.filter(t => t.Nombre == value)[0].Subtramas;
-        this.defaultSubtrama = this.Subtramas[0].Nombre;
+        if (this.defaultCampana === 'Sin campaña') {
+            this.Subtramas = [];
+            this.defaultSubtrama = 'Subtrama base';
+            this.filtroPersonajes();
+            return;
+        }
+
+        const trama = this.Tramas.find(t => t.Nombre == value);
+        this.Subtramas = trama?.Subtramas ?? [];
+        this.defaultSubtrama = this.Subtramas[0]?.Nombre ?? 'Subtrama base';
         this.filtroPersonajes();
     }
 
@@ -86,8 +106,7 @@ export class ListaPersonajesComponent implements OnInit, AfterViewInit {
         if (this.inputText) {
             const texto = this.normalizarTexto(this.inputText.nativeElement.value);
             const archivo = !(this.anuncioArchivo === 'Clic para mostar pjs archivados');
-            const pjFiltrados = this.Personajes.filter(pj => this.esVisibleParaUsuarioActual(pj)
-                && (texto === '' || this.coincideConTextoFiltro(pj, texto))
+            const pjFiltrados = this.Personajes.filter(pj => (texto === '' || this.coincideConTextoFiltro(pj, texto))
                 && (this.defaultCampana === undefined || this.defaultCampana === 'Sin campaña' || pj.Campana === this.defaultCampana)
                 && (this.defaultTrama === undefined || this.defaultTrama === 'Trama base' || pj.Trama === this.defaultTrama)
                 && (this.defaultSubtrama === undefined || this.defaultSubtrama === 'Subtrama base' || pj.Subtrama === this.defaultSubtrama)
@@ -186,21 +205,6 @@ export class ListaPersonajesComponent implements OnInit, AfterViewInit {
             || this.normalizarTexto(pj?.Campana).includes(texto)
             || this.normalizarTexto(pj?.Trama).includes(texto)
             || this.normalizarTexto(pj?.Subtrama).includes(texto);
-    }
-
-    private esVisibleParaUsuarioActual(pj: PersonajeSimple): boolean {
-        if (pj?.visible_otros_usuarios === true)
-            return true;
-
-        const ownerUid = `${pj?.ownerUid ?? ''}`.trim();
-        if (ownerUid.length < 1)
-            return false;
-
-        const uidActual = `${this.userSvc.CurrentUserUid ?? ''}`.trim();
-        if (uidActual.length < 1)
-            return false;
-
-        return ownerUid === uidActual;
     }
 
     private normalizarTexto(value: any): string {

@@ -1,7 +1,8 @@
 import { Injectable } from '@angular/core';
 import { PersonajeSimple } from '../../interfaces/simplificaciones/personaje-simple';
 import { Database, Unsubscribe, onValue, ref, set } from '@angular/fire/database';
-import { Observable, firstValueFrom } from 'rxjs';
+import { Auth } from '@angular/fire/auth';
+import { Observable, firstValueFrom, of } from 'rxjs';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { environment } from 'src/environments/environment';
 import { RazaSimple } from 'src/app/interfaces/simplificaciones/raza-simple';
@@ -14,79 +15,18 @@ import { FirebaseInjectionContextService } from '../firebase-injection-context.s
 export class ListaPersonajesService {
 
     constructor(
+        private auth: Auth,
         private db: Database,
         private http: HttpClient,
         private firebaseContextSvc: FirebaseInjectionContextService
     ) { }
 
     async getPersonajes(): Promise<Observable<PersonajeSimple[]>> {
-        return new Observable((observador) => {
-            let unsubscribe: Unsubscribe;
-
-            const onNext = (snapshot: any) => {
-                const Personajes: PersonajeSimple[] = [];
-                snapshot.forEach((obj: any) => {
-                    const idRegion = Math.max(0, Math.trunc(toNumber(
-                        obj.child('Id_region').val()
-                        ?? obj.child('id_region').val()
-                        ?? obj.child('idRegion').val()
-                        ?? obj.child('Region').child('Id').val()
-                        ?? obj.child('Region').child('id').val()
-                        ?? obj.child('region').child('Id').val()
-                        ?? obj.child('region').child('id').val()
-                    )));
-                    const nombreRegion = `${obj.child('Region').child('Nombre').val()
-                        ?? obj.child('Region').child('nombre').val()
-                        ?? obj.child('region').child('Nombre').val()
-                        ?? obj.child('region').child('nombre').val()
-                        ?? ''}`.trim();
-                    const pj: PersonajeSimple = {
-                        Id: obj.key,
-                        Nombre: obj.child('Nombre').val(),
-                        ownerUid: obj.child('ownerUid').val() ?? null,
-                        ownerDisplayName: extractOwnerDisplayName({
-                            ownerDisplayName: obj.child('ownerDisplayName').val(),
-                            owner_display_name: obj.child('owner_display_name').val(),
-                            odn: obj.child('odn').val(),
-                        }),
-                        visible_otros_usuarios: toBoolean(obj.child('visible_otros_usuarios').val()),
-                        Id_region: idRegion,
-                        Region: {
-                            Id: idRegion,
-                            Nombre: nombreRegion.length > 0 ? nombreRegion : (idRegion === 0 ? 'Sin región' : ''),
-                        },
-                        Raza: obj.child('Raza').val(),
-                        Clases: obj.child('Clases').val(),
-                        Personalidad: obj.child('Personalidad').val(),
-                        Contexto: obj.child('Contexto').val(),
-                        Campana: obj.child('Campaña').val(),
-                        Trama: obj.child('Trama').val(),
-                        Subtrama: obj.child('Subtrama').val(),
-                        Archivado: obj.child('Archivado').val(),
-                    };
-                    Personajes.push(pj);
-                });
-                observador.next(Personajes); // Emitir el array de personajes
-            };
-
-            const onError = (error: any) => {
-                observador.error(error); // Manejar el error
-            };
-
-            // const onComplete = () => {
-            //     observador.complete();  Completar el observable
-            // };
-
-            // unsubscribe = onValue(dbRef, onNext, onError, onComplete);
-            unsubscribe = this.firebaseContextSvc.run(() => {
-                const dbRef = ref(this.db, 'Personajes-simples');
-                return onValue(dbRef, onNext, onError);
-            });
-
-            return () => {
-                unsubscribe(); // Cancelar la suscripción al evento onValue
-            };
-        });
+        const headers = await this.buildAuthHeaders();
+        const response = await firstValueFrom(this.pjs(headers));
+        const personajes = (Array.isArray(response) ? response : Object.values(response ?? {}))
+            .map((element: any) => this.mapApiToPersonajeSimple(element));
+        return of(personajes);
     }
 
     public ceateDataTable() {
@@ -150,53 +90,41 @@ export class ListaPersonajesService {
         return columns;
     }
 
-    pjs(): Observable<any> {
-        const headers = new HttpHeaders({ 'Content-Type': 'application/json' });
-        const personajes = this.http.get(`${environment.apiUrl}personajes/simplificados`);
+    pjs(headers?: HttpHeaders): Observable<any> {
+        const personajes = this.http.get(`${environment.apiUrl}personajes/simplificados`, headers ? { headers } : undefined);
         return personajes;
     }
 
     public async RenovarPersonajesSimples(): Promise<boolean> {
         try {
-            const response = await firstValueFrom(this.pjs());
+            const headers = await this.buildAuthHeaders();
+            const response = await firstValueFrom(this.pjs(headers));
             const personajes = Array.isArray(response)
                 ? response
                 : Object.values(response ?? {});
 
             await Promise.all(
                 personajes.map((element: any) => {
-                    const idRegion = Math.max(0, Math.trunc(toNumber(
-                        element?.id_region
-                        ?? element?.idRegion
-                        ?? element?.Region?.Id
-                        ?? element?.Region?.id
-                        ?? element?.region?.Id
-                        ?? element?.region?.id
-                    )));
-                    const nombreRegion = `${element?.Region?.Nombre
-                        ?? element?.Region?.nombre
-                        ?? element?.region?.Nombre
-                        ?? element?.region?.nombre
-                        ?? ''}`.trim();
+                    const personaje = this.mapApiToPersonajeSimple(element);
                     return this.firebaseContextSvc.run(() => {
                         return set(ref(this.db, `Personajes-simples/${element.i}`), {
-                            Nombre: element.n,
-                            ownerUid: extractOwnerUid(element),
-                            ownerDisplayName: extractOwnerDisplayName(element),
-                            visible_otros_usuarios: toBoolean(element.visible_otros_usuarios),
-                            Id_region: idRegion,
+                            Nombre: personaje.Nombre,
+                            ownerUid: personaje.ownerUid,
+                            ownerDisplayName: personaje.ownerDisplayName,
+                            visible_otros_usuarios: personaje.visible_otros_usuarios,
+                            Id_region: personaje.Id_region,
                             Region: {
-                                Id: idRegion,
-                                Nombre: nombreRegion.length > 0 ? nombreRegion : (idRegion === 0 ? 'Sin región' : ''),
+                                Id: personaje.Region?.Id ?? 0,
+                                Nombre: personaje.Region?.Nombre ?? '',
                             },
-                            Raza: element.r as RazaSimple,
-                            Clases: element.c,
-                            Contexto: element.co,
-                            Personalidad: element.p,
-                            Campaña: element.ca,
-                            Trama: element.t,
-                            Subtrama: element.s,
-                            Archivado: element.a,
+                            Raza: personaje.Raza as RazaSimple,
+                            Clases: personaje.Clases,
+                            Contexto: personaje.Contexto,
+                            Personalidad: personaje.Personalidad,
+                            Campaña: personaje.Campana,
+                            Trama: personaje.Trama,
+                            Subtrama: personaje.Subtrama,
+                            Archivado: personaje.Archivado,
                         });
                     });
                 })
@@ -218,6 +146,57 @@ export class ListaPersonajesService {
             });
             return false;
         }
+    }
+
+    private mapApiToPersonajeSimple(element: any): PersonajeSimple {
+        const idRegion = Math.max(0, Math.trunc(toNumber(
+            element?.id_region
+            ?? element?.idRegion
+            ?? element?.Region?.Id
+            ?? element?.Region?.id
+            ?? element?.region?.Id
+            ?? element?.region?.id
+        )));
+        const nombreRegion = `${element?.Region?.Nombre
+            ?? element?.Region?.nombre
+            ?? element?.region?.Nombre
+            ?? element?.region?.nombre
+            ?? ''}`.trim();
+
+        return {
+            Id: Math.trunc(toNumber(element?.i ?? element?.Id)),
+            Nombre: `${element?.n ?? element?.Nombre ?? ''}`.trim(),
+            ownerUid: extractOwnerUid(element),
+            ownerDisplayName: extractOwnerDisplayName(element),
+            visible_otros_usuarios: toBoolean(element?.visible_otros_usuarios),
+            Id_region: idRegion,
+            Region: {
+                Id: idRegion,
+                Nombre: nombreRegion.length > 0 ? nombreRegion : (idRegion === 0 ? 'Sin región' : ''),
+            },
+            Raza: (element?.r ?? element?.Raza) as RazaSimple,
+            Clases: `${element?.c ?? element?.Clases ?? ''}`.trim(),
+            Contexto: `${element?.co ?? element?.Contexto ?? ''}`.trim(),
+            Personalidad: `${element?.p ?? element?.Personalidad ?? ''}`.trim(),
+            Campana: `${element?.ca ?? element?.Campaña ?? element?.Campana ?? 'Sin campaña'}`.trim() || 'Sin campaña',
+            Trama: `${element?.t ?? element?.Trama ?? 'Trama base'}`.trim() || 'Trama base',
+            Subtrama: `${element?.s ?? element?.Subtrama ?? 'Subtrama base'}`.trim() || 'Subtrama base',
+            Archivado: toBoolean(element?.a ?? element?.Archivado),
+        };
+    }
+
+    private async buildAuthHeaders(): Promise<HttpHeaders> {
+        const user = this.auth.currentUser;
+        if (!user)
+            throw new Error('Sesión no iniciada');
+
+        const idToken = await user.getIdToken();
+        if (`${idToken ?? ''}`.trim().length < 1)
+            throw new Error('Token no disponible');
+
+        return new HttpHeaders({
+            Authorization: `Bearer ${idToken}`,
+        });
     }
 }
 

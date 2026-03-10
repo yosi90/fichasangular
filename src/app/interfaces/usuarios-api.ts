@@ -45,7 +45,4 @@ export interface UsuarioUpsertResponseDto {
     userId: string;
     uid: string;
     acl: UsuarioAclResponseDto;
-    legacyPlayer: {
-        idJugador: number;
-    };
 }

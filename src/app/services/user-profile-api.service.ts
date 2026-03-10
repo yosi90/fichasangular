@@ -10,6 +10,7 @@ import {
     UserPrivateProfile,
     UserPublicProfile,
 } from '../interfaces/user-account';
+import { AdminRoleRequestItem, ResolveRoleRequestInput, UserRoleRequestStatus } from '../interfaces/user-role-request';
 import { UserSettingsV1, createDefaultUserSettings } from '../interfaces/user-settings';
 
 @Injectable({
@@ -101,6 +102,70 @@ export class UserProfileApiService {
             );
         } catch (error) {
             throw this.toProfileApiError(error, 'No se pudo eliminar el avatar.');
+        }
+    }
+
+    async getMyRoleRequestStatus(): Promise<UserRoleRequestStatus> {
+        try {
+            const response = await firstValueFrom(
+                this.http.get<UserRoleRequestStatus>(`${this.usuariosBaseUrl}/me/role-request`, {
+                    headers: await this.buildAuthHeaders(),
+                })
+            );
+            return this.normalizeRoleRequestStatus(response);
+        } catch (error) {
+            throw this.toProfileApiError(error, 'No se pudo cargar el estado de tu solicitud de rol.');
+        }
+    }
+
+    async createMasterRoleRequest(): Promise<UserRoleRequestStatus> {
+        try {
+            await firstValueFrom(
+                this.http.post(`${this.usuariosBaseUrl}/me/master-request`, {}, {
+                    headers: await this.buildAuthHeaders(),
+                })
+            );
+            return await this.getMyRoleRequestStatus();
+        } catch (error) {
+            throw this.toProfileApiError(error, 'No se pudo crear la solicitud para ser master.');
+        }
+    }
+
+    async listPendingMasterRoleRequests(): Promise<AdminRoleRequestItem[]> {
+        try {
+            const response = await firstValueFrom(
+                this.http.get<AdminRoleRequestItem[]>(`${this.usuariosBaseUrl}/master-requests`, {
+                    headers: await this.buildAuthHeaders(),
+                    params: { status: 'pending' },
+                })
+            );
+            return Array.isArray(response)
+                ? response.map((item) => this.normalizeAdminRoleRequestItem(item))
+                : [];
+        } catch (error) {
+            throw this.toProfileApiError(error, 'No se pudieron cargar las solicitudes pendientes.');
+        }
+    }
+
+    async resolveRoleRequest(requestId: number, input: ResolveRoleRequestInput): Promise<void> {
+        const id = Math.trunc(Number(requestId));
+        if (!Number.isFinite(id) || id <= 0)
+            throw new ProfileApiError('Solicitud inválida.', 'ROLE_REQUEST_INVALID', 400);
+
+        try {
+            await firstValueFrom(
+                this.http.patch<void>(
+                    `${this.usuariosBaseUrl}/role-requests/${id}`,
+                    {
+                        decision: input.decision,
+                        blockedUntilUtc: input.blockedUntilUtc ?? null,
+                        adminComment: `${input.adminComment ?? ''}`.trim() || null,
+                    },
+                    { headers: await this.buildAuthHeaders() }
+                )
+            );
+        } catch (error) {
+            throw this.toProfileApiError(error, 'No se pudo resolver la solicitud.');
         }
     }
 
@@ -222,5 +287,51 @@ export class UserProfileApiService {
                 mostrarPerfilPublico: raw?.perfil?.mostrarPerfilPublico !== false,
             },
         };
+    }
+
+    private normalizeRoleRequestStatus(raw: UserRoleRequestStatus | null | undefined): UserRoleRequestStatus {
+        return {
+            currentRole: (raw?.currentRole ?? 'jugador') as UserRoleRequestStatus['currentRole'],
+            requestedRole: raw?.requestedRole ?? null,
+            status: raw?.status ?? 'none',
+            blockedUntilUtc: raw?.blockedUntilUtc ?? null,
+            requestId: this.toPositiveIntOrNull(raw?.requestId),
+            requestedAtUtc: this.toNullableText(raw?.requestedAtUtc),
+            resolvedAtUtc: this.toNullableText(raw?.resolvedAtUtc),
+            eligible: raw?.eligible === true,
+            reasonCode: this.toNullableText(raw?.reasonCode),
+            currentRoleAtRequest: raw?.currentRoleAtRequest ?? null,
+            adminComment: this.toNullableText(raw?.adminComment),
+        };
+    }
+
+    private normalizeAdminRoleRequestItem(raw: AdminRoleRequestItem | null | undefined): AdminRoleRequestItem {
+        return {
+            requestId: this.toPositiveIntOrNull(raw?.requestId) ?? 0,
+            userId: `${raw?.userId ?? ''}`.trim(),
+            status: raw?.status ?? 'pending',
+            requestedRole: raw?.requestedRole ?? 'master',
+            currentRoleAtRequest: raw?.currentRoleAtRequest ?? 'jugador',
+            requestedAtUtc: this.toNullableText(raw?.requestedAtUtc),
+            requestedByUserId: this.toNullableText(raw?.requestedByUserId),
+            resolvedAtUtc: this.toNullableText(raw?.resolvedAtUtc),
+            resolvedByUserId: this.toNullableText(raw?.resolvedByUserId),
+            blockedUntilUtc: this.toNullableText(raw?.blockedUntilUtc),
+            adminComment: this.toNullableText(raw?.adminComment),
+            uid: `${raw?.uid ?? ''}`.trim(),
+            displayName: this.toNullableText(raw?.displayName),
+            email: this.toNullableText(raw?.email),
+            currentRole: (raw?.currentRole ?? 'jugador') as AdminRoleRequestItem['currentRole'],
+        };
+    }
+
+    private toPositiveIntOrNull(value: any): number | null {
+        const parsed = Math.trunc(Number(value));
+        return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+    }
+
+    private toNullableText(value: any): string | null {
+        const text = `${value ?? ''}`.trim();
+        return text.length > 0 ? text : null;
     }
 }

@@ -1,126 +1,314 @@
+import { HttpClient, HttpErrorResponse, HttpHeaders } from '@angular/common/http';
 import { Injectable } from '@angular/core';
-import { Database, Unsubscribe, onValue, ref, set } from '@angular/fire/database';
-import { Observable, firstValueFrom } from 'rxjs';
-import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
-import { Campana } from '../interfaces/campaña';
-import { environment } from 'src/environments/environment';
+import { Auth } from '@angular/fire/auth';
+import { Database, ref, set } from '@angular/fire/database';
+import { Observable, firstValueFrom, of } from 'rxjs';
 import Swal from 'sweetalert2';
+import { Campana } from '../interfaces/campaña';
+import {
+    CampaignDetailViewModel,
+    CampaignListItem,
+    CampaignMemberItem,
+    CampaignMemberRemovalStatus,
+    CampaignMembershipStatus,
+    CampaignRoleCode,
+    CampaignSubtramaItem,
+    CampaignTramaItem,
+    CampaignUserSearchResult,
+    TransferCampaignMasterInput,
+} from '../interfaces/campaign-management';
+import { environment } from 'src/environments/environment';
 import { FirebaseInjectionContextService } from './firebase-injection-context.service';
 
 @Injectable({
     providedIn: 'root'
 })
 export class CampanaService {
+    private readonly campanasBaseUrl = `${environment.apiUrl}campanas`;
+    private readonly tramasBaseUrl = `${environment.apiUrl}tramas`;
+    private readonly subtramasBaseUrl = `${environment.apiUrl}subtramas`;
+    private readonly usuariosBaseUrl = `${environment.apiUrl}usuarios`;
+
     constructor(
+        private auth: Auth,
         private db: Database,
         private http: HttpClient,
         private firebaseContextSvc: FirebaseInjectionContextService
     ) { }
 
     async getListCampanas(): Promise<Observable<Campana[]>> {
-        return new Observable((observador) => {
-            let unsubscribe: Unsubscribe;
-
-            const onNext = (snapshot: any) => {
-                const Campañas: Campana[] = [];
-                snapshot.forEach((obj: any) => {
-                    const campaña: Campana = {
-                        Id: obj.key,
-                        Nombre: obj.child('Nombre').val(),
-                        Tramas: obj.child('Tramas').val()
-                    };
-                    Campañas.push(campaña);
-                });
-                observador.next(Campañas); // Emitir el array de personajes
-            };
-
-            const onError = (error: any) => {
-                observador.error(error); // Manejar el error
-            };
-
-            // const onComplete = () => {
-            //     observador.complete();  Completar el observable
-            // };
-
-            // unsubscribe = onValue(dbRef, onNext, onError, onComplete);
-            unsubscribe = this.firebaseContextSvc.run(() => {
-                const dbRef = ref(this.db, 'Campañas');
-                return onValue(dbRef, onNext, onError);
-            });
-
-            return () => {
-                unsubscribe(); // Cancelar la suscripción al evento onValue
-            };
-        });
+        const headers = await this.buildAuthHeaders();
+        const campanas = await this.fetchCampanasActorScoped(headers);
+        return of(campanas);
     }
 
-    private getCampanas(): Observable<any> {
-        const headers = new HttpHeaders({ 'Content-Type': 'application/json' });
-        const campañas = this.http.get(`${environment.apiUrl}campanas`);
-        return campañas;
+    async listVisibleCampaigns(): Promise<CampaignListItem[]> {
+        try {
+            return await this.fetchCampaignSummaries(await this.buildAuthHeaders());
+        } catch (error) {
+            throw this.toError(error, 'No se pudieron cargar las campañas visibles.');
+        }
     }
 
-    private getTramas(idCam: number): Observable<any> {
-        const headers = new HttpHeaders({ 'Content-Type': 'application/json' });
-        const params = new HttpParams().set('id_campana', idCam)
-        const campañas = this.http.get(`${environment.apiUrl}tramas`, { params });
-        return campañas;
+    async getCampaignDetail(idCampana: number, includeInactive: boolean = false): Promise<CampaignDetailViewModel> {
+        const id = this.toPositiveInt(idCampana);
+        if (!id)
+            throw new Error('Campaña inválida.');
+
+        try {
+            const headers = await this.buildAuthHeaders();
+            const campaigns = await this.fetchCampaignSummaries(headers);
+            const campaign = campaigns.find((item) => item.id === id);
+            if (!campaign)
+                throw new Error('La campaña solicitada ya no está disponible para tu usuario.');
+
+            const [members, tramas] = await Promise.all([
+                this.fetchCampaignMembers(id, headers, includeInactive),
+                this.fetchCampaignTramas(id, headers),
+            ]);
+
+            return {
+                campaign,
+                members,
+                includeInactiveMembers: includeInactive === true,
+                tramas,
+                loadingMembers: false,
+                loadingTramas: false,
+            };
+        } catch (error) {
+            throw this.toError(error, 'No se pudo cargar el detalle de la campaña.');
+        }
     }
 
-    private getSubtramas(idTra: number): Observable<any> {
-        const headers = new HttpHeaders({ 'Content-Type': 'application/json' });
-        const params = new HttpParams().set('id_trama', idTra)
-        const campañas = this.http.get(`${environment.apiUrl}subtramas`, { params });
-        return campañas;
+    async createCampaign(nombre: string): Promise<CampaignListItem> {
+        const nombreNormalizado = this.normalizeRequiredName(nombre, 'Debes indicar un nombre de campaña.');
+
+        try {
+            const response = await firstValueFrom(
+                this.http.post<any>(
+                    this.campanasBaseUrl,
+                    { nombre: nombreNormalizado },
+                    { headers: await this.buildAuthHeaders() }
+                )
+            );
+
+            return {
+                id: this.toPositiveInt(response?.idCampana) ?? 0,
+                nombre: `${response?.nombre ?? nombreNormalizado}`.trim() || nombreNormalizado,
+                campaignRole: 'master',
+                membershipStatus: 'activo',
+            };
+        } catch (error) {
+            throw this.toError(error, 'No se pudo crear la campaña.');
+        }
+    }
+
+    async renameCampaign(idCampana: number, nombre: string): Promise<void> {
+        const id = this.toPositiveInt(idCampana);
+        if (!id)
+            throw new Error('Campaña inválida.');
+
+        try {
+            await firstValueFrom(
+                this.http.patch<void>(
+                    `${this.campanasBaseUrl}/${id}`,
+                    { nombre: this.normalizeRequiredName(nombre, 'Debes indicar un nombre de campaña.') },
+                    { headers: await this.buildAuthHeaders() }
+                )
+            );
+        } catch (error) {
+            throw this.toError(error, 'No se pudo renombrar la campaña.');
+        }
+    }
+
+    async listCampaignMembers(idCampana: number, includeInactive: boolean = false): Promise<CampaignMemberItem[]> {
+        const id = this.toPositiveInt(idCampana);
+        if (!id)
+            throw new Error('Campaña inválida.');
+
+        try {
+            return await this.fetchCampaignMembers(id, await this.buildAuthHeaders(), includeInactive);
+        } catch (error) {
+            throw this.toError(error, 'No se pudieron cargar los miembros de la campaña.');
+        }
+    }
+
+    async addCampaignMember(idCampana: number, targetUid: string): Promise<void> {
+        const id = this.toPositiveInt(idCampana);
+        const uid = `${targetUid ?? ''}`.trim();
+        if (!id || uid.length < 1)
+            throw new Error('Datos inválidos para añadir el jugador.');
+
+        try {
+            await firstValueFrom(
+                this.http.post<void>(
+                    `${this.campanasBaseUrl}/${id}/jugadores`,
+                    { targetUid: uid },
+                    { headers: await this.buildAuthHeaders() }
+                )
+            );
+        } catch (error) {
+            throw this.toError(error, 'No se pudo añadir el jugador a la campaña.');
+        }
+    }
+
+    async removeCampaignMember(
+        idCampana: number,
+        targetUid: string,
+        status: CampaignMemberRemovalStatus = 'expulsado'
+    ): Promise<void> {
+        const id = this.toPositiveInt(idCampana);
+        const uid = `${targetUid ?? ''}`.trim();
+        if (!id || uid.length < 1)
+            throw new Error('Datos inválidos para retirar el jugador.');
+
+        try {
+            await firstValueFrom(
+                this.http.delete<void>(
+                    `${this.campanasBaseUrl}/${id}/jugadores/${encodeURIComponent(uid)}`,
+                    {
+                        body: { status },
+                        headers: await this.buildAuthHeaders(),
+                    }
+                )
+            );
+        } catch (error) {
+            throw this.toError(error, 'No se pudo retirar el jugador de la campaña.');
+        }
+    }
+
+    async transferCampaignMaster(idCampana: number, input: TransferCampaignMasterInput): Promise<void> {
+        const id = this.toPositiveInt(idCampana);
+        const targetUid = `${input?.targetUid ?? ''}`.trim();
+        if (!id || targetUid.length < 1)
+            throw new Error('Datos inválidos para transferir el master de la campaña.');
+
+        try {
+            await firstValueFrom(
+                this.http.patch<void>(
+                    `${this.campanasBaseUrl}/${id}/master`,
+                    {
+                        targetUid,
+                        keepPreviousAsPlayer: input.keepPreviousAsPlayer !== false,
+                    },
+                    { headers: await this.buildAuthHeaders() }
+                )
+            );
+        } catch (error) {
+            throw this.toError(error, 'No se pudo transferir el master de la campaña.');
+        }
+    }
+
+    async searchUsers(query: string, limit: number = 10): Promise<CampaignUserSearchResult[]> {
+        const q = `${query ?? ''}`.trim();
+        if (q.length < 2)
+            return [];
+
+        try {
+            const response = await firstValueFrom(
+                this.http.get<any[]>(`${this.usuariosBaseUrl}/search`, {
+                    params: {
+                        q,
+                        limit: `${Math.min(20, Math.max(1, Math.trunc(Number(limit) || 10)))}`,
+                    },
+                })
+            );
+            const raw = Array.isArray(response) ? response : Object.values(response ?? {});
+            return raw
+                .map((item) => this.normalizeUserSearchResult(item))
+                .filter((item): item is CampaignUserSearchResult => item !== null);
+        } catch (error) {
+            throw this.toError(error, 'No se pudo buscar usuarios.');
+        }
+    }
+
+    async createTrama(idCampana: number, nombre: string): Promise<void> {
+        const id = this.toPositiveInt(idCampana);
+        if (!id)
+            throw new Error('Campaña inválida.');
+
+        try {
+            await firstValueFrom(
+                this.http.post<void>(
+                    `${this.tramasBaseUrl}/campana/${id}`,
+                    { nombre: this.normalizeRequiredName(nombre, 'Debes indicar un nombre de trama.') },
+                    { headers: await this.buildAuthHeaders() }
+                )
+            );
+        } catch (error) {
+            throw this.toError(error, 'No se pudo crear la trama.');
+        }
+    }
+
+    async updateTrama(idTrama: number, nombre: string): Promise<void> {
+        const id = this.toPositiveInt(idTrama);
+        if (!id)
+            throw new Error('Trama inválida.');
+
+        try {
+            await firstValueFrom(
+                this.http.patch<void>(
+                    `${this.tramasBaseUrl}/${id}`,
+                    { nombre: this.normalizeRequiredName(nombre, 'Debes indicar un nombre de trama.') },
+                    { headers: await this.buildAuthHeaders() }
+                )
+            );
+        } catch (error) {
+            throw this.toError(error, 'No se pudo actualizar la trama.');
+        }
+    }
+
+    async createSubtrama(idTrama: number, nombre: string): Promise<void> {
+        const id = this.toPositiveInt(idTrama);
+        if (!id)
+            throw new Error('Trama inválida.');
+
+        try {
+            await firstValueFrom(
+                this.http.post<void>(
+                    `${this.subtramasBaseUrl}/trama/${id}`,
+                    { nombre: this.normalizeRequiredName(nombre, 'Debes indicar un nombre de subtrama.') },
+                    { headers: await this.buildAuthHeaders() }
+                )
+            );
+        } catch (error) {
+            throw this.toError(error, 'No se pudo crear la subtrama.');
+        }
+    }
+
+    async updateSubtrama(idSubtrama: number, nombre: string): Promise<void> {
+        const id = this.toPositiveInt(idSubtrama);
+        if (!id)
+            throw new Error('Subtrama inválida.');
+
+        try {
+            await firstValueFrom(
+                this.http.patch<void>(
+                    `${this.subtramasBaseUrl}/${id}`,
+                    { nombre: this.normalizeRequiredName(nombre, 'Debes indicar un nombre de subtrama.') },
+                    { headers: await this.buildAuthHeaders() }
+                )
+            );
+        } catch (error) {
+            throw this.toError(error, 'No se pudo actualizar la subtrama.');
+        }
+    }
+
+    protected writeCampanaCache(campana: Campana): Promise<void> {
+        return this.firebaseContextSvc.run(() => set(ref(this.db, `Campañas/${campana.Id}`), {
+            Nombre: campana.Nombre,
+            Tramas: campana.Tramas,
+        }));
     }
 
     public async RenovarCampañasFirebase(): Promise<boolean> {
-        const campañas: Campana[] = [];
-
         try {
-            const response = await firstValueFrom(this.getCampanas());
-            const campanasRaw = Array.isArray(response)
-                ? response
-                : Object.values(response ?? {});
-
-            for (const cam of campanasRaw) {
-                const tramas: { Id: any; Nombre: any; Subtramas: { Id: any; Nombre: any; }[]; }[] = [];
-                const tramasResponse = await firstValueFrom(this.getTramas(cam.i));
-                const tramasRaw = Array.isArray(tramasResponse)
-                    ? tramasResponse
-                    : Object.values(tramasResponse ?? {});
-
-                for (const tra of tramasRaw) {
-                    const subTramasResponse = await firstValueFrom(this.getSubtramas(tra.i));
-                    const subTramasRaw = Array.isArray(subTramasResponse)
-                        ? subTramasResponse
-                        : Object.values(subTramasResponse ?? {});
-                    const subTramas = subTramasRaw.map((sub: any) => ({
-                        Id: sub.i,
-                        Nombre: sub.n,
-                    }));
-
-                    tramas.push({
-                        Id: tra.i,
-                        Nombre: tra.n,
-                        Subtramas: subTramas,
-                    });
-                }
-
-                campañas.push({
-                    Id: cam.i,
-                    Nombre: cam.n,
-                    Tramas: tramas,
-                });
-            }
+            const headers = await this.buildAuthHeaders();
+            const campanas = (await this.fetchCampanasActorScoped(headers))
+                .filter((campana) => campana.Nombre !== 'Sin campaña');
 
             await Promise.all(
-                campañas.map((element) =>
-                    this.firebaseContextSvc.run(() => set(ref(this.db, `Campañas/${element.Id}`), {
-                        Nombre: element.Nombre,
-                        Tramas: element.Tramas
-                    }))
-                )
+                campanas.map((element) => this.writeCampanaCache(element))
             );
 
             Swal.fire({
@@ -141,4 +329,250 @@ export class CampanaService {
         }
     }
 
+    private async fetchCampanasActorScoped(headers: HttpHeaders): Promise<Campana[]> {
+        const campanas = await this.fetchCampaignSummaries(headers);
+        const campaignTrees = await Promise.all(
+            campanas.map(async (campana) => ({
+                Id: campana.id,
+                Nombre: campana.nombre,
+                Tramas: (await this.fetchCampaignTramas(campana.id, headers)).map((trama) => ({
+                    Id: trama.id,
+                    Nombre: trama.nombre,
+                    Subtramas: trama.subtramas.map((subtrama) => ({
+                        Id: subtrama.id,
+                        Nombre: subtrama.nombre,
+                    })),
+                })),
+            }))
+        );
+
+        return [
+            this.buildSinCampanaOption(),
+            ...campaignTrees,
+        ];
+    }
+
+    private async fetchCampaignSummaries(headers: HttpHeaders): Promise<CampaignListItem[]> {
+        const response = await firstValueFrom(
+            this.http.get<any[]>(this.campanasBaseUrl, { headers })
+        );
+        const raw = Array.isArray(response) ? response : Object.values(response ?? {});
+        return raw
+            .map((item) => this.normalizeCampaignSummary(item))
+            .filter((item): item is CampaignListItem => item !== null)
+            .sort((a, b) => a.nombre.localeCompare(b.nombre, 'es', { sensitivity: 'base' }));
+    }
+
+    private async fetchCampaignMembers(
+        idCampana: number,
+        headers: HttpHeaders,
+        includeInactive: boolean
+    ): Promise<CampaignMemberItem[]> {
+        const response = await firstValueFrom(
+            this.http.get<any[]>(`${this.campanasBaseUrl}/${idCampana}/jugadores`, {
+                headers,
+                params: includeInactive ? { includeInactive: 'true' } : undefined,
+            })
+        );
+        const raw = Array.isArray(response) ? response : Object.values(response ?? {});
+        return raw
+            .map((item) => this.normalizeCampaignMember(item))
+            .filter((item): item is CampaignMemberItem => item !== null)
+            .sort((a, b) => {
+                if (a.campaignRole !== b.campaignRole)
+                    return a.campaignRole === 'master' ? -1 : 1;
+                return this.getDisplayLabel(a).localeCompare(this.getDisplayLabel(b), 'es', { sensitivity: 'base' });
+            });
+    }
+
+    private async fetchCampaignTramas(idCampana: number, headers: HttpHeaders): Promise<CampaignTramaItem[]> {
+        const tramasResponse = await firstValueFrom(
+            this.http.get<any[]>(`${this.tramasBaseUrl}/campana/${idCampana}`, { headers })
+        );
+        const tramasRaw = Array.isArray(tramasResponse)
+            ? tramasResponse
+            : Object.values(tramasResponse ?? {});
+
+        const tramas = await Promise.all(
+            tramasRaw.map(async (item) => {
+                const trama = this.normalizeCampaignTrama(item);
+                if (!trama)
+                    return null;
+
+                const subtramas = await this.fetchCampaignSubtramas(trama.id, headers);
+                return {
+                    ...trama,
+                    subtramas,
+                };
+            })
+        );
+
+        return tramas
+            .filter((item): item is CampaignTramaItem => item !== null)
+            .sort((a, b) => a.nombre.localeCompare(b.nombre, 'es', { sensitivity: 'base' }));
+    }
+
+    private async fetchCampaignSubtramas(idTrama: number, headers: HttpHeaders): Promise<CampaignSubtramaItem[]> {
+        const response = await firstValueFrom(
+            this.http.get<any[]>(`${this.subtramasBaseUrl}/trama/${idTrama}`, { headers })
+        );
+        const raw = Array.isArray(response) ? response : Object.values(response ?? {});
+        return raw
+            .map((item) => this.normalizeCampaignSubtrama(item))
+            .filter((item): item is CampaignSubtramaItem => item !== null)
+            .sort((a, b) => a.nombre.localeCompare(b.nombre, 'es', { sensitivity: 'base' }));
+    }
+
+    private normalizeCampaignSummary(raw: any): CampaignListItem | null {
+        const id = this.toPositiveInt(raw?.i ?? raw?.Id ?? raw?.id);
+        if (!id)
+            return null;
+
+        return {
+            id,
+            nombre: `${raw?.n ?? raw?.Nombre ?? raw?.nombre ?? ''}`.trim(),
+            campaignRole: this.normalizeCampaignRole(raw?.campaignRole),
+            membershipStatus: this.normalizeMembershipStatus(raw?.membershipStatus),
+        };
+    }
+
+    private normalizeCampaignMember(raw: any): CampaignMemberItem | null {
+        const uid = `${raw?.uid ?? raw?.firebaseUid ?? ''}`.trim();
+        if (uid.length < 1)
+            return null;
+
+        const campaignRole = this.normalizeCampaignRole(raw?.campaignRole);
+        const membershipStatus = this.normalizeMembershipStatus(raw?.membershipStatus);
+        return {
+            userId: this.toNullableText(raw?.userId),
+            uid,
+            displayName: this.toNullableText(raw?.displayName),
+            email: this.toNullableText(raw?.email),
+            campaignRole,
+            membershipStatus,
+            isActive: raw?.isActive === true || membershipStatus === 'activo',
+            addedAtUtc: this.toNullableText(raw?.addedAtUtc),
+            addedByUserId: this.toNullableText(raw?.addedByUserId),
+        };
+    }
+
+    private normalizeCampaignTrama(raw: any): CampaignTramaItem | null {
+        const id = this.toPositiveInt(raw?.i ?? raw?.Id ?? raw?.id);
+        if (!id)
+            return null;
+
+        return {
+            id,
+            nombre: `${raw?.n ?? raw?.Nombre ?? raw?.nombre ?? ''}`.trim(),
+            subtramas: [],
+        };
+    }
+
+    private normalizeCampaignSubtrama(raw: any): CampaignSubtramaItem | null {
+        const id = this.toPositiveInt(raw?.i ?? raw?.Id ?? raw?.id);
+        if (!id)
+            return null;
+
+        return {
+            id,
+            nombre: `${raw?.n ?? raw?.Nombre ?? raw?.nombre ?? ''}`.trim(),
+        };
+    }
+
+    private normalizeUserSearchResult(raw: any): CampaignUserSearchResult | null {
+        const uid = `${raw?.uid ?? ''}`.trim();
+        if (uid.length < 1)
+            return null;
+
+        return {
+            uid,
+            displayName: this.toNullableText(raw?.displayName),
+            photoThumbUrl: this.toNullableText(raw?.photoThumbUrl),
+        };
+    }
+
+    private buildSinCampanaOption(): Campana {
+        return {
+            Id: 0,
+            Nombre: 'Sin campaña',
+            Tramas: [],
+        };
+    }
+
+    private normalizeCampaignRole(value: any): CampaignRoleCode {
+        return `${value ?? ''}`.trim().toLowerCase() === 'master' ? 'master' : 'jugador';
+    }
+
+    private normalizeMembershipStatus(value: any): CampaignMembershipStatus {
+        const normalized = `${value ?? ''}`.trim().toLowerCase();
+        if (normalized === 'inactivo')
+            return 'inactivo';
+        if (normalized === 'expulsado')
+            return 'expulsado';
+        return 'activo';
+    }
+
+    private normalizeRequiredName(value: string, emptyMessage: string): string {
+        const nombre = `${value ?? ''}`.trim();
+        if (nombre.length < 1)
+            throw new Error(emptyMessage);
+        return nombre;
+    }
+
+    private toPositiveInt(value: any): number | null {
+        const parsed = Math.trunc(Number(value));
+        return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+    }
+
+    private toNullableText(value: any): string | null {
+        const text = `${value ?? ''}`.trim();
+        return text.length > 0 ? text : null;
+    }
+
+    private getDisplayLabel(member: CampaignMemberItem): string {
+        return `${member.displayName ?? member.email ?? member.uid}`.trim();
+    }
+
+    private toError(error: any, fallbackMessage: string): Error {
+        if (error instanceof Error)
+            return error;
+
+        if (error instanceof HttpErrorResponse) {
+            const bodyMessage = this.extractErrorMessage(error.error);
+            return new Error(bodyMessage || `${fallbackMessage} (HTTP ${error.status || 0})`);
+        }
+
+        return new Error(`${error?.message ?? fallbackMessage}`.trim() || fallbackMessage);
+    }
+
+    private extractErrorMessage(body: any): string {
+        if (!body)
+            return '';
+        if (typeof body === 'string')
+            return body.trim();
+        if (typeof body === 'object') {
+            const directMessage = `${body?.message ?? body?.error ?? ''}`.trim();
+            if (directMessage.length > 0)
+                return directMessage;
+            const firstEntry = Object.entries(body)[0];
+            if (!firstEntry)
+                return '';
+            return `${firstEntry[0]}${firstEntry[1] ? `: ${firstEntry[1]}` : ''}`.trim();
+        }
+        return '';
+    }
+
+    private async buildAuthHeaders(): Promise<HttpHeaders> {
+        const user = this.auth.currentUser;
+        if (!user)
+            throw new Error('Sesión no iniciada');
+
+        const idToken = await user.getIdToken();
+        if (`${idToken ?? ''}`.trim().length < 1)
+            throw new Error('Token no disponible');
+
+        return new HttpHeaders({
+            Authorization: `Bearer ${idToken}`,
+        });
+    }
 }

@@ -16,7 +16,7 @@
         <div class="tw-w-full">
             <mat-card class="tw-m-2 tw-p-3">
                 <mat-accordion class="admin-accordion">
-                    <mat-expansion-panel #primero>
+                    <mat-expansion-panel #primero [expanded]="syncPanelExpanded">
                         <mat-expansion-panel-header class="tw-rounded-none tw-rounded-t-md">
                             <button mat-stroked-button color="accent" class="tw-rounded-none tw-rounded-t-md"
                                 matTooltip="Solo debe ser usado para inicializar datos en firebase">
@@ -37,7 +37,7 @@
                         </div>
                     </mat-expansion-panel>
 
-                    <mat-expansion-panel #segundo>
+                    <mat-expansion-panel #segundo [expanded]="usuariosPanelExpanded">
                         <mat-expansion-panel-header class="tw-rounded-none tw-rounded-t-md">
                             <button mat-stroked-button color="accent" class="tw-rounded-none tw-rounded-t-md"
                                 matTooltip="Gestionar usuarios, baneos y permisos granulares de creación">
@@ -46,6 +46,74 @@
                         </mat-expansion-panel-header>
 
                         <div class="usuarios-admin-panel tw-p-2">
+                            <section
+                                id="admin-role-requests"
+                                class="admin-role-requests"
+                                [class.admin-role-requests--highlight]="resaltarSolicitudesPendientes">
+                                <div class="admin-role-requests__header">
+                                    <div>
+                                        <h3>Peticiones de master</h3>
+                                        <p>Solicitudes pendientes de aprobación o rechazo.</p>
+                                    </div>
+                                    <button
+                                        mat-stroked-button
+                                        color="accent"
+                                        [disabled]="cargandoSolicitudesMaster"
+                                        (click)="cargarSolicitudesMasterPendientes()">
+                                        <mat-icon>{{cargandoSolicitudesMaster ? 'hourglass_top' : 'refresh'}}</mat-icon>
+                                        {{cargandoSolicitudesMaster ? 'Cargando...' : 'Actualizar'}}
+                                    </button>
+                                </div>
+
+                                <div class="usuarios-admin-estado tw-text-center tw-p-2" *ngIf="etiquetaEstadoSolicitudes.length > 0">
+                                    <mat-chip>{{etiquetaEstadoSolicitudes}}</mat-chip>
+                                </div>
+
+                                <div class="tabla-scroll usuarios-admin-tabla-scroll" *ngIf="etiquetaEstadoSolicitudes.length < 1">
+                                    <table class="tabla-usuarios-admin tabla-usuarios-admin--requests">
+                                        <thead>
+                                            <tr>
+                                                <th>Solicitante</th>
+                                                <th>Rol actual</th>
+                                                <th>Solicitado</th>
+                                                <th>Fecha</th>
+                                                <th>Acciones</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr *ngFor="let request of solicitudesMasterPendientes; trackBy: trackByRoleRequest">
+                                                <td>
+                                                    <div class="usuario-principal">{{request.displayName || 'Sin nombre'}}</div>
+                                                    <div class="usuario-secundario">{{request.email || '-'}}</div>
+                                                    <div class="usuario-secundario">UID: {{request.uid}}</div>
+                                                </td>
+                                                <td>{{roleLabel(request.currentRole)}}</td>
+                                                <td>{{roleLabel(request.requestedRole)}}</td>
+                                                <td>{{formatearFechaUtc(request.requestedAtUtc)}}</td>
+                                                <td>
+                                                    <div class="admin-role-requests__actions">
+                                                        <button
+                                                            mat-raised-button
+                                                            color="primary"
+                                                            [disabled]="isRoleRequestOpRunning(request)"
+                                                            (click)="aprobarSolicitudMaster(request)">
+                                                            Aprobar
+                                                        </button>
+                                                        <button
+                                                            mat-stroked-button
+                                                            color="warn"
+                                                            [disabled]="isRoleRequestOpRunning(request)"
+                                                            (click)="rechazarSolicitudMaster(request)">
+                                                            Rechazar
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </section>
+
                             <mat-form-field appearance="fill" class="tw-w-full tw-mb-2">
                                 <mat-label>Buscar usuario</mat-label>
                                 <input

@@ -3719,9 +3719,10 @@ export class NuevoPersonajeComponent {
         const subtrama = (trama?.Subtramas ?? [])
             .find((item) => this.normalizarTexto(item?.Nombre ?? '') === subtramaNorm);
 
-        const idCampana = this.toPositiveInt(campana?.Id) ?? 1;
-        const idTrama = this.toPositiveInt(trama?.Id) ?? 1;
-        const idSubtrama = this.toPositiveInt(subtrama?.Id) ?? 1;
+        const esSinCampana = campanaNorm.length < 1 || campanaNorm === this.normalizarTexto('Sin campaña');
+        const idCampana = esSinCampana ? null : (this.toPositiveInt(campana?.Id) ?? null);
+        const idTrama = esSinCampana ? null : (this.toPositiveInt(trama?.Id) ?? null);
+        const idSubtrama = esSinCampana ? null : (this.toPositiveInt(subtrama?.Id) ?? null);
         const ventajasCatalogo = [
             ...(this.catalogoVentajas ?? []),
             ...(this.catalogoDesventajas ?? []),

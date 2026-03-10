@@ -24,7 +24,7 @@
             Admin panel
             <button (click)="quitarPanelAdministracion()" mat-icon-button class="tw-ms-2"><mat-icon>close</mat-icon></button>
         </ng-template>
-        <app-admin-panel></app-admin-panel>
+        <app-admin-panel [openRequest]="adminPanelOpenRequest"></app-admin-panel>
     </mat-tab>
     <mat-tab label="Roadmap" *ngIf="roadmapTabOpen">
         <ng-template mat-tab-label>

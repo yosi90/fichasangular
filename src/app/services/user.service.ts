@@ -77,7 +77,6 @@ export class UserService {
         if (this.isBanned())
             return false;
 
-        const role = this.currentRole();
         if (this.isAdmin())
             return true;
 
@@ -86,12 +85,12 @@ export class UserService {
         if (resourceKey.length < 1 || actionKey.length < 1)
             return false;
 
-        if (actionKey === 'create' && resourceKey === 'personajes')
-            return role === 'usuario' || role === 'colaborador' || role === 'admin';
-        if (role === 'usuario')
-            return false;
+        const aclResource = this.acl.permissions?.[resourceKey];
+        if (aclResource && Object.prototype.hasOwnProperty.call(aclResource, actionKey))
+            return aclResource?.[actionKey] === true;
 
-        return this.acl.permissions?.[resourceKey]?.[actionKey] === true;
+        const profileResource = this.privateProfileSubject.value?.permissions?.[resourceKey] as Record<string, boolean | undefined> | undefined;
+        return profileResource?.[actionKey] === true;
     }
 
     register({ email, password }: any) {
@@ -355,10 +354,6 @@ export class UserService {
 
     private isAdmin(): boolean {
         return this.acl.roles?.admin === true;
-    }
-
-    private currentRole(): 'usuario' | 'colaborador' | 'admin' {
-        return this.acl.roles?.type ?? 'usuario';
     }
 
     private isBanned(): boolean {

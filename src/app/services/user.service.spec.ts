@@ -44,12 +44,11 @@ class UserServiceTestDouble extends UserService {
             uid: `${payload.uid ?? payload.firebaseUid ?? ''}`,
             acl: {
                 uid: `${payload.uid ?? payload.firebaseUid ?? ''}`,
-                role: payload.role ?? 'usuario',
+                role: payload.role ?? 'jugador',
                 admin: payload.role === 'admin',
                 banned: payload.banned === true,
                 permissionsCreate: payload.permissionsCreate ?? [],
             },
-            legacyPlayer: { idJugador: 0 },
         };
     }
 
@@ -98,7 +97,7 @@ describe('UserService', () => {
         service.isLoggedIn$.subscribe((value) => loggedIn = value);
 
         service.emitAcl('uid-1', {
-            roles: { admin: false, type: 'usuario' },
+            roles: { admin: false, type: 'jugador' },
             status: { banned: false },
             permissions: { personajes: { create: true } },
         });
@@ -151,7 +150,7 @@ describe('UserService', () => {
         service.permisos$.subscribe((value) => capturados.push(value));
 
         service.emitAcl('uid-dinamico', {
-            roles: { admin: false, type: 'usuario' },
+            roles: { admin: false, type: 'jugador' },
             status: { banned: false },
             permissions: { personajes: { create: true } },
         });
@@ -170,7 +169,7 @@ describe('UserService', () => {
         await service.flush();
 
         service.emitAcl('uid-dinamico', {
-            roles: { admin: false, type: 'usuario' },
+            roles: { admin: false, type: 'jugador' },
             status: { banned: false },
             permissions: { personajes: { create: true } },
         });
@@ -203,7 +202,7 @@ describe('UserService', () => {
     it('ban en ACL RTDB fuerza logout de la sesión activa', async () => {
         const service = new UserServiceTestDouble();
         service.emitAcl('uid-ban', {
-            roles: { admin: false, type: 'usuario' },
+            roles: { admin: false, type: 'jugador' },
             status: { banned: false },
             permissions: { personajes: { create: true } },
         });
@@ -215,7 +214,7 @@ describe('UserService', () => {
         await service.flush();
 
         service.emitAcl('uid-ban', {
-            roles: { admin: false, type: 'usuario' },
+            roles: { admin: false, type: 'jugador' },
             status: { banned: true },
             permissions: { personajes: { create: true } },
         });
@@ -224,25 +223,25 @@ describe('UserService', () => {
         expect(service.signOutCalls).toBeGreaterThan(0);
     });
 
-    it('rol usuario solo permite crear personajes', async () => {
+    it('rol jugador respeta permisos create del ACL', async () => {
         const service = new UserServiceTestDouble();
-        service.emitAcl('uid-rol-usuario', {
-            roles: { admin: false, type: 'usuario' },
+        service.emitAcl('uid-rol-jugador', {
+            roles: { admin: false, type: 'jugador' },
             status: { banned: false },
             permissions: {
-                personajes: { create: true },
-                dotes: { create: true },
+                personajes: { create: false },
+                campanas: { create: true },
             },
         });
         service.emitAuth({
-            uid: 'uid-rol-usuario',
+            uid: 'uid-rol-jugador',
             displayName: 'Aldric',
             email: 'aldric@test.com',
         } as User);
         await service.flush();
 
-        expect(service.can('personajes', 'create')).toBeTrue();
-        expect(service.can('dotes', 'create')).toBeFalse();
+        expect(service.can('personajes', 'create')).toBeFalse();
+        expect(service.can('campanas', 'create')).toBeTrue();
     });
 
     it('rol colaborador permite permisos create adicionales', async () => {
@@ -269,7 +268,7 @@ describe('UserService', () => {
     it('logOut delega en signOut cuando hay sesión abierta', async () => {
         const service = new UserServiceTestDouble();
         service.emitAcl('uid-3', {
-            roles: { admin: false, type: 'usuario' },
+            roles: { admin: false, type: 'jugador' },
             status: { banned: false },
             permissions: { personajes: { create: true } },
         });
@@ -282,5 +281,35 @@ describe('UserService', () => {
         await service.logOut();
 
         expect(service.signOutCalls).toBe(1);
+    });
+
+    it('usa permisos del perfil privado como fallback si el ACL todavía no está en RTDB', async () => {
+        const service = new UserServiceTestDouble();
+        service.emitAuth({
+            uid: 'uid-profile-fallback',
+            displayName: 'Aldric',
+            email: 'aldric@test.com',
+        } as User);
+        await service.flush();
+
+        service.setCurrentPrivateProfile({
+            uid: 'uid-profile-fallback',
+            displayName: 'Aldric',
+            email: 'aldric@test.com',
+            emailVerified: true,
+            authProvider: 'correo',
+            photoUrl: null,
+            photoThumbUrl: null,
+            createdAt: null,
+            lastSeenAt: null,
+            role: 'jugador',
+            permissions: {
+                personajes: { create: true },
+                campanas: { create: true },
+            },
+        });
+
+        expect(service.can('personajes', 'create')).toBeTrue();
+        expect(service.can('campanas', 'create')).toBeTrue();
     });
 });

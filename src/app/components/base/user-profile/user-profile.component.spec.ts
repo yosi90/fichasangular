@@ -5,6 +5,7 @@ import { BehaviorSubject } from 'rxjs';
 
 import { UserProfileComponent } from './user-profile.component';
 import { AppToastService } from 'src/app/services/app-toast.service';
+import { CampanaService } from 'src/app/services/campana.service';
 import { UserProfileApiService } from 'src/app/services/user-profile-api.service';
 import { UserSettingsService } from 'src/app/services/user-settings.service';
 import { UserService } from 'src/app/services/user.service';
@@ -27,7 +28,7 @@ describe('UserProfileComponent', () => {
         photoThumbUrl: null,
         createdAt: '2025-01-01T00:00:00.000Z',
         lastSeenAt: '2025-01-02T00:00:00.000Z',
-        role: 'usuario',
+        role: 'jugador',
         permissions: {},
     });
 
@@ -59,6 +60,7 @@ describe('UserProfileComponent', () => {
             currentPrivateProfile$: profileSubject.asObservable(),
             refreshCurrentPrivateProfile: jasmine.createSpy('refreshCurrentPrivateProfile').and.callFake(async () => profileSubject.value),
             setCurrentPrivateProfile: jasmine.createSpy('setCurrentPrivateProfile'),
+            can: jasmine.createSpy('can').and.returnValue(true),
         };
 
         await TestBed.configureTestingModule({
@@ -70,9 +72,28 @@ describe('UserProfileComponent', () => {
                 {
                     provide: UserProfileApiService,
                     useValue: jasmine.createSpyObj<UserProfileApiService>('UserProfileApiService', [
+                        'getMyRoleRequestStatus',
+                        'createMasterRoleRequest',
                         'uploadAvatar',
                         'deleteAvatar',
                         'updateDisplayName',
+                    ]),
+                },
+                {
+                    provide: CampanaService,
+                    useValue: jasmine.createSpyObj<CampanaService>('CampanaService', [
+                        'listVisibleCampaigns',
+                        'getCampaignDetail',
+                        'createCampaign',
+                        'renameCampaign',
+                        'searchUsers',
+                        'addCampaignMember',
+                        'removeCampaignMember',
+                        'transferCampaignMaster',
+                        'createTrama',
+                        'updateTrama',
+                        'createSubtrama',
+                        'updateSubtrama',
                     ]),
                 },
                 { provide: UserSettingsService, useValue: userSettingsSvc },
@@ -86,6 +107,53 @@ describe('UserProfileComponent', () => {
 
         fixture = TestBed.createComponent(UserProfileComponent);
         component = fixture.componentInstance;
+        const apiSvc = TestBed.inject(UserProfileApiService) as jasmine.SpyObj<UserProfileApiService>;
+        const campanaSvc = TestBed.inject(CampanaService) as jasmine.SpyObj<CampanaService>;
+        apiSvc.getMyRoleRequestStatus.and.resolveTo({
+            currentRole: 'jugador',
+            requestedRole: null,
+            status: 'none',
+            blockedUntilUtc: null,
+            requestId: null,
+            requestedAtUtc: null,
+            resolvedAtUtc: null,
+            eligible: true,
+            reasonCode: null,
+            currentRoleAtRequest: null,
+            adminComment: null,
+        });
+        apiSvc.createMasterRoleRequest.and.resolveTo({
+            currentRole: 'jugador',
+            requestedRole: 'master',
+            status: 'pending',
+            blockedUntilUtc: null,
+            requestId: 10,
+            requestedAtUtc: '2026-03-10T10:00:00.000Z',
+            resolvedAtUtc: null,
+            eligible: false,
+            reasonCode: 'REQUEST_PENDING',
+            currentRoleAtRequest: 'jugador',
+            adminComment: null,
+        });
+        campanaSvc.listVisibleCampaigns.and.resolveTo([{
+            id: 7,
+            nombre: 'Campaña de prueba',
+            campaignRole: 'master',
+            membershipStatus: 'activo',
+        }]);
+        campanaSvc.getCampaignDetail.and.resolveTo({
+            campaign: {
+                id: 7,
+                nombre: 'Campaña de prueba',
+                campaignRole: 'master',
+                membershipStatus: 'activo',
+            },
+            members: [],
+            includeInactiveMembers: false,
+            tramas: [],
+            loadingMembers: false,
+            loadingTramas: false,
+        });
     });
 
     it('abre la sección solicitada cuando recibe un request válido', fakeAsync(() => {
@@ -121,5 +189,57 @@ describe('UserProfileComponent', () => {
         });
 
         expect(component.currentSection).toBe('resumen');
+    }));
+
+    it('permite solicitar ser master cuando el usuario es elegible', fakeAsync(() => {
+        fixture.detectChanges();
+        tick();
+
+        expect(component.canRequestMaster).toBeTrue();
+
+        void component.solicitarMaster();
+        tick();
+
+        expect(component.roleRequestStatus?.status).toBe('pending');
+        const toastSvc = TestBed.inject(AppToastService) as jasmine.SpyObj<AppToastService>;
+        expect(toastSvc.showSuccess).toHaveBeenCalled();
+    }));
+
+    it('muestra el bloqueo temporal cuando la solicitud fue rechazada', fakeAsync(() => {
+        const apiSvc = TestBed.inject(UserProfileApiService) as jasmine.SpyObj<UserProfileApiService>;
+        apiSvc.getMyRoleRequestStatus.and.resolveTo({
+            currentRole: 'jugador',
+            requestedRole: 'master',
+            status: 'rejected',
+            blockedUntilUtc: '2026-04-01T09:30:00.000Z',
+            requestId: 12,
+            requestedAtUtc: '2026-03-10T10:00:00.000Z',
+            resolvedAtUtc: '2026-03-11T10:00:00.000Z',
+            eligible: false,
+            reasonCode: 'REQUEST_BLOCKED',
+            currentRoleAtRequest: 'jugador',
+            adminComment: 'Espera un tiempo antes de volver a pedirlo.',
+        });
+
+        fixture.detectChanges();
+        tick();
+
+        expect(component.canRequestMaster).toBeFalse();
+        expect(component.roleRequestStatusLabel).toContain('No podrás volver a pedirlo');
+        expect(component.roleRequestAdminComment).toContain('Espera un tiempo');
+    }));
+
+    it('abre campañas y carga el detalle seleccionado', fakeAsync(() => {
+        fixture.detectChanges();
+        tick();
+
+        component.ngOnChanges({
+            openRequest: new SimpleChange(null, { section: 'campanas', requestId: 4 }, false),
+        });
+        tick();
+
+        expect(component.currentSection).toBe('campanas');
+        expect(component.masterCampaigns.length).toBe(1);
+        expect(component.selectedCampaignSummary?.id).toBe(7);
     }));
 });

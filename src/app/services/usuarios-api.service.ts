@@ -1,4 +1,4 @@
-import { HttpClient, HttpErrorResponse, HttpResponse } from '@angular/common/http';
+import { HttpClient, HttpErrorResponse, HttpHeaders, HttpResponse } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { Auth } from '@angular/fire/auth';
 import { saveAs } from 'file-saver';
@@ -26,7 +26,9 @@ export class UsuariosApiService {
 
         try {
             return await firstValueFrom(
-                this.http.get<UsuarioAclResponseDto>(`${this.usuariosBaseUrl}/acl/${encodeURIComponent(uidNormalizado)}`)
+                this.http.get<UsuarioAclResponseDto>(`${this.usuariosBaseUrl}/acl/${encodeURIComponent(uidNormalizado)}`, {
+                    headers: await this.buildAuthHeaders(),
+                })
             );
         } catch (error) {
             throw this.toApiError(error, 'No se pudo leer ACL de usuario desde API');
@@ -36,7 +38,9 @@ export class UsuariosApiService {
     async listUsers(): Promise<UsuarioListadoItemDto[]> {
         try {
             const response = await firstValueFrom(
-                this.http.get<UsuarioListadoItemDto[]>(this.usuariosBaseUrl)
+                this.http.get<UsuarioListadoItemDto[]>(this.usuariosBaseUrl, {
+                    headers: await this.buildAuthHeaders(),
+                })
             );
             return Array.isArray(response) ? response : [];
         } catch (error) {
@@ -47,7 +51,9 @@ export class UsuariosApiService {
     async upsertUser(payload: UsuarioUpsertRequestDto): Promise<UsuarioUpsertResponseDto> {
         try {
             return await firstValueFrom(
-                this.http.post<UsuarioUpsertResponseDto>(this.usuariosBaseUrl, payload)
+                this.http.post<UsuarioUpsertResponseDto>(this.usuariosBaseUrl, payload, {
+                    headers: await this.buildAuthHeaders(),
+                })
             );
         } catch (error) {
             throw this.toApiError(error, 'No se pudo persistir usuario en API');
@@ -55,17 +61,12 @@ export class UsuariosApiService {
     }
 
     async downloadUsersBackupZip(): Promise<string> {
-        const actorUid = `${this.auth.currentUser?.uid ?? ''}`.trim();
-        if (actorUid.length < 1)
-            throw new Error('Sesión no iniciada');
-
         try {
             const response = await firstValueFrom(
                 this.http.get(`${this.usuariosBaseUrl}/backup`, {
                     observe: 'response',
                     responseType: 'blob',
-                    params: { uid: actorUid },
-                    headers: { 'X-User-Uid': actorUid },
+                    headers: await this.buildAuthHeaders(),
                 })
             );
             const filename = this.resolveDownloadFilename(response, 'rol-backup.zip');
@@ -152,5 +153,19 @@ export class UsuariosApiService {
 
         const asciiMatch = contentDisposition.match(/filename\s*=\s*"?([^\";]+)"?/i);
         return asciiMatch?.[1]?.trim() || fallback;
+    }
+
+    private async buildAuthHeaders(): Promise<HttpHeaders> {
+        const user = this.auth.currentUser;
+        if (!user)
+            throw new Error('Sesión no iniciada');
+
+        const idToken = await user.getIdToken();
+        if (`${idToken ?? ''}`.trim().length < 1)
+            throw new Error('Token no disponible');
+
+        return new HttpHeaders({
+            Authorization: `Bearer ${idToken}`,
+        });
     }
 }

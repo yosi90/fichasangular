@@ -80,7 +80,7 @@
       multiTemplateDataRows
       matSort
       (matSortChange)="announceSortChange($event)"
-      *ngIf="Personajes.length > 0; else cargando"
+      *ngIf="personajesCargados; else cargando"
     >
       <ng-container
         matColumnDef="{{ column }}"

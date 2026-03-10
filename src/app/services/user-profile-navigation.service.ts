@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { Observable, Subject } from 'rxjs';
-import { UserPrivateProfileOpenRequest, UserPrivateProfileSectionId, UserPublicProfileTab } from '../interfaces/user-account';
+import { AdminPanelOpenRequest, AdminPanelSectionId, UserPrivateProfileOpenRequest, UserPrivateProfileSectionId, UserPublicProfileTab } from '../interfaces/user-account';
 
 @Injectable({
     providedIn: 'root'
@@ -8,14 +8,14 @@ import { UserPrivateProfileOpenRequest, UserPrivateProfileSectionId, UserPublicP
 export class UserProfileNavigationService {
     private readonly privateProfileSubject = new Subject<UserPrivateProfileOpenRequest>();
     private readonly publicProfileSubject = new Subject<UserPublicProfileTab>();
-    private readonly adminPanelSubject = new Subject<void>();
+    private readonly adminPanelSubject = new Subject<AdminPanelOpenRequest>();
     private readonly roadmapSubject = new Subject<void>();
     private readonly legalPrivacySubject = new Subject<void>();
     private readonly usageAboutSubject = new Subject<void>();
 
     readonly privateProfileOpen$: Observable<UserPrivateProfileOpenRequest> = this.privateProfileSubject.asObservable();
     readonly publicProfileOpen$: Observable<UserPublicProfileTab> = this.publicProfileSubject.asObservable();
-    readonly adminPanelOpen$: Observable<void> = this.adminPanelSubject.asObservable();
+    readonly adminPanelOpen$: Observable<AdminPanelOpenRequest> = this.adminPanelSubject.asObservable();
     readonly roadmapOpen$: Observable<void> = this.roadmapSubject.asObservable();
     readonly legalPrivacyOpen$: Observable<void> = this.legalPrivacySubject.asObservable();
     readonly usageAboutOpen$: Observable<void> = this.usageAboutSubject.asObservable();
@@ -31,8 +31,20 @@ export class UserProfileNavigationService {
         this.publicProfileSubject.next(payload);
     }
 
-    openAdminPanel(): void {
-        this.adminPanelSubject.next();
+    openAdminPanel(request?: AdminPanelOpenRequest | AdminPanelSectionId): void {
+        if (typeof request === 'string') {
+            this.adminPanelSubject.next({
+                section: request,
+                requestId: Date.now(),
+            });
+            return;
+        }
+
+        this.adminPanelSubject.next({
+            section: request?.section ?? 'usuarios',
+            pendingOnly: request?.pendingOnly === true,
+            requestId: Number(request?.requestId) > 0 ? Number(request?.requestId) : Date.now(),
+        });
     }
 
     openRoadmap(): void {

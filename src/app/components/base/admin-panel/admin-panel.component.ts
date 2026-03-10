@@ -1,5 +1,6 @@
-import { Component, OnDestroy, OnInit } from '@angular/core';
+import { Component, Input, OnChanges, OnDestroy, OnInit, SimpleChanges } from '@angular/core';
 import { Subject, takeUntil } from 'rxjs';
+import Swal from 'sweetalert2';
 import { CACHE_CONTRACT_MANIFEST, CacheEntityKey } from 'src/app/config/cache-contract-manifest';
 import { CampanaService } from 'src/app/services/campana.service';
 import { ClaseService } from 'src/app/services/clase.service';
@@ -41,6 +42,9 @@ import { MonstruoService } from 'src/app/services/monstruo.service';
 import { ExtraService } from 'src/app/services/extra.service';
 import { TamanoService } from 'src/app/services/tamano.service';
 import { SubdisciplinaConjurosService } from 'src/app/services/subdisciplina-conjuros.service';
+import { AdminPanelOpenRequest } from 'src/app/interfaces/user-account';
+import { AdminRoleRequestItem } from 'src/app/interfaces/user-role-request';
+import { UserProfileApiService } from 'src/app/services/user-profile-api.service';
 
 interface SyncItemConfig {
     key: CacheEntityKey;
@@ -60,6 +64,8 @@ interface SyncItemUi extends SyncItemConfig, CacheSyncUiState {
     standalone: false
 })
 export class AdminPanelComponent implements OnInit, OnDestroy {
+    @Input() openRequest: AdminPanelOpenRequest | null = null;
+
     hasCon?: boolean;
     esAdmin: boolean = false;
     cargandoUsuarios: boolean = true;
@@ -71,15 +77,22 @@ export class AdminPanelComponent implements OnInit, OnDestroy {
     estadoBackupSql: string = '';
     usuariosAdmin: AdminUserRow[] = [];
     readonly permissionResources = PERMISSION_RESOURCES;
-    readonly roleOptions: UserRole[] = ['usuario', 'colaborador', 'admin'];
+    readonly roleOptions: UserRole[] = ['jugador', 'master', 'colaborador', 'admin'];
     serverStatusIcon: string = 'question_mark';
     serverStatus: string = 'Verificar conexión';
     syncItems: SyncItemUi[] = [];
     syncItemsOrdenados: SyncItemUi[] = [];
+    solicitudesMasterPendientes: AdminRoleRequestItem[] = [];
+    cargandoSolicitudesMaster: boolean = false;
+    errorSolicitudesMaster: string = '';
+    usuariosPanelExpanded: boolean = true;
+    syncPanelExpanded: boolean = false;
+    resaltarSolicitudesPendientes: boolean = false;
 
     private readonly destroy$ = new Subject<void>();
     private readonly keysEjecutando = new Set<CacheEntityKey>();
     private readonly userOpsInFlight = new Set<string>();
+    private readonly roleRequestOpsInFlight = new Set<number>();
     private readonly dateFormatter = new Intl.DateTimeFormat('es-ES', {
         day: '2-digit',
         month: '2-digit',
@@ -130,6 +143,7 @@ export class AdminPanelComponent implements OnInit, OnDestroy {
         private cacheSyncMetadataSvc: CacheSyncMetadataService,
         private userSvc: UserService,
         private adminUsersSvc: AdminUsersService,
+        private userProfileApiSvc: UserProfileApiService,
     ) {
         this.syncRunners = {
             lista_personajes: () => this.lpSvc.RenovarPersonajesSimples(),
@@ -184,8 +198,10 @@ export class AdminPanelComponent implements OnInit, OnDestroy {
             .pipe(takeUntil(this.destroy$))
             .subscribe((estado) => {
                 this.esAdmin = estado === true;
-                if (this.esAdmin)
+                if (this.esAdmin) {
                     void this.validarAccesoAdmin();
+                    void this.cargarSolicitudesMasterPendientes();
+                }
             });
         this.adminUsersSvc.watchUsersAdminView()
             .pipe(takeUntil(this.destroy$))
@@ -225,6 +241,11 @@ export class AdminPanelComponent implements OnInit, OnDestroy {
                 });
                 this.syncItemsOrdenados = this.ordenarSyncItems(this.syncItems);
             });
+    }
+
+    ngOnChanges(changes: SimpleChanges): void {
+        if (changes['openRequest']?.currentValue)
+            this.aplicarOpenRequest(changes['openRequest'].currentValue);
     }
 
     ngOnDestroy(): void {
@@ -318,6 +339,16 @@ export class AdminPanelComponent implements OnInit, OnDestroy {
         return '';
     }
 
+    get etiquetaEstadoSolicitudes(): string {
+        if (this.cargandoSolicitudesMaster)
+            return 'Cargando solicitudes...';
+        if (this.errorSolicitudesMaster.length > 0)
+            return this.errorSolicitudesMaster;
+        if (this.solicitudesMasterPendientes.length < 1)
+            return 'No hay solicitudes pendientes';
+        return '';
+    }
+
     providerLabel(provider: string): string {
         const normalizado = this.normalizarTexto(provider);
         if (normalizado === 'correo')
@@ -332,7 +363,9 @@ export class AdminPanelComponent implements OnInit, OnDestroy {
             return 'Admin';
         if (role === 'colaborador')
             return 'Colaborador';
-        return 'Usuario';
+        if (role === 'master')
+            return 'Master';
+        return 'Jugador';
     }
 
     isSelfRow(row: AdminUserRow): boolean {
@@ -365,9 +398,7 @@ export class AdminPanelComponent implements OnInit, OnDestroy {
     canTogglePermission(row: AdminUserRow, resource: PermissionResource): boolean {
         if (!this.esAdmin)
             return false;
-        if (resource === 'personajes')
-            return false;
-        if (row.role === 'admin' || row.role === 'usuario')
+        if (row.role === 'admin')
             return false;
         if (this.isUserOpRunning(row.uid, `perm:${resource}`))
             return false;
@@ -480,6 +511,69 @@ export class AdminPanelComponent implements OnInit, OnDestroy {
         return item;
     }
 
+    trackByRoleRequest(index: number, item: AdminRoleRequestItem): number {
+        return item.requestId;
+    }
+
+    formatearFechaUtc(value: string | null | undefined, fallback: string = 'Sin dato'): string {
+        const text = `${value ?? ''}`.trim();
+        if (text.length < 1)
+            return fallback;
+
+        const parsed = new Date(text);
+        if (Number.isNaN(parsed.getTime()))
+            return fallback;
+        return this.dateFormatter.format(parsed).replace(',', '');
+    }
+
+    isRoleRequestOpRunning(item: AdminRoleRequestItem): boolean {
+        return this.roleRequestOpsInFlight.has(item.requestId);
+    }
+
+    async aprobarSolicitudMaster(item: AdminRoleRequestItem): Promise<void> {
+        if (!this.esAdmin || this.isRoleRequestOpRunning(item))
+            return;
+
+        const opKey = item.requestId;
+        this.roleRequestOpsInFlight.add(opKey);
+        this.errorSolicitudesMaster = '';
+        try {
+            await this.userProfileApiSvc.resolveRoleRequest(item.requestId, { decision: 'approve' });
+            await this.adminUsersSvc.syncUsersCacheFromApi();
+            await this.cargarSolicitudesMasterPendientes();
+        } catch (error: any) {
+            this.errorSolicitudesMaster = error?.message ?? 'No se pudo aprobar la solicitud';
+        } finally {
+            this.roleRequestOpsInFlight.delete(opKey);
+        }
+    }
+
+    async rechazarSolicitudMaster(item: AdminRoleRequestItem): Promise<void> {
+        if (!this.esAdmin || this.isRoleRequestOpRunning(item))
+            return;
+
+        const opKey = item.requestId;
+        this.roleRequestOpsInFlight.add(opKey);
+        this.errorSolicitudesMaster = '';
+        try {
+            const rechazo = await this.pedirDatosRechazo();
+            if (!rechazo)
+                return;
+
+            await this.userProfileApiSvc.resolveRoleRequest(item.requestId, {
+                decision: 'reject',
+                blockedUntilUtc: rechazo.blockedUntilUtc,
+                adminComment: rechazo.adminComment,
+            });
+            await this.adminUsersSvc.syncUsersCacheFromApi();
+            await this.cargarSolicitudesMasterPendientes();
+        } catch (error: any) {
+            this.errorSolicitudesMaster = error?.message ?? 'No se pudo rechazar la solicitud';
+        } finally {
+            this.roleRequestOpsInFlight.delete(opKey);
+        }
+    }
+
     private normalizarTexto(value: string): string {
         return `${value ?? ''}`
             .normalize('NFD')
@@ -503,5 +597,95 @@ export class AdminPanelComponent implements OnInit, OnDestroy {
             this.errorUsuarios = error?.message ?? 'No autorizado';
             this.esAdmin = false;
         }
+    }
+
+    async cargarSolicitudesMasterPendientes(): Promise<void> {
+        if (!this.esAdmin)
+            return;
+
+        this.cargandoSolicitudesMaster = true;
+        this.errorSolicitudesMaster = '';
+        try {
+            this.solicitudesMasterPendientes = await this.userProfileApiSvc.listPendingMasterRoleRequests();
+        } catch (error: any) {
+            this.errorSolicitudesMaster = error?.message ?? 'No se pudieron cargar las solicitudes pendientes';
+        } finally {
+            this.cargandoSolicitudesMaster = false;
+        }
+    }
+
+    private aplicarOpenRequest(request: AdminPanelOpenRequest): void {
+        this.usuariosPanelExpanded = true;
+        this.syncPanelExpanded = false;
+        this.resaltarSolicitudesPendientes = request?.section === 'role-requests' && request?.pendingOnly === true;
+
+        if (request?.section === 'role-requests') {
+            void this.cargarSolicitudesMasterPendientes();
+            this.scrollToRoleRequests();
+        }
+    }
+
+    private scrollToRoleRequests(): void {
+        if (typeof document === 'undefined')
+            return;
+
+        setTimeout(() => {
+            document.getElementById('admin-role-requests')?.scrollIntoView({
+                behavior: 'smooth',
+                block: 'start',
+            });
+        }, 50);
+    }
+
+    private async pedirDatosRechazo(): Promise<{ blockedUntilUtc: string; adminComment: string | null; } | null> {
+        const ahora = new Date();
+        const sugerida = new Date(ahora.getTime() + 7 * 24 * 60 * 60 * 1000);
+        const isoLocal = this.toLocalDateTimeValue(sugerida);
+
+        const result = await Swal.fire({
+            title: 'Rechazar solicitud',
+            html: `
+                <label for="role-request-blocked-until" style="display:block;text-align:left;margin-bottom:6px;">Bloquear nuevas solicitudes hasta</label>
+                <input id="role-request-blocked-until" type="datetime-local" class="swal2-input" value="${isoLocal}" style="margin:0 0 12px 0;width:100%;" />
+                <label for="role-request-admin-comment" style="display:block;text-align:left;margin-bottom:6px;">Comentario para el usuario (opcional)</label>
+                <textarea id="role-request-admin-comment" class="swal2-textarea" style="margin:0;width:100%;" placeholder="Motivo del rechazo"></textarea>
+            `,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Rechazar',
+            cancelButtonText: 'Cancelar',
+            focusConfirm: false,
+            preConfirm: () => {
+                const blockedUntilInput = document.getElementById('role-request-blocked-until') as HTMLInputElement | null;
+                const adminCommentInput = document.getElementById('role-request-admin-comment') as HTMLTextAreaElement | null;
+                const blockedUntilValue = `${blockedUntilInput?.value ?? ''}`.trim();
+                if (blockedUntilValue.length < 1) {
+                    Swal.showValidationMessage('Debes indicar hasta cuándo se bloquean nuevas solicitudes.');
+                    return null;
+                }
+
+                const blockedUntilDate = new Date(blockedUntilValue);
+                if (Number.isNaN(blockedUntilDate.getTime()) || blockedUntilDate.getTime() <= Date.now()) {
+                    Swal.showValidationMessage('La fecha de bloqueo debe estar en el futuro.');
+                    return null;
+                }
+
+                return {
+                    blockedUntilUtc: blockedUntilDate.toISOString(),
+                    adminComment: `${adminCommentInput?.value ?? ''}`.trim() || null,
+                };
+            },
+        });
+
+        return result.isConfirmed ? (result.value ?? null) : null;
+    }
+
+    private toLocalDateTimeValue(value: Date): string {
+        const year = value.getFullYear();
+        const month = `${value.getMonth() + 1}`.padStart(2, '0');
+        const day = `${value.getDate()}`.padStart(2, '0');
+        const hours = `${value.getHours()}`.padStart(2, '0');
+        const minutes = `${value.getMinutes()}`.padStart(2, '0');
+        return `${year}-${month}-${day}T${hours}:${minutes}`;
     }
 }

@@ -1,7 +1,8 @@
 export type UserAclPermissions = Record<string, Record<string, boolean>>;
-export type UserRole = 'usuario' | 'colaborador' | 'admin';
+export type UserRole = 'jugador' | 'master' | 'colaborador' | 'admin';
 export type PermissionResource =
     | 'personajes'
+    | 'campanas'
     | 'conjuros'
     | 'dotes'
     | 'razas'
@@ -16,6 +17,7 @@ export type PermissionResource =
 
 export const PERMISSION_RESOURCES: PermissionResource[] = [
     'personajes',
+    'campanas',
     'conjuros',
     'dotes',
     'razas',
@@ -43,7 +45,7 @@ export interface UserAcl {
 export const EMPTY_USER_ACL: UserAcl = {
     roles: {
         admin: false,
-        type: 'usuario',
+        type: 'jugador',
     },
     status: {
         banned: false,
@@ -75,13 +77,15 @@ function normalizeRole(rawRole: any, rawAdmin: any): UserRole {
     const role = toKey(rawRole);
     if (role === 'admin')
         return 'admin';
+    if (role === 'master')
+        return 'master';
     if (role === 'colaborador')
         return 'colaborador';
-    if (role === 'usuario')
-        return 'usuario';
+    if (role === 'jugador')
+        return 'jugador';
     if (toBoolean(rawAdmin))
         return 'admin';
-    return 'usuario';
+    return 'jugador';
 }
 
 export function normalizeUserAcl(raw: any): UserAcl {

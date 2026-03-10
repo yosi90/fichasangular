@@ -8,6 +8,15 @@ const firebaseContextMock = {
     run: <T>(fn: () => T) => fn(),
 } as FirebaseInjectionContextService;
 
+function crearServicio(httpMock: any): PersonajeService {
+    return new PersonajeService(
+        { currentUser: { getIdToken: async () => 'token' } } as any,
+        {} as any,
+        httpMock,
+        firebaseContextMock
+    );
+}
+
 function crearPersonajeMock(): Personaje {
     return {
         Id: 0,
@@ -228,7 +237,7 @@ describe('PersonajeService', () => {
         const httpMock = {
             post: jasmine.createSpy('post').and.returnValue(of({})),
         } as any;
-        const service = new PersonajeService({} as any, httpMock, firebaseContextMock);
+        const service = crearServicio(httpMock);
         const pj = crearPersonajeMock();
 
         const payload = service.construirPayloadCreacionDesdePersonaje(
@@ -246,11 +255,32 @@ describe('PersonajeService', () => {
         expect(payload.tamano.idTamano).toBe(1);
     });
 
+    it('omite campaña, trama y subtrama al crear un personaje sin campaña', () => {
+        const httpMock = {
+            post: jasmine.createSpy('post').and.returnValue(of({})),
+        } as any;
+        const service = crearServicio(httpMock);
+        const pj = crearPersonajeMock();
+        pj.Campana = 'Sin campaña';
+        pj.Trama = 'Trama base';
+        pj.Subtrama = 'Subtrama base';
+
+        const payload = service.construirPayloadCreacionDesdePersonaje(
+            pj,
+            'uid-1',
+            { idCampana: null, idTrama: null, idSubtrama: null }
+        );
+
+        expect(payload.personaje.campana).toBeUndefined();
+        expect(payload.personaje.trama).toBeUndefined();
+        expect(payload.personaje.subtrama).toBeUndefined();
+    });
+
     it('prioriza idRegion de contexto cuando está presente', () => {
         const httpMock = {
             post: jasmine.createSpy('post').and.returnValue(of({})),
         } as any;
-        const service = new PersonajeService({} as any, httpMock, firebaseContextMock);
+        const service = crearServicio(httpMock);
         const pj = crearPersonajeMock();
         pj.Id_region = 3;
 
@@ -267,7 +297,7 @@ describe('PersonajeService', () => {
         const httpMock = {
             post: jasmine.createSpy('post').and.returnValue(of({})),
         } as any;
-        const service = new PersonajeService({} as any, httpMock, firebaseContextMock);
+        const service = crearServicio(httpMock);
         const pj = crearPersonajeMock();
         pj.competencia_arma = [
             { Id: 3, Nombre: 'Espada larga' },
@@ -294,11 +324,11 @@ describe('PersonajeService', () => {
             post: jasmine.createSpy('post').and.returnValue(of({
                 message: 'ok',
                 idPersonaje: '22',
-                idJugador: '9',
+                ownerUserId: '00000000-0000-0000-0000-000000000009',
                 uid: 'uid-1',
             })),
         } as any;
-        const service = new PersonajeService({} as any, httpMock, firebaseContextMock);
+        const service = crearServicio(httpMock);
 
         const response = await service.crearPersonajeApiDesdeCreacion({
             uid: 'uid-1',
@@ -327,7 +357,7 @@ describe('PersonajeService', () => {
 
         expect(httpMock.post).toHaveBeenCalled();
         expect(response.idPersonaje).toBe(22);
-        expect(response.idJugador).toBe(9);
+        expect(response.ownerUserId).toBe('00000000-0000-0000-0000-000000000009');
         expect(response.uid).toBe('uid-1');
     });
 
@@ -335,7 +365,7 @@ describe('PersonajeService', () => {
         const httpMock = {
             post: jasmine.createSpy('post').and.returnValue(of({})),
         } as any;
-        const service = new PersonajeService({} as any, httpMock, firebaseContextMock);
+        const service = crearServicio(httpMock);
         const pj = crearPersonajeMock();
         pj.Id_region = 4;
         pj.Region = { Id: 4, Nombre: 'Rashemen' } as any;
@@ -368,7 +398,7 @@ describe('PersonajeService', () => {
         const httpMock = {
             post: jasmine.createSpy('post').and.returnValue(of({})),
         } as any;
-        const service = new PersonajeService({} as any, httpMock, firebaseContextMock);
+        const service = crearServicio(httpMock);
         const pj = crearPersonajeMock();
         (pj as any).competencia_arma = null;
         (pj as any).competencia_armadura = [{ Id: 4, Nombre: 'Broquel', Es_escudo: 1 }];
@@ -387,7 +417,7 @@ describe('PersonajeService', () => {
         const httpMock = {
             post: jasmine.createSpy('post').and.returnValue(of({})),
         } as any;
-        const service = new PersonajeService({} as any, httpMock, firebaseContextMock);
+        const service = crearServicio(httpMock);
         spyOn<any>(service, 'd_pjs').and.returnValue(of([{
             i: 55,
             n: 'Kara',

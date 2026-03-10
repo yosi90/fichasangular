@@ -1,15 +1,50 @@
 # API Endpoints (Programa de fichas - Backend)
 
-Fecha de generacion: 2026-03-04
+Fecha de generacion: 2026-03-10
 
 Resumen
 - Base URL (local): `http://127.0.0.1:5000`
 - Prefijos registrados: `/verify`, `/usuarios`, `/personajes`, `/razas`, `/razas/raciales`, `/subtipos`, `/campanas`, `/tramas`, `/subtramas`, `/manuales`, `/manuales/asociados`, `/monstruos`, `/familiares`, `/companeros`, `/tiposCriatura`, `/rasgos`, `/conjuros`, `/escuelas`, `/disciplinas`, `/alineamientos`, `/habilidades`, `/idiomas`, `/enemigos-predilectos`, `/extras`, `/tamanos`, `/armas`, `/armaduras`, `/grupos-armas`, `/grupos-armaduras`, `/dominios`, `/ambitos`, `/pabellones`, `/deidades`, `/dotes`, `/clases`, `/clases/habilidades`, `/plantillas`, `/ventajas`, `/desventajas`
-- Autenticacion: la mayoria de endpoints legacy siguen sin autenticacion backend; la vertical nueva de perfil usa `Authorization: Bearer <id_token>` de Firebase.
+- Autenticacion: la vertical de usuarios, campañas y personajes ya usa `Authorization: Bearer <id_token>` de Firebase en lectura actor-scoped y en operaciones admin. Parte del catálogo legacy de creación sigue pendiente de endurecimiento.
 - Content-Type esperado: `application/json`, `multipart/form-data` en `POST /usuarios/me/avatar`, `application/zip` en `GET /usuarios/backup` e `image/webp` en `GET /media/avatars/<uid>/<filename>`
 - CORS habilitado para: `https://rol.yosiftware.es/`, `https://www.rol.yosiftware.es/`, `https://62.43.222.28`, `http://192.168.0.34`
 - Metodos usados: `GET`, `POST`, `PUT`, `PATCH`, `DELETE`, `OPTIONS` (preflight en varias rutas).
 - Errores: los endpoints legacy siguen sin estandarizacion completa; la vertical nueva de perfil usa `{ "code": "...", "message": "..." }`.
+
+Cambios clave 2026-03-10
+- Se elimina cualquier dependencia API de `jugadores`, `jugador_personaje`, `campañas_tramas` y `tramas_subtramas`.
+- El rol base pasa a ser `jugador`. El catalogo global queda en `jugador | master | colaborador | admin`.
+- La autoria de personajes ya no se resuelve por email ni por tablas legacy: ahora sale de `personajes.OwnerUserId -> AppUser`.
+- La pertenencia a campaña se resuelve en `CampanaUsuario`.
+- `CampanaUsuario` queda modelada con dos dimensiones:
+  - `CampaignRoleCode`: `master | jugador`
+  - `MembershipStatusCode`: `activo | inactivo | expulsado`
+- Las tramas pertenecen directamente a una campaña y las subtramas pertenecen directamente a una trama.
+- El frontend debe dejar de esperar `legacyPlayer`, `idJugador` o sincronizacion con `jugadores`.
+- Nuevas capacidades de campañas:
+  - crear campaña
+  - editar campaña
+  - añadir o quitar jugadores
+  - transferir master conservando al anterior como `jugador` o dejándolo `inactivo`
+  - crear y editar tramas y subtramas desde endpoints específicos
+- Nuevas capacidades de usuarios:
+  - solicitudes de rol sobre `UserRequest`
+  - flujo soportado: `jugador -> master` y `master -> colaborador`
+  - alias legacy de `master-request` mantenidos temporalmente
+- Visibilidad actor-scoped:
+  - `GET /campanas` solo devuelve campañas activas del actor, salvo `admin`
+  - `GET /personajes`, `GET /personajes/simplificados` y `GET /personajes/<id>` aplican autorización por actor
+  - en campañas, los personajes públicos solo los ven miembros activos de esa campaña y `admin`
+
+Scripts SQL relevantes
+- `docs/1.-Consulta creación base datos rol.sql`: esquema base principal.
+- `docs/2.-Consulta creación sistema de usuarios.sql`: `AppUser`, ACL, permisos, `CampanaUsuario` y objetos de usuarios.
+- `docs/12.-Procedimientos personajes.sql`: procedimientos `dbo.rol_get_personajes` y `dbo.rol_get_personajes_simplificados`.
+
+Orden recomendado al recrear la base
+1. `docs/1.-Consulta creación base datos rol.sql`
+2. `docs/2.-Consulta creación sistema de usuarios.sql`
+3. `docs/12.-Procedimientos personajes.sql`
 
 Lista de endpoints
 | Metodo | Path | Descripcion | Estado |
@@ -20,15 +55,24 @@ Lista de endpoints
 | GET | /usuarios/acl/<uid> | ACL bootstrap por Firebase UID | Implementado |
 | GET | /usuarios/me | Perfil privado del usuario autenticado | Implementado |
 | PATCH | /usuarios/me | Actualizar displayName del usuario autenticado | Implementado |
+| GET | /usuarios/me/role-request | Estado actual de solicitud de rol del usuario autenticado | Implementado |
+| POST | /usuarios/me/role-request | Crear solicitud de rol del usuario autenticado | Implementado |
+| GET | /usuarios/me/master-request | Alias legado para consultar solicitud a master | Implementado |
+| POST | /usuarios/me/master-request | Alias legado para solicitar rol master | Implementado |
 | GET | /usuarios/me/settings | Recuperar settings del usuario autenticado | Implementado |
 | PUT | /usuarios/me/settings | Reemplazar settings del usuario autenticado | Implementado |
 | POST | /usuarios/me/avatar | Subir o reemplazar avatar | Implementado |
 | DELETE | /usuarios/me/avatar | Eliminar avatar | Implementado |
+| GET | /usuarios/role-requests | Listado admin de solicitudes de rol | Implementado |
+| PATCH | /usuarios/role-requests/<id> | Resolver una solicitud de rol | Implementado |
+| GET | /usuarios/master-requests | Alias admin para solicitudes a master | Implementado |
+| GET | /usuarios/search | Búsqueda pública básica de usuarios | Implementado |
 | GET | /usuarios/<uid>/public | Perfil público resumido por Firebase UID | Implementado |
-| POST | /usuarios | Upsert usuario + replica a jugadores legacy | Implementado |
+| POST | /usuarios | Upsert usuario + ACL sobre `AppUser` | Implementado |
 | GET | /media/avatars/<uid>/<filename> | Recuperar avatar público servido por la API | Implementado |
-| GET | /personajes | Lista detallada de personajes | Implementado |
-| GET | /personajes/simplificados | Lista simplificada de personajes | Implementado |
+| GET | /personajes | Lista detallada de personajes visible para el actor | Implementado |
+| GET | /personajes/<id_personaje> | Detalle de personaje visible para el actor | Implementado |
+| GET | /personajes/simplificados | Lista simplificada visible para el actor | Implementado |
 | POST | /personajes/add | Crear personaje | Implementado |
 | PATCH | /personajes/<id_personaje>/visible | Actualizar visibilidad de personaje | Implementado |
 | GET | /razas | Lista completa de razas | Implementado |
@@ -37,14 +81,24 @@ Lista de endpoints
 | GET | /subtipos | Lista de subtipos | Implementado |
 | GET | /subtipos/<id_subtipo> | Subtipo completo por id | Implementado |
 | POST | /razas/add | Crear raza | No implementado (funcion `pass`) |
-| GET | /campanas | Lista de campanas | Implementado |
-| POST | /campanas/add | Crear campana | No implementado (funcion `pass`) |
+| GET | /campanas | Lista de campañas visibles para el actor | Implementado |
+| POST | /campanas | Crear campana | Implementado |
+| POST | /campanas/add | Alias legacy para crear campana | Implementado |
+| PATCH | /campanas/<id_campana> | Editar campaña | Implementado |
+| POST | /campanas/<id_campana>/jugadores | Añadir jugador a campaña | Implementado |
+| GET | /campanas/<id_campana>/jugadores | Listar miembros de campaña | Implementado |
+| DELETE | /campanas/<id_campana>/jugadores/<uid> | Retirar jugador de campaña | Implementado |
+| PATCH | /campanas/<id_campana>/master | Transferir master de campaña | Implementado |
 | GET | /tramas | Lista de tramas | Implementado |
 | GET | /tramas/campana/<id_campana> | Tramas por campana | Implementado |
-| POST | /tramas/add | Crear trama | No implementado (funcion `pass`) |
+| POST | /tramas/campana/<id_campana> | Crear trama dentro de campaña | Implementado |
+| POST | /tramas/add | Alias legacy para crear trama | Implementado |
+| PATCH | /tramas/<id_trama> | Editar trama | Implementado |
 | GET | /subtramas | Lista de subtramas | Implementado |
 | GET | /subtramas/trama/<id_trama> | Subtramas por trama | Implementado |
-| POST | /subtramas/add | Crear subtrama | No implementado (funcion `pass`) |
+| POST | /subtramas/trama/<id_trama> | Crear subtrama dentro de trama | Implementado |
+| POST | /subtramas/add | Alias legacy para crear subtrama | Implementado |
+| PATCH | /subtramas/<id_subtrama> | Editar subtrama | Implementado |
 | GET | /manuales | Lista de manuales | Implementado |
 | GET | /manuales/<id_manual> | Manual por id | Implementado |
 | PATCH | /manuales/<id_manual> | Actualizar flags de contenido de un manual | Implementado |
@@ -141,6 +195,12 @@ Respuesta 500 (ejemplo)
 ```
 
 Endpoint: GET /usuarios
+Descripcion: Lista de usuarios para panel admin. Requiere `Authorization: Bearer <id_token>` y rol `admin`.
+
+Acceso
+- Solo admins autenticados.
+- Si el usuario autenticado está baneado, responde `403`.
+
 Respuesta: array de `UsuarioListadoItem`
 
 UsuarioListadoItem
@@ -151,7 +211,7 @@ UsuarioListadoItem
 | displayName | string/null | Nombre visible |
 | email | string/null | Email |
 | authProvider | string | `correo` \| `google` \| `otro` |
-| role | string | `usuario` \| `colaborador` \| `admin` |
+| role | string | `jugador` \| `master` \| `colaborador` \| `admin` |
 | admin | boolean | `true` cuando `role=admin` |
 | banned | boolean | Estado de baneo |
 | updatedAtUtc | string/null | Fecha UTC de ultima actualizacion ACL |
@@ -163,8 +223,7 @@ Descripcion: Genera un ZIP en memoria con scripts SQL de insercion para todas la
 
 Acceso
 - Solo admins.
-- El admin se identifica con `uid` por query string o `X-User-Uid` por header.
-- Si ambos se envian y no coinciden, responde `400`.
+- Requiere `Authorization: Bearer <id_token>`.
 
 Respuesta 200
 - `Content-Type`: `application/zip`
@@ -176,12 +235,13 @@ Respuesta 200
   - `999_post_restore.sql`
 
 Errores esperados
-- `400`: falta `uid` o no coincide con `X-User-Uid`.
+- `401`: token ausente o invalido.
 - `403`: usuario baneado o no admin.
-- `404`: `uid` no encontrado en `AppUser`.
 - `500`: error generando el backup o consultando la base.
 
 Endpoint: GET /usuarios/acl/<uid>
+Descripcion: Recupera la ACL de un usuario concreto por Firebase UID. Requiere `Authorization: Bearer <id_token>` y rol `admin`.
+
 Parametros de path
 | Campo | Tipo | Descripcion |
 | --- | --- | --- |
@@ -191,7 +251,7 @@ Respuesta 200: `UsuarioAclResponse`
 ```json
 {
   "uid": "firebase-uid",
-  "role": "usuario",
+  "role": "jugador",
   "admin": false,
   "banned": false,
   "permissionsCreate": [
@@ -210,7 +270,7 @@ Respuesta 404 (ejemplo)
 ```
 
 Endpoint: POST /usuarios
-Descripcion: Upsert transaccional en `AppUser` + ACL opcional + replica en `jugadores`.
+Descripcion: Upsert transaccional en `AppUser` + ACL opcional. Ya no replica datos en tablas legacy. Requiere `Authorization: Bearer <id_token>` y rol `admin`.
 
 Body (`application/json`)
 ```json
@@ -219,7 +279,6 @@ Body (`application/json`)
   "displayName": "Nombre",
   "email": "mail@dominio.com",
   "authProvider": "correo",
-  "actorUserId": "00000000-0000-0000-0000-000000000000",
   "role": "colaborador",
   "banned": false,
   "permissionsCreate": [
@@ -231,10 +290,12 @@ Body (`application/json`)
 Reglas de validacion
 - `uid` o `firebaseUid`: obligatorio.
 - `displayName`: obligatorio, maximo 150.
-- `email`: obligatorio, maximo 60.
+- `email`: obligatorio, maximo 320.
 - `authProvider`: `correo|google|otro`.
+- `role`: `jugador|master|colaborador|admin`.
 - `permissionsCreate`: array de `{ resource, allowed }`.
-- Si existen multiples `jugadores` con el mismo `correo`, responde `409` y hace rollback.
+- `permissionsCreate` solo tiene efecto real cuando el usuario no es `admin`.
+- `actorUserId` ya no se acepta desde cliente; el actor sale del token autenticado.
 
 Respuesta 201/200 (ejemplo)
 ```json
@@ -244,21 +305,18 @@ Respuesta 201/200 (ejemplo)
   "uid": "firebase-uid",
   "acl": {
     "uid": "firebase-uid",
-    "role": "usuario",
+    "role": "jugador",
     "admin": false,
     "banned": false,
     "permissionsCreate": [
       { "resource": "personajes", "allowed": true }
     ]
-  },
-  "legacyPlayer": {
-    "idJugador": 123
   }
 }
 ```
 
 Endpoint: GET /usuarios/me
-Descripcion: Recupera el perfil privado del usuario autenticado mediante `Authorization: Bearer <id_token>` de Firebase. Si el `AppUser` no existe, la API lo bootstrappea junto con `UserAcl`, `AppUserProfile`, `AppUserSettings` y el jugador legacy asociado.
+Descripcion: Recupera el perfil privado del usuario autenticado mediante `Authorization: Bearer <id_token>` de Firebase. Si el `AppUser` no existe, la API lo bootstrappea junto con `UserAcl`, `AppUserProfile` y `AppUserSettings`.
 
 Respuesta 200 (ejemplo)
 ```json
@@ -272,9 +330,10 @@ Respuesta 200 (ejemplo)
   "photoThumbUrl": null,
   "createdAt": "2026-03-09T12:00:00.000Z",
   "lastSeenAt": "2026-03-09T12:00:00.000Z",
-  "role": "usuario",
+  "role": "jugador",
   "permissions": {
     "personajes": { "create": true },
+    "campanas": { "create": false },
     "conjuros": { "create": false }
   }
 }
@@ -282,11 +341,11 @@ Respuesta 200 (ejemplo)
 
 Errores esperados
 - `401`: `UNAUTHORIZED`, `TOKEN_INVALID`.
-- `409`: `PROFILE_EMAIL_REQUIRED`, `LEGACY_PLAYER_CONFLICT`.
+- `409`: `PROFILE_EMAIL_REQUIRED`.
 - `500`: error interno o configuración inválida de Firebase.
 
 Endpoint: PATCH /usuarios/me
-Descripcion: Actualiza exclusivamente `displayName` del usuario autenticado y sincroniza `jugadores.nombre`.
+Descripcion: Actualiza exclusivamente `displayName` del usuario autenticado.
 
 Body (`application/json`)
 ```json
@@ -299,7 +358,7 @@ Errores esperados
 - `400`: `PROFILE_NAME_INVALID`, `PROFILE_NAME_TOO_LONG`.
 - `401`: `UNAUTHORIZED`, `TOKEN_INVALID`.
 - `403`: `PROFILE_READ_ONLY_FOR_BANNED`.
-- `409`: `LEGACY_PLAYER_CONFLICT`.
+- `409`: `PROFILE_EMAIL_REQUIRED` si el bootstrap del usuario no puede completarse.
 
 Endpoint: GET /usuarios/me/settings
 Descripcion: Devuelve el documento de settings V1 del usuario autenticado. Si no existe, la API genera el default y lo persiste.
@@ -347,7 +406,7 @@ Errores esperados
 - `400`: `SETTINGS_INVALID`, `SETTINGS_VERSION_UNSUPPORTED`.
 - `401`: `UNAUTHORIZED`, `TOKEN_INVALID`.
 - `403`: `PROFILE_READ_ONLY_FOR_BANNED`.
-- `409`: `LEGACY_PLAYER_CONFLICT`.
+- `409`: `PROFILE_EMAIL_REQUIRED`.
 
 Endpoint: POST /usuarios/me/avatar
 Descripcion: Sube o reemplaza el avatar del usuario autenticado. Acepta `image/jpeg`, `image/png` o `image/webp`, máximo `5 MB`, y re-encodea a `webp`.
@@ -367,10 +426,123 @@ Errores esperados
 - `400`: `AVATAR_FILE_TOO_LARGE`, `AVATAR_FILE_TYPE_INVALID`, `AVATAR_IMAGE_INVALID`.
 - `401`: `UNAUTHORIZED`, `TOKEN_INVALID`.
 - `403`: `PROFILE_READ_ONLY_FOR_BANNED`.
-- `409`: `LEGACY_PLAYER_CONFLICT`.
+- `409`: `PROFILE_EMAIL_REQUIRED`.
+
+Endpoint: GET /usuarios/me/role-request
+Descripcion: Devuelve el estado actual de la solicitud de rol del usuario autenticado. Usa `Authorization: Bearer <id_token>` de Firebase.
+
+Respuesta 200 (ejemplo)
+```json
+{
+  "currentRole": "jugador",
+  "requestedRole": "master",
+  "status": "pending",
+  "blockedUntilUtc": null,
+  "requestId": 17,
+  "requestedAtUtc": "2026-03-10T18:00:00.000Z",
+  "resolvedAtUtc": null,
+  "eligible": false,
+  "reasonCode": "REQUEST_PENDING",
+  "currentRoleAtRequest": "jugador",
+  "adminComment": null
+}
+```
+
+Notas
+- El flujo soportado es `jugador -> master` y `master -> colaborador`.
+- Si el usuario no tiene ninguna solicitud previa, `status` vale `none`.
+
+Endpoint: POST /usuarios/me/role-request
+Descripcion: Crea una solicitud de cambio de rol en `UserRequest`.
+
+Body (ejemplo)
+```json
+{
+  "requestedRole": "master"
+}
+```
+
+Notas
+- `jugador` solo puede solicitar `master`.
+- `master` solo puede solicitar `colaborador`.
+- `colaborador` y `admin` no pueden solicitar cambios.
+- Si hay una pendiente o un bloqueo vigente, responde `409`.
+
+Endpoint: GET /usuarios/me/master-request
+Descripcion: Alias temporal de `GET /usuarios/me/role-request` con `requestedRole=master`.
+
+Endpoint: POST /usuarios/me/master-request
+Descripcion: Alias temporal de `POST /usuarios/me/role-request` para solicitudes a `master`.
+
+Endpoint: GET /usuarios/role-requests
+Descripcion: Listado admin de solicitudes de rol.
+
+Autorización
+- Solo `admin`, autenticado con `Authorization: Bearer <id_token>`.
+
+Query params
+| Campo | Tipo | Descripcion |
+| --- | --- | --- |
+| status | string | `pending`, `approved` o `rejected` |
+| requestedRole | string | `master` o `colaborador` |
+
+Endpoint: PATCH /usuarios/role-requests/<id>
+Descripcion: Resuelve una solicitud de rol existente.
+
+Body (ejemplo)
+```json
+{
+  "decision": "reject",
+  "blockedUntilUtc": "2026-04-10T00:00:00.000Z",
+  "adminComment": "Necesitamos más experiencia de dirección."
+}
+```
+
+Notas
+- `decision=approve` promociona automáticamente el rol global con `usp_SetUserRole`.
+- `decision=reject` exige `blockedUntilUtc`.
+- Si el rol actual del usuario ya no coincide con `CurrentRoleCodeAtRequest`, responde `409`.
+- Autorización: solo `admin`, autenticado con `Authorization: Bearer <id_token>`.
+
+Endpoint: GET /usuarios/master-requests
+Descripcion: Alias admin de `GET /usuarios/role-requests` filtrado a `requestedRole=master`.
+
+Endpoint: GET /usuarios/search
+Descripcion: Búsqueda pública básica de usuarios para autocompletar, invitaciones a campaña y futuras funciones sociales. No requiere autenticación.
+
+Query params
+- `q`: obligatorio, string, mínimo 2 caracteres.
+- `limit`: opcional, entero, default `10`, máximo `20`.
+
+Reglas
+- Busca por coincidencia por contenido en `displayName`.
+- Si `q` coincide exactamente con `uid`, ese resultado se prioriza.
+- Excluye usuarios baneados.
+- Incluye usuarios activos aunque `perfil.mostrarPerfilPublico=false`.
+- Solo devuelve datos básicos: `uid`, `displayName`, `photoThumbUrl`.
+
+Respuesta 200 (ejemplo)
+```json
+[
+  {
+    "uid": "firebase-uid-exacto",
+    "displayName": "Alberto",
+    "photoThumbUrl": "http://127.0.0.1:5000/media/avatars/firebase-uid-exacto/thumb.webp"
+  },
+  {
+    "uid": "firebase-uid-otro",
+    "displayName": "Calisto",
+    "photoThumbUrl": "http://127.0.0.1:5000/media/avatars/firebase-uid-otro/original.webp"
+  }
+]
+```
+
+Errores esperados
+- `400`: falta `q`, `q` tiene menos de 2 caracteres o `limit` es inválido.
+- `500`: error interno o de base de datos.
 
 Endpoint: GET /usuarios/<uid>/public
-Descripcion: Recupera el perfil público mínimo por `FirebaseUid`. Si el usuario no existe o `perfil.mostrarPerfilPublico=false`, devuelve el mismo `404`.
+Descripcion: Recupera el perfil público mínimo por `FirebaseUid`. Si el usuario no existe o `perfil.mostrarPerfilPublico=false`, devuelve el mismo `404`. Las estadísticas se calculan por `personajes.OwnerUserId`.
 
 Respuesta 200 (ejemplo)
 ```json
@@ -396,6 +568,7 @@ Nota de alcance
 - En esta iteración no existe `POST /usuarios/me/password`; el frontend debe usar Firebase Client SDK para reautenticar y cambiar contraseña.
 
 Endpoint: GET /personajes
+Descripcion: Lista detallada actor-scoped. Requiere `Authorization: Bearer <id_token>`.
 Respuesta: array de `PersonajeDetalle`
 
 PersonajeDetalle
@@ -471,7 +644,7 @@ PersonajeDetalle
 | ve | string | Lista serializada de ventajas separada por `| ` |
 | idi | array | Lista de `Idioma` |
 | sor | array | Lista de `SortilegioPersonaje` |
-| ju | string | Jugador |
+| ju | string | Nombre visible del creador |
 | pgl | number | PGS (lic) |
 | ini_v | array | Modificadores de iniciativa: `{ Valor, Origen }` |
 | pr_v | array | Modificadores de presa: `{ Valor, Origen }` |
@@ -493,6 +666,7 @@ PersonajeDetalle
 | ecp | string | Lista serializada de escuelas prohibidas separada por `| ` |
 
 Endpoint: GET /personajes/simplificados
+Descripcion: Lista simplificada actor-scoped. Requiere `Authorization: Bearer <id_token>`.
 Respuesta: array de `PersonajeSimplificado`
 
 PersonajeSimplificado
@@ -513,8 +687,23 @@ PersonajeSimplificado
 | a | number | Archivado (0/1) |
 | visible_otros_usuarios | boolean | Si otros usuarios pueden ver este personaje |
 
+Reglas de visibilidad actor-scoped para listados y detalle
+- `admin`: ve todo.
+- El owner siempre ve sus propios personajes.
+- Sin campaña: un personaje solo es visible si es propio o público.
+- En campaña: un `master` activo ve todos los personajes de su campaña.
+- En campaña: un miembro activo no-master ve sus personajes y los públicos de esa campaña.
+- Un usuario ajeno a una campaña no ve personajes de esa campaña aunque sean públicos.
+
+Endpoint: GET /personajes/<id_personaje>
+Descripcion: Devuelve el mismo `PersonajeDetalle` del listado, pero para un único personaje y con la misma autorización actor-scoped.
+
 Endpoint: POST /personajes/add
-Descripcion: Crea personaje completo en una transaccion y lo vincula al `jugador` legacy asociado al `AppUser` (`uid/firebaseUid`).
+Descripcion: Crea personaje completo en una transacción y lo vincula al `AppUser` autenticado mediante `personajes.OwnerUserId`.
+
+Autorización
+- Requiere `Authorization: Bearer <id_token>`.
+- Si el body incluye `uid` o `firebaseUid` por compatibilidad legacy, debe coincidir con el usuario autenticado.
 
 Body minimo (ejemplo)
 ```json
@@ -526,9 +715,6 @@ Body minimo (ejemplo)
     "idRaza": 1,
     "idTipoCriatura": 1,
     "idRegion": 0,
-    "campana": { "id": 1 },
-    "trama": { "id": 1 },
-    "subtrama": { "id": 1 },
     "visible_otros_usuarios": false,
     "oficial": true
   },
@@ -553,13 +739,20 @@ Colecciones soportadas adicionales
 Validaciones relevantes
 - `personaje.idRegion` (o `personaje.id_region`) es obligatorio y debe existir en `regiones`.
 - Se permite `idRegion=0` para "Sin región".
+- Forma canónica de crear un personaje sin campaña: omitir `campana`, `trama` y `subtrama`.
+- Por compatibilidad también se aceptan las tres propiedades a `null`, pero el frontend nuevo no debería enviarlas así.
+- Si se indica historia, deben enviarse conjuntamente `campana`, `trama` y `subtrama`, y todas deben existir.
+- La `trama` debe pertenecer a la `campana`.
+- La `subtrama` debe pertenecer a la `trama`.
+- El actor debe tener permiso `personajes.create`.
+- Si se indica campaña, el actor debe pertenecer a ella con membresía `activa` como `jugador` o `master`, salvo `admin`.
 
 Respuesta 201
 ```json
 {
   "message": "Personaje creado exitosamente",
   "idPersonaje": 123,
-  "idJugador": 45,
+  "ownerUserId": "00000000-0000-0000-0000-000000000000",
   "uid": "firebase-uid"
 }
 ```
@@ -567,12 +760,14 @@ Respuesta 201
 Errores esperados
 - `404`: AppUser no encontrado para `uid`.
 - `403`: usuario baneado o sin `personajes.create`.
-- `409`: AppUser sin jugador legacy sincronizado (o duplicado) en `jugadores`.
 - `400`: payload invalido o conflicto de integridad de datos.
 
 Endpoint: PATCH /personajes/<id_personaje>/visible
 Descripcion: Actualiza exclusivamente la flag `visible_otros_usuarios` de un personaje.
-Nota: se acepta `uid` (canonico) o `firebaseUid` (alias) para identificar al AppUser.
+
+Autorización
+- Requiere `Authorization: Bearer <id_token>`.
+- Si el body incluye `uid` o `firebaseUid` por compatibilidad legacy, debe coincidir con el usuario autenticado.
 
 Body (ejemplo)
 ```json
@@ -596,7 +791,6 @@ Errores esperados
 - `400`: body invalido o `visible_otros_usuarios` no booleano.
 - `403`: usuario baneado o no propietario (si no es admin).
 - `404`: AppUser no encontrado o personaje inexistente.
-- `409`: AppUser sin jugador legacy sincronizado (o duplicado) para validar ownership.
 - `500`: error interno no controlado.
 
 Endpoint: GET /razas
@@ -752,18 +946,226 @@ SubtipoDetalle
 | Plantillas | array | Lista de `ReferenciaCorta` |
 
 Endpoint: GET /campanas
+Descripcion: Lista actor-scoped de campañas visibles. Requiere `Authorization: Bearer <id_token>`.
+
+Autorización
+- `admin`: ve todas las campañas.
+- resto: solo campañas donde tenga membresía `activa`.
+
 Respuesta
 ```json
 [
-  { "i": 1, "n": "Nombre de campana" }
+  {
+    "i": 1,
+    "n": "Nombre de campana",
+    "campaignRole": "jugador",
+    "membershipStatus": "activo"
+  }
 ]
 ```
+
+Endpoint: POST /campanas
+Descripcion: Crea una campaña y añade automáticamente al actor como `master` de la campaña.
+
+Autorización
+- Requiere `Authorization: Bearer <id_token>`.
+- Si el body incluye `uid` o `firebaseUid` por compatibilidad legacy, debe coincidir con el usuario autenticado.
+
+Body
+```json
+{
+  "uid": "firebase-uid",
+  "nombre": "La costa de las nieblas"
+}
+```
+
+Respuesta 201
+```json
+{
+  "message": "Campaña creada correctamente",
+  "idCampana": 7,
+  "nombre": "La costa de las nieblas",
+  "masterUid": "firebase-uid"
+}
+```
+
+Notas
+- Requiere `campanas.create`.
+- El actor puede ser `master`, `colaborador` o `admin`.
+
+Endpoint: POST /campanas/add
+Descripcion: Alias legacy de `POST /campanas`. El frontend nuevo debería usar la ruta canónica.
+
+Endpoint: PATCH /campanas/<id_campana>
+Descripcion: Renombra una campaña existente.
+
+Autorización
+- Requiere `Authorization: Bearer <id_token>`.
+- Si el body incluye `uid` o `firebaseUid` por compatibilidad legacy, debe coincidir con el usuario autenticado.
+
+Body
+```json
+{
+  "uid": "firebase-uid",
+  "nombre": "Nuevo nombre"
+}
+```
+
+Notas
+- Solo `admin` o el `master` de esa campaña.
+
+Endpoint: POST /campanas/<id_campana>/jugadores
+Descripcion: Añade un usuario a la campaña con rol de campaña fijo `jugador`.
+
+Autorización
+- Requiere `Authorization: Bearer <id_token>`.
+- Si el body incluye `uid` o `firebaseUid` por compatibilidad legacy, debe coincidir con el usuario autenticado.
+
+Body
+```json
+{
+  "uid": "firebase-uid",
+  "targetUid": "firebase-uid-destino"
+}
+```
+
+Respuesta 201
+```json
+{
+  "message": "Jugador añadido a la campaña",
+  "idCampana": 7,
+  "targetUid": "firebase-uid-destino",
+  "campaignRole": "jugador",
+  "membershipStatus": "activo"
+}
+```
+
+Notas
+- Aunque el usuario destino tenga rol global `master`, aquí entra como `jugador`.
+- Si ya pertenecía, la API lo fuerza igualmente a `jugador`.
+- Si estaba `inactivo` o `expulsado`, el alta lo reactiva como `jugador`.
+
+Endpoint: GET /campanas/<id_campana>/jugadores
+Descripcion: Lista los miembros de una campaña. Por defecto devuelve solo los miembros con `membershipStatus=activo`. Si el frontend necesita histórico, puede pedir también `inactivo` y `expulsado`.
+
+Autorización
+- `admin`
+- cualquier miembro activo de la campaña (`master` o `jugador`)
+- siempre mediante `Authorization: Bearer <id_token>`
+
+Query params
+| Campo | Tipo | Descripcion |
+| --- | --- | --- |
+| includeInactive | boolean | Si vale `true`, incluye también `inactivo` y `expulsado` |
+
+Ejemplo
+`GET /campanas/7/jugadores?includeInactive=true`
+
+Respuesta 200
+```json
+[
+  {
+    "userId": "00000000-0000-0000-0000-000000000001",
+    "uid": "firebase-master",
+    "displayName": "Master actual",
+    "email": "master@test.com",
+    "campaignRole": "master",
+    "membershipStatus": "activo",
+    "isActive": true,
+    "addedAtUtc": "2026-03-10T15:10:00.000Z",
+    "addedByUserId": "00000000-0000-0000-0000-000000000001"
+  },
+  {
+    "userId": "00000000-0000-0000-0000-000000000002",
+    "uid": "firebase-expulsado",
+    "displayName": "Jugador expulsado",
+    "email": "expulsado@test.com",
+    "campaignRole": "jugador",
+    "membershipStatus": "expulsado",
+    "isActive": false,
+    "addedAtUtc": "2026-03-10T15:20:00.000Z",
+    "addedByUserId": "00000000-0000-0000-0000-000000000001"
+  }
+]
+```
+
+Valores posibles de `campaignRole`
+- `master`
+- `jugador`
+
+Valores posibles de `membershipStatus`
+- `activo`
+- `inactivo`
+- `expulsado`
+
+Endpoint: DELETE /campanas/<id_campana>/jugadores/<uid>
+Descripcion: Retira a un usuario de la campaña sin borrar el registro histórico.
+
+Autorización
+- Requiere `Authorization: Bearer <id_token>`.
+- Si el body incluye `uid` o `firebaseUid` por compatibilidad legacy, debe coincidir con el usuario autenticado.
+
+Body
+```json
+{
+  "uid": "firebase-uid",
+  "status": "expulsado"
+}
+```
+
+Notas
+- Solo `admin` o el `master` de esa campaña.
+- No permite eliminar al `master` actual desde esta ruta.
+- Si no se indica `status`, la API usa `expulsado`.
+- `status` admite `inactivo` o `expulsado`.
+
+Respuesta 200
+```json
+{
+  "message": "Jugador retirado de la campaña",
+  "idCampana": 7,
+  "targetUid": "firebase-uid-destino",
+  "campaignRole": "jugador",
+  "membershipStatus": "expulsado"
+}
+```
+
+Endpoint: PATCH /campanas/<id_campana>/master
+Descripcion: Transfiere el master de la campaña a otro usuario.
+
+Autorización
+- Requiere `Authorization: Bearer <id_token>`.
+- Si el body incluye `uid` o `firebaseUid` por compatibilidad legacy, debe coincidir con el usuario autenticado.
+
+Body
+```json
+{
+  "uid": "firebase-uid-master-actual",
+  "targetUid": "firebase-uid-nuevo-master",
+  "keepPreviousAsPlayer": true
+}
+```
+
+Respuesta 200
+```json
+{
+  "message": "Master de campaña transferido correctamente",
+  "idCampana": 7,
+  "newMasterUid": "firebase-uid-nuevo-master",
+  "previousMasterDisposition": "jugador"
+}
+```
+
+Notas
+- `keepPreviousAsPlayer=true`: el master saliente queda como `jugador`.
+- `keepPreviousAsPlayer=false`: el master saliente queda como `inactivo`.
+- Solo `admin` o el `master` actual.
 
 Endpoint: GET /tramas
 Respuesta
 ```json
 [
-  { "i": 1, "n": "Nombre de trama" }
+  { "i": 1, "n": "Nombre de trama", "idCampana": 7 }
 ]
 ```
 
@@ -773,13 +1175,61 @@ Parametros de path
 | --- | --- | --- |
 | id_campana | number | Id de campana |
 
-Respuesta igual a `/tramas`.
+Respuesta: array de objetos `{ i, n }`.
+
+Endpoint: POST /tramas/campana/<id_campana>
+Descripcion: Crea una trama dentro de la campaña indicada.
+
+Autorización
+- Requiere `Authorization: Bearer <id_token>`.
+- Si el body incluye `uid` o `firebaseUid` por compatibilidad legacy, debe coincidir con el usuario autenticado.
+
+Body
+```json
+{
+  "uid": "firebase-uid",
+  "nombre": "Los barcos negros"
+}
+```
+
+Respuesta 201
+```json
+{
+  "message": "Trama creada correctamente",
+  "idTrama": 11,
+  "idCampana": 7,
+  "nombre": "Los barcos negros"
+}
+```
+
+Endpoint: POST /tramas/add
+Descripcion: Alias legacy. Requiere `idCampana` en el body.
+
+Autorización
+- Requiere `Authorization: Bearer <id_token>`.
+- Si el body incluye `uid` o `firebaseUid` por compatibilidad legacy, debe coincidir con el usuario autenticado.
+
+Body mínimo
+```json
+{
+  "uid": "firebase-uid",
+  "idCampana": 7,
+  "nombre": "Los barcos negros"
+}
+```
+
+Endpoint: PATCH /tramas/<id_trama>
+Descripcion: Renombra una trama existente. Solo `admin` o el `master` de la campaña a la que pertenece.
+
+Autorización
+- Requiere `Authorization: Bearer <id_token>`.
+- Si el body incluye `uid` o `firebaseUid` por compatibilidad legacy, debe coincidir con el usuario autenticado.
 
 Endpoint: GET /subtramas
 Respuesta
 ```json
 [
-  { "i": 1, "n": "Nombre de subtrama" }
+  { "i": 1, "n": "Nombre de subtrama", "idTrama": 11 }
 ]
 ```
 
@@ -789,7 +1239,56 @@ Parametros de path
 | --- | --- | --- |
 | id_trama | number | Id de trama |
 
-Respuesta igual a `/subtramas`.
+Respuesta: array de objetos `{ i, n }`.
+
+Endpoint: POST /subtramas/trama/<id_trama>
+Descripcion: Crea una subtrama dentro de la trama indicada.
+
+Autorización
+- Requiere `Authorization: Bearer <id_token>`.
+- Si el body incluye `uid` o `firebaseUid` por compatibilidad legacy, debe coincidir con el usuario autenticado.
+
+Body
+```json
+{
+  "uid": "firebase-uid",
+  "nombre": "La torre hundida"
+}
+```
+
+Respuesta 201
+```json
+{
+  "message": "Subtrama creada correctamente",
+  "idSubtrama": 21,
+  "idTrama": 11,
+  "idCampana": 7,
+  "nombre": "La torre hundida"
+}
+```
+
+Endpoint: POST /subtramas/add
+Descripcion: Alias legacy. Requiere `idTrama` en el body.
+
+Autorización
+- Requiere `Authorization: Bearer <id_token>`.
+- Si el body incluye `uid` o `firebaseUid` por compatibilidad legacy, debe coincidir con el usuario autenticado.
+
+Body mínimo
+```json
+{
+  "uid": "firebase-uid",
+  "idTrama": 11,
+  "nombre": "La torre hundida"
+}
+```
+
+Endpoint: PATCH /subtramas/<id_subtrama>
+Descripcion: Renombra una subtrama existente. Solo `admin` o el `master` de la campaña a la que pertenece su trama.
+
+Autorización
+- Requiere `Authorization: Bearer <id_token>`.
+- Si el body incluye `uid` o `firebaseUid` por compatibilidad legacy, debe coincidir con el usuario autenticado.
 
 Endpoint: GET /manuales
 Respuesta: array de `ManualDetalle`

@@ -128,13 +128,9 @@ export class AdminUsersService {
         const acl = normalizeUserAcl(rawAcl);
         if (acl.roles.type === 'admin')
             throw new Error('Los permisos de un admin son fijos y siempre están activos');
-        if (acl.roles.type === 'usuario')
-            throw new Error('El rol usuario no admite permisos adicionales');
-        if (resource === 'personajes' && value !== true)
-            throw new Error('El permiso personajes.create es obligatorio');
 
         const permissions = this.toPermissionsMap(this.permissionsArrayFromAclPermissions(acl.permissions));
-        permissions[resource] = resource === 'personajes' ? true : value;
+        permissions[resource] = value;
         const permissionsEfectivos = this.toPermissionsMap(
             this.buildEffectivePermissionsCreate(acl.roles.type, this.mapToPermissionsArray(permissions))
         );
@@ -277,7 +273,7 @@ export class AdminUsersService {
         uids.forEach((uid) => {
             const profile = perfiles[uid];
             const acl = aclByUid[uid] ?? { ...EMPTY_USER_ACL };
-            const role = acl.roles?.type ?? 'usuario';
+            const role = acl.roles?.type ?? 'jugador';
 
             rows.push({
                 uid,
@@ -342,17 +338,13 @@ export class AdminUsersService {
                 return;
             }
 
-            if (resource === 'personajes') {
-                base[resource] = true;
+            const aclResource = rawPermissions?.[resource];
+            if (aclResource && Object.prototype.hasOwnProperty.call(aclResource, 'create')) {
+                base[resource] = aclResource?.['create'] === true;
                 return;
             }
 
-            if (role === 'usuario') {
-                base[resource] = false;
-                return;
-            }
-
-            base[resource] = rawPermissions?.[resource]?.['create'] === true;
+            base[resource] = resource === 'personajes';
         });
         return base;
     }
@@ -422,10 +414,12 @@ export class AdminUsersService {
     }
 
     private permissionsArrayFromAclPermissions(rawPermissions: Record<string, Record<string, boolean>>): UsuarioPermissionCreateDto[] {
-        return PERMISSION_RESOURCES.map((resource) => ({
-            resource,
-            allowed: rawPermissions?.[resource]?.['create'] === true,
-        }));
+        return PERMISSION_RESOURCES
+            .filter((resource) => Object.prototype.hasOwnProperty.call(rawPermissions ?? {}, resource))
+            .map((resource) => ({
+                resource,
+                allowed: rawPermissions?.[resource]?.['create'] === true,
+            }));
     }
 
     private async backupUserToApi(uid: string): Promise<void> {
@@ -458,7 +452,7 @@ export class AdminUsersService {
             return null;
 
         const acl = normalizeUserAcl(aclRaw);
-        const role = acl.roles?.type ?? 'usuario';
+        const role = acl.roles?.type ?? 'jugador';
         const permissionsCreate = this.buildEffectivePermissionsCreate(
             role,
             this.permissionsArrayFromAclPermissions(acl.permissions)
@@ -490,19 +484,19 @@ export class AdminUsersService {
         permissions: UsuarioPermissionCreateDto[] | null | undefined
     ): UsuarioPermissionCreateDto[] {
         const map = this.toPermissionsMap(permissions);
+        const providedResources = new Set(
+            (permissions ?? [])
+                .map((item) => `${item?.resource ?? ''}`.trim().toLowerCase())
+                .filter((resource) => PERMISSION_RESOURCES.includes(resource as PermissionResource))
+        );
 
         if (role === 'admin') {
             PERMISSION_RESOURCES.forEach((resource) => map[resource] = true);
             return this.mapToPermissionsArray(map);
         }
 
-        map.personajes = true;
-        if (role === 'usuario') {
-            PERMISSION_RESOURCES
-                .filter((resource) => resource !== 'personajes')
-                .forEach((resource) => map[resource] = false);
-            return this.mapToPermissionsArray(map);
-        }
+        if (!providedResources.has('personajes'))
+            map.personajes = true;
 
         return this.mapToPermissionsArray(map);
     }
@@ -545,7 +539,7 @@ export class AdminUsersService {
             if (uid.length < 1)
                 return;
 
-            const role = (row?.role ?? 'usuario') as UserRole;
+            const role = (row?.role ?? 'jugador') as UserRole;
             const permissionsCreate = this.buildEffectivePermissionsCreate(role, row.permissionsCreate);
             const permissionsMap = this.toPermissionsMap(permissionsCreate);
             const permissionsRaw: Record<string, Record<string, boolean>> = {};

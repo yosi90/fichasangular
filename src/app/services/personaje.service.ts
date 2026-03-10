@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
+import { Auth } from '@angular/fire/auth';
 import { Database, Unsubscribe, onValue, ref, set, update } from '@angular/fire/database';
-import { Observable, firstValueFrom } from 'rxjs';
+import { Observable, firstValueFrom, of } from 'rxjs';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import {
     Personaje,
@@ -42,193 +43,30 @@ interface PersonajeVisibilityUpdateResponse {
 export class PersonajeService {
 
     constructor(
+        private auth: Auth,
         private db: Database,
         private http: HttpClient,
         private firebaseContextSvc: FirebaseInjectionContextService,
     ) { }
 
     async getDetallesPersonaje(id: number): Promise<Observable<Personaje>> {
-        return new Observable((observador) => {
-            const dbRef = ref(this.db, `Personajes/${id}`);
-            let unsubscribe: Unsubscribe;
+        const personajeId = Math.trunc(toNumber(id));
+        if (personajeId <= 0)
+            throw new Error('Id de personaje no válido');
 
-            const onNext = (snapshot: any) => {
-                const clasesVal = snapshot.child('Clases').val();
-                const clasesArray = Array.isArray(clasesVal) ? clasesVal : [];
-                const dotesContextuales = toDoteContextualArray(snapshot.child('DotesContextuales').val());
-                const dotesLegacyRaw = snapshot.child('Dotes').val();
-                const subtipos = normalizeSubtipoRefArray(snapshot.child('Subtipos').val() ?? snapshot.child('stc').val());
-                const ventajas = normalizeVentajasPersonaje(snapshot.child('Ventajas').val());
-                const idiomas = normalizeIdiomasPersonaje(snapshot.child('Idiomas').val());
-                const competenciasArma = normalizeCompetenciasPersonaje(snapshot.child('competencia_arma').val(), {
-                    idKeys: ['Id', 'id', 'Id_arma', 'id_arma', 'i'],
-                    nombreKeys: ['Nombre', 'nombre', 'Arma', 'arma'],
-                });
-                const competenciasArmadura = normalizeCompetenciasPersonaje(snapshot.child('competencia_armadura').val(), {
-                    idKeys: ['Id', 'id', 'Id_armadura', 'id_armadura', 'Id_arma', 'id_arma', 'i'],
-                    nombreKeys: ['Nombre', 'nombre', 'Armadura', 'armadura', 'Arma', 'arma'],
-                    includeShield: true,
-                }) as PersonajeCompetenciaArmaduraDirecta[];
-                const competenciasGrupoArma = normalizeCompetenciasPersonaje(snapshot.child('competencia_grupo_arma').val(), {
-                    idKeys: ['Id', 'id', 'Id_grupo', 'id_grupo', 'IdGrupo', 'idGrupo', 'i'],
-                    nombreKeys: ['Nombre', 'nombre', 'Grupo', 'grupo'],
-                });
-                const competenciasGrupoArmadura = normalizeCompetenciasPersonaje(snapshot.child('competencia_grupo_armadura').val(), {
-                    idKeys: ['Id', 'id', 'Id_grupo', 'id_grupo', 'IdGrupo', 'idGrupo', 'i'],
-                    nombreKeys: ['Nombre', 'nombre', 'Grupo', 'grupo'],
-                });
-                const familiares = normalizeFamiliarMonstruoDetalleArray(snapshot.child('Familiares').val() ?? snapshot.child('familiares').val(), 1);
-                const companeros = normalizeCompaneroMonstruoDetalleArray(snapshot.child('Companeros').val() ?? snapshot.child('companeros').val(), 1);
-                const caracteristicasPerdidas = normalizeCaracteristicasPerdidasPersonaje(
-                    snapshot.child('Caracteristicas_perdidas').val(),
-                    snapshot.child('Constitucion_perdida').val()
-                );
-                const idRegion = Math.max(0, Math.trunc(toNumber(
-                    snapshot.child('Id_region').val()
-                    ?? snapshot.child('id_region').val()
-                    ?? snapshot.child('idRegion').val()
-                    ?? snapshot.child('Region').child('Id').val()
-                    ?? snapshot.child('Region').child('id').val()
-                    ?? snapshot.child('region').child('Id').val()
-                    ?? snapshot.child('region').child('id').val()
-                )));
-                const nombreRegion = toText(
-                    snapshot.child('Region').child('Nombre').val()
-                    ?? snapshot.child('Region').child('nombre').val()
-                    ?? snapshot.child('region').child('Nombre').val()
-                    ?? snapshot.child('region').child('nombre').val()
-                ).trim();
-                const dotesLegacy = Array.isArray(dotesLegacyRaw)
-                    ? dotesLegacyRaw
-                    : (dotesLegacyRaw && typeof dotesLegacyRaw === 'object'
-                        ? Object.values(dotesLegacyRaw)
-                        : toDoteLegacyArray(dotesContextuales));
-                let pj: Personaje = {
-                    Id: id,
-                    Nombre: snapshot.child('Nombre').val(),
-                    ownerUid: toNullableText(snapshot.child('ownerUid').val() ?? snapshot.child('uid').val()),
-                    ownerDisplayName: toNullableText(
-                        snapshot.child('ownerDisplayName').val()
-                        ?? snapshot.child('owner_display_name').val()
-                        ?? snapshot.child('odn').val()
-                    ),
-                    visible_otros_usuarios: toBoolean(snapshot.child('visible_otros_usuarios').val()),
-                    Id_region: idRegion,
-                    Region: {
-                        Id: idRegion,
-                        Nombre: nombreRegion.length > 0 ? nombreRegion : (idRegion === 0 ? 'Sin región' : ''),
-                    },
-                    Raza: snapshot.child('Raza').val(),
-                    RazaBase: snapshot.child('RazaBase').val() ?? snapshot.child('raza_base').val() ?? null,
-                    desgloseClases: clasesArray,
-                    Clases: clasesArray.map((c: { Nombre: any; Nivel: any; }) => `${c.Nombre} (${c.Nivel})`).join(", "),
-                    Personalidad: snapshot.child('Personalidad').val(),
-                    Contexto: snapshot.child('Contexto').val(),
-                    Campana: snapshot.child('Campana').val(),
-                    Trama: snapshot.child('Trama').val(),
-                    Subtrama: snapshot.child('Subtrama').val(),
-                    Ataque_base: snapshot.child('Ataque_base').val(),
-                    Ca: snapshot.child('Ca').val(),
-                    Armadura_natural: snapshot.child('Armadura_natural').val(),
-                    Ca_desvio: snapshot.child('Ca_desvio').val(),
-                    Ca_varios: snapshot.child('Ca_varios').val(),
-                    Iniciativa_varios: snapshot.child('Iniciativa_varios').val(),
-                    Presa: snapshot.child('Presa').val(),
-                    Presa_varios: snapshot.child('Presa_varios').val(),
-                    Tipo_criatura: snapshot.child('Tipo_criatura').val(),
-                    Subtipos: subtipos,
-                    Fuerza: snapshot.child('Fuerza').val(),
-                    ModFuerza: snapshot.child('ModFuerza').val(),
-                    Destreza: snapshot.child('Destreza').val(),
-                    ModDestreza: snapshot.child('ModDestreza').val(),
-                    Constitucion: snapshot.child('Constitucion').val(),
-                    ModConstitucion: snapshot.child('ModConstitucion').val(),
-                    Caracteristicas_perdidas: caracteristicasPerdidas,
-                    Constitucion_perdida: caracteristicasPerdidas.Constitucion === true,
-                    Inteligencia: snapshot.child('Inteligencia').val(),
-                    ModInteligencia: snapshot.child('ModInteligencia').val(),
-                    Sabiduria: snapshot.child('Sabiduria').val(),
-                    ModSabiduria: snapshot.child('ModSabiduria').val(),
-                    Carisma: snapshot.child('Carisma').val(),
-                    ModCarisma: snapshot.child('ModCarisma').val(),
-                    CaracteristicasVarios: snapshot.child('CaracteristicasVarios').val() ?? {
-                        Fuerza: [],
-                        Destreza: [],
-                        Constitucion: [],
-                        Inteligencia: [],
-                        Sabiduria: [],
-                        Carisma: [],
-                    },
-                    NEP: snapshot.child('NEP').val(),
-                    Experiencia: snapshot.child('Experiencia').val(),
-                    Deidad: snapshot.child('Deidad').val(),
-                    Alineamiento: snapshot.child('Alineamiento').val(),
-                    Genero: snapshot.child('Genero').val(),
-                    Vida: snapshot.child('Vida').val(),
-                    Correr: snapshot.child('Correr').val(),
-                    Nadar: snapshot.child('Nadar').val(),
-                    Volar: snapshot.child('Volar').val(),
-                    Trepar: snapshot.child('Trepar').val(),
-                    Escalar: snapshot.child('Escalar').val(),
-                    Oficial: snapshot.child('Oficial').val(),
-                    Dados_golpe: snapshot.child('Dados_golpe').val(),
-                    Pgs_lic: snapshot.child('Pgs_lic').val(),
-                    Dominios: snapshot.child('Dominios').val(),
-                    competencia_arma: competenciasArma,
-                    competencia_armadura: competenciasArmadura,
-                    competencia_grupo_arma: competenciasGrupoArma,
-                    competencia_grupo_armadura: competenciasGrupoArmadura,
-                    Plantillas: snapshot.child('Plantillas').val(),
-                    Familiares: familiares,
-                    Companeros: companeros,
-                    Conjuros: snapshot.child('Conjuros').val(),
-                    Claseas: snapshot.child('Claseas').val(),
-                    Raciales: normalizeRaciales(snapshot.child('Raciales').val()),
-                    Habilidades: snapshot.child('Habilidades').val(),
-                    Dotes: dotesLegacy,
-                    DotesContextuales: dotesContextuales,
-                    Ventajas: ventajas,
-                    Idiomas: idiomas,
-                    Sortilegas: snapshot.child('Sortilegas').val(),
-                    Archivado: false,
-                    Jugador: snapshot.child('Jugador').val(),
-                    Edad: snapshot.child('Edad').val(),
-                    Altura: snapshot.child('Altura').val(),
-                    Peso: snapshot.child('Peso').val(),
-                    Salvaciones: snapshot.child('Salvaciones').val(),
-                    Rds: snapshot.child('Rds').val(),
-                    Rcs: snapshot.child('Rcs').val(),
-                    Res: snapshot.child('Res').val(),
-                    Capacidad_carga: snapshot.child('Capacidad_carga').val(),
-                    Oro_inicial: snapshot.child('Oro_inicial').val() ?? 0,
-                    Escuela_especialista: snapshot.child('Escuela_especialista').val(),
-                    Disciplina_especialista: snapshot.child('Disciplina_especialista').val(),
-                    Disciplina_prohibida: snapshot.child('Disciplina_prohibida').val(),
-                    Escuelas_prohibidas: snapshot.child('Escuelas_prohibidas').val(),
-                };
-                observador.next(pj); // Emitir el array de personajes
-            };
-
-            const onError = (error: any) => {
-                observador.error(error); // Manejar el error
-            };
-
-            // const onComplete = () => {
-            //     observador.complete();  Completar el observable
-            // };
-
-            // unsubscribe = onValue(dbRef, onNext, onError, onComplete);
-            unsubscribe = this.firebaseContextSvc.run(() => onValue(dbRef, onNext, onError));
-
-            return () => {
-                unsubscribe(); // Cancelar la suscripción al evento onValue
-            };
-        });
+        try {
+            const headers = await this.buildAuthHeaders();
+            const response = await firstValueFrom(
+                this.http.get<any>(`${environment.apiUrl}personajes/${personajeId}`, { headers })
+            );
+            return of(this.mapApiDetalleToPersonaje(response));
+        } catch (error: any) {
+            throw new Error(this.obtenerMensajeErrorHttp(error, 'No se pudo cargar el detalle del personaje.'));
+        }
     }
 
-    private d_pjs(): Observable<any> {
-        const headers = new HttpHeaders({ 'Content-Type': 'application/json' });
-        const res = this.http.get(`${environment.apiUrl}personajes`);
+    private d_pjs(headers?: HttpHeaders): Observable<any> {
+        const res = this.http.get(`${environment.apiUrl}personajes`, headers ? { headers } : undefined);
         return res;
     }
 
@@ -253,6 +91,8 @@ export class PersonajeService {
             this.http.patch<PersonajeVisibilityUpdateResponse>(
                 `${environment.apiUrl}personajes/${id}/visible`,
                 payload
+                ,
+                { headers: await this.buildAuthHeaders() }
             )
         );
 
@@ -289,6 +129,8 @@ export class PersonajeService {
         const idCampana = Math.trunc(toNumber(contextoIds?.idCampana));
         const idTrama = Math.trunc(toNumber(contextoIds?.idTrama));
         const idSubtrama = Math.trunc(toNumber(contextoIds?.idSubtrama));
+        const esSinCampana = normalizeLookupKey(personaje?.Campana) === 'sin campana';
+        const tieneContextoCampana = !esSinCampana && idCampana > 0 && idTrama > 0 && idSubtrama > 0;
         const tieneClaseConNivel = (personaje?.desgloseClases ?? [])
             .some((entrada) => Math.trunc(toNumber(entrada?.Nivel)) > 0);
         const mapasCatalogo = {
@@ -311,7 +153,7 @@ export class PersonajeService {
             throw new Error('El tipo de criatura del personaje no es válido.');
         if (!tieneClaseConNivel)
             throw new Error('Debes tener al menos una clase con nivel mayor que 0.');
-        if (idCampana <= 0 || idTrama <= 0 || idSubtrama <= 0)
+        if (!esSinCampana && !tieneContextoCampana)
             throw new Error('No se pudo resolver el contexto de campaña/trama/subtrama.');
 
         const idAlineamiento = Math.trunc(toNumber(contextoIds?.idAlineamiento))
@@ -357,9 +199,6 @@ export class PersonajeService {
             idRaza,
             idTipoCriatura,
             idRegion,
-            campana: { id: idCampana },
-            trama: { id: idTrama },
-            subtrama: { id: idSubtrama },
             descripcionPersonalidad: `${personaje?.Personalidad ?? ''}`.trim(),
             descripcionHistoria: `${personaje?.Contexto ?? ''}`.trim(),
             armaduraNatural: Math.trunc(toNumber(personaje?.Armadura_natural)),
@@ -390,6 +229,11 @@ export class PersonajeService {
         };
         if (idRazaBase > 0)
             personajePayload.idRazaBase = idRazaBase;
+        if (tieneContextoCampana) {
+            personajePayload.campana = { id: idCampana };
+            personajePayload.trama = { id: idTrama };
+            personajePayload.subtrama = { id: idSubtrama };
+        }
 
         const payload: PersonajeCreateRequestDto = {
             uid,
@@ -937,18 +781,21 @@ export class PersonajeService {
             const response = await firstValueFrom(
                 this.http.post<PersonajeCreateResponseDto>(
                     `${environment.apiUrl}personajes/add`,
-                    payload
+                    payload,
+                    { headers: await this.buildAuthHeaders() }
                 )
             );
             const idPersonaje = Math.trunc(toNumber(response?.idPersonaje));
-            const idJugador = Math.trunc(toNumber(response?.idJugador));
+            const ownerUserId = `${response?.ownerUserId ?? ''}`.trim();
             if (idPersonaje <= 0)
                 throw new Error('La API no devolvió un id de personaje válido.');
+            if (ownerUserId.length < 1)
+                throw new Error('La API no devolvió un ownerUserId válido.');
 
             return {
                 message: `${response?.message ?? 'Personaje creado'}`,
                 idPersonaje,
-                idJugador,
+                ownerUserId,
                 uid: `${response?.uid ?? payload?.uid ?? ''}`.trim(),
             };
         } catch (error: any) {
@@ -1102,9 +949,260 @@ export class PersonajeService {
         return direct.length > 0 ? direct : fallback;
     }
 
+    private async buildAuthHeaders(): Promise<HttpHeaders> {
+        const user = this.auth.currentUser;
+        if (!user)
+            throw new Error('Sesión no iniciada');
+
+        const idToken = await user.getIdToken();
+        if (`${idToken ?? ''}`.trim().length < 1)
+            throw new Error('Token no disponible');
+
+        return new HttpHeaders({
+            Authorization: `Bearer ${idToken}`,
+        });
+    }
+
+    private mapApiDetalleToPersonaje(element: any): Personaje {
+        const tempcla = `${element?.cla ?? ''}`.split('|');
+        let nep = toNumber(element?.ra?.Dgs_adicionales?.Cantidad);
+        const clas: { Nombre: string; Nivel: number; }[] = [];
+        tempcla.forEach((el: string) => {
+            const datos = el.split(';');
+            const nivelClase = toNumber(datos[1]);
+            if (`${datos[0] ?? ''}`.trim().length < 1)
+                return;
+            clas.push({
+                Nombre: datos[0].trim(),
+                Nivel: nivelClase,
+            });
+            nep += nivelClase;
+        });
+
+        const ajusteNivelRaza = toNumber(element?.ra?.Ajuste_nivel);
+        if (ajusteNivelRaza > 0)
+            nep += ajusteNivelRaza;
+        (element?.pla ?? []).forEach((el: { Ajuste_nivel: number; Multiplicador_dgs_lic: number; }) => {
+            nep += toNumber(el?.Ajuste_nivel) + toNumber(el?.Multiplicador_dgs_lic);
+        });
+
+        const experiencia = nep > 0 ? ((nep - 1) * nep / 2) * 1000 : 0;
+        const dotesContextuales = toDoteContextualArray(element?.dotes);
+        const dotes = toDoteLegacyArray(dotesContextuales);
+        const claseas: { Nombre: string; Extra: string; }[] = [];
+        for (let index = 0; index < (element?.esp ?? []).length; index++) {
+            claseas.push({
+                Nombre: element.esp[index],
+                Extra: element.espX?.[index] ?? 'Nada',
+            });
+        }
+
+        const habilidades: {
+            Id: number; Nombre: string; Clasea: boolean; Car: string; Mod_car: number; Rangos: number; Rangos_varios: number; Extra: string;
+            Varios: string; Custom: boolean;
+        }[] = [];
+        for (let index = 0; index < (element?.habN ?? []).length; index++) {
+            habilidades.push({
+                Id: toNumber(element?.hab?.[index]),
+                Nombre: element.habN[index],
+                Clasea: toBoolean(element?.habC?.[index]),
+                Car: `${element?.habCa?.[index] ?? ''}`,
+                Mod_car: toNumber(element?.habMc?.[index]),
+                Rangos: toNumber(element?.habR?.[index]),
+                Rangos_varios: toNumber(element?.habRv?.[index]),
+                Extra: `${element?.habX?.[index] ?? ''}`,
+                Varios: `${element?.habV?.[index] ?? ''}`,
+                Custom: toBoolean(element?.habCu?.[index]),
+            });
+        }
+
+        const cargas = {
+            Ligera: toNumber(element?.ccl),
+            Media: toNumber(element?.ccm),
+            Pesada: toNumber(element?.ccp),
+        };
+        const escuela_esp = {
+            Nombre: `${element?.espa ?? ''}`,
+            Calificativo: `${element?.espan ?? ''}`,
+        };
+        const disciplina_esp = {
+            Nombre: `${element?.espp ?? ''}`,
+            Calificativo: `${element?.esppn ?? ''}`,
+        };
+        const rds: { Modificador: string; Origen: string; }[] = [];
+        if (element?.rds)
+            for (let index = 0; index < element.rds.length; index++) {
+                const partes = `${element.rds[index] ?? ''}`.split(';');
+                rds.push({
+                    Modificador: `${partes[0] ?? ''}`,
+                    Origen: `${partes[1] ?? ''}`,
+                });
+            }
+        const rcs: { Modificador: string; Origen: string; }[] = [];
+        if (element?.rcs)
+            for (let index = 0; index < element.rcs.length; index++) {
+                const partes = `${element.rcs[index] ?? ''}`.split(';');
+                rcs.push({
+                    Modificador: `${partes[0] ?? ''}`,
+                    Origen: `${partes[1] ?? ''}`,
+                });
+            }
+        const res: { Modificador: string; Origen: string; }[] = [];
+        if (element?.res)
+            for (let index = 0; index < element.res.length; index++) {
+                const partes = `${element.res[index] ?? ''}`.split(';');
+                res.push({
+                    Modificador: `${partes[0] ?? ''}`,
+                    Origen: `${partes[1] ?? ''}`,
+                });
+            }
+
+        const dom: string[] = `${element?.dom ?? ''}`.split('|').map((item: string) => item.trim()).filter((item: string) => item.length > 0);
+        const subtipos = normalizeSubtipoRefArray(element?.subtipos ?? element?.stc ?? '');
+        const raciales = normalizeRaciales(element?.rac);
+        const ve = normalizeVentajasPersonaje(element?.ve);
+        const idiomas = normalizeIdiomasPersonaje(element?.idi);
+        const competenciasArma = normalizeCompetenciasPersonaje(element?.competencia_arma, {
+            idKeys: ['Id', 'id', 'Id_arma', 'id_arma', 'i'],
+            nombreKeys: ['Nombre', 'nombre', 'Arma', 'arma'],
+        });
+        const competenciasArmadura = normalizeCompetenciasPersonaje(element?.competencia_armadura, {
+            idKeys: ['Id', 'id', 'Id_armadura', 'id_armadura', 'Id_arma', 'id_arma', 'i'],
+            nombreKeys: ['Nombre', 'nombre', 'Armadura', 'armadura', 'Arma', 'arma'],
+            includeShield: true,
+        });
+        const competenciasGrupoArma = normalizeCompetenciasPersonaje(element?.competencia_grupo_arma, {
+            idKeys: ['Id', 'id', 'Id_grupo', 'id_grupo', 'IdGrupo', 'idGrupo', 'i'],
+            nombreKeys: ['Nombre', 'nombre', 'Grupo', 'grupo'],
+        });
+        const competenciasGrupoArmadura = normalizeCompetenciasPersonaje(element?.competencia_grupo_armadura, {
+            idKeys: ['Id', 'id', 'Id_grupo', 'id_grupo', 'IdGrupo', 'idGrupo', 'i'],
+            nombreKeys: ['Nombre', 'nombre', 'Grupo', 'grupo'],
+        });
+        const ecp: string[] = `${element?.ecp ?? ''}`.split('|').map((item: string) => item.trim()).filter((item: string) => item.length > 0);
+        const ataqueBase = `${element?.a ?? 0}`;
+        const presaBase = +(ataqueBase.includes('/') ? ataqueBase.substring(0, ataqueBase.indexOf('/')) : ataqueBase);
+        const razaBase = element?.RazaBase ?? element?.rb ?? element?.raza_base ?? null;
+        const idRegion = Math.max(0, Math.trunc(toNumber(
+            element?.id_region
+            ?? element?.idRegion
+            ?? element?.Region?.Id
+            ?? element?.Region?.id
+            ?? element?.region?.Id
+            ?? element?.region?.id
+        )));
+        const nombreRegion = `${element?.Region?.Nombre
+            ?? element?.Region?.nombre
+            ?? element?.region?.Nombre
+            ?? element?.region?.nombre
+            ?? ''}`.trim();
+
+        return {
+            Id: Math.trunc(toNumber(element?.i ?? element?.Id)),
+            Nombre: `${element?.n ?? element?.Nombre ?? ''}`.trim(),
+            ownerUid: extractOwnerUid(element),
+            ownerDisplayName: extractOwnerDisplayName(element),
+            visible_otros_usuarios: toBoolean(element?.visible_otros_usuarios),
+            Id_region: idRegion,
+            Region: {
+                Id: idRegion,
+                Nombre: nombreRegion.length > 0 ? nombreRegion : (idRegion === 0 ? 'Sin región' : ''),
+            },
+            Personalidad: `${element?.dcp ?? element?.Personalidad ?? ''}`,
+            Contexto: `${element?.dh ?? element?.Contexto ?? ''}`,
+            Ataque_base: element?.a,
+            Tamano: element?.ra?.Tamano?.Nombre,
+            Ca: element?.ca,
+            Armadura_natural: element?.an,
+            Ca_desvio: element?.cd,
+            Ca_varios: element?.cv,
+            Iniciativa_varios: element?.ini_v ?? [],
+            Presa: Number(presaBase + +element?.mf + +element?.ra?.Tamano?.Modificador_presa + +(element?.pr_v ?? []).reduce((c: number, v: { Valor: number; }) => c + Number(v.Valor), 0)),
+            Presa_varios: element?.pr_v ?? [],
+            Raza: element?.ra,
+            RazaBase: razaBase,
+            Tipo_criatura: element?.tc,
+            Fuerza: element?.f,
+            ModFuerza: element?.mf,
+            Destreza: element?.d,
+            ModDestreza: element?.md,
+            Constitucion: element?.co,
+            ModConstitucion: element?.mco,
+            Caracteristicas_perdidas: normalizeCaracteristicasPerdidasPersonaje(element?.cper, element?.cperd),
+            Constitucion_perdida: toBoolean(element?.cperd),
+            Inteligencia: element?.int,
+            ModInteligencia: element?.mint,
+            Sabiduria: element?.s,
+            ModSabiduria: element?.ms,
+            Carisma: element?.car,
+            ModCarisma: element?.mcar,
+            NEP: toNumber(nep),
+            Experiencia: toNumber(experiencia),
+            Deidad: element?.de,
+            Alineamiento: element?.ali,
+            Genero: element?.g,
+            Campana: `${element?.ncam ?? element?.Campana ?? 'Sin campaña'}` || 'Sin campaña',
+            Trama: `${element?.ntr ?? element?.Trama ?? 'Trama base'}` || 'Trama base',
+            Subtrama: `${element?.nst ?? element?.Subtrama ?? 'Subtrama base'}` || 'Subtrama base',
+            Vida: element?.v,
+            Correr: element?.cor,
+            Nadar: element?.na,
+            Volar: element?.vo,
+            Trepar: element?.t,
+            Escalar: element?.e,
+            Oficial: element?.o,
+            Dados_golpe: element?.dg,
+            Pgs_lic: element?.pgl,
+            Jugador: element?.ju,
+            Edad: element?.edad,
+            Altura: element?.alt,
+            Peso: element?.peso,
+            Clases: clas.map((entrada) => `${entrada.Nombre} (${entrada.Nivel})`).join(', '),
+            desgloseClases: clas,
+            Dominios: dom.map((Nombre) => ({ Nombre })) as any,
+            Subtipos: subtipos,
+            competencia_arma: competenciasArma as PersonajeCompetenciaDirecta[],
+            competencia_armadura: competenciasArmadura as PersonajeCompetenciaArmaduraDirecta[],
+            competencia_grupo_arma: competenciasGrupoArma as PersonajeCompetenciaDirecta[],
+            competencia_grupo_armadura: competenciasGrupoArmadura as PersonajeCompetenciaDirecta[],
+            Plantillas: element?.pla ?? [],
+            Familiares: normalizeFamiliarMonstruoDetalleArray(element?.familiares, 1),
+            Companeros: normalizeCompaneroMonstruoDetalleArray(element?.companeros, 1),
+            Conjuros: element?.con ?? [],
+            Claseas: claseas,
+            Raciales: raciales,
+            Habilidades: habilidades,
+            Dotes: dotes,
+            DotesContextuales: dotesContextuales,
+            Ventajas: ve,
+            Idiomas: idiomas,
+            Sortilegas: element?.sor ?? [],
+            Salvaciones: element?.salv,
+            Rds: rds,
+            Rcs: rcs,
+            Res: res,
+            Capacidad_carga: cargas,
+            Oro_inicial: toNumber(calc_oro(nep)),
+            Escuela_especialista: escuela_esp,
+            Disciplina_especialista: disciplina_esp,
+            Disciplina_prohibida: element?.disp,
+            Escuelas_prohibidas: ecp,
+            Archivado: false,
+            CaracteristicasVarios: {
+                Fuerza: [],
+                Destreza: [],
+                Constitucion: [],
+                Inteligencia: [],
+                Sabiduria: [],
+                Carisma: [],
+            },
+        } as Personaje;
+    }
+
     public async RenovarPersonajes(): Promise<boolean> {
         try {
-            const response = await firstValueFrom(this.d_pjs());
+            const headers = await this.buildAuthHeaders();
+            const response = await firstValueFrom(this.d_pjs(headers));
             const personajes = Array.isArray(response)
                 ? response
                 : Object.values(response ?? {});
