@@ -27,7 +27,7 @@
                             <button
                                 *ngFor="let item of syncItemsOrdenados; trackBy: trackBySyncItem"
                                 mat-raised-button
-                                [color]="item.isPrimary ? 'primary' : 'accent'"
+                                [color]="item.isPrimary ? 'warn' : 'accent'"
                                 class="sync-item-btn"
                                 [disabled]="estaEjecutando(item.key)"
                                 (click)="ejecutarSync(item)">

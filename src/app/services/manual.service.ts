@@ -5,6 +5,7 @@ import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { environment } from 'src/environments/environment';
 import Swal from 'sweetalert2';
 import { Manual } from '../interfaces/manual';
+import { ManualIncludeFlag } from '../config/manual-secciones.config';
 import { FirebaseInjectionContextService } from './firebase-injection-context.service';
 
 function toBoolean(value: any): boolean {
@@ -26,6 +27,8 @@ function normalizeManual(raw: any): Manual {
         Oficial: toBoolean(raw?.Oficial),
     };
 }
+
+export type ManualFlagsPatchPayload = Partial<Record<ManualIncludeFlag, boolean>>;
 
 @Injectable({
     providedIn: 'root'
@@ -115,7 +118,42 @@ export class ManualService {
         return this.http.get(`${environment.apiUrl}manuales`);
     }
 
-    public async RenovarManuales(): Promise<boolean> {
+    public async patchManualFlags(idManual: number, payload: ManualFlagsPatchPayload): Promise<Manual> {
+        const id = Math.trunc(Number(idManual));
+        if (!Number.isFinite(id) || id <= 0)
+            throw new Error('Id de manual inválido');
+
+        const allowedEntries = Object.entries(payload ?? {})
+            .filter(([_, value]) => typeof value === 'boolean');
+        if (allowedEntries.length < 1)
+            throw new Error('No hay flags de manual para actualizar');
+
+        const requestBody = allowedEntries.reduce((acc, [key, value]) => {
+            acc[key as ManualIncludeFlag] = value;
+            return acc;
+        }, {} as ManualFlagsPatchPayload);
+
+        try {
+            const response = await firstValueFrom(
+                this.http.patch(`${environment.apiUrl}manuales/${id}`, requestBody)
+            );
+            return normalizeManual(response);
+        } catch (error: any) {
+            if (error instanceof HttpErrorResponse) {
+                const backendMessage = this.extractErrorMessage(error.error);
+                if (backendMessage.length > 0)
+                    throw new Error(backendMessage);
+                if (error.status === 404)
+                    throw new Error(`No existe el manual con id ${id}`);
+                if (error.status === 400)
+                    throw new Error('La API rechazó las flags del manual');
+            }
+
+            throw new Error(error?.message ?? `No se pudieron actualizar las flags del manual ${id}`);
+        }
+    }
+
+    public async RenovarManuales(showFeedback: boolean = true): Promise<boolean> {
         try {
             const response = await firstValueFrom(this.syncManuales());
             const manuales = Array.isArray(response)
@@ -129,21 +167,43 @@ export class ManualService {
                 })
             );
 
-            Swal.fire({
-                icon: 'success',
-                title: 'Listado de manuales actualizado con éxito',
-                showConfirmButton: true,
-                timer: 2000
-            });
+            if (showFeedback) {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Listado de manuales actualizado con éxito',
+                    showConfirmButton: true,
+                    timer: 2000
+                });
+            }
             return true;
         } catch (error: any) {
-            Swal.fire({
-                icon: 'warning',
-                title: 'Error al actualizar el listado de manuales',
-                text: error?.message ?? 'Error no identificado',
-                showConfirmButton: true
-            });
+            if (showFeedback) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Error al actualizar el listado de manuales',
+                    text: error?.message ?? 'Error no identificado',
+                    showConfirmButton: true
+                });
+            }
             return false;
         }
+    }
+
+    private extractErrorMessage(errorBody: any): string {
+        if (!errorBody)
+            return '';
+
+        if (typeof errorBody === 'string') {
+            const message = errorBody.trim();
+            return message.length > 0 ? message : '';
+        }
+
+        if (typeof errorBody === 'object') {
+            const message = `${errorBody?.message ?? errorBody?.error ?? ''}`.trim();
+            if (message.length > 0)
+                return message;
+        }
+
+        return '';
     }
 }

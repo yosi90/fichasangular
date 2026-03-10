@@ -1,5 +1,5 @@
 import { Component, EventEmitter, HostListener, Input, NgZone, OnDestroy, OnInit, Output, SimpleChanges, ViewChild } from '@angular/core';
-import { UserPublicProfileTab } from 'src/app/interfaces/user-account';
+import { UserPrivateProfileOpenRequest, UserPrivateProfileSectionId, UserPublicProfileTab } from 'src/app/interfaces/user-account';
 import { UserService } from '../../../services/user.service';
 import { PersonajeService } from 'src/app/services/personaje.service';
 import { MatTabGroup } from '@angular/material/tabs';
@@ -67,6 +67,11 @@ export class TabControlComponent implements OnInit, OnDestroy {
     public usrLoggedIn = false;
     public usrPerm: number = 0;
     public privateProfileTabOpen = false;
+    public privateProfileOpenRequest: UserPrivateProfileOpenRequest | null = null;
+    public adminPanelTabOpen = false;
+    public roadmapTabOpen = false;
+    public legalPrivacyTabOpen = false;
+    public usageAboutTabOpen = false;
     public publicProfileTabs: UserPublicProfileTab[] = [];
     public detallesPersonajeAbiertos: Personaje[] = [];
     public detallesRazaAbiertos: Raza[] = [];
@@ -90,8 +95,10 @@ export class TabControlComponent implements OnInit, OnDestroy {
     private readonly TAB_PERSONAJES = 'base:personajes';
     private readonly TAB_PROFILE = 'base:perfil';
     private readonly TAB_ADMIN = 'base:admin';
+    private readonly TAB_ROADMAP = 'base:roadmap';
+    private readonly TAB_LEGAL = 'base:legal';
+    private readonly TAB_USAGE = 'base:usage';
     private readonly TAB_NUEVO = 'base:nuevo';
-    private readonly TAB_IMPORTANTE = 'base:importante';
     private activeTabKey: string = this.TAB_PERSONAJES;
     private openerByTab = new Map<string, string>();
     private avisoCachePendienteMostrado = false;
@@ -130,15 +137,21 @@ export class TabControlComponent implements OnInit, OnDestroy {
             .pipe(takeUntil(this.destroy$))
             .subscribe((loggedIn) => {
                 this.usrLoggedIn = loggedIn === true;
-                if (!this.usrLoggedIn)
+                if (!this.usrLoggedIn) {
                     this.cerrarPerfilPrivadoPorLogout();
+                    this.cerrarPanelAdministracionPorPermisos();
+                }
             });
         this.usrPerm = this.usrSvc.Usuario.permisos;
         this.usrSvc.permisos$
             .pipe(takeUntil(this.destroy$))
             .subscribe((permisos) => {
                 this.usrPerm = Number(permisos) === 1 ? 1 : 0;
-                if (this.usrPerm === 1 && this.TabGroup)
+                if (this.usrPerm !== 1) {
+                    this.cerrarPanelAdministracionPorPermisos();
+                    return;
+                }
+                if (this.TabGroup)
                     void this.verificarPendientesCacheAdminEnInicio();
             });
         this.manualRefNavSvc.aperturas$
@@ -149,7 +162,19 @@ export class TabControlComponent implements OnInit, OnDestroy {
             .subscribe((manual) => this.abrirDetallesManual(manual));
         this.userProfileNavSvc?.privateProfileOpen$
             .pipe(takeUntil(this.destroy$))
-            .subscribe(() => this.abrirPerfilPrivado());
+            .subscribe((request) => this.abrirPerfilPrivado(request));
+        this.userProfileNavSvc?.adminPanelOpen$
+            .pipe(takeUntil(this.destroy$))
+            .subscribe(() => this.abrirPanelAdministracion());
+        this.userProfileNavSvc?.roadmapOpen$
+            .pipe(takeUntil(this.destroy$))
+            .subscribe(() => this.abrirRoadmap());
+        this.userProfileNavSvc?.legalPrivacyOpen$
+            .pipe(takeUntil(this.destroy$))
+            .subscribe(() => this.abrirLegalPrivacidad());
+        this.userProfileNavSvc?.usageAboutOpen$
+            .pipe(takeUntil(this.destroy$))
+            .subscribe(() => this.abrirUsoYAcerca());
         this.userProfileNavSvc?.publicProfileOpen$
             .pipe(takeUntil(this.destroy$))
             .subscribe((payload) => this.abrirPerfilPublico(payload));
@@ -214,10 +239,24 @@ export class TabControlComponent implements OnInit, OnDestroy {
             return;
         const activeKey = this.tabKeyByIndex(currentIndex);
         const tabLabel = this.TabGroup._tabs.toArray()[currentIndex].textLabel;
-        if (activeKey === this.TAB_ADMIN || activeKey === this.TAB_IMPORTANTE || this.esTabAdmin(tabLabel) || tabLabel === 'Información importante')
-            return;
         if (activeKey === this.TAB_PROFILE) {
             this.quitarPerfilPrivado();
+            return;
+        }
+        if (activeKey === this.TAB_ADMIN) {
+            this.quitarPanelAdministracion();
+            return;
+        }
+        if (activeKey === this.TAB_ROADMAP) {
+            this.quitarRoadmap();
+            return;
+        }
+        if (activeKey === this.TAB_LEGAL) {
+            this.quitarLegalPrivacidad();
+            return;
+        }
+        if (activeKey === this.TAB_USAGE) {
+            this.quitarUsoYAcerca();
             return;
         }
         if (activeKey?.startsWith('perfil-publico:')) {
@@ -274,8 +313,14 @@ export class TabControlComponent implements OnInit, OnDestroy {
         const keys: string[] = [this.TAB_PERSONAJES];
         if (this.usrLoggedIn && this.privateProfileTabOpen)
             keys.push(this.TAB_PROFILE);
-        if (this.usrPerm === 1)
+        if (this.usrPerm === 1 && this.adminPanelTabOpen)
             keys.push(this.TAB_ADMIN);
+        if (this.roadmapTabOpen)
+            keys.push(this.TAB_ROADMAP);
+        if (this.legalPrivacyTabOpen)
+            keys.push(this.TAB_LEGAL);
+        if (this.usageAboutTabOpen)
+            keys.push(this.TAB_USAGE);
         keys.push(...this.detallesPersonajeAbiertos.map((pj) => this.getPersonajeTabKey(pj)));
         keys.push(...this.publicProfileTabs.map((tab) => this.getPublicProfileTabKey(tab)));
         if (this.AbrirNuevoPersonajeTab)
@@ -298,7 +343,6 @@ export class TabControlComponent implements OnInit, OnDestroy {
         keys.push(...this.detallesArmaAbiertos.map((arma) => this.getArmaTabKey(arma)));
         keys.push(...this.detallesArmaduraAbiertos.map((armadura) => this.getArmaduraTabKey(armadura)));
         keys.push(...this.detallesDeidadAbiertos.map((deidad) => this.getDeidadTabKey(deidad)));
-        keys.push(this.TAB_IMPORTANTE);
         return keys;
     }
 
@@ -399,9 +443,10 @@ export class TabControlComponent implements OnInit, OnDestroy {
         });
     }
 
-    public abrirPerfilPrivado(): void {
+    public abrirPerfilPrivado(request?: UserPrivateProfileOpenRequest | UserPrivateProfileSectionId | null): void {
         if (!this.usrLoggedIn)
             return;
+        this.privateProfileOpenRequest = this.buildPrivateProfileOpenRequest(request);
         if (this.privateProfileTabOpen) {
             this.selectTabByKey(this.TAB_PROFILE, true);
             return;
@@ -421,16 +466,115 @@ export class TabControlComponent implements OnInit, OnDestroy {
         });
     }
 
+    public abrirPanelAdministracion(): void {
+        if (this.usrPerm !== 1)
+            return;
+        if (this.adminPanelTabOpen) {
+            this.selectTabByKey(this.TAB_ADMIN, true);
+            return;
+        }
+        this.adminPanelTabOpen = true;
+        this.registerOpenContext(this.TAB_ADMIN, this.getSafeOpenerKey());
+        this.focusOpenedTab(this.TAB_ADMIN);
+    }
+
+    public quitarPanelAdministracion(): boolean {
+        if (!this.adminPanelTabOpen)
+            return false;
+
+        return this.closeTabWithNavigation(this.TAB_ADMIN, () => {
+            this.adminPanelTabOpen = false;
+            return true;
+        });
+    }
+
+    public abrirRoadmap(): void {
+        this.openHelpTab(this.TAB_ROADMAP, 'roadmapTabOpen');
+    }
+
+    public quitarRoadmap(): boolean {
+        return this.closeHelpTab(this.TAB_ROADMAP, 'roadmapTabOpen');
+    }
+
+    public abrirLegalPrivacidad(): void {
+        this.openHelpTab(this.TAB_LEGAL, 'legalPrivacyTabOpen');
+    }
+
+    public quitarLegalPrivacidad(): boolean {
+        return this.closeHelpTab(this.TAB_LEGAL, 'legalPrivacyTabOpen');
+    }
+
+    public abrirUsoYAcerca(): void {
+        this.openHelpTab(this.TAB_USAGE, 'usageAboutTabOpen');
+    }
+
+    public quitarUsoYAcerca(): boolean {
+        return this.closeHelpTab(this.TAB_USAGE, 'usageAboutTabOpen');
+    }
+
     private cerrarPerfilPrivadoPorLogout(): void {
         if (!this.privateProfileTabOpen)
             return;
         const wasActive = this.activeTabKey === this.TAB_PROFILE;
         this.privateProfileTabOpen = false;
+        this.privateProfileOpenRequest = null;
         this.openerByTab.delete(this.TAB_PROFILE);
         if (wasActive)
             this.selectTabByKey(this.TAB_PERSONAJES, true);
         else if (!this.isTabKeyOpen(this.activeTabKey))
             this.selectTabByKey(this.TAB_PERSONAJES, true);
+    }
+
+    private cerrarPanelAdministracionPorPermisos(): void {
+        if (!this.adminPanelTabOpen)
+            return;
+        const wasActive = this.activeTabKey === this.TAB_ADMIN;
+        this.adminPanelTabOpen = false;
+        this.openerByTab.delete(this.TAB_ADMIN);
+        if (wasActive)
+            this.selectTabByKey(this.TAB_PERSONAJES, true);
+        else if (!this.isTabKeyOpen(this.activeTabKey))
+            this.selectTabByKey(this.TAB_PERSONAJES, true);
+    }
+
+    private openHelpTab(key: string, flag: 'roadmapTabOpen' | 'legalPrivacyTabOpen' | 'usageAboutTabOpen'): void {
+        if (this.getHelpTabFlag(flag)) {
+            this.selectTabByKey(key, true);
+            return;
+        }
+        this.setHelpTabFlag(flag, true);
+        this.registerOpenContext(key, this.getSafeOpenerKey());
+        this.focusOpenedTab(key);
+    }
+
+    private closeHelpTab(key: string, flag: 'roadmapTabOpen' | 'legalPrivacyTabOpen' | 'usageAboutTabOpen'): boolean {
+        if (!this.getHelpTabFlag(flag))
+            return false;
+
+        return this.closeTabWithNavigation(key, () => {
+            this.setHelpTabFlag(flag, false);
+            return true;
+        });
+    }
+
+    private getHelpTabFlag(flag: 'roadmapTabOpen' | 'legalPrivacyTabOpen' | 'usageAboutTabOpen'): boolean {
+        if (flag === 'roadmapTabOpen')
+            return this.roadmapTabOpen;
+        if (flag === 'legalPrivacyTabOpen')
+            return this.legalPrivacyTabOpen;
+        return this.usageAboutTabOpen;
+    }
+
+    private setHelpTabFlag(flag: 'roadmapTabOpen' | 'legalPrivacyTabOpen' | 'usageAboutTabOpen', value: boolean): void {
+        if (flag === 'roadmapTabOpen') {
+            this.roadmapTabOpen = value;
+            return;
+        }
+        if (flag === 'legalPrivacyTabOpen') {
+            this.legalPrivacyTabOpen = value;
+            return;
+        }
+        this.usageAboutTabOpen = value;
     }
 
     public abrirPerfilPublico(payload: UserPublicProfileTab): void {
@@ -528,7 +672,11 @@ export class TabControlComponent implements OnInit, OnDestroy {
         try {
             const metaSnapshot = await this.cacheSyncMetadataSvc.getSnapshotOnce();
             const uiState = this.cacheSyncMetadataSvc.buildUiState(metaSnapshot);
-            const hayPendientes = uiState.some(item => item.isPrimary);
+            const hayPendientes = uiState.some((item) => {
+                if (!item.isPrimary)
+                    return false;
+                return metaSnapshot[item.key]?.staleReason !== 'manual_flag_mismatch';
+            });
             if (!hayPendientes)
                 return;
 
@@ -554,10 +702,10 @@ export class TabControlComponent implements OnInit, OnDestroy {
     }
 
     private irAlPanelAdministracion(): void {
-        if (this.usrPerm !== 1 || !this.TabGroup)
+        if (this.usrPerm !== 1)
             return;
 
-        const navegar = () => this.selectTabByKey(this.TAB_ADMIN, false);
+        const navegar = () => this.abrirPanelAdministracion();
 
         this.ngZone.run(navegar);
         setTimeout(() => this.ngZone.run(navegar), 0);
@@ -1933,13 +2081,6 @@ export class TabControlComponent implements OnInit, OnDestroy {
         });
     }
 
-    private esTabAdmin(tabLabel: string): boolean {
-        const normalizado = this.normalizar(tabLabel);
-        return normalizado === 'panel de administracion'
-            || normalizado === 'admin panel'
-            || normalizado.includes('admin');
-    }
-
     private abrirDesdeManual(payload: ManualReferenciaNavegacion): void {
         if (payload.tipo === 'dote') {
             this.abrirDetallesDotePorId(payload.id);
@@ -1978,5 +2119,28 @@ export class TabControlComponent implements OnInit, OnDestroy {
         if (payload.tipo === 'monstruo') {
             this.abrirDetallesMonstruoPorId(payload.id);
         }
+    }
+
+    private buildPrivateProfileOpenRequest(
+        request?: UserPrivateProfileOpenRequest | UserPrivateProfileSectionId | null
+    ): UserPrivateProfileOpenRequest {
+        if (typeof request === 'string') {
+            return {
+                section: request,
+                requestId: Date.now(),
+            };
+        }
+
+        if (request?.section) {
+            return {
+                section: request.section,
+                requestId: Number(request.requestId) > 0 ? Number(request.requestId) : Date.now(),
+            };
+        }
+
+        return {
+            section: 'resumen',
+            requestId: Date.now(),
+        };
     }
 }

@@ -1,9 +1,15 @@
-import { Component, OnDestroy, OnInit } from '@angular/core';
+import { Component, Input, OnChanges, OnDestroy, OnInit, SimpleChanges } from '@angular/core';
 import { Auth } from '@angular/fire/auth';
 import { updateProfile } from 'firebase/auth';
 import { EmailAuthProvider, reauthenticateWithCredential, updatePassword } from 'firebase/auth';
 import { Subject, takeUntil } from 'rxjs';
-import { ProfileApiError, UserAvatarResponse, UserPrivateProfile } from 'src/app/interfaces/user-account';
+import {
+    ProfileApiError,
+    UserAvatarResponse,
+    UserPrivateProfile,
+    UserPrivateProfileOpenRequest,
+    UserPrivateProfileSectionId
+} from 'src/app/interfaces/user-account';
 import { NuevoPersonajeGeneradorConfig, UserSettingsV1 } from 'src/app/interfaces/user-settings';
 import { AppToastService } from 'src/app/services/app-toast.service';
 import { UserProfileApiService } from 'src/app/services/user-profile-api.service';
@@ -11,20 +17,20 @@ import { UserSettingsService } from 'src/app/services/user-settings.service';
 import { UserService } from 'src/app/services/user.service';
 import { resolveDefaultProfileAvatar } from 'src/app/services/utils/profile-avatar.util';
 
-type ProfileSectionId = 'resumen' | 'identidad' | 'preferencias' | 'seguridad';
-
 @Component({
     selector: 'app-user-profile',
     templateUrl: './user-profile.component.html',
     styleUrls: ['./user-profile.component.sass'],
     standalone: false
 })
-export class UserProfileComponent implements OnInit, OnDestroy {
+export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
+    @Input() openRequest: UserPrivateProfileOpenRequest | null = null;
+
     profile: UserPrivateProfile | null = null;
     settings: UserSettingsV1 | null = null;
     loading = false;
     loadErrorMessage = '';
-    currentSection: ProfileSectionId = 'resumen';
+    currentSection: UserPrivateProfileSectionId = 'resumen';
 
     displayNameDraft = '';
     displayNameSaving = false;
@@ -46,6 +52,7 @@ export class UserProfileComponent implements OnInit, OnDestroy {
     passwordSaving = false;
 
     private readonly destroy$ = new Subject<void>();
+    private pendingRequestedSection: UserPrivateProfileSectionId | null = null;
     private readonly dateFormatter = new Intl.DateTimeFormat('es-ES', {
         day: 'numeric',
         month: 'long',
@@ -69,8 +76,14 @@ export class UserProfileComponent implements OnInit, OnDestroy {
                     this.displayNameDraft = `${profile.displayName ?? ''}`.trim();
                 if (!this.canChangePassword && this.currentSection === 'seguridad')
                     this.currentSection = 'resumen';
+                this.resolvePendingRequestedSection();
             });
         void this.cargar();
+    }
+
+    ngOnChanges(changes: SimpleChanges): void {
+        if (changes['openRequest']?.currentValue)
+            this.requestSection(changes['openRequest'].currentValue.section);
     }
 
     ngOnDestroy(): void {
@@ -83,8 +96,8 @@ export class UserProfileComponent implements OnInit, OnDestroy {
         return !!this.profile;
     }
 
-    get sectionItems(): { id: ProfileSectionId; label: string; icon: string; }[] {
-        const base: { id: ProfileSectionId; label: string; icon: string; }[] = [
+    get sectionItems(): { id: UserPrivateProfileSectionId; label: string; icon: string; }[] {
+        const base: { id: UserPrivateProfileSectionId; label: string; icon: string; }[] = [
             { id: 'resumen', label: 'Resumen', icon: 'badge' },
             { id: 'identidad', label: 'Identidad', icon: 'account_circle' },
             { id: 'preferencias', label: 'Preferencias', icon: 'tune' },
@@ -356,10 +369,11 @@ export class UserProfileComponent implements OnInit, OnDestroy {
         }
     }
 
-    setSection(section: ProfileSectionId): void {
+    setSection(section: UserPrivateProfileSectionId): void {
         if (section === 'seguridad' && !this.canChangePassword)
             return;
         this.currentSection = section;
+        this.pendingRequestedSection = null;
     }
 
     private applyAvatarResponse(response: UserAvatarResponse): void {
@@ -383,6 +397,26 @@ export class UserProfileComponent implements OnInit, OnDestroy {
         this.mostrarPerfilPublico = settings?.perfil?.mostrarPerfilPublico !== false;
         this.generadorMinimoSeleccionado = this.normalizeGeneradorMinimo(settings?.nuevo_personaje?.generador_config?.minimoSeleccionado ?? 13);
         this.generadorTablasPermitidas = this.normalizeGeneradorTablas(settings?.nuevo_personaje?.generador_config?.tablasPermitidas ?? 3);
+    }
+
+    private requestSection(section: UserPrivateProfileSectionId | null | undefined): void {
+        const target = section ?? 'resumen';
+        this.pendingRequestedSection = target;
+        this.resolvePendingRequestedSection();
+    }
+
+    private resolvePendingRequestedSection(): void {
+        if (!this.pendingRequestedSection)
+            return;
+
+        if (this.pendingRequestedSection === 'seguridad') {
+            if (!this.profile)
+                return;
+            this.setSection(this.canChangePassword ? 'seguridad' : 'resumen');
+            return;
+        }
+
+        this.setSection(this.pendingRequestedSection);
     }
 
     private validateAvatarFile(file: File): string | null {

@@ -61,6 +61,13 @@ export interface UserPublicProfileTab {
     initialDisplayName?: string | null;
 }
 
+export type UserPrivateProfileSectionId = 'resumen' | 'identidad' | 'preferencias' | 'seguridad';
+
+export interface UserPrivateProfileOpenRequest {
+    section: UserPrivateProfileSectionId;
+    requestId: number;
+}
+
 export interface UserAccountState {
     profile: UserPrivateProfile | null;
     settings: UserSettingsV1 | null;

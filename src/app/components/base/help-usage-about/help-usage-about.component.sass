@@ -1,0 +1,30 @@
+.help-shell
+    height: 100%
+    min-height: 0
+
+.help-grid
+    display: grid
+    grid-template-columns: repeat(2, minmax(0, 1fr))
+    gap: 1rem
+
+.help-card
+    background: linear-gradient(180deg, rgba(36, 44, 54, 0.96), rgba(19, 24, 32, 0.98))
+    border: 1px solid rgba(255, 255, 255, 0.08)
+
+    a
+        color: #93c5fd
+
+        &:hover
+            color: #dbeafe
+
+.help-list
+    margin: 0
+    padding-left: 1rem
+
+    li
+        margin-bottom: 0.6rem
+        line-height: 1.6
+
+@media (max-width: 900px)
+    .help-grid
+        grid-template-columns: 1fr

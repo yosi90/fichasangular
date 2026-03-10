@@ -199,9 +199,14 @@ describe('NuevoPersonajeService (generador)', () => {
     it('sincroniza mínimo y tablas desde settings remotos cuando son válidos', async () => {
         const userSettingsSvc = jasmine.createSpyObj<UserSettingsService>('UserSettingsService', [
             'loadGeneradorConfig',
+            'loadProfileSettings',
             'saveGeneradorConfig',
             'migrateLegacyLocalConfigOnce',
         ]);
+        userSettingsSvc.loadProfileSettings.and.resolveTo({
+            visibilidadPorDefectoPersonajes: false,
+            mostrarPerfilPublico: true,
+        });
         userSettingsSvc.loadGeneradorConfig.and.resolveTo({
             minimoSeleccionado: 8,
             tablasPermitidas: 5,
@@ -241,9 +246,14 @@ describe('NuevoPersonajeService (generador)', () => {
     it('si no hay configuración remota mantiene defaults', async () => {
         const userSettingsSvc = jasmine.createSpyObj<UserSettingsService>('UserSettingsService', [
             'loadGeneradorConfig',
+            'loadProfileSettings',
             'saveGeneradorConfig',
             'migrateLegacyLocalConfigOnce',
         ]);
+        userSettingsSvc.loadProfileSettings.and.resolveTo({
+            visibilidadPorDefectoPersonajes: false,
+            mostrarPerfilPublico: true,
+        });
         userSettingsSvc.loadGeneradorConfig.and.resolveTo(null);
         userSettingsSvc.saveGeneradorConfig.and.resolveTo();
         userSettingsSvc.migrateLegacyLocalConfigOnce.and.resolveTo();
@@ -259,9 +269,14 @@ describe('NuevoPersonajeService (generador)', () => {
     it('normaliza configuración remota inválida hacia límites válidos', async () => {
         const userSettingsSvc = jasmine.createSpyObj<UserSettingsService>('UserSettingsService', [
             'loadGeneradorConfig',
+            'loadProfileSettings',
             'saveGeneradorConfig',
             'migrateLegacyLocalConfigOnce',
         ]);
+        userSettingsSvc.loadProfileSettings.and.resolveTo({
+            visibilidadPorDefectoPersonajes: false,
+            mostrarPerfilPublico: true,
+        });
         userSettingsSvc.loadGeneradorConfig.and.resolveTo({
             minimoSeleccionado: 50,
             tablasPermitidas: 0,

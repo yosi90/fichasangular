@@ -47,6 +47,7 @@ Lista de endpoints
 | POST | /subtramas/add | Crear subtrama | No implementado (funcion `pass`) |
 | GET | /manuales | Lista de manuales | Implementado |
 | GET | /manuales/<id_manual> | Manual por id | Implementado |
+| PATCH | /manuales/<id_manual> | Actualizar flags de contenido de un manual | Implementado |
 | GET | /manuales/asociados | Lista de manuales con asociados | Implementado |
 | GET | /manuales/asociados/<id_manual> | Manual con asociados por id | Implementado |
 | POST | /manuales/add | Crear manual | No implementado (funcion `pass`) |
@@ -823,6 +824,60 @@ Respuesta 404 (ejemplo)
   "id_manual": 123
 }
 ```
+
+Endpoint: PATCH /manuales/<id_manual>
+Descripcion: Actualiza de forma parcial las flags de contenido del manual. Este endpoint solo permite cambiar las flags de contenido; no admite cambios de `id`, `nombre` ni `oficial`.
+
+Parametros de path
+| Campo | Tipo | Descripcion |
+| --- | --- | --- |
+| id_manual | number | Id de manual |
+
+Body (ejemplo)
+```json
+{
+  "Incluye_dotes": true,
+  "Incluye_razas": 1,
+  "Incluye_tipos": false
+}
+```
+
+Campos admitidos en body
+- `Incluye_dotes` o alias `dote`
+- `Incluye_conjuros` o alias `conjuro`
+- `Incluye_plantillas` o alias `plantilla`
+- `Incluye_monstruos` o alias `monstruo`
+- `Incluye_razas` o alias `raza`
+- `Incluye_clases` o alias `clase`
+- `Incluye_tipos` o alias `tipo`
+- `Incluye_subtipos` o alias `subtipo`
+
+Valores admitidos por flag
+- boolean: `true` / `false`
+- number: `1` / `0`
+- string: `true`, `false`, `si`, `sí`, `no`, `yes`, `1`, `0`
+
+Respuesta 200
+```json
+{
+  "Id": 7,
+  "Nombre": "Manual de prueba",
+  "Incluye_dotes": 1,
+  "Incluye_conjuros": 1,
+  "Incluye_plantillas": 0,
+  "Incluye_monstruos": 1,
+  "Incluye_razas": 1,
+  "Incluye_clases": 1,
+  "Incluye_tipos": 0,
+  "Incluye_subtipos": 1,
+  "Oficial": true
+}
+```
+
+Errores esperados
+- `400`: body invalido, sin flags, con flags no permitidas o con tipos no booleanos.
+- `404`: manual no encontrado.
+- `500`: error de base de datos o error interno no controlado.
 
 Endpoint: GET /manuales/asociados
 Respuesta: array de `ManualAsociadoDetalle`

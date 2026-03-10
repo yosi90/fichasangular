@@ -921,6 +921,50 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+    patch:
+      tags: [manuales]
+      summary: Actualizar flags de contenido de un manual
+      description: |
+        Actualiza parcialmente las flags de contenido del manual.
+        Solo admite cambios sobre dotes, conjuros, plantillas, monstruos, razas, clases, tipos y subtipos.
+        No permite modificar `id`, `nombre` ni `oficial`.
+      parameters:
+        - name: id_manual
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ManualPatchRequest'
+      responses:
+        '200':
+          description: Manual actualizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ManualDetalle'
+        '400':
+          description: Body invalido o flags no permitidas
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Manual no encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error interno o de base de datos
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 
   /manuales/asociados:
     get:
@@ -2694,6 +2738,111 @@ components:
         visible_otros_usuarios: { type: boolean }
         uid: { type: string }
       required: [message, idPersonaje, visible_otros_usuarios, uid]
+
+    ManualPatchRequest:
+      type: object
+      description: |
+        Admite una o varias flags de contenido del manual.
+        Cada flag acepta boolean (`true`/`false`), entero (`1`/`0`) o string equivalente (`si`, `sí`, `no`, `true`, `false`, `yes`, `1`, `0`).
+      properties:
+        Incluye_dotes:
+          oneOf:
+            - type: boolean
+            - type: integer
+              enum: [0, 1]
+            - type: string
+        dote:
+          oneOf:
+            - type: boolean
+            - type: integer
+              enum: [0, 1]
+            - type: string
+        Incluye_conjuros:
+          oneOf:
+            - type: boolean
+            - type: integer
+              enum: [0, 1]
+            - type: string
+        conjuro:
+          oneOf:
+            - type: boolean
+            - type: integer
+              enum: [0, 1]
+            - type: string
+        Incluye_plantillas:
+          oneOf:
+            - type: boolean
+            - type: integer
+              enum: [0, 1]
+            - type: string
+        plantilla:
+          oneOf:
+            - type: boolean
+            - type: integer
+              enum: [0, 1]
+            - type: string
+        Incluye_monstruos:
+          oneOf:
+            - type: boolean
+            - type: integer
+              enum: [0, 1]
+            - type: string
+        monstruo:
+          oneOf:
+            - type: boolean
+            - type: integer
+              enum: [0, 1]
+            - type: string
+        Incluye_razas:
+          oneOf:
+            - type: boolean
+            - type: integer
+              enum: [0, 1]
+            - type: string
+        raza:
+          oneOf:
+            - type: boolean
+            - type: integer
+              enum: [0, 1]
+            - type: string
+        Incluye_clases:
+          oneOf:
+            - type: boolean
+            - type: integer
+              enum: [0, 1]
+            - type: string
+        clase:
+          oneOf:
+            - type: boolean
+            - type: integer
+              enum: [0, 1]
+            - type: string
+        Incluye_tipos:
+          oneOf:
+            - type: boolean
+            - type: integer
+              enum: [0, 1]
+            - type: string
+        tipo:
+          oneOf:
+            - type: boolean
+            - type: integer
+              enum: [0, 1]
+            - type: string
+        Incluye_subtipos:
+          oneOf:
+            - type: boolean
+            - type: integer
+              enum: [0, 1]
+            - type: string
+        subtipo:
+          oneOf:
+            - type: boolean
+            - type: integer
+              enum: [0, 1]
+            - type: string
+      additionalProperties: false
+      minProperties: 1
 
     UsuarioPermissionCreate:
       type: object

@@ -1,12 +1,77 @@
-<div>
-    <p>Archivo</p>
-    <p #menuTrigger="matMenuTrigger" [matMenuTriggerFor]="menuManuales">Manuales</p>
-    <p>Opciones</p>
-    <p>Ayuda</p>
+<div class="ribbon-nav">
+    <button type="button" class="ribbon-trigger" #archivoTrigger="matMenuTrigger" [matMenuTriggerFor]="menuArchivo"
+        (click)="onRibbonTriggerClick(archivoTrigger)"
+        (menuOpened)="onRibbonMenuOpened(archivoTrigger)"
+        (menuClosed)="onRibbonMenuClosed(archivoTrigger)"
+        (mouseenter)="onRibbonTriggerEnter(archivoTrigger)"
+        (mouseleave)="onRibbonTriggerLeave(archivoTrigger)">
+        Archivo
+    </button>
+    <button type="button" class="ribbon-trigger" #menuTrigger="matMenuTrigger" [matMenuTriggerFor]="menuManuales"
+        (click)="onRibbonTriggerClick(menuTrigger)"
+        (menuOpened)="onRibbonMenuOpened(menuTrigger)"
+        (menuClosed)="onRibbonMenuClosed(menuTrigger)"
+        (mouseenter)="onRibbonTriggerEnter(menuTrigger)"
+        (mouseleave)="onRibbonTriggerLeave(menuTrigger)">
+        Manuales
+    </button>
+    <button type="button" class="ribbon-trigger" #opcionesTrigger="matMenuTrigger" [matMenuTriggerFor]="menuOpciones"
+        (click)="onRibbonTriggerClick(opcionesTrigger)"
+        (menuOpened)="onOptionsMenuOpened(opcionesTrigger)"
+        (menuClosed)="onRibbonMenuClosed(opcionesTrigger)"
+        (mouseenter)="onRibbonTriggerEnter(opcionesTrigger)"
+        (mouseleave)="onRibbonTriggerLeave(opcionesTrigger)">
+        Opciones
+    </button>
+    <button type="button" class="ribbon-trigger" #ayudaTrigger="matMenuTrigger" [matMenuTriggerFor]="menuAyuda"
+        (click)="onRibbonTriggerClick(ayudaTrigger)"
+        (menuOpened)="onRibbonMenuOpened(ayudaTrigger)"
+        (menuClosed)="onRibbonMenuClosed(ayudaTrigger)"
+        (mouseenter)="onRibbonTriggerEnter(ayudaTrigger)"
+        (mouseleave)="onRibbonTriggerLeave(ayudaTrigger)">
+        Ayuda
+    </button>
 </div>
 
-<mat-menu #menuManuales="matMenu" [class]="'menuManualesOscuro'">
-    <div class="manuales-menu" (click)="$event.stopPropagation();">
+<mat-menu #menuArchivo="matMenu" [class]="'menuSuperficieOscura'">
+    <div class="ribbon-menu-shell"
+        (mouseenter)="cancelarCierreRibbonMenu()"
+        (mouseleave)="programarCierreRibbonMenu(archivoTrigger)">
+        <div class="menu-user-state" (click)="$event.stopPropagation()">
+            <span class="menu-user-state__eyebrow">Sesión actual</span>
+            <strong class="menu-user-state__title">{{usr}}</strong>
+            <span class="menu-user-state__subtitle">{{userSubLabel}}</span>
+        </div>
+
+        <button mat-menu-item *ngIf="isLoggedIn" (click)="abrirMiPerfil()">
+            <mat-icon>account_circle</mat-icon>
+            <span>Mi perfil</span>
+        </button>
+
+        <button mat-menu-item *ngIf="isLoggedIn && isAdmin" (click)="abrirAdminPanel()">
+            <mat-icon>admin_panel_settings</mat-icon>
+            <span>Admin panel</span>
+        </button>
+
+        <div class="menu-separator" *ngIf="isLoggedIn" (click)="$event.stopPropagation()"></div>
+
+        <button mat-menu-item *ngIf="isLoggedIn" class="menu-entry-danger" (click)="logOut()">
+            <mat-icon>logout</mat-icon>
+            <span>Cerrar sesión</span>
+        </button>
+
+        <button mat-menu-item *ngIf="!isLoggedIn" (click)="openSesionDialog()">
+            <mat-icon>login</mat-icon>
+            <span>Identifícate</span>
+        </button>
+    </div>
+</mat-menu>
+
+<mat-menu #menuManuales="matMenu" [class]="'menuSuperficieOscura menuSuperficieOscura--wide'">
+    <div class="manuales-menu"
+        (click)="$event.stopPropagation();"
+        (mouseenter)="cancelarCierreRibbonMenu()"
+        (mouseleave)="programarCierreRibbonMenu(menuTrigger)">
         <p class="menu-estado" *ngIf="isLoading">
             Cargando manuales...
         </p>
@@ -43,5 +108,111 @@
                 </div>
             </div>
         </div>
+    </div>
+</mat-menu>
+
+<mat-menu #menuOpciones="matMenu" [class]="'menuSuperficieOscura menuSuperficieOscura--options'">
+    <div class="options-menu ribbon-menu-shell"
+        (click)="$event.stopPropagation()"
+        (mouseenter)="cancelarCierreRibbonMenu()"
+        (mouseleave)="programarCierreRibbonMenu(opcionesTrigger)">
+        <div class="options-section">
+            <span class="options-section__eyebrow">Cuenta</span>
+            <button mat-menu-item [disabled]="!isLoggedIn" (click)="abrirSeccionPerfil('resumen')">
+                <mat-icon>badge</mat-icon>
+                <span>Resumen</span>
+            </button>
+            <button mat-menu-item [disabled]="!isLoggedIn" (click)="abrirSeccionPerfil('identidad')">
+                <mat-icon>account_circle</mat-icon>
+                <span>Identidad</span>
+            </button>
+            <button mat-menu-item [disabled]="!isLoggedIn" (click)="abrirSeccionPerfil('preferencias')">
+                <mat-icon>tune</mat-icon>
+                <span>Preferencias</span>
+            </button>
+            <button mat-menu-item [disabled]="!isLoggedIn" (click)="abrirSeccionPerfil('seguridad')">
+                <mat-icon>lock</mat-icon>
+                <span>Seguridad</span>
+            </button>
+        </div>
+
+        <div class="menu-separator" (click)="$event.stopPropagation()"></div>
+
+        <div class="options-section">
+            <span class="options-section__eyebrow">Ajustes rápidos</span>
+            <p class="options-section__copy" *ngIf="isLoggedIn && quickSettingsLoading">
+                Cargando ajustes...
+            </p>
+            <p class="options-section__copy options-section__copy--warning" *ngIf="isLoggedIn && !quickSettingsLoading && quickSettingsError">
+                {{quickSettingsError}}
+            </p>
+            <p class="options-section__copy" *ngIf="!isLoggedIn">
+                Inicia sesión para cambiar estas opciones.
+            </p>
+
+            <div class="options-toggle-row" (click)="$event.stopPropagation()">
+                <div class="options-toggle-row__copy">
+                    <strong>Perfil público</strong>
+                </div>
+                <mat-slide-toggle
+                    class="options-toggle-control"
+                    color="primary"
+                    [checked]="mostrarPerfilPublicoQuickSetting"
+                    [disabled]="isQuickSettingDisabled('mostrarPerfilPublico')"
+                    (click)="$event.stopPropagation()"
+                    (change)="onQuickSettingChange('mostrarPerfilPublico', $event.checked)">
+                </mat-slide-toggle>
+            </div>
+
+            <div class="options-toggle-row" (click)="$event.stopPropagation()">
+                <div class="options-toggle-row__copy">
+                    <strong>Personajes nuevos públicos</strong>
+                </div>
+                <mat-slide-toggle
+                    class="options-toggle-control"
+                    color="primary"
+                    [checked]="visibilidadPorDefectoQuickSetting"
+                    [disabled]="isQuickSettingDisabled('visibilidadPorDefectoPersonajes')"
+                    (click)="$event.stopPropagation()"
+                    (change)="onQuickSettingChange('visibilidadPorDefectoPersonajes', $event.checked)">
+                </mat-slide-toggle>
+            </div>
+        </div>
+
+        <div class="menu-separator" *ngIf="isAdmin || !isLoggedIn" (click)="$event.stopPropagation()"></div>
+
+        <div class="options-section" *ngIf="isAdmin">
+            <span class="options-section__eyebrow">Avanzado</span>
+            <button mat-menu-item (click)="abrirAdminPanel()">
+                <mat-icon>admin_panel_settings</mat-icon>
+                <span>Admin panel</span>
+            </button>
+        </div>
+
+        <div class="options-section" *ngIf="!isLoggedIn">
+            <button mat-menu-item (click)="openSesionDialog()">
+                <mat-icon>login</mat-icon>
+                <span>Identifícate</span>
+            </button>
+        </div>
+    </div>
+</mat-menu>
+
+<mat-menu #menuAyuda="matMenu" [class]="'menuSuperficieOscura'">
+    <div class="ribbon-menu-shell"
+        (mouseenter)="cancelarCierreRibbonMenu()"
+        (mouseleave)="programarCierreRibbonMenu(ayudaTrigger)">
+        <button mat-menu-item (click)="abrirRoadmap()">
+            <mat-icon>map</mat-icon>
+            <span>Roadmap</span>
+        </button>
+        <button mat-menu-item (click)="abrirLegalPrivacidad()">
+            <mat-icon>gavel</mat-icon>
+            <span>Legal y privacidad</span>
+        </button>
+        <button mat-menu-item (click)="abrirUsoYAcerca()">
+            <mat-icon>help_center</mat-icon>
+            <span>Uso y acerca</span>
+        </button>
     </div>
 </mat-menu>

@@ -1,28 +1,154 @@
 @use '../../../../assets/css/variables' as *
-p
-    display: inline-block
 
+.ribbon-nav
+    display: flex
+    align-items: center
+    gap: 2px
+
+.ribbon-trigger
+    display: inline-flex
+    align-items: center
+    justify-content: center
+    border: 0
+    background: transparent
     color: white
     text-align: center
-
-    padding: 2px 15px 2px 15px
+    padding: 2px 15px
     margin: 2px 0
+    font: inherit
 
     &:hover
         background-color: white
         color: black
-
         border-radius: 4px
-
         cursor: pointer
 
-::ng-deep .cdk-overlay-pane:has(.menuManualesOscuro)
+::ng-deep .cdk-overlay-pane:has(.menuSuperficieOscura)
+    .menuSuperficieOscura
+        background-color: #2a3036
+        color: #d7dde2
+
+        .mat-mdc-menu-content
+            padding-top: 0
+            padding-bottom: 0
+
+        .mat-mdc-menu-item
+            color: #d7dde2
+
+        .mat-icon
+            color: inherit
+
+::ng-deep .cdk-overlay-pane:has(.menuSuperficieOscura--wide)
     width: min(620px, calc(100vw - 16px)) !important
     max-width: min(620px, calc(100vw - 16px)) !important
 
-    .menuManualesOscuro
-        background-color: #2a3036
-        color: #d7dde2
+::ng-deep .cdk-overlay-pane:has(.menuSuperficieOscura--options)
+    width: min(400px, calc(100vw - 16px)) !important
+    max-width: min(400px, calc(100vw - 16px)) !important
+
+    .menuSuperficieOscura--options
+        overflow: hidden
+
+        .mat-mdc-menu-content
+            max-height: none !important
+            overflow: hidden !important
+
+.menu-user-state
+    display: flex
+    flex-direction: column
+    gap: 2px
+    padding: 12px 16px 10px
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1)
+
+.menu-user-state__eyebrow
+    font-size: 11px
+    text-transform: uppercase
+    letter-spacing: 0.08em
+    color: #9fb1bf
+
+.menu-user-state__title
+    font-size: 14px
+    color: #f0f3f6
+
+.menu-user-state__subtitle
+    font-size: 12px
+    color: #c4d0d9
+
+.menu-separator
+    margin: 6px 12px
+    border-top: 1px solid rgba(255, 255, 255, 0.14)
+
+.menu-entry-danger
+    color: #ffb3b3
+
+.ribbon-menu-shell
+    min-width: 220px
+
+.options-menu
+    display: block
+    min-width: 400px
+    max-height: min(calc(100vh - 88px), 540px)
+    padding: 10px 0
+    overflow-y: auto
+    overscroll-behavior: contain
+    scrollbar-gutter: stable
+    box-sizing: border-box
+
+.options-section
+    display: flex
+    flex-direction: column
+
+.options-section__eyebrow
+    padding: 0 16px 8px
+    font-size: 11px
+    text-transform: uppercase
+    letter-spacing: 0.08em
+    color: #9fb1bf
+
+.options-section__copy
+    margin: 0
+    padding: 0 16px 12px
+    font-size: 12px
+    color: #c4d0d9
+
+.options-section__copy--warning
+    color: #ffc107
+
+.options-toggle-row
+    display: flex
+    align-items: center
+    justify-content: space-between
+    gap: 12px
+    padding: 9px 16px
+    transition: background-color .15s ease
+
+    &:hover
+        background: rgba(255, 255, 255, 0.04)
+
+.options-toggle-row__copy
+    display: flex
+    flex-direction: row
+    align-items: center
+    flex: 1 1 auto
+    min-width: 0
+
+    strong
+        font-size: 13px
+        color: #f0f3f6
+
+::ng-deep .options-toggle-control.mat-mdc-slide-toggle
+    flex: 0 0 auto
+    display: inline-flex
+    align-items: center
+    justify-content: flex-end
+    min-width: 52px
+    margin-left: auto
+
+::ng-deep .menuSuperficieOscura--options .mat-mdc-menu-item[disabled]
+    opacity: 0.52
+
+::ng-deep .menuSuperficieOscura--options .mdc-switch--disabled + label
+    opacity: 0.72
 
 .manuales-menu
     width: 100%
@@ -102,4 +228,3 @@ p
     width: 14px
     height: 14px
     font-size: 14px
-

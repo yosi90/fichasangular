@@ -104,6 +104,9 @@ import { DetallesDeidadComponent } from './components/detalles/detalles-deidad/d
 import { ListadoDeidadesComponent } from './components/shared/listado-deidades/listado-deidades.component';
 import { UserProfileComponent } from './components/base/user-profile/user-profile.component';
 import { PublicUserProfileComponent } from './components/base/public-user-profile/public-user-profile.component';
+import { HelpRoadmapComponent } from './components/base/help-roadmap/help-roadmap.component';
+import { HelpLegalComponent } from './components/base/help-legal/help-legal.component';
+import { HelpUsageAboutComponent } from './components/base/help-usage-about/help-usage-about.component';
 
 @NgModule({
     declarations: [
@@ -117,6 +120,9 @@ import { PublicUserProfileComponent } from './components/base/public-user-profil
         BaseMenuComponent,
         UserProfileComponent,
         PublicUserProfileComponent,
+        HelpRoadmapComponent,
+        HelpLegalComponent,
+        HelpUsageAboutComponent,
         AdminPanelComponent,
         DetallesPersonajeComponent,
         NuevoPersonajeComponent,

@@ -1,8 +1,8 @@
-import { ManualAsociadoDetalle, ManualAsociados } from '../interfaces/manual-asociado';
+import { ManualAsociadoDetalle, ManualAsociados, ReferenciaCorta } from '../interfaces/manual-asociado';
 import { ManualReferenciaTipo } from '../interfaces/manual-referencia-navegacion';
 
 export type ManualSeccionKey = keyof ManualAsociados;
-type ManualIncludeFlag =
+export type ManualIncludeFlag =
     | 'Incluye_dotes'
     | 'Incluye_conjuros'
     | 'Incluye_plantillas'
@@ -40,6 +40,13 @@ export interface ManualCategoriaConIcono {
     icono: string;
 }
 
+export interface ManualFlagMismatch {
+    key: ManualSeccionKey;
+    includeFlag: ManualIncludeFlag;
+    current: boolean;
+    effective: boolean;
+}
+
 export const MANUAL_SECCIONES_CONFIG: ManualSeccionConfig[] = [
     { key: 'Dotes', label: 'Dotes', includeFlag: 'Incluye_dotes', tipo: 'dote' },
     { key: 'Conjuros', label: 'Conjuros', includeFlag: 'Incluye_conjuros', tipo: 'conjuro' },
@@ -56,18 +63,41 @@ export function getManualTipoPorSeccion(key: ManualSeccionKey): ManualReferencia
     return seccion?.tipo ?? null;
 }
 
-export function isManualSeccionIncluida(
+export function getManualReferenciasValidas(
+    manual: ManualAsociadoDetalle | null | undefined,
+    key: ManualSeccionKey
+): ReferenciaCorta[] {
+    const lista = manual?.Asociados?.[key] ?? [];
+    return lista.filter((ref) => Number(ref?.Id) > 0 && `${ref?.Nombre ?? ''}`.trim().length > 0);
+}
+
+export function getManualSeccionIncludeFlag(key: ManualSeccionKey): ManualIncludeFlag | null {
+    const seccion = MANUAL_SECCIONES_CONFIG.find((item) => item.key === key);
+    return seccion?.includeFlag ?? null;
+}
+
+export function isManualSeccionEfectiva(
     manual: ManualAsociadoDetalle | null | undefined,
     key: ManualSeccionKey
 ): boolean {
     if (!manual)
         return false;
 
-    const seccion = MANUAL_SECCIONES_CONFIG.find((item) => item.key === key);
-    if (!seccion)
+    const includeFlag = getManualSeccionIncludeFlag(key);
+    if (!includeFlag)
         return false;
 
-    return !!manual[seccion.includeFlag];
+    if (!!manual[includeFlag])
+        return true;
+
+    return getManualReferenciasValidas(manual, key).length > 0;
+}
+
+export function isManualSeccionIncluida(
+    manual: ManualAsociadoDetalle | null | undefined,
+    key: ManualSeccionKey
+): boolean {
+    return isManualSeccionEfectiva(manual, key);
 }
 
 export function getManualCategorias(manual: ManualAsociadoDetalle | null | undefined): ManualCategoriaConIcono[] {
@@ -75,11 +105,29 @@ export function getManualCategorias(manual: ManualAsociadoDetalle | null | undef
         return [];
 
     return MANUAL_SECCIONES_CONFIG
-        .filter((item) => !!manual[item.includeFlag])
+        .filter((item) => isManualSeccionEfectiva(manual, item.key))
         .map((item) => ({
             key: item.key,
             label: item.label,
             tipo: item.tipo,
             icono: ICONOS_ENTIDAD[item.tipo],
         }));
+}
+
+export function getManualFlagMismatches(manual: ManualAsociadoDetalle | null | undefined): ManualFlagMismatch[] {
+    if (!manual)
+        return [];
+
+    return MANUAL_SECCIONES_CONFIG
+        .map((item) => {
+            const current = !!manual[item.includeFlag];
+            const effective = getManualReferenciasValidas(manual, item.key).length > 0;
+            return {
+                key: item.key,
+                includeFlag: item.includeFlag,
+                current,
+                effective,
+            } as ManualFlagMismatch;
+        })
+        .filter((item) => item.current !== item.effective);
 }

@@ -16,14 +16,39 @@
             Mi perfil
             <button (click)="quitarPerfilPrivado()" mat-icon-button class="tw-ms-2"><mat-icon>close</mat-icon></button>
         </ng-template>
-        <app-user-profile></app-user-profile>
+        <app-user-profile [openRequest]="privateProfileOpenRequest"></app-user-profile>
     </mat-tab>
-    <mat-tab label="Panel de administración" *ngIf="usrPerm === 1">
-        <ng-template mat-tab-label="">
+    <mat-tab label="Panel de administración" *ngIf="usrPerm === 1 && adminPanelTabOpen">
+        <ng-template mat-tab-label>
             <mat-icon class="tw-me-2">admin_panel_settings</mat-icon>
             Admin panel
+            <button (click)="quitarPanelAdministracion()" mat-icon-button class="tw-ms-2"><mat-icon>close</mat-icon></button>
         </ng-template>
         <app-admin-panel></app-admin-panel>
+    </mat-tab>
+    <mat-tab label="Roadmap" *ngIf="roadmapTabOpen">
+        <ng-template mat-tab-label>
+            <mat-icon class="tw-me-2">map</mat-icon>
+            Roadmap
+            <button (click)="quitarRoadmap()" mat-icon-button class="tw-ms-2"><mat-icon>close</mat-icon></button>
+        </ng-template>
+        <app-help-roadmap></app-help-roadmap>
+    </mat-tab>
+    <mat-tab label="Legal y privacidad" *ngIf="legalPrivacyTabOpen">
+        <ng-template mat-tab-label>
+            <mat-icon class="tw-me-2">gavel</mat-icon>
+            Legal y privacidad
+            <button (click)="quitarLegalPrivacidad()" mat-icon-button class="tw-ms-2"><mat-icon>close</mat-icon></button>
+        </ng-template>
+        <app-help-legal></app-help-legal>
+    </mat-tab>
+    <mat-tab label="Uso y acerca" *ngIf="usageAboutTabOpen">
+        <ng-template mat-tab-label>
+            <mat-icon class="tw-me-2">help_center</mat-icon>
+            Uso y acerca
+            <button (click)="quitarUsoYAcerca()" mat-icon-button class="tw-ms-2"><mat-icon>close</mat-icon></button>
+        </ng-template>
+        <app-help-usage-about></app-help-usage-about>
     </mat-tab>
     <mat-tab *ngFor="let pj of detallesPersonajeAbiertos; let index = index" [label]="pj.Nombre">
         <ng-template mat-tab-label>
@@ -290,124 +315,6 @@
             [deidad]="detallesDeidadAbiertos[index]"
             (armaDetallesId)="abrirDetallesArmaPorId($event)">
         </app-detalles-deidad>
-    </mat-tab>
-    <mat-tab label="Información importante" class="tw-pe-4">
-        <ng-template mat-tab-label="">
-            <mat-icon class="tw-me-2">info_outline</mat-icon>
-            Importante leer
-        </ng-template>
-        <mat-card class="mh-90 tw-m-12">
-            <mat-card-header>
-                <mat-card-title class="tw-text-white"><mat-icon class="tw-me-2">construction</mat-icon> En construcción <mat-icon class="tw-ms-2">construction</mat-icon></mat-card-title>
-                <mat-card-subtitle>Esta web está siendo desarrollada por <a href="https://yosiftware.es" target="_blank">Yosiftware.es</a></mat-card-subtitle>
-            </mat-card-header>
-            <mat-card-content class="tw-text-white tw-p-12">
-                <p class="tw-flex tw-items-center tw-mb-0">Versión 0.1 - Estos son los personajes <mat-icon class="tw-ms-2">done_all</mat-icon></p>
-                <hr>
-                <ol>
-                    <li><p class="tw-flex tw-items-center tw-mb-0">Base de la web creada <mat-icon class="tw-ms-2">done</mat-icon></p></li> 
-                    <li><p class="tw-flex tw-items-center tw-mb-0">Creada lista de personajes <mat-icon class="tw-ms-2">done</mat-icon></p></li>
-                    <li><p class="tw-flex tw-items-center tw-mb-0">Creada Vista de personajes <mat-icon class="tw-ms-2">done</mat-icon></p></li>
-                    <li><p class="tw-flex tw-items-center tw-mb-0">Creada funcionalidad para descargar la ficha en pdf <mat-icon class="tw-ms-2">done</mat-icon></p></li>
-                    <li><p class="tw-flex tw-items-center tw-mb-0">Creada base del admin panel <mat-icon class="tw-ms-2">done</mat-icon></p></li>
-                </ol>
-                <hr><hr>
-                <p class="tw-flex tw-items-center tw-mb-0">Versión 0.2 - Creemos nuevos personajes <mat-icon class="tw-ms-2">done_all</mat-icon></p>
-                <hr>
-                <ol>
-                    <li><p class="tw-flex tw-items-center tw-mb-0">Creada creación de personajes <mat-icon class="tw-ms-2">done</mat-icon></p></li>
-                    <li><p class="tw-flex tw-items-center tw-mb-0">Creada vista de Razas <mat-icon class="tw-ms-2">done</mat-icon></p></li>
-                    <li><p class="tw-flex tw-items-center tw-mb-0">Creada vista de tipos de criatura <mat-icon class="tw-ms-2">done</mat-icon></p></li>
-                    <li><p class="tw-flex tw-items-center tw-mb-0">Creada vista de rasgos <mat-icon class="tw-ms-2">done</mat-icon></p></li>
-                    <li><p class="tw-flex tw-items-center tw-mb-0">Creada vista de conjuros y sortílegas <mat-icon class="tw-ms-2">done</mat-icon></p></li>
-                    <li><p class="tw-flex tw-items-center tw-mb-0">Creada vista de clases <mat-icon class="tw-ms-2">done</mat-icon></p></li>
-                    <li><p class="tw-flex tw-items-center tw-mb-0">Creada vista de Dotes <mat-icon class="tw-ms-2">done</mat-icon></p></li>
-                </ol>
-                <hr><hr>
-                <p class="tw-flex tw-items-center tw-mb-0">Versión 0.3 - Un personaje mal creado no es un personaje <mat-icon class="tw-ms-2">done_all</mat-icon></p>
-                <hr>
-                <ol>
-                    <li><p class="tw-flex tw-items-center tw-mb-0">Repaso de bugs en Nuevo personaje <mat-icon class="tw-ms-2">done</mat-icon></p></li>
-                    <li><p class="tw-flex tw-items-center tw-mb-0">Revisión de filtros de razas <mat-icon class="tw-ms-2">done</mat-icon></p></li>
-                    <li><p class="tw-flex tw-items-center tw-mb-0">Revisión de filtros de clases <mat-icon class="tw-ms-2">done</mat-icon></p></li>
-                    <li><p class="tw-flex tw-items-center tw-mb-0">Revisión de filtros de conjuros <mat-icon class="tw-ms-2">done</mat-icon></p></li>
-                    <li><p class="tw-flex tw-items-center tw-mb-0">Revisión de filtros de dotes <mat-icon class="tw-ms-2">done</mat-icon></p></li>
-                    <li><p class="tw-flex tw-items-center tw-mb-0">Revisión de filtros de plantillas <mat-icon class="tw-ms-2">done</mat-icon></p></li>
-                </ol>
-                <hr><hr>
-                <p class="tw-flex tw-items-center tw-mb-0">Versión 0.4 - Pasado pisado <mat-icon class="tw-ms-2">done_all</mat-icon></p>
-                <hr>
-                <ol>
-                    <li><p class="tw-flex tw-items-center tw-mb-0">Eliminar bootstrap de la app e integrar en su lugar tailwind <mat-icon class="tw-ms-2">done</mat-icon></p></li>
-                    <li><p class="tw-flex tw-items-center tw-mb-0">Upgradear a angular 20 <mat-icon class="tw-ms-2">done</mat-icon></p></li>
-                    <li><p class="tw-flex tw-items-center tw-mb-0">Upgradear todos los módulos anticuados <mat-icon class="tw-ms-2">done</mat-icon></p></li>
-                </ol>
-                <hr><hr>
-                <p class="tw-flex tw-items-center tw-mb-0">Versión 0.5 - Gestión, revisión, adición <mat-icon class="tw-ms-2">done_all</mat-icon></p>
-                <hr>
-                <ol>
-                    <li><p class="tw-flex tw-items-center tw-mb-0">Creadas las vistas faltantes <mat-icon class="tw-ms-2">done</mat-icon></p></li>
-                    <li><p class="tw-flex tw-items-center tw-mb-0">Creada la inserción de conjuros <mat-icon class="tw-ms-2">done</mat-icon></p></li>
-                    <li><p class="tw-flex tw-items-center tw-mb-0">Creada la inserción de dotes <mat-icon class="tw-ms-2">done</mat-icon></p></li>
-                    <li><p class="tw-flex tw-items-center tw-mb-0">Mejoras en el sistema de permisos <mat-icon class="tw-ms-2">done</mat-icon></p></li>
-                    <li><p class="tw-flex tw-items-center tw-mb-0">Creada la gestión de usuarios en admin panel <mat-icon class="tw-ms-2">done</mat-icon></p></li>
-                </ol>
-                <hr><hr>
-                <p class="tw-flex tw-items-center tw-mb-0">Versión 0.6 - En las nubes (En espera)</p>
-                <hr>
-                <ol>
-                    <li><p class="tw-flex tw-items-center tw-mb-0">Instalar mini pc</p></li>
-                    <li><p class="tw-flex tw-items-center tw-mb-0">Configurarle una ip estática con cloudflare</p></li>
-                    <li><p class="tw-flex tw-items-center tw-mb-0">Hostear la base de datos</p></li>
-                    <li><p class="tw-flex tw-items-center tw-mb-0">Hostear la api</p></li>
-                    <li><p class="tw-flex tw-items-center tw-mb-0">Configurar la api para que ataque a la base de datos hosteada</p></li>
-                    <li><p class="tw-flex tw-items-center tw-mb-0">Implementar seguridad en la api y la base de datos</p></li>
-                    <li><p class="tw-flex tw-items-center tw-mb-0">Configurar la app para que ataque a la api hosteada</p></li>
-                    <li><p class="tw-flex tw-items-center tw-mb-0">Configurar bien los permisos de firebase realtime database</p></li>
-                </ol>
-                <hr><hr>
-                <p class="tw-flex tw-items-center tw-mb-0">Versión 0.7 - Usuario importa (Actual)</p>
-                <hr>
-                <ol>
-                    <li><p class="tw-flex tw-items-center tw-mb-0">Mejorada la gestión de usuarios <mat-icon class="tw-ms-2">done</mat-icon></p></li>
-                    <li><p class="tw-flex tw-items-center tw-mb-0">Creada funcionalidad de "Archivo"</p></li>
-                    <li><p class="tw-flex tw-items-center tw-mb-0">Creada funcionalidad de "Opciones"</p></li>
-                    <li><p class="tw-flex tw-items-center tw-mb-0">Creada funcionalidad de "Ayuda"</p></li>
-                    <li><p class="tw-flex tw-items-center tw-mb-0">Creado el perfil de usuario <mat-icon class="tw-ms-2">done</mat-icon></p></li>
-                </ol>
-                <hr><hr>
-                <p class="tw-flex tw-items-center tw-mb-0">Versión 0.8 - Las inserciones son complejas</p>
-                <hr>
-                <ol>
-                    <li><p class="tw-flex tw-items-center tw-mb-0">Creada la inserción de Razas</p></li>
-                    <li><p class="tw-flex tw-items-center tw-mb-0">Creada la inserción de clases</p></li>
-                </ol>
-                <hr><hr>
-                <p class="tw-flex tw-items-center tw-mb-0">Versión 0.9 - Las putas apariencias siempre</p>
-                <hr>
-                <ol>
-                    <li><p class="tw-flex tw-items-center tw-mb-0">Establecer una dirección artística del proyecto</p></li>
-                    <li><p class="tw-flex tw-items-center tw-mb-0">Establecer una paleta de colores coherente</p></li>
-                    <li><p class="tw-flex tw-items-center tw-mb-0">Establecer un estilo visual consistente</p></li>
-                </ol>
-                <hr><hr>
-                <p class="tw-flex tw-items-center tw-mb-0">¡Aclaraciones!</p>
-                <ul>
-                    <li>
-                        <p class="tw-flex tw-items-center tw-mb-0">
-                        Esta web no es, ni pretende ser, una demostración de conocimientos 
-                        <mat-icon class="tw-ms-2">done_all</mat-icon><mat-icon class="tw-ms-2">done_all</mat-icon><mat-icon class="tw-ms-2">done_all</mat-icon>
-                        </p>
-                    </li>
-                    <li><p class="tw-flex tw-items-center tw-mb-0"><s>Todos los personajes existentes han sido creados con la versión de escritorio de la app</s></p></li>
-                    <li><p class="tw-flex tw-items-center tw-mb-0">No todos los botones de la cinta están programados.</p></li>
-                    <li><p class="tw-flex tw-items-center tw-mb-0">Los botones de insertar y modificar NO están programados.</p></li>
-                </ul>
-            </mat-card-content>
-            <mat-card-actions>
-                <button mat-raised-button color="primary" class="tw-w-full" (click)="verPersonajes()">Ok</button>
-            </mat-card-actions>
-        </mat-card>
     </mat-tab>
 </mat-tab-group>
 

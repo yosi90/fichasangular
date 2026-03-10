@@ -8,6 +8,7 @@ export interface CacheSyncMeta {
     lastSuccessAt: number;
     lastSuccessIso: string;
     schemaVersionApplied: number;
+    staleReason?: string | null;
 }
 
 export interface CacheSyncUiState {
@@ -60,8 +61,28 @@ export class CacheSyncMetadataService {
             lastSuccessAt: now,
             lastSuccessIso: new Date(now).toISOString(),
             schemaVersionApplied: schemaVersion,
+            staleReason: null,
         };
         await this.firebaseContextSvc.run(() => set(ref(this.db, `${this.path}/${key}`), payload));
+    }
+
+    async markStale(keys: CacheEntityKey | CacheEntityKey[], staleReason: string | null = null): Promise<void> {
+        const requestedKeys = Array.isArray(keys) ? keys : [keys];
+        const snapshot = await this.getSnapshotOnce();
+        const now = Date.now();
+
+        await Promise.all(requestedKeys
+            .filter((key) => this.keys.has(key))
+            .map((key) => {
+                const previous = snapshot[key];
+                const payload: CacheSyncMeta = {
+                    lastSuccessAt: previous?.lastSuccessAt ?? now,
+                    lastSuccessIso: previous?.lastSuccessIso ?? new Date(now).toISOString(),
+                    schemaVersionApplied: 0,
+                    staleReason,
+                };
+                return this.firebaseContextSvc.run(() => set(ref(this.db, `${this.path}/${key}`), payload));
+            }));
     }
 
     async getSnapshotOnce(): Promise<Record<CacheEntityKey, CacheSyncMeta | null>> {
@@ -112,6 +133,7 @@ export class CacheSyncMetadataService {
         const lastSuccessAt = Number(raw.lastSuccessAt);
         const schemaVersionApplied = Number(raw.schemaVersionApplied);
         const lastSuccessIso = typeof raw.lastSuccessIso === "string" ? raw.lastSuccessIso : "";
+        const staleReason = typeof raw.staleReason === "string" ? raw.staleReason : null;
 
         if (!Number.isFinite(lastSuccessAt) || !Number.isFinite(schemaVersionApplied) || lastSuccessIso.length < 1)
             return null;
@@ -120,6 +142,7 @@ export class CacheSyncMetadataService {
             lastSuccessAt,
             lastSuccessIso,
             schemaVersionApplied,
+            staleReason,
         };
     }
 }

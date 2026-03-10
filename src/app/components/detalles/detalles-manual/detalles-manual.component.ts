@@ -1,8 +1,11 @@
-import { Component, Input } from '@angular/core';
-import { ICONOS_ENTIDAD, isManualSeccionIncluida, getManualCategorias, getManualTipoPorSeccion, MANUAL_SECCIONES_CONFIG, ManualCategoriaConIcono } from 'src/app/config/manual-secciones.config';
+import { Component, Input, OnDestroy, OnInit } from '@angular/core';
+import { Subscription } from 'rxjs';
+import { ICONOS_ENTIDAD, getManualCategorias, getManualReferenciasValidas, getManualTipoPorSeccion, isManualSeccionIncluida, MANUAL_SECCIONES_CONFIG, ManualCategoriaConIcono } from 'src/app/config/manual-secciones.config';
 import { ManualAsociadoDetalle, ManualAsociados, ReferenciaCorta } from 'src/app/interfaces/manual-asociado';
 import { ManualReferenciaTipo } from 'src/app/interfaces/manual-referencia-navegacion';
+import { ManualFlagConsistencyNoticeService } from 'src/app/services/manual-flag-consistency-notice.service';
 import { ManualReferenciaNavigationService } from 'src/app/services/manual-referencia-navigation.service';
+import { UserService } from 'src/app/services/user.service';
 
 type SeccionManualKey = keyof ManualAsociados;
 type SeccionManual = { key: SeccionManualKey, label: string, icono: string };
@@ -14,13 +17,16 @@ type BloqueManualObjeto = { seccion: SeccionManual, referencia: ReferenciaCorta 
     styleUrls: ['./detalles-manual.component.sass'],
     standalone: false
 })
-export class DetallesManualComponent {
-    private _manual!: ManualAsociadoDetalle;
-    @Input() set manual(value: ManualAsociadoDetalle) {
+export class DetallesManualComponent implements OnInit, OnDestroy {
+    private _manual: ManualAsociadoDetalle | null = null;
+    private permisosSub?: Subscription;
+    private isAdmin: boolean = false;
+    @Input() set manual(value: ManualAsociadoDetalle | null) {
         this._manual = value;
         this.recalcularSeccionesRender();
+        this.notificarDesajusteSiProcede();
     }
-    get manual(): ManualAsociadoDetalle {
+    get manual(): ManualAsociadoDetalle | null {
         return this._manual;
     }
 
@@ -33,7 +39,23 @@ export class DetallesManualComponent {
     bloquesRender: BloqueManualObjeto[] = [];
     seccionesActivas: Partial<Record<SeccionManualKey, boolean>> = {};
 
-    constructor(private manualRefNavSvc: ManualReferenciaNavigationService) { }
+    constructor(
+        private manualRefNavSvc: ManualReferenciaNavigationService,
+        private userSvc: UserService,
+        private manualFlagNoticeSvc: ManualFlagConsistencyNoticeService,
+    ) { }
+
+    ngOnInit(): void {
+        this.permisosSub = this.userSvc.permisos$
+            .subscribe((permisos) => {
+                this.isAdmin = Number(permisos) === 1;
+                this.notificarDesajusteSiProcede();
+            });
+    }
+
+    ngOnDestroy(): void {
+        this.permisosSub?.unsubscribe();
+    }
 
     getCategorias(manual: ManualAsociadoDetalle): ManualCategoriaConIcono[] {
         return getManualCategorias(manual);
@@ -79,8 +101,7 @@ export class DetallesManualComponent {
     }
 
     getReferenciasValidas(manual: ManualAsociadoDetalle, key: SeccionManualKey): ReferenciaCorta[] {
-        const lista = manual?.Asociados?.[key] ?? [];
-        return lista.filter((ref) => Number(ref?.Id) > 0 && `${ref?.Nombre ?? ''}`.trim().length > 0);
+        return getManualReferenciasValidas(manual, key);
     }
 
     get bloquesFiltrados(): BloqueManualObjeto[] {
@@ -134,7 +155,8 @@ export class DetallesManualComponent {
             return;
         }
 
-        const conDatos = this.seccionesBase.filter((seccion) => this.seccionIncluidaEnManual(this.manual, seccion.key));
+        const manual = this.manual;
+        const conDatos = this.seccionesBase.filter((seccion) => this.seccionIncluidaEnManual(manual, seccion.key));
         this.seccionesRender = this.shuffle([...conDatos]);
         this.bloquesRender = [];
         this.seccionesActivas = {};
@@ -144,7 +166,7 @@ export class DetallesManualComponent {
         });
 
         this.seccionesRender.forEach((seccion) => {
-            const refs = this.shuffle([...this.getReferenciasValidas(this.manual, seccion.key)]);
+            const refs = this.shuffle([...this.getReferenciasValidas(manual, seccion.key)]);
             refs.forEach((referencia) => {
                 this.bloquesRender.push({ seccion, referencia });
             });
@@ -165,5 +187,9 @@ export class DetallesManualComponent {
             items[j] = aux;
         }
         return items;
+    }
+
+    private notificarDesajusteSiProcede(): void {
+        this.manualFlagNoticeSvc.notifyAdminIfNeeded(this.manual, this.isAdmin);
     }
 }
