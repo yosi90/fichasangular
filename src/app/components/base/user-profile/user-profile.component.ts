@@ -317,14 +317,10 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
     }
 
     get masterCampaigns(): CampaignListItem[] {
-        if (this.profile?.role === 'admin')
-            return this.campaigns;
         return this.campaigns.filter((campaign) => campaign.campaignRole === 'master');
     }
 
     get participantCampaigns(): CampaignListItem[] {
-        if (this.profile?.role === 'admin')
-            return [];
         return this.campaigns.filter((campaign) => campaign.campaignRole !== 'master');
     }
 
@@ -334,12 +330,34 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
         return this.campaigns.find((campaign) => campaign.id === this.selectedCampaignId) ?? null;
     }
 
+    get selectedCampaignCurrentMembership(): CampaignMemberItem | null {
+        const currentUid = `${this.profile?.uid ?? ''}`.trim();
+        if (currentUid.length < 1)
+            return null;
+        return this.selectedCampaignMembers.find((member) => member.uid === currentUid) ?? null;
+    }
+
+    get selectedCampaignActorRole(): 'master' | 'jugador' | null {
+        return this.selectedCampaignCurrentMembership?.campaignRole
+            ?? this.selectedCampaignSummary?.campaignRole
+            ?? null;
+    }
+
+    get selectedCampaignActorStatus(): 'activo' | 'inactivo' | 'expulsado' | null {
+        return this.selectedCampaignCurrentMembership?.membershipStatus
+            ?? this.selectedCampaignSummary?.membershipStatus
+            ?? null;
+    }
+
     get selectedCampaignCanManage(): boolean {
+        return this.selectedCampaignActorRole === 'master';
+    }
+
+    get selectedCampaignCanTransferMaster(): boolean {
         if (!this.selectedCampaignSummary)
             return false;
-        if (this.profile?.role === 'admin')
-            return true;
-        return this.selectedCampaignSummary.campaignRole === 'master';
+        return this.selectedCampaignActorRole === 'master'
+            && this.selectedCampaignMembers.some((member) => member.campaignRole !== 'master' && member.isActive);
     }
 
     get selectedCampaignMembers(): CampaignMemberItem[] {
@@ -352,6 +370,27 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
 
     get selectedCampaignMaster(): CampaignMemberItem | null {
         return this.selectedCampaignMembers.find((member) => member.campaignRole === 'master' && member.isActive) ?? null;
+    }
+
+    get selectedCampaignHasActiveMaster(): boolean {
+        return !!this.selectedCampaignMaster;
+    }
+
+    get selectedCampaignOwnerMatchesCurrentUser(): boolean {
+        const currentUid = `${this.profile?.uid ?? ''}`.trim();
+        const ownerUid = `${this.selectedCampaignDetail?.ownerUid ?? ''}`.trim();
+        return currentUid.length > 0 && ownerUid.length > 0 && currentUid === ownerUid;
+    }
+
+    get selectedCampaignCanRecoverMaster(): boolean {
+        return this.selectedCampaignDetail?.canRecoverMaster === true
+            || (!this.selectedCampaignHasActiveMaster && this.selectedCampaignOwnerMatchesCurrentUser);
+    }
+
+    get selectedCampaignShowLegacyRecoverHint(): boolean {
+        return !this.selectedCampaignHasActiveMaster
+            && !this.selectedCampaignCanRecoverMaster
+            && this.selectedCampaignMembers.length <= 1;
     }
 
     get campaignListsHaveData(): boolean {
@@ -584,6 +623,20 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
             await this.ensureCampaignSectionLoaded();
     }
 
+    onSectionNavClick(section: UserPrivateProfileSectionId, event?: Event): void {
+        event?.preventDefault();
+        event?.stopPropagation();
+        void this.setSection(section);
+    }
+
+    onSectionNavPointerDown(section: UserPrivateProfileSectionId, event: PointerEvent): void {
+        if (event.button !== 0 || this.currentSection === section)
+            return;
+        event.preventDefault();
+        event.stopPropagation();
+        void this.setSection(section);
+    }
+
     async seleccionarCampana(campaignId: number): Promise<void> {
         await this.loadCampaignSelection(campaignId, false);
     }
@@ -625,6 +678,55 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
         if (!this.selectedCampaignId)
             return;
         await this.loadCampaignSelection(this.selectedCampaignId, true, value === true);
+    }
+
+    async toggleHistorialMiembros(): Promise<void> {
+        await this.cambiarHistorialMiembros(!(this.selectedCampaignDetail?.includeInactiveMembers === true));
+    }
+
+    async abrirInfoRecuperarMaster(event?: Event): Promise<void> {
+        event?.preventDefault();
+        event?.stopPropagation();
+
+        if (!this.selectedCampaignCanRecoverMaster)
+            return;
+
+        const result = await Swal.fire({
+            icon: 'info',
+            title: 'Convertirte en master',
+            html: `
+                <p style="text-align:left; margin-bottom:12px;">
+                    Esta campaña ha quedado huérfana o vacía de jugadores, así que ahora mismo nadie puede gestionarla.
+                </p>
+                <p style="text-align:left; margin-bottom:12px;">
+                    Para poder gestionarla de nuevo, el creador debe convertirse a sí mismo en master de la campaña.
+                </p>
+                <p style="text-align:left; margin-bottom:0;">
+                    Esto puede ocurrir en campañas legacy o en campañas afectadas por usuarios baneados.
+                </p>
+            `,
+            showCancelButton: true,
+            confirmButtonText: 'Convertirme en master',
+            cancelButtonText: 'Cancelar',
+        });
+
+        if (!result.isConfirmed)
+            return;
+
+        await this.recuperarMasterCampana();
+    }
+
+    private async recuperarMasterCampana(): Promise<void> {
+        if (!this.selectedCampaignId || !this.selectedCampaignCanRecoverMaster)
+            return;
+
+        try {
+            await this.campanaSvc.recoverCampaignMaster(this.selectedCampaignId);
+            this.appToastSvc.showSuccess('Has recuperado el rol de master de la campaña.');
+            await this.reloadCampaigns(this.selectedCampaignId);
+        } catch (error: any) {
+            this.appToastSvc.showError(this.mapCampaignError(error, 'No se pudo recuperar el master de la campaña.'));
+        }
     }
 
     onMemberSearchQueryChange(): void {
@@ -869,17 +971,24 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
         return this.subtramaSaveInFlightId === subtramaId;
     }
 
-    getCampaignRoleLabel(role: string): string {
-        return `${role ?? ''}`.trim().toLowerCase() === 'master' ? 'Master' : 'Jugador';
+    getCampaignRoleLabel(role: string | null | undefined): string {
+        const normalized = `${role ?? ''}`.trim().toLowerCase();
+        if (normalized === 'master')
+            return 'Master';
+        if (normalized === 'jugador')
+            return 'Jugador';
+        return 'Sin rol';
     }
 
-    getMembershipStatusLabel(status: string): string {
+    getMembershipStatusLabel(status: string | null | undefined): string {
         const normalized = `${status ?? ''}`.trim().toLowerCase();
         if (normalized === 'inactivo')
             return 'Inactivo';
         if (normalized === 'expulsado')
             return 'Expulsado';
-        return 'Activo';
+        if (normalized === 'activo')
+            return 'Activo';
+        return 'Sin estado';
     }
 
     getUserDisplayLabel(displayName: string | null | undefined, email: string | null | undefined, uid: string): string {

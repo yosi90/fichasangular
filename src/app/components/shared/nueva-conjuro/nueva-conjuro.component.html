@@ -1,7 +1,7 @@
 <div class="nueva-conjuro-shell">
     <form class="nueva-conjuro-form" [formGroup]="form" (ngSubmit)="crearConjuro()">
         <p class="permiso-msg" *ngIf="!puedeCrear">
-            No tienes permiso <b>conjuros.create</b> para insertar conjuros.
+            {{mensajePermisosInsuficientes}}
         </p>
 
         <section class="panel-card">

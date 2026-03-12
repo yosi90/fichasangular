@@ -326,6 +326,10 @@ export class NuevaDoteComponent implements OnInit, OnDestroy {
         return '';
     }
 
+    get mensajePermisosInsuficientes(): string {
+        return this.userSvc.getPermissionDeniedMessage();
+    }
+
     get permiteSeleccionarCompetencia(): boolean {
         return this.extraTipoSeleccionado === 'extra_arma' || this.extraTipoSeleccionado === 'extra_armadura';
     }
@@ -514,8 +518,12 @@ export class NuevaDoteComponent implements OnInit, OnDestroy {
     }
 
     async onAccionPrincipal(): Promise<void> {
-        if (this.guardando || !this.puedeCrear)
+        if (this.guardando)
             return;
+        if (!this.puedeCrear) {
+            await this.mostrarPermisosInsuficientes();
+            return;
+        }
 
         if (this.requiereSelectorExtras && this.cantidadExtrasSeleccionadosActual < 1) {
             await this.abrirSelectorExtras();
@@ -901,12 +909,7 @@ export class NuevaDoteComponent implements OnInit, OnDestroy {
 
     async crearDote(): Promise<void> {
         if (!this.puedeCrear) {
-            Swal.fire({
-                icon: 'warning',
-                title: 'Permisos insuficientes',
-                text: 'Tu usuario no tiene permiso dotes.create.',
-                showConfirmButton: true
-            });
+            await this.mostrarPermisosInsuficientes();
             return;
         }
 
@@ -1386,6 +1389,15 @@ export class NuevaDoteComponent implements OnInit, OnDestroy {
             title: 'Error al cargar datos',
             text: texto,
             confirmButtonText: 'Entendido',
+        });
+    }
+
+    private async mostrarPermisosInsuficientes(): Promise<void> {
+        await Swal.fire({
+            icon: 'warning',
+            title: 'Permisos insuficientes',
+            text: this.mensajePermisosInsuficientes,
+            showConfirmButton: true
         });
     }
 

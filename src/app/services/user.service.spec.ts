@@ -10,10 +10,17 @@ class UserServiceTestDouble extends UserService {
     private upsertError: Error | null = null;
     private aclByUid = new Map<string, any>();
     private aclWatchers = new Map<string, { onData: (rawAcl: any) => void; onError: () => void; }>();
+    private registerError: any = null;
+    private loginError: any = null;
+    private resetError: any = null;
+    private googleError: any = null;
 
     upsertPayloads: UsuarioUpsertRequestDto[] = [];
     signOutCalls = 0;
     persistProfileCalls = 0;
+    registerCalls: Array<{ email: string; password: string; }> = [];
+    loginCalls: Array<{ email: string; password: string; }> = [];
+    resetCalls: string[] = [];
 
     constructor() {
         super(
@@ -30,6 +37,33 @@ class UserServiceTestDouble extends UserService {
 
     protected override ejecutarSignOut(): Promise<void> {
         this.signOutCalls += 1;
+        return Promise.resolve();
+    }
+
+    protected override authCreateUserWithEmailAndPassword(email: string, password: string): Promise<any> {
+        this.registerCalls.push({ email, password });
+        if (this.registerError)
+            return Promise.reject(this.registerError);
+        return Promise.resolve({ user: { uid: 'uid-register' } });
+    }
+
+    protected override authSignInWithEmailAndPassword(email: string, password: string): Promise<any> {
+        this.loginCalls.push({ email, password });
+        if (this.loginError)
+            return Promise.reject(this.loginError);
+        return Promise.resolve({ user: { uid: 'uid-login' } });
+    }
+
+    protected override authSignInWithPopup(): Promise<any> {
+        if (this.googleError)
+            return Promise.reject(this.googleError);
+        return Promise.resolve({ user: { uid: 'uid-google' } });
+    }
+
+    protected override authSendPasswordResetEmail(email: string): Promise<void> {
+        this.resetCalls.push(email);
+        if (this.resetError)
+            return Promise.reject(this.resetError);
         return Promise.resolve();
     }
 
@@ -82,6 +116,22 @@ class UserServiceTestDouble extends UserService {
 
     setUpsertError(error: Error | null): void {
         this.upsertError = error;
+    }
+
+    setRegisterError(error: any): void {
+        this.registerError = error;
+    }
+
+    setLoginError(error: any): void {
+        this.loginError = error;
+    }
+
+    setResetError(error: any): void {
+        this.resetError = error;
+    }
+
+    setGoogleError(error: any): void {
+        this.googleError = error;
     }
 
     async flush(): Promise<void> {
@@ -311,5 +361,100 @@ describe('UserService', () => {
 
         expect(service.can('personajes', 'create')).toBeTrue();
         expect(service.can('campanas', 'create')).toBeTrue();
+    });
+
+    it('register traduce email-already-in-use a un mensaje de usuario', async () => {
+        const service = new UserServiceTestDouble();
+        service.setRegisterError({ code: 'auth/email-already-in-use' });
+
+        await expectAsync(service.register({ email: 'aldric@test.com', password: '12345678' }) as Promise<any>)
+            .toBeRejectedWithError('Ese correo ya está registrado.');
+        expect(service.registerCalls).toEqual([{ email: 'aldric@test.com', password: '12345678' }]);
+    });
+
+    it('loginEmailPass traduce invalid-credential a credenciales incorrectas', async () => {
+        const service = new UserServiceTestDouble();
+        service.setLoginError({ code: 'auth/invalid-credential' });
+
+        await expectAsync(service.loginEmailPass({ email: 'aldric@test.com', password: '12345678' }) as Promise<any>)
+            .toBeRejectedWithError('Las credenciales no son correctas.');
+        expect(service.loginCalls).toEqual([{ email: 'aldric@test.com', password: '12345678' }]);
+    });
+
+    it('loginEmailPass traduce too-many-requests', async () => {
+        const service = new UserServiceTestDouble();
+        service.setLoginError({ code: 'auth/too-many-requests' });
+
+        await expectAsync(service.loginEmailPass({ email: 'aldric@test.com', password: '12345678' }) as Promise<any>)
+            .toBeRejectedWithError('Demasiados intentos. Inténtalo de nuevo más tarde.');
+    });
+
+    it('requestPasswordReset llama a Firebase con el email normalizado', async () => {
+        const service = new UserServiceTestDouble();
+
+        await service.requestPasswordReset('  aldric@test.com  ');
+
+        expect(service.resetCalls).toEqual(['aldric@test.com']);
+    });
+
+    it('requestPasswordReset no falla si Firebase responde user-not-found', async () => {
+        const service = new UserServiceTestDouble();
+        service.setResetError({ code: 'auth/user-not-found' });
+
+        await expectAsync(service.requestPasswordReset('aldric@test.com')).toBeResolved();
+    });
+
+    it('requestPasswordReset traduce errores de red a mensaje usable', async () => {
+        const service = new UserServiceTestDouble();
+        service.setResetError({ code: 'auth/network-request-failed' });
+
+        await expectAsync(service.requestPasswordReset('aldric@test.com'))
+            .toBeRejectedWithError('No se pudo conectar con el servicio. Revisa tu conexión e inténtalo de nuevo.');
+    });
+
+    it('getPermissionDeniedMessage invita a registrarse cuando no hay sesión', () => {
+        const service = new UserServiceTestDouble();
+
+        expect(service.getPermissionDeniedMessage()).toBe(
+            'No dispones de los permisos necesarios para realizar esta acción. Regístrate o inicia sesión para poder solicitar acceso.'
+        );
+    });
+
+    it('getPermissionDeniedMessage sugiere pedir rol master para jugadores', async () => {
+        const service = new UserServiceTestDouble();
+        service.emitAcl('uid-jugador', {
+            roles: { admin: false, type: 'jugador' },
+            status: { banned: false },
+            permissions: {},
+        });
+        service.emitAuth({
+            uid: 'uid-jugador',
+            displayName: 'Aldric',
+            email: 'aldric@test.com',
+        } as User);
+        await service.flush();
+
+        expect(service.getPermissionDeniedMessage()).toBe(
+            'No dispones de los permisos necesarios para realizar esta acción. Puedes solicitar convertirte en master desde tu perfil.'
+        );
+    });
+
+    it('getPermissionDeniedMessage sugiere pedir rol colaborador para masters', async () => {
+        const service = new UserServiceTestDouble();
+        service.emitAcl('uid-master', {
+            roles: { admin: false, type: 'master' },
+            status: { banned: false },
+            permissions: {},
+        });
+        service.emitAuth({
+            uid: 'uid-master',
+            displayName: 'Aldric',
+            email: 'aldric@test.com',
+        } as User);
+        await service.flush();
+
+        expect(service.getPermissionDeniedMessage()).toBe(
+            'No dispones de los permisos necesarios para realizar esta acción. Puedes solicitar convertirte en colaborador desde tu perfil.'
+        );
     });
 });

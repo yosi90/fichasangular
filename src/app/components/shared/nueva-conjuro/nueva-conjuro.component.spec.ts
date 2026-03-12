@@ -109,6 +109,7 @@ describe('NuevaConjuroComponent', () => {
                     isLoggedIn$: of(true),
                     CurrentUserUid: 'uid-1',
                     can: () => true,
+                    getPermissionDeniedMessage: () => 'No dispones de los permisos necesarios para realizar esta acción. Puedes solicitar convertirte en master desde tu perfil.',
                 } },
             ],
             schemas: [NO_ERRORS_SCHEMA],
@@ -344,5 +345,18 @@ describe('NuevaConjuroComponent', () => {
         expect(component.varianteActiva).toBe('base');
         expect(component.form.controls.arcano.value).toBeTrue();
         expect(component.form.controls.divino.value).toBeFalse();
+    });
+
+    it('usa el mensaje amigable de permisos cuando no puede crear', async () => {
+        const userSvc = TestBed.inject(UserService) as any;
+        userSvc.can = () => false;
+        component['recalcularPermisos']();
+
+        await component.crearConjuro();
+
+        expect(Swal.fire).toHaveBeenCalledWith(jasmine.objectContaining({
+            title: 'Permisos insuficientes',
+            text: 'No dispones de los permisos necesarios para realizar esta acción. Puedes solicitar convertirte en master desde tu perfil.',
+        }));
     });
 });

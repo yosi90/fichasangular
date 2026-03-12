@@ -36,3 +36,31 @@
     display: block
     width: 32px
     height: 32px
+
+.dialog-link-button
+    padding: 0
+    border: 0
+    background: transparent
+    color: #0f766e
+    cursor: pointer
+    font: inherit
+    text-decoration: underline
+
+    &:hover
+        color: #115e59
+
+    &:focus-visible
+        outline: 2px solid #9ca3af
+        outline-offset: 2px
+
+.dialog-helper-text
+    margin: 0 0 1rem
+    color: rgba(255, 255, 255, 0.8)
+
+.dialog-actions-inline
+    display: flex
+    justify-content: space-between
+    gap: .75rem
+
+    button
+        flex: 1 1 auto

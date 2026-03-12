@@ -114,6 +114,15 @@
 
     mat-chip-option
         box-shadow: 6px 6px 4px rgba(0, 0, 0, .5)
+        background-color: #5b5b5b
+        color: #f3f3f3
+
+        &.mdc-evolution-chip--selected
+            background-color: $active
+            color: white
+
+        ::ng-deep .mdc-evolution-chip__text-label
+            color: inherit
 
 ::ng-deep .mat-mdc-menu-panel.menu-clases-personaje
     max-width: none !important

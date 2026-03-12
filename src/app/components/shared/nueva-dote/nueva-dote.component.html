@@ -1,7 +1,7 @@
 <div class="nueva-dote-shell">
     <form class="nueva-dote-form" [formGroup]="form" (ngSubmit)="onAccionPrincipal()">
         <p class="permiso-msg" *ngIf="!puedeCrear">
-            No tienes permiso <b>dotes.create</b> para insertar dotes.
+            {{mensajePermisosInsuficientes}}
         </p>
 
         <section class="panel-card">

@@ -105,6 +105,7 @@ describe('NuevaDoteComponent', () => {
         isLoggedIn$: of(true),
         CurrentUserUid: 'uid-1',
         can: () => true,
+        getPermissionDeniedMessage: () => 'No dispones de los permisos necesarios para realizar esta acción. Puedes solicitar convertirte en master desde tu perfil.',
     };
 
     beforeEach(async () => {

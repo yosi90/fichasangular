@@ -281,8 +281,28 @@ export class ListaPersonajesService {
 
     private async readPublicPersonajesFromCache(): Promise<PersonajeSimple[]> {
         const payload = await this.readCacheSnapshot('Personajes-simples');
-        return (Array.isArray(payload) ? payload : Object.values(payload ?? {}))
-            .map((element: any) => this.mapApiToPersonajeSimple(element))
+        if (Array.isArray(payload)) {
+            return payload
+                .map((element: any, index: number) => {
+                    if (!element)
+                        return null;
+                    const fallbackId = toNumber(element?.Id) > 0
+                        ? element.Id
+                        : (toNumber(element?.i) > 0 ? element.i : index);
+                    return this.mapApiToPersonajeSimple({
+                        ...(element as Record<string, any>),
+                        Id: fallbackId,
+                    });
+                })
+                .filter((personaje): personaje is PersonajeSimple => !!personaje)
+                .filter((personaje) => this.esVisibleParaInvitado(personaje));
+        }
+
+        return Object.entries(payload ?? {})
+            .map(([id, element]) => this.mapApiToPersonajeSimple({
+                ...(element as Record<string, any>),
+                Id: toNumber((element as any)?.Id) > 0 ? (element as any).Id : id,
+            }))
             .filter((personaje) => this.esVisibleParaInvitado(personaje));
     }
 

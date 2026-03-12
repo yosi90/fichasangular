@@ -26,7 +26,8 @@
                         *ngFor="let section of sectionItems"
                         class="profile-nav__item"
                         [class.profile-nav__item--active]="currentSection === section.id"
-                        (click)="setSection(section.id)">
+                        (pointerdown)="onSectionNavPointerDown(section.id, $event)"
+                        (click)="onSectionNavClick(section.id, $event)">
                         <mat-icon>{{section.icon}}</mat-icon>
                         <span>{{section.label}}</span>
                     </button>
@@ -35,14 +36,6 @@
 
             <main class="profile-main sombra-caja-sm tw-rounded-md">
                 <section class="profile-section" *ngIf="currentSection === 'resumen'">
-                    <div class="profile-section__header">
-                        <div>
-                            <p class="profile-section__eyebrow">Vista general</p>
-                            <h1>Datos del usuario</h1>
-                            <p class="profile-section__subtitle">Resumen de cuenta, rol y presencia pública.</p>
-                        </div>
-                    </div>
-
                     <div class="profile-summary">
                         <div class="profile-summary__hero">
                             <div class="profile-summary__avatar">
@@ -104,20 +97,11 @@
                     </div>
                 </section>
 
-                <section class="profile-section" *ngIf="currentSection === 'campanas'">
-                    <div class="profile-section__header">
-                        <div>
-                            <p class="profile-section__eyebrow">Campañas</p>
-                            <h1>Gestión de campañas</h1>
-                            <p class="profile-section__subtitle">Crea campañas, gestiona jugadores y organiza tramas y subtramas sin salir de tu perfil.</p>
-                        </div>
-                    </div>
-
+                <section class="profile-section profile-section--campanas" *ngIf="currentSection === 'campanas'">
                     <div class="campaigns-layout-grid">
                         <article class="profile-panel campaign-block">
                             <div class="profile-panel__header">
                                 <h2>Mis campañas como master</h2>
-                                <p>Campañas que puedes administrar directamente.</p>
                             </div>
 
                             <div class="campaign-create-form" *ngIf="canCreateCampaign">
@@ -160,7 +144,6 @@
                         <article class="profile-panel campaign-block">
                             <div class="profile-panel__header">
                                 <h2>Campañas donde participo</h2>
-                                <p>Vista de solo lectura de campañas donde eres jugador.</p>
                             </div>
 
                             <p class="profile-panel__hint" *ngIf="campaignsLoading">Cargando campañas...</p>
@@ -184,12 +167,22 @@
 
                     <article class="profile-panel campaign-detail-panel" *ngIf="selectedCampaignSummary">
                         <div class="profile-panel__header campaign-detail-panel__header">
-                            <div>
-                                <h2>{{selectedCampaignSummary.nombre}}</h2>
-                                <p>Rol en campaña: {{getCampaignRoleLabel(selectedCampaignSummary.campaignRole || 'jugador')}}. Estado: {{getMembershipStatusLabel(selectedCampaignSummary.membershipStatus || 'activo')}}.</p>
+                            <h2 class="campaign-detail-panel__title">{{selectedCampaignSummary.nombre}}</h2>
+                            <p class="campaign-detail-panel__meta">
+                                {{getCampaignRoleLabel(selectedCampaignActorRole)}} · {{getMembershipStatusLabel(selectedCampaignActorStatus)}}
+                            </p>
+                            <div class="campaign-detail-panel__actions">
+                                <button
+                                    type="button"
+                                    class="campaign-recover-button"
+                                    *ngIf="selectedCampaignCanRecoverMaster"
+                                    (click)="abrirInfoRecuperarMaster($event)">
+                                    <mat-icon>help_outline</mat-icon>
+                                    <span>Convertirte en master</span>
+                                </button>
+                                <span class="profile-pill campaign-detail-panel__mode" *ngIf="selectedCampaignCanManage">Modo gestión</span>
+                                <span class="profile-pill campaign-detail-panel__mode" *ngIf="!selectedCampaignCanManage">Solo lectura</span>
                             </div>
-                            <span class="profile-pill" *ngIf="selectedCampaignCanManage">Modo gestión</span>
-                            <span class="profile-pill" *ngIf="!selectedCampaignCanManage">Solo lectura</span>
                         </div>
 
                         <p class="profile-panel__hint" *ngIf="selectedCampaignLoading">Cargando detalle de campaña...</p>
@@ -200,11 +193,6 @@
                         <ng-container *ngIf="!selectedCampaignLoading && selectedCampaignDetail">
                             <div class="campaign-detail-grid">
                                 <article class="campaign-card">
-                                    <div class="profile-panel__header">
-                                        <h3>Campaña</h3>
-                                        <p>Nombre y contexto general.</p>
-                                    </div>
-
                                     <div class="campaign-inline-form" *ngIf="selectedCampaignCanManage">
                                         <input
                                             class="campaign-text-input"
@@ -220,12 +208,18 @@
                                     <p class="profile-panel__hint" *ngIf="!selectedCampaignCanManage">
                                         {{selectedCampaignSummary.nombre}}
                                     </p>
-                                    <p class="profile-panel__hint" *ngIf="selectedCampaignMaster">
-                                        Master actual: {{getUserDisplayLabel(selectedCampaignMaster.displayName, selectedCampaignMaster.email, selectedCampaignMaster.uid || '')}}
+                                    <p class="profile-panel__hint" *ngIf="selectedCampaignHasActiveMaster">
+                                        Master actual: {{selectedCampaignDetail.activeMasterDisplayName || getUserDisplayLabel(selectedCampaignMaster?.displayName, selectedCampaignMaster?.email, selectedCampaignMaster?.uid || '')}}
+                                    </p>
+                                    <p class="profile-panel__hint" *ngIf="!selectedCampaignHasActiveMaster && selectedCampaignDetail.ownerDisplayName">
+                                        Creador: {{selectedCampaignDetail.ownerDisplayName}}
+                                    </p>
+                                    <p class="profile-panel__hint" *ngIf="selectedCampaignShowLegacyRecoverHint">
+                                        Esta campaña no tiene master activo y tampoco un creador recuperable en el detalle. Si es una campaña legacy, hará falta revisarla desde administración.
                                     </p>
                                 </article>
 
-                                <article class="campaign-card" *ngIf="selectedCampaignCanManage">
+                                <article class="campaign-card" *ngIf="selectedCampaignCanTransferMaster">
                                     <div class="profile-panel__header">
                                         <h3>Transferir master</h3>
                                         <p>Cede la campaña y decide si el master saliente sigue como jugador.</p>
@@ -278,18 +272,17 @@
 
                             <div class="campaign-detail-grid">
                                 <article class="campaign-card">
-                                    <div class="profile-panel__header">
-                                        <h3>Jugadores</h3>
-                                        <p>Miembros activos y, si quieres, histórico de inactivos o expulsados.</p>
+                                    <div class="profile-panel__header campaign-card__header">
+                                        <div>
+                                            <h3>Jugadores</h3>
+                                        </div>
+                                        <mat-chip-option
+                                            class="campaign-history-chip"
+                                            [selected]="selectedCampaignDetail.includeInactiveMembers"
+                                            (click)="$event.stopPropagation(); toggleHistorialMiembros()">
+                                            Mostrar histórico
+                                        </mat-chip-option>
                                     </div>
-
-                                    <label class="campaign-checkbox">
-                                        <input
-                                            type="checkbox"
-                                            [checked]="selectedCampaignDetail.includeInactiveMembers"
-                                            (change)="cambiarHistorialMiembros($any($event.target).checked)" />
-                                        <span>Mostrar historial de miembros</span>
-                                    </label>
 
                                     <div class="campaign-inline-form" *ngIf="selectedCampaignCanManage">
                                         <input
@@ -320,10 +313,11 @@
                                     <div class="campaign-member-list" *ngIf="selectedCampaignMembers.length > 0">
                                         <div class="campaign-member-row" *ngFor="let member of selectedCampaignMembers; trackBy: trackByMemberUid">
                                             <div class="campaign-member-row__copy">
-                                                <strong>{{getUserDisplayLabel(member.displayName, member.email, member.uid)}}</strong>
-                                                <span>{{member.uid}}</span>
-                                                <span>{{getCampaignRoleLabel(member.campaignRole)}} · {{getMembershipStatusLabel(member.membershipStatus)}}</span>
-                                                <span *ngIf="member.addedAtUtc">Alta: {{formatOptionalDateTime(member.addedAtUtc)}}</span>
+                                                <div class="campaign-member-row__identity">
+                                                    <strong>{{getUserDisplayLabel(member.displayName, member.email, member.uid)}}</strong>
+                                                    <span>{{getCampaignRoleLabel(member.campaignRole)}} · {{getMembershipStatusLabel(member.membershipStatus)}}</span>
+                                                </div>
+                                                <span class="campaign-member-row__meta" *ngIf="member.addedAtUtc">Alta: {{formatOptionalDateTime(member.addedAtUtc)}}</span>
                                             </div>
                                             <button
                                                 mat-stroked-button
@@ -344,10 +338,9 @@
                                 <article class="campaign-card">
                                     <div class="profile-panel__header">
                                         <h3>Tramas y subtramas</h3>
-                                        <p>Estructura narrativa de la campaña seleccionada.</p>
                                     </div>
 
-                                    <div class="campaign-inline-form" *ngIf="selectedCampaignCanManage">
+                                    <div class="campaign-inline-form campaign-creation-bar" *ngIf="selectedCampaignCanManage">
                                         <input
                                             class="campaign-text-input"
                                             type="text"
@@ -392,7 +385,7 @@
                                             <div class="campaign-subtrama-list" *ngIf="trama.subtramas.length > 0">
                                                 <div class="campaign-subtrama-row" *ngFor="let subtrama of trama.subtramas; trackBy: trackBySubtramaId">
                                                     <ng-container *ngIf="!isEditingSubtrama(subtrama.id); else editarSubtrama">
-                                                        <div class="campaign-subtrama-row__copy">
+                                                        <div class="campaign-subtrama-row__copy campaign-subtrama-row__copy--nested">
                                                             <span>{{subtrama.nombre}}</span>
                                                         </div>
                                                         <button
@@ -453,14 +446,6 @@
                 </section>
 
                 <section class="profile-section" *ngIf="currentSection === 'identidad'">
-                    <div class="profile-section__header">
-                        <div>
-                            <p class="profile-section__eyebrow">Identidad</p>
-                            <h1>Nombre visible y avatar</h1>
-                            <p class="profile-section__subtitle">Lo que se usará para firmar tu perfil y tus personajes públicos.</p>
-                        </div>
-                    </div>
-
                     <div class="profile-two-column">
                         <article class="profile-panel profile-panel--avatar">
                             <div class="profile-panel__header">
@@ -519,14 +504,6 @@
                 </section>
 
                 <section class="profile-section" *ngIf="currentSection === 'preferencias'">
-                    <div class="profile-section__header">
-                        <div>
-                            <p class="profile-section__eyebrow">Preferencias</p>
-                            <h1>Perfil y generador</h1>
-                            <p class="profile-section__subtitle">Ajustes por defecto para personajes nuevos y para tu perfil público.</p>
-                        </div>
-                    </div>
-
                     <div class="profile-two-column">
                         <article class="profile-panel">
                             <div class="profile-panel__header">
@@ -587,14 +564,6 @@
                 </section>
 
                 <section class="profile-section" *ngIf="currentSection === 'seguridad' && canChangePassword">
-                    <div class="profile-section__header">
-                        <div>
-                            <p class="profile-section__eyebrow">Seguridad</p>
-                            <h1>Cambio de contraseña</h1>
-                            <p class="profile-section__subtitle">Disponible solo para cuentas con correo y contraseña.</p>
-                        </div>
-                    </div>
-
                     <article class="profile-panel profile-panel--security">
                         <mat-form-field appearance="outline" class="profile-field">
                             <mat-label>Contraseña actual</mat-label>

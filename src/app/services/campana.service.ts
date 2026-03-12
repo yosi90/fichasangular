@@ -60,10 +60,7 @@ export class CampanaService {
 
         try {
             const headers = await this.buildAuthHeaders();
-            const campaigns = await this.fetchCampaignSummaries(headers);
-            const campaign = campaigns.find((item) => item.id === id);
-            if (!campaign)
-                throw new Error('La campaña solicitada ya no está disponible para tu usuario.');
+            const campaignDetail = await this.fetchCampaignDetailHeader(id, headers);
 
             const [members, tramas] = await Promise.all([
                 this.fetchCampaignMembers(id, headers, includeInactive),
@@ -71,7 +68,12 @@ export class CampanaService {
             ]);
 
             return {
-                campaign,
+                campaign: campaignDetail.campaign,
+                ownerUid: campaignDetail.ownerUid,
+                ownerDisplayName: campaignDetail.ownerDisplayName,
+                activeMasterUid: campaignDetail.activeMasterUid,
+                activeMasterDisplayName: campaignDetail.activeMasterDisplayName,
+                canRecoverMaster: campaignDetail.canRecoverMaster,
                 members,
                 includeInactiveMembers: includeInactive === true,
                 tramas,
@@ -204,6 +206,25 @@ export class CampanaService {
             await this.refreshCampanasCacheBestEffort();
         } catch (error) {
             throw this.toError(error, 'No se pudo transferir el master de la campaña.');
+        }
+    }
+
+    async recoverCampaignMaster(idCampana: number): Promise<void> {
+        const id = this.toPositiveInt(idCampana);
+        if (!id)
+            throw new Error('Campaña inválida.');
+
+        try {
+            await firstValueFrom(
+                this.http.post<void>(
+                    `${this.campanasBaseUrl}/${id}/master/recover`,
+                    {},
+                    { headers: await this.buildAuthHeaders() }
+                )
+            );
+            await this.refreshCampanasCacheBestEffort();
+        } catch (error) {
+            throw this.toError(error, 'No se pudo recuperar el master de la campaña.');
         }
     }
 
@@ -381,6 +402,27 @@ export class CampanaService {
             .sort((a, b) => a.nombre.localeCompare(b.nombre, 'es', { sensitivity: 'base' }));
     }
 
+    private async fetchCampaignDetailHeader(
+        idCampana: number,
+        headers: HttpHeaders
+    ): Promise<Pick<CampaignDetailViewModel, 'campaign' | 'ownerUid' | 'ownerDisplayName' | 'activeMasterUid' | 'activeMasterDisplayName' | 'canRecoverMaster'>> {
+        const response = await firstValueFrom(
+            this.http.get<any>(`${this.campanasBaseUrl}/${idCampana}`, { headers })
+        );
+        const campaign = this.normalizeCampaignSummary(response);
+        if (!campaign)
+            throw new Error('La campaña solicitada ya no está disponible para tu usuario.');
+
+        return {
+            campaign,
+            ownerUid: this.toNullableText(response?.ownerUid),
+            ownerDisplayName: this.toNullableText(response?.ownerDisplayName),
+            activeMasterUid: this.toNullableText(response?.activeMasterUid),
+            activeMasterDisplayName: this.toNullableText(response?.activeMasterDisplayName),
+            canRecoverMaster: response?.canRecoverMaster === true,
+        };
+    }
+
     private async fetchCampaignMembers(
         idCampana: number,
         headers: HttpHeaders,
@@ -442,15 +484,30 @@ export class CampanaService {
     }
 
     private normalizeCampaignSummary(raw: any): CampaignListItem | null {
-        const id = this.toPositiveInt(raw?.i ?? raw?.Id ?? raw?.id);
+        const id = this.toPositiveInt(raw?.i ?? raw?.Id ?? raw?.id ?? raw?.idCampana ?? raw?.IdCampana);
         if (!id)
             return null;
 
+        const normalizedRoleSource = raw?.campaignRole
+            ?? raw?.CampaignRole
+            ?? raw?.role
+            ?? raw?.Role
+            ?? raw?.rolCampana
+            ?? raw?.RolCampana;
+        const normalizedStatusSource = raw?.membershipStatus
+            ?? raw?.MembershipStatus
+            ?? raw?.status
+            ?? raw?.Status
+            ?? raw?.memberStatus
+            ?? raw?.MemberStatus
+            ?? raw?.estado
+            ?? raw?.Estado;
+
         return {
             id,
-            nombre: `${raw?.n ?? raw?.Nombre ?? raw?.nombre ?? ''}`.trim(),
-            campaignRole: this.normalizeCampaignRole(raw?.campaignRole),
-            membershipStatus: this.normalizeMembershipStatus(raw?.membershipStatus),
+            nombre: `${raw?.n ?? raw?.Nombre ?? raw?.nombre ?? raw?.NombreCampana ?? ''}`.trim(),
+            campaignRole: this.normalizeNullableCampaignRole(normalizedRoleSource),
+            membershipStatus: this.normalizeNullableMembershipStatus(normalizedStatusSource),
         };
     }
 
@@ -459,8 +516,24 @@ export class CampanaService {
         if (uid.length < 1)
             return null;
 
-        const campaignRole = this.normalizeCampaignRole(raw?.campaignRole);
-        const membershipStatus = this.normalizeMembershipStatus(raw?.membershipStatus);
+        const campaignRole = this.normalizeCampaignRole(
+            raw?.campaignRole
+            ?? raw?.CampaignRole
+            ?? raw?.role
+            ?? raw?.Role
+            ?? raw?.rolCampana
+            ?? raw?.RolCampana
+        );
+        const membershipStatus = this.normalizeMembershipStatus(
+            raw?.membershipStatus
+            ?? raw?.MembershipStatus
+            ?? raw?.status
+            ?? raw?.Status
+            ?? raw?.memberStatus
+            ?? raw?.MemberStatus
+            ?? raw?.estado
+            ?? raw?.Estado
+        );
         return {
             userId: this.toNullableText(raw?.userId),
             uid,
@@ -542,6 +615,15 @@ export class CampanaService {
         return `${value ?? ''}`.trim().toLowerCase() === 'master' ? 'master' : 'jugador';
     }
 
+    private normalizeNullableCampaignRole(value: any): CampaignRoleCode | null {
+        const normalized = `${value ?? ''}`.trim().toLowerCase();
+        if (normalized === 'master')
+            return 'master';
+        if (normalized === 'jugador')
+            return 'jugador';
+        return null;
+    }
+
     private normalizeMembershipStatus(value: any): CampaignMembershipStatus {
         const normalized = `${value ?? ''}`.trim().toLowerCase();
         if (normalized === 'inactivo')
@@ -549,6 +631,17 @@ export class CampanaService {
         if (normalized === 'expulsado')
             return 'expulsado';
         return 'activo';
+    }
+
+    private normalizeNullableMembershipStatus(value: any): CampaignMembershipStatus | null {
+        const normalized = `${value ?? ''}`.trim().toLowerCase();
+        if (normalized === 'activo')
+            return 'activo';
+        if (normalized === 'inactivo')
+            return 'inactivo';
+        if (normalized === 'expulsado')
+            return 'expulsado';
+        return null;
     }
 
     private normalizeRequiredName(value: string, emptyMessage: string): string {

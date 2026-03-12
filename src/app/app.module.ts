@@ -38,6 +38,7 @@ import { provideHttpClient, withInterceptorsFromDi } from '@angular/common/http'
 import { DataServices } from './data.services';
 import { provideAuth, getAuth } from '@angular/fire/auth';
 import { provideDatabase, getDatabase } from '@angular/fire/database';
+import { forceWebSockets } from 'firebase/database';
 import { SesionDialogComponent } from './components/sesion-dialog/sesion-dialog.component';
 import { TabControlComponent } from './components/base/tab-control/tab-control.component';
 import { BaseMenuResponsiveComponent } from './components/base/responsive-base/responsive-base.component';
@@ -107,6 +108,7 @@ import { PublicUserProfileComponent } from './components/base/public-user-profil
 import { HelpRoadmapComponent } from './components/base/help-roadmap/help-roadmap.component';
 import { HelpLegalComponent } from './components/base/help-legal/help-legal.component';
 import { HelpUsageAboutComponent } from './components/base/help-usage-about/help-usage-about.component';
+import { CloseFilterMenuOnMouseleaveDirective } from './directives/close-filter-menu-on-mouseleave.directive';
 
 @NgModule({
     declarations: [
@@ -123,6 +125,7 @@ import { HelpUsageAboutComponent } from './components/base/help-usage-about/help
         HelpRoadmapComponent,
         HelpLegalComponent,
         HelpUsageAboutComponent,
+        CloseFilterMenuOnMouseleaveDirective,
         AdminPanelComponent,
         DetallesPersonajeComponent,
         NuevoPersonajeComponent,
@@ -217,7 +220,10 @@ import { HelpUsageAboutComponent } from './components/base/help-usage-about/help
         provideHttpClient(withInterceptorsFromDi()),
         provideFirebaseApp(() => initializeApp(environment.firebase)),
         provideAuth(() => getAuth()),
-        provideDatabase(() => getDatabase()),
+        provideDatabase(() => {
+            forceWebSockets();
+            return getDatabase();
+        }),
     ],
     bootstrap: [AppComponent]
 })

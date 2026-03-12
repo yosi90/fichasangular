@@ -135,7 +135,38 @@ describe('ListaPersonajesService', () => {
         const personajes = await (service as any).readPublicPersonajesFromCache();
 
         expect(personajes).toHaveSize(1);
+        expect(personajes[0].Id).toBe(1);
         expect(personajes[0].Nombre).toBe('Visible sin campaña');
+    });
+
+    it('reconstruye el Id desde el índice cuando Firebase devuelve un array', async () => {
+        const service = new ListaPersonajesService(
+            { currentUser: null } as any,
+            {} as any,
+            {} as any,
+            firebaseContextMock
+        );
+        spyOn<any>(service, 'readCacheSnapshot').and.resolveTo([
+            null,
+            {
+                n: 'Visible en array',
+                visible_otros_usuarios: true,
+                r: { Id: 1, Nombre: 'Humano' },
+                c: 'Guerrero 1',
+                co: 'Contexto',
+                p: 'Personalidad',
+                ca: 'Sin campaña',
+                t: 'Trama base',
+                s: 'Subtrama base',
+                a: false,
+            },
+        ]);
+
+        const personajes = await (service as any).readPublicPersonajesFromCache();
+
+        expect(personajes).toHaveSize(1);
+        expect(personajes[0].Id).toBe(1);
+        expect(personajes[0].Nombre).toBe('Visible en array');
     });
 
     it('getPersonajes ignora aliases legacy de owner y usa solo el contrato canónico', async () => {

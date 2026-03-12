@@ -85,6 +85,7 @@ describe('UserProfileComponent', () => {
                     useValue: jasmine.createSpyObj<CampanaService>('CampanaService', [
                         'listVisibleCampaigns',
                         'getCampaignDetail',
+                        'recoverCampaignMaster',
                         'createCampaign',
                         'renameCampaign',
                         'searchUsers',
@@ -149,6 +150,11 @@ describe('UserProfileComponent', () => {
                 campaignRole: 'master',
                 membershipStatus: 'activo',
             },
+            ownerUid: 'uid-1',
+            ownerDisplayName: 'Yosi',
+            activeMasterUid: 'uid-1',
+            activeMasterDisplayName: 'Yosi',
+            canRecoverMaster: false,
             members: [],
             includeInactiveMembers: false,
             tramas: [],
@@ -293,6 +299,266 @@ describe('UserProfileComponent', () => {
         expect(component.currentSection).toBe('campanas');
         expect(component.masterCampaigns.length).toBe(1);
         expect(component.selectedCampaignSummary?.id).toBe(7);
+    }));
+
+    it('mantiene separadas las campañas master y jugador aunque el rol global sea admin', fakeAsync(() => {
+        const campanaSvc = TestBed.inject(CampanaService) as jasmine.SpyObj<CampanaService>;
+        profileSubject.next({
+            ...buildProfile('correo'),
+            role: 'admin',
+        });
+        userSvc.refreshCurrentPrivateProfile.and.resolveTo(profileSubject.value);
+        campanaSvc.listVisibleCampaigns.and.resolveTo([
+            {
+                id: 7,
+                nombre: 'Caballeros',
+                campaignRole: 'jugador',
+                membershipStatus: 'activo',
+            },
+            {
+                id: 8,
+                nombre: 'Costa',
+                campaignRole: 'master',
+                membershipStatus: 'activo',
+            },
+        ]);
+        campanaSvc.getCampaignDetail.and.resolveTo({
+            campaign: {
+                id: 8,
+                nombre: 'Costa',
+                campaignRole: 'master',
+                membershipStatus: 'activo',
+            },
+            ownerUid: 'uid-1',
+            ownerDisplayName: 'Yosi',
+            activeMasterUid: 'uid-1',
+            activeMasterDisplayName: 'Yosi',
+            canRecoverMaster: false,
+            members: [],
+            includeInactiveMembers: false,
+            tramas: [],
+            loadingMembers: false,
+            loadingTramas: false,
+        });
+
+        fixture.detectChanges();
+        tick();
+        component.ngOnChanges({
+            openRequest: new SimpleChange(null, { section: 'campanas', requestId: 5 }, false),
+        });
+        tick();
+
+        expect(component.masterCampaigns.map(item => item.id)).toEqual([8]);
+        expect(component.participantCampaigns.map(item => item.id)).toEqual([7]);
+    }));
+
+    it('usa la membresía detallada del actor para detectar si realmente es master', fakeAsync(() => {
+        const campanaSvc = TestBed.inject(CampanaService) as jasmine.SpyObj<CampanaService>;
+        campanaSvc.listVisibleCampaigns.and.resolveTo([{
+            id: 7,
+            nombre: 'Caballeros',
+            campaignRole: 'jugador',
+            membershipStatus: 'activo',
+        }]);
+        campanaSvc.getCampaignDetail.and.resolveTo({
+            campaign: {
+                id: 7,
+                nombre: 'Caballeros',
+                campaignRole: 'jugador',
+                membershipStatus: 'activo',
+            },
+            ownerUid: 'uid-1',
+            ownerDisplayName: 'Yosi',
+            activeMasterUid: 'uid-1',
+            activeMasterDisplayName: 'Yosi',
+            canRecoverMaster: false,
+            members: [{
+                userId: 'u-1',
+                uid: 'uid-1',
+                displayName: 'Yosi',
+                email: 'yosi@test.dev',
+                campaignRole: 'master',
+                membershipStatus: 'activo',
+                isActive: true,
+                addedAtUtc: null,
+                addedByUserId: null,
+            }, {
+                userId: 'u-2',
+                uid: 'uid-2',
+                displayName: 'Acompañante',
+                email: 'otro@test.dev',
+                campaignRole: 'jugador',
+                membershipStatus: 'activo',
+                isActive: true,
+                addedAtUtc: null,
+                addedByUserId: null,
+            }],
+            includeInactiveMembers: false,
+            tramas: [],
+            loadingMembers: false,
+            loadingTramas: false,
+        });
+
+        fixture.detectChanges();
+        tick();
+        component.ngOnChanges({
+            openRequest: new SimpleChange(null, { section: 'campanas', requestId: 6 }, false),
+        });
+        tick();
+
+        expect(component.selectedCampaignActorRole).toBe('master');
+        expect(component.selectedCampaignCanManage).toBeTrue();
+        expect(component.selectedCampaignCanTransferMaster).toBeTrue();
+    }));
+
+    it('no ofrece transferir master si la campaña solo tiene al master activo', fakeAsync(() => {
+        const campanaSvc = TestBed.inject(CampanaService) as jasmine.SpyObj<CampanaService>;
+        campanaSvc.listVisibleCampaigns.and.resolveTo([{
+            id: 7,
+            nombre: 'Caballeros',
+            campaignRole: 'master',
+            membershipStatus: 'activo',
+        }]);
+        campanaSvc.getCampaignDetail.and.resolveTo({
+            campaign: {
+                id: 7,
+                nombre: 'Caballeros',
+                campaignRole: 'master',
+                membershipStatus: 'activo',
+            },
+            ownerUid: 'uid-1',
+            ownerDisplayName: 'Yosi',
+            activeMasterUid: 'uid-1',
+            activeMasterDisplayName: 'Yosi',
+            canRecoverMaster: false,
+            members: [{
+                userId: 'u-1',
+                uid: 'uid-1',
+                displayName: 'Yosi',
+                email: 'yosi@test.dev',
+                campaignRole: 'master',
+                membershipStatus: 'activo',
+                isActive: true,
+                addedAtUtc: '2026-03-12T20:03:00.000Z',
+                addedByUserId: null,
+            }],
+            includeInactiveMembers: false,
+            tramas: [],
+            loadingMembers: false,
+            loadingTramas: false,
+        });
+
+        fixture.detectChanges();
+        tick();
+        component.ngOnChanges({
+            openRequest: new SimpleChange(null, { section: 'campanas', requestId: 9 }, false),
+        });
+        tick();
+
+        expect(component.selectedCampaignCanManage).toBeTrue();
+        expect(component.selectedCampaignCanTransferMaster).toBeFalse();
+    }));
+
+    it('no permite gestión convencional si el actor no es master aunque sea admin', fakeAsync(() => {
+        const campanaSvc = TestBed.inject(CampanaService) as jasmine.SpyObj<CampanaService>;
+        profileSubject.next({
+            ...buildProfile('correo'),
+            role: 'admin',
+        });
+        userSvc.refreshCurrentPrivateProfile.and.resolveTo(profileSubject.value);
+        campanaSvc.listVisibleCampaigns.and.resolveTo([{
+            id: 7,
+            nombre: 'Caballeros',
+            campaignRole: 'jugador',
+            membershipStatus: 'activo',
+        }]);
+        campanaSvc.getCampaignDetail.and.resolveTo({
+            campaign: {
+                id: 7,
+                nombre: 'Caballeros',
+                campaignRole: 'jugador',
+                membershipStatus: 'activo',
+            },
+            ownerUid: 'uid-1',
+            ownerDisplayName: 'Yosi',
+            activeMasterUid: null,
+            activeMasterDisplayName: null,
+            canRecoverMaster: true,
+            members: [{
+                userId: 'u-1',
+                uid: 'uid-1',
+                displayName: 'Yosi',
+                email: 'yosi@test.dev',
+                campaignRole: 'jugador',
+                membershipStatus: 'activo',
+                isActive: true,
+                addedAtUtc: null,
+                addedByUserId: null,
+            }],
+            includeInactiveMembers: false,
+            tramas: [],
+            loadingMembers: false,
+            loadingTramas: false,
+        });
+
+        fixture.detectChanges();
+        tick();
+        component.ngOnChanges({
+            openRequest: new SimpleChange(null, { section: 'campanas', requestId: 7 }, false),
+        });
+        tick();
+
+        expect(component.selectedCampaignCanManage).toBeFalse();
+        expect(component.selectedCampaignCanTransferMaster).toBeFalse();
+        expect(component.selectedCampaignCanRecoverMaster).toBeTrue();
+    }));
+
+    it('permite recuperar master en legacy si ownerUid coincide aunque canRecoverMaster venga false', fakeAsync(() => {
+        const campanaSvc = TestBed.inject(CampanaService) as jasmine.SpyObj<CampanaService>;
+        campanaSvc.listVisibleCampaigns.and.resolveTo([{
+            id: 7,
+            nombre: 'Legacy',
+            campaignRole: 'jugador',
+            membershipStatus: 'activo',
+        }]);
+        campanaSvc.getCampaignDetail.and.resolveTo({
+            campaign: {
+                id: 7,
+                nombre: 'Legacy',
+                campaignRole: 'jugador',
+                membershipStatus: 'activo',
+            },
+            ownerUid: 'uid-1',
+            ownerDisplayName: 'Yosi',
+            activeMasterUid: null,
+            activeMasterDisplayName: null,
+            canRecoverMaster: false,
+            members: [{
+                userId: 'u-1',
+                uid: 'uid-1',
+                displayName: 'Yosi',
+                email: 'yosi@test.dev',
+                campaignRole: 'jugador',
+                membershipStatus: 'activo',
+                isActive: true,
+                addedAtUtc: null,
+                addedByUserId: null,
+            }],
+            includeInactiveMembers: false,
+            tramas: [],
+            loadingMembers: false,
+            loadingTramas: false,
+        });
+
+        fixture.detectChanges();
+        tick();
+        component.ngOnChanges({
+            openRequest: new SimpleChange(null, { section: 'campanas', requestId: 8 }, false),
+        });
+        tick();
+
+        expect(component.selectedCampaignOwnerMatchesCurrentUser).toBeTrue();
+        expect(component.selectedCampaignCanRecoverMaster).toBeTrue();
     }));
 
     it('preserva allowDirectMessagesFromNonFriends al guardar preferencias', fakeAsync(() => {

@@ -5,6 +5,7 @@ import {
     User,
     createUserWithEmailAndPassword,
     onAuthStateChanged,
+    sendPasswordResetEmail,
     signInWithEmailAndPassword,
     signInWithPopup,
     signOut,
@@ -13,7 +14,7 @@ import { Database, get, onValue, ref, set } from '@angular/fire/database';
 import { BehaviorSubject, map } from 'rxjs';
 import { UserPrivateProfile } from '../interfaces/user-account';
 import { Usuario } from '../interfaces/usuario';
-import { EMPTY_USER_ACL, UserAcl, normalizeUserAcl } from '../interfaces/user-acl';
+import { EMPTY_USER_ACL, UserAcl, UserRole, normalizeUserAcl } from '../interfaces/user-acl';
 import { AuthProviderType, UserProfile } from '../interfaces/user-profile';
 import { UsuarioUpsertRequestDto, UsuarioUpsertResponseDto } from '../interfaces/usuarios-api';
 import { FirebaseInjectionContextService } from './firebase-injection-context.service';
@@ -93,34 +94,61 @@ export class UserService {
         return profileResource?.[actionKey] === true;
     }
 
+    public getPermissionDeniedMessage(): string {
+        const base = 'No dispones de los permisos necesarios para realizar esta acción.';
+        if (!this.sesionAbierta)
+            return `${base} Regístrate o inicia sesión para poder solicitar acceso.`;
+
+        const role = this.resolveCurrentRole();
+        if (role === 'jugador')
+            return `${base} Puedes solicitar convertirte en master desde tu perfil.`;
+        if (role === 'master')
+            return `${base} Puedes solicitar convertirte en colaborador desde tu perfil.`;
+        return base;
+    }
+
     register({ email, password }: any) {
-        if (!this.sesionAbierta) {
-            return createUserWithEmailAndPassword(this.auth, email, password)
-                .catch(error => {
-                    console.log(error);
-                    throw error;
-                });
-        } else return null;
+        if (this.sesionAbierta)
+            return null;
+
+        const emailNormalizado = `${email ?? ''}`.trim();
+        const passwordNormalizada = `${password ?? ''}`;
+        return this.authCreateUserWithEmailAndPassword(emailNormalizado, passwordNormalizada)
+            .catch((error) => {
+                throw this.mapAuthError(error, 'register');
+            });
     }
 
     loginEmailPass({ email, password }: any) {
-        if (!this.sesionAbierta) {
-            return signInWithEmailAndPassword(this.auth, email, password)
-                .catch(error => {
-                    console.log(error);
-                    throw error;
-                });
-        } else return null;
+        if (this.sesionAbierta)
+            return null;
+
+        const emailNormalizado = `${email ?? ''}`.trim();
+        const passwordNormalizada = `${password ?? ''}`;
+        return this.authSignInWithEmailAndPassword(emailNormalizado, passwordNormalizada)
+            .catch((error) => {
+                throw this.mapAuthError(error, 'login');
+            });
     }
 
     loginGoogle() {
         if (!this.sesionAbierta) {
-            return signInWithPopup(this.auth, new GoogleAuthProvider())
-                .catch(error => {
-                    console.log(error);
-                    throw error;
+            return this.authSignInWithPopup()
+                .catch((error) => {
+                    throw this.mapAuthError(error, 'google-login');
                 });
         } else return null;
+    }
+
+    requestPasswordReset(email: string): Promise<void> {
+        const emailNormalizado = `${email ?? ''}`.trim();
+        return this.authSendPasswordResetEmail(emailNormalizado)
+            .catch((error) => {
+                const code = this.normalizeAuthErrorCode(error);
+                if (code === 'auth/user-not-found')
+                    return;
+                throw this.mapAuthError(error, 'password-reset');
+            });
     }
 
     loginAnon() {
@@ -198,6 +226,22 @@ export class UserService {
 
     protected ejecutarSignOut(): Promise<void> {
         return signOut(this.auth);
+    }
+
+    protected authCreateUserWithEmailAndPassword(email: string, password: string) {
+        return createUserWithEmailAndPassword(this.auth, email, password);
+    }
+
+    protected authSignInWithEmailAndPassword(email: string, password: string) {
+        return signInWithEmailAndPassword(this.auth, email, password);
+    }
+
+    protected authSignInWithPopup() {
+        return signInWithPopup(this.auth, new GoogleAuthProvider());
+    }
+
+    protected authSendPasswordResetEmail(email: string): Promise<void> {
+        return sendPasswordResetEmail(this.auth, email);
     }
 
     protected upsertUserApi(payload: UsuarioUpsertRequestDto): Promise<UsuarioUpsertResponseDto> {
@@ -356,6 +400,13 @@ export class UserService {
         return this.acl.roles?.admin === true;
     }
 
+    private resolveCurrentRole(): UserRole {
+        const profileRole = `${this.privateProfileSubject.value?.role ?? ''}`.trim().toLowerCase();
+        if (profileRole === 'admin' || profileRole === 'colaborador' || profileRole === 'master' || profileRole === 'jugador')
+            return profileRole as UserRole;
+        return this.acl.roles?.type ?? 'jugador';
+    }
+
     private isBanned(): boolean {
         return this.acl.status?.banned === true;
     }
@@ -497,6 +548,52 @@ export class UserService {
         if (text.length <= maxLength)
             return text;
         return text.substring(0, maxLength).trim();
+    }
+
+    private mapAuthError(error: any, context: 'register' | 'login' | 'password-reset' | 'google-login'): Error {
+        const code = this.normalizeAuthErrorCode(error);
+        const mapped = new Error(this.resolveAuthErrorMessage(code, context, error));
+        (mapped as any).code = code;
+        (mapped as any).cause = error;
+        return mapped;
+    }
+
+    private normalizeAuthErrorCode(error: any): string {
+        return `${error?.code ?? ''}`.trim().toLowerCase();
+    }
+
+    private resolveAuthErrorMessage(
+        code: string,
+        context: 'register' | 'login' | 'password-reset' | 'google-login',
+        error: any
+    ): string {
+        if (code.includes('email-already-in-use'))
+            return 'Ese correo ya está registrado.';
+        if (code.includes('wrong-password') || code.includes('invalid-credential'))
+            return 'Las credenciales no son correctas.';
+        if (code.includes('user-not-found')) {
+            if (context === 'password-reset')
+                return 'Si la cuenta existe, recibirás un correo para restablecer la contraseña.';
+            return 'No existe ninguna cuenta con ese correo.';
+        }
+        if (code.includes('too-many-requests'))
+            return 'Demasiados intentos. Inténtalo de nuevo más tarde.';
+        if (code.includes('invalid-email'))
+            return 'Debes indicar un correo electrónico válido.';
+        if (code.includes('weak-password'))
+            return 'La contraseña es demasiado débil.';
+        if (code.includes('network-request-failed'))
+            return 'No se pudo conectar con el servicio. Revisa tu conexión e inténtalo de nuevo.';
+        if (code.includes('popup-closed-by-user'))
+            return 'Se canceló el inicio de sesión con Google.';
+        if (code.includes('popup-blocked'))
+            return 'El navegador bloqueó la ventana de inicio de sesión.';
+
+        if (context === 'register')
+            return `${error?.message ?? 'No se pudo completar el registro.'}`.trim() || 'No se pudo completar el registro.';
+        if (context === 'password-reset')
+            return `${error?.message ?? 'No se pudo iniciar la recuperación de contraseña.'}`.trim() || 'No se pudo iniciar la recuperación de contraseña.';
+        return `${error?.message ?? 'No se pudo iniciar sesión.'}`.trim() || 'No se pudo iniciar sesión.';
     }
 
     private isActiveUser(uid: string): boolean {

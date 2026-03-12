@@ -2,7 +2,7 @@ import { Component, Inject } from '@angular/core';
 import { MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
 import { FormGroup, Validators, ValidatorFn, FormControl, AbstractControl, ValidationErrors, FormGroupDirective, NgForm } from '@angular/forms';
 import { ErrorStateMatcher } from '@angular/material/core';
-import { UserCredential } from 'firebase/auth';
+import { AppToastService } from 'src/app/services/app-toast.service';
 import { UserService } from 'src/app/services/user.service';
 
 export class MyErrorStateMatcher implements ErrorStateMatcher {
@@ -22,8 +22,13 @@ export class MyErrorStateMatcher implements ErrorStateMatcher {
 })
 export class SesionDialogComponent {
     emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+    enviandoLogin = false;
+    enviandoRegistro = false;
+    enviandoRecuperacion = false;
+    mostrandoRecuperacion = false;
 
     constructor(private usrService: UserService,
+        private appToastSvc: AppToastService,
         public dialogRef: MatDialogRef<SesionDialogComponent>, @Inject(MAT_DIALOG_DATA) public msg: string) { }
 
     loginForm = new FormGroup({
@@ -31,19 +36,79 @@ export class SesionDialogComponent {
         password: new FormControl('', [Validators.required, Validators.minLength(8)])
     });
 
-    login(value: any): void {
-        if (this.emailRegex.test(value.email) && value.password.length >= 8) {
-            this.usrService.loginEmailPass(this.loginForm.value);
+    async login(): Promise<void> {
+        if (this.loginForm.invalid) {
+            this.loginForm.markAllAsTouched();
+            return;
+        }
+
+        this.enviandoLogin = true;
+        try {
+            await this.usrService.loginEmailPass(this.loginForm.getRawValue());
+            this.dialogRef.close(true);
+        } catch (error: any) {
+            this.appToastSvc.showError(`${error?.message ?? 'No se pudo iniciar sesión.'}`.trim());
+        } finally {
+            this.enviandoLogin = false;
         }
     }
 
     loginGoogle() {
-        this.usrService.loginGoogle()?.then(_ => this.dialogRef.close());
+        this.usrService.loginGoogle()
+            ?.then(_ => this.dialogRef.close())
+            .catch((error: any) => {
+                this.appToastSvc.showError(`${error?.message ?? 'No se pudo iniciar sesión con Google.'}`.trim());
+            });
     }
 
-    register(value: any): void {
-        if (value.usuario.length >= 3 && this.emailRegex.test(value.email) && value.password.length >= 8 && value.password === value.confirmPassword)
-            this.usrService.register(this.registerForm.value);
+    async register(): Promise<void> {
+        if (this.registerForm.invalid) {
+            this.registerForm.markAllAsTouched();
+            return;
+        }
+
+        this.enviandoRegistro = true;
+        try {
+            await this.usrService.register(this.registerForm.getRawValue());
+            this.dialogRef.close(true);
+        } catch (error: any) {
+            this.appToastSvc.showError(`${error?.message ?? 'No se pudo completar el registro.'}`.trim());
+        } finally {
+            this.enviandoRegistro = false;
+        }
+    }
+
+    abrirRecuperacionPassword(): void {
+        this.mostrandoRecuperacion = true;
+        this.passwordResetForm.patchValue({
+            email: this.resolveEmailPrefill(),
+        });
+        this.passwordResetForm.markAsPristine();
+        this.passwordResetForm.markAsUntouched();
+    }
+
+    cancelarRecuperacionPassword(): void {
+        this.mostrandoRecuperacion = false;
+    }
+
+    async recuperarPassword(): Promise<void> {
+        if (this.passwordResetForm.invalid) {
+            this.passwordResetForm.markAllAsTouched();
+            return;
+        }
+
+        this.enviandoRecuperacion = true;
+        const email = `${this.passwordResetForm.getRawValue().email ?? ''}`.trim();
+        try {
+            await this.usrService.requestPasswordReset(email);
+            this.loginForm.patchValue({ email });
+            this.appToastSvc.showSuccess('Si la cuenta existe, recibirás un correo para restablecer la contraseña.');
+            this.mostrandoRecuperacion = false;
+        } catch (error: any) {
+            this.appToastSvc.showError(`${error?.message ?? 'No se pudo iniciar la recuperación de contraseña.'}`.trim());
+        } finally {
+            this.enviandoRecuperacion = false;
+        }
     }
 
     matcher = new MyErrorStateMatcher();
@@ -60,4 +125,16 @@ export class SesionDialogComponent {
         password: new FormControl('', [Validators.required, Validators.minLength(8)]),
         confirmPassword: new FormControl(''),
     }, { validators: this.checkPasswords });
+
+    passwordResetForm = new FormGroup({
+        email: new FormControl('', [Validators.required, Validators.pattern(this.emailRegex)]),
+    });
+
+    private resolveEmailPrefill(): string {
+        const fromLogin = `${this.loginForm.getRawValue().email ?? ''}`.trim();
+        if (fromLogin.length > 0)
+            return fromLogin;
+
+        return `${this.registerForm.getRawValue().email ?? ''}`.trim();
+    }
 }

@@ -133,4 +133,14 @@
     button:nth-child(even):not([disabled])
         background-color: #ccc
 
+    > span > button[disabled]
+        background-color: #373C41
+        opacity: 1
+
+        ::ng-deep .mdc-button__label
+            color: #B0BEC5
+
+::ng-deep .menu-otros-tooltip
+    pointer-events: none
+
 

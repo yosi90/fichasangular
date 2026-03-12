@@ -55,6 +55,11 @@ export class PersonajeService {
             throw new Error('Id de personaje no válido');
 
         try {
+            if (!this.auth.currentUser) {
+                const personajePublico = await this.readPublicDetalleFromCache(personajeId);
+                return of(personajePublico);
+            }
+
             const headers = await this.buildAuthHeaders();
             const response = await firstValueFrom(
                 this.http.get<any>(`${environment.apiUrl}personajes/${personajeId}`, { headers })
@@ -937,6 +942,41 @@ export class PersonajeService {
         return direct.length > 0 ? direct : fallback;
     }
 
+    private async readPublicDetalleFromCache(idPersonaje: number): Promise<Personaje> {
+        const payload = await this.readCacheSnapshot(`Personajes/${idPersonaje}`);
+        const raw = {
+            ...(payload ?? {}),
+            Id: toNumber(payload?.Id) > 0 ? payload.Id : idPersonaje,
+        };
+        if (!Array.isArray((raw as any).desgloseClases) && Array.isArray((raw as any).Clases))
+            (raw as any).desgloseClases = (raw as any).Clases;
+        const personaje = this.esPayloadPersonajeCanonico(raw)
+            ? this.normalizarPersonajeParaPersistenciaFinal(raw as Personaje, idPersonaje)
+            : this.mapApiDetalleToPersonaje(raw);
+
+        if (personaje.Id <= 0)
+            throw new Error('No se pudo cargar el detalle del personaje.');
+        if (!this.esDetalleVisibleParaInvitado(personaje))
+            throw new Error('El personaje solicitado no está disponible para invitados.');
+
+        return personaje;
+    }
+
+    private async readCacheSnapshot(path: string): Promise<any> {
+        return new Promise((resolve, reject) => {
+            try {
+                this.firebaseContextSvc.run(() => onValue(
+                    ref(this.db, path),
+                    (snapshot) => resolve(snapshot.val()),
+                    reject,
+                    { onlyOnce: true }
+                ));
+            } catch (error) {
+                reject(error);
+            }
+        });
+    }
+
     private async buildAuthHeaders(): Promise<HttpHeaders> {
         const user = this.auth.currentUser;
         if (!user)
@@ -949,6 +989,23 @@ export class PersonajeService {
         return new HttpHeaders({
             Authorization: `Bearer ${idToken}`,
         });
+    }
+
+    private esDetalleVisibleParaInvitado(personaje: Personaje): boolean {
+        return personaje?.visible_otros_usuarios === true
+            && normalizeLookupKey(personaje?.Campana) === 'sin campana';
+    }
+
+    private esPayloadPersonajeCanonico(payload: any): boolean {
+        if (!payload || typeof payload !== 'object')
+            return false;
+
+        return 'Nombre' in payload
+            || 'Ataque_base' in payload
+            || 'Fuerza' in payload
+            || 'Vida' in payload
+            || 'desgloseClases' in payload
+            || 'CaracteristicasVarios' in payload;
     }
 
     private mapApiDetalleToPersonaje(element: any): Personaje {

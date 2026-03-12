@@ -5,8 +5,8 @@ export type CampaignMemberRemovalStatus = 'inactivo' | 'expulsado';
 export interface CampaignListItem {
     id: number;
     nombre: string;
-    campaignRole: CampaignRoleCode;
-    membershipStatus: CampaignMembershipStatus;
+    campaignRole: CampaignRoleCode | null;
+    membershipStatus: CampaignMembershipStatus | null;
 }
 
 export interface CampaignMemberItem {
@@ -40,6 +40,11 @@ export interface CampaignTramaItem {
 
 export interface CampaignDetailViewModel {
     campaign: CampaignListItem;
+    ownerUid: string | null;
+    ownerDisplayName: string | null;
+    activeMasterUid: string | null;
+    activeMasterDisplayName: string | null;
+    canRecoverMaster: boolean;
     members: CampaignMemberItem[];
     includeInactiveMembers: boolean;
     tramas: CampaignTramaItem[];

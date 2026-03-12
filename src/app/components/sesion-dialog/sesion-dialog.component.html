@@ -3,7 +3,7 @@
         <div class="tw-w-full lg:tw-w-1/2 tw-px-4">
             <h1 mat-dialog-title class="tw-text-center dialog-section-title">Identifícate</h1>
             <div mat-dialog-content>
-                <form [formGroup]="loginForm" #lForm="ngForm" (ngSubmit)="login(lForm.value)">
+                <form *ngIf="!mostrandoRecuperacion" [formGroup]="loginForm" (ngSubmit)="login()">
                     <mat-form-field appearance="fill" class="tw-w-full">
                         <mat-label>Correo electrónico</mat-label>
                         <input matInput #email type="email" formControlName="email"
@@ -26,11 +26,41 @@
                             Faltan caracteres
                         </mat-error>
                     </mat-form-field>
+                    <button type="button" class="dialog-link-button tw-mb-3" (click)="abrirRecuperacionPassword()">
+                        He olvidado mi contraseña
+                    </button>
                     <div mat-dialog-actions class="tw-flex tw-justify-end">
-                        <button mat-raised-button class="tw-w-full" color="accent" type="submit" [mat-dialog-close]="true"
-                            [disabled]="loginForm.invalid">
+                        <button mat-raised-button class="tw-w-full" color="accent" type="submit"
+                            [disabled]="loginForm.invalid || enviandoLogin">
                             <mat-icon>login</mat-icon>
-                            Login
+                            {{ enviandoLogin ? 'Entrando...' : 'Login' }}
+                        </button>
+                    </div>
+                </form>
+
+                <form *ngIf="mostrandoRecuperacion" [formGroup]="passwordResetForm" (ngSubmit)="recuperarPassword()">
+                    <p class="dialog-helper-text">
+                        Indica tu correo y te enviaremos instrucciones para restablecer la contraseña si la cuenta existe.
+                    </p>
+                    <mat-form-field appearance="fill" class="tw-w-full">
+                        <mat-label>Correo electrónico</mat-label>
+                        <input matInput type="email" formControlName="email" placeholder="tu-correo@ejemplo.com">
+                        <mat-error *ngIf="passwordResetForm.get('email')?.errors?.['required']">
+                            Necesitas un correo electrónico para recuperar la contraseña.
+                        </mat-error>
+                        <mat-error *ngIf="passwordResetForm.get('email')?.errors?.['pattern']">
+                            Correo electrónico no válido.
+                        </mat-error>
+                    </mat-form-field>
+                    <div class="dialog-actions-inline" mat-dialog-actions>
+                        <button mat-stroked-button type="button" (click)="cancelarRecuperacionPassword()"
+                            [disabled]="enviandoRecuperacion">
+                            Volver
+                        </button>
+                        <button mat-raised-button color="accent" type="submit"
+                            [disabled]="passwordResetForm.invalid || enviandoRecuperacion">
+                            <mat-icon>mail</mat-icon>
+                            {{ enviandoRecuperacion ? 'Enviando...' : 'Enviar enlace' }}
                         </button>
                     </div>
                 </form>
@@ -67,14 +97,14 @@
         <div class="tw-w-full lg:tw-w-1/2 tw-px-4">
             <h1 mat-dialog-title class="tw-text-center dialog-section-title">Regístrate</h1>
             <div mat-dialog-content>
-                <form [formGroup]="registerForm" #rform="ngForm" (ngSubmit)="register(rform.value)">
+                <form [formGroup]="registerForm" (ngSubmit)="register()">
                     <mat-form-field class="tw-w-full">
                         <mat-label>Nombre de usuario</mat-label>
                         <input matInput type="text" placeholder="Nombre de usuario" formControlName="usuario" required>
-                        <mat-error *ngIf="registerForm.get('password')?.errors?.['required']">
+                        <mat-error *ngIf="registerForm.get('usuario')?.errors?.['required']">
                             Necesitas un nombre de usuario.
                         </mat-error>
-                        <mat-error *ngIf="registerForm.get('password')?.errors?.['minlength']">
+                        <mat-error *ngIf="registerForm.get('usuario')?.errors?.['minlength']">
                             Usuario demasiado corto.
                         </mat-error>
                     </mat-form-field>
@@ -109,10 +139,10 @@
                         </mat-error>
                     </mat-form-field>
                     <div mat-dialog-actions class="tw-flex tw-justify-end tw-w-full">
-                        <button mat-raised-button class="tw-w-full" color="accent" type="submit" [mat-dialog-close]="true"
-                            [disabled]="registerForm.invalid">
+                        <button mat-raised-button class="tw-w-full" color="accent" type="submit"
+                            [disabled]="registerForm.invalid || enviandoRegistro">
                             <mat-icon>app_registration</mat-icon>
-                            Regístrate
+                            {{ enviandoRegistro ? 'Registrando...' : 'Regístrate' }}
                         </button>
                     </div>
                 </form>

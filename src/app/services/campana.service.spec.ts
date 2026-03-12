@@ -140,10 +140,46 @@ describe('CampanaService', () => {
         ]);
     });
 
+    it('listVisibleCampaigns tolera alias legacy para rol y estado', async () => {
+        httpMock.get.and.returnValue(of([
+            { i: 9, n: 'Costa', Role: 'master', Estado: 'activo' },
+            { i: 10, n: 'Bosque', rolCampana: 'jugador', memberStatus: 'expulsado' },
+        ]));
+
+        const campaigns = await service.listVisibleCampaigns();
+
+        expect(campaigns).toEqual([
+            { id: 10, nombre: 'Bosque', campaignRole: 'jugador', membershipStatus: 'expulsado' },
+            { id: 9, nombre: 'Costa', campaignRole: 'master', membershipStatus: 'activo' },
+        ]);
+    });
+
+    it('listVisibleCampaigns preserva null en campañas legacy donde el actor solo es owner', async () => {
+        httpMock.get.and.returnValue(of([
+            { i: 12, n: 'Legacy propia', campaignRole: null, membershipStatus: null },
+        ]));
+
+        const campaigns = await service.listVisibleCampaigns();
+
+        expect(campaigns).toEqual([
+            { id: 12, nombre: 'Legacy propia', campaignRole: null, membershipStatus: null },
+        ]);
+    });
+
     it('getCampaignDetail compone miembros y árbol de tramas actor-scoped', async () => {
         httpMock.get.and.callFake((url: string) => {
-            if (url.endsWith('campanas'))
-                return of([{ i: 7, n: 'Campaña visible', campaignRole: 'master', membershipStatus: 'activo' }]);
+            if (url.endsWith('campanas/7'))
+                return of({
+                    idCampana: 7,
+                    nombre: 'Campaña visible',
+                    campaignRole: 'master',
+                    membershipStatus: 'activo',
+                    ownerUid: 'uid-owner',
+                    ownerDisplayName: 'Owner',
+                    activeMasterUid: 'uid-master',
+                    activeMasterDisplayName: 'Master',
+                    canRecoverMaster: false,
+                });
             if (url.endsWith('campanas/7/jugadores'))
                 return of([{ uid: 'uid-master', displayName: 'Master', campaignRole: 'master', membershipStatus: 'activo', isActive: true }]);
             if (url.endsWith('tramas/campana/7'))
@@ -156,15 +192,60 @@ describe('CampanaService', () => {
         const detail = await service.getCampaignDetail(7, true);
 
         expect(detail.campaign.nombre).toBe('Campaña visible');
+        expect(detail.ownerUid).toBe('uid-owner');
+        expect(detail.activeMasterUid).toBe('uid-master');
         expect(detail.includeInactiveMembers).toBeTrue();
         expect(detail.members[0].uid).toBe('uid-master');
         expect(detail.tramas[0].subtramas[0].nombre).toBe('Subtrama alfa');
     });
 
+    it('getCampaignDetail acepta el shape canónico idCampana/nombre para jugador sin master activo', async () => {
+        httpMock.get.and.callFake((url: string) => {
+            if (url.endsWith('campanas/9'))
+                return of({
+                    idCampana: 9,
+                    nombre: 'Zorvintal',
+                    campaignRole: 'jugador',
+                    membershipStatus: 'activo',
+                    ownerUid: 'uid-owner',
+                    ownerDisplayName: 'Owner',
+                    activeMasterUid: null,
+                    activeMasterDisplayName: null,
+                    canRecoverMaster: true,
+                });
+            if (url.endsWith('campanas/9/jugadores'))
+                return of([{ uid: 'uid-owner', displayName: 'Owner', campaignRole: 'jugador', membershipStatus: 'activo', isActive: true }]);
+            if (url.endsWith('tramas/campana/9'))
+                return of([]);
+            throw new Error(`URL inesperada: ${url}`);
+        });
+
+        const detail = await service.getCampaignDetail(9);
+
+        expect(detail.campaign).toEqual({
+            id: 9,
+            nombre: 'Zorvintal',
+            campaignRole: 'jugador',
+            membershipStatus: 'activo',
+        });
+        expect(detail.canRecoverMaster).toBeTrue();
+        expect(detail.activeMasterUid).toBeNull();
+    });
+
     it('descarta miembros malformados sin uid canónico', async () => {
         httpMock.get.and.callFake((url: string) => {
-            if (url.endsWith('campanas'))
-                return of([{ i: 7, n: 'Campaña visible', campaignRole: 'master', membershipStatus: 'activo' }]);
+            if (url.endsWith('campanas/7'))
+                return of({
+                    i: 7,
+                    n: 'Campaña visible',
+                    campaignRole: 'master',
+                    membershipStatus: 'activo',
+                    ownerUid: 'uid-owner',
+                    ownerDisplayName: 'Owner',
+                    activeMasterUid: 'uid-master',
+                    activeMasterDisplayName: 'Master',
+                    canRecoverMaster: false,
+                });
             if (url.endsWith('campanas/7/jugadores'))
                 return of([
                     { firebaseUid: 'legacy-only', displayName: 'Legacy roto', campaignRole: 'jugador', membershipStatus: 'activo' },
@@ -180,6 +261,25 @@ describe('CampanaService', () => {
         expect(detail.members).toEqual([
             jasmine.objectContaining({ uid: 'uid-master', displayName: 'Master' }),
         ]);
+    });
+
+    it('recoverCampaignMaster usa la ruta canónica y refresca cache en best-effort', async () => {
+        httpMock.post.and.callFake((url: string) => {
+            if (url.endsWith('campanas/7/master/recover'))
+                return of({ message: 'ok' });
+            throw new Error(`URL inesperada: ${url}`);
+        });
+        httpMock.get.and.callFake((url: string) => {
+            if (url.endsWith('campanas'))
+                return of([{ i: 7, n: 'Campaña visible', campaignRole: 'master', membershipStatus: 'activo' }]);
+            if (url.endsWith('tramas/campana/7'))
+                return of([]);
+            throw new Error(`URL inesperada: ${url}`);
+        });
+
+        await service.recoverCampaignMaster(7);
+
+        expect(httpMock.post.calls.mostRecent().args[0]).toMatch(/campanas\/7\/master\/recover$/);
     });
 
     it('searchUsers usa el endpoint público de búsqueda', async () => {

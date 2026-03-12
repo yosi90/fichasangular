@@ -299,6 +299,10 @@ export class NuevaConjuroComponent implements OnInit, OnDestroy {
         return this.guardando ? 'Creando...' : 'Crear conjuro';
     }
 
+    get mensajePermisosInsuficientes(): string {
+        return this.userSvc.getPermissionDeniedMessage();
+    }
+
     get descripcionComponentesLabel(): string {
         return this.varianteActiva === 'base'
             ? 'Descripción del foco'
@@ -452,12 +456,7 @@ export class NuevaConjuroComponent implements OnInit, OnDestroy {
 
     async crearConjuro(): Promise<void> {
         if (!this.puedeCrear) {
-            await Swal.fire({
-                icon: 'warning',
-                title: 'Permisos insuficientes',
-                text: 'Tu usuario no tiene permiso conjuros.create.',
-                showConfirmButton: true
-            });
+            await this.mostrarPermisosInsuficientes();
             return;
         }
 
@@ -609,6 +608,15 @@ export class NuevaConjuroComponent implements OnInit, OnDestroy {
         this.sincronizarSelectPorDefecto('id_tiempo_lanz', this.tiemposLanzamiento);
         this.sincronizarSelectPorDefecto('id_alcance', this.alcances);
         this.sincronizarSubdisciplinas();
+    }
+
+    private async mostrarPermisosInsuficientes(): Promise<void> {
+        await Swal.fire({
+            icon: 'warning',
+            title: 'Permisos insuficientes',
+            text: this.mensajePermisosInsuficientes,
+            showConfirmButton: true
+        });
     }
 
     private recalcularPermisos(): void {

@@ -17,6 +17,15 @@ function crearServicio(httpMock: any): PersonajeService {
     );
 }
 
+function crearServicioInvitado(httpMock: any): PersonajeService {
+    return new PersonajeService(
+        { currentUser: null } as any,
+        {} as any,
+        httpMock,
+        firebaseContextMock
+    );
+}
+
 function crearPersonajeMock(): Personaje {
     return {
         Id: 0,
@@ -352,6 +361,106 @@ describe('PersonajeService', () => {
         expect(personaje.ownerUid).toBe('uid-77');
         expect(personaje.ownerDisplayName).toBe('Aldric Owner');
         expect(personaje.Clases).toBe('Guerrero (2)');
+    });
+
+    it('getDetallesPersonaje usa cache pública para invitados cuando el personaje es visible', async () => {
+        const httpMock = {
+            get: jasmine.createSpy('get'),
+        } as any;
+        const service = crearServicioInvitado(httpMock);
+        spyOn<any>(service, 'readCacheSnapshot').and.resolveTo({
+            Nombre: 'Aldric',
+            visible_otros_usuarios: true,
+            Campana: 'Sin campaña',
+            Trama: 'Trama base',
+            Subtrama: 'Subtrama base',
+            Clases: [{ Nombre: 'Guerrero', Nivel: 2 }],
+            Raza: {
+                Id: 1,
+                Nombre: 'Humano',
+                Ajuste_nivel: 0,
+                Tamano: { Nombre: 'Mediano', Modificador_presa: 0 },
+                Dgs_adicionales: { Cantidad: 0 },
+            },
+            Tipo_criatura: { Id: 1, Nombre: 'Humanoide' },
+            Fuerza: 10,
+            Destreza: 10,
+            Constitucion: 10,
+            Inteligencia: 10,
+            Sabiduria: 10,
+            Carisma: 10,
+            Vida: 10,
+            Ataque_base: '2',
+            Ca: 12,
+            Armadura_natural: 0,
+            Ca_desvio: 0,
+            Ca_varios: 0,
+            Presa: 2,
+            Presa_varios: [],
+            Iniciativa_varios: [],
+            Dominios: [],
+            Subtipos: [],
+            Plantillas: [],
+            Familiares: [],
+            Companeros: [],
+            Conjuros: [],
+            Claseas: [],
+            Raciales: [],
+            Habilidades: [],
+            Dotes: [],
+            DotesContextuales: [],
+            Ventajas: [],
+            Idiomas: [],
+            Sortilegas: [],
+            Rds: [],
+            Rcs: [],
+            Res: [],
+            Capacidad_carga: { Ligera: 0, Media: 0, Pesada: 0 },
+            Salvaciones: {},
+            Escuela_especialista: { Nombre: '', Calificativo: '' },
+            Disciplina_especialista: { Nombre: '', Calificativo: '' },
+            Disciplina_prohibida: '',
+            Escuelas_prohibidas: [],
+            CaracteristicasVarios: {
+                Fuerza: [],
+                Destreza: [],
+                Constitucion: [],
+                Inteligencia: [],
+                Sabiduria: [],
+                Carisma: [],
+            },
+        });
+
+        const observable = await service.getDetallesPersonaje(77);
+        const personaje = await new Promise<any>((resolve) => observable.subscribe(resolve));
+
+        expect(httpMock.get).not.toHaveBeenCalled();
+        expect(personaje.Id).toBe(77);
+        expect(personaje.visible_otros_usuarios).toBeTrue();
+        expect(personaje.Campana).toBe('Sin campaña');
+        expect(personaje.Fuerza).toBe(10);
+        expect(personaje.Vida).toBe(10);
+        expect(personaje.Clases).toBe('Guerrero (2)');
+    });
+
+    it('getDetallesPersonaje rechaza detalle cacheado no visible para invitados', async () => {
+        const httpMock = {
+            get: jasmine.createSpy('get'),
+        } as any;
+        const service = crearServicioInvitado(httpMock);
+        spyOn<any>(service, 'readCacheSnapshot').and.resolveTo({
+            Id: 88,
+            Nombre: 'Privado',
+            visible_otros_usuarios: false,
+            Campana: 'Sin campaña',
+            Trama: 'Trama base',
+            Subtrama: 'Subtrama base',
+            Raza: { Id: 1, Nombre: 'Humano', Ajuste_nivel: 0, Tamano: { Nombre: 'Mediano', Modificador_presa: 0 }, Dgs_adicionales: { Cantidad: 0 } },
+            Tipo_criatura: { Id: 1, Nombre: 'Humanoide' },
+        });
+
+        await expectAsync(service.getDetallesPersonaje(88))
+            .toBeRejectedWithError('El personaje solicitado no está disponible para invitados.');
     });
 
     it('construye payload minimo valido para /personajes/add', () => {

@@ -7,6 +7,7 @@ import { MatExpansionPanel } from '@angular/material/expansion';
 import { ConnectedPosition } from '@angular/cdk/overlay';
 
 type SeccionOtros = 'insertar' | 'modificar' | 'detalles';
+type PermissionAction = 'create' | 'update';
 
 @Component({
     selector: 'app-base-menu',
@@ -100,6 +101,14 @@ export class BaseMenuComponent implements OnInit, OnDestroy {
     @Output() ListadoTab: EventEmitter<{ tipo: string, operacion: string }> = new EventEmitter();
     AbrirListado(tipo: string, operacion: string): void {
         this.ListadoTab.emit({ tipo, operacion });
+    }
+
+    get mensajePermisosInsuficientes(): string {
+        return this.usrService.getPermissionDeniedMessage();
+    }
+
+    canGestionar(resource: string, action: PermissionAction): boolean {
+        return this.usrService.can(resource, action);
     }
 
     canInsertarDotes(): boolean {

@@ -1,6 +1,19 @@
 <mat-card id="menu" class="sombra-interna">
     <aside>
-        <button id="nuevopj" mat-raised-button color="primary" (click)="AbrirNuevoPersonaje();" class="tw-w-full sombra tw-mt-1 tw-mb-3">Nuevo personaje</button>
+        <span
+            class="tw-block"
+            [matTooltip]="canGestionar('personajes', 'create') ? '' : mensajePermisosInsuficientes"
+            [matTooltipDisabled]="canGestionar('personajes', 'create')">
+            <button
+                id="nuevopj"
+                mat-raised-button
+                color="primary"
+                (click)="AbrirNuevoPersonaje();"
+                [disabled]="!canGestionar('personajes', 'create')"
+                class="tw-w-full sombra tw-mt-1 tw-mb-3">
+                Nuevo personaje
+            </button>
+        </span>
         <mat-accordion>
             <mat-expansion-panel #primero>
                 <mat-expansion-panel-header class="tw-rounded-none tw-rounded-t-md">
@@ -8,22 +21,38 @@
                         <mat-icon>add_box</mat-icon>Insertar
                     </button>
                 </mat-expansion-panel-header>
-                <button mat-button color="primary">Raza</button>
-                <button mat-button color="primary">Clase</button>
                 <span
-                    [matTooltip]="canInsertarDotes() ? '' : 'Requiere permiso dotes.create'"
+                    [matTooltip]="canGestionar('razas', 'create') ? '' : mensajePermisosInsuficientes"
+                    [matTooltipDisabled]="canGestionar('razas', 'create')">
+                    <button mat-button color="primary" [disabled]="!canGestionar('razas', 'create')">Raza</button>
+                </span>
+                <span
+                    [matTooltip]="canGestionar('clases', 'create') ? '' : mensajePermisosInsuficientes"
+                    [matTooltipDisabled]="canGestionar('clases', 'create')">
+                    <button mat-button color="primary" [disabled]="!canGestionar('clases', 'create')">Clase</button>
+                </span>
+                <span
+                    [matTooltip]="canInsertarDotes() ? '' : mensajePermisosInsuficientes"
                     [matTooltipDisabled]="canInsertarDotes()">
                     <button mat-button color="primary" [disabled]="!canInsertarDotes()"
                         (click)="onInsertarDote()">Dote</button>
                 </span>
                 <span
-                    [matTooltip]="canInsertarConjuros() ? '' : 'Requiere permiso conjuros.create'"
+                    [matTooltip]="canInsertarConjuros() ? '' : mensajePermisosInsuficientes"
                     [matTooltipDisabled]="canInsertarConjuros()">
                     <button mat-button color="primary" [disabled]="!canInsertarConjuros()"
                         (click)="onInsertarConjuro()">Conjuro</button>
                 </span>
-                <button mat-button color="primary">Monstruo</button>
-                <button mat-button color="primary">Plantilla</button>
+                <span
+                    [matTooltip]="canGestionar('tipos_criatura', 'create') ? '' : mensajePermisosInsuficientes"
+                    [matTooltipDisabled]="canGestionar('tipos_criatura', 'create')">
+                    <button mat-button color="primary" [disabled]="!canGestionar('tipos_criatura', 'create')">Monstruo</button>
+                </span>
+                <span
+                    [matTooltip]="canGestionar('plantillas', 'create') ? '' : mensajePermisosInsuficientes"
+                    [matTooltipDisabled]="canGestionar('plantillas', 'create')">
+                    <button mat-button color="primary" [disabled]="!canGestionar('plantillas', 'create')">Plantilla</button>
+                </span>
                 <button mat-button color="primary" cdkOverlayOrigin #origenInsertar="cdkOverlayOrigin"
                     (mouseenter)="abrirOtros('insertar')" (mouseleave)="programarCierreOtros()"
                     (click)="toggleOtros('insertar', $event)">
@@ -36,15 +65,69 @@
                     [cdkConnectedOverlayBackdropClass]="'cdk-overlay-transparent-backdrop'"
                     (backdropClick)="cerrarOtros()" (detach)="cerrarOtros()" (overlayKeydown)="onOverlayKeydown($event)">
                     <div class="menu-otros-panel" (mouseenter)="cancelarCierreOtros()" (mouseleave)="programarCierreOtros()">
-                        <button mat-button color="primary" (click)="cerrarOtros()">Tipos de criatura</button>
-                        <button mat-button color="primary" (click)="cerrarOtros()">Armas</button>
-                        <button mat-button color="primary" (click)="cerrarOtros()">Armaduras</button>
-                        <button mat-button color="primary" (click)="cerrarOtros()">Deidades</button>
-                        <button mat-button color="primary" (click)="cerrarOtros()">Subtipos de criatura</button>
-                        <button mat-button color="primary" (click)="cerrarOtros()">Rasgos</button>
-                        <button mat-button color="primary" (click)="cerrarOtros()">Especiales</button>
-                        <button mat-button color="primary" (click)="cerrarOtros()">Raciales</button>
-                        <button mat-button color="primary" (click)="cerrarOtros()">Ventajas y desventajas</button>
+                        <span
+                            matTooltipClass="menu-otros-tooltip"
+                            matTooltipPosition="right"
+                            [matTooltip]="canGestionar('tipos_criatura', 'create') ? '' : mensajePermisosInsuficientes"
+                            [matTooltipDisabled]="canGestionar('tipos_criatura', 'create')">
+                            <button mat-button color="primary" [disabled]="!canGestionar('tipos_criatura', 'create')" (click)="cerrarOtros()">Tipos de criatura</button>
+                        </span>
+                        <span
+                            matTooltipClass="menu-otros-tooltip"
+                            matTooltipPosition="right"
+                            [matTooltip]="canGestionar('armas', 'create') ? '' : mensajePermisosInsuficientes"
+                            [matTooltipDisabled]="canGestionar('armas', 'create')">
+                            <button mat-button color="primary" [disabled]="!canGestionar('armas', 'create')" (click)="cerrarOtros()">Armas</button>
+                        </span>
+                        <span
+                            matTooltipClass="menu-otros-tooltip"
+                            matTooltipPosition="right"
+                            [matTooltip]="canGestionar('armaduras', 'create') ? '' : mensajePermisosInsuficientes"
+                            [matTooltipDisabled]="canGestionar('armaduras', 'create')">
+                            <button mat-button color="primary" [disabled]="!canGestionar('armaduras', 'create')" (click)="cerrarOtros()">Armaduras</button>
+                        </span>
+                        <span
+                            matTooltipClass="menu-otros-tooltip"
+                            matTooltipPosition="right"
+                            [matTooltip]="canGestionar('deidades', 'create') ? '' : mensajePermisosInsuficientes"
+                            [matTooltipDisabled]="canGestionar('deidades', 'create')">
+                            <button mat-button color="primary" [disabled]="!canGestionar('deidades', 'create')" (click)="cerrarOtros()">Deidades</button>
+                        </span>
+                        <span
+                            matTooltipClass="menu-otros-tooltip"
+                            matTooltipPosition="right"
+                            [matTooltip]="canGestionar('subtipos', 'create') ? '' : mensajePermisosInsuficientes"
+                            [matTooltipDisabled]="canGestionar('subtipos', 'create')">
+                            <button mat-button color="primary" [disabled]="!canGestionar('subtipos', 'create')" (click)="cerrarOtros()">Subtipos de criatura</button>
+                        </span>
+                        <span
+                            matTooltipClass="menu-otros-tooltip"
+                            matTooltipPosition="right"
+                            [matTooltip]="canGestionar('rasgos', 'create') ? '' : mensajePermisosInsuficientes"
+                            [matTooltipDisabled]="canGestionar('rasgos', 'create')">
+                            <button mat-button color="primary" [disabled]="!canGestionar('rasgos', 'create')" (click)="cerrarOtros()">Rasgos</button>
+                        </span>
+                        <span
+                            matTooltipClass="menu-otros-tooltip"
+                            matTooltipPosition="right"
+                            [matTooltip]="canGestionar('especiales', 'create') ? '' : mensajePermisosInsuficientes"
+                            [matTooltipDisabled]="canGestionar('especiales', 'create')">
+                            <button mat-button color="primary" [disabled]="!canGestionar('especiales', 'create')" (click)="cerrarOtros()">Especiales</button>
+                        </span>
+                        <span
+                            matTooltipClass="menu-otros-tooltip"
+                            matTooltipPosition="right"
+                            [matTooltip]="canGestionar('raciales', 'create') ? '' : mensajePermisosInsuficientes"
+                            [matTooltipDisabled]="canGestionar('raciales', 'create')">
+                            <button mat-button color="primary" [disabled]="!canGestionar('raciales', 'create')" (click)="cerrarOtros()">Raciales</button>
+                        </span>
+                        <span
+                            matTooltipClass="menu-otros-tooltip"
+                            matTooltipPosition="right"
+                            [matTooltip]="canGestionar('ventajas', 'create') ? '' : mensajePermisosInsuficientes"
+                            [matTooltipDisabled]="canGestionar('ventajas', 'create')">
+                            <button mat-button color="primary" [disabled]="!canGestionar('ventajas', 'create')" (click)="cerrarOtros()">Ventajas y desventajas</button>
+                        </span>
                     </div>
                 </ng-template>
             </mat-expansion-panel>
@@ -54,12 +137,36 @@
                         <mat-icon>edit_square</mat-icon>Modificar
                     </button>
                 </mat-expansion-panel-header>
-                <button mat-button color="primary">Raza</button>
-                <button mat-button color="primary">Clase</button>
-                <button mat-button color="primary">Dote</button>
-                <button mat-button color="primary">Conjuro</button>
-                <button mat-button color="primary">Monstruo</button>
-                <button mat-button color="primary">Plantilla</button>
+                <span
+                    [matTooltip]="canGestionar('razas', 'update') ? '' : mensajePermisosInsuficientes"
+                    [matTooltipDisabled]="canGestionar('razas', 'update')">
+                    <button mat-button color="primary" [disabled]="!canGestionar('razas', 'update')">Raza</button>
+                </span>
+                <span
+                    [matTooltip]="canGestionar('clases', 'update') ? '' : mensajePermisosInsuficientes"
+                    [matTooltipDisabled]="canGestionar('clases', 'update')">
+                    <button mat-button color="primary" [disabled]="!canGestionar('clases', 'update')">Clase</button>
+                </span>
+                <span
+                    [matTooltip]="canGestionar('dotes', 'update') ? '' : mensajePermisosInsuficientes"
+                    [matTooltipDisabled]="canGestionar('dotes', 'update')">
+                    <button mat-button color="primary" [disabled]="!canGestionar('dotes', 'update')">Dote</button>
+                </span>
+                <span
+                    [matTooltip]="canGestionar('conjuros', 'update') ? '' : mensajePermisosInsuficientes"
+                    [matTooltipDisabled]="canGestionar('conjuros', 'update')">
+                    <button mat-button color="primary" [disabled]="!canGestionar('conjuros', 'update')">Conjuro</button>
+                </span>
+                <span
+                    [matTooltip]="canGestionar('tipos_criatura', 'update') ? '' : mensajePermisosInsuficientes"
+                    [matTooltipDisabled]="canGestionar('tipos_criatura', 'update')">
+                    <button mat-button color="primary" [disabled]="!canGestionar('tipos_criatura', 'update')">Monstruo</button>
+                </span>
+                <span
+                    [matTooltip]="canGestionar('plantillas', 'update') ? '' : mensajePermisosInsuficientes"
+                    [matTooltipDisabled]="canGestionar('plantillas', 'update')">
+                    <button mat-button color="primary" [disabled]="!canGestionar('plantillas', 'update')">Plantilla</button>
+                </span>
                 <button mat-button color="primary" cdkOverlayOrigin #origenModificar="cdkOverlayOrigin"
                     (mouseenter)="abrirOtros('modificar')" (mouseleave)="programarCierreOtros()"
                     (click)="toggleOtros('modificar', $event)">
@@ -72,15 +179,69 @@
                     [cdkConnectedOverlayBackdropClass]="'cdk-overlay-transparent-backdrop'"
                     (backdropClick)="cerrarOtros()" (detach)="cerrarOtros()" (overlayKeydown)="onOverlayKeydown($event)">
                     <div class="menu-otros-panel" (mouseenter)="cancelarCierreOtros()" (mouseleave)="programarCierreOtros()">
-                        <button mat-button color="primary" (click)="cerrarOtros()">Tipos de criatura</button>
-                        <button mat-button color="primary" (click)="cerrarOtros()">Armas</button>
-                        <button mat-button color="primary" (click)="cerrarOtros()">Armaduras</button>
-                        <button mat-button color="primary" (click)="cerrarOtros()">Deidades</button>
-                        <button mat-button color="primary" (click)="cerrarOtros()">Subtipos de criatura</button>
-                        <button mat-button color="primary" (click)="cerrarOtros()">Rasgos raciales</button>
-                        <button mat-button color="primary" (click)="cerrarOtros()">Especiales</button>
-                        <button mat-button color="primary" (click)="cerrarOtros()">Raciales</button>
-                        <button mat-button color="primary" (click)="cerrarOtros()">Ventajas y desventajas</button>
+                        <span
+                            matTooltipClass="menu-otros-tooltip"
+                            matTooltipPosition="right"
+                            [matTooltip]="canGestionar('tipos_criatura', 'update') ? '' : mensajePermisosInsuficientes"
+                            [matTooltipDisabled]="canGestionar('tipos_criatura', 'update')">
+                            <button mat-button color="primary" [disabled]="!canGestionar('tipos_criatura', 'update')" (click)="cerrarOtros()">Tipos de criatura</button>
+                        </span>
+                        <span
+                            matTooltipClass="menu-otros-tooltip"
+                            matTooltipPosition="right"
+                            [matTooltip]="canGestionar('armas', 'update') ? '' : mensajePermisosInsuficientes"
+                            [matTooltipDisabled]="canGestionar('armas', 'update')">
+                            <button mat-button color="primary" [disabled]="!canGestionar('armas', 'update')" (click)="cerrarOtros()">Armas</button>
+                        </span>
+                        <span
+                            matTooltipClass="menu-otros-tooltip"
+                            matTooltipPosition="right"
+                            [matTooltip]="canGestionar('armaduras', 'update') ? '' : mensajePermisosInsuficientes"
+                            [matTooltipDisabled]="canGestionar('armaduras', 'update')">
+                            <button mat-button color="primary" [disabled]="!canGestionar('armaduras', 'update')" (click)="cerrarOtros()">Armaduras</button>
+                        </span>
+                        <span
+                            matTooltipClass="menu-otros-tooltip"
+                            matTooltipPosition="right"
+                            [matTooltip]="canGestionar('deidades', 'update') ? '' : mensajePermisosInsuficientes"
+                            [matTooltipDisabled]="canGestionar('deidades', 'update')">
+                            <button mat-button color="primary" [disabled]="!canGestionar('deidades', 'update')" (click)="cerrarOtros()">Deidades</button>
+                        </span>
+                        <span
+                            matTooltipClass="menu-otros-tooltip"
+                            matTooltipPosition="right"
+                            [matTooltip]="canGestionar('subtipos', 'update') ? '' : mensajePermisosInsuficientes"
+                            [matTooltipDisabled]="canGestionar('subtipos', 'update')">
+                            <button mat-button color="primary" [disabled]="!canGestionar('subtipos', 'update')" (click)="cerrarOtros()">Subtipos de criatura</button>
+                        </span>
+                        <span
+                            matTooltipClass="menu-otros-tooltip"
+                            matTooltipPosition="right"
+                            [matTooltip]="canGestionar('rasgos', 'update') ? '' : mensajePermisosInsuficientes"
+                            [matTooltipDisabled]="canGestionar('rasgos', 'update')">
+                            <button mat-button color="primary" [disabled]="!canGestionar('rasgos', 'update')" (click)="cerrarOtros()">Rasgos raciales</button>
+                        </span>
+                        <span
+                            matTooltipClass="menu-otros-tooltip"
+                            matTooltipPosition="right"
+                            [matTooltip]="canGestionar('especiales', 'update') ? '' : mensajePermisosInsuficientes"
+                            [matTooltipDisabled]="canGestionar('especiales', 'update')">
+                            <button mat-button color="primary" [disabled]="!canGestionar('especiales', 'update')" (click)="cerrarOtros()">Especiales</button>
+                        </span>
+                        <span
+                            matTooltipClass="menu-otros-tooltip"
+                            matTooltipPosition="right"
+                            [matTooltip]="canGestionar('raciales', 'update') ? '' : mensajePermisosInsuficientes"
+                            [matTooltipDisabled]="canGestionar('raciales', 'update')">
+                            <button mat-button color="primary" [disabled]="!canGestionar('raciales', 'update')" (click)="cerrarOtros()">Raciales</button>
+                        </span>
+                        <span
+                            matTooltipClass="menu-otros-tooltip"
+                            matTooltipPosition="right"
+                            [matTooltip]="canGestionar('ventajas', 'update') ? '' : mensajePermisosInsuficientes"
+                            [matTooltipDisabled]="canGestionar('ventajas', 'update')">
+                            <button mat-button color="primary" [disabled]="!canGestionar('ventajas', 'update')" (click)="cerrarOtros()">Ventajas y desventajas</button>
+                        </span>
                     </div>
                 </ng-template>
             </mat-expansion-panel>
