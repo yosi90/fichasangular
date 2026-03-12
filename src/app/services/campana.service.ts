@@ -41,7 +41,7 @@ export class CampanaService {
 
     async getListCampanas(): Promise<Observable<Campana[]>> {
         const headers = await this.buildAuthHeaders();
-        const campanas = await this.fetchCampanasActorScoped(headers);
+        const campanas = await this.fetchCampanasWithActiveMembership(headers);
         return of(campanas);
     }
 
@@ -50,6 +50,17 @@ export class CampanaService {
             return await this.fetchCampaignSummaries(await this.buildAuthHeaders());
         } catch (error) {
             throw this.toError(error, 'No se pudieron cargar las campañas visibles.');
+        }
+    }
+
+    async listProfileCampaigns(): Promise<CampaignListItem[]> {
+        try {
+            const headers = await this.buildAuthHeaders();
+            const actorUid = `${this.auth.currentUser?.uid ?? ''}`.trim();
+            const campaigns = await this.fetchCampaignSummaries(headers);
+            return await this.filterCampaignsForProfile(campaigns, headers, actorUid);
+        } catch (error) {
+            throw this.toError(error, 'No se pudieron cargar las campañas del perfil.');
         }
     }
 
@@ -370,6 +381,54 @@ export class CampanaService {
 
     private async fetchCampanasActorScoped(headers: HttpHeaders): Promise<Campana[]> {
         const campanas = await this.fetchCampaignSummaries(headers);
+        return this.buildCampanasTree(campanas, headers);
+    }
+
+    private async fetchCampanasWithActiveMembership(headers: HttpHeaders): Promise<Campana[]> {
+        const campanas = await this.fetchCampaignSummaries(headers);
+        return this.buildCampanasTree(
+            campanas.filter((campana) => this.hasActiveMembership(campana)),
+            headers
+        );
+    }
+
+    private async filterCampaignsForProfile(
+        campanas: CampaignListItem[],
+        headers: HttpHeaders,
+        actorUid: string
+    ): Promise<CampaignListItem[]> {
+        const ownUid = `${actorUid ?? ''}`.trim();
+        const filtered = await Promise.all(
+            (campanas ?? []).map(async (campana) => {
+                if (this.hasActiveMembership(campana))
+                    return campana?.isOwner === true
+                        ? { ...campana, isOwner: true }
+                        : { ...campana };
+
+                if (campana?.membershipStatus === 'expulsado')
+                    return null;
+
+                if (campana?.isOwner === true)
+                    return { ...campana, isOwner: true };
+
+                if (ownUid.length < 1)
+                    return null;
+
+                try {
+                    const detail = await this.fetchCampaignDetailHeader(campana.id, headers);
+                    return `${detail.ownerUid ?? ''}`.trim() === ownUid
+                        ? { ...campana, isOwner: true }
+                        : null;
+                } catch {
+                    return null;
+                }
+            })
+        );
+
+        return filtered.filter((campana) => campana !== null) as CampaignListItem[];
+    }
+
+    private async buildCampanasTree(campanas: CampaignListItem[], headers: HttpHeaders): Promise<Campana[]> {
         const campaignTrees = await Promise.all(
             campanas.map(async (campana) => ({
                 Id: campana.id,
@@ -389,6 +448,11 @@ export class CampanaService {
             this.buildSinCampanaOption(),
             ...campaignTrees,
         ];
+    }
+
+    private hasActiveMembership(campana: CampaignListItem | null | undefined): boolean {
+        return campana?.membershipStatus === 'activo'
+            && (campana.campaignRole === 'master' || campana.campaignRole === 'jugador');
     }
 
     private async fetchCampaignSummaries(headers: HttpHeaders): Promise<CampaignListItem[]> {
@@ -503,11 +567,13 @@ export class CampanaService {
             ?? raw?.estado
             ?? raw?.Estado;
 
+        const isOwner = raw?.isOwner === true;
         return {
             id,
             nombre: `${raw?.n ?? raw?.Nombre ?? raw?.nombre ?? raw?.NombreCampana ?? ''}`.trim(),
             campaignRole: this.normalizeNullableCampaignRole(normalizedRoleSource),
             membershipStatus: this.normalizeNullableMembershipStatus(normalizedStatusSource),
+            ...(isOwner ? { isOwner: true } : {}),
         };
     }
 

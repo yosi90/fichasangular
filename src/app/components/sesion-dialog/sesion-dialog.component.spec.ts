@@ -2,6 +2,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { NO_ERRORS_SCHEMA } from '@angular/core';
 import { ReactiveFormsModule } from '@angular/forms';
+import Swal from 'sweetalert2';
 
 import { SesionDialogComponent } from './sesion-dialog.component';
 import { AppToastService } from 'src/app/services/app-toast.service';
@@ -12,6 +13,7 @@ describe('SesionDialogComponent', () => {
   let fixture: ComponentFixture<SesionDialogComponent>;
   let dialogRefMock: { close: jasmine.Spy };
   let appToastSvcMock: jasmine.SpyObj<AppToastService>;
+  let swalFireSpy: jasmine.Spy;
 
   const userServiceMock = {
     loginEmailPass: jasmine.createSpy('loginEmailPass').and.returnValue(Promise.resolve()),
@@ -23,6 +25,7 @@ describe('SesionDialogComponent', () => {
   beforeEach(async () => {
     dialogRefMock = { close: jasmine.createSpy('close') };
     appToastSvcMock = jasmine.createSpyObj<AppToastService>('AppToastService', ['showSuccess', 'showError', 'showInfo']);
+    swalFireSpy = spyOn(Swal, 'fire').and.resolveTo({} as any);
     await TestBed.configureTestingModule({
       declarations: [ SesionDialogComponent ],
       imports: [ReactiveFormsModule],
@@ -39,6 +42,10 @@ describe('SesionDialogComponent', () => {
     fixture = TestBed.createComponent(SesionDialogComponent);
     component = fixture.componentInstance;
     fixture.detectChanges();
+    userServiceMock.loginEmailPass.and.returnValue(Promise.resolve());
+    userServiceMock.register.and.returnValue(Promise.resolve());
+    userServiceMock.loginGoogle.and.returnValue(Promise.resolve());
+    userServiceMock.requestPasswordReset.and.returnValue(Promise.resolve());
     userServiceMock.loginEmailPass.calls.reset();
     userServiceMock.register.calls.reset();
     userServiceMock.loginGoogle.calls.reset();
@@ -47,6 +54,7 @@ describe('SesionDialogComponent', () => {
     appToastSvcMock.showSuccess.calls.reset();
     appToastSvcMock.showError.calls.reset();
     appToastSvcMock.showInfo.calls.reset();
+    swalFireSpy.calls.reset();
   });
 
   it('should create', () => {
@@ -139,7 +147,7 @@ describe('SesionDialogComponent', () => {
     expect(component.passwordResetForm.getRawValue().email).toBe('aldric@test.com');
   });
 
-  it('recuperarPassword lanza el reset y muestra mensaje genérico de éxito', async () => {
+  it('recuperarPassword lanza el reset y avisa de revisar spam con una alerta', async () => {
     component.mostrandoRecuperacion = true;
     component.passwordResetForm.setValue({ email: 'aldric@test.com' });
 
@@ -147,6 +155,11 @@ describe('SesionDialogComponent', () => {
 
     expect(userServiceMock.requestPasswordReset).toHaveBeenCalledWith('aldric@test.com');
     expect(appToastSvcMock.showSuccess).toHaveBeenCalledWith('Si la cuenta existe, recibirás un correo para restablecer la contraseña.');
+    expect(Swal.fire).toHaveBeenCalledWith(jasmine.objectContaining({
+      title: 'Revisa tu correo',
+      icon: 'info',
+      confirmButtonText: 'Entendido',
+    }));
     expect(component.mostrandoRecuperacion).toBeFalse();
     expect(dialogRefMock.close).not.toHaveBeenCalled();
   });

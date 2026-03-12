@@ -2,6 +2,7 @@ import { Component, Inject } from '@angular/core';
 import { MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
 import { FormGroup, Validators, ValidatorFn, FormControl, AbstractControl, ValidationErrors, FormGroupDirective, NgForm } from '@angular/forms';
 import { ErrorStateMatcher } from '@angular/material/core';
+import Swal from 'sweetalert2';
 import { AppToastService } from 'src/app/services/app-toast.service';
 import { UserService } from 'src/app/services/user.service';
 
@@ -103,6 +104,12 @@ export class SesionDialogComponent {
             await this.usrService.requestPasswordReset(email);
             this.loginForm.patchValue({ email });
             this.appToastSvc.showSuccess('Si la cuenta existe, recibirás un correo para restablecer la contraseña.');
+            await Swal.fire({
+                title: 'Revisa tu correo',
+                text: 'Si la cuenta existe, recibiras un correo para restablecer la contrasena. Si no aparece en la bandeja de entrada, revisa tambien spam o correo no deseado.',
+                icon: 'info',
+                confirmButtonText: 'Entendido',
+            });
             this.mostrandoRecuperacion = false;
         } catch (error: any) {
             this.appToastSvc.showError(`${error?.message ?? 'No se pudo iniciar la recuperación de contraseña.'}`.trim());

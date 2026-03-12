@@ -70,7 +70,6 @@ export class AdminRoleRequestNotifierService implements OnDestroy {
         try {
             const requests = await this.userProfileApiSvc.listRoleRequests({
                 status: 'pending',
-                requestedRole: 'master',
             });
             const count = requests.length;
             const previous = this.pendingCount;
@@ -98,8 +97,8 @@ export class AdminRoleRequestNotifierService implements OnDestroy {
                 icon: 'info',
                 title: 'Tienes peticiones por supervisar',
                 text: count === 1
-                    ? 'Hay 1 solicitud pendiente de master.'
-                    : `Hay ${count} solicitudes pendientes de master.`,
+                    ? 'Hay 1 solicitud de rol pendiente.'
+                    : `Hay ${count} solicitudes de rol pendientes.`,
                 showCancelButton: true,
                 confirmButtonText: 'Revisar ahora',
                 cancelButtonText: 'Más tarde',

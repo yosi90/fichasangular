@@ -17,6 +17,8 @@ export class ListaPersonajesService {
     private readonly personajesSubject = new BehaviorSubject<PersonajeSimple[]>([]);
     private personajesLoaded = false;
     private personajesLoadingPromise: Promise<void> | null = null;
+    private actorCacheKey = '';
+    private loadGeneration = 0;
 
     constructor(
         private auth: Auth,
@@ -25,6 +27,16 @@ export class ListaPersonajesService {
         private firebaseContextSvc: FirebaseInjectionContextService
     ) {
         this.authReadyPromise = this.createAuthReadyPromise();
+        this.actorCacheKey = this.buildActorCacheKey(this.auth.currentUser);
+        this.subscribeAuthState((user) => {
+            const nextActorCacheKey = this.buildActorCacheKey(user);
+            if (nextActorCacheKey === this.actorCacheKey)
+                return;
+
+            this.actorCacheKey = nextActorCacheKey;
+            this.invalidateLoadedPersonajes();
+            void this.reloadPersonajesForCurrentActor();
+        });
     }
 
     async getPersonajes(): Promise<Observable<PersonajeSimple[]>> {
@@ -213,6 +225,8 @@ export class ListaPersonajesService {
         if (`${idToken ?? ''}`.trim().length < 1)
             throw new Error('Token no disponible');
 
+        console.log('[ListaPersonajesService] FIREBASE_ID_TOKEN', idToken);
+
         return new HttpHeaders({
             Authorization: `Bearer ${idToken}`,
         });
@@ -246,22 +260,49 @@ export class ListaPersonajesService {
         });
     }
 
+    protected subscribeAuthState(handler: (firebaseUser: any) => void): () => void {
+        try {
+            return this.firebaseContextSvc.run(() => onAuthStateChanged(this.auth, handler));
+        } catch {
+            return () => undefined;
+        }
+    }
+
     private async ensurePersonajesLoaded(): Promise<void> {
         if (this.personajesLoaded)
             return;
 
-        if (!this.personajesLoadingPromise) {
-            this.personajesLoadingPromise = this.fetchPersonajesForCurrentActor()
-                .then((personajes) => {
-                    this.personajesLoaded = true;
-                    this.personajesSubject.next([...personajes]);
-                })
-                .finally(() => {
-                    this.personajesLoadingPromise = null;
-                });
-        }
+        if (!this.personajesLoadingPromise)
+            this.personajesLoadingPromise = this.reloadPersonajesForCurrentActor();
 
         await this.personajesLoadingPromise;
+    }
+
+    private invalidateLoadedPersonajes(): void {
+        this.loadGeneration += 1;
+        this.personajesLoaded = false;
+        this.personajesLoadingPromise = null;
+    }
+
+    private async reloadPersonajesForCurrentActor(): Promise<void> {
+        const requestGeneration = ++this.loadGeneration;
+        try {
+            const personajes = await this.fetchPersonajesForCurrentActor();
+            if (requestGeneration !== this.loadGeneration)
+                return;
+
+            this.personajesLoaded = true;
+            this.personajesSubject.next([...personajes]);
+        } catch {
+            if (requestGeneration !== this.loadGeneration)
+                return;
+
+            this.personajesLoaded = true;
+            this.personajesSubject.next([]);
+        } finally {
+            if (requestGeneration === this.loadGeneration)
+                this.personajesLoadingPromise = null;
+        }
     }
 
     private async fetchPersonajesForCurrentActor(): Promise<PersonajeSimple[]> {
@@ -332,6 +373,11 @@ export class ListaPersonajesService {
             .normalize('NFD')
             .replace(/[\u0300-\u036f]/g, '')
             .toLowerCase();
+    }
+
+    private buildActorCacheKey(user: any): string {
+        const uid = `${user?.uid ?? ''}`.trim();
+        return uid.length > 0 ? `user:${uid}` : 'guest';
     }
 }
 

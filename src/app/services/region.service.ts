@@ -38,7 +38,22 @@ function toArray<T = any>(value: any): T[] {
     return [];
 }
 
+function hasCanonicalRegionShape(raw: any): boolean {
+    return !!raw
+        && typeof raw === "object"
+        && Object.prototype.hasOwnProperty.call(raw, "Id")
+        && Object.prototype.hasOwnProperty.call(raw, "Nombre");
+}
+
 export function normalizeRegion(raw: any): RegionDetalle {
+    if (!hasCanonicalRegionShape(raw)) {
+        return {
+            Id: 0,
+            Nombre: "",
+            Oficial: false,
+        };
+    }
+
     return {
         Id: toNumber(raw?.Id),
         Nombre: toText(raw?.Nombre),

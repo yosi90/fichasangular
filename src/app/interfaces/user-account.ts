@@ -11,6 +11,9 @@ export type UserPermissionMap = Record<string, UserPermissionActionMap>;
 export interface UserPrivateProfile {
     uid: string;
     displayName: string | null;
+    bio: string | null;
+    genderIdentity: string | null;
+    pronouns: string | null;
     email: string | null;
     emailVerified: boolean;
     authProvider: AuthProviderType;
@@ -25,14 +28,26 @@ export interface UserPrivateProfile {
 export interface UserPublicProfileStats {
     totalPersonajes: number;
     publicos: number;
+    campanasActivas: number;
+    campanasMaster: number;
+    campanasCreadas: number;
 }
 
 export interface UserPublicProfile {
     uid: string;
     displayName: string | null;
+    bio: string | null;
+    pronouns: string | null;
     photoThumbUrl: string | null;
     memberSince: string | null;
     stats: UserPublicProfileStats;
+}
+
+export interface UserPrivateProfileUpdate {
+    displayName?: string;
+    bio?: string | null;
+    genderIdentity?: string | null;
+    pronouns?: string | null;
 }
 
 export interface UserAvatarResponse {

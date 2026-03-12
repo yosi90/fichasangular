@@ -45,7 +45,10 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
     currentSection: UserPrivateProfileSectionId = 'resumen';
 
     displayNameDraft = '';
-    displayNameSaving = false;
+    bioDraft = '';
+    genderIdentityDraft = '';
+    pronounsDraft = '';
+    identitySaving = false;
 
     settingsSaving = false;
     visibilidadPorDefectoPersonajes = false;
@@ -65,6 +68,7 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
     roleRequestStatus: UserRoleRequestStatus | null = null;
     roleRequestLoading = false;
     roleRequestSubmitting = false;
+    roleRequestCommentDraft = '';
 
     campaigns: CampaignListItem[] = [];
     campaignsLoading = false;
@@ -106,6 +110,7 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
     private pendingRequestedSection: UserPrivateProfileSectionId | null = null;
     private memberSearchTimerId: number | null = null;
     private transferSearchTimerId: number | null = null;
+    private identityDraftsUid = '';
     private readonly dateFormatter = new Intl.DateTimeFormat('es-ES', {
         day: 'numeric',
         month: 'long',
@@ -134,8 +139,10 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
             .pipe(takeUntil(this.destroy$))
             .subscribe((profile) => {
                 this.profile = profile;
-                if (profile && this.displayNameDraft.trim().length < 1)
-                    this.displayNameDraft = `${profile.displayName ?? ''}`.trim();
+                if (profile && this.identityDraftsUid !== profile.uid) {
+                    this.hydrateIdentityDraftsFromProfile(profile, true);
+                    this.identityDraftsUid = profile.uid;
+                }
                 if (!this.canChangePassword && this.currentSection === 'seguridad')
                     this.currentSection = 'resumen';
                 this.resolvePendingRequestedSection();
@@ -223,6 +230,18 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
         return this.displayNameDraft.trim().length;
     }
 
+    get bioLength(): number {
+        return `${this.bioDraft ?? ''}`.length;
+    }
+
+    get genderIdentityLength(): number {
+        return `${this.genderIdentityDraft ?? ''}`.trim().length;
+    }
+
+    get pronounsLength(): number {
+        return `${this.pronounsDraft ?? ''}`.trim().length;
+    }
+
     get selectedAvatarName(): string {
         return `${this.selectedAvatarFile?.name ?? ''}`.trim();
     }
@@ -252,15 +271,43 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
         return 'rol superior';
     }
 
+    get showRoleRequestPanel(): boolean {
+        return !!this.requestedRoleTarget;
+    }
+
+    get roleRequestPanelDescription(): string {
+        if (this.requestedRoleTarget === 'colaborador')
+            return 'Pide acceso a funciones de colaborador para ampliar tus permisos globales.';
+        return 'Pide acceso a funciones de master para crear y gestionar tus campañas.';
+    }
+
     get requestRoleButtonLabel(): string {
         return `Solicitar ser ${this.requestedRoleLabel}`;
     }
 
+    get hasRelevantRoleRequestState(): boolean {
+        return !!this.requestedRoleTarget
+            && this.roleRequestStatus?.requestedRole === this.requestedRoleTarget;
+    }
+
+    get hasPendingRoleRequestForCurrentTarget(): boolean {
+        return this.hasRelevantRoleRequestState && this.roleRequestStatus?.status === 'pending';
+    }
+
+    get hasBlockedRoleRequestForCurrentTarget(): boolean {
+        return this.hasRelevantRoleRequestState && this.hasRoleRequestBlock;
+    }
+
+    get hasRoleRequestBan(): boolean {
+        return `${this.roleRequestStatus?.reasonCode ?? ''}`.trim().toUpperCase() === 'BANNED';
+    }
+
     get canRequestRole(): boolean {
         return !!this.requestedRoleTarget
-            && this.roleRequestStatus?.eligible === true
-            && this.roleRequestStatus?.status !== 'pending'
-            && !this.hasRoleRequestBlock;
+            && !!this.roleRequestStatus
+            && !this.hasPendingRoleRequestForCurrentTarget
+            && !this.hasBlockedRoleRequestForCurrentTarget
+            && !this.hasRoleRequestBan;
     }
 
     get hasRoleRequestBlock(): boolean {
@@ -275,16 +322,15 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
         if (this.profile?.role === 'colaborador' || this.profile?.role === 'admin')
             return `Tu rol actual es ${this.profile.role}.`;
 
-        const status = this.roleRequestStatus?.status ?? 'none';
-        if (status === 'pending')
+        if (this.hasPendingRoleRequestForCurrentTarget)
             return 'Tienes una solicitud pendiente de revisión.';
-        if (status === 'approved')
+        if (this.hasRelevantRoleRequestState && this.roleRequestStatus?.status === 'approved')
             return 'La última solicitud fue aprobada.';
-        if (status === 'rejected')
+        if (this.hasRelevantRoleRequestState && this.roleRequestStatus?.status === 'rejected')
             return this.hasRoleRequestBlock
                 ? `Solicitud rechazada. No podrás volver a pedirlo hasta ${this.formattedRoleRequestBlockedUntil}.`
                 : 'La última solicitud fue rechazada.';
-        if (this.roleRequestStatus?.eligible === true)
+        if (this.canRequestRole || this.roleRequestStatus?.eligible === true)
             return `Puedes solicitar convertirte en ${this.requestedRoleLabel}.`;
         return this.roleRequestReasonLabel;
     }
@@ -309,7 +355,15 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
     }
 
     get roleRequestAdminComment(): string {
+        if (!this.hasRelevantRoleRequestState)
+            return '';
         return `${this.roleRequestStatus?.adminComment ?? ''}`.trim();
+    }
+
+    get roleRequestUserComment(): string {
+        if (!this.hasRelevantRoleRequestState)
+            return '';
+        return `${this.roleRequestStatus?.requestComment ?? ''}`.trim();
     }
 
     get canCreateCampaign(): boolean {
@@ -317,11 +371,13 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
     }
 
     get masterCampaigns(): CampaignListItem[] {
-        return this.campaigns.filter((campaign) => campaign.campaignRole === 'master');
+        return this.campaigns.filter((campaign) => campaign.campaignRole === 'master' || campaign.isOwner === true);
     }
 
     get participantCampaigns(): CampaignListItem[] {
-        return this.campaigns.filter((campaign) => campaign.campaignRole !== 'master');
+        return this.campaigns.filter((campaign) => (
+            campaign.campaignRole === 'jugador' && campaign.membershipStatus === 'activo'
+        ));
     }
 
     get selectedCampaignSummary(): CampaignListItem | null {
@@ -408,7 +464,8 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
             this.profile = profile;
             this.settings = settings;
             this.applySettingsToForm(settings);
-            this.displayNameDraft = `${profile?.displayName ?? ''}`.trim();
+            this.hydrateIdentityDraftsFromProfile(profile, true);
+            this.identityDraftsUid = `${profile?.uid ?? ''}`.trim();
             await this.cargarEstadoSolicitudRol();
         } catch (error: any) {
             this.loadErrorMessage = `${error?.message ?? 'No se pudo cargar el perfil.'}`.trim();
@@ -477,28 +534,35 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
         }
     }
 
-    async guardarDisplayName(): Promise<void> {
-        const displayName = this.displayNameDraft.trim();
-        if (this.displayNameSaving)
+    async guardarIdentidad(): Promise<void> {
+        if (this.identitySaving)
             return;
 
-        if (displayName.length < 1 || displayName.length > 150) {
-            this.appToastSvc.showError('El nombre visible debe tener entre 1 y 150 caracteres.');
+        const validationError = this.validateIdentityForm();
+        if (validationError) {
+            this.appToastSvc.showError(validationError);
             return;
         }
 
-        this.displayNameSaving = true;
+        const displayName = this.normalizeDisplayName(this.displayNameDraft);
+        this.identitySaving = true;
         try {
-            const profile = await this.userProfileApiSvc.updateDisplayName(displayName);
-            await this.syncAuthDisplayName(displayName);
+            const profile = await this.userProfileApiSvc.updateMyProfile({
+                displayName,
+                bio: this.normalizeOptionalMultilineText(this.bioDraft),
+                genderIdentity: this.normalizeOptionalSingleLineText(this.genderIdentityDraft),
+                pronouns: this.normalizeOptionalSingleLineText(this.pronounsDraft),
+            });
+            await this.syncAuthDisplayName(`${profile?.displayName ?? displayName}`.trim());
             this.userSvc.setCurrentPrivateProfile(profile);
             this.profile = profile;
-            this.displayNameDraft = `${profile?.displayName ?? ''}`.trim();
-            this.appToastSvc.showSuccess('Nombre visible actualizado.');
+            this.hydrateIdentityDraftsFromProfile(profile, true);
+            this.identityDraftsUid = `${profile?.uid ?? ''}`.trim();
+            this.appToastSvc.showSuccess('Identidad actualizada.');
         } catch (error: any) {
-            this.appToastSvc.showError(this.mapProfileError(error, 'No se pudo guardar el nombre visible.'));
+            this.appToastSvc.showError(this.mapProfileError(error, 'No se pudo guardar la identidad.'));
         } finally {
-            this.displayNameSaving = false;
+            this.identitySaving = false;
         }
     }
 
@@ -509,7 +573,11 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
 
         this.roleRequestSubmitting = true;
         try {
-            this.roleRequestStatus = await this.userProfileApiSvc.createRoleRequest(target);
+            this.roleRequestStatus = await this.userProfileApiSvc.createRoleRequest(
+                target,
+                this.normalizeOptionalMultilineText(this.roleRequestCommentDraft)
+            );
+            this.roleRequestCommentDraft = '';
             this.appToastSvc.showSuccess(`Solicitud para ser ${this.requestedRoleLabel} enviada. Queda pendiente de revisión.`);
         } catch (error: any) {
             this.appToastSvc.showError(this.mapProfileError(error, 'No se pudo registrar la solicitud.'));
@@ -971,12 +1039,14 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
         return this.subtramaSaveInFlightId === subtramaId;
     }
 
-    getCampaignRoleLabel(role: string | null | undefined): string {
+    getCampaignRoleLabel(role: string | null | undefined, isOwner: boolean = false): string {
         const normalized = `${role ?? ''}`.trim().toLowerCase();
         if (normalized === 'master')
             return 'Master';
         if (normalized === 'jugador')
             return 'Jugador';
+        if (isOwner)
+            return 'Creador';
         return 'Sin rol';
     }
 
@@ -1048,6 +1118,20 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
         this.generadorTablasPermitidas = this.normalizeGeneradorTablas(settings?.nuevo_personaje?.generador_config?.tablasPermitidas ?? 3);
     }
 
+    private hydrateIdentityDraftsFromProfile(profile: UserPrivateProfile | null, force: boolean = false): void {
+        if (!profile)
+            return;
+
+        if (force || this.displayNameDraft.trim().length < 1)
+            this.displayNameDraft = `${profile.displayName ?? ''}`.trim();
+        if (force || `${this.bioDraft ?? ''}`.length < 1)
+            this.bioDraft = `${profile.bio ?? ''}`;
+        if (force || `${this.genderIdentityDraft ?? ''}`.trim().length < 1)
+            this.genderIdentityDraft = `${profile.genderIdentity ?? ''}`.trim();
+        if (force || `${this.pronounsDraft ?? ''}`.trim().length < 1)
+            this.pronounsDraft = `${profile.pronouns ?? ''}`.trim();
+    }
+
     private requestSection(section: UserPrivateProfileSectionId | null | undefined): void {
         const target = section ?? 'resumen';
         this.pendingRequestedSection = target;
@@ -1098,6 +1182,48 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
         return Math.min(5, Math.max(1, parsed));
     }
 
+    private validateIdentityForm(): string | null {
+        const displayName = this.normalizeDisplayName(this.displayNameDraft);
+        const bio = this.normalizeOptionalMultilineText(this.bioDraft);
+        const genderIdentity = this.normalizeOptionalSingleLineText(this.genderIdentityDraft);
+        const pronouns = this.normalizeOptionalSingleLineText(this.pronounsDraft);
+
+        if (displayName.length < 1 || displayName.length > 150)
+            return 'El nombre visible debe tener entre 1 y 150 caracteres.';
+        if (bio && bio.length > 600)
+            return 'La bio no puede superar 600 caracteres.';
+        if (this.hasLineBreak(this.genderIdentityDraft))
+            return 'La identidad de género no puede contener saltos de línea.';
+        if (genderIdentity && genderIdentity.length > 80)
+            return 'La identidad de género no puede superar 80 caracteres.';
+        if (this.hasLineBreak(this.pronounsDraft))
+            return 'Los pronombres no pueden contener saltos de línea.';
+        if (pronouns && pronouns.length > 80)
+            return 'Los pronombres no pueden superar 80 caracteres.';
+        return null;
+    }
+
+    private normalizeDisplayName(value: string | null | undefined): string {
+        return `${value ?? ''}`.trim();
+    }
+
+    private normalizeOptionalSingleLineText(value: string | null | undefined): string | null {
+        const text = `${value ?? ''}`.trim();
+        return text.length > 0 ? text : null;
+    }
+
+    private normalizeOptionalMultilineText(value: string | null | undefined): string | null {
+        const text = `${value ?? ''}`
+            .replace(/\r\n/g, '\n')
+            .replace(/\r/g, '\n')
+            .trim();
+        return text.length > 0 ? text : null;
+    }
+
+    private hasLineBreak(value: string | null | undefined): boolean {
+        return /[\r\n]/.test(`${value ?? ''}`);
+    }
+
     private async syncAuthDisplayName(displayName: string): Promise<void> {
         if (!this.auth.currentUser)
             return;
@@ -1124,6 +1250,10 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
                 return 'El nombre visible no es válido.';
             if (error.code === 'PROFILE_NAME_TOO_LONG')
                 return 'El nombre visible supera el límite permitido.';
+            if (error.code === 'PROFILE_FIELD_INVALID')
+                return 'Uno de los campos de identidad no es válido.';
+            if (error.code === 'PROFILE_FIELD_TOO_LONG')
+                return 'Uno de los campos de identidad supera el límite permitido.';
             if (error.code === 'AVATAR_FILE_TOO_LARGE')
                 return 'El avatar no puede superar 5 MB.';
             if (error.code === 'AVATAR_FILE_TYPE_INVALID')
@@ -1180,11 +1310,6 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
         try {
             this.roleRequestStatus = await this.userProfileApiSvc.getMyRoleRequestStatus();
         } catch (error: any) {
-            const apiError = error instanceof ProfileApiError ? error : null;
-            if (apiError?.status === 404) {
-                this.roleRequestStatus = null;
-                return;
-            }
             this.roleRequestStatus = null;
             this.appToastSvc.showError(this.mapProfileError(error, 'No se pudo cargar el estado de la solicitud de rol.'));
         } finally {
@@ -1205,7 +1330,7 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
         this.campaignsLoading = true;
         this.campaignsErrorMessage = '';
         try {
-            const campaigns = await this.campanaSvc.listVisibleCampaigns();
+            const campaigns = await this.campanaSvc.listProfileCampaigns();
             this.campaigns = campaigns;
             this.campaignsLoaded = true;
 

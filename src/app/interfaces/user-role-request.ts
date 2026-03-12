@@ -16,6 +16,7 @@ export interface UserRoleRequestStatus {
     eligible: boolean;
     reasonCode: string | null;
     currentRoleAtRequest: 'jugador' | 'master' | null;
+    requestComment: string | null;
     adminComment: string | null;
 }
 
@@ -30,6 +31,7 @@ export interface AdminRoleRequestItem {
     resolvedAtUtc: string | null;
     resolvedByUserId: string | null;
     blockedUntilUtc: string | null;
+    requestComment: string | null;
     adminComment: string | null;
     uid: string;
     displayName: string | null;

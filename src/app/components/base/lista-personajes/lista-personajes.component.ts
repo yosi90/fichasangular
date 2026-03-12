@@ -40,6 +40,8 @@ export class ListaPersonajesComponent implements OnInit, AfterViewInit, OnDestro
     expandedElement!: PersonajeSimple;
     personajesCargados: boolean = false;
     private personajesSub?: Subscription;
+    private sessionStateSub?: Subscription;
+    private lastLoggedInState: boolean | null = null;
 
     constructor(
         private listaPjs: ListaPersonajesService,
@@ -57,6 +59,19 @@ export class ListaPersonajesComponent implements OnInit, AfterViewInit, OnDestro
             this.cargarPersonajes(),
             this.cargarCampanas(),
         ]);
+
+        this.sessionStateSub = this.userSvc.isLoggedIn$.subscribe((loggedIn) => {
+            if (this.lastLoggedInState === null) {
+                this.lastLoggedInState = loggedIn;
+                return;
+            }
+
+            if (this.lastLoggedInState === loggedIn)
+                return;
+
+            this.lastLoggedInState = loggedIn;
+            void this.cargarCampanas();
+        });
     }
 
     ngAfterViewInit() {
@@ -66,10 +81,13 @@ export class ListaPersonajesComponent implements OnInit, AfterViewInit, OnDestro
             if (flt.length > 1)
                 flt[1].classList.add('filtroSS');
         }
+
+        this.filtroPersonajes();
     }
 
     ngOnDestroy(): void {
         this.personajesSub?.unsubscribe();
+        this.sessionStateSub?.unsubscribe();
     }
 
     actualizarTramas(value: string) {
@@ -103,26 +121,24 @@ export class ListaPersonajesComponent implements OnInit, AfterViewInit, OnDestro
     }
 
     filtroPersonajes() {
-        if (this.inputText) {
-            const texto = this.normalizarTexto(this.inputText.nativeElement.value);
-            const archivo = !(this.anuncioArchivo === 'Clic para mostar pjs archivados');
-            const pjFiltrados = this.Personajes.filter(pj => (texto === '' || this.coincideConTextoFiltro(pj, texto))
-                && (this.defaultCampana === undefined || this.defaultCampana === 'Sin campaña' || pj.Campana === this.defaultCampana)
-                && (this.defaultTrama === undefined || this.defaultTrama === 'Trama base' || pj.Trama === this.defaultTrama)
-                && (this.defaultSubtrama === undefined || this.defaultSubtrama === 'Subtrama base' || pj.Subtrama === this.defaultSubtrama)
-                && (archivo || !archivo && !pj.Archivado)
-            );
-            this.personajesDS = new MatTableDataSource(pjFiltrados);
-            this.personajesDS.sortingDataAccessor = (item: PersonajeSimple, property: string) => {
-                if (property === 'Visibilidad')
-                    return this.esPublicoPersonaje(item) ? 1 : 0;
-                if (property === '¿Archivado?')
-                    return item?.Archivado ? 1 : 0;
-                return (item as any)?.[property];
-            };
-            this.personajesDS.sort = this.sort;
-            this.personajesDS.paginator = this.paginator;
-        }
+        const texto = this.normalizarTexto(this.inputText?.nativeElement?.value ?? '');
+        const archivo = !(this.anuncioArchivo === 'Clic para mostar pjs archivados');
+        const pjFiltrados = this.Personajes.filter(pj => (texto === '' || this.coincideConTextoFiltro(pj, texto))
+            && (this.defaultCampana === undefined || this.defaultCampana === 'Sin campaña' || pj.Campana === this.defaultCampana)
+            && (this.defaultTrama === undefined || this.defaultTrama === 'Trama base' || pj.Trama === this.defaultTrama)
+            && (this.defaultSubtrama === undefined || this.defaultSubtrama === 'Subtrama base' || pj.Subtrama === this.defaultSubtrama)
+            && (archivo || !archivo && !pj.Archivado)
+        );
+        this.personajesDS = new MatTableDataSource(pjFiltrados);
+        this.personajesDS.sortingDataAccessor = (item: PersonajeSimple, property: string) => {
+            if (property === 'Visibilidad')
+                return this.esPublicoPersonaje(item) ? 1 : 0;
+            if (property === '¿Archivado?')
+                return item?.Archivado ? 1 : 0;
+            return (item as any)?.[property];
+        };
+        this.personajesDS.sort = this.sort;
+        this.personajesDS.paginator = this.paginator;
     }
 
     anuncioArchivo: string = 'Clic para mostrar pjs archivados';

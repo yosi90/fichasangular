@@ -16,15 +16,13 @@
                 <div class="public-profile-tag">Perfil público del creador</div>
                 <h2 class="public-profile-title">{{profileLabel}}</h2>
                 <p class="public-profile-subtitle">Miembro desde {{formattedMemberSince}}</p>
+                <p class="public-profile-pronouns" *ngIf="pronounsText.length > 0">{{pronounsText}}</p>
+                <p class="public-profile-bio" *ngIf="bioText.length > 0">{{bioText}}</p>
 
                 <div class="public-profile-stats">
-                    <div class="public-profile-stat">
-                        <strong>{{profile.stats.totalPersonajes}}</strong>
-                        <span>Personajes totales</span>
-                    </div>
-                    <div class="public-profile-stat">
-                        <strong>{{profile.stats.publicos}}</strong>
-                        <span>Personajes públicos</span>
+                    <div class="public-profile-stat" *ngFor="let item of statsItems">
+                        <strong>{{item.value}}</strong>
+                        <span>{{item.label}}</span>
                     </div>
                 </div>
             </div>

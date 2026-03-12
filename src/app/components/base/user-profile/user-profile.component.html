@@ -73,21 +73,33 @@
                             </article>
                         </div>
 
-                        <article class="profile-panel profile-panel--role-request">
+                        <article class="profile-panel profile-panel--role-request" *ngIf="showRoleRequestPanel">
                             <div class="profile-panel__header">
                                 <h2>Solicitud de rol</h2>
-                                <p>Pide acceso a funciones de master para crear y gestionar tus campañas.</p>
+                                <p>{{roleRequestPanelDescription}}</p>
                             </div>
 
                             <p class="profile-panel__hint" *ngIf="roleRequestLoading">Cargando estado de la solicitud...</p>
 
                             <ng-container *ngIf="!roleRequestLoading">
                                 <p class="profile-role-request__status">{{roleRequestStatusLabel}}</p>
-                                <p class="profile-panel__hint" *ngIf="roleRequestAdminComment.length > 0">
+                                <p class="profile-panel__hint profile-panel__hint--multiline" *ngIf="roleRequestUserComment.length > 0">
+                                    Tu texto: {{roleRequestUserComment}}
+                                </p>
+                                <p class="profile-panel__hint profile-panel__hint--multiline" *ngIf="roleRequestAdminComment.length > 0">
                                     Comentario del admin: {{roleRequestAdminComment}}
                                 </p>
 
                                 <div class="profile-action-row" *ngIf="canRequestRole">
+                                    <mat-form-field appearance="outline" class="profile-field profile-field--role-request">
+                                        <mat-label>Texto para la solicitud (opcional)</mat-label>
+                                        <textarea
+                                            matInput
+                                            rows="3"
+                                            [(ngModel)]="roleRequestCommentDraft"
+                                            [disabled]="roleRequestSubmitting"
+                                            placeholder="Añade contexto para el admin si lo necesitas"></textarea>
+                                    </mat-form-field>
                                     <button mat-raised-button color="primary" (click)="solicitarCambioRol()" [disabled]="roleRequestSubmitting">
                                         {{roleRequestSubmitting ? 'Enviando...' : requestRoleButtonLabel}}
                                     </button>
@@ -136,7 +148,7 @@
                                     [class.campaign-list__item--active]="isCampaignSelected(campaign.id)"
                                     (click)="seleccionarCampana(campaign.id)">
                                     <strong>{{campaign.nombre}}</strong>
-                                    <span>{{getCampaignRoleLabel(campaign.campaignRole)}} · {{getMembershipStatusLabel(campaign.membershipStatus)}}</span>
+                                    <span>{{getCampaignRoleLabel(campaign.campaignRole, campaign.isOwner === true)}} · {{getMembershipStatusLabel(campaign.membershipStatus)}}</span>
                                 </button>
                             </div>
                         </article>
@@ -159,7 +171,7 @@
                                     [class.campaign-list__item--active]="isCampaignSelected(campaign.id)"
                                     (click)="seleccionarCampana(campaign.id)">
                                     <strong>{{campaign.nombre}}</strong>
-                                    <span>{{getCampaignRoleLabel(campaign.campaignRole)}} · {{getMembershipStatusLabel(campaign.membershipStatus)}}</span>
+                                    <span>{{getCampaignRoleLabel(campaign.campaignRole, campaign.isOwner === true)}} · {{getMembershipStatusLabel(campaign.membershipStatus)}}</span>
                                 </button>
                             </div>
                         </article>
@@ -169,7 +181,7 @@
                         <div class="profile-panel__header campaign-detail-panel__header">
                             <h2 class="campaign-detail-panel__title">{{selectedCampaignSummary.nombre}}</h2>
                             <p class="campaign-detail-panel__meta">
-                                {{getCampaignRoleLabel(selectedCampaignActorRole)}} · {{getMembershipStatusLabel(selectedCampaignActorStatus)}}
+                                {{getCampaignRoleLabel(selectedCampaignActorRole, selectedCampaignSummary?.isOwner === true)}} · {{getMembershipStatusLabel(selectedCampaignActorStatus)}}
                             </p>
                             <div class="campaign-detail-panel__actions">
                                 <button
@@ -476,27 +488,67 @@
                             </div>
                         </article>
 
-                        <article class="profile-panel">
+                        <article class="profile-panel profile-panel--identity">
                             <div class="profile-panel__header">
-                                <h2>Nombre visible</h2>
-                                <p>Hasta 150 caracteres.</p>
+                                <h2>Identidad</h2>
+                                <p>Nombre visible, bio, identidad de género y pronombres.</p>
                             </div>
 
-                            <mat-form-field appearance="outline" class="profile-field">
-                                <mat-label>Nombre visible</mat-label>
-                                <input
-                                    matInput
-                                    id="display-name-input"
-                                    type="text"
-                                    maxlength="150"
-                                    [(ngModel)]="displayNameDraft"
-                                    [disabled]="displayNameSaving" />
-                                <mat-hint align="end">{{displayNameLength}}/150</mat-hint>
-                            </mat-form-field>
+                            <div class="profile-identity-form">
+                                <mat-form-field appearance="outline" class="profile-field">
+                                    <mat-label>Nombre visible</mat-label>
+                                    <input
+                                        matInput
+                                        id="display-name-input"
+                                        type="text"
+                                        maxlength="150"
+                                        [(ngModel)]="displayNameDraft"
+                                        [disabled]="identitySaving" />
+                                    <mat-hint align="end">{{displayNameLength}}/150</mat-hint>
+                                </mat-form-field>
+
+                                <mat-form-field appearance="outline" class="profile-field">
+                                    <mat-label>Bio</mat-label>
+                                    <textarea
+                                        matInput
+                                        id="bio-input"
+                                        rows="5"
+                                        maxlength="600"
+                                        [(ngModel)]="bioDraft"
+                                        [disabled]="identitySaving"></textarea>
+                                    <mat-hint align="end">{{bioLength}}/600</mat-hint>
+                                </mat-form-field>
+
+                                <div class="profile-identity-grid">
+                                    <mat-form-field appearance="outline" class="profile-field">
+                                        <mat-label>Identidad de género</mat-label>
+                                        <input
+                                            matInput
+                                            id="gender-identity-input"
+                                            type="text"
+                                            maxlength="80"
+                                            [(ngModel)]="genderIdentityDraft"
+                                            [disabled]="identitySaving" />
+                                        <mat-hint align="end">{{genderIdentityLength}}/80</mat-hint>
+                                    </mat-form-field>
+
+                                    <mat-form-field appearance="outline" class="profile-field">
+                                        <mat-label>Pronombres</mat-label>
+                                        <input
+                                            matInput
+                                            id="pronouns-input"
+                                            type="text"
+                                            maxlength="80"
+                                            [(ngModel)]="pronounsDraft"
+                                            [disabled]="identitySaving" />
+                                        <mat-hint align="end">{{pronounsLength}}/80</mat-hint>
+                                    </mat-form-field>
+                                </div>
+                            </div>
 
                             <div class="profile-action-row">
-                                <button mat-raised-button color="primary" (click)="guardarDisplayName()" [disabled]="displayNameSaving">
-                                    {{displayNameSaving ? 'Guardando...' : 'Guardar nombre'}}
+                                <button mat-raised-button color="primary" (click)="guardarIdentidad()" [disabled]="identitySaving">
+                                    {{identitySaving ? 'Guardando...' : 'Guardar identidad'}}
                                 </button>
                             </div>
                         </article>

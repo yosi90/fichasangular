@@ -69,6 +69,86 @@ describe('UserProfileApiService', () => {
         expect(settings.perfil.allowDirectMessagesFromNonFriends).toBeFalse();
     });
 
+    it('getMyProfile normaliza bio, genero, pronombres y permisos', async () => {
+        const httpMock = jasmine.createSpyObj('HttpClient', ['get', 'put', 'post', 'patch']);
+        httpMock.get.and.returnValue(of({
+            uid: ' uid-1 ',
+            displayName: ' Perfil API ',
+            bio: '  Bio con saltos\r\nextra  ',
+            genderIdentity: ' No binario ',
+            pronouns: ' elle ',
+            email: ' perfil@test.dev ',
+            emailVerified: true,
+            authProvider: 'correo',
+            photoUrl: '',
+            photoThumbUrl: ' thumb.webp ',
+            createdAt: '2026-03-09T12:00:00.000Z',
+            lastSeenAt: '2026-03-10T12:00:00.000Z',
+            role: 'master',
+            permissions: {
+                campanas: { create: 1 },
+                personajes: { create: true },
+                ' ': { create: true },
+            },
+        }));
+        const service = new UserProfileApiService(httpMock, authMock);
+
+        const profile = await service.getMyProfile();
+
+        expect(profile.uid).toBe('uid-1');
+        expect(profile.bio).toBe('Bio con saltos\nextra');
+        expect(profile.genderIdentity).toBe('No binario');
+        expect(profile.pronouns).toBe('elle');
+        expect(profile.photoUrl).toBeNull();
+        expect(profile.photoThumbUrl).toBe('thumb.webp');
+        expect(profile.permissions).toEqual({
+            campanas: { create: false },
+            personajes: { create: true },
+        });
+        const options = httpMock.get.calls.mostRecent().args[1];
+        expect(options.headers.get('Authorization')).toBe('Bearer token-settings');
+    });
+
+    it('updateMyProfile envia Bearer y limpia campos opcionales vacios a null', async () => {
+        const httpMock = jasmine.createSpyObj('HttpClient', ['get', 'put', 'post', 'patch']);
+        httpMock.patch.and.returnValue(of({
+            uid: 'uid-1',
+            displayName: 'Nombre nuevo',
+            bio: null,
+            genderIdentity: null,
+            pronouns: null,
+            email: 'perfil@test.dev',
+            emailVerified: true,
+            authProvider: 'correo',
+            photoUrl: null,
+            photoThumbUrl: null,
+            createdAt: null,
+            lastSeenAt: null,
+            role: 'jugador',
+            permissions: {},
+        }));
+        const service = new UserProfileApiService(httpMock, authMock);
+
+        const profile = await service.updateMyProfile({
+            displayName: '  Nombre nuevo ',
+            bio: '   ',
+            genderIdentity: ' ',
+            pronouns: '',
+        });
+
+        const [url, body, options] = httpMock.patch.calls.mostRecent().args;
+        expect(url).toContain('/usuarios/me');
+        expect(body).toEqual({
+            displayName: 'Nombre nuevo',
+            bio: null,
+            genderIdentity: null,
+            pronouns: null,
+        });
+        expect(options.headers.get('Authorization')).toBe('Bearer token-settings');
+        expect(profile.displayName).toBe('Nombre nuevo');
+        expect(profile.bio).toBeNull();
+    });
+
     it('createRoleRequest envia Bearer, normaliza el rol y refresca el estado resultante', async () => {
         const httpMock = jasmine.createSpyObj('HttpClient', ['get', 'put', 'post', 'patch']);
         httpMock.post.and.returnValue(of(null));
@@ -83,19 +163,24 @@ describe('UserProfileApiService', () => {
             eligible: false,
             reasonCode: '',
             currentRoleAtRequest: 'jugador',
+            requestComment: '  Quiero dirigir una campaña propia.  ',
             adminComment: '',
         }));
         const service = new UserProfileApiService(httpMock, authMock);
 
-        const status = await service.createRoleRequest('MASTER' as any);
+        const status = await service.createRoleRequest('MASTER' as any, '  Quiero dirigir una campaña propia.  ');
 
         const [, postBody, postOptions] = httpMock.post.calls.argsFor(0);
-        expect(postBody).toEqual({ requestedRole: 'master' });
+        expect(postBody).toEqual({
+            requestedRole: 'master',
+            requestComment: 'Quiero dirigir una campaña propia.',
+        });
         expect(postOptions.headers.get('Authorization')).toBe('Bearer token-settings');
         const [, getOptions] = httpMock.get.calls.argsFor(0);
         expect(getOptions.headers.get('Authorization')).toBe('Bearer token-settings');
         expect(status.requestId).toBe(12);
         expect(status.blockedUntilUtc).toBeNull();
+        expect(status.requestComment).toBe('Quiero dirigir una campaña propia.');
         expect(status.adminComment).toBeNull();
     });
 
@@ -112,6 +197,7 @@ describe('UserProfileApiService', () => {
             resolvedAtUtc: '',
             resolvedByUserId: '',
             blockedUntilUtc: '',
+            requestComment: '  Me encargo de revisar contenido y campañas. ',
             adminComment: '',
             uid: 'firebase-user-1',
             displayName: 'Yosi',
@@ -130,6 +216,7 @@ describe('UserProfileApiService', () => {
         expect(options.headers.get('Authorization')).toBe('Bearer token-settings');
         expect(items[0].requestId).toBe(5);
         expect(items[0].requestedByUserId).toBeNull();
+        expect(items[0].requestComment).toBe('Me encargo de revisar contenido y campañas.');
         expect(items[0].email).toBeNull();
     });
 
@@ -158,12 +245,17 @@ describe('UserProfileApiService', () => {
         const httpMock = jasmine.createSpyObj('HttpClient', ['get', 'put', 'post', 'patch']);
         httpMock.get.and.returnValue(of({
             uid: 'uid-publico',
-            displayName: 'Perfil publico',
+            displayName: ' Perfil publico ',
+            bio: '  Jugador narrativo  ',
+            pronouns: ' elle/they ',
             photoThumbUrl: null,
             memberSince: '2026-01-01T00:00:00.000Z',
             stats: {
-                totalPersonajes: 3,
+                totalPersonajes: '3',
                 publicos: 2,
+                campanasActivas: -1,
+                campanasMaster: '4',
+                campanasCreadas: null,
             },
         }));
         const service = new UserProfileApiService(httpMock, authMock);
@@ -172,6 +264,15 @@ describe('UserProfileApiService', () => {
         const second = await service.getPublicProfile('uid-publico');
 
         expect(first.displayName).toBe('Perfil publico');
+        expect(first.bio).toBe('Jugador narrativo');
+        expect(first.pronouns).toBe('elle/they');
+        expect(first.stats).toEqual({
+            totalPersonajes: 3,
+            publicos: 2,
+            campanasActivas: 0,
+            campanasMaster: 4,
+            campanasCreadas: 0,
+        });
         expect(second.displayName).toBe('Perfil publico');
         expect(httpMock.get.calls.count()).toBe(1);
     });

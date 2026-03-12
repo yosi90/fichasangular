@@ -6,6 +6,15 @@ const firebaseContextMock = {
     run: <T>(fn: () => T) => fn(),
 } as FirebaseInjectionContextService;
 
+class ListaPersonajesServiceAuthTestDouble extends ListaPersonajesService {
+    authHandler: ((firebaseUser: any) => void) | null = null;
+
+    protected override subscribeAuthState(handler: (firebaseUser: any) => void): () => void {
+        this.authHandler = handler;
+        return () => undefined;
+    }
+}
+
 describe('ListaPersonajesService', () => {
     it('getPersonajes usa API actor-scoped con Bearer', async () => {
         const httpMock = {
@@ -202,5 +211,58 @@ describe('ListaPersonajesService', () => {
         expect(personajes).toHaveSize(1);
         expect(personajes[0].ownerUid).toBeNull();
         expect(personajes[0].ownerDisplayName).toBeNull();
+    });
+
+    it('recarga el listado cuando cambia la sesión de invitado a usuario autenticado', async () => {
+        const authMock = { currentUser: null } as any;
+        const service = new ListaPersonajesServiceAuthTestDouble(
+            authMock,
+            {} as any,
+            {} as any,
+            firebaseContextMock
+        );
+        spyOn<any>(service, 'readPublicPersonajesFromCache').and.resolveTo([{
+            Id: 7,
+            Nombre: 'Publico invitado',
+            visible_otros_usuarios: true,
+            Raza: { Id: 1, Nombre: 'Humano' },
+            Clases: 'Guerrero 1',
+            Contexto: 'Contexto',
+            Personalidad: 'Personalidad',
+            Campana: 'Sin campaña',
+            Trama: 'Trama base',
+            Subtrama: 'Subtrama base',
+            Archivado: false,
+        }]);
+        spyOn<any>(service, 'fetchPersonajesFromApi').and.resolveTo([{
+            Id: 9,
+            Nombre: 'Visible para usuario',
+            ownerUid: 'uid-9',
+            ownerDisplayName: 'Owner',
+            visible_otros_usuarios: true,
+            Id_region: 0,
+            Region: { Id: 0, Nombre: 'Sin región' },
+            Raza: { Id: 1, Nombre: 'Humano' },
+            Clases: 'Mago 1',
+            Contexto: 'Contexto',
+            Personalidad: 'Personalidad',
+            Campana: 'Sin campaña',
+            Trama: 'Trama base',
+            Subtrama: 'Subtrama base',
+            Archivado: false,
+        }]);
+
+        const observable = await service.getPersonajes();
+        const emisiones: any[][] = [];
+        const sub = observable.subscribe((personajes) => emisiones.push(personajes));
+
+        authMock.currentUser = { uid: 'uid-auth', getIdToken: async () => 'token' };
+        service.authHandler?.(authMock.currentUser);
+        await Promise.resolve();
+        await Promise.resolve();
+
+        expect(emisiones[0]?.[0]?.Nombre).toBe('Publico invitado');
+        expect(emisiones[emisiones.length - 1]?.[0]?.Nombre).toBe('Visible para usuario');
+        sub.unsubscribe();
     });
 });

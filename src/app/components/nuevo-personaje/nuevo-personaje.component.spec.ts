@@ -1056,6 +1056,38 @@ describe('NuevoPersonajeComponent', () => {
         expect(component.Personaje.Subtrama).toBe('Subtrama base');
     });
 
+    it('cargarCampanas filtra Sin campaña del listado porque el selector ya la pinta fija', async () => {
+        campanaSvcMock.getListCampanas = async () => of([
+            { Id: 0, Nombre: 'Sin campaña', Tramas: [] },
+            { Id: 1, Nombre: 'Campaña A', Tramas: [] },
+        ]);
+
+        await (component as any).cargarCampanas();
+
+        expect(component.Campanas.map((item) => item.Nombre)).toEqual(['Campaña A']);
+    });
+
+    it('actualizarTramas resetea a Sin campaña cuando la selección actual ya no es válida', () => {
+        component.Campanas = [{
+            Id: 1,
+            Nombre: 'Campaña A',
+            Tramas: [{ Id: 10, Nombre: 'Trama 1', Subtramas: [{ Id: 100, Nombre: 'Sub 1' }] }],
+        }];
+        component.Personaje.Campana = 'Campaña oculta';
+        component.Personaje.Trama = 'Trama fantasma';
+        component.Personaje.Subtrama = 'Subtrama fantasma';
+        component.Tramas = [{ Id: 99, Nombre: 'Temporal' }];
+        component.Subtramas = [{ Id: 999, Nombre: 'Temporal' }];
+
+        component.actualizarTramas();
+
+        expect(component.Personaje.Campana).toBe('Sin campaña');
+        expect(component.Personaje.Trama).toBe('Trama base');
+        expect(component.Personaje.Subtrama).toBe('Subtrama base');
+        expect(component.Tramas).toEqual([]);
+        expect(component.Subtramas).toEqual([]);
+    });
+
     it('actualizarTramas con campaña valida autoselecciona primera trama y primera subtrama', () => {
         const campanas: Campana[] = [{
             Id: 1,

@@ -12,7 +12,30 @@ function toBoolean(value: any): boolean {
     return value === true || value === 1 || value === '1';
 }
 
+function hasCanonicalManualShape(raw: any): boolean {
+    return !!raw
+        && typeof raw === 'object'
+        && Object.prototype.hasOwnProperty.call(raw, 'Id')
+        && Object.prototype.hasOwnProperty.call(raw, 'Nombre');
+}
+
 function normalizeManual(raw: any): Manual {
+    if (!hasCanonicalManualShape(raw)) {
+        return {
+            Id: 0,
+            Nombre: '',
+            Incluye_dotes: false,
+            Incluye_conjuros: false,
+            Incluye_plantillas: false,
+            Incluye_monstruos: false,
+            Incluye_razas: false,
+            Incluye_clases: false,
+            Incluye_tipos: false,
+            Incluye_subtipos: false,
+            Oficial: false,
+        };
+    }
+
     return {
         Id: Number(raw?.Id ?? 0),
         Nombre: raw?.Nombre ?? '',

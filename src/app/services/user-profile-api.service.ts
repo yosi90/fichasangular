@@ -8,6 +8,7 @@ import {
     ProfileApiErrorResponse,
     UserAvatarResponse,
     UserPrivateProfile,
+    UserPrivateProfileUpdate,
     UserPublicProfile,
 } from '../interfaces/user-account';
 import {
@@ -30,28 +31,38 @@ export class UserProfileApiService {
 
     async getMyProfile(): Promise<UserPrivateProfile> {
         try {
-            return await firstValueFrom(
+            const response = await firstValueFrom(
                 this.http.get<UserPrivateProfile>(`${this.usuariosBaseUrl}/me`, {
                     headers: await this.buildAuthHeaders(),
                 })
             );
+            return this.normalizePrivateProfile(response);
         } catch (error) {
             throw this.toProfileApiError(error, 'No se pudo cargar tu perfil.');
         }
     }
 
-    async updateDisplayName(displayName: string): Promise<UserPrivateProfile> {
+    async updateMyProfile(input: UserPrivateProfileUpdate): Promise<UserPrivateProfile> {
+        const payload = this.buildProfilePatchPayload(input);
+        if (Object.keys(payload).length < 1)
+            throw new ProfileApiError('No hay cambios de perfil para guardar.', 'PROFILE_PATCH_EMPTY', 400);
+
         try {
-            return await firstValueFrom(
+            const response = await firstValueFrom(
                 this.http.patch<UserPrivateProfile>(
                     `${this.usuariosBaseUrl}/me`,
-                    { displayName },
+                    payload,
                     { headers: await this.buildAuthHeaders() }
                 )
             );
+            return this.normalizePrivateProfile(response);
         } catch (error) {
-            throw this.toProfileApiError(error, 'No se pudo actualizar el nombre visible.');
+            throw this.toProfileApiError(error, 'No se pudo actualizar tu perfil.');
         }
+    }
+
+    async updateDisplayName(displayName: string): Promise<UserPrivateProfile> {
+        return await this.updateMyProfile({ displayName });
     }
 
     async getMySettings(): Promise<UserSettingsV1> {
@@ -124,16 +135,23 @@ export class UserProfileApiService {
         }
     }
 
-    async createRoleRequest(requestedRole: UserRoleRequestTarget): Promise<UserRoleRequestStatus> {
+    async createRoleRequest(requestedRole: UserRoleRequestTarget, requestComment?: string | null): Promise<UserRoleRequestStatus> {
         const normalizedRole = `${requestedRole ?? ''}`.trim().toLowerCase();
         if (normalizedRole !== 'master' && normalizedRole !== 'colaborador')
             throw new ProfileApiError('Rol solicitado inválido.', 'ROLE_REQUEST_INVALID', 400);
 
         try {
             await firstValueFrom(
-                this.http.post(`${this.usuariosBaseUrl}/me/role-request`, { requestedRole: normalizedRole }, {
-                    headers: await this.buildAuthHeaders(),
-                })
+                this.http.post(
+                    `${this.usuariosBaseUrl}/me/role-request`,
+                    {
+                        requestedRole: normalizedRole,
+                        requestComment: `${requestComment ?? ''}`.trim() || null,
+                    },
+                    {
+                        headers: await this.buildAuthHeaders(),
+                    }
+                )
             );
             return await this.getMyRoleRequestStatus();
         } catch (error) {
@@ -204,8 +222,9 @@ export class UserProfileApiService {
             const response = await firstValueFrom(
                 this.http.get<UserPublicProfile>(`${this.usuariosBaseUrl}/${encodeURIComponent(uidNormalizado)}/public`)
             );
-            this.publicProfileCache.set(uidNormalizado, response);
-            return response;
+            const normalized = this.normalizePublicProfile(response);
+            this.publicProfileCache.set(uidNormalizado, normalized);
+            return normalized;
         } catch (error) {
             const apiError = this.toProfileApiError(error, 'No se pudo cargar el perfil público.');
             if (apiError.status === 404)
@@ -289,6 +308,94 @@ export class UserProfileApiService {
         return { code: '', message: '' };
     }
 
+    private buildProfilePatchPayload(input: UserPrivateProfileUpdate | null | undefined): UserPrivateProfileUpdate {
+        const payload: UserPrivateProfileUpdate = {};
+        if (!input || typeof input !== 'object')
+            return payload;
+
+        if (Object.prototype.hasOwnProperty.call(input, 'displayName'))
+            payload.displayName = `${input.displayName ?? ''}`.trim();
+        if (Object.prototype.hasOwnProperty.call(input, 'bio'))
+            payload.bio = this.normalizeMultilineText(input.bio);
+        if (Object.prototype.hasOwnProperty.call(input, 'genderIdentity'))
+            payload.genderIdentity = this.toNullableText(input.genderIdentity);
+        if (Object.prototype.hasOwnProperty.call(input, 'pronouns'))
+            payload.pronouns = this.toNullableText(input.pronouns);
+
+        return payload;
+    }
+
+    private normalizePrivateProfile(raw: UserPrivateProfile | null | undefined): UserPrivateProfile {
+        return {
+            uid: `${raw?.uid ?? ''}`.trim(),
+            displayName: this.toNullableText(raw?.displayName),
+            bio: this.normalizeMultilineText(raw?.bio),
+            genderIdentity: this.toNullableText(raw?.genderIdentity),
+            pronouns: this.toNullableText(raw?.pronouns),
+            email: this.toNullableText(raw?.email),
+            emailVerified: raw?.emailVerified === true,
+            authProvider: this.normalizeAuthProvider(raw?.authProvider),
+            photoUrl: this.toNullableText(raw?.photoUrl),
+            photoThumbUrl: this.toNullableText(raw?.photoThumbUrl),
+            createdAt: this.toNullableText(raw?.createdAt),
+            lastSeenAt: this.toNullableText(raw?.lastSeenAt),
+            role: this.normalizeUserRole(raw?.role),
+            permissions: this.normalizePermissionsMap(raw?.permissions),
+        };
+    }
+
+    private normalizePublicProfile(raw: UserPublicProfile | null | undefined): UserPublicProfile {
+        return {
+            uid: `${raw?.uid ?? ''}`.trim(),
+            displayName: this.toNullableText(raw?.displayName),
+            bio: this.normalizeMultilineText(raw?.bio),
+            pronouns: this.toNullableText(raw?.pronouns),
+            photoThumbUrl: this.toNullableText(raw?.photoThumbUrl),
+            memberSince: this.toNullableText(raw?.memberSince),
+            stats: this.normalizePublicProfileStats(raw?.stats),
+        };
+    }
+
+    private normalizePublicProfileStats(raw: UserPublicProfile['stats'] | null | undefined): UserPublicProfile['stats'] {
+        return {
+            totalPersonajes: this.toNonNegativeInt(raw?.totalPersonajes),
+            publicos: this.toNonNegativeInt(raw?.publicos),
+            campanasActivas: this.toNonNegativeInt(raw?.campanasActivas),
+            campanasMaster: this.toNonNegativeInt(raw?.campanasMaster),
+            campanasCreadas: this.toNonNegativeInt(raw?.campanasCreadas),
+        };
+    }
+
+    private normalizePermissionsMap(raw: UserPrivateProfile['permissions'] | null | undefined): UserPrivateProfile['permissions'] {
+        if (!raw || typeof raw !== 'object')
+            return {};
+
+        return Object.entries(raw).reduce<UserPrivateProfile['permissions']>((acc, [resource, value]) => {
+            const key = `${resource ?? ''}`.trim();
+            if (key.length < 1)
+                return acc;
+
+            acc[key] = {
+                create: value?.create === true,
+            };
+            return acc;
+        }, {});
+    }
+
+    private normalizeAuthProvider(value: any): UserPrivateProfile['authProvider'] {
+        const normalized = `${value ?? ''}`.trim().toLowerCase();
+        if (normalized === 'correo' || normalized === 'google')
+            return normalized;
+        return 'otro';
+    }
+
+    private normalizeUserRole(value: any): UserPrivateProfile['role'] {
+        const normalized = `${value ?? ''}`.trim().toLowerCase();
+        if (normalized === 'master' || normalized === 'colaborador' || normalized === 'admin')
+            return normalized;
+        return 'jugador';
+    }
+
     private normalizeSettings(raw: UserSettingsV1 | null | undefined): UserSettingsV1 {
         const base = createDefaultUserSettings();
         if (!raw || typeof raw !== 'object')
@@ -321,6 +428,7 @@ export class UserProfileApiService {
             eligible: raw?.eligible === true,
             reasonCode: this.toNullableText(raw?.reasonCode),
             currentRoleAtRequest: raw?.currentRoleAtRequest ?? null,
+            requestComment: this.normalizeMultilineText(raw?.requestComment),
             adminComment: this.toNullableText(raw?.adminComment),
         };
     }
@@ -337,6 +445,7 @@ export class UserProfileApiService {
             resolvedAtUtc: this.toNullableText(raw?.resolvedAtUtc),
             resolvedByUserId: this.toNullableText(raw?.resolvedByUserId),
             blockedUntilUtc: this.toNullableText(raw?.blockedUntilUtc),
+            requestComment: this.normalizeMultilineText(raw?.requestComment),
             adminComment: this.toNullableText(raw?.adminComment),
             uid: `${raw?.uid ?? ''}`.trim(),
             displayName: this.toNullableText(raw?.displayName),
@@ -348,6 +457,21 @@ export class UserProfileApiService {
     private toPositiveIntOrNull(value: any): number | null {
         const parsed = Math.trunc(Number(value));
         return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+    }
+
+    private toNonNegativeInt(value: any): number {
+        const parsed = Math.trunc(Number(value));
+        if (!Number.isFinite(parsed))
+            return 0;
+        return Math.max(0, parsed);
+    }
+
+    private normalizeMultilineText(value: any): string | null {
+        const text = `${value ?? ''}`
+            .replace(/\r\n/g, '\n')
+            .replace(/\r/g, '\n')
+            .trim();
+        return text.length > 0 ? text : null;
     }
 
     private toNullableText(value: any): string | null {

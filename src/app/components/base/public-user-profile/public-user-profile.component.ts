@@ -41,6 +41,27 @@ export class PublicUserProfileComponent implements OnChanges {
         return `${this.profile?.displayName ?? this.initialDisplayName ?? ''}`.trim() || 'Perfil público';
     }
 
+    get bioText(): string {
+        return `${this.profile?.bio ?? ''}`.trim();
+    }
+
+    get pronounsText(): string {
+        return `${this.profile?.pronouns ?? ''}`.trim();
+    }
+
+    get statsItems(): { value: number; label: string; }[] {
+        if (!this.profile)
+            return [];
+
+        return [
+            { value: this.profile.stats.totalPersonajes, label: 'Personajes totales' },
+            { value: this.profile.stats.publicos, label: 'Personajes públicos' },
+            { value: this.profile.stats.campanasActivas, label: 'Campañas activas' },
+            { value: this.profile.stats.campanasMaster, label: 'Como master' },
+            { value: this.profile.stats.campanasCreadas, label: 'Campañas creadas' },
+        ];
+    }
+
     get formattedMemberSince(): string {
         const raw = `${this.profile?.memberSince ?? ''}`.trim();
         if (raw.length < 1)

@@ -7,6 +7,7 @@ export interface CampaignListItem {
     nombre: string;
     campaignRole: CampaignRoleCode | null;
     membershipStatus: CampaignMembershipStatus | null;
+    isOwner?: boolean;
 }
 
 export interface CampaignMemberItem {

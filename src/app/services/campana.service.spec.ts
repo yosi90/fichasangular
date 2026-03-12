@@ -28,7 +28,7 @@ describe('CampanaService', () => {
         spyOn(Swal, 'fire').and.resolveTo({} as any);
 
         service = new CampanaServiceTestDouble(
-            { currentUser: { getIdToken: async () => 'token' } } as any,
+            { currentUser: { uid: 'actor-1', getIdToken: async () => 'token' } } as any,
             {} as any,
             httpMock as any,
             { run: <T>(fn: () => T) => fn() } as FirebaseInjectionContextService
@@ -111,10 +111,10 @@ describe('CampanaService', () => {
         expect(service.writeCalls).toEqual([]);
     });
 
-    it('getListCampanas añade la opción sintética Sin campaña', async () => {
+    it('getListCampanas añade la opción sintética Sin campaña para campañas con membresía activa', async () => {
         httpMock.get.and.callFake((url: string) => {
             if (url.endsWith('campanas'))
-                return of([{ i: 7, n: 'Campaña visible' }]);
+                return of([{ i: 7, n: 'Campaña visible', campaignRole: 'master', membershipStatus: 'activo' }]);
             if (url.endsWith('tramas/campana/7'))
                 return of([]);
             throw new Error(`URL inesperada: ${url}`);
@@ -124,6 +124,29 @@ describe('CampanaService', () => {
         const campanas = await new Promise<any[]>((resolve) => observable.subscribe(resolve));
 
         expect(campanas.map((item) => item.Nombre)).toEqual(['Sin campaña', 'Campaña visible']);
+    });
+
+    it('getListCampanas excluye campañas sin membresía activa del actor', async () => {
+        httpMock.get.and.callFake((url: string) => {
+            if (url.endsWith('campanas'))
+                return of([
+                    { i: 7, n: 'Campaña propia', campaignRole: 'master', membershipStatus: 'activo' },
+                    { i: 8, n: 'Campaña expulsado', campaignRole: 'jugador', membershipStatus: 'expulsado' },
+                    { i: 9, n: 'Campaña legacy owner', campaignRole: null, membershipStatus: null },
+                ]);
+            if (url.endsWith('tramas/campana/7'))
+                return of([]);
+            throw new Error(`URL inesperada: ${url}`);
+        });
+
+        const observable = await service.getListCampanas();
+        const campanas = await new Promise<any[]>((resolve) => observable.subscribe(resolve));
+
+        expect(campanas.map((item) => item.Nombre)).toEqual(['Sin campaña', 'Campaña propia']);
+        expect(httpMock.get.calls.allArgs().map((args) => args[0])).toEqual([
+            jasmine.stringMatching(/campanas$/),
+            jasmine.stringMatching(/tramas\/campana\/7$/),
+        ]);
     });
 
     it('listVisibleCampaigns normaliza rol y estado de membresía', async () => {
@@ -163,6 +186,50 @@ describe('CampanaService', () => {
 
         expect(campaigns).toEqual([
             { id: 12, nombre: 'Legacy propia', campaignRole: null, membershipStatus: null },
+        ]);
+    });
+
+    it('listProfileCampaigns conserva membresías activas y campañas propias sin membresía directa', async () => {
+        httpMock.get.and.callFake((url: string) => {
+            if (url.endsWith('campanas'))
+                return of([
+                    { i: 7, n: 'Legacy propia', campaignRole: null, membershipStatus: null },
+                    { i: 8, n: 'Aventureros', campaignRole: 'jugador', membershipStatus: 'activo' },
+                    { i: 9, n: 'Ajena visible', campaignRole: null, membershipStatus: null },
+                    { i: 10, n: 'Expulsado', campaignRole: 'jugador', membershipStatus: 'expulsado' },
+                ]);
+            if (url.endsWith('campanas/7'))
+                return of({
+                    idCampana: 7,
+                    nombre: 'Legacy propia',
+                    campaignRole: null,
+                    membershipStatus: null,
+                    ownerUid: 'actor-1',
+                    ownerDisplayName: 'Actor',
+                    activeMasterUid: null,
+                    activeMasterDisplayName: null,
+                    canRecoverMaster: true,
+                });
+            if (url.endsWith('campanas/9'))
+                return of({
+                    idCampana: 9,
+                    nombre: 'Ajena visible',
+                    campaignRole: null,
+                    membershipStatus: null,
+                    ownerUid: 'other-owner',
+                    ownerDisplayName: 'Otro',
+                    activeMasterUid: 'uid-master',
+                    activeMasterDisplayName: 'Master',
+                    canRecoverMaster: false,
+                });
+            throw new Error(`URL inesperada: ${url}`);
+        });
+
+        const campaigns = await service.listProfileCampaigns();
+
+        expect(campaigns).toEqual([
+            { id: 8, nombre: 'Aventureros', campaignRole: 'jugador', membershipStatus: 'activo' },
+            { id: 7, nombre: 'Legacy propia', campaignRole: null, membershipStatus: null, isOwner: true },
         ]);
     });
 

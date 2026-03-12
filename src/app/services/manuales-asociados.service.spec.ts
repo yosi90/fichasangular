@@ -1,4 +1,5 @@
 import { of } from 'rxjs';
+import Swal from 'sweetalert2';
 import { ManualAsociadoDetalle } from '../interfaces/manual-asociado';
 import { ManualFlagsPatchPayload } from './manual.service';
 import { ManualesAsociadosService } from './manuales-asociados.service';
@@ -39,6 +40,8 @@ describe('ManualesAsociadosService', () => {
         httpMock = jasmine.createSpyObj('HttpClient', ['get']);
         manualSvcMock = jasmine.createSpyObj('ManualService', ['patchManualFlags', 'RenovarManuales']);
         manualSvcMock.RenovarManuales.and.resolveTo(true);
+        spyOn(Swal, 'fire').and.resolveTo({} as any);
+        spyOn(Swal, 'close');
 
         service = new ManualesAsociadosService(
             {} as any,

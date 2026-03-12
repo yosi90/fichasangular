@@ -42,6 +42,20 @@ function ordenarReferencias(items: ReferenciaCorta[]): ReferenciaCorta[] {
     return [...items].sort((a, b) => a.Nombre.localeCompare(b.Nombre, 'es', { sensitivity: 'base' }));
 }
 
+function hasCanonicalManualAsociadoShape(raw: any): boolean {
+    return !!raw
+        && typeof raw === 'object'
+        && Object.prototype.hasOwnProperty.call(raw, 'Id')
+        && Object.prototype.hasOwnProperty.call(raw, 'Nombre');
+}
+
+function hasCanonicalReferenciaShape(raw: any): boolean {
+    return !!raw
+        && typeof raw === 'object'
+        && Object.prototype.hasOwnProperty.call(raw, 'Id')
+        && Object.prototype.hasOwnProperty.call(raw, 'Nombre');
+}
+
 @Injectable({
     providedIn: 'root'
 })
@@ -146,6 +160,23 @@ export class ManualesAsociadosService {
     }
 
     private normalizeManualAsociado(raw: any): ManualAsociadoDetalle {
+        if (!hasCanonicalManualAsociadoShape(raw)) {
+            return {
+                Id: 0,
+                Nombre: '',
+                Incluye_dotes: false,
+                Incluye_conjuros: false,
+                Incluye_plantillas: false,
+                Incluye_monstruos: false,
+                Incluye_razas: false,
+                Incluye_clases: false,
+                Incluye_tipos: false,
+                Incluye_subtipos: false,
+                Oficial: false,
+                Asociados: this.emptyAsociados(),
+            };
+        }
+
         return {
             Id: toNumber(raw?.Id ?? 0),
             Nombre: toText(raw?.Nombre),
@@ -180,6 +211,14 @@ export class ManualesAsociadosService {
             return [];
 
         return raw.map((item: any) => {
+            if (!hasCanonicalReferenciaShape(item)) {
+                return {
+                    Id: 0,
+                    Nombre: '',
+                    Descripcion: '',
+                };
+            }
+
             const referencia: ReferenciaCorta = {
                 Id: toNumber(item?.Id),
                 Nombre: toText(item?.Nombre),

@@ -1901,9 +1901,14 @@ export class NuevoPersonajeComponent {
 
     private async cargarCampanas() {
         this.campanasSub = (await this.campanaSvc.getListCampanas()).subscribe(campanas => {
-            this.Campanas = campanas;
+            this.Campanas = this.filtrarCampanasDuplicadasEnSelector(campanas);
             this.actualizarTramas();
         });
+    }
+
+    private filtrarCampanasDuplicadasEnSelector(campanas: Campana[]): Campana[] {
+        const sinCampana = this.normalizarTexto('Sin campaña');
+        return (campanas ?? []).filter((campana) => this.normalizarTexto(campana?.Nombre ?? '') !== sinCampana);
     }
 
     actualizarTramas(): void {
@@ -1916,6 +1921,15 @@ export class NuevoPersonajeComponent {
         }
 
         const campanaSeleccionada = this.Campanas.find(c => c.Nombre === this.Personaje.Campana);
+        if (!campanaSeleccionada) {
+            this.Personaje.Campana = 'Sin campaña';
+            this.Tramas = [];
+            this.Subtramas = [];
+            this.Personaje.Trama = 'Trama base';
+            this.Personaje.Subtrama = 'Subtrama base';
+            return;
+        }
+
         this.Tramas = campanaSeleccionada?.Tramas.map(t => ({
             Id: t.Id,
             Nombre: t.Nombre
@@ -1943,6 +1957,14 @@ export class NuevoPersonajeComponent {
         }
 
         const campanaSeleccionada = this.Campanas.find(c => c.Nombre === this.Personaje.Campana);
+        if (!campanaSeleccionada) {
+            this.Personaje.Campana = 'Sin campaña';
+            this.Subtramas = [];
+            this.Personaje.Trama = 'Trama base';
+            this.Personaje.Subtrama = 'Subtrama base';
+            return;
+        }
+
         const tramaSeleccionada = campanaSeleccionada?.Tramas.find(t => t.Nombre === this.Personaje.Trama);
         this.Subtramas = tramaSeleccionada?.Subtramas.map(s => ({
             Id: s.Id,

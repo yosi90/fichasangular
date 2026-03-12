@@ -345,6 +345,9 @@ describe('UserService', () => {
         service.setCurrentPrivateProfile({
             uid: 'uid-profile-fallback',
             displayName: 'Aldric',
+            bio: null,
+            genderIdentity: null,
+            pronouns: null,
             email: 'aldric@test.com',
             emailVerified: true,
             authProvider: 'correo',

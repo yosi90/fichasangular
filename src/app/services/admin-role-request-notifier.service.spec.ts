@@ -29,9 +29,9 @@ describe('AdminRoleRequestNotifierService', () => {
 
         expect(userProfileApiSvc.listRoleRequests).toHaveBeenCalledWith({
             status: 'pending',
-            requestedRole: 'master',
         });
         expect(Swal.fire).toHaveBeenCalled();
+        expect((Swal.fire as jasmine.Spy).calls.mostRecent().args[0]?.text).toBe('Hay 2 solicitudes de rol pendientes.');
         expect(navSvc.openAdminPanel).toHaveBeenCalledWith(jasmine.objectContaining({
             section: 'role-requests',
             pendingOnly: true,
