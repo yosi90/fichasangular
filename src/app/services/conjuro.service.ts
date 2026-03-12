@@ -1,13 +1,14 @@
 import { HttpClient, HttpErrorResponse } from "@angular/common/http";
 import { Injectable } from "@angular/core";
+import { Auth } from "@angular/fire/auth";
 import { Database, Unsubscribe, onValue, ref, set } from '@angular/fire/database';
 import { Observable, firstValueFrom } from "rxjs";
 import { environment } from "src/environments/environment";
 import Swal from "sweetalert2";
 import { Conjuro } from "../interfaces/conjuro";
-import { ConjuroCreateRequest, ConjuroCreateResponse } from "../interfaces/conjuros-api";
+import { ConjuroCreateApiResponse, ConjuroCreateRequest, ConjuroCreateResponse } from "../interfaces/conjuros-api";
 import { FirebaseInjectionContextService } from "./firebase-injection-context.service";
-import { normalizeConjuro } from "./utils/conjuro-mapper";
+import { normalizeConjuroApi, normalizeConjuroLegacy } from "./utils/conjuro-mapper";
 
 @Injectable({
     providedIn: 'root'
@@ -15,27 +16,60 @@ import { normalizeConjuro } from "./utils/conjuro-mapper";
 export class ConjuroService {
 
     constructor(
+        private auth: Auth,
         private db: Database,
         private http: HttpClient,
         private firebaseContextSvc: FirebaseInjectionContextService
     ) { }
+
+    protected watchConjuroPath(id: number, onNext: (snapshot: any) => void, onError: (error: any) => void): Unsubscribe {
+        const dbRef = ref(this.db, `Conjuros/${id}`);
+        return this.firebaseContextSvc.run(() => onValue(dbRef, onNext, onError));
+    }
+
+    protected watchConjurosPath(onNext: (snapshot: any) => void, onError: (error: any) => void): Unsubscribe {
+        const dbRef = ref(this.db, 'Conjuros');
+        return this.firebaseContextSvc.run(() => onValue(dbRef, onNext, onError));
+    }
 
     getConjuro(id: number): Observable<Conjuro> {
         return new Observable((observador) => {
             let unsubscribe: Unsubscribe;
 
             const onNext = (snapshot: any) => {
-                observador.next(normalizeConjuro(snapshot?.val?.() ?? { Id: id }));
+                if (!snapshot.exists()) {
+                    this.http.get(`${environment.apiUrl}conjuros/${id}`).subscribe({
+                        next: (raw: any) => observador.next(normalizeConjuroApi(raw)),
+                        error: (error: HttpErrorResponse) => {
+                            if (error.status === 404) {
+                                Swal.fire({
+                                    icon: 'warning',
+                                    title: 'Conjuro no encontrado',
+                                    text: `No existe el conjuro con id ${id}`,
+                                    showConfirmButton: true,
+                                });
+                            } else {
+                                Swal.fire({
+                                    icon: 'warning',
+                                    title: 'Error al obtener el conjuro',
+                                    text: error.message,
+                                    showConfirmButton: true,
+                                });
+                            }
+                            observador.error(error);
+                        }
+                    });
+                    return;
+                }
+
+                observador.next(normalizeConjuroLegacy(snapshot?.val?.() ?? { Id: id }));
             };
 
             const onError = (error: any) => {
                 observador.error(error);
             };
 
-            unsubscribe = this.firebaseContextSvc.run(() => {
-                const dbRef = ref(this.db, `Conjuros/${id}`);
-                return onValue(dbRef, onNext, onError);
-            });
+            unsubscribe = this.watchConjuroPath(id, onNext, onError);
 
             return () => {
                 unsubscribe();
@@ -48,9 +82,39 @@ export class ConjuroService {
             let unsubscribe: Unsubscribe;
 
             const onNext = (snapshot: any) => {
+                if (!snapshot.exists()) {
+                    this.syncConjuros().subscribe({
+                        next: (raw: any) => {
+                            const conjuros = (Array.isArray(raw) ? raw : Object.values(raw ?? {}))
+                                .map((item: any) => normalizeConjuroApi(item))
+                                .filter((conjuro) => conjuro.Id > 0);
+                            observador.next(conjuros);
+                        },
+                        error: (error: HttpErrorResponse) => {
+                            if (error.status === 404) {
+                                Swal.fire({
+                                    icon: 'warning',
+                                    title: 'Listado de conjuros no disponible',
+                                    text: 'No se encontró /conjuros en la API',
+                                    showConfirmButton: true,
+                                });
+                            } else {
+                                Swal.fire({
+                                    icon: 'warning',
+                                    title: 'Error al obtener el listado de conjuros',
+                                    text: error.message,
+                                    showConfirmButton: true,
+                                });
+                            }
+                            observador.error(error);
+                        }
+                    });
+                    return;
+                }
+
                 const conjuros: Conjuro[] = [];
                 snapshot.forEach((obj: any) => {
-                    conjuros.push(normalizeConjuro(obj.val()));
+                    conjuros.push(normalizeConjuroLegacy(obj.val()));
                 });
                 observador.next(conjuros);
             };
@@ -59,10 +123,7 @@ export class ConjuroService {
                 observador.error(error);
             };
 
-            unsubscribe = this.firebaseContextSvc.run(() => {
-                const dbRef = ref(this.db, 'Conjuros');
-                return onValue(dbRef, onNext, onError);
-            });
+            unsubscribe = this.watchConjurosPath(onNext, onError);
 
             return () => {
                 unsubscribe();
@@ -72,8 +133,9 @@ export class ConjuroService {
 
     public async crearConjuro(payload: ConjuroCreateRequest): Promise<ConjuroCreateResponse> {
         try {
+            const headers = await this.buildAuthHeaders();
             const response = await firstValueFrom(
-                this.http.post<ConjuroCreateResponse>(`${environment.apiUrl}conjuros/add`, payload)
+                this.http.post<ConjuroCreateApiResponse>(`${environment.apiUrl}conjuros/add`, payload, { headers })
             );
             const idConjuro = Math.trunc(Number(response?.idConjuro ?? 0));
             if (!Number.isFinite(idConjuro) || idConjuro <= 0)
@@ -82,7 +144,6 @@ export class ConjuroService {
             const normalizedResponse: ConjuroCreateResponse = {
                 message: `${response?.message ?? "Conjuro creado"}`,
                 idConjuro,
-                uid: `${response?.uid ?? payload?.uid ?? payload?.firebaseUid ?? ""}`.trim(),
             };
 
             await this.refrescarConjuroCacheBestEffort(idConjuro);
@@ -105,7 +166,7 @@ export class ConjuroService {
 
             await Promise.all(
                 conjuros.map((raw: any) => {
-                    const conjuro = normalizeConjuro(raw);
+                    const conjuro = normalizeConjuroApi(raw);
                     return this.firebaseContextSvc.run(() => set(ref(this.db, `Conjuros/${conjuro.Id}`), conjuro));
                 })
             );
@@ -135,7 +196,7 @@ export class ConjuroService {
                 ? raw
                 : Object.values(raw ?? {});
             const encontrado = conjuros
-                .map((item: any) => normalizeConjuro(item))
+                .map((item: any) => normalizeConjuroApi(item))
                 .find((item) => item.Id === idConjuro);
             if (!encontrado)
                 return;
@@ -188,5 +249,19 @@ export class ConjuroService {
         }
 
         return "";
+    }
+
+    private async buildAuthHeaders(): Promise<{ Authorization: string; }> {
+        const user = this.auth.currentUser;
+        if (!user)
+            throw new Error("Sesión no iniciada");
+
+        const idToken = await user.getIdToken();
+        if (`${idToken ?? ""}`.trim().length < 1)
+            throw new Error("Token no disponible");
+
+        return {
+            Authorization: `Bearer ${idToken}`,
+        };
     }
 }

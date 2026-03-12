@@ -1,8 +1,8 @@
 import { Injectable } from '@angular/core';
 import { PersonajeSimple } from '../../interfaces/simplificaciones/personaje-simple';
-import { Database, Unsubscribe, onValue, ref, set } from '@angular/fire/database';
-import { Auth } from '@angular/fire/auth';
-import { Observable, firstValueFrom, of } from 'rxjs';
+import { Database, onValue, ref, set } from '@angular/fire/database';
+import { Auth, onAuthStateChanged } from '@angular/fire/auth';
+import { BehaviorSubject, Observable, firstValueFrom } from 'rxjs';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { environment } from 'src/environments/environment';
 import { RazaSimple } from 'src/app/interfaces/simplificaciones/raza-simple';
@@ -13,20 +13,23 @@ import { FirebaseInjectionContextService } from '../firebase-injection-context.s
     providedIn: 'root'
 })
 export class ListaPersonajesService {
+    private readonly authReadyPromise: Promise<void>;
+    private readonly personajesSubject = new BehaviorSubject<PersonajeSimple[]>([]);
+    private personajesLoaded = false;
+    private personajesLoadingPromise: Promise<void> | null = null;
 
     constructor(
         private auth: Auth,
         private db: Database,
         private http: HttpClient,
         private firebaseContextSvc: FirebaseInjectionContextService
-    ) { }
+    ) {
+        this.authReadyPromise = this.createAuthReadyPromise();
+    }
 
     async getPersonajes(): Promise<Observable<PersonajeSimple[]>> {
-        const headers = await this.buildAuthHeaders();
-        const response = await firstValueFrom(this.pjs(headers));
-        const personajes = (Array.isArray(response) ? response : Object.values(response ?? {}))
-            .map((element: any) => this.mapApiToPersonajeSimple(element));
-        return of(personajes);
+        await this.ensurePersonajesLoaded();
+        return this.personajesSubject.asObservable();
     }
 
     public ceateDataTable() {
@@ -97,17 +100,14 @@ export class ListaPersonajesService {
 
     public async RenovarPersonajesSimples(): Promise<boolean> {
         try {
-            const headers = await this.buildAuthHeaders();
-            const response = await firstValueFrom(this.pjs(headers));
-            const personajes = Array.isArray(response)
-                ? response
-                : Object.values(response ?? {});
+            const personajes = await this.fetchPersonajesFromApi();
+            this.personajesLoaded = true;
+            this.personajesSubject.next([...personajes]);
 
             await Promise.all(
-                personajes.map((element: any) => {
-                    const personaje = this.mapApiToPersonajeSimple(element);
+                personajes.map((personaje) => {
                     return this.firebaseContextSvc.run(() => {
-                        return set(ref(this.db, `Personajes-simples/${element.i}`), {
+                        return set(ref(this.db, `Personajes-simples/${personaje.Id}`), {
                             Nombre: personaje.Nombre,
                             ownerUid: personaje.ownerUid,
                             ownerDisplayName: personaje.ownerDisplayName,
@@ -148,6 +148,24 @@ export class ListaPersonajesService {
         }
     }
 
+    public actualizarVisibilidadEnCache(idPersonaje: number, visible: boolean): void {
+        const id = Math.trunc(toNumber(idPersonaje));
+        if (id <= 0 || !this.personajesLoaded)
+            return;
+
+        this.personajesSubject.next(
+            this.personajesSubject.value.map((personaje) => {
+                if (Math.trunc(toNumber(personaje?.Id)) !== id)
+                    return personaje;
+
+                return {
+                    ...personaje,
+                    visible_otros_usuarios: !!visible,
+                };
+            })
+        );
+    }
+
     private mapApiToPersonajeSimple(element: any): PersonajeSimple {
         const idRegion = Math.max(0, Math.trunc(toNumber(
             element?.id_region
@@ -186,6 +204,7 @@ export class ListaPersonajesService {
     }
 
     private async buildAuthHeaders(): Promise<HttpHeaders> {
+        await this.authReadyPromise;
         const user = this.auth.currentUser;
         if (!user)
             throw new Error('Sesión no iniciada');
@@ -197,6 +216,102 @@ export class ListaPersonajesService {
         return new HttpHeaders({
             Authorization: `Bearer ${idToken}`,
         });
+    }
+
+    private createAuthReadyPromise(): Promise<void> {
+        if (this.auth.currentUser)
+            return Promise.resolve();
+
+        return new Promise((resolve) => {
+            let resolved = false;
+            let unsubscribe: (() => void) | null = null;
+            const finish = () => {
+                if (resolved)
+                    return;
+                resolved = true;
+                unsubscribe?.();
+                resolve();
+            };
+
+            try {
+                unsubscribe = this.firebaseContextSvc.run(() => onAuthStateChanged(
+                    this.auth,
+                    () => finish(),
+                    () => finish()
+                ));
+                setTimeout(() => finish(), 1500);
+            } catch {
+                finish();
+            }
+        });
+    }
+
+    private async ensurePersonajesLoaded(): Promise<void> {
+        if (this.personajesLoaded)
+            return;
+
+        if (!this.personajesLoadingPromise) {
+            this.personajesLoadingPromise = this.fetchPersonajesForCurrentActor()
+                .then((personajes) => {
+                    this.personajesLoaded = true;
+                    this.personajesSubject.next([...personajes]);
+                })
+                .finally(() => {
+                    this.personajesLoadingPromise = null;
+                });
+        }
+
+        await this.personajesLoadingPromise;
+    }
+
+    private async fetchPersonajesForCurrentActor(): Promise<PersonajeSimple[]> {
+        await this.authReadyPromise;
+        if (!this.auth.currentUser)
+            return this.readPublicPersonajesFromCache();
+
+        return this.fetchPersonajesFromApi();
+    }
+
+    private async fetchPersonajesFromApi(): Promise<PersonajeSimple[]> {
+        const headers = await this.buildAuthHeaders();
+        const response = await firstValueFrom(this.pjs(headers));
+        return (Array.isArray(response) ? response : Object.values(response ?? {}))
+            .map((element: any) => this.mapApiToPersonajeSimple(element));
+    }
+
+    private async readPublicPersonajesFromCache(): Promise<PersonajeSimple[]> {
+        const payload = await this.readCacheSnapshot('Personajes-simples');
+        return (Array.isArray(payload) ? payload : Object.values(payload ?? {}))
+            .map((element: any) => this.mapApiToPersonajeSimple(element))
+            .filter((personaje) => this.esVisibleParaInvitado(personaje));
+    }
+
+    private async readCacheSnapshot(path: string): Promise<any> {
+        return new Promise((resolve, reject) => {
+            try {
+                this.firebaseContextSvc.run(() => onValue(
+                    ref(this.db, path),
+                    (snapshot) => resolve(snapshot.val()),
+                    reject,
+                    { onlyOnce: true }
+                ));
+            } catch (error) {
+                reject(error);
+            }
+        });
+    }
+
+    private esVisibleParaInvitado(personaje: PersonajeSimple): boolean {
+        return personaje?.visible_otros_usuarios === true
+            && this.normalizarCampana(personaje?.Campana) === 'sin campana';
+    }
+
+    private normalizarCampana(value: any): string {
+        return `${value ?? 'Sin campaña'}`
+            .trim()
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .toLowerCase();
     }
 }
 
@@ -221,7 +336,7 @@ function extractOwnerUid(value: any): string | null {
     if (!value || typeof value !== 'object')
         return null;
 
-    const text = `${value.ownerUid ?? value.owneruid ?? value.owner_uid ?? value.uid ?? ''}`.trim();
+    const text = `${value.ownerUid ?? ''}`.trim();
     return text.length > 0 ? text : null;
 }
 
@@ -229,6 +344,6 @@ function extractOwnerDisplayName(value: any): string | null {
     if (!value || typeof value !== 'object')
         return null;
 
-    const text = `${value.ownerDisplayName ?? value.owner_display_name ?? value.odn ?? ''}`.trim();
+    const text = `${value.ownerDisplayName ?? ''}`.trim();
     return text.length > 0 ? text : null;
 }

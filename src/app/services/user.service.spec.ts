@@ -41,9 +41,9 @@ class UserServiceTestDouble extends UserService {
         return {
             status: 'created',
             userId: 'user-id-1',
-            uid: `${payload.uid ?? payload.firebaseUid ?? ''}`,
+            uid: `${payload.uid ?? ''}`,
             acl: {
-                uid: `${payload.uid ?? payload.firebaseUid ?? ''}`,
+                uid: `${payload.uid ?? ''}`,
                 role: payload.role ?? 'jugador',
                 admin: payload.role === 'admin',
                 banned: payload.banned === true,

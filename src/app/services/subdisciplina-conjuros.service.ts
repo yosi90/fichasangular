@@ -26,9 +26,9 @@ function toText(value: any): string {
 
 function normalizeSubdisciplina(raw: any): SubdisciplinaCatalogItem {
     return {
-        Id: toInt(raw?.Id ?? raw?.id ?? raw?.i, 0),
-        Nombre: toText(raw?.Nombre ?? raw?.nombre ?? raw?.n),
-        id_disciplina: toInt(raw?.id_disciplina ?? raw?.Id_disciplina ?? raw?.idDisciplina ?? raw?.d ?? raw?.id_discipina, 0),
+        Id: toInt(raw?.Id, 0),
+        Nombre: toText(raw?.Nombre),
+        id_disciplina: toInt(raw?.Id_disciplina, 0),
     };
 }
 

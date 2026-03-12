@@ -30,11 +30,9 @@ export interface UsuarioListadoItemDto {
 
 export interface UsuarioUpsertRequestDto {
     uid?: string;
-    firebaseUid?: string;
     displayName: string;
     email: string;
     authProvider: AuthProviderType;
-    actorUserId?: string;
     role?: UserRole;
     banned?: boolean;
     permissionsCreate?: UsuarioPermissionCreateDto[];

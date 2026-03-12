@@ -34,8 +34,8 @@ function normalizeSubdisciplinas(raw: any): Subdisciplinas[] {
                 };
             }
             return {
-                Id: toInt(item?.Id ?? item?.id ?? item?.i, 0),
-                Nombre: toText(item?.Nombre ?? item?.nombre ?? item?.n),
+                Id: toInt(item?.Id, 0),
+                Nombre: toText(item?.Nombre),
             };
         })
         .filter((item) => {
@@ -46,10 +46,10 @@ function normalizeSubdisciplinas(raw: any): Subdisciplinas[] {
 
 function normalizeDisciplina(raw: any, fallbackId: number = 0): DisciplinaConjuros {
     return {
-        Id: toInt(raw?.Id ?? raw?.id ?? raw?.i, fallbackId),
-        Nombre: toText(raw?.Nombre ?? raw?.nombre ?? raw?.n),
-        Nombre_especial: toText(raw?.Nombre_especial ?? raw?.Nombre_esp ?? raw?.nombre_especial ?? raw?.ne),
-        Subdisciplinas: normalizeSubdisciplinas(raw?.Subdisciplinas ?? raw?.subdisciplinas ?? raw?.sd),
+        Id: toInt(raw?.Id, fallbackId),
+        Nombre: toText(raw?.Nombre),
+        Nombre_especial: toText(raw?.Nombre_esp),
+        Subdisciplinas: normalizeSubdisciplinas(raw?.Subdisciplinas),
     };
 }
 
@@ -146,15 +146,16 @@ export class DisciplinaConjurosService {
                 : Object.values(response ?? {});
 
             await Promise.all(
-                disciplinas.map((element: {
-                    i: number; n: string; ne: string; sd: Subdisciplinas[];
-                }) => {
+                disciplinas.map((element: any) => {
+                    const disciplina = normalizeDisciplina(element);
+                    if (disciplina.Id <= 0 || disciplina.Nombre.length < 1)
+                        return Promise.resolve();
                     return this.firebaseContextSvc.run(() => set(
-                        ref(this.db, `Disciplinas/${element.i}`), {
-                        Id: element.i,
-                        Nombre: element.n,
-                        Nombre_especial: element.ne,
-                        Subdisciplinas: element.sd
+                        ref(this.db, `Disciplinas/${disciplina.Id}`), {
+                        Id: disciplina.Id,
+                        Nombre: disciplina.Nombre,
+                        Nombre_especial: disciplina.Nombre_especial,
+                        Subdisciplinas: disciplina.Subdisciplinas
                     }));
                 })
             );

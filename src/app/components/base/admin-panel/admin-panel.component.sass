@@ -11,35 +11,62 @@
 
     .admin-accordion
         width: 100%
+        mat-expansion-panel
+            border-radius: 0
+            box-shadow: 3px 3px 10px black
+            padding: 0
+            overflow: hidden
 
-mat-expansion-panel
-    border-bottom-left-radius: 0
-    border-bottom-right-radius: 0
-    box-shadow: 3px 3px 10px black
-    padding: 0
-    margin-bottom: 1px
+            &:first-of-type
+                border-top-left-radius: 6px
+                border-top-right-radius: 6px
 
-    mat-expansion-panel-header
-        max-height: 48px
+            &:last-of-type
+                border-bottom-left-radius: 6px
+                border-bottom-right-radius: 6px
+                margin-bottom: 0
 
-        mat-icon
-            font-size: 24px
-            width: auto
-            height: auto
+            mat-expansion-panel-header
+                max-height: 48px
+                position: relative
+                overflow: hidden
 
-    mat-expansion-panel-header button
-        justify-content: left
-        position: absolute
-        right: 0
-        bottom: 0
-        left: 0
-        height: 100%
-        width: 100%
-        background-color: $primary
-        font-weight: 500
+                mat-icon
+                    font-size: 24px
+                    width: auto
+                    height: auto
 
-    ::ng-deep .mat-expansion-panel-body
-        padding: 0
+            mat-expansion-panel-header button
+                justify-content: left
+                position: absolute
+                right: 0
+                bottom: 0
+                left: 0
+                height: 100%
+                width: 100%
+                padding-right: 56px
+                box-sizing: border-box
+                border-radius: 0 !important
+                background-color: $primary
+                font-weight: 500
+
+            &:first-of-type mat-expansion-panel-header button
+                border-top-left-radius: 6px !important
+                border-top-right-radius: 6px !important
+
+            &:last-of-type:not(.mat-expanded) mat-expansion-panel-header button
+                border-bottom-left-radius: 6px !important
+                border-bottom-right-radius: 6px !important
+
+            ::ng-deep .mat-expansion-panel-body
+                padding: 0
+
+            ::ng-deep .mat-expansion-panel-content
+                border-radius: 0
+
+            &:last-of-type.mat-expanded ::ng-deep .mat-expansion-panel-body
+                border-bottom-left-radius: 6px
+                border-bottom-right-radius: 6px
 
 .sync-list
     max-height: 56vh
@@ -70,15 +97,11 @@ mat-expansion-panel
     background: rgba(0, 0, 0, 0.08)
 
 .admin-role-requests
-    padding: 12px
-    margin-bottom: 16px
-    border: 1px solid rgba(255, 255, 255, 0.12)
-    border-radius: 12px
-    background: rgba(255, 255, 255, 0.03)
+    padding: 16px
+    background: transparent
 
 .admin-role-requests--highlight
-    border-color: rgba(255, 193, 7, 0.55)
-    box-shadow: 0 0 0 1px rgba(255, 193, 7, 0.22)
+    background: linear-gradient(180deg, rgba(255, 193, 7, 0.08), rgba(255, 193, 7, 0.02))
 
 .admin-role-requests__header
     display: flex
@@ -86,7 +109,7 @@ mat-expansion-panel
     justify-content: space-between
     gap: 12px
     flex-wrap: wrap
-    margin-bottom: 10px
+    margin-bottom: 18px
 
     h3
         margin: 0
@@ -100,6 +123,60 @@ mat-expansion-panel
     display: flex
     gap: 8px
     flex-wrap: wrap
+
+.admin-role-requests__section
+    padding-top: 16px
+    margin-top: 16px
+    border-top: 1px solid rgba(255, 255, 255, 0.08)
+
+    &:first-of-type
+        margin-top: 0
+        padding-top: 0
+        border-top: 0
+
+.admin-role-requests__section-header
+    margin-bottom: 12px
+
+    h3
+        margin: 0
+        font-size: 17px
+
+    p
+        margin: 4px 0 0
+        opacity: 0.75
+
+.admin-role-requests__group-grid
+    display: grid
+    gap: 14px
+
+.admin-role-requests__group
+    padding: 12px
+    border-radius: 10px
+    background: rgba(255, 255, 255, 0.03)
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06)
+
+.admin-role-requests__subheader
+    display: flex
+    align-items: center
+    justify-content: space-between
+    gap: 12px
+    margin-bottom: 10px
+
+    h4
+        margin: 0
+        font-size: 15px
+
+    span
+        min-width: 28px
+        height: 28px
+        display: inline-flex
+        align-items: center
+        justify-content: center
+        padding: 0 8px
+        border-radius: 999px
+        background: rgba(255, 255, 255, 0.08)
+        font-size: 12px
+        font-weight: 600
 
 .usuarios-admin-actions
     display: flex
@@ -180,4 +257,10 @@ mat-expansion-panel
 
     .perm-grid
         grid-template-columns: 1fr
+
+    .admin-role-requests
+        padding: 12px
+
+    .admin-role-requests__group
+        padding: 10px
 

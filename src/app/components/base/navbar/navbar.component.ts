@@ -24,6 +24,7 @@ export class NavbarComponent implements OnInit, OnDestroy {
     private static readonly DEFAULT_PROFILE_SETTINGS = {
         visibilidadPorDefectoPersonajes: false,
         mostrarPerfilPublico: true,
+        allowDirectMessagesFromNonFriends: false,
     };
 
     manuales: ManualAsociadoDetalle[] = [];

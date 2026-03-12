@@ -1,13 +1,14 @@
 import { HttpClient, HttpErrorResponse } from "@angular/common/http";
 import { Injectable } from "@angular/core";
+import { Auth } from "@angular/fire/auth";
 import { Database, Unsubscribe, onValue, ref, set } from "@angular/fire/database";
 import { Observable, firstValueFrom } from "rxjs";
 import { Dote } from "../interfaces/dote";
-import { DoteCreateRequest, DoteCreateResponse } from "../interfaces/dotes-api";
+import { DoteCreateApiResponse, DoteCreateRequest, DoteCreateResponse } from "../interfaces/dotes-api";
 import { environment } from "src/environments/environment";
 import Swal from "sweetalert2";
 import { FirebaseInjectionContextService } from "./firebase-injection-context.service";
-import { normalizeDote } from "./utils/dote-mapper";
+import { normalizeDoteApi, normalizeDoteLegacy } from "./utils/dote-mapper";
 
 @Injectable({
     providedIn: "root"
@@ -15,10 +16,21 @@ import { normalizeDote } from "./utils/dote-mapper";
 export class DoteService {
 
     constructor(
+        private auth: Auth,
         private db: Database,
         private http: HttpClient,
         private firebaseContextSvc: FirebaseInjectionContextService
     ) { }
+
+    protected watchDotePath(id: number, onNext: (snapshot: any) => void, onError: (error: any) => void): Unsubscribe {
+        const dbRef = ref(this.db, `Dotes/${id}`);
+        return this.firebaseContextSvc.run(() => onValue(dbRef, onNext, onError));
+    }
+
+    protected watchDotesPath(onNext: (snapshot: any) => void, onError: (error: any) => void): Unsubscribe {
+        const dbRef = ref(this.db, "Dotes");
+        return this.firebaseContextSvc.run(() => onValue(dbRef, onNext, onError));
+    }
 
     getDote(id: number): Observable<Dote> {
         return new Observable((observador) => {
@@ -26,12 +38,12 @@ export class DoteService {
 
             const onNext = (snapshot: any) => {
                 if (snapshot.exists()) {
-                    observador.next(normalizeDote(snapshot.val()));
+                    observador.next(normalizeDoteLegacy(snapshot.val()));
                     return;
                 }
 
                 this.http.get(`${environment.apiUrl}dotes/${id}`).subscribe({
-                    next: (raw: any) => observador.next(normalizeDote(raw)),
+                    next: (raw: any) => observador.next(normalizeDoteApi(raw)),
                     error: (error: HttpErrorResponse) => {
                         if (error.status === 404) {
                             Swal.fire({
@@ -57,10 +69,7 @@ export class DoteService {
                 observador.error(error);
             };
 
-            unsubscribe = this.firebaseContextSvc.run(() => {
-                const dbRef = ref(this.db, `Dotes/${id}`);
-                return onValue(dbRef, onNext, onError);
-            });
+            unsubscribe = this.watchDotePath(id, onNext, onError);
 
             return () => {
                 unsubscribe();
@@ -73,9 +82,39 @@ export class DoteService {
             let unsubscribe: Unsubscribe;
 
             const onNext = (snapshot: any) => {
+                if (!snapshot.exists()) {
+                    this.syncDotes().subscribe({
+                        next: (raw: any) => {
+                            const dotes = (Array.isArray(raw) ? raw : Object.values(raw ?? {}))
+                                .map((item: any) => normalizeDoteApi(item))
+                                .filter((dote) => dote.Id > 0);
+                            observador.next(dotes);
+                        },
+                        error: (error: HttpErrorResponse) => {
+                            if (error.status === 404) {
+                                Swal.fire({
+                                    icon: "warning",
+                                    title: "Listado de dotes no disponible",
+                                    text: "No se encontró /dotes en la API",
+                                    showConfirmButton: true,
+                                });
+                            } else {
+                                Swal.fire({
+                                    icon: "warning",
+                                    title: "Error al obtener el listado de dotes",
+                                    text: error.message,
+                                    showConfirmButton: true,
+                                });
+                            }
+                            observador.error(error);
+                        }
+                    });
+                    return;
+                }
+
                 const dotes: Dote[] = [];
                 snapshot.forEach((obj: any) => {
-                    dotes.push(normalizeDote(obj.val()));
+                    dotes.push(normalizeDoteLegacy(obj.val()));
                 });
                 observador.next(dotes);
             };
@@ -84,10 +123,7 @@ export class DoteService {
                 observador.error(error);
             };
 
-            unsubscribe = this.firebaseContextSvc.run(() => {
-                const dbRef = ref(this.db, "Dotes");
-                return onValue(dbRef, onNext, onError);
-            });
+            unsubscribe = this.watchDotesPath(onNext, onError);
 
             return () => {
                 unsubscribe();
@@ -101,8 +137,9 @@ export class DoteService {
 
     public async crearDote(payload: DoteCreateRequest): Promise<DoteCreateResponse> {
         try {
+            const headers = await this.buildAuthHeaders();
             const response = await firstValueFrom(
-                this.http.post<DoteCreateResponse>(`${environment.apiUrl}dotes/add`, payload)
+                this.http.post<DoteCreateApiResponse>(`${environment.apiUrl}dotes/add`, payload, { headers })
             );
             const idDote = Math.trunc(Number(response?.idDote ?? 0));
             if (!Number.isFinite(idDote) || idDote <= 0)
@@ -111,7 +148,6 @@ export class DoteService {
             const normalizedResponse: DoteCreateResponse = {
                 message: `${response?.message ?? "Dote creada"}`,
                 idDote,
-                uid: `${response?.uid ?? payload?.uid ?? payload?.firebaseUid ?? ""}`.trim(),
             };
 
             await this.refrescarDoteCacheBestEffort(idDote);
@@ -130,7 +166,7 @@ export class DoteService {
 
             await Promise.all(
                 dotes.map((raw: any) => {
-                    const dote = normalizeDote(raw);
+                    const dote = normalizeDoteApi(raw);
                     return this.firebaseContextSvc.run(() => set(ref(this.db, `Dotes/${dote.Id}`), dote));
                 })
             );
@@ -166,7 +202,7 @@ export class DoteService {
     private async refrescarDoteCacheBestEffort(idDote: number): Promise<void> {
         try {
             const raw = await firstValueFrom(this.http.get(`${environment.apiUrl}dotes/${idDote}`));
-            const normalized = normalizeDote(raw);
+            const normalized = normalizeDoteApi(raw);
             await this.firebaseContextSvc.run(() => set(ref(this.db, `Dotes/${normalized.Id}`), normalized));
         } catch {
             // Best-effort: no bloquea flujo de creacion.
@@ -215,5 +251,19 @@ export class DoteService {
         }
 
         return "";
+    }
+
+    private async buildAuthHeaders(): Promise<{ Authorization: string; }> {
+        const user = this.auth.currentUser;
+        if (!user)
+            throw new Error("Sesión no iniciada");
+
+        const idToken = await user.getIdToken();
+        if (`${idToken ?? ""}`.trim().length < 1)
+            throw new Error("Token no disponible");
+
+        return {
+            Authorization: `Bearer ${idToken}`,
+        };
     }
 }

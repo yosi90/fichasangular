@@ -17,6 +17,7 @@ import { toDoteContextualArray, toDoteLegacyArray } from './utils/dote-mapper';
 import {
     CatalogoNombreIdDto,
     PersonajeContextoIdsDto,
+    PersonajeCreateApiResponseDto,
     PersonajeCreateColeccionesDto,
     PersonajeCreateModificadoresDto,
     PersonajeCreateRequestDto,
@@ -34,7 +35,6 @@ interface PersonajeVisibilityUpdateResponse {
     message: string;
     idPersonaje: number;
     visible_otros_usuarios: boolean;
-    uid: string;
 }
 
 @Injectable({
@@ -73,17 +73,12 @@ export class PersonajeService {
     public async actualizarVisibilidadPersonaje(
         idPersonaje: number,
         visible: boolean,
-        actorUid: string
     ): Promise<PersonajeVisibilityUpdateResponse> {
         const id = Math.trunc(toNumber(idPersonaje));
-        const uid = `${actorUid ?? ''}`.trim();
         if (id <= 0)
             throw new Error('Id de personaje no válido');
-        if (uid.length < 1)
-            throw new Error('No hay sesión activa para actualizar visibilidad');
 
         const payload = {
-            uid,
             visible_otros_usuarios: !!visible,
         };
 
@@ -113,16 +108,13 @@ export class PersonajeService {
             ...response,
             idPersonaje: Math.trunc(toNumber(response?.idPersonaje)),
             visible_otros_usuarios: !!visible,
-            uid,
         };
     }
 
     public construirPayloadCreacionDesdePersonaje(
         personaje: Personaje,
-        uidSesion: string,
         contextoIds: PersonajeContextoIdsDto
     ): PersonajeCreateRequestDto {
-        const uid = `${uidSesion ?? ''}`.trim();
         const nombre = `${personaje?.Nombre ?? ''}`.trim();
         const idRaza = Math.trunc(toNumber(personaje?.Raza?.Id));
         const idTipoCriatura = Math.trunc(toNumber(personaje?.Tipo_criatura?.Id));
@@ -143,8 +135,6 @@ export class PersonajeService {
             regiones: this.construirMapaNombreId(contextoIds?.catalogos?.regiones),
         };
 
-        if (uid.length < 1)
-            throw new Error('No hay sesión activa para finalizar el personaje.');
         if (nombre.length < 1)
             throw new Error('El personaje debe tener nombre antes de finalizar.');
         if (idRaza <= 0)
@@ -236,7 +226,6 @@ export class PersonajeService {
         }
 
         const payload: PersonajeCreateRequestDto = {
-            uid,
             personaje: personajePayload,
             caracteristicas: {
                 fuerza: {
@@ -779,7 +768,7 @@ export class PersonajeService {
     public async crearPersonajeApiDesdeCreacion(payload: PersonajeCreateRequestDto): Promise<PersonajeCreateResponseDto> {
         try {
             const response = await firstValueFrom(
-                this.http.post<PersonajeCreateResponseDto>(
+                this.http.post<PersonajeCreateApiResponseDto>(
                     `${environment.apiUrl}personajes/add`,
                     payload,
                     { headers: await this.buildAuthHeaders() }
@@ -796,7 +785,6 @@ export class PersonajeService {
                 message: `${response?.message ?? 'Personaje creado'}`,
                 idPersonaje,
                 ownerUserId,
-                uid: `${response?.uid ?? payload?.uid ?? ''}`.trim(),
             };
         } catch (error: any) {
             throw new Error(this.obtenerMensajeErrorHttp(error, 'No se pudo crear el personaje en la API.'));
@@ -1208,231 +1196,9 @@ export class PersonajeService {
                 : Object.values(response ?? {});
 
             await Promise.all(
-                personajes.map((element: {
-                    i: any; n: any; ownerUid?: any; visible_otros_usuarios?: any; id_region?: any; idRegion?: any; region?: any; Region?: any; dcp: any; dh: any; tm: any; a: any; ca: any; an: any; cd: any; cv: any; ra: any; rb?: any; raza_base?: any; RazaBase?: any; tc: TipoCriatura; f: any; mf: any; d: any; md: any; co: any; mco: any; int: any; mint: any; s: any; 
-                    ms: any; car: any; mcar: any; de: any; ali: any; g: any; ncam: any; ntr: any; ju: any; nst: any; v: any; cor: any; na: any; vo: any; t: any; e: any; o: any; dg: any; cla: any; dom: any; stc: any; subtipos?: any;
-                    competencia_arma?: any; competencia_armadura?: any; competencia_grupo_arma?: any; competencia_grupo_armadura?: any;
-                    pla: any; con: any; esp: any; espX: any; rac: any; hab: any; habN: any; habC: any; habCa: any; habMc: any; habR: any; habRv: any; habX: any; habV: any; habCu: any; dotes: DoteContextual[]; ve: any; idi: any;
-                    familiares?: any; companeros?: any;
-                    sor: any; pgl: any; ini_v: any; pr_v: { Valor: number; Origen: string; }[]; edad: any; alt: any; peso: any; salv: any; rds: any; 
-                    rcs: any; res: any; ccl: any; ccm: any; ccp: any; espa: any; espan: any; espp: any; esppn: any; disp: any; ecp: any; cper?: any; cperd?: any;
-                }) => {
-                    const tempcla = (element.cla ?? "").split("|");
-                    let nep = toNumber(element?.ra?.Dgs_adicionales?.Cantidad);
-                    let clas: { Nombre: string; Nivel: number }[] = [];
-                    tempcla.forEach((el: string) => {
-                        const datos = el.split(";");
-                        const nivelClase = toNumber(datos[1]);
-                        if (datos[0] != "") {
-                            clas.push({
-                                Nombre: datos[0].trim(),
-                                Nivel: nivelClase
-                            });
-                            nep += nivelClase;
-                        }
-                    });
-                    const ajusteNivelRaza = toNumber(element?.ra?.Ajuste_nivel);
-                    if (ajusteNivelRaza > 0)
-                        nep += ajusteNivelRaza;
-                    (element.pla ?? []).forEach((el: { Ajuste_nivel: number; Multiplicador_dgs_lic: number }) => {
-                        nep += toNumber(el.Ajuste_nivel) + toNumber(el.Multiplicador_dgs_lic);
-                    });
-                    const experiencia = nep > 0 ? ((nep - 1) * nep / 2) * 1000 : 0;
-                    const dotesContextuales = toDoteContextualArray(element.dotes);
-                    const dotes = toDoteLegacyArray(dotesContextuales);
-                    let claseas: { Nombre: string; Extra: string; }[] = [];
-                    for (let index = 0; index < element.esp.length; index++) {
-                        claseas.push({
-                            Nombre: element.esp[index],
-                            Extra: element.espX[index] ?? 'Nada',
-                        });
-                    }
-                    let habilidades: {
-                        Id: number; Nombre: string; Clasea: boolean; Car: string; Mod_car: number; Rangos: number; Rangos_varios: number; Extra: string;
-                        Varios: string; Custom: boolean;
-                    }[] = [];
-                    for (let index = 0; index < element.habN.length; index++) {
-                        habilidades.push({
-                            Id: element.hab[index],
-                            Nombre: element.habN[index],
-                            Clasea: element.habC[index],
-                            Car: element.habCa[index],
-                            Mod_car: element.habMc[index],
-                            Rangos: element.habR[index],
-                            Rangos_varios: element.habRv[index],
-                            Extra: element.habX[index],
-                            Varios: element.habV[index],
-                            Custom: element.habCu[index]
-                        });
-                    }
-                    let cargas = {
-                        Ligera: element.ccl,
-                        Media: element.ccm,
-                        Pesada: element.ccp
-                    }
-                    let escuela_esp = {
-                        Nombre: element.espa,
-                        Calificativo: element.espan
-                    }
-                    let disciplina_esp = {
-                        Nombre: element.espp,
-                        Calificativo: element.esppn
-                    }
-                    let rds: { Modificador: string; Origen: string; }[] = [];
-                    if (element.rds)
-                        for (let index = 0; index < element.rds.length; index++) {
-                            let partes = element.rds[index].split(";");
-                            rds.push({
-                                Modificador: partes[0],
-                                Origen: partes[1],
-                            });
-                        }
-                    let rcs: { Modificador: string; Origen: string; }[] = [];
-                    if (element.rcs)
-                        for (let index = 0; index < element.rcs.length; index++) {
-                            let partes = element.rcs[index].split(";");
-                            rcs.push({
-                                Modificador: partes[0],
-                                Origen: partes[1],
-                            });
-                        }
-                    let res: { Modificador: string; Origen: string; }[] = [];
-                    if (element.res)
-                        for (let index = 0; index < element.res.length; index++) {
-                            let partes = element.res[index].split(";");
-                            res.push({
-                                Modificador: partes[0],
-                                Origen: partes[1],
-                            });
-                        }
-                    const dom: [] = element.dom.split("|").map((item: string) => item.trim()).filter((item: string) => item.length > 0);
-                    const subtipos = normalizeSubtipoRefArray(element.subtipos ?? element.stc ?? "");
-                    const raciales = normalizeRaciales(element.rac);
-                    const ve = normalizeVentajasPersonaje(element.ve);
-                    const idiomas = normalizeIdiomasPersonaje(element.idi);
-                    const competenciasArma = normalizeCompetenciasPersonaje(element.competencia_arma, {
-                        idKeys: ['Id', 'id', 'Id_arma', 'id_arma', 'i'],
-                        nombreKeys: ['Nombre', 'nombre', 'Arma', 'arma'],
-                    });
-                    const competenciasArmadura = normalizeCompetenciasPersonaje(element.competencia_armadura, {
-                        idKeys: ['Id', 'id', 'Id_armadura', 'id_armadura', 'Id_arma', 'id_arma', 'i'],
-                        nombreKeys: ['Nombre', 'nombre', 'Armadura', 'armadura', 'Arma', 'arma'],
-                        includeShield: true,
-                    });
-                    const competenciasGrupoArma = normalizeCompetenciasPersonaje(element.competencia_grupo_arma, {
-                        idKeys: ['Id', 'id', 'Id_grupo', 'id_grupo', 'IdGrupo', 'idGrupo', 'i'],
-                        nombreKeys: ['Nombre', 'nombre', 'Grupo', 'grupo'],
-                    });
-                    const competenciasGrupoArmadura = normalizeCompetenciasPersonaje(element.competencia_grupo_armadura, {
-                        idKeys: ['Id', 'id', 'Id_grupo', 'id_grupo', 'IdGrupo', 'idGrupo', 'i'],
-                        nombreKeys: ['Nombre', 'nombre', 'Grupo', 'grupo'],
-                    });
-                    const ecp: [] = element.ecp.split("|").map((item: string) => item.trim()).filter((item: string) => item.length > 0);
-                    const ataqueBase = `${element.a ?? 0}`;
-                    const presaBase = +(ataqueBase.includes('/') ? ataqueBase.substring(0, ataqueBase.indexOf('/')) : ataqueBase);
-                    const razaBase = element.RazaBase ?? element.rb ?? element.raza_base ?? null;
-                    const idRegion = Math.max(0, Math.trunc(toNumber(
-                        element.id_region
-                        ?? element.idRegion
-                        ?? element.Region?.Id
-                        ?? element.Region?.id
-                        ?? element.region?.Id
-                        ?? element.region?.id
-                    )));
-                    const nombreRegion = `${element.Region?.Nombre
-                        ?? element.Region?.nombre
-                        ?? element.region?.Nombre
-                        ?? element.region?.nombre
-                        ?? ''}`.trim();
-                    return this.escribirRutaFirebase(`Personajes/${element.i}`, {
-                        Nombre: element.n,
-                        ownerUid: extractOwnerUid(element),
-                        ownerDisplayName: extractOwnerDisplayName(element),
-                        visible_otros_usuarios: toBoolean(element.visible_otros_usuarios),
-                        Id_region: idRegion,
-                        Region: {
-                            Id: idRegion,
-                            Nombre: nombreRegion.length > 0 ? nombreRegion : (idRegion === 0 ? 'Sin región' : ''),
-                        },
-                        Personalidad: element.dcp,
-                        Contexto: element.dh,
-                        Ataque_base: element.a,
-                        Tamano: element.ra.Tamano.Nombre,
-                        Ca: element.ca,
-                        Armadura_natural: element.an,
-                        Ca_desvio: element.cd,
-                        Ca_varios: element.cv,
-                        Iniciativa_varios: element.ini_v ?? [],
-                        Presa: Number(presaBase + +element.mf + +element.ra.Tamano.Modificador_presa + +(element.pr_v ?? []).reduce((c: number, v: { Valor: number; }) => c + Number(v.Valor), 0)),
-                        Presa_varios: element.pr_v ?? [],
-                        Raza: element.ra,
-                        RazaBase: razaBase,
-                        Tipo_criatura: element.tc,
-                        Fuerza: element.f,
-                        ModFuerza: element.mf,
-                        Destreza: element.d,
-                        ModDestreza: element.md,
-                        Constitucion: element.co,
-                        ModConstitucion: element.mco,
-                        Caracteristicas_perdidas: normalizeCaracteristicasPerdidasPersonaje(element.cper, element.cperd),
-                        Constitucion_perdida: toBoolean(element.cperd),
-                        Inteligencia: element.int,
-                        ModInteligencia: element.mint,
-                        Sabiduria: element.s,
-                        ModSabiduria: element.ms,
-                        Carisma: element.car,
-                        ModCarisma: element.mcar,
-                        NEP: toNumber(nep),
-                        Experiencia: toNumber(experiencia),
-                        Deidad: element.de,
-                        Alineamiento: element.ali,
-                        Genero: element.g,
-                        Campana: element.ncam,
-                        Trama: element.ntr,
-                        Subtrama: element.nst,
-                        Vida: element.v,
-                        Correr: element.cor,
-                        Nadar: element.na,
-                        Volar: element.vo,
-                        Trepar: element.t,
-                        Escalar: element.e,
-                        Oficial: element.o,
-                        Dados_golpe: element.dg,
-                        Pgs_lic: element.pgl,
-                        Jugador: element.ju,
-                        Edad: element.edad,
-                        Altura: element.alt,
-                        Peso: element.peso,
-                        Clases: clas,
-                        Dominios: dom,
-                        Subtipos: subtipos,
-                        competencia_arma: competenciasArma,
-                        competencia_armadura: competenciasArmadura,
-                        competencia_grupo_arma: competenciasGrupoArma,
-                        competencia_grupo_armadura: competenciasGrupoArmadura,
-                        Plantillas: element.pla,
-                        Familiares: normalizeFamiliarMonstruoDetalleArray(element.familiares, 1),
-                        Companeros: normalizeCompaneroMonstruoDetalleArray(element.companeros, 1),
-                        Conjuros: element.con,
-                        Claseas: claseas,
-                        Raciales: raciales,
-                        Habilidades: habilidades,
-                        Dotes: dotes,
-                        DotesContextuales: dotesContextuales,
-                        Ventajas: ve,
-                        Idiomas: idiomas,
-                        Sortilegas: element.sor,
-                        Salvaciones: element.salv,
-                        Rds: rds,
-                        Rcs: rcs,
-                        Res: res,
-                        Capacidad_carga: cargas,
-                        Oro_inicial: toNumber(calc_oro(nep)),
-                        Escuela_especialista: escuela_esp,
-                        Disciplina_especialista: disciplina_esp,
-                        Disciplina_prohibida: element.disp,
-                        Escuelas_prohibidas: ecp
-                    });
+                personajes.map((element: any) => {
+                    const personaje = this.mapApiDetalleToPersonaje(element);
+                    return this.guardarPersonajeEnFirebase(personaje.Id, personaje);
                 })
             );
 
@@ -1516,9 +1282,6 @@ function extractOwnerUid(value: any): string | null {
 
     return toNullableText(
         value.ownerUid
-        ?? value.owneruid
-        ?? value.owner_uid
-        ?? value.uid
     );
 }
 
@@ -1528,8 +1291,6 @@ function extractOwnerDisplayName(value: any): string | null {
 
     return toNullableText(
         value.ownerDisplayName
-        ?? value.owner_display_name
-        ?? value.odn
     );
 }
 

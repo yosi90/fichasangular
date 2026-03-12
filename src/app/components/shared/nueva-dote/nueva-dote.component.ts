@@ -923,18 +923,7 @@ export class NuevaDoteComponent implements OnInit, OnDestroy {
             return;
         }
 
-        const uid = `${this.userSvc.CurrentUserUid ?? ''}`.trim();
-        if (uid.length < 1) {
-            Swal.fire({
-                icon: 'warning',
-                title: 'Sesión inválida',
-                text: 'No se pudo resolver uid de Firebase para crear la dote.',
-                showConfirmButton: true
-            });
-            return;
-        }
-
-        const payload = this.buildPayload(uid);
+        const payload = this.buildPayload();
         this.guardando = true;
         try {
             const response = await this.doteSvc.crearDote(payload);
@@ -953,12 +942,11 @@ export class NuevaDoteComponent implements OnInit, OnDestroy {
         }
     }
 
-    private buildPayload(uid: string): DoteCreateRequest {
+    private buildPayload(): DoteCreateRequest {
         const raw = this.form.getRawValue();
         const extrasDisponibles = this.construirExtrasDisponiblesPayload();
 
         return {
-            uid,
             dote: {
                 nombre: `${raw.nombre ?? ''}`.trim(),
                 beneficio: `${raw.beneficio ?? ''}`.trim(),

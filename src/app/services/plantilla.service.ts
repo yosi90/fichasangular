@@ -13,6 +13,7 @@ import {
     PlantillaPrerrequisitosFlags,
 } from "../interfaces/plantilla";
 import { FirebaseInjectionContextService } from "./firebase-injection-context.service";
+import { normalizePlantillaApi } from "./utils/plantilla-mapper";
 import { toDoteContextualArray } from "./utils/dote-mapper";
 import { normalizeSubtipoRefArray } from "./utils/subtipo-mapper";
 
@@ -333,7 +334,7 @@ export class PlantillaService {
                 }
 
                 this.http.get(`${environment.apiUrl}plantillas/${id}`).subscribe({
-                    next: (raw: any) => observador.next(normalizePlantilla(raw)),
+                    next: (raw: any) => observador.next(normalizePlantillaApi(raw)),
                     error: (error: HttpErrorResponse) => {
                         if (error.status === 404) {
                             Swal.fire({
@@ -411,7 +412,7 @@ export class PlantillaService {
         try {
             const response = await firstValueFrom(this.syncPlantillas());
             const plantillas = toArray(response)
-                .map((raw: any) => normalizePlantilla(raw))
+                .map((raw: any) => normalizePlantillaApi(raw))
                 .filter((plantilla) => hasValidId(plantilla));
 
             await Promise.all(

@@ -6,8 +6,8 @@ import { ConjuroCatalogItem } from '../interfaces/conjuro-catalogos';
 
 function normalizeCatalogItem(raw: any): ConjuroCatalogItem {
     return {
-        Id: Number(raw?.Id ?? raw?.i ?? 0),
-        Nombre: `${raw?.Nombre ?? raw?.n ?? ''}`.trim(),
+        Id: Number(raw?.Id ?? 0),
+        Nombre: `${raw?.Nombre ?? ''}`.trim(),
     };
 }
 

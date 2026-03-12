@@ -54,11 +54,13 @@ describe('NavbarComponent', () => {
             perfil: {
                 visibilidadPorDefectoPersonajes: false,
                 mostrarPerfilPublico: true,
+                allowDirectMessagesFromNonFriends: false,
             },
         } as any);
         userSettingsSvc.saveProfileSettings.and.resolveTo({
             visibilidadPorDefectoPersonajes: false,
             mostrarPerfilPublico: true,
+            allowDirectMessagesFromNonFriends: false,
         } as any);
         appToastSvc = jasmine.createSpyObj<AppToastService>('AppToastService', ['showSuccess', 'showError']);
         dialog = jasmine.createSpyObj<MatDialog>('MatDialog', ['open']);
@@ -276,6 +278,7 @@ describe('NavbarComponent', () => {
         userSettingsSvc.saveProfileSettings.and.resolveTo({
             visibilidadPorDefectoPersonajes: false,
             mostrarPerfilPublico: false,
+            allowDirectMessagesFromNonFriends: false,
         } as any);
 
         await component.onQuickSettingChange('mostrarPerfilPublico', false);

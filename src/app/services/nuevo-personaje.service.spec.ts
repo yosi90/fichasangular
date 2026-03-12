@@ -206,6 +206,7 @@ describe('NuevoPersonajeService (generador)', () => {
         userSettingsSvc.loadProfileSettings.and.resolveTo({
             visibilidadPorDefectoPersonajes: false,
             mostrarPerfilPublico: true,
+            allowDirectMessagesFromNonFriends: false,
         });
         userSettingsSvc.loadGeneradorConfig.and.resolveTo({
             minimoSeleccionado: 8,
@@ -253,6 +254,7 @@ describe('NuevoPersonajeService (generador)', () => {
         userSettingsSvc.loadProfileSettings.and.resolveTo({
             visibilidadPorDefectoPersonajes: false,
             mostrarPerfilPublico: true,
+            allowDirectMessagesFromNonFriends: false,
         });
         userSettingsSvc.loadGeneradorConfig.and.resolveTo(null);
         userSettingsSvc.saveGeneradorConfig.and.resolveTo();
@@ -276,6 +278,7 @@ describe('NuevoPersonajeService (generador)', () => {
         userSettingsSvc.loadProfileSettings.and.resolveTo({
             visibilidadPorDefectoPersonajes: false,
             mostrarPerfilPublico: true,
+            allowDirectMessagesFromNonFriends: false,
         });
         userSettingsSvc.loadGeneradorConfig.and.resolveTo({
             minimoSeleccionado: 50,

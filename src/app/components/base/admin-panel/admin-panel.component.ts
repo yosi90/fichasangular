@@ -83,9 +83,13 @@ export class AdminPanelComponent implements OnInit, OnDestroy {
     syncItems: SyncItemUi[] = [];
     syncItemsOrdenados: SyncItemUi[] = [];
     solicitudesMasterPendientes: AdminRoleRequestItem[] = [];
-    cargandoSolicitudesMaster: boolean = false;
-    errorSolicitudesMaster: string = '';
+    solicitudesColaboradorPendientes: AdminRoleRequestItem[] = [];
+    solicitudesAprobadas: AdminRoleRequestItem[] = [];
+    solicitudesRechazadas: AdminRoleRequestItem[] = [];
+    cargandoSolicitudesRol: boolean = false;
+    errorSolicitudesRol: string = '';
     usuariosPanelExpanded: boolean = true;
+    solicitudesPanelExpanded: boolean = false;
     syncPanelExpanded: boolean = false;
     resaltarSolicitudesPendientes: boolean = false;
 
@@ -200,7 +204,7 @@ export class AdminPanelComponent implements OnInit, OnDestroy {
                 this.esAdmin = estado === true;
                 if (this.esAdmin) {
                     void this.validarAccesoAdmin();
-                    void this.cargarSolicitudesMasterPendientes();
+                    void this.cargarSolicitudesRolPendientes();
                 }
             });
         this.adminUsersSvc.watchUsersAdminView()
@@ -339,14 +343,24 @@ export class AdminPanelComponent implements OnInit, OnDestroy {
         return '';
     }
 
-    get etiquetaEstadoSolicitudes(): string {
-        if (this.cargandoSolicitudesMaster)
+    get etiquetaEstadoSolicitudesRol(): string {
+        if (this.cargandoSolicitudesRol)
             return 'Cargando solicitudes...';
-        if (this.errorSolicitudesMaster.length > 0)
-            return this.errorSolicitudesMaster;
-        if (this.solicitudesMasterPendientes.length < 1)
-            return 'No hay solicitudes pendientes';
+        if (this.errorSolicitudesRol.length > 0)
+            return this.errorSolicitudesRol;
         return '';
+    }
+
+    get haySolicitudesRolPendientes(): boolean {
+        return this.solicitudesMasterPendientes.length > 0 || this.solicitudesColaboradorPendientes.length > 0;
+    }
+
+    get hayHistorialSolicitudesRol(): boolean {
+        return this.solicitudesAprobadas.length > 0 || this.solicitudesRechazadas.length > 0;
+    }
+
+    get noHaySolicitudesRol(): boolean {
+        return !this.haySolicitudesRolPendientes && !this.hayHistorialSolicitudesRol;
     }
 
     providerLabel(provider: string): string {
@@ -530,31 +544,31 @@ export class AdminPanelComponent implements OnInit, OnDestroy {
         return this.roleRequestOpsInFlight.has(item.requestId);
     }
 
-    async aprobarSolicitudMaster(item: AdminRoleRequestItem): Promise<void> {
+    async aprobarSolicitudRol(item: AdminRoleRequestItem): Promise<void> {
         if (!this.esAdmin || this.isRoleRequestOpRunning(item))
             return;
 
         const opKey = item.requestId;
         this.roleRequestOpsInFlight.add(opKey);
-        this.errorSolicitudesMaster = '';
+        this.errorSolicitudesRol = '';
         try {
             await this.userProfileApiSvc.resolveRoleRequest(item.requestId, { decision: 'approve' });
             await this.adminUsersSvc.syncUsersCacheFromApi();
-            await this.cargarSolicitudesMasterPendientes();
+            await this.cargarSolicitudesRolPendientes();
         } catch (error: any) {
-            this.errorSolicitudesMaster = error?.message ?? 'No se pudo aprobar la solicitud';
+            this.errorSolicitudesRol = error?.message ?? 'No se pudo aprobar la solicitud';
         } finally {
             this.roleRequestOpsInFlight.delete(opKey);
         }
     }
 
-    async rechazarSolicitudMaster(item: AdminRoleRequestItem): Promise<void> {
+    async rechazarSolicitudRol(item: AdminRoleRequestItem): Promise<void> {
         if (!this.esAdmin || this.isRoleRequestOpRunning(item))
             return;
 
         const opKey = item.requestId;
         this.roleRequestOpsInFlight.add(opKey);
-        this.errorSolicitudesMaster = '';
+        this.errorSolicitudesRol = '';
         try {
             const rechazo = await this.pedirDatosRechazo();
             if (!rechazo)
@@ -566,9 +580,9 @@ export class AdminPanelComponent implements OnInit, OnDestroy {
                 adminComment: rechazo.adminComment,
             });
             await this.adminUsersSvc.syncUsersCacheFromApi();
-            await this.cargarSolicitudesMasterPendientes();
+            await this.cargarSolicitudesRolPendientes();
         } catch (error: any) {
-            this.errorSolicitudesMaster = error?.message ?? 'No se pudo rechazar la solicitud';
+            this.errorSolicitudesRol = error?.message ?? 'No se pudo rechazar la solicitud';
         } finally {
             this.roleRequestOpsInFlight.delete(opKey);
         }
@@ -599,28 +613,48 @@ export class AdminPanelComponent implements OnInit, OnDestroy {
         }
     }
 
-    async cargarSolicitudesMasterPendientes(): Promise<void> {
+    async cargarSolicitudesRolPendientes(): Promise<void> {
         if (!this.esAdmin)
             return;
 
-        this.cargandoSolicitudesMaster = true;
-        this.errorSolicitudesMaster = '';
+        this.cargandoSolicitudesRol = true;
+        this.errorSolicitudesRol = '';
         try {
-            this.solicitudesMasterPendientes = await this.userProfileApiSvc.listPendingMasterRoleRequests();
+            const [master, colaborador, aprobadas, rechazadas] = await Promise.all([
+                this.userProfileApiSvc.listRoleRequests({
+                    status: 'pending',
+                    requestedRole: 'master',
+                }),
+                this.userProfileApiSvc.listRoleRequests({
+                    status: 'pending',
+                    requestedRole: 'colaborador',
+                }),
+                this.userProfileApiSvc.listRoleRequests({
+                    status: 'approved',
+                }),
+                this.userProfileApiSvc.listRoleRequests({
+                    status: 'rejected',
+                }),
+            ]);
+            this.solicitudesMasterPendientes = master;
+            this.solicitudesColaboradorPendientes = colaborador;
+            this.solicitudesAprobadas = aprobadas;
+            this.solicitudesRechazadas = rechazadas;
         } catch (error: any) {
-            this.errorSolicitudesMaster = error?.message ?? 'No se pudieron cargar las solicitudes pendientes';
+            this.errorSolicitudesRol = error?.message ?? 'No se pudieron cargar las solicitudes pendientes';
         } finally {
-            this.cargandoSolicitudesMaster = false;
+            this.cargandoSolicitudesRol = false;
         }
     }
 
     private aplicarOpenRequest(request: AdminPanelOpenRequest): void {
-        this.usuariosPanelExpanded = true;
+        this.usuariosPanelExpanded = request?.section !== 'role-requests';
+        this.solicitudesPanelExpanded = request?.section === 'role-requests';
         this.syncPanelExpanded = false;
         this.resaltarSolicitudesPendientes = request?.section === 'role-requests' && request?.pendingOnly === true;
 
         if (request?.section === 'role-requests') {
-            void this.cargarSolicitudesMasterPendientes();
+            void this.cargarSolicitudesRolPendientes();
             this.scrollToRoleRequests();
         }
     }

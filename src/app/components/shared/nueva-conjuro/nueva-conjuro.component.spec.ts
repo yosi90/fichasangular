@@ -141,7 +141,7 @@ describe('NuevaConjuroComponent', () => {
         component.nivelesBaseClase = [{ uid: 'a', id: 10, nivel: 1, espontaneo: false }];
         component.nivelesBaseDominio = [{ uid: 'b', id: 5, nivel: 1, espontaneo: true }];
 
-        const payload = (component as any).buildPayload('uid-1');
+        const payload = (component as any).buildPayload();
 
         expect(payload.conjuro.variante).toBe('base');
         expect(payload.conjuro.id_escuela).toBe(4);
@@ -149,6 +149,7 @@ describe('NuevaConjuroComponent', () => {
         expect(payload.niveles_clase).toEqual([{ id_clase: 10, nivel: 1, espontaneo: false }]);
         expect(payload.niveles_dominio).toEqual([{ id_dominio: 5, nivel: 1, espontaneo: true }]);
         expect(payload.componentes).toEqual([1, 2]);
+        expect('uid' in payload).toBeFalse();
     });
 
     it('muestra todos los manuales y preselecciona compendio de conjuros', () => {
@@ -201,13 +202,14 @@ describe('NuevaConjuroComponent', () => {
         component.nivelesPsiClase = [{ uid: 'a', id: 12, nivel: 2, espontaneo: false }];
         component.nivelesPsiDisciplina = [{ uid: 'b', id: 8, nivel: 2, espontaneo: false }];
 
-        const payload = (component as any).buildPayload('uid-1');
+        const payload = (component as any).buildPayload();
 
         expect(payload.conjuro.variante).toBe('psionico');
         expect(payload.conjuro.id_disciplina).toBe(8);
         expect(payload.conjuro.id_subdisciplina).toBe(81);
         expect(payload.conjuro.puntos_poder).toBe(3);
         expect(payload.niveles_disciplina).toEqual([{ id_disciplina: 8, nivel: 2, espontaneo: false }]);
+        expect('uid' in payload).toBeFalse();
     });
 
     it('resetea la subdisciplina cuando cambia la disciplina', () => {

@@ -14,6 +14,7 @@ import { Rasgo } from 'src/app/interfaces/rasgo';
 import { SubtipoRef } from 'src/app/interfaces/subtipo';
 import { TipoCriatura } from 'src/app/interfaces/tipo_criatura';
 import { FichasDescargaBackgroundService } from 'src/app/services/fichas-descarga-background.service';
+import { ListaPersonajesService } from 'src/app/services/listas/lista-personajes.service';
 import { PersonajeService } from 'src/app/services/personaje.service';
 import { RegionService } from 'src/app/services/region.service';
 import { UserProfileApiService } from 'src/app/services/user-profile-api.service';
@@ -98,6 +99,7 @@ export class DetallesPersonajeComponent implements OnInit, OnChanges, AfterViewI
     constructor(
         private fichasDescargaBgSvc: FichasDescargaBackgroundService,
         private pSvc: PersonajeService,
+        private listaPersonajesSvc: ListaPersonajesService,
         private regionSvc: RegionService,
         private userSvc: UserService,
         private userProfileApiSvc: UserProfileApiService,
@@ -216,8 +218,9 @@ export class DetallesPersonajeComponent implements OnInit, OnChanges, AfterViewI
 
         this.actualizandoVisibilidad = true;
         try {
-            await this.pSvc.actualizarVisibilidadPersonaje(this.pj.Id, visible, actorUid);
+            await this.pSvc.actualizarVisibilidadPersonaje(this.pj.Id, visible);
             this.pj.visible_otros_usuarios = visible;
+            this.listaPersonajesSvc.actualizarVisibilidadEnCache(this.pj.Id, visible);
         } catch (error: any) {
             await Swal.fire({
                 icon: 'warning',

@@ -30,8 +30,6 @@ export interface DoteCreateExtrasDisponiblesDto {
 }
 
 export interface DoteCreateRequest {
-    uid?: string;
-    firebaseUid?: string;
     dote: DoteCreateDoteDto;
     modificadores?: Record<string, number>;
     habilidades_otorgadas?: Array<Record<string, any>>;
@@ -40,8 +38,13 @@ export interface DoteCreateRequest {
     [key: string]: any;
 }
 
-export interface DoteCreateResponse {
+export interface DoteCreateApiResponse {
     message: string;
     idDote: number;
     uid: string;
+}
+
+export interface DoteCreateResponse {
+    message: string;
+    idDote: number;
 }

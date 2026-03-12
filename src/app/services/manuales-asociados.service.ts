@@ -147,8 +147,8 @@ export class ManualesAsociadosService {
 
     private normalizeManualAsociado(raw: any): ManualAsociadoDetalle {
         return {
-            Id: toNumber(raw?.Id ?? raw?.i ?? 0),
-            Nombre: toText(raw?.Nombre ?? raw?.n),
+            Id: toNumber(raw?.Id ?? 0),
+            Nombre: toText(raw?.Nombre),
             Incluye_dotes: toBoolean(raw?.Incluye_dotes),
             Incluye_conjuros: toBoolean(raw?.Incluye_conjuros),
             Incluye_plantillas: toBoolean(raw?.Incluye_plantillas),
@@ -181,14 +181,14 @@ export class ManualesAsociadosService {
 
         return raw.map((item: any) => {
             const referencia: ReferenciaCorta = {
-                Id: toNumber(item?.Id ?? item?.i),
-                Nombre: toText(item?.Nombre ?? item?.n),
-                Descripcion: toText(item?.Descripcion ?? item?.d),
+                Id: toNumber(item?.Id),
+                Nombre: toText(item?.Nombre),
+                Descripcion: toText(item?.Descripcion),
             };
 
             if (item && typeof item === 'object') {
                 Object.keys(item).forEach((key) => {
-                    if (key === 'Id' || key === 'i' || key === 'Nombre' || key === 'n' || key === 'Descripcion' || key === 'd')
+                    if (key === 'Id' || key === 'Nombre' || key === 'Descripcion')
                         return;
                     referencia[key] = item[key];
                 });

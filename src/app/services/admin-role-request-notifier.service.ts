@@ -68,7 +68,10 @@ export class AdminRoleRequestNotifierService implements OnDestroy {
 
         this.checking = true;
         try {
-            const requests = await this.userProfileApiSvc.listPendingMasterRoleRequests();
+            const requests = await this.userProfileApiSvc.listRoleRequests({
+                status: 'pending',
+                requestedRole: 'master',
+            });
             const count = requests.length;
             const previous = this.pendingCount;
             this.pendingCount = count;

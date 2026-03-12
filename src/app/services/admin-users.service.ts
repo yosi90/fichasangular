@@ -2,6 +2,7 @@ import { Injectable } from '@angular/core';
 import { Auth } from '@angular/fire/auth';
 import { Database, get, onValue, ref, set } from '@angular/fire/database';
 import { Observable, combineLatest, map } from 'rxjs';
+import { CACHE_CONTRACT_MANIFEST } from '../config/cache-contract-manifest';
 import {
     EMPTY_USER_ACL,
     PERMISSION_RESOURCES,
@@ -11,6 +12,7 @@ import {
 } from '../interfaces/user-acl';
 import { AuthProviderType, UserProfile } from '../interfaces/user-profile';
 import { UsuarioListadoItemDto, UsuarioPermissionCreateDto, UsuarioUpsertRequestDto, UsuarioUpsertResponseDto } from '../interfaces/usuarios-api';
+import { CacheSyncMetadataService } from './cache-sync-metadata.service';
 import { FirebaseInjectionContextService } from './firebase-injection-context.service';
 import { UsuariosApiService } from './usuarios-api.service';
 
@@ -33,6 +35,10 @@ export interface SyncUsuariosApiResult {
     failedUids: string[];
 }
 
+const USUARIOS_ACL_CACHE_SCHEMA_VERSION = CACHE_CONTRACT_MANIFEST
+    .find((entry) => entry.key === 'usuarios_acl_cache')
+    ?.schemaVersion ?? 1;
+
 @Injectable({
     providedIn: 'root'
 })
@@ -42,6 +48,7 @@ export class AdminUsersService {
         private auth: Auth,
         private usuariosApiSvc: UsuariosApiService,
         private firebaseContextSvc: FirebaseInjectionContextService,
+        private cacheSyncMetadataSvc: CacheSyncMetadataService,
     ) { }
 
     watchUsersAdminView(): Observable<AdminUserRow[]> {
@@ -155,6 +162,7 @@ export class AdminUsersService {
         const cachePayload = this.buildCachePayloadFromApi(usuarios);
         await this.setPath('UserProfiles', cachePayload.userProfilesByUid);
         await this.setPath('Acl/users', cachePayload.aclByUid);
+        await this.cacheSyncMetadataSvc.markSuccess('usuarios_acl_cache', USUARIOS_ACL_CACHE_SCHEMA_VERSION);
         return true;
     }
 
@@ -430,6 +438,7 @@ export class AdminUsersService {
         try {
             await this.upsertUserApi(payload);
         } catch {
+            await this.cacheSyncMetadataSvc.markStale('usuarios_acl_cache', 'admin_rtdb_write_pending_api_sync');
             // Backup best-effort: no bloquea la gestión en tiempo real de RTDB.
         }
     }

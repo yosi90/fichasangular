@@ -169,6 +169,7 @@ export class UserSettingsService {
         return {
             visibilidadPorDefectoPersonajes: settings.perfil.visibilidadPorDefectoPersonajes === true,
             mostrarPerfilPublico: settings.perfil.mostrarPerfilPublico !== false,
+            allowDirectMessagesFromNonFriends: settings.perfil.allowDirectMessagesFromNonFriends === true,
         };
     }
 
@@ -179,6 +180,7 @@ export class UserSettingsService {
             perfil: {
                 visibilidadPorDefectoPersonajes: data.visibilidadPorDefectoPersonajes ?? settings.perfil.visibilidadPorDefectoPersonajes,
                 mostrarPerfilPublico: data.mostrarPerfilPublico ?? settings.perfil.mostrarPerfilPublico,
+                allowDirectMessagesFromNonFriends: data.allowDirectMessagesFromNonFriends ?? settings.perfil.allowDirectMessagesFromNonFriends,
             },
         });
         return next.perfil;
@@ -339,6 +341,7 @@ export class UserSettingsService {
             perfil: {
                 visibilidadPorDefectoPersonajes: raw?.perfil?.visibilidadPorDefectoPersonajes === true,
                 mostrarPerfilPublico: raw?.perfil?.mostrarPerfilPublico !== false,
+                allowDirectMessagesFromNonFriends: raw?.perfil?.allowDirectMessagesFromNonFriends === true,
             },
         };
     }

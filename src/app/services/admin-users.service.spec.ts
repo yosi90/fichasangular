@@ -4,6 +4,7 @@ import { BehaviorSubject, Observable, filter, firstValueFrom } from 'rxjs';
 import { PERMISSION_RESOURCES } from '../interfaces/user-acl';
 import { UsuarioListadoItemDto, UsuarioUpsertRequestDto, UsuarioUpsertResponseDto } from '../interfaces/usuarios-api';
 import { AdminUsersService } from './admin-users.service';
+import { CacheSyncMetadataService } from './cache-sync-metadata.service';
 import { FirebaseInjectionContextService } from './firebase-injection-context.service';
 import { UsuariosApiService } from './usuarios-api.service';
 
@@ -18,14 +19,20 @@ class AdminUsersServiceTestDouble extends AdminUsersService {
     upsertErrorByUid: Record<string, Error> = {};
     downloadBackupCalls: number = 0;
     downloadBackupResult: string = 'rol-backup-test.zip';
+    readonly cacheSyncMetadataSvcMock: jasmine.SpyObj<CacheSyncMetadataService>;
 
     constructor(authMock: Partial<Auth> = {}) {
+        const cacheSyncMetadataSvcMock = jasmine.createSpyObj<CacheSyncMetadataService>('CacheSyncMetadataService', ['markSuccess', 'markStale']);
         super(
             {} as Database,
             authMock as Auth,
             {} as UsuariosApiService,
             { run: <T>(fn: () => T) => fn() } as FirebaseInjectionContextService,
+            cacheSyncMetadataSvcMock,
         );
+        this.cacheSyncMetadataSvcMock = cacheSyncMetadataSvcMock;
+        this.cacheSyncMetadataSvcMock.markSuccess.and.resolveTo();
+        this.cacheSyncMetadataSvcMock.markStale.and.resolveTo();
         this.state.set('UserProfiles', {});
         this.state.set('Acl/users', {});
     }
@@ -80,7 +87,7 @@ class AdminUsersServiceTestDouble extends AdminUsersService {
     }
 
     protected override async upsertUserApi(payload: UsuarioUpsertRequestDto): Promise<UsuarioUpsertResponseDto> {
-        const uid = `${payload.uid ?? payload.firebaseUid ?? ''}`.trim();
+        const uid = `${payload.uid ?? ''}`.trim();
         const errorByUid = this.upsertErrorByUid[uid];
         if (errorByUid)
             throw errorByUid;
@@ -226,6 +233,7 @@ describe('AdminUsersService', () => {
         expect(service.setCalls[1].path).toBe('Acl/users');
         expect(service.setCalls[1].payload['u1'].roles.type).toBe('admin');
         expect(service.setCalls[1].payload['u2'].permissions.dotes.create).toBeTrue();
+        expect(service.cacheSyncMetadataSvcMock.markSuccess).toHaveBeenCalledOnceWith('usuarios_acl_cache', 1);
     });
 
     it('setBanned persiste en RTDB y hace backup API', async () => {
@@ -260,6 +268,41 @@ describe('AdminUsersService', () => {
         expect(service.upsertCalls.length).toBe(1);
         expect(service.upsertCalls[0].uid).toBe('user-1');
         expect(service.upsertCalls[0].banned).toBeTrue();
+        expect(service.cacheSyncMetadataSvcMock.markStale).not.toHaveBeenCalled();
+    });
+
+    it('marca stale si el backup a API falla tras escribir ACL en RTDB', async () => {
+        const service = new AdminUsersServiceTestDouble({ currentUser: { uid: 'admin-1' } as any });
+        service.seedPath('UserProfiles', {
+            'user-1': {
+                uid: 'user-1',
+                displayName: 'User',
+                email: 'user@test.com',
+                authProvider: 'correo',
+                createdAt: 1,
+                lastSeenAt: 2,
+            },
+        });
+        service.seedPath('Acl/users', {
+            'admin-1': {
+                roles: { admin: true, type: 'admin' },
+                status: { banned: false },
+                permissions: { personajes: { create: true } },
+            },
+            'user-1': {
+                roles: { admin: false, type: 'colaborador' },
+                status: { banned: false },
+                permissions: { personajes: { create: true } },
+            },
+        });
+        service.upsertError = new Error('API caída');
+
+        await service.setBanned('user-1', true);
+
+        expect(service.cacheSyncMetadataSvcMock.markStale).toHaveBeenCalledOnceWith(
+            'usuarios_acl_cache',
+            'admin_rtdb_write_pending_api_sync'
+        );
     });
 
     it('bloquea auto-ban del admin actual', async () => {

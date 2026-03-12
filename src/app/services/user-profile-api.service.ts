@@ -10,7 +10,13 @@ import {
     UserPrivateProfile,
     UserPublicProfile,
 } from '../interfaces/user-account';
-import { AdminRoleRequestItem, ResolveRoleRequestInput, UserRoleRequestStatus } from '../interfaces/user-role-request';
+import {
+    AdminRoleRequestItem,
+    ResolveRoleRequestInput,
+    UserRoleRequestListFilters,
+    UserRoleRequestStatus,
+    UserRoleRequestTarget,
+} from '../interfaces/user-role-request';
 import { UserSettingsV1, createDefaultUserSettings } from '../interfaces/user-settings';
 
 @Injectable({
@@ -118,32 +124,45 @@ export class UserProfileApiService {
         }
     }
 
-    async createMasterRoleRequest(): Promise<UserRoleRequestStatus> {
+    async createRoleRequest(requestedRole: UserRoleRequestTarget): Promise<UserRoleRequestStatus> {
+        const normalizedRole = `${requestedRole ?? ''}`.trim().toLowerCase();
+        if (normalizedRole !== 'master' && normalizedRole !== 'colaborador')
+            throw new ProfileApiError('Rol solicitado inválido.', 'ROLE_REQUEST_INVALID', 400);
+
         try {
             await firstValueFrom(
-                this.http.post(`${this.usuariosBaseUrl}/me/master-request`, {}, {
+                this.http.post(`${this.usuariosBaseUrl}/me/role-request`, { requestedRole: normalizedRole }, {
                     headers: await this.buildAuthHeaders(),
                 })
             );
             return await this.getMyRoleRequestStatus();
         } catch (error) {
-            throw this.toProfileApiError(error, 'No se pudo crear la solicitud para ser master.');
+            throw this.toProfileApiError(error, 'No se pudo crear la solicitud de rol.');
         }
     }
 
-    async listPendingMasterRoleRequests(): Promise<AdminRoleRequestItem[]> {
+    async listRoleRequests(filters: UserRoleRequestListFilters = {}): Promise<AdminRoleRequestItem[]> {
+        const params: Record<string, string> = {};
+        const status = `${filters?.status ?? ''}`.trim().toLowerCase();
+        const requestedRole = `${filters?.requestedRole ?? ''}`.trim().toLowerCase();
+
+        if (status === 'pending' || status === 'approved' || status === 'rejected')
+            params['status'] = status;
+        if (requestedRole === 'master' || requestedRole === 'colaborador')
+            params['requestedRole'] = requestedRole;
+
         try {
             const response = await firstValueFrom(
-                this.http.get<AdminRoleRequestItem[]>(`${this.usuariosBaseUrl}/master-requests`, {
+                this.http.get<AdminRoleRequestItem[]>(`${this.usuariosBaseUrl}/role-requests`, {
                     headers: await this.buildAuthHeaders(),
-                    params: { status: 'pending' },
+                    params,
                 })
             );
             return Array.isArray(response)
                 ? response.map((item) => this.normalizeAdminRoleRequestItem(item))
                 : [];
         } catch (error) {
-            throw this.toProfileApiError(error, 'No se pudieron cargar las solicitudes pendientes.');
+            throw this.toProfileApiError(error, 'No se pudieron cargar las solicitudes de rol.');
         }
     }
 
@@ -285,6 +304,7 @@ export class UserProfileApiService {
             perfil: {
                 visibilidadPorDefectoPersonajes: raw?.perfil?.visibilidadPorDefectoPersonajes === true,
                 mostrarPerfilPublico: raw?.perfil?.mostrarPerfilPublico !== false,
+                allowDirectMessagesFromNonFriends: raw?.perfil?.allowDirectMessagesFromNonFriends === true,
             },
         };
     }
@@ -294,7 +314,7 @@ export class UserProfileApiService {
             currentRole: (raw?.currentRole ?? 'jugador') as UserRoleRequestStatus['currentRole'],
             requestedRole: raw?.requestedRole ?? null,
             status: raw?.status ?? 'none',
-            blockedUntilUtc: raw?.blockedUntilUtc ?? null,
+            blockedUntilUtc: this.toNullableText(raw?.blockedUntilUtc),
             requestId: this.toPositiveIntOrNull(raw?.requestId),
             requestedAtUtc: this.toNullableText(raw?.requestedAtUtc),
             resolvedAtUtc: this.toNullableText(raw?.resolvedAtUtc),

@@ -20,7 +20,7 @@ import {
     UserPrivateProfileOpenRequest,
     UserPrivateProfileSectionId
 } from 'src/app/interfaces/user-account';
-import { UserRoleRequestStatus } from 'src/app/interfaces/user-role-request';
+import { UserRoleRequestStatus, UserRoleRequestTarget } from 'src/app/interfaces/user-role-request';
 import { NuevoPersonajeGeneradorConfig, UserSettingsV1 } from 'src/app/interfaces/user-settings';
 import { AppToastService } from 'src/app/services/app-toast.service';
 import { CampanaService } from 'src/app/services/campana.service';
@@ -235,8 +235,29 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
         return this.formatDateLabel(this.profile?.lastSeenAt, 'Sin dato');
     }
 
-    get canRequestMaster(): boolean {
-        return this.profile?.role === 'jugador'
+    get requestedRoleTarget(): UserRoleRequestTarget | null {
+        if (this.profile?.role === 'jugador')
+            return 'master';
+        if (this.profile?.role === 'master')
+            return 'colaborador';
+        return null;
+    }
+
+    get requestedRoleLabel(): string {
+        const target = this.requestedRoleTarget;
+        if (target === 'master')
+            return 'master';
+        if (target === 'colaborador')
+            return 'colaborador';
+        return 'rol superior';
+    }
+
+    get requestRoleButtonLabel(): string {
+        return `Solicitar ser ${this.requestedRoleLabel}`;
+    }
+
+    get canRequestRole(): boolean {
+        return !!this.requestedRoleTarget
             && this.roleRequestStatus?.eligible === true
             && this.roleRequestStatus?.status !== 'pending'
             && !this.hasRoleRequestBlock;
@@ -251,7 +272,7 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
     }
 
     get roleRequestStatusLabel(): string {
-        if (this.profile?.role && this.profile.role !== 'jugador')
+        if (this.profile?.role === 'colaborador' || this.profile?.role === 'admin')
             return `Tu rol actual es ${this.profile.role}.`;
 
         const status = this.roleRequestStatus?.status ?? 'none';
@@ -264,7 +285,7 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
                 ? `Solicitud rechazada. No podrás volver a pedirlo hasta ${this.formattedRoleRequestBlockedUntil}.`
                 : 'La última solicitud fue rechazada.';
         if (this.roleRequestStatus?.eligible === true)
-            return 'Puedes solicitar convertirte en master.';
+            return `Puedes solicitar convertirte en ${this.requestedRoleLabel}.`;
         return this.roleRequestReasonLabel;
     }
 
@@ -442,14 +463,15 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
         }
     }
 
-    async solicitarMaster(): Promise<void> {
-        if (!this.canRequestMaster || this.roleRequestSubmitting)
+    async solicitarCambioRol(): Promise<void> {
+        const target = this.requestedRoleTarget;
+        if (!target || !this.canRequestRole || this.roleRequestSubmitting)
             return;
 
         this.roleRequestSubmitting = true;
         try {
-            this.roleRequestStatus = await this.userProfileApiSvc.createMasterRoleRequest();
-            this.appToastSvc.showSuccess('Solicitud enviada. Queda pendiente de revisión.');
+            this.roleRequestStatus = await this.userProfileApiSvc.createRoleRequest(target);
+            this.appToastSvc.showSuccess(`Solicitud para ser ${this.requestedRoleLabel} enviada. Queda pendiente de revisión.`);
         } catch (error: any) {
             this.appToastSvc.showError(this.mapProfileError(error, 'No se pudo registrar la solicitud.'));
         } finally {
@@ -475,6 +497,7 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
                 perfil: {
                     visibilidadPorDefectoPersonajes: this.visibilidadPorDefectoPersonajes === true,
                     mostrarPerfilPublico: this.mostrarPerfilPublico !== false,
+                    allowDirectMessagesFromNonFriends: current.perfil?.allowDirectMessagesFromNonFriends === true,
                 },
                 nuevo_personaje: {
                     ...current.nuevo_personaje,

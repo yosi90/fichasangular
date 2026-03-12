@@ -43,18 +43,10 @@ function toArray<T = any>(raw: any): T[] {
 }
 
 function normalizeManual(raw: any): { Id: number; Nombre: string; Pagina: number; } {
-    if (typeof raw === "string") {
-        return {
-            Id: 0,
-            Nombre: raw,
-            Pagina: 0,
-        };
-    }
-
     return {
-        Id: toNumber(raw?.Id ?? raw?.i),
-        Nombre: toText(raw?.Nombre ?? raw?.n),
-        Pagina: toNumber(raw?.Pagina ?? raw?.p),
+        Id: toNumber(raw?.Id),
+        Nombre: toText(raw?.Nombre),
+        Pagina: toNumber(raw?.Pagina),
     };
 }
 
@@ -91,7 +83,7 @@ function normalizeHabilidadBase(raw: any): SubtipoHabilidadBase {
         Entrenada: toBoolean(raw?.Entrenada),
         Id_extra: toNumber(raw?.Id_extra),
         Extra: toText(raw?.Extra),
-        Cantidad: toNumber(raw?.Cantidad ?? raw?.Rangos),
+        Cantidad: toNumber(raw?.Cantidad),
         Varios: toText(raw?.Varios),
     };
 }
@@ -102,7 +94,7 @@ function normalizeHabilidadCustom(raw: any): SubtipoHabilidadCustom {
         Habilidad: toText(raw?.Habilidad),
         Id_caracteristica: toNumber(raw?.Id_caracteristica),
         Caracteristica: toText(raw?.Caracteristica),
-        Cantidad: toNumber(raw?.Cantidad ?? raw?.Rangos),
+        Cantidad: toNumber(raw?.Cantidad),
     };
 }
 
@@ -131,12 +123,12 @@ export function normalizeSubtipoRefArray(raw: any): SubtipoRef[] {
 
 export function normalizeSubtipoResumen(raw: any): SubtipoResumen {
     return {
-        Id: toNumber(raw?.Id ?? raw?.i),
-        Nombre: toText(raw?.Nombre ?? raw?.n),
-        Descripcion: toText(raw?.Descripcion ?? raw?.d),
-        Manual: normalizeManual(raw?.Manual ?? raw?.ma),
-        Heredada: toBoolean(raw?.Heredada ?? raw?.he),
-        Oficial: toBoolean(raw?.Oficial ?? raw?.o),
+        Id: toNumber(raw?.Id),
+        Nombre: toText(raw?.Nombre),
+        Descripcion: toText(raw?.Descripcion),
+        Manual: normalizeManual(raw?.Manual),
+        Heredada: toBoolean(raw?.Heredada),
+        Oficial: toBoolean(raw?.Oficial),
     };
 }
 
@@ -144,12 +136,12 @@ export function normalizeSubtipoDetalle(raw: any): SubtipoDetalle {
     const dotes: DoteContextual[] = toDoteContextualArray(raw?.Dotes);
 
     return {
-        Id: toNumber(raw?.Id ?? raw?.i),
-        Nombre: toText(raw?.Nombre ?? raw?.n),
-        Descripcion: toText(raw?.Descripcion ?? raw?.d),
-        Manual: normalizeManual(raw?.Manual ?? raw?.ma),
-        Heredada: toBoolean(raw?.Heredada ?? raw?.he),
-        Oficial: toBoolean(raw?.Oficial ?? raw?.o),
+        Id: toNumber(raw?.Id),
+        Nombre: toText(raw?.Nombre),
+        Descripcion: toText(raw?.Descripcion),
+        Manual: normalizeManual(raw?.Manual),
+        Heredada: toBoolean(raw?.Heredada),
+        Oficial: toBoolean(raw?.Oficial),
         Modificadores_caracteristicas: {
             Fuerza: toNumber(raw?.Modificadores_caracteristicas?.Fuerza),
             Destreza: toNumber(raw?.Modificadores_caracteristicas?.Destreza),
@@ -210,9 +202,9 @@ export function normalizeSubtipoDetalle(raw: any): SubtipoDetalle {
         Sortilegas: toArray(raw?.Sortilegas).map((item: any) => normalizeSortilega(item)),
         Rasgos: toArray(raw?.Rasgos),
         Plantillas: toArray(raw?.Plantillas).map((item: any) => ({
-            Id: toNumber(item?.Id ?? item?.i),
-            Nombre: toText(item?.Nombre ?? item?.n),
-            Descripcion: toText(item?.Descripcion ?? item?.d),
+            Id: toNumber(item?.Id),
+            Nombre: toText(item?.Nombre),
+            Descripcion: toText(item?.Descripcion),
         })),
     };
 }

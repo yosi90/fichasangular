@@ -30,6 +30,7 @@ export interface UserSettingsV1 {
     perfil: {
         visibilidadPorDefectoPersonajes: boolean;
         mostrarPerfilPublico: boolean;
+        allowDirectMessagesFromNonFriends: boolean;
     };
 }
 
@@ -44,6 +45,7 @@ export function createDefaultUserSettings(): UserSettingsV1 {
         perfil: {
             visibilidadPorDefectoPersonajes: false,
             mostrarPerfilPublico: true,
+            allowDirectMessagesFromNonFriends: false,
         },
     };
 }

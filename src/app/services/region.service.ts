@@ -40,9 +40,9 @@ function toArray<T = any>(value: any): T[] {
 
 export function normalizeRegion(raw: any): RegionDetalle {
     return {
-        Id: toNumber(raw?.Id ?? raw?.id ?? raw?.i),
-        Nombre: toText(raw?.Nombre ?? raw?.nombre ?? raw?.n),
-        Oficial: toBoolean(raw?.Oficial ?? raw?.oficial ?? raw?.o),
+        Id: toNumber(raw?.Id),
+        Nombre: toText(raw?.Nombre),
+        Oficial: toBoolean(raw?.Oficial),
     };
 }
 

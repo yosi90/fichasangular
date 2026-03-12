@@ -17,8 +17,8 @@
             <mat-card class="tw-m-2 tw-p-3">
                 <mat-accordion class="admin-accordion">
                     <mat-expansion-panel #primero [expanded]="syncPanelExpanded">
-                        <mat-expansion-panel-header class="tw-rounded-none tw-rounded-t-md">
-                            <button mat-stroked-button color="accent" class="tw-rounded-none tw-rounded-t-md"
+                        <mat-expansion-panel-header>
+                            <button mat-stroked-button color="accent"
                                 matTooltip="Solo debe ser usado para inicializar datos en firebase">
                                 <mat-icon>sync_alt</mat-icon>Sincronizar datos entre SQL server y firebase
                             </button>
@@ -37,83 +37,235 @@
                         </div>
                     </mat-expansion-panel>
 
-                    <mat-expansion-panel #segundo [expanded]="usuariosPanelExpanded">
-                        <mat-expansion-panel-header class="tw-rounded-none tw-rounded-t-md">
-                            <button mat-stroked-button color="accent" class="tw-rounded-none tw-rounded-t-md"
+                    <mat-expansion-panel #segundo [expanded]="solicitudesPanelExpanded">
+                        <mat-expansion-panel-header>
+                            <button mat-stroked-button color="accent"
+                                matTooltip="Gestionar solicitudes de elevación de rol">
+                                <mat-icon>pending_actions</mat-icon>Solicitudes de rol
+                            </button>
+                        </mat-expansion-panel-header>
+
+                        <div
+                            id="admin-role-requests"
+                            class="usuarios-admin-panel tw-p-2 admin-role-requests"
+                            [class.admin-role-requests--highlight]="resaltarSolicitudesPendientes">
+                            <div class="admin-role-requests__header">
+                                <div>
+                                    <h3>Solicitudes pendientes</h3>
+                                    <p>Revisión separada para peticiones de master y colaborador.</p>
+                                </div>
+                                <button
+                                    mat-stroked-button
+                                    color="accent"
+                                    [disabled]="cargandoSolicitudesRol"
+                                    (click)="cargarSolicitudesRolPendientes()">
+                                    <mat-icon>{{cargandoSolicitudesRol ? 'hourglass_top' : 'refresh'}}</mat-icon>
+                                    {{cargandoSolicitudesRol ? 'Cargando...' : 'Actualizar'}}
+                                </button>
+                            </div>
+
+                            <div class="usuarios-admin-estado tw-text-center tw-p-2" *ngIf="etiquetaEstadoSolicitudesRol.length > 0">
+                                <mat-chip>{{etiquetaEstadoSolicitudesRol}}</mat-chip>
+                            </div>
+
+                            <ng-container *ngIf="etiquetaEstadoSolicitudesRol.length < 1">
+                                <div class="usuarios-admin-estado tw-text-center tw-p-2" *ngIf="noHaySolicitudesRol">
+                                    <mat-chip>No hay solicitudes registradas</mat-chip>
+                                </div>
+
+                                <section class="admin-role-requests__section" *ngIf="haySolicitudesRolPendientes">
+                                    <div class="admin-role-requests__section-header">
+                                        <h3>Pendientes</h3>
+                                        <p>Separadas por rol solicitado para revisar más rápido.</p>
+                                    </div>
+
+                                    <div class="admin-role-requests__group-grid">
+                                        <section class="admin-role-requests__group" *ngIf="solicitudesMasterPendientes.length > 0">
+                                            <div class="admin-role-requests__subheader">
+                                                <h4>Solicitudes de master</h4>
+                                                <span>{{solicitudesMasterPendientes.length}}</span>
+                                            </div>
+
+                                            <div class="tabla-scroll usuarios-admin-tabla-scroll">
+                                                <table class="tabla-usuarios-admin tabla-usuarios-admin--requests">
+                                                    <thead>
+                                                        <tr>
+                                                            <th>Solicitante</th>
+                                                            <th>Rol actual</th>
+                                                            <th>Solicitado</th>
+                                                            <th>Fecha</th>
+                                                            <th>Acciones</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        <tr *ngFor="let request of solicitudesMasterPendientes; trackBy: trackByRoleRequest">
+                                                            <td>
+                                                                <div class="usuario-principal">{{request.displayName || 'Sin nombre'}}</div>
+                                                                <div class="usuario-secundario">{{request.email || '-'}}</div>
+                                                                <div class="usuario-secundario">UID: {{request.uid}}</div>
+                                                            </td>
+                                                            <td>{{roleLabel(request.currentRole)}}</td>
+                                                            <td>{{roleLabel(request.requestedRole)}}</td>
+                                                            <td>{{formatearFechaUtc(request.requestedAtUtc)}}</td>
+                                                            <td>
+                                                                <div class="admin-role-requests__actions">
+                                                                    <button
+                                                                        mat-raised-button
+                                                                        color="primary"
+                                                                        [disabled]="isRoleRequestOpRunning(request)"
+                                                                        (click)="aprobarSolicitudRol(request)">
+                                                                        Aprobar
+                                                                    </button>
+                                                                    <button
+                                                                        mat-stroked-button
+                                                                        color="warn"
+                                                                        [disabled]="isRoleRequestOpRunning(request)"
+                                                                        (click)="rechazarSolicitudRol(request)">
+                                                                        Rechazar
+                                                                    </button>
+                                                                </div>
+                                                            </td>
+                                                        </tr>
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </section>
+
+                                        <section class="admin-role-requests__group" *ngIf="solicitudesColaboradorPendientes.length > 0">
+                                            <div class="admin-role-requests__subheader">
+                                                <h4>Solicitudes de colaborador</h4>
+                                                <span>{{solicitudesColaboradorPendientes.length}}</span>
+                                            </div>
+
+                                            <div class="tabla-scroll usuarios-admin-tabla-scroll">
+                                                <table class="tabla-usuarios-admin tabla-usuarios-admin--requests">
+                                                    <thead>
+                                                        <tr>
+                                                            <th>Solicitante</th>
+                                                            <th>Rol actual</th>
+                                                            <th>Solicitado</th>
+                                                            <th>Fecha</th>
+                                                            <th>Acciones</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        <tr *ngFor="let request of solicitudesColaboradorPendientes; trackBy: trackByRoleRequest">
+                                                            <td>
+                                                                <div class="usuario-principal">{{request.displayName || 'Sin nombre'}}</div>
+                                                                <div class="usuario-secundario">{{request.email || '-'}}</div>
+                                                                <div class="usuario-secundario">UID: {{request.uid}}</div>
+                                                            </td>
+                                                            <td>{{roleLabel(request.currentRole)}}</td>
+                                                            <td>{{roleLabel(request.requestedRole)}}</td>
+                                                            <td>{{formatearFechaUtc(request.requestedAtUtc)}}</td>
+                                                            <td>
+                                                                <div class="admin-role-requests__actions">
+                                                                    <button
+                                                                        mat-raised-button
+                                                                        color="primary"
+                                                                        [disabled]="isRoleRequestOpRunning(request)"
+                                                                        (click)="aprobarSolicitudRol(request)">
+                                                                        Aprobar
+                                                                    </button>
+                                                                    <button
+                                                                        mat-stroked-button
+                                                                        color="warn"
+                                                                        [disabled]="isRoleRequestOpRunning(request)"
+                                                                        (click)="rechazarSolicitudRol(request)">
+                                                                        Rechazar
+                                                                    </button>
+                                                                </div>
+                                                            </td>
+                                                        </tr>
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </section>
+                                    </div>
+                                </section>
+
+                                <section class="admin-role-requests__section" *ngIf="solicitudesAprobadas.length > 0">
+                                    <div class="admin-role-requests__section-header">
+                                        <h3>Aceptadas</h3>
+                                        <p>Histórico de solicitudes aprobadas.</p>
+                                    </div>
+
+                                    <div class="tabla-scroll usuarios-admin-tabla-scroll">
+                                        <table class="tabla-usuarios-admin tabla-usuarios-admin--requests">
+                                            <thead>
+                                                <tr>
+                                                    <th>Solicitante</th>
+                                                    <th>Rol actual</th>
+                                                    <th>Solicitado</th>
+                                                    <th>Solicitada</th>
+                                                    <th>Resuelta</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <tr *ngFor="let request of solicitudesAprobadas; trackBy: trackByRoleRequest">
+                                                    <td>
+                                                        <div class="usuario-principal">{{request.displayName || 'Sin nombre'}}</div>
+                                                        <div class="usuario-secundario">{{request.email || '-'}}</div>
+                                                        <div class="usuario-secundario">UID: {{request.uid}}</div>
+                                                    </td>
+                                                    <td>{{roleLabel(request.currentRole)}}</td>
+                                                    <td>{{roleLabel(request.requestedRole)}}</td>
+                                                    <td>{{formatearFechaUtc(request.requestedAtUtc)}}</td>
+                                                    <td>{{formatearFechaUtc(request.resolvedAtUtc)}}</td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </section>
+
+                                <section class="admin-role-requests__section" *ngIf="solicitudesRechazadas.length > 0">
+                                    <div class="admin-role-requests__section-header">
+                                        <h3>Rechazadas</h3>
+                                        <p>Histórico con bloqueo y comentario cuando existen.</p>
+                                    </div>
+
+                                    <div class="tabla-scroll usuarios-admin-tabla-scroll">
+                                        <table class="tabla-usuarios-admin tabla-usuarios-admin--requests">
+                                            <thead>
+                                                <tr>
+                                                    <th>Solicitante</th>
+                                                    <th>Solicitado</th>
+                                                    <th>Solicitada</th>
+                                                    <th>Resuelta</th>
+                                                    <th>Bloqueo</th>
+                                                    <th>Comentario</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <tr *ngFor="let request of solicitudesRechazadas; trackBy: trackByRoleRequest">
+                                                    <td>
+                                                        <div class="usuario-principal">{{request.displayName || 'Sin nombre'}}</div>
+                                                        <div class="usuario-secundario">{{request.email || '-'}}</div>
+                                                        <div class="usuario-secundario">UID: {{request.uid}}</div>
+                                                    </td>
+                                                    <td>{{roleLabel(request.requestedRole)}}</td>
+                                                    <td>{{formatearFechaUtc(request.requestedAtUtc)}}</td>
+                                                    <td>{{formatearFechaUtc(request.resolvedAtUtc)}}</td>
+                                                    <td>{{formatearFechaUtc(request.blockedUntilUtc, 'Sin bloqueo')}}</td>
+                                                    <td>{{request.adminComment || 'Sin comentario'}}</td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </section>
+                            </ng-container>
+                        </div>
+                    </mat-expansion-panel>
+
+                    <mat-expansion-panel #tercero [expanded]="usuariosPanelExpanded">
+                        <mat-expansion-panel-header>
+                            <button mat-stroked-button color="accent"
                                 matTooltip="Gestionar usuarios, baneos y permisos granulares de creación">
                                 <mat-icon>manage_accounts</mat-icon>Gestionar usuarios y permisos
                             </button>
                         </mat-expansion-panel-header>
 
                         <div class="usuarios-admin-panel tw-p-2">
-                            <section
-                                id="admin-role-requests"
-                                class="admin-role-requests"
-                                [class.admin-role-requests--highlight]="resaltarSolicitudesPendientes">
-                                <div class="admin-role-requests__header">
-                                    <div>
-                                        <h3>Peticiones de master</h3>
-                                        <p>Solicitudes pendientes de aprobación o rechazo.</p>
-                                    </div>
-                                    <button
-                                        mat-stroked-button
-                                        color="accent"
-                                        [disabled]="cargandoSolicitudesMaster"
-                                        (click)="cargarSolicitudesMasterPendientes()">
-                                        <mat-icon>{{cargandoSolicitudesMaster ? 'hourglass_top' : 'refresh'}}</mat-icon>
-                                        {{cargandoSolicitudesMaster ? 'Cargando...' : 'Actualizar'}}
-                                    </button>
-                                </div>
-
-                                <div class="usuarios-admin-estado tw-text-center tw-p-2" *ngIf="etiquetaEstadoSolicitudes.length > 0">
-                                    <mat-chip>{{etiquetaEstadoSolicitudes}}</mat-chip>
-                                </div>
-
-                                <div class="tabla-scroll usuarios-admin-tabla-scroll" *ngIf="etiquetaEstadoSolicitudes.length < 1">
-                                    <table class="tabla-usuarios-admin tabla-usuarios-admin--requests">
-                                        <thead>
-                                            <tr>
-                                                <th>Solicitante</th>
-                                                <th>Rol actual</th>
-                                                <th>Solicitado</th>
-                                                <th>Fecha</th>
-                                                <th>Acciones</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            <tr *ngFor="let request of solicitudesMasterPendientes; trackBy: trackByRoleRequest">
-                                                <td>
-                                                    <div class="usuario-principal">{{request.displayName || 'Sin nombre'}}</div>
-                                                    <div class="usuario-secundario">{{request.email || '-'}}</div>
-                                                    <div class="usuario-secundario">UID: {{request.uid}}</div>
-                                                </td>
-                                                <td>{{roleLabel(request.currentRole)}}</td>
-                                                <td>{{roleLabel(request.requestedRole)}}</td>
-                                                <td>{{formatearFechaUtc(request.requestedAtUtc)}}</td>
-                                                <td>
-                                                    <div class="admin-role-requests__actions">
-                                                        <button
-                                                            mat-raised-button
-                                                            color="primary"
-                                                            [disabled]="isRoleRequestOpRunning(request)"
-                                                            (click)="aprobarSolicitudMaster(request)">
-                                                            Aprobar
-                                                        </button>
-                                                        <button
-                                                            mat-stroked-button
-                                                            color="warn"
-                                                            [disabled]="isRoleRequestOpRunning(request)"
-                                                            (click)="rechazarSolicitudMaster(request)">
-                                                            Rechazar
-                                                        </button>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </section>
-
                             <mat-form-field appearance="fill" class="tw-w-full tw-mb-2">
                                 <mat-label>Buscar usuario</mat-label>
                                 <input

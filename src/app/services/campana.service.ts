@@ -1,6 +1,6 @@
 import { HttpClient, HttpErrorResponse, HttpHeaders } from '@angular/common/http';
 import { Injectable } from '@angular/core';
-import { Auth } from '@angular/fire/auth';
+import { Auth, onAuthStateChanged } from '@angular/fire/auth';
 import { Database, ref, set } from '@angular/fire/database';
 import { Observable, firstValueFrom, of } from 'rxjs';
 import Swal from 'sweetalert2';
@@ -28,13 +28,16 @@ export class CampanaService {
     private readonly tramasBaseUrl = `${environment.apiUrl}tramas`;
     private readonly subtramasBaseUrl = `${environment.apiUrl}subtramas`;
     private readonly usuariosBaseUrl = `${environment.apiUrl}usuarios`;
+    private readonly authReadyPromise: Promise<void>;
 
     constructor(
         private auth: Auth,
         private db: Database,
         private http: HttpClient,
         private firebaseContextSvc: FirebaseInjectionContextService
-    ) { }
+    ) {
+        this.authReadyPromise = this.createAuthReadyPromise();
+    }
 
     async getListCampanas(): Promise<Observable<Campana[]>> {
         const headers = await this.buildAuthHeaders();
@@ -91,6 +94,7 @@ export class CampanaService {
                     { headers: await this.buildAuthHeaders() }
                 )
             );
+            await this.refreshCampanasCacheBestEffort();
 
             return {
                 id: this.toPositiveInt(response?.idCampana) ?? 0,
@@ -116,6 +120,7 @@ export class CampanaService {
                     { headers: await this.buildAuthHeaders() }
                 )
             );
+            await this.refreshCampanasCacheBestEffort();
         } catch (error) {
             throw this.toError(error, 'No se pudo renombrar la campaña.');
         }
@@ -147,6 +152,7 @@ export class CampanaService {
                     { headers: await this.buildAuthHeaders() }
                 )
             );
+            await this.refreshCampanasCacheBestEffort();
         } catch (error) {
             throw this.toError(error, 'No se pudo añadir el jugador a la campaña.');
         }
@@ -172,6 +178,7 @@ export class CampanaService {
                     }
                 )
             );
+            await this.refreshCampanasCacheBestEffort();
         } catch (error) {
             throw this.toError(error, 'No se pudo retirar el jugador de la campaña.');
         }
@@ -194,6 +201,7 @@ export class CampanaService {
                     { headers: await this.buildAuthHeaders() }
                 )
             );
+            await this.refreshCampanasCacheBestEffort();
         } catch (error) {
             throw this.toError(error, 'No se pudo transferir el master de la campaña.');
         }
@@ -235,6 +243,7 @@ export class CampanaService {
                     { headers: await this.buildAuthHeaders() }
                 )
             );
+            await this.refreshCampanasCacheBestEffort();
         } catch (error) {
             throw this.toError(error, 'No se pudo crear la trama.');
         }
@@ -253,6 +262,7 @@ export class CampanaService {
                     { headers: await this.buildAuthHeaders() }
                 )
             );
+            await this.refreshCampanasCacheBestEffort();
         } catch (error) {
             throw this.toError(error, 'No se pudo actualizar la trama.');
         }
@@ -271,6 +281,7 @@ export class CampanaService {
                     { headers: await this.buildAuthHeaders() }
                 )
             );
+            await this.refreshCampanasCacheBestEffort();
         } catch (error) {
             throw this.toError(error, 'No se pudo crear la subtrama.');
         }
@@ -289,27 +300,19 @@ export class CampanaService {
                     { headers: await this.buildAuthHeaders() }
                 )
             );
+            await this.refreshCampanasCacheBestEffort();
         } catch (error) {
             throw this.toError(error, 'No se pudo actualizar la subtrama.');
         }
     }
 
-    protected writeCampanaCache(campana: Campana): Promise<void> {
-        return this.firebaseContextSvc.run(() => set(ref(this.db, `Campañas/${campana.Id}`), {
-            Nombre: campana.Nombre,
-            Tramas: campana.Tramas,
-        }));
+    protected writeCampanasCachePayload(payload: Record<string, { Nombre: string; Tramas: any[]; }>): Promise<void> {
+        return this.firebaseContextSvc.run(() => set(ref(this.db, 'Campañas'), payload));
     }
 
     public async RenovarCampañasFirebase(): Promise<boolean> {
         try {
-            const headers = await this.buildAuthHeaders();
-            const campanas = (await this.fetchCampanasActorScoped(headers))
-                .filter((campana) => campana.Nombre !== 'Sin campaña');
-
-            await Promise.all(
-                campanas.map((element) => this.writeCampanaCache(element))
-            );
+            await this.syncCampanasCache();
 
             Swal.fire({
                 icon: 'success',
@@ -326,6 +329,21 @@ export class CampanaService {
                 showConfirmButton: true
             });
             return false;
+        }
+    }
+
+    private async syncCampanasCache(): Promise<void> {
+        const headers = await this.buildAuthHeaders();
+        const campanas = (await this.fetchCampanasActorScoped(headers))
+            .filter((campana) => campana.Id > 0 && campana.Nombre !== 'Sin campaña');
+        await this.writeCampanasCachePayload(this.buildCampanasCachePayload(campanas));
+    }
+
+    private async refreshCampanasCacheBestEffort(): Promise<void> {
+        try {
+            await this.syncCampanasCache();
+        } catch {
+            // Best-effort: la mutación principal ya fue aceptada por la API.
         }
     }
 
@@ -437,7 +455,7 @@ export class CampanaService {
     }
 
     private normalizeCampaignMember(raw: any): CampaignMemberItem | null {
-        const uid = `${raw?.uid ?? raw?.firebaseUid ?? ''}`.trim();
+        const uid = `${raw?.uid ?? ''}`.trim();
         if (uid.length < 1)
             return null;
 
@@ -497,6 +515,27 @@ export class CampanaService {
             Nombre: 'Sin campaña',
             Tramas: [],
         };
+    }
+
+    private buildCampanasCachePayload(campanas: Campana[]): Record<string, { Nombre: string; Tramas: any[]; }> {
+        const payload: Record<string, { Nombre: string; Tramas: any[]; }> = {};
+        campanas.forEach((campana) => {
+            if (this.toPositiveInt(campana?.Id) !== campana.Id)
+                return;
+
+            payload[`${campana.Id}`] = {
+                Nombre: `${campana.Nombre ?? ''}`.trim(),
+                Tramas: (campana.Tramas ?? []).map((trama) => ({
+                    Id: this.toPositiveInt(trama?.Id) ?? 0,
+                    Nombre: `${trama?.Nombre ?? ''}`.trim(),
+                    Subtramas: (trama?.Subtramas ?? []).map((subtrama) => ({
+                        Id: this.toPositiveInt(subtrama?.Id) ?? 0,
+                        Nombre: `${subtrama?.Nombre ?? ''}`.trim(),
+                    })),
+                })),
+            };
+        });
+        return payload;
     }
 
     private normalizeCampaignRole(value: any): CampaignRoleCode {
@@ -563,6 +602,7 @@ export class CampanaService {
     }
 
     private async buildAuthHeaders(): Promise<HttpHeaders> {
+        await this.authReadyPromise;
         const user = this.auth.currentUser;
         if (!user)
             throw new Error('Sesión no iniciada');
@@ -573,6 +613,34 @@ export class CampanaService {
 
         return new HttpHeaders({
             Authorization: `Bearer ${idToken}`,
+        });
+    }
+
+    private createAuthReadyPromise(): Promise<void> {
+        if (this.auth.currentUser)
+            return Promise.resolve();
+
+        return new Promise((resolve) => {
+            let resolved = false;
+            let unsubscribe: (() => void) | null = null;
+            const finish = () => {
+                if (resolved)
+                    return;
+                resolved = true;
+                unsubscribe?.();
+                resolve();
+            };
+
+            try {
+                unsubscribe = this.firebaseContextSvc.run(() => onAuthStateChanged(
+                    this.auth,
+                    () => finish(),
+                    () => finish()
+                ));
+                setTimeout(() => finish(), 1500);
+            } catch {
+                finish();
+            }
         });
     }
 }

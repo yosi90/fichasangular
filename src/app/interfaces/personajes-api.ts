@@ -101,7 +101,6 @@ export interface PersonajeCreateColeccionesDto {
 }
 
 export interface PersonajeCreateRequestDto {
-    uid: string;
     personaje: {
         nombre: string;
         ataqueBase: string;
@@ -158,9 +157,14 @@ export interface PersonajeCreateRequestDto {
     companero?: Record<string, any>;
 }
 
+export interface PersonajeCreateApiResponseDto {
+    message: string;
+    idPersonaje: number;
+    ownerUserId: string;
+}
+
 export interface PersonajeCreateResponseDto {
     message: string;
     idPersonaje: number;
     ownerUserId: string;
-    uid: string;
 }

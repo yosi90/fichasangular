@@ -1,4 +1,4 @@
-import { of } from 'rxjs';
+import { of, throwError } from 'rxjs';
 import Swal from 'sweetalert2';
 
 import { CampanaService } from './campana.service';
@@ -7,19 +7,22 @@ import { FirebaseInjectionContextService } from './firebase-injection-context.se
 class CampanaServiceTestDouble extends CampanaService {
     writeCalls: any[] = [];
 
-    protected override writeCampanaCache(campana: any): Promise<void> {
-        this.writeCalls.push(campana);
+    protected override writeCampanasCachePayload(payload: any): Promise<void> {
+        this.writeCalls.push(payload);
         return Promise.resolve();
     }
 }
 
 describe('CampanaService', () => {
-    let httpMock: { get: jasmine.Spy; };
+    let httpMock: { get: jasmine.Spy; post: jasmine.Spy; patch: jasmine.Spy; delete: jasmine.Spy; };
     let service: CampanaServiceTestDouble;
 
     beforeEach(() => {
         httpMock = {
             get: jasmine.createSpy('get'),
+            post: jasmine.createSpy('post'),
+            patch: jasmine.createSpy('patch'),
+            delete: jasmine.createSpy('delete'),
         };
 
         spyOn(Swal, 'fire').and.resolveTo({} as any);
@@ -52,17 +55,60 @@ describe('CampanaService', () => {
             jasmine.stringMatching(/subtramas\/trama\/11$/),
         ]);
         expect(service.writeCalls).toEqual([{
-            Id: 7,
-            Nombre: 'Campaña de prueba',
-            Tramas: [{
-                Id: 11,
-                Nombre: 'Trama principal',
-                Subtramas: [{
-                    Id: 21,
-                    Nombre: 'Subtrama alfa',
+            '7': {
+                Nombre: 'Campaña de prueba',
+                Tramas: [{
+                    Id: 11,
+                    Nombre: 'Trama principal',
+                    Subtramas: [{
+                        Id: 21,
+                        Nombre: 'Subtrama alfa',
+                    }],
                 }],
-            }],
+            },
         }]);
+    });
+
+    it('createCampaign refresca la cache derivada completa en best-effort', async () => {
+        httpMock.post.and.returnValue(of({ idCampana: 7, nombre: 'Campaña nueva' }));
+        httpMock.get.and.callFake((url: string) => {
+            if (url.endsWith('campanas'))
+                return of([{ i: 7, n: 'Campaña nueva' }]);
+            if (url.endsWith('tramas/campana/7'))
+                return of([{ i: 11, n: 'Trama principal' }]);
+            if (url.endsWith('subtramas/trama/11'))
+                return of([]);
+            throw new Error(`URL inesperada: ${url}`);
+        });
+
+        const created = await service.createCampaign('Campaña nueva');
+
+        expect(created).toEqual({
+            id: 7,
+            nombre: 'Campaña nueva',
+            campaignRole: 'master',
+            membershipStatus: 'activo',
+        });
+        expect(service.writeCalls).toEqual([{
+            '7': {
+                Nombre: 'Campaña nueva',
+                Tramas: [{
+                    Id: 11,
+                    Nombre: 'Trama principal',
+                    Subtramas: [],
+                }],
+            },
+        }]);
+    });
+
+    it('createCampaign no falla si el refresh best-effort de cache revienta', async () => {
+        httpMock.post.and.returnValue(of({ idCampana: 7, nombre: 'Campaña nueva' }));
+        httpMock.get.and.returnValue(throwError(() => new Error('refresh fail')));
+
+        const created = await service.createCampaign('Campaña nueva');
+
+        expect(created.id).toBe(7);
+        expect(service.writeCalls).toEqual([]);
     });
 
     it('getListCampanas añade la opción sintética Sin campaña', async () => {
@@ -113,6 +159,27 @@ describe('CampanaService', () => {
         expect(detail.includeInactiveMembers).toBeTrue();
         expect(detail.members[0].uid).toBe('uid-master');
         expect(detail.tramas[0].subtramas[0].nombre).toBe('Subtrama alfa');
+    });
+
+    it('descarta miembros malformados sin uid canónico', async () => {
+        httpMock.get.and.callFake((url: string) => {
+            if (url.endsWith('campanas'))
+                return of([{ i: 7, n: 'Campaña visible', campaignRole: 'master', membershipStatus: 'activo' }]);
+            if (url.endsWith('campanas/7/jugadores'))
+                return of([
+                    { firebaseUid: 'legacy-only', displayName: 'Legacy roto', campaignRole: 'jugador', membershipStatus: 'activo' },
+                    { uid: 'uid-master', displayName: 'Master', campaignRole: 'master', membershipStatus: 'activo' },
+                ]);
+            if (url.endsWith('tramas/campana/7'))
+                return of([]);
+            throw new Error(`URL inesperada: ${url}`);
+        });
+
+        const detail = await service.getCampaignDetail(7);
+
+        expect(detail.members).toEqual([
+            jasmine.objectContaining({ uid: 'uid-master', displayName: 'Master' }),
+        ]);
     });
 
     it('searchUsers usa el endpoint público de búsqueda', async () => {

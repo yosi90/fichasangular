@@ -7,6 +7,36 @@ import Swal from "sweetalert2";
 import { EscuelaConjuros } from "../interfaces/escuela-conjuros";
 import { FirebaseInjectionContextService } from "./firebase-injection-context.service";
 
+function toInt(value: any, fallback: number = 0): number {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? Math.trunc(parsed) : fallback;
+}
+
+function toText(value: any): string {
+    return `${value ?? ''}`.trim();
+}
+
+function toBoolean(value: any): boolean {
+    if (typeof value === 'boolean')
+        return value;
+    if (typeof value === 'number')
+        return value > 0;
+    if (typeof value === 'string') {
+        const normalized = value.trim().toLowerCase();
+        return normalized === '1' || normalized === 'true' || normalized === 'si' || normalized === 'sí';
+    }
+    return false;
+}
+
+function normalizeEscuela(raw: any, fallbackId: number = 0): EscuelaConjuros {
+    return {
+        Id: toInt(raw?.Id, fallbackId),
+        Nombre: toText(raw?.Nombre),
+        Nombre_especial: toText(raw?.Nombre_esp ?? raw?.Nombre_especial),
+        Prohibible: toBoolean(raw?.Prohibible),
+    };
+}
+
 @Injectable({
     providedIn: 'root'
 })
@@ -24,13 +54,7 @@ export class EscuelaConjurosService {
             let unsubscribe: Unsubscribe;
 
             const onNext = (snapshot: any) => {
-                let escuela: EscuelaConjuros = {
-                    Id: id,
-                    Nombre: snapshot.child('Nombre').val(),
-                    Nombre_especial: snapshot.child('Nombre_especial').val(),
-                    Prohibible: snapshot.child('Prohibible').val()
-                };
-                observador.next(escuela);
+                observador.next(normalizeEscuela(snapshot.val(), id));
             };
 
             const onError = (error: any) => {
@@ -52,12 +76,7 @@ export class EscuelaConjurosService {
             const onNext = (snapshot: any) => {
                 const escuelas: EscuelaConjuros[] = [];
                 snapshot.forEach((obj: any) => {
-                    const escuela: EscuelaConjuros = {
-                        Id: obj.child('Id').val(),
-                        Nombre: obj.child('Nombre').val(),
-                        Nombre_especial: obj.child('Nombre_especial').val(),
-                        Prohibible: obj.child('Prohibible').val()
-                    };
+                    const escuela = normalizeEscuela(obj.val());
                     escuelas.push(escuela);
                 });
                 observador.next(escuelas);
@@ -88,15 +107,16 @@ export class EscuelaConjurosService {
                 : Object.values(response ?? {});
 
             await Promise.all(
-                escuelas.map((element: {
-                    i: number; n: string; ne: string; p: boolean;
-                }) => {
+                escuelas.map((element: any) => {
+                    const escuela = normalizeEscuela(element);
+                    if (escuela.Id <= 0 || escuela.Nombre.length < 1)
+                        return Promise.resolve();
                     return this.firebaseContextSvc.run(() => set(
-                        ref(this.db, `Escuelas/${element.i}`), {
-                        Id: element.i,
-                        Nombre: element.n,
-                        Nombre_especial: element.ne,
-                        Prohibible: element.p
+                        ref(this.db, `Escuelas/${escuela.Id}`), {
+                        Id: escuela.Id,
+                        Nombre: escuela.Nombre,
+                        Nombre_especial: escuela.Nombre_especial,
+                        Prohibible: escuela.Prohibible
                     }));
                 })
             );

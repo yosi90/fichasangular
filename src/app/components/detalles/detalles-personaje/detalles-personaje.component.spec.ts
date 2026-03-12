@@ -4,6 +4,7 @@ import { By } from '@angular/platform-browser';
 import { of } from 'rxjs';
 import { NuevoPersonajeService } from 'src/app/services/nuevo-personaje.service';
 import { FichasDescargaBackgroundService } from 'src/app/services/fichas-descarga-background.service';
+import { ListaPersonajesService } from 'src/app/services/listas/lista-personajes.service';
 import { PersonajeService } from 'src/app/services/personaje.service';
 import { RegionService } from 'src/app/services/region.service';
 import { UserProfileApiService } from 'src/app/services/user-profile-api.service';
@@ -15,10 +16,14 @@ describe('DetallesPersonajeComponent', () => {
     let fixture: ComponentFixture<DetallesPersonajeComponent>;
     let fichasDescargaBgSvcMock: any;
     let regionSvcMock: any;
+    let listaPersonajesSvcMock: any;
 
     beforeEach(async () => {
         fichasDescargaBgSvcMock = {
             descargarFichas: jasmine.createSpy('descargarFichas').and.callFake(() => undefined),
+        };
+        listaPersonajesSvcMock = {
+            actualizarVisibilidadEnCache: jasmine.createSpy('actualizarVisibilidadEnCache'),
         };
         regionSvcMock = {
             getRegiones: () => of([]),
@@ -36,9 +41,12 @@ describe('DetallesPersonajeComponent', () => {
                         actualizarVisibilidadPersonaje: async () => ({
                             idPersonaje: 1,
                             visible_otros_usuarios: false,
-                            uid: 'test-uid',
                         }),
                     },
+                },
+                {
+                    provide: ListaPersonajesService,
+                    useValue: listaPersonajesSvcMock,
                 },
                 {
                     provide: UserService,
@@ -63,6 +71,14 @@ describe('DetallesPersonajeComponent', () => {
         fixture = TestBed.createComponent(DetallesPersonajeComponent);
         component = fixture.componentInstance;
         component.pj = new NuevoPersonajeService().PersonajeCreacion;
+        component.pj.Id = 1;
+    });
+
+    it('actualiza la cache del listado al cambiar la visibilidad', async () => {
+        await component.actualizarVisibilidad(true);
+
+        expect(component.pj.visible_otros_usuarios).toBeTrue();
+        expect(listaPersonajesSvcMock.actualizarVisibilidadEnCache).toHaveBeenCalledOnceWith(1, true);
     });
 
     it('muestra botón Generar pdf por defecto', () => {

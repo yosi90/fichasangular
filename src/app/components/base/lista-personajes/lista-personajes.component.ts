@@ -1,4 +1,4 @@
-import { Component, ViewChild, OnInit, AfterViewInit, ElementRef, Output, EventEmitter } from '@angular/core';
+import { Component, ViewChild, OnInit, AfterViewInit, ElementRef, Output, EventEmitter, OnDestroy } from '@angular/core';
 import { animate, state, style, transition, trigger } from '@angular/animations';
 import { ListaPersonajesService } from '../../../services/listas/lista-personajes.service';
 import { PersonajeSimple } from '../../../interfaces/simplificaciones/personaje-simple';
@@ -9,6 +9,7 @@ import { LiveAnnouncer } from '@angular/cdk/a11y';
 import { Campana, Tramas, Super } from 'src/app/interfaces/campaña';
 import { CampanaService } from 'src/app/services/campana.service';
 import { UserService } from 'src/app/services/user.service';
+import { Subscription } from 'rxjs';
 
 @Component({
     selector: 'app-lista-personajes',
@@ -24,7 +25,7 @@ import { UserService } from 'src/app/services/user.service';
     ],
     standalone: false
 })
-export class ListaPersonajesComponent implements OnInit, AfterViewInit {
+export class ListaPersonajesComponent implements OnInit, AfterViewInit, OnDestroy {
     Personajes: PersonajeSimple[] = [];
     Campanas: Campana[] = [];
     Tramas: Tramas[] = [];
@@ -38,6 +39,7 @@ export class ListaPersonajesComponent implements OnInit, AfterViewInit {
     columnsToDisplayWithExpand = [...this.columnsToDisplay, 'expand'];
     expandedElement!: PersonajeSimple;
     personajesCargados: boolean = false;
+    private personajesSub?: Subscription;
 
     constructor(
         private listaPjs: ListaPersonajesService,
@@ -51,16 +53,10 @@ export class ListaPersonajesComponent implements OnInit, AfterViewInit {
     @ViewChild('textInc', { read: ElementRef }) inputText!: ElementRef;
 
     async ngOnInit(): Promise<void> {
-        (await this.listaPjs.getPersonajes()).subscribe(personajes => {
-            this.Personajes = personajes;
-            this.personajesCargados = true;
-            this.filtroPersonajes();
-        });
-        (await this.csrv.getListCampanas()).subscribe(campañas => {
-            this.Campanas = campañas;
-            this.defaultCampana = this.Campanas[0]?.Nombre ?? 'Sin campaña';
-            this.actualizarTramas(this.defaultCampana);
-        });
+        await Promise.all([
+            this.cargarPersonajes(),
+            this.cargarCampanas(),
+        ]);
     }
 
     ngAfterViewInit() {
@@ -70,6 +66,10 @@ export class ListaPersonajesComponent implements OnInit, AfterViewInit {
             if (flt.length > 1)
                 flt[1].classList.add('filtroSS');
         }
+    }
+
+    ngOnDestroy(): void {
+        this.personajesSub?.unsubscribe();
     }
 
     actualizarTramas(value: string) {
@@ -212,5 +212,37 @@ export class ListaPersonajesComponent implements OnInit, AfterViewInit {
             .normalize("NFD")
             .replace(/[\u0300-\u036f]/g, "")
             .toLowerCase();
+    }
+
+    private async cargarPersonajes(): Promise<void> {
+        try {
+            this.personajesSub?.unsubscribe();
+            this.personajesSub = (await this.listaPjs.getPersonajes()).subscribe(personajes => {
+                this.Personajes = personajes;
+                this.personajesCargados = true;
+                this.filtroPersonajes();
+            });
+        } catch {
+            this.Personajes = [];
+            this.personajesDS = new MatTableDataSource(this.Personajes);
+            this.personajesCargados = true;
+        }
+    }
+
+    private async cargarCampanas(): Promise<void> {
+        try {
+            (await this.csrv.getListCampanas()).subscribe(campañas => {
+                this.Campanas = campañas;
+                this.defaultCampana = this.Campanas[0]?.Nombre ?? 'Sin campaña';
+                this.actualizarTramas(this.defaultCampana);
+            });
+        } catch {
+            this.Campanas = [];
+            this.Tramas = [];
+            this.Subtramas = [];
+            this.defaultCampana = 'Sin campaña';
+            this.defaultTrama = 'Trama base';
+            this.defaultSubtrama = 'Subtrama base';
+        }
     }
 }

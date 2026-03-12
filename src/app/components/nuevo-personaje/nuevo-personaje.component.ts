@@ -3651,7 +3651,6 @@ export class NuevoPersonajeComponent {
                 const contextoIds = this.resolverContextoIdsCreacion();
                 const payload = this.personajeSvc.construirPayloadCreacionDesdePersonaje(
                     this.Personaje,
-                    this.obtenerUidSesionActiva(),
                     contextoIds
                 );
                 const response = await this.personajeSvc.crearPersonajeApiDesdeCreacion(payload);

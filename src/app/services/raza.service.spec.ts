@@ -1,6 +1,106 @@
-import { normalizeAlineamientoRaza, normalizeHabilidadesRaza, normalizeIdiomasRaza } from './raza.service';
+import { firstValueFrom, of } from 'rxjs';
+import Swal from 'sweetalert2';
+import { normalizeRazaApi } from './utils/raza-mapper';
+import { RazaService, normalizeAlineamientoRaza, normalizeHabilidadesRaza, normalizeIdiomasRaza, normalizeRazaLegacy } from './raza.service';
 
 describe('RazaService helpers', () => {
+    class TestRazaService extends RazaService {
+        snapshotFactory: (() => any) | null = null;
+        razasSnapshotFactory: (() => any) | null = null;
+
+        protected override watchRazaPath(_id: number, onNext: (snapshot: any) => void, _onError: (error: any) => void): () => void {
+            onNext(this.snapshotFactory ? this.snapshotFactory() : null);
+            return () => undefined;
+        }
+
+        protected override watchRazasPath(onNext: (snapshot: any) => void, _onError: (error: any) => void): () => void {
+            onNext(this.razasSnapshotFactory ? this.razasSnapshotFactory() : null);
+            return () => undefined;
+        }
+    }
+
+    function createRazaApiRaw(overrides: any = {}): any {
+        return {
+            i: 7,
+            n: 'Cambiante',
+            m: {
+                Fuerza: 0,
+                Destreza: 2,
+                Constitucion: 0,
+                Inteligencia: 0,
+                Sabiduria: 0,
+                Carisma: 0,
+            },
+            aju: 1,
+            ma: 'MM',
+            c: 'Explorador',
+            o: true,
+            an: '',
+            t: { Id: 1, Nombre: 'Mediano', Modificador: 0, Modificador_presa: 0 },
+            dg: { Cantidad: 1, Dado: 'd8', Tipo_criatura: 'Humanoide' },
+            rd: '',
+            rc: '',
+            re: '',
+            he: 0,
+            mu: 1,
+            tmd: 0,
+            pr: {
+                actitud_prohibido: [],
+                actitud_requerido: [],
+                alineamiento_prohibido: [],
+                alineamiento_requerido: [],
+                tipo_criatura: [],
+            },
+            prf: {
+                actitud_prohibido: false,
+                actitud_requerido: false,
+                alineamiento_prohibido: false,
+                alineamiento_requerido: false,
+                tipo_criatura: false,
+            },
+            Mutacion: {
+                Es_mutada: true,
+                Tamano_dependiente: false,
+                Tiene_prerrequisitos: false,
+                Heredada: false,
+            },
+            ant: 0,
+            va: 0,
+            co: 30,
+            na: 0,
+            vo: 0,
+            man: {},
+            tr: 0,
+            es: 0,
+            ari: 0,
+            ars: 0,
+            pri: 0,
+            prs: 0,
+            ea: 18,
+            em: 35,
+            ev: 53,
+            eve: 70,
+            esp: 5,
+            alc: 5,
+            tc: { Id: 3, Nombre: 'Humanoide' },
+            sor: [],
+            ali: {
+                Id: 1,
+                Basico: { Id_basico: 1, Nombre: 'Neutral' },
+                Ley: { Id_ley: 1, Nombre: 'Neutral' },
+                Moral: { Id_moral: 1, Nombre: 'Neutral' },
+                Prioridad: { Id_prioridad: 1, Nombre: 'Sin preferencia' },
+                Descripcion: '',
+            },
+            dotes: [],
+            rac: [],
+            Habilidades: { Base: [], Custom: [] },
+            Idiomas: [],
+            subtipos: [],
+            ...overrides,
+        };
+    }
+
     it('normaliza idiomas con aliases y filtra entradas vacías', () => {
         const idiomas = normalizeIdiomasRaza([
             { Id: 1, Nombre: 'Común', Descripcion: 'Base', Secreto: 0, Oficial: 1 },
@@ -101,5 +201,316 @@ describe('RazaService helpers', () => {
         expect(alineamiento.Ley.Nombre).toBe('');
         expect(alineamiento.Moral.Nombre).toBe('');
         expect(alineamiento.Descripcion).toBe('');
+    });
+
+    it('normaliza el contrato HTTP abreviado actual de raza', () => {
+        const raza = normalizeRazaApi(createRazaApiRaw({
+            subtipos: [{ Id: 11, Nombre: 'Humano' }],
+            rac: [{
+                Id: 4,
+                Nombre: 'Vision en la penumbra',
+                Descripcion: 'Ve mejor con poca luz',
+                Opcional: 0,
+                Dotes: [],
+                Habilidades: { Base: [], Custom: [] },
+                Caracteristicas: [],
+                Salvaciones: [],
+                Sortilegas: [],
+                Ataques: [],
+                Prerrequisitos_flags: { raza: false, caracteristica_minima: false },
+                Prerrequisitos: { raza: [], caracteristica: [] },
+            }],
+        }));
+
+        expect(raza.Id).toBe(7);
+        expect(raza.Nombre).toBe('Cambiante');
+        expect(raza.Alineamiento.Basico.Nombre).toBe('Neutral');
+        expect(raza.Subtipos).toEqual([{ Id: 11, Nombre: 'Humano' }]);
+        expect(raza.Raciales[0].Nombre).toBe('Vision en la penumbra');
+    });
+
+    it('descarta aliases cache legacy en el mapper HTTP de raza', () => {
+        const raza = normalizeRazaApi(createRazaApiRaw({
+            i: undefined,
+            n: undefined,
+            m: undefined,
+            ali: undefined,
+            subtipos: [{ i: 11, n: 'Humano' }],
+            rac: [{ i: 4, n: 'Vision en la penumbra' }],
+            Nombre: 'Legacy',
+            Modificadores: { Fuerza: 2 },
+            Alineamiento: { Basico: { Nombre: 'Legal bueno' } },
+            Subtipos: [{ Id: 12, Nombre: 'Celestial' }],
+            Raciales: [{ Id: 8, Nombre: 'Legacy racial' }],
+            DotesContextuales: [{ Dote: { Nombre: 'Alerta' }, Contexto: { Entidad: 'raza' } }],
+        }));
+
+        expect(raza.Id).toBe(0);
+        expect(raza.Nombre).toBe('');
+        expect(raza.Modificadores.Fuerza).toBe(0);
+        expect(raza.Alineamiento.Basico.Nombre).toBe('');
+        expect(raza.Subtipos).toEqual([]);
+        expect(raza.Raciales[0].Nombre).toBe('');
+        expect(raza.DotesContextuales).toEqual([]);
+    });
+
+    it('mantiene compatibilidad legacy en el mapper compartido de raza', () => {
+        const raza = normalizeRazaLegacy({
+            Id: 9,
+            Nombre: 'Legacy',
+            Modificadores: { Fuerza: 2 },
+            Alineamiento: { Basico: { Nombre: 'Legal bueno' } },
+            Manual: 'Manual legacy',
+            Clase_predilecta: 'Guerrero',
+            Oficial: true,
+            Ataques_naturales: '',
+            Tamano: {},
+            Dgs_adicionales: {},
+            Reduccion_dano: '',
+            Resistencia_magica: '',
+            Resistencia_energia: '',
+            Heredada: false,
+            Mutada: false,
+            Tamano_mutacion_dependiente: false,
+            Prerrequisitos: {},
+            Armadura_natural: 0,
+            Varios_armadura: 0,
+            Correr: 30,
+            Nadar: 0,
+            Volar: 0,
+            Maniobrabilidad: {},
+            Trepar: 0,
+            Escalar: 0,
+            Altura_rango_inf: 0,
+            Altura_rango_sup: 0,
+            Peso_rango_inf: 0,
+            Peso_rango_sup: 0,
+            Edad_adulto: 18,
+            Edad_mediana: 35,
+            Edad_viejo: 53,
+            Edad_venerable: 70,
+            Espacio: 5,
+            Alcance: 5,
+            Tipo_criatura: {},
+            Sortilegas: [],
+            DotesContextuales: [{ Dote: { Nombre: 'Alerta' }, Contexto: { Entidad: 'raza', Extra: 'No aplica', Id_extra: 0, Id_raza: 9 } }],
+            Subtipos: [{ Id: 12, Nombre: 'Celestial' }],
+            Raciales: [{ Id: 8, Nombre: 'Legacy racial' }],
+            Habilidades: { Base: [], Custom: [] },
+            Idiomas: [],
+        }, 9);
+
+        expect(raza.Id).toBe(9);
+        expect(raza.Nombre).toBe('Legacy');
+        expect(raza.Alineamiento.Basico.Nombre).toBe('Legal bueno');
+        expect(raza.Subtipos).toEqual([{ Id: 12, Nombre: 'Celestial' }]);
+        expect(raza.Raciales[0].Nombre).toBe('Legacy racial');
+        expect(raza.DotesContextuales.length).toBe(1);
+    });
+
+    it('getRaza usa fallback HTTP canónico cuando la cache RTDB no existe', async () => {
+        const rawApi = createRazaApiRaw({
+            subtipos: [{ Id: 11, Nombre: 'Humano' }],
+        });
+        const http = {
+            get: jasmine.createSpy().and.returnValue(of(rawApi)),
+        };
+        const firebaseContextSvc = {
+            run: (fn: () => any) => fn(),
+        };
+        spyOn(Swal, 'fire');
+
+        const service = new TestRazaService({} as any, http as any, firebaseContextSvc as any);
+        service.snapshotFactory = () => ({
+            exists: () => false,
+            val: () => null,
+            child: () => ({ val: () => undefined }),
+        });
+
+        const observable = await service.getRaza(7);
+        const emitted = await firstValueFrom(observable);
+
+        expect(http.get).toHaveBeenCalledWith(jasmine.stringMatching(/razas\/7$/));
+        expect(emitted.Id).toBe(7);
+        expect(emitted.Nombre).toBe('Cambiante');
+        expect(emitted.Subtipos).toEqual([{ Id: 11, Nombre: 'Humano' }]);
+    });
+
+    it('getRaza mantiene la ruta legacy de cache cuando RTDB sí tiene dato', async () => {
+        const http = {
+            get: jasmine.createSpy(),
+        };
+        const firebaseContextSvc = {
+            run: (fn: () => any) => fn(),
+        };
+
+        const service = new TestRazaService({} as any, http as any, firebaseContextSvc as any);
+        service.snapshotFactory = () => ({
+            exists: () => true,
+            val: () => ({
+                Nombre: 'Legacy cache',
+                Modificadores: { Fuerza: 2 },
+                Alineamiento: { Basico: { Nombre: 'Legal bueno' } },
+                Manual: 'Manual legacy',
+                Clase_predilecta: 'Guerrero',
+                Oficial: true,
+                Ataques_naturales: '',
+                Tamano: {},
+                Dgs_adicionales: {},
+                Reduccion_dano: '',
+                Resistencia_magica: '',
+                Resistencia_energia: '',
+                Heredada: false,
+                Mutada: false,
+                Tamano_mutacion_dependiente: false,
+                Prerrequisitos: {},
+                Armadura_natural: 0,
+                Varios_armadura: 0,
+                Correr: 30,
+                Nadar: 0,
+                Volar: 0,
+                Maniobrabilidad: {},
+                Trepar: 0,
+                Escalar: 0,
+                Altura_rango_inf: 0,
+                Altura_rango_sup: 0,
+                Peso_rango_inf: 0,
+                Peso_rango_sup: 0,
+                Edad_adulto: 18,
+                Edad_mediana: 35,
+                Edad_viejo: 53,
+                Edad_venerable: 70,
+                Espacio: 5,
+                Alcance: 5,
+                Tipo_criatura: {},
+                Habilidades: { Base: [], Custom: [] },
+                Idiomas: [],
+            }),
+            child: (path: string) => ({
+                val: () => {
+                    if (path === 'DotesContextuales')
+                        return [{ Dote: { Nombre: 'Alerta' }, Contexto: { Entidad: 'raza', Extra: 'No aplica', Id_extra: 0, Id_raza: 7 } }];
+                    if (path === 'Subtipos')
+                        return [{ Id: 12, Nombre: 'Celestial' }];
+                    if (path === 'Raciales')
+                        return [{ Id: 8, Nombre: 'Legacy racial' }];
+                    return undefined;
+                }
+            }),
+        });
+
+        const observable = await service.getRaza(7);
+        const emitted = await firstValueFrom(observable);
+
+        expect(http.get).not.toHaveBeenCalled();
+        expect(emitted.Id).toBe(7);
+        expect(emitted.Nombre).toBe('Legacy cache');
+        expect(emitted.Subtipos).toEqual([{ Id: 12, Nombre: 'Celestial' }]);
+        expect(emitted.Raciales[0].Nombre).toBe('Legacy racial');
+        expect(emitted.DotesContextuales.length).toBe(1);
+    });
+
+    it('getRazas usa fallback HTTP canónico cuando la cache RTDB no existe', async () => {
+        const http = {
+            get: jasmine.createSpy().and.returnValue(of([
+                createRazaApiRaw({ i: 7, n: 'Cambiante' }),
+                createRazaApiRaw({ i: 8, n: 'Draconido', subtipos: [{ Id: 22, Nombre: 'Sangre de dragon' }] }),
+            ])),
+        };
+        const firebaseContextSvc = {
+            run: (fn: () => any) => fn(),
+        };
+        spyOn(Swal, 'fire');
+
+        const service = new TestRazaService({} as any, http as any, firebaseContextSvc as any);
+        service.razasSnapshotFactory = () => ({
+            exists: () => false,
+            forEach: () => undefined,
+        });
+
+        const emitted = await firstValueFrom(service.getRazas());
+
+        expect(http.get).toHaveBeenCalledWith(jasmine.stringMatching(/razas$/));
+        expect(emitted.length).toBe(2);
+        expect(emitted.map((item) => item.Id)).toEqual([7, 8]);
+        expect(emitted[1].Subtipos).toEqual([{ Id: 22, Nombre: 'Sangre de dragon' }]);
+    });
+
+    it('getRazas mantiene la ruta legacy de cache cuando RTDB sí tiene datos', async () => {
+        const http = {
+            get: jasmine.createSpy(),
+        };
+        const firebaseContextSvc = {
+            run: (fn: () => any) => fn(),
+        };
+
+        const service = new TestRazaService({} as any, http as any, firebaseContextSvc as any);
+        service.razasSnapshotFactory = () => ({
+            exists: () => true,
+            forEach: (callback: (item: any) => void) => {
+                callback({
+                    key: '7',
+                    val: () => ({
+                        Nombre: 'Legacy cache',
+                        Modificadores: { Fuerza: 2 },
+                        Alineamiento: { Basico: { Nombre: 'Legal bueno' } },
+                        Manual: 'Manual legacy',
+                        Clase_predilecta: 'Guerrero',
+                        Oficial: true,
+                        Ataques_naturales: '',
+                        Tamano: {},
+                        Dgs_adicionales: {},
+                        Reduccion_dano: '',
+                        Resistencia_magica: '',
+                        Resistencia_energia: '',
+                        Heredada: false,
+                        Mutada: false,
+                        Tamano_mutacion_dependiente: false,
+                        Prerrequisitos: {},
+                        Armadura_natural: 0,
+                        Varios_armadura: 0,
+                        Correr: 30,
+                        Nadar: 0,
+                        Volar: 0,
+                        Maniobrabilidad: {},
+                        Trepar: 0,
+                        Escalar: 0,
+                        Altura_rango_inf: 0,
+                        Altura_rango_sup: 0,
+                        Peso_rango_inf: 0,
+                        Peso_rango_sup: 0,
+                        Edad_adulto: 18,
+                        Edad_mediana: 35,
+                        Edad_viejo: 53,
+                        Edad_venerable: 70,
+                        Espacio: 5,
+                        Alcance: 5,
+                        Tipo_criatura: {},
+                        Habilidades: { Base: [], Custom: [] },
+                        Idiomas: [],
+                    }),
+                    child: (path: string) => ({
+                        val: () => {
+                            if (path === 'DotesContextuales')
+                                return [{ Dote: { Nombre: 'Alerta' }, Contexto: { Entidad: 'raza', Extra: 'No aplica', Id_extra: 0, Id_raza: 7 } }];
+                            if (path === 'Subtipos')
+                                return [{ Id: 12, Nombre: 'Celestial' }];
+                            if (path === 'Raciales')
+                                return [{ Id: 8, Nombre: 'Legacy racial' }];
+                            return undefined;
+                        }
+                    }),
+                });
+            }
+        });
+
+        const emitted = await firstValueFrom(service.getRazas());
+
+        expect(http.get).not.toHaveBeenCalled();
+        expect(emitted.length).toBe(1);
+        expect(emitted[0].Id).toBe(7);
+        expect(emitted[0].Nombre).toBe('Legacy cache');
+        expect(emitted[0].Subtipos).toEqual([{ Id: 12, Nombre: 'Celestial' }]);
+        expect(emitted[0].Raciales[0].Nombre).toBe('Legacy racial');
     });
 });

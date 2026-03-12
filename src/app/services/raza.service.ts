@@ -1,17 +1,14 @@
 import { Injectable } from '@angular/core';
 import { Database, Unsubscribe, onValue, ref, set } from '@angular/fire/database';
 import { Observable, firstValueFrom } from 'rxjs';
-import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { MutacionRaza, Raza, RazaHabilidades, RazaPrerrequisitos, RazaPrerrequisitosFlags } from '../interfaces/raza';
 import { environment } from 'src/environments/environment';
 import Swal from 'sweetalert2';
-import { Maniobrabilidad } from '../interfaces/maniobrabilidad';
-import { Tamano } from '../interfaces/tamaño';
-import { TipoCriatura } from '../interfaces/tipo_criatura';
-import { AptitudSortilega } from '../interfaces/aptitud-sortilega';
 import { Alineamiento } from '../interfaces/alineamiento';
 import { DoteContextual } from '../interfaces/dote-contextual';
 import { FirebaseInjectionContextService } from './firebase-injection-context.service';
+import { normalizeRazaApi } from './utils/raza-mapper';
 import { toDoteContextualArray } from './utils/dote-mapper';
 import { normalizeRaciales } from './utils/racial-mapper';
 import { normalizeSubtipoRefArray } from './utils/subtipo-mapper';
@@ -307,6 +304,13 @@ function mapRazaDesdeRaw(raw: any, id: any, dotesContextuales: DoteContextual[],
     };
 }
 
+export function normalizeRazaLegacy(raw: any, id: any = raw?.Id ?? raw?.i): Raza {
+    const dotesContextuales = toDoteContextualArray(raw?.DotesContextuales ?? raw?.dotes);
+    const subtipos = normalizeSubtipoRefArray(raw?.Subtipos ?? raw?.subtipos);
+    const raciales = raw?.Raciales ?? raw?.rac;
+    return mapRazaDesdeRaw(raw ?? {}, id, dotesContextuales, subtipos, raciales);
+}
+
 @Injectable({
     providedIn: 'root'
 })
@@ -318,11 +322,46 @@ export class RazaService {
         private firebaseContextSvc: FirebaseInjectionContextService
     ) { }
 
+    protected watchRazaPath(id: number, onNext: (snapshot: any) => void, onError: (error: any) => void): Unsubscribe {
+        const dbRef = ref(this.db, `Razas/${id}`);
+        return this.firebaseContextSvc.run(() => onValue(dbRef, onNext, onError));
+    }
+
+    protected watchRazasPath(onNext: (snapshot: any) => void, onError: (error: any) => void): Unsubscribe {
+        const dbRef = ref(this.db, 'Razas');
+        return this.firebaseContextSvc.run(() => onValue(dbRef, onNext, onError));
+    }
+
     async getRaza(id: number): Promise<Observable<Raza>> {
         return new Observable((observador) => {
             let unsubscribe: Unsubscribe;
 
             const onNext = (snapshot: any) => {
+                if (!snapshot.exists()) {
+                    this.http.get(`${environment.apiUrl}razas/${id}`).subscribe({
+                        next: (raw: any) => observador.next(normalizeRazaApi(raw)),
+                        error: (error: HttpErrorResponse) => {
+                            if (error.status === 404) {
+                                Swal.fire({
+                                    icon: 'warning',
+                                    title: 'Raza no encontrada',
+                                    text: `No existe la raza con id ${id}`,
+                                    showConfirmButton: true,
+                                });
+                            } else {
+                                Swal.fire({
+                                    icon: 'warning',
+                                    title: 'Error al obtener la raza',
+                                    text: error.message,
+                                    showConfirmButton: true,
+                                });
+                            }
+                            observador.error(error);
+                        }
+                    });
+                    return;
+                }
+
                 const dotesContextuales = toDoteContextualArray(snapshot.child('DotesContextuales').val());
                 const subtipos = normalizeSubtipoRefArray(snapshot.child('Subtipos').val() ?? snapshot.child('subtipos').val());
                 const raza: Raza = mapRazaDesdeRaw(
@@ -344,10 +383,7 @@ export class RazaService {
             // };
 
             // unsubscribe = onValue(dbRef, onNext, onError, onComplete);
-            unsubscribe = this.firebaseContextSvc.run(() => {
-                const dbRef = ref(this.db, `Razas/${id}`);
-                return onValue(dbRef, onNext, onError);
-            });
+            unsubscribe = this.watchRazaPath(id, onNext, onError);
 
             return () => {
                 unsubscribe(); // Cancelar la suscripción al evento onValue
@@ -360,6 +396,36 @@ export class RazaService {
             let unsubscribe: Unsubscribe;
 
             const onNext = (snapshot: any) => {
+                if (!snapshot.exists()) {
+                    this.http.get(`${environment.apiUrl}razas`).subscribe({
+                        next: (raw: any) => {
+                            const razas = (Array.isArray(raw) ? raw : Object.values(raw ?? {}))
+                                .map((item: any) => normalizeRazaApi(item))
+                                .filter((raza) => raza.Id > 0);
+                            observador.next(razas);
+                        },
+                        error: (error: HttpErrorResponse) => {
+                            if (error.status === 404) {
+                                Swal.fire({
+                                    icon: 'warning',
+                                    title: 'Listado de razas no disponible',
+                                    text: 'No se encontró /razas en la API',
+                                    showConfirmButton: true,
+                                });
+                            } else {
+                                Swal.fire({
+                                    icon: 'warning',
+                                    title: 'Error al obtener el listado de razas',
+                                    text: error.message,
+                                    showConfirmButton: true,
+                                });
+                            }
+                            observador.error(error);
+                        }
+                    });
+                    return;
+                }
+
                 const Razas: Raza[] = [];
                 snapshot.forEach((obj: any) => {
                     const dotesContextuales = toDoteContextualArray(obj.child('DotesContextuales').val());
@@ -385,10 +451,7 @@ export class RazaService {
             // };
 
             // unsubscribe = onValue(dbRef, onNext, onError, onComplete);
-            unsubscribe = this.firebaseContextSvc.run(() => {
-                const dbRef = ref(this.db, 'Razas');
-                return onValue(dbRef, onNext, onError);
-            });
+            unsubscribe = this.watchRazasPath(onNext, onError);
 
             return () => {
                 unsubscribe(); // Cancelar la suscripción al evento onValue
@@ -397,7 +460,6 @@ export class RazaService {
     }
 
     private syncRazas(): Observable<any> {
-        const headers = new HttpHeaders({ 'Content-Type': 'application/json' });
         const res = this.http.get(`${environment.apiUrl}razas`);
         return res;
     }
@@ -408,83 +470,15 @@ export class RazaService {
             const razas = Array.isArray(response)
                 ? response
                 : Object.values(response ?? {});
+            const razasNormalizadas = razas
+                .map((element: any) => normalizeRazaApi(element))
+                .filter((raza) => raza.Id > 0);
 
             await Promise.all(
-                razas.map((element: {
-                    i: any; n: any; m: { Fuerza: number; Destreza: number; Constitucion: number; Inteligencia: number; Sabiduria: number; Carisma: number; }; ma: any;
-                    aju: any; c: any; o: boolean; an: string; t: Tamano; dg: any; rd: string; rc: string; re: string; he: boolean; mu: boolean; tmd: boolean; pr: any;
-                    ant: number; va: number; co: number; na: number; vo: number; man: Maniobrabilidad; tr: number; es: number; ari: number; ars: number; pri: number; 
-                    prs: number; ea: number; em: number; ev: number; eve: number; esp: number; alc: number; tc: TipoCriatura; sor: AptitudSortilega[],
-                    ali?: any; Alineamiento?: any; alineamiento?: any; dotes: DoteContextual[]; subtipos?: any; prf?: any; Prerrequisitos_flags?: any; Mutacion?: any;
-                    rac: any; Habilidades?: any; habilidades?: any; hab?: any; Idiomas?: any; idiomas?: any; idi?: any;
-                }) => {
-                    const dotesContextuales = toDoteContextualArray(element.dotes);
-                    const raciales = normalizeRaciales(element.rac);
-                    const habilidades = normalizeHabilidadesRaza(element.Habilidades ?? element.habilidades ?? element.hab);
-                    const idiomas = normalizeIdiomasRaza(element.Idiomas ?? element.idiomas ?? element.idi);
-                    const alineamiento = normalizeAlineamientoRaza(element.Alineamiento ?? element.alineamiento ?? element.ali);
-                    const subtipos = normalizeSubtipoRefArray(element.subtipos ?? "");
-                    const prerrequisitos = normalizePrerrequisitos(element.pr);
-                    const prerrequisitosFlags = normalizePrerrequisitosFlags(
-                        element.prf ?? element.Prerrequisitos_flags,
-                        prerrequisitos
-                    );
-                    const mutacion = normalizeMutacion(
-                        element.Mutacion,
-                        element.mu,
-                        element.tmd,
-                        element.he,
-                        prerrequisitos
-                    );
-                    return this.firebaseContextSvc.run(() => set(
-                        ref(this.db, `Razas/${element.i}`), {
-                        Nombre: element.n,
-                        Modificadores: element.m,
-                        Alineamiento: alineamiento,
-                        Manual: element.ma,
-                        Ajuste_nivel: element.aju,
-                        Clase_predilecta: element.c,
-                        Oficial: toBoolean(element.o ?? (element as any)?.Oficial ?? (element as any)?.oficial, true),
-                        Ataques_naturales: element.an,
-                        Tamano: element.t,
-                        Dgs_adicionales: element.dg,
-                        Reduccion_dano: element.rd,
-                        Resistencia_magica: element.rc,
-                        Resistencia_magia: element.rc,
-                        Resistencia_energia: element.re,
-                        Heredada: element.he,
-                        Mutada: mutacion.Es_mutada,
-                        Tamano_mutacion_dependiente: mutacion.Tamano_dependiente,
-                        Prerrequisitos: prerrequisitos,
-                        Prerrequisitos_flags: prerrequisitosFlags,
-                        Mutacion: mutacion,
-                        Armadura_natural: element.ant,
-                        Varios_armadura: element.va,
-                        Correr: element.co,
-                        Nadar: element.na,
-                        Volar: element.vo,
-                        Maniobrabilidad: element.man,
-                        Trepar: element.tr,
-                        Escalar: element.es,
-                        Altura_rango_inf: element.ari,
-                        Altura_rango_sup: element.ars,
-                        Peso_rango_inf: element.pri,
-                        Peso_rango_sup: element.prs,
-                        Edad_adulto: element.ea,
-                        Edad_mediana: element.em,
-                        Edad_viejo: element.ev,
-                        Edad_venerable: element.eve,
-                        Espacio: element.esp,
-                        Alcance: element.alc,
-                        Tipo_criatura: element.tc,
-                        Subtipos: subtipos,
-                        Sortilegas: element.sor,
-                        Raciales: raciales,
-                        Habilidades: habilidades,
-                        DotesContextuales: dotesContextuales,
-                        Idiomas: idiomas,
-                    }));
-                })
+                razasNormalizadas.map((raza) => this.firebaseContextSvc.run(() => set(
+                    ref(this.db, `Razas/${raza.Id}`),
+                    raza
+                )))
             );
 
             Swal.fire({

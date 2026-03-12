@@ -170,4 +170,23 @@ describe('ManualesAsociadosService', () => {
         expect(manualSvcMock.RenovarManuales).toHaveBeenCalledOnceWith(false);
         expect(ok).toBeFalse();
     });
+
+    it('descarta respuestas abreviadas legacy al normalizar manuales asociados', async () => {
+        const manualCanonico = createManual({
+            Id: 12,
+            Nombre: 'Manual canónico',
+        });
+        httpMock.get.and.returnValue(of([
+            { i: 99, n: 'Legacy', Asociados: { Dotes: [{ i: 1, n: 'Legacy dote', d: 'legacy' }] } },
+            manualCanonico,
+        ]));
+        const persistSpy = spyOn<any>(service, 'persistirCacheManualesAsociados').and.resolveTo();
+
+        const ok = await service.RenovarManualesAsociados();
+
+        expect(persistSpy).toHaveBeenCalledWith([
+            jasmine.objectContaining({ Id: 12, Nombre: 'Manual canónico' }),
+        ]);
+        expect(ok).toBeTrue();
+    });
 });

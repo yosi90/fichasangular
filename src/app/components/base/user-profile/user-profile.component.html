@@ -94,9 +94,9 @@
                                     Comentario del admin: {{roleRequestAdminComment}}
                                 </p>
 
-                                <div class="profile-action-row" *ngIf="canRequestMaster">
-                                    <button mat-raised-button color="primary" (click)="solicitarMaster()" [disabled]="roleRequestSubmitting">
-                                        {{roleRequestSubmitting ? 'Enviando...' : 'Solicitar ser master'}}
+                                <div class="profile-action-row" *ngIf="canRequestRole">
+                                    <button mat-raised-button color="primary" (click)="solicitarCambioRol()" [disabled]="roleRequestSubmitting">
+                                        {{roleRequestSubmitting ? 'Enviando...' : requestRoleButtonLabel}}
                                     </button>
                                 </div>
                             </ng-container>
@@ -185,8 +185,8 @@
                     <article class="profile-panel campaign-detail-panel" *ngIf="selectedCampaignSummary">
                         <div class="profile-panel__header campaign-detail-panel__header">
                             <div>
-                                <h2>{{selectedCampaignSummary?.nombre}}</h2>
-                                <p>Rol en campaña: {{getCampaignRoleLabel(selectedCampaignSummary?.campaignRole || 'jugador')}}. Estado: {{getMembershipStatusLabel(selectedCampaignSummary?.membershipStatus || 'activo')}}.</p>
+                                <h2>{{selectedCampaignSummary.nombre}}</h2>
+                                <p>Rol en campaña: {{getCampaignRoleLabel(selectedCampaignSummary.campaignRole || 'jugador')}}. Estado: {{getMembershipStatusLabel(selectedCampaignSummary.membershipStatus || 'activo')}}.</p>
                             </div>
                             <span class="profile-pill" *ngIf="selectedCampaignCanManage">Modo gestión</span>
                             <span class="profile-pill" *ngIf="!selectedCampaignCanManage">Solo lectura</span>
@@ -218,10 +218,10 @@
                                     </div>
 
                                     <p class="profile-panel__hint" *ngIf="!selectedCampaignCanManage">
-                                        {{selectedCampaignSummary?.nombre}}
+                                        {{selectedCampaignSummary.nombre}}
                                     </p>
                                     <p class="profile-panel__hint" *ngIf="selectedCampaignMaster">
-                                        Master actual: {{getUserDisplayLabel(selectedCampaignMaster?.displayName, selectedCampaignMaster?.email, selectedCampaignMaster?.uid || '')}}
+                                        Master actual: {{getUserDisplayLabel(selectedCampaignMaster.displayName, selectedCampaignMaster.email, selectedCampaignMaster.uid || '')}}
                                     </p>
                                 </article>
 
@@ -262,7 +262,7 @@
 
                                     <div class="campaign-transfer-selection" *ngIf="transferSelectedUser">
                                         <p class="profile-panel__hint">
-                                            Nuevo master: {{getUserDisplayLabel(transferSelectedUser?.displayName, null, transferSelectedUser?.uid || '')}}
+                                            Nuevo master: {{getUserDisplayLabel(transferSelectedUser.displayName, null, transferSelectedUser.uid || '')}}
                                         </p>
                                         <div class="profile-action-row">
                                             <button mat-raised-button color="primary" (click)="transferirMaster()" [disabled]="transferSaving">

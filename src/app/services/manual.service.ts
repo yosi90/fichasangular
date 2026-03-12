@@ -14,8 +14,8 @@ function toBoolean(value: any): boolean {
 
 function normalizeManual(raw: any): Manual {
     return {
-        Id: Number(raw?.Id ?? raw?.i ?? 0),
-        Nombre: raw?.Nombre ?? raw?.n ?? '',
+        Id: Number(raw?.Id ?? 0),
+        Nombre: raw?.Nombre ?? '',
         Incluye_dotes: toBoolean(raw?.Incluye_dotes),
         Incluye_conjuros: toBoolean(raw?.Incluye_conjuros),
         Incluye_plantillas: toBoolean(raw?.Incluye_plantillas),
@@ -137,7 +137,10 @@ export class ManualService {
             const response = await firstValueFrom(
                 this.http.patch(`${environment.apiUrl}manuales/${id}`, requestBody)
             );
-            return normalizeManual(response);
+            const manual = normalizeManual(response);
+            if (manual.Id <= 0 || `${manual.Nombre ?? ''}`.trim().length < 1)
+                throw new Error('La API devolvió un manual inválido');
+            return manual;
         } catch (error: any) {
             if (error instanceof HttpErrorResponse) {
                 const backendMessage = this.extractErrorMessage(error.error);
@@ -159,10 +162,12 @@ export class ManualService {
             const manuales = Array.isArray(response)
                 ? response
                 : Object.values(response ?? {});
+            const manualesValidos = manuales
+                .map((raw: any) => normalizeManual(raw))
+                .filter((manual) => manual.Id > 0 && `${manual.Nombre ?? ''}`.trim().length > 0);
 
             await Promise.all(
-                manuales.map((raw: any) => {
-                    const manual = normalizeManual(raw);
+                manualesValidos.map((manual) => {
                     return this.firebaseContextSvc.run(() => set(ref(this.db, `Manuales/${manual.Id}`), manual));
                 })
             );

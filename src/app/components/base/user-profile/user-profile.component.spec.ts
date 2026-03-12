@@ -42,6 +42,7 @@ describe('UserProfileComponent', () => {
         perfil: {
             visibilidadPorDefectoPersonajes: false,
             mostrarPerfilPublico: true,
+            allowDirectMessagesFromNonFriends: false,
         },
     };
 
@@ -73,7 +74,7 @@ describe('UserProfileComponent', () => {
                     provide: UserProfileApiService,
                     useValue: jasmine.createSpyObj<UserProfileApiService>('UserProfileApiService', [
                         'getMyRoleRequestStatus',
-                        'createMasterRoleRequest',
+                        'createRoleRequest',
                         'uploadAvatar',
                         'deleteAvatar',
                         'updateDisplayName',
@@ -122,7 +123,7 @@ describe('UserProfileComponent', () => {
             currentRoleAtRequest: null,
             adminComment: null,
         });
-        apiSvc.createMasterRoleRequest.and.resolveTo({
+        apiSvc.createRoleRequest.and.resolveTo({
             currentRole: 'jugador',
             requestedRole: 'master',
             status: 'pending',
@@ -192,17 +193,68 @@ describe('UserProfileComponent', () => {
     }));
 
     it('permite solicitar ser master cuando el usuario es elegible', fakeAsync(() => {
+        const apiSvc = TestBed.inject(UserProfileApiService) as jasmine.SpyObj<UserProfileApiService>;
         fixture.detectChanges();
         tick();
 
-        expect(component.canRequestMaster).toBeTrue();
+        expect(component.canRequestRole).toBeTrue();
+        expect(component.requestRoleButtonLabel).toBe('Solicitar ser master');
 
-        void component.solicitarMaster();
+        void component.solicitarCambioRol();
         tick();
 
+        expect(apiSvc.createRoleRequest).toHaveBeenCalledWith('master');
         expect(component.roleRequestStatus?.status).toBe('pending');
         const toastSvc = TestBed.inject(AppToastService) as jasmine.SpyObj<AppToastService>;
         expect(toastSvc.showSuccess).toHaveBeenCalled();
+    }));
+
+    it('permite solicitar ser colaborador cuando el usuario es master y es elegible', fakeAsync(() => {
+        const apiSvc = TestBed.inject(UserProfileApiService) as jasmine.SpyObj<UserProfileApiService>;
+        profileSubject.next({
+            ...buildProfile('correo'),
+            role: 'master',
+        });
+        userSvc.refreshCurrentPrivateProfile.and.resolveTo(profileSubject.value);
+        apiSvc.getMyRoleRequestStatus.and.resolveTo({
+            currentRole: 'master',
+            requestedRole: null,
+            status: 'none',
+            blockedUntilUtc: null,
+            requestId: null,
+            requestedAtUtc: null,
+            resolvedAtUtc: null,
+            eligible: true,
+            reasonCode: null,
+            currentRoleAtRequest: null,
+            adminComment: null,
+        });
+        apiSvc.createRoleRequest.and.resolveTo({
+            currentRole: 'master',
+            requestedRole: 'colaborador',
+            status: 'pending',
+            blockedUntilUtc: null,
+            requestId: 11,
+            requestedAtUtc: '2026-03-11T10:00:00.000Z',
+            resolvedAtUtc: null,
+            eligible: false,
+            reasonCode: 'REQUEST_PENDING',
+            currentRoleAtRequest: 'master',
+            adminComment: null,
+        });
+
+        fixture.detectChanges();
+        tick();
+
+        expect(component.requestedRoleTarget).toBe('colaborador');
+        expect(component.canRequestRole).toBeTrue();
+        expect(component.roleRequestStatusLabel).toContain('colaborador');
+
+        void component.solicitarCambioRol();
+        tick();
+
+        expect(apiSvc.createRoleRequest).toHaveBeenCalledWith('colaborador');
+        expect(component.roleRequestStatus?.requestedRole).toBe('colaborador');
     }));
 
     it('muestra el bloqueo temporal cuando la solicitud fue rechazada', fakeAsync(() => {
@@ -224,7 +276,7 @@ describe('UserProfileComponent', () => {
         fixture.detectChanges();
         tick();
 
-        expect(component.canRequestMaster).toBeFalse();
+        expect(component.canRequestRole).toBeFalse();
         expect(component.roleRequestStatusLabel).toContain('No podrás volver a pedirlo');
         expect(component.roleRequestAdminComment).toContain('Espera un tiempo');
     }));
@@ -241,5 +293,32 @@ describe('UserProfileComponent', () => {
         expect(component.currentSection).toBe('campanas');
         expect(component.masterCampaigns.length).toBe(1);
         expect(component.selectedCampaignSummary?.id).toBe(7);
+    }));
+
+    it('preserva allowDirectMessagesFromNonFriends al guardar preferencias', fakeAsync(() => {
+        const persistedSettings = {
+            ...settings,
+            perfil: {
+                ...settings.perfil,
+                allowDirectMessagesFromNonFriends: true,
+            },
+        };
+        userSettingsSvc.loadSettings.and.resolveTo(persistedSettings as any);
+        userSettingsSvc.saveSettings.and.callFake(async (payload: any) => payload);
+
+        fixture.detectChanges();
+        tick();
+
+        component.mostrarPerfilPublico = false;
+        void component.guardarPreferencias();
+        tick();
+
+        expect(userSettingsSvc.saveSettings).toHaveBeenCalledWith(jasmine.objectContaining({
+            perfil: jasmine.objectContaining({
+                mostrarPerfilPublico: false,
+                visibilidadPorDefectoPersonajes: false,
+                allowDirectMessagesFromNonFriends: true,
+            }),
+        }));
     }));
 });

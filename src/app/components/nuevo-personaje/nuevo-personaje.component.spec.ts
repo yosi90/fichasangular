@@ -651,12 +651,11 @@ describe('NuevoPersonajeComponent', () => {
             getEspeciales: () => of([]),
         };
         personajeSvcMock = {
-            construirPayloadCreacionDesdePersonaje: jasmine.createSpy('construirPayloadCreacionDesdePersonaje').and.returnValue({ uid: 'uid-1' }),
+            construirPayloadCreacionDesdePersonaje: jasmine.createSpy('construirPayloadCreacionDesdePersonaje').and.returnValue({}),
             crearPersonajeApiDesdeCreacion: jasmine.createSpy('crearPersonajeApiDesdeCreacion').and.resolveTo({
                 message: 'ok',
                 idPersonaje: 123,
                 ownerUserId: '00000000-0000-0000-0000-000000000010',
-                uid: 'uid-1',
             }),
             guardarPersonajeEnFirebase: jasmine.createSpy('guardarPersonajeEnFirebase').and.resolveTo(),
             normalizarPersonajeParaPersistenciaFinal: jasmine.createSpy('normalizarPersonajeParaPersistenciaFinal').and.callFake((pj: any, id: number) => ({
@@ -3932,7 +3931,6 @@ describe('NuevoPersonajeComponent', () => {
             message: 'ok',
             idPersonaje: 456,
             ownerUserId: '00000000-0000-0000-0000-000000000009',
-            uid: 'uid-1',
         });
         personajeSvcMock.guardarPersonajeEnFirebase.and.returnValues(
             Promise.reject(new Error('firebase caido')),

@@ -38,8 +38,6 @@ export interface ConjuroCreateNivelRef {
 }
 
 export interface ConjuroCreateRequest {
-    uid?: string;
-    firebaseUid?: string;
     conjuro: ConjuroCreateCore;
     componentes?: Array<number | { id?: number; id_componente?: number; [key: string]: any; }>;
     descriptores?: Array<number | { id?: number; id_descriptor?: number; [key: string]: any; }>;
@@ -49,8 +47,13 @@ export interface ConjuroCreateRequest {
     [key: string]: any;
 }
 
-export interface ConjuroCreateResponse {
+export interface ConjuroCreateApiResponse {
     message: string;
     idConjuro: number;
     uid: string;
+}
+
+export interface ConjuroCreateResponse {
+    message: string;
+    idConjuro: number;
 }

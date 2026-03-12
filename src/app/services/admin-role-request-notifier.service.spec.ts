@@ -11,7 +11,7 @@ describe('AdminRoleRequestNotifierService', () => {
             CurrentUserUid: 'admin-1',
         } as any;
         const userProfileApiSvc = {
-            listPendingMasterRoleRequests: jasmine.createSpy('listPendingMasterRoleRequests').and.resolveTo([
+            listRoleRequests: jasmine.createSpy('listRoleRequests').and.resolveTo([
                 { requestId: 1 },
                 { requestId: 2 },
             ]),
@@ -27,7 +27,10 @@ describe('AdminRoleRequestNotifierService', () => {
         esAdmin$.next(true);
         tick();
 
-        expect(userProfileApiSvc.listPendingMasterRoleRequests).toHaveBeenCalled();
+        expect(userProfileApiSvc.listRoleRequests).toHaveBeenCalledWith({
+            status: 'pending',
+            requestedRole: 'master',
+        });
         expect(Swal.fire).toHaveBeenCalled();
         expect(navSvc.openAdminPanel).toHaveBeenCalledWith(jasmine.objectContaining({
             section: 'role-requests',

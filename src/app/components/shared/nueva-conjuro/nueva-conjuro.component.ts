@@ -473,20 +473,9 @@ export class NuevaConjuroComponent implements OnInit, OnDestroy {
             return;
         }
 
-        const uid = `${this.userSvc.CurrentUserUid ?? ''}`.trim();
-        if (uid.length < 1) {
-            await Swal.fire({
-                icon: 'warning',
-                title: 'Sesión inválida',
-                text: 'No se pudo resolver uid de Firebase para crear el conjuro.',
-                showConfirmButton: true
-            });
-            return;
-        }
-
         let payload: ConjuroCreateRequest;
         try {
-            payload = this.buildPayload(uid);
+            payload = this.buildPayload();
         } catch (error: any) {
             await Swal.fire({
                 icon: 'warning',
@@ -514,7 +503,7 @@ export class NuevaConjuroComponent implements OnInit, OnDestroy {
         }
     }
 
-    private buildPayload(uid: string): ConjuroCreateRequest {
+    private buildPayload(): ConjuroCreateRequest {
         const raw = this.form.getRawValue();
         const conjuroBase = {
             variante: this.varianteActiva,
@@ -536,7 +525,6 @@ export class NuevaConjuroComponent implements OnInit, OnDestroy {
 
         if (this.varianteActualEsBase) {
             return {
-                uid,
                 conjuro: {
                     ...conjuroBase,
                     variante: 'base',
@@ -553,7 +541,6 @@ export class NuevaConjuroComponent implements OnInit, OnDestroy {
         }
 
         return {
-            uid,
             conjuro: {
                 ...conjuroBase,
                 variante: 'psionico',

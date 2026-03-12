@@ -3,6 +3,7 @@ import { UserRole } from './user-acl';
 export type UserRoleRequestStatusCode = 'none' | 'pending' | 'approved' | 'rejected';
 export type UserRoleRequestTarget = 'master' | 'colaborador';
 export type UserRoleRequestDecision = 'approve' | 'reject';
+export type UserRoleRequestListStatus = 'pending' | 'approved' | 'rejected';
 
 export interface UserRoleRequestStatus {
     currentRole: UserRole;
@@ -40,4 +41,9 @@ export interface ResolveRoleRequestInput {
     decision: UserRoleRequestDecision;
     blockedUntilUtc?: string | null;
     adminComment?: string | null;
+}
+
+export interface UserRoleRequestListFilters {
+    status?: UserRoleRequestListStatus;
+    requestedRole?: UserRoleRequestTarget;
 }
