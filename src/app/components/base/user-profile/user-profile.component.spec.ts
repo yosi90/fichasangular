@@ -527,6 +527,29 @@ describe('UserProfileComponent', () => {
         expect(component.selectedCampaignSummary?.id).toBe(7);
     }));
 
+    it('oculta el formulario de crear campaña a jugadores aunque el ACL diga campanas.create=true', fakeAsync(() => {
+        profileSubject.next({
+            ...buildProfile('correo'),
+            role: 'jugador',
+        });
+        userSvc.refreshCurrentPrivateProfile.and.resolveTo(profileSubject.value);
+        userSvc.can.and.returnValue(true);
+
+        fixture.detectChanges();
+        tick();
+        component.ngOnChanges({
+            openRequest: new SimpleChange(null, { section: 'campanas', requestId: 13 }, false),
+        });
+        tick();
+        fixture.detectChanges();
+
+        const text = `${fixture.nativeElement.textContent ?? ''}`;
+        expect(component.canCreateCampaignByRole).toBeFalse();
+        expect(component.canCreateCampaign).toBeFalse();
+        expect(text).toContain('Solo los master y colaboradores pueden crear campañas.');
+        expect(text).not.toContain('Crear campaña');
+    }));
+
     it('mantiene separadas las campañas master y jugador aunque el rol global sea admin', fakeAsync(() => {
         const campanaSvc = TestBed.inject(CampanaService) as jasmine.SpyObj<CampanaService>;
         profileSubject.next({
@@ -578,7 +601,7 @@ describe('UserProfileComponent', () => {
         expect(component.participantCampaigns.map(item => item.id)).toEqual([7]);
     }));
 
-    it('lista campañas propias legacy del creador sin contarlas como participación', fakeAsync(() => {
+    it('lista campañas propias legacy del creador en el bloque de participación y no como master', fakeAsync(() => {
         const campanaSvc = TestBed.inject(CampanaService) as jasmine.SpyObj<CampanaService>;
         profileSubject.next({
             ...buildProfile('correo'),
@@ -627,12 +650,129 @@ describe('UserProfileComponent', () => {
             openRequest: new SimpleChange(null, { section: 'campanas', requestId: 11 }, false),
         });
         tick();
+        fixture.detectChanges();
 
-        expect(component.masterCampaigns.map(item => item.id)).toEqual([7]);
-        expect(component.participantCampaigns).toEqual([]);
+        expect(component.masterCampaigns).toEqual([]);
+        expect(component.participantCampaigns.map(item => item.id)).toEqual([7]);
         expect(component.selectedCampaignSummary?.id).toBe(7);
         expect(component.getCampaignRoleLabel(component.selectedCampaignSummary?.campaignRole, component.selectedCampaignSummary?.isOwner === true))
             .toBe('Creador');
+    }));
+
+    it('usa un mensaje vacío neutro en campañas de participación', fakeAsync(() => {
+        const campanaSvc = TestBed.inject(CampanaService) as jasmine.SpyObj<CampanaService>;
+        campanaSvc.listProfileCampaigns.and.resolveTo([]);
+
+        fixture.detectChanges();
+        tick();
+        component.ngOnChanges({
+            openRequest: new SimpleChange(null, { section: 'campanas', requestId: 12 }, false),
+        });
+        tick();
+        fixture.detectChanges();
+
+        const text = `${fixture.nativeElement.textContent ?? ''}`;
+        expect(text).toContain('No tienes campañas en este bloque ahora mismo.');
+        expect(text).not.toContain('No participas en campañas ajenas ahora mismo.');
+    }));
+
+    it('oculta firebase uid y diferencia visualmente resultados de búsqueda de miembros actuales', fakeAsync(() => {
+        fixture.detectChanges();
+        tick();
+
+        component.currentSection = 'campanas';
+        component.campaigns = [{
+            id: 7,
+            nombre: 'Caballeros',
+            campaignRole: 'master',
+            membershipStatus: 'activo',
+        }];
+        component.selectedCampaignId = 7;
+        component.selectedCampaignDetail = {
+            campaign: {
+                id: 7,
+                nombre: 'Caballeros',
+                campaignRole: 'master',
+                membershipStatus: 'activo',
+            },
+            ownerUid: 'uid-1',
+            ownerDisplayName: 'Yosi',
+            activeMasterUid: 'uid-1',
+            activeMasterDisplayName: 'Yosi',
+            canRecoverMaster: false,
+            members: [{
+                userId: 'u-1',
+                uid: 'firebase-visible-1',
+                displayName: 'MiYosi90',
+                email: 'mryosi@test.dev',
+                campaignRole: 'master',
+                membershipStatus: 'activo',
+                isActive: true,
+                addedAtUtc: '2026-03-12T22:51:00.000Z',
+                addedByUserId: null,
+            }],
+            includeInactiveMembers: false,
+            tramas: [],
+            loadingMembers: false,
+            loadingTramas: false,
+        };
+        component.memberSearchResults = [{
+            uid: 'firebase-visible-2',
+            displayName: 'Yosi',
+            photoThumbUrl: null,
+        }];
+
+        fixture.detectChanges();
+
+        const text = `${fixture.nativeElement.textContent ?? ''}`;
+        expect(text).toContain('Resultados de búsqueda');
+        expect(text).toContain('Seleccionar para añadir a la campaña');
+        expect(text).not.toContain('firebase-visible-1');
+        expect(text).not.toContain('firebase-visible-2');
+    }));
+
+    it('filtra del buscador de jugadores a miembros que ya están en la campaña', fakeAsync(() => {
+        const campanaSvc = TestBed.inject(CampanaService) as jasmine.SpyObj<CampanaService>;
+        component.selectedCampaignDetail = {
+            campaign: {
+                id: 7,
+                nombre: 'Caballeros',
+                campaignRole: 'master',
+                membershipStatus: 'activo',
+            },
+            ownerUid: 'uid-1',
+            ownerDisplayName: 'Yosi',
+            activeMasterUid: 'uid-1',
+            activeMasterDisplayName: 'Yosi',
+            canRecoverMaster: false,
+            members: [{
+                userId: 'u-1',
+                uid: 'uid-master',
+                displayName: 'MrYosi90',
+                email: 'mryosi@test.dev',
+                campaignRole: 'master',
+                membershipStatus: 'activo',
+                isActive: true,
+                addedAtUtc: null,
+                addedByUserId: null,
+            }],
+            includeInactiveMembers: false,
+            tramas: [],
+            loadingMembers: false,
+            loadingTramas: false,
+        };
+        campanaSvc.searchUsers.and.resolveTo([
+            { uid: 'uid-master', displayName: 'MrYosi90', photoThumbUrl: null },
+            { uid: 'uid-new', displayName: 'Yosi', photoThumbUrl: null },
+        ]);
+
+        component.memberSearchQuery = 'yosi';
+        void (component as any).runUserSearch('member', 'yosi');
+        tick();
+
+        expect(component.memberSearchResults).toEqual([
+            { uid: 'uid-new', displayName: 'Yosi', photoThumbUrl: null },
+        ]);
     }));
 
     it('usa la membresía detallada del actor para detectar si realmente es master', fakeAsync(() => {

@@ -291,6 +291,7 @@ describe('PersonajeService', () => {
                 t: 0,
                 e: 0,
                 o: true,
+                archivado: true,
                 dg: 0,
                 cla: 'Guerrero;2',
                 dom: '',
@@ -361,6 +362,118 @@ describe('PersonajeService', () => {
         expect(personaje.ownerUid).toBe('uid-77');
         expect(personaje.ownerDisplayName).toBe('Aldric Owner');
         expect(personaje.Clases).toBe('Guerrero (2)');
+        expect(personaje.Archivado).toBeTrue();
+    });
+
+    it('getDetallesPersonaje recupera Archivado desde cache auxiliar cuando el detalle API no lo trae', async () => {
+        const httpMock = {
+            get: jasmine.createSpy('get').and.returnValue(of({
+                i: 77,
+                n: 'Aldric',
+                ownerUid: 'uid-77',
+                ownerDisplayName: 'Aldric Owner',
+                visible_otros_usuarios: true,
+                id_region: 4,
+                dcp: 'Personalidad',
+                dh: 'Historia',
+                a: '2',
+                ca: 16,
+                an: 1,
+                cd: 0,
+                cv: 0,
+                ra: {
+                    Id: 1,
+                    Nombre: 'Humano',
+                    Ajuste_nivel: 0,
+                    Tamano: { Nombre: 'Mediano', Modificador_presa: 0 },
+                    Dgs_adicionales: { Cantidad: 0 },
+                },
+                tc: { Id: 1, Nombre: 'Humanoide' },
+                f: 12,
+                mf: 1,
+                d: 10,
+                md: 0,
+                co: 10,
+                mco: 0,
+                int: 10,
+                mint: 0,
+                s: 10,
+                ms: 0,
+                car: 8,
+                mcar: -1,
+                de: 'No tener deidad',
+                ali: 'Neutral autentico',
+                g: 'Macho',
+                ncam: 'Sin campaña',
+                ntr: 'Trama base',
+                nst: 'Subtrama base',
+                v: 12,
+                cor: 30,
+                na: 0,
+                vo: 0,
+                t: 0,
+                e: 0,
+                o: true,
+                dg: 0,
+                cla: 'Guerrero;2',
+                dom: '',
+                stc: '',
+                competencia_arma: [],
+                competencia_armadura: [],
+                competencia_grupo_arma: [],
+                competencia_grupo_armadura: [],
+                pla: [],
+                con: [],
+                esp: [],
+                espX: [],
+                rac: [],
+                hab: [],
+                habN: [],
+                habC: [],
+                habCa: [],
+                habMc: [],
+                habR: [],
+                habRv: [],
+                habX: [],
+                habV: [],
+                habCu: [],
+                dotes: [],
+                ve: '',
+                idi: [],
+                familiares: [],
+                companeros: [],
+                sor: [],
+                ju: 'Jugador visible',
+                pgl: 0,
+                ini_v: [],
+                pr_v: [],
+                edad: 20,
+                alt: 1.8,
+                peso: 80,
+                salv: {},
+                rds: [],
+                rcs: [],
+                res: [],
+                ccl: 0,
+                ccm: 0,
+                ccp: 0,
+                espa: '',
+                espan: '',
+                espp: '',
+                esppn: '',
+                disp: '',
+                ecp: '',
+                cper: {},
+                cperd: false,
+            })),
+        } as any;
+        const service = crearServicio(httpMock);
+        spyOn<any>(service, 'readCacheSnapshot').and.resolveTo({ Archivado: true });
+
+        const observable = await service.getDetallesPersonaje(77);
+        const personaje = await new Promise<any>((resolve) => observable.subscribe(resolve));
+
+        expect(personaje.Archivado).toBeTrue();
     });
 
     it('getDetallesPersonaje usa cache pública para invitados cuando el personaje es visible', async () => {
@@ -461,6 +574,52 @@ describe('PersonajeService', () => {
 
         await expectAsync(service.getDetallesPersonaje(88))
             .toBeRejectedWithError('El personaje solicitado no está disponible para invitados.');
+    });
+
+    it('getDetallesPersonaje rechaza detalle archivado para invitados aunque sea visible', async () => {
+        const httpMock = {
+            get: jasmine.createSpy('get'),
+        } as any;
+        const service = crearServicioInvitado(httpMock);
+        spyOn<any>(service, 'readCacheSnapshot').and.resolveTo({
+            Id: 89,
+            Nombre: 'Archivado',
+            visible_otros_usuarios: true,
+            Archivado: true,
+            Campana: 'Sin campaña',
+            Trama: 'Trama base',
+            Subtrama: 'Subtrama base',
+            Raza: { Id: 1, Nombre: 'Humano', Ajuste_nivel: 0, Tamano: { Nombre: 'Mediano', Modificador_presa: 0 }, Dgs_adicionales: { Cantidad: 0 } },
+            Tipo_criatura: { Id: 1, Nombre: 'Humanoide' },
+        });
+
+        await expectAsync(service.getDetallesPersonaje(89))
+            .toBeRejectedWithError('El personaje solicitado no está disponible para invitados.');
+    });
+
+    it('actualizarArchivadoPersonaje usa PATCH con Bearer y normaliza respuesta', async () => {
+        const httpMock = {
+            patch: jasmine.createSpy('patch').and.returnValue(of({
+                message: 'ok',
+                idPersonaje: '15',
+                archivado: true,
+            })),
+        } as any;
+        const service = crearServicio(httpMock);
+
+        const response = await service.actualizarArchivadoPersonaje(15, true);
+
+        expect(httpMock.patch).toHaveBeenCalledWith(
+            jasmine.stringMatching(/personajes\/15\/archivado$/),
+            { archivado: true },
+            jasmine.objectContaining({
+                headers: jasmine.anything(),
+            })
+        );
+        const options = httpMock.patch.calls.mostRecent().args[2];
+        expect(options.headers.get('Authorization')).toBe('Bearer token');
+        expect(response.idPersonaje).toBe(15);
+        expect(response.archivado).toBeTrue();
     });
 
     it('construye payload minimo valido para /personajes/add', () => {
@@ -633,6 +792,19 @@ describe('PersonajeService', () => {
         expect(normalizado.competencia_armadura).toEqual([{ Id: 4, Nombre: 'Broquel', Es_escudo: true }]);
         expect(normalizado.competencia_grupo_arma).toEqual([]);
         expect(normalizado.competencia_grupo_armadura).toEqual([]);
+    });
+
+    it('normalizarPersonajeParaPersistenciaFinal preserva Archivado', () => {
+        const httpMock = {
+            post: jasmine.createSpy('post').and.returnValue(of({})),
+        } as any;
+        const service = crearServicio(httpMock);
+        const pj = crearPersonajeMock();
+        pj.Archivado = true;
+
+        const normalizado = service.normalizarPersonajeParaPersistenciaFinal(pj, 77);
+
+        expect(normalizado.Archivado).toBeTrue();
     });
 
     it('RenovarPersonajes sincroniza competencias directas en cache detallada', async () => {

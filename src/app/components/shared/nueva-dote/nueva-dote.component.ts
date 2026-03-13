@@ -940,7 +940,6 @@ export class NuevaDoteComponent implements OnInit, OnDestroy {
                 showConfirmButton: true
             });
         } finally {
-            console.log('[NuevaDote] Payload enviado a /dotes/add:', payload);
             this.guardando = false;
         }
     }

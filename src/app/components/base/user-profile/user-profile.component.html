@@ -129,7 +129,7 @@
                             </div>
 
                             <p class="profile-panel__hint" *ngIf="!canCreateCampaign">
-                                Ahora mismo no tienes permiso para crear campañas nuevas.
+                                {{campaignCreateHint}}
                             </p>
 
                             <p class="profile-panel__hint" *ngIf="campaignsLoading">Cargando campañas...</p>
@@ -160,7 +160,7 @@
 
                             <p class="profile-panel__hint" *ngIf="campaignsLoading">Cargando campañas...</p>
                             <p class="profile-panel__hint" *ngIf="!campaignsLoading && participantCampaigns.length < 1">
-                                No participas en campañas ajenas ahora mismo.
+                                No tienes campañas en este bloque ahora mismo.
                             </p>
 
                             <div class="campaign-list" *ngIf="participantCampaigns.length > 0">
@@ -181,7 +181,7 @@
                         <div class="profile-panel__header campaign-detail-panel__header">
                             <h2 class="campaign-detail-panel__title">{{selectedCampaignSummary.nombre}}</h2>
                             <p class="campaign-detail-panel__meta">
-                                {{getCampaignRoleLabel(selectedCampaignActorRole, selectedCampaignSummary?.isOwner === true)}} · {{getMembershipStatusLabel(selectedCampaignActorStatus)}}
+                                {{getCampaignRoleLabel(selectedCampaignActorRole, selectedCampaignSummary.isOwner === true)}} · {{getMembershipStatusLabel(selectedCampaignActorStatus)}}
                             </p>
                             <div class="campaign-detail-panel__actions">
                                 <button
@@ -240,7 +240,7 @@
                                     <input
                                         class="campaign-text-input"
                                         type="text"
-                                        placeholder="Buscar usuario por nombre o uid"
+                                        placeholder="Buscar usuario por nombre"
                                         [(ngModel)]="transferSearchQuery"
                                         (ngModelChange)="onTransferSearchQueryChange()"
                                         [disabled]="transferSaving" />
@@ -255,14 +255,15 @@
                                         {{transferSearchErrorMessage}}
                                     </p>
 
-                                    <div class="campaign-search-results" *ngIf="transferSearchResults.length > 0">
+                                    <div class="campaign-search-results campaign-search-results--transfer" *ngIf="transferSearchResults.length > 0">
+                                        <div class="campaign-search-results__header">Resultados de búsqueda</div>
                                         <button
                                             type="button"
-                                            class="campaign-search-results__item"
+                                            class="campaign-search-results__item campaign-search-results__item--transfer"
                                             *ngFor="let result of transferSearchResults; trackBy: trackByUserUid"
                                             (click)="seleccionarNuevoMaster(result)">
                                             <strong>{{getUserDisplayLabel(result.displayName, null, result.uid)}}</strong>
-                                            <span>{{result.uid}}</span>
+                                            <span>Seleccionar como nuevo master</span>
                                         </button>
                                     </div>
 
@@ -310,15 +311,16 @@
                                         {{memberSearchErrorMessage}}
                                     </p>
 
-                                    <div class="campaign-search-results" *ngIf="selectedCampaignCanManage && memberSearchResults.length > 0">
+                                    <div class="campaign-search-results campaign-search-results--member" *ngIf="selectedCampaignCanManage && memberSearchResults.length > 0">
+                                        <div class="campaign-search-results__header">Resultados de búsqueda</div>
                                         <button
                                             type="button"
-                                            class="campaign-search-results__item"
+                                            class="campaign-search-results__item campaign-search-results__item--member"
                                             *ngFor="let result of memberSearchResults; trackBy: trackByUserUid"
                                             (click)="agregarJugador(result)"
                                             [disabled]="isAddingMember(result.uid)">
                                             <strong>{{getUserDisplayLabel(result.displayName, null, result.uid)}}</strong>
-                                            <span>{{isAddingMember(result.uid) ? 'Añadiendo...' : result.uid}}</span>
+                                            <span>{{isAddingMember(result.uid) ? 'Añadiendo...' : 'Seleccionar para añadir a la campaña'}}</span>
                                         </button>
                                     </div>
 

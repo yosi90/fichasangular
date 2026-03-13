@@ -35,7 +35,7 @@ export class ListaPersonajesService {
 
             this.actorCacheKey = nextActorCacheKey;
             this.invalidateLoadedPersonajes();
-            void this.reloadPersonajesForCurrentActor();
+            this.personajesLoadingPromise = this.reloadPersonajesForCurrentActor();
         });
     }
 
@@ -178,6 +178,24 @@ export class ListaPersonajesService {
         );
     }
 
+    public actualizarArchivadoEnCache(idPersonaje: number, archivado: boolean): void {
+        const id = Math.trunc(toNumber(idPersonaje));
+        if (id <= 0 || !this.personajesLoaded)
+            return;
+
+        this.personajesSubject.next(
+            this.personajesSubject.value.map((personaje) => {
+                if (Math.trunc(toNumber(personaje?.Id)) !== id)
+                    return personaje;
+
+                return {
+                    ...personaje,
+                    Archivado: !!archivado,
+                };
+            })
+        );
+    }
+
     private mapApiToPersonajeSimple(element: any): PersonajeSimple {
         const idRegion = Math.max(0, Math.trunc(toNumber(
             element?.id_region
@@ -224,8 +242,6 @@ export class ListaPersonajesService {
         const idToken = await user.getIdToken();
         if (`${idToken ?? ''}`.trim().length < 1)
             throw new Error('Token no disponible');
-
-        console.log('[ListaPersonajesService] FIREBASE_ID_TOKEN', idToken);
 
         return new HttpHeaders({
             Authorization: `Bearer ${idToken}`,
@@ -364,6 +380,7 @@ export class ListaPersonajesService {
 
     private esVisibleParaInvitado(personaje: PersonajeSimple): boolean {
         return personaje?.visible_otros_usuarios === true
+            && personaje?.Archivado !== true
             && this.normalizarCampana(personaje?.Campana) === 'sin campana';
     }
 

@@ -201,9 +201,17 @@
             <div class="sombra-caja-sm tw-rounded-md tw-p-2 tw-my-2" *ngIf="mostrarControlVisibilidad">
                 <mat-slide-toggle
                     [checked]="personajeVisiblePublicamente"
-                    [disabled]="actualizandoVisibilidad"
+                    [disabled]="actualizandoEstadoPersonaje"
                     (change)="actualizarVisibilidad($event.checked)">
                     {{personajeVisiblePublicamente ? 'Visible para todos' : 'Visible solo para el creador'}}
+                </mat-slide-toggle>
+            </div>
+            <div class="sombra-caja-sm tw-rounded-md tw-p-2 tw-my-2" *ngIf="mostrarControlVisibilidad">
+                <mat-slide-toggle
+                    [checked]="personajeArchivado"
+                    [disabled]="actualizandoEstadoPersonaje"
+                    (change)="actualizarArchivado($event.checked)">
+                    {{personajeArchivado ? 'Personaje archivado' : 'Archivar personaje'}}
                 </mat-slide-toggle>
             </div>
             <button *ngIf="mostrarBotonGenerarPdf" mat-stroked-button color="accent" class="tw-w-full sombra-caja-sm tw-rounded-md tw-my-2" (click)="generarFicha();">

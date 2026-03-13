@@ -24,6 +24,7 @@ describe('DetallesPersonajeComponent', () => {
         };
         listaPersonajesSvcMock = {
             actualizarVisibilidadEnCache: jasmine.createSpy('actualizarVisibilidadEnCache'),
+            actualizarArchivadoEnCache: jasmine.createSpy('actualizarArchivadoEnCache'),
         };
         regionSvcMock = {
             getRegiones: () => of([]),
@@ -41,6 +42,10 @@ describe('DetallesPersonajeComponent', () => {
                         actualizarVisibilidadPersonaje: async () => ({
                             idPersonaje: 1,
                             visible_otros_usuarios: false,
+                        }),
+                        actualizarArchivadoPersonaje: async () => ({
+                            idPersonaje: 1,
+                            archivado: true,
                         }),
                     },
                 },
@@ -79,6 +84,13 @@ describe('DetallesPersonajeComponent', () => {
 
         expect(component.pj.visible_otros_usuarios).toBeTrue();
         expect(listaPersonajesSvcMock.actualizarVisibilidadEnCache).toHaveBeenCalledOnceWith(1, true);
+    });
+
+    it('actualiza la cache del listado al cambiar el archivado', async () => {
+        await component.actualizarArchivado(true);
+
+        expect(component.pj.Archivado).toBeTrue();
+        expect(listaPersonajesSvcMock.actualizarArchivadoEnCache).toHaveBeenCalledOnceWith(1, true);
     });
 
     it('muestra botón Generar pdf por defecto', () => {

@@ -366,18 +366,33 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
         return `${this.roleRequestStatus?.requestComment ?? ''}`.trim();
     }
 
+    get canCreateCampaignByRole(): boolean {
+        const role = `${this.profile?.role ?? ''}`.trim().toLowerCase();
+        return role === 'master' || role === 'colaborador' || role === 'admin';
+    }
+
     get canCreateCampaign(): boolean {
-        return this.userSvc.can('campanas', 'create');
+        return this.canCreateCampaignByRole && this.userSvc.can('campanas', 'create');
+    }
+
+    get campaignCreateHint(): string {
+        if (!this.canCreateCampaignByRole)
+            return 'Solo los master y colaboradores pueden crear campañas.';
+
+        return 'Ahora mismo no tienes permiso para crear campañas nuevas.';
     }
 
     get masterCampaigns(): CampaignListItem[] {
-        return this.campaigns.filter((campaign) => campaign.campaignRole === 'master' || campaign.isOwner === true);
+        return this.campaigns.filter((campaign) => campaign.campaignRole === 'master');
     }
 
     get participantCampaigns(): CampaignListItem[] {
-        return this.campaigns.filter((campaign) => (
-            campaign.campaignRole === 'jugador' && campaign.membershipStatus === 'activo'
-        ));
+        return this.campaigns.filter((campaign) => {
+            if (campaign.campaignRole === 'jugador' && campaign.membershipStatus === 'activo')
+                return true;
+
+            return campaign.isOwner === true && campaign.campaignRole !== 'master';
+        });
     }
 
     get selectedCampaignSummary(): CampaignListItem | null {
@@ -1068,7 +1083,7 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
         const correo = `${email ?? ''}`.trim();
         if (correo.length > 0)
             return correo;
-        return uid;
+        return 'Usuario sin nombre';
     }
 
     formatOptionalDateTime(value: string | null | undefined, fallback: string = 'Sin dato'): string {
@@ -1498,10 +1513,12 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
             if ((kind === 'member' ? `${this.memberSearchQuery ?? ''}`.trim() : `${this.transferSearchQuery ?? ''}`.trim()) !== expectedQuery)
                 return;
 
+            const filteredResults = this.filterCampaignSearchResults(kind, results);
+
             if (kind === 'member')
-                this.memberSearchResults = results;
+                this.memberSearchResults = filteredResults;
             else
-                this.transferSearchResults = results;
+                this.transferSearchResults = filteredResults;
         } catch (error: any) {
             const message = this.mapCampaignError(error, 'No se pudo buscar usuarios.');
             if (kind === 'member') {
@@ -1517,5 +1534,24 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
             else
                 this.transferSearchLoading = false;
         }
+    }
+
+    private filterCampaignSearchResults(kind: 'member' | 'transfer', results: CampaignUserSearchResult[]): CampaignUserSearchResult[] {
+        const currentMemberUids = new Set(
+            this.selectedCampaignMembers
+                .map((member) => `${member.uid ?? ''}`.trim())
+                .filter((uid) => uid.length > 0)
+        );
+
+        return (results ?? []).filter((result) => {
+            const uid = `${result?.uid ?? ''}`.trim();
+            if (uid.length < 1)
+                return false;
+
+            if (kind === 'member')
+                return !currentMemberUids.has(uid);
+
+            return uid !== `${this.selectedCampaignMaster?.uid ?? ''}`.trim();
+        });
     }
 }

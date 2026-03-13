@@ -84,6 +84,7 @@ export class DetallesPersonajeComponent implements OnInit, OnChanges, AfterViewI
     cMedia: string = "0 Kilogramos";
     cPesada: string = "0 Kilogramos";
     actualizandoVisibilidad = false;
+    actualizandoArchivado = false;
     etiquetaCreador = 'Desconocido';
     perfilPublicoDisponible = false;
     perfilPublicoComprobando = false;
@@ -171,6 +172,14 @@ export class DetallesPersonajeComponent implements OnInit, OnChanges, AfterViewI
         return this.toBoolean(this.pj?.visible_otros_usuarios);
     }
 
+    get personajeArchivado(): boolean {
+        return this.toBoolean(this.pj?.Archivado);
+    }
+
+    get actualizandoEstadoPersonaje(): boolean {
+        return this.actualizandoVisibilidad || this.actualizandoArchivado;
+    }
+
     get mostrarChipCreador(): boolean {
         return !this.esPreviewNuevoPersonaje;
     }
@@ -199,7 +208,7 @@ export class DetallesPersonajeComponent implements OnInit, OnChanges, AfterViewI
     }
 
     async actualizarVisibilidad(visible: boolean): Promise<void> {
-        if (!this.mostrarControlVisibilidad || this.actualizandoVisibilidad)
+        if (!this.mostrarControlVisibilidad || this.actualizandoEstadoPersonaje)
             return;
 
         const actorUid = `${this.userSvc.CurrentUserUid ?? ''}`.trim();
@@ -233,6 +242,44 @@ export class DetallesPersonajeComponent implements OnInit, OnChanges, AfterViewI
             });
         } finally {
             this.actualizandoVisibilidad = false;
+        }
+    }
+
+    async actualizarArchivado(archivado: boolean): Promise<void> {
+        if (!this.mostrarControlVisibilidad || this.actualizandoEstadoPersonaje)
+            return;
+
+        const actorUid = `${this.userSvc.CurrentUserUid ?? ''}`.trim();
+        if (actorUid.length < 1) {
+            await Swal.fire({
+                icon: 'warning',
+                title: 'No hay sesión activa',
+                text: 'Inicia sesión para poder cambiar el archivado del personaje.',
+                showConfirmButton: true,
+                target: document.body,
+                heightAuto: false,
+                scrollbarPadding: false,
+            });
+            return;
+        }
+
+        this.actualizandoArchivado = true;
+        try {
+            await this.pSvc.actualizarArchivadoPersonaje(this.pj.Id, archivado);
+            this.pj.Archivado = archivado;
+            this.listaPersonajesSvc.actualizarArchivadoEnCache(this.pj.Id, archivado);
+        } catch (error: any) {
+            await Swal.fire({
+                icon: 'warning',
+                title: 'No se pudo actualizar el archivado',
+                text: error?.message ?? 'Error no identificado',
+                showConfirmButton: true,
+                target: document.body,
+                heightAuto: false,
+                scrollbarPadding: false,
+            });
+        } finally {
+            this.actualizandoArchivado = false;
         }
     }
 

@@ -148,11 +148,7 @@ export class BaseMenuComponent implements OnInit, OnDestroy {
     }
 
     logOut() {
-        this.usrService.logOut()
-            ?.then(response => {
-                console.log(response);
-            })
-            .catch(error => console.log(error));
+        void this.usrService.logOut()?.catch(() => undefined);
     }
 
     abrirMiPerfil(): void {

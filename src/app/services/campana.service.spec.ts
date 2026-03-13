@@ -349,6 +349,29 @@ describe('CampanaService', () => {
         expect(httpMock.post.calls.mostRecent().args[0]).toMatch(/campanas\/7\/master\/recover$/);
     });
 
+    it('addCampaignMember envía Bearer y targetUid al endpoint canónico', async () => {
+        httpMock.post.and.callFake((url: string, body: any, options: any) => {
+            if (url.endsWith('campanas/7/jugadores')) {
+                expect(body).toEqual({ targetUid: 'uid-target' });
+                expect(options.headers.get('Authorization')).toBe('Bearer token');
+                return of({ message: 'ok' });
+            }
+            throw new Error(`URL inesperada: ${url}`);
+        });
+        httpMock.get.and.callFake((url: string) => {
+            if (url.endsWith('campanas'))
+                return of([{ i: 7, n: 'Campaña visible', campaignRole: 'master', membershipStatus: 'activo' }]);
+            if (url.endsWith('tramas/campana/7'))
+                return of([]);
+            throw new Error(`URL inesperada: ${url}`);
+        });
+
+        await service.addCampaignMember(7, 'uid-target');
+
+        expect(httpMock.post.calls.count()).toBe(1);
+        expect(httpMock.post.calls.mostRecent().args[0]).toMatch(/campanas\/7\/jugadores$/);
+    });
+
     it('searchUsers usa el endpoint público de búsqueda', async () => {
         httpMock.get.and.callFake((url: string) => {
             if (url.endsWith('usuarios/search'))

@@ -37,6 +37,12 @@ interface PersonajeVisibilityUpdateResponse {
     visible_otros_usuarios: boolean;
 }
 
+interface PersonajeArchiveUpdateResponse {
+    message: string;
+    idPersonaje: number;
+    archivado: boolean;
+}
+
 @Injectable({
     providedIn: 'root'
 })
@@ -64,7 +70,10 @@ export class PersonajeService {
             const response = await firstValueFrom(
                 this.http.get<any>(`${environment.apiUrl}personajes/${personajeId}`, { headers })
             );
-            return of(this.mapApiDetalleToPersonaje(response));
+            const personaje = this.mapApiDetalleToPersonaje(response);
+            if (!this.hasArchivadoField(response))
+                personaje.Archivado = await this.readArchivadoStateFromCache(personajeId, personaje.Archivado);
+            return of(personaje);
         } catch (error: any) {
             throw new Error(this.obtenerMensajeErrorHttp(error, 'No se pudo cargar el detalle del personaje.'));
         }
@@ -113,6 +122,49 @@ export class PersonajeService {
             ...response,
             idPersonaje: Math.trunc(toNumber(response?.idPersonaje)),
             visible_otros_usuarios: !!visible,
+        };
+    }
+
+    public async actualizarArchivadoPersonaje(
+        idPersonaje: number,
+        archivado: boolean,
+    ): Promise<PersonajeArchiveUpdateResponse> {
+        const id = Math.trunc(toNumber(idPersonaje));
+        if (id <= 0)
+            throw new Error('Id de personaje no válido');
+
+        const payload = {
+            archivado: !!archivado,
+        };
+
+        const response = await firstValueFrom(
+            this.http.patch<PersonajeArchiveUpdateResponse>(
+                `${environment.apiUrl}personajes/${id}/archivado`,
+                payload,
+                { headers: await this.buildAuthHeaders() }
+            )
+        );
+
+        try {
+            await Promise.all([
+                this.firebaseContextSvc.run(() => update(ref(this.db, `Personajes/${id}`), {
+                    Archivado: !!archivado,
+                })),
+                this.firebaseContextSvc.run(() => update(ref(this.db, `Personajes-simples/${id}`), {
+                    Archivado: !!archivado,
+                })),
+                this.firebaseContextSvc.run(() => update(ref(this.db, `listado-personajes/${id}`), {
+                    Archivado: !!archivado,
+                })),
+            ]);
+        } catch {
+            // Usuarios no-admin pueden no tener permisos de escritura en RTDB.
+        }
+
+        return {
+            ...response,
+            idPersonaje: Math.trunc(toNumber(response?.idPersonaje)),
+            archivado: !!archivado,
         };
     }
 
@@ -823,7 +875,7 @@ export class PersonajeService {
         clonado.Id = id;
         clonado.ownerUid = toNullableText(clonado?.ownerUid);
         clonado.visible_otros_usuarios = !!clonado?.visible_otros_usuarios;
-        clonado.Archivado = false;
+        clonado.Archivado = !!clonado?.Archivado;
         clonado.desgloseClases = clasesNormalizadas;
         clonado.Clases = clasesNormalizadas
             .map((entrada) => `${entrada.Nombre} (${entrada.Nivel})`)
@@ -910,7 +962,7 @@ export class PersonajeService {
             Campaña: `${normalizado?.Campana ?? ''}`,
             Trama: `${normalizado?.Trama ?? ''}`,
             Subtrama: `${normalizado?.Subtrama ?? ''}`,
-            Archivado: false,
+            Archivado: !!normalizado?.Archivado,
         };
 
         await Promise.all([
@@ -962,6 +1014,38 @@ export class PersonajeService {
         return personaje;
     }
 
+    private hasArchivadoField(payload: any): boolean {
+        if (!payload || typeof payload !== 'object')
+            return false;
+
+        return Object.prototype.hasOwnProperty.call(payload, 'archivado')
+            || Object.prototype.hasOwnProperty.call(payload, 'Archivado');
+    }
+
+    private async readArchivadoStateFromCache(idPersonaje: number, fallback: boolean): Promise<boolean> {
+        const id = Math.trunc(toNumber(idPersonaje));
+        if (id <= 0)
+            return !!fallback;
+
+        const paths = [
+            `Personajes/${id}`,
+            `Personajes-simples/${id}`,
+            `listado-personajes/${id}`,
+        ];
+
+        for (const path of paths) {
+            try {
+                const payload = await this.readCacheSnapshot(path);
+                if (this.hasArchivadoField(payload))
+                    return toBoolean(payload?.Archivado ?? payload?.archivado);
+            } catch {
+                // Best-effort: si una rama no existe intentamos la siguiente.
+            }
+        }
+
+        return !!fallback;
+    }
+
     private async readCacheSnapshot(path: string): Promise<any> {
         return new Promise((resolve, reject) => {
             try {
@@ -993,6 +1077,7 @@ export class PersonajeService {
 
     private esDetalleVisibleParaInvitado(personaje: Personaje): boolean {
         return personaje?.visible_otros_usuarios === true
+            && personaje?.Archivado !== true
             && normalizeLookupKey(personaje?.Campana) === 'sin campana';
     }
 
@@ -1232,7 +1317,7 @@ export class PersonajeService {
             Disciplina_especialista: disciplina_esp,
             Disciplina_prohibida: element?.disp,
             Escuelas_prohibidas: ecp,
-            Archivado: false,
+            Archivado: toBoolean(element?.archivado ?? element?.Archivado),
             CaracteristicasVarios: {
                 Fuerza: [],
                 Destreza: [],

@@ -158,11 +158,12 @@ export class CampanaService {
             throw new Error('Datos inválidos para añadir el jugador.');
 
         try {
+            const headers = await this.buildAuthHeaders();
             await firstValueFrom(
                 this.http.post<void>(
                     `${this.campanasBaseUrl}/${id}/jugadores`,
                     { targetUid: uid },
-                    { headers: await this.buildAuthHeaders() }
+                    { headers }
                 )
             );
             await this.refreshCampanasCacheBestEffort();

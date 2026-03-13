@@ -126,11 +126,7 @@ export class NavbarComponent implements OnInit, OnDestroy {
     }
 
     logOut(): void {
-        this.usrService.logOut()
-            ?.then(response => {
-                console.log(response);
-            })
-            .catch(error => console.log(error));
+        void this.usrService.logOut()?.catch(() => undefined);
     }
 
     abrirMiPerfil(): void {

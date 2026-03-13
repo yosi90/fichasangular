@@ -39,6 +39,7 @@ export class ListaPersonajesComponent implements OnInit, AfterViewInit, OnDestro
     columnsToDisplayWithExpand = [...this.columnsToDisplay, 'expand'];
     expandedElement!: PersonajeSimple;
     personajesCargados: boolean = false;
+    mostrarArchivados = false;
     private personajesSub?: Subscription;
     private sessionStateSub?: Subscription;
     private lastLoggedInState: boolean | null = null;
@@ -122,12 +123,11 @@ export class ListaPersonajesComponent implements OnInit, AfterViewInit, OnDestro
 
     filtroPersonajes() {
         const texto = this.normalizarTexto(this.inputText?.nativeElement?.value ?? '');
-        const archivo = !(this.anuncioArchivo === 'Clic para mostar pjs archivados');
         const pjFiltrados = this.Personajes.filter(pj => (texto === '' || this.coincideConTextoFiltro(pj, texto))
             && (this.defaultCampana === undefined || this.defaultCampana === 'Sin campaña' || pj.Campana === this.defaultCampana)
             && (this.defaultTrama === undefined || this.defaultTrama === 'Trama base' || pj.Trama === this.defaultTrama)
             && (this.defaultSubtrama === undefined || this.defaultSubtrama === 'Subtrama base' || pj.Subtrama === this.defaultSubtrama)
-            && (archivo || !archivo && !pj.Archivado)
+            && (this.mostrarArchivados || !pj.Archivado)
         );
         this.personajesDS = new MatTableDataSource(pjFiltrados);
         this.personajesDS.sortingDataAccessor = (item: PersonajeSimple, property: string) => {
@@ -141,15 +141,17 @@ export class ListaPersonajesComponent implements OnInit, AfterViewInit, OnDestro
         this.personajesDS.paginator = this.paginator;
     }
 
-    anuncioArchivo: string = 'Clic para mostrar pjs archivados';
-    AlternarArchivados(value: string) {
-        if (value === 'Clic para mostrar pjs archivados') {
-            this.anuncioArchivo = 'Mostrando pjs archivados';
+    get anuncioArchivo(): string {
+        return this.mostrarArchivados ? 'Mostrando pjs archivados' : 'Clic para mostrar pjs archivados';
+    }
+
+    AlternarArchivados() {
+        this.mostrarArchivados = !this.mostrarArchivados;
+        const hasArchivadoColumn = this.columnsToDisplay.includes('¿Archivado?');
+        if (this.mostrarArchivados && !hasArchivadoColumn)
             this.columnsToDisplay.push('¿Archivado?');
-        } else {
-            this.anuncioArchivo = 'Clic para mostrar pjs archivados';
-            this.columnsToDisplay.pop();
-        }
+        if (!this.mostrarArchivados && hasArchivadoColumn)
+            this.columnsToDisplay = this.columnsToDisplay.filter((column) => column !== '¿Archivado?');
         this.columnsToDisplayWithExpand = [...this.columnsToDisplay, 'expand'];
         this.filtroPersonajes();
     }

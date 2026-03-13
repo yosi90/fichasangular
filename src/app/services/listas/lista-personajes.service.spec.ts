@@ -148,6 +148,61 @@ describe('ListaPersonajesService', () => {
         expect(personajes[0].Nombre).toBe('Visible sin campaña');
     });
 
+    it('filtra personajes archivados en cache pública aunque sean visibles', async () => {
+        const service = new ListaPersonajesService(
+            { currentUser: null } as any,
+            {} as any,
+            {} as any,
+            firebaseContextMock
+        );
+        spyOn<any>(service, 'readCacheSnapshot').and.resolveTo({
+            '1': {
+                i: 1,
+                n: 'Archivado visible',
+                visible_otros_usuarios: true,
+                r: { Id: 1, Nombre: 'Humano' },
+                c: 'Guerrero 1',
+                co: 'Contexto',
+                p: 'Personalidad',
+                ca: 'Sin campaña',
+                t: 'Trama base',
+                s: 'Subtrama base',
+                a: true,
+            },
+        });
+
+        const personajes = await (service as any).readPublicPersonajesFromCache();
+
+        expect(personajes).toEqual([]);
+    });
+
+    it('actualizarArchivadoEnCache refleja el cambio en el listado cargado', () => {
+        const service = new ListaPersonajesService(
+            { currentUser: { getIdToken: async () => 'token' } } as any,
+            {} as any,
+            {} as any,
+            firebaseContextMock
+        );
+        (service as any).personajesLoaded = true;
+        (service as any).personajesSubject.next([{
+            Id: 3,
+            Nombre: 'Aldric',
+            visible_otros_usuarios: true,
+            Raza: { Id: 1, Nombre: 'Humano' },
+            Clases: 'Guerrero 1',
+            Contexto: 'Contexto',
+            Personalidad: 'Personalidad',
+            Campana: 'Sin campaña',
+            Trama: 'Trama base',
+            Subtrama: 'Subtrama base',
+            Archivado: false,
+        }]);
+
+        service.actualizarArchivadoEnCache(3, true);
+
+        expect((service as any).personajesSubject.value[0].Archivado).toBeTrue();
+    });
+
     it('reconstruye el Id desde el índice cuando Firebase devuelve un array', async () => {
         const service = new ListaPersonajesService(
             { currentUser: null } as any,
@@ -221,6 +276,7 @@ describe('ListaPersonajesService', () => {
             {} as any,
             firebaseContextMock
         );
+        (service as any).authReadyPromise = Promise.resolve();
         spyOn<any>(service, 'readPublicPersonajesFromCache').and.resolveTo([{
             Id: 7,
             Nombre: 'Publico invitado',
@@ -258,11 +314,10 @@ describe('ListaPersonajesService', () => {
 
         authMock.currentUser = { uid: 'uid-auth', getIdToken: async () => 'token' };
         service.authHandler?.(authMock.currentUser);
-        await Promise.resolve();
-        await Promise.resolve();
+        await (service as any).reloadPersonajesForCurrentActor();
 
         expect(emisiones[0]?.[0]?.Nombre).toBe('Publico invitado');
-        expect(emisiones[emisiones.length - 1]?.[0]?.Nombre).toBe('Visible para usuario');
+        expect((service as any).personajesSubject.value[0]?.Nombre).toBe('Visible para usuario');
         sub.unsubscribe();
     });
 });

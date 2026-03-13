@@ -313,7 +313,6 @@ export class ManualesAsociadosService {
                         payload: this.extractFlagsFromManual(actualizado),
                     });
                 } catch (error) {
-                    console.warn(`No se pudieron reconciliar las flags del manual ${manual.Id}`, error);
                     resultados.push({
                         id: manual.Id,
                         ok: false,
