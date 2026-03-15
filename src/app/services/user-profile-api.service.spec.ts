@@ -220,7 +220,7 @@ describe('UserProfileApiService', () => {
         expect(items[0].email).toBeNull();
     });
 
-    it('resolveRoleRequest envia decision y limpia adminComment vacio a null', async () => {
+    it('resolveRoleRequest envia el body canonico y limpia adminComment vacio a null', async () => {
         const httpMock = jasmine.createSpyObj('HttpClient', ['get', 'put', 'post', 'patch']);
         httpMock.patch.and.returnValue(of(void 0));
         const service = new UserProfileApiService(httpMock, authMock);
@@ -237,6 +237,7 @@ describe('UserProfileApiService', () => {
             decision: 'reject',
             blockedUntilUtc: null,
             adminComment: null,
+            notifyUser: true,
         });
         expect(options.headers.get('Authorization')).toBe('Bearer token-settings');
     });

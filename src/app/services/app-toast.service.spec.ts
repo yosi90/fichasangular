@@ -30,4 +30,19 @@ describe('AppToastService', () => {
             expect(toasts.length).toBe(0);
         });
     });
+
+    it('mantiene visible más tiempo un toast de sistema', fakeAsync(() => {
+        const service = new AppToastService();
+        let currentLength = 0;
+        service.toasts$.subscribe((toasts) => currentLength = toasts.length);
+
+        service.showSystem('Yosiftware: Nuevo aviso');
+        expect(currentLength).toBe(1);
+
+        tick(5201);
+        expect(currentLength).toBe(1);
+
+        tick(2400);
+        expect(currentLength).toBe(0);
+    }));
 });

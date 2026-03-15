@@ -1,4 +1,4 @@
-export type AppToastType = 'success' | 'error' | 'info';
+export type AppToastType = 'success' | 'error' | 'info' | 'system';
 
 export interface AppToast {
     id: string;

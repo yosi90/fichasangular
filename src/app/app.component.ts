@@ -2,6 +2,9 @@ import { Component, OnDestroy, OnInit } from '@angular/core';
 import { Observable, Subject, fromEvent, takeUntil } from 'rxjs';
 import Swal from 'sweetalert2';
 import { AdminRoleRequestNotifierService } from './services/admin-role-request-notifier.service';
+import { CampaignRealtimeSyncService } from './services/campaign-realtime-sync.service';
+import { ChatAlertService } from './services/chat-alert.service';
+import { ChatRealtimeService } from './services/chat-realtime.service';
 
 @Component({
     selector: 'app-root',
@@ -16,11 +19,19 @@ export class AppComponent implements OnInit, OnDestroy {
     width: number = typeof window !== 'undefined' ? window.innerWidth : 0;
     resize$: Observable<Event> = fromEvent(window, 'resize');
 
-    constructor(private adminRoleRequestNotifierSvc: AdminRoleRequestNotifierService) { }
+    constructor(
+        private adminRoleRequestNotifierSvc: AdminRoleRequestNotifierService,
+        private campaignRealtimeSyncSvc: CampaignRealtimeSyncService,
+        private chatRealtimeSvc: ChatRealtimeService,
+        private chatAlertSvc: ChatAlertService,
+    ) { }
 
     async ngOnInit(): Promise<void> {
         this.configurarSwalGlobal();
         this.adminRoleRequestNotifierSvc.init();
+        this.chatRealtimeSvc.init();
+        this.campaignRealtimeSyncSvc.init();
+        this.chatAlertSvc.init();
         this.resize$
             .pipe(takeUntil(this.destroy$))
             .subscribe(() => {

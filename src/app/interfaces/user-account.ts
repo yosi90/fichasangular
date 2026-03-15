@@ -1,5 +1,6 @@
 import { UserRole } from './user-acl';
 import { AuthProviderType } from './user-profile';
+import { SocialHubOpenRequest, SocialHubSectionId } from './social';
 import { UserSettingsV1 } from './user-settings';
 
 export interface UserPermissionActionMap {
@@ -89,6 +90,8 @@ export interface AdminPanelOpenRequest {
     pendingOnly?: boolean;
     requestId: number;
 }
+
+export type { SocialHubSectionId, SocialHubOpenRequest };
 
 export interface UserAccountState {
     profile: UserPrivateProfile | null;

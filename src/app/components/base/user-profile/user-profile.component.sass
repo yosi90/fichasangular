@@ -306,7 +306,8 @@
 
 .campaign-block,
 .campaign-detail-panel,
-.campaign-card
+.campaign-card,
+.campaign-invitation-inbox
     min-width: 0
 
 .profile-section--campanas
@@ -406,6 +407,7 @@
 
 .campaign-list,
 .campaign-member-list,
+.campaign-invitation-list,
 .campaign-trama-list,
 .campaign-subtrama-list
     display: flex
@@ -431,6 +433,7 @@
     background: transparent
 
 .campaign-member-list,
+.campaign-invitation-list,
 .campaign-search-results
     padding: .8rem
     border-radius: 1rem
@@ -569,6 +572,35 @@
 
 .campaign-member-list
     margin-top: .45rem
+
+.campaign-member-list--pending
+    border-color: rgba(255, 193, 7, .28)
+    background: rgba(255, 193, 7, .08)
+
+.campaign-invitation-row
+    display: flex
+    align-items: center
+    justify-content: space-between
+    gap: .85rem
+    padding: .4rem 0
+
+    &:not(:first-child)
+        margin-top: .35rem
+
+.campaign-invitation-row__copy
+    display: flex
+    flex-direction: column
+    gap: .2rem
+    min-width: 0
+
+.campaign-invitation-row__identity
+    display: flex
+    flex-direction: column
+    gap: .25rem
+
+    span
+        color: rgba(245, 247, 255, .65)
+        word-break: break-word
 
 .campaign-member-row__identity
     display: flex
@@ -729,6 +761,7 @@
         font-size: 1.6rem
 
     .campaign-member-row,
+    .campaign-invitation-row,
     .campaign-subtrama-row,
     .campaign-trama-item__header,
     .campaign-inline-form

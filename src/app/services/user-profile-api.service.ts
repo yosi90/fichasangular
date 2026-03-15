@@ -189,15 +189,18 @@ export class UserProfileApiService {
         if (!Number.isFinite(id) || id <= 0)
             throw new ProfileApiError('Solicitud inválida.', 'ROLE_REQUEST_INVALID', 400);
 
+        const payload = {
+            decision: input.decision,
+            blockedUntilUtc: input.blockedUntilUtc ?? null,
+            adminComment: `${input.adminComment ?? ''}`.trim() || null,
+            notifyUser: input.notifyUser ?? true,
+        };
+
         try {
             await firstValueFrom(
                 this.http.patch<void>(
                     `${this.usuariosBaseUrl}/role-requests/${id}`,
-                    {
-                        decision: input.decision,
-                        blockedUntilUtc: input.blockedUntilUtc ?? null,
-                        adminComment: `${input.adminComment ?? ''}`.trim() || null,
-                    },
+                    payload,
                     { headers: await this.buildAuthHeaders() }
                 )
             );

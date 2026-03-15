@@ -28,6 +28,7 @@ function crearComponente(overrides?: { pSvc?: any; }): TabControlComponent {
     const userProfileNavSvc = {
         privateProfileOpen$: new Subject<any>(),
         publicProfileOpen$: new Subject<any>(),
+        socialOpen$: new Subject<any>(),
         adminPanelOpen$: new Subject<any>(),
         roadmapOpen$: new Subject<void>(),
         legalPrivacyOpen$: new Subject<void>(),
@@ -63,6 +64,8 @@ function crearComponente(overrides?: { pSvc?: any; }): TabControlComponent {
         const tabs: any[] = [{ textLabel: 'Personajes' }];
         if (component.usrLoggedIn && component.privateProfileTabOpen)
             tabs.push({ textLabel: 'Mi perfil' });
+        if (component.socialTabOpen)
+            tabs.push({ textLabel: 'Social' });
         if (component.usrPerm === 1 && component.adminPanelTabOpen)
             tabs.push({ textLabel: 'Panel de administración' });
         if (component.roadmapTabOpen)
@@ -357,6 +360,34 @@ describe('TabControlComponent navegación por origen', () => {
         expect(component.privateProfileTabOpen).toBeTrue();
         expect(component.privateProfileOpenRequest?.section).toBe('preferencias');
         expect((component as any).activeTabKey).toBe('base:perfil');
+    }));
+
+    it('abre social como tab dinámica y la puede cerrar con ESC', fakeAsync(() => {
+        const component = crearComponente();
+
+        component.abrirSocial({ section: 'amistades', requestId: 4 });
+        tick(120);
+
+        expect(component.socialTabOpen).toBeTrue();
+        expect(component.socialOpenRequest?.section).toBe('amistades');
+        expect((component as any).activeTabKey).toBe('base:social');
+
+        component.onEscPressed();
+
+        expect(component.socialTabOpen).toBeFalse();
+        expect((component as any).activeTabKey).toBe('base:personajes');
+    }));
+
+    it('la navegación social por servicio propaga la sección y la conversación pedidas', fakeAsync(() => {
+        const component = crearComponente();
+        const userProfileNavSvc = (component as any).__userProfileNavSvc as any;
+
+        component.ngOnInit();
+        userProfileNavSvc.socialOpen$.next({ section: 'mensajes', conversationId: 55, requestId: 9 });
+        tick(120);
+
+        expect(component.socialTabOpen).toBeTrue();
+        expect(component.socialOpenRequest).toEqual({ section: 'mensajes', conversationId: 55, requestId: 9 });
     }));
 
     it('la navegación de perfil por servicio propaga la sección pedida', fakeAsync(() => {

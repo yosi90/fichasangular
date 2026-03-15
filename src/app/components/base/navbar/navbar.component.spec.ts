@@ -41,7 +41,7 @@ describe('NavbarComponent', () => {
         manualVistaNavSvc = jasmine.createSpyObj<ManualVistaNavigationService>('ManualVistaNavigationService', ['emitirApertura']);
         userProfileNavSvc = jasmine.createSpyObj<UserProfileNavigationService>(
             'UserProfileNavigationService',
-            ['openPrivateProfile', 'openAdminPanel', 'openRoadmap', 'openLegalPrivacy', 'openUsageAbout']
+            ['openPrivateProfile', 'openSocial', 'openAdminPanel', 'openRoadmap', 'openLegalPrivacy', 'openUsageAbout']
         );
         userSettingsSvc = jasmine.createSpyObj<UserSettingsService>('UserSettingsService', ['loadSettings', 'saveProfileSettings']);
         userSettingsSvc.loadSettings.and.resolveTo({
@@ -117,6 +117,7 @@ describe('NavbarComponent', () => {
         expect(botones.map((item) => item.nativeElement.textContent.trim())).toEqual([
             'Archivo',
             'Manuales',
+            'Social',
             'Opciones',
             'Ayuda',
         ]);
@@ -160,6 +161,12 @@ describe('NavbarComponent', () => {
         component.abrirSeccionPerfil('identidad');
 
         expect(userProfileNavSvc.openPrivateProfile).toHaveBeenCalledWith('identidad');
+    });
+
+    it('abre social desde la cinta', () => {
+        component.abrirSocial();
+
+        expect(userProfileNavSvc.openSocial).toHaveBeenCalledWith('resumen');
     });
 
     it('abre admin panel solo para admins', () => {

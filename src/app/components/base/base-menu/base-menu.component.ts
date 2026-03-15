@@ -159,4 +159,10 @@ export class BaseMenuComponent implements OnInit, OnDestroy {
         this.cerrarOtros();
     }
 
+    abrirSocial(): void {
+        this.userProfileNavSvc.openSocial('resumen');
+        this.closeAcordion();
+        this.cerrarOtros();
+    }
+
 }

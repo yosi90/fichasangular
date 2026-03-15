@@ -6,6 +6,7 @@
         <mat-icon class="app-toast__icon" *ngIf="toast.type === 'success'">check_circle</mat-icon>
         <mat-icon class="app-toast__icon" *ngIf="toast.type === 'error'">error_outline</mat-icon>
         <mat-icon class="app-toast__icon" *ngIf="toast.type === 'info'">info</mat-icon>
+        <mat-icon class="app-toast__icon" *ngIf="toast.type === 'system'">notifications_active</mat-icon>
         <span class="app-toast__text">{{toast.message}}</span>
         <button
             type="button"

@@ -130,6 +130,10 @@
                 <mat-icon>tune</mat-icon>
                 <span>Preferencias</span>
             </button>
+            <button mat-menu-item (click)="abrirSocial()">
+                <mat-icon>hub</mat-icon>
+                <span>Social</span>
+            </button>
             <button mat-menu-item [disabled]="!isLoggedIn" (click)="abrirSeccionPerfil('seguridad')">
                 <mat-icon>lock</mat-icon>
                 <span>Seguridad</span>
@@ -175,6 +179,20 @@
                     [disabled]="isQuickSettingDisabled('visibilidadPorDefectoPersonajes')"
                     (click)="$event.stopPropagation()"
                     (change)="onQuickSettingChange('visibilidadPorDefectoPersonajes', $event.checked)">
+                </mat-slide-toggle>
+            </div>
+
+            <div class="options-toggle-row" (click)="$event.stopPropagation()">
+                <div class="options-toggle-row__copy">
+                    <strong>Mensajes de no amigos</strong>
+                </div>
+                <mat-slide-toggle
+                    class="options-toggle-control"
+                    color="primary"
+                    [checked]="allowDirectMessagesQuickSetting"
+                    [disabled]="isQuickSettingDisabled('allowDirectMessagesFromNonFriends')"
+                    (click)="$event.stopPropagation()"
+                    (change)="onQuickSettingChange('allowDirectMessagesFromNonFriends', $event.checked)">
                 </mat-slide-toggle>
             </div>
         </div>

@@ -7,7 +7,7 @@ import { Raza } from 'src/app/interfaces/raza';
 import { VentajaDetalle } from 'src/app/interfaces/ventaja';
 import { AsignacionCaracteristicas, NuevoPersonajeService } from 'src/app/services/nuevo-personaje.service';
 import { NuevoPersonajeComponent } from './nuevo-personaje.component';
-import { of } from 'rxjs';
+import { Subject, of } from 'rxjs';
 
 function crearRazaMock(oficial = true): Raza {
     return {
@@ -1065,6 +1065,32 @@ describe('NuevoPersonajeComponent', () => {
         await (component as any).cargarCampanas();
 
         expect(component.Campanas.map((item) => item.Nombre)).toEqual(['Campaña A']);
+    });
+
+    it('cargarCampanas reacciona a emisiones posteriores y resetea selección inválida', async () => {
+        const campanas$ = new Subject<Campana[]>();
+        campanaSvcMock.getListCampanas = async () => campanas$.asObservable();
+        component.Personaje.Campana = 'Campaña A';
+        component.Personaje.Trama = 'Trama vieja';
+        component.Personaje.Subtrama = 'Sub vieja';
+
+        await (component as any).cargarCampanas();
+
+        campanas$.next([{
+            Id: 1,
+            Nombre: 'Campaña A',
+            Tramas: [{ Id: 10, Nombre: 'Trama 1', Subtramas: [{ Id: 100, Nombre: 'Sub 1' }] }],
+        }]);
+        campanas$.next([{
+            Id: 2,
+            Nombre: 'Campaña B',
+            Tramas: [],
+        }]);
+
+        expect(component.Campanas.map((item) => item.Nombre)).toEqual(['Campaña B']);
+        expect(component.Personaje.Campana).toBe('Sin campaña');
+        expect(component.Personaje.Trama).toBe('Trama base');
+        expect(component.Personaje.Subtrama).toBe('Subtrama base');
     });
 
     it('actualizarTramas resetea a Sin campaña cuando la selección actual ya no es válida', () => {

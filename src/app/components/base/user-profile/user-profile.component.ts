@@ -2,13 +2,16 @@ import { Component, Input, OnChanges, OnDestroy, OnInit, SimpleChanges } from '@
 import { Auth } from '@angular/fire/auth';
 import { updateProfile } from 'firebase/auth';
 import { EmailAuthProvider, reauthenticateWithCredential, updatePassword } from 'firebase/auth';
-import { Subject, takeUntil } from 'rxjs';
+import { Subject, concatMap, debounceTime, from, takeUntil } from 'rxjs';
 import Swal from 'sweetalert2';
 import {
     CampaignDetailViewModel,
+    CampaignInvitationDecision,
+    CampaignInvitationItem,
     CampaignListItem,
     CampaignMemberItem,
     CampaignMemberRemovalStatus,
+    CampaignRealtimeEvent,
     CampaignSubtramaItem,
     CampaignTramaItem,
     CampaignUserSearchResult,
@@ -24,7 +27,11 @@ import { UserRoleRequestStatus, UserRoleRequestTarget } from 'src/app/interfaces
 import { NuevoPersonajeGeneradorConfig, UserSettingsV1 } from 'src/app/interfaces/user-settings';
 import { AppToastService } from 'src/app/services/app-toast.service';
 import { CampanaService } from 'src/app/services/campana.service';
+import { CampaignRealtimeSyncService } from 'src/app/services/campaign-realtime-sync.service';
+import { ChatApiService } from 'src/app/services/chat-api.service';
+import { ChatRealtimeService } from 'src/app/services/chat-realtime.service';
 import { UserProfileApiService } from 'src/app/services/user-profile-api.service';
+import { UserProfileNavigationService } from 'src/app/services/user-profile-navigation.service';
 import { UserSettingsService } from 'src/app/services/user-settings.service';
 import { UserService } from 'src/app/services/user.service';
 import { resolveDefaultProfileAvatar } from 'src/app/services/utils/profile-avatar.util';
@@ -53,6 +60,7 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
     settingsSaving = false;
     visibilidadPorDefectoPersonajes = false;
     mostrarPerfilPublico = true;
+    allowDirectMessagesFromNonFriends = false;
     generadorMinimoSeleccionado = 13;
     generadorTablasPermitidas = 3;
 
@@ -86,8 +94,13 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
     memberSearchLoading = false;
     memberSearchResults: CampaignUserSearchResult[] = [];
     memberSearchErrorMessage = '';
-    memberAddInFlightUid = '';
+    memberInviteInFlightUid = '';
     memberRemoveInFlightUid = '';
+    receivedCampaignInvitations: CampaignInvitationItem[] = [];
+    receivedCampaignInvitationsLoading = false;
+    receivedCampaignInvitationsErrorMessage = '';
+    receivedCampaignInviteResolveInFlightId: number | null = null;
+    campaignInviteCancelInFlightId: number | null = null;
     transferSearchQuery = '';
     transferSearchLoading = false;
     transferSearchResults: CampaignUserSearchResult[] = [];
@@ -107,6 +120,7 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
     subtramaCreateSavingTramaId: number | null = null;
 
     private readonly destroy$ = new Subject<void>();
+    private readonly campaignRealtimeRefresh$ = new Subject<CampaignRealtimeEvent>();
     private pendingRequestedSection: UserPrivateProfileSectionId | null = null;
     private memberSearchTimerId: number | null = null;
     private transferSearchTimerId: number | null = null;
@@ -131,6 +145,10 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
         private userProfileApiSvc: UserProfileApiService,
         private userSettingsSvc: UserSettingsService,
         private campanaSvc: CampanaService,
+        private campaignRealtimeSyncSvc: CampaignRealtimeSyncService,
+        private chatApiSvc: ChatApiService,
+        private chatRealtimeSvc: ChatRealtimeService,
+        private userProfileNavSvc: UserProfileNavigationService,
         private appToastSvc: AppToastService
     ) { }
 
@@ -147,6 +165,20 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
                     this.currentSection = 'resumen';
                 this.resolvePendingRequestedSection();
             });
+        this.campaignRealtimeSyncSvc.events$
+            .pipe(takeUntil(this.destroy$))
+            .subscribe((event) => {
+                if (event.source !== 'remote' || this.currentSection !== 'campanas')
+                    return;
+                this.campaignRealtimeRefresh$.next(event);
+            });
+        this.campaignRealtimeRefresh$
+            .pipe(
+                takeUntil(this.destroy$),
+                debounceTime(250),
+                concatMap((event) => from(this.handleCampaignRealtimeEvent(event)))
+            )
+            .subscribe();
         void this.cargar();
     }
 
@@ -424,6 +456,10 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
         return this.selectedCampaignActorRole === 'master';
     }
 
+    get canOpenSelectedCampaignChat(): boolean {
+        return !!this.selectedCampaignSummary && this.selectedCampaignActorStatus === 'activo';
+    }
+
     get selectedCampaignCanTransferMaster(): boolean {
         if (!this.selectedCampaignSummary)
             return false;
@@ -437,6 +473,10 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
 
     get selectedCampaignTramas(): CampaignTramaItem[] {
         return this.selectedCampaignDetail?.tramas ?? [];
+    }
+
+    get selectedCampaignPendingInvitations(): CampaignInvitationItem[] {
+        return this.selectedCampaignDetail?.pendingInvitations ?? [];
     }
 
     get selectedCampaignMaster(): CampaignMemberItem | null {
@@ -466,6 +506,10 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
 
     get campaignListsHaveData(): boolean {
         return this.masterCampaigns.length > 0 || this.participantCampaigns.length > 0;
+    }
+
+    get hasReceivedCampaignInvitations(): boolean {
+        return this.receivedCampaignInvitations.length > 0;
     }
 
     async cargar(): Promise<void> {
@@ -619,7 +663,7 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
                 perfil: {
                     visibilidadPorDefectoPersonajes: this.visibilidadPorDefectoPersonajes === true,
                     mostrarPerfilPublico: this.mostrarPerfilPublico !== false,
-                    allowDirectMessagesFromNonFriends: current.perfil?.allowDirectMessagesFromNonFriends === true,
+                    allowDirectMessagesFromNonFriends: this.allowDirectMessagesFromNonFriends === true,
                 },
                 nuevo_personaje: {
                     ...current.nuevo_personaje,
@@ -757,6 +801,23 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
         }
     }
 
+    async abrirChatCampanaSeleccionada(): Promise<void> {
+        if (!this.selectedCampaignId || !this.canOpenSelectedCampaignChat)
+            return;
+
+        try {
+            const detail = await this.chatApiSvc.ensureCampaignConversation(this.selectedCampaignId);
+            this.chatRealtimeSvc.upsertConversation(detail);
+            this.userProfileNavSvc.openSocial({
+                section: 'mensajes',
+                conversationId: detail.conversationId,
+                requestId: Date.now(),
+            });
+        } catch (error: any) {
+            this.appToastSvc.showError(`${error?.message ?? 'No se pudo abrir el chat de la campaña.'}`.trim());
+        }
+    }
+
     async cambiarHistorialMiembros(value: boolean): Promise<void> {
         if (!this.selectedCampaignId)
             return;
@@ -827,18 +888,75 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
         if (!this.selectedCampaignId || !this.selectedCampaignCanManage)
             return;
 
-        this.memberAddInFlightUid = result.uid;
+        this.memberInviteInFlightUid = result.uid;
         try {
-            await this.campanaSvc.addCampaignMember(this.selectedCampaignId, result.uid);
+            await this.campanaSvc.inviteCampaignMember(this.selectedCampaignId, result.uid);
             this.memberSearchQuery = '';
             this.memberSearchResults = [];
             this.memberSearchErrorMessage = '';
-            this.appToastSvc.showSuccess('Jugador añadido a la campaña.');
+            this.appToastSvc.showSuccess('Invitación enviada correctamente.');
             await this.loadCampaignSelection(this.selectedCampaignId, true, this.selectedCampaignDetail?.includeInactiveMembers === true);
         } catch (error: any) {
-            this.appToastSvc.showError(this.mapCampaignError(error, 'No se pudo añadir el jugador.'));
+            this.appToastSvc.showError(this.mapCampaignError(error, 'No se pudo enviar la invitación.'));
         } finally {
-            this.memberAddInFlightUid = '';
+            this.memberInviteInFlightUid = '';
+        }
+    }
+
+    async responderInvitacionCampana(invitation: CampaignInvitationItem, decision: CampaignInvitationDecision): Promise<void> {
+        const inviteId = Math.trunc(Number(invitation?.inviteId));
+        if (inviteId <= 0 || this.receivedCampaignInviteResolveInFlightId === inviteId)
+            return;
+
+        this.receivedCampaignInviteResolveInFlightId = inviteId;
+        try {
+            const response = await this.campanaSvc.resolveCampaignInvitation(inviteId, decision);
+            await this.refreshReceivedCampaignInvitations();
+            if (decision === 'accept') {
+                this.appToastSvc.showSuccess('Invitación aceptada. Ya formas parte de la campaña.');
+                await this.reloadCampaigns(response.invitation.campaignId);
+            } else {
+                this.appToastSvc.showSuccess('Invitación rechazada.');
+                if (this.selectedCampaignId)
+                    await this.loadCampaignSelection(this.selectedCampaignId, true, this.selectedCampaignDetail?.includeInactiveMembers === true);
+            }
+        } catch (error: any) {
+            await this.refreshReceivedCampaignInvitations();
+            if (this.isCampaignStateOutdatedError(error)) {
+                if (decision === 'accept')
+                    await this.reloadCampaigns(invitation.campaignId);
+                else if (this.selectedCampaignId)
+                    await this.loadCampaignSelection(this.selectedCampaignId, true, this.selectedCampaignDetail?.includeInactiveMembers === true);
+                this.appToastSvc.showInfo('La invitación ya cambió en otra sesión. Se ha refrescado el estado.');
+                return;
+            }
+            this.appToastSvc.showError(this.mapCampaignError(error, 'No se pudo responder la invitación.'));
+        } finally {
+            this.receivedCampaignInviteResolveInFlightId = null;
+        }
+    }
+
+    async cancelarInvitacionCampana(invitation: CampaignInvitationItem): Promise<void> {
+        const inviteId = Math.trunc(Number(invitation?.inviteId));
+        if (inviteId <= 0 || this.campaignInviteCancelInFlightId === inviteId)
+            return;
+
+        this.campaignInviteCancelInFlightId = inviteId;
+        try {
+            await this.campanaSvc.cancelCampaignInvitation(inviteId);
+            this.appToastSvc.showSuccess('Invitación cancelada.');
+            if (this.selectedCampaignId)
+                await this.loadCampaignSelection(this.selectedCampaignId, true, this.selectedCampaignDetail?.includeInactiveMembers === true);
+        } catch (error: any) {
+            if (this.isCampaignStateOutdatedError(error)) {
+                if (this.selectedCampaignId)
+                    await this.loadCampaignSelection(this.selectedCampaignId, true, this.selectedCampaignDetail?.includeInactiveMembers === true);
+                this.appToastSvc.showInfo('La invitación ya había cambiado en otra sesión. Se ha refrescado la campaña.');
+                return;
+            }
+            this.appToastSvc.showError(this.mapCampaignError(error, 'No se pudo cancelar la invitación.'));
+        } finally {
+            this.campaignInviteCancelInFlightId = null;
         }
     }
 
@@ -1035,7 +1153,15 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
     }
 
     isAddingMember(uid: string): boolean {
-        return this.memberAddInFlightUid === uid;
+        return this.memberInviteInFlightUid === uid;
+    }
+
+    isResolvingReceivedCampaignInvitation(inviteId: number): boolean {
+        return this.receivedCampaignInviteResolveInFlightId === inviteId;
+    }
+
+    isCancelingCampaignInvitation(inviteId: number): boolean {
+        return this.campaignInviteCancelInFlightId === inviteId;
     }
 
     isEditingTrama(tramaId: number): boolean {
@@ -1129,6 +1255,7 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
         this.settings = settings;
         this.visibilidadPorDefectoPersonajes = settings?.perfil?.visibilidadPorDefectoPersonajes === true;
         this.mostrarPerfilPublico = settings?.perfil?.mostrarPerfilPublico !== false;
+        this.allowDirectMessagesFromNonFriends = settings?.perfil?.allowDirectMessagesFromNonFriends === true;
         this.generadorMinimoSeleccionado = this.normalizeGeneradorMinimo(settings?.nuevo_personaje?.generador_config?.minimoSeleccionado ?? 13);
         this.generadorTablasPermitidas = this.normalizeGeneradorTablas(settings?.nuevo_personaje?.generador_config?.tablasPermitidas ?? 3);
     }
@@ -1334,6 +1461,7 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
 
     private async ensureCampaignSectionLoaded(force: boolean = false): Promise<void> {
         if (this.campaignsLoaded && !force) {
+            await this.refreshReceivedCampaignInvitations();
             if (this.selectedCampaignId && !this.selectedCampaignDetail)
                 await this.loadCampaignSelection(this.selectedCampaignId, true);
             return;
@@ -1345,7 +1473,10 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
         this.campaignsLoading = true;
         this.campaignsErrorMessage = '';
         try {
-            const campaigns = await this.campanaSvc.listProfileCampaigns();
+            const [campaigns] = await Promise.all([
+                this.campanaSvc.listProfileCampaigns(),
+                this.refreshReceivedCampaignInvitations(),
+            ]);
             this.campaigns = campaigns;
             this.campaignsLoaded = true;
 
@@ -1432,12 +1563,12 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
         this.clearSearchTimer('member');
         this.clearSearchTimer('transfer');
         this.memberSearchQuery = '';
-        this.memberSearchResults = [];
-        this.memberSearchLoading = false;
-        this.memberSearchErrorMessage = '';
-        this.memberAddInFlightUid = '';
-        this.memberRemoveInFlightUid = '';
-        this.transferSearchQuery = '';
+            this.memberSearchResults = [];
+            this.memberSearchLoading = false;
+            this.memberSearchErrorMessage = '';
+            this.memberInviteInFlightUid = '';
+            this.memberRemoveInFlightUid = '';
+            this.transferSearchQuery = '';
         this.transferSearchResults = [];
         this.transferSearchLoading = false;
         this.transferSearchErrorMessage = '';
@@ -1542,16 +1673,69 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
                 .map((member) => `${member.uid ?? ''}`.trim())
                 .filter((uid) => uid.length > 0)
         );
+        const invitedUids = new Set(
+            this.selectedCampaignPendingInvitations
+                .map((invitation) => `${invitation.invitedUser?.uid ?? ''}`.trim())
+                .filter((uid) => uid.length > 0)
+        );
+        const currentActorUid = `${this.profile?.uid ?? ''}`.trim();
 
         return (results ?? []).filter((result) => {
             const uid = `${result?.uid ?? ''}`.trim();
             if (uid.length < 1)
                 return false;
+            if (uid === currentActorUid)
+                return false;
 
             if (kind === 'member')
-                return !currentMemberUids.has(uid);
+                return !currentMemberUids.has(uid) && !invitedUids.has(uid);
 
             return uid !== `${this.selectedCampaignMaster?.uid ?? ''}`.trim();
         });
+    }
+
+    private async refreshReceivedCampaignInvitations(): Promise<void> {
+        this.receivedCampaignInvitationsLoading = true;
+        this.receivedCampaignInvitationsErrorMessage = '';
+        try {
+            this.receivedCampaignInvitations = await this.campanaSvc.listReceivedCampaignInvitations();
+        } catch (error: any) {
+            this.receivedCampaignInvitations = [];
+            this.receivedCampaignInvitationsErrorMessage = this.mapCampaignError(error, 'No se pudieron cargar las invitaciones recibidas.');
+        } finally {
+            this.receivedCampaignInvitationsLoading = false;
+        }
+    }
+
+    private async handleCampaignRealtimeEvent(event: CampaignRealtimeEvent): Promise<void> {
+        if (event.source !== 'remote' || this.currentSection !== 'campanas')
+            return;
+
+        if (event.code === 'system.campaign_invitation_received') {
+            await this.refreshReceivedCampaignInvitations();
+            if (this.currentSection === 'campanas')
+                this.appToastSvc.showInfo('Tus invitaciones de campaña se han actualizado.');
+            return;
+        }
+
+        await this.reloadCampaigns(this.selectedCampaignId ?? event.campaignId);
+        if (this.currentSection === 'campanas')
+            this.appToastSvc.showInfo('La información de campañas se ha actualizado.');
+    }
+
+    private isCampaignStateOutdatedError(error: any): boolean {
+        const normalized = this.normalizeComparableText(`${error?.message ?? error ?? ''}`);
+        return normalized.includes('ya no esta pendiente')
+            || normalized.includes('ya formas parte de la campana')
+            || normalized.includes('ya es miembro activo de la campana')
+            || normalized.includes('la campana solicitada ya no esta disponible para tu usuario');
+    }
+
+    private normalizeComparableText(value: string | null | undefined): string {
+        return `${value ?? ''}`
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .toLowerCase()
+            .trim();
     }
 }

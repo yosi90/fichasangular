@@ -36,10 +36,11 @@ export class NavbarComponent implements OnInit, OnDestroy {
     isLoggedIn: boolean = false;
     isAdmin: boolean = false;
     quickSettingsLoading: boolean = false;
-    quickSettingsSavingKey: 'mostrarPerfilPublico' | 'visibilidadPorDefectoPersonajes' | null = null;
+    quickSettingsSavingKey: 'mostrarPerfilPublico' | 'visibilidadPorDefectoPersonajes' | 'allowDirectMessagesFromNonFriends' | null = null;
     quickSettingsError: string = '';
     mostrarPerfilPublicoQuickSetting: boolean = NavbarComponent.DEFAULT_PROFILE_SETTINGS.mostrarPerfilPublico;
     visibilidadPorDefectoQuickSetting: boolean = NavbarComponent.DEFAULT_PROFILE_SETTINGS.visibilidadPorDefectoPersonajes;
+    allowDirectMessagesQuickSetting: boolean = NavbarComponent.DEFAULT_PROFILE_SETTINGS.allowDirectMessagesFromNonFriends;
     private manualesSub?: Subscription;
     private fallbackSub?: Subscription;
     private loggedInSub?: Subscription;
@@ -135,6 +136,10 @@ export class NavbarComponent implements OnInit, OnDestroy {
         this.userProfileNavSvc.openPrivateProfile();
     }
 
+    abrirSocial(): void {
+        this.userProfileNavSvc.openSocial('resumen');
+    }
+
     abrirSeccionPerfil(section: UserPrivateProfileSectionId): void {
         if (!this.isLoggedIn)
             return;
@@ -165,16 +170,16 @@ export class NavbarComponent implements OnInit, OnDestroy {
             void this.loadQuickProfileSettings(true);
     }
 
-    isQuickSettingSaving(key: 'mostrarPerfilPublico' | 'visibilidadPorDefectoPersonajes'): boolean {
+    isQuickSettingSaving(key: 'mostrarPerfilPublico' | 'visibilidadPorDefectoPersonajes' | 'allowDirectMessagesFromNonFriends'): boolean {
         return this.quickSettingsSavingKey === key;
     }
 
-    isQuickSettingDisabled(key: 'mostrarPerfilPublico' | 'visibilidadPorDefectoPersonajes'): boolean {
+    isQuickSettingDisabled(key: 'mostrarPerfilPublico' | 'visibilidadPorDefectoPersonajes' | 'allowDirectMessagesFromNonFriends'): boolean {
         return !this.isLoggedIn || this.quickSettingsLoading || this.quickSettingsSavingKey !== null || this.isQuickSettingSaving(key);
     }
 
     async onQuickSettingChange(
-        key: 'mostrarPerfilPublico' | 'visibilidadPorDefectoPersonajes',
+        key: 'mostrarPerfilPublico' | 'visibilidadPorDefectoPersonajes' | 'allowDirectMessagesFromNonFriends',
         checked: boolean
     ): Promise<void> {
         if (!this.isLoggedIn || this.quickSettingsLoading || this.quickSettingsSavingKey !== null)
@@ -290,6 +295,7 @@ export class NavbarComponent implements OnInit, OnDestroy {
                 return;
             this.mostrarPerfilPublicoQuickSetting = settings.perfil?.mostrarPerfilPublico !== false;
             this.visibilidadPorDefectoQuickSetting = settings.perfil?.visibilidadPorDefectoPersonajes === true;
+            this.allowDirectMessagesQuickSetting = settings.perfil?.allowDirectMessagesFromNonFriends === true;
         } catch (error: any) {
             if (requestSeq !== this.quickSettingsLoadSeq)
                 return;
@@ -312,25 +318,34 @@ export class NavbarComponent implements OnInit, OnDestroy {
     private resetQuickProfileSettingValues(): void {
         this.mostrarPerfilPublicoQuickSetting = NavbarComponent.DEFAULT_PROFILE_SETTINGS.mostrarPerfilPublico;
         this.visibilidadPorDefectoQuickSetting = NavbarComponent.DEFAULT_PROFILE_SETTINGS.visibilidadPorDefectoPersonajes;
+        this.allowDirectMessagesQuickSetting = NavbarComponent.DEFAULT_PROFILE_SETTINGS.allowDirectMessagesFromNonFriends;
     }
 
-    private getQuickSettingValue(key: 'mostrarPerfilPublico' | 'visibilidadPorDefectoPersonajes'): boolean {
+    private getQuickSettingValue(key: 'mostrarPerfilPublico' | 'visibilidadPorDefectoPersonajes' | 'allowDirectMessagesFromNonFriends'): boolean {
         if (key === 'mostrarPerfilPublico')
             return this.mostrarPerfilPublicoQuickSetting;
+        if (key === 'allowDirectMessagesFromNonFriends')
+            return this.allowDirectMessagesQuickSetting;
         return this.visibilidadPorDefectoQuickSetting;
     }
 
-    private setQuickSettingValue(key: 'mostrarPerfilPublico' | 'visibilidadPorDefectoPersonajes', value: boolean): void {
+    private setQuickSettingValue(key: 'mostrarPerfilPublico' | 'visibilidadPorDefectoPersonajes' | 'allowDirectMessagesFromNonFriends', value: boolean): void {
         if (key === 'mostrarPerfilPublico') {
             this.mostrarPerfilPublicoQuickSetting = value === true;
+            return;
+        }
+        if (key === 'allowDirectMessagesFromNonFriends') {
+            this.allowDirectMessagesQuickSetting = value === true;
             return;
         }
         this.visibilidadPorDefectoQuickSetting = value === true;
     }
 
-    private getQuickSettingLabel(key: 'mostrarPerfilPublico' | 'visibilidadPorDefectoPersonajes'): string {
+    private getQuickSettingLabel(key: 'mostrarPerfilPublico' | 'visibilidadPorDefectoPersonajes' | 'allowDirectMessagesFromNonFriends'): string {
         if (key === 'mostrarPerfilPublico')
             return 'Visibilidad del perfil público';
+        if (key === 'allowDirectMessagesFromNonFriends')
+            return 'Mensajes directos de no amigos';
         return 'Visibilidad por defecto de personajes';
     }
 

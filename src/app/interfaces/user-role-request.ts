@@ -43,6 +43,7 @@ export interface ResolveRoleRequestInput {
     decision: UserRoleRequestDecision;
     blockedUntilUtc?: string | null;
     adminComment?: string | null;
+    notifyUser?: boolean;
 }
 
 export interface UserRoleRequestListFilters {

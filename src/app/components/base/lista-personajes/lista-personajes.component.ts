@@ -41,6 +41,7 @@ export class ListaPersonajesComponent implements OnInit, AfterViewInit, OnDestro
     personajesCargados: boolean = false;
     mostrarArchivados = false;
     private personajesSub?: Subscription;
+    private campanasSub?: Subscription;
     private sessionStateSub?: Subscription;
     private lastLoggedInState: boolean | null = null;
 
@@ -88,6 +89,7 @@ export class ListaPersonajesComponent implements OnInit, AfterViewInit, OnDestro
 
     ngOnDestroy(): void {
         this.personajesSub?.unsubscribe();
+        this.campanasSub?.unsubscribe();
         this.sessionStateSub?.unsubscribe();
     }
 
@@ -249,7 +251,8 @@ export class ListaPersonajesComponent implements OnInit, AfterViewInit, OnDestro
 
     private async cargarCampanas(): Promise<void> {
         try {
-            (await this.csrv.getListCampanas()).subscribe(campañas => {
+            this.campanasSub?.unsubscribe();
+            this.campanasSub = (await this.csrv.getListCampanas()).subscribe(campañas => {
                 this.Campanas = campañas;
                 this.defaultCampana = this.Campanas[0]?.Nombre ?? 'Sin campaña';
                 this.actualizarTramas(this.defaultCampana);

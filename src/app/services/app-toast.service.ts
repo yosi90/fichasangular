@@ -28,6 +28,10 @@ export class AppToastService {
         this.show('info', message, options);
     }
 
+    showSystem(message: string, options?: AppToastOptions): void {
+        this.show('system', message, options);
+    }
+
     dismiss(id: string): void {
         const timer = this.closeTimers.get(id);
         if (timer !== undefined) {
@@ -57,6 +61,8 @@ export class AppToastService {
             return 3200;
         if (type === 'info')
             return 4200;
+        if (type === 'system')
+            return 7600;
         return 5200;
     }
 

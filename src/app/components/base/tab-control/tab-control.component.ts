@@ -1,5 +1,5 @@
 import { Component, EventEmitter, HostListener, Input, NgZone, OnDestroy, OnInit, Output, SimpleChanges, ViewChild } from '@angular/core';
-import { AdminPanelOpenRequest, UserPrivateProfileOpenRequest, UserPrivateProfileSectionId, UserPublicProfileTab } from 'src/app/interfaces/user-account';
+import { AdminPanelOpenRequest, SocialHubOpenRequest, UserPrivateProfileOpenRequest, UserPrivateProfileSectionId, UserPublicProfileTab } from 'src/app/interfaces/user-account';
 import { UserService } from '../../../services/user.service';
 import { PersonajeService } from 'src/app/services/personaje.service';
 import { MatTabGroup } from '@angular/material/tabs';
@@ -68,6 +68,8 @@ export class TabControlComponent implements OnInit, OnDestroy {
     public usrPerm: number = 0;
     public privateProfileTabOpen = false;
     public privateProfileOpenRequest: UserPrivateProfileOpenRequest | null = null;
+    public socialTabOpen = false;
+    public socialOpenRequest: SocialHubOpenRequest | null = null;
     public adminPanelTabOpen = false;
     public adminPanelOpenRequest: AdminPanelOpenRequest | null = null;
     public roadmapTabOpen = false;
@@ -95,6 +97,7 @@ export class TabControlComponent implements OnInit, OnDestroy {
     public listadoTabsAbiertos: ListadoTabAbierto[] = [];
     private readonly TAB_PERSONAJES = 'base:personajes';
     private readonly TAB_PROFILE = 'base:perfil';
+    private readonly TAB_SOCIAL = 'base:social';
     private readonly TAB_ADMIN = 'base:admin';
     private readonly TAB_ROADMAP = 'base:roadmap';
     private readonly TAB_LEGAL = 'base:legal';
@@ -164,6 +167,9 @@ export class TabControlComponent implements OnInit, OnDestroy {
         this.userProfileNavSvc?.privateProfileOpen$
             .pipe(takeUntil(this.destroy$))
             .subscribe((request) => this.abrirPerfilPrivado(request));
+        this.userProfileNavSvc?.socialOpen$
+            .pipe(takeUntil(this.destroy$))
+            .subscribe((request) => this.abrirSocial(request));
         this.userProfileNavSvc?.adminPanelOpen$
             .pipe(takeUntil(this.destroy$))
             .subscribe((request) => this.abrirPanelAdministracion(request));
@@ -244,6 +250,10 @@ export class TabControlComponent implements OnInit, OnDestroy {
             this.quitarPerfilPrivado();
             return;
         }
+        if (activeKey === this.TAB_SOCIAL) {
+            this.quitarSocial();
+            return;
+        }
         if (activeKey === this.TAB_ADMIN) {
             this.quitarPanelAdministracion();
             return;
@@ -314,6 +324,8 @@ export class TabControlComponent implements OnInit, OnDestroy {
         const keys: string[] = [this.TAB_PERSONAJES];
         if (this.usrLoggedIn && this.privateProfileTabOpen)
             keys.push(this.TAB_PROFILE);
+        if (this.socialTabOpen)
+            keys.push(this.TAB_SOCIAL);
         if (this.usrPerm === 1 && this.adminPanelTabOpen)
             keys.push(this.TAB_ADMIN);
         if (this.roadmapTabOpen)
@@ -467,6 +479,28 @@ export class TabControlComponent implements OnInit, OnDestroy {
         });
     }
 
+    public abrirSocial(request?: SocialHubOpenRequest | null): void {
+        this.socialOpenRequest = this.buildSocialOpenRequest(request);
+        if (this.socialTabOpen) {
+            this.selectTabByKey(this.TAB_SOCIAL, true);
+            return;
+        }
+        this.socialTabOpen = true;
+        this.registerOpenContext(this.TAB_SOCIAL, this.getSafeOpenerKey());
+        this.focusOpenedTab(this.TAB_SOCIAL);
+    }
+
+    public quitarSocial(): boolean {
+        if (!this.socialTabOpen)
+            return false;
+
+        return this.closeTabWithNavigation(this.TAB_SOCIAL, () => {
+            this.socialTabOpen = false;
+            this.socialOpenRequest = null;
+            return true;
+        });
+    }
+
     public abrirPanelAdministracion(request?: AdminPanelOpenRequest | null): void {
         if (this.usrPerm !== 1)
             return;
@@ -532,6 +566,14 @@ export class TabControlComponent implements OnInit, OnDestroy {
         return {
             section: request?.section ?? 'usuarios',
             pendingOnly: request?.pendingOnly === true,
+            requestId: Number(request?.requestId) > 0 ? Number(request?.requestId) : Date.now(),
+        };
+    }
+
+    private buildSocialOpenRequest(request?: SocialHubOpenRequest | null): SocialHubOpenRequest {
+        return {
+            section: request?.section ?? 'resumen',
+            conversationId: Number(request?.conversationId) > 0 ? Number(request?.conversationId) : null,
             requestId: Number(request?.requestId) > 0 ? Number(request?.requestId) : Date.now(),
         };
     }
@@ -984,7 +1026,7 @@ export class TabControlComponent implements OnInit, OnDestroy {
 
     public getEtiquetaPerfilPublico(tab: UserPublicProfileTab): string {
         const label = `${tab?.initialDisplayName ?? ''}`.trim();
-        return `${label.length > 0 ? label : tab.uid} (Perfil)`;
+        return `${label.length > 0 ? label : 'Perfil público'} (Perfil)`;
     }
 
     private getPublicProfileTabKey(tab: UserPublicProfileTab): string {

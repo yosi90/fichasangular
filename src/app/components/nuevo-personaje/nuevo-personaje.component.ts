@@ -1900,6 +1900,7 @@ export class NuevoPersonajeComponent {
     }
 
     private async cargarCampanas() {
+        this.campanasSub?.unsubscribe();
         this.campanasSub = (await this.campanaSvc.getListCampanas()).subscribe(campanas => {
             this.Campanas = this.filtrarCampanasDuplicadasEnSelector(campanas);
             this.actualizarTramas();

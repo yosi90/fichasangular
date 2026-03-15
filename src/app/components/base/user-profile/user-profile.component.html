@@ -177,6 +177,49 @@
                         </article>
                     </div>
 
+                    <article class="profile-panel campaign-invitation-inbox">
+                        <div class="profile-panel__header">
+                            <h2>Invitaciones recibidas</h2>
+                        </div>
+
+                        <p class="profile-panel__hint" *ngIf="receivedCampaignInvitationsLoading">Cargando invitaciones...</p>
+                        <p class="profile-panel__hint profile-panel__hint--error" *ngIf="receivedCampaignInvitationsErrorMessage.length > 0">
+                            {{receivedCampaignInvitationsErrorMessage}}
+                        </p>
+
+                        <div class="campaign-invitation-list" *ngIf="receivedCampaignInvitations.length > 0">
+                            <article class="campaign-invitation-row" *ngFor="let invitation of receivedCampaignInvitations">
+                                <div class="campaign-invitation-row__copy">
+                                    <div class="campaign-invitation-row__identity">
+                                        <strong>{{invitation.campaignName || 'Campaña sin nombre'}}</strong>
+                                        <span>{{getUserDisplayLabel(invitation.invitedBy.displayName, invitation.invitedBy.email, invitation.invitedBy.uid)}} te ha invitado</span>
+                                    </div>
+                                    <span class="campaign-member-row__meta" *ngIf="invitation.createdAtUtc">Recibida: {{formatOptionalDateTime(invitation.createdAtUtc)}}</span>
+                                </div>
+                                <div class="profile-action-row">
+                                    <button
+                                        mat-raised-button
+                                        color="primary"
+                                        (click)="responderInvitacionCampana(invitation, 'accept')"
+                                        [disabled]="isResolvingReceivedCampaignInvitation(invitation.inviteId)">
+                                        {{isResolvingReceivedCampaignInvitation(invitation.inviteId) ? 'Aplicando...' : 'Aceptar'}}
+                                    </button>
+                                    <button
+                                        mat-stroked-button
+                                        color="warn"
+                                        (click)="responderInvitacionCampana(invitation, 'reject')"
+                                        [disabled]="isResolvingReceivedCampaignInvitation(invitation.inviteId)">
+                                        Rechazar
+                                    </button>
+                                </div>
+                            </article>
+                        </div>
+
+                        <p class="profile-panel__hint" *ngIf="!receivedCampaignInvitationsLoading && receivedCampaignInvitations.length < 1 && receivedCampaignInvitationsErrorMessage.length < 1">
+                            No tienes invitaciones pendientes ahora mismo.
+                        </p>
+                    </article>
+
                     <article class="profile-panel campaign-detail-panel" *ngIf="selectedCampaignSummary">
                         <div class="profile-panel__header campaign-detail-panel__header">
                             <h2 class="campaign-detail-panel__title">{{selectedCampaignSummary.nombre}}</h2>
@@ -184,6 +227,13 @@
                                 {{getCampaignRoleLabel(selectedCampaignActorRole, selectedCampaignSummary.isOwner === true)}} · {{getMembershipStatusLabel(selectedCampaignActorStatus)}}
                             </p>
                             <div class="campaign-detail-panel__actions">
+                                <button
+                                    mat-stroked-button
+                                    color="primary"
+                                    *ngIf="canOpenSelectedCampaignChat"
+                                    (click)="abrirChatCampanaSeleccionada()">
+                                    Abrir chat
+                                </button>
                                 <button
                                     type="button"
                                     class="campaign-recover-button"
@@ -301,7 +351,7 @@
                                         <input
                                             class="campaign-text-input"
                                             type="text"
-                                            placeholder="Buscar usuario para añadir"
+                                            placeholder="Buscar usuario para invitar"
                                             [(ngModel)]="memberSearchQuery"
                                             (ngModelChange)="onMemberSearchQueryChange()" />
                                     </div>
@@ -320,8 +370,29 @@
                                             (click)="agregarJugador(result)"
                                             [disabled]="isAddingMember(result.uid)">
                                             <strong>{{getUserDisplayLabel(result.displayName, null, result.uid)}}</strong>
-                                            <span>{{isAddingMember(result.uid) ? 'Añadiendo...' : 'Seleccionar para añadir a la campaña'}}</span>
+                                            <span>{{isAddingMember(result.uid) ? 'Enviando...' : 'Seleccionar para invitar a la campaña'}}</span>
                                         </button>
+                                    </div>
+
+                                    <div class="campaign-member-list campaign-member-list--pending" *ngIf="selectedCampaignPendingInvitations.length > 0">
+                                        <div class="campaign-search-results__header">Invitaciones pendientes</div>
+                                        <div class="campaign-member-row" *ngFor="let invitation of selectedCampaignPendingInvitations">
+                                            <div class="campaign-member-row__copy">
+                                                <div class="campaign-member-row__identity">
+                                                    <strong>{{getUserDisplayLabel(invitation.invitedUser.displayName, invitation.invitedUser.email, invitation.invitedUser.uid)}}</strong>
+                                                    <span>Invitación pendiente</span>
+                                                </div>
+                                                <span class="campaign-member-row__meta" *ngIf="invitation.createdAtUtc">Enviada: {{formatOptionalDateTime(invitation.createdAtUtc)}}</span>
+                                            </div>
+                                            <button
+                                                mat-stroked-button
+                                                color="warn"
+                                                *ngIf="selectedCampaignCanManage"
+                                                (click)="cancelarInvitacionCampana(invitation)"
+                                                [disabled]="isCancelingCampaignInvitation(invitation.inviteId)">
+                                                {{isCancelingCampaignInvitation(invitation.inviteId) ? 'Cancelando...' : 'Cancelar'}}
+                                            </button>
+                                        </div>
                                     </div>
 
                                     <div class="campaign-member-list" *ngIf="selectedCampaignMembers.length > 0">
@@ -454,7 +525,7 @@
                     <article class="profile-panel" *ngIf="!selectedCampaignSummary && !campaignsLoading && campaignsErrorMessage.length < 1">
                         <div class="profile-panel__header">
                             <h2>Sin campañas visibles</h2>
-                            <p>Cuando crees una campaña o te añadan a una, aparecerá aquí.</p>
+                            <p>Cuando crees una campaña o aceptes una invitación, aparecerá aquí.</p>
                         </div>
                     </article>
                 </section>
@@ -571,6 +642,9 @@
                                 </mat-slide-toggle>
                                 <mat-slide-toggle color="primary" [(ngModel)]="mostrarPerfilPublico" [disabled]="settingsSaving">
                                     Mostrar mi perfil público
+                                </mat-slide-toggle>
+                                <mat-slide-toggle color="primary" [(ngModel)]="allowDirectMessagesFromNonFriends" [disabled]="settingsSaving">
+                                    Permitir mensajes directos de personas no amigas
                                 </mat-slide-toggle>
                             </div>
                         </article>

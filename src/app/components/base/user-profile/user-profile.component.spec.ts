@@ -1,12 +1,16 @@
 import { NO_ERRORS_SCHEMA, SimpleChange } from '@angular/core';
 import { fakeAsync, ComponentFixture, TestBed, tick } from '@angular/core/testing';
 import { FormsModule } from '@angular/forms';
-import { BehaviorSubject } from 'rxjs';
+import { BehaviorSubject, Subject } from 'rxjs';
 
 import { UserProfileComponent } from './user-profile.component';
 import { AppToastService } from 'src/app/services/app-toast.service';
 import { CampanaService } from 'src/app/services/campana.service';
+import { CampaignRealtimeSyncService } from 'src/app/services/campaign-realtime-sync.service';
+import { ChatApiService } from 'src/app/services/chat-api.service';
+import { ChatRealtimeService } from 'src/app/services/chat-realtime.service';
 import { UserProfileApiService } from 'src/app/services/user-profile-api.service';
+import { UserProfileNavigationService } from 'src/app/services/user-profile-navigation.service';
 import { UserSettingsService } from 'src/app/services/user-settings.service';
 import { UserService } from 'src/app/services/user.service';
 import { Auth } from '@angular/fire/auth';
@@ -15,6 +19,7 @@ describe('UserProfileComponent', () => {
     let fixture: ComponentFixture<UserProfileComponent>;
     let component: UserProfileComponent;
     let profileSubject: BehaviorSubject<any>;
+    let campaignRealtimeEvents$: Subject<any>;
     let userSvc: any;
     let userSettingsSvc: jasmine.SpyObj<UserSettingsService>;
 
@@ -51,6 +56,7 @@ describe('UserProfileComponent', () => {
 
     beforeEach(async () => {
         profileSubject = new BehaviorSubject<any>(buildProfile('correo'));
+        campaignRealtimeEvents$ = new Subject<any>();
         userSettingsSvc = jasmine.createSpyObj<UserSettingsService>('UserSettingsService', [
             'loadSettings',
             'saveSettings',
@@ -93,7 +99,10 @@ describe('UserProfileComponent', () => {
                         'createCampaign',
                         'renameCampaign',
                         'searchUsers',
-                        'addCampaignMember',
+                        'inviteCampaignMember',
+                        'listReceivedCampaignInvitations',
+                        'cancelCampaignInvitation',
+                        'resolveCampaignInvitation',
                         'removeCampaignMember',
                         'transferCampaignMaster',
                         'createTrama',
@@ -101,6 +110,24 @@ describe('UserProfileComponent', () => {
                         'createSubtrama',
                         'updateSubtrama',
                     ]),
+                },
+                {
+                    provide: CampaignRealtimeSyncService,
+                    useValue: {
+                        events$: campaignRealtimeEvents$.asObservable(),
+                    },
+                },
+                {
+                    provide: ChatApiService,
+                    useValue: jasmine.createSpyObj<ChatApiService>('ChatApiService', ['ensureCampaignConversation']),
+                },
+                {
+                    provide: ChatRealtimeService,
+                    useValue: jasmine.createSpyObj<ChatRealtimeService>('ChatRealtimeService', ['upsertConversation']),
+                },
+                {
+                    provide: UserProfileNavigationService,
+                    useValue: jasmine.createSpyObj<UserProfileNavigationService>('UserProfileNavigationService', ['openSocial']),
                 },
                 { provide: UserSettingsService, useValue: userSettingsSvc },
                 {
@@ -149,6 +176,7 @@ describe('UserProfileComponent', () => {
             campaignRole: 'master',
             membershipStatus: 'activo',
         }]);
+        campanaSvc.listReceivedCampaignInvitations.and.resolveTo([]);
         campanaSvc.getCampaignDetail.and.resolveTo({
             campaign: {
                 id: 7,
@@ -162,8 +190,10 @@ describe('UserProfileComponent', () => {
             activeMasterDisplayName: 'Yosi',
             canRecoverMaster: false,
             members: [],
+            pendingInvitations: [],
             includeInactiveMembers: false,
             tramas: [],
+            loadingInvitations: false,
             loadingMembers: false,
             loadingTramas: false,
         });
@@ -250,6 +280,64 @@ describe('UserProfileComponent', () => {
         expect(component.displayNameDraft).toBe('Nombre nuevo');
         expect(component.bioDraft).toBe('Bio nueva');
         expect(toastSvc.showSuccess).toHaveBeenCalled();
+    }));
+
+    it('asegura el chat de campaña y navega a Social > mensajes', fakeAsync(() => {
+        const chatApiSvc = TestBed.inject(ChatApiService) as jasmine.SpyObj<ChatApiService>;
+        const chatRealtimeSvc = TestBed.inject(ChatRealtimeService) as jasmine.SpyObj<ChatRealtimeService>;
+        const navSvc = TestBed.inject(UserProfileNavigationService) as jasmine.SpyObj<UserProfileNavigationService>;
+        chatApiSvc.ensureCampaignConversation.and.resolveTo({
+            conversationId: 88,
+            type: 'campaign',
+            title: 'Campaña de prueba',
+            photoThumbUrl: null,
+            campaignId: 7,
+            participantRole: 'member',
+            participantStatus: 'active',
+            lastMessagePreview: null,
+            lastMessageAtUtc: null,
+            unreadCount: 0,
+            canSend: true,
+            isSystemConversation: false,
+            counterpartUid: null,
+            lastMessageNotification: null,
+            participants: [],
+        } as any);
+
+        fixture.detectChanges();
+        tick();
+        component.ngOnChanges({
+            openRequest: new SimpleChange(null, { section: 'campanas', requestId: 31 }, false),
+        });
+        tick();
+
+        void component.abrirChatCampanaSeleccionada();
+        tick();
+
+        expect(chatApiSvc.ensureCampaignConversation).toHaveBeenCalledWith(7);
+        expect(chatRealtimeSvc.upsertConversation).toHaveBeenCalled();
+        expect(navSvc.openSocial).toHaveBeenCalledWith(jasmine.objectContaining({
+            section: 'mensajes',
+            conversationId: 88,
+        }));
+    }));
+
+    it('muestra error controlado si no puede abrir el chat de campaña', fakeAsync(() => {
+        const chatApiSvc = TestBed.inject(ChatApiService) as jasmine.SpyObj<ChatApiService>;
+        const toastSvc = TestBed.inject(AppToastService) as jasmine.SpyObj<AppToastService>;
+        chatApiSvc.ensureCampaignConversation.and.rejectWith(new Error('Fallo al abrir chat.'));
+
+        fixture.detectChanges();
+        tick();
+        component.ngOnChanges({
+            openRequest: new SimpleChange(null, { section: 'campanas', requestId: 32 }, false),
+        });
+        tick();
+
+        void component.abrirChatCampanaSeleccionada();
+        tick();
+
+        expect(toastSvc.showError).toHaveBeenCalledWith('Fallo al abrir chat.');
     }));
 
     it('bloquea el guardado si los pronombres contienen saltos de línea', fakeAsync(() => {
@@ -584,8 +672,10 @@ describe('UserProfileComponent', () => {
             activeMasterDisplayName: 'Yosi',
             canRecoverMaster: false,
             members: [],
+            pendingInvitations: [],
             includeInactiveMembers: false,
             tramas: [],
+            loadingInvitations: false,
             loadingMembers: false,
             loadingTramas: false,
         });
@@ -638,8 +728,10 @@ describe('UserProfileComponent', () => {
             activeMasterDisplayName: null,
             canRecoverMaster: true,
             members: [],
+            pendingInvitations: [],
             includeInactiveMembers: false,
             tramas: [],
+            loadingInvitations: false,
             loadingMembers: false,
             loadingTramas: false,
         });
@@ -711,8 +803,10 @@ describe('UserProfileComponent', () => {
                 addedAtUtc: '2026-03-12T22:51:00.000Z',
                 addedByUserId: null,
             }],
+            pendingInvitations: [],
             includeInactiveMembers: false,
             tramas: [],
+            loadingInvitations: false,
             loadingMembers: false,
             loadingTramas: false,
         };
@@ -726,13 +820,14 @@ describe('UserProfileComponent', () => {
 
         const text = `${fixture.nativeElement.textContent ?? ''}`;
         expect(text).toContain('Resultados de búsqueda');
-        expect(text).toContain('Seleccionar para añadir a la campaña');
+        expect(text).toContain('Seleccionar para invitar a la campaña');
         expect(text).not.toContain('firebase-visible-1');
         expect(text).not.toContain('firebase-visible-2');
     }));
 
-    it('filtra del buscador de jugadores a miembros que ya están en la campaña', fakeAsync(() => {
+    it('filtra del buscador de jugadores a miembros, invitados pendientes y al propio actor', fakeAsync(() => {
         const campanaSvc = TestBed.inject(CampanaService) as jasmine.SpyObj<CampanaService>;
+        component.profile = buildProfile('correo') as any;
         component.selectedCampaignDetail = {
             campaign: {
                 id: 7,
@@ -756,13 +851,37 @@ describe('UserProfileComponent', () => {
                 addedAtUtc: null,
                 addedByUserId: null,
             }],
+            pendingInvitations: [{
+                inviteId: 18,
+                status: 'pending',
+                createdAtUtc: '2026-03-13T10:15:00.000Z',
+                resolvedAtUtc: null,
+                campaignId: 7,
+                campaignName: 'Caballeros',
+                invitedUser: {
+                    userId: 'u-3',
+                    uid: 'uid-pending',
+                    displayName: 'Pendiente',
+                    email: 'pending@test.dev',
+                },
+                invitedBy: {
+                    userId: 'u-1',
+                    uid: 'uid-1',
+                    displayName: 'Yosi',
+                    email: 'yosi@test.dev',
+                },
+                resolvedByUserId: null,
+            }],
             includeInactiveMembers: false,
             tramas: [],
+            loadingInvitations: false,
             loadingMembers: false,
             loadingTramas: false,
         };
         campanaSvc.searchUsers.and.resolveTo([
             { uid: 'uid-master', displayName: 'MrYosi90', photoThumbUrl: null },
+            { uid: 'uid-1', displayName: 'Yosi', photoThumbUrl: null },
+            { uid: 'uid-pending', displayName: 'Pendiente', photoThumbUrl: null },
             { uid: 'uid-new', displayName: 'Yosi', photoThumbUrl: null },
         ]);
 
@@ -773,6 +892,356 @@ describe('UserProfileComponent', () => {
         expect(component.memberSearchResults).toEqual([
             { uid: 'uid-new', displayName: 'Yosi', photoThumbUrl: null },
         ]);
+    }));
+
+    it('acepta una invitación recibida y recarga campañas seleccionando la campaña aceptada', fakeAsync(() => {
+        const campanaSvc = TestBed.inject(CampanaService) as jasmine.SpyObj<CampanaService>;
+        const toastSvc = TestBed.inject(AppToastService) as jasmine.SpyObj<AppToastService>;
+        const invitation = {
+            inviteId: 25,
+            status: 'pending' as const,
+            createdAtUtc: '2026-03-13T10:15:00.000Z',
+            resolvedAtUtc: null,
+            campaignId: 9,
+            campaignName: 'Costa',
+            invitedUser: {
+                userId: 'u-1',
+                uid: 'uid-1',
+                displayName: 'Yosi',
+                email: 'yosi@test.dev',
+            },
+            invitedBy: {
+                userId: 'u-2',
+                uid: 'uid-master',
+                displayName: 'Master',
+                email: 'master@test.dev',
+            },
+            resolvedByUserId: null,
+        };
+        campanaSvc.listReceivedCampaignInvitations.and.returnValues(
+            Promise.resolve([invitation]),
+            Promise.resolve([])
+        );
+        campanaSvc.resolveCampaignInvitation.and.resolveTo({
+            message: 'Invitación aceptada',
+            invitation: {
+                ...invitation,
+                status: 'accepted',
+                resolvedAtUtc: '2026-03-13T10:20:00.000Z',
+                resolvedByUserId: 'u-1',
+            },
+        });
+        campanaSvc.listProfileCampaigns.and.resolveTo([{
+            id: 9,
+            nombre: 'Costa',
+            campaignRole: 'jugador',
+            membershipStatus: 'activo',
+        }]);
+        campanaSvc.getCampaignDetail.and.resolveTo({
+            campaign: {
+                id: 9,
+                nombre: 'Costa',
+                campaignRole: 'jugador',
+                membershipStatus: 'activo',
+            },
+            ownerUid: 'uid-owner',
+            ownerDisplayName: 'Owner',
+            activeMasterUid: 'uid-master',
+            activeMasterDisplayName: 'Master',
+            canRecoverMaster: false,
+            members: [],
+            pendingInvitations: [],
+            includeInactiveMembers: false,
+            tramas: [],
+            loadingInvitations: false,
+            loadingMembers: false,
+            loadingTramas: false,
+        });
+
+        fixture.detectChanges();
+        tick();
+
+        void component.responderInvitacionCampana(invitation, 'accept');
+        tick();
+
+        expect(campanaSvc.resolveCampaignInvitation).toHaveBeenCalledWith(25, 'accept');
+        expect(component.selectedCampaignId).toBe(9);
+        expect(toastSvc.showSuccess).toHaveBeenCalledWith('Invitación aceptada. Ya formas parte de la campaña.');
+    }));
+
+    it('refresca invitaciones recibidas al llegar un evento realtime de invitación nueva', fakeAsync(() => {
+        const campanaSvc = TestBed.inject(CampanaService) as jasmine.SpyObj<CampanaService>;
+        const toastSvc = TestBed.inject(AppToastService) as jasmine.SpyObj<AppToastService>;
+        campanaSvc.listReceivedCampaignInvitations.and.returnValues(
+            Promise.resolve([]),
+            Promise.resolve([{
+                inviteId: 22,
+                status: 'pending',
+                createdAtUtc: '2026-03-13T10:15:00.000Z',
+                resolvedAtUtc: null,
+                campaignId: 7,
+                campaignName: 'Campaña de prueba',
+                invitedUser: {
+                    userId: 'u-1',
+                    uid: 'uid-1',
+                    displayName: 'Yosi',
+                    email: 'yosi@test.dev',
+                },
+                invitedBy: {
+                    userId: 'u-2',
+                    uid: 'uid-master',
+                    displayName: 'Master',
+                    email: 'master@test.dev',
+                },
+                resolvedByUserId: null,
+            }]),
+        );
+
+        fixture.detectChanges();
+        tick();
+        component.ngOnChanges({
+            openRequest: new SimpleChange(null, { section: 'campanas', requestId: 21 }, false),
+        });
+        tick();
+
+        campaignRealtimeEvents$.next({
+            code: 'system.campaign_invitation_received',
+            campaignId: 7,
+            conversationId: null,
+            source: 'remote',
+        });
+        tick(300);
+
+        expect(campanaSvc.listReceivedCampaignInvitations.calls.count()).toBe(2);
+        expect(component.receivedCampaignInvitations.length).toBe(1);
+        expect(toastSvc.showInfo).toHaveBeenCalledWith('Tus invitaciones de campaña se han actualizado.');
+    }));
+
+    it('refresca campañas y detalle al llegar un evento realtime de invitación resuelta', fakeAsync(() => {
+        const campanaSvc = TestBed.inject(CampanaService) as jasmine.SpyObj<CampanaService>;
+        const toastSvc = TestBed.inject(AppToastService) as jasmine.SpyObj<AppToastService>;
+        campanaSvc.listProfileCampaigns.and.returnValues(
+            Promise.resolve([{
+                id: 7,
+                nombre: 'Campaña de prueba',
+                campaignRole: 'master',
+                membershipStatus: 'activo',
+            }]),
+            Promise.resolve([{
+                id: 7,
+                nombre: 'Campaña de prueba',
+                campaignRole: 'master',
+                membershipStatus: 'activo',
+            }]),
+        );
+        campanaSvc.getCampaignDetail.and.returnValues(
+            Promise.resolve({
+                campaign: {
+                    id: 7,
+                    nombre: 'Campaña de prueba',
+                    campaignRole: 'master',
+                    membershipStatus: 'activo',
+                },
+                ownerUid: 'uid-1',
+                ownerDisplayName: 'Yosi',
+                activeMasterUid: 'uid-1',
+                activeMasterDisplayName: 'Yosi',
+                canRecoverMaster: false,
+                members: [],
+                pendingInvitations: [{
+                    inviteId: 31,
+                    status: 'pending',
+                    createdAtUtc: '2026-03-13T10:15:00.000Z',
+                    resolvedAtUtc: null,
+                    campaignId: 7,
+                    campaignName: 'Campaña de prueba',
+                    invitedUser: {
+                        userId: 'u-2',
+                        uid: 'uid-new',
+                        displayName: 'Nuevo',
+                        email: 'new@test.dev',
+                    },
+                    invitedBy: {
+                        userId: 'u-1',
+                        uid: 'uid-1',
+                        displayName: 'Yosi',
+                        email: 'yosi@test.dev',
+                    },
+                    resolvedByUserId: null,
+                }],
+                includeInactiveMembers: false,
+                tramas: [],
+                loadingInvitations: false,
+                loadingMembers: false,
+                loadingTramas: false,
+            }),
+            Promise.resolve({
+                campaign: {
+                    id: 7,
+                    nombre: 'Campaña de prueba',
+                    campaignRole: 'master',
+                    membershipStatus: 'activo',
+                },
+                ownerUid: 'uid-1',
+                ownerDisplayName: 'Yosi',
+                activeMasterUid: 'uid-1',
+                activeMasterDisplayName: 'Yosi',
+                canRecoverMaster: false,
+                members: [{
+                    userId: 'u-2',
+                    uid: 'uid-new',
+                    displayName: 'Nuevo',
+                    email: 'new@test.dev',
+                    campaignRole: 'jugador',
+                    membershipStatus: 'activo',
+                    isActive: true,
+                    addedAtUtc: null,
+                    addedByUserId: null,
+                }],
+                pendingInvitations: [],
+                includeInactiveMembers: false,
+                tramas: [],
+                loadingInvitations: false,
+                loadingMembers: false,
+                loadingTramas: false,
+            }),
+        );
+
+        fixture.detectChanges();
+        tick();
+        component.ngOnChanges({
+            openRequest: new SimpleChange(null, { section: 'campanas', requestId: 22 }, false),
+        });
+        tick();
+
+        campaignRealtimeEvents$.next({
+            code: 'system.campaign_invitation_resolved',
+            campaignId: 7,
+            conversationId: null,
+            source: 'remote',
+        });
+        tick(300);
+
+        expect(campanaSvc.listProfileCampaigns.calls.count()).toBe(2);
+        expect(campanaSvc.getCampaignDetail.calls.count()).toBe(2);
+        expect(component.selectedCampaignDetail?.pendingInvitations).toEqual([]);
+        expect(component.selectedCampaignMembers.length).toBe(1);
+        expect(toastSvc.showInfo).toHaveBeenCalledWith('La información de campañas se ha actualizado.');
+    }));
+
+    it('permite cancelar una invitación pendiente emitida desde el detalle de campaña', fakeAsync(() => {
+        const campanaSvc = TestBed.inject(CampanaService) as jasmine.SpyObj<CampanaService>;
+        const toastSvc = TestBed.inject(AppToastService) as jasmine.SpyObj<AppToastService>;
+        component.selectedCampaignId = 7;
+        component.selectedCampaignDetail = {
+            campaign: {
+                id: 7,
+                nombre: 'Caballeros',
+                campaignRole: 'master',
+                membershipStatus: 'activo',
+            },
+            ownerUid: 'uid-1',
+            ownerDisplayName: 'Yosi',
+            activeMasterUid: 'uid-1',
+            activeMasterDisplayName: 'Yosi',
+            canRecoverMaster: false,
+            members: [],
+            pendingInvitations: [{
+                inviteId: 18,
+                status: 'pending',
+                createdAtUtc: '2026-03-13T10:15:00.000Z',
+                resolvedAtUtc: null,
+                campaignId: 7,
+                campaignName: 'Caballeros',
+                invitedUser: {
+                    userId: 'u-3',
+                    uid: 'uid-pending',
+                    displayName: 'Pendiente',
+                    email: 'pending@test.dev',
+                },
+                invitedBy: {
+                    userId: 'u-1',
+                    uid: 'uid-1',
+                    displayName: 'Yosi',
+                    email: 'yosi@test.dev',
+                },
+                resolvedByUserId: null,
+            }],
+            includeInactiveMembers: false,
+            tramas: [],
+            loadingInvitations: false,
+            loadingMembers: false,
+            loadingTramas: false,
+        };
+        campanaSvc.cancelCampaignInvitation.and.resolveTo();
+        campanaSvc.getCampaignDetail.and.resolveTo({
+            ...(component.selectedCampaignDetail as any),
+            pendingInvitations: [],
+        });
+
+        void component.cancelarInvitacionCampana(component.selectedCampaignDetail.pendingInvitations[0]);
+        tick();
+
+        expect(campanaSvc.cancelCampaignInvitation).toHaveBeenCalledWith(18);
+        expect(toastSvc.showSuccess).toHaveBeenCalledWith('Invitación cancelada.');
+    }));
+
+    it('si cancelar falla porque la invitación ya cambió, refresca el detalle y muestra aviso no bloqueante', fakeAsync(() => {
+        const campanaSvc = TestBed.inject(CampanaService) as jasmine.SpyObj<CampanaService>;
+        const toastSvc = TestBed.inject(AppToastService) as jasmine.SpyObj<AppToastService>;
+        component.selectedCampaignId = 7;
+        component.selectedCampaignDetail = {
+            campaign: {
+                id: 7,
+                nombre: 'Caballeros',
+                campaignRole: 'master',
+                membershipStatus: 'activo',
+            },
+            ownerUid: 'uid-1',
+            ownerDisplayName: 'Yosi',
+            activeMasterUid: 'uid-1',
+            activeMasterDisplayName: 'Yosi',
+            canRecoverMaster: false,
+            members: [],
+            pendingInvitations: [{
+                inviteId: 18,
+                status: 'pending',
+                createdAtUtc: '2026-03-13T10:15:00.000Z',
+                resolvedAtUtc: null,
+                campaignId: 7,
+                campaignName: 'Caballeros',
+                invitedUser: {
+                    userId: 'u-3',
+                    uid: 'uid-pending',
+                    displayName: 'Pendiente',
+                    email: 'pending@test.dev',
+                },
+                invitedBy: {
+                    userId: 'u-1',
+                    uid: 'uid-1',
+                    displayName: 'Yosi',
+                    email: 'yosi@test.dev',
+                },
+                resolvedByUserId: null,
+            }],
+            includeInactiveMembers: false,
+            tramas: [],
+            loadingInvitations: false,
+            loadingMembers: false,
+            loadingTramas: false,
+        };
+        campanaSvc.cancelCampaignInvitation.and.rejectWith(new Error('La invitación ya no está pendiente.'));
+        campanaSvc.getCampaignDetail.and.resolveTo({
+            ...(component.selectedCampaignDetail as any),
+            pendingInvitations: [],
+        });
+
+        void component.cancelarInvitacionCampana(component.selectedCampaignDetail.pendingInvitations[0]);
+        tick();
+
+        expect(campanaSvc.getCampaignDetail).toHaveBeenCalledWith(7, false);
+        expect(toastSvc.showInfo).toHaveBeenCalledWith('La invitación ya había cambiado en otra sesión. Se ha refrescado la campaña.');
+        expect(toastSvc.showError).not.toHaveBeenCalled();
     }));
 
     it('usa la membresía detallada del actor para detectar si realmente es master', fakeAsync(() => {
@@ -816,8 +1285,10 @@ describe('UserProfileComponent', () => {
                 addedAtUtc: null,
                 addedByUserId: null,
             }],
+            pendingInvitations: [],
             includeInactiveMembers: false,
             tramas: [],
+            loadingInvitations: false,
             loadingMembers: false,
             loadingTramas: false,
         });
@@ -865,8 +1336,10 @@ describe('UserProfileComponent', () => {
                 addedAtUtc: '2026-03-12T20:03:00.000Z',
                 addedByUserId: null,
             }],
+            pendingInvitations: [],
             includeInactiveMembers: false,
             tramas: [],
+            loadingInvitations: false,
             loadingMembers: false,
             loadingTramas: false,
         });
@@ -918,8 +1391,10 @@ describe('UserProfileComponent', () => {
                 addedAtUtc: null,
                 addedByUserId: null,
             }],
+            pendingInvitations: [],
             includeInactiveMembers: false,
             tramas: [],
+            loadingInvitations: false,
             loadingMembers: false,
             loadingTramas: false,
         });
@@ -967,8 +1442,10 @@ describe('UserProfileComponent', () => {
                 addedAtUtc: null,
                 addedByUserId: null,
             }],
+            pendingInvitations: [],
             includeInactiveMembers: false,
             tramas: [],
+            loadingInvitations: false,
             loadingMembers: false,
             loadingTramas: false,
         });
@@ -984,12 +1461,12 @@ describe('UserProfileComponent', () => {
         expect(component.selectedCampaignCanRecoverMaster).toBeTrue();
     }));
 
-    it('preserva allowDirectMessagesFromNonFriends al guardar preferencias', fakeAsync(() => {
+    it('permite editar allowDirectMessagesFromNonFriends al guardar preferencias', fakeAsync(() => {
         const persistedSettings = {
             ...settings,
             perfil: {
                 ...settings.perfil,
-                allowDirectMessagesFromNonFriends: true,
+                allowDirectMessagesFromNonFriends: false,
             },
         };
         userSettingsSvc.loadSettings.and.resolveTo(persistedSettings as any);
@@ -999,6 +1476,7 @@ describe('UserProfileComponent', () => {
         tick();
 
         component.mostrarPerfilPublico = false;
+        component.allowDirectMessagesFromNonFriends = true;
         void component.guardarPreferencias();
         tick();
 

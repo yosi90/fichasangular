@@ -2,11 +2,16 @@ import { HttpClient, HttpErrorResponse, HttpHeaders } from '@angular/common/http
 import { Injectable } from '@angular/core';
 import { Auth, onAuthStateChanged } from '@angular/fire/auth';
 import { Database, ref, set } from '@angular/fire/database';
-import { Observable, firstValueFrom, of } from 'rxjs';
+import { Observable, catchError, filter, firstValueFrom, from, map, merge, of, scan, shareReplay, switchMap, timer } from 'rxjs';
 import Swal from 'sweetalert2';
 import { Campana } from '../interfaces/campaña';
 import {
     CampaignDetailViewModel,
+    CampaignInvitationDecision,
+    CampaignInvitationItem,
+    CampaignInvitationResponse,
+    CampaignInvitationStatus,
+    CampaignInvitationUser,
     CampaignListItem,
     CampaignMemberItem,
     CampaignMemberRemovalStatus,
@@ -18,6 +23,7 @@ import {
     TransferCampaignMasterInput,
 } from '../interfaces/campaign-management';
 import { environment } from 'src/environments/environment';
+import { CampaignRealtimeSyncService } from './campaign-realtime-sync.service';
 import { FirebaseInjectionContextService } from './firebase-injection-context.service';
 
 @Injectable({
@@ -29,20 +35,41 @@ export class CampanaService {
     private readonly subtramasBaseUrl = `${environment.apiUrl}subtramas`;
     private readonly usuariosBaseUrl = `${environment.apiUrl}usuarios`;
     private readonly authReadyPromise: Promise<void>;
+    private readonly liveCampanas$: Observable<Campana[]>;
 
     constructor(
         private auth: Auth,
         private db: Database,
         private http: HttpClient,
-        private firebaseContextSvc: FirebaseInjectionContextService
+        private firebaseContextSvc: FirebaseInjectionContextService,
+        private campaignRealtimeSyncSvc: CampaignRealtimeSyncService,
     ) {
         this.authReadyPromise = this.createAuthReadyPromise();
+        this.liveCampanas$ = merge(
+            of(null),
+            this.campaignRealtimeSyncSvc.listInvalidations$,
+            timer(30000, 30000),
+        ).pipe(
+            switchMap(() => from(this.fetchLiveCampanasWithActiveMembership()).pipe(
+                map((campanas) => ({ ok: true as const, campanas })),
+                catchError(() => of({
+                    ok: false as const,
+                    campanas: [] as Campana[],
+                })),
+            )),
+            scan(
+                (current: Campana[] | null, result: { ok: boolean; campanas: Campana[]; }) => result.ok
+                    ? result.campanas
+                    : (current ?? [this.buildSinCampanaOption()]),
+                null as Campana[] | null
+            ),
+            filter((campanas): campanas is Campana[] => Array.isArray(campanas)),
+            shareReplay({ bufferSize: 1, refCount: true }),
+        );
     }
 
     async getListCampanas(): Promise<Observable<Campana[]>> {
-        const headers = await this.buildAuthHeaders();
-        const campanas = await this.fetchCampanasWithActiveMembership(headers);
-        return of(campanas);
+        return this.liveCampanas$;
     }
 
     async listVisibleCampaigns(): Promise<CampaignListItem[]> {
@@ -73,8 +100,9 @@ export class CampanaService {
             const headers = await this.buildAuthHeaders();
             const campaignDetail = await this.fetchCampaignDetailHeader(id, headers);
 
-            const [members, tramas] = await Promise.all([
+            const [members, pendingInvitations, tramas] = await Promise.all([
                 this.fetchCampaignMembers(id, headers, includeInactive),
+                this.fetchCampaignInvitationsBestEffort(id, headers),
                 this.fetchCampaignTramas(id, headers),
             ]);
 
@@ -86,8 +114,10 @@ export class CampanaService {
                 activeMasterDisplayName: campaignDetail.activeMasterDisplayName,
                 canRecoverMaster: campaignDetail.canRecoverMaster,
                 members,
+                pendingInvitations,
                 includeInactiveMembers: includeInactive === true,
                 tramas,
+                loadingInvitations: false,
                 loadingMembers: false,
                 loadingTramas: false,
             };
@@ -108,6 +138,7 @@ export class CampanaService {
                 )
             );
             await this.refreshCampanasCacheBestEffort();
+            this.notifyCampaignListChange(this.toPositiveInt(response?.idCampana));
 
             return {
                 id: this.toPositiveInt(response?.idCampana) ?? 0,
@@ -134,6 +165,7 @@ export class CampanaService {
                 )
             );
             await this.refreshCampanasCacheBestEffort();
+            this.notifyCampaignListChange(id);
         } catch (error) {
             throw this.toError(error, 'No se pudo renombrar la campaña.');
         }
@@ -151,24 +183,97 @@ export class CampanaService {
         }
     }
 
-    async addCampaignMember(idCampana: number, targetUid: string): Promise<void> {
+    async inviteCampaignMember(idCampana: number, targetUid: string): Promise<CampaignInvitationResponse> {
         const id = this.toPositiveInt(idCampana);
         const uid = `${targetUid ?? ''}`.trim();
         if (!id || uid.length < 1)
-            throw new Error('Datos inválidos para añadir el jugador.');
+            throw new Error('Datos inválidos para invitar al jugador.');
+
+        const payload = { targetUid: uid };
 
         try {
             const headers = await this.buildAuthHeaders();
-            await firstValueFrom(
-                this.http.post<void>(
+            const response = await firstValueFrom(
+                this.http.post<any>(
                     `${this.campanasBaseUrl}/${id}/jugadores`,
-                    { targetUid: uid },
+                    payload,
                     { headers }
                 )
             );
             await this.refreshCampanasCacheBestEffort();
+            this.notifyCampaignListChange(id);
+            return this.normalizeCampaignInvitationResponse(response);
         } catch (error) {
-            throw this.toError(error, 'No se pudo añadir el jugador a la campaña.');
+            throw this.toError(error, 'No se pudo enviar la invitación.');
+        }
+    }
+
+    async listReceivedCampaignInvitations(): Promise<CampaignInvitationItem[]> {
+        try {
+            const response = await firstValueFrom(
+                this.http.get<any[]>(`${this.campanasBaseUrl}/invitaciones/received`, {
+                    headers: await this.buildAuthHeaders(),
+                })
+            );
+            const raw = Array.isArray(response) ? response : Object.values(response ?? {});
+            return raw
+                .map((item) => this.normalizeCampaignInvitation(item))
+                .filter((item): item is CampaignInvitationItem => item !== null)
+                .sort((a, b) => this.toDateMs(b.createdAtUtc) - this.toDateMs(a.createdAtUtc));
+        } catch (error) {
+            throw this.toError(error, 'No se pudieron cargar las invitaciones recibidas.');
+        }
+    }
+
+    async listCampaignInvitations(idCampana: number): Promise<CampaignInvitationItem[]> {
+        const id = this.toPositiveInt(idCampana);
+        if (!id)
+            throw new Error('Campaña inválida.');
+
+        try {
+            return await this.fetchCampaignInvitations(id, await this.buildAuthHeaders());
+        } catch (error) {
+            throw this.toError(error, 'No se pudieron cargar las invitaciones de la campaña.');
+        }
+    }
+
+    async resolveCampaignInvitation(inviteId: number, decision: CampaignInvitationDecision): Promise<CampaignInvitationResponse> {
+        const id = this.toPositiveInt(inviteId);
+        if (!id)
+            throw new Error('Invitación inválida.');
+
+        try {
+            const response = await firstValueFrom(
+                this.http.patch<any>(
+                    `${this.campanasBaseUrl}/invitaciones/${id}`,
+                    { decision },
+                    { headers: await this.buildAuthHeaders() }
+                )
+            );
+            await this.refreshCampanasCacheBestEffort();
+            this.notifyCampaignListChange(response?.invitation?.campaignId);
+            return this.normalizeCampaignInvitationResponse(response);
+        } catch (error) {
+            throw this.toError(error, 'No se pudo resolver la invitación.');
+        }
+    }
+
+    async cancelCampaignInvitation(inviteId: number): Promise<void> {
+        const id = this.toPositiveInt(inviteId);
+        if (!id)
+            throw new Error('Invitación inválida.');
+
+        try {
+            await firstValueFrom(
+                this.http.delete<void>(
+                    `${this.campanasBaseUrl}/invitaciones/${id}`,
+                    { headers: await this.buildAuthHeaders() }
+                )
+            );
+            await this.refreshCampanasCacheBestEffort();
+            this.notifyCampaignListChange();
+        } catch (error) {
+            throw this.toError(error, 'No se pudo cancelar la invitación.');
         }
     }
 
@@ -193,6 +298,7 @@ export class CampanaService {
                 )
             );
             await this.refreshCampanasCacheBestEffort();
+            this.notifyCampaignListChange(id);
         } catch (error) {
             throw this.toError(error, 'No se pudo retirar el jugador de la campaña.');
         }
@@ -216,6 +322,7 @@ export class CampanaService {
                 )
             );
             await this.refreshCampanasCacheBestEffort();
+            this.notifyCampaignListChange(id);
         } catch (error) {
             throw this.toError(error, 'No se pudo transferir el master de la campaña.');
         }
@@ -235,6 +342,7 @@ export class CampanaService {
                 )
             );
             await this.refreshCampanasCacheBestEffort();
+            this.notifyCampaignListChange(id);
         } catch (error) {
             throw this.toError(error, 'No se pudo recuperar el master de la campaña.');
         }
@@ -277,6 +385,7 @@ export class CampanaService {
                 )
             );
             await this.refreshCampanasCacheBestEffort();
+            this.notifyCampaignListChange(id);
         } catch (error) {
             throw this.toError(error, 'No se pudo crear la trama.');
         }
@@ -296,6 +405,7 @@ export class CampanaService {
                 )
             );
             await this.refreshCampanasCacheBestEffort();
+            this.notifyCampaignListChange();
         } catch (error) {
             throw this.toError(error, 'No se pudo actualizar la trama.');
         }
@@ -315,6 +425,7 @@ export class CampanaService {
                 )
             );
             await this.refreshCampanasCacheBestEffort();
+            this.notifyCampaignListChange();
         } catch (error) {
             throw this.toError(error, 'No se pudo crear la subtrama.');
         }
@@ -334,6 +445,7 @@ export class CampanaService {
                 )
             );
             await this.refreshCampanasCacheBestEffort();
+            this.notifyCampaignListChange();
         } catch (error) {
             throw this.toError(error, 'No se pudo actualizar la subtrama.');
         }
@@ -372,6 +484,10 @@ export class CampanaService {
         await this.writeCampanasCachePayload(this.buildCampanasCachePayload(campanas));
     }
 
+    private notifyCampaignListChange(campaignId?: number | null): void {
+        this.campaignRealtimeSyncSvc.notifyLocalChange(campaignId);
+    }
+
     private async refreshCampanasCacheBestEffort(): Promise<void> {
         try {
             await this.syncCampanasCache();
@@ -383,6 +499,10 @@ export class CampanaService {
     private async fetchCampanasActorScoped(headers: HttpHeaders): Promise<Campana[]> {
         const campanas = await this.fetchCampaignSummaries(headers);
         return this.buildCampanasTree(campanas, headers);
+    }
+
+    private async fetchLiveCampanasWithActiveMembership(): Promise<Campana[]> {
+        return this.fetchCampanasWithActiveMembership(await this.buildAuthHeaders());
     }
 
     private async fetchCampanasWithActiveMembership(headers: HttpHeaders): Promise<Campana[]> {
@@ -508,6 +628,31 @@ export class CampanaService {
                     return a.campaignRole === 'master' ? -1 : 1;
                 return this.getDisplayLabel(a).localeCompare(this.getDisplayLabel(b), 'es', { sensitivity: 'base' });
             });
+    }
+
+    private async fetchCampaignInvitations(
+        idCampana: number,
+        headers: HttpHeaders
+    ): Promise<CampaignInvitationItem[]> {
+        const response = await firstValueFrom(
+            this.http.get<any[]>(`${this.campanasBaseUrl}/${idCampana}/invitaciones`, { headers })
+        );
+        const raw = Array.isArray(response) ? response : Object.values(response ?? {});
+        return raw
+            .map((item) => this.normalizeCampaignInvitation(item))
+            .filter((item): item is CampaignInvitationItem => item !== null)
+            .sort((a, b) => this.toDateMs(b.createdAtUtc) - this.toDateMs(a.createdAtUtc));
+    }
+
+    private async fetchCampaignInvitationsBestEffort(
+        idCampana: number,
+        headers: HttpHeaders
+    ): Promise<CampaignInvitationItem[]> {
+        try {
+            return await this.fetchCampaignInvitations(idCampana, headers);
+        } catch {
+            return [];
+        }
     }
 
     private async fetchCampaignTramas(idCampana: number, headers: HttpHeaders): Promise<CampaignTramaItem[]> {
@@ -649,6 +794,51 @@ export class CampanaService {
         };
     }
 
+    private normalizeCampaignInvitationUser(raw: any): CampaignInvitationUser | null {
+        const uid = `${raw?.uid ?? ''}`.trim();
+        if (uid.length < 1)
+            return null;
+
+        return {
+            userId: this.toNullableText(raw?.userId),
+            uid,
+            displayName: this.toNullableText(raw?.displayName),
+            email: this.toNullableText(raw?.email),
+        };
+    }
+
+    private normalizeCampaignInvitation(raw: any): CampaignInvitationItem | null {
+        const inviteId = this.toPositiveInt(raw?.inviteId);
+        const campaignId = this.toPositiveInt(raw?.campaignId);
+        const invitedUser = this.normalizeCampaignInvitationUser(raw?.invitedUser);
+        const invitedBy = this.normalizeCampaignInvitationUser(raw?.invitedBy);
+        if (!inviteId || !campaignId || !invitedUser || !invitedBy)
+            return null;
+
+        return {
+            inviteId,
+            status: this.normalizeInvitationStatus(raw?.status),
+            createdAtUtc: this.toNullableText(raw?.createdAtUtc),
+            resolvedAtUtc: this.toNullableText(raw?.resolvedAtUtc),
+            campaignId,
+            campaignName: this.toNullableText(raw?.campaignName),
+            invitedUser,
+            invitedBy,
+            resolvedByUserId: this.toNullableText(raw?.resolvedByUserId),
+        };
+    }
+
+    private normalizeCampaignInvitationResponse(raw: any): CampaignInvitationResponse {
+        const invitation = this.normalizeCampaignInvitation(raw?.invitation);
+        if (!invitation)
+            throw new Error('La invitación devuelta por la API no es válida.');
+
+        return {
+            message: `${raw?.message ?? ''}`.trim() || 'Invitación procesada correctamente.',
+            invitation,
+        };
+    }
+
     private buildSinCampanaOption(): Campana {
         return {
             Id: 0,
@@ -711,6 +901,17 @@ export class CampanaService {
         return null;
     }
 
+    private normalizeInvitationStatus(value: any): CampaignInvitationStatus {
+        const normalized = `${value ?? ''}`.trim().toLowerCase();
+        if (normalized === 'accepted')
+            return 'accepted';
+        if (normalized === 'rejected')
+            return 'rejected';
+        if (normalized === 'canceled')
+            return 'canceled';
+        return 'pending';
+    }
+
     private normalizeRequiredName(value: string, emptyMessage: string): string {
         const nombre = `${value ?? ''}`.trim();
         if (nombre.length < 1)
@@ -726,6 +927,11 @@ export class CampanaService {
     private toNullableText(value: any): string | null {
         const text = `${value ?? ''}`.trim();
         return text.length > 0 ? text : null;
+    }
+
+    private toDateMs(value: string | null | undefined): number {
+        const parsed = new Date(`${value ?? ''}`);
+        return Number.isNaN(parsed.getTime()) ? 0 : parsed.getTime();
     }
 
     private getDisplayLabel(member: CampaignMemberItem): string {

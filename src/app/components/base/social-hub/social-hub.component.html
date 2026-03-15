@@ -1,0 +1,594 @@
+<section class="social-shell">
+    <div class="social-layout">
+        <aside class="social-nav sombra-caja-sm tw-rounded-md">
+            <div class="social-nav__identity">
+                <div class="social-nav__icon">
+                    <mat-icon>hub</mat-icon>
+                </div>
+                <div class="social-nav__copy">
+                    <h2>Social</h2>
+                    <p *ngIf="isLoggedIn; else guestModeCopy">Comunidad, amistades y mensajes.</p>
+                    <ng-template #guestModeCopy>
+                        <p>Modo limitado: búsqueda y perfiles públicos.</p>
+                    </ng-template>
+                </div>
+            </div>
+
+            <div class="social-nav__items">
+                <button
+                    type="button"
+                    *ngFor="let section of sections"
+                    class="social-nav__item"
+                    [class.social-nav__item--active]="currentSection === section.id"
+                    (click)="selectSection(section.id)">
+                    <mat-icon>{{section.icon}}</mat-icon>
+                    <span>{{section.label}}</span>
+                </button>
+            </div>
+
+            <div class="social-nav__summary" *ngIf="isLoggedIn">
+                <div class="social-nav__summary-row">
+                    <span>Amigos</span>
+                    <strong>{{friends.length}}</strong>
+                </div>
+                <div class="social-nav__summary-row">
+                    <span>No leídos</span>
+                    <strong>{{unreadUserCount + unreadSystemCount}}</strong>
+                </div>
+            </div>
+        </aside>
+
+        <main class="social-main sombra-caja-sm tw-rounded-md">
+            <section class="social-section" *ngIf="currentSection === 'resumen'">
+                <div class="social-summary-grid" *ngIf="isLoggedIn; else guestSummary">
+                    <article class="social-stat-card" *ngFor="let card of summaryCards">
+                        <span class="social-stat-card__label">{{card.label}}</span>
+                        <strong>{{card.value}}</strong>
+                        <small>{{card.hint}}</small>
+                    </article>
+                </div>
+                <ng-template #guestSummary>
+                    <div class="social-empty">
+                        <mat-icon>travel_explore</mat-icon>
+                        <p>Puedes buscar usuarios y abrir sus perfiles públicos desde Amistades. Inicia sesión para activar amistades, bloqueos y mensajería.</p>
+                    </div>
+                </ng-template>
+            </section>
+
+            <section class="social-section" *ngIf="currentSection === 'amistades'">
+                <div class="social-search-block">
+                    <mat-form-field appearance="outline" class="social-search__field">
+                        <mat-label>Buscar jugadores</mat-label>
+                        <input
+                            matInput
+                            [(ngModel)]="searchQuery"
+                            (ngModelChange)="onSearchQueryChange()"
+                            placeholder="Nombre visible">
+                    </mat-form-field>
+                    <p class="social-inline-hint" *ngIf="searchLoading">Buscando usuarios...</p>
+                    <p class="social-inline-error" *ngIf="searchErrorMessage">{{searchErrorMessage}}</p>
+
+                    <div class="social-user-list" *ngIf="visibleSearchResults.length > 0">
+                        <article class="social-user-card" *ngFor="let user of visibleSearchResults; trackBy: trackByUid">
+                            <div class="social-user-card__main">
+                                <strong>{{getUserLabel(user)}}</strong>
+                                <span class="social-user-card__meta">{{getRelationshipLabel(getRelationshipState(user))}}</span>
+                            </div>
+                            <div class="social-user-card__actions">
+                                <button mat-icon-button type="button" matTooltip="Ver perfil" aria-label="Ver perfil" (click)="viewPublicProfile(user)">
+                                    <mat-icon>account_circle</mat-icon>
+                                </button>
+                                <button mat-icon-button type="button" *ngIf="isLoggedIn && getRelationshipState(user) === 'neutral'" matTooltip="Enviar solicitud" aria-label="Enviar solicitud" (click)="sendFriendRequest(user)">
+                                    <mat-icon>person_add</mat-icon>
+                                </button>
+                                <button mat-icon-button type="button" *ngIf="isLoggedIn && getRelationshipState(user) === 'sent_request'" matTooltip="Cancelar solicitud" aria-label="Cancelar solicitud" (click)="cancelFriendRequest(user)">
+                                    <mat-icon>person_remove</mat-icon>
+                                </button>
+                                <button mat-icon-button type="button" *ngIf="canStartConversation(user)" matTooltip="Abrir chat" aria-label="Abrir chat" (click)="openDirect(user)">
+                                    <mat-icon>chat</mat-icon>
+                                </button>
+                                <button mat-icon-button type="button" color="warn" *ngIf="isLoggedIn && getRelationshipState(user) !== 'blocked'" matTooltip="Bloquear" aria-label="Bloquear" (click)="blockUser(user)">
+                                    <mat-icon>block</mat-icon>
+                                </button>
+                                <button mat-icon-button type="button" *ngIf="isLoggedIn && getRelationshipState(user) === 'blocked'" matTooltip="Desbloquear" aria-label="Desbloquear" (click)="unblockUser(user)">
+                                    <mat-icon>lock_open</mat-icon>
+                                </button>
+                            </div>
+                        </article>
+                    </div>
+
+                    <div class="social-empty social-empty--inline" *ngIf="searchHasMinimumQuery && !searchLoading && visibleSearchResults.length < 1">
+                        <mat-icon>person_search</mat-icon>
+                        <p>No hay usuarios visibles con ese criterio.</p>
+                    </div>
+                </div>
+
+                <hr class="social-section__separator">
+
+                <div class="social-empty social-empty--inline" *ngIf="!isLoggedIn">
+                    <mat-icon>lock</mat-icon>
+                    <p>Inicia sesión para gestionar amistades, solicitudes y mensajes directos.</p>
+                </div>
+
+                <div *ngIf="isLoggedIn" class="social-columns">
+                    <article class="social-panel">
+                        <h3>Amigos</h3>
+                        <mat-form-field appearance="outline" class="social-search__field" *ngIf="friends.length > 0">
+                            <mat-label>Buscar entre amistades</mat-label>
+                            <input
+                                matInput
+                                [(ngModel)]="friendsFilterQuery"
+                                placeholder="Nombre visible">
+                        </mat-form-field>
+
+                        <div class="social-user-list" *ngIf="visibleFriends.length > 0; else noFriends">
+                            <article class="social-user-card" *ngFor="let friend of visibleFriends; trackBy: trackByUid">
+                                <div class="social-user-card__main">
+                                    <strong>{{getUserLabel(friend)}}</strong>
+                                    <span class="social-user-card__meta">Amistad activa</span>
+                                </div>
+                                <div class="social-user-card__actions">
+                                    <button mat-icon-button type="button" matTooltip="Ver perfil" aria-label="Ver perfil" (click)="viewPublicProfile(friend)">
+                                        <mat-icon>account_circle</mat-icon>
+                                    </button>
+                                    <button mat-icon-button type="button" matTooltip="Abrir chat" aria-label="Abrir chat" (click)="openDirect(friend)">
+                                        <mat-icon>chat</mat-icon>
+                                    </button>
+                                    <button mat-icon-button type="button" color="warn" matTooltip="Eliminar amistad" aria-label="Eliminar amistad" (click)="removeFriend(friend)">
+                                        <mat-icon>person_remove</mat-icon>
+                                    </button>
+                                    <button mat-icon-button type="button" color="warn" matTooltip="Bloquear" aria-label="Bloquear" (click)="blockUser(friend)">
+                                        <mat-icon>block</mat-icon>
+                                    </button>
+                                </div>
+                            </article>
+                        </div>
+                        <ng-template #noFriends>
+                            <p class="social-inline-hint">{{friends.length > 0 ? 'No hay amistades que coincidan con el filtro.' : 'Aún no tienes amistades.'}}</p>
+                        </ng-template>
+                    </article>
+
+                    <article class="social-panel">
+                        <h3>Solicitudes recibidas</h3>
+                        <div class="social-user-list" *ngIf="receivedRequests.length > 0; else noReceivedRequests">
+                            <article class="social-user-card" *ngFor="let request of receivedRequests; trackBy: trackByRequestId">
+                                <div class="social-user-card__main">
+                                    <strong>{{getUserLabel(request.target)}}</strong>
+                                    <span class="social-user-card__meta">Pendiente</span>
+                                </div>
+                                <div class="social-user-card__actions">
+                                    <button mat-icon-button type="button" matTooltip="Ver perfil" aria-label="Ver perfil" (click)="viewPublicProfile(request)">
+                                        <mat-icon>account_circle</mat-icon>
+                                    </button>
+                                    <button mat-icon-button type="button" color="primary" matTooltip="Aceptar solicitud" aria-label="Aceptar solicitud" (click)="acceptFriendRequest(request)">
+                                        <mat-icon>check</mat-icon>
+                                    </button>
+                                    <button mat-icon-button type="button" color="warn" matTooltip="Rechazar solicitud" aria-label="Rechazar solicitud" (click)="rejectFriendRequest(request)">
+                                        <mat-icon>close</mat-icon>
+                                    </button>
+                                    <button mat-icon-button type="button" color="warn" matTooltip="Bloquear" aria-label="Bloquear" (click)="blockUser(request)">
+                                        <mat-icon>block</mat-icon>
+                                    </button>
+                                </div>
+                            </article>
+                        </div>
+                        <ng-template #noReceivedRequests>
+                            <p class="social-inline-hint">No tienes solicitudes recibidas.</p>
+                        </ng-template>
+
+                        <h3 class="social-panel__subheading">Solicitudes enviadas</h3>
+                        <div class="social-user-list" *ngIf="sentRequests.length > 0; else noSentRequests">
+                            <article class="social-user-card" *ngFor="let request of sentRequests; trackBy: trackByRequestId">
+                                <div class="social-user-card__main">
+                                    <strong>{{getUserLabel(request.target)}}</strong>
+                                    <span class="social-user-card__meta">Esperando respuesta</span>
+                                </div>
+                                <div class="social-user-card__actions">
+                                    <button mat-icon-button type="button" matTooltip="Ver perfil" aria-label="Ver perfil" (click)="viewPublicProfile(request)">
+                                        <mat-icon>account_circle</mat-icon>
+                                    </button>
+                                    <button mat-icon-button type="button" matTooltip="Cancelar solicitud" aria-label="Cancelar solicitud" (click)="cancelFriendRequest(request.target)">
+                                        <mat-icon>person_remove</mat-icon>
+                                    </button>
+                                </div>
+                            </article>
+                        </div>
+                        <ng-template #noSentRequests>
+                            <p class="social-inline-hint">No tienes solicitudes enviadas pendientes.</p>
+                        </ng-template>
+                    </article>
+                </div>
+            </section>
+
+            <section class="social-section" *ngIf="currentSection === 'bloqueos'">
+                <div class="social-empty" *ngIf="!isLoggedIn">
+                    <mat-icon>lock</mat-icon>
+                    <p>Inicia sesión para ver usuarios bloqueados.</p>
+                </div>
+
+                <mat-form-field appearance="outline" class="social-search__field" *ngIf="isLoggedIn && blocks.length > 0">
+                    <mat-label>Filtrar bloqueos</mat-label>
+                    <input
+                        matInput
+                        [(ngModel)]="blocksFilterQuery"
+                        placeholder="Nombre visible">
+                </mat-form-field>
+
+                <div class="social-user-list" *ngIf="isLoggedIn && visibleBlocks.length > 0; else noBlocks">
+                    <article class="social-user-card" *ngFor="let blocked of visibleBlocks; trackBy: trackByUid">
+                        <div class="social-user-card__main">
+                            <strong>{{getUserLabel(blocked)}}</strong>
+                            <span class="social-user-card__meta">Bloqueado</span>
+                        </div>
+                        <div class="social-user-card__actions">
+                            <button mat-icon-button type="button" matTooltip="Ver perfil" aria-label="Ver perfil" (click)="viewPublicProfile(blocked)">
+                                <mat-icon>account_circle</mat-icon>
+                            </button>
+                            <button mat-icon-button type="button" matTooltip="Desbloquear" aria-label="Desbloquear" (click)="unblockUser(blocked)">
+                                <mat-icon>lock_open</mat-icon>
+                            </button>
+                        </div>
+                    </article>
+                </div>
+                <ng-template #noBlocks>
+                    <p class="social-inline-hint" *ngIf="isLoggedIn">{{blocks.length > 0 ? 'No hay bloqueos que coincidan con el filtro.' : 'No has bloqueado a ningún usuario.'}}</p>
+                </ng-template>
+            </section>
+
+            <section class="social-section" *ngIf="currentSection === 'mensajes'">
+                <div class="social-empty" *ngIf="!isLoggedIn">
+                    <mat-icon>lock</mat-icon>
+                    <p>Inicia sesión para usar la mensajería.</p>
+                </div>
+
+                <div class="social-chat" *ngIf="isLoggedIn">
+                    <aside class="social-chat__sidebar">
+                        <div class="social-chat__filters">
+                            <button
+                                type="button"
+                                class="social-chat__filter"
+                                *ngFor="let filter of conversationFilters"
+                                [class.social-chat__filter--active]="conversationFilter === filter.id"
+                                (click)="selectConversationFilter(filter.id)">
+                                {{filter.label}}
+                            </button>
+                        </div>
+
+                        <button
+                            type="button"
+                            *ngIf="canOpenNewDirect"
+                            class="social-chat__conversation social-chat__conversation--new"
+                            [class.social-chat__conversation--active]="messageComposerMode === 'new-direct'"
+                            (click)="openNewDirectComposer()">
+                            <div class="social-chat__conversation-avatar social-chat__conversation-avatar--new">
+                                <mat-icon>add_comment</mat-icon>
+                            </div>
+                            <div class="social-chat__conversation-body">
+                                <div class="social-chat__conversation-main">
+                                    <strong>Nuevo chat</strong>
+                                </div>
+                                <small>Buscar un usuario y abrir un directo</small>
+                            </div>
+                        </button>
+
+                        <button
+                            type="button"
+                            *ngIf="canCreateGroup"
+                            class="social-chat__conversation social-chat__conversation--new"
+                            [class.social-chat__conversation--active]="messageComposerMode === 'new-group'"
+                            (click)="openNewGroupComposer()">
+                            <div class="social-chat__conversation-avatar social-chat__conversation-avatar--new">
+                                <mat-icon>groups</mat-icon>
+                            </div>
+                            <div class="social-chat__conversation-body">
+                                <div class="social-chat__conversation-main">
+                                    <strong>Nuevo grupo</strong>
+                                </div>
+                                <small>Crear un grupo con tus amistades activas</small>
+                            </div>
+                        </button>
+
+                        <button
+                            type="button"
+                            class="social-chat__conversation"
+                            *ngFor="let conversation of filteredConversations; trackBy: trackByConversationId"
+                            [class.social-chat__conversation--active]="messageComposerMode === 'conversation' && conversation.conversationId === activeConversation?.conversationId"
+                            (click)="selectConversation(conversation)">
+                            <div class="social-chat__conversation-avatar" *ngIf="isConversationAvatarVisible(conversation)">
+                                <img [src]="getConversationAvatarUrl(conversation)" [alt]="getConversationLabel(conversation)">
+                            </div>
+                            <div class="social-chat__conversation-avatar social-chat__conversation-avatar--system" *ngIf="!isConversationAvatarVisible(conversation)">
+                                <mat-icon>{{getConversationTypeIcon(conversation)}}</mat-icon>
+                            </div>
+                            <div class="social-chat__conversation-body">
+                                <div class="social-chat__conversation-main">
+                                    <strong>{{getConversationLabel(conversation)}}</strong>
+                                    <span class="social-chat__badge" *ngIf="isConversationTypeBadgeVisible(conversation)">{{getConversationTypeLabel(conversation)}}</span>
+                                </div>
+                                <small>{{getConversationPreview(conversation)}}</small>
+                            </div>
+                            <span class="social-chat__unread" *ngIf="conversation.unreadCount > 0">{{conversation.unreadCount}}</span>
+                        </button>
+
+                        <div class="social-empty social-empty--inline social-empty--compact" *ngIf="filteredConversations.length < 1 && messageComposerMode === 'conversation'">
+                            <mat-icon>forum</mat-icon>
+                            <p>No hay conversaciones para ese filtro.</p>
+                        </div>
+                    </aside>
+
+                    <div class="social-chat__divider" aria-hidden="true"></div>
+
+                    <article class="social-chat__detail" *ngIf="messageComposerMode === 'new-direct' || messageComposerMode === 'new-group' || activeConversation; else noConversation">
+                        <div class="social-chat__frame">
+                            <ng-container *ngIf="messageComposerMode === 'new-direct'; else groupComposerOrConversation">
+                                <div class="social-chat__search-mode">
+                                    <mat-form-field appearance="outline" class="social-search__field">
+                                        <mat-label>Buscar para abrir directo</mat-label>
+                                        <input
+                                            matInput
+                                            [(ngModel)]="newDirectSearchQuery"
+                                            (ngModelChange)="onNewDirectQueryChange()"
+                                            placeholder="Nombre visible">
+                                    </mat-form-field>
+
+                                    <p class="social-inline-hint" *ngIf="!newDirectSearchHasMinimumQuery">Escribe al menos 2 caracteres. Solo se muestran usuarios que también aceptan directos sin amistad.</p>
+                                    <p class="social-inline-hint" *ngIf="newDirectSearchLoading">Buscando usuarios...</p>
+                                    <p class="social-inline-error" *ngIf="newDirectSearchErrorMessage">{{newDirectSearchErrorMessage}}</p>
+
+                                    <div class="social-user-list" *ngIf="visibleNewDirectResults.length > 0">
+                                        <article class="social-user-card social-user-card--compact" *ngFor="let user of visibleNewDirectResults; trackBy: trackByUid">
+                                            <div class="social-user-card__main social-user-card__main--with-avatar">
+                                                <button type="button" class="social-avatar-link social-avatar-link--medium" (click)="viewPublicProfile(user)">
+                                                    <img [src]="getUserAvatarUrl(user)" [alt]="getUserLabel(user)">
+                                                </button>
+                                                <div class="social-user-card__copy">
+                                                    <strong>{{getUserLabel(user)}}</strong>
+                                                    <span class="social-user-card__meta">Acepta directos sin amistad</span>
+                                                </div>
+                                            </div>
+                                            <div class="social-user-card__actions">
+                                                <button mat-stroked-button color="primary" (click)="viewPublicProfile(user)">Perfil</button>
+                                                <button mat-stroked-button (click)="openDirectFromSearch(user)">Abrir chat</button>
+                                            </div>
+                                        </article>
+                                    </div>
+
+                                    <div class="social-empty social-empty--inline" *ngIf="newDirectSearchHasMinimumQuery && !newDirectSearchLoading && visibleNewDirectResults.length < 1">
+                                        <mat-icon>person_off</mat-icon>
+                                        <p>No hay usuarios disponibles con esas condiciones.</p>
+                                    </div>
+                                </div>
+                            </ng-container>
+
+                            <ng-template #groupComposerOrConversation>
+                                <ng-container *ngIf="messageComposerMode === 'new-group'; else socialConversationMode">
+                                    <div class="social-chat__search-mode">
+                                        <div class="social-chat__group-builder">
+                                            <mat-form-field appearance="outline" class="social-search__field">
+                                                <mat-label>Nombre del grupo</mat-label>
+                                                <input
+                                                    matInput
+                                                    [(ngModel)]="newGroupDraft.title"
+                                                    placeholder="Nombre visible del grupo">
+                                            </mat-form-field>
+
+                                            <mat-form-field appearance="outline" class="social-search__field">
+                                                <mat-label>Filtrar amistades</mat-label>
+                                                <input
+                                                    matInput
+                                                    [(ngModel)]="newGroupParticipantQuery"
+                                                    placeholder="Nombre visible">
+                                            </mat-form-field>
+
+                                            <p class="social-inline-hint">
+                                                Selecciona al menos una amistad activa para crear el grupo. Tu usuario se añadirá como admin automáticamente.
+                                            </p>
+
+                                            <div class="social-chat__selection-summary" *ngIf="newGroupDraft.participantUids.length > 0">
+                                                {{newGroupDraft.participantUids.length}} participante(s) seleccionado(s)
+                                            </div>
+
+                                            <div class="social-user-list" *ngIf="visibleNewGroupFriends.length > 0">
+                                                <article class="social-user-card social-user-card--compact" *ngFor="let friend of visibleNewGroupFriends; trackBy: trackByUid">
+                                                    <div class="social-user-card__main social-user-card__main--with-avatar">
+                                                        <button type="button" class="social-avatar-link social-avatar-link--medium" (click)="viewPublicProfile(friend)">
+                                                            <img [src]="getUserAvatarUrl(friend)" [alt]="getUserLabel(friend)">
+                                                        </button>
+                                                        <div class="social-user-card__copy">
+                                                            <strong>{{getUserLabel(friend)}}</strong>
+                                                            <span class="social-user-card__meta">
+                                                                {{isNewGroupParticipantSelected(friend.uid) ? 'Seleccionado para el grupo' : 'Amistad activa'}}
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                    <div class="social-user-card__actions">
+                                                        <button mat-stroked-button color="primary" (click)="viewPublicProfile(friend)">Perfil</button>
+                                                        <button mat-stroked-button (click)="toggleNewGroupParticipant(friend)">
+                                                            {{isNewGroupParticipantSelected(friend.uid) ? 'Quitar' : 'Seleccionar'}}
+                                                        </button>
+                                                    </div>
+                                                </article>
+                                            </div>
+
+                                            <div class="social-empty social-empty--inline" *ngIf="visibleNewGroupFriends.length < 1">
+                                                <mat-icon>group_off</mat-icon>
+                                                <p>No hay amistades disponibles con ese filtro.</p>
+                                            </div>
+
+                                            <div class="social-chat__builder-actions">
+                                                <button mat-raised-button color="primary" (click)="createGroup()" [disabled]="!canSubmitNewGroup">
+                                                    {{newGroupSaving ? 'Creando...' : 'Crear grupo'}}
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </ng-container>
+                            </ng-template>
+
+                            <ng-template #socialConversationMode>
+                                <div class="social-chat__header" *ngIf="activeConversation">
+                                    <div class="social-chat__participants" *ngIf="activeParticipants.length > 0">
+                                        <ng-container *ngFor="let participant of activeParticipants">
+                                            <button
+                                                type="button"
+                                                class="social-chip"
+                                                *ngIf="canLinkParticipant(participant); else readonlyParticipantChip"
+                                                [class.social-chip--warm]="participant.participantRole === 'admin'"
+                                                (click)="openParticipantProfile(participant)">
+                                                <span class="social-chip__avatar">
+                                                    <img [src]="getParticipantAvatarUrl(participant)" [alt]="getParticipantLabel(participant)">
+                                                </span>
+                                                <span>{{getParticipantLabel(participant)}}</span>
+                                            </button>
+                                            <ng-template #readonlyParticipantChip>
+                                                <span class="social-chip" [class.social-chip--warm]="participant.participantRole === 'admin'">
+                                                    <span class="social-chip__avatar social-chip__avatar--system">
+                                                        <mat-icon>{{participant.isSystemUser ? 'campaign' : 'person'}}</mat-icon>
+                                                    </span>
+                                                    <span>{{getParticipantLabel(participant)}}</span>
+                                                </span>
+                                            </ng-template>
+                                        </ng-container>
+                                    </div>
+
+                                    <div class="social-chat__detail-meta" *ngIf="activeConversation.isSystemConversation">
+                                        Canal de solo lectura de Yosiftware.
+                                    </div>
+                                    <div class="social-chat__detail-meta" *ngIf="!activeConversation.isSystemConversation && !activeConversation.canSend">
+                                        No puedes enviar mensajes en esta conversación ahora mismo.
+                                    </div>
+                                    <div class="social-chat__detail-meta" *ngIf="activeConversation.type === 'campaign'">
+                                        Chat principal de campaña integrado en Social.
+                                    </div>
+                                    <div class="social-chat__admin-panel" *ngIf="canManageActiveGroup">
+                                        <div class="social-chat__admin-grid">
+                                            <article class="social-panel social-chat__admin-card">
+                                                <h3>Renombrar grupo</h3>
+                                                <div class="social-chat__inline-form">
+                                                    <mat-form-field appearance="outline" class="social-search__field">
+                                                        <mat-label>Nombre del grupo</mat-label>
+                                                        <input matInput [(ngModel)]="groupRenameDraft" placeholder="Nombre visible del grupo">
+                                                    </mat-form-field>
+                                                    <button mat-raised-button color="primary" (click)="saveActiveGroupName()" [disabled]="groupRenameSaving">
+                                                        {{groupRenameSaving ? 'Guardando...' : 'Guardar nombre'}}
+                                                    </button>
+                                                </div>
+                                            </article>
+
+                                            <article class="social-panel social-chat__admin-card">
+                                                <h3>Añadir amistades</h3>
+                                                <mat-form-field appearance="outline" class="social-search__field">
+                                                    <mat-label>Filtrar amistades</mat-label>
+                                                    <input matInput [(ngModel)]="groupParticipantQuery" placeholder="Nombre visible">
+                                                </mat-form-field>
+                                                <div class="social-user-list social-user-list--compact" *ngIf="visibleGroupAddCandidates.length > 0">
+                                                    <article class="social-user-card social-user-card--compact" *ngFor="let friend of visibleGroupAddCandidates; trackBy: trackByUid">
+                                                        <div class="social-user-card__main social-user-card__main--with-avatar">
+                                                            <button type="button" class="social-avatar-link social-avatar-link--medium" (click)="viewPublicProfile(friend)">
+                                                                <img [src]="getUserAvatarUrl(friend)" [alt]="getUserLabel(friend)">
+                                                            </button>
+                                                            <div class="social-user-card__copy">
+                                                                <strong>{{getUserLabel(friend)}}</strong>
+                                                                <span class="social-user-card__meta">Amistad activa</span>
+                                                            </div>
+                                                        </div>
+                                                        <div class="social-user-card__actions">
+                                                            <button mat-stroked-button color="primary" (click)="addFriendToActiveGroup(friend)" [disabled]="groupParticipantSavingUid === friend.uid">
+                                                                {{groupParticipantSavingUid === friend.uid ? 'Añadiendo...' : 'Añadir'}}
+                                                            </button>
+                                                        </div>
+                                                    </article>
+                                                </div>
+                                                <p class="social-inline-hint" *ngIf="visibleGroupAddCandidates.length < 1">
+                                                    No hay amistades elegibles para añadir al grupo.
+                                                </p>
+                                            </article>
+
+                                            <article class="social-panel social-chat__admin-card">
+                                                <h3>Participantes retirables</h3>
+                                                <div class="social-user-list social-user-list--compact" *ngIf="removableGroupParticipants.length > 0">
+                                                    <article class="social-user-card social-user-card--compact" *ngFor="let participant of removableGroupParticipants; trackBy: trackByParticipantUid">
+                                                        <div class="social-user-card__main social-user-card__main--with-avatar">
+                                                            <button type="button" class="social-avatar-link social-avatar-link--medium" (click)="openParticipantProfile(participant)">
+                                                                <img [src]="getParticipantAvatarUrl(participant)" [alt]="getParticipantLabel(participant)">
+                                                            </button>
+                                                            <div class="social-user-card__copy">
+                                                                <strong>{{getParticipantLabel(participant)}}</strong>
+                                                                <span class="social-user-card__meta">{{participant.participantRole === 'admin' ? 'Admin' : 'Miembro'}}</span>
+                                                            </div>
+                                                        </div>
+                                                        <div class="social-user-card__actions">
+                                                            <button mat-stroked-button color="warn" (click)="removeParticipantFromActiveGroup(participant)" [disabled]="groupParticipantRemovingUid === participant.uid">
+                                                                {{groupParticipantRemovingUid === participant.uid ? 'Retirando...' : 'Retirar'}}
+                                                            </button>
+                                                        </div>
+                                                    </article>
+                                                </div>
+                                                <p class="social-inline-hint" *ngIf="removableGroupParticipants.length < 1">
+                                                    No hay participantes retirables ahora mismo.
+                                                </p>
+                                            </article>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <button mat-stroked-button class="social-chat__load-more" *ngIf="canLoadMoreMessages" (click)="loadPreviousMessages()">Cargar anteriores</button>
+                                <p class="social-inline-error" *ngIf="activeConversationError">{{activeConversationError}}</p>
+
+                                <div class="social-chat__messages">
+                                    <article
+                                        class="social-chat__message-row"
+                                        *ngFor="let message of activeMessages; trackBy: trackByMessageId"
+                                        [class.social-chat__message-row--own]="isOwnMessage(message)"
+                                        [class.social-chat__message-row--system]="message.sender.isSystemUser">
+                                        <button
+                                            type="button"
+                                            class="social-avatar-link social-avatar-link--small"
+                                            *ngIf="canLinkMessageSender(message); else messageAvatarReadonly"
+                                            (click)="openMessageSenderProfile(message)">
+                                            <img [src]="getMessageSenderAvatarUrl(message)" [alt]="getMessageSenderLabel(message)">
+                                        </button>
+                                        <ng-template #messageAvatarReadonly>
+                                            <div class="social-avatar-link social-avatar-link--small social-avatar-link--readonly">
+                                                <mat-icon>{{message.sender.isSystemUser ? 'campaign' : 'person'}}</mat-icon>
+                                            </div>
+                                        </ng-template>
+
+                                        <div
+                                            class="social-chat__message"
+                                            [class.social-chat__message--own]="isOwnMessage(message)"
+                                            [class.social-chat__message--system]="message.sender.isSystemUser">
+                                            <strong>{{getMessageSenderLabel(message)}}</strong>
+                                            <p>{{message.body}}</p>
+                                        </div>
+                                    </article>
+                                </div>
+
+                                <div class="social-chat__composer" *ngIf="activeConversation">
+                                    <mat-form-field appearance="outline" class="social-chat__composer-field">
+                                        <mat-label>Mensaje</mat-label>
+                                        <textarea
+                                            matInput
+                                            rows="3"
+                                            [(ngModel)]="sendDraft"
+                                            [disabled]="!activeConversation.canSend || sendingMessage">
+                                        </textarea>
+                                    </mat-form-field>
+                                    <button mat-raised-button color="primary" (click)="sendMessage()" [disabled]="!activeConversation.canSend || sendingMessage || sendDraft.trim().length < 1">
+                                        Enviar
+                                    </button>
+                                </div>
+                            </ng-template>
+                        </div>
+                    </article>
+                    <ng-template #noConversation>
+                        <div class="social-empty">
+                            <mat-icon>mark_chat_unread</mat-icon>
+                            <p>Selecciona una conversación para ver el historial.</p>
+                        </div>
+                    </ng-template>
+                </div>
+            </section>
+        </main>
+    </div>
+</section>
