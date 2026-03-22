@@ -47,4 +47,31 @@ describe('SocialApiService', () => {
             limit: '12',
         });
     });
+
+    it('listFriends usa Firestore privado cuando el read model esta disponible', async () => {
+        const httpMock = jasmine.createSpyObj('HttpClient', ['get', 'post', 'patch', 'delete']);
+        const privateUserFirestoreSvcMock = {
+            listFriends: jasmine.createSpy('listFriends').and.resolveTo({
+                items: [{
+                    uid: 'uid-2',
+                    displayName: 'Yuna',
+                    photoThumbUrl: null,
+                    allowDirectMessagesFromNonFriends: true,
+                    friendsSince: '2026-03-15T10:00:00.000Z',
+                }],
+                meta: {
+                    totalCount: 1,
+                    limit: 25,
+                    offset: 0,
+                    hasMore: false,
+                },
+            }),
+        };
+        const service = new SocialApiService(httpMock, authMock, privateUserFirestoreSvcMock as any);
+
+        const result = await service.listFriends();
+
+        expect(result.items[0].uid).toBe('uid-2');
+        expect(httpMock.get).not.toHaveBeenCalled();
+    });
 });

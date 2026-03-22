@@ -1,5 +1,6 @@
 export const environment = {
     production: false,
+    firestoreDatabaseId: 'fichas-rol',
     firebase: {
         projectId: 'yosiftware-fichas',
         appId: '1:89131912577:web:e44115b5692471f58eec80',
@@ -11,6 +12,7 @@ export const environment = {
         messagingSenderId: '89131912577',
     },
 
-    //apiUrl: 'http://88.8.78.136:5000/'
-    apiUrl: 'http://127.0.0.1:5000/'
+    // apiUrl: 'http://88.8.92.76:5000/'
+    // apiUrl: 'http://127.0.0.1:5000/'
+    apiUrl: 'https://fichas-api.yosiftware.es/'
 }

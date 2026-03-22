@@ -76,6 +76,12 @@ export class SocialHubComponent implements OnInit, OnChanges, OnDestroy {
     private searchTimer: number | null = null;
     private newDirectSearchTimer: number | null = null;
     private pendingConversationId: number | null = null;
+    private friendsWatchStop: (() => void) | null = null;
+    private receivedRequestsWatchStop: (() => void) | null = null;
+    private sentRequestsWatchStop: (() => void) | null = null;
+    private socialRealtimeActive = false;
+    private readonly readReceiptAckByConversation = new Map<number, number>();
+    private readonly readReceiptInFlightByConversation = new Map<number, number>();
 
     readonly sections: { id: SocialHubSectionId; label: string; icon: string; }[] = [
         { id: 'resumen', label: 'Resumen', icon: 'hub' },
@@ -134,6 +140,17 @@ export class SocialHubComponent implements OnInit, OnChanges, OnDestroy {
         this.chatRealtimeSvc.unreadSystemCount$
             .pipe(takeUntil(this.destroy$))
             .subscribe((count) => this.unreadSystemCount = count);
+        this.chatRealtimeSvc.messageRead$
+            .pipe(takeUntil(this.destroy$))
+            .subscribe((payload) => {
+                if (`${payload?.uid ?? ''}`.trim() !== this.userSvc.CurrentUserUid)
+                    return;
+                const conversationId = this.toPositiveInt(payload?.conversationId);
+                const lastReadMessageId = this.toPositiveInt(payload?.lastReadMessageId);
+                if (!conversationId || !lastReadMessageId)
+                    return;
+                this.rememberReadReceiptAck(conversationId, lastReadMessageId);
+            });
         this.chatRealtimeSvc.messageCreated$
             .pipe(takeUntil(this.destroy$))
             .subscribe((message) => {
@@ -156,6 +173,7 @@ export class SocialHubComponent implements OnInit, OnChanges, OnDestroy {
     ngOnDestroy(): void {
         this.destroy$.next();
         this.destroy$.complete();
+        this.stopSocialSubscriptions();
         this.chatRealtimeSvc.setActiveConversationId(null);
         if (this.searchTimer !== null)
             window.clearTimeout(this.searchTimer);
@@ -874,9 +892,10 @@ export class SocialHubComponent implements OnInit, OnChanges, OnDestroy {
 
     private async loadAuthenticatedState(): Promise<void> {
         this.loading = true;
+        this.startSocialSubscriptions();
         try {
             await Promise.all([
-                this.reloadSocialLists('all'),
+                this.reloadSocialLists(this.socialRealtimeActive ? 'blocks' : 'all'),
                 this.chatRealtimeSvc.refreshConversations(true),
                 this.userSettingsSvc.loadProfileSettings()
                     .then((settings) => this.actorAllowsNonFriendDM = settings.allowDirectMessagesFromNonFriends === true)
@@ -890,6 +909,9 @@ export class SocialHubComponent implements OnInit, OnChanges, OnDestroy {
     }
 
     private resetAuthenticatedState(): void {
+        this.stopSocialSubscriptions();
+        this.readReceiptAckByConversation.clear();
+        this.readReceiptInFlightByConversation.clear();
         this.friends = [];
         this.receivedRequests = [];
         this.sentRequests = [];
@@ -917,21 +939,58 @@ export class SocialHubComponent implements OnInit, OnChanges, OnDestroy {
 
         const tasks: Promise<any>[] = [];
         if (scope === 'all') {
-            tasks.push(
-                this.socialApiSvc.listFriends().then((result) => this.friends = result.items),
-                this.socialApiSvc.listReceivedFriendRequests().then((result) => this.receivedRequests = result.items.filter((item) => item.status === 'pending')),
-                this.socialApiSvc.listSentFriendRequests().then((result) => this.sentRequests = result.items.filter((item) => item.status === 'pending')),
-                this.socialApiSvc.listBlocks().then((items) => this.blocks = items),
-            );
+            if (!this.socialRealtimeActive) {
+                tasks.push(
+                    this.socialApiSvc.listFriends().then((result) => this.friends = result.items),
+                    this.socialApiSvc.listReceivedFriendRequests().then((result) => this.receivedRequests = result.items.filter((item) => item.status === 'pending')),
+                    this.socialApiSvc.listSentFriendRequests().then((result) => this.sentRequests = result.items.filter((item) => item.status === 'pending')),
+                );
+            }
+            tasks.push(this.socialApiSvc.listBlocks().then((items) => this.blocks = items));
         } else if (scope === 'requests') {
-            tasks.push(
-                this.socialApiSvc.listReceivedFriendRequests().then((result) => this.receivedRequests = result.items.filter((item) => item.status === 'pending')),
-                this.socialApiSvc.listSentFriendRequests().then((result) => this.sentRequests = result.items.filter((item) => item.status === 'pending')),
-            );
+            if (!this.socialRealtimeActive) {
+                tasks.push(
+                    this.socialApiSvc.listReceivedFriendRequests().then((result) => this.receivedRequests = result.items.filter((item) => item.status === 'pending')),
+                    this.socialApiSvc.listSentFriendRequests().then((result) => this.sentRequests = result.items.filter((item) => item.status === 'pending')),
+                );
+            }
         } else {
             tasks.push(this.socialApiSvc.listBlocks().then((items) => this.blocks = items));
         }
         await Promise.all(tasks);
+    }
+
+    private startSocialSubscriptions(): void {
+        this.stopSocialSubscriptions();
+        this.socialRealtimeActive = false;
+
+        const friendsWatch = this.socialApiSvc.watchFriends(
+            (result) => this.friends = result.items,
+            () => void this.reloadSocialLists('all')
+        );
+        const receivedWatch = this.socialApiSvc.watchReceivedFriendRequests(
+            (result) => this.receivedRequests = result.items.filter((item) => item.status === 'pending'),
+            () => void this.reloadSocialLists('requests')
+        );
+        const sentWatch = this.socialApiSvc.watchSentFriendRequests(
+            (result) => this.sentRequests = result.items.filter((item) => item.status === 'pending'),
+            () => void this.reloadSocialLists('requests')
+        );
+
+        this.friendsWatchStop = friendsWatch;
+        this.receivedRequestsWatchStop = receivedWatch;
+        this.sentRequestsWatchStop = sentWatch;
+        this.socialRealtimeActive = !!friendsWatch || !!receivedWatch || !!sentWatch;
+    }
+
+    private stopSocialSubscriptions(): void {
+        this.friendsWatchStop?.();
+        this.receivedRequestsWatchStop?.();
+        this.sentRequestsWatchStop?.();
+        this.friendsWatchStop = null;
+        this.receivedRequestsWatchStop = null;
+        this.sentRequestsWatchStop = null;
+        this.socialRealtimeActive = false;
     }
 
     private async tryOpenPendingConversation(): Promise<void> {
@@ -954,12 +1013,40 @@ export class SocialHubComponent implements OnInit, OnChanges, OnDestroy {
         if (!conversation || !lastMessage)
             return;
 
+        const conversationId = this.toPositiveInt(conversation.conversationId);
+        const lastMessageId = this.toPositiveInt(lastMessage.messageId);
+        if (!conversationId || !lastMessageId)
+            return;
+        if (!this.shouldSendReadReceipt(conversationId, lastMessageId))
+            return;
+
+        this.readReceiptInFlightByConversation.set(conversationId, lastMessageId);
+
         try {
-            await this.chatApiSvc.markAsRead(conversation.conversationId, lastMessage.messageId);
-            this.chatRealtimeSvc.markConversationReadLocally(conversation.conversationId);
+            await this.chatApiSvc.markAsRead(conversationId, lastMessageId);
+            this.rememberReadReceiptAck(conversationId, lastMessageId);
+            this.chatRealtimeSvc.markConversationReadLocally(conversationId);
         } catch {
-            // best effort
+            const pending = this.readReceiptInFlightByConversation.get(conversationId) ?? 0;
+            if (pending <= lastMessageId)
+                this.readReceiptInFlightByConversation.delete(conversationId);
         }
+    }
+
+    private shouldSendReadReceipt(conversationId: number, messageId: number): boolean {
+        const ack = this.readReceiptAckByConversation.get(conversationId) ?? 0;
+        const inFlight = this.readReceiptInFlightByConversation.get(conversationId) ?? 0;
+        return messageId > ack && messageId > inFlight;
+    }
+
+    private rememberReadReceiptAck(conversationId: number, messageId: number): void {
+        const currentAck = this.readReceiptAckByConversation.get(conversationId) ?? 0;
+        if (messageId > currentAck)
+            this.readReceiptAckByConversation.set(conversationId, messageId);
+
+        const pending = this.readReceiptInFlightByConversation.get(conversationId) ?? 0;
+        if (pending <= messageId)
+            this.readReceiptInFlightByConversation.delete(conversationId);
     }
 
     private applyOpenRequest(request: SocialHubOpenRequest | null): void {

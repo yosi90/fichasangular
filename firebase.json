@@ -13,6 +13,13 @@
       }
     ]
   },
+  "firestore": [
+    {
+      "database": "fichas-rol",
+      "rules": "firestore.fichas-rol.rules",
+      "indexes": "firestore.fichas-rol.indexes.json"
+    }
+  ],
   "database": {
     "rules": "database.rules.json"
   }

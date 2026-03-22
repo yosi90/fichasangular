@@ -35,6 +35,63 @@ describe('UserProfileApiService', () => {
         expect(options.headers.get('Authorization')).toBe('Bearer token-settings');
     });
 
+    it('getMyProfile usa Firestore privado cuando el read model esta disponible', async () => {
+        const httpMock = jasmine.createSpyObj('HttpClient', ['get', 'put', 'post', 'patch']);
+        const privateUserFirestoreSvcMock = {
+            getMyProfile: jasmine.createSpy('getMyProfile').and.resolveTo({
+                uid: 'uid-firestore',
+                displayName: 'Perfil privado',
+                bio: 'Bio',
+                genderIdentity: null,
+                pronouns: null,
+                email: 'perfil@test.dev',
+                emailVerified: true,
+                authProvider: 'correo',
+                photoUrl: null,
+                photoThumbUrl: null,
+                createdAt: null,
+                lastSeenAt: null,
+                role: 'jugador',
+                permissions: {
+                    personajes: { create: true },
+                },
+            }),
+        };
+        const service = new UserProfileApiService(httpMock, authMock, privateUserFirestoreSvcMock as any);
+
+        const profile = await service.getMyProfile();
+
+        expect(profile.uid).toBe('uid-firestore');
+        expect(profile.permissions['personajes']?.create).toBeTrue();
+        expect(httpMock.get).not.toHaveBeenCalled();
+    });
+
+    it('getMySettings usa Firestore privado cuando el read model esta disponible', async () => {
+        const httpMock = jasmine.createSpyObj('HttpClient', ['get', 'put', 'post', 'patch']);
+        const privateUserFirestoreSvcMock = {
+            getMySettings: jasmine.createSpy('getMySettings').and.resolveTo({
+                version: 1,
+                nuevo_personaje: {
+                    generador_config: null,
+                    preview_minimizada: null,
+                    preview_restaurada: null,
+                },
+                perfil: {
+                    visibilidadPorDefectoPersonajes: true,
+                    mostrarPerfilPublico: false,
+                    allowDirectMessagesFromNonFriends: true,
+                },
+            }),
+        };
+        const service = new UserProfileApiService(httpMock, authMock, privateUserFirestoreSvcMock as any);
+
+        const settings = await service.getMySettings();
+
+        expect(settings.perfil.mostrarPerfilPublico).toBeFalse();
+        expect(settings.perfil.allowDirectMessagesFromNonFriends).toBeTrue();
+        expect(httpMock.get).not.toHaveBeenCalled();
+    });
+
     it('replaceMySettings hace round-trip del flag allowDirectMessagesFromNonFriends', async () => {
         const httpMock = jasmine.createSpyObj('HttpClient', ['get', 'put', 'post', 'patch']);
         httpMock.put.and.callFake((_url: string, body: any) => of(body));

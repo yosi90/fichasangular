@@ -1,0 +1,638 @@
+import { Injectable } from '@angular/core';
+import { Auth } from '@angular/fire/auth';
+import {
+    Firestore,
+    collection,
+    doc,
+    getDoc,
+    getDocs,
+    onSnapshot,
+} from '@angular/fire/firestore';
+import { UserPrivateProfile } from '../interfaces/user-account';
+import { UserSettingsV1, createDefaultUserSettings } from '../interfaces/user-settings';
+import {
+    FriendItem,
+    FriendRequestItem,
+    PagedListMeta,
+    PagedListResult,
+    SocialUserBasic,
+} from '../interfaces/social';
+import { CampaignListItem } from '../interfaces/campaign-management';
+import { PersonajeSimple } from '../interfaces/simplificaciones/personaje-simple';
+import { AuthProviderType } from '../interfaces/user-profile';
+import { UserRole } from '../interfaces/user-acl';
+import { FirebaseInjectionContextService } from './firebase-injection-context.service';
+
+type FriendRequestDirection = 'sent' | 'received';
+
+@Injectable({
+    providedIn: 'root'
+})
+export class PrivateUserFirestoreService {
+    constructor(
+        private auth: Auth,
+        private firestore: Firestore,
+        private firebaseContextSvc: FirebaseInjectionContextService
+    ) { }
+
+    async getMyProfile(): Promise<UserPrivateProfile | null> {
+        const uid = this.getCurrentUid();
+        if (!uid)
+            return null;
+
+        const profileRef = this.buildProfileDocRef(uid);
+        const snapshot = await this.firebaseContextSvc.run(() => getDoc(profileRef));
+        return this.mapPrivateProfile(snapshot.exists() ? snapshot.data() : null, uid);
+    }
+
+    watchMyProfile(
+        next: (profile: UserPrivateProfile | null) => void,
+        onError?: (error: unknown) => void
+    ): () => void {
+        const uid = this.getCurrentUid();
+        if (!uid) {
+            next(null);
+            return () => undefined;
+        }
+
+        return this.firebaseContextSvc.run(() => onSnapshot(
+            this.buildProfileDocRef(uid),
+            (snapshot) => next(this.mapPrivateProfile(snapshot.exists() ? snapshot.data() : null, uid)),
+            (error) => onError?.(error)
+        ));
+    }
+
+    async getMySettings(): Promise<UserSettingsV1 | null> {
+        const uid = this.getCurrentUid();
+        if (!uid)
+            return null;
+
+        const settingsRef = this.buildSettingsDocRef(uid);
+        const snapshot = await this.firebaseContextSvc.run(() => getDoc(settingsRef));
+        return this.mapSettings(snapshot.exists() ? snapshot.data() : null);
+    }
+
+    watchFriends(
+        next: (result: PagedListResult<FriendItem>) => void,
+        onError?: (error: unknown) => void,
+        limit: number = 25,
+        offset: number = 0
+    ): () => void {
+        return this.watchPagedCollection(
+            'friends',
+            limit,
+            offset,
+            (raw, docId) => this.mapFriendItem(raw, docId),
+            (a, b) => this.compareText(a.displayName ?? a.uid, b.displayName ?? b.uid),
+            next,
+            onError
+        );
+    }
+
+    async listFriends(limit: number = 25, offset: number = 0): Promise<PagedListResult<FriendItem>> {
+        return this.listPagedCollection(
+            'friends',
+            limit,
+            offset,
+            (raw, docId) => this.mapFriendItem(raw, docId),
+            (a, b) => this.compareText(a.displayName ?? a.uid, b.displayName ?? b.uid)
+        );
+    }
+
+    async listFriendRequests(
+        direction: FriendRequestDirection,
+        limit: number = 25,
+        offset: number = 0
+    ): Promise<PagedListResult<FriendRequestItem>> {
+        const path = direction === 'received'
+            ? 'friend_requests_received'
+            : 'friend_requests_sent';
+
+        return this.listPagedCollection(
+            path,
+            limit,
+            offset,
+            (raw, docId) => this.mapFriendRequestItem(raw, docId, direction),
+            (a, b) => this.toDateMs(b.createdAtUtc) - this.toDateMs(a.createdAtUtc)
+        );
+    }
+
+    watchFriendRequests(
+        direction: FriendRequestDirection,
+        next: (result: PagedListResult<FriendRequestItem>) => void,
+        onError?: (error: unknown) => void,
+        limit: number = 25,
+        offset: number = 0
+    ): () => void {
+        const path = direction === 'received'
+            ? 'friend_requests_received'
+            : 'friend_requests_sent';
+
+        return this.watchPagedCollection(
+            path,
+            limit,
+            offset,
+            (raw, docId) => this.mapFriendRequestItem(raw, docId, direction),
+            (a, b) => this.toDateMs(b.createdAtUtc) - this.toDateMs(a.createdAtUtc),
+            next,
+            onError
+        );
+    }
+
+    async listCampaigns(): Promise<CampaignListItem[]> {
+        const uid = this.getCurrentUid();
+        if (!uid)
+            return [];
+
+        const snapshot = await this.firebaseContextSvc.run(() => getDocs(
+            collection(this.firestore, 'private_users', uid, 'campaigns')
+        ));
+
+        return snapshot.docs
+            .map((item) => this.mapCampaignSummary(item.data(), item.id))
+            .filter((item): item is CampaignListItem => item !== null)
+            .sort((a, b) => this.compareText(a.nombre, b.nombre));
+    }
+
+    watchCampaigns(
+        next: (items: CampaignListItem[]) => void,
+        onError?: (error: unknown) => void
+    ): () => void {
+        const uid = this.getCurrentUid();
+        if (!uid) {
+            next([]);
+            return () => undefined;
+        }
+
+        return this.firebaseContextSvc.run(() => onSnapshot(
+            collection(this.firestore, 'private_users', uid, 'campaigns'),
+            (snapshot) => {
+                const items = snapshot.docs
+                    .map((item) => this.mapCampaignSummary(item.data(), item.id))
+                    .filter((item): item is CampaignListItem => item !== null)
+                    .sort((a, b) => this.compareText(a.nombre, b.nombre));
+                next(items);
+            },
+            (error) => onError?.(error)
+        ));
+    }
+
+    async listCharacters(): Promise<PersonajeSimple[]> {
+        const uid = this.getCurrentUid();
+        if (!uid)
+            return [];
+
+        const snapshot = await this.firebaseContextSvc.run(() => getDocs(
+            collection(this.firestore, 'private_users', uid, 'characters')
+        ));
+
+        return snapshot.docs
+            .map((item) => this.mapCharacter(item.data(), item.id))
+            .filter((item): item is PersonajeSimple => item !== null)
+            .sort((a, b) => this.compareText(a.Nombre, b.Nombre));
+    }
+
+    watchCharacters(
+        next: (items: PersonajeSimple[]) => void,
+        onError?: (error: unknown) => void
+    ): () => void {
+        const uid = this.getCurrentUid();
+        if (!uid) {
+            next([]);
+            return () => undefined;
+        }
+
+        return this.firebaseContextSvc.run(() => onSnapshot(
+            collection(this.firestore, 'private_users', uid, 'characters'),
+            (snapshot) => {
+                const items = snapshot.docs
+                    .map((item) => this.mapCharacter(item.data(), item.id))
+                    .filter((item): item is PersonajeSimple => item !== null)
+                    .sort((a, b) => this.compareText(a.Nombre, b.Nombre));
+                next(items);
+            },
+            (error) => onError?.(error)
+        ));
+    }
+
+    private async listPagedCollection<T>(
+        collectionName: string,
+        limit: number,
+        offset: number,
+        mapper: (raw: any, docId: string) => T | null,
+        sorter: (a: T, b: T) => number
+    ): Promise<PagedListResult<T>> {
+        const uid = this.getCurrentUid();
+        if (!uid)
+            return this.buildPagedResult([], limit, offset);
+
+        const snapshot = await this.firebaseContextSvc.run(() => getDocs(
+            collection(this.firestore, 'private_users', uid, collectionName)
+        ));
+        const items = snapshot.docs
+            .map((item) => mapper(item.data(), item.id))
+            .filter((item): item is T => item !== null)
+            .sort(sorter);
+
+        return this.buildPagedResult(items, limit, offset);
+    }
+
+    private watchPagedCollection<T>(
+        collectionName: string,
+        limit: number,
+        offset: number,
+        mapper: (raw: any, docId: string) => T | null,
+        sorter: (a: T, b: T) => number,
+        next: (result: PagedListResult<T>) => void,
+        onError?: (error: unknown) => void
+    ): () => void {
+        const uid = this.getCurrentUid();
+        if (!uid) {
+            next(this.buildPagedResult([], limit, offset));
+            return () => undefined;
+        }
+
+        return this.firebaseContextSvc.run(() => onSnapshot(
+            collection(this.firestore, 'private_users', uid, collectionName),
+            (snapshot) => {
+                const items = snapshot.docs
+                    .map((item) => mapper(item.data(), item.id))
+                    .filter((item): item is T => item !== null)
+                    .sort(sorter);
+                next(this.buildPagedResult(items, limit, offset));
+            },
+            (error) => onError?.(error)
+        ));
+    }
+
+    private buildProfileDocRef(uid: string) {
+        return doc(this.firestore, 'private_users', uid, 'meta', 'profile');
+    }
+
+    private buildSettingsDocRef(uid: string) {
+        return doc(this.firestore, 'private_users', uid, 'meta', 'settings');
+    }
+
+    private getCurrentUid(): string {
+        return `${this.auth.currentUser?.uid ?? ''}`.trim();
+    }
+
+    private mapPrivateProfile(raw: any, fallbackUid: string): UserPrivateProfile {
+        const currentUser = this.auth.currentUser;
+        const fallbackEmail = this.toNullableText(currentUser?.email);
+        const fallbackDisplayName = this.toNullableText(currentUser?.displayName)
+            ?? this.fallbackDisplayName(fallbackEmail)
+            ?? 'Usuario';
+
+        return {
+            uid: this.toNullableText(raw?.uid) ?? fallbackUid,
+            displayName: this.toNullableText(raw?.displayName) ?? fallbackDisplayName,
+            bio: this.normalizeMultilineText(raw?.bio),
+            genderIdentity: this.toNullableText(raw?.genderIdentity),
+            pronouns: this.toNullableText(raw?.pronouns),
+            email: this.toNullableText(raw?.email) ?? fallbackEmail,
+            emailVerified: raw?.emailVerified === true || currentUser?.emailVerified === true,
+            authProvider: this.normalizeAuthProvider(raw?.authProvider, currentUser),
+            photoUrl: this.toNullableText(raw?.photoUrl),
+            photoThumbUrl: this.toNullableText(raw?.photoThumbUrl),
+            createdAt: this.toNullableText(raw?.createdAt),
+            lastSeenAt: this.toNullableText(raw?.lastSeenAt),
+            role: this.normalizeRole(raw?.role),
+            permissions: this.normalizePermissions(raw?.permissions),
+        };
+    }
+
+    private mapSettings(raw: any): UserSettingsV1 {
+        const base = createDefaultUserSettings();
+        if (!raw || typeof raw !== 'object')
+            return base;
+
+        return {
+            version: 1,
+            nuevo_personaje: {
+                generador_config: this.normalizeGeneradorConfig(raw?.nuevo_personaje?.generador_config),
+                preview_minimizada: this.normalizePreviewMinimizada(raw?.nuevo_personaje?.preview_minimizada),
+                preview_restaurada: this.normalizePreviewRestaurada(raw?.nuevo_personaje?.preview_restaurada),
+            },
+            perfil: {
+                visibilidadPorDefectoPersonajes: raw?.perfil?.visibilidadPorDefectoPersonajes === true,
+                mostrarPerfilPublico: raw?.perfil?.mostrarPerfilPublico !== false,
+                allowDirectMessagesFromNonFriends: raw?.perfil?.allowDirectMessagesFromNonFriends === true,
+            },
+        };
+    }
+
+    private mapFriendItem(raw: any, docId: string): FriendItem | null {
+        const user = this.mapSocialUserBasic(raw?.target ?? raw?.friend ?? raw, docId);
+        if (!user)
+            return null;
+
+        return {
+            ...user,
+            friendsSince: this.toNullableText(raw?.friendsSince ?? raw?.friendsSinceUtc ?? raw?.createdAtUtc ?? raw?.createdAt),
+        };
+    }
+
+    private mapFriendRequestItem(raw: any, docId: string, fallbackDirection: FriendRequestDirection): FriendRequestItem | null {
+        const requestId = this.toPositiveInt(raw?.requestId ?? raw?.id ?? docId) ?? 0;
+        const target = this.mapSocialUserBasic(
+            raw?.target ?? raw?.user ?? raw?.targetUser ?? raw?.counterpart ?? raw,
+            this.toNullableText(raw?.targetUid) ?? docId
+        );
+        if (!target)
+            return null;
+
+        const directionRaw = `${raw?.direction ?? fallbackDirection}`.trim().toLowerCase();
+        const statusRaw = `${raw?.status ?? ''}`.trim().toLowerCase();
+
+        return {
+            requestId,
+            direction: directionRaw === 'received' ? 'received' : 'sent',
+            status: statusRaw === 'accepted' || statusRaw === 'rejected' || statusRaw === 'canceled'
+                ? statusRaw
+                : 'pending',
+            createdAtUtc: this.toNullableText(raw?.createdAtUtc ?? raw?.createdAt ?? raw?.sentAtUtc),
+            target,
+        };
+    }
+
+    private mapSocialUserBasic(raw: any, fallbackUid: string): SocialUserBasic | null {
+        const uid = this.toNullableText(
+            raw?.uid
+            ?? raw?.targetUid
+            ?? raw?.friendUid
+            ?? raw?.counterpartUid
+            ?? fallbackUid
+        );
+        if (!uid)
+            return null;
+
+        return {
+            uid,
+            displayName: this.toNullableText(raw?.displayName),
+            photoThumbUrl: this.toNullableText(raw?.photoThumbUrl),
+            allowDirectMessagesFromNonFriends: raw?.allowDirectMessagesFromNonFriends === true,
+        };
+    }
+
+    private mapCampaignSummary(raw: any, docId: string): CampaignListItem | null {
+        const id = this.toPositiveInt(raw?.id ?? raw?.idCampana ?? raw?.IdCampana ?? raw?.Id ?? raw?.i ?? docId);
+        if (!id)
+            return null;
+
+        return {
+            id,
+            nombre: this.toNullableText(raw?.nombre ?? raw?.Nombre ?? raw?.NombreCampana ?? raw?.n) ?? `Campana ${id}`,
+            campaignRole: this.normalizeNullableCampaignRole(
+                raw?.campaignRole
+                ?? raw?.CampaignRole
+                ?? raw?.role
+                ?? raw?.Role
+                ?? raw?.rolCampana
+                ?? raw?.RolCampana
+            ),
+            membershipStatus: this.normalizeNullableMembershipStatus(
+                raw?.membershipStatus
+                ?? raw?.MembershipStatus
+                ?? raw?.status
+                ?? raw?.Status
+                ?? raw?.memberStatus
+                ?? raw?.MemberStatus
+                ?? raw?.estado
+                ?? raw?.Estado
+            ),
+            ...(raw?.isOwner === true ? { isOwner: true } : {}),
+        };
+    }
+
+    private mapCharacter(raw: any, docId: string): PersonajeSimple | null {
+        const id = this.toPositiveInt(raw?.Id ?? raw?.i ?? raw?.id ?? docId);
+        if (!id)
+            return null;
+
+        const idRegion = Math.max(0, Math.trunc(Number(
+            raw?.id_region
+            ?? raw?.idRegion
+            ?? raw?.Id_region
+            ?? raw?.Region?.Id
+            ?? raw?.region?.Id
+            ?? 0
+        )));
+        const regionNombre = this.toNullableText(
+            raw?.Region?.Nombre
+            ?? raw?.Region?.nombre
+            ?? raw?.region?.Nombre
+            ?? raw?.region?.nombre
+        );
+
+        return {
+            Id: id,
+            Nombre: this.toNullableText(raw?.Nombre ?? raw?.n) ?? `Personaje ${id}`,
+            ownerUid: this.toNullableText(raw?.ownerUid),
+            ownerDisplayName: this.toNullableText(raw?.ownerDisplayName),
+            visible_otros_usuarios: raw?.visible_otros_usuarios === true,
+            Id_region: idRegion,
+            Region: {
+                Id: idRegion,
+                Nombre: regionNombre ?? (idRegion === 0 ? 'Sin region' : ''),
+            },
+            Raza: raw?.Raza ?? raw?.r ?? { Id: 0, Nombre: 'Sin raza' },
+            RazaBase: raw?.RazaBase ?? raw?.razaBase ?? null,
+            Clases: this.toNullableText(raw?.Clases ?? raw?.c) ?? '',
+            Contexto: this.toNullableText(raw?.Contexto ?? raw?.co) ?? '',
+            Personalidad: this.toNullableText(raw?.Personalidad ?? raw?.p) ?? '',
+            Campana: this.toNullableText(raw?.Campana ?? raw?.Campaña ?? raw?.ca) ?? 'Sin campana',
+            Trama: this.toNullableText(raw?.Trama ?? raw?.t) ?? 'Trama base',
+            Subtrama: this.toNullableText(raw?.Subtrama ?? raw?.s) ?? 'Subtrama base',
+            Archivado: raw?.Archivado === true || raw?.a === true,
+        };
+    }
+
+    private normalizePermissions(raw: any): UserPrivateProfile['permissions'] {
+        if (!raw || typeof raw !== 'object')
+            return {};
+
+        return Object.entries(raw).reduce<UserPrivateProfile['permissions']>((acc, [resource, value]) => {
+            const key = `${resource ?? ''}`.trim();
+            if (key.length < 1)
+                return acc;
+
+            const resourceValue = value as { create?: boolean; } | null | undefined;
+            acc[key] = {
+                create: resourceValue?.create === true,
+            };
+            return acc;
+        }, {});
+    }
+
+    private normalizeAuthProvider(rawValue: any, currentUser: any): AuthProviderType {
+        const normalized = `${rawValue ?? ''}`.trim().toLowerCase();
+        if (normalized === 'correo' || normalized === 'google')
+            return normalized;
+
+        const providerIds = Array.isArray(currentUser?.providerData)
+            ? currentUser.providerData.map((provider: any) => `${provider?.providerId ?? ''}`.trim().toLowerCase())
+            : [];
+        if (providerIds.includes('google.com'))
+            return 'google';
+        if (providerIds.includes('password') || providerIds.includes('email'))
+            return 'correo';
+        return 'otro';
+    }
+
+    private normalizeRole(value: any): UserRole {
+        const normalized = `${value ?? ''}`.trim().toLowerCase();
+        if (normalized === 'admin' || normalized === 'colaborador' || normalized === 'master')
+            return normalized as UserRole;
+        return 'jugador';
+    }
+
+    private normalizeNullableCampaignRole(value: any): CampaignListItem['campaignRole'] {
+        const normalized = `${value ?? ''}`.trim().toLowerCase();
+        if (normalized === 'master')
+            return 'master';
+        if (normalized === 'jugador')
+            return 'jugador';
+        return null;
+    }
+
+    private normalizeNullableMembershipStatus(value: any): CampaignListItem['membershipStatus'] {
+        const normalized = `${value ?? ''}`.trim().toLowerCase();
+        if (normalized === 'activo')
+            return 'activo';
+        if (normalized === 'inactivo')
+            return 'inactivo';
+        if (normalized === 'expulsado')
+            return 'expulsado';
+        return null;
+    }
+
+    private normalizeGeneradorConfig(raw: any): UserSettingsV1['nuevo_personaje']['generador_config'] {
+        if (!raw || typeof raw !== 'object')
+            return null;
+
+        const minimoSeleccionado = Number(raw?.minimoSeleccionado);
+        const tablasPermitidas = Number(raw?.tablasPermitidas);
+        const updatedAt = Number(raw?.updatedAt);
+        if (!Number.isFinite(minimoSeleccionado) || !Number.isFinite(tablasPermitidas) || !Number.isFinite(updatedAt))
+            return null;
+
+        return {
+            minimoSeleccionado: Math.trunc(minimoSeleccionado),
+            tablasPermitidas: Math.trunc(tablasPermitidas),
+            updatedAt: Math.trunc(updatedAt),
+        };
+    }
+
+    private normalizePreviewMinimizada(raw: any): UserSettingsV1['nuevo_personaje']['preview_minimizada'] {
+        if (!raw || typeof raw !== 'object')
+            return null;
+
+        const version = Number(raw?.version);
+        const side = `${raw?.side ?? ''}`.trim().toLowerCase();
+        const top = Number(raw?.top);
+        const updatedAt = Number(raw?.updatedAt);
+        if (version !== 1 || (side !== 'left' && side !== 'right') || !Number.isFinite(top) || !Number.isFinite(updatedAt))
+            return null;
+
+        return {
+            version: 1,
+            side,
+            top,
+            updatedAt: Math.trunc(updatedAt),
+        };
+    }
+
+    private normalizePreviewRestaurada(raw: any): UserSettingsV1['nuevo_personaje']['preview_restaurada'] {
+        if (!raw || typeof raw !== 'object')
+            return null;
+
+        const version = Number(raw?.version);
+        const left = Number(raw?.left);
+        const top = Number(raw?.top);
+        const width = Number(raw?.width);
+        const height = Number(raw?.height);
+        const updatedAt = Number(raw?.updatedAt);
+        if (version !== 1)
+            return null;
+        if (!Number.isFinite(left) || !Number.isFinite(top) || !Number.isFinite(width) || !Number.isFinite(height) || !Number.isFinite(updatedAt))
+            return null;
+        if (width <= 0 || height <= 0)
+            return null;
+
+        return {
+            version: 1,
+            left,
+            top,
+            width,
+            height,
+            updatedAt: Math.trunc(updatedAt),
+        };
+    }
+
+    private buildPagedResult<T>(items: T[], limit: number, offset: number): PagedListResult<T> {
+        const normalizedLimit = this.normalizeLimit(limit);
+        const normalizedOffset = this.normalizeOffset(offset);
+        const sliced = items.slice(normalizedOffset, normalizedOffset + normalizedLimit);
+
+        return {
+            items: sliced,
+            meta: {
+                totalCount: items.length,
+                limit: normalizedLimit,
+                offset: normalizedOffset,
+                hasMore: normalizedOffset + normalizedLimit < items.length,
+            },
+        };
+    }
+
+    private normalizeLimit(value: number, fallback: number = 25): number {
+        const parsed = Math.trunc(Number(value));
+        if (!Number.isFinite(parsed) || parsed < 1)
+            return fallback;
+        return Math.min(100, parsed);
+    }
+
+    private normalizeOffset(value: number): number {
+        const parsed = Math.trunc(Number(value));
+        return Number.isFinite(parsed) && parsed >= 0 ? parsed : 0;
+    }
+
+    private toPositiveInt(value: any): number | null {
+        const parsed = Math.trunc(Number(value));
+        return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+    }
+
+    private toNullableText(value: any): string | null {
+        const text = `${value ?? ''}`.trim();
+        return text.length > 0 ? text : null;
+    }
+
+    private normalizeMultilineText(value: any): string | null {
+        const text = `${value ?? ''}`
+            .replace(/\r\n/g, '\n')
+            .replace(/\r/g, '\n')
+            .trim();
+        return text.length > 0 ? text : null;
+    }
+
+    private fallbackDisplayName(email: string | null): string | null {
+        const normalized = `${email ?? ''}`.trim();
+        if (normalized.length < 1)
+            return null;
+
+        const atPos = normalized.indexOf('@');
+        if (atPos > 0)
+            return normalized.substring(0, atPos);
+        return normalized;
+    }
+
+    private compareText(a: string, b: string): number {
+        return `${a ?? ''}`.localeCompare(`${b ?? ''}`, 'es', { sensitivity: 'base' });
+    }
+
+    private toDateMs(value: string | null | undefined): number {
+        const parsed = new Date(`${value ?? ''}`);
+        return Number.isNaN(parsed.getTime()) ? 0 : parsed.getTime();
+    }
+}

@@ -233,10 +233,31 @@ describe('ChatApiService', () => {
         const originalApiUrl = environment.apiUrl;
 
         environment.apiUrl = 'http://localhost:5000/';
-        const url = service.buildWebSocketUrl('token de prueba');
+        const url = service.buildWebSocketUrl(null, 'ticket de prueba');
 
-        expect(url).toBe('ws://127.0.0.1:5000/ws/chat?token=token%20de%20prueba');
+        expect(url).toBe('ws://127.0.0.1:5000/ws/chat?ticket=ticket%20de%20prueba');
 
         environment.apiUrl = originalApiUrl;
+    });
+
+    it('requestWebSocketTicket envia Bearer y normaliza la respuesta', async () => {
+        const httpMock = jasmine.createSpyObj('HttpClient', ['get', 'post']);
+        httpMock.post.and.returnValue(of({
+            ticket: ' ticket-123 ',
+            expiresAtUtc: '2026-03-15T10:00:00.000Z',
+            websocketUrl: 'ws://localhost:8001/ws/chat',
+        }));
+        const service = new ChatApiService(httpMock, authMock);
+
+        const response = await service.requestWebSocketTicket();
+
+        expect(response).toEqual({
+            ticket: 'ticket-123',
+            expiresAtUtc: '2026-03-15T10:00:00.000Z',
+            websocketUrl: 'ws://localhost:8001/ws/chat',
+        });
+        const [, body, options] = httpMock.post.calls.mostRecent().args;
+        expect(body).toEqual({});
+        expect(options.headers.get('Authorization')).toBe('Bearer token-chat');
     });
 });

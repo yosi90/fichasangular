@@ -1,7 +1,7 @@
 import { Injectable, OnDestroy } from '@angular/core';
 import { Auth } from '@angular/fire/auth';
 import { BehaviorSubject, Subject, Subscription } from 'rxjs';
-import { ChatConversationSummary, ChatMessage, ChatMessageReadPayload } from '../interfaces/chat';
+import { ChatAlertCandidate, ChatConversationSummary, ChatMessage, ChatMessageReadPayload } from '../interfaces/chat';
 import { ChatApiService } from './chat-api.service';
 import { UserService } from './user.service';
 
@@ -14,14 +14,18 @@ export class ChatRealtimeService implements OnDestroy {
     private readonly unreadSystemCountSubject = new BehaviorSubject<number>(0);
     private readonly activeConversationIdSubject = new BehaviorSubject<number | null>(null);
     private readonly messageCreatedSubject = new Subject<ChatMessage>();
-    private readonly alertCandidateSubject = new Subject<ChatMessage>();
+    private readonly alertCandidateSubject = new Subject<ChatAlertCandidate>();
     private readonly conversationUpdatedSubject = new Subject<ChatConversationSummary>();
     private readonly messageReadSubject = new Subject<ChatMessageReadPayload>();
     private readonly notifiedMessageIdsByConversation = new Map<number, number>();
+    private readonly handledAlertKeys = new Set<string>();
+    private readonly pendingConversationRefreshIds = new Set<number>();
     private authSub?: Subscription;
     private socket: WebSocket | null = null;
     private pollingTimer: number | null = null;
     private pingTimer: number | null = null;
+    private reconnectTimer: number | null = null;
+    private refreshDebounceTimer: number | null = null;
     private refreshInFlight = false;
     private initialized = false;
 
@@ -104,11 +108,13 @@ export class ChatRealtimeService implements OnDestroy {
 
         this.refreshInFlight = true;
         try {
+            const previous = this.conversationsSubject.value;
             const result = await this.chatApiSvc.listConversations();
             const normalized = this.sortConversations(result.items);
             this.conversationsSubject.next(normalized);
             this.unreadUserCountSubject.next(result.unreadUserCount);
             this.unreadSystemCountSubject.next(result.unreadSystemCount);
+            this.emitSummaryAlertCandidates(previous, normalized);
         } catch {
             // best effort
         } finally {
@@ -132,29 +138,33 @@ export class ChatRealtimeService implements OnDestroy {
         }
 
         try {
-            const token = await currentUser.getIdToken();
-            if (`${token ?? ''}`.trim().length < 1) {
+            const ticketResponse = await this.chatApiSvc.requestWebSocketTicket();
+            if (`${ticketResponse.ticket ?? ''}`.trim().length < 1) {
                 this.startPolling();
                 return;
             }
 
-            const socketUrl = this.chatApiSvc.buildWebSocketUrl(token);
+            const socketUrl = this.chatApiSvc.buildWebSocketUrl(ticketResponse.websocketUrl, ticketResponse.ticket);
             this.socket = new WebSocket(socketUrl);
             this.socket.onopen = () => {
                 this.clearPolling();
+                this.clearReconnect();
                 this.startPingLoop();
             };
             this.socket.onmessage = (event) => this.onSocketMessage(event.data);
             this.socket.onerror = () => {
                 this.startPolling();
+                this.scheduleReconnect();
             };
             this.socket.onclose = () => {
                 this.stopPingLoop();
                 this.socket = null;
                 this.startPolling();
+                this.scheduleReconnect();
             };
         } catch {
             this.startPolling();
+            this.scheduleReconnect();
         }
     }
 
@@ -175,6 +185,7 @@ export class ChatRealtimeService implements OnDestroy {
 
         if (event.type === 'conversation.updated') {
             this.upsertConversation(event.payload);
+            this.resolvePendingConversationRefresh(event.payload.conversationId);
             return;
         }
 
@@ -190,11 +201,11 @@ export class ChatRealtimeService implements OnDestroy {
 
     private handleIncomingMessage(message: ChatMessage): void {
         this.messageCreatedSubject.next(message);
-        this.emitAlertCandidate(message);
-        void this.refreshConversations();
+        this.emitAlertCandidateFromMessage(message);
+        this.queueConversationRefresh(message.conversationId);
     }
 
-    private emitAlertCandidate(message: ChatMessage): void {
+    private emitAlertCandidateFromMessage(message: ChatMessage): void {
         const conversationId = this.toPositiveInt(message?.conversationId);
         const messageId = this.toPositiveInt(message?.messageId);
         if (!conversationId || !messageId)
@@ -206,7 +217,40 @@ export class ChatRealtimeService implements OnDestroy {
         if (messageId <= lastNotifiedId)
             return;
         this.notifiedMessageIdsByConversation.set(conversationId, messageId);
-        this.alertCandidateSubject.next(message);
+
+        const candidate = this.buildMessageAlertCandidate(message);
+        if (!candidate || this.handledAlertKeys.has(candidate.alertKey))
+            return;
+
+        this.handledAlertKeys.add(candidate.alertKey);
+        this.alertCandidateSubject.next(candidate);
+    }
+
+    private emitSummaryAlertCandidates(previous: ChatConversationSummary[], next: ChatConversationSummary[]): void {
+        const previousMap = new Map<number, ChatConversationSummary>();
+        previous.forEach((item) => {
+            if (item.conversationId > 0)
+                previousMap.set(item.conversationId, item);
+        });
+
+        next.forEach((item) => {
+            if (!item.isSystemConversation || !item.lastMessageNotification)
+                return;
+            if (item.unreadCount < 1)
+                return;
+
+            const previousItem = previousMap.get(item.conversationId);
+            const previousUnread = previousItem?.unreadCount ?? 0;
+            if (item.unreadCount <= previousUnread)
+                return;
+
+            const candidate = this.buildSummaryAlertCandidate(item);
+            if (!candidate || this.handledAlertKeys.has(candidate.alertKey))
+                return;
+
+            this.handledAlertKeys.add(candidate.alertKey);
+            this.alertCandidateSubject.next(candidate);
+        });
     }
 
     private startPolling(): void {
@@ -222,6 +266,37 @@ export class ChatRealtimeService implements OnDestroy {
         if (this.pollingTimer !== null)
             window.clearInterval(this.pollingTimer);
         this.pollingTimer = null;
+    }
+
+    private queueConversationRefresh(conversationId: number | null | undefined): void {
+        const normalizedConversationId = this.toPositiveInt(conversationId);
+        if (!normalizedConversationId)
+            return;
+
+        this.pendingConversationRefreshIds.add(normalizedConversationId);
+        if (this.refreshDebounceTimer !== null)
+            return;
+
+        this.refreshDebounceTimer = window.setTimeout(() => {
+            const shouldRefresh = this.pendingConversationRefreshIds.size > 0;
+            this.pendingConversationRefreshIds.clear();
+            this.refreshDebounceTimer = null;
+            if (shouldRefresh)
+                void this.refreshConversations();
+        }, 250);
+    }
+
+    private resolvePendingConversationRefresh(conversationId: number | null | undefined): void {
+        const normalizedConversationId = this.toPositiveInt(conversationId);
+        if (!normalizedConversationId)
+            return;
+
+        this.pendingConversationRefreshIds.delete(normalizedConversationId);
+        if (this.pendingConversationRefreshIds.size > 0 || this.refreshDebounceTimer === null)
+            return;
+
+        window.clearTimeout(this.refreshDebounceTimer);
+        this.refreshDebounceTimer = null;
     }
 
     private startPingLoop(): void {
@@ -255,12 +330,130 @@ export class ChatRealtimeService implements OnDestroy {
 
     private teardownSessionState(): void {
         this.clearPolling();
+        this.clearReconnect();
+        this.clearQueuedConversationRefresh();
         this.closeSocket();
         this.conversationsSubject.next([]);
         this.unreadUserCountSubject.next(0);
         this.unreadSystemCountSubject.next(0);
         this.activeConversationIdSubject.next(null);
         this.notifiedMessageIdsByConversation.clear();
+        this.handledAlertKeys.clear();
+    }
+
+    private clearQueuedConversationRefresh(): void {
+        this.pendingConversationRefreshIds.clear();
+        if (this.refreshDebounceTimer !== null)
+            window.clearTimeout(this.refreshDebounceTimer);
+        this.refreshDebounceTimer = null;
+    }
+
+    private buildMessageAlertCandidate(message: ChatMessage): ChatAlertCandidate | null {
+        const conversationId = this.toPositiveInt(message?.conversationId);
+        if (!conversationId)
+            return null;
+
+        const alertKey = this.buildAlertKey(
+            conversationId,
+            message?.sentAtUtc,
+            message?.notification?.code,
+            message?.notification?.title,
+            message?.body,
+        );
+        if (!alertKey)
+            return null;
+
+        return {
+            alertKey,
+            source: 'message',
+            messageId: this.toPositiveInt(message?.messageId),
+            conversationId,
+            sender: {
+                uid: `${message?.sender?.uid ?? ''}`.trim(),
+                displayName: message?.sender?.displayName ?? null,
+                photoThumbUrl: message?.sender?.photoThumbUrl ?? null,
+                isSystemUser: message?.sender?.isSystemUser === true,
+            },
+            body: `${message?.body ?? ''}`.trim(),
+            sentAtUtc: `${message?.sentAtUtc ?? ''}`.trim() || null,
+            notification: message?.notification ?? null,
+            announcement: message?.announcement ?? null,
+        };
+    }
+
+    private buildSummaryAlertCandidate(conversation: ChatConversationSummary): ChatAlertCandidate | null {
+        const conversationId = this.toPositiveInt(conversation?.conversationId);
+        if (!conversationId)
+            return null;
+
+        const alertKey = this.buildAlertKey(
+            conversationId,
+            conversation?.lastMessageAtUtc,
+            conversation?.lastMessageNotification?.code,
+            conversation?.lastMessageNotification?.title,
+            conversation?.lastMessagePreview,
+        );
+        if (!alertKey)
+            return null;
+
+        return {
+            alertKey,
+            source: 'conversation_summary',
+            messageId: null,
+            conversationId,
+            sender: {
+                uid: 'system:yosiftware',
+                displayName: 'Yosiftware',
+                photoThumbUrl: null,
+                isSystemUser: true,
+            },
+            body: `${conversation?.lastMessagePreview ?? ''}`.trim(),
+            sentAtUtc: `${conversation?.lastMessageAtUtc ?? ''}`.trim() || null,
+            notification: conversation?.lastMessageNotification ?? null,
+            announcement: null,
+        };
+    }
+
+    private buildAlertKey(
+        conversationId: number,
+        sentAtUtc: string | null | undefined,
+        notificationCode: string | null | undefined,
+        notificationTitle: string | null | undefined,
+        body: string | null | undefined
+    ): string | null {
+        const normalizedConversationId = this.toPositiveInt(conversationId);
+        const normalizedSentAtUtc = `${sentAtUtc ?? ''}`.trim();
+        const normalizedCode = `${notificationCode ?? ''}`.trim();
+        const normalizedTitle = `${notificationTitle ?? ''}`.trim();
+        const normalizedBody = `${body ?? ''}`.replace(/\s+/g, ' ').trim();
+        if (!normalizedConversationId || normalizedSentAtUtc.length < 1)
+            return null;
+
+        return [
+            normalizedConversationId,
+            normalizedSentAtUtc,
+            normalizedCode,
+            normalizedTitle,
+            normalizedBody,
+        ].join('|');
+    }
+
+    private scheduleReconnect(): void {
+        if (this.reconnectTimer !== null)
+            return;
+
+        this.reconnectTimer = window.setTimeout(() => {
+            this.reconnectTimer = null;
+            if (this.userSvc.CurrentUserUid.length < 1)
+                return;
+            void this.connectWebSocket();
+        }, 3000);
+    }
+
+    private clearReconnect(): void {
+        if (this.reconnectTimer !== null)
+            window.clearTimeout(this.reconnectTimer);
+        this.reconnectTimer = null;
     }
 
     private upsertConversationInList(list: ChatConversationSummary[], conversation: ChatConversationSummary): ChatConversationSummary[] {

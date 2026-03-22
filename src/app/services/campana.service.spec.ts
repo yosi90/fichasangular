@@ -211,6 +211,65 @@ describe('CampanaService', () => {
         expect(httpMock.get.calls.allArgs().filter((args) => `${args[0]}`.match(/campanas$/)).length).toBe(2);
     }));
 
+    it('getListCampanas usa watcher Firestore privado y reconstruye tramas tras invalidación', fakeAsync(() => {
+        const watchState: { next: ((items: any[]) => void) | null; } = { next: null };
+        let tramaCycle = 0;
+        const privateUserFirestoreSvcMock = {
+            watchCampaigns: jasmine.createSpy('watchCampaigns').and.callFake((next: (items: any[]) => void) => {
+                watchState.next = next;
+                return () => undefined;
+            }),
+            listCampaigns: jasmine.createSpy('listCampaigns').and.resolveTo([
+                { id: 7, nombre: 'Campaña privada', campaignRole: 'master', membershipStatus: 'activo' },
+            ]),
+        };
+        const firestoreBackedService = new CampanaServiceTestDouble(
+            { currentUser: { uid: 'actor-1', getIdToken: async () => 'token' } } as any,
+            {} as any,
+            httpMock as any,
+            { run: <T>(fn: () => T) => fn() } as FirebaseInjectionContextService,
+            campaignRealtimeSyncSvcMock,
+            privateUserFirestoreSvcMock as any
+        );
+
+        httpMock.get.and.callFake((url: string) => {
+            if (url.endsWith('tramas/campana/7')) {
+                tramaCycle += 1;
+                return of(tramaCycle === 1 ? [] : [{ i: 11, n: 'Trama viva' }]);
+            }
+            if (url.endsWith('subtramas/trama/11'))
+                return of([]);
+            throw new Error(`URL inesperada: ${url}`);
+        });
+
+        let observable: any;
+        firestoreBackedService.getListCampanas().then((value) => observable = value);
+        tick();
+
+        const emissions: number[] = [];
+        const subscription = observable.subscribe((campanas: any[]) => emissions.push(campanas[1]?.Tramas?.length ?? 0));
+        tick();
+
+        watchState.next?.([
+            { id: 7, nombre: 'Campaña privada', campaignRole: 'master', membershipStatus: 'activo' },
+        ]);
+        tick();
+
+        invalidations$.next({
+            code: 'system.campaign_updated',
+            campaignId: 7,
+            conversationId: null,
+            source: 'remote',
+        });
+        tick();
+
+        expect(privateUserFirestoreSvcMock.watchCampaigns).toHaveBeenCalled();
+        expect(httpMock.get.calls.allArgs().some((args) => `${args[0]}`.match(/campanas$/))).toBeFalse();
+        expect(emissions).toEqual([0, 0, 1]);
+
+        subscription.unsubscribe();
+    }));
+
     it('getListCampanas excluye campañas sin membresía activa del actor', async () => {
         httpMock.get.and.callFake((url: string) => {
             if (url.endsWith('campanas'))

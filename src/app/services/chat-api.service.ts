@@ -16,6 +16,7 @@ import {
     ChatMessageEnvelope,
     ChatMessageReadPayload,
     ChatReadResponse,
+    ChatWebSocketTicketResponse,
     ChatWebSocketEvent,
 } from '../interfaces/chat';
 import { PagedListMeta } from '../interfaces/social';
@@ -284,7 +285,50 @@ export class ChatApiService {
         return null;
     }
 
-    buildWebSocketUrl(token: string): string {
+    async requestWebSocketTicket(): Promise<ChatWebSocketTicketResponse> {
+        try {
+            const response = await firstValueFrom(
+                this.http.post<any>(
+                    `${this.chatBaseUrl}/ws-ticket`,
+                    {},
+                    { headers: await this.buildAuthHeaders() }
+                )
+            );
+            return this.normalizeWebSocketTicketResponse(response);
+        } catch (error) {
+            throw this.toProfileApiError(error, 'No se pudo abrir el ticket realtime.');
+        }
+    }
+
+    buildWebSocketUrl(websocketUrl: string | null | undefined, ticket: string): string {
+        const normalizedTicket = `${ticket ?? ''}`.trim();
+        if (normalizedTicket.length < 1)
+            throw new ProfileApiError('Ticket realtime no disponible.', 'CHAT_WS_TICKET_INVALID', 400);
+
+        const preferredUrl = `${websocketUrl ?? ''}`.trim();
+        const targetUrl = preferredUrl.length > 0 ? preferredUrl : this.buildFallbackWebSocketBaseUrl();
+
+        try {
+            const parsed = new URL(targetUrl);
+            if (parsed.protocol === 'http:')
+                parsed.protocol = 'ws:';
+            else if (parsed.protocol === 'https:')
+                parsed.protocol = 'wss:';
+            if (parsed.hostname === 'localhost')
+                parsed.hostname = '127.0.0.1';
+            parsed.search = `ticket=${encodeURIComponent(normalizedTicket)}`;
+            return parsed.toString();
+        } catch {
+            const normalizedBase = targetUrl
+                .replace(/^http:/i, 'ws:')
+                .replace(/^https:/i, 'wss:')
+                .replace(/:\/\/localhost(?=[:/]|$)/i, '://127.0.0.1');
+            const separator = normalizedBase.includes('?') ? '&' : '?';
+            return `${normalizedBase}${separator}ticket=${encodeURIComponent(normalizedTicket)}`;
+        }
+    }
+
+    private buildFallbackWebSocketBaseUrl(): string {
         const apiUrl = `${environment.apiUrl ?? ''}`.trim();
         const fallbackBase = apiUrl.endsWith('/') ? apiUrl.slice(0, -1) : apiUrl;
 
@@ -295,14 +339,14 @@ export class ChatApiService {
                 parsed.hostname = '127.0.0.1';
             const basePath = parsed.pathname.endsWith('/') ? parsed.pathname.slice(0, -1) : parsed.pathname;
             parsed.pathname = `${basePath}/ws/chat`;
-            parsed.search = `token=${encodeURIComponent(token)}`;
+            parsed.search = '';
             return parsed.toString();
         } catch {
             const wsBase = fallbackBase
                 .replace(/^http:/i, 'ws:')
                 .replace(/^https:/i, 'wss:')
                 .replace(/:\/\/localhost(?=[:/]|$)/i, '://127.0.0.1');
-            return `${wsBase}/ws/chat?token=${encodeURIComponent(token)}`;
+            return `${wsBase}/ws/chat`;
         }
     }
 
@@ -448,6 +492,14 @@ export class ChatApiService {
         if (normalized === 'left' || normalized === 'removed')
             return normalized;
         return 'active';
+    }
+
+    private normalizeWebSocketTicketResponse(raw: any): ChatWebSocketTicketResponse {
+        return {
+            ticket: `${raw?.ticket ?? ''}`.trim(),
+            expiresAtUtc: this.toNullableText(raw?.expiresAtUtc),
+            websocketUrl: this.toNullableText(raw?.websocketUrl),
+        };
     }
 
     private async buildAuthHeaders(): Promise<HttpHeaders> {

@@ -8,6 +8,7 @@ import { environment } from 'src/environments/environment';
 import { RazaSimple } from 'src/app/interfaces/simplificaciones/raza-simple';
 import Swal from 'sweetalert2';
 import { FirebaseInjectionContextService } from '../firebase-injection-context.service';
+import { PrivateUserFirestoreService } from '../private-user-firestore.service';
 
 @Injectable({
     providedIn: 'root'
@@ -19,12 +20,14 @@ export class ListaPersonajesService {
     private personajesLoadingPromise: Promise<void> | null = null;
     private actorCacheKey = '';
     private loadGeneration = 0;
+    private privateCharactersUnsubscribe: (() => void) | null = null;
 
     constructor(
         private auth: Auth,
         private db: Database,
         private http: HttpClient,
-        private firebaseContextSvc: FirebaseInjectionContextService
+        private firebaseContextSvc: FirebaseInjectionContextService,
+        private privateUserFirestoreSvc?: PrivateUserFirestoreService
     ) {
         this.authReadyPromise = this.createAuthReadyPromise();
         this.actorCacheKey = this.buildActorCacheKey(this.auth.currentUser);
@@ -35,6 +38,7 @@ export class ListaPersonajesService {
 
             this.actorCacheKey = nextActorCacheKey;
             this.invalidateLoadedPersonajes();
+            this.stopPrivateCharactersSubscription();
             this.personajesLoadingPromise = this.reloadPersonajesForCurrentActor();
         });
     }
@@ -112,7 +116,9 @@ export class ListaPersonajesService {
 
     public async RenovarPersonajesSimples(): Promise<boolean> {
         try {
-            const personajes = await this.fetchPersonajesFromApi();
+            const personajes = this.privateUserFirestoreSvc
+                ? await this.privateUserFirestoreSvc.listCharacters()
+                : await this.fetchPersonajesFromApi();
             this.personajesLoaded = true;
             this.personajesSubject.next([...personajes]);
 
@@ -309,6 +315,8 @@ export class ListaPersonajesService {
 
             this.personajesLoaded = true;
             this.personajesSubject.next([...personajes]);
+            if (requestGeneration === this.loadGeneration && this.privateUserFirestoreSvc && this.auth.currentUser)
+                this.startPrivateCharactersSubscription();
         } catch {
             if (requestGeneration !== this.loadGeneration)
                 return;
@@ -326,7 +334,35 @@ export class ListaPersonajesService {
         if (!this.auth.currentUser)
             return this.readPublicPersonajesFromCache();
 
+        if (this.privateUserFirestoreSvc)
+            return this.privateUserFirestoreSvc.listCharacters();
+
         return this.fetchPersonajesFromApi();
+    }
+
+    private startPrivateCharactersSubscription(): void {
+        if (!this.privateUserFirestoreSvc || !this.auth.currentUser)
+            return;
+
+        this.stopPrivateCharactersSubscription();
+        this.privateCharactersUnsubscribe = this.privateUserFirestoreSvc.watchCharacters(
+            (personajes) => {
+                this.personajesLoaded = true;
+                this.personajesSubject.next([...personajes]);
+            },
+            () => {
+                this.personajesLoaded = true;
+                this.personajesSubject.next([]);
+            }
+        );
+    }
+
+    private stopPrivateCharactersSubscription(): void {
+        if (!this.privateCharactersUnsubscribe)
+            return;
+
+        this.privateCharactersUnsubscribe();
+        this.privateCharactersUnsubscribe = null;
     }
 
     private async fetchPersonajesFromApi(): Promise<PersonajeSimple[]> {

@@ -1,8 +1,9 @@
+import { fakeAsync, tick } from '@angular/core/testing';
 import { BehaviorSubject } from 'rxjs';
 import { ChatRealtimeService } from './chat-realtime.service';
 
 describe('ChatRealtimeService', () => {
-    it('deduplica alertCandidate por messageId y omite mensajes propios', () => {
+    it('deduplica alertCandidate por alertKey y omite mensajes propios', () => {
         const userSvc = {
             isLoggedIn$: new BehaviorSubject<boolean>(false),
             CurrentUserUid: 'uid-propio',
@@ -21,8 +22,8 @@ describe('ChatRealtimeService', () => {
             } as any,
         );
 
-        const alertedIds: number[] = [];
-        service.alertCandidate$.subscribe((message) => alertedIds.push(message.messageId));
+        const alertedIds: Array<number | null> = [];
+        service.alertCandidate$.subscribe((candidate) => alertedIds.push(candidate.messageId));
 
         (service as any).handleIncomingMessage({
             messageId: 10,
@@ -69,6 +70,282 @@ describe('ChatRealtimeService', () => {
 
         expect(alertedIds).toEqual([10]);
     });
+
+    it('emite alertCandidate para notificación persistente recuperada desde listConversations', async () => {
+        const userSvc = {
+            isLoggedIn$: new BehaviorSubject<boolean>(false),
+            CurrentUserUid: 'uid-propio',
+        } as any;
+        let cycle = 0;
+        const service = new ChatRealtimeService(
+            {} as any,
+            userSvc,
+            {
+                parseWebSocketEvent: (raw: any) => raw,
+                listConversations: jasmine.createSpy('listConversations').and.callFake(async () => {
+                    cycle += 1;
+                    if (cycle === 1) {
+                        return {
+                            items: [{
+                                conversationId: 55,
+                                type: 'direct',
+                                title: 'Yosiftware',
+                                photoThumbUrl: null,
+                                campaignId: null,
+                                participantRole: 'member',
+                                participantStatus: 'active',
+                                lastMessagePreview: null,
+                                lastMessageAtUtc: null,
+                                unreadCount: 0,
+                                canSend: true,
+                                isSystemConversation: true,
+                                counterpartUid: null,
+                                lastMessageNotification: null,
+                            }],
+                            unreadUserCount: 0,
+                            unreadSystemCount: 0,
+                        };
+                    }
+                    return {
+                        items: [{
+                            conversationId: 55,
+                            type: 'direct',
+                            title: 'Yosiftware',
+                            photoThumbUrl: null,
+                            campaignId: null,
+                            participantRole: 'member',
+                            participantStatus: 'active',
+                            lastMessagePreview: 'Tu invitación ha sido aceptada.',
+                            lastMessageAtUtc: '2026-03-15T15:00:00.000Z',
+                            unreadCount: 1,
+                            canSend: true,
+                            isSystemConversation: true,
+                            counterpartUid: null,
+                            lastMessageNotification: {
+                                code: 'system.campaign_invitation_resolved',
+                                title: 'Invitación resuelta',
+                                action: {
+                                    target: 'social.messages',
+                                    conversationId: 55,
+                                },
+                                context: {
+                                    campaignId: 7,
+                                },
+                            },
+                        }],
+                        unreadUserCount: 0,
+                        unreadSystemCount: 1,
+                    };
+                }),
+                buildWebSocketUrl: jasmine.createSpy('buildWebSocketUrl').and.returnValue('ws://test/ws/chat'),
+            } as any,
+        );
+
+        const candidates: any[] = [];
+        service.alertCandidate$.subscribe((candidate) => candidates.push(candidate));
+
+        await service.refreshConversations(true);
+        await service.refreshConversations(true);
+
+        expect(candidates.length).toBe(1);
+        expect(candidates[0].source).toBe('conversation_summary');
+        expect(candidates[0].messageId).toBeNull();
+        expect(candidates[0].notification?.code).toBe('system.campaign_invitation_resolved');
+    });
+
+    it('no duplica la alerta persistente si el websocket ya entregó la misma notificación', async () => {
+        const userSvc = {
+            isLoggedIn$: new BehaviorSubject<boolean>(false),
+            CurrentUserUid: 'uid-propio',
+        } as any;
+        const service = new ChatRealtimeService(
+            {} as any,
+            userSvc,
+            {
+                parseWebSocketEvent: (raw: any) => raw,
+                listConversations: jasmine.createSpy('listConversations').and.resolveTo({
+                    items: [{
+                        conversationId: 55,
+                        type: 'direct',
+                        title: 'Yosiftware',
+                        photoThumbUrl: null,
+                        campaignId: null,
+                        participantRole: 'member',
+                        participantStatus: 'active',
+                        lastMessagePreview: 'Tu invitación ha sido aceptada.',
+                        lastMessageAtUtc: '2026-03-15T15:00:00.000Z',
+                        unreadCount: 1,
+                        canSend: true,
+                        isSystemConversation: true,
+                        counterpartUid: null,
+                        lastMessageNotification: {
+                            code: 'system.campaign_invitation_resolved',
+                            title: 'Invitación resuelta',
+                            action: {
+                                target: 'social.messages',
+                                conversationId: 55,
+                            },
+                            context: {
+                                campaignId: 7,
+                            },
+                        },
+                    }],
+                    unreadUserCount: 0,
+                    unreadSystemCount: 1,
+                }),
+                buildWebSocketUrl: jasmine.createSpy('buildWebSocketUrl').and.returnValue('ws://test/ws/chat'),
+            } as any,
+        );
+
+        const candidates: any[] = [];
+        service.alertCandidate$.subscribe((candidate) => candidates.push(candidate));
+
+        (service as any).handleIncomingMessage({
+            messageId: 91,
+            conversationId: 55,
+            sender: {
+                uid: 'system:yosiftware',
+                displayName: 'Yosiftware',
+                photoThumbUrl: null,
+                isSystemUser: true,
+            },
+            body: 'Tu invitación ha sido aceptada.',
+            sentAtUtc: '2026-03-15T15:00:00.000Z',
+            notification: {
+                code: 'system.campaign_invitation_resolved',
+                title: 'Invitación resuelta',
+                action: {
+                    target: 'social.messages',
+                    conversationId: 55,
+                },
+                context: {
+                    campaignId: 7,
+                },
+            },
+            announcement: null,
+        });
+        await service.refreshConversations(true);
+
+        expect(candidates.length).toBe(1);
+        expect(candidates[0].source).toBe('message');
+    });
+
+    it('agrupa varios message.created en una sola recarga diferida', fakeAsync(() => {
+        const listConversations = jasmine.createSpy('listConversations').and.resolveTo({
+            items: [],
+            unreadUserCount: 0,
+            unreadSystemCount: 0,
+        });
+        const userSvc = {
+            isLoggedIn$: new BehaviorSubject<boolean>(false),
+            CurrentUserUid: 'uid-propio',
+        } as any;
+        const service = new ChatRealtimeService(
+            {} as any,
+            userSvc,
+            {
+                parseWebSocketEvent: (raw: any) => raw,
+                listConversations,
+                buildWebSocketUrl: jasmine.createSpy('buildWebSocketUrl').and.returnValue('ws://test/ws/chat'),
+            } as any,
+        );
+
+        (service as any).handleIncomingMessage({
+            messageId: 10,
+            conversationId: 5,
+            sender: {
+                uid: 'uid-otro',
+                displayName: 'Yuna',
+                photoThumbUrl: null,
+                isSystemUser: false,
+            },
+            body: 'Hola',
+            sentAtUtc: '2026-03-13T12:00:00.000Z',
+            notification: null,
+            announcement: null,
+        });
+        (service as any).handleIncomingMessage({
+            messageId: 11,
+            conversationId: 5,
+            sender: {
+                uid: 'uid-otro',
+                displayName: 'Yuna',
+                photoThumbUrl: null,
+                isSystemUser: false,
+            },
+            body: 'Otra vez',
+            sentAtUtc: '2026-03-13T12:00:01.000Z',
+            notification: null,
+            announcement: null,
+        });
+
+        expect(listConversations).not.toHaveBeenCalled();
+
+        tick(249);
+        expect(listConversations).not.toHaveBeenCalled();
+
+        tick(1);
+        expect(listConversations).toHaveBeenCalledTimes(1);
+    }));
+
+    it('cancela la recarga diferida si llega conversation.updated para la conversación pendiente', fakeAsync(() => {
+        const listConversations = jasmine.createSpy('listConversations').and.resolveTo({
+            items: [],
+            unreadUserCount: 0,
+            unreadSystemCount: 0,
+        });
+        const userSvc = {
+            isLoggedIn$: new BehaviorSubject<boolean>(false),
+            CurrentUserUid: 'uid-propio',
+        } as any;
+        const service = new ChatRealtimeService(
+            {} as any,
+            userSvc,
+            {
+                parseWebSocketEvent: (raw: any) => raw,
+                listConversations,
+                buildWebSocketUrl: jasmine.createSpy('buildWebSocketUrl').and.returnValue('ws://test/ws/chat'),
+            } as any,
+        );
+
+        (service as any).handleIncomingMessage({
+            messageId: 10,
+            conversationId: 5,
+            sender: {
+                uid: 'uid-otro',
+                displayName: 'Yuna',
+                photoThumbUrl: null,
+                isSystemUser: false,
+            },
+            body: 'Hola',
+            sentAtUtc: '2026-03-13T12:00:00.000Z',
+            notification: null,
+            announcement: null,
+        });
+        (service as any).onSocketMessage({
+            type: 'conversation.updated',
+            payload: {
+                conversationId: 5,
+                type: 'direct',
+                title: 'Yuna',
+                photoThumbUrl: null,
+                campaignId: null,
+                participantRole: 'member',
+                participantStatus: 'active',
+                lastMessagePreview: 'Hola',
+                lastMessageAtUtc: '2026-03-13T12:00:00.000Z',
+                unreadCount: 1,
+                canSend: true,
+                isSystemConversation: false,
+                counterpartUid: 'uid-otro',
+                lastMessageNotification: null,
+            },
+        });
+
+        tick(250);
+
+        expect(listConversations).not.toHaveBeenCalled();
+    }));
 
     it('solo considera focused la conversación activa con la pestaña visible y con foco', () => {
         const userSvc = {

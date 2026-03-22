@@ -38,7 +38,9 @@ import { provideHttpClient, withInterceptorsFromDi } from '@angular/common/http'
 import { DataServices } from './data.services';
 import { provideAuth, getAuth } from '@angular/fire/auth';
 import { provideDatabase, getDatabase } from '@angular/fire/database';
+import { provideFirestore, getFirestore } from '@angular/fire/firestore';
 import { forceWebSockets } from 'firebase/database';
+import { getApp } from 'firebase/app';
 import { SesionDialogComponent } from './components/sesion-dialog/sesion-dialog.component';
 import { TabControlComponent } from './components/base/tab-control/tab-control.component';
 import { BaseMenuResponsiveComponent } from './components/base/responsive-base/responsive-base.component';
@@ -226,6 +228,7 @@ import { CloseFilterMenuOnMouseleaveDirective } from './directives/close-filter-
             forceWebSockets();
             return getDatabase();
         }),
+        provideFirestore(() => getFirestore(getApp(), environment.firestoreDatabaseId)),
     ],
     bootstrap: [AppComponent]
 })

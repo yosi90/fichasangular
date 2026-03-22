@@ -1,7 +1,7 @@
 import { Injectable, OnDestroy } from '@angular/core';
 import { Subscription } from 'rxjs';
 import Swal from 'sweetalert2';
-import { ChatAnnouncementPayload, ChatMessage } from '../interfaces/chat';
+import { ChatAlertCandidate, ChatAnnouncementPayload } from '../interfaces/chat';
 import { AppToastService } from './app-toast.service';
 import { ChatRealtimeService } from './chat-realtime.service';
 import { UserProfileNavigationService } from './user-profile-navigation.service';
@@ -12,7 +12,7 @@ import { UserService } from './user.service';
 })
 export class ChatAlertService implements OnDestroy {
     private initialized = false;
-    private readonly handledMessageIds = new Set<number>();
+    private readonly handledAlertKeys = new Set<string>();
     private readonly subscriptions = new Subscription();
     private swalQueue: Promise<void> = Promise.resolve();
 
@@ -31,11 +31,11 @@ export class ChatAlertService implements OnDestroy {
         this.subscriptions.add(
             this.userSvc.isLoggedIn$.subscribe((loggedIn) => {
                 if (loggedIn !== true)
-                    this.handledMessageIds.clear();
+                    this.handledAlertKeys.clear();
             })
         );
         this.subscriptions.add(
-            this.chatRealtimeSvc.alertCandidate$.subscribe((message) => this.handleAlert(message))
+            this.chatRealtimeSvc.alertCandidate$.subscribe((candidate) => this.handleAlert(candidate))
         );
     }
 
@@ -43,38 +43,38 @@ export class ChatAlertService implements OnDestroy {
         this.subscriptions.unsubscribe();
     }
 
-    private handleAlert(message: ChatMessage): void {
-        const messageId = Math.trunc(Number(message?.messageId));
-        if (!Number.isFinite(messageId) || messageId <= 0)
+    private handleAlert(candidate: ChatAlertCandidate): void {
+        const alertKey = `${candidate?.alertKey ?? ''}`.trim();
+        if (alertKey.length < 1)
             return;
-        if (this.isOwnMessage(message))
+        if (this.isOwnMessage(candidate))
             return;
-        if (this.handledMessageIds.has(messageId))
+        if (this.handledAlertKeys.has(alertKey))
             return;
-        this.handledMessageIds.add(messageId);
+        this.handledAlertKeys.add(alertKey);
 
-        if (message.notification) {
-            this.enqueueSwal(message);
+        if (candidate.notification) {
+            this.enqueueSwal(candidate);
             return;
         }
 
-        if (this.chatRealtimeSvc.isConversationFocused(message.conversationId))
+        if (this.chatRealtimeSvc.isConversationFocused(candidate.conversationId))
             return;
 
-        if (message.announcement) {
-            this.showAnnouncementToast(message.announcement, message);
-            return;
-        }
-
-        if (message.sender.isSystemUser === true || `${message.sender.uid ?? ''}`.trim() === 'system:yosiftware') {
-            this.appToastSvc.showSystem(this.buildSystemToast(message), { durationMs: 7600 });
+        if (candidate.announcement) {
+            this.showAnnouncementToast(candidate.announcement, candidate);
             return;
         }
 
-        this.appToastSvc.showInfo(this.buildUserMessageToast(message));
+        if (candidate.sender.isSystemUser === true || `${candidate.sender.uid ?? ''}`.trim() === 'system:yosiftware') {
+            this.appToastSvc.showSystem(this.buildSystemToast(candidate), { durationMs: 7600 });
+            return;
+        }
+
+        this.appToastSvc.showInfo(this.buildUserMessageToast(candidate));
     }
 
-    private showAnnouncementToast(announcement: ChatAnnouncementPayload, message: ChatMessage): void {
+    private showAnnouncementToast(announcement: ChatAnnouncementPayload, candidate: ChatAlertCandidate): void {
         const title = `${announcement.title ?? ''}`.trim();
         if (announcement.code === 'chat.new_chat') {
             this.appToastSvc.showInfo(title || 'Tienes una conversación nueva.');
@@ -82,32 +82,32 @@ export class ChatAlertService implements OnDestroy {
         }
 
         if (announcement.code === 'chat.new_message') {
-            this.appToastSvc.showInfo(title || this.buildUserMessageToast(message));
+            this.appToastSvc.showInfo(title || this.buildUserMessageToast(candidate));
             return;
         }
 
-        this.appToastSvc.showInfo(title || this.buildUserMessageToast(message));
+        this.appToastSvc.showInfo(title || this.buildUserMessageToast(candidate));
     }
 
-    private buildUserMessageToast(message: ChatMessage): string {
-        const senderLabel = `${message.sender.displayName ?? ''}`.trim() || 'Usuario';
-        const preview = this.buildPreview(message.body);
+    private buildUserMessageToast(candidate: ChatAlertCandidate): string {
+        const senderLabel = `${candidate.sender.displayName ?? ''}`.trim() || 'Usuario';
+        const preview = this.buildPreview(candidate.body);
         return preview.length > 0 ? `${senderLabel}: ${preview}` : `${senderLabel} te ha enviado un mensaje.`;
     }
 
-    private buildSystemToast(message: ChatMessage): string {
-        const preview = this.buildPreview(message.body);
+    private buildSystemToast(candidate: ChatAlertCandidate): string {
+        const preview = this.buildPreview(candidate.body);
         return preview.length > 0 ? `Yosiftware: ${preview}` : 'Yosiftware te ha enviado un aviso.';
     }
 
-    private enqueueSwal(message: ChatMessage): void {
+    private enqueueSwal(candidate: ChatAlertCandidate): void {
         this.swalQueue = this.swalQueue
-            .then(() => this.showNotificationSwal(message))
+            .then(() => this.showNotificationSwal(candidate))
             .catch(() => undefined);
     }
 
-    private async showNotificationSwal(message: ChatMessage): Promise<void> {
-        const notification = message.notification;
+    private async showNotificationSwal(candidate: ChatAlertCandidate): Promise<void> {
+        const notification = candidate.notification;
         if (!notification)
             return;
 
@@ -116,7 +116,7 @@ export class ChatAlertService implements OnDestroy {
         const result = await Swal.fire({
             icon: 'info',
             title: `${notification.title ?? ''}`.trim() || 'Nuevo aviso',
-            text: `${message.body ?? ''}`.trim() || `${notification.title ?? ''}`.trim() || 'Tienes un nuevo aviso.',
+            text: `${candidate.body ?? ''}`.trim() || `${notification.title ?? ''}`.trim() || 'Tienes un nuevo aviso.',
             showCancelButton: canOpenMessages,
             confirmButtonText: canOpenMessages ? 'Abrir mensajes' : 'Aceptar',
             cancelButtonText: canOpenMessages ? 'Cerrar' : undefined,
@@ -140,8 +140,8 @@ export class ChatAlertService implements OnDestroy {
         return `${normalized.slice(0, 117).trim()}...`;
     }
 
-    private isOwnMessage(message: ChatMessage): boolean {
-        const senderUid = `${message?.sender?.uid ?? ''}`.trim();
+    private isOwnMessage(candidate: ChatAlertCandidate): boolean {
+        const senderUid = `${candidate?.sender?.uid ?? ''}`.trim();
         const currentUid = `${this.userSvc.CurrentUserUid ?? ''}`.trim();
         return senderUid.length > 0 && currentUid.length > 0 && senderUid === currentUid;
     }

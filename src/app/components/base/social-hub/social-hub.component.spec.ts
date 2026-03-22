@@ -20,6 +20,7 @@ describe('SocialHubComponent', () => {
     let unreadUserCount$: BehaviorSubject<number>;
     let unreadSystemCount$: BehaviorSubject<number>;
     let messageCreated$: Subject<any>;
+    let messageRead$: Subject<any>;
     let chatApiSvc: jasmine.SpyObj<ChatApiService>;
     let socialApiSvc: jasmine.SpyObj<SocialApiService>;
     let userProfileNavSvc: jasmine.SpyObj<UserProfileNavigationService>;
@@ -31,11 +32,15 @@ describe('SocialHubComponent', () => {
         unreadUserCount$ = new BehaviorSubject<number>(0);
         unreadSystemCount$ = new BehaviorSubject<number>(0);
         messageCreated$ = new Subject<any>();
+        messageRead$ = new Subject<any>();
         socialApiSvc = jasmine.createSpyObj<SocialApiService>('SocialApiService', [
             'searchUsers',
             'listFriends',
             'listReceivedFriendRequests',
             'listSentFriendRequests',
+            'watchFriends',
+            'watchReceivedFriendRequests',
+            'watchSentFriendRequests',
             'listBlocks',
             'sendFriendRequest',
             'resolveFriendRequest',
@@ -46,6 +51,9 @@ describe('SocialHubComponent', () => {
         socialApiSvc.searchUsers.and.resolveTo([
             { uid: 'uid-2', displayName: 'Yuna', photoThumbUrl: null, allowDirectMessagesFromNonFriends: true },
         ] as any);
+        socialApiSvc.watchFriends.and.returnValue(null);
+        socialApiSvc.watchReceivedFriendRequests.and.returnValue(null);
+        socialApiSvc.watchSentFriendRequests.and.returnValue(null);
         socialApiSvc.listFriends.and.resolveTo({ items: [], meta: { totalCount: 0, limit: 25, offset: 0, hasMore: false } });
         socialApiSvc.listReceivedFriendRequests.and.resolveTo({ items: [], meta: { totalCount: 0, limit: 25, offset: 0, hasMore: false } });
         socialApiSvc.listSentFriendRequests.and.resolveTo({ items: [], meta: { totalCount: 0, limit: 25, offset: 0, hasMore: false } });
@@ -119,6 +127,7 @@ describe('SocialHubComponent', () => {
                         conversations$,
                         unreadUserCount$,
                         unreadSystemCount$,
+                        messageRead$,
                         messageCreated$,
                         refreshConversations: jasmine.createSpy('refreshConversations').and.resolveTo(),
                         upsertConversation: jasmine.createSpy('upsertConversation'),
@@ -183,6 +192,51 @@ describe('SocialHubComponent', () => {
         expect(component.visibleFriends.map((item: any) => item.uid)).toEqual(['uid-2']);
         expect(component.visibleBlocks.map((item: any) => item.uid)).toEqual(['uid-4']);
     });
+
+    it('usa watchers realtime privados para amistades y solicitudes cuando están disponibles', fakeAsync(() => {
+        socialApiSvc.watchFriends.and.callFake((next: (result: any) => void) => {
+            next({
+                items: [
+                    { uid: 'uid-2', displayName: 'Yuna', photoThumbUrl: null, allowDirectMessagesFromNonFriends: true, friendsSince: null },
+                ],
+                meta: { totalCount: 1, limit: 25, offset: 0, hasMore: false },
+            });
+            return () => undefined;
+        });
+        socialApiSvc.watchReceivedFriendRequests.and.callFake((next: (result: any) => void) => {
+            next({
+                items: [
+                    {
+                        requestId: 7,
+                        direction: 'received',
+                        status: 'pending',
+                        createdAtUtc: null,
+                        target: { uid: 'uid-3', displayName: 'Marcus', photoThumbUrl: null, allowDirectMessagesFromNonFriends: true },
+                    },
+                ],
+                meta: { totalCount: 1, limit: 25, offset: 0, hasMore: false },
+            });
+            return () => undefined;
+        });
+        socialApiSvc.watchSentFriendRequests.and.callFake((next: (result: any) => void) => {
+            next({
+                items: [],
+                meta: { totalCount: 0, limit: 25, offset: 0, hasMore: false },
+            });
+            return () => undefined;
+        });
+
+        fixture.detectChanges();
+        isLoggedIn$.next(true);
+        tick();
+
+        expect(component.friends.map((item: any) => item.uid)).toEqual(['uid-2']);
+        expect(component.receivedRequests.map((item: any) => item.requestId)).toEqual([7]);
+        expect(socialApiSvc.listFriends).not.toHaveBeenCalled();
+        expect(socialApiSvc.listReceivedFriendRequests).not.toHaveBeenCalled();
+        expect(socialApiSvc.listSentFriendRequests).not.toHaveBeenCalled();
+        expect(socialApiSvc.listBlocks).toHaveBeenCalled();
+    }));
 
     it('solo permite mensaje en búsqueda si es amistad o acepta directos de no amigos', () => {
         fixture.detectChanges();
@@ -428,6 +482,99 @@ describe('SocialHubComponent', () => {
         tick();
 
         expect(component.activeMessages.map((item: any) => item.messageId)).toEqual([92]);
+    }));
+
+    it('no repite markAsRead para el mismo último messageId ya confirmado', fakeAsync(() => {
+        fixture.detectChanges();
+        component.activeConversationSummary = {
+            conversationId: 77,
+            type: 'direct',
+            title: 'Yuna',
+            photoThumbUrl: null,
+            campaignId: null,
+            participantRole: 'member',
+            participantStatus: 'active',
+            lastMessagePreview: null,
+            lastMessageAtUtc: null,
+            unreadCount: 1,
+            canSend: true,
+            isSystemConversation: false,
+            counterpartUid: 'uid-2',
+            lastMessageNotification: null,
+        } as any;
+        component.activeMessages = [{
+            messageId: 501,
+            conversationId: 77,
+            body: 'Hola',
+            sentAtUtc: '2026-03-15T14:00:00.000Z',
+            sender: {
+                uid: 'uid-2',
+                displayName: 'Yuna',
+                photoThumbUrl: null,
+                isSystemUser: false,
+            },
+            notification: null,
+            announcement: null,
+        }];
+
+        void (component as any).markActiveConversationAsRead();
+        tick();
+        void (component as any).markActiveConversationAsRead();
+        tick();
+
+        expect(chatApiSvc.markAsRead).toHaveBeenCalledTimes(1);
+        expect(chatApiSvc.markAsRead).toHaveBeenCalledWith(77, 501);
+    }));
+
+    it('usa message.read del propio usuario como acuse y evita reintentar el mismo read receipt', fakeAsync(() => {
+        fixture.detectChanges();
+        component.activeConversationSummary = {
+            conversationId: 78,
+            type: 'direct',
+            title: 'Yuna',
+            photoThumbUrl: null,
+            campaignId: null,
+            participantRole: 'member',
+            participantStatus: 'active',
+            lastMessagePreview: null,
+            lastMessageAtUtc: null,
+            unreadCount: 1,
+            canSend: true,
+            isSystemConversation: false,
+            counterpartUid: 'uid-2',
+            lastMessageNotification: null,
+        } as any;
+        component.activeMessages = [{
+            messageId: 601,
+            conversationId: 78,
+            body: 'Hola',
+            sentAtUtc: '2026-03-15T14:00:00.000Z',
+            sender: {
+                uid: 'uid-2',
+                displayName: 'Yuna',
+                photoThumbUrl: null,
+                isSystemUser: false,
+            },
+            notification: null,
+            announcement: null,
+        }];
+
+        void (component as any).markActiveConversationAsRead();
+        tick();
+
+        messageRead$.next({
+            conversationId: 78,
+            lastReadMessageId: 601,
+            userId: 'user-1',
+            uid: 'uid-1',
+        });
+        tick();
+
+        void (component as any).markActiveConversationAsRead();
+        tick();
+
+        expect(chatApiSvc.markAsRead).toHaveBeenCalledTimes(1);
+        expect(chatApiSvc.markAsRead).toHaveBeenCalledWith(78, 601);
     }));
 
     it('filtra conversaciones por tipo y mantiene la activa si sigue visible', fakeAsync(() => {

@@ -87,6 +87,18 @@ export interface ChatMessage {
     announcement: ChatAnnouncementPayload | null;
 }
 
+export interface ChatAlertCandidate {
+    alertKey: string;
+    source: 'message' | 'conversation_summary';
+    messageId: number | null;
+    conversationId: number;
+    sender: ChatMessageSender;
+    body: string;
+    sentAtUtc: string | null;
+    notification: ChatNotificationPayload | null;
+    announcement: ChatAnnouncementPayload | null;
+}
+
 export interface ChatMessageEnvelope {
     message: ChatMessage;
     conversation: ChatConversationSummary;
@@ -109,6 +121,12 @@ export interface ChatConversationListResult {
     meta: PagedListMeta;
     unreadUserCount: number;
     unreadSystemCount: number;
+}
+
+export interface ChatWebSocketTicketResponse {
+    ticket: string;
+    expiresAtUtc: string | null;
+    websocketUrl: string | null;
 }
 
 export type ChatWebSocketEvent =

@@ -25,6 +25,7 @@ import {
 import { environment } from 'src/environments/environment';
 import { CampaignRealtimeSyncService } from './campaign-realtime-sync.service';
 import { FirebaseInjectionContextService } from './firebase-injection-context.service';
+import { PrivateUserFirestoreService } from './private-user-firestore.service';
 
 @Injectable({
     providedIn: 'root'
@@ -43,29 +44,12 @@ export class CampanaService {
         private http: HttpClient,
         private firebaseContextSvc: FirebaseInjectionContextService,
         private campaignRealtimeSyncSvc: CampaignRealtimeSyncService,
+        private privateUserFirestoreSvc?: PrivateUserFirestoreService,
     ) {
         this.authReadyPromise = this.createAuthReadyPromise();
-        this.liveCampanas$ = merge(
-            of(null),
-            this.campaignRealtimeSyncSvc.listInvalidations$,
-            timer(30000, 30000),
-        ).pipe(
-            switchMap(() => from(this.fetchLiveCampanasWithActiveMembership()).pipe(
-                map((campanas) => ({ ok: true as const, campanas })),
-                catchError(() => of({
-                    ok: false as const,
-                    campanas: [] as Campana[],
-                })),
-            )),
-            scan(
-                (current: Campana[] | null, result: { ok: boolean; campanas: Campana[]; }) => result.ok
-                    ? result.campanas
-                    : (current ?? [this.buildSinCampanaOption()]),
-                null as Campana[] | null
-            ),
-            filter((campanas): campanas is Campana[] => Array.isArray(campanas)),
-            shareReplay({ bufferSize: 1, refCount: true }),
-        );
+        this.liveCampanas$ = this.privateUserFirestoreSvc
+            ? this.createFirestoreLiveCampanasObservable()
+            : this.createLegacyLiveCampanasObservable();
     }
 
     async getListCampanas(): Promise<Observable<Campana[]>> {
@@ -74,7 +58,7 @@ export class CampanaService {
 
     async listVisibleCampaigns(): Promise<CampaignListItem[]> {
         try {
-            return await this.fetchCampaignSummaries(await this.buildAuthHeaders());
+            return await this.fetchCampaignSummaries();
         } catch (error) {
             throw this.toError(error, 'No se pudieron cargar las campañas visibles.');
         }
@@ -84,7 +68,7 @@ export class CampanaService {
         try {
             const headers = await this.buildAuthHeaders();
             const actorUid = `${this.auth.currentUser?.uid ?? ''}`.trim();
-            const campaigns = await this.fetchCampaignSummaries(headers);
+            const campaigns = await this.fetchCampaignSummaries();
             return await this.filterCampaignsForProfile(campaigns, headers, actorUid);
         } catch (error) {
             throw this.toError(error, 'No se pudieron cargar las campañas del perfil.');
@@ -497,7 +481,7 @@ export class CampanaService {
     }
 
     private async fetchCampanasActorScoped(headers: HttpHeaders): Promise<Campana[]> {
-        const campanas = await this.fetchCampaignSummaries(headers);
+        const campanas = await this.fetchCampaignSummaries();
         return this.buildCampanasTree(campanas, headers);
     }
 
@@ -505,8 +489,83 @@ export class CampanaService {
         return this.fetchCampanasWithActiveMembership(await this.buildAuthHeaders());
     }
 
+    private createFirestoreLiveCampanasObservable(): Observable<Campana[]> {
+        return new Observable<Campana[]>((subscriber) => {
+            let active = true;
+            let current = [this.buildSinCampanaOption()];
+            let latestSummaries: CampaignListItem[] = [];
+
+            const emitCurrent = () => {
+                if (active)
+                    subscriber.next(current);
+            };
+            const rebuildTree = async (forceReloadSummaries: boolean = false) => {
+                try {
+                    if (forceReloadSummaries || latestSummaries.length < 1)
+                        latestSummaries = await this.fetchCampaignSummaries();
+
+                    const headers = await this.buildAuthHeaders();
+                    current = await this.buildCampanasTree(
+                        latestSummaries.filter((campana) => this.hasActiveMembership(campana)),
+                        headers
+                    );
+                } catch {
+                    // Conservamos la última emisión válida si falla una reconstrucción.
+                }
+                emitCurrent();
+            };
+
+            const watchStop = this.privateUserFirestoreSvc!.watchCampaigns(
+                (summaries) => {
+                    latestSummaries = summaries;
+                    void rebuildTree(false);
+                },
+                () => emitCurrent()
+            );
+            const refreshSub = merge(
+                this.campaignRealtimeSyncSvc.listInvalidations$,
+                timer(30000, 30000),
+            ).subscribe(() => {
+                void rebuildTree(latestSummaries.length < 1);
+            });
+
+            emitCurrent();
+            return () => {
+                active = false;
+                watchStop();
+                refreshSub.unsubscribe();
+            };
+        }).pipe(
+            shareReplay({ bufferSize: 1, refCount: true }),
+        );
+    }
+
+    private createLegacyLiveCampanasObservable(): Observable<Campana[]> {
+        return merge(
+            of(null),
+            this.campaignRealtimeSyncSvc.listInvalidations$,
+            timer(30000, 30000),
+        ).pipe(
+            switchMap(() => from(this.fetchLiveCampanasWithActiveMembership()).pipe(
+                map((campanas) => ({ ok: true as const, campanas })),
+                catchError(() => of({
+                    ok: false as const,
+                    campanas: [] as Campana[],
+                })),
+            )),
+            scan(
+                (current: Campana[] | null, result: { ok: boolean; campanas: Campana[]; }) => result.ok
+                    ? result.campanas
+                    : (current ?? [this.buildSinCampanaOption()]),
+                null as Campana[] | null
+            ),
+            filter((campanas): campanas is Campana[] => Array.isArray(campanas)),
+            shareReplay({ bufferSize: 1, refCount: true }),
+        );
+    }
+
     private async fetchCampanasWithActiveMembership(headers: HttpHeaders): Promise<Campana[]> {
-        const campanas = await this.fetchCampaignSummaries(headers);
+        const campanas = await this.fetchCampaignSummaries();
         return this.buildCampanasTree(
             campanas.filter((campana) => this.hasActiveMembership(campana)),
             headers
@@ -576,7 +635,11 @@ export class CampanaService {
             && (campana.campaignRole === 'master' || campana.campaignRole === 'jugador');
     }
 
-    private async fetchCampaignSummaries(headers: HttpHeaders): Promise<CampaignListItem[]> {
+    private async fetchCampaignSummaries(): Promise<CampaignListItem[]> {
+        if (this.privateUserFirestoreSvc)
+            return this.privateUserFirestoreSvc.listCampaigns();
+
+        const headers = await this.buildAuthHeaders();
         const response = await firstValueFrom(
             this.http.get<any[]>(this.campanasBaseUrl, { headers })
         );

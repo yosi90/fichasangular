@@ -14,6 +14,7 @@ import {
     SocialMutationResponse,
     SocialUserBasic,
 } from '../interfaces/social';
+import { PrivateUserFirestoreService } from './private-user-firestore.service';
 
 @Injectable({
     providedIn: 'root'
@@ -21,7 +22,11 @@ import {
 export class SocialApiService {
     private readonly usuariosBaseUrl = `${environment.apiUrl}usuarios`;
 
-    constructor(private http: HttpClient, private auth: Auth) { }
+    constructor(
+        private http: HttpClient,
+        private auth: Auth,
+        private privateUserFirestoreSvc?: PrivateUserFirestoreService
+    ) { }
 
     async searchUsers(query: string, limit: number = 10): Promise<SocialUserBasic[]> {
         const q = `${query ?? ''}`.trim();
@@ -46,6 +51,9 @@ export class SocialApiService {
     }
 
     async listFriends(limit: number = 25, offset: number = 0): Promise<PagedListResult<FriendItem>> {
+        if (this.privateUserFirestoreSvc)
+            return this.privateUserFirestoreSvc.listFriends(limit, offset);
+
         return this.getPagedList<FriendItem>(
             `${this.usuariosBaseUrl}/me/friends`,
             {
@@ -56,7 +64,21 @@ export class SocialApiService {
         );
     }
 
+    watchFriends(
+        next: (result: PagedListResult<FriendItem>) => void,
+        onError?: (error: unknown) => void,
+        limit: number = 25,
+        offset: number = 0
+    ): (() => void) | null {
+        if (!this.privateUserFirestoreSvc)
+            return null;
+        return this.privateUserFirestoreSvc.watchFriends(next, onError, limit, offset);
+    }
+
     async listReceivedFriendRequests(limit: number = 25, offset: number = 0): Promise<PagedListResult<FriendRequestItem>> {
+        if (this.privateUserFirestoreSvc)
+            return this.privateUserFirestoreSvc.listFriendRequests('received', limit, offset);
+
         return this.getPagedList<FriendRequestItem>(
             `${this.usuariosBaseUrl}/me/friend-requests/received`,
             {
@@ -67,7 +89,21 @@ export class SocialApiService {
         );
     }
 
+    watchReceivedFriendRequests(
+        next: (result: PagedListResult<FriendRequestItem>) => void,
+        onError?: (error: unknown) => void,
+        limit: number = 25,
+        offset: number = 0
+    ): (() => void) | null {
+        if (!this.privateUserFirestoreSvc)
+            return null;
+        return this.privateUserFirestoreSvc.watchFriendRequests('received', next, onError, limit, offset);
+    }
+
     async listSentFriendRequests(limit: number = 25, offset: number = 0): Promise<PagedListResult<FriendRequestItem>> {
+        if (this.privateUserFirestoreSvc)
+            return this.privateUserFirestoreSvc.listFriendRequests('sent', limit, offset);
+
         return this.getPagedList<FriendRequestItem>(
             `${this.usuariosBaseUrl}/me/friend-requests/sent`,
             {
@@ -76,6 +112,17 @@ export class SocialApiService {
             },
             (item) => this.normalizeFriendRequestItem(item, 'sent')
         );
+    }
+
+    watchSentFriendRequests(
+        next: (result: PagedListResult<FriendRequestItem>) => void,
+        onError?: (error: unknown) => void,
+        limit: number = 25,
+        offset: number = 0
+    ): (() => void) | null {
+        if (!this.privateUserFirestoreSvc)
+            return null;
+        return this.privateUserFirestoreSvc.watchFriendRequests('sent', next, onError, limit, offset);
     }
 
     async sendFriendRequest(targetUid: string): Promise<SocialMutationResponse<FriendRequestItem>> {

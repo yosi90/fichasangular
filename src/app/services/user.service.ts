@@ -18,6 +18,7 @@ import { EMPTY_USER_ACL, UserAcl, UserRole, normalizeUserAcl } from '../interfac
 import { AuthProviderType, UserProfile } from '../interfaces/user-profile';
 import { UsuarioUpsertRequestDto, UsuarioUpsertResponseDto } from '../interfaces/usuarios-api';
 import { FirebaseInjectionContextService } from './firebase-injection-context.service';
+import { PrivateUserFirestoreService } from './private-user-firestore.service';
 import { UserProfileApiService } from './user-profile-api.service';
 import { UsuariosApiService } from './usuarios-api.service';
 
@@ -30,6 +31,7 @@ export class UserService {
     private sesionAbierta: boolean = false;
     private authUidActivo: string = '';
     private aclUnsubscribe: (() => void) | null = null;
+    private privateProfileUnsubscribe: (() => void) | null = null;
     private banSignOutInProgress: boolean = false;
     private isLoggedInSubject = new BehaviorSubject<boolean>(false);
     private permisosSubject = new BehaviorSubject<number>(0);
@@ -61,7 +63,8 @@ export class UserService {
         private db: Database,
         private usuariosApiSvc: UsuariosApiService,
         private firebaseContextSvc: FirebaseInjectionContextService,
-        private userProfileApiSvc?: UserProfileApiService
+        private userProfileApiSvc?: UserProfileApiService,
+        private privateUserFirestoreSvc?: PrivateUserFirestoreService
     ) {
         this.subscribeAuthState((firebaseUser) => {
             this.actualizarSesionDesdeAuth(firebaseUser);
@@ -165,6 +168,7 @@ export class UserService {
 
     private actualizarSesionDesdeAuth(firebaseUser: User | null): void {
         this.stopAclSubscription();
+        this.stopPrivateProfileSubscription();
 
         if (!firebaseUser) {
             this.authUidActivo = '';
@@ -185,6 +189,7 @@ export class UserService {
         });
 
         this.startAclSubscription(firebaseUser.uid);
+        this.startPrivateProfileSubscription(firebaseUser.uid);
         void this.hidratarSesion(firebaseUser);
     }
 
@@ -460,6 +465,36 @@ export class UserService {
         this.aclUnsubscribe = null;
     }
 
+    private startPrivateProfileSubscription(uid: string): void {
+        if (!this.privateUserFirestoreSvc)
+            return;
+
+        const uidNormalizado = `${uid ?? ''}`.trim();
+        if (uidNormalizado.length < 1) {
+            this.setCurrentPrivateProfile(null);
+            return;
+        }
+
+        this.privateProfileUnsubscribe = this.privateUserFirestoreSvc.watchMyProfile(
+            (profile) => {
+                if (this.isActiveUser(uidNormalizado))
+                    this.setCurrentPrivateProfile(profile);
+            },
+            () => {
+                if (this.isActiveUser(uidNormalizado))
+                    this.setCurrentPrivateProfile(null);
+            }
+        );
+    }
+
+    private stopPrivateProfileSubscription(): void {
+        if (!this.privateProfileUnsubscribe)
+            return;
+
+        this.privateProfileUnsubscribe();
+        this.privateProfileUnsubscribe = null;
+    }
+
     private async hidratarSesion(firebaseUser: User): Promise<void> {
         const uid = `${firebaseUser.uid ?? ''}`.trim();
         if (uid.length < 1)
@@ -484,7 +519,7 @@ export class UserService {
             // Mantiene sesión y permisos aunque falle escritura de perfil.
         }
 
-        if (!this.userProfileApiSvc)
+        if (!this.userProfileApiSvc || this.privateUserFirestoreSvc)
             return;
 
         try {

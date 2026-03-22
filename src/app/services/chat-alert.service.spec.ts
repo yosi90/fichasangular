@@ -11,6 +11,20 @@ describe('ChatAlertService', () => {
     let userSvc: any;
     let service: ChatAlertService;
 
+    function buildCandidate(partial: Record<string, any>): any {
+        return {
+            alertKey: partial['alertKey'] ?? `alert-${partial['messageId'] ?? partial['conversationId'] ?? 'x'}`,
+            source: partial['source'] ?? 'message',
+            messageId: partial['messageId'] ?? null,
+            conversationId: partial['conversationId'] ?? 0,
+            sender: partial['sender'],
+            body: partial['body'] ?? '',
+            sentAtUtc: partial['sentAtUtc'] ?? '2026-03-13T12:00:00.000Z',
+            notification: partial['notification'] ?? null,
+            announcement: partial['announcement'] ?? null,
+        };
+    }
+
     beforeEach(() => {
         alertCandidate$ = new Subject<any>();
         chatRealtimeSvc = {
@@ -30,7 +44,7 @@ describe('ChatAlertService', () => {
         spyOn(Swal, 'fire').and.resolveTo({ isConfirmed: true } as any);
 
         service.init();
-        alertCandidate$.next({
+        alertCandidate$.next(buildCandidate({
             messageId: 21,
             conversationId: 55,
             sender: {
@@ -40,7 +54,6 @@ describe('ChatAlertService', () => {
                 isSystemUser: true,
             },
             body: 'Tu solicitud de rol ha sido aprobada.',
-            sentAtUtc: '2026-03-13T12:00:00.000Z',
             notification: {
                 code: 'system.role_request_resolved',
                 title: 'Tu solicitud de rol ha sido aprobada',
@@ -52,8 +65,7 @@ describe('ChatAlertService', () => {
                     status: 'approved',
                 },
             },
-            announcement: null,
-        });
+        }));
         tick();
 
         expect(Swal.fire).toHaveBeenCalled();
@@ -67,7 +79,7 @@ describe('ChatAlertService', () => {
         const swalSpy = spyOn(Swal, 'fire').and.resolveTo({ isConfirmed: true } as any);
 
         service.init();
-        alertCandidate$.next({
+        alertCandidate$.next(buildCandidate({
             messageId: 22,
             conversationId: 56,
             sender: {
@@ -77,8 +89,6 @@ describe('ChatAlertService', () => {
                 isSystemUser: false,
             },
             body: 'Hola',
-            sentAtUtc: '2026-03-13T12:00:00.000Z',
-            notification: null,
             announcement: {
                 code: 'chat.new_chat',
                 title: 'Tienes una conversación nueva',
@@ -88,7 +98,7 @@ describe('ChatAlertService', () => {
                 },
                 context: {},
             },
-        });
+        }));
 
         expect(appToastSvc.showInfo).toHaveBeenCalledWith('Tienes una conversación nueva');
         expect(swalSpy).not.toHaveBeenCalled();
@@ -98,7 +108,7 @@ describe('ChatAlertService', () => {
         const swalSpy = spyOn(Swal, 'fire').and.resolveTo({ isConfirmed: false } as any);
 
         service.init();
-        alertCandidate$.next({
+        alertCandidate$.next(buildCandidate({
             messageId: 25,
             conversationId: 58,
             sender: {
@@ -108,10 +118,7 @@ describe('ChatAlertService', () => {
                 isSystemUser: false,
             },
             body: 'Mensaje normal',
-            sentAtUtc: '2026-03-13T12:00:00.000Z',
-            notification: null,
-            announcement: null,
-        });
+        }));
 
         expect(appToastSvc.showInfo).toHaveBeenCalledWith('Yuna: Mensaje normal');
         expect(swalSpy).not.toHaveBeenCalled();
@@ -119,7 +126,7 @@ describe('ChatAlertService', () => {
 
     it('usa toast de sistema para mensajes del sistema sin notification', () => {
         service.init();
-        alertCandidate$.next({
+        alertCandidate$.next(buildCandidate({
             messageId: 26,
             conversationId: 58,
             sender: {
@@ -129,10 +136,7 @@ describe('ChatAlertService', () => {
                 isSystemUser: true,
             },
             body: '',
-            sentAtUtc: '2026-03-13T12:00:00.000Z',
-            notification: null,
-            announcement: null,
-        });
+        }));
 
         expect(appToastSvc.showSystem).toHaveBeenCalledWith('Yosiftware te ha enviado un aviso.', { durationMs: 7600 });
     });
@@ -142,7 +146,7 @@ describe('ChatAlertService', () => {
         chatRealtimeSvc.isConversationFocused.and.returnValue(true);
 
         service.init();
-        alertCandidate$.next({
+        alertCandidate$.next(buildCandidate({
             messageId: 23,
             conversationId: 57,
             sender: {
@@ -152,16 +156,14 @@ describe('ChatAlertService', () => {
                 isSystemUser: false,
             },
             body: 'Mensaje normal',
-            sentAtUtc: '2026-03-13T12:00:00.000Z',
-            notification: null,
             announcement: {
                 code: 'chat.new_message',
                 title: null,
                 action: null,
                 context: {},
             },
-        });
-        alertCandidate$.next({
+        }));
+        alertCandidate$.next(buildCandidate({
             messageId: 24,
             conversationId: 57,
             sender: {
@@ -171,15 +173,13 @@ describe('ChatAlertService', () => {
                 isSystemUser: true,
             },
             body: 'Aviso importante',
-            sentAtUtc: '2026-03-13T12:00:00.000Z',
             notification: {
                 code: 'system.account_updated',
                 title: 'Cuenta actualizada',
                 action: null,
                 context: {},
             },
-            announcement: null,
-        });
+        }));
         tick();
 
         expect(appToastSvc.showInfo).not.toHaveBeenCalled();
@@ -190,7 +190,7 @@ describe('ChatAlertService', () => {
         const swalSpy = spyOn(Swal, 'fire').and.resolveTo({ isConfirmed: false } as any);
 
         service.init();
-        alertCandidate$.next({
+        alertCandidate$.next(buildCandidate({
             messageId: 27,
             conversationId: 59,
             sender: {
@@ -200,21 +200,19 @@ describe('ChatAlertService', () => {
                 isSystemUser: false,
             },
             body: 'Mensaje propio',
-            sentAtUtc: '2026-03-13T12:00:00.000Z',
-            notification: null,
-            announcement: null,
-        });
+        }));
 
         expect(appToastSvc.showInfo).not.toHaveBeenCalled();
         expect(appToastSvc.showSystem).not.toHaveBeenCalled();
         expect(swalSpy).not.toHaveBeenCalled();
     });
 
-    it('no duplica alertas para el mismo messageId', fakeAsync(() => {
+    it('no duplica alertas para la misma alertKey', fakeAsync(() => {
         const swalSpy = spyOn(Swal, 'fire').and.resolveTo({ isConfirmed: false } as any);
 
         service.init();
-        const message = {
+        const message = buildCandidate({
+            alertKey: 'same-alert',
             messageId: 30,
             conversationId: 60,
             sender: {
@@ -224,20 +222,51 @@ describe('ChatAlertService', () => {
                 isSystemUser: true,
             },
             body: 'Aviso importante',
-            sentAtUtc: '2026-03-13T12:00:00.000Z',
             notification: {
                 code: 'system.account_banned',
                 title: 'Cuenta suspendida',
                 action: null,
                 context: {},
             },
-            announcement: null,
-        };
+        });
 
         alertCandidate$.next(message);
         alertCandidate$.next(message);
         tick();
 
         expect(swalSpy).toHaveBeenCalledTimes(1);
+    }));
+
+    it('muestra Swal para notificación persistente recuperada por summary aunque no tenga messageId', fakeAsync(() => {
+        spyOn(Swal, 'fire').and.resolveTo({ isConfirmed: false } as any);
+
+        service.init();
+        alertCandidate$.next(buildCandidate({
+            alertKey: 'summary-55',
+            source: 'conversation_summary',
+            messageId: null,
+            conversationId: 55,
+            sender: {
+                uid: 'system:yosiftware',
+                displayName: 'Yosiftware',
+                photoThumbUrl: null,
+                isSystemUser: true,
+            },
+            body: 'Tu invitación de campaña ha sido aceptada.',
+            notification: {
+                code: 'system.campaign_invitation_resolved',
+                title: 'Invitación resuelta',
+                action: {
+                    target: 'social.messages',
+                    conversationId: 55,
+                },
+                context: {
+                    campaignId: 7,
+                },
+            },
+        }));
+        tick();
+
+        expect(Swal.fire).toHaveBeenCalledTimes(1);
     }));
 });

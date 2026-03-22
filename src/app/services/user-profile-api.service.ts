@@ -19,6 +19,7 @@ import {
     UserRoleRequestTarget,
 } from '../interfaces/user-role-request';
 import { UserSettingsV1, createDefaultUserSettings } from '../interfaces/user-settings';
+import { PrivateUserFirestoreService } from './private-user-firestore.service';
 
 @Injectable({
     providedIn: 'root'
@@ -27,9 +28,18 @@ export class UserProfileApiService {
     private readonly usuariosBaseUrl = `${environment.apiUrl}usuarios`;
     private readonly publicProfileCache = new Map<string, UserPublicProfile | null>();
 
-    constructor(private http: HttpClient, private auth: Auth) { }
+    constructor(
+        private http: HttpClient,
+        private auth: Auth,
+        private privateUserFirestoreSvc?: PrivateUserFirestoreService
+    ) { }
 
     async getMyProfile(): Promise<UserPrivateProfile> {
+        if (this.privateUserFirestoreSvc) {
+            const response = await this.privateUserFirestoreSvc.getMyProfile();
+            return this.normalizePrivateProfile(response ?? this.buildFallbackPrivateProfile());
+        }
+
         try {
             const response = await firstValueFrom(
                 this.http.get<UserPrivateProfile>(`${this.usuariosBaseUrl}/me`, {
@@ -66,6 +76,11 @@ export class UserProfileApiService {
     }
 
     async getMySettings(): Promise<UserSettingsV1> {
+        if (this.privateUserFirestoreSvc) {
+            const response = await this.privateUserFirestoreSvc.getMySettings();
+            return this.normalizeSettings(response ?? createDefaultUserSettings());
+        }
+
         try {
             const response = await firstValueFrom(
                 this.http.get<UserSettingsV1>(`${this.usuariosBaseUrl}/me/settings`, {
@@ -347,6 +362,31 @@ export class UserProfileApiService {
         };
     }
 
+    private buildFallbackPrivateProfile(): UserPrivateProfile {
+        const currentUser = this.auth.currentUser;
+        const email = this.toNullableText(currentUser?.email);
+        const displayName = this.toNullableText(currentUser?.displayName)
+            ?? this.fallbackDisplayName(email)
+            ?? 'Usuario';
+
+        return {
+            uid: `${currentUser?.uid ?? ''}`.trim(),
+            displayName,
+            bio: null,
+            genderIdentity: null,
+            pronouns: null,
+            email,
+            emailVerified: currentUser?.emailVerified === true,
+            authProvider: this.normalizeAuthProvider(null),
+            photoUrl: null,
+            photoThumbUrl: null,
+            createdAt: null,
+            lastSeenAt: null,
+            role: 'jugador',
+            permissions: {},
+        };
+    }
+
     private normalizePublicProfile(raw: UserPublicProfile | null | undefined): UserPublicProfile {
         return {
             uid: `${raw?.uid ?? ''}`.trim(),
@@ -389,6 +429,14 @@ export class UserProfileApiService {
         const normalized = `${value ?? ''}`.trim().toLowerCase();
         if (normalized === 'correo' || normalized === 'google')
             return normalized;
+
+        const providerIds = (this.auth.currentUser?.providerData ?? [])
+            .map((provider) => `${provider?.providerId ?? ''}`.trim().toLowerCase())
+            .filter((providerId) => providerId.length > 0);
+        if (providerIds.includes('google.com'))
+            return 'google';
+        if (providerIds.includes('password') || providerIds.includes('email'))
+            return 'correo';
         return 'otro';
     }
 
@@ -480,5 +528,16 @@ export class UserProfileApiService {
     private toNullableText(value: any): string | null {
         const text = `${value ?? ''}`.trim();
         return text.length > 0 ? text : null;
+    }
+
+    private fallbackDisplayName(email: string | null): string | null {
+        const normalized = `${email ?? ''}`.trim();
+        if (normalized.length < 1)
+            return null;
+
+        const atPos = normalized.indexOf('@');
+        if (atPos > 0)
+            return normalized.substring(0, atPos);
+        return normalized;
     }
 }
