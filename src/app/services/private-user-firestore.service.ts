@@ -297,8 +297,20 @@ export class PrivateUserFirestoreService {
             photoThumbUrl: this.toNullableText(raw?.photoThumbUrl),
             createdAt: this.toNullableText(raw?.createdAt),
             lastSeenAt: this.toNullableText(raw?.lastSeenAt),
-            role: this.normalizeRole(raw?.role),
-            permissions: this.normalizePermissions(raw?.permissions),
+            role: this.normalizeRole(
+                raw?.role
+                ?? raw?.currentRole
+                ?? raw?.roleCode
+                ?? raw?.roles?.type
+                ?? raw?.acl?.role
+            ),
+            permissions: this.normalizePermissions(
+                raw?.permissions
+                ?? raw?.permissionsMap
+                ?? raw?.acl?.permissions
+                ?? raw?.permissionsCreate
+                ?? raw
+            ),
         };
     }
 
@@ -318,6 +330,12 @@ export class PrivateUserFirestoreService {
                 visibilidadPorDefectoPersonajes: raw?.perfil?.visibilidadPorDefectoPersonajes === true,
                 mostrarPerfilPublico: raw?.perfil?.mostrarPerfilPublico !== false,
                 allowDirectMessagesFromNonFriends: raw?.perfil?.allowDirectMessagesFromNonFriends === true,
+                notificaciones: {
+                    mensajes: raw?.perfil?.notificaciones?.mensajes !== false,
+                    amistad: raw?.perfil?.notificaciones?.amistad !== false,
+                    campanas: raw?.perfil?.notificaciones?.campanas !== false,
+                    cuentaSistema: raw?.perfil?.notificaciones?.cuentaSistema !== false,
+                },
             },
         };
     }
@@ -382,7 +400,7 @@ export class PrivateUserFirestoreService {
 
         return {
             id,
-            nombre: this.toNullableText(raw?.nombre ?? raw?.Nombre ?? raw?.NombreCampana ?? raw?.n) ?? `Campana ${id}`,
+            nombre: this.toNullableText(raw?.nombre ?? raw?.Nombre ?? raw?.NombreCampana ?? raw?.n) ?? `Campaña ${id}`,
             campaignRole: this.normalizeNullableCampaignRole(
                 raw?.campaignRole
                 ?? raw?.CampaignRole
@@ -441,7 +459,7 @@ export class PrivateUserFirestoreService {
             Clases: this.toNullableText(raw?.Clases ?? raw?.c) ?? '',
             Contexto: this.toNullableText(raw?.Contexto ?? raw?.co) ?? '',
             Personalidad: this.toNullableText(raw?.Personalidad ?? raw?.p) ?? '',
-            Campana: this.toNullableText(raw?.Campana ?? raw?.Campaña ?? raw?.ca) ?? 'Sin campana',
+            Campana: this.toNullableText(raw?.Campana ?? raw?.Campaña ?? raw?.ca) ?? 'Sin campaña',
             Trama: this.toNullableText(raw?.Trama ?? raw?.t) ?? 'Trama base',
             Subtrama: this.toNullableText(raw?.Subtrama ?? raw?.s) ?? 'Subtrama base',
             Archivado: raw?.Archivado === true || raw?.a === true,
@@ -449,7 +467,23 @@ export class PrivateUserFirestoreService {
     }
 
     private normalizePermissions(raw: any): UserPrivateProfile['permissions'] {
-        if (!raw || typeof raw !== 'object')
+        if (!raw)
+            return {};
+
+        if (Array.isArray(raw)) {
+            return raw.reduce<UserPrivateProfile['permissions']>((acc, item) => {
+                const resource = `${item?.resource ?? item?.Resource ?? ''}`.trim();
+                if (resource.length < 1)
+                    return acc;
+
+                acc[resource] = {
+                    create: item?.allowed === true,
+                };
+                return acc;
+            }, {});
+        }
+
+        if (typeof raw !== 'object')
             return {};
 
         return Object.entries(raw).reduce<UserPrivateProfile['permissions']>((acc, [resource, value]) => {
@@ -457,9 +491,15 @@ export class PrivateUserFirestoreService {
             if (key.length < 1)
                 return acc;
 
-            const resourceValue = value as { create?: boolean; } | null | undefined;
+            const resourceValue = value as { create?: boolean; allowed?: boolean; } | null | undefined;
+            if (typeof resourceValue !== 'object' || resourceValue === null)
+                return acc;
+            if (!Object.prototype.hasOwnProperty.call(resourceValue, 'create')
+                && !Object.prototype.hasOwnProperty.call(resourceValue, 'allowed'))
+                return acc;
+
             acc[key] = {
-                create: resourceValue?.create === true,
+                create: resourceValue?.create === true || resourceValue?.allowed === true,
             };
             return acc;
         }, {});

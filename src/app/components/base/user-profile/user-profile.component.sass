@@ -298,14 +298,15 @@
 .profile-panel__hint--error
     color: rgba(255, 144, 144, .92)
 
-.campaigns-layout-grid,
+.campaign-management-layout,
 .campaign-detail-grid
     display: grid
-    grid-template-columns: repeat(2, minmax(0, 1fr))
+    grid-template-columns: 19rem minmax(0, 1fr)
     gap: 1rem
+    align-items: stretch
 
-.campaign-block,
-.campaign-detail-panel,
+.campaign-nav-panel,
+.campaign-workspace,
 .campaign-card,
 .campaign-invitation-inbox
     min-width: 0
@@ -313,44 +314,54 @@
 .profile-section--campanas
     overflow: hidden
 
-.campaign-block
+.campaign-nav-panel,
+.campaign-workspace
     display: flex
     flex-direction: column
+    min-height: 34rem
+    max-height: 34rem
     overflow: hidden
 
-.campaign-detail-panel
-    gap: 1.25rem
-    flex: 1 1 auto
-    overflow: auto
+.campaign-workspace
+    gap: 1rem
 
-.campaign-detail-panel__header
-    display: grid
-    grid-template-columns: auto minmax(0, 1fr) auto
-    align-items: center
-    gap: .85rem
+.campaign-workspace__header
+    display: flex
+    justify-content: space-between
+    align-items: flex-start
+    gap: 1rem
 
-.campaign-detail-panel__title
-    margin: 0
+.campaign-workspace__copy
+    display: flex
+    flex-direction: column
+    gap: .65rem
     min-width: 0
-    white-space: nowrap
-    overflow: hidden
-    text-overflow: ellipsis
 
-.campaign-detail-panel__meta
-    margin: 0
-    color: rgba(245, 247, 255, .72)
-    white-space: nowrap
-    overflow: hidden
-    text-overflow: ellipsis
+    h2
+        margin: 0
+        font-size: 1.1rem
+        font-weight: 700
 
-.campaign-detail-panel__mode
-    justify-self: end
+.campaign-workspace__context
+    display: flex
+    flex-wrap: wrap
+    gap: .55rem
 
-.campaign-detail-panel__actions
+.campaign-workspace__actions
     display: inline-flex
     align-items: center
-    justify-self: end
+    justify-content: flex-end
+    flex-wrap: wrap
     gap: .6rem
+
+.campaign-workspace__body
+    display: flex
+    flex-direction: column
+    gap: 1rem
+    flex: 1 1 auto
+    min-height: 0
+    overflow: auto
+    padding-right: .15rem
 
 .campaign-recover-button
     display: inline-flex
@@ -382,6 +393,46 @@
     gap: .75rem
     align-items: center
 
+.campaign-inline-form--editor
+    align-items: stretch
+
+.campaign-policy-grid
+    display: grid
+    grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr))
+    gap: .85rem
+
+.campaign-policy-field
+    display: flex
+    flex-direction: column
+    gap: .45rem
+
+    span
+        color: rgba(245, 247, 255, .72)
+        font-size: .9rem
+
+.campaign-policy-field--full
+    grid-column: 1 / -1
+
+.campaign-policy-field--muted
+    opacity: .7
+
+.campaign-policy-heading
+    display: flex
+    align-items: center
+    gap: .35rem
+
+.campaign-help-button
+    width: 2rem
+    height: 2rem
+    color: rgba(245, 247, 255, .78)
+    padding: 0
+
+    mat-icon
+        color: $accent
+        font-size: 1.05rem
+        width: 1.05rem
+        height: 1.05rem
+
 .campaign-inline-form--full
     width: 100%
 
@@ -391,19 +442,23 @@
     border-bottom: 1px solid rgba(255, 255, 255, .08)
 
 .campaign-text-input
-    flex: 1 1 14rem
+    width: 100%
     min-height: 2.8rem
     padding: .75rem .9rem
     border-radius: .85rem
     border: 1px solid rgba(173, 189, 196, .22)
     background: rgba(255, 255, 255, .04)
     color: #f5f7ff
+    box-sizing: border-box
 
     &::placeholder
         color: rgba(245, 247, 255, .42)
 
     &:disabled
         opacity: .7
+
+.campaign-inline-form .campaign-text-input
+    flex: 1 1 14rem
 
 .campaign-list,
 .campaign-member-list,
@@ -482,6 +537,49 @@
         border-color: rgba(194, 24, 91, .38)
         background: rgba(255, 255, 255, .06)
 
+.campaign-nav-card
+    display: flex
+    flex-direction: column
+    gap: .65rem
+    padding: .85rem .95rem
+    border-radius: .9rem
+    border: 1px solid rgba(173, 189, 196, .16)
+    background: rgba(255, 255, 255, .03)
+    transition: border-color .2s ease, background-color .2s ease
+
+.campaign-nav-card--selected
+    border-color: rgba(194, 24, 91, .72)
+    background: rgba(194, 24, 91, .12)
+
+.campaign-nav-card__select
+    display: flex
+    flex-direction: column
+    align-items: flex-start
+    gap: .25rem
+    width: 100%
+    padding: 0
+    border: 0
+    background: transparent
+    color: #f5f7ff
+    text-align: left
+    cursor: pointer
+
+    span
+        color: rgba(245, 247, 255, .65)
+        word-break: break-word
+
+.campaign-nav-card__actions
+    display: grid
+    grid-template-columns: repeat(2, minmax(0, 1fr))
+    gap: .55rem
+
+.campaign-nav-card__action
+    min-width: 0
+
+.campaign-nav-card__action--active
+    border-color: rgba(194, 24, 91, .72) !important
+    background: rgba(194, 24, 91, .14) !important
+
 .campaign-search-results__item
     border-style: dashed
 
@@ -505,11 +603,77 @@
     border-color: rgba(194, 24, 91, .72)
     background: rgba(194, 24, 91, .14)
 
+.campaign-list__item--create
+    border-style: dashed
+
+    &:disabled
+        cursor: not-allowed
+        opacity: .6
+        transform: none
+
 .campaign-card
     padding: 1rem
     border-radius: 1rem
     background: rgba(255, 255, 255, .03)
     border: 1px solid rgba(255, 255, 255, .08)
+
+.campaign-workspace-empty
+    display: flex
+    flex-direction: column
+    align-items: center
+    justify-content: center
+    gap: .85rem
+    min-height: 14rem
+    padding: 1.5rem
+    border-radius: 1rem
+    border: 1px dashed rgba(173, 189, 196, .22)
+    background: rgba(255, 255, 255, .03)
+    text-align: center
+
+    mat-icon
+        color: $accent
+
+    p
+        margin: 0
+        color: rgba(245, 247, 255, .74)
+
+.campaign-workspace-empty__actions
+    display: flex
+    flex-wrap: wrap
+    justify-content: center
+    gap: .65rem
+
+.campaign-workspace-tabs
+    display: inline-flex
+    flex-wrap: wrap
+    gap: .55rem
+
+.campaign-workspace-tab
+    padding: .45rem .85rem
+    border-radius: 999px
+    border: 1px solid rgba(255, 255, 255, .12)
+    background: rgba(255, 255, 255, .04)
+    color: #f5f7ff
+    cursor: pointer
+
+.campaign-workspace-tab--active
+    border-color: rgba(194, 24, 91, .72)
+    background: rgba(194, 24, 91, .14)
+
+.campaign-users-tab,
+.campaign-stories-tab
+    display: flex
+    flex-direction: column
+    gap: 1rem
+
+.campaign-trama-item__copy
+    display: flex
+    flex-direction: column
+    gap: .2rem
+
+.campaign-trama-item__visibility
+    color: rgba(245, 247, 255, .68)
+    font-size: .86rem
 
 .campaign-checkbox
     display: inline-flex
@@ -519,6 +683,66 @@
 
     input
         accent-color: $active
+
+    span
+        display: inline-flex
+        flex-direction: column
+        gap: .2rem
+
+    small
+        color: rgba(245, 247, 255, .62)
+        font-size: .82rem
+
+.campaign-checkbox--stacked
+    align-items: flex-start
+
+.campaign-homebrew-modes
+    display: grid
+    grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr))
+    gap: .75rem
+
+.campaign-choice
+    display: flex
+    align-items: flex-start
+    gap: .75rem
+    padding: .8rem .9rem
+    border-radius: .9rem
+    border: 1px solid rgba(255, 255, 255, .08)
+    background: rgba(255, 255, 255, .03)
+    cursor: pointer
+    transition: border-color .18s ease, background .18s ease
+
+    input
+        margin-top: .15rem
+        accent-color: $active
+
+    span
+        display: flex
+        flex-direction: column
+        gap: .2rem
+        color: #f5f7ff
+
+.campaign-choice--active
+    border-color: rgba(194, 24, 91, .6)
+    background: rgba(194, 24, 91, .12)
+
+.campaign-choice--disabled
+    cursor: not-allowed
+    opacity: .72
+
+.campaign-toggle-list
+    display: flex
+    flex-direction: column
+    gap: .85rem
+
+.campaign-toggle-row
+    display: flex
+    align-items: center
+    justify-content: space-between
+    gap: .75rem
+
+::ng-deep .campaign-toggle-list .mdc-label
+    color: #f5f7ff
 
 .campaign-card__header
     display: flex
@@ -727,23 +951,24 @@
     .profile-summary__hero,
     .profile-two-column,
     .profile-identity-grid,
-    .campaigns-layout-grid,
+    .campaign-management-layout,
     .campaign-detail-grid
         grid-template-columns: 1fr
 
     .profile-main
         align-items: stretch
 
-    .campaign-detail-panel__header
-        grid-template-columns: 1fr
-        align-items: flex-start
+    .campaign-workspace__header
+        flex-direction: column
+        align-items: stretch
 
-    .campaign-detail-panel__mode
-        justify-self: start
-
-    .campaign-detail-panel__actions
-        justify-self: start
+    .campaign-workspace__actions
         flex-wrap: wrap
+
+    .campaign-nav-panel,
+    .campaign-workspace
+        min-height: auto
+        max-height: none
 
 @media (max-width: 640px)
     .profile-main
@@ -752,6 +977,9 @@
     .campaign-card__header
         flex-direction: column
         align-items: flex-start
+
+    .campaign-nav-card__actions
+        grid-template-columns: 1fr
 
     .profile-summary__avatar img
         width: 8.5rem

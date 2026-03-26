@@ -45,4 +45,42 @@ describe('AppToastService', () => {
         tick(2400);
         expect(currentLength).toBe(0);
     }));
+
+    it('suprime toasts etiquetados cuando la categoría está desactivada', () => {
+        const prefsSvc = jasmine.createSpyObj('SocialAlertPreferencesService', ['isEnabled']);
+        prefsSvc.isEnabled.and.returnValue(false);
+        const service = new AppToastService(prefsSvc);
+        let latest: any[] = [];
+        service.toasts$.subscribe((toasts) => latest = toasts);
+
+        service.showInfo('Mensaje oculto', { category: 'mensajes' });
+
+        expect(latest.length).toBe(0);
+    });
+
+    it('mantiene visibles los errores aunque la categoría esté desactivada', () => {
+        const prefsSvc = jasmine.createSpyObj('SocialAlertPreferencesService', ['isEnabled']);
+        prefsSvc.isEnabled.and.returnValue(false);
+        const service = new AppToastService(prefsSvc);
+        let latest: any[] = [];
+        service.toasts$.subscribe((toasts) => latest = toasts);
+
+        service.showError('Error crítico', { category: 'campanas' });
+
+        expect(latest.length).toBe(1);
+        expect(latest[0].message).toBe('Error crítico');
+    });
+
+    it('mantiene el comportamiento normal para toasts sin categoría', () => {
+        const prefsSvc = jasmine.createSpyObj('SocialAlertPreferencesService', ['isEnabled']);
+        prefsSvc.isEnabled.and.returnValue(false);
+        const service = new AppToastService(prefsSvc);
+        let latest: any[] = [];
+        service.toasts$.subscribe((toasts) => latest = toasts);
+
+        service.showSuccess('Guardado general');
+
+        expect(latest.length).toBe(1);
+        expect(latest[0].message).toBe('Guardado general');
+    });
 });

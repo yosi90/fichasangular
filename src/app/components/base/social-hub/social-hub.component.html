@@ -235,6 +235,123 @@
                 </ng-template>
             </section>
 
+            <section class="social-section" *ngIf="currentSection === 'campanas'">
+                <div class="social-empty" *ngIf="!isLoggedIn">
+                    <mat-icon>lock</mat-icon>
+                    <p>Inicia sesión para ver invitaciones y campañas activas.</p>
+                </div>
+
+                <ng-container *ngIf="isLoggedIn">
+                    <div class="social-campaigns-grid">
+                        <article class="social-panel">
+                            <h3>Invitaciones recibidas</h3>
+                            <p class="social-inline-hint" *ngIf="campaignInvitationsLoading">Cargando invitaciones...</p>
+                            <p class="social-inline-error" *ngIf="campaignInvitationsErrorMessage">{{campaignInvitationsErrorMessage}}</p>
+
+                            <div class="social-user-list" *ngIf="campaignInvitations.length > 0">
+                                <article class="social-user-card social-user-card--campaign" *ngFor="let invitation of campaignInvitations">
+                                    <div class="social-user-card__main">
+                                        <strong>{{invitation.campaignName || 'Campaña sin nombre'}}</strong>
+                                        <span class="social-user-card__meta">{{invitation.invitedBy.displayName || invitation.invitedBy.email || 'Usuario'}} te ha invitado</span>
+                                    </div>
+                                    <div class="social-user-card__actions">
+                                        <button mat-stroked-button color="primary" (click)="respondCampaignInvitation(invitation, 'accept')" [disabled]="campaignInviteResolveInFlightId === invitation.inviteId">
+                                            {{campaignInviteResolveInFlightId === invitation.inviteId ? 'Aplicando...' : 'Aceptar'}}
+                                        </button>
+                                        <button mat-stroked-button color="warn" (click)="respondCampaignInvitation(invitation, 'reject')" [disabled]="campaignInviteResolveInFlightId === invitation.inviteId">
+                                            Rechazar
+                                        </button>
+                                    </div>
+                                </article>
+                            </div>
+
+                            <p class="social-inline-hint" *ngIf="!campaignInvitationsLoading && campaignInvitations.length < 1 && !campaignInvitationsErrorMessage">
+                                No tienes invitaciones de campaña pendientes.
+                            </p>
+                        </article>
+
+                        <article class="social-panel">
+                            <h3>Mis campañas activas</h3>
+                            <p class="social-inline-hint" *ngIf="campaignsLoading">Cargando campañas...</p>
+                            <p class="social-inline-error" *ngIf="campaignsErrorMessage">{{campaignsErrorMessage}}</p>
+
+                            <div class="social-user-list" *ngIf="campaigns.length > 0">
+                                <button
+                                    type="button"
+                                    class="social-user-card social-user-card--campaign social-user-card--button"
+                                    *ngFor="let campaign of campaigns"
+                                    [class.social-user-card--active]="campaign.id === selectedCampaignId"
+                                    (click)="selectCampaign(campaign.id)">
+                                    <div class="social-user-card__main">
+                                        <strong>{{campaign.nombre}}</strong>
+                                        <span class="social-user-card__meta">{{getCampaignRoleLabel(campaign.campaignRole, campaign.isOwner === true)}} · {{getCampaignMembershipLabel(campaign.membershipStatus)}}</span>
+                                    </div>
+                                </button>
+                            </div>
+
+                            <p class="social-inline-hint" *ngIf="!campaignsLoading && campaigns.length < 1 && !campaignsErrorMessage">
+                                No tienes campañas activas en este bloque.
+                            </p>
+                        </article>
+                    </div>
+
+                    <article class="social-panel social-campaign-detail" *ngIf="selectedCampaignSummary">
+                        <div class="social-campaign-detail__header">
+                            <div>
+                                <h3>{{selectedCampaignSummary.nombre}}</h3>
+                                <p class="social-inline-hint">{{getCampaignRoleLabel(selectedCampaignSummary.campaignRole, selectedCampaignSummary.isOwner === true)}} · {{getCampaignMembershipLabel(selectedCampaignSummary.membershipStatus)}}</p>
+                            </div>
+                            <div class="social-user-card__actions">
+                                <button mat-stroked-button color="primary" *ngIf="canOpenSelectedCampaignChat" (click)="openSelectedCampaignChat()">Abrir chat</button>
+                                <button mat-stroked-button color="primary" *ngIf="selectedCampaignCanOpenManagement" (click)="openSelectedCampaignManagement()">Abrir gestión</button>
+                            </div>
+                        </div>
+
+                        <p class="social-inline-hint" *ngIf="selectedCampaignLoading">Cargando detalle de campaña...</p>
+                        <p class="social-inline-error" *ngIf="selectedCampaignErrorMessage">{{selectedCampaignErrorMessage}}</p>
+
+                        <div class="social-campaign-detail__grid" *ngIf="!selectedCampaignLoading && selectedCampaignDetail">
+                            <article class="social-panel social-panel--nested">
+                                <h3>Miembros</h3>
+                                <div class="social-user-list" *ngIf="selectedCampaignMembers.length > 0">
+                                    <article class="social-user-card social-user-card--compact" *ngFor="let member of selectedCampaignMembers">
+                                        <div class="social-user-card__main">
+                                            <strong>{{member.displayName || member.email || member.uid}}</strong>
+                                            <span class="social-user-card__meta">{{getCampaignRoleLabel(member.campaignRole)}} · {{getCampaignMembershipLabel(member.membershipStatus)}}</span>
+                                        </div>
+                                    </article>
+                                </div>
+                                <p class="social-inline-hint" *ngIf="selectedCampaignMembers.length < 1">No hay miembros visibles para esta campaña.</p>
+                            </article>
+
+                            <article class="social-panel social-panel--nested">
+                                <h3>Tramas y subtramas</h3>
+                                <div class="social-campaign-story-list" *ngIf="selectedCampaignTramas.length > 0">
+                                    <article class="social-campaign-story" *ngFor="let trama of selectedCampaignTramas">
+                                        <div class="social-campaign-story__header">
+                                            <strong>{{trama.nombre}}</strong>
+                                            <span>{{getCampaignVisibilityLabel(trama.visibleParaJugadores)}}</span>
+                                        </div>
+                                        <div class="social-campaign-substory-list" *ngIf="trama.subtramas.length > 0">
+                                            <div class="social-campaign-substory" *ngFor="let subtrama of trama.subtramas">
+                                                <strong>{{subtrama.nombre}}</strong>
+                                                <span>{{getCampaignVisibilityLabel(subtrama.visibleParaJugadores)}}</span>
+                                            </div>
+                                        </div>
+                                    </article>
+                                </div>
+                                <p class="social-inline-hint" *ngIf="selectedCampaignTramas.length < 1">Esta campaña no tiene tramas visibles todavía.</p>
+                            </article>
+                        </div>
+                    </article>
+
+                    <div class="social-empty social-empty--inline" *ngIf="!selectedCampaignSummary && !campaignsLoading && !campaignsErrorMessage">
+                        <mat-icon>diversity_3</mat-icon>
+                        <p>Selecciona una campaña para ver su detalle social o abre una invitación pendiente.</p>
+                    </div>
+                </ng-container>
+            </section>
+
             <section class="social-section" *ngIf="currentSection === 'mensajes'">
                 <div class="social-empty" *ngIf="!isLoggedIn">
                     <mat-icon>lock</mat-icon>
@@ -560,6 +677,11 @@
                                             [class.social-chat__message--system]="message.sender.isSystemUser">
                                             <strong>{{getMessageSenderLabel(message)}}</strong>
                                             <p>{{message.body}}</p>
+                                            <div class="social-chat__message-actions" *ngIf="hasMessageAction(message)">
+                                                <button mat-stroked-button class="social-chat__message-action" (click)="runMessageAction(message)">
+                                                    {{getMessageActionLabel(message)}}
+                                                </button>
+                                            </div>
                                         </div>
                                     </article>
                                 </div>

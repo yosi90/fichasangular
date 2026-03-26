@@ -28,6 +28,7 @@ import { UsuariosApiService } from './usuarios-api.service';
 export class UserService {
     private usuario: Usuario = { nombre: 'Invitado', correo: '', permisos: 0 };
     private acl: UserAcl = { ...EMPTY_USER_ACL };
+    private aclHasSourceData: boolean = false;
     private sesionAbierta: boolean = false;
     private authUidActivo: string = '';
     private aclUnsubscribe: (() => void) | null = null;
@@ -38,6 +39,7 @@ export class UserService {
     private isBannedSubject = new BehaviorSubject<boolean>(false);
     private aclSubject = new BehaviorSubject<UserAcl>({ ...EMPTY_USER_ACL });
     private privateProfileSubject = new BehaviorSubject<UserPrivateProfile | null>(null);
+    private privateProfileBase: UserPrivateProfile | null = null;
     private upsertApiDeshabilitadoEnSesion = false;
     public isLoggedIn$ = this.isLoggedInSubject.asObservable();
     public permisos$ = this.permisosSubject.asObservable();
@@ -194,13 +196,15 @@ export class UserService {
     }
 
     public setCurrentPrivateProfile(profile: UserPrivateProfile | null): void {
-        this.privateProfileSubject.next(profile);
+        this.privateProfileBase = profile;
+        const effectiveProfile = this.buildEffectivePrivateProfile(profile);
+        this.privateProfileSubject.next(effectiveProfile);
 
-        if (!profile || !this.sesionAbierta)
+        if (!effectiveProfile || !this.sesionAbierta)
             return;
 
-        const email = `${profile.email ?? ''}`.trim();
-        const displayName = `${profile.displayName ?? ''}`.trim();
+        const email = `${effectiveProfile.email ?? ''}`.trim();
+        const displayName = `${effectiveProfile.displayName ?? ''}`.trim();
         const fallbackName = email.length > 0 ? this.fallbackDisplayName(email) : this.usuario.nombre;
         this.actualizarUsuarioSesion({
             nombre: displayName.length > 0 ? displayName : fallbackName,
@@ -222,7 +226,7 @@ export class UserService {
         const profile = await this.userProfileApiSvc.getMyProfile();
         if (this.isActiveUser(uid))
             this.setCurrentPrivateProfile(profile);
-        return profile;
+        return this.CurrentPrivateProfile;
     }
 
     protected subscribeAuthState(handler: (firebaseUser: User | null) => void): void {
@@ -394,8 +398,10 @@ export class UserService {
     }
 
     private setAclRaw(raw: any): void {
+        this.aclHasSourceData = !!raw && typeof raw === 'object';
         this.acl = normalizeUserAcl(raw);
         this.aclSubject.next(this.acl);
+        this.privateProfileSubject.next(this.buildEffectivePrivateProfile(this.privateProfileBase));
         this.isBannedSubject.next(this.isBanned());
         this.actualizarPermisosDesdeAcl();
         this.evaluarSesionBaneada();
@@ -636,5 +642,45 @@ export class UserService {
             ? this.authUidActivo
             : this.resolveActiveUserUid();
         return actual.length > 0 && actual === `${uid ?? ''}`.trim();
+    }
+
+    private buildEffectivePrivateProfile(profile: UserPrivateProfile | null): UserPrivateProfile | null {
+        if (!profile)
+            return null;
+
+        if (!this.aclHasSourceData)
+            return profile;
+
+        return {
+            ...profile,
+            permissions: this.mergeEffectivePermissions(profile.permissions, this.acl.permissions),
+        };
+    }
+
+    private mergeEffectivePermissions(
+        profilePermissions: UserPrivateProfile['permissions'],
+        aclPermissions: UserAcl['permissions']
+    ): UserPrivateProfile['permissions'] {
+        const merged: UserPrivateProfile['permissions'] = {};
+
+        Object.entries(aclPermissions ?? {}).forEach(([resource, actions]) => {
+            const key = `${resource ?? ''}`.trim();
+            if (key.length < 1)
+                return;
+            merged[key] = {
+                create: actions?.['create'] === true,
+            };
+        });
+
+        Object.entries(profilePermissions ?? {}).forEach(([resource, actions]) => {
+            const key = `${resource ?? ''}`.trim();
+            if (key.length < 1)
+                return;
+            merged[key] = {
+                create: actions?.['create'] === true,
+            };
+        });
+
+        return merged;
     }
 }

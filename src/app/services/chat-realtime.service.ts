@@ -103,6 +103,17 @@ export class ChatRealtimeService implements OnDestroy {
         this.recomputeUnreadCounts(next);
     }
 
+    findSystemConversationId(counterpartUid: string = 'system:yosiftware'): number | null {
+        const normalizedCounterpartUid = `${counterpartUid ?? ''}`.trim();
+        if (normalizedCounterpartUid.length < 1)
+            return null;
+
+        const match = this.conversationsSubject.value.find((item) =>
+            item.isSystemConversation === true && `${item.counterpartUid ?? ''}`.trim() === normalizedCounterpartUid
+        );
+        return this.toPositiveInt(match?.conversationId);
+    }
+
     async refreshConversations(force: boolean = false): Promise<void> {
         if (this.refreshInFlight && !force)
             return;
@@ -372,6 +383,7 @@ export class ChatRealtimeService implements OnDestroy {
         const conversationId = this.toPositiveInt(message?.conversationId);
         if (!conversationId)
             return null;
+        const conversation = this.conversationsSubject.value.find((item) => item.conversationId === conversationId) ?? null;
 
         const alertKey = this.buildAlertKey(
             conversationId,
@@ -388,6 +400,10 @@ export class ChatRealtimeService implements OnDestroy {
             source: 'message',
             messageId: this.toPositiveInt(message?.messageId),
             conversationId,
+            conversationType: conversation?.type ?? null,
+            conversationTitle: `${conversation?.title ?? ''}`.trim() || null,
+            campaignId: this.toPositiveInt(conversation?.campaignId),
+            isSystemConversation: conversation?.isSystemConversation === true,
             sender: {
                 uid: `${message?.sender?.uid ?? ''}`.trim(),
                 displayName: message?.sender?.displayName ?? null,
@@ -421,6 +437,10 @@ export class ChatRealtimeService implements OnDestroy {
             source: 'conversation_summary',
             messageId: null,
             conversationId,
+            conversationType: conversation?.type ?? null,
+            conversationTitle: `${conversation?.title ?? ''}`.trim() || null,
+            campaignId: this.toPositiveInt(conversation?.campaignId),
+            isSystemConversation: conversation?.isSystemConversation === true,
             sender: {
                 uid: 'system:yosiftware',
                 displayName: 'Yosiftware',

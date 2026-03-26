@@ -170,6 +170,7 @@ export class UserSettingsService {
             visibilidadPorDefectoPersonajes: settings.perfil.visibilidadPorDefectoPersonajes === true,
             mostrarPerfilPublico: settings.perfil.mostrarPerfilPublico !== false,
             allowDirectMessagesFromNonFriends: settings.perfil.allowDirectMessagesFromNonFriends === true,
+            notificaciones: this.normalizeNotificationSettings(settings.perfil.notificaciones),
         };
     }
 
@@ -181,6 +182,7 @@ export class UserSettingsService {
                 visibilidadPorDefectoPersonajes: data.visibilidadPorDefectoPersonajes ?? settings.perfil.visibilidadPorDefectoPersonajes,
                 mostrarPerfilPublico: data.mostrarPerfilPublico ?? settings.perfil.mostrarPerfilPublico,
                 allowDirectMessagesFromNonFriends: data.allowDirectMessagesFromNonFriends ?? settings.perfil.allowDirectMessagesFromNonFriends,
+                notificaciones: this.normalizeNotificationSettings(data.notificaciones ?? settings.perfil.notificaciones),
             },
         });
         return next.perfil;
@@ -342,7 +344,17 @@ export class UserSettingsService {
                 visibilidadPorDefectoPersonajes: raw?.perfil?.visibilidadPorDefectoPersonajes === true,
                 mostrarPerfilPublico: raw?.perfil?.mostrarPerfilPublico !== false,
                 allowDirectMessagesFromNonFriends: raw?.perfil?.allowDirectMessagesFromNonFriends === true,
+                notificaciones: this.normalizeNotificationSettings(raw?.perfil?.notificaciones),
             },
+        };
+    }
+
+    private normalizeNotificationSettings(raw: UserSettingsV1['perfil']['notificaciones'] | null | undefined): UserSettingsV1['perfil']['notificaciones'] {
+        return {
+            mensajes: raw?.mensajes !== false,
+            amistad: raw?.amistad !== false,
+            campanas: raw?.campanas !== false,
+            cuentaSistema: raw?.cuentaSistema !== false,
         };
     }
 

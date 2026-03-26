@@ -106,7 +106,7 @@ export class SesionDialogComponent {
             this.appToastSvc.showSuccess('Si la cuenta existe, recibirás un correo para restablecer la contraseña.');
             await Swal.fire({
                 title: 'Revisa tu correo',
-                text: 'Si la cuenta existe, recibiras un correo para restablecer la contrasena. Si no aparece en la bandeja de entrada, revisa tambien spam o correo no deseado.',
+                text: 'Si la cuenta existe, recibirás un correo para restablecer la contraseña. Si no aparece en la bandeja de entrada, revisa también spam o correo no deseado.',
                 icon: 'info',
                 confirmButtonText: 'Entendido',
             });

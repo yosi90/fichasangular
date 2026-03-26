@@ -4,6 +4,7 @@ import { Auth, onAuthStateChanged } from '@angular/fire/auth';
 import { Observable, catchError, filter, firstValueFrom, from, map, merge, of, scan, shareReplay, switchMap, timer } from 'rxjs';
 import { Campana } from '../interfaces/campaña';
 import {
+    CampaignCreationPolicy,
     CampaignDetailViewModel,
     CampaignInvitationDecision,
     CampaignInvitationItem,
@@ -18,7 +19,13 @@ import {
     CampaignSubtramaItem,
     CampaignTramaItem,
     CampaignUserSearchResult,
+    CreateCampaignInput,
+    CreateCampaignSubtramaInput,
+    CreateCampaignTramaInput,
     TransferCampaignMasterInput,
+    UpdateCampaignInput,
+    UpdateCampaignSubtramaInput,
+    UpdateCampaignTramaInput,
 } from '../interfaces/campaign-management';
 import { environment } from 'src/environments/environment';
 import { CampaignRealtimeSyncService } from './campaign-realtime-sync.service';
@@ -35,6 +42,7 @@ export class CampanaService {
     private readonly usuariosBaseUrl = `${environment.apiUrl}usuarios`;
     private readonly authReadyPromise: Promise<void>;
     private readonly liveCampanas$: Observable<Campana[]>;
+    private readonly optimisticCampaignSummaries = new Map<number, CampaignListItem>();
 
     constructor(
         private auth: Auth,
@@ -72,6 +80,15 @@ export class CampanaService {
         }
     }
 
+    async listSocialCampaigns(): Promise<CampaignListItem[]> {
+        try {
+            return (await this.fetchCampaignSummaries())
+                .filter((campaign) => this.hasActiveMembership(campaign));
+        } catch (error) {
+            throw this.toError(error, 'No se pudieron cargar las campañas de Social.');
+        }
+    }
+
     async getCampaignDetail(idCampana: number, includeInactive: boolean = false): Promise<CampaignDetailViewModel> {
         const id = this.toPositiveInt(idCampana);
         if (!id)
@@ -84,7 +101,7 @@ export class CampanaService {
             const [members, pendingInvitations, tramas] = await Promise.all([
                 this.fetchCampaignMembers(id, headers, includeInactive),
                 this.fetchCampaignInvitationsBestEffort(id, headers),
-                this.fetchCampaignTramas(id, headers),
+                Promise.resolve(campaignDetail.tramas),
             ]);
 
             return {
@@ -94,6 +111,7 @@ export class CampanaService {
                 activeMasterUid: campaignDetail.activeMasterUid,
                 activeMasterDisplayName: campaignDetail.activeMasterDisplayName,
                 canRecoverMaster: campaignDetail.canRecoverMaster,
+                politicaCreacion: campaignDetail.politicaCreacion,
                 members,
                 pendingInvitations,
                 includeInactiveMembers: includeInactive === true,
@@ -107,14 +125,14 @@ export class CampanaService {
         }
     }
 
-    async createCampaign(nombre: string): Promise<CampaignListItem> {
-        const nombreNormalizado = this.normalizeRequiredName(nombre, 'Debes indicar un nombre de campaña.');
+    async createCampaign(input: string | CreateCampaignInput): Promise<CampaignListItem> {
+        const payload = this.normalizeCreateCampaignInput(input);
 
         try {
             const response = await firstValueFrom(
                 this.http.post<any>(
                     this.campanasBaseUrl,
-                    { nombre: nombreNormalizado },
+                    payload,
                     { headers: await this.buildAuthHeaders() }
                 )
             );
@@ -122,7 +140,7 @@ export class CampanaService {
 
             return {
                 id: this.toPositiveInt(response?.idCampana) ?? 0,
-                nombre: `${response?.nombre ?? nombreNormalizado}`.trim() || nombreNormalizado,
+                nombre: `${response?.nombre ?? payload.nombre}`.trim() || payload.nombre,
                 campaignRole: 'master',
                 membershipStatus: 'activo',
             };
@@ -131,19 +149,23 @@ export class CampanaService {
         }
     }
 
-    async renameCampaign(idCampana: number, nombre: string): Promise<void> {
+    async updateCampaign(idCampana: number, input: string | UpdateCampaignInput): Promise<void> {
         const id = this.toPositiveInt(idCampana);
         if (!id)
             throw new Error('Campaña inválida.');
 
         try {
+            const normalizedInput = this.normalizeUpdateCampaignInput(input);
             await firstValueFrom(
                 this.http.patch<void>(
                     `${this.campanasBaseUrl}/${id}`,
-                    { nombre: this.normalizeRequiredName(nombre, 'Debes indicar un nombre de campaña.') },
+                    normalizedInput,
                     { headers: await this.buildAuthHeaders() }
                 )
             );
+            this.rememberCampaignSummaryMutation(id, {
+                nombre: `${normalizedInput.nombre ?? ''}`.trim() || undefined,
+            });
             this.notifyCampaignListChange(id);
         } catch (error) {
             throw this.toError(error, 'No se pudo renombrar la campaña.');
@@ -228,6 +250,8 @@ export class CampanaService {
                     { headers: await this.buildAuthHeaders() }
                 )
             );
+            if (decision === 'accept')
+                this.rememberAcceptedCampaignSummary(response?.invitation);
             this.notifyCampaignListChange(response?.invitation?.campaignId);
             return this.normalizeCampaignInvitationResponse(response);
         } catch (error) {
@@ -296,6 +320,10 @@ export class CampanaService {
                     { headers: await this.buildAuthHeaders() }
                 )
             );
+            this.rememberCampaignSummaryMutation(id, {
+                campaignRole: input.keepPreviousAsPlayer !== false ? 'jugador' : null,
+                membershipStatus: input.keepPreviousAsPlayer !== false ? 'activo' : null,
+            });
             this.notifyCampaignListChange(id);
         } catch (error) {
             throw this.toError(error, 'No se pudo transferir el master de la campaña.');
@@ -315,10 +343,58 @@ export class CampanaService {
                     { headers: await this.buildAuthHeaders() }
                 )
             );
+            this.rememberCampaignSummaryMutation(id, {
+                campaignRole: 'master',
+                membershipStatus: 'activo',
+            });
             this.notifyCampaignListChange(id);
         } catch (error) {
             throw this.toError(error, 'No se pudo recuperar el master de la campaña.');
         }
+    }
+
+    watchCampaignSummaries(
+        next: (items: CampaignListItem[]) => void,
+        onError?: (error: unknown) => void
+    ): () => void {
+        let active = true;
+        const emit = (items: CampaignListItem[]) => {
+            if (!active)
+                return;
+            next(this.mergeOptimisticCampaignSummaries(items));
+        };
+
+        if (this.privateUserFirestoreSvc) {
+            const watchStop = this.privateUserFirestoreSvc.watchCampaigns(
+                (items) => emit(items),
+                onError
+            );
+            const refreshSub = merge(
+                this.campaignRealtimeSyncSvc.listInvalidations$,
+                timer(30000, 30000),
+            ).subscribe(() => {
+                void this.refreshCampaignSummariesWatcher(emit, onError);
+            });
+
+            return () => {
+                active = false;
+                watchStop();
+                refreshSub.unsubscribe();
+            };
+        }
+
+        const refreshSub = merge(
+            of(null),
+            this.campaignRealtimeSyncSvc.listInvalidations$,
+            timer(30000, 30000),
+        ).subscribe(() => {
+            void this.refreshCampaignSummariesWatcher(emit, onError);
+        });
+
+        return () => {
+            active = false;
+            refreshSub.unsubscribe();
+        };
     }
 
     async searchUsers(query: string, limit: number = 10): Promise<CampaignUserSearchResult[]> {
@@ -344,7 +420,7 @@ export class CampanaService {
         }
     }
 
-    async createTrama(idCampana: number, nombre: string): Promise<void> {
+    async createTrama(idCampana: number, input: string | CreateCampaignTramaInput): Promise<void> {
         const id = this.toPositiveInt(idCampana);
         if (!id)
             throw new Error('Campaña inválida.');
@@ -353,7 +429,7 @@ export class CampanaService {
             await firstValueFrom(
                 this.http.post<void>(
                     `${this.tramasBaseUrl}/campana/${id}`,
-                    { nombre: this.normalizeRequiredName(nombre, 'Debes indicar un nombre de trama.') },
+                    this.normalizeCreateTramaInput(input),
                     { headers: await this.buildAuthHeaders() }
                 )
             );
@@ -363,7 +439,7 @@ export class CampanaService {
         }
     }
 
-    async updateTrama(idTrama: number, nombre: string): Promise<void> {
+    async updateTrama(idTrama: number, input: string | UpdateCampaignTramaInput): Promise<void> {
         const id = this.toPositiveInt(idTrama);
         if (!id)
             throw new Error('Trama inválida.');
@@ -372,7 +448,7 @@ export class CampanaService {
             await firstValueFrom(
                 this.http.patch<void>(
                     `${this.tramasBaseUrl}/${id}`,
-                    { nombre: this.normalizeRequiredName(nombre, 'Debes indicar un nombre de trama.') },
+                    this.normalizeUpdateTramaInput(input),
                     { headers: await this.buildAuthHeaders() }
                 )
             );
@@ -382,7 +458,7 @@ export class CampanaService {
         }
     }
 
-    async createSubtrama(idTrama: number, nombre: string): Promise<void> {
+    async createSubtrama(idTrama: number, input: string | CreateCampaignSubtramaInput): Promise<void> {
         const id = this.toPositiveInt(idTrama);
         if (!id)
             throw new Error('Trama inválida.');
@@ -391,7 +467,7 @@ export class CampanaService {
             await firstValueFrom(
                 this.http.post<void>(
                     `${this.subtramasBaseUrl}/trama/${id}`,
-                    { nombre: this.normalizeRequiredName(nombre, 'Debes indicar un nombre de subtrama.') },
+                    this.normalizeCreateSubtramaInput(input),
                     { headers: await this.buildAuthHeaders() }
                 )
             );
@@ -401,7 +477,7 @@ export class CampanaService {
         }
     }
 
-    async updateSubtrama(idSubtrama: number, nombre: string): Promise<void> {
+    async updateSubtrama(idSubtrama: number, input: string | UpdateCampaignSubtramaInput): Promise<void> {
         const id = this.toPositiveInt(idSubtrama);
         if (!id)
             throw new Error('Subtrama inválida.');
@@ -410,7 +486,7 @@ export class CampanaService {
             await firstValueFrom(
                 this.http.patch<void>(
                     `${this.subtramasBaseUrl}/${id}`,
-                    { nombre: this.normalizeRequiredName(nombre, 'Debes indicar un nombre de subtrama.') },
+                    this.normalizeUpdateSubtramaInput(input),
                     { headers: await this.buildAuthHeaders() }
                 )
             );
@@ -465,7 +541,7 @@ export class CampanaService {
                 this.campaignRealtimeSyncSvc.listInvalidations$,
                 timer(30000, 30000),
             ).subscribe(() => {
-                void rebuildTree(latestSummaries.length < 1);
+                void rebuildTree(true);
             });
 
             emitCurrent();
@@ -534,7 +610,7 @@ export class CampanaService {
                     return null;
 
                 try {
-                    const detail = await this.fetchCampaignDetailHeader(campana.id, headers);
+                    const detail = await this.fetchCampaignDetailHeader(campana.id, headers, false);
                     return `${detail.ownerUid ?? ''}`.trim() === ownUid
                         ? { ...campana, isOwner: true }
                         : null;
@@ -576,29 +652,38 @@ export class CampanaService {
 
     private async fetchCampaignSummaries(): Promise<CampaignListItem[]> {
         if (this.privateUserFirestoreSvc)
-            return this.privateUserFirestoreSvc.listCampaigns();
+            return this.mergeOptimisticCampaignSummaries(await this.privateUserFirestoreSvc.listCampaigns());
 
         const headers = await this.buildAuthHeaders();
         const response = await firstValueFrom(
             this.http.get<any[]>(this.campanasBaseUrl, { headers })
         );
         const raw = Array.isArray(response) ? response : Object.values(response ?? {});
-        return raw
+        const items = raw
             .map((item) => this.normalizeCampaignSummary(item))
             .filter((item): item is CampaignListItem => item !== null)
             .sort((a, b) => a.nombre.localeCompare(b.nombre, 'es', { sensitivity: 'base' }));
+        return this.mergeOptimisticCampaignSummaries(items);
     }
 
     private async fetchCampaignDetailHeader(
         idCampana: number,
-        headers: HttpHeaders
-    ): Promise<Pick<CampaignDetailViewModel, 'campaign' | 'ownerUid' | 'ownerDisplayName' | 'activeMasterUid' | 'activeMasterDisplayName' | 'canRecoverMaster'>> {
+        headers: HttpHeaders,
+        includeTramasFallback: boolean = true
+    ): Promise<Pick<CampaignDetailViewModel, 'campaign' | 'ownerUid' | 'ownerDisplayName' | 'activeMasterUid' | 'activeMasterDisplayName' | 'canRecoverMaster' | 'politicaCreacion' | 'tramas'>> {
         const response = await firstValueFrom(
             this.http.get<any>(`${this.campanasBaseUrl}/${idCampana}`, { headers })
         );
         const campaign = this.normalizeCampaignSummary(response);
         if (!campaign)
             throw new Error('La campaña solicitada ya no está disponible para tu usuario.');
+
+        const hasEmbeddedTramas = response?.tramas !== null && response?.tramas !== undefined;
+        const tramas = hasEmbeddedTramas
+            ? this.normalizeCampaignDetailTramas(response?.tramas)
+            : includeTramasFallback
+                ? await this.fetchCampaignTramas(idCampana, headers)
+                : [];
 
         return {
             campaign,
@@ -607,6 +692,8 @@ export class CampanaService {
             activeMasterUid: this.toNullableText(response?.activeMasterUid),
             activeMasterDisplayName: this.toNullableText(response?.activeMasterDisplayName),
             canRecoverMaster: response?.canRecoverMaster === true,
+            politicaCreacion: this.normalizeCampaignCreationPolicy(response?.politicaCreacion),
+            tramas,
         };
     }
 
@@ -762,25 +849,33 @@ export class CampanaService {
     }
 
     private normalizeCampaignTrama(raw: any): CampaignTramaItem | null {
-        const id = this.toPositiveInt(raw?.i ?? raw?.Id ?? raw?.id);
+        const id = this.toPositiveInt(raw?.i ?? raw?.Id ?? raw?.id ?? raw?.idTrama ?? raw?.IdTrama);
         if (!id)
             return null;
 
         return {
             id,
             nombre: `${raw?.n ?? raw?.Nombre ?? raw?.nombre ?? ''}`.trim(),
+            visibleParaJugadores: this.toBoolean(
+                raw?.visibleParaJugadores ?? raw?.VisibleParaJugadores,
+                true
+            ),
             subtramas: [],
         };
     }
 
     private normalizeCampaignSubtrama(raw: any): CampaignSubtramaItem | null {
-        const id = this.toPositiveInt(raw?.i ?? raw?.Id ?? raw?.id);
+        const id = this.toPositiveInt(raw?.i ?? raw?.Id ?? raw?.id ?? raw?.idSubtrama ?? raw?.IdSubtrama);
         if (!id)
             return null;
 
         return {
             id,
             nombre: `${raw?.n ?? raw?.Nombre ?? raw?.nombre ?? ''}`.trim(),
+            visibleParaJugadores: this.toBoolean(
+                raw?.visibleParaJugadores ?? raw?.VisibleParaJugadores,
+                true
+            ),
         };
     }
 
@@ -841,6 +936,84 @@ export class CampanaService {
         };
     }
 
+    private rememberAcceptedCampaignSummary(rawInvitation: any): void {
+        const campaignId = this.toPositiveInt(rawInvitation?.campaignId);
+        if (!campaignId)
+            return;
+
+        const campaignName = `${rawInvitation?.campaignName ?? ''}`.trim();
+        this.optimisticCampaignSummaries.set(campaignId, {
+            id: campaignId,
+            nombre: campaignName.length > 0 ? campaignName : `Campaña ${campaignId}`,
+            campaignRole: 'jugador',
+            membershipStatus: 'activo',
+        });
+    }
+
+    private rememberCampaignSummaryMutation(
+        campaignId: number,
+        partial: Partial<Pick<CampaignListItem, 'nombre' | 'campaignRole' | 'membershipStatus' | 'isOwner'>>
+    ): void {
+        const id = this.toPositiveInt(campaignId);
+        if (!id)
+            return;
+
+        const current = this.optimisticCampaignSummaries.get(id) ?? {
+            id,
+            nombre: `Campaña ${id}`,
+            campaignRole: 'master' as CampaignRoleCode | null,
+            membershipStatus: 'activo' as CampaignMembershipStatus | null,
+        };
+
+        const next: CampaignListItem = {
+            ...current,
+            ...(partial.nombre !== undefined ? { nombre: partial.nombre } : {}),
+            ...(partial.campaignRole !== undefined ? { campaignRole: partial.campaignRole } : {}),
+            ...(partial.membershipStatus !== undefined ? { membershipStatus: partial.membershipStatus } : {}),
+            ...((partial.isOwner === true || current.isOwner === true) ? { isOwner: true } : {}),
+        };
+
+        this.optimisticCampaignSummaries.set(id, next);
+    }
+
+    private async refreshCampaignSummariesWatcher(
+        emit: (items: CampaignListItem[]) => void,
+        onError?: (error: unknown) => void
+    ): Promise<void> {
+        try {
+            emit(await this.fetchCampaignSummaries());
+        } catch (error) {
+            onError?.(error);
+        }
+    }
+
+    private mergeOptimisticCampaignSummaries(items: CampaignListItem[]): CampaignListItem[] {
+        const current = Array.isArray(items) ? [...items] : [];
+        if (this.optimisticCampaignSummaries.size < 1)
+            return current;
+
+        const seenIds = new Set<number>();
+        const merged = current.map((item) => {
+            seenIds.add(item.id);
+            const optimistic = this.optimisticCampaignSummaries.get(item.id);
+            if (!optimistic)
+                return item;
+            return {
+                ...item,
+                ...optimistic,
+                ...((item.isOwner === true || optimistic.isOwner === true) ? { isOwner: true } : {}),
+            };
+        });
+
+        for (const [campaignId, item] of this.optimisticCampaignSummaries.entries()) {
+            if (seenIds.has(campaignId))
+                continue;
+            merged.push({ ...item });
+        }
+
+        return merged.sort((a, b) => a.nombre.localeCompare(b.nombre, 'es', { sensitivity: 'base' }));
+    }
+
     private buildSinCampanaOption(): Campana {
         return {
             Id: 0,
@@ -893,6 +1066,146 @@ export class CampanaService {
         return 'pending';
     }
 
+    private normalizeCampaignCreationPolicy(raw: any): CampaignCreationPolicy {
+        return {
+            tiradaMinimaCaracteristica: this.toNullableNumber(raw?.tiradaMinimaCaracteristica),
+            maxTablasDadosCaracteristicas: this.toNullableNumber(raw?.maxTablasDadosCaracteristicas),
+            permitirHomebrewGeneral: this.toBoolean(raw?.permitirHomebrewGeneral, true),
+            permitirVentajasDesventajas: this.toBoolean(raw?.permitirVentajasDesventajas, true),
+            permitirIgnorarRestriccionesAlineamiento: this.toBoolean(raw?.permitirIgnorarRestriccionesAlineamiento, false),
+            maxFuentesHomebrewGeneralesPorPersonaje: this.toNullableNumber(raw?.maxFuentesHomebrewGeneralesPorPersonaje),
+        };
+    }
+
+    private normalizeCreateCampaignInput(input: string | CreateCampaignInput): CreateCampaignInput {
+        if (typeof input === 'string')
+            return { nombre: this.normalizeRequiredName(input, 'Debes indicar un nombre de campaña.') };
+
+        return {
+            nombre: this.normalizeRequiredName(input?.nombre ?? '', 'Debes indicar un nombre de campaña.'),
+            politicaCreacion: this.serializeCampaignCreationPolicy(input?.politicaCreacion ?? null),
+        };
+    }
+
+    private normalizeUpdateCampaignInput(input: string | UpdateCampaignInput): UpdateCampaignInput {
+        if (typeof input === 'string')
+            return { nombre: this.normalizeRequiredName(input, 'Debes indicar un nombre de campaña.') };
+
+        const payload: UpdateCampaignInput = {};
+        if (typeof input?.nombre === 'string')
+            payload.nombre = this.normalizeRequiredName(input.nombre, 'Debes indicar un nombre de campaña.');
+
+        if (input?.politicaCreacion !== undefined)
+            payload.politicaCreacion = this.serializeCampaignCreationPolicy(input?.politicaCreacion ?? null);
+
+        if (!payload.nombre && payload.politicaCreacion === undefined)
+            throw new Error('Debes indicar al menos un cambio de campaña.');
+
+        return payload;
+    }
+
+    private normalizeCreateTramaInput(input: string | CreateCampaignTramaInput): CreateCampaignTramaInput {
+        if (typeof input === 'string') {
+            return {
+                nombre: this.normalizeRequiredName(input, 'Debes indicar un nombre de trama.'),
+                visibleParaJugadores: true,
+            };
+        }
+
+        return {
+            nombre: this.normalizeRequiredName(input?.nombre ?? '', 'Debes indicar un nombre de trama.'),
+            visibleParaJugadores: input?.visibleParaJugadores !== false,
+        };
+    }
+
+    private normalizeUpdateTramaInput(input: string | UpdateCampaignTramaInput): UpdateCampaignTramaInput {
+        if (typeof input === 'string')
+            return { nombre: this.normalizeRequiredName(input, 'Debes indicar un nombre de trama.') };
+
+        const payload: UpdateCampaignTramaInput = {};
+        if (typeof input?.nombre === 'string')
+            payload.nombre = this.normalizeRequiredName(input.nombre, 'Debes indicar un nombre de trama.');
+        if (typeof input?.visibleParaJugadores === 'boolean')
+            payload.visibleParaJugadores = input.visibleParaJugadores;
+        if (!payload.nombre && payload.visibleParaJugadores === undefined)
+            throw new Error('Debes indicar al menos un cambio de trama.');
+        return payload;
+    }
+
+    private normalizeCreateSubtramaInput(input: string | CreateCampaignSubtramaInput): CreateCampaignSubtramaInput {
+        if (typeof input === 'string') {
+            return {
+                nombre: this.normalizeRequiredName(input, 'Debes indicar un nombre de subtrama.'),
+                visibleParaJugadores: true,
+            };
+        }
+
+        return {
+            nombre: this.normalizeRequiredName(input?.nombre ?? '', 'Debes indicar un nombre de subtrama.'),
+            visibleParaJugadores: input?.visibleParaJugadores !== false,
+        };
+    }
+
+    private normalizeUpdateSubtramaInput(input: string | UpdateCampaignSubtramaInput): UpdateCampaignSubtramaInput {
+        if (typeof input === 'string')
+            return { nombre: this.normalizeRequiredName(input, 'Debes indicar un nombre de subtrama.') };
+
+        const payload: UpdateCampaignSubtramaInput = {};
+        if (typeof input?.nombre === 'string')
+            payload.nombre = this.normalizeRequiredName(input.nombre, 'Debes indicar un nombre de subtrama.');
+        if (typeof input?.visibleParaJugadores === 'boolean')
+            payload.visibleParaJugadores = input.visibleParaJugadores;
+        if (!payload.nombre && payload.visibleParaJugadores === undefined)
+            throw new Error('Debes indicar al menos un cambio de subtrama.');
+        return payload;
+    }
+
+    private serializeCampaignCreationPolicy(raw: Partial<CampaignCreationPolicy> | null | undefined): Partial<CampaignCreationPolicy> | null | undefined {
+        if (raw === undefined)
+            return undefined;
+        if (raw === null)
+            return null;
+
+        const payload: Partial<CampaignCreationPolicy> = {};
+
+        if ('tiradaMinimaCaracteristica' in raw)
+            payload.tiradaMinimaCaracteristica = this.toNullableNumber(raw.tiradaMinimaCaracteristica);
+        if ('maxTablasDadosCaracteristicas' in raw)
+            payload.maxTablasDadosCaracteristicas = this.toNullableNumber(raw.maxTablasDadosCaracteristicas);
+        if ('permitirHomebrewGeneral' in raw)
+            payload.permitirHomebrewGeneral = this.toBoolean(raw.permitirHomebrewGeneral, true);
+        if ('permitirVentajasDesventajas' in raw)
+            payload.permitirVentajasDesventajas = this.toBoolean(raw.permitirVentajasDesventajas, true);
+        if ('permitirIgnorarRestriccionesAlineamiento' in raw)
+            payload.permitirIgnorarRestriccionesAlineamiento = this.toBoolean(raw.permitirIgnorarRestriccionesAlineamiento, false);
+        if ('maxFuentesHomebrewGeneralesPorPersonaje' in raw)
+            payload.maxFuentesHomebrewGeneralesPorPersonaje = this.toNullableNumber(raw.maxFuentesHomebrewGeneralesPorPersonaje);
+
+        return payload;
+    }
+
+    private normalizeCampaignDetailTramas(raw: any): CampaignTramaItem[] {
+        const items = Array.isArray(raw) ? raw : Object.values(raw ?? {});
+        return items
+            .map((item) => {
+                const trama = this.normalizeCampaignTrama(item);
+                if (!trama)
+                    return null;
+
+                const rawSubtramas = item?.subtramas ?? item?.Subtramas;
+                const subtramasRaw = Array.isArray(rawSubtramas) ? rawSubtramas : Object.values(rawSubtramas ?? {});
+                return {
+                    ...trama,
+                    subtramas: subtramasRaw
+                        .map((subtrama: any) => this.normalizeCampaignSubtrama(subtrama))
+                        .filter((subtrama: CampaignSubtramaItem | null): subtrama is CampaignSubtramaItem => subtrama !== null)
+                        .sort((a: CampaignSubtramaItem, b: CampaignSubtramaItem) => a.nombre.localeCompare(b.nombre, 'es', { sensitivity: 'base' })),
+                };
+            })
+            .filter((item): item is CampaignTramaItem => item !== null)
+            .sort((a: CampaignTramaItem, b: CampaignTramaItem) => a.nombre.localeCompare(b.nombre, 'es', { sensitivity: 'base' }));
+    }
+
     private normalizeRequiredName(value: string, emptyMessage: string): string {
         const nombre = `${value ?? ''}`.trim();
         if (nombre.length < 1)
@@ -905,9 +1218,26 @@ export class CampanaService {
         return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
     }
 
+    private toNullableNumber(value: any): number | null {
+        if (value === null || value === undefined || `${value}`.trim() === '')
+            return null;
+        const parsed = Math.trunc(Number(value));
+        return Number.isFinite(parsed) ? parsed : null;
+    }
+
     private toNullableText(value: any): string | null {
         const text = `${value ?? ''}`.trim();
         return text.length > 0 ? text : null;
+    }
+
+    private toBoolean(value: any, fallback: boolean): boolean {
+        if (typeof value === 'boolean')
+            return value;
+        if (value === 'true')
+            return true;
+        if (value === 'false')
+            return false;
+        return fallback;
     }
 
     private toDateMs(value: string | null | undefined): number {

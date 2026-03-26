@@ -43,6 +43,8 @@ import { TamanoService } from 'src/app/services/tamano.service';
 import { SubdisciplinaConjurosService } from 'src/app/services/subdisciplina-conjuros.service';
 import { AdminPanelOpenRequest } from 'src/app/interfaces/user-account';
 import { AdminRoleRequestItem } from 'src/app/interfaces/user-role-request';
+import { ChatAlertCandidate } from 'src/app/interfaces/chat';
+import { ChatRealtimeService } from 'src/app/services/chat-realtime.service';
 import { UserProfileApiService } from 'src/app/services/user-profile-api.service';
 
 interface SyncItemConfig {
@@ -146,6 +148,7 @@ export class AdminPanelComponent implements OnInit, OnDestroy {
         private userSvc: UserService,
         private adminUsersSvc: AdminUsersService,
         private userProfileApiSvc: UserProfileApiService,
+        private chatRealtimeSvc: ChatRealtimeService,
     ) {
         this.syncRunners = {
             lista_personajes: () => this.lpSvc.RenovarPersonajesSimples(),
@@ -203,6 +206,13 @@ export class AdminPanelComponent implements OnInit, OnDestroy {
                     void this.validarAccesoAdmin();
                     void this.cargarSolicitudesRolPendientes();
                 }
+            });
+        this.chatRealtimeSvc.alertCandidate$
+            .pipe(takeUntil(this.destroy$))
+            .subscribe((candidate) => {
+                if (!this.esAdmin || !this.isRealtimeRoleRequestNotification(candidate))
+                    return;
+                void this.cargarSolicitudesRolPendientes();
             });
         this.adminUsersSvc.watchUsersAdminView()
             .pipe(takeUntil(this.destroy$))
@@ -666,6 +676,12 @@ export class AdminPanelComponent implements OnInit, OnDestroy {
                 block: 'start',
             });
         }, 50);
+    }
+
+    private isRealtimeRoleRequestNotification(candidate: ChatAlertCandidate | null | undefined): boolean {
+        const notificationCode = `${candidate?.notification?.code ?? ''}`.trim().toLowerCase();
+        const actionTarget = `${candidate?.notification?.action?.target ?? ''}`.trim().toLowerCase();
+        return notificationCode === 'system.role_request_created' && actionTarget === 'admin.role_requests';
     }
 
     private async pedirDatosRechazo(): Promise<{ blockedUntilUtc: string; adminComment: string | null; } | null> {

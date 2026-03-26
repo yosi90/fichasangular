@@ -194,6 +194,140 @@ describe('CampanaService', () => {
         subscription.unsubscribe();
     }));
 
+    it('getListCampanas expone de forma optimista una campaña aceptada antes de que Firestore emita', fakeAsync(() => {
+        const watchState: { next: ((items: any[]) => void) | null; } = { next: null };
+        const privateUserFirestoreSvcMock = {
+            watchCampaigns: jasmine.createSpy('watchCampaigns').and.callFake((next: (items: any[]) => void) => {
+                watchState.next = next;
+                return () => undefined;
+            }),
+            listCampaigns: jasmine.createSpy('listCampaigns').and.resolveTo([]),
+        };
+        const firestoreBackedService = new CampanaService(
+            { currentUser: { uid: 'actor-1', getIdToken: async () => 'token' } } as any,
+            httpMock as any,
+            { run: <T>(fn: () => T) => fn() } as FirebaseInjectionContextService,
+            campaignRealtimeSyncSvcMock,
+            privateUserFirestoreSvcMock as any
+        );
+
+        httpMock.get.and.callFake((url: string) => {
+            if (url.endsWith('tramas/campana/7'))
+                return of([]);
+            throw new Error(`URL inesperada: ${url}`);
+        });
+        httpMock.patch.and.callFake((url: string) => {
+            if (url.endsWith('campanas/invitaciones/8')) {
+                return of({
+                    message: 'Invitacion aceptada',
+                    invitation: {
+                        inviteId: 8,
+                        status: 'accepted',
+                        createdAtUtc: '2026-03-13T10:15:00.000Z',
+                        resolvedAtUtc: '2026-03-13T10:20:00.000Z',
+                        campaignId: 7,
+                        campaignName: 'Caballeros de Cormyr',
+                        invitedUser: {
+                            userId: 'user-2',
+                            uid: 'actor-1',
+                            displayName: 'Actor',
+                            email: 'actor@test.dev',
+                        },
+                        invitedBy: {
+                            userId: 'user-9',
+                            uid: 'uid-master',
+                            displayName: 'Master',
+                            email: 'master@test.dev',
+                        },
+                        resolvedByUserId: 'user-2',
+                    },
+                });
+            }
+            throw new Error(`URL inesperada: ${url}`);
+        });
+
+        let observable: any;
+        firestoreBackedService.getListCampanas().then((value) => observable = value);
+        tick();
+
+        const emissions: string[][] = [];
+        const subscription = observable.subscribe((campanas: any[]) => emissions.push(campanas.map((item) => item.Nombre)));
+        tick();
+
+        watchState.next?.([]);
+        tick();
+
+        void firestoreBackedService.resolveCampaignInvitation(8, 'accept');
+        tick();
+        invalidations$.next({
+            code: 'campaign.local_change',
+            campaignId: 7,
+            conversationId: null,
+            source: 'local',
+        });
+        tick();
+
+        expect(emissions).toContain(['Sin campaña', 'Caballeros de Cormyr']);
+        subscription.unsubscribe();
+    }));
+
+    it('getListCampanas refleja de forma optimista un renombre antes de que Firestore converja', fakeAsync(() => {
+        const watchState: { next: ((items: any[]) => void) | null; } = { next: null };
+        const privateUserFirestoreSvcMock = {
+            watchCampaigns: jasmine.createSpy('watchCampaigns').and.callFake((next: (items: any[]) => void) => {
+                watchState.next = next;
+                return () => undefined;
+            }),
+            listCampaigns: jasmine.createSpy('listCampaigns').and.resolveTo([
+                { id: 7, nombre: 'Campaña vieja', campaignRole: 'master', membershipStatus: 'activo' },
+            ]),
+        };
+        const firestoreBackedService = new CampanaService(
+            { currentUser: { uid: 'actor-1', getIdToken: async () => 'token' } } as any,
+            httpMock as any,
+            { run: <T>(fn: () => T) => fn() } as FirebaseInjectionContextService,
+            campaignRealtimeSyncSvcMock,
+            privateUserFirestoreSvcMock as any
+        );
+
+        httpMock.get.and.callFake((url: string) => {
+            if (url.endsWith('tramas/campana/7'))
+                return of([]);
+            throw new Error(`URL inesperada: ${url}`);
+        });
+        httpMock.patch.and.callFake((url: string) => {
+            if (url.endsWith('campanas/7'))
+                return of({});
+            throw new Error(`URL inesperada: ${url}`);
+        });
+
+        let observable: any;
+        firestoreBackedService.getListCampanas().then((value) => observable = value);
+        tick();
+
+        const emissions: string[][] = [];
+        const subscription = observable.subscribe((campanas: any[]) => emissions.push(campanas.map((item) => item.Nombre)));
+        tick();
+
+        watchState.next?.([
+            { id: 7, nombre: 'Campaña vieja', campaignRole: 'master', membershipStatus: 'activo' },
+        ]);
+        tick();
+
+        void firestoreBackedService.updateCampaign(7, { nombre: 'Campaña nueva' });
+        tick();
+        invalidations$.next({
+            code: 'campaign.local_change',
+            campaignId: 7,
+            conversationId: null,
+            source: 'local',
+        });
+        tick();
+
+        expect(emissions).toContain(['Sin campaña', 'Campaña nueva']);
+        subscription.unsubscribe();
+    }));
+
     it('getListCampanas excluye campañas sin membresía activa del actor', async () => {
         httpMock.get.and.callFake((url: string) => {
             if (url.endsWith('campanas'))
@@ -319,13 +453,22 @@ describe('CampanaService', () => {
                     activeMasterUid: 'uid-master',
                     activeMasterDisplayName: 'Master',
                     canRecoverMaster: false,
+                    politicaCreacion: {
+                        permitirHomebrewGeneral: true,
+                    },
+                    tramas: [{
+                        i: 11,
+                        n: 'Trama principal',
+                        visibleParaJugadores: true,
+                        subtramas: [{
+                            i: 21,
+                            n: 'Subtrama alfa',
+                            visibleParaJugadores: false,
+                        }],
+                    }],
                 });
             if (url.endsWith('campanas/7/jugadores'))
                 return of([{ uid: 'uid-master', displayName: 'Master', campaignRole: 'master', membershipStatus: 'activo', isActive: true }]);
-            if (url.endsWith('tramas/campana/7'))
-                return of([{ i: 11, n: 'Trama principal' }]);
-            if (url.endsWith('subtramas/trama/11'))
-                return of([{ i: 21, n: 'Subtrama alfa' }]);
             throw new Error(`URL inesperada: ${url}`);
         });
 
@@ -337,6 +480,8 @@ describe('CampanaService', () => {
         expect(detail.includeInactiveMembers).toBeTrue();
         expect(detail.members[0].uid).toBe('uid-master');
         expect(detail.tramas[0].subtramas[0].nombre).toBe('Subtrama alfa');
+        expect(detail.tramas[0].visibleParaJugadores).toBeTrue();
+        expect(detail.tramas[0].subtramas[0].visibleParaJugadores).toBeFalse();
     });
 
     it('getCampaignDetail acepta el shape canónico idCampana/nombre para jugador sin master activo', async () => {
@@ -370,6 +515,83 @@ describe('CampanaService', () => {
         });
         expect(detail.canRecoverMaster).toBeTrue();
         expect(detail.activeMasterUid).toBeNull();
+    });
+
+    it('getCampaignDetail normaliza idTrama/idSubtrama canónicos del árbol embebido', async () => {
+        httpMock.get.and.callFake((url: string) => {
+            if (url.endsWith('campanas/7'))
+                return of({
+                    idCampana: 7,
+                    nombre: 'Campaña visible',
+                    campaignRole: 'master',
+                    membershipStatus: 'activo',
+                    tramas: [{
+                        idTrama: 31,
+                        nombre: 'Trama canónica',
+                        visibleParaJugadores: false,
+                        subtramas: [{
+                            idSubtrama: 41,
+                            nombre: 'Subtrama canónica',
+                            visibleParaJugadores: true,
+                        }],
+                    }],
+                });
+            if (url.endsWith('campanas/7/jugadores'))
+                return of([{ uid: 'uid-master', displayName: 'Master', campaignRole: 'master', membershipStatus: 'activo', isActive: true }]);
+            throw new Error(`URL inesperada: ${url}`);
+        });
+
+        const detail = await service.getCampaignDetail(7);
+
+        expect(detail.tramas).toEqual([
+            jasmine.objectContaining({
+                id: 31,
+                nombre: 'Trama canónica',
+                visibleParaJugadores: false,
+                subtramas: [
+                    jasmine.objectContaining({
+                        id: 41,
+                        nombre: 'Subtrama canónica',
+                        visibleParaJugadores: true,
+                    }),
+                ],
+            }),
+        ]);
+    });
+
+    it('getCampaignDetail cae a /tramas/campana cuando el detalle no embebe el árbol', async () => {
+        httpMock.get.and.callFake((url: string) => {
+            if (url.endsWith('campanas/7'))
+                return of({
+                    idCampana: 7,
+                    nombre: 'Campaña visible',
+                    campaignRole: 'master',
+                    membershipStatus: 'activo',
+                });
+            if (url.endsWith('campanas/7/jugadores'))
+                return of([{ uid: 'uid-master', displayName: 'Master', campaignRole: 'master', membershipStatus: 'activo', isActive: true }]);
+            if (url.endsWith('tramas/campana/7'))
+                return of([{ idTrama: 11, nombre: 'Trama desde endpoint', visibleParaJugadores: true }]);
+            if (url.endsWith('subtramas/trama/11'))
+                return of([{ idSubtrama: 21, nombre: 'Subtrama desde endpoint', visibleParaJugadores: false }]);
+            throw new Error(`URL inesperada: ${url}`);
+        });
+
+        const detail = await service.getCampaignDetail(7);
+
+        expect(detail.tramas).toEqual([
+            jasmine.objectContaining({
+                id: 11,
+                nombre: 'Trama desde endpoint',
+                subtramas: [
+                    jasmine.objectContaining({
+                        id: 21,
+                        nombre: 'Subtrama desde endpoint',
+                        visibleParaJugadores: false,
+                    }),
+                ],
+            }),
+        ]);
     });
 
     it('descarta miembros malformados sin uid canónico', async () => {

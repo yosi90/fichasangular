@@ -5,6 +5,7 @@ import { AdminRoleRequestNotifierService } from './services/admin-role-request-n
 import { CampaignRealtimeSyncService } from './services/campaign-realtime-sync.service';
 import { ChatAlertService } from './services/chat-alert.service';
 import { ChatRealtimeService } from './services/chat-realtime.service';
+import { SocialAlertPreferencesService } from './services/social-alert-preferences.service';
 
 @Component({
     selector: 'app-root',
@@ -24,6 +25,7 @@ export class AppComponent implements OnInit, OnDestroy {
         private campaignRealtimeSyncSvc: CampaignRealtimeSyncService,
         private chatRealtimeSvc: ChatRealtimeService,
         private chatAlertSvc: ChatAlertService,
+        private socialAlertPrefsSvc: SocialAlertPreferencesService,
     ) { }
 
     async ngOnInit(): Promise<void> {
@@ -31,6 +33,7 @@ export class AppComponent implements OnInit, OnDestroy {
         this.adminRoleRequestNotifierSvc.init();
         this.chatRealtimeSvc.init();
         this.campaignRealtimeSyncSvc.init();
+        this.socialAlertPrefsSvc.init();
         this.chatAlertSvc.init();
         this.resize$
             .pipe(takeUntil(this.destroy$))

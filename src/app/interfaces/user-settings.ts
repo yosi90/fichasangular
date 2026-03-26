@@ -31,6 +31,12 @@ export interface UserSettingsV1 {
         visibilidadPorDefectoPersonajes: boolean;
         mostrarPerfilPublico: boolean;
         allowDirectMessagesFromNonFriends: boolean;
+        notificaciones: {
+            mensajes: boolean;
+            amistad: boolean;
+            campanas: boolean;
+            cuentaSistema: boolean;
+        };
     };
 }
 
@@ -46,6 +52,12 @@ export function createDefaultUserSettings(): UserSettingsV1 {
             visibilidadPorDefectoPersonajes: false,
             mostrarPerfilPublico: true,
             allowDirectMessagesFromNonFriends: false,
+            notificaciones: {
+                mensajes: true,
+                amistad: true,
+                campanas: true,
+                cuentaSistema: true,
+            },
         },
     };
 }

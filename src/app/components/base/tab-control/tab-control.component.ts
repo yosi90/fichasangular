@@ -574,6 +574,7 @@ export class TabControlComponent implements OnInit, OnDestroy {
         return {
             section: request?.section ?? 'resumen',
             conversationId: Number(request?.conversationId) > 0 ? Number(request?.conversationId) : null,
+            campaignId: Number(request?.campaignId) > 0 ? Number(request?.campaignId) : null,
             requestId: Number(request?.requestId) > 0 ? Number(request?.requestId) : Date.now(),
         };
     }
@@ -2181,6 +2182,7 @@ export class TabControlComponent implements OnInit, OnDestroy {
             return {
                 section: request,
                 requestId: Date.now(),
+                campaignId: null,
             };
         }
 
@@ -2188,12 +2190,14 @@ export class TabControlComponent implements OnInit, OnDestroy {
             return {
                 section: request.section,
                 requestId: Number(request.requestId) > 0 ? Number(request.requestId) : Date.now(),
+                campaignId: Number(request.campaignId) > 0 ? Number(request.campaignId) : null,
             };
         }
 
         return {
             section: 'resumen',
             requestId: Date.now(),
+            campaignId: null,
         };
     }
 }

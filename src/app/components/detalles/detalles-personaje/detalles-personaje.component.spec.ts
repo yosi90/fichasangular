@@ -77,6 +77,7 @@ describe('DetallesPersonajeComponent', () => {
         component = fixture.componentInstance;
         component.pj = new NuevoPersonajeService().PersonajeCreacion;
         component.pj.Id = 1;
+        component.pj.ownerUid = 'test-uid';
     });
 
     it('actualiza la cache del listado al cambiar la visibilidad', async () => {
@@ -91,6 +92,33 @@ describe('DetallesPersonajeComponent', () => {
 
         expect(component.pj.Archivado).toBeTrue();
         expect(listaPersonajesSvcMock.actualizarArchivadoEnCache).toHaveBeenCalledOnceWith(1, true);
+    });
+
+    it('muestra los switches de visibilidad y archivado solo al propietario', () => {
+        fixture.detectChanges();
+
+        const toggles = fixture.debugElement.queryAll(By.css('mat-slide-toggle'));
+        expect(component.mostrarControlVisibilidad).toBeTrue();
+        expect(toggles.length).toBe(2);
+    });
+
+    it('oculta los switches de visibilidad y archivado en personajes ajenos', () => {
+        component.pj.ownerUid = 'otro-uid';
+        fixture.detectChanges();
+
+        const toggles = fixture.debugElement.queryAll(By.css('mat-slide-toggle'));
+        expect(component.mostrarControlVisibilidad).toBeFalse();
+        expect(toggles.length).toBe(0);
+    });
+
+    it('oculta los switches de visibilidad y archivado sin sesión activa', () => {
+        const userSvc = TestBed.inject(UserService) as any;
+        userSvc.CurrentUserUid = '';
+        fixture.detectChanges();
+
+        const toggles = fixture.debugElement.queryAll(By.css('mat-slide-toggle'));
+        expect(component.mostrarControlVisibilidad).toBeFalse();
+        expect(toggles.length).toBe(0);
     });
 
     it('muestra botón Generar pdf por defecto', () => {

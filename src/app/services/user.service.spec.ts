@@ -366,6 +366,47 @@ describe('UserService', () => {
         expect(service.can('campanas', 'create')).toBeTrue();
     });
 
+    it('mantiene el role del perfil privado aunque ACL llegue desfasada y completa permisos faltantes desde ACL', async () => {
+        const service = new UserServiceTestDouble();
+        service.emitAcl('uid-role-sync', {
+            roles: { admin: false, type: 'jugador' },
+            status: { banned: false },
+            permissions: {
+                personajes: { create: true },
+                campanas: { create: true },
+            },
+        });
+        service.emitAuth({
+            uid: 'uid-role-sync',
+            displayName: 'Aldric',
+            email: 'aldric@test.com',
+        } as User);
+        await service.flush();
+
+        service.setCurrentPrivateProfile({
+            uid: 'uid-role-sync',
+            displayName: 'Aldric',
+            bio: null,
+            genderIdentity: null,
+            pronouns: null,
+            email: 'aldric@test.com',
+            emailVerified: true,
+            authProvider: 'correo',
+            photoUrl: null,
+            photoThumbUrl: null,
+            createdAt: null,
+            lastSeenAt: null,
+            role: 'master',
+            permissions: {
+                personajes: { create: true },
+            },
+        });
+
+        expect(service.CurrentPrivateProfile?.role).toBe('master');
+        expect(service.CurrentPrivateProfile?.permissions['campanas']?.create).toBeTrue();
+        expect(service.CurrentPrivateProfile?.permissions['personajes']?.create).toBeTrue();
+    });
+
     it('register traduce email-already-in-use a un mensaje de usuario', async () => {
         const service = new UserServiceTestDouble();
         service.setRegisterError({ code: 'auth/email-already-in-use' });

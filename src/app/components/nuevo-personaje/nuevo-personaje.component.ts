@@ -103,6 +103,7 @@ import {
     nombreBasicoDesdeVector,
 } from 'src/app/services/utils/alineamiento-contrato';
 import { CatalogoNombreIdDto, PersonajeContextoIdsDto } from 'src/app/interfaces/personajes-api';
+import { CampaignCreationPolicy } from 'src/app/interfaces/campaign-management';
 import { environment } from 'src/environments/environment';
 import Swal from 'sweetalert2';
 
@@ -282,6 +283,7 @@ export class NuevoPersonajeComponent {
 
     Personaje!: Personaje;
     Campanas: Campana[] = [];
+    campanasLoading = false;
     Tramas: Super[] = [];
     Subtramas: Super[] = [];
     razasCatalogo: Raza[] = [];
@@ -328,6 +330,9 @@ export class NuevoPersonajeComponent {
     incluirHomebrewClases: boolean = false;
     private hardAlignmentClassOverrideConfirmed: boolean = false;
     private homebrewPorClaseAplicada: boolean = false;
+    selectedCampaignPolicy: CampaignCreationPolicy | null = null;
+    private selectedCampaignPolicyLoading = false;
+    private selectedCampaignPolicyRequestKey = '';
     catalogoAlineamientosBasicos: AlineamientoBasicoCatalogItem[] = [];
     cargandoVentajas: boolean = true;
     cargandoIdiomas: boolean = true;
@@ -1505,6 +1510,9 @@ export class NuevoPersonajeComponent {
             return;
         }
 
+        if (!await this.ensureSelectedCampaignPolicyReady())
+            return;
+
         let mostroAlertaInconsistencias = false;
         this.normalizarAlineamientoSeleccionado();
         if (!this.esTextoNoVacio(this.Personaje.Contexto)) {
@@ -1518,6 +1526,7 @@ export class NuevoPersonajeComponent {
         const hayPreview = evaluacion.previewWarnings.length > 0;
         const hayConflictosDuros = evaluacion.hardConflicts.length > 0;
         const hayOtrosBloqueos = evaluacion.otherOfficialBlockers.length > 0;
+        const permiteIgnorarAlineamiento = this.canIgnoreAlignmentRestrictionsForCurrentContext;
         if (hayPreview || hayConflictosDuros || hayOtrosBloqueos) {
             mostroAlertaInconsistencias = true;
             const previewHtml = hayPreview
@@ -1527,14 +1536,27 @@ export class NuevoPersonajeComponent {
                 ? `<p style="text-align:left; margin: 8px 0 6px 0;"><strong>Regla dura de alineamiento</strong></p><ul style="text-align:left; margin-top: 4px;">${evaluacion.hardConflicts.map((c) => c.origen === 'raza'
                     ? `<li>Has elegido <strong>${c.elegido}</strong>, mientras que tu raza exige <strong>${c.requerido}</strong>${c.prioridad ? ` (prioridad ${c.prioridad})` : ''}.</li>`
                     : `<li>Has elegido <strong>${c.elegido}</strong>, mientras que tu deidad exige <strong>${c.requerido}</strong>.</li>`
-                ).join('')}</ul><p style="text-align:left; margin: 8px 0 0 0;"><strong>Con tus elecciones has ignorado una regla dura del manual. Si continúas, el personaje se convertirá en homebrew (no oficial) y deberías consultarlo con tu máster.</strong></p>`
+                ).join('')}</ul><p style="text-align:left; margin: 8px 0 0 0;"><strong>${permiteIgnorarAlineamiento
+                    ? 'Con tus elecciones estás saltándote una regla importante del sistema. Si continúas, el personaje quedará marcado como homebrew, seguirá mostrando este aviso en creación y será una rareza excepcional en el mundo.'
+                    : 'Esta campaña no permite saltarse restricciones de alineamiento. Debes cambiar tus elecciones antes de continuar.'
+                }</strong></p>`
                 : '';
             const bloqueosHtml = hayOtrosBloqueos
                 ? `<p style="text-align:left; margin: 8px 0 6px 0;"><strong>Impacto en oficialidad</strong></p><ul style="text-align:left; margin-top: 4px;">${evaluacion.otherOfficialBlockers.map(i => `<li>${i}</li>`).join('')}</ul>`
                 : '';
+            if (hayConflictosDuros && !permiteIgnorarAlineamiento) {
+                await Swal.fire({
+                    title: 'La campaña no permite este alineamiento',
+                    html: `${previewHtml}${conflictosHtml}${bloqueosHtml}`,
+                    icon: 'warning',
+                    confirmButtonText: 'Entendido',
+                    returnFocus: false,
+                });
+                return;
+            }
             const result = await Swal.fire({
                 title: 'Tus elecciones van en contra de los manuales',
-                html: `Cancelar para cambiarlas o aceptar si tu master lo permite.${previewHtml}${conflictosHtml}${bloqueosHtml}`,
+                html: `Cancelar para cambiarlas o aceptar si quieres continuar con una excepción marcada como homebrew.${previewHtml}${conflictosHtml}${bloqueosHtml}`,
                 icon: 'warning',
                 showCancelButton: true,
                 confirmButtonText: 'Aceptar y continuar',
@@ -1901,9 +1923,18 @@ export class NuevoPersonajeComponent {
 
     private async cargarCampanas() {
         this.campanasSub?.unsubscribe();
-        this.campanasSub = (await this.campanaSvc.getListCampanas()).subscribe(campanas => {
-            this.Campanas = this.filtrarCampanasDuplicadasEnSelector(campanas);
-            this.actualizarTramas();
+        this.campanasLoading = true;
+        this.campanasSub = (await this.campanaSvc.getListCampanas()).subscribe({
+            next: (campanas) => {
+                const nextCampanas = this.filtrarCampanasDuplicadasEnSelector(campanas);
+                this.sincronizarNombreCampanaSeleccionada(nextCampanas);
+                this.Campanas = nextCampanas;
+                this.campanasLoading = false;
+                this.actualizarTramas();
+            },
+            error: () => {
+                this.campanasLoading = false;
+            },
         });
     }
 
@@ -1912,8 +1943,29 @@ export class NuevoPersonajeComponent {
         return (campanas ?? []).filter((campana) => this.normalizarTexto(campana?.Nombre ?? '') !== sinCampana);
     }
 
+    private sincronizarNombreCampanaSeleccionada(campanas: Campana[]): void {
+        const currentName = `${this.Personaje?.Campana ?? ''}`.trim();
+        if (currentName.length < 1 || this.normalizarTexto(currentName) === this.normalizarTexto('Sin campaña'))
+            return;
+
+        const currentStillExists = (campanas ?? []).some((campana) => this.normalizarTexto(campana?.Nombre ?? '') === this.normalizarTexto(currentName));
+        if (currentStillExists)
+            return;
+
+        const previousCampaignId = this.toPositiveInt(
+            this.Campanas.find((campana) => this.normalizarTexto(campana?.Nombre ?? '') === this.normalizarTexto(currentName))?.Id
+        );
+        if (!previousCampaignId)
+            return;
+
+        const renamedCampaign = (campanas ?? []).find((campana) => this.toPositiveInt(campana?.Id) === previousCampaignId);
+        if (renamedCampaign?.Nombre)
+            this.Personaje.Campana = renamedCampaign.Nombre;
+    }
+
     actualizarTramas(): void {
         if (this.Personaje.Campana === 'Sin campaña') {
+            this.selectedCampaignPolicy = null;
             this.Tramas = [];
             this.Subtramas = [];
             this.Personaje.Trama = 'Trama base';
@@ -1924,6 +1976,7 @@ export class NuevoPersonajeComponent {
         const campanaSeleccionada = this.Campanas.find(c => c.Nombre === this.Personaje.Campana);
         if (!campanaSeleccionada) {
             this.Personaje.Campana = 'Sin campaña';
+            this.selectedCampaignPolicy = null;
             this.Tramas = [];
             this.Subtramas = [];
             this.Personaje.Trama = 'Trama base';
@@ -1947,6 +2000,7 @@ export class NuevoPersonajeComponent {
             this.Personaje.Trama = this.Tramas[0].Nombre;
         }
 
+        void this.syncSelectedCampaignPolicy();
         this.actualizarSubtramas();
     }
 
@@ -2563,14 +2617,28 @@ export class NuevoPersonajeComponent {
         if (!seleccion || !seleccion.puedeAplicarse)
             return;
 
+        if (!await this.ensureSelectedCampaignPolicyReady())
+            return;
+
         const primerNivelClase = Number(seleccion.siguienteNivel ?? 0) === 1;
         const requiereAvisoAlineamiento = primerNivelClase
             && (seleccion.compatAlineamiento.requiereConfirmacion || seleccion.bloqueoSoloAlineamiento);
         if (requiereAvisoAlineamiento) {
             const detalleAlineamiento = seleccion.compatAlineamiento.tooltip;
-            const avisoHomebrew = seleccion.compatAlineamiento.marcaHomebrew
-                ? '<br><br><strong>Esta elección convertirá al personaje en Homebrew (no oficial).</strong>'
-                : '';
+            if (!this.canIgnoreAlignmentRestrictionsForCurrentContext) {
+                await Swal.fire({
+                    icon: 'warning',
+                    title: 'La campaña no permite esta clase',
+                    html: `${detalleAlineamiento}<br><br><strong>Esta campaña no permite saltarse restricciones de alineamiento. Debes elegir una clase compatible.</strong>`,
+                    showConfirmButton: true,
+                    confirmButtonText: 'Entendido',
+                    target: document.body,
+                    heightAuto: false,
+                    scrollbarPadding: false,
+                });
+                return;
+            }
+            const avisoHomebrew = '<br><br><strong>Esta elección está saltándose una regla importante del sistema. El personaje quedará marcado como Homebrew y será una rareza excepcional en el mundo.</strong>';
             const confirmacion = await Swal.fire({
                 icon: 'warning',
                 title: 'Aviso de alineamiento de clase',
@@ -2676,7 +2744,7 @@ export class NuevoPersonajeComponent {
             this.homebrewPorClaseAplicada = true;
             this.Personaje.Oficial = false;
         }
-        if (seleccion.compatAlineamiento.marcaHomebrew) {
+        if (requiereAvisoAlineamiento && this.canIgnoreAlignmentRestrictionsForCurrentContext) {
             this.hardAlignmentClassOverrideConfirmed = true;
             this.Personaje.Oficial = false;
         }
@@ -4959,6 +5027,67 @@ export class NuevoPersonajeComponent {
             this.incluirHomebrewVentajas = true;
             this.incluirHomebrewPlantillas = true;
             this.incluirHomebrewIdiomas = true;
+        }
+    }
+
+    private get hasSelectedCampaignContext(): boolean {
+        return this.normalizarTexto(this.Personaje?.Campana ?? '') !== this.normalizarTexto('Sin campaña');
+    }
+
+    private get canIgnoreAlignmentRestrictionsForCurrentContext(): boolean {
+        if (!this.hasSelectedCampaignContext)
+            return true;
+        return this.selectedCampaignPolicy?.permitirIgnorarRestriccionesAlineamiento === true;
+    }
+
+    private async ensureSelectedCampaignPolicyReady(): Promise<boolean> {
+        if (!this.hasSelectedCampaignContext)
+            return true;
+
+        if (!this.selectedCampaignPolicy && !this.selectedCampaignPolicyLoading)
+            await this.syncSelectedCampaignPolicy();
+
+        if (this.selectedCampaignPolicyLoading) {
+            await Swal.fire({
+                icon: 'info',
+                title: 'Cargando campaña',
+                text: 'Espera un momento a que se cargue la política de creación de la campaña.',
+                confirmButtonText: 'Entendido',
+                target: document.body,
+                heightAuto: false,
+                scrollbarPadding: false,
+            });
+            return false;
+        }
+
+        return true;
+    }
+
+    private async syncSelectedCampaignPolicy(): Promise<void> {
+        const campanaSeleccionada = this.Campanas.find(c => c.Nombre === this.Personaje.Campana);
+        const campaignId = Number(campanaSeleccionada?.Id ?? 0);
+        if (!this.hasSelectedCampaignContext || !Number.isFinite(campaignId) || campaignId <= 0) {
+            this.selectedCampaignPolicy = null;
+            this.selectedCampaignPolicyLoading = false;
+            this.selectedCampaignPolicyRequestKey = '';
+            return;
+        }
+
+        const requestKey = `${campaignId}:${this.Personaje.Campana ?? ''}`;
+        this.selectedCampaignPolicyRequestKey = requestKey;
+        this.selectedCampaignPolicyLoading = true;
+        try {
+            const detail = await this.campanaSvc.getCampaignDetail(campaignId);
+            if (this.selectedCampaignPolicyRequestKey !== requestKey)
+                return;
+            this.selectedCampaignPolicy = detail?.politicaCreacion ?? null;
+        } catch {
+            if (this.selectedCampaignPolicyRequestKey !== requestKey)
+                return;
+            this.selectedCampaignPolicy = null;
+        } finally {
+            if (this.selectedCampaignPolicyRequestKey === requestKey)
+                this.selectedCampaignPolicyLoading = false;
         }
     }
 

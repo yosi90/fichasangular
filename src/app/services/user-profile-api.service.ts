@@ -463,6 +463,12 @@ export class UserProfileApiService {
                 visibilidadPorDefectoPersonajes: raw?.perfil?.visibilidadPorDefectoPersonajes === true,
                 mostrarPerfilPublico: raw?.perfil?.mostrarPerfilPublico !== false,
                 allowDirectMessagesFromNonFriends: raw?.perfil?.allowDirectMessagesFromNonFriends === true,
+                notificaciones: {
+                    mensajes: raw?.perfil?.notificaciones?.mensajes !== false,
+                    amistad: raw?.perfil?.notificaciones?.amistad !== false,
+                    campanas: raw?.perfil?.notificaciones?.campanas !== false,
+                    cuentaSistema: raw?.perfil?.notificaciones?.cuentaSistema !== false,
+                },
             },
         };
     }

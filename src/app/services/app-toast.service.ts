@@ -1,10 +1,7 @@
 import { Injectable } from '@angular/core';
 import { BehaviorSubject } from 'rxjs';
-import { AppToast, AppToastType } from '../interfaces/app-toast';
-
-interface AppToastOptions {
-    durationMs?: number;
-}
+import { AppToast, AppToastOptions, AppToastType } from '../interfaces/app-toast';
+import { SocialAlertPreferencesService } from './social-alert-preferences.service';
 
 @Injectable({
     providedIn: 'root'
@@ -15,6 +12,8 @@ export class AppToastService {
     private sequence = 0;
 
     readonly toasts$ = this.toastsSubject.asObservable();
+
+    constructor(private socialAlertPrefsSvc?: SocialAlertPreferencesService) { }
 
     showSuccess(message: string, options?: AppToastOptions): void {
         this.show('success', message, options);
@@ -47,9 +46,11 @@ export class AppToastService {
         const message = `${rawMessage ?? ''}`.trim();
         if (message.length < 1)
             return;
+        if (type !== 'error' && options?.category && this.socialAlertPrefsSvc?.isEnabled(options.category) === false)
+            return;
 
         const id = `app-toast-${Date.now()}-${++this.sequence}`;
-        const toast: AppToast = { id, message, type };
+        const toast: AppToast = { id, message, type, category: options?.category };
         this.toastsSubject.next([...this.toastsSubject.value, toast]);
         this.scheduleDismiss(id, this.resolveDuration(type, options?.durationMs));
     }

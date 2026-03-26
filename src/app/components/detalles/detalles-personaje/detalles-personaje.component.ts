@@ -165,7 +165,9 @@ export class DetallesPersonajeComponent implements OnInit, OnChanges, AfterViewI
     }
 
     get mostrarControlVisibilidad(): boolean {
-        return !this.esPreviewNuevoPersonaje && this.toNumber(this.pj?.Id) > 0;
+        return !this.esPreviewNuevoPersonaje
+            && this.toNumber(this.pj?.Id) > 0
+            && this.actorPuedeGestionarEstadoPersonaje();
     }
 
     get personajeVisiblePublicamente(): boolean {
@@ -301,6 +303,12 @@ export class DetallesPersonajeComponent implements OnInit, OnChanges, AfterViewI
 
     private ownerUidNormalizado(): string {
         return `${this.pj?.ownerUid ?? ''}`.trim();
+    }
+
+    private actorPuedeGestionarEstadoPersonaje(): boolean {
+        const actorUid = `${this.userSvc.CurrentUserUid ?? ''}`.trim();
+        const ownerUid = this.ownerUidNormalizado();
+        return actorUid.length > 0 && ownerUid.length > 0 && actorUid === ownerUid;
     }
 
     private resolverNombreJugadorFicha(): string {

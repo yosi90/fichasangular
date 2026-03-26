@@ -1093,6 +1093,48 @@ describe('NuevoPersonajeComponent', () => {
         expect(component.Personaje.Subtrama).toBe('Subtrama base');
     });
 
+    it('cargarCampanas preserva la selección cuando la campaña cambia de nombre pero mantiene Id', async () => {
+        const campanas$ = new Subject<Campana[]>();
+        campanaSvcMock.getListCampanas = async () => campanas$.asObservable();
+        component.Personaje.Campana = 'Campaña A';
+        component.Personaje.Trama = 'Trama 1';
+        component.Personaje.Subtrama = 'Sub 1';
+
+        await (component as any).cargarCampanas();
+
+        campanas$.next([{
+            Id: 1,
+            Nombre: 'Campaña A',
+            Tramas: [{ Id: 10, Nombre: 'Trama 1', Subtramas: [{ Id: 100, Nombre: 'Sub 1' }] }],
+        }]);
+        campanas$.next([{
+            Id: 1,
+            Nombre: 'Campaña Renombrada',
+            Tramas: [{ Id: 10, Nombre: 'Trama 1', Subtramas: [{ Id: 100, Nombre: 'Sub 1' }] }],
+        }]);
+
+        expect(component.Personaje.Campana).toBe('Campaña Renombrada');
+        expect(component.Personaje.Trama).toBe('Trama 1');
+        expect(component.Personaje.Subtrama).toBe('Sub 1');
+    });
+
+    it('cargarCampanas marca estado de carga hasta recibir la primera emisión', async () => {
+        const campanas$ = new Subject<Campana[]>();
+        campanaSvcMock.getListCampanas = async () => campanas$.asObservable();
+
+        const loadingPromise = (component as any).cargarCampanas();
+        expect(component.campanasLoading).toBeTrue();
+
+        await loadingPromise;
+        campanas$.next([{
+            Id: 2,
+            Nombre: 'Campaña B',
+            Tramas: [],
+        }]);
+
+        expect(component.campanasLoading).toBeFalse();
+    });
+
     it('actualizarTramas resetea a Sin campaña cuando la selección actual ya no es válida', () => {
         component.Campanas = [{
             Id: 1,
@@ -1259,9 +1301,32 @@ describe('NuevoPersonajeComponent', () => {
         const swalConfig = swalSpy.calls.mostRecent().args[0] as any;
         expect(`${swalConfig.html ?? ''}`).toContain('Regla dura de alineamiento');
         expect(`${swalConfig.html ?? ''}`).toContain('tu raza exige');
-        expect(`${swalConfig.html ?? ''}`).toContain('se convertirá en homebrew');
+        expect(`${swalConfig.html ?? ''}`).toContain('quedará marcado como homebrew');
         expect(component.Personaje.Oficial).toBeFalse();
         expect(component.modalCaracteristicasAbierto).toBeTrue();
+    });
+
+    it('continuarDesdeBasicos bloquea el avance si la campaña no permite saltarse alineamiento', async () => {
+        component.seleccionarRaza(crearRazaConConflictoDuroAlineamiento());
+        component.Personaje.Campana = 'Caballeros';
+        component.Personaje.Alineamiento = 'Legal neutral';
+        component.Personaje.Deidad = 'No tener deidad';
+        component.selectedCampaignPolicy = {
+            tiradaMinimaCaracteristica: 3,
+            maxTablasDadosCaracteristicas: 1,
+            permitirHomebrewGeneral: false,
+            permitirVentajasDesventajas: false,
+            permitirIgnorarRestriccionesAlineamiento: false,
+            maxFuentesHomebrewGeneralesPorPersonaje: 1,
+        };
+        const swalSpy = spyOn(Swal, 'fire').and.resolveTo({ isConfirmed: true } as any);
+
+        await component.continuarDesdeBasicos();
+
+        const swalConfig = swalSpy.calls.mostRecent().args[0] as any;
+        expect(`${swalConfig.title ?? ''}`).toContain('La campaña no permite este alineamiento');
+        expect(`${swalConfig.html ?? ''}`).toContain('Esta campaña no permite saltarse restricciones de alineamiento');
+        expect(component.modalCaracteristicasAbierto).toBeFalse();
     });
 
     it('continuarDesdeBasicos con deidad incompatible marca homebrew al confirmar', async () => {
@@ -1953,7 +2018,7 @@ describe('NuevoPersonajeComponent', () => {
         expect(component.Personaje.Oficial).toBeFalse();
     });
 
-    it('incompatibilidad P2: al confirmar, aplica clase sin forzar homebrew por prioridad', async () => {
+    it('incompatibilidad P2: al confirmar, aplica clase y la marca como homebrew por saltarse alineamiento', async () => {
         const claseP2 = crearClaseMock({
             Id: 33,
             Nombre: 'Monje estricto',
@@ -1976,7 +2041,7 @@ describe('NuevoPersonajeComponent', () => {
         await component.continuarDesdeClases();
 
         expect(component.Personaje.desgloseClases.some((c) => c.Nombre === 'Monje estricto' && c.Nivel === 1)).toBeTrue();
-        expect(component.Personaje.Oficial).toBeTrue();
+        expect(component.Personaje.Oficial).toBeFalse();
     });
 
     it('avisa por alineamiento solo al nivel 1 de cada clase incompatible', async () => {
@@ -2072,6 +2137,42 @@ describe('NuevoPersonajeComponent', () => {
 
         expect(component.Personaje.desgloseClases.some((c) => c.Nombre === 'Ejemplo homebrew' && c.Nivel === 1)).toBeTrue();
         expect(component.Personaje.Oficial).toBeFalse();
+    });
+
+    it('continuarDesdeClases bloquea una clase incompatible si la campaña no permite ignorar alineamiento', async () => {
+        const monje = crearClaseMock({
+            Id: 45,
+            Nombre: 'Monje estricto',
+            Alineamiento: {
+                Id: 1,
+                Basico: { Id_basico: 1, Nombre: 'Legal bueno' },
+                Ley: { Id_ley: 1, Nombre: 'Legal' },
+                Moral: { Id_moral: 1, Nombre: 'Bueno' },
+                Prioridad: { Id_prioridad: 3, Nombre: 'Duro' },
+                Descripcion: 'Solo para legales buenos',
+            },
+        });
+        component.Personaje.Campana = 'Caballeros';
+        component.Personaje.Alineamiento = 'Caotico maligno';
+        component.selectedCampaignPolicy = {
+            tiradaMinimaCaracteristica: 3,
+            maxTablasDadosCaracteristicas: 1,
+            permitirHomebrewGeneral: false,
+            permitirVentajasDesventajas: false,
+            permitirIgnorarRestriccionesAlineamiento: false,
+            maxFuentesHomebrewGeneralesPorPersonaje: 1,
+        };
+        component.catalogoClases = [monje];
+        nuevoPSvc.setCatalogoClases(component.catalogoClases);
+        const swalSpy = spyOn(Swal, 'fire').and.resolveTo({ isConfirmed: true } as any);
+
+        (component as any).recalcularClasesVisibles();
+        component.seleccionarClaseParaAplicar(monje);
+        await component.continuarDesdeClases();
+
+        const swalConfig = swalSpy.calls.mostRecent().args[0] as any;
+        expect(`${swalConfig.title ?? ''}`).toContain('La campaña no permite esta clase');
+        expect(component.Personaje.desgloseClases.some((c) => c.Nombre === 'Monje estricto')).toBeFalse();
     });
 
     it('continuarDesdeClases avanza a habilidades cuando aplica correctamente', async () => {

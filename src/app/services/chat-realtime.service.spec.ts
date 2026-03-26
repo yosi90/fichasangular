@@ -72,6 +72,68 @@ describe('ChatRealtimeService', () => {
         expect(alertedIds).toEqual([10]);
     });
 
+    it('enriquece el alertCandidate con el contexto de la conversación', () => {
+        const userSvc = {
+            isLoggedIn$: new BehaviorSubject<boolean>(false),
+            CurrentUserUid: 'uid-propio',
+        } as any;
+        const service = new ChatRealtimeService(
+            {} as any,
+            userSvc,
+            {
+                parseWebSocketEvent: (raw: any) => raw,
+                listConversations: jasmine.createSpy('listConversations').and.resolveTo({
+                    items: [],
+                    unreadUserCount: 0,
+                    unreadSystemCount: 0,
+                }),
+                buildWebSocketUrl: jasmine.createSpy('buildWebSocketUrl').and.returnValue('ws://test/ws/chat'),
+            } as any,
+        );
+
+        service.upsertConversation({
+            conversationId: 5,
+            type: 'campaign',
+            title: 'Caballeros de Cormyr',
+            photoThumbUrl: null,
+            campaignId: 7,
+            participantRole: 'member',
+            participantStatus: 'active',
+            lastMessagePreview: null,
+            lastMessageAtUtc: null,
+            unreadCount: 0,
+            canSend: true,
+            isSystemConversation: false,
+            counterpartUid: null,
+            lastMessageNotification: null,
+        } as any);
+
+        const candidates: any[] = [];
+        service.alertCandidate$.subscribe((candidate) => candidates.push(candidate));
+
+        (service as any).handleIncomingMessage({
+            messageId: 10,
+            conversationId: 5,
+            sender: {
+                uid: 'uid-otro',
+                displayName: 'Yuna',
+                photoThumbUrl: null,
+                isSystemUser: false,
+            },
+            body: 'Hola',
+            sentAtUtc: '2026-03-13T12:00:00.000Z',
+            notification: null,
+            announcement: null,
+        });
+
+        expect(candidates[0]).toEqual(jasmine.objectContaining({
+            conversationType: 'campaign',
+            conversationTitle: 'Caballeros de Cormyr',
+            campaignId: 7,
+            isSystemConversation: false,
+        }));
+    });
+
     it('emite alertCandidate para notificación persistente recuperada desde listConversations', async () => {
         const userSvc = {
             isLoggedIn$: new BehaviorSubject<boolean>(false),

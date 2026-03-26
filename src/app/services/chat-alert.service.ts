@@ -1,9 +1,12 @@
 import { Injectable, OnDestroy } from '@angular/core';
 import { Subscription } from 'rxjs';
 import Swal from 'sweetalert2';
+import { AppToastCategory } from '../interfaces/app-toast';
 import { ChatAlertCandidate, ChatAnnouncementPayload } from '../interfaces/chat';
 import { AppToastService } from './app-toast.service';
+import { ChatApiService } from './chat-api.service';
 import { ChatRealtimeService } from './chat-realtime.service';
+import { SocialAlertPreferencesService } from './social-alert-preferences.service';
 import { UserProfileNavigationService } from './user-profile-navigation.service';
 import { UserService } from './user.service';
 
@@ -18,9 +21,11 @@ export class ChatAlertService implements OnDestroy {
 
     constructor(
         private chatRealtimeSvc: ChatRealtimeService,
+        private chatApiSvc: ChatApiService,
         private appToastSvc: AppToastService,
         private userProfileNavSvc: UserProfileNavigationService,
         private userSvc: UserService,
+        private socialAlertPrefsSvc: SocialAlertPreferencesService,
     ) { }
 
     init(): void {
@@ -49,11 +54,15 @@ export class ChatAlertService implements OnDestroy {
             return;
         if (this.isOwnMessage(candidate))
             return;
+        if (this.isAdminRoleRequestNotification(candidate))
+            return;
         if (this.handledAlertKeys.has(alertKey))
             return;
         this.handledAlertKeys.add(alertKey);
 
         if (candidate.notification) {
+            if (!this.socialAlertPrefsSvc.isEnabled(this.resolveCategory(candidate)))
+                return;
             this.enqueueSwal(candidate);
             return;
         }
@@ -66,32 +75,55 @@ export class ChatAlertService implements OnDestroy {
             return;
         }
 
+        const category = this.resolveCategory(candidate);
+        if (!this.socialAlertPrefsSvc.isEnabled(category))
+            return;
+
         if (candidate.sender.isSystemUser === true || `${candidate.sender.uid ?? ''}`.trim() === 'system:yosiftware') {
-            this.appToastSvc.showSystem(this.buildSystemToast(candidate), { durationMs: 7600 });
+            this.appToastSvc.showSystem(this.buildSystemToast(candidate), {
+                durationMs: 7600,
+                category,
+            });
             return;
         }
 
-        this.appToastSvc.showInfo(this.buildUserMessageToast(candidate));
+        this.appToastSvc.showInfo(this.buildUserMessageToast(candidate), {
+            category,
+        });
     }
 
     private showAnnouncementToast(announcement: ChatAnnouncementPayload, candidate: ChatAlertCandidate): void {
         const title = `${announcement.title ?? ''}`.trim();
+        const category = this.resolveCategory(candidate);
+        if (!this.socialAlertPrefsSvc.isEnabled(category))
+            return;
         if (announcement.code === 'chat.new_chat') {
-            this.appToastSvc.showInfo(title || 'Tienes una conversación nueva.');
+            this.appToastSvc.showInfo(title || 'Tienes una conversación nueva.', { category: 'mensajes' });
             return;
         }
 
         if (announcement.code === 'chat.new_message') {
-            this.appToastSvc.showInfo(title || this.buildUserMessageToast(candidate));
+            this.appToastSvc.showInfo(title || this.buildUserMessageToast(candidate), { category: 'mensajes' });
             return;
         }
 
-        this.appToastSvc.showInfo(title || this.buildUserMessageToast(candidate));
+        this.appToastSvc.showInfo(title || this.buildUserMessageToast(candidate), {
+            category,
+        });
     }
 
     private buildUserMessageToast(candidate: ChatAlertCandidate): string {
+        const conversationTitle = `${candidate.conversationTitle ?? ''}`.trim();
         const senderLabel = `${candidate.sender.displayName ?? ''}`.trim() || 'Usuario';
         const preview = this.buildPreview(candidate.body);
+        if (candidate.conversationType === 'campaign' && conversationTitle.length > 0)
+            return preview.length > 0
+                ? `Nuevo mensaje en el grupo de ${conversationTitle}: ${preview}`
+                : `Nuevo mensaje en el grupo de ${conversationTitle}.`;
+        if (candidate.conversationType === 'group' && conversationTitle.length > 0)
+            return preview.length > 0
+                ? `Nuevo mensaje en ${conversationTitle}: ${preview}`
+                : `Nuevo mensaje en ${conversationTitle}.`;
         return preview.length > 0 ? `${senderLabel}: ${preview}` : `${senderLabel} te ha enviado un mensaje.`;
     }
 
@@ -113,24 +145,68 @@ export class ChatAlertService implements OnDestroy {
 
         const canOpenMessages = notification.action?.target === 'social.messages'
             && Math.trunc(Number(notification.action?.conversationId)) > 0;
+        const notificationConversationId = Math.trunc(Number(notification.action?.conversationId));
+        const campaignId = this.extractCampaignId(candidate);
+        const canOpenCampaign = campaignId > 0
+            && (notification.code === 'system.campaign_invitation_received'
+                || notification.code === 'system.campaign_invitation_resolved');
+        const canOpenProfile = notification.code === 'system.role_request_resolved';
+        const primaryActionLabel = canOpenCampaign
+            ? 'Abrir campaña'
+            : canOpenProfile
+                ? 'Abrir perfil'
+                : canOpenMessages
+                    ? 'Abrir mensajes'
+                    : 'Aceptar';
         const result = await Swal.fire({
             icon: 'info',
             title: `${notification.title ?? ''}`.trim() || 'Nuevo aviso',
             text: `${candidate.body ?? ''}`.trim() || `${notification.title ?? ''}`.trim() || 'Tienes un nuevo aviso.',
-            showCancelButton: canOpenMessages,
-            confirmButtonText: canOpenMessages ? 'Abrir mensajes' : 'Aceptar',
-            cancelButtonText: canOpenMessages ? 'Cerrar' : undefined,
+            showCancelButton: canOpenCampaign || canOpenProfile || canOpenMessages,
+            showDenyButton: (canOpenCampaign || canOpenProfile) && canOpenMessages,
+            confirmButtonText: primaryActionLabel,
+            denyButtonText: canOpenMessages ? 'Abrir mensajes' : undefined,
+            cancelButtonText: canOpenCampaign || canOpenProfile || canOpenMessages ? 'Cerrar' : undefined,
             focusConfirm: false,
         });
 
-        if (!canOpenMessages || !result.isConfirmed)
+        if (result.isConfirmed) {
+            if (canOpenCampaign) {
+                await this.markNotificationConversationAsRead(candidate, notificationConversationId);
+                this.userProfileNavSvc.openSocial({
+                    section: 'campanas',
+                    campaignId,
+                    requestId: Date.now(),
+                });
+                return;
+            }
+            if (canOpenProfile) {
+                await this.markNotificationConversationAsRead(candidate, notificationConversationId);
+                this.userProfileNavSvc.openPrivateProfile({
+                    section: 'resumen',
+                    requestId: Date.now(),
+                });
+                return;
+            }
+            if (canOpenMessages) {
+                await this.markNotificationConversationAsRead(candidate, notificationConversationId);
+                this.userProfileNavSvc.openSocial({
+                    section: 'mensajes',
+                    conversationId: notificationConversationId,
+                    requestId: Date.now(),
+                });
+            }
             return;
+        }
 
-        this.userProfileNavSvc.openSocial({
-            section: 'mensajes',
-            conversationId: Math.trunc(Number(notification.action?.conversationId)),
-            requestId: Date.now(),
-        });
+        if (result.isDenied && canOpenMessages) {
+            await this.markNotificationConversationAsRead(candidate, notificationConversationId);
+            this.userProfileNavSvc.openSocial({
+                section: 'mensajes',
+                conversationId: notificationConversationId,
+                requestId: Date.now(),
+            });
+        }
     }
 
     private buildPreview(body: string): string {
@@ -140,9 +216,88 @@ export class ChatAlertService implements OnDestroy {
         return `${normalized.slice(0, 117).trim()}...`;
     }
 
+    private extractCampaignId(candidate: ChatAlertCandidate): number {
+        const notificationCampaignId = Math.trunc(Number(candidate.notification?.context?.['campaignId']));
+        if (Number.isFinite(notificationCampaignId) && notificationCampaignId > 0)
+            return notificationCampaignId;
+        return Math.trunc(Number(candidate.campaignId)) > 0 ? Math.trunc(Number(candidate.campaignId)) : 0;
+    }
+
     private isOwnMessage(candidate: ChatAlertCandidate): boolean {
         const senderUid = `${candidate?.sender?.uid ?? ''}`.trim();
         const currentUid = `${this.userSvc.CurrentUserUid ?? ''}`.trim();
         return senderUid.length > 0 && currentUid.length > 0 && senderUid === currentUid;
+    }
+
+    private resolveCategory(candidate: ChatAlertCandidate): AppToastCategory {
+        const announcementCode = `${candidate?.announcement?.code ?? ''}`.trim().toLowerCase();
+        if (announcementCode === 'chat.new_chat' || announcementCode === 'chat.new_message')
+            return 'mensajes';
+
+        const notificationCode = `${candidate?.notification?.code ?? ''}`.trim().toLowerCase();
+        if (notificationCode === 'system.campaign_invitation_received' || notificationCode === 'system.campaign_invitation_resolved')
+            return 'campanas';
+        if (notificationCode === 'system.role_request_created')
+            return 'cuentaSistema';
+        if (notificationCode === 'system.role_request_resolved'
+            || notificationCode === 'system.account_updated'
+            || notificationCode === 'system.account_banned')
+            return 'cuentaSistema';
+        if (notificationCode.startsWith('system.')) {
+            if (this.isFriendshipNotification(candidate))
+                return 'amistad';
+            return 'cuentaSistema';
+        }
+
+        if (candidate?.sender?.isSystemUser === true || `${candidate?.sender?.uid ?? ''}`.trim() === 'system:yosiftware')
+            return 'cuentaSistema';
+
+        return 'mensajes';
+    }
+
+    private isFriendshipNotification(candidate: ChatAlertCandidate): boolean {
+        const campaignId = this.extractCampaignId(candidate);
+        if (campaignId > 0)
+            return false;
+
+        const context = candidate.notification?.context ?? {};
+        return ['targetUid', 'requesterUid', 'fromUid']
+            .some((key) => `${context?.[key] ?? ''}`.trim().length > 0);
+    }
+
+    private isAdminRoleRequestNotification(candidate: ChatAlertCandidate): boolean {
+        const notificationCode = `${candidate?.notification?.code ?? ''}`.trim().toLowerCase();
+        const actionTarget = `${candidate?.notification?.action?.target ?? ''}`.trim().toLowerCase();
+        return notificationCode === 'system.role_request_created' || actionTarget === 'admin.role_requests';
+    }
+
+    private async markNotificationConversationAsRead(candidate: ChatAlertCandidate, conversationId: number): Promise<void> {
+        const normalizedConversationId = Math.trunc(Number(conversationId));
+        if (!Number.isFinite(normalizedConversationId) || normalizedConversationId <= 0)
+            return;
+
+        const directMessageId = Math.trunc(Number(candidate?.messageId));
+        try {
+            const lastMessageId = Number.isFinite(directMessageId) && directMessageId > 0
+                ? directMessageId
+                : this.resolveLastMessageId(
+                    await this.chatApiSvc.listMessages(normalizedConversationId, null, 25)
+                );
+            if (!lastMessageId)
+                return;
+
+            await this.chatApiSvc.markAsRead(normalizedConversationId, lastMessageId);
+            this.chatRealtimeSvc.markConversationReadLocally(normalizedConversationId);
+        } catch {
+            // La navegación principal no debe romperse si falla el marcado de lectura.
+        }
+    }
+
+    private resolveLastMessageId(messages: ChatAlertCandidate[] | any[]): number {
+        const candidate = Array.isArray(messages) && messages.length > 0
+            ? messages[messages.length - 1]
+            : null;
+        const messageId = Math.trunc(Number(candidate?.messageId));
+        return Number.isFinite(messageId) && messageId > 0 ? messageId : 0;
     }
 }

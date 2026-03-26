@@ -83,6 +83,7 @@ export type AdminPanelSectionId = 'usuarios' | 'role-requests';
 export interface UserPrivateProfileOpenRequest {
     section: UserPrivateProfileSectionId;
     requestId: number;
+    campaignId?: number | null;
 }
 
 export interface AdminPanelOpenRequest {

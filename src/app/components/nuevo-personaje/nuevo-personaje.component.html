@@ -115,8 +115,10 @@
                                     <mat-label>Campaña</mat-label>
                                     <mat-select [(value)]="Personaje.Campana" (selectionChange)="actualizarTramas()">
                                         <mat-option value="Sin campaña">Sin campaña</mat-option>
+                                        <mat-option *ngIf="campanasLoading" disabled>Cargando campañas...</mat-option>
                                         <mat-option *ngFor="let campana of Campanas" [value]="campana.Nombre">{{campana.Nombre}}</mat-option>
                                     </mat-select>
+                                    <mat-hint *ngIf="campanasLoading">Cargando campañas y tramas disponibles...</mat-hint>
                                 </mat-form-field>
                                 <mat-form-field appearance="fill">
                                     <mat-label>Trama</mat-label>

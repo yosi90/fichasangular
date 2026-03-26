@@ -30,10 +30,19 @@ export class UserProfileNavigationService {
     readonly legalPrivacyOpen$: Observable<void> = this.legalPrivacySubject.asObservable();
     readonly usageAboutOpen$: Observable<void> = this.usageAboutSubject.asObservable();
 
-    openPrivateProfile(section: UserPrivateProfileSectionId = 'resumen'): void {
+    openPrivateProfile(request?: UserPrivateProfileOpenRequest | UserPrivateProfileSectionId): void {
+        if (typeof request === 'string' || !request) {
+            this.privateProfileSubject.next({
+                section: request ?? 'resumen',
+                requestId: Date.now(),
+            });
+            return;
+        }
+
         this.privateProfileSubject.next({
-            section,
-            requestId: Date.now(),
+            section: request.section ?? 'resumen',
+            requestId: Number(request.requestId) > 0 ? Number(request.requestId) : Date.now(),
+            campaignId: Number(request.campaignId) > 0 ? Number(request.campaignId) : null,
         });
     }
 
@@ -53,6 +62,7 @@ export class UserProfileNavigationService {
         this.socialSubject.next({
             section: request?.section ?? 'resumen',
             conversationId: Number(request?.conversationId) > 0 ? Number(request?.conversationId) : null,
+            campaignId: Number(request?.campaignId) > 0 ? Number(request?.campaignId) : null,
             requestId: Number(request?.requestId) > 0 ? Number(request?.requestId) : Date.now(),
         });
     }

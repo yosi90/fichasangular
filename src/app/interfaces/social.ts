@@ -1,8 +1,9 @@
-export type SocialHubSectionId = 'resumen' | 'amistades' | 'bloqueos' | 'mensajes';
+export type SocialHubSectionId = 'resumen' | 'amistades' | 'bloqueos' | 'campanas' | 'mensajes';
 
 export interface SocialHubOpenRequest {
     section: SocialHubSectionId;
     conversationId?: number | null;
+    campaignId?: number | null;
     requestId: number;
 }
 

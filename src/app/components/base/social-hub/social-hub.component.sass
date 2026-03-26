@@ -303,6 +303,11 @@
     grid-template-columns: repeat(2, minmax(0, 1fr))
     gap: 1rem
 
+.social-campaigns-grid
+    display: grid
+    grid-template-columns: repeat(2, minmax(0, 1fr))
+    gap: 1rem
+
 .social-panel
     display: flex
     flex-direction: column
@@ -315,6 +320,63 @@
 
 .social-panel__subheading
     margin-top: .5rem !important
+
+.social-panel--nested
+    background: rgba(255, 255, 255, .03)
+
+.social-user-card--campaign
+    align-items: center
+
+.social-user-card--button
+    width: 100%
+    border: 1px solid rgba(173, 189, 196, .16)
+    border-radius: .9rem
+    background: rgba(255, 255, 255, .03)
+    color: #f5f7ff
+    text-align: left
+    cursor: pointer
+
+.social-user-card--active
+    border-color: rgba(194, 24, 91, .72)
+    background: rgba(194, 24, 91, .14)
+
+.social-campaign-detail
+    min-height: 0
+
+.social-campaign-detail__header
+    display: flex
+    justify-content: space-between
+    gap: 1rem
+    align-items: flex-start
+
+.social-campaign-detail__grid
+    display: grid
+    grid-template-columns: repeat(2, minmax(0, 1fr))
+    gap: 1rem
+
+.social-campaign-story-list,
+.social-campaign-substory-list
+    display: flex
+    flex-direction: column
+    gap: .75rem
+
+.social-campaign-story,
+.social-campaign-substory
+    padding: .9rem
+    border-radius: .9rem
+    border: 1px solid rgba(255, 255, 255, .08)
+    background: rgba(255, 255, 255, .03)
+
+.social-campaign-story__header,
+.social-campaign-substory
+    display: flex
+    justify-content: space-between
+    gap: .85rem
+    align-items: center
+
+    span
+        color: rgba(245, 247, 255, .66)
+        font-size: .88rem
 
 .social-chat
     display: grid
@@ -606,18 +668,25 @@
 
 .social-chat__message
     max-width: min(80%, 44rem)
-    padding: .8rem
+    display: flex
+    flex-direction: column
+    gap: .55rem
+    padding: .9rem 1rem
     border-radius: .9rem
     background: rgba(255, 255, 255, .05)
     border: 1px solid rgba(255, 255, 255, .08)
 
     strong
         display: block
-        margin-bottom: .3rem
+        margin: 0
+        font-size: .98rem
+        line-height: 1.2
 
     p
         margin: 0
         white-space: pre-wrap
+        line-height: 1.45
+        color: rgba(245, 247, 255, .9)
 
 .social-chat__message--own
     align-self: flex-end
@@ -625,7 +694,38 @@
     border-color: rgba(194, 24, 91, .35)
 
 .social-chat__message--system
-    border-color: rgba(250, 202, 67, .35)
+    background: linear-gradient(180deg, rgba(255, 248, 220, .035), rgba(255, 255, 255, .045))
+    border-color: rgba(214, 180, 95, .34)
+    box-shadow: inset 0 1px 0 rgba(255, 248, 220, .06)
+
+    strong
+        color: #fff4cf
+
+    p
+        color: rgba(255, 248, 220, .92)
+
+.social-chat__message-actions
+    display: flex
+    flex-wrap: wrap
+    gap: .55rem
+    padding-top: .2rem
+
+.social-chat__message-action
+    min-width: 0
+    padding: .32rem .9rem
+    border-radius: .7rem
+    border-color: rgba(214, 180, 95, .34) !important
+    background: rgba(214, 180, 95, .1) !important
+    color: #fff1bf !important
+    line-height: 1.2
+    letter-spacing: .01em
+
+    &:hover
+        background: rgba(214, 180, 95, .16) !important
+        border-color: rgba(214, 180, 95, .46) !important
+
+    .mdc-button__label
+        color: inherit
 
 .social-chat__composer
     display: flex

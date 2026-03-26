@@ -5,6 +5,7 @@ import { EmailAuthProvider, reauthenticateWithCredential, updatePassword } from 
 import { Subject, concatMap, debounceTime, from, takeUntil } from 'rxjs';
 import Swal from 'sweetalert2';
 import {
+    CampaignCreationPolicy,
     CampaignDetailViewModel,
     CampaignInvitationDecision,
     CampaignInvitationItem,
@@ -32,9 +33,13 @@ import { ChatApiService } from 'src/app/services/chat-api.service';
 import { ChatRealtimeService } from 'src/app/services/chat-realtime.service';
 import { UserProfileApiService } from 'src/app/services/user-profile-api.service';
 import { UserProfileNavigationService } from 'src/app/services/user-profile-navigation.service';
+import { SocialAlertPreferencesService } from 'src/app/services/social-alert-preferences.service';
 import { UserSettingsService } from 'src/app/services/user-settings.service';
 import { UserService } from 'src/app/services/user.service';
 import { resolveDefaultProfileAvatar } from 'src/app/services/utils/profile-avatar.util';
+
+type CampaignWorkspaceMode = 'idle' | 'create' | 'config' | 'peopleStories';
+type CampaignWorkspaceTab = 'usuarios' | 'historias';
 
 @Component({
     selector: 'app-user-profile',
@@ -61,6 +66,10 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
     visibilidadPorDefectoPersonajes = false;
     mostrarPerfilPublico = true;
     allowDirectMessagesFromNonFriends = false;
+    socialAlertsMensajes = true;
+    socialAlertsAmistad = true;
+    socialAlertsCampanas = true;
+    socialAlertsCuentaSistema = true;
     generadorMinimoSeleccionado = 13;
     generadorTablasPermitidas = 3;
 
@@ -86,7 +95,10 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
     selectedCampaignDetail: CampaignDetailViewModel | null = null;
     selectedCampaignLoading = false;
     selectedCampaignErrorMessage = '';
+    campaignWorkspaceMode: CampaignWorkspaceMode = 'idle';
+    campaignWorkspaceTab: CampaignWorkspaceTab = 'usuarios';
     campaignCreateDraft = '';
+    campaignCreatePolicyDraft: CampaignCreationPolicy = this.createDefaultCampaignPolicyDraft();
     campaignCreateSaving = false;
     campaignRenameDraft = '';
     campaignRenameSaving = false;
@@ -109,22 +121,30 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
     keepPreviousMasterAsPlayer = true;
     transferSaving = false;
     tramaCreateDraft = '';
+    tramaCreateVisibleParaJugadores = true;
     tramaCreateSaving = false;
     editingTramaId: number | null = null;
     editingTramaDraft = '';
+    editingTramaVisibleParaJugadores = true;
     tramaSaveInFlightId: number | null = null;
     editingSubtramaId: number | null = null;
     editingSubtramaDraft = '';
+    editingSubtramaVisibleParaJugadores = true;
     subtramaSaveInFlightId: number | null = null;
     subtramaCreateDraftByTrama: Record<number, string> = {};
+    subtramaCreateVisibleByTrama: Record<number, boolean> = {};
     subtramaCreateSavingTramaId: number | null = null;
 
     private readonly destroy$ = new Subject<void>();
     private readonly campaignRealtimeRefresh$ = new Subject<CampaignRealtimeEvent>();
     private pendingRequestedSection: UserPrivateProfileSectionId | null = null;
+    private pendingRequestedCampaignId: number | null = null;
     private memberSearchTimerId: number | null = null;
     private transferSearchTimerId: number | null = null;
+    private campaignSummariesWatchStop: (() => void) | null = null;
     private identityDraftsUid = '';
+    private readonly campaignPolicyAutofixInFlight = new Set<number>();
+    private campaignSummariesLiveReady = false;
     private readonly dateFormatter = new Intl.DateTimeFormat('es-ES', {
         day: 'numeric',
         month: 'long',
@@ -149,7 +169,8 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
         private chatApiSvc: ChatApiService,
         private chatRealtimeSvc: ChatRealtimeService,
         private userProfileNavSvc: UserProfileNavigationService,
-        private appToastSvc: AppToastService
+        private appToastSvc: AppToastService,
+        private socialAlertPrefsSvc: SocialAlertPreferencesService,
     ) { }
 
     ngOnInit(): void {
@@ -168,7 +189,7 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
         this.campaignRealtimeSyncSvc.events$
             .pipe(takeUntil(this.destroy$))
             .subscribe((event) => {
-                if (event.source !== 'remote' || this.currentSection !== 'campanas')
+                if (this.currentSection !== 'campanas')
                     return;
                 this.campaignRealtimeRefresh$.next(event);
             });
@@ -179,12 +200,13 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
                 concatMap((event) => from(this.handleCampaignRealtimeEvent(event)))
             )
             .subscribe();
+        this.startCampaignSummariesWatch();
         void this.cargar();
     }
 
     ngOnChanges(changes: SimpleChanges): void {
         if (changes['openRequest']?.currentValue)
-            this.requestSection(changes['openRequest'].currentValue.section);
+            this.requestSection(changes['openRequest'].currentValue);
     }
 
     ngOnDestroy(): void {
@@ -193,6 +215,8 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
         this.releaseAvatarPreview();
         this.clearSearchTimer('member');
         this.clearSearchTimer('transfer');
+        this.campaignSummariesWatchStop?.();
+        this.campaignSummariesWatchStop = null;
     }
 
     get canShowContent(): boolean {
@@ -202,10 +226,11 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
     get sectionItems(): { id: UserPrivateProfileSectionId; label: string; icon: string; }[] {
         const base: { id: UserPrivateProfileSectionId; label: string; icon: string; }[] = [
             { id: 'resumen', label: 'Resumen', icon: 'badge' },
-            { id: 'campanas', label: 'Campañas', icon: 'diversity_3' },
             { id: 'identidad', label: 'Identidad', icon: 'account_circle' },
             { id: 'preferencias', label: 'Preferencias', icon: 'tune' },
         ];
+        if (this.canAccessCampaignManagementSection)
+            base.splice(1, 0, { id: 'campanas', label: 'Gestión de campañas', icon: 'diversity_3' });
         if (this.canChangePassword)
             base.push({ id: 'seguridad', label: 'Seguridad', icon: 'lock' });
         return base;
@@ -286,6 +311,10 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
         return this.formatDateLabel(this.profile?.lastSeenAt, 'Sin dato');
     }
 
+    get profileRoleLabel(): string {
+        return this.formatRoleLabel(this.profile?.role, 'Jugador');
+    }
+
     get requestedRoleTarget(): UserRoleRequestTarget | null {
         if (this.profile?.role === 'jugador')
             return 'master';
@@ -295,26 +324,23 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
     }
 
     get requestedRoleLabel(): string {
-        const target = this.requestedRoleTarget;
-        if (target === 'master')
-            return 'master';
-        if (target === 'colaborador')
-            return 'colaborador';
-        return 'rol superior';
+        return this.formatRoleLabel(this.requestedRoleTarget, 'Rol superior');
+    }
+
+    get roleRequestPanelTitle(): string {
+        if (this.requestedRoleTarget === 'colaborador')
+            return 'Acceso a Colaborador';
+        if (this.requestedRoleTarget === 'master')
+            return 'Acceso a Master';
+        return 'Acceso de rol';
     }
 
     get showRoleRequestPanel(): boolean {
         return !!this.requestedRoleTarget;
     }
 
-    get roleRequestPanelDescription(): string {
-        if (this.requestedRoleTarget === 'colaborador')
-            return 'Pide acceso a funciones de colaborador para ampliar tus permisos globales.';
-        return 'Pide acceso a funciones de master para crear y gestionar tus campañas.';
-    }
-
     get requestRoleButtonLabel(): string {
-        return `Solicitar ser ${this.requestedRoleLabel}`;
+        return `Solicitar acceso a ${this.requestedRoleLabel}`;
     }
 
     get hasRelevantRoleRequestState(): boolean {
@@ -352,7 +378,7 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
 
     get roleRequestStatusLabel(): string {
         if (this.profile?.role === 'colaborador' || this.profile?.role === 'admin')
-            return `Tu rol actual es ${this.profile.role}.`;
+            return `Tu rol actual es ${this.profileRoleLabel}.`;
 
         if (this.hasPendingRoleRequestForCurrentTarget)
             return 'Tienes una solicitud pendiente de revisión.';
@@ -363,7 +389,7 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
                 ? `Solicitud rechazada. No podrás volver a pedirlo hasta ${this.formattedRoleRequestBlockedUntil}.`
                 : 'La última solicitud fue rechazada.';
         if (this.canRequestRole || this.roleRequestStatus?.eligible === true)
-            return `Puedes solicitar convertirte en ${this.requestedRoleLabel}.`;
+            return `Puedes solicitar acceso a ${this.requestedRoleLabel}.`;
         return this.roleRequestReasonLabel;
     }
 
@@ -407,30 +433,37 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
         return this.canCreateCampaignByRole && this.userSvc.can('campanas', 'create');
     }
 
+    get canAccessCampaignManagementSection(): boolean {
+        return this.canCreateCampaign || this.manageableCampaigns.length > 0 || this.currentSection === 'campanas';
+    }
+
     get campaignCreateHint(): string {
         if (!this.canCreateCampaignByRole)
-            return 'Solo los master y colaboradores pueden crear campañas.';
+            return 'Solo los Masters y Colaboradores pueden crear campañas.';
 
         return 'Ahora mismo no tienes permiso para crear campañas nuevas.';
     }
 
+    get manageableCampaigns(): CampaignListItem[] {
+        return this.campaigns.filter((campaign) => campaign.campaignRole === 'master' || campaign.isOwner === true);
+    }
+
     get masterCampaigns(): CampaignListItem[] {
-        return this.campaigns.filter((campaign) => campaign.campaignRole === 'master');
+        return this.manageableCampaigns.filter((campaign) => campaign.campaignRole === 'master');
     }
 
     get participantCampaigns(): CampaignListItem[] {
-        return this.campaigns.filter((campaign) => {
-            if (campaign.campaignRole === 'jugador' && campaign.membershipStatus === 'activo')
-                return true;
+        return [];
+    }
 
-            return campaign.isOwner === true && campaign.campaignRole !== 'master';
-        });
+    get hasManageableCampaigns(): boolean {
+        return this.manageableCampaigns.length > 0;
     }
 
     get selectedCampaignSummary(): CampaignListItem | null {
         if (!this.selectedCampaignId)
             return null;
-        return this.campaigns.find((campaign) => campaign.id === this.selectedCampaignId) ?? null;
+        return this.manageableCampaigns.find((campaign) => campaign.id === this.selectedCampaignId) ?? null;
     }
 
     get selectedCampaignCurrentMembership(): CampaignMemberItem | null {
@@ -461,14 +494,15 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
     }
 
     get selectedCampaignCanTransferMaster(): boolean {
-        if (!this.selectedCampaignSummary)
-            return false;
-        return this.selectedCampaignActorRole === 'master'
-            && this.selectedCampaignMembers.some((member) => member.campaignRole !== 'master' && member.isActive);
+        return this.selectedCampaignActorRole === 'master' && this.selectedCampaignTransferCandidates.length > 0;
     }
 
     get selectedCampaignMembers(): CampaignMemberItem[] {
         return this.selectedCampaignDetail?.members ?? [];
+    }
+
+    get selectedCampaignTransferCandidates(): CampaignMemberItem[] {
+        return this.selectedCampaignMembers.filter((member) => member.campaignRole !== 'master' && member.isActive);
     }
 
     get selectedCampaignTramas(): CampaignTramaItem[] {
@@ -505,7 +539,89 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
     }
 
     get campaignListsHaveData(): boolean {
-        return this.masterCampaigns.length > 0 || this.participantCampaigns.length > 0;
+        return this.manageableCampaigns.length > 0;
+    }
+
+    get isCreatingCampaign(): boolean {
+        return this.campaignWorkspaceMode === 'create';
+    }
+
+    get isCampaignWorkspaceIdle(): boolean {
+        return this.campaignWorkspaceMode === 'idle';
+    }
+
+    get isCampaignWorkspaceConfig(): boolean {
+        return this.campaignWorkspaceMode === 'config';
+    }
+
+    get isCampaignWorkspacePeopleStories(): boolean {
+        return this.campaignWorkspaceMode === 'peopleStories';
+    }
+
+    get isCampaignWorkspaceUsersTab(): boolean {
+        return this.campaignWorkspaceTab === 'usuarios';
+    }
+
+    get isCampaignWorkspaceStoriesTab(): boolean {
+        return this.campaignWorkspaceTab === 'historias';
+    }
+
+    get campaignWorkspaceTitle(): string {
+        if (this.isCreatingCampaign)
+            return 'Nueva campaña';
+        if (this.isCampaignWorkspaceConfig)
+            return 'Configuración de campaña';
+        if (this.isCampaignWorkspacePeopleStories)
+            return 'Usuarios e historias';
+        if (this.selectedCampaignSummary)
+            return this.selectedCampaignSummary.nombre;
+        return 'Gestión de campañas';
+    }
+
+    get campaignEditorTitle(): string {
+        return this.isCreatingCampaign
+            ? 'Nueva campaña'
+            : 'Configuración de campaña';
+    }
+
+    get campaignEditorSubmitLabel(): string {
+        return this.isCreatingCampaign ? 'Crear campaña' : 'Guardar cambios';
+    }
+
+    get campaignEditorNamePlaceholder(): string {
+        return this.isCreatingCampaign ? 'Nombre de la nueva campaña' : 'Nombre de campaña';
+    }
+
+    get campaignEditorSaving(): boolean {
+        return this.campaignCreateSaving || this.campaignRenameSaving;
+    }
+
+    get campaignEditorCanSave(): boolean {
+        return this.isCreatingCampaign ? this.canCreateCampaign : this.selectedCampaignCanManage;
+    }
+
+    get campaignEditorFormDisabled(): boolean {
+        return this.campaignEditorSaving || !this.campaignEditorCanSave;
+    }
+
+    get campaignHomebrewMode(): 'none' | 'general' | 'limitado' {
+        if (this.campaignCreatePolicyDraft.permitirHomebrewGeneral === true)
+            return 'general';
+        if ((this.campaignCreatePolicyDraft.maxFuentesHomebrewGeneralesPorPersonaje ?? 0) === 0)
+            return 'none';
+        return 'limitado';
+    }
+
+    get showCampaignHomebrewLimitInput(): boolean {
+        return this.campaignHomebrewMode === 'limitado';
+    }
+
+    get showCampaignHomebrewAdvancedToggles(): boolean {
+        return this.campaignHomebrewMode !== 'none';
+    }
+
+    get campaignHomebrewLimitDisabled(): boolean {
+        return this.campaignEditorFormDisabled || !this.showCampaignHomebrewLimitInput;
     }
 
     get hasReceivedCampaignInvitations(): boolean {
@@ -516,16 +632,21 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
         this.loading = true;
         this.loadErrorMessage = '';
         try {
-            const [profile, settings] = await Promise.all([
+            const [profile, settings, campaigns] = await Promise.all([
                 this.userSvc.refreshCurrentPrivateProfile(),
                 this.userSettingsSvc.loadSettings(true),
+                this.campanaSvc.listProfileCampaigns().catch(() => []),
             ]);
             this.profile = profile;
             this.settings = settings;
+            this.campaigns = this.filterManageableCampaigns(campaigns);
+            this.campaignsLoaded = true;
             this.applySettingsToForm(settings);
             this.hydrateIdentityDraftsFromProfile(profile, true);
             this.identityDraftsUid = `${profile?.uid ?? ''}`.trim();
             await this.cargarEstadoSolicitudRol();
+            if (!this.canAccessCampaignManagementSection && this.currentSection === 'campanas')
+                this.currentSection = 'resumen';
         } catch (error: any) {
             this.loadErrorMessage = `${error?.message ?? 'No se pudo cargar el perfil.'}`.trim();
         } finally {
@@ -637,7 +758,9 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
                 this.normalizeOptionalMultilineText(this.roleRequestCommentDraft)
             );
             this.roleRequestCommentDraft = '';
-            this.appToastSvc.showSuccess(`Solicitud para ser ${this.requestedRoleLabel} enviada. Queda pendiente de revisión.`);
+            this.appToastSvc.showSuccess(`Solicitud para ser ${this.requestedRoleLabel} enviada. Queda pendiente de revisión.`, {
+                category: 'cuentaSistema',
+            });
         } catch (error: any) {
             this.appToastSvc.showError(this.mapProfileError(error, 'No se pudo registrar la solicitud.'));
         } finally {
@@ -664,6 +787,12 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
                     visibilidadPorDefectoPersonajes: this.visibilidadPorDefectoPersonajes === true,
                     mostrarPerfilPublico: this.mostrarPerfilPublico !== false,
                     allowDirectMessagesFromNonFriends: this.allowDirectMessagesFromNonFriends === true,
+                    notificaciones: {
+                        mensajes: this.socialAlertsMensajes !== false,
+                        amistad: this.socialAlertsAmistad !== false,
+                        campanas: this.socialAlertsCampanas !== false,
+                        cuentaSistema: this.socialAlertsCuentaSistema !== false,
+                    },
                 },
                 nuevo_personaje: {
                     ...current.nuevo_personaje,
@@ -673,6 +802,7 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
             const saved = await this.userSettingsSvc.saveSettings(nextSettings);
             this.settings = saved;
             this.applySettingsToForm(saved);
+            this.socialAlertPrefsSvc.applyProfileSettings(saved.perfil);
             this.appToastSvc.showSuccess('Preferencias guardadas.');
         } catch (error: any) {
             this.appToastSvc.showError(this.mapProfileError(error, 'No se pudieron guardar las preferencias.'));
@@ -741,13 +871,22 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
         }
     }
 
-    async setSection(section: UserPrivateProfileSectionId): Promise<void> {
+    async setSection(section: UserPrivateProfileSectionId, preferredCampaignId?: number | null): Promise<void> {
         if (section === 'seguridad' && !this.canChangePassword)
             return;
+        if (section === 'campanas' && !this.canAccessCampaignManagementSection) {
+            this.currentSection = 'resumen';
+            return;
+        }
         this.currentSection = section;
         this.pendingRequestedSection = null;
+        this.pendingRequestedCampaignId = null;
+        if (section === 'campanas' && this.toPositiveInt(preferredCampaignId)) {
+            this.campaignWorkspaceMode = 'idle';
+            this.campaignWorkspaceTab = 'usuarios';
+        }
         if (section === 'campanas')
-            await this.ensureCampaignSectionLoaded();
+            await this.ensureCampaignSectionLoaded(true, preferredCampaignId);
     }
 
     onSectionNavClick(section: UserPrivateProfileSectionId, event?: Event): void {
@@ -766,6 +905,108 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
 
     async seleccionarCampana(campaignId: number): Promise<void> {
         await this.loadCampaignSelection(campaignId, false);
+        this.campaignWorkspaceMode = 'idle';
+        this.campaignWorkspaceTab = 'usuarios';
+    }
+
+    seleccionarNuevaCampana(): void {
+        this.selectedCampaignId = null;
+        this.selectedCampaignDetail = null;
+        this.selectedCampaignErrorMessage = '';
+        this.campaignWorkspaceMode = 'create';
+        this.campaignWorkspaceTab = 'usuarios';
+        this.resetCampaignEditorToCreateMode();
+        this.resetCampaignDetailEditors();
+    }
+
+    async abrirConfiguracionCampana(campaignId: number, event?: Event): Promise<void> {
+        event?.preventDefault();
+        event?.stopPropagation();
+        await this.loadCampaignSelection(campaignId, false);
+        this.campaignWorkspaceMode = 'config';
+        this.campaignWorkspaceTab = 'usuarios';
+    }
+
+    async abrirUsuariosHistoriasCampana(campaignId: number, event?: Event): Promise<void> {
+        event?.preventDefault();
+        event?.stopPropagation();
+        await this.loadCampaignSelection(campaignId, false);
+        this.campaignWorkspaceMode = 'peopleStories';
+        this.campaignWorkspaceTab = 'usuarios';
+    }
+
+    seleccionarCampaignWorkspaceTab(tab: CampaignWorkspaceTab): void {
+        this.campaignWorkspaceTab = tab;
+    }
+
+    async guardarCampanaDesdeEditor(): Promise<void> {
+        if (this.isCreatingCampaign) {
+            await this.crearCampana();
+            return;
+        }
+        await this.guardarNombreCampana();
+    }
+
+    setCampaignHomebrewMode(mode: 'none' | 'general' | 'limitado'): void {
+        if (mode === 'none') {
+            this.campaignCreatePolicyDraft.permitirHomebrewGeneral = false;
+            this.campaignCreatePolicyDraft.maxFuentesHomebrewGeneralesPorPersonaje = 0;
+            this.campaignCreatePolicyDraft.permitirVentajasDesventajas = false;
+            this.campaignCreatePolicyDraft.permitirIgnorarRestriccionesAlineamiento = false;
+            return;
+        }
+
+        if (mode === 'general') {
+            this.campaignCreatePolicyDraft.permitirHomebrewGeneral = true;
+            this.campaignCreatePolicyDraft.maxFuentesHomebrewGeneralesPorPersonaje = null;
+            return;
+        }
+
+        this.campaignCreatePolicyDraft.permitirHomebrewGeneral = false;
+        this.campaignCreatePolicyDraft.maxFuentesHomebrewGeneralesPorPersonaje = this.normalizeCampaignHomebrewLimit(
+            this.campaignCreatePolicyDraft.maxFuentesHomebrewGeneralesPorPersonaje,
+            1
+        );
+    }
+
+    onCampaignHomebrewLimitChange(): void {
+        if (this.campaignHomebrewMode !== 'limitado')
+            return;
+
+        this.campaignCreatePolicyDraft.maxFuentesHomebrewGeneralesPorPersonaje = this.normalizeCampaignHomebrewLimit(
+            this.campaignCreatePolicyDraft.maxFuentesHomebrewGeneralesPorPersonaje,
+            1
+        );
+    }
+
+    abrirInfoCampaignHomebrew(event?: Event): void {
+        event?.preventDefault();
+        event?.stopPropagation();
+        void Swal.fire({
+            title: 'Homebrew de campaña',
+            icon: 'info',
+            html: `
+                <p style="text-align:left; margin-bottom:8px;"><strong>No permitir homebrew</strong>: bloquea excepciones generales de contenido.</p>
+                <p style="text-align:left; margin-bottom:8px;"><strong>Permitir solo N fuentes</strong>: admite un margen controlado y medible.</p>
+                <p style="text-align:left; margin:0;"><strong>Permitir homebrew en general</strong>: deja la campaña abierta a excepciones amplias.</p>
+            `,
+            confirmButtonText: 'Entendido',
+        });
+    }
+
+    abrirInfoCampaignAlignmentOverride(event?: Event): void {
+        event?.preventDefault();
+        event?.stopPropagation();
+        void Swal.fire({
+            title: 'Restricciones de alineamiento',
+            icon: 'info',
+            html: `
+                <p style="text-align:left; margin-bottom:8px;">Esta opción no elimina los avisos del creador de personaje.</p>
+                <p style="text-align:left; margin-bottom:8px;">Si está desactivada, el frontend bloquea elecciones que rompan reglas duras de alineamiento.</p>
+                <p style="text-align:left; margin:0;">Si está activada, se puede continuar, pero el personaje queda marcado como Homebrew y se avisa de que será una rareza excepcional.</p>
+            `,
+            confirmButtonText: 'Entendido',
+        });
     }
 
     async crearCampana(): Promise<void> {
@@ -774,9 +1015,15 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
 
         this.campaignCreateSaving = true;
         try {
-            const created = await this.campanaSvc.createCampaign(this.campaignCreateDraft);
+            const normalizedPolicy = this.buildCampaignPolicyForSave();
+            const created = await this.campanaSvc.createCampaign({
+                nombre: this.campaignCreateDraft,
+                politicaCreacion: normalizedPolicy,
+            });
             this.campaignCreateDraft = '';
-            this.appToastSvc.showSuccess('Campaña creada correctamente.');
+            this.campaignCreatePolicyDraft = this.createDefaultCampaignPolicyDraft();
+            this.campaignWorkspaceMode = 'config';
+            this.showCampaignSuccess('Campaña creada correctamente.');
             await this.reloadCampaigns(created.id);
         } catch (error: any) {
             this.appToastSvc.showError(this.mapCampaignError(error, 'No se pudo crear la campaña.'));
@@ -791,8 +1038,12 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
 
         this.campaignRenameSaving = true;
         try {
-            await this.campanaSvc.renameCampaign(this.selectedCampaignId, this.campaignRenameDraft);
-            this.appToastSvc.showSuccess('Campaña actualizada.');
+            const normalizedPolicy = this.buildCampaignPolicyForSave();
+            await this.campanaSvc.updateCampaign(this.selectedCampaignId, {
+                nombre: this.campaignCreateDraft,
+                politicaCreacion: normalizedPolicy,
+            });
+            this.showCampaignSuccess('Campaña actualizada.');
             await this.reloadCampaigns(this.selectedCampaignId);
         } catch (error: any) {
             this.appToastSvc.showError(this.mapCampaignError(error, 'No se pudo actualizar la campaña.'));
@@ -816,6 +1067,24 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
         } catch (error: any) {
             this.appToastSvc.showError(`${error?.message ?? 'No se pudo abrir el chat de la campaña.'}`.trim());
         }
+    }
+
+    abrirVistaSocialCampana(): void {
+        if (!this.selectedCampaignId)
+            return;
+
+        this.userProfileNavSvc.openSocial({
+            section: 'campanas',
+            campaignId: this.selectedCampaignId,
+            requestId: Date.now(),
+        });
+    }
+
+    abrirCampanasSociales(): void {
+        this.userProfileNavSvc.openSocial({
+            section: 'campanas',
+            requestId: Date.now(),
+        });
     }
 
     async cambiarHistorialMiembros(value: boolean): Promise<void> {
@@ -866,7 +1135,7 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
 
         try {
             await this.campanaSvc.recoverCampaignMaster(this.selectedCampaignId);
-            this.appToastSvc.showSuccess('Has recuperado el rol de master de la campaña.');
+            this.showCampaignSuccess('Has recuperado el rol de master de la campaña.');
             await this.reloadCampaigns(this.selectedCampaignId);
         } catch (error: any) {
             this.appToastSvc.showError(this.mapCampaignError(error, 'No se pudo recuperar el master de la campaña.'));
@@ -876,12 +1145,6 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
     onMemberSearchQueryChange(): void {
         this.memberSearchErrorMessage = '';
         this.scheduleUserSearch('member');
-    }
-
-    onTransferSearchQueryChange(): void {
-        this.transferSelectedUser = null;
-        this.transferSearchErrorMessage = '';
-        this.scheduleUserSearch('transfer');
     }
 
     async agregarJugador(result: CampaignUserSearchResult): Promise<void> {
@@ -894,7 +1157,7 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
             this.memberSearchQuery = '';
             this.memberSearchResults = [];
             this.memberSearchErrorMessage = '';
-            this.appToastSvc.showSuccess('Invitación enviada correctamente.');
+            this.showCampaignSuccess('Invitación enviada correctamente.');
             await this.loadCampaignSelection(this.selectedCampaignId, true, this.selectedCampaignDetail?.includeInactiveMembers === true);
         } catch (error: any) {
             this.appToastSvc.showError(this.mapCampaignError(error, 'No se pudo enviar la invitación.'));
@@ -913,10 +1176,10 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
             const response = await this.campanaSvc.resolveCampaignInvitation(inviteId, decision);
             await this.refreshReceivedCampaignInvitations();
             if (decision === 'accept') {
-                this.appToastSvc.showSuccess('Invitación aceptada. Ya formas parte de la campaña.');
+                this.showCampaignSuccess('Invitación aceptada. Ya formas parte de la campaña.');
                 await this.reloadCampaigns(response.invitation.campaignId);
             } else {
-                this.appToastSvc.showSuccess('Invitación rechazada.');
+                this.showCampaignSuccess('Invitación rechazada.');
                 if (this.selectedCampaignId)
                     await this.loadCampaignSelection(this.selectedCampaignId, true, this.selectedCampaignDetail?.includeInactiveMembers === true);
             }
@@ -927,7 +1190,7 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
                     await this.reloadCampaigns(invitation.campaignId);
                 else if (this.selectedCampaignId)
                     await this.loadCampaignSelection(this.selectedCampaignId, true, this.selectedCampaignDetail?.includeInactiveMembers === true);
-                this.appToastSvc.showInfo('La invitación ya cambió en otra sesión. Se ha refrescado el estado.');
+                this.showCampaignInfo('La invitación ya cambió en otra sesión. Se ha refrescado el estado.');
                 return;
             }
             this.appToastSvc.showError(this.mapCampaignError(error, 'No se pudo responder la invitación.'));
@@ -944,14 +1207,14 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
         this.campaignInviteCancelInFlightId = inviteId;
         try {
             await this.campanaSvc.cancelCampaignInvitation(inviteId);
-            this.appToastSvc.showSuccess('Invitación cancelada.');
+            this.showCampaignSuccess('Invitación cancelada.');
             if (this.selectedCampaignId)
                 await this.loadCampaignSelection(this.selectedCampaignId, true, this.selectedCampaignDetail?.includeInactiveMembers === true);
         } catch (error: any) {
             if (this.isCampaignStateOutdatedError(error)) {
                 if (this.selectedCampaignId)
                     await this.loadCampaignSelection(this.selectedCampaignId, true, this.selectedCampaignDetail?.includeInactiveMembers === true);
-                this.appToastSvc.showInfo('La invitación ya había cambiado en otra sesión. Se ha refrescado la campaña.');
+                this.showCampaignInfo('La invitación ya había cambiado en otra sesión. Se ha refrescado la campaña.');
                 return;
             }
             this.appToastSvc.showError(this.mapCampaignError(error, 'No se pudo cancelar la invitación.'));
@@ -990,7 +1253,7 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
                 member.uid,
                 result.value as CampaignMemberRemovalStatus
             );
-            this.appToastSvc.showSuccess('Jugador retirado de la campaña.');
+            this.showCampaignSuccess('Jugador retirado de la campaña.');
             await this.loadCampaignSelection(this.selectedCampaignId, true, this.selectedCampaignDetail?.includeInactiveMembers === true);
         } catch (error: any) {
             this.appToastSvc.showError(this.mapCampaignError(error, 'No se pudo retirar el jugador.'));
@@ -999,9 +1262,13 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
         }
     }
 
-    seleccionarNuevoMaster(result: CampaignUserSearchResult): void {
-        this.transferSelectedUser = result;
-        this.transferSearchQuery = this.getUserDisplayLabel(result.displayName, null, result.uid);
+    seleccionarNuevoMaster(member: CampaignMemberItem): void {
+        this.transferSelectedUser = {
+            uid: member.uid,
+            displayName: member.displayName,
+            photoThumbUrl: null,
+        };
+        this.transferSearchQuery = this.getUserDisplayLabel(member.displayName, member.email, member.uid);
         this.transferSearchResults = [];
         this.transferSearchErrorMessage = '';
     }
@@ -1029,7 +1296,7 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
                 targetUid: this.transferSelectedUser.uid,
                 keepPreviousAsPlayer: this.keepPreviousMasterAsPlayer !== false,
             });
-            this.appToastSvc.showSuccess('Master de campaña transferido correctamente.');
+            this.showCampaignSuccess('Master de campaña transferido correctamente.');
             this.limpiarNuevoMaster();
             await this.reloadCampaigns(this.selectedCampaignId);
         } catch (error: any) {
@@ -1045,9 +1312,13 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
 
         this.tramaCreateSaving = true;
         try {
-            await this.campanaSvc.createTrama(this.selectedCampaignId, this.tramaCreateDraft);
+            await this.campanaSvc.createTrama(this.selectedCampaignId, {
+                nombre: this.tramaCreateDraft,
+                visibleParaJugadores: this.tramaCreateVisibleParaJugadores,
+            });
             this.tramaCreateDraft = '';
-            this.appToastSvc.showSuccess('Trama creada correctamente.');
+            this.tramaCreateVisibleParaJugadores = true;
+            this.showCampaignSuccess('Trama creada correctamente.');
             await this.loadCampaignSelection(this.selectedCampaignId, true, this.selectedCampaignDetail?.includeInactiveMembers === true);
         } catch (error: any) {
             this.appToastSvc.showError(this.mapCampaignError(error, 'No se pudo crear la trama.'));
@@ -1059,11 +1330,13 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
     iniciarEdicionTrama(trama: CampaignTramaItem): void {
         this.editingTramaId = trama.id;
         this.editingTramaDraft = trama.nombre;
+        this.editingTramaVisibleParaJugadores = trama.visibleParaJugadores === true;
     }
 
     cancelarEdicionTrama(): void {
         this.editingTramaId = null;
         this.editingTramaDraft = '';
+        this.editingTramaVisibleParaJugadores = true;
         this.tramaSaveInFlightId = null;
     }
 
@@ -1073,8 +1346,11 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
 
         this.tramaSaveInFlightId = this.editingTramaId;
         try {
-            await this.campanaSvc.updateTrama(this.editingTramaId, this.editingTramaDraft);
-            this.appToastSvc.showSuccess('Trama actualizada.');
+            await this.campanaSvc.updateTrama(this.editingTramaId, {
+                nombre: this.editingTramaDraft,
+                visibleParaJugadores: this.editingTramaVisibleParaJugadores,
+            });
+            this.showCampaignSuccess('Trama actualizada.');
             const selectedId = this.selectedCampaignId;
             this.cancelarEdicionTrama();
             if (selectedId)
@@ -1089,11 +1365,13 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
     iniciarEdicionSubtrama(subtrama: CampaignSubtramaItem): void {
         this.editingSubtramaId = subtrama.id;
         this.editingSubtramaDraft = subtrama.nombre;
+        this.editingSubtramaVisibleParaJugadores = subtrama.visibleParaJugadores === true;
     }
 
     cancelarEdicionSubtrama(): void {
         this.editingSubtramaId = null;
         this.editingSubtramaDraft = '';
+        this.editingSubtramaVisibleParaJugadores = true;
         this.subtramaSaveInFlightId = null;
     }
 
@@ -1103,8 +1381,11 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
 
         this.subtramaSaveInFlightId = this.editingSubtramaId;
         try {
-            await this.campanaSvc.updateSubtrama(this.editingSubtramaId, this.editingSubtramaDraft);
-            this.appToastSvc.showSuccess('Subtrama actualizada.');
+            await this.campanaSvc.updateSubtrama(this.editingSubtramaId, {
+                nombre: this.editingSubtramaDraft,
+                visibleParaJugadores: this.editingSubtramaVisibleParaJugadores,
+            });
+            this.showCampaignSuccess('Subtrama actualizada.');
             const selectedId = this.selectedCampaignId;
             this.cancelarEdicionSubtrama();
             if (selectedId)
@@ -1123,18 +1404,32 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
         };
     }
 
+    actualizarNuevaSubtramaVisible(tramaId: number, value: boolean): void {
+        this.subtramaCreateVisibleByTrama = {
+            ...this.subtramaCreateVisibleByTrama,
+            [tramaId]: value === true,
+        };
+    }
+
     async crearSubtrama(tramaId: number): Promise<void> {
         if (!this.selectedCampaignCanManage || this.subtramaCreateSavingTramaId === tramaId)
             return;
 
         this.subtramaCreateSavingTramaId = tramaId;
         try {
-            await this.campanaSvc.createSubtrama(tramaId, this.subtramaCreateDraftByTrama[tramaId] ?? '');
+            await this.campanaSvc.createSubtrama(tramaId, {
+                nombre: this.subtramaCreateDraftByTrama[tramaId] ?? '',
+                visibleParaJugadores: this.subtramaCreateVisibleByTrama[tramaId] !== false,
+            });
             this.subtramaCreateDraftByTrama = {
                 ...this.subtramaCreateDraftByTrama,
                 [tramaId]: '',
             };
-            this.appToastSvc.showSuccess('Subtrama creada correctamente.');
+            this.subtramaCreateVisibleByTrama = {
+                ...this.subtramaCreateVisibleByTrama,
+                [tramaId]: true,
+            };
+            this.showCampaignSuccess('Subtrama creada correctamente.');
             if (this.selectedCampaignId)
                 await this.loadCampaignSelection(this.selectedCampaignId, true, this.selectedCampaignDetail?.includeInactiveMembers === true);
         } catch (error: any) {
@@ -1202,6 +1497,10 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
         return 'Sin estado';
     }
 
+    getCampaignVisibilityLabel(visibleParaJugadores: boolean | null | undefined): string {
+        return visibleParaJugadores === false ? 'Solo master' : 'Visible para jugadores';
+    }
+
     getUserDisplayLabel(displayName: string | null | undefined, email: string | null | undefined, uid: string): string {
         const nombre = `${displayName ?? ''}`.trim();
         if (nombre.length > 0)
@@ -1214,6 +1513,19 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
 
     formatOptionalDateTime(value: string | null | undefined, fallback: string = 'Sin dato'): string {
         return this.formatDateTimeLabel(value, fallback);
+    }
+
+    private formatRoleLabel(role: string | null | undefined, fallback: string = 'Sin rol'): string {
+        const normalized = `${role ?? ''}`.trim().toLowerCase();
+        if (normalized === 'admin')
+            return 'Admin';
+        if (normalized === 'colaborador')
+            return 'Colaborador';
+        if (normalized === 'master')
+            return 'Master';
+        if (normalized === 'jugador')
+            return 'Jugador';
+        return fallback;
     }
 
     trackByCampaignId(index: number, item: CampaignListItem): number {
@@ -1256,6 +1568,10 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
         this.visibilidadPorDefectoPersonajes = settings?.perfil?.visibilidadPorDefectoPersonajes === true;
         this.mostrarPerfilPublico = settings?.perfil?.mostrarPerfilPublico !== false;
         this.allowDirectMessagesFromNonFriends = settings?.perfil?.allowDirectMessagesFromNonFriends === true;
+        this.socialAlertsMensajes = settings?.perfil?.notificaciones?.mensajes !== false;
+        this.socialAlertsAmistad = settings?.perfil?.notificaciones?.amistad !== false;
+        this.socialAlertsCampanas = settings?.perfil?.notificaciones?.campanas !== false;
+        this.socialAlertsCuentaSistema = settings?.perfil?.notificaciones?.cuentaSistema !== false;
         this.generadorMinimoSeleccionado = this.normalizeGeneradorMinimo(settings?.nuevo_personaje?.generador_config?.minimoSeleccionado ?? 13);
         this.generadorTablasPermitidas = this.normalizeGeneradorTablas(settings?.nuevo_personaje?.generador_config?.tablasPermitidas ?? 3);
     }
@@ -1274,9 +1590,14 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
             this.pronounsDraft = `${profile.pronouns ?? ''}`.trim();
     }
 
-    private requestSection(section: UserPrivateProfileSectionId | null | undefined): void {
-        const target = section ?? 'resumen';
+    private requestSection(request: UserPrivateProfileOpenRequest | UserPrivateProfileSectionId | null | undefined): void {
+        const target = typeof request === 'string'
+            ? request
+            : request?.section ?? 'resumen';
         this.pendingRequestedSection = target;
+        this.pendingRequestedCampaignId = typeof request === 'string'
+            ? null
+            : this.toPositiveInt(request?.campaignId);
         this.resolvePendingRequestedSection();
     }
 
@@ -1291,7 +1612,7 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
             return;
         }
 
-        void this.setSection(this.pendingRequestedSection);
+        void this.setSection(this.pendingRequestedSection, this.pendingRequestedCampaignId);
     }
 
     private validateAvatarFile(file: File): string | null {
@@ -1322,6 +1643,69 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
         if (!Number.isFinite(parsed))
             return 3;
         return Math.min(5, Math.max(1, parsed));
+    }
+
+    private showCampaignSuccess(message: string): void {
+        this.appToastSvc.showSuccess(message, { category: 'campanas' });
+    }
+
+    private showCampaignInfo(message: string): void {
+        this.appToastSvc.showInfo(message, { category: 'campanas' });
+    }
+
+    private createDefaultCampaignPolicyDraft(): CampaignCreationPolicy {
+        return {
+            tiradaMinimaCaracteristica: 3,
+            maxTablasDadosCaracteristicas: 1,
+            permitirHomebrewGeneral: false,
+            permitirVentajasDesventajas: false,
+            permitirIgnorarRestriccionesAlineamiento: false,
+            maxFuentesHomebrewGeneralesPorPersonaje: 0,
+        };
+    }
+
+    private buildCampaignPolicyForSave(): CampaignCreationPolicy {
+        const homebrewMode = this.campaignHomebrewMode;
+        const permitirHomebrewGeneral = homebrewMode === 'general';
+        const maxFuentesHomebrew = homebrewMode === 'general'
+            ? null
+            : homebrewMode === 'limitado'
+                ? this.normalizeCampaignHomebrewLimit(
+                    this.campaignCreatePolicyDraft.maxFuentesHomebrewGeneralesPorPersonaje,
+                    1
+                )
+                : 0;
+        return {
+            tiradaMinimaCaracteristica: this.normalizeCampaignMinimumRoll(this.campaignCreatePolicyDraft.tiradaMinimaCaracteristica),
+            maxTablasDadosCaracteristicas: this.normalizeCampaignMaxTables(this.campaignCreatePolicyDraft.maxTablasDadosCaracteristicas),
+            permitirHomebrewGeneral,
+            permitirVentajasDesventajas: homebrewMode !== 'none'
+                && this.campaignCreatePolicyDraft.permitirVentajasDesventajas === true,
+            permitirIgnorarRestriccionesAlineamiento: homebrewMode !== 'none'
+                && this.campaignCreatePolicyDraft.permitirIgnorarRestriccionesAlineamiento === true,
+            maxFuentesHomebrewGeneralesPorPersonaje: maxFuentesHomebrew,
+        };
+    }
+
+    private normalizeCampaignMinimumRoll(value: number | null | undefined): number {
+        const parsed = Math.trunc(Number(value));
+        if (!Number.isFinite(parsed))
+            return 3;
+        return Math.min(13, Math.max(3, parsed));
+    }
+
+    private normalizeCampaignMaxTables(value: number | null | undefined): number {
+        const parsed = Math.trunc(Number(value));
+        if (!Number.isFinite(parsed))
+            return 1;
+        return Math.min(5, Math.max(1, parsed));
+    }
+
+    private normalizeCampaignHomebrewLimit(value: number | null | undefined, fallback: number): number {
+        const parsed = Math.trunc(Number(value));
+        if (!Number.isFinite(parsed))
+            return fallback;
+        return Math.max(fallback, parsed);
     }
 
     private validateIdentityForm(): string | null {
@@ -1459,25 +1843,25 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
         }
     }
 
-    private async ensureCampaignSectionLoaded(force: boolean = false): Promise<void> {
+    private async ensureCampaignSectionLoaded(force: boolean = false, preferredCampaignId?: number | null): Promise<void> {
+        if (!this.canAccessCampaignManagementSection) {
+            this.currentSection = 'resumen';
+            return;
+        }
         if (this.campaignsLoaded && !force) {
-            await this.refreshReceivedCampaignInvitations();
             if (this.selectedCampaignId && !this.selectedCampaignDetail)
                 await this.loadCampaignSelection(this.selectedCampaignId, true);
             return;
         }
-        await this.reloadCampaigns(this.selectedCampaignId);
+        await this.reloadCampaigns(preferredCampaignId ?? this.selectedCampaignId);
     }
 
     private async reloadCampaigns(preferredCampaignId?: number | null): Promise<void> {
         this.campaignsLoading = true;
         this.campaignsErrorMessage = '';
         try {
-            const [campaigns] = await Promise.all([
-                this.campanaSvc.listProfileCampaigns(),
-                this.refreshReceivedCampaignInvitations(),
-            ]);
-            this.campaigns = campaigns;
+            const campaigns = await this.campanaSvc.listProfileCampaigns();
+            this.campaigns = this.filterManageableCampaigns(campaigns);
             this.campaignsLoaded = true;
 
             const nextId = this.resolveNextSelectedCampaignId(preferredCampaignId);
@@ -1485,6 +1869,10 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
                 this.selectedCampaignId = null;
                 this.selectedCampaignDetail = null;
                 this.selectedCampaignErrorMessage = '';
+                if (this.campaignWorkspaceMode !== 'create')
+                    this.campaignWorkspaceMode = 'idle';
+                this.campaignWorkspaceTab = 'usuarios';
+                this.resetCampaignEditorToCreateMode();
                 this.resetCampaignDetailEditors();
                 return;
             }
@@ -1498,19 +1886,92 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
         }
     }
 
+    private startCampaignSummariesWatch(): void {
+        if (this.campaignSummariesWatchStop)
+            return;
+
+        this.campaignSummariesWatchStop = this.campanaSvc.watchCampaignSummaries(
+            (items) => this.applyLiveCampaignSummaries(items),
+            () => undefined
+        );
+    }
+
+    private applyLiveCampaignSummaries(items: CampaignListItem[]): void {
+        const previousManageable = [...this.campaigns];
+        const previousById = new Map(previousManageable.map((campaign) => [campaign.id, campaign]));
+        const incoming = Array.isArray(items) ? items : [];
+        const incomingIds = new Set(incoming.map((campaign) => campaign.id));
+
+        const merged = [
+            ...previousManageable.filter((campaign) => campaign.isOwner === true && !incomingIds.has(campaign.id)),
+            ...incoming.map((campaign) => {
+                const previous = previousById.get(campaign.id);
+                return {
+                    ...previous,
+                    ...campaign,
+                    ...((campaign.isOwner === true || previous?.isOwner === true) ? { isOwner: true } : {}),
+                };
+            }),
+        ];
+
+        const nextManageable = this.filterManageableCampaigns(merged);
+        this.campaigns = nextManageable;
+        this.campaignsLoaded = true;
+
+        const selectedSummary = this.selectedCampaignId
+            ? nextManageable.find((campaign) => campaign.id === this.selectedCampaignId) ?? null
+            : null;
+        if (selectedSummary && this.selectedCampaignDetail?.campaign?.id === selectedSummary.id) {
+            this.selectedCampaignDetail = {
+                ...this.selectedCampaignDetail,
+                campaign: {
+                    ...this.selectedCampaignDetail.campaign,
+                    ...selectedSummary,
+                },
+            };
+            if (!this.campaignRenameSaving)
+                this.campaignRenameDraft = selectedSummary.nombre;
+        }
+
+        if (this.currentSection === 'campanas' && this.selectedCampaignId && !selectedSummary && !this.selectedCampaignLoading) {
+            this.selectedCampaignId = null;
+            this.selectedCampaignDetail = null;
+            this.selectedCampaignErrorMessage = '';
+            if (this.campaignWorkspaceMode !== 'create')
+                this.campaignWorkspaceMode = 'idle';
+            this.campaignWorkspaceTab = 'usuarios';
+            this.resetCampaignEditorToCreateMode();
+            this.resetCampaignDetailEditors();
+        }
+
+        if (this.campaignSummariesLiveReady) {
+            const newlyManagedCampaigns = nextManageable.filter((campaign) => campaign.campaignRole === 'master'
+                && previousById.get(campaign.id)?.campaignRole !== 'master');
+            if (newlyManagedCampaigns.length > 0) {
+                const campaignName = `${newlyManagedCampaigns[0]?.nombre ?? ''}`.trim();
+                this.showCampaignInfo(
+                    campaignName.length > 0
+                        ? `Ahora eres Master de la campaña ${campaignName}.`
+                        : 'Ahora eres Master de una campaña.'
+                );
+            }
+        } else {
+            this.campaignSummariesLiveReady = true;
+        }
+    }
+
     private resolveNextSelectedCampaignId(preferredCampaignId?: number | null): number | null {
-        if (this.campaigns.length < 1)
+        if (this.manageableCampaigns.length < 1)
             return null;
 
         const candidateIds = [
             preferredCampaignId,
             this.selectedCampaignId,
-            this.masterCampaigns[0]?.id ?? null,
-            this.campaigns[0]?.id ?? null,
+            this.manageableCampaigns[0]?.id ?? null,
         ];
         for (const candidate of candidateIds) {
             const normalized = Math.trunc(Number(candidate));
-            if (normalized > 0 && this.campaigns.some((campaign) => campaign.id === normalized))
+            if (normalized > 0 && this.manageableCampaigns.some((campaign) => campaign.id === normalized))
                 return normalized;
         }
         return null;
@@ -1547,6 +2008,8 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
 
             this.selectedCampaignDetail = detail;
             this.campaignRenameDraft = detail.campaign.nombre;
+            this.syncCampaignEditorFromDetail(detail);
+            this.maybePersistLegacyCampaignPolicyDefaults(detail);
             this.resetCampaignDetailEditors();
         } catch (error: any) {
             if (this.selectedCampaignId !== id)
@@ -1563,12 +2026,12 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
         this.clearSearchTimer('member');
         this.clearSearchTimer('transfer');
         this.memberSearchQuery = '';
-            this.memberSearchResults = [];
-            this.memberSearchLoading = false;
-            this.memberSearchErrorMessage = '';
-            this.memberInviteInFlightUid = '';
-            this.memberRemoveInFlightUid = '';
-            this.transferSearchQuery = '';
+        this.memberSearchResults = [];
+        this.memberSearchLoading = false;
+        this.memberSearchErrorMessage = '';
+        this.memberInviteInFlightUid = '';
+        this.memberRemoveInFlightUid = '';
+        this.transferSearchQuery = '';
         this.transferSearchResults = [];
         this.transferSearchLoading = false;
         this.transferSearchErrorMessage = '';
@@ -1576,15 +2039,87 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
         this.keepPreviousMasterAsPlayer = true;
         this.transferSaving = false;
         this.tramaCreateDraft = '';
+        this.tramaCreateVisibleParaJugadores = true;
         this.tramaCreateSaving = false;
         this.editingTramaId = null;
         this.editingTramaDraft = '';
+        this.editingTramaVisibleParaJugadores = true;
         this.tramaSaveInFlightId = null;
         this.editingSubtramaId = null;
         this.editingSubtramaDraft = '';
+        this.editingSubtramaVisibleParaJugadores = true;
         this.subtramaSaveInFlightId = null;
         this.subtramaCreateDraftByTrama = {};
+        this.subtramaCreateVisibleByTrama = {};
         this.subtramaCreateSavingTramaId = null;
+    }
+
+    private resetCampaignEditorToCreateMode(): void {
+        this.campaignCreateDraft = '';
+        this.campaignCreatePolicyDraft = this.createDefaultCampaignPolicyDraft();
+        this.campaignRenameDraft = '';
+    }
+
+    private syncCampaignEditorFromDetail(detail: CampaignDetailViewModel): void {
+        this.campaignCreateDraft = `${detail?.campaign?.nombre ?? ''}`.trim();
+        this.campaignCreatePolicyDraft = this.hydrateCampaignPolicyDraft(detail?.politicaCreacion ?? null);
+        this.campaignRenameDraft = this.campaignCreateDraft;
+    }
+
+    private hydrateCampaignPolicyDraft(source: Partial<CampaignCreationPolicy> | null | undefined): CampaignCreationPolicy {
+        const defaults = this.createDefaultCampaignPolicyDraft();
+        const rawMinimo = source?.tiradaMinimaCaracteristica;
+        const rawTablas = source?.maxTablasDadosCaracteristicas;
+        const permitirHomebrewGeneral = source?.permitirHomebrewGeneral === true;
+        const maxFuentesRaw = source?.maxFuentesHomebrewGeneralesPorPersonaje;
+        const maxFuentes = maxFuentesRaw === null || maxFuentesRaw === undefined
+            ? defaults.maxFuentesHomebrewGeneralesPorPersonaje
+            : this.normalizeCampaignHomebrewLimit(maxFuentesRaw, defaults.maxFuentesHomebrewGeneralesPorPersonaje ?? 0);
+
+        return {
+            tiradaMinimaCaracteristica: rawMinimo === null || rawMinimo === undefined
+                ? defaults.tiradaMinimaCaracteristica
+                : this.normalizeCampaignMinimumRoll(rawMinimo),
+            maxTablasDadosCaracteristicas: rawTablas === null || rawTablas === undefined
+                ? defaults.maxTablasDadosCaracteristicas
+                : this.normalizeCampaignMaxTables(rawTablas),
+            permitirHomebrewGeneral,
+            permitirVentajasDesventajas: source?.permitirVentajasDesventajas === true,
+            permitirIgnorarRestriccionesAlineamiento: source?.permitirIgnorarRestriccionesAlineamiento === true,
+            maxFuentesHomebrewGeneralesPorPersonaje: permitirHomebrewGeneral ? null : maxFuentes,
+        };
+    }
+
+    private maybePersistLegacyCampaignPolicyDefaults(detail: CampaignDetailViewModel | null): void {
+        const campaignId = Number(detail?.campaign?.id ?? 0);
+        if (!Number.isFinite(campaignId) || campaignId <= 0)
+            return;
+        if (detail?.campaign?.campaignRole !== 'master')
+            return;
+        if (this.campaignPolicyAutofixInFlight.has(campaignId))
+            return;
+
+        const rawPolicy = detail?.politicaCreacion;
+        const needsDefaults = rawPolicy?.tiradaMinimaCaracteristica === null
+            || rawPolicy?.tiradaMinimaCaracteristica === undefined
+            || rawPolicy?.maxTablasDadosCaracteristicas === null
+            || rawPolicy?.maxTablasDadosCaracteristicas === undefined;
+        if (!needsDefaults)
+            return;
+
+        this.campaignPolicyAutofixInFlight.add(campaignId);
+        const normalizedPolicy = this.hydrateCampaignPolicyDraft(rawPolicy);
+        void this.campanaSvc.updateCampaign(campaignId, {
+            politicaCreacion: normalizedPolicy,
+        }).finally(() => {
+            this.campaignPolicyAutofixInFlight.delete(campaignId);
+        });
+    }
+
+    private filterManageableCampaigns(campaigns: CampaignListItem[]): CampaignListItem[] {
+        return (campaigns ?? [])
+            .filter((campaign) => campaign?.campaignRole === 'master' || campaign?.isOwner === true)
+            .sort((a, b) => a.nombre.localeCompare(b.nombre, 'es', { sensitivity: 'base' }));
     }
 
     private scheduleUserSearch(kind: 'member' | 'transfer'): void {
@@ -1708,13 +2243,8 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
     }
 
     private async handleCampaignRealtimeEvent(event: CampaignRealtimeEvent): Promise<void> {
-        if (event.source !== 'remote' || this.currentSection !== 'campanas')
+        if (this.currentSection !== 'campanas')
             return;
-
-        if (event.code === 'system.campaign_invitation_received') {
-            await this.refreshReceivedCampaignInvitations();
-            return;
-        }
 
         await this.reloadCampaigns(this.selectedCampaignId ?? event.campaignId);
     }
@@ -1733,5 +2263,10 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
             .replace(/[\u0300-\u036f]/g, '')
             .toLowerCase()
             .trim();
+    }
+
+    private toPositiveInt(value: any): number | null {
+        const parsed = Math.trunc(Number(value));
+        return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
     }
 }

@@ -9,6 +9,7 @@ import { createRacialPlaceholder } from './utils/racial-mapper';
 import { Plantilla } from '../interfaces/plantilla';
 import { Raza } from '../interfaces/raza';
 import { TipoCriatura } from '../interfaces/tipo_criatura';
+import { createDefaultUserSettings } from '../interfaces/user-settings';
 import { UserSettingsService } from './user-settings.service';
 
 const GENERADOR_CONFIG_STORAGE_KEY = 'fichas35.nuevoPersonaje.generador.config.v1';
@@ -204,9 +205,7 @@ describe('NuevoPersonajeService (generador)', () => {
             'migrateLegacyLocalConfigOnce',
         ]);
         userSettingsSvc.loadProfileSettings.and.resolveTo({
-            visibilidadPorDefectoPersonajes: false,
-            mostrarPerfilPublico: true,
-            allowDirectMessagesFromNonFriends: false,
+            ...createDefaultUserSettings().perfil,
         });
         userSettingsSvc.loadGeneradorConfig.and.resolveTo({
             minimoSeleccionado: 8,
@@ -252,9 +251,7 @@ describe('NuevoPersonajeService (generador)', () => {
             'migrateLegacyLocalConfigOnce',
         ]);
         userSettingsSvc.loadProfileSettings.and.resolveTo({
-            visibilidadPorDefectoPersonajes: false,
-            mostrarPerfilPublico: true,
-            allowDirectMessagesFromNonFriends: false,
+            ...createDefaultUserSettings().perfil,
         });
         userSettingsSvc.loadGeneradorConfig.and.resolveTo(null);
         userSettingsSvc.saveGeneradorConfig.and.resolveTo();
@@ -276,9 +273,7 @@ describe('NuevoPersonajeService (generador)', () => {
             'migrateLegacyLocalConfigOnce',
         ]);
         userSettingsSvc.loadProfileSettings.and.resolveTo({
-            visibilidadPorDefectoPersonajes: false,
-            mostrarPerfilPublico: true,
-            allowDirectMessagesFromNonFriends: false,
+            ...createDefaultUserSettings().perfil,
         });
         userSettingsSvc.loadGeneradorConfig.and.resolveTo({
             minimoSeleccionado: 50,

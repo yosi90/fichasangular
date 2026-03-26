@@ -5,6 +5,8 @@ import { BehaviorSubject, Subject } from 'rxjs';
 import { createDefaultUserSettings } from 'src/app/interfaces/user-settings';
 import { SocialHubComponent } from './social-hub.component';
 import { AppToastService } from 'src/app/services/app-toast.service';
+import { CampanaService } from 'src/app/services/campana.service';
+import { CampaignRealtimeSyncService } from 'src/app/services/campaign-realtime-sync.service';
 import { ChatApiService } from 'src/app/services/chat-api.service';
 import { ChatRealtimeService } from 'src/app/services/chat-realtime.service';
 import { SocialApiService } from 'src/app/services/social-api.service';
@@ -22,6 +24,8 @@ describe('SocialHubComponent', () => {
     let messageCreated$: Subject<any>;
     let messageRead$: Subject<any>;
     let chatApiSvc: jasmine.SpyObj<ChatApiService>;
+    let campanaSvc: jasmine.SpyObj<CampanaService>;
+    let campaignRealtimeSyncSvc: jasmine.SpyObj<CampaignRealtimeSyncService>;
     let socialApiSvc: jasmine.SpyObj<SocialApiService>;
     let userProfileNavSvc: jasmine.SpyObj<UserProfileNavigationService>;
     let userSettingsSvc: jasmine.SpyObj<UserSettingsService>;
@@ -100,8 +104,47 @@ describe('SocialHubComponent', () => {
                 },
             ],
         } as any);
+        campanaSvc = jasmine.createSpyObj<CampanaService>('CampanaService', [
+            'listReceivedCampaignInvitations',
+            'listSocialCampaigns',
+            'getCampaignDetail',
+            'resolveCampaignInvitation',
+        ]);
+        campanaSvc.listReceivedCampaignInvitations.and.resolveTo([]);
+        campanaSvc.listSocialCampaigns.and.resolveTo([]);
+        campanaSvc.getCampaignDetail.and.resolveTo({
+            campaign: {
+                id: 4,
+                nombre: 'Caballeros de Cormyr',
+                campaignRole: 'jugador',
+                membershipStatus: 'activo',
+            },
+            ownerUid: 'uid-master',
+            ownerDisplayName: 'MrYosi90',
+            activeMasterUid: 'uid-master',
+            activeMasterDisplayName: 'MrYosi90',
+            canRecoverMaster: false,
+            politicaCreacion: {
+                tiradaMinimaCaracteristica: null,
+                maxTablasDadosCaracteristicas: null,
+                permitirHomebrewGeneral: true,
+                permitirVentajasDesventajas: true,
+                permitirIgnorarRestriccionesAlineamiento: false,
+                maxFuentesHomebrewGeneralesPorPersonaje: null,
+            },
+            members: [],
+            pendingInvitations: [],
+            includeInactiveMembers: false,
+            tramas: [],
+            loadingInvitations: false,
+            loadingMembers: false,
+            loadingTramas: false,
+        } as any);
+        campaignRealtimeSyncSvc = jasmine.createSpyObj<CampaignRealtimeSyncService>('CampaignRealtimeSyncService', [], {
+            events$: new Subject<any>().asObservable(),
+        });
 
-        userProfileNavSvc = jasmine.createSpyObj<UserProfileNavigationService>('UserProfileNavigationService', ['openPublicProfile', 'openSocial']);
+        userProfileNavSvc = jasmine.createSpyObj<UserProfileNavigationService>('UserProfileNavigationService', ['openPublicProfile', 'openSocial', 'openPrivateProfile', 'openAdminPanel']);
         userSettingsSvc = jasmine.createSpyObj<UserSettingsService>('UserSettingsService', ['loadProfileSettings']);
         userSettingsSvc.loadProfileSettings.and.resolveTo({
             ...createDefaultUserSettings().perfil,
@@ -120,6 +163,8 @@ describe('SocialHubComponent', () => {
                     },
                 },
                 { provide: SocialApiService, useValue: socialApiSvc },
+                { provide: CampanaService, useValue: campanaSvc },
+                { provide: CampaignRealtimeSyncService, useValue: campaignRealtimeSyncSvc },
                 { provide: ChatApiService, useValue: chatApiSvc },
                 {
                     provide: ChatRealtimeService,
@@ -160,6 +205,82 @@ describe('SocialHubComponent', () => {
         expect(component.searchResults.length).toBe(1);
         expect(component.visibleSearchResults.length).toBe(1);
     }));
+
+    it('expone una acción para abrir la campaña desde un mensaje del sistema', () => {
+        fixture.detectChanges();
+
+        const message = {
+            messageId: 41,
+            conversationId: 9,
+            sender: {
+                uid: 'system:yosiftware',
+                displayName: 'Yosiftware',
+                photoThumbUrl: null,
+                isSystemUser: true,
+            },
+            body: 'Tu invitación de campaña ha sido aceptada.',
+            sentAtUtc: '2026-03-26T10:00:00.000Z',
+            notification: {
+                code: 'system.campaign_invitation_resolved',
+                title: 'Invitación resuelta',
+                action: {
+                    target: 'social.messages',
+                    conversationId: 9,
+                },
+                context: {
+                    campaignId: 4,
+                },
+            },
+            announcement: null,
+        } as any;
+
+        expect(component.getMessageActionLabel(message)).toBe('Abrir campaña');
+
+        component.runMessageAction(message);
+
+        expect(userProfileNavSvc.openSocial).toHaveBeenCalledWith(jasmine.objectContaining({
+            section: 'campanas',
+            campaignId: 4,
+        }));
+    });
+
+    it('expone una acción para abrir solicitudes desde un aviso admin del sistema', () => {
+        fixture.detectChanges();
+
+        const message = {
+            messageId: 42,
+            conversationId: 10,
+            sender: {
+                uid: 'system:yosiftware',
+                displayName: 'Yosiftware',
+                photoThumbUrl: null,
+                isSystemUser: true,
+            },
+            body: 'Nueva solicitud de rol pendiente.',
+            sentAtUtc: '2026-03-26T10:00:00.000Z',
+            notification: {
+                code: 'system.role_request_created',
+                title: 'Nueva solicitud de rol',
+                action: {
+                    target: 'admin.role_requests',
+                    conversationId: 10,
+                },
+                context: {
+                    requestId: 12,
+                },
+            },
+            announcement: null,
+        } as any;
+
+        expect(component.getMessageActionLabel(message)).toBe('Abrir solicitudes');
+
+        component.runMessageAction(message);
+
+        expect(userProfileNavSvc.openAdminPanel).toHaveBeenCalledWith(jasmine.objectContaining({
+            section: 'role-requests',
+            pendingOnly: true,
+        }));
+    });
 
     it('excluye al usuario actual de la búsqueda social', fakeAsync(() => {
         socialApiSvc.searchUsers.and.resolveTo([
@@ -278,6 +399,23 @@ describe('SocialHubComponent', () => {
             initialDisplayName: 'Yuna',
         });
     });
+
+    it('etiqueta los toasts de amistad con la categoría amistad', fakeAsync(() => {
+        const toastSvc = TestBed.inject(AppToastService) as jasmine.SpyObj<AppToastService>;
+        fixture.detectChanges();
+
+        void component.sendFriendRequest({
+            uid: 'uid-2',
+            displayName: 'Yuna',
+            photoThumbUrl: null,
+            allowDirectMessagesFromNonFriends: true,
+        });
+        tick();
+
+        expect(toastSvc.showSuccess).toHaveBeenCalledWith('Solicitud de amistad enviada.', {
+            category: 'amistad',
+        });
+    }));
 
     it('muestra Nuevo chat si el actor permite directos con no-amigos', fakeAsync(() => {
         fixture.detectChanges();

@@ -5,6 +5,7 @@ export type ChatConversationFilter = 'all' | 'direct' | 'campaign' | 'group' | '
 export type ChatParticipantRole = 'member' | 'admin';
 export type ChatParticipantStatus = 'active' | 'left' | 'removed';
 export type ChatNotificationCode =
+    | 'system.role_request_created'
     | 'system.role_request_resolved'
     | 'system.account_updated'
     | 'system.account_banned'
@@ -15,7 +16,7 @@ export type ChatNotificationCode =
     | 'chat.new_message'
     | (string & {});
 export type ChatAnnouncementCode = 'chat.new_chat' | 'chat.new_message' | (string & {});
-export type ChatNotificationActionTarget = 'social.messages' | (string & {});
+export type ChatNotificationActionTarget = 'social.messages' | 'admin.role_requests' | (string & {});
 
 export interface ChatNotificationAction {
     target: ChatNotificationActionTarget;
@@ -92,6 +93,10 @@ export interface ChatAlertCandidate {
     source: 'message' | 'conversation_summary';
     messageId: number | null;
     conversationId: number;
+    conversationType: ChatConversationType | null;
+    conversationTitle: string | null;
+    campaignId: number | null;
+    isSystemConversation: boolean;
     sender: ChatMessageSender;
     body: string;
     sentAtUtc: string | null;

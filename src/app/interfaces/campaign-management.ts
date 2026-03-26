@@ -66,14 +66,55 @@ export interface CampaignInvitationResponse {
     invitation: CampaignInvitationItem;
 }
 
+export interface CampaignCreationPolicy {
+    tiradaMinimaCaracteristica: number | null;
+    maxTablasDadosCaracteristicas: number | null;
+    permitirHomebrewGeneral: boolean;
+    permitirVentajasDesventajas: boolean;
+    permitirIgnorarRestriccionesAlineamiento: boolean;
+    maxFuentesHomebrewGeneralesPorPersonaje: number | null;
+}
+
+export interface CreateCampaignInput {
+    nombre: string;
+    politicaCreacion?: Partial<CampaignCreationPolicy> | null;
+}
+
+export interface UpdateCampaignInput {
+    nombre?: string;
+    politicaCreacion?: Partial<CampaignCreationPolicy> | null;
+}
+
+export interface CreateCampaignTramaInput {
+    nombre: string;
+    visibleParaJugadores: boolean;
+}
+
+export interface UpdateCampaignTramaInput {
+    nombre?: string;
+    visibleParaJugadores?: boolean;
+}
+
+export interface CreateCampaignSubtramaInput {
+    nombre: string;
+    visibleParaJugadores: boolean;
+}
+
+export interface UpdateCampaignSubtramaInput {
+    nombre?: string;
+    visibleParaJugadores?: boolean;
+}
+
 export interface CampaignSubtramaItem {
     id: number;
     nombre: string;
+    visibleParaJugadores: boolean;
 }
 
 export interface CampaignTramaItem {
     id: number;
     nombre: string;
+    visibleParaJugadores: boolean;
     subtramas: CampaignSubtramaItem[];
 }
 
@@ -84,6 +125,7 @@ export interface CampaignDetailViewModel {
     activeMasterUid: string | null;
     activeMasterDisplayName: string | null;
     canRecoverMaster: boolean;
+    politicaCreacion: CampaignCreationPolicy;
     members: CampaignMemberItem[];
     pendingInvitations: CampaignInvitationItem[];
     includeInactiveMembers: boolean;

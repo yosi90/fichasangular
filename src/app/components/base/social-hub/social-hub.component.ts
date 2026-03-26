@@ -1,6 +1,7 @@
 import { Component, Input, OnChanges, OnDestroy, OnInit, SimpleChanges } from '@angular/core';
 import { Subject, takeUntil } from 'rxjs';
 import { ChatConversationDetail, ChatConversationFilter, ChatConversationSummary, ChatGroupCreateDraft, ChatMessage, ChatParticipant } from 'src/app/interfaces/chat';
+import { CampaignDetailViewModel, CampaignInvitationDecision, CampaignInvitationItem, CampaignListItem, CampaignMemberItem, CampaignRealtimeEvent, CampaignTramaItem } from 'src/app/interfaces/campaign-management';
 import {
     BlockedUserItem,
     FriendItem,
@@ -11,6 +12,8 @@ import {
     SocialUserBasic,
 } from 'src/app/interfaces/social';
 import { AppToastService } from 'src/app/services/app-toast.service';
+import { CampanaService } from 'src/app/services/campana.service';
+import { CampaignRealtimeSyncService } from 'src/app/services/campaign-realtime-sync.service';
 import { ChatApiService } from 'src/app/services/chat-api.service';
 import { ChatRealtimeService } from 'src/app/services/chat-realtime.service';
 import { SocialApiService } from 'src/app/services/social-api.service';
@@ -41,6 +44,17 @@ export class SocialHubComponent implements OnInit, OnChanges, OnDestroy {
     receivedRequests: FriendRequestItem[] = [];
     sentRequests: FriendRequestItem[] = [];
     blocks: BlockedUserItem[] = [];
+    campaignInvitations: CampaignInvitationItem[] = [];
+    campaigns: CampaignListItem[] = [];
+    campaignsLoading = false;
+    campaignsErrorMessage = '';
+    campaignInvitationsLoading = false;
+    campaignInvitationsErrorMessage = '';
+    selectedCampaignId: number | null = null;
+    selectedCampaignDetail: CampaignDetailViewModel | null = null;
+    selectedCampaignLoading = false;
+    selectedCampaignErrorMessage = '';
+    campaignInviteResolveInFlightId: number | null = null;
     conversations: ChatConversationSummary[] = [];
     unreadUserCount = 0;
     unreadSystemCount = 0;
@@ -76,10 +90,12 @@ export class SocialHubComponent implements OnInit, OnChanges, OnDestroy {
     private searchTimer: number | null = null;
     private newDirectSearchTimer: number | null = null;
     private pendingConversationId: number | null = null;
+    private pendingCampaignId: number | null = null;
     private friendsWatchStop: (() => void) | null = null;
     private receivedRequestsWatchStop: (() => void) | null = null;
     private sentRequestsWatchStop: (() => void) | null = null;
     private socialRealtimeActive = false;
+    private readonly campaignRealtimeRefresh$ = new Subject<CampaignRealtimeEvent>();
     private readonly readReceiptAckByConversation = new Map<number, number>();
     private readonly readReceiptInFlightByConversation = new Map<number, number>();
 
@@ -87,6 +103,7 @@ export class SocialHubComponent implements OnInit, OnChanges, OnDestroy {
         { id: 'resumen', label: 'Resumen', icon: 'hub' },
         { id: 'amistades', label: 'Amistades', icon: 'group' },
         { id: 'bloqueos', label: 'Bloqueos', icon: 'block' },
+        { id: 'campanas', label: 'Campañas', icon: 'diversity_3' },
         { id: 'mensajes', label: 'Mensajes', icon: 'chat' },
     ];
     readonly conversationFilters: { id: ChatConversationFilter; label: string; }[] = [
@@ -100,6 +117,8 @@ export class SocialHubComponent implements OnInit, OnChanges, OnDestroy {
     constructor(
         private userSvc: UserService,
         private socialApiSvc: SocialApiService,
+        private campanaSvc: CampanaService,
+        private campaignRealtimeSyncSvc: CampaignRealtimeSyncService,
         private chatApiSvc: ChatApiService,
         private chatRealtimeSvc: ChatRealtimeService,
         private userProfileNavSvc: UserProfileNavigationService,
@@ -160,6 +179,18 @@ export class SocialHubComponent implements OnInit, OnChanges, OnDestroy {
                     return;
                 this.activeMessages = [...this.activeMessages, message];
                 void this.markActiveConversationAsRead();
+            });
+        this.campaignRealtimeSyncSvc.events$
+            .pipe(takeUntil(this.destroy$))
+            .subscribe((event) => {
+                if (!this.isLoggedIn || this.currentSection !== 'campanas')
+                    return;
+                this.campaignRealtimeRefresh$.next(event);
+            });
+        this.campaignRealtimeRefresh$
+            .pipe(takeUntil(this.destroy$))
+            .subscribe((event) => {
+                void this.handleCampaignRealtimeEvent(event);
             });
 
         this.applyOpenRequest(this.openRequest);
@@ -273,6 +304,28 @@ export class SocialHubComponent implements OnInit, OnChanges, OnDestroy {
         return Array.isArray(this.activeConversationDetail?.participants) ? this.activeConversationDetail!.participants : [];
     }
 
+    get selectedCampaignSummary(): CampaignListItem | null {
+        if (!this.selectedCampaignId)
+            return null;
+        return this.campaigns.find((item) => item.id === this.selectedCampaignId) ?? null;
+    }
+
+    get selectedCampaignMembers(): CampaignMemberItem[] {
+        return this.selectedCampaignDetail?.members ?? [];
+    }
+
+    get selectedCampaignTramas(): CampaignTramaItem[] {
+        return this.selectedCampaignDetail?.tramas ?? [];
+    }
+
+    get canOpenSelectedCampaignChat(): boolean {
+        return !!this.selectedCampaignSummary && this.selectedCampaignSummary.membershipStatus === 'activo';
+    }
+
+    get selectedCampaignCanOpenManagement(): boolean {
+        return this.selectedCampaignSummary?.campaignRole === 'master' || this.selectedCampaignSummary?.isOwner === true;
+    }
+
     get canSubmitNewGroup(): boolean {
         return `${this.newGroupDraft.title ?? ''}`.trim().length > 0
             && this.newGroupDraft.participantUids.length > 0
@@ -317,6 +370,8 @@ export class SocialHubComponent implements OnInit, OnChanges, OnDestroy {
 
     selectSection(section: SocialHubSectionId): void {
         this.currentSection = section;
+        if (section === 'campanas' && this.isLoggedIn)
+            void this.ensureCampaignSectionLoaded();
         if (section === 'mensajes' && this.isLoggedIn && this.conversations.length < 1)
             void this.chatRealtimeSvc.refreshConversations(true);
     }
@@ -432,7 +487,7 @@ export class SocialHubComponent implements OnInit, OnChanges, OnDestroy {
         await this.runAction(async () => {
             await this.socialApiSvc.sendFriendRequest(user.uid);
             await this.reloadSocialLists('requests');
-            this.appToastSvc.showSuccess('Solicitud de amistad enviada.');
+            this.showFriendshipSuccess('Solicitud de amistad enviada.');
         });
     }
 
@@ -445,7 +500,7 @@ export class SocialHubComponent implements OnInit, OnChanges, OnDestroy {
         await this.runAction(async () => {
             await this.socialApiSvc.resolveFriendRequest(request.requestId, 'cancel');
             await this.reloadSocialLists('requests');
-            this.appToastSvc.showInfo('Solicitud cancelada.');
+            this.showFriendshipInfo('Solicitud cancelada.');
         });
     }
 
@@ -453,7 +508,7 @@ export class SocialHubComponent implements OnInit, OnChanges, OnDestroy {
         await this.runAction(async () => {
             await this.socialApiSvc.resolveFriendRequest(request.requestId, 'accept');
             await this.reloadSocialLists('all');
-            this.appToastSvc.showSuccess('Solicitud aceptada.');
+            this.showFriendshipSuccess('Solicitud aceptada.');
         });
     }
 
@@ -461,7 +516,7 @@ export class SocialHubComponent implements OnInit, OnChanges, OnDestroy {
         await this.runAction(async () => {
             await this.socialApiSvc.resolveFriendRequest(request.requestId, 'reject');
             await this.reloadSocialLists('requests');
-            this.appToastSvc.showInfo('Solicitud rechazada.');
+            this.showFriendshipInfo('Solicitud rechazada.');
         });
     }
 
@@ -472,7 +527,7 @@ export class SocialHubComponent implements OnInit, OnChanges, OnDestroy {
         await this.runAction(async () => {
             await this.socialApiSvc.deleteFriend(target.uid);
             await this.reloadSocialLists('all');
-            this.appToastSvc.showInfo('Amistad eliminada.');
+            this.showFriendshipInfo('Amistad eliminada.');
         });
     }
 
@@ -483,7 +538,7 @@ export class SocialHubComponent implements OnInit, OnChanges, OnDestroy {
         await this.runAction(async () => {
             await this.socialApiSvc.blockUser(target.uid);
             await this.reloadSocialLists('all');
-            this.appToastSvc.showSuccess('Usuario bloqueado.');
+            this.showFriendshipSuccess('Usuario bloqueado.');
         });
     }
 
@@ -494,7 +549,82 @@ export class SocialHubComponent implements OnInit, OnChanges, OnDestroy {
         await this.runAction(async () => {
             await this.socialApiSvc.unblockUser(target.uid);
             await this.reloadSocialLists('blocks');
-            this.appToastSvc.showInfo('Usuario desbloqueado.');
+            this.showFriendshipInfo('Usuario desbloqueado.');
+        });
+    }
+
+    async selectCampaign(campaignId: number, forceReload: boolean = false): Promise<void> {
+        const id = this.toPositiveInt(campaignId);
+        if (!id)
+            return;
+
+        if (!forceReload && this.selectedCampaignId === id && this.selectedCampaignDetail)
+            return;
+
+        this.selectedCampaignId = id;
+        this.selectedCampaignLoading = true;
+        this.selectedCampaignErrorMessage = '';
+        try {
+            const detail = await this.campanaSvc.getCampaignDetail(id, false);
+            if (this.selectedCampaignId !== id)
+                return;
+            this.selectedCampaignDetail = detail;
+        } catch (error: any) {
+            if (this.selectedCampaignId !== id)
+                return;
+            this.selectedCampaignDetail = null;
+            this.selectedCampaignErrorMessage = `${error?.message ?? 'No se pudo cargar la campaña.'}`.trim();
+        } finally {
+            if (this.selectedCampaignId === id)
+                this.selectedCampaignLoading = false;
+        }
+    }
+
+    async respondCampaignInvitation(invitation: CampaignInvitationItem, decision: CampaignInvitationDecision): Promise<void> {
+        const inviteId = this.toPositiveInt(invitation?.inviteId);
+        if (!inviteId || this.campaignInviteResolveInFlightId === inviteId)
+            return;
+
+        this.campaignInviteResolveInFlightId = inviteId;
+        try {
+            await this.campanaSvc.resolveCampaignInvitation(inviteId, decision);
+            await this.reloadCampaignData(invitation.campaignId);
+            this.appToastSvc.showSuccess(
+                decision === 'accept'
+                    ? 'Invitación de campaña aceptada.'
+                    : 'Invitación de campaña rechazada.',
+                { category: 'campanas' }
+            );
+        } catch (error: any) {
+            this.appToastSvc.showError(`${error?.message ?? 'No se pudo resolver la invitación.'}`.trim());
+        } finally {
+            this.campaignInviteResolveInFlightId = null;
+        }
+    }
+
+    async openSelectedCampaignChat(): Promise<void> {
+        if (!this.selectedCampaignId || !this.canOpenSelectedCampaignChat)
+            return;
+
+        try {
+            const detail = await this.chatApiSvc.ensureCampaignConversation(this.selectedCampaignId);
+            this.chatRealtimeSvc.upsertConversation(detail);
+            this.currentSection = 'mensajes';
+            this.messageComposerMode = 'conversation';
+            await this.selectConversation(detail, detail);
+        } catch (error: any) {
+            this.appToastSvc.showError(`${error?.message ?? 'No se pudo abrir el chat de la campaña.'}`.trim());
+        }
+    }
+
+    openSelectedCampaignManagement(): void {
+        if (!this.selectedCampaignId || !this.selectedCampaignCanOpenManagement)
+            return;
+
+        this.userProfileNavSvc.openPrivateProfile({
+            section: 'campanas',
+            campaignId: this.selectedCampaignId,
+            requestId: Date.now(),
         });
     }
 
@@ -878,6 +1008,94 @@ export class SocialHubComponent implements OnInit, OnChanges, OnDestroy {
         this.openUserPublicProfile(message.sender.uid, this.getMessageSenderLabel(message));
     }
 
+    hasMessageAction(message: ChatMessage | null | undefined): boolean {
+        return this.getMessageActionLabel(message).length > 0;
+    }
+
+    getMessageActionLabel(message: ChatMessage | null | undefined): string {
+        const notification = message?.notification;
+        if (!notification)
+            return '';
+
+        const campaignId = this.extractNotificationCampaignId(notification);
+        if (
+            campaignId > 0
+            && (notification.code === 'system.campaign_invitation_received'
+                || notification.code === 'system.campaign_invitation_resolved')
+        )
+            return 'Abrir campaña';
+
+        if (notification.code === 'system.role_request_resolved')
+            return 'Abrir perfil';
+        if (notification.code === 'system.role_request_created'
+            || notification.action?.target === 'admin.role_requests')
+            return 'Abrir solicitudes';
+
+        const profileUid = this.extractNotificationProfileUid(notification);
+        if (profileUid.length > 0)
+            return 'Ver perfil';
+
+        const actionConversationId = this.toPositiveInt(notification.action?.conversationId);
+        if (notification.action?.target === 'social.messages'
+            && actionConversationId
+            && actionConversationId !== this.activeConversation?.conversationId)
+            return 'Abrir conversación';
+
+        return '';
+    }
+
+    runMessageAction(message: ChatMessage): void {
+        const notification = message?.notification;
+        if (!notification)
+            return;
+
+        const campaignId = this.extractNotificationCampaignId(notification);
+        if (
+            campaignId > 0
+            && (notification.code === 'system.campaign_invitation_received'
+                || notification.code === 'system.campaign_invitation_resolved')
+        ) {
+            this.userProfileNavSvc.openSocial({
+                section: 'campanas',
+                campaignId,
+                requestId: Date.now(),
+            });
+            return;
+        }
+
+        if (notification.code === 'system.role_request_resolved') {
+            this.userProfileNavSvc.openPrivateProfile({
+                section: 'resumen',
+                requestId: Date.now(),
+            });
+            return;
+        }
+        if (notification.code === 'system.role_request_created'
+            || notification.action?.target === 'admin.role_requests') {
+            this.userProfileNavSvc.openAdminPanel({
+                section: 'role-requests',
+                pendingOnly: true,
+                requestId: Date.now(),
+            });
+            return;
+        }
+
+        const profileUid = this.extractNotificationProfileUid(notification);
+        if (profileUid.length > 0) {
+            this.openUserPublicProfile(profileUid);
+            return;
+        }
+
+        const actionConversationId = this.toPositiveInt(notification.action?.conversationId);
+        if (notification.action?.target === 'social.messages' && actionConversationId) {
+            this.userProfileNavSvc.openSocial({
+                section: 'mensajes',
+                conversationId: actionConversationId,
+                requestId: Date.now(),
+            });
+        }
+    }
+
     getRelationshipLabel(state: SocialRelationshipState): string {
         if (state === 'friend')
             return 'Amistad activa';
@@ -888,6 +1106,32 @@ export class SocialHubComponent implements OnInit, OnChanges, OnDestroy {
         if (state === 'blocked')
             return 'Bloqueado';
         return 'Neutral';
+    }
+
+    getCampaignRoleLabel(role: string | null | undefined, isOwner: boolean = false): string {
+        const normalized = `${role ?? ''}`.trim().toLowerCase();
+        if (normalized === 'master')
+            return 'Master';
+        if (normalized === 'jugador')
+            return 'Jugador';
+        if (isOwner)
+            return 'Creador';
+        return 'Sin rol';
+    }
+
+    getCampaignMembershipLabel(status: string | null | undefined): string {
+        const normalized = `${status ?? ''}`.trim().toLowerCase();
+        if (normalized === 'activo')
+            return 'Activo';
+        if (normalized === 'inactivo')
+            return 'Inactivo';
+        if (normalized === 'expulsado')
+            return 'Expulsado';
+        return 'Sin estado';
+    }
+
+    getCampaignVisibilityLabel(visibleParaJugadores: boolean | null | undefined): string {
+        return visibleParaJugadores === false ? 'Solo master' : 'Visible para jugadores';
     }
 
     private async loadAuthenticatedState(): Promise<void> {
@@ -901,8 +1145,12 @@ export class SocialHubComponent implements OnInit, OnChanges, OnDestroy {
                     .then((settings) => this.actorAllowsNonFriendDM = settings.allowDirectMessagesFromNonFriends === true)
                     .catch(() => this.actorAllowsNonFriendDM = false),
             ]);
+            if (this.currentSection === 'campanas')
+                await this.ensureCampaignSectionLoaded();
             if (this.pendingConversationId)
                 await this.tryOpenPendingConversation();
+            if (this.pendingCampaignId)
+                await this.tryOpenPendingCampaign();
         } finally {
             this.loading = false;
         }
@@ -917,6 +1165,18 @@ export class SocialHubComponent implements OnInit, OnChanges, OnDestroy {
         this.sentRequests = [];
         this.blocks = [];
         this.actorAllowsNonFriendDM = false;
+        this.campaignInvitations = [];
+        this.campaigns = [];
+        this.campaignsLoading = false;
+        this.campaignsErrorMessage = '';
+        this.campaignInvitationsLoading = false;
+        this.campaignInvitationsErrorMessage = '';
+        this.selectedCampaignId = null;
+        this.selectedCampaignDetail = null;
+        this.selectedCampaignLoading = false;
+        this.selectedCampaignErrorMessage = '';
+        this.campaignInviteResolveInFlightId = null;
+        this.pendingCampaignId = null;
         this.conversationFilter = 'all';
         this.resetConversationPaneState();
         this.messageComposerMode = 'conversation';
@@ -1007,6 +1267,20 @@ export class SocialHubComponent implements OnInit, OnChanges, OnDestroy {
         await this.selectConversation(target);
     }
 
+    private async tryOpenPendingCampaign(): Promise<void> {
+        const campaignId = this.pendingCampaignId;
+        if (!campaignId || this.campaigns.length < 1)
+            return;
+
+        const target = this.campaigns.find((item) => item.id === campaignId) ?? null;
+        if (!target)
+            return;
+
+        this.pendingCampaignId = null;
+        this.currentSection = 'campanas';
+        await this.selectCampaign(target.id);
+    }
+
     private async markActiveConversationAsRead(): Promise<void> {
         const conversation = this.activeConversation;
         const lastMessage = this.activeMessages[this.activeMessages.length - 1];
@@ -1054,8 +1328,62 @@ export class SocialHubComponent implements OnInit, OnChanges, OnDestroy {
             return;
         this.currentSection = request.section ?? 'resumen';
         this.pendingConversationId = this.toPositiveInt(request.conversationId);
+        this.pendingCampaignId = this.toPositiveInt(request.campaignId);
+        if (this.currentSection === 'campanas' && this.isLoggedIn)
+            void this.ensureCampaignSectionLoaded();
         if (this.pendingConversationId && this.isLoggedIn)
             void this.tryOpenPendingConversation();
+        if (this.pendingCampaignId && this.isLoggedIn)
+            void this.tryOpenPendingCampaign();
+    }
+
+    private async ensureCampaignSectionLoaded(): Promise<void> {
+        if (!this.isLoggedIn)
+            return;
+        await this.reloadCampaignData(this.pendingCampaignId ?? this.selectedCampaignId);
+    }
+
+    private async reloadCampaignData(preferredCampaignId?: number | null): Promise<void> {
+        this.campaignsLoading = true;
+        this.campaignsErrorMessage = '';
+        this.campaignInvitationsLoading = true;
+        this.campaignInvitationsErrorMessage = '';
+        try {
+            const [campaigns, invitations] = await Promise.all([
+                this.campanaSvc.listSocialCampaigns(),
+                this.campanaSvc.listReceivedCampaignInvitations(),
+            ]);
+            this.campaigns = campaigns;
+            this.campaignInvitations = invitations;
+
+            const candidateIds = [
+                preferredCampaignId,
+                this.selectedCampaignId,
+                this.campaigns[0]?.id ?? null,
+            ];
+            const nextCampaignId = candidateIds
+                .map((item) => this.toPositiveInt(item))
+                .find((item) => !!item && this.campaigns.some((campaign) => campaign.id === item)) ?? null;
+
+            if (nextCampaignId)
+                await this.selectCampaign(nextCampaignId, true);
+            else {
+                this.selectedCampaignId = null;
+                this.selectedCampaignDetail = null;
+                this.selectedCampaignErrorMessage = '';
+            }
+        } catch (error: any) {
+            this.campaigns = [];
+            this.campaignInvitations = [];
+            this.campaignsErrorMessage = `${error?.message ?? 'No se pudieron cargar las campañas.'}`.trim();
+        } finally {
+            this.campaignsLoading = false;
+            this.campaignInvitationsLoading = false;
+        }
+    }
+
+    private async handleCampaignRealtimeEvent(event: CampaignRealtimeEvent): Promise<void> {
+        await this.reloadCampaignData(this.selectedCampaignId ?? event.campaignId);
     }
 
     private resolveUserFromAny(user: SocialUserBasic | FriendItem | BlockedUserItem | FriendRequestItem | null | undefined): SocialUserBasic | null {
@@ -1096,6 +1424,23 @@ export class SocialHubComponent implements OnInit, OnChanges, OnDestroy {
         } finally {
             this.actionInFlightKey = '';
         }
+    }
+
+    private extractNotificationCampaignId(notification: ChatMessage['notification'] | null | undefined): number {
+        return this.toPositiveInt(
+            notification?.context?.['campaignId']
+            ?? notification?.context?.['idCampana']
+            ?? notification?.context?.['campaign_id']
+        ) ?? 0;
+    }
+
+    private extractNotificationProfileUid(notification: ChatMessage['notification'] | null | undefined): string {
+        const raw = notification?.context?.['targetUid']
+            ?? notification?.context?.['uid']
+            ?? notification?.context?.['userUid']
+            ?? notification?.context?.['fromUid']
+            ?? notification?.context?.['requesterUid'];
+        return `${raw ?? ''}`.trim();
     }
 
     private toDateMs(value: string | null | undefined): number {
@@ -1163,6 +1508,14 @@ export class SocialHubComponent implements OnInit, OnChanges, OnDestroy {
             this.groupRenameDraft = `${conversation.title ?? ''}`.trim();
         else
             this.groupRenameDraft = '';
+    }
+
+    private showFriendshipSuccess(message: string): void {
+        this.appToastSvc.showSuccess(message, { category: 'amistad' });
+    }
+
+    private showFriendshipInfo(message: string): void {
+        this.appToastSvc.showInfo(message, { category: 'amistad' });
     }
 
     private applyConversationMutation(detail: ChatConversationDetail): void {
