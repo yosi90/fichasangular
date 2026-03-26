@@ -2,6 +2,7 @@ import { Injectable, OnDestroy } from '@angular/core';
 import { Auth } from '@angular/fire/auth';
 import { BehaviorSubject, Subject, Subscription } from 'rxjs';
 import { ChatAlertCandidate, ChatConversationSummary, ChatMessage, ChatMessageReadPayload } from '../interfaces/chat';
+import { ProfileApiError } from '../interfaces/user-account';
 import { ChatApiService } from './chat-api.service';
 import { UserService } from './user.service';
 
@@ -162,9 +163,11 @@ export class ChatRealtimeService implements OnDestroy {
                 this.startPolling();
                 this.scheduleReconnect();
             };
-        } catch {
+        } catch (error) {
             this.startPolling();
-            this.scheduleReconnect();
+            this.reportRealtimeBootstrapError(error);
+            if (this.shouldRetryRealtimeBootstrap(error))
+                this.scheduleReconnect();
         }
     }
 
@@ -346,6 +349,23 @@ export class ChatRealtimeService implements OnDestroy {
         if (this.refreshDebounceTimer !== null)
             window.clearTimeout(this.refreshDebounceTimer);
         this.refreshDebounceTimer = null;
+    }
+
+    private shouldRetryRealtimeBootstrap(error: unknown): boolean {
+        return !this.isPublishedRealtimeContractError(error);
+    }
+
+    private reportRealtimeBootstrapError(error: unknown): void {
+        if (this.isPublishedRealtimeContractError(error)) {
+            console.error(
+                '[chat-realtime] El ticket realtime no devolvio websocketUrl en despliegue no local. Se mantiene polling pero no se reintentara websocket automaticamente.',
+                error
+            );
+        }
+    }
+
+    private isPublishedRealtimeContractError(error: unknown): boolean {
+        return error instanceof ProfileApiError && error.code === 'CHAT_WS_URL_MISSING';
     }
 
     private buildMessageAlertCandidate(message: ChatMessage): ChatAlertCandidate | null {

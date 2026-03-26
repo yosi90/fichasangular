@@ -1,9 +1,7 @@
 import { HttpClient, HttpErrorResponse, HttpHeaders } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { Auth, onAuthStateChanged } from '@angular/fire/auth';
-import { Database, ref, set } from '@angular/fire/database';
 import { Observable, catchError, filter, firstValueFrom, from, map, merge, of, scan, shareReplay, switchMap, timer } from 'rxjs';
-import Swal from 'sweetalert2';
 import { Campana } from '../interfaces/campaña';
 import {
     CampaignDetailViewModel,
@@ -40,7 +38,6 @@ export class CampanaService {
 
     constructor(
         private auth: Auth,
-        private db: Database,
         private http: HttpClient,
         private firebaseContextSvc: FirebaseInjectionContextService,
         private campaignRealtimeSyncSvc: CampaignRealtimeSyncService,
@@ -121,7 +118,6 @@ export class CampanaService {
                     { headers: await this.buildAuthHeaders() }
                 )
             );
-            await this.refreshCampanasCacheBestEffort();
             this.notifyCampaignListChange(this.toPositiveInt(response?.idCampana));
 
             return {
@@ -148,7 +144,6 @@ export class CampanaService {
                     { headers: await this.buildAuthHeaders() }
                 )
             );
-            await this.refreshCampanasCacheBestEffort();
             this.notifyCampaignListChange(id);
         } catch (error) {
             throw this.toError(error, 'No se pudo renombrar la campaña.');
@@ -184,7 +179,6 @@ export class CampanaService {
                     { headers }
                 )
             );
-            await this.refreshCampanasCacheBestEffort();
             this.notifyCampaignListChange(id);
             return this.normalizeCampaignInvitationResponse(response);
         } catch (error) {
@@ -234,7 +228,6 @@ export class CampanaService {
                     { headers: await this.buildAuthHeaders() }
                 )
             );
-            await this.refreshCampanasCacheBestEffort();
             this.notifyCampaignListChange(response?.invitation?.campaignId);
             return this.normalizeCampaignInvitationResponse(response);
         } catch (error) {
@@ -254,7 +247,6 @@ export class CampanaService {
                     { headers: await this.buildAuthHeaders() }
                 )
             );
-            await this.refreshCampanasCacheBestEffort();
             this.notifyCampaignListChange();
         } catch (error) {
             throw this.toError(error, 'No se pudo cancelar la invitación.');
@@ -281,7 +273,6 @@ export class CampanaService {
                     }
                 )
             );
-            await this.refreshCampanasCacheBestEffort();
             this.notifyCampaignListChange(id);
         } catch (error) {
             throw this.toError(error, 'No se pudo retirar el jugador de la campaña.');
@@ -305,7 +296,6 @@ export class CampanaService {
                     { headers: await this.buildAuthHeaders() }
                 )
             );
-            await this.refreshCampanasCacheBestEffort();
             this.notifyCampaignListChange(id);
         } catch (error) {
             throw this.toError(error, 'No se pudo transferir el master de la campaña.');
@@ -325,7 +315,6 @@ export class CampanaService {
                     { headers: await this.buildAuthHeaders() }
                 )
             );
-            await this.refreshCampanasCacheBestEffort();
             this.notifyCampaignListChange(id);
         } catch (error) {
             throw this.toError(error, 'No se pudo recuperar el master de la campaña.');
@@ -368,7 +357,6 @@ export class CampanaService {
                     { headers: await this.buildAuthHeaders() }
                 )
             );
-            await this.refreshCampanasCacheBestEffort();
             this.notifyCampaignListChange(id);
         } catch (error) {
             throw this.toError(error, 'No se pudo crear la trama.');
@@ -388,7 +376,6 @@ export class CampanaService {
                     { headers: await this.buildAuthHeaders() }
                 )
             );
-            await this.refreshCampanasCacheBestEffort();
             this.notifyCampaignListChange();
         } catch (error) {
             throw this.toError(error, 'No se pudo actualizar la trama.');
@@ -408,7 +395,6 @@ export class CampanaService {
                     { headers: await this.buildAuthHeaders() }
                 )
             );
-            await this.refreshCampanasCacheBestEffort();
             this.notifyCampaignListChange();
         } catch (error) {
             throw this.toError(error, 'No se pudo crear la subtrama.');
@@ -428,61 +414,14 @@ export class CampanaService {
                     { headers: await this.buildAuthHeaders() }
                 )
             );
-            await this.refreshCampanasCacheBestEffort();
             this.notifyCampaignListChange();
         } catch (error) {
             throw this.toError(error, 'No se pudo actualizar la subtrama.');
         }
     }
 
-    protected writeCampanasCachePayload(payload: Record<string, { Nombre: string; Tramas: any[]; }>): Promise<void> {
-        return this.firebaseContextSvc.run(() => set(ref(this.db, 'Campañas'), payload));
-    }
-
-    public async RenovarCampañasFirebase(): Promise<boolean> {
-        try {
-            await this.syncCampanasCache();
-
-            Swal.fire({
-                icon: 'success',
-                title: 'Listado de campañas, tramas y subtramas actualizado con éxito',
-                showConfirmButton: true,
-                timer: 2000
-            });
-            return true;
-        } catch (error: any) {
-            Swal.fire({
-                icon: 'warning',
-                title: 'Error al actualizar el listado de campañas, ttramas y subtramas',
-                text: error?.message ?? 'Error no identificado',
-                showConfirmButton: true
-            });
-            return false;
-        }
-    }
-
-    private async syncCampanasCache(): Promise<void> {
-        const headers = await this.buildAuthHeaders();
-        const campanas = (await this.fetchCampanasActorScoped(headers))
-            .filter((campana) => campana.Id > 0 && campana.Nombre !== 'Sin campaña');
-        await this.writeCampanasCachePayload(this.buildCampanasCachePayload(campanas));
-    }
-
     private notifyCampaignListChange(campaignId?: number | null): void {
         this.campaignRealtimeSyncSvc.notifyLocalChange(campaignId);
-    }
-
-    private async refreshCampanasCacheBestEffort(): Promise<void> {
-        try {
-            await this.syncCampanasCache();
-        } catch {
-            // Best-effort: la mutación principal ya fue aceptada por la API.
-        }
-    }
-
-    private async fetchCampanasActorScoped(headers: HttpHeaders): Promise<Campana[]> {
-        const campanas = await this.fetchCampaignSummaries();
-        return this.buildCampanasTree(campanas, headers);
     }
 
     private async fetchLiveCampanasWithActiveMembership(): Promise<Campana[]> {
@@ -908,27 +847,6 @@ export class CampanaService {
             Nombre: 'Sin campaña',
             Tramas: [],
         };
-    }
-
-    private buildCampanasCachePayload(campanas: Campana[]): Record<string, { Nombre: string; Tramas: any[]; }> {
-        const payload: Record<string, { Nombre: string; Tramas: any[]; }> = {};
-        campanas.forEach((campana) => {
-            if (this.toPositiveInt(campana?.Id) !== campana.Id)
-                return;
-
-            payload[`${campana.Id}`] = {
-                Nombre: `${campana.Nombre ?? ''}`.trim(),
-                Tramas: (campana.Tramas ?? []).map((trama) => ({
-                    Id: this.toPositiveInt(trama?.Id) ?? 0,
-                    Nombre: `${trama?.Nombre ?? ''}`.trim(),
-                    Subtramas: (trama?.Subtramas ?? []).map((subtrama) => ({
-                        Id: this.toPositiveInt(subtrama?.Id) ?? 0,
-                        Nombre: `${subtrama?.Nombre ?? ''}`.trim(),
-                    })),
-                })),
-            };
-        });
-        return payload;
     }
 
     private normalizeCampaignRole(value: any): CampaignRoleCode {

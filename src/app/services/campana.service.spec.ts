@@ -1,23 +1,13 @@
 import { fakeAsync, tick } from '@angular/core/testing';
-import { Subject, of, throwError } from 'rxjs';
-import Swal from 'sweetalert2';
+import { Subject, of } from 'rxjs';
 
 import { CampanaService } from './campana.service';
 import { CampaignRealtimeSyncService } from './campaign-realtime-sync.service';
 import { FirebaseInjectionContextService } from './firebase-injection-context.service';
 
-class CampanaServiceTestDouble extends CampanaService {
-    writeCalls: any[] = [];
-
-    protected override writeCampanasCachePayload(payload: any): Promise<void> {
-        this.writeCalls.push(payload);
-        return Promise.resolve();
-    }
-}
-
 describe('CampanaService', () => {
     let httpMock: { get: jasmine.Spy; post: jasmine.Spy; patch: jasmine.Spy; delete: jasmine.Spy; };
-    let service: CampanaServiceTestDouble;
+    let service: CampanaService;
     let invalidations$: Subject<any>;
     let campaignRealtimeSyncSvcMock: jasmine.SpyObj<CampaignRealtimeSyncService>;
 
@@ -35,62 +25,16 @@ describe('CampanaService', () => {
             { listInvalidations$: invalidations$.asObservable() }
         );
 
-        spyOn(Swal, 'fire').and.resolveTo({} as any);
-
-        service = new CampanaServiceTestDouble(
+        service = new CampanaService(
             { currentUser: { uid: 'actor-1', getIdToken: async () => 'token' } } as any,
-            {} as any,
             httpMock as any,
             { run: <T>(fn: () => T) => fn() } as FirebaseInjectionContextService,
             campaignRealtimeSyncSvcMock
         );
     });
 
-    it('RenovarCampañasFirebase usa rutas canonicas y conserva el shape anidado del cache', async () => {
-        httpMock.get.and.callFake((url: string) => {
-            if (url.endsWith('campanas'))
-                return of([{ i: 7, n: 'Campaña de prueba' }]);
-            if (url.endsWith('tramas/campana/7'))
-                return of([{ i: 11, n: 'Trama principal' }]);
-            if (url.endsWith('subtramas/trama/11'))
-                return of([{ i: 21, n: 'Subtrama alfa' }]);
-            throw new Error(`URL inesperada: ${url}`);
-        });
-
-        const ok = await service.RenovarCampañasFirebase();
-
-        expect(ok).toBeTrue();
-        expect(httpMock.get.calls.allArgs().map((args) => args[0])).toEqual([
-            jasmine.stringMatching(/campanas$/),
-            jasmine.stringMatching(/tramas\/campana\/7$/),
-            jasmine.stringMatching(/subtramas\/trama\/11$/),
-        ]);
-        expect(service.writeCalls).toEqual([{
-            '7': {
-                Nombre: 'Campaña de prueba',
-                Tramas: [{
-                    Id: 11,
-                    Nombre: 'Trama principal',
-                    Subtramas: [{
-                        Id: 21,
-                        Nombre: 'Subtrama alfa',
-                    }],
-                }],
-            },
-        }]);
-    });
-
-    it('createCampaign refresca la cache derivada completa en best-effort', async () => {
+    it('createCampaign notifica cambio local sin rehidratar una cache RTDB derivada', async () => {
         httpMock.post.and.returnValue(of({ idCampana: 7, nombre: 'Campaña nueva' }));
-        httpMock.get.and.callFake((url: string) => {
-            if (url.endsWith('campanas'))
-                return of([{ i: 7, n: 'Campaña nueva' }]);
-            if (url.endsWith('tramas/campana/7'))
-                return of([{ i: 11, n: 'Trama principal' }]);
-            if (url.endsWith('subtramas/trama/11'))
-                return of([]);
-            throw new Error(`URL inesperada: ${url}`);
-        });
 
         const created = await service.createCampaign('Campaña nueva');
 
@@ -101,26 +45,7 @@ describe('CampanaService', () => {
             membershipStatus: 'activo',
         });
         expect(campaignRealtimeSyncSvcMock.notifyLocalChange).toHaveBeenCalledWith(7);
-        expect(service.writeCalls).toEqual([{
-            '7': {
-                Nombre: 'Campaña nueva',
-                Tramas: [{
-                    Id: 11,
-                    Nombre: 'Trama principal',
-                    Subtramas: [],
-                }],
-            },
-        }]);
-    });
-
-    it('createCampaign no falla si el refresh best-effort de cache revienta', async () => {
-        httpMock.post.and.returnValue(of({ idCampana: 7, nombre: 'Campaña nueva' }));
-        httpMock.get.and.returnValue(throwError(() => new Error('refresh fail')));
-
-        const created = await service.createCampaign('Campaña nueva');
-
-        expect(created.id).toBe(7);
-        expect(service.writeCalls).toEqual([]);
+        expect(httpMock.get).not.toHaveBeenCalled();
     });
 
     it('getListCampanas añade la opción sintética Sin campaña para campañas con membresía activa', async () => {
@@ -223,9 +148,8 @@ describe('CampanaService', () => {
                 { id: 7, nombre: 'Campaña privada', campaignRole: 'master', membershipStatus: 'activo' },
             ]),
         };
-        const firestoreBackedService = new CampanaServiceTestDouble(
+        const firestoreBackedService = new CampanaService(
             { currentUser: { uid: 'actor-1', getIdToken: async () => 'token' } } as any,
-            {} as any,
             httpMock as any,
             { run: <T>(fn: () => T) => fn() } as FirebaseInjectionContextService,
             campaignRealtimeSyncSvcMock,

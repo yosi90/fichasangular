@@ -1,5 +1,6 @@
 import { fakeAsync, tick } from '@angular/core/testing';
 import { BehaviorSubject } from 'rxjs';
+import { ProfileApiError } from '../interfaces/user-account';
 import { ChatRealtimeService } from './chat-realtime.service';
 
 describe('ChatRealtimeService', () => {
@@ -410,4 +411,49 @@ describe('ChatRealtimeService', () => {
         expect(clearIntervalSpy).toHaveBeenCalledWith(123);
         expect((service as any).pollingTimer).toBeNull();
     });
+
+    it('no reintenta websocket automaticamente si falta websocketUrl en despliegue no local', fakeAsync(() => {
+        const userSvc = {
+            isLoggedIn$: new BehaviorSubject<boolean>(false),
+            CurrentUserUid: 'uid-propio',
+        } as any;
+        const requestWebSocketTicket = jasmine.createSpy('requestWebSocketTicket').and.resolveTo({
+            ticket: 'ticket-publicado',
+            websocketUrl: null,
+        });
+        const buildWebSocketUrl = jasmine.createSpy('buildWebSocketUrl').and.callFake(() => {
+            throw new ProfileApiError(
+                'El backend no devolvió websocketUrl para el gateway realtime publicado.',
+                'CHAT_WS_URL_MISSING',
+                500
+            );
+        });
+        const service = new ChatRealtimeService(
+            { currentUser: { getIdToken: async () => 'token' } } as any,
+            userSvc,
+            {
+                parseWebSocketEvent: (raw: any) => raw,
+                listConversations: jasmine.createSpy('listConversations').and.resolveTo({
+                    items: [],
+                    unreadUserCount: 0,
+                    unreadSystemCount: 0,
+                }),
+                requestWebSocketTicket,
+                buildWebSocketUrl,
+            } as any,
+        );
+        const startPollingSpy = spyOn<any>(service, 'startPolling').and.callThrough();
+        const scheduleReconnectSpy = spyOn<any>(service, 'scheduleReconnect').and.callThrough();
+        const consoleErrorSpy = spyOn(console, 'error');
+        spyOn(window, 'setInterval').and.returnValue(123 as any);
+
+        (service as any).connectWebSocket();
+        tick();
+
+        expect(requestWebSocketTicket).toHaveBeenCalled();
+        expect(buildWebSocketUrl).toHaveBeenCalledWith(null, 'ticket-publicado');
+        expect(startPollingSpy).toHaveBeenCalled();
+        expect(scheduleReconnectSpy).not.toHaveBeenCalled();
+        expect(consoleErrorSpy).toHaveBeenCalled();
+    }));
 });

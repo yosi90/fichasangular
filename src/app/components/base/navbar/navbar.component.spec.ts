@@ -117,7 +117,6 @@ describe('NavbarComponent', () => {
         expect(botones.map((item) => item.nativeElement.textContent.trim())).toEqual([
             'Archivo',
             'Manuales',
-            'Social',
             'Opciones',
             'Ayuda',
         ]);

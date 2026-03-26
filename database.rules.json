@@ -56,10 +56,6 @@
         ".write": "auth != null && root.child('Acl/users/' + auth.uid + '/roles/admin').val() === true && root.child('Acl/users/' + auth.uid + '/roles/type').val() === 'admin'"
       }
     },
-    "Campañas": {
-      ".read": "auth != null && root.child('Acl/users/' + auth.uid + '/roles/admin').val() === true && root.child('Acl/users/' + auth.uid + '/roles/type').val() === 'admin'",
-      ".write": "auth != null && root.child('Acl/users/' + auth.uid + '/roles/admin').val() === true && root.child('Acl/users/' + auth.uid + '/roles/type').val() === 'admin'"
-    },
     "Alineamientos": {
       ".read": "true",
       ".write": "auth != null && root.child('Acl/users/' + auth.uid + '/roles/admin').val() === true && root.child('Acl/users/' + auth.uid + '/roles/type').val() === 'admin'"
@@ -179,7 +175,7 @@
       }
     },
     "Personajes-simples": {
-      ".read": "true",
+      ".read": "auth != null && root.child('Acl/users/' + auth.uid + '/roles/admin').val() === true && root.child('Acl/users/' + auth.uid + '/roles/type').val() === 'admin'",
       ".write": "auth != null && root.child('Acl/users/' + auth.uid + '/roles/admin').val() === true && root.child('Acl/users/' + auth.uid + '/roles/type').val() === 'admin'"
     },
     "Plantillas": {

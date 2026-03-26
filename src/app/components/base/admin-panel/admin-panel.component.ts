@@ -2,7 +2,6 @@ import { Component, Input, OnChanges, OnDestroy, OnInit, SimpleChanges } from '@
 import { Subject, takeUntil } from 'rxjs';
 import Swal from 'sweetalert2';
 import { CACHE_CONTRACT_MANIFEST, CacheEntityKey } from 'src/app/config/cache-contract-manifest';
-import { CampanaService } from 'src/app/services/campana.service';
 import { ClaseService } from 'src/app/services/clase.service';
 import { ConjuroService } from 'src/app/services/conjuro.service';
 import { DisciplinaConjurosService } from 'src/app/services/disciplina-conjuros.service';
@@ -111,7 +110,6 @@ export class AdminPanelComponent implements OnInit, OnDestroy {
         private conSvc: VerifyConnectionService,
         private pSvc: PersonajeService,
         private lpSvc: ListaPersonajesService,
-        private cSvc: CampanaService,
         private rSvc: RazaService,
         private mSvc: ManualService,
         private manualesAsociadosSvc: ManualesAsociadosService,
@@ -151,7 +149,6 @@ export class AdminPanelComponent implements OnInit, OnDestroy {
     ) {
         this.syncRunners = {
             lista_personajes: () => this.lpSvc.RenovarPersonajesSimples(),
-            campanas_tramas_subtramas: () => this.cSvc.RenovarCampañasFirebase(),
             personajes: () => this.pSvc.RenovarPersonajes(),
             monstruos: () => this.monstruoSvc.RenovarMonstruos(),
             familiares: () => this.monstruoSvc.RenovarFamiliares(),

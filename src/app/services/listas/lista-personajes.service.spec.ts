@@ -16,7 +16,7 @@ class ListaPersonajesServiceAuthTestDouble extends ListaPersonajesService {
 }
 
 describe('ListaPersonajesService', () => {
-    it('getPersonajes usa API actor-scoped con Bearer', async () => {
+    it('getPersonajes usa API detallada actor-scoped con Bearer', async () => {
         const httpMock = {
             get: jasmine.createSpy('get').and.returnValue(of([{
                 i: 1,
@@ -46,7 +46,7 @@ describe('ListaPersonajesService', () => {
         const personajes = await new Promise<any[]>((resolve) => observable.subscribe(resolve));
 
         expect(httpMock.get).toHaveBeenCalledWith(
-            jasmine.stringMatching(/personajes\/simplificados$/),
+            jasmine.stringMatching(/personajes$/),
             jasmine.objectContaining({
                 headers: jasmine.anything(),
             })
@@ -54,6 +54,54 @@ describe('ListaPersonajesService', () => {
         const options = httpMock.get.calls.mostRecent().args[1];
         expect(options.headers.get('Authorization')).toBe('Bearer token');
         expect(personajes[0].ownerUid).toBe('uid-1');
+    });
+
+    it('getPersonajes mapea el contrato detallado de GET /personajes a PersonajeSimple', async () => {
+        const httpMock = {
+            get: jasmine.createSpy('get').and.returnValue(of([{
+                i: 5,
+                n: 'Seraphina',
+                ownerUid: 'uid-5',
+                ownerDisplayName: 'Seraphina Owner',
+                visible_otros_usuarios: true,
+                id_region: 3,
+                ra: { Id: 9, Nombre: 'Elfa' },
+                cla: 'Maga 5 | Archimaga 1',
+                dcp: 'Curiosa y metódica',
+                dh: 'Bibliotecaria de Myth Drannor',
+                ncam: 'Costa de la Espada',
+                ntr: 'Torre eclipsada',
+                nst: 'Archivo hundido',
+                archivado: false,
+            }])),
+        };
+
+        const service = new ListaPersonajesService(
+            { currentUser: { getIdToken: async () => 'token' } } as any,
+            {} as any,
+            httpMock as any,
+            firebaseContextMock
+        );
+
+        const observable = await service.getPersonajes();
+        const personajes = await new Promise<any[]>((resolve) => observable.subscribe(resolve));
+
+        expect(personajes).toHaveSize(1);
+        expect(personajes[0]).toEqual(jasmine.objectContaining({
+            Id: 5,
+            Nombre: 'Seraphina',
+            ownerUid: 'uid-5',
+            ownerDisplayName: 'Seraphina Owner',
+            Clases: 'Maga 5 | Archimaga 1',
+            Personalidad: 'Curiosa y metódica',
+            Contexto: 'Bibliotecaria de Myth Drannor',
+            Campana: 'Costa de la Espada',
+            Trama: 'Torre eclipsada',
+            Subtrama: 'Archivo hundido',
+            Archivado: false,
+        }));
+        expect(personajes[0].Raza).toEqual(jasmine.objectContaining({ Id: 9, Nombre: 'Elfa' }));
+        expect(personajes[0].Region).toEqual({ Id: 3, Nombre: '' });
     });
 
     it('usa cache pública para invitados y no llama a la API', async () => {
@@ -143,6 +191,7 @@ describe('ListaPersonajesService', () => {
 
         const personajes = await (service as any).readPublicPersonajesFromCache();
 
+        expect((service as any).readCacheSnapshot).toHaveBeenCalledWith('listado-personajes');
         expect(personajes).toHaveSize(1);
         expect(personajes[0].Id).toBe(1);
         expect(personajes[0].Nombre).toBe('Visible sin campaña');

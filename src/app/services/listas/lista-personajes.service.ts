@@ -110,7 +110,7 @@ export class ListaPersonajesService {
     }
 
     pjs(headers?: HttpHeaders): Observable<any> {
-        const personajes = this.http.get(`${environment.apiUrl}personajes/simplificados`, headers ? { headers } : undefined);
+        const personajes = this.http.get(`${environment.apiUrl}personajes`, headers ? { headers } : undefined);
         return personajes;
     }
 
@@ -216,6 +216,23 @@ export class ListaPersonajesService {
             ?? element?.region?.Nombre
             ?? element?.region?.nombre
             ?? ''}`.trim();
+        const raza = (element?.r
+            ?? element?.ra
+            ?? element?.Raza
+            ?? element?.raza
+            ?? { Id: 0, Nombre: 'Sin raza' }) as RazaSimple;
+        const clases = `${element?.c
+            ?? element?.cla
+            ?? element?.Clases
+            ?? ''}`.trim();
+        const contexto = `${element?.co
+            ?? element?.dh
+            ?? element?.Contexto
+            ?? ''}`.trim();
+        const personalidad = `${element?.p
+            ?? element?.dcp
+            ?? element?.Personalidad
+            ?? ''}`.trim();
 
         return {
             Id: Math.trunc(toNumber(element?.i ?? element?.Id)),
@@ -228,14 +245,14 @@ export class ListaPersonajesService {
                 Id: idRegion,
                 Nombre: nombreRegion.length > 0 ? nombreRegion : (idRegion === 0 ? 'Sin región' : ''),
             },
-            Raza: (element?.r ?? element?.Raza) as RazaSimple,
-            Clases: `${element?.c ?? element?.Clases ?? ''}`.trim(),
-            Contexto: `${element?.co ?? element?.Contexto ?? ''}`.trim(),
-            Personalidad: `${element?.p ?? element?.Personalidad ?? ''}`.trim(),
-            Campana: `${element?.ca ?? element?.Campaña ?? element?.Campana ?? 'Sin campaña'}`.trim() || 'Sin campaña',
-            Trama: `${element?.t ?? element?.Trama ?? 'Trama base'}`.trim() || 'Trama base',
-            Subtrama: `${element?.s ?? element?.Subtrama ?? 'Subtrama base'}`.trim() || 'Subtrama base',
-            Archivado: toBoolean(element?.a ?? element?.Archivado),
+            Raza: raza,
+            Clases: clases,
+            Contexto: contexto,
+            Personalidad: personalidad,
+            Campana: `${element?.ca ?? element?.ncam ?? element?.Campaña ?? element?.Campana ?? 'Sin campaña'}`.trim() || 'Sin campaña',
+            Trama: `${element?.t ?? element?.ntr ?? element?.Trama ?? 'Trama base'}`.trim() || 'Trama base',
+            Subtrama: `${element?.s ?? element?.nst ?? element?.Subtrama ?? 'Subtrama base'}`.trim() || 'Subtrama base',
+            Archivado: toBoolean(element?.a ?? element?.archivado ?? element?.Archivado),
         };
     }
 
@@ -373,7 +390,7 @@ export class ListaPersonajesService {
     }
 
     private async readPublicPersonajesFromCache(): Promise<PersonajeSimple[]> {
-        const payload = await this.readCacheSnapshot('Personajes-simples');
+        const payload = await this.readCacheSnapshot('listado-personajes');
         if (Array.isArray(payload)) {
             return payload
                 .map((element: any, index: number) => {

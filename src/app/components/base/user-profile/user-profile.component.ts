@@ -1713,14 +1713,10 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
 
         if (event.code === 'system.campaign_invitation_received') {
             await this.refreshReceivedCampaignInvitations();
-            if (this.currentSection === 'campanas')
-                this.appToastSvc.showInfo('Tus invitaciones de campaña se han actualizado.');
             return;
         }
 
         await this.reloadCampaigns(this.selectedCampaignId ?? event.campaignId);
-        if (this.currentSection === 'campanas')
-            this.appToastSvc.showInfo('La información de campañas se ha actualizado.');
     }
 
     private isCampaignStateOutdatedError(error: any): boolean {

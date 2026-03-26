@@ -1,6 +1,7 @@
 import { of } from 'rxjs';
 import { ChatApiService } from './chat-api.service';
 import { environment } from 'src/environments/environment';
+import { ProfileApiError } from '../interfaces/user-account';
 
 describe('ChatApiService', () => {
     const authMock = {
@@ -238,6 +239,38 @@ describe('ChatApiService', () => {
         expect(url).toBe('ws://127.0.0.1:5000/ws/chat?ticket=ticket%20de%20prueba');
 
         environment.apiUrl = originalApiUrl;
+    });
+
+    it('buildWebSocketUrl prioriza websocketUrl devuelto por backend en despliegue no local', () => {
+        const httpMock = jasmine.createSpyObj('HttpClient', ['get', 'post']);
+        const service = new ChatApiService(httpMock, authMock);
+
+        const url = service.buildWebSocketUrl('wss://realtime.yosiftware.es/ws/chat', 'ticket cloudflare');
+
+        expect(url).toBe('wss://realtime.yosiftware.es/ws/chat?ticket=ticket%20cloudflare');
+    });
+
+    it('buildWebSocketUrl falla en no local si backend no devuelve websocketUrl', () => {
+        const httpMock = jasmine.createSpyObj('HttpClient', ['get', 'post']);
+        const service = new ChatApiService(httpMock, authMock);
+        const originalApiUrl = environment.apiUrl;
+
+        environment.apiUrl = 'https://fichas-api.yosiftware.es/';
+
+        try {
+            expect(() => service.buildWebSocketUrl(null, 'ticket cloudflare')).toThrowError(ProfileApiError);
+            expect(() => service.buildWebSocketUrl(null, 'ticket cloudflare')).toThrowError(/websocketUrl/i);
+            try {
+                service.buildWebSocketUrl(null, 'ticket cloudflare');
+                fail('Se esperaba ProfileApiError por websocketUrl ausente en despliegue no local.');
+            } catch (error) {
+                const profileError = error as ProfileApiError;
+                expect(profileError.code).toBe('CHAT_WS_URL_MISSING');
+                expect(profileError.status).toBe(500);
+            }
+        } finally {
+            environment.apiUrl = originalApiUrl;
+        }
     });
 
     it('requestWebSocketTicket envia Bearer y normaliza la respuesta', async () => {

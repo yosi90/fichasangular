@@ -1014,7 +1014,7 @@ describe('UserProfileComponent', () => {
 
         expect(campanaSvc.listReceivedCampaignInvitations.calls.count()).toBe(2);
         expect(component.receivedCampaignInvitations.length).toBe(1);
-        expect(toastSvc.showInfo).toHaveBeenCalledWith('Tus invitaciones de campaña se han actualizado.');
+        expect(toastSvc.showInfo).not.toHaveBeenCalled();
     }));
 
     it('refresca campañas y detalle al llegar un evento realtime de invitación resuelta', fakeAsync(() => {
@@ -1126,7 +1126,7 @@ describe('UserProfileComponent', () => {
         expect(campanaSvc.getCampaignDetail.calls.count()).toBe(2);
         expect(component.selectedCampaignDetail?.pendingInvitations).toEqual([]);
         expect(component.selectedCampaignMembers.length).toBe(1);
-        expect(toastSvc.showInfo).toHaveBeenCalledWith('La información de campañas se ha actualizado.');
+        expect(toastSvc.showInfo).not.toHaveBeenCalled();
     }));
 
     it('permite cancelar una invitación pendiente emitida desde el detalle de campaña', fakeAsync(() => {

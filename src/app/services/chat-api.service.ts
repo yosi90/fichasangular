@@ -306,7 +306,9 @@ export class ChatApiService {
             throw new ProfileApiError('Ticket realtime no disponible.', 'CHAT_WS_TICKET_INVALID', 400);
 
         const preferredUrl = `${websocketUrl ?? ''}`.trim();
-        const targetUrl = preferredUrl.length > 0 ? preferredUrl : this.buildFallbackWebSocketBaseUrl();
+        const targetUrl = preferredUrl.length > 0
+            ? preferredUrl
+            : this.resolveFallbackWebSocketBaseUrl();
 
         try {
             const parsed = new URL(targetUrl);
@@ -328,6 +330,18 @@ export class ChatApiService {
         }
     }
 
+    private resolveFallbackWebSocketBaseUrl(): string {
+        if (!this.isLocalApiUrl(environment.apiUrl)) {
+            throw new ProfileApiError(
+                'El backend no devolvió websocketUrl para el gateway realtime publicado.',
+                'CHAT_WS_URL_MISSING',
+                500
+            );
+        }
+
+        return this.buildFallbackWebSocketBaseUrl();
+    }
+
     private buildFallbackWebSocketBaseUrl(): string {
         const apiUrl = `${environment.apiUrl ?? ''}`.trim();
         const fallbackBase = apiUrl.endsWith('/') ? apiUrl.slice(0, -1) : apiUrl;
@@ -347,6 +361,20 @@ export class ChatApiService {
                 .replace(/^https:/i, 'wss:')
                 .replace(/:\/\/localhost(?=[:/]|$)/i, '://127.0.0.1');
             return `${wsBase}/ws/chat`;
+        }
+    }
+
+    private isLocalApiUrl(value: string | null | undefined): boolean {
+        const apiUrl = `${value ?? ''}`.trim();
+        if (apiUrl.length < 1)
+            return false;
+
+        try {
+            const parsed = new URL(apiUrl);
+            const hostname = `${parsed.hostname ?? ''}`.trim().toLowerCase();
+            return hostname === 'localhost' || hostname === '127.0.0.1';
+        } catch {
+            return /^https?:\/\/(localhost|127\.0\.0\.1)(?=[:/]|$)/i.test(apiUrl);
         }
     }
 

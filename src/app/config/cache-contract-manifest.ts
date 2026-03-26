@@ -1,6 +1,5 @@
 export type CacheEntityKey =
     | "lista_personajes"
-    | "campanas_tramas_subtramas"
     | "personajes"
     | "monstruos"
     | "familiares"
@@ -52,7 +51,6 @@ export interface CacheContractEntry {
 
 export const CACHE_CONTRACT_MANIFEST: CacheContractEntry[] = [
     { key: "lista_personajes", label: "Lista de personajes", schemaVersion: 2 },
-    { key: "campanas_tramas_subtramas", label: "Campañas, tramas y subtramas", schemaVersion: 1 },
     { key: "personajes", label: "Personajes", schemaVersion: 6 },
     { key: "monstruos", label: "Monstruos", schemaVersion: 1 },
     { key: "familiares", label: "Familiares", schemaVersion: 1 },
