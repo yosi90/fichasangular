@@ -52,8 +52,14 @@ describe('CampanaService', () => {
         httpMock.get.and.callFake((url: string) => {
             if (url.endsWith('campanas'))
                 return of([{ i: 7, n: 'Campaña visible', campaignRole: 'master', membershipStatus: 'activo' }]);
-            if (url.endsWith('tramas/campana/7'))
-                return of([]);
+            if (url.endsWith('campanas/7'))
+                return of({
+                    i: 7,
+                    n: 'Campaña visible',
+                    campaignRole: 'master',
+                    membershipStatus: 'activo',
+                    tramas: [],
+                });
             throw new Error(`URL inesperada: ${url}`);
         });
 
@@ -80,8 +86,22 @@ describe('CampanaService', () => {
                     { i: 8, n: 'Campaña nueva', campaignRole: 'jugador', membershipStatus: 'activo' },
                 ]);
             }
-            if (url.endsWith('tramas/campana/7') || url.endsWith('tramas/campana/8'))
-                return of([]);
+            if (url.endsWith('campanas/7'))
+                return of({
+                    i: 7,
+                    n: 'Campaña visible',
+                    campaignRole: 'master',
+                    membershipStatus: 'activo',
+                    tramas: [],
+                });
+            if (url.endsWith('campanas/8'))
+                return of({
+                    i: 8,
+                    n: 'Campaña nueva',
+                    campaignRole: 'jugador',
+                    membershipStatus: 'activo',
+                    tramas: [],
+                });
             throw new Error(`URL inesperada: ${url}`);
         });
 
@@ -113,8 +133,14 @@ describe('CampanaService', () => {
         httpMock.get.and.callFake((url: string) => {
             if (url.endsWith('campanas'))
                 return of([{ i: 7, n: 'Campaña visible', campaignRole: 'master', membershipStatus: 'activo' }]);
-            if (url.endsWith('tramas/campana/7'))
-                return of([]);
+            if (url.endsWith('campanas/7'))
+                return of({
+                    i: 7,
+                    n: 'Campaña visible',
+                    campaignRole: 'master',
+                    membershipStatus: 'activo',
+                    tramas: [],
+                });
             throw new Error(`URL inesperada: ${url}`);
         });
 
@@ -157,12 +183,16 @@ describe('CampanaService', () => {
         );
 
         httpMock.get.and.callFake((url: string) => {
-            if (url.endsWith('tramas/campana/7')) {
+            if (url.endsWith('campanas/7')) {
                 tramaCycle += 1;
-                return of(tramaCycle === 1 ? [] : [{ i: 11, n: 'Trama viva' }]);
+                return of({
+                    i: 7,
+                    n: 'Campaña privada',
+                    campaignRole: 'master',
+                    membershipStatus: 'activo',
+                    tramas: tramaCycle === 1 ? [] : [{ i: 11, n: 'Trama viva', visibleParaJugadores: true, subtramas: [] }],
+                });
             }
-            if (url.endsWith('subtramas/trama/11'))
-                return of([]);
             throw new Error(`URL inesperada: ${url}`);
         });
 
@@ -212,8 +242,14 @@ describe('CampanaService', () => {
         );
 
         httpMock.get.and.callFake((url: string) => {
-            if (url.endsWith('tramas/campana/7'))
-                return of([]);
+            if (url.endsWith('campanas/7'))
+                return of({
+                    i: 7,
+                    n: 'Caballeros de Cormyr',
+                    campaignRole: 'jugador',
+                    membershipStatus: 'activo',
+                    tramas: [],
+                });
             throw new Error(`URL inesperada: ${url}`);
         });
         httpMock.patch.and.callFake((url: string) => {
@@ -291,8 +327,14 @@ describe('CampanaService', () => {
         );
 
         httpMock.get.and.callFake((url: string) => {
-            if (url.endsWith('tramas/campana/7'))
-                return of([]);
+            if (url.endsWith('campanas/7'))
+                return of({
+                    i: 7,
+                    n: 'Campaña nueva',
+                    campaignRole: 'master',
+                    membershipStatus: 'activo',
+                    tramas: [],
+                });
             throw new Error(`URL inesperada: ${url}`);
         });
         httpMock.patch.and.callFake((url: string) => {
@@ -336,8 +378,14 @@ describe('CampanaService', () => {
                     { i: 8, n: 'Campaña expulsado', campaignRole: 'jugador', membershipStatus: 'expulsado' },
                     { i: 9, n: 'Campaña legacy owner', campaignRole: null, membershipStatus: null },
                 ]);
-            if (url.endsWith('tramas/campana/7'))
-                return of([]);
+            if (url.endsWith('campanas/7'))
+                return of({
+                    i: 7,
+                    n: 'Campaña propia',
+                    campaignRole: 'master',
+                    membershipStatus: 'activo',
+                    tramas: [],
+                });
             throw new Error(`URL inesperada: ${url}`);
         });
 
@@ -352,8 +400,47 @@ describe('CampanaService', () => {
         expect(campanas.map((item) => item.Nombre)).toEqual(['Sin campaña', 'Campaña propia']);
         expect(httpMock.get.calls.allArgs().map((args) => args[0])).toEqual([
             jasmine.stringMatching(/campanas$/),
-            jasmine.stringMatching(/tramas\/campana\/7$/),
+            jasmine.stringMatching(/campanas\/7$/),
         ]);
+    });
+
+    it('getListCampanas reutiliza el árbol actor-scoped de detalle para preservar tramas solo master', async () => {
+        httpMock.get.and.callFake((url: string) => {
+            if (url.endsWith('campanas'))
+                return of([{ i: 7, n: 'Caballeros de Cormyr', campaignRole: 'master', membershipStatus: 'activo' }]);
+            if (url.endsWith('campanas/7'))
+                return of({
+                    i: 7,
+                    n: 'Caballeros de Cormyr',
+                    campaignRole: 'master',
+                    membershipStatus: 'activo',
+                    tramas: [
+                        { i: 11, n: 'Buscando a razidir', visibleParaJugadores: true, subtramas: [] },
+                        {
+                            i: 12,
+                            n: 'Invasión de cormyr',
+                            visibleParaJugadores: false,
+                            subtramas: [{ i: 21, n: 'Partida 1', visibleParaJugadores: false }],
+                        },
+                    ],
+                });
+            throw new Error(`URL inesperada: ${url}`);
+        });
+
+        const observable = await service.getListCampanas();
+        const campanas = await new Promise<any[]>((resolve) => {
+            const subscription = observable.subscribe((value) => {
+                resolve(value);
+                subscription.unsubscribe();
+            });
+        });
+
+        expect(campanas[1].Tramas.map((item: any) => item.Nombre)).toEqual([
+            'Buscando a razidir',
+            'Invasión de cormyr',
+        ]);
+        expect(campanas[1].Tramas[1].VisibleParaJugadores).toBeFalse();
+        expect(campanas[1].Tramas[1].Subtramas[0].Nombre).toBe('Partida 1');
     });
 
     it('listVisibleCampaigns normaliza rol y estado de membresía', async () => {

@@ -625,18 +625,24 @@ export class CampanaService {
 
     private async buildCampanasTree(campanas: CampaignListItem[], headers: HttpHeaders): Promise<Campana[]> {
         const campaignTrees = await Promise.all(
-            campanas.map(async (campana) => ({
-                Id: campana.id,
-                Nombre: campana.nombre,
-                Tramas: (await this.fetchCampaignTramas(campana.id, headers)).map((trama) => ({
-                    Id: trama.id,
-                    Nombre: trama.nombre,
-                    Subtramas: trama.subtramas.map((subtrama) => ({
-                        Id: subtrama.id,
-                        Nombre: subtrama.nombre,
+            campanas.map(async (campana) => {
+                const detail = await this.fetchCampaignDetailHeader(campana.id, headers);
+                return {
+                    Id: campana.id,
+                    Nombre: campana.nombre,
+                    CampaignRole: campana.campaignRole ?? null,
+                    Tramas: detail.tramas.map((trama) => ({
+                        Id: trama.id,
+                        Nombre: trama.nombre,
+                        VisibleParaJugadores: trama.visibleParaJugadores,
+                        Subtramas: trama.subtramas.map((subtrama) => ({
+                            Id: subtrama.id,
+                            Nombre: subtrama.nombre,
+                            VisibleParaJugadores: subtrama.visibleParaJugadores,
+                        })),
                     })),
-                })),
-            }))
+                };
+            })
         );
 
         return [

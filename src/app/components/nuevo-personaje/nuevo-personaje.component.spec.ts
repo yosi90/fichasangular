@@ -1176,6 +1176,84 @@ describe('NuevoPersonajeComponent', () => {
         expect(component.Personaje.Subtrama).toBe('Sub 1');
     });
 
+    it('syncSelectedCampaignPolicy aplica 3/1 al generador cuando el actor es jugador y la campaña fija esos límites', async () => {
+        component.Campanas = [{
+            Id: 1,
+            Nombre: 'Campaña A',
+            CampaignRole: 'jugador',
+            Tramas: [],
+        }];
+        component.Personaje.Campana = 'Campaña A';
+        campanaSvcMock.getCampaignDetail = jasmine.createSpy('getCampaignDetail').and.resolveTo({
+            campaign: {
+                id: 1,
+                nombre: 'Campaña A',
+                campaignRole: 'jugador',
+                membershipStatus: 'activo',
+            },
+            politicaCreacion: {
+                tiradaMinimaCaracteristica: 3,
+                maxTablasDadosCaracteristicas: 1,
+                permitirHomebrewGeneral: false,
+                permitirVentajasDesventajas: false,
+                permitirIgnorarRestriccionesAlineamiento: false,
+                maxFuentesHomebrewGeneralesPorPersonaje: 1,
+            },
+        });
+
+        await (component as any).syncSelectedCampaignPolicy();
+
+        expect(component.selectedCampaignPolicy?.tiradaMinimaCaracteristica).toBe(3);
+        expect(nuevoPSvc.EstadoFlujo.generador.minimoSeleccionado).toBe(3);
+        expect(nuevoPSvc.EstadoFlujo.generador.tablasPermitidas).toBe(1);
+    });
+
+    it('syncSelectedCampaignPolicy no restringe el generador cuando el actor es master', async () => {
+        component.Campanas = [{
+            Id: 1,
+            Nombre: 'Campaña A',
+            CampaignRole: 'master',
+            Tramas: [],
+        }];
+        component.Personaje.Campana = 'Campaña A';
+        campanaSvcMock.getCampaignDetail = jasmine.createSpy('getCampaignDetail').and.resolveTo({
+            campaign: {
+                id: 1,
+                nombre: 'Campaña A',
+                campaignRole: 'master',
+                membershipStatus: 'activo',
+            },
+            politicaCreacion: {
+                tiradaMinimaCaracteristica: 3,
+                maxTablasDadosCaracteristicas: 1,
+                permitirHomebrewGeneral: false,
+                permitirVentajasDesventajas: false,
+                permitirIgnorarRestriccionesAlineamiento: false,
+                maxFuentesHomebrewGeneralesPorPersonaje: 1,
+            },
+        });
+
+        await (component as any).syncSelectedCampaignPolicy();
+
+        expect(component.selectedCampaignPolicy?.tiradaMinimaCaracteristica).toBe(3);
+        expect(nuevoPSvc.TieneRestriccionCampanaGenerador).toBeFalse();
+        expect(nuevoPSvc.EstadoFlujo.generador.minimoSeleccionado).toBe(13);
+        expect(nuevoPSvc.EstadoFlujo.generador.tablasPermitidas).toBe(3);
+    });
+
+    it('actualizarTramas sin campaña libera la restricción temporal del generador', () => {
+        nuevoPSvc.aplicarRestriccionCampanaGenerador({
+            tiradaMinimaCaracteristica: 3,
+            maxTablasDadosCaracteristicas: 1,
+        });
+        component.Personaje.Campana = 'Sin campaña';
+
+        component.actualizarTramas();
+
+        expect(nuevoPSvc.EstadoFlujo.generador.minimoSeleccionado).toBe(13);
+        expect(nuevoPSvc.EstadoFlujo.generador.tablasPermitidas).toBe(3);
+    });
+
     it('getInconsistenciasManual incluye peso, altura y edad fuera de rango', () => {
         component.Personaje.Edad = 100;
         component.Personaje.Peso = 120;

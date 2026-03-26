@@ -126,6 +126,10 @@ export class GeneradorCaracteristicasModalComponent implements AfterViewInit {
         return this.nuevoPSvc.EstadoFlujo.generador;
     }
 
+    get generadorRestringidoPorCampana(): boolean {
+        return this.nuevoPSvc.TieneRestriccionCampanaGenerador;
+    }
+
     get puedeFinalizar(): boolean {
         return this.nuevoPSvc.puedeFinalizarGenerador();
     }

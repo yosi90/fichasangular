@@ -868,6 +868,8 @@ export class NuevoPersonajeService {
     private aumentosPendientesCaracteristica: AumentoCaracteristicaPendiente[] = [];
     private aumentosProgresionConcedidos = 0;
     private secuenciaAumentoPendiente = 1;
+    private generadorConfigBase = this.getConfigGeneradorDefault();
+    private restriccionCampanaGenerador: { minimoSeleccionado: number; tablasPermitidas: number; } | null = null;
     private estadoFlujo: EstadoFlujoNuevoPersonaje = this.crearEstadoFlujoBase();
 
     constructor(private userSettingsSvc?: UserSettingsService) { }
@@ -886,6 +888,10 @@ export class NuevoPersonajeService {
 
     get EstadoFlujo(): EstadoFlujoNuevoPersonaje {
         return this.estadoFlujo;
+    }
+
+    get TieneRestriccionCampanaGenerador(): boolean {
+        return this.restriccionCampanaGenerador !== null;
     }
 
     refrescarDerivadasPreviewNuevoPersonaje(): void {
@@ -910,15 +916,41 @@ export class NuevoPersonajeService {
             const tablasRaw = Number(remota.tablasPermitidas);
             const minimo = this.normalizarMinimo(Number.isFinite(minimoRaw) ? minimoRaw : DEFAULT_TIRADA);
             const tablasPermitidas = this.normalizarTablasPermitidas(Number.isFinite(tablasRaw) ? tablasRaw : DEFAULT_TABLAS);
-            const indiceMinimo = this.getIndexByMinimo(minimo);
-
-            this.estadoFlujo.generador.minimoSeleccionado = this.getMinimoByIndex(indiceMinimo);
-            this.estadoFlujo.generador.indiceMinimo = indiceMinimo;
-            this.estadoFlujo.generador.tablasPermitidas = tablasPermitidas;
-            this.resetearGeneradorCaracteristicas();
+            this.generadorConfigBase = {
+                minimoSeleccionado: minimo,
+                tablasPermitidas,
+            };
+            this.aplicarConfigGeneradorEfectiva();
         } catch {
             // Si falla la lectura de settings remotos, mantenemos configuración en memoria.
         }
+    }
+
+    aplicarRestriccionCampanaGenerador(
+        restriccion: { tiradaMinimaCaracteristica?: number | null; maxTablasDadosCaracteristicas?: number | null; } | null | undefined
+    ): void {
+        if (!restriccion) {
+            this.restriccionCampanaGenerador = null;
+            this.aplicarConfigGeneradorEfectiva();
+            return;
+        }
+
+        const minimo = this.normalizarMinimo(
+            Number.isFinite(Number(restriccion.tiradaMinimaCaracteristica))
+                ? Number(restriccion.tiradaMinimaCaracteristica)
+                : MIN_TIRADA
+        );
+        const tablasPermitidas = this.normalizarTablasPermitidas(
+            Number.isFinite(Number(restriccion.maxTablasDadosCaracteristicas))
+                ? Number(restriccion.maxTablasDadosCaracteristicas)
+                : MIN_TABLAS
+        );
+
+        this.restriccionCampanaGenerador = {
+            minimoSeleccionado: minimo,
+            tablasPermitidas,
+        };
+        this.aplicarConfigGeneradorEfectiva();
     }
 
     reiniciar(): void {
@@ -4206,18 +4238,16 @@ export class NuevoPersonajeService {
 
     setMinimoGenerador(minimo: number): void {
         const index = this.getIndexByMinimo(minimo);
-        this.estadoFlujo.generador.minimoSeleccionado = this.getMinimoByIndex(index);
-        this.estadoFlujo.generador.indiceMinimo = index;
+        this.generadorConfigBase.minimoSeleccionado = this.getMinimoByIndex(index);
         this.persistirConfigGenerador();
-        this.asegurarTiradasPorIndice(index);
-        this.resetearGeneradorCaracteristicas();
+        this.aplicarConfigGeneradorEfectiva();
     }
 
     setTablasPermitidasGenerador(cantidad: number): void {
         const tablas = this.normalizarTablasPermitidas(cantidad);
-        this.estadoFlujo.generador.tablasPermitidas = tablas;
+        this.generadorConfigBase.tablasPermitidas = tablas;
         this.persistirConfigGenerador();
-        this.resetearGeneradorCaracteristicas();
+        this.aplicarConfigGeneradorEfectiva();
     }
 
     seleccionarTablaGenerador(tabla: number): boolean {
@@ -7634,7 +7664,7 @@ export class NuevoPersonajeService {
     }
 
     private crearEstadoFlujoBase(): EstadoFlujoNuevoPersonaje {
-        const config = this.getConfigGeneradorDefault();
+        const config = this.getConfigGeneradorEfectiva();
         const indiceMinimo = this.getIndexByMinimo(config.minimoSeleccionado);
         return {
             pasoActual: 'raza',
@@ -8072,12 +8102,26 @@ export class NuevoPersonajeService {
             return;
 
         const payload: Pick<NuevoPersonajeGeneradorConfig, 'minimoSeleccionado' | 'tablasPermitidas'> = {
-            minimoSeleccionado: this.estadoFlujo.generador.minimoSeleccionado,
-            tablasPermitidas: this.estadoFlujo.generador.tablasPermitidas,
+            minimoSeleccionado: this.generadorConfigBase.minimoSeleccionado,
+            tablasPermitidas: this.generadorConfigBase.tablasPermitidas,
         };
         this.userSettingsSvc.saveGeneradorConfig(payload).catch(() => {
             // Si falla la escritura remota, mantenemos la configuración actual en memoria.
         });
+    }
+
+    private aplicarConfigGeneradorEfectiva(): void {
+        const config = this.getConfigGeneradorEfectiva();
+        const indiceMinimo = this.getIndexByMinimo(config.minimoSeleccionado);
+        this.estadoFlujo.generador.minimoSeleccionado = this.getMinimoByIndex(indiceMinimo);
+        this.estadoFlujo.generador.indiceMinimo = indiceMinimo;
+        this.estadoFlujo.generador.tablasPermitidas = config.tablasPermitidas;
+        this.asegurarTiradasPorIndice(indiceMinimo);
+        this.resetearGeneradorCaracteristicas();
+    }
+
+    private getConfigGeneradorEfectiva(): { minimoSeleccionado: number; tablasPermitidas: number; } {
+        return this.restriccionCampanaGenerador ?? this.generadorConfigBase;
     }
 
     private getConfigGeneradorDefault(): { minimoSeleccionado: number; tablasPermitidas: number; } {

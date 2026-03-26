@@ -304,6 +304,9 @@
     grid-template-columns: 19rem minmax(0, 1fr)
     gap: 1rem
     align-items: stretch
+    flex: 1 1 auto
+    height: 100%
+    min-height: 0
 
 .campaign-nav-panel,
 .campaign-workspace,
@@ -312,14 +315,19 @@
     min-width: 0
 
 .profile-section--campanas
+    display: flex
+    flex-direction: column
+    flex: 1 1 auto
+    height: 100%
+    min-height: 0
     overflow: hidden
 
 .campaign-nav-panel,
 .campaign-workspace
     display: flex
     flex-direction: column
-    min-height: 34rem
-    max-height: 34rem
+    height: 100%
+    min-height: 0
     overflow: hidden
 
 .campaign-workspace
@@ -330,6 +338,10 @@
     justify-content: space-between
     align-items: flex-start
     gap: 1rem
+    min-width: 0
+
+    > *
+        min-width: 0
 
 .campaign-workspace__copy
     display: flex
@@ -353,6 +365,11 @@
     justify-content: flex-end
     flex-wrap: wrap
     gap: .6rem
+    min-width: 0
+
+    > *
+        flex: 0 1 auto
+        min-width: 0
 
 .campaign-workspace__body
     display: flex
@@ -360,7 +377,9 @@
     gap: 1rem
     flex: 1 1 auto
     min-height: 0
-    overflow: auto
+    min-width: 0
+    overflow-y: auto
+    overflow-x: hidden
     padding-right: .15rem
 
 .campaign-recover-button
@@ -395,11 +414,19 @@
 
 .campaign-inline-form--editor
     align-items: stretch
+    min-width: 0
+
+    > *
+        min-width: 0
 
 .campaign-policy-grid
     display: grid
     grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr))
     gap: .85rem
+    min-width: 0
+
+    > *
+        min-width: 0
 
 .campaign-policy-field
     display: flex
@@ -575,6 +602,10 @@
 
 .campaign-nav-card__action
     min-width: 0
+    min-height: 2.75rem
+    padding: .45rem .8rem
+    line-height: 1.35
+    white-space: normal
 
 .campaign-nav-card__action--active
     border-color: rgba(194, 24, 91, .72) !important
@@ -700,6 +731,7 @@
     display: grid
     grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr))
     gap: .75rem
+    min-width: 0
 
 .campaign-choice
     display: flex
@@ -711,8 +743,10 @@
     background: rgba(255, 255, 255, .03)
     cursor: pointer
     transition: border-color .18s ease, background .18s ease
+    min-width: 0
 
     input
+        flex: 0 0 auto
         margin-top: .15rem
         accent-color: $active
 
@@ -721,6 +755,10 @@
         flex-direction: column
         gap: .2rem
         color: #f5f7ff
+        min-width: 0
+
+    strong
+        overflow-wrap: anywhere
 
 .campaign-choice--active
     border-color: rgba(194, 24, 91, .6)
@@ -740,6 +778,11 @@
     align-items: center
     justify-content: space-between
     gap: .75rem
+    flex-wrap: wrap
+    min-width: 0
+
+    > *
+        min-width: 0
 
 ::ng-deep .campaign-toggle-list .mdc-label
     color: #f5f7ff

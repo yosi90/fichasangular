@@ -332,6 +332,50 @@ describe('NuevoPersonajeService (generador)', () => {
         expect(estado.asignaciones.Fuerza).toBeNull();
     });
 
+    it('aplica restricción temporal de campaña al generador sin perder la preferencia base', async () => {
+        const userSettingsSvc = jasmine.createSpyObj<UserSettingsService>('UserSettingsService', [
+            'loadGeneradorConfig',
+            'loadProfileSettings',
+            'saveGeneradorConfig',
+            'migrateLegacyLocalConfigOnce',
+        ]);
+        userSettingsSvc.loadProfileSettings.and.resolveTo({
+            ...createDefaultUserSettings().perfil,
+        });
+        userSettingsSvc.loadGeneradorConfig.and.resolveTo({
+            minimoSeleccionado: 8,
+            tablasPermitidas: 5,
+            updatedAt: Date.now(),
+        });
+        userSettingsSvc.saveGeneradorConfig.and.resolveTo();
+        userSettingsSvc.migrateLegacyLocalConfigOnce.and.resolveTo();
+
+        const service = new NuevoPersonajeService(userSettingsSvc);
+        await service.sincronizarConfigGeneradorDesdeCuenta();
+
+        service.aplicarRestriccionCampanaGenerador({
+            tiradaMinimaCaracteristica: 3,
+            maxTablasDadosCaracteristicas: 1,
+        });
+
+        expect(service.EstadoFlujo.generador.minimoSeleccionado).toBe(3);
+        expect(service.EstadoFlujo.generador.tablasPermitidas).toBe(1);
+
+        service.aplicarRestriccionCampanaGenerador(null);
+
+        expect(service.EstadoFlujo.generador.minimoSeleccionado).toBe(8);
+        expect(service.EstadoFlujo.generador.tablasPermitidas).toBe(5);
+    });
+
+    it('usa fallback conservador 3/1 cuando la campaña no aporta política completa', () => {
+        const service = new NuevoPersonajeService();
+
+        service.aplicarRestriccionCampanaGenerador({});
+
+        expect(service.EstadoFlujo.generador.minimoSeleccionado).toBe(3);
+        expect(service.EstadoFlujo.generador.tablasPermitidas).toBe(1);
+    });
+
     it('evaluarCuestionarioAuto aplica suelo de constitución y activa Q4 cuando hay empate cercano', () => {
         const service = new NuevoPersonajeService();
         const diagnostico = service.evaluarCuestionarioAuto(autoCuestionario({

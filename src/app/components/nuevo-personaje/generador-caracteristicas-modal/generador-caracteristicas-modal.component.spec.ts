@@ -141,6 +141,33 @@ describe('GeneradorCaracteristicasModalComponent', () => {
         expect(component.tablasPermitidasOpciones).toEqual([1, 2, 3, 4, 5]);
     });
 
+    it('deja libres los selectores cuando no hay restricción de campaña', () => {
+        expect(component.generadorRestringidoPorCampana).toBeFalse();
+    });
+
+    it('bloquea los selectores cuando la campaña restringe tirada mínima y tablas', () => {
+        service.aplicarRestriccionCampanaGenerador({
+            tiradaMinimaCaracteristica: 3,
+            maxTablasDadosCaracteristicas: 1,
+        });
+
+        expect(component.generadorRestringidoPorCampana).toBeTrue();
+        expect(component.estado.minimoSeleccionado).toBe(3);
+        expect(component.estado.tablasPermitidas).toBe(1);
+    });
+
+    it('reactiva los selectores si la restricción de campaña desaparece', () => {
+        service.aplicarRestriccionCampanaGenerador({
+            tiradaMinimaCaracteristica: 3,
+            maxTablasDadosCaracteristicas: 1,
+        });
+        service.aplicarRestriccionCampanaGenerador(null);
+
+        expect(component.generadorRestringidoPorCampana).toBeFalse();
+        expect(component.estado.minimoSeleccionado).toBe(13);
+        expect(component.estado.tablasPermitidas).toBe(3);
+    });
+
     it('seleccionar tabla crea pool de 6 valores inmediatamente', () => {
         component.seleccionarTabla(1);
 

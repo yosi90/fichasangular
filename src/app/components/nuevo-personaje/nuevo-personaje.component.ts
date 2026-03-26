@@ -1966,6 +1966,7 @@ export class NuevoPersonajeComponent {
     actualizarTramas(): void {
         if (this.Personaje.Campana === 'Sin campaña') {
             this.selectedCampaignPolicy = null;
+            this.nuevoPSvc.aplicarRestriccionCampanaGenerador(null);
             this.Tramas = [];
             this.Subtramas = [];
             this.Personaje.Trama = 'Trama base';
@@ -1977,6 +1978,7 @@ export class NuevoPersonajeComponent {
         if (!campanaSeleccionada) {
             this.Personaje.Campana = 'Sin campaña';
             this.selectedCampaignPolicy = null;
+            this.nuevoPSvc.aplicarRestriccionCampanaGenerador(null);
             this.Tramas = [];
             this.Subtramas = [];
             this.Personaje.Trama = 'Trama base';
@@ -5068,6 +5070,7 @@ export class NuevoPersonajeComponent {
         const campaignId = Number(campanaSeleccionada?.Id ?? 0);
         if (!this.hasSelectedCampaignContext || !Number.isFinite(campaignId) || campaignId <= 0) {
             this.selectedCampaignPolicy = null;
+            this.nuevoPSvc.aplicarRestriccionCampanaGenerador(null);
             this.selectedCampaignPolicyLoading = false;
             this.selectedCampaignPolicyRequestKey = '';
             return;
@@ -5081,10 +5084,23 @@ export class NuevoPersonajeComponent {
             if (this.selectedCampaignPolicyRequestKey !== requestKey)
                 return;
             this.selectedCampaignPolicy = detail?.politicaCreacion ?? null;
+            this.nuevoPSvc.aplicarRestriccionCampanaGenerador(
+                detail?.campaign?.campaignRole === 'master'
+                    ? null
+                    : (detail?.politicaCreacion ?? null)
+            );
         } catch {
             if (this.selectedCampaignPolicyRequestKey !== requestKey)
                 return;
             this.selectedCampaignPolicy = null;
+            this.nuevoPSvc.aplicarRestriccionCampanaGenerador(
+                campanaSeleccionada?.CampaignRole === 'master'
+                    ? null
+                    : {
+                        tiradaMinimaCaracteristica: 3,
+                        maxTablasDadosCaracteristicas: 1,
+                    }
+            );
         } finally {
             if (this.selectedCampaignPolicyRequestKey === requestKey)
                 this.selectedCampaignPolicyLoading = false;

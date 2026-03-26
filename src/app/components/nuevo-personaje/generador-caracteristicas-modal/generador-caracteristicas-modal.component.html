@@ -9,13 +9,13 @@
             <div class="header-actions">
                 <mat-form-field appearance="fill" class="minimo-selector">
                     <mat-label>Tirada mínima</mat-label>
-                    <mat-select [value]="estado.minimoSeleccionado" (selectionChange)="onMinimoChange($event.value)">
+                    <mat-select [value]="estado.minimoSeleccionado" [disabled]="generadorRestringidoPorCampana" (selectionChange)="onMinimoChange($event.value)">
                         <mat-option *ngFor="let minimo of minimos" [value]="minimo">{{minimo}}</mat-option>
                     </mat-select>
                 </mat-form-field>
                 <mat-form-field appearance="fill" class="tablas-selector">
                     <mat-label>Tablas permitidas</mat-label>
-                    <mat-select [value]="estado.tablasPermitidas" (selectionChange)="onTablasPermitidasChange($event.value)">
+                    <mat-select [value]="estado.tablasPermitidas" [disabled]="generadorRestringidoPorCampana" (selectionChange)="onTablasPermitidasChange($event.value)">
                         <mat-option *ngFor="let cantidad of tablasPermitidasOpciones" [value]="cantidad">{{cantidad}}</mat-option>
                     </mat-select>
                 </mat-form-field>
