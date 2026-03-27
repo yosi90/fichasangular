@@ -565,6 +565,8 @@ describe('NuevoPersonajeComponent', () => {
     let especialSvcMock: any;
     let personajeSvcMock: any;
     let fichasDescargaBgSvcMock: any;
+    let userSvcMock: any;
+    let userProfileNavigationSvcMock: any;
 
     beforeEach(() => {
         nuevoPSvc = new NuevoPersonajeService();
@@ -666,6 +668,15 @@ describe('NuevoPersonajeComponent', () => {
         fichasDescargaBgSvcMock = {
             descargarFichas: jasmine.createSpy('descargarFichas').and.callFake(() => undefined),
         };
+        userSvcMock = {
+            CurrentPrivateProfile: {
+                role: 'jugador',
+            },
+            can: jasmine.createSpy('can').and.returnValue(false),
+        };
+        userProfileNavigationSvcMock = {
+            openPrivateProfile: jasmine.createSpy('openPrivateProfile'),
+        };
         component = new NuevoPersonajeComponent(
             nuevoPSvc,
             campanaSvcMock,
@@ -692,7 +703,9 @@ describe('NuevoPersonajeComponent', () => {
             monstruoSvcMock,
             especialSvcMock,
             personajeSvcMock,
-            fichasDescargaBgSvcMock
+            fichasDescargaBgSvcMock,
+            userSvcMock,
+            userProfileNavigationSvcMock,
         );
         component.Personaje = nuevoPSvc.PersonajeCreacion;
         component.catalogoDeidades = crearDeidadesMock();
@@ -1174,6 +1187,41 @@ describe('NuevoPersonajeComponent', () => {
 
         expect(component.Personaje.Trama).toBe('Trama 1');
         expect(component.Personaje.Subtrama).toBe('Sub 1');
+    });
+
+    it('canOpenCampaignManagement solo se activa para master o superior con permiso de crear campañas', () => {
+        userSvcMock.CurrentPrivateProfile = { role: 'master' };
+        userSvcMock.can.and.returnValue(true);
+
+        expect(component.canOpenCampaignManagement).toBeTrue();
+        expect(userSvcMock.can).toHaveBeenCalledWith('campanas', 'create');
+
+        userSvcMock.can.calls.reset();
+        userSvcMock.CurrentPrivateProfile = { role: 'jugador' };
+        userSvcMock.can.and.returnValue(true);
+
+        expect(component.canOpenCampaignManagement).toBeFalse();
+        expect(userSvcMock.can).not.toHaveBeenCalled();
+    });
+
+    it('abrirGestionCampanas navega al perfil privado en la sección de campañas cuando tiene permiso', () => {
+        userSvcMock.CurrentPrivateProfile = { role: 'colaborador' };
+        userSvcMock.can.and.returnValue(true);
+
+        component.abrirGestionCampanas();
+
+        expect(userProfileNavigationSvcMock.openPrivateProfile).toHaveBeenCalledWith(jasmine.objectContaining({
+            section: 'campanas',
+        }));
+    });
+
+    it('abrirGestionCampanas no navega cuando no puede gestionar campañas', () => {
+        userSvcMock.CurrentPrivateProfile = { role: 'jugador' };
+        userSvcMock.can.and.returnValue(true);
+
+        component.abrirGestionCampanas();
+
+        expect(userProfileNavigationSvcMock.openPrivateProfile).not.toHaveBeenCalled();
     });
 
     it('syncSelectedCampaignPolicy aplica 3/1 al generador cuando el actor es jugador y la campaña fija esos límites', async () => {
@@ -4274,7 +4322,9 @@ describe('NuevoPersonajeComponent', () => {
             monstruoSvcMock,
             especialSvcMock,
             personajeSvcMock,
-            fichasDescargaBgSvcMock
+            fichasDescargaBgSvcMock,
+            userSvcMock,
+            userProfileNavigationSvcMock,
         );
         componentReabierto.ngOnInit();
 

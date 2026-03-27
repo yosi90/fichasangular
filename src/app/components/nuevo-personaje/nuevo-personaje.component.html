@@ -111,15 +111,27 @@
                                 <mat-icon class="tw-ms-2">campaign</mat-icon>
                             </mat-chip>
                             <div class="field-grid">
-                                <mat-form-field appearance="fill" class="full-span">
-                                    <mat-label>Campaña</mat-label>
-                                    <mat-select [(value)]="Personaje.Campana" (selectionChange)="actualizarTramas()">
-                                        <mat-option value="Sin campaña">Sin campaña</mat-option>
-                                        <mat-option *ngIf="campanasLoading" disabled>Cargando campañas...</mat-option>
-                                        <mat-option *ngFor="let campana of Campanas" [value]="campana.Nombre">{{campana.Nombre}}</mat-option>
-                                    </mat-select>
-                                    <mat-hint *ngIf="campanasLoading">Cargando campañas y tramas disponibles...</mat-hint>
-                                </mat-form-field>
+                                <div class="full-span campaign-selector-row">
+                                    <mat-form-field appearance="fill" class="campaign-selector-field">
+                                        <mat-label>Campaña</mat-label>
+                                        <mat-select [(value)]="Personaje.Campana" (selectionChange)="actualizarTramas()">
+                                            <mat-option value="Sin campaña">Sin campaña</mat-option>
+                                            <mat-option *ngIf="campanasLoading" disabled>Cargando campañas...</mat-option>
+                                            <mat-option *ngFor="let campana of Campanas" [value]="campana.Nombre">{{campana.Nombre}}</mat-option>
+                                        </mat-select>
+                                        <mat-hint *ngIf="campanasLoading">Cargando campañas y tramas disponibles...</mat-hint>
+                                    </mat-form-field>
+                                    <button
+                                        *ngIf="canOpenCampaignManagement"
+                                        type="button"
+                                        mat-icon-button
+                                        class="campaign-manage-btn"
+                                        (click)="abrirGestionCampanas()"
+                                        aria-label="Crear o gestionar campañas"
+                                        matTooltip="Crear campaña">
+                                        <mat-icon>add</mat-icon>
+                                    </button>
+                                </div>
                                 <mat-form-field appearance="fill">
                                     <mat-label>Trama</mat-label>
                                     <mat-select [(value)]="Personaje.Trama" [disabled]="!campanaTieneTramas" (selectionChange)="actualizarSubtramas()">

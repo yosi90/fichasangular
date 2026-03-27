@@ -48,6 +48,8 @@ import { MonstruoService } from 'src/app/services/monstruo.service';
 import { RegionService } from 'src/app/services/region.service';
 import { FichasDescargaBackgroundService } from 'src/app/services/fichas-descarga-background.service';
 import { PersonajeService } from 'src/app/services/personaje.service';
+import { UserProfileNavigationService } from 'src/app/services/user-profile-navigation.service';
+import { UserService } from 'src/app/services/user.service';
 import {
     AsignacionAumentoCaracteristica,
     AsignacionCaracteristicas,
@@ -497,7 +499,9 @@ export class NuevoPersonajeComponent {
         private monstruoSvc: MonstruoService,
         private especialSvc: EspecialService,
         private personajeSvc: PersonajeService,
-        private fichasDescargaBgSvc: FichasDescargaBackgroundService
+        private fichasDescargaBgSvc: FichasDescargaBackgroundService,
+        private userSvc: UserService,
+        private userProfileNavigationSvc: UserProfileNavigationService,
     ) {
         this.Personaje = this.nuevoPSvc.PersonajeCreacion;
     }
@@ -964,6 +968,12 @@ export class NuevoPersonajeComponent {
             return false;
         }
         return this.Tramas.length > 0;
+    }
+
+    get canOpenCampaignManagement(): boolean {
+        const role = `${this.userSvc.CurrentPrivateProfile?.role ?? ''}`.trim().toLowerCase();
+        const canCreateByRole = role === 'master' || role === 'colaborador' || role === 'admin';
+        return canCreateByRole && this.userSvc.can('campanas', 'create');
     }
 
     get tramaTieneSubtramas(): boolean {
@@ -2004,6 +2014,16 @@ export class NuevoPersonajeComponent {
 
         void this.syncSelectedCampaignPolicy();
         this.actualizarSubtramas();
+    }
+
+    abrirGestionCampanas(): void {
+        if (!this.canOpenCampaignManagement)
+            return;
+
+        this.userProfileNavigationSvc.openPrivateProfile({
+            section: 'campanas',
+            requestId: Date.now(),
+        });
     }
 
     actualizarSubtramas(): void {
