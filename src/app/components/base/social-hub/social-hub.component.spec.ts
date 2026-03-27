@@ -10,6 +10,7 @@ import { CampaignRealtimeSyncService } from 'src/app/services/campaign-realtime-
 import { ChatApiService } from 'src/app/services/chat-api.service';
 import { ChatRealtimeService } from 'src/app/services/chat-realtime.service';
 import { SocialApiService } from 'src/app/services/social-api.service';
+import { SocialRealtimeService } from 'src/app/services/social-realtime.service';
 import { UserProfileNavigationService } from 'src/app/services/user-profile-navigation.service';
 import { UserSettingsService } from 'src/app/services/user-settings.service';
 import { UserService } from 'src/app/services/user.service';
@@ -180,6 +181,15 @@ describe('SocialHubComponent', () => {
                         markConversationReadLocally: jasmine.createSpy('markConversationReadLocally'),
                     },
                 },
+                {
+                    provide: SocialRealtimeService,
+                    useValue: {
+                        activate: jasmine.createSpy('activate'),
+                        deactivate: jasmine.createSpy('deactivate'),
+                        events$: new Subject<any>().asObservable(),
+                        refetchRequested$: new Subject<void>().asObservable(),
+                    },
+                },
                 { provide: UserProfileNavigationService, useValue: userProfileNavSvc },
                 { provide: UserSettingsService, useValue: userSettingsSvc },
                 {
@@ -205,6 +215,21 @@ describe('SocialHubComponent', () => {
         expect(component.searchResults.length).toBe(1);
         expect(component.visibleSearchResults.length).toBe(1);
     }));
+
+    it('expone las nuevas secciones V3 en el orden acordado', () => {
+        fixture.detectChanges();
+
+        expect(component.sections.map((item) => item.id)).toEqual([
+            'resumen',
+            'comunidad',
+            'actividad',
+            'convocatorias',
+            'amistades',
+            'bloqueos',
+            'campanas',
+            'mensajes',
+        ]);
+    });
 
     it('expone una acción para abrir la campaña desde un mensaje del sistema', () => {
         fixture.detectChanges();
@@ -399,6 +424,23 @@ describe('SocialHubComponent', () => {
             initialDisplayName: 'Yuna',
         });
     });
+
+    it('activa el realtime social solo cuando la sesión está abierta', fakeAsync(() => {
+        const socialRealtimeSvc = TestBed.inject(SocialRealtimeService) as jasmine.SpyObj<SocialRealtimeService>;
+        fixture.detectChanges();
+
+        expect(socialRealtimeSvc.activate).not.toHaveBeenCalled();
+
+        isLoggedIn$.next(true);
+        tick();
+
+        expect(socialRealtimeSvc.activate).toHaveBeenCalled();
+
+        isLoggedIn$.next(false);
+        tick();
+
+        expect(socialRealtimeSvc.deactivate).toHaveBeenCalled();
+    }));
 
     it('etiqueta los toasts de amistad con la categoría amistad', fakeAsync(() => {
         const toastSvc = TestBed.inject(AppToastService) as jasmine.SpyObj<AppToastService>;

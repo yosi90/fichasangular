@@ -75,6 +75,7 @@ export class ProfileApiError extends Error {
 export interface UserPublicProfileTab {
     uid: string;
     initialDisplayName?: string | null;
+    mode?: 'public' | 'relationship';
 }
 
 export type UserPrivateProfileSectionId = 'resumen' | 'campanas' | 'identidad' | 'preferencias' | 'seguridad';

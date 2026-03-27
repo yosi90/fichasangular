@@ -50,9 +50,21 @@
                 <ng-template #guestSummary>
                     <div class="social-empty">
                         <mat-icon>travel_explore</mat-icon>
-                        <p>Puedes buscar usuarios y abrir sus perfiles públicos desde Amistades. Inicia sesión para activar amistades, bloqueos y mensajería.</p>
+                        <p>Puedes revisar el bloque social, pero Comunidad, Actividad y Convocatorias quedan bloqueadas hasta iniciar sesión. Amistades sigue ofreciendo búsqueda pública básica.</p>
                     </div>
                 </ng-template>
+            </section>
+
+            <section class="social-section" *ngIf="currentSection === 'comunidad'">
+                <app-social-community-section [isLoggedIn]="isLoggedIn"></app-social-community-section>
+            </section>
+
+            <section class="social-section" *ngIf="currentSection === 'actividad'">
+                <app-social-activity-section [isLoggedIn]="isLoggedIn"></app-social-activity-section>
+            </section>
+
+            <section class="social-section" *ngIf="currentSection === 'convocatorias'">
+                <app-social-lfg-section [isLoggedIn]="isLoggedIn" [openRequest]="openRequest"></app-social-lfg-section>
             </section>
 
             <section class="social-section" *ngIf="currentSection === 'amistades'">

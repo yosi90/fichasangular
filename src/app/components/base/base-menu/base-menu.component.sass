@@ -91,9 +91,6 @@
 
                 z-index: 1
 
-            ::ng-deep .mat-expansion-panel-body button
-                justify-content: center
-
             ::ng-deep span .mdc-button__label
                 max-width: 165px
 
@@ -101,6 +98,98 @@
                 text-overflow: ellipsis
 
                 margin: auto
+
+            ::ng-deep .mat-expansion-panel-body
+                padding: 12px
+
+            .user-panel-card
+                display: flex
+                flex-direction: column
+                gap: 8px
+
+            .user-panel-links
+                display: flex
+                flex-direction: column
+                gap: 8px
+
+            .user-panel-footer
+                padding-top: 2px
+
+            .user-panel-link
+                justify-content: flex-start
+                align-items: center
+                gap: 12px
+
+                width: 100%
+                min-height: 44px
+
+                border-radius: 8px
+                border: 1px solid rgba(255,255,255,.12)
+                background-color: #495058
+
+                font-weight: 700
+                letter-spacing: .02em
+                color: #eef3f8 !important
+
+                transition: background-color .2s ease, border-color .2s ease, transform .2s ease, box-shadow .2s ease
+
+                mat-icon
+                    margin-right: 0
+                    color: inherit !important
+
+                ::ng-deep .mdc-button__label
+                    color: inherit !important
+
+                &:hover
+                    transform: translateY(-1px)
+                    box-shadow: 0 6px 14px rgba(0,0,0,.2)
+                    background-color: #535b64
+
+            .user-panel-link__lead
+                display: inline-flex
+                align-items: center
+                gap: 10px
+                min-width: 0
+
+                span
+                    overflow: hidden
+                    text-overflow: ellipsis
+
+            .user-panel-link--primary
+                background: linear-gradient(180deg, #d41e72, #b61760)
+                color: #fff7fb
+                border-color: rgba(255,255,255,.14)
+
+                &:hover
+                    background: linear-gradient(180deg, #de2d7d, #c11b67)
+
+            .user-panel-link--login
+                background: linear-gradient(180deg, #d41e72, #b61760)
+                color: #fff7fb
+                border-color: rgba(255,255,255,.14)
+
+                &:hover
+                    background: linear-gradient(180deg, #de2d7d, #c11b67)
+
+            .user-panel-link:not(.user-panel-link--primary):not(.user-panel-link--login):not(.user-panel-link--danger)
+                background-color: #4c5560
+                color: #f1f5f9
+
+            .user-panel-link--admin
+                background-color: #42505f
+                color: #eef4f9
+                border-color: rgba(176, 190, 197, .16)
+
+                &:hover
+                    background-color: #4c5b6c
+
+            .user-panel-link--danger
+                color: #f4d9e5
+                background: linear-gradient(180deg, #57414b, #47343d)
+                border-color: rgba(212, 30, 114, .24)
+
+                &:hover
+                    background: linear-gradient(180deg, #634953, #503a44)
 
 ::ng-deep .menuOscuro
     background-color: #373C41

@@ -165,4 +165,16 @@ export class BaseMenuComponent implements OnInit, OnDestroy {
         this.cerrarOtros();
     }
 
+    abrirAdminPanel(): void {
+        if (!this.esAdmin)
+            return;
+        this.userProfileNavSvc.openAdminPanel();
+        this.closeAcordion();
+        this.cerrarOtros();
+    }
+
+    get esAdmin(): boolean {
+        return this.usrService.Usuario.permisos === 1;
+    }
+
 }

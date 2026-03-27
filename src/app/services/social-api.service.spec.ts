@@ -74,4 +74,16 @@ describe('SocialApiService', () => {
         expect(result.items[0].uid).toBe('uid-2');
         expect(httpMock.get).not.toHaveBeenCalled();
     });
+
+    it('listFriends falla si el read model privado no está disponible', async () => {
+        const httpMock = jasmine.createSpyObj('HttpClient', ['get', 'post', 'patch', 'delete']);
+        const service = new SocialApiService(httpMock, authMock);
+
+        await expectAsync(service.listFriends()).toBeRejectedWith(
+            jasmine.objectContaining({
+                code: 'PRIVATE_READ_MODEL_UNAVAILABLE',
+            })
+        );
+        expect(httpMock.get).not.toHaveBeenCalled();
+    });
 });

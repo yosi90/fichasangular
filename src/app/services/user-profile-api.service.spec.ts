@@ -13,26 +13,28 @@ describe('UserProfileApiService', () => {
 
     it('getMySettings preserva allowDirectMessagesFromNonFriends y envia Bearer', async () => {
         const httpMock = jasmine.createSpyObj('HttpClient', ['get', 'put', 'post', 'patch']);
-        httpMock.get.and.returnValue(of({
-            version: 1,
-            nuevo_personaje: {
-                generador_config: null,
-                preview_minimizada: null,
-                preview_restaurada: null,
-            },
-            perfil: {
-                visibilidadPorDefectoPersonajes: true,
-                mostrarPerfilPublico: true,
-                allowDirectMessagesFromNonFriends: true,
-            },
-        }));
-        const service = new UserProfileApiService(httpMock, authMock);
+        const privateUserFirestoreSvcMock = {
+            getMySettings: jasmine.createSpy('getMySettings').and.resolveTo({
+                version: 1,
+                nuevo_personaje: {
+                    generador_config: null,
+                    preview_minimizada: null,
+                    preview_restaurada: null,
+                },
+                perfil: {
+                    visibilidadPorDefectoPersonajes: true,
+                    mostrarPerfilPublico: true,
+                    allowDirectMessagesFromNonFriends: true,
+                },
+            }),
+        };
+        const service = new UserProfileApiService(httpMock, authMock, privateUserFirestoreSvcMock as any);
 
         const settings = await service.getMySettings();
 
         expect(settings.perfil.allowDirectMessagesFromNonFriends).toBeTrue();
-        const options = httpMock.get.calls.mostRecent().args[1];
-        expect(options.headers.get('Authorization')).toBe('Bearer token-settings');
+        expect(privateUserFirestoreSvcMock.getMySettings).toHaveBeenCalled();
+        expect(httpMock.get).not.toHaveBeenCalled();
     });
 
     it('getMyProfile usa Firestore privado cuando el read model esta disponible', async () => {
@@ -110,13 +112,15 @@ describe('UserProfileApiService', () => {
 
     it('getMySettings normaliza defaults sin truncar el documento', async () => {
         const httpMock = jasmine.createSpyObj('HttpClient', ['get', 'put', 'post', 'patch']);
-        httpMock.get.and.returnValue(of({
-            version: 1,
-            perfil: {
-                mostrarPerfilPublico: false,
-            },
-        }));
-        const service = new UserProfileApiService(httpMock, authMock);
+        const privateUserFirestoreSvcMock = {
+            getMySettings: jasmine.createSpy('getMySettings').and.resolveTo({
+                version: 1,
+                perfil: {
+                    mostrarPerfilPublico: false,
+                },
+            }),
+        };
+        const service = new UserProfileApiService(httpMock, authMock, privateUserFirestoreSvcMock as any);
 
         const settings = await service.getMySettings();
 
@@ -128,27 +132,29 @@ describe('UserProfileApiService', () => {
 
     it('getMyProfile normaliza bio, genero, pronombres y permisos', async () => {
         const httpMock = jasmine.createSpyObj('HttpClient', ['get', 'put', 'post', 'patch']);
-        httpMock.get.and.returnValue(of({
-            uid: ' uid-1 ',
-            displayName: ' Perfil API ',
-            bio: '  Bio con saltos\r\nextra  ',
-            genderIdentity: ' No binario ',
-            pronouns: ' elle ',
-            email: ' perfil@test.dev ',
-            emailVerified: true,
-            authProvider: 'correo',
-            photoUrl: '',
-            photoThumbUrl: ' thumb.webp ',
-            createdAt: '2026-03-09T12:00:00.000Z',
-            lastSeenAt: '2026-03-10T12:00:00.000Z',
-            role: 'master',
-            permissions: {
-                campanas: { create: 1 },
-                personajes: { create: true },
-                ' ': { create: true },
-            },
-        }));
-        const service = new UserProfileApiService(httpMock, authMock);
+        const privateUserFirestoreSvcMock = {
+            getMyProfile: jasmine.createSpy('getMyProfile').and.resolveTo({
+                uid: ' uid-1 ',
+                displayName: ' Perfil API ',
+                bio: '  Bio con saltos\r\nextra  ',
+                genderIdentity: ' No binario ',
+                pronouns: ' elle ',
+                email: ' perfil@test.dev ',
+                emailVerified: true,
+                authProvider: 'correo',
+                photoUrl: '',
+                photoThumbUrl: ' thumb.webp ',
+                createdAt: '2026-03-09T12:00:00.000Z',
+                lastSeenAt: '2026-03-10T12:00:00.000Z',
+                role: 'master',
+                permissions: {
+                    campanas: { create: 1 },
+                    personajes: { create: true },
+                    ' ': { create: true },
+                },
+            }),
+        };
+        const service = new UserProfileApiService(httpMock, authMock, privateUserFirestoreSvcMock as any);
 
         const profile = await service.getMyProfile();
 
@@ -162,8 +168,32 @@ describe('UserProfileApiService', () => {
             campanas: { create: false },
             personajes: { create: true },
         });
-        const options = httpMock.get.calls.mostRecent().args[1];
-        expect(options.headers.get('Authorization')).toBe('Bearer token-settings');
+        expect(privateUserFirestoreSvcMock.getMyProfile).toHaveBeenCalled();
+        expect(httpMock.get).not.toHaveBeenCalled();
+    });
+
+    it('getMyProfile falla si el read model privado no está disponible', async () => {
+        const httpMock = jasmine.createSpyObj('HttpClient', ['get', 'put', 'post', 'patch']);
+        const service = new UserProfileApiService(httpMock, authMock);
+
+        await expectAsync(service.getMyProfile()).toBeRejectedWith(
+            jasmine.objectContaining({
+                code: 'PRIVATE_READ_MODEL_UNAVAILABLE',
+            })
+        );
+        expect(httpMock.get).not.toHaveBeenCalled();
+    });
+
+    it('getMySettings falla si el read model privado no está disponible', async () => {
+        const httpMock = jasmine.createSpyObj('HttpClient', ['get', 'put', 'post', 'patch']);
+        const service = new UserProfileApiService(httpMock, authMock);
+
+        await expectAsync(service.getMySettings()).toBeRejectedWith(
+            jasmine.objectContaining({
+                code: 'PRIVATE_READ_MODEL_UNAVAILABLE',
+            })
+        );
+        expect(httpMock.get).not.toHaveBeenCalled();
     });
 
     it('updateMyProfile envia Bearer y limpia campos opcionales vacios a null', async () => {

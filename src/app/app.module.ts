@@ -108,6 +108,9 @@ import { ListadoDeidadesComponent } from './components/shared/listado-deidades/l
 import { UserProfileComponent } from './components/base/user-profile/user-profile.component';
 import { PublicUserProfileComponent } from './components/base/public-user-profile/public-user-profile.component';
 import { SocialHubComponent } from './components/base/social-hub/social-hub.component';
+import { SocialActivitySectionComponent } from './components/base/social-hub/social-activity-section.component';
+import { SocialCommunitySectionComponent } from './components/base/social-hub/social-community-section.component';
+import { SocialLfgSectionComponent } from './components/base/social-hub/social-lfg-section.component';
 import { HelpRoadmapComponent } from './components/base/help-roadmap/help-roadmap.component';
 import { HelpLegalComponent } from './components/base/help-legal/help-legal.component';
 import { HelpUsageAboutComponent } from './components/base/help-usage-about/help-usage-about.component';
@@ -126,6 +129,9 @@ import { CloseFilterMenuOnMouseleaveDirective } from './directives/close-filter-
         UserProfileComponent,
         PublicUserProfileComponent,
         SocialHubComponent,
+        SocialCommunitySectionComponent,
+        SocialActivitySectionComponent,
+        SocialLfgSectionComponent,
         HelpRoadmapComponent,
         HelpLegalComponent,
         HelpUsageAboutComponent,

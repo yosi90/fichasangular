@@ -640,6 +640,8 @@ export class TabControlComponent implements OnInit, OnDestroy {
         if (existente) {
             if (!existente.initialDisplayName && payload.initialDisplayName)
                 existente.initialDisplayName = payload.initialDisplayName;
+            if (payload.mode === 'relationship')
+                existente.mode = 'relationship';
             this.selectTabByKey(this.getPublicProfileTabKey(existente));
             return;
         }
@@ -647,6 +649,7 @@ export class TabControlComponent implements OnInit, OnDestroy {
         const tab: UserPublicProfileTab = {
             uid,
             initialDisplayName: `${payload?.initialDisplayName ?? ''}`.trim() || null,
+            mode: payload?.mode === 'relationship' ? 'relationship' : 'public',
         };
         const targetKey = this.getPublicProfileTabKey(tab);
         this.publicProfileTabs.push(tab);

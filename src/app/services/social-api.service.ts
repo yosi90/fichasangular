@@ -51,17 +51,7 @@ export class SocialApiService {
     }
 
     async listFriends(limit: number = 25, offset: number = 0): Promise<PagedListResult<FriendItem>> {
-        if (this.privateUserFirestoreSvc)
-            return this.privateUserFirestoreSvc.listFriends(limit, offset);
-
-        return this.getPagedList<FriendItem>(
-            `${this.usuariosBaseUrl}/me/friends`,
-            {
-                limit: `${this.normalizeLimit(limit)}`,
-                offset: `${this.normalizeOffset(offset)}`,
-            },
-            (item) => this.normalizeFriendItem(item)
-        );
+        return this.requirePrivateReadModel('amistades').listFriends(limit, offset);
     }
 
     watchFriends(
@@ -76,17 +66,8 @@ export class SocialApiService {
     }
 
     async listReceivedFriendRequests(limit: number = 25, offset: number = 0): Promise<PagedListResult<FriendRequestItem>> {
-        if (this.privateUserFirestoreSvc)
-            return this.privateUserFirestoreSvc.listFriendRequests('received', limit, offset);
-
-        return this.getPagedList<FriendRequestItem>(
-            `${this.usuariosBaseUrl}/me/friend-requests/received`,
-            {
-                limit: `${this.normalizeLimit(limit)}`,
-                offset: `${this.normalizeOffset(offset)}`,
-            },
-            (item) => this.normalizeFriendRequestItem(item, 'received')
-        );
+        return this.requirePrivateReadModel('solicitudes de amistad recibidas')
+            .listFriendRequests('received', limit, offset);
     }
 
     watchReceivedFriendRequests(
@@ -101,17 +82,8 @@ export class SocialApiService {
     }
 
     async listSentFriendRequests(limit: number = 25, offset: number = 0): Promise<PagedListResult<FriendRequestItem>> {
-        if (this.privateUserFirestoreSvc)
-            return this.privateUserFirestoreSvc.listFriendRequests('sent', limit, offset);
-
-        return this.getPagedList<FriendRequestItem>(
-            `${this.usuariosBaseUrl}/me/friend-requests/sent`,
-            {
-                limit: `${this.normalizeLimit(limit)}`,
-                offset: `${this.normalizeOffset(offset)}`,
-            },
-            (item) => this.normalizeFriendRequestItem(item, 'sent')
-        );
+        return this.requirePrivateReadModel('solicitudes de amistad enviadas')
+            .listFriendRequests('sent', limit, offset);
     }
 
     watchSentFriendRequests(
@@ -249,6 +221,17 @@ export class SocialApiService {
         } catch (error) {
             throw this.toProfileApiError(error, 'No se pudo desbloquear al usuario.');
         }
+    }
+
+    private requirePrivateReadModel(scope: string): PrivateUserFirestoreService {
+        if (this.privateUserFirestoreSvc)
+            return this.privateUserFirestoreSvc;
+
+        throw new ProfileApiError(
+            `Las lecturas actor-scoped de ${scope} deben salir de Firestore y el read model privado no está disponible.`,
+            'PRIVATE_READ_MODEL_UNAVAILABLE',
+            500
+        );
     }
 
     private async getPagedList<T>(

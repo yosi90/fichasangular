@@ -35,21 +35,8 @@ export class UserProfileApiService {
     ) { }
 
     async getMyProfile(): Promise<UserPrivateProfile> {
-        if (this.privateUserFirestoreSvc) {
-            const response = await this.privateUserFirestoreSvc.getMyProfile();
-            return this.normalizePrivateProfile(response ?? this.buildFallbackPrivateProfile());
-        }
-
-        try {
-            const response = await firstValueFrom(
-                this.http.get<UserPrivateProfile>(`${this.usuariosBaseUrl}/me`, {
-                    headers: await this.buildAuthHeaders(),
-                })
-            );
-            return this.normalizePrivateProfile(response);
-        } catch (error) {
-            throw this.toProfileApiError(error, 'No se pudo cargar tu perfil.');
-        }
+        const response = await this.requirePrivateReadModel('perfil privado').getMyProfile();
+        return this.normalizePrivateProfile(response ?? this.buildFallbackPrivateProfile());
     }
 
     async updateMyProfile(input: UserPrivateProfileUpdate): Promise<UserPrivateProfile> {
@@ -76,21 +63,8 @@ export class UserProfileApiService {
     }
 
     async getMySettings(): Promise<UserSettingsV1> {
-        if (this.privateUserFirestoreSvc) {
-            const response = await this.privateUserFirestoreSvc.getMySettings();
-            return this.normalizeSettings(response ?? createDefaultUserSettings());
-        }
-
-        try {
-            const response = await firstValueFrom(
-                this.http.get<UserSettingsV1>(`${this.usuariosBaseUrl}/me/settings`, {
-                    headers: await this.buildAuthHeaders(),
-                })
-            );
-            return this.normalizeSettings(response);
-        } catch (error) {
-            throw this.toProfileApiError(error, 'No se pudieron cargar los ajustes de usuario.');
-        }
+        const response = await this.requirePrivateReadModel('ajustes privados').getMySettings();
+        return this.normalizeSettings(response ?? createDefaultUserSettings());
     }
 
     async replaceMySettings(settings: UserSettingsV1): Promise<UserSettingsV1> {
@@ -269,6 +243,17 @@ export class UserProfileApiService {
             return;
         }
         this.publicProfileCache.clear();
+    }
+
+    private requirePrivateReadModel(scope: string): PrivateUserFirestoreService {
+        if (this.privateUserFirestoreSvc)
+            return this.privateUserFirestoreSvc;
+
+        throw new ProfileApiError(
+            `El ${scope} debe leerse desde Firestore y el read model privado no está disponible.`,
+            'PRIVATE_READ_MODEL_UNAVAILABLE',
+            500
+        );
     }
 
     private async buildAuthHeaders(): Promise<HttpHeaders> {

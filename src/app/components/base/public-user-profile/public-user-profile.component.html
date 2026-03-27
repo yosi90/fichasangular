@@ -1,29 +1,52 @@
 <div class="public-profile-shell tw-p-4">
     <div *ngIf="loading" class="public-profile-state sombra-caja-sm tw-rounded-md tw-p-6">
-        Cargando perfil público...
+        Cargando perfil...
     </div>
 
     <div *ngIf="!loading && errorMessage.length > 0" class="public-profile-state sombra-caja-sm tw-rounded-md tw-p-6">
         {{errorMessage}}
     </div>
 
-    <section class="public-profile-card sombra-caja-sm tw-rounded-md" *ngIf="!loading && profile">
+    <section class="public-profile-card sombra-caja-sm tw-rounded-md" *ngIf="!loading && (publicProfile || relationshipProfile)">
         <div class="public-profile-layout">
             <div class="public-profile-avatar">
-                <img [src]="avatarUrl" alt="Avatar público del creador" />
+                <img [src]="avatarUrl" [alt]="profileLabel" />
             </div>
             <div class="public-profile-copy">
-                <div class="public-profile-tag">Perfil público del creador</div>
+                <div class="public-profile-tag">{{tagLabel}}</div>
                 <h2 class="public-profile-title">{{profileLabel}}</h2>
                 <p class="public-profile-subtitle">Miembro desde {{formattedMemberSince}}</p>
                 <p class="public-profile-pronouns" *ngIf="pronounsText.length > 0">{{pronounsText}}</p>
                 <p class="public-profile-bio" *ngIf="bioText.length > 0">{{bioText}}</p>
+                <p class="public-profile-relationship" *ngIf="mode === 'relationship' && relationshipProfile">{{relationshipStateLabel}}</p>
 
                 <div class="public-profile-stats">
                     <div class="public-profile-stat" *ngFor="let item of statsItems">
                         <strong>{{item.value}}</strong>
                         <span>{{item.label}}</span>
                     </div>
+                </div>
+
+                <div class="public-profile-aux-grid" *ngIf="mode === 'relationship' && relationshipProfile">
+                    <div class="public-profile-stat" [class.public-profile-stat--warn]="item.tone === 'warn'" *ngFor="let item of relationshipMetaItems">
+                        <strong>{{item.value}}</strong>
+                        <span>{{item.label}}</span>
+                    </div>
+                </div>
+
+                <div class="public-profile-visibility" *ngIf="mode === 'relationship' && relationshipProfile">
+                    <div class="public-profile-visibility__item" *ngFor="let item of visibilityItems">
+                        <span>{{item.label}}</span>
+                        <strong>{{item.value}}</strong>
+                    </div>
+                </div>
+
+                <div class="public-profile-activity" *ngIf="mode === 'relationship' && relationshipProfile && recentActivityItems.length > 0">
+                    <h3>Actividad reciente</h3>
+                    <article class="public-profile-activity__item" *ngFor="let item of recentActivityItems">
+                        <strong>{{item.summary}}</strong>
+                        <span>{{item.kind}}</span>
+                    </article>
                 </div>
             </div>
         </div>

@@ -7,16 +7,13 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatDialog } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
 import { MatMenuModule } from '@angular/material/menu';
-import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatTooltipModule } from '@angular/material/tooltip';
 
 import { NavbarComponent } from './navbar.component';
-import { AppToastService } from 'src/app/services/app-toast.service';
 import { ManualFlagConsistencyNoticeService } from 'src/app/services/manual-flag-consistency-notice.service';
 import { ManualesAsociadosService } from 'src/app/services/manuales-asociados.service';
 import { ManualVistaNavigationService } from 'src/app/services/manual-vista-navigation.service';
 import { UserProfileNavigationService } from 'src/app/services/user-profile-navigation.service';
-import { UserSettingsService } from 'src/app/services/user-settings.service';
 import { UserService } from 'src/app/services/user.service';
 
 describe('NavbarComponent', () => {
@@ -28,8 +25,6 @@ describe('NavbarComponent', () => {
     let currentPrivateProfile$: BehaviorSubject<any>;
     let manualVistaNavSvc: jasmine.SpyObj<ManualVistaNavigationService>;
     let userProfileNavSvc: jasmine.SpyObj<UserProfileNavigationService>;
-    let userSettingsSvc: jasmine.SpyObj<UserSettingsService>;
-    let appToastSvc: jasmine.SpyObj<AppToastService>;
     let dialog: jasmine.SpyObj<MatDialog>;
     let userSvc: any;
 
@@ -43,26 +38,6 @@ describe('NavbarComponent', () => {
             'UserProfileNavigationService',
             ['openPrivateProfile', 'openSocial', 'openAdminPanel', 'openRoadmap', 'openLegalPrivacy', 'openUsageAbout']
         );
-        userSettingsSvc = jasmine.createSpyObj<UserSettingsService>('UserSettingsService', ['loadSettings', 'saveProfileSettings']);
-        userSettingsSvc.loadSettings.and.resolveTo({
-            version: 1,
-            nuevo_personaje: {
-                generador_config: null,
-                preview_minimizada: null,
-                preview_restaurada: null,
-            },
-            perfil: {
-                visibilidadPorDefectoPersonajes: false,
-                mostrarPerfilPublico: true,
-                allowDirectMessagesFromNonFriends: false,
-            },
-        } as any);
-        userSettingsSvc.saveProfileSettings.and.resolveTo({
-            visibilidadPorDefectoPersonajes: false,
-            mostrarPerfilPublico: true,
-            allowDirectMessagesFromNonFriends: false,
-        } as any);
-        appToastSvc = jasmine.createSpyObj<AppToastService>('AppToastService', ['showSuccess', 'showError']);
         dialog = jasmine.createSpyObj<MatDialog>('MatDialog', ['open']);
         userSvc = {
             get Usuario() {
@@ -82,7 +57,6 @@ describe('NavbarComponent', () => {
                 MatMenuModule,
                 MatTooltipModule,
                 MatIconModule,
-                MatSlideToggleModule,
             ],
             providers: [
                 {
@@ -99,8 +73,6 @@ describe('NavbarComponent', () => {
                 { provide: ManualVistaNavigationService, useValue: manualVistaNavSvc },
                 { provide: UserService, useValue: userSvc },
                 { provide: UserProfileNavigationService, useValue: userProfileNavSvc },
-                { provide: UserSettingsService, useValue: userSettingsSvc },
-                { provide: AppToastService, useValue: appToastSvc },
                 { provide: MatDialog, useValue: dialog },
             ],
             schemas: [NO_ERRORS_SCHEMA],
@@ -152,6 +124,16 @@ describe('NavbarComponent', () => {
         expect(userProfileNavSvc.openPrivateProfile).toHaveBeenCalledWith();
     });
 
+    it('abre Social desde Archivo cuando hay sesión', () => {
+        userState = { nombre: 'Yosi', correo: 'yosi@test.dev', permisos: 0 };
+        isLoggedIn$.next(true);
+        fixture.detectChanges();
+
+        component.abrirSocial();
+
+        expect(userProfileNavSvc.openSocial).toHaveBeenCalledWith('resumen');
+    });
+
     it('abre una sección concreta del perfil desde Opciones', () => {
         userState = { nombre: 'Yosi', correo: 'yosi@test.dev', permisos: 0 };
         isLoggedIn$.next(true);
@@ -160,12 +142,6 @@ describe('NavbarComponent', () => {
         component.abrirSeccionPerfil('identidad');
 
         expect(userProfileNavSvc.openPrivateProfile).toHaveBeenCalledWith('identidad');
-    });
-
-    it('abre social desde la cinta', () => {
-        component.abrirSocial();
-
-        expect(userProfileNavSvc.openSocial).toHaveBeenCalledWith('resumen');
     });
 
     it('abre admin panel solo para admins', () => {
@@ -259,63 +235,6 @@ describe('NavbarComponent', () => {
         component.abrirUsoYAcerca();
 
         expect(userProfileNavSvc.openUsageAbout).toHaveBeenCalled();
-    });
-
-    it('carga quick settings al abrir Opciones con sesión iniciada', fakeAsync(() => {
-        userState = { nombre: 'Yosi', correo: 'yosi@test.dev', permisos: 0 };
-        isLoggedIn$.next(true);
-        fixture.detectChanges();
-
-        const trigger = jasmine.createSpyObj('MatMenuTrigger', ['closeMenu', 'openMenu'], { menuOpen: true });
-        component.onOptionsMenuOpened(trigger as any);
-        tick();
-
-        expect(userSettingsSvc.loadSettings).toHaveBeenCalledWith(true);
-        expect(component.mostrarPerfilPublicoQuickSetting).toBeTrue();
-        expect(component.visibilidadPorDefectoQuickSetting).toBeFalse();
-    }));
-
-    it('guarda un quick setting y muestra feedback de éxito', async () => {
-        userState = { nombre: 'Yosi', correo: 'yosi@test.dev', permisos: 0 };
-        isLoggedIn$.next(true);
-        fixture.detectChanges();
-        await fixture.whenStable();
-        component.mostrarPerfilPublicoQuickSetting = true;
-        userSettingsSvc.saveProfileSettings.and.resolveTo({
-            visibilidadPorDefectoPersonajes: false,
-            mostrarPerfilPublico: false,
-            allowDirectMessagesFromNonFriends: false,
-        } as any);
-
-        await component.onQuickSettingChange('mostrarPerfilPublico', false);
-
-        expect(userSettingsSvc.saveProfileSettings).toHaveBeenCalledWith({ mostrarPerfilPublico: false });
-        expect(component.mostrarPerfilPublicoQuickSetting).toBeFalse();
-        expect(appToastSvc.showSuccess).toHaveBeenCalled();
-    });
-
-    it('revierte el quick setting si el guardado falla', async () => {
-        userState = { nombre: 'Yosi', correo: 'yosi@test.dev', permisos: 0 };
-        isLoggedIn$.next(true);
-        fixture.detectChanges();
-        await fixture.whenStable();
-        component.mostrarPerfilPublicoQuickSetting = true;
-        userSettingsSvc.saveProfileSettings.and.rejectWith(new Error('fallo persistiendo'));
-
-        await component.onQuickSettingChange('mostrarPerfilPublico', false);
-
-        expect(component.mostrarPerfilPublicoQuickSetting).toBeTrue();
-        expect(component.quickSettingsError).toContain('fallo persistiendo');
-        expect(appToastSvc.showError).toHaveBeenCalled();
-    });
-
-    it('deshabilita quick settings para invitados pero mantiene acceso a login', () => {
-        expect(component.isLoggedIn).toBeFalse();
-        expect(component.isQuickSettingDisabled('mostrarPerfilPublico')).toBeTrue();
-
-        component.openSesionDialog();
-
-        expect(dialog.open).toHaveBeenCalled();
     });
 
     it('cierra un menú de la cinta con retardo al alejarse', fakeAsync(() => {

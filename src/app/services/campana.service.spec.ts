@@ -10,6 +10,8 @@ describe('CampanaService', () => {
     let service: CampanaService;
     let invalidations$: Subject<any>;
     let campaignRealtimeSyncSvcMock: jasmine.SpyObj<CampaignRealtimeSyncService>;
+    let privateUserFirestoreSvcMock: { listCampaigns: jasmine.Spy; watchCampaigns: jasmine.Spy; };
+    let watchState: { next: ((items: any[]) => void) | null; };
 
     beforeEach(() => {
         httpMock = {
@@ -19,17 +21,26 @@ describe('CampanaService', () => {
             delete: jasmine.createSpy('delete'),
         };
         invalidations$ = new Subject<any>();
+        watchState = { next: null };
         campaignRealtimeSyncSvcMock = jasmine.createSpyObj<CampaignRealtimeSyncService>(
             'CampaignRealtimeSyncService',
             ['notifyLocalChange'],
             { listInvalidations$: invalidations$.asObservable() }
         );
+        privateUserFirestoreSvcMock = {
+            listCampaigns: jasmine.createSpy('listCampaigns').and.resolveTo([]),
+            watchCampaigns: jasmine.createSpy('watchCampaigns').and.callFake((next: (items: any[]) => void) => {
+                watchState.next = next;
+                return () => undefined;
+            }),
+        };
 
         service = new CampanaService(
             { currentUser: { uid: 'actor-1', getIdToken: async () => 'token' } } as any,
             httpMock as any,
             { run: <T>(fn: () => T) => fn() } as FirebaseInjectionContextService,
-            campaignRealtimeSyncSvcMock
+            campaignRealtimeSyncSvcMock,
+            privateUserFirestoreSvcMock as any
         );
     });
 
@@ -49,9 +60,10 @@ describe('CampanaService', () => {
     });
 
     it('getListCampanas añade la opción sintética Sin campaña para campañas con membresía activa', async () => {
+        privateUserFirestoreSvcMock.listCampaigns.and.resolveTo([
+            { id: 7, nombre: 'Campaña visible', campaignRole: 'master', membershipStatus: 'activo' },
+        ]);
         httpMock.get.and.callFake((url: string) => {
-            if (url.endsWith('campanas'))
-                return of([{ i: 7, n: 'Campaña visible', campaignRole: 'master', membershipStatus: 'activo' }]);
             if (url.endsWith('campanas/7'))
                 return of({
                     i: 7,
@@ -66,26 +78,25 @@ describe('CampanaService', () => {
         const observable = await service.getListCampanas();
         const campanas = await new Promise<any[]>((resolve) => {
             const subscription = observable.subscribe((value) => {
+                if (value.length < 2)
+                    return;
                 resolve(value);
                 subscription.unsubscribe();
             });
+            watchState.next?.([
+                { id: 7, nombre: 'Campaña visible', campaignRole: 'master', membershipStatus: 'activo' },
+            ]);
         });
 
         expect(campanas.map((item) => item.Nombre)).toEqual(['Sin campaña', 'Campaña visible']);
     });
 
     it('getListCampanas vuelve a emitir tras una invalidación realtime o local', fakeAsync(() => {
-        let cycle = 0;
+        privateUserFirestoreSvcMock.listCampaigns.and.resolveTo([
+            { id: 7, nombre: 'Campaña visible', campaignRole: 'master', membershipStatus: 'activo' },
+            { id: 8, nombre: 'Campaña nueva', campaignRole: 'jugador', membershipStatus: 'activo' },
+        ]);
         httpMock.get.and.callFake((url: string) => {
-            if (url.endsWith('campanas')) {
-                cycle += 1;
-                if (cycle === 1)
-                    return of([{ i: 7, n: 'Campaña visible', campaignRole: 'master', membershipStatus: 'activo' }]);
-                return of([
-                    { i: 7, n: 'Campaña visible', campaignRole: 'master', membershipStatus: 'activo' },
-                    { i: 8, n: 'Campaña nueva', campaignRole: 'jugador', membershipStatus: 'activo' },
-                ]);
-            }
             if (url.endsWith('campanas/7'))
                 return of({
                     i: 7,
@@ -112,6 +123,10 @@ describe('CampanaService', () => {
         const emissions: string[][] = [];
         const subscription = observable.subscribe((campanas: any[]) => emissions.push(campanas.map((item) => item.Nombre)));
         tick();
+        watchState.next?.([
+            { id: 7, nombre: 'Campaña visible', campaignRole: 'master', membershipStatus: 'activo' },
+        ]);
+        tick();
 
         invalidations$.next({
             code: 'system.campaign_invitation_resolved',
@@ -122,17 +137,19 @@ describe('CampanaService', () => {
         tick();
 
         expect(emissions).toEqual([
+            ['Sin campaña'],
             ['Sin campaña', 'Campaña visible'],
-            ['Sin campaña', 'Campaña nueva', 'Campaña visible'],
+            ['Sin campaña', 'Campaña visible', 'Campaña nueva'],
         ]);
 
         subscription.unsubscribe();
     }));
 
     it('getListCampanas detiene el polling cuando no quedan suscriptores', fakeAsync(() => {
+        privateUserFirestoreSvcMock.listCampaigns.and.resolveTo([
+            { id: 7, nombre: 'Campaña visible', campaignRole: 'master', membershipStatus: 'activo' },
+        ]);
         httpMock.get.and.callFake((url: string) => {
-            if (url.endsWith('campanas'))
-                return of([{ i: 7, n: 'Campaña visible', campaignRole: 'master', membershipStatus: 'activo' }]);
             if (url.endsWith('campanas/7'))
                 return of({
                     i: 7,
@@ -150,16 +167,23 @@ describe('CampanaService', () => {
 
         const subscription = observable.subscribe();
         tick();
+        watchState.next?.([
+            { id: 7, nombre: 'Campaña visible', campaignRole: 'master', membershipStatus: 'activo' },
+        ]);
+        tick();
 
-        expect(httpMock.get.calls.allArgs().filter((args) => `${args[0]}`.match(/campanas$/)).length).toBe(1);
+        expect(privateUserFirestoreSvcMock.listCampaigns.calls.count()).toBe(0);
+        expect(httpMock.get.calls.allArgs().filter((args) => `${args[0]}`.match(/campanas\/7$/)).length).toBe(1);
 
         tick(30000);
-        expect(httpMock.get.calls.allArgs().filter((args) => `${args[0]}`.match(/campanas$/)).length).toBe(2);
+        expect(privateUserFirestoreSvcMock.listCampaigns.calls.count()).toBe(1);
+        expect(httpMock.get.calls.allArgs().filter((args) => `${args[0]}`.match(/campanas\/7$/)).length).toBe(2);
 
         subscription.unsubscribe();
         tick(30000);
 
-        expect(httpMock.get.calls.allArgs().filter((args) => `${args[0]}`.match(/campanas$/)).length).toBe(2);
+        expect(privateUserFirestoreSvcMock.listCampaigns.calls.count()).toBe(1);
+        expect(httpMock.get.calls.allArgs().filter((args) => `${args[0]}`.match(/campanas\/7$/)).length).toBe(2);
     }));
 
     it('getListCampanas usa watcher Firestore privado y reconstruye tramas tras invalidación', fakeAsync(() => {
@@ -371,13 +395,12 @@ describe('CampanaService', () => {
     }));
 
     it('getListCampanas excluye campañas sin membresía activa del actor', async () => {
+        privateUserFirestoreSvcMock.listCampaigns.and.resolveTo([
+            { id: 7, nombre: 'Campaña propia', campaignRole: 'master', membershipStatus: 'activo' },
+            { id: 8, nombre: 'Campaña expulsado', campaignRole: 'jugador', membershipStatus: 'expulsado' },
+            { id: 9, nombre: 'Campaña legacy owner', campaignRole: null, membershipStatus: null },
+        ]);
         httpMock.get.and.callFake((url: string) => {
-            if (url.endsWith('campanas'))
-                return of([
-                    { i: 7, n: 'Campaña propia', campaignRole: 'master', membershipStatus: 'activo' },
-                    { i: 8, n: 'Campaña expulsado', campaignRole: 'jugador', membershipStatus: 'expulsado' },
-                    { i: 9, n: 'Campaña legacy owner', campaignRole: null, membershipStatus: null },
-                ]);
             if (url.endsWith('campanas/7'))
                 return of({
                     i: 7,
@@ -392,22 +415,30 @@ describe('CampanaService', () => {
         const observable = await service.getListCampanas();
         const campanas = await new Promise<any[]>((resolve) => {
             const subscription = observable.subscribe((value) => {
+                if (value.length < 2)
+                    return;
                 resolve(value);
                 subscription.unsubscribe();
             });
+            watchState.next?.([
+                { id: 7, nombre: 'Campaña propia', campaignRole: 'master', membershipStatus: 'activo' },
+                { id: 8, nombre: 'Campaña expulsado', campaignRole: 'jugador', membershipStatus: 'expulsado' },
+                { id: 9, nombre: 'Campaña legacy owner', campaignRole: null, membershipStatus: null },
+            ]);
         });
 
         expect(campanas.map((item) => item.Nombre)).toEqual(['Sin campaña', 'Campaña propia']);
+        expect(privateUserFirestoreSvcMock.listCampaigns).not.toHaveBeenCalled();
         expect(httpMock.get.calls.allArgs().map((args) => args[0])).toEqual([
-            jasmine.stringMatching(/campanas$/),
             jasmine.stringMatching(/campanas\/7$/),
         ]);
     });
 
     it('getListCampanas reutiliza el árbol actor-scoped de detalle para preservar tramas solo master', async () => {
+        privateUserFirestoreSvcMock.listCampaigns.and.resolveTo([
+            { id: 7, nombre: 'Caballeros de Cormyr', campaignRole: 'master', membershipStatus: 'activo' },
+        ]);
         httpMock.get.and.callFake((url: string) => {
-            if (url.endsWith('campanas'))
-                return of([{ i: 7, n: 'Caballeros de Cormyr', campaignRole: 'master', membershipStatus: 'activo' }]);
             if (url.endsWith('campanas/7'))
                 return of({
                     i: 7,
@@ -430,9 +461,14 @@ describe('CampanaService', () => {
         const observable = await service.getListCampanas();
         const campanas = await new Promise<any[]>((resolve) => {
             const subscription = observable.subscribe((value) => {
+                if (value.length < 2)
+                    return;
                 resolve(value);
                 subscription.unsubscribe();
             });
+            watchState.next?.([
+                { id: 7, nombre: 'Caballeros de Cormyr', campaignRole: 'master', membershipStatus: 'activo' },
+            ]);
         });
 
         expect(campanas[1].Tramas.map((item: any) => item.Nombre)).toEqual([
@@ -444,37 +480,37 @@ describe('CampanaService', () => {
     });
 
     it('listVisibleCampaigns normaliza rol y estado de membresía', async () => {
-        httpMock.get.and.returnValue(of([
-            { i: 9, n: 'Costa', campaignRole: 'master', membershipStatus: 'activo' },
-            { i: 10, n: 'Bosque', campaignRole: 'jugador', membershipStatus: 'expulsado' },
-        ]));
+        privateUserFirestoreSvcMock.listCampaigns.and.resolveTo([
+            { id: 9, nombre: 'Costa', campaignRole: 'master', membershipStatus: 'activo' },
+            { id: 10, nombre: 'Bosque', campaignRole: 'jugador', membershipStatus: 'expulsado' },
+        ]);
 
         const campaigns = await service.listVisibleCampaigns();
 
         expect(campaigns).toEqual([
-            { id: 10, nombre: 'Bosque', campaignRole: 'jugador', membershipStatus: 'expulsado' },
             { id: 9, nombre: 'Costa', campaignRole: 'master', membershipStatus: 'activo' },
+            { id: 10, nombre: 'Bosque', campaignRole: 'jugador', membershipStatus: 'expulsado' },
         ]);
     });
 
     it('listVisibleCampaigns tolera alias legacy para rol y estado', async () => {
-        httpMock.get.and.returnValue(of([
-            { i: 9, n: 'Costa', Role: 'master', Estado: 'activo' },
-            { i: 10, n: 'Bosque', rolCampana: 'jugador', memberStatus: 'expulsado' },
-        ]));
+        privateUserFirestoreSvcMock.listCampaigns.and.resolveTo([
+            { id: 9, nombre: 'Costa', campaignRole: 'master', membershipStatus: 'activo' },
+            { id: 10, nombre: 'Bosque', campaignRole: 'jugador', membershipStatus: 'expulsado' },
+        ]);
 
         const campaigns = await service.listVisibleCampaigns();
 
         expect(campaigns).toEqual([
-            { id: 10, nombre: 'Bosque', campaignRole: 'jugador', membershipStatus: 'expulsado' },
             { id: 9, nombre: 'Costa', campaignRole: 'master', membershipStatus: 'activo' },
+            { id: 10, nombre: 'Bosque', campaignRole: 'jugador', membershipStatus: 'expulsado' },
         ]);
     });
 
     it('listVisibleCampaigns preserva null en campañas legacy donde el actor solo es owner', async () => {
-        httpMock.get.and.returnValue(of([
-            { i: 12, n: 'Legacy propia', campaignRole: null, membershipStatus: null },
-        ]));
+        privateUserFirestoreSvcMock.listCampaigns.and.resolveTo([
+            { id: 12, nombre: 'Legacy propia', campaignRole: null, membershipStatus: null },
+        ]);
 
         const campaigns = await service.listVisibleCampaigns();
 
@@ -484,14 +520,13 @@ describe('CampanaService', () => {
     });
 
     it('listProfileCampaigns conserva membresías activas y campañas propias sin membresía directa', async () => {
+        privateUserFirestoreSvcMock.listCampaigns.and.resolveTo([
+            { id: 7, nombre: 'Legacy propia', campaignRole: null, membershipStatus: null },
+            { id: 8, nombre: 'Aventureros', campaignRole: 'jugador', membershipStatus: 'activo' },
+            { id: 9, nombre: 'Ajena visible', campaignRole: null, membershipStatus: null },
+            { id: 10, nombre: 'Expulsado', campaignRole: 'jugador', membershipStatus: 'expulsado' },
+        ]);
         httpMock.get.and.callFake((url: string) => {
-            if (url.endsWith('campanas'))
-                return of([
-                    { i: 7, n: 'Legacy propia', campaignRole: null, membershipStatus: null },
-                    { i: 8, n: 'Aventureros', campaignRole: 'jugador', membershipStatus: 'activo' },
-                    { i: 9, n: 'Ajena visible', campaignRole: null, membershipStatus: null },
-                    { i: 10, n: 'Expulsado', campaignRole: 'jugador', membershipStatus: 'expulsado' },
-                ]);
             if (url.endsWith('campanas/7'))
                 return of({
                     idCampana: 7,
@@ -522,8 +557,8 @@ describe('CampanaService', () => {
         const campaigns = await service.listProfileCampaigns();
 
         expect(campaigns).toEqual([
-            { id: 8, nombre: 'Aventureros', campaignRole: 'jugador', membershipStatus: 'activo' },
             { id: 7, nombre: 'Legacy propia', campaignRole: null, membershipStatus: null, isOwner: true },
+            { id: 8, nombre: 'Aventureros', campaignRole: 'jugador', membershipStatus: 'activo' },
         ]);
     });
 
@@ -718,13 +753,6 @@ describe('CampanaService', () => {
                 return of({ message: 'ok' });
             throw new Error(`URL inesperada: ${url}`);
         });
-        httpMock.get.and.callFake((url: string) => {
-            if (url.endsWith('campanas'))
-                return of([{ i: 7, n: 'Campaña visible', campaignRole: 'master', membershipStatus: 'activo' }]);
-            if (url.endsWith('tramas/campana/7'))
-                return of([]);
-            throw new Error(`URL inesperada: ${url}`);
-        });
 
         await service.recoverCampaignMaster(7);
 
@@ -761,13 +789,6 @@ describe('CampanaService', () => {
                     },
                 });
             }
-            throw new Error(`URL inesperada: ${url}`);
-        });
-        httpMock.get.and.callFake((url: string) => {
-            if (url.endsWith('campanas'))
-                return of([{ i: 7, n: 'Campaña visible', campaignRole: 'master', membershipStatus: 'activo' }]);
-            if (url.endsWith('tramas/campana/7'))
-                return of([]);
             throw new Error(`URL inesperada: ${url}`);
         });
 
@@ -846,13 +867,6 @@ describe('CampanaService', () => {
             }
             throw new Error(`URL inesperada: ${url}`);
         });
-        httpMock.get.and.callFake((url: string) => {
-            if (url.endsWith('campanas'))
-                return of([{ i: 7, n: 'Campaña visible', campaignRole: 'jugador', membershipStatus: 'activo' }]);
-            if (url.endsWith('tramas/campana/7'))
-                return of([]);
-            throw new Error(`URL inesperada: ${url}`);
-        });
 
         const response = await service.resolveCampaignInvitation(8, 'accept');
 
@@ -865,13 +879,6 @@ describe('CampanaService', () => {
         httpMock.delete.and.callFake((url: string) => {
             if (url.endsWith('campanas/invitaciones/8'))
                 return of(void 0);
-            throw new Error(`URL inesperada: ${url}`);
-        });
-        httpMock.get.and.callFake((url: string) => {
-            if (url.endsWith('campanas'))
-                return of([{ i: 7, n: 'Campaña visible', campaignRole: 'master', membershipStatus: 'activo' }]);
-            if (url.endsWith('tramas/campana/7'))
-                return of([]);
             throw new Error(`URL inesperada: ${url}`);
         });
 

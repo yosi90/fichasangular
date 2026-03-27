@@ -6,12 +6,10 @@ import { getManualCategorias, ManualCategoriaConIcono } from 'src/app/config/man
 import { UserPrivateProfileSectionId } from 'src/app/interfaces/user-account';
 import { ManualAsociadoDetalle } from 'src/app/interfaces/manual-asociado';
 import { SesionDialogComponent } from 'src/app/components/sesion-dialog/sesion-dialog.component';
-import { AppToastService } from 'src/app/services/app-toast.service';
 import { ManualFlagConsistencyNoticeService } from 'src/app/services/manual-flag-consistency-notice.service';
 import { ManualesAsociadosService } from 'src/app/services/manuales-asociados.service';
 import { ManualVistaNavigationService } from 'src/app/services/manual-vista-navigation.service';
 import { UserProfileNavigationService } from 'src/app/services/user-profile-navigation.service';
-import { UserSettingsService } from 'src/app/services/user-settings.service';
 import { UserService } from 'src/app/services/user.service';
 
 @Component({
@@ -21,12 +19,6 @@ import { UserService } from 'src/app/services/user.service';
     standalone: false
 })
 export class NavbarComponent implements OnInit, OnDestroy {
-    private static readonly DEFAULT_PROFILE_SETTINGS = {
-        visibilidadPorDefectoPersonajes: false,
-        mostrarPerfilPublico: true,
-        allowDirectMessagesFromNonFriends: false,
-    };
-
     manuales: ManualAsociadoDetalle[] = [];
     isLoading: boolean = true;
     errorState: string = '';
@@ -35,12 +27,6 @@ export class NavbarComponent implements OnInit, OnDestroy {
     userSubLabel: string = 'Sin sesión iniciada';
     isLoggedIn: boolean = false;
     isAdmin: boolean = false;
-    quickSettingsLoading: boolean = false;
-    quickSettingsSavingKey: 'mostrarPerfilPublico' | 'visibilidadPorDefectoPersonajes' | 'allowDirectMessagesFromNonFriends' | null = null;
-    quickSettingsError: string = '';
-    mostrarPerfilPublicoQuickSetting: boolean = NavbarComponent.DEFAULT_PROFILE_SETTINGS.mostrarPerfilPublico;
-    visibilidadPorDefectoQuickSetting: boolean = NavbarComponent.DEFAULT_PROFILE_SETTINGS.visibilidadPorDefectoPersonajes;
-    allowDirectMessagesQuickSetting: boolean = NavbarComponent.DEFAULT_PROFILE_SETTINGS.allowDirectMessagesFromNonFriends;
     private manualesSub?: Subscription;
     private fallbackSub?: Subscription;
     private loggedInSub?: Subscription;
@@ -49,7 +35,6 @@ export class NavbarComponent implements OnInit, OnDestroy {
     private ribbonMenuCloseTimer: ReturnType<typeof setTimeout> | null = null;
     private activeRibbonMenuTrigger: MatMenuTrigger | null = null;
     private lastRibbonMenuOpenedAt: number = 0;
-    private quickSettingsLoadSeq: number = 0;
 
     constructor(
         private dSesion: MatDialog,
@@ -58,8 +43,6 @@ export class NavbarComponent implements OnInit, OnDestroy {
         private manualFlagNoticeSvc: ManualFlagConsistencyNoticeService,
         private usrService: UserService,
         private userProfileNavSvc: UserProfileNavigationService,
-        private userSettingsSvc: UserSettingsService,
-        private appToastSvc: AppToastService,
     ) { }
 
     ngOnInit(): void {
@@ -72,10 +55,6 @@ export class NavbarComponent implements OnInit, OnDestroy {
             .subscribe((loggedIn) => {
                 this.isLoggedIn = loggedIn === true;
                 this.syncUserState();
-                if (this.isLoggedIn)
-                    void this.loadQuickProfileSettings(true);
-                else
-                    this.resetQuickProfileSettingsState();
             });
         this.permisosSub = this.usrService.permisos$
             .subscribe((permisos) => {
@@ -164,46 +143,6 @@ export class NavbarComponent implements OnInit, OnDestroy {
         this.userProfileNavSvc.openUsageAbout();
     }
 
-    onOptionsMenuOpened(trigger: MatMenuTrigger): void {
-        this.onRibbonMenuOpened(trigger);
-        if (this.isLoggedIn)
-            void this.loadQuickProfileSettings(true);
-    }
-
-    isQuickSettingSaving(key: 'mostrarPerfilPublico' | 'visibilidadPorDefectoPersonajes' | 'allowDirectMessagesFromNonFriends'): boolean {
-        return this.quickSettingsSavingKey === key;
-    }
-
-    isQuickSettingDisabled(key: 'mostrarPerfilPublico' | 'visibilidadPorDefectoPersonajes' | 'allowDirectMessagesFromNonFriends'): boolean {
-        return !this.isLoggedIn || this.quickSettingsLoading || this.quickSettingsSavingKey !== null || this.isQuickSettingSaving(key);
-    }
-
-    async onQuickSettingChange(
-        key: 'mostrarPerfilPublico' | 'visibilidadPorDefectoPersonajes' | 'allowDirectMessagesFromNonFriends',
-        checked: boolean
-    ): Promise<void> {
-        if (!this.isLoggedIn || this.quickSettingsLoading || this.quickSettingsSavingKey !== null)
-            return;
-
-        const previousValue = this.getQuickSettingValue(key);
-        this.setQuickSettingValue(key, checked);
-        this.quickSettingsSavingKey = key;
-        this.quickSettingsError = '';
-
-        try {
-            const saved = await this.userSettingsSvc.saveProfileSettings({ [key]: checked });
-            this.mostrarPerfilPublicoQuickSetting = saved.mostrarPerfilPublico !== false;
-            this.visibilidadPorDefectoQuickSetting = saved.visibilidadPorDefectoPersonajes === true;
-            this.appToastSvc.showSuccess(`${this.getQuickSettingLabel(key)} actualizado.`);
-        } catch (error: any) {
-            this.setQuickSettingValue(key, previousValue);
-            this.quickSettingsError = `${error?.message ?? 'No se pudo guardar el ajuste.'}`.trim();
-            this.appToastSvc.showError(this.quickSettingsError);
-        } finally {
-            this.quickSettingsSavingKey = null;
-        }
-    }
-
     onRibbonTriggerClick(trigger: MatMenuTrigger): void {
         this.cancelarCierreRibbonMenu();
         this.activeRibbonMenuTrigger = trigger;
@@ -277,76 +216,6 @@ export class NavbarComponent implements OnInit, OnDestroy {
         this.userSubLabel = isLoggedIn
             ? (correo.length > 0 ? correo : 'Sesión activa')
             : 'Sin sesión iniciada';
-    }
-
-    private async loadQuickProfileSettings(forceRefresh: boolean): Promise<void> {
-        if (!this.isLoggedIn) {
-            this.resetQuickProfileSettingsState();
-            return;
-        }
-
-        const requestSeq = ++this.quickSettingsLoadSeq;
-        this.quickSettingsLoading = true;
-        this.quickSettingsError = '';
-
-        try {
-            const settings = await this.userSettingsSvc.loadSettings(forceRefresh);
-            if (requestSeq !== this.quickSettingsLoadSeq || !this.isLoggedIn)
-                return;
-            this.mostrarPerfilPublicoQuickSetting = settings.perfil?.mostrarPerfilPublico !== false;
-            this.visibilidadPorDefectoQuickSetting = settings.perfil?.visibilidadPorDefectoPersonajes === true;
-            this.allowDirectMessagesQuickSetting = settings.perfil?.allowDirectMessagesFromNonFriends === true;
-        } catch (error: any) {
-            if (requestSeq !== this.quickSettingsLoadSeq)
-                return;
-            this.quickSettingsError = `${error?.message ?? 'No se pudieron cargar los ajustes.'}`.trim();
-            this.resetQuickProfileSettingValues();
-        } finally {
-            if (requestSeq === this.quickSettingsLoadSeq)
-                this.quickSettingsLoading = false;
-        }
-    }
-
-    private resetQuickProfileSettingsState(): void {
-        this.quickSettingsLoadSeq += 1;
-        this.quickSettingsLoading = false;
-        this.quickSettingsSavingKey = null;
-        this.quickSettingsError = '';
-        this.resetQuickProfileSettingValues();
-    }
-
-    private resetQuickProfileSettingValues(): void {
-        this.mostrarPerfilPublicoQuickSetting = NavbarComponent.DEFAULT_PROFILE_SETTINGS.mostrarPerfilPublico;
-        this.visibilidadPorDefectoQuickSetting = NavbarComponent.DEFAULT_PROFILE_SETTINGS.visibilidadPorDefectoPersonajes;
-        this.allowDirectMessagesQuickSetting = NavbarComponent.DEFAULT_PROFILE_SETTINGS.allowDirectMessagesFromNonFriends;
-    }
-
-    private getQuickSettingValue(key: 'mostrarPerfilPublico' | 'visibilidadPorDefectoPersonajes' | 'allowDirectMessagesFromNonFriends'): boolean {
-        if (key === 'mostrarPerfilPublico')
-            return this.mostrarPerfilPublicoQuickSetting;
-        if (key === 'allowDirectMessagesFromNonFriends')
-            return this.allowDirectMessagesQuickSetting;
-        return this.visibilidadPorDefectoQuickSetting;
-    }
-
-    private setQuickSettingValue(key: 'mostrarPerfilPublico' | 'visibilidadPorDefectoPersonajes' | 'allowDirectMessagesFromNonFriends', value: boolean): void {
-        if (key === 'mostrarPerfilPublico') {
-            this.mostrarPerfilPublicoQuickSetting = value === true;
-            return;
-        }
-        if (key === 'allowDirectMessagesFromNonFriends') {
-            this.allowDirectMessagesQuickSetting = value === true;
-            return;
-        }
-        this.visibilidadPorDefectoQuickSetting = value === true;
-    }
-
-    private getQuickSettingLabel(key: 'mostrarPerfilPublico' | 'visibilidadPorDefectoPersonajes' | 'allowDirectMessagesFromNonFriends'): string {
-        if (key === 'mostrarPerfilPublico')
-            return 'Visibilidad del perfil público';
-        if (key === 'allowDirectMessagesFromNonFriends')
-            return 'Mensajes directos de no amigos';
-        return 'Visibilidad por defecto de personajes';
     }
 
     private notificarManualesDesincronizados(): void {

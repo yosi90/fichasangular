@@ -297,19 +297,46 @@
                     </button>
                 </mat-expansion-panel-header>
 
-                <button mat-raised-button color="accent" (click)="openSesionDialog()" *ngIf="usr == 'Invitado'; else sinRegistrar">
-                    Identifícate
-                </button>
+                <div class="user-panel-card" *ngIf="usr == 'Invitado'; else sinRegistrar">
+                    <button mat-button class="user-panel-link user-panel-link--login" (click)="openSesionDialog()">
+                        <span class="user-panel-link__lead">
+                            <mat-icon>login</mat-icon>
+                            <span>Identifícate</span>
+                        </span>
+                        <mat-icon>chevron_right</mat-icon>
+                    </button>
+                </div>
                 <ng-template #sinRegistrar>
-                    <button mat-raised-button color="primary" class="tw-mb-2" (click)="abrirMiPerfil()">
-                        Mi perfil
-                    </button>
-                    <button mat-raised-button color="primary" class="tw-mb-2" (click)="abrirSocial()">
-                        Social
-                    </button>
-                    <button mat-raised-button color="accent" (click)="logOut()">
-                        Cerrar sesión
-                    </button>
+                    <div class="user-panel-card">
+                        <div class="user-panel-links">
+                            <button mat-button class="user-panel-link user-panel-link--primary" (click)="abrirMiPerfil()">
+                                <span class="user-panel-link__lead">
+                                    <mat-icon>account_circle</mat-icon>
+                                    <span>Mi perfil</span>
+                                </span>
+                            </button>
+                            <button mat-button class="user-panel-link" (click)="abrirSocial()">
+                                <span class="user-panel-link__lead">
+                                    <mat-icon>hub</mat-icon>
+                                    <span>Social</span>
+                                </span>
+                            </button>
+                            <button mat-button class="user-panel-link user-panel-link--admin" *ngIf="esAdmin" (click)="abrirAdminPanel()">
+                                <span class="user-panel-link__lead">
+                                    <mat-icon>admin_panel_settings</mat-icon>
+                                    <span>Admin panel</span>
+                                </span>
+                            </button>
+                        </div>
+                        <div class="user-panel-footer">
+                            <button mat-button class="user-panel-link user-panel-link--danger" (click)="logOut()">
+                                <span class="user-panel-link__lead">
+                                    <mat-icon>logout</mat-icon>
+                                    <span>Cerrar sesión</span>
+                                </span>
+                            </button>
+                        </div>
+                    </div>
                 </ng-template>
             </mat-expansion-panel>
         </mat-accordion>

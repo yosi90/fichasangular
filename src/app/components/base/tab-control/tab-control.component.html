@@ -92,6 +92,7 @@
         <app-public-user-profile
             [uid]="publicProfileTab.uid"
             [initialDisplayName]="publicProfileTab.initialDisplayName ?? null"
+            [mode]="publicProfileTab.mode ?? 'public'"
             (profileLoaded)="actualizarEtiquetaPerfilPublico($event)">
         </app-public-user-profile>
     </mat-tab>

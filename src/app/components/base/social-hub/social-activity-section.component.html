@@ -1,0 +1,66 @@
+<section class="social-v3-section">
+    <ng-container *ngIf="isLoggedIn; else guestBlocked">
+        <div class="social-v3-toolbar">
+            <mat-form-field appearance="outline">
+                <mat-label>Ámbito</mat-label>
+                <mat-select [(ngModel)]="scope" (selectionChange)="reloadFeed(true)">
+                    <mat-option *ngFor="let item of scopes" [value]="item.value">{{item.label}}</mat-option>
+                </mat-select>
+            </mat-form-field>
+
+            <mat-form-field appearance="outline">
+                <mat-label>Tipo</mat-label>
+                <mat-select [(ngModel)]="kind" (selectionChange)="reloadFeed(true)">
+                    <mat-option *ngFor="let item of kinds" [value]="item.value">{{item.label}}</mat-option>
+                </mat-select>
+            </mat-form-field>
+
+            <button mat-raised-button color="primary" type="button" (click)="reloadFeed(true)">Actualizar</button>
+        </div>
+
+        <p class="social-v3-error" *ngIf="errorMessage">{{errorMessage}}</p>
+        <p class="social-v3-hint" *ngIf="loading">Cargando actividad social...</p>
+
+        <div class="social-v3-feed" *ngIf="items.length > 0">
+            <article class="social-v3-feed-item" *ngFor="let item of items; trackBy: trackByItemId">
+                <div class="social-v3-feed-item__head">
+                    <button type="button" class="social-v3-avatar" (click)="openItemProfile(item)" [disabled]="!canOpenProfile(item)">
+                        <img [src]="getActorAvatarUrl(item)" [alt]="item.actor.displayName || item.actor.uid || item.id">
+                    </button>
+                    <div class="social-v3-feed-item__copy">
+                        <div class="social-v3-feed-item__meta">
+                            <span class="social-v3-chip">{{getKindLabel(item)}}</span>
+                            <span>{{item.visibility}}</span>
+                        </div>
+                        <strong>{{item.summary}}</strong>
+                        <span *ngIf="item.subject.title">{{item.subject.title}}</span>
+                    </div>
+                </div>
+
+                <div class="social-v3-feed-item__actions">
+                    <button mat-stroked-button color="primary" type="button" *ngIf="canOpenProfile(item)" (click)="openItemProfile(item)">
+                        Abrir perfil
+                    </button>
+                </div>
+            </article>
+        </div>
+
+        <div class="social-v3-empty" *ngIf="!loading && items.length < 1">
+            <mat-icon>history_toggle_off</mat-icon>
+            <p>No hay eventos visibles con los filtros actuales.</p>
+        </div>
+
+        <div class="social-v3-actions" *ngIf="hasMore">
+            <button mat-stroked-button type="button" (click)="reloadFeed(false)" [disabled]="loadingMore">
+                {{loadingMore ? 'Cargando...' : 'Cargar más'}}
+            </button>
+        </div>
+    </ng-container>
+
+    <ng-template #guestBlocked>
+        <div class="social-v3-empty social-v3-empty--guest">
+            <mat-icon>lock</mat-icon>
+            <p>Actividad requiere sesión iniciada. Cuando entres se cargará por REST y se refrescará con `/ws/social`.</p>
+        </div>
+    </ng-template>
+</section>

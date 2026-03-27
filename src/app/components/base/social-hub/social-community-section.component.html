@@ -1,0 +1,115 @@
+<section class="social-v3-section">
+    <ng-container *ngIf="isLoggedIn; else guestBlocked">
+        <div class="social-v3-toolbar">
+            <mat-form-field appearance="outline" class="social-v3-toolbar__query">
+                <mat-label>Buscar en comunidad</mat-label>
+                <input matInput [(ngModel)]="query" (keyup.enter)="reloadUsers(true)" placeholder="Nombre visible o UID">
+            </mat-form-field>
+
+            <mat-form-field appearance="outline">
+                <mat-label>Rol</mat-label>
+                <mat-select [(ngModel)]="role" (selectionChange)="reloadUsers(true)">
+                    <mat-option *ngFor="let item of roles" [value]="item.value">{{item.label}}</mat-option>
+                </mat-select>
+            </mat-form-field>
+
+            <mat-form-field appearance="outline">
+                <mat-label>Orden</mat-label>
+                <mat-select [(ngModel)]="sort" (selectionChange)="reloadUsers(true)">
+                    <mat-option *ngFor="let item of sorts" [value]="item.value">{{item.label}}</mat-option>
+                </mat-select>
+            </mat-form-field>
+
+            <button mat-raised-button color="primary" type="button" (click)="reloadAll()">Actualizar</button>
+        </div>
+
+        <p class="social-v3-error" *ngIf="errorMessage">{{errorMessage}}</p>
+
+        <div class="social-v3-stats" *ngIf="stats && !statsLoading">
+            <article class="social-v3-stat" *ngFor="let item of statCards">
+                <span>{{item.label}}</span>
+                <strong>{{item.value}}</strong>
+            </article>
+        </div>
+        <p class="social-v3-hint" *ngIf="statsLoading">Cargando métricas de comunidad...</p>
+
+        <article class="social-v3-panel">
+            <div class="social-v3-panel__header">
+                <div>
+                    <h3>Rankings</h3>
+                    <p>Lectura rápida de la actividad pública visible.</p>
+                </div>
+                <mat-form-field appearance="outline">
+                    <mat-label>Métrica</mat-label>
+                    <mat-select [(ngModel)]="rankingMetric" (selectionChange)="reloadRankings()">
+                        <mat-option *ngFor="let item of rankingMetrics" [value]="item.value">{{item.label}}</mat-option>
+                    </mat-select>
+                </mat-form-field>
+            </div>
+
+            <div class="social-v3-ranking-list" *ngIf="rankings && !rankingsLoading; else rankingsLoadingState">
+                <button type="button" class="social-v3-ranking-item" *ngFor="let item of rankings.items" (click)="openRelationshipProfile(item)">
+                    <span class="social-v3-ranking-item__position">#{{item.position}}</span>
+                    <span class="social-v3-ranking-item__label">{{item.displayName || item.uid}}</span>
+                    <strong>{{item.value}}</strong>
+                </button>
+            </div>
+            <ng-template #rankingsLoadingState>
+                <p class="social-v3-hint">{{rankingsLoading ? 'Cargando ranking...' : 'Sin datos de ranking disponibles.'}}</p>
+            </ng-template>
+        </article>
+
+        <article class="social-v3-panel">
+            <div class="social-v3-panel__header">
+                <div>
+                    <h3>Directorio visible</h3>
+                    <p>Consulta autenticada con perfil relacional reutilizando la pestaña de perfil existente.</p>
+                </div>
+            </div>
+
+            <p class="social-v3-hint" *ngIf="loading">Cargando comunidad...</p>
+            <div class="social-v3-user-list" *ngIf="users.length > 0">
+                <article class="social-v3-user-card" *ngFor="let user of users; trackBy: trackByUid">
+                    <div class="social-v3-user-card__identity">
+                        <button type="button" class="social-v3-avatar" (click)="openRelationshipProfile(user)">
+                            <img [src]="getAvatarUrl(user)" [alt]="user.displayName || user.uid">
+                        </button>
+                        <div>
+                            <strong>{{user.displayName || user.uid}}</strong>
+                            <span>{{getRoleLabel(user.role)}} · {{getRelationshipLabel(user)}}</span>
+                        </div>
+                    </div>
+
+                    <div class="social-v3-user-card__stats">
+                        <span>{{user.publicStats.publicCharacters}} personajes públicos</span>
+                        <span>{{user.publicStats.activeCampaigns}} campañas activas</span>
+                    </div>
+
+                    <div class="social-v3-user-card__actions">
+                        <button mat-stroked-button color="primary" type="button" (click)="openRelationshipProfile(user)">
+                            Ver perfil social
+                        </button>
+                    </div>
+                </article>
+            </div>
+
+            <div class="social-v3-empty" *ngIf="!loading && users.length < 1">
+                <mat-icon>group_off</mat-icon>
+                <p>No hay usuarios visibles con esos filtros.</p>
+            </div>
+
+            <div class="social-v3-actions" *ngIf="hasMore">
+                <button mat-stroked-button type="button" (click)="reloadUsers(false)" [disabled]="loadingMore">
+                    {{loadingMore ? 'Cargando...' : 'Cargar más'}}
+                </button>
+            </div>
+        </article>
+    </ng-container>
+
+    <ng-template #guestBlocked>
+        <div class="social-v3-empty social-v3-empty--guest">
+            <mat-icon>lock</mat-icon>
+            <p>Comunidad requiere sesión iniciada. Al entrar verás directorio, estadísticas globales y rankings con perfil relacional.</p>
+        </div>
+    </ng-template>
+</section>

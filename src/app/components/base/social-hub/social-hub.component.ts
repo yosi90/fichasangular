@@ -17,6 +17,7 @@ import { CampaignRealtimeSyncService } from 'src/app/services/campaign-realtime-
 import { ChatApiService } from 'src/app/services/chat-api.service';
 import { ChatRealtimeService } from 'src/app/services/chat-realtime.service';
 import { SocialApiService } from 'src/app/services/social-api.service';
+import { SocialRealtimeService } from 'src/app/services/social-realtime.service';
 import { UserProfileNavigationService } from 'src/app/services/user-profile-navigation.service';
 import { UserSettingsService } from 'src/app/services/user-settings.service';
 import { resolveDefaultProfileAvatar } from 'src/app/services/utils/profile-avatar.util';
@@ -101,6 +102,9 @@ export class SocialHubComponent implements OnInit, OnChanges, OnDestroy {
 
     readonly sections: { id: SocialHubSectionId; label: string; icon: string; }[] = [
         { id: 'resumen', label: 'Resumen', icon: 'hub' },
+        { id: 'comunidad', label: 'Comunidad', icon: 'groups' },
+        { id: 'actividad', label: 'Actividad', icon: 'timeline' },
+        { id: 'convocatorias', label: 'Convocatorias', icon: 'forum' },
         { id: 'amistades', label: 'Amistades', icon: 'group' },
         { id: 'bloqueos', label: 'Bloqueos', icon: 'block' },
         { id: 'campanas', label: 'Campañas', icon: 'diversity_3' },
@@ -121,6 +125,7 @@ export class SocialHubComponent implements OnInit, OnChanges, OnDestroy {
         private campaignRealtimeSyncSvc: CampaignRealtimeSyncService,
         private chatApiSvc: ChatApiService,
         private chatRealtimeSvc: ChatRealtimeService,
+        private socialRealtimeSvc: SocialRealtimeService,
         private userProfileNavSvc: UserProfileNavigationService,
         private userSettingsSvc: UserSettingsService,
         private appToastSvc: AppToastService,
@@ -132,9 +137,11 @@ export class SocialHubComponent implements OnInit, OnChanges, OnDestroy {
             .subscribe((loggedIn) => {
                 this.isLoggedIn = loggedIn === true;
                 if (this.isLoggedIn) {
+                    this.socialRealtimeSvc.activate();
                     void this.loadAuthenticatedState();
                     return;
                 }
+                this.socialRealtimeSvc.deactivate();
                 this.resetAuthenticatedState();
             });
 
@@ -205,6 +212,7 @@ export class SocialHubComponent implements OnInit, OnChanges, OnDestroy {
         this.destroy$.next();
         this.destroy$.complete();
         this.stopSocialSubscriptions();
+        this.socialRealtimeSvc.deactivate();
         this.chatRealtimeSvc.setActiveConversationId(null);
         if (this.searchTimer !== null)
             window.clearTimeout(this.searchTimer);
@@ -1190,6 +1198,7 @@ export class SocialHubComponent implements OnInit, OnChanges, OnDestroy {
         this.groupParticipantSavingUid = '';
         this.groupParticipantRemovingUid = '';
         this.chatRealtimeSvc.setActiveConversationId(null);
+        this.socialRealtimeSvc.deactivate();
         this.currentSection = 'resumen';
     }
 

@@ -75,6 +75,7 @@ function crearComponente(overrides?: { pSvc?: any; }): TabControlComponent {
         if (component.usageAboutTabOpen)
             tabs.push({ textLabel: 'Uso y acerca' });
         (component.detallesPersonajeAbiertos ?? []).forEach((pj: any) => tabs.push({ textLabel: pj.Nombre }));
+        (component.publicProfileTabs ?? []).forEach((tab: any) => tabs.push({ textLabel: component.getEtiquetaPerfilPublico(tab) }));
         if (component.AbrirNuevoPersonajeTab)
             tabs.push({ textLabel: 'Nuevo personaje' });
         (component.listadoTabsAbiertos ?? []).forEach((tab: any) => tabs.push({ textLabel: component.getEtiquetaListadoTab(tab) }));
@@ -387,7 +388,12 @@ describe('TabControlComponent navegación por origen', () => {
         tick(120);
 
         expect(component.socialTabOpen).toBeTrue();
-        expect(component.socialOpenRequest).toEqual({ section: 'mensajes', conversationId: 55, requestId: 9 });
+        expect(component.socialOpenRequest).toEqual({
+            section: 'mensajes',
+            conversationId: 55,
+            campaignId: null,
+            requestId: 9,
+        });
     }));
 
     it('la navegación de perfil por servicio propaga la sección pedida', fakeAsync(() => {
@@ -403,7 +409,27 @@ describe('TabControlComponent navegación por origen', () => {
         tick(120);
 
         expect(component.privateProfileTabOpen).toBeTrue();
-        expect(component.privateProfileOpenRequest).toEqual({ section: 'identidad', requestId: 7 });
+        expect(component.privateProfileOpenRequest).toEqual({
+            section: 'identidad',
+            requestId: 7,
+            campaignId: null,
+        });
+    }));
+
+    it('reutiliza la misma tab de perfil y la promociona a relationship cuando Social lo solicita', fakeAsync(() => {
+        const component = crearComponente();
+
+        component.abrirPerfilPublico({ uid: 'uid-2', initialDisplayName: 'Yuna' });
+        tick(120);
+        component.abrirPerfilPublico({ uid: 'uid-2', initialDisplayName: 'Yuna', mode: 'relationship' });
+        tick(120);
+
+        expect(component.publicProfileTabs.length).toBe(1);
+        expect(component.publicProfileTabs[0]).toEqual({
+            uid: 'uid-2',
+            initialDisplayName: 'Yuna',
+            mode: 'relationship',
+        });
     }));
 
     it('abre admin panel como tab dinámica y la puede cerrar con ESC', fakeAsync(() => {

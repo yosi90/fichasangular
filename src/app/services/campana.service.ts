@@ -54,7 +54,7 @@ export class CampanaService {
         this.authReadyPromise = this.createAuthReadyPromise();
         this.liveCampanas$ = this.privateUserFirestoreSvc
             ? this.createFirestoreLiveCampanasObservable()
-            : this.createLegacyLiveCampanasObservable();
+            : this.createMissingReadModelCampanasObservable();
     }
 
     async getListCampanas(): Promise<Observable<Campana[]>> {
@@ -357,6 +357,11 @@ export class CampanaService {
         next: (items: CampaignListItem[]) => void,
         onError?: (error: unknown) => void
     ): () => void {
+        if (!this.privateUserFirestoreSvc) {
+            onError?.(this.buildPrivateReadModelError('campañas privadas'));
+            return () => undefined;
+        }
+
         let active = true;
         const emit = (items: CampaignListItem[]) => {
             if (!active)
@@ -364,27 +369,11 @@ export class CampanaService {
             next(this.mergeOptimisticCampaignSummaries(items));
         };
 
-        if (this.privateUserFirestoreSvc) {
-            const watchStop = this.privateUserFirestoreSvc.watchCampaigns(
-                (items) => emit(items),
-                onError
-            );
-            const refreshSub = merge(
-                this.campaignRealtimeSyncSvc.listInvalidations$,
-                timer(30000, 30000),
-            ).subscribe(() => {
-                void this.refreshCampaignSummariesWatcher(emit, onError);
-            });
-
-            return () => {
-                active = false;
-                watchStop();
-                refreshSub.unsubscribe();
-            };
-        }
-
+        const watchStop = this.privateUserFirestoreSvc.watchCampaigns(
+            (items) => emit(items),
+            onError
+        );
         const refreshSub = merge(
-            of(null),
             this.campaignRealtimeSyncSvc.listInvalidations$,
             timer(30000, 30000),
         ).subscribe(() => {
@@ -393,6 +382,7 @@ export class CampanaService {
 
         return () => {
             active = false;
+            watchStop();
             refreshSub.unsubscribe();
         };
     }
@@ -555,26 +545,10 @@ export class CampanaService {
         );
     }
 
-    private createLegacyLiveCampanasObservable(): Observable<Campana[]> {
-        return merge(
-            of(null),
-            this.campaignRealtimeSyncSvc.listInvalidations$,
-            timer(30000, 30000),
-        ).pipe(
-            switchMap(() => from(this.fetchLiveCampanasWithActiveMembership()).pipe(
-                map((campanas) => ({ ok: true as const, campanas })),
-                catchError(() => of({
-                    ok: false as const,
-                    campanas: [] as Campana[],
-                })),
-            )),
-            scan(
-                (current: Campana[] | null, result: { ok: boolean; campanas: Campana[]; }) => result.ok
-                    ? result.campanas
-                    : (current ?? [this.buildSinCampanaOption()]),
-                null as Campana[] | null
-            ),
-            filter((campanas): campanas is Campana[] => Array.isArray(campanas)),
+    private createMissingReadModelCampanasObservable(): Observable<Campana[]> {
+        return new Observable<Campana[]>((subscriber) => {
+            subscriber.error(this.buildPrivateReadModelError('campañas privadas'));
+        }).pipe(
             shareReplay({ bufferSize: 1, refCount: true }),
         );
     }
@@ -657,19 +631,20 @@ export class CampanaService {
     }
 
     private async fetchCampaignSummaries(): Promise<CampaignListItem[]> {
-        if (this.privateUserFirestoreSvc)
-            return this.mergeOptimisticCampaignSummaries(await this.privateUserFirestoreSvc.listCampaigns());
-
-        const headers = await this.buildAuthHeaders();
-        const response = await firstValueFrom(
-            this.http.get<any[]>(this.campanasBaseUrl, { headers })
+        return this.mergeOptimisticCampaignSummaries(
+            await this.requirePrivateReadModel('campañas privadas').listCampaigns()
         );
-        const raw = Array.isArray(response) ? response : Object.values(response ?? {});
-        const items = raw
-            .map((item) => this.normalizeCampaignSummary(item))
-            .filter((item): item is CampaignListItem => item !== null)
-            .sort((a, b) => a.nombre.localeCompare(b.nombre, 'es', { sensitivity: 'base' }));
-        return this.mergeOptimisticCampaignSummaries(items);
+    }
+
+    private requirePrivateReadModel(scope: string): PrivateUserFirestoreService {
+        if (this.privateUserFirestoreSvc)
+            return this.privateUserFirestoreSvc;
+
+        throw this.buildPrivateReadModelError(scope);
+    }
+
+    private buildPrivateReadModelError(scope: string): Error {
+        return new Error(`Las lecturas actor-scoped de ${scope} deben salir de Firestore y el read model privado no está disponible.`);
     }
 
     private async fetchCampaignDetailHeader(

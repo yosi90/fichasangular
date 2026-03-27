@@ -1,5 +1,7 @@
 import { Component, EventEmitter, Input, OnChanges, Output, SimpleChanges } from '@angular/core';
+import { SocialRelationshipProfile } from 'src/app/interfaces/social-v3';
 import { UserPublicProfile } from 'src/app/interfaces/user-account';
+import { SocialV3ApiService } from 'src/app/services/social-v3-api.service';
 import { UserProfileApiService } from 'src/app/services/user-profile-api.service';
 import { resolveDefaultProfileAvatar } from 'src/app/services/utils/profile-avatar.util';
 
@@ -12,9 +14,11 @@ import { resolveDefaultProfileAvatar } from 'src/app/services/utils/profile-avat
 export class PublicUserProfileComponent implements OnChanges {
     @Input() uid = '';
     @Input() initialDisplayName: string | null = null;
+    @Input() mode: 'public' | 'relationship' = 'public';
     @Output() profileLoaded = new EventEmitter<{ uid: string; displayName: string | null; }>();
 
-    profile: UserPublicProfile | null = null;
+    publicProfile: UserPublicProfile | null = null;
+    relationshipProfile: SocialRelationshipProfile | null = null;
     loading = false;
     errorMessage = '';
     private readonly dateFormatter = new Intl.DateTimeFormat('es-ES', {
@@ -23,47 +27,52 @@ export class PublicUserProfileComponent implements OnChanges {
         year: 'numeric',
     });
 
-    constructor(private userProfileApiSvc: UserProfileApiService) { }
+    constructor(
+        private userProfileApiSvc: UserProfileApiService,
+        private socialV3ApiSvc: SocialV3ApiService,
+    ) { }
 
     ngOnChanges(changes: SimpleChanges): void {
-        if (changes['uid'] && `${changes['uid'].currentValue ?? ''}`.trim().length > 0)
+        if ((changes['uid'] || changes['mode']) && `${this.uid ?? ''}`.trim().length > 0)
             void this.cargar();
     }
 
     get avatarUrl(): string {
-        const image = `${this.profile?.photoThumbUrl ?? ''}`.trim();
+        const image = `${this.relationshipProfile?.profile?.photoThumbUrl ?? this.publicProfile?.photoThumbUrl ?? ''}`.trim();
         if (image.length > 0)
             return image;
-        return resolveDefaultProfileAvatar(this.uid || this.initialDisplayName || this.profile?.displayName || '');
+        return resolveDefaultProfileAvatar(this.uid || this.initialDisplayName || this.profileLabel || '');
     }
 
     get profileLabel(): string {
-        return `${this.profile?.displayName ?? this.initialDisplayName ?? ''}`.trim() || 'Perfil público';
+        return `${this.relationshipProfile?.profile?.displayName ?? this.publicProfile?.displayName ?? this.initialDisplayName ?? ''}`.trim()
+            || 'Perfil público';
     }
 
     get bioText(): string {
-        return `${this.profile?.bio ?? ''}`.trim();
+        return `${this.relationshipProfile?.profile?.bio ?? this.publicProfile?.bio ?? ''}`.trim();
     }
 
     get pronounsText(): string {
-        return `${this.profile?.pronouns ?? ''}`.trim();
+        return `${this.relationshipProfile?.profile?.pronouns ?? this.publicProfile?.pronouns ?? ''}`.trim();
     }
 
     get statsItems(): { value: number; label: string; }[] {
-        if (!this.profile)
+        const stats = (this.relationshipProfile?.stats ?? this.publicProfile?.stats ?? null) as any;
+        if (!stats)
             return [];
 
         return [
-            { value: this.profile.stats.totalPersonajes, label: 'Personajes totales' },
-            { value: this.profile.stats.publicos, label: 'Personajes públicos' },
-            { value: this.profile.stats.campanasActivas, label: 'Campañas activas' },
-            { value: this.profile.stats.campanasMaster, label: 'Como master' },
-            { value: this.profile.stats.campanasCreadas, label: 'Campañas creadas' },
+            { value: this.toNumber(stats.totalPersonajes ?? stats.totalCharacters), label: 'Personajes totales' },
+            { value: this.toNumber(stats.publicos ?? stats.publicCharacters), label: 'Personajes públicos' },
+            { value: this.toNumber(stats.campanasActivas ?? stats.activeCampaigns), label: 'Campañas activas' },
+            { value: this.toNumber(stats.campanasMaster ?? stats.campaignsAsMaster), label: 'Como master' },
+            { value: this.toNumber(stats.campanasCreadas ?? stats.campaignsCreated), label: 'Campañas creadas' },
         ];
     }
 
     get formattedMemberSince(): string {
-        const raw = `${this.profile?.memberSince ?? ''}`.trim();
+        const raw = `${this.relationshipProfile?.profile?.joinedAtUtc ?? this.publicProfile?.memberSince ?? ''}`.trim();
         if (raw.length < 1)
             return 'fecha desconocida';
 
@@ -74,6 +83,76 @@ export class PublicUserProfileComponent implements OnChanges {
         return this.dateFormatter.format(parsed);
     }
 
+    get tagLabel(): string {
+        return this.mode === 'relationship' ? 'Perfil social relacional' : 'Perfil público del creador';
+    }
+
+    get relationshipStateLabel(): string {
+        const state = `${this.relationshipProfile?.relationship?.state ?? ''}`.trim();
+        if (state === 'self')
+            return 'Este perfil corresponde a tu propia cuenta.';
+        if (state === 'friend')
+            return 'Amistad activa.';
+        if (state === 'incoming_request')
+            return 'Solicitud de amistad recibida.';
+        if (state === 'outgoing_request')
+            return 'Solicitud de amistad enviada.';
+        if (state === 'blocked_by_actor')
+            return 'Has bloqueado a esta persona.';
+        if (state === 'blocked_actor')
+            return 'Esta persona te ha bloqueado o no puede interactuar contigo.';
+        return 'Sin vínculo social activo.';
+    }
+
+    get relationshipMetaItems(): { value: string; label: string; tone?: 'neutral' | 'warn'; }[] {
+        if (!this.relationshipProfile)
+            return [];
+
+        const items: { value: string; label: string; tone?: 'neutral' | 'warn'; }[] = [
+            {
+                value: `${this.relationshipProfile.relationship.mutualFriendsCount}`,
+                label: 'Amistades en común',
+            },
+            {
+                value: `${this.relationshipProfile.relationship.mutualCampaignsCount}`,
+                label: 'Campañas en común',
+            },
+        ];
+
+        if (this.relationshipProfile.relationship.blockedByActor)
+            items.push({ value: 'Sí', label: 'Bloqueado por ti', tone: 'warn' });
+        if (this.relationshipProfile.relationship.blockedActor)
+            items.push({ value: 'Sí', label: 'Te bloquea o restringe', tone: 'warn' });
+
+        return items;
+    }
+
+    get visibilityItems(): { value: string; label: string; }[] {
+        if (!this.relationshipProfile)
+            return [];
+
+        return [
+            {
+                value: this.relationshipProfile.visibility.showAuthenticatedBlock ? 'Visible' : 'Oculto',
+                label: 'Bloque autenticado',
+            },
+            {
+                value: this.relationshipProfile.visibility.showFriendsBlock ? 'Visible' : 'Oculto',
+                label: 'Bloque de amistades',
+            },
+            {
+                value: this.relationshipProfile.visibility.showRecentActivity ? 'Visible' : 'Oculta',
+                label: 'Actividad reciente',
+            },
+        ];
+    }
+
+    get recentActivityItems(): SocialRelationshipProfile['recentActivity'] {
+        if (!this.relationshipProfile?.visibility?.showRecentActivity)
+            return [];
+        return this.relationshipProfile.recentActivity ?? [];
+    }
+
     async cargar(): Promise<void> {
         const uid = `${this.uid ?? ''}`.trim();
         if (uid.length < 1)
@@ -81,18 +160,29 @@ export class PublicUserProfileComponent implements OnChanges {
 
         this.loading = true;
         this.errorMessage = '';
+        this.publicProfile = null;
+        this.relationshipProfile = null;
         try {
-            const profile = await this.userProfileApiSvc.getPublicProfile(uid);
-            this.profile = profile;
+            if (this.mode === 'relationship')
+                this.relationshipProfile = await this.socialV3ApiSvc.getRelationshipProfile(uid);
+            else
+                this.publicProfile = await this.userProfileApiSvc.getPublicProfile(uid);
+
             this.profileLoaded.emit({
                 uid,
-                displayName: `${profile?.displayName ?? ''}`.trim() || null,
+                displayName: this.profileLabel || null,
             });
         } catch (error: any) {
-            this.profile = null;
+            this.publicProfile = null;
+            this.relationshipProfile = null;
             this.errorMessage = `${error?.message ?? 'No se pudo cargar el perfil público.'}`.trim();
         } finally {
             this.loading = false;
         }
+    }
+
+    private toNumber(value: any): number {
+        const parsed = Math.trunc(Number(value));
+        return Number.isFinite(parsed) && parsed >= 0 ? parsed : 0;
     }
 }

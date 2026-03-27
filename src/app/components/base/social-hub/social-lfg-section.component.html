@@ -1,0 +1,232 @@
+<section class="social-lfg">
+    <ng-container *ngIf="isLoggedIn; else guestBlocked">
+        <div class="social-lfg__toolbar">
+            <mat-form-field appearance="outline">
+                <mat-label>Estado</mat-label>
+                <mat-select [(ngModel)]="statusFilter" (selectionChange)="reloadPosts(true)">
+                    <mat-option *ngFor="let item of statuses" [value]="item.value">{{item.label}}</mat-option>
+                </mat-select>
+            </mat-form-field>
+
+            <button mat-raised-button color="primary" type="button" (click)="startCreatePost()">Nueva convocatoria</button>
+            <button mat-stroked-button type="button" (click)="reloadPosts(true)">Actualizar</button>
+        </div>
+
+        <p class="social-lfg__error" *ngIf="errorMessage">{{errorMessage}}</p>
+
+        <div class="social-lfg__layout">
+            <aside class="social-lfg__sidebar">
+                <p class="social-lfg__hint" *ngIf="loading">Cargando convocatorias...</p>
+
+                <div class="social-lfg__post-list" *ngIf="posts.length > 0">
+                    <button
+                        type="button"
+                        class="social-lfg__post-card"
+                        *ngFor="let post of posts; trackBy: trackByPostId"
+                        [class.social-lfg__post-card--active]="selectedPost?.id === post.id && editorMode === 'view'"
+                        (click)="selectPost(post)">
+                        <div class="social-lfg__post-card-head">
+                            <strong>{{post.title}}</strong>
+                            <span>{{getStatusLabel(post.status)}}</span>
+                        </div>
+                        <span>{{post.gameSystem}} · {{post.campaignStyle || 'Sin estilo'}}</span>
+                        <span>{{post.slotsOpen}} / {{post.slotsTotal}} plazas libres</span>
+                    </button>
+                </div>
+
+                <div class="social-lfg__empty" *ngIf="!loading && posts.length < 1">
+                    <mat-icon>groups_2</mat-icon>
+                    <p>No hay convocatorias visibles con este filtro.</p>
+                </div>
+
+                <button mat-stroked-button type="button" *ngIf="hasMore" (click)="reloadPosts(false)" [disabled]="loadingMore">
+                    {{loadingMore ? 'Cargando...' : 'Cargar más'}}
+                </button>
+            </aside>
+
+            <section class="social-lfg__detail">
+                <ng-container *ngIf="editorMode === 'create' || editorMode === 'edit'; else detailMode">
+                    <article class="social-lfg__panel social-lfg__panel--editor">
+                        <div class="social-lfg__panel-head">
+                            <div>
+                                <h3>{{editorMode === 'create' ? 'Nueva convocatoria' : 'Editar convocatoria'}}</h3>
+                            </div>
+                        </div>
+
+                        <div class="social-lfg__form">
+                            <mat-form-field appearance="outline">
+                                <mat-label>Título</mat-label>
+                                <input matInput [(ngModel)]="draft.title" placeholder="Mesa semanal de D&D 3.5">
+                            </mat-form-field>
+
+                            <mat-form-field appearance="outline">
+                                <mat-label>Sistema</mat-label>
+                                <input matInput [(ngModel)]="draft.gameSystem" placeholder="D&D 3.5">
+                            </mat-form-field>
+
+                            <mat-form-field appearance="outline">
+                                <mat-label>Estilo de campaña</mat-label>
+                                <input matInput [(ngModel)]="draft.campaignStyle" placeholder="Sandbox, dungeon crawl, intriga...">
+                            </mat-form-field>
+
+                            <mat-form-field appearance="outline">
+                                <mat-label>Horario</mat-label>
+                                <input matInput [(ngModel)]="draft.scheduleText" placeholder="Sábados 18:00 GMT+1">
+                            </mat-form-field>
+
+                            <mat-form-field appearance="outline">
+                                <mat-label>Idioma</mat-label>
+                                <input matInput [(ngModel)]="draft.language" placeholder="es">
+                            </mat-form-field>
+
+                            <mat-form-field appearance="outline">
+                                <mat-label>Plazas totales</mat-label>
+                                <input matInput type="number" min="1" [(ngModel)]="draft.slotsTotal">
+                            </mat-form-field>
+
+                            <mat-form-field appearance="outline" class="social-lfg__form-full">
+                                <mat-label>Resumen</mat-label>
+                                <textarea matInput rows="5" [(ngModel)]="draft.summary"></textarea>
+                            </mat-form-field>
+
+                            <mat-form-field appearance="outline">
+                                <mat-label>Estado</mat-label>
+                                <mat-select [(ngModel)]="draft.status">
+                                    <mat-option *ngFor="let status of editableStatuses" [value]="status">{{getStatusLabel(status)}}</mat-option>
+                                </mat-select>
+                            </mat-form-field>
+                        </div>
+
+                        <div class="social-lfg__actions">
+                            <button mat-raised-button color="primary" type="button" (click)="saveDraft()" [disabled]="editorSaving">
+                                {{editorSaving ? 'Guardando...' : 'Guardar convocatoria'}}
+                            </button>
+                            <button mat-stroked-button type="button" (click)="cancelEditor()">Cancelar</button>
+                        </div>
+                    </article>
+                </ng-container>
+
+                <ng-template #detailMode>
+                    <article class="social-lfg__panel" *ngIf="selectedPost; else noSelection">
+                        <div class="social-lfg__panel-head">
+                            <div class="social-lfg__author">
+                                <button type="button" class="social-lfg__avatar" (click)="openAuthorProfile(selectedPost)">
+                                    <img [src]="selectedPostAvatarUrl" [alt]="selectedPost.author.displayName || selectedPost.author.uid">
+                                </button>
+                                <div>
+                                    <h3>{{selectedPost.title}}</h3>
+                                    <p>{{selectedPost.author.displayName || selectedPost.author.uid}} · {{getStatusLabel(selectedPost.status)}}</p>
+                                </div>
+                            </div>
+                            <div class="social-lfg__actions">
+                                <button mat-stroked-button type="button" *ngIf="canEditSelectedPost" (click)="startEditSelectedPost()">Editar</button>
+                                <button mat-stroked-button color="primary" type="button" (click)="openContactConversation()" [disabled]="contactSaving">
+                                    {{contactSaving ? 'Abriendo...' : 'Abrir conversación'}}
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="social-lfg__meta">
+                            <span>{{selectedPost.gameSystem}}</span>
+                            <span>{{selectedPost.campaignStyle || 'Sin estilo'}}</span>
+                            <span>{{selectedPost.scheduleText || 'Horario por definir'}}</span>
+                            <span>{{selectedPost.slotsOpen}} / {{selectedPost.slotsTotal}} plazas libres</span>
+                        </div>
+
+                        <p class="social-lfg__summary">{{selectedPost.summary}}</p>
+
+                        <article class="social-lfg__panel social-lfg__panel--nested" *ngIf="canApplyToSelectedPost || ownApplication">
+                            <h4>Tu aplicación</h4>
+                            <p class="social-lfg__error" *ngIf="applicationsErrorMessage">{{applicationsErrorMessage}}</p>
+                            <ng-container *ngIf="ownApplication; else newApplication">
+                                <div class="social-lfg__application-actions">
+                                    <span>Estado actual: <strong>{{getStatusLabel(ownApplication.status)}}</strong></span>
+                                    <button
+                                        mat-stroked-button
+                                        color="warn"
+                                        type="button"
+                                        *ngIf="ownApplication.permissions.canWithdraw"
+                                        (click)="resolveApplication(ownApplication, 'withdrawn')">
+                                        Retirar aplicación
+                                    </button>
+                                </div>
+                            </ng-container>
+                            <ng-template #newApplication>
+                                <mat-form-field appearance="outline" class="social-lfg__form-full">
+                                    <mat-label>Mensaje para el autor</mat-label>
+                                    <textarea matInput rows="4" [(ngModel)]="applyMessage"></textarea>
+                                </mat-form-field>
+                                <button mat-raised-button color="primary" type="button" (click)="applyToSelectedPost()" [disabled]="applySaving || applyMessage.trim().length < 1">
+                                    {{applySaving ? 'Enviando...' : 'Enviar aplicación'}}
+                                </button>
+                            </ng-template>
+                        </article>
+
+                        <article class="social-lfg__panel social-lfg__panel--nested">
+                            <div class="social-lfg__panel-head">
+                                <div>
+                                    <h4>Aplicaciones</h4>
+                                    <p>Las acciones se deciden únicamente por `permissions.canResolve` y `permissions.canWithdraw`.</p>
+                                </div>
+                                <mat-form-field appearance="outline">
+                                    <mat-label>Filtrar</mat-label>
+                                    <mat-select [(ngModel)]="applicationStatusFilter" (selectionChange)="reloadApplications()">
+                                        <mat-option *ngFor="let item of applicationStatuses" [value]="item.value">{{item.label}}</mat-option>
+                                    </mat-select>
+                                </mat-form-field>
+                            </div>
+
+                            <p class="social-lfg__hint" *ngIf="detailLoading || applicationsLoading">Cargando aplicaciones...</p>
+                            <p class="social-lfg__error" *ngIf="applicationsErrorMessage">{{applicationsErrorMessage}}</p>
+
+                            <div class="social-lfg__application-list" *ngIf="visibleApplications.length > 0">
+                                <article class="social-lfg__application-card" *ngFor="let application of visibleApplications; trackBy: trackByApplicationId">
+                                    <div class="social-lfg__application-head">
+                                        <div class="social-lfg__applicant">
+                                            <img [src]="getApplicantAvatar(application)" [alt]="application.applicant.displayName || application.applicant.uid">
+                                            <div>
+                                                <strong>{{application.applicant.displayName || application.applicant.uid}}</strong>
+                                                <span>{{getStatusLabel(application.status)}}</span>
+                                            </div>
+                                        </div>
+                                        <div class="social-lfg__application-actions">
+                                            <button mat-stroked-button color="primary" type="button" *ngIf="application.permissions.canResolve" (click)="resolveApplication(application, 'accepted')">
+                                                Aceptar
+                                            </button>
+                                            <button mat-stroked-button color="warn" type="button" *ngIf="application.permissions.canResolve" (click)="resolveApplication(application, 'rejected')">
+                                                Rechazar
+                                            </button>
+                                            <button mat-stroked-button color="warn" type="button" *ngIf="application.permissions.canWithdraw" (click)="resolveApplication(application, 'withdrawn')">
+                                                Retirar
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <p>{{application.message}}</p>
+                                </article>
+                            </div>
+
+                            <div class="social-lfg__empty social-lfg__empty--compact" *ngIf="!applicationsLoading && visibleApplications.length < 1">
+                                <mat-icon>mail_lock</mat-icon>
+                                <p>No hay aplicaciones visibles para este post.</p>
+                            </div>
+                        </article>
+                    </article>
+
+                    <ng-template #noSelection>
+                        <div class="social-lfg__empty">
+                            <mat-icon>forum</mat-icon>
+                            <p>Selecciona una convocatoria o crea una nueva para trabajar el panel de detalle.</p>
+                        </div>
+                    </ng-template>
+                </ng-template>
+            </section>
+        </div>
+    </ng-container>
+
+    <ng-template #guestBlocked>
+        <div class="social-lfg__empty social-lfg__empty--guest">
+            <mat-icon>lock</mat-icon>
+            <p>Convocatorias requiere sesión iniciada. Aquí se listarán posts, detalle, aplicaciones y conversación contextual.</p>
+        </div>
+    </ng-template>
+</section>

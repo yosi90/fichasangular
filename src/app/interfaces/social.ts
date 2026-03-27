@@ -1,4 +1,12 @@
-export type SocialHubSectionId = 'resumen' | 'amistades' | 'bloqueos' | 'campanas' | 'mensajes';
+export type SocialHubSectionId =
+    | 'resumen'
+    | 'comunidad'
+    | 'actividad'
+    | 'convocatorias'
+    | 'amistades'
+    | 'bloqueos'
+    | 'campanas'
+    | 'mensajes';
 
 export interface SocialHubOpenRequest {
     section: SocialHubSectionId;
