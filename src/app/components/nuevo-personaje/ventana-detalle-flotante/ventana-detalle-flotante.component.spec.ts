@@ -230,8 +230,8 @@ describe('VentanaDetalleFlotanteComponent', () => {
             version: 1,
             left: 140,
             top: 96,
-            width: 780,
-            height: 520,
+            width: 560,
+            height: 340,
             updatedAt: Date.now(),
         });
 
@@ -251,8 +251,8 @@ describe('VentanaDetalleFlotanteComponent', () => {
         expect(component.isMinimized).toBeFalse();
         expect(component.rect.x).toBe(140);
         expect(component.rect.y).toBe(96);
-        expect(component.rect.width).toBe(780);
-        expect(component.rect.height).toBe(520);
+        expect(component.rect.width).toBe(560);
+        expect(component.rect.height).toBe(340);
     });
 
     it('aplica geometría restaurada guardada por cuenta al iniciar', async () => {
@@ -260,8 +260,8 @@ describe('VentanaDetalleFlotanteComponent', () => {
             version: 1,
             left: 80,
             top: 70,
-            width: 800,
-            height: 500,
+            width: 560,
+            height: 340,
             updatedAt: Date.now(),
         });
 
@@ -272,8 +272,8 @@ describe('VentanaDetalleFlotanteComponent', () => {
 
         expect(component.rect.x).toBe(80);
         expect(component.rect.y).toBe(70);
-        expect(component.rect.width).toBe(800);
-        expect(component.rect.height).toBe(500);
+        expect(component.rect.width).toBe(560);
+        expect(component.rect.height).toBe(340);
     });
 
     it('si se maximiza desde minimizada, al restaurar usa geometría guardada', async () => {
@@ -281,8 +281,8 @@ describe('VentanaDetalleFlotanteComponent', () => {
             version: 1,
             left: 88,
             top: 66,
-            width: 820,
-            height: 540,
+            width: 560,
+            height: 340,
             updatedAt: Date.now(),
         });
 
@@ -299,8 +299,8 @@ describe('VentanaDetalleFlotanteComponent', () => {
         expect(component.isMinimized).toBeFalse();
         expect(component.rect.x).toBe(88);
         expect(component.rect.y).toBe(66);
-        expect(component.rect.width).toBe(820);
-        expect(component.rect.height).toBe(540);
+        expect(component.rect.width).toBe(560);
+        expect(component.rect.height).toBe(340);
     });
 
     it('guarda placement al soltar arrastre mientras está minimizada', () => {
@@ -332,6 +332,63 @@ describe('VentanaDetalleFlotanteComponent', () => {
         } as any);
         component.onDocumentPointerUp();
 
+        expect(userSettingsSvc.savePreviewMinimizada).not.toHaveBeenCalled();
+    });
+
+    it('si la minimizada no se ancla a laterales mantiene posicion libre y no guarda side/top', () => {
+        component.persistPreviewPlacements = false;
+        component.minimizedAnchorsToViewportSides = false;
+        component.restoredPlacementInput = {
+            version: 1,
+            left: 120,
+            top: 120,
+            width: 560,
+            height: 340,
+            updatedAt: Date.now(),
+        };
+        component.minimizedPlacementInput = {
+            version: 1,
+            side: 'right',
+            top: 40,
+            updatedAt: Date.now(),
+        };
+        component.windowMode = 'window';
+        component.ngOnChanges({
+            restoredPlacementInput: {
+                currentValue: component.restoredPlacementInput,
+                previousValue: null,
+                firstChange: false,
+                isFirstChange: () => false,
+            },
+            minimizedPlacementInput: {
+                currentValue: component.minimizedPlacementInput,
+                previousValue: null,
+                firstChange: false,
+                isFirstChange: () => false,
+            },
+        } as any);
+
+        component.toggleMinimize();
+        const leftBeforeMove = Number(component.containerStyle['left'].replace('px', ''));
+
+        component.onTitleBarPointerDown({
+            button: 0,
+            clientX: 100,
+            clientY: 100,
+            target: null,
+            preventDefault: () => undefined,
+        } as any);
+        component.onDocumentPointerMove({
+            clientX: 160,
+            clientY: 160,
+        } as PointerEvent);
+        component.onDocumentPointerUp();
+
+        const leftAfterMove = Number(component.containerStyle['left'].replace('px', ''));
+
+        expect(leftBeforeMove).toBe(120);
+        expect(leftAfterMove).toBe(180);
+        expect(component['minimizedPlacement']).toBeNull();
         expect(userSettingsSvc.savePreviewMinimizada).not.toHaveBeenCalled();
     });
 });

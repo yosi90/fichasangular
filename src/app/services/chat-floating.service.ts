@@ -45,6 +45,8 @@ export class ChatFloatingService implements OnDestroy {
     private initialized = false;
     private zIndexCursor = 1500;
     private automaticPersistenceBlocked = false;
+    private bootstrappedUid = '';
+    private persistInFlight: Promise<void> | null = null;
 
     readonly listWindow$ = this.listWindowSubject.asObservable();
     readonly bubbles$ = this.bubblesSubject.asObservable();
@@ -66,9 +68,14 @@ export class ChatFloatingService implements OnDestroy {
         this.subscriptions.add(
             this.userSvc.isLoggedIn$.subscribe((loggedIn) => {
                 if (loggedIn === true) {
+                    const currentUid = `${this.userSvc.CurrentUserUid ?? ''}`.trim();
+                    if (currentUid.length < 1 || this.bootstrappedUid === currentUid)
+                        return;
+                    this.bootstrappedUid = currentUid;
                     void this.bootstrapForCurrentUser();
                     return;
                 }
+                this.bootstrappedUid = '';
                 this.resetState();
             })
         );
@@ -85,6 +92,10 @@ export class ChatFloatingService implements OnDestroy {
 
     get isAutoOpenListEnabled(): boolean {
         return this.autoOpenListSubject.value !== false;
+    }
+
+    get isListWindowOpen(): boolean {
+        return this.listWindowSubject.value?.open === true;
     }
 
     applyProfileSettings(profile: Pick<UserSettingsV1['perfil'], 'autoAbrirVentanaChats' | 'permitirBurbujasChat'> | UserSettingsV1['perfil'] | null | undefined): void {
@@ -162,7 +173,7 @@ export class ChatFloatingService implements OnDestroy {
             minimizedPlacement: minimizedPlacement ? { ...minimizedPlacement } : current.minimizedPlacement,
             updatedAt: Date.now(),
         });
-        this.schedulePersist();
+        void this.persistStateSoon();
     }
 
     openConversation(conversationId: number): void {
@@ -236,7 +247,7 @@ export class ChatFloatingService implements OnDestroy {
             };
         });
         this.bubblesSubject.next(next);
-        this.schedulePersist();
+        void this.persistStateSoon();
     }
 
     closeConversation(conversationId: number): void {
@@ -298,6 +309,7 @@ export class ChatFloatingService implements OnDestroy {
     private resetState(): void {
         this.clearPersistTimer();
         this.automaticPersistenceBlocked = false;
+        this.bootstrappedUid = '';
         this.listWindowSubject.next(null);
         this.bubblesSubject.next([]);
         this.autoOpenListSubject.next(true);
@@ -362,6 +374,19 @@ export class ChatFloatingService implements OnDestroy {
                 this.clearPersistTimer();
             }
         }
+    }
+
+    private async persistStateSoon(): Promise<void> {
+        this.clearPersistTimer();
+        if (this.persistInFlight) {
+            await this.persistInFlight.catch(() => undefined);
+        }
+        this.persistInFlight = this.persistState()
+            .catch(() => undefined)
+            .finally(() => {
+                this.persistInFlight = null;
+            });
+        await this.persistInFlight;
     }
 
     private buildPersistedListWindowState(): FloatingChatListRuntimeState {

@@ -25,6 +25,7 @@ describe('SocialHubComponent', () => {
     let unreadSystemCount$: BehaviorSubject<number>;
     let messageCreated$: Subject<any>;
     let messageRead$: Subject<any>;
+    let floatingListWindow$: BehaviorSubject<any>;
     let chatApiSvc: jasmine.SpyObj<ChatApiService>;
     let campanaSvc: jasmine.SpyObj<CampanaService>;
     let campaignRealtimeSyncSvc: jasmine.SpyObj<CampaignRealtimeSyncService>;
@@ -40,6 +41,7 @@ describe('SocialHubComponent', () => {
         unreadSystemCount$ = new BehaviorSubject<number>(0);
         messageCreated$ = new Subject<any>();
         messageRead$ = new Subject<any>();
+        floatingListWindow$ = new BehaviorSubject<any>(null);
         socialApiSvc = jasmine.createSpyObj<SocialApiService>('SocialApiService', [
             'searchUsers',
             'listFriends',
@@ -151,6 +153,7 @@ describe('SocialHubComponent', () => {
         userSettingsSvc = jasmine.createSpyObj<UserSettingsService>('UserSettingsService', ['loadProfileSettings']);
         chatFloatingSvc = jasmine.createSpyObj<ChatFloatingService>('ChatFloatingService', ['applyProfileSettings', 'openOrFocusListWindow', 'openConversation'], {
             isBubbleFeatureEnabled: true,
+            listWindow$: floatingListWindow$.asObservable(),
         });
         userSettingsSvc.loadProfileSettings.and.resolveTo({
             ...createDefaultUserSettings().perfil,
@@ -477,6 +480,24 @@ describe('SocialHubComponent', () => {
         expect(fixture.nativeElement.textContent).toContain('Nuevo chat');
     }));
 
+    it('mantiene Nuevo chat visible aunque el actor no acepte directos de desconocidos', fakeAsync(() => {
+        userSettingsSvc.loadProfileSettings.and.resolveTo({
+            ...createDefaultUserSettings().perfil,
+            allowDirectMessagesFromNonFriends: false,
+        });
+
+        fixture.detectChanges();
+        isLoggedIn$.next(true);
+        tick();
+
+        component.currentSection = 'mensajes';
+        fixture.detectChanges();
+
+        expect(component.actorAllowsNonFriendDM).toBeFalse();
+        expect(component.canOpenNewDirect).toBeTrue();
+        expect(fixture.nativeElement.textContent).toContain('Nuevo chat');
+    }));
+
     it('permite abrir o traer la ventana flotante desde Social/Mensajes', fakeAsync(() => {
         fixture.detectChanges();
         isLoggedIn$.next(true);
@@ -485,6 +506,22 @@ describe('SocialHubComponent', () => {
         component.openFloatingChatWindow();
 
         expect(chatFloatingSvc.openOrFocusListWindow).toHaveBeenCalled();
+    }));
+
+    it('oculta el botón de ventana flotante si la ventana ya está abierta', fakeAsync(() => {
+        fixture.detectChanges();
+        isLoggedIn$.next(true);
+        tick();
+
+        component.currentSection = 'mensajes';
+        fixture.detectChanges();
+        expect(fixture.nativeElement.textContent).toContain('Ventana flotante');
+
+        floatingListWindow$.next({ open: true });
+        fixture.detectChanges();
+
+        expect(component.canOpenFloatingChatWindow).toBeFalse();
+        expect(fixture.nativeElement.textContent).not.toContain('Ventana flotante');
     }));
 
     it('popea la conversación activa a burbuja cuando la feature está disponible', () => {
@@ -542,9 +579,13 @@ describe('SocialHubComponent', () => {
 
     it('filtra resultados de Nuevo chat por self, bloqueados, duplicados y setting de DM', () => {
         fixture.detectChanges();
+        component.isLoggedIn = true;
 
         component.blocks = [
             { uid: 'uid-blocked', displayName: 'Bloqueado', photoThumbUrl: null, allowDirectMessagesFromNonFriends: false, blockedAtUtc: null },
+        ];
+        component.friends = [
+            { uid: 'uid-friend', displayName: 'Amistad', photoThumbUrl: null, allowDirectMessagesFromNonFriends: false, friendsSince: null } as any,
         ];
         component.conversations = [
             {
@@ -568,11 +609,12 @@ describe('SocialHubComponent', () => {
             { uid: 'uid-1', displayName: 'Yo', photoThumbUrl: null, allowDirectMessagesFromNonFriends: true },
             { uid: 'uid-blocked', displayName: 'Bloqueado', photoThumbUrl: null, allowDirectMessagesFromNonFriends: true },
             { uid: 'uid-existing', displayName: 'Existente', photoThumbUrl: null, allowDirectMessagesFromNonFriends: true },
+            { uid: 'uid-friend', displayName: 'Amistad', photoThumbUrl: null, allowDirectMessagesFromNonFriends: false },
             { uid: 'uid-closed', displayName: 'Cerrado', photoThumbUrl: null, allowDirectMessagesFromNonFriends: false },
             { uid: 'uid-open', displayName: 'Abierto', photoThumbUrl: null, allowDirectMessagesFromNonFriends: true },
         ];
 
-        expect(component.visibleNewDirectResults.map((item: any) => item.uid)).toEqual(['uid-open']);
+        expect(component.visibleNewDirectResults.map((item: any) => item.uid)).toEqual(['uid-friend', 'uid-open']);
     });
 
     it('abre el perfil público desde el avatar de un mensaje humano', () => {

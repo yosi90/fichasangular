@@ -6,6 +6,8 @@ export interface AppToast {
     message: string;
     type: AppToastType;
     category?: AppToastCategory;
+    createdAt: number;
+    durationMs: number;
 }
 
 export interface AppToastOptions {

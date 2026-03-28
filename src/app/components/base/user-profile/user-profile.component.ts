@@ -26,6 +26,7 @@ import {
 } from 'src/app/interfaces/user-account';
 import { UserRoleRequestStatus, UserRoleRequestTarget } from 'src/app/interfaces/user-role-request';
 import { NuevoPersonajeGeneradorConfig, UserSettingsV1 } from 'src/app/interfaces/user-settings';
+import { PERMISSION_RESOURCES } from 'src/app/interfaces/user-acl';
 import { AppToastService } from 'src/app/services/app-toast.service';
 import { CampanaService } from 'src/app/services/campana.service';
 import { CampaignRealtimeSyncService } from 'src/app/services/campaign-realtime-sync.service';
@@ -75,6 +76,7 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
     socialAlertsCuentaSistema = true;
     generadorMinimoSeleccionado = 13;
     generadorTablasPermitidas = 3;
+    previewResetting = false;
 
     avatarUploading = false;
     avatarDeleting = false;
@@ -148,6 +150,8 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
     private identityDraftsUid = '';
     private readonly campaignPolicyAutofixInFlight = new Set<number>();
     private campaignSummariesLiveReady = false;
+    readonly generadorMinimoOpciones = Array.from({ length: 11 }, (_, index) => index + 3);
+    readonly generadorTablasOpciones = Array.from({ length: 5 }, (_, index) => index + 1);
     private readonly dateFormatter = new Intl.DateTimeFormat('es-ES', {
         day: 'numeric',
         month: 'long',
@@ -268,22 +272,23 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
     }
 
     get allCreatePermissionsEnabled(): boolean {
-        const permisos = Object.values(this.profile?.permissions ?? {});
-        return permisos.length > 0 && permisos.every((resource) => resource?.create === true);
+        const permisos = this.profile?.permissions ?? {};
+        return PERMISSION_RESOURCES.every((resource) => permisos?.[resource]?.create === true);
     }
 
     get permisosCreateActivos(): string[] {
         const permisos = this.profile?.permissions ?? {};
         return Object.keys(permisos)
             .filter((resource) => permisos?.[resource]?.create === true)
+            .map((resource) => this.formatCreatePermissionLabel(resource))
             .sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' }));
     }
 
     get permisosResumen(): string {
         if (this.allCreatePermissionsEnabled)
-            return 'Todos';
+            return 'Todos los permisos de creación';
         if (this.permisosCreateActivos.length < 1)
-            return 'Ninguno';
+            return 'Sin permisos adicionales';
         return this.permisosCreateActivos.join(', ');
     }
 
@@ -315,14 +320,18 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
         return this.formatDateLabel(this.profile?.lastSeenAt, 'Sin dato');
     }
 
+    get effectiveProfileRole(): 'jugador' | 'master' | 'colaborador' | 'admin' {
+        return this.userSvc.getCurrentRole();
+    }
+
     get profileRoleLabel(): string {
-        return this.formatRoleLabel(this.profile?.role, 'Jugador');
+        return this.formatRoleLabel(this.effectiveProfileRole, 'Jugador');
     }
 
     get requestedRoleTarget(): UserRoleRequestTarget | null {
-        if (this.profile?.role === 'jugador')
+        if (this.effectiveProfileRole === 'jugador')
             return 'master';
-        if (this.profile?.role === 'master')
+        if (this.effectiveProfileRole === 'master')
             return 'colaborador';
         return null;
     }
@@ -381,7 +390,7 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
     }
 
     get roleRequestStatusLabel(): string {
-        if (this.profile?.role === 'colaborador' || this.profile?.role === 'admin')
+        if (this.effectiveProfileRole === 'colaborador' || this.effectiveProfileRole === 'admin')
             return `Tu rol actual es ${this.profileRoleLabel}.`;
 
         if (this.hasPendingRoleRequestForCurrentTarget)
@@ -429,7 +438,7 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
     }
 
     get canCreateCampaignByRole(): boolean {
-        const role = `${this.profile?.role ?? ''}`.trim().toLowerCase();
+        const role = `${this.userSvc.getCurrentRole() ?? ''}`.trim().toLowerCase();
         return role === 'master' || role === 'colaborador' || role === 'admin';
     }
 
@@ -526,7 +535,7 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
     }
 
     get selectedCampaignOwnerMatchesCurrentUser(): boolean {
-        const currentUid = `${this.profile?.uid ?? ''}`.trim();
+        const currentUid = `${this.userSvc.CurrentUserUid || this.profile?.uid || ''}`.trim();
         const ownerUid = `${this.selectedCampaignDetail?.ownerUid ?? ''}`.trim();
         return currentUid.length > 0 && ownerUid.length > 0 && currentUid === ownerUid;
     }
@@ -819,20 +828,35 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
     }
 
     async resetearPosicionPreview(): Promise<void> {
-        if (this.settingsSaving)
+        if (this.previewResetting)
             return;
 
-        this.settingsSaving = true;
+        this.previewResetting = true;
         try {
             await this.userSettingsSvc.clearPreviewPlacements();
-            this.settings = await this.userSettingsSvc.loadSettings(true);
-            this.applySettingsToForm(this.settings);
+            const currentSettings = this.settings ?? await this.userSettingsSvc.loadSettings();
+            this.settings = {
+                ...currentSettings,
+                nuevo_personaje: {
+                    ...currentSettings.nuevo_personaje,
+                    preview_minimizada: null,
+                    preview_restaurada: null,
+                },
+            };
             this.appToastSvc.showSuccess('Posición de preview restablecida.');
         } catch (error: any) {
             this.appToastSvc.showError(this.mapProfileError(error, 'No se pudo restablecer la preview.'));
         } finally {
-            this.settingsSaving = false;
+            this.previewResetting = false;
         }
+    }
+
+    onGeneradorMinimoSeleccionadoChange(value: number | string | null | undefined): void {
+        this.generadorMinimoSeleccionado = this.normalizeGeneradorMinimo(Number(value));
+    }
+
+    onGeneradorTablasPermitidasChange(value: number | string | null | undefined): void {
+        this.generadorTablasPermitidas = this.normalizeGeneradorTablas(Number(value));
     }
 
     async cambiarPassword(): Promise<void> {
@@ -1840,6 +1864,22 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
         return this.dateTimeFormatter.format(parsed).replace(',', '');
     }
 
+    private formatCreatePermissionLabel(resource: string | null | undefined): string {
+        const normalized = `${resource ?? ''}`.trim().toLowerCase();
+        if (normalized === 'personajes')
+            return 'Crear personajes nuevos';
+        if (normalized === 'campanas')
+            return 'Crear campañas nuevas';
+        if (normalized.length < 1)
+            return 'Permiso de creación';
+
+        const readableResource = normalized
+            .replace(/_/g, ' ')
+            .replace(/\s+/g, ' ')
+            .trim();
+        return `Crear ${readableResource}`;
+    }
+
     private async cargarEstadoSolicitudRol(): Promise<void> {
         this.roleRequestLoading = true;
         try {
@@ -2023,12 +2063,63 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
         } catch (error: any) {
             if (this.selectedCampaignId !== id)
                 return;
+            const ownerRecoveryFallback = this.buildRecoverableOwnerFallbackDetail(id, includeInactive, error);
+            if (ownerRecoveryFallback) {
+                this.selectedCampaignDetail = ownerRecoveryFallback;
+                this.selectedCampaignErrorMessage = '';
+                this.campaignRenameDraft = ownerRecoveryFallback.campaign.nombre;
+                this.syncCampaignEditorFromDetail(ownerRecoveryFallback);
+                this.resetCampaignDetailEditors();
+                return;
+            }
             this.selectedCampaignDetail = null;
             this.selectedCampaignErrorMessage = this.mapCampaignError(error, 'No se pudo cargar el detalle de la campaña.');
         } finally {
             if (this.selectedCampaignId === id)
                 this.selectedCampaignLoading = false;
         }
+    }
+
+    private buildRecoverableOwnerFallbackDetail(
+        campaignId: number,
+        includeInactive: boolean,
+        error: any
+    ): CampaignDetailViewModel | null {
+        const summary = this.manageableCampaigns.find((campaign) => campaign.id === campaignId) ?? null;
+        if (!summary?.isOwner || summary.campaignRole === 'master')
+            return null;
+        if (!this.isOwnerRecoverAccessDeniedError(error))
+            return null;
+
+        const currentUid = `${this.userSvc.CurrentUserUid || this.profile?.uid || ''}`.trim();
+        const ownerDisplayName = this.profile?.displayName ?? null;
+
+        return {
+            campaign: {
+                ...summary,
+            },
+            ownerUid: currentUid.length > 0 ? currentUid : null,
+            ownerDisplayName,
+            activeMasterUid: null,
+            activeMasterDisplayName: null,
+            canRecoverMaster: true,
+            politicaCreacion: this.hydrateCampaignPolicyDraft(null),
+            members: [],
+            pendingInvitations: [],
+            includeInactiveMembers: includeInactive === true,
+            tramas: [],
+            loadingInvitations: false,
+            loadingMembers: false,
+            loadingTramas: false,
+        };
+    }
+
+    private isOwnerRecoverAccessDeniedError(error: any): boolean {
+        const message = `${error?.message ?? ''}`.trim().toLowerCase();
+        return message.includes('no pertenece a la campaña')
+            || message.includes('http 403')
+            || message.includes('forbidden')
+            || message.includes('acceso denegado');
     }
 
     private resetCampaignDetailEditors(): void {

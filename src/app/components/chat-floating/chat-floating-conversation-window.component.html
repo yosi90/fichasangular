@@ -6,6 +6,7 @@
     [restoredPlacementInput]="restoredPlacement"
     [minimizedPlacementInput]="bubblePlacement"
     [windowMode]="mode === 'bubble' ? 'minimized' : mode"
+    [minimizedAnchorsToViewportSides]="mode === 'bubble'"
     [zIndex]="zIndex"
     (focoSolicitado)="onFocusRequested()"
     (cerrarSolicitado)="closeRequested.emit()"

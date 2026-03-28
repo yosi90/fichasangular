@@ -2,6 +2,7 @@ import { Injectable, OnDestroy } from '@angular/core';
 import { Subscription } from 'rxjs';
 import Swal from 'sweetalert2';
 import { ChatAlertCandidate } from '../interfaces/chat';
+import { AdminUsersService } from './admin-users.service';
 import { ChatApiService } from './chat-api.service';
 import { ChatRealtimeService } from './chat-realtime.service';
 import { UserProfileNavigationService } from './user-profile-navigation.service';
@@ -21,6 +22,7 @@ export class AdminRoleRequestNotifierService implements OnDestroy {
 
     constructor(
         private userSvc: UserService,
+        private adminUsersSvc: AdminUsersService,
         private userProfileNavSvc: UserProfileNavigationService,
         private chatRealtimeSvc: ChatRealtimeService,
         private chatApiSvc: ChatApiService,
@@ -31,12 +33,11 @@ export class AdminRoleRequestNotifierService implements OnDestroy {
             return;
 
         this.initialized = true;
-        this.adminStateSub = this.userSvc.esAdmin$.subscribe((isAdmin) => {
-            this.isAdminActive = isAdmin === true;
-            if (isAdmin === true) {
+        this.adminStateSub = this.userSvc.isLoggedIn$.subscribe((loggedIn) => {
+            if (loggedIn === true)
                 return;
-            }
 
+            this.isAdminActive = false;
             this.alertInFlight = false;
             this.handledRealtimeAlertKeys.clear();
             this.latestRealtimeRoleRequestAlert = null;
@@ -54,6 +55,8 @@ export class AdminRoleRequestNotifierService implements OnDestroy {
     }
 
     private async handleRealtimeAlert(candidate: ChatAlertCandidate | null | undefined): Promise<void> {
+        if (!this.isAdminActive)
+            await this.refreshAdminRuntimeAccess();
         if (!this.isAdminActive)
             return;
 
@@ -128,5 +131,14 @@ export class AdminRoleRequestNotifierService implements OnDestroy {
         const lastMessage = Array.isArray(messages) && messages.length > 0 ? messages[messages.length - 1] : null;
         const lastMessageId = Math.trunc(Number(lastMessage?.messageId));
         return Number.isFinite(lastMessageId) && lastMessageId > 0 ? lastMessageId : 0;
+    }
+
+    private async refreshAdminRuntimeAccess(): Promise<void> {
+        try {
+            await this.adminUsersSvc.assertAdminAccess();
+            this.isAdminActive = true;
+        } catch {
+            this.isAdminActive = false;
+        }
     }
 }

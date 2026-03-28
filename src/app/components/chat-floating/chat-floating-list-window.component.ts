@@ -116,7 +116,29 @@ export class ChatFloatingListWindowComponent implements OnInit, OnDestroy {
     }
 
     get canOpenNewDirect(): boolean {
-        return this.isLoggedIn && this.actorAllowsNonFriendDM;
+        return this.isLoggedIn;
+    }
+
+    get canOpenComposer(): boolean {
+        return this.canOpenNewDirect || this.canCreateGroup;
+    }
+
+    get isComposerExpanded(): boolean {
+        return this.composerMode !== 'none';
+    }
+
+    get shouldShowComposerModes(): boolean {
+        return this.canOpenNewDirect && this.canCreateGroup;
+    }
+
+    get newChatSummary(): string {
+        if (this.canOpenNewDirect && this.canCreateGroup)
+            return 'Buscar un usuario o preparar un grupo';
+        if (this.canOpenNewDirect)
+            return 'Buscar un usuario y abrir un directo';
+        if (this.canCreateGroup)
+            return 'Crear un grupo con tus amistades activas';
+        return 'No hay acciones de chat disponibles';
     }
 
     get canCreateGroup(): boolean {
@@ -129,6 +151,11 @@ export class ChatFloatingListWindowComponent implements OnInit, OnDestroy {
 
     get visibleNewDirectResults(): SocialUserBasic[] {
         const currentUid = `${this.userSvc.CurrentUserUid ?? ''}`.trim();
+        const friendUids = new Set(
+            this.friends
+                .map((item) => `${item?.uid ?? ''}`.trim())
+                .filter((item) => item.length > 0)
+        );
         const directCounterparts = new Set(
             this.conversations
                 .filter((item) => item.type === 'direct' && item.isSystemConversation !== true)
@@ -141,7 +168,7 @@ export class ChatFloatingListWindowComponent implements OnInit, OnDestroy {
                 return false;
             if (directCounterparts.has(uid))
                 return false;
-            return item.allowDirectMessagesFromNonFriends === true;
+            return friendUids.has(uid) || item.allowDirectMessagesFromNonFriends === true;
         });
     }
 

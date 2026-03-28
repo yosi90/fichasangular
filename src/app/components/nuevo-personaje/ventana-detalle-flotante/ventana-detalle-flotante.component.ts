@@ -49,6 +49,7 @@ export class VentanaDetalleFlotanteComponent implements OnInit, OnChanges {
     @Input() windowMode: FloatingWindowVisualMode | null = null;
     @Input() zIndex: number | null = null;
     @Input() persistPreviewPlacements = true;
+    @Input() minimizedAnchorsToViewportSides = true;
     @Output() cerrarSolicitado: EventEmitter<void> = new EventEmitter<void>();
     @Output() windowModeChange: EventEmitter<FloatingWindowVisualMode> = new EventEmitter<FloatingWindowVisualMode>();
     @Output() restoredPlacementChange: EventEmitter<FloatingWindowPlacementRestored | null> = new EventEmitter<FloatingWindowPlacementRestored | null>();
@@ -154,8 +155,12 @@ export class VentanaDetalleFlotanteComponent implements OnInit, OnChanges {
         }
 
         this.isMinimized = !this.isMinimized;
-        if (this.isMinimized)
-            this.aplicarPlacementMinimizadoGuardado();
+        if (this.isMinimized) {
+            if (this.minimizedAnchorsToViewportSides)
+                this.aplicarPlacementMinimizadoGuardado();
+            else
+                this.clearMinimizedPlacement();
+        }
         else {
             const restoredRect = this.getRestoredRectGuardado();
             if (restoredRect)
@@ -247,7 +252,7 @@ export class VentanaDetalleFlotanteComponent implements OnInit, OnChanges {
             || interaction.startRect.width !== this.rect.width
             || interaction.startRect.height !== this.rect.height;
 
-        if (interaction.type === 'move' && this.isMinimized && this.moveHasDelta)
+        if (interaction.type === 'move' && this.isMinimized && this.moveHasDelta && this.minimizedAnchorsToViewportSides)
             this.guardarPlacementMinimizado();
         if (!this.isMinimized && !this.isMaximized && geometryChanged)
             this.guardarPlacementRestaurado();
@@ -273,7 +278,7 @@ export class VentanaDetalleFlotanteComponent implements OnInit, OnChanges {
         this.isMinimized = mode === 'minimized';
         this.isMaximized = mode === 'maximized';
         this.restoreRect = restoredRect ? { ...restoredRect } : this.restoreRect;
-        if (this.isMinimized)
+        if (this.isMinimized && this.minimizedAnchorsToViewportSides)
             this.aplicarPlacementMinimizadoGuardado();
     }
 
@@ -453,7 +458,7 @@ export class VentanaDetalleFlotanteComponent implements OnInit, OnChanges {
     }
 
     private aplicarPlacementMinimizadoGuardado(): void {
-        if (!this.minimizedPlacement)
+        if (!this.minimizedAnchorsToViewportSides || !this.minimizedPlacement)
             return;
 
         const width = this.getMinimizedWidth();
@@ -470,6 +475,9 @@ export class VentanaDetalleFlotanteComponent implements OnInit, OnChanges {
     }
 
     private guardarPlacementMinimizado(): void {
+        if (!this.minimizedAnchorsToViewportSides)
+            return;
+
         const viewport = this.getViewport();
         const width = this.getMinimizedWidth();
         const centerX = this.rect.x + (width / 2);
@@ -492,6 +500,11 @@ export class VentanaDetalleFlotanteComponent implements OnInit, OnChanges {
         }).catch(() => {
             // Ignorado: si falla el guardado remoto, se mantiene la última posición local.
         });
+    }
+
+    private clearMinimizedPlacement(): void {
+        this.minimizedPlacement = null;
+        this.minimizedPlacementChange.emit(null);
     }
 
     private getRestoredRectGuardado(): WindowRect | null {

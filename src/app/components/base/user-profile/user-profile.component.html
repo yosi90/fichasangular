@@ -68,7 +68,7 @@
                                 <strong>{{profileRoleLabel}}</strong>
                             </article>
                             <article class="profile-stat-card">
-                                <span class="profile-stat-card__label">Permisos create</span>
+                                <span class="profile-stat-card__label">Tus permisos</span>
                                 <strong>{{permisosResumen}}</strong>
                             </article>
                         </div>
@@ -823,40 +823,52 @@
 
                         <article class="profile-panel">
                             <div class="profile-panel__header">
-                                <h2>Generador</h2>
-                                <p>Valores iniciales del creador de personajes.</p>
+                                <h2>Tiradas iniciales</h2>
+                                <p>Ajustes base del generador de características.</p>
                             </div>
 
                             <mat-form-field appearance="outline" class="profile-field">
-                                <mat-label>Mínimo seleccionado</mat-label>
-                                <input
-                                    matInput
+                                <mat-label>Puntuación mínima por característica</mat-label>
+                                <mat-select
                                     id="generador-minimo"
-                                    type="number"
-                                    min="3"
-                                    max="13"
-                                    [(ngModel)]="generadorMinimoSeleccionado"
-                                    [disabled]="settingsSaving" />
+                                    [ngModel]="generadorMinimoSeleccionado"
+                                    (ngModelChange)="onGeneradorMinimoSeleccionadoChange($event)"
+                                    [disabled]="settingsSaving">
+                                    <mat-option *ngFor="let minimo of generadorMinimoOpciones" [value]="minimo">
+                                        {{minimo}}
+                                    </mat-option>
+                                </mat-select>
                             </mat-form-field>
 
                             <mat-form-field appearance="outline" class="profile-field">
-                                <mat-label>Tablas permitidas</mat-label>
-                                <input
-                                    matInput
+                                <mat-label>Tablas de tiradas disponibles</mat-label>
+                                <mat-select
                                     id="generador-tablas"
-                                    type="number"
-                                    min="1"
-                                    max="5"
-                                    [(ngModel)]="generadorTablasPermitidas"
-                                    [disabled]="settingsSaving" />
+                                    [ngModel]="generadorTablasPermitidas"
+                                    (ngModelChange)="onGeneradorTablasPermitidasChange($event)"
+                                    [disabled]="settingsSaving">
+                                    <mat-option *ngFor="let tablas of generadorTablasOpciones" [value]="tablas">
+                                        {{tablas}}
+                                    </mat-option>
+                                </mat-select>
                             </mat-form-field>
 
                             <div class="profile-action-row">
                                 <button mat-raised-button color="primary" (click)="guardarPreferencias()" [disabled]="settingsSaving">
                                     {{settingsSaving ? 'Guardando...' : 'Guardar preferencias'}}
                                 </button>
-                                <button mat-stroked-button color="accent" (click)="resetearPosicionPreview()" [disabled]="settingsSaving">
-                                    Resetear preview flotante
+                            </div>
+                        </article>
+
+                        <article class="profile-panel">
+                            <div class="profile-panel__header">
+                                <h2>Preview de nuevo personaje</h2>
+                                <p>Restablece la posición de su ventana flotante.</p>
+                            </div>
+
+                            <div class="profile-action-row">
+                                <button mat-stroked-button color="accent" (click)="resetearPosicionPreview()" [disabled]="previewResetting">
+                                    {{previewResetting ? 'Restableciendo...' : 'Restablecer posición de la preview'}}
                                 </button>
                             </div>
                         </article>

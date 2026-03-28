@@ -83,6 +83,22 @@ describe('ChatFloatingService', () => {
         expect(listWindow?.open).toBeTrue();
     }));
 
+    it('no reabre la ventana-listado ya cerrada si la sesion reemite loggedIn con el mismo uid', fakeAsync(() => {
+        service.init();
+        isLoggedIn$.next(true);
+        tick();
+
+        service.closeListWindow();
+        isLoggedIn$.next(true);
+        tick();
+
+        let listWindow: any = null;
+        service.listWindow$.subscribe((value) => listWindow = value);
+
+        expect(userSettingsSvc.loadSettings).toHaveBeenCalledTimes(1);
+        expect(listWindow?.open).toBeFalse();
+    }));
+
     it('persiste un bloque ventana_chat valido incluso si la ventana-listado aun no existe en runtime', fakeAsync(() => {
         service.openConversation(31);
         tick(250);

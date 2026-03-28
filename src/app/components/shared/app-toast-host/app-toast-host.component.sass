@@ -2,16 +2,20 @@
 
 .app-toast-host
     position: fixed
-    right: 1rem
-    bottom: 1rem
+    top: 1rem
+    left: 50%
+    transform: translateX(-50%)
     z-index: 1200
     display: flex
     flex-direction: column
+    align-items: center
     gap: .65rem
     width: min(420px, calc(100vw - 2rem))
     pointer-events: none
 
 .app-toast
+    position: relative
+    overflow: hidden
     display: flex
     align-items: center
     gap: .75rem
@@ -80,9 +84,38 @@
         height: 1rem
         font-size: 1rem
 
+.app-toast__progress
+    position: absolute
+    left: 0
+    right: 0
+    bottom: 0
+    height: 3px
+    background: rgba(255, 255, 255, .32)
+    transform-origin: left center
+    animation: app-toast-progress linear forwards
+
+.app-toast--success .app-toast__progress
+    background: rgba(111, 236, 166, .7)
+
+.app-toast--error .app-toast__progress
+    background: rgba(255, 138, 128, .78)
+
+.app-toast--info .app-toast__progress
+    background: rgba(173, 189, 196, .68)
+
+.app-toast--system .app-toast__progress
+    background: rgba(255, 210, 92, .78)
+
+@keyframes app-toast-progress
+    from
+        transform: scaleX(1)
+
+    to
+        transform: scaleX(0)
+
 @media (max-width: 700px)
     .app-toast-host
-        right: .75rem
         left: .75rem
-        bottom: .75rem
+        top: .75rem
+        transform: none
         width: auto

@@ -154,7 +154,7 @@ export class AdminUsersService {
     }
 
     async assertAdminAccess(): Promise<void> {
-        await this.ensureActorAdmin();
+        await this.ensureActorAdminViaApi();
     }
 
     async syncUsersCacheFromApi(): Promise<boolean> {
@@ -263,17 +263,13 @@ export class AdminUsersService {
         if (actorUid.length < 1)
             throw new Error('Sesión no iniciada');
 
-        const aclRaw = await this.getPath('Acl/users');
-        const aclByUid = this.toAclByUid(aclRaw);
-        this.assertNoDuplicateAdminsInCache(aclByUid);
-
-        const actorAcl = aclByUid[actorUid] ?? { ...EMPTY_USER_ACL };
-        if (actorAcl.status?.banned === true)
-            throw new Error('No autorizado');
-        if (actorAcl.roles?.type !== 'admin' || actorAcl.roles?.admin !== true)
-            throw new Error('No autorizado');
+        await this.ensureActorAdminViaApi();
 
         return actorUid;
+    }
+
+    private async ensureActorAdminViaApi(): Promise<void> {
+        await this.listUsersApi();
     }
 
     private buildRows(profilesRaw: any, aclRaw: any): AdminUserRow[] {
@@ -390,14 +386,6 @@ export class AdminUsersService {
     private toOptionalNumber(value: any): number | null {
         const parsed = Number(value);
         return Number.isFinite(parsed) ? Math.trunc(parsed) : null;
-    }
-
-    private assertNoDuplicateAdminsInCache(aclByUid: Record<string, ReturnType<typeof normalizeUserAcl>>): void {
-        const adminCount = Object.values(aclByUid)
-            .filter((acl) => acl.roles?.type === 'admin' || acl.roles?.admin === true)
-            .length;
-        if (adminCount > 1)
-            throw new Error('Salvaguarda activada: hay múltiples admins en Firebase. Operación bloqueada.');
     }
 
     private buildAclWritePayload(

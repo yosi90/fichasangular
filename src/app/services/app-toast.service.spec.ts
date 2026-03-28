@@ -31,6 +31,21 @@ describe('AppToastService', () => {
         });
     });
 
+    it('mantiene visible dos segundos mas un toast de error', fakeAsync(() => {
+        const service = new AppToastService();
+        let currentLength = 0;
+        service.toasts$.subscribe((toasts) => currentLength = toasts.length);
+
+        service.showError('Error');
+        expect(currentLength).toBe(1);
+
+        tick(5201);
+        expect(currentLength).toBe(1);
+
+        tick(2000);
+        expect(currentLength).toBe(0);
+    }));
+
     it('mantiene visible más tiempo un toast de sistema', fakeAsync(() => {
         const service = new AppToastService();
         let currentLength = 0;

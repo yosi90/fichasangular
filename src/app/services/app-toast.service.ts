@@ -50,9 +50,17 @@ export class AppToastService {
             return;
 
         const id = `app-toast-${Date.now()}-${++this.sequence}`;
-        const toast: AppToast = { id, message, type, category: options?.category };
+        const durationMs = this.resolveDuration(type, options?.durationMs);
+        const toast: AppToast = {
+            id,
+            message,
+            type,
+            category: options?.category,
+            createdAt: Date.now(),
+            durationMs,
+        };
         this.toastsSubject.next([...this.toastsSubject.value, toast]);
-        this.scheduleDismiss(id, this.resolveDuration(type, options?.durationMs));
+        this.scheduleDismiss(id, durationMs);
     }
 
     private resolveDuration(type: AppToastType, explicit?: number): number {
@@ -64,7 +72,7 @@ export class AppToastService {
             return 4200;
         if (type === 'system')
             return 7600;
-        return 5200;
+        return 7200;
     }
 
     private scheduleDismiss(id: string, durationMs: number): void {

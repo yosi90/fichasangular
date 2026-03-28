@@ -61,6 +61,7 @@ export class SocialHubComponent implements OnInit, OnChanges, OnDestroy {
     unreadUserCount = 0;
     unreadSystemCount = 0;
     actorAllowsNonFriendDM = false;
+    isFloatingChatWindowOpen = false;
     activeConversationSummary: ChatConversationSummary | null = null;
     activeConversationDetail: ChatConversationDetail | null = null;
     activeMessages: ChatMessage[] = [];
@@ -162,6 +163,9 @@ export class SocialHubComponent implements OnInit, OnChanges, OnDestroy {
                 }
                 this.syncActiveConversationWithFilter();
             });
+        this.chatFloatingSvc.listWindow$
+            .pipe(takeUntil(this.destroy$))
+            .subscribe((state) => this.isFloatingChatWindowOpen = state?.open === true);
         this.chatRealtimeSvc.unreadUserCount$
             .pipe(takeUntil(this.destroy$))
             .subscribe((count) => this.unreadUserCount = count);
@@ -246,11 +250,11 @@ export class SocialHubComponent implements OnInit, OnChanges, OnDestroy {
     }
 
     get canOpenNewDirect(): boolean {
-        return this.isLoggedIn && this.actorAllowsNonFriendDM;
+        return this.isLoggedIn;
     }
 
     get canOpenFloatingChatWindow(): boolean {
-        return this.isLoggedIn;
+        return this.isLoggedIn && !this.isFloatingChatWindowOpen;
     }
 
     get canPopOutActiveConversation(): boolean {
@@ -284,8 +288,6 @@ export class SocialHubComponent implements OnInit, OnChanges, OnDestroy {
     }
 
     get visibleNewDirectResults(): SocialUserBasic[] {
-        const currentUid = `${this.userSvc.CurrentUserUid ?? ''}`.trim();
-        const blockedUids = new Set(this.blocks.map((item) => item.uid));
         const directCounterparts = new Set(
             this.conversations
                 .filter((item) => item.type === 'direct' && !item.isSystemConversation)
@@ -294,13 +296,9 @@ export class SocialHubComponent implements OnInit, OnChanges, OnDestroy {
         );
         return this.newDirectResults.filter((item) => {
             const uid = `${item?.uid ?? ''}`.trim();
-            if (uid.length < 1 || uid === currentUid)
-                return false;
-            if (blockedUids.has(uid))
-                return false;
             if (directCounterparts.has(uid))
                 return false;
-            return item.allowDirectMessagesFromNonFriends === true;
+            return this.canStartConversation(item);
         });
     }
 

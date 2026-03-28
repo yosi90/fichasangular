@@ -672,6 +672,7 @@ describe('NuevoPersonajeComponent', () => {
             CurrentPrivateProfile: {
                 role: 'jugador',
             },
+            getCurrentRole: jasmine.createSpy('getCurrentRole').and.callFake(() => userSvcMock.CurrentPrivateProfile?.role ?? 'jugador'),
             can: jasmine.createSpy('can').and.returnValue(false),
         };
         userProfileNavigationSvcMock = {
@@ -1192,6 +1193,7 @@ describe('NuevoPersonajeComponent', () => {
 
     it('canOpenCampaignManagement solo se activa para master o superior con permiso de crear campañas', () => {
         userSvcMock.CurrentPrivateProfile = { role: 'master' };
+        userSvcMock.getCurrentRole.and.returnValue('master');
         userSvcMock.can.and.returnValue(true);
 
         expect(component.canOpenCampaignManagement).toBeTrue();
@@ -1199,14 +1201,25 @@ describe('NuevoPersonajeComponent', () => {
 
         userSvcMock.can.calls.reset();
         userSvcMock.CurrentPrivateProfile = { role: 'jugador' };
+        userSvcMock.getCurrentRole.and.returnValue('jugador');
         userSvcMock.can.and.returnValue(true);
 
         expect(component.canOpenCampaignManagement).toBeFalse();
         expect(userSvcMock.can).not.toHaveBeenCalled();
     });
 
+    it('canOpenCampaignManagement admite admin aunque el CurrentPrivateProfile esté degradado', () => {
+        userSvcMock.CurrentPrivateProfile = { role: 'jugador' };
+        userSvcMock.getCurrentRole.and.returnValue('admin');
+        userSvcMock.can.and.returnValue(true);
+
+        expect(component.canOpenCampaignManagement).toBeTrue();
+        expect(userSvcMock.can).toHaveBeenCalledWith('campanas', 'create');
+    });
+
     it('abrirGestionCampanas navega al perfil privado en la sección de campañas cuando tiene permiso', () => {
         userSvcMock.CurrentPrivateProfile = { role: 'colaborador' };
+        userSvcMock.getCurrentRole.and.returnValue('colaborador');
         userSvcMock.can.and.returnValue(true);
 
         component.abrirGestionCampanas();
@@ -1218,6 +1231,7 @@ describe('NuevoPersonajeComponent', () => {
 
     it('abrirGestionCampanas no navega cuando no puede gestionar campañas', () => {
         userSvcMock.CurrentPrivateProfile = { role: 'jugador' };
+        userSvcMock.getCurrentRole.and.returnValue('jugador');
         userSvcMock.can.and.returnValue(true);
 
         component.abrirGestionCampanas();

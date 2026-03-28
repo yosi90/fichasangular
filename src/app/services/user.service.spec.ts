@@ -335,7 +335,7 @@ describe('UserService', () => {
         expect(service.can('campanas', 'create')).toBeTrue();
     });
 
-    it('mantiene el role del perfil privado aunque ACL llegue desfasada y completa permisos faltantes desde ACL', async () => {
+    it('prioriza el rol ACL sobre el perfil privado y completa permisos faltantes desde ACL', async () => {
         const service = new UserServiceTestDouble();
         service.emitAcl('uid-role-sync', {
             roles: { admin: false, type: 'jugador' },
@@ -371,9 +371,85 @@ describe('UserService', () => {
             },
         });
 
-        expect(service.CurrentPrivateProfile?.role).toBe('master');
+        expect(service.getCurrentRole()).toBe('jugador');
+        expect(service.CurrentPrivateProfile?.role).toBe('jugador');
         expect(service.CurrentPrivateProfile?.permissions['campanas']?.create).toBeTrue();
         expect(service.CurrentPrivateProfile?.permissions['personajes']?.create).toBeTrue();
+    });
+
+    it('prioriza el rol ACL cuando el perfil privado actor-scoped llega degradado', async () => {
+        const service = new UserServiceTestDouble();
+        service.emitAcl('uid-admin', {
+            roles: { admin: true, type: 'admin' },
+            status: { banned: false },
+            permissions: {},
+        });
+        service.emitAuth({
+            uid: 'uid-admin',
+            displayName: 'Aldric',
+            email: 'aldric@test.com',
+        } as User);
+        await service.flush();
+
+        service.setCurrentPrivateProfile({
+            uid: 'uid-admin',
+            displayName: 'Aldric',
+            bio: null,
+            genderIdentity: null,
+            pronouns: null,
+            email: 'aldric@test.com',
+            emailVerified: true,
+            authProvider: 'correo',
+            photoUrl: null,
+            photoThumbUrl: null,
+            createdAt: null,
+            lastSeenAt: null,
+            role: 'jugador',
+            permissions: {},
+        });
+
+        expect(service.getCurrentRole()).toBe('admin');
+        expect(service.CurrentPrivateProfile?.role).toBe('admin');
+    });
+
+    it('no eleva a admin desde el perfil privado si el ACL activo ya marca otro rol', async () => {
+        const service = new UserServiceTestDouble();
+        service.emitAcl('uid-admin-stale', {
+            roles: { admin: false, type: 'jugador' },
+            status: { banned: false },
+            permissions: {
+                personajes: { create: true },
+            },
+        });
+        service.emitAuth({
+            uid: 'uid-admin-stale',
+            displayName: 'Aldric',
+            email: 'aldric@test.com',
+        } as User);
+        await service.flush();
+
+        service.setCurrentPrivateProfile({
+            uid: 'uid-admin-stale',
+            displayName: 'Aldric',
+            bio: null,
+            genderIdentity: null,
+            pronouns: null,
+            email: 'aldric@test.com',
+            emailVerified: true,
+            authProvider: 'correo',
+            photoUrl: null,
+            photoThumbUrl: null,
+            createdAt: null,
+            lastSeenAt: null,
+            role: 'admin',
+            permissions: {
+                personajes: { create: true },
+            },
+        });
+
+        expect(service.getCurrentRole()).toBe('jugador');
+        expect(service.CurrentPrivateProfile?.role).toBe('jugador');
+        expect(service.Usuario.permisos).toBe(0);
     });
 
     it('register traduce email-already-in-use a un mensaje de usuario', async () => {

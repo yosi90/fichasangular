@@ -371,23 +371,11 @@ describe('AdminUsersService', () => {
         expect(aclSet?.payload?.permissions?.personajes?.create).toBeFalse();
     });
 
-    it('activa salvaguarda cuando detecta duplicados en Firebase', async () => {
+    it('assertAdminAccess usa la API como fuente de verdad del admin runtime', async () => {
         const service = new AdminUsersServiceTestDouble({ currentUser: { uid: 'admin-1' } as any });
-        service.seedPath('Acl/users', {
-            'admin-1': {
-                roles: { admin: true, type: 'admin' },
-                status: { banned: false },
-                permissions: { personajes: { create: true } },
-            },
-            'admin-2': {
-                roles: { admin: true, type: 'admin' },
-                status: { banned: false },
-                permissions: { personajes: { create: true } },
-            },
-        });
+        service.apiUsers = [buildUser({ uid: 'admin-1', role: 'admin', admin: true })];
 
-        await expectAsync(service.assertAdminAccess())
-            .toBeRejectedWithError('Salvaguarda activada: hay múltiples admins en Firebase. Operación bloqueada.');
+        await expectAsync(service.assertAdminAccess()).toBeResolved();
     });
 
     it('syncAllUsersToApiFromCache reenvia todos los usuarios cacheados a API', async () => {

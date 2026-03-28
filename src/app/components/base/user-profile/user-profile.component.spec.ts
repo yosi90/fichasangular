@@ -115,8 +115,10 @@ describe('UserProfileComponent', () => {
 
         userSvc = {
             currentPrivateProfile$: profileSubject.asObservable(),
+            CurrentUserUid: 'uid-1',
             refreshCurrentPrivateProfile: jasmine.createSpy('refreshCurrentPrivateProfile').and.callFake(async () => profileSubject.value),
             setCurrentPrivateProfile: jasmine.createSpy('setCurrentPrivateProfile'),
+            getCurrentRole: jasmine.createSpy('getCurrentRole').and.callFake(() => profileSubject.value?.role ?? 'jugador'),
             can: jasmine.createSpy('can').and.returnValue(true),
         };
 
@@ -263,6 +265,23 @@ describe('UserProfileComponent', () => {
         expect(component.currentSection).toBe('seguridad');
     }));
 
+    it('presenta el resumen de permisos con etiquetas legibles para usuario final', fakeAsync(() => {
+        profileSubject.next({
+            ...buildProfile('correo'),
+            permissions: {
+                personajes: { create: true },
+            },
+        });
+
+        fixture.detectChanges();
+        tick();
+        fixture.detectChanges();
+
+        expect(component.permisosResumen).toBe('Crear personajes nuevos');
+        expect(fixture.nativeElement.textContent).toContain('Tus permisos');
+        expect(fixture.nativeElement.textContent).toContain('Crear personajes nuevos');
+    }));
+
     it('cae a resumen si se solicita seguridad para un proveedor sin cambio de contraseña', fakeAsync(() => {
         profileSubject.next(buildProfile('google'));
         userSvc.refreshCurrentPrivateProfile.and.resolveTo(profileSubject.value);
@@ -289,6 +308,7 @@ describe('UserProfileComponent', () => {
     it('guarda la identidad completa y actualiza el perfil en memoria', fakeAsync(() => {
         const apiSvc = TestBed.inject(UserProfileApiService) as jasmine.SpyObj<UserProfileApiService>;
         const toastSvc = TestBed.inject(AppToastService) as jasmine.SpyObj<AppToastService>;
+        const chatFloatingSvc = TestBed.inject(ChatFloatingService) as jasmine.SpyObj<ChatFloatingService>;
         apiSvc.updateMyProfile.and.resolveTo({
             ...buildProfile('correo'),
             displayName: 'Nombre nuevo',
@@ -322,6 +342,7 @@ describe('UserProfileComponent', () => {
         expect(component.displayNameDraft).toBe('Nombre nuevo');
         expect(component.bioDraft).toBe('Bio nueva');
         expect(toastSvc.showSuccess).toHaveBeenCalled();
+        expect(chatFloatingSvc.applyProfileSettings).not.toHaveBeenCalled();
     }));
 
     it('asegura el chat de campaña y navega a Social > mensajes', fakeAsync(() => {
@@ -421,6 +442,23 @@ describe('UserProfileComponent', () => {
             genderIdentity: null,
             pronouns: null,
         });
+    }));
+
+    it('resetear la preview no pisa los borradores actuales de preferencias', fakeAsync(() => {
+        fixture.detectChanges();
+        tick();
+
+        component.visibilidadPorDefectoPersonajes = true;
+        component.generadorMinimoSeleccionado = 11;
+        component.generadorTablasPermitidas = 5;
+
+        void component.resetearPosicionPreview();
+        tick();
+
+        expect(userSettingsSvc.clearPreviewPlacements).toHaveBeenCalled();
+        expect(component.visibilidadPorDefectoPersonajes).toBeTrue();
+        expect(component.generadorMinimoSeleccionado).toBe(11);
+        expect(component.generadorTablasPermitidas).toBe(5);
     }));
 
     it('permite solicitar ser master cuando el usuario es elegible', fakeAsync(() => {
@@ -884,6 +922,42 @@ describe('UserProfileComponent', () => {
         expect(component.selectedCampaignSummary?.id).toBe(7);
         expect(component.getCampaignRoleLabel(component.selectedCampaignSummary?.campaignRole, component.selectedCampaignSummary?.isOwner === true))
             .toBe('Creador');
+    }));
+
+    it('permite crear campañas si el rol efectivo es admin aunque el perfil local venga degradado', fakeAsync(() => {
+        profileSubject.next({
+            ...buildProfile('correo'),
+            role: 'jugador',
+        });
+        userSvc.getCurrentRole.and.returnValue('admin');
+        userSvc.can.and.returnValue(true);
+
+        fixture.detectChanges();
+        tick();
+        component.ngOnChanges({
+            openRequest: new SimpleChange(null, { section: 'campanas', requestId: 112 }, false),
+        });
+        tick();
+
+        expect(component.canCreateCampaignByRole).toBeTrue();
+        expect(component.canCreateCampaign).toBeTrue();
+    }));
+
+    it('oculta el panel de solicitar master cuando el rol efectivo ya es admin', fakeAsync(() => {
+        profileSubject.next({
+            ...buildProfile('correo'),
+            role: 'jugador',
+        });
+        userSvc.getCurrentRole.and.returnValue('admin');
+
+        fixture.detectChanges();
+        tick();
+        fixture.detectChanges();
+
+        expect(component.profileRoleLabel).toBe('Admin');
+        expect(component.requestedRoleTarget).toBeNull();
+        expect(component.showRoleRequestPanel).toBeFalse();
+        expect(`${fixture.nativeElement.textContent ?? ''}`).not.toContain('Acceso a Master');
     }));
 
     it('vuelve a resumen si el actor no tiene acceso a gestión de campañas', fakeAsync(() => {
@@ -1405,6 +1479,31 @@ describe('UserProfileComponent', () => {
 
         expect(component.selectedCampaignOwnerMatchesCurrentUser).toBeTrue();
         expect(component.selectedCampaignCanRecoverMaster).toBeTrue();
+    }));
+
+    it('construye fallback de recuperación cuando el creador ve la campaña pero el detalle devuelve 403 por no ser miembro activo', fakeAsync(() => {
+        const campanaSvc = TestBed.inject(CampanaService) as jasmine.SpyObj<CampanaService>;
+        campanaSvc.listProfileCampaigns.and.resolveTo([{
+            id: 7,
+            nombre: 'Legacy',
+            campaignRole: null,
+            membershipStatus: null,
+            isOwner: true,
+        }]);
+        campanaSvc.getCampaignDetail.and.rejectWith(new Error('El usuario no pertenece a la campaña.'));
+
+        fixture.detectChanges();
+        tick();
+        component.ngOnChanges({
+            openRequest: new SimpleChange(null, { section: 'campanas', requestId: 113 }, false),
+        });
+        tick();
+
+        expect(component.selectedCampaignSummary?.id).toBe(7);
+        expect(component.selectedCampaignDetail?.campaign.id).toBe(7);
+        expect(component.selectedCampaignErrorMessage).toBe('');
+        expect(component.selectedCampaignCanRecoverMaster).toBeTrue();
+        expect(component.selectedCampaignCanManage).toBeFalse();
     }));
 
     it('seleccionar una campaña deja el workspace en modo neutro', fakeAsync(() => {

@@ -1000,7 +1000,7 @@ export class NuevoPersonajeComponent {
     }
 
     get canOpenCampaignManagement(): boolean {
-        const role = `${this.userSvc.CurrentPrivateProfile?.role ?? ''}`.trim().toLowerCase();
+        const role = `${this.userSvc.getCurrentRole() ?? ''}`.trim().toLowerCase();
         const canCreateByRole = role === 'master' || role === 'colaborador' || role === 'admin';
         return canCreateByRole && this.userSvc.can('campanas', 'create');
     }

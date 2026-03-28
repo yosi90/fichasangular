@@ -15,5 +15,6 @@
             (click)="dismiss(toast.id)">
             <mat-icon>close</mat-icon>
         </button>
+        <span class="app-toast__progress" [style.animation-duration.ms]="toast.durationMs"></span>
     </div>
 </div>

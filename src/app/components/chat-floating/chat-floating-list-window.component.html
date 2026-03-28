@@ -6,6 +6,7 @@
     [restoredPlacementInput]="restoredPlacement"
     [minimizedPlacementInput]="minimizedPlacement"
     [windowMode]="mode"
+    [minimizedAnchorsToViewportSides]="false"
     [zIndex]="zIndex"
     (focoSolicitado)="focusRequested.emit()"
     (cerrarSolicitado)="closeRequested.emit()"
@@ -24,113 +25,130 @@
             </button>
         </div>
 
-        <div class="chat-float-list__toolbar">
-            <button mat-stroked-button color="primary" type="button" (click)="openNewChatComposer()" [disabled]="!canOpenNewDirect && !canCreateGroup">
-                Nuevo chat
+        <section class="chat-float-list__new-chat" *ngIf="canOpenComposer">
+            <button
+                type="button"
+                class="chat-float-list__conversation chat-float-list__conversation--new chat-float-list__conversation--composer"
+                [class.chat-float-list__conversation--active]="isComposerExpanded"
+                (click)="openNewChatComposer()">
+                <span class="chat-float-list__avatar chat-float-list__avatar--new">
+                    <mat-icon>add_comment</mat-icon>
+                </span>
+
+                <span class="chat-float-list__copy">
+                    <span class="chat-float-list__main">
+                        <strong>Nuevo chat</strong>
+                    </span>
+                    <small>{{newChatSummary}}</small>
+                </span>
             </button>
-            <button mat-button type="button" *ngIf="composerMode !== 'none'" (click)="cancelComposer()">
-                Cerrar
-            </button>
-        </div>
 
-        <div class="chat-float-list__composer" *ngIf="composerMode !== 'none'">
-            <div class="chat-float-list__composer-modes">
-                <button
-                    type="button"
-                    class="chat-float-list__composer-mode"
-                    *ngIf="canOpenNewDirect"
-                    [class.chat-float-list__composer-mode--active]="composerMode === 'new-direct'"
-                    (click)="openNewDirectComposer()">
-                    Directo
-                </button>
-                <button
-                    type="button"
-                    class="chat-float-list__composer-mode"
-                    *ngIf="canCreateGroup"
-                    [class.chat-float-list__composer-mode--active]="composerMode === 'new-group'"
-                    (click)="openNewGroupComposer()">
-                    Grupo
-                </button>
+            <div class="chat-float-list__composer-panel" *ngIf="isComposerExpanded">
+                <div class="chat-float-list__composer-actions">
+                    <div class="chat-float-list__composer-modes" *ngIf="shouldShowComposerModes">
+                        <button
+                            type="button"
+                            class="chat-float-list__composer-mode"
+                            *ngIf="canOpenNewDirect"
+                            [class.chat-float-list__composer-mode--active]="composerMode === 'new-direct'"
+                            (click)="openNewDirectComposer()">
+                            Directo
+                        </button>
+                        <button
+                            type="button"
+                            class="chat-float-list__composer-mode"
+                            *ngIf="canCreateGroup"
+                            [class.chat-float-list__composer-mode--active]="composerMode === 'new-group'"
+                            (click)="openNewGroupComposer()">
+                            Grupo
+                        </button>
+                    </div>
+
+                    <button type="button" class="chat-float-list__composer-close" (click)="cancelComposer()">
+                        Cerrar
+                    </button>
+                </div>
+
+                <div class="chat-float-list__composer" *ngIf="composerMode === 'new-direct'">
+                    <label class="chat-float-list__inline-field">
+                        <mat-icon>search</mat-icon>
+                        <input
+                            type="text"
+                            [(ngModel)]="newDirectSearchQuery"
+                            (ngModelChange)="onNewDirectQueryChange()"
+                            placeholder="Buscar usuario">
+                    </label>
+
+                    <p class="chat-float-list__hint" *ngIf="!newDirectSearchHasMinimumQuery">Escribe al menos 2 caracteres.</p>
+                    <p class="chat-float-list__hint" *ngIf="newDirectSearchLoading">Buscando usuarios...</p>
+                    <p class="chat-float-list__error" *ngIf="newDirectSearchErrorMessage">{{newDirectSearchErrorMessage}}</p>
+
+                    <div class="chat-float-list__mini-results" *ngIf="visibleNewDirectResults.length > 0">
+                        <button
+                            type="button"
+                            class="chat-float-list__mini-card"
+                            *ngFor="let user of visibleNewDirectResults; trackBy: trackByUid"
+                            (click)="openDirectFromSearch(user)">
+                            <span class="chat-float-list__mini-avatar">
+                                <img [src]="getUserAvatarUrl(user)" [alt]="getUserLabel(user)">
+                            </span>
+                            <span class="chat-float-list__mini-copy">
+                                <strong>{{getUserLabel(user)}}</strong>
+                                <small>Acepta directos</small>
+                            </span>
+                        </button>
+                    </div>
+
+                    <div class="chat-float-list__empty chat-float-list__empty--inline" *ngIf="newDirectSearchHasMinimumQuery && !newDirectSearchLoading && visibleNewDirectResults.length < 1">
+                        <mat-icon>person_search</mat-icon>
+                        <p>No hay usuarios disponibles con ese criterio.</p>
+                    </div>
+                </div>
+
+                <div class="chat-float-list__composer" *ngIf="composerMode === 'new-group'">
+                    <label class="chat-float-list__inline-field">
+                        <mat-icon>group</mat-icon>
+                        <input type="text" [(ngModel)]="newGroupDraft.title" placeholder="Nombre del grupo">
+                    </label>
+
+                    <label class="chat-float-list__inline-field">
+                        <mat-icon>search</mat-icon>
+                        <input type="text" [(ngModel)]="newGroupParticipantQuery" placeholder="Filtrar amistades">
+                    </label>
+
+                    <p class="chat-float-list__hint">Selecciona amistades activas para crear el grupo.</p>
+                    <p class="chat-float-list__hint" *ngIf="newGroupDraft.participantUids.length > 0">
+                        {{newGroupDraft.participantUids.length}} participante(s) seleccionado(s)
+                    </p>
+
+                    <div class="chat-float-list__mini-results" *ngIf="visibleNewGroupFriends.length > 0">
+                        <button
+                            type="button"
+                            class="chat-float-list__mini-card"
+                            *ngFor="let friend of visibleNewGroupFriends; trackBy: trackByUid"
+                            [class.chat-float-list__mini-card--selected]="isNewGroupParticipantSelected(friend.uid)"
+                            (click)="toggleNewGroupParticipant(friend)">
+                            <span class="chat-float-list__mini-avatar">
+                                <img [src]="getUserAvatarUrl(friend)" [alt]="getUserLabel(friend)">
+                            </span>
+                            <span class="chat-float-list__mini-copy">
+                                <strong>{{getUserLabel(friend)}}</strong>
+                                <small>{{isNewGroupParticipantSelected(friend.uid) ? 'Seleccionado' : 'Amistad activa'}}</small>
+                            </span>
+                        </button>
+                    </div>
+
+                    <div class="chat-float-list__empty chat-float-list__empty--inline" *ngIf="visibleNewGroupFriends.length < 1">
+                        <mat-icon>group_off</mat-icon>
+                        <p>No hay amistades disponibles con ese filtro.</p>
+                    </div>
+
+                    <button mat-raised-button color="primary" type="button" (click)="createGroup()" [disabled]="!canSubmitNewGroup">
+                        {{newGroupSaving ? 'Creando...' : 'Crear grupo'}}
+                    </button>
+                </div>
             </div>
-        </div>
-
-        <div class="chat-float-list__composer" *ngIf="composerMode === 'new-direct'">
-            <mat-form-field appearance="outline" class="chat-float-list__field">
-                <mat-label>Buscar usuario</mat-label>
-                <input
-                    matInput
-                    [(ngModel)]="newDirectSearchQuery"
-                    (ngModelChange)="onNewDirectQueryChange()"
-                    placeholder="Nombre visible">
-            </mat-form-field>
-            <p class="chat-float-list__hint" *ngIf="!newDirectSearchHasMinimumQuery">Escribe al menos 2 caracteres.</p>
-            <p class="chat-float-list__hint" *ngIf="newDirectSearchLoading">Buscando usuarios...</p>
-            <p class="chat-float-list__error" *ngIf="newDirectSearchErrorMessage">{{newDirectSearchErrorMessage}}</p>
-
-            <div class="chat-float-list__mini-results" *ngIf="visibleNewDirectResults.length > 0">
-                <button
-                    type="button"
-                    class="chat-float-list__mini-card"
-                    *ngFor="let user of visibleNewDirectResults; trackBy: trackByUid"
-                    (click)="openDirectFromSearch(user)">
-                    <span class="chat-float-list__mini-avatar">
-                        <img [src]="getUserAvatarUrl(user)" [alt]="getUserLabel(user)">
-                    </span>
-                    <span class="chat-float-list__mini-copy">
-                        <strong>{{getUserLabel(user)}}</strong>
-                        <small>Acepta directos</small>
-                    </span>
-                </button>
-            </div>
-
-            <div class="chat-float-list__empty chat-float-list__empty--inline" *ngIf="newDirectSearchHasMinimumQuery && !newDirectSearchLoading && visibleNewDirectResults.length < 1">
-                <mat-icon>person_search</mat-icon>
-                <p>No hay usuarios disponibles con ese criterio.</p>
-            </div>
-        </div>
-
-        <div class="chat-float-list__composer" *ngIf="composerMode === 'new-group'">
-            <mat-form-field appearance="outline" class="chat-float-list__field">
-                <mat-label>Nombre del grupo</mat-label>
-                <input matInput [(ngModel)]="newGroupDraft.title" placeholder="Nombre visible del grupo">
-            </mat-form-field>
-
-            <mat-form-field appearance="outline" class="chat-float-list__field">
-                <mat-label>Filtrar amistades</mat-label>
-                <input matInput [(ngModel)]="newGroupParticipantQuery" placeholder="Nombre visible">
-            </mat-form-field>
-
-            <p class="chat-float-list__hint">Selecciona amistades activas para crear el grupo.</p>
-            <p class="chat-float-list__hint" *ngIf="newGroupDraft.participantUids.length > 0">
-                {{newGroupDraft.participantUids.length}} participante(s) seleccionado(s)
-            </p>
-
-            <div class="chat-float-list__mini-results" *ngIf="visibleNewGroupFriends.length > 0">
-                <button
-                    type="button"
-                    class="chat-float-list__mini-card"
-                    *ngFor="let friend of visibleNewGroupFriends; trackBy: trackByUid"
-                    [class.chat-float-list__mini-card--selected]="isNewGroupParticipantSelected(friend.uid)"
-                    (click)="toggleNewGroupParticipant(friend)">
-                    <span class="chat-float-list__mini-avatar">
-                        <img [src]="getUserAvatarUrl(friend)" [alt]="getUserLabel(friend)">
-                    </span>
-                    <span class="chat-float-list__mini-copy">
-                        <strong>{{getUserLabel(friend)}}</strong>
-                        <small>{{isNewGroupParticipantSelected(friend.uid) ? 'Seleccionado' : 'Amistad activa'}}</small>
-                    </span>
-                </button>
-            </div>
-
-            <div class="chat-float-list__empty chat-float-list__empty--inline" *ngIf="visibleNewGroupFriends.length < 1">
-                <mat-icon>group_off</mat-icon>
-                <p>No hay amistades disponibles con ese filtro.</p>
-            </div>
-
-            <button mat-raised-button color="primary" type="button" (click)="createGroup()" [disabled]="!canSubmitNewGroup">
-                {{newGroupSaving ? 'Creando...' : 'Crear grupo'}}
-            </button>
-        </div>
+        </section>
 
         <div class="chat-float-list__body">
             <button

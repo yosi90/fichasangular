@@ -57,6 +57,10 @@ export class UserService {
         return this.privateProfileSubject.value;
     }
 
+    public getCurrentRole(): UserRole {
+        return this.resolveCurrentRole();
+    }
+
     constructor(
         private auth: Auth,
         private db: Database,
@@ -195,6 +199,7 @@ export class UserService {
         this.privateProfileBase = profile;
         const effectiveProfile = this.buildEffectivePrivateProfile(profile);
         this.privateProfileSubject.next(effectiveProfile);
+        this.actualizarPermisosDesdeAcl();
 
         if (!effectiveProfile || !this.sesionAbierta)
             return;
@@ -400,14 +405,22 @@ export class UserService {
     }
 
     private isAdmin(): boolean {
-        return this.acl.roles?.admin === true;
+        return this.acl.roles?.admin === true || this.resolveCurrentRole() === 'admin';
     }
 
-    private resolveCurrentRole(): UserRole {
-        const profileRole = `${this.privateProfileSubject.value?.role ?? ''}`.trim().toLowerCase();
-        if (profileRole === 'admin' || profileRole === 'colaborador' || profileRole === 'master' || profileRole === 'jugador')
-            return profileRole as UserRole;
-        return this.acl.roles?.type ?? 'jugador';
+    private resolveCurrentRole(profileOverride?: Pick<UserPrivateProfile, 'role'> | null): UserRole {
+        const aclRole = this.normalizeUserRoleValue(this.acl.roles?.type);
+        const profileRole = this.normalizeUserRoleValue(
+            (profileOverride ?? this.privateProfileSubject.value)?.role
+        );
+
+        if (this.aclHasSourceData && aclRole)
+            return aclRole;
+        if (profileRole === 'admin')
+            return 'admin';
+        if (profileRole)
+            return profileRole;
+        return aclRole ?? 'jugador';
     }
 
     private isBanned(): boolean {
@@ -607,6 +620,7 @@ export class UserService {
 
         return {
             ...profile,
+            role: this.resolveCurrentRole(profile),
             permissions: this.mergeEffectivePermissions(profile.permissions, this.acl.permissions),
         };
     }
@@ -636,5 +650,12 @@ export class UserService {
         });
 
         return merged;
+    }
+
+    private normalizeUserRoleValue(value: unknown): UserRole | null {
+        const normalized = `${value ?? ''}`.trim().toLowerCase();
+        if (normalized === 'admin' || normalized === 'colaborador' || normalized === 'master' || normalized === 'jugador')
+            return normalized as UserRole;
+        return null;
     }
 }
