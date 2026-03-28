@@ -48,6 +48,7 @@ import { MonstruoService } from 'src/app/services/monstruo.service';
 import { RegionService } from 'src/app/services/region.service';
 import { FichasDescargaBackgroundService } from 'src/app/services/fichas-descarga-background.service';
 import { PersonajeService } from 'src/app/services/personaje.service';
+import { ChatFloatingService, FloatingChatOverlaySnapshot } from 'src/app/services/chat-floating.service';
 import { UserProfileNavigationService } from 'src/app/services/user-profile-navigation.service';
 import { UserService } from 'src/app/services/user.service';
 import {
@@ -104,7 +105,7 @@ import {
     getVectorDesdeNombreBasico,
     nombreBasicoDesdeVector,
 } from 'src/app/services/utils/alineamiento-contrato';
-import { CatalogoNombreIdDto, PersonajeContextoIdsDto } from 'src/app/interfaces/personajes-api';
+import { CatalogoNombreIdDto, PersonajeContextoCreacionCampanaDto, PersonajeContextoIdsDto } from 'src/app/interfaces/personajes-api';
 import { CampaignCreationPolicy } from 'src/app/interfaces/campaign-management';
 import { environment } from 'src/environments/environment';
 import Swal from 'sweetalert2';
@@ -261,12 +262,15 @@ interface CampaignHomebrewSource {
 
 interface CampaignCreationValidationResult {
     mode: CampaignHomebrewMode;
+    nepLimit: number | null;
+    currentNep: number;
     maxSources: number | null;
     sources: CampaignHomebrewSource[];
     sourceKeys: Set<string>;
     sourceCount: number;
     remainingSources: number | null;
     allowsVentajasDesventajas: boolean;
+    blocksExistingNep: boolean;
     blocksExistingHomebrew: boolean;
     blocksExistingVentajas: boolean;
     blockers: string[];
@@ -292,6 +296,7 @@ interface SelectorCompaneroBloqueadoItem {
 
 const DEFAULT_CAMPAIGN_CREATION_POLICY: CampaignCreationPolicy = {
     tiradaMinimaCaracteristica: null,
+    nepMaximoPersonajeNuevo: null,
     maxTablasDadosCaracteristicas: null,
     permitirHomebrewGeneral: true,
     permitirVentajasDesventajas: true,
@@ -385,6 +390,7 @@ export class NuevoPersonajeComponent {
     private hardAlignmentClassOverrideConfirmed: boolean = false;
     private homebrewPorClaseAplicada: boolean = false;
     selectedCampaignPolicy: CampaignCreationPolicy | null = null;
+    private selectedCampaignActiveMasterUid: string | null = null;
     private selectedCampaignPolicyLoading = false;
     private selectedCampaignPolicyRequestKey = '';
     private selectedCampaignPolicyResolved = false;
@@ -524,6 +530,7 @@ export class NuevoPersonajeComponent {
     private conjurosCatalogoCargado = false;
     private escuelasCatalogoCargado = false;
     private disciplinasCatalogoCargado = false;
+    private chatOverlaySnapshotModalCaracteristicas: FloatingChatOverlaySnapshot | null = null;
     private dominiosSub?: Subscription;
     private regionesSub?: Subscription;
     private enemigosPredilectosSub?: Subscription;
@@ -561,6 +568,7 @@ export class NuevoPersonajeComponent {
         private especialSvc: EspecialService,
         private personajeSvc: PersonajeService,
         private fichasDescargaBgSvc: FichasDescargaBackgroundService,
+        private chatFloatingSvc: ChatFloatingService,
         private userSvc: UserService,
         private userProfileNavigationSvc: UserProfileNavigationService,
     ) {
@@ -568,6 +576,45 @@ export class NuevoPersonajeComponent {
     }
 
     ngOnInit(): void {
+        void this.inicializarComponente();
+    }
+
+    ngOnDestroy(): void {
+        this.nuevoPSvc.persistirBorradorLocalAhora();
+        this.nuevoPSvc.desactivarPersistenciaBorradorLocal();
+        this.campanasSub?.unsubscribe();
+        this.plantillasSub?.unsubscribe();
+        this.ventajasSub?.unsubscribe();
+        this.desventajasSub?.unsubscribe();
+        this.habilidadesSub?.unsubscribe();
+        this.habilidadesCustomSub?.unsubscribe();
+        this.idiomasSub?.unsubscribe();
+        this.armasSub?.unsubscribe();
+        this.armadurasSub?.unsubscribe();
+        this.gruposArmasSub?.unsubscribe();
+        this.gruposArmadurasSub?.unsubscribe();
+        this.razasSub?.unsubscribe();
+        this.clasesSub?.unsubscribe();
+        this.dotesSub?.unsubscribe();
+        this.dominiosSub?.unsubscribe();
+        this.regionesSub?.unsubscribe();
+        this.enemigosPredilectosSub?.unsubscribe();
+        this.deidadesSub?.unsubscribe();
+        this.tiposCriaturaSub?.unsubscribe();
+        this.alineamientosBasicosSub?.unsubscribe();
+        this.restaurarChatTrasModalCaracteristicas();
+    }
+
+    @HostListener('window:beforeunload')
+    onBeforeUnload(): void {
+        this.nuevoPSvc.persistirBorradorLocalAhora();
+    }
+
+    private async inicializarComponente(): Promise<void> {
+        const uid = this.obtenerUidSesionActiva();
+        if (uid.length > 0)
+            await this.resolverRestauracionBorradorSiAplica(uid);
+
         this.nuevoPSvc.refrescarDerivadasPreviewNuevoPersonaje();
         this.Personaje = this.nuevoPSvc.PersonajeCreacion;
         this.sincronizarOwnerUidEnCreacion();
@@ -596,29 +643,8 @@ export class NuevoPersonajeComponent {
         this.cargarDotes();
         this.cargarTiposCriatura();
         this.cargarAlineamientosBasicos();
-    }
-
-    ngOnDestroy(): void {
-        this.campanasSub?.unsubscribe();
-        this.plantillasSub?.unsubscribe();
-        this.ventajasSub?.unsubscribe();
-        this.desventajasSub?.unsubscribe();
-        this.habilidadesSub?.unsubscribe();
-        this.habilidadesCustomSub?.unsubscribe();
-        this.idiomasSub?.unsubscribe();
-        this.armasSub?.unsubscribe();
-        this.armadurasSub?.unsubscribe();
-        this.gruposArmasSub?.unsubscribe();
-        this.gruposArmadurasSub?.unsubscribe();
-        this.razasSub?.unsubscribe();
-        this.clasesSub?.unsubscribe();
-        this.dotesSub?.unsubscribe();
-        this.dominiosSub?.unsubscribe();
-        this.regionesSub?.unsubscribe();
-        this.enemigosPredilectosSub?.unsubscribe();
-        this.deidadesSub?.unsubscribe();
-        this.tiposCriaturaSub?.unsubscribe();
-        this.alineamientosBasicosSub?.unsubscribe();
+        if (uid.length > 0)
+            this.nuevoPSvc.activarPersistenciaBorradorLocal(uid);
     }
 
     get flujo() {
@@ -1829,16 +1855,21 @@ export class NuevoPersonajeComponent {
             return;
         }
 
+        const uid = this.obtenerUidSesionActiva();
+        if (uid.length > 0)
+            this.nuevoPSvc.descartarBorradorLocal(uid);
         this.ventanaDetalleAbierta = false;
         this.cerrarNuevoPersonajeSolicitado.emit();
     }
 
     abrirModalCaracteristicas(): void {
+        this.chatOverlaySnapshotModalCaracteristicas = this.chatFloatingSvc.hideAllFloatingWindowsForOverlay();
         this.nuevoPSvc.abrirModalCaracteristicas();
     }
 
     cerrarModalCaracteristicas(): void {
         this.nuevoPSvc.cerrarModalCaracteristicas();
+        this.restaurarChatTrasModalCaracteristicas();
     }
 
     async finalizarGeneracionCaracteristicas(asignaciones: AsignacionCaracteristicas): Promise<void> {
@@ -1852,6 +1883,8 @@ export class NuevoPersonajeComponent {
             });
             return;
         }
+
+        this.restaurarChatTrasModalCaracteristicas();
 
         this.nuevoPSvc.registrarAumentosPendientesPorProgresion('Progresion inicial por DGs raciales');
         const aumentosCompletados = await this.abrirSelectorAumentosCaracteristica();
@@ -1896,6 +1929,14 @@ export class NuevoPersonajeComponent {
         this.asegurarPasoCompatibleConCampania();
         this.inicializarControlHomebrewVentajasSiAplica();
         this.selectedInternalTabIndex = this.mapearPasoAIndex(this.flujo.pasoActual);
+    }
+
+    private restaurarChatTrasModalCaracteristicas(): void {
+        if (!this.chatOverlaySnapshotModalCaracteristicas)
+            return;
+
+        this.chatFloatingSvc.restoreFloatingWindowsAfterOverlay(this.chatOverlaySnapshotModalCaracteristicas);
+        this.chatOverlaySnapshotModalCaracteristicas = null;
     }
 
     onInternalTabIndexChange(index: number): void {
@@ -2209,6 +2250,7 @@ export class NuevoPersonajeComponent {
     actualizarTramas(): void {
         if (this.Personaje.Campana === 'Sin campaña') {
             this.selectedCampaignPolicy = null;
+            this.selectedCampaignActiveMasterUid = null;
             this.selectedCampaignPolicyResolved = true;
             this.nuevoPSvc.aplicarRestriccionCampanaGenerador(null);
             this.Tramas = [];
@@ -2223,6 +2265,7 @@ export class NuevoPersonajeComponent {
         if (!campanaSeleccionada) {
             this.Personaje.Campana = 'Sin campaña';
             this.selectedCampaignPolicy = null;
+            this.selectedCampaignActiveMasterUid = null;
             this.selectedCampaignPolicyResolved = true;
             this.nuevoPSvc.aplicarRestriccionCampanaGenerador(null);
             this.Tramas = [];
@@ -4035,9 +4078,11 @@ export class NuevoPersonajeComponent {
             if (!this.finalizacionState.sqlOk) {
                 etapa = 'sql';
                 const contextoIds = this.resolverContextoIdsCreacion();
+                const contextoCreacionCampana = this.buildCampaignCreationContextForApi();
                 const payload = this.personajeSvc.construirPayloadCreacionDesdePersonaje(
                     this.Personaje,
-                    contextoIds
+                    contextoIds,
+                    contextoCreacionCampana
                 );
                 const response = await this.personajeSvc.crearPersonajeApiDesdeCreacion(payload);
                 idPersonaje = Math.trunc(Number(response?.idPersonaje ?? 0));
@@ -4064,6 +4109,7 @@ export class NuevoPersonajeComponent {
             etapa = 'navegacion';
             this.modalSelectorVisibilidadAbierto = false;
             this.selectorVisibilidadValorInicial = null;
+            this.nuevoPSvc.descartarBorradorLocal(this.obtenerUidSesionActiva());
             this.personajeFinalizado.emit(idPersonaje);
             this.fichasDescargaBgSvc.descargarFichas(pjNormalizado, {
                 incluirConjuros: true,
@@ -4134,6 +4180,21 @@ export class NuevoPersonajeComponent {
                 disciplinas: this.mapearCatalogoNombreId(this.catalogoDisciplinas, (item) => item?.Id, (item) => item?.Nombre),
                 regiones: this.mapearCatalogoNombreId(this.catalogoRegiones, (item) => item?.Id, (item) => item?.Nombre),
             },
+        };
+    }
+
+    private buildCampaignCreationContextForApi(): PersonajeContextoCreacionCampanaDto | null {
+        if (!this.hasSelectedCampaignContext)
+            return null;
+
+        const generatorState = this.nuevoPSvc.EstadoFlujo?.generador ?? null;
+        const tiradaMinimaDeclarada = this.toNonNegativeIntegerOrNull(generatorState?.minimoSeleccionado);
+        const tablasDadosUsadas = this.toNonNegativeIntegerOrNull(generatorState?.tablasPermitidas);
+
+        return {
+            tiradaMinimaDeclarada,
+            tablasDadosUsadas,
+            overrideReglasCampana: this.isSelectedCampaignActiveMaster,
         };
     }
 
@@ -4264,6 +4325,15 @@ export class NuevoPersonajeComponent {
         return parsed;
     }
 
+    private toNonNegativeIntegerOrNull(value: any): number | null {
+        if (value === null || value === undefined || `${value}`.trim() === '')
+            return null;
+        const parsed = Math.trunc(Number(value));
+        if (!Number.isFinite(parsed) || parsed < 0)
+            return null;
+        return parsed;
+    }
+
     private resetearEstadoFinalizacion(): void {
         this.finalizacionState = {
             idPersonaje: null,
@@ -4342,6 +4412,33 @@ export class NuevoPersonajeComponent {
         } catch {
             return '';
         }
+    }
+
+    private async resolverRestauracionBorradorSiAplica(uid: string): Promise<void> {
+        if (!this.nuevoPSvc.puedeOfrecerRestauracionBorrador(uid))
+            return;
+
+        const result = await Swal.fire({
+            icon: 'question',
+            title: 'Borrador encontrado',
+            text: 'Encontré una creación de personaje guardada en este navegador. ¿Quieres continuarla o empezar de cero?',
+            showDenyButton: true,
+            confirmButtonText: 'Continuar borrador',
+            denyButtonText: 'Empezar de cero',
+            allowOutsideClick: false,
+            allowEscapeKey: false,
+            target: document.body,
+            heightAuto: false,
+            scrollbarPadding: false,
+        });
+
+        if (result.isConfirmed) {
+            this.nuevoPSvc.restaurarBorradorLocal(uid);
+            return;
+        }
+
+        this.nuevoPSvc.descartarBorradorLocal(uid);
+        this.nuevoPSvc.reiniciar();
     }
 
     private getIdPlantillaCompaneroSeleccionada(plantilla: CompaneroPlantillaSelector | null): number {
@@ -5337,6 +5434,12 @@ export class NuevoPersonajeComponent {
         };
     }
 
+    private get isSelectedCampaignActiveMaster(): boolean {
+        const actorUid = `${this.userSvc.CurrentUserUid ?? ''}`.trim();
+        const activeMasterUid = `${this.selectedCampaignActiveMasterUid ?? ''}`.trim();
+        return actorUid.length > 0 && activeMasterUid.length > 0 && actorUid === activeMasterUid;
+    }
+
     private get hasSelectedCampaignContext(): boolean {
         return this.normalizarTexto(this.Personaje?.Campana ?? '') !== this.normalizarTexto('Sin campaña');
     }
@@ -5369,6 +5472,15 @@ export class NuevoPersonajeComponent {
 
     private normalizarCampaignMaxSources(value: number | null | undefined): number | null {
         if (value === null || value === undefined)
+            return null;
+        const parsed = Math.trunc(Number(value));
+        if (!Number.isFinite(parsed))
+            return null;
+        return Math.max(0, parsed);
+    }
+
+    private normalizarCampaignMaxNep(value: number | null | undefined): number | null {
+        if (value === null || value === undefined || `${value}`.trim() === '')
             return null;
         const parsed = Math.trunc(Number(value));
         if (!Number.isFinite(parsed))
@@ -5464,6 +5576,8 @@ export class NuevoPersonajeComponent {
 
     private getCampaignCreationValidation(): CampaignCreationValidationResult {
         const policy = this.effectiveSelectedCampaignPolicy;
+        const nepLimit = this.normalizarCampaignMaxNep(policy?.nepMaximoPersonajeNuevo ?? null);
+        const currentNep = Math.max(0, Math.trunc(Number(this.Personaje?.NEP ?? 0)));
         const mode = this.getCurrentCampaignHomebrewMode(policy);
         const maxSources = this.normalizarCampaignMaxSources(policy?.maxFuentesHomebrewGeneralesPorPersonaje ?? null);
         const sources = this.collectCampaignHomebrewSources();
@@ -5474,6 +5588,7 @@ export class NuevoPersonajeComponent {
             : null;
         const allowsVentajasDesventajas = policy?.permitirVentajasDesventajas !== false;
         const ventajasCount = this.flujoVentajas.seleccionVentajas.length + this.flujoVentajas.seleccionDesventajas.length;
+        const blocksExistingNep = !this.isSelectedCampaignActiveMaster && nepLimit !== null && currentNep > nepLimit;
         const blocksExistingHomebrew = mode === 'forbidden'
             ? sourceCount > 0
             : mode === 'limited' && maxSources !== null && sourceCount > maxSources;
@@ -5482,6 +5597,10 @@ export class NuevoPersonajeComponent {
         const fuentesTexto = sources
             .map((source) => `${this.getCampaignSourceCategoryLabel(source.categoria)}: ${source.nombre}`)
             .join(', ');
+
+        if (blocksExistingNep) {
+            blockers.push(`La campaña limita el NEP de personajes nuevos a ${nepLimit} y este personaje tiene NEP ${currentNep}.`);
+        }
 
         if (blocksExistingHomebrew) {
             if (mode === 'forbidden') {
@@ -5497,12 +5616,15 @@ export class NuevoPersonajeComponent {
 
         return {
             mode,
+            nepLimit,
+            currentNep,
             maxSources,
             sources,
             sourceKeys,
             sourceCount,
             remainingSources,
             allowsVentajasDesventajas,
+            blocksExistingNep,
             blocksExistingHomebrew,
             blocksExistingVentajas,
             blockers,
@@ -5604,6 +5726,7 @@ export class NuevoPersonajeComponent {
         const campaignId = Number(campanaSeleccionada?.Id ?? 0);
         if (!this.hasSelectedCampaignContext || !Number.isFinite(campaignId) || campaignId <= 0) {
             this.selectedCampaignPolicy = null;
+            this.selectedCampaignActiveMasterUid = null;
             this.selectedCampaignPolicyResolved = true;
             this.nuevoPSvc.aplicarRestriccionCampanaGenerador(null);
             this.selectedCampaignPolicyLoading = false;
@@ -5621,9 +5744,10 @@ export class NuevoPersonajeComponent {
             if (this.selectedCampaignPolicyRequestKey !== requestKey)
                 return;
             this.selectedCampaignPolicy = detail?.politicaCreacion ?? null;
+            this.selectedCampaignActiveMasterUid = `${detail?.activeMasterUid ?? ''}`.trim() || null;
             this.selectedCampaignPolicyResolved = true;
             this.nuevoPSvc.aplicarRestriccionCampanaGenerador(
-                detail?.campaign?.campaignRole === 'master'
+                this.isSelectedCampaignActiveMaster
                     ? null
                     : (detail?.politicaCreacion ?? null)
             );
@@ -5631,14 +5755,13 @@ export class NuevoPersonajeComponent {
             if (this.selectedCampaignPolicyRequestKey !== requestKey)
                 return;
             this.selectedCampaignPolicy = null;
+            this.selectedCampaignActiveMasterUid = null;
             this.selectedCampaignPolicyResolved = true;
             this.nuevoPSvc.aplicarRestriccionCampanaGenerador(
-                campanaSeleccionada?.CampaignRole === 'master'
-                    ? null
-                    : {
-                        tiradaMinimaCaracteristica: 3,
-                        maxTablasDadosCaracteristicas: 1,
-                    }
+                {
+                    tiradaMinimaCaracteristica: 3,
+                    maxTablasDadosCaracteristicas: 1,
+                }
             );
         } finally {
             if (this.selectedCampaignPolicyRequestKey === requestKey) {

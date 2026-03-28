@@ -68,6 +68,7 @@ export interface CampaignInvitationResponse {
 
 export interface CampaignCreationPolicy {
     tiradaMinimaCaracteristica: number | null;
+    nepMaximoPersonajeNuevo: number | null;
     maxTablasDadosCaracteristicas: number | null;
     permitirHomebrewGeneral: boolean;
     permitirVentajasDesventajas: boolean;

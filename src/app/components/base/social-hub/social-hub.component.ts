@@ -21,6 +21,7 @@ import { SocialApiService } from 'src/app/services/social-api.service';
 import { SocialRealtimeService } from 'src/app/services/social-realtime.service';
 import { UserProfileNavigationService } from 'src/app/services/user-profile-navigation.service';
 import { UserSettingsService } from 'src/app/services/user-settings.service';
+import { ApiActionGuardService } from 'src/app/services/api-action-guard.service';
 import { resolveDefaultProfileAvatar } from 'src/app/services/utils/profile-avatar.util';
 import { UserService } from 'src/app/services/user.service';
 
@@ -132,6 +133,7 @@ export class SocialHubComponent implements OnInit, OnChanges, OnDestroy {
         private userProfileNavSvc: UserProfileNavigationService,
         private userSettingsSvc: UserSettingsService,
         private appToastSvc: AppToastService,
+        private apiActionGuardSvc: ApiActionGuardService,
     ) { }
 
     ngOnInit(): void {
@@ -500,7 +502,7 @@ export class SocialHubComponent implements OnInit, OnChanges, OnDestroy {
     async sendFriendRequest(user: SocialUserBasic): Promise<void> {
         if (!this.isVisibleSocialUser(user))
             return;
-        await this.runAction(async () => {
+        await this.runAction(`social.friend-request.send.${user.uid}`, async () => {
             await this.socialApiSvc.sendFriendRequest(user.uid);
             await this.reloadSocialLists('requests');
             this.showFriendshipSuccess('Solicitud de amistad enviada.');
@@ -513,7 +515,7 @@ export class SocialHubComponent implements OnInit, OnChanges, OnDestroy {
         const request = this.sentRequests.find((item) => item.target.uid === user.uid);
         if (!request)
             return;
-        await this.runAction(async () => {
+        await this.runAction(`social.friend-request.cancel.${request.requestId}`, async () => {
             await this.socialApiSvc.resolveFriendRequest(request.requestId, 'cancel');
             await this.reloadSocialLists('requests');
             this.showFriendshipInfo('Solicitud cancelada.');
@@ -521,7 +523,7 @@ export class SocialHubComponent implements OnInit, OnChanges, OnDestroy {
     }
 
     async acceptFriendRequest(request: FriendRequestItem): Promise<void> {
-        await this.runAction(async () => {
+        await this.runAction(`social.friend-request.accept.${request.requestId}`, async () => {
             await this.socialApiSvc.resolveFriendRequest(request.requestId, 'accept');
             await this.reloadSocialLists('all');
             this.showFriendshipSuccess('Solicitud aceptada.');
@@ -529,7 +531,7 @@ export class SocialHubComponent implements OnInit, OnChanges, OnDestroy {
     }
 
     async rejectFriendRequest(request: FriendRequestItem): Promise<void> {
-        await this.runAction(async () => {
+        await this.runAction(`social.friend-request.reject.${request.requestId}`, async () => {
             await this.socialApiSvc.resolveFriendRequest(request.requestId, 'reject');
             await this.reloadSocialLists('requests');
             this.showFriendshipInfo('Solicitud rechazada.');
@@ -540,7 +542,7 @@ export class SocialHubComponent implements OnInit, OnChanges, OnDestroy {
         const target = this.resolveUserFromAny(user);
         if (!target || !this.isVisibleSocialUser(target))
             return;
-        await this.runAction(async () => {
+        await this.runAction(`social.friend.remove.${target.uid}`, async () => {
             await this.socialApiSvc.deleteFriend(target.uid);
             await this.reloadSocialLists('all');
             this.showFriendshipInfo('Amistad eliminada.');
@@ -551,7 +553,7 @@ export class SocialHubComponent implements OnInit, OnChanges, OnDestroy {
         const target = this.resolveUserFromAny(user);
         if (!target || !this.isVisibleSocialUser(target))
             return;
-        await this.runAction(async () => {
+        await this.runAction(`social.block.${target.uid}`, async () => {
             await this.socialApiSvc.blockUser(target.uid);
             await this.reloadSocialLists('all');
             this.showFriendshipSuccess('Usuario bloqueado.');
@@ -562,7 +564,7 @@ export class SocialHubComponent implements OnInit, OnChanges, OnDestroy {
         const target = this.resolveUserFromAny(user);
         if (!target || !this.isVisibleSocialUser(target))
             return;
-        await this.runAction(async () => {
+        await this.runAction(`social.unblock.${target.uid}`, async () => {
             await this.socialApiSvc.unblockUser(target.uid);
             await this.reloadSocialLists('blocks');
             this.showFriendshipInfo('Usuario desbloqueado.');
@@ -600,6 +602,13 @@ export class SocialHubComponent implements OnInit, OnChanges, OnDestroy {
         const inviteId = this.toPositiveInt(invitation?.inviteId);
         if (!inviteId || this.campaignInviteResolveInFlightId === inviteId)
             return;
+        const guard = this.apiActionGuardSvc.shouldAllow(this.userSvc.CurrentUserUid, `social.campaign.invitation.${inviteId}.${decision}`);
+        if (guard.newlySessionLocked) {
+            this.appToastSvc.showError('Esta sesión ha quedado bloqueada por abuso de peticiones.');
+            return;
+        }
+        if (guard.status !== 'allowed')
+            return;
 
         this.campaignInviteResolveInFlightId = inviteId;
         try {
@@ -620,6 +629,13 @@ export class SocialHubComponent implements OnInit, OnChanges, OnDestroy {
 
     async openSelectedCampaignChat(): Promise<void> {
         if (!this.selectedCampaignId || !this.canOpenSelectedCampaignChat)
+            return;
+        const guard = this.apiActionGuardSvc.shouldAllow(this.userSvc.CurrentUserUid, `social.campaign.chat.${this.selectedCampaignId}`);
+        if (guard.newlySessionLocked) {
+            this.appToastSvc.showError('Esta sesión ha quedado bloqueada por abuso de peticiones.');
+            return;
+        }
+        if (guard.status !== 'allowed')
             return;
 
         try {
@@ -648,7 +664,7 @@ export class SocialHubComponent implements OnInit, OnChanges, OnDestroy {
         const target = this.resolveUserFromAny(user);
         if (!target || !this.canStartConversation(target))
             return;
-        await this.runAction(async () => {
+        await this.runAction(`social.direct.open.${target.uid}`, async () => {
             const detail = await this.chatApiSvc.createOrOpenDirect(target.uid);
             this.chatRealtimeSvc.upsertConversation(detail);
             this.currentSection = 'mensajes';
@@ -748,6 +764,13 @@ export class SocialHubComponent implements OnInit, OnChanges, OnDestroy {
         const body = `${this.sendDraft ?? ''}`.trim();
         if (!conversation || !conversation.canSend || body.length < 1 || this.sendingMessage)
             return;
+        const guard = this.apiActionGuardSvc.shouldAllow(this.userSvc.CurrentUserUid, `social.message.send.${conversation.conversationId}`);
+        if (guard.newlySessionLocked) {
+            this.activeConversationError = 'Esta sesión ha quedado bloqueada por abuso de peticiones.';
+            return;
+        }
+        if (guard.status !== 'allowed')
+            return;
 
         this.sendingMessage = true;
         this.activeConversationError = '';
@@ -819,6 +842,13 @@ export class SocialHubComponent implements OnInit, OnChanges, OnDestroy {
     async createGroup(): Promise<void> {
         if (!this.canSubmitNewGroup)
             return;
+        const guard = this.apiActionGuardSvc.shouldAllow(this.userSvc.CurrentUserUid, 'social.group.create');
+        if (guard.newlySessionLocked) {
+            this.appToastSvc.showError('Esta sesión ha quedado bloqueada por abuso de peticiones.');
+            return;
+        }
+        if (guard.status !== 'allowed')
+            return;
 
         this.newGroupSaving = true;
         try {
@@ -837,6 +867,13 @@ export class SocialHubComponent implements OnInit, OnChanges, OnDestroy {
     async saveActiveGroupName(): Promise<void> {
         const conversationId = this.activeConversation?.conversationId ?? 0;
         if (!this.canManageActiveGroup || conversationId <= 0 || this.groupRenameSaving)
+            return;
+        const guard = this.apiActionGuardSvc.shouldAllow(this.userSvc.CurrentUserUid, `social.group.rename.${conversationId}`);
+        if (guard.newlySessionLocked) {
+            this.appToastSvc.showError('Esta sesión ha quedado bloqueada por abuso de peticiones.');
+            return;
+        }
+        if (guard.status !== 'allowed')
             return;
 
         this.groupRenameSaving = true;
@@ -857,6 +894,13 @@ export class SocialHubComponent implements OnInit, OnChanges, OnDestroy {
         const uid = `${friend?.uid ?? ''}`.trim();
         if (!this.canManageActiveGroup || conversationId <= 0 || uid.length < 1 || this.groupParticipantSavingUid.length > 0)
             return;
+        const guard = this.apiActionGuardSvc.shouldAllow(this.userSvc.CurrentUserUid, `social.group.participant.add.${conversationId}.${uid}`);
+        if (guard.newlySessionLocked) {
+            this.appToastSvc.showError('Esta sesión ha quedado bloqueada por abuso de peticiones.');
+            return;
+        }
+        if (guard.status !== 'allowed')
+            return;
 
         this.groupParticipantSavingUid = uid;
         try {
@@ -876,6 +920,13 @@ export class SocialHubComponent implements OnInit, OnChanges, OnDestroy {
         const conversationId = this.activeConversation?.conversationId ?? 0;
         const uid = `${participant?.uid ?? ''}`.trim();
         if (!this.canManageActiveGroup || conversationId <= 0 || uid.length < 1 || this.groupParticipantRemovingUid.length > 0)
+            return;
+        const guard = this.apiActionGuardSvc.shouldAllow(this.userSvc.CurrentUserUid, `social.group.participant.remove.${conversationId}.${uid}`);
+        if (guard.newlySessionLocked) {
+            this.appToastSvc.showError('Esta sesión ha quedado bloqueada por abuso de peticiones.');
+            return;
+        }
+        if (guard.status !== 'allowed')
             return;
 
         this.groupParticipantRemovingUid = uid;
@@ -1385,12 +1436,24 @@ export class SocialHubComponent implements OnInit, OnChanges, OnDestroy {
         this.campaignInvitationsLoading = true;
         this.campaignInvitationsErrorMessage = '';
         try {
-            const [campaigns, invitations] = await Promise.all([
+            const [campaignsResult, invitationsResult] = await Promise.allSettled([
                 this.campanaSvc.listSocialCampaigns(),
                 this.campanaSvc.listReceivedCampaignInvitations(),
             ]);
-            this.campaigns = campaigns;
-            this.campaignInvitations = invitations;
+
+            if (campaignsResult.status === 'fulfilled') {
+                this.campaigns = campaignsResult.value;
+            } else {
+                this.campaigns = [];
+                this.campaignsErrorMessage = `${campaignsResult.reason?.message ?? 'No se pudieron cargar las campañas.'}`.trim();
+            }
+
+            if (invitationsResult.status === 'fulfilled') {
+                this.campaignInvitations = invitationsResult.value;
+            } else {
+                this.campaignInvitations = [];
+                this.campaignInvitationsErrorMessage = `${invitationsResult.reason?.message ?? 'No se pudieron cargar las invitaciones de campaña.'}`.trim();
+            }
 
             const candidateIds = [
                 preferredCampaignId,
@@ -1408,10 +1471,6 @@ export class SocialHubComponent implements OnInit, OnChanges, OnDestroy {
                 this.selectedCampaignDetail = null;
                 this.selectedCampaignErrorMessage = '';
             }
-        } catch (error: any) {
-            this.campaigns = [];
-            this.campaignInvitations = [];
-            this.campaignsErrorMessage = `${error?.message ?? 'No se pudieron cargar las campañas.'}`.trim();
         } finally {
             this.campaignsLoading = false;
             this.campaignInvitationsLoading = false;
@@ -1447,8 +1506,15 @@ export class SocialHubComponent implements OnInit, OnChanges, OnDestroy {
         this.hydrateConversationDrafts(this.activeConversationDetail ?? conversation);
     }
 
-    private async runAction(handler: () => Promise<void>, fallbackMessage?: string): Promise<void> {
+    private async runAction(actionKey: string, handler: () => Promise<void>, fallbackMessage?: string): Promise<void> {
         if (this.actionInFlightKey)
+            return;
+        const decision = this.apiActionGuardSvc.shouldAllow(this.userSvc.CurrentUserUid, actionKey);
+        if (decision.newlySessionLocked) {
+            this.appToastSvc.showError('Esta sesión ha quedado bloqueada por abuso de peticiones.');
+            return;
+        }
+        if (decision.status !== 'allowed')
             return;
 
         this.actionInFlightKey = 'pending';

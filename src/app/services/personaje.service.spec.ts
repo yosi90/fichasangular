@@ -642,6 +642,31 @@ describe('PersonajeService', () => {
         expect(payload.tamano.idTamano).toBe(1);
     });
 
+    it('incluye contextoCreacionCampana cuando el personaje pertenece a campaña', () => {
+        const httpMock = {
+            post: jasmine.createSpy('post').and.returnValue(of({})),
+        } as any;
+        const service = crearServicio(httpMock);
+        const pj = crearPersonajeMock();
+        pj.Campana = 'Campaña A';
+
+        const payload = service.construirPayloadCreacionDesdePersonaje(
+            pj,
+            { idCampana: 1, idTrama: 1, idSubtrama: 1 },
+            {
+                tiradaMinimaDeclarada: 10,
+                tablasDadosUsadas: 4,
+                overrideReglasCampana: true,
+            }
+        );
+
+        expect(payload.contextoCreacionCampana).toEqual({
+            tiradaMinimaDeclarada: 10,
+            tablasDadosUsadas: 4,
+            overrideReglasCampana: true,
+        });
+    });
+
     it('omite campaña, trama y subtrama al crear un personaje sin campaña', () => {
         const httpMock = {
             post: jasmine.createSpy('post').and.returnValue(of({})),
@@ -660,6 +685,7 @@ describe('PersonajeService', () => {
         expect(payload.personaje.campana).toBeUndefined();
         expect(payload.personaje.trama).toBeUndefined();
         expect(payload.personaje.subtrama).toBeUndefined();
+        expect(payload.contextoCreacionCampana).toBeUndefined();
     });
 
     it('prioriza idRegion de contexto cuando está presente', () => {

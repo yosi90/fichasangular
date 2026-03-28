@@ -225,6 +225,39 @@ describe('VentanaDetalleFlotanteComponent', () => {
         expect(top).toBe(200);
     });
 
+    it('si no existe placement minimizado previo y ancla a laterales, el primer minimizado se pega al borde', () => {
+        component.rect = {
+            x: 900,
+            y: 160,
+            width: 560,
+            height: 340,
+        };
+
+        component.toggleMinimize();
+
+        const viewportWidth = Math.max(640, window.innerWidth);
+        const width = Number(component.containerStyle['width'].replace('px', ''));
+        const left = Number(component.containerStyle['left'].replace('px', ''));
+        const top = Number(component.containerStyle['top'].replace('px', ''));
+
+        expect(component.isMinimized).toBeTrue();
+        expect(left).toBe(viewportWidth - width - 12);
+        expect(top).toBe(160);
+    });
+
+    it('si la ventana parte centrada y no hay placement minimizado previo, el primer minimizado desempata hacia la derecha', () => {
+        component.rect = component['getInitialRect']();
+
+        component.toggleMinimize();
+
+        const viewportWidth = Math.max(640, window.innerWidth);
+        const width = Number(component.containerStyle['width'].replace('px', ''));
+        const left = Number(component.containerStyle['left'].replace('px', ''));
+
+        expect(component.isMinimized).toBeTrue();
+        expect(left).toBe(viewportWidth - width - 12);
+    });
+
     it('al restaurar desde minimizada vuelve a la geometría guardada', async () => {
         userSettingsSvc.loadPreviewRestaurada.and.resolveTo({
             version: 1,
@@ -305,6 +338,7 @@ describe('VentanaDetalleFlotanteComponent', () => {
 
     it('guarda placement al soltar arrastre mientras está minimizada', () => {
         component.toggleMinimize();
+        userSettingsSvc.savePreviewMinimizada.calls.reset();
         component.onTitleBarPointerDown({
             button: 0,
             clientX: 100,
@@ -323,6 +357,7 @@ describe('VentanaDetalleFlotanteComponent', () => {
 
     it('no guarda placement si no hubo desplazamiento al soltar', () => {
         component.toggleMinimize();
+        userSettingsSvc.savePreviewMinimizada.calls.reset();
         component.onTitleBarPointerDown({
             button: 0,
             clientX: 100,
@@ -338,12 +373,14 @@ describe('VentanaDetalleFlotanteComponent', () => {
     it('si la minimizada no se ancla a laterales mantiene posicion libre y no guarda side/top', () => {
         component.persistPreviewPlacements = false;
         component.minimizedAnchorsToViewportSides = false;
+        component.minWidth = 320;
+        component.minHeight = 220;
         component.restoredPlacementInput = {
             version: 1,
             left: 120,
             top: 120,
-            width: 560,
-            height: 340,
+            width: 320,
+            height: 220,
             updatedAt: Date.now(),
         };
         component.minimizedPlacementInput = {
@@ -392,14 +429,123 @@ describe('VentanaDetalleFlotanteComponent', () => {
         expect(component['restoredPlacement']).toEqual(jasmine.objectContaining({
             left: 180,
             top: 180,
-            width: 560,
-            height: 340,
+            width: 320,
+            height: 220,
         }));
         expect(userSettingsSvc.savePreviewMinimizada).not.toHaveBeenCalled();
     });
 
+    it('una minimizada libre no se resnappea al recibir de vuelta el restoredPlacement del padre', () => {
+        component.persistPreviewPlacements = false;
+        component.minimizedAnchorsToViewportSides = false;
+        component.minWidth = 320;
+        component.minHeight = 220;
+        component.restoredPlacementInput = {
+            version: 1,
+            left: 120,
+            top: 120,
+            width: 320,
+            height: 220,
+            updatedAt: Date.now(),
+        };
+        component.windowMode = 'window';
+        component.ngOnChanges({
+            restoredPlacementInput: {
+                currentValue: component.restoredPlacementInput,
+                previousValue: null,
+                firstChange: false,
+                isFirstChange: () => false,
+            },
+        } as any);
+
+        component.toggleMinimize();
+        component.rect = {
+            ...component.rect,
+            x: 180,
+            y: 180,
+        };
+        component['restoredPlacement'] = {
+            version: 1,
+            left: 180,
+            top: 180,
+            width: 320,
+            height: 220,
+            updatedAt: Date.now(),
+        };
+        component.restoredPlacementInput = component['restoredPlacement'];
+        component.windowMode = 'minimized';
+        component.ngOnChanges({
+            restoredPlacementInput: {
+                currentValue: component.restoredPlacementInput,
+                previousValue: null,
+                firstChange: false,
+                isFirstChange: () => false,
+            },
+        } as any);
+
+        expect(component.isMinimized).toBeTrue();
+        expect(Number(component.containerStyle['left'].replace('px', ''))).toBe(180);
+        expect(Number(component.containerStyle['top'].replace('px', ''))).toBe(180);
+    });
+
+    it('una minimizada libre no debe teletransportarse si el feedback del padre trae un restored top recalculado', () => {
+        component.persistPreviewPlacements = false;
+        component.minimizedAnchorsToViewportSides = false;
+        component.minWidth = 320;
+        component.minHeight = 220;
+        component.restoredPlacementInput = {
+            version: 1,
+            left: 120,
+            top: 120,
+            width: 320,
+            height: 220,
+            updatedAt: Date.now(),
+        };
+        component.windowMode = 'window';
+        component.ngOnChanges({
+            restoredPlacementInput: {
+                currentValue: component.restoredPlacementInput,
+                previousValue: null,
+                firstChange: false,
+                isFirstChange: () => false,
+            },
+        } as any);
+
+        component.toggleMinimize();
+        component.rect = {
+            ...component.rect,
+            x: 180,
+            y: 300,
+        };
+
+        component.restoredPlacementInput = {
+            version: 1,
+            left: 180,
+            top: 12,
+            width: 320,
+            height: 220,
+            updatedAt: Date.now(),
+        };
+        component.windowMode = 'minimized';
+        component.ngOnChanges({
+            restoredPlacementInput: {
+                currentValue: component.restoredPlacementInput,
+                previousValue: null,
+                firstChange: false,
+                isFirstChange: () => false,
+            },
+        } as any);
+
+        expect(component.isMinimized).toBeTrue();
+        expect(Number(component.containerStyle['left'].replace('px', ''))).toBe(180);
+        expect(Number(component.containerStyle['top'].replace('px', ''))).toBe(300);
+    });
+
     it('rehidrata el top correcto cuando arranca ya minimizada sin anclaje lateral', () => {
         const viewportHeight = Math.max(480, window.innerHeight);
+        component.minWidth = 320;
+        component.minHeight = 220;
+        const restoredTop = viewportHeight - component.minHeight - 24;
         const expectedTop = viewportHeight - component.titleBarHeight - 24;
 
         component.persistPreviewPlacements = false;
@@ -407,9 +553,9 @@ describe('VentanaDetalleFlotanteComponent', () => {
         component.restoredPlacementInput = {
             version: 1,
             left: 180,
-            top: expectedTop,
-            width: 560,
-            height: 340,
+            top: restoredTop,
+            width: 320,
+            height: 220,
             updatedAt: Date.now(),
         };
         component.minimizedPlacementInput = null;
@@ -431,5 +577,182 @@ describe('VentanaDetalleFlotanteComponent', () => {
 
         expect(component.isMinimized).toBeTrue();
         expect(Number(component.containerStyle['top'].replace('px', ''))).toBe(expectedTop);
+    });
+
+    it('al minimizar libre conserva el offset derecho del placement restaurado', () => {
+        const viewportWidth = Math.max(640, window.innerWidth);
+
+        component.persistPreviewPlacements = false;
+        component.minimizedAnchorsToViewportSides = false;
+        component.minWidth = 320;
+        component.minHeight = 220;
+        component.restoredPlacementInput = {
+            version: 1,
+            left: viewportWidth - 320 - 28,
+            top: 96,
+            width: 320,
+            height: 220,
+            updatedAt: Date.now(),
+        };
+        component.windowMode = 'window';
+        component.ngOnChanges({
+            restoredPlacementInput: {
+                currentValue: component.restoredPlacementInput,
+                previousValue: null,
+                firstChange: false,
+                isFirstChange: () => false,
+            },
+        } as any);
+
+        component.toggleMinimize();
+
+        const minimizedWidth = Number(component.containerStyle['width'].replace('px', ''));
+        const left = Number(component.containerStyle['left'].replace('px', ''));
+        expect(left).toBe(viewportWidth - minimizedWidth - 28);
+    });
+
+    it('al restaurar desde minimizada libre reutiliza el placement restaurado guardado', () => {
+        component.persistPreviewPlacements = false;
+        component.minimizedAnchorsToViewportSides = false;
+        component.minWidth = 320;
+        component.minHeight = 220;
+        component.restoredPlacementInput = {
+            version: 1,
+            left: 132,
+            top: 84,
+            width: 320,
+            height: 220,
+            updatedAt: Date.now(),
+        };
+        component.windowMode = 'window';
+        component.ngOnChanges({
+            restoredPlacementInput: {
+                currentValue: component.restoredPlacementInput,
+                previousValue: null,
+                firstChange: false,
+                isFirstChange: () => false,
+            },
+        } as any);
+
+        component.toggleMinimize();
+        component.toggleMinimize();
+
+        expect(component.isMinimized).toBeFalse();
+        expect(component.rect.x).toBe(132);
+        expect(component.rect.y).toBe(84);
+        expect(component['restoredPlacement']).toEqual(jasmine.objectContaining({
+            left: 132,
+            top: 84,
+            width: 320,
+            height: 220,
+        }));
+    });
+
+    it('al restaurar desde minimizada libre en cuadrante derecho preserva el offset derecho actual', () => {
+        const viewportWidth = Math.max(640, window.innerWidth);
+
+        component.persistPreviewPlacements = false;
+        component.minimizedAnchorsToViewportSides = false;
+        component.minWidth = 320;
+        component.minHeight = 220;
+        component.restoredPlacementInput = {
+            version: 1,
+            left: viewportWidth - 320 - 36,
+            top: 84,
+            width: 320,
+            height: 220,
+            updatedAt: Date.now(),
+        };
+        component.windowMode = 'window';
+        component.ngOnChanges({
+            restoredPlacementInput: {
+                currentValue: component.restoredPlacementInput,
+                previousValue: null,
+                firstChange: false,
+                isFirstChange: () => false,
+            },
+        } as any);
+
+        component.toggleMinimize();
+        const minimizedWidth = Number(component.containerStyle['width'].replace('px', ''));
+        component.rect = {
+            ...component.rect,
+            x: viewportWidth - minimizedWidth - 12,
+            y: component.rect.y,
+        };
+
+        component.toggleMinimize();
+
+        expect(component.isMinimized).toBeFalse();
+        expect(component.rect.x).toBe(viewportWidth - 320 - 12);
+    });
+
+    it('al restaurar desde minimizada libre en cuadrante inferior preserva el offset inferior actual', () => {
+        const viewportHeight = Math.max(480, window.innerHeight);
+
+        component.persistPreviewPlacements = false;
+        component.minimizedAnchorsToViewportSides = false;
+        component.minWidth = 320;
+        component.minHeight = 220;
+        component.restoredPlacementInput = {
+            version: 1,
+            left: 96,
+            top: viewportHeight - 220 - 18,
+            width: 320,
+            height: 220,
+            updatedAt: Date.now(),
+        };
+        component.windowMode = 'window';
+        component.ngOnChanges({
+            restoredPlacementInput: {
+                currentValue: component.restoredPlacementInput,
+                previousValue: null,
+                firstChange: false,
+                isFirstChange: () => false,
+            },
+        } as any);
+
+        component.toggleMinimize();
+        component.rect = {
+            ...component.rect,
+            y: viewportHeight - component.titleBarHeight - 20,
+        };
+
+        component.toggleMinimize();
+
+        expect(component.isMinimized).toBeFalse();
+        expect(component.rect.y).toBe(viewportHeight - 220 - 20);
+    });
+
+    it('fixedWidth fuerza el ancho y desactiva resize', () => {
+        component.fixedWidth = 320;
+        component.minWidth = 320;
+        component.resizable = false;
+        component.rect = {
+            x: 40,
+            y: 40,
+            width: 560,
+            height: 340,
+        };
+        component.ngOnChanges({} as any);
+
+        expect(component.containerStyle['width']).toBe('320px');
+
+        component.onResizePointerDown({
+            button: 0,
+            clientX: 400,
+            clientY: 300,
+            preventDefault: () => undefined,
+            stopPropagation: () => undefined,
+        } as any, 'se');
+
+        component.onDocumentPointerMove({
+            clientX: 999,
+            clientY: 999,
+        } as PointerEvent);
+        component.onDocumentPointerUp();
+
+        expect(component.containerStyle['width']).toBe('320px');
+        expect(component.rect.width).toBe(560);
     });
 });

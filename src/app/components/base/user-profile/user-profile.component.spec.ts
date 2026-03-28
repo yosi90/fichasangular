@@ -16,6 +16,7 @@ import { SocialAlertPreferencesService } from 'src/app/services/social-alert-pre
 import { UserSettingsService } from 'src/app/services/user-settings.service';
 import { UserService } from 'src/app/services/user.service';
 import { Auth } from '@angular/fire/auth';
+import { resolveDefaultProfileAvatar } from 'src/app/services/utils/profile-avatar.util';
 
 describe('UserProfileComponent', () => {
     let fixture: ComponentFixture<UserProfileComponent>;
@@ -68,6 +69,7 @@ describe('UserProfileComponent', () => {
 
     const buildCampaignPolicy = (partial: Record<string, any> = {}) => ({
         tiradaMinimaCaracteristica: 3,
+        nepMaximoPersonajeNuevo: null,
         maxTablasDadosCaracteristicas: 1,
         permitirHomebrewGeneral: false,
         permitirVentajasDesventajas: false,
@@ -101,6 +103,7 @@ describe('UserProfileComponent', () => {
     });
 
     beforeEach(async () => {
+        sessionStorage.clear();
         profileSubject = new BehaviorSubject<any>(buildProfile('correo'));
         campaignRealtimeEvents$ = new Subject<any>();
         watchedCampaignSummariesNext = null;
@@ -312,7 +315,7 @@ describe('UserProfileComponent', () => {
         apiSvc.updateMyProfile.and.resolveTo({
             ...buildProfile('correo'),
             displayName: 'Nombre nuevo',
-            bio: 'Bio nueva',
+            bio: 'Bio nueva 2',
             genderIdentity: 'Agénero',
             pronouns: 'they',
         } as any);
@@ -321,7 +324,7 @@ describe('UserProfileComponent', () => {
         tick();
 
         component.displayNameDraft = '  Nombre nuevo ';
-        component.bioDraft = ' Bio nueva ';
+        component.bioDraft = ' Bio nueva 2 ';
         component.genderIdentityDraft = ' Agénero ';
         component.pronounsDraft = ' they ';
         void component.guardarIdentidad();
@@ -329,18 +332,18 @@ describe('UserProfileComponent', () => {
 
         expect(apiSvc.updateMyProfile).toHaveBeenCalledWith({
             displayName: 'Nombre nuevo',
-            bio: 'Bio nueva',
+            bio: 'Bio nueva 2',
             genderIdentity: 'Agénero',
             pronouns: 'they',
         });
         expect(userSvc.setCurrentPrivateProfile).toHaveBeenCalledWith(jasmine.objectContaining({
             displayName: 'Nombre nuevo',
-            bio: 'Bio nueva',
+            bio: 'Bio nueva 2',
             genderIdentity: 'Agénero',
             pronouns: 'they',
         }));
         expect(component.displayNameDraft).toBe('Nombre nuevo');
-        expect(component.bioDraft).toBe('Bio nueva');
+        expect(component.bioDraft).toBe('Bio nueva 2');
         expect(toastSvc.showSuccess).toHaveBeenCalled();
         expect(chatFloatingSvc.applyProfileSettings).not.toHaveBeenCalled();
     }));
@@ -416,6 +419,88 @@ describe('UserProfileComponent', () => {
 
         expect(apiSvc.updateMyProfile).not.toHaveBeenCalled();
         expect(toastSvc.showError).toHaveBeenCalledWith('Los pronombres no pueden contener saltos de línea.');
+    }));
+
+    it('bloquea el guardado si el nombre visible tiene menos de 3 caracteres', fakeAsync(() => {
+        const apiSvc = TestBed.inject(UserProfileApiService) as jasmine.SpyObj<UserProfileApiService>;
+        const toastSvc = TestBed.inject(AppToastService) as jasmine.SpyObj<AppToastService>;
+
+        fixture.detectChanges();
+        tick();
+
+        component.displayNameDraft = 'Yo';
+        void component.guardarIdentidad();
+        tick();
+
+        expect(apiSvc.updateMyProfile).not.toHaveBeenCalled();
+        expect(toastSvc.showError).toHaveBeenCalledWith('El nombre visible debe tener entre 3 y 150 caracteres.');
+    }));
+
+    it('bloquea el guardado si el nombre visible está formado solo por números', fakeAsync(() => {
+        const apiSvc = TestBed.inject(UserProfileApiService) as jasmine.SpyObj<UserProfileApiService>;
+        const toastSvc = TestBed.inject(AppToastService) as jasmine.SpyObj<AppToastService>;
+
+        fixture.detectChanges();
+        tick();
+
+        component.displayNameDraft = '12345';
+        void component.guardarIdentidad();
+        tick();
+
+        expect(apiSvc.updateMyProfile).not.toHaveBeenCalled();
+        expect(toastSvc.showError).toHaveBeenCalledWith('El nombre visible no puede estar formado solo por números.');
+    }));
+
+    it('bloquea el guardado si la bio no vacía tiene menos de 10 caracteres', fakeAsync(() => {
+        const apiSvc = TestBed.inject(UserProfileApiService) as jasmine.SpyObj<UserProfileApiService>;
+        const toastSvc = TestBed.inject(AppToastService) as jasmine.SpyObj<AppToastService>;
+
+        fixture.detectChanges();
+        tick();
+
+        component.bioDraft = 'Demasiad';
+        void component.guardarIdentidad();
+        tick();
+
+        expect(apiSvc.updateMyProfile).not.toHaveBeenCalled();
+        expect(toastSvc.showError).toHaveBeenCalledWith('La bio debe tener al menos 10 caracteres o dejarse vacía.');
+    }));
+
+    it('bloquea el guardado si la bio está formada solo por números', fakeAsync(() => {
+        const apiSvc = TestBed.inject(UserProfileApiService) as jasmine.SpyObj<UserProfileApiService>;
+        const toastSvc = TestBed.inject(AppToastService) as jasmine.SpyObj<AppToastService>;
+
+        fixture.detectChanges();
+        tick();
+
+        component.bioDraft = '1234567890';
+        void component.guardarIdentidad();
+        tick();
+
+        expect(apiSvc.updateMyProfile).not.toHaveBeenCalled();
+        expect(toastSvc.showError).toHaveBeenCalledWith('La bio no puede estar formada solo por números.');
+    }));
+
+    it('cae al avatar por defecto si falla la carga de la imagen persistida', fakeAsync(() => {
+        fixture.detectChanges();
+        tick();
+
+        profileSubject.next({
+            ...buildProfile('correo'),
+            photoUrl: 'https://cdn.test/avatar-roto.webp',
+            photoThumbUrl: null,
+        });
+        fixture.detectChanges();
+        tick();
+
+        component.onAvatarImageError({
+            target: {
+                src: 'https://cdn.test/avatar-roto.webp',
+                currentSrc: 'https://cdn.test/avatar-roto.webp',
+            },
+        } as any);
+
+        expect(component.avatarUrl).toBe(resolveDefaultProfileAvatar('uid-1'));
     }));
 
     it('envia null al limpiar bio, genero y pronombres', fakeAsync(() => {
@@ -1718,6 +1803,70 @@ describe('UserProfileComponent', () => {
                 maxFuentesHomebrewGeneralesPorPersonaje: 1,
             }),
         }));
+    }));
+
+    it('bloquea crear campaña si el nombre tiene menos de 5 caracteres', fakeAsync(() => {
+        const campanaSvc = TestBed.inject(CampanaService) as jasmine.SpyObj<CampanaService>;
+        const toastSvc = TestBed.inject(AppToastService) as jasmine.SpyObj<AppToastService>;
+
+        profileSubject.next({
+            ...buildProfile('correo'),
+            role: 'master',
+        });
+        userSvc.refreshCurrentPrivateProfile.and.resolveTo(profileSubject.value);
+        fixture.detectChanges();
+        tick();
+
+        component.seleccionarNuevaCampana();
+        component.campaignCreateDraft = 'Mini';
+        void component.crearCampana();
+        tick();
+
+        expect(campanaSvc.createCampaign).not.toHaveBeenCalled();
+        expect(toastSvc.showError).toHaveBeenCalledWith('El nombre de campaña debe tener entre 5 y 150 caracteres.');
+    }));
+
+    it('bloquea crear campaña si el nombre está formado solo por números', fakeAsync(() => {
+        const campanaSvc = TestBed.inject(CampanaService) as jasmine.SpyObj<CampanaService>;
+        const toastSvc = TestBed.inject(AppToastService) as jasmine.SpyObj<AppToastService>;
+
+        profileSubject.next({
+            ...buildProfile('correo'),
+            role: 'master',
+        });
+        userSvc.refreshCurrentPrivateProfile.and.resolveTo(profileSubject.value);
+        fixture.detectChanges();
+        tick();
+
+        component.seleccionarNuevaCampana();
+        component.campaignCreateDraft = '12345';
+        void component.crearCampana();
+        tick();
+
+        expect(campanaSvc.createCampaign).not.toHaveBeenCalled();
+        expect(toastSvc.showError).toHaveBeenCalledWith('El nombre de campaña no puede estar formado solo por números.');
+    }));
+
+    it('recorta los límites numéricos de campaña al máximo permitido', fakeAsync(() => {
+        fixture.detectChanges();
+        tick();
+
+        component.seleccionarNuevaCampana();
+        component.campaignCreatePolicyDraft.tiradaMinimaCaracteristica = 99 as any;
+        component.campaignCreatePolicyDraft.nepMaximoPersonajeNuevo = -4 as any;
+        component.campaignCreatePolicyDraft.maxTablasDadosCaracteristicas = 99 as any;
+        component.campaignCreatePolicyDraft.maxFuentesHomebrewGeneralesPorPersonaje = 99 as any;
+
+        component.onCampaignMinimumRollChange();
+        component.onCampaignMaxNepChange();
+        component.onCampaignMaxTablesChange();
+        component.setCampaignHomebrewMode('limitado');
+        component.onCampaignHomebrewLimitChange();
+
+        expect(component.campaignCreatePolicyDraft.tiradaMinimaCaracteristica).toBe(13);
+        expect(component.campaignCreatePolicyDraft.nepMaximoPersonajeNuevo).toBe(0);
+        expect(component.campaignCreatePolicyDraft.maxTablasDadosCaracteristicas).toBe(5);
+        expect(component.campaignCreatePolicyDraft.maxFuentesHomebrewGeneralesPorPersonaje).toBe(20);
     }));
 
     it('autocompleta campañas legacy con mínimos 3/1 y persiste el autofix al cargar el detalle', fakeAsync(() => {

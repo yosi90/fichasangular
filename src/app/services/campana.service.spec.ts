@@ -1,4 +1,5 @@
 import { fakeAsync, tick } from '@angular/core/testing';
+import { HttpErrorResponse } from '@angular/common/http';
 import { Subject, of } from 'rxjs';
 
 import { CampanaService } from './campana.service';
@@ -14,6 +15,7 @@ describe('CampanaService', () => {
     let watchState: { next: ((items: any[]) => void) | null; };
 
     beforeEach(() => {
+        sessionStorage.clear();
         httpMock = {
             get: jasmine.createSpy('get'),
             post: jasmine.createSpy('post'),
@@ -57,6 +59,130 @@ describe('CampanaService', () => {
         });
         expect(campaignRealtimeSyncSvcMock.notifyLocalChange).toHaveBeenCalledWith(7);
         expect(httpMock.get).not.toHaveBeenCalled();
+    });
+
+    it('createCampaign serializa nepMaximoPersonajeNuevo cuando se informa', async () => {
+        httpMock.post.and.returnValue(of({ idCampana: 7, nombre: 'Campaña nueva' }));
+
+        await service.createCampaign({
+            nombre: 'Campaña nueva',
+            politicaCreacion: {
+                tiradaMinimaCaracteristica: 8,
+                nepMaximoPersonajeNuevo: 6,
+                maxTablasDadosCaracteristicas: 2,
+                permitirHomebrewGeneral: true,
+                permitirVentajasDesventajas: true,
+                permitirIgnorarRestriccionesAlineamiento: false,
+                maxFuentesHomebrewGeneralesPorPersonaje: null,
+            },
+        });
+
+        expect(httpMock.post).toHaveBeenCalled();
+        expect(httpMock.post.calls.mostRecent().args[1]).toEqual(jasmine.objectContaining({
+            politicaCreacion: jasmine.objectContaining({
+                nepMaximoPersonajeNuevo: 6,
+            }),
+        }));
+    });
+
+    it('createCampaign rechaza nombres demasiado cortos', async () => {
+        await expectAsync(service.createCampaign('Mini')).toBeRejectedWithError(
+            'El nombre de campaña debe tener entre 5 y 150 caracteres.'
+        );
+        expect(httpMock.post).not.toHaveBeenCalled();
+    });
+
+    it('createCampaign rechaza nombres formados solo por números', async () => {
+        await expectAsync(service.createCampaign('12345')).toBeRejectedWithError(
+            'El nombre de campaña no puede estar formado solo por números.'
+        );
+        expect(httpMock.post).not.toHaveBeenCalled();
+    });
+
+    it('updateCampaign rechaza nombres demasiado largos', async () => {
+        await expectAsync(service.updateCampaign(7, { nombre: 'a'.repeat(151) })).toBeRejectedWithError(
+            'El nombre de campaña debe tener entre 5 y 150 caracteres.'
+        );
+        expect(httpMock.patch).not.toHaveBeenCalled();
+    });
+
+    it('traduce errores de nombre duplicado a un mensaje funcional', async () => {
+        httpMock.post.and.returnValue(new Subject<any>().asObservable());
+        httpMock.post.and.callFake(() => {
+            throw new HttpErrorResponse({
+                status: 500,
+                error: {
+                    message: "Violation of UNIQUE KEY constraint 'UQ_Campanas_Nombre'. Cannot insert duplicate key row in object 'dbo.Campanas' with unique index 'IX_Campanas_Nombre'.",
+                },
+            });
+        });
+
+        await expectAsync(service.createCampaign('Costa de la Espada')).toBeRejectedWithError(
+            'No puedes usar ese nombre porque ya está en uso por otra campaña.'
+        );
+    });
+
+    it('listSocialCampaigns recupera campañas propias aunque la proyección privada llegue sin membresía activa', async () => {
+        privateUserFirestoreSvcMock.listCampaigns.and.resolveTo([
+            { id: 7, nombre: 'Campaña propia', campaignRole: null, membershipStatus: null, isOwner: true },
+        ]);
+        httpMock.get.and.callFake((url: string) => {
+            if (url.endsWith('campanas/7')) {
+                return of({
+                    idCampana: 7,
+                    nombre: 'Campaña propia',
+                    ownerUid: 'actor-1',
+                    activeMasterUid: 'actor-1',
+                    tramas: [],
+                });
+            }
+            throw new Error(`URL inesperada: ${url}`);
+        });
+
+        const campaigns = await service.listSocialCampaigns();
+
+        expect(campaigns).toEqual([{
+            id: 7,
+            nombre: 'Campaña propia',
+            campaignRole: 'master',
+            membershipStatus: 'activo',
+            isOwner: true,
+        }]);
+    });
+
+    it('getCampaignDetail normaliza nepMaximoPersonajeNuevo desde la API', async () => {
+        httpMock.get.and.callFake((url: string) => {
+            if (url.endsWith('campanas/7')) {
+                return of({
+                    idCampana: 7,
+                    nombre: 'Campaña propia',
+                    campaignRole: 'master',
+                    membershipStatus: 'activo',
+                    ownerUid: 'actor-1',
+                    activeMasterUid: 'actor-1',
+                    canRecoverMaster: false,
+                    politicaCreacion: {
+                        tiradaMinimaCaracteristica: 8,
+                        nepMaximoPersonajeNuevo: 6,
+                        maxTablasDadosCaracteristicas: 2,
+                        permitirHomebrewGeneral: true,
+                        permitirVentajasDesventajas: true,
+                        permitirIgnorarRestriccionesAlineamiento: false,
+                        maxFuentesHomebrewGeneralesPorPersonaje: null,
+                    },
+                    tramas: [],
+                });
+            }
+            if (url.endsWith('campanas/7/jugadores'))
+                return of([]);
+            if (url.endsWith('campanas/7/invitaciones'))
+                return of([]);
+            throw new Error(`URL inesperada: ${url}`);
+        });
+
+        const detail = await service.getCampaignDetail(7);
+
+        expect(detail.politicaCreacion.nepMaximoPersonajeNuevo).toBe(6);
     });
 
     it('getListCampanas añade la opción sintética Sin campaña para campañas con membresía activa', async () => {

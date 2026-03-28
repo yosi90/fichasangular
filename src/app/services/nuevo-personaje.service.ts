@@ -837,6 +837,55 @@ export interface PlantillasFlujoState {
     heredadaActiva: boolean;
 }
 
+interface NuevoPersonajeDraftEstadoFlujoV1 {
+    pasoActual: StepNuevoPersonaje;
+    caracteristicasGeneradas: boolean;
+    generador: GeneradorCaracteristicasState;
+    plantillas: {
+        seleccionadas: Plantilla[];
+        confirmadasIds: number[];
+        retornoFinNivelPendiente: boolean;
+        tipoCriaturaSimulada: {
+            Id: number;
+            Nombre: string;
+        };
+        licantropiaActiva: boolean;
+        heredadaActiva: boolean;
+    };
+    ventajas: {
+        seleccionVentajas: SeleccionVentajaState[];
+        seleccionDesventajas: SeleccionVentajaState[];
+    };
+    habilidades: HabilidadesFlujoState;
+    conjuros: ConjurosFlujoState;
+}
+
+interface NuevoPersonajeDraftV1 {
+    version: 1;
+    uid: string;
+    updatedAt: number;
+    personaje: Personaje;
+    razaSeleccionada: Raza | null;
+    razaBaseSeleccionada: Raza | null;
+    estadoFlujoPersistible: NuevoPersonajeDraftEstadoFlujoV1;
+    dotesPendientes: DotePendienteState[];
+    secuenciaDotePendiente: number;
+    dotesProgresionConcedidas: number;
+    dotesExtraRazaConcedidas: number;
+    aumentosPendientesCaracteristica: AumentoCaracteristicaPendiente[];
+    aumentosProgresionConcedidos: number;
+    secuenciaAumentoPendiente: number;
+    bonusNivelLanzadorPorClase: Record<string, number>;
+    idsEspecialesInternosActivos: number[];
+    idsDotesInternosActivos: number[];
+    conjurosSesionPlaceholderPorId: Record<number, Conjuro>;
+}
+
+const NUEVO_PERSONAJE_DRAFT_VERSION = 1;
+const NUEVO_PERSONAJE_DRAFT_STORAGE_PREFIX = 'fichas35.nuevoPersonaje.draft.v1.';
+const NUEVO_PERSONAJE_DRAFT_AUTOSAVE_MS = 1200;
+const NUEVO_PERSONAJE_DRAFT_DEBOUNCE_MS = 300;
+
 @Injectable({
     providedIn: 'root'
 })
@@ -871,6 +920,10 @@ export class NuevoPersonajeService {
     private generadorConfigBase = this.getConfigGeneradorDefault();
     private restriccionCampanaGenerador: { minimoSeleccionado: number; tablasPermitidas: number; } | null = null;
     private estadoFlujo: EstadoFlujoNuevoPersonaje = this.crearEstadoFlujoBase();
+    private draftUidActivo = '';
+    private draftAutosaveTimer: ReturnType<typeof setInterval> | null = null;
+    private draftPersistTimer: ReturnType<typeof setTimeout> | null = null;
+    private draftUltimaFirmaPersistida: string | null = null;
 
     constructor(private userSettingsSvc?: UserSettingsService) { }
 
@@ -892,6 +945,75 @@ export class NuevoPersonajeService {
 
     get TieneRestriccionCampanaGenerador(): boolean {
         return this.restriccionCampanaGenerador !== null;
+    }
+
+    activarPersistenciaBorradorLocal(uid: string): void {
+        const uidNormalizado = `${uid ?? ''}`.trim();
+        this.desactivarPersistenciaBorradorLocal();
+        if (uidNormalizado.length < 1)
+            return;
+
+        this.draftUidActivo = uidNormalizado;
+        this.draftUltimaFirmaPersistida = this.getFirmaBorradorLocal(uidNormalizado);
+        this.draftAutosaveTimer = setInterval(() => {
+            this.comprobarPersistenciaBorradorActiva();
+        }, NUEVO_PERSONAJE_DRAFT_AUTOSAVE_MS);
+    }
+
+    desactivarPersistenciaBorradorLocal(): void {
+        if (this.draftAutosaveTimer) {
+            clearInterval(this.draftAutosaveTimer);
+            this.draftAutosaveTimer = null;
+        }
+        if (this.draftPersistTimer) {
+            clearTimeout(this.draftPersistTimer);
+            this.draftPersistTimer = null;
+        }
+        this.draftUidActivo = '';
+    }
+
+    puedeOfrecerRestauracionBorrador(uid: string): boolean {
+        const uidNormalizado = `${uid ?? ''}`.trim();
+        if (uidNormalizado.length < 1)
+            return false;
+        if (this.tieneCreacionEnCurso())
+            return false;
+        return this.leerBorradorLocal(uidNormalizado) !== null;
+    }
+
+    restaurarBorradorLocal(uid: string): boolean {
+        const borrador = this.leerBorradorLocal(uid);
+        if (!borrador)
+            return false;
+
+        this.hidratarDesdeBorradorLocal(borrador);
+        this.draftUltimaFirmaPersistida = this.getFirmaBorradorLocal(`${borrador.uid ?? ''}`.trim());
+        return true;
+    }
+
+    descartarBorradorLocal(uid?: string): void {
+        const uidNormalizado = `${uid ?? this.draftUidActivo ?? ''}`.trim();
+        if (uidNormalizado.length < 1)
+            return;
+        this.eliminarBorradorStorage(uidNormalizado);
+        if (this.draftUidActivo === uidNormalizado)
+            this.draftUltimaFirmaPersistida = null;
+    }
+
+    persistirBorradorLocalAhora(uid?: string): void {
+        const uidNormalizado = `${uid ?? this.draftUidActivo ?? ''}`.trim();
+        if (uidNormalizado.length < 1)
+            return;
+
+        const borrador = this.construirBorradorLocal(uidNormalizado);
+        if (!borrador) {
+            this.eliminarBorradorStorage(uidNormalizado);
+            this.draftUltimaFirmaPersistida = null;
+            return;
+        }
+
+        this.escribirBorradorStorage(uidNormalizado, borrador);
+        this.draftUltimaFirmaPersistida = this.firmarBorradorLocal(borrador);
     }
 
     refrescarDerivadasPreviewNuevoPersonaje(): void {
@@ -993,6 +1115,7 @@ export class NuevoPersonajeService {
         this.setCatalogoRegiones(catalogoRegiones);
         this.setCatalogoDeidades(catalogoDeidades);
         this.sincronizarBaseVentajasDesdePersonaje();
+        this.programarPersistenciaBorradorLocal();
     }
 
     resetearCreacionNuevoPersonaje(): void {
@@ -1093,6 +1216,7 @@ export class NuevoPersonajeService {
         this.sincronizarBaseVentajasDesdePersonaje();
         this.inicializarHabilidadesBase(true);
         this.recalcularEfectosVentajas();
+        this.programarPersistenciaBorradorLocal();
         return true;
     }
 
@@ -2681,6 +2805,7 @@ export class NuevoPersonajeService {
     private validarRepeticionDote(dote: Dote, idExtra: number, extraTexto: string): boolean {
         const idDote = this.toNumber(dote?.Id);
         const nombreNorm = this.normalizarTexto(`${dote?.Nombre ?? ''}`);
+        const repetibleDistintoExtra = this.toBooleanValue(dote?.Repetible_distinto_extra) && this.doteTieneExtrasSoportados(dote);
         const contextuales = (this.personajeCreacion.DotesContextuales ?? []).filter((item) => {
             const id = this.toNumber(item?.Dote?.Id);
             const nombre = this.normalizarTexto(item?.Dote?.Nombre ?? '');
@@ -2694,10 +2819,8 @@ export class NuevoPersonajeService {
 
         if (!yaExiste)
             return true;
-        if (this.toBooleanValue(dote?.Repetible))
-            return true;
 
-        if (this.toBooleanValue(dote?.Repetible_distinto_extra)) {
+        if (repetibleDistintoExtra) {
             const idExtraNorm = Math.max(0, this.toNumber(idExtra));
             const extraNorm = this.normalizarTexto(extraTexto ?? '');
             if (idExtraNorm <= 0 && extraNorm.length < 1)
@@ -2717,6 +2840,9 @@ export class NuevoPersonajeService {
             );
             return !repetidaContextual && !repetidaLegacy;
         }
+
+        if (this.toBooleanValue(dote?.Repetible))
+            return true;
 
         return false;
     }
@@ -4234,6 +4360,7 @@ export class NuevoPersonajeService {
 
     actualizarPasoActual(paso: StepNuevoPersonaje): void {
         this.estadoFlujo.pasoActual = paso;
+        this.persistirBorradorLocalAhora();
     }
 
     setMinimoGenerador(minimo: number): void {
@@ -7661,6 +7788,300 @@ export class NuevoPersonajeService {
         return this.estadoFlujo.ventajas.seleccionVentajas
             .filter(v => v.id !== exceptVentajaId)
             .some((v) => this.normalizarTexto(v.idioma?.Nombre ?? '') === normalizado);
+    }
+
+    private comprobarPersistenciaBorradorActiva(): void {
+        const uid = `${this.draftUidActivo ?? ''}`.trim();
+        if (uid.length < 1)
+            return;
+
+        const firmaActual = this.getFirmaBorradorLocal(uid);
+        if (firmaActual === this.draftUltimaFirmaPersistida)
+            return;
+
+        this.programarPersistenciaBorradorLocal();
+    }
+
+    private programarPersistenciaBorradorLocal(): void {
+        const uid = `${this.draftUidActivo ?? ''}`.trim();
+        if (uid.length < 1)
+            return;
+
+        if (this.draftPersistTimer)
+            clearTimeout(this.draftPersistTimer);
+
+        this.draftPersistTimer = setTimeout(() => {
+            this.draftPersistTimer = null;
+            this.persistirBorradorLocalAhora(uid);
+        }, NUEVO_PERSONAJE_DRAFT_DEBOUNCE_MS);
+    }
+
+    private construirBorradorLocal(uid: string): NuevoPersonajeDraftV1 | null {
+        const uidNormalizado = `${uid ?? ''}`.trim();
+        if (uidNormalizado.length < 1)
+            return null;
+        if (!this.tieneCreacionEnCurso())
+            return null;
+
+        return {
+            version: NUEVO_PERSONAJE_DRAFT_VERSION,
+            uid: uidNormalizado,
+            updatedAt: Date.now(),
+            personaje: this.clonarProfundo(this.personajeCreacion),
+            razaSeleccionada: this.clonarProfundo(this.razaSeleccionada),
+            razaBaseSeleccionada: this.clonarProfundo(this.razaBaseSeleccionadaCompleta),
+            estadoFlujoPersistible: {
+                pasoActual: this.resolverPasoPersistible(this.estadoFlujo.pasoActual),
+                caracteristicasGeneradas: this.estadoFlujo.caracteristicasGeneradas === true,
+                generador: this.clonarProfundo(this.estadoFlujo.generador),
+                plantillas: {
+                    seleccionadas: this.clonarProfundo(this.estadoFlujo.plantillas.seleccionadas),
+                    confirmadasIds: this.clonarProfundo(this.estadoFlujo.plantillas.confirmadasIds),
+                    retornoFinNivelPendiente: this.estadoFlujo.plantillas.retornoFinNivelPendiente === true,
+                    tipoCriaturaSimulada: this.clonarProfundo(this.estadoFlujo.plantillas.tipoCriaturaSimulada),
+                    licantropiaActiva: this.estadoFlujo.plantillas.licantropiaActiva === true,
+                    heredadaActiva: this.estadoFlujo.plantillas.heredadaActiva === true,
+                },
+                ventajas: {
+                    seleccionVentajas: this.clonarProfundo(this.estadoFlujo.ventajas.seleccionVentajas),
+                    seleccionDesventajas: this.clonarProfundo(this.estadoFlujo.ventajas.seleccionDesventajas),
+                },
+                habilidades: this.clonarProfundo(this.estadoFlujo.habilidades),
+                conjuros: this.clonarProfundo(this.estadoFlujo.conjuros),
+            },
+            dotesPendientes: this.clonarProfundo(this.dotesPendientes),
+            secuenciaDotePendiente: Math.max(1, Math.trunc(this.toNumber(this.secuenciaDotePendiente))),
+            dotesProgresionConcedidas: Math.max(0, Math.trunc(this.toNumber(this.dotesProgresionConcedidas))),
+            dotesExtraRazaConcedidas: Math.max(0, Math.trunc(this.toNumber(this.dotesExtraRazaConcedidas))),
+            aumentosPendientesCaracteristica: this.clonarProfundo(this.aumentosPendientesCaracteristica),
+            aumentosProgresionConcedidos: Math.max(0, Math.trunc(this.toNumber(this.aumentosProgresionConcedidos))),
+            secuenciaAumentoPendiente: Math.max(1, Math.trunc(this.toNumber(this.secuenciaAumentoPendiente))),
+            bonusNivelLanzadorPorClase: this.clonarProfundo(this.bonusNivelLanzadorPorClase),
+            idsEspecialesInternosActivos: Array.from(this.idsEspecialesInternosActivos.values()),
+            idsDotesInternosActivos: Array.from(this.idsDotesInternosActivos.values()),
+            conjurosSesionPlaceholderPorId: this.clonarProfundo(this.conjurosSesionPlaceholderPorId),
+        };
+    }
+
+    private hidratarDesdeBorradorLocal(borrador: NuevoPersonajeDraftV1): void {
+        const catalogoHabilidades = this.estadoFlujo.ventajas.catalogoHabilidades.slice();
+        const catalogoHabilidadesCustom = this.estadoFlujo.ventajas.catalogoHabilidadesCustom.slice();
+        const catalogoIdiomas = this.estadoFlujo.ventajas.catalogoIdiomas.slice();
+        const catalogoVentajas = this.estadoFlujo.ventajas.catalogoVentajas.slice();
+        const catalogoDesventajas = this.estadoFlujo.ventajas.catalogoDesventajas.slice();
+        const catalogoClases = this.catalogoClases.slice();
+        const catalogoDotes = this.catalogoDotes.slice();
+        const catalogoConjuros = this.catalogoConjuros.slice();
+        const catalogoDominios = this.catalogoDominios.slice();
+        const catalogoRegiones = this.catalogoRegiones.slice();
+        const catalogoDeidades = this.catalogoDeidades.slice();
+
+        this.personajeCreacion = this.clonarProfundo(borrador.personaje ?? this.crearPersonajeBase());
+        this.razaSeleccionada = this.clonarProfundo(borrador.razaSeleccionada ?? null);
+        this.razaBaseSeleccionadaCompleta = this.clonarProfundo(borrador.razaBaseSeleccionada ?? null);
+        this.estadoFlujo = this.crearEstadoFlujoBase();
+
+        const flujoPersistido = borrador.estadoFlujoPersistible;
+        if (flujoPersistido) {
+            this.estadoFlujo.pasoActual = this.normalizarPasoRestaurado(flujoPersistido.pasoActual);
+            this.estadoFlujo.modalCaracteristicasAbierto = false;
+            this.estadoFlujo.caracteristicasGeneradas = flujoPersistido.caracteristicasGeneradas === true;
+            this.estadoFlujo.generador = this.clonarProfundo(flujoPersistido.generador ?? this.estadoFlujo.generador);
+            this.estadoFlujo.plantillas = {
+                ...this.crearPlantillasFlujoBase(),
+                seleccionadas: this.clonarProfundo(flujoPersistido.plantillas?.seleccionadas ?? []),
+                confirmadasIds: this.clonarProfundo(flujoPersistido.plantillas?.confirmadasIds ?? []),
+                retornoFinNivelPendiente: flujoPersistido.plantillas?.retornoFinNivelPendiente === true,
+                tipoCriaturaSimulada: this.clonarProfundo(
+                    flujoPersistido.plantillas?.tipoCriaturaSimulada ?? this.crearPlantillasFlujoBase().tipoCriaturaSimulada
+                ),
+                licantropiaActiva: flujoPersistido.plantillas?.licantropiaActiva === true,
+                heredadaActiva: flujoPersistido.plantillas?.heredadaActiva === true,
+            };
+            this.estadoFlujo.ventajas = {
+                ...this.crearVentajasFlujoBase(),
+                seleccionVentajas: this.clonarProfundo(flujoPersistido.ventajas?.seleccionVentajas ?? []),
+                seleccionDesventajas: this.clonarProfundo(flujoPersistido.ventajas?.seleccionDesventajas ?? []),
+            };
+            this.estadoFlujo.habilidades = {
+                ...this.crearHabilidadesFlujoBase(),
+                ...this.clonarProfundo(flujoPersistido.habilidades ?? this.crearHabilidadesFlujoBase()),
+            };
+            this.estadoFlujo.conjuros = {
+                ...this.crearConjurosFlujoBase(),
+                ...this.clonarProfundo(flujoPersistido.conjuros ?? this.crearConjurosFlujoBase()),
+            };
+        }
+
+        this.dotesPendientes = this.clonarProfundo(borrador.dotesPendientes ?? []);
+        this.secuenciaDotePendiente = Math.max(1, Math.trunc(this.toNumber(borrador.secuenciaDotePendiente)));
+        this.dotesProgresionConcedidas = Math.max(0, Math.trunc(this.toNumber(borrador.dotesProgresionConcedidas)));
+        this.dotesExtraRazaConcedidas = Math.max(0, Math.trunc(this.toNumber(borrador.dotesExtraRazaConcedidas)));
+        this.aumentosPendientesCaracteristica = this.clonarProfundo(borrador.aumentosPendientesCaracteristica ?? []);
+        this.aumentosProgresionConcedidos = Math.max(0, Math.trunc(this.toNumber(borrador.aumentosProgresionConcedidos)));
+        this.secuenciaAumentoPendiente = Math.max(1, Math.trunc(this.toNumber(borrador.secuenciaAumentoPendiente)));
+        this.bonusNivelLanzadorPorClase = this.clonarProfundo(borrador.bonusNivelLanzadorPorClase ?? {});
+        this.conjurosSesionPlaceholderPorId = this.clonarProfundo(borrador.conjurosSesionPlaceholderPorId ?? {});
+        this.idsEspecialesInternosActivos = new Set<number>(
+            (borrador.idsEspecialesInternosActivos ?? [])
+                .map((id) => Math.trunc(this.toNumber(id)))
+                .filter((id) => id > 0)
+        );
+        this.idsDotesInternosActivos = new Set<number>(
+            (borrador.idsDotesInternosActivos ?? [])
+                .map((id) => Math.trunc(this.toNumber(id)))
+                .filter((id) => id > 0)
+        );
+
+        this.setCatalogoHabilidades(catalogoHabilidades);
+        this.setCatalogoHabilidadesCustom(catalogoHabilidadesCustom);
+        this.setCatalogoIdiomas(catalogoIdiomas);
+        this.setCatalogosVentajas(catalogoVentajas, catalogoDesventajas);
+        this.setCatalogoClases(catalogoClases);
+        this.setCatalogoDotes(catalogoDotes);
+        this.setCatalogoConjuros(catalogoConjuros);
+        this.setCatalogoDominios(catalogoDominios);
+        this.setCatalogoRegiones(catalogoRegiones);
+        this.setCatalogoDeidades(catalogoDeidades);
+
+        this.sincronizarCaracteristicasPerdidasConTipoActual();
+        this.recalcularTipoYSubtiposDerivados();
+        this.sincronizarBaseVentajasDesdePersonaje();
+        this.recalcularEfectosVentajas();
+        this.recalcularSimulacionPlantillas();
+        this.refrescarDerivadasPreviewNuevoPersonaje();
+    }
+
+    private leerBorradorLocal(uid: string): NuevoPersonajeDraftV1 | null {
+        const uidNormalizado = `${uid ?? ''}`.trim();
+        if (uidNormalizado.length < 1)
+            return null;
+
+        const raw = this.leerStorage(this.getClaveBorradorLocal(uidNormalizado));
+        if (!raw)
+            return null;
+
+        try {
+            const parsed = JSON.parse(raw) as NuevoPersonajeDraftV1;
+            if (!this.esBorradorLocalValido(parsed, uidNormalizado))
+                return null;
+            return parsed;
+        } catch {
+            return null;
+        }
+    }
+
+    private esBorradorLocalValido(value: NuevoPersonajeDraftV1 | null | undefined, uid: string): value is NuevoPersonajeDraftV1 {
+        if (!value || typeof value !== 'object')
+            return false;
+        if (this.toNumber((value as any).version) !== NUEVO_PERSONAJE_DRAFT_VERSION)
+            return false;
+        if (`${(value as any).uid ?? ''}`.trim() !== `${uid ?? ''}`.trim())
+            return false;
+        if (!(value as any).personaje || !(value as any).estadoFlujoPersistible)
+            return false;
+        return true;
+    }
+
+    private escribirBorradorStorage(uid: string, borrador: NuevoPersonajeDraftV1): void {
+        this.escribirStorage(this.getClaveBorradorLocal(uid), JSON.stringify(borrador));
+    }
+
+    private eliminarBorradorStorage(uid: string): void {
+        this.eliminarStorage(this.getClaveBorradorLocal(uid));
+    }
+
+    private getClaveBorradorLocal(uid: string): string {
+        return `${NUEVO_PERSONAJE_DRAFT_STORAGE_PREFIX}${`${uid ?? ''}`.trim()}`;
+    }
+
+    private getFirmaBorradorLocal(uid: string): string | null {
+        const borrador = this.construirBorradorLocal(uid);
+        return borrador ? this.firmarBorradorLocal(borrador) : null;
+    }
+
+    private firmarBorradorLocal(borrador: NuevoPersonajeDraftV1): string {
+        const firma = {
+            ...borrador,
+            updatedAt: 0,
+        };
+        return JSON.stringify(firma);
+    }
+
+    private tieneCreacionEnCurso(): boolean {
+        if (this.razaSeleccionada !== null)
+            return true;
+        if (`${this.personajeCreacion?.Nombre ?? ''}`.trim().length > 0)
+            return true;
+        if (this.estadoFlujo.pasoActual !== 'raza')
+            return true;
+        return false;
+    }
+
+    private resolverPasoPersistible(paso: StepNuevoPersonaje): StepNuevoPersonaje {
+        return this.normalizarPasoRestaurado(paso);
+    }
+
+    private normalizarPasoRestaurado(paso: StepNuevoPersonaje): StepNuevoPersonaje {
+        if (!this.razaSeleccionada || this.toNumber(this.personajeCreacion?.Raza?.Id) <= 0)
+            return 'raza';
+
+        const pasoNormalizado: StepNuevoPersonaje = (
+            paso === 'basicos'
+            || paso === 'plantillas'
+            || paso === 'ventajas'
+            || paso === 'clases'
+            || paso === 'habilidades'
+            || paso === 'conjuros'
+            || paso === 'dotes'
+        ) ? paso : 'raza';
+
+        if (pasoNormalizado === 'raza')
+            return 'basicos';
+
+        if (!this.estadoFlujo.caracteristicasGeneradas && this.pasoRequiereCaracteristicasGeneradas(pasoNormalizado))
+            return 'basicos';
+
+        return pasoNormalizado;
+    }
+
+    private pasoRequiereCaracteristicasGeneradas(paso: StepNuevoPersonaje): boolean {
+        return paso === 'plantillas'
+            || paso === 'ventajas'
+            || paso === 'clases'
+            || paso === 'habilidades'
+            || paso === 'conjuros'
+            || paso === 'dotes';
+    }
+
+    private leerStorage(key: string): string | null {
+        try {
+            return localStorage.getItem(key);
+        } catch {
+            return null;
+        }
+    }
+
+    private escribirStorage(key: string, value: string): void {
+        try {
+            localStorage.setItem(key, value);
+        } catch {
+            // Ignorado: localStorage puede no estar disponible.
+        }
+    }
+
+    private eliminarStorage(key: string): void {
+        try {
+            localStorage.removeItem(key);
+        } catch {
+            // Ignorado: localStorage puede no estar disponible.
+        }
+    }
+
+    private clonarProfundo<T>(value: T): T {
+        if (typeof structuredClone === 'function')
+            return structuredClone(value);
+        return JSON.parse(JSON.stringify(value));
     }
 
     private crearEstadoFlujoBase(): EstadoFlujoNuevoPersonaje {

@@ -39,4 +39,32 @@ describe('SelectorDotesModalComponent', () => {
     it('should create', () => {
         expect(component).toBeTruthy();
     });
+
+    it('recalcula el estado seleccionado y puede confirmar al elegir un candidato sin extra', () => {
+        component.candidatos = [
+            {
+                dote: {
+                    Id: 7,
+                    Nombre: 'Ataque poderoso',
+                    Manual: { Nombre: 'PHB', Pagina: 98 },
+                    Tipos: [{ Nombre: 'General' }],
+                } as any,
+                restringidaPorTipo: false,
+                repeticionValida: true,
+                requiereExtra: false,
+                extrasDisponibles: [],
+                evaluacion: {
+                    estado: 'eligible',
+                    razones: [],
+                    advertencias: [],
+                },
+            } as any,
+        ];
+
+        component.ngOnChanges({ candidatos: {} as any });
+        component.seleccionarCandidato(component.candidatos[0] as any);
+
+        expect(component.candidatoSeleccionado?.dote?.Id).toBe(7);
+        expect(component.puedeConfirmar).toBeTrue();
+    });
 });

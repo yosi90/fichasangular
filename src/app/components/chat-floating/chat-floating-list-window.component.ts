@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Input, OnDestroy, OnInit, Output } from '@angular/core';
+import { AfterViewInit, Component, ElementRef, EventEmitter, HostListener, Input, OnDestroy, OnInit, Output, ViewChild } from '@angular/core';
 import { Subject, takeUntil } from 'rxjs';
 import {
     ChatConversationFilter,
@@ -27,7 +27,8 @@ type ListComposerMode = 'none' | 'new-direct' | 'new-group';
     styleUrls: ['./chat-floating-list-window.component.sass'],
     standalone: false,
 })
-export class ChatFloatingListWindowComponent implements OnInit, OnDestroy {
+export class ChatFloatingListWindowComponent implements OnInit, OnDestroy, AfterViewInit {
+    @ViewChild('conversationBody') private conversationBodyRef?: ElementRef<HTMLElement>;
     @Input() mode: 'window' | 'minimized' | 'maximized' = 'window';
     @Input() restoredPlacement: FloatingWindowPlacementRestored | null = null;
     @Input() minimizedPlacement: FloatingWindowPlacementMinimized | null = null;
@@ -44,6 +45,7 @@ export class ChatFloatingListWindowComponent implements OnInit, OnDestroy {
     actorAllowsNonFriendDM = false;
     conversations: ChatConversationSummary[] = [];
     conversationFilter: ChatConversationFilter = 'all';
+    conversationNameQuery = '';
     composerMode: ListComposerMode = 'none';
     friends: FriendItem[] = [];
     newDirectSearchQuery = '';
@@ -56,10 +58,12 @@ export class ChatFloatingListWindowComponent implements OnInit, OnDestroy {
     };
     newGroupParticipantQuery = '';
     newGroupSaving = false;
+    hasConversationOverflow = false;
 
     private readonly destroy$ = new Subject<void>();
     private newDirectSearchTimer: number | null = null;
     private friendsWatchStop: (() => void) | null = null;
+    private overflowMeasureFrame: number | null = null;
 
     readonly conversationFilters: { id: ChatConversationFilter; label: string; }[] = [
         { id: 'all', label: 'Todas' },
@@ -98,7 +102,14 @@ export class ChatFloatingListWindowComponent implements OnInit, OnDestroy {
 
         this.chatRealtimeSvc.conversations$
             .pipe(takeUntil(this.destroy$))
-            .subscribe((items) => this.conversations = [...items]);
+            .subscribe((items) => {
+                this.conversations = [...items];
+                this.scheduleConversationOverflowSync();
+            });
+    }
+
+    ngAfterViewInit(): void {
+        this.scheduleConversationOverflowSync();
     }
 
     ngOnDestroy(): void {
@@ -107,12 +118,19 @@ export class ChatFloatingListWindowComponent implements OnInit, OnDestroy {
         this.stopFriendsWatch();
         if (this.newDirectSearchTimer !== null)
             window.clearTimeout(this.newDirectSearchTimer);
+        if (this.overflowMeasureFrame !== null && typeof window !== 'undefined')
+            window.cancelAnimationFrame(this.overflowMeasureFrame);
     }
 
     get filteredConversations(): ChatConversationSummary[] {
         return [...this.conversations]
             .sort((a, b) => this.toDateMs(b.lastMessageAtUtc) - this.toDateMs(a.lastMessageAtUtc))
-            .filter((item) => this.isConversationVisibleInFilter(item, this.conversationFilter));
+            .filter((item) => this.isConversationVisibleInFilter(item, this.conversationFilter))
+            .filter((item) => this.matchesConversationNameFilter(item, this.conversationNameQuery));
+    }
+
+    get shouldShowConversationSearch(): boolean {
+        return this.hasConversationOverflow || this.conversationNameQuery.trim().length > 0;
     }
 
     get canOpenNewDirect(): boolean {
@@ -194,6 +212,7 @@ export class ChatFloatingListWindowComponent implements OnInit, OnDestroy {
 
     onWindowModeChange(mode: 'window' | 'minimized' | 'maximized'): void {
         this.mode = mode;
+        this.scheduleConversationOverflowSync();
         this.emitState();
     }
 
@@ -209,6 +228,7 @@ export class ChatFloatingListWindowComponent implements OnInit, OnDestroy {
 
     selectConversationFilter(filter: ChatConversationFilter): void {
         this.conversationFilter = filter;
+        this.scheduleConversationOverflowSync();
     }
 
     selectConversation(conversation: ChatConversationSummary): void {
@@ -233,6 +253,7 @@ export class ChatFloatingListWindowComponent implements OnInit, OnDestroy {
         this.newDirectSearchLoading = false;
         this.newDirectSearchErrorMessage = '';
         this.newDirectResults = [];
+        this.scheduleConversationOverflowSync();
     }
 
     openNewGroupComposer(): void {
@@ -245,10 +266,21 @@ export class ChatFloatingListWindowComponent implements OnInit, OnDestroy {
         };
         this.newGroupParticipantQuery = '';
         this.newGroupSaving = false;
+        this.scheduleConversationOverflowSync();
     }
 
     cancelComposer(): void {
         this.resetComposer();
+        this.scheduleConversationOverflowSync();
+    }
+
+    onConversationNameQueryChange(): void {
+        this.scheduleConversationOverflowSync();
+    }
+
+    @HostListener('window:resize')
+    onWindowResize(): void {
+        this.scheduleConversationOverflowSync();
     }
 
     onNewDirectQueryChange(): void {
@@ -454,6 +486,14 @@ export class ChatFloatingListWindowComponent implements OnInit, OnDestroy {
         return conversation.type === filter;
     }
 
+    private matchesConversationNameFilter(conversation: ChatConversationSummary | null | undefined, query: string | null | undefined): boolean {
+        const normalizedQuery = `${query ?? ''}`.trim().toLowerCase();
+        if (normalizedQuery.length < 1)
+            return true;
+        const label = this.getConversationLabel(conversation).toLowerCase();
+        return label.includes(normalizedQuery);
+    }
+
     private resetComposer(): void {
         this.composerMode = 'none';
         this.newDirectSearchQuery = '';
@@ -466,6 +506,27 @@ export class ChatFloatingListWindowComponent implements OnInit, OnDestroy {
         };
         this.newGroupParticipantQuery = '';
         this.newGroupSaving = false;
+    }
+
+    private scheduleConversationOverflowSync(): void {
+        if (typeof window === 'undefined')
+            return;
+        if (this.overflowMeasureFrame !== null)
+            window.cancelAnimationFrame(this.overflowMeasureFrame);
+        this.overflowMeasureFrame = window.requestAnimationFrame(() => {
+            this.overflowMeasureFrame = null;
+            this.syncConversationOverflow();
+        });
+    }
+
+    private syncConversationOverflow(): void {
+        const body = this.conversationBodyRef?.nativeElement;
+        if (!body) {
+            this.hasConversationOverflow = false;
+            return;
+        }
+
+        this.hasConversationOverflow = body.scrollHeight > (body.clientHeight + 1);
     }
 
     private toDateMs(value: string | null | undefined): number {

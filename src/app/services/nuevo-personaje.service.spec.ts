@@ -590,6 +590,202 @@ describe('NuevoPersonajeService (generador)', () => {
     });
 });
 
+describe('NuevoPersonajeService (borrador local)', () => {
+    const uid = 'uid-borrador-test';
+    const storageKey = `fichas35.nuevoPersonaje.draft.v1.${uid}`;
+
+    function crearTipoBase(): TipoCriatura {
+        return {
+            Id: 1,
+            Nombre: 'Humanoide',
+            Descripcion: 'Mock',
+            Manual: 'Mock',
+            Id_tipo_dado: 1,
+            Tipo_dado: 8,
+            Id_ataque: 1,
+            Id_fortaleza: 1,
+            Id_reflejos: 1,
+            Id_voluntad: 1,
+            Id_puntos_habilidad: 1,
+            Come: true,
+            Respira: true,
+            Duerme: true,
+            Recibe_criticos: true,
+            Puede_ser_flanqueado: true,
+            Pierde_constitucion: false,
+            Limite_inteligencia: 0,
+            Tesoro: 'Normal',
+            Id_alineamiento: 0,
+            Rasgos: [],
+            Oficial: true,
+        };
+    }
+
+    function crearRazaDraft(): Raza {
+        const tipo = crearTipoBase();
+        return {
+            Id: 10,
+            Nombre: 'Humano',
+            Ajuste_nivel: 1,
+            Manual: 'Manual base',
+            Clase_predilecta: 'Guerrero',
+            Modificadores: {
+                Fuerza: 0,
+                Destreza: 0,
+                Constitucion: 0,
+                Inteligencia: 0,
+                Sabiduria: 0,
+                Carisma: 0,
+            },
+            Alineamiento: {
+                Id: 1,
+                Basico: { Id_basico: 1, Nombre: 'Legal bueno' },
+                Ley: { Id_ley: 1, Nombre: 'Siempre legal' },
+                Moral: { Id_moral: 1, Nombre: 'Siempre bueno' },
+                Prioridad: { Id_prioridad: 1, Nombre: 'Moral' },
+                Descripcion: '',
+            },
+            Oficial: true,
+            Ataques_naturales: '',
+            Tamano: { Id: 1, Nombre: 'Mediano', Modificador: 0, Modificador_presa: 0 },
+            Dgs_adicionales: {
+                Cantidad: 0,
+                Dado: 'd8',
+                Tipo_criatura: 'Humanoide',
+                Ataque_base: 0,
+                Dotes_extra: 0,
+                Puntos_habilidad: 0,
+                Multiplicador_puntos_habilidad: 1,
+                Fortaleza: 0,
+                Reflejos: 0,
+                Voluntad: 0,
+            },
+            Reduccion_dano: '',
+            Resistencia_magica: '',
+            Resistencia_energia: '',
+            Heredada: false,
+            Mutada: false,
+            Tamano_mutacion_dependiente: false,
+            Prerrequisitos: {
+                actitud_prohibido: [],
+                actitud_requerido: [],
+                alineamiento_prohibido: [],
+                alineamiento_requerido: [],
+                tipo_criatura: [],
+            },
+            Armadura_natural: 0,
+            Varios_armadura: 0,
+            Correr: 30,
+            Nadar: 0,
+            Volar: 0,
+            Maniobrabilidad: {
+                Id: 0,
+                Nombre: '-',
+                Velocidad_avance: '',
+                Flotar: 0,
+                Volar_atras: 0,
+                Contramarcha: 0,
+                Giro: '',
+                Rotacion: '',
+                Giro_max: '',
+                Angulo_ascenso: '',
+                Velocidad_ascenso: '',
+                Angulo_descenso: '',
+                Descenso_ascenso: 0,
+            },
+            Trepar: 0,
+            Escalar: 0,
+            Altura_rango_inf: 1.5,
+            Altura_rango_sup: 1.9,
+            Peso_rango_inf: 55,
+            Peso_rango_sup: 85,
+            Edad_adulto: 20,
+            Edad_mediana: 40,
+            Edad_viejo: 60,
+            Edad_venerable: 80,
+            Espacio: 5,
+            Alcance: 5,
+            Tipo_criatura: tipo,
+            Subtipos: [],
+            Sortilegas: [],
+            Raciales: [createRacialPlaceholder('Sentidos agudos')],
+            Habilidades: { Base: [], Custom: [] },
+            DotesContextuales: [],
+        };
+    }
+
+    beforeEach(() => {
+        localStorage.removeItem(storageKey);
+    });
+
+    afterEach(() => {
+        localStorage.removeItem(storageKey);
+    });
+
+    it('serializa y rehidrata un borrador valido', () => {
+        const service = new NuevoPersonajeService();
+        const raza = crearRazaDraft();
+        service.seleccionarRaza(raza);
+        service.PersonajeCreacion.Nombre = 'Aldric';
+        service.actualizarPasoActual('basicos');
+        service.activarPersistenciaBorradorLocal(uid);
+        service.persistirBorradorLocalAhora();
+
+        const restaurado = new NuevoPersonajeService();
+        expect(restaurado.restaurarBorradorLocal(uid)).toBeTrue();
+        expect(restaurado.PersonajeCreacion.Nombre).toBe('Aldric');
+        expect(restaurado.RazaSeleccionada?.Nombre).toBe('Humano');
+        expect(restaurado.EstadoFlujo.pasoActual).toBe('basicos');
+    });
+
+    it('ignora borradores corruptos o de otro uid', () => {
+        localStorage.setItem(storageKey, '{mal json');
+        const service = new NuevoPersonajeService();
+        expect(service.restaurarBorradorLocal(uid)).toBeFalse();
+
+        localStorage.setItem(storageKey, JSON.stringify({
+            version: 1,
+            uid: 'otro-uid',
+            updatedAt: Date.now(),
+            personaje: { Nombre: 'Intruso' },
+            estadoFlujoPersistible: { pasoActual: 'basicos' },
+        }));
+        expect(service.restaurarBorradorLocal(uid)).toBeFalse();
+    });
+
+    it('limpia el borrador cuando se reinicia y se persiste de nuevo', () => {
+        const service = new NuevoPersonajeService();
+        service.seleccionarRaza(crearRazaDraft());
+        service.PersonajeCreacion.Nombre = 'Aldric';
+        service.activarPersistenciaBorradorLocal(uid);
+        service.persistirBorradorLocalAhora();
+        expect(localStorage.getItem(storageKey)).not.toBeNull();
+
+        service.reiniciar();
+        service.persistirBorradorLocalAhora();
+        expect(localStorage.getItem(storageKey)).toBeNull();
+    });
+
+    it('degrada a un paso valido si el borrador restaurado ya no es compatible', () => {
+        const base = new NuevoPersonajeService();
+        base.seleccionarRaza(crearRazaDraft());
+        base.PersonajeCreacion.Nombre = 'Aldric';
+        base.activarPersistenciaBorradorLocal(uid);
+        base.persistirBorradorLocalAhora();
+        base.desactivarPersistenciaBorradorLocal();
+
+        const raw = localStorage.getItem(storageKey) as string;
+        const borrador = JSON.parse(raw);
+        borrador.estadoFlujoPersistible.pasoActual = 'clases';
+        borrador.estadoFlujoPersistible.caracteristicasGeneradas = false;
+        localStorage.setItem(storageKey, JSON.stringify(borrador));
+
+        const service = new NuevoPersonajeService();
+        expect(service.restaurarBorradorLocal(uid)).toBeTrue();
+        expect(service.EstadoFlujo.pasoActual).toBe('basicos');
+    });
+});
+
 describe('NuevoPersonajeService (ventajas/desventajas)', () => {
     let service: NuevoPersonajeService;
     let ventajaFuerza: VentajaDetalle;
@@ -5457,5 +5653,88 @@ describe('NuevoPersonajeService (vida final)', () => {
 
         expect(resultado.total).toBe(1);
         expect(resultado.maximo).toBe(1);
+    });
+});
+
+describe('NuevoPersonajeService (dotes repetibles con extra)', () => {
+    function crearDoteRepetibleConExtras(): any {
+        return {
+            Id: 77,
+            Nombre: 'Enfoque de arma',
+            Descripcion: '',
+            Beneficio: '',
+            Normal: '',
+            Especial: '',
+            Manual: { Id: 1, Nombre: 'PHB', Pagina: 101 },
+            Tipos: [{ Id: 1, Nombre: 'General', Usado: 1 }],
+            Repetible: 1,
+            Repetible_distinto_extra: 1,
+            Repetible_comb: 0,
+            Comp_arma: 0,
+            Oficial: true,
+            Extras_soportados: {
+                Extra_arma: 1,
+                Extra_armadura_armaduras: 0,
+                Extra_armadura_escudos: 0,
+                Extra_armadura: 0,
+                Extra_escuela: 0,
+                Extra_habilidad: 0,
+            },
+            Extras_disponibles: {
+                Armas: [
+                    { Id: 10, Nombre: 'Espada larga' },
+                    { Id: 11, Nombre: 'Hacha de batalla' },
+                ],
+                Armaduras: [],
+                Escuelas: [],
+                Habilidades: [],
+            },
+            Modificadores: {},
+            Prerrequisitos: {},
+        };
+    }
+
+    it('no permite repetir el mismo extra cuando la dote exige repeticion con extra distinto', () => {
+        const svc = new NuevoPersonajeService();
+        const dote = crearDoteRepetibleConExtras();
+
+        svc.setCatalogoDotes([dote]);
+        (svc as any).dotesPendientes = [{
+            id: 1,
+            fuente: 'nivel',
+            origen: 'Nivel 3',
+            tipoPermitido: null,
+            estado: 'pendiente',
+        }];
+        svc.PersonajeCreacion.Dotes = [{
+            Nombre: 'Enfoque de arma',
+            Descripcion: '',
+            Beneficio: '',
+            Pagina: 101,
+            Extra: 'Espada larga',
+            Origen: 'Nivel 1',
+        }] as any;
+        svc.PersonajeCreacion.DotesContextuales = [{
+            Dote: dote,
+            Contexto: {
+                Entidad: 'personaje',
+                Id_personaje: 1,
+                Id_extra: 10,
+                Extra: 'Espada larga',
+                Origen: 'Nivel 1',
+            },
+        }] as any;
+
+        expect(svc.aplicarDotePendiente(1, {
+            idDote: 77,
+            idExtra: 10,
+            extra: 'Espada larga',
+        })).toBeFalse();
+
+        expect(svc.aplicarDotePendiente(1, {
+            idDote: 77,
+            idExtra: 11,
+            extra: 'Hacha de batalla',
+        })).toBeTrue();
     });
 });

@@ -15,6 +15,45 @@
     min-height: 44px
     z-index: 40
 
+.ventana-flotante--bubble
+    background: transparent
+    border: 0
+    border-radius: 0
+    box-shadow: none
+    overflow: visible
+    min-width: 0
+    min-height: 0
+
+.ventana-burbuja
+    width: 100%
+    height: 100%
+    padding: 0
+    border: 0
+    border-radius: 50%
+    background: linear-gradient(180deg, #4b5058 0%, #373c43 100%)
+    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.38)
+    color: #f4f6fb
+    display: inline-flex
+    align-items: center
+    justify-content: center
+    overflow: hidden
+    cursor: move
+
+    img
+        width: 100%
+        height: 100%
+        object-fit: cover
+
+    mat-icon
+        width: 28px
+        height: 28px
+        font-size: 28px
+        line-height: 28px
+
+    &:hover
+        transform: translateY(-1px)
+        box-shadow: 0 12px 28px rgba(0, 0, 0, 0.44)
+
 .ventana-header
     height: 44px
     min-height: 44px

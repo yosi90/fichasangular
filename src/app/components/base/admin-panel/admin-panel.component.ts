@@ -46,6 +46,12 @@ import { AdminRoleRequestItem } from 'src/app/interfaces/user-role-request';
 import { ChatAlertCandidate } from 'src/app/interfaces/chat';
 import { ChatRealtimeService } from 'src/app/services/chat-realtime.service';
 import { UserProfileApiService } from 'src/app/services/user-profile-api.service';
+import {
+    CreationAuditEventDetailDto,
+    CreationAuditEventSummaryDto,
+    CreationAuditResultCode,
+} from 'src/app/interfaces/usuarios-api';
+import { UsuariosApiService } from 'src/app/services/usuarios-api.service';
 
 interface SyncItemConfig {
     key: CacheEntityKey;
@@ -92,8 +98,25 @@ export class AdminPanelComponent implements OnInit, OnDestroy {
     roleRequestsSqlAccessDenied: boolean = false;
     usuariosPanelExpanded: boolean = true;
     solicitudesPanelExpanded: boolean = false;
+    auditoriaPanelExpanded: boolean = false;
     syncPanelExpanded: boolean = false;
     resaltarSolicitudesPendientes: boolean = false;
+    auditoriaCreaciones: CreationAuditEventSummaryDto[] = [];
+    cargandoAuditoriaCreaciones: boolean = false;
+    errorAuditoriaCreaciones: string = '';
+    auditoriaCreacionesActorUid = '';
+    auditoriaCreacionesActionCode = '';
+    auditoriaCreacionesResult: '' | CreationAuditResultCode = '';
+    auditoriaCreacionesResourceType = '';
+    auditoriaCreacionesFrom = '';
+    auditoriaCreacionesTo = '';
+    auditoriaCreacionesLimit = 25;
+    auditoriaCreacionesOffset = 0;
+    auditoriaCreacionesTotal = 0;
+    detalleAuditoriaCreacion: CreationAuditEventDetailDto | null = null;
+    cargandoDetalleAuditoriaCreacion: boolean = false;
+    errorDetalleAuditoriaCreacion: string = '';
+    private auditoriaCreacionesLoadedOnce: boolean = false;
 
     private readonly destroy$ = new Subject<void>();
     private readonly keysEjecutando = new Set<CacheEntityKey>();
@@ -149,6 +172,7 @@ export class AdminPanelComponent implements OnInit, OnDestroy {
         private cacheSyncMetadataSvc: CacheSyncMetadataService,
         private userSvc: UserService,
         private adminUsersSvc: AdminUsersService,
+        private usuariosApiSvc: UsuariosApiService,
         private userProfileApiSvc: UserProfileApiService,
         private chatRealtimeSvc: ChatRealtimeService,
     ) {
@@ -660,9 +684,143 @@ export class AdminPanelComponent implements OnInit, OnDestroy {
         this.solicitudesPanelExpanded = false;
     }
 
+    get etiquetaEstadoAuditoriaCreaciones(): string {
+        if (this.cargandoAuditoriaCreaciones)
+            return 'Cargando auditoría...';
+        if (this.errorAuditoriaCreaciones.length > 0)
+            return this.errorAuditoriaCreaciones;
+        if (this.auditoriaCreaciones.length < 1)
+            return 'No hay eventos que coincidan con los filtros actuales';
+        return '';
+    }
+
+    get puedePaginaAnteriorAuditoriaCreaciones(): boolean {
+        return this.auditoriaCreacionesOffset > 0 && !this.cargandoAuditoriaCreaciones;
+    }
+
+    get puedePaginaSiguienteAuditoriaCreaciones(): boolean {
+        return !this.cargandoAuditoriaCreaciones
+            && this.auditoriaCreacionesOffset + this.auditoriaCreaciones.length < this.auditoriaCreacionesTotal;
+    }
+
+    get auditoriaCreacionesPaginaTexto(): string {
+        if (this.auditoriaCreacionesTotal < 1)
+            return 'Sin resultados';
+        const desde = this.auditoriaCreacionesOffset + 1;
+        const hasta = Math.min(this.auditoriaCreacionesOffset + this.auditoriaCreaciones.length, this.auditoriaCreacionesTotal);
+        return `${desde}-${hasta} de ${this.auditoriaCreacionesTotal}`;
+    }
+
+    async onAuditoriaPanelOpened(): Promise<void> {
+        this.auditoriaPanelExpanded = true;
+        if (!this.auditoriaCreacionesLoadedOnce)
+            await this.cargarAuditoriaCreaciones(true);
+    }
+
+    onAuditoriaPanelClosed(): void {
+        this.auditoriaPanelExpanded = false;
+    }
+
+    async aplicarFiltrosAuditoriaCreaciones(): Promise<void> {
+        this.auditoriaCreacionesOffset = 0;
+        await this.cargarAuditoriaCreaciones(true);
+    }
+
+    limpiarFiltrosAuditoriaCreaciones(): void {
+        this.auditoriaCreacionesActorUid = '';
+        this.auditoriaCreacionesActionCode = '';
+        this.auditoriaCreacionesResult = '';
+        this.auditoriaCreacionesResourceType = '';
+        this.auditoriaCreacionesFrom = '';
+        this.auditoriaCreacionesTo = '';
+        this.auditoriaCreacionesOffset = 0;
+        this.detalleAuditoriaCreacion = null;
+        this.errorDetalleAuditoriaCreacion = '';
+        void this.cargarAuditoriaCreaciones(true);
+    }
+
+    async cargarAuditoriaCreaciones(forceReload: boolean = false): Promise<void> {
+        if (!this.esAdmin)
+            return;
+        if (this.cargandoAuditoriaCreaciones)
+            return;
+        if (!forceReload && this.auditoriaCreacionesLoadedOnce)
+            return;
+
+        this.cargandoAuditoriaCreaciones = true;
+        this.errorAuditoriaCreaciones = '';
+        try {
+            const response = await this.usuariosApiSvc.listCreationAuditEvents({
+                actorUid: this.auditoriaCreacionesActorUid,
+                actionCode: this.auditoriaCreacionesActionCode,
+                result: this.auditoriaCreacionesResult || null,
+                resourceType: this.auditoriaCreacionesResourceType,
+                from: this.toAuditUtcFilter(this.auditoriaCreacionesFrom),
+                to: this.toAuditUtcFilter(this.auditoriaCreacionesTo),
+                limit: this.auditoriaCreacionesLimit,
+                offset: this.auditoriaCreacionesOffset,
+            });
+            this.auditoriaCreaciones = response.items ?? [];
+            this.auditoriaCreacionesTotal = Number(response.total ?? 0) || 0;
+            this.auditoriaCreacionesLimit = Number(response.limit ?? this.auditoriaCreacionesLimit) || this.auditoriaCreacionesLimit;
+            this.auditoriaCreacionesOffset = Number(response.offset ?? this.auditoriaCreacionesOffset) || 0;
+            this.auditoriaCreacionesLoadedOnce = true;
+
+            if (this.detalleAuditoriaCreacion) {
+                const currentEventId = `${this.detalleAuditoriaCreacion.eventId ?? ''}`.trim();
+                if (currentEventId.length > 0 && !this.auditoriaCreaciones.some((item) => `${item?.eventId ?? ''}`.trim() === currentEventId)) {
+                    this.detalleAuditoriaCreacion = null;
+                    this.errorDetalleAuditoriaCreacion = '';
+                }
+            }
+        } catch (error: any) {
+            this.auditoriaCreaciones = [];
+            this.auditoriaCreacionesTotal = 0;
+            this.errorAuditoriaCreaciones = error?.message ?? 'No se pudo cargar la auditoría de creaciones';
+        } finally {
+            this.cargandoAuditoriaCreaciones = false;
+        }
+    }
+
+    async cargarDetalleAuditoriaCreacion(eventId: string): Promise<void> {
+        const normalizedEventId = `${eventId ?? ''}`.trim();
+        if (!this.esAdmin || normalizedEventId.length < 1)
+            return;
+
+        this.cargandoDetalleAuditoriaCreacion = true;
+        this.errorDetalleAuditoriaCreacion = '';
+        try {
+            this.detalleAuditoriaCreacion = await this.usuariosApiSvc.getCreationAuditEventDetail(normalizedEventId);
+        } catch (error: any) {
+            this.detalleAuditoriaCreacion = null;
+            this.errorDetalleAuditoriaCreacion = error?.message ?? 'No se pudo cargar el detalle de auditoría';
+        } finally {
+            this.cargandoDetalleAuditoriaCreacion = false;
+        }
+    }
+
+    async irPaginaAnteriorAuditoriaCreaciones(): Promise<void> {
+        if (!this.puedePaginaAnteriorAuditoriaCreaciones)
+            return;
+        this.auditoriaCreacionesOffset = Math.max(0, this.auditoriaCreacionesOffset - this.auditoriaCreacionesLimit);
+        await this.cargarAuditoriaCreaciones(true);
+    }
+
+    async irPaginaSiguienteAuditoriaCreaciones(): Promise<void> {
+        if (!this.puedePaginaSiguienteAuditoriaCreaciones)
+            return;
+        this.auditoriaCreacionesOffset += this.auditoriaCreacionesLimit;
+        await this.cargarAuditoriaCreaciones(true);
+    }
+
+    trackByAuditEvent(index: number, item: CreationAuditEventSummaryDto): string {
+        return `${item?.eventId ?? index}`;
+    }
+
     private aplicarOpenRequest(request: AdminPanelOpenRequest): void {
         this.usuariosPanelExpanded = request?.section !== 'role-requests';
         this.solicitudesPanelExpanded = request?.section === 'role-requests';
+        this.auditoriaPanelExpanded = false;
         this.syncPanelExpanded = false;
         this.resaltarSolicitudesPendientes = request?.section === 'role-requests' && request?.pendingOnly === true;
 
@@ -709,6 +867,33 @@ export class AdminPanelComponent implements OnInit, OnDestroy {
         const status = Number(error?.status ?? 0);
         const code = `${error?.code ?? ''}`.trim().toUpperCase();
         return status === 403 || code === 'FORBIDDEN';
+    }
+
+    auditActorLabel(item: CreationAuditEventSummaryDto | CreationAuditEventDetailDto | null | undefined): string {
+        return `${item?.actor?.displayName ?? item?.actor?.uid ?? 'Sin actor'}`.trim();
+    }
+
+    auditResourceLabel(item: CreationAuditEventSummaryDto | CreationAuditEventDetailDto | null | undefined): string {
+        return `${item?.resource?.label ?? item?.resource?.id ?? item?.resource?.type ?? 'Sin recurso'}`.trim();
+    }
+
+    auditResultLabel(result: string | null | undefined): string {
+        const normalized = `${result ?? ''}`.trim().toLowerCase();
+        if (normalized === 'created')
+            return 'Creado';
+        if (normalized === 'reused')
+            return 'Reutilizado';
+        if (normalized === 'rejected')
+            return 'Rechazado';
+        return normalized.length > 0 ? normalized : 'Sin dato';
+    }
+
+    private toAuditUtcFilter(value: string): string | null {
+        const normalized = `${value ?? ''}`.trim();
+        if (normalized.length < 1)
+            return null;
+        const parsed = new Date(normalized);
+        return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString();
     }
 
     private async pedirDatosRechazo(): Promise<{ blockedUntilUtc: string; adminComment: string | null; } | null> {

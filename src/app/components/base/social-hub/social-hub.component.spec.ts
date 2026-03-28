@@ -35,6 +35,7 @@ describe('SocialHubComponent', () => {
     let chatFloatingSvc: jasmine.SpyObj<ChatFloatingService>;
 
     beforeEach(async () => {
+        sessionStorage.clear();
         isLoggedIn$ = new BehaviorSubject<boolean>(false);
         conversations$ = new BehaviorSubject<any[]>([]);
         unreadUserCount$ = new BehaviorSubject<number>(0);
@@ -277,6 +278,25 @@ describe('SocialHubComponent', () => {
             campaignId: 4,
         }));
     });
+
+    it('mantiene campañas visibles aunque falle la carga de invitaciones', fakeAsync(() => {
+        campanaSvc.listSocialCampaigns.and.resolveTo([
+            { id: 4, nombre: 'Caballeros de Cormyr', campaignRole: 'master', membershipStatus: 'activo' },
+        ] as any);
+        campanaSvc.listReceivedCampaignInvitations.and.rejectWith(new Error('Fallo invitaciones'));
+
+        fixture.detectChanges();
+        isLoggedIn$.next(true);
+        tick();
+
+        component.selectSection('campanas');
+        tick();
+
+        expect(component.campaigns.map((item: any) => item.id)).toEqual([4]);
+        expect(component.campaignInvitations).toEqual([]);
+        expect(component.campaignInvitationsErrorMessage).toBe('Fallo invitaciones');
+        expect(component.campaignsErrorMessage).toBe('');
+    }));
 
     it('expone una acción para abrir solicitudes desde un aviso admin del sistema', () => {
         fixture.detectChanges();

@@ -15,17 +15,17 @@
         <div class="selector-filtros">
             <mat-form-field appearance="fill" class="tw-w-full">
                 <mat-label>Buscar dote</mat-label>
-                <input matInput [(ngModel)]="filtroTexto" placeholder="Nombre, descripción o beneficio">
+                <input matInput [(ngModel)]="filtroTexto" (ngModelChange)="onFiltrosChange()" placeholder="Nombre, descripción o beneficio">
             </mat-form-field>
             <mat-form-field appearance="fill" class="tw-w-full">
                 <mat-label>Manual</mat-label>
-                <mat-select [(ngModel)]="filtroManual">
+                <mat-select [(ngModel)]="filtroManual" (ngModelChange)="onFiltrosChange()">
                     <mat-option *ngFor="let manual of manualesDisponibles" [value]="manual">{{manual}}</mat-option>
                 </mat-select>
             </mat-form-field>
             <mat-form-field appearance="fill" class="tw-w-full">
                 <mat-label>Tipo</mat-label>
-                <mat-select [(ngModel)]="filtroTipo">
+                <mat-select [(ngModel)]="filtroTipo" (ngModelChange)="onFiltrosChange()">
                     <mat-option *ngFor="let tipo of tiposDisponibles" [value]="tipo">{{tipo}}</mat-option>
                 </mat-select>
             </mat-form-field>
@@ -114,7 +114,7 @@
         <div class="selector-extra" *ngIf="candidatoSeleccionado && requiereExtraSeleccionado">
             <mat-form-field appearance="fill" class="tw-w-full">
                 <mat-label>Extra</mat-label>
-                <mat-select [(ngModel)]="idExtraSeleccionado">
+                <mat-select [(ngModel)]="idExtraSeleccionado" (ngModelChange)="onExtraSeleccionChange()">
                     <mat-option [value]="0">Elegir</mat-option>
                     <mat-option *ngFor="let extra of extrasCandidatoSeleccionado" [value]="extra.Id">
                         {{extra.Nombre}}

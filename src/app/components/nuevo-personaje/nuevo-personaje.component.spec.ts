@@ -565,6 +565,7 @@ describe('NuevoPersonajeComponent', () => {
     let especialSvcMock: any;
     let personajeSvcMock: any;
     let fichasDescargaBgSvcMock: any;
+    let chatFloatingSvcMock: any;
     let userSvcMock: any;
     let userProfileNavigationSvcMock: any;
 
@@ -668,10 +669,16 @@ describe('NuevoPersonajeComponent', () => {
         fichasDescargaBgSvcMock = {
             descargarFichas: jasmine.createSpy('descargarFichas').and.callFake(() => undefined),
         };
+        chatFloatingSvcMock = {
+            isListWindowOpen: false,
+            hideAllFloatingWindowsForOverlay: jasmine.createSpy('hideAllFloatingWindowsForOverlay').and.returnValue(null),
+            restoreFloatingWindowsAfterOverlay: jasmine.createSpy('restoreFloatingWindowsAfterOverlay').and.callFake(() => undefined),
+        };
         userSvcMock = {
             CurrentPrivateProfile: {
                 role: 'jugador',
             },
+            CurrentUserUid: 'uid-actor',
             getCurrentRole: jasmine.createSpy('getCurrentRole').and.callFake(() => userSvcMock.CurrentPrivateProfile?.role ?? 'jugador'),
             can: jasmine.createSpy('can').and.returnValue(false),
         };
@@ -706,6 +713,7 @@ describe('NuevoPersonajeComponent', () => {
             especialSvcMock,
             personajeSvcMock,
             fichasDescargaBgSvcMock,
+            chatFloatingSvcMock,
             userSvcMock,
             userProfileNavigationSvcMock,
         );
@@ -1209,6 +1217,7 @@ describe('NuevoPersonajeComponent', () => {
             },
             politicaCreacion: {
                 tiradaMinimaCaracteristica: null,
+                nepMaximoPersonajeNuevo: null,
                 maxTablasDadosCaracteristicas: null,
                 permitirHomebrewGeneral: false,
                 permitirVentajasDesventajas: true,
@@ -1291,6 +1300,7 @@ describe('NuevoPersonajeComponent', () => {
             },
             politicaCreacion: {
                 tiradaMinimaCaracteristica: 3,
+                nepMaximoPersonajeNuevo: null,
                 maxTablasDadosCaracteristicas: 1,
                 permitirHomebrewGeneral: false,
                 permitirVentajasDesventajas: false,
@@ -1306,7 +1316,7 @@ describe('NuevoPersonajeComponent', () => {
         expect(nuevoPSvc.EstadoFlujo.generador.tablasPermitidas).toBe(1);
     });
 
-    it('syncSelectedCampaignPolicy no restringe el generador cuando el actor es master', async () => {
+    it('syncSelectedCampaignPolicy no restringe el generador solo cuando el actor es el master activo', async () => {
         component.Campanas = [{
             Id: 1,
             Nombre: 'Campaña A',
@@ -1321,8 +1331,10 @@ describe('NuevoPersonajeComponent', () => {
                 campaignRole: 'master',
                 membershipStatus: 'activo',
             },
+            activeMasterUid: 'uid-actor',
             politicaCreacion: {
                 tiradaMinimaCaracteristica: 3,
+                nepMaximoPersonajeNuevo: null,
                 maxTablasDadosCaracteristicas: 1,
                 permitirHomebrewGeneral: false,
                 permitirVentajasDesventajas: false,
@@ -1337,6 +1349,40 @@ describe('NuevoPersonajeComponent', () => {
         expect(nuevoPSvc.TieneRestriccionCampanaGenerador).toBeFalse();
         expect(nuevoPSvc.EstadoFlujo.generador.minimoSeleccionado).toBe(13);
         expect(nuevoPSvc.EstadoFlujo.generador.tablasPermitidas).toBe(3);
+    });
+
+    it('syncSelectedCampaignPolicy restringe el generador si no puede confirmar activeMasterUid aunque campaignRole sea master', async () => {
+        component.Campanas = [{
+            Id: 1,
+            Nombre: 'Campaña A',
+            CampaignRole: 'master',
+            Tramas: [],
+        }];
+        component.Personaje.Campana = 'Campaña A';
+        campanaSvcMock.getCampaignDetail = jasmine.createSpy('getCampaignDetail').and.resolveTo({
+            campaign: {
+                id: 1,
+                nombre: 'Campaña A',
+                campaignRole: 'master',
+                membershipStatus: 'activo',
+            },
+            activeMasterUid: 'uid-otro',
+            politicaCreacion: {
+                tiradaMinimaCaracteristica: 3,
+                nepMaximoPersonajeNuevo: null,
+                maxTablasDadosCaracteristicas: 1,
+                permitirHomebrewGeneral: false,
+                permitirVentajasDesventajas: false,
+                permitirIgnorarRestriccionesAlineamiento: false,
+                maxFuentesHomebrewGeneralesPorPersonaje: 1,
+            },
+        });
+
+        await (component as any).syncSelectedCampaignPolicy();
+
+        expect(nuevoPSvc.TieneRestriccionCampanaGenerador).toBeTrue();
+        expect(nuevoPSvc.EstadoFlujo.generador.minimoSeleccionado).toBe(3);
+        expect(nuevoPSvc.EstadoFlujo.generador.tablasPermitidas).toBe(1);
     });
 
     it('actualizarTramas sin campaña libera la restricción temporal del generador', () => {
@@ -1373,6 +1419,7 @@ describe('NuevoPersonajeComponent', () => {
         ];
         component.selectedCampaignPolicy = {
             tiradaMinimaCaracteristica: null,
+            nepMaximoPersonajeNuevo: null,
             maxTablasDadosCaracteristicas: null,
             permitirHomebrewGeneral: false,
             permitirVentajasDesventajas: true,
@@ -1533,6 +1580,7 @@ describe('NuevoPersonajeComponent', () => {
         component.Personaje.Deidad = 'No tener deidad';
         component.selectedCampaignPolicy = {
             tiradaMinimaCaracteristica: 3,
+            nepMaximoPersonajeNuevo: null,
             maxTablasDadosCaracteristicas: 1,
             permitirHomebrewGeneral: false,
             permitirVentajasDesventajas: false,
@@ -1585,6 +1633,7 @@ describe('NuevoPersonajeComponent', () => {
             },
             politicaCreacion: {
                 tiradaMinimaCaracteristica: null,
+                nepMaximoPersonajeNuevo: null,
                 maxTablasDadosCaracteristicas: null,
                 permitirHomebrewGeneral: false,
                 permitirVentajasDesventajas: true,
@@ -1615,6 +1664,7 @@ describe('NuevoPersonajeComponent', () => {
         component.Personaje.Altura = 1.8;
         component.selectedCampaignPolicy = {
             tiradaMinimaCaracteristica: null,
+            nepMaximoPersonajeNuevo: null,
             maxTablasDadosCaracteristicas: null,
             permitirHomebrewGeneral: false,
             permitirVentajasDesventajas: true,
@@ -1643,7 +1693,7 @@ describe('NuevoPersonajeComponent', () => {
         expect(component.motivosBloqueoBasicos).toContain('Se está cargando la política de creación de la campaña seleccionada.');
     });
 
-    it('continuarDesdeBasicos también bloquea homebrew para actor master', async () => {
+    it('continuarDesdeBasicos sigue bloqueando homebrew aunque el actor sea el activeMasterUid', async () => {
         component.Campanas = [{
             Id: 1,
             Nombre: 'Campaña A',
@@ -1661,8 +1711,10 @@ describe('NuevoPersonajeComponent', () => {
                 campaignRole: 'master',
                 membershipStatus: 'activo',
             },
+            activeMasterUid: 'uid-actor',
             politicaCreacion: {
                 tiradaMinimaCaracteristica: 3,
+                nepMaximoPersonajeNuevo: null,
                 maxTablasDadosCaracteristicas: 1,
                 permitirHomebrewGeneral: false,
                 permitirVentajasDesventajas: true,
@@ -1901,6 +1953,7 @@ describe('NuevoPersonajeComponent', () => {
     it('continuarDesdePlantillas salta ventajas cuando la campaña las prohíbe', async () => {
         component.selectedCampaignPolicy = {
             tiradaMinimaCaracteristica: null,
+            nepMaximoPersonajeNuevo: null,
             maxTablasDadosCaracteristicas: null,
             permitirHomebrewGeneral: true,
             permitirVentajasDesventajas: false,
@@ -2037,6 +2090,7 @@ describe('NuevoPersonajeComponent', () => {
         component.Personaje.Campana = 'Campaña A';
         component.selectedCampaignPolicy = {
             tiradaMinimaCaracteristica: null,
+            nepMaximoPersonajeNuevo: null,
             maxTablasDadosCaracteristicas: null,
             permitirHomebrewGeneral: false,
             permitirVentajasDesventajas: true,
@@ -2391,6 +2445,7 @@ describe('NuevoPersonajeComponent', () => {
         component.Personaje.Campana = 'Campaña A';
         component.selectedCampaignPolicy = {
             tiradaMinimaCaracteristica: null,
+            nepMaximoPersonajeNuevo: null,
             maxTablasDadosCaracteristicas: null,
             permitirHomebrewGeneral: false,
             permitirVentajasDesventajas: true,
@@ -2579,6 +2634,7 @@ describe('NuevoPersonajeComponent', () => {
         component.Personaje.Alineamiento = 'Caotico maligno';
         component.selectedCampaignPolicy = {
             tiradaMinimaCaracteristica: 3,
+            nepMaximoPersonajeNuevo: null,
             maxTablasDadosCaracteristicas: 1,
             permitirHomebrewGeneral: false,
             permitirVentajasDesventajas: false,
@@ -4362,6 +4418,7 @@ describe('NuevoPersonajeComponent', () => {
         component.Personaje.Campana = 'Campaña A';
         component.selectedCampaignPolicy = {
             tiradaMinimaCaracteristica: null,
+            nepMaximoPersonajeNuevo: null,
             maxTablasDadosCaracteristicas: null,
             permitirHomebrewGeneral: false,
             permitirVentajasDesventajas: true,
@@ -4540,6 +4597,7 @@ describe('NuevoPersonajeComponent', () => {
         component.seleccionarRaza(crearRazaMock(false));
         component.selectedCampaignPolicy = {
             tiradaMinimaCaracteristica: null,
+            nepMaximoPersonajeNuevo: null,
             maxTablasDadosCaracteristicas: null,
             permitirHomebrewGeneral: false,
             permitirVentajasDesventajas: true,
@@ -4554,6 +4612,82 @@ describe('NuevoPersonajeComponent', () => {
         expect(personajeSvcMock.crearPersonajeApiDesdeCreacion).not.toHaveBeenCalled();
         expect(personajeSvcMock.guardarPersonajeEnFirebase).not.toHaveBeenCalled();
         expect(`${(swalSpy.calls.mostRecent().args[0] as any).title ?? ''}`).toContain('La campaña bloquea la finalización');
+    });
+
+    it('finalizarPersonajeCompleto envía overrideReglasCampana solo si el actor es el activeMasterUid de la campaña', async () => {
+        component.modalSelectorVisibilidadAbierto = true;
+        component.Campanas = [{
+            Id: 7,
+            Nombre: 'Campaña A',
+            CampaignRole: 'master',
+            Tramas: [],
+        }];
+        component.Personaje.Campana = 'Campaña A';
+        component.Personaje.Trama = 'Trama base';
+        component.Personaje.Subtrama = 'Subtrama base';
+        component.selectedCampaignPolicy = {
+            tiradaMinimaCaracteristica: null,
+            nepMaximoPersonajeNuevo: null,
+            maxTablasDadosCaracteristicas: null,
+            permitirHomebrewGeneral: true,
+            permitirVentajasDesventajas: true,
+            permitirIgnorarRestriccionesAlineamiento: true,
+            maxFuentesHomebrewGeneralesPorPersonaje: null,
+        };
+        (component as any).selectedCampaignPolicyResolved = true;
+        (component as any).selectedCampaignActiveMasterUid = 'uid-actor';
+        nuevoPSvc.EstadoFlujo.generador.minimoSeleccionado = 11;
+        nuevoPSvc.EstadoFlujo.generador.tablasPermitidas = 2;
+
+        await component.onConfirmarSelectorVisibilidad(true);
+
+        expect(personajeSvcMock.construirPayloadCreacionDesdePersonaje).toHaveBeenCalledWith(
+            component.Personaje,
+            jasmine.any(Object),
+            jasmine.objectContaining({
+                tiradaMinimaDeclarada: 11,
+                tablasDadosUsadas: 2,
+                overrideReglasCampana: true,
+            })
+        );
+    });
+
+    it('finalizarPersonajeCompleto no envía overrideReglasCampana si no coincide el activeMasterUid', async () => {
+        component.modalSelectorVisibilidadAbierto = true;
+        component.Campanas = [{
+            Id: 7,
+            Nombre: 'Campaña A',
+            CampaignRole: 'master',
+            Tramas: [],
+        }];
+        component.Personaje.Campana = 'Campaña A';
+        component.Personaje.Trama = 'Trama base';
+        component.Personaje.Subtrama = 'Subtrama base';
+        component.selectedCampaignPolicy = {
+            tiradaMinimaCaracteristica: null,
+            nepMaximoPersonajeNuevo: null,
+            maxTablasDadosCaracteristicas: null,
+            permitirHomebrewGeneral: true,
+            permitirVentajasDesventajas: true,
+            permitirIgnorarRestriccionesAlineamiento: true,
+            maxFuentesHomebrewGeneralesPorPersonaje: null,
+        };
+        (component as any).selectedCampaignPolicyResolved = true;
+        (component as any).selectedCampaignActiveMasterUid = 'uid-otro';
+        nuevoPSvc.EstadoFlujo.generador.minimoSeleccionado = 9;
+        nuevoPSvc.EstadoFlujo.generador.tablasPermitidas = 1;
+
+        await component.onConfirmarSelectorVisibilidad(true);
+
+        expect(personajeSvcMock.construirPayloadCreacionDesdePersonaje).toHaveBeenCalledWith(
+            component.Personaje,
+            jasmine.any(Object),
+            jasmine.objectContaining({
+                tiradaMinimaDeclarada: 9,
+                tablasDadosUsadas: 1,
+                overrideReglasCampana: false,
+            })
+        );
     });
 
     it('cerrar selector visibilidad no altera la preferencia actual', () => {
@@ -4688,6 +4822,7 @@ describe('NuevoPersonajeComponent', () => {
             especialSvcMock,
             personajeSvcMock,
             fichasDescargaBgSvcMock,
+            chatFloatingSvcMock,
             userSvcMock,
             userProfileNavigationSvcMock,
         );
@@ -4695,5 +4830,113 @@ describe('NuevoPersonajeComponent', () => {
 
         expect(componentReabierto.modalCaracteristicasAbierto).toBeTrue();
         expect(componentReabierto.selectedInternalTabIndex).toBe(1);
+    });
+
+    it('muestra prompt y restaura borrador local al continuar', async () => {
+        const uid = 'uid-borrador-component';
+        const borradorSvc = new NuevoPersonajeService();
+        borradorSvc.seleccionarRaza(crearRazaMock());
+        borradorSvc.PersonajeCreacion.Nombre = 'Aldric';
+        borradorSvc.actualizarPasoActual('basicos');
+        borradorSvc.activarPersistenciaBorradorLocal(uid);
+        borradorSvc.persistirBorradorLocalAhora();
+        borradorSvc.desactivarPersistenciaBorradorLocal();
+
+        const fireSpy = spyOn(Swal, 'fire').and.resolveTo({ isConfirmed: true } as any);
+        const restoredSvc = new NuevoPersonajeService();
+        const componentRestaurado = new NuevoPersonajeComponent(
+            { currentUser: { uid, displayName: 'Aldric', email: 'aldric@test.com' } } as any,
+            restoredSvc,
+            campanaSvcMock,
+            alineamientoSvcMock,
+            claseSvcMock,
+            conjuroSvcMock,
+            escuelaSvcMock,
+            disciplinaSvcMock,
+            razaSvcMock,
+            plantillaSvcMock,
+            ventajaSvcMock,
+            habilidadSvcMock,
+            idiomaSvcMock,
+            doteSvcMock,
+            enemigoPredilectoSvcMock,
+            armaSvcMock,
+            armaduraSvcMock,
+            grupoArmaSvcMock,
+            grupoArmaduraSvcMock,
+            dominioSvcMock,
+            regionSvcMock,
+            deidadSvcMock,
+            tipoCriaturaSvcMock,
+            monstruoSvcMock,
+            especialSvcMock,
+            personajeSvcMock,
+            fichasDescargaBgSvcMock,
+            chatFloatingSvcMock,
+            userSvcMock,
+            userProfileNavigationSvcMock,
+        );
+
+        await (componentRestaurado as any).inicializarComponente();
+
+        expect(fireSpy).toHaveBeenCalled();
+        expect(componentRestaurado.Personaje.Nombre).toBe('Aldric');
+        expect(componentRestaurado.selectedInternalTabIndex).toBe(1);
+
+        componentRestaurado.ngOnDestroy();
+        localStorage.removeItem(`fichas35.nuevoPersonaje.draft.v1.${uid}`);
+    });
+
+    it('permite empezar de cero y limpia el borrador local', async () => {
+        const uid = 'uid-borrador-reset';
+        const borradorSvc = new NuevoPersonajeService();
+        borradorSvc.seleccionarRaza(crearRazaMock());
+        borradorSvc.PersonajeCreacion.Nombre = 'Aldric';
+        borradorSvc.activarPersistenciaBorradorLocal(uid);
+        borradorSvc.persistirBorradorLocalAhora();
+        borradorSvc.desactivarPersistenciaBorradorLocal();
+
+        spyOn(Swal, 'fire').and.resolveTo({ isConfirmed: false, isDenied: true } as any);
+        const limpioSvc = new NuevoPersonajeService();
+        const componentLimpio = new NuevoPersonajeComponent(
+            { currentUser: { uid, displayName: 'Aldric', email: 'aldric@test.com' } } as any,
+            limpioSvc,
+            campanaSvcMock,
+            alineamientoSvcMock,
+            claseSvcMock,
+            conjuroSvcMock,
+            escuelaSvcMock,
+            disciplinaSvcMock,
+            razaSvcMock,
+            plantillaSvcMock,
+            ventajaSvcMock,
+            habilidadSvcMock,
+            idiomaSvcMock,
+            doteSvcMock,
+            enemigoPredilectoSvcMock,
+            armaSvcMock,
+            armaduraSvcMock,
+            grupoArmaSvcMock,
+            grupoArmaduraSvcMock,
+            dominioSvcMock,
+            regionSvcMock,
+            deidadSvcMock,
+            tipoCriaturaSvcMock,
+            monstruoSvcMock,
+            especialSvcMock,
+            personajeSvcMock,
+            fichasDescargaBgSvcMock,
+            chatFloatingSvcMock,
+            userSvcMock,
+            userProfileNavigationSvcMock,
+        );
+
+        await (componentLimpio as any).inicializarComponente();
+
+        expect(componentLimpio.razaSeleccionada).toBeNull();
+        expect(componentLimpio.selectedInternalTabIndex).toBe(0);
+        expect(localStorage.getItem(`fichas35.nuevoPersonaje.draft.v1.${uid}`)).toBeNull();
+
+        componentLimpio.ngOnDestroy();
     });
 });

@@ -15,6 +15,15 @@
     gap: 8px
     padding: 16px 16px 8px
 
+.chat-float-list__divider
+    width: calc(100% - 32px)
+    margin: 0 16px 12px
+    border: 0
+    border-top: 1px solid rgba(255, 255, 255, 0.12)
+
+.chat-float-list__search
+    padding: 0 16px 12px
+
 .chat-float-list__filter
     border: 1px solid rgba(255, 255, 255, 0.16)
     background: rgba(255, 255, 255, 0.04)
@@ -104,6 +113,11 @@
 
         &::placeholder
             color: rgba(245, 247, 255, 0.52)
+
+.chat-float-list__inline-field--compact
+    min-height: 44px
+    padding: 0 12px
+    border-radius: 10px
 
 .chat-float-list__hint,
 .chat-float-list__error
@@ -215,17 +229,10 @@
 .chat-float-list__main
     display: flex
     align-items: center
-    gap: 8px
+    min-width: 0
 
-.chat-float-list__badge
-    display: inline-flex
-    align-items: center
-    min-height: 22px
-    padding: 0 8px
-    border-radius: 999px
-    font-size: 11px
-    background: rgba(255, 255, 255, 0.08)
-    color: rgba(255, 255, 255, 0.8)
+    strong
+        min-width: 0
 
 .chat-float-list__unread
     margin-left: auto

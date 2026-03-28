@@ -161,6 +161,62 @@
     background: rgba(255, 255, 255, 0.03)
     box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06)
 
+.admin-audit-panel
+    padding: 16px
+
+.admin-audit__filters
+    display: grid
+    grid-template-columns: repeat(auto-fit, minmax(190px, 1fr))
+    gap: 10px
+    margin-bottom: 8px
+
+.admin-audit__field
+    width: 100%
+
+.tabla-usuarios-admin--audit
+    min-width: 1100px
+
+.admin-audit__detail
+    margin-top: 18px
+    padding-top: 16px
+    border-top: 1px solid rgba(255, 255, 255, 0.08)
+
+.admin-audit__detail-header
+    margin-bottom: 12px
+
+    h3
+        margin: 0
+        font-size: 17px
+
+.admin-audit__detail-grid
+    display: grid
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr))
+    gap: 12px
+
+.admin-audit__detail-card
+    padding: 12px
+    border-radius: 10px
+    background: rgba(255, 255, 255, 0.03)
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06)
+
+    h4
+        margin: 0 0 10px 0
+        font-size: 15px
+
+    p
+        margin: 0 0 8px 0
+        line-height: 1.45
+
+    pre
+        margin: 0
+        white-space: pre-wrap
+        word-break: break-word
+        font-size: 12px
+        line-height: 1.45
+
+.admin-audit__detail-card--full
+    grid-column: 1 / -1
+
 .admin-role-requests__subheader
     display: flex
     align-items: center

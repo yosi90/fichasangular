@@ -1,4 +1,4 @@
-import { AfterViewInit, Component, ElementRef, EventEmitter, HostListener, Input, Output, ViewChild } from '@angular/core';
+import { AfterViewInit, Component, ElementRef, EventEmitter, HostListener, Input, OnDestroy, Output, ViewChild } from '@angular/core';
 import { Raza } from 'src/app/interfaces/raza';
 import {
     AsignacionCaracteristicas,
@@ -27,7 +27,7 @@ interface PreviewCaracteristica {
     styleUrls: ['./generador-caracteristicas-modal.component.sass'],
     standalone: false
 })
-export class GeneradorCaracteristicasModalComponent implements AfterViewInit {
+export class GeneradorCaracteristicasModalComponent implements AfterViewInit, OnDestroy {
     @Input() raza!: Raza;
     @Input() caracteristicasPerdidas: CaracteristicasPerdidasState | null = null;
     @Input() pierdeConstitucion = false;
@@ -114,10 +114,15 @@ export class GeneradorCaracteristicasModalComponent implements AfterViewInit {
 
     constructor(private nuevoPSvc: NuevoPersonajeService) {
         this.nuevoPSvc.abrirModalCaracteristicas();
+        document.body.classList.add('generador-caracteristicas-modal-activo');
     }
 
     ngAfterViewInit(): void {
         this.programarFocoModal();
+    }
+
+    ngOnDestroy(): void {
+        document.body.classList.remove('generador-caracteristicas-modal-activo');
     }
 
     get estado() {

@@ -100,6 +100,7 @@
         display: inline-flex
         align-items: center
         gap: 6px
+        margin-left: auto
 
     button[disabled]
         opacity: 0.55
@@ -362,6 +363,11 @@ textarea
         width: 100%
         white-space: normal !important
 
+.homebrew-banner--info
+    background: linear-gradient(135deg, rgba(49, 114, 196, 0.92), rgba(38, 153, 214, 0.92)) !important
+    color: #eff8ff !important
+    border: 1px solid rgba(147, 197, 253, 0.35)
+
 .homebrew-banner-text
     flex: 1 1 auto
     min-width: 0
@@ -396,19 +402,128 @@ textarea
     align-items: center
 
 .ventajas-listados
+    display: flex
+    align-items: stretch
+    flex: 1 1 auto
     min-height: 0
+    height: 100%
+    overflow: hidden
 
     > [class*='col-'], > .tw-w-full
+        display: flex
+        flex-direction: column
+        flex: 1 1 0
         min-height: 0
         min-width: 0
 
     .sombra-caja-sm
         display: flex
         flex-direction: column
+        flex: 1 1 auto
         min-height: 0
 
     .tabla-scroll
         flex: 1 1 auto
+
+.ventajas-view
+    .tab-scroll
+        overflow: hidden
+        display: flex
+        flex-direction: column
+
+.ventajas-panel
+    display: flex
+    flex-direction: column
+    flex: 1 1 auto
+    gap: 10px
+    overflow: hidden
+    background: linear-gradient(180deg, rgba(61, 62, 67, 0.96), rgba(49, 50, 55, 0.96))
+    border: 1px solid rgba(255, 255, 255, 0.08)
+
+.ventajas-panel__title
+    flex: 0 0 auto
+    display: inline-flex
+    align-items: center
+    justify-content: center
+    gap: 8px
+    min-height: 38px
+    padding: 8px 14px
+    border-radius: 999px
+    font-weight: 700
+    letter-spacing: 0.01em
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12), 0 4px 12px rgba(0, 0, 0, 0.18)
+
+    mat-icon
+        width: 18px
+        height: 18px
+        font-size: 18px
+
+.ventajas-panel__title--ventaja
+    background: linear-gradient(135deg, rgba(42, 93, 64, 0.92), rgba(62, 135, 86, 0.92))
+    color: #f0fff4
+
+.ventajas-panel__title--desventaja
+    background: linear-gradient(135deg, rgba(108, 76, 30, 0.92), rgba(154, 106, 38, 0.92))
+    color: #fff8e6
+
+.ventajas-panel__body
+    flex: 1 1 auto
+    min-height: 0
+    display: flex
+    flex-direction: column
+    overflow: hidden
+
+.tabla-scroll--ventajas
+    border: 1px solid rgba(255, 255, 255, 0.12)
+    border-radius: 0 0 10px 10px
+    background: rgba(34, 36, 41, 0.82)
+    overflow-x: hidden
+    overflow-y: auto
+    flex: 1 1 0
+    min-height: 0
+
+.tabla-ventajas--seleccion
+    table-layout: fixed
+
+    th
+        top: 0
+        z-index: 3
+        background: #2b2d33
+        text-align: center
+
+    td
+        background: rgba(46, 48, 54, 0.92)
+
+    tbody tr:nth-child(even) td
+        background: rgba(42, 44, 50, 0.92)
+
+    tbody tr:hover td
+        background: rgba(60, 68, 82, 0.94)
+
+    th:nth-child(1), td:nth-child(1)
+        width: 7%
+        text-align: center
+
+    th:nth-child(2), td:nth-child(2)
+        width: 19%
+
+    th:nth-child(3), td:nth-child(3)
+        width: 10%
+        text-align: center
+
+    th:nth-child(4), td:nth-child(4)
+        width: 34%
+
+    th:nth-child(5), td:nth-child(5)
+        width: 12%
+
+    th:nth-child(6), td:nth-child(6)
+        width: 9%
+        text-align: center
+
+    th:nth-child(7), td:nth-child(7)
+        width: 9%
+        text-align: center
 
 .clases-view
     min-height: 0
@@ -515,11 +630,13 @@ textarea
         background: #25272d
         color: #eef2ff
         font-weight: 600
+        text-align: center
 
     td
         color: #e5e7eb
         background: #2c2f36
         vertical-align: middle
+        text-align: left
 
     tbody tr:nth-child(even) td
         background: #2a2d33
@@ -552,8 +669,8 @@ textarea
         overflow: hidden
         text-overflow: ellipsis
 
-    th:nth-child(5), td:nth-child(5),
-    th:nth-child(6), td:nth-child(6)
+    th:nth-child(1), td:nth-child(1),
+    th:nth-child(9), td:nth-child(9)
         text-align: center
         vertical-align: middle
 
@@ -561,6 +678,11 @@ textarea
     min-width: 36px
     font-weight: 600
     line-height: 1.1
+
+.habilidad-rangos-wrap
+    display: inline-flex
+    align-items: center
+    justify-content: flex-start
 
 .habilidad-extra-col
     min-width: 130px
@@ -585,6 +707,8 @@ textarea
     display: inline-flex
     align-items: center
     gap: 2px
+    justify-content: center
+    width: 100%
 
 .habilidades-acciones
     padding: 8px

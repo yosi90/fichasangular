@@ -398,7 +398,7 @@
             <div class="tw-w-full tw-py-3 tw-h-full ventajas-view">
                 <mat-card class="tw-h-full sombra-caja-sm tw-p-2 tw-flex tw-flex-col tw-gap-2 tab-frame">
                     <div class="tab-head tw-flex tw-flex-col tw-gap-2">
-                    <mat-chip class="tw-w-full tw-h-auto warm homebrew-banner">
+                    <mat-chip class="tw-w-full tw-h-auto homebrew-banner homebrew-banner--info">
                         <span class="homebrew-banner-text">Sistema homebrew: solo con permiso del máster. Tu personaje no será oficial.</span>
                         <button type="button" class="homebrew-help-chip" (click)="abrirInfoVentajasHomebrew($event)"
                             matTooltip="Más info sobre este sistema" aria-label="Información sobre ventajas y desventajas homebrew">
@@ -428,13 +428,17 @@
                     <div class="tab-scroll">
                         <div class="tw-flex tw-flex-wrap ventajas-listados">
                         <div class="tw-w-full lg:tw-w-1/2 tw-box-border tw-p-1">
-                            <div class="sombra-caja-sm tw-rounded tw-p-2 tw-h-full">
-                                <mat-chip class="tw-w-full sombra-caja-sm tw-mb-2">Desventajas</mat-chip>
+                            <div class="sombra-caja-sm tw-rounded tw-p-2 tw-h-full ventajas-panel">
+                                <div class="ventajas-panel__title ventajas-panel__title--desventaja">
+                                    <mat-icon>thumb_down</mat-icon>
+                                    <span>Desventajas</span>
+                                </div>
+                                <div class="ventajas-panel__body">
                                 <div *ngIf="cargandoVentajas" class="tw-text-center tw-p-2">
                                     <mat-chip>Cargando desventajas...</mat-chip>
                                 </div>
-                                <div class="tabla-scroll" *ngIf="!cargandoVentajas">
-                                    <table class="tabla-ventajas">
+                                <div class="tabla-scroll tabla-scroll--ventajas" *ngIf="!cargandoVentajas">
+                                    <table class="tabla-ventajas tabla-ventajas--seleccion">
                                         <thead>
                                             <tr>
                                                 <th></th>
@@ -464,16 +468,21 @@
                                         </tbody>
                                     </table>
                                 </div>
+                                </div>
                             </div>
                         </div>
                         <div class="tw-w-full lg:tw-w-1/2 tw-box-border tw-p-1">
-                            <div class="sombra-caja-sm tw-rounded tw-p-2 tw-h-full">
-                                <mat-chip class="tw-w-full sombra-caja-sm tw-mb-2">Ventajas</mat-chip>
+                            <div class="sombra-caja-sm tw-rounded tw-p-2 tw-h-full ventajas-panel">
+                                <div class="ventajas-panel__title ventajas-panel__title--ventaja">
+                                    <mat-icon>thumb_up</mat-icon>
+                                    <span>Ventajas</span>
+                                </div>
+                                <div class="ventajas-panel__body">
                                 <div *ngIf="cargandoVentajas" class="tw-text-center tw-p-2">
                                     <mat-chip>Cargando ventajas...</mat-chip>
                                 </div>
-                                <div class="tabla-scroll" *ngIf="!cargandoVentajas">
-                                    <table class="tabla-ventajas">
+                                <div class="tabla-scroll tabla-scroll--ventajas" *ngIf="!cargandoVentajas">
+                                    <table class="tabla-ventajas tabla-ventajas--seleccion">
                                         <thead>
                                             <tr>
                                                 <th></th>
@@ -506,6 +515,7 @@
                                             </tr>
                                         </tbody>
                                     </table>
+                                </div>
                                 </div>
                             </div>
                         </div>
@@ -787,11 +797,11 @@
                                                     <span>{{getTextoExtraHabilidad(habilidad)}}</span>
                                                 </ng-template>
                                             </td>
-                                            <td>
+                                            <td class="habilidad-rangos-col">
                                                 <ng-container *ngIf="tieneRangosHabilidad(habilidad); else sinRangosHabilidadTpl">
-                                                    <div class="tw-flex tw-justify-center tw-items-center">
+                                                    <div class="habilidad-rangos-wrap">
                                                         <p
-                                                            class="tw-inline-block sombra3d-sm tw-rounded tw-p-1 tw-mb-0 chip tw-text-center habilidad-rango-chip"
+                                                            class="tw-inline-block sombra3d-sm tw-rounded tw-p-1 tw-mb-0 chip habilidad-rango-chip"
                                                             [ngClass]="esRangoNuevoHabilidad(habilidad) ? 'good' : 'bad'"
                                                             [matTooltip]="getTooltipRangoHabilidad(habilidad)"
                                                             matTooltipClass="tt-accent">
@@ -806,7 +816,7 @@
                                                 {{getTextoVariosHabilidad(habilidad)}}
                                             </td>
                                             <td>{{getLimiteRangoHabilidad(habilidad.Id)}}</td>
-                                            <td>
+                                            <td class="habilidad-acciones-col">
                                                 <div class="habilidad-acciones">
                                                     <button mat-icon-button color="warn"
                                                         [disabled]="!puedeBajarRangoHabilidad(habilidad)"
@@ -985,6 +995,7 @@
         <app-ventana-detalle-flotante
             [titulo]="tituloVentanaDetalle"
             [bloqueadaPorOverlay]="modalCaracteristicasAbierto"
+            [minimizedAnchorsToViewportSides]="false"
             (cerrarSolicitado)="onSolicitarCerrarVentanaDetalle()">
             <app-detalles-personaje
                 [pj]="Personaje"

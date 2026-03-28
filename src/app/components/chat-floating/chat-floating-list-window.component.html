@@ -1,7 +1,9 @@
 <app-ventana-detalle-flotante
     titulo="Chats"
-    [minWidth]="360"
+    [minWidth]="320"
     [minHeight]="520"
+    [fixedWidth]="320"
+    [resizable]="false"
     [persistPreviewPlacements]="false"
     [restoredPlacementInput]="restoredPlacement"
     [minimizedPlacementInput]="minimizedPlacement"
@@ -23,6 +25,19 @@
                 (click)="selectConversationFilter(filter.id)">
                 {{filter.label}}
             </button>
+        </div>
+
+        <hr class="chat-float-list__divider">
+
+        <div class="chat-float-list__search" *ngIf="shouldShowConversationSearch">
+            <label class="chat-float-list__inline-field chat-float-list__inline-field--compact">
+                <mat-icon>search</mat-icon>
+                <input
+                    type="text"
+                    [(ngModel)]="conversationNameQuery"
+                    (ngModelChange)="onConversationNameQueryChange()"
+                    placeholder="Buscar chat por nombre">
+            </label>
         </div>
 
         <section class="chat-float-list__new-chat" *ngIf="canOpenComposer">
@@ -150,7 +165,7 @@
             </div>
         </section>
 
-        <div class="chat-float-list__body">
+        <div class="chat-float-list__body" #conversationBody>
             <button
                 type="button"
                 class="chat-float-list__conversation"
@@ -168,9 +183,6 @@
                 <span class="chat-float-list__copy">
                     <span class="chat-float-list__main">
                         <strong>{{getConversationLabel(conversation)}}</strong>
-                        <span class="chat-float-list__badge" *ngIf="conversation.isSystemConversation || conversation.type !== 'direct'">
-                            {{getConversationTypeLabel(conversation)}}
-                        </span>
                     </span>
                     <small>{{getConversationPreview(conversation)}}</small>
                 </span>

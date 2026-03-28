@@ -261,7 +261,179 @@
                         </div>
                     </mat-expansion-panel>
 
-                    <mat-expansion-panel #tercero [expanded]="usuariosPanelExpanded">
+                    <mat-expansion-panel
+                        #tercero
+                        [expanded]="auditoriaPanelExpanded"
+                        (opened)="onAuditoriaPanelOpened()"
+                        (closed)="onAuditoriaPanelClosed()">
+                        <mat-expansion-panel-header>
+                            <button mat-stroked-button color="accent"
+                                matTooltip="Inspeccionar auditoría REST de creaciones">
+                                <mat-icon>history</mat-icon>Auditoría REST
+                            </button>
+                        </mat-expansion-panel-header>
+
+                        <div class="usuarios-admin-panel tw-p-2 admin-audit-panel">
+                            <div class="admin-audit__filters">
+                                <mat-form-field appearance="outline" class="admin-audit__field">
+                                    <mat-label>Actor UID</mat-label>
+                                    <input matInput [(ngModel)]="auditoriaCreacionesActorUid" placeholder="uid del actor">
+                                </mat-form-field>
+                                <mat-form-field appearance="outline" class="admin-audit__field">
+                                    <mat-label>Action code</mat-label>
+                                    <input matInput [(ngModel)]="auditoriaCreacionesActionCode" placeholder="campaign.create">
+                                </mat-form-field>
+                                <mat-form-field appearance="outline" class="admin-audit__field">
+                                    <mat-label>Resultado</mat-label>
+                                    <mat-select [(ngModel)]="auditoriaCreacionesResult">
+                                        <mat-option value="">Todos</mat-option>
+                                        <mat-option value="created">Creado</mat-option>
+                                        <mat-option value="reused">Reutilizado</mat-option>
+                                        <mat-option value="rejected">Rechazado</mat-option>
+                                    </mat-select>
+                                </mat-form-field>
+                                <mat-form-field appearance="outline" class="admin-audit__field">
+                                    <mat-label>Resource type</mat-label>
+                                    <input matInput [(ngModel)]="auditoriaCreacionesResourceType" placeholder="campaign">
+                                </mat-form-field>
+                                <mat-form-field appearance="outline" class="admin-audit__field">
+                                    <mat-label>Desde</mat-label>
+                                    <input matInput type="datetime-local" [(ngModel)]="auditoriaCreacionesFrom">
+                                </mat-form-field>
+                                <mat-form-field appearance="outline" class="admin-audit__field">
+                                    <mat-label>Hasta</mat-label>
+                                    <input matInput type="datetime-local" [(ngModel)]="auditoriaCreacionesTo">
+                                </mat-form-field>
+                            </div>
+
+                            <div class="usuarios-admin-actions tw-mb-2">
+                                <button
+                                    mat-raised-button
+                                    color="primary"
+                                    [disabled]="cargandoAuditoriaCreaciones"
+                                    (click)="aplicarFiltrosAuditoriaCreaciones()">
+                                    <mat-icon>{{cargandoAuditoriaCreaciones ? 'hourglass_top' : 'search'}}</mat-icon>
+                                    {{cargandoAuditoriaCreaciones ? 'Cargando...' : 'Aplicar filtros'}}
+                                </button>
+                                <button
+                                    mat-stroked-button
+                                    color="accent"
+                                    [disabled]="cargandoAuditoriaCreaciones"
+                                    (click)="limpiarFiltrosAuditoriaCreaciones()">
+                                    Limpiar
+                                </button>
+                                <span class="usuario-secundario">{{auditoriaCreacionesPaginaTexto}}</span>
+                                <button
+                                    mat-stroked-button
+                                    [disabled]="!puedePaginaAnteriorAuditoriaCreaciones"
+                                    (click)="irPaginaAnteriorAuditoriaCreaciones()">
+                                    Anterior
+                                </button>
+                                <button
+                                    mat-stroked-button
+                                    [disabled]="!puedePaginaSiguienteAuditoriaCreaciones"
+                                    (click)="irPaginaSiguienteAuditoriaCreaciones()">
+                                    Siguiente
+                                </button>
+                            </div>
+
+                            <div class="usuarios-admin-estado tw-text-center tw-p-2" *ngIf="etiquetaEstadoAuditoriaCreaciones.length > 0">
+                                <mat-chip>{{etiquetaEstadoAuditoriaCreaciones}}</mat-chip>
+                            </div>
+
+                            <div class="tabla-scroll usuarios-admin-tabla-scroll" *ngIf="etiquetaEstadoAuditoriaCreaciones.length < 1">
+                                <table class="tabla-usuarios-admin tabla-usuarios-admin--audit">
+                                    <thead>
+                                        <tr>
+                                            <th>Fecha</th>
+                                            <th>Actor</th>
+                                            <th>Acción</th>
+                                            <th>Resultado</th>
+                                            <th>Recurso</th>
+                                            <th>Ruta</th>
+                                            <th>Detalle</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr *ngFor="let item of auditoriaCreaciones; trackBy: trackByAuditEvent">
+                                            <td>{{formatearFechaUtc(item.occurredAtUtc)}}</td>
+                                            <td>
+                                                <div class="usuario-principal">{{auditActorLabel(item)}}</div>
+                                                <div class="usuario-secundario">{{item.actor.uid || '-'}}</div>
+                                            </td>
+                                            <td>{{item.actionCode || '-'}}</td>
+                                            <td>{{auditResultLabel(item.result)}}</td>
+                                            <td>
+                                                <div class="usuario-principal">{{auditResourceLabel(item)}}</div>
+                                                <div class="usuario-secundario">{{item.resource.type || '-'}}</div>
+                                            </td>
+                                            <td>{{item.routeTemplate || '-'}}</td>
+                                            <td>
+                                                <button
+                                                    mat-stroked-button
+                                                    color="accent"
+                                                    [disabled]="cargandoDetalleAuditoriaCreacion"
+                                                    (click)="cargarDetalleAuditoriaCreacion(item.eventId)">
+                                                    Ver detalle
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <section class="admin-audit__detail" *ngIf="detalleAuditoriaCreacion || cargandoDetalleAuditoriaCreacion || errorDetalleAuditoriaCreacion.length > 0">
+                                <div class="admin-audit__detail-header">
+                                    <h3>Detalle del evento</h3>
+                                </div>
+
+                                <div class="usuarios-admin-estado tw-text-center tw-p-2" *ngIf="cargandoDetalleAuditoriaCreacion">
+                                    <mat-chip>Cargando detalle...</mat-chip>
+                                </div>
+                                <div class="usuarios-admin-estado tw-text-center tw-p-2" *ngIf="errorDetalleAuditoriaCreacion.length > 0">
+                                    <mat-chip>{{errorDetalleAuditoriaCreacion}}</mat-chip>
+                                </div>
+
+                                <div class="admin-audit__detail-grid" *ngIf="detalleAuditoriaCreacion && !cargandoDetalleAuditoriaCreacion && errorDetalleAuditoriaCreacion.length < 1">
+                                    <article class="admin-audit__detail-card">
+                                        <h4>Resumen</h4>
+                                        <p><strong>Fecha:</strong> {{formatearFechaUtc(detalleAuditoriaCreacion.occurredAtUtc)}}</p>
+                                        <p><strong>Actor:</strong> {{auditActorLabel(detalleAuditoriaCreacion)}} ({{detalleAuditoriaCreacion.actor.uid || '-'}})</p>
+                                        <p><strong>Rol:</strong> {{detalleAuditoriaCreacion.actor.role || '-'}}</p>
+                                        <p><strong>Acción:</strong> {{detalleAuditoriaCreacion.actionCode || '-'}}</p>
+                                        <p><strong>Resultado:</strong> {{auditResultLabel(detalleAuditoriaCreacion.result)}}</p>
+                                        <p><strong>HTTP:</strong> {{detalleAuditoriaCreacion.httpStatusCode || '-'}}</p>
+                                        <p><strong>Ruta:</strong> {{detalleAuditoriaCreacion.routeTemplate || '-'}}</p>
+                                        <p><strong>Recurso:</strong> {{auditResourceLabel(detalleAuditoriaCreacion)}} ({{detalleAuditoriaCreacion.resource.type || '-'}})</p>
+                                        <p><strong>IP:</strong> {{detalleAuditoriaCreacion.clientIp || '-'}}</p>
+                                        <p><strong>User agent:</strong> {{detalleAuditoriaCreacion.userAgent || '-'}}</p>
+                                    </article>
+
+                                    <article class="admin-audit__detail-card" *ngIf="detalleAuditoriaCreacion.error">
+                                        <h4>Error</h4>
+                                        <pre>{{detalleAuditoriaCreacion.error | json}}</pre>
+                                    </article>
+
+                                    <article class="admin-audit__detail-card">
+                                        <h4>Route params</h4>
+                                        <pre>{{detalleAuditoriaCreacion.routeParams | json}}</pre>
+                                    </article>
+
+                                    <article class="admin-audit__detail-card">
+                                        <h4>Query</h4>
+                                        <pre>{{detalleAuditoriaCreacion.query | json}}</pre>
+                                    </article>
+
+                                    <article class="admin-audit__detail-card admin-audit__detail-card--full">
+                                        <h4>Request body</h4>
+                                        <pre>{{detalleAuditoriaCreacion.requestBody | json}}</pre>
+                                    </article>
+                                </div>
+                            </section>
+                        </div>
+                    </mat-expansion-panel>
+
+                    <mat-expansion-panel #cuarto [expanded]="usuariosPanelExpanded">
                         <mat-expansion-panel-header>
                             <button mat-stroked-button color="accent"
                                 matTooltip="Gestionar usuarios, baneos y permisos granulares de creación">

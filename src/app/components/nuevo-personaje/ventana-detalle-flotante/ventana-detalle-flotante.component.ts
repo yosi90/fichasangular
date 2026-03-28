@@ -7,6 +7,8 @@ import { UserSettingsService } from 'src/app/services/user-settings.service';
 
 type ResizeDirection = 'n' | 's' | 'e' | 'w' | 'ne' | 'nw' | 'se' | 'sw';
 export type FloatingWindowVisualMode = 'window' | 'minimized' | 'maximized';
+type FloatingWindowHorizontalAnchor = 'left' | 'right';
+type FloatingWindowVerticalAnchor = 'top' | 'bottom';
 
 interface WindowRect {
     x: number;
@@ -32,6 +34,11 @@ interface ResizeInteraction {
 
 type ActiveInteraction = MoveInteraction | ResizeInteraction | null;
 
+interface WindowViewportSector {
+    horizontal: FloatingWindowHorizontalAnchor;
+    vertical: FloatingWindowVerticalAnchor;
+}
+
 @Component({
     selector: 'app-ventana-detalle-flotante',
     templateUrl: './ventana-detalle-flotante.component.html',
@@ -39,10 +46,15 @@ type ActiveInteraction = MoveInteraction | ResizeInteraction | null;
     standalone: false
 })
 export class VentanaDetalleFlotanteComponent implements OnInit, OnChanges {
+    @Input() minimizedVariant: 'bar' | 'bubble' = 'bar';
+    @Input() minimizedBubbleImageUrl: string | null = null;
+    @Input() minimizedBubbleIcon = 'forum';
+    @Input() minimizedBubbleLabel = 'Restaurar ventana';
     @Input() titulo = 'Sin nombre - En creación';
     @Input() bloqueadaPorOverlay = false;
     @Input() minWidth = 560;
     @Input() minHeight = 340;
+    @Input() fixedWidth: number | null = null;
     @Input() titleBarHeight = 44;
     @Input() restoredPlacementInput: FloatingWindowPlacementRestored | null = null;
     @Input() minimizedPlacementInput: FloatingWindowPlacementMinimized | null = null;
@@ -50,6 +62,7 @@ export class VentanaDetalleFlotanteComponent implements OnInit, OnChanges {
     @Input() zIndex: number | null = null;
     @Input() persistPreviewPlacements = true;
     @Input() minimizedAnchorsToViewportSides = true;
+    @Input() resizable = true;
     @Output() cerrarSolicitado: EventEmitter<void> = new EventEmitter<void>();
     @Output() windowModeChange: EventEmitter<FloatingWindowVisualMode> = new EventEmitter<FloatingWindowVisualMode>();
     @Output() restoredPlacementChange: EventEmitter<FloatingWindowPlacementRestored | null> = new EventEmitter<FloatingWindowPlacementRestored | null>();
@@ -58,6 +71,7 @@ export class VentanaDetalleFlotanteComponent implements OnInit, OnChanges {
 
     private readonly viewportPadding = 12;
     private readonly minMinimizedWidth = 220;
+    private readonly minimizedBubbleSize = 56;
     private readonly controlButtonWidth = 34;
     private readonly actionsBlockGap = 4;
 
@@ -74,6 +88,7 @@ export class VentanaDetalleFlotanteComponent implements OnInit, OnChanges {
     private minimizedPlacement: FloatingWindowPlacementMinimized | null = null;
     private restoredPlacement: FloatingWindowPlacementRestored | null = null;
     private moveHasDelta = false;
+    private suppressMinimizedBubbleClick = false;
     private initialized = false;
 
     constructor(private userSettingsSvc?: UserSettingsService) { }
@@ -88,14 +103,18 @@ export class VentanaDetalleFlotanteComponent implements OnInit, OnChanges {
     }
 
     ngOnChanges(changes: SimpleChanges): void {
-        if (changes['titulo'] && this.isMinimized)
-            this.rect = this.clampRectToViewport(this.rect);
+        if (changes['titulo'] && this.isMinimized) {
+            if (this.minimizedAnchorsToViewportSides)
+                this.rect = this.clampRectToViewport(this.rect);
+            else
+                this.rect = this.clampRectPositionToViewport(this.rect, this.getMinimizedVisualWidth(), this.getMinimizedVisualHeight());
+        }
 
         if (!this.initialized || this.persistPreviewPlacements)
             return;
 
         if (changes['restoredPlacementInput'] || changes['minimizedPlacementInput'] || changes['windowMode'])
-            this.aplicarEstadoExterno();
+            this.aplicarEstadoExterno(changes);
     }
 
     onContainerPointerDown(): void {
@@ -125,7 +144,7 @@ export class VentanaDetalleFlotanteComponent implements OnInit, OnChanges {
 
     onResizePointerDown(event: PointerEvent, direction: ResizeDirection): void {
         this.onContainerPointerDown();
-        if (event.button !== 0 || this.isMaximized || this.isMinimized || this.bloqueadaPorOverlay)
+        if (event.button !== 0 || this.isMaximized || this.isMinimized || this.bloqueadaPorOverlay || !this.resizable)
             return;
 
         this.activeInteraction = {
@@ -137,6 +156,35 @@ export class VentanaDetalleFlotanteComponent implements OnInit, OnChanges {
         };
         event.preventDefault();
         event.stopPropagation();
+    }
+
+    onMinimizedBubblePointerDown(event: PointerEvent): void {
+        this.onContainerPointerDown();
+        if (event.button !== 0 || this.isMaximized || this.bloqueadaPorOverlay || !this.isBubbleMinimized)
+            return;
+
+        this.activeInteraction = {
+            type: 'move',
+            startPointerX: event.clientX,
+            startPointerY: event.clientY,
+            startRect: { ...this.rect },
+        };
+        this.moveHasDelta = false;
+        this.suppressMinimizedBubbleClick = false;
+        event.preventDefault();
+    }
+
+    onMinimizedBubbleClick(event: MouseEvent): void {
+        if (this.bloqueadaPorOverlay || !this.isBubbleMinimized)
+            return;
+        if (this.suppressMinimizedBubbleClick) {
+            this.suppressMinimizedBubbleClick = false;
+            event.preventDefault();
+            return;
+        }
+
+        this.toggleMinimize();
+        event.preventDefault();
     }
 
     toggleMinimize(): void {
@@ -157,16 +205,24 @@ export class VentanaDetalleFlotanteComponent implements OnInit, OnChanges {
         this.isMinimized = !this.isMinimized;
         if (this.isMinimized) {
             if (this.minimizedAnchorsToViewportSides)
-                this.aplicarPlacementMinimizadoGuardado();
-            else
+                this.aplicarPlacementMinimizadoGuardado(this.getRestoredRectGuardado() ?? this.rect);
+            else {
                 this.clearMinimizedPlacement();
+                this.rect = this.getRectMinimizadoDesdeRestaurado(this.getRestoredRectGuardado() ?? this.rect);
+            }
         }
         else {
-            const restoredRect = this.getRestoredRectGuardado();
-            if (restoredRect)
+            const restoredRect = this.minimizedAnchorsToViewportSides
+                ? this.getRestoredRectGuardado()
+                : this.getRectRestauradoDesdeMinimizadoLibre(this.rect, this.getRestoredRectGuardado() ?? this.rect);
+            if (restoredRect) {
                 this.rect = restoredRect;
+                if (!this.minimizedAnchorsToViewportSides)
+                    this.guardarPlacementRestauradoDesdeRect(restoredRect);
+            }
         }
         this.rect = this.clampRectToViewport(this.rect);
+        this.suppressMinimizedBubbleClick = false;
         this.emitModeChange();
     }
 
@@ -208,8 +264,8 @@ export class VentanaDetalleFlotanteComponent implements OnInit, OnChanges {
             style['width'] = `${Math.max(this.minWidth, viewport.width - (pad * 2))}px`;
             style['height'] = `${Math.max(this.minHeight, viewport.height - (pad * 2))}px`;
         } else {
-            const width = this.isMinimized ? this.getMinimizedWidth() : this.rect.width;
-            const height = this.isMinimized ? this.titleBarHeight : this.rect.height;
+            const width = this.isMinimized ? this.getMinimizedVisualWidth() : this.getEffectiveWidth(this.rect.width);
+            const height = this.isMinimized ? this.getMinimizedVisualHeight() : this.rect.height;
             style['left'] = `${this.rect.x}px`;
             style['top'] = `${this.rect.y}px`;
             style['width'] = `${width}px`;
@@ -224,6 +280,14 @@ export class VentanaDetalleFlotanteComponent implements OnInit, OnChanges {
     get tituloVisible(): string {
         const value = `${this.titulo ?? ''}`.trim();
         return value.length > 0 ? value : 'Sin nombre - En creación';
+    }
+
+    get isBubbleMinimized(): boolean {
+        return this.isMinimized && this.minimizedVariant === 'bubble';
+    }
+
+    get hasMinimizedBubbleImage(): boolean {
+        return `${this.minimizedBubbleImageUrl ?? ''}`.trim().length > 0;
     }
 
     @HostListener('document:pointermove', ['$event'])
@@ -255,11 +319,17 @@ export class VentanaDetalleFlotanteComponent implements OnInit, OnChanges {
         if (interaction.type === 'move' && this.isMinimized && this.moveHasDelta) {
             if (this.minimizedAnchorsToViewportSides)
                 this.guardarPlacementMinimizado();
-            else
-                this.guardarPlacementRestaurado();
+            else {
+                const restoredRect = this.getRectRestauradoDesdeMinimizadoLibre(
+                    this.rect,
+                    this.getRestoredRectGuardado() ?? interaction.startRect
+                );
+                this.guardarPlacementRestauradoDesdeRect(restoredRect);
+            }
         }
         if (!this.isMinimized && !this.isMaximized && geometryChanged)
             this.guardarPlacementRestaurado();
+        this.suppressMinimizedBubbleClick = interaction.type === 'move' && this.isBubbleMinimized && this.moveHasDelta;
         this.activeInteraction = null;
         this.moveHasDelta = false;
     }
@@ -268,23 +338,38 @@ export class VentanaDetalleFlotanteComponent implements OnInit, OnChanges {
     onWindowBlur(): void {
         this.activeInteraction = null;
         this.moveHasDelta = false;
+        this.suppressMinimizedBubbleClick = false;
     }
 
-    private aplicarEstadoExterno(): void {
+    private aplicarEstadoExterno(changes?: SimpleChanges): void {
         this.minimizedPlacement = this.clonePlacementMinimized(this.minimizedPlacementInput);
         this.restoredPlacement = this.clonePlacementRestored(this.restoredPlacementInput);
 
         const mode = this.windowMode ?? 'window';
+        const wasMinimized = this.isMinimized;
         this.isMinimized = mode === 'minimized';
         this.isMaximized = mode === 'maximized';
 
         const restoredRect = this.getRestoredRectGuardado();
-        if (restoredRect)
-            this.rect = this.clampRectToViewport(restoredRect);
-
         this.restoreRect = restoredRect ? { ...restoredRect } : this.restoreRect;
-        if (this.isMinimized && this.minimizedAnchorsToViewportSides)
-            this.aplicarPlacementMinimizadoGuardado();
+        if (!this.isMinimized) {
+            if (restoredRect)
+                this.rect = this.clampRectToViewport(restoredRect);
+            return;
+        }
+
+        if (this.minimizedAnchorsToViewportSides) {
+            this.aplicarPlacementMinimizadoGuardado(restoredRect ?? this.rect);
+            return;
+        }
+
+        const modeChanged = !!changes?.['windowMode'];
+        const minimizedPlacementChanged = !!changes?.['minimizedPlacementInput'];
+        const shouldRecomputeMinimizedRect = !wasMinimized || modeChanged || minimizedPlacementChanged;
+        if (!shouldRecomputeMinimizedRect)
+            return;
+
+        this.rect = this.getRectMinimizadoDesdeRestaurado(restoredRect ?? this.rect);
     }
 
     private restoreFromSnapshot(): void {
@@ -343,10 +428,17 @@ export class VentanaDetalleFlotanteComponent implements OnInit, OnChanges {
 
     private ensureMinSize(rect: WindowRect, direction: ResizeDirection): WindowRect {
         const next = { ...rect };
-        if (next.width < this.minWidth) {
+        const effectiveMinWidth = this.getEffectiveMinWidth();
+        const effectiveFixedWidth = this.getFixedWidthValue();
+        if (effectiveFixedWidth !== null) {
             if (direction.includes('w'))
-                next.x = next.x - (this.minWidth - next.width);
-            next.width = this.minWidth;
+                next.x = next.x - (effectiveFixedWidth - next.width);
+            next.width = effectiveFixedWidth;
+        }
+        else if (next.width < effectiveMinWidth) {
+            if (direction.includes('w'))
+                next.x = next.x - (effectiveMinWidth - next.width);
+            next.width = effectiveMinWidth;
         }
 
         if (next.height < this.minHeight) {
@@ -361,12 +453,14 @@ export class VentanaDetalleFlotanteComponent implements OnInit, OnChanges {
         const viewport = this.getViewport();
         const pad = this.viewportPadding;
 
-        const maxWidth = Math.max(this.minWidth, viewport.width - (pad * 2));
+        const effectiveMinWidth = this.getEffectiveMinWidth();
+        const fixedWidth = this.getFixedWidthValue();
+        const maxWidth = fixedWidth ?? Math.max(effectiveMinWidth, viewport.width - (pad * 2));
         const maxHeight = Math.max(this.minHeight, viewport.height - (pad * 2));
-        const width = this.clamp(rect.width, this.minWidth, maxWidth);
+        const width = fixedWidth ?? this.clamp(rect.width, effectiveMinWidth, maxWidth);
         const height = this.clamp(rect.height, this.minHeight, maxHeight);
-        const visualWidth = this.isMinimized ? this.getMinimizedWidth() : width;
-        const visualHeight = this.isMinimized ? this.titleBarHeight : height;
+        const visualWidth = this.isMinimized ? this.getMinimizedVisualWidth() : width;
+        const visualHeight = this.isMinimized ? this.getMinimizedVisualHeight() : height;
 
         const minX = pad;
         const maxX = Math.max(minX, viewport.width - visualWidth - pad);
@@ -381,10 +475,26 @@ export class VentanaDetalleFlotanteComponent implements OnInit, OnChanges {
         };
     }
 
+    private clampRectPositionToViewport(rect: WindowRect, visualWidth: number, visualHeight: number): WindowRect {
+        const viewport = this.getViewport();
+        const pad = this.viewportPadding;
+        const minX = pad;
+        const maxX = Math.max(minX, viewport.width - visualWidth - pad);
+        const minY = pad;
+        const maxY = Math.max(minY, viewport.height - visualHeight - pad);
+
+        return {
+            ...rect,
+            x: this.clamp(rect.x, minX, maxX),
+            y: this.clamp(rect.y, minY, maxY),
+        };
+    }
+
     private getInitialRect(): WindowRect {
         const viewport = this.getViewport();
         const pad = this.viewportPadding;
-        const width = Math.max(this.minWidth, Math.min(960, viewport.width - (pad * 2)));
+        const width = this.getFixedWidthValue()
+            ?? Math.max(this.getEffectiveMinWidth(), Math.min(960, viewport.width - (pad * 2)));
         const height = Math.max(this.minHeight, Math.min(700, viewport.height - (pad * 2)));
 
         return this.clampRectToViewport({
@@ -412,6 +522,21 @@ export class VentanaDetalleFlotanteComponent implements OnInit, OnChanges {
         return value;
     }
 
+    private getFixedWidthValue(): number | null {
+        const parsed = Number(this.fixedWidth);
+        if (!Number.isFinite(parsed) || parsed <= 0)
+            return null;
+        return Math.trunc(parsed);
+    }
+
+    private getEffectiveMinWidth(): number {
+        return this.getFixedWidthValue() ?? this.minWidth;
+    }
+
+    private getEffectiveWidth(width: number): number {
+        return this.getFixedWidthValue() ?? width;
+    }
+
     private getMinimizedWidth(): number {
         const viewport = this.getViewport();
         const pad = this.viewportPadding;
@@ -422,6 +547,18 @@ export class VentanaDetalleFlotanteComponent implements OnInit, OnChanges {
         const raw = titlePaddingWidth + actionsWidth + this.getTituloPixelWidth();
 
         return this.clamp(Math.ceil(raw), this.minMinimizedWidth, maxWidth);
+    }
+
+    private getMinimizedVisualWidth(): number {
+        if (this.minimizedVariant === 'bubble')
+            return this.minimizedBubbleSize;
+        return this.getMinimizedWidth();
+    }
+
+    private getMinimizedVisualHeight(): number {
+        if (this.minimizedVariant === 'bubble')
+            return this.minimizedBubbleSize;
+        return this.titleBarHeight;
     }
 
     private getTituloPixelWidth(): number {
@@ -462,11 +599,15 @@ export class VentanaDetalleFlotanteComponent implements OnInit, OnChanges {
             this.toggleMaximize();
     }
 
-    private aplicarPlacementMinimizadoGuardado(): void {
-        if (!this.minimizedAnchorsToViewportSides || !this.minimizedPlacement)
+    private aplicarPlacementMinimizadoGuardado(sourceRect: WindowRect = this.rect): void {
+        if (!this.minimizedAnchorsToViewportSides)
+            return;
+        if (!this.minimizedPlacement)
+            this.guardarPlacementMinimizado(sourceRect);
+        if (!this.minimizedPlacement)
             return;
 
-        const width = this.getMinimizedWidth();
+        const width = this.getMinimizedVisualWidth();
         const viewport = this.getViewport();
         const x = this.minimizedPlacement.side === 'right'
             ? viewport.width - width - this.viewportPadding
@@ -479,15 +620,16 @@ export class VentanaDetalleFlotanteComponent implements OnInit, OnChanges {
         };
     }
 
-    private guardarPlacementMinimizado(): void {
+    private guardarPlacementMinimizado(sourceRect: WindowRect = this.rect): void {
         if (!this.minimizedAnchorsToViewportSides)
             return;
 
         const viewport = this.getViewport();
-        const width = this.getMinimizedWidth();
-        const centerX = this.rect.x + (width / 2);
-        const side: 'left' | 'right' = centerX <= (viewport.width / 2) ? 'left' : 'right';
-        const top = this.rect.y;
+        const width = this.getMinimizedVisualWidth();
+        const referenceWidth = this.minimizedPlacement ? width : sourceRect.width;
+        const centerX = sourceRect.x + (referenceWidth / 2);
+        const side: 'left' | 'right' = centerX < (viewport.width / 2) ? 'left' : 'right';
+        const top = sourceRect.y;
 
         this.minimizedPlacement = {
             version: 1,
@@ -512,6 +654,50 @@ export class VentanaDetalleFlotanteComponent implements OnInit, OnChanges {
         this.minimizedPlacementChange.emit(null);
     }
 
+    private getRectMinimizadoDesdeRestaurado(restoredRect: WindowRect): WindowRect {
+        const viewport = this.getViewport();
+        const minimizedWidth = this.getMinimizedVisualWidth();
+        const minimizedHeight = this.getMinimizedVisualHeight();
+        const sector = this.resolverSectorViewport(restoredRect, restoredRect.width, restoredRect.height);
+        const leftOffset = restoredRect.x;
+        const rightOffset = viewport.width - (restoredRect.x + restoredRect.width);
+        const topOffset = restoredRect.y;
+        const bottomOffset = viewport.height - (restoredRect.y + restoredRect.height);
+
+        const nextRect: WindowRect = {
+            ...restoredRect,
+            x: sector.horizontal === 'left'
+                ? leftOffset
+                : viewport.width - minimizedWidth - rightOffset,
+            y: sector.vertical === 'top'
+                ? topOffset
+                : viewport.height - minimizedHeight - bottomOffset,
+        };
+
+        return this.clampRectPositionToViewport(nextRect, minimizedWidth, minimizedHeight);
+    }
+
+    private getRectRestauradoDesdeMinimizadoLibre(minimizedRect: WindowRect, fallbackRect: WindowRect): WindowRect {
+        const viewport = this.getViewport();
+        const minimizedWidth = this.getMinimizedVisualWidth();
+        const minimizedHeight = this.getMinimizedVisualHeight();
+        const sector = this.resolverSectorViewport(minimizedRect, minimizedWidth, minimizedHeight);
+        const leftOffset = minimizedRect.x;
+        const rightOffset = viewport.width - (minimizedRect.x + minimizedWidth);
+        const topOffset = minimizedRect.y;
+        const bottomOffset = viewport.height - (minimizedRect.y + minimizedHeight);
+
+        return this.clampRectToViewport({
+            ...fallbackRect,
+            x: sector.horizontal === 'left'
+                ? leftOffset
+                : viewport.width - fallbackRect.width - rightOffset,
+            y: sector.vertical === 'top'
+                ? topOffset
+                : viewport.height - fallbackRect.height - bottomOffset,
+        });
+    }
+
     private getRestoredRectGuardado(): WindowRect | null {
         if (!this.restoredPlacement)
             return null;
@@ -525,11 +711,14 @@ export class VentanaDetalleFlotanteComponent implements OnInit, OnChanges {
     }
 
     private guardarPlacementRestaurado(): void {
-        const left = this.rect.x;
-        const top = this.rect.y;
-        const width = this.rect.width;
-        const height = this.rect.height;
+        this.guardarPlacementRestauradoDesdeRect(this.rect);
+    }
 
+    private guardarPlacementRestauradoDesdeRect(rect: WindowRect): void {
+        const left = rect.x;
+        const top = rect.y;
+        const width = this.getEffectiveWidth(rect.width);
+        const height = rect.height;
         this.restoredPlacement = {
             version: 1,
             left,
@@ -550,6 +739,44 @@ export class VentanaDetalleFlotanteComponent implements OnInit, OnChanges {
         }).catch(() => {
             // Ignorado: si falla el guardado remoto, se mantiene la última geometría local.
         });
+    }
+
+    private resolverSectorViewport(rect: WindowRect, visualWidth: number, visualHeight: number): WindowViewportSector {
+        const viewport = this.getViewport();
+        const middleX = viewport.width / 2;
+        const middleY = viewport.height / 2;
+        const sectors: Array<WindowViewportSector & {
+            left: number;
+            top: number;
+            right: number;
+            bottom: number;
+        }> = [
+            { horizontal: 'left', vertical: 'top', left: 0, top: 0, right: middleX, bottom: middleY },
+            { horizontal: 'right', vertical: 'top', left: middleX, top: 0, right: viewport.width, bottom: middleY },
+            { horizontal: 'left', vertical: 'bottom', left: 0, top: middleY, right: middleX, bottom: viewport.height },
+            { horizontal: 'right', vertical: 'bottom', left: middleX, top: middleY, right: viewport.width, bottom: viewport.height },
+        ];
+
+        let bestSector: WindowViewportSector = { horizontal: 'left', vertical: 'top' };
+        let bestArea = -1;
+        sectors.forEach((sector) => {
+            const overlapLeft = Math.max(rect.x, sector.left);
+            const overlapTop = Math.max(rect.y, sector.top);
+            const overlapRight = Math.min(rect.x + visualWidth, sector.right);
+            const overlapBottom = Math.min(rect.y + visualHeight, sector.bottom);
+            const overlapWidth = Math.max(0, overlapRight - overlapLeft);
+            const overlapHeight = Math.max(0, overlapBottom - overlapTop);
+            const area = overlapWidth * overlapHeight;
+            if (area > bestArea) {
+                bestArea = area;
+                bestSector = {
+                    horizontal: sector.horizontal,
+                    vertical: sector.vertical,
+                };
+            }
+        });
+
+        return bestSector;
     }
 
     private emitModeChange(): void {

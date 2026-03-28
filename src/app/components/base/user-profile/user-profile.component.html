@@ -12,7 +12,7 @@
             <aside class="profile-nav sombra-caja-sm tw-rounded-md">
                 <div class="profile-nav__identity">
                     <div class="profile-nav__avatar">
-                        <img [src]="avatarUrl" alt="Avatar del usuario" />
+                        <img [src]="avatarUrl" alt="Avatar del usuario" (error)="onAvatarImageError($event)" />
                     </div>
                     <div class="profile-nav__copy">
                         <h2>{{profile?.displayName || 'Sin nombre visible'}}</h2>
@@ -39,7 +39,7 @@
                     <div class="profile-summary">
                         <div class="profile-summary__hero">
                             <div class="profile-summary__avatar">
-                                <img [src]="avatarUrl" alt="Avatar del usuario" />
+                                <img [src]="avatarUrl" alt="Avatar del usuario" (error)="onAvatarImageError($event)" />
                             </div>
 
                             <div class="profile-summary__copy">
@@ -220,6 +220,7 @@
                                                 class="campaign-text-input"
                                                 type="text"
                                                 [placeholder]="campaignEditorNamePlaceholder"
+                                                [attr.maxlength]="campaignNameMaxLength"
                                                 [(ngModel)]="campaignCreateDraft"
                                                 [disabled]="campaignEditorFormDisabled" />
                                             <button
@@ -231,6 +232,7 @@
                                                 {{campaignEditorSaving ? 'Guardando...' : campaignEditorSubmitLabel}}
                                             </button>
                                         </div>
+                                        <p class="profile-panel__hint">{{campaignNameLength}}/{{campaignNameMaxLength}}</p>
 
                                         <div class="profile-action-row" *ngIf="selectedCampaignSummary && !selectedCampaignCanManage && selectedCampaignCanRecoverMaster">
                                             <button
@@ -248,18 +250,32 @@
                                                 <input
                                                     class="campaign-text-input"
                                                     type="number"
-                                                    min="3"
+                                                    [min]="campaignMinimumRollMin"
+                                                    [max]="campaignMinimumRollMax"
                                                     [(ngModel)]="campaignCreatePolicyDraft.tiradaMinimaCaracteristica"
-                                                    [disabled]="campaignEditorFormDisabled" />
+                                                    [disabled]="campaignEditorFormDisabled"
+                                                    (ngModelChange)="onCampaignMinimumRollChange()" />
                                             </label>
                                             <label class="campaign-policy-field">
                                                 <span>Máx. tablas de dados</span>
                                                 <input
                                                     class="campaign-text-input"
                                                     type="number"
-                                                    min="1"
+                                                    [min]="campaignMaxTablesMin"
+                                                    [max]="campaignMaxTablesMax"
                                                     [(ngModel)]="campaignCreatePolicyDraft.maxTablasDadosCaracteristicas"
-                                                    [disabled]="campaignEditorFormDisabled" />
+                                                    [disabled]="campaignEditorFormDisabled"
+                                                    (ngModelChange)="onCampaignMaxTablesChange()" />
+                                            </label>
+                                            <label class="campaign-policy-field">
+                                                <span>NEP máximo personaje nuevo</span>
+                                                <input
+                                                    class="campaign-text-input"
+                                                    type="number"
+                                                    [min]="campaignNepMin"
+                                                    [(ngModel)]="campaignCreatePolicyDraft.nepMaximoPersonajeNuevo"
+                                                    [disabled]="campaignEditorFormDisabled"
+                                                    (ngModelChange)="onCampaignMaxNepChange()" />
                                             </label>
                                             <div class="campaign-policy-field campaign-policy-field--full">
                                                 <div class="campaign-policy-heading">
@@ -317,7 +333,8 @@
                                                 <input
                                                     class="campaign-text-input"
                                                     type="number"
-                                                    min="1"
+                                                    [min]="campaignHomebrewSourcesMin"
+                                                    [max]="campaignHomebrewSourcesMax"
                                                     [(ngModel)]="campaignCreatePolicyDraft.maxFuentesHomebrewGeneralesPorPersonaje"
                                                     [disabled]="campaignHomebrewLimitDisabled"
                                                     (ngModelChange)="onCampaignHomebrewLimitChange()" />
@@ -679,7 +696,7 @@
                             </div>
 
                             <div class="profile-avatar-preview">
-                                <img [src]="avatarUrl" alt="Avatar actual" />
+                                <img [src]="avatarUrl" alt="Avatar actual" (error)="onAvatarImageError($event)" />
                             </div>
 
                             <p class="profile-panel__hint" *ngIf="selectedAvatarName.length > 0">
@@ -714,10 +731,10 @@
                                         matInput
                                         id="display-name-input"
                                         type="text"
-                                        maxlength="150"
+                                        [attr.maxlength]="displayNameMaxLength"
                                         [(ngModel)]="displayNameDraft"
                                         [disabled]="identitySaving" />
-                                    <mat-hint align="end">{{displayNameLength}}/150</mat-hint>
+                                    <mat-hint align="end">{{displayNameLength}}/{{displayNameMaxLength}}</mat-hint>
                                 </mat-form-field>
 
                                 <mat-form-field appearance="outline" class="profile-field">
@@ -726,10 +743,10 @@
                                         matInput
                                         id="bio-input"
                                         rows="5"
-                                        maxlength="600"
+                                        [attr.maxlength]="bioMaxLength"
                                         [(ngModel)]="bioDraft"
                                         [disabled]="identitySaving"></textarea>
-                                    <mat-hint align="end">{{bioLength}}/600</mat-hint>
+                                    <mat-hint align="end">{{bioLength}}/{{bioMaxLength}}</mat-hint>
                                 </mat-form-field>
 
                                 <div class="profile-identity-grid">

@@ -16,6 +16,7 @@ import { DoteContextual } from '../interfaces/dote-contextual';
 import { toDoteContextualArray, toDoteLegacyArray } from './utils/dote-mapper';
 import {
     CatalogoNombreIdDto,
+    PersonajeContextoCreacionCampanaDto,
     PersonajeContextoIdsDto,
     PersonajeCreateApiResponseDto,
     PersonajeCreateColeccionesDto,
@@ -170,7 +171,8 @@ export class PersonajeService {
 
     public construirPayloadCreacionDesdePersonaje(
         personaje: Personaje,
-        contextoIds: PersonajeContextoIdsDto
+        contextoIds: PersonajeContextoIdsDto,
+        contextoCreacionCampana?: PersonajeContextoCreacionCampanaDto | null
     ): PersonajeCreateRequestDto {
         const nombre = `${personaje?.Nombre ?? ''}`.trim();
         const idRaza = Math.trunc(toNumber(personaje?.Raza?.Id));
@@ -325,6 +327,13 @@ export class PersonajeService {
             payload.modificadores = modificadores;
         if (Object.keys(colecciones).length > 0)
             payload.colecciones = colecciones;
+        if (tieneContextoCampana) {
+            payload.contextoCreacionCampana = {
+                tiradaMinimaDeclarada: this.toNonNegativeIntOrNull(contextoCreacionCampana?.tiradaMinimaDeclarada),
+                tablasDadosUsadas: this.toNonNegativeIntOrNull(contextoCreacionCampana?.tablasDadosUsadas),
+                overrideReglasCampana: contextoCreacionCampana?.overrideReglasCampana === true,
+            };
+        }
         return payload;
     }
 

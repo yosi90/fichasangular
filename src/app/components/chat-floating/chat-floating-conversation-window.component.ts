@@ -135,6 +135,33 @@ export class ChatFloatingConversationWindowComponent implements OnInit, OnDestro
         return `Chat ${this.conversationId}`;
     }
 
+    get bubbleImageUrl(): string {
+        const conversation = this.detail ?? this.summary;
+        if (conversation?.isSystemConversation)
+            return '';
+        const photo = `${conversation?.photoThumbUrl ?? ''}`.trim();
+        if (photo.length > 0)
+            return photo;
+        if (conversation?.type === 'direct')
+            return resolveDefaultProfileAvatar(conversation?.counterpartUid ?? conversation?.title ?? this.conversationId);
+        return '';
+    }
+
+    get bubbleIcon(): string {
+        const conversation = this.detail ?? this.summary;
+        if (conversation?.isSystemConversation)
+            return 'campaign';
+        if (conversation?.type === 'campaign')
+            return 'diversity_3';
+        if (conversation?.type === 'group')
+            return 'groups_2';
+        return 'person';
+    }
+
+    get bubbleLabel(): string {
+        return `Abrir ${this.title}`;
+    }
+
     get activeParticipants(): ChatParticipant[] {
         return this.detail?.participants ?? [];
     }

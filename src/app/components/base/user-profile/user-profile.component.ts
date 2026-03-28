@@ -38,6 +38,7 @@ import { UserProfileNavigationService } from 'src/app/services/user-profile-navi
 import { SocialAlertPreferencesService } from 'src/app/services/social-alert-preferences.service';
 import { UserSettingsService } from 'src/app/services/user-settings.service';
 import { UserService } from 'src/app/services/user.service';
+import { ApiActionGuardService } from 'src/app/services/api-action-guard.service';
 import { resolveDefaultProfileAvatar } from 'src/app/services/utils/profile-avatar.util';
 
 type CampaignWorkspaceMode = 'idle' | 'create' | 'config' | 'peopleStories';
@@ -82,6 +83,7 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
     avatarDeleting = false;
     avatarPreviewUrl: string | null = null;
     selectedAvatarFile: File | null = null;
+    private avatarFailedSource = '';
 
     currentPassword = '';
     newPassword = '';
@@ -150,6 +152,19 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
     private identityDraftsUid = '';
     private readonly campaignPolicyAutofixInFlight = new Set<number>();
     private campaignSummariesLiveReady = false;
+    readonly displayNameMinLength = 3;
+    readonly displayNameMaxLength = 150;
+    readonly bioMinLength = 10;
+    readonly bioMaxLength = 600;
+    readonly campaignNameMinLength = 5;
+    readonly campaignNameMaxLength = 150;
+    readonly campaignMinimumRollMin = 3;
+    readonly campaignMinimumRollMax = 13;
+    readonly campaignNepMin = 0;
+    readonly campaignMaxTablesMin = 1;
+    readonly campaignMaxTablesMax = 5;
+    readonly campaignHomebrewSourcesMin = 1;
+    readonly campaignHomebrewSourcesMax = 20;
     readonly generadorMinimoOpciones = Array.from({ length: 11 }, (_, index) => index + 3);
     readonly generadorTablasOpciones = Array.from({ length: 5 }, (_, index) => index + 1);
     private readonly dateFormatter = new Intl.DateTimeFormat('es-ES', {
@@ -179,6 +194,7 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
         private userProfileNavSvc: UserProfileNavigationService,
         private appToastSvc: AppToastService,
         private socialAlertPrefsSvc: SocialAlertPreferencesService,
+        private apiActionGuardSvc: ApiActionGuardService,
     ) { }
 
     ngOnInit(): void {
@@ -186,6 +202,7 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
             .pipe(takeUntil(this.destroy$))
             .subscribe((profile) => {
                 this.profile = profile;
+                this.syncAvatarFailureState(profile);
                 if (profile && this.identityDraftsUid !== profile.uid) {
                     this.hydrateIdentityDraftsFromProfile(profile, true);
                     this.identityDraftsUid = profile.uid;
@@ -249,9 +266,9 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
             return this.avatarPreviewUrl;
         const profile = this.profile;
         const persisted = `${profile?.photoUrl ?? profile?.photoThumbUrl ?? ''}`.trim();
-        if (persisted.length > 0)
+        if (persisted.length > 0 && persisted !== this.avatarFailedSource)
             return persisted;
-        return resolveDefaultProfileAvatar(profile?.uid ?? profile?.displayName ?? profile?.email ?? '');
+        return this.defaultAvatarUrl;
     }
 
     get hasPersistedAvatar(): boolean {
@@ -300,6 +317,10 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
         return `${this.bioDraft ?? ''}`.length;
     }
 
+    get campaignNameLength(): number {
+        return `${this.campaignCreateDraft ?? ''}`.trim().length;
+    }
+
     get genderIdentityLength(): number {
         return `${this.genderIdentityDraft ?? ''}`.trim().length;
     }
@@ -310,6 +331,11 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
 
     get selectedAvatarName(): string {
         return `${this.selectedAvatarFile?.name ?? ''}`.trim();
+    }
+
+    get defaultAvatarUrl(): string {
+        const profile = this.profile;
+        return resolveDefaultProfileAvatar(profile?.uid ?? profile?.displayName ?? profile?.email ?? '');
     }
 
     get formattedCreatedAt(): string {
@@ -689,6 +715,8 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
     async guardarAvatar(): Promise<void> {
         if (!this.selectedAvatarFile || this.avatarUploading)
             return;
+        if (!this.shouldRunGuardedApiAction('profile.avatar.upload'))
+            return;
 
         this.avatarUploading = true;
         try {
@@ -713,6 +741,8 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
             this.appToastSvc.showInfo('Selección de avatar descartada.');
             return;
         }
+        if (!this.shouldRunGuardedApiAction('profile.avatar.delete'))
+            return;
 
         this.avatarDeleting = true;
         try {
@@ -727,6 +757,17 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
         }
     }
 
+    onAvatarImageError(event: Event): void {
+        const target = event.target as HTMLImageElement | null;
+        const failedSource = `${target?.currentSrc ?? target?.src ?? ''}`.trim();
+        if (failedSource.length < 1 || failedSource === this.defaultAvatarUrl || failedSource.startsWith('blob:'))
+            return;
+
+        this.avatarFailedSource = failedSource;
+        if (target)
+            target.src = this.defaultAvatarUrl;
+    }
+
     async guardarIdentidad(): Promise<void> {
         if (this.identitySaving)
             return;
@@ -736,6 +777,8 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
             this.appToastSvc.showError(validationError);
             return;
         }
+        if (!this.shouldRunGuardedApiAction('profile.identity.save'))
+            return;
 
         const displayName = this.normalizeDisplayName(this.displayNameDraft);
         this.identitySaving = true;
@@ -763,6 +806,8 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
         const target = this.requestedRoleTarget;
         if (!target || !this.canRequestRole || this.roleRequestSubmitting)
             return;
+        if (!this.shouldRunGuardedApiAction(`profile.role-request.${target}`))
+            return;
 
         this.roleRequestSubmitting = true;
         try {
@@ -783,6 +828,8 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
 
     async guardarPreferencias(): Promise<void> {
         if (this.settingsSaving)
+            return;
+        if (!this.shouldRunGuardedApiAction('profile.settings.save'))
             return;
 
         this.settingsSaving = true;
@@ -829,6 +876,8 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
 
     async resetearPosicionPreview(): Promise<void> {
         if (this.previewResetting)
+            return;
+        if (!this.shouldRunGuardedApiAction('profile.preview.reset'))
             return;
 
         this.previewResetting = true;
@@ -885,6 +934,8 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
             this.appToastSvc.showError('No se pudo resolver la sesión actual para cambiar la contraseña.');
             return;
         }
+        if (!this.shouldRunGuardedApiAction('profile.password.change'))
+            return;
 
         this.passwordSaving = true;
         try {
@@ -1010,6 +1061,24 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
         );
     }
 
+    onCampaignMinimumRollChange(): void {
+        this.campaignCreatePolicyDraft.tiradaMinimaCaracteristica = this.normalizeCampaignMinimumRoll(
+            this.campaignCreatePolicyDraft.tiradaMinimaCaracteristica
+        );
+    }
+
+    onCampaignMaxNepChange(): void {
+        this.campaignCreatePolicyDraft.nepMaximoPersonajeNuevo = this.normalizeCampaignMaxNep(
+            this.campaignCreatePolicyDraft.nepMaximoPersonajeNuevo
+        );
+    }
+
+    onCampaignMaxTablesChange(): void {
+        this.campaignCreatePolicyDraft.maxTablasDadosCaracteristicas = this.normalizeCampaignMaxTables(
+            this.campaignCreatePolicyDraft.maxTablasDadosCaracteristicas
+        );
+    }
+
     abrirInfoCampaignHomebrew(event?: Event): void {
         event?.preventDefault();
         event?.stopPropagation();
@@ -1044,6 +1113,14 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
         if (!this.canCreateCampaign || this.campaignCreateSaving)
             return;
 
+        const validationError = this.validateCampaignName(this.campaignCreateDraft);
+        if (validationError) {
+            this.appToastSvc.showError(validationError);
+            return;
+        }
+        if (!this.shouldRunGuardedApiAction('campaign.create'))
+            return;
+
         this.campaignCreateSaving = true;
         try {
             const normalizedPolicy = this.buildCampaignPolicyForSave();
@@ -1067,6 +1144,14 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
         if (!this.selectedCampaignCanManage || !this.selectedCampaignId || this.campaignRenameSaving)
             return;
 
+        const validationError = this.validateCampaignName(this.campaignCreateDraft);
+        if (validationError) {
+            this.appToastSvc.showError(validationError);
+            return;
+        }
+        if (!this.shouldRunGuardedApiAction(`campaign.update.${this.selectedCampaignId}`))
+            return;
+
         this.campaignRenameSaving = true;
         try {
             const normalizedPolicy = this.buildCampaignPolicyForSave();
@@ -1085,6 +1170,8 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
 
     async abrirChatCampanaSeleccionada(): Promise<void> {
         if (!this.selectedCampaignId || !this.canOpenSelectedCampaignChat)
+            return;
+        if (!this.shouldRunGuardedApiAction(`campaign.chat.open.${this.selectedCampaignId}`))
             return;
 
         try {
@@ -1163,6 +1250,8 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
     private async recuperarMasterCampana(): Promise<void> {
         if (!this.selectedCampaignId || !this.selectedCampaignCanRecoverMaster)
             return;
+        if (!this.shouldRunGuardedApiAction(`campaign.master.recover.${this.selectedCampaignId}`))
+            return;
 
         try {
             await this.campanaSvc.recoverCampaignMaster(this.selectedCampaignId);
@@ -1180,6 +1269,8 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
 
     async agregarJugador(result: CampaignUserSearchResult): Promise<void> {
         if (!this.selectedCampaignId || !this.selectedCampaignCanManage)
+            return;
+        if (!this.shouldRunGuardedApiAction(`campaign.member.invite.${this.selectedCampaignId}.${result.uid}`))
             return;
 
         this.memberInviteInFlightUid = result.uid;
@@ -1200,6 +1291,8 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
     async responderInvitacionCampana(invitation: CampaignInvitationItem, decision: CampaignInvitationDecision): Promise<void> {
         const inviteId = Math.trunc(Number(invitation?.inviteId));
         if (inviteId <= 0 || this.receivedCampaignInviteResolveInFlightId === inviteId)
+            return;
+        if (!this.shouldRunGuardedApiAction(`campaign.invitation.respond.${inviteId}.${decision}`))
             return;
 
         this.receivedCampaignInviteResolveInFlightId = inviteId;
@@ -1233,6 +1326,8 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
     async cancelarInvitacionCampana(invitation: CampaignInvitationItem): Promise<void> {
         const inviteId = Math.trunc(Number(invitation?.inviteId));
         if (inviteId <= 0 || this.campaignInviteCancelInFlightId === inviteId)
+            return;
+        if (!this.shouldRunGuardedApiAction(`campaign.invitation.cancel.${inviteId}`))
             return;
 
         this.campaignInviteCancelInFlightId = inviteId;
@@ -1275,6 +1370,8 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
                 : 'Debes seleccionar un estado válido.',
         });
         if (!result.isConfirmed)
+            return;
+        if (!this.shouldRunGuardedApiAction(`campaign.member.remove.${this.selectedCampaignId}.${member.uid}`))
             return;
 
         this.memberRemoveInFlightUid = member.uid;
@@ -1320,6 +1417,8 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
             this.appToastSvc.showError('El usuario seleccionado ya es el master actual.');
             return;
         }
+        if (!this.shouldRunGuardedApiAction(`campaign.master.transfer.${this.selectedCampaignId}.${this.transferSelectedUser.uid}`))
+            return;
 
         this.transferSaving = true;
         try {
@@ -1339,6 +1438,8 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
 
     async crearTrama(): Promise<void> {
         if (!this.selectedCampaignId || !this.selectedCampaignCanManage || this.tramaCreateSaving)
+            return;
+        if (!this.shouldRunGuardedApiAction(`campaign.trama.create.${this.selectedCampaignId}`))
             return;
 
         this.tramaCreateSaving = true;
@@ -1373,6 +1474,8 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
 
     async guardarEdicionTrama(): Promise<void> {
         if (!this.editingTramaId || this.tramaSaveInFlightId === this.editingTramaId)
+            return;
+        if (!this.shouldRunGuardedApiAction(`campaign.trama.update.${this.editingTramaId}`))
             return;
 
         this.tramaSaveInFlightId = this.editingTramaId;
@@ -1409,6 +1512,8 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
     async guardarEdicionSubtrama(): Promise<void> {
         if (!this.editingSubtramaId || this.subtramaSaveInFlightId === this.editingSubtramaId)
             return;
+        if (!this.shouldRunGuardedApiAction(`campaign.subtrama.update.${this.editingSubtramaId}`))
+            return;
 
         this.subtramaSaveInFlightId = this.editingSubtramaId;
         try {
@@ -1444,6 +1549,8 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
 
     async crearSubtrama(tramaId: number): Promise<void> {
         if (!this.selectedCampaignCanManage || this.subtramaCreateSavingTramaId === tramaId)
+            return;
+        if (!this.shouldRunGuardedApiAction(`campaign.subtrama.create.${tramaId}`))
             return;
 
         this.subtramaCreateSavingTramaId = tramaId;
@@ -1590,6 +1697,7 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
             this.profile = nextProfile;
             this.userSvc.setCurrentPrivateProfile(nextProfile);
         }
+        this.avatarFailedSource = '';
         this.selectedAvatarFile = null;
         this.releaseAvatarPreview();
     }
@@ -1689,6 +1797,7 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
     private createDefaultCampaignPolicyDraft(): CampaignCreationPolicy {
         return {
             tiradaMinimaCaracteristica: 3,
+            nepMaximoPersonajeNuevo: null,
             maxTablasDadosCaracteristicas: 1,
             permitirHomebrewGeneral: false,
             permitirVentajasDesventajas: false,
@@ -1710,6 +1819,7 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
                 : 0;
         return {
             tiradaMinimaCaracteristica: this.normalizeCampaignMinimumRoll(this.campaignCreatePolicyDraft.tiradaMinimaCaracteristica),
+            nepMaximoPersonajeNuevo: this.normalizeCampaignMaxNep(this.campaignCreatePolicyDraft.nepMaximoPersonajeNuevo),
             maxTablasDadosCaracteristicas: this.normalizeCampaignMaxTables(this.campaignCreatePolicyDraft.maxTablasDadosCaracteristicas),
             permitirHomebrewGeneral,
             permitirVentajasDesventajas: homebrewMode !== 'none'
@@ -1723,22 +1833,31 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
     private normalizeCampaignMinimumRoll(value: number | null | undefined): number {
         const parsed = Math.trunc(Number(value));
         if (!Number.isFinite(parsed))
-            return 3;
-        return Math.min(13, Math.max(3, parsed));
+            return this.campaignMinimumRollMin;
+        return Math.min(this.campaignMinimumRollMax, Math.max(this.campaignMinimumRollMin, parsed));
+    }
+
+    private normalizeCampaignMaxNep(value: number | null | undefined): number | null {
+        if (value === null || value === undefined || `${value}`.trim() === '')
+            return null;
+        const parsed = Math.trunc(Number(value));
+        if (!Number.isFinite(parsed))
+            return null;
+        return Math.max(this.campaignNepMin, parsed);
     }
 
     private normalizeCampaignMaxTables(value: number | null | undefined): number {
         const parsed = Math.trunc(Number(value));
         if (!Number.isFinite(parsed))
-            return 1;
-        return Math.min(5, Math.max(1, parsed));
+            return this.campaignMaxTablesMin;
+        return Math.min(this.campaignMaxTablesMax, Math.max(this.campaignMaxTablesMin, parsed));
     }
 
     private normalizeCampaignHomebrewLimit(value: number | null | undefined, fallback: number): number {
         const parsed = Math.trunc(Number(value));
         if (!Number.isFinite(parsed))
             return fallback;
-        return Math.max(fallback, parsed);
+        return Math.min(this.campaignHomebrewSourcesMax, Math.max(fallback, parsed));
     }
 
     private validateIdentityForm(): string | null {
@@ -1747,10 +1866,16 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
         const genderIdentity = this.normalizeOptionalSingleLineText(this.genderIdentityDraft);
         const pronouns = this.normalizeOptionalSingleLineText(this.pronounsDraft);
 
-        if (displayName.length < 1 || displayName.length > 150)
-            return 'El nombre visible debe tener entre 1 y 150 caracteres.';
-        if (bio && bio.length > 600)
-            return 'La bio no puede superar 600 caracteres.';
+        if (displayName.length < this.displayNameMinLength || displayName.length > this.displayNameMaxLength)
+            return `El nombre visible debe tener entre ${this.displayNameMinLength} y ${this.displayNameMaxLength} caracteres.`;
+        if (this.isNumericOnlyText(displayName))
+            return 'El nombre visible no puede estar formado solo por números.';
+        if (bio && bio.length < this.bioMinLength)
+            return `La bio debe tener al menos ${this.bioMinLength} caracteres o dejarse vacía.`;
+        if (bio && this.isNumericOnlyText(bio))
+            return 'La bio no puede estar formada solo por números.';
+        if (bio && bio.length > this.bioMaxLength)
+            return `La bio no puede superar ${this.bioMaxLength} caracteres.`;
         if (this.hasLineBreak(this.genderIdentityDraft))
             return 'La identidad de género no puede contener saltos de línea.';
         if (genderIdentity && genderIdentity.length > 80)
@@ -1759,6 +1884,15 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
             return 'Los pronombres no pueden contener saltos de línea.';
         if (pronouns && pronouns.length > 80)
             return 'Los pronombres no pueden superar 80 caracteres.';
+        return null;
+    }
+
+    private validateCampaignName(value: string | null | undefined): string | null {
+        const name = `${value ?? ''}`.trim();
+        if (name.length < this.campaignNameMinLength || name.length > this.campaignNameMaxLength)
+            return `El nombre de campaña debe tener entre ${this.campaignNameMinLength} y ${this.campaignNameMaxLength} caracteres.`;
+        if (this.isNumericOnlyText(name))
+            return 'El nombre de campaña no puede estar formado solo por números.';
         return null;
     }
 
@@ -1781,6 +1915,26 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
 
     private hasLineBreak(value: string | null | undefined): boolean {
         return /[\r\n]/.test(`${value ?? ''}`);
+    }
+
+    private isNumericOnlyText(value: string | null | undefined): boolean {
+        const compact = `${value ?? ''}`.replace(/\s+/g, '');
+        return compact.length > 0 && /^\d+$/.test(compact);
+    }
+
+    private syncAvatarFailureState(profile: UserPrivateProfile | null): void {
+        const persisted = `${profile?.photoUrl ?? profile?.photoThumbUrl ?? ''}`.trim();
+        if (persisted !== this.avatarFailedSource)
+            this.avatarFailedSource = '';
+    }
+
+    private shouldRunGuardedApiAction(actionKey: string): boolean {
+        const decision = this.apiActionGuardSvc.shouldAllow(this.userSvc.CurrentUserUid, actionKey);
+        if (decision.newlySessionLocked) {
+            this.appToastSvc.showError('Esta sesión ha quedado bloqueada por abuso de peticiones.');
+            return false;
+        }
+        return decision.status === 'allowed';
     }
 
     private async syncAuthDisplayName(displayName: string): Promise<void> {
@@ -2169,6 +2323,7 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
     private hydrateCampaignPolicyDraft(source: Partial<CampaignCreationPolicy> | null | undefined): CampaignCreationPolicy {
         const defaults = this.createDefaultCampaignPolicyDraft();
         const rawMinimo = source?.tiradaMinimaCaracteristica;
+        const rawNep = source?.nepMaximoPersonajeNuevo;
         const rawTablas = source?.maxTablasDadosCaracteristicas;
         const permitirHomebrewGeneral = source?.permitirHomebrewGeneral === true;
         const maxFuentesRaw = source?.maxFuentesHomebrewGeneralesPorPersonaje;
@@ -2180,6 +2335,9 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
             tiradaMinimaCaracteristica: rawMinimo === null || rawMinimo === undefined
                 ? defaults.tiradaMinimaCaracteristica
                 : this.normalizeCampaignMinimumRoll(rawMinimo),
+            nepMaximoPersonajeNuevo: rawNep === null || rawNep === undefined
+                ? defaults.nepMaximoPersonajeNuevo
+                : this.normalizeCampaignMaxNep(rawNep),
             maxTablasDadosCaracteristicas: rawTablas === null || rawTablas === undefined
                 ? defaults.maxTablasDadosCaracteristicas
                 : this.normalizeCampaignMaxTables(rawTablas),

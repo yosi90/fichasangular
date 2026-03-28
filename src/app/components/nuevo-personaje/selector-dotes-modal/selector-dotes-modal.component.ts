@@ -1,4 +1,4 @@
-import { Component, EventEmitter, HostListener, Input, Output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, EventEmitter, HostListener, Input, OnChanges, Output, SimpleChanges } from '@angular/core';
 import { Dote } from 'src/app/interfaces/dote';
 import { DoteSeleccionConfirmada, DoteSelectorCandidato, DotePendienteState } from 'src/app/services/nuevo-personaje.service';
 
@@ -6,9 +6,10 @@ import { DoteSeleccionConfirmada, DoteSelectorCandidato, DotePendienteState } fr
     selector: 'app-selector-dotes-modal',
     templateUrl: './selector-dotes-modal.component.html',
     styleUrls: ['./selector-dotes-modal.component.sass'],
+    changeDetection: ChangeDetectionStrategy.OnPush,
     standalone: false
 })
-export class SelectorDotesModalComponent {
+export class SelectorDotesModalComponent implements OnChanges {
     @Input() titulo: string = 'Seleccionar dote';
     @Input() pendiente: DotePendienteState | null = null;
     @Input() pendientesRestantes: number = 0;
@@ -25,87 +26,23 @@ export class SelectorDotesModalComponent {
     idDoteSeleccionada = 0;
     idExtraSeleccionado = 0;
 
-    get candidatosFiltrados(): DoteSelectorCandidato[] {
-        const textoNorm = this.normalizarTexto(this.filtroTexto);
-        const manualNorm = this.normalizarTexto(this.filtroManual);
-        const tipoNorm = this.normalizarTexto(this.filtroTipo);
+    candidatosFiltrados: DoteSelectorCandidato[] = [];
+    candidatosColumnaA: DoteSelectorCandidato[] = [];
+    candidatosColumnaB: DoteSelectorCandidato[] = [];
+    manualesDisponibles: string[] = ['Cualquiera'];
+    tiposDisponibles: string[] = ['Cualquiera'];
+    cantidadElegibles = 0;
+    candidatoSeleccionado: DoteSelectorCandidato | null = null;
+    extrasCandidatoSeleccionado: Array<{ Id: number; Nombre: string; }> = [];
+    requiereExtraSeleccionado = false;
+    puedeConfirmar = false;
 
-        return (this.candidatos ?? [])
-            .filter((candidato) => {
-                if (!this.mostrarSoloElegibles)
-                    return true;
-                return this.esCandidatoElegible(candidato);
-            })
-            .filter((candidato) => {
-                if (textoNorm.length < 1)
-                    return true;
-                const nombre = this.normalizarTexto(candidato?.dote?.Nombre ?? '');
-                const descripcion = this.normalizarTexto(candidato?.dote?.Descripcion ?? '');
-                const beneficio = this.normalizarTexto(candidato?.dote?.Beneficio ?? '');
-                return nombre.includes(textoNorm) || descripcion.includes(textoNorm) || beneficio.includes(textoNorm);
-            })
-            .filter((candidato) => {
-                if (manualNorm.length < 1 || manualNorm === this.normalizarTexto('Cualquiera'))
-                    return true;
-                return this.normalizarTexto(candidato?.dote?.Manual?.Nombre ?? '') === manualNorm;
-            })
-            .filter((candidato) => {
-                if (tipoNorm.length < 1 || tipoNorm === this.normalizarTexto('Cualquiera'))
-                    return true;
-                return (candidato?.dote?.Tipos ?? [])
-                    .some((tipo) => this.normalizarTexto(tipo?.Nombre ?? '') === tipoNorm);
-            })
-            .sort((a, b) => `${a?.dote?.Nombre ?? ''}`.localeCompare(`${b?.dote?.Nombre ?? ''}`, 'es', { sensitivity: 'base' }));
-    }
-
-    get candidatosColumnaA(): DoteSelectorCandidato[] {
-        return this.candidatosFiltrados.filter((_candidato, index) => index % 2 === 0);
-    }
-
-    get candidatosColumnaB(): DoteSelectorCandidato[] {
-        return this.candidatosFiltrados.filter((_candidato, index) => index % 2 === 1);
-    }
-
-    get candidatoSeleccionado(): DoteSelectorCandidato | null {
-        const id = this.toNumber(this.idDoteSeleccionada);
-        if (id <= 0)
-            return null;
-        return (this.candidatos ?? []).find((candidato) => this.toNumber(candidato?.dote?.Id) === id) ?? null;
-    }
-
-    get extrasCandidatoSeleccionado(): Array<{ Id: number; Nombre: string; }> {
-        const candidato = this.candidatoSeleccionado;
-        if (!candidato)
-            return [];
-        return (candidato.extrasDisponibles ?? [])
-            .map((extra) => ({
-                Id: this.toNumber(extra?.Id),
-                Nombre: `${extra?.Nombre ?? ''}`.trim(),
-            }))
-            .filter((extra) => extra.Id > 0 && extra.Nombre.length > 0);
-    }
-
-    get requiereExtraSeleccionado(): boolean {
-        return !!this.candidatoSeleccionado?.requiereExtra;
-    }
-
-    get cantidadElegibles(): number {
-        return (this.candidatos ?? []).filter((candidato) => this.esCandidatoElegible(candidato)).length;
-    }
-
-    get manualesDisponibles(): string[] {
-        const base = (this.candidatos ?? [])
-            .map((candidato) => `${candidato?.dote?.Manual?.Nombre ?? ''}`.trim())
-            .filter((nombre) => nombre.length > 0);
-        return ['Cualquiera', ...Array.from(new Set(base)).sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' }))];
-    }
-
-    get tiposDisponibles(): string[] {
-        const tipos = (this.candidatos ?? [])
-            .flatMap((candidato) => candidato?.dote?.Tipos ?? [])
-            .map((tipo) => `${tipo?.Nombre ?? ''}`.trim())
-            .filter((nombre) => nombre.length > 0);
-        return ['Cualquiera', ...Array.from(new Set(tipos)).sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' }))];
+    ngOnChanges(changes: SimpleChanges): void {
+        if (changes['candidatos']) {
+            this.idDoteSeleccionada = this.toNumber(this.idDoteSeleccionada);
+            this.idExtraSeleccionado = this.toNumber(this.idExtraSeleccionado);
+        }
+        this.refreshViewModel();
     }
 
     get textoPendientes(): string {
@@ -122,17 +59,6 @@ export class SelectorDotesModalComponent {
         if (pendiente.fuente === 'raza_dg')
             return `Fuente: DGs de raza: ${pendiente.origen || 'Raza'}`;
         return 'Fuente: dote adicional';
-    }
-
-    get puedeConfirmar(): boolean {
-        const candidato = this.candidatoSeleccionado;
-        if (!candidato || !this.esCandidatoElegible(candidato))
-            return false;
-
-        if (!candidato.requiereExtra)
-            return true;
-
-        return this.extrasCandidatoSeleccionado.some((extra) => this.toNumber(extra?.Id) === this.toNumber(this.idExtraSeleccionado));
     }
 
     trackByDoteId = (_index: number, candidato: DoteSelectorCandidato): number => {
@@ -180,10 +106,20 @@ export class SelectorDotesModalComponent {
             return;
         this.idDoteSeleccionada = this.toNumber(candidato?.dote?.Id);
         this.idExtraSeleccionado = 0;
+        this.syncSelectedCandidateState();
     }
 
     onAlternarSoloElegibles(): void {
         this.mostrarSoloElegibles = !this.mostrarSoloElegibles;
+        this.refreshFilteredCandidates();
+    }
+
+    onFiltrosChange(): void {
+        this.refreshFilteredCandidates();
+    }
+
+    onExtraSeleccionChange(): void {
+        this.syncSelectedCandidateState();
     }
 
     onOmitir(): void {
@@ -226,6 +162,100 @@ export class SelectorDotesModalComponent {
             return;
         event.preventDefault();
         this.onConfirmar();
+    }
+
+    private refreshViewModel(): void {
+        this.manualesDisponibles = this.buildManualesDisponibles();
+        this.tiposDisponibles = this.buildTiposDisponibles();
+        if (!this.manualesDisponibles.includes(this.filtroManual))
+            this.filtroManual = 'Cualquiera';
+        if (!this.tiposDisponibles.includes(this.filtroTipo))
+            this.filtroTipo = 'Cualquiera';
+        this.cantidadElegibles = (this.candidatos ?? []).filter((candidato) => this.esCandidatoElegible(candidato)).length;
+        this.refreshFilteredCandidates();
+    }
+
+    private refreshFilteredCandidates(): void {
+        const textoNorm = this.normalizarTexto(this.filtroTexto);
+        const manualNorm = this.normalizarTexto(this.filtroManual);
+        const tipoNorm = this.normalizarTexto(this.filtroTipo);
+
+        this.candidatosFiltrados = (this.candidatos ?? [])
+            .filter((candidato) => {
+                if (!this.mostrarSoloElegibles)
+                    return true;
+                return this.esCandidatoElegible(candidato);
+            })
+            .filter((candidato) => {
+                if (textoNorm.length < 1)
+                    return true;
+                const nombre = this.normalizarTexto(candidato?.dote?.Nombre ?? '');
+                const descripcion = this.normalizarTexto(candidato?.dote?.Descripcion ?? '');
+                const beneficio = this.normalizarTexto(candidato?.dote?.Beneficio ?? '');
+                return nombre.includes(textoNorm) || descripcion.includes(textoNorm) || beneficio.includes(textoNorm);
+            })
+            .filter((candidato) => {
+                if (manualNorm.length < 1 || manualNorm === this.normalizarTexto('Cualquiera'))
+                    return true;
+                return this.normalizarTexto(candidato?.dote?.Manual?.Nombre ?? '') === manualNorm;
+            })
+            .filter((candidato) => {
+                if (tipoNorm.length < 1 || tipoNorm === this.normalizarTexto('Cualquiera'))
+                    return true;
+                return (candidato?.dote?.Tipos ?? [])
+                    .some((tipo) => this.normalizarTexto(tipo?.Nombre ?? '') === tipoNorm);
+            })
+            .sort((a, b) => `${a?.dote?.Nombre ?? ''}`.localeCompare(`${b?.dote?.Nombre ?? ''}`, 'es', { sensitivity: 'base' }));
+        this.candidatosColumnaA = this.candidatosFiltrados.filter((_candidato, index) => index % 2 === 0);
+        this.candidatosColumnaB = this.candidatosFiltrados.filter((_candidato, index) => index % 2 === 1);
+        this.syncSelectedCandidateState();
+    }
+
+    private syncSelectedCandidateState(): void {
+        const id = this.toNumber(this.idDoteSeleccionada);
+        this.candidatoSeleccionado = id > 0
+            ? (this.candidatos ?? []).find((candidato) => this.toNumber(candidato?.dote?.Id) === id) ?? null
+            : null;
+        this.requiereExtraSeleccionado = !!this.candidatoSeleccionado?.requiereExtra;
+        this.extrasCandidatoSeleccionado = (this.candidatoSeleccionado?.extrasDisponibles ?? [])
+            .map((extra) => ({
+                Id: this.toNumber(extra?.Id),
+                Nombre: `${extra?.Nombre ?? ''}`.trim(),
+            }))
+            .filter((extra) => extra.Id > 0 && extra.Nombre.length > 0);
+
+        if (this.requiereExtraSeleccionado
+            && !this.extrasCandidatoSeleccionado.some((extra) => this.toNumber(extra?.Id) === this.toNumber(this.idExtraSeleccionado))) {
+            this.idExtraSeleccionado = 0;
+        }
+
+        this.puedeConfirmar = this.computePuedeConfirmar();
+    }
+
+    private computePuedeConfirmar(): boolean {
+        const candidato = this.candidatoSeleccionado;
+        if (!candidato || !this.esCandidatoElegible(candidato))
+            return false;
+
+        if (!candidato.requiereExtra)
+            return true;
+
+        return this.extrasCandidatoSeleccionado.some((extra) => this.toNumber(extra?.Id) === this.toNumber(this.idExtraSeleccionado));
+    }
+
+    private buildManualesDisponibles(): string[] {
+        const base = (this.candidatos ?? [])
+            .map((candidato) => `${candidato?.dote?.Manual?.Nombre ?? ''}`.trim())
+            .filter((nombre) => nombre.length > 0);
+        return ['Cualquiera', ...Array.from(new Set(base)).sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' }))];
+    }
+
+    private buildTiposDisponibles(): string[] {
+        const tipos = (this.candidatos ?? [])
+            .flatMap((candidato) => candidato?.dote?.Tipos ?? [])
+            .map((tipo) => `${tipo?.Nombre ?? ''}`.trim())
+            .filter((nombre) => nombre.length > 0);
+        return ['Cualquiera', ...Array.from(new Set(tipos)).sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' }))];
     }
 
     private esElementoInteractivo(target: HTMLElement | null): boolean {

@@ -100,6 +100,12 @@ export interface PersonajeCreateColeccionesDto {
     raciales?: Array<{ idRacial: number; origen?: string; }>;
 }
 
+export interface PersonajeContextoCreacionCampanaDto {
+    tiradaMinimaDeclarada?: number | null;
+    tablasDadosUsadas?: number | null;
+    overrideReglasCampana?: boolean;
+}
+
 export interface PersonajeCreateRequestDto {
     personaje: {
         nombre: string;
@@ -153,6 +159,7 @@ export interface PersonajeCreateRequestDto {
     };
     modificadores?: PersonajeCreateModificadoresDto;
     colecciones?: PersonajeCreateColeccionesDto;
+    contextoCreacionCampana?: PersonajeContextoCreacionCampanaDto;
     familiar?: Record<string, any>;
     companero?: Record<string, any>;
 }

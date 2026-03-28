@@ -36,6 +36,9 @@ import { PrivateUserFirestoreService } from './private-user-firestore.service';
     providedIn: 'root'
 })
 export class CampanaService {
+    private static readonly CAMPAIGN_NAME_MIN_LENGTH = 5;
+    private static readonly CAMPAIGN_NAME_MAX_LENGTH = 150;
+    private static readonly CAMPAIGN_MAX_HOMEBREW_SOURCES = 20;
     private readonly campanasBaseUrl = `${environment.apiUrl}campanas`;
     private readonly tramasBaseUrl = `${environment.apiUrl}tramas`;
     private readonly subtramasBaseUrl = `${environment.apiUrl}subtramas`;
@@ -82,8 +85,13 @@ export class CampanaService {
 
     async listSocialCampaigns(): Promise<CampaignListItem[]> {
         try {
-            return (await this.fetchCampaignSummaries())
-                .filter((campaign) => this.hasActiveMembership(campaign));
+            const headers = await this.buildAuthHeaders();
+            const actorUid = `${this.auth.currentUser?.uid ?? ''}`.trim();
+            return await this.filterCampaignsForSocial(
+                await this.fetchCampaignSummaries(),
+                headers,
+                actorUid
+            );
         } catch (error) {
             throw this.toError(error, 'No se pudieron cargar las campañas de Social.');
         }
@@ -597,6 +605,53 @@ export class CampanaService {
         return filtered.filter((campana) => campana !== null) as CampaignListItem[];
     }
 
+    private async filterCampaignsForSocial(
+        campanas: CampaignListItem[],
+        headers: HttpHeaders,
+        actorUid: string
+    ): Promise<CampaignListItem[]> {
+        const ownUid = `${actorUid ?? ''}`.trim();
+        const filtered = await Promise.all(
+            (campanas ?? []).map(async (campana) => {
+                if (this.hasActiveMembership(campana))
+                    return { ...campana };
+
+                if (campana?.isOwner === true) {
+                    return {
+                        ...campana,
+                        isOwner: true,
+                        campaignRole: campana.campaignRole ?? 'master',
+                        membershipStatus: campana.membershipStatus ?? 'activo',
+                    };
+                }
+
+                if (ownUid.length < 1)
+                    return null;
+
+                try {
+                    const detail = await this.fetchCampaignDetailHeader(campana.id, headers, false);
+                    const isOwner = `${detail.ownerUid ?? ''}`.trim() === ownUid;
+                    const isActiveMaster = `${detail.activeMasterUid ?? ''}`.trim() === ownUid;
+                    if (!isOwner && !isActiveMaster)
+                        return null;
+
+                    return {
+                        ...campana,
+                        isOwner,
+                        campaignRole: campana.campaignRole ?? 'master',
+                        membershipStatus: campana.membershipStatus ?? 'activo',
+                    };
+                } catch {
+                    return null;
+                }
+            })
+        );
+
+        return filtered
+            .filter((campana): campana is CampaignListItem => campana !== null)
+            .sort((a, b) => a.nombre.localeCompare(b.nombre, 'es', { sensitivity: 'base' }));
+    }
+
     private async buildCampanasTree(campanas: CampaignListItem[], headers: HttpHeaders): Promise<Campana[]> {
         const campaignTrees = await Promise.all(
             campanas.map(async (campana) => {
@@ -1050,31 +1105,32 @@ export class CampanaService {
     private normalizeCampaignCreationPolicy(raw: any): CampaignCreationPolicy {
         return {
             tiradaMinimaCaracteristica: this.toNullableNumber(raw?.tiradaMinimaCaracteristica),
+            nepMaximoPersonajeNuevo: this.normalizeNullableNepLimit(raw?.nepMaximoPersonajeNuevo),
             maxTablasDadosCaracteristicas: this.toNullableNumber(raw?.maxTablasDadosCaracteristicas),
             permitirHomebrewGeneral: this.toBoolean(raw?.permitirHomebrewGeneral, true),
             permitirVentajasDesventajas: this.toBoolean(raw?.permitirVentajasDesventajas, true),
             permitirIgnorarRestriccionesAlineamiento: this.toBoolean(raw?.permitirIgnorarRestriccionesAlineamiento, false),
-            maxFuentesHomebrewGeneralesPorPersonaje: this.toNullableNumber(raw?.maxFuentesHomebrewGeneralesPorPersonaje),
+            maxFuentesHomebrewGeneralesPorPersonaje: this.normalizeNullableHomebrewSourceLimit(raw?.maxFuentesHomebrewGeneralesPorPersonaje),
         };
     }
 
     private normalizeCreateCampaignInput(input: string | CreateCampaignInput): CreateCampaignInput {
         if (typeof input === 'string')
-            return { nombre: this.normalizeRequiredName(input, 'Debes indicar un nombre de campaña.') };
+            return { nombre: this.normalizeCampaignName(input) };
 
         return {
-            nombre: this.normalizeRequiredName(input?.nombre ?? '', 'Debes indicar un nombre de campaña.'),
+            nombre: this.normalizeCampaignName(input?.nombre ?? ''),
             politicaCreacion: this.serializeCampaignCreationPolicy(input?.politicaCreacion ?? null),
         };
     }
 
     private normalizeUpdateCampaignInput(input: string | UpdateCampaignInput): UpdateCampaignInput {
         if (typeof input === 'string')
-            return { nombre: this.normalizeRequiredName(input, 'Debes indicar un nombre de campaña.') };
+            return { nombre: this.normalizeCampaignName(input) };
 
         const payload: UpdateCampaignInput = {};
         if (typeof input?.nombre === 'string')
-            payload.nombre = this.normalizeRequiredName(input.nombre, 'Debes indicar un nombre de campaña.');
+            payload.nombre = this.normalizeCampaignName(input.nombre);
 
         if (input?.politicaCreacion !== undefined)
             payload.politicaCreacion = this.serializeCampaignCreationPolicy(input?.politicaCreacion ?? null);
@@ -1151,6 +1207,8 @@ export class CampanaService {
 
         if ('tiradaMinimaCaracteristica' in raw)
             payload.tiradaMinimaCaracteristica = this.toNullableNumber(raw.tiradaMinimaCaracteristica);
+        if ('nepMaximoPersonajeNuevo' in raw)
+            payload.nepMaximoPersonajeNuevo = this.normalizeNullableNepLimit(raw.nepMaximoPersonajeNuevo);
         if ('maxTablasDadosCaracteristicas' in raw)
             payload.maxTablasDadosCaracteristicas = this.toNullableNumber(raw.maxTablasDadosCaracteristicas);
         if ('permitirHomebrewGeneral' in raw)
@@ -1191,6 +1249,20 @@ export class CampanaService {
         const nombre = `${value ?? ''}`.trim();
         if (nombre.length < 1)
             throw new Error(emptyMessage);
+        return nombre;
+    }
+
+    private normalizeCampaignName(value: string): string {
+        const nombre = `${value ?? ''}`.trim();
+        if (nombre.length < 1)
+            throw new Error('Debes indicar un nombre de campaña.');
+        if (nombre.length < CampanaService.CAMPAIGN_NAME_MIN_LENGTH || nombre.length > CampanaService.CAMPAIGN_NAME_MAX_LENGTH) {
+            throw new Error(
+                `El nombre de campaña debe tener entre ${CampanaService.CAMPAIGN_NAME_MIN_LENGTH} y ${CampanaService.CAMPAIGN_NAME_MAX_LENGTH} caracteres.`
+            );
+        }
+        if (/^\d+$/.test(nombre.replace(/\s+/g, '')))
+            throw new Error('El nombre de campaña no puede estar formado solo por números.');
         return nombre;
     }
 
@@ -1236,6 +1308,9 @@ export class CampanaService {
 
         if (error instanceof HttpErrorResponse) {
             const bodyMessage = this.extractErrorMessage(error.error);
+            const duplicateNameMessage = this.toDuplicateCampaignNameMessage(error.status, bodyMessage);
+            if (duplicateNameMessage)
+                return new Error(duplicateNameMessage);
             return new Error(bodyMessage || `${fallbackMessage} (HTTP ${error.status || 0})`);
         }
 
@@ -1257,6 +1332,40 @@ export class CampanaService {
             return `${firstEntry[0]}${firstEntry[1] ? `: ${firstEntry[1]}` : ''}`.trim();
         }
         return '';
+    }
+
+    private toDuplicateCampaignNameMessage(status: number, message: string): string {
+        const normalized = `${message ?? ''}`.trim().toLowerCase();
+        if (normalized.length < 1)
+            return '';
+
+        const looksLikeDuplicate = normalized.includes('duplicate')
+            || normalized.includes('duplicado')
+            || normalized.includes('duplicada')
+            || normalized.includes('unique')
+            || normalized.includes('uq_')
+            || normalized.includes('ix_');
+        const looksLikeCampaignName = normalized.includes('campa')
+            || normalized.includes('nombre');
+
+        if ((status === 409 || status === 400 || status === 500) && looksLikeDuplicate && looksLikeCampaignName)
+            return 'No puedes usar ese nombre porque ya está en uso por otra campaña.';
+
+        return '';
+    }
+
+    private normalizeNullableHomebrewSourceLimit(value: any): number | null {
+        const parsed = this.toNullableNumber(value);
+        if (parsed === null)
+            return null;
+        return Math.min(CampanaService.CAMPAIGN_MAX_HOMEBREW_SOURCES, Math.max(0, parsed));
+    }
+
+    private normalizeNullableNepLimit(value: any): number | null {
+        const parsed = this.toNullableNumber(value);
+        if (parsed === null)
+            return null;
+        return Math.max(0, parsed);
     }
 
     private async buildAuthHeaders(): Promise<HttpHeaders> {
