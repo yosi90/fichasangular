@@ -1,8 +1,12 @@
-import { Component, EventEmitter, HostListener, Input, OnChanges, Output, SimpleChanges } from '@angular/core';
-import { NuevoPersonajePreviewMinimizada, NuevoPersonajePreviewRestaurada } from 'src/app/interfaces/user-settings';
+import { Component, EventEmitter, HostListener, Input, OnChanges, OnInit, Output, SimpleChanges } from '@angular/core';
+import {
+    FloatingWindowPlacementMinimized,
+    FloatingWindowPlacementRestored,
+} from 'src/app/interfaces/user-settings';
 import { UserSettingsService } from 'src/app/services/user-settings.service';
 
 type ResizeDirection = 'n' | 's' | 'e' | 'w' | 'ne' | 'nw' | 'se' | 'sw';
+export type FloatingWindowVisualMode = 'window' | 'minimized' | 'maximized';
 
 interface WindowRect {
     x: number;
@@ -34,14 +38,23 @@ type ActiveInteraction = MoveInteraction | ResizeInteraction | null;
     styleUrls: ['./ventana-detalle-flotante.component.sass'],
     standalone: false
 })
-export class VentanaDetalleFlotanteComponent {
+export class VentanaDetalleFlotanteComponent implements OnInit, OnChanges {
     @Input() titulo = 'Sin nombre - En creación';
     @Input() bloqueadaPorOverlay = false;
+    @Input() minWidth = 560;
+    @Input() minHeight = 340;
+    @Input() titleBarHeight = 44;
+    @Input() restoredPlacementInput: FloatingWindowPlacementRestored | null = null;
+    @Input() minimizedPlacementInput: FloatingWindowPlacementMinimized | null = null;
+    @Input() windowMode: FloatingWindowVisualMode | null = null;
+    @Input() zIndex: number | null = null;
+    @Input() persistPreviewPlacements = true;
     @Output() cerrarSolicitado: EventEmitter<void> = new EventEmitter<void>();
+    @Output() windowModeChange: EventEmitter<FloatingWindowVisualMode> = new EventEmitter<FloatingWindowVisualMode>();
+    @Output() restoredPlacementChange: EventEmitter<FloatingWindowPlacementRestored | null> = new EventEmitter<FloatingWindowPlacementRestored | null>();
+    @Output() minimizedPlacementChange: EventEmitter<FloatingWindowPlacementMinimized | null> = new EventEmitter<FloatingWindowPlacementMinimized | null>();
+    @Output() focoSolicitado: EventEmitter<void> = new EventEmitter<void>();
 
-    readonly minWidth = 560;
-    readonly minHeight = 340;
-    readonly titleBarHeight = 44;
     private readonly viewportPadding = 12;
     private readonly minMinimizedWidth = 220;
     private readonly controlButtonWidth = 34;
@@ -57,24 +70,41 @@ export class VentanaDetalleFlotanteComponent {
     isMaximized = false;
     private restoreRect: WindowRect | null = null;
     private activeInteraction: ActiveInteraction = null;
-    private minimizedPlacement: NuevoPersonajePreviewMinimizada | null = null;
-    private restoredPlacement: NuevoPersonajePreviewRestaurada | null = null;
+    private minimizedPlacement: FloatingWindowPlacementMinimized | null = null;
+    private restoredPlacement: FloatingWindowPlacementRestored | null = null;
     private moveHasDelta = false;
+    private initialized = false;
 
     constructor(private userSettingsSvc?: UserSettingsService) { }
 
     ngOnInit(): void {
         this.rect = this.getInitialRect();
-        this.cargarPlacementsGuardados();
+        this.initialized = true;
+        if (this.persistPreviewPlacements)
+            void this.cargarPlacementsGuardados();
+        else
+            this.aplicarEstadoExterno();
     }
 
     ngOnChanges(changes: SimpleChanges): void {
-        if (changes['titulo'] && this.isMinimized) {
+        if (changes['titulo'] && this.isMinimized)
             this.rect = this.clampRectToViewport(this.rect);
-        }
+
+        if (!this.initialized || this.persistPreviewPlacements)
+            return;
+
+        if (changes['restoredPlacementInput'] || changes['minimizedPlacementInput'] || changes['windowMode'])
+            this.aplicarEstadoExterno();
+    }
+
+    onContainerPointerDown(): void {
+        if (this.bloqueadaPorOverlay)
+            return;
+        this.focoSolicitado.emit();
     }
 
     onTitleBarPointerDown(event: PointerEvent): void {
+        this.onContainerPointerDown();
         if (event.button !== 0 || this.isMaximized || this.bloqueadaPorOverlay)
             return;
 
@@ -93,6 +123,7 @@ export class VentanaDetalleFlotanteComponent {
     }
 
     onResizePointerDown(event: PointerEvent, direction: ResizeDirection): void {
+        this.onContainerPointerDown();
         if (event.button !== 0 || this.isMaximized || this.isMinimized || this.bloqueadaPorOverlay)
             return;
 
@@ -111,14 +142,14 @@ export class VentanaDetalleFlotanteComponent {
         if (this.bloqueadaPorOverlay)
             return;
 
+        this.onContainerPointerDown();
         const minimizando = !this.isMinimized;
         if (minimizando && !this.isMaximized)
             this.guardarPlacementRestaurado();
         if (minimizando && this.isMaximized) {
             this.isMaximized = false;
-            if (this.restoreRect) {
+            if (this.restoreRect)
                 this.rect = this.clampRectToViewport(this.restoreRect);
-            }
             this.restoreRect = null;
         }
 
@@ -131,24 +162,29 @@ export class VentanaDetalleFlotanteComponent {
                 this.rect = restoredRect;
         }
         this.rect = this.clampRectToViewport(this.rect);
+        this.emitModeChange();
     }
 
     toggleMaximize(): void {
         if (this.bloqueadaPorOverlay)
             return;
+
+        this.onContainerPointerDown();
         if (this.isMaximized) {
             this.restoreFromSnapshot();
+            this.emitModeChange();
             return;
         }
 
-        if (this.isMinimized) {
+        if (this.isMinimized)
             this.restoreRect = this.getRestoredRectGuardado() ?? { ...this.rect };
-        } else {
+        else {
             this.guardarPlacementRestaurado();
             this.restoreRect = { ...this.rect };
         }
         this.isMinimized = false;
         this.isMaximized = true;
+        this.emitModeChange();
     }
 
     solicitarCierre(): void {
@@ -158,25 +194,26 @@ export class VentanaDetalleFlotanteComponent {
     }
 
     get containerStyle(): Record<string, string> {
+        const style: Record<string, string> = {};
         if (this.isMaximized) {
             const viewport = this.getViewport();
             const pad = this.viewportPadding;
-            return {
-                left: `${pad}px`,
-                top: `${pad}px`,
-                width: `${Math.max(this.minWidth, viewport.width - (pad * 2))}px`,
-                height: `${Math.max(this.minHeight, viewport.height - (pad * 2))}px`,
-            };
+            style['left'] = `${pad}px`;
+            style['top'] = `${pad}px`;
+            style['width'] = `${Math.max(this.minWidth, viewport.width - (pad * 2))}px`;
+            style['height'] = `${Math.max(this.minHeight, viewport.height - (pad * 2))}px`;
+        } else {
+            const width = this.isMinimized ? this.getMinimizedWidth() : this.rect.width;
+            const height = this.isMinimized ? this.titleBarHeight : this.rect.height;
+            style['left'] = `${this.rect.x}px`;
+            style['top'] = `${this.rect.y}px`;
+            style['width'] = `${width}px`;
+            style['height'] = `${height}px`;
         }
 
-        const width = this.isMinimized ? this.getMinimizedWidth() : this.rect.width;
-        const height = this.isMinimized ? this.titleBarHeight : this.rect.height;
-        return {
-            left: `${this.rect.x}px`,
-            top: `${this.rect.y}px`,
-            width: `${width}px`,
-            height: `${height}px`,
-        };
+        if (Number.isFinite(this.zIndex))
+            style['z-index'] = `${Math.trunc(Number(this.zIndex))}`;
+        return style;
     }
 
     get tituloVisible(): string {
@@ -224,11 +261,26 @@ export class VentanaDetalleFlotanteComponent {
         this.moveHasDelta = false;
     }
 
+    private aplicarEstadoExterno(): void {
+        this.minimizedPlacement = this.clonePlacementMinimized(this.minimizedPlacementInput);
+        this.restoredPlacement = this.clonePlacementRestored(this.restoredPlacementInput);
+
+        const restoredRect = this.getRestoredRectGuardado();
+        if (restoredRect)
+            this.rect = this.clampRectToViewport(restoredRect);
+
+        const mode = this.windowMode ?? 'window';
+        this.isMinimized = mode === 'minimized';
+        this.isMaximized = mode === 'maximized';
+        this.restoreRect = restoredRect ? { ...restoredRect } : this.restoreRect;
+        if (this.isMinimized)
+            this.aplicarPlacementMinimizadoGuardado();
+    }
+
     private restoreFromSnapshot(): void {
         this.isMaximized = false;
-        if (this.restoreRect) {
+        if (this.restoreRect)
             this.rect = this.clampRectToViewport(this.restoreRect);
-        }
         this.restoreRect = null;
     }
 
@@ -280,7 +332,7 @@ export class VentanaDetalleFlotanteComponent {
     }
 
     private ensureMinSize(rect: WindowRect, direction: ResizeDirection): WindowRect {
-        let next = { ...rect };
+        const next = { ...rect };
         if (next.width < this.minWidth) {
             if (direction.includes('w'))
                 next.x = next.x - (this.minWidth - next.width);
@@ -393,6 +445,11 @@ export class VentanaDetalleFlotanteComponent {
         } catch {
             this.restoredPlacement = null;
         }
+
+        if (this.windowMode === 'minimized')
+            this.toggleMinimize();
+        if (this.windowMode === 'maximized')
+            this.toggleMaximize();
     }
 
     private aplicarPlacementMinimizadoGuardado(): void {
@@ -413,9 +470,6 @@ export class VentanaDetalleFlotanteComponent {
     }
 
     private guardarPlacementMinimizado(): void {
-        if (!this.userSettingsSvc)
-            return;
-
         const viewport = this.getViewport();
         const width = this.getMinimizedWidth();
         const centerX = this.rect.x + (width / 2);
@@ -428,6 +482,10 @@ export class VentanaDetalleFlotanteComponent {
             top,
             updatedAt: Date.now(),
         };
+        this.minimizedPlacementChange.emit(this.clonePlacementMinimized(this.minimizedPlacement));
+        if (!this.persistPreviewPlacements || !this.userSettingsSvc)
+            return;
+
         this.userSettingsSvc.savePreviewMinimizada({
             side,
             top,
@@ -462,7 +520,8 @@ export class VentanaDetalleFlotanteComponent {
             height,
             updatedAt: Date.now(),
         };
-        if (!this.userSettingsSvc)
+        this.restoredPlacementChange.emit(this.clonePlacementRestored(this.restoredPlacement));
+        if (!this.persistPreviewPlacements || !this.userSettingsSvc)
             return;
 
         this.userSettingsSvc.savePreviewRestaurada({
@@ -473,5 +532,25 @@ export class VentanaDetalleFlotanteComponent {
         }).catch(() => {
             // Ignorado: si falla el guardado remoto, se mantiene la última geometría local.
         });
+    }
+
+    private emitModeChange(): void {
+        this.windowModeChange.emit(this.resolveMode());
+    }
+
+    private resolveMode(): FloatingWindowVisualMode {
+        if (this.isMaximized)
+            return 'maximized';
+        if (this.isMinimized)
+            return 'minimized';
+        return 'window';
+    }
+
+    private clonePlacementMinimized(source: FloatingWindowPlacementMinimized | null): FloatingWindowPlacementMinimized | null {
+        return source ? { ...source } : null;
+    }
+
+    private clonePlacementRestored(source: FloatingWindowPlacementRestored | null): FloatingWindowPlacementRestored | null {
+        return source ? { ...source } : null;
     }
 }

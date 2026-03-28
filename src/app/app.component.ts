@@ -4,6 +4,7 @@ import Swal from 'sweetalert2';
 import { AdminRoleRequestNotifierService } from './services/admin-role-request-notifier.service';
 import { CampaignRealtimeSyncService } from './services/campaign-realtime-sync.service';
 import { ChatAlertService } from './services/chat-alert.service';
+import { ChatFloatingService } from './services/chat-floating.service';
 import { ChatRealtimeService } from './services/chat-realtime.service';
 import { SocialAlertPreferencesService } from './services/social-alert-preferences.service';
 
@@ -24,6 +25,7 @@ export class AppComponent implements OnInit, OnDestroy {
         private adminRoleRequestNotifierSvc: AdminRoleRequestNotifierService,
         private campaignRealtimeSyncSvc: CampaignRealtimeSyncService,
         private chatRealtimeSvc: ChatRealtimeService,
+        private chatFloatingSvc: ChatFloatingService,
         private chatAlertSvc: ChatAlertService,
         private socialAlertPrefsSvc: SocialAlertPreferencesService,
     ) { }
@@ -32,6 +34,7 @@ export class AppComponent implements OnInit, OnDestroy {
         this.configurarSwalGlobal();
         this.adminRoleRequestNotifierSvc.init();
         this.chatRealtimeSvc.init();
+        this.chatFloatingSvc.init();
         this.campaignRealtimeSyncSvc.init();
         this.socialAlertPrefsSvc.init();
         this.chatAlertSvc.init();

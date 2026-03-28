@@ -1,12 +1,18 @@
 import { Injectable } from '@angular/core';
 import { Auth, onAuthStateChanged } from '@angular/fire/auth';
 import {
+    ChatFloatingBubbleState,
+    ChatFloatingSettings,
+    ChatFloatingWindowState,
+    FloatingWindowPlacementMinimized,
+    FloatingWindowPlacementRestored,
     NuevoPersonajeGeneradorConfig,
     NuevoPersonajePreviewMinimizada,
     NuevoPersonajePreviewRestaurada,
     UserSettingsV1,
     createDefaultUserSettings,
 } from '../interfaces/user-settings';
+import { FirebaseInjectionContextService } from './firebase-injection-context.service';
 import { UserProfileApiService } from './user-profile-api.service';
 
 const GENERADOR_MIGRATION_FLAG_PATH = 'migrations/generador_config_local_v1_done';
@@ -19,17 +25,21 @@ export class UserSettingsService {
     private settingsCache: UserSettingsV1 | null = null;
     private migrationFlags = new Set<string>();
 
-    constructor(private auth: Auth, private userProfileApiSvc: UserProfileApiService) {
+    constructor(
+        private auth: Auth,
+        private userProfileApiSvc: UserProfileApiService,
+        private firebaseContextSvc: FirebaseInjectionContextService
+    ) {
         this.authReadyPromise = new Promise((resolve) => {
             let unsubscribe: () => void = () => undefined;
-            unsubscribe = onAuthStateChanged(
+            unsubscribe = this.firebaseContextSvc.run(() => onAuthStateChanged(
                 this.auth,
                 () => {
                     unsubscribe();
                     resolve();
                 },
                 () => resolve()
-            );
+            ));
         });
     }
 
@@ -170,6 +180,8 @@ export class UserSettingsService {
             visibilidadPorDefectoPersonajes: settings.perfil.visibilidadPorDefectoPersonajes === true,
             mostrarPerfilPublico: settings.perfil.mostrarPerfilPublico !== false,
             allowDirectMessagesFromNonFriends: settings.perfil.allowDirectMessagesFromNonFriends === true,
+            autoAbrirVentanaChats: settings.perfil.autoAbrirVentanaChats !== false,
+            permitirBurbujasChat: settings.perfil.permitirBurbujasChat !== false,
             notificaciones: this.normalizeNotificationSettings(settings.perfil.notificaciones),
         };
     }
@@ -182,6 +194,8 @@ export class UserSettingsService {
                 visibilidadPorDefectoPersonajes: data.visibilidadPorDefectoPersonajes ?? settings.perfil.visibilidadPorDefectoPersonajes,
                 mostrarPerfilPublico: data.mostrarPerfilPublico ?? settings.perfil.mostrarPerfilPublico,
                 allowDirectMessagesFromNonFriends: data.allowDirectMessagesFromNonFriends ?? settings.perfil.allowDirectMessagesFromNonFriends,
+                autoAbrirVentanaChats: data.autoAbrirVentanaChats ?? settings.perfil.autoAbrirVentanaChats,
+                permitirBurbujasChat: data.permitirBurbujasChat ?? settings.perfil.permitirBurbujasChat,
                 notificaciones: this.normalizeNotificationSettings(data.notificaciones ?? settings.perfil.notificaciones),
             },
         });
@@ -228,6 +242,14 @@ export class UserSettingsService {
     }
 
     private normalizePreviewMinimizada(raw: any): NuevoPersonajePreviewMinimizada | null {
+        return this.normalizeFloatingPlacementMinimized(raw);
+    }
+
+    private normalizePreviewRestaurada(raw: any): NuevoPersonajePreviewRestaurada | null {
+        return this.normalizeFloatingPlacementRestored(raw);
+    }
+
+    private normalizeFloatingPlacementMinimized(raw: any): FloatingWindowPlacementMinimized | null {
         if (!raw || typeof raw !== 'object')
             return null;
 
@@ -251,7 +273,7 @@ export class UserSettingsService {
         };
     }
 
-    private normalizePreviewRestaurada(raw: any): NuevoPersonajePreviewRestaurada | null {
+    private normalizeFloatingPlacementRestored(raw: any): FloatingWindowPlacementRestored | null {
         if (!raw || typeof raw !== 'object')
             return null;
 
@@ -276,6 +298,65 @@ export class UserSettingsService {
             width,
             height,
             updatedAt: Math.trunc(updatedAt),
+        };
+    }
+
+    private normalizeChatFloatingWindowState(raw: any): ChatFloatingWindowState | null {
+        if (!raw || typeof raw !== 'object')
+            return null;
+
+        const mode = `${raw?.mode ?? ''}`.trim().toLowerCase();
+        const updatedAt = Number(raw?.updatedAt);
+        if ((mode !== 'window' && mode !== 'minimized' && mode !== 'maximized') || !Number.isFinite(updatedAt))
+            return null;
+
+        return {
+            version: 1,
+            mode: mode as ChatFloatingWindowState['mode'],
+            restoredPlacement: this.normalizeFloatingPlacementRestored(raw?.restoredPlacement),
+            minimizedPlacement: this.normalizeFloatingPlacementMinimized(raw?.minimizedPlacement),
+            updatedAt: Math.trunc(updatedAt),
+        };
+    }
+
+    private normalizeChatFloatingBubbleState(raw: any): ChatFloatingBubbleState | null {
+        if (!raw || typeof raw !== 'object')
+            return null;
+
+        const conversationId = Math.trunc(Number(raw?.conversationId));
+        const mode = `${raw?.mode ?? ''}`.trim().toLowerCase();
+        const updatedAt = Number(raw?.updatedAt);
+        if (!Number.isFinite(conversationId) || conversationId <= 0)
+            return null;
+        if ((mode !== 'window' && mode !== 'bubble' && mode !== 'maximized') || !Number.isFinite(updatedAt))
+            return null;
+
+        return {
+            version: 1,
+            conversationId,
+            mode: mode as ChatFloatingBubbleState['mode'],
+            restoredPlacement: this.normalizeFloatingPlacementRestored(raw?.restoredPlacement),
+            bubblePlacement: this.normalizeFloatingPlacementMinimized(raw?.bubblePlacement),
+            updatedAt: Math.trunc(updatedAt),
+        };
+    }
+
+    private normalizeChatFloatingSettings(raw: any): ChatFloatingSettings | null {
+        if (!raw || typeof raw !== 'object')
+            return null;
+
+        const bubbleMap = new Map<number, ChatFloatingBubbleState>();
+        const source = Array.isArray(raw?.burbujas_abiertas) ? raw.burbujas_abiertas : [];
+        source.forEach((item: any) => {
+            const normalized = this.normalizeChatFloatingBubbleState(item);
+            if (normalized)
+                bubbleMap.set(normalized.conversationId, normalized);
+        });
+
+        return {
+            version: 1,
+            ventana_chat: this.normalizeChatFloatingWindowState(raw?.ventana_chat),
+            burbujas_abiertas: [...bubbleMap.values()].sort((a, b) => a.updatedAt - b.updatedAt),
         };
     }
 
@@ -344,8 +425,11 @@ export class UserSettingsService {
                 visibilidadPorDefectoPersonajes: raw?.perfil?.visibilidadPorDefectoPersonajes === true,
                 mostrarPerfilPublico: raw?.perfil?.mostrarPerfilPublico !== false,
                 allowDirectMessagesFromNonFriends: raw?.perfil?.allowDirectMessagesFromNonFriends === true,
+                autoAbrirVentanaChats: raw?.perfil?.autoAbrirVentanaChats !== false,
+                permitirBurbujasChat: raw?.perfil?.permitirBurbujasChat !== false,
                 notificaciones: this.normalizeNotificationSettings(raw?.perfil?.notificaciones),
             },
+            mensajeria_flotante: this.normalizeChatFloatingSettings(raw?.mensajeria_flotante),
         };
     }
 

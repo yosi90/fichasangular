@@ -98,7 +98,6 @@ export class DeidadService {
 
     getDeidad(id: number): Observable<DeidadDetalle> {
         return new Observable((observador) => {
-            const dbRef = ref(this.db, `Deidades/${id}`);
             let unsubscribe: Unsubscribe;
 
             const onNext = (snapshot: any) => {
@@ -134,14 +133,16 @@ export class DeidadService {
                 observador.error(error);
             };
 
-            unsubscribe = this.firebaseContextSvc.run(() => onValue(dbRef, onNext, onError));
+            unsubscribe = this.firebaseContextSvc.run(() => {
+                const dbRef = ref(this.db, `Deidades/${id}`);
+                return onValue(dbRef, onNext, onError);
+            });
             return () => unsubscribe();
         });
     }
 
     getDeidades(): Observable<DeidadDetalle[]> {
         return new Observable((observador) => {
-            const dbRef = ref(this.db, "Deidades");
             let unsubscribe: Unsubscribe;
 
             const onNext = (snapshot: any) => {
@@ -159,7 +160,10 @@ export class DeidadService {
                 observador.error(error);
             };
 
-            unsubscribe = this.firebaseContextSvc.run(() => onValue(dbRef, onNext, onError));
+            unsubscribe = this.firebaseContextSvc.run(() => {
+                const dbRef = ref(this.db, "Deidades");
+                return onValue(dbRef, onNext, onError);
+            });
             return () => unsubscribe();
         });
     }

@@ -1,4 +1,4 @@
-<div class="ventana-flotante" [ngStyle]="containerStyle" [class.ventana-bloqueada]="bloqueadaPorOverlay">
+<div class="ventana-flotante" [ngStyle]="containerStyle" [class.ventana-bloqueada]="bloqueadaPorOverlay" (pointerdown)="onContainerPointerDown()">
     <div class="ventana-header" (pointerdown)="onTitleBarPointerDown($event)">
         <div class="ventana-titulo">{{tituloVisible}}</div>
         <div class="ventana-acciones no-drag">

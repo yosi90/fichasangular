@@ -1,21 +1,16 @@
 import { Auth, User } from '@angular/fire/auth';
 import { Database } from '@angular/fire/database';
-import { UsuarioUpsertRequestDto, UsuarioUpsertResponseDto } from '../interfaces/usuarios-api';
 import { FirebaseInjectionContextService } from './firebase-injection-context.service';
 import { UserService } from './user.service';
-import { UsuariosApiService } from './usuarios-api.service';
 
 class UserServiceTestDouble extends UserService {
     private authHandler?: ((firebaseUser: User | null) => void) | null;
-    private upsertError: Error | null = null;
     private aclByUid = new Map<string, any>();
     private aclWatchers = new Map<string, { onData: (rawAcl: any) => void; onError: () => void; }>();
     private registerError: any = null;
     private loginError: any = null;
     private resetError: any = null;
     private googleError: any = null;
-
-    upsertPayloads: UsuarioUpsertRequestDto[] = [];
     signOutCalls = 0;
     persistProfileCalls = 0;
     registerCalls: Array<{ email: string; password: string; }> = [];
@@ -26,7 +21,6 @@ class UserServiceTestDouble extends UserService {
         super(
             {} as Auth,
             {} as Database,
-            {} as UsuariosApiService,
             { run: <T>(fn: () => T) => fn() } as FirebaseInjectionContextService
         );
     }
@@ -67,25 +61,6 @@ class UserServiceTestDouble extends UserService {
         return Promise.resolve();
     }
 
-    protected override async upsertUserApi(payload: UsuarioUpsertRequestDto): Promise<UsuarioUpsertResponseDto> {
-        this.upsertPayloads.push(payload);
-        if (this.upsertError)
-            throw this.upsertError;
-
-        return {
-            status: 'created',
-            userId: 'user-id-1',
-            uid: `${payload.uid ?? ''}`,
-            acl: {
-                uid: `${payload.uid ?? ''}`,
-                role: payload.role ?? 'jugador',
-                admin: payload.role === 'admin',
-                banned: payload.banned === true,
-                permissionsCreate: payload.permissionsCreate ?? [],
-            },
-        };
-    }
-
     protected override watchAclPath(uid: string, onData: (rawAcl: any) => void, onError: () => void): () => void {
         this.aclWatchers.set(uid, { onData, onError });
         onData(this.aclByUid.get(uid) ?? null);
@@ -112,10 +87,6 @@ class UserServiceTestDouble extends UserService {
 
     emitAclError(uid: string): void {
         this.aclWatchers.get(uid)?.onError();
-    }
-
-    setUpsertError(error: Error | null): void {
-        this.upsertError = error;
     }
 
     setRegisterError(error: any): void {
@@ -161,7 +132,6 @@ describe('UserService', () => {
         expect(service.Usuario.nombre).toBe('Aldric');
         expect(service.Usuario.correo).toBe('aldric@test.com');
         expect(loggedIn).toBeTrue();
-        expect(service.upsertPayloads.length).toBe(1);
         expect(service.persistProfileCalls).toBe(1);
     });
 
@@ -230,9 +200,8 @@ describe('UserService', () => {
         expect(capturados[capturados.length - 1]).toBe(0);
     });
 
-    it('fallo de upsert API no tumba permisos si ACL RTDB es admin', async () => {
+    it('la hidratacion no depende de un upsert API para conservar permisos admin desde RTDB', async () => {
         const service = new UserServiceTestDouble();
-        service.setUpsertError(new Error('api down'));
         service.emitAcl('uid-admin', {
             roles: { admin: true, type: 'admin' },
             status: { banned: false },

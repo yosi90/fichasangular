@@ -79,7 +79,6 @@ export class HabilidadService {
 
     private getColeccion(path: string): Observable<HabilidadBasicaDetalle[]> {
         return new Observable((observador) => {
-            const dbRef = ref(this.db, path);
             let unsubscribe: Unsubscribe;
 
             const onNext = (snapshot: any) => {
@@ -98,7 +97,10 @@ export class HabilidadService {
                 observador.error(error);
             };
 
-            unsubscribe = this.firebaseContextSvc.run(() => onValue(dbRef, onNext, onError));
+            unsubscribe = this.firebaseContextSvc.run(() => {
+                const dbRef = ref(this.db, path);
+                return onValue(dbRef, onNext, onError);
+            });
 
             return () => {
                 unsubscribe();

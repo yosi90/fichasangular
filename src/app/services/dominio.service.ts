@@ -59,7 +59,6 @@ export class DominioService {
 
     getDominio(id: number): Observable<DominioDetalle> {
         return new Observable((observador) => {
-            const dbRef = ref(this.db, `Dominios/${id}`);
             let unsubscribe: Unsubscribe;
 
             const onNext = (snapshot: any) => {
@@ -95,14 +94,16 @@ export class DominioService {
                 observador.error(error);
             };
 
-            unsubscribe = this.firebaseContextSvc.run(() => onValue(dbRef, onNext, onError));
+            unsubscribe = this.firebaseContextSvc.run(() => {
+                const dbRef = ref(this.db, `Dominios/${id}`);
+                return onValue(dbRef, onNext, onError);
+            });
             return () => unsubscribe();
         });
     }
 
     getDominios(): Observable<DominioDetalle[]> {
         return new Observable((observador) => {
-            const dbRef = ref(this.db, "Dominios");
             let unsubscribe: Unsubscribe;
 
             const onNext = (snapshot: any) => {
@@ -120,7 +121,10 @@ export class DominioService {
                 observador.error(error);
             };
 
-            unsubscribe = this.firebaseContextSvc.run(() => onValue(dbRef, onNext, onError));
+            unsubscribe = this.firebaseContextSvc.run(() => {
+                const dbRef = ref(this.db, "Dominios");
+                return onValue(dbRef, onNext, onError);
+            });
             return () => unsubscribe();
         });
     }

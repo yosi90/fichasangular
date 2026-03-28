@@ -518,4 +518,46 @@ describe('ChatRealtimeService', () => {
         expect(scheduleReconnectSpy).not.toHaveBeenCalled();
         expect(consoleErrorSpy).toHaveBeenCalled();
     }));
+
+    it('detiene los reintentos websocket automaticos tras errores repetidos de gateway publicado', fakeAsync(() => {
+        const userSvc = {
+            isLoggedIn$: new BehaviorSubject<boolean>(false),
+            CurrentUserUid: 'uid-propio',
+        } as any;
+        const requestWebSocketTicket = jasmine.createSpy('requestWebSocketTicket').and.rejectWith(
+            new ProfileApiError('Gateway caido.', 'CHAT_GATEWAY_DOWN', 502)
+        );
+        const service = new ChatRealtimeService(
+            { currentUser: { getIdToken: async () => 'token' } } as any,
+            userSvc,
+            {
+                parseWebSocketEvent: (raw: any) => raw,
+                listConversations: jasmine.createSpy('listConversations').and.resolveTo({
+                    items: [],
+                    unreadUserCount: 0,
+                    unreadSystemCount: 0,
+                }),
+                requestWebSocketTicket,
+                buildWebSocketUrl: jasmine.createSpy('buildWebSocketUrl').and.returnValue('ws://test/ws/chat'),
+            } as any,
+        );
+        const scheduleReconnectSpy = spyOn<any>(service, 'scheduleReconnect').and.callThrough();
+        const clearReconnectSpy = spyOn<any>(service, 'clearReconnect').and.callThrough();
+        spyOn(window, 'setTimeout').and.returnValue(123 as any);
+        spyOn(window, 'clearTimeout');
+        const consoleWarnSpy = spyOn(console, 'warn');
+
+        (service as any).connectWebSocket();
+        tick();
+        expect(scheduleReconnectSpy).toHaveBeenCalledTimes(1);
+        expect((service as any).suppressAutomaticRealtimeReconnect).toBeFalse();
+
+        clearReconnectSpy();
+        (service as any).connectWebSocket();
+        tick();
+
+        expect(scheduleReconnectSpy).toHaveBeenCalledTimes(1);
+        expect((service as any).suppressAutomaticRealtimeReconnect).toBeTrue();
+        expect(consoleWarnSpy).toHaveBeenCalled();
+    }));
 });

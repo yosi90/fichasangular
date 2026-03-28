@@ -16,11 +16,9 @@ import { UserPrivateProfile } from '../interfaces/user-account';
 import { Usuario } from '../interfaces/usuario';
 import { EMPTY_USER_ACL, UserAcl, UserRole, normalizeUserAcl } from '../interfaces/user-acl';
 import { AuthProviderType, UserProfile } from '../interfaces/user-profile';
-import { UsuarioUpsertRequestDto, UsuarioUpsertResponseDto } from '../interfaces/usuarios-api';
 import { FirebaseInjectionContextService } from './firebase-injection-context.service';
 import { PrivateUserFirestoreService } from './private-user-firestore.service';
 import { UserProfileApiService } from './user-profile-api.service';
-import { UsuariosApiService } from './usuarios-api.service';
 
 @Injectable({
     providedIn: 'root'
@@ -40,7 +38,6 @@ export class UserService {
     private aclSubject = new BehaviorSubject<UserAcl>({ ...EMPTY_USER_ACL });
     private privateProfileSubject = new BehaviorSubject<UserPrivateProfile | null>(null);
     private privateProfileBase: UserPrivateProfile | null = null;
-    private upsertApiDeshabilitadoEnSesion = false;
     public isLoggedIn$ = this.isLoggedInSubject.asObservable();
     public permisos$ = this.permisosSubject.asObservable();
     public isBanned$ = this.isBannedSubject.asObservable();
@@ -63,7 +60,6 @@ export class UserService {
     constructor(
         private auth: Auth,
         private db: Database,
-        private usuariosApiSvc: UsuariosApiService,
         private firebaseContextSvc: FirebaseInjectionContextService,
         private userProfileApiSvc?: UserProfileApiService,
         private privateUserFirestoreSvc?: PrivateUserFirestoreService
@@ -251,10 +247,6 @@ export class UserService {
 
     protected authSendPasswordResetEmail(email: string): Promise<void> {
         return sendPasswordResetEmail(this.auth, email);
-    }
-
-    protected upsertUserApi(payload: UsuarioUpsertRequestDto): Promise<UsuarioUpsertResponseDto> {
-        return this.usuariosApiSvc.upsertUser(payload);
     }
 
     protected watchAclPath(uid: string, onData: (rawAcl: any) => void, onError: () => void): () => void {
@@ -506,17 +498,6 @@ export class UserService {
         if (uid.length < 1)
             return;
 
-        if (!this.upsertApiDeshabilitadoEnSesion) {
-            try {
-                const upsertPayload = this.buildUpsertPayload(firebaseUser);
-                await this.upsertUserApi(upsertPayload);
-            } catch (error: any) {
-                if (this.debeDeshabilitarUpsertApi(error))
-                    this.upsertApiDeshabilitadoEnSesion = true;
-                // Backup best-effort: el runtime de permisos vive en RTDB.
-            }
-        }
-
         if (!this.isActiveUser(uid))
             return;
         try {
@@ -535,33 +516,6 @@ export class UserService {
         } catch {
             // El perfil privado mejora la UI pero no bloquea la sesión.
         }
-    }
-
-    private debeDeshabilitarUpsertApi(error: any): boolean {
-        const message = `${error?.message ?? error ?? ''}`.toLowerCase();
-        // HTTP 0 suele indicar CORS/bloqueo de red en navegador.
-        return message.includes('http 0')
-            || message.includes('cors')
-            || message.includes('failed to fetch')
-            || message.includes('network');
-    }
-
-    private buildUpsertPayload(firebaseUser: User): UsuarioUpsertRequestDto {
-        const uid = `${firebaseUser.uid ?? ''}`.trim();
-        const emailRaw = `${firebaseUser.email ?? ''}`.trim();
-        const email = this.truncate(emailRaw.length > 0 ? emailRaw : `${uid}@sin-email.local`, 60);
-        const displayNameRaw = `${firebaseUser.displayName ?? ''}`.trim();
-        const displayName = this.truncate(
-            displayNameRaw.length > 0 ? displayNameRaw : this.fallbackDisplayName(email),
-            150
-        );
-
-        return {
-            uid,
-            displayName,
-            email,
-            authProvider: this.resolveAuthProvider(firebaseUser),
-        };
     }
 
     private fallbackDisplayName(email: string): string {

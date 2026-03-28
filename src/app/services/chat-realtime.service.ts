@@ -29,6 +29,8 @@ export class ChatRealtimeService implements OnDestroy {
     private refreshDebounceTimer: number | null = null;
     private refreshInFlight = false;
     private initialized = false;
+    private bootstrapFailureCount = 0;
+    private suppressAutomaticRealtimeReconnect = false;
 
     readonly conversations$ = this.conversationsSubject.asObservable();
     readonly unreadUserCount$ = this.unreadUserCountSubject.asObservable();
@@ -135,11 +137,15 @@ export class ChatRealtimeService implements OnDestroy {
     }
 
     private async startForCurrentSession(): Promise<void> {
+        this.resetRealtimeBootstrapState();
         await this.refreshConversations(true);
         await this.connectWebSocket();
     }
 
     private async connectWebSocket(): Promise<void> {
+        if (this.suppressAutomaticRealtimeReconnect)
+            return;
+
         this.closeSocket();
         this.clearPolling();
 
@@ -161,6 +167,7 @@ export class ChatRealtimeService implements OnDestroy {
             this.socket.onopen = () => {
                 this.clearPolling();
                 this.clearReconnect();
+                this.resetRealtimeBootstrapState();
                 this.startPingLoop();
             };
             this.socket.onmessage = (event) => this.onSocketMessage(event.data);
@@ -176,8 +183,9 @@ export class ChatRealtimeService implements OnDestroy {
             };
         } catch (error) {
             this.startPolling();
+            const shouldRetry = this.shouldRetryRealtimeBootstrap(error);
             this.reportRealtimeBootstrapError(error);
-            if (this.shouldRetryRealtimeBootstrap(error))
+            if (shouldRetry)
                 this.scheduleReconnect();
         }
     }
@@ -353,6 +361,7 @@ export class ChatRealtimeService implements OnDestroy {
         this.activeConversationIdSubject.next(null);
         this.notifiedMessageIdsByConversation.clear();
         this.handledAlertKeys.clear();
+        this.resetRealtimeBootstrapState();
     }
 
     private clearQueuedConversationRefresh(): void {
@@ -363,7 +372,20 @@ export class ChatRealtimeService implements OnDestroy {
     }
 
     private shouldRetryRealtimeBootstrap(error: unknown): boolean {
-        return !this.isPublishedRealtimeContractError(error);
+        if (this.isPublishedRealtimeContractError(error)) {
+            this.suppressAutomaticRealtimeReconnect = true;
+            return false;
+        }
+
+        if (this.isGatewayBootstrapUnavailableError(error)) {
+            this.bootstrapFailureCount += 1;
+            if (this.bootstrapFailureCount >= 2) {
+                this.suppressAutomaticRealtimeReconnect = true;
+                return false;
+            }
+        }
+
+        return true;
     }
 
     private reportRealtimeBootstrapError(error: unknown): void {
@@ -372,11 +394,29 @@ export class ChatRealtimeService implements OnDestroy {
                 '[chat-realtime] El ticket realtime no devolvio websocketUrl en despliegue no local. Se mantiene polling pero no se reintentara websocket automaticamente.',
                 error
             );
+            return;
+        }
+
+        if (this.isGatewayBootstrapUnavailableError(error) && this.bootstrapFailureCount >= 2) {
+            console.warn(
+                '[chat-realtime] El gateway realtime publicado sigue devolviendo error de red/gateway. Se mantiene polling y se detienen los reintentos websocket automaticos en esta sesion.',
+                error
+            );
         }
     }
 
     private isPublishedRealtimeContractError(error: unknown): boolean {
         return error instanceof ProfileApiError && error.code === 'CHAT_WS_URL_MISSING';
+    }
+
+    private isGatewayBootstrapUnavailableError(error: unknown): boolean {
+        return error instanceof ProfileApiError
+            && [0, 502, 503, 504].includes(Number(error.status ?? 0));
+    }
+
+    private resetRealtimeBootstrapState(): void {
+        this.bootstrapFailureCount = 0;
+        this.suppressAutomaticRealtimeReconnect = false;
     }
 
     private buildMessageAlertCandidate(message: ChatMessage): ChatAlertCandidate | null {

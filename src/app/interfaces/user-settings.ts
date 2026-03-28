@@ -4,20 +4,49 @@ export interface NuevoPersonajeGeneradorConfig {
     updatedAt: number;
 }
 
-export interface NuevoPersonajePreviewMinimizada {
+export interface FloatingWindowPlacementMinimized {
     version: 1;
     side: 'left' | 'right';
     top: number;
     updatedAt: number;
 }
 
-export interface NuevoPersonajePreviewRestaurada {
+export interface FloatingWindowPlacementRestored {
     version: 1;
     left: number;
     top: number;
     width: number;
     height: number;
     updatedAt: number;
+}
+
+export type NuevoPersonajePreviewMinimizada = FloatingWindowPlacementMinimized;
+export type NuevoPersonajePreviewRestaurada = FloatingWindowPlacementRestored;
+
+export type ChatFloatingListWindowMode = 'window' | 'minimized' | 'maximized';
+export type ChatFloatingBubbleMode = 'window' | 'bubble' | 'maximized';
+
+export interface ChatFloatingWindowState {
+    version: 1;
+    mode: ChatFloatingListWindowMode;
+    restoredPlacement: FloatingWindowPlacementRestored | null;
+    minimizedPlacement: FloatingWindowPlacementMinimized | null;
+    updatedAt: number;
+}
+
+export interface ChatFloatingBubbleState {
+    version: 1;
+    conversationId: number;
+    mode: ChatFloatingBubbleMode;
+    restoredPlacement: FloatingWindowPlacementRestored | null;
+    bubblePlacement: FloatingWindowPlacementMinimized | null;
+    updatedAt: number;
+}
+
+export interface ChatFloatingSettings {
+    version: 1;
+    ventana_chat: ChatFloatingWindowState | null;
+    burbujas_abiertas: ChatFloatingBubbleState[];
 }
 
 export interface UserSettingsV1 {
@@ -31,6 +60,8 @@ export interface UserSettingsV1 {
         visibilidadPorDefectoPersonajes: boolean;
         mostrarPerfilPublico: boolean;
         allowDirectMessagesFromNonFriends: boolean;
+        autoAbrirVentanaChats: boolean;
+        permitirBurbujasChat: boolean;
         notificaciones: {
             mensajes: boolean;
             amistad: boolean;
@@ -38,6 +69,7 @@ export interface UserSettingsV1 {
             cuentaSistema: boolean;
         };
     };
+    mensajeria_flotante: ChatFloatingSettings | null;
 }
 
 export function createDefaultUserSettings(): UserSettingsV1 {
@@ -52,6 +84,8 @@ export function createDefaultUserSettings(): UserSettingsV1 {
             visibilidadPorDefectoPersonajes: false,
             mostrarPerfilPublico: true,
             allowDirectMessagesFromNonFriends: false,
+            autoAbrirVentanaChats: true,
+            permitirBurbujasChat: true,
             notificaciones: {
                 mensajes: true,
                 amistad: true,
@@ -59,5 +93,6 @@ export function createDefaultUserSettings(): UserSettingsV1 {
                 cuentaSistema: true,
             },
         },
+        mensajeria_flotante: null,
     };
 }

@@ -8,6 +8,7 @@ import { AppToastService } from 'src/app/services/app-toast.service';
 import { CampanaService } from 'src/app/services/campana.service';
 import { CampaignRealtimeSyncService } from 'src/app/services/campaign-realtime-sync.service';
 import { ChatApiService } from 'src/app/services/chat-api.service';
+import { ChatFloatingService } from 'src/app/services/chat-floating.service';
 import { ChatRealtimeService } from 'src/app/services/chat-realtime.service';
 import { UserProfileApiService } from 'src/app/services/user-profile-api.service';
 import { UserProfileNavigationService } from 'src/app/services/user-profile-navigation.service';
@@ -53,6 +54,8 @@ describe('UserProfileComponent', () => {
             visibilidadPorDefectoPersonajes: false,
             mostrarPerfilPublico: true,
             allowDirectMessagesFromNonFriends: false,
+            autoAbrirVentanaChats: true,
+            permitirBurbujasChat: true,
             notificaciones: {
                 mensajes: true,
                 amistad: true,
@@ -60,6 +63,7 @@ describe('UserProfileComponent', () => {
                 cuentaSistema: true,
             },
         },
+        mensajeria_flotante: null,
     };
 
     const buildCampaignPolicy = (partial: Record<string, any> = {}) => ({
@@ -169,6 +173,10 @@ describe('UserProfileComponent', () => {
                 {
                     provide: ChatRealtimeService,
                     useValue: jasmine.createSpyObj<ChatRealtimeService>('ChatRealtimeService', ['upsertConversation']),
+                },
+                {
+                    provide: ChatFloatingService,
+                    useValue: jasmine.createSpyObj<ChatFloatingService>('ChatFloatingService', ['applyProfileSettings']),
                 },
                 {
                     provide: UserProfileNavigationService,
@@ -1526,6 +1534,7 @@ describe('UserProfileComponent', () => {
 
     it('persiste los toggles de avisos y actualiza la caché síncrona', fakeAsync(() => {
         const socialAlertPrefsSvc = TestBed.inject(SocialAlertPreferencesService) as jasmine.SpyObj<SocialAlertPreferencesService>;
+        const chatFloatingSvc = TestBed.inject(ChatFloatingService) as jasmine.SpyObj<ChatFloatingService>;
         userSettingsSvc.saveSettings.and.callFake(async (payload: any) => payload);
 
         fixture.detectChanges();
@@ -1556,6 +1565,7 @@ describe('UserProfileComponent', () => {
                 cuentaSistema: false,
             },
         }));
+        expect(chatFloatingSvc.applyProfileSettings).toHaveBeenCalled();
     }));
 
     it('usa una política mínima y conservadora al abrir nueva campaña', fakeAsync(() => {

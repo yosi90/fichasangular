@@ -1,11 +1,10 @@
 import { Injectable, OnDestroy } from '@angular/core';
-import { Subscription, interval } from 'rxjs';
+import { Subscription } from 'rxjs';
 import Swal from 'sweetalert2';
 import { ChatAlertCandidate } from '../interfaces/chat';
 import { ChatApiService } from './chat-api.service';
 import { ChatRealtimeService } from './chat-realtime.service';
 import { UserProfileNavigationService } from './user-profile-navigation.service';
-import { UserProfileApiService } from './user-profile-api.service';
 import { UserService } from './user.service';
 
 @Injectable({
@@ -15,9 +14,6 @@ export class AdminRoleRequestNotifierService implements OnDestroy {
     private initialized = false;
     private adminStateSub: Subscription | null = null;
     private realtimeAlertsSub: Subscription | null = null;
-    private pollSub: Subscription | null = null;
-    private pendingCount: number | null = null;
-    private checking = false;
     private alertInFlight = false;
     private isAdminActive = false;
     private readonly handledRealtimeAlertKeys = new Set<string>();
@@ -25,7 +21,6 @@ export class AdminRoleRequestNotifierService implements OnDestroy {
 
     constructor(
         private userSvc: UserService,
-        private userProfileApiSvc: UserProfileApiService,
         private userProfileNavSvc: UserProfileNavigationService,
         private chatRealtimeSvc: ChatRealtimeService,
         private chatApiSvc: ChatApiService,
@@ -39,13 +34,9 @@ export class AdminRoleRequestNotifierService implements OnDestroy {
         this.adminStateSub = this.userSvc.esAdmin$.subscribe((isAdmin) => {
             this.isAdminActive = isAdmin === true;
             if (isAdmin === true) {
-                this.startPolling();
-                void this.checkPendingRequests(true);
                 return;
             }
 
-            this.stopPolling();
-            this.pendingCount = null;
             this.alertInFlight = false;
             this.handledRealtimeAlertKeys.clear();
             this.latestRealtimeRoleRequestAlert = null;
@@ -56,52 +47,10 @@ export class AdminRoleRequestNotifierService implements OnDestroy {
     }
 
     ngOnDestroy(): void {
-        this.stopPolling();
         this.adminStateSub?.unsubscribe();
         this.adminStateSub = null;
         this.realtimeAlertsSub?.unsubscribe();
         this.realtimeAlertsSub = null;
-    }
-
-    private startPolling(): void {
-        if (this.pollSub)
-            return;
-
-        this.pollSub = interval(5 * 60 * 1000).subscribe(() => {
-            void this.checkPendingRequests(false);
-        });
-    }
-
-    private stopPolling(): void {
-        this.pollSub?.unsubscribe();
-        this.pollSub = null;
-    }
-
-    private async checkPendingRequests(notifyOnAnyPending: boolean): Promise<void> {
-        if (this.checking)
-            return;
-        if (this.userSvc.CurrentUserUid.length < 1)
-            return;
-
-        this.checking = true;
-        try {
-            const requests = await this.userProfileApiSvc.listRoleRequests({
-                status: 'pending',
-            });
-            const count = requests.length;
-            const previous = this.pendingCount;
-            this.pendingCount = count;
-
-            if (count < 1)
-                return;
-
-            if (notifyOnAnyPending || previous === null || count > previous)
-                await this.showPendingRequestsAlert(count);
-        } catch {
-            // La notificación es best-effort y no debe romper el arranque de la app.
-        } finally {
-            this.checking = false;
-        }
     }
 
     private async handleRealtimeAlert(candidate: ChatAlertCandidate | null | undefined): Promise<void> {
@@ -121,10 +70,10 @@ export class AdminRoleRequestNotifierService implements OnDestroy {
         }
 
         this.latestRealtimeRoleRequestAlert = candidate ?? null;
-        await this.checkPendingRequests(true);
+        await this.showPendingRequestsAlert();
     }
 
-    private async showPendingRequestsAlert(count: number): Promise<void> {
+    private async showPendingRequestsAlert(): Promise<void> {
         if (this.alertInFlight)
             return;
 
@@ -133,9 +82,7 @@ export class AdminRoleRequestNotifierService implements OnDestroy {
             const result = await Swal.fire({
                 icon: 'info',
                 title: 'Tienes peticiones por supervisar',
-                text: count === 1
-                    ? 'Hay 1 solicitud de rol pendiente.'
-                    : `Hay ${count} solicitudes de rol pendientes.`,
+                text: 'Ha llegado una nueva solicitud de rol o hay pendientes por revisar.',
                 showCancelButton: true,
                 confirmButtonText: 'Revisar ahora',
                 cancelButtonText: 'Más tarde',

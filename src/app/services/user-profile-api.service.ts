@@ -159,9 +159,10 @@ export class UserProfileApiService {
             params['requestedRole'] = requestedRole;
 
         try {
+            const headers = await this.buildAuthHeaders();
             const response = await firstValueFrom(
                 this.http.get<AdminRoleRequestItem[]>(`${this.usuariosBaseUrl}/role-requests`, {
-                    headers: await this.buildAuthHeaders(),
+                    headers,
                     params,
                 })
             );
@@ -186,11 +187,12 @@ export class UserProfileApiService {
         };
 
         try {
+            const headers = await this.buildAuthHeaders();
             await firstValueFrom(
                 this.http.patch<void>(
                     `${this.usuariosBaseUrl}/role-requests/${id}`,
                     payload,
-                    { headers: await this.buildAuthHeaders() }
+                    { headers }
                 )
             );
         } catch (error) {
@@ -448,6 +450,8 @@ export class UserProfileApiService {
                 visibilidadPorDefectoPersonajes: raw?.perfil?.visibilidadPorDefectoPersonajes === true,
                 mostrarPerfilPublico: raw?.perfil?.mostrarPerfilPublico !== false,
                 allowDirectMessagesFromNonFriends: raw?.perfil?.allowDirectMessagesFromNonFriends === true,
+                autoAbrirVentanaChats: raw?.perfil?.autoAbrirVentanaChats !== false,
+                permitirBurbujasChat: raw?.perfil?.permitirBurbujasChat !== false,
                 notificaciones: {
                     mensajes: raw?.perfil?.notificaciones?.mensajes !== false,
                     amistad: raw?.perfil?.notificaciones?.amistad !== false,
@@ -455,6 +459,7 @@ export class UserProfileApiService {
                     cuentaSistema: raw?.perfil?.notificaciones?.cuentaSistema !== false,
                 },
             },
+            mensajeria_flotante: raw?.mensajeria_flotante ?? null,
         };
     }
 

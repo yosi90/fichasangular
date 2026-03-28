@@ -37,7 +37,11 @@
                         </div>
                     </mat-expansion-panel>
 
-                    <mat-expansion-panel #segundo [expanded]="solicitudesPanelExpanded">
+                    <mat-expansion-panel
+                        #segundo
+                        [expanded]="solicitudesPanelExpanded"
+                        (opened)="onSolicitudesPanelOpened()"
+                        (closed)="onSolicitudesPanelClosed()">
                         <mat-expansion-panel-header>
                             <button mat-stroked-button color="accent"
                                 matTooltip="Gestionar solicitudes de elevación de rol">

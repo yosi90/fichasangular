@@ -27,7 +27,6 @@ export class AlineamientoService {
 
     getAlineamiento(id: number): Observable<Alineamiento> {
         return new Observable((observador) => {
-            const dbRef = ref(this.db, `Alineamientos/${id}`);
             let unsubscribe: Unsubscribe;
 
             const onNext = (snapshot: any) => {
@@ -45,7 +44,10 @@ export class AlineamientoService {
             const onError = (error: any) => {
                 observador.error(error);
             };
-            unsubscribe = this.firebaseContextSvc.run(() => onValue(dbRef, onNext, onError));
+            unsubscribe = this.firebaseContextSvc.run(() => {
+                const dbRef = ref(this.db, `Alineamientos/${id}`);
+                return onValue(dbRef, onNext, onError);
+            });
 
             return () => {
                 unsubscribe();
@@ -189,7 +191,6 @@ export class AlineamientoService {
 
     private watchArrayPath<T>(path: string): Observable<T[]> {
         return new Observable((observador) => {
-            const dbRef = ref(this.db, path);
             let unsubscribe: Unsubscribe;
 
             const onNext = (snapshot: any) => {
@@ -204,7 +205,10 @@ export class AlineamientoService {
                 observador.error(error);
             };
 
-            unsubscribe = this.firebaseContextSvc.run(() => onValue(dbRef, onNext, onError));
+            unsubscribe = this.firebaseContextSvc.run(() => {
+                const dbRef = ref(this.db, path);
+                return onValue(dbRef, onNext, onError);
+            });
             return () => unsubscribe();
         });
     }

@@ -1,0 +1,157 @@
+<app-ventana-detalle-flotante
+    [titulo]="title"
+    [minWidth]="520"
+    [minHeight]="420"
+    [persistPreviewPlacements]="false"
+    [restoredPlacementInput]="restoredPlacement"
+    [minimizedPlacementInput]="bubblePlacement"
+    [windowMode]="mode === 'bubble' ? 'minimized' : mode"
+    [zIndex]="zIndex"
+    (focoSolicitado)="onFocusRequested()"
+    (cerrarSolicitado)="closeRequested.emit()"
+    (windowModeChange)="onWindowModeChange($event)"
+    (restoredPlacementChange)="onRestoredPlacementChange($event)"
+    (minimizedPlacementChange)="onBubblePlacementChange($event)">
+    <div class="chat-float-conversation">
+        <div class="chat-float-conversation__status" *ngIf="summary?.isSystemConversation">
+            Canal de solo lectura de Yosiftware.
+        </div>
+        <div class="chat-float-conversation__status" *ngIf="summary && !summary.isSystemConversation && !summary.canSend">
+            No puedes enviar mensajes en esta conversación ahora mismo.
+        </div>
+        <div class="chat-float-conversation__status" *ngIf="summary?.type === 'campaign'">
+            Chat principal de campaña integrado en Social.
+        </div>
+
+        <div class="chat-float-conversation__participants" *ngIf="activeParticipants.length > 0">
+            <ng-container *ngFor="let participant of activeParticipants; trackBy: trackByParticipantUid">
+                <button
+                    type="button"
+                    class="chat-float-conversation__chip"
+                    *ngIf="canLinkParticipant(participant); else readonlyParticipantChip"
+                    [class.chat-float-conversation__chip--warm]="participant.participantRole === 'admin'"
+                    (click)="openParticipantProfile(participant)">
+                    <span class="chat-float-conversation__chip-avatar">
+                        <img [src]="getParticipantAvatarUrl(participant)" [alt]="getParticipantLabel(participant)">
+                    </span>
+                    <span>{{getParticipantLabel(participant)}}</span>
+                </button>
+                <ng-template #readonlyParticipantChip>
+                    <span class="chat-float-conversation__chip" [class.chat-float-conversation__chip--warm]="participant.participantRole === 'admin'">
+                        <span class="chat-float-conversation__chip-avatar chat-float-conversation__chip-avatar--system">
+                            <mat-icon>{{participant.isSystemUser ? 'campaign' : 'person'}}</mat-icon>
+                        </span>
+                        <span>{{getParticipantLabel(participant)}}</span>
+                    </span>
+                </ng-template>
+            </ng-container>
+        </div>
+
+        <div class="chat-float-conversation__admin" *ngIf="canManageActiveGroup">
+            <div class="chat-float-conversation__admin-card">
+                <strong>Renombrar grupo</strong>
+                <div class="chat-float-conversation__admin-row">
+                    <mat-form-field appearance="outline" class="chat-float-conversation__field">
+                        <mat-label>Nombre del grupo</mat-label>
+                        <input matInput [(ngModel)]="groupRenameDraft" placeholder="Nombre visible del grupo">
+                    </mat-form-field>
+                    <button mat-raised-button color="primary" type="button" (click)="saveActiveGroupName()" [disabled]="groupRenameSaving">
+                        {{groupRenameSaving ? 'Guardando...' : 'Guardar'}}
+                    </button>
+                </div>
+            </div>
+
+            <div class="chat-float-conversation__admin-card">
+                <strong>Añadir amistades</strong>
+                <mat-form-field appearance="outline" class="chat-float-conversation__field">
+                    <mat-label>Filtrar amistades</mat-label>
+                    <input matInput [(ngModel)]="groupParticipantQuery" placeholder="Nombre visible">
+                </mat-form-field>
+                <div class="chat-float-conversation__mini-list" *ngIf="visibleGroupAddCandidates.length > 0">
+                    <button
+                        type="button"
+                        class="chat-float-conversation__mini-card"
+                        *ngFor="let friend of visibleGroupAddCandidates; trackBy: trackByFriendUid"
+                        (click)="addFriendToActiveGroup(friend)"
+                        [disabled]="groupParticipantSavingUid === friend.uid">
+                        <span>{{friend.displayName || friend.uid}}</span>
+                        <small>{{groupParticipantSavingUid === friend.uid ? 'Añadiendo...' : 'Añadir'}}</small>
+                    </button>
+                </div>
+            </div>
+
+            <div class="chat-float-conversation__admin-card">
+                <strong>Participantes retirables</strong>
+                <div class="chat-float-conversation__mini-list" *ngIf="removableGroupParticipants.length > 0">
+                    <button
+                        type="button"
+                        class="chat-float-conversation__mini-card"
+                        *ngFor="let participant of removableGroupParticipants; trackBy: trackByParticipantUid"
+                        (click)="removeParticipantFromActiveGroup(participant)"
+                        [disabled]="groupParticipantRemovingUid === participant.uid">
+                        <span>{{getParticipantLabel(participant)}}</span>
+                        <small>{{groupParticipantRemovingUid === participant.uid ? 'Retirando...' : 'Retirar'}}</small>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <button mat-stroked-button class="chat-float-conversation__load" *ngIf="canLoadMoreMessages" (click)="loadPreviousMessages()">
+            Cargar anteriores
+        </button>
+        <p class="chat-float-conversation__error" *ngIf="errorMessage">{{errorMessage}}</p>
+
+        <div class="chat-float-conversation__messages">
+            <article
+                class="chat-float-conversation__message-row"
+                *ngFor="let message of messages; trackBy: trackByMessageId"
+                [class.chat-float-conversation__message-row--own]="isOwnMessage(message)">
+                <button
+                    type="button"
+                    class="chat-float-conversation__avatar"
+                    *ngIf="canLinkMessageSender(message); else readonlySenderAvatar"
+                    (click)="openMessageSenderProfile(message)">
+                    <img [src]="getMessageSenderAvatarUrl(message)" [alt]="getMessageSenderLabel(message)">
+                </button>
+                <ng-template #readonlySenderAvatar>
+                    <div class="chat-float-conversation__avatar chat-float-conversation__avatar--readonly">
+                        <mat-icon>{{message.sender.isSystemUser ? 'campaign' : 'person'}}</mat-icon>
+                    </div>
+                </ng-template>
+
+                <div
+                    class="chat-float-conversation__message"
+                    [class.chat-float-conversation__message--own]="isOwnMessage(message)"
+                    [class.chat-float-conversation__message--system]="message.sender.isSystemUser">
+                    <strong>{{getMessageSenderLabel(message)}}</strong>
+                    <p>{{message.body}}</p>
+                    <div class="chat-float-conversation__actions" *ngIf="hasMessageAction(message)">
+                        <button mat-stroked-button type="button" (click)="runMessageAction(message)">
+                            {{getMessageActionLabel(message)}}
+                        </button>
+                    </div>
+                </div>
+            </article>
+        </div>
+
+        <div class="chat-float-conversation__composer" *ngIf="summary">
+            <mat-form-field appearance="outline" class="chat-float-conversation__field">
+                <mat-label>Mensaje</mat-label>
+                <textarea
+                    matInput
+                    rows="3"
+                    [(ngModel)]="sendDraft"
+                    [disabled]="!summary.canSend || sendingMessage">
+                </textarea>
+            </mat-form-field>
+            <button
+                mat-raised-button
+                color="primary"
+                type="button"
+                (click)="sendMessage()"
+                [disabled]="!summary.canSend || sendingMessage || sendDraft.trim().length < 1">
+                Enviar
+            </button>
+        </div>
+    </div>
+</app-ventana-detalle-flotante>

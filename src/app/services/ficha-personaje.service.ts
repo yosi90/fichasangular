@@ -1,5 +1,5 @@
-import { Injectable } from '@angular/core';
-import { getAuth } from '@angular/fire/auth';
+import { Injectable, inject } from '@angular/core';
+import { Auth } from '@angular/fire/auth';
 import { PDFDocument } from 'pdf-lib';
 import { saveAs } from 'file-saver';
 import { Personaje } from '../interfaces/personaje';
@@ -10,6 +10,7 @@ import { CompaneroMonstruoDetalle, FamiliarMonstruoDetalle, MonstruoDetalle } fr
     providedIn: 'root'
 })
 export class FichaPersonajeService {
+    private readonly auth = inject(Auth);
 
     async generarPDF(pj: Personaje) {
         const pdfTemplateBytes = await fetch('../../assets/pdf/Ficha.pdf').then((res) => res.arrayBuffer());
@@ -661,7 +662,7 @@ export class FichaPersonajeService {
 
         const ownerUid = `${pj?.ownerUid ?? ''}`.trim();
         try {
-            const user = getAuth()?.currentUser;
+            const user = this.auth.currentUser;
             const uid = `${user?.uid ?? ''}`.trim();
             const displayName = `${user?.displayName ?? ''}`.trim();
             if (uid.length > 0 && ownerUid.length > 0 && uid === ownerUid && displayName.length > 0)

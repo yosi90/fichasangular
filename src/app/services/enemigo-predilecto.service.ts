@@ -46,7 +46,6 @@ export class EnemigoPredilectoService {
 
     getEnemigosPredilectos(): Observable<EnemigoPredilectoDetalle[]> {
         return new Observable((observador) => {
-            const dbRef = ref(this.db, "EnemigosPredilectos");
             let unsubscribe: Unsubscribe;
 
             const onNext = (snapshot: any) => {
@@ -65,7 +64,10 @@ export class EnemigoPredilectoService {
                 observador.error(error);
             };
 
-            unsubscribe = this.firebaseContextSvc.run(() => onValue(dbRef, onNext, onError));
+            unsubscribe = this.firebaseContextSvc.run(() => {
+                const dbRef = ref(this.db, "EnemigosPredilectos");
+                return onValue(dbRef, onNext, onError);
+            });
             return () => unsubscribe();
         });
     }

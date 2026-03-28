@@ -15,6 +15,7 @@ import { AppToastService } from 'src/app/services/app-toast.service';
 import { CampanaService } from 'src/app/services/campana.service';
 import { CampaignRealtimeSyncService } from 'src/app/services/campaign-realtime-sync.service';
 import { ChatApiService } from 'src/app/services/chat-api.service';
+import { ChatFloatingService } from 'src/app/services/chat-floating.service';
 import { ChatRealtimeService } from 'src/app/services/chat-realtime.service';
 import { SocialApiService } from 'src/app/services/social-api.service';
 import { SocialRealtimeService } from 'src/app/services/social-realtime.service';
@@ -124,6 +125,7 @@ export class SocialHubComponent implements OnInit, OnChanges, OnDestroy {
         private campanaSvc: CampanaService,
         private campaignRealtimeSyncSvc: CampaignRealtimeSyncService,
         private chatApiSvc: ChatApiService,
+        private chatFloatingSvc: ChatFloatingService,
         private chatRealtimeSvc: ChatRealtimeService,
         private socialRealtimeSvc: SocialRealtimeService,
         private userProfileNavSvc: UserProfileNavigationService,
@@ -245,6 +247,14 @@ export class SocialHubComponent implements OnInit, OnChanges, OnDestroy {
 
     get canOpenNewDirect(): boolean {
         return this.isLoggedIn && this.actorAllowsNonFriendDM;
+    }
+
+    get canOpenFloatingChatWindow(): boolean {
+        return this.isLoggedIn;
+    }
+
+    get canPopOutActiveConversation(): boolean {
+        return this.chatFloatingSvc.isBubbleFeatureEnabled && !!this.activeConversation;
     }
 
     get canCreateGroup(): boolean {
@@ -647,6 +657,19 @@ export class SocialHubComponent implements OnInit, OnChanges, OnDestroy {
             this.messageComposerMode = 'conversation';
             await this.selectConversation(detail, detail);
         }, 'No se pudo abrir el chat directo. Revisa bloqueos o preferencias de mensajes.');
+    }
+
+    openFloatingChatWindow(): void {
+        if (!this.canOpenFloatingChatWindow)
+            return;
+        this.chatFloatingSvc.openOrFocusListWindow();
+    }
+
+    popOutActiveConversation(): void {
+        const conversationId = this.activeConversation?.conversationId ?? 0;
+        if (conversationId <= 0 || !this.chatFloatingSvc.isBubbleFeatureEnabled)
+            return;
+        this.chatFloatingSvc.openConversation(conversationId);
     }
 
     selectConversationFilter(filter: ChatConversationFilter): void {
@@ -1150,8 +1173,14 @@ export class SocialHubComponent implements OnInit, OnChanges, OnDestroy {
                 this.reloadSocialLists(this.socialRealtimeActive ? 'blocks' : 'all'),
                 this.chatRealtimeSvc.refreshConversations(true),
                 this.userSettingsSvc.loadProfileSettings()
-                    .then((settings) => this.actorAllowsNonFriendDM = settings.allowDirectMessagesFromNonFriends === true)
-                    .catch(() => this.actorAllowsNonFriendDM = false),
+                    .then((settings) => {
+                        this.actorAllowsNonFriendDM = settings.allowDirectMessagesFromNonFriends === true;
+                        this.chatFloatingSvc.applyProfileSettings(settings);
+                    })
+                    .catch(() => {
+                        this.actorAllowsNonFriendDM = false;
+                        this.chatFloatingSvc.applyProfileSettings(null);
+                    }),
             ]);
             if (this.currentSection === 'campanas')
                 await this.ensureCampaignSectionLoaded();

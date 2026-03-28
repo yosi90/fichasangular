@@ -89,6 +89,7 @@ export class AdminPanelComponent implements OnInit, OnDestroy {
     solicitudesRechazadas: AdminRoleRequestItem[] = [];
     cargandoSolicitudesRol: boolean = false;
     errorSolicitudesRol: string = '';
+    roleRequestsSqlAccessDenied: boolean = false;
     usuariosPanelExpanded: boolean = true;
     solicitudesPanelExpanded: boolean = false;
     syncPanelExpanded: boolean = false;
@@ -98,6 +99,7 @@ export class AdminPanelComponent implements OnInit, OnDestroy {
     private readonly keysEjecutando = new Set<CacheEntityKey>();
     private readonly userOpsInFlight = new Set<string>();
     private readonly roleRequestOpsInFlight = new Set<number>();
+    private roleRequestsLoadedOnce: boolean = false;
     private readonly dateFormatter = new Intl.DateTimeFormat('es-ES', {
         day: '2-digit',
         month: '2-digit',
@@ -202,17 +204,16 @@ export class AdminPanelComponent implements OnInit, OnDestroy {
             .pipe(takeUntil(this.destroy$))
             .subscribe((estado) => {
                 this.esAdmin = estado === true;
-                if (this.esAdmin) {
+                if (this.esAdmin)
                     void this.validarAccesoAdmin();
-                    void this.cargarSolicitudesRolPendientes();
-                }
             });
         this.chatRealtimeSvc.alertCandidate$
             .pipe(takeUntil(this.destroy$))
             .subscribe((candidate) => {
                 if (!this.esAdmin || !this.isRealtimeRoleRequestNotification(candidate))
                     return;
-                void this.cargarSolicitudesRolPendientes();
+                if (this.solicitudesPanelExpanded && this.roleRequestsLoadedOnce)
+                    void this.cargarSolicitudesRolPendientes();
             });
         this.adminUsersSvc.watchUsersAdminView()
             .pipe(takeUntil(this.destroy$))
@@ -563,7 +564,7 @@ export class AdminPanelComponent implements OnInit, OnDestroy {
             await this.adminUsersSvc.syncUsersCacheFromApi();
             await this.cargarSolicitudesRolPendientes();
         } catch (error: any) {
-            this.errorSolicitudesRol = error?.message ?? 'No se pudo aprobar la solicitud';
+            this.handleRoleRequestsLoadError(error, 'No se pudo aprobar la solicitud');
         } finally {
             this.roleRequestOpsInFlight.delete(opKey);
         }
@@ -589,7 +590,7 @@ export class AdminPanelComponent implements OnInit, OnDestroy {
             await this.adminUsersSvc.syncUsersCacheFromApi();
             await this.cargarSolicitudesRolPendientes();
         } catch (error: any) {
-            this.errorSolicitudesRol = error?.message ?? 'No se pudo rechazar la solicitud';
+            this.handleRoleRequestsLoadError(error, 'No se pudo rechazar la solicitud');
         } finally {
             this.roleRequestOpsInFlight.delete(opKey);
         }
@@ -627,31 +628,36 @@ export class AdminPanelComponent implements OnInit, OnDestroy {
         this.cargandoSolicitudesRol = true;
         this.errorSolicitudesRol = '';
         try {
-            const [master, colaborador, aprobadas, rechazadas] = await Promise.all([
-                this.userProfileApiSvc.listRoleRequests({
-                    status: 'pending',
-                    requestedRole: 'master',
-                }),
-                this.userProfileApiSvc.listRoleRequests({
-                    status: 'pending',
-                    requestedRole: 'colaborador',
-                }),
-                this.userProfileApiSvc.listRoleRequests({
-                    status: 'approved',
-                }),
-                this.userProfileApiSvc.listRoleRequests({
-                    status: 'rejected',
-                }),
-            ]);
-            this.solicitudesMasterPendientes = master;
-            this.solicitudesColaboradorPendientes = colaborador;
+            const pendientes = await this.userProfileApiSvc.listRoleRequests({
+                status: 'pending',
+            });
+            const aprobadas = await this.userProfileApiSvc.listRoleRequests({
+                status: 'approved',
+            });
+            const rechazadas = await this.userProfileApiSvc.listRoleRequests({
+                status: 'rejected',
+            });
+            this.solicitudesMasterPendientes = pendientes.filter((item) => item.requestedRole === 'master');
+            this.solicitudesColaboradorPendientes = pendientes.filter((item) => item.requestedRole === 'colaborador');
             this.solicitudesAprobadas = aprobadas;
             this.solicitudesRechazadas = rechazadas;
+            this.roleRequestsLoadedOnce = true;
+            this.roleRequestsSqlAccessDenied = false;
         } catch (error: any) {
-            this.errorSolicitudesRol = error?.message ?? 'No se pudieron cargar las solicitudes pendientes';
+            this.handleRoleRequestsLoadError(error, 'No se pudieron cargar las solicitudes pendientes');
         } finally {
             this.cargandoSolicitudesRol = false;
         }
+    }
+
+    async onSolicitudesPanelOpened(): Promise<void> {
+        this.solicitudesPanelExpanded = true;
+        if (!this.roleRequestsLoadedOnce)
+            await this.cargarSolicitudesRolPendientes();
+    }
+
+    onSolicitudesPanelClosed(): void {
+        this.solicitudesPanelExpanded = false;
     }
 
     private aplicarOpenRequest(request: AdminPanelOpenRequest): void {
@@ -682,6 +688,27 @@ export class AdminPanelComponent implements OnInit, OnDestroy {
         const notificationCode = `${candidate?.notification?.code ?? ''}`.trim().toLowerCase();
         const actionTarget = `${candidate?.notification?.action?.target ?? ''}`.trim().toLowerCase();
         return notificationCode === 'system.role_request_created' && actionTarget === 'admin.role_requests';
+    }
+
+    private handleRoleRequestsLoadError(error: any, fallbackMessage: string): void {
+        if (this.isRoleRequestsForbidden(error)) {
+            this.roleRequestsSqlAccessDenied = true;
+            this.roleRequestsLoadedOnce = true;
+            this.solicitudesMasterPendientes = [];
+            this.solicitudesColaboradorPendientes = [];
+            this.solicitudesAprobadas = [];
+            this.solicitudesRechazadas = [];
+            this.errorSolicitudesRol = 'La API no autoriza esta seccion para tu sesion actual. El admin real de role-requests se resuelve en SQL y no en caches actor-scoped.';
+            return;
+        }
+
+        this.errorSolicitudesRol = error?.message ?? fallbackMessage;
+    }
+
+    private isRoleRequestsForbidden(error: any): boolean {
+        const status = Number(error?.status ?? 0);
+        const code = `${error?.code ?? ''}`.trim().toUpperCase();
+        return status === 403 || code === 'FORBIDDEN';
     }
 
     private async pedirDatosRechazo(): Promise<{ blockedUntilUtc: string; adminComment: string | null; } | null> {

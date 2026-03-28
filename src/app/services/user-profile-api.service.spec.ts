@@ -307,6 +307,32 @@ describe('UserProfileApiService', () => {
         expect(items[0].email).toBeNull();
     });
 
+    it('listRoleRequests no reintenta un 403 y expone el error de autorizacion', async () => {
+        const authNoRetryMock = {
+            currentUser: {
+                getIdToken: jasmine.createSpy('getIdToken').and.resolveTo('token-settings'),
+            },
+        } as any;
+        const httpMock = jasmine.createSpyObj('HttpClient', ['get', 'put', 'post', 'patch']);
+        httpMock.get.and.returnValue(throwError(() => new HttpErrorResponse({
+            status: 403,
+            error: {
+                code: 'FORBIDDEN',
+                message: 'Solo admins',
+            },
+        })));
+        const service = new UserProfileApiService(httpMock, authNoRetryMock);
+
+        await expectAsync(service.listRoleRequests({ status: 'pending' })).toBeRejectedWith(
+            jasmine.objectContaining({
+                status: 403,
+                code: 'FORBIDDEN',
+            })
+        );
+        expect(authNoRetryMock.currentUser.getIdToken.calls.count()).toBe(1);
+        expect(httpMock.get.calls.count()).toBe(1);
+    });
+
     it('resolveRoleRequest envia el body canonico y limpia adminComment vacio a null', async () => {
         const httpMock = jasmine.createSpyObj('HttpClient', ['get', 'put', 'post', 'patch']);
         httpMock.patch.and.returnValue(of(void 0));

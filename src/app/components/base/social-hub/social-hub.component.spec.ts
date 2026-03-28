@@ -8,6 +8,7 @@ import { AppToastService } from 'src/app/services/app-toast.service';
 import { CampanaService } from 'src/app/services/campana.service';
 import { CampaignRealtimeSyncService } from 'src/app/services/campaign-realtime-sync.service';
 import { ChatApiService } from 'src/app/services/chat-api.service';
+import { ChatFloatingService } from 'src/app/services/chat-floating.service';
 import { ChatRealtimeService } from 'src/app/services/chat-realtime.service';
 import { SocialApiService } from 'src/app/services/social-api.service';
 import { SocialRealtimeService } from 'src/app/services/social-realtime.service';
@@ -30,6 +31,7 @@ describe('SocialHubComponent', () => {
     let socialApiSvc: jasmine.SpyObj<SocialApiService>;
     let userProfileNavSvc: jasmine.SpyObj<UserProfileNavigationService>;
     let userSettingsSvc: jasmine.SpyObj<UserSettingsService>;
+    let chatFloatingSvc: jasmine.SpyObj<ChatFloatingService>;
 
     beforeEach(async () => {
         isLoggedIn$ = new BehaviorSubject<boolean>(false);
@@ -147,6 +149,9 @@ describe('SocialHubComponent', () => {
 
         userProfileNavSvc = jasmine.createSpyObj<UserProfileNavigationService>('UserProfileNavigationService', ['openPublicProfile', 'openSocial', 'openPrivateProfile', 'openAdminPanel']);
         userSettingsSvc = jasmine.createSpyObj<UserSettingsService>('UserSettingsService', ['loadProfileSettings']);
+        chatFloatingSvc = jasmine.createSpyObj<ChatFloatingService>('ChatFloatingService', ['applyProfileSettings', 'openOrFocusListWindow', 'openConversation'], {
+            isBubbleFeatureEnabled: true,
+        });
         userSettingsSvc.loadProfileSettings.and.resolveTo({
             ...createDefaultUserSettings().perfil,
             allowDirectMessagesFromNonFriends: true,
@@ -192,6 +197,7 @@ describe('SocialHubComponent', () => {
                 },
                 { provide: UserProfileNavigationService, useValue: userProfileNavSvc },
                 { provide: UserSettingsService, useValue: userSettingsSvc },
+                { provide: ChatFloatingService, useValue: chatFloatingSvc },
                 {
                     provide: AppToastService,
                     useValue: jasmine.createSpyObj<AppToastService>('AppToastService', ['showSuccess', 'showError', 'showInfo', 'showSystem']),
@@ -470,6 +476,40 @@ describe('SocialHubComponent', () => {
         expect(component.canOpenNewDirect).toBeTrue();
         expect(fixture.nativeElement.textContent).toContain('Nuevo chat');
     }));
+
+    it('permite abrir o traer la ventana flotante desde Social/Mensajes', fakeAsync(() => {
+        fixture.detectChanges();
+        isLoggedIn$.next(true);
+        tick();
+
+        component.openFloatingChatWindow();
+
+        expect(chatFloatingSvc.openOrFocusListWindow).toHaveBeenCalled();
+    }));
+
+    it('popea la conversación activa a burbuja cuando la feature está disponible', () => {
+        fixture.detectChanges();
+        component.activeConversationSummary = {
+            conversationId: 55,
+            type: 'direct',
+            title: 'Yuna',
+            photoThumbUrl: null,
+            campaignId: null,
+            participantRole: 'member',
+            participantStatus: 'active',
+            lastMessagePreview: null,
+            lastMessageAtUtc: null,
+            unreadCount: 0,
+            canSend: true,
+            isSystemConversation: false,
+            counterpartUid: 'uid-2',
+            lastMessageNotification: null,
+        } as any;
+
+        component.popOutActiveConversation();
+
+        expect(chatFloatingSvc.openConversation).toHaveBeenCalledWith(55);
+    });
 
     it('carga detalle con participantes al seleccionar una conversación', fakeAsync(() => {
         fixture.detectChanges();

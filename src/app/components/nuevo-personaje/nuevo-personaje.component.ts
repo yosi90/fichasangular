@@ -1,5 +1,5 @@
 import { Component, EventEmitter, HostListener, Output, ViewChild } from '@angular/core';
-import { getAuth } from '@angular/fire/auth';
+import { Auth } from '@angular/fire/auth';
 import { MatTabGroup } from '@angular/material/tabs';
 import { Subscription, firstValueFrom, take } from 'rxjs';
 import { Campana, Super } from 'src/app/interfaces/campaña';
@@ -135,6 +135,13 @@ interface EvaluacionInconsistenciasBasicos {
     otherOfficialBlockers: string[];
 }
 
+interface BasicosDerivedState {
+    preferenciasRazaItems: { etiqueta: string; valor: string; }[];
+    deidadesFiltradas: DeidadBasicosOption[];
+    alineamientosDisponibles: string[];
+    evaluacionBasicos: EvaluacionInconsistenciasBasicos;
+}
+
 interface CandidataRazaBase {
     raza: Raza;
     evaluacion: EvaluacionElegibilidadRazaBase;
@@ -239,6 +246,36 @@ interface ClaseListadoItem {
     roles: ClaseRolChip[];
     compatAlineamiento: ClaseCompatibilidadAlineamientoItem;
     esHomebrew: boolean;
+    campaignBlockedReason: string | null;
+}
+
+type CampaignHomebrewSourceCategory = 'raza' | 'raza_base' | 'deidad' | 'plantilla' | 'clase' | 'dote';
+type CampaignHomebrewMode = 'unrestricted' | 'limited' | 'forbidden';
+
+interface CampaignHomebrewSource {
+    key: string;
+    categoria: CampaignHomebrewSourceCategory;
+    id: number;
+    nombre: string;
+}
+
+interface CampaignCreationValidationResult {
+    mode: CampaignHomebrewMode;
+    maxSources: number | null;
+    sources: CampaignHomebrewSource[];
+    sourceKeys: Set<string>;
+    sourceCount: number;
+    remainingSources: number | null;
+    allowsVentajasDesventajas: boolean;
+    blocksExistingHomebrew: boolean;
+    blocksExistingVentajas: boolean;
+    blockers: string[];
+}
+
+interface DeidadBasicosOption {
+    nombre: string;
+    etiqueta: string;
+    disabled: boolean;
 }
 
 interface SelectorFamiliarBloqueadoItem {
@@ -253,6 +290,15 @@ interface SelectorCompaneroBloqueadoItem {
     nivelMinimoRequerido: number | null;
 }
 
+const DEFAULT_CAMPAIGN_CREATION_POLICY: CampaignCreationPolicy = {
+    tiradaMinimaCaracteristica: null,
+    maxTablasDadosCaracteristicas: null,
+    permitirHomebrewGeneral: true,
+    permitirVentajasDesventajas: true,
+    permitirIgnorarRestriccionesAlineamiento: true,
+    maxFuentesHomebrewGeneralesPorPersonaje: null,
+};
+
 @Component({
     selector: 'app-nuevo-personaje',
     templateUrl: './nuevo-personaje.component.html',
@@ -260,6 +306,11 @@ interface SelectorCompaneroBloqueadoItem {
     standalone: false
 })
 export class NuevoPersonajeComponent {
+    private static readonly EMPTY_BASICS_EVALUATION: EvaluacionInconsistenciasBasicos = {
+        previewWarnings: [],
+        hardConflicts: [],
+        otherOfficialBlockers: [],
+    };
     readonly placeholderContexto = 'De donde viene tu personaje, cual es su familia, linaje, maestros, etc. Esto te ayudara a saber como deberia reaccionar tu personaje ante diversos estimulos.';
     readonly placeholderPersonalidad = 'Altivo, compasivo, incapaz de estarse quieto, maduro o incomprendido. Dale adjetivos a tu personaje para reforzar su interpretacion.';
     readonly fallbackContexto = 'Eres totalmente antirol hijo mio.';
@@ -291,6 +342,7 @@ export class NuevoPersonajeComponent {
     razasCatalogo: Raza[] = [];
     plantillasCatalogo: Plantilla[] = [];
     plantillasElegibles: Plantilla[] = [];
+    plantillasBloqueadasCampana: { plantilla: Plantilla; evaluacion: PlantillaEvaluacionResultado; }[] = [];
     plantillasBloqueadasUnknown: { plantilla: Plantilla; evaluacion: PlantillaEvaluacionResultado; }[] = [];
     plantillasBloqueadasFailed: { plantilla: Plantilla; evaluacion: PlantillaEvaluacionResultado; }[] = [];
     readonly mostrarDiagnosticoPlantillas = !environment.production;
@@ -335,6 +387,7 @@ export class NuevoPersonajeComponent {
     selectedCampaignPolicy: CampaignCreationPolicy | null = null;
     private selectedCampaignPolicyLoading = false;
     private selectedCampaignPolicyRequestKey = '';
+    private selectedCampaignPolicyResolved = false;
     catalogoAlineamientosBasicos: AlineamientoBasicoCatalogItem[] = [];
     cargandoVentajas: boolean = true;
     cargandoIdiomas: boolean = true;
@@ -432,6 +485,13 @@ export class NuevoPersonajeComponent {
     private resolverSelectorCompanero: ((seleccion: SelectorCompaneroConfirmacion | 'omitir' | null) => void) | null = null;
     private nombresEspecialesCompanero: Record<number, string> | null = null;
     private idiomasTemporalesSeleccionados: IdiomaDetalle[] = [];
+    private basicosDerivedState: BasicosDerivedState = {
+        preferenciasRazaItems: [],
+        deidadesFiltradas: [],
+        alineamientosDisponibles: [...this.alineamientos],
+        evaluacionBasicos: NuevoPersonajeComponent.EMPTY_BASICS_EVALUATION,
+    };
+    private basicosDerivedSignature = '';
     resultadoVidaActual: ResultadoCalculoVidaFinal | null = null;
     tiradasVidaTotales = 3;
     tiradasVidaRestantes = 0;
@@ -474,6 +534,7 @@ export class NuevoPersonajeComponent {
     @Output() personajeFinalizado = new EventEmitter<number>();
 
     constructor(
+        private auth: Auth,
         private nuevoPSvc: NuevoPersonajeService,
         private campanaSvc: CampanaService,
         private alineamientoSvc: AlineamientoService,
@@ -795,6 +856,14 @@ export class NuevoPersonajeComponent {
         return this.personajeNoOficial || this.incluirHomebrewClases;
     }
 
+    get campaignForbidsAdvantages(): boolean {
+        return this.effectiveSelectedCampaignPolicy?.permitirVentajasDesventajas === false;
+    }
+
+    get ventajasTabDisabled(): boolean {
+        return !this.caracteristicasGeneradas || this.campaignForbidsAdvantages;
+    }
+
     get ventajasSeleccionadasCount(): number {
         return this.flujoVentajas.seleccionVentajas.length;
     }
@@ -888,54 +957,14 @@ export class NuevoPersonajeComponent {
         return Math.max(0, objetivo - seleccionada);
     }
 
-    get deidadesFiltradas(): string[] {
-        const candidatas = this.catalogoDeidades
-            .filter((deidad) => `${deidad?.Nombre ?? ''}`.trim().length > 0)
-            .filter((deidad) => this.personajeNoOficial || deidad?.Oficial !== false)
-            .map((deidad) => ({
-                nombre: `${deidad.Nombre}`.trim(),
-                distancia: this.distanciaAlineamiento(
-                    this.Personaje.Alineamiento,
-                    `${deidad?.Alineamiento?.Nombre ?? ''}`
-                ),
-                oficial: deidad.Oficial !== false,
-            }))
-            .sort((a, b) => {
-                const distA = Number.isFinite(a.distancia) ? Number(a.distancia) : 99;
-                const distB = Number.isFinite(b.distancia) ? Number(b.distancia) : 99;
-                if (distA !== distB)
-                    return distA - distB;
-                if (a.oficial !== b.oficial)
-                    return a.oficial ? -1 : 1;
-                return a.nombre.localeCompare(b.nombre, 'es', { sensitivity: 'base' });
-            })
-            .map((item) => item.nombre);
-        const lista = [this.deidadSinSeleccion, ...candidatas];
-        const deidadActual = `${this.Personaje.Deidad ?? ''}`.trim();
-        if (deidadActual.length > 0) {
-            const existe = lista.some((item) => this.normalizarTexto(item) === this.normalizarTexto(deidadActual));
-            if (!existe)
-                lista.push(deidadActual);
-        }
-        return lista;
+    get deidadesFiltradas(): DeidadBasicosOption[] {
+        this.ensureBasicosDerivedState();
+        return this.basicosDerivedState.deidadesFiltradas;
     }
 
     get alineamientosDisponibles(): string[] {
-        const nombresCatalogo = this.catalogoAlineamientosBasicos
-            .map((item) => `${item?.Nombre ?? ''}`.trim())
-            .filter((nombre) => nombre.length > 0);
-
-        const fuente = nombresCatalogo.length > 0 ? nombresCatalogo : this.alineamientos;
-        const vistos = new Set<string>();
-        const resultado: string[] = [];
-        fuente.forEach((nombre) => {
-            const normalizado = this.normalizarTexto(nombre);
-            if (normalizado.length < 1 || vistos.has(normalizado) || normalizado === 'no aplica')
-                return;
-            vistos.add(normalizado);
-            resultado.push(nombre);
-        });
-        return resultado;
+        this.ensureBasicosDerivedState();
+        return this.basicosDerivedState.alineamientosDisponibles;
     }
 
     get puedeContinuarBasicos(): boolean {
@@ -999,23 +1028,13 @@ export class NuevoPersonajeComponent {
     }
 
     get preferenciasRazaItems(): { etiqueta: string; valor: string; }[] {
-        const items: { etiqueta: string; valor: string; }[] = [];
-        const base = this.razaSeleccionada?.Alineamiento?.Basico?.Nombre?.trim() ?? '';
-        const ley = this.razaSeleccionada?.Alineamiento?.Ley?.Nombre?.trim() ?? '';
-        const moral = this.razaSeleccionada?.Alineamiento?.Moral?.Nombre?.trim() ?? '';
-
-        if (this.esPreferenciaAlineamientoVisible(base))
-            items.push({ etiqueta: 'Base', valor: base });
-        if (this.esPreferenciaAlineamientoVisible(ley))
-            items.push({ etiqueta: 'Ley / normas', valor: ley });
-        if (this.esPreferenciaAlineamientoVisible(moral))
-            items.push({ etiqueta: 'Moral / trato', valor: moral });
-
-        return items;
+        this.ensureBasicosDerivedState();
+        return this.basicosDerivedState.preferenciasRazaItems;
     }
 
     get tienePreferenciasRazaVisibles(): boolean {
-        return this.preferenciasRazaItems.length > 0;
+        this.ensureBasicosDerivedState();
+        return this.basicosDerivedState.preferenciasRazaItems.length > 0;
     }
 
     get rangoEdadTexto(): string {
@@ -1170,7 +1189,8 @@ export class NuevoPersonajeComponent {
     }
 
     get evaluacionBasicosActual(): EvaluacionInconsistenciasBasicos {
-        return this.evaluarInconsistenciasBasicos();
+        this.ensureBasicosDerivedState();
+        return this.basicosDerivedState.evaluacionBasicos;
     }
 
     get tieneFeedbackRazaBasicos(): boolean {
@@ -1513,15 +1533,132 @@ export class NuevoPersonajeComponent {
             && !this.hardAlignmentClassOverrideConfirmed
             && !tieneClaseHomebrew
             && !tieneVentajasODesventajas;
+        this.refreshBasicosDerivedState(evaluacion);
+    }
+
+    private refreshBasicosDerivedState(evaluacion: EvaluacionInconsistenciasBasicos | null = null): void {
+        this.basicosDerivedState = {
+            preferenciasRazaItems: this.buildPreferenciasRazaItems(),
+            deidadesFiltradas: this.buildDeidadesFiltradas(),
+            alineamientosDisponibles: this.buildAlineamientosDisponibles(),
+            evaluacionBasicos: evaluacion ?? this.evaluarInconsistenciasBasicos(),
+        };
+        this.basicosDerivedSignature = this.buildBasicosDerivedSignature();
+    }
+
+    private ensureBasicosDerivedState(): void {
+        const signature = this.buildBasicosDerivedSignature();
+        if (this.basicosDerivedSignature === signature)
+            return;
+        this.refreshBasicosDerivedState();
+    }
+
+    private buildBasicosDerivedSignature(): string {
+        const razaId = Number(this.razaSeleccionada?.Id ?? 0);
+        const alineamiento = `${this.Personaje?.Alineamiento ?? ''}`.trim();
+        const deidad = `${this.Personaje?.Deidad ?? ''}`.trim();
+        const campana = `${this.Personaje?.Campana ?? ''}`.trim();
+        const politica = this.selectedCampaignPolicy
+            ? JSON.stringify(this.selectedCampaignPolicy)
+            : 'null';
+        return [
+            razaId,
+            alineamiento,
+            deidad,
+            campana,
+            this.catalogoDeidades.length,
+            this.catalogoAlineamientosBasicos.length,
+            politica,
+        ].join('|');
+    }
+
+    private buildPreferenciasRazaItems(): { etiqueta: string; valor: string; }[] {
+        const items: { etiqueta: string; valor: string; }[] = [];
+        const base = this.razaSeleccionada?.Alineamiento?.Basico?.Nombre?.trim() ?? '';
+        const ley = this.razaSeleccionada?.Alineamiento?.Ley?.Nombre?.trim() ?? '';
+        const moral = this.razaSeleccionada?.Alineamiento?.Moral?.Nombre?.trim() ?? '';
+
+        if (this.esPreferenciaAlineamientoVisible(base))
+            items.push({ etiqueta: 'Base', valor: base });
+        if (this.esPreferenciaAlineamientoVisible(ley))
+            items.push({ etiqueta: 'Ley / normas', valor: ley });
+        if (this.esPreferenciaAlineamientoVisible(moral))
+            items.push({ etiqueta: 'Moral / trato', valor: moral });
+
+        return items;
+    }
+
+    private buildDeidadesFiltradas(): DeidadBasicosOption[] {
+        const candidatas = this.catalogoDeidades
+            .filter((deidad) => `${deidad?.Nombre ?? ''}`.trim().length > 0)
+            .map((deidad) => ({
+                nombre: `${deidad.Nombre}`.trim(),
+                distancia: this.distanciaAlineamiento(
+                    this.Personaje.Alineamiento,
+                    `${deidad?.Alineamiento?.Nombre ?? ''}`
+                ),
+                oficial: deidad.Oficial !== false,
+                disabledReason: this.getCampaignBlockedReasonForCandidate(
+                    'deidad',
+                    Number(deidad?.Id ?? 0),
+                    `${deidad?.Nombre ?? ''}`.trim(),
+                    deidad?.Oficial === false
+                ),
+            }))
+            .sort((a, b) => {
+                const distA = Number.isFinite(a.distancia) ? Number(a.distancia) : 99;
+                const distB = Number.isFinite(b.distancia) ? Number(b.distancia) : 99;
+                if (distA !== distB)
+                    return distA - distB;
+                if (a.oficial !== b.oficial)
+                    return a.oficial ? -1 : 1;
+                return a.nombre.localeCompare(b.nombre, 'es', { sensitivity: 'base' });
+            })
+            .map((item) => ({
+                nombre: item.nombre,
+                etiqueta: item.disabledReason ? `${item.nombre} (${item.disabledReason})` : item.nombre,
+                disabled: !!item.disabledReason,
+            }));
+        const lista: DeidadBasicosOption[] = [{
+            nombre: this.deidadSinSeleccion,
+            etiqueta: this.deidadSinSeleccion,
+            disabled: false,
+        }, ...candidatas];
+        const deidadActual = `${this.Personaje.Deidad ?? ''}`.trim();
+        if (deidadActual.length > 0) {
+            const existe = lista.some((item) => this.normalizarTexto(item.nombre) === this.normalizarTexto(deidadActual));
+            if (!existe)
+                lista.push({
+                    nombre: deidadActual,
+                    etiqueta: deidadActual,
+                    disabled: false,
+                });
+        }
+        return lista;
+    }
+
+    private buildAlineamientosDisponibles(): string[] {
+        const nombresCatalogo = this.catalogoAlineamientosBasicos
+            .map((item) => `${item?.Nombre ?? ''}`.trim())
+            .filter((nombre) => nombre.length > 0);
+
+        const fuente = nombresCatalogo.length > 0 ? nombresCatalogo : this.alineamientos;
+        const vistos = new Set<string>();
+        const resultado: string[] = [];
+        fuente.forEach((nombre) => {
+            const normalizado = this.normalizarTexto(nombre);
+            if (normalizado.length < 1 || vistos.has(normalizado) || normalizado === 'no aplica')
+                return;
+            vistos.add(normalizado);
+            resultado.push(nombre);
+        });
+        return resultado;
     }
 
     async continuarDesdeBasicos(desdeAtajoTeclado = false): Promise<void> {
         if (!this.razaElegida || !this.puedeContinuarBasicos) {
             return;
         }
-
-        if (!await this.ensureSelectedCampaignPolicyReady())
-            return;
 
         let mostroAlertaInconsistencias = false;
         this.normalizarAlineamientoSeleccionado();
@@ -1531,6 +1668,9 @@ export class NuevoPersonajeComponent {
         if (!this.esTextoNoVacio(this.Personaje.Personalidad)) {
             this.Personaje.Personalidad = this.fallbackPersonalidad;
         }
+
+        if (!await this.ensureCampaignCreationRulesSatisfied('basicos'))
+            return;
 
         const evaluacion = this.evaluarInconsistenciasBasicos();
         const hayPreview = evaluacion.previewWarnings.length > 0;
@@ -1720,6 +1860,7 @@ export class NuevoPersonajeComponent {
     }
 
     private sincronizarTabConPaso(): void {
+        this.asegurarPasoCompatibleConCampania();
         this.inicializarControlHomebrewVentajasSiAplica();
         this.selectedInternalTabIndex = this.mapearPasoAIndex(this.flujo.pasoActual);
     }
@@ -1885,16 +2026,18 @@ export class NuevoPersonajeComponent {
     };
 
     private normalizarAlineamientoSeleccionado(): void {
+        const alineamientosDisponibles = this.buildAlineamientosDisponibles();
+        this.basicosDerivedState.alineamientosDisponibles = alineamientosDisponibles;
         const actual = this.Personaje.Alineamiento ?? '';
         const normalizado = this.normalizarTexto(actual);
-        const encontrado = this.alineamientosDisponibles.find(a => this.normalizarTexto(a) === normalizado);
+        const encontrado = alineamientosDisponibles.find(a => this.normalizarTexto(a) === normalizado);
 
         if (encontrado) {
             this.Personaje.Alineamiento = encontrado;
             return;
         }
 
-        this.Personaje.Alineamiento = this.alineamientosDisponibles[0] ?? 'Legal bueno';
+        this.Personaje.Alineamiento = alineamientosDisponibles[0] ?? 'Legal bueno';
     }
 
     private hayModalBloqueandoAtajos(): boolean {
@@ -1976,11 +2119,13 @@ export class NuevoPersonajeComponent {
     actualizarTramas(): void {
         if (this.Personaje.Campana === 'Sin campaña') {
             this.selectedCampaignPolicy = null;
+            this.selectedCampaignPolicyResolved = true;
             this.nuevoPSvc.aplicarRestriccionCampanaGenerador(null);
             this.Tramas = [];
             this.Subtramas = [];
             this.Personaje.Trama = 'Trama base';
             this.Personaje.Subtrama = 'Subtrama base';
+            this.syncCampaignPolicyDependentState();
             return;
         }
 
@@ -1988,11 +2133,13 @@ export class NuevoPersonajeComponent {
         if (!campanaSeleccionada) {
             this.Personaje.Campana = 'Sin campaña';
             this.selectedCampaignPolicy = null;
+            this.selectedCampaignPolicyResolved = true;
             this.nuevoPSvc.aplicarRestriccionCampanaGenerador(null);
             this.Tramas = [];
             this.Subtramas = [];
             this.Personaje.Trama = 'Trama base';
             this.Personaje.Subtrama = 'Subtrama base';
+            this.syncCampaignPolicyDependentState();
             return;
         }
 
@@ -2564,6 +2711,8 @@ export class NuevoPersonajeComponent {
         if (!this.caracteristicasGeneradas) {
             return;
         }
+        if (!await this.ensureSelectedCampaignPolicyReady())
+            return;
         const retornoFinNivelPendiente = this.nuevoPSvc.consumirRetornoFinNivelPendientePlantillas();
 
         this.nuevoPSvc.registrarAumentosPendientesPorProgresion('Plantillas confirmadas');
@@ -2580,7 +2729,7 @@ export class NuevoPersonajeComponent {
             return;
         }
 
-        const siguientePaso: StepNuevoPersonaje = retornoFinNivelPendiente ? 'clases' : 'ventajas';
+        const siguientePaso: StepNuevoPersonaje = retornoFinNivelPendiente || this.campaignForbidsAdvantages ? 'clases' : 'ventajas';
         this.nuevoPSvc.actualizarPasoActual(siguientePaso);
         this.recalcularPlantillasVisibles();
         this.recalcularClasesVisibles();
@@ -3525,6 +3674,34 @@ export class NuevoPersonajeComponent {
         return candidato.evaluacion?.estado === 'eligible';
     }
 
+    private aplicarRestriccionesCampanaADotes(candidatos: DoteSelectorCandidato[]): DoteSelectorCandidato[] {
+        return (candidatos ?? []).map((candidato) => {
+            const dote = candidato?.dote;
+            const campaignBlockedReason = this.getCampaignBlockedReasonForCandidate(
+                'dote',
+                Number(dote?.Id ?? 0),
+                `${dote?.Nombre ?? ''}`.trim(),
+                dote?.Oficial === false
+            );
+            if (!campaignBlockedReason)
+                return candidato;
+
+            const razones = Array.from(new Set([
+                ...(candidato?.evaluacion?.razones ?? []),
+                campaignBlockedReason,
+            ].filter((reason) => `${reason ?? ''}`.trim().length > 0)));
+
+            return {
+                ...candidato,
+                evaluacion: {
+                    estado: 'blocked_failed',
+                    razones,
+                    advertencias: [...(candidato?.evaluacion?.advertencias ?? [])],
+                },
+            };
+        });
+    }
+
     private getCantidadDotesPendientes(): number {
         return this.nuevoPSvc.getDotesPendientes()
             .filter((pendiente) => pendiente.estado === 'pendiente')
@@ -3539,7 +3716,9 @@ export class NuevoPersonajeComponent {
             if (!pendiente)
                 return true;
 
-            const candidatos = this.nuevoPSvc.obtenerCandidatosDotePendiente(pendiente.id);
+            const candidatos = this.aplicarRestriccionesCampanaADotes(
+                this.nuevoPSvc.obtenerCandidatosDotePendiente(pendiente.id)
+            );
             const elegibles = candidatos.filter((candidato) => this.esCandidatoDoteElegible(candidato));
             if (elegibles.length < 1) {
                 await Swal.fire({
@@ -3754,6 +3933,9 @@ export class NuevoPersonajeComponent {
     }
 
     private async finalizarPersonajeCompleto(): Promise<void> {
+        if (!await this.ensureCampaignCreationRulesSatisfied('finalizacion'))
+            return;
+
         let etapa: 'sql' | 'firebase' | 'navegacion' = 'sql';
         this.finalizacionEnCurso = true;
         try {
@@ -4046,7 +4228,7 @@ export class NuevoPersonajeComponent {
 
     private obtenerUidSesionActiva(): string {
         try {
-            return `${getAuth()?.currentUser?.uid ?? ''}`.trim();
+            return `${this.auth.currentUser?.uid ?? ''}`.trim();
         } catch {
             return '';
         }
@@ -4054,7 +4236,7 @@ export class NuevoPersonajeComponent {
 
     private obtenerNombreSesionActiva(): string {
         try {
-            const user = getAuth()?.currentUser;
+            const user = this.auth.currentUser;
             const displayName = `${user?.displayName ?? ''}`.trim();
             if (displayName.length > 0)
                 return displayName;
@@ -4551,6 +4733,8 @@ export class NuevoPersonajeComponent {
         const clases = ['fila-clase'];
         if (Number(this.claseSeleccionadaId) === Number(item.clase.Id))
             clases.push('fila-clase--seleccionada');
+        if (item.campaignBlockedReason)
+            clases.push('fila-clase--campana-bloqueada');
         if (item.compatAlineamiento.estado === 'incompatible')
             clases.push('fila-clase--alineamiento-incompatible');
         else
@@ -4996,6 +5180,7 @@ export class NuevoPersonajeComponent {
             error: () => {
                 this.plantillasCatalogo = [];
                 this.plantillasElegibles = [];
+                this.plantillasBloqueadasCampana = [];
                 this.plantillasBloqueadasUnknown = [];
                 this.plantillasBloqueadasFailed = [];
                 this.cargandoPlantillas = false;
@@ -5052,6 +5237,15 @@ export class NuevoPersonajeComponent {
         }
     }
 
+    private get effectiveSelectedCampaignPolicy(): CampaignCreationPolicy | null {
+        if (!this.hasSelectedCampaignContext)
+            return null;
+        return {
+            ...DEFAULT_CAMPAIGN_CREATION_POLICY,
+            ...(this.selectedCampaignPolicy ?? {}),
+        };
+    }
+
     private get hasSelectedCampaignContext(): boolean {
         return this.normalizarTexto(this.Personaje?.Campana ?? '') !== this.normalizarTexto('Sin campaña');
     }
@@ -5059,14 +5253,237 @@ export class NuevoPersonajeComponent {
     private get canIgnoreAlignmentRestrictionsForCurrentContext(): boolean {
         if (!this.hasSelectedCampaignContext)
             return true;
-        return this.selectedCampaignPolicy?.permitirIgnorarRestriccionesAlineamiento === true;
+        return this.effectiveSelectedCampaignPolicy?.permitirIgnorarRestriccionesAlineamiento === true;
+    }
+
+    private getCurrentCampaignHomebrewMode(policy: CampaignCreationPolicy | null): CampaignHomebrewMode {
+        if (!policy)
+            return 'unrestricted';
+
+        const maxSources = this.normalizarCampaignMaxSources(policy.maxFuentesHomebrewGeneralesPorPersonaje);
+        if (maxSources !== null) {
+            if (policy.permitirHomebrewGeneral === false && maxSources <= 0)
+                return 'forbidden';
+            return 'limited';
+        }
+
+        return policy.permitirHomebrewGeneral === false ? 'forbidden' : 'unrestricted';
+    }
+
+    private normalizarCampaignMaxSources(value: number | null | undefined): number | null {
+        if (value === null || value === undefined)
+            return null;
+        const parsed = Math.trunc(Number(value));
+        if (!Number.isFinite(parsed))
+            return null;
+        return Math.max(0, parsed);
+    }
+
+    private buildCampaignHomebrewSource(
+        categoria: CampaignHomebrewSourceCategory,
+        rawId: number,
+        rawNombre: string
+    ): CampaignHomebrewSource | null {
+        const id = Number(rawId);
+        const nombre = `${rawNombre ?? ''}`.trim();
+        if (!Number.isFinite(id) || id <= 0 || nombre.length < 1)
+            return null;
+        return {
+            key: `${categoria}:${id}`,
+            categoria,
+            id,
+            nombre,
+        };
+    }
+
+    private collectCampaignHomebrewSources(): CampaignHomebrewSource[] {
+        const sources = new Map<string, CampaignHomebrewSource>();
+        const addSource = (source: CampaignHomebrewSource | null): void => {
+            if (!source || sources.has(source.key))
+                return;
+            sources.set(source.key, source);
+        };
+
+        if (this.razaSeleccionada?.Oficial === false) {
+            addSource(this.buildCampaignHomebrewSource('raza', Number(this.razaSeleccionada?.Id ?? 0), `${this.razaSeleccionada?.Nombre ?? ''}`));
+        }
+
+        if (this.nuevoPSvc.RazaBaseSeleccionadaCompleta?.Oficial === false) {
+            addSource(this.buildCampaignHomebrewSource(
+                'raza_base',
+                Number(this.nuevoPSvc.RazaBaseSeleccionadaCompleta?.Id ?? 0),
+                `${this.nuevoPSvc.RazaBaseSeleccionadaCompleta?.Nombre ?? ''}`
+            ));
+        }
+
+        if (this.deidadSeleccionadaDetalle?.Oficial === false) {
+            addSource(this.buildCampaignHomebrewSource('deidad', Number(this.deidadSeleccionadaDetalle?.Id ?? 0), `${this.deidadSeleccionadaDetalle?.Nombre ?? ''}`));
+        }
+
+        (this.plantillasSeleccionadas ?? [])
+            .filter((plantilla) => plantilla?.Oficial === false)
+            .forEach((plantilla) => {
+                addSource(this.buildCampaignHomebrewSource('plantilla', Number(plantilla?.Id ?? 0), `${plantilla?.Nombre ?? ''}`));
+            });
+
+        const clasesByNombre = new Map<string, Clase>();
+        (this.catalogoClases ?? []).forEach((clase) => {
+            const key = this.normalizarTexto(clase?.Nombre ?? '');
+            if (key.length > 0 && !clasesByNombre.has(key))
+                clasesByNombre.set(key, clase);
+        });
+        (this.Personaje?.desgloseClases ?? []).forEach((entrada) => {
+            const nombre = `${entrada?.Nombre ?? ''}`.trim();
+            const key = this.normalizarTexto(nombre);
+            const clase = key.length > 0 ? (clasesByNombre.get(key) ?? null) : null;
+            if (clase?.Oficial === false) {
+                addSource(this.buildCampaignHomebrewSource('clase', Number(clase?.Id ?? 0), nombre));
+            }
+        });
+
+        (this.Personaje?.DotesContextuales ?? [])
+            .filter((entrada) => entrada?.Contexto?.Entidad === 'personaje')
+            .filter((entrada) => entrada?.Dote?.Oficial === false)
+            .forEach((entrada) => {
+                addSource(this.buildCampaignHomebrewSource('dote', Number(entrada?.Dote?.Id ?? 0), `${entrada?.Dote?.Nombre ?? ''}`));
+            });
+
+        return Array.from(sources.values());
+    }
+
+    private getCampaignSourceCategoryLabel(categoria: CampaignHomebrewSourceCategory): string {
+        if (categoria === 'raza')
+            return 'Raza';
+        if (categoria === 'raza_base')
+            return 'Raza base';
+        if (categoria === 'deidad')
+            return 'Deidad';
+        if (categoria === 'plantilla')
+            return 'Plantilla';
+        if (categoria === 'clase')
+            return 'Clase';
+        return 'Dote';
+    }
+
+    private getCampaignCreationValidation(): CampaignCreationValidationResult {
+        const policy = this.effectiveSelectedCampaignPolicy;
+        const mode = this.getCurrentCampaignHomebrewMode(policy);
+        const maxSources = this.normalizarCampaignMaxSources(policy?.maxFuentesHomebrewGeneralesPorPersonaje ?? null);
+        const sources = this.collectCampaignHomebrewSources();
+        const sourceKeys = new Set(sources.map((source) => source.key));
+        const sourceCount = sources.length;
+        const remainingSources = mode === 'limited' && maxSources !== null
+            ? Math.max(0, maxSources - sourceCount)
+            : null;
+        const allowsVentajasDesventajas = policy?.permitirVentajasDesventajas !== false;
+        const ventajasCount = this.flujoVentajas.seleccionVentajas.length + this.flujoVentajas.seleccionDesventajas.length;
+        const blocksExistingHomebrew = mode === 'forbidden'
+            ? sourceCount > 0
+            : mode === 'limited' && maxSources !== null && sourceCount > maxSources;
+        const blocksExistingVentajas = !allowsVentajasDesventajas && ventajasCount > 0;
+        const blockers: string[] = [];
+        const fuentesTexto = sources
+            .map((source) => `${this.getCampaignSourceCategoryLabel(source.categoria)}: ${source.nombre}`)
+            .join(', ');
+
+        if (blocksExistingHomebrew) {
+            if (mode === 'forbidden') {
+                blockers.push(`La campaña no permite homebrew general y el personaje ya usa ${fuentesTexto}.`);
+            } else if (maxSources !== null) {
+                blockers.push(`La campaña solo permite ${maxSources} fuente(s) homebrew y el personaje ya usa ${sourceCount}: ${fuentesTexto}.`);
+            }
+        }
+
+        if (blocksExistingVentajas) {
+            blockers.push(`La campaña no permite ventajas y desventajas y el personaje ya tiene ${ventajasCount} selección(es) en ese sistema.`);
+        }
+
+        return {
+            mode,
+            maxSources,
+            sources,
+            sourceKeys,
+            sourceCount,
+            remainingSources,
+            allowsVentajasDesventajas,
+            blocksExistingHomebrew,
+            blocksExistingVentajas,
+            blockers,
+        };
+    }
+
+    private getCampaignBlockedReasonForCandidate(
+        categoria: CampaignHomebrewSourceCategory,
+        rawId: number,
+        rawNombre: string,
+        isHomebrew: boolean
+    ): string | null {
+        if (!isHomebrew)
+            return null;
+
+        const source = this.buildCampaignHomebrewSource(categoria, rawId, rawNombre);
+        if (!source)
+            return null;
+
+        const validation = this.getCampaignCreationValidation();
+        if (validation.sourceKeys.has(source.key))
+            return null;
+        if (validation.mode === 'unrestricted')
+            return null;
+        if (validation.mode === 'forbidden')
+            return 'bloqueada por campaña: no permite homebrew';
+        if (validation.maxSources !== null && validation.sourceCount >= validation.maxSources)
+            return `bloqueada por campaña: límite de ${validation.maxSources} fuente(s) homebrew alcanzado`;
+        return null;
+    }
+
+    private async ensureCampaignCreationRulesSatisfied(context: 'basicos' | 'finalizacion'): Promise<boolean> {
+        if (!await this.ensureSelectedCampaignPolicyReady())
+            return false;
+
+        const validation = this.getCampaignCreationValidation();
+        if (validation.blockers.length < 1)
+            return true;
+
+        const title = context === 'finalizacion'
+            ? 'La campaña bloquea la finalización'
+            : 'La campaña bloquea continuar';
+        const detailHtml = validation.blockers.map((blocker) => `<li>${blocker}</li>`).join('');
+        const sourcesHtml = validation.sources.length > 0
+            ? `<p style="text-align:left; margin: 8px 0 6px 0;"><strong>Fuentes homebrew detectadas</strong></p><ul style="text-align:left; margin-top: 4px;">${validation.sources.map((source) => `<li>${this.getCampaignSourceCategoryLabel(source.categoria)}: ${source.nombre}</li>`).join('')}</ul>`
+            : '';
+
+        await Swal.fire({
+            icon: 'warning',
+            title,
+            html: `<p style="text-align:left; margin: 0 0 6px 0;"><strong>Debes corregir estas incompatibilidades antes de seguir.</strong></p><ul style="text-align:left; margin-top: 4px;">${detailHtml}</ul>${sourcesHtml}`,
+            confirmButtonText: 'Entendido',
+            target: document.body,
+            heightAuto: false,
+            scrollbarPadding: false,
+        });
+        return false;
+    }
+
+    private syncCampaignPolicyDependentState(): void {
+        this.asegurarPasoCompatibleConCampania();
+        this.recalcularPlantillasVisibles();
+        this.recalcularClasesVisibles();
+        this.recalcularOficialidad();
+        this.sincronizarTabConPaso();
+    }
+
+    private asegurarPasoCompatibleConCampania(): void {
+        if (this.flujo.pasoActual === 'ventajas' && this.campaignForbidsAdvantages) {
+            this.nuevoPSvc.actualizarPasoActual('clases');
+        }
     }
 
     private async ensureSelectedCampaignPolicyReady(): Promise<boolean> {
         if (!this.hasSelectedCampaignContext)
             return true;
 
-        if (!this.selectedCampaignPolicy && !this.selectedCampaignPolicyLoading)
+        if (!this.selectedCampaignPolicyResolved && !this.selectedCampaignPolicyLoading)
             await this.syncSelectedCampaignPolicy();
 
         if (this.selectedCampaignPolicyLoading) {
@@ -5090,20 +5507,24 @@ export class NuevoPersonajeComponent {
         const campaignId = Number(campanaSeleccionada?.Id ?? 0);
         if (!this.hasSelectedCampaignContext || !Number.isFinite(campaignId) || campaignId <= 0) {
             this.selectedCampaignPolicy = null;
+            this.selectedCampaignPolicyResolved = true;
             this.nuevoPSvc.aplicarRestriccionCampanaGenerador(null);
             this.selectedCampaignPolicyLoading = false;
             this.selectedCampaignPolicyRequestKey = '';
+            this.syncCampaignPolicyDependentState();
             return;
         }
 
         const requestKey = `${campaignId}:${this.Personaje.Campana ?? ''}`;
         this.selectedCampaignPolicyRequestKey = requestKey;
         this.selectedCampaignPolicyLoading = true;
+        this.selectedCampaignPolicyResolved = false;
         try {
             const detail = await this.campanaSvc.getCampaignDetail(campaignId);
             if (this.selectedCampaignPolicyRequestKey !== requestKey)
                 return;
             this.selectedCampaignPolicy = detail?.politicaCreacion ?? null;
+            this.selectedCampaignPolicyResolved = true;
             this.nuevoPSvc.aplicarRestriccionCampanaGenerador(
                 detail?.campaign?.campaignRole === 'master'
                     ? null
@@ -5113,6 +5534,7 @@ export class NuevoPersonajeComponent {
             if (this.selectedCampaignPolicyRequestKey !== requestKey)
                 return;
             this.selectedCampaignPolicy = null;
+            this.selectedCampaignPolicyResolved = true;
             this.nuevoPSvc.aplicarRestriccionCampanaGenerador(
                 campanaSeleccionada?.CampaignRole === 'master'
                     ? null
@@ -5122,8 +5544,10 @@ export class NuevoPersonajeComponent {
                     }
             );
         } finally {
-            if (this.selectedCampaignPolicyRequestKey === requestKey)
+            if (this.selectedCampaignPolicyRequestKey === requestKey) {
                 this.selectedCampaignPolicyLoading = false;
+                this.syncCampaignPolicyDependentState();
+            }
         }
     }
 
@@ -5372,6 +5796,7 @@ export class NuevoPersonajeComponent {
             error: () => {
                 this.catalogoDeidades = [];
                 this.nuevoPSvc.setCatalogoDeidades([]);
+                this.refreshBasicosDerivedState();
                 this.cargandoDeidades = false;
             },
         });
@@ -5407,6 +5832,7 @@ export class NuevoPersonajeComponent {
             error: () => {
                 this.catalogoAlineamientosBasicos = [];
                 this.normalizarAlineamientoSeleccionado();
+                this.refreshBasicosDerivedState();
             },
         });
     }
@@ -5458,9 +5884,16 @@ export class NuevoPersonajeComponent {
 
             const evaluacion = this.nuevoPSvc.evaluarClaseParaSeleccion(clase);
             const bloqueoSoloAlineamiento = this.nuevoPSvc.esBloqueoSoloPorAlineamiento(evaluacion);
-            const puedeAplicarse = evaluacion.estado === 'eligible' || bloqueoSoloAlineamiento;
-            if (!puedeAplicarse)
+            const campaignBlockedReason = this.getCampaignBlockedReasonForCandidate(
+                'clase',
+                claseId,
+                nombre,
+                clase?.Oficial === false
+            );
+            const elegiblePorReglasBase = evaluacion.estado === 'eligible' || bloqueoSoloAlineamiento;
+            if (!elegiblePorReglasBase && !campaignBlockedReason)
                 return;
+            const puedeAplicarse = elegiblePorReglasBase && !campaignBlockedReason;
 
             const nivelActual = this.getNivelActualClasePorNombre(clase.Nombre);
             const siguienteNivel = nivelActual + 1;
@@ -5478,6 +5911,7 @@ export class NuevoPersonajeComponent {
                 roles: this.getRolesClase(clase),
                 compatAlineamiento: this.evaluarCompatibilidadAlineamientoClase(clase),
                 esHomebrew: clase?.Oficial === false,
+                campaignBlockedReason,
             });
         });
 
@@ -6085,6 +6519,7 @@ export class NuevoPersonajeComponent {
         const raza = this.razaSeleccionada;
         if (!raza) {
             this.plantillasElegibles = [];
+            this.plantillasBloqueadasCampana = [];
             this.plantillasBloqueadasUnknown = [];
             this.plantillasBloqueadasFailed = [];
             return;
@@ -6095,6 +6530,7 @@ export class NuevoPersonajeComponent {
         const ctx = this.getContextoEvaluacionPlantillas(raza, this.incluirHomebrewPlantillasEfectivo);
 
         const elegibles: Plantilla[] = [];
+        const bloqueadasCampana: { plantilla: Plantilla; evaluacion: PlantillaEvaluacionResultado; }[] = [];
         const bloqueadasUnknown: { plantilla: Plantilla; evaluacion: PlantillaEvaluacionResultado; }[] = [];
         const bloqueadasFailed: { plantilla: Plantilla; evaluacion: PlantillaEvaluacionResultado; }[] = [];
         const idsNoDisponibles = new Set<number>(this.plantillasSeleccionadas
@@ -6116,6 +6552,23 @@ export class NuevoPersonajeComponent {
 
             const evaluacion = evaluarElegibilidadPlantilla(plantilla, ctx);
             if (evaluacion.estado === 'eligible') {
+                const campaignBlockedReason = this.getCampaignBlockedReasonForCandidate(
+                    'plantilla',
+                    idPlantilla,
+                    `${plantilla?.Nombre ?? ''}`.trim(),
+                    plantilla?.Oficial === false
+                );
+                if (campaignBlockedReason) {
+                    bloqueadasCampana.push({
+                        plantilla,
+                        evaluacion: {
+                            estado: 'blocked_failed',
+                            razones: [campaignBlockedReason],
+                            advertencias: [],
+                        },
+                    });
+                    return;
+                }
                 const alineamientoResuelto = resolverAlineamientoPlantillas(
                     this.Personaje.Alineamiento,
                     [...this.plantillasSeleccionadas, plantilla]
@@ -6146,6 +6599,7 @@ export class NuevoPersonajeComponent {
         });
 
         this.plantillasElegibles = elegibles;
+        this.plantillasBloqueadasCampana = bloqueadasCampana;
         this.plantillasBloqueadasUnknown = bloqueadasUnknown;
         this.plantillasBloqueadasFailed = bloqueadasFailed;
     }

@@ -678,6 +678,7 @@ describe('NuevoPersonajeComponent', () => {
             openPrivateProfile: jasmine.createSpy('openPrivateProfile'),
         };
         component = new NuevoPersonajeComponent(
+            { currentUser: null } as any,
             nuevoPSvc,
             campanaSvcMock,
             alineamientoSvcMock,
@@ -1302,6 +1303,41 @@ describe('NuevoPersonajeComponent', () => {
         expect(nuevoPSvc.EstadoFlujo.generador.tablasPermitidas).toBe(3);
     });
 
+    it('deidadesFiltradas bloquea nuevas deidades homebrew cuando la campaña no permite más fuentes', () => {
+        component.Personaje.Campana = 'Campaña A';
+        component.seleccionarRaza(crearRazaMock(false));
+        component.catalogoDeidades = [
+            ...crearDeidadesMock(),
+            {
+                Id: 99,
+                Nombre: 'Diosa homebrew',
+                Descripcion: '',
+                Manual: { Id: 9, Nombre: 'Manual homebrew', Pagina: 1 },
+                Alineamiento: { Id: 2, Id_basico: 2, Nombre: 'Legal neutral' },
+                Arma: { Id: 1, Nombre: 'Espada larga' },
+                Pabellon: { Id: 1, Nombre: 'Prueba' },
+                Genero: { Id: 1, Nombre: 'Femenino' },
+                Ambitos: [],
+                Dominios: [],
+                Oficial: false,
+            } as any,
+        ];
+        component.selectedCampaignPolicy = {
+            tiradaMinimaCaracteristica: null,
+            maxTablasDadosCaracteristicas: null,
+            permitirHomebrewGeneral: false,
+            permitirVentajasDesventajas: true,
+            permitirIgnorarRestriccionesAlineamiento: true,
+            maxFuentesHomebrewGeneralesPorPersonaje: 1,
+        };
+        (component as any).selectedCampaignPolicyResolved = true;
+
+        const deidadHomebrew = component.deidadesFiltradas.find((item) => item.nombre === 'Diosa homebrew');
+
+        expect(deidadHomebrew?.disabled).toBeTrue();
+        expect(`${deidadHomebrew?.etiqueta ?? ''}`).toContain('bloqueada por campaña');
+    });
+
     it('getInconsistenciasManual incluye peso, altura y edad fuera de rango', () => {
         component.Personaje.Edad = 100;
         component.Personaje.Peso = 120;
@@ -1351,10 +1387,10 @@ describe('NuevoPersonajeComponent', () => {
         component.Personaje.Deidad = component.deidadSinSeleccion;
 
         const deidades = component.deidadesFiltradas;
-        expect(deidades[0]).toBe(component.deidadSinSeleccion);
-        expect(deidades).toContain('Heironeous');
-        expect(deidades).toContain('Gruumsh');
-        expect(deidades).toContain('St. Cuthbert');
+        expect(deidades[0].nombre).toBe(component.deidadSinSeleccion);
+        expect(deidades.map((item) => item.nombre)).toContain('Heironeous');
+        expect(deidades.map((item) => item.nombre)).toContain('Gruumsh');
+        expect(deidades.map((item) => item.nombre)).toContain('St. Cuthbert');
     });
 
     it('onDeidadChange normaliza vacío a No tener deidad', () => {
@@ -1377,7 +1413,7 @@ describe('NuevoPersonajeComponent', () => {
         component.Personaje.Deidad = 'Dios inventado';
 
         const deidades = component.deidadesFiltradas;
-        expect(deidades).toContain('Dios inventado');
+        expect(deidades.map((item) => item.nombre)).toContain('Dios inventado');
     });
 
     it('recalcularOficialidad pone false con contradicciones de manual', () => {
@@ -1445,6 +1481,7 @@ describe('NuevoPersonajeComponent', () => {
             permitirIgnorarRestriccionesAlineamiento: false,
             maxFuentesHomebrewGeneralesPorPersonaje: 1,
         };
+        (component as any).selectedCampaignPolicyResolved = true;
         const swalSpy = spyOn(Swal, 'fire').and.resolveTo({ isConfirmed: true } as any);
 
         await component.continuarDesdeBasicos();
@@ -1468,6 +1505,81 @@ describe('NuevoPersonajeComponent', () => {
         expect(`${swalConfig.html ?? ''}`).toContain('tu deidad exige');
         expect(component.Personaje.Oficial).toBeFalse();
         expect(component.modalCaracteristicasAbierto).toBeTrue();
+    });
+
+    it('continuarDesdeBasicos bloquea si la campaña prohíbe todo el homebrew y la raza ya es homebrew', async () => {
+        component.Campanas = [{
+            Id: 1,
+            Nombre: 'Campaña A',
+            CampaignRole: 'jugador',
+            Tramas: [],
+        }];
+        component.seleccionarRaza(crearRazaMock(false));
+        component.Personaje.Campana = 'Campaña A';
+        component.Personaje.Trama = 'Trama base';
+        component.Personaje.Subtrama = 'Subtrama base';
+        campanaSvcMock.getCampaignDetail = jasmine.createSpy('getCampaignDetail').and.resolveTo({
+            campaign: {
+                id: 1,
+                nombre: 'Campaña A',
+                campaignRole: 'jugador',
+                membershipStatus: 'activo',
+            },
+            politicaCreacion: {
+                tiradaMinimaCaracteristica: null,
+                maxTablasDadosCaracteristicas: null,
+                permitirHomebrewGeneral: false,
+                permitirVentajasDesventajas: true,
+                permitirIgnorarRestriccionesAlineamiento: true,
+                maxFuentesHomebrewGeneralesPorPersonaje: 0,
+            },
+        });
+        const swalSpy = spyOn(Swal, 'fire').and.resolveTo({ isConfirmed: true } as any);
+
+        await component.continuarDesdeBasicos();
+
+        const swalConfig = swalSpy.calls.mostRecent().args[0] as any;
+        expect(`${swalConfig.title ?? ''}`).toContain('La campaña bloquea continuar');
+        expect(`${swalConfig.html ?? ''}`).toContain('no permite homebrew general');
+        expect(component.modalCaracteristicasAbierto).toBeFalse();
+    });
+
+    it('continuarDesdeBasicos también bloquea homebrew para actor master', async () => {
+        component.Campanas = [{
+            Id: 1,
+            Nombre: 'Campaña A',
+            CampaignRole: 'master',
+            Tramas: [],
+        }];
+        component.seleccionarRaza(crearRazaMock(false));
+        component.Personaje.Campana = 'Campaña A';
+        component.Personaje.Trama = 'Trama base';
+        component.Personaje.Subtrama = 'Subtrama base';
+        campanaSvcMock.getCampaignDetail = jasmine.createSpy('getCampaignDetail').and.resolveTo({
+            campaign: {
+                id: 1,
+                nombre: 'Campaña A',
+                campaignRole: 'master',
+                membershipStatus: 'activo',
+            },
+            politicaCreacion: {
+                tiradaMinimaCaracteristica: 3,
+                maxTablasDadosCaracteristicas: 1,
+                permitirHomebrewGeneral: false,
+                permitirVentajasDesventajas: true,
+                permitirIgnorarRestriccionesAlineamiento: true,
+                maxFuentesHomebrewGeneralesPorPersonaje: 0,
+            },
+        });
+        const swalSpy = spyOn(Swal, 'fire').and.resolveTo({ isConfirmed: true } as any);
+
+        await component.continuarDesdeBasicos();
+
+        const swalConfig = swalSpy.calls.mostRecent().args[0] as any;
+        expect(`${swalConfig.title ?? ''}`).toContain('La campaña bloquea continuar');
+        expect(`${swalConfig.html ?? ''}`).toContain('no permite homebrew general');
+        expect(component.modalCaracteristicasAbierto).toBeFalse();
+        expect(nuevoPSvc.TieneRestriccionCampanaGenerador).toBeFalse();
     });
 
     it('deidad permite diferencia de un paso sin conflicto duro', async () => {
@@ -1687,6 +1799,33 @@ describe('NuevoPersonajeComponent', () => {
         expect(component.selectedInternalTabIndex).toBe(3);
     });
 
+    it('continuarDesdePlantillas salta ventajas cuando la campaña las prohíbe', async () => {
+        component.selectedCampaignPolicy = {
+            tiradaMinimaCaracteristica: null,
+            maxTablasDadosCaracteristicas: null,
+            permitirHomebrewGeneral: true,
+            permitirVentajasDesventajas: false,
+            permitirIgnorarRestriccionesAlineamiento: true,
+            maxFuentesHomebrewGeneralesPorPersonaje: null,
+        };
+        (component as any).selectedCampaignPolicyResolved = true;
+        component.Personaje.Campana = 'Campaña A';
+
+        await component.finalizarGeneracionCaracteristicas({
+            Fuerza: 14,
+            Destreza: 15,
+            Constitucion: 13,
+            Inteligencia: 12,
+            Sabiduria: 10,
+            Carisma: 8,
+        });
+        await component.continuarDesdePlantillas();
+
+        expect(component.campaignForbidsAdvantages).toBeTrue();
+        expect(nuevoPSvc.EstadoFlujo.pasoActual).toBe('clases');
+        expect(component.selectedInternalTabIndex).toBe(4);
+    });
+
     it('al salir de plantillas, DGs por plantilla pueden disparar selector de aumentos', async () => {
         const razaConDgs = crearRazaMock();
         razaConDgs.Dgs_adicionales.Cantidad = 2;
@@ -1785,6 +1924,37 @@ describe('NuevoPersonajeComponent', () => {
 
         expect(component.plantillasBloqueadasUnknown.some((item) => item.plantilla.Id === plantilla.Id)).toBeFalse();
         expect(component.plantillasBloqueadasFailed.some((item) => item.plantilla.Id === plantilla.Id)).toBeFalse();
+    });
+
+    it('recalcularPlantillasVisibles mueve plantillas homebrew a bloqueadas por campaña cuando ya no hay fuentes disponibles', async () => {
+        await component.finalizarGeneracionCaracteristicas({
+            Fuerza: 14,
+            Destreza: 15,
+            Constitucion: 13,
+            Inteligencia: 12,
+            Sabiduria: 10,
+            Carisma: 8,
+        });
+        component.Personaje.Campana = 'Campaña A';
+        component.selectedCampaignPolicy = {
+            tiradaMinimaCaracteristica: null,
+            maxTablasDadosCaracteristicas: null,
+            permitirHomebrewGeneral: false,
+            permitirVentajasDesventajas: true,
+            permitirIgnorarRestriccionesAlineamiento: true,
+            maxFuentesHomebrewGeneralesPorPersonaje: 1,
+        };
+        (component as any).selectedCampaignPolicyResolved = true;
+        component.seleccionarRaza(crearRazaMock(false));
+        component.incluirHomebrewPlantillas = true;
+        const plantillaHomebrew = crearPlantillaMock({ Id: 911, Nombre: 'Plantilla homebrew', Oficial: false });
+        component.plantillasCatalogo = [plantillaHomebrew];
+        nuevoPSvc.setPlantillasDisponibles(component.plantillasCatalogo);
+
+        (component as any).recalcularPlantillasVisibles();
+
+        expect(component.plantillasBloqueadasCampana.some((item) => item.plantilla.Id === plantillaHomebrew.Id)).toBeTrue();
+        expect(component.plantillasElegibles.some((item) => item.Id === plantillaHomebrew.Id)).toBeFalse();
     });
 
     it('al mutar tipo de criatura, reevaluá compatibilidad de plantillas y mantiene otros prerrequisitos', async () => {
@@ -2118,6 +2288,34 @@ describe('NuevoPersonajeComponent', () => {
         expect(component.clasesListadoFiltrado[0].puedeAplicarse).toBeTrue();
     });
 
+    it('recalcularClasesVisibles mantiene visible una clase homebrew pero la bloquea por campaña al alcanzar el límite', () => {
+        component.Personaje.Campana = 'Campaña A';
+        component.selectedCampaignPolicy = {
+            tiradaMinimaCaracteristica: null,
+            maxTablasDadosCaracteristicas: null,
+            permitirHomebrewGeneral: false,
+            permitirVentajasDesventajas: true,
+            permitirIgnorarRestriccionesAlineamiento: true,
+            maxFuentesHomebrewGeneralesPorPersonaje: 1,
+        };
+        (component as any).selectedCampaignPolicyResolved = true;
+        component.seleccionarRaza(crearRazaMock(false));
+        component.incluirHomebrewClases = true;
+        const claseHomebrew = crearClaseMock({
+            Id: 999,
+            Nombre: 'Espadachín astral',
+            Oficial: false,
+        });
+        component.catalogoClases = [claseHomebrew];
+        nuevoPSvc.setCatalogoClases(component.catalogoClases);
+
+        (component as any).recalcularClasesVisibles();
+
+        expect(component.clasesListadoFiltrado.length).toBe(1);
+        expect(component.clasesListadoFiltrado[0].campaignBlockedReason).toContain('bloqueada por campaña');
+        expect(component.clasesListadoFiltrado[0].puedeAplicarse).toBeFalse();
+    });
+
     it('incompatibilidad P3: al confirmar, aplica clase y deja personaje no oficial', async () => {
         const barbaro = crearClaseMock({
             Id: 32,
@@ -2288,6 +2486,7 @@ describe('NuevoPersonajeComponent', () => {
             permitirIgnorarRestriccionesAlineamiento: false,
             maxFuentesHomebrewGeneralesPorPersonaje: 1,
         };
+        (component as any).selectedCampaignPolicyResolved = true;
         component.catalogoClases = [monje];
         nuevoPSvc.setCatalogoClases(component.catalogoClases);
         const swalSpy = spyOn(Swal, 'fire').and.resolveTo({ isConfirmed: true } as any);
@@ -4060,6 +4259,39 @@ describe('NuevoPersonajeComponent', () => {
         expect(nuevoPSvc.EstadoFlujo.pasoActual).toBe('clases');
     });
 
+    it('aplicarRestriccionesCampanaADotes bloquea una dote homebrew nueva cuando ya se alcanzó el límite', () => {
+        component.Personaje.Campana = 'Campaña A';
+        component.selectedCampaignPolicy = {
+            tiradaMinimaCaracteristica: null,
+            maxTablasDadosCaracteristicas: null,
+            permitirHomebrewGeneral: false,
+            permitirVentajasDesventajas: true,
+            permitirIgnorarRestriccionesAlineamiento: true,
+            maxFuentesHomebrewGeneralesPorPersonaje: 1,
+        };
+        (component as any).selectedCampaignPolicyResolved = true;
+        component.seleccionarRaza(crearRazaMock(false));
+        const candidatos = (component as any).aplicarRestriccionesCampanaADotes([{
+            dote: {
+                Id: 77,
+                Nombre: 'Dote homebrew',
+                Beneficio: '',
+                Descripcion: '',
+                Manual: { Id: 1, Nombre: 'Manual homebrew', Pagina: 1 },
+                Tipos: [],
+                Oficial: false,
+            },
+            evaluacion: { estado: 'eligible', razones: [], advertencias: [] },
+            repeticionValida: true,
+            restringidaPorTipo: false,
+            requiereExtra: false,
+            extrasDisponibles: [],
+        }]);
+
+        expect(candidatos[0].evaluacion.estado).toBe('blocked_failed');
+        expect(candidatos[0].evaluacion.razones.some((reason: string) => reason.includes('bloqueada por campaña'))).toBeTrue();
+    });
+
     it('mostrarBotonFinalizarCreacion permite finalizar con clase o con 4+ DGs raciales', () => {
         component.Personaje.desgloseClases = [];
         component.Personaje.Raza.Dgs_adicionales.Cantidad = 0;
@@ -4202,6 +4434,29 @@ describe('NuevoPersonajeComponent', () => {
         expect(component.modalSelectorVisibilidadAbierto).toBeFalse();
     });
 
+    it('finalizarPersonajeCompleto bloquea el POST si la campaña sigue siendo incompatible por homebrew', async () => {
+        component.Personaje.Campana = 'Campaña A';
+        component.Personaje.Trama = 'Trama base';
+        component.Personaje.Subtrama = 'Subtrama base';
+        component.seleccionarRaza(crearRazaMock(false));
+        component.selectedCampaignPolicy = {
+            tiradaMinimaCaracteristica: null,
+            maxTablasDadosCaracteristicas: null,
+            permitirHomebrewGeneral: false,
+            permitirVentajasDesventajas: true,
+            permitirIgnorarRestriccionesAlineamiento: true,
+            maxFuentesHomebrewGeneralesPorPersonaje: 0,
+        };
+        (component as any).selectedCampaignPolicyResolved = true;
+        const swalSpy = spyOn(Swal, 'fire').and.resolveTo({ isConfirmed: true } as any);
+
+        await (component as any).finalizarPersonajeCompleto();
+
+        expect(personajeSvcMock.crearPersonajeApiDesdeCreacion).not.toHaveBeenCalled();
+        expect(personajeSvcMock.guardarPersonajeEnFirebase).not.toHaveBeenCalled();
+        expect(`${(swalSpy.calls.mostRecent().args[0] as any).title ?? ''}`).toContain('La campaña bloquea la finalización');
+    });
+
     it('cerrar selector visibilidad no altera la preferencia actual', () => {
         component.Personaje.visible_otros_usuarios = false;
         component.modalSelectorVisibilidadAbierto = true;
@@ -4297,6 +4552,7 @@ describe('NuevoPersonajeComponent', () => {
         nuevoPSvc.actualizarPasoActual('basicos');
 
         const componentReabierto = new NuevoPersonajeComponent(
+            { currentUser: null } as any,
             nuevoPSvc,
             campanaSvcMock,
             alineamientoSvcMock,

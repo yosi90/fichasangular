@@ -23,13 +23,17 @@ export class DoteService {
     ) { }
 
     protected watchDotePath(id: number, onNext: (snapshot: any) => void, onError: (error: any) => void): Unsubscribe {
-        const dbRef = ref(this.db, `Dotes/${id}`);
-        return this.firebaseContextSvc.run(() => onValue(dbRef, onNext, onError));
+        return this.firebaseContextSvc.run(() => {
+            const dbRef = ref(this.db, `Dotes/${id}`);
+            return onValue(dbRef, onNext, onError);
+        });
     }
 
     protected watchDotesPath(onNext: (snapshot: any) => void, onError: (error: any) => void): Unsubscribe {
-        const dbRef = ref(this.db, "Dotes");
-        return this.firebaseContextSvc.run(() => onValue(dbRef, onNext, onError));
+        return this.firebaseContextSvc.run(() => {
+            const dbRef = ref(this.db, "Dotes");
+            return onValue(dbRef, onNext, onError);
+        });
     }
 
     getDote(id: number): Observable<Dote> {

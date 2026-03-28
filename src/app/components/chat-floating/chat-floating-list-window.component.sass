@@ -1,0 +1,192 @@
+:host
+    display: block
+    pointer-events: auto
+
+.chat-float-list
+    display: flex
+    flex-direction: column
+    min-height: 100%
+    background: #2f3135
+    color: #f2f2f2
+
+.chat-float-list__filters
+    display: flex
+    flex-wrap: wrap
+    gap: 8px
+    padding: 16px 16px 8px
+
+.chat-float-list__filter
+    border: 1px solid rgba(255, 255, 255, 0.16)
+    background: rgba(255, 255, 255, 0.04)
+    color: #ececec
+    border-radius: 999px
+    padding: 8px 14px
+    font-size: 13px
+    font-weight: 600
+
+.chat-float-list__filter--active
+    border-color: rgba(255, 128, 170, 0.95)
+    box-shadow: inset 0 0 0 1px rgba(255, 128, 170, 0.4)
+
+.chat-float-list__toolbar
+    display: flex
+    flex-wrap: wrap
+    gap: 8px
+    padding: 0 16px 12px
+
+.chat-float-list__composer
+    display: flex
+    flex-direction: column
+    gap: 10px
+    padding: 0 16px 12px
+
+.chat-float-list__composer-modes
+    display: flex
+    gap: 8px
+
+.chat-float-list__composer-mode
+    border: 1px solid rgba(255, 255, 255, 0.16)
+    background: rgba(255, 255, 255, 0.04)
+    color: #ececec
+    border-radius: 999px
+    padding: 8px 14px
+    font-size: 13px
+    font-weight: 600
+
+.chat-float-list__composer-mode--active
+    border-color: rgba(120, 205, 255, 0.9)
+    background: rgba(120, 205, 255, 0.12)
+
+.chat-float-list__field
+    width: 100%
+
+.chat-float-list__hint,
+.chat-float-list__error
+    margin: 0
+    font-size: 12px
+
+.chat-float-list__hint
+    color: rgba(255, 255, 255, 0.72)
+
+.chat-float-list__error
+    color: #ffb4b4
+
+.chat-float-list__mini-results
+    display: flex
+    flex-direction: column
+    gap: 8px
+    max-height: 220px
+    overflow: auto
+
+.chat-float-list__mini-card
+    display: flex
+    align-items: center
+    gap: 10px
+    width: 100%
+    border: 1px solid rgba(255, 255, 255, 0.12)
+    border-radius: 12px
+    background: rgba(255, 255, 255, 0.04)
+    padding: 10px 12px
+    text-align: left
+    color: inherit
+
+.chat-float-list__mini-card--selected
+    border-color: rgba(120, 205, 255, 0.8)
+    background: rgba(120, 205, 255, 0.12)
+
+.chat-float-list__mini-avatar,
+.chat-float-list__avatar
+    width: 42px
+    height: 42px
+    min-width: 42px
+    border-radius: 50%
+    overflow: hidden
+    display: inline-flex
+    align-items: center
+    justify-content: center
+    background: rgba(255, 255, 255, 0.08)
+
+    img
+        width: 100%
+        height: 100%
+        object-fit: cover
+
+.chat-float-list__avatar--system
+    border-radius: 14px
+
+.chat-float-list__mini-copy,
+.chat-float-list__copy
+    display: flex
+    flex-direction: column
+    min-width: 0
+
+    strong,
+    small
+        white-space: nowrap
+        overflow: hidden
+        text-overflow: ellipsis
+
+.chat-float-list__body
+    flex: 1 1 auto
+    overflow: auto
+    display: flex
+    flex-direction: column
+    gap: 8px
+    padding: 0 16px 16px
+
+.chat-float-list__conversation
+    display: flex
+    align-items: center
+    gap: 12px
+    width: 100%
+    border: 1px solid rgba(255, 255, 255, 0.12)
+    border-radius: 14px
+    background: rgba(255, 255, 255, 0.04)
+    padding: 12px
+    color: inherit
+    text-align: left
+
+.chat-float-list__main
+    display: flex
+    align-items: center
+    gap: 8px
+
+.chat-float-list__badge
+    display: inline-flex
+    align-items: center
+    min-height: 22px
+    padding: 0 8px
+    border-radius: 999px
+    font-size: 11px
+    background: rgba(255, 255, 255, 0.08)
+    color: rgba(255, 255, 255, 0.8)
+
+.chat-float-list__unread
+    margin-left: auto
+    min-width: 24px
+    height: 24px
+    border-radius: 999px
+    padding: 0 6px
+    display: inline-flex
+    align-items: center
+    justify-content: center
+    background: #a53a65
+    color: #fff
+    font-size: 12px
+    font-weight: 700
+
+.chat-float-list__empty
+    display: flex
+    flex-direction: column
+    align-items: center
+    justify-content: center
+    gap: 8px
+    min-height: 180px
+    border: 1px dashed rgba(255, 255, 255, 0.14)
+    border-radius: 14px
+    color: rgba(255, 255, 255, 0.7)
+    text-align: center
+    padding: 24px
+
+.chat-float-list__empty--inline
+    min-height: 96px

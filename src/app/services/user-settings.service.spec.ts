@@ -20,7 +20,10 @@ describe('UserSettingsService', () => {
                 visibilidadPorDefectoPersonajes: true,
                 mostrarPerfilPublico: false,
                 allowDirectMessagesFromNonFriends: true,
+                autoAbrirVentanaChats: true,
+                permitirBurbujasChat: true,
             },
+            mensajeria_flotante: null,
         } as any);
 
         expect(normalized.perfil.notificaciones).toEqual({
@@ -29,6 +32,9 @@ describe('UserSettingsService', () => {
             campanas: true,
             cuentaSistema: true,
         });
+        expect(normalized.perfil.autoAbrirVentanaChats).toBeTrue();
+        expect(normalized.perfil.permitirBurbujasChat).toBeTrue();
+        expect(normalized.mensajeria_flotante).toBeNull();
     });
 
     it('saveProfileSettings conserva el bloque de notificaciones y permite actualizarlo', async () => {
@@ -58,6 +64,8 @@ describe('UserSettingsService', () => {
                 mostrarPerfilPublico: false,
                 visibilidadPorDefectoPersonajes: false,
                 allowDirectMessagesFromNonFriends: false,
+                autoAbrirVentanaChats: true,
+                permitirBurbujasChat: true,
                 notificaciones: {
                     mensajes: false,
                     amistad: false,

@@ -9,7 +9,15 @@ import {
     onSnapshot,
 } from '@angular/fire/firestore';
 import { UserPrivateProfile } from '../interfaces/user-account';
-import { UserSettingsV1, createDefaultUserSettings } from '../interfaces/user-settings';
+import {
+    ChatFloatingBubbleState,
+    ChatFloatingSettings,
+    ChatFloatingWindowState,
+    FloatingWindowPlacementMinimized,
+    FloatingWindowPlacementRestored,
+    UserSettingsV1,
+    createDefaultUserSettings,
+} from '../interfaces/user-settings';
 import {
     FriendItem,
     FriendRequestItem,
@@ -40,8 +48,9 @@ export class PrivateUserFirestoreService {
         if (!uid)
             return null;
 
-        const profileRef = this.buildProfileDocRef(uid);
-        const snapshot = await this.firebaseContextSvc.run(() => getDoc(profileRef));
+        const snapshot = await this.firebaseContextSvc.run(() => getDoc(
+            doc(this.firestore, 'private_users', uid, 'meta', 'profile')
+        ));
         return this.mapPrivateProfile(snapshot.exists() ? snapshot.data() : null, uid);
     }
 
@@ -56,7 +65,7 @@ export class PrivateUserFirestoreService {
         }
 
         return this.firebaseContextSvc.run(() => onSnapshot(
-            this.buildProfileDocRef(uid),
+            doc(this.firestore, 'private_users', uid, 'meta', 'profile'),
             (snapshot) => next(this.mapPrivateProfile(snapshot.exists() ? snapshot.data() : null, uid)),
             (error) => onError?.(error)
         ));
@@ -67,8 +76,9 @@ export class PrivateUserFirestoreService {
         if (!uid)
             return null;
 
-        const settingsRef = this.buildSettingsDocRef(uid);
-        const snapshot = await this.firebaseContextSvc.run(() => getDoc(settingsRef));
+        const snapshot = await this.firebaseContextSvc.run(() => getDoc(
+            doc(this.firestore, 'private_users', uid, 'meta', 'settings')
+        ));
         return this.mapSettings(snapshot.exists() ? snapshot.data() : null);
     }
 
@@ -265,14 +275,6 @@ export class PrivateUserFirestoreService {
         ));
     }
 
-    private buildProfileDocRef(uid: string) {
-        return doc(this.firestore, 'private_users', uid, 'meta', 'profile');
-    }
-
-    private buildSettingsDocRef(uid: string) {
-        return doc(this.firestore, 'private_users', uid, 'meta', 'settings');
-    }
-
     private getCurrentUid(): string {
         return `${this.auth.currentUser?.uid ?? ''}`.trim();
     }
@@ -330,6 +332,8 @@ export class PrivateUserFirestoreService {
                 visibilidadPorDefectoPersonajes: raw?.perfil?.visibilidadPorDefectoPersonajes === true,
                 mostrarPerfilPublico: raw?.perfil?.mostrarPerfilPublico !== false,
                 allowDirectMessagesFromNonFriends: raw?.perfil?.allowDirectMessagesFromNonFriends === true,
+                autoAbrirVentanaChats: raw?.perfil?.autoAbrirVentanaChats !== false,
+                permitirBurbujasChat: raw?.perfil?.permitirBurbujasChat !== false,
                 notificaciones: {
                     mensajes: raw?.perfil?.notificaciones?.mensajes !== false,
                     amistad: raw?.perfil?.notificaciones?.amistad !== false,
@@ -337,6 +341,7 @@ export class PrivateUserFirestoreService {
                     cuentaSistema: raw?.perfil?.notificaciones?.cuentaSistema !== false,
                 },
             },
+            mensajeria_flotante: this.normalizeChatFloatingSettings(raw?.mensajeria_flotante),
         };
     }
 
@@ -565,6 +570,14 @@ export class PrivateUserFirestoreService {
     }
 
     private normalizePreviewMinimizada(raw: any): UserSettingsV1['nuevo_personaje']['preview_minimizada'] {
+        return this.normalizeFloatingPlacementMinimized(raw);
+    }
+
+    private normalizePreviewRestaurada(raw: any): UserSettingsV1['nuevo_personaje']['preview_restaurada'] {
+        return this.normalizeFloatingPlacementRestored(raw);
+    }
+
+    private normalizeFloatingPlacementMinimized(raw: any): FloatingWindowPlacementMinimized | null {
         if (!raw || typeof raw !== 'object')
             return null;
 
@@ -583,7 +596,7 @@ export class PrivateUserFirestoreService {
         };
     }
 
-    private normalizePreviewRestaurada(raw: any): UserSettingsV1['nuevo_personaje']['preview_restaurada'] {
+    private normalizeFloatingPlacementRestored(raw: any): FloatingWindowPlacementRestored | null {
         if (!raw || typeof raw !== 'object')
             return null;
 
@@ -607,6 +620,65 @@ export class PrivateUserFirestoreService {
             width,
             height,
             updatedAt: Math.trunc(updatedAt),
+        };
+    }
+
+    private normalizeChatFloatingWindowState(raw: any): ChatFloatingWindowState | null {
+        if (!raw || typeof raw !== 'object')
+            return null;
+
+        const mode = `${raw?.mode ?? ''}`.trim().toLowerCase();
+        const updatedAt = Number(raw?.updatedAt);
+        if ((mode !== 'window' && mode !== 'minimized' && mode !== 'maximized') || !Number.isFinite(updatedAt))
+            return null;
+
+        return {
+            version: 1,
+            mode: mode as ChatFloatingWindowState['mode'],
+            restoredPlacement: this.normalizeFloatingPlacementRestored(raw?.restoredPlacement),
+            minimizedPlacement: this.normalizeFloatingPlacementMinimized(raw?.minimizedPlacement),
+            updatedAt: Math.trunc(updatedAt),
+        };
+    }
+
+    private normalizeChatFloatingBubbleState(raw: any): ChatFloatingBubbleState | null {
+        if (!raw || typeof raw !== 'object')
+            return null;
+
+        const conversationId = this.toPositiveInt(raw?.conversationId);
+        const mode = `${raw?.mode ?? ''}`.trim().toLowerCase();
+        const updatedAt = Number(raw?.updatedAt);
+        if (!conversationId)
+            return null;
+        if ((mode !== 'window' && mode !== 'bubble' && mode !== 'maximized') || !Number.isFinite(updatedAt))
+            return null;
+
+        return {
+            version: 1,
+            conversationId,
+            mode: mode as ChatFloatingBubbleState['mode'],
+            restoredPlacement: this.normalizeFloatingPlacementRestored(raw?.restoredPlacement),
+            bubblePlacement: this.normalizeFloatingPlacementMinimized(raw?.bubblePlacement),
+            updatedAt: Math.trunc(updatedAt),
+        };
+    }
+
+    private normalizeChatFloatingSettings(raw: any): ChatFloatingSettings | null {
+        if (!raw || typeof raw !== 'object')
+            return null;
+
+        const bubbleMap = new Map<number, ChatFloatingBubbleState>();
+        const source = Array.isArray(raw?.burbujas_abiertas) ? raw.burbujas_abiertas : [];
+        source.forEach((item: any) => {
+            const normalized = this.normalizeChatFloatingBubbleState(item);
+            if (normalized)
+                bubbleMap.set(normalized.conversationId, normalized);
+        });
+
+        return {
+            version: 1,
+            ventana_chat: this.normalizeChatFloatingWindowState(raw?.ventana_chat),
+            burbujas_abiertas: [...bubbleMap.values()].sort((a, b) => a.updatedAt - b.updatedAt),
         };
     }
 

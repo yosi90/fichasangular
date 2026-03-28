@@ -53,7 +53,6 @@ export class IdiomaService {
 
     getIdiomas(): Observable<IdiomaDetalle[]> {
         return new Observable((observador) => {
-            const dbRef = ref(this.db, "Idiomas");
             let unsubscribe: Unsubscribe;
 
             const onNext = (snapshot: any) => {
@@ -72,7 +71,10 @@ export class IdiomaService {
                 observador.error(error);
             };
 
-            unsubscribe = this.firebaseContextSvc.run(() => onValue(dbRef, onNext, onError));
+            unsubscribe = this.firebaseContextSvc.run(() => {
+                const dbRef = ref(this.db, "Idiomas");
+                return onValue(dbRef, onNext, onError);
+            });
 
             return () => {
                 unsubscribe();

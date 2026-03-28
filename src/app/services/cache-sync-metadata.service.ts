@@ -34,22 +34,23 @@ export class CacheSyncMetadataService {
 
     watchAll(): Observable<Record<CacheEntityKey, CacheSyncMeta | null>> {
         return new Observable((observer) => {
-            const dbRef = ref(this.db, this.path);
-
-            const unsubscribe = this.firebaseContextSvc.run(() => onValue(
-                dbRef,
-                (snapshot) => {
-                    const record = this.createEmptyRecord();
-                    snapshot.forEach((child) => {
-                        const key = child.key as CacheEntityKey;
-                        if (!this.keys.has(key))
-                            return;
-                        record[key] = this.normalizeMeta(child.val());
-                    });
-                    observer.next(record);
-                },
-                (error) => observer.error(error)
-            ));
+            const unsubscribe = this.firebaseContextSvc.run(() => {
+                const dbRef = ref(this.db, this.path);
+                return onValue(
+                    dbRef,
+                    (snapshot) => {
+                        const record = this.createEmptyRecord();
+                        snapshot.forEach((child) => {
+                            const key = child.key as CacheEntityKey;
+                            if (!this.keys.has(key))
+                                return;
+                            record[key] = this.normalizeMeta(child.val());
+                        });
+                        observer.next(record);
+                    },
+                    (error) => observer.error(error)
+                );
+            });
 
             return () => unsubscribe();
         });
@@ -63,7 +64,10 @@ export class CacheSyncMetadataService {
             schemaVersionApplied: schemaVersion,
             staleReason: null,
         };
-        await this.firebaseContextSvc.run(() => set(ref(this.db, `${this.path}/${key}`), payload));
+        await this.firebaseContextSvc.run(() => {
+            const dbRef = ref(this.db, `${this.path}/${key}`);
+            return set(dbRef, payload);
+        });
     }
 
     async markStale(keys: CacheEntityKey | CacheEntityKey[], staleReason: string | null = null): Promise<void> {
@@ -81,12 +85,18 @@ export class CacheSyncMetadataService {
                     schemaVersionApplied: 0,
                     staleReason,
                 };
-                return this.firebaseContextSvc.run(() => set(ref(this.db, `${this.path}/${key}`), payload));
+                return this.firebaseContextSvc.run(() => {
+                    const dbRef = ref(this.db, `${this.path}/${key}`);
+                    return set(dbRef, payload);
+                });
             }));
     }
 
     async getSnapshotOnce(): Promise<Record<CacheEntityKey, CacheSyncMeta | null>> {
-        const snapshot = await this.firebaseContextSvc.run(() => get(ref(this.db, this.path)));
+        const snapshot = await this.firebaseContextSvc.run(() => {
+            const dbRef = ref(this.db, this.path);
+            return get(dbRef);
+        });
         const record = this.createEmptyRecord();
 
         if (!snapshot.exists())

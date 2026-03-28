@@ -96,7 +96,6 @@ export class ArmaduraService {
 
     getArmadura(id: number): Observable<ArmaduraDetalle> {
         return new Observable((observador) => {
-            const dbRef = ref(this.db, `Armaduras/${id}`);
             let unsubscribe: Unsubscribe;
 
             const onNext = (snapshot: any) => {
@@ -132,14 +131,16 @@ export class ArmaduraService {
                 observador.error(error);
             };
 
-            unsubscribe = this.firebaseContextSvc.run(() => onValue(dbRef, onNext, onError));
+            unsubscribe = this.firebaseContextSvc.run(() => {
+                const dbRef = ref(this.db, `Armaduras/${id}`);
+                return onValue(dbRef, onNext, onError);
+            });
             return () => unsubscribe();
         });
     }
 
     getArmaduras(): Observable<ArmaduraDetalle[]> {
         return new Observable((observador) => {
-            const dbRef = ref(this.db, "Armaduras");
             let unsubscribe: Unsubscribe;
 
             const onNext = (snapshot: any) => {
@@ -157,7 +158,10 @@ export class ArmaduraService {
                 observador.error(error);
             };
 
-            unsubscribe = this.firebaseContextSvc.run(() => onValue(dbRef, onNext, onError));
+            unsubscribe = this.firebaseContextSvc.run(() => {
+                const dbRef = ref(this.db, "Armaduras");
+                return onValue(dbRef, onNext, onError);
+            });
             return () => unsubscribe();
         });
     }

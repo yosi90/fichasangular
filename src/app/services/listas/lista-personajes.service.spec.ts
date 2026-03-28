@@ -197,6 +197,37 @@ describe('ListaPersonajesService', () => {
         expect(personajes[0].Nombre).toBe('Visible sin campaña');
     });
 
+    it('acepta proyecciones públicas donde Campana llega como objeto', async () => {
+        const service = new ListaPersonajesService(
+            { currentUser: null } as any,
+            {} as any,
+            {} as any,
+            firebaseContextMock
+        );
+        spyOn<any>(service, 'readCacheSnapshot').and.resolveTo({
+            '1': {
+                i: 1,
+                n: 'Visible con contexto objeto',
+                visible_otros_usuarios: true,
+                r: { Id: 1, Nombre: 'Humano' },
+                c: 'Guerrero 1',
+                co: 'Contexto',
+                p: 'Personalidad',
+                Campana: { Id: 0, Nombre: 'Sin campaña' },
+                Trama: { Id: 0, Nombre: 'Trama base' },
+                Subtrama: { Id: 0, Nombre: 'Subtrama base' },
+                a: false,
+            },
+        });
+
+        const personajes = await (service as any).readPublicPersonajesFromCache();
+
+        expect(personajes).toHaveSize(1);
+        expect(personajes[0].Campana).toBe('Sin campaña');
+        expect(personajes[0].Trama).toBe('Trama base');
+        expect(personajes[0].Subtrama).toBe('Subtrama base');
+    });
+
     it('filtra personajes archivados en cache pública aunque sean visibles', async () => {
         const service = new ListaPersonajesService(
             { currentUser: null } as any,

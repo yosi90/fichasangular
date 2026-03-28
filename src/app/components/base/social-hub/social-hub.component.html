@@ -372,6 +372,12 @@
 
                 <div class="social-chat" *ngIf="isLoggedIn">
                     <aside class="social-chat__sidebar">
+                        <div class="social-chat__sidebar-actions">
+                            <button mat-stroked-button type="button" (click)="openFloatingChatWindow()" *ngIf="canOpenFloatingChatWindow">
+                                Ventana flotante
+                            </button>
+                        </div>
+
                         <div class="social-chat__filters">
                             <button
                                 type="button"
@@ -588,6 +594,11 @@
                                     </div>
                                     <div class="social-chat__detail-meta" *ngIf="activeConversation.type === 'campaign'">
                                         Chat principal de campaña integrado en Social.
+                                    </div>
+                                    <div class="social-chat__detail-actions" *ngIf="canPopOutActiveConversation">
+                                        <button mat-stroked-button type="button" (click)="popOutActiveConversation()">
+                                            Popear a burbuja
+                                        </button>
                                     </div>
                                     <div class="social-chat__admin-panel" *ngIf="canManageActiveGroup">
                                         <div class="social-chat__admin-grid">

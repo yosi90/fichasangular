@@ -71,7 +71,9 @@
                                     <mat-form-field appearance="fill" class="tw-w-full tw-m-0">
                                         <mat-label>Deidad</mat-label>
                                         <mat-select [(ngModel)]="Personaje.Deidad" (selectionChange)="onDeidadChange()">
-                                            <mat-option *ngFor="let deidad of deidadesFiltradas" [value]="deidad">{{deidad}}</mat-option>
+                                            <mat-option *ngFor="let deidad of deidadesFiltradas" [value]="deidad.nombre" [disabled]="deidad.disabled">
+                                                {{deidad.etiqueta}}
+                                            </mat-option>
                                         </mat-select>
                                     </mat-form-field>
                                     <div class="deidad-contexto" *ngIf="mostrarPanelDeidad">
@@ -278,6 +280,22 @@
                                         </mat-chip>
                                     </mat-chip-set>
 
+                                    <mat-chip class="tw-w-full sombra-caja-sm tw-mt-3 tw-mb-2" *ngIf="plantillasBloqueadasCampana.length > 0">
+                                        Bloqueadas por política de campaña
+                                    </mat-chip>
+                                    <mat-chip-set class="tw-m-1" *ngIf="plantillasBloqueadasCampana.length > 0">
+                                        <mat-chip *ngFor="let item of plantillasBloqueadasCampana" class="tw-h-auto sombra3d-sm chip-bloqueada"
+                                            [matTooltip]="getTooltipBloqueoUnknown(item)" matTooltipClass="tt-accent tt-multiline">
+                                            {{item.plantilla.Nombre}}
+                                            <mat-chip class="tw-m-1">Campaña</mat-chip>
+                                            <button mat-icon-button class="plantilla-detalle-btn"
+                                                (click)="verDetallesPlantilla(item.plantilla); $event.stopPropagation()"
+                                                aria-label="Ver detalle de plantilla" matTooltip="Ver detalles">
+                                                <mat-icon>open_in_new</mat-icon>
+                                            </button>
+                                        </mat-chip>
+                                    </mat-chip-set>
+
                                     <mat-chip class="tw-w-full sombra-caja-sm tw-mt-3 tw-mb-2" *ngIf="plantillasBloqueadasUnknown.length > 0">
                                         Bloqueadas por formato de prerrequisito no soportado
                                     </mat-chip>
@@ -366,7 +384,7 @@
                 </ng-template>
             </div>
         </mat-tab>
-        <mat-tab label="ventajas" [disabled]="!caracteristicasGeneradas">
+        <mat-tab label="ventajas" [disabled]="ventajasTabDisabled">
             <ng-template mat-tab-label="">
                 <mat-icon class="tw-me-2">balance</mat-icon>
                 Ventajas y desventajas
@@ -593,6 +611,7 @@
                                                 <div class="clase-celda-chipline">
                                                     <mat-chip class="tw-m-1" *ngIf="item.elegida">Ya elegida</mat-chip>
                                                     <mat-chip class="tw-m-1" *ngIf="item.clase.Prestigio">Prestigio</mat-chip>
+                                                    <mat-chip class="tw-m-1 bad" *ngIf="item.campaignBlockedReason">{{item.campaignBlockedReason}}</mat-chip>
                                                 </div>
                                             </div>
                                         </td>

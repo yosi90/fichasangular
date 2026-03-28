@@ -323,13 +323,17 @@ export class RazaService {
     ) { }
 
     protected watchRazaPath(id: number, onNext: (snapshot: any) => void, onError: (error: any) => void): Unsubscribe {
-        const dbRef = ref(this.db, `Razas/${id}`);
-        return this.firebaseContextSvc.run(() => onValue(dbRef, onNext, onError));
+        return this.firebaseContextSvc.run(() => {
+            const dbRef = ref(this.db, `Razas/${id}`);
+            return onValue(dbRef, onNext, onError);
+        });
     }
 
     protected watchRazasPath(onNext: (snapshot: any) => void, onError: (error: any) => void): Unsubscribe {
-        const dbRef = ref(this.db, 'Razas');
-        return this.firebaseContextSvc.run(() => onValue(dbRef, onNext, onError));
+        return this.firebaseContextSvc.run(() => {
+            const dbRef = ref(this.db, 'Razas');
+            return onValue(dbRef, onNext, onError);
+        });
     }
 
     async getRaza(id: number): Promise<Observable<Raza>> {

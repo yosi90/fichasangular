@@ -30,6 +30,7 @@ import { AppToastService } from 'src/app/services/app-toast.service';
 import { CampanaService } from 'src/app/services/campana.service';
 import { CampaignRealtimeSyncService } from 'src/app/services/campaign-realtime-sync.service';
 import { ChatApiService } from 'src/app/services/chat-api.service';
+import { ChatFloatingService } from 'src/app/services/chat-floating.service';
 import { ChatRealtimeService } from 'src/app/services/chat-realtime.service';
 import { UserProfileApiService } from 'src/app/services/user-profile-api.service';
 import { UserProfileNavigationService } from 'src/app/services/user-profile-navigation.service';
@@ -66,6 +67,8 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
     visibilidadPorDefectoPersonajes = false;
     mostrarPerfilPublico = true;
     allowDirectMessagesFromNonFriends = false;
+    autoAbrirVentanaChats = true;
+    permitirBurbujasChat = true;
     socialAlertsMensajes = true;
     socialAlertsAmistad = true;
     socialAlertsCampanas = true;
@@ -168,6 +171,7 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
         private campaignRealtimeSyncSvc: CampaignRealtimeSyncService,
         private chatApiSvc: ChatApiService,
         private chatRealtimeSvc: ChatRealtimeService,
+        private chatFloatingSvc: ChatFloatingService,
         private userProfileNavSvc: UserProfileNavigationService,
         private appToastSvc: AppToastService,
         private socialAlertPrefsSvc: SocialAlertPreferencesService,
@@ -787,6 +791,8 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
                     visibilidadPorDefectoPersonajes: this.visibilidadPorDefectoPersonajes === true,
                     mostrarPerfilPublico: this.mostrarPerfilPublico !== false,
                     allowDirectMessagesFromNonFriends: this.allowDirectMessagesFromNonFriends === true,
+                    autoAbrirVentanaChats: this.autoAbrirVentanaChats !== false,
+                    permitirBurbujasChat: this.permitirBurbujasChat !== false,
                     notificaciones: {
                         mensajes: this.socialAlertsMensajes !== false,
                         amistad: this.socialAlertsAmistad !== false,
@@ -803,6 +809,7 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
             this.settings = saved;
             this.applySettingsToForm(saved);
             this.socialAlertPrefsSvc.applyProfileSettings(saved.perfil);
+            this.chatFloatingSvc.applyProfileSettings(saved.perfil);
             this.appToastSvc.showSuccess('Preferencias guardadas.');
         } catch (error: any) {
             this.appToastSvc.showError(this.mapProfileError(error, 'No se pudieron guardar las preferencias.'));
@@ -1568,6 +1575,8 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
         this.visibilidadPorDefectoPersonajes = settings?.perfil?.visibilidadPorDefectoPersonajes === true;
         this.mostrarPerfilPublico = settings?.perfil?.mostrarPerfilPublico !== false;
         this.allowDirectMessagesFromNonFriends = settings?.perfil?.allowDirectMessagesFromNonFriends === true;
+        this.autoAbrirVentanaChats = settings?.perfil?.autoAbrirVentanaChats !== false;
+        this.permitirBurbujasChat = settings?.perfil?.permitirBurbujasChat !== false;
         this.socialAlertsMensajes = settings?.perfil?.notificaciones?.mensajes !== false;
         this.socialAlertsAmistad = settings?.perfil?.notificaciones?.amistad !== false;
         this.socialAlertsCampanas = settings?.perfil?.notificaciones?.campanas !== false;

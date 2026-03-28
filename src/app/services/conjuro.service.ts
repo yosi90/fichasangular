@@ -23,13 +23,17 @@ export class ConjuroService {
     ) { }
 
     protected watchConjuroPath(id: number, onNext: (snapshot: any) => void, onError: (error: any) => void): Unsubscribe {
-        const dbRef = ref(this.db, `Conjuros/${id}`);
-        return this.firebaseContextSvc.run(() => onValue(dbRef, onNext, onError));
+        return this.firebaseContextSvc.run(() => {
+            const dbRef = ref(this.db, `Conjuros/${id}`);
+            return onValue(dbRef, onNext, onError);
+        });
     }
 
     protected watchConjurosPath(onNext: (snapshot: any) => void, onError: (error: any) => void): Unsubscribe {
-        const dbRef = ref(this.db, 'Conjuros');
-        return this.firebaseContextSvc.run(() => onValue(dbRef, onNext, onError));
+        return this.firebaseContextSvc.run(() => {
+            const dbRef = ref(this.db, 'Conjuros');
+            return onValue(dbRef, onNext, onError);
+        });
     }
 
     getConjuro(id: number): Observable<Conjuro> {

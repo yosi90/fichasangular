@@ -74,7 +74,6 @@ export class RegionService {
 
     getRegiones(): Observable<RegionDetalle[]> {
         return new Observable((observador) => {
-            const dbRef = ref(this.db, "Regiones");
             let unsubscribe: Unsubscribe;
 
             const onNext = (snapshot: any) => {
@@ -93,7 +92,10 @@ export class RegionService {
                 observador.error(error);
             };
 
-            unsubscribe = this.firebaseContextSvc.run(() => onValue(dbRef, onNext, onError));
+            unsubscribe = this.firebaseContextSvc.run(() => {
+                const dbRef = ref(this.db, "Regiones");
+                return onValue(dbRef, onNext, onError);
+            });
             return () => unsubscribe();
         });
     }

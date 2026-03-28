@@ -786,6 +786,12 @@
                                 <mat-slide-toggle color="primary" [(ngModel)]="allowDirectMessagesFromNonFriends" [disabled]="settingsSaving">
                                     Permitir mensajes directos de personas no amigas
                                 </mat-slide-toggle>
+                                <mat-slide-toggle color="primary" [(ngModel)]="autoAbrirVentanaChats" [disabled]="settingsSaving">
+                                    Autoabrir ventana de chats al entrar o recargar
+                                </mat-slide-toggle>
+                                <mat-slide-toggle color="primary" [(ngModel)]="permitirBurbujasChat" [disabled]="settingsSaving">
+                                    Permitir burbujas de chat flotantes
+                                </mat-slide-toggle>
                             </div>
                         </article>
 

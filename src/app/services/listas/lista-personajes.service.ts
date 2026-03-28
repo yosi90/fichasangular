@@ -233,6 +233,25 @@ export class ListaPersonajesService {
             ?? element?.dcp
             ?? element?.Personalidad
             ?? ''}`.trim();
+        const campana = this.resolveContextLabel(
+            element?.ca
+            ?? element?.ncam
+            ?? element?.Campaña
+            ?? element?.Campana,
+            'Sin campaña'
+        );
+        const trama = this.resolveContextLabel(
+            element?.t
+            ?? element?.ntr
+            ?? element?.Trama,
+            'Trama base'
+        );
+        const subtrama = this.resolveContextLabel(
+            element?.s
+            ?? element?.nst
+            ?? element?.Subtrama,
+            'Subtrama base'
+        );
 
         return {
             Id: Math.trunc(toNumber(element?.i ?? element?.Id)),
@@ -249,9 +268,9 @@ export class ListaPersonajesService {
             Clases: clases,
             Contexto: contexto,
             Personalidad: personalidad,
-            Campana: `${element?.ca ?? element?.ncam ?? element?.Campaña ?? element?.Campana ?? 'Sin campaña'}`.trim() || 'Sin campaña',
-            Trama: `${element?.t ?? element?.ntr ?? element?.Trama ?? 'Trama base'}`.trim() || 'Trama base',
-            Subtrama: `${element?.s ?? element?.nst ?? element?.Subtrama ?? 'Subtrama base'}`.trim() || 'Subtrama base',
+            Campana: campana,
+            Trama: trama,
+            Subtrama: subtrama,
             Archivado: toBoolean(element?.a ?? element?.archivado ?? element?.Archivado),
         };
     }
@@ -438,11 +457,27 @@ export class ListaPersonajesService {
     }
 
     private normalizarCampana(value: any): string {
-        return `${value ?? 'Sin campaña'}`
+        return this.resolveContextLabel(value, 'Sin campaña')
             .trim()
             .normalize('NFD')
             .replace(/[\u0300-\u036f]/g, '')
             .toLowerCase();
+    }
+
+    private resolveContextLabel(value: any, fallback: string): string {
+        if (typeof value === 'string') {
+            const text = value.trim();
+            return text.length > 0 ? text : fallback;
+        }
+
+        if (value && typeof value === 'object') {
+            const namedValue = `${value?.Nombre ?? value?.nombre ?? value?.Label ?? value?.label ?? ''}`.trim();
+            if (namedValue.length > 0)
+                return namedValue;
+        }
+
+        const text = `${value ?? ''}`.trim();
+        return text.length > 0 ? text : fallback;
     }
 
     private buildActorCacheKey(user: any): string {

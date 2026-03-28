@@ -50,7 +50,6 @@ export class EscuelaConjurosService {
 
     getEscuela(id: number): Observable<EscuelaConjuros> {
         return new Observable((observador) => {
-            const dbRef = ref(this.db, `Escuelas/${id}`);
             let unsubscribe: Unsubscribe;
 
             const onNext = (snapshot: any) => {
@@ -60,7 +59,10 @@ export class EscuelaConjurosService {
             const onError = (error: any) => {
                 observador.error(error);
             };
-            unsubscribe = this.firebaseContextSvc.run(() => onValue(dbRef, onNext, onError));
+            unsubscribe = this.firebaseContextSvc.run(() => {
+                const dbRef = ref(this.db, `Escuelas/${id}`);
+                return onValue(dbRef, onNext, onError);
+            });
 
             return () => {
                 unsubscribe();
@@ -70,7 +72,6 @@ export class EscuelaConjurosService {
 
     getEscuelas(): Observable<EscuelaConjuros[]> {
         return new Observable((observador) => {
-            const dbRef = ref(this.db, 'Escuelas');
             let unsubscribe: Unsubscribe;
 
             const onNext = (snapshot: any) => {
@@ -86,7 +87,10 @@ export class EscuelaConjurosService {
                 observador.error(error);
             };
 
-            unsubscribe = this.firebaseContextSvc.run(() => onValue(dbRef, onNext, onError));
+            unsubscribe = this.firebaseContextSvc.run(() => {
+                const dbRef = ref(this.db, 'Escuelas');
+                return onValue(dbRef, onNext, onError);
+            });
 
             return () => {
                 unsubscribe();

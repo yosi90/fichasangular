@@ -46,7 +46,6 @@ export class GrupoArmaService {
 
     getGrupoArma(id: number): Observable<GrupoCompetencia> {
         return new Observable((observador) => {
-            const dbRef = ref(this.db, `GruposArmas/${id}`);
             let unsubscribe: Unsubscribe;
 
             const onNext = (snapshot: any) => {
@@ -82,14 +81,16 @@ export class GrupoArmaService {
                 observador.error(error);
             };
 
-            unsubscribe = this.firebaseContextSvc.run(() => onValue(dbRef, onNext, onError));
+            unsubscribe = this.firebaseContextSvc.run(() => {
+                const dbRef = ref(this.db, `GruposArmas/${id}`);
+                return onValue(dbRef, onNext, onError);
+            });
             return () => unsubscribe();
         });
     }
 
     getGruposArmas(): Observable<GrupoCompetencia[]> {
         return new Observable((observador) => {
-            const dbRef = ref(this.db, "GruposArmas");
             let unsubscribe: Unsubscribe;
 
             const onNext = (snapshot: any) => {
@@ -107,7 +108,10 @@ export class GrupoArmaService {
                 observador.error(error);
             };
 
-            unsubscribe = this.firebaseContextSvc.run(() => onValue(dbRef, onNext, onError));
+            unsubscribe = this.firebaseContextSvc.run(() => {
+                const dbRef = ref(this.db, "GruposArmas");
+                return onValue(dbRef, onNext, onError);
+            });
             return () => unsubscribe();
         });
     }
