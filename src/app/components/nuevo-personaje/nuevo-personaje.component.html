@@ -11,7 +11,7 @@
                 Raza
             </ng-template>
             <app-listado-razas
-                [homebrewSeleccionado]="homebrewForzado"
+                [homebrewSeleccionado]="homebrewForzado ? true : undefined"
                 [homebrewBloqueado]="homebrewForzado"
                 (razaDetalles)="verDetallesRaza($event)"
                 (razaSeleccionada)="seleccionarRaza($event)">
@@ -156,15 +156,15 @@
                                 <mat-icon class="tw-ms-2">straighten</mat-icon>
                             </mat-chip>
                             <div class="field-grid">
-                                <div class="edad-bloque full-span">
-                                    <mat-form-field appearance="fill" class="tw-w-full tw-m-0">
-                                        <mat-label>Edad</mat-label>
-                                        <input matInput type="number" min="0" [(ngModel)]="Personaje.Edad" (ngModelChange)="recalcularOficialidad()">
-                                    </mat-form-field>
-                                    <div class="edad-contexto">
-                                        <p class="tw-m-0"><strong>Etapas tipicas:</strong> {{rangoEdadTexto}}</p>
-                                        <p class="tw-m-0"><strong>Etapa actual:</strong> {{etapaEdadActual}}</p>
-                                        <p class="tw-m-0">{{edadMensajeContextual}}</p>
+                                    <div class="edad-bloque full-span">
+                                        <mat-form-field appearance="fill" class="tw-w-full tw-m-0">
+                                            <mat-label>Edad</mat-label>
+                                            <input matInput type="number" min="0" [ngModel]="Personaje.Edad" (ngModelChange)="onEdadChange($event)">
+                                        </mat-form-field>
+                                        <div class="edad-contexto">
+                                            <p class="tw-m-0"><strong>Etapas tipicas:</strong> {{rangoEdadTexto}}</p>
+                                            <p class="tw-m-0"><strong>Etapa actual:</strong> {{etapaEdadActual}}</p>
+                                            <p class="tw-m-0">{{edadMensajeContextual}}</p>
                                     </div>
                                 </div>
                                 <mat-chip class="bad tw-mb-2 chip-alerta" *ngIf="edadFueraRango">
@@ -172,12 +172,12 @@
                                 </mat-chip>
                                 <mat-form-field appearance="fill">
                                     <mat-label>Peso (kg)</mat-label>
-                                    <input matInput type="number" min="0" step="0.1" [(ngModel)]="Personaje.Peso" (ngModelChange)="recalcularOficialidad()">
+                                    <input matInput type="number" min="0" step="0.01" [ngModel]="Personaje.Peso" (ngModelChange)="onPesoChange($event)">
                                     <mat-hint>Recomendado {{raza.Peso_rango_inf}} - {{raza.Peso_rango_sup}}</mat-hint>
                                 </mat-form-field>
                                 <mat-form-field appearance="fill">
                                     <mat-label>Altura (m)</mat-label>
-                                    <input matInput type="number" min="0" step="0.01" [(ngModel)]="Personaje.Altura" (ngModelChange)="recalcularOficialidad()">
+                                    <input matInput type="number" min="0" step="0.01" [ngModel]="Personaje.Altura" (ngModelChange)="onAlturaChange($event)">
                                     <mat-hint>Recomendado {{raza.Altura_rango_inf}} - {{raza.Altura_rango_sup}}</mat-hint>
                                 </mat-form-field>
                             </div>
@@ -212,6 +212,12 @@
                 </div>
                 </div>
                 <div class="tab-footer basicos-action-bar">
+                    <div class="basicos-bloqueos" *ngIf="motivosBloqueoBasicos.length > 0">
+                        <p class="tw-m-0 basicos-bloqueos__titulo">No puedes continuar todavía por esto:</p>
+                        <ul class="basicos-bloqueos__lista">
+                            <li *ngFor="let motivo of motivosBloqueoBasicos">{{motivo}}</li>
+                        </ul>
+                    </div>
                     <button mat-raised-button color="primary" [disabled]="!puedeContinuarBasicos" (click)="continuarDesdeBasicos()">
                         Siguiente
                         <mat-icon>arrow_forward</mat-icon>

@@ -976,7 +976,40 @@ export class NuevoPersonajeComponent {
             && this.esTextoNoVacio(this.Personaje.Subtrama)
             && this.esNumeroValidoPositivo(this.Personaje.Edad)
             && this.esNumeroValidoPositivo(this.Personaje.Peso)
-            && this.esNumeroValidoPositivo(this.Personaje.Altura);
+            && this.esNumeroValidoPositivo(this.Personaje.Altura)
+            && !this.selectedCampaignPolicyLoading
+            && !this.hasCampaignBlockersForBasicos();
+    }
+
+    get motivosBloqueoBasicos(): string[] {
+        const motivos: string[] = [];
+
+        if (!this.esTextoNoVacio(this.Personaje.Nombre))
+            motivos.push('Debes indicar el nombre del personaje.');
+        if (!this.esTextoNoVacio(this.Personaje.Genero))
+            motivos.push('Debes elegir el género.');
+        if (!this.esTextoNoVacio(this.Personaje.Deidad))
+            motivos.push('Debes elegir una deidad o marcar que no tendrá deidad.');
+        if (!this.esTextoNoVacio(this.Personaje.Campana))
+            motivos.push('Debes elegir una campaña.');
+        if (!this.esTextoNoVacio(this.Personaje.Trama))
+            motivos.push('Debes elegir una trama.');
+        if (!this.esTextoNoVacio(this.Personaje.Subtrama))
+            motivos.push('Debes elegir una subtrama.');
+        if (!this.esNumeroValidoPositivo(this.Personaje.Edad))
+            motivos.push('La edad debe ser un número mayor que 0.');
+        if (!this.esNumeroValidoPositivo(this.Personaje.Peso))
+            motivos.push('El peso debe ser un número mayor que 0.');
+        if (!this.esNumeroValidoPositivo(this.Personaje.Altura))
+            motivos.push('La altura debe ser un número mayor que 0.');
+        if (this.selectedCampaignPolicyLoading)
+            motivos.push('Se está cargando la política de creación de la campaña seleccionada.');
+
+        if (this.hasSelectedCampaignContext && this.selectedCampaignPolicyResolved) {
+            this.getCampaignCreationValidation().blockers.forEach((blocker) => motivos.push(blocker));
+        }
+
+        return motivos;
     }
 
     get idRegionSeleccionadaBasicos(): number {
@@ -1514,7 +1547,7 @@ export class NuevoPersonajeComponent {
     }
 
     recalcularOficialidad(): void {
-        const razaEsOficial = this.razaSeleccionada?.Oficial === true;
+        const razaEsOficial = !this.razaSeleccionada || this.razaSeleccionada.Oficial === true;
         const evaluacion = this.evaluarInconsistenciasBasicos();
         const tieneConflictoDuroConfirmado = evaluacion.hardConflicts.length > 0 && this.hardAlignmentOverrideConfirmed;
         const tieneClaseHomebrew = (this.Personaje?.desgloseClases ?? []).some((entrada) => {
@@ -1910,6 +1943,63 @@ export class NuevoPersonajeComponent {
         return Number.isFinite(parsed) && parsed > 0;
     }
 
+    onEdadChange(value: number | string | null | undefined): void {
+        this.Personaje.Edad = this.normalizarNumeroConMaxCifras(value, 4, 0);
+        this.recalcularOficialidad();
+    }
+
+    onPesoChange(value: number | string | null | undefined): void {
+        this.Personaje.Peso = this.normalizarNumeroConMaxCifras(value, 3, 2);
+        this.recalcularOficialidad();
+    }
+
+    onAlturaChange(value: number | string | null | undefined): void {
+        this.Personaje.Altura = this.normalizarNumeroConMaxCifras(value, 3, 2);
+        this.recalcularOficialidad();
+    }
+
+    private normalizarNumeroConMaxCifras(
+        value: number | string | null | undefined,
+        maxDigits: number,
+        maxDecimals: number
+    ): number {
+        const source = `${value ?? ''}`.replace(',', '.');
+        let resultado = '';
+        let digitsCount = 0;
+        let decimalUsed = false;
+        let decimalsCount = 0;
+
+        for (const char of source) {
+            if (char >= '0' && char <= '9') {
+                if (digitsCount >= maxDigits)
+                    continue;
+                if (decimalUsed && decimalsCount >= maxDecimals)
+                    continue;
+                resultado += char;
+                digitsCount += 1;
+                if (decimalUsed)
+                    decimalsCount += 1;
+                continue;
+            }
+
+            if (char === '.' && !decimalUsed && maxDecimals > 0) {
+                if (resultado.length < 1)
+                    resultado = '0';
+                resultado += '.';
+                decimalUsed = true;
+            }
+        }
+
+        if (resultado === '' || resultado === '.')
+            return 0;
+
+        if (resultado.endsWith('.'))
+            resultado = resultado.slice(0, -1);
+
+        const parsed = Number(resultado);
+        return Number.isFinite(parsed) ? parsed : 0;
+    }
+
     private esperarSiguienteTickUi(): Promise<void> {
         return new Promise((resolve) => setTimeout(resolve, 0));
     }
@@ -2152,6 +2242,7 @@ export class NuevoPersonajeComponent {
             this.Subtramas = [];
             this.Personaje.Trama = 'Trama base';
             this.Personaje.Subtrama = 'Subtrama base';
+            void this.syncSelectedCampaignPolicy();
             return;
         }
 
@@ -5268,6 +5359,12 @@ export class NuevoPersonajeComponent {
         }
 
         return policy.permitirHomebrewGeneral === false ? 'forbidden' : 'unrestricted';
+    }
+
+    private hasCampaignBlockersForBasicos(): boolean {
+        if (!this.hasSelectedCampaignContext || !this.selectedCampaignPolicyResolved)
+            return false;
+        return this.getCampaignCreationValidation().blockers.length > 0;
     }
 
     private normalizarCampaignMaxSources(value: number | null | undefined): number | null {

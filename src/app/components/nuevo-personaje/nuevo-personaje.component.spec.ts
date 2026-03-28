@@ -1007,6 +1007,7 @@ describe('NuevoPersonajeComponent', () => {
     it('puedeContinuarBasicos es false si falta un campo obligatorio visible', () => {
         component.Personaje.Nombre = '';
         expect(component.puedeContinuarBasicos).toBeFalse();
+        expect(component.motivosBloqueoBasicos).toContain('Debes indicar el nombre del personaje.');
     });
 
     it('puedeContinuarBasicos es true cuando todos los campos visibles obligatorios están completos', () => {
@@ -1189,6 +1190,40 @@ describe('NuevoPersonajeComponent', () => {
 
         expect(component.Personaje.Trama).toBe('Trama 1');
         expect(component.Personaje.Subtrama).toBe('Sub 1');
+    });
+
+    it('actualizarTramas carga la politica aunque la campaña no tenga tramas', async () => {
+        component.Campanas = [{
+            Id: 7,
+            Nombre: 'Campaña sin tramas',
+            CampaignRole: 'jugador',
+            Tramas: [],
+        }];
+        component.Personaje.Campana = 'Campaña sin tramas';
+        campanaSvcMock.getCampaignDetail = jasmine.createSpy('getCampaignDetail').and.resolveTo({
+            campaign: {
+                id: 7,
+                nombre: 'Campaña sin tramas',
+                campaignRole: 'jugador',
+                membershipStatus: 'activo',
+            },
+            politicaCreacion: {
+                tiradaMinimaCaracteristica: null,
+                maxTablasDadosCaracteristicas: null,
+                permitirHomebrewGeneral: false,
+                permitirVentajasDesventajas: true,
+                permitirIgnorarRestriccionesAlineamiento: true,
+                maxFuentesHomebrewGeneralesPorPersonaje: 0,
+            },
+        });
+
+        component.actualizarTramas();
+        await new Promise((resolve) => setTimeout(resolve, 0));
+
+        expect(campanaSvcMock.getCampaignDetail).toHaveBeenCalledWith(7);
+        expect(component.selectedCampaignPolicy?.permitirHomebrewGeneral).toBeFalse();
+        expect(component.Personaje.Trama).toBe('Trama base');
+        expect(component.Personaje.Subtrama).toBe('Subtrama base');
     });
 
     it('canOpenCampaignManagement solo se activa para master o superior con permiso de crear campañas', () => {
@@ -1397,6 +1432,15 @@ describe('NuevoPersonajeComponent', () => {
         expect(component.Personaje.Oficial).toBeTrue();
     });
 
+    it('recalcularOficialidad no fuerza homebrew antes de elegir raza', () => {
+        component.Personaje.Oficial = true;
+
+        component.recalcularOficialidad();
+
+        expect(component.Personaje.Oficial).toBeTrue();
+        expect(component.homebrewForzado).toBeFalse();
+    });
+
     it('selector de deidad muestra listado completo y conserva No tener deidad como primera opción', () => {
         component.Personaje.Deidad = component.deidadSinSeleccion;
 
@@ -1556,6 +1600,47 @@ describe('NuevoPersonajeComponent', () => {
         expect(`${swalConfig.title ?? ''}`).toContain('La campaña bloquea continuar');
         expect(`${swalConfig.html ?? ''}`).toContain('no permite homebrew general');
         expect(component.modalCaracteristicasAbierto).toBeFalse();
+    });
+
+    it('puedeContinuarBasicos es false cuando la campaña ya bloquea el homebrew elegido', () => {
+        component.seleccionarRaza(crearRazaMock(false));
+        component.Personaje.Nombre = 'Aranel';
+        component.Personaje.Genero = 'Hembra';
+        component.Personaje.Deidad = 'No tener deidad';
+        component.Personaje.Campana = 'Campaña A';
+        component.Personaje.Trama = 'Trama base';
+        component.Personaje.Subtrama = 'Subtrama base';
+        component.Personaje.Edad = 120;
+        component.Personaje.Peso = 42;
+        component.Personaje.Altura = 1.8;
+        component.selectedCampaignPolicy = {
+            tiradaMinimaCaracteristica: null,
+            maxTablasDadosCaracteristicas: null,
+            permitirHomebrewGeneral: false,
+            permitirVentajasDesventajas: true,
+            permitirIgnorarRestriccionesAlineamiento: true,
+            maxFuentesHomebrewGeneralesPorPersonaje: 0,
+        };
+        (component as any).selectedCampaignPolicyResolved = true;
+
+        expect(component.puedeContinuarBasicos).toBeFalse();
+        expect(component.motivosBloqueoBasicos.some((motivo) => motivo.includes('no permite homebrew general'))).toBeTrue();
+    });
+
+    it('motivosBloqueoBasicos informa cuando la politica de campaña sigue cargando', () => {
+        component.Personaje.Nombre = 'Aranel';
+        component.Personaje.Genero = 'Hembra';
+        component.Personaje.Deidad = 'No tener deidad';
+        component.Personaje.Campana = 'Campaña A';
+        component.Personaje.Trama = 'Trama base';
+        component.Personaje.Subtrama = 'Subtrama base';
+        component.Personaje.Edad = 120;
+        component.Personaje.Peso = 42;
+        component.Personaje.Altura = 1.8;
+        (component as any).selectedCampaignPolicyLoading = true;
+
+        expect(component.puedeContinuarBasicos).toBeFalse();
+        expect(component.motivosBloqueoBasicos).toContain('Se está cargando la política de creación de la campaña seleccionada.');
     });
 
     it('continuarDesdeBasicos también bloquea homebrew para actor master', async () => {
@@ -4559,6 +4644,16 @@ describe('NuevoPersonajeComponent', () => {
         expect(component.homebrewForzado).toBeTrue();
         expect(component.incluirHomebrewPlantillasEfectivo).toBeTrue();
         expect(component.incluirHomebrewVentajasEfectivo).toBeTrue();
+    });
+
+    it('limita edad, peso y altura al maximo de cifras permitido', () => {
+        component.onEdadChange('12345');
+        component.onPesoChange('70.55');
+        component.onAlturaChange('12.34');
+
+        expect(component.Personaje.Edad).toBe(1234);
+        expect(component.Personaje.Peso).toBe(70.5);
+        expect(component.Personaje.Altura).toBe(12.3);
     });
 
     it('persistencia de modal: si vuelves al componente, mantiene estado del servicio', () => {

@@ -77,30 +77,37 @@
         top: 100px
 
 ::ng-deep .mat-mdc-menu-panel.menu-filtros-estandar
-    max-width: 300px
+    max-width: 320px
 
-    background-color: lightgray
-    box-shadow: 3px 3px 8px inset black
+    background: linear-gradient(180deg, rgba(65, 69, 74, .98) 0%, rgba(49, 52, 57, .98) 100%) !important
+    border: 1px solid rgba(255, 255, 255, .08)
+    border-radius: 18px !important
+    box-shadow: 0 20px 40px rgba(0, 0, 0, .45), inset 0 1px 0 rgba(255, 255, 255, .05)
 
-    padding: 5px
+    padding: .55rem !important
 
     .mat-mdc-menu-content
         display: flex
         flex-wrap: wrap
         justify-content: center
+        gap: .65rem
+        padding: 0 !important
 
     #menu
         display: flex
         flex-wrap: wrap
         justify-content: center
 
-        box-shadow: 6px 6px 4px rgba(0, 0, 0, .5)
-
-        margin-left: 5px
-        margin-right: 5px
+        width: 100%
+        border: 1px solid rgba(255, 255, 255, .06)
+        border-radius: 14px
+        background: rgba(28, 31, 36, .78)
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, .03)
+        padding: .55rem .55rem .35rem
 
         mat-form-field
             width: 100%
+            color: #f0f2f5
 
             .mat-mdc-form-field-subscript-wrapper
                 display: none
@@ -109,8 +116,67 @@
             border-top-left-radius: 0
             border-top-right-radius: 0
 
+        ::ng-deep .mdc-text-field--filled,
+        ::ng-deep .mdc-text-field--outlined
+            background: rgba(46, 50, 56, .92) !important
+            border-radius: 12px
+
+        ::ng-deep .mat-mdc-select-value,
+        ::ng-deep .mat-mdc-input-element,
+        ::ng-deep .mdc-floating-label
+            color: #f0f2f5 !important
+
+        ::ng-deep .mat-mdc-form-field-icon-suffix,
+        ::ng-deep .mat-mdc-select-arrow
+            color: rgba(240, 242, 245, .74) !important
+
     mat-chip-option
-        box-shadow: 6px 6px 4px rgba(0, 0, 0, .5)
+        margin: 0 !important
+        min-height: 38px
+        border-radius: 999px !important
+        box-shadow: none !important
+        transition: transform .18s ease, border-color .18s ease, background-color .18s ease, box-shadow .18s ease
+
+        &.filtro-chip--expand
+            width: 100%
+
+        &:hover:not(.mdc-evolution-chip--disabled)
+            transform: translateY(-1px)
+
+        ::ng-deep .mdc-evolution-chip__cell--primary
+            flex: 1 1 auto
+
+        ::ng-deep .mdc-evolution-chip__action--primary
+            min-height: 38px
+            padding-inline: 14px
+            border: 1px solid rgba(255, 255, 255, .12)
+            border-radius: 999px
+            background: rgba(255, 255, 255, .045)
+            box-shadow: 0 6px 14px rgba(0, 0, 0, .18)
+
+        ::ng-deep .mdc-evolution-chip__text-label
+            color: #f4f6f8 !important
+            font-size: .94rem
+            font-weight: 600
+            letter-spacing: .01em
+
+        ::ng-deep .mdc-evolution-chip__graphic,
+        ::ng-deep .mdc-evolution-chip__checkmark
+            color: currentColor
+
+        &.mdc-evolution-chip--selected,
+        &.mat-mdc-chip-selected
+            ::ng-deep .mdc-evolution-chip__action--primary
+                border-color: rgba(255, 115, 166, .9)
+                background: linear-gradient(180deg, rgba(194, 24, 91, .28) 0%, rgba(194, 24, 91, .18) 100%)
+                box-shadow: 0 0 0 1px rgba(194, 24, 91, .22), 0 10px 20px rgba(0, 0, 0, .24)
+
+        &.mdc-evolution-chip--disabled
+            opacity: .45
+
+            ::ng-deep .mdc-evolution-chip__action--primary
+                border-color: rgba(255, 255, 255, .06)
+                background: rgba(255, 255, 255, .025)
 
 .d-initial
     display: initial

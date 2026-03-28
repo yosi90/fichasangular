@@ -19,7 +19,7 @@
                         <mat-option *ngFor="let cantidad of tablasPermitidasOpciones" [value]="cantidad">{{cantidad}}</mat-option>
                     </mat-select>
                 </mat-form-field>
-                <button mat-icon-button (click)="cerrarModal()" aria-label="Cerrar modal">
+                <button class="close-modal-btn" mat-icon-button (click)="cerrarModal()" aria-label="Cerrar modal">
                     <mat-icon>close</mat-icon>
                 </button>
             </div>
@@ -27,7 +27,10 @@
 
         <mat-card-content class="modal-content">
             <section class="bloque">
-                <h4 class="tw-m-0">Tablas de tiradas disponibles</h4>
+                <div class="bloque-header">
+                    <h4 class="tw-m-0">Tablas de tiradas disponibles</h4>
+                    <p class="bloque-subtitulo tw-m-0">Elige la tabla de características que más te convenza para tu personaje.</p>
+                </div>
                 <div class="tablas-scroll">
                     <div class="tablas-grid">
                         <div class="tabla-card" *ngFor="let tabla of tablasVisibles"
@@ -44,7 +47,10 @@
             </section>
 
             <section class="bloque" *ngIf="estado.tablaSeleccionada !== null">
-                <h4 class="tw-m-0">Pool disponible</h4>
+                <div class="bloque-header">
+                    <h4 class="tw-m-0">Pool disponible</h4>
+                    <p class="bloque-subtitulo tw-m-0">Arrastra cada valor a la característica que desees.</p>
+                </div>
                 <div class="pool-grid">
                     <button
                         mat-stroked-button
@@ -60,7 +66,10 @@
             </section>
 
             <section class="bloque">
-                <h4 class="tw-m-0">Asignación</h4>
+                <div class="bloque-header">
+                    <h4 class="tw-m-0">Asignación</h4>
+                    <p class="bloque-subtitulo tw-m-0">Una vez asignadas todas las características podrás continuar con la creación de tu personaje.</p>
+                </div>
                 <div class="atributos-grid">
                     <div class="atributo-item" *ngFor="let item of caracteristicas">
                         <div class="atributo-label">{{item.label}}</div>
@@ -99,6 +108,7 @@
             <div class="auto-quiz-header">
                 <h3 class="tw-m-0">Mini test de enfoque</h3>
                 <button
+                    class="auto-quiz-close-btn"
                     mat-icon-button
                     type="button"
                     aria-label="Cerrar mini test"

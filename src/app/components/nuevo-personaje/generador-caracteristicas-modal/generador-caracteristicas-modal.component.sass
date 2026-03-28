@@ -1,7 +1,9 @@
 :host
-    position: absolute
+    position: fixed
     inset: 0
     display: block
+    pointer-events: auto
+    z-index: 1600
 
 .modal-local-backdrop
     position: absolute
@@ -40,6 +42,11 @@
     gap: 14px
     margin-left: auto
 
+.close-modal-btn
+    color: #f3f6ff
+    background: rgba(61, 71, 90, 0.92)
+    border: 1px solid rgba(177, 196, 229, 0.28)
+
 .minimo-selector
     width: 210px
 
@@ -66,6 +73,17 @@
     > h4
         color: #f2f8ff
         font-weight: 700
+
+.bloque-header
+    display: flex
+    flex-wrap: wrap
+    align-items: baseline
+    gap: 8px 12px
+
+.bloque-subtitulo
+    color: #c8d8f8
+    font-size: 0.93rem
+    line-height: 1.35
 
 .tablas-scroll
     overflow-x: auto
@@ -192,6 +210,13 @@
     align-items: center
     gap: 8px
 
+    > button:not(.auto-reparto-btn)
+        color: #f5fbff
+
+    > button:not(.auto-reparto-btn):not([color="primary"])
+        background: rgba(61, 71, 90, 0.92)
+        border: 1px solid rgba(177, 196, 229, 0.28)
+
 .auto-reparto-btn
     margin-right: auto
     min-height: 40px
@@ -240,6 +265,11 @@
         color: #f3f6ff
         font-size: 1.5rem
         font-weight: 700
+
+.auto-quiz-close-btn
+    color: #f3f6ff
+    background: rgba(61, 71, 90, 0.92)
+    border: 1px solid rgba(177, 196, 229, 0.28)
 
 .auto-quiz-text
     color: #e7ebf6

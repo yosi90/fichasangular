@@ -117,9 +117,7 @@ export class GeneradorCaracteristicasModalComponent implements AfterViewInit {
     }
 
     ngAfterViewInit(): void {
-        // Fuerza que el foco quede dentro del modal al abrirse.
-        setTimeout(() => this.forzarFocoEnModal());
-        setTimeout(() => this.forzarFocoEnModal(), 40);
+        this.programarFocoModal();
     }
 
     get estado() {
@@ -203,10 +201,12 @@ export class GeneradorCaracteristicasModalComponent implements AfterViewInit {
 
     onMinimoChange(value: number): void {
         this.nuevoPSvc.setMinimoGenerador(Number(value));
+        this.programarFocoModal();
     }
 
     onTablasPermitidasChange(value: number): void {
         this.nuevoPSvc.setTablasPermitidasGenerador(Number(value));
+        this.programarFocoModal();
     }
 
     get tablasVisibles(): { numero: number; valores: number[]; }[] {
@@ -513,15 +513,27 @@ export class GeneradorCaracteristicasModalComponent implements AfterViewInit {
             resolver(respuesta);
     }
 
+    private programarFocoModal(): void {
+        if (typeof requestAnimationFrame === 'function') {
+            requestAnimationFrame(() => this.forzarFocoEnModal());
+            return;
+        }
+        setTimeout(() => this.forzarFocoEnModal(), 0);
+    }
+
     private forzarFocoEnModal(): void {
         if (typeof document === 'undefined')
             return;
 
+        const panel = this.modalPanelRef?.nativeElement;
+        if (!panel)
+            return;
+
         const active = document.activeElement as HTMLElement | null;
-        if (active && typeof active.blur === 'function')
+        if (active && active !== document.body && !panel.contains(active) && typeof active.blur === 'function')
             active.blur();
 
-        this.modalPanelRef?.nativeElement?.focus({ preventScroll: true });
+        panel.focus({ preventScroll: true });
     }
 
     private esElementoInteractivoParaEnter(target: HTMLElement | null): boolean {

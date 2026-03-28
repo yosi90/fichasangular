@@ -252,8 +252,12 @@ export class VentanaDetalleFlotanteComponent implements OnInit, OnChanges {
             || interaction.startRect.width !== this.rect.width
             || interaction.startRect.height !== this.rect.height;
 
-        if (interaction.type === 'move' && this.isMinimized && this.moveHasDelta && this.minimizedAnchorsToViewportSides)
-            this.guardarPlacementMinimizado();
+        if (interaction.type === 'move' && this.isMinimized && this.moveHasDelta) {
+            if (this.minimizedAnchorsToViewportSides)
+                this.guardarPlacementMinimizado();
+            else
+                this.guardarPlacementRestaurado();
+        }
         if (!this.isMinimized && !this.isMaximized && geometryChanged)
             this.guardarPlacementRestaurado();
         this.activeInteraction = null;
@@ -270,13 +274,14 @@ export class VentanaDetalleFlotanteComponent implements OnInit, OnChanges {
         this.minimizedPlacement = this.clonePlacementMinimized(this.minimizedPlacementInput);
         this.restoredPlacement = this.clonePlacementRestored(this.restoredPlacementInput);
 
+        const mode = this.windowMode ?? 'window';
+        this.isMinimized = mode === 'minimized';
+        this.isMaximized = mode === 'maximized';
+
         const restoredRect = this.getRestoredRectGuardado();
         if (restoredRect)
             this.rect = this.clampRectToViewport(restoredRect);
 
-        const mode = this.windowMode ?? 'window';
-        this.isMinimized = mode === 'minimized';
-        this.isMaximized = mode === 'maximized';
         this.restoreRect = restoredRect ? { ...restoredRect } : this.restoreRect;
         if (this.isMinimized && this.minimizedAnchorsToViewportSides)
             this.aplicarPlacementMinimizadoGuardado();

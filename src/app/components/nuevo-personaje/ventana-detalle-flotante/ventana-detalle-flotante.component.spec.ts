@@ -389,6 +389,47 @@ describe('VentanaDetalleFlotanteComponent', () => {
         expect(leftBeforeMove).toBe(120);
         expect(leftAfterMove).toBe(180);
         expect(component['minimizedPlacement']).toBeNull();
+        expect(component['restoredPlacement']).toEqual(jasmine.objectContaining({
+            left: 180,
+            top: 180,
+            width: 560,
+            height: 340,
+        }));
         expect(userSettingsSvc.savePreviewMinimizada).not.toHaveBeenCalled();
+    });
+
+    it('rehidrata el top correcto cuando arranca ya minimizada sin anclaje lateral', () => {
+        const viewportHeight = Math.max(480, window.innerHeight);
+        const expectedTop = viewportHeight - component.titleBarHeight - 24;
+
+        component.persistPreviewPlacements = false;
+        component.minimizedAnchorsToViewportSides = false;
+        component.restoredPlacementInput = {
+            version: 1,
+            left: 180,
+            top: expectedTop,
+            width: 560,
+            height: 340,
+            updatedAt: Date.now(),
+        };
+        component.minimizedPlacementInput = null;
+        component.windowMode = 'minimized';
+        component.ngOnChanges({
+            restoredPlacementInput: {
+                currentValue: component.restoredPlacementInput,
+                previousValue: null,
+                firstChange: false,
+                isFirstChange: () => false,
+            },
+            windowMode: {
+                currentValue: 'minimized',
+                previousValue: 'window',
+                firstChange: false,
+                isFirstChange: () => false,
+            },
+        } as any);
+
+        expect(component.isMinimized).toBeTrue();
+        expect(Number(component.containerStyle['top'].replace('px', ''))).toBe(expectedTop);
     });
 });
