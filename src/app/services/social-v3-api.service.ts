@@ -188,6 +188,7 @@ export class SocialV3ApiService {
     }
 
     async createLfgPost(input: SocialLfgPostUpsertInput): Promise<SocialLfgPost> {
+        this.assertValidLfgPostInput(input, false);
         try {
             const response = await firstValueFrom(
                 this.http.post<any>(
@@ -206,6 +207,7 @@ export class SocialV3ApiService {
         const normalizedPostId = this.toPositiveInt(postId);
         if (!normalizedPostId)
             throw new ProfileApiError('Convocatoria inválida.', 'SOCIAL_LFG_POST_INVALID', 400);
+        this.assertValidLfgPostInput(input, true);
 
         try {
             const response = await firstValueFrom(
@@ -303,8 +305,16 @@ export class SocialV3ApiService {
                     { headers: await this.buildAuthHeaders() }
                 )
             );
+            const conversationId = this.toPositiveInt(
+                response?.conversationId
+                ?? response?.idConversacion
+                ?? response?.conversation?.conversationId
+                ?? response?.conversation?.id
+            );
+            if (!conversationId)
+                throw new ProfileApiError('La API no devolvió una conversación válida.', 'SOCIAL_LFG_CONTACT_CONVERSATION_INVALID', 500);
             return {
-                conversationId: this.toPositiveInt(response?.conversationId) ?? 0,
+                conversationId,
                 created: response?.created === true,
                 type: 'direct',
             };
@@ -561,6 +571,29 @@ export class SocialV3ApiService {
         };
     }
 
+    private assertValidLfgPostInput(input: Partial<SocialLfgPostUpsertInput>, allowPartial: boolean): void {
+        const shouldValidate = (key: keyof SocialLfgPostUpsertInput): boolean =>
+            !allowPartial || Object.prototype.hasOwnProperty.call(input ?? {}, key);
+
+        if (shouldValidate('title') && !this.hasMeaningfulLfgText(input?.title))
+            throw new ProfileApiError('El título debe incluir texto real y no solo números.', 'SOCIAL_LFG_TITLE_INVALID', 400);
+        if (shouldValidate('summary') && !this.hasMeaningfulLfgText(input?.summary))
+            throw new ProfileApiError('El resumen debe incluir texto real y no solo números.', 'SOCIAL_LFG_SUMMARY_INVALID', 400);
+        if (shouldValidate('gameSystem') && !this.hasMeaningfulLfgText(input?.gameSystem))
+            throw new ProfileApiError('El sistema debe incluir texto real y no solo números.', 'SOCIAL_LFG_GAME_SYSTEM_INVALID', 400);
+        if (shouldValidate('campaignStyle') && !this.hasMeaningfulLfgText(input?.campaignStyle))
+            throw new ProfileApiError('El estilo de campaña debe incluir texto real y no solo números.', 'SOCIAL_LFG_CAMPAIGN_STYLE_INVALID', 400);
+        if (shouldValidate('scheduleText') && !this.hasValidLfgSchedule(input?.scheduleText))
+            throw new ProfileApiError('El horario debe incluir una hora válida, por ejemplo 18:00.', 'SOCIAL_LFG_SCHEDULE_INVALID', 400);
+        if (shouldValidate('language') && !this.hasMeaningfulLfgText(input?.language))
+            throw new ProfileApiError('El idioma debe incluir texto real y no solo números.', 'SOCIAL_LFG_LANGUAGE_INVALID', 400);
+        if (shouldValidate('slotsTotal')) {
+            const slotsTotal = Math.trunc(Number(input?.slotsTotal));
+            if (!Number.isInteger(slotsTotal) || slotsTotal <= 0)
+                throw new ProfileApiError('Las plazas totales deben ser un número mayor que 0.', 'SOCIAL_LFG_SLOTS_TOTAL_INVALID', 400);
+        }
+    }
+
     private async buildAuthHeaders(): Promise<HttpHeaders> {
         const user = this.auth.currentUser;
         if (!user)
@@ -665,6 +698,20 @@ export class SocialV3ApiService {
                 acc[key] = normalized;
             return acc;
         }, {});
+    }
+
+    private hasMeaningfulLfgText(value: any): boolean {
+        const normalized = `${value ?? ''}`.trim();
+        if (normalized.length < 1)
+            return false;
+        return /[A-Za-zÁÉÍÓÚÜÑáéíóúüñ]/.test(normalized);
+    }
+
+    private hasValidLfgSchedule(value: any): boolean {
+        const normalized = `${value ?? ''}`.trim();
+        if (normalized.length < 1)
+            return false;
+        return /\b(?:[01]?\d|2[0-3]):[0-5]\d\b/.test(normalized);
     }
 
     private normalizeCommunityRole(value: any): SocialCommunityRole {

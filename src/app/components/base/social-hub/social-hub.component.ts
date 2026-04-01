@@ -602,12 +602,7 @@ export class SocialHubComponent implements OnInit, OnChanges, OnDestroy {
         const inviteId = this.toPositiveInt(invitation?.inviteId);
         if (!inviteId || this.campaignInviteResolveInFlightId === inviteId)
             return;
-        const guard = this.apiActionGuardSvc.shouldAllow(this.userSvc.CurrentUserUid, `social.campaign.invitation.${inviteId}.${decision}`);
-        if (guard.newlySessionLocked) {
-            this.appToastSvc.showError('Esta sesión ha quedado bloqueada por abuso de peticiones.');
-            return;
-        }
-        if (guard.status !== 'allowed')
+        if (!this.shouldRunGuardedApiAction(`social.campaign.invitation.${inviteId}.${decision}`))
             return;
 
         this.campaignInviteResolveInFlightId = inviteId;
@@ -621,7 +616,7 @@ export class SocialHubComponent implements OnInit, OnChanges, OnDestroy {
                 { category: 'campanas' }
             );
         } catch (error: any) {
-            this.appToastSvc.showError(`${error?.message ?? 'No se pudo resolver la invitación.'}`.trim());
+            this.appToastSvc.showError(this.mapSocialActionError(error, 'No se pudo resolver la invitación.'));
         } finally {
             this.campaignInviteResolveInFlightId = null;
         }
@@ -630,12 +625,7 @@ export class SocialHubComponent implements OnInit, OnChanges, OnDestroy {
     async openSelectedCampaignChat(): Promise<void> {
         if (!this.selectedCampaignId || !this.canOpenSelectedCampaignChat)
             return;
-        const guard = this.apiActionGuardSvc.shouldAllow(this.userSvc.CurrentUserUid, `social.campaign.chat.${this.selectedCampaignId}`);
-        if (guard.newlySessionLocked) {
-            this.appToastSvc.showError('Esta sesión ha quedado bloqueada por abuso de peticiones.');
-            return;
-        }
-        if (guard.status !== 'allowed')
+        if (!this.shouldRunGuardedApiAction(`social.campaign.chat.${this.selectedCampaignId}`))
             return;
 
         try {
@@ -645,7 +635,7 @@ export class SocialHubComponent implements OnInit, OnChanges, OnDestroy {
             this.messageComposerMode = 'conversation';
             await this.selectConversation(detail, detail);
         } catch (error: any) {
-            this.appToastSvc.showError(`${error?.message ?? 'No se pudo abrir el chat de la campaña.'}`.trim());
+            this.appToastSvc.showError(this.mapSocialActionError(error, 'No se pudo abrir el chat de la campaña.'));
         }
     }
 
@@ -764,12 +754,7 @@ export class SocialHubComponent implements OnInit, OnChanges, OnDestroy {
         const body = `${this.sendDraft ?? ''}`.trim();
         if (!conversation || !conversation.canSend || body.length < 1 || this.sendingMessage)
             return;
-        const guard = this.apiActionGuardSvc.shouldAllow(this.userSvc.CurrentUserUid, `social.message.send.${conversation.conversationId}`);
-        if (guard.newlySessionLocked) {
-            this.activeConversationError = 'Esta sesión ha quedado bloqueada por abuso de peticiones.';
-            return;
-        }
-        if (guard.status !== 'allowed')
+        if (!this.shouldRunGuardedApiAction(`social.message.send.${conversation.conversationId}`, 'activeConversation'))
             return;
 
         this.sendingMessage = true;
@@ -784,7 +769,7 @@ export class SocialHubComponent implements OnInit, OnChanges, OnDestroy {
             this.sendDraft = '';
             await this.markActiveConversationAsRead();
         } catch (error: any) {
-            this.activeConversationError = `${error?.message ?? 'No se pudo enviar el mensaje.'}`.trim();
+            this.activeConversationError = this.mapSocialActionError(error, 'No se pudo enviar el mensaje.');
         } finally {
             this.sendingMessage = false;
         }
@@ -842,12 +827,7 @@ export class SocialHubComponent implements OnInit, OnChanges, OnDestroy {
     async createGroup(): Promise<void> {
         if (!this.canSubmitNewGroup)
             return;
-        const guard = this.apiActionGuardSvc.shouldAllow(this.userSvc.CurrentUserUid, 'social.group.create');
-        if (guard.newlySessionLocked) {
-            this.appToastSvc.showError('Esta sesión ha quedado bloqueada por abuso de peticiones.');
-            return;
-        }
-        if (guard.status !== 'allowed')
+        if (!this.shouldRunGuardedApiAction('social.group.create'))
             return;
 
         this.newGroupSaving = true;
@@ -858,7 +838,7 @@ export class SocialHubComponent implements OnInit, OnChanges, OnDestroy {
             this.resetNewGroupDraft();
             await this.selectConversation(detail, detail);
         } catch (error: any) {
-            this.appToastSvc.showError(`${error?.message ?? 'No se pudo crear el grupo.'}`.trim());
+            this.appToastSvc.showError(this.mapSocialActionError(error, 'No se pudo crear el grupo.'));
         } finally {
             this.newGroupSaving = false;
         }
@@ -868,12 +848,7 @@ export class SocialHubComponent implements OnInit, OnChanges, OnDestroy {
         const conversationId = this.activeConversation?.conversationId ?? 0;
         if (!this.canManageActiveGroup || conversationId <= 0 || this.groupRenameSaving)
             return;
-        const guard = this.apiActionGuardSvc.shouldAllow(this.userSvc.CurrentUserUid, `social.group.rename.${conversationId}`);
-        if (guard.newlySessionLocked) {
-            this.appToastSvc.showError('Esta sesión ha quedado bloqueada por abuso de peticiones.');
-            return;
-        }
-        if (guard.status !== 'allowed')
+        if (!this.shouldRunGuardedApiAction(`social.group.rename.${conversationId}`))
             return;
 
         this.groupRenameSaving = true;
@@ -883,7 +858,7 @@ export class SocialHubComponent implements OnInit, OnChanges, OnDestroy {
             this.appToastSvc.showSuccess('Grupo actualizado.');
         } catch (error: any) {
             await this.reloadActiveConversationDetail();
-            this.appToastSvc.showError(`${error?.message ?? 'No se pudo renombrar el grupo.'}`.trim());
+            this.appToastSvc.showError(this.mapSocialActionError(error, 'No se pudo renombrar el grupo.'));
         } finally {
             this.groupRenameSaving = false;
         }
@@ -894,12 +869,7 @@ export class SocialHubComponent implements OnInit, OnChanges, OnDestroy {
         const uid = `${friend?.uid ?? ''}`.trim();
         if (!this.canManageActiveGroup || conversationId <= 0 || uid.length < 1 || this.groupParticipantSavingUid.length > 0)
             return;
-        const guard = this.apiActionGuardSvc.shouldAllow(this.userSvc.CurrentUserUid, `social.group.participant.add.${conversationId}.${uid}`);
-        if (guard.newlySessionLocked) {
-            this.appToastSvc.showError('Esta sesión ha quedado bloqueada por abuso de peticiones.');
-            return;
-        }
-        if (guard.status !== 'allowed')
+        if (!this.shouldRunGuardedApiAction(`social.group.participant.add.${conversationId}.${uid}`))
             return;
 
         this.groupParticipantSavingUid = uid;
@@ -910,7 +880,7 @@ export class SocialHubComponent implements OnInit, OnChanges, OnDestroy {
             this.appToastSvc.showSuccess('Participante añadido al grupo.');
         } catch (error: any) {
             await this.reloadActiveConversationDetail();
-            this.appToastSvc.showError(`${error?.message ?? 'No se pudo añadir al participante.'}`.trim());
+            this.appToastSvc.showError(this.mapSocialActionError(error, 'No se pudo añadir al participante.'));
         } finally {
             this.groupParticipantSavingUid = '';
         }
@@ -921,12 +891,7 @@ export class SocialHubComponent implements OnInit, OnChanges, OnDestroy {
         const uid = `${participant?.uid ?? ''}`.trim();
         if (!this.canManageActiveGroup || conversationId <= 0 || uid.length < 1 || this.groupParticipantRemovingUid.length > 0)
             return;
-        const guard = this.apiActionGuardSvc.shouldAllow(this.userSvc.CurrentUserUid, `social.group.participant.remove.${conversationId}.${uid}`);
-        if (guard.newlySessionLocked) {
-            this.appToastSvc.showError('Esta sesión ha quedado bloqueada por abuso de peticiones.');
-            return;
-        }
-        if (guard.status !== 'allowed')
+        if (!this.shouldRunGuardedApiAction(`social.group.participant.remove.${conversationId}.${uid}`))
             return;
 
         this.groupParticipantRemovingUid = uid;
@@ -936,7 +901,7 @@ export class SocialHubComponent implements OnInit, OnChanges, OnDestroy {
             this.appToastSvc.showSuccess('Participante retirado del grupo.');
         } catch (error: any) {
             await this.reloadActiveConversationDetail();
-            this.appToastSvc.showError(`${error?.message ?? 'No se pudo retirar al participante.'}`.trim());
+            this.appToastSvc.showError(this.mapSocialActionError(error, 'No se pudo retirar al participante.'));
         } finally {
             this.groupParticipantRemovingUid = '';
         }
@@ -1509,23 +1474,50 @@ export class SocialHubComponent implements OnInit, OnChanges, OnDestroy {
     private async runAction(actionKey: string, handler: () => Promise<void>, fallbackMessage?: string): Promise<void> {
         if (this.actionInFlightKey)
             return;
-        const decision = this.apiActionGuardSvc.shouldAllow(this.userSvc.CurrentUserUid, actionKey);
-        if (decision.newlySessionLocked) {
-            this.appToastSvc.showError('Esta sesión ha quedado bloqueada por abuso de peticiones.');
-            return;
-        }
-        if (decision.status !== 'allowed')
+        if (!this.shouldRunGuardedApiAction(actionKey))
             return;
 
         this.actionInFlightKey = 'pending';
         try {
             await handler();
         } catch (error: any) {
-            const message = `${error?.message ?? fallbackMessage ?? 'No se pudo completar la acción.'}`.trim();
+            const message = this.mapSocialActionError(error, fallbackMessage ?? 'No se pudo completar la acción.');
             this.appToastSvc.showError(message);
         } finally {
             this.actionInFlightKey = '';
         }
+    }
+
+    private shouldRunGuardedApiAction(
+        actionKey: string,
+        errorTarget: 'toast' | 'activeConversation' = 'toast'
+    ): boolean {
+        const accessRestrictionMessage = this.userSvc.getAccessRestrictionMessage('usage');
+        if (accessRestrictionMessage.length > 0) {
+            if (errorTarget === 'activeConversation')
+                this.activeConversationError = accessRestrictionMessage;
+            else
+                this.appToastSvc.showError(accessRestrictionMessage);
+            return false;
+        }
+
+        const decision = this.apiActionGuardSvc.shouldAllow(this.userSvc.CurrentUserUid, actionKey);
+        if (decision.newlySessionLocked) {
+            const message = 'Esta sesión ha quedado bloqueada por abuso de peticiones.';
+            if (errorTarget === 'activeConversation')
+                this.activeConversationError = message;
+            else
+                this.appToastSvc.showError(message);
+            return false;
+        }
+        return decision.status === 'allowed';
+    }
+
+    private mapSocialActionError(error: any, fallback: string): string {
+        const complianceError = this.userSvc.getComplianceErrorMessage(error, 'usage');
+        if (complianceError.length > 0)
+            return complianceError;
+        return `${error?.message ?? fallback}`.trim() || fallback;
     }
 
     private extractNotificationCampaignId(notification: ChatMessage['notification'] | null | undefined): number {

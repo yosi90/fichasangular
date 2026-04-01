@@ -1,6 +1,7 @@
 import { Component, OnDestroy, OnInit } from '@angular/core';
 import { Observable, Subject, fromEvent, takeUntil } from 'rxjs';
 import Swal from 'sweetalert2';
+import { CompliancePolicyNoticeService } from './services/compliance-policy-notice.service';
 import { AdminRoleRequestNotifierService } from './services/admin-role-request-notifier.service';
 import { CampaignRealtimeSyncService } from './services/campaign-realtime-sync.service';
 import { ChatAlertService } from './services/chat-alert.service';
@@ -22,6 +23,7 @@ export class AppComponent implements OnInit, OnDestroy {
     resize$: Observable<Event> = fromEvent(window, 'resize');
 
     constructor(
+        private compliancePolicyNoticeSvc: CompliancePolicyNoticeService,
         private adminRoleRequestNotifierSvc: AdminRoleRequestNotifierService,
         private campaignRealtimeSyncSvc: CampaignRealtimeSyncService,
         private chatRealtimeSvc: ChatRealtimeService,
@@ -32,6 +34,7 @@ export class AppComponent implements OnInit, OnDestroy {
 
     async ngOnInit(): Promise<void> {
         this.configurarSwalGlobal();
+        this.compliancePolicyNoticeSvc.init();
         this.adminRoleRequestNotifierSvc.init();
         this.chatRealtimeSvc.init();
         this.chatFloatingSvc.init();

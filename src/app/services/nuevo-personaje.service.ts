@@ -193,6 +193,7 @@ const FILAS_TIRADAS = MAX_TIRADA - MIN_TIRADA + 1;
 const GENERADOR_CONFIG_STORAGE_KEY = 'fichas35.nuevoPersonaje.generador.config.v1';
 const MAX_VENTAJAS_SELECCIONABLES = 3;
 const DADOS_PROGRESION = [4, 6, 8, 10, 12];
+const NUEVO_PERSONAJE_DRAFT_TTL_MS = 24 * 60 * 60 * 1000;
 const CLAVES_MOD_DOTE_PGS_PLANO = new Set<string>([
     'pga',
     'pgaadicional',
@@ -7965,6 +7966,10 @@ export class NuevoPersonajeService {
             const parsed = JSON.parse(raw) as NuevoPersonajeDraftV1;
             if (!this.esBorradorLocalValido(parsed, uidNormalizado))
                 return null;
+            if (this.estaBorradorLocalCaducado(parsed)) {
+                this.eliminarBorradorStorage(uidNormalizado);
+                return null;
+            }
             return parsed;
         } catch {
             return null;
@@ -7981,6 +7986,14 @@ export class NuevoPersonajeService {
         if (!(value as any).personaje || !(value as any).estadoFlujoPersistible)
             return false;
         return true;
+    }
+
+    private estaBorradorLocalCaducado(borrador: NuevoPersonajeDraftV1): boolean {
+        const updatedAt = Math.trunc(this.toNumber((borrador as any)?.updatedAt));
+        if (updatedAt <= 0)
+            return true;
+
+        return (Date.now() - updatedAt) > NUEVO_PERSONAJE_DRAFT_TTL_MS;
     }
 
     private escribirBorradorStorage(uid: string, borrador: NuevoPersonajeDraftV1): void {

@@ -88,6 +88,41 @@ describe('ChatAlertService', () => {
         expect(chatRealtimeSvc.markConversationReadLocally).toHaveBeenCalledWith(55);
     }));
 
+    it('muestra Swal para moderación y abre el resumen del perfil al confirmar', fakeAsync(() => {
+        spyOn(Swal, 'fire').and.resolveTo({ isConfirmed: true } as any);
+
+        service.init();
+        alertCandidate$.next(buildCandidate({
+            messageId: 91,
+            conversationId: 71,
+            sender: {
+                uid: 'system:yosiftware',
+                displayName: 'Yosiftware',
+                photoThumbUrl: null,
+                isSystemUser: true,
+            },
+            body: 'Se ha confirmado una incidencia en tu cuenta.',
+            notification: {
+                code: 'system.moderation_event',
+                title: 'Nuevo evento de moderación',
+                action: {
+                    target: 'social.messages',
+                    conversationId: 71,
+                },
+                context: {
+                    result: 'reported',
+                },
+            },
+        }));
+        tick();
+
+        expect(Swal.fire).toHaveBeenCalled();
+        expect(navSvc.openPrivateProfile).toHaveBeenCalledWith(jasmine.objectContaining({
+            section: 'resumen',
+        }));
+        expect(chatApiSvc.markAsRead).toHaveBeenCalledWith(71, 91);
+    }));
+
     it('usa toast para announcement trivial y no abre Swal', () => {
         const swalSpy = spyOn(Swal, 'fire').and.resolveTo({ isConfirmed: true } as any);
 

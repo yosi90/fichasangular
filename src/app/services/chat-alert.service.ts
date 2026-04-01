@@ -150,7 +150,9 @@ export class ChatAlertService implements OnDestroy {
         const canOpenCampaign = campaignId > 0
             && (notification.code === 'system.campaign_invitation_received'
                 || notification.code === 'system.campaign_invitation_resolved');
-        const canOpenProfile = notification.code === 'system.role_request_resolved';
+        const canOpenProfile = notification.code === 'system.role_request_resolved'
+            || notification.code === 'system.moderation_event'
+            || notification.code === 'system.account_banned';
         const primaryActionLabel = canOpenCampaign
             ? 'Abrir campaña'
             : canOpenProfile

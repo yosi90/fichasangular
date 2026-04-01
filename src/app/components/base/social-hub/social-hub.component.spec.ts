@@ -15,6 +15,7 @@ import { SocialRealtimeService } from 'src/app/services/social-realtime.service'
 import { UserProfileNavigationService } from 'src/app/services/user-profile-navigation.service';
 import { UserSettingsService } from 'src/app/services/user-settings.service';
 import { UserService } from 'src/app/services/user.service';
+import { ApiActionGuardService } from 'src/app/services/api-action-guard.service';
 
 describe('SocialHubComponent', () => {
     let fixture: ComponentFixture<SocialHubComponent>;
@@ -33,6 +34,8 @@ describe('SocialHubComponent', () => {
     let userProfileNavSvc: jasmine.SpyObj<UserProfileNavigationService>;
     let userSettingsSvc: jasmine.SpyObj<UserSettingsService>;
     let chatFloatingSvc: jasmine.SpyObj<ChatFloatingService>;
+    let apiActionGuardSvc: jasmine.SpyObj<ApiActionGuardService>;
+    let appToastSvc: jasmine.SpyObj<AppToastService>;
 
     beforeEach(async () => {
         sessionStorage.clear();
@@ -156,6 +159,16 @@ describe('SocialHubComponent', () => {
             isBubbleFeatureEnabled: true,
             listWindow$: floatingListWindow$.asObservable(),
         });
+        apiActionGuardSvc = jasmine.createSpyObj<ApiActionGuardService>('ApiActionGuardService', ['shouldAllow']);
+        apiActionGuardSvc.shouldAllow.and.returnValue({
+            status: 'allowed',
+            blockedUntil: null,
+            blocksToday: 0,
+            sessionLocked: false,
+            newlyBlocked: false,
+            newlySessionLocked: false,
+        });
+        appToastSvc = jasmine.createSpyObj<AppToastService>('AppToastService', ['showSuccess', 'showError', 'showInfo', 'showSystem']);
         userSettingsSvc.loadProfileSettings.and.resolveTo({
             ...createDefaultUserSettings().perfil,
             allowDirectMessagesFromNonFriends: true,
@@ -170,6 +183,8 @@ describe('SocialHubComponent', () => {
                     useValue: {
                         isLoggedIn$,
                         CurrentUserUid: 'uid-1',
+                        getAccessRestrictionMessage: jasmine.createSpy('getAccessRestrictionMessage').and.returnValue(''),
+                        getComplianceErrorMessage: jasmine.createSpy('getComplianceErrorMessage').and.returnValue(''),
                     },
                 },
                 { provide: SocialApiService, useValue: socialApiSvc },
@@ -202,10 +217,8 @@ describe('SocialHubComponent', () => {
                 { provide: UserProfileNavigationService, useValue: userProfileNavSvc },
                 { provide: UserSettingsService, useValue: userSettingsSvc },
                 { provide: ChatFloatingService, useValue: chatFloatingSvc },
-                {
-                    provide: AppToastService,
-                    useValue: jasmine.createSpyObj<AppToastService>('AppToastService', ['showSuccess', 'showError', 'showInfo', 'showSystem']),
-                },
+                { provide: ApiActionGuardService, useValue: apiActionGuardSvc },
+                { provide: AppToastService, useValue: appToastSvc },
             ],
             schemas: [NO_ERRORS_SCHEMA],
         }).compileComponents();
@@ -962,6 +975,43 @@ describe('SocialHubComponent', () => {
         expect(chatApiSvc.createGroup).toHaveBeenCalledWith('Grupo de prueba', ['uid-2']);
         expect((TestBed.inject(ChatRealtimeService) as any).upsertConversation).toHaveBeenCalled();
         expect(component.activeConversation?.conversationId).toBe(44);
+    }));
+
+    it('bloquea createGroup localmente cuando compliance exige aceptar normas de uso', fakeAsync(() => {
+        const userSvc = TestBed.inject(UserService) as any;
+        userSvc.getAccessRestrictionMessage.and.returnValue('Debes aceptar las normas de uso vigentes antes de continuar.');
+
+        fixture.detectChanges();
+        isLoggedIn$.next(true);
+        tick();
+
+        component.openNewGroupComposer();
+        component.newGroupDraft.title = 'Grupo restringido';
+        component.newGroupDraft.participantUids = ['uid-2'];
+        void component.createGroup();
+        tick();
+
+        expect(chatApiSvc.createGroup).not.toHaveBeenCalled();
+        expect(apiActionGuardSvc.shouldAllow).not.toHaveBeenCalledWith('uid-1', 'social.group.create');
+        expect(appToastSvc.showError).toHaveBeenCalledWith('Debes aceptar las normas de uso vigentes antes de continuar.');
+    }));
+
+    it('traduce mustAcceptUsage al fallar una mutación social con 403 funcional', fakeAsync(() => {
+        const userSvc = TestBed.inject(UserService) as any;
+        userSvc.getComplianceErrorMessage.and.returnValue('Debes aceptar las normas de uso vigentes antes de continuar.');
+        chatApiSvc.createGroup.and.rejectWith({ status: 403, code: 'mustAcceptUsage', message: 'Forbidden' });
+
+        fixture.detectChanges();
+        isLoggedIn$.next(true);
+        tick();
+
+        component.openNewGroupComposer();
+        component.newGroupDraft.title = 'Grupo restringido';
+        component.newGroupDraft.participantUids = ['uid-2'];
+        void component.createGroup();
+        tick();
+
+        expect(appToastSvc.showError).toHaveBeenCalledWith('Debes aceptar las normas de uso vigentes antes de continuar.');
     }));
 
     it('renombra el grupo activo y refresca el detalle local', fakeAsync(() => {

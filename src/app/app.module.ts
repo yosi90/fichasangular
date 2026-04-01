@@ -29,7 +29,6 @@ import { MatChipsModule } from '@angular/material/chips';
 import { MatDialogModule } from '@angular/material/dialog';
 import { MatSortModule } from '@angular/material/sort';
 import { MatPaginatorModule } from '@angular/material/paginator';
-import { MatSidenavModule } from '@angular/material/sidenav';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatStepperModule } from '@angular/material/stepper';
 import { FormsModule } from '@angular/forms';
@@ -43,7 +42,6 @@ import { forceWebSockets } from 'firebase/database';
 import { getApp } from 'firebase/app';
 import { SesionDialogComponent } from './components/sesion-dialog/sesion-dialog.component';
 import { TabControlComponent } from './components/base/tab-control/tab-control.component';
-import { BaseMenuResponsiveComponent } from './components/base/responsive-base/responsive-base.component';
 import { BaseMenuComponent } from './components/base/base-menu/base-menu.component';
 import { AdminPanelComponent } from './components/base/admin-panel/admin-panel.component';
 import { DetallesPersonajeComponent } from './components/detalles/detalles-personaje/detalles-personaje.component';
@@ -127,7 +125,6 @@ import { CloseFilterMenuOnMouseleaveDirective } from './directives/close-filter-
         ListaPersonajesComponent,
         SesionDialogComponent,
         TabControlComponent,
-        BaseMenuResponsiveComponent,
         BaseMenuComponent,
         UserProfileComponent,
         PublicUserProfileComponent,
@@ -226,7 +223,6 @@ import { CloseFilterMenuOnMouseleaveDirective } from './directives/close-filter-
         MatDialogModule,
         MatSortModule,
         MatPaginatorModule,
-        MatSidenavModule,
         MatTooltipModule,
         MatStepperModule,
         ReactiveFormsModule,

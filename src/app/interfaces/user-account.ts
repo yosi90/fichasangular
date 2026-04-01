@@ -1,4 +1,5 @@
 import { UserRole } from './user-acl';
+import { UserComplianceSnapshot } from './user-moderation';
 import { AuthProviderType } from './user-profile';
 import { SocialHubOpenRequest, SocialHubSectionId } from './social';
 import { UserSettingsV1 } from './user-settings';
@@ -24,6 +25,7 @@ export interface UserPrivateProfile {
     lastSeenAt: string | null;
     role: UserRole;
     permissions: UserPermissionMap;
+    compliance?: UserComplianceSnapshot | null;
 }
 
 export interface UserPublicProfileStats {

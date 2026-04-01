@@ -47,11 +47,26 @@ import { ChatAlertCandidate } from 'src/app/interfaces/chat';
 import { ChatRealtimeService } from 'src/app/services/chat-realtime.service';
 import { UserProfileApiService } from 'src/app/services/user-profile-api.service';
 import {
+    AdminPolicyDraftDto,
     CreationAuditEventDetailDto,
     CreationAuditEventSummaryDto,
     CreationAuditResultCode,
+    ModerationAdminHistoryItemDto,
+    ModerationAdminHistoryResponseDto,
+    ModerationCaseListItemDto,
+    ModerationCaseStageDto,
+    ModerationIncidentListItemDto,
+    ModerationProgressCaseDto,
+    ModerationSanctionListItemDto,
+    UsuarioAclResponseDto,
 } from 'src/app/interfaces/usuarios-api';
 import { UsuariosApiService } from 'src/app/services/usuarios-api.service';
+import {
+    UserComplianceActivePolicy,
+    UserCompliancePolicyKind,
+    UserModerationHistoryResult,
+    UserModerationSanction,
+} from 'src/app/interfaces/user-moderation';
 
 interface SyncItemConfig {
     key: CacheEntityKey;
@@ -62,6 +77,21 @@ interface SyncItemConfig {
 
 interface SyncItemUi extends SyncItemConfig, CacheSyncUiState {
     lastSuccessTexto: string;
+}
+
+interface AdminPolicyPanelItem {
+    kind: UserCompliancePolicyKind;
+    draft: AdminPolicyDraftDto | null;
+    active: UserComplianceActivePolicy | null;
+}
+
+type AdminPanelViewSectionId = 'usuarios' | 'role-requests' | 'moderacion' | 'auditoria' | 'sync';
+
+interface AdminPanelSectionItem {
+    id: AdminPanelViewSectionId;
+    label: string;
+    icon: string;
+    hint: string;
 }
 
 @Component({
@@ -96,11 +126,21 @@ export class AdminPanelComponent implements OnInit, OnDestroy {
     cargandoSolicitudesRol: boolean = false;
     errorSolicitudesRol: string = '';
     roleRequestsSqlAccessDenied: boolean = false;
-    usuariosPanelExpanded: boolean = true;
-    solicitudesPanelExpanded: boolean = false;
-    auditoriaPanelExpanded: boolean = false;
-    syncPanelExpanded: boolean = false;
+    currentSection: AdminPanelViewSectionId = 'usuarios';
     resaltarSolicitudesPendientes: boolean = false;
+    politicasModeracion: AdminPolicyPanelItem[] = [];
+    supuestosModerables: ModerationCaseListItemDto[] = [];
+    incidenciasModeracion: ModerationIncidentListItemDto[] = [];
+    sancionesModeracion: ModerationSanctionListItemDto[] = [];
+    cargandoModeracionAdmin: boolean = false;
+    errorModeracionAdmin: string = '';
+    moderacionUsuarioUid: string = '';
+    previewModeracionUsuario: UsuarioAclResponseDto | null = null;
+    historialModeracionUsuario: ModerationAdminHistoryResponseDto | null = null;
+    cargandoHistorialModeracionUsuario: boolean = false;
+    errorHistorialModeracionUsuario: string = '';
+    historialModeracionUsuarioLimit = 10;
+    historialModeracionUsuarioOffset = 0;
     auditoriaCreaciones: CreationAuditEventSummaryDto[] = [];
     cargandoAuditoriaCreaciones: boolean = false;
     errorAuditoriaCreaciones: string = '';
@@ -117,12 +157,20 @@ export class AdminPanelComponent implements OnInit, OnDestroy {
     cargandoDetalleAuditoriaCreacion: boolean = false;
     errorDetalleAuditoriaCreacion: string = '';
     private auditoriaCreacionesLoadedOnce: boolean = false;
+    readonly sectionItems: AdminPanelSectionItem[] = [
+        { id: 'usuarios', label: 'Usuarios', icon: 'manage_accounts', hint: 'Baneos, roles y permisos de creacion.' },
+        { id: 'role-requests', label: 'Solicitudes de rol', icon: 'pending_actions', hint: 'Peticiones pendientes e historico.' },
+        { id: 'moderacion', label: 'Moderacion', icon: 'gavel', hint: 'Politicas, incidencias y sanciones.' },
+        { id: 'auditoria', label: 'Auditoria REST', icon: 'history', hint: 'Eventos de creacion y detalle HTTP.' },
+        { id: 'sync', label: 'Sincronizacion', icon: 'sync_alt', hint: 'Herramientas de cache y resincronizacion.' },
+    ];
 
     private readonly destroy$ = new Subject<void>();
     private readonly keysEjecutando = new Set<CacheEntityKey>();
     private readonly userOpsInFlight = new Set<string>();
     private readonly roleRequestOpsInFlight = new Set<number>();
     private roleRequestsLoadedOnce: boolean = false;
+    private moderacionAdminLoadedOnce: boolean = false;
     private readonly dateFormatter = new Intl.DateTimeFormat('es-ES', {
         day: '2-digit',
         month: '2-digit',
@@ -236,7 +284,7 @@ export class AdminPanelComponent implements OnInit, OnDestroy {
             .subscribe((candidate) => {
                 if (!this.esAdmin || !this.isRealtimeRoleRequestNotification(candidate))
                     return;
-                if (this.solicitudesPanelExpanded && this.roleRequestsLoadedOnce)
+                if (this.currentSection === 'role-requests' && this.roleRequestsLoadedOnce)
                     void this.cargarSolicitudesRolPendientes();
             });
         this.adminUsersSvc.watchUsersAdminView()
@@ -387,6 +435,10 @@ export class AdminPanelComponent implements OnInit, OnDestroy {
         return this.solicitudesMasterPendientes.length > 0 || this.solicitudesColaboradorPendientes.length > 0;
     }
 
+    get pendingRoleRequestsCount(): number {
+        return this.solicitudesMasterPendientes.length + this.solicitudesColaboradorPendientes.length;
+    }
+
     get hayHistorialSolicitudesRol(): boolean {
         return this.solicitudesAprobadas.length > 0 || this.solicitudesRechazadas.length > 0;
     }
@@ -412,6 +464,173 @@ export class AdminPanelComponent implements OnInit, OnDestroy {
         if (role === 'master')
             return 'Master';
         return 'Jugador';
+    }
+
+    moderationSummaryLabel(row: AdminUserRow): string {
+        const summary = row.moderationSummary;
+        if (!summary)
+            return 'Moderación: sin resumen';
+        if (summary.incidentCount < 1 && summary.sanctionCount < 1 && !summary.activeSanction)
+            return 'Moderación: sin historial confirmado';
+        return `Moderación: ${summary.incidentCount} incidencias · ${summary.sanctionCount} sanciones`;
+    }
+
+    moderationSummaryDetailLabel(row: AdminUserRow): string {
+        const summary = row.moderationSummary;
+        if (!summary)
+            return '';
+        if (summary.activeSanction) {
+            const label = `${summary.activeSanction.name ?? summary.activeSanction.code ?? summary.activeSanction.kind ?? 'Sanción'}`.trim();
+            if (summary.activeSanction.isPermanent)
+                return `Activa: ${label} permanente`;
+            if (`${summary.activeSanction.endsAtUtc ?? ''}`.trim().length > 0)
+                return `Activa hasta ${this.formatearFechaUtc(summary.activeSanction.endsAtUtc, 'fecha no disponible')}`;
+            return `Activa: ${label}`;
+        }
+        if (summary.lastSanctionAtUtc)
+            return `Última sanción: ${this.formatearFechaUtc(summary.lastSanctionAtUtc)}`;
+        if (summary.lastIncidentAtUtc)
+            return `Última incidencia: ${this.formatearFechaUtc(summary.lastIncidentAtUtc)}`;
+        return '';
+    }
+
+    policyKindLabel(kind: UserCompliancePolicyKind): string {
+        return kind === 'creation' ? 'Normas de creación' : 'Normas de uso';
+    }
+
+    policyVersionLabel(item: AdminPolicyPanelItem): string {
+        const draftVersion = `${item?.draft?.version ?? ''}`.trim();
+        const activeVersion = `${item?.active?.version ?? ''}`.trim();
+        return draftVersion || activeVersion || 'Sin versión';
+    }
+
+    policyExcerpt(item: AdminPolicyPanelItem): string {
+        const text = `${item?.draft?.markdown ?? item?.active?.markdown ?? ''}`
+            .replace(/\s+/g, ' ')
+            .trim();
+        if (text.length < 1)
+            return 'Sin contenido visible';
+        if (text.length <= 220)
+            return text;
+        return `${text.slice(0, 220).trim()}...`;
+    }
+
+    moderationCaseLabel(item: ModerationCaseListItemDto): string {
+        return `${item?.name ?? item?.code ?? 'Caso sin nombre'}`.trim();
+    }
+
+    moderationStageLabel(stage: ModerationCaseStageDto): string {
+        const threshold = stage.reportThreshold !== null ? `umbral ${stage.reportThreshold}` : 'umbral n/d';
+        const sanction = this.moderationSanctionNameFromParts(stage.sanctionName, stage.sanctionCode, stage.sanctionKind);
+        const duration = this.moderationStageDurationLabel(stage);
+        return `Etapa ${stage.stageIndex + 1}: ${threshold} -> ${sanction}${duration ? ` (${duration})` : ''}`;
+    }
+
+    moderationIncidentTargetLabel(item: ModerationIncidentListItemDto | ModerationSanctionListItemDto | ModerationAdminHistoryItemDto | null | undefined): string {
+        return `${item?.targetDisplayName ?? item?.targetUid ?? 'Sin usuario'}`.trim();
+    }
+
+    moderationResultLabel(result: UserModerationHistoryResult | null | undefined): string {
+        if (result === 'reported')
+            return 'Reportada';
+        if (result === 'sanctioned')
+            return 'Sancionada';
+        if (result === 'banned')
+            return 'Ban efectivo';
+        return 'Sin resultado';
+    }
+
+    moderationModeLabel(mode: string | null | undefined): string {
+        const normalized = `${mode ?? ''}`.trim().toLowerCase();
+        if (normalized === 'force_sanction')
+            return 'Sanción forzada';
+        if (normalized === 'report')
+            return 'Reporte';
+        if (normalized === 'technical_signal_auto')
+            return 'Señal técnica';
+        return normalized.length > 0 ? normalized : 'Sin modo';
+    }
+
+    moderationProgressLabel(item: ModerationProgressCaseDto): string {
+        const stage = item.currentStageIndex !== null ? `Etapa ${item.currentStageIndex + 1}` : 'Etapa n/d';
+        const pending = item.pendingReports !== null ? `${item.pendingReports} pendientes` : 'pendientes n/d';
+        const sanction = item.activeSanction ? ` · ${this.moderationSanctionLabel(item.activeSanction)}` : '';
+        return `${stage} · ${pending}${sanction}`;
+    }
+
+    moderationSanctionLabel(sanction: UserModerationSanction | ModerationSanctionListItemDto | null | undefined): string {
+        if (!sanction)
+            return 'Sin sanción';
+
+        const label = this.moderationSanctionNameFromParts(sanction.name, sanction.code, sanction.kind);
+        if (sanction.isPermanent)
+            return `${label} permanente`;
+        if (`${sanction.endsAtUtc ?? ''}`.trim().length > 0)
+            return `${label} hasta ${this.formatearFechaUtc(sanction.endsAtUtc, 'fecha no disponible')}`;
+        return label;
+    }
+
+    moderationHistoryDetailLabel(item: ModerationAdminHistoryItemDto): string {
+        const details: string[] = [];
+        if (`${item.clientDate ?? ''}`.trim().length > 0)
+            details.push(`Cliente: ${item.clientDate}`);
+        if (item.localBlockCountToday !== null)
+            details.push(`Bloqueos día: ${item.localBlockCountToday}`);
+        if (item.triggeredStageIndex !== null)
+            details.push(`Etapa disparada: ${item.triggeredStageIndex + 1}`);
+        if (item.triggeredSanctionId !== null)
+            details.push(`Sanción: #${item.triggeredSanctionId}`);
+        return details.join(' · ');
+    }
+
+    moderationObjectPreview(value: Record<string, any> | null | undefined): string {
+        if (!value)
+            return '';
+
+        try {
+            return JSON.stringify(value, null, 2);
+        } catch {
+            return '';
+        }
+    }
+
+    get etiquetaEstadoModeracionAdmin(): string {
+        if (this.cargandoModeracionAdmin)
+            return 'Cargando moderación y cumplimiento...';
+        if (this.errorModeracionAdmin.length > 0)
+            return this.errorModeracionAdmin;
+        return '';
+    }
+
+    get etiquetaEstadoHistorialModeracionUsuario(): string {
+        if (this.cargandoHistorialModeracionUsuario)
+            return 'Cargando historial de moderación...';
+        if (this.errorHistorialModeracionUsuario.length > 0)
+            return this.errorHistorialModeracionUsuario;
+        if (this.historialModeracionUsuario && this.historialModeracionUsuario.items.length < 1)
+            return 'No hay incidencias o sanciones para el usuario seleccionado';
+        return '';
+    }
+
+    get puedePaginaAnteriorHistorialModeracionUsuario(): boolean {
+        return this.historialModeracionUsuarioOffset > 0 && !this.cargandoHistorialModeracionUsuario;
+    }
+
+    get puedePaginaSiguienteHistorialModeracionUsuario(): boolean {
+        if (this.cargandoHistorialModeracionUsuario || !this.historialModeracionUsuario)
+            return false;
+        return this.historialModeracionUsuarioOffset + this.historialModeracionUsuario.items.length < this.historialModeracionUsuario.total;
+    }
+
+    get historialModeracionUsuarioPaginaTexto(): string {
+        if (!this.historialModeracionUsuario || this.historialModeracionUsuario.total < 1)
+            return 'Sin resultados';
+        const desde = this.historialModeracionUsuario.offset + 1;
+        const hasta = Math.min(
+            this.historialModeracionUsuario.offset + this.historialModeracionUsuario.items.length,
+            this.historialModeracionUsuario.total
+        );
+        return `${desde}-${hasta} de ${this.historialModeracionUsuario.total}`;
     }
 
     isSelfRow(row: AdminUserRow): boolean {
@@ -675,13 +894,180 @@ export class AdminPanelComponent implements OnInit, OnDestroy {
     }
 
     async onSolicitudesPanelOpened(): Promise<void> {
-        this.solicitudesPanelExpanded = true;
-        if (!this.roleRequestsLoadedOnce)
-            await this.cargarSolicitudesRolPendientes();
+        await this.setSection('role-requests');
     }
 
     onSolicitudesPanelClosed(): void {
-        this.solicitudesPanelExpanded = false;
+        this.currentSection = 'usuarios';
+    }
+
+    async onModeracionPanelOpened(): Promise<void> {
+        await this.setSection('moderacion');
+    }
+
+    onModeracionPanelClosed(): void {
+        this.currentSection = 'usuarios';
+    }
+
+    async cargarModeracionAdmin(forceReload: boolean = false): Promise<void> {
+        if (!this.esAdmin)
+            return;
+        if (this.cargandoModeracionAdmin)
+            return;
+        if (!forceReload && this.moderacionAdminLoadedOnce)
+            return;
+
+        this.cargandoModeracionAdmin = true;
+        this.errorModeracionAdmin = '';
+        try {
+            const [
+                usageDraftResult,
+                creationDraftResult,
+                usageActiveResult,
+                creationActiveResult,
+                casesResult,
+                incidentsResult,
+                sanctionsResult,
+            ] = await Promise.allSettled([
+                this.usuariosApiSvc.getAdminPolicyDraft('usage'),
+                this.usuariosApiSvc.getAdminPolicyDraft('creation'),
+                this.userProfileApiSvc.getActivePolicy('usage'),
+                this.userProfileApiSvc.getActivePolicy('creation'),
+                this.usuariosApiSvc.listModerationCases(false),
+                this.usuariosApiSvc.listModerationIncidents(),
+                this.usuariosApiSvc.listModerationSanctions(),
+            ]);
+
+            this.politicasModeracion = [
+                {
+                    kind: 'usage',
+                    draft: usageDraftResult.status === 'fulfilled' ? usageDraftResult.value : null,
+                    active: usageActiveResult.status === 'fulfilled' ? usageActiveResult.value : null,
+                },
+                {
+                    kind: 'creation',
+                    draft: creationDraftResult.status === 'fulfilled' ? creationDraftResult.value : null,
+                    active: creationActiveResult.status === 'fulfilled' ? creationActiveResult.value : null,
+                },
+            ];
+            this.supuestosModerables = casesResult.status === 'fulfilled' ? casesResult.value : [];
+            this.incidenciasModeracion = incidentsResult.status === 'fulfilled' ? incidentsResult.value : [];
+            this.sancionesModeracion = sanctionsResult.status === 'fulfilled' ? sanctionsResult.value : [];
+            this.moderacionAdminLoadedOnce = true;
+
+            const errors = [
+                usageDraftResult,
+                creationDraftResult,
+                usageActiveResult,
+                creationActiveResult,
+                casesResult,
+                incidentsResult,
+                sanctionsResult,
+            ]
+                .filter((result): result is PromiseRejectedResult => result.status === 'rejected')
+                .map((result) => `${result.reason?.message ?? ''}`.trim())
+                .filter((message) => message.length > 0);
+
+            if (errors.length > 0)
+                this.errorModeracionAdmin = errors[0];
+        } catch (error: any) {
+            this.errorModeracionAdmin = error?.message ?? 'No se pudo cargar la lectura admin de moderación';
+        } finally {
+            this.cargandoModeracionAdmin = false;
+        }
+    }
+
+    async abrirModeracionUsuario(row: AdminUserRow): Promise<void> {
+        this.moderacionUsuarioUid = row.uid;
+        this.historialModeracionUsuarioOffset = 0;
+        this.currentSection = 'moderacion';
+        if (!this.moderacionAdminLoadedOnce)
+            await this.cargarModeracionAdmin(true);
+        await this.cargarHistorialModeracionUsuario(true);
+        this.scrollToModeration();
+    }
+
+    async cargarHistorialModeracionUsuario(forceReload: boolean = false): Promise<void> {
+        const normalizedUid = `${this.moderacionUsuarioUid ?? ''}`.trim();
+        if (!this.esAdmin || normalizedUid.length < 1)
+            return;
+        if (this.cargandoHistorialModeracionUsuario)
+            return;
+        if (!forceReload && this.historialModeracionUsuario?.uid === normalizedUid)
+            return;
+
+        this.cargandoHistorialModeracionUsuario = true;
+        this.errorHistorialModeracionUsuario = '';
+        try {
+            const [preview, history] = await Promise.all([
+                this.usuariosApiSvc.getAclByUid(normalizedUid, 5),
+                this.usuariosApiSvc.getUserModerationHistory(
+                    normalizedUid,
+                    this.historialModeracionUsuarioLimit,
+                    this.historialModeracionUsuarioOffset
+                ),
+            ]);
+            this.previewModeracionUsuario = preview;
+            this.historialModeracionUsuario = history;
+            this.historialModeracionUsuarioOffset = history.offset;
+            this.historialModeracionUsuarioLimit = history.limit;
+        } catch (error: any) {
+            this.previewModeracionUsuario = null;
+            this.historialModeracionUsuario = null;
+            this.errorHistorialModeracionUsuario = error?.message ?? 'No se pudo cargar el historial admin del usuario';
+        } finally {
+            this.cargandoHistorialModeracionUsuario = false;
+        }
+    }
+
+    limpiarModeracionUsuario(): void {
+        this.moderacionUsuarioUid = '';
+        this.previewModeracionUsuario = null;
+        this.historialModeracionUsuario = null;
+        this.errorHistorialModeracionUsuario = '';
+        this.historialModeracionUsuarioOffset = 0;
+    }
+
+    async irPaginaAnteriorHistorialModeracionUsuario(): Promise<void> {
+        if (!this.puedePaginaAnteriorHistorialModeracionUsuario)
+            return;
+        this.historialModeracionUsuarioOffset = Math.max(0, this.historialModeracionUsuarioOffset - this.historialModeracionUsuarioLimit);
+        await this.cargarHistorialModeracionUsuario(true);
+    }
+
+    async irPaginaSiguienteHistorialModeracionUsuario(): Promise<void> {
+        if (!this.puedePaginaSiguienteHistorialModeracionUsuario)
+            return;
+        this.historialModeracionUsuarioOffset += this.historialModeracionUsuarioLimit;
+        await this.cargarHistorialModeracionUsuario(true);
+    }
+
+    trackByPolicy(index: number, item: AdminPolicyPanelItem): UserCompliancePolicyKind {
+        return item.kind;
+    }
+
+    trackByModerationCase(index: number, item: ModerationCaseListItemDto): string {
+        return `${item?.caseId ?? index}:${item?.code ?? ''}`;
+    }
+
+    trackByModerationStage(index: number, item: ModerationCaseStageDto): string {
+        return `${item?.stageIndex ?? index}:${item?.sanctionCode ?? item?.sanctionKind ?? ''}`;
+    }
+
+    trackByModerationIncident(index: number, item: ModerationIncidentListItemDto): string {
+        return `${item?.incidentId ?? index}`;
+    }
+
+    trackByModerationSanction(index: number, item: ModerationSanctionListItemDto): string {
+        return `${item?.sanctionId ?? index}`;
+    }
+
+    trackByModerationProgress(index: number, item: ModerationProgressCaseDto): string {
+        return `${item?.caseId ?? index}:${item?.caseCode ?? ''}`;
+    }
+
+    trackByModerationHistory(index: number, item: ModerationAdminHistoryItemDto): string {
+        return `${item?.incidentId ?? index}`;
     }
 
     get etiquetaEstadoAuditoriaCreaciones(): string {
@@ -712,13 +1098,11 @@ export class AdminPanelComponent implements OnInit, OnDestroy {
     }
 
     async onAuditoriaPanelOpened(): Promise<void> {
-        this.auditoriaPanelExpanded = true;
-        if (!this.auditoriaCreacionesLoadedOnce)
-            await this.cargarAuditoriaCreaciones(true);
+        await this.setSection('auditoria');
     }
 
     onAuditoriaPanelClosed(): void {
-        this.auditoriaPanelExpanded = false;
+        this.currentSection = 'usuarios';
     }
 
     async aplicarFiltrosAuditoriaCreaciones(): Promise<void> {
@@ -817,16 +1201,41 @@ export class AdminPanelComponent implements OnInit, OnDestroy {
         return `${item?.eventId ?? index}`;
     }
 
+    async setSection(section: AdminPanelViewSectionId): Promise<void> {
+        if (this.currentSection === section) {
+            await this.ensureSectionLoaded(section);
+            return;
+        }
+
+        this.currentSection = section;
+        this.resaltarSolicitudesPendientes = false;
+        await this.ensureSectionLoaded(section);
+    }
+
     private aplicarOpenRequest(request: AdminPanelOpenRequest): void {
-        this.usuariosPanelExpanded = request?.section !== 'role-requests';
-        this.solicitudesPanelExpanded = request?.section === 'role-requests';
-        this.auditoriaPanelExpanded = false;
-        this.syncPanelExpanded = false;
+        this.currentSection = request?.section === 'role-requests' ? 'role-requests' : 'usuarios';
         this.resaltarSolicitudesPendientes = request?.section === 'role-requests' && request?.pendingOnly === true;
 
         if (request?.section === 'role-requests') {
             void this.cargarSolicitudesRolPendientes();
             this.scrollToRoleRequests();
+        }
+    }
+
+    private async ensureSectionLoaded(section: AdminPanelViewSectionId): Promise<void> {
+        if (section === 'role-requests') {
+            if (!this.roleRequestsLoadedOnce)
+                await this.cargarSolicitudesRolPendientes();
+            return;
+        }
+        if (section === 'moderacion') {
+            if (!this.moderacionAdminLoadedOnce)
+                await this.cargarModeracionAdmin(true);
+            return;
+        }
+        if (section === 'auditoria') {
+            if (!this.auditoriaCreacionesLoadedOnce)
+                await this.cargarAuditoriaCreaciones(true);
         }
     }
 
@@ -836,6 +1245,18 @@ export class AdminPanelComponent implements OnInit, OnDestroy {
 
         setTimeout(() => {
             document.getElementById('admin-role-requests')?.scrollIntoView({
+                behavior: 'smooth',
+                block: 'start',
+            });
+        }, 50);
+    }
+
+    private scrollToModeration(): void {
+        if (typeof document === 'undefined')
+            return;
+
+        setTimeout(() => {
+            document.getElementById('admin-moderation-panel')?.scrollIntoView({
                 behavior: 'smooth',
                 block: 'start',
             });
@@ -894,6 +1315,24 @@ export class AdminPanelComponent implements OnInit, OnDestroy {
             return null;
         const parsed = new Date(normalized);
         return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString();
+    }
+
+    private moderationSanctionNameFromParts(
+        name: string | null | undefined,
+        code: string | null | undefined,
+        kind: string | null | undefined
+    ): string {
+        return `${name ?? code ?? kind ?? 'Sanción'}`.trim();
+    }
+
+    private moderationStageDurationLabel(stage: ModerationCaseStageDto): string {
+        if (stage.isPermanent)
+            return 'permanente';
+        if (stage.durationDays !== null && stage.durationDays > 0)
+            return `${stage.durationDays} día${stage.durationDays === 1 ? '' : 's'}`;
+        if (stage.durationHours !== null && stage.durationHours > 0)
+            return `${stage.durationHours} hora${stage.durationHours === 1 ? '' : 's'}`;
+        return '';
     }
 
     private async pedirDatosRechazo(): Promise<{ blockedUntilUtc: string; adminComment: string | null; } | null> {

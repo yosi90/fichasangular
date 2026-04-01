@@ -9,6 +9,7 @@ export type ChatNotificationCode =
     | 'system.role_request_resolved'
     | 'system.account_updated'
     | 'system.account_banned'
+    | 'system.moderation_event'
     | 'system.conversation_closed'
     | 'system.campaign_invitation_received'
     | 'system.campaign_invitation_resolved'

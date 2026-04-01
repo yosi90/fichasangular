@@ -304,6 +304,11 @@ export class ChatFloatingListWindowComponent implements OnInit, OnDestroy, After
         const uid = `${user?.uid ?? ''}`.trim();
         if (uid.length < 1)
             return;
+        const accessRestrictionMessage = this.userSvc.getAccessRestrictionMessage('usage');
+        if (accessRestrictionMessage.length > 0) {
+            this.appToastSvc.showError(accessRestrictionMessage);
+            return;
+        }
 
         try {
             const detail = await this.chatApiSvc.createOrOpenDirect(uid);
@@ -311,7 +316,7 @@ export class ChatFloatingListWindowComponent implements OnInit, OnDestroy, After
             this.resetComposer();
             this.chatFloatingSvc.openConversation(detail.conversationId);
         } catch (error: any) {
-            this.appToastSvc.showError(`${error?.message ?? 'No se pudo abrir el chat directo.'}`.trim());
+            this.appToastSvc.showError(this.mapUsageError(error, 'No se pudo abrir el chat directo.'));
         }
     }
 
@@ -342,6 +347,11 @@ export class ChatFloatingListWindowComponent implements OnInit, OnDestroy, After
     async createGroup(): Promise<void> {
         if (!this.canSubmitNewGroup)
             return;
+        const accessRestrictionMessage = this.userSvc.getAccessRestrictionMessage('usage');
+        if (accessRestrictionMessage.length > 0) {
+            this.appToastSvc.showError(accessRestrictionMessage);
+            return;
+        }
 
         this.newGroupSaving = true;
         try {
@@ -351,7 +361,7 @@ export class ChatFloatingListWindowComponent implements OnInit, OnDestroy, After
             this.resetComposer();
             this.chatFloatingSvc.openConversation(detail.conversationId);
         } catch (error: any) {
-            this.appToastSvc.showError(`${error?.message ?? 'No se pudo crear el grupo.'}`.trim());
+            this.appToastSvc.showError(this.mapUsageError(error, 'No se pudo crear el grupo.'));
         } finally {
             this.newGroupSaving = false;
         }
@@ -527,6 +537,13 @@ export class ChatFloatingListWindowComponent implements OnInit, OnDestroy, After
         }
 
         this.hasConversationOverflow = body.scrollHeight > (body.clientHeight + 1);
+    }
+
+    private mapUsageError(error: any, fallback: string): string {
+        const complianceError = this.userSvc.getComplianceErrorMessage(error, 'usage');
+        if (complianceError.length > 0)
+            return complianceError;
+        return `${error?.message ?? fallback}`.trim() || fallback;
     }
 
     private toDateMs(value: string | null | undefined): number {

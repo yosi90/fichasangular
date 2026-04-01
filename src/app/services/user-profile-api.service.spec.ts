@@ -152,6 +152,28 @@ describe('UserProfileApiService', () => {
                     personajes: { create: true },
                     ' ': { create: true },
                 },
+                compliance: {
+                    banned: false,
+                    mustAcceptUsage: true,
+                    mustAcceptCreation: false,
+                    activeSanction: {
+                        sanctionId: '7',
+                        kind: 'temporary',
+                        code: 'cooldown',
+                        name: 'Cooldown',
+                        startsAtUtc: '2026-04-01T10:00:00Z',
+                        endsAtUtc: '2026-04-08T10:00:00Z',
+                        isPermanent: false,
+                    },
+                    usage: {
+                        version: '4',
+                        accepted: false,
+                    },
+                    creation: {
+                        version: '2',
+                        accepted: true,
+                    },
+                },
             }),
         };
         const service = new UserProfileApiService(httpMock, authMock, privateUserFirestoreSvcMock as any);
@@ -168,6 +190,9 @@ describe('UserProfileApiService', () => {
             campanas: { create: false },
             personajes: { create: true },
         });
+        expect(profile.compliance?.mustAcceptUsage).toBeTrue();
+        expect(profile.compliance?.usage?.version).toBe('4');
+        expect(profile.compliance?.activeSanction?.sanctionId).toBe(7);
         expect(privateUserFirestoreSvcMock.getMyProfile).toHaveBeenCalled();
         expect(httpMock.get).not.toHaveBeenCalled();
     });
@@ -353,6 +378,157 @@ describe('UserProfileApiService', () => {
             notifyUser: true,
         });
         expect(options.headers.get('Authorization')).toBe('Bearer token-settings');
+    });
+
+    it('listMyModerationHistory envia Bearer y normaliza la timeline actor-scoped', async () => {
+        const httpMock = jasmine.createSpyObj('HttpClient', ['get', 'put', 'post', 'patch']);
+        httpMock.get.and.returnValue(of({
+            items: [{
+                incidentId: '19',
+                caseId: '8',
+                caseCode: 'harassment',
+                caseName: 'Acoso',
+                mode: 'report',
+                confirmedAtUtc: '2026-04-01T10:00:00Z',
+                createdAtUtc: '2026-04-01T09:55:00Z',
+                userVisibleMessage: '  Se ha confirmado una incidencia. ',
+                result: 'sanctioned',
+                sanction: {
+                    sanctionId: '7',
+                    kind: 'temporary',
+                    code: 'cooldown',
+                    name: 'Cooldown',
+                    endsAtUtc: '2026-04-08T10:00:00Z',
+                    isPermanent: false,
+                },
+            }],
+            total: '11',
+            limit: '10',
+            offset: '0',
+            hasMore: true,
+        }));
+        const service = new UserProfileApiService(httpMock, authMock);
+
+        const response = await service.listMyModerationHistory(10, 0);
+
+        const [url, options] = httpMock.get.calls.mostRecent().args;
+        expect(url).toContain('/usuarios/me/moderation/history');
+        expect(options.headers.get('Authorization')).toBe('Bearer token-settings');
+        expect(options.params).toEqual({
+            limit: '10',
+            offset: '0',
+        });
+        expect(response.total).toBe(11);
+        expect(response.hasMore).toBeTrue();
+        expect(response.items[0].incidentId).toBe(19);
+        expect(response.items[0].result).toBe('sanctioned');
+        expect(response.items[0].userVisibleMessage).toBe('Se ha confirmado una incidencia.');
+        expect(response.items[0].sanction?.sanctionId).toBe(7);
+    });
+
+    it('getActivePolicy envia Bearer y normaliza la política activa actor-scoped', async () => {
+        const httpMock = jasmine.createSpyObj('HttpClient', ['get', 'put', 'post', 'patch']);
+        httpMock.get.and.returnValue(of({
+            policyKind: 'creation',
+            versionTag: '2',
+            title: 'Normas de creación',
+            markdown: '  # Reglas\n\nTexto editable.  ',
+            effectiveAtUtc: '2026-04-01T10:00:00Z',
+        }));
+        const service = new UserProfileApiService(httpMock, authMock);
+
+        const response = await service.getActivePolicy('creation');
+
+        const [url, options] = httpMock.get.calls.mostRecent().args;
+        expect(url).toContain('/usuarios/me/policies/creation/active');
+        expect(options.headers.get('Authorization')).toBe('Bearer token-settings');
+        expect(response).toEqual({
+            kind: 'creation',
+            version: '2',
+            title: 'Normas de creación',
+            markdown: '# Reglas\n\nTexto editable.',
+            publishedAtUtc: '2026-04-01T10:00:00Z',
+        });
+    });
+
+    it('acceptActivePolicy envia Bearer y normaliza policy + compliance recalculado', async () => {
+        const httpMock = jasmine.createSpyObj('HttpClient', ['get', 'put', 'post', 'patch']);
+        httpMock.post.and.returnValue(of({
+            policy: {
+                kind: 'usage',
+                version: '4',
+                title: 'Normas de uso',
+                markdown: '# Uso',
+                publishedAtUtc: '2026-04-01T10:00:00Z',
+            },
+            compliance: {
+                banned: false,
+                mustAcceptUsage: false,
+                mustAcceptCreation: true,
+                activeSanction: null,
+                usage: {
+                    version: '4',
+                    accepted: true,
+                    acceptedAtUtc: '2026-04-01T12:00:00Z',
+                    publishedAtUtc: '2026-04-01T10:00:00Z',
+                    title: 'Normas de uso',
+                },
+                creation: {
+                    version: '2',
+                    accepted: false,
+                    acceptedAtUtc: null,
+                    publishedAtUtc: '2026-04-01T10:00:00Z',
+                    title: 'Normas de creación',
+                },
+            },
+        }));
+        const service = new UserProfileApiService(httpMock, authMock);
+
+        const response = await service.acceptActivePolicy('usage');
+
+        const [url, body, options] = httpMock.post.calls.mostRecent().args;
+        expect(url).toContain('/usuarios/me/policies/usage/accept');
+        expect(body).toEqual({});
+        expect(options.headers.get('Authorization')).toBe('Bearer token-settings');
+        expect(response.policy?.kind).toBe('usage');
+        expect(response.policy?.version).toBe('4');
+        expect(response.compliance?.mustAcceptUsage).toBeFalse();
+        expect(response.compliance?.creation?.accepted).toBeFalse();
+    });
+
+    it('reportAbuseLock envia Bearer y normaliza la respuesta actor-scoped', async () => {
+        const httpMock = jasmine.createSpyObj('HttpClient', ['get', 'put', 'post', 'patch']);
+        httpMock.post.and.returnValue(of({
+            status: 'banned',
+            compliance: {
+                banned: true,
+                mustAcceptUsage: false,
+                mustAcceptCreation: false,
+                activeSanction: null,
+                usage: null,
+                creation: null,
+            },
+        }));
+        const service = new UserProfileApiService(httpMock, authMock);
+
+        const response = await service.reportAbuseLock({
+            reason: 'frontend_api_button_spam',
+            clientDate: '2026-03-28',
+            localBlockCountToday: 3,
+            source: 'web',
+        });
+
+        const [url, body, options] = httpMock.post.calls.mostRecent().args;
+        expect(url).toContain('/usuarios/me/security/abuse-lock');
+        expect(body).toEqual({
+            reason: 'frontend_api_button_spam',
+            clientDate: '2026-03-28',
+            localBlockCountToday: 3,
+            source: 'web',
+        });
+        expect(options.headers.get('Authorization')).toBe('Bearer token-settings');
+        expect(response.status).toBe('banned');
+        expect(response.compliance?.banned).toBeTrue();
     });
 
     it('getPublicProfile usa cache positiva y evita repetir la llamada HTTP', async () => {

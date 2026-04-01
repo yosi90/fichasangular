@@ -1,4 +1,6 @@
 import { Injectable } from '@angular/core';
+import { UserAbuseLockReportInput } from '../interfaces/user-moderation';
+import { UserProfileApiService } from './user-profile-api.service';
 
 export type ApiActionGuardStatus = 'allowed' | 'cooldown' | 'session_locked';
 
@@ -30,6 +32,13 @@ export class ApiActionGuardService {
     readonly burstWindowMs = 10_000;
     readonly cooldownMs = 3 * 60_000;
     readonly maxBlocksPerDay = 3;
+    private readonly abuseLockReason = 'frontend_api_button_spam';
+    private readonly abuseLockSource = 'web';
+    private readonly abuseLockSyncInFlight = new Map<string, Promise<void>>();
+
+    constructor(
+        private userProfileApiSvc: UserProfileApiService
+    ) { }
 
     shouldAllow(actorUid: string | null | undefined, actionKey: string): ApiActionGuardDecision {
         const uid = this.normalizeActorUid(actorUid);
@@ -49,8 +58,10 @@ export class ApiActionGuardService {
         const state = this.readState(uid, now);
         const action = state.actions[key] ?? { attempts: [], blockedUntil: 0 };
 
+        let decision: ApiActionGuardDecision;
+
         if (state.sessionLocked) {
-            return {
+            decision = {
                 status: 'session_locked',
                 blockedUntil: action.blockedUntil > now ? action.blockedUntil : null,
                 blocksToday: state.blocksToday,
@@ -58,6 +69,8 @@ export class ApiActionGuardService {
                 newlyBlocked: false,
                 newlySessionLocked: false,
             };
+            void this.syncAbuseLockIfNeeded(uid, decision);
+            return decision;
         }
 
         if (action.blockedUntil > now) {
@@ -87,7 +100,8 @@ export class ApiActionGuardService {
                 blockedUntil: now + this.cooldownMs,
             };
             this.writeState(uid, state);
-            return {
+
+            decision = {
                 status: sessionLocked ? 'session_locked' : 'cooldown',
                 blockedUntil: now + this.cooldownMs,
                 blocksToday: state.blocksToday,
@@ -95,6 +109,8 @@ export class ApiActionGuardService {
                 newlyBlocked: true,
                 newlySessionLocked: sessionLocked,
             };
+            void this.syncAbuseLockIfNeeded(uid, decision);
+            return decision;
         }
 
         state.actions[key] = {
@@ -169,6 +185,10 @@ export class ApiActionGuardService {
         return `fichas3.5.api-action-guard.${uid}`;
     }
 
+    private abuseLockReportedKey(uid: string, clientDate: string, localBlockCountToday: number): string {
+        return `fichas3.5.api-action-guard.abuse-lock.${uid}.${clientDate}.${localBlockCountToday}`;
+    }
+
     private normalizeActorUid(value: string | null | undefined): string {
         return `${value ?? ''}`.trim();
     }
@@ -184,5 +204,50 @@ export class ApiActionGuardService {
     private toNonNegativeInt(value: unknown): number {
         const parsed = Math.trunc(Number(value));
         return Number.isFinite(parsed) && parsed >= 0 ? parsed : 0;
+    }
+
+    private async syncAbuseLockIfNeeded(actorUid: string, decision: ApiActionGuardDecision): Promise<void> {
+        const payload = this.buildAbuseLockPayload(actorUid, decision);
+        if (!payload)
+            return;
+
+        const requestKey = this.abuseLockReportedKey(actorUid, payload.clientDate, payload.localBlockCountToday);
+        if (sessionStorage.getItem(requestKey))
+            return;
+
+        const inFlight = this.abuseLockSyncInFlight.get(requestKey);
+        if (inFlight) {
+            await inFlight;
+            return;
+        }
+
+        const task = this.userProfileApiSvc.reportAbuseLock(payload)
+            .then(() => {
+                sessionStorage.setItem(requestKey, new Date().toISOString());
+            })
+            .catch(() => undefined)
+            .finally(() => {
+                this.abuseLockSyncInFlight.delete(requestKey);
+            });
+
+        this.abuseLockSyncInFlight.set(requestKey, task);
+        await task;
+    }
+
+    private buildAbuseLockPayload(actorUid: string, decision: ApiActionGuardDecision): UserAbuseLockReportInput | null {
+        const uid = this.normalizeActorUid(actorUid);
+        if (uid.length < 1 || decision.sessionLocked !== true)
+            return null;
+
+        const localBlockCountToday = this.toNonNegativeInt(decision.blocksToday);
+        if (localBlockCountToday < 1)
+            return null;
+
+        return {
+            reason: this.abuseLockReason,
+            clientDate: this.toDayKey(Date.now()),
+            localBlockCountToday,
+            source: this.abuseLockSource,
+        };
     }
 }

@@ -205,9 +205,17 @@
     border-color: rgba(194, 24, 91, .55)
     background: rgba(194, 24, 91, .18)
 
+.profile-pill--warn
+    border-color: rgba(255, 193, 7, .38)
+    background: rgba(255, 193, 7, .14)
+
+.profile-pill--danger
+    border-color: rgba(255, 105, 97, .42)
+    background: rgba(255, 105, 97, .16)
+
 .profile-summary__grid
     display: grid
-    grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr))
+    grid-template-columns: repeat(4, minmax(0, 1fr))
     gap: .9rem
 
 .profile-stat-card,
@@ -226,6 +234,20 @@
         font-size: 1.05rem
         word-break: break-word
 
+.profile-stat-card--policy
+    justify-content: space-between
+
+.profile-stat-card__actions
+    display: flex
+    flex-wrap: wrap
+    gap: .65rem
+    margin-top: .35rem
+
+.profile-action-button--ok
+    color: #7bd88f !important
+    border-color: rgba(123, 216, 143, .45) !important
+    background: rgba(123, 216, 143, .08) !important
+
 .profile-stat-card__label
     color: rgba(245, 247, 255, .66)
     font-size: .86rem
@@ -236,6 +258,48 @@
     display: grid
     grid-template-columns: repeat(2, minmax(0, 1fr))
     gap: 1rem
+
+.profile-compliance-grid
+    display: grid
+    grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr))
+    gap: .9rem
+
+.profile-moderation-list
+    display: flex
+    flex-direction: column
+    gap: .85rem
+
+.profile-moderation-item
+    padding: .95rem
+    border-radius: .95rem
+    background: rgba(0, 0, 0, .12)
+    border: 1px solid rgba(255, 255, 255, .06)
+
+.profile-moderation-item__header
+    display: flex
+    align-items: flex-start
+    justify-content: space-between
+    gap: .85rem
+
+.profile-moderation-item__copy
+    display: flex
+    flex-direction: column
+    gap: .45rem
+    min-width: 0
+
+    strong
+        word-break: break-word
+
+.profile-moderation-item__date
+    color: rgba(245, 247, 255, .6)
+    font-size: .86rem
+    white-space: nowrap
+
+.profile-moderation-item__message
+    margin: .7rem 0 0
+    color: rgba(245, 247, 255, .86)
+    white-space: pre-line
+    line-height: 1.5
 
 .profile-panel
     display: flex
@@ -993,9 +1057,13 @@
         width: auto
         flex: 1 1 12rem
 
+    .profile-summary__grid
+        grid-template-columns: repeat(2, minmax(0, 1fr))
+
     .profile-summary__hero,
     .profile-two-column,
     .profile-identity-grid,
+    .profile-compliance-grid,
     .campaign-management-layout,
     .campaign-detail-grid
         grid-template-columns: 1fr
@@ -1016,6 +1084,9 @@
         max-height: none
 
 @media (max-width: 640px)
+    .profile-summary__grid
+        grid-template-columns: 1fr
+
     .profile-main
         padding: 1rem
 
@@ -1037,6 +1108,7 @@
     .campaign-invitation-row,
     .campaign-subtrama-row,
     .campaign-trama-item__header,
-    .campaign-inline-form
+    .campaign-inline-form,
+    .profile-moderation-item__header
         flex-direction: column
         align-items: stretch

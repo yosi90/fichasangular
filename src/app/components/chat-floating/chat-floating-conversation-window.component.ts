@@ -231,7 +231,7 @@ export class ChatFloatingConversationWindowComponent implements OnInit, OnDestro
             this.messages = [...previous, ...this.messages];
             this.canLoadMoreMessages = previous.length >= 25;
         } catch (error: any) {
-            this.errorMessage = `${error?.message ?? 'No se pudo cargar más historial.'}`.trim();
+            this.errorMessage = this.mapUsageError(error, 'No se pudo cargar más historial.');
         } finally {
             this.loading = false;
         }
@@ -242,6 +242,11 @@ export class ChatFloatingConversationWindowComponent implements OnInit, OnDestro
         const body = `${this.sendDraft ?? ''}`.trim();
         if (!conversation || !conversation.canSend || body.length < 1 || this.sendingMessage)
             return;
+        const accessRestrictionMessage = this.userSvc.getAccessRestrictionMessage('usage');
+        if (accessRestrictionMessage.length > 0) {
+            this.errorMessage = accessRestrictionMessage;
+            return;
+        }
 
         this.sendingMessage = true;
         this.errorMessage = '';
@@ -256,7 +261,7 @@ export class ChatFloatingConversationWindowComponent implements OnInit, OnDestro
             this.sendDraft = '';
             await this.markConversationAsRead();
         } catch (error: any) {
-            this.errorMessage = `${error?.message ?? 'No se pudo enviar el mensaje.'}`.trim();
+            this.errorMessage = this.mapUsageError(error, 'No se pudo enviar el mensaje.');
         } finally {
             this.sendingMessage = false;
         }
@@ -265,6 +270,11 @@ export class ChatFloatingConversationWindowComponent implements OnInit, OnDestro
     async saveActiveGroupName(): Promise<void> {
         if (!this.canManageActiveGroup || this.conversationId <= 0 || this.groupRenameSaving)
             return;
+        const accessRestrictionMessage = this.userSvc.getAccessRestrictionMessage('usage');
+        if (accessRestrictionMessage.length > 0) {
+            this.appToastSvc.showError(accessRestrictionMessage);
+            return;
+        }
 
         this.groupRenameSaving = true;
         try {
@@ -273,7 +283,7 @@ export class ChatFloatingConversationWindowComponent implements OnInit, OnDestro
             this.appToastSvc.showSuccess('Grupo actualizado.');
         } catch (error: any) {
             await this.reloadConversationDetail();
-            this.appToastSvc.showError(`${error?.message ?? 'No se pudo renombrar el grupo.'}`.trim());
+            this.appToastSvc.showError(this.mapUsageError(error, 'No se pudo renombrar el grupo.'));
         } finally {
             this.groupRenameSaving = false;
         }
@@ -283,6 +293,11 @@ export class ChatFloatingConversationWindowComponent implements OnInit, OnDestro
         const uid = `${friend?.uid ?? ''}`.trim();
         if (!this.canManageActiveGroup || this.conversationId <= 0 || uid.length < 1 || this.groupParticipantSavingUid.length > 0)
             return;
+        const accessRestrictionMessage = this.userSvc.getAccessRestrictionMessage('usage');
+        if (accessRestrictionMessage.length > 0) {
+            this.appToastSvc.showError(accessRestrictionMessage);
+            return;
+        }
 
         this.groupParticipantSavingUid = uid;
         try {
@@ -292,7 +307,7 @@ export class ChatFloatingConversationWindowComponent implements OnInit, OnDestro
             this.appToastSvc.showSuccess('Participante añadido al grupo.');
         } catch (error: any) {
             await this.reloadConversationDetail();
-            this.appToastSvc.showError(`${error?.message ?? 'No se pudo añadir al participante.'}`.trim());
+            this.appToastSvc.showError(this.mapUsageError(error, 'No se pudo añadir al participante.'));
         } finally {
             this.groupParticipantSavingUid = '';
         }
@@ -302,6 +317,11 @@ export class ChatFloatingConversationWindowComponent implements OnInit, OnDestro
         const uid = `${participant?.uid ?? ''}`.trim();
         if (!this.canManageActiveGroup || this.conversationId <= 0 || uid.length < 1 || this.groupParticipantRemovingUid.length > 0)
             return;
+        const accessRestrictionMessage = this.userSvc.getAccessRestrictionMessage('usage');
+        if (accessRestrictionMessage.length > 0) {
+            this.appToastSvc.showError(accessRestrictionMessage);
+            return;
+        }
 
         this.groupParticipantRemovingUid = uid;
         try {
@@ -310,7 +330,7 @@ export class ChatFloatingConversationWindowComponent implements OnInit, OnDestro
             this.appToastSvc.showSuccess('Participante retirado del grupo.');
         } catch (error: any) {
             await this.reloadConversationDetail();
-            this.appToastSvc.showError(`${error?.message ?? 'No se pudo retirar al participante.'}`.trim());
+            this.appToastSvc.showError(this.mapUsageError(error, 'No se pudo retirar al participante.'));
         } finally {
             this.groupParticipantRemovingUid = '';
         }
@@ -492,7 +512,7 @@ export class ChatFloatingConversationWindowComponent implements OnInit, OnDestro
             this.groupRenameDraft = `${detail.title ?? ''}`.trim();
             await this.markConversationAsRead();
         } catch (error: any) {
-            this.errorMessage = `${error?.message ?? 'No se pudo cargar la conversación.'}`.trim();
+            this.errorMessage = this.mapUsageError(error, 'No se pudo cargar la conversación.');
         } finally {
             this.loading = false;
         }
@@ -612,5 +632,12 @@ export class ChatFloatingConversationWindowComponent implements OnInit, OnDestro
     private toPositiveInt(value: any): number | null {
         const parsed = Math.trunc(Number(value));
         return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+    }
+
+    private mapUsageError(error: any, fallback: string): string {
+        const complianceError = this.userSvc.getComplianceErrorMessage(error, 'usage');
+        if (complianceError.length > 0)
+            return complianceError;
+        return `${error?.message ?? fallback}`.trim() || fallback;
     }
 }

@@ -1,6 +1,6 @@
 import { fakeAsync, tick } from '@angular/core/testing';
 import { HttpErrorResponse } from '@angular/common/http';
-import { Subject, of } from 'rxjs';
+import { BehaviorSubject, Subject, of } from 'rxjs';
 
 import { CampanaService } from './campana.service';
 import { CampaignRealtimeSyncService } from './campaign-realtime-sync.service';
@@ -150,6 +150,33 @@ describe('CampanaService', () => {
         }]);
     });
 
+    it('listSocialCampaigns sustituye nombres sintéticos por el nombre real de la campaña', async () => {
+        privateUserFirestoreSvcMock.listCampaigns.and.resolveTo([
+            { id: 7, nombre: 'Campaña 7', campaignRole: 'master', membershipStatus: 'activo' },
+        ]);
+        httpMock.get.and.callFake((url: string) => {
+            if (url.endsWith('campanas/7')) {
+                return of({
+                    idCampana: 7,
+                    nombre: 'Caballeros de Cormyr',
+                    ownerUid: 'actor-1',
+                    activeMasterUid: 'actor-1',
+                    tramas: [],
+                });
+            }
+            throw new Error(`URL inesperada: ${url}`);
+        });
+
+        const campaigns = await service.listSocialCampaigns();
+
+        expect(campaigns).toEqual([{
+            id: 7,
+            nombre: 'Caballeros de Cormyr',
+            campaignRole: 'master',
+            membershipStatus: 'activo',
+        }]);
+    });
+
     it('getCampaignDetail normaliza nepMaximoPersonajeNuevo desde la API', async () => {
         httpMock.get.and.callFake((url: string) => {
             if (url.endsWith('campanas/7')) {
@@ -267,6 +294,89 @@ describe('CampanaService', () => {
             ['Sin campaña', 'Campaña visible'],
             ['Sin campaña', 'Campaña visible', 'Campaña nueva'],
         ]);
+
+        subscription.unsubscribe();
+    }));
+
+    it('getListCampanas pausa la expansión actor-scoped mientras usage está pendiente y la rearma al aceptar', fakeAsync(() => {
+        const complianceProfile$ = new BehaviorSubject<any>(null);
+        let blockedByCompliance = false;
+        const firestoreBackedService = new CampanaService(
+            { currentUser: { uid: 'actor-1', getIdToken: async () => 'token' } } as any,
+            httpMock as any,
+            { run: <T>(fn: () => T) => fn() } as FirebaseInjectionContextService,
+            campaignRealtimeSyncSvcMock,
+            privateUserFirestoreSvcMock as any,
+            {
+                currentPrivateProfile$: complianceProfile$.asObservable(),
+                getAccessRestriction: jasmine.createSpy('getAccessRestriction').and.callFake(() =>
+                    blockedByCompliance ? 'mustAcceptUsage' : null
+                ),
+            } as any,
+        );
+        privateUserFirestoreSvcMock.listCampaigns.and.resolveTo([
+            { id: 7, nombre: 'Campaña visible', campaignRole: 'master', membershipStatus: 'activo' },
+        ]);
+        httpMock.get.and.callFake((url: string) => {
+            if (url.endsWith('campanas/7')) {
+                return of({
+                    i: 7,
+                    n: 'Campaña visible',
+                    campaignRole: 'master',
+                    membershipStatus: 'activo',
+                    tramas: [],
+                });
+            }
+            throw new Error(`URL inesperada: ${url}`);
+        });
+
+        let observable: any;
+        firestoreBackedService.getListCampanas().then((value) => observable = value);
+        tick();
+
+        const emissions: string[][] = [];
+        const subscription = observable.subscribe((campanas: any[]) => emissions.push(campanas.map((item) => item.Nombre)));
+        tick();
+
+        watchState.next?.([
+            { id: 7, nombre: 'Campaña visible', campaignRole: 'master', membershipStatus: 'activo' },
+        ]);
+        tick();
+        expect(emissions).toContain(['Sin campaña', 'Campaña visible']);
+        const httpCallsBeforeBlock = httpMock.get.calls.count();
+
+        blockedByCompliance = true;
+        complianceProfile$.next({
+            compliance: {
+                banned: false,
+                mustAcceptUsage: true,
+                mustAcceptCreation: false,
+                activeSanction: null,
+                usage: null,
+                creation: null,
+            },
+        });
+        tick();
+        expect(emissions[emissions.length - 1]).toEqual(['Sin campaña']);
+
+        tick(30000);
+        expect(httpMock.get.calls.count()).toBe(httpCallsBeforeBlock);
+
+        blockedByCompliance = false;
+        complianceProfile$.next({
+            compliance: {
+                banned: false,
+                mustAcceptUsage: false,
+                mustAcceptCreation: false,
+                activeSanction: null,
+                usage: null,
+                creation: null,
+            },
+        });
+        tick();
+
+        expect(httpMock.get.calls.count()).toBeGreaterThan(httpCallsBeforeBlock);
+        expect(emissions[emissions.length - 1]).toEqual(['Sin campaña', 'Campaña visible']);
 
         subscription.unsubscribe();
     }));
@@ -605,6 +715,38 @@ describe('CampanaService', () => {
         expect(campanas[1].Tramas[1].Subtramas[0].Nombre).toBe('Partida 1');
     });
 
+    it('getListCampanas sustituye nombres sintéticos del read model por el nombre canónico del detalle', async () => {
+        privateUserFirestoreSvcMock.listCampaigns.and.resolveTo([
+            { id: 7, nombre: 'Campaña 7', campaignRole: 'master', membershipStatus: 'activo' },
+        ]);
+        httpMock.get.and.callFake((url: string) => {
+            if (url.endsWith('campanas/7'))
+                return of({
+                    i: 7,
+                    n: 'Caballeros de Cormyr',
+                    campaignRole: 'master',
+                    membershipStatus: 'activo',
+                    tramas: [],
+                });
+            throw new Error(`URL inesperada: ${url}`);
+        });
+
+        const observable = await service.getListCampanas();
+        const campanas = await new Promise<any[]>((resolve) => {
+            const subscription = observable.subscribe((value) => {
+                if (value.length < 2)
+                    return;
+                resolve(value);
+                subscription.unsubscribe();
+            });
+            watchState.next?.([
+                { id: 7, nombre: 'Campaña 7', campaignRole: 'master', membershipStatus: 'activo' },
+            ]);
+        });
+
+        expect(campanas.map((item) => item.Nombre)).toEqual(['Sin campaña', 'Caballeros de Cormyr']);
+    });
+
     it('listVisibleCampaigns normaliza rol y estado de membresía', async () => {
         privateUserFirestoreSvcMock.listCampaigns.and.resolveTo([
             { id: 9, nombre: 'Costa', campaignRole: 'master', membershipStatus: 'activo' },
@@ -685,6 +827,31 @@ describe('CampanaService', () => {
         expect(campaigns).toEqual([
             { id: 7, nombre: 'Legacy propia', campaignRole: null, membershipStatus: null, isOwner: true },
             { id: 8, nombre: 'Aventureros', campaignRole: 'jugador', membershipStatus: 'activo' },
+        ]);
+    });
+
+    it('listProfileCampaigns sustituye nombres sintéticos del summary por el nombre real', async () => {
+        privateUserFirestoreSvcMock.listCampaigns.and.resolveTo([
+            { id: 7, nombre: 'Campaña 7', campaignRole: 'master', membershipStatus: 'activo' },
+        ]);
+        httpMock.get.and.callFake((url: string) => {
+            if (url.endsWith('campanas/7'))
+                return of({
+                    idCampana: 7,
+                    nombre: 'Caballeros de Cormyr',
+                    campaignRole: 'master',
+                    membershipStatus: 'activo',
+                    ownerUid: 'actor-1',
+                    activeMasterUid: 'actor-1',
+                    tramas: [],
+                });
+            throw new Error(`URL inesperada: ${url}`);
+        });
+
+        const campaigns = await service.listProfileCampaigns();
+
+        expect(campaigns).toEqual([
+            { id: 7, nombre: 'Caballeros de Cormyr', campaignRole: 'master', membershipStatus: 'activo' },
         ]);
     });
 

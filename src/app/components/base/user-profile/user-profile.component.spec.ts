@@ -2,6 +2,7 @@ import { NO_ERRORS_SCHEMA, SimpleChange } from '@angular/core';
 import { fakeAsync, ComponentFixture, TestBed, tick } from '@angular/core/testing';
 import { FormsModule } from '@angular/forms';
 import { BehaviorSubject, Subject } from 'rxjs';
+import Swal from 'sweetalert2';
 
 import { UserProfileComponent } from './user-profile.component';
 import { AppToastService } from 'src/app/services/app-toast.service';
@@ -15,7 +16,9 @@ import { UserProfileNavigationService } from 'src/app/services/user-profile-navi
 import { SocialAlertPreferencesService } from 'src/app/services/social-alert-preferences.service';
 import { UserSettingsService } from 'src/app/services/user-settings.service';
 import { UserService } from 'src/app/services/user.service';
+import { ApiActionGuardService } from 'src/app/services/api-action-guard.service';
 import { Auth } from '@angular/fire/auth';
+import { ProfileApiError } from 'src/app/interfaces/user-account';
 import { resolveDefaultProfileAvatar } from 'src/app/services/utils/profile-avatar.util';
 
 describe('UserProfileComponent', () => {
@@ -26,6 +29,7 @@ describe('UserProfileComponent', () => {
     let watchedCampaignSummariesNext: ((items: any[]) => void) | null;
     let userSvc: any;
     let userSettingsSvc: jasmine.SpyObj<UserSettingsService>;
+    let apiActionGuardSvc: jasmine.SpyObj<ApiActionGuardService>;
 
     const buildProfile = (authProvider: 'correo' | 'google') => ({
         uid: 'uid-1',
@@ -115,6 +119,15 @@ describe('UserProfileComponent', () => {
         userSettingsSvc.loadSettings.and.resolveTo(settings);
         userSettingsSvc.saveSettings.and.resolveTo(settings);
         userSettingsSvc.clearPreviewPlacements.and.resolveTo();
+        apiActionGuardSvc = jasmine.createSpyObj<ApiActionGuardService>('ApiActionGuardService', ['shouldAllow']);
+        apiActionGuardSvc.shouldAllow.and.returnValue({
+            status: 'allowed',
+            blockedUntil: null,
+            blocksToday: 0,
+            sessionLocked: false,
+            newlyBlocked: false,
+            newlySessionLocked: false,
+        });
 
         userSvc = {
             currentPrivateProfile$: profileSubject.asObservable(),
@@ -123,6 +136,21 @@ describe('UserProfileComponent', () => {
             setCurrentPrivateProfile: jasmine.createSpy('setCurrentPrivateProfile'),
             getCurrentRole: jasmine.createSpy('getCurrentRole').and.callFake(() => profileSubject.value?.role ?? 'jugador'),
             can: jasmine.createSpy('can').and.returnValue(true),
+            canProceed: jasmine.createSpy('canProceed').and.returnValue(true),
+            getAccessRestriction: jasmine.createSpy('getAccessRestriction').and.returnValue(null),
+            getAccessRestrictionMessage: jasmine.createSpy('getAccessRestrictionMessage').and.returnValue(''),
+            resolveComplianceRestrictionFromError: jasmine.createSpy('resolveComplianceRestrictionFromError').and.callFake((error: any, scope: 'usage' | 'creation' = 'usage') => {
+                const code = `${error?.code ?? ''}`.trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+                if (code.includes('banned'))
+                    return 'banned';
+                if (code.includes('mustacceptusage') || code.includes('usagepolicyacceptancerequired'))
+                    return 'mustAcceptUsage';
+                if (code.includes('mustacceptcreation') || code.includes('creationpolicyacceptancerequired'))
+                    return 'mustAcceptCreation';
+                if (Number(error?.status ?? 0) === 403)
+                    return scope === 'creation' ? 'mustAcceptCreation' : 'mustAcceptUsage';
+                return null;
+            }),
         };
 
         await TestBed.configureTestingModule({
@@ -135,6 +163,9 @@ describe('UserProfileComponent', () => {
                     provide: UserProfileApiService,
                     useValue: jasmine.createSpyObj<UserProfileApiService>('UserProfileApiService', [
                         'getMyRoleRequestStatus',
+                        'listMyModerationHistory',
+                        'getActivePolicy',
+                        'acceptActivePolicy',
                         'createRoleRequest',
                         'uploadAvatar',
                         'deleteAvatar',
@@ -196,6 +227,7 @@ describe('UserProfileComponent', () => {
                     provide: AppToastService,
                     useValue: jasmine.createSpyObj<AppToastService>('AppToastService', ['showSuccess', 'showError', 'showInfo']),
                 },
+                { provide: ApiActionGuardService, useValue: apiActionGuardSvc },
             ],
             schemas: [NO_ERRORS_SCHEMA],
         }).compileComponents();
@@ -232,6 +264,49 @@ describe('UserProfileComponent', () => {
             requestComment: 'Quiero arbitrar una campaña.',
             adminComment: null,
         });
+        apiSvc.listMyModerationHistory.and.resolveTo({
+            items: [],
+            total: 0,
+            limit: 10,
+            offset: 0,
+            hasMore: false,
+        } as any);
+        apiSvc.getActivePolicy.and.callFake(async (kind: 'usage' | 'creation') => ({
+            kind,
+            version: kind === 'creation' ? '2' : '4',
+            title: kind === 'creation' ? 'Normas de creación' : 'Normas de uso',
+            markdown: `# ${kind}\n\nTexto ${kind}.`,
+            publishedAtUtc: '2026-04-01T10:00:00Z',
+        }) as any);
+        apiSvc.acceptActivePolicy.and.callFake(async (kind: 'usage' | 'creation') => ({
+            policy: {
+                kind,
+                version: kind === 'creation' ? '2' : '4',
+                title: kind === 'creation' ? 'Normas de creación' : 'Normas de uso',
+                markdown: `# ${kind}\n\nTexto ${kind}.`,
+                publishedAtUtc: '2026-04-01T10:00:00Z',
+            },
+            compliance: {
+                banned: false,
+                mustAcceptUsage: kind === 'usage' ? false : profileSubject.value?.compliance?.mustAcceptUsage === true,
+                mustAcceptCreation: kind === 'creation' ? false : profileSubject.value?.compliance?.mustAcceptCreation === true,
+                activeSanction: null,
+                usage: {
+                    version: '4',
+                    accepted: true,
+                    acceptedAtUtc: '2026-04-01T12:00:00Z',
+                    publishedAtUtc: '2026-04-01T10:00:00Z',
+                    title: 'Normas de uso',
+                },
+                creation: {
+                    version: '2',
+                    accepted: kind === 'creation',
+                    acceptedAtUtc: kind === 'creation' ? '2026-04-01T12:00:00Z' : null,
+                    publishedAtUtc: '2026-04-01T10:00:00Z',
+                    title: 'Normas de creación',
+                },
+            },
+        }) as any);
         campanaSvc.listProfileCampaigns.and.resolveTo([{
             id: 7,
             nombre: 'Campaña de prueba',
@@ -283,6 +358,256 @@ describe('UserProfileComponent', () => {
         expect(component.permisosResumen).toBe('Crear personajes nuevos');
         expect(fixture.nativeElement.textContent).toContain('Tus permisos');
         expect(fixture.nativeElement.textContent).toContain('Crear personajes nuevos');
+    }));
+
+    it('muestra compliance actor-scoped en el resumen cuando llega en el perfil privado', fakeAsync(() => {
+        profileSubject.next({
+            ...buildProfile('correo'),
+            compliance: {
+                banned: false,
+                mustAcceptUsage: true,
+                mustAcceptCreation: false,
+                activeSanction: {
+                    sanctionId: 4,
+                    kind: 'temporary',
+                    code: 'cooldown',
+                    name: 'Cooldown',
+                    startsAtUtc: '2026-04-01T10:00:00Z',
+                    endsAtUtc: '2026-04-08T10:00:00Z',
+                    isPermanent: false,
+                },
+                usage: {
+                    version: '4',
+                    accepted: false,
+                    acceptedAtUtc: null,
+                    publishedAtUtc: null,
+                    title: null,
+                },
+                creation: {
+                    version: '2',
+                    accepted: true,
+                    acceptedAtUtc: '2026-03-20T10:00:00Z',
+                    publishedAtUtc: null,
+                    title: null,
+                },
+            },
+        });
+
+        fixture.detectChanges();
+        tick();
+        fixture.detectChanges();
+
+        expect(component.compliance?.mustAcceptUsage).toBeTrue();
+        expect(fixture.nativeElement.textContent).toContain('Normas de uso');
+        expect(fixture.nativeElement.textContent).toContain('Normas de creación');
+        expect(fixture.nativeElement.textContent).toContain('Moderación y avisos');
+        expect(fixture.nativeElement.textContent).toContain('Aceptar normas');
+    }));
+
+    it('abre un modal con la política activa desde el resumen de compliance', fakeAsync(() => {
+        const apiSvc = TestBed.inject(UserProfileApiService) as jasmine.SpyObj<UserProfileApiService>;
+        spyOn(Swal, 'fire').and.resolveTo({ isConfirmed: true } as any);
+        profileSubject.next({
+            ...buildProfile('correo'),
+            compliance: {
+                banned: false,
+                mustAcceptUsage: true,
+                mustAcceptCreation: false,
+                activeSanction: null,
+                usage: {
+                    version: '4',
+                    accepted: false,
+                    acceptedAtUtc: null,
+                    publishedAtUtc: '2026-04-01T10:00:00Z',
+                    title: 'Normas de uso',
+                },
+                creation: null,
+            },
+        });
+
+        fixture.detectChanges();
+        tick();
+
+        void component.abrirPoliticaCumplimiento('usage');
+        tick();
+        fixture.detectChanges();
+
+        expect(apiSvc.getActivePolicy).toHaveBeenCalledWith('usage');
+        expect(Swal.fire).toHaveBeenCalled();
+        expect((Swal.fire as jasmine.Spy).calls.mostRecent().args[0]).toEqual(jasmine.objectContaining({
+            title: 'Normas de uso',
+        }));
+        expect(`${(Swal.fire as jasmine.Spy).calls.mostRecent().args[0]?.html ?? ''}`).toContain('Texto usage');
+        expect(fixture.nativeElement.textContent).toContain('Ver normas');
+        expect(fixture.nativeElement.textContent).toContain('Aceptar normas');
+    }));
+
+    it('acepta la política desde la tarjeta y actualiza compliance en memoria', fakeAsync(() => {
+        const apiSvc = TestBed.inject(UserProfileApiService) as jasmine.SpyObj<UserProfileApiService>;
+        const toastSvc = TestBed.inject(AppToastService) as jasmine.SpyObj<AppToastService>;
+        profileSubject.next({
+            ...buildProfile('correo'),
+            compliance: {
+                banned: false,
+                mustAcceptUsage: true,
+                mustAcceptCreation: false,
+                activeSanction: null,
+                usage: {
+                    version: '4',
+                    accepted: false,
+                    acceptedAtUtc: null,
+                    publishedAtUtc: '2026-04-01T10:00:00Z',
+                    title: 'Normas de uso',
+                },
+                creation: null,
+            },
+        });
+
+        fixture.detectChanges();
+        tick();
+
+        void component.aceptarPoliticaCumplimiento('usage');
+        tick();
+
+        expect(apiSvc.acceptActivePolicy).toHaveBeenCalledWith('usage');
+        expect(userSvc.setCurrentPrivateProfile).toHaveBeenCalledWith(jasmine.objectContaining({
+            compliance: jasmine.objectContaining({
+                mustAcceptUsage: false,
+            }),
+        }));
+        expect(component.compliance?.mustAcceptUsage).toBeFalse();
+        expect(toastSvc.showSuccess).toHaveBeenCalled();
+    }));
+
+    it('muestra el estado verde de ya aceptadas cuando la política no está pendiente', fakeAsync(() => {
+        profileSubject.next({
+            ...buildProfile('correo'),
+            compliance: {
+                banned: false,
+                mustAcceptUsage: false,
+                mustAcceptCreation: false,
+                activeSanction: null,
+                usage: {
+                    version: '4',
+                    accepted: true,
+                    acceptedAtUtc: '2026-04-01T12:00:00Z',
+                    publishedAtUtc: '2026-04-01T10:00:00Z',
+                    title: 'Normas de uso',
+                },
+                creation: {
+                    version: '2',
+                    accepted: true,
+                    acceptedAtUtc: '2026-04-01T12:00:00Z',
+                    publishedAtUtc: '2026-04-01T10:00:00Z',
+                    title: 'Normas de creación',
+                },
+            },
+        });
+
+        fixture.detectChanges();
+        tick();
+        fixture.detectChanges();
+
+        expect(fixture.nativeElement.textContent).toContain('Ya aceptadas');
+        expect(fixture.nativeElement.textContent).not.toContain('Aceptar normas');
+    }));
+
+    it('bloquea localmente la creación de campaña cuando falta aceptar normas de creación', fakeAsync(() => {
+        const campanaSvc = TestBed.inject(CampanaService) as jasmine.SpyObj<CampanaService>;
+        const toastSvc = TestBed.inject(AppToastService) as jasmine.SpyObj<AppToastService>;
+
+        profileSubject.next({
+            ...buildProfile('correo'),
+            role: 'master',
+            permissions: {
+                campanas: { create: true },
+            },
+        });
+        userSvc.getAccessRestrictionMessage.and.callFake((scope: string) =>
+            scope === 'creation' ? 'Debes aceptar las normas de creación vigentes antes de continuar.' : ''
+        );
+
+        fixture.detectChanges();
+        tick();
+
+        component.seleccionarNuevaCampana();
+        component.campaignCreateDraft = 'Campaña nueva';
+        void component.crearCampana();
+        tick();
+
+        expect(campanaSvc.createCampaign).not.toHaveBeenCalled();
+        expect(apiActionGuardSvc.shouldAllow).not.toHaveBeenCalled();
+        expect(toastSvc.showError).toHaveBeenCalledWith('Debes aceptar las normas de creación vigentes antes de continuar.');
+    }));
+
+    it('muestra el estado limpio cuando no hay historial de moderación', fakeAsync(() => {
+        profileSubject.next({
+            ...buildProfile('correo'),
+            compliance: {
+                banned: false,
+                mustAcceptUsage: false,
+                mustAcceptCreation: false,
+                activeSanction: null,
+                usage: null,
+                creation: null,
+            },
+        });
+
+        fixture.detectChanges();
+        tick();
+        fixture.detectChanges();
+
+        expect(component.hasModerationEvents).toBeFalse();
+        expect(fixture.nativeElement.textContent).toContain('Moderación y avisos');
+        expect(fixture.nativeElement.textContent).toContain('Estás limpi@');
+    }));
+
+    it('abre un modal con el historial actor-scoped de moderación', fakeAsync(() => {
+        const apiSvc = TestBed.inject(UserProfileApiService) as jasmine.SpyObj<UserProfileApiService>;
+        spyOn(Swal, 'fire').and.resolveTo({ isConfirmed: true } as any);
+        profileSubject.next({
+            ...buildProfile('correo'),
+            compliance: {
+                banned: false,
+                mustAcceptUsage: false,
+                mustAcceptCreation: false,
+                activeSanction: null,
+                usage: null,
+                creation: null,
+            },
+        });
+        apiSvc.listMyModerationHistory.and.resolveTo({
+            items: [{
+                incidentId: 19,
+                caseId: 8,
+                caseCode: 'harassment',
+                caseName: 'Acoso',
+                mode: 'report',
+                confirmedAtUtc: '2026-04-01T10:00:00Z',
+                createdAtUtc: '2026-04-01T09:55:00Z',
+                userVisibleMessage: 'Se ha confirmado una incidencia.',
+                result: 'reported',
+                sanction: null,
+            }],
+            total: 1,
+            limit: 10,
+            offset: 0,
+            hasMore: false,
+        } as any);
+
+        fixture.detectChanges();
+        tick();
+        fixture.detectChanges();
+
+        void component.abrirHistorialModeracionModal();
+        tick();
+
+        expect(apiSvc.listMyModerationHistory).toHaveBeenCalledWith(10, 0);
+        expect(component.moderationHistory.length).toBe(1);
+        expect(fixture.nativeElement.textContent).toContain('Ver historial');
+        expect(Swal.fire).toHaveBeenCalled();
+        expect(`${(Swal.fire as jasmine.Spy).calls.mostRecent().args[0]?.html ?? ''}`).toContain('Acoso');
+        expect(`${(Swal.fire as jasmine.Spy).calls.mostRecent().args[0]?.html ?? ''}`).toContain('Reporte confirmado');
     }));
 
     it('cae a resumen si se solicita seguridad para un proveedor sin cambio de contraseña', fakeAsync(() => {
@@ -346,6 +671,24 @@ describe('UserProfileComponent', () => {
         expect(component.bioDraft).toBe('Bio nueva 2');
         expect(toastSvc.showSuccess).toHaveBeenCalled();
         expect(chatFloatingSvc.applyProfileSettings).not.toHaveBeenCalled();
+    }));
+
+    it('traduce 403 funcional mustAcceptUsage sin depender del mensaje backend al guardar identidad', fakeAsync(() => {
+        const apiSvc = TestBed.inject(UserProfileApiService) as jasmine.SpyObj<UserProfileApiService>;
+        const toastSvc = TestBed.inject(AppToastService) as jasmine.SpyObj<AppToastService>;
+        apiSvc.updateMyProfile.and.rejectWith(new ProfileApiError('Forbidden', 'mustAcceptUsage', 403));
+
+        fixture.detectChanges();
+        tick();
+
+        component.displayNameDraft = 'Nombre válido';
+        component.bioDraft = 'Bio suficientemente larga';
+        component.genderIdentityDraft = 'No binario';
+        component.pronounsDraft = 'elle';
+        void component.guardarIdentidad();
+        tick();
+
+        expect(toastSvc.showError).toHaveBeenCalledWith('Debes aceptar las normas de uso vigentes antes de continuar.');
     }));
 
     it('asegura el chat de campaña y navega a Social > mensajes', fakeAsync(() => {
@@ -746,7 +1089,7 @@ describe('UserProfileComponent', () => {
             currentRole: 'jugador',
             requestedRole: 'master',
             status: 'rejected',
-            blockedUntilUtc: '2026-04-01T09:30:00.000Z',
+            blockedUntilUtc: '2026-04-08T09:30:00.000Z',
             requestId: 12,
             requestedAtUtc: '2026-03-10T10:00:00.000Z',
             resolvedAtUtc: '2026-03-11T10:00:00.000Z',
@@ -1691,6 +2034,31 @@ describe('UserProfileComponent', () => {
                 allowDirectMessagesFromNonFriends: true,
             }),
         }));
+    }));
+
+    it('permite guardar preferencias aunque usage siga pendiente de aceptar', fakeAsync(() => {
+        userSettingsSvc.saveSettings.and.callFake(async (payload: any) => payload);
+        profileSubject.next({
+            ...buildProfile('correo'),
+            compliance: {
+                banned: false,
+                mustAcceptUsage: true,
+                mustAcceptCreation: false,
+                activeSanction: null,
+                usage: null,
+                creation: null,
+            },
+        });
+        userSvc.getAccessRestrictionMessage.and.returnValue('Debes aceptar las normas de uso vigentes antes de continuar.');
+
+        fixture.detectChanges();
+        tick();
+
+        component.allowDirectMessagesFromNonFriends = true;
+        void component.guardarPreferencias();
+        tick();
+
+        expect(userSettingsSvc.saveSettings).toHaveBeenCalled();
     }));
 
     it('hidrata los toggles de avisos desde settings', fakeAsync(() => {

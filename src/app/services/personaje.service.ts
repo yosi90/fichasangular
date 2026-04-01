@@ -8,6 +8,7 @@ import {
     PersonajeCompetenciaArmaduraDirecta,
     PersonajeCompetenciaDirecta
 } from '../interfaces/personaje';
+import { ProfileApiError } from '../interfaces/user-account';
 import { environment } from 'src/environments/environment';
 import { RazaSimple } from '../interfaces/simplificaciones/raza-simple';
 import Swal from 'sweetalert2';
@@ -853,7 +854,7 @@ export class PersonajeService {
                 ownerUserId,
             };
         } catch (error: any) {
-            throw new Error(this.obtenerMensajeErrorHttp(error, 'No se pudo crear el personaje en la API.'));
+            throw this.toProfileApiError(error, 'No se pudo crear el personaje en la API.');
         }
     }
 
@@ -1001,6 +1002,17 @@ export class PersonajeService {
         }
         const direct = `${error?.message ?? ''}`.trim();
         return direct.length > 0 ? direct : fallback;
+    }
+
+    private toProfileApiError(error: any, fallback: string): ProfileApiError {
+        const body = error?.error;
+        if (body && typeof body === 'object') {
+            const message = `${body?.message ?? body?.error ?? fallback}`.trim() || fallback;
+            const code = `${body?.code ?? ''}`.trim();
+            return new ProfileApiError(message, code, Number(error?.status ?? 0));
+        }
+
+        return new ProfileApiError(this.obtenerMensajeErrorHttp(error, fallback), '', Number(error?.status ?? 0));
     }
 
     private async readPublicDetalleFromCache(idPersonaje: number): Promise<Personaje> {

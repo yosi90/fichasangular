@@ -1,7 +1,7 @@
 import { HttpClient, HttpErrorResponse, HttpHeaders } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { Auth, onAuthStateChanged } from '@angular/fire/auth';
-import { Observable, catchError, filter, firstValueFrom, from, map, merge, of, scan, shareReplay, switchMap, timer } from 'rxjs';
+import { Observable, catchError, filter, firstValueFrom, from, map, merge, of, scan, shareReplay, skip, switchMap, timer } from 'rxjs';
 import { Campana } from '../interfaces/campaña';
 import {
     CampaignCreationPolicy,
@@ -27,10 +27,12 @@ import {
     UpdateCampaignSubtramaInput,
     UpdateCampaignTramaInput,
 } from '../interfaces/campaign-management';
+import { ProfileApiError, ProfileApiErrorResponse } from '../interfaces/user-account';
 import { environment } from 'src/environments/environment';
 import { CampaignRealtimeSyncService } from './campaign-realtime-sync.service';
 import { FirebaseInjectionContextService } from './firebase-injection-context.service';
 import { PrivateUserFirestoreService } from './private-user-firestore.service';
+import { UserService } from './user.service';
 
 @Injectable({
     providedIn: 'root'
@@ -39,6 +41,7 @@ export class CampanaService {
     private static readonly CAMPAIGN_NAME_MIN_LENGTH = 5;
     private static readonly CAMPAIGN_NAME_MAX_LENGTH = 150;
     private static readonly CAMPAIGN_MAX_HOMEBREW_SOURCES = 20;
+    private static readonly CAMPAIGN_UNNAMED_LABEL = 'Campaña';
     private readonly campanasBaseUrl = `${environment.apiUrl}campanas`;
     private readonly tramasBaseUrl = `${environment.apiUrl}tramas`;
     private readonly subtramasBaseUrl = `${environment.apiUrl}subtramas`;
@@ -53,6 +56,7 @@ export class CampanaService {
         private firebaseContextSvc: FirebaseInjectionContextService,
         private campaignRealtimeSyncSvc: CampaignRealtimeSyncService,
         private privateUserFirestoreSvc?: PrivateUserFirestoreService,
+        private userSvc?: UserService,
     ) {
         this.authReadyPromise = this.createAuthReadyPromise();
         this.liveCampanas$ = this.privateUserFirestoreSvc
@@ -514,6 +518,12 @@ export class CampanaService {
             };
             const rebuildTree = async (forceReloadSummaries: boolean = false) => {
                 try {
+                    if (this.isUsageBlockedForCampaignReads()) {
+                        current = [this.buildSinCampanaOption()];
+                        emitCurrent();
+                        return;
+                    }
+
                     if (forceReloadSummaries || latestSummaries.length < 1)
                         latestSummaries = await this.fetchCampaignSummaries();
 
@@ -535,10 +545,13 @@ export class CampanaService {
                 },
                 () => emitCurrent()
             );
-            const refreshSub = merge(
+            const refreshSources: Observable<unknown>[] = [
                 this.campaignRealtimeSyncSvc.listInvalidations$,
                 timer(30000, 30000),
-            ).subscribe(() => {
+            ];
+            if (this.userSvc)
+                refreshSources.push(this.userSvc.currentPrivateProfile$.pipe(skip(1)));
+            const refreshSub = merge(...refreshSources).subscribe(() => {
                 void rebuildTree(true);
             });
 
@@ -577,16 +590,18 @@ export class CampanaService {
         const ownUid = `${actorUid ?? ''}`.trim();
         const filtered = await Promise.all(
             (campanas ?? []).map(async (campana) => {
-                if (this.hasActiveMembership(campana))
+                if (this.hasActiveMembership(campana)) {
+                    const normalized = await this.ensureCanonicalCampaignName(campana, headers);
                     return campana?.isOwner === true
-                        ? { ...campana, isOwner: true }
-                        : { ...campana };
+                        ? { ...normalized, isOwner: true }
+                        : normalized;
+                }
 
                 if (campana?.membershipStatus === 'expulsado')
                     return null;
 
                 if (campana?.isOwner === true)
-                    return { ...campana, isOwner: true };
+                    return { ...(await this.ensureCanonicalCampaignName(campana, headers)), isOwner: true };
 
                 if (ownUid.length < 1)
                     return null;
@@ -594,7 +609,11 @@ export class CampanaService {
                 try {
                     const detail = await this.fetchCampaignDetailHeader(campana.id, headers, false);
                     return `${detail.ownerUid ?? ''}`.trim() === ownUid
-                        ? { ...campana, isOwner: true }
+                        ? {
+                            ...campana,
+                            nombre: this.resolveCampaignDisplayName(detail.campaign.nombre, campana.id, campana.nombre),
+                            isOwner: true,
+                        }
                         : null;
                 } catch {
                     return null;
@@ -602,7 +621,7 @@ export class CampanaService {
             })
         );
 
-        return filtered.filter((campana) => campana !== null) as CampaignListItem[];
+        return filtered.filter((campana): campana is CampaignListItem => campana !== null);
     }
 
     private async filterCampaignsForSocial(
@@ -614,11 +633,11 @@ export class CampanaService {
         const filtered = await Promise.all(
             (campanas ?? []).map(async (campana) => {
                 if (this.hasActiveMembership(campana))
-                    return { ...campana };
+                    return await this.ensureCanonicalCampaignName(campana, headers);
 
                 if (campana?.isOwner === true) {
                     return {
-                        ...campana,
+                        ...(await this.ensureCanonicalCampaignName(campana, headers)),
                         isOwner: true,
                         campaignRole: campana.campaignRole ?? 'master',
                         membershipStatus: campana.membershipStatus ?? 'activo',
@@ -637,6 +656,7 @@ export class CampanaService {
 
                     return {
                         ...campana,
+                        nombre: this.resolveCampaignDisplayName(detail.campaign.nombre, campana.id, campana.nombre),
                         isOwner,
                         campaignRole: campana.campaignRole ?? 'master',
                         membershipStatus: campana.membershipStatus ?? 'activo',
@@ -658,7 +678,7 @@ export class CampanaService {
                 const detail = await this.fetchCampaignDetailHeader(campana.id, headers);
                 return {
                     Id: campana.id,
-                    Nombre: campana.nombre,
+                    Nombre: this.resolveCampaignDisplayName(detail.campaign.nombre, campana.id, campana.nombre),
                     CampaignRole: campana.campaignRole ?? null,
                     Tramas: detail.tramas.map((trama) => ({
                         Id: trama.id,
@@ -700,6 +720,11 @@ export class CampanaService {
 
     private buildPrivateReadModelError(scope: string): Error {
         return new Error(`Las lecturas actor-scoped de ${scope} deben salir de Firestore y el read model privado no está disponible.`);
+    }
+
+    private isUsageBlockedForCampaignReads(): boolean {
+        const restriction = this.userSvc?.getAccessRestriction('usage');
+        return restriction === 'mustAcceptUsage' || restriction === 'banned';
     }
 
     private async fetchCampaignDetailHeader(
@@ -980,7 +1005,7 @@ export class CampanaService {
         const campaignName = `${rawInvitation?.campaignName ?? ''}`.trim();
         this.optimisticCampaignSummaries.set(campaignId, {
             id: campaignId,
-            nombre: campaignName.length > 0 ? campaignName : `Campaña ${campaignId}`,
+            nombre: this.resolveCampaignDisplayName(campaignName, campaignId),
             campaignRole: 'jugador',
             membershipStatus: 'activo',
         });
@@ -996,7 +1021,7 @@ export class CampanaService {
 
         const current = this.optimisticCampaignSummaries.get(id) ?? {
             id,
-            nombre: `Campaña ${id}`,
+            nombre: this.resolveCampaignDisplayName('', id),
             campaignRole: 'master' as CampaignRoleCode | null,
             membershipStatus: 'activo' as CampaignMembershipStatus | null,
         };
@@ -1048,6 +1073,59 @@ export class CampanaService {
         }
 
         return merged.sort((a, b) => a.nombre.localeCompare(b.nombre, 'es', { sensitivity: 'base' }));
+    }
+
+    private async ensureCanonicalCampaignName(
+        campana: CampaignListItem,
+        headers: HttpHeaders
+    ): Promise<CampaignListItem> {
+        const fallbackName = this.resolveCampaignDisplayName(campana?.nombre, campana?.id);
+        if (!this.isSyntheticCampaignName(campana?.nombre, campana?.id))
+            return {
+                ...campana,
+                nombre: fallbackName,
+            };
+
+        try {
+            const detail = await this.fetchCampaignDetailHeader(campana.id, headers, false);
+            return {
+                ...campana,
+                nombre: this.resolveCampaignDisplayName(detail.campaign.nombre, campana.id, campana.nombre),
+            };
+        } catch {
+            return {
+                ...campana,
+                nombre: fallbackName,
+            };
+        }
+    }
+
+    private resolveCampaignDisplayName(
+        primaryName: string | null | undefined,
+        campaignId: number | null | undefined,
+        secondaryName?: string | null | undefined
+    ): string {
+        const primary = `${primaryName ?? ''}`.trim();
+        if (primary.length > 0 && !this.isSyntheticCampaignName(primary, campaignId))
+            return primary;
+
+        const secondary = `${secondaryName ?? ''}`.trim();
+        if (secondary.length > 0 && !this.isSyntheticCampaignName(secondary, campaignId))
+            return secondary;
+
+        return CampanaService.CAMPAIGN_UNNAMED_LABEL;
+    }
+
+    private isSyntheticCampaignName(name: string | null | undefined, campaignId: number | null | undefined): boolean {
+        const normalizedName = `${name ?? ''}`.trim();
+        const id = this.toPositiveInt(campaignId);
+        if (normalizedName.length < 1)
+            return true;
+        if (normalizedName.localeCompare(CampanaService.CAMPAIGN_UNNAMED_LABEL, 'es', { sensitivity: 'base' }) === 0)
+            return true;
+        if (!id)
+            return false;
+        return normalizedName.localeCompare(`Campaña ${id}`, 'es', { sensitivity: 'base' }) === 0;
     }
 
     private buildSinCampanaOption(): Campana {
@@ -1303,35 +1381,45 @@ export class CampanaService {
     }
 
     private toError(error: any, fallbackMessage: string): Error {
-        if (error instanceof Error)
+        if (error instanceof ProfileApiError)
             return error;
-
         if (error instanceof HttpErrorResponse) {
-            const bodyMessage = this.extractErrorMessage(error.error);
+            const parsed = this.extractErrorBody(error.error);
+            const bodyMessage = parsed.message;
             const duplicateNameMessage = this.toDuplicateCampaignNameMessage(error.status, bodyMessage);
             if (duplicateNameMessage)
-                return new Error(duplicateNameMessage);
-            return new Error(bodyMessage || `${fallbackMessage} (HTTP ${error.status || 0})`);
+                return new ProfileApiError(duplicateNameMessage, parsed.code, error.status || 0);
+            return new ProfileApiError(
+                bodyMessage || `${fallbackMessage} (HTTP ${error.status || 0})`,
+                parsed.code,
+                error.status || 0
+            );
         }
+        if (error instanceof Error)
+            return error;
 
         return new Error(`${error?.message ?? fallbackMessage}`.trim() || fallbackMessage);
     }
 
-    private extractErrorMessage(body: any): string {
+    private extractErrorBody(body: any): ProfileApiErrorResponse {
         if (!body)
-            return '';
+            return { code: '', message: '' };
         if (typeof body === 'string')
-            return body.trim();
+            return { code: '', message: body.trim() };
         if (typeof body === 'object') {
+            const code = `${body?.code ?? ''}`.trim();
             const directMessage = `${body?.message ?? body?.error ?? ''}`.trim();
-            if (directMessage.length > 0)
-                return directMessage;
+            if (code.length > 0 || directMessage.length > 0)
+                return { code, message: directMessage };
             const firstEntry = Object.entries(body)[0];
             if (!firstEntry)
-                return '';
-            return `${firstEntry[0]}${firstEntry[1] ? `: ${firstEntry[1]}` : ''}`.trim();
+                return { code: '', message: '' };
+            return {
+                code: '',
+                message: `${firstEntry[0]}${firstEntry[1] ? `: ${firstEntry[1]}` : ''}`.trim(),
+            };
         }
-        return '';
+        return { code: '', message: '' };
     }
 
     private toDuplicateCampaignNameMessage(status: number, message: string): string {

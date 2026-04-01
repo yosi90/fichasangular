@@ -753,6 +753,22 @@ describe('NuevoPersonajeService (borrador local)', () => {
         expect(service.restaurarBorradorLocal(uid)).toBeFalse();
     });
 
+    it('descarta y elimina borradores caducados de mas de 24 horas', () => {
+        localStorage.setItem(storageKey, JSON.stringify({
+            version: 1,
+            uid,
+            updatedAt: Date.now() - (24 * 60 * 60 * 1000) - 1,
+            personaje: { Nombre: 'Aldric' },
+            estadoFlujoPersistible: { pasoActual: 'basicos' },
+        }));
+
+        const service = new NuevoPersonajeService();
+
+        expect(service.puedeOfrecerRestauracionBorrador(uid)).toBeFalse();
+        expect(service.restaurarBorradorLocal(uid)).toBeFalse();
+        expect(localStorage.getItem(storageKey)).toBeNull();
+    });
+
     it('limpia el borrador cuando se reinicia y se persiste de nuevo', () => {
         const service = new NuevoPersonajeService();
         service.seleccionarRaza(crearRazaDraft());

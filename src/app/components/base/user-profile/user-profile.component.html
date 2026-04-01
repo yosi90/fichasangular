@@ -71,8 +71,75 @@
                                 <span class="profile-stat-card__label">Tus permisos</span>
                                 <strong>{{permisosResumen}}</strong>
                             </article>
+                            <ng-container *ngIf="compliance">
+                                <article class="profile-stat-card profile-stat-card--policy">
+                                    <span class="profile-stat-card__label">Normas de uso</span>
+                                    <div class="profile-stat-card__actions">
+                                        <button
+                                            mat-stroked-button
+                                            color="accent"
+                                            [disabled]="isViewingPolicy('usage')"
+                                            (click)="abrirPoliticaCumplimiento('usage')">
+                                            {{isViewingPolicy('usage') ? 'Cargando...' : 'Ver normas'}}
+                                        </button>
+                                        <button
+                                            *ngIf="canAcceptPolicy('usage'); else usageAcceptedState"
+                                            mat-flat-button
+                                            color="primary"
+                                            (click)="aceptarPoliticaCumplimiento('usage')">
+                                            {{policyAcceptingKind === 'usage' ? 'Aceptando...' : 'Aceptar normas'}}
+                                        </button>
+                                        <ng-template #usageAcceptedState>
+                                            <button mat-stroked-button type="button" class="profile-action-button--ok">
+                                                Ya aceptadas
+                                            </button>
+                                        </ng-template>
+                                    </div>
+                                </article>
+                                <article class="profile-stat-card profile-stat-card--policy">
+                                    <span class="profile-stat-card__label">Normas de creación</span>
+                                    <div class="profile-stat-card__actions">
+                                        <button
+                                            mat-stroked-button
+                                            color="accent"
+                                            [disabled]="isViewingPolicy('creation')"
+                                            (click)="abrirPoliticaCumplimiento('creation')">
+                                            {{isViewingPolicy('creation') ? 'Cargando...' : 'Ver normas'}}
+                                        </button>
+                                        <button
+                                            *ngIf="canAcceptPolicy('creation'); else creationAcceptedState"
+                                            mat-flat-button
+                                            color="primary"
+                                            (click)="aceptarPoliticaCumplimiento('creation')">
+                                            {{policyAcceptingKind === 'creation' ? 'Aceptando...' : 'Aceptar normas'}}
+                                        </button>
+                                        <ng-template #creationAcceptedState>
+                                            <button mat-stroked-button type="button" class="profile-action-button--ok">
+                                                Ya aceptadas
+                                            </button>
+                                        </ng-template>
+                                    </div>
+                                </article>
+                                <article class="profile-stat-card profile-stat-card--policy">
+                                    <span class="profile-stat-card__label">Moderación y avisos</span>
+                                    <div class="profile-stat-card__actions">
+                                        <button
+                                            *ngIf="hasModerationEvents || moderationHistoryLoading || moderationHistoryErrorMessage.length > 0; else moderationCleanState"
+                                            mat-stroked-button
+                                            color="accent"
+                                            [disabled]="moderationHistoryLoading && !hasModerationEvents"
+                                            (click)="abrirHistorialModeracionModal()">
+                                            {{moderationStatusButtonLabel}}
+                                        </button>
+                                        <ng-template #moderationCleanState>
+                                            <button mat-stroked-button type="button" class="profile-action-button--ok">
+                                                Estás limpi@
+                                            </button>
+                                        </ng-template>
+                                    </div>
+                                </article>
+                            </ng-container>
                         </div>
-
                         <article class="profile-panel profile-panel--role-request" *ngIf="showRoleRequestPanel">
                             <div class="profile-panel__header">
                                 <h2>{{roleRequestPanelTitle}}</h2>

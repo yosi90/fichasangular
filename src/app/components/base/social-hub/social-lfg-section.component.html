@@ -8,8 +8,9 @@
                 </mat-select>
             </mat-form-field>
 
-            <button mat-raised-button color="primary" type="button" (click)="startCreatePost()">Nueva convocatoria</button>
-            <button mat-stroked-button type="button" (click)="reloadPosts(true)">Actualizar</button>
+            <button mat-stroked-button type="button" class="social-lfg__refresh-button" (click)="reloadPosts(true)" aria-label="Actualizar convocatorias">
+                <mat-icon>refresh</mat-icon>
+            </button>
         </div>
 
         <p class="social-lfg__error" *ngIf="errorMessage">{{errorMessage}}</p>
@@ -37,6 +38,9 @@
                 <div class="social-lfg__empty" *ngIf="!loading && posts.length < 1">
                     <mat-icon>groups_2</mat-icon>
                     <p>No hay convocatorias visibles con este filtro.</p>
+                    <button mat-stroked-button color="primary" type="button" (click)="startCreatePost()">
+                        Nueva convocatoria
+                    </button>
                 </div>
 
                 <button mat-stroked-button type="button" *ngIf="hasMore" (click)="reloadPosts(false)" [disabled]="loadingMore">
@@ -44,7 +48,10 @@
                 </button>
             </aside>
 
-            <section class="social-lfg__detail">
+            <section
+                class="social-lfg__detail"
+                [class.social-lfg__detail--editor]="editorMode === 'create' || editorMode === 'edit'"
+                *ngIf="editorMode === 'create' || editorMode === 'edit' || selectedPost">
                 <ng-container *ngIf="editorMode === 'create' || editorMode === 'edit'; else detailMode">
                     <article class="social-lfg__panel social-lfg__panel--editor">
                         <div class="social-lfg__panel-head">
@@ -54,46 +61,91 @@
                         </div>
 
                         <div class="social-lfg__form">
-                            <mat-form-field appearance="outline">
-                                <mat-label>Título</mat-label>
-                                <input matInput [(ngModel)]="draft.title" placeholder="Mesa semanal de D&D 3.5">
-                            </mat-form-field>
+                            <div class="social-lfg__form-row social-lfg__form-row--full">
+                                <mat-form-field appearance="outline">
+                                    <mat-label>Título</mat-label>
+                                    <input matInput [(ngModel)]="draft.title" placeholder="Mesa semanal de D&D 3.5">
+                                </mat-form-field>
+                            </div>
 
-                            <mat-form-field appearance="outline">
-                                <mat-label>Sistema</mat-label>
-                                <input matInput [(ngModel)]="draft.gameSystem" placeholder="D&D 3.5">
-                            </mat-form-field>
+                            <div class="social-lfg__form-row social-lfg__form-row--two">
+                                <mat-form-field appearance="outline">
+                                    <mat-label>Sistema</mat-label>
+                                    <input matInput [(ngModel)]="draft.gameSystem" placeholder="D&D 3.5">
+                                </mat-form-field>
 
-                            <mat-form-field appearance="outline">
-                                <mat-label>Estilo de campaña</mat-label>
-                                <input matInput [(ngModel)]="draft.campaignStyle" placeholder="Sandbox, dungeon crawl, intriga...">
-                            </mat-form-field>
+                                <mat-form-field appearance="outline">
+                                    <mat-label>Estilo de campaña</mat-label>
+                                    <input
+                                        matInput
+                                        [(ngModel)]="draft.campaignStyle"
+                                        [matAutocomplete]="campaignStyleAutocomplete"
+                                        placeholder="Sandbox, dungeon crawl, intriga...">
+                                    <mat-autocomplete #campaignStyleAutocomplete="matAutocomplete" autoActiveFirstOption>
+                                        <mat-option *ngFor="let option of filteredCampaignStyleOptions" [value]="option">
+                                            {{option}}
+                                        </mat-option>
+                                    </mat-autocomplete>
+                                </mat-form-field>
+                            </div>
 
-                            <mat-form-field appearance="outline">
-                                <mat-label>Horario</mat-label>
-                                <input matInput [(ngModel)]="draft.scheduleText" placeholder="Sábados 18:00 GMT+1">
-                            </mat-form-field>
+                            <div class="social-lfg__form-row social-lfg__form-row--four">
+                                <mat-form-field appearance="outline">
+                                    <mat-label>Idioma</mat-label>
+                                    <input
+                                        matInput
+                                        [(ngModel)]="draft.language"
+                                        [matAutocomplete]="languageAutocomplete"
+                                        placeholder="Español">
+                                    <mat-autocomplete #languageAutocomplete="matAutocomplete" autoActiveFirstOption>
+                                        <mat-option *ngFor="let option of filteredLanguageOptions" [value]="option">
+                                            {{option}}
+                                        </mat-option>
+                                    </mat-autocomplete>
+                                </mat-form-field>
 
-                            <mat-form-field appearance="outline">
-                                <mat-label>Idioma</mat-label>
-                                <input matInput [(ngModel)]="draft.language" placeholder="es">
-                            </mat-form-field>
+                                <mat-form-field appearance="outline">
+                                    <mat-label>Plazas totales</mat-label>
+                                    <input matInput type="number" min="1" [(ngModel)]="draft.slotsTotal">
+                                </mat-form-field>
 
-                            <mat-form-field appearance="outline">
-                                <mat-label>Plazas totales</mat-label>
-                                <input matInput type="number" min="1" [(ngModel)]="draft.slotsTotal">
-                            </mat-form-field>
+                                <mat-form-field appearance="outline" class="social-lfg__time-field">
+                                    <mat-label>Hora</mat-label>
+                                    <input
+                                        matInput
+                                        inputmode="numeric"
+                                        maxlength="5"
+                                        [ngModel]="scheduleTimeMasked"
+                                        (ngModelChange)="onScheduleTimeMaskedChange($event)"
+                                        (focus)="onScheduleTimeFocus($event)"
+                                        (click)="onScheduleTimeClick($event)"
+                                        (keydown)="onScheduleTimeKeydown($event)">
+                                </mat-form-field>
+
+                                <mat-form-field appearance="outline">
+                                    <mat-label>Estado</mat-label>
+                                    <mat-select [(ngModel)]="draft.status">
+                                        <mat-option *ngFor="let status of editableStatuses" [value]="status">{{getStatusLabel(status)}}</mat-option>
+                                    </mat-select>
+                                </mat-form-field>
+                            </div>
+
+                            <div class="social-lfg__schedule-days">
+                                <button
+                                    mat-stroked-button
+                                    type="button"
+                                    *ngFor="let day of weekdayOptions"
+                                    class="social-lfg__schedule-chip"
+                                    [class.social-lfg__schedule-chip--active]="isScheduleDaySelected(day.value)"
+                                    (click)="toggleScheduleDay(day.value)">
+                                    <mat-icon *ngIf="isScheduleDaySelected(day.value)">done</mat-icon>
+                                    {{day.label}}
+                                </button>
+                            </div>
 
                             <mat-form-field appearance="outline" class="social-lfg__form-full">
                                 <mat-label>Resumen</mat-label>
                                 <textarea matInput rows="5" [(ngModel)]="draft.summary"></textarea>
-                            </mat-form-field>
-
-                            <mat-form-field appearance="outline">
-                                <mat-label>Estado</mat-label>
-                                <mat-select [(ngModel)]="draft.status">
-                                    <mat-option *ngFor="let status of editableStatuses" [value]="status">{{getStatusLabel(status)}}</mat-option>
-                                </mat-select>
                             </mat-form-field>
                         </div>
 
@@ -107,7 +159,7 @@
                 </ng-container>
 
                 <ng-template #detailMode>
-                    <article class="social-lfg__panel" *ngIf="selectedPost; else noSelection">
+                    <article class="social-lfg__panel" *ngIf="selectedPost">
                         <div class="social-lfg__panel-head">
                             <div class="social-lfg__author">
                                 <button type="button" class="social-lfg__avatar" (click)="openAuthorProfile(selectedPost)">
@@ -120,7 +172,7 @@
                             </div>
                             <div class="social-lfg__actions">
                                 <button mat-stroked-button type="button" *ngIf="canEditSelectedPost" (click)="startEditSelectedPost()">Editar</button>
-                                <button mat-stroked-button color="primary" type="button" (click)="openContactConversation()" [disabled]="contactSaving">
+                                <button mat-stroked-button color="primary" type="button" *ngIf="canOpenContactConversation" (click)="openContactConversation()" [disabled]="contactSaving">
                                     {{contactSaving ? 'Abriendo...' : 'Abrir conversación'}}
                                 </button>
                             </div>
@@ -166,7 +218,7 @@
                             <div class="social-lfg__panel-head">
                                 <div>
                                     <h4>Aplicaciones</h4>
-                                    <p>Las acciones se deciden únicamente por `permissions.canResolve` y `permissions.canWithdraw`.</p>
+                                    <p>{{applicationsSectionHelperText}}</p>
                                 </div>
                                 <mat-form-field appearance="outline">
                                     <mat-label>Filtrar</mat-label>
@@ -211,13 +263,6 @@
                             </div>
                         </article>
                     </article>
-
-                    <ng-template #noSelection>
-                        <div class="social-lfg__empty">
-                            <mat-icon>forum</mat-icon>
-                            <p>Selecciona una convocatoria o crea una nueva para trabajar el panel de detalle.</p>
-                        </div>
-                    </ng-template>
                 </ng-template>
             </section>
         </div>

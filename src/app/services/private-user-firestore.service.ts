@@ -30,6 +30,7 @@ import { PersonajeSimple } from '../interfaces/simplificaciones/personaje-simple
 import { AuthProviderType } from '../interfaces/user-profile';
 import { UserRole } from '../interfaces/user-acl';
 import { FirebaseInjectionContextService } from './firebase-injection-context.service';
+import { UserCompliancePolicyState, UserComplianceSnapshot, UserModerationSanction } from '../interfaces/user-moderation';
 
 type FriendRequestDirection = 'sent' | 'received';
 
@@ -313,6 +314,11 @@ export class PrivateUserFirestoreService {
                 ?? raw?.permissionsCreate
                 ?? raw
             ),
+            compliance: this.normalizeCompliance(
+                raw?.compliance
+                ?? raw?.privateState?.compliance
+                ?? raw?.access?.compliance
+            ),
         };
     }
 
@@ -508,6 +514,59 @@ export class PrivateUserFirestoreService {
             };
             return acc;
         }, {});
+    }
+
+    private normalizeCompliance(raw: any): UserComplianceSnapshot | null {
+        if (!raw || typeof raw !== 'object')
+            return null;
+
+        return {
+            banned: raw?.banned === true,
+            mustAcceptUsage: raw?.mustAcceptUsage === true,
+            mustAcceptCreation: raw?.mustAcceptCreation === true,
+            activeSanction: this.normalizeModerationSanction(raw?.activeSanction),
+            usage: this.normalizeCompliancePolicy(raw?.usage),
+            creation: this.normalizeCompliancePolicy(raw?.creation),
+        };
+    }
+
+    private normalizeCompliancePolicy(raw: any): UserCompliancePolicyState | null {
+        if (!raw || typeof raw !== 'object')
+            return null;
+
+        return {
+            version: this.toNullableText(raw?.version ?? raw?.versionTag ?? raw?.versionCode),
+            accepted: raw?.accepted === true || raw?.isAccepted === true || raw?.acceptedVersionMatchesActive === true,
+            acceptedAtUtc: this.toNullableText(raw?.acceptedAtUtc ?? raw?.acceptedAt),
+            publishedAtUtc: this.toNullableText(raw?.publishedAtUtc ?? raw?.effectiveAtUtc ?? raw?.activeSinceUtc),
+            title: this.toNullableText(raw?.title ?? raw?.name),
+        };
+    }
+
+    private normalizeModerationSanction(raw: any): UserModerationSanction | null {
+        if (!raw || typeof raw !== 'object')
+            return null;
+
+        const sanctionId = this.toPositiveInt(raw?.sanctionId ?? raw?.id);
+        const kind = this.toNullableText(raw?.kind ?? raw?.sanctionKind ?? raw?.type);
+        const code = this.toNullableText(raw?.code ?? raw?.sanctionCode);
+        const name = this.toNullableText(raw?.name ?? raw?.title ?? raw?.label);
+        const startsAtUtc = this.toNullableText(raw?.startsAtUtc ?? raw?.startAtUtc ?? raw?.appliedAtUtc);
+        const endsAtUtc = this.toNullableText(raw?.endsAtUtc ?? raw?.endAtUtc ?? raw?.expiresAtUtc);
+        const isPermanent = raw?.isPermanent === true || raw?.permanent === true || raw?.endsAtUtc === null;
+
+        if (!sanctionId && !kind && !code && !name && !startsAtUtc && !endsAtUtc && !isPermanent)
+            return null;
+
+        return {
+            sanctionId,
+            kind,
+            code,
+            name,
+            startsAtUtc,
+            endsAtUtc,
+            isPermanent,
+        };
     }
 
     private normalizeAuthProvider(rawValue: any, currentUser: any): AuthProviderType {

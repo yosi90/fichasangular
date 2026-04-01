@@ -11,6 +11,7 @@ import {
     normalizeUserAcl,
 } from '../interfaces/user-acl';
 import { AuthProviderType, UserProfile } from '../interfaces/user-profile';
+import { UserModerationSanction, UserModerationSummary } from '../interfaces/user-moderation';
 import { UsuarioListadoItemDto, UsuarioPermissionCreateDto, UsuarioUpsertRequestDto, UsuarioUpsertResponseDto } from '../interfaces/usuarios-api';
 import { CacheSyncMetadataService } from './cache-sync-metadata.service';
 import { FirebaseInjectionContextService } from './firebase-injection-context.service';
@@ -26,6 +27,7 @@ export interface AdminUserRow {
     admin: boolean;
     permissions: Record<PermissionResource, boolean>;
     updatedAt: number | null;
+    moderationSummary: UserModerationSummary | null;
 }
 
 export interface SyncUsuariosApiResult {
@@ -297,6 +299,7 @@ export class AdminUsersService {
                 admin: role === 'admin',
                 permissions: this.getPermissionsByResource(role, acl.permissions),
                 updatedAt: this.toOptionalNumber((aclRaw?.[uid] as Record<string, any>)?.['updatedAt']),
+                moderationSummary: this.normalizeModerationSummary((aclRaw?.[uid] as Record<string, any>)?.['moderationSummary']),
             });
         });
 
@@ -573,6 +576,7 @@ export class AdminUsersService {
                     banned: row?.banned === true,
                 },
                 permissions: permissionsRaw,
+                moderationSummary: this.normalizeModerationSummary(row?.moderationSummary),
                 updatedAt,
                 updatedBy: `${row?.updatedByUserId ?? ''}`.trim(),
             };
@@ -602,5 +606,61 @@ export class AdminUsersService {
         if (text.length <= maxLength)
             return text;
         return text.substring(0, maxLength).trim();
+    }
+
+    private normalizeModerationSummary(raw: any): UserModerationSummary | null {
+        if (!raw || typeof raw !== 'object')
+            return null;
+
+        return {
+            incidentCount: this.toNonNegativeInt(raw?.incidentCount, 0) ?? 0,
+            sanctionCount: this.toNonNegativeInt(raw?.sanctionCount, 0) ?? 0,
+            lastIncidentAtUtc: this.toNullableText(raw?.lastIncidentAtUtc),
+            lastSanctionAtUtc: this.toNullableText(raw?.lastSanctionAtUtc),
+            activeSanction: this.normalizeModerationSanction(raw?.activeSanction),
+        };
+    }
+
+    private normalizeModerationSanction(raw: any): UserModerationSanction | null {
+        if (!raw || typeof raw !== 'object')
+            return null;
+
+        const sanctionId = this.toPositiveInt(raw?.sanctionId ?? raw?.id);
+        const kind = this.toNullableText(raw?.kind ?? raw?.sanctionKind ?? raw?.type);
+        const code = this.toNullableText(raw?.code ?? raw?.sanctionCode);
+        const name = this.toNullableText(raw?.name ?? raw?.title ?? raw?.label);
+        const startsAtUtc = this.toNullableText(raw?.startsAtUtc ?? raw?.startAtUtc ?? raw?.appliedAtUtc);
+        const endsAtUtc = this.toNullableText(raw?.endsAtUtc ?? raw?.endAtUtc ?? raw?.expiresAtUtc);
+        const isPermanent = raw?.isPermanent === true || raw?.permanent === true || raw?.endsAtUtc === null;
+
+        if (!sanctionId && !kind && !code && !name && !startsAtUtc && !endsAtUtc && !isPermanent)
+            return null;
+
+        return {
+            sanctionId,
+            kind,
+            code,
+            name,
+            startsAtUtc,
+            endsAtUtc,
+            isPermanent,
+        };
+    }
+
+    private toPositiveInt(value: any): number | null {
+        const parsed = Math.trunc(Number(value));
+        return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+    }
+
+    private toNonNegativeInt(value: any, fallback: number | null): number | null {
+        const parsed = Math.trunc(Number(value));
+        if (!Number.isFinite(parsed) || parsed < 0)
+            return fallback;
+        return parsed;
+    }
+
+    private toNullableText(value: any): string | null {
+        const text = `${value ?? ''}`.trim();
+        return text.length > 0 ? text : null;
     }
 }

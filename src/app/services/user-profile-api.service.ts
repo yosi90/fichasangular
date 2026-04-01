@@ -19,6 +19,19 @@ import {
     UserRoleRequestTarget,
 } from '../interfaces/user-role-request';
 import { UserSettingsV1, createDefaultUserSettings } from '../interfaces/user-settings';
+import {
+    UserAbuseLockReportInput,
+    UserAbuseLockReportResponse,
+    UserComplianceAcceptResponse,
+    UserComplianceActivePolicy,
+    UserCompliancePolicyKind,
+    UserCompliancePolicyState,
+    UserComplianceSnapshot,
+    UserModerationHistoryItem,
+    UserModerationHistoryListResponse,
+    UserModerationHistoryResult,
+    UserModerationSanction,
+} from '../interfaces/user-moderation';
 import { PrivateUserFirestoreService } from './private-user-firestore.service';
 
 @Injectable({
@@ -65,6 +78,68 @@ export class UserProfileApiService {
     async getMySettings(): Promise<UserSettingsV1> {
         const response = await this.requirePrivateReadModel('ajustes privados').getMySettings();
         return this.normalizeSettings(response ?? createDefaultUserSettings());
+    }
+
+    async listMyModerationHistory(limit: number = 10, offset: number = 0): Promise<UserModerationHistoryListResponse> {
+        try {
+            const headers = await this.buildAuthHeaders();
+            const response = await firstValueFrom(
+                this.http.get<UserModerationHistoryListResponse>(`${this.usuariosBaseUrl}/me/moderation/history`, {
+                    headers,
+                    params: this.buildPaginationParams(limit, offset),
+                })
+            );
+            return this.normalizeModerationHistoryResponse(response, limit, offset);
+        } catch (error) {
+            throw this.toProfileApiError(error, 'No se pudo cargar tu historial de moderación.');
+        }
+    }
+
+    async getActivePolicy(policyKind: UserCompliancePolicyKind): Promise<UserComplianceActivePolicy> {
+        const normalizedKind = this.normalizePolicyKind(policyKind);
+        try {
+            const response = await firstValueFrom(
+                this.http.get<any>(
+                    `${this.usuariosBaseUrl}/me/policies/${normalizedKind}/active`,
+                    { headers: await this.buildAuthHeaders() }
+                )
+            );
+            return this.normalizeActivePolicy(response, normalizedKind);
+        } catch (error) {
+            throw this.toProfileApiError(error, `No se pudo cargar la política activa de ${normalizedKind}.`);
+        }
+    }
+
+    async acceptActivePolicy(policyKind: UserCompliancePolicyKind): Promise<UserComplianceAcceptResponse> {
+        const normalizedKind = this.normalizePolicyKind(policyKind);
+        try {
+            const response = await firstValueFrom(
+                this.http.post<any>(
+                    `${this.usuariosBaseUrl}/me/policies/${normalizedKind}/accept`,
+                    {},
+                    { headers: await this.buildAuthHeaders() }
+                )
+            );
+            return this.normalizePolicyAcceptResponse(response, normalizedKind);
+        } catch (error) {
+            throw this.toProfileApiError(error, `No se pudo aceptar la política activa de ${normalizedKind}.`);
+        }
+    }
+
+    async reportAbuseLock(input: UserAbuseLockReportInput): Promise<UserAbuseLockReportResponse> {
+        const payload = this.normalizeAbuseLockPayload(input);
+        try {
+            const response = await firstValueFrom(
+                this.http.post<any>(
+                    `${this.usuariosBaseUrl}/me/security/abuse-lock`,
+                    payload,
+                    { headers: await this.buildAuthHeaders() }
+                )
+            );
+            return this.normalizeAbuseLockResponse(response);
+        } catch (error) {
+            throw this.toProfileApiError(error, 'No se pudo escalar el bloqueo técnico por abuso.');
+        }
     }
 
     async replaceMySettings(settings: UserSettingsV1): Promise<UserSettingsV1> {
@@ -346,6 +421,7 @@ export class UserProfileApiService {
             lastSeenAt: this.toNullableText(raw?.lastSeenAt),
             role: this.normalizeUserRole(raw?.role),
             permissions: this.normalizePermissionsMap(raw?.permissions),
+            compliance: this.normalizeCompliance(raw?.compliance),
         };
     }
 
@@ -371,6 +447,7 @@ export class UserProfileApiService {
             lastSeenAt: null,
             role: 'jugador',
             permissions: {},
+            compliance: null,
         };
     }
 
@@ -412,6 +489,143 @@ export class UserProfileApiService {
         }, {});
     }
 
+    private normalizeCompliance(raw: any): UserComplianceSnapshot | null {
+        if (!raw || typeof raw !== 'object')
+            return null;
+
+        return {
+            banned: raw?.banned === true,
+            mustAcceptUsage: raw?.mustAcceptUsage === true,
+            mustAcceptCreation: raw?.mustAcceptCreation === true,
+            activeSanction: this.normalizeModerationSanction(raw?.activeSanction),
+            usage: this.normalizeCompliancePolicy(raw?.usage),
+            creation: this.normalizeCompliancePolicy(raw?.creation),
+        };
+    }
+
+    private normalizeCompliancePolicy(raw: any): UserCompliancePolicyState | null {
+        if (!raw || typeof raw !== 'object')
+            return null;
+
+        return {
+            version: this.toNullableText(raw?.version ?? raw?.versionTag ?? raw?.versionCode),
+            accepted: raw?.accepted === true || raw?.isAccepted === true || raw?.acceptedVersionMatchesActive === true,
+            acceptedAtUtc: this.toNullableText(raw?.acceptedAtUtc ?? raw?.acceptedAt),
+            publishedAtUtc: this.toNullableText(raw?.publishedAtUtc ?? raw?.effectiveAtUtc ?? raw?.activeSinceUtc),
+            title: this.toNullableText(raw?.title ?? raw?.name),
+        };
+    }
+
+    private normalizeActivePolicy(raw: any, fallbackKind: UserCompliancePolicyKind): UserComplianceActivePolicy {
+        const normalizedKind = this.normalizePolicyKind(raw?.kind ?? raw?.policyKind ?? fallbackKind);
+        return {
+            kind: normalizedKind,
+            version: this.toNullableText(raw?.version ?? raw?.versionTag ?? raw?.versionCode),
+            title: this.toNullableText(raw?.title ?? raw?.name),
+            markdown: this.normalizeMultilineText(raw?.markdown ?? raw?.content ?? raw?.body),
+            publishedAtUtc: this.toNullableText(raw?.publishedAtUtc ?? raw?.effectiveAtUtc ?? raw?.activeSinceUtc),
+        };
+    }
+
+    private normalizePolicyAcceptResponse(raw: any, fallbackKind: UserCompliancePolicyKind): UserComplianceAcceptResponse {
+        const policySource = raw?.policy ?? raw?.activePolicy ?? raw;
+        const complianceSource = raw?.compliance ?? raw?.complianceSnapshot ?? null;
+        return {
+            policy: policySource && typeof policySource === 'object'
+                ? this.normalizeActivePolicy(policySource, fallbackKind)
+                : null,
+            compliance: this.normalizeCompliance(complianceSource),
+        };
+    }
+
+    private normalizeAbuseLockPayload(input: UserAbuseLockReportInput | null | undefined): UserAbuseLockReportInput {
+        const clientDate = `${input?.clientDate ?? ''}`.trim();
+        const localBlockCountToday = Math.max(1, this.toNonNegativeInt(input?.localBlockCountToday));
+        return {
+            reason: `${input?.reason ?? ''}`.trim() || 'frontend_api_button_spam',
+            clientDate: /^\d{4}-\d{2}-\d{2}$/.test(clientDate) ? clientDate : new Date().toISOString().slice(0, 10),
+            localBlockCountToday,
+            source: 'web',
+        };
+    }
+
+    private normalizeAbuseLockResponse(raw: any): UserAbuseLockReportResponse {
+        const status = `${raw?.status ?? ''}`.trim().toLowerCase();
+        return {
+            status: status.length > 0 ? status : 'ignored',
+            compliance: this.normalizeCompliance(raw?.compliance ?? raw?.complianceSnapshot),
+        };
+    }
+
+    private normalizeModerationHistoryResponse(
+        raw: any,
+        requestedLimit: number,
+        requestedOffset: number
+    ): UserModerationHistoryListResponse {
+        const items = Array.isArray(raw?.items)
+            ? raw.items.map((item: any) => this.normalizeModerationHistoryItem(item))
+            : [];
+        const limit = this.normalizeModerationPageSize(raw?.limit, requestedLimit);
+        const offset = this.toNonNegativeInt(raw?.offset) ?? this.toNonNegativeInt(requestedOffset) ?? 0;
+        const total = this.toNonNegativeInt(raw?.total) ?? items.length;
+
+        return {
+            items,
+            total,
+            limit,
+            offset,
+            hasMore: raw?.hasMore === true || offset + items.length < total,
+        };
+    }
+
+    private normalizeModerationHistoryItem(raw: any): UserModerationHistoryItem {
+        return {
+            incidentId: this.toPositiveIntOrNull(raw?.incidentId) ?? 0,
+            caseId: this.toPositiveIntOrNull(raw?.caseId),
+            caseCode: this.toNullableText(raw?.caseCode),
+            caseName: this.toNullableText(raw?.caseName),
+            mode: this.toNullableText(raw?.mode),
+            confirmedAtUtc: this.toNullableText(raw?.confirmedAtUtc),
+            createdAtUtc: this.toNullableText(raw?.createdAtUtc),
+            userVisibleMessage: this.normalizeMultilineText(raw?.userVisibleMessage),
+            result: this.normalizeModerationResult(raw?.result),
+            sanction: this.normalizeModerationSanction(raw?.sanction),
+        };
+    }
+
+    private normalizeModerationSanction(raw: any): UserModerationSanction | null {
+        if (!raw || typeof raw !== 'object')
+            return null;
+
+        const sanctionId = this.toPositiveIntOrNull(raw?.sanctionId ?? raw?.id);
+        const kind = this.toNullableText(raw?.kind ?? raw?.sanctionKind ?? raw?.type);
+        const code = this.toNullableText(raw?.code ?? raw?.sanctionCode);
+        const name = this.toNullableText(raw?.name ?? raw?.title ?? raw?.label);
+        const startsAtUtc = this.toNullableText(raw?.startsAtUtc ?? raw?.startAtUtc ?? raw?.appliedAtUtc);
+        const endsAtUtc = this.toNullableText(raw?.endsAtUtc ?? raw?.endAtUtc ?? raw?.expiresAtUtc);
+        const isPermanent = raw?.isPermanent === true || raw?.permanent === true || raw?.endsAtUtc === null;
+
+        if (!sanctionId && !kind && !code && !name && !startsAtUtc && !endsAtUtc && !isPermanent)
+            return null;
+
+        return {
+            sanctionId,
+            kind,
+            code,
+            name,
+            startsAtUtc,
+            endsAtUtc,
+            isPermanent,
+        };
+    }
+
+    private normalizeModerationResult(value: any): UserModerationHistoryResult | null {
+        const normalized = `${value ?? ''}`.trim().toLowerCase();
+        if (normalized === 'reported' || normalized === 'sanctioned' || normalized === 'banned')
+            return normalized;
+        return null;
+    }
+
     private normalizeAuthProvider(value: any): UserPrivateProfile['authProvider'] {
         const normalized = `${value ?? ''}`.trim().toLowerCase();
         if (normalized === 'correo' || normalized === 'google')
@@ -432,6 +646,24 @@ export class UserProfileApiService {
         if (normalized === 'master' || normalized === 'colaborador' || normalized === 'admin')
             return normalized;
         return 'jugador';
+    }
+
+    private normalizePolicyKind(value: any): UserCompliancePolicyKind {
+        return `${value ?? ''}`.trim().toLowerCase() === 'creation' ? 'creation' : 'usage';
+    }
+
+    private buildPaginationParams(limit: number, offset: number): Record<string, string> {
+        const params: Record<string, string> = {};
+        params['limit'] = `${this.normalizeModerationPageSize(limit, 10)}`;
+        params['offset'] = `${this.toNonNegativeInt(offset) ?? 0}`;
+        return params;
+    }
+
+    private normalizeModerationPageSize(value: any, fallback: number): number {
+        const parsed = this.toNonNegativeInt(value);
+        if (parsed === null || parsed < 1)
+            return fallback;
+        return Math.min(100, parsed);
     }
 
     private normalizeSettings(raw: UserSettingsV1 | null | undefined): UserSettingsV1 {

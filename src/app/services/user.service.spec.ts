@@ -111,6 +111,77 @@ class UserServiceTestDouble extends UserService {
     }
 }
 
+class UserServiceProfileBootstrapTestDouble extends UserService {
+    private authHandler?: ((firebaseUser: User | null) => void) | null;
+    private readonly authStub: { currentUser: User | null; };
+
+    constructor(
+        private apiMock: { getMyProfile: jasmine.Spy; },
+        private firestoreMock?: { watchMyProfile: jasmine.Spy; }
+    ) {
+        const authStub = { currentUser: null as User | null };
+        super(
+            authStub as unknown as Auth,
+            {} as Database,
+            { run: <T>(fn: () => T) => fn() } as FirebaseInjectionContextService,
+            apiMock as any,
+            firestoreMock as any,
+        );
+        this.authStub = authStub;
+    }
+
+    protected override subscribeAuthState(handler: (firebaseUser: User | null) => void): void {
+        this.authHandler = handler;
+    }
+
+    protected override persistUserProfile(_: User): Promise<void> {
+        return Promise.resolve();
+    }
+
+    protected override watchAclPath(_: string, onData: (rawAcl: any) => void, __: () => void): () => void {
+        onData(null);
+        return () => undefined;
+    }
+
+    emitAuth(firebaseUser: User | null): void {
+        this.authStub.currentUser = firebaseUser;
+        this.authHandler?.(firebaseUser);
+    }
+
+    emitFirestoreProfile(profile: any): void {
+        const lastCall = this.firestoreMock?.watchMyProfile.calls.mostRecent();
+        const next = lastCall?.args?.[0];
+        if (typeof next === 'function')
+            next(profile);
+    }
+
+    async flush(): Promise<void> {
+        await Promise.resolve();
+        await Promise.resolve();
+    }
+}
+
+function buildPrivateProfile(overrides: Partial<any> = {}): any {
+    return {
+        uid: 'uid-1',
+        displayName: 'Aldric',
+        bio: null,
+        genderIdentity: null,
+        pronouns: null,
+        email: 'aldric@test.com',
+        emailVerified: true,
+        authProvider: 'correo',
+        photoUrl: null,
+        photoThumbUrl: null,
+        createdAt: null,
+        lastSeenAt: null,
+        role: 'jugador',
+        permissions: {},
+        compliance: null,
+        ...overrides,
+    };
+}
+
 describe('UserService', () => {
     it('actualiza usuario e isLoggedIn desde cambios de auth', async () => {
         const service = new UserServiceTestDouble();
@@ -242,6 +313,52 @@ describe('UserService', () => {
         expect(service.signOutCalls).toBeGreaterThan(0);
     });
 
+    it('ban actor-scoped en compliance también fuerza logout aunque el ACL legacy no lo marque', async () => {
+        const service = new UserServiceTestDouble();
+        service.emitAcl('uid-compliance-ban', {
+            roles: { admin: false, type: 'jugador' },
+            status: { banned: false },
+            permissions: { personajes: { create: true } },
+        });
+        service.emitAuth({
+            uid: 'uid-compliance-ban',
+            displayName: 'Aldric',
+            email: 'aldric@test.com',
+        } as User);
+        await service.flush();
+
+        service.setCurrentPrivateProfile({
+            uid: 'uid-compliance-ban',
+            displayName: 'Aldric',
+            bio: null,
+            genderIdentity: null,
+            pronouns: null,
+            email: 'aldric@test.com',
+            emailVerified: true,
+            authProvider: 'correo',
+            photoUrl: null,
+            photoThumbUrl: null,
+            createdAt: null,
+            lastSeenAt: null,
+            role: 'jugador',
+            permissions: {
+                personajes: { create: true },
+            },
+            compliance: {
+                banned: true,
+                mustAcceptUsage: false,
+                mustAcceptCreation: false,
+                activeSanction: null,
+                usage: null,
+                creation: null,
+            },
+        });
+        await service.flush();
+
+        expect(service.signOutCalls).toBeGreaterThan(0);
+        expect(service.getCurrentCompliance()?.banned).toBeTrue();
+    });
+
     it('rol jugador respeta permisos create del ACL', async () => {
         const service = new UserServiceTestDouble();
         service.emitAcl('uid-rol-jugador', {
@@ -282,6 +399,173 @@ describe('UserService', () => {
 
         expect(service.can('personajes', 'create')).toBeTrue();
         expect(service.can('dotes', 'create')).toBeTrue();
+    });
+
+    it('bloquea creación cuando compliance exige aceptar normas de creación sin cerrar la sesión', async () => {
+        const service = new UserServiceTestDouble();
+        service.emitAcl('uid-must-create', {
+            roles: { admin: false, type: 'master' },
+            status: { banned: false },
+            permissions: {
+                campanas: { create: true },
+            },
+        });
+        service.emitAuth({
+            uid: 'uid-must-create',
+            displayName: 'Aldric',
+            email: 'aldric@test.com',
+        } as User);
+        await service.flush();
+
+        service.setCurrentPrivateProfile({
+            uid: 'uid-must-create',
+            displayName: 'Aldric',
+            bio: null,
+            genderIdentity: null,
+            pronouns: null,
+            email: 'aldric@test.com',
+            emailVerified: true,
+            authProvider: 'correo',
+            photoUrl: null,
+            photoThumbUrl: null,
+            createdAt: null,
+            lastSeenAt: null,
+            role: 'master',
+            permissions: {
+                campanas: { create: true },
+            },
+            compliance: {
+                banned: false,
+                mustAcceptUsage: false,
+                mustAcceptCreation: true,
+                activeSanction: null,
+                usage: null,
+                creation: null,
+            },
+        });
+
+        expect(service.canProceed('usage')).toBeTrue();
+        expect(service.canProceed('creation')).toBeFalse();
+        expect(service.can('campanas', 'create')).toBeFalse();
+        expect(service.getPermissionDeniedMessage()).toBe('Debes aceptar las normas de creación vigentes antes de continuar.');
+        expect(service.signOutCalls).toBe(0);
+    });
+
+    it('bloquea uso normal cuando compliance exige aceptar normas de uso', async () => {
+        const service = new UserServiceTestDouble();
+        service.emitAcl('uid-must-usage', {
+            roles: { admin: false, type: 'jugador' },
+            status: { banned: false },
+            permissions: {
+                personajes: { create: true },
+            },
+        });
+        service.emitAuth({
+            uid: 'uid-must-usage',
+            displayName: 'Aldric',
+            email: 'aldric@test.com',
+        } as User);
+        await service.flush();
+
+        service.setCurrentPrivateProfile({
+            uid: 'uid-must-usage',
+            displayName: 'Aldric',
+            bio: null,
+            genderIdentity: null,
+            pronouns: null,
+            email: 'aldric@test.com',
+            emailVerified: true,
+            authProvider: 'correo',
+            photoUrl: null,
+            photoThumbUrl: null,
+            createdAt: null,
+            lastSeenAt: null,
+            role: 'jugador',
+            permissions: {
+                personajes: { create: true },
+            },
+            compliance: {
+                banned: false,
+                mustAcceptUsage: true,
+                mustAcceptCreation: false,
+                activeSanction: null,
+                usage: null,
+                creation: null,
+            },
+        });
+
+        expect(service.canProceed('usage')).toBeFalse();
+        expect(service.can('personajes', 'create')).toBeFalse();
+        expect(service.getAccessRestriction('usage')).toBe('mustAcceptUsage');
+        expect(service.getAccessRestrictionMessage('usage')).toBe('Debes aceptar las normas de uso vigentes antes de continuar.');
+        expect(service.signOutCalls).toBe(0);
+    });
+
+    it('getComplianceErrorMessage traduce mustAcceptCreation desde el código funcional', () => {
+        const service = new UserServiceTestDouble();
+
+        expect(service.getComplianceErrorMessage({ code: 'mustAcceptCreation', status: 403 }, 'creation')).toBe(
+            'Debes aceptar las normas de creación vigentes antes de continuar.'
+        );
+    });
+
+    it('getComplianceErrorMessage traduce los códigos canónicos nuevos de aceptación de políticas', () => {
+        const service = new UserServiceTestDouble();
+
+        expect(service.getComplianceErrorMessage({ code: 'USAGE_POLICY_ACCEPTANCE_REQUIRED', status: 403 }, 'usage')).toBe(
+            'Debes aceptar las normas de uso vigentes antes de continuar.'
+        );
+        expect(service.getComplianceErrorMessage({ code: 'CREATION_POLICY_ACCEPTANCE_REQUIRED', status: 403 }, 'creation')).toBe(
+            'Debes aceptar las normas de creación vigentes antes de continuar.'
+        );
+    });
+
+    it('getComplianceErrorMessage usa el restriction local como fallback en 403 opacos', async () => {
+        const service = new UserServiceTestDouble();
+        service.emitAcl('uid-must-usage-fallback', {
+            roles: { admin: false, type: 'jugador' },
+            status: { banned: false },
+            permissions: {
+                personajes: { create: true },
+            },
+        });
+        service.emitAuth({
+            uid: 'uid-must-usage-fallback',
+            displayName: 'Aldric',
+            email: 'aldric@test.com',
+        } as User);
+        await service.flush();
+
+        service.setCurrentPrivateProfile({
+            uid: 'uid-must-usage-fallback',
+            displayName: 'Aldric',
+            bio: null,
+            genderIdentity: null,
+            pronouns: null,
+            email: 'aldric@test.com',
+            emailVerified: true,
+            authProvider: 'correo',
+            photoUrl: null,
+            photoThumbUrl: null,
+            createdAt: null,
+            lastSeenAt: null,
+            role: 'jugador',
+            permissions: {
+                personajes: { create: true },
+            },
+            compliance: {
+                banned: false,
+                mustAcceptUsage: true,
+                mustAcceptCreation: false,
+                activeSanction: null,
+                usage: null,
+                creation: null,
+            },
+        });
+
+        expect(service.getComplianceErrorMessage({ status: 403 }, 'usage')).toBe(
+            'Debes aceptar las normas de uso vigentes antes de continuar.'
+        );
     });
 
     it('logOut delega en signOut cuando hay sesión abierta', async () => {
@@ -450,6 +734,76 @@ describe('UserService', () => {
         expect(service.getCurrentRole()).toBe('jugador');
         expect(service.CurrentPrivateProfile?.role).toBe('jugador');
         expect(service.Usuario.permisos).toBe(0);
+    });
+
+    it('hidrata compliance actor-scoped desde API al iniciar sesión aunque exista Firestore', async () => {
+        const apiMock = {
+            getMyProfile: jasmine.createSpy('getMyProfile').and.resolveTo(buildPrivateProfile({
+                compliance: {
+                    banned: false,
+                    mustAcceptUsage: true,
+                    mustAcceptCreation: false,
+                    activeSanction: null,
+                    usage: { version: '4' },
+                    creation: null,
+                },
+            })),
+        };
+        const firestoreMock = {
+            watchMyProfile: jasmine.createSpy('watchMyProfile').and.callFake((next: (profile: any) => void) => {
+                next(buildPrivateProfile({ compliance: null }));
+                return () => undefined;
+            }),
+        };
+        const service = new UserServiceProfileBootstrapTestDouble(apiMock, firestoreMock);
+
+        service.emitAuth({
+            uid: 'uid-1',
+            displayName: 'Aldric',
+            email: 'aldric@test.com',
+        } as User);
+        await service.flush();
+
+        expect(apiMock.getMyProfile).toHaveBeenCalled();
+        expect(service.CurrentPrivateProfile?.compliance?.mustAcceptUsage).toBeTrue();
+    });
+
+    it('conserva compliance ya hidratado si Firestore reemite un perfil sin ese bloque', async () => {
+        const apiMock = {
+            getMyProfile: jasmine.createSpy('getMyProfile').and.resolveTo(buildPrivateProfile({
+                compliance: {
+                    banned: false,
+                    mustAcceptUsage: false,
+                    mustAcceptCreation: true,
+                    activeSanction: null,
+                    usage: null,
+                    creation: { version: '2' },
+                },
+            })),
+        };
+        const firestoreMock = {
+            watchMyProfile: jasmine.createSpy('watchMyProfile').and.callFake((next: (profile: any) => void) => {
+                next(buildPrivateProfile({ compliance: null }));
+                return () => undefined;
+            }),
+        };
+        const service = new UserServiceProfileBootstrapTestDouble(apiMock, firestoreMock);
+
+        service.emitAuth({
+            uid: 'uid-1',
+            displayName: 'Aldric',
+            email: 'aldric@test.com',
+        } as User);
+        await service.flush();
+
+        service.emitFirestoreProfile(buildPrivateProfile({
+            displayName: 'Aldric actualizado',
+            compliance: null,
+        }));
+        await service.flush();
+
+        expect(service.CurrentPrivateProfile?.displayName).toBe('Aldric actualizado');
+        expect(service.CurrentPrivateProfile?.compliance?.mustAcceptCreation).toBeTrue();
     });
 
     it('register traduce email-already-in-use a un mensaje de usuario', async () => {

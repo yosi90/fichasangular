@@ -14,6 +14,7 @@ import { SocialV3ApiService } from 'src/app/services/social-v3-api.service';
 import { UserProfileNavigationService } from 'src/app/services/user-profile-navigation.service';
 import { UserService } from 'src/app/services/user.service';
 import { resolveDefaultProfileAvatar } from 'src/app/services/utils/profile-avatar.util';
+import { AppToastService } from 'src/app/services/app-toast.service';
 
 @Component({
     selector: 'app-social-lfg-section',
@@ -39,6 +40,41 @@ export class SocialLfgSectionComponent implements OnInit, OnChanges, OnDestroy {
         { value: 'withdrawn', label: 'Retiradas' },
     ];
     readonly editableStatuses: SocialLfgStatus[] = ['open', 'paused', 'closed'];
+    readonly weekdayOptions: { value: string; label: string; aliases: string[]; }[] = [
+        { value: 'monday', label: 'Lunes', aliases: ['lunes'] },
+        { value: 'tuesday', label: 'Martes', aliases: ['martes'] },
+        { value: 'wednesday', label: 'Miércoles', aliases: ['miercoles', 'miércoles'] },
+        { value: 'thursday', label: 'Jueves', aliases: ['jueves'] },
+        { value: 'friday', label: 'Viernes', aliases: ['viernes'] },
+        { value: 'saturday', label: 'Sábados', aliases: ['sabado', 'sábado', 'sabados', 'sábados'] },
+        { value: 'sunday', label: 'Domingos', aliases: ['domingo', 'domingos'] },
+    ];
+    readonly campaignStyleOptions: string[] = [
+        'Sandbox',
+        'Dungeon crawl',
+        'Intriga política',
+        'Exploración',
+        'Supervivencia',
+        'Investigación',
+        'Urbana',
+        'West Marches',
+        'Alta fantasía heroica',
+        'Terror',
+        'Aventura episódica',
+    ];
+    readonly languageOptions: string[] = [
+        'Español',
+        'Inglés',
+        'Francés',
+        'Alemán',
+        'Italiano',
+        'Portugués',
+        'Catalán',
+        'Euskera',
+        'Gallego',
+        'Japonés',
+        'Otro',
+    ];
 
     posts: SocialLfgPost[] = [];
     selectedPost: SocialLfgPost | null = null;
@@ -58,6 +94,8 @@ export class SocialLfgSectionComponent implements OnInit, OnChanges, OnDestroy {
     hasMore = false;
     editorMode: 'view' | 'create' | 'edit' = 'view';
     draft: SocialLfgPostUpsertInput = this.buildDefaultDraft();
+    selectedScheduleDays: string[] = [];
+    scheduleTimeMasked = '__:__';
     private readonly pageSize = 12;
     private readonly subscriptions = new Subscription();
 
@@ -66,6 +104,7 @@ export class SocialLfgSectionComponent implements OnInit, OnChanges, OnDestroy {
         private socialRealtimeSvc: SocialRealtimeService,
         private userSvc: UserService,
         private userProfileNavSvc: UserProfileNavigationService,
+        private appToastSvc: AppToastService,
     ) { }
 
     ngOnInit(): void {
@@ -98,6 +137,10 @@ export class SocialLfgSectionComponent implements OnInit, OnChanges, OnDestroy {
         return !!this.selectedPost && this.selectedPost.author.uid === this.userSvc.CurrentUserUid;
     }
 
+    get canOpenContactConversation(): boolean {
+        return !!this.selectedPost && !this.canEditSelectedPost;
+    }
+
     get canApplyToSelectedPost(): boolean {
         if (!this.selectedPost || this.selectedPost.author.uid === this.userSvc.CurrentUserUid)
             return false;
@@ -119,6 +162,14 @@ export class SocialLfgSectionComponent implements OnInit, OnChanges, OnDestroy {
         return this.applications.filter((item) => item.status === this.applicationStatusFilter);
     }
 
+    get applicationsSectionHelperText(): string {
+        if (this.canEditSelectedPost)
+            return 'Aquí puedes revisar y gestionar las solicitudes recibidas para esta convocatoria.';
+        if (this.ownApplication)
+            return 'Aquí puedes consultar el estado actual de tu solicitud.';
+        return 'Aquí aparecerán las solicitudes relacionadas con esta convocatoria.';
+    }
+
     get selectedPostAvatarUrl(): string {
         if (!this.selectedPost)
             return resolveDefaultProfileAvatar('social-lfg');
@@ -126,6 +177,18 @@ export class SocialLfgSectionComponent implements OnInit, OnChanges, OnDestroy {
         if (photo.length > 0)
             return photo;
         return resolveDefaultProfileAvatar(this.selectedPost.author.uid || this.selectedPost.author.displayName || `${this.selectedPost.id}`);
+    }
+
+    get filteredCampaignStyleOptions(): string[] {
+        return this.filterAutocompleteOptions(this.campaignStyleOptions, this.draft?.campaignStyle);
+    }
+
+    get filteredLanguageOptions(): string[] {
+        return this.filterAutocompleteOptions(this.languageOptions, this.draft?.language);
+    }
+
+    get hasSelectedScheduleDays(): boolean {
+        return this.selectedScheduleDays.length > 0;
     }
 
     async reloadPosts(reset: boolean): Promise<void> {
@@ -189,6 +252,7 @@ export class SocialLfgSectionComponent implements OnInit, OnChanges, OnDestroy {
         this.applyMessage = '';
         this.applicationsErrorMessage = '';
         this.draft = this.buildDefaultDraft();
+        this.resetScheduleUi();
     }
 
     startEditSelectedPost(): void {
@@ -203,18 +267,29 @@ export class SocialLfgSectionComponent implements OnInit, OnChanges, OnDestroy {
             campaignStyle: this.selectedPost.campaignStyle,
             slotsTotal: this.selectedPost.slotsTotal,
             scheduleText: this.selectedPost.scheduleText,
-            language: this.selectedPost.language,
+            language: this.expandKnownLanguageAlias(this.selectedPost.language),
             visibility: 'global',
             status: this.selectedPost.status,
         };
+        this.hydrateScheduleUiFromText(this.selectedPost.scheduleText);
     }
 
     cancelEditor(): void {
         this.editorMode = 'view';
         this.draft = this.buildDefaultDraft();
+        this.resetScheduleUi();
     }
 
     async saveDraft(): Promise<void> {
+        this.normalizeDraftAutocompleteFields();
+        this.syncScheduleTextFromUi();
+        const validationError = this.validateDraft(this.draft);
+        if (validationError.length > 0) {
+            this.appToastSvc.showError(validationError);
+            return;
+        }
+
+        const wasEditing = this.editorMode === 'edit';
         this.editorSaving = true;
         this.errorMessage = '';
         try {
@@ -223,13 +298,104 @@ export class SocialLfgSectionComponent implements OnInit, OnChanges, OnDestroy {
                 : await this.socialV3ApiSvc.createLfgPost(this.draft);
             this.editorMode = 'view';
             this.draft = this.buildDefaultDraft();
+            this.appToastSvc.showSuccess(
+                wasEditing
+                    ? 'Convocatoria actualizada.'
+                    : 'Convocatoria creada.'
+            );
             await this.reloadPosts(true);
             await this.selectPost(saved);
         } catch (error: any) {
-            this.errorMessage = `${error?.message ?? 'No se pudo guardar la convocatoria.'}`.trim();
+            this.appToastSvc.showError(this.mapLfgActionError(error, 'No se pudo guardar la convocatoria.'));
         } finally {
             this.editorSaving = false;
         }
+    }
+
+    toggleScheduleDay(dayValue: string): void {
+        const normalizedDay = `${dayValue ?? ''}`.trim();
+        if (normalizedDay.length < 1)
+            return;
+
+        if (this.isScheduleDaySelected(normalizedDay)) {
+            this.selectedScheduleDays = this.selectedScheduleDays.filter((item) => item !== normalizedDay);
+            return;
+        }
+
+        const allowedOrder = this.weekdayOptions.map((item) => item.value);
+        this.selectedScheduleDays = [...this.selectedScheduleDays, normalizedDay]
+            .filter((value, index, array) => array.indexOf(value) === index)
+            .sort((left, right) => allowedOrder.indexOf(left) - allowedOrder.indexOf(right));
+    }
+
+    isScheduleDaySelected(dayValue: string): boolean {
+        return this.selectedScheduleDays.includes(dayValue);
+    }
+
+    onScheduleTimeMaskedChange(value: string | null | undefined): void {
+        const digits = `${value ?? ''}`.replace(/\D/g, '').slice(0, 4);
+        this.scheduleTimeMasked = this.buildScheduleTimeMask(digits);
+    }
+
+    onScheduleTimeFocus(event: FocusEvent): void {
+        const input = event.target as HTMLInputElement | null;
+        if (!input)
+            return;
+        this.setScheduleCaret(input, this.findNextEditableScheduleIndex(0));
+    }
+
+    onScheduleTimeClick(event: MouseEvent): void {
+        const input = event.target as HTMLInputElement | null;
+        if (!input)
+            return;
+
+        const cursor = input.selectionStart ?? 0;
+        if (cursor === 2)
+            this.setScheduleCaret(input, 3);
+    }
+
+    onScheduleTimeKeydown(event: KeyboardEvent): void {
+        const input = event.target as HTMLInputElement | null;
+        if (!input)
+            return;
+
+        const key = `${event.key ?? ''}`;
+        if (key === 'Tab')
+            return;
+
+        if (key === 'ArrowLeft') {
+            event.preventDefault();
+            const current = Math.max(0, input.selectionStart ?? 0);
+            this.setScheduleCaret(input, this.findPreviousEditableScheduleIndex(current - 1));
+            return;
+        }
+
+        if (key === 'ArrowRight') {
+            event.preventDefault();
+            const current = Math.max(0, input.selectionStart ?? 0);
+            this.setScheduleCaret(input, this.findNextEditableScheduleIndex(current + 1));
+            return;
+        }
+
+        if (key === 'Backspace') {
+            event.preventDefault();
+            this.removeScheduleDigit(input, true);
+            return;
+        }
+
+        if (key === 'Delete') {
+            event.preventDefault();
+            this.removeScheduleDigit(input, false);
+            return;
+        }
+
+        if (!/^\d$/.test(key)) {
+            event.preventDefault();
+            return;
+        }
+
+        event.preventDefault();
+        this.insertScheduleDigit(input, key);
     }
 
     async reloadApplications(): Promise<void> {
@@ -263,9 +429,10 @@ export class SocialLfgSectionComponent implements OnInit, OnChanges, OnDestroy {
             const application = await this.socialV3ApiSvc.createLfgApplication(this.selectedPost.id, this.applyMessage);
             this.applyMessage = '';
             this.applications = this.reconcileApplications([application, ...this.applications]);
+            this.appToastSvc.showSuccess('Solicitud enviada.');
             await this.reloadApplications();
         } catch (error: any) {
-            this.applicationsErrorMessage = `${error?.message ?? 'No se pudo enviar la aplicación.'}`.trim();
+            this.appToastSvc.showError(this.mapLfgActionError(error, 'No se pudo enviar la aplicación.'));
         } finally {
             this.applySaving = false;
         }
@@ -281,15 +448,16 @@ export class SocialLfgSectionComponent implements OnInit, OnChanges, OnDestroy {
             : item);
         try {
             await this.socialV3ApiSvc.updateLfgApplication(this.selectedPost.id, application.applicationId, status);
+            this.appToastSvc.showSuccess('Solicitud actualizada.');
             await this.refreshSelectedIfNeeded(this.selectedPost.id, true);
         } catch (error: any) {
             this.applications = previous;
-            this.applicationsErrorMessage = `${error?.message ?? 'No se pudo actualizar la aplicación.'}`.trim();
+            this.appToastSvc.showError(this.mapLfgActionError(error, 'No se pudo actualizar la aplicación.'));
         }
     }
 
     async openContactConversation(): Promise<void> {
-        if (!this.selectedPost)
+        if (!this.selectedPost || !this.canOpenContactConversation)
             return;
 
         this.contactSaving = true;
@@ -302,7 +470,7 @@ export class SocialLfgSectionComponent implements OnInit, OnChanges, OnDestroy {
                 requestId: Date.now(),
             });
         } catch (error: any) {
-            this.applicationsErrorMessage = `${error?.message ?? 'No se pudo abrir la conversación.'}`.trim();
+            this.appToastSvc.showError(this.mapLfgActionError(error, 'No se pudo abrir la conversación.'));
         } finally {
             this.contactSaving = false;
         }
@@ -422,10 +590,270 @@ export class SocialLfgSectionComponent implements OnInit, OnChanges, OnDestroy {
             campaignStyle: '',
             slotsTotal: 4,
             scheduleText: '',
-            language: 'es',
+            language: 'Español',
             visibility: 'global',
             status: 'open',
         };
+    }
+
+    private validateDraft(draft: SocialLfgPostUpsertInput): string {
+        if (!this.isMeaningfulText(draft?.title))
+            return 'El título debe incluir texto real y no solo números.';
+        if (!this.isMeaningfulText(draft?.summary))
+            return 'El resumen debe incluir texto real y no solo números.';
+        if (!this.isMeaningfulText(draft?.gameSystem))
+            return 'El sistema debe incluir texto real y no solo números.';
+        if (!this.isMeaningfulText(draft?.campaignStyle))
+            return 'El estilo de campaña debe incluir texto real y no solo números.';
+        if (this.selectedScheduleDays.length < 1)
+            return 'Debes seleccionar al menos un día de la semana.';
+        if (!this.isScheduleTextValid(draft?.scheduleText))
+            return 'El horario debe incluir una hora válida en formato 00:00.';
+        if (!this.isMeaningfulText(draft?.language))
+            return 'El idioma debe incluir texto real y no solo números.';
+        if (!Number.isInteger(Number(draft?.slotsTotal)) || Number(draft?.slotsTotal) <= 0)
+            return 'Las plazas totales deben ser un número mayor que 0.';
+        return '';
+    }
+
+    private isMeaningfulText(value: string | null | undefined): boolean {
+        const normalized = `${value ?? ''}`.trim();
+        if (normalized.length < 1)
+            return false;
+        return /[A-Za-zÁÉÍÓÚÜÑáéíóúüñ]/.test(normalized);
+    }
+
+    private isScheduleTextValid(value: string | null | undefined): boolean {
+        const normalized = `${value ?? ''}`.trim();
+        if (normalized.length < 1)
+            return false;
+        return /\b(?:[01]?\d|2[0-3]):[0-5]\d\b/.test(normalized);
+    }
+
+    private filterAutocompleteOptions(options: string[], query: string | null | undefined): string[] {
+        const normalizedQuery = this.normalizeAutocompleteText(query);
+        const exactValue = `${query ?? ''}`.trim();
+        const filtered = options.filter((option) => {
+            if (normalizedQuery.length < 1)
+                return true;
+            return this.normalizeAutocompleteText(option).includes(normalizedQuery);
+        });
+
+        if (exactValue.length > 0 && !filtered.some((option) => option.localeCompare(exactValue, 'es', { sensitivity: 'base' }) === 0))
+            return [exactValue, ...filtered];
+        return filtered;
+    }
+
+    private normalizeDraftAutocompleteFields(): void {
+        this.draft = {
+            ...this.draft,
+            campaignStyle: `${this.draft?.campaignStyle ?? ''}`.trim(),
+            language: this.expandKnownLanguageAlias(this.draft?.language),
+        };
+    }
+
+    private syncScheduleTextFromUi(): void {
+        const time = this.extractCompleteScheduleTime(this.scheduleTimeMasked);
+        const selectedLabels = this.weekdayOptions
+            .filter((item) => this.selectedScheduleDays.includes(item.value))
+            .map((item) => item.label);
+
+        if (selectedLabels.length < 1 || time.length < 1) {
+            this.draft = {
+                ...this.draft,
+                scheduleText: '',
+            };
+            return;
+        }
+
+        this.draft = {
+            ...this.draft,
+            scheduleText: `${this.formatScheduleDaysLabel(selectedLabels)} a las ${time}`,
+        };
+    }
+
+    private hydrateScheduleUiFromText(scheduleText: string | null | undefined): void {
+        const normalizedText = `${scheduleText ?? ''}`.trim();
+        if (normalizedText.length < 1) {
+            this.resetScheduleUi();
+            return;
+        }
+
+        const normalizedSearch = this.normalizeAutocompleteText(normalizedText);
+        this.selectedScheduleDays = this.weekdayOptions
+            .filter((item) => item.aliases.some((alias) => normalizedSearch.includes(alias)))
+            .map((item) => item.value);
+
+        const timeMatch = normalizedText.match(/\b(?:[01]?\d|2[0-3]):[0-5]\d\b/);
+        const digits = `${timeMatch?.[0] ?? ''}`.replace(/\D/g, '').slice(0, 4);
+        this.scheduleTimeMasked = digits.length > 0 ? this.buildScheduleTimeMask(digits) : '__:__';
+    }
+
+    private resetScheduleUi(): void {
+        this.selectedScheduleDays = [];
+        this.scheduleTimeMasked = '__:__';
+    }
+
+    private buildScheduleTimeMask(digits: string): string {
+        const safeDigits = `${digits ?? ''}`.replace(/\D/g, '').slice(0, 4);
+        const parts = ['_', '_', ':', '_', '_'];
+        if (safeDigits.length > 0)
+            parts[0] = safeDigits[0];
+        if (safeDigits.length > 1)
+            parts[1] = safeDigits[1];
+        if (safeDigits.length > 2)
+            parts[3] = safeDigits[2];
+        if (safeDigits.length > 3)
+            parts[4] = safeDigits[3];
+        return parts.join('');
+    }
+
+    private extractCompleteScheduleTime(value: string | null | undefined): string {
+        const normalized = `${value ?? ''}`.trim();
+        if (!/^\d{2}:\d{2}$/.test(normalized))
+            return '';
+        return this.isScheduleTextValid(normalized) ? normalized : '';
+    }
+
+    private insertScheduleDigit(input: HTMLInputElement, digit: string): void {
+        const currentChars = this.scheduleTimeMasked.split('');
+        const selectionStart = input.selectionStart ?? 0;
+        const selectionEnd = input.selectionEnd ?? selectionStart;
+        let targetIndex = this.findNextEditableScheduleIndex(selectionStart);
+
+        if (selectionEnd > selectionStart) {
+            for (let index = selectionStart; index < selectionEnd; index++) {
+                if (this.isScheduleEditableIndex(index))
+                    currentChars[index] = '_';
+            }
+            targetIndex = this.findNextEditableScheduleIndex(selectionStart);
+        }
+
+        if (!this.isScheduleEditableIndex(targetIndex))
+            return;
+
+        currentChars[targetIndex] = digit;
+        this.scheduleTimeMasked = currentChars.join('');
+        this.setScheduleCaret(input, this.findNextEditableScheduleIndex(targetIndex + 1));
+    }
+
+    private removeScheduleDigit(input: HTMLInputElement, removePrevious: boolean): void {
+        const currentChars = this.scheduleTimeMasked.split('');
+        const selectionStart = input.selectionStart ?? 0;
+        const selectionEnd = input.selectionEnd ?? selectionStart;
+
+        if (selectionEnd > selectionStart) {
+            for (let index = selectionStart; index < selectionEnd; index++) {
+                if (this.isScheduleEditableIndex(index))
+                    currentChars[index] = '_';
+            }
+            this.scheduleTimeMasked = currentChars.join('');
+            this.setScheduleCaret(input, this.findNextEditableScheduleIndex(selectionStart));
+            return;
+        }
+
+        const targetIndex = removePrevious
+            ? this.findPreviousEditableScheduleIndex(selectionStart - 1)
+            : this.findNextEditableScheduleIndex(selectionStart);
+
+        if (!this.isScheduleEditableIndex(targetIndex))
+            return;
+
+        currentChars[targetIndex] = '_';
+        this.scheduleTimeMasked = currentChars.join('');
+        this.setScheduleCaret(input, removePrevious ? targetIndex : this.findNextEditableScheduleIndex(targetIndex));
+    }
+
+    private isScheduleEditableIndex(index: number): boolean {
+        return index === 0 || index === 1 || index === 3 || index === 4;
+    }
+
+    private findNextEditableScheduleIndex(index: number): number {
+        if (index <= 0)
+            return 0;
+        if (index <= 1)
+            return index;
+        if (index <= 3)
+            return 3;
+        if (index <= 4)
+            return 4;
+        return 5;
+    }
+
+    private findPreviousEditableScheduleIndex(index: number): number {
+        if (index >= 4)
+            return 4;
+        if (index >= 3)
+            return 3;
+        if (index >= 1)
+            return 1;
+        if (index >= 0)
+            return 0;
+        return 0;
+    }
+
+    private setScheduleCaret(input: HTMLInputElement, index: number): void {
+        const safeIndex = index === 2 ? 3 : Math.max(0, Math.min(5, index));
+        setTimeout(() => input.setSelectionRange(safeIndex, safeIndex));
+    }
+
+    private formatScheduleDaysLabel(labels: string[]): string {
+        if (labels.length < 1)
+            return '';
+        if (labels.length === 1)
+            return labels[0];
+        if (labels.length === 2)
+            return `${labels[0]} y ${labels[1]}`;
+        return `${labels.slice(0, -1).join(', ')} y ${labels[labels.length - 1]}`;
+    }
+
+    private expandKnownLanguageAlias(value: string | null | undefined): string {
+        const normalized = `${value ?? ''}`.trim();
+        if (normalized.length < 1)
+            return '';
+
+        const aliasMap = new Map<string, string>([
+            ['es', 'Español'],
+            ['esp', 'Español'],
+            ['español', 'Español'],
+            ['en', 'Inglés'],
+            ['eng', 'Inglés'],
+            ['ingles', 'Inglés'],
+            ['inglés', 'Inglés'],
+            ['fr', 'Francés'],
+            ['fra', 'Francés'],
+            ['frances', 'Francés'],
+            ['francés', 'Francés'],
+            ['de', 'Alemán'],
+            ['deu', 'Alemán'],
+            ['aleman', 'Alemán'],
+            ['alemán', 'Alemán'],
+            ['it', 'Italiano'],
+            ['ita', 'Italiano'],
+            ['pt', 'Portugués'],
+            ['por', 'Portugués'],
+            ['ca', 'Catalán'],
+            ['cat', 'Catalán'],
+            ['eu', 'Euskera'],
+            ['gl', 'Gallego'],
+            ['ja', 'Japonés'],
+        ]);
+        return aliasMap.get(this.normalizeAutocompleteText(normalized)) ?? normalized;
+    }
+
+    private normalizeAutocompleteText(value: string | null | undefined): string {
+        return `${value ?? ''}`
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .trim()
+            .toLowerCase();
+    }
+
+    private mapLfgActionError(error: any, fallback: string): string {
+        const complianceError = this.userSvc.getComplianceErrorMessage(error, 'usage');
+        if (complianceError.length > 0)
+            return complianceError;
+        return `${error?.message ?? fallback}`.trim() || fallback;
     }
 
     private resetState(): void {
@@ -447,5 +875,6 @@ export class SocialLfgSectionComponent implements OnInit, OnChanges, OnDestroy {
         this.hasMore = false;
         this.editorMode = 'view';
         this.draft = this.buildDefaultDraft();
+        this.resetScheduleUi();
     }
 }

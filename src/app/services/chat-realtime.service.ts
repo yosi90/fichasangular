@@ -22,6 +22,7 @@ export class ChatRealtimeService implements OnDestroy {
     private readonly handledAlertKeys = new Set<string>();
     private readonly pendingConversationRefreshIds = new Set<number>();
     private authSub?: Subscription;
+    private profileSub?: Subscription;
     private socket: WebSocket | null = null;
     private pollingTimer: number | null = null;
     private pingTimer: number | null = null;
@@ -31,6 +32,7 @@ export class ChatRealtimeService implements OnDestroy {
     private initialized = false;
     private bootstrapFailureCount = 0;
     private suppressAutomaticRealtimeReconnect = false;
+    private complianceRealtimeBlocked = false;
 
     readonly conversations$ = this.conversationsSubject.asObservable();
     readonly unreadUserCount$ = this.unreadUserCountSubject.asObservable();
@@ -59,10 +61,14 @@ export class ChatRealtimeService implements OnDestroy {
             }
             this.teardownSessionState();
         });
+        this.profileSub = this.userSvc.currentPrivateProfile$.subscribe(() => {
+            this.handleComplianceRealtimeStateChange();
+        });
     }
 
     ngOnDestroy(): void {
         this.authSub?.unsubscribe();
+        this.profileSub?.unsubscribe();
         this.teardownSessionState();
     }
 
@@ -117,6 +123,10 @@ export class ChatRealtimeService implements OnDestroy {
     }
 
     async refreshConversations(force: boolean = false): Promise<void> {
+        if (this.isRealtimeAccessBlocked()) {
+            this.applyComplianceRealtimeBlock();
+            return;
+        }
         if (this.refreshInFlight && !force)
             return;
 
@@ -129,22 +139,31 @@ export class ChatRealtimeService implements OnDestroy {
             this.unreadUserCountSubject.next(result.unreadUserCount);
             this.unreadSystemCountSubject.next(result.unreadSystemCount);
             this.emitSummaryAlertCandidates(previous, normalized);
-        } catch {
-            // best effort
+        } catch (error) {
+            if (this.isRealtimeComplianceBlockError(error))
+                this.applyComplianceRealtimeBlock();
         } finally {
             this.refreshInFlight = false;
         }
     }
 
     private async startForCurrentSession(): Promise<void> {
+        if (this.isRealtimeAccessBlocked()) {
+            this.applyComplianceRealtimeBlock();
+            return;
+        }
         this.resetRealtimeBootstrapState();
         await this.refreshConversations(true);
+        if (this.complianceRealtimeBlocked || this.isRealtimeAccessBlocked())
+            return;
         await this.connectWebSocket();
     }
 
     private async connectWebSocket(): Promise<void> {
-        if (this.suppressAutomaticRealtimeReconnect)
+        if (this.suppressAutomaticRealtimeReconnect || this.isRealtimeAccessBlocked()) {
+            this.applyComplianceRealtimeBlock();
             return;
+        }
 
         this.closeSocket();
         this.clearPolling();
@@ -361,7 +380,25 @@ export class ChatRealtimeService implements OnDestroy {
         this.activeConversationIdSubject.next(null);
         this.notifiedMessageIdsByConversation.clear();
         this.handledAlertKeys.clear();
+        this.complianceRealtimeBlocked = false;
         this.resetRealtimeBootstrapState();
+    }
+
+    private handleComplianceRealtimeStateChange(): void {
+        if (!this.initialized || this.userSvc.CurrentUserUid.length < 1)
+            return;
+
+        if (this.isRealtimeAccessBlocked()) {
+            this.applyComplianceRealtimeBlock();
+            return;
+        }
+
+        if (!this.complianceRealtimeBlocked)
+            return;
+
+        this.complianceRealtimeBlocked = false;
+        this.resetRealtimeBootstrapState();
+        void this.startForCurrentSession();
     }
 
     private clearQueuedConversationRefresh(): void {
@@ -372,6 +409,11 @@ export class ChatRealtimeService implements OnDestroy {
     }
 
     private shouldRetryRealtimeBootstrap(error: unknown): boolean {
+        if (this.isRealtimeComplianceBlockError(error)) {
+            this.applyComplianceRealtimeBlock();
+            return false;
+        }
+
         if (this.isPublishedRealtimeContractError(error)) {
             this.suppressAutomaticRealtimeReconnect = true;
             return false;
@@ -389,6 +431,14 @@ export class ChatRealtimeService implements OnDestroy {
     }
 
     private reportRealtimeBootstrapError(error: unknown): void {
+        if (this.isRealtimeComplianceBlockError(error)) {
+            console.info(
+                '[chat-realtime] Se detienen polling y reintentos websocket mientras el actor tenga normas de uso pendientes o la cuenta esté bloqueada.',
+                error
+            );
+            return;
+        }
+
         if (this.isPublishedRealtimeContractError(error)) {
             console.error(
                 '[chat-realtime] El ticket realtime no devolvio websocketUrl en despliegue no local. Se mantiene polling pero no se reintentara websocket automaticamente.',
@@ -412,6 +462,28 @@ export class ChatRealtimeService implements OnDestroy {
     private isGatewayBootstrapUnavailableError(error: unknown): boolean {
         return error instanceof ProfileApiError
             && [0, 502, 503, 504].includes(Number(error.status ?? 0));
+    }
+
+    private isRealtimeComplianceBlockError(error: unknown): boolean {
+        const restriction = typeof this.userSvc.resolveComplianceRestrictionFromError === 'function'
+            ? this.userSvc.resolveComplianceRestrictionFromError(error, 'usage')
+            : null;
+        return restriction === 'mustAcceptUsage' || restriction === 'banned';
+    }
+
+    private isRealtimeAccessBlocked(): boolean {
+        const restriction = typeof this.userSvc.getAccessRestriction === 'function'
+            ? this.userSvc.getAccessRestriction('usage')
+            : null;
+        return restriction === 'mustAcceptUsage' || restriction === 'banned';
+    }
+
+    private applyComplianceRealtimeBlock(): void {
+        this.complianceRealtimeBlocked = true;
+        this.suppressAutomaticRealtimeReconnect = true;
+        this.clearPolling();
+        this.clearReconnect();
+        this.closeSocket();
     }
 
     private resetRealtimeBootstrapState(): void {

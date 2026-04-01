@@ -14,6 +14,8 @@ import { UserProfileNavigationService } from './user-profile-navigation.service'
 import { UserSettingsService } from './user-settings.service';
 import { UserService } from './user.service';
 
+const FLOATING_SETTINGS_DRAFT_STORAGE_PREFIX = 'f35:chat-floating:draft:';
+
 export interface FloatingChatListRuntimeState {
     open: boolean;
     mode: ChatFloatingWindowState['mode'];
@@ -336,44 +338,19 @@ export class ChatFloatingService implements OnDestroy {
 
     private async bootstrapForCurrentUser(): Promise<void> {
         this.automaticPersistenceBlocked = false;
+        const currentUid = `${this.bootstrappedUid ?? ''}`.trim();
         try {
             const settings = await this.userSettingsSvc.loadSettings(true);
             this.applyProfileSettings(settings.perfil);
-            const persistedFloating = settings.mensajeria_flotante;
-
-            const listPersisted = persistedFloating?.ventana_chat ?? null;
-            this.listWindowSubject.next(listPersisted
-                ? {
-                    open: this.isAutoOpenListEnabled,
-                    mode: listPersisted.mode,
-                    restoredPlacement: listPersisted.restoredPlacement ? { ...listPersisted.restoredPlacement } : null,
-                    minimizedPlacement: listPersisted.minimizedPlacement ? { ...listPersisted.minimizedPlacement } : null,
-                    zIndex: this.nextZIndex(),
-                    updatedAt: listPersisted.updatedAt,
-                }
-                : (this.isAutoOpenListEnabled
-                    ? {
-                        open: true,
-                        mode: 'window',
-                        restoredPlacement: null,
-                        minimizedPlacement: null,
-                        zIndex: this.nextZIndex(),
-                        updatedAt: Date.now(),
-                    }
-                    : null));
-
-            const bubbles = this.isBubbleFeatureEnabled
-                ? (persistedFloating?.burbujas_abiertas ?? []).map((item) => ({
-                    conversationId: item.conversationId,
-                    mode: item.mode,
-                    restoredPlacement: item.restoredPlacement ? { ...item.restoredPlacement } : null,
-                    bubblePlacement: item.bubblePlacement ? { ...item.bubblePlacement } : null,
-                    zIndex: this.nextZIndex(),
-                    updatedAt: item.updatedAt,
-                }))
-                : [];
-            this.bubblesSubject.next(this.normalizeBubbleCollisions(bubbles));
+            const cachedFloating = this.readCachedFloatingSettingsDraft(currentUid);
+            const persistedFloating = this.pickMostRecentFloatingSettings(settings.mensajeria_flotante, cachedFloating);
+            this.applyPersistedFloatingSettings(persistedFloating);
         } catch {
+            const cachedFloating = this.readCachedFloatingSettingsDraft(currentUid);
+            if (cachedFloating) {
+                this.applyPersistedFloatingSettings(cachedFloating);
+                return;
+            }
             this.resetState();
         }
     }
@@ -394,7 +371,10 @@ export class ChatFloatingService implements OnDestroy {
     }
 
     private schedulePersist(): void {
-        if (this.userSvc.CurrentUserUid.length < 1 || this.automaticPersistenceBlocked)
+        if (this.userSvc.CurrentUserUid.length < 1)
+            return;
+        this.cacheFloatingSettingsDraft();
+        if (this.automaticPersistenceBlocked)
             return;
         this.clearPersistTimer();
         this.persistTimer = window.setTimeout(() => {
@@ -415,31 +395,13 @@ export class ChatFloatingService implements OnDestroy {
 
         try {
             const currentSettings = await this.userSettingsSvc.loadSettings();
-            const listWindow = this.buildPersistedListWindowState();
-            const bubbles = this.isBubbleFeatureEnabled ? this.bubblesSubject.value : [];
-            const floatingSettings: ChatFloatingSettings = {
-                version: 1,
-                ventana_chat: {
-                    version: 1,
-                    mode: listWindow.mode,
-                    restoredPlacement: listWindow.restoredPlacement ? { ...listWindow.restoredPlacement } : null,
-                    minimizedPlacement: listWindow.minimizedPlacement ? { ...listWindow.minimizedPlacement } : null,
-                    updatedAt: listWindow.updatedAt,
-                },
-                burbujas_abiertas: bubbles.map((item) => ({
-                    version: 1,
-                    conversationId: item.conversationId,
-                    mode: item.mode,
-                    restoredPlacement: item.restoredPlacement ? { ...item.restoredPlacement } : null,
-                    bubblePlacement: item.bubblePlacement ? { ...item.bubblePlacement } : null,
-                    updatedAt: item.updatedAt,
-                })),
-            };
+            const floatingSettings = this.buildFloatingSettingsPayload();
 
             await this.userSettingsSvc.saveSettings({
                 ...currentSettings,
                 mensajeria_flotante: floatingSettings,
             });
+            this.clearCachedFloatingSettingsDraft();
         } catch (error) {
             if (this.isUnsupportedSettingsShapeError(error)) {
                 this.automaticPersistenceBlocked = true;
@@ -450,6 +412,7 @@ export class ChatFloatingService implements OnDestroy {
 
     private async persistStateSoon(): Promise<void> {
         this.clearPersistTimer();
+        this.cacheFloatingSettingsDraft();
         if (this.persistInFlight) {
             await this.persistInFlight.catch(() => undefined);
         }
@@ -474,6 +437,139 @@ export class ChatFloatingService implements OnDestroy {
             zIndex: this.nextZIndex(),
             updatedAt: Date.now(),
         };
+    }
+
+    private buildFloatingSettingsPayload(): ChatFloatingSettings {
+        const listWindow = this.buildPersistedListWindowState();
+        const bubbles = this.isBubbleFeatureEnabled ? this.bubblesSubject.value : [];
+        return {
+            version: 1,
+            ventana_chat: {
+                version: 1,
+                mode: listWindow.mode,
+                restoredPlacement: listWindow.restoredPlacement ? { ...listWindow.restoredPlacement } : null,
+                minimizedPlacement: listWindow.minimizedPlacement ? { ...listWindow.minimizedPlacement } : null,
+                updatedAt: listWindow.updatedAt,
+            },
+            burbujas_abiertas: bubbles.map((item) => ({
+                version: 1,
+                conversationId: item.conversationId,
+                mode: item.mode,
+                restoredPlacement: item.restoredPlacement ? { ...item.restoredPlacement } : null,
+                bubblePlacement: item.bubblePlacement ? { ...item.bubblePlacement } : null,
+                updatedAt: item.updatedAt,
+            })),
+        };
+    }
+
+    private applyPersistedFloatingSettings(persistedFloating: ChatFloatingSettings | null | undefined): void {
+        const listPersisted = persistedFloating?.ventana_chat ?? null;
+        this.listWindowSubject.next(listPersisted
+            ? {
+                open: this.isAutoOpenListEnabled,
+                mode: listPersisted.mode,
+                restoredPlacement: listPersisted.restoredPlacement ? { ...listPersisted.restoredPlacement } : null,
+                minimizedPlacement: listPersisted.minimizedPlacement ? { ...listPersisted.minimizedPlacement } : null,
+                zIndex: this.nextZIndex(),
+                updatedAt: listPersisted.updatedAt,
+            }
+            : (this.isAutoOpenListEnabled
+                ? {
+                    open: true,
+                    mode: 'window',
+                    restoredPlacement: null,
+                    minimizedPlacement: null,
+                    zIndex: this.nextZIndex(),
+                    updatedAt: Date.now(),
+                }
+                : null));
+
+        const bubbles = this.isBubbleFeatureEnabled
+            ? (persistedFloating?.burbujas_abiertas ?? []).map((item) => ({
+                conversationId: item.conversationId,
+                mode: item.mode,
+                restoredPlacement: item.restoredPlacement ? { ...item.restoredPlacement } : null,
+                bubblePlacement: item.bubblePlacement ? { ...item.bubblePlacement } : null,
+                zIndex: this.nextZIndex(),
+                updatedAt: item.updatedAt,
+            }))
+            : [];
+        this.bubblesSubject.next(this.normalizeBubbleCollisions(bubbles));
+    }
+
+    private cacheFloatingSettingsDraft(): void {
+        const currentUid = `${this.userSvc.CurrentUserUid ?? ''}`.trim();
+        if (currentUid.length < 1)
+            return;
+
+        try {
+            localStorage.setItem(
+                this.buildFloatingDraftStorageKey(currentUid),
+                JSON.stringify(this.buildFloatingSettingsPayload())
+            );
+        } catch {
+            // noop
+        }
+    }
+
+    private readCachedFloatingSettingsDraft(uid: string): ChatFloatingSettings | null {
+        const normalizedUid = `${uid ?? ''}`.trim();
+        if (normalizedUid.length < 1)
+            return null;
+
+        try {
+            const raw = localStorage.getItem(this.buildFloatingDraftStorageKey(normalizedUid));
+            if (!raw)
+                return null;
+            const parsed = JSON.parse(raw);
+            return parsed && typeof parsed === 'object'
+                ? parsed as ChatFloatingSettings
+                : null;
+        } catch {
+            return null;
+        }
+    }
+
+    private clearCachedFloatingSettingsDraft(): void {
+        const currentUid = `${this.userSvc.CurrentUserUid ?? ''}`.trim();
+        if (currentUid.length < 1)
+            return;
+
+        try {
+            localStorage.removeItem(this.buildFloatingDraftStorageKey(currentUid));
+        } catch {
+            // noop
+        }
+    }
+
+    private buildFloatingDraftStorageKey(uid: string): string {
+        return `${FLOATING_SETTINGS_DRAFT_STORAGE_PREFIX}${uid}`;
+    }
+
+    private pickMostRecentFloatingSettings(
+        persisted: ChatFloatingSettings | null | undefined,
+        cached: ChatFloatingSettings | null | undefined
+    ): ChatFloatingSettings | null {
+        if (!persisted && !cached)
+            return null;
+        if (!persisted)
+            return cached ?? null;
+        if (!cached)
+            return persisted ?? null;
+        return this.getFloatingSettingsUpdatedAt(cached) >= this.getFloatingSettingsUpdatedAt(persisted)
+            ? cached
+            : persisted;
+    }
+
+    private getFloatingSettingsUpdatedAt(settings: ChatFloatingSettings | null | undefined): number {
+        if (!settings)
+            return 0;
+
+        const candidates = [
+            Number(settings.ventana_chat?.updatedAt ?? 0),
+            ...(settings.burbujas_abiertas ?? []).map((item) => Number(item.updatedAt ?? 0)),
+        ];
+        return candidates.reduce((max, current) => Number.isFinite(current) && current > max ? current : max, 0);
     }
 
     private normalizeBubbleCollisions(

@@ -1,15 +1,26 @@
 import { TestBed } from '@angular/core/testing';
 
 import { ApiActionGuardService } from './api-action-guard.service';
+import { UserProfileApiService } from './user-profile-api.service';
 
 describe('ApiActionGuardService', () => {
     let service: ApiActionGuardService;
+    let userProfileApiSvc: jasmine.SpyObj<UserProfileApiService>;
 
     beforeEach(() => {
         sessionStorage.clear();
         jasmine.clock().install();
         jasmine.clock().mockDate(new Date('2026-03-28T10:00:00.000Z'));
-        TestBed.configureTestingModule({});
+        userProfileApiSvc = jasmine.createSpyObj<UserProfileApiService>('UserProfileApiService', ['reportAbuseLock']);
+        userProfileApiSvc.reportAbuseLock.and.resolveTo({
+            status: 'ignored',
+            compliance: null,
+        } as any);
+        TestBed.configureTestingModule({
+            providers: [
+                { provide: UserProfileApiService, useValue: userProfileApiSvc },
+            ],
+        });
         service = TestBed.inject(ApiActionGuardService);
     });
 
@@ -52,6 +63,39 @@ describe('ApiActionGuardService', () => {
         expect(decision.status).toBe('session_locked');
         expect(decision.blocksToday).toBe(3);
         expect(decision.sessionLocked).toBeTrue();
+    });
+
+    it('escala abuse-lock cuando la sesión entra en session_locked', async () => {
+        for (let strike = 0; strike < 3; strike += 1) {
+            for (let index = 0; index < 6; index += 1)
+                service.shouldAllow('uid-1', `campaign.create.${strike}`);
+            jasmine.clock().tick(service.cooldownMs + 1);
+        }
+
+        service.shouldAllow('uid-1', 'campaign.update');
+        await Promise.resolve();
+
+        expect(userProfileApiSvc.reportAbuseLock).toHaveBeenCalledWith({
+            reason: 'frontend_api_button_spam',
+            clientDate: '2026-03-28',
+            localBlockCountToday: 3,
+            source: 'web',
+        });
+    });
+
+    it('no duplica el mismo abuse-lock si la sesión ya quedó bloqueada y el reporte previo fue aceptado', async () => {
+        for (let strike = 0; strike < 3; strike += 1) {
+            for (let index = 0; index < 6; index += 1)
+                service.shouldAllow('uid-1', `campaign.create.${strike}`);
+            jasmine.clock().tick(service.cooldownMs + 1);
+        }
+
+        service.shouldAllow('uid-1', 'campaign.update');
+        await Promise.resolve();
+        service.shouldAllow('uid-1', 'campaign.update');
+        await Promise.resolve();
+
+        expect(userProfileApiSvc.reportAbuseLock.calls.count()).toBe(1);
     });
 
     it('reinicia el contador cuando cambia el día', () => {

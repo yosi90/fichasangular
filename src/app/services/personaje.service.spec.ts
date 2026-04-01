@@ -1,6 +1,7 @@
-import { of } from 'rxjs';
+import { of, throwError } from 'rxjs';
 import Swal from 'sweetalert2';
 import { Personaje } from '../interfaces/personaje';
+import { ProfileApiError } from '../interfaces/user-account';
 import { FirebaseInjectionContextService } from './firebase-injection-context.service';
 import { PersonajeService } from './personaje.service';
 
@@ -766,6 +767,51 @@ describe('PersonajeService', () => {
         expect(httpMock.post).toHaveBeenCalled();
         expect(response.idPersonaje).toBe(22);
         expect(response.ownerUserId).toBe('00000000-0000-0000-0000-000000000009');
+    });
+
+    it('crearPersonajeApiDesdeCreacion preserva status y code en 403 funcionales', async () => {
+        const httpMock = {
+            post: jasmine.createSpy('post').and.returnValue(throwError(() => ({
+                status: 403,
+                error: {
+                    code: 'mustAcceptCreation',
+                    message: 'Debes aceptar las normas de creación vigentes antes de continuar.',
+                },
+            }))),
+        } as any;
+        const service = crearServicio(httpMock);
+        let captured: any = null;
+
+        try {
+            await service.crearPersonajeApiDesdeCreacion({
+                personaje: {
+                    nombre: 'Aldric',
+                    ataqueBase: '1',
+                    idRaza: 1,
+                    idTipoCriatura: 1,
+                    idRegion: 0,
+                    visible_otros_usuarios: false,
+                    oficial: true,
+                },
+                caracteristicas: {
+                    fuerza: { valor: 10, minimo: 0, perdido: false },
+                    destreza: { valor: 10, minimo: 0, perdido: false },
+                    constitucion: { valor: 10, minimo: 0, perdido: false },
+                    inteligencia: { valor: 10, minimo: 0, perdido: false },
+                    sabiduria: { valor: 10, minimo: 0, perdido: false },
+                    carisma: { valor: 10, minimo: 0, perdido: false },
+                },
+                tamano: { idTamano: 1, origen: 'Web' },
+            });
+            fail('Se esperaba un error funcional 403.');
+        } catch (error: any) {
+            captured = error;
+        }
+
+        expect(captured instanceof ProfileApiError).toBeTrue();
+        expect(captured?.code).toBe('mustAcceptCreation');
+        expect(captured?.status).toBe(403);
+        expect(captured?.message).toBe('Debes aceptar las normas de creación vigentes antes de continuar.');
     });
 
     it('guardarPersonajeEnFirebase escribe detalle y simple con forma compatible', async () => {

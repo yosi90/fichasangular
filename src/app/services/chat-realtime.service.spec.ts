@@ -560,4 +560,104 @@ describe('ChatRealtimeService', () => {
         expect((service as any).suppressAutomaticRealtimeReconnect).toBeTrue();
         expect(consoleWarnSpy).toHaveBeenCalled();
     }));
+
+    it('detiene polling y reconnect cuando ws-ticket responde USAGE_POLICY_ACCEPTANCE_REQUIRED', fakeAsync(() => {
+        const userSvc = {
+            isLoggedIn$: new BehaviorSubject<boolean>(false),
+            currentPrivateProfile$: new BehaviorSubject<any>(null),
+            CurrentUserUid: 'uid-propio',
+            getAccessRestriction: jasmine.createSpy('getAccessRestriction').and.returnValue(null),
+            resolveComplianceRestrictionFromError: jasmine.createSpy('resolveComplianceRestrictionFromError').and.callFake((error: any) =>
+                `${error?.code ?? ''}` === 'USAGE_POLICY_ACCEPTANCE_REQUIRED' ? 'mustAcceptUsage' : null
+            ),
+        } as any;
+        const requestWebSocketTicket = jasmine.createSpy('requestWebSocketTicket').and.rejectWith(
+            new ProfileApiError('Forbidden', 'USAGE_POLICY_ACCEPTANCE_REQUIRED', 403)
+        );
+        const service = new ChatRealtimeService(
+            { currentUser: { getIdToken: async () => 'token' } } as any,
+            userSvc,
+            {
+                parseWebSocketEvent: (raw: any) => raw,
+                listConversations: jasmine.createSpy('listConversations').and.resolveTo({
+                    items: [],
+                    unreadUserCount: 0,
+                    unreadSystemCount: 0,
+                }),
+                requestWebSocketTicket,
+                buildWebSocketUrl: jasmine.createSpy('buildWebSocketUrl').and.returnValue('ws://test/ws/chat'),
+            } as any,
+        );
+        const scheduleReconnectSpy = spyOn<any>(service, 'scheduleReconnect').and.callThrough();
+        const clearPollingSpy = spyOn<any>(service, 'clearPolling').and.callThrough();
+        spyOn(window, 'setTimeout').and.returnValue(123 as any);
+
+        (service as any).connectWebSocket();
+        tick();
+
+        expect(requestWebSocketTicket).toHaveBeenCalled();
+        expect(scheduleReconnectSpy).not.toHaveBeenCalled();
+        expect(clearPollingSpy).toHaveBeenCalled();
+        expect((service as any).complianceRealtimeBlocked).toBeTrue();
+    }));
+
+    it('reanuda la sesión realtime cuando el perfil deja de requerir usage', fakeAsync(() => {
+        const isLoggedIn$ = new BehaviorSubject<boolean>(false);
+        const currentPrivateProfile$ = new BehaviorSubject<any>(null);
+        let blockedByCompliance = true;
+        const userSvc = {
+            isLoggedIn$,
+            currentPrivateProfile$,
+            CurrentUserUid: 'uid-propio',
+            getAccessRestriction: jasmine.createSpy('getAccessRestriction').and.callFake(() => blockedByCompliance ? 'mustAcceptUsage' : null),
+            resolveComplianceRestrictionFromError: jasmine.createSpy('resolveComplianceRestrictionFromError').and.callFake((error: any) =>
+                `${error?.code ?? ''}` === 'USAGE_POLICY_ACCEPTANCE_REQUIRED' ? 'mustAcceptUsage' : null
+            ),
+        } as any;
+        const listConversations = jasmine.createSpy('listConversations').and.resolveTo({
+            items: [],
+            unreadUserCount: 0,
+            unreadSystemCount: 0,
+        });
+        const service = new ChatRealtimeService(
+            { currentUser: { getIdToken: async () => 'token' } } as any,
+            userSvc,
+            {
+                parseWebSocketEvent: (raw: any) => raw,
+                listConversations,
+                requestWebSocketTicket: jasmine.createSpy('requestWebSocketTicket').and.resolveTo({
+                    ticket: 'ticket-ok',
+                    websocketUrl: 'ws://test/ws/chat',
+                }),
+                buildWebSocketUrl: jasmine.createSpy('buildWebSocketUrl').and.returnValue('ws://test/ws/chat'),
+            } as any,
+        );
+        const startForCurrentSessionSpy = spyOn<any>(service, 'startForCurrentSession').and.callThrough();
+        const connectWebSocketSpy = spyOn<any>(service, 'connectWebSocket').and.resolveTo();
+
+        service.init();
+        isLoggedIn$.next(true);
+        tick();
+
+        expect(startForCurrentSessionSpy).toHaveBeenCalledTimes(1);
+        expect(listConversations).not.toHaveBeenCalled();
+        expect(connectWebSocketSpy).not.toHaveBeenCalled();
+
+        blockedByCompliance = false;
+        currentPrivateProfile$.next({
+            compliance: {
+                banned: false,
+                mustAcceptUsage: false,
+                mustAcceptCreation: false,
+                activeSanction: null,
+                usage: null,
+                creation: null,
+            },
+        });
+        tick();
+
+        expect(startForCurrentSessionSpy).toHaveBeenCalledTimes(2);
+        expect(listConversations).toHaveBeenCalledTimes(1);
+        expect(connectWebSocketSpy).toHaveBeenCalledTimes(1);
+    }));
 });

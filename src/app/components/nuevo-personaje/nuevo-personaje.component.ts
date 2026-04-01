@@ -4067,6 +4067,20 @@ export class NuevoPersonajeComponent {
     }
 
     private async finalizarPersonajeCompleto(): Promise<void> {
+        const accessRestrictionMessage = this.userSvc.getAccessRestrictionMessage('creation');
+        if (accessRestrictionMessage.length > 0) {
+            await Swal.fire({
+                icon: 'warning',
+                title: 'No puedes finalizar el personaje',
+                text: accessRestrictionMessage,
+                showConfirmButton: true,
+                target: document.body,
+                heightAuto: false,
+                scrollbarPadding: false,
+            });
+            return;
+        }
+
         if (!await this.ensureCampaignCreationRulesSatisfied('finalizacion'))
             return;
 
@@ -4118,7 +4132,8 @@ export class NuevoPersonajeComponent {
             });
             this.resetearEstadoFinalizacion();
         } catch (error: any) {
-            const texto = `${error?.message ?? 'Error no identificado'}`.trim();
+            const complianceMessage = this.userSvc.getComplianceErrorMessage(error, 'creation');
+            const texto = `${complianceMessage || error?.message || 'Error no identificado'}`.trim();
             const titulo = etapa === 'sql'
                 ? 'No se pudo guardar en SQL'
                 : etapa === 'firebase'

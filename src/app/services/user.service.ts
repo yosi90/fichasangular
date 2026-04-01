@@ -16,6 +16,7 @@ import { UserPrivateProfile } from '../interfaces/user-account';
 import { Usuario } from '../interfaces/usuario';
 import { EMPTY_USER_ACL, UserAcl, UserRole, normalizeUserAcl } from '../interfaces/user-acl';
 import { AuthProviderType, UserProfile } from '../interfaces/user-profile';
+import { UserAccessRestrictionReason, UserAccessScope, UserComplianceSnapshot } from '../interfaces/user-moderation';
 import { FirebaseInjectionContextService } from './firebase-injection-context.service';
 import { PrivateUserFirestoreService } from './private-user-firestore.service';
 import { UserProfileApiService } from './user-profile-api.service';
@@ -61,6 +62,70 @@ export class UserService {
         return this.resolveCurrentRole();
     }
 
+    public getCurrentCompliance(): UserComplianceSnapshot | null {
+        const profileCompliance = this.privateProfileSubject.value?.compliance ?? this.privateProfileBase?.compliance ?? null;
+        const aclBanned = this.acl.status?.banned === true;
+
+        if (!profileCompliance && !aclBanned)
+            return null;
+
+        return {
+            banned: profileCompliance?.banned === true || aclBanned,
+            mustAcceptUsage: profileCompliance?.mustAcceptUsage === true,
+            mustAcceptCreation: profileCompliance?.mustAcceptCreation === true,
+            activeSanction: profileCompliance?.activeSanction ?? null,
+            usage: profileCompliance?.usage ?? null,
+            creation: profileCompliance?.creation ?? null,
+        };
+    }
+
+    public getAccessRestriction(scope: UserAccessScope = 'usage'): UserAccessRestrictionReason | null {
+        if (!this.sesionAbierta)
+            return null;
+
+        const compliance = this.getCurrentCompliance();
+        if (!compliance)
+            return null;
+        if (compliance.banned)
+            return 'banned';
+        if (compliance.mustAcceptUsage)
+            return 'mustAcceptUsage';
+        if (scope === 'creation' && compliance.mustAcceptCreation)
+            return 'mustAcceptCreation';
+        return null;
+    }
+
+    public canProceed(scope: UserAccessScope = 'usage'): boolean {
+        return this.sesionAbierta && !this.getAccessRestriction(scope);
+    }
+
+    public getAccessRestrictionMessage(scope: UserAccessScope = 'usage'): string {
+        return this.formatAccessRestrictionMessage(this.getAccessRestriction(scope));
+    }
+
+    public resolveComplianceRestrictionFromError(
+        error: any,
+        scope: UserAccessScope = 'usage'
+    ): UserAccessRestrictionReason | null {
+        const localRestriction = this.getAccessRestriction(scope);
+        const status = Number(error?.status ?? 0);
+        const code = this.normalizeFunctionalErrorCode(error?.code);
+
+        if (this.isBannedFunctionalErrorCode(code))
+            return 'banned';
+        if (this.isUsagePolicyFunctionalErrorCode(code))
+            return 'mustAcceptUsage';
+        if (this.isCreationPolicyFunctionalErrorCode(code))
+            return 'mustAcceptCreation';
+        if (status === 403 && localRestriction)
+            return localRestriction;
+        return null;
+    }
+
+    public getComplianceErrorMessage(error: any, scope: UserAccessScope = 'usage'): string {
+        return this.formatAccessRestrictionMessage(this.resolveComplianceRestrictionFromError(error, scope));
+    }
+
     constructor(
         private auth: Auth,
         private db: Database,
@@ -80,7 +145,7 @@ export class UserService {
     public can(resource: string, action: string): boolean {
         if (!this.sesionAbierta)
             return false;
-        if (this.isBanned())
+        if (!this.canProceed(this.resolveActionScope(action)))
             return false;
 
         if (this.isAdmin())
@@ -103,6 +168,10 @@ export class UserService {
         const base = 'No dispones de los permisos necesarios para realizar esta acción.';
         if (!this.sesionAbierta)
             return `${base} Regístrate o inicia sesión para poder solicitar acceso.`;
+
+        const restrictionMessage = this.getAccessRestrictionMessage('creation');
+        if (restrictionMessage.length > 0)
+            return restrictionMessage;
 
         const role = this.resolveCurrentRole();
         if (role === 'jugador')
@@ -196,10 +265,13 @@ export class UserService {
     }
 
     public setCurrentPrivateProfile(profile: UserPrivateProfile | null): void {
-        this.privateProfileBase = profile;
-        const effectiveProfile = this.buildEffectivePrivateProfile(profile);
+        const mergedProfile = this.mergeIncomingPrivateProfile(profile);
+        this.privateProfileBase = mergedProfile;
+        const effectiveProfile = this.buildEffectivePrivateProfile(mergedProfile);
         this.privateProfileSubject.next(effectiveProfile);
+        this.isBannedSubject.next(this.isBanned());
         this.actualizarPermisosDesdeAcl();
+        this.evaluarSesionBaneada();
 
         if (!effectiveProfile || !this.sesionAbierta)
             return;
@@ -424,7 +496,7 @@ export class UserService {
     }
 
     private isBanned(): boolean {
-        return this.acl.status?.banned === true;
+        return this.getCurrentCompliance()?.banned === true;
     }
 
     private actualizarPermisosDesdeAcl(): void {
@@ -519,7 +591,7 @@ export class UserService {
             // Mantiene sesión y permisos aunque falle escritura de perfil.
         }
 
-        if (!this.userProfileApiSvc || this.privateUserFirestoreSvc)
+        if (!this.userProfileApiSvc)
             return;
 
         try {
@@ -568,6 +640,27 @@ export class UserService {
 
     private normalizeAuthErrorCode(error: any): string {
         return `${error?.code ?? ''}`.trim().toLowerCase();
+    }
+
+    private normalizeFunctionalErrorCode(value: unknown): string {
+        return `${value ?? ''}`
+            .trim()
+            .toLowerCase()
+            .replace(/[^a-z0-9]/g, '');
+    }
+
+    private isBannedFunctionalErrorCode(code: string): boolean {
+        return code.includes('banned');
+    }
+
+    private isUsagePolicyFunctionalErrorCode(code: string): boolean {
+        return code.includes('mustacceptusage')
+            || code.includes('usagepolicyacceptancerequired');
+    }
+
+    private isCreationPolicyFunctionalErrorCode(code: string): boolean {
+        return code.includes('mustacceptcreation')
+            || code.includes('creationpolicyacceptancerequired');
     }
 
     private resolveAuthErrorMessage(
@@ -622,6 +715,36 @@ export class UserService {
             ...profile,
             role: this.resolveCurrentRole(profile),
             permissions: this.mergeEffectivePermissions(profile.permissions, this.acl.permissions),
+            compliance: this.mergeEffectiveCompliance(profile.compliance),
+        };
+    }
+
+    private mergeIncomingPrivateProfile(profile: UserPrivateProfile | null): UserPrivateProfile | null {
+        if (!profile)
+            return null;
+
+        const current = this.privateProfileBase;
+        if (!current || current.uid !== profile.uid)
+            return profile;
+
+        return {
+            ...profile,
+            compliance: profile.compliance ?? current.compliance ?? null,
+        };
+    }
+
+    private mergeEffectiveCompliance(profileCompliance: UserComplianceSnapshot | null | undefined): UserComplianceSnapshot | null | undefined {
+        const aclBanned = this.acl.status?.banned === true;
+        if (!profileCompliance && !aclBanned)
+            return profileCompliance;
+
+        return {
+            banned: profileCompliance?.banned === true || aclBanned,
+            mustAcceptUsage: profileCompliance?.mustAcceptUsage === true,
+            mustAcceptCreation: profileCompliance?.mustAcceptCreation === true,
+            activeSanction: profileCompliance?.activeSanction ?? null,
+            usage: profileCompliance?.usage ?? null,
+            creation: profileCompliance?.creation ?? null,
         };
     }
 
@@ -657,5 +780,19 @@ export class UserService {
         if (normalized === 'admin' || normalized === 'colaborador' || normalized === 'master' || normalized === 'jugador')
             return normalized as UserRole;
         return null;
+    }
+
+    private resolveActionScope(action: string): UserAccessScope {
+        return `${action ?? ''}`.trim().toLowerCase() === 'create' ? 'creation' : 'usage';
+    }
+
+    private formatAccessRestrictionMessage(restriction: UserAccessRestrictionReason | null): string {
+        if (restriction === 'banned')
+            return 'Tu cuenta no puede realizar esta acción en este momento.';
+        if (restriction === 'mustAcceptUsage')
+            return 'Debes aceptar las normas de uso vigentes antes de continuar.';
+        if (restriction === 'mustAcceptCreation')
+            return 'Debes aceptar las normas de creación vigentes antes de continuar.';
+        return '';
     }
 }

@@ -139,6 +139,7 @@ describe('AdminUsersService', () => {
             updatedAtUtc: partial.updatedAtUtc ?? null,
             updatedByUserId: partial.updatedByUserId ?? null,
             permissionsCreate: partial.permissionsCreate ?? [{ resource: 'personajes', allowed: true }],
+            moderationSummary: partial.moderationSummary ?? null,
         };
     }
 
@@ -234,6 +235,40 @@ describe('AdminUsersService', () => {
         expect(service.setCalls[1].payload['u1'].roles.type).toBe('admin');
         expect(service.setCalls[1].payload['u2'].permissions.dotes.create).toBeTrue();
         expect(service.cacheSyncMetadataSvcMock.markSuccess).toHaveBeenCalledOnceWith('usuarios_acl_cache', 1);
+    });
+
+    it('syncUsersCacheFromApi preserva moderationSummary y lo expone en filas', async () => {
+        const service = new AdminUsersServiceTestDouble();
+        service.apiUsers = [
+            buildUser({
+                uid: 'u-moderated',
+                moderationSummary: {
+                    incidentCount: 3,
+                    sanctionCount: 1,
+                    lastIncidentAtUtc: '2026-04-01T10:00:00Z',
+                    lastSanctionAtUtc: '2026-04-01T10:00:00Z',
+                    activeSanction: {
+                        sanctionId: 17,
+                        kind: 'temporary',
+                        code: 'cooldown',
+                        name: 'Cooldown',
+                        startsAtUtc: '2026-04-01T10:00:00Z',
+                        endsAtUtc: '2026-04-08T10:00:00Z',
+                        isPermanent: false,
+                    },
+                },
+            }),
+        ];
+
+        await service.syncUsersCacheFromApi();
+        const rows = await firstValueFrom(
+            service.watchUsersAdminView().pipe(filter((value) => value.some((row) => row.uid === 'u-moderated')))
+        );
+        const moderated = rows.find((row) => row.uid === 'u-moderated');
+
+        expect(service.setCalls[1].payload['u-moderated'].moderationSummary.incidentCount).toBe(3);
+        expect(moderated?.moderationSummary?.sanctionCount).toBe(1);
+        expect(moderated?.moderationSummary?.activeSanction?.sanctionId).toBe(17);
     });
 
     it('setBanned persiste en RTDB y hace backup API', async () => {

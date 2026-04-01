@@ -1,29 +1,47 @@
 <div class="tw-w-full tw-px-3 admin-panel-shell">
-    <div class="tw-flex tw-flex-wrap">
-        <div class="tw-w-full">
-            <mat-card class="tw-m-2 tw-p-3 admin-connection-card">
+    <div class="admin-layout">
+        <aside class="admin-nav sombra-caja-sm tw-rounded-md">
+            <div class="admin-nav__items">
                 <button
-                    mat-raised-button
+                    type="button"
+                    *ngFor="let section of sectionItems"
+                    class="admin-nav__item"
+                    [class.admin-nav__item--active]="currentSection === section.id"
+                    (click)="setSection(section.id)">
+                    <mat-icon>{{section.icon}}</mat-icon>
+                    <div class="admin-nav__copy">
+                        <strong>{{section.label}}</strong>
+                        <span>{{section.hint}}</span>
+                    </div>
+                    <span class="admin-nav__badge" *ngIf="section.id === 'role-requests' && pendingRoleRequestsCount > 0">
+                        {{pendingRoleRequestsCount}}
+                    </span>
+                </button>
+            </div>
+
+            <div class="admin-nav__footer">
+                <button
+                    mat-stroked-button
                     class="admin-connection-btn"
                     color="{{serverStatusIcon === 'thumb_up' ? 'accent' : 'warn'}}"
                     (click)="verificar()">
                     <mat-icon class="tw-me-2">{{serverStatusIcon}}</mat-icon>
                     {{serverStatus}}
                 </button>
-            </mat-card>
-        </div>
+            </div>
+        </aside>
 
-        <div class="tw-w-full">
-            <mat-card class="tw-m-2 tw-p-3">
-                <mat-accordion class="admin-accordion">
-                    <mat-expansion-panel #primero [expanded]="syncPanelExpanded">
-                        <mat-expansion-panel-header>
-                            <button mat-stroked-button color="accent"
-                                matTooltip="Solo debe ser usado para inicializar datos en firebase">
-                                <mat-icon>sync_alt</mat-icon>Sincronizar datos entre SQL server y firebase
-                            </button>
-                        </mat-expansion-panel-header>
-                        <div class="sync-list">
+        <main class="admin-main sombra-caja-sm tw-rounded-md">
+            <section class="admin-section" *ngIf="currentSection === 'sync'">
+                <div class="admin-section__header">
+                    <div>
+                        <p class="admin-section__eyebrow">Sincronizacion</p>
+                        <h2>SQL Server y Firebase</h2>
+                        <p class="admin-section__subtitle">Herramientas de resincronizacion y estado de cache del panel admin.</p>
+                    </div>
+                </div>
+
+                <div class="sync-list">
                             <button
                                 *ngFor="let item of syncItemsOrdenados; trackBy: trackBySyncItem"
                                 mat-raised-button
@@ -34,22 +52,11 @@
                                 <span class="sync-item-label">{{item.label}}</span>
                                 <span class="sync-item-date">{{item.lastSuccessTexto}}</span>
                             </button>
-                        </div>
-                    </mat-expansion-panel>
+                </div>
+            </section>
 
-                    <mat-expansion-panel
-                        #segundo
-                        [expanded]="solicitudesPanelExpanded"
-                        (opened)="onSolicitudesPanelOpened()"
-                        (closed)="onSolicitudesPanelClosed()">
-                        <mat-expansion-panel-header>
-                            <button mat-stroked-button color="accent"
-                                matTooltip="Gestionar solicitudes de elevación de rol">
-                                <mat-icon>pending_actions</mat-icon>Solicitudes de rol
-                            </button>
-                        </mat-expansion-panel-header>
-
-                        <div
+            <section class="admin-section" *ngIf="currentSection === 'role-requests'">
+                <div
                             id="admin-role-requests"
                             class="usuarios-admin-panel tw-p-2 admin-role-requests"
                             [class.admin-role-requests--highlight]="resaltarSolicitudesPendientes">
@@ -258,22 +265,11 @@
                                     </div>
                                 </section>
                             </ng-container>
-                        </div>
-                    </mat-expansion-panel>
+                </div>
+            </section>
 
-                    <mat-expansion-panel
-                        #tercero
-                        [expanded]="auditoriaPanelExpanded"
-                        (opened)="onAuditoriaPanelOpened()"
-                        (closed)="onAuditoriaPanelClosed()">
-                        <mat-expansion-panel-header>
-                            <button mat-stroked-button color="accent"
-                                matTooltip="Inspeccionar auditoría REST de creaciones">
-                                <mat-icon>history</mat-icon>Auditoría REST
-                            </button>
-                        </mat-expansion-panel-header>
-
-                        <div class="usuarios-admin-panel tw-p-2 admin-audit-panel">
+            <section class="admin-section" *ngIf="currentSection === 'auditoria'">
+                <div class="usuarios-admin-panel tw-p-2 admin-audit-panel">
                             <div class="admin-audit__filters">
                                 <mat-form-field appearance="outline" class="admin-audit__field">
                                     <mat-label>Actor UID</mat-label>
@@ -430,18 +426,314 @@
                                     </article>
                                 </div>
                             </section>
-                        </div>
-                    </mat-expansion-panel>
+                </div>
+            </section>
 
-                    <mat-expansion-panel #cuarto [expanded]="usuariosPanelExpanded">
-                        <mat-expansion-panel-header>
-                            <button mat-stroked-button color="accent"
-                                matTooltip="Gestionar usuarios, baneos y permisos granulares de creación">
-                                <mat-icon>manage_accounts</mat-icon>Gestionar usuarios y permisos
-                            </button>
-                        </mat-expansion-panel-header>
+            <section class="admin-section" *ngIf="currentSection === 'moderacion'">
+                <div
+                            id="admin-moderation-panel"
+                            class="usuarios-admin-panel tw-p-2 admin-moderation-panel">
+                            <div class="admin-moderation__header">
+                                <div>
+                                    <h3>Lectura operativa</h3>
+                                    <p>Resumen de políticas, supuestos, incidencias, sanciones e historial privado admin-only.</p>
+                                </div>
+                                <button
+                                    mat-stroked-button
+                                    color="accent"
+                                    [disabled]="cargandoModeracionAdmin"
+                                    (click)="cargarModeracionAdmin(true)">
+                                    <mat-icon>{{cargandoModeracionAdmin ? 'hourglass_top' : 'refresh'}}</mat-icon>
+                                    {{cargandoModeracionAdmin ? 'Cargando...' : 'Actualizar lectura admin'}}
+                                </button>
+                            </div>
 
-                        <div class="usuarios-admin-panel tw-p-2">
+                            <div class="usuarios-admin-estado tw-text-center tw-p-2" *ngIf="etiquetaEstadoModeracionAdmin.length > 0">
+                                <mat-chip>{{etiquetaEstadoModeracionAdmin}}</mat-chip>
+                            </div>
+
+                            <ng-container *ngIf="etiquetaEstadoModeracionAdmin.length < 1">
+                                <section class="admin-moderation__section">
+                                    <div class="admin-moderation__section-header">
+                                        <h3>Políticas</h3>
+                                        <p>Borrador admin y versión activa publicada para uso y creación.</p>
+                                    </div>
+
+                                    <div class="admin-moderation__policy-grid">
+                                        <article class="admin-moderation__card" *ngFor="let item of politicasModeracion; trackBy: trackByPolicy">
+                                            <div class="admin-moderation__card-header">
+                                                <h4>{{policyKindLabel(item.kind)}}</h4>
+                                                <mat-chip>{{policyVersionLabel(item)}}</mat-chip>
+                                            </div>
+                                            <p><strong>Borrador:</strong> {{item.draft?.title || 'Sin título'}}</p>
+                                            <p><strong>Draft actualizado:</strong> {{formatearFechaUtc(item.draft?.updatedAtUtc, 'Sin fecha')}}</p>
+                                            <p><strong>Activa:</strong> {{item.active?.title || 'Sin política publicada'}}</p>
+                                            <p><strong>Publicada:</strong> {{formatearFechaUtc(item.active?.publishedAtUtc, 'Sin fecha')}}</p>
+                                            <p class="admin-moderation__excerpt">{{policyExcerpt(item)}}</p>
+                                        </article>
+                                    </div>
+                                </section>
+
+                                <section class="admin-moderation__section">
+                                    <div class="admin-moderation__section-header">
+                                        <h3>Supuestos moderables</h3>
+                                        <p>Configuración operativa de casos y escalera de reincidencia.</p>
+                                    </div>
+
+                                    <div class="usuarios-admin-estado tw-text-center tw-p-2" *ngIf="supuestosModerables.length < 1">
+                                        <mat-chip>No hay supuestos moderables visibles</mat-chip>
+                                    </div>
+
+                                    <div class="tabla-scroll usuarios-admin-tabla-scroll" *ngIf="supuestosModerables.length > 0">
+                                        <table class="tabla-usuarios-admin tabla-usuarios-admin--moderation">
+                                            <thead>
+                                                <tr>
+                                                    <th>Caso</th>
+                                                    <th>Modo fuente</th>
+                                                    <th>Estado</th>
+                                                    <th>Etapas</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <tr *ngFor="let item of supuestosModerables; trackBy: trackByModerationCase">
+                                                    <td>
+                                                        <div class="usuario-principal">{{moderationCaseLabel(item)}}</div>
+                                                        <div class="usuario-secundario">{{item.code || '-'}}</div>
+                                                    </td>
+                                                    <td>{{item.sourceMode || 'Sin modo'}}</td>
+                                                    <td>{{item.deleted ? 'Eliminado lógico' : 'Activo'}}</td>
+                                                    <td>
+                                                        <div class="admin-moderation__stack" *ngIf="item.stages.length > 0; else noStages">
+                                                            <div class="usuario-secundario" *ngFor="let stage of item.stages; trackBy: trackByModerationStage">
+                                                                {{moderationStageLabel(stage)}}
+                                                            </div>
+                                                        </div>
+                                                        <ng-template #noStages>
+                                                            <span class="usuario-secundario">Sin etapas configuradas</span>
+                                                        </ng-template>
+                                                    </td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </section>
+
+                                <section class="admin-moderation__section">
+                                    <div class="admin-moderation__section-header">
+                                        <h3>Incidencias recientes</h3>
+                                        <p>Confirmaciones y sanciones aplicadas por backend en la vertical de moderación.</p>
+                                    </div>
+
+                                    <div class="usuarios-admin-estado tw-text-center tw-p-2" *ngIf="incidenciasModeracion.length < 1">
+                                        <mat-chip>No hay incidencias recientes</mat-chip>
+                                    </div>
+
+                                    <div class="tabla-scroll usuarios-admin-tabla-scroll" *ngIf="incidenciasModeracion.length > 0">
+                                        <table class="tabla-usuarios-admin tabla-usuarios-admin--moderation">
+                                            <thead>
+                                                <tr>
+                                                    <th>Fecha</th>
+                                                    <th>Usuario</th>
+                                                    <th>Caso</th>
+                                                    <th>Modo</th>
+                                                    <th>Resultado</th>
+                                                    <th>Mensaje</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <tr *ngFor="let item of incidenciasModeracion; trackBy: trackByModerationIncident">
+                                                    <td>{{formatearFechaUtc(item.confirmedAtUtc || item.createdAtUtc)}}</td>
+                                                    <td>
+                                                        <div class="usuario-principal">{{moderationIncidentTargetLabel(item)}}</div>
+                                                        <div class="usuario-secundario">{{item.targetUid || '-'}}</div>
+                                                    </td>
+                                                    <td>
+                                                        <div class="usuario-principal">{{item.caseName || item.caseCode || '-'}}</div>
+                                                        <div class="usuario-secundario">{{item.caseCode || '-'}}</div>
+                                                    </td>
+                                                    <td>{{moderationModeLabel(item.mode)}}</td>
+                                                    <td>{{moderationResultLabel(item.result)}}</td>
+                                                    <td>
+                                                        <div class="admin-moderation__message">{{item.userVisibleMessage || 'Sin mensaje visible'}}</div>
+                                                        <div class="usuario-secundario" *ngIf="item.internalDescription">{{item.internalDescription}}</div>
+                                                    </td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </section>
+
+                                <section class="admin-moderation__section">
+                                    <div class="admin-moderation__section-header">
+                                        <h3>Sanciones recientes</h3>
+                                        <p>Vista rápida de sanciones activas o históricas sin pedir detalle por usuario.</p>
+                                    </div>
+
+                                    <div class="usuarios-admin-estado tw-text-center tw-p-2" *ngIf="sancionesModeracion.length < 1">
+                                        <mat-chip>No hay sanciones visibles</mat-chip>
+                                    </div>
+
+                                    <div class="tabla-scroll usuarios-admin-tabla-scroll" *ngIf="sancionesModeracion.length > 0">
+                                        <table class="tabla-usuarios-admin tabla-usuarios-admin--moderation">
+                                            <thead>
+                                                <tr>
+                                                    <th>Inicio</th>
+                                                    <th>Usuario</th>
+                                                    <th>Sanción</th>
+                                                    <th>Caso</th>
+                                                    <th>Estado</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <tr *ngFor="let item of sancionesModeracion; trackBy: trackByModerationSanction">
+                                                    <td>{{formatearFechaUtc(item.startsAtUtc)}}</td>
+                                                    <td>
+                                                        <div class="usuario-principal">{{moderationIncidentTargetLabel(item)}}</div>
+                                                        <div class="usuario-secundario">{{item.targetUid || '-'}}</div>
+                                                    </td>
+                                                    <td>{{moderationSanctionLabel(item)}}</td>
+                                                    <td>{{item.caseName || item.caseCode || '-'}}</td>
+                                                    <td>{{item.active ? 'Activa' : 'Histórica'}}</td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </section>
+
+                                <section class="admin-moderation__section">
+                                    <div class="admin-moderation__section-header">
+                                        <h3>Historial por usuario</h3>
+                                        <p>Timeline admin canónica con campos privados, usando `GET /usuarios/admin/moderation/users/&lt;uid&gt;/history`.</p>
+                                    </div>
+
+                                    <div class="admin-moderation__history-actions usuarios-admin-actions tw-mb-2">
+                                        <mat-form-field appearance="outline" class="admin-moderation__history-field">
+                                            <mat-label>UID usuario</mat-label>
+                                            <input matInput [(ngModel)]="moderacionUsuarioUid" placeholder="firebase-uid">
+                                        </mat-form-field>
+                                        <button
+                                            mat-raised-button
+                                            color="primary"
+                                            [disabled]="cargandoHistorialModeracionUsuario || moderacionUsuarioUid.trim().length < 1"
+                                            (click)="cargarHistorialModeracionUsuario(true)">
+                                            <mat-icon>{{cargandoHistorialModeracionUsuario ? 'hourglass_top' : 'manage_search'}}</mat-icon>
+                                            {{cargandoHistorialModeracionUsuario ? 'Cargando...' : 'Cargar historial'}}
+                                        </button>
+                                        <button
+                                            mat-stroked-button
+                                            color="accent"
+                                            [disabled]="cargandoHistorialModeracionUsuario"
+                                            (click)="limpiarModeracionUsuario()">
+                                            Limpiar
+                                        </button>
+                                        <span class="usuario-secundario">{{historialModeracionUsuarioPaginaTexto}}</span>
+                                        <button
+                                            mat-stroked-button
+                                            [disabled]="!puedePaginaAnteriorHistorialModeracionUsuario"
+                                            (click)="irPaginaAnteriorHistorialModeracionUsuario()">
+                                            Anterior
+                                        </button>
+                                        <button
+                                            mat-stroked-button
+                                            [disabled]="!puedePaginaSiguienteHistorialModeracionUsuario"
+                                            (click)="irPaginaSiguienteHistorialModeracionUsuario()">
+                                            Siguiente
+                                        </button>
+                                    </div>
+
+                                    <div class="usuarios-admin-estado tw-text-center tw-p-2" *ngIf="etiquetaEstadoHistorialModeracionUsuario.length > 0">
+                                        <mat-chip>{{etiquetaEstadoHistorialModeracionUsuario}}</mat-chip>
+                                    </div>
+
+                                    <ng-container *ngIf="previewModeracionUsuario">
+                                        <div class="admin-moderation__summary-grid">
+                                            <article class="admin-moderation__card">
+                                                <h4>Usuario</h4>
+                                                <p><strong>Nombre:</strong> {{previewModeracionUsuario.displayName || 'Sin nombre'}}</p>
+                                                <p><strong>UID:</strong> {{previewModeracionUsuario.uid}}</p>
+                                                <p><strong>Rol:</strong> {{roleLabel(previewModeracionUsuario.role)}}</p>
+                                                <p><strong>Baneado:</strong> {{previewModeracionUsuario.banned ? 'Sí' : 'No'}}</p>
+                                            </article>
+
+                                            <article class="admin-moderation__card" *ngIf="previewModeracionUsuario.moderationSummary">
+                                                <h4>Resumen agregado</h4>
+                                                <p><strong>Incidencias:</strong> {{previewModeracionUsuario.moderationSummary.incidentCount}}</p>
+                                                <p><strong>Sanciones:</strong> {{previewModeracionUsuario.moderationSummary.sanctionCount}}</p>
+                                                <p><strong>Última incidencia:</strong> {{formatearFechaUtc(previewModeracionUsuario.moderationSummary.lastIncidentAtUtc, 'Sin fecha')}}</p>
+                                                <p><strong>Última sanción:</strong> {{formatearFechaUtc(previewModeracionUsuario.moderationSummary.lastSanctionAtUtc, 'Sin fecha')}}</p>
+                                                <p><strong>Activa:</strong> {{moderationSanctionLabel(previewModeracionUsuario.moderationSummary.activeSanction)}}</p>
+                                            </article>
+
+                                            <article class="admin-moderation__card" *ngIf="previewModeracionUsuario.recentModerationHistory?.length">
+                                                <h4>Preview admin ACL</h4>
+                                                <div class="admin-moderation__stack">
+                                                    <div class="usuario-secundario" *ngFor="let item of previewModeracionUsuario.recentModerationHistory">
+                                                        {{formatearFechaUtc(item.confirmedAtUtc || item.createdAtUtc)}} · {{item.caseName || item.caseCode || 'Sin caso'}} · {{moderationResultLabel(item.result)}}
+                                                    </div>
+                                                </div>
+                                            </article>
+                                        </div>
+                                    </ng-container>
+
+                                    <ng-container *ngIf="historialModeracionUsuario">
+                                        <div class="admin-moderation__summary-grid" *ngIf="historialModeracionUsuario.progressByCase.length > 0">
+                                            <article class="admin-moderation__card" *ngFor="let item of historialModeracionUsuario.progressByCase; trackBy: trackByModerationProgress">
+                                                <h4>{{item.caseName || item.caseCode || 'Caso'}}</h4>
+                                                <p>{{moderationProgressLabel(item)}}</p>
+                                            </article>
+                                        </div>
+
+                                        <div class="tabla-scroll usuarios-admin-tabla-scroll" *ngIf="historialModeracionUsuario.items.length > 0">
+                                            <table class="tabla-usuarios-admin tabla-usuarios-admin--moderation-history">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Fecha</th>
+                                                        <th>Caso</th>
+                                                        <th>Modo / resultado</th>
+                                                        <th>Sanción</th>
+                                                        <th>Mensajes</th>
+                                                        <th>Campos privados</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    <tr *ngFor="let item of historialModeracionUsuario.items; trackBy: trackByModerationHistory">
+                                                        <td>{{formatearFechaUtc(item.confirmedAtUtc || item.createdAtUtc)}}</td>
+                                                        <td>
+                                                            <div class="usuario-principal">{{item.caseName || item.caseCode || 'Sin caso'}}</div>
+                                                            <div class="usuario-secundario">{{item.caseCode || '-'}}</div>
+                                                        </td>
+                                                        <td>
+                                                            <div class="usuario-principal">{{moderationModeLabel(item.mode)}}</div>
+                                                            <div class="usuario-secundario">{{moderationResultLabel(item.result)}}</div>
+                                                            <div class="usuario-secundario" *ngIf="moderationHistoryDetailLabel(item).length > 0">
+                                                                {{moderationHistoryDetailLabel(item)}}
+                                                            </div>
+                                                        </td>
+                                                        <td>{{moderationSanctionLabel(item.sanction)}}</td>
+                                                        <td>
+                                                            <div class="admin-moderation__message">{{item.userVisibleMessage || 'Sin mensaje visible'}}</div>
+                                                            <div class="usuario-secundario" *ngIf="item.internalDescription">{{item.internalDescription}}</div>
+                                                        </td>
+                                                        <td>
+                                                            <div class="admin-moderation__private-block" *ngIf="item.dedupKey">
+                                                                <div class="usuario-secundario"><strong>Dedup:</strong> {{item.dedupKey}}</div>
+                                                            </div>
+                                                            <pre *ngIf="moderationObjectPreview(item.progressBefore).length > 0">{{moderationObjectPreview(item.progressBefore)}}</pre>
+                                                            <pre *ngIf="moderationObjectPreview(item.progressAfter).length > 0">{{moderationObjectPreview(item.progressAfter)}}</pre>
+                                                            <pre *ngIf="moderationObjectPreview(item.context).length > 0">{{moderationObjectPreview(item.context)}}</pre>
+                                                        </td>
+                                                    </tr>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </ng-container>
+                                </section>
+                            </ng-container>
+                </div>
+            </section>
+
+            <section class="admin-section" *ngIf="currentSection === 'usuarios'">
+                <div class="usuarios-admin-panel tw-p-2">
                             <mat-form-field appearance="fill" class="tw-w-full tw-mb-2">
                                 <mat-label>Buscar usuario</mat-label>
                                 <input
@@ -493,6 +785,18 @@
                                                 <div class="usuario-principal">{{user.displayName || 'Sin nombre'}}</div>
                                                 <div class="usuario-secundario">{{user.email || '-'}}</div>
                                                 <div class="usuario-secundario">UID: {{user.uid}}</div>
+                                                <div class="usuario-secundario usuario-secundario--moderation">{{moderationSummaryLabel(user)}}</div>
+                                                <div class="usuario-secundario usuario-secundario--moderation" *ngIf="moderationSummaryDetailLabel(user).length > 0">
+                                                    {{moderationSummaryDetailLabel(user)}}
+                                                </div>
+                                                <div class="tw-mt-2">
+                                                    <button
+                                                        mat-stroked-button
+                                                        color="accent"
+                                                        (click)="abrirModeracionUsuario(user)">
+                                                        Ver moderación
+                                                    </button>
+                                                </div>
                                             </td>
                                             <td>{{providerLabel(user.authProvider)}}</td>
                                             <td>
@@ -532,10 +836,8 @@
                                     </tbody>
                                 </table>
                             </div>
-                        </div>
-                    </mat-expansion-panel>
-                </mat-accordion>
-            </mat-card>
-        </div>
+                </div>
+            </section>
+        </main>
     </div>
 </div>

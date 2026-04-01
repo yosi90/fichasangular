@@ -18,6 +18,14 @@
     gap: .85rem
     align-items: flex-start
 
+.social-lfg__refresh-button
+    min-width: 3rem
+    width: 3rem
+    padding: 0
+
+    .mat-icon
+        margin: 0
+
 .social-lfg__layout
     display: grid
     grid-template-columns: minmax(18rem, 24rem) minmax(0, 1fr)
@@ -75,6 +83,9 @@
     overflow: auto
     padding-right: .1rem
 
+.social-lfg__detail--editor
+    overflow: hidden
+
 .social-lfg__panel
     display: flex
     flex-direction: column
@@ -83,6 +94,11 @@
 
 .social-lfg__panel--nested
     background: rgba(255, 255, 255, .03)
+
+.social-lfg__panel--editor
+    flex: 1 1 auto
+    min-height: 0
+    overflow: hidden
 
 .social-lfg__panel-head
     display: flex
@@ -136,12 +152,61 @@
     white-space: pre-wrap
 
 .social-lfg__form
-    display: grid
-    grid-template-columns: repeat(2, minmax(0, 1fr))
+    display: flex
+    flex-direction: column
     gap: .85rem
+    flex: 1 1 auto
+    min-height: 0
+    overflow: auto
+    padding-right: .15rem
 
 .social-lfg__form-full
-    grid-column: 1 / -1
+    width: 100%
+
+.social-lfg__form-row
+    display: grid
+    gap: .85rem
+
+    mat-form-field
+        width: 100%
+
+.social-lfg__form-row--full
+    grid-template-columns: 1fr
+
+.social-lfg__form-row--two
+    grid-template-columns: repeat(2, minmax(0, 1fr))
+
+.social-lfg__form-row--three
+    grid-template-columns: repeat(3, minmax(0, 1fr))
+
+.social-lfg__form-row--four
+    grid-template-columns: repeat(4, minmax(0, 1fr))
+
+.social-lfg__schedule-days
+    display: grid
+    grid-template-columns: repeat(7, minmax(0, 1fr))
+    gap: .6rem
+    width: 100%
+    justify-content: space-between
+
+.social-lfg__schedule-chip
+    width: 100%
+    justify-content: center
+    border-radius: 999px
+
+    .mat-icon
+        margin-right: .25rem
+        font-size: 1rem
+        width: 1rem
+        height: 1rem
+
+.social-lfg__schedule-chip--active
+    background: rgba(194, 24, 91, .16)
+    border-color: rgba(194, 24, 91, .52)
+    color: #fff
+
+.social-lfg__time-field
+    max-width: none
 
 .social-lfg__actions
     display: flex
@@ -236,8 +301,13 @@
         padding-right: 0
 
 @media (max-width: 760px)
-    .social-lfg__form
+    .social-lfg__form-row--two,
+    .social-lfg__form-row--three,
+    .social-lfg__form-row--four
         grid-template-columns: 1fr
+
+    .social-lfg__schedule-days
+        grid-template-columns: repeat(2, minmax(0, 1fr))
 
     .social-lfg__panel-head,
     .social-lfg__application-head

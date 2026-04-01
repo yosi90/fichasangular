@@ -193,6 +193,62 @@ describe('SocialV3ApiService', () => {
         });
     });
 
+    it('bloquea en cliente un create LFG con el borrador vacío antes de tocar backend', async () => {
+        const httpMock = jasmine.createSpyObj('HttpClient', ['get', 'post', 'patch']);
+        const service = new SocialV3ApiService(httpMock, authMock);
+
+        await expectAsync(service.createLfgPost({
+            title: '',
+            summary: '',
+            gameSystem: 'D&D 3.5',
+            campaignStyle: '',
+            slotsTotal: 4,
+            scheduleText: '',
+            language: 'es',
+            visibility: 'global',
+            status: 'open',
+        } as any)).toBeRejectedWith(jasmine.objectContaining({
+            code: 'SOCIAL_LFG_TITLE_INVALID',
+            status: 400,
+        }));
+
+        expect(httpMock.post).not.toHaveBeenCalled();
+    });
+
+    it('bloquea en cliente un patch LFG con horario inválido antes de tocar backend', async () => {
+        const httpMock = jasmine.createSpyObj('HttpClient', ['get', 'post', 'patch']);
+        const service = new SocialV3ApiService(httpMock, authMock);
+
+        await expectAsync(service.updateLfgPost(3, {
+            scheduleText: 'Viernes por la tarde',
+        })).toBeRejectedWith(jasmine.objectContaining({
+            code: 'SOCIAL_LFG_SCHEDULE_INVALID',
+            status: 400,
+        }));
+
+        expect(httpMock.patch).not.toHaveBeenCalled();
+    });
+
+    it('normaliza la conversacion contextual LFG aunque llegue anidada', async () => {
+        const httpMock = jasmine.createSpyObj('HttpClient', ['get', 'post', 'patch']);
+        httpMock.post.and.returnValue(of({
+            created: false,
+            type: 'direct',
+            conversation: {
+                id: 44,
+            },
+        }));
+        const service = new SocialV3ApiService(httpMock, authMock);
+
+        const response = await service.openLfgContactConversation(3);
+
+        expect(response).toEqual({
+            conversationId: 44,
+            created: false,
+            type: 'direct',
+        });
+    });
+
     it('convierte localhost a 127.0.0.1 al construir la url websocket', () => {
         const httpMock = jasmine.createSpyObj('HttpClient', ['get', 'post', 'patch']);
         const service = new SocialV3ApiService(httpMock, authMock);

@@ -16,6 +16,7 @@ describe('ChatFloatingService', () => {
     let chatRealtimeSvc: jasmine.SpyObj<ChatRealtimeService>;
 
     beforeEach(() => {
+        localStorage.clear();
         isLoggedIn$ = new BehaviorSubject<boolean>(false);
         userSettingsSvc = jasmine.createSpyObj<UserSettingsService>('UserSettingsService', ['loadSettings', 'saveSettings']);
         userProfileNavSvc = jasmine.createSpyObj<UserProfileNavigationService>('UserProfileNavigationService', ['openSocial']);
@@ -209,5 +210,35 @@ describe('ChatFloatingService', () => {
         tick(250);
 
         expect(userSettingsSvc.saveSettings).toHaveBeenCalledTimes(1);
+    }));
+
+    it('rehidrata el layout desde un draft local si el remoto aún no está disponible', fakeAsync(() => {
+        localStorage.setItem('f35:chat-floating:draft:uid-1', JSON.stringify({
+            version: 1,
+            ventana_chat: {
+                version: 1,
+                mode: 'minimized',
+                restoredPlacement: null,
+                minimizedPlacement: {
+                    version: 1,
+                    side: 'right',
+                    top: 144,
+                    updatedAt: 101,
+                },
+                updatedAt: 101,
+            },
+            burbujas_abiertas: [],
+        }));
+        userSettingsSvc.loadSettings.and.rejectWith(new Error('firestore-temporalmente-no-disponible'));
+
+        service.init();
+        isLoggedIn$.next(true);
+        tick();
+
+        let listWindow: any = null;
+        service.listWindow$.subscribe((value) => listWindow = value);
+
+        expect(listWindow?.mode).toBe('minimized');
+        expect(listWindow?.minimizedPlacement?.top).toBe(144);
     }));
 });

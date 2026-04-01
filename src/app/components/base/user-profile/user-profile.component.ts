@@ -27,6 +27,16 @@ import {
 import { UserRoleRequestStatus, UserRoleRequestTarget } from 'src/app/interfaces/user-role-request';
 import { NuevoPersonajeGeneradorConfig, UserSettingsV1 } from 'src/app/interfaces/user-settings';
 import { PERMISSION_RESOURCES } from 'src/app/interfaces/user-acl';
+import {
+    UserAccessRestrictionReason,
+    UserAccessScope,
+    UserComplianceActivePolicy,
+    UserCompliancePolicyKind,
+    UserCompliancePolicyState,
+    UserComplianceSnapshot,
+    UserModerationHistoryItem,
+    UserModerationSanction,
+} from 'src/app/interfaces/user-moderation';
 import { AppToastService } from 'src/app/services/app-toast.service';
 import { CampanaService } from 'src/app/services/campana.service';
 import { CampaignRealtimeSyncService } from 'src/app/services/campaign-realtime-sync.service';
@@ -93,6 +103,14 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
     roleRequestLoading = false;
     roleRequestSubmitting = false;
     roleRequestCommentDraft = '';
+    moderationHistory: UserModerationHistoryItem[] = [];
+    moderationHistoryLoading = false;
+    moderationHistoryErrorMessage = '';
+    moderationHistoryHasMore = false;
+    private moderationHistoryTotal = 0;
+    readonly moderationHistoryPageSize = 10;
+    policyViewingKind: UserCompliancePolicyKind | null = null;
+    policyAcceptingKind: UserCompliancePolicyKind | null = null;
 
     campaigns: CampaignListItem[] = [];
     campaignsLoading = false;
@@ -346,6 +364,20 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
         return this.formatDateLabel(this.profile?.lastSeenAt, 'Sin dato');
     }
 
+    get compliance(): UserComplianceSnapshot | null {
+        return this.profile?.compliance ?? null;
+    }
+
+    get hasComplianceRestrictions(): boolean {
+        const compliance = this.compliance;
+        if (!compliance)
+            return false;
+        return compliance.banned
+            || compliance.mustAcceptUsage
+            || compliance.mustAcceptCreation
+            || !!compliance.activeSanction;
+    }
+
     get effectiveProfileRole(): 'jugador' | 'master' | 'colaborador' | 'admin' {
         return this.userSvc.getCurrentRole();
     }
@@ -525,11 +557,13 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
     }
 
     get selectedCampaignCanManage(): boolean {
-        return this.selectedCampaignActorRole === 'master';
+        return this.selectedCampaignActorRole === 'master' && this.userSvc.canProceed('creation');
     }
 
     get canOpenSelectedCampaignChat(): boolean {
-        return !!this.selectedCampaignSummary && this.selectedCampaignActorStatus === 'activo';
+        return !!this.selectedCampaignSummary
+            && this.selectedCampaignActorStatus === 'activo'
+            && this.userSvc.canProceed('usage');
     }
 
     get selectedCampaignCanTransferMaster(): boolean {
@@ -567,8 +601,10 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
     }
 
     get selectedCampaignCanRecoverMaster(): boolean {
-        return this.selectedCampaignDetail?.canRecoverMaster === true
-            || (!this.selectedCampaignHasActiveMaster && this.selectedCampaignOwnerMatchesCurrentUser);
+        return this.userSvc.canProceed('usage') && (
+            this.selectedCampaignDetail?.canRecoverMaster === true
+            || (!this.selectedCampaignHasActiveMaster && this.selectedCampaignOwnerMatchesCurrentUser)
+        );
     }
 
     get selectedCampaignShowLegacyRecoverHint(): boolean {
@@ -670,6 +706,7 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
     async cargar(): Promise<void> {
         this.loading = true;
         this.loadErrorMessage = '';
+        this.resetModerationHistory();
         try {
             const [profile, settings, campaigns] = await Promise.all([
                 this.userSvc.refreshCurrentPrivateProfile(),
@@ -684,12 +721,48 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
             this.hydrateIdentityDraftsFromProfile(profile, true);
             this.identityDraftsUid = `${profile?.uid ?? ''}`.trim();
             await this.cargarEstadoSolicitudRol();
+            void this.cargarHistorialModeracion(true);
             if (!this.canAccessCampaignManagementSection && this.currentSection === 'campanas')
                 this.currentSection = 'resumen';
         } catch (error: any) {
             this.loadErrorMessage = `${error?.message ?? 'No se pudo cargar el perfil.'}`.trim();
         } finally {
             this.loading = false;
+        }
+    }
+
+    async cargarHistorialModeracion(reset: boolean = false): Promise<void> {
+        if (this.moderationHistoryLoading)
+            return;
+
+        const profileUid = `${this.profile?.uid ?? ''}`.trim();
+        if (profileUid.length < 1) {
+            this.resetModerationHistory();
+            return;
+        }
+
+        const nextOffset = reset ? 0 : this.moderationHistory.length;
+        this.moderationHistoryLoading = true;
+        if (reset)
+            this.moderationHistoryErrorMessage = '';
+
+        try {
+            const response = await this.userProfileApiSvc.listMyModerationHistory(this.moderationHistoryPageSize, nextOffset);
+            const items = Array.isArray(response?.items) ? response.items : [];
+            this.moderationHistory = reset
+                ? items
+                : this.mergeModerationHistory(this.moderationHistory, items);
+            this.moderationHistoryTotal = Math.max(this.moderationHistory.length, Number(response?.total ?? 0) || 0);
+            this.moderationHistoryHasMore = response?.hasMore === true
+                || this.moderationHistory.length < this.moderationHistoryTotal;
+            this.moderationHistoryErrorMessage = '';
+        } catch (error: any) {
+            this.moderationHistoryErrorMessage = this.mapProfileError(error, 'No se pudo cargar tu historial de moderación.');
+            if (reset)
+                this.moderationHistory = [];
+            this.moderationHistoryHasMore = false;
+        } finally {
+            this.moderationHistoryLoading = false;
         }
     }
 
@@ -829,8 +902,6 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
     async guardarPreferencias(): Promise<void> {
         if (this.settingsSaving)
             return;
-        if (!this.shouldRunGuardedApiAction('profile.settings.save'))
-            return;
 
         this.settingsSaving = true;
         try {
@@ -876,8 +947,6 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
 
     async resetearPosicionPreview(): Promise<void> {
         if (this.previewResetting)
-            return;
-        if (!this.shouldRunGuardedApiAction('profile.preview.reset'))
             return;
 
         this.previewResetting = true;
@@ -1134,7 +1203,7 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
             this.showCampaignSuccess('Campaña creada correctamente.');
             await this.reloadCampaigns(created.id);
         } catch (error: any) {
-            this.appToastSvc.showError(this.mapCampaignError(error, 'No se pudo crear la campaña.'));
+            this.appToastSvc.showError(this.mapCampaignError(error, 'No se pudo crear la campaña.', 'creation'));
         } finally {
             this.campaignCreateSaving = false;
         }
@@ -1162,7 +1231,7 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
             this.showCampaignSuccess('Campaña actualizada.');
             await this.reloadCampaigns(this.selectedCampaignId);
         } catch (error: any) {
-            this.appToastSvc.showError(this.mapCampaignError(error, 'No se pudo actualizar la campaña.'));
+            this.appToastSvc.showError(this.mapCampaignError(error, 'No se pudo actualizar la campaña.', 'creation'));
         } finally {
             this.campaignRenameSaving = false;
         }
@@ -1183,7 +1252,7 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
                 requestId: Date.now(),
             });
         } catch (error: any) {
-            this.appToastSvc.showError(`${error?.message ?? 'No se pudo abrir el chat de la campaña.'}`.trim());
+            this.appToastSvc.showError(this.mapCampaignError(error, 'No se pudo abrir el chat de la campaña.'));
         }
     }
 
@@ -1453,7 +1522,7 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
             this.showCampaignSuccess('Trama creada correctamente.');
             await this.loadCampaignSelection(this.selectedCampaignId, true, this.selectedCampaignDetail?.includeInactiveMembers === true);
         } catch (error: any) {
-            this.appToastSvc.showError(this.mapCampaignError(error, 'No se pudo crear la trama.'));
+            this.appToastSvc.showError(this.mapCampaignError(error, 'No se pudo crear la trama.', 'creation'));
         } finally {
             this.tramaCreateSaving = false;
         }
@@ -1490,7 +1559,7 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
             if (selectedId)
                 await this.loadCampaignSelection(selectedId, true, this.selectedCampaignDetail?.includeInactiveMembers === true);
         } catch (error: any) {
-            this.appToastSvc.showError(this.mapCampaignError(error, 'No se pudo actualizar la trama.'));
+            this.appToastSvc.showError(this.mapCampaignError(error, 'No se pudo actualizar la trama.', 'creation'));
         } finally {
             this.tramaSaveInFlightId = null;
         }
@@ -1527,7 +1596,7 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
             if (selectedId)
                 await this.loadCampaignSelection(selectedId, true, this.selectedCampaignDetail?.includeInactiveMembers === true);
         } catch (error: any) {
-            this.appToastSvc.showError(this.mapCampaignError(error, 'No se pudo actualizar la subtrama.'));
+            this.appToastSvc.showError(this.mapCampaignError(error, 'No se pudo actualizar la subtrama.', 'creation'));
         } finally {
             this.subtramaSaveInFlightId = null;
         }
@@ -1571,7 +1640,7 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
             if (this.selectedCampaignId)
                 await this.loadCampaignSelection(this.selectedCampaignId, true, this.selectedCampaignDetail?.includeInactiveMembers === true);
         } catch (error: any) {
-            this.appToastSvc.showError(this.mapCampaignError(error, 'No se pudo crear la subtrama.'));
+            this.appToastSvc.showError(this.mapCampaignError(error, 'No se pudo crear la subtrama.', 'creation'));
         } finally {
             this.subtramaCreateSavingTramaId = null;
         }
@@ -1653,6 +1722,193 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
         return this.formatDateTimeLabel(value, fallback);
     }
 
+    complianceAccessLabel(compliance: UserComplianceSnapshot | null | undefined): string {
+        if (!compliance)
+            return 'Estado no disponible';
+        if (compliance.banned)
+            return 'Cuenta baneada';
+        if (compliance.activeSanction)
+            return `Sanción activa: ${this.formatModerationSanctionLabel(compliance.activeSanction)}`;
+        if (compliance.mustAcceptUsage && compliance.mustAcceptCreation)
+            return 'Acceso restringido hasta aceptar normas de uso y creación';
+        if (compliance.mustAcceptUsage)
+            return 'Acceso restringido hasta aceptar normas de uso';
+        if (compliance.mustAcceptCreation)
+            return 'Creación restringida hasta aceptar normas de creación';
+        return 'Acceso normal';
+    }
+
+    compliancePolicyLabel(policy: UserCompliancePolicyState | null | undefined, mustAccept: boolean): string {
+        if (!policy)
+            return mustAccept ? 'Pendientes' : 'Sin datos';
+
+        const version = policy.version ? `v${policy.version}` : 'versión activa';
+        if (mustAccept)
+            return `Pendientes (${version})`;
+        if (policy.accepted)
+            return `Aceptadas (${version})`;
+        return `No aceptadas (${version})`;
+    }
+
+    isViewingPolicy(kind: UserCompliancePolicyKind): boolean {
+        return this.policyViewingKind === kind;
+    }
+
+    policyRequiresAcceptance(kind: UserCompliancePolicyKind): boolean {
+        if (kind === 'creation')
+            return this.compliance?.mustAcceptCreation === true;
+        return this.compliance?.mustAcceptUsage === true;
+    }
+
+    canAcceptPolicy(kind: UserCompliancePolicyKind): boolean {
+        return this.policyRequiresAcceptance(kind)
+            && this.policyAcceptingKind !== kind;
+    }
+
+    get hasModerationEvents(): boolean {
+        return this.moderationHistory.length > 0 || !!this.compliance?.activeSanction;
+    }
+
+    get moderationStatusButtonLabel(): string {
+        if (this.moderationHistoryLoading && !this.hasModerationEvents)
+            return 'Cargando...';
+        return this.hasModerationEvents ? 'Ver historial' : 'Estás limpi@';
+    }
+
+    compliancePolicyViewerTitle(policy: UserComplianceActivePolicy | null | undefined): string {
+        const label = policy?.kind === 'creation' ? 'Normas de creación' : 'Normas de uso';
+        const title = `${policy?.title ?? ''}`.trim();
+        return title.length > 0 ? title : label;
+    }
+
+    compliancePolicyViewerMeta(policy: UserComplianceActivePolicy | null | undefined): string {
+        if (!policy)
+            return 'Sin versión activa cargada.';
+
+        const parts: string[] = [];
+        if (policy.version)
+            parts.push(`Versión ${policy.version}`);
+        if (policy.publishedAtUtc)
+            parts.push(`Publicada ${this.formatOptionalDateTime(policy.publishedAtUtc, 'sin fecha')}`);
+        return parts.join(' · ') || 'Versión activa';
+    }
+
+    async abrirPoliticaCumplimiento(kind: UserCompliancePolicyKind): Promise<void> {
+        if (this.policyViewingKind === kind)
+            return;
+
+        this.policyViewingKind = kind;
+
+        try {
+            const policy = await this.userProfileApiSvc.getActivePolicy(kind);
+            await Swal.fire({
+                title: this.compliancePolicyViewerTitle(policy),
+                html: this.buildCompliancePolicyModalHtml(policy, this.policyRequiresAcceptance(kind)),
+                confirmButtonText: 'Cerrar',
+                customClass: {
+                    popup: 'profile-swal',
+                    title: 'profile-swal__title',
+                    htmlContainer: 'swal2-html-container--policy',
+                    confirmButton: 'profile-swal__confirm',
+                    cancelButton: 'profile-swal__cancel',
+                },
+                width: 760,
+            });
+        } catch (error: any) {
+            this.appToastSvc.showError(this.mapProfileError(error, 'No se pudo cargar la política activa.'));
+        } finally {
+            this.policyViewingKind = null;
+        }
+    }
+
+    async aceptarPoliticaCumplimiento(kind: UserCompliancePolicyKind): Promise<void> {
+        if (!this.policyRequiresAcceptance(kind) || this.policyAcceptingKind === kind)
+            return;
+
+        this.policyAcceptingKind = kind;
+        try {
+            const response = await this.userProfileApiSvc.acceptActivePolicy(kind);
+            this.applyComplianceUpdate(response.compliance);
+            this.appToastSvc.showSuccess(
+                kind === 'creation'
+                    ? 'Normas de creación aceptadas.'
+                    : 'Normas de uso aceptadas.',
+                { category: 'cuentaSistema' }
+            );
+        } catch (error: any) {
+            this.appToastSvc.showError(this.mapProfileError(error, 'No se pudo aceptar la política activa.'));
+        } finally {
+            this.policyAcceptingKind = null;
+        }
+    }
+
+    moderationCaseLabel(item: UserModerationHistoryItem): string {
+        return `${item.caseName ?? item.caseCode ?? 'Incidencia de moderación'}`.trim();
+    }
+
+    moderationResultLabel(result: UserModerationHistoryItem['result']): string {
+        const normalized = `${result ?? ''}`.trim().toLowerCase();
+        if (normalized === 'banned')
+            return 'Ban';
+        if (normalized === 'sanctioned')
+            return 'Sanción';
+        if (normalized === 'reported')
+            return 'Reporte confirmado';
+        return 'Moderación';
+    }
+
+    moderationModeLabel(mode: string | null | undefined): string {
+        const normalized = `${mode ?? ''}`.trim().toLowerCase();
+        if (normalized === 'force_sanction')
+            return 'Sanción forzada';
+        if (normalized === 'report')
+            return 'Reporte';
+        return normalized.length > 0 ? normalized : 'Sin modo';
+    }
+
+    async abrirHistorialModeracionModal(): Promise<void> {
+        if (!this.hasModerationEvents && !this.moderationHistoryLoading && this.moderationHistoryErrorMessage.length < 1)
+            return;
+        if (this.moderationHistoryLoading && this.moderationHistory.length < 1)
+            return;
+
+        if (this.moderationHistory.length < 1 || this.moderationHistoryHasMore)
+            await this.cargarHistorialModeracionCompleto();
+
+        if (this.moderationHistoryErrorMessage.length > 0) {
+            this.appToastSvc.showError(this.moderationHistoryErrorMessage);
+            return;
+        }
+        if (this.moderationHistory.length < 1 && !this.compliance?.activeSanction)
+            return;
+
+        await Swal.fire({
+            title: 'Moderación y avisos',
+            html: this.buildModerationHistoryModalHtml(),
+            confirmButtonText: 'Cerrar',
+            width: 780,
+            customClass: {
+                popup: 'profile-swal',
+                title: 'profile-swal__title',
+                htmlContainer: 'swal2-html-container--policy',
+                confirmButton: 'profile-swal__confirm',
+                cancelButton: 'profile-swal__cancel',
+            },
+        });
+    }
+
+    formatModerationSanctionLabel(sanction: UserModerationSanction | null | undefined): string {
+        if (!sanction)
+            return 'Sin sanción activa';
+
+        const label = `${sanction.name ?? sanction.code ?? sanction.kind ?? 'Sanción'}`.trim();
+        if (sanction.isPermanent)
+            return `${label} permanente`;
+        if (`${sanction.endsAtUtc ?? ''}`.trim().length > 0)
+            return `${label} hasta ${this.formatDateTimeLabel(sanction.endsAtUtc, 'fecha no disponible')}`;
+        return label;
+    }
+
     private formatRoleLabel(role: string | null | undefined, fallback: string = 'Sin rol'): string {
         const normalized = `${role ?? ''}`.trim().toLowerCase();
         if (normalized === 'admin')
@@ -1684,6 +1940,10 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
 
     trackByUserUid(index: number, item: CampaignUserSearchResult): string {
         return item.uid;
+    }
+
+    trackByModerationIncident(index: number, item: UserModerationHistoryItem): number {
+        return item.incidentId;
     }
 
     private applyAvatarResponse(response: UserAvatarResponse): void {
@@ -1792,6 +2052,35 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
 
     private showCampaignInfo(message: string): void {
         this.appToastSvc.showInfo(message, { category: 'campanas' });
+    }
+
+    private resetModerationHistory(): void {
+        this.moderationHistory = [];
+        this.moderationHistoryLoading = false;
+        this.moderationHistoryErrorMessage = '';
+        this.moderationHistoryHasMore = false;
+        this.moderationHistoryTotal = 0;
+    }
+
+    private mergeModerationHistory(
+        current: UserModerationHistoryItem[],
+        incoming: UserModerationHistoryItem[]
+    ): UserModerationHistoryItem[] {
+        const map = new Map<number, UserModerationHistoryItem>();
+        [...current, ...incoming].forEach((item) => {
+            if (!item?.incidentId)
+                return;
+            map.set(item.incidentId, item);
+        });
+        return [...map.values()].sort((a, b) => this.compareModerationItems(a, b));
+    }
+
+    private compareModerationItems(a: UserModerationHistoryItem, b: UserModerationHistoryItem): number {
+        const aTime = this.toModerationDateMs(a.confirmedAtUtc ?? a.createdAtUtc);
+        const bTime = this.toModerationDateMs(b.confirmedAtUtc ?? b.createdAtUtc);
+        if (aTime !== bTime)
+            return bTime - aTime;
+        return b.incidentId - a.incidentId;
     }
 
     private createDefaultCampaignPolicyDraft(): CampaignCreationPolicy {
@@ -1929,6 +2218,13 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
     }
 
     private shouldRunGuardedApiAction(actionKey: string): boolean {
+        const accessScope = this.resolveActionAccessScope(actionKey);
+        const accessRestrictionMessage = this.userSvc.getAccessRestrictionMessage(accessScope);
+        if (accessRestrictionMessage.length > 0) {
+            this.appToastSvc.showError(accessRestrictionMessage);
+            return false;
+        }
+
         const decision = this.apiActionGuardSvc.shouldAllow(this.userSvc.CurrentUserUid, actionKey);
         if (decision.newlySessionLocked) {
             this.appToastSvc.showError('Esta sesión ha quedado bloqueada por abuso de peticiones.');
@@ -1957,7 +2253,11 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
         }
     }
 
-    private mapProfileError(error: any, fallback: string): string {
+    private mapProfileError(error: any, fallback: string, scope: UserAccessScope = 'usage'): string {
+        const complianceError = this.resolveComplianceErrorMessage(error, scope);
+        if (complianceError)
+            return complianceError;
+
         if (error instanceof ProfileApiError) {
             if (error.code === 'PROFILE_NAME_INVALID')
                 return 'El nombre visible no es válido.';
@@ -1977,7 +2277,10 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
         return `${error?.message ?? fallback}`.trim() || fallback;
     }
 
-    private mapCampaignError(error: any, fallback: string): string {
+    private mapCampaignError(error: any, fallback: string, scope: UserAccessScope = 'usage'): string {
+        const complianceError = this.resolveComplianceErrorMessage(error, scope);
+        if (complianceError)
+            return complianceError;
         return `${error?.message ?? fallback}`.trim() || fallback;
     }
 
@@ -1992,6 +2295,134 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
         if (code.includes('requires-recent-login'))
             return 'Necesitas volver a autenticarte antes de cambiar la contraseña.';
         return `${error?.message ?? 'No se pudo actualizar la contraseña.'}`.trim();
+    }
+
+    private applyComplianceUpdate(compliance: UserComplianceSnapshot | null): void {
+        if (!compliance || !this.profile)
+            return;
+
+        const currentProfile = this.profile;
+        const nextProfile: UserPrivateProfile = {
+            ...currentProfile,
+            compliance,
+        };
+        this.userSvc.setCurrentPrivateProfile(nextProfile);
+        this.profile = nextProfile;
+    }
+
+    private buildCompliancePolicyModalHtml(
+        policy: UserComplianceActivePolicy,
+        requiresAcceptance: boolean
+    ): string {
+        const meta = this.escapeHtml(this.compliancePolicyViewerMeta(policy));
+        const status = requiresAcceptance ? 'Aceptación pendiente' : 'Aceptada o no requerida';
+        const markdown = this.escapeHtml(`${policy?.markdown ?? ''}`.trim() || 'Esta política activa no incluye contenido visible.');
+        const versionBadge = policy?.version
+            ? `<span style="display:inline-flex;padding:.28rem .65rem;border-radius:999px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);font-size:.82rem;">v${this.escapeHtml(policy.version)}</span>`
+            : '';
+
+        return [
+            '<div style="display:flex;flex-direction:column;gap:1rem;text-align:left;">',
+            '  <div style="display:flex;flex-wrap:wrap;gap:.5rem;align-items:center;">',
+            versionBadge,
+            `    <span style="display:inline-flex;padding:.28rem .65rem;border-radius:999px;background:${requiresAcceptance ? 'rgba(212, 165, 32, .14)' : 'rgba(255,255,255,.08)'};border:1px solid ${requiresAcceptance ? 'rgba(212, 165, 32, .4)' : 'rgba(255,255,255,.12)'};font-size:.82rem;">${status}</span>`,
+            '  </div>',
+            `  <p style="margin:0;color:rgba(255,255,255,.72);line-height:1.5;">${meta || 'Versión activa'}</p>`,
+            `  <pre style="margin:0;padding:1rem;border-radius:1rem;background:rgba(0,0,0,.18);border:1px solid rgba(255,255,255,.08);color:rgba(245,247,255,.92);white-space:pre-wrap;word-break:break-word;line-height:1.55;font-family:Consolas,'Courier New',monospace;max-height:24rem;overflow:auto;">${markdown}</pre>`,
+            '</div>',
+        ].filter(Boolean).join('');
+    }
+
+    private async cargarHistorialModeracionCompleto(): Promise<void> {
+        let safety = 0;
+        if (this.moderationHistory.length < 1)
+            await this.cargarHistorialModeracion(true);
+
+        while (this.moderationHistoryHasMore && safety < 20) {
+            safety += 1;
+            await this.cargarHistorialModeracion();
+            if (this.moderationHistoryErrorMessage.length > 0)
+                break;
+        }
+    }
+
+    private buildModerationHistoryModalHtml(): string {
+        const activeSanction = this.compliance?.activeSanction ?? null;
+        const sanctionHtml = activeSanction
+            ? [
+                '<div style="padding:1rem;border-radius:1rem;background:rgba(255,193,7,.08);border:1px solid rgba(255,193,7,.22);text-align:left;">',
+                '  <div style="display:flex;flex-direction:column;gap:.35rem;">',
+                '    <strong style="font-size:1rem;">Sanción activa</strong>',
+                `    <span style="color:rgba(255,255,255,.82);line-height:1.5;">${this.escapeHtml(this.formatModerationSanctionLabel(activeSanction))}</span>`,
+                '  </div>',
+                '</div>',
+            ].join('')
+            : '';
+
+        const itemsHtml = this.moderationHistory.map((item) => [
+            '<article style="padding:1rem;border-radius:1rem;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);text-align:left;">',
+            '  <div style="display:flex;justify-content:space-between;gap:1rem;align-items:flex-start;">',
+            '    <div style="display:flex;flex-direction:column;gap:.45rem;min-width:0;">',
+            `      <strong style="font-size:1rem;word-break:break-word;">${this.escapeHtml(this.moderationCaseLabel(item))}</strong>`,
+            '      <div style="display:flex;flex-wrap:wrap;gap:.5rem;">',
+            `        <span style="display:inline-flex;padding:.28rem .65rem;border-radius:999px;background:rgba(255,193,7,.14);border:1px solid rgba(255,193,7,.38);font-size:.82rem;">${this.escapeHtml(this.moderationResultLabel(item.result))}</span>`,
+            `        <span style="display:inline-flex;padding:.28rem .65rem;border-radius:999px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);font-size:.82rem;">${this.escapeHtml(this.moderationModeLabel(item.mode))}</span>`,
+            '      </div>',
+            '    </div>',
+            `    <span style="color:rgba(255,255,255,.6);font-size:.86rem;white-space:nowrap;">${this.escapeHtml(this.formatOptionalDateTime(item.confirmedAtUtc || item.createdAtUtc, 'Sin fecha'))}</span>`,
+            '  </div>',
+            item.userVisibleMessage
+                ? `  <p style="margin:.8rem 0 0;color:rgba(245,247,255,.86);white-space:pre-line;line-height:1.55;">${this.escapeHtml(item.userVisibleMessage)}</p>`
+                : '',
+            item.sanction
+                ? `  <p style="margin:.7rem 0 0;color:rgba(245,247,255,.68);line-height:1.5;">${this.escapeHtml(this.formatModerationSanctionLabel(item.sanction))}</p>`
+                : '',
+            '</article>',
+        ].filter(Boolean).join('')).join('');
+
+        return [
+            '<div style="display:flex;flex-direction:column;gap:1rem;">',
+            sanctionHtml,
+            itemsHtml,
+            '</div>',
+        ].filter(Boolean).join('');
+    }
+
+    private escapeHtml(value: string): string {
+        return `${value ?? ''}`
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
+    private resolveComplianceErrorMessage(error: any, scope: UserAccessScope): string {
+        const restriction = this.resolveComplianceRestriction(error, scope);
+        if (restriction === 'banned')
+            return 'Tu cuenta no puede realizar esta acción en este momento.';
+        if (restriction === 'mustAcceptUsage')
+            return 'Debes aceptar las normas de uso vigentes antes de continuar.';
+        if (restriction === 'mustAcceptCreation')
+            return 'Debes aceptar las normas de creación vigentes antes de continuar.';
+        return '';
+    }
+
+    private resolveComplianceRestriction(error: any, scope: UserAccessScope): UserAccessRestrictionReason | null {
+        return this.userSvc.resolveComplianceRestrictionFromError(error, scope);
+    }
+
+    private resolveActionAccessScope(actionKey: string): UserAccessScope {
+        const normalized = `${actionKey ?? ''}`.trim().toLowerCase();
+        if (normalized === 'campaign.create'
+            || normalized.startsWith('campaign.update.')
+            || normalized.startsWith('campaign.trama.create.')
+            || normalized.startsWith('campaign.trama.update.')
+            || normalized.startsWith('campaign.subtrama.create.')
+            || normalized.startsWith('campaign.subtrama.update.')) {
+            return 'creation';
+        }
+        return 'usage';
     }
 
     private formatDateLabel(value: string | null | undefined, fallback: string): string {
@@ -2521,6 +2952,11 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
             .replace(/[\u0300-\u036f]/g, '')
             .toLowerCase()
             .trim();
+    }
+
+    private toModerationDateMs(value: string | null | undefined): number {
+        const parsed = new Date(`${value ?? ''}`);
+        return Number.isNaN(parsed.getTime()) ? 0 : parsed.getTime();
     }
 
     private toPositiveInt(value: any): number | null {

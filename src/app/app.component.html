@@ -1,12 +1,6 @@
-<ng-container *ngIf="isDesktopLayout; else mobileLayout">
-    <app-navbar></app-navbar>
-    <app-cont-principal></app-cont-principal>
-    <app-chat-floating-host></app-chat-floating-host>
-</ng-container>
-
-<ng-template #mobileLayout>
-    <app-responsive-base></app-responsive-base>
-</ng-template>
+<app-navbar></app-navbar>
+<app-cont-principal></app-cont-principal>
+<app-chat-floating-host *ngIf="isDesktopLayout"></app-chat-floating-host>
 
 <app-app-toast-host></app-app-toast-host>
 <app-fichas-descarga-toast-host></app-fichas-descarga-toast-host>

@@ -681,6 +681,8 @@ describe('NuevoPersonajeComponent', () => {
             CurrentUserUid: 'uid-actor',
             getCurrentRole: jasmine.createSpy('getCurrentRole').and.callFake(() => userSvcMock.CurrentPrivateProfile?.role ?? 'jugador'),
             can: jasmine.createSpy('can').and.returnValue(false),
+            getAccessRestrictionMessage: jasmine.createSpy('getAccessRestrictionMessage').and.returnValue(''),
+            getComplianceErrorMessage: jasmine.createSpy('getComplianceErrorMessage').and.returnValue(''),
         };
         userProfileNavigationSvcMock = {
             openPrivateProfile: jasmine.createSpy('openPrivateProfile'),
@@ -4612,6 +4614,39 @@ describe('NuevoPersonajeComponent', () => {
         expect(personajeSvcMock.crearPersonajeApiDesdeCreacion).not.toHaveBeenCalled();
         expect(personajeSvcMock.guardarPersonajeEnFirebase).not.toHaveBeenCalled();
         expect(`${(swalSpy.calls.mostRecent().args[0] as any).title ?? ''}`).toContain('La campaña bloquea la finalización');
+    });
+
+    it('finalizarPersonajeCompleto bloquea el POST si compliance exige aceptar normas de creación', async () => {
+        userSvcMock.getAccessRestrictionMessage.and.callFake((scope: string) => scope === 'creation'
+            ? 'Debes aceptar las normas de creación vigentes antes de continuar.'
+            : '');
+        const swalSpy = spyOn(Swal, 'fire').and.resolveTo({ isConfirmed: true } as any);
+
+        await (component as any).finalizarPersonajeCompleto();
+
+        expect(personajeSvcMock.crearPersonajeApiDesdeCreacion).not.toHaveBeenCalled();
+        expect(personajeSvcMock.guardarPersonajeEnFirebase).not.toHaveBeenCalled();
+        expect((swalSpy.calls.mostRecent().args[0] as any).text).toBe('Debes aceptar las normas de creación vigentes antes de continuar.');
+    });
+
+    it('finalizarPersonajeCompleto traduce mustAcceptCreation cuando el POST responde 403 funcional', async () => {
+        personajeSvcMock.crearPersonajeApiDesdeCreacion.and.rejectWith({
+            status: 403,
+            code: 'mustAcceptCreation',
+            message: 'Forbidden',
+        });
+        userSvcMock.getComplianceErrorMessage.and.callFake((error: any, scope: string) => {
+            if (scope === 'creation' && `${error?.code ?? ''}` === 'mustAcceptCreation')
+                return 'Debes aceptar las normas de creación vigentes antes de continuar.';
+            return '';
+        });
+        const swalSpy = spyOn(Swal, 'fire').and.resolveTo({ isConfirmed: true } as any);
+
+        await (component as any).finalizarPersonajeCompleto();
+
+        expect(personajeSvcMock.crearPersonajeApiDesdeCreacion).toHaveBeenCalledTimes(1);
+        expect(personajeSvcMock.guardarPersonajeEnFirebase).not.toHaveBeenCalled();
+        expect((swalSpy.calls.mostRecent().args[0] as any).text).toBe('Debes aceptar las normas de creación vigentes antes de continuar.');
     });
 
     it('finalizarPersonajeCompleto envía overrideReglasCampana solo si el actor es el activeMasterUid de la campaña', async () => {
