@@ -638,7 +638,7 @@
                                             mat-raised-button
                                             color="primary"
                                             [disabled]="cargandoHistorialModeracionUsuario || moderacionUsuarioUid.trim().length < 1"
-                                            (click)="cargarHistorialModeracionUsuario(true)">
+                                            (click)="cargarHistorialModeracionUsuarioDesdePanel()">
                                             <mat-icon>{{cargandoHistorialModeracionUsuario ? 'hourglass_top' : 'manage_search'}}</mat-icon>
                                             {{cargandoHistorialModeracionUsuario ? 'Cargando...' : 'Cargar historial'}}
                                         </button>
@@ -664,92 +664,12 @@
                                         </button>
                                     </div>
 
-                                    <div class="usuarios-admin-estado tw-text-center tw-p-2" *ngIf="etiquetaEstadoHistorialModeracionUsuario.length > 0">
-                                        <mat-chip>{{etiquetaEstadoHistorialModeracionUsuario}}</mat-chip>
-                                    </div>
-
-                                    <ng-container *ngIf="previewModeracionUsuario">
-                                        <div class="admin-moderation__summary-grid">
-                                            <article class="admin-moderation__card">
-                                                <h4>Usuario</h4>
-                                                <p><strong>Nombre:</strong> {{previewModeracionUsuario.displayName || 'Sin nombre'}}</p>
-                                                <p><strong>UID:</strong> {{previewModeracionUsuario.uid}}</p>
-                                                <p><strong>Rol:</strong> {{roleLabel(previewModeracionUsuario.role)}}</p>
-                                                <p><strong>Baneado:</strong> {{previewModeracionUsuario.banned ? 'Sí' : 'No'}}</p>
-                                            </article>
-
-                                            <article class="admin-moderation__card" *ngIf="previewModeracionUsuario.moderationSummary">
-                                                <h4>Resumen agregado</h4>
-                                                <p><strong>Incidencias:</strong> {{previewModeracionUsuario.moderationSummary.incidentCount}}</p>
-                                                <p><strong>Sanciones:</strong> {{previewModeracionUsuario.moderationSummary.sanctionCount}}</p>
-                                                <p><strong>Última incidencia:</strong> {{formatearFechaUtc(previewModeracionUsuario.moderationSummary.lastIncidentAtUtc, 'Sin fecha')}}</p>
-                                                <p><strong>Última sanción:</strong> {{formatearFechaUtc(previewModeracionUsuario.moderationSummary.lastSanctionAtUtc, 'Sin fecha')}}</p>
-                                                <p><strong>Activa:</strong> {{moderationSanctionLabel(previewModeracionUsuario.moderationSummary.activeSanction)}}</p>
-                                            </article>
-
-                                            <article class="admin-moderation__card" *ngIf="previewModeracionUsuario.recentModerationHistory?.length">
-                                                <h4>Preview admin ACL</h4>
-                                                <div class="admin-moderation__stack">
-                                                    <div class="usuario-secundario" *ngFor="let item of previewModeracionUsuario.recentModerationHistory">
-                                                        {{formatearFechaUtc(item.confirmedAtUtc || item.createdAtUtc)}} · {{item.caseName || item.caseCode || 'Sin caso'}} · {{moderationResultLabel(item.result)}}
-                                                    </div>
-                                                </div>
-                                            </article>
-                                        </div>
-                                    </ng-container>
-
-                                    <ng-container *ngIf="historialModeracionUsuario">
-                                        <div class="admin-moderation__summary-grid" *ngIf="historialModeracionUsuario.progressByCase.length > 0">
-                                            <article class="admin-moderation__card" *ngFor="let item of historialModeracionUsuario.progressByCase; trackBy: trackByModerationProgress">
-                                                <h4>{{item.caseName || item.caseCode || 'Caso'}}</h4>
-                                                <p>{{moderationProgressLabel(item)}}</p>
-                                            </article>
-                                        </div>
-
-                                        <div class="tabla-scroll usuarios-admin-tabla-scroll" *ngIf="historialModeracionUsuario.items.length > 0">
-                                            <table class="tabla-usuarios-admin tabla-usuarios-admin--moderation-history">
-                                                <thead>
-                                                    <tr>
-                                                        <th>Fecha</th>
-                                                        <th>Caso</th>
-                                                        <th>Modo / resultado</th>
-                                                        <th>Sanción</th>
-                                                        <th>Mensajes</th>
-                                                        <th>Campos privados</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody>
-                                                    <tr *ngFor="let item of historialModeracionUsuario.items; trackBy: trackByModerationHistory">
-                                                        <td>{{formatearFechaUtc(item.confirmedAtUtc || item.createdAtUtc)}}</td>
-                                                        <td>
-                                                            <div class="usuario-principal">{{item.caseName || item.caseCode || 'Sin caso'}}</div>
-                                                            <div class="usuario-secundario">{{item.caseCode || '-'}}</div>
-                                                        </td>
-                                                        <td>
-                                                            <div class="usuario-principal">{{moderationModeLabel(item.mode)}}</div>
-                                                            <div class="usuario-secundario">{{moderationResultLabel(item.result)}}</div>
-                                                            <div class="usuario-secundario" *ngIf="moderationHistoryDetailLabel(item).length > 0">
-                                                                {{moderationHistoryDetailLabel(item)}}
-                                                            </div>
-                                                        </td>
-                                                        <td>{{moderationSanctionLabel(item.sanction)}}</td>
-                                                        <td>
-                                                            <div class="admin-moderation__message">{{item.userVisibleMessage || 'Sin mensaje visible'}}</div>
-                                                            <div class="usuario-secundario" *ngIf="item.internalDescription">{{item.internalDescription}}</div>
-                                                        </td>
-                                                        <td>
-                                                            <div class="admin-moderation__private-block" *ngIf="item.dedupKey">
-                                                                <div class="usuario-secundario"><strong>Dedup:</strong> {{item.dedupKey}}</div>
-                                                            </div>
-                                                            <pre *ngIf="moderationObjectPreview(item.progressBefore).length > 0">{{moderationObjectPreview(item.progressBefore)}}</pre>
-                                                            <pre *ngIf="moderationObjectPreview(item.progressAfter).length > 0">{{moderationObjectPreview(item.progressAfter)}}</pre>
-                                                            <pre *ngIf="moderationObjectPreview(item.context).length > 0">{{moderationObjectPreview(item.context)}}</pre>
-                                                        </td>
-                                                    </tr>
-                                                </tbody>
-                                            </table>
-                                        </div>
-                                    </ng-container>
+                                    <app-admin-user-moderation-history-view
+                                        [preview]="previewModeracionUsuario"
+                                        [history]="historialModeracionUsuario"
+                                        [loading]="cargandoHistorialModeracionUsuario"
+                                        [statusLabel]="etiquetaEstadoHistorialModeracionUsuario">
+                                    </app-admin-user-moderation-history-view>
                                 </section>
                             </ng-container>
                 </div>
@@ -905,3 +825,18 @@
     (closeRequested)="cerrarCasoModeracion()"
     (saveRequested)="guardarCasoModeracion($event)">
 </app-admin-moderation-case-modal>
+
+<app-admin-user-moderation-history-modal
+    *ngIf="usuarioHistorialModeracionModal"
+    [user]="usuarioHistorialModeracionModal"
+    [preview]="previewModeracionUsuario"
+    [history]="historialModeracionUsuario"
+    [loading]="cargandoHistorialModeracionUsuario"
+    [statusLabel]="etiquetaEstadoHistorialModeracionUsuario"
+    [pageText]="historialModeracionUsuarioPaginaTexto"
+    [canGoPrevious]="puedePaginaAnteriorHistorialModeracionUsuario"
+    [canGoNext]="puedePaginaSiguienteHistorialModeracionUsuario"
+    (closeRequested)="cerrarHistorialModeracionUsuarioModal()"
+    (previousRequested)="irPaginaAnteriorHistorialModeracionUsuario()"
+    (nextRequested)="irPaginaSiguienteHistorialModeracionUsuario()">
+</app-admin-user-moderation-history-modal>

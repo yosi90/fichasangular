@@ -52,6 +52,20 @@ export class UserProfileApiService {
         return this.normalizePrivateProfile(response ?? this.buildFallbackPrivateProfile());
     }
 
+    async getMyCompliance(): Promise<UserComplianceSnapshot | null> {
+        try {
+            const response = await firstValueFrom(
+                this.http.get<any>(
+                    `${this.usuariosBaseUrl}/me/compliance`,
+                    { headers: await this.buildAuthHeaders() }
+                )
+            );
+            return this.normalizeCompliance(response);
+        } catch (error) {
+            throw this.toProfileApiError(error, 'No se pudo cargar tu estado de cumplimiento.');
+        }
+    }
+
     async updateMyProfile(input: UserPrivateProfileUpdate): Promise<UserPrivateProfile> {
         const payload = this.buildProfilePatchPayload(input);
         if (Object.keys(payload).length < 1)
@@ -562,19 +576,28 @@ export class UserProfileApiService {
         requestedLimit: number,
         requestedOffset: number
     ): UserModerationHistoryListResponse {
-        const items = Array.isArray(raw?.items)
-            ? raw.items.map((item: any) => this.normalizeModerationHistoryItem(item))
-            : [];
-        const limit = this.normalizeModerationPageSize(raw?.limit, requestedLimit);
-        const offset = this.toNonNegativeInt(raw?.offset) ?? this.toNonNegativeInt(requestedOffset) ?? 0;
-        const total = this.toNonNegativeInt(raw?.total) ?? items.length;
+        const rawItems = Array.isArray(raw)
+            ? raw
+            : (Array.isArray(raw?.items) ? raw.items : []);
+        const items = rawItems.map((item: any) => this.normalizeModerationHistoryItem(item));
+        const limit = this.normalizeModerationPageSize(
+            Array.isArray(raw) ? items.length || requestedLimit : raw?.limit,
+            requestedLimit
+        );
+        const offset = this.toNonNegativeInt(Array.isArray(raw) ? requestedOffset : raw?.offset)
+            ?? this.toNonNegativeInt(requestedOffset)
+            ?? 0;
+        const total = this.toNonNegativeInt(Array.isArray(raw) ? items.length : raw?.total) ?? items.length;
+        const hasMore = Array.isArray(raw)
+            ? false
+            : (raw?.hasMore === true || offset + items.length < total);
 
         return {
             items,
             total,
             limit,
             offset,
-            hasMore: raw?.hasMore === true || offset + items.length < total,
+            hasMore,
         };
     }
 
@@ -603,7 +626,11 @@ export class UserProfileApiService {
         const name = this.toNullableText(raw?.name ?? raw?.title ?? raw?.label);
         const startsAtUtc = this.toNullableText(raw?.startsAtUtc ?? raw?.startAtUtc ?? raw?.appliedAtUtc);
         const endsAtUtc = this.toNullableText(raw?.endsAtUtc ?? raw?.endAtUtc ?? raw?.expiresAtUtc);
-        const isPermanent = raw?.isPermanent === true || raw?.permanent === true || raw?.endsAtUtc === null;
+        const hasExplicitPermanent = raw?.isPermanent === true || raw?.permanent === true;
+        const hasExplicitNullEnd = (Object.prototype.hasOwnProperty.call(raw, 'endsAtUtc') && raw?.endsAtUtc === null)
+            || (Object.prototype.hasOwnProperty.call(raw, 'endAtUtc') && raw?.endAtUtc === null)
+            || (Object.prototype.hasOwnProperty.call(raw, 'expiresAtUtc') && raw?.expiresAtUtc === null);
+        const isPermanent = hasExplicitPermanent || hasExplicitNullEnd;
 
         if (!sanctionId && !kind && !code && !name && !startsAtUtc && !endsAtUtc && !isPermanent)
             return null;

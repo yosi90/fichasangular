@@ -48,7 +48,6 @@ export interface UsuarioUpsertRequestDto {
     email: string;
     authProvider: AuthProviderType;
     role?: UserRole;
-    banned?: boolean;
     permissionsCreate?: UsuarioPermissionCreateDto[];
 }
 

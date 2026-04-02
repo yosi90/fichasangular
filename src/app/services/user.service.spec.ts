@@ -116,9 +116,10 @@ class UserServiceProfileBootstrapTestDouble extends UserService {
     private readonly authStub: { currentUser: User | null; };
     private aclRaw: any = null;
     private aclOnData?: (rawAcl: any) => void;
+    signOutCalls = 0;
 
     constructor(
-        private apiMock: { getMyProfile: jasmine.Spy; },
+        private apiMock: { getMyProfile: jasmine.Spy; getMyCompliance: jasmine.Spy; },
         private firestoreMock?: { watchMyProfile: jasmine.Spy; }
     ) {
         const authStub = { currentUser: null as User | null };
@@ -137,6 +138,11 @@ class UserServiceProfileBootstrapTestDouble extends UserService {
     }
 
     protected override persistUserProfile(_: User): Promise<void> {
+        return Promise.resolve();
+    }
+
+    protected override ejecutarSignOut(): Promise<void> {
+        this.signOutCalls += 1;
         return Promise.resolve();
     }
 
@@ -297,7 +303,7 @@ describe('UserService', () => {
         expect(service.Usuario.permisos).toBe(1);
     });
 
-    it('ban en ACL RTDB fuerza logout de la sesión activa', async () => {
+    it('ban en ACL RTDB ya no fuerza logout por sí solo sin activeSanction actor-scoped', async () => {
         const service = new UserServiceTestDouble();
         service.emitAcl('uid-ban', {
             roles: { admin: false, type: 'jugador' },
@@ -318,7 +324,9 @@ describe('UserService', () => {
         });
         await service.flush();
 
-        expect(service.signOutCalls).toBeGreaterThan(0);
+        expect(service.signOutCalls).toBe(0);
+        expect(service.getCurrentBanStatus().restriction).toBeNull();
+        expect(service.canProceed('usage')).toBeTrue();
     });
 
     it('ban temporal actor-scoped mantiene la sesión y bloquea el uso normal', async () => {
@@ -811,15 +819,16 @@ describe('UserService', () => {
     it('hidrata compliance actor-scoped desde API al iniciar sesión aunque exista Firestore', async () => {
         const apiMock = {
             getMyProfile: jasmine.createSpy('getMyProfile').and.resolveTo(buildPrivateProfile({
-                compliance: {
-                    banned: false,
-                    mustAcceptUsage: true,
-                    mustAcceptCreation: false,
-                    activeSanction: null,
-                    usage: { version: '4' },
-                    creation: null,
-                },
+                compliance: null,
             })),
+            getMyCompliance: jasmine.createSpy('getMyCompliance').and.resolveTo({
+                banned: false,
+                mustAcceptUsage: true,
+                mustAcceptCreation: false,
+                activeSanction: null,
+                usage: { version: '4' },
+                creation: null,
+            }),
         };
         const firestoreMock = {
             watchMyProfile: jasmine.createSpy('watchMyProfile').and.callFake((next: (profile: any) => void) => {
@@ -837,21 +846,23 @@ describe('UserService', () => {
         await service.flush();
 
         expect(apiMock.getMyProfile).toHaveBeenCalled();
+        expect(apiMock.getMyCompliance).toHaveBeenCalled();
         expect(service.CurrentPrivateProfile?.compliance?.mustAcceptUsage).toBeTrue();
     });
 
     it('conserva compliance ya hidratado si Firestore reemite un perfil sin ese bloque', async () => {
         const apiMock = {
             getMyProfile: jasmine.createSpy('getMyProfile').and.resolveTo(buildPrivateProfile({
-                compliance: {
-                    banned: false,
-                    mustAcceptUsage: false,
-                    mustAcceptCreation: true,
-                    activeSanction: null,
-                    usage: null,
-                    creation: { version: '2' },
-                },
+                compliance: null,
             })),
+            getMyCompliance: jasmine.createSpy('getMyCompliance').and.resolveTo({
+                banned: false,
+                mustAcceptUsage: false,
+                mustAcceptCreation: true,
+                activeSanction: null,
+                usage: null,
+                creation: { version: '2' },
+            }),
         };
         const firestoreMock = {
             watchMyProfile: jasmine.createSpy('watchMyProfile').and.callFake((next: (profile: any) => void) => {
@@ -882,15 +893,16 @@ describe('UserService', () => {
     it('limpia compliance vieja cuando Firestore reemite null explícito', async () => {
         const apiMock = {
             getMyProfile: jasmine.createSpy('getMyProfile').and.resolveTo(buildPrivateProfile({
-                compliance: {
-                    banned: false,
-                    mustAcceptUsage: false,
-                    mustAcceptCreation: true,
-                    activeSanction: null,
-                    usage: null,
-                    creation: { version: '2' },
-                },
+                compliance: null,
             })),
+            getMyCompliance: jasmine.createSpy('getMyCompliance').and.resolveTo({
+                banned: false,
+                mustAcceptUsage: false,
+                mustAcceptCreation: true,
+                activeSanction: null,
+                usage: null,
+                creation: { version: '2' },
+            }),
         };
         const firestoreMock = {
             watchMyProfile: jasmine.createSpy('watchMyProfile').and.callFake((next: (profile: any) => void) => {
@@ -922,6 +934,7 @@ describe('UserService', () => {
             getMyProfile: jasmine.createSpy('getMyProfile').and.resolveTo(buildPrivateProfile({
                 compliance: null,
             })),
+            getMyCompliance: jasmine.createSpy('getMyCompliance').and.resolveTo(null),
         };
         const firestoreMock = {
             watchMyProfile: jasmine.createSpy('watchMyProfile').and.callFake((next: (profile: any) => void) => {
@@ -949,7 +962,101 @@ describe('UserService', () => {
         expect(service.canProceed('usage')).toBeTrue();
     });
 
-    it('descarta sanciones temporales ya expiradas al calcular la restricción efectiva', async () => {
+    it('no cierra sesión si Firestore emite un ban stale antes de la hidratación canónica limpia', async () => {
+        const resolverHolder: { resolve: ((value: any) => void) | null; } = { resolve: null };
+        const apiMock = {
+            getMyProfile: jasmine.createSpy('getMyProfile').and.resolveTo(buildPrivateProfile({
+                compliance: {
+                    banned: true,
+                    mustAcceptUsage: false,
+                    mustAcceptCreation: false,
+                    activeSanction: null,
+                    usage: null,
+                    creation: null,
+                },
+            })),
+            getMyCompliance: jasmine.createSpy('getMyCompliance').and.returnValue(new Promise((resolve) => {
+                resolverHolder.resolve = resolve;
+            })),
+        };
+        const firestoreMock = {
+            watchMyProfile: jasmine.createSpy('watchMyProfile').and.callFake((next: (profile: any) => void) => {
+                next(buildPrivateProfile({
+                    compliance: {
+                        banned: true,
+                        mustAcceptUsage: false,
+                        mustAcceptCreation: false,
+                        activeSanction: null,
+                        usage: null,
+                        creation: null,
+                    },
+                }));
+                return () => undefined;
+            }),
+        };
+        const service = new UserServiceProfileBootstrapTestDouble(apiMock, firestoreMock);
+
+        service.emitAuth({
+            uid: 'uid-1',
+            displayName: 'Aldric',
+            email: 'aldric@test.com',
+        } as User);
+        await service.flush();
+
+        expect(apiMock.getMyCompliance).toHaveBeenCalled();
+        expect(service.signOutCalls).toBe(0);
+
+        resolverHolder.resolve?.(null);
+        await service.flush();
+
+        expect(service.getCurrentBanStatus().restriction).toBeNull();
+        expect(service.canProceed('usage')).toBeTrue();
+    });
+
+    it('ignora un compliance stale de Firestore si /me/compliance ya responde limpio', async () => {
+        const apiMock = {
+            getMyProfile: jasmine.createSpy('getMyProfile').and.resolveTo(buildPrivateProfile({
+                compliance: {
+                    banned: true,
+                    mustAcceptUsage: false,
+                    mustAcceptCreation: false,
+                    activeSanction: null,
+                    usage: null,
+                    creation: null,
+                },
+            })),
+            getMyCompliance: jasmine.createSpy('getMyCompliance').and.resolveTo(null),
+        };
+        const firestoreMock = {
+            watchMyProfile: jasmine.createSpy('watchMyProfile').and.callFake((next: (profile: any) => void) => {
+                next(buildPrivateProfile({
+                    compliance: {
+                        banned: true,
+                        mustAcceptUsage: false,
+                        mustAcceptCreation: false,
+                        activeSanction: null,
+                        usage: null,
+                        creation: null,
+                    },
+                }));
+                return () => undefined;
+            }),
+        };
+        const service = new UserServiceProfileBootstrapTestDouble(apiMock, firestoreMock);
+
+        service.emitAuth({
+            uid: 'uid-1',
+            displayName: 'Aldric',
+            email: 'aldric@test.com',
+        } as User);
+        await service.flush();
+
+        expect(service.signOutCalls).toBe(0);
+        expect(service.getCurrentBanStatus().restriction).toBeNull();
+        expect(service.canProceed('usage')).toBeTrue();
+    });
+
+    it('no infiere una restricción activa solo por una fecha vieja si backend ya marca banned=false y activeSanction=null', async () => {
         const service = new UserServiceTestDouble();
         service.emitAcl('uid-expired-ban', {
             roles: { admin: false, type: 'jugador' },
@@ -981,18 +1088,10 @@ describe('UserService', () => {
                 personajes: { create: true },
             },
             compliance: {
-                banned: true,
+                banned: false,
                 mustAcceptUsage: false,
                 mustAcceptCreation: false,
-                activeSanction: {
-                    sanctionId: 11,
-                    kind: 'ban',
-                    code: 'manual-ban-expired',
-                    name: 'Ban temporal',
-                    startsAtUtc: '2026-04-02T09:00:00Z',
-                    endsAtUtc: '2000-04-02T10:00:00Z',
-                    isPermanent: false,
-                },
+                activeSanction: null,
                 usage: null,
                 creation: null,
             },
@@ -1002,6 +1101,61 @@ describe('UserService', () => {
         expect(service.getCurrentBanStatus().restriction).toBeNull();
         expect(service.getAccessRestriction('usage')).toBeNull();
         expect(service.signOutCalls).toBe(0);
+    });
+
+    it('sigue una sanción permanente activa cuando backend marca banned=true e isPermanent=true', async () => {
+        const service = new UserServiceTestDouble();
+        service.emitAcl('uid-temp-ban', {
+            roles: { admin: false, type: 'jugador' },
+            status: { banned: false },
+            permissions: { personajes: { create: true } },
+        });
+        service.emitAuth({
+            uid: 'uid-temp-ban',
+            displayName: 'Aldric',
+            email: 'aldric@test.com',
+        } as User);
+        await service.flush();
+
+        service.setCurrentPrivateProfile({
+            uid: 'uid-temp-ban',
+            displayName: 'Aldric',
+            bio: null,
+            genderIdentity: null,
+            pronouns: null,
+            email: 'aldric@test.com',
+            emailVerified: true,
+            authProvider: 'correo',
+            photoUrl: null,
+            photoThumbUrl: null,
+            createdAt: null,
+            lastSeenAt: null,
+            role: 'jugador',
+            permissions: {
+                personajes: { create: true },
+            },
+            compliance: {
+                banned: true,
+                mustAcceptUsage: false,
+                mustAcceptCreation: false,
+                activeSanction: {
+                    sanctionId: 12,
+                    kind: 'ban',
+                    code: 'admin_manual_account_ban',
+                    name: 'Ban manual admin',
+                    startsAtUtc: '2026-04-02T09:00:00Z',
+                    endsAtUtc: '2099-04-02T10:11:00Z',
+                    isPermanent: true,
+                },
+                usage: null,
+                creation: null,
+            },
+        });
+        await service.flush();
+
+        expect(service.getCurrentBanStatus().restriction).toBe('permanentBan');
+        expect(service.getCurrentBanStatus().sanction?.isPermanent).toBeTrue();
+        expect(service.signOutCalls).toBeGreaterThan(0);
     });
 
     it('register traduce email-already-in-use a un mensaje de usuario', async () => {

@@ -102,7 +102,7 @@ class AdminUsersServiceTestDouble extends AdminUsersService {
                 uid,
                 role: (payload.role ?? 'jugador'),
                 admin: payload.role === 'admin',
-                banned: payload.banned === true,
+                banned: false,
                 permissionsCreate: payload.permissionsCreate ?? [],
             },
         };
@@ -311,7 +311,7 @@ describe('AdminUsersService', () => {
         expect(moderated?.moderationSummary?.activeSanction?.sanctionId).toBe(17);
     });
 
-    it('setBanned persiste en RTDB y hace backup API', async () => {
+    it('setBanned rechaza el toggle legacy y obliga a usar moderación canónica', async () => {
         const service = new AdminUsersServiceTestDouble({ currentUser: { uid: 'admin-1' } as any });
         service.seedPath('UserProfiles', {
             'user-1': {
@@ -336,17 +336,15 @@ describe('AdminUsersService', () => {
             },
         });
 
-        await service.setBanned('user-1', true);
-
-        const aclSet = service.setCalls.find((call) => call.path === 'Acl/users/user-1');
-        expect(aclSet?.payload?.status?.banned).toBeTrue();
-        expect(service.upsertCalls.length).toBe(1);
-        expect(service.upsertCalls[0].uid).toBe('user-1');
-        expect(service.upsertCalls[0].banned).toBeTrue();
-        expect(service.cacheSyncMetadataSvcMock.markStale).not.toHaveBeenCalled();
+        await expectAsync(service.setBanned('user-1', true))
+            .toBeRejectedWithError(
+                'El toggle legacy de baneo ya no está soportado para aplicar baneos. Usa moderación canónica con incidencias admin.'
+            );
+        expect(service.setCalls.find((call) => call.path === 'Acl/users/user-1')).toBeUndefined();
+        expect(service.upsertCalls.length).toBe(0);
     });
 
-    it('marca stale si el backup a API falla tras escribir ACL en RTDB', async () => {
+    it('rechaza también usar el toggle legacy para levantar baneos', async () => {
         const service = new AdminUsersServiceTestDouble({ currentUser: { uid: 'admin-1' } as any });
         service.seedPath('UserProfiles', {
             'user-1': {
@@ -370,28 +368,11 @@ describe('AdminUsersService', () => {
                 permissions: { personajes: { create: true } },
             },
         });
-        service.upsertError = new Error('API caída');
 
-        await service.setBanned('user-1', true);
-
-        expect(service.cacheSyncMetadataSvcMock.markStale).toHaveBeenCalledOnceWith(
-            'usuarios_acl_cache',
-            'admin_rtdb_write_pending_api_sync'
-        );
-    });
-
-    it('bloquea auto-ban del admin actual', async () => {
-        const service = new AdminUsersServiceTestDouble({ currentUser: { uid: 'admin-1' } as any });
-        service.seedPath('Acl/users', {
-            'admin-1': {
-                roles: { admin: true, type: 'admin' },
-                status: { banned: false },
-                permissions: { personajes: { create: true } },
-            },
-        });
-
-        await expectAsync(service.setBanned('admin-1', true))
-            .toBeRejectedWithError('No puedes banear tu propia cuenta');
+        await expectAsync(service.setBanned('user-1', false))
+            .toBeRejectedWithError(
+                'El toggle legacy de baneo ya no está soportado para levantar baneos. Usa moderación canónica con incidencias admin.'
+            );
     });
 
     it('rechaza mutar Yosiftware como entidad del sistema', async () => {
@@ -591,6 +572,7 @@ describe('AdminUsersService', () => {
         const adminPayload = service.upsertCalls.find((item) => item.uid === 'admin-1');
         expect(adminPayload?.role).toBe('admin');
         expect(adminPayload?.permissionsCreate).toBeUndefined();
+        expect(adminPayload && Object.prototype.hasOwnProperty.call(adminPayload, 'banned')).toBeFalse();
         const u2Payload = service.upsertCalls.find((item) => item.uid === 'u2');
         const dotes = u2Payload?.permissionsCreate?.find((item) => item.resource === 'dotes');
         expect(dotes?.allowed).toBeTrue();

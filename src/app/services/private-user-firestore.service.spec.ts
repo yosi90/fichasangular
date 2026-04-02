@@ -1,24 +1,9 @@
 import { Auth } from '@angular/fire/auth';
-import * as ngFirestore from '@angular/fire/firestore';
 import { PrivateUserFirestoreService } from './private-user-firestore.service';
 import { FirebaseInjectionContextService } from './firebase-injection-context.service';
 
 describe('PrivateUserFirestoreService', () => {
     it('getMyProfile acepta role top-level y permisos create proyectados en campos raiz', async () => {
-        spyOn(ngFirestore, 'doc').and.returnValue({} as any);
-        spyOn(ngFirestore, 'getDoc').and.resolveTo({
-            exists: () => true,
-            data: () => ({
-                uid: 'uid-firestore',
-                displayName: 'Perfil Firestore',
-                email: 'perfil@test.dev',
-                role: 'master',
-                personajes: { create: true },
-                campanas: { create: true },
-                tramas: { create: true },
-            }),
-        } as any);
-
         const service = new PrivateUserFirestoreService(
             {
                 currentUser: {
@@ -32,6 +17,19 @@ describe('PrivateUserFirestoreService', () => {
             {} as any,
             { run: <T>(fn: () => T) => fn() } as FirebaseInjectionContextService,
         );
+        spyOn<any>(service, 'getDocumentRef').and.returnValue({} as any);
+        spyOn<any>(service, 'readDocument').and.resolveTo({
+            exists: () => true,
+            data: () => ({
+                uid: 'uid-firestore',
+                displayName: 'Perfil Firestore',
+                email: 'perfil@test.dev',
+                role: 'master',
+                personajes: { create: true },
+                campanas: { create: true },
+                tramas: { create: true },
+            }),
+        } as any);
 
         const profile = await service.getMyProfile();
 

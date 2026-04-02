@@ -54,4 +54,17 @@ describe('ListaPersonajesComponent', () => {
 
         expect(component.Campanas.map((item) => item.Nombre)).toEqual(['Sin campaña', 'Caballeros']);
     });
+
+    it('normaliza el resumen de clases usando siempre Clase (Nivel) cuando hay nivel', () => {
+        const component = createComponent(new Subject<Campana[]>());
+
+        expect(component.resumenClases('Guerrero 3, Mago(2), Pícaro')).toBe('Guerrero (3), Mago (2), Pícaro');
+    });
+
+    it('formatea una única clase con el mismo criterio visual que la multiclase', () => {
+        const component = createComponent(new Subject<Campana[]>());
+
+        expect(component.formatearClase({ Nombre: 'Clérigo', Nivel: 5 })).toBe('Clérigo (5)');
+        expect(component.formatearClase({ Nombre: 'Monje', Nivel: null })).toBe('Monje');
+    });
 });

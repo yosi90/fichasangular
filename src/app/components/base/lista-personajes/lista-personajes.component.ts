@@ -76,14 +76,7 @@ export class ListaPersonajesComponent implements OnInit, AfterViewInit, OnDestro
         });
     }
 
-    ngAfterViewInit() {
-        const flt = document.querySelectorAll('.filtros');
-        if (flt[0]) {
-            flt[0].classList.add('filtroBS');
-            if (flt.length > 1)
-                flt[1].classList.add('filtroSS');
-        }
-
+    ngAfterViewInit(): void {
         this.filtroPersonajes();
     }
 
@@ -210,6 +203,22 @@ export class ListaPersonajesComponent implements OnInit, AfterViewInit, OnDestro
     CrearDetallesClase(nombreClase: string) {
         if (nombreClase && nombreClase.trim().length > 0)
             this.ClaseDetallesTab.emit(nombreClase.trim());
+    }
+
+    formatearClase(item: { Nombre: string, Nivel: number | null } | null | undefined): string {
+        const nombre = `${item?.Nombre ?? ''}`.trim();
+        if (nombre.length < 1)
+            return 'Sin clase';
+        if (item?.Nivel === null || item?.Nivel === undefined)
+            return nombre;
+        return `${nombre} (${item.Nivel})`;
+    }
+
+    resumenClases(raw: string): string {
+        const clases = this.extraerClases(raw);
+        if (clases.length < 1)
+            return `${raw ?? ''}`.trim() || 'Sin clase';
+        return clases.map((item) => this.formatearClase(item)).join(', ');
     }
 
     esPublicoPersonaje(personaje: PersonajeSimple): boolean {

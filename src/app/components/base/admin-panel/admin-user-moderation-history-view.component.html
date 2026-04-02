@@ -1,0 +1,154 @@
+<div class="admin-moderation-history">
+    <div class="usuarios-admin-estado tw-text-center tw-p-2" *ngIf="statusLabel.length > 0">
+        <mat-chip>{{statusLabel}}</mat-chip>
+    </div>
+
+    <ng-container *ngIf="preview">
+        <div class="admin-moderation-history__summary-grid">
+            <article class="admin-moderation-history__card">
+                <h4>Usuario</h4>
+                <div class="admin-moderation-history__kv">
+                    <span>Nombre</span>
+                    <strong>{{preview.displayName || history?.displayName || 'Sin nombre'}}</strong>
+                </div>
+                <div class="admin-moderation-history__kv">
+                    <span>UID</span>
+                    <strong>{{preview.uid || history?.uid || 'Sin UID'}}</strong>
+                </div>
+                <div class="admin-moderation-history__kv">
+                    <span>Rol</span>
+                    <strong>{{roleLabel(preview.role)}}</strong>
+                </div>
+                <div class="admin-moderation-history__kv">
+                    <span>Proveedor</span>
+                    <strong>{{authProviderLabel(history?.authProvider || null)}}</strong>
+                </div>
+                <div class="admin-moderation-history__kv">
+                    <span>Ban efectivo</span>
+                    <strong>{{preview.banned ? 'Sí' : 'No'}}</strong>
+                </div>
+            </article>
+
+            <article class="admin-moderation-history__card" *ngIf="preview.moderationSummary">
+                <h4>Resumen agregado</h4>
+                <div class="admin-moderation-history__kv">
+                    <span>Incidencias</span>
+                    <strong>{{preview.moderationSummary.incidentCount}}</strong>
+                </div>
+                <div class="admin-moderation-history__kv">
+                    <span>Sanciones</span>
+                    <strong>{{preview.moderationSummary.sanctionCount}}</strong>
+                </div>
+                <div class="admin-moderation-history__kv">
+                    <span>Última incidencia</span>
+                    <strong>{{formatearFechaUtc(preview.moderationSummary.lastIncidentAtUtc, 'Sin fecha')}}</strong>
+                </div>
+                <div class="admin-moderation-history__kv">
+                    <span>Última sanción</span>
+                    <strong>{{formatearFechaUtc(preview.moderationSummary.lastSanctionAtUtc, 'Sin fecha')}}</strong>
+                </div>
+                <div class="admin-moderation-history__kv">
+                    <span>Activa</span>
+                    <strong>{{moderationSanctionLabel(preview.moderationSummary.activeSanction)}}</strong>
+                </div>
+            </article>
+
+            <article class="admin-moderation-history__card" *ngIf="preview.recentModerationHistory?.length">
+                <h4>Preview admin ACL</h4>
+                <div class="admin-moderation-history__stack">
+                    <div class="admin-moderation-history__preview-row" *ngFor="let item of preview.recentModerationHistory">
+                        <strong>{{formatearFechaUtc(item.confirmedAtUtc || item.createdAtUtc)}}</strong>
+                        <span>{{item.caseName || item.caseCode || 'Sin caso'}}</span>
+                        <span>{{moderationResultLabel(item.result)}}</span>
+                    </div>
+                </div>
+            </article>
+        </div>
+    </ng-container>
+
+    <div class="admin-moderation-history__progress-grid" *ngIf="progressItems.length > 0">
+        <article class="admin-moderation-history__card admin-moderation-history__card--progress" *ngFor="let item of progressItems; trackBy: trackByModerationProgress">
+            <h4>{{item.caseName || item.caseCode || 'Caso'}}</h4>
+            <p>{{moderationProgressLabel(item)}}</p>
+        </article>
+    </div>
+
+    <div class="admin-moderation-history__timeline" *ngIf="historyItems.length > 0">
+        <article class="admin-moderation-history__timeline-item" *ngFor="let item of historyItems; trackBy: trackByModerationHistory">
+            <header class="admin-moderation-history__timeline-header">
+                <div class="admin-moderation-history__timeline-head-main">
+                    <h4>{{item.caseName || item.caseCode || 'Sin caso'}}</h4>
+                    <p>{{item.caseCode || 'Sin código'}}</p>
+                </div>
+                <span class="admin-moderation-history__date">{{formatearFechaUtc(item.confirmedAtUtc || item.createdAtUtc)}}</span>
+            </header>
+
+            <div class="admin-moderation-history__badge-row">
+                <span class="admin-moderation-history__badge admin-moderation-history__badge--accent">
+                    {{moderationModeLabel(item.mode)}}
+                </span>
+                <span class="admin-moderation-history__badge">
+                    {{moderationResultLabel(item.result)}}
+                </span>
+                <span class="admin-moderation-history__badge" *ngIf="moderationHistoryDetailLabel(item).length > 0">
+                    {{moderationHistoryDetailLabel(item)}}
+                </span>
+            </div>
+
+            <div class="admin-moderation-history__content-grid">
+                <section class="admin-moderation-history__content-card">
+                    <h5>Sanción</h5>
+                    <p>{{moderationSanctionLabel(item.sanction)}}</p>
+                </section>
+
+                <section class="admin-moderation-history__content-card">
+                    <h5>Mensaje visible</h5>
+                    <p>{{item.userVisibleMessage || 'Sin mensaje visible'}}</p>
+                </section>
+
+                <section class="admin-moderation-history__content-card" *ngIf="item.internalDescription">
+                    <h5>Descripción interna</h5>
+                    <p>{{item.internalDescription}}</p>
+                </section>
+            </div>
+
+            <div class="admin-moderation-history__meta-grid" *ngIf="item.dedupKey || item.clientDate || item.localBlockCountToday !== null || item.triggeredStageIndex !== null || item.triggeredSanctionId !== null">
+                <div class="admin-moderation-history__meta-pill" *ngIf="item.dedupKey">
+                    <span>Dedup</span>
+                    <strong>{{item.dedupKey}}</strong>
+                </div>
+                <div class="admin-moderation-history__meta-pill" *ngIf="item.clientDate">
+                    <span>Fecha cliente</span>
+                    <strong>{{item.clientDate}}</strong>
+                </div>
+                <div class="admin-moderation-history__meta-pill" *ngIf="item.localBlockCountToday !== null">
+                    <span>Bloqueos día</span>
+                    <strong>{{item.localBlockCountToday}}</strong>
+                </div>
+                <div class="admin-moderation-history__meta-pill" *ngIf="item.triggeredStageIndex !== null">
+                    <span>Etapa disparada</span>
+                    <strong>{{item.triggeredStageIndex}}</strong>
+                </div>
+                <div class="admin-moderation-history__meta-pill" *ngIf="item.triggeredSanctionId !== null">
+                    <span>Sanción ID</span>
+                    <strong>#{{item.triggeredSanctionId}}</strong>
+                </div>
+            </div>
+
+            <div class="admin-moderation-history__json-grid">
+                <section class="admin-moderation-history__json-card" *ngIf="moderationObjectPreview(item.progressBefore).length > 0">
+                    <h5>progressBefore</h5>
+                    <pre>{{moderationObjectPreview(item.progressBefore)}}</pre>
+                </section>
+                <section class="admin-moderation-history__json-card" *ngIf="moderationObjectPreview(item.progressAfter).length > 0">
+                    <h5>progressAfter</h5>
+                    <pre>{{moderationObjectPreview(item.progressAfter)}}</pre>
+                </section>
+                <section class="admin-moderation-history__json-card" *ngIf="moderationObjectPreview(item.context).length > 0">
+                    <h5>context</h5>
+                    <pre>{{moderationObjectPreview(item.context)}}</pre>
+                </section>
+            </div>
+        </article>
+    </div>
+</div>

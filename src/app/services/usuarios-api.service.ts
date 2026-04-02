@@ -245,9 +245,23 @@ export class UsuariosApiService {
     }
 
     async upsertUser(payload: UsuarioUpsertRequestDto): Promise<UsuarioUpsertResponseDto> {
+        const normalizedPayload: UsuarioUpsertRequestDto = {
+            uid: `${payload?.uid ?? ''}`.trim() || undefined,
+            displayName: `${payload?.displayName ?? ''}`.trim(),
+            email: `${payload?.email ?? ''}`.trim(),
+            authProvider: payload?.authProvider ?? 'otro',
+            role: payload?.role,
+            permissionsCreate: Array.isArray(payload?.permissionsCreate)
+                ? payload.permissionsCreate.map((item) => ({
+                    resource: `${item?.resource ?? ''}`.trim(),
+                    allowed: item?.allowed === true,
+                }))
+                : undefined,
+        };
+
         try {
             return await firstValueFrom(
-                this.http.post<UsuarioUpsertResponseDto>(this.usuariosBaseUrl, payload, {
+                this.http.post<UsuarioUpsertResponseDto>(this.usuariosBaseUrl, normalizedPayload, {
                     headers: await this.buildAuthHeaders(),
                 })
             );
@@ -691,7 +705,11 @@ export class UsuariosApiService {
         const name = this.toNullableText(raw?.name ?? raw?.title ?? raw?.label);
         const startsAtUtc = this.toNullableText(raw?.startsAtUtc ?? raw?.startAtUtc ?? raw?.appliedAtUtc);
         const endsAtUtc = this.toNullableText(raw?.endsAtUtc ?? raw?.endAtUtc ?? raw?.expiresAtUtc);
-        const isPermanent = raw?.isPermanent === true || raw?.permanent === true || raw?.endsAtUtc === null;
+        const hasExplicitPermanent = raw?.isPermanent === true || raw?.permanent === true;
+        const hasExplicitNullEnd = (Object.prototype.hasOwnProperty.call(raw, 'endsAtUtc') && raw?.endsAtUtc === null)
+            || (Object.prototype.hasOwnProperty.call(raw, 'endAtUtc') && raw?.endAtUtc === null)
+            || (Object.prototype.hasOwnProperty.call(raw, 'expiresAtUtc') && raw?.expiresAtUtc === null);
+        const isPermanent = hasExplicitPermanent || hasExplicitNullEnd;
 
         if (!sanctionId && !kind && !code && !name && !startsAtUtc && !endsAtUtc && !isPermanent)
             return null;

@@ -65,32 +65,12 @@ export class AdminUsersService {
     }
 
     async setBanned(uid: string, value: boolean): Promise<void> {
-        const actorUid = await this.ensureActorAdmin();
-        const uidObjetivo = `${uid ?? ''}`.trim();
-        if (uidObjetivo.length < 1)
+        const normalizedUid = `${uid ?? ''}`.trim();
+        const action = value === true ? 'aplicar baneos' : 'levantar baneos';
+        if (normalizedUid.length < 1)
             throw new Error('UID inválido');
-        await this.assertMutableUserEntity(uidObjetivo);
-        if (value === true && uidObjetivo === actorUid)
-            throw new Error('No puedes banear tu propia cuenta');
-
-        const rawAcl = await this.getPath(`Acl/users/${uidObjetivo}`);
-        const acl = normalizeUserAcl(rawAcl);
-        const permissions = this.toPermissionsMap(
-            this.buildEffectivePermissionsCreate(
-                acl.roles.type,
-                this.permissionsArrayFromAclPermissions(acl.permissions)
-            )
-        );
-        const payload = this.buildAclWritePayload(
-            acl.roles.type,
-            value,
-            permissions,
-            rawAcl,
-            actorUid
-        );
-
-        await this.setPath(`Acl/users/${uidObjetivo}`, payload);
-        await this.backupUserToApi(uidObjetivo);
+        await this.assertMutableUserEntity(normalizedUid);
+        throw new Error(`El toggle legacy de baneo ya no está soportado para ${action}. Usa moderación canónica con incidencias admin.`);
     }
 
     async setAdmin(uid: string, value: boolean): Promise<void> {
@@ -543,7 +523,6 @@ export class AdminUsersService {
             email,
             authProvider: this.normalizeProvider(profileRaw?.authProvider),
             role,
-            banned: acl.status?.banned === true,
         };
         if (role !== 'admin')
             payload.permissionsCreate = permissionsCreate;
@@ -694,7 +673,11 @@ export class AdminUsersService {
         const name = this.toNullableText(raw?.name ?? raw?.title ?? raw?.label);
         const startsAtUtc = this.toNullableText(raw?.startsAtUtc ?? raw?.startAtUtc ?? raw?.appliedAtUtc);
         const endsAtUtc = this.toNullableText(raw?.endsAtUtc ?? raw?.endAtUtc ?? raw?.expiresAtUtc);
-        const isPermanent = raw?.isPermanent === true || raw?.permanent === true || raw?.endsAtUtc === null;
+        const hasExplicitPermanent = raw?.isPermanent === true || raw?.permanent === true;
+        const hasExplicitNullEnd = (Object.prototype.hasOwnProperty.call(raw, 'endsAtUtc') && raw?.endsAtUtc === null)
+            || (Object.prototype.hasOwnProperty.call(raw, 'endAtUtc') && raw?.endAtUtc === null)
+            || (Object.prototype.hasOwnProperty.call(raw, 'expiresAtUtc') && raw?.expiresAtUtc === null);
+        const isPermanent = hasExplicitPermanent || hasExplicitNullEnd;
 
         if (!sanctionId && !kind && !code && !name && !startsAtUtc && !endsAtUtc && !isPermanent)
             return null;

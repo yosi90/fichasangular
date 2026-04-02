@@ -79,6 +79,16 @@
             mat-paginator
                 align-self: flex-end
 
+.lista-personajes__filters-trigger
+    top: 100px
+    right: 40px
+    width: 38px
+    height: 38px
+    padding: 4px 0 0 1px
+
+    @supports (-moz-appearance:none)
+        top: 100px
+
 ::ng-deep .mat-mdc-menu-panel.menu-filtros-personajes
     max-width: 320px
 
@@ -193,20 +203,6 @@
         min-height: 40px !important
         line-height: 1.2 !important
         white-space: nowrap
-
-.filtroBS
-    top: 116px
-    right: 40px
-
-    @supports (-moz-appearance:none)
-        top: 95px
-
-.filtroSS
-    top: 57px
-    right: 30px
-
-    @supports (-moz-appearance:none)
-        top: 50px
 
 .superballs
     --uib-size: 85px

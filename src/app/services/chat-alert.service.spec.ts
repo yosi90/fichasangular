@@ -32,6 +32,7 @@ describe('ChatAlertService', () => {
     }
 
     beforeEach(() => {
+        localStorage.clear();
         alertCandidate$ = new Subject<any>();
         chatRealtimeSvc = {
             alertCandidate$,
@@ -550,6 +551,54 @@ describe('ChatAlertService', () => {
         const swalArgs = swalSpy.calls.mostRecent().args[0] as unknown as Record<string, any>;
         expect(swalArgs['html']).toContain('La restricción ya ha terminado');
         expect(swalArgs['confirmButtonText']).toBe('Entendido');
+    }));
+
+    it('no vuelve a mostrar una alerta expirada de account_banned ya recordada para el mismo usuario', fakeAsync(() => {
+        const swalSpy = spyOn(Swal, 'fire').and.resolveTo({ isConfirmed: false } as any);
+        userSvc.getCurrentBanStatus.and.returnValue({
+            restriction: null,
+            sanction: null,
+            isActiveNow: false,
+            endsAtUtc: null,
+            expiresInMs: null,
+        });
+
+        service.init();
+        const expiredCandidate = buildCandidate({
+            alertKey: 'ban-alert-expired-repeat',
+            messageId: 77,
+            conversationId: 62,
+            sender: {
+                uid: 'system:yosiftware',
+                displayName: 'Yosiftware',
+                photoThumbUrl: null,
+                isSystemUser: true,
+            },
+            body: 'Nota del administrador: Pruebas',
+            notification: {
+                code: 'system.account_banned',
+                title: 'Tu cuenta ha sido baneada',
+                action: {
+                    target: 'social.messages',
+                    conversationId: 62,
+                },
+                context: {},
+            },
+        });
+
+        alertCandidate$.next(expiredCandidate);
+        tick();
+        expect(swalSpy).toHaveBeenCalledTimes(1);
+
+        (userSvc.isLoggedIn$ as Subject<boolean>).next(false);
+        (userSvc.isLoggedIn$ as Subject<boolean>).next(true);
+        alertCandidate$.next({
+            ...expiredCandidate,
+            alertKey: 'ban-alert-expired-repeat-2',
+        });
+        tick();
+
+        expect(swalSpy).toHaveBeenCalledTimes(1);
     }));
 
     it('abre la pestaña de restricción temporal al confirmar una alerta de cuenta baneada', fakeAsync(() => {

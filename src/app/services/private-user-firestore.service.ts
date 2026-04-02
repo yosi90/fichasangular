@@ -49,9 +49,9 @@ export class PrivateUserFirestoreService {
         if (!uid)
             return null;
 
-        const snapshot = await this.firebaseContextSvc.run(() => getDoc(
-            doc(this.firestore, 'private_users', uid, 'meta', 'profile')
-        ));
+        const snapshot = await this.readDocument(
+            this.getDocumentRef('private_users', uid, 'meta', 'profile')
+        );
         return this.mapPrivateProfile(snapshot.exists() ? snapshot.data() : null, uid);
     }
 
@@ -66,9 +66,9 @@ export class PrivateUserFirestoreService {
         }
 
         return this.firebaseContextSvc.run(() => onSnapshot(
-            doc(this.firestore, 'private_users', uid, 'meta', 'profile'),
-            (snapshot) => next(this.mapPrivateProfile(snapshot.exists() ? snapshot.data() : null, uid)),
-            (error) => onError?.(error)
+            this.getDocumentRef('private_users', uid, 'meta', 'profile'),
+            (snapshot: any) => next(this.mapPrivateProfile(snapshot.exists() ? snapshot.data() : null, uid)),
+            (error: unknown) => onError?.(error)
         ));
     }
 
@@ -77,9 +77,9 @@ export class PrivateUserFirestoreService {
         if (!uid)
             return null;
 
-        const snapshot = await this.firebaseContextSvc.run(() => getDoc(
-            doc(this.firestore, 'private_users', uid, 'meta', 'settings')
-        ));
+        const snapshot = await this.readDocument(
+            this.getDocumentRef('private_users', uid, 'meta', 'settings')
+        );
         return this.mapSettings(snapshot.exists() ? snapshot.data() : null);
     }
 
@@ -274,6 +274,14 @@ export class PrivateUserFirestoreService {
             },
             (error) => onError?.(error)
         ));
+    }
+
+    private getDocumentRef(...pathSegments: string[]): any {
+        return doc(this.firestore as any, ...(pathSegments as any));
+    }
+
+    private readDocument(documentRef: any): Promise<any> {
+        return this.firebaseContextSvc.run(() => getDoc(documentRef));
     }
 
     private getCurrentUid(): string {
@@ -553,7 +561,11 @@ export class PrivateUserFirestoreService {
         const name = this.toNullableText(raw?.name ?? raw?.title ?? raw?.label);
         const startsAtUtc = this.toNullableText(raw?.startsAtUtc ?? raw?.startAtUtc ?? raw?.appliedAtUtc);
         const endsAtUtc = this.toNullableText(raw?.endsAtUtc ?? raw?.endAtUtc ?? raw?.expiresAtUtc);
-        const isPermanent = raw?.isPermanent === true || raw?.permanent === true || raw?.endsAtUtc === null;
+        const hasExplicitPermanent = raw?.isPermanent === true || raw?.permanent === true;
+        const hasExplicitNullEnd = (Object.prototype.hasOwnProperty.call(raw, 'endsAtUtc') && raw?.endsAtUtc === null)
+            || (Object.prototype.hasOwnProperty.call(raw, 'endAtUtc') && raw?.endAtUtc === null)
+            || (Object.prototype.hasOwnProperty.call(raw, 'expiresAtUtc') && raw?.expiresAtUtc === null);
+        const isPermanent = hasExplicitPermanent || hasExplicitNullEnd;
 
         if (!sanctionId && !kind && !code && !name && !startsAtUtc && !endsAtUtc && !isPermanent)
             return null;

@@ -45,6 +45,8 @@ import { TabControlComponent } from './components/base/tab-control/tab-control.c
 import { BaseMenuComponent } from './components/base/base-menu/base-menu.component';
 import { AdminPanelComponent } from './components/base/admin-panel/admin-panel.component';
 import { AdminUserPermissionsModalComponent } from './components/base/admin-panel/admin-user-permissions-modal.component';
+import { AdminUserModerationHistoryModalComponent } from './components/base/admin-panel/admin-user-moderation-history-modal.component';
+import { AdminUserModerationHistoryViewComponent } from './components/base/admin-panel/admin-user-moderation-history-view.component';
 import { AdminUserSanctionModalComponent } from './components/base/admin-panel/admin-user-sanction-modal.component';
 import { AdminModerationCaseModalComponent } from './components/base/admin-panel/admin-moderation-case-modal.component';
 import { DetallesPersonajeComponent } from './components/detalles/detalles-personaje/detalles-personaje.component';
@@ -146,6 +148,8 @@ import { CloseFilterMenuOnMouseleaveDirective } from './directives/close-filter-
         CloseFilterMenuOnMouseleaveDirective,
         AdminPanelComponent,
         AdminUserPermissionsModalComponent,
+        AdminUserModerationHistoryModalComponent,
+        AdminUserModerationHistoryViewComponent,
         AdminUserSanctionModalComponent,
         AdminModerationCaseModalComponent,
         DetallesPersonajeComponent,

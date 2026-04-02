@@ -168,6 +168,7 @@ export class AdminPanelComponent implements OnInit, OnDestroy {
     cargandoDetalleAuditoriaCreacion: boolean = false;
     errorDetalleAuditoriaCreacion: string = '';
     usuarioPermisosModal: AdminUserRow | null = null;
+    usuarioHistorialModeracionModal: AdminUserRow | null = null;
     guardandoPermisosUsuario: boolean = false;
     usuarioSancionModal: AdminUserRow | null = null;
     registrandoSancionUsuario: boolean = false;
@@ -1245,13 +1246,19 @@ export class AdminPanelComponent implements OnInit, OnDestroy {
     async abrirModeracionUsuario(row: AdminUserRow): Promise<void> {
         if (!this.canOpenModerationHistory(row))
             return;
-        this.moderacionUsuarioUid = row.uid;
-        this.historialModeracionUsuarioOffset = 0;
-        this.currentSection = 'moderacion';
-        if (!this.moderacionAdminLoadedOnce)
-            await this.cargarModeracionAdmin(true);
+        this.usuarioHistorialModeracionModal = row;
+        this.seleccionarModeracionUsuario(row.uid, true);
         await this.cargarHistorialModeracionUsuario(true);
-        this.scrollToModeration();
+    }
+
+    cerrarHistorialModeracionUsuarioModal(): void {
+        this.usuarioHistorialModeracionModal = null;
+    }
+
+    async cargarHistorialModeracionUsuarioDesdePanel(): Promise<void> {
+        this.usuarioHistorialModeracionModal = null;
+        this.seleccionarModeracionUsuario(this.moderacionUsuarioUid, true);
+        await this.cargarHistorialModeracionUsuario(true);
     }
 
     async cargarHistorialModeracionUsuario(forceReload: boolean = false): Promise<void> {
@@ -1288,6 +1295,7 @@ export class AdminPanelComponent implements OnInit, OnDestroy {
     }
 
     limpiarModeracionUsuario(): void {
+        this.usuarioHistorialModeracionModal = null;
         this.moderacionUsuarioUid = '';
         this.previewModeracionUsuario = null;
         this.historialModeracionUsuario = null;
@@ -1528,6 +1536,23 @@ export class AdminPanelComponent implements OnInit, OnDestroy {
                 block: 'start',
             });
         }, 50);
+    }
+
+    private seleccionarModeracionUsuario(uid: string | null | undefined, resetOffset: boolean = false): void {
+        const normalizedUid = `${uid ?? ''}`.trim();
+        const previousUid = `${this.moderacionUsuarioUid ?? ''}`.trim();
+        const uidChanged = normalizedUid !== previousUid;
+
+        this.moderacionUsuarioUid = normalizedUid;
+
+        if (uidChanged) {
+            this.previewModeracionUsuario = null;
+            this.historialModeracionUsuario = null;
+            this.errorHistorialModeracionUsuario = '';
+        }
+
+        if (uidChanged || resetOffset)
+            this.historialModeracionUsuarioOffset = 0;
     }
 
     private isRealtimeRoleRequestNotification(candidate: ChatAlertCandidate | null | undefined): boolean {

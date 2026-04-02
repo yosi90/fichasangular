@@ -22,6 +22,7 @@ export class CloseFilterMenuOnMouseleaveDirective implements OnDestroy {
 
         this.hostListeners.push(
             this.listen(this.host.nativeElement, 'mouseenter', () => this.clearCloseTimeout()),
+            this.listen(this.host.nativeElement, 'mouseleave', () => this.scheduleClose()),
         );
     }
 

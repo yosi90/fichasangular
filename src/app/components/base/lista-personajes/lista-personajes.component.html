@@ -6,7 +6,7 @@
       #filtros
       mat-icon-button
       [matMenuTriggerFor]="menu"
-      class="filtros"
+      class="filtros lista-personajes__filters-trigger"
     >
       <mat-icon>filter_alt</mat-icon>
     </button>
@@ -118,10 +118,7 @@
                     $event.stopPropagation()
                   "
                 >
-                  <mat-icon>read_more</mat-icon> {{ clases[0].Nombre
-                  }}<span *ngIf="clases[0].Nivel !== null"
-                    >&nbsp;({{ clases[0].Nivel }})</span
-                  >
+                  <mat-icon>read_more</mat-icon> {{ formatearClase(clases[0]) }}
                 </button>
                 <button
                   mat-stroked-button
@@ -138,7 +135,7 @@
                   }"
                   (click)="$event.stopPropagation()"
                 >
-                  <mat-icon>read_more</mat-icon> {{ element[column] }}
+                  <mat-icon>read_more</mat-icon> {{ resumenClases(element[column]) }}
                 </button>
                 <p class="tw-mb-0" *ngIf="clases.length < 1">Sin clase</p>
                 <mat-menu
@@ -159,10 +156,7 @@
                         CrearDetallesClase(c.Nombre); trigger?.closeMenu()
                       "
                     >
-                      {{ c.Nombre
-                      }}<span *ngIf="c.Nivel !== null"
-                        >&nbsp;({{ c.Nivel }})</span
-                      >
+                      {{ formatearClase(c) }}
                     </button>
                   </ng-template>
                 </mat-menu>

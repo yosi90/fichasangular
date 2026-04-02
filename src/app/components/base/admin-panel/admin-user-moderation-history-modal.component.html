@@ -1,0 +1,46 @@
+<div class="admin-user-modal__overlay" (click)="onBackdropClose()">
+    <div class="admin-user-modal admin-user-modal--history" (click)="$event.stopPropagation()">
+        <div class="admin-user-modal__header">
+            <div class="admin-user-modal__header-main">
+                <p class="admin-user-modal__eyebrow">Historial de moderación</p>
+                <h3>{{preview?.displayName || history?.displayName || user?.displayName || 'Sin nombre'}}</h3>
+                <p class="admin-user-modal__subtitle">{{subtitle}}</p>
+            </div>
+
+            <mat-chip class="admin-user-modal__status-chip">
+                {{pageText}}
+            </mat-chip>
+        </div>
+
+        <div class="admin-user-modal__actions admin-user-modal__actions--history">
+            <button
+                mat-stroked-button
+                type="button"
+                [disabled]="!canGoPrevious"
+                (click)="onPrevious()">
+                Anterior
+            </button>
+            <button
+                mat-stroked-button
+                type="button"
+                [disabled]="!canGoNext"
+                (click)="onNext()">
+                Siguiente
+            </button>
+            <button
+                mat-raised-button
+                color="primary"
+                type="button"
+                (click)="onBackdropClose()">
+                Cerrar
+            </button>
+        </div>
+
+        <app-admin-user-moderation-history-view
+            [preview]="preview"
+            [history]="history"
+            [loading]="loading"
+            [statusLabel]="statusLabel">
+        </app-admin-user-moderation-history-view>
+    </div>
+</div>

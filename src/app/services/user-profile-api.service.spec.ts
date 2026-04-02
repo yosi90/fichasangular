@@ -68,6 +68,50 @@ describe('UserProfileApiService', () => {
         expect(httpMock.get).not.toHaveBeenCalled();
     });
 
+    it('getMyCompliance usa HTTP canonico con Bearer y normaliza la respuesta', async () => {
+        const httpMock = jasmine.createSpyObj('HttpClient', ['get', 'put', 'post', 'patch']);
+        httpMock.get.and.returnValue(of({
+            uid: 'uid-1',
+            banned: false,
+            mustAcceptUsage: true,
+            mustAcceptCreation: false,
+            activeSanction: {
+                sanctionId: '7',
+                kind: 'temporary',
+                code: 'manual-ban',
+                name: 'Ban temporal',
+                startsAtUtc: '2026-04-02T09:00:00Z',
+                endsAtUtc: '2026-04-02T10:10:00Z',
+                isPermanent: false,
+            },
+            usage: {
+                versionTag: 'usage-v4',
+                acceptedVersionMatchesActive: false,
+            },
+            creation: {
+                versionCode: 'creation-v2',
+                isAccepted: true,
+            },
+        }));
+        const privateUserFirestoreSvcMock = {
+            getMyProfile: jasmine.createSpy('getMyProfile'),
+        };
+        const service = new UserProfileApiService(httpMock, authMock, privateUserFirestoreSvcMock as any);
+
+        const compliance = await service.getMyCompliance();
+
+        expect(compliance?.banned).toBeFalse();
+        expect(compliance?.mustAcceptUsage).toBeTrue();
+        expect(compliance?.mustAcceptCreation).toBeFalse();
+        expect(compliance?.activeSanction?.sanctionId).toBe(7);
+        expect(compliance?.usage?.version).toBe('usage-v4');
+        expect(compliance?.creation?.accepted).toBeTrue();
+        expect(privateUserFirestoreSvcMock.getMyProfile).not.toHaveBeenCalled();
+        const [url, options] = httpMock.get.calls.mostRecent().args;
+        expect(url).toContain('/usuarios/me/compliance');
+        expect(options.headers.get('Authorization')).toBe('Bearer token-settings');
+    });
+
     it('getMySettings usa Firestore privado cuando el read model esta disponible', async () => {
         const httpMock = jasmine.createSpyObj('HttpClient', ['get', 'put', 'post', 'patch']);
         const privateUserFirestoreSvcMock = {
@@ -424,6 +468,68 @@ describe('UserProfileApiService', () => {
         expect(response.items[0].result).toBe('sanctioned');
         expect(response.items[0].userVisibleMessage).toBe('Se ha confirmado una incidencia.');
         expect(response.items[0].sanction?.sanctionId).toBe(7);
+    });
+
+    it('listMyModerationHistory acepta también la respuesta canónica como array directo', async () => {
+        const httpMock = jasmine.createSpyObj('HttpClient', ['get', 'put', 'post', 'patch']);
+        httpMock.get.and.returnValue(of([{
+            incidentId: '20',
+            caseId: '9',
+            caseCode: 'admin_manual_account_ban',
+            caseName: 'Ban manual admin',
+            mode: 'force_sanction',
+            confirmedAtUtc: '2026-04-02T10:00:00Z',
+            createdAtUtc: '2026-04-02T09:59:00Z',
+            userVisibleMessage: 'Has sido sancionado por administración.',
+            result: 'banned',
+            sanction: {
+                sanctionId: '8',
+                kind: 'ban',
+                code: 'admin_manual_account_ban',
+                name: 'Ban manual admin',
+                endsAtUtc: null,
+                isPermanent: true,
+            },
+        }]));
+        const service = new UserProfileApiService(httpMock, authMock);
+
+        const response = await service.listMyModerationHistory(10, 0);
+
+        expect(response.total).toBe(1);
+        expect(response.hasMore).toBeFalse();
+        expect(response.items.length).toBe(1);
+        expect(response.items[0].result).toBe('banned');
+        expect(response.items[0].mode).toBe('force_sanction');
+        expect(response.items[0].sanction?.isPermanent).toBeTrue();
+    });
+
+    it('listMyModerationHistory preserva el flag isPermanent del backend cuando llega mezclado con endsAtUtc', async () => {
+        const httpMock = jasmine.createSpyObj('HttpClient', ['get', 'put', 'post', 'patch']);
+        httpMock.get.and.returnValue(of([{
+            incidentId: '21',
+            caseId: '9',
+            caseCode: 'admin_manual_account_ban',
+            caseName: 'Ban manual admin',
+            mode: 'force_sanction',
+            confirmedAtUtc: '2026-04-02T10:00:00Z',
+            createdAtUtc: '2026-04-02T09:59:00Z',
+            userVisibleMessage: 'Has sido sancionado por administración.',
+            result: 'banned',
+            sanction: {
+                sanctionId: '9',
+                kind: 'ban',
+                code: 'admin_manual_account_ban',
+                name: 'Ban manual admin',
+                endsAtUtc: '2026-04-02T10:11:00Z',
+                isPermanent: true,
+            },
+        }]));
+        const service = new UserProfileApiService(httpMock, authMock);
+
+        const response = await service.listMyModerationHistory(10, 0);
+
+        expect(response.items[0].sanction?.isPermanent).toBeTrue();
+        expect(response.items[0].sanction?.endsAtUtc).toBe('2026-04-02T10:11:00Z');
     });
 
     it('getActivePolicy envia Bearer y normaliza la política activa actor-scoped', async () => {

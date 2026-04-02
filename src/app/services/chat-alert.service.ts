@@ -15,6 +15,7 @@ import { UserService } from './user.service';
     providedIn: 'root'
 })
 export class ChatAlertService implements OnDestroy {
+    private readonly expiredBanNoticeStoragePrefix = 'f35:chat-alert:expired-ban';
     private initialized = false;
     private readonly handledAlertKeys = new Set<string>();
     private readonly subscriptions = new Subscription();
@@ -57,9 +58,14 @@ export class ChatAlertService implements OnDestroy {
             return;
         if (this.isAdminRoleRequestNotification(candidate))
             return;
+        if (this.hasDismissedExpiredAccountBanAlert(candidate))
+            return;
         if (this.handledAlertKeys.has(alertKey))
             return;
         this.handledAlertKeys.add(alertKey);
+
+        if (this.isExpiredAccountBanAlert(candidate))
+            this.rememberExpiredAccountBanAlert(candidate);
 
         if (candidate.notification) {
             if (!this.socialAlertPrefsSvc.isEnabled(this.resolveCategory(candidate)))
@@ -324,6 +330,53 @@ export class ChatAlertService implements OnDestroy {
         const notificationCode = `${candidate?.notification?.code ?? ''}`.trim().toLowerCase();
         const actionTarget = `${candidate?.notification?.action?.target ?? ''}`.trim().toLowerCase();
         return notificationCode === 'system.role_request_created' || actionTarget === 'admin.role_requests';
+    }
+
+    private isExpiredAccountBanAlert(candidate: ChatAlertCandidate): boolean {
+        const notificationCode = `${candidate?.notification?.code ?? ''}`.trim().toLowerCase();
+        if (notificationCode !== 'system.account_banned')
+            return false;
+        const banStatus = typeof this.userSvc.getCurrentBanStatus === 'function'
+            ? this.userSvc.getCurrentBanStatus()
+            : null;
+        return !banStatus?.restriction;
+    }
+
+    private hasDismissedExpiredAccountBanAlert(candidate: ChatAlertCandidate): boolean {
+        if (!this.isExpiredAccountBanAlert(candidate))
+            return false;
+        const storageKey = this.buildExpiredAccountBanAlertStorageKey(candidate);
+        if (storageKey.length < 1)
+            return false;
+        try {
+            return localStorage.getItem(storageKey) !== null;
+        } catch {
+            return false;
+        }
+    }
+
+    private rememberExpiredAccountBanAlert(candidate: ChatAlertCandidate): void {
+        const storageKey = this.buildExpiredAccountBanAlertStorageKey(candidate);
+        if (storageKey.length < 1)
+            return;
+        try {
+            localStorage.setItem(storageKey, new Date().toISOString());
+        } catch {
+            // Ignorado: localStorage puede no estar disponible.
+        }
+    }
+
+    private buildExpiredAccountBanAlertStorageKey(candidate: ChatAlertCandidate): string {
+        const currentUid = `${this.userSvc.CurrentUserUid ?? ''}`.trim();
+        if (currentUid.length < 1)
+            return '';
+        const messageId = Math.trunc(Number(candidate?.messageId));
+        const fingerprint = Number.isFinite(messageId) && messageId > 0
+            ? `message:${messageId}`
+            : `alert:${`${candidate?.alertKey ?? ''}`.trim()}`;
+        if (fingerprint.endsWith('alert:'))
+            return '';
+        return `${this.expiredBanNoticeStoragePrefix}:${currentUid}:${fingerprint}`;
     }
 
     private async markNotificationConversationAsRead(candidate: ChatAlertCandidate, conversationId: number): Promise<void> {

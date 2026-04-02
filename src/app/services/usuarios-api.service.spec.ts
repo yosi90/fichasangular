@@ -155,6 +155,46 @@ describe('UsuariosApiService', () => {
         expect(response.markdown).toContain('Sin spam');
     });
 
+    it('upsertUser no envía el campo legacy banned a POST /usuarios', async () => {
+        const httpMock = jasmine.createSpyObj('HttpClient', ['get', 'post']);
+        httpMock.post.and.returnValue(of({
+            status: 'updated',
+            userId: 'uuid-1',
+            uid: 'uid-1',
+            acl: {
+                uid: 'uid-1',
+                role: 'jugador',
+                admin: false,
+                banned: false,
+                permissionsCreate: [{ resource: 'personajes', allowed: true }],
+            },
+        }));
+        const service = new UsuariosApiService(httpMock, authMock);
+
+        await service.upsertUser({
+            uid: ' uid-1 ',
+            displayName: ' Usuario ',
+            email: ' user@test.dev ',
+            authProvider: 'correo',
+            role: 'jugador',
+            permissionsCreate: [{ resource: ' personajes ', allowed: true }],
+            banned: true,
+        } as any);
+
+        const [url, body, options] = httpMock.post.calls.mostRecent().args;
+        expect(url).toContain('/usuarios');
+        expect(options.headers.get('Authorization')).toBe('Bearer token-audit');
+        expect(body).toEqual({
+            uid: 'uid-1',
+            displayName: 'Usuario',
+            email: 'user@test.dev',
+            authProvider: 'correo',
+            role: 'jugador',
+            permissionsCreate: [{ resource: 'personajes', allowed: true }],
+        });
+        expect(Object.prototype.hasOwnProperty.call(body, 'banned')).toBeFalse();
+    });
+
     it('listModerationCases normaliza etapas, metadata operativa y compat legacy de duración', async () => {
         const httpMock = jasmine.createSpyObj('HttpClient', ['get']);
         httpMock.get.and.returnValue(of({
@@ -411,6 +451,54 @@ describe('UsuariosApiService', () => {
         expect(response.activeSanction?.sanctionId).toBe(18);
         expect(response.progress?.completedStageCount).toBe(1);
         expect(response.banned).toBeTrue();
+    });
+
+    it('createModerationIncident preserva el flag isPermanent devuelto por backend', async () => {
+        const httpMock = jasmine.createSpyObj('HttpClient', ['get', 'post']);
+        httpMock.post.and.returnValue(of({
+            deduped: false,
+            incident: {
+                incidentId: '56',
+                targetUid: 'uid-77',
+                caseCode: 'admin_manual_account_ban',
+                caseName: 'Ban manual admin',
+                mode: 'force_sanction',
+                result: 'banned',
+                userVisibleMessage: 'Se ha aplicado un ban temporal.',
+            },
+            sanction: {
+                sanctionId: '19',
+                kind: 'ban',
+                name: 'Ban manual admin',
+                isPermanent: true,
+                endsAtUtc: '2026-04-02T10:11:00Z',
+            },
+            activeSanction: {
+                sanctionId: '19',
+                kind: 'ban',
+                name: 'Ban manual admin',
+                isPermanent: true,
+                endsAtUtc: '2026-04-02T10:11:00Z',
+            },
+            progress: null,
+            banned: true,
+        }));
+        const service = new UsuariosApiService(httpMock, authMock);
+
+        const response = await service.createModerationIncident({
+            targetUid: 'uid-77',
+            caseCode: 'admin_manual_account_ban',
+            mode: 'force_sanction',
+            internalDescription: 'Pruebas',
+            userVisibleMessage: 'Ban temporal',
+            sanctionOverride: {
+                endsAtUtc: '2026-04-02T10:11:00Z',
+            },
+        });
+
+        expect(response.sanction?.isPermanent).toBeTrue();
+        expect(response.activeSanction?.isPermanent).toBeTrue();
+        expect(response.activeSanction?.endsAtUtc).toBe('2026-04-02T10:11:00Z');
     });
 
     it('getUserModerationHistory usa paginación y conserva campos privados admin-only', async () => {
