@@ -125,12 +125,17 @@ export interface AdminPolicyDraftDto {
     updatedAtUtc: string | null;
 }
 
+export type ModerationCaseSourceMode = 'manual_only' | 'technical_signal_auto';
+export type ModerationCaseOriginType = 'system_seed' | 'admin_custom';
+
 export interface ModerationCaseStageDto {
+    stageId: number | null;
     stageIndex: number;
     reportThreshold: number | null;
     sanctionKind: string | null;
     sanctionCode: string | null;
     sanctionName: string | null;
+    durationMinutes: number | null;
     durationDays: number | null;
     durationHours: number | null;
     isPermanent: boolean;
@@ -140,10 +145,60 @@ export interface ModerationCaseListItemDto {
     caseId: number;
     code: string | null;
     name: string | null;
-    sourceMode: string | null;
+    description?: string | null;
+    sourceMode: ModerationCaseSourceMode | null;
+    enabled: boolean;
+    originType: ModerationCaseOriginType | null;
+    isDeletable: boolean;
+    isDeleted: boolean;
+    deletedAtUtc: string | null;
+    createdAtUtc: string | null;
+    updatedAtUtc: string | null;
     deleted: boolean;
     stages: ModerationCaseStageDto[];
 }
+
+export interface ModerationCaseStageUpsertDto {
+    stageIndex: number;
+    reportThreshold: number;
+    isPermanent: boolean;
+    durationMinutes: number | null;
+}
+
+export interface ModerationCaseCreateRequestDto {
+    code: string;
+    name: string;
+    description: string;
+    sourceMode: ModerationCaseSourceMode;
+    enabled?: boolean;
+    stages: ModerationCaseStageUpsertDto[];
+}
+
+export interface ModerationCasePatchRequestDto {
+    code?: string;
+    name?: string;
+    description?: string;
+    sourceMode?: ModerationCaseSourceMode;
+    enabled?: boolean;
+}
+
+export interface ModerationCaseStagesReplaceRequestDto {
+    stages: ModerationCaseStageUpsertDto[];
+}
+
+export type AdminModerationCaseModalMode = 'create' | 'edit';
+
+export type AdminModerationCaseModalSubmit =
+    | {
+        mode: 'create';
+        createRequest: ModerationCaseCreateRequestDto;
+    }
+    | {
+        mode: 'edit';
+        caseId: number;
+        patchRequest: ModerationCasePatchRequestDto;
+        stagesRequest: ModerationCaseStagesReplaceRequestDto;
+    };
 
 export interface ModerationIncidentListItemDto {
     incidentId: number;
@@ -161,6 +216,20 @@ export interface ModerationIncidentListItemDto {
     sanction: UserModerationSanction | null;
 }
 
+export interface ModerationIncidentCreateRequestDto {
+    targetUid: string;
+    caseCode: string;
+    mode: 'report' | 'force_sanction';
+    sourceCode?: 'manual_admin';
+    internalDescription: string;
+    userVisibleMessage: string;
+    context?: Record<string, any> | null;
+    sanctionOverride?: {
+        endsAtUtc?: string | null;
+        isPermanent?: boolean;
+    } | null;
+}
+
 export interface ModerationSanctionListItemDto {
     sanctionId: number;
     targetUid: string | null;
@@ -175,6 +244,27 @@ export interface ModerationSanctionListItemDto {
     endsAtUtc: string | null;
     isPermanent: boolean;
     active: boolean;
+}
+
+export interface ModerationCaseProgressDto {
+    caseId: number | null;
+    caseCode: string | null;
+    caseName: string | null;
+    currentStageIndex: number | null;
+    pendingReportCount: number | null;
+    completedStageCount: number | null;
+    lastIncidentAtUtc: string | null;
+    lastActionAtUtc: string | null;
+}
+
+export interface ModerationIncidentCreateResponseDto {
+    deduped: boolean;
+    incident: ModerationIncidentListItemDto;
+    stage: ModerationCaseStageDto | null;
+    sanction: UserModerationSanction | null;
+    activeSanction: UserModerationSanction | null;
+    progress: ModerationCaseProgressDto | null;
+    banned: boolean;
 }
 
 export interface ModerationProgressCaseDto {

@@ -5,10 +5,18 @@ import { TabControlComponent } from './tab-control.component';
 function crearComponente(overrides?: { pSvc?: any; }): TabControlComponent {
     const isLoggedIn$ = new BehaviorSubject<boolean>(false);
     const permisos$ = new BehaviorSubject<number>(0);
+    const banStatus$ = new BehaviorSubject<any>({
+        restriction: null,
+        sanction: null,
+        isActiveNow: false,
+        endsAtUtc: null,
+        expiresInMs: null,
+    });
     const userSvc = {
         Usuario: { permisos: 0 },
         isLoggedIn$,
         permisos$,
+        banStatus$,
     } as any;
     const ngZone = { run: (fn: () => void) => fn() } as any;
     const monstruoSvc = { getMonstruo: jasmine.createSpy('getMonstruo').and.returnValue(of({ Id: 90, Nombre: 'Grifo' })) } as any;
@@ -28,6 +36,7 @@ function crearComponente(overrides?: { pSvc?: any; }): TabControlComponent {
     const userProfileNavSvc = {
         privateProfileOpen$: new Subject<any>(),
         publicProfileOpen$: new Subject<any>(),
+        accountRestrictionOpen$: new Subject<any>(),
         socialOpen$: new Subject<any>(),
         adminPanelOpen$: new Subject<any>(),
         roadmapOpen$: new Subject<void>(),
@@ -61,9 +70,13 @@ function crearComponente(overrides?: { pSvc?: any; }): TabControlComponent {
     );
 
     const buildTabs = () => {
-        const tabs: any[] = [{ textLabel: 'Personajes' }];
+        const tabs: any[] = [];
+        if (!component.temporaryRestrictionActive)
+            tabs.push({ textLabel: 'Personajes' });
         if (component.usrLoggedIn && component.privateProfileTabOpen)
             tabs.push({ textLabel: 'Mi perfil' });
+        if (component.restrictionTabOpen)
+            tabs.push({ textLabel: 'Cuenta restringida' });
         if (component.socialTabOpen)
             tabs.push({ textLabel: 'Social' });
         if (component.usrPerm === 1 && component.adminPanelTabOpen)
@@ -108,6 +121,7 @@ function crearComponente(overrides?: { pSvc?: any; }): TabControlComponent {
     (component as any).__userSvc = userSvc;
     (component as any).__isLoggedIn$ = isLoggedIn$;
     (component as any).__permisos$ = permisos$;
+    (component as any).__banStatus$ = banStatus$;
     (component as any).__userProfileNavSvc = userProfileNavSvc;
     (component as any).__cacheSyncMetadataSvc = cacheSyncMetadataSvc;
 
@@ -198,6 +212,61 @@ describe('TabControlComponent navegación por origen', () => {
 
         expect((component as any).activeTabKey).toBe('clase:14');
         expect(component.detallesConjuroAbiertos.length).toBe(0);
+    }));
+
+    it('autoabre la pestaña de restricción y cierra social cuando entra un ban temporal', fakeAsync(() => {
+        const component = crearComponente();
+        const banStatus$ = (component as any).__banStatus$ as BehaviorSubject<any>;
+        const isLoggedIn$ = (component as any).__isLoggedIn$ as BehaviorSubject<boolean>;
+
+        component.ngOnInit();
+        isLoggedIn$.next(true);
+        component.abrirSocial({ section: 'mensajes', requestId: 1 });
+        tick(120);
+
+        banStatus$.next({
+            restriction: 'temporaryBan',
+            sanction: {
+                sanctionId: 7,
+                kind: 'ban',
+                code: 'manual-ban',
+                name: 'Ban temporal',
+                startsAtUtc: '2026-04-02T09:00:00Z',
+                endsAtUtc: '2026-04-02T10:00:00Z',
+                isPermanent: false,
+            },
+            isActiveNow: true,
+            endsAtUtc: '2026-04-02T10:00:00Z',
+            expiresInMs: 60_000,
+        });
+        tick(120);
+
+        expect(component.temporaryRestrictionActive).toBeTrue();
+        expect(component.restrictionTabOpen).toBeTrue();
+        expect(component.socialTabOpen).toBeFalse();
+        expect((component as any).activeTabKey).toBe('base:restriction');
+    }));
+
+    it('la navegación puede abrir la pestaña de restricción temporal', fakeAsync(() => {
+        const component = crearComponente();
+        const banStatus$ = (component as any).__banStatus$ as BehaviorSubject<any>;
+        const navSvc = (component as any).__userProfileNavSvc as any;
+
+        component.ngOnInit();
+        banStatus$.next({
+            restriction: 'temporaryBan',
+            sanction: null,
+            isActiveNow: true,
+            endsAtUtc: '2026-04-02T10:00:00Z',
+            expiresInMs: 60_000,
+        });
+        tick(120);
+
+        navSvc.accountRestrictionOpen$.next({ section: 'resumen', requestId: 2 });
+        tick(120);
+
+        expect(component.restrictionTabOpen).toBeTrue();
+        expect((component as any).activeTabKey).toBe('base:restriction');
     }));
 
     it('abre detalle de monstruo desde listado dinámico', fakeAsync(() => {

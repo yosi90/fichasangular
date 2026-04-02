@@ -1,4 +1,4 @@
-<div class="tw-w-full tw-px-3 admin-panel-shell">
+<div class="tw-w-full tw-p-3 admin-panel-shell">
     <div class="admin-layout">
         <aside class="admin-nav sombra-caja-sm tw-rounded-md">
             <div class="admin-nav__items">
@@ -475,9 +475,19 @@
                                 </section>
 
                                 <section class="admin-moderation__section">
-                                    <div class="admin-moderation__section-header">
-                                        <h3>Supuestos moderables</h3>
-                                        <p>Configuración operativa de casos y escalera de reincidencia.</p>
+                                    <div class="admin-moderation__section-header admin-moderation__section-header--actions">
+                                        <div>
+                                            <h3>Supuestos moderables</h3>
+                                            <p>Configuración operativa de casos y escalera de reincidencia.</p>
+                                        </div>
+                                        <button
+                                            mat-raised-button
+                                            color="primary"
+                                            [disabled]="cargandoModeracionAdmin || guardandoCasoModeracion"
+                                            (click)="abrirCreacionCasoModeracion()">
+                                            <mat-icon>add</mat-icon>
+                                            Crear nuevo supuesto
+                                        </button>
                                     </div>
 
                                     <div class="usuarios-admin-estado tw-text-center tw-p-2" *ngIf="supuestosModerables.length < 1">
@@ -492,6 +502,7 @@
                                                     <th>Modo fuente</th>
                                                     <th>Estado</th>
                                                     <th>Etapas</th>
+                                                    <th>Acciones</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
@@ -499,9 +510,10 @@
                                                     <td>
                                                         <div class="usuario-principal">{{moderationCaseLabel(item)}}</div>
                                                         <div class="usuario-secundario">{{item.code || '-'}}</div>
+                                                        <div class="usuario-secundario">{{moderationCaseOriginLabel(item)}}</div>
                                                     </td>
-                                                    <td>{{item.sourceMode || 'Sin modo'}}</td>
-                                                    <td>{{item.deleted ? 'Eliminado lógico' : 'Activo'}}</td>
+                                                    <td>{{moderationCaseSourceModeLabel(item.sourceMode)}}</td>
+                                                    <td>{{moderationCaseStatusLabel(item)}}</td>
                                                     <td>
                                                         <div class="admin-moderation__stack" *ngIf="item.stages.length > 0; else noStages">
                                                             <div class="usuario-secundario" *ngFor="let stage of item.stages; trackBy: trackByModerationStage">
@@ -511,6 +523,17 @@
                                                         <ng-template #noStages>
                                                             <span class="usuario-secundario">Sin etapas configuradas</span>
                                                         </ng-template>
+                                                    </td>
+                                                    <td>
+                                                        <div class="admin-moderation__table-actions">
+                                                            <button
+                                                                mat-stroked-button
+                                                                color="accent"
+                                                                [disabled]="!canOpenModerationCaseModal(item)"
+                                                                (click)="abrirEdicionCasoModeracion(item)">
+                                                                {{item.isDeleted || item.deleted ? 'No editable' : 'Modificar'}}
+                                                            </button>
+                                                        </div>
                                                     </td>
                                                 </tr>
                                             </tbody>
@@ -774,7 +797,7 @@
                                         <tr>
                                             <th>Usuario</th>
                                             <th>Proveedor</th>
-                                            <th>Baneado</th>
+                                            <th>Moderación</th>
                                             <th>Rol</th>
                                             <th>Permisos create</th>
                                         </tr>
@@ -785,6 +808,12 @@
                                                 <div class="usuario-principal">{{user.displayName || 'Sin nombre'}}</div>
                                                 <div class="usuario-secundario">{{user.email || '-'}}</div>
                                                 <div class="usuario-secundario">UID: {{user.uid}}</div>
+                                                <mat-chip class="admin-user-actions__status-chip admin-user-actions__status-chip--system" *ngIf="user.isSystemEntity">
+                                                    Entidad del sistema
+                                                </mat-chip>
+                                                <div class="usuario-secundario usuario-secundario--system" *ngIf="user.isSystemEntity">
+                                                    {{systemEntityAdminLabel(user)}}
+                                                </div>
                                                 <div class="usuario-secundario usuario-secundario--moderation">{{moderationSummaryLabel(user)}}</div>
                                                 <div class="usuario-secundario usuario-secundario--moderation" *ngIf="moderationSummaryDetailLabel(user).length > 0">
                                                     {{moderationSummaryDetailLabel(user)}}
@@ -793,19 +822,26 @@
                                                     <button
                                                         mat-stroked-button
                                                         color="accent"
+                                                        [disabled]="!canOpenModerationHistory(user)"
                                                         (click)="abrirModeracionUsuario(user)">
-                                                        Ver moderación
+                                                        {{user.isSystemEntity ? 'Historial no disponible' : 'Ver moderación'}}
                                                     </button>
                                                 </div>
                                             </td>
                                             <td>{{providerLabel(user.authProvider)}}</td>
                                             <td>
-                                                <mat-slide-toggle
-                                                    [checked]="user.banned"
-                                                    [disabled]="!canToggleBan(user)"
-                                                    (change)="onToggleBanned(user, $event.checked)">
-                                                    {{user.banned ? 'Sí' : 'No'}}
-                                                </mat-slide-toggle>
+                                                <div class="admin-user-actions">
+                                                    <mat-chip class="admin-user-actions__status-chip" [class.admin-user-actions__status-chip--warn]="user.banned">
+                                                        {{user.banned ? 'Ban efectivo' : 'Sin ban efectivo'}}
+                                                    </mat-chip>
+                                                    <button
+                                                        mat-raised-button
+                                                        color="warn"
+                                                        [disabled]="!canOpenManualSanction(user)"
+                                                        (click)="abrirSancionManual(user)">
+                                                        {{user.isSystemEntity ? 'No sancionable' : 'Aplicar sanción'}}
+                                                    </button>
+                                                </div>
                                             </td>
                                             <td>
                                                 <mat-form-field appearance="outline" class="rol-field">
@@ -818,18 +854,19 @@
                                                         </mat-option>
                                                     </mat-select>
                                                 </mat-form-field>
-                                                <div class="usuario-secundario" *ngIf="user.role === 'admin'">Rol inmutable</div>
+                                                <div class="usuario-secundario" *ngIf="user.isSystemEntity">Rol fijo de entidad del sistema</div>
+                                                <div class="usuario-secundario" *ngIf="!user.isSystemEntity && user.role === 'admin'">Rol inmutable</div>
                                             </td>
                                             <td>
-                                                <div class="perm-grid">
-                                                    <div class="perm-item" *ngFor="let resource of permissionResources; trackBy: trackByPermissionResource">
-                                                        <span class="perm-label">{{resource}}</span>
-                                                        <mat-slide-toggle
-                                                            [checked]="user.permissions[resource]"
-                                                            [disabled]="!canTogglePermission(user, resource)"
-                                                            (change)="onToggleCreatePermission(user, resource, $event.checked)">
-                                                        </mat-slide-toggle>
-                                                    </div>
+                                                <div class="admin-user-actions">
+                                                    <div class="usuario-secundario">{{permissionSummaryLabel(user)}}</div>
+                                                    <button
+                                                        mat-stroked-button
+                                                        color="accent"
+                                                        [disabled]="!canOpenPermissionsModal(user)"
+                                                        (click)="abrirPermisosUsuario(user)">
+                                                        {{user.isSystemEntity ? 'Permisos bloqueados' : (user.role === 'admin' ? 'Ver permisos' : 'Editar permisos')}}
+                                                    </button>
                                                 </div>
                                             </td>
                                         </tr>
@@ -841,3 +878,30 @@
         </main>
     </div>
 </div>
+
+<app-admin-user-permissions-modal
+    *ngIf="usuarioPermisosModal"
+    [user]="usuarioPermisosModal"
+    [resources]="permissionResources"
+    [saving]="guardandoPermisosUsuario"
+    (closeRequested)="cerrarPermisosUsuario()"
+    (saveRequested)="guardarPermisosUsuario($event)">
+</app-admin-user-permissions-modal>
+
+<app-admin-user-sanction-modal
+    *ngIf="usuarioSancionModal"
+    [user]="usuarioSancionModal"
+    [cases]="manualModerationCases"
+    [saving]="registrandoSancionUsuario"
+    (closeRequested)="cerrarSancionManual()"
+    (submitRequested)="aplicarSancionManual($event)">
+</app-admin-user-sanction-modal>
+
+<app-admin-moderation-case-modal
+    *ngIf="casoModeracionModal"
+    [mode]="casoModeracionModal.mode"
+    [item]="casoModeracionModal.item"
+    [saving]="guardandoCasoModeracion"
+    (closeRequested)="cerrarCasoModeracion()"
+    (saveRequested)="guardarCasoModeracion($event)">
+</app-admin-moderation-case-modal>

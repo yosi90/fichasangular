@@ -47,6 +47,8 @@ import { ChatAlertCandidate } from 'src/app/interfaces/chat';
 import { ChatRealtimeService } from 'src/app/services/chat-realtime.service';
 import { UserProfileApiService } from 'src/app/services/user-profile-api.service';
 import {
+    AdminModerationCaseModalMode,
+    AdminModerationCaseModalSubmit,
     AdminPolicyDraftDto,
     CreationAuditEventDetailDto,
     CreationAuditEventSummaryDto,
@@ -54,7 +56,11 @@ import {
     ModerationAdminHistoryItemDto,
     ModerationAdminHistoryResponseDto,
     ModerationCaseListItemDto,
+    ModerationCasePatchRequestDto,
+    ModerationCaseSourceMode,
     ModerationCaseStageDto,
+    ModerationCaseStagesReplaceRequestDto,
+    ModerationIncidentCreateRequestDto,
     ModerationIncidentListItemDto,
     ModerationProgressCaseDto,
     ModerationSanctionListItemDto,
@@ -92,6 +98,11 @@ interface AdminPanelSectionItem {
     label: string;
     icon: string;
     hint: string;
+}
+
+interface AdminModerationCaseModalState {
+    mode: AdminModerationCaseModalMode;
+    item: ModerationCaseListItemDto | null;
 }
 
 @Component({
@@ -156,9 +167,15 @@ export class AdminPanelComponent implements OnInit, OnDestroy {
     detalleAuditoriaCreacion: CreationAuditEventDetailDto | null = null;
     cargandoDetalleAuditoriaCreacion: boolean = false;
     errorDetalleAuditoriaCreacion: string = '';
+    usuarioPermisosModal: AdminUserRow | null = null;
+    guardandoPermisosUsuario: boolean = false;
+    usuarioSancionModal: AdminUserRow | null = null;
+    registrandoSancionUsuario: boolean = false;
+    casoModeracionModal: AdminModerationCaseModalState | null = null;
+    guardandoCasoModeracion: boolean = false;
     private auditoriaCreacionesLoadedOnce: boolean = false;
     readonly sectionItems: AdminPanelSectionItem[] = [
-        { id: 'usuarios', label: 'Usuarios', icon: 'manage_accounts', hint: 'Baneos, roles y permisos de creacion.' },
+        { id: 'usuarios', label: 'Usuarios', icon: 'manage_accounts', hint: 'Sanciones, roles y permisos de creación.' },
         { id: 'role-requests', label: 'Solicitudes de rol', icon: 'pending_actions', hint: 'Peticiones pendientes e historico.' },
         { id: 'moderacion', label: 'Moderacion', icon: 'gavel', hint: 'Politicas, incidencias y sanciones.' },
         { id: 'auditoria', label: 'Auditoria REST', icon: 'history', hint: 'Eventos de creacion y detalle HTTP.' },
@@ -467,6 +484,8 @@ export class AdminPanelComponent implements OnInit, OnDestroy {
     }
 
     moderationSummaryLabel(row: AdminUserRow): string {
+        if (this.isSystemEntityRow(row))
+            return 'Moderación: no aplica a entidades del sistema';
         const summary = row.moderationSummary;
         if (!summary)
             return 'Moderación: sin resumen';
@@ -476,6 +495,8 @@ export class AdminPanelComponent implements OnInit, OnDestroy {
     }
 
     moderationSummaryDetailLabel(row: AdminUserRow): string {
+        if (this.isSystemEntityRow(row))
+            return '';
         const summary = row.moderationSummary;
         if (!summary)
             return '';
@@ -519,11 +540,36 @@ export class AdminPanelComponent implements OnInit, OnDestroy {
         return `${item?.name ?? item?.code ?? 'Caso sin nombre'}`.trim();
     }
 
+    moderationCaseSourceModeLabel(value: ModerationCaseSourceMode | string | null | undefined): string {
+        const normalized = `${value ?? ''}`.trim().toLowerCase();
+        if (normalized === 'technical_signal_auto')
+            return 'Señal técnica automática';
+        return normalized.length > 0 ? 'Manual admin' : 'Sin modo';
+    }
+
+    moderationCaseStatusLabel(item: ModerationCaseListItemDto | null | undefined): string {
+        if (!item)
+            return 'Sin estado';
+        if (item.isDeleted || item.deleted)
+            return 'Eliminado lógico';
+        if (item.enabled === false)
+            return 'Deshabilitado';
+        return 'Activo';
+    }
+
+    moderationCaseOriginLabel(item: ModerationCaseListItemDto | null | undefined): string {
+        if (item?.originType === 'system_seed')
+            return 'Seed del sistema';
+        if (item?.originType === 'admin_custom')
+            return 'Custom admin';
+        return 'Origen n/d';
+    }
+
     moderationStageLabel(stage: ModerationCaseStageDto): string {
         const threshold = stage.reportThreshold !== null ? `umbral ${stage.reportThreshold}` : 'umbral n/d';
         const sanction = this.moderationSanctionNameFromParts(stage.sanctionName, stage.sanctionCode, stage.sanctionKind);
         const duration = this.moderationStageDurationLabel(stage);
-        return `Etapa ${stage.stageIndex + 1}: ${threshold} -> ${sanction}${duration ? ` (${duration})` : ''}`;
+        return `Etapa ${stage.stageIndex}: ${threshold} -> ${sanction}${duration ? ` (${duration})` : ''}`;
     }
 
     moderationIncidentTargetLabel(item: ModerationIncidentListItemDto | ModerationSanctionListItemDto | ModerationAdminHistoryItemDto | null | undefined): string {
@@ -552,7 +598,7 @@ export class AdminPanelComponent implements OnInit, OnDestroy {
     }
 
     moderationProgressLabel(item: ModerationProgressCaseDto): string {
-        const stage = item.currentStageIndex !== null ? `Etapa ${item.currentStageIndex + 1}` : 'Etapa n/d';
+        const stage = item.currentStageIndex !== null ? `Etapa ${item.currentStageIndex}` : 'Etapa n/d';
         const pending = item.pendingReports !== null ? `${item.pendingReports} pendientes` : 'pendientes n/d';
         const sanction = item.activeSanction ? ` · ${this.moderationSanctionLabel(item.activeSanction)}` : '';
         return `${stage} · ${pending}${sanction}`;
@@ -577,7 +623,7 @@ export class AdminPanelComponent implements OnInit, OnDestroy {
         if (item.localBlockCountToday !== null)
             details.push(`Bloqueos día: ${item.localBlockCountToday}`);
         if (item.triggeredStageIndex !== null)
-            details.push(`Etapa disparada: ${item.triggeredStageIndex + 1}`);
+            details.push(`Etapa disparada: ${item.triggeredStageIndex}`);
         if (item.triggeredSanctionId !== null)
             details.push(`Sanción: #${item.triggeredSanctionId}`);
         return details.join(' · ');
@@ -638,18 +684,14 @@ export class AdminPanelComponent implements OnInit, OnDestroy {
         return uidActual.length > 0 && uidActual === row.uid;
     }
 
-    canToggleBan(row: AdminUserRow): boolean {
-        if (!this.esAdmin)
-            return false;
-        if (this.isUserOpRunning(row.uid, 'ban'))
-            return false;
-        if (this.isSelfRow(row))
-            return false;
-        return true;
+    isSystemEntityRow(row: AdminUserRow): boolean {
+        return row.isSystemEntity === true;
     }
 
     canChangeRole(row: AdminUserRow): boolean {
         if (!this.esAdmin)
+            return false;
+        if (this.isSystemEntityRow(row))
             return false;
         if (this.isUserOpRunning(row.uid, 'role'))
             return false;
@@ -658,31 +700,6 @@ export class AdminPanelComponent implements OnInit, OnDestroy {
         if (row.role === 'admin')
             return false;
         return true;
-    }
-
-    canTogglePermission(row: AdminUserRow, resource: PermissionResource): boolean {
-        if (!this.esAdmin)
-            return false;
-        if (row.role === 'admin')
-            return false;
-        if (this.isUserOpRunning(row.uid, `perm:${resource}`))
-            return false;
-        return true;
-    }
-
-    async onToggleBanned(row: AdminUserRow, value: boolean): Promise<void> {
-        if (!this.canToggleBan(row))
-            return;
-
-        const opKey = this.userOpKey(row.uid, 'ban');
-        this.userOpsInFlight.add(opKey);
-        try {
-            await this.adminUsersSvc.setBanned(row.uid, value);
-        } catch (error: any) {
-            this.errorUsuarios = error?.message ?? 'No se pudo actualizar el estado de ban';
-        } finally {
-            this.userOpsInFlight.delete(opKey);
-        }
     }
 
     async onRoleChange(row: AdminUserRow, value: UserRole): Promise<void> {
@@ -702,18 +719,250 @@ export class AdminPanelComponent implements OnInit, OnDestroy {
         }
     }
 
-    async onToggleCreatePermission(row: AdminUserRow, resource: PermissionResource, value: boolean): Promise<void> {
-        if (!this.canTogglePermission(row, resource))
+    canOpenPermissionsModal(row: AdminUserRow): boolean {
+        if (!this.esAdmin)
+            return false;
+        if (this.isSystemEntityRow(row))
+            return false;
+        if (this.isUserOpRunning(row.uid, 'permissions'))
+            return false;
+        return true;
+    }
+
+    canOpenManualSanction(row: AdminUserRow): boolean {
+        if (!this.esAdmin)
+            return false;
+        if (this.isSystemEntityRow(row))
+            return false;
+        if (this.isSelfRow(row))
+            return false;
+        if (this.isUserOpRunning(row.uid, 'sanction'))
+            return false;
+        return true;
+    }
+
+    canOpenModerationCaseModal(item: ModerationCaseListItemDto | null | undefined): boolean {
+        if (!this.esAdmin || !item)
+            return false;
+        if (this.cargandoModeracionAdmin || this.guardandoCasoModeracion)
+            return false;
+        if (item.isDeleted || item.deleted)
+            return false;
+        return item.caseId > 0;
+    }
+
+    canOpenModerationHistory(row: AdminUserRow): boolean {
+        if (!this.esAdmin)
+            return false;
+        if (this.isSystemEntityRow(row))
+            return false;
+        return true;
+    }
+
+    permissionSummaryLabel(row: AdminUserRow): string {
+        if (this.isSystemEntityRow(row))
+            return 'Entidad del sistema: permisos no editables';
+        const active = this.permissionActiveCount(row);
+        const total = this.permissionResources.length;
+        if (row.role === 'admin')
+            return `Todos activos por rol admin (${total}/${total})`;
+        return `${active} de ${total} activos`;
+    }
+
+    systemEntityAdminLabel(row: AdminUserRow): string {
+        if (!this.isSystemEntityRow(row))
+            return '';
+        return 'Entidad del sistema. No es un usuario jugable ni moderable.';
+    }
+
+    permissionActiveCount(row: AdminUserRow): number {
+        return this.permissionResources.filter((resource) => row.permissions[resource] === true).length;
+    }
+
+    abrirPermisosUsuario(row: AdminUserRow): void {
+        if (!this.canOpenPermissionsModal(row))
+            return;
+        this.usuarioPermisosModal = row;
+    }
+
+    cerrarPermisosUsuario(): void {
+        if (this.guardandoPermisosUsuario)
+            return;
+        this.usuarioPermisosModal = null;
+    }
+
+    async guardarPermisosUsuario(permissions: Record<PermissionResource, boolean>): Promise<void> {
+        const row = this.usuarioPermisosModal;
+        if (!row || !this.canOpenPermissionsModal(row) || row.role === 'admin')
             return;
 
-        const opKey = this.userOpKey(row.uid, `perm:${resource}`);
+        const opKey = this.userOpKey(row.uid, 'permissions');
         this.userOpsInFlight.add(opKey);
+        this.guardandoPermisosUsuario = true;
         try {
-            await this.adminUsersSvc.setCreatePermission(row.uid, resource, value);
+            await this.adminUsersSvc.setCreatePermissions(row.uid, permissions);
+            this.patchAdminUserRow(row.uid, {
+                permissions: { ...permissions },
+            });
+            this.usuarioPermisosModal = null;
+            await Swal.fire({
+                icon: 'success',
+                title: 'Permisos actualizados',
+                text: 'Los permisos de creación se han guardado correctamente.',
+            });
         } catch (error: any) {
-            this.errorUsuarios = error?.message ?? `No se pudo actualizar permiso ${resource}.create`;
+            const message = error?.message ?? 'No se pudieron guardar los permisos del usuario';
+            this.errorUsuarios = message;
+            await Swal.fire({
+                icon: 'error',
+                title: 'No se pudo guardar',
+                text: message,
+            });
         } finally {
             this.userOpsInFlight.delete(opKey);
+            this.guardandoPermisosUsuario = false;
+        }
+    }
+
+    async abrirSancionManual(row: AdminUserRow): Promise<void> {
+        if (!this.canOpenManualSanction(row))
+            return;
+
+        if (!this.moderacionAdminLoadedOnce)
+            await this.cargarModeracionAdmin(true);
+
+        if (this.manualModerationCases.length < 1) {
+            const message = 'No hay supuestos moderables manuales disponibles para aplicar sanciones.';
+            this.errorUsuarios = message;
+            await Swal.fire({
+                icon: 'error',
+                title: 'Sin casos manuales',
+                text: message,
+            });
+            return;
+        }
+
+        this.usuarioSancionModal = row;
+    }
+
+    cerrarSancionManual(): void {
+        if (this.registrandoSancionUsuario)
+            return;
+        this.usuarioSancionModal = null;
+    }
+
+    get manualModerationCases(): ModerationCaseListItemDto[] {
+        return this.supuestosModerables.filter((item) => {
+            if (!item || item.deleted === true)
+                return false;
+            const sourceMode = `${item.sourceMode ?? ''}`.trim().toLowerCase();
+            return sourceMode !== 'technical_signal_auto';
+        });
+    }
+
+    async aplicarSancionManual(payload: ModerationIncidentCreateRequestDto): Promise<void> {
+        const row = this.usuarioSancionModal;
+        if (!row || !this.canOpenManualSanction(row))
+            return;
+
+        const opKey = this.userOpKey(row.uid, 'sanction');
+        this.userOpsInFlight.add(opKey);
+        this.registrandoSancionUsuario = true;
+        try {
+            const response = await this.usuariosApiSvc.createModerationIncident(payload);
+            const preview = await this.usuariosApiSvc.getAclByUid(row.uid, 5);
+            this.patchAdminUserRow(row.uid, {
+                banned: preview.banned,
+                moderationSummary: preview.moderationSummary ?? null,
+            });
+            if (this.previewModeracionUsuario?.uid === row.uid) {
+                this.previewModeracionUsuario = preview;
+                await this.cargarHistorialModeracionUsuario(true);
+            }
+            if (this.moderacionAdminLoadedOnce)
+                await this.cargarModeracionAdmin(true);
+            this.usuarioSancionModal = null;
+            await Swal.fire({
+                icon: 'success',
+                title: response.banned ? 'Ban aplicado' : 'Sanción aplicada',
+                text: response.deduped
+                    ? 'La incidencia ya existía y backend la ha tratado como duplicada.'
+                    : (response.incident.userVisibleMessage ?? 'La sanción manual se ha registrado correctamente.'),
+            });
+        } catch (error: any) {
+            const message = error?.message ?? 'No se pudo registrar la sanción manual';
+            this.errorUsuarios = message;
+            await Swal.fire({
+                icon: 'error',
+                title: 'No se pudo sancionar',
+                text: message,
+            });
+        } finally {
+            this.userOpsInFlight.delete(opKey);
+            this.registrandoSancionUsuario = false;
+        }
+    }
+
+    async abrirCreacionCasoModeracion(): Promise<void> {
+        if (!this.esAdmin || this.guardandoCasoModeracion)
+            return;
+        if (!this.moderacionAdminLoadedOnce)
+            await this.cargarModeracionAdmin(true);
+        this.casoModeracionModal = {
+            mode: 'create',
+            item: null,
+        };
+    }
+
+    async abrirEdicionCasoModeracion(item: ModerationCaseListItemDto): Promise<void> {
+        if (!this.canOpenModerationCaseModal(item))
+            return;
+        if (!this.moderacionAdminLoadedOnce)
+            await this.cargarModeracionAdmin(true);
+        this.casoModeracionModal = {
+            mode: 'edit',
+            item,
+        };
+    }
+
+    cerrarCasoModeracion(): void {
+        if (this.guardandoCasoModeracion)
+            return;
+        this.casoModeracionModal = null;
+    }
+
+    async guardarCasoModeracion(payload: AdminModerationCaseModalSubmit): Promise<void> {
+        if (!this.esAdmin || this.guardandoCasoModeracion)
+            return;
+
+        this.guardandoCasoModeracion = true;
+        this.errorModeracionAdmin = '';
+        try {
+            if (payload.mode === 'create') {
+                await this.usuariosApiSvc.createModerationCase(payload.createRequest);
+            } else {
+                await this.persistirEdicionCasoModeracion(payload.caseId, payload.patchRequest, payload.stagesRequest);
+            }
+
+            await this.cargarModeracionAdmin(true);
+            this.casoModeracionModal = null;
+            await Swal.fire({
+                icon: 'success',
+                title: payload.mode === 'create' ? 'Supuesto creado' : 'Supuesto actualizado',
+                text: payload.mode === 'create'
+                    ? 'El supuesto moderable se ha creado correctamente.'
+                    : 'Los cambios del supuesto moderable se han guardado correctamente.',
+            });
+        } catch (error: any) {
+            const message = error?.message ?? 'No se pudo guardar el supuesto moderable';
+            this.errorModeracionAdmin = message;
+            await Swal.fire({
+                icon: 'error',
+                title: 'No se pudo guardar',
+                text: message,
+            });
+        } finally {
+            this.guardandoCasoModeracion = false;
         }
     }
 
@@ -847,6 +1096,22 @@ export class AdminPanelComponent implements OnInit, OnDestroy {
             .toLowerCase();
     }
 
+    private patchAdminUserRow(uid: string, patch: Partial<AdminUserRow>): void {
+        this.usuariosAdmin = this.usuariosAdmin.map((row) => {
+            if (row.uid !== uid)
+                return row;
+
+            const hasPermissionsPatch = Object.prototype.hasOwnProperty.call(patch, 'permissions');
+            const hasModerationPatch = Object.prototype.hasOwnProperty.call(patch, 'moderationSummary');
+            return {
+                ...row,
+                ...patch,
+                permissions: hasPermissionsPatch ? (patch.permissions ?? row.permissions) : row.permissions,
+                moderationSummary: hasModerationPatch ? (patch.moderationSummary ?? null) : row.moderationSummary,
+            };
+        });
+    }
+
     private userOpKey(uid: string, action: string): string {
         return `${uid}::${action}`;
     }
@@ -978,6 +1243,8 @@ export class AdminPanelComponent implements OnInit, OnDestroy {
     }
 
     async abrirModeracionUsuario(row: AdminUserRow): Promise<void> {
+        if (!this.canOpenModerationHistory(row))
+            return;
         this.moderacionUsuarioUid = row.uid;
         this.historialModeracionUsuarioOffset = 0;
         this.currentSection = 'moderacion';
@@ -1328,11 +1595,31 @@ export class AdminPanelComponent implements OnInit, OnDestroy {
     private moderationStageDurationLabel(stage: ModerationCaseStageDto): string {
         if (stage.isPermanent)
             return 'permanente';
+        if (stage.durationMinutes !== null && stage.durationMinutes > 0) {
+            if (stage.durationMinutes % (24 * 60) === 0) {
+                const days = stage.durationMinutes / (24 * 60);
+                return `${days} día${days === 1 ? '' : 's'}`;
+            }
+            if (stage.durationMinutes % 60 === 0) {
+                const hours = stage.durationMinutes / 60;
+                return `${hours} hora${hours === 1 ? '' : 's'}`;
+            }
+            return `${stage.durationMinutes} minuto${stage.durationMinutes === 1 ? '' : 's'}`;
+        }
         if (stage.durationDays !== null && stage.durationDays > 0)
             return `${stage.durationDays} día${stage.durationDays === 1 ? '' : 's'}`;
         if (stage.durationHours !== null && stage.durationHours > 0)
             return `${stage.durationHours} hora${stage.durationHours === 1 ? '' : 's'}`;
         return '';
+    }
+
+    private async persistirEdicionCasoModeracion(
+        caseId: number,
+        patchRequest: ModerationCasePatchRequestDto,
+        stagesRequest: ModerationCaseStagesReplaceRequestDto
+    ): Promise<void> {
+        await this.usuariosApiSvc.updateModerationCase(caseId, patchRequest);
+        await this.usuariosApiSvc.replaceModerationCaseStages(caseId, stagesRequest);
     }
 
     private async pedirDatosRechazo(): Promise<{ blockedUntilUtc: string; adminComment: string | null; } | null> {

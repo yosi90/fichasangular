@@ -16,7 +16,7 @@ import { UserPrivateProfile } from '../interfaces/user-account';
 import { Usuario } from '../interfaces/usuario';
 import { EMPTY_USER_ACL, UserAcl, UserRole, normalizeUserAcl } from '../interfaces/user-acl';
 import { AuthProviderType, UserProfile } from '../interfaces/user-profile';
-import { UserAccessRestrictionReason, UserAccessScope, UserComplianceSnapshot } from '../interfaces/user-moderation';
+import { UserAccessRestrictionReason, UserAccessScope, UserBanStatus, UserComplianceSnapshot, UserModerationSanction } from '../interfaces/user-moderation';
 import { FirebaseInjectionContextService } from './firebase-injection-context.service';
 import { PrivateUserFirestoreService } from './private-user-firestore.service';
 import { UserProfileApiService } from './user-profile-api.service';
@@ -36,12 +36,14 @@ export class UserService {
     private isLoggedInSubject = new BehaviorSubject<boolean>(false);
     private permisosSubject = new BehaviorSubject<number>(0);
     private isBannedSubject = new BehaviorSubject<boolean>(false);
+    private banStatusSubject = new BehaviorSubject<UserBanStatus>(this.buildEmptyBanStatus());
     private aclSubject = new BehaviorSubject<UserAcl>({ ...EMPTY_USER_ACL });
     private privateProfileSubject = new BehaviorSubject<UserPrivateProfile | null>(null);
     private privateProfileBase: UserPrivateProfile | null = null;
     public isLoggedIn$ = this.isLoggedInSubject.asObservable();
     public permisos$ = this.permisosSubject.asObservable();
     public isBanned$ = this.isBannedSubject.asObservable();
+    public banStatus$ = this.banStatusSubject.asObservable();
     public acl$ = this.aclSubject.asObservable();
     public currentPrivateProfile$ = this.privateProfileSubject.asObservable();
     public esAdmin$ = this.permisos$.pipe(map((value) => value === 1));
@@ -63,20 +65,15 @@ export class UserService {
     }
 
     public getCurrentCompliance(): UserComplianceSnapshot | null {
-        const profileCompliance = this.privateProfileSubject.value?.compliance ?? this.privateProfileBase?.compliance ?? null;
-        const aclBanned = this.acl.status?.banned === true;
+        const currentProfile = this.privateProfileSubject.value;
+        const effectiveCompliance = currentProfile
+            ? (currentProfile.compliance ?? null)
+            : (this.mergeEffectiveCompliance(this.privateProfileBase?.compliance ?? null) ?? null);
+        return effectiveCompliance ? { ...effectiveCompliance } : null;
+    }
 
-        if (!profileCompliance && !aclBanned)
-            return null;
-
-        return {
-            banned: profileCompliance?.banned === true || aclBanned,
-            mustAcceptUsage: profileCompliance?.mustAcceptUsage === true,
-            mustAcceptCreation: profileCompliance?.mustAcceptCreation === true,
-            activeSanction: profileCompliance?.activeSanction ?? null,
-            usage: profileCompliance?.usage ?? null,
-            creation: profileCompliance?.creation ?? null,
-        };
+    public getCurrentBanStatus(): UserBanStatus {
+        return this.buildBanStatus(this.getCurrentCompliance());
     }
 
     public getAccessRestriction(scope: UserAccessScope = 'usage'): UserAccessRestrictionReason | null {
@@ -86,8 +83,9 @@ export class UserService {
         const compliance = this.getCurrentCompliance();
         if (!compliance)
             return null;
-        if (compliance.banned)
-            return 'banned';
+        const banRestriction = this.getCurrentBanStatus().restriction;
+        if (banRestriction)
+            return banRestriction;
         if (compliance.mustAcceptUsage)
             return 'mustAcceptUsage';
         if (scope === 'creation' && compliance.mustAcceptCreation)
@@ -110,9 +108,12 @@ export class UserService {
         const localRestriction = this.getAccessRestriction(scope);
         const status = Number(error?.status ?? 0);
         const code = this.normalizeFunctionalErrorCode(error?.code);
+        const localBanRestriction = localRestriction === 'temporaryBan' || localRestriction === 'permanentBan'
+            ? localRestriction
+            : null;
 
         if (this.isBannedFunctionalErrorCode(code))
-            return 'banned';
+            return localBanRestriction ?? 'permanentBan';
         if (this.isUsagePolicyFunctionalErrorCode(code))
             return 'mustAcceptUsage';
         if (this.isCreationPolicyFunctionalErrorCode(code))
@@ -269,6 +270,7 @@ export class UserService {
         this.privateProfileBase = mergedProfile;
         const effectiveProfile = this.buildEffectivePrivateProfile(mergedProfile);
         this.privateProfileSubject.next(effectiveProfile);
+        this.banStatusSubject.next(this.buildBanStatus(effectiveProfile?.compliance ?? null));
         this.isBannedSubject.next(this.isBanned());
         this.actualizarPermisosDesdeAcl();
         this.evaluarSesionBaneada();
@@ -471,6 +473,7 @@ export class UserService {
         this.acl = normalizeUserAcl(raw);
         this.aclSubject.next(this.acl);
         this.privateProfileSubject.next(this.buildEffectivePrivateProfile(this.privateProfileBase));
+        this.banStatusSubject.next(this.buildBanStatus(this.privateProfileSubject.value?.compliance ?? null));
         this.isBannedSubject.next(this.isBanned());
         this.actualizarPermisosDesdeAcl();
         this.evaluarSesionBaneada();
@@ -496,11 +499,11 @@ export class UserService {
     }
 
     private isBanned(): boolean {
-        return this.getCurrentCompliance()?.banned === true;
+        return this.getCurrentBanStatus().restriction !== null;
     }
 
     private actualizarPermisosDesdeAcl(): void {
-        const permisos = this.sesionAbierta && !this.isBanned() && this.isAdmin() ? 1 : 0;
+        const permisos = this.sesionAbierta && this.getCurrentBanStatus().restriction === null && this.isAdmin() ? 1 : 0;
         this.usuario = {
             ...this.usuario,
             permisos,
@@ -509,7 +512,7 @@ export class UserService {
     }
 
     private evaluarSesionBaneada(): void {
-        if (!this.sesionAbierta || !this.isBanned() || this.banSignOutInProgress)
+        if (!this.sesionAbierta || this.getCurrentBanStatus().restriction !== 'permanentBan' || this.banSignOutInProgress)
             return;
 
         this.banSignOutInProgress = true;
@@ -726,26 +729,25 @@ export class UserService {
         const current = this.privateProfileBase;
         if (!current || current.uid !== profile.uid)
             return profile;
+        const hasComplianceProperty = Object.prototype.hasOwnProperty.call(profile, 'compliance');
 
         return {
             ...profile,
-            compliance: profile.compliance ?? current.compliance ?? null,
+            compliance: hasComplianceProperty
+                ? (profile.compliance ?? null)
+                : (current.compliance ?? null),
         };
     }
 
     private mergeEffectiveCompliance(profileCompliance: UserComplianceSnapshot | null | undefined): UserComplianceSnapshot | null | undefined {
         const aclBanned = this.acl.status?.banned === true;
-        if (!profileCompliance && !aclBanned)
+        if (profileCompliance !== null && profileCompliance !== undefined)
+            return this.sanitizeComplianceSnapshot(profileCompliance);
+        if (this.shouldIgnoreLegacyAclBanForCompliance())
+            return null;
+        if (!aclBanned)
             return profileCompliance;
-
-        return {
-            banned: profileCompliance?.banned === true || aclBanned,
-            mustAcceptUsage: profileCompliance?.mustAcceptUsage === true,
-            mustAcceptCreation: profileCompliance?.mustAcceptCreation === true,
-            activeSanction: profileCompliance?.activeSanction ?? null,
-            usage: profileCompliance?.usage ?? null,
-            creation: profileCompliance?.creation ?? null,
-        };
+        return this.buildLegacyAclBanCompliance();
     }
 
     private mergeEffectivePermissions(
@@ -787,12 +789,117 @@ export class UserService {
     }
 
     private formatAccessRestrictionMessage(restriction: UserAccessRestrictionReason | null): string {
-        if (restriction === 'banned')
+        if (restriction === 'temporaryBan')
+            return 'Tu cuenta está restringida temporalmente. Solo puedes revisar tu estado hasta que termine la sanción.';
+        if (restriction === 'permanentBan')
             return 'Tu cuenta no puede realizar esta acción en este momento.';
         if (restriction === 'mustAcceptUsage')
             return 'Debes aceptar las normas de uso vigentes antes de continuar.';
         if (restriction === 'mustAcceptCreation')
             return 'Debes aceptar las normas de creación vigentes antes de continuar.';
         return '';
+    }
+
+    private sanitizeComplianceSnapshot(profileCompliance: UserComplianceSnapshot | null | undefined): UserComplianceSnapshot | null {
+        if (!profileCompliance)
+            return null;
+
+        const activeSanction = this.sanitizeModerationSanction(profileCompliance.activeSanction);
+        const hadRawSanction = !!profileCompliance.activeSanction;
+        const explicitBannedWithoutSanction = profileCompliance.banned === true && !hadRawSanction;
+
+        return {
+            banned: explicitBannedWithoutSanction || !!activeSanction,
+            mustAcceptUsage: profileCompliance.mustAcceptUsage === true,
+            mustAcceptCreation: profileCompliance.mustAcceptCreation === true,
+            activeSanction,
+            usage: profileCompliance.usage ?? null,
+            creation: profileCompliance.creation ?? null,
+        };
+    }
+
+    private sanitizeModerationSanction(sanction: UserModerationSanction | null | undefined): UserModerationSanction | null {
+        if (!sanction)
+            return null;
+        if (sanction.isPermanent)
+            return { ...sanction, endsAtUtc: null };
+
+        const endsAtUtc = `${sanction.endsAtUtc ?? ''}`.trim();
+        if (endsAtUtc.length < 1)
+            return { ...sanction };
+
+        const parsed = new Date(endsAtUtc);
+        if (Number.isNaN(parsed.getTime()) || parsed.getTime() <= Date.now())
+            return null;
+
+        return {
+            ...sanction,
+            endsAtUtc,
+        };
+    }
+
+    private buildLegacyAclBanCompliance(): UserComplianceSnapshot {
+        return {
+            banned: true,
+            mustAcceptUsage: false,
+            mustAcceptCreation: false,
+            activeSanction: null,
+            usage: null,
+            creation: null,
+        };
+    }
+
+    private shouldIgnoreLegacyAclBanForCompliance(): boolean {
+        return !!this.userProfileApiSvc || !!this.privateUserFirestoreSvc;
+    }
+
+    private buildBanStatus(compliance: UserComplianceSnapshot | null | undefined): UserBanStatus {
+        const sanction = this.sanitizeModerationSanction(compliance?.activeSanction ?? null);
+        if (sanction?.isPermanent) {
+            return {
+                restriction: 'permanentBan',
+                sanction,
+                isActiveNow: true,
+                endsAtUtc: null,
+                expiresInMs: null,
+            };
+        }
+
+        const endsAtUtc = `${sanction?.endsAtUtc ?? ''}`.trim();
+        if (endsAtUtc.length > 0) {
+            const parsed = new Date(endsAtUtc);
+            const expiresInMs = Number.isNaN(parsed.getTime()) ? null : parsed.getTime() - Date.now();
+            if (expiresInMs !== null && expiresInMs > 0) {
+                return {
+                    restriction: 'temporaryBan',
+                    sanction,
+                    isActiveNow: true,
+                    endsAtUtc,
+                    expiresInMs,
+                };
+            }
+        }
+
+        if (compliance?.banned === true) {
+            return {
+                restriction: 'permanentBan',
+                sanction: sanction ?? null,
+                isActiveNow: true,
+                endsAtUtc: null,
+                expiresInMs: null,
+            };
+        }
+
+        return this.buildEmptyBanStatus();
+    }
+
+    private buildEmptyBanStatus(): UserBanStatus {
+        return {
+            restriction: null,
+            sanction: null,
+            isActiveNow: false,
+            endsAtUtc: null,
+            expiresInMs: null,
+        };
     }
 }

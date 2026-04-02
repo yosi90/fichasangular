@@ -42,12 +42,20 @@ describe('ChatAlertService', () => {
         chatApiSvc.listMessages.and.resolveTo([{ messageId: 55 }]);
         chatApiSvc.markAsRead.and.resolveTo({ conversationId: 55, lastReadMessageId: 55 });
         appToastSvc = jasmine.createSpyObj('AppToastService', ['showInfo', 'showSystem']);
-        navSvc = jasmine.createSpyObj('UserProfileNavigationService', ['openSocial', 'openPrivateProfile']);
+        navSvc = jasmine.createSpyObj('UserProfileNavigationService', ['openSocial', 'openPrivateProfile', 'openAccountRestriction']);
         socialAlertPrefsSvc = jasmine.createSpyObj('SocialAlertPreferencesService', ['isEnabled']);
         socialAlertPrefsSvc.isEnabled.and.returnValue(true);
         userSvc = {
             isLoggedIn$: new Subject<boolean>(),
             CurrentUserUid: 'uid-propio',
+            getCurrentCompliance: jasmine.createSpy('getCurrentCompliance').and.returnValue(null),
+            getCurrentBanStatus: jasmine.createSpy('getCurrentBanStatus').and.returnValue({
+                restriction: null,
+                sanction: null,
+                isActiveNow: false,
+                endsAtUtc: null,
+                expiresInMs: null,
+            }),
         };
         service = new ChatAlertService(chatRealtimeSvc, chatApiSvc, appToastSvc, navSvc, userSvc, socialAlertPrefsSvc);
     });
@@ -432,6 +440,156 @@ describe('ChatAlertService', () => {
         tick();
 
         expect(swalSpy).toHaveBeenCalledTimes(1);
+    }));
+
+    it('sanea la Swal de cuenta baneada temporal y dirige a la pestaña de restricción', fakeAsync(() => {
+        const swalSpy = spyOn(Swal, 'fire').and.resolveTo({ isConfirmed: false } as any);
+        userSvc.getCurrentBanStatus.and.returnValue({
+            restriction: 'temporaryBan',
+            sanction: {
+                sanctionId: 17,
+                kind: 'ban',
+                code: 'manual-ban',
+                name: 'Ban temporal',
+                startsAtUtc: '2026-04-02T09:00:00Z',
+                endsAtUtc: '2026-04-09T09:00:00Z',
+                isPermanent: false,
+            },
+            isActiveNow: true,
+            endsAtUtc: '2026-04-09T09:00:00Z',
+            expiresInMs: 60_000,
+        });
+        userSvc.getCurrentCompliance.and.returnValue({
+            banned: true,
+            mustAcceptUsage: false,
+            mustAcceptCreation: false,
+            activeSanction: {
+                sanctionId: 17,
+                kind: 'ban',
+                code: 'manual-ban',
+                name: 'Ban temporal',
+                startsAtUtc: '2026-04-02T09:00:00Z',
+                endsAtUtc: '2026-04-09T09:00:00Z',
+                isPermanent: false,
+            },
+            usage: null,
+            creation: null,
+        });
+
+        service.init();
+        alertCandidate$.next(buildCandidate({
+            alertKey: 'ban-alert',
+            messageId: 31,
+            conversationId: 61,
+            sender: {
+                uid: 'system:yosiftware',
+                displayName: 'Yosiftware',
+                photoThumbUrl: null,
+                isSystemUser: true,
+            },
+            body: 'Tu cuenta ha sido actualizada por administración.\nEstado de cuenta: baneada. Nota del administrador: Pruebas',
+            notification: {
+                code: 'system.account_banned',
+                title: 'Tu cuenta ha sido baneada',
+                action: {
+                    target: 'social.messages',
+                    conversationId: 61,
+                },
+                context: {},
+            },
+        }));
+        tick();
+
+        expect(swalSpy).toHaveBeenCalledTimes(1);
+        const swalArgs = swalSpy.calls.mostRecent().args[0] as unknown as Record<string, any>;
+        expect(swalArgs['icon']).toBe('warning');
+        expect(swalArgs['confirmButtonText']).toBe('Ver restricción');
+        expect(swalArgs['html']).toContain('Duración del baneo');
+        expect(swalArgs['html']).toContain('Razón:</strong> Pruebas');
+        expect(swalArgs['html']).toContain('Ban temporal');
+        expect(swalArgs['html']).toContain('09/04/2026');
+        expect(swalArgs['html']).not.toContain('Tu cuenta ha sido actualizada por administración');
+        expect(swalArgs['html']).not.toContain('Estado de cuenta');
+        expect(swalArgs['denyButtonText']).toBeUndefined();
+    }));
+
+    it('muestra un estado expirado cuando la notificación llega después de terminar la sanción', fakeAsync(() => {
+        const swalSpy = spyOn(Swal, 'fire').and.resolveTo({ isConfirmed: false } as any);
+        userSvc.getCurrentBanStatus.and.returnValue({
+            restriction: null,
+            sanction: null,
+            isActiveNow: false,
+            endsAtUtc: null,
+            expiresInMs: null,
+        });
+
+        service.init();
+        alertCandidate$.next(buildCandidate({
+            alertKey: 'ban-alert-expired',
+            messageId: 32,
+            conversationId: 62,
+            sender: {
+                uid: 'system:yosiftware',
+                displayName: 'Yosiftware',
+                photoThumbUrl: null,
+                isSystemUser: true,
+            },
+            body: 'Nota del administrador: Pruebas',
+            notification: {
+                code: 'system.account_banned',
+                title: 'Tu cuenta ha sido baneada',
+                action: {
+                    target: 'social.messages',
+                    conversationId: 62,
+                },
+                context: {},
+            },
+        }));
+        tick();
+
+        const swalArgs = swalSpy.calls.mostRecent().args[0] as unknown as Record<string, any>;
+        expect(swalArgs['html']).toContain('La restricción ya ha terminado');
+        expect(swalArgs['confirmButtonText']).toBe('Entendido');
+    }));
+
+    it('abre la pestaña de restricción temporal al confirmar una alerta de cuenta baneada', fakeAsync(() => {
+        spyOn(Swal, 'fire').and.resolveTo({ isConfirmed: true } as any);
+        userSvc.getCurrentBanStatus.and.returnValue({
+            restriction: 'temporaryBan',
+            sanction: null,
+            isActiveNow: true,
+            endsAtUtc: '2026-04-09T09:00:00Z',
+            expiresInMs: 60_000,
+        });
+
+        service.init();
+        alertCandidate$.next(buildCandidate({
+            alertKey: 'ban-alert-open-restriction',
+            messageId: 33,
+            conversationId: 63,
+            sender: {
+                uid: 'system:yosiftware',
+                displayName: 'Yosiftware',
+                photoThumbUrl: null,
+                isSystemUser: true,
+            },
+            body: 'Nota del administrador: Pruebas',
+            notification: {
+                code: 'system.account_banned',
+                title: 'Tu cuenta ha sido baneada',
+                action: {
+                    target: 'social.messages',
+                    conversationId: 63,
+                },
+                context: {},
+            },
+        }));
+        tick();
+
+        expect(navSvc.openAccountRestriction).toHaveBeenCalledWith(jasmine.objectContaining({
+            section: 'resumen',
+        }));
+        expect(navSvc.openSocial).not.toHaveBeenCalled();
     }));
 
     it('muestra Swal para notificación persistente recuperada por summary aunque no tenga messageId', fakeAsync(() => {

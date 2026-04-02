@@ -1,0 +1,60 @@
+<div class="admin-user-modal__overlay" (click)="onBackdropClose()">
+    <div class="admin-user-modal" (click)="$event.stopPropagation()">
+        <div class="admin-user-modal__header">
+            <div class="admin-user-modal__header-main">
+                <p class="admin-user-modal__eyebrow">Permisos create</p>
+                <h3>{{user?.displayName || 'Sin nombre'}}</h3>
+                <p class="admin-user-modal__subtitle">
+                    {{user?.email || user?.uid || 'Sin usuario'}}
+                </p>
+            </div>
+
+            <mat-chip class="admin-user-modal__status-chip">
+                {{activePermissionsCount}} / {{totalPermissionsCount}} activos
+            </mat-chip>
+        </div>
+
+        <div class="admin-user-modal__info" *ngIf="user">
+            <div><strong>UID:</strong> {{user.uid}}</div>
+            <div><strong>Rol:</strong> {{user.role === 'admin' ? 'Admin' : user.role}}</div>
+        </div>
+
+        <mat-chip class="admin-user-modal__warning-chip" *ngIf="!canEdit">
+            El rol admin mantiene todos los permisos activos y no se edita desde aquí.
+        </mat-chip>
+
+        <div class="admin-user-modal__permission-grid">
+            <label class="admin-user-modal__permission-item" *ngFor="let resource of resources">
+                <div class="admin-user-modal__permission-copy">
+                    <strong>{{permissionLabel(resource)}}</strong>
+                    <span>{{resource}}</span>
+                </div>
+
+                <mat-slide-toggle
+                    [checked]="draftPermissions[resource]"
+                    [disabled]="!canEdit || saving"
+                    (change)="onPermissionToggle(resource, $event.checked)">
+                </mat-slide-toggle>
+            </label>
+        </div>
+
+        <div class="admin-user-modal__actions">
+            <button
+                mat-stroked-button
+                type="button"
+                [disabled]="saving"
+                (click)="onBackdropClose()">
+                Cerrar
+            </button>
+            <button
+                *ngIf="canEdit"
+                mat-raised-button
+                color="primary"
+                type="button"
+                [disabled]="saving || !hasChanges"
+                (click)="onSave()">
+                {{saving ? 'Guardando...' : 'Guardar permisos'}}
+            </button>
+        </div>
+    </div>
+</div>

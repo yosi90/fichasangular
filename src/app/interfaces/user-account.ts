@@ -82,6 +82,7 @@ export interface UserPublicProfileTab {
 
 export type UserPrivateProfileSectionId = 'resumen' | 'campanas' | 'identidad' | 'preferencias' | 'seguridad';
 export type AdminPanelSectionId = 'usuarios' | 'role-requests';
+export type AccountRestrictionSectionId = 'resumen';
 
 export interface UserPrivateProfileOpenRequest {
     section: UserPrivateProfileSectionId;
@@ -92,6 +93,11 @@ export interface UserPrivateProfileOpenRequest {
 export interface AdminPanelOpenRequest {
     section: AdminPanelSectionId;
     pendingOnly?: boolean;
+    requestId: number;
+}
+
+export interface AccountRestrictionOpenRequest {
+    section: AccountRestrictionSectionId;
     requestId: number;
 }
 

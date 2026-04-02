@@ -1,5 +1,6 @@
 import { Component, EventEmitter, HostListener, Input, NgZone, OnDestroy, OnInit, Output, SimpleChanges, ViewChild } from '@angular/core';
-import { AdminPanelOpenRequest, SocialHubOpenRequest, UserPrivateProfileOpenRequest, UserPrivateProfileSectionId, UserPublicProfileTab } from 'src/app/interfaces/user-account';
+import { AccountRestrictionOpenRequest, AdminPanelOpenRequest, SocialHubOpenRequest, UserPrivateProfileOpenRequest, UserPrivateProfileSectionId, UserPublicProfileTab } from 'src/app/interfaces/user-account';
+import { UserBanStatus } from 'src/app/interfaces/user-moderation';
 import { UserService } from '../../../services/user.service';
 import { PersonajeService } from 'src/app/services/personaje.service';
 import { MatTabGroup } from '@angular/material/tabs';
@@ -68,6 +69,9 @@ export class TabControlComponent implements OnInit, OnDestroy {
     public usrPerm: number = 0;
     public privateProfileTabOpen = false;
     public privateProfileOpenRequest: UserPrivateProfileOpenRequest | null = null;
+    public restrictionTabOpen = false;
+    public restrictionOpenRequest: AccountRestrictionOpenRequest | null = null;
+    public temporaryRestrictionActive = false;
     public socialTabOpen = false;
     public socialOpenRequest: SocialHubOpenRequest | null = null;
     public adminPanelTabOpen = false;
@@ -97,6 +101,7 @@ export class TabControlComponent implements OnInit, OnDestroy {
     public listadoTabsAbiertos: ListadoTabAbierto[] = [];
     private readonly TAB_PERSONAJES = 'base:personajes';
     private readonly TAB_PROFILE = 'base:perfil';
+    private readonly TAB_RESTRICTION = 'base:restriction';
     private readonly TAB_SOCIAL = 'base:social';
     private readonly TAB_ADMIN = 'base:admin';
     private readonly TAB_ROADMAP = 'base:roadmap';
@@ -143,6 +148,7 @@ export class TabControlComponent implements OnInit, OnDestroy {
                 this.usrLoggedIn = loggedIn === true;
                 if (!this.usrLoggedIn) {
                     this.cerrarPerfilPrivadoPorLogout();
+                    this.cerrarRestriccionCuenta();
                     this.cerrarPanelAdministracionPorPermisos();
                 }
             });
@@ -167,6 +173,9 @@ export class TabControlComponent implements OnInit, OnDestroy {
         this.userProfileNavSvc?.privateProfileOpen$
             .pipe(takeUntil(this.destroy$))
             .subscribe((request) => this.abrirPerfilPrivado(request));
+        this.userProfileNavSvc?.accountRestrictionOpen$
+            .pipe(takeUntil(this.destroy$))
+            .subscribe((request) => this.abrirRestriccionCuenta(request));
         this.userProfileNavSvc?.socialOpen$
             .pipe(takeUntil(this.destroy$))
             .subscribe((request) => this.abrirSocial(request));
@@ -185,6 +194,9 @@ export class TabControlComponent implements OnInit, OnDestroy {
         this.userProfileNavSvc?.publicProfileOpen$
             .pipe(takeUntil(this.destroy$))
             .subscribe((payload) => this.abrirPerfilPublico(payload));
+        this.usrSvc.banStatus$
+            .pipe(takeUntil(this.destroy$))
+            .subscribe((status) => this.syncTemporaryRestrictionState(status));
     }
 
     ngOnDestroy(): void {
@@ -215,7 +227,7 @@ export class TabControlComponent implements OnInit, OnDestroy {
 
     onTabChange(event: any) {
         const key = this.tabKeyByIndex(Number(event?.index ?? 0));
-        this.activeTabKey = key ?? this.TAB_PERSONAJES;
+        this.activeTabKey = key ?? this.getDefaultBaseTabKey();
     }
 
     @HostListener('document:keydown', ['$event'])
@@ -248,6 +260,10 @@ export class TabControlComponent implements OnInit, OnDestroy {
         const tabLabel = this.TabGroup._tabs.toArray()[currentIndex].textLabel;
         if (activeKey === this.TAB_PROFILE) {
             this.quitarPerfilPrivado();
+            return;
+        }
+        if (activeKey === this.TAB_RESTRICTION) {
+            this.quitarRestriccionCuenta();
             return;
         }
         if (activeKey === this.TAB_SOCIAL) {
@@ -321,9 +337,15 @@ export class TabControlComponent implements OnInit, OnDestroy {
     }
 
     private buildOrderedTabKeys(): string[] {
-        const keys: string[] = [this.TAB_PERSONAJES];
+        const keys: string[] = [];
+        if (this.temporaryRestrictionActive && this.restrictionTabOpen)
+            keys.push(this.TAB_RESTRICTION);
+        else
+            keys.push(this.TAB_PERSONAJES);
         if (this.usrLoggedIn && this.privateProfileTabOpen)
             keys.push(this.TAB_PROFILE);
+        if (!this.temporaryRestrictionActive && this.restrictionTabOpen)
+            keys.push(this.TAB_RESTRICTION);
         if (this.socialTabOpen)
             keys.push(this.TAB_SOCIAL);
         if (this.usrPerm === 1 && this.adminPanelTabOpen)
@@ -378,13 +400,13 @@ export class TabControlComponent implements OnInit, OnDestroy {
     private getSafeOpenerKey(): string {
         if (this.isTabKeyOpen(this.activeTabKey))
             return this.activeTabKey;
-        return this.TAB_PERSONAJES;
+        return this.getDefaultBaseTabKey();
     }
 
     private registerOpenContext(targetKey: string, openerKey: string): void {
         if (!targetKey || this.openerByTab.has(targetKey))
             return;
-        const opener = this.isTabKeyOpen(openerKey) ? openerKey : this.TAB_PERSONAJES;
+        const opener = this.isTabKeyOpen(openerKey) ? openerKey : this.getDefaultBaseTabKey();
         this.openerByTab.set(targetKey, opener);
     }
 
@@ -398,10 +420,11 @@ export class TabControlComponent implements OnInit, OnDestroy {
             return;
         }
         if (fallbackToPersonajes) {
-            const idxFallback = this.tabIndexByKey(this.TAB_PERSONAJES);
+            const fallbackKey = this.getDefaultBaseTabKey();
+            const idxFallback = this.tabIndexByKey(fallbackKey);
             if (idxFallback >= 0) {
                 this.TabGroup.selectedIndex = idxFallback;
-                this.activeTabKey = this.TAB_PERSONAJES;
+                this.activeTabKey = fallbackKey;
             }
         }
     }
@@ -412,7 +435,7 @@ export class TabControlComponent implements OnInit, OnDestroy {
 
     private closeTabWithNavigation(closingKey: string, removeFn: () => boolean): boolean {
         const wasActive = this.activeTabKey === closingKey;
-        const opener = this.openerByTab.get(closingKey) ?? this.TAB_PERSONAJES;
+        const opener = this.openerByTab.get(closingKey) ?? this.getDefaultBaseTabKey();
         const removed = removeFn();
         if (!removed)
             return false;
@@ -422,7 +445,7 @@ export class TabControlComponent implements OnInit, OnDestroy {
         if (!wasActive)
             return true;
 
-        const target = this.isTabKeyOpen(opener) ? opener : this.TAB_PERSONAJES;
+        const target = this.isTabKeyOpen(opener) ? opener : this.getDefaultBaseTabKey();
         this.selectTabByKey(target, true);
         return true;
     }
@@ -469,6 +492,32 @@ export class TabControlComponent implements OnInit, OnDestroy {
         this.focusOpenedTab(this.TAB_PROFILE);
     }
 
+    public abrirRestriccionCuenta(request?: AccountRestrictionOpenRequest | null): void {
+        if (!this.temporaryRestrictionActive)
+            return;
+        this.restrictionOpenRequest = this.buildRestrictionOpenRequest(request);
+        if (this.restrictionTabOpen) {
+            this.selectTabByKey(this.TAB_RESTRICTION, true);
+            return;
+        }
+        this.restrictionTabOpen = true;
+        this.registerOpenContext(this.TAB_RESTRICTION, this.getSafeOpenerKey());
+        this.focusOpenedTab(this.TAB_RESTRICTION);
+    }
+
+    public quitarRestriccionCuenta(): boolean {
+        if (!this.restrictionTabOpen)
+            return false;
+        if (this.temporaryRestrictionActive)
+            return false;
+
+        return this.closeTabWithNavigation(this.TAB_RESTRICTION, () => {
+            this.restrictionTabOpen = false;
+            this.restrictionOpenRequest = null;
+            return true;
+        });
+    }
+
     public quitarPerfilPrivado(): boolean {
         if (!this.privateProfileTabOpen)
             return false;
@@ -480,6 +529,8 @@ export class TabControlComponent implements OnInit, OnDestroy {
     }
 
     public abrirSocial(request?: SocialHubOpenRequest | null): void {
+        if (this.temporaryRestrictionActive)
+            return;
         this.socialOpenRequest = this.buildSocialOpenRequest(request);
         if (this.socialTabOpen) {
             this.selectTabByKey(this.TAB_SOCIAL, true);
@@ -557,9 +608,22 @@ export class TabControlComponent implements OnInit, OnDestroy {
         this.privateProfileOpenRequest = null;
         this.openerByTab.delete(this.TAB_PROFILE);
         if (wasActive)
-            this.selectTabByKey(this.TAB_PERSONAJES, true);
+            this.selectTabByKey(this.getDefaultBaseTabKey(), true);
         else if (!this.isTabKeyOpen(this.activeTabKey))
-            this.selectTabByKey(this.TAB_PERSONAJES, true);
+            this.selectTabByKey(this.getDefaultBaseTabKey(), true);
+    }
+
+    private cerrarRestriccionCuenta(): void {
+        if (!this.restrictionTabOpen)
+            return;
+        const wasActive = this.activeTabKey === this.TAB_RESTRICTION;
+        this.restrictionTabOpen = false;
+        this.restrictionOpenRequest = null;
+        this.openerByTab.delete(this.TAB_RESTRICTION);
+        if (wasActive)
+            this.selectTabByKey(this.getDefaultBaseTabKey(), true);
+        else if (!this.isTabKeyOpen(this.activeTabKey))
+            this.selectTabByKey(this.getDefaultBaseTabKey(), true);
     }
 
     private buildAdminPanelOpenRequest(request?: AdminPanelOpenRequest | null): AdminPanelOpenRequest {
@@ -579,6 +643,13 @@ export class TabControlComponent implements OnInit, OnDestroy {
         };
     }
 
+    private buildRestrictionOpenRequest(request?: AccountRestrictionOpenRequest | null): AccountRestrictionOpenRequest {
+        return {
+            section: request?.section ?? 'resumen',
+            requestId: Number(request?.requestId) > 0 ? Number(request?.requestId) : Date.now(),
+        };
+    }
+
     private cerrarPanelAdministracionPorPermisos(): void {
         if (!this.adminPanelTabOpen)
             return;
@@ -586,12 +657,14 @@ export class TabControlComponent implements OnInit, OnDestroy {
         this.adminPanelTabOpen = false;
         this.openerByTab.delete(this.TAB_ADMIN);
         if (wasActive)
-            this.selectTabByKey(this.TAB_PERSONAJES, true);
+            this.selectTabByKey(this.getDefaultBaseTabKey(), true);
         else if (!this.isTabKeyOpen(this.activeTabKey))
-            this.selectTabByKey(this.TAB_PERSONAJES, true);
+            this.selectTabByKey(this.getDefaultBaseTabKey(), true);
     }
 
     private openHelpTab(key: string, flag: 'roadmapTabOpen' | 'legalPrivacyTabOpen' | 'usageAboutTabOpen'): void {
+        if (this.temporaryRestrictionActive)
+            return;
         if (this.getHelpTabFlag(flag)) {
             this.selectTabByKey(key, true);
             return;
@@ -1989,7 +2062,7 @@ export class TabControlComponent implements OnInit, OnDestroy {
     }
 
     verPersonajes() {
-        this.selectTabByKey(this.TAB_PERSONAJES, true);
+        this.selectTabByKey(this.getDefaultBaseTabKey(), true);
     }
 
     @Output() CerrarNuevoPersonajeTab: EventEmitter<void> = new EventEmitter();
@@ -2052,6 +2125,68 @@ export class TabControlComponent implements OnInit, OnDestroy {
             this.CerrarListadoTab.emit();
             return true;
         });
+    }
+
+    private syncTemporaryRestrictionState(status: UserBanStatus | null): void {
+        const temporaryBanActive = status?.restriction === 'temporaryBan';
+        if (temporaryBanActive) {
+            const wasInactive = this.temporaryRestrictionActive !== true;
+            this.temporaryRestrictionActive = true;
+            this.closeNonAccountTabsForTemporaryBan();
+            this.abrirRestriccionCuenta({
+                section: 'resumen',
+                requestId: Date.now(),
+            });
+            if (wasInactive)
+                this.selectTabByKey(this.TAB_RESTRICTION, true);
+            return;
+        }
+
+        const wasTemporary = this.temporaryRestrictionActive === true;
+        this.temporaryRestrictionActive = false;
+        if (wasTemporary)
+            this.cerrarRestriccionCuenta();
+    }
+
+    private closeNonAccountTabsForTemporaryBan(): void {
+        this.socialTabOpen = false;
+        this.socialOpenRequest = null;
+        this.adminPanelTabOpen = false;
+        this.adminPanelOpenRequest = null;
+        this.roadmapTabOpen = false;
+        this.legalPrivacyTabOpen = false;
+        this.usageAboutTabOpen = false;
+        this.publicProfileTabs = [];
+        this.detallesPersonajeAbiertos = [];
+        this.detallesRazaAbiertos = [];
+        this.detallesConjuroAbiertos = [];
+        this.detallesSortilegaAbiertos = [];
+        this.detallesTipoCriaturaAbiertos = [];
+        this.detallesRasgoAbiertos = [];
+        this.detallesDoteAbiertos = [];
+        this.detallesClaseAbiertos = [];
+        this.detallesEspecialAbiertos = [];
+        this.detallesRacialAbiertos = [];
+        this.detallesManualAbiertos = [];
+        this.detallesPlantillaAbiertos = [];
+        this.detallesSubtipoAbiertos = [];
+        this.detallesVentajaAbiertos = [];
+        this.detallesMonstruoAbiertos = [];
+        this.detallesArmaAbiertos = [];
+        this.detallesArmaduraAbiertos = [];
+        this.detallesDeidadAbiertos = [];
+        this.listadoTabsAbiertos = [];
+        this.AbrirNuevoPersonajeTab = 0;
+
+        Array.from(this.openerByTab.keys())
+            .filter((key) => key !== this.TAB_PROFILE && key !== this.TAB_RESTRICTION)
+            .forEach((key) => this.openerByTab.delete(key));
+    }
+
+    private getDefaultBaseTabKey(): string {
+        if (this.temporaryRestrictionActive && this.restrictionTabOpen)
+            return this.TAB_RESTRICTION;
+        return this.TAB_PERSONAJES;
     }
 
     private normalizar(value: string): string {

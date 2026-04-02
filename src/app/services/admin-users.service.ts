@@ -25,6 +25,7 @@ export interface AdminUserRow {
     role: UserRole;
     banned: boolean;
     admin: boolean;
+    isSystemEntity: boolean;
     permissions: Record<PermissionResource, boolean>;
     updatedAt: number | null;
     moderationSummary: UserModerationSummary | null;
@@ -40,6 +41,7 @@ export interface SyncUsuariosApiResult {
 const USUARIOS_ACL_CACHE_SCHEMA_VERSION = CACHE_CONTRACT_MANIFEST
     .find((entry) => entry.key === 'usuarios_acl_cache')
     ?.schemaVersion ?? 1;
+const SYSTEM_ENTITY_DISPLAY_NAMES = new Set(['yosiftware']);
 
 @Injectable({
     providedIn: 'root'
@@ -67,6 +69,7 @@ export class AdminUsersService {
         const uidObjetivo = `${uid ?? ''}`.trim();
         if (uidObjetivo.length < 1)
             throw new Error('UID inválido');
+        await this.assertMutableUserEntity(uidObjetivo);
         if (value === true && uidObjetivo === actorUid)
             throw new Error('No puedes banear tu propia cuenta');
 
@@ -101,6 +104,7 @@ export class AdminUsersService {
         const uidObjetivo = `${uid ?? ''}`.trim();
         if (uidObjetivo.length < 1)
             throw new Error('UID inválido');
+        await this.assertMutableUserEntity(uidObjetivo);
 
         const rawAcl = await this.getPath(`Acl/users/${uidObjetivo}`);
         const acl = normalizeUserAcl(rawAcl);
@@ -132,6 +136,7 @@ export class AdminUsersService {
             throw new Error('UID inválido');
         if (!PERMISSION_RESOURCES.includes(resource))
             throw new Error('Recurso de permiso inválido');
+        await this.assertMutableUserEntity(uidObjetivo);
 
         const rawAcl = await this.getPath(`Acl/users/${uidObjetivo}`);
         const acl = normalizeUserAcl(rawAcl);
@@ -142,6 +147,38 @@ export class AdminUsersService {
         permissions[resource] = value;
         const permissionsEfectivos = this.toPermissionsMap(
             this.buildEffectivePermissionsCreate(acl.roles.type, this.mapToPermissionsArray(permissions))
+        );
+        const payload = this.buildAclWritePayload(
+            acl.roles.type,
+            acl.status.banned === true,
+            permissionsEfectivos,
+            rawAcl,
+            actorUid
+        );
+
+        await this.setPath(`Acl/users/${uidObjetivo}`, payload);
+        await this.backupUserToApi(uidObjetivo);
+    }
+
+    async setCreatePermissions(uid: string, permissions: Record<PermissionResource, boolean>): Promise<void> {
+        const actorUid = await this.ensureActorAdmin();
+        const uidObjetivo = `${uid ?? ''}`.trim();
+        if (uidObjetivo.length < 1)
+            throw new Error('UID inválido');
+        await this.assertMutableUserEntity(uidObjetivo);
+
+        const rawAcl = await this.getPath(`Acl/users/${uidObjetivo}`);
+        const acl = normalizeUserAcl(rawAcl);
+        if (acl.roles.type === 'admin')
+            throw new Error('Los permisos de un admin son fijos y siempre están activos');
+
+        const normalizedPermissions = {} as Record<PermissionResource, boolean>;
+        PERMISSION_RESOURCES.forEach((resource) => {
+            normalizedPermissions[resource] = permissions?.[resource] === true;
+        });
+
+        const permissionsEfectivos = this.toPermissionsMap(
+            this.buildEffectivePermissionsCreate(acl.roles.type, this.mapToPermissionsArray(normalizedPermissions))
         );
         const payload = this.buildAclWritePayload(
             acl.roles.type,
@@ -288,6 +325,7 @@ export class AdminUsersService {
             const profile = perfiles[uid];
             const acl = aclByUid[uid] ?? { ...EMPTY_USER_ACL };
             const role = acl.roles?.type ?? 'jugador';
+            const isSystemEntity = this.isSystemEntityProfile(uid, profile);
 
             rows.push({
                 uid,
@@ -297,6 +335,7 @@ export class AdminUsersService {
                 role,
                 banned: acl.status?.banned === true,
                 admin: role === 'admin',
+                isSystemEntity,
                 permissions: this.getPermissionsByResource(role, acl.permissions),
                 updatedAt: this.toOptionalNumber((aclRaw?.[uid] as Record<string, any>)?.['updatedAt']),
                 moderationSummary: this.normalizeModerationSummary((aclRaw?.[uid] as Record<string, any>)?.['moderationSummary']),
@@ -374,11 +413,35 @@ export class AdminUsersService {
     }
 
     private sortRows(a: AdminUserRow, b: AdminUserRow): number {
+        if (a.isSystemEntity !== b.isSystemEntity)
+            return a.isSystemEntity ? 1 : -1;
         const aKey = `${a.displayName || a.email || a.uid}`.toLowerCase();
         const bKey = `${b.displayName || b.email || b.uid}`.toLowerCase();
         if (aKey === bKey)
             return a.uid.localeCompare(b.uid);
         return aKey.localeCompare(bKey);
+    }
+
+    private async assertMutableUserEntity(uid: string): Promise<void> {
+        if (await this.isSystemEntityUid(uid))
+            throw new Error('Yosiftware es una entidad del sistema. Su rol, permisos y moderación no se pueden editar desde el panel admin.');
+    }
+
+    private async isSystemEntityUid(uid: string): Promise<boolean> {
+        const profileRaw = await this.getPath(`UserProfiles/${uid}`);
+        return this.isSystemEntityProfile(uid, profileRaw);
+    }
+
+    private isSystemEntityProfile(uid: string, profileRaw: any): boolean {
+        const displayName = this.toKey(profileRaw?.displayName);
+        if (SYSTEM_ENTITY_DISPLAY_NAMES.has(displayName))
+            return true;
+
+        const email = this.toKey(profileRaw?.email);
+        if (email.length > 0 && SYSTEM_ENTITY_DISPLAY_NAMES.has(email.replace(/@.*$/, '')))
+            return true;
+
+        return false;
     }
 
     private toNumber(value: any): number {
@@ -662,5 +725,9 @@ export class AdminUsersService {
     private toNullableText(value: any): string | null {
         const text = `${value ?? ''}`.trim();
         return text.length > 0 ? text : null;
+    }
+
+    private toKey(value: any): string {
+        return `${value ?? ''}`.trim().toLowerCase();
     }
 }

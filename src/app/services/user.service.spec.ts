@@ -114,6 +114,8 @@ class UserServiceTestDouble extends UserService {
 class UserServiceProfileBootstrapTestDouble extends UserService {
     private authHandler?: ((firebaseUser: User | null) => void) | null;
     private readonly authStub: { currentUser: User | null; };
+    private aclRaw: any = null;
+    private aclOnData?: (rawAcl: any) => void;
 
     constructor(
         private apiMock: { getMyProfile: jasmine.Spy; },
@@ -139,7 +141,8 @@ class UserServiceProfileBootstrapTestDouble extends UserService {
     }
 
     protected override watchAclPath(_: string, onData: (rawAcl: any) => void, __: () => void): () => void {
-        onData(null);
+        this.aclOnData = onData;
+        onData(this.aclRaw);
         return () => undefined;
     }
 
@@ -153,6 +156,11 @@ class UserServiceProfileBootstrapTestDouble extends UserService {
         const next = lastCall?.args?.[0];
         if (typeof next === 'function')
             next(profile);
+    }
+
+    emitAcl(rawAcl: any): void {
+        this.aclRaw = rawAcl;
+        this.aclOnData?.(rawAcl);
     }
 
     async flush(): Promise<void> {
@@ -313,7 +321,7 @@ describe('UserService', () => {
         expect(service.signOutCalls).toBeGreaterThan(0);
     });
 
-    it('ban actor-scoped en compliance también fuerza logout aunque el ACL legacy no lo marque', async () => {
+    it('ban temporal actor-scoped mantiene la sesión y bloquea el uso normal', async () => {
         const service = new UserServiceTestDouble();
         service.emitAcl('uid-compliance-ban', {
             roles: { admin: false, type: 'jugador' },
@@ -348,7 +356,71 @@ describe('UserService', () => {
                 banned: true,
                 mustAcceptUsage: false,
                 mustAcceptCreation: false,
-                activeSanction: null,
+                activeSanction: {
+                    sanctionId: 9,
+                    kind: 'ban',
+                    code: 'manual-ban',
+                    name: 'Ban temporal',
+                    startsAtUtc: '2026-04-02T09:00:00Z',
+                    endsAtUtc: '2999-04-02T10:00:00Z',
+                    isPermanent: false,
+                },
+                usage: null,
+                creation: null,
+            },
+        });
+        await service.flush();
+
+        expect(service.signOutCalls).toBe(0);
+        expect(service.getAccessRestriction('usage')).toBe('temporaryBan');
+        expect(service.getAccessRestrictionMessage('usage')).toContain('restringida temporalmente');
+        expect(service.getCurrentCompliance()?.banned).toBeTrue();
+    });
+
+    it('ban permanente actor-scoped sigue forzando logout', async () => {
+        const service = new UserServiceTestDouble();
+        service.emitAcl('uid-compliance-ban-permanent', {
+            roles: { admin: false, type: 'jugador' },
+            status: { banned: false },
+            permissions: { personajes: { create: true } },
+        });
+        service.emitAuth({
+            uid: 'uid-compliance-ban-permanent',
+            displayName: 'Aldric',
+            email: 'aldric@test.com',
+        } as User);
+        await service.flush();
+
+        service.setCurrentPrivateProfile({
+            uid: 'uid-compliance-ban-permanent',
+            displayName: 'Aldric',
+            bio: null,
+            genderIdentity: null,
+            pronouns: null,
+            email: 'aldric@test.com',
+            emailVerified: true,
+            authProvider: 'correo',
+            photoUrl: null,
+            photoThumbUrl: null,
+            createdAt: null,
+            lastSeenAt: null,
+            role: 'jugador',
+            permissions: {
+                personajes: { create: true },
+            },
+            compliance: {
+                banned: true,
+                mustAcceptUsage: false,
+                mustAcceptCreation: false,
+                activeSanction: {
+                    sanctionId: 10,
+                    kind: 'ban',
+                    code: 'manual-ban-permanent',
+                    name: 'Ban permanente',
+                    startsAtUtc: '2026-04-02T09:00:00Z',
+                    endsAtUtc: null,
+                    isPermanent: true,
+                },
                 usage: null,
                 creation: null,
             },
@@ -356,7 +428,7 @@ describe('UserService', () => {
         await service.flush();
 
         expect(service.signOutCalls).toBeGreaterThan(0);
-        expect(service.getCurrentCompliance()?.banned).toBeTrue();
+        expect(service.getCurrentBanStatus().restriction).toBe('permanentBan');
     });
 
     it('rol jugador respeta permisos create del ACL', async () => {
@@ -796,6 +868,45 @@ describe('UserService', () => {
         } as User);
         await service.flush();
 
+        const firestoreProfile = buildPrivateProfile({
+            displayName: 'Aldric actualizado',
+        });
+        delete firestoreProfile.compliance;
+        service.emitFirestoreProfile(firestoreProfile);
+        await service.flush();
+
+        expect(service.CurrentPrivateProfile?.displayName).toBe('Aldric actualizado');
+        expect(service.CurrentPrivateProfile?.compliance?.mustAcceptCreation).toBeTrue();
+    });
+
+    it('limpia compliance vieja cuando Firestore reemite null explícito', async () => {
+        const apiMock = {
+            getMyProfile: jasmine.createSpy('getMyProfile').and.resolveTo(buildPrivateProfile({
+                compliance: {
+                    banned: false,
+                    mustAcceptUsage: false,
+                    mustAcceptCreation: true,
+                    activeSanction: null,
+                    usage: null,
+                    creation: { version: '2' },
+                },
+            })),
+        };
+        const firestoreMock = {
+            watchMyProfile: jasmine.createSpy('watchMyProfile').and.callFake((next: (profile: any) => void) => {
+                next(buildPrivateProfile({ compliance: null }));
+                return () => undefined;
+            }),
+        };
+        const service = new UserServiceProfileBootstrapTestDouble(apiMock, firestoreMock);
+
+        service.emitAuth({
+            uid: 'uid-1',
+            displayName: 'Aldric',
+            email: 'aldric@test.com',
+        } as User);
+        await service.flush();
+
         service.emitFirestoreProfile(buildPrivateProfile({
             displayName: 'Aldric actualizado',
             compliance: null,
@@ -803,7 +914,94 @@ describe('UserService', () => {
         await service.flush();
 
         expect(service.CurrentPrivateProfile?.displayName).toBe('Aldric actualizado');
-        expect(service.CurrentPrivateProfile?.compliance?.mustAcceptCreation).toBeTrue();
+        expect(service.CurrentPrivateProfile?.compliance).toBeNull();
+    });
+
+    it('ignora un ACL legacy stale cuando la capa actor-scoped ya no marca ban', async () => {
+        const apiMock = {
+            getMyProfile: jasmine.createSpy('getMyProfile').and.resolveTo(buildPrivateProfile({
+                compliance: null,
+            })),
+        };
+        const firestoreMock = {
+            watchMyProfile: jasmine.createSpy('watchMyProfile').and.callFake((next: (profile: any) => void) => {
+                next(buildPrivateProfile({ compliance: null }));
+                return () => undefined;
+            }),
+        };
+        const service = new UserServiceProfileBootstrapTestDouble(apiMock, firestoreMock);
+
+        service.emitAcl({
+            roles: { admin: false, type: 'jugador' },
+            status: { banned: true },
+            permissions: {
+                personajes: { create: true },
+            },
+        });
+        service.emitAuth({
+            uid: 'uid-1',
+            displayName: 'Aldric',
+            email: 'aldric@test.com',
+        } as User);
+        await service.flush();
+
+        expect(service.getCurrentBanStatus().restriction).toBeNull();
+        expect(service.canProceed('usage')).toBeTrue();
+    });
+
+    it('descarta sanciones temporales ya expiradas al calcular la restricción efectiva', async () => {
+        const service = new UserServiceTestDouble();
+        service.emitAcl('uid-expired-ban', {
+            roles: { admin: false, type: 'jugador' },
+            status: { banned: false },
+            permissions: { personajes: { create: true } },
+        });
+        service.emitAuth({
+            uid: 'uid-expired-ban',
+            displayName: 'Aldric',
+            email: 'aldric@test.com',
+        } as User);
+        await service.flush();
+
+        service.setCurrentPrivateProfile({
+            uid: 'uid-expired-ban',
+            displayName: 'Aldric',
+            bio: null,
+            genderIdentity: null,
+            pronouns: null,
+            email: 'aldric@test.com',
+            emailVerified: true,
+            authProvider: 'correo',
+            photoUrl: null,
+            photoThumbUrl: null,
+            createdAt: null,
+            lastSeenAt: null,
+            role: 'jugador',
+            permissions: {
+                personajes: { create: true },
+            },
+            compliance: {
+                banned: true,
+                mustAcceptUsage: false,
+                mustAcceptCreation: false,
+                activeSanction: {
+                    sanctionId: 11,
+                    kind: 'ban',
+                    code: 'manual-ban-expired',
+                    name: 'Ban temporal',
+                    startsAtUtc: '2026-04-02T09:00:00Z',
+                    endsAtUtc: '2000-04-02T10:00:00Z',
+                    isPermanent: false,
+                },
+                usage: null,
+                creation: null,
+            },
+        });
+        await service.flush();
+
+        expect(service.getCurrentBanStatus().restriction).toBeNull();
+        expect(service.getAccessRestriction('usage')).toBeNull();
+        expect(service.signOutCalls).toBe(0);
     });
 
     it('register traduce email-already-in-use a un mensaje de usuario', async () => {

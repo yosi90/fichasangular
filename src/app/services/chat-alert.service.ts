@@ -3,6 +3,7 @@ import { Subscription } from 'rxjs';
 import Swal from 'sweetalert2';
 import { AppToastCategory } from '../interfaces/app-toast';
 import { ChatAlertCandidate, ChatAnnouncementPayload } from '../interfaces/chat';
+import { UserModerationSanction } from '../interfaces/user-moderation';
 import { AppToastService } from './app-toast.service';
 import { ChatApiService } from './chat-api.service';
 import { ChatRealtimeService } from './chat-realtime.service';
@@ -143,32 +144,41 @@ export class ChatAlertService implements OnDestroy {
         if (!notification)
             return;
 
-        const canOpenMessages = notification.action?.target === 'social.messages'
+        const isAccountBannedAlert = notification.code === 'system.account_banned';
+        const currentBanStatus = typeof this.userSvc.getCurrentBanStatus === 'function'
+            ? this.userSvc.getCurrentBanStatus()
+            : null;
+        const canOpenMessages = !isAccountBannedAlert
+            && notification.action?.target === 'social.messages'
             && Math.trunc(Number(notification.action?.conversationId)) > 0;
         const notificationConversationId = Math.trunc(Number(notification.action?.conversationId));
         const campaignId = this.extractCampaignId(candidate);
         const canOpenCampaign = campaignId > 0
             && (notification.code === 'system.campaign_invitation_received'
                 || notification.code === 'system.campaign_invitation_resolved');
-        const canOpenProfile = notification.code === 'system.role_request_resolved'
-            || notification.code === 'system.moderation_event'
-            || notification.code === 'system.account_banned';
+        const canOpenRestriction = isAccountBannedAlert && currentBanStatus?.restriction === 'temporaryBan';
+        const canOpenProfile = !isAccountBannedAlert && (notification.code === 'system.role_request_resolved'
+            || notification.code === 'system.moderation_event');
         const primaryActionLabel = canOpenCampaign
             ? 'Abrir campaña'
-            : canOpenProfile
+            : canOpenRestriction
+                ? 'Ver restricción'
+                : canOpenProfile
                 ? 'Abrir perfil'
                 : canOpenMessages
                     ? 'Abrir mensajes'
-                    : 'Aceptar';
+                    : 'Entendido';
+        const swalHtml = this.buildNotificationSwalHtml(candidate);
         const result = await Swal.fire({
-            icon: 'info',
+            icon: isAccountBannedAlert ? 'warning' : 'info',
             title: `${notification.title ?? ''}`.trim() || 'Nuevo aviso',
-            text: `${candidate.body ?? ''}`.trim() || `${notification.title ?? ''}`.trim() || 'Tienes un nuevo aviso.',
-            showCancelButton: canOpenCampaign || canOpenProfile || canOpenMessages,
+            text: swalHtml ? undefined : (`${candidate.body ?? ''}`.trim() || `${notification.title ?? ''}`.trim() || 'Tienes un nuevo aviso.'),
+            html: swalHtml || undefined,
+            showCancelButton: canOpenCampaign || canOpenRestriction || canOpenProfile || canOpenMessages,
             showDenyButton: (canOpenCampaign || canOpenProfile) && canOpenMessages,
             confirmButtonText: primaryActionLabel,
             denyButtonText: canOpenMessages ? 'Abrir mensajes' : undefined,
-            cancelButtonText: canOpenCampaign || canOpenProfile || canOpenMessages ? 'Cerrar' : undefined,
+            cancelButtonText: canOpenCampaign || canOpenRestriction || canOpenProfile || canOpenMessages ? 'Cerrar' : undefined,
             focusConfirm: false,
         });
 
@@ -178,6 +188,14 @@ export class ChatAlertService implements OnDestroy {
                 this.userProfileNavSvc.openSocial({
                     section: 'campanas',
                     campaignId,
+                    requestId: Date.now(),
+                });
+                return;
+            }
+            if (canOpenRestriction) {
+                await this.markNotificationConversationAsRead(candidate, notificationConversationId);
+                this.userProfileNavSvc.openAccountRestriction({
+                    section: 'resumen',
                     requestId: Date.now(),
                 });
                 return;
@@ -216,6 +234,41 @@ export class ChatAlertService implements OnDestroy {
         if (normalized.length <= 120)
             return normalized;
         return `${normalized.slice(0, 117).trim()}...`;
+    }
+
+    private buildNotificationSwalHtml(candidate: ChatAlertCandidate): string {
+        const notificationCode = `${candidate?.notification?.code ?? ''}`.trim().toLowerCase();
+        if (notificationCode !== 'system.account_banned')
+            return '';
+
+        const bodyParts = this.extractAccountBanCopy(candidate);
+        const banStatus = typeof this.userSvc.getCurrentBanStatus === 'function'
+            ? this.userSvc.getCurrentBanStatus()
+            : null;
+        const sanction = banStatus?.sanction ?? this.userSvc.getCurrentCompliance?.()?.activeSanction ?? null;
+        const durationLabel = banStatus?.restriction === 'temporaryBan'
+            ? `Duración del baneo: ${this.formatModerationSanctionLabel(sanction)}`
+            : banStatus?.restriction === 'permanentBan'
+                ? 'Duración del baneo: permanente'
+                : 'La restricción ya ha terminado';
+        const durationHint = banStatus?.restriction
+            ? 'La duración se basa en la sanción activa registrada para tu cuenta.'
+            : 'El aviso ha llegado después de que terminara la sanción activa.';
+
+        return [
+            '<div style="display:flex;flex-direction:column;gap:1rem;text-align:center;">',
+            bodyParts.reason
+                ? `  <p style="margin:0;color:rgba(33,37,41,.88);line-height:1.45;"><strong>Razón:</strong> ${this.escapeHtml(bodyParts.reason)}</p>`
+                : '',
+            bodyParts.extraMessage
+                ? `  <p style="margin:0;color:rgba(33,37,41,.78);white-space:pre-line;line-height:1.45;">${this.escapeHtml(bodyParts.extraMessage)}</p>`
+                : '',
+            '  <div style="padding:.85rem 1rem;border-radius:1rem;background:rgba(255,99,132,.08);border:1px solid rgba(255,99,132,.22);text-align:left;">',
+            `    <strong style="display:block;margin-bottom:.35rem;color:rgba(33,37,41,.92);">${this.escapeHtml(durationLabel)}</strong>`,
+            `    <span style="display:block;color:rgba(33,37,41,.74);line-height:1.45;">${this.escapeHtml(durationHint)}</span>`,
+            '  </div>',
+            '</div>',
+        ].filter((line) => line.length > 0).join('');
     }
 
     private extractCampaignId(candidate: ChatAlertCandidate): number {
@@ -301,5 +354,71 @@ export class ChatAlertService implements OnDestroy {
             : null;
         const messageId = Math.trunc(Number(candidate?.messageId));
         return Number.isFinite(messageId) && messageId > 0 ? messageId : 0;
+    }
+
+    private formatModerationSanctionLabel(sanction: UserModerationSanction | null | undefined): string {
+        if (!sanction)
+            return 'no disponible';
+
+        const label = `${sanction.name ?? sanction.code ?? sanction.kind ?? 'Sanción'}`.trim();
+        if (sanction.isPermanent)
+            return `${label} permanente`;
+        const endsAtUtc = `${sanction.endsAtUtc ?? ''}`.trim();
+        if (endsAtUtc.length > 0)
+            return `${label} hasta ${this.formatDateTimeLabel(endsAtUtc)}`;
+        return label;
+    }
+
+    private formatDateTimeLabel(value: string): string {
+        const parsed = new Date(value);
+        if (Number.isNaN(parsed.getTime()))
+            return 'fecha no disponible';
+
+        return new Intl.DateTimeFormat('es-ES', {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: false,
+        }).format(parsed).replace(',', '');
+    }
+
+    private extractAccountBanCopy(candidate: ChatAlertCandidate): { reason: string; extraMessage: string; } {
+        const body = `${candidate?.body ?? ''}`.trim();
+        const reasonMatch = /(?:nota del administrador|raz[oó]n)\s*:\s*([^\n]+)/i.exec(body);
+        const lines = body
+            .split(/\r?\n/)
+            .map((line) => line.trim())
+            .filter((line) => line.length > 0);
+
+        let reason = `${reasonMatch?.[1] ?? ''}`.trim();
+        const extraLines = lines.filter((line) => {
+            const normalized = line.toLowerCase();
+            if (normalized.startsWith('tu cuenta ha sido actualizada por administración.')
+                || normalized.startsWith('tu cuenta ha sido actualizada por administracion.')
+                || normalized.startsWith('estado de cuenta:')) {
+                return false;
+            }
+            if (normalized.startsWith('nota del administrador:') || normalized.startsWith('razón:') || normalized.startsWith('razon:')) {
+                reason = reason || line.split(':').slice(1).join(':').trim();
+                return false;
+            }
+            return true;
+        });
+
+        return {
+            reason,
+            extraMessage: extraLines.join('\n'),
+        };
+    }
+
+    private escapeHtml(value: string): string {
+        return `${value ?? ''}`
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
     }
 }

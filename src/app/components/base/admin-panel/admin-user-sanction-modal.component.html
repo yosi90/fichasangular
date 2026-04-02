@@ -1,0 +1,157 @@
+<div class="admin-user-modal__overlay" (click)="onBackdropClose()">
+    <div class="admin-user-modal admin-user-modal--wide" (click)="$event.stopPropagation()">
+        <div class="admin-user-modal__header">
+            <div class="admin-user-modal__header-main">
+                <p class="admin-user-modal__eyebrow">Sanción manual</p>
+                <h3>{{user?.displayName || 'Sin nombre'}}</h3>
+                <p class="admin-user-modal__subtitle">
+                    {{user?.email || user?.uid || 'Sin usuario'}}
+                </p>
+            </div>
+
+            <mat-chip class="admin-user-modal__status-chip">
+                {{user?.banned ? 'Cuenta ya baneada' : 'Sin ban efectivo'}}
+            </mat-chip>
+        </div>
+
+        <div class="admin-user-modal__info" *ngIf="user">
+            <div><strong>UID:</strong> {{user.uid}}</div>
+            <div><strong>Moderación:</strong> {{user.moderationSummary?.incidentCount || 0}} incidencias · {{user.moderationSummary?.sanctionCount || 0}} sanciones</div>
+        </div>
+
+        <mat-form-field appearance="fill" class="admin-user-modal__field">
+            <mat-label>Motivo predefinido</mat-label>
+            <mat-select [(ngModel)]="selectedCaseCode" [disabled]="saving" panelClass="admin-user-modal__select-panel">
+                <mat-option *ngFor="let item of availableCases" [value]="item.code">
+                    {{caseLabel(item)}}
+                </mat-option>
+            </mat-select>
+        </mat-form-field>
+
+        <div class="admin-user-modal__case-card" *ngIf="selectedCase as currentCase">
+            <div class="admin-user-modal__case-head">
+                <div class="admin-user-modal__case-title">
+                    <strong>{{caseLabel(currentCase)}}</strong>
+                </div>
+                <span>{{currentCase.code || 'sin código'}}</span>
+            </div>
+            <p *ngIf="currentCase.description">{{currentCase.description}}</p>
+            <div class="admin-user-modal__case-summary">
+                <p>{{stageSummary(currentCase)}}</p>
+                <button
+                    mat-icon-button
+                    type="button"
+                    class="admin-user-modal__help-btn"
+                    [matTooltip]="'La card resume la escalera configurada del caso. Solo describe cómo está definido el supuesto moderable y mantiene compatibilidad con bloqueos administrativos legacy; no implica que este usuario ya haya pasado por esos escalones.'"
+                    matTooltipPosition="above"
+                    aria-label="Más información sobre el resumen de etapas">
+                    <mat-icon>warning_amber</mat-icon>
+                </button>
+            </div>
+        </div>
+
+        <div class="admin-user-modal__duration-grid">
+            <mat-form-field appearance="fill" class="admin-user-modal__field">
+                <mat-label>Duración</mat-label>
+                <mat-select
+                    [(ngModel)]="durationPreset"
+                    [disabled]="saving"
+                    (selectionChange)="onDurationPresetChange($event.value)"
+                    panelClass="admin-user-modal__select-panel">
+                    <mat-option value="24h">24 horas</mat-option>
+                    <mat-option value="72h">3 días</mat-option>
+                    <mat-option value="7d">7 días</mat-option>
+                    <mat-option value="30d">30 días</mat-option>
+                    <mat-option value="permanent">Permanente</mat-option>
+                    <mat-option value="custom">Personalizada</mat-option>
+                </mat-select>
+            </mat-form-field>
+        </div>
+
+        <div class="admin-user-modal__custom-mode-card" *ngIf="showCustomControls">
+            <div class="admin-user-modal__custom-mode">
+                <div class="admin-user-modal__custom-mode-header">
+                    <strong>Ajuste manual</strong>
+                </div>
+
+                <mat-radio-group [(ngModel)]="customMode" [disabled]="saving" class="admin-user-modal__custom-mode-group">
+                    <mat-radio-button value="minutes">Por minutos</mat-radio-button>
+                    <mat-radio-button value="datetime">Fecha y hora</mat-radio-button>
+                </mat-radio-group>
+
+                <mat-form-field appearance="fill" class="admin-user-modal__field" *ngIf="isCustomMinutesMode">
+                    <mat-label>Minutos</mat-label>
+                    <input
+                        matInput
+                        type="number"
+                        min="1"
+                        step="1"
+                        [(ngModel)]="customMinutes"
+                        [disabled]="saving"
+                        placeholder="Ej. 1, 5, 60">
+                </mat-form-field>
+
+                <mat-form-field appearance="fill" class="admin-user-modal__field" *ngIf="isCustomDateTimeMode">
+                    <mat-label>Hasta</mat-label>
+                    <input
+                        matInput
+                        type="datetime-local"
+                        step="60"
+                        [(ngModel)]="customEndsAtLocal"
+                        [disabled]="saving">
+                </mat-form-field>
+            </div>
+        </div>
+
+        <mat-chip class="admin-user-modal__warning-chip">
+            Fin efectivo: {{effectiveDurationLabel}}
+        </mat-chip>
+
+        <p class="admin-user-modal__duration-hint" *ngIf="durationPreset === 'custom'">
+            Puedes fijar una fecha exacta o indicar una duración mínima en minutos. Para pruebas rápidas, usa `1` minuto.
+        </p>
+        <p class="admin-user-modal__duration-hint admin-user-modal__duration-hint--timezone" *ngIf="durationPreset === 'custom' && customMode === 'datetime'">
+            Hora local del navegador: {{localTimeZoneLabel}}
+        </p>
+
+        <div class="admin-user-modal__textareas">
+            <mat-form-field appearance="fill" class="admin-user-modal__field">
+                <mat-label>Motivo interno</mat-label>
+                <textarea
+                    matInput
+                    rows="4"
+                    [(ngModel)]="internalDescription"
+                    [disabled]="saving"
+                    placeholder="Qué ha ocurrido y por qué se aplica la sanción"></textarea>
+            </mat-form-field>
+
+            <mat-form-field appearance="fill" class="admin-user-modal__field">
+                <mat-label>Mensaje visible para el usuario</mat-label>
+                <textarea
+                    matInput
+                    rows="4"
+                    [(ngModel)]="userVisibleMessage"
+                    [disabled]="saving"
+                    placeholder="Explicación breve y clara que recibirá el usuario"></textarea>
+            </mat-form-field>
+        </div>
+
+        <div class="admin-user-modal__actions">
+            <button
+                mat-stroked-button
+                type="button"
+                [disabled]="saving"
+                (click)="onBackdropClose()">
+                Cancelar
+            </button>
+            <button
+                mat-raised-button
+                color="warn"
+                type="button"
+                [disabled]="!canSubmit"
+                (click)="onSubmit()">
+                {{saving ? 'Aplicando...' : 'Aplicar sanción'}}
+            </button>
+        </div>
+    </div>
+</div>

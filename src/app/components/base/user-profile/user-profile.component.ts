@@ -2399,7 +2399,9 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
 
     private resolveComplianceErrorMessage(error: any, scope: UserAccessScope): string {
         const restriction = this.resolveComplianceRestriction(error, scope);
-        if (restriction === 'banned')
+        if (restriction === 'temporaryBan')
+            return 'Tu cuenta está restringida temporalmente. Solo puedes revisar tu estado hasta que termine la sanción.';
+        if (restriction === 'permanentBan')
             return 'Tu cuenta no puede realizar esta acción en este momento.';
         if (restriction === 'mustAcceptUsage')
             return 'Debes aceptar las normas de uso vigentes antes de continuar.';

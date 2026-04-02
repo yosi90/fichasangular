@@ -11,8 +11,16 @@ import {
     CreationAuditListResponseDto,
     ModerationAdminHistoryItemDto,
     ModerationAdminHistoryResponseDto,
+    ModerationCaseProgressDto,
+    ModerationCaseCreateRequestDto,
     ModerationCaseListItemDto,
+    ModerationCasePatchRequestDto,
+    ModerationCaseSourceMode,
     ModerationCaseStageDto,
+    ModerationCaseStagesReplaceRequestDto,
+    ModerationCaseStageUpsertDto,
+    ModerationIncidentCreateRequestDto,
+    ModerationIncidentCreateResponseDto,
     ModerationIncidentListItemDto,
     ModerationProgressCaseDto,
     ModerationSanctionListItemDto,
@@ -98,6 +106,50 @@ export class UsuariosApiService {
         }
     }
 
+    async createModerationCase(payload: ModerationCaseCreateRequestDto): Promise<ModerationCaseListItemDto> {
+        const normalizedPayload = this.normalizeModerationCaseCreateRequest(payload);
+        try {
+            const response = await firstValueFrom(
+                this.http.post<any>(`${this.usuariosBaseUrl}/admin/moderation/cases`, normalizedPayload, {
+                    headers: await this.buildAuthHeaders(),
+                })
+            );
+            return this.normalizeModerationCaseItem(response);
+        } catch (error) {
+            throw this.toApiError(error, 'No se pudo crear el supuesto moderable');
+        }
+    }
+
+    async updateModerationCase(caseId: number, payload: ModerationCasePatchRequestDto): Promise<ModerationCaseListItemDto> {
+        const normalizedCaseId = this.normalizeModerationCaseId(caseId);
+        const normalizedPayload = this.normalizeModerationCasePatchRequest(payload);
+        try {
+            const response = await firstValueFrom(
+                this.http.patch<any>(`${this.usuariosBaseUrl}/admin/moderation/cases/${normalizedCaseId}`, normalizedPayload, {
+                    headers: await this.buildAuthHeaders(),
+                })
+            );
+            return this.normalizeModerationCaseItem(response);
+        } catch (error) {
+            throw this.toApiError(error, 'No se pudo actualizar el supuesto moderable');
+        }
+    }
+
+    async replaceModerationCaseStages(caseId: number, payload: ModerationCaseStagesReplaceRequestDto): Promise<ModerationCaseListItemDto> {
+        const normalizedCaseId = this.normalizeModerationCaseId(caseId);
+        const normalizedPayload = this.normalizeModerationCaseStagesReplaceRequest(payload);
+        try {
+            const response = await firstValueFrom(
+                this.http.put<any>(`${this.usuariosBaseUrl}/admin/moderation/cases/${normalizedCaseId}/stages`, normalizedPayload, {
+                    headers: await this.buildAuthHeaders(),
+                })
+            );
+            return this.normalizeModerationCaseItem(response);
+        } catch (error) {
+            throw this.toApiError(error, 'No se pudieron sustituir las etapas del supuesto moderable');
+        }
+    }
+
     async listModerationIncidents(): Promise<ModerationIncidentListItemDto[]> {
         try {
             const response = await firstValueFrom(
@@ -108,6 +160,20 @@ export class UsuariosApiService {
             return this.normalizeModerationIncidentsResponse(response);
         } catch (error) {
             throw this.toApiError(error, 'No se pudieron cargar las incidencias de moderación');
+        }
+    }
+
+    async createModerationIncident(payload: ModerationIncidentCreateRequestDto): Promise<ModerationIncidentCreateResponseDto> {
+        const normalizedPayload = this.normalizeModerationIncidentCreateRequest(payload);
+        try {
+            const response = await firstValueFrom(
+                this.http.post<any>(`${this.usuariosBaseUrl}/admin/moderation/incidents`, normalizedPayload, {
+                    headers: await this.buildAuthHeaders(),
+                })
+            );
+            return this.normalizeModerationIncidentCreateResponse(response, normalizedPayload);
+        } catch (error) {
+            throw this.toApiError(error, 'No se pudo registrar la sanción manual');
         }
     }
 
@@ -350,26 +416,38 @@ export class UsuariosApiService {
     }
 
     private normalizeModerationCaseItem(raw: any): ModerationCaseListItemDto {
+        const isDeleted = raw?.deleted === true || raw?.isDeleted === true;
         return {
             caseId: this.toPositiveInt(raw?.caseId ?? raw?.id) ?? 0,
             code: this.toNullableText(raw?.caseCode ?? raw?.code),
             name: this.toNullableText(raw?.caseName ?? raw?.name ?? raw?.title),
-            sourceMode: this.toNullableText(raw?.sourceMode ?? raw?.mode),
-            deleted: raw?.deleted === true || raw?.isDeleted === true,
+            description: this.toNullableMultilineText(raw?.description),
+            sourceMode: this.normalizeModerationCaseSourceMode(raw?.sourceMode ?? raw?.mode),
+            enabled: raw?.enabled !== false,
+            originType: this.normalizeModerationCaseOriginType(raw?.originType),
+            isDeletable: raw?.isDeletable === true,
+            isDeleted,
+            deletedAtUtc: this.toNullableText(raw?.deletedAtUtc),
+            createdAtUtc: this.toNullableText(raw?.createdAtUtc),
+            updatedAtUtc: this.toNullableText(raw?.updatedAtUtc),
+            deleted: isDeleted,
             stages: this.extractListItems(raw?.stages)
                 .map((stage, index) => this.normalizeModerationCaseStage(stage, index)),
         };
     }
 
     private normalizeModerationCaseStage(raw: any, index: number): ModerationCaseStageDto {
+        const durationMinutes = this.normalizeModerationCaseStageDurationMinutes(raw);
         return {
-            stageIndex: this.toNonNegativeInt(raw?.stageIndex, index) ?? index,
+            stageId: this.toPositiveInt(raw?.stageId ?? raw?.id),
+            stageIndex: this.toPositiveInt(raw?.stageIndex) ?? (index + 1),
             reportThreshold: this.toNonNegativeInt(raw?.reportThreshold, null),
             sanctionKind: this.toNullableText(raw?.sanctionKind ?? raw?.kind ?? raw?.type),
             sanctionCode: this.toNullableText(raw?.sanctionCode ?? raw?.code),
             sanctionName: this.toNullableText(raw?.sanctionName ?? raw?.name ?? raw?.title ?? raw?.label),
-            durationDays: this.toNonNegativeInt(raw?.durationDays, null),
-            durationHours: this.toNonNegativeInt(raw?.durationHours, null),
+            durationMinutes,
+            durationDays: this.toNonNegativeInt(raw?.durationDays, null) ?? this.minutesToWholeDays(durationMinutes),
+            durationHours: this.toNonNegativeInt(raw?.durationHours, null) ?? this.minutesToWholeHours(durationMinutes),
             isPermanent: raw?.isPermanent === true || raw?.permanent === true,
         };
     }
@@ -402,6 +480,27 @@ export class UsuariosApiService {
         return this.extractListItems(raw)
             .map((item) => this.normalizeModerationSanctionItem(item))
             .filter((item) => item.sanctionId > 0);
+    }
+
+    private normalizeModerationIncidentCreateResponse(
+        raw: any,
+        request: ModerationIncidentCreateRequestDto
+    ): ModerationIncidentCreateResponseDto {
+        return {
+            deduped: raw?.deduped === true,
+            incident: this.normalizeModerationIncidentItem(raw?.incident ?? {
+                targetUid: request.targetUid,
+                caseCode: request.caseCode,
+                mode: request.mode,
+                userVisibleMessage: request.userVisibleMessage,
+                internalDescription: request.internalDescription,
+            }),
+            stage: raw?.stage ? this.normalizeModerationCaseStage(raw.stage, 0) : null,
+            sanction: this.normalizeModerationSanction(raw?.sanction),
+            activeSanction: this.normalizeModerationSanction(raw?.activeSanction),
+            progress: this.normalizeModerationCaseProgress(raw?.progress),
+            banned: raw?.banned === true,
+        };
     }
 
     private normalizeModerationSanctionItem(raw: any): ModerationSanctionListItemDto {
@@ -470,6 +569,22 @@ export class UsuariosApiService {
             currentStageIndex: this.toNonNegativeInt(raw?.currentStageIndex ?? raw?.stageIndex, null),
             pendingReports: this.toNonNegativeInt(raw?.pendingReports ?? raw?.pendingCount, null),
             activeSanction: this.normalizeModerationSanction(raw?.activeSanction),
+        };
+    }
+
+    private normalizeModerationCaseProgress(raw: any): ModerationCaseProgressDto | null {
+        if (!raw || typeof raw !== 'object')
+            return null;
+
+        return {
+            caseId: this.toPositiveInt(raw?.caseId),
+            caseCode: this.toNullableText(raw?.caseCode ?? raw?.case?.code),
+            caseName: this.toNullableText(raw?.name ?? raw?.caseName ?? raw?.case?.name ?? raw?.case?.title),
+            currentStageIndex: this.toNonNegativeInt(raw?.currentStageIndex, null),
+            pendingReportCount: this.toNonNegativeInt(raw?.pendingReportCount, null),
+            completedStageCount: this.toNonNegativeInt(raw?.completedStageCount, null),
+            lastIncidentAtUtc: this.toNullableText(raw?.lastIncidentAtUtc),
+            lastActionAtUtc: this.toNullableText(raw?.lastActionAtUtc),
         };
     }
 
@@ -615,6 +730,206 @@ export class UsuariosApiService {
 
     private normalizePolicyKind(value: any): UserCompliancePolicyKind {
         return `${value ?? ''}`.trim().toLowerCase() === 'creation' ? 'creation' : 'usage';
+    }
+
+    private normalizeModerationIncidentCreateRequest(payload: ModerationIncidentCreateRequestDto): ModerationIncidentCreateRequestDto {
+        const targetUid = `${payload?.targetUid ?? ''}`.trim();
+        if (targetUid.length < 1)
+            throw new Error('UID objetivo inválido');
+
+        const caseCode = `${payload?.caseCode ?? ''}`.trim();
+        if (caseCode.length < 1)
+            throw new Error('Caso moderable inválido');
+
+        const mode = `${payload?.mode ?? ''}`.trim().toLowerCase() === 'report' ? 'report' : 'force_sanction';
+        const internalDescription = `${payload?.internalDescription ?? ''}`.trim();
+        if (internalDescription.length < 1)
+            throw new Error('Debes indicar el motivo interno');
+
+        const userVisibleMessage = `${payload?.userVisibleMessage ?? ''}`
+            .replace(/\r\n/g, '\n')
+            .replace(/\r/g, '\n')
+            .trim();
+        if (userVisibleMessage.length < 1)
+            throw new Error('Debes indicar la explicación visible para el usuario');
+
+        const normalized: ModerationIncidentCreateRequestDto = {
+            targetUid,
+            caseCode,
+            mode,
+            sourceCode: 'manual_admin',
+            internalDescription,
+            userVisibleMessage,
+        };
+
+        if (payload?.context && typeof payload.context === 'object')
+            normalized.context = payload.context;
+
+        const override = payload?.sanctionOverride;
+        if (override && typeof override === 'object') {
+            if (override.isPermanent === true) {
+                normalized.sanctionOverride = { isPermanent: true };
+            } else {
+                const endsAtUtc = `${override?.endsAtUtc ?? ''}`.trim();
+                if (endsAtUtc.length > 0)
+                    normalized.sanctionOverride = { endsAtUtc };
+            }
+        }
+
+        return normalized;
+    }
+
+    private normalizeModerationCaseCreateRequest(payload: ModerationCaseCreateRequestDto): ModerationCaseCreateRequestDto {
+        const code = `${payload?.code ?? ''}`.trim();
+        if (code.length < 1)
+            throw new Error('Debes indicar el código del supuesto moderable');
+
+        const name = `${payload?.name ?? ''}`.trim();
+        if (name.length < 1)
+            throw new Error('Debes indicar el nombre del supuesto moderable');
+
+        const description = `${payload?.description ?? ''}`.replace(/\r\n/g, '\n').replace(/\r/g, '\n').trim();
+        if (description.length < 1)
+            throw new Error('Debes indicar la descripción del supuesto moderable');
+
+        return {
+            code,
+            name,
+            description,
+            sourceMode: this.normalizeModerationCaseSourceMode(payload?.sourceMode) ?? 'manual_only',
+            enabled: payload?.enabled !== false,
+            stages: this.normalizeModerationCaseStages(payload?.stages),
+        };
+    }
+
+    private normalizeModerationCasePatchRequest(payload: ModerationCasePatchRequestDto): ModerationCasePatchRequestDto {
+        if (!payload || typeof payload !== 'object')
+            throw new Error('Payload de supuesto moderable inválido');
+
+        const normalized: ModerationCasePatchRequestDto = {};
+
+        if (payload.code !== undefined) {
+            const code = `${payload.code ?? ''}`.trim();
+            if (code.length < 1)
+                throw new Error('El código del supuesto moderable es inválido');
+            normalized.code = code;
+        }
+
+        if (payload.name !== undefined) {
+            const name = `${payload.name ?? ''}`.trim();
+            if (name.length < 1)
+                throw new Error('El nombre del supuesto moderable es inválido');
+            normalized.name = name;
+        }
+
+        if (payload.description !== undefined) {
+            const description = `${payload.description ?? ''}`.replace(/\r\n/g, '\n').replace(/\r/g, '\n').trim();
+            if (description.length < 1)
+                throw new Error('La descripción del supuesto moderable es inválida');
+            normalized.description = description;
+        }
+
+        if (payload.sourceMode !== undefined)
+            normalized.sourceMode = this.normalizeModerationCaseSourceMode(payload.sourceMode) ?? 'manual_only';
+
+        if (payload.enabled !== undefined)
+            normalized.enabled = payload.enabled === true;
+
+        if (Object.keys(normalized).length < 1)
+            throw new Error('No hay cambios válidos para actualizar el supuesto moderable');
+
+        return normalized;
+    }
+
+    private normalizeModerationCaseStagesReplaceRequest(payload: ModerationCaseStagesReplaceRequestDto): ModerationCaseStagesReplaceRequestDto {
+        return {
+            stages: this.normalizeModerationCaseStages(payload?.stages),
+        };
+    }
+
+    private normalizeModerationCaseStages(stages: ModerationCaseStageUpsertDto[] | null | undefined): ModerationCaseStageUpsertDto[] {
+        if (!Array.isArray(stages) || stages.length < 1)
+            throw new Error('Debes indicar al menos una etapa de moderación');
+
+        return stages.map((stage, index) => this.normalizeModerationCaseStageUpsert(stage, index));
+    }
+
+    private normalizeModerationCaseStageUpsert(stage: ModerationCaseStageUpsertDto, index: number): ModerationCaseStageUpsertDto {
+        const reportThreshold = Math.trunc(Number(stage?.reportThreshold));
+        if (!Number.isFinite(reportThreshold) || reportThreshold < 1)
+            throw new Error(`La etapa ${index + 1} debe tener un umbral válido`);
+
+        const isPermanent = stage?.isPermanent === true;
+        let durationMinutes: number | null = null;
+        if (!isPermanent) {
+            durationMinutes = Math.trunc(Number(stage?.durationMinutes));
+            if (!Number.isFinite(durationMinutes) || durationMinutes < 1)
+                throw new Error(`La etapa ${index + 1} debe tener una duración válida en minutos`);
+        }
+
+        return {
+            stageIndex: index + 1,
+            reportThreshold,
+            isPermanent,
+            durationMinutes,
+        };
+    }
+
+    private normalizeModerationCaseId(caseId: number): number {
+        const normalizedCaseId = this.toPositiveInt(caseId);
+        if (!normalizedCaseId)
+            throw new Error('Supuesto moderable inválido');
+        return normalizedCaseId;
+    }
+
+    private normalizeModerationCaseStageDurationMinutes(raw: any): number | null {
+        if (raw?.durationMinutes === null)
+            return null;
+        const durationMinutes = this.toNonNegativeInt(raw?.durationMinutes, null);
+        if (durationMinutes !== null)
+            return durationMinutes;
+
+        if (raw?.durationDays === null)
+            return null;
+        const durationDays = this.toNonNegativeInt(raw?.durationDays, null);
+        if (durationDays !== null)
+            return durationDays * 24 * 60;
+
+        if (raw?.durationHours === null)
+            return null;
+        const durationHours = this.toNonNegativeInt(raw?.durationHours, null);
+        if (durationHours !== null)
+            return durationHours * 60;
+
+        return null;
+    }
+
+    private minutesToWholeDays(durationMinutes: number | null): number | null {
+        if (durationMinutes === null || durationMinutes < 1 || durationMinutes % (24 * 60) !== 0)
+            return null;
+        return durationMinutes / (24 * 60);
+    }
+
+    private minutesToWholeHours(durationMinutes: number | null): number | null {
+        if (durationMinutes === null || durationMinutes < 1 || durationMinutes % 60 !== 0)
+            return null;
+        return durationMinutes / 60;
+    }
+
+    private normalizeModerationCaseSourceMode(value: any): ModerationCaseSourceMode | null {
+        const normalized = `${value ?? ''}`.trim().toLowerCase();
+        if (normalized === 'technical_signal_auto')
+            return 'technical_signal_auto';
+        if (normalized === 'manual_only' || normalized === 'manual_admin' || normalized === 'manual')
+            return 'manual_only';
+        return null;
+    }
+
+    private normalizeModerationCaseOriginType(value: any): 'system_seed' | 'admin_custom' | null {
+        const normalized = `${value ?? ''}`.trim().toLowerCase();
+        if (normalized === 'system_seed' || normalized === 'admin_custom')
+            return normalized;
+        return null;
     }
 
     private buildPaginationParams(limit: number, offset: number): Record<string, string> {

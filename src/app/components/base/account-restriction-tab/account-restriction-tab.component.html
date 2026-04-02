@@ -1,0 +1,32 @@
+<section class="account-restriction" *ngIf="hasRestriction; else noRestriction">
+    <div class="account-restriction__hero">
+        <p class="account-restriction__eyebrow">Cuenta restringida</p>
+        <h2 *ngIf="isTemporaryBan">Tu cuenta sigue limitada temporalmente</h2>
+        <h2 *ngIf="isPermanentBan">Tu cuenta tiene una restricción permanente</h2>
+        <p class="account-restriction__copy">
+            <span *ngIf="isTemporaryBan">Puedes consultar tu estado de cuenta, pero no crear contenido ni usar funciones sociales hasta que termine la sanción.</span>
+            <span *ngIf="isPermanentBan">El acceso normal a la plataforma está bloqueado por una sanción permanente.</span>
+        </p>
+    </div>
+
+    <div class="account-restriction__grid">
+        <article class="account-restriction__card">
+            <span class="account-restriction__label">Razón</span>
+            <strong>{{restrictionReason}}</strong>
+        </article>
+        <article class="account-restriction__card" *ngIf="isTemporaryBan">
+            <span class="account-restriction__label">Termina</span>
+            <strong>{{endsAtLabel}}</strong>
+        </article>
+        <article class="account-restriction__card account-restriction__card--warn">
+            <span class="account-restriction__label">{{isTemporaryBan ? 'Cuenta atrás' : 'Estado'}}</span>
+            <strong>{{isTemporaryBan ? countdownLabel : 'Permanente'}}</strong>
+        </article>
+    </div>
+</section>
+
+<ng-template #noRestriction>
+    <section class="account-restriction account-restriction--empty">
+        <p>No hay ninguna restricción temporal activa en esta cuenta.</p>
+    </section>
+</ng-template>

@@ -1,0 +1,130 @@
+:host
+    position: fixed
+    inset: 0
+    z-index: 80
+
+.admin-user-modal__overlay
+    position: fixed
+    inset: 0
+    display: flex
+    justify-content: center
+    align-items: center
+    padding: 1rem
+    background: rgba(0, 0, 0, .72)
+
+.admin-user-modal
+    width: min(780px, 96vw)
+    max-height: 92vh
+    overflow: auto
+    display: flex
+    flex-direction: column
+    gap: 1rem
+    padding: 1.2rem
+    color: #edf2ff
+    border-radius: 1rem
+    border: 1px solid rgba(255, 255, 255, .16)
+    background: linear-gradient(180deg, #32343a 0%, #282b31 100%)
+    box-shadow: 0 24px 60px rgba(0, 0, 0, .45)
+
+.admin-user-modal__header
+    display: flex
+    align-items: flex-start
+    justify-content: space-between
+    gap: 1rem
+
+.admin-user-modal__header-main
+    display: flex
+    flex-direction: column
+    gap: .2rem
+
+    h3
+        margin: 0
+        font-size: 1.35rem
+
+.admin-user-modal__eyebrow
+    margin: 0
+    text-transform: uppercase
+    letter-spacing: .08em
+    font-size: .74rem
+    color: #f06aa2
+
+.admin-user-modal__subtitle
+    margin: 0
+    color: rgba(237, 242, 255, .76)
+
+.admin-user-modal__status-chip
+    background: rgba(122, 154, 255, .2)
+    border: 1px solid rgba(159, 179, 255, .45)
+    color: #d8e3ff
+
+.admin-user-modal__warning-chip
+    background: rgba(255, 193, 7, .18)
+    border: 1px solid rgba(255, 193, 7, .34)
+    color: #ffe28a
+    white-space: normal
+    height: auto
+
+.admin-user-modal__info
+    display: grid
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr))
+    gap: .5rem 1rem
+    font-size: .92rem
+    color: rgba(237, 242, 255, .84)
+
+.admin-user-modal__permission-grid
+    display: grid
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr))
+    gap: .75rem
+
+.admin-user-modal__permission-item
+    display: flex
+    align-items: center
+    justify-content: space-between
+    gap: .75rem
+    padding: .85rem .95rem
+    border-radius: .85rem
+    border: 1px solid rgba(255, 255, 255, .1)
+    background: rgba(255, 255, 255, .05)
+
+.admin-user-modal__permission-copy
+    display: flex
+    flex-direction: column
+    gap: .18rem
+    min-width: 0
+
+    strong
+        font-size: .95rem
+
+    span
+        font-size: .78rem
+        color: rgba(237, 242, 255, .62)
+
+.admin-user-modal__actions
+    display: flex
+    justify-content: flex-end
+    gap: .75rem
+
+:host ::ng-deep .admin-user-modal .mat-slide-toggle.mat-checked .mat-slide-toggle-bar
+    background-color: rgba(240, 106, 162, .48)
+
+:host ::ng-deep .admin-user-modal .mat-slide-toggle.mat-checked .mat-slide-toggle-thumb
+    background-color: #f06aa2
+
+:host ::ng-deep .admin-user-modal .mat-stroked-button
+    border-color: rgba(214, 227, 255, .45)
+    color: #f4f7ff
+
+:host ::ng-deep .admin-user-modal .mat-raised-button.mat-primary
+    background: linear-gradient(135deg, #d61a73 0%, #b8105f 100%)
+    color: #fff
+
+@media (max-width: 720px)
+    .admin-user-modal
+        width: min(96vw, 96vw)
+        padding: 1rem
+
+    .admin-user-modal__header
+        flex-direction: column
+
+    .admin-user-modal__actions
+        flex-direction: column

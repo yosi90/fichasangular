@@ -1,6 +1,6 @@
 export type UserModerationHistoryResult = 'reported' | 'sanctioned' | 'banned';
 export type UserAccessScope = 'usage' | 'creation';
-export type UserAccessRestrictionReason = 'banned' | 'mustAcceptUsage' | 'mustAcceptCreation';
+export type UserAccessRestrictionReason = 'temporaryBan' | 'permanentBan' | 'mustAcceptUsage' | 'mustAcceptCreation';
 export type UserCompliancePolicyKind = 'usage' | 'creation';
 
 export interface UserModerationSanction {
@@ -70,6 +70,14 @@ export interface UserComplianceSnapshot {
 export interface UserComplianceAcceptResponse {
     policy: UserComplianceActivePolicy | null;
     compliance: UserComplianceSnapshot | null;
+}
+
+export interface UserBanStatus {
+    restriction: Extract<UserAccessRestrictionReason, 'temporaryBan' | 'permanentBan'> | null;
+    sanction: UserModerationSanction | null;
+    isActiveNow: boolean;
+    endsAtUtc: string | null;
+    expiresInMs: number | null;
 }
 
 export interface UserAbuseLockReportInput {

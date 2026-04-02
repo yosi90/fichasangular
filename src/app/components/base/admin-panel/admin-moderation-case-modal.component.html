@@ -1,0 +1,162 @@
+<div class="admin-case-modal__overlay" (click)="onBackdropClose()">
+    <div class="admin-case-modal" (click)="$event.stopPropagation()">
+        <div class="admin-case-modal__header">
+            <div class="admin-case-modal__header-main">
+                <p class="admin-case-modal__eyebrow">Supuesto moderable</p>
+                <h3>{{modalTitle}}</h3>
+                <p class="admin-case-modal__subtitle">{{modalSubtitle}}</p>
+            </div>
+
+            <mat-chip class="admin-case-modal__status-chip" [class.admin-case-modal__status-chip--disabled]="enabled === false">
+                {{enabled ? 'Activo' : 'Deshabilitado'}}
+            </mat-chip>
+        </div>
+
+        <div class="admin-case-modal__meta" *ngIf="!isCreateMode && item">
+            <div><strong>ID:</strong> {{item.caseId}}</div>
+            <div><strong>Origen:</strong> {{originTypeLabel}}</div>
+            <div><strong>Actualizado:</strong> {{item.updatedAtUtc || 'Sin fecha'}}</div>
+        </div>
+
+        <div class="admin-case-modal__grid">
+            <mat-form-field appearance="fill" class="admin-case-modal__field">
+                <mat-label>Código</mat-label>
+                <input
+                    matInput
+                    [(ngModel)]="code"
+                    [disabled]="saving || identityLocked"
+                    placeholder="Ej. harassment_manual">
+            </mat-form-field>
+
+            <mat-form-field appearance="fill" class="admin-case-modal__field">
+                <mat-label>Nombre</mat-label>
+                <input
+                    matInput
+                    [(ngModel)]="name"
+                    [disabled]="saving || identityLocked"
+                    placeholder="Ej. Acoso manual">
+            </mat-form-field>
+
+            <mat-form-field appearance="fill" class="admin-case-modal__field">
+                <mat-label>Modo fuente</mat-label>
+                <mat-select [(ngModel)]="sourceMode" [disabled]="saving || sourceModeLocked" panelClass="admin-case-modal__select-panel">
+                    <mat-option *ngFor="let option of sourceModeOptions" [value]="option">
+                        {{sourceModeLabel(option)}}
+                    </mat-option>
+                </mat-select>
+            </mat-form-field>
+
+            <div class="admin-case-modal__toggle">
+                <mat-slide-toggle [(ngModel)]="enabled" [disabled]="saving">
+                    Caso habilitado
+                </mat-slide-toggle>
+                <div class="usuario-secundario" *ngIf="isSystemSeed">
+                    En seeds del sistema solo puedes ajustar descripción, estado y etapas.
+                </div>
+            </div>
+        </div>
+
+        <mat-form-field appearance="fill" class="admin-case-modal__field">
+            <mat-label>Descripción</mat-label>
+            <textarea
+                matInput
+                rows="4"
+                [(ngModel)]="description"
+                [disabled]="saving"
+                placeholder="Describe el supuesto moderable y el criterio operativo."></textarea>
+        </mat-form-field>
+
+        <div class="admin-case-modal__stages-header">
+            <div>
+                <strong>Escalera de reincidencia</strong>
+                <div class="usuario-secundario">
+                    La posición define la etapa. Cada etapa usa umbral y duración en minutos o permanencia.
+                </div>
+            </div>
+            <button
+                mat-stroked-button
+                color="accent"
+                type="button"
+                [disabled]="saving"
+                (click)="addStage()">
+                <mat-icon>add</mat-icon>
+                Añadir etapa
+            </button>
+        </div>
+
+        <div class="admin-case-modal__stages">
+            <article class="admin-case-modal__stage-card" *ngFor="let stage of stages; let index = index">
+                <div class="admin-case-modal__stage-head">
+                    <div>
+                        <strong>Etapa {{index + 1}}</strong>
+                        <div class="usuario-secundario">{{stageDurationHint(stage)}}</div>
+                    </div>
+                    <button
+                        mat-icon-button
+                        type="button"
+                        [disabled]="saving || stages.length <= 1"
+                        (click)="removeStage(index)"
+                        aria-label="Eliminar etapa">
+                        <mat-icon>delete</mat-icon>
+                    </button>
+                </div>
+
+                <div class="admin-case-modal__stage-grid">
+                    <mat-form-field appearance="fill" class="admin-case-modal__field">
+                        <mat-label>Umbral de reportes</mat-label>
+                        <input
+                            matInput
+                            type="number"
+                            min="1"
+                            step="1"
+                            [(ngModel)]="stage.reportThreshold"
+                            [disabled]="saving">
+                    </mat-form-field>
+
+                    <mat-form-field appearance="fill" class="admin-case-modal__field" *ngIf="!stage.isPermanent">
+                        <mat-label>Duración en minutos</mat-label>
+                        <input
+                            matInput
+                            type="number"
+                            min="1"
+                            step="1"
+                            [(ngModel)]="stage.durationMinutes"
+                            [disabled]="saving"
+                            placeholder="Ej. 60, 1440, 10080">
+                    </mat-form-field>
+
+                    <div class="admin-case-modal__toggle admin-case-modal__toggle--stage">
+                        <mat-slide-toggle
+                            [ngModel]="stage.isPermanent"
+                            [disabled]="saving"
+                            (ngModelChange)="onStagePermanentChange(index, $event)">
+                            Permanente
+                        </mat-slide-toggle>
+                    </div>
+                </div>
+            </article>
+        </div>
+
+        <p class="admin-case-modal__error" *ngIf="!hasValidStages">
+            Revisa las etapas: necesitas al menos una y cada etapa debe tener umbral válido y, si no es permanente, duración en minutos.
+        </p>
+
+        <div class="admin-case-modal__actions">
+            <button
+                mat-stroked-button
+                type="button"
+                [disabled]="saving"
+                (click)="onBackdropClose()">
+                Cancelar
+            </button>
+            <button
+                mat-raised-button
+                color="primary"
+                type="button"
+                [disabled]="!canSave"
+                (click)="onSave()">
+                {{saving ? 'Guardando...' : (isCreateMode ? 'Crear supuesto' : 'Guardar cambios')}}
+            </button>
+        </div>
+    </div>
+</div>

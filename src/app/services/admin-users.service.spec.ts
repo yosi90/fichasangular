@@ -208,6 +208,46 @@ describe('AdminUsersService', () => {
             .forEach((resource) => expect(u3?.permissions[resource]).toBeFalse());
     });
 
+    it('marca Yosiftware como entidad del sistema y la ordena al final', async () => {
+        const service = new AdminUsersServiceTestDouble();
+        const rowsPromise = firstValueFrom(
+            service.watchUsersAdminView().pipe(filter((rows) => rows.length === 2))
+        );
+
+        service.seedPath('UserProfiles', {
+            normal: {
+                uid: 'normal',
+                displayName: 'Alba',
+                email: 'alba@test.com',
+                authProvider: 'correo',
+            },
+            system: {
+                uid: 'system',
+                displayName: 'Yosiftware',
+                email: 'system@test.com',
+                authProvider: 'otro',
+            },
+        });
+        service.seedPath('Acl/users', {
+            normal: {
+                roles: { admin: false, type: 'jugador' },
+                status: { banned: false },
+                permissions: { personajes: { create: true } },
+            },
+            system: {
+                roles: { admin: false, type: 'jugador' },
+                status: { banned: false },
+                permissions: { personajes: { create: true } },
+            },
+        });
+
+        const rows = await rowsPromise;
+
+        expect(rows[0].uid).toBe('normal');
+        expect(rows[1].uid).toBe('system');
+        expect(rows[1].isSystemEntity).toBeTrue();
+    });
+
     it('syncUsersCacheFromApi mapea API a cache RTDB', async () => {
         const service = new AdminUsersServiceTestDouble();
         service.apiUsers = [
@@ -354,6 +394,49 @@ describe('AdminUsersService', () => {
             .toBeRejectedWithError('No puedes banear tu propia cuenta');
     });
 
+    it('rechaza mutar Yosiftware como entidad del sistema', async () => {
+        const service = new AdminUsersServiceTestDouble({ currentUser: { uid: 'admin-1' } as any });
+        service.seedPath('UserProfiles', {
+            yosiftware: {
+                uid: 'yosiftware',
+                displayName: 'Yosiftware',
+                email: 'system@test.com',
+                authProvider: 'otro',
+            },
+        });
+        service.seedPath('Acl/users', {
+            'admin-1': {
+                roles: { admin: true, type: 'admin' },
+                status: { banned: false },
+                permissions: { personajes: { create: true } },
+            },
+            yosiftware: {
+                roles: { admin: false, type: 'jugador' },
+                status: { banned: false },
+                permissions: { personajes: { create: true } },
+            },
+        });
+
+        const expectedMessage = 'Yosiftware es una entidad del sistema. Su rol, permisos y moderación no se pueden editar desde el panel admin.';
+        await expectAsync(service.setRole('yosiftware', 'master')).toBeRejectedWithError(expectedMessage);
+        await expectAsync(service.setCreatePermissions('yosiftware', {
+            personajes: true,
+            campanas: true,
+            conjuros: false,
+            dotes: false,
+            razas: false,
+            clases: false,
+            plantillas: false,
+            manuales: false,
+            tipos_criatura: false,
+            subtipos: false,
+            rasgos: false,
+            ventajas: false,
+            desventajas: false,
+        })).toBeRejectedWithError(expectedMessage);
+        await expectAsync(service.setBanned('yosiftware', true)).toBeRejectedWithError(expectedMessage);
+    });
+
     it('rechaza quitar admin manualmente', async () => {
         const service = new AdminUsersServiceTestDouble({ currentUser: { uid: 'admin-1' } as any });
 
@@ -404,6 +487,57 @@ describe('AdminUsersService', () => {
 
         const aclSet = service.setCalls.find((call) => call.path === 'Acl/users/user-2');
         expect(aclSet?.payload?.permissions?.personajes?.create).toBeFalse();
+    });
+
+    it('setCreatePermissions guarda el lote completo y mantiene backup API', async () => {
+        const service = new AdminUsersServiceTestDouble({ currentUser: { uid: 'admin-1' } as any });
+        service.seedPath('UserProfiles', {
+            'user-2': {
+                uid: 'user-2',
+                displayName: 'User',
+                email: 'user@test.com',
+                authProvider: 'correo',
+                createdAt: 1,
+                lastSeenAt: 2,
+            },
+        });
+        service.seedPath('Acl/users', {
+            'admin-1': {
+                roles: { admin: true, type: 'admin' },
+                status: { banned: false },
+                permissions: { personajes: { create: true } },
+            },
+            'user-2': {
+                roles: { admin: false, type: 'jugador' },
+                status: { banned: false },
+                permissions: {
+                    personajes: { create: true },
+                    dotes: { create: false },
+                },
+            },
+        });
+
+        await service.setCreatePermissions('user-2', {
+            personajes: true,
+            campanas: true,
+            conjuros: false,
+            dotes: true,
+            razas: false,
+            clases: false,
+            plantillas: false,
+            manuales: false,
+            tipos_criatura: false,
+            subtipos: false,
+            rasgos: false,
+            ventajas: false,
+            desventajas: false,
+        });
+
+        const aclSet = service.setCalls.find((call) => call.path === 'Acl/users/user-2');
+        expect(aclSet?.payload?.permissions?.campanas?.create).toBeTrue();
+        expect(aclSet?.payload?.permissions?.dotes?.create).toBeTrue();
+        expect(aclSet?.payload?.permissions?.conjuros?.create).toBeFalse();
+        expect(service.upsertCalls[0].permissionsCreate?.find((item) => item.resource === 'campanas')?.allowed).toBeTrue();
     });
 
     it('assertAdminAccess usa la API como fuente de verdad del admin runtime', async () => {

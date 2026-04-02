@@ -155,16 +155,22 @@ describe('UsuariosApiService', () => {
         expect(response.markdown).toContain('Sin spam');
     });
 
-    it('listModerationCases normaliza etapas y soporta payload paginado', async () => {
+    it('listModerationCases normaliza etapas, metadata operativa y compat legacy de duración', async () => {
         const httpMock = jasmine.createSpyObj('HttpClient', ['get']);
         httpMock.get.and.returnValue(of({
             items: [{
                 caseId: '9',
                 code: 'harassment',
                 name: 'Acoso',
+                description: 'Insultos y acoso directo.',
                 sourceMode: 'manual_admin',
+                enabled: false,
+                originType: 'admin_custom',
+                isDeletable: true,
+                isDeleted: false,
                 stages: [{
-                    stageIndex: '0',
+                    stageId: '3',
+                    stageIndex: '1',
                     reportThreshold: '2',
                     sanctionKind: 'temporary',
                     sanctionName: 'Silencio temporal',
@@ -181,8 +187,230 @@ describe('UsuariosApiService', () => {
         expect(options.params).toEqual({ includeDeleted: 'true' });
         expect(response.length).toBe(1);
         expect(response[0].caseId).toBe(9);
+        expect(response[0].description).toContain('acoso');
+        expect(response[0].sourceMode).toBe('manual_only');
+        expect(response[0].enabled).toBeFalse();
+        expect(response[0].originType).toBe('admin_custom');
+        expect(response[0].isDeletable).toBeTrue();
         expect(response[0].stages[0].reportThreshold).toBe(2);
+        expect(response[0].stages[0].stageId).toBe(3);
+        expect(response[0].stages[0].durationMinutes).toBe(10080);
         expect(response[0].stages[0].durationDays).toBe(7);
+    });
+
+    it('createModerationCase usa la ruta canónica y serializa etapas en minutos', async () => {
+        const httpMock = jasmine.createSpyObj('HttpClient', ['post']);
+        httpMock.post.and.returnValue(of({
+            caseId: '21',
+            code: ' harassment_manual ',
+            name: 'Acoso manual',
+            description: 'Caso manual.',
+            sourceMode: 'manual_only',
+            enabled: true,
+            originType: 'admin_custom',
+            isDeletable: true,
+            isDeleted: false,
+            stages: [{
+                stageIndex: 0,
+                reportThreshold: 1,
+                isPermanent: false,
+                durationMinutes: 60,
+            }],
+        }));
+        const service = new UsuariosApiService(httpMock, authMock);
+
+        const response = await service.createModerationCase({
+            code: ' harassment_manual ',
+            name: ' Acoso manual ',
+            description: ' Caso manual. ',
+            sourceMode: 'manual_only',
+            enabled: true,
+            stages: [{
+                stageIndex: 7,
+                reportThreshold: 1,
+                isPermanent: false,
+                durationMinutes: 60,
+            }],
+        });
+
+        const [url, payload, options] = httpMock.post.calls.mostRecent().args;
+        expect(url).toContain('/usuarios/admin/moderation/cases');
+        expect(options.headers.get('Authorization')).toBe('Bearer token-audit');
+        expect(payload).toEqual({
+            code: 'harassment_manual',
+            name: 'Acoso manual',
+            description: 'Caso manual.',
+            sourceMode: 'manual_only',
+            enabled: true,
+            stages: [{
+                stageIndex: 1,
+                reportThreshold: 1,
+                isPermanent: false,
+                durationMinutes: 60,
+            }],
+        });
+        expect(response.caseId).toBe(21);
+        expect(response.stages[0].durationMinutes).toBe(60);
+    });
+
+    it('updateModerationCase usa patch y limpia el payload editable', async () => {
+        const httpMock = jasmine.createSpyObj('HttpClient', ['patch']);
+        httpMock.patch.and.returnValue(of({
+            caseId: '9',
+            code: 'harassment',
+            name: 'Acoso',
+            description: 'Descripción actualizada',
+            sourceMode: 'technical_signal_auto',
+            enabled: false,
+            originType: 'admin_custom',
+            isDeletable: true,
+            isDeleted: false,
+            stages: [],
+        }));
+        const service = new UsuariosApiService(httpMock, authMock);
+
+        const response = await service.updateModerationCase(9, {
+            code: ' harassment ',
+            name: ' Acoso ',
+            description: ' Descripción actualizada ',
+            sourceMode: 'technical_signal_auto',
+            enabled: false,
+        });
+
+        const [url, payload, options] = httpMock.patch.calls.mostRecent().args;
+        expect(url).toContain('/usuarios/admin/moderation/cases/9');
+        expect(options.headers.get('Authorization')).toBe('Bearer token-audit');
+        expect(payload).toEqual({
+            code: 'harassment',
+            name: 'Acoso',
+            description: 'Descripción actualizada',
+            sourceMode: 'technical_signal_auto',
+            enabled: false,
+        });
+        expect(response.enabled).toBeFalse();
+        expect(response.sourceMode).toBe('technical_signal_auto');
+    });
+
+    it('replaceModerationCaseStages usa put y reindexa las etapas enviadas', async () => {
+        const httpMock = jasmine.createSpyObj('HttpClient', ['put']);
+        httpMock.put.and.returnValue(of({
+            caseId: '9',
+            code: 'harassment',
+            name: 'Acoso',
+            description: 'Caso actualizado',
+            sourceMode: 'manual_only',
+            enabled: true,
+            originType: 'admin_custom',
+            isDeletable: true,
+            isDeleted: false,
+            stages: [{
+                stageIndex: '1',
+                reportThreshold: '2',
+                isPermanent: true,
+                durationMinutes: null,
+            }],
+        }));
+        const service = new UsuariosApiService(httpMock, authMock);
+
+        const response = await service.replaceModerationCaseStages(9, {
+            stages: [{
+                stageIndex: 3,
+                reportThreshold: 2,
+                isPermanent: true,
+                durationMinutes: 999,
+            }],
+        });
+
+        const [url, payload, options] = httpMock.put.calls.mostRecent().args;
+        expect(url).toContain('/usuarios/admin/moderation/cases/9/stages');
+        expect(options.headers.get('Authorization')).toBe('Bearer token-audit');
+        expect(payload).toEqual({
+            stages: [{
+                stageIndex: 1,
+                reportThreshold: 2,
+                isPermanent: true,
+                durationMinutes: null,
+            }],
+        });
+        expect(response.stages[0].isPermanent).toBeTrue();
+        expect(response.stages[0].durationMinutes).toBeNull();
+    });
+
+    it('createModerationIncident usa la ruta canónica y normaliza respuesta de sanción manual', async () => {
+        const httpMock = jasmine.createSpyObj('HttpClient', ['get', 'post']);
+        httpMock.post.and.returnValue(of({
+            deduped: false,
+            incident: {
+                incidentId: '55',
+                targetUid: 'uid-77',
+                caseCode: 'harassment',
+                caseName: 'Acoso',
+                mode: 'force_sanction',
+                result: 'banned',
+                userVisibleMessage: 'Se ha aplicado un ban temporal.',
+                internalDescription: 'Insultos reiterados.',
+            },
+            stage: {
+                stageIndex: '1',
+                reportThreshold: '1',
+                sanctionKind: 'ban',
+                sanctionName: 'Ban temporal',
+                durationDays: '7',
+            },
+            sanction: {
+                sanctionId: '18',
+                kind: 'ban',
+                name: 'Ban temporal',
+                endsAtUtc: '2026-04-09T10:00:00Z',
+            },
+            activeSanction: {
+                sanctionId: '18',
+                kind: 'ban',
+                name: 'Ban temporal',
+                endsAtUtc: '2026-04-09T10:00:00Z',
+            },
+            progress: {
+                caseId: '9',
+                caseCode: 'harassment',
+                name: 'Acoso',
+                currentStageIndex: '1',
+                pendingReportCount: '0',
+                completedStageCount: '1',
+            },
+            banned: true,
+        }));
+        const service = new UsuariosApiService(httpMock, authMock);
+
+        const response = await service.createModerationIncident({
+            targetUid: ' uid-77 ',
+            caseCode: ' harassment ',
+            mode: 'force_sanction',
+            internalDescription: ' Insultos reiterados. ',
+            userVisibleMessage: ' Se ha aplicado un ban temporal. ',
+            sanctionOverride: {
+                endsAtUtc: '2026-04-09T10:00:00Z',
+            },
+        });
+
+        const [url, payload, options] = httpMock.post.calls.mostRecent().args;
+        expect(url).toContain('/usuarios/admin/moderation/incidents');
+        expect(options.headers.get('Authorization')).toBe('Bearer token-audit');
+        expect(payload).toEqual({
+            targetUid: 'uid-77',
+            caseCode: 'harassment',
+            mode: 'force_sanction',
+            sourceCode: 'manual_admin',
+            internalDescription: 'Insultos reiterados.',
+            userVisibleMessage: 'Se ha aplicado un ban temporal.',
+            sanctionOverride: {
+                endsAtUtc: '2026-04-09T10:00:00Z',
+            },
+        });
+        expect(response.incident.incidentId).toBe(55);
+        expect(response.stage?.durationDays).toBe(7);
+        expect(response.activeSanction?.sanctionId).toBe(18);
+        expect(response.progress?.completedStageCount).toBe(1);
+        expect(response.banned).toBeTrue();
     });
 
     it('getUserModerationHistory usa paginación y conserva campos privados admin-only', async () => {

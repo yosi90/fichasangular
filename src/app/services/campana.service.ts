@@ -724,7 +724,7 @@ export class CampanaService {
 
     private isUsageBlockedForCampaignReads(): boolean {
         const restriction = this.userSvc?.getAccessRestriction('usage');
-        return restriction === 'mustAcceptUsage' || restriction === 'banned';
+        return restriction === 'mustAcceptUsage' || restriction === 'temporaryBan' || restriction === 'permanentBan';
     }
 
     private async fetchCampaignDetailHeader(

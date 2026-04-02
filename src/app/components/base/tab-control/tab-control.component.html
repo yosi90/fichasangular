@@ -1,5 +1,5 @@
 <mat-tab-group #TabControl mat-stretch-tabs="false" mat-align-tabs="start" (selectedTabChange)="onTabChange($event)">
-    <mat-tab label="Personajes">
+    <mat-tab label="Personajes" *ngIf="!temporaryRestrictionActive">
         <ng-template mat-tab-label="">
             <mat-icon class="tw-me-2">people_alt</mat-icon>
             Personajes
@@ -17,6 +17,13 @@
             <button (click)="quitarPerfilPrivado()" mat-icon-button class="tw-ms-2"><mat-icon>close</mat-icon></button>
         </ng-template>
         <app-user-profile [openRequest]="privateProfileOpenRequest"></app-user-profile>
+    </mat-tab>
+    <mat-tab label="Cuenta restringida" *ngIf="restrictionTabOpen">
+        <ng-template mat-tab-label>
+            <mat-icon class="tw-me-2">gpp_bad</mat-icon>
+            Cuenta restringida
+        </ng-template>
+        <app-account-restriction-tab [openRequest]="restrictionOpenRequest"></app-account-restriction-tab>
     </mat-tab>
     <mat-tab label="Social" *ngIf="socialTabOpen">
         <ng-template mat-tab-label>

@@ -1,6 +1,8 @@
 import { Injectable } from '@angular/core';
 import { Observable, Subject } from 'rxjs';
 import {
+    AccountRestrictionOpenRequest,
+    AccountRestrictionSectionId,
     AdminPanelOpenRequest,
     AdminPanelSectionId,
     SocialHubOpenRequest,
@@ -18,6 +20,7 @@ export class UserProfileNavigationService {
     private readonly publicProfileSubject = new Subject<UserPublicProfileTab>();
     private readonly socialSubject = new Subject<SocialHubOpenRequest>();
     private readonly adminPanelSubject = new Subject<AdminPanelOpenRequest>();
+    private readonly accountRestrictionSubject = new Subject<AccountRestrictionOpenRequest>();
     private readonly roadmapSubject = new Subject<void>();
     private readonly legalPrivacySubject = new Subject<void>();
     private readonly usageAboutSubject = new Subject<void>();
@@ -26,6 +29,7 @@ export class UserProfileNavigationService {
     readonly publicProfileOpen$: Observable<UserPublicProfileTab> = this.publicProfileSubject.asObservable();
     readonly socialOpen$: Observable<SocialHubOpenRequest> = this.socialSubject.asObservable();
     readonly adminPanelOpen$: Observable<AdminPanelOpenRequest> = this.adminPanelSubject.asObservable();
+    readonly accountRestrictionOpen$: Observable<AccountRestrictionOpenRequest> = this.accountRestrictionSubject.asObservable();
     readonly roadmapOpen$: Observable<void> = this.roadmapSubject.asObservable();
     readonly legalPrivacyOpen$: Observable<void> = this.legalPrivacySubject.asObservable();
     readonly usageAboutOpen$: Observable<void> = this.usageAboutSubject.asObservable();
@@ -80,6 +84,21 @@ export class UserProfileNavigationService {
             section: request?.section ?? 'usuarios',
             pendingOnly: request?.pendingOnly === true,
             requestId: Number(request?.requestId) > 0 ? Number(request?.requestId) : Date.now(),
+        });
+    }
+
+    openAccountRestriction(request?: AccountRestrictionOpenRequest | AccountRestrictionSectionId): void {
+        if (typeof request === 'string' || !request) {
+            this.accountRestrictionSubject.next({
+                section: request ?? 'resumen',
+                requestId: Date.now(),
+            });
+            return;
+        }
+
+        this.accountRestrictionSubject.next({
+            section: request.section ?? 'resumen',
+            requestId: Number(request.requestId) > 0 ? Number(request.requestId) : Date.now(),
         });
     }
 

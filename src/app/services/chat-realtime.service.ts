@@ -468,14 +468,14 @@ export class ChatRealtimeService implements OnDestroy {
         const restriction = typeof this.userSvc.resolveComplianceRestrictionFromError === 'function'
             ? this.userSvc.resolveComplianceRestrictionFromError(error, 'usage')
             : null;
-        return restriction === 'mustAcceptUsage' || restriction === 'banned';
+        return restriction === 'mustAcceptUsage' || restriction === 'temporaryBan' || restriction === 'permanentBan';
     }
 
     private isRealtimeAccessBlocked(): boolean {
         const restriction = typeof this.userSvc.getAccessRestriction === 'function'
             ? this.userSvc.getAccessRestriction('usage')
             : null;
-        return restriction === 'mustAcceptUsage' || restriction === 'banned';
+        return restriction === 'mustAcceptUsage' || restriction === 'temporaryBan' || restriction === 'permanentBan';
     }
 
     private applyComplianceRealtimeBlock(): void {
