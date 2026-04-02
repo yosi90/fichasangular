@@ -96,6 +96,9 @@
                                 <button mat-icon-button type="button" *ngIf="isLoggedIn && getRelationshipState(user) === 'sent_request'" matTooltip="Cancelar solicitud" aria-label="Cancelar solicitud" (click)="cancelFriendRequest(user)">
                                     <mat-icon>person_remove</mat-icon>
                                 </button>
+                                <button mat-icon-button type="button" color="warn" *ngIf="isLoggedIn && getRelationshipState(user) === 'friend'" matTooltip="Eliminar amistad" aria-label="Eliminar amistad" (click)="removeFriend(user)">
+                                    <mat-icon>person_remove</mat-icon>
+                                </button>
                                 <button mat-icon-button type="button" *ngIf="canStartConversation(user)" matTooltip="Abrir chat" aria-label="Abrir chat" (click)="openDirect(user)">
                                     <mat-icon>chat</mat-icon>
                                 </button>

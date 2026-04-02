@@ -467,6 +467,33 @@ describe('SocialHubComponent', () => {
         });
     });
 
+    it('muestra eliminar amistad en búsqueda para relaciones friend y reutiliza la mutación canónica', fakeAsync(() => {
+        socialApiSvc.deleteFriend.and.resolveTo();
+
+        fixture.detectChanges();
+        isLoggedIn$.next(true);
+        tick();
+
+        component.currentSection = 'amistades';
+        component.searchResults = [
+            { uid: 'uid-2', displayName: 'Yuna', photoThumbUrl: null, allowDirectMessagesFromNonFriends: false },
+        ] as any;
+        component.friends = [
+            { uid: 'uid-2', displayName: 'Yuna', photoThumbUrl: null, allowDirectMessagesFromNonFriends: false, friendsSince: null },
+        ] as any;
+        fixture.detectChanges();
+
+        const searchBlock: HTMLElement | null = fixture.nativeElement.querySelector('.social-search-block');
+        const deleteButton = searchBlock?.querySelector('button[aria-label="Eliminar amistad"]') as HTMLButtonElement | null;
+
+        expect(deleteButton).withContext('La búsqueda debe exponer la acción contextual para amistades activas.').not.toBeNull();
+
+        deleteButton?.click();
+        tick();
+
+        expect(socialApiSvc.deleteFriend).toHaveBeenCalledWith('uid-2');
+    }));
+
     it('activa el realtime social solo cuando la sesión está abierta', fakeAsync(() => {
         const socialRealtimeSvc = TestBed.inject(SocialRealtimeService) as jasmine.SpyObj<SocialRealtimeService>;
         fixture.detectChanges();

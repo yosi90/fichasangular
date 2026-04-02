@@ -755,12 +755,22 @@
                                                         {{user.banned ? 'Ban efectivo' : 'Sin ban efectivo'}}
                                                     </mat-chip>
                                                     <button
+                                                        *ngIf="user.banned; else sanctionActionButton"
                                                         mat-raised-button
                                                         color="warn"
-                                                        [disabled]="!canOpenManualSanction(user)"
-                                                        (click)="abrirSancionManual(user)">
-                                                        {{user.isSystemEntity ? 'No sancionable' : 'Aplicar sanción'}}
+                                                        [disabled]="!canRevokeActiveBan(user)"
+                                                        (click)="retirarBaneoActivo(user)">
+                                                        {{isRevokingActiveBan(user) ? 'Retirando...' : (user.isSystemEntity ? 'No revocable' : 'Retirar baneo')}}
                                                     </button>
+                                                    <ng-template #sanctionActionButton>
+                                                        <button
+                                                            mat-raised-button
+                                                            color="warn"
+                                                            [disabled]="!canOpenManualSanction(user)"
+                                                            (click)="abrirSancionManual(user)">
+                                                            {{user.isSystemEntity ? 'No sancionable' : 'Aplicar sanción'}}
+                                                        </button>
+                                                    </ng-template>
                                                 </div>
                                             </td>
                                             <td>

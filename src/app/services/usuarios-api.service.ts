@@ -24,6 +24,8 @@ import {
     ModerationIncidentListItemDto,
     ModerationProgressCaseDto,
     ModerationSanctionListItemDto,
+    ModerationSanctionRevokeRequestDto,
+    ModerationSanctionRevokeResponseDto,
     UsuarioAclResponseDto,
     UsuarioListadoItemDto,
     UsuarioUpsertRequestDto,
@@ -187,6 +189,24 @@ export class UsuariosApiService {
             return this.normalizeModerationSanctionsResponse(response);
         } catch (error) {
             throw this.toApiError(error, 'No se pudieron cargar las sanciones de moderación');
+        }
+    }
+
+    async revokeModerationSanction(
+        sanctionId: number,
+        payload: ModerationSanctionRevokeRequestDto = {}
+    ): Promise<ModerationSanctionRevokeResponseDto> {
+        const normalizedSanctionId = this.normalizeModerationSanctionId(sanctionId);
+        const normalizedPayload = this.normalizeModerationSanctionRevokeRequest(payload);
+        try {
+            const response = await firstValueFrom(
+                this.http.post<any>(`${this.usuariosBaseUrl}/admin/moderation/sanctions/${normalizedSanctionId}/revoke`, normalizedPayload, {
+                    headers: await this.buildAuthHeaders(),
+                })
+            );
+            return this.normalizeModerationSanctionRevokeResponse(response);
+        } catch (error) {
+            throw this.toApiError(error, 'No se pudo retirar la sanción activa');
         }
     }
 
@@ -496,6 +516,15 @@ export class UsuariosApiService {
             .filter((item) => item.sanctionId > 0);
     }
 
+    private normalizeModerationSanctionRevokeResponse(raw: any): ModerationSanctionRevokeResponseDto {
+        return {
+            revoked: raw?.revoked !== false,
+            sanction: this.normalizeModerationSanction(raw?.sanction),
+            activeSanction: this.normalizeModerationSanction(raw?.activeSanction),
+            banned: raw?.banned === true,
+        };
+    }
+
     private normalizeModerationIncidentCreateResponse(
         raw: any,
         request: ModerationIncidentCreateRequestDto
@@ -797,6 +826,17 @@ export class UsuariosApiService {
         return normalized;
     }
 
+    private normalizeModerationSanctionRevokeRequest(payload: ModerationSanctionRevokeRequestDto): ModerationSanctionRevokeRequestDto {
+        const normalized: ModerationSanctionRevokeRequestDto = {};
+        const adminComment = this.toNullableMultilineText(payload?.adminComment);
+        const userVisibleMessage = this.toNullableMultilineText(payload?.userVisibleMessage);
+        if (adminComment)
+            normalized.adminComment = adminComment;
+        if (userVisibleMessage)
+            normalized.userVisibleMessage = userVisibleMessage;
+        return normalized;
+    }
+
     private normalizeModerationCaseCreateRequest(payload: ModerationCaseCreateRequestDto): ModerationCaseCreateRequestDto {
         const code = `${payload?.code ?? ''}`.trim();
         if (code.length < 1)
@@ -898,6 +938,13 @@ export class UsuariosApiService {
         if (!normalizedCaseId)
             throw new Error('Supuesto moderable inválido');
         return normalizedCaseId;
+    }
+
+    private normalizeModerationSanctionId(sanctionId: number): number {
+        const normalizedSanctionId = this.toPositiveInt(sanctionId);
+        if (!normalizedSanctionId)
+            throw new Error('Sanción inválida');
+        return normalizedSanctionId;
     }
 
     private normalizeModerationCaseStageDurationMinutes(raw: any): number | null {

@@ -501,6 +501,49 @@ describe('UsuariosApiService', () => {
         expect(response.activeSanction?.endsAtUtc).toBe('2026-04-02T10:11:00Z');
     });
 
+    it('revokeModerationSanction usa la ruta propuesta y sanea el payload opcional', async () => {
+        const httpMock = jasmine.createSpyObj('HttpClient', ['post']);
+        httpMock.post.and.returnValue(of({
+            revoked: true,
+            sanction: {
+                sanctionId: '19',
+                kind: 'ban',
+                name: 'Ban manual admin',
+                startsAtUtc: '2026-04-02T09:00:00Z',
+                endsAtUtc: '2026-04-09T09:00:00Z',
+                isPermanent: false,
+            },
+            activeSanction: null,
+            banned: false,
+        }));
+        const service = new UsuariosApiService(httpMock, authMock);
+
+        const response = await service.revokeModerationSanction(19, {
+            adminComment: ' Revisado por admin. ',
+            userVisibleMessage: ' Se ha retirado la restricción. ',
+        });
+
+        const [url, payload, options] = httpMock.post.calls.mostRecent().args;
+        expect(url).toContain('/usuarios/admin/moderation/sanctions/19/revoke');
+        expect(options.headers.get('Authorization')).toBe('Bearer token-audit');
+        expect(payload).toEqual({
+            adminComment: 'Revisado por admin.',
+            userVisibleMessage: 'Se ha retirado la restricción.',
+        });
+        expect(response.revoked).toBeTrue();
+        expect(response.sanction?.sanctionId).toBe(19);
+        expect(response.activeSanction).toBeNull();
+        expect(response.banned).toBeFalse();
+    });
+
+    it('revokeModerationSanction rechaza ids inválidos', async () => {
+        const httpMock = jasmine.createSpyObj('HttpClient', ['post']);
+        const service = new UsuariosApiService(httpMock, authMock);
+
+        await expectAsync(service.revokeModerationSanction(0)).toBeRejectedWithError('Sanción inválida');
+        expect(httpMock.post).not.toHaveBeenCalled();
+    });
+
     it('getUserModerationHistory usa paginación y conserva campos privados admin-only', async () => {
         const httpMock = jasmine.createSpyObj('HttpClient', ['get']);
         httpMock.get.and.returnValue(of({

@@ -245,6 +245,18 @@ export interface ModerationSanctionListItemDto {
     active: boolean;
 }
 
+export interface ModerationSanctionRevokeRequestDto {
+    adminComment?: string | null;
+    userVisibleMessage?: string | null;
+}
+
+export interface ModerationSanctionRevokeResponseDto {
+    revoked: boolean;
+    sanction: UserModerationSanction | null;
+    activeSanction: UserModerationSanction | null;
+    banned: boolean;
+}
+
 export interface ModerationCaseProgressDto {
     caseId: number | null;
     caseCode: string | null;

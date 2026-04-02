@@ -64,6 +64,7 @@ import {
     ModerationIncidentListItemDto,
     ModerationProgressCaseDto,
     ModerationSanctionListItemDto,
+    ModerationSanctionRevokeRequestDto,
     UsuarioAclResponseDto,
 } from 'src/app/interfaces/usuarios-api';
 import { UsuariosApiService } from 'src/app/services/usuarios-api.service';
@@ -742,6 +743,24 @@ export class AdminPanelComponent implements OnInit, OnDestroy {
         return true;
     }
 
+    canRevokeActiveBan(row: AdminUserRow): boolean {
+        if (!this.esAdmin)
+            return false;
+        if (!row?.banned)
+            return false;
+        if (this.isSystemEntityRow(row))
+            return false;
+        if (this.isSelfRow(row))
+            return false;
+        if (this.isUserOpRunning(row.uid, 'revoke-ban'))
+            return false;
+        return this.getActiveBanSanctionId(row) !== null;
+    }
+
+    isRevokingActiveBan(row: AdminUserRow): boolean {
+        return !!row && this.isUserOpRunning(row.uid, 'revoke-ban');
+    }
+
     canOpenModerationCaseModal(item: ModerationCaseListItemDto | null | undefined): boolean {
         if (!this.esAdmin || !item)
             return false;
@@ -844,6 +863,81 @@ export class AdminPanelComponent implements OnInit, OnDestroy {
         }
 
         this.usuarioSancionModal = row;
+    }
+
+    async retirarBaneoActivo(row: AdminUserRow): Promise<void> {
+        if (!row?.banned)
+            return;
+
+        const sanctionId = this.getActiveBanSanctionId(row);
+        if (!sanctionId) {
+            const message = 'No se ha encontrado una sanción activa identificable para retirar este ban.';
+            this.errorUsuarios = message;
+            await Swal.fire({
+                icon: 'error',
+                title: 'Ban no revocable',
+                text: message,
+            });
+            return;
+        }
+
+        const confirmation = await Swal.fire({
+            title: 'Retirar baneo',
+            text: 'Se retirará la sanción activa que mantiene el ban efectivo actual de esta cuenta.',
+            input: 'textarea',
+            inputLabel: 'Comentario admin opcional',
+            inputPlaceholder: 'Motivo interno de la retirada anticipada',
+            inputAttributes: {
+                'aria-label': 'Comentario admin opcional',
+            },
+            inputAutoTrim: true,
+            showCancelButton: true,
+            confirmButtonText: 'Retirar baneo',
+            cancelButtonText: 'Cancelar',
+            confirmButtonColor: '#c62828',
+        });
+
+        if (!confirmation.isConfirmed)
+            return;
+
+        const opKey = this.userOpKey(row.uid, 'revoke-ban');
+        this.userOpsInFlight.add(opKey);
+        try {
+            const payload: ModerationSanctionRevokeRequestDto = {
+                adminComment: `${confirmation.value ?? ''}`.trim() || null,
+                userVisibleMessage: 'Administración ha retirado antes de tiempo la restricción activa de tu cuenta.',
+            };
+            const response = await this.usuariosApiSvc.revokeModerationSanction(sanctionId, payload);
+            const preview = await this.usuariosApiSvc.getAclByUid(row.uid, 5);
+            this.patchAdminUserRow(row.uid, {
+                banned: preview.banned,
+                moderationSummary: preview.moderationSummary ?? null,
+            });
+            if (this.previewModeracionUsuario?.uid === row.uid) {
+                this.previewModeracionUsuario = preview;
+                await this.cargarHistorialModeracionUsuario(true);
+            }
+            if (this.moderacionAdminLoadedOnce)
+                await this.cargarModeracionAdmin(true);
+
+            await Swal.fire({
+                icon: 'success',
+                title: response.revoked ? 'Ban retirado' : 'Sin cambios',
+                text: response.revoked
+                    ? 'La sanción activa se ha retirado correctamente.'
+                    : 'La sanción ya no estaba activa y no ha sido necesario aplicar cambios.',
+            });
+        } catch (error: any) {
+            const message = error?.message ?? 'No se pudo retirar el ban activo';
+            this.errorUsuarios = message;
+            await Swal.fire({
+                icon: 'error',
+                title: 'No se pudo retirar el baneo',
+                text: message,
+            });
+        } finally {
+            this.userOpsInFlight.delete(opKey);
+        }
     }
 
     cerrarSancionManual(): void {
@@ -1119,6 +1213,11 @@ export class AdminPanelComponent implements OnInit, OnDestroy {
 
     private isUserOpRunning(uid: string, action: string): boolean {
         return this.userOpsInFlight.has(this.userOpKey(uid, action));
+    }
+
+    private getActiveBanSanctionId(row: AdminUserRow | null | undefined): number | null {
+        const sanctionId = Number(row?.moderationSummary?.activeSanction?.sanctionId ?? 0);
+        return Number.isFinite(sanctionId) && sanctionId > 0 ? sanctionId : null;
     }
 
     private async validarAccesoAdmin(): Promise<void> {
