@@ -126,4 +126,21 @@ describe('ChatFloatingConversationWindowComponent', () => {
 
         expect(appToastSvc.showError).toHaveBeenCalledWith('Debes aceptar las normas de uso vigentes antes de continuar.');
     });
+
+    it('marca como danger los mensajes de moderacion y baneo de Yosiftware', () => {
+        expect(component.getMessageSystemTone({
+            sender: { uid: 'system:yosiftware', isSystemUser: true },
+            notification: { code: 'system.moderation_event' },
+        } as any)).toBe('danger');
+
+        expect(component.getMessageSystemTone({
+            sender: { uid: 'system:yosiftware', isSystemUser: true },
+            notification: { code: 'system.account_banned' },
+        } as any)).toBe('danger');
+
+        expect(component.getMessageSystemTone({
+            sender: { uid: 'system:yosiftware', isSystemUser: true },
+            notification: { code: 'system.account_updated' },
+        } as any)).toBe('default');
+    });
 });

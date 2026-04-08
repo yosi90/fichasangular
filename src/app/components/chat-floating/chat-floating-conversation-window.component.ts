@@ -1,6 +1,6 @@
 import { Component, EventEmitter, Input, OnDestroy, OnInit, Output, SimpleChanges } from '@angular/core';
 import { Subject, takeUntil } from 'rxjs';
-import { ChatConversationDetail, ChatConversationSummary, ChatMessage, ChatParticipant } from 'src/app/interfaces/chat';
+import { ChatConversationDetail, ChatConversationSummary, ChatMessage, ChatNotificationPayload, ChatParticipant } from 'src/app/interfaces/chat';
 import { FriendItem } from 'src/app/interfaces/social';
 import {
     FloatingWindowPlacementMinimized,
@@ -376,6 +376,12 @@ export class ChatFloatingConversationWindowComponent implements OnInit, OnDestro
         return resolveDefaultProfileAvatar(message?.sender?.uid ?? message?.sender?.displayName ?? '');
     }
 
+    getMessageSystemTone(message: ChatMessage | null | undefined): 'default' | 'danger' {
+        if (message?.sender?.isSystemUser !== true && `${message?.sender?.uid ?? ''}`.trim() !== 'system:yosiftware')
+            return 'default';
+        return this.getNotificationTone(message?.notification);
+    }
+
     canLinkParticipant(participant: ChatParticipant | null | undefined): boolean {
         const uid = `${participant?.uid ?? ''}`.trim();
         return uid.length > 0 && participant?.isSystemUser !== true && uid !== 'system:yosiftware';
@@ -639,5 +645,12 @@ export class ChatFloatingConversationWindowComponent implements OnInit, OnDestro
         if (complianceError.length > 0)
             return complianceError;
         return `${error?.message ?? fallback}`.trim() || fallback;
+    }
+
+    private getNotificationTone(notification: ChatNotificationPayload | null | undefined): 'default' | 'danger' {
+        const code = `${notification?.code ?? ''}`.trim().toLowerCase();
+        if (code === 'system.account_banned' || code === 'system.moderation_event')
+            return 'danger';
+        return 'default';
     }
 }

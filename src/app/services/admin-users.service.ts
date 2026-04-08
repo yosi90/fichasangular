@@ -15,6 +15,7 @@ import { UserModerationSanction, UserModerationSummary } from '../interfaces/use
 import { UsuarioListadoItemDto, UsuarioPermissionCreateDto, UsuarioUpsertRequestDto, UsuarioUpsertResponseDto } from '../interfaces/usuarios-api';
 import { CacheSyncMetadataService } from './cache-sync-metadata.service';
 import { FirebaseInjectionContextService } from './firebase-injection-context.service';
+import { UserService } from './user.service';
 import { UsuariosApiService } from './usuarios-api.service';
 
 export interface AdminUserRow {
@@ -56,6 +57,7 @@ export class AdminUsersService {
         private usuariosApiSvc: UsuariosApiService,
         private firebaseContextSvc: FirebaseInjectionContextService,
         private cacheSyncMetadataSvc: CacheSyncMetadataService,
+        private userSvc?: UserService,
     ) { }
 
     watchUsersAdminView(): Observable<AdminUserRow[]> {
@@ -70,6 +72,19 @@ export class AdminUsersService {
 
     refreshUsersAdminView(): void {
         this.adminViewRefresh$.next(Date.now());
+    }
+
+    async getCanonicalAdminRow(uid: string): Promise<AdminUserRow | null> {
+        const normalizedUid = `${uid ?? ''}`.trim();
+        if (normalizedUid.length < 1)
+            return null;
+
+        const users = await this.listUsersApi();
+        const match = users.find((item) => `${item?.uid ?? ''}`.trim() === normalizedUid) ?? null;
+        if (!match)
+            return null;
+
+        return this.buildRows(null, null, [match])[0] ?? null;
     }
 
     async setBanned(uid: string, value: boolean): Promise<void> {
@@ -88,37 +103,28 @@ export class AdminUsersService {
     }
 
     async setRole(uid: string, role: UserRole): Promise<void> {
-        const actorUid = await this.ensureActorAdmin();
         const uidObjetivo = `${uid ?? ''}`.trim();
         if (uidObjetivo.length < 1)
             throw new Error('UID inválido');
         await this.assertMutableUserEntity(uidObjetivo);
 
-        const rawAcl = await this.getPath(`Acl/users/${uidObjetivo}`);
-        const acl = normalizeUserAcl(rawAcl);
-        if (acl.roles.type === 'admin' && role !== 'admin')
+        await this.ensureActorAdmin();
+        const user = await this.getCanonicalUserByUid(uidObjetivo);
+        if (user.role === 'admin' && role !== 'admin')
             throw new Error('No se puede degradar manualmente una cuenta admin');
 
-        const permissions = this.toPermissionsMap(
-            this.buildEffectivePermissionsCreate(
-                role,
-                this.permissionsArrayFromAclPermissions(acl.permissions)
-            )
-        );
-        const payload = this.buildAclWritePayload(
+        const permissionsCreate = this.buildEffectivePermissionsCreate(role, user.permissionsCreate);
+        await this.upsertCanonicalUser({
+            uid: uidObjetivo,
+            displayName: `${user.displayName ?? ''}`.trim(),
+            email: `${user.email ?? ''}`.trim(),
+            authProvider: user.authProvider,
             role,
-            acl.status.banned === true,
-            permissions,
-            rawAcl,
-            actorUid
-        );
-
-        await this.setPath(`Acl/users/${uidObjetivo}`, payload);
-        await this.backupUserToApi(uidObjetivo);
+            permissionsCreate: role === 'admin' ? undefined : permissionsCreate,
+        });
     }
 
     async setCreatePermission(uid: string, resource: PermissionResource, value: boolean): Promise<void> {
-        const actorUid = await this.ensureActorAdmin();
         const uidObjetivo = `${uid ?? ''}`.trim();
         if (uidObjetivo.length < 1)
             throw new Error('UID inválido');
@@ -126,38 +132,32 @@ export class AdminUsersService {
             throw new Error('Recurso de permiso inválido');
         await this.assertMutableUserEntity(uidObjetivo);
 
-        const rawAcl = await this.getPath(`Acl/users/${uidObjetivo}`);
-        const acl = normalizeUserAcl(rawAcl);
-        if (acl.roles.type === 'admin')
+        await this.ensureActorAdmin();
+        const user = await this.getCanonicalUserByUid(uidObjetivo);
+        if (user.role === 'admin')
             throw new Error('Los permisos de un admin son fijos y siempre están activos');
 
-        const permissions = this.toPermissionsMap(this.permissionsArrayFromAclPermissions(acl.permissions));
+        const permissions = this.toPermissionsMap(this.buildEffectivePermissionsCreate(user.role, user.permissionsCreate));
         permissions[resource] = value;
-        const permissionsEfectivos = this.toPermissionsMap(
-            this.buildEffectivePermissionsCreate(acl.roles.type, this.mapToPermissionsArray(permissions))
-        );
-        const payload = this.buildAclWritePayload(
-            acl.roles.type,
-            acl.status.banned === true,
-            permissionsEfectivos,
-            rawAcl,
-            actorUid
-        );
-
-        await this.setPath(`Acl/users/${uidObjetivo}`, payload);
-        await this.backupUserToApi(uidObjetivo);
+        await this.upsertCanonicalUser({
+            uid: uidObjetivo,
+            displayName: `${user.displayName ?? ''}`.trim(),
+            email: `${user.email ?? ''}`.trim(),
+            authProvider: user.authProvider,
+            role: user.role,
+            permissionsCreate: this.buildEffectivePermissionsCreate(user.role, this.mapToPermissionsArray(permissions)),
+        });
     }
 
     async setCreatePermissions(uid: string, permissions: Record<PermissionResource, boolean>): Promise<void> {
-        const actorUid = await this.ensureActorAdmin();
         const uidObjetivo = `${uid ?? ''}`.trim();
         if (uidObjetivo.length < 1)
             throw new Error('UID inválido');
         await this.assertMutableUserEntity(uidObjetivo);
 
-        const rawAcl = await this.getPath(`Acl/users/${uidObjetivo}`);
-        const acl = normalizeUserAcl(rawAcl);
-        if (acl.roles.type === 'admin')
+        await this.ensureActorAdmin();
+        const user = await this.getCanonicalUserByUid(uidObjetivo);
+        if (user.role === 'admin')
             throw new Error('Los permisos de un admin son fijos y siempre están activos');
 
         const normalizedPermissions = {} as Record<PermissionResource, boolean>;
@@ -165,19 +165,14 @@ export class AdminUsersService {
             normalizedPermissions[resource] = permissions?.[resource] === true;
         });
 
-        const permissionsEfectivos = this.toPermissionsMap(
-            this.buildEffectivePermissionsCreate(acl.roles.type, this.mapToPermissionsArray(normalizedPermissions))
-        );
-        const payload = this.buildAclWritePayload(
-            acl.roles.type,
-            acl.status.banned === true,
-            permissionsEfectivos,
-            rawAcl,
-            actorUid
-        );
-
-        await this.setPath(`Acl/users/${uidObjetivo}`, payload);
-        await this.backupUserToApi(uidObjetivo);
+        await this.upsertCanonicalUser({
+            uid: uidObjetivo,
+            displayName: `${user.displayName ?? ''}`.trim(),
+            email: `${user.email ?? ''}`.trim(),
+            authProvider: user.authProvider,
+            role: user.role,
+            permissionsCreate: this.buildEffectivePermissionsCreate(user.role, this.mapToPermissionsArray(normalizedPermissions)),
+        });
     }
 
     async assertAdminAccess(): Promise<void> {
@@ -275,15 +270,24 @@ export class AdminUsersService {
     }
 
     protected listUsersApi(): Promise<UsuarioListadoItemDto[]> {
-        return this.usuariosApiSvc.listUsers();
+        return this.usuariosApiSvc.listUsers().catch((error) => {
+            this.handleAdminApiFailure(error);
+            throw error;
+        });
     }
 
     protected upsertUserApi(payload: UsuarioUpsertRequestDto): Promise<UsuarioUpsertResponseDto> {
-        return this.usuariosApiSvc.upsertUser(payload);
+        return this.usuariosApiSvc.upsertUser(payload).catch((error) => {
+            this.handleAdminApiFailure(error);
+            throw error;
+        });
     }
 
     protected downloadUsersBackupApi(): Promise<string> {
-        return this.usuariosApiSvc.downloadUsersBackupZip();
+        return this.usuariosApiSvc.downloadUsersBackupZip().catch((error) => {
+            this.handleAdminApiFailure(error);
+            throw error;
+        });
     }
 
     private async ensureActorAdmin(): Promise<string> {
@@ -328,17 +332,17 @@ export class AdminUsersService {
             const apiUser = apiByUid[uid] ?? null;
             const rawAclEntry = (aclRaw?.[uid] as Record<string, any>) ?? null;
             const role = apiUser?.role ?? acl.roles?.type ?? 'jugador';
-            const moderationSummary = this.normalizeModerationSummary(
-                apiUser?.moderationSummary ?? rawAclEntry?.['moderationSummary']
-            );
+            const moderationSummary = apiUser
+                ? this.normalizeModerationSummary(apiUser?.moderationSummary)
+                : this.normalizeModerationSummary(rawAclEntry?.['moderationSummary']);
             const moderationStatus = this.normalizeModerationStatus(
-                apiUser?.moderationStatus ?? rawAclEntry?.['moderationStatus'],
-                apiUser?.banned === true,
+                apiUser ? apiUser?.moderationStatus : rawAclEntry?.['moderationStatus'],
+                apiUser ? apiUser?.banned === true : acl.status?.banned === true,
                 moderationSummary
             );
             const isSystemEntity = this.isSystemEntityProfile(uid, {
-                displayName: `${profile?.displayName ?? apiUser?.displayName ?? ''}`.trim(),
-                email: `${profile?.email ?? apiUser?.email ?? ''}`.trim(),
+                displayName: `${apiUser?.displayName ?? profile?.displayName ?? ''}`.trim(),
+                email: `${apiUser?.email ?? profile?.email ?? ''}`.trim(),
             });
             const permissions = apiUser
                 ? this.permissionsFromApi(role, apiUser.permissionsCreate)
@@ -347,14 +351,13 @@ export class AdminUsersService {
 
             rows.push({
                 uid,
-                displayName: `${profile?.displayName ?? apiUser?.displayName ?? ''}`.trim(),
-                email: `${profile?.email ?? apiUser?.email ?? ''}`.trim(),
-                authProvider: this.normalizeProvider(profile?.authProvider ?? apiUser?.authProvider),
+                displayName: `${apiUser?.displayName ?? profile?.displayName ?? ''}`.trim(),
+                email: `${apiUser?.email ?? profile?.email ?? ''}`.trim(),
+                authProvider: this.normalizeProvider(apiUser?.authProvider ?? profile?.authProvider),
                 role,
                 banned: moderationStatus === 'blocked'
                     || moderationStatus === 'banned'
-                    || apiUser?.banned === true
-                    || acl.status?.banned === true,
+                    || (apiUser ? apiUser?.banned === true : acl.status?.banned === true),
                 moderationStatus,
                 admin: role === 'admin' || apiUser?.admin === true,
                 isSystemEntity,
@@ -365,6 +368,32 @@ export class AdminUsersService {
         });
 
         return rows.sort((a, b) => this.sortRows(a, b));
+    }
+
+    private async getCanonicalUserByUid(uid: string): Promise<UsuarioListadoItemDto> {
+        const users = await this.listUsersApi();
+        const normalizedUid = `${uid ?? ''}`.trim();
+        const found = users.find((item) => `${item?.uid ?? ''}`.trim() === normalizedUid);
+        if (!found)
+            throw new Error('No se pudo cargar el usuario objetivo desde la API canónica');
+        return found;
+    }
+
+    private async upsertCanonicalUser(payload: UsuarioUpsertRequestDto): Promise<void> {
+        await this.upsertUserApi(payload);
+        this.refreshUsersAdminView();
+    }
+
+    private handleAdminApiFailure(error: any): void {
+        if (!this.isAdminAuthorizationError(error))
+            return;
+        this.userSvc?.setCanonicalAdminAccess(false);
+    }
+
+    private isAdminAuthorizationError(error: any): boolean {
+        const status = Number(error?.status ?? error?.cause?.status ?? 0);
+        const code = `${error?.code ?? ''}`.trim().toUpperCase();
+        return status === 401 || status === 403 || code === 'UNAUTHORIZED' || code === 'FORBIDDEN';
     }
 
     private toApiUsersByUid(apiUsers: UsuarioListadoItemDto[] | null | undefined): Record<string, UsuarioListadoItemDto> {

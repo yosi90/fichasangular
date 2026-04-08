@@ -142,7 +142,35 @@
     background: rgba(117, 208, 255, 0.14)
 
 .chat-float-conversation__message--system
-    background: rgba(255, 208, 117, 0.12)
+    background: linear-gradient(180deg, rgba(255, 248, 220, .035), rgba(255, 255, 255, .045))
+    border: 1px solid rgba(214, 180, 95, .34)
+    box-shadow: inset 0 1px 0 rgba(255, 248, 220, .06)
+
+    strong
+        color: #fff4cf
+
+    p
+        color: rgba(255, 248, 220, .92)
+
+.chat-float-conversation__message--system-danger
+    background: linear-gradient(180deg, rgba(121, 20, 20, .42), rgba(76, 11, 11, .26))
+    border: 1px solid rgba(255, 104, 104, .42)
+    box-shadow: inset 0 1px 0 rgba(255, 214, 214, .08)
+
+    strong
+        color: #ffd0d0
+
+    p
+        color: rgba(255, 228, 228, .94)
+
+    .chat-float-conversation__actions button
+        border-color: rgba(255, 130, 130, .32) !important
+        background: rgba(160, 36, 36, .22) !important
+        color: #ffe1e1 !important
+
+        &:hover
+            background: rgba(180, 48, 48, .3) !important
+            border-color: rgba(255, 144, 144, .42) !important
 
 .chat-float-conversation__actions
     display: flex

@@ -2,6 +2,7 @@ import { Component, Input, OnDestroy, OnInit } from '@angular/core';
 import { interval, Subscription } from 'rxjs';
 import { AccountRestrictionOpenRequest } from 'src/app/interfaces/user-account';
 import { UserBanStatus } from 'src/app/interfaces/user-moderation';
+import { AppToastService } from 'src/app/services/app-toast.service';
 import { UserService } from 'src/app/services/user.service';
 
 @Component({
@@ -11,27 +12,42 @@ import { UserService } from 'src/app/services/user.service';
     standalone: false,
 })
 export class AccountRestrictionTabComponent implements OnInit, OnDestroy {
+    private static readonly CANONICAL_REFRESH_INTERVAL_MS = 15000;
+
     @Input() openRequest: AccountRestrictionOpenRequest | null = null;
 
     banStatus: UserBanStatus | null = null;
     currentTimeMs = Date.now();
     private readonly subscription = new Subscription();
     private refreshTriggered = false;
+    private refreshInFlight = false;
+    private lastCanonicalRefreshAtMs = 0;
 
-    constructor(private userSvc: UserService) { }
+    constructor(
+        private userSvc: UserService,
+        private appToastSvc: AppToastService,
+    ) { }
 
     ngOnInit(): void {
         this.subscription.add(
             this.userSvc.banStatus$.subscribe((status) => {
+                const previousRestriction = this.banStatus?.restriction ?? null;
                 this.banStatus = status;
                 if (status.restriction === 'temporaryBan' && (status.expiresInMs ?? 0) > 0)
                     this.refreshTriggered = false;
+                if (previousRestriction === 'temporaryBan' && status.restriction === null) {
+                    this.appToastSvc.showSuccess('Tu restricción temporal ha terminado. La cuenta vuelve a funcionar con normalidad.', {
+                        category: 'cuentaSistema',
+                        dedupeKey: 'account-restriction-ended',
+                    });
+                }
             })
         );
         this.subscription.add(
             interval(1000).subscribe(() => {
                 this.currentTimeMs = Date.now();
                 void this.tryRefreshWhenExpired();
+                void this.tryRefreshWhileTemporaryBanActive();
             })
         );
     }
@@ -114,9 +130,31 @@ export class AccountRestrictionTabComponent implements OnInit, OnDestroy {
 
         this.refreshTriggered = true;
         try {
-            await this.userSvc.refreshCurrentPrivateProfile();
+            await this.refreshCanonicalState();
         } catch {
             this.refreshTriggered = false;
+        }
+    }
+
+    private async tryRefreshWhileTemporaryBanActive(): Promise<void> {
+        if (!this.isTemporaryBan || this.remainingMs <= 0)
+            return;
+        if ((this.currentTimeMs - this.lastCanonicalRefreshAtMs) < AccountRestrictionTabComponent.CANONICAL_REFRESH_INTERVAL_MS)
+            return;
+
+        await this.refreshCanonicalState();
+    }
+
+    private async refreshCanonicalState(): Promise<void> {
+        if (this.refreshInFlight)
+            return;
+
+        this.refreshInFlight = true;
+        this.lastCanonicalRefreshAtMs = Date.now();
+        try {
+            await this.userSvc.refreshCurrentPrivateProfile();
+        } finally {
+            this.refreshInFlight = false;
         }
     }
 }

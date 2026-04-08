@@ -124,6 +124,14 @@
                                     <span class="profile-stat-card__label">Moderación y avisos</span>
                                     <div class="profile-stat-card__actions">
                                         <button
+                                            *ngIf="hasActiveAccountRestriction"
+                                            mat-raised-button
+                                            color="warn"
+                                            class="profile-action-button--danger"
+                                            (click)="abrirRestriccionCuentaResumenModal()">
+                                            {{activeAccountRestrictionButtonLabel}}
+                                        </button>
+                                        <button
                                             *ngIf="hasModerationEvents || moderationHistoryLoading || moderationHistoryErrorMessage.length > 0; else moderationCleanState"
                                             mat-stroked-button
                                             color="accent"
@@ -132,7 +140,7 @@
                                             {{moderationStatusButtonLabel}}
                                         </button>
                                         <ng-template #moderationCleanState>
-                                            <button mat-stroked-button type="button" class="profile-action-button--ok">
+                                            <button *ngIf="!hasActiveAccountRestriction" mat-stroked-button type="button" class="profile-action-button--ok">
                                                 Estás limpi@
                                             </button>
                                         </ng-template>

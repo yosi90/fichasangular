@@ -68,6 +68,8 @@ export class ChatAlertService implements OnDestroy {
         if (this.isExpiredAccountBanAlert(candidate))
             this.rememberExpiredAccountBanAlert(candidate);
 
+        this.maybeRefreshCanonicalCompliance(candidate);
+
         if (candidate.notification) {
             if (!this.socialAlertPrefsSvc.isEnabled(this.resolveCategory(candidate)))
                 return;
@@ -138,6 +140,15 @@ export class ChatAlertService implements OnDestroy {
     private buildSystemToast(candidate: ChatAlertCandidate): string {
         const preview = this.buildPreview(candidate.body);
         return preview.length > 0 ? `Yosiftware: ${preview}` : 'Yosiftware te ha enviado un aviso.';
+    }
+
+    private maybeRefreshCanonicalCompliance(candidate: ChatAlertCandidate): void {
+        const code = `${candidate?.notification?.code ?? ''}`.trim().toLowerCase();
+        if (code !== 'system.account_banned' && code !== 'system.moderation_event')
+            return;
+        const refreshTask = this.userSvc.refreshCurrentPrivateProfile?.();
+        if (refreshTask && typeof (refreshTask as Promise<unknown>).catch === 'function')
+            void refreshTask.catch(() => undefined);
     }
 
     private enqueueSwal(candidate: ChatAlertCandidate): void {

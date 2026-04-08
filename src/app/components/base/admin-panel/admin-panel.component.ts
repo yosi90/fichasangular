@@ -388,6 +388,7 @@ export class AdminPanelComponent implements OnInit, OnDestroy {
             await this.adminUsersSvc.assertAdminAccess();
         } catch (error: any) {
             this.errorUsuarios = error?.message ?? 'No autorizado';
+            this.userSvc.setCanonicalAdminAccess(false);
             this.esAdmin = false;
             return;
         }
@@ -910,16 +911,31 @@ export class AdminPanelComponent implements OnInit, OnDestroy {
                 userVisibleMessage: 'Administración ha retirado antes de tiempo la restricción activa de tu cuenta.',
             };
             const response = await this.usuariosApiSvc.revokeModerationSanction(uid, payload);
-            const preview = await this.usuariosApiSvc.getAclByUid(row.uid, 5);
-            this.patchAdminUserRow(row.uid, {
-                banned: preview.banned,
-                moderationStatus: preview.moderationStatus ?? null,
-                moderationSummary: preview.moderationSummary ?? null,
-            });
+            const canonicalRow = await this.adminUsersSvc.getCanonicalAdminRow(uid);
+            this.patchAdminUserRow(row.uid, canonicalRow
+                ? {
+                    banned: canonicalRow.banned,
+                    moderationStatus: canonicalRow.moderationStatus ?? null,
+                    moderationSummary: canonicalRow.moderationSummary ?? null,
+                }
+                : response.revoked
+                    ? {
+                        banned: false,
+                        moderationStatus: 'none',
+                        moderationSummary: row.moderationSummary
+                            ? {
+                                ...row.moderationSummary,
+                                activeSanction: null,
+                            }
+                            : null,
+                    }
+                    : {}
+            );
             if (this.previewModeracionUsuario?.uid === row.uid) {
-                this.previewModeracionUsuario = preview;
+                this.previewModeracionUsuario = await this.usuariosApiSvc.getAclByUid(row.uid, 5);
                 await this.cargarHistorialModeracionUsuario(true);
             }
+            this.adminUsersSvc.refreshUsersAdminView();
             if (this.moderacionAdminLoadedOnce)
                 await this.cargarModeracionAdmin(true);
 
@@ -1261,6 +1277,7 @@ export class AdminPanelComponent implements OnInit, OnDestroy {
             await this.adminUsersSvc.assertAdminAccess();
         } catch (error: any) {
             this.errorUsuarios = error?.message ?? 'No autorizado';
+            this.userSvc.setCanonicalAdminAccess(false);
             this.esAdmin = false;
         }
     }
@@ -1698,6 +1715,8 @@ export class AdminPanelComponent implements OnInit, OnDestroy {
 
     private handleRoleRequestsLoadError(error: any, fallbackMessage: string): void {
         if (this.isRoleRequestsForbidden(error)) {
+            this.userSvc.setCanonicalAdminAccess(false);
+            this.esAdmin = false;
             this.roleRequestsSqlAccessDenied = true;
             this.roleRequestsLoadedOnce = true;
             this.solicitudesMasterPendientes = [];

@@ -431,6 +431,7 @@
                             class="social-chat__conversation"
                             *ngFor="let conversation of filteredConversations; trackBy: trackByConversationId"
                             [class.social-chat__conversation--active]="messageComposerMode === 'conversation' && conversation.conversationId === activeConversation?.conversationId"
+                            [class.social-chat__conversation--system-danger]="getConversationSystemTone(conversation) === 'danger'"
                             (click)="selectConversation(conversation)">
                             <div class="social-chat__conversation-avatar" *ngIf="isConversationAvatarVisible(conversation)">
                                 <img [src]="getConversationAvatarUrl(conversation)" [alt]="getConversationLabel(conversation)">
@@ -700,7 +701,8 @@
                                         <div
                                             class="social-chat__message"
                                             [class.social-chat__message--own]="isOwnMessage(message)"
-                                            [class.social-chat__message--system]="message.sender.isSystemUser">
+                                            [class.social-chat__message--system]="message.sender.isSystemUser"
+                                            [class.social-chat__message--system-danger]="getMessageSystemTone(message) === 'danger'">
                                             <strong>{{getMessageSenderLabel(message)}}</strong>
                                             <p>{{message.body}}</p>
                                             <div class="social-chat__message-actions" *ngIf="hasMessageAction(message)">

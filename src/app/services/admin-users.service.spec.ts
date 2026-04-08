@@ -368,6 +368,31 @@ describe('AdminUsersService', () => {
         expect(blocked?.moderationSummary?.activeSanction?.sanctionId).toBe(18);
     });
 
+    it('getCanonicalAdminRow devuelve el estado canónico actualizado tras una revocación', async () => {
+        const service = new AdminUsersServiceTestDouble();
+        service.apiUsers = [
+            buildUser({
+                uid: 'u-blocked',
+                banned: false,
+                moderationStatus: 'none',
+                moderationSummary: {
+                    incidentCount: 2,
+                    sanctionCount: 1,
+                    lastIncidentAtUtc: '2026-04-08T10:00:00Z',
+                    lastSanctionAtUtc: '2026-04-08T10:00:00Z',
+                    activeSanction: null,
+                },
+            }),
+        ];
+
+        const row = await service.getCanonicalAdminRow('u-blocked');
+
+        expect(row?.uid).toBe('u-blocked');
+        expect(row?.moderationStatus).toBe('none');
+        expect(row?.banned).toBeFalse();
+        expect(row?.moderationSummary?.activeSanction).toBeNull();
+    });
+
     it('setBanned rechaza el toggle legacy y obliga a usar moderación canónica', async () => {
         const service = new AdminUsersServiceTestDouble({ currentUser: { uid: 'admin-1' } as any });
         service.seedPath('UserProfiles', {
@@ -484,76 +509,47 @@ describe('AdminUsersService', () => {
 
     it('setRole admin activa todos los permisos create', async () => {
         const service = new AdminUsersServiceTestDouble({ currentUser: { uid: 'admin-1' } as any });
-        service.seedPath('Acl/users', {
-            'admin-1': {
-                roles: { admin: true, type: 'admin' },
-                status: { banned: false },
-                permissions: { personajes: { create: true } },
-            },
-            'user-2': {
-                roles: { admin: false, type: 'colaborador' },
-                status: { banned: false },
-                permissions: { personajes: { create: true } },
-            },
-        });
+        service.apiUsers = [
+            buildUser({ uid: 'admin-1', role: 'admin', admin: true }),
+            buildUser({ uid: 'user-2', role: 'colaborador', permissionsCreate: [{ resource: 'personajes', allowed: true }] }),
+        ];
 
         await service.setRole('user-2', 'admin');
 
-        const aclSet = service.setCalls.find((call) => call.path === 'Acl/users/user-2');
-        expect(aclSet?.payload?.roles?.type).toBe('admin');
-        PERMISSION_RESOURCES.forEach((resource) => {
-            expect(aclSet?.payload?.permissions?.[resource]?.create).toBeTrue();
-        });
+        expect(service.setCalls.length).toBe(0);
+        expect(service.upsertCalls[0].role).toBe('admin');
+        expect(service.upsertCalls[0].permissionsCreate).toBeUndefined();
     });
 
     it('permite revocar personajes.create en un jugador', async () => {
         const service = new AdminUsersServiceTestDouble({ currentUser: { uid: 'admin-1' } as any });
-        service.seedPath('Acl/users', {
-            'admin-1': {
-                roles: { admin: true, type: 'admin' },
-                status: { banned: false },
-                permissions: { personajes: { create: true } },
-            },
-            'user-2': {
-                roles: { admin: false, type: 'jugador' },
-                status: { banned: false },
-                permissions: { personajes: { create: true } },
-            },
-        });
+        service.apiUsers = [
+            buildUser({ uid: 'admin-1', role: 'admin', admin: true }),
+            buildUser({ uid: 'user-2', role: 'jugador', permissionsCreate: [{ resource: 'personajes', allowed: true }] }),
+        ];
 
         await service.setCreatePermission('user-2', 'personajes', false);
 
-        const aclSet = service.setCalls.find((call) => call.path === 'Acl/users/user-2');
-        expect(aclSet?.payload?.permissions?.personajes?.create).toBeFalse();
+        expect(service.setCalls.length).toBe(0);
+        expect(service.upsertCalls[0].permissionsCreate?.find((item) => item.resource === 'personajes')?.allowed).toBeFalse();
     });
 
-    it('setCreatePermissions guarda el lote completo y mantiene backup API', async () => {
+    it('setCreatePermissions guarda el lote completo via API canónica', async () => {
         const service = new AdminUsersServiceTestDouble({ currentUser: { uid: 'admin-1' } as any });
-        service.seedPath('UserProfiles', {
-            'user-2': {
+        service.apiUsers = [
+            buildUser({ uid: 'admin-1', role: 'admin', admin: true }),
+            buildUser({
                 uid: 'user-2',
                 displayName: 'User',
                 email: 'user@test.com',
                 authProvider: 'correo',
-                createdAt: 1,
-                lastSeenAt: 2,
-            },
-        });
-        service.seedPath('Acl/users', {
-            'admin-1': {
-                roles: { admin: true, type: 'admin' },
-                status: { banned: false },
-                permissions: { personajes: { create: true } },
-            },
-            'user-2': {
-                roles: { admin: false, type: 'jugador' },
-                status: { banned: false },
-                permissions: {
-                    personajes: { create: true },
-                    dotes: { create: false },
-                },
-            },
-        });
+                role: 'jugador',
+                permissionsCreate: [
+                    { resource: 'personajes', allowed: true },
+                    { resource: 'dotes', allowed: false },
+                ],
+            }),
+        ];
 
         await service.setCreatePermissions('user-2', {
             personajes: true,
@@ -571,11 +567,10 @@ describe('AdminUsersService', () => {
             desventajas: false,
         });
 
-        const aclSet = service.setCalls.find((call) => call.path === 'Acl/users/user-2');
-        expect(aclSet?.payload?.permissions?.campanas?.create).toBeTrue();
-        expect(aclSet?.payload?.permissions?.dotes?.create).toBeTrue();
-        expect(aclSet?.payload?.permissions?.conjuros?.create).toBeFalse();
+        expect(service.setCalls.length).toBe(0);
         expect(service.upsertCalls[0].permissionsCreate?.find((item) => item.resource === 'campanas')?.allowed).toBeTrue();
+        expect(service.upsertCalls[0].permissionsCreate?.find((item) => item.resource === 'dotes')?.allowed).toBeTrue();
+        expect(service.upsertCalls[0].permissionsCreate?.find((item) => item.resource === 'conjuros')?.allowed).toBeFalse();
     });
 
     it('assertAdminAccess usa la API como fuente de verdad del admin runtime', async () => {

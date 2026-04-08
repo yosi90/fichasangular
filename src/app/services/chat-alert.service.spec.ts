@@ -50,6 +50,7 @@ describe('ChatAlertService', () => {
             isLoggedIn$: new Subject<boolean>(),
             CurrentUserUid: 'uid-propio',
             getCurrentCompliance: jasmine.createSpy('getCurrentCompliance').and.returnValue(null),
+            refreshCurrentPrivateProfile: jasmine.createSpy('refreshCurrentPrivateProfile').and.resolveTo(null),
             getCurrentBanStatus: jasmine.createSpy('getCurrentBanStatus').and.returnValue({
                 restriction: null,
                 sanction: null,
@@ -132,10 +133,40 @@ describe('ChatAlertService', () => {
         tick();
 
         expect(Swal.fire).toHaveBeenCalled();
+        expect(userSvc.refreshCurrentPrivateProfile).toHaveBeenCalled();
         expect(navSvc.openPrivateProfile).toHaveBeenCalledWith(jasmine.objectContaining({
             section: 'resumen',
         }));
         expect(chatApiSvc.markAsRead).toHaveBeenCalledWith(71, 91);
+    }));
+
+    it('refresca compliance canónica al llegar una notificación de cuenta baneada', fakeAsync(() => {
+        spyOn(Swal, 'fire').and.resolveTo({ isConfirmed: false } as any);
+
+        service.init();
+        alertCandidate$.next(buildCandidate({
+            messageId: 92,
+            conversationId: 72,
+            sender: {
+                uid: 'system:yosiftware',
+                displayName: 'Yosiftware',
+                photoThumbUrl: null,
+                isSystemUser: true,
+            },
+            body: 'Se ha actualizado el estado de tu cuenta.',
+            notification: {
+                code: 'system.account_banned',
+                title: 'Cuenta actualizada',
+                action: {
+                    target: 'social.messages',
+                    conversationId: 72,
+                },
+                context: {},
+            },
+        }));
+        tick();
+
+        expect(userSvc.refreshCurrentPrivateProfile).toHaveBeenCalled();
     }));
 
     it('usa toast para announcement trivial y no abre Swal', () => {

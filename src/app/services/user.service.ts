@@ -20,6 +20,7 @@ import { UserAccessRestrictionReason, UserAccessScope, UserBanStatus, UserCompli
 import { FirebaseInjectionContextService } from './firebase-injection-context.service';
 import { PrivateUserFirestoreService } from './private-user-firestore.service';
 import { UserProfileApiService } from './user-profile-api.service';
+import { UsuariosApiService } from './usuarios-api.service';
 
 @Injectable({
     providedIn: 'root'
@@ -35,6 +36,8 @@ export class UserService {
     private banSignOutInProgress: boolean = false;
     private complianceBootstrapPending: boolean = false;
     private complianceCanonicalOverride: UserComplianceSnapshot | null | undefined = undefined;
+    private canonicalAdminAccess: boolean | null = null;
+    private canonicalAdminValidationInFlight: Promise<boolean> | null = null;
     private isLoggedInSubject = new BehaviorSubject<boolean>(false);
     private permisosSubject = new BehaviorSubject<number>(0);
     private isBannedSubject = new BehaviorSubject<boolean>(false);
@@ -139,7 +142,8 @@ export class UserService {
         private db: Database,
         private firebaseContextSvc: FirebaseInjectionContextService,
         private userProfileApiSvc?: UserProfileApiService,
-        private privateUserFirestoreSvc?: PrivateUserFirestoreService
+        private privateUserFirestoreSvc?: PrivateUserFirestoreService,
+        private usuariosApiSvc?: UsuariosApiService,
     ) {
         this.subscribeAuthState((firebaseUser) => {
             this.actualizarSesionDesdeAuth(firebaseUser);
@@ -164,12 +168,17 @@ export class UserService {
         if (resourceKey.length < 1 || actionKey.length < 1)
             return false;
 
+        const profileResource = this.privateProfileSubject.value?.permissions?.[resourceKey] as Record<string, boolean | undefined> | undefined;
+        if (profileResource && Object.prototype.hasOwnProperty.call(profileResource, actionKey))
+            return profileResource?.[actionKey] === true;
+
+        if (this.userProfileApiSvc || this.privateUserFirestoreSvc)
+            return false;
+
         const aclResource = this.acl.permissions?.[resourceKey];
         if (aclResource && Object.prototype.hasOwnProperty.call(aclResource, actionKey))
             return aclResource?.[actionKey] === true;
-
-        const profileResource = this.privateProfileSubject.value?.permissions?.[resourceKey] as Record<string, boolean | undefined> | undefined;
-        return profileResource?.[actionKey] === true;
+        return false;
     }
 
     public getPermissionDeniedMessage(): string {
@@ -254,6 +263,8 @@ export class UserService {
             this.banSignOutInProgress = false;
             this.complianceBootstrapPending = false;
             this.complianceCanonicalOverride = undefined;
+            this.canonicalAdminAccess = null;
+            this.canonicalAdminValidationInFlight = null;
             this.setAclRaw(null);
             this.setCurrentPrivateProfile(null);
             this.setLoggedIn({ nombre: 'Invitado', correo: '', permisos: 0 });
@@ -263,6 +274,8 @@ export class UserService {
         this.authUidActivo = `${firebaseUser.uid ?? ''}`.trim();
         this.complianceBootstrapPending = !!this.userProfileApiSvc;
         this.complianceCanonicalOverride = undefined;
+        this.canonicalAdminAccess = null;
+        this.canonicalAdminValidationInFlight = null;
 
         this.setAclRaw(null);
         this.setLoggedIn({
@@ -312,6 +325,15 @@ export class UserService {
         this.setCanonicalCompliance(compliance);
     }
 
+    public setCanonicalAdminAccess(value: boolean | null | undefined): void {
+        this.canonicalAdminAccess = value === true
+            ? true
+            : value === false
+                ? false
+                : null;
+        this.actualizarPermisosDesdeAcl();
+    }
+
     public async refreshCurrentPrivateProfile(): Promise<UserPrivateProfile | null> {
         if (!this.userProfileApiSvc)
             return this.CurrentPrivateProfile;
@@ -337,6 +359,8 @@ export class UserService {
 
         if (profileResult.status === 'fulfilled')
             this.setCurrentPrivateProfile(profileResult.value);
+
+        await this.validateCurrentAdminAccess(true);
 
         return this.CurrentPrivateProfile;
     }
@@ -517,7 +541,7 @@ export class UserService {
     }
 
     private isAdmin(): boolean {
-        return this.acl.roles?.admin === true || this.resolveCurrentRole() === 'admin';
+        return this.canonicalAdminAccess === true;
     }
 
     private resolveCurrentRole(profileOverride?: Pick<UserPrivateProfile, 'role'> | null): UserRole {
@@ -526,10 +550,17 @@ export class UserService {
             (profileOverride ?? this.privateProfileSubject.value)?.role
         );
 
+        if (this.isAdmin())
+            return 'admin';
+        if (this.userProfileApiSvc || this.privateUserFirestoreSvc) {
+            if (profileRole && profileRole !== 'admin')
+                return profileRole;
+            if (this.aclHasSourceData && aclRole && aclRole !== 'admin')
+                return aclRole;
+            return 'jugador';
+        }
         if (this.aclHasSourceData && aclRole)
             return aclRole;
-        if (profileRole === 'admin')
-            return 'admin';
         if (profileRole)
             return profileRole;
         return aclRole ?? 'jugador';
@@ -637,8 +668,10 @@ export class UserService {
             // Mantiene sesión y permisos aunque falle escritura de perfil.
         }
 
-        if (!this.userProfileApiSvc)
+        if (!this.userProfileApiSvc) {
+            await this.validateCurrentAdminAccess(true);
             return;
+        }
 
         try {
             const [profileResult, complianceResult] = await Promise.allSettled([
@@ -659,6 +692,7 @@ export class UserService {
         } catch {
             // El perfil privado mejora la UI pero no bloquea la sesión.
         } finally {
+            await this.validateCurrentAdminAccess(true);
             if (this.isActiveUser(uid)) {
                 this.complianceBootstrapPending = false;
                 this.isBannedSubject.next(this.isBanned());
@@ -841,6 +875,18 @@ export class UserService {
     ): UserPrivateProfile['permissions'] {
         const merged: UserPrivateProfile['permissions'] = {};
 
+        if (this.userProfileApiSvc || this.privateUserFirestoreSvc) {
+            Object.entries(profilePermissions ?? {}).forEach(([resource, actions]) => {
+                const key = `${resource ?? ''}`.trim();
+                if (key.length < 1)
+                    return;
+                merged[key] = {
+                    create: actions?.['create'] === true,
+                };
+            });
+            return merged;
+        }
+
         Object.entries(aclPermissions ?? {}).forEach(([resource, actions]) => {
             const key = `${resource ?? ''}`.trim();
             if (key.length < 1)
@@ -925,6 +971,35 @@ export class UserService {
 
     private shouldIgnoreLegacyAclBanForCompliance(): boolean {
         return !!this.userProfileApiSvc || !!this.privateUserFirestoreSvc;
+    }
+
+    private async validateCurrentAdminAccess(force: boolean = false): Promise<boolean> {
+        if (!this.sesionAbierta || !this.usuariosApiSvc) {
+            this.setCanonicalAdminAccess(false);
+            return false;
+        }
+        if (!force && this.canonicalAdminAccess !== null)
+            return this.canonicalAdminAccess === true;
+        if (this.canonicalAdminValidationInFlight)
+            return this.canonicalAdminValidationInFlight;
+
+        const task = this.usuariosApiSvc.listUsers()
+            .then(() => {
+                if (this.sesionAbierta)
+                    this.setCanonicalAdminAccess(true);
+                return true;
+            })
+            .catch(() => {
+                if (this.sesionAbierta)
+                    this.setCanonicalAdminAccess(false);
+                return false;
+            })
+            .finally(() => {
+                this.canonicalAdminValidationInFlight = null;
+            });
+
+        this.canonicalAdminValidationInFlight = task;
+        return task;
     }
 
     private buildBanStatus(compliance: UserComplianceSnapshot | null | undefined): UserBanStatus {

@@ -1,7 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 
 import { ApiActionGuardService } from './api-action-guard.service';
-import { SessionNotificationCenterService } from './session-notification-center.service';
 import { UserProfileApiService } from './user-profile-api.service';
 import { UserService } from './user.service';
 
@@ -9,7 +8,6 @@ describe('ApiActionGuardService', () => {
     let service: ApiActionGuardService;
     let userProfileApiSvc: jasmine.SpyObj<UserProfileApiService>;
     let userSvc: jasmine.SpyObj<UserService>;
-    let sessionNotificationCenterSvc: SessionNotificationCenterService;
 
     beforeEach(() => {
         localStorage.clear();
@@ -36,7 +34,6 @@ describe('ApiActionGuardService', () => {
             ],
         });
         service = TestBed.inject(ApiActionGuardService);
-        sessionNotificationCenterSvc = TestBed.inject(SessionNotificationCenterService);
     });
 
     afterEach(() => {
@@ -45,92 +42,49 @@ describe('ApiActionGuardService', () => {
         sessionStorage.clear();
     });
 
-    it('permite hasta 5 activaciones rápidas y bloquea a partir de la sexta', () => {
+    it('permite siempre la acción y reporta abuse-lock al superar el umbral rápido', async () => {
         const decisions = Array.from({ length: 6 }, () => service.shouldAllow('uid-1', 'campaign.create'));
-
-        expect(decisions.slice(0, 5).every((item) => item.status === 'allowed')).toBeTrue();
-        expect(decisions[5]).toEqual(jasmine.objectContaining({
-            status: 'cooldown',
-            blocksToday: 1,
-            sessionLocked: false,
-            newlyBlocked: true,
-        }));
-    });
-
-    it('mantiene el cooldown durante la ventana de bloqueo', () => {
-        for (let index = 0; index < 6; index += 1)
-            service.shouldAllow('uid-1', 'campaign.create');
-
-        jasmine.clock().tick(30_000);
-
-        const decision = service.shouldAllow('uid-1', 'campaign.create');
-        expect(decision.status).toBe('cooldown');
-        expect(decision.newlyBlocked).toBeFalse();
-    });
-
-    it('bloquea la sesión al llegar a 3 bloqueos en el día', () => {
-        for (let strike = 0; strike < 3; strike += 1) {
-            for (let index = 0; index < 6; index += 1)
-                service.shouldAllow('uid-1', `campaign.create.${strike}`);
-            jasmine.clock().tick(service.cooldownMs + 1);
-        }
-
-        const decision = service.shouldAllow('uid-1', 'campaign.update');
-        expect(decision.status).toBe('session_locked');
-        expect(decision.blocksToday).toBe(3);
-        expect(decision.sessionLocked).toBeTrue();
-    });
-
-    it('escala abuse-lock cuando la sesión entra en session_locked', async () => {
-        for (let strike = 0; strike < 3; strike += 1) {
-            for (let index = 0; index < 6; index += 1)
-                service.shouldAllow('uid-1', `campaign.create.${strike}`);
-            jasmine.clock().tick(service.cooldownMs + 1);
-        }
-
-        service.shouldAllow('uid-1', 'campaign.update');
         await Promise.resolve();
 
+        expect(decisions.every((item) => item.status === 'allowed')).toBeTrue();
+        expect(decisions[5].newlyBlocked).toBeTrue();
+        expect(decisions[5].blocksToday).toBe(1);
         expect(userProfileApiSvc.reportAbuseLock).toHaveBeenCalledWith({
             reason: 'frontend_api_button_spam',
             clientDate: '2026-03-28',
-            localBlockCountToday: 3,
+            localBlockCountToday: 1,
             source: 'web',
         });
     });
 
-    it('publica una notificación con countdown cuando entra en cooldown', () => {
+    it('no vuelve a reportar mientras no se produzca un nuevo umbral', async () => {
         for (let index = 0; index < 6; index += 1)
             service.shouldAllow('uid-1', 'campaign.create');
-
-        let entries = [] as any[];
-        sessionNotificationCenterSvc.entries$.subscribe((value) => entries = value);
-
-        expect(entries.length).toBe(1);
-        expect(entries[0].title).toContain('Protección temporal');
-        expect(entries[0].countdownLabel).toBe('Fin de la limitación temporal');
-        expect(entries[0].countdownUntil).not.toBeNull();
-    });
-
-    it('actualiza la misma notificación cuando backend responde ignored al abuse-lock', async () => {
-        for (let strike = 0; strike < 3; strike += 1) {
-            for (let index = 0; index < 6; index += 1)
-                service.shouldAllow('uid-1', `campaign.create.${strike}`);
-            jasmine.clock().tick(service.cooldownMs + 1);
-        }
-
-        service.shouldAllow('uid-1', 'campaign.update');
         await Promise.resolve();
 
-        let entries = [] as any[];
-        sessionNotificationCenterSvc.entries$.subscribe((value) => entries = value);
+        service.shouldAllow('uid-1', 'campaign.create');
+        await Promise.resolve();
 
-        expect(entries.length).toBe(1);
-        expect(entries[0].message).toContain('no se ha aplicado una sanción adicional');
-        expect(entries[0].countdownLabel).toBe('Fin de la limitación de la sesión');
+        expect(userProfileApiSvc.reportAbuseLock.calls.count()).toBe(1);
     });
 
-    it('aplica el compliance devuelto por abuse-lock para converger la sesión sin esperar a Firestore', async () => {
+    it('puede reportar varios abuse-lock en el mismo día si el spam se repite por ráfagas', async () => {
+        for (let burst = 0; burst < 2; burst += 1) {
+            for (let index = 0; index < 6; index += 1)
+                service.shouldAllow('uid-1', `campaign.create.${burst}`);
+            await Promise.resolve();
+        }
+
+        expect(userProfileApiSvc.reportAbuseLock.calls.count()).toBe(2);
+        expect(userProfileApiSvc.reportAbuseLock.calls.argsFor(1)[0]).toEqual({
+            reason: 'frontend_api_button_spam',
+            clientDate: '2026-03-28',
+            localBlockCountToday: 2,
+            source: 'web',
+        });
+    });
+
+    it('aplica el compliance devuelto por abuse-lock solo cuando backend confirma restricción real', async () => {
         userProfileApiSvc.reportAbuseLock.and.resolveTo({
             status: 'blocked',
             moderationStatus: 'blocked',
@@ -165,13 +119,8 @@ describe('ApiActionGuardService', () => {
             },
         } as any);
 
-        for (let strike = 0; strike < 3; strike += 1) {
-            for (let index = 0; index < 6; index += 1)
-                service.shouldAllow('uid-1', `campaign.create.${strike}`);
-            jasmine.clock().tick(service.cooldownMs + 1);
-        }
-
-        service.shouldAllow('uid-1', 'campaign.update');
+        for (let index = 0; index < 6; index += 1)
+            service.shouldAllow('uid-1', 'campaign.create');
         await Promise.resolve();
 
         expect(userSvc.setCurrentCompliance).toHaveBeenCalledWith(jasmine.objectContaining({
@@ -184,42 +133,12 @@ describe('ApiActionGuardService', () => {
         expect(userSvc.refreshCurrentPrivateProfile).toHaveBeenCalled();
     });
 
-    it('incrementa el contador de la misma notificación cuando se insiste durante el cooldown', () => {
+    it('no inventa una sanción local cuando backend responde ignored', async () => {
         for (let index = 0; index < 6; index += 1)
             service.shouldAllow('uid-1', 'campaign.create');
-
-        service.shouldAllow('uid-1', 'campaign.create');
-
-        let entries = [] as any[];
-        sessionNotificationCenterSvc.entries$.subscribe((value) => entries = value);
-
-        expect(entries.length).toBe(1);
-        expect(entries[0].repeatCount).toBe(2);
-    });
-
-    it('no duplica el mismo abuse-lock si la sesión ya quedó bloqueada y el reporte previo fue aceptado', async () => {
-        for (let strike = 0; strike < 3; strike += 1) {
-            for (let index = 0; index < 6; index += 1)
-                service.shouldAllow('uid-1', `campaign.create.${strike}`);
-            jasmine.clock().tick(service.cooldownMs + 1);
-        }
-
-        service.shouldAllow('uid-1', 'campaign.update');
-        await Promise.resolve();
-        service.shouldAllow('uid-1', 'campaign.update');
         await Promise.resolve();
 
-        expect(userProfileApiSvc.reportAbuseLock.calls.count()).toBe(1);
-    });
-
-    it('reinicia el contador cuando cambia el día', () => {
-        for (let index = 0; index < 6; index += 1)
-            service.shouldAllow('uid-1', 'campaign.create');
-
-        jasmine.clock().mockDate(new Date('2026-03-29T10:00:00.000Z'));
-
-        const decision = service.shouldAllow('uid-1', 'campaign.create');
-        expect(decision.status).toBe('allowed');
-        expect(decision.blocksToday).toBe(0);
+        expect(userSvc.setCurrentCompliance).not.toHaveBeenCalled();
+        expect(userSvc.refreshCurrentPrivateProfile).toHaveBeenCalled();
     });
 });

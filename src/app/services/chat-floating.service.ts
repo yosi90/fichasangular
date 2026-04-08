@@ -58,6 +58,7 @@ export class ChatFloatingService implements OnDestroy {
     private automaticPersistenceBlocked = false;
     private bootstrappedUid = '';
     private persistInFlight: Promise<void> | null = null;
+    private restrictionAccessBlocked = false;
 
     readonly listWindow$ = this.listWindowSubject.asObservable();
     readonly bubbles$ = this.bubblesSubject.asObservable();
@@ -88,6 +89,14 @@ export class ChatFloatingService implements OnDestroy {
                 }
                 this.bootstrappedUid = '';
                 this.resetState();
+            })
+        );
+        this.subscriptions.add(
+            this.userSvc.banStatus$.subscribe((status) => {
+                const blocked = status?.restriction === 'temporaryBan' || status?.restriction === 'permanentBan';
+                this.restrictionAccessBlocked = blocked;
+                if (blocked)
+                    this.applyRestrictionAccessBlock();
             })
         );
     }
@@ -125,6 +134,8 @@ export class ChatFloatingService implements OnDestroy {
     }
 
     openOrFocusListWindow(): void {
+        if (this.handleRestrictionBlockedAccess())
+            return;
         const current = this.listWindowSubject.value;
         const next: FloatingChatListRuntimeState = current
             ? {
@@ -192,6 +203,8 @@ export class ChatFloatingService implements OnDestroy {
     }
 
     openConversation(conversationId: number): void {
+        if (this.handleRestrictionBlockedAccess())
+            return;
         const normalizedConversationId = Math.trunc(Number(conversationId));
         if (!Number.isFinite(normalizedConversationId) || normalizedConversationId <= 0)
             return;
@@ -229,6 +242,8 @@ export class ChatFloatingService implements OnDestroy {
     }
 
     focusConversation(conversationId: number): void {
+        if (this.handleRestrictionBlockedAccess())
+            return;
         const normalizedConversationId = Math.trunc(Number(conversationId));
         if (!Number.isFinite(normalizedConversationId) || normalizedConversationId <= 0)
             return;
@@ -314,6 +329,10 @@ export class ChatFloatingService implements OnDestroy {
     restoreFloatingWindowsAfterOverlay(snapshot: FloatingChatOverlaySnapshot | null): void {
         if (!snapshot)
             return;
+        if (this.restrictionAccessBlocked) {
+            this.applyRestrictionAccessBlock();
+            return;
+        }
 
         if (snapshot.listWindow) {
             this.listWindowSubject.next({
@@ -345,10 +364,14 @@ export class ChatFloatingService implements OnDestroy {
             const cachedFloating = this.readCachedFloatingSettingsDraft(currentUid);
             const persistedFloating = this.pickMostRecentFloatingSettings(settings.mensajeria_flotante, cachedFloating);
             this.applyPersistedFloatingSettings(persistedFloating);
+            if (this.restrictionAccessBlocked)
+                this.applyRestrictionAccessBlock();
         } catch {
             const cachedFloating = this.readCachedFloatingSettingsDraft(currentUid);
             if (cachedFloating) {
                 this.applyPersistedFloatingSettings(cachedFloating);
+                if (this.restrictionAccessBlocked)
+                    this.applyRestrictionAccessBlock();
                 return;
             }
             this.resetState();
@@ -359,10 +382,40 @@ export class ChatFloatingService implements OnDestroy {
         this.clearPersistTimer();
         this.automaticPersistenceBlocked = false;
         this.bootstrappedUid = '';
+        this.restrictionAccessBlocked = false;
         this.listWindowSubject.next(null);
         this.bubblesSubject.next([]);
         this.autoOpenListSubject.next(true);
         this.bubbleFeatureEnabledSubject.next(true);
+    }
+
+    private handleRestrictionBlockedAccess(): boolean {
+        if (!this.restrictionAccessBlocked)
+            return false;
+        this.userProfileNavSvc.openAccountRestriction({
+            section: 'resumen',
+            requestId: Date.now(),
+        });
+        return true;
+    }
+
+    private applyRestrictionAccessBlock(): void {
+        const currentList = this.listWindowSubject.value;
+        const hadOpenList = currentList?.open === true;
+        const hadBubbles = this.bubblesSubject.value.length > 0;
+
+        if (currentList?.open === true) {
+            this.listWindowSubject.next({
+                ...currentList,
+                open: false,
+            });
+        }
+        if (hadBubbles)
+            this.bubblesSubject.next([]);
+        if (hadOpenList || hadBubbles) {
+            this.chatRealtimeSvc.setActiveConversationId(null);
+            this.schedulePersist();
+        }
     }
 
     private nextZIndex(): number {

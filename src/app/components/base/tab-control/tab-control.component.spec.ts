@@ -275,6 +275,41 @@ describe('TabControlComponent navegación por origen', () => {
         expect((component as any).activeTabKey).toBe('base:restriction');
     }));
 
+    it('cierra la pestaña de restricción al levantarse el bloqueo y sale del estado restringido', fakeAsync(() => {
+        const component = crearComponente();
+        const banStatus$ = (component as any).__banStatus$ as BehaviorSubject<any>;
+        const isLoggedIn$ = (component as any).__isLoggedIn$ as BehaviorSubject<boolean>;
+
+        component.ngOnInit();
+        isLoggedIn$.next(true);
+        component.abrirPerfilPrivado({ section: 'resumen', requestId: 1 });
+        tick(120);
+
+        banStatus$.next({
+            restriction: 'temporaryBan',
+            sanction: null,
+            isActiveNow: true,
+            endsAtUtc: '2026-04-02T10:00:00Z',
+            expiresInMs: 60_000,
+        });
+        tick(120);
+        expect(component.restrictionTabOpen).toBeTrue();
+        expect((component as any).activeTabKey).toBe('base:restriction');
+
+        banStatus$.next({
+            restriction: null,
+            sanction: null,
+            isActiveNow: false,
+            endsAtUtc: null,
+            expiresInMs: null,
+        });
+        tick(120);
+
+        expect(component.temporaryRestrictionActive).toBeFalse();
+        expect(component.restrictionTabOpen).toBeFalse();
+        expect((component as any).activeTabKey).toBe('base:personajes');
+    }));
+
     it('abre detalle de monstruo desde listado dinámico', fakeAsync(() => {
         const component = crearComponente();
         const monstruo = crearMonstruo(21, 'Hidra');

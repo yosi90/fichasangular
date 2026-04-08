@@ -85,8 +85,11 @@
     min-height: 56px
 
 .admin-case-modal__toggle--stage
-    min-height: auto
-    justify-content: flex-end
+    min-height: 56px
+    justify-content: center
+    align-self: stretch
+    padding: 0 .2rem
+    transform: translateY(-9px)
 
 .admin-case-modal__stages-header
     display: flex
@@ -113,8 +116,14 @@
 
 .admin-case-modal__stage-grid
     display: grid
-    grid-template-columns: repeat(3, minmax(0, 1fr))
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(150px, 190px)
     gap: .9rem
+    align-items: start
+
+.admin-case-modal__stage-toggle-slot
+    display: flex
+    align-items: flex-start
+    min-height: 100%
 
 .admin-case-modal__error
     margin: -.2rem 0 0
@@ -136,6 +145,12 @@
 :host ::ng-deep .admin-case-modal .mat-select-arrow,
 :host ::ng-deep .admin-case-modal .mat-slide-toggle-content
     color: #edf2ff
+
+:host ::ng-deep .admin-case-modal__toggle--stage .mat-slide-toggle
+    margin: 0
+
+:host ::ng-deep .admin-case-modal__toggle--stage .mat-slide-toggle-label
+    align-items: center
 
 :host ::ng-deep .admin-case-modal .mat-form-field-underline
     background-color: rgba(203, 216, 255, .5)
@@ -165,3 +180,8 @@
     .admin-case-modal__stages-header,
     .admin-case-modal__actions
         flex-direction: column
+
+    .admin-case-modal__toggle--stage
+        min-height: auto
+        padding: 0
+        transform: none

@@ -125,13 +125,15 @@
                             placeholder="Ej. 60, 1440, 10080">
                     </mat-form-field>
 
-                    <div class="admin-case-modal__toggle admin-case-modal__toggle--stage">
-                        <mat-slide-toggle
-                            [ngModel]="stage.isPermanent"
-                            [disabled]="saving"
-                            (ngModelChange)="onStagePermanentChange(index, $event)">
-                            Permanente
-                        </mat-slide-toggle>
+                    <div class="admin-case-modal__stage-toggle-slot">
+                        <div class="admin-case-modal__toggle admin-case-modal__toggle--stage">
+                            <mat-slide-toggle
+                                [ngModel]="stage.isPermanent"
+                                [disabled]="saving"
+                                (ngModelChange)="onStagePermanentChange(index, $event)">
+                                Permanente
+                            </mat-slide-toggle>
+                        </div>
                     </div>
                 </div>
             </article>

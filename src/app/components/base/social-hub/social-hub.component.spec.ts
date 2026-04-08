@@ -164,9 +164,7 @@ describe('SocialHubComponent', () => {
             status: 'allowed',
             blockedUntil: null,
             blocksToday: 0,
-            sessionLocked: false,
             newlyBlocked: false,
-            newlySessionLocked: false,
         });
         apiActionGuardSvc.getBlockedMessage.and.returnValue('Hemos observado un comportamiento inusual en esta sesión.');
         apiActionGuardSvc.getBlockedToastDedupeKey.and.returnValue('api-action-guard.uid-1.toast.cooldown');

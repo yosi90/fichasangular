@@ -124,9 +124,7 @@ describe('UserProfileComponent', () => {
             status: 'allowed',
             blockedUntil: null,
             blocksToday: 0,
-            sessionLocked: false,
             newlyBlocked: false,
-            newlySessionLocked: false,
         });
         apiActionGuardSvc.getBlockedMessage.and.returnValue('Hemos observado un comportamiento inusual en esta sesión.');
         apiActionGuardSvc.getBlockedToastDedupeKey.and.returnValue('api-action-guard.uid-1.toast.cooldown');
@@ -137,6 +135,13 @@ describe('UserProfileComponent', () => {
             refreshCurrentPrivateProfile: jasmine.createSpy('refreshCurrentPrivateProfile').and.callFake(async () => profileSubject.value),
             setCurrentCompliance: jasmine.createSpy('setCurrentCompliance'),
             setCurrentPrivateProfile: jasmine.createSpy('setCurrentPrivateProfile'),
+            getCurrentBanStatus: jasmine.createSpy('getCurrentBanStatus').and.returnValue({
+                restriction: null,
+                sanction: null,
+                isActiveNow: false,
+                endsAtUtc: null,
+                expiresInMs: null,
+            }),
             getCurrentRole: jasmine.createSpy('getCurrentRole').and.callFake(() => profileSubject.value?.role ?? 'jugador'),
             can: jasmine.createSpy('can').and.returnValue(true),
             canProceed: jasmine.createSpy('canProceed').and.returnValue(true),
@@ -219,7 +224,7 @@ describe('UserProfileComponent', () => {
                 },
                 {
                     provide: UserProfileNavigationService,
-                    useValue: jasmine.createSpyObj<UserProfileNavigationService>('UserProfileNavigationService', ['openSocial']),
+                    useValue: jasmine.createSpyObj<UserProfileNavigationService>('UserProfileNavigationService', ['openSocial', 'openAccountRestriction']),
                 },
                 { provide: UserSettingsService, useValue: userSettingsSvc },
                 {
@@ -616,6 +621,127 @@ describe('UserProfileComponent', () => {
         expect(`${(Swal.fire as jasmine.Spy).calls.mostRecent().args[0]?.html ?? ''}`).toContain('Reporte confirmado');
     }));
 
+    it('muestra un botón de cuenta bloqueada cuando hay restricción temporal activa', fakeAsync(() => {
+        userSvc.getCurrentBanStatus.and.returnValue({
+            restriction: 'temporaryBan',
+            sanction: {
+                sanctionId: 22,
+                kind: 'restriction',
+                code: 'technical_account_restriction_temporary',
+                name: 'Restricción temporal de cuenta',
+                startsAtUtc: '2026-04-08T10:00:00Z',
+                endsAtUtc: '2026-04-08T20:00:00Z',
+                isPermanent: false,
+            },
+            isActiveNow: true,
+            endsAtUtc: '2026-04-08T20:00:00Z',
+            expiresInMs: 60_000,
+        });
+        profileSubject.next({
+            ...buildProfile('correo'),
+            compliance: {
+                banned: true,
+                mustAcceptUsage: false,
+                mustAcceptCreation: false,
+                activeSanction: {
+                    sanctionId: 22,
+                    kind: 'restriction',
+                    code: 'technical_account_restriction_temporary',
+                    name: 'Restricción temporal de cuenta',
+                    startsAtUtc: '2026-04-08T10:00:00Z',
+                    endsAtUtc: '2026-04-08T20:00:00Z',
+                    isPermanent: false,
+                },
+                usage: null,
+                creation: null,
+            },
+        });
+
+        fixture.detectChanges();
+        tick();
+        fixture.detectChanges();
+
+        expect(fixture.nativeElement.textContent).toContain('Cuenta bloqueada');
+    }));
+
+    it('abre un modal con la información de la restricción activa desde el resumen', fakeAsync(() => {
+        spyOn(Swal, 'fire').and.resolveTo({ isConfirmed: true } as any);
+        userSvc.getCurrentBanStatus.and.returnValue({
+            restriction: 'temporaryBan',
+            sanction: {
+                sanctionId: 22,
+                kind: 'restriction',
+                code: 'technical_account_restriction_temporary',
+                name: 'Restricción temporal de cuenta',
+                startsAtUtc: '2026-04-08T10:00:00Z',
+                endsAtUtc: '2026-04-08T20:00:00Z',
+                isPermanent: false,
+            },
+            isActiveNow: true,
+            endsAtUtc: '2026-04-08T20:00:00Z',
+            expiresInMs: 60_000,
+        });
+        profileSubject.next({
+            ...buildProfile('correo'),
+            compliance: {
+                banned: true,
+                mustAcceptUsage: false,
+                mustAcceptCreation: false,
+                activeSanction: {
+                    sanctionId: 22,
+                    kind: 'restriction',
+                    code: 'technical_account_restriction_temporary',
+                    name: 'Restricción temporal de cuenta',
+                    startsAtUtc: '2026-04-08T10:00:00Z',
+                    endsAtUtc: '2026-04-08T20:00:00Z',
+                    isPermanent: false,
+                },
+                usage: null,
+                creation: null,
+            },
+        });
+        const apiSvc = TestBed.inject(UserProfileApiService) as jasmine.SpyObj<UserProfileApiService>;
+        apiSvc.listMyModerationHistory.and.resolveTo({
+            items: [{
+                incidentId: 71,
+                caseId: 8,
+                caseCode: 'spam_button',
+                caseName: 'Spam técnico de API button',
+                mode: 'report',
+                confirmedAtUtc: '2026-04-08T10:00:00Z',
+                createdAtUtc: '2026-04-08T09:55:00Z',
+                userVisibleMessage: 'Se ha registrado una incidencia técnica por abuso repetitivo de acciones sensibles.',
+                result: 'sanctioned',
+                sanction: {
+                    sanctionId: 22,
+                    kind: 'restriction',
+                    code: 'technical_account_restriction_temporary',
+                    name: 'Restricción temporal de cuenta',
+                    startsAtUtc: '2026-04-08T10:00:00Z',
+                    endsAtUtc: '2026-04-08T20:00:00Z',
+                    isPermanent: false,
+                },
+            }],
+            total: 1,
+            limit: 10,
+            offset: 0,
+            hasMore: false,
+        } as any);
+
+        fixture.detectChanges();
+        tick();
+
+        void component.abrirRestriccionCuentaResumenModal();
+        tick();
+
+        expect(Swal.fire).toHaveBeenCalled();
+        expect(`${(Swal.fire as jasmine.Spy).calls.mostRecent().args[0]?.html ?? ''}`).toContain('Restricción temporal de cuenta');
+        expect(`${(Swal.fire as jasmine.Spy).calls.mostRecent().args[0]?.html ?? ''}`).toContain('abuso repetitivo de acciones sensibles');
+        expect((Swal.fire as jasmine.Spy).calls.mostRecent().args[0]).toEqual(jasmine.objectContaining({
+            confirmButtonText: 'Cerrar',
+        }));
+    }));
+
     it('cae a resumen si se solicita seguridad para un proveedor sin cambio de contraseña', fakeAsync(() => {
         profileSubject.next(buildProfile('google'));
         userSvc.refreshCurrentPrivateProfile.and.resolveTo(profileSubject.value);
@@ -697,21 +823,14 @@ describe('UserProfileComponent', () => {
         expect(toastSvc.showError).toHaveBeenCalledWith('Debes aceptar las normas de uso vigentes antes de continuar.');
     }));
 
-    it('avisa del cooldown local y evita llamar a la API al guardar identidad', fakeAsync(() => {
+    it('no bloquea localmente el guard y permite guardar identidad', fakeAsync(() => {
         const apiSvc = TestBed.inject(UserProfileApiService) as jasmine.SpyObj<UserProfileApiService>;
-        const toastSvc = TestBed.inject(AppToastService) as jasmine.SpyObj<AppToastService>;
         apiActionGuardSvc.shouldAllow.and.returnValue({
-            status: 'cooldown',
-            blockedUntil: Date.now() + 30_000,
+            status: 'allowed',
+            blockedUntil: null,
             blocksToday: 1,
-            sessionLocked: false,
             newlyBlocked: true,
-            newlySessionLocked: false,
         });
-        apiActionGuardSvc.getBlockedMessage.and.returnValue(
-            'Hemos detectado demasiadas solicitudes en muy poco tiempo. Hemos limitado temporalmente tus peticiones para proteger la estabilidad de la web. Razón: Demasiadas solicitudes en un corto espacio de tiempo. Podrás volver a intentarlo en 30 s.'
-        );
-        apiActionGuardSvc.getBlockedToastDedupeKey.and.returnValue('api-action-guard.uid-1.toast.cooldown');
 
         fixture.detectChanges();
         tick();
@@ -723,14 +842,7 @@ describe('UserProfileComponent', () => {
         void component.guardarIdentidad();
         tick();
 
-        expect(apiSvc.updateMyProfile).not.toHaveBeenCalled();
-        expect(toastSvc.showError).toHaveBeenCalledWith(
-            'Hemos detectado demasiadas solicitudes en muy poco tiempo. Hemos limitado temporalmente tus peticiones para proteger la estabilidad de la web. Razón: Demasiadas solicitudes en un corto espacio de tiempo. Podrás volver a intentarlo en 30 s.',
-            {
-                captureSessionNotification: false,
-                dedupeKey: 'api-action-guard.uid-1.toast.cooldown',
-            }
-        );
+        expect(apiSvc.updateMyProfile).toHaveBeenCalled();
     }));
 
     it('asegura el chat de campaña y navega a Social > mensajes', fakeAsync(() => {

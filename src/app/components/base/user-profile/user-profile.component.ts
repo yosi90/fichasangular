@@ -30,6 +30,7 @@ import { PERMISSION_RESOURCES } from 'src/app/interfaces/user-acl';
 import {
     UserAccessRestrictionReason,
     UserAccessScope,
+    UserBanStatus,
     UserComplianceActivePolicy,
     UserCompliancePolicyKind,
     UserCompliancePolicyState,
@@ -1769,6 +1770,25 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
         return this.moderationHistory.length > 0 || !!this.compliance?.activeSanction;
     }
 
+    get currentBanStatus(): UserBanStatus | null {
+        return typeof this.userSvc.getCurrentBanStatus === 'function'
+            ? this.userSvc.getCurrentBanStatus()
+            : null;
+    }
+
+    get hasActiveAccountRestriction(): boolean {
+        return this.currentBanStatus?.restriction === 'temporaryBan'
+            || this.currentBanStatus?.restriction === 'permanentBan';
+    }
+
+    get activeAccountRestrictionButtonLabel(): string {
+        if (this.currentBanStatus?.restriction === 'permanentBan')
+            return 'Cuenta baneada';
+        if (this.currentBanStatus?.restriction === 'temporaryBan')
+            return 'Cuenta bloqueada';
+        return 'Cuenta restringida';
+    }
+
     get moderationStatusButtonLabel(): string {
         if (this.moderationHistoryLoading && !this.hasModerationEvents)
             return 'Cargando...';
@@ -1887,6 +1907,33 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
             html: this.buildModerationHistoryModalHtml(),
             confirmButtonText: 'Cerrar',
             width: 780,
+            customClass: {
+                popup: 'profile-swal',
+                title: 'profile-swal__title',
+                htmlContainer: 'swal2-html-container--policy',
+                confirmButton: 'profile-swal__confirm',
+                cancelButton: 'profile-swal__cancel',
+            },
+        });
+    }
+
+    async abrirRestriccionCuentaResumenModal(): Promise<void> {
+        if (!this.hasActiveAccountRestriction)
+            return;
+
+        if (this.moderationHistory.length < 1 || this.moderationHistoryHasMore)
+            await this.cargarHistorialModeracionCompleto();
+
+        if (this.moderationHistoryErrorMessage.length > 0) {
+            this.appToastSvc.showError(this.moderationHistoryErrorMessage);
+            return;
+        }
+
+        await Swal.fire({
+            title: this.activeAccountRestrictionButtonLabel,
+            html: this.buildActiveRestrictionModalHtml(),
+            confirmButtonText: 'Cerrar',
+            width: 760,
             customClass: {
                 popup: 'profile-swal',
                 title: 'profile-swal__title',
@@ -2390,6 +2437,55 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
             itemsHtml,
             '</div>',
         ].filter(Boolean).join('');
+    }
+
+    private buildActiveRestrictionModalHtml(): string {
+        const banStatus = this.currentBanStatus;
+        const sanction = banStatus?.sanction ?? this.compliance?.activeSanction ?? null;
+        const latestMatchingItem = this.findLatestRestrictionHistoryItem(sanction);
+        const stateLabel = banStatus?.restriction === 'permanentBan' ? 'Baneo activo' : 'Bloqueo activo';
+        const reasonLabel = this.formatModerationSanctionLabel(sanction);
+        const visibleMessage = `${latestMatchingItem?.userVisibleMessage ?? ''}`.trim();
+        const endsAtLabel = banStatus?.restriction === 'temporaryBan'
+            ? this.formatDateTimeLabel(banStatus?.endsAtUtc, 'Sin fecha de finalización')
+            : 'Permanente';
+
+        return [
+            '<div style="display:flex;flex-direction:column;gap:1rem;text-align:left;">',
+            '  <div style="padding:1rem;border-radius:1rem;background:rgba(160,36,36,.18);border:1px solid rgba(255,120,120,.28);">',
+            `    <div style="display:flex;flex-wrap:wrap;gap:.5rem;margin-bottom:.75rem;"><span style="display:inline-flex;padding:.28rem .65rem;border-radius:999px;background:rgba(255,120,120,.16);border:1px solid rgba(255,120,120,.28);font-size:.82rem;">${this.escapeHtml(stateLabel)}</span></div>`,
+            `    <p style="margin:0;color:rgba(255,238,238,.94);line-height:1.6;">${this.escapeHtml(visibleMessage || 'Tu cuenta tiene ahora mismo una restricción activa confirmada por backend.')}</p>`,
+            '  </div>',
+            '  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(14rem,1fr));gap:.75rem;">',
+            `    <article style="padding:1rem;border-radius:1rem;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);"><div style="color:rgba(245,247,255,.62);font-size:.82rem;text-transform:uppercase;letter-spacing:.05em;margin-bottom:.35rem;">Razón</div><strong style="font-size:1rem;">${this.escapeHtml(reasonLabel)}</strong></article>`,
+            `    <article style="padding:1rem;border-radius:1rem;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);"><div style="color:rgba(245,247,255,.62);font-size:.82rem;text-transform:uppercase;letter-spacing:.05em;margin-bottom:.35rem;">${banStatus?.restriction === 'temporaryBan' ? 'Termina' : 'Duración'}</div><strong style="font-size:1rem;">${this.escapeHtml(endsAtLabel)}</strong></article>`,
+            '  </div>',
+            (latestMatchingItem && latestMatchingItem !== this.moderationHistory[0])
+                ? `  <p style="margin:0;color:rgba(245,247,255,.68);line-height:1.55;">Último evento relacionado: ${this.escapeHtml(this.moderationCaseLabel(latestMatchingItem))}.</p>`
+                : '',
+            '</div>',
+        ].filter(Boolean).join('');
+    }
+
+    private findLatestRestrictionHistoryItem(sanction: UserModerationSanction | null | undefined): UserModerationHistoryItem | null {
+        if (this.moderationHistory.length < 1)
+            return null;
+
+        const sanctionId = Number(sanction?.sanctionId ?? 0);
+        if (sanctionId > 0) {
+            const bySanctionId = this.moderationHistory.find((item) => Number(item?.sanction?.sanctionId ?? 0) === sanctionId) ?? null;
+            if (bySanctionId)
+                return bySanctionId;
+        }
+
+        const normalizedCode = `${sanction?.code ?? ''}`.trim().toLowerCase();
+        if (normalizedCode.length > 0) {
+            const byCode = this.moderationHistory.find((item) => `${item?.sanction?.code ?? ''}`.trim().toLowerCase() === normalizedCode) ?? null;
+            if (byCode)
+                return byCode;
+        }
+
+        return this.moderationHistory.find((item) => item?.sanction != null) ?? this.moderationHistory[0] ?? null;
     }
 
     private escapeHtml(value: string): string {

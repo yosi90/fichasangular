@@ -232,7 +232,7 @@ describe('UserService', () => {
         expect(service.Usuario.permisos).toBe(0);
     });
 
-    it('asigna permisos admin cuando ACL RTDB devuelve admin', async () => {
+    it('no concede permisos admin solo porque ACL RTDB devuelva admin', async () => {
         const service = new UserServiceTestDouble();
         service.emitAcl('uid-admin', {
             roles: { admin: true, type: 'admin' },
@@ -246,10 +246,10 @@ describe('UserService', () => {
         } as User);
         await service.flush();
 
-        expect(service.Usuario.permisos).toBe(1);
+        expect(service.Usuario.permisos).toBe(0);
     });
 
-    it('actualiza permisos en caliente cuando cambia ACL en RTDB', async () => {
+    it('ignora elevaciones admin procedentes solo de ACL RTDB en caliente', async () => {
         const service = new UserServiceTestDouble();
         const capturados: number[] = [];
         service.permisos$.subscribe((value) => capturados.push(value));
@@ -281,11 +281,11 @@ describe('UserService', () => {
         await service.flush();
 
         expect(service.Usuario.permisos).toBe(0);
-        expect(capturados).toContain(1);
+        expect(capturados).not.toContain(1);
         expect(capturados[capturados.length - 1]).toBe(0);
     });
 
-    it('la hidratacion no depende de un upsert API para conservar permisos admin desde RTDB', async () => {
+    it('la hidratacion no conserva permisos admin desde RTDB sin validacion backend', async () => {
         const service = new UserServiceTestDouble();
         service.emitAcl('uid-admin', {
             roles: { admin: true, type: 'admin' },
@@ -300,7 +300,7 @@ describe('UserService', () => {
         } as User);
         await service.flush();
 
-        expect(service.Usuario.permisos).toBe(1);
+        expect(service.Usuario.permisos).toBe(0);
     });
 
     it('ban en ACL RTDB ya no fuerza logout por sí solo sin activeSanction actor-scoped', async () => {
@@ -1044,7 +1044,7 @@ describe('UserService', () => {
         expect(service.signOutCalls).toBe(0);
     });
 
-    it('limpia compliance vieja cuando Firestore reemite null explícito', async () => {
+    it('mantiene la compliance canónica cuando Firestore reemite null explícito', async () => {
         const apiMock = {
             getMyProfile: jasmine.createSpy('getMyProfile').and.resolveTo(buildPrivateProfile({
                 compliance: null,
@@ -1080,7 +1080,9 @@ describe('UserService', () => {
         await service.flush();
 
         expect(service.CurrentPrivateProfile?.displayName).toBe('Aldric actualizado');
-        expect(service.CurrentPrivateProfile?.compliance).toBeNull();
+        expect(service.CurrentPrivateProfile?.compliance?.banned).toBeFalse();
+        expect(service.CurrentPrivateProfile?.compliance?.mustAcceptCreation).toBeTrue();
+        expect(service.CurrentPrivateProfile?.compliance?.creation?.version).toBe('2');
     });
 
     it('ignora un ACL legacy stale cuando la capa actor-scoped ya no marca ban', async () => {

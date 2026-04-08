@@ -127,7 +127,8 @@
                 <div
                     class="chat-float-conversation__message"
                     [class.chat-float-conversation__message--own]="isOwnMessage(message)"
-                    [class.chat-float-conversation__message--system]="message.sender.isSystemUser">
+                    [class.chat-float-conversation__message--system]="message.sender.isSystemUser && getMessageSystemTone(message) === 'default'"
+                    [class.chat-float-conversation__message--system-danger]="message.sender.isSystemUser && getMessageSystemTone(message) === 'danger'">
                     <strong>{{getMessageSenderLabel(message)}}</strong>
                     <p>{{message.body}}</p>
                     <div class="chat-float-conversation__actions" *ngIf="hasMessageAction(message)">

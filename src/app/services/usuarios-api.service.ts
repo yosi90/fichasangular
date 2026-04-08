@@ -443,9 +443,21 @@ export class UsuariosApiService {
         if (error instanceof HttpErrorResponse) {
             const message = this.extractErrorMessage(error.error)
                 || `${fallbackMessage} (HTTP ${error.status || '0'})`;
-            return new Error(message);
+            const mapped = new Error(message);
+            (mapped as any).status = error.status || 0;
+            (mapped as any).code = error.status === 403
+                ? 'FORBIDDEN'
+                : error.status === 401
+                    ? 'UNAUTHORIZED'
+                    : '';
+            (mapped as any).cause = error;
+            return mapped;
         }
-        return new Error(fallbackMessage);
+        const mapped = new Error(fallbackMessage);
+        (mapped as any).status = Number(error?.status ?? 0) || 0;
+        (mapped as any).code = `${error?.code ?? ''}`.trim().toUpperCase();
+        (mapped as any).cause = error;
+        return mapped;
     }
 
     private async toApiErrorAsync(error: any, fallbackMessage: string): Promise<Error> {

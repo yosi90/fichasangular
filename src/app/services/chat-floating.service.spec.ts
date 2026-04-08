@@ -11,6 +11,7 @@ import { UserService } from './user.service';
 describe('ChatFloatingService', () => {
     let service: ChatFloatingService;
     let isLoggedIn$: BehaviorSubject<boolean>;
+    let banStatus$: BehaviorSubject<any>;
     let userSettingsSvc: jasmine.SpyObj<UserSettingsService>;
     let userProfileNavSvc: jasmine.SpyObj<UserProfileNavigationService>;
     let chatRealtimeSvc: jasmine.SpyObj<ChatRealtimeService>;
@@ -18,8 +19,15 @@ describe('ChatFloatingService', () => {
     beforeEach(() => {
         localStorage.clear();
         isLoggedIn$ = new BehaviorSubject<boolean>(false);
+        banStatus$ = new BehaviorSubject<any>({
+            restriction: null,
+            sanction: null,
+            isActiveNow: false,
+            endsAtUtc: null,
+            expiresInMs: null,
+        });
         userSettingsSvc = jasmine.createSpyObj<UserSettingsService>('UserSettingsService', ['loadSettings', 'saveSettings']);
-        userProfileNavSvc = jasmine.createSpyObj<UserProfileNavigationService>('UserProfileNavigationService', ['openSocial']);
+        userProfileNavSvc = jasmine.createSpyObj<UserProfileNavigationService>('UserProfileNavigationService', ['openSocial', 'openAccountRestriction']);
         chatRealtimeSvc = jasmine.createSpyObj<ChatRealtimeService>('ChatRealtimeService', ['setActiveConversationId', 'isConversationFocused', 'markConversationReadLocally']);
 
         userSettingsSvc.loadSettings.and.resolveTo(createDefaultUserSettings());
@@ -33,6 +41,7 @@ describe('ChatFloatingService', () => {
                     provide: UserService,
                     useValue: {
                         isLoggedIn$,
+                        banStatus$,
                         CurrentUserUid: 'uid-1',
                     },
                 },
@@ -154,6 +163,67 @@ describe('ChatFloatingService', () => {
         expect(bubbles[0].conversationId).toBe(51);
         expect(bubbles[0].bubblePlacement?.top).toBe(180);
     });
+
+    it('cierra ventana y burbujas al entrar una restricción temporal', () => {
+        service.init();
+        service.openOrFocusListWindow();
+        service.openConversation(61);
+
+        let listWindow: any = null;
+        let bubbles: any[] = [];
+        service.listWindow$.subscribe((value) => listWindow = value);
+        service.bubbles$.subscribe((items) => bubbles = items);
+
+        banStatus$.next({
+            restriction: 'temporaryBan',
+            sanction: null,
+            isActiveNow: true,
+            endsAtUtc: '2026-04-08T21:03:00Z',
+            expiresInMs: 60_000,
+        });
+
+        expect(listWindow?.open).toBeFalse();
+        expect(bubbles.length).toBe(0);
+        expect(chatRealtimeSvc.setActiveConversationId).toHaveBeenCalledWith(null);
+    });
+
+    it('redirige a Cuenta restringida si se intenta abrir chat flotante durante una restricción', () => {
+        service.init();
+        banStatus$.next({
+            restriction: 'temporaryBan',
+            sanction: null,
+            isActiveNow: true,
+            endsAtUtc: '2026-04-08T21:03:00Z',
+            expiresInMs: 60_000,
+        });
+
+        service.openOrFocusListWindow();
+        service.openConversation(77);
+
+        expect(userProfileNavSvc.openAccountRestriction).toHaveBeenCalledTimes(2);
+        expect(userProfileNavSvc.openSocial).not.toHaveBeenCalled();
+    });
+
+    it('no reabre la ventana flotante al hidratar settings si la sesión ya está restringida', fakeAsync(() => {
+        service.init();
+        banStatus$.next({
+            restriction: 'temporaryBan',
+            sanction: null,
+            isActiveNow: true,
+            endsAtUtc: '2026-04-08T21:03:00Z',
+            expiresInMs: 60_000,
+        });
+
+        isLoggedIn$.next(true);
+        tick();
+
+        let listWindow: any = null;
+        service.listWindow$.subscribe((value) => listWindow = value);
+
+        expect(userSettingsSvc.loadSettings).toHaveBeenCalled();
+        expect(listWindow?.open).toBeFalse();
+        expect(chatRealtimeSvc.setActiveConversationId).toHaveBeenCalledWith(null);
+    }));
 
     it('restaura la ventana-listado al iniciar si el setting de autoapertura sigue activo', fakeAsync(() => {
         service.init();

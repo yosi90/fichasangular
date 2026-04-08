@@ -1,6 +1,6 @@
 import { Component, Input, OnChanges, OnDestroy, OnInit, SimpleChanges } from '@angular/core';
 import { Subject, takeUntil } from 'rxjs';
-import { ChatConversationDetail, ChatConversationFilter, ChatConversationSummary, ChatGroupCreateDraft, ChatMessage, ChatParticipant } from 'src/app/interfaces/chat';
+import { ChatConversationDetail, ChatConversationFilter, ChatConversationSummary, ChatGroupCreateDraft, ChatMessage, ChatNotificationPayload, ChatParticipant } from 'src/app/interfaces/chat';
 import { CampaignDetailViewModel, CampaignInvitationDecision, CampaignInvitationItem, CampaignListItem, CampaignMemberItem, CampaignRealtimeEvent, CampaignTramaItem } from 'src/app/interfaces/campaign-management';
 import {
     BlockedUserItem,
@@ -1017,6 +1017,12 @@ export class SocialHubComponent implements OnInit, OnChanges, OnDestroy {
         return `${conversation?.lastMessagePreview ?? ''}`.trim() || 'Sin mensajes aún';
     }
 
+    getConversationSystemTone(conversation: ChatConversationSummary | null | undefined): 'default' | 'danger' {
+        if (!conversation?.isSystemConversation)
+            return 'default';
+        return this.getNotificationTone(conversation.lastMessageNotification);
+    }
+
     getParticipantLabel(participant: ChatParticipant | null | undefined): string {
         if (!participant)
             return 'Participante';
@@ -1033,6 +1039,12 @@ export class SocialHubComponent implements OnInit, OnChanges, OnDestroy {
             return 'Yosiftware';
         const displayName = `${message.sender.displayName ?? ''}`.trim();
         return displayName.length > 0 ? displayName : 'Usuario';
+    }
+
+    getMessageSystemTone(message: ChatMessage | null | undefined): 'default' | 'danger' {
+        if (message?.sender?.isSystemUser !== true && `${message?.sender?.uid ?? ''}`.trim() !== 'system:yosiftware')
+            return 'default';
+        return this.getNotificationTone(message?.notification);
     }
 
     canLinkParticipant(participant: ChatParticipant | null | undefined): boolean {
@@ -1668,5 +1680,12 @@ export class SocialHubComponent implements OnInit, OnChanges, OnDestroy {
             .replace(/[\u0300-\u036f]/g, '')
             .toLowerCase()
             .trim();
+    }
+
+    private getNotificationTone(notification: ChatNotificationPayload | null | undefined): 'default' | 'danger' {
+        const code = `${notification?.code ?? ''}`.trim().toLowerCase();
+        if (code === 'system.account_banned' || code === 'system.moderation_event')
+            return 'danger';
+        return 'default';
     }
 }
