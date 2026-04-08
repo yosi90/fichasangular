@@ -2,6 +2,7 @@ import { Injectable, OnDestroy } from '@angular/core';
 import { Subscription } from 'rxjs';
 import Swal from 'sweetalert2';
 import { ChatAlertCandidate } from '../interfaces/chat';
+import { SessionNotificationSwalOptions } from '../interfaces/session-notification';
 import { AdminUsersService } from './admin-users.service';
 import { ChatApiService } from './chat-api.service';
 import { ChatRealtimeService } from './chat-realtime.service';
@@ -82,6 +83,14 @@ export class AdminRoleRequestNotifierService implements OnDestroy {
 
         this.alertInFlight = true;
         try {
+            const openRoleRequests = async (): Promise<void> => {
+                await this.markLatestAdminNotificationAsRead();
+                this.userProfileNavSvc.openAdminPanel({
+                    section: 'role-requests',
+                    pendingOnly: true,
+                    requestId: Date.now(),
+                });
+            };
             const result = await Swal.fire({
                 icon: 'info',
                 title: 'Tienes peticiones por supervisar',
@@ -89,16 +98,18 @@ export class AdminRoleRequestNotifierService implements OnDestroy {
                 showCancelButton: true,
                 confirmButtonText: 'Revisar ahora',
                 cancelButtonText: 'Más tarde',
-            });
+                sessionNotification: {
+                    include: true,
+                    level: 'info',
+                    title: 'Tienes peticiones por supervisar',
+                    message: 'Ha llegado una nueva solicitud de rol o hay pendientes por revisar.',
+                    actionLabel: 'Revisar ahora',
+                    action: () => openRoleRequests(),
+                },
+            } as SessionNotificationSwalOptions);
 
-            if (result.isConfirmed) {
-                await this.markLatestAdminNotificationAsRead();
-                this.userProfileNavSvc.openAdminPanel({
-                    section: 'role-requests',
-                    pendingOnly: true,
-                    requestId: Date.now(),
-                });
-            }
+            if (result.isConfirmed)
+                await openRoleRequests();
         } finally {
             this.alertInFlight = false;
         }

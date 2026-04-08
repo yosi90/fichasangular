@@ -90,6 +90,12 @@ describe('ChatAlertService', () => {
         tick();
 
         expect(Swal.fire).toHaveBeenCalled();
+        expect((Swal.fire as jasmine.Spy).calls.mostRecent().args[0]).toEqual(jasmine.objectContaining({
+            sessionNotification: jasmine.objectContaining({
+                include: true,
+                actionLabel: 'Abrir perfil',
+            }),
+        }));
         expect(navSvc.openPrivateProfile).toHaveBeenCalledWith(jasmine.objectContaining({
             section: 'resumen',
         }));
@@ -512,6 +518,11 @@ describe('ChatAlertService', () => {
         expect(swalArgs['html']).not.toContain('Tu cuenta ha sido actualizada por administración');
         expect(swalArgs['html']).not.toContain('Estado de cuenta');
         expect(swalArgs['denyButtonText']).toBeUndefined();
+        expect(swalArgs['sessionNotification']).toEqual(jasmine.objectContaining({
+            include: true,
+            level: 'warning',
+            actionLabel: 'Ver restricción',
+        }));
     }));
 
     it('muestra un estado expirado cuando la notificación llega después de terminar la sanción', fakeAsync(() => {

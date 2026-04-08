@@ -1,5 +1,5 @@
 import { NO_ERRORS_SCHEMA } from '@angular/core';
-import { fakeAsync, ComponentFixture, TestBed, tick } from '@angular/core/testing';
+import { ComponentFixture, TestBed, fakeAsync, tick } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 import { BehaviorSubject, of } from 'rxjs';
@@ -7,18 +7,21 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatDialog } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
 import { MatMenuModule } from '@angular/material/menu';
-import { MatTooltipModule } from '@angular/material/tooltip';
 
 import { NavbarComponent } from './navbar.component';
 import { ManualFlagConsistencyNoticeService } from 'src/app/services/manual-flag-consistency-notice.service';
 import { ManualesAsociadosService } from 'src/app/services/manuales-asociados.service';
 import { ManualVistaNavigationService } from 'src/app/services/manual-vista-navigation.service';
+import { SessionNotificationCenterService } from 'src/app/services/session-notification-center.service';
 import { UserProfileNavigationService } from 'src/app/services/user-profile-navigation.service';
 import { UserService } from 'src/app/services/user.service';
 
+beforeAll(() => {
+    jasmine.getEnv().configure({ random: false });
+});
+
 describe('NavbarComponent', () => {
     let component: NavbarComponent;
-    let fixture: ComponentFixture<NavbarComponent>;
     let userState: { nombre: string; correo: string; permisos: number; };
     let isLoggedIn$: BehaviorSubject<boolean>;
     let permisos$: BehaviorSubject<number>;
@@ -26,9 +29,12 @@ describe('NavbarComponent', () => {
     let manualVistaNavSvc: jasmine.SpyObj<ManualVistaNavigationService>;
     let userProfileNavSvc: jasmine.SpyObj<UserProfileNavigationService>;
     let dialog: jasmine.SpyObj<MatDialog>;
+    let manualFlagNoticeSvc: jasmine.SpyObj<ManualFlagConsistencyNoticeService>;
+    let sessionNotificationCenterSvc: SessionNotificationCenterService;
+    let manualesAsociadosSvc: any;
     let userSvc: any;
 
-    beforeEach(async () => {
+    function createComponent(): NavbarComponent {
         userState = { nombre: 'Invitado', correo: '', permisos: 0 };
         isLoggedIn$ = new BehaviorSubject<boolean>(false);
         permisos$ = new BehaviorSubject<number>(0);
@@ -36,9 +42,15 @@ describe('NavbarComponent', () => {
         manualVistaNavSvc = jasmine.createSpyObj<ManualVistaNavigationService>('ManualVistaNavigationService', ['emitirApertura']);
         userProfileNavSvc = jasmine.createSpyObj<UserProfileNavigationService>(
             'UserProfileNavigationService',
-            ['openPrivateProfile', 'openSocial', 'openAdminPanel', 'openRoadmap', 'openLegalPrivacy', 'openUsageAbout']
+            ['openPrivateProfile', 'openSocial', 'openAdminPanel', 'openRoadmap', 'openLegalPrivacy', 'openUsageAbout', 'openFeedbackBug', 'openFeedbackFeature']
         );
         dialog = jasmine.createSpyObj<MatDialog>('MatDialog', ['open']);
+        manualFlagNoticeSvc = jasmine.createSpyObj<ManualFlagConsistencyNoticeService>('ManualFlagConsistencyNoticeService', ['notifyAdminIfNeeded']);
+        sessionNotificationCenterSvc = new SessionNotificationCenterService();
+        manualesAsociadosSvc = {
+            getManualesAsociados: () => of([]),
+            fallbackNotice$: of(''),
+        };
         userSvc = {
             get Usuario() {
                 return userState;
@@ -49,49 +61,28 @@ describe('NavbarComponent', () => {
             logOut: jasmine.createSpy('logOut').and.returnValue(Promise.resolve()),
         };
 
-        await TestBed.configureTestingModule({
-            declarations: [NavbarComponent],
-            imports: [
-                NoopAnimationsModule,
-                MatButtonModule,
-                MatMenuModule,
-                MatTooltipModule,
-                MatIconModule,
-            ],
-            providers: [
-                {
-                    provide: ManualesAsociadosService,
-                    useValue: {
-                        getManualesAsociados: () => of([]),
-                        fallbackNotice$: of(''),
-                    },
-                },
-                {
-                    provide: ManualFlagConsistencyNoticeService,
-                    useValue: jasmine.createSpyObj<ManualFlagConsistencyNoticeService>('ManualFlagConsistencyNoticeService', ['notifyAdminIfNeeded']),
-                },
-                { provide: ManualVistaNavigationService, useValue: manualVistaNavSvc },
-                { provide: UserService, useValue: userSvc },
-                { provide: UserProfileNavigationService, useValue: userProfileNavSvc },
-                { provide: MatDialog, useValue: dialog },
-            ],
-            schemas: [NO_ERRORS_SCHEMA],
-        }).compileComponents();
+        const instance = new NavbarComponent(
+            dialog,
+            manualesAsociadosSvc,
+            manualVistaNavSvc,
+            manualFlagNoticeSvc,
+            sessionNotificationCenterSvc,
+            userSvc,
+            userProfileNavSvc,
+        );
+        instance.ngOnInit();
+        return instance;
+    }
 
-        fixture = TestBed.createComponent(NavbarComponent);
-        component = fixture.componentInstance;
-        fixture.detectChanges();
+    beforeEach(() => {
+        component = createComponent();
     });
 
-    it('crea los cuatro botones principales de la cinta', () => {
-        const botones = fixture.debugElement.queryAll(By.css('.ribbon-trigger'));
-
-        expect(botones.map((item) => item.nativeElement.textContent.trim())).toEqual([
-            'Archivo',
-            'Manuales',
-            'Opciones',
-            'Ayuda',
-        ]);
+    afterEach(() => {
+        component.ngOnDestroy();
+        isLoggedIn$.complete();
+        permisos$.complete();
+        currentPrivateProfile$.complete();
     });
 
     it('muestra estado de invitado por defecto', () => {
@@ -106,7 +97,6 @@ describe('NavbarComponent', () => {
         isLoggedIn$.next(true);
         permisos$.next(1);
         currentPrivateProfile$.next({ displayName: 'Yosi' });
-        fixture.detectChanges();
 
         expect(component.isLoggedIn).toBeTrue();
         expect(component.isAdmin).toBeTrue();
@@ -117,7 +107,6 @@ describe('NavbarComponent', () => {
     it('abre mi perfil desde Archivo cuando hay sesión', () => {
         userState = { nombre: 'Yosi', correo: 'yosi@test.dev', permisos: 0 };
         isLoggedIn$.next(true);
-        fixture.detectChanges();
 
         component.abrirMiPerfil();
 
@@ -127,7 +116,6 @@ describe('NavbarComponent', () => {
     it('abre Social desde Archivo cuando hay sesión', () => {
         userState = { nombre: 'Yosi', correo: 'yosi@test.dev', permisos: 0 };
         isLoggedIn$.next(true);
-        fixture.detectChanges();
 
         component.abrirSocial();
 
@@ -137,7 +125,6 @@ describe('NavbarComponent', () => {
     it('abre una sección concreta del perfil desde Opciones', () => {
         userState = { nombre: 'Yosi', correo: 'yosi@test.dev', permisos: 0 };
         isLoggedIn$.next(true);
-        fixture.detectChanges();
 
         component.abrirSeccionPerfil('identidad');
 
@@ -148,7 +135,6 @@ describe('NavbarComponent', () => {
         userState = { nombre: 'Yosi', correo: 'yosi@test.dev', permisos: 1 };
         isLoggedIn$.next(true);
         permisos$.next(1);
-        fixture.detectChanges();
 
         component.abrirAdminPanel();
 
@@ -159,7 +145,6 @@ describe('NavbarComponent', () => {
         userState = { nombre: 'Yosi', correo: 'yosi@test.dev', permisos: 0 };
         isLoggedIn$.next(true);
         permisos$.next(0);
-        fixture.detectChanges();
 
         component.abrirAdminPanel();
 
@@ -172,9 +157,8 @@ describe('NavbarComponent', () => {
         expect(dialog.open).toHaveBeenCalled();
     });
 
-    it('delegates logout to UserService', async () => {
+    it('delegates logout to UserService', () => {
         component.logOut();
-        await fixture.whenStable();
 
         expect(userSvc.logOut).toHaveBeenCalled();
     });
@@ -237,6 +221,29 @@ describe('NavbarComponent', () => {
         expect(userProfileNavSvc.openUsageAbout).toHaveBeenCalled();
     });
 
+    it('abre reportar bug desde Ayuda si hay sesión', () => {
+        userState = { nombre: 'Yosi', correo: 'yosi@test.dev', permisos: 0 };
+        isLoggedIn$.next(true);
+
+        component.abrirReportarBug();
+
+        expect(userProfileNavSvc.openFeedbackBug).toHaveBeenCalled();
+        expect(dialog.open).not.toHaveBeenCalled();
+    });
+
+    it('abre login si intentan reportar bug sin sesión', () => {
+        component.abrirReportarBug();
+
+        expect(dialog.open).toHaveBeenCalled();
+        expect(userProfileNavSvc.openFeedbackBug).not.toHaveBeenCalled();
+    });
+
+    it('abre solicitar funcionalidad también para invitados', () => {
+        component.abrirSolicitarFuncionalidad();
+
+        expect(userProfileNavSvc.openFeedbackFeature).toHaveBeenCalled();
+    });
+
     it('cierra un menú de la cinta con retardo al alejarse', fakeAsync(() => {
         const trigger = jasmine.createSpyObj('MatMenuTrigger', ['closeMenu']);
 
@@ -278,5 +285,161 @@ describe('NavbarComponent', () => {
         tick(250);
 
         expect(trigger.closeMenu).not.toHaveBeenCalled();
+    }));
+
+    it('marca como vistas las notificaciones al abrir la campana', fakeAsync(() => {
+        const trigger = jasmine.createSpyObj('MatMenuTrigger', ['closeMenu', 'openMenu'], { menuOpen: true });
+        const notificationId = sessionNotificationCenterSvc.add({
+            source: 'toast',
+            level: 'info',
+            title: 'Nueva',
+            message: 'Mensaje',
+        });
+
+        component.onNotificationMenuOpened(trigger as any);
+        tick();
+
+        expect(component.hasUnreadNotifications).toBeFalse();
+        expect(component.sessionNotifications.find((entry) => entry.id === notificationId)?.seenAt).not.toBeNull();
+    }));
+
+    it('permite borrar una notificación sin romper el estado interno', () => {
+        const removed = sessionNotificationCenterSvc.add({
+            source: 'toast',
+            level: 'info',
+            title: 'A',
+            message: 'Uno',
+        });
+        sessionNotificationCenterSvc.add({
+            source: 'toast',
+            level: 'info',
+            title: 'B',
+            message: 'Dos',
+        });
+
+        component.dismissSessionNotification(removed, new MouseEvent('click'));
+
+        expect(component.sessionNotifications.length).toBe(1);
+        expect(component.sessionNotifications[0].title).toBe('B');
+    });
+
+    it('ejecuta la acción principal de una notificación navegable', async () => {
+        const action = jasmine.createSpy('action');
+        const trigger = jasmine.createSpyObj('MatMenuTrigger', ['closeMenu', 'openMenu'], { menuOpen: true });
+        sessionNotificationCenterSvc.add({
+            source: 'swal',
+            level: 'info',
+            title: 'Navegable',
+            message: 'Abre algo',
+            actionLabel: 'Abrir',
+            action,
+        });
+
+        await component.openSessionNotification(component.sessionNotifications[0], trigger as any);
+
+        expect(trigger.closeMenu).toHaveBeenCalled();
+        expect(action).toHaveBeenCalled();
+    });
+});
+
+describe('NavbarComponent template', () => {
+    let fixture: ComponentFixture<NavbarComponent>;
+    let component: NavbarComponent;
+    let sessionNotificationCenterSvc: SessionNotificationCenterService;
+    let userState: { nombre: string; correo: string; permisos: number; };
+
+    beforeEach(async () => {
+        userState = { nombre: 'Invitado', correo: '', permisos: 0 };
+        await TestBed.configureTestingModule({
+            declarations: [NavbarComponent],
+            imports: [
+                NoopAnimationsModule,
+                MatButtonModule,
+                MatMenuModule,
+                MatIconModule,
+            ],
+            providers: [
+                {
+                    provide: ManualesAsociadosService,
+                    useValue: {
+                        getManualesAsociados: () => of([]),
+                        fallbackNotice$: of(''),
+                    },
+                },
+                {
+                    provide: ManualFlagConsistencyNoticeService,
+                    useValue: jasmine.createSpyObj<ManualFlagConsistencyNoticeService>('ManualFlagConsistencyNoticeService', ['notifyAdminIfNeeded']),
+                },
+                {
+                    provide: ManualVistaNavigationService,
+                    useValue: jasmine.createSpyObj<ManualVistaNavigationService>('ManualVistaNavigationService', ['emitirApertura']),
+                },
+                {
+                    provide: UserService,
+                    useValue: {
+                        get Usuario() {
+                            return userState;
+                        },
+                        isLoggedIn$: new BehaviorSubject<boolean>(false),
+                        permisos$: new BehaviorSubject<number>(0),
+                        currentPrivateProfile$: new BehaviorSubject<any>(null),
+                        logOut: jasmine.createSpy('logOut').and.returnValue(Promise.resolve()),
+                    },
+                },
+                {
+                    provide: UserProfileNavigationService,
+                    useValue: jasmine.createSpyObj<UserProfileNavigationService>(
+                        'UserProfileNavigationService',
+                        ['openPrivateProfile', 'openSocial', 'openAdminPanel', 'openRoadmap', 'openLegalPrivacy', 'openUsageAbout', 'openFeedbackBug', 'openFeedbackFeature']
+                    ),
+                },
+                { provide: MatDialog, useValue: jasmine.createSpyObj<MatDialog>('MatDialog', ['open']) },
+                SessionNotificationCenterService,
+            ],
+            schemas: [NO_ERRORS_SCHEMA],
+        }).compileComponents();
+
+        sessionNotificationCenterSvc = TestBed.inject(SessionNotificationCenterService);
+        fixture = TestBed.createComponent(NavbarComponent);
+        component = fixture.componentInstance;
+        fixture.detectChanges();
+    });
+
+    afterEach(() => {
+        fixture.destroy();
+    });
+
+    it('crea la cinta iconificada y la campana a la derecha', () => {
+        const botones = fixture.debugElement.queryAll(By.css('.ribbon-nav > .ribbon-trigger'));
+        const iconos = fixture.debugElement.queryAll(By.css('.ribbon-nav > .ribbon-trigger .mat-icon'));
+
+        expect(botones.length).toBe(5);
+        expect(iconos.map((item) => item.nativeElement.textContent.trim())).toEqual([
+            'folder',
+            'menu_book',
+            'tune',
+            'help_center',
+            'notifications',
+        ]);
+        expect(botones[4].nativeElement.getAttribute('aria-label')).toBe('Notificaciones de la sesión');
+    });
+
+    it('renderiza el punto de no vistas y lo oculta al abrir la campana', fakeAsync(() => {
+        const trigger = jasmine.createSpyObj('MatMenuTrigger', ['closeMenu', 'openMenu'], { menuOpen: true });
+
+        sessionNotificationCenterSvc.add({
+            source: 'toast',
+            level: 'info',
+            title: 'Nueva',
+            message: 'Mensaje',
+        });
+        fixture.detectChanges();
+        expect(fixture.debugElement.query(By.css('.ribbon-bell__dot'))).not.toBeNull();
+
+        component.onNotificationMenuOpened(trigger as any);
+        tick();
+        fixture.detectChanges();
+
+        expect(fixture.debugElement.query(By.css('.ribbon-bell__dot'))).toBeNull();
     }));
 });

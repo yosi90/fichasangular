@@ -1,6 +1,19 @@
+import { HttpHeaders, HttpResponse } from '@angular/common/http';
+import * as FileSaver from 'file-saver';
 import { of } from 'rxjs';
 
 import { UsuariosApiService } from './usuarios-api.service';
+
+class FormDataMock {
+    readonly entries: { name: string; value: any; filename?: string; }[] = [];
+
+    append(name: string, value: any, filename?: string): void {
+        const entry: { name: string; value: any; filename?: string; } = { name, value };
+        if (filename !== undefined)
+            entry.filename = filename;
+        this.entries.push(entry);
+    }
+}
 
 describe('UsuariosApiService', () => {
     const authMock = {
@@ -153,6 +166,247 @@ describe('UsuariosApiService', () => {
         expect(response.kind).toBe('creation');
         expect(response.version).toBe('creation-v3');
         expect(response.markdown).toContain('Sin spam');
+    });
+
+    it('createBugReport compone FormData multipart con imágenes y bearer', async () => {
+        const httpMock = jasmine.createSpyObj('HttpClient', ['post']);
+        httpMock.post.and.returnValue(of({
+            id: 12,
+            kind: 'bug',
+            status: 'submitted',
+            priority: null,
+            title: 'Chat roto',
+            description: 'No abre.',
+            pageUrl: '/social',
+            details: {
+                stepsToReproduce: 'Entrar',
+                expectedBehavior: 'Abrir',
+                actualBehavior: 'Nada',
+            },
+            attachments: [],
+            updates: [],
+            createdAtUtc: '2026-04-02T10:00:00Z',
+            updatedAtUtc: '2026-04-02T10:00:00Z',
+        }));
+        const service = new UsuariosApiService(httpMock, authMock);
+        const originalFormData = (window as any).FormData;
+        (window as any).FormData = FormDataMock as any;
+
+        try {
+            const image = new File(['bug'], 'captura.png', { type: 'image/png' });
+            const response = await service.createBugReport({
+                title: ' Chat roto ',
+                description: ' No abre. ',
+                pageUrl: ' /social ',
+                stepsToReproduce: ' Entrar ',
+                expectedBehavior: ' Abrir ',
+                actualBehavior: ' Nada ',
+                images: [image],
+            });
+
+            const [url, body, options] = httpMock.post.calls.mostRecent().args;
+            expect(url).toContain('/usuarios/me/bug-reports');
+            expect(options.headers.get('Authorization')).toBe('Bearer token-audit');
+            expect(body instanceof FormDataMock).toBeTrue();
+            expect((body as FormDataMock).entries).toEqual([
+                { name: 'description', value: 'No abre.' },
+                { name: 'title', value: 'Chat roto' },
+                { name: 'pageUrl', value: '/social' },
+                { name: 'stepsToReproduce', value: 'Entrar' },
+                { name: 'expectedBehavior', value: 'Abrir' },
+                { name: 'actualBehavior', value: 'Nada' },
+                { name: 'images[]', value: image, filename: 'captura.png' },
+            ]);
+            expect(response.kind).toBe('bug');
+            expect(response.details.actualBehavior).toBe('Nada');
+        } finally {
+            (window as any).FormData = originalFormData;
+        }
+    });
+
+    it('createFeatureRequest compone FormData multipart para peticiones de funcionalidad', async () => {
+        const httpMock = jasmine.createSpyObj('HttpClient', ['post']);
+        httpMock.post.and.returnValue(of({
+            id: 15,
+            kind: 'feature',
+            status: 'submitted',
+            priority: null,
+            title: 'Modo campaña',
+            description: 'Quiero una portada.',
+            pageUrl: '/campanas',
+            details: {
+                useCase: 'Preparar sesión',
+                desiredOutcome: 'Tener una portada compartible',
+            },
+            attachments: [],
+            updates: [],
+            createdAtUtc: '2026-04-02T11:00:00Z',
+            updatedAtUtc: '2026-04-02T11:00:00Z',
+        }));
+        const service = new UsuariosApiService(httpMock, authMock);
+        const originalFormData = (window as any).FormData;
+        (window as any).FormData = FormDataMock as any;
+
+        try {
+            await service.createFeatureRequest({
+                title: ' Modo campaña ',
+                description: ' Quiero una portada. ',
+                pageUrl: ' /campanas ',
+                useCase: ' Preparar sesión ',
+                desiredOutcome: ' Tener una portada compartible ',
+                images: [],
+            });
+
+            const [url, body, options] = httpMock.post.calls.mostRecent().args;
+            expect(url).toContain('/usuarios/me/feature-requests');
+            expect(options.headers.get('Authorization')).toBe('Bearer token-audit');
+            expect((body as FormDataMock).entries).toEqual([
+                { name: 'description', value: 'Quiero una portada.' },
+                { name: 'title', value: 'Modo campaña' },
+                { name: 'pageUrl', value: '/campanas' },
+                { name: 'useCase', value: 'Preparar sesión' },
+                { name: 'desiredOutcome', value: 'Tener una portada compartible' },
+            ]);
+        } finally {
+            (window as any).FormData = originalFormData;
+        }
+    });
+
+    it('listMyBugReports usa bearer y normaliza la paginación', async () => {
+        const httpMock = jasmine.createSpyObj('HttpClient', ['get']);
+        httpMock.get.and.returnValue(of({
+            items: [{
+                id: '12',
+                kind: 'bug',
+                status: 'triaged',
+                priority: 'high',
+                title: 'Chat roto',
+                description: 'No abre.',
+                pageUrl: '/social',
+                details: {
+                    stepsToReproduce: 'Entrar',
+                },
+                createdAtUtc: '2026-04-02T10:00:00Z',
+                updatedAtUtc: '2026-04-02T10:10:00Z',
+            }],
+            total: 1,
+            limit: 25,
+            offset: 0,
+            hasMore: false,
+        }));
+        const service = new UsuariosApiService(httpMock, authMock);
+
+        const response = await service.listMyBugReports();
+
+        const [url, options] = httpMock.get.calls.mostRecent().args;
+        expect(url).toContain('/usuarios/me/bug-reports');
+        expect(options.headers.get('Authorization')).toBe('Bearer token-audit');
+        expect(options.params).toEqual({ limit: '25', offset: '0' });
+        expect(response.items[0].id).toBe(12);
+        expect(response.items[0].status).toBe('triaged');
+        expect(response.items[0].priority).toBe('high');
+        expect(response.hasMore).toBeFalse();
+    });
+
+    it('getMyFeatureRequest normaliza detalle privado con adjuntos y timeline', async () => {
+        const httpMock = jasmine.createSpyObj('HttpClient', ['get']);
+        httpMock.get.and.returnValue(of({
+            id: 18,
+            kind: 'feature',
+            status: 'planned',
+            priority: 'medium',
+            title: 'Ficha imprimible',
+            description: 'Quiero imprimirla mejor.',
+            pageUrl: '/personajes',
+            details: {
+                useCase: 'Llevarla a mesa',
+                desiredOutcome: 'Impresión clara',
+            },
+            attachments: [{
+                id: 91,
+                filename: 'mockup.webp',
+                mimeType: 'image/webp',
+                sizeBytes: 12345,
+                createdAtUtc: '2026-04-02T10:30:00Z',
+                url: '/usuarios/feedback/attachments/91',
+            }],
+            updates: [{
+                status: 'planned',
+                publicMessage: 'Lo hemos apuntado.',
+                createdAtUtc: '2026-04-02T11:00:00Z',
+            }],
+            createdAtUtc: '2026-04-02T10:00:00Z',
+            updatedAtUtc: '2026-04-02T11:00:00Z',
+        }));
+        const service = new UsuariosApiService(httpMock, authMock);
+
+        const response = await service.getMyFeatureRequest(18);
+
+        const [url, options] = httpMock.get.calls.mostRecent().args;
+        expect(url).toContain('/usuarios/me/feature-requests/18');
+        expect(options.headers.get('Authorization')).toBe('Bearer token-audit');
+        expect(response.attachments[0].id).toBe(91);
+        expect(response.attachments[0].filename).toBe('mockup.webp');
+        expect(response.updates[0].status).toBe('planned');
+        expect(response.details.desiredOutcome).toBe('Impresión clara');
+    });
+
+    it('listPublicFeatureRequests usa la ruta pública sin Authorization', async () => {
+        const httpMock = jasmine.createSpyObj('HttpClient', ['get']);
+        httpMock.get.and.returnValue(of({
+            items: [{
+                id: 32,
+                kind: 'feature',
+                status: 'submitted',
+                priority: null,
+                title: 'Dashboard',
+                description: 'Un tablero de actividad.',
+                pageUrl: '/social',
+                details: {
+                    useCase: 'Ver resumen',
+                    desiredOutcome: 'Acceder más rápido',
+                },
+                createdAtUtc: '2026-04-02T12:00:00Z',
+                updatedAtUtc: '2026-04-02T12:00:00Z',
+            }],
+            total: 1,
+            limit: 10,
+            offset: 20,
+            hasMore: true,
+        }));
+        const service = new UsuariosApiService(httpMock, authMock);
+
+        const response = await service.listPublicFeatureRequests(10, 20);
+
+        const [url, options] = httpMock.get.calls.mostRecent().args;
+        expect(url).toContain('/usuarios/feature-requests/public');
+        expect(options.headers).toBeUndefined();
+        expect(options.params).toEqual({ limit: '10', offset: '20' });
+        expect(response.items[0].kind).toBe('feature');
+        expect(response.offset).toBe(20);
+        expect(response.hasMore).toBeTrue();
+    });
+
+    it('downloadFeedbackAttachment descarga el blob autenticado con nombre resuelto', async () => {
+        const httpMock = jasmine.createSpyObj('HttpClient', ['get']);
+        const saveAsSpy = spyOn(FileSaver, 'saveAs');
+        const blob = new Blob(['img'], { type: 'image/webp' });
+        httpMock.get.and.returnValue(of(new HttpResponse({
+            body: blob,
+            status: 200,
+            headers: new HttpHeaders(),
+        })));
+        const service = new UsuariosApiService(httpMock, authMock);
+
+        const filename = await service.downloadFeedbackAttachment(91, 'mockup.webp');
+
+        const [url, options] = httpMock.get.calls.mostRecent().args;
+        expect(url).toContain('/usuarios/feedback/attachments/91');
+        expect(options.headers.get('Authorization')).toBe('Bearer token-audit');
+        expect(options.observe).toBe('response');
+        expect(options.responseType).toBe('blob');
+        expect(saveAsSpy).toHaveBeenCalledWith(blob, 'mockup.webp');
+        expect(filename).toBe('mockup.webp');
     });
 
     it('upsertUser no envía el campo legacy banned a POST /usuarios', async () => {

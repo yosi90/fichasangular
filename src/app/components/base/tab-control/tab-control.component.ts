@@ -79,6 +79,8 @@ export class TabControlComponent implements OnInit, OnDestroy {
     public roadmapTabOpen = false;
     public legalPrivacyTabOpen = false;
     public usageAboutTabOpen = false;
+    public feedbackBugTabOpen = false;
+    public feedbackFeatureTabOpen = false;
     public publicProfileTabs: UserPublicProfileTab[] = [];
     public detallesPersonajeAbiertos: Personaje[] = [];
     public detallesRazaAbiertos: Raza[] = [];
@@ -107,6 +109,8 @@ export class TabControlComponent implements OnInit, OnDestroy {
     private readonly TAB_ROADMAP = 'base:roadmap';
     private readonly TAB_LEGAL = 'base:legal';
     private readonly TAB_USAGE = 'base:usage';
+    private readonly TAB_FEEDBACK_BUG = 'base:feedback-bug';
+    private readonly TAB_FEEDBACK_FEATURE = 'base:feedback-feature';
     private readonly TAB_NUEVO = 'base:nuevo';
     private activeTabKey: string = this.TAB_PERSONAJES;
     private openerByTab = new Map<string, string>();
@@ -150,6 +154,7 @@ export class TabControlComponent implements OnInit, OnDestroy {
                     this.cerrarPerfilPrivadoPorLogout();
                     this.cerrarRestriccionCuenta();
                     this.cerrarPanelAdministracionPorPermisos();
+                    this.cerrarFeedbackBugPorLogout();
                 }
             });
         this.usrPerm = this.usrSvc.Usuario.permisos;
@@ -191,6 +196,12 @@ export class TabControlComponent implements OnInit, OnDestroy {
         this.userProfileNavSvc?.usageAboutOpen$
             .pipe(takeUntil(this.destroy$))
             .subscribe(() => this.abrirUsoYAcerca());
+        this.userProfileNavSvc?.feedbackBugOpen$
+            .pipe(takeUntil(this.destroy$))
+            .subscribe(() => this.abrirFeedbackBug());
+        this.userProfileNavSvc?.feedbackFeatureOpen$
+            .pipe(takeUntil(this.destroy$))
+            .subscribe(() => this.abrirFeedbackFeature());
         this.userProfileNavSvc?.publicProfileOpen$
             .pipe(takeUntil(this.destroy$))
             .subscribe((payload) => this.abrirPerfilPublico(payload));
@@ -286,6 +297,14 @@ export class TabControlComponent implements OnInit, OnDestroy {
             this.quitarUsoYAcerca();
             return;
         }
+        if (activeKey === this.TAB_FEEDBACK_BUG) {
+            this.quitarFeedbackBug();
+            return;
+        }
+        if (activeKey === this.TAB_FEEDBACK_FEATURE) {
+            this.quitarFeedbackFeature();
+            return;
+        }
         if (activeKey?.startsWith('perfil-publico:')) {
             this.quitarPerfilPublico(activeKey);
             return;
@@ -356,6 +375,10 @@ export class TabControlComponent implements OnInit, OnDestroy {
             keys.push(this.TAB_LEGAL);
         if (this.usageAboutTabOpen)
             keys.push(this.TAB_USAGE);
+        if (this.feedbackBugTabOpen)
+            keys.push(this.TAB_FEEDBACK_BUG);
+        if (this.feedbackFeatureTabOpen)
+            keys.push(this.TAB_FEEDBACK_FEATURE);
         keys.push(...this.detallesPersonajeAbiertos.map((pj) => this.getPersonajeTabKey(pj)));
         keys.push(...this.publicProfileTabs.map((tab) => this.getPublicProfileTabKey(tab)));
         if (this.AbrirNuevoPersonajeTab)
@@ -600,6 +623,24 @@ export class TabControlComponent implements OnInit, OnDestroy {
         return this.closeHelpTab(this.TAB_USAGE, 'usageAboutTabOpen');
     }
 
+    public abrirFeedbackBug(): void {
+        if (!this.usrLoggedIn)
+            return;
+        this.openHelpTab(this.TAB_FEEDBACK_BUG, 'feedbackBugTabOpen');
+    }
+
+    public quitarFeedbackBug(): boolean {
+        return this.closeHelpTab(this.TAB_FEEDBACK_BUG, 'feedbackBugTabOpen');
+    }
+
+    public abrirFeedbackFeature(): void {
+        this.openHelpTab(this.TAB_FEEDBACK_FEATURE, 'feedbackFeatureTabOpen');
+    }
+
+    public quitarFeedbackFeature(): boolean {
+        return this.closeHelpTab(this.TAB_FEEDBACK_FEATURE, 'feedbackFeatureTabOpen');
+    }
+
     private cerrarPerfilPrivadoPorLogout(): void {
         if (!this.privateProfileTabOpen)
             return;
@@ -620,6 +661,18 @@ export class TabControlComponent implements OnInit, OnDestroy {
         this.restrictionTabOpen = false;
         this.restrictionOpenRequest = null;
         this.openerByTab.delete(this.TAB_RESTRICTION);
+        if (wasActive)
+            this.selectTabByKey(this.getDefaultBaseTabKey(), true);
+        else if (!this.isTabKeyOpen(this.activeTabKey))
+            this.selectTabByKey(this.getDefaultBaseTabKey(), true);
+    }
+
+    private cerrarFeedbackBugPorLogout(): void {
+        if (!this.feedbackBugTabOpen)
+            return;
+        const wasActive = this.activeTabKey === this.TAB_FEEDBACK_BUG;
+        this.feedbackBugTabOpen = false;
+        this.openerByTab.delete(this.TAB_FEEDBACK_BUG);
         if (wasActive)
             this.selectTabByKey(this.getDefaultBaseTabKey(), true);
         else if (!this.isTabKeyOpen(this.activeTabKey))
@@ -662,7 +715,10 @@ export class TabControlComponent implements OnInit, OnDestroy {
             this.selectTabByKey(this.getDefaultBaseTabKey(), true);
     }
 
-    private openHelpTab(key: string, flag: 'roadmapTabOpen' | 'legalPrivacyTabOpen' | 'usageAboutTabOpen'): void {
+    private openHelpTab(
+        key: string,
+        flag: 'roadmapTabOpen' | 'legalPrivacyTabOpen' | 'usageAboutTabOpen' | 'feedbackBugTabOpen' | 'feedbackFeatureTabOpen'
+    ): void {
         if (this.temporaryRestrictionActive)
             return;
         if (this.getHelpTabFlag(flag)) {
@@ -674,7 +730,10 @@ export class TabControlComponent implements OnInit, OnDestroy {
         this.focusOpenedTab(key);
     }
 
-    private closeHelpTab(key: string, flag: 'roadmapTabOpen' | 'legalPrivacyTabOpen' | 'usageAboutTabOpen'): boolean {
+    private closeHelpTab(
+        key: string,
+        flag: 'roadmapTabOpen' | 'legalPrivacyTabOpen' | 'usageAboutTabOpen' | 'feedbackBugTabOpen' | 'feedbackFeatureTabOpen'
+    ): boolean {
         if (!this.getHelpTabFlag(flag))
             return false;
 
@@ -684,15 +743,26 @@ export class TabControlComponent implements OnInit, OnDestroy {
         });
     }
 
-    private getHelpTabFlag(flag: 'roadmapTabOpen' | 'legalPrivacyTabOpen' | 'usageAboutTabOpen'): boolean {
+    private getHelpTabFlag(
+        flag: 'roadmapTabOpen' | 'legalPrivacyTabOpen' | 'usageAboutTabOpen' | 'feedbackBugTabOpen' | 'feedbackFeatureTabOpen'
+    ): boolean {
         if (flag === 'roadmapTabOpen')
             return this.roadmapTabOpen;
         if (flag === 'legalPrivacyTabOpen')
             return this.legalPrivacyTabOpen;
+        if (flag === 'usageAboutTabOpen')
+            return this.usageAboutTabOpen;
+        if (flag === 'feedbackBugTabOpen')
+            return this.feedbackBugTabOpen;
+        if (flag === 'feedbackFeatureTabOpen')
+            return this.feedbackFeatureTabOpen;
         return this.usageAboutTabOpen;
     }
 
-    private setHelpTabFlag(flag: 'roadmapTabOpen' | 'legalPrivacyTabOpen' | 'usageAboutTabOpen', value: boolean): void {
+    private setHelpTabFlag(
+        flag: 'roadmapTabOpen' | 'legalPrivacyTabOpen' | 'usageAboutTabOpen' | 'feedbackBugTabOpen' | 'feedbackFeatureTabOpen',
+        value: boolean
+    ): void {
         if (flag === 'roadmapTabOpen') {
             this.roadmapTabOpen = value;
             return;
@@ -701,7 +771,15 @@ export class TabControlComponent implements OnInit, OnDestroy {
             this.legalPrivacyTabOpen = value;
             return;
         }
-        this.usageAboutTabOpen = value;
+        if (flag === 'usageAboutTabOpen') {
+            this.usageAboutTabOpen = value;
+            return;
+        }
+        if (flag === 'feedbackBugTabOpen') {
+            this.feedbackBugTabOpen = value;
+            return;
+        }
+        this.feedbackFeatureTabOpen = value;
     }
 
     public abrirPerfilPublico(payload: UserPublicProfileTab): void {
@@ -2156,6 +2234,8 @@ export class TabControlComponent implements OnInit, OnDestroy {
         this.roadmapTabOpen = false;
         this.legalPrivacyTabOpen = false;
         this.usageAboutTabOpen = false;
+        this.feedbackBugTabOpen = false;
+        this.feedbackFeatureTabOpen = false;
         this.publicProfileTabs = [];
         this.detallesPersonajeAbiertos = [];
         this.detallesRazaAbiertos = [];

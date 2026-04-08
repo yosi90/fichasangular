@@ -3,12 +3,14 @@ import { MatDialog } from '@angular/material/dialog';
 import { MatMenuTrigger } from '@angular/material/menu';
 import { Subscription } from 'rxjs';
 import { getManualCategorias, ManualCategoriaConIcono } from 'src/app/config/manual-secciones.config';
+import { SessionNotificationEntry } from 'src/app/interfaces/session-notification';
 import { UserPrivateProfileSectionId } from 'src/app/interfaces/user-account';
 import { ManualAsociadoDetalle } from 'src/app/interfaces/manual-asociado';
 import { SesionDialogComponent } from 'src/app/components/sesion-dialog/sesion-dialog.component';
 import { ManualFlagConsistencyNoticeService } from 'src/app/services/manual-flag-consistency-notice.service';
 import { ManualesAsociadosService } from 'src/app/services/manuales-asociados.service';
 import { ManualVistaNavigationService } from 'src/app/services/manual-vista-navigation.service';
+import { SessionNotificationCenterService } from 'src/app/services/session-notification-center.service';
 import { UserProfileNavigationService } from 'src/app/services/user-profile-navigation.service';
 import { UserService } from 'src/app/services/user.service';
 
@@ -27,12 +29,18 @@ export class NavbarComponent implements OnInit, OnDestroy {
     userSubLabel: string = 'Sin sesión iniciada';
     isLoggedIn: boolean = false;
     isAdmin: boolean = false;
+    sessionNotifications: SessionNotificationEntry[] = [];
+    hasUnreadNotifications: boolean = false;
+    notificationMenuOpen: boolean = false;
     private manualesSub?: Subscription;
     private fallbackSub?: Subscription;
     private loggedInSub?: Subscription;
     private permisosSub?: Subscription;
     private profileSub?: Subscription;
+    private sessionNotificationsSub?: Subscription;
+    private unreadNotificationsSub?: Subscription;
     private ribbonMenuCloseTimer: ReturnType<typeof setTimeout> | null = null;
+    private notificationSeenSyncTimer: ReturnType<typeof setTimeout> | null = null;
     private activeRibbonMenuTrigger: MatMenuTrigger | null = null;
     private lastRibbonMenuOpenedAt: number = 0;
 
@@ -41,6 +49,7 @@ export class NavbarComponent implements OnInit, OnDestroy {
         private manualesAsociadosSvc: ManualesAsociadosService,
         private manualVistaNavSvc: ManualVistaNavigationService,
         private manualFlagNoticeSvc: ManualFlagConsistencyNoticeService,
+        private sessionNotificationCenterSvc: SessionNotificationCenterService,
         private usrService: UserService,
         private userProfileNavSvc: UserProfileNavigationService,
     ) { }
@@ -67,6 +76,14 @@ export class NavbarComponent implements OnInit, OnDestroy {
                 this.syncUserState();
                 this.notificarManualesDesincronizados();
             });
+        this.sessionNotificationsSub = this.sessionNotificationCenterSvc.entries$
+            .subscribe((entries) => {
+                this.sessionNotifications = entries;
+                if (this.notificationMenuOpen)
+                    this.scheduleVisibleNotificationsSeenSync();
+            });
+        this.unreadNotificationsSub = this.sessionNotificationCenterSvc.hasUnread$
+            .subscribe((hasUnread) => this.hasUnreadNotifications = hasUnread);
         this.manualesSub = this.manualesAsociadosSvc.getManualesAsociados().subscribe({
             next: (manuales) => {
                 this.manuales = manuales.filter(m => Number(m?.Id) > 0);
@@ -86,7 +103,10 @@ export class NavbarComponent implements OnInit, OnDestroy {
         this.loggedInSub?.unsubscribe();
         this.permisosSub?.unsubscribe();
         this.profileSub?.unsubscribe();
+        this.sessionNotificationsSub?.unsubscribe();
+        this.unreadNotificationsSub?.unsubscribe();
         this.cancelarCierreRibbonMenu();
+        this.cancelNotificationSeenSync();
     }
 
     getCategorias(manual: ManualAsociadoDetalle): ManualCategoriaConIcono[] {
@@ -143,6 +163,55 @@ export class NavbarComponent implements OnInit, OnDestroy {
         this.userProfileNavSvc.openUsageAbout();
     }
 
+    abrirReportarBug(): void {
+        if (!this.isLoggedIn) {
+            this.openSesionDialog();
+            return;
+        }
+        this.userProfileNavSvc.openFeedbackBug();
+    }
+
+    abrirSolicitarFuncionalidad(): void {
+        this.userProfileNavSvc.openFeedbackFeature();
+    }
+
+    trackByNotificationId(index: number, entry: SessionNotificationEntry): string {
+        return entry.id;
+    }
+
+    notificationLevelIcon(level: string): string {
+        if (level === 'success')
+            return 'task_alt';
+        if (level === 'error')
+            return 'error';
+        if (level === 'warning')
+            return 'warning';
+        if (level === 'system')
+            return 'settings_suggest';
+        return 'info';
+    }
+
+    formatNotificationTime(value: number): string {
+        const date = new Date(value);
+        if (Number.isNaN(date.getTime()))
+            return '';
+        const now = new Date();
+        const sameDay = now.getFullYear() === date.getFullYear()
+            && now.getMonth() === date.getMonth()
+            && now.getDate() === date.getDate();
+        return new Intl.DateTimeFormat('es-ES', sameDay ? {
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: false,
+        } : {
+            day: '2-digit',
+            month: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: false,
+        }).format(date).replace(',', '');
+    }
+
     onRibbonTriggerClick(trigger: MatMenuTrigger): void {
         this.cancelarCierreRibbonMenu();
         this.activeRibbonMenuTrigger = trigger;
@@ -186,6 +255,46 @@ export class NavbarComponent implements OnInit, OnDestroy {
             this.activeRibbonMenuTrigger = null;
     }
 
+    onNotificationMenuOpened(trigger: MatMenuTrigger): void {
+        this.notificationMenuOpen = true;
+        this.onRibbonMenuOpened(trigger);
+        this.scheduleVisibleNotificationsSeenSync();
+    }
+
+    onNotificationMenuClosed(trigger: MatMenuTrigger): void {
+        this.notificationMenuOpen = false;
+        this.cancelNotificationSeenSync();
+        this.onRibbonMenuClosed(trigger);
+    }
+
+    dismissSessionNotification(id: string, event: Event): void {
+        event.stopPropagation();
+        event.preventDefault();
+        this.sessionNotificationCenterSvc.remove(id);
+    }
+
+    clearSessionNotifications(event: Event): void {
+        event.stopPropagation();
+        event.preventDefault();
+        this.sessionNotificationCenterSvc.clear();
+    }
+
+    async openSessionNotification(entry: SessionNotificationEntry, trigger?: MatMenuTrigger): Promise<void> {
+        if (!entry)
+            return;
+        this.sessionNotificationCenterSvc.markSeen([entry.id]);
+        if (typeof entry.action !== 'function')
+            return;
+        trigger?.closeMenu();
+        this.notificationMenuOpen = false;
+        this.cancelNotificationSeenSync();
+        try {
+            await entry.action();
+        } catch {
+            // La navegación de la notificación no debe romper la UI si falla.
+        }
+    }
+
     programarCierreRibbonMenu(trigger?: MatMenuTrigger): void {
         this.cancelarCierreRibbonMenu();
         if (!trigger)
@@ -225,5 +334,24 @@ export class NavbarComponent implements OnInit, OnDestroy {
         this.manuales.forEach((manual) => {
             this.manualFlagNoticeSvc.notifyAdminIfNeeded(manual, this.isAdmin);
         });
+    }
+
+    private scheduleVisibleNotificationsSeenSync(): void {
+        if (!this.notificationMenuOpen)
+            return;
+        this.cancelNotificationSeenSync();
+        this.notificationSeenSyncTimer = setTimeout(() => {
+            this.notificationSeenSyncTimer = null;
+            if (!this.notificationMenuOpen || this.sessionNotifications.length < 1)
+                return;
+            this.sessionNotificationCenterSvc.markSeen(this.sessionNotifications.map((entry) => entry.id));
+        });
+    }
+
+    private cancelNotificationSeenSync(): void {
+        if (!this.notificationSeenSyncTimer)
+            return;
+        clearTimeout(this.notificationSeenSyncTimer);
+        this.notificationSeenSyncTimer = null;
     }
 }

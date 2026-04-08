@@ -9,6 +9,17 @@ import {
     CreationAuditEventDetailDto,
     CreationAuditListFiltersDto,
     CreationAuditListResponseDto,
+    FeedbackAttachmentDto,
+    FeedbackCreateBugRequestDto,
+    FeedbackCreateFeatureRequestDto,
+    FeedbackDetailsDto,
+    FeedbackKind,
+    FeedbackListResponseDto,
+    FeedbackPriority,
+    FeedbackStatus,
+    FeedbackSubmissionDetailDto,
+    FeedbackSubmissionSummaryDto,
+    FeedbackUpdateDto,
     ModerationAdminHistoryItemDto,
     ModerationAdminHistoryResponseDto,
     ModerationCaseProgressDto,
@@ -76,6 +87,123 @@ export class UsuariosApiService {
             return this.normalizeAdminPolicyDraft(response, normalizedKind);
         } catch (error) {
             throw this.toApiError(error, `No se pudo cargar el borrador de política ${normalizedKind}`);
+        }
+    }
+
+    async createBugReport(payload: FeedbackCreateBugRequestDto): Promise<FeedbackSubmissionDetailDto> {
+        const formData = this.buildFeedbackBugFormData(payload);
+        try {
+            const response = await firstValueFrom(
+                this.http.post<any>(`${this.usuariosBaseUrl}/me/bug-reports`, formData, {
+                    headers: await this.buildAuthHeaders(),
+                })
+            );
+            return this.normalizeFeedbackSubmissionDetail(response, 'bug');
+        } catch (error) {
+            throw this.toApiError(error, 'No se pudo enviar el reporte de bug');
+        }
+    }
+
+    async listMyBugReports(limit: number = 25, offset: number = 0): Promise<FeedbackListResponseDto> {
+        try {
+            const response = await firstValueFrom(
+                this.http.get<any>(`${this.usuariosBaseUrl}/me/bug-reports`, {
+                    headers: await this.buildAuthHeaders(),
+                    params: this.buildPaginationParams(limit, offset),
+                })
+            );
+            return this.normalizeFeedbackListResponse(response, 'bug', limit, offset);
+        } catch (error) {
+            throw this.toApiError(error, 'No se pudo cargar tu historial de bugs');
+        }
+    }
+
+    async getMyBugReport(id: number): Promise<FeedbackSubmissionDetailDto> {
+        const normalizedId = this.normalizeFeedbackSubmissionId(id);
+        try {
+            const response = await firstValueFrom(
+                this.http.get<any>(`${this.usuariosBaseUrl}/me/bug-reports/${normalizedId}`, {
+                    headers: await this.buildAuthHeaders(),
+                })
+            );
+            return this.normalizeFeedbackSubmissionDetail(response, 'bug');
+        } catch (error) {
+            throw this.toApiError(error, 'No se pudo cargar el detalle del bug');
+        }
+    }
+
+    async createFeatureRequest(payload: FeedbackCreateFeatureRequestDto): Promise<FeedbackSubmissionDetailDto> {
+        const formData = this.buildFeedbackFeatureFormData(payload);
+        try {
+            const response = await firstValueFrom(
+                this.http.post<any>(`${this.usuariosBaseUrl}/me/feature-requests`, formData, {
+                    headers: await this.buildAuthHeaders(),
+                })
+            );
+            return this.normalizeFeedbackSubmissionDetail(response, 'feature');
+        } catch (error) {
+            throw this.toApiError(error, 'No se pudo enviar la petición de funcionalidad');
+        }
+    }
+
+    async listMyFeatureRequests(limit: number = 25, offset: number = 0): Promise<FeedbackListResponseDto> {
+        try {
+            const response = await firstValueFrom(
+                this.http.get<any>(`${this.usuariosBaseUrl}/me/feature-requests`, {
+                    headers: await this.buildAuthHeaders(),
+                    params: this.buildPaginationParams(limit, offset),
+                })
+            );
+            return this.normalizeFeedbackListResponse(response, 'feature', limit, offset);
+        } catch (error) {
+            throw this.toApiError(error, 'No se pudo cargar tu historial de peticiones');
+        }
+    }
+
+    async getMyFeatureRequest(id: number): Promise<FeedbackSubmissionDetailDto> {
+        const normalizedId = this.normalizeFeedbackSubmissionId(id);
+        try {
+            const response = await firstValueFrom(
+                this.http.get<any>(`${this.usuariosBaseUrl}/me/feature-requests/${normalizedId}`, {
+                    headers: await this.buildAuthHeaders(),
+                })
+            );
+            return this.normalizeFeedbackSubmissionDetail(response, 'feature');
+        } catch (error) {
+            throw this.toApiError(error, 'No se pudo cargar el detalle de la petición');
+        }
+    }
+
+    async listPublicFeatureRequests(limit: number = 25, offset: number = 0): Promise<FeedbackListResponseDto> {
+        try {
+            const response = await firstValueFrom(
+                this.http.get<any>(`${this.usuariosBaseUrl}/feature-requests/public`, {
+                    params: this.buildPaginationParams(limit, offset),
+                })
+            );
+            return this.normalizeFeedbackListResponse(response, 'feature', limit, offset);
+        } catch (error) {
+            throw this.toApiError(error, 'No se pudo cargar el listado público de peticiones');
+        }
+    }
+
+    async downloadFeedbackAttachment(attachmentId: number, filenameHint?: string | null): Promise<string> {
+        const normalizedAttachmentId = this.normalizeFeedbackAttachmentId(attachmentId);
+        try {
+            const response = await firstValueFrom(
+                this.http.get(`${this.usuariosBaseUrl}/feedback/attachments/${normalizedAttachmentId}`, {
+                    observe: 'response',
+                    responseType: 'blob',
+                    headers: await this.buildAuthHeaders(),
+                })
+            );
+            const fallbackName = `${`${filenameHint ?? ''}`.trim() || `feedback-attachment-${normalizedAttachmentId}`}`;
+            const filename = this.resolveDownloadFilename(response, fallbackName);
+            const blob = response.body ?? new Blob([]);
+            saveAs(blob, filename);
+            return filename;
+        } catch (error) {
+            throw await this.toApiErrorAsync(error, 'No se pudo descargar el adjunto de feedback');
         }
     }
 
@@ -429,6 +557,203 @@ export class UsuariosApiService {
         if (limit !== null && limit > 0)
             params['historyLimit'] = `${Math.min(20, limit)}`;
         return params;
+    }
+
+    private buildFeedbackBugFormData(payload: FeedbackCreateBugRequestDto): FormData {
+        const normalized = this.normalizeFeedbackBugRequest(payload);
+        const formData = new FormData();
+        formData.append('description', normalized.description);
+        if (normalized.title)
+            formData.append('title', normalized.title);
+        if (normalized.pageUrl)
+            formData.append('pageUrl', normalized.pageUrl);
+        if (normalized.stepsToReproduce)
+            formData.append('stepsToReproduce', normalized.stepsToReproduce);
+        if (normalized.expectedBehavior)
+            formData.append('expectedBehavior', normalized.expectedBehavior);
+        if (normalized.actualBehavior)
+            formData.append('actualBehavior', normalized.actualBehavior);
+        normalized.images.forEach((image) => formData.append('images[]', image, image.name));
+        return formData;
+    }
+
+    private buildFeedbackFeatureFormData(payload: FeedbackCreateFeatureRequestDto): FormData {
+        const normalized = this.normalizeFeedbackFeatureRequest(payload);
+        const formData = new FormData();
+        formData.append('description', normalized.description);
+        if (normalized.title)
+            formData.append('title', normalized.title);
+        if (normalized.pageUrl)
+            formData.append('pageUrl', normalized.pageUrl);
+        if (normalized.useCase)
+            formData.append('useCase', normalized.useCase);
+        if (normalized.desiredOutcome)
+            formData.append('desiredOutcome', normalized.desiredOutcome);
+        normalized.images.forEach((image) => formData.append('images[]', image, image.name));
+        return formData;
+    }
+
+    private normalizeFeedbackBugRequest(payload: FeedbackCreateBugRequestDto): {
+        description: string;
+        title: string | null;
+        pageUrl: string | null;
+        stepsToReproduce: string | null;
+        expectedBehavior: string | null;
+        actualBehavior: string | null;
+        images: File[];
+    } {
+        const description = this.toNullableMultilineText(payload?.description);
+        if (!description)
+            throw new Error('Debes indicar la descripción del bug');
+
+        return {
+            description,
+            title: this.toNullableText(payload?.title),
+            pageUrl: this.toNullableText(payload?.pageUrl),
+            stepsToReproduce: this.toNullableMultilineText(payload?.stepsToReproduce),
+            expectedBehavior: this.toNullableMultilineText(payload?.expectedBehavior),
+            actualBehavior: this.toNullableMultilineText(payload?.actualBehavior),
+            images: this.normalizeFeedbackImages(payload?.images),
+        };
+    }
+
+    private normalizeFeedbackFeatureRequest(payload: FeedbackCreateFeatureRequestDto): {
+        description: string;
+        title: string | null;
+        pageUrl: string | null;
+        useCase: string | null;
+        desiredOutcome: string | null;
+        images: File[];
+    } {
+        const description = this.toNullableMultilineText(payload?.description);
+        if (!description)
+            throw new Error('Debes indicar la descripción de la petición');
+
+        return {
+            description,
+            title: this.toNullableText(payload?.title),
+            pageUrl: this.toNullableText(payload?.pageUrl),
+            useCase: this.toNullableMultilineText(payload?.useCase),
+            desiredOutcome: this.toNullableMultilineText(payload?.desiredOutcome),
+            images: this.normalizeFeedbackImages(payload?.images),
+        };
+    }
+
+    private normalizeFeedbackImages(images: File[] | null | undefined): File[] {
+        if (!Array.isArray(images))
+            return [];
+        return images.filter((image) => image instanceof File);
+    }
+
+    private normalizeFeedbackListResponse(
+        raw: any,
+        fallbackKind: FeedbackKind,
+        requestedLimit: number,
+        requestedOffset: number
+    ): FeedbackListResponseDto {
+        const rawItems = this.extractListItems(raw);
+        const items = rawItems.map((item) => this.normalizeFeedbackSubmissionSummary(item, fallbackKind));
+        const limit = this.normalizeModerationPageSize(raw?.limit, requestedLimit);
+        const offset = this.toNonNegativeInt(raw?.offset, requestedOffset) ?? requestedOffset;
+        const total = this.toNonNegativeInt(raw?.total, items.length) ?? items.length;
+
+        return {
+            items,
+            total,
+            limit,
+            offset,
+            hasMore: raw?.hasMore === true || offset + items.length < total,
+        };
+    }
+
+    private normalizeFeedbackSubmissionSummary(raw: any, fallbackKind: FeedbackKind): FeedbackSubmissionSummaryDto {
+        return {
+            id: this.normalizeFeedbackSubmissionId(raw?.id ?? raw?.submissionId),
+            kind: this.normalizeFeedbackKind(raw?.kind, fallbackKind),
+            status: this.normalizeFeedbackStatus(raw?.status),
+            priority: this.normalizeFeedbackPriority(raw?.priority),
+            title: this.toNullableText(raw?.title),
+            description: this.toNullableMultilineText(raw?.description) ?? '',
+            pageUrl: this.toNullableText(raw?.pageUrl),
+            details: this.normalizeFeedbackDetails(raw?.details),
+            createdAtUtc: this.toNullableText(raw?.createdAtUtc),
+            updatedAtUtc: this.toNullableText(raw?.updatedAtUtc),
+        };
+    }
+
+    private normalizeFeedbackSubmissionDetail(raw: any, fallbackKind: FeedbackKind): FeedbackSubmissionDetailDto {
+        const summary = this.normalizeFeedbackSubmissionSummary(raw, fallbackKind);
+        return {
+            ...summary,
+            attachments: Array.isArray(raw?.attachments)
+                ? raw.attachments.map((item: any) => this.normalizeFeedbackAttachment(item))
+                : [],
+            updates: Array.isArray(raw?.updates)
+                ? raw.updates.map((item: any) => this.normalizeFeedbackUpdate(item))
+                : [],
+        };
+    }
+
+    private normalizeFeedbackDetails(raw: any): FeedbackDetailsDto {
+        return {
+            stepsToReproduce: this.toNullableMultilineText(raw?.stepsToReproduce),
+            expectedBehavior: this.toNullableMultilineText(raw?.expectedBehavior),
+            actualBehavior: this.toNullableMultilineText(raw?.actualBehavior),
+            useCase: this.toNullableMultilineText(raw?.useCase),
+            desiredOutcome: this.toNullableMultilineText(raw?.desiredOutcome),
+        };
+    }
+
+    private normalizeFeedbackAttachment(raw: any): FeedbackAttachmentDto {
+        return {
+            id: this.normalizeFeedbackAttachmentId(raw?.id ?? raw?.attachmentId),
+            filename: this.toNullableText(raw?.filename),
+            mimeType: this.toNullableText(raw?.mimeType) ?? 'application/octet-stream',
+            sizeBytes: this.toNonNegativeInt(raw?.sizeBytes, 0) ?? 0,
+            createdAtUtc: this.toNullableText(raw?.createdAtUtc),
+            url: this.toNullableText(raw?.url) ?? '',
+        };
+    }
+
+    private normalizeFeedbackUpdate(raw: any): FeedbackUpdateDto {
+        return {
+            status: this.normalizeFeedbackStatus(raw?.status),
+            publicMessage: this.toNullableMultilineText(raw?.publicMessage),
+            createdAtUtc: this.toNullableText(raw?.createdAtUtc),
+        };
+    }
+
+    private normalizeFeedbackKind(value: any, fallback: FeedbackKind): FeedbackKind {
+        return `${value ?? ''}`.trim().toLowerCase() === 'bug' ? 'bug' : fallback;
+    }
+
+    private normalizeFeedbackStatus(value: any): FeedbackStatus {
+        const normalized = `${value ?? ''}`.trim().toLowerCase();
+        if (normalized === 'triaged' || normalized === 'planned' || normalized === 'in_progress'
+            || normalized === 'resolved' || normalized === 'closed' || normalized === 'rejected')
+            return normalized;
+        return 'submitted';
+    }
+
+    private normalizeFeedbackPriority(value: any): FeedbackPriority | null {
+        const normalized = `${value ?? ''}`.trim().toLowerCase();
+        if (normalized === 'low' || normalized === 'medium' || normalized === 'high' || normalized === 'critical')
+            return normalized;
+        return null;
+    }
+
+    private normalizeFeedbackSubmissionId(value: any): number {
+        const normalized = this.toPositiveInt(value);
+        if (!normalized)
+            throw new Error('Envío de feedback inválido');
+        return normalized;
+    }
+
+    private normalizeFeedbackAttachmentId(value: any): number {
+        const normalized = this.toPositiveInt(value);
+        if (!normalized)
+            throw new Error('Adjunto de feedback inválido');
+        return normalized;
     }
 
     private normalizeAdminPolicyDraft(raw: any, fallbackKind: UserCompliancePolicyKind): AdminPolicyDraftDto {

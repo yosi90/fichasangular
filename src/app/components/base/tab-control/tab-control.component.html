@@ -65,6 +65,22 @@
         </ng-template>
         <app-help-usage-about></app-help-usage-about>
     </mat-tab>
+    <mat-tab label="Reportar bug" *ngIf="feedbackBugTabOpen">
+        <ng-template mat-tab-label>
+            <mat-icon class="tw-me-2">bug_report</mat-icon>
+            Reportar bug
+            <button (click)="quitarFeedbackBug()" mat-icon-button class="tw-ms-2"><mat-icon>close</mat-icon></button>
+        </ng-template>
+        <app-help-feedback kind="bug"></app-help-feedback>
+    </mat-tab>
+    <mat-tab label="Solicitar funcionalidad" *ngIf="feedbackFeatureTabOpen">
+        <ng-template mat-tab-label>
+            <mat-icon class="tw-me-2">lightbulb</mat-icon>
+            Solicitar funcionalidad
+            <button (click)="quitarFeedbackFeature()" mat-icon-button class="tw-ms-2"><mat-icon>close</mat-icon></button>
+        </ng-template>
+        <app-help-feedback kind="feature"></app-help-feedback>
+    </mat-tab>
     <mat-tab *ngFor="let pj of detallesPersonajeAbiertos; let index = index" [label]="pj.Nombre">
         <ng-template mat-tab-label>
             <mat-icon class="tw-me-2">person_search</mat-icon>

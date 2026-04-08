@@ -1,6 +1,7 @@
 import { Injectable, OnDestroy } from '@angular/core';
 import { Subscription } from 'rxjs';
 import Swal from 'sweetalert2';
+import { SessionNotificationSwalOptions } from '../interfaces/session-notification';
 import { UserPrivateProfile } from '../interfaces/user-account';
 import { UserProfileNavigationService } from './user-profile-navigation.service';
 import { UserService } from './user.service';
@@ -78,7 +79,21 @@ export class CompliancePolicyNoticeService implements OnDestroy {
                 showCancelButton: true,
                 confirmButtonText: 'Revisar ahora',
                 cancelButtonText: 'Más tarde',
-            });
+                sessionNotification: {
+                    include: true,
+                    level: 'warning',
+                    title: prompt.title,
+                    message: prompt.message,
+                    actionLabel: 'Revisar ahora',
+                    action: () => {
+                        this.reviewFlowPendingUid = pendingUid;
+                        this.userProfileNavSvc.openPrivateProfile({
+                            section: 'resumen',
+                            requestId: Date.now(),
+                        });
+                    },
+                },
+            } as SessionNotificationSwalOptions);
 
             if (result.isConfirmed) {
                 this.reviewFlowPendingUid = pendingUid;

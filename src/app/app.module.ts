@@ -116,6 +116,7 @@ import { SocialCommunitySectionComponent } from './components/base/social-hub/so
 import { SocialLfgSectionComponent } from './components/base/social-hub/social-lfg-section.component';
 import { HelpRoadmapComponent } from './components/base/help-roadmap/help-roadmap.component';
 import { HelpLegalComponent } from './components/base/help-legal/help-legal.component';
+import { HelpFeedbackComponent } from './components/base/help-feedback/help-feedback.component';
 import { HelpUsageAboutComponent } from './components/base/help-usage-about/help-usage-about.component';
 import { AccountRestrictionTabComponent } from './components/base/account-restriction-tab/account-restriction-tab.component';
 import { ChatFloatingConversationWindowComponent } from './components/chat-floating/chat-floating-conversation-window.component';
@@ -140,6 +141,7 @@ import { CloseFilterMenuOnMouseleaveDirective } from './directives/close-filter-
         SocialLfgSectionComponent,
         HelpRoadmapComponent,
         HelpLegalComponent,
+        HelpFeedbackComponent,
         HelpUsageAboutComponent,
         AccountRestrictionTabComponent,
         ChatFloatingHostComponent,

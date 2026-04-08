@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import { BehaviorSubject } from 'rxjs';
 import { AppToast, AppToastOptions, AppToastType } from '../interfaces/app-toast';
+import { SessionNotificationCenterService } from './session-notification-center.service';
 import { SocialAlertPreferencesService } from './social-alert-preferences.service';
 
 @Injectable({
@@ -13,7 +14,10 @@ export class AppToastService {
 
     readonly toasts$ = this.toastsSubject.asObservable();
 
-    constructor(private socialAlertPrefsSvc?: SocialAlertPreferencesService) { }
+    constructor(
+        private socialAlertPrefsSvc?: SocialAlertPreferencesService,
+        private sessionNotificationCenterSvc?: SessionNotificationCenterService,
+    ) { }
 
     showSuccess(message: string, options?: AppToastOptions): void {
         this.show('success', message, options);
@@ -60,6 +64,7 @@ export class AppToastService {
             durationMs,
         };
         this.toastsSubject.next([...this.toastsSubject.value, toast]);
+        this.sessionNotificationCenterSvc?.captureToast(type, message);
         this.scheduleDismiss(id, durationMs);
     }
 

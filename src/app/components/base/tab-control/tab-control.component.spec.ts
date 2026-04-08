@@ -42,6 +42,8 @@ function crearComponente(overrides?: { pSvc?: any; }): TabControlComponent {
         roadmapOpen$: new Subject<void>(),
         legalPrivacyOpen$: new Subject<void>(),
         usageAboutOpen$: new Subject<void>(),
+        feedbackBugOpen$: new Subject<void>(),
+        feedbackFeatureOpen$: new Subject<void>(),
     } as any;
     const component = new TabControlComponent(
         userSvc,
@@ -87,6 +89,10 @@ function crearComponente(overrides?: { pSvc?: any; }): TabControlComponent {
             tabs.push({ textLabel: 'Legal y privacidad' });
         if (component.usageAboutTabOpen)
             tabs.push({ textLabel: 'Uso y acerca' });
+        if (component.feedbackBugTabOpen)
+            tabs.push({ textLabel: 'Reportar bug' });
+        if (component.feedbackFeatureTabOpen)
+            tabs.push({ textLabel: 'Solicitar funcionalidad' });
         (component.detallesPersonajeAbiertos ?? []).forEach((pj: any) => tabs.push({ textLabel: pj.Nombre }));
         (component.publicProfileTabs ?? []).forEach((tab: any) => tabs.push({ textLabel: component.getEtiquetaPerfilPublico(tab) }));
         if (component.AbrirNuevoPersonajeTab)
@@ -585,6 +591,72 @@ describe('TabControlComponent navegación por origen', () => {
 
         expect(component.legalPrivacyTabOpen).toBeTrue();
         expect((component as any).activeTabKey).toBe('base:legal');
+    }));
+
+    it('abre reportar bug solo con sesión iniciada', fakeAsync(() => {
+        const component = crearComponente();
+        const isLoggedIn$ = (component as any).__isLoggedIn$ as BehaviorSubject<boolean>;
+
+        component.ngOnInit();
+        component.abrirFeedbackBug();
+        tick(120);
+
+        expect(component.feedbackBugTabOpen).toBeFalse();
+
+        isLoggedIn$.next(true);
+        tick();
+        component.abrirFeedbackBug();
+        tick(120);
+
+        expect(component.feedbackBugTabOpen).toBeTrue();
+        expect((component as any).activeTabKey).toBe('base:feedback-bug');
+    }));
+
+    it('abre solicitar funcionalidad también para invitados', fakeAsync(() => {
+        const component = crearComponente();
+
+        component.abrirFeedbackFeature();
+        tick(120);
+
+        expect(component.feedbackFeatureTabOpen).toBeTrue();
+        expect((component as any).activeTabKey).toBe('base:feedback-feature');
+    }));
+
+    it('la navegación por servicio puede abrir ambas tabs de feedback', fakeAsync(() => {
+        const component = crearComponente();
+        const isLoggedIn$ = (component as any).__isLoggedIn$ as BehaviorSubject<boolean>;
+        const userProfileNavSvc = (component as any).__userProfileNavSvc as any;
+
+        component.ngOnInit();
+        userProfileNavSvc.feedbackFeatureOpen$.next();
+        tick(120);
+        expect(component.feedbackFeatureTabOpen).toBeTrue();
+
+        isLoggedIn$.next(true);
+        tick();
+        userProfileNavSvc.feedbackBugOpen$.next();
+        tick(120);
+        expect(component.feedbackBugTabOpen).toBeTrue();
+        expect((component as any).activeTabKey).toBe('base:feedback-bug');
+    }));
+
+    it('cerrar sesión cierra la tab privada de bugs pero mantiene accesible la de funcionalidades', fakeAsync(() => {
+        const component = crearComponente();
+        const isLoggedIn$ = (component as any).__isLoggedIn$ as BehaviorSubject<boolean>;
+
+        component.ngOnInit();
+        isLoggedIn$.next(true);
+        tick();
+        component.abrirFeedbackFeature();
+        tick(120);
+        component.abrirFeedbackBug();
+        tick(120);
+
+        isLoggedIn$.next(false);
+        tick(120);
+
+        expect(component.feedbackBugTabOpen).toBeFalse();
+        expect(component.feedbackFeatureTabOpen).toBeTrue();
     }));
 
     it('cerrar uso y acerca vuelve al origen', fakeAsync(() => {

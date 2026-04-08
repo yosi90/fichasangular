@@ -1,5 +1,6 @@
 import { fakeAsync, tick } from '@angular/core/testing';
 import { AppToastService } from './app-toast.service';
+import { SessionNotificationCenterService } from './session-notification-center.service';
 
 describe('AppToastService', () => {
     it('crea y autocierra un toast de exito', fakeAsync(() => {
@@ -97,5 +98,35 @@ describe('AppToastService', () => {
 
         expect(latest.length).toBe(1);
         expect(latest[0].message).toBe('Guardado general');
+    });
+
+    it('añade cada toast al histórico de sesión al emitirse', () => {
+        const notifications = new SessionNotificationCenterService();
+        const service = new AppToastService(undefined, notifications);
+        let entries: any[] = [];
+        notifications.entries$.subscribe((value) => entries = value);
+
+        service.showInfo('Nueva alerta');
+
+        expect(entries.length).toBe(1);
+        expect(entries[0].source).toBe('toast');
+        expect(entries[0].message).toBe('Nueva alerta');
+    });
+
+    it('no duplica el histórico al cerrar un toast', () => {
+        const notifications = new SessionNotificationCenterService();
+        const service = new AppToastService(undefined, notifications);
+        let toastId = '';
+        let entries: any[] = [];
+        service.toasts$.subscribe((toasts) => {
+            toastId = toasts[0]?.id ?? '';
+        });
+        notifications.entries$.subscribe((value) => entries = value);
+
+        service.showSuccess('Guardado');
+        service.dismiss(toastId);
+
+        expect(entries.length).toBe(1);
+        expect(entries[0].message).toBe('Guardado');
     });
 });

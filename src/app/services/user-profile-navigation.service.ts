@@ -24,6 +24,8 @@ export class UserProfileNavigationService {
     private readonly roadmapSubject = new Subject<void>();
     private readonly legalPrivacySubject = new Subject<void>();
     private readonly usageAboutSubject = new Subject<void>();
+    private readonly feedbackBugSubject = new Subject<void>();
+    private readonly feedbackFeatureSubject = new Subject<void>();
 
     readonly privateProfileOpen$: Observable<UserPrivateProfileOpenRequest> = this.privateProfileSubject.asObservable();
     readonly publicProfileOpen$: Observable<UserPublicProfileTab> = this.publicProfileSubject.asObservable();
@@ -33,6 +35,8 @@ export class UserProfileNavigationService {
     readonly roadmapOpen$: Observable<void> = this.roadmapSubject.asObservable();
     readonly legalPrivacyOpen$: Observable<void> = this.legalPrivacySubject.asObservable();
     readonly usageAboutOpen$: Observable<void> = this.usageAboutSubject.asObservable();
+    readonly feedbackBugOpen$: Observable<void> = this.feedbackBugSubject.asObservable();
+    readonly feedbackFeatureOpen$: Observable<void> = this.feedbackFeatureSubject.asObservable();
 
     openPrivateProfile(request?: UserPrivateProfileOpenRequest | UserPrivateProfileSectionId): void {
         if (typeof request === 'string' || !request) {
@@ -112,5 +116,13 @@ export class UserProfileNavigationService {
 
     openUsageAbout(): void {
         this.usageAboutSubject.next();
+    }
+
+    openFeedbackBug(): void {
+        this.feedbackBugSubject.next();
+    }
+
+    openFeedbackFeature(): void {
+        this.feedbackFeatureSubject.next();
     }
 }

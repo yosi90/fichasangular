@@ -7,6 +7,7 @@ import { CampaignRealtimeSyncService } from './services/campaign-realtime-sync.s
 import { ChatAlertService } from './services/chat-alert.service';
 import { ChatFloatingService } from './services/chat-floating.service';
 import { ChatRealtimeService } from './services/chat-realtime.service';
+import { SessionNotificationCenterService } from './services/session-notification-center.service';
 import { SocialAlertPreferencesService } from './services/social-alert-preferences.service';
 
 @Component({
@@ -29,6 +30,7 @@ export class AppComponent implements OnInit, OnDestroy {
         private chatRealtimeSvc: ChatRealtimeService,
         private chatFloatingSvc: ChatFloatingService,
         private chatAlertSvc: ChatAlertService,
+        private sessionNotificationCenterSvc: SessionNotificationCenterService,
         private socialAlertPrefsSvc: SocialAlertPreferencesService,
     ) { }
 
@@ -70,14 +72,16 @@ export class AppComponent implements OnInit, OnDestroy {
         };
 
         (Swal as any).fire = ((...args: any[]) => {
-            if (args.length === 0)
+            const normalizedArgs = this.sessionNotificationCenterSvc.prepareSwalInvocation(args);
+
+            if (normalizedArgs.length === 0)
                 return originalFire(baseConfig);
 
-            if (args.length === 1 && args[0] && typeof args[0] === 'object' && !Array.isArray(args[0]))
-                return originalFire({ ...baseConfig, ...args[0] });
+            if (normalizedArgs.length === 1 && normalizedArgs[0] && typeof normalizedArgs[0] === 'object' && !Array.isArray(normalizedArgs[0]))
+                return originalFire({ ...baseConfig, ...normalizedArgs[0] });
 
-            if (args.length <= 3) {
-                const [title, text, icon] = args;
+            if (normalizedArgs.length <= 3) {
+                const [title, text, icon] = normalizedArgs;
                 return originalFire({
                     ...baseConfig,
                     title,
@@ -86,7 +90,7 @@ export class AppComponent implements OnInit, OnDestroy {
                 });
             }
 
-            return originalFire(...args);
+            return originalFire(...normalizedArgs);
         }) as typeof Swal.fire;
 
         AppComponent.swalConfigurado = true;

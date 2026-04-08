@@ -1,0 +1,424 @@
+:host
+    display: block
+    height: 100%
+    min-height: 0
+
+.help-shell
+    height: 100%
+    min-height: 0
+
+.feedback-bug-shell
+    display: flex
+    flex-direction: column
+    height: 100%
+    min-height: 0
+
+.feedback-bug-layout
+    display: grid
+    grid-template-columns: 17rem minmax(0, 1fr)
+    gap: 1rem
+    flex: 1 1 auto
+    min-height: 0
+    height: 100%
+    align-items: stretch
+
+.feedback-bug-nav,
+.feedback-bug-main
+    background: rgba(45, 45, 48, .96)
+    color: #f5f7ff
+    border: 1px solid rgba(255, 255, 255, .08)
+    border-radius: 1rem
+
+.feedback-bug-nav
+    display: flex
+    flex-direction: column
+    gap: .85rem
+    padding: 1rem
+    min-height: 0
+    overflow: auto
+
+.feedback-bug-nav__new,
+.feedback-bug-nav__item
+    display: flex
+    align-items: center
+    gap: .75rem
+    width: 100%
+    padding: .8rem .95rem
+    border: 1px solid rgba(255, 255, 255, .08)
+    border-radius: .85rem
+    background: rgba(255, 255, 255, .04)
+    color: #f5f7ff
+    text-align: left
+    cursor: pointer
+    transition: background-color .2s ease, border-color .2s ease, transform .2s ease
+
+    &:hover
+        transform: translateY(-1px)
+        background: rgba(255, 255, 255, .08)
+
+.feedback-bug-nav__new
+    justify-content: center
+    font-weight: 600
+
+.feedback-bug-nav__new--active,
+.feedback-bug-nav__item--active
+    border-color: rgba(194, 24, 91, .7)
+    background: rgba(194, 24, 91, .14)
+
+.feedback-bug-nav__list
+    display: flex
+    flex-direction: column
+    gap: .55rem
+    min-height: 0
+    overflow: auto
+    padding-right: .1rem
+
+.feedback-bug-nav__item
+    justify-content: flex-start
+    min-width: 0
+    overflow: hidden
+    text-overflow: ellipsis
+    white-space: nowrap
+
+.feedback-bug-main
+    display: flex
+    flex-direction: column
+    gap: 1rem
+    align-items: stretch
+    padding: 1.35rem
+    min-height: 100%
+    overflow: hidden
+
+.feedback-panel
+    display: flex
+    flex-direction: column
+    gap: 1rem
+    width: 100%
+    min-height: 0
+    padding: 1rem
+    border-radius: 1rem
+    background: rgba(255, 255, 255, .04)
+    border: 1px solid rgba(255, 255, 255, .08)
+
+.feedback-panel--main
+    flex: 1 1 auto
+
+.feedback-panel__header
+    display: flex
+    align-items: flex-start
+    justify-content: space-between
+    gap: 1rem
+
+    h3
+        margin: 0
+        font-size: 1.1rem
+        font-weight: 700
+
+    p
+        margin: .35rem 0 0
+        color: rgba(245, 247, 255, .66)
+
+.feedback-panel__body
+    display: flex
+    flex-direction: column
+    gap: 1rem
+    flex: 1 1 auto
+    min-height: 0
+    overflow: auto
+    padding-right: .15rem
+
+    > p
+        margin: 0
+        line-height: 1.55
+        white-space: pre-wrap
+
+.feedback-form
+    display: grid
+    gap: 1rem
+
+    mat-form-field
+        width: 100%
+
+.feedback-form__row
+    display: grid
+    gap: 1rem
+    align-items: start
+
+.feedback-form__row--title
+    grid-template-columns: minmax(0, 2fr) minmax(0, 1fr)
+
+.feedback-form__row--triple
+    grid-template-columns: repeat(3, minmax(0, 1fr))
+
+.feedback-form__row--double
+    grid-template-columns: repeat(2, minmax(0, 1fr))
+
+.feedback-form--scroll
+    flex: 1 1 auto
+    min-height: 0
+    overflow: auto
+    padding-top: .4rem
+    padding-right: .15rem
+
+.feedback-grid
+    display: grid
+    grid-template-columns: repeat(2, minmax(0, 1fr))
+    gap: 1rem
+
+.feedback-card
+    background: linear-gradient(180deg, rgba(36, 44, 54, 0.96), rgba(19, 24, 32, 0.98))
+    border: 1px solid rgba(255, 255, 255, 0.08)
+
+.feedback-card--full
+    grid-column: 1 / -1
+
+.feedback-copy
+    margin: 0 0 1rem
+    color: rgba(255, 255, 255, 0.82)
+    line-height: 1.6
+
+.feedback-upload
+    display: grid
+    gap: 0.35rem
+
+    input[type="file"]
+        color: rgba(255, 255, 255, 0.86)
+
+.feedback-upload__label
+    font-weight: 600
+
+.feedback-upload__hint
+    margin: 0
+    color: rgba(255, 255, 255, 0.62)
+    font-size: 0.92rem
+
+.feedback-previews
+    display: grid
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr))
+    gap: 0.75rem
+
+.feedback-preview
+    display: grid
+    gap: 0.5rem
+    padding: 0.75rem
+    border-radius: 0.75rem
+    background: rgba(255, 255, 255, 0.04)
+    border: 1px solid rgba(255, 255, 255, 0.08)
+
+    img
+        width: 100%
+        height: 120px
+        object-fit: cover
+        border-radius: 0.5rem
+        background: rgba(0, 0, 0, 0.35)
+
+.feedback-preview__meta
+    display: grid
+    gap: 0.2rem
+    font-size: 0.9rem
+
+    span
+        color: rgba(255, 255, 255, 0.7)
+
+.feedback-list
+    display: grid
+    gap: 0.75rem
+    margin-bottom: 1rem
+
+.feedback-entry
+    border-radius: 0.85rem
+    border: 1px solid rgba(255, 255, 255, 0.08)
+    background: rgba(255, 255, 255, 0.03)
+    overflow: hidden
+
+.feedback-entry__header
+    width: 100%
+    display: flex
+    align-items: center
+    justify-content: space-between
+    gap: 1rem
+    padding: 0.95rem 1rem
+    background: transparent
+    border: 0
+    color: inherit
+    text-align: left
+    cursor: pointer
+
+.feedback-entry__title-wrap
+    display: grid
+    gap: 0.4rem
+
+.feedback-entry__title
+    font-weight: 600
+
+.feedback-entry__meta
+    display: flex
+    flex-wrap: wrap
+    gap: 0.45rem
+
+.feedback-entry__body
+    padding: 0 1rem 1rem
+
+    p
+        margin-top: 0
+        line-height: 1.6
+
+.feedback-entry__dates
+    margin: 0
+    color: rgba(255, 255, 255, 0.62)
+    font-size: 0.92rem
+
+.feedback-badge
+    display: inline-flex
+    align-items: center
+    padding: 0.18rem 0.55rem
+    border-radius: 999px
+    background: rgba(148, 163, 184, 0.18)
+    color: #dbeafe
+    font-size: 0.78rem
+    font-weight: 600
+
+.feedback-badge--status
+    background: rgba(59, 130, 246, 0.22)
+
+.feedback-facts
+    display: grid
+    gap: 0.65rem
+    margin: 0
+
+    div
+        display: grid
+        gap: 0.15rem
+
+    dt
+        font-weight: 600
+        color: #dbeafe
+
+    dd
+        margin: 0
+        color: rgba(255, 255, 255, 0.82)
+        white-space: pre-wrap
+
+.feedback-private-entry
+    display: grid
+    gap: 0.2rem
+    padding: 0.85rem 0.95rem
+    border-radius: 0.75rem
+    border: 1px solid rgba(255, 255, 255, 0.08)
+    background: rgba(255, 255, 255, 0.03)
+    color: inherit
+    text-align: left
+    cursor: pointer
+
+.feedback-private-entry--active
+    border-color: rgba(96, 165, 250, 0.8)
+    background: rgba(37, 99, 235, 0.15)
+
+.feedback-private-entry__title
+    font-weight: 600
+
+.feedback-private-entry__meta
+    color: rgba(255, 255, 255, 0.68)
+    font-size: 0.88rem
+
+.feedback-detail
+    margin-top: 1.25rem
+    padding-top: 1rem
+    border-top: 1px solid rgba(255, 255, 255, 0.08)
+
+    h3, h4, h5
+        margin-top: 0
+        color: #fff
+
+.feedback-detail__heading
+    display: flex
+    align-items: flex-start
+    justify-content: space-between
+    gap: 1rem
+    margin-bottom: 0.75rem
+
+.feedback-detail__badges
+    display: flex
+    flex-wrap: wrap
+    gap: 0.4rem
+
+.feedback-detail__section
+    margin-top: 1rem
+
+    h5
+        margin: 0 0 .65rem
+        color: #fff
+
+.feedback-attachments
+    display: flex
+    flex-wrap: wrap
+    gap: 0.6rem
+
+.feedback-timeline
+    display: grid
+    gap: 0.75rem
+    margin: 0
+    padding-left: 1.2rem
+
+    li
+        padding-left: 0.2rem
+
+    span
+        display: block
+        color: rgba(255, 255, 255, 0.68)
+        font-size: 0.9rem
+        margin-top: 0.15rem
+
+    p
+        margin: 0.4rem 0 0
+        line-height: 1.5
+
+.feedback-error
+    margin: 0
+    color: #fca5a5
+
+.feedback-empty
+    margin: 0
+    color: rgba(255, 255, 255, 0.7)
+
+.feedback-empty--panel
+    display: flex
+    flex-direction: column
+    align-items: center
+    justify-content: center
+    gap: .65rem
+    min-height: 14rem
+    border-radius: 1rem
+    background: rgba(255, 255, 255, .03)
+    border: 1px solid rgba(255, 255, 255, .08)
+    text-align: center
+
+    mat-icon
+        color: rgba(255, 255, 255, .78)
+
+@media (max-width: 960px)
+    .feedback-grid,
+    .feedback-bug-layout
+        grid-template-columns: 1fr
+
+    .feedback-card--full
+        grid-column: auto
+
+    .feedback-detail__heading,
+    .feedback-panel__header
+        flex-direction: column
+
+    .feedback-bug-nav,
+    .feedback-bug-main,
+    .feedback-form--scroll,
+    .feedback-panel__body
+        overflow: visible
+
+    .feedback-form__row--title,
+    .feedback-form__row--triple,
+    .feedback-form__row--double
+        grid-template-columns: 1fr
+
+@media (max-width: 640px)
+    .feedback-bug-main
+        padding: 1rem

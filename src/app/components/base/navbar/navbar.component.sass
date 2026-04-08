@@ -4,6 +4,7 @@
     display: flex
     align-items: center
     gap: 2px
+    width: 100%
 
 .ribbon-trigger
     display: inline-flex
@@ -22,6 +23,44 @@
         color: black
         border-radius: 4px
         cursor: pointer
+
+.ribbon-trigger--icon
+    min-width: 0
+
+    .mat-icon
+        font-size: 18px
+        width: 18px
+        height: 18px
+
+.ribbon-trigger__sr-only
+    position: absolute
+    width: 1px
+    height: 1px
+    padding: 0
+    margin: -1px
+    overflow: hidden
+    clip: rect(0, 0, 0, 0)
+    white-space: nowrap
+    border: 0
+
+.ribbon-spacer
+    flex: 1 1 auto
+
+.ribbon-bell
+    position: relative
+    display: inline-flex
+    align-items: center
+    justify-content: center
+
+.ribbon-bell__dot
+    position: absolute
+    top: -2px
+    right: -1px
+    width: 8px
+    height: 8px
+    border-radius: 999px
+    background: #ff6b6b
+    box-shadow: 0 0 0 2px #1f2327
 
 ::ng-deep .cdk-overlay-pane:has(.menuSuperficieOscura)
     .menuSuperficieOscura
@@ -47,6 +86,14 @@
     max-width: min(400px, calc(100vw - 16px)) !important
 
     .menuSuperficieOscura--options
+        overflow: hidden
+
+        .mat-mdc-menu-content
+            max-height: none !important
+            overflow: hidden !important
+
+::ng-deep .cdk-overlay-pane:has(.menuSuperficieOscura--notifications)
+    .menuSuperficieOscura--notifications
         overflow: hidden
 
         .mat-mdc-menu-content
@@ -228,3 +275,128 @@
     width: 14px
     height: 14px
     font-size: 14px
+
+.notifications-menu
+    display: flex
+    flex-direction: column
+    width: min(420px, calc(100vw - 16px))
+    min-width: 320px
+    max-width: 420px
+    max-height: min(calc(100vh - 88px), 520px)
+
+.notifications-menu__empty
+    padding: 18px 16px
+    color: #c4d0d9
+    font-size: 13px
+
+.notifications-menu__list
+    display: flex
+    flex-direction: column
+    overflow-y: auto
+    overscroll-behavior: contain
+
+.notification-entry
+    display: grid
+    grid-template-columns: 24px minmax(0, 1fr) 28px
+    gap: 12px
+    align-items: flex-start
+    padding: 12px 14px
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08)
+    outline: none
+
+    &:last-child
+        border-bottom: 0
+
+.notification-entry--actionable
+    cursor: pointer
+    transition: background-color .15s ease
+
+    &:hover,
+    &:focus-visible
+        background: rgba(255, 255, 255, 0.05)
+
+.notification-entry--unseen
+    background: rgba(111, 190, 255, 0.07)
+
+.notification-entry__status
+    padding-top: 2px
+
+    .mat-icon
+        width: 20px
+        height: 20px
+        font-size: 20px
+
+.notification-entry__content
+    min-width: 0
+    display: flex
+    flex-direction: column
+    gap: 4px
+
+.notification-entry__meta
+    display: flex
+    align-items: baseline
+    justify-content: space-between
+    gap: 8px
+
+.notification-entry__title
+    color: #f0f3f6
+    font-size: 13px
+    line-height: 1.3
+
+.notification-entry__time
+    flex: 0 0 auto
+    font-size: 11px
+    color: #9fb1bf
+
+.notification-entry__message
+    margin: 0
+    color: #cdd7de
+    font-size: 12px
+    line-height: 1.4
+    word-break: break-word
+
+.notification-entry__action
+    font-size: 11px
+    font-weight: 600
+    letter-spacing: 0.02em
+    color: #8ec5ff
+
+.notification-entry__dismiss
+    display: inline-flex
+    align-items: center
+    justify-content: center
+    width: 28px
+    height: 28px
+    border: 0
+    border-radius: 999px
+    background: transparent
+    color: #aebcc7
+    cursor: pointer
+    transition: background-color .15s ease, color .15s ease
+
+    &:hover
+        background: rgba(255, 255, 255, 0.08)
+        color: #f0f3f6
+
+    .mat-icon
+        width: 18px
+        height: 18px
+        font-size: 18px
+
+.notifications-menu__footer
+    padding: 10px 14px 12px
+    border-top: 1px solid rgba(255, 255, 255, 0.08)
+
+.notifications-menu__clear-all
+    width: 100%
+    border: 0
+    border-radius: 10px
+    padding: 10px 12px
+    background: rgba(255, 255, 255, 0.06)
+    color: #f0f3f6
+    font: inherit
+    cursor: pointer
+    transition: background-color .15s ease
+
+    &:hover
+        background: rgba(255, 255, 255, 0.12)

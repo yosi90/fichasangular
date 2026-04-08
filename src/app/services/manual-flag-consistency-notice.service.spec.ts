@@ -55,6 +55,12 @@ describe('ManualFlagConsistencyNoticeService', () => {
         await Promise.resolve();
         await Promise.resolve();
 
+        expect((Swal.fire as jasmine.Spy).calls.mostRecent().args[0]).toEqual(jasmine.objectContaining({
+            sessionNotification: jasmine.objectContaining({
+                include: true,
+                actionLabel: 'Ir al admin panel',
+            }),
+        }));
         expect(userProfileNavSvcMock.openAdminPanel).toHaveBeenCalled();
     });
 });

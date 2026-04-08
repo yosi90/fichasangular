@@ -43,6 +43,12 @@ describe('AdminRoleRequestNotifierService', () => {
         tick();
 
         expect(Swal.fire).toHaveBeenCalled();
+        expect((Swal.fire as jasmine.Spy).calls.mostRecent().args[0]).toEqual(jasmine.objectContaining({
+            sessionNotification: jasmine.objectContaining({
+                include: true,
+                actionLabel: 'Revisar ahora',
+            }),
+        }));
         expect(navSvc.openAdminPanel).toHaveBeenCalledWith(jasmine.objectContaining({
             section: 'role-requests',
             pendingOnly: true,

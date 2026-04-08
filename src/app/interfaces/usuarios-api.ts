@@ -115,6 +115,78 @@ export interface CreationAuditListFiltersDto {
     offset?: number | null;
 }
 
+export type FeedbackKind = 'bug' | 'feature';
+export type FeedbackStatus = 'submitted' | 'triaged' | 'planned' | 'in_progress' | 'resolved' | 'closed' | 'rejected';
+export type FeedbackPriority = 'low' | 'medium' | 'high' | 'critical';
+
+export interface FeedbackDetailsDto {
+    stepsToReproduce: string | null;
+    expectedBehavior: string | null;
+    actualBehavior: string | null;
+    useCase: string | null;
+    desiredOutcome: string | null;
+}
+
+export interface FeedbackAttachmentDto {
+    id: number;
+    filename: string | null;
+    mimeType: string;
+    sizeBytes: number;
+    createdAtUtc: string | null;
+    url: string;
+}
+
+export interface FeedbackUpdateDto {
+    status: FeedbackStatus;
+    publicMessage: string | null;
+    createdAtUtc: string | null;
+}
+
+export interface FeedbackSubmissionSummaryDto {
+    id: number;
+    kind: FeedbackKind;
+    status: FeedbackStatus;
+    priority: FeedbackPriority | null;
+    title: string | null;
+    description: string;
+    pageUrl: string | null;
+    details: FeedbackDetailsDto;
+    createdAtUtc: string | null;
+    updatedAtUtc: string | null;
+}
+
+export interface FeedbackSubmissionDetailDto extends FeedbackSubmissionSummaryDto {
+    attachments: FeedbackAttachmentDto[];
+    updates: FeedbackUpdateDto[];
+}
+
+export interface FeedbackListResponseDto {
+    items: FeedbackSubmissionSummaryDto[];
+    total: number;
+    limit: number;
+    offset: number;
+    hasMore: boolean;
+}
+
+export interface FeedbackCreateBugRequestDto {
+    title?: string | null;
+    description: string;
+    pageUrl?: string | null;
+    stepsToReproduce?: string | null;
+    expectedBehavior?: string | null;
+    actualBehavior?: string | null;
+    images?: File[] | null;
+}
+
+export interface FeedbackCreateFeatureRequestDto {
+    title?: string | null;
+    description: string;
+    pageUrl?: string | null;
+    useCase?: string | null;
+    desiredOutcome?: string | null;
+    images?: File[] | null;
+}
+
 export interface AdminPolicyDraftDto {
     kind: UserCompliancePolicyKind;
     title: string | null;

@@ -1,35 +1,58 @@
 <div class="ribbon-nav">
-    <button type="button" class="ribbon-trigger" #archivoTrigger="matMenuTrigger" [matMenuTriggerFor]="menuArchivo"
+    <button type="button" class="ribbon-trigger ribbon-trigger--icon" #archivoTrigger="matMenuTrigger" [matMenuTriggerFor]="menuArchivo"
+        matTooltip="Archivo" aria-label="Archivo"
         (click)="onRibbonTriggerClick(archivoTrigger)"
         (menuOpened)="onRibbonMenuOpened(archivoTrigger)"
         (menuClosed)="onRibbonMenuClosed(archivoTrigger)"
         (mouseenter)="onRibbonTriggerEnter(archivoTrigger)"
         (mouseleave)="onRibbonTriggerLeave(archivoTrigger)">
-        Archivo
+        <mat-icon>folder</mat-icon>
+        <span class="ribbon-trigger__sr-only">Archivo</span>
     </button>
-    <button type="button" class="ribbon-trigger" #menuTrigger="matMenuTrigger" [matMenuTriggerFor]="menuManuales"
+    <button type="button" class="ribbon-trigger ribbon-trigger--icon" #menuTrigger="matMenuTrigger" [matMenuTriggerFor]="menuManuales"
+        matTooltip="Manuales" aria-label="Manuales"
         (click)="onRibbonTriggerClick(menuTrigger)"
         (menuOpened)="onRibbonMenuOpened(menuTrigger)"
         (menuClosed)="onRibbonMenuClosed(menuTrigger)"
         (mouseenter)="onRibbonTriggerEnter(menuTrigger)"
         (mouseleave)="onRibbonTriggerLeave(menuTrigger)">
-        Manuales
+        <mat-icon>menu_book</mat-icon>
+        <span class="ribbon-trigger__sr-only">Manuales</span>
     </button>
-    <button type="button" class="ribbon-trigger" #opcionesTrigger="matMenuTrigger" [matMenuTriggerFor]="menuOpciones"
+    <button type="button" class="ribbon-trigger ribbon-trigger--icon" #opcionesTrigger="matMenuTrigger" [matMenuTriggerFor]="menuOpciones"
+        matTooltip="Opciones" aria-label="Opciones"
         (click)="onRibbonTriggerClick(opcionesTrigger)"
         (menuOpened)="onRibbonMenuOpened(opcionesTrigger)"
         (menuClosed)="onRibbonMenuClosed(opcionesTrigger)"
         (mouseenter)="onRibbonTriggerEnter(opcionesTrigger)"
         (mouseleave)="onRibbonTriggerLeave(opcionesTrigger)">
-        Opciones
+        <mat-icon>tune</mat-icon>
+        <span class="ribbon-trigger__sr-only">Opciones</span>
     </button>
-    <button type="button" class="ribbon-trigger" #ayudaTrigger="matMenuTrigger" [matMenuTriggerFor]="menuAyuda"
+    <button type="button" class="ribbon-trigger ribbon-trigger--icon" #ayudaTrigger="matMenuTrigger" [matMenuTriggerFor]="menuAyuda"
+        matTooltip="Ayuda" aria-label="Ayuda"
         (click)="onRibbonTriggerClick(ayudaTrigger)"
         (menuOpened)="onRibbonMenuOpened(ayudaTrigger)"
         (menuClosed)="onRibbonMenuClosed(ayudaTrigger)"
         (mouseenter)="onRibbonTriggerEnter(ayudaTrigger)"
         (mouseleave)="onRibbonTriggerLeave(ayudaTrigger)">
-        Ayuda
+        <mat-icon>help_center</mat-icon>
+        <span class="ribbon-trigger__sr-only">Ayuda</span>
+    </button>
+    <div class="ribbon-spacer" aria-hidden="true"></div>
+    <button type="button" class="ribbon-trigger ribbon-trigger--icon ribbon-trigger--bell" #notificationTrigger="matMenuTrigger"
+        [matMenuTriggerFor]="menuNotificaciones"
+        matTooltip="Notificaciones de la sesión" aria-label="Notificaciones de la sesión"
+        (click)="onRibbonTriggerClick(notificationTrigger)"
+        (menuOpened)="onNotificationMenuOpened(notificationTrigger)"
+        (menuClosed)="onNotificationMenuClosed(notificationTrigger)"
+        (mouseenter)="onRibbonTriggerEnter(notificationTrigger)"
+        (mouseleave)="onRibbonTriggerLeave(notificationTrigger)">
+        <span class="ribbon-bell">
+            <mat-icon>notifications</mat-icon>
+            <span *ngIf="hasUnreadNotifications" class="ribbon-bell__dot" aria-hidden="true"></span>
+        </span>
+        <span class="ribbon-trigger__sr-only">Notificaciones</span>
     </button>
 </div>
 
@@ -166,5 +189,61 @@
             <mat-icon>help_center</mat-icon>
             <span>Uso y acerca</span>
         </button>
+        <button mat-menu-item (click)="abrirReportarBug()">
+            <mat-icon>bug_report</mat-icon>
+            <span>Reportar bug</span>
+        </button>
+        <button mat-menu-item (click)="abrirSolicitarFuncionalidad()">
+            <mat-icon>lightbulb</mat-icon>
+            <span>Solicitar funcionalidad</span>
+        </button>
+    </div>
+</mat-menu>
+
+<mat-menu #menuNotificaciones="matMenu" [class]="'menuSuperficieOscura menuSuperficieOscura--notifications'"
+    xPosition="before" yPosition="below" [overlapTrigger]="false">
+    <div class="notifications-menu"
+        (click)="$event.stopPropagation()"
+        (mouseenter)="cancelarCierreRibbonMenu()"
+        (mouseleave)="programarCierreRibbonMenu(notificationTrigger)">
+        <div class="notifications-menu__empty" *ngIf="sessionNotifications.length === 0">
+            No hay notificaciones en esta sesión.
+        </div>
+
+        <div class="notifications-menu__list" *ngIf="sessionNotifications.length > 0">
+            <div class="notification-entry"
+                *ngFor="let entry of sessionNotifications; trackBy: trackByNotificationId"
+                [class.notification-entry--actionable]="!!entry.action"
+                [class.notification-entry--unseen]="entry.seenAt === null"
+                [attr.role]="entry.action ? 'button' : null"
+                [attr.tabindex]="entry.action ? 0 : null"
+                (click)="openSessionNotification(entry, notificationTrigger)"
+                (keydown.enter)="openSessionNotification(entry, notificationTrigger)"
+                (keydown.space)="openSessionNotification(entry, notificationTrigger); $event.preventDefault()">
+                <div class="notification-entry__status">
+                    <mat-icon>{{notificationLevelIcon(entry.level)}}</mat-icon>
+                </div>
+                <div class="notification-entry__content">
+                    <div class="notification-entry__meta">
+                        <strong class="notification-entry__title">{{entry.title}}</strong>
+                        <span class="notification-entry__time">{{formatNotificationTime(entry.createdAt)}}</span>
+                    </div>
+                    <p class="notification-entry__message">{{entry.message}}</p>
+                    <span class="notification-entry__action" *ngIf="entry.actionLabel">{{entry.actionLabel}}</span>
+                </div>
+                <button type="button" class="notification-entry__dismiss"
+                    aria-label="Borrar notificación"
+                    matTooltip="Borrar"
+                    (click)="dismissSessionNotification(entry.id, $event)">
+                    <mat-icon>close</mat-icon>
+                </button>
+            </div>
+        </div>
+
+        <div class="notifications-menu__footer" *ngIf="sessionNotifications.length >= 2">
+            <button type="button" class="notifications-menu__clear-all" (click)="clearSessionNotifications($event)">
+                Borrar todas
+            </button>
+        </div>
     </div>
 </mat-menu>

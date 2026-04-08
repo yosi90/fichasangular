@@ -48,6 +48,11 @@ describe('CompliancePolicyNoticeService', () => {
         expect((Swal.fire as jasmine.Spy).calls.mostRecent().args[0]).toEqual(jasmine.objectContaining({
             title: 'Debes aceptar los términos de uso',
             text: 'Para poder usar la web debes aceptar los términos de uso vigentes.',
+            sessionNotification: jasmine.objectContaining({
+                include: true,
+                level: 'warning',
+                actionLabel: 'Revisar ahora',
+            }),
         }));
         expect(userProfileNavSvc.openPrivateProfile).toHaveBeenCalledWith(jasmine.objectContaining({
             section: 'resumen',

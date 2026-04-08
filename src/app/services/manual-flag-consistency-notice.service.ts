@@ -2,6 +2,7 @@ import { Injectable } from '@angular/core';
 import Swal from 'sweetalert2';
 import { getManualFlagMismatches } from '../config/manual-secciones.config';
 import { ManualAsociadoDetalle } from '../interfaces/manual-asociado';
+import { SessionNotificationSwalOptions } from '../interfaces/session-notification';
 import { CacheSyncMetadataService } from './cache-sync-metadata.service';
 import { UserProfileNavigationService } from './user-profile-navigation.service';
 
@@ -47,7 +48,15 @@ export class ManualFlagConsistencyNoticeService {
             showCancelButton: true,
             confirmButtonText: 'Ir al admin panel',
             cancelButtonText: 'Luego',
-        });
+            sessionNotification: {
+                include: true,
+                level: 'info',
+                title: 'Manual desincronizado',
+                message: `El manual "${manual.Nombre}" tiene flags de contenido desajustadas respecto a sus asociados. Recarga la caché desde Admin panel > Manuales asociados.`,
+                actionLabel: 'Ir al admin panel',
+                action: () => this.userProfileNavSvc.openAdminPanel(),
+            },
+        } as SessionNotificationSwalOptions);
 
         if (result.isConfirmed)
             this.userProfileNavSvc.openAdminPanel();

@@ -3,6 +3,7 @@ import { Subscription } from 'rxjs';
 import Swal from 'sweetalert2';
 import { AppToastCategory } from '../interfaces/app-toast';
 import { ChatAlertCandidate, ChatAnnouncementPayload } from '../interfaces/chat';
+import { SessionNotificationSwalOptions } from '../interfaces/session-notification';
 import { UserModerationSanction } from '../interfaces/user-moderation';
 import { AppToastService } from './app-toast.service';
 import { ChatApiService } from './chat-api.service';
@@ -175,20 +176,7 @@ export class ChatAlertService implements OnDestroy {
                     ? 'Abrir mensajes'
                     : 'Entendido';
         const swalHtml = this.buildNotificationSwalHtml(candidate);
-        const result = await Swal.fire({
-            icon: isAccountBannedAlert ? 'warning' : 'info',
-            title: `${notification.title ?? ''}`.trim() || 'Nuevo aviso',
-            text: swalHtml ? undefined : (`${candidate.body ?? ''}`.trim() || `${notification.title ?? ''}`.trim() || 'Tienes un nuevo aviso.'),
-            html: swalHtml || undefined,
-            showCancelButton: canOpenCampaign || canOpenRestriction || canOpenProfile || canOpenMessages,
-            showDenyButton: (canOpenCampaign || canOpenProfile) && canOpenMessages,
-            confirmButtonText: primaryActionLabel,
-            denyButtonText: canOpenMessages ? 'Abrir mensajes' : undefined,
-            cancelButtonText: canOpenCampaign || canOpenRestriction || canOpenProfile || canOpenMessages ? 'Cerrar' : undefined,
-            focusConfirm: false,
-        });
-
-        if (result.isConfirmed) {
+        const openPrimaryAction = async (): Promise<void> => {
             if (canOpenCampaign) {
                 await this.markNotificationConversationAsRead(candidate, notificationConversationId);
                 this.userProfileNavSvc.openSocial({
@@ -222,6 +210,34 @@ export class ChatAlertService implements OnDestroy {
                     requestId: Date.now(),
                 });
             }
+        };
+        const result = await Swal.fire({
+            icon: isAccountBannedAlert ? 'warning' : 'info',
+            title: `${notification.title ?? ''}`.trim() || 'Nuevo aviso',
+            text: swalHtml ? undefined : (`${candidate.body ?? ''}`.trim() || `${notification.title ?? ''}`.trim() || 'Tienes un nuevo aviso.'),
+            html: swalHtml || undefined,
+            showCancelButton: canOpenCampaign || canOpenRestriction || canOpenProfile || canOpenMessages,
+            showDenyButton: (canOpenCampaign || canOpenProfile) && canOpenMessages,
+            confirmButtonText: primaryActionLabel,
+            denyButtonText: canOpenMessages ? 'Abrir mensajes' : undefined,
+            cancelButtonText: canOpenCampaign || canOpenRestriction || canOpenProfile || canOpenMessages ? 'Cerrar' : undefined,
+            focusConfirm: false,
+            sessionNotification: {
+                include: true,
+                level: isAccountBannedAlert ? 'warning' : 'info',
+                title: `${notification.title ?? ''}`.trim() || 'Nuevo aviso',
+                message: `${candidate.body ?? ''}`.trim() || `${notification.title ?? ''}`.trim() || 'Tienes un nuevo aviso.',
+                actionLabel: canOpenCampaign || canOpenRestriction || canOpenProfile || canOpenMessages
+                    ? primaryActionLabel
+                    : null,
+                action: canOpenCampaign || canOpenRestriction || canOpenProfile || canOpenMessages
+                    ? (() => openPrimaryAction())
+                    : null,
+            },
+        } as SessionNotificationSwalOptions);
+
+        if (result.isConfirmed) {
+            await openPrimaryAction();
             return;
         }
 
