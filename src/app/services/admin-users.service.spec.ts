@@ -136,6 +136,7 @@ describe('AdminUsersService', () => {
             role: partial.role ?? 'jugador',
             admin: partial.admin ?? (partial.role === 'admin'),
             banned: partial.banned ?? false,
+            moderationStatus: partial.moderationStatus ?? null,
             updatedAtUtc: partial.updatedAtUtc ?? null,
             updatedByUserId: partial.updatedByUserId ?? null,
             permissionsCreate: partial.permissionsCreate ?? [{ resource: 'personajes', allowed: true }],
@@ -309,6 +310,62 @@ describe('AdminUsersService', () => {
         expect(service.setCalls[1].payload['u-moderated'].moderationSummary.incidentCount).toBe(3);
         expect(moderated?.moderationSummary?.sanctionCount).toBe(1);
         expect(moderated?.moderationSummary?.activeSanction?.sanctionId).toBe(17);
+    });
+
+    it('watchUsersAdminView usa GET /usuarios como verdad canónica cuando RTDB va desfasado en moderación', async () => {
+        const service = new AdminUsersServiceTestDouble();
+        const rowsPromise = firstValueFrom(
+            service.watchUsersAdminView().pipe(
+                filter((rows) => rows.some((row) => row.uid === 'u-blocked' && row.moderationStatus === 'blocked'))
+            ),
+        );
+
+        service.seedPath('UserProfiles', {
+            'u-blocked': {
+                uid: 'u-blocked',
+                displayName: 'Bloqueado',
+                email: 'blocked@test.com',
+                authProvider: 'correo',
+            },
+        });
+        service.seedPath('Acl/users', {
+            'u-blocked': {
+                roles: { admin: false, type: 'jugador' },
+                status: { banned: false },
+                permissions: { personajes: { create: true } },
+                moderationSummary: null,
+            },
+        });
+        service.apiUsers = [
+            buildUser({
+                uid: 'u-blocked',
+                banned: false,
+                moderationStatus: 'blocked',
+                moderationSummary: {
+                    incidentCount: 2,
+                    sanctionCount: 1,
+                    lastIncidentAtUtc: '2026-04-08T10:00:00Z',
+                    lastSanctionAtUtc: '2026-04-08T10:00:00Z',
+                    activeSanction: {
+                        sanctionId: 18,
+                        kind: 'restriction',
+                        code: 'technical_account_restriction_temporary',
+                        name: 'Restricción temporal de cuenta',
+                        startsAtUtc: '2026-04-08T10:00:00Z',
+                        endsAtUtc: '2026-04-08T20:00:00Z',
+                        isPermanent: false,
+                    },
+                },
+            }),
+        ];
+
+        service.refreshUsersAdminView();
+        const rows = await rowsPromise;
+        const blocked = rows.find((row) => row.uid === 'u-blocked');
+
+        expect(blocked?.moderationStatus).toBe('blocked');
+        expect(blocked?.banned).toBeTrue();
+        expect(blocked?.moderationSummary?.activeSanction?.sanctionId).toBe(18);
     });
 
     it('setBanned rechaza el toggle legacy y obliga a usar moderación canónica', async () => {

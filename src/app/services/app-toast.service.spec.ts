@@ -3,6 +3,14 @@ import { AppToastService } from './app-toast.service';
 import { SessionNotificationCenterService } from './session-notification-center.service';
 
 describe('AppToastService', () => {
+    beforeEach(() => {
+        localStorage.clear();
+    });
+
+    afterEach(() => {
+        localStorage.clear();
+    });
+
     it('crea y autocierra un toast de exito', fakeAsync(() => {
         const service = new AppToastService();
         let currentLength = 0;
@@ -113,6 +121,17 @@ describe('AppToastService', () => {
         expect(entries[0].message).toBe('Nueva alerta');
     });
 
+    it('permite omitir la captura en el histórico de sesión cuando otra fuente ya crea la entrada persistente', () => {
+        const notifications = new SessionNotificationCenterService();
+        const service = new AppToastService(undefined, notifications);
+        let entries: any[] = [];
+        notifications.entries$.subscribe((value) => entries = value);
+
+        service.showError('Bloqueo local', { captureSessionNotification: false });
+
+        expect(entries.length).toBe(0);
+    });
+
     it('no duplica el histórico al cerrar un toast', () => {
         const notifications = new SessionNotificationCenterService();
         const service = new AppToastService(undefined, notifications);
@@ -128,5 +147,18 @@ describe('AppToastService', () => {
 
         expect(entries.length).toBe(1);
         expect(entries[0].message).toBe('Guardado');
+    });
+
+    it('reutiliza el mismo toast explícitamente deduplicado aunque cambie el countdown del mensaje', () => {
+        const service = new AppToastService();
+        let latest: any[] = [];
+        service.toasts$.subscribe((toasts) => latest = toasts);
+
+        service.showError('Bloqueado. Inténtalo de nuevo en 30 s.', { dedupeKey: 'guard.uid-1.cooldown' });
+        service.showError('Bloqueado. Inténtalo de nuevo en 29 s.', { dedupeKey: 'guard.uid-1.cooldown' });
+
+        expect(latest.length).toBe(1);
+        expect(latest[0].message).toBe('Bloqueado. Inténtalo de nuevo en 29 s.');
+        expect(latest[0].repeatCount).toBe(2);
     });
 });

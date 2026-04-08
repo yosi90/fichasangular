@@ -1,6 +1,8 @@
 import { Injectable } from '@angular/core';
 import { UserAbuseLockReportInput } from '../interfaces/user-moderation';
 import { UserProfileApiService } from './user-profile-api.service';
+import { SessionNotificationCenterService } from './session-notification-center.service';
+import { UserService } from './user.service';
 
 export type ApiActionGuardStatus = 'allowed' | 'cooldown' | 'session_locked';
 
@@ -34,10 +36,13 @@ export class ApiActionGuardService {
     readonly maxBlocksPerDay = 3;
     private readonly abuseLockReason = 'frontend_api_button_spam';
     private readonly abuseLockSource = 'web';
+    private readonly abuseReasonLabel = 'Demasiadas solicitudes en un corto espacio de tiempo.';
     private readonly abuseLockSyncInFlight = new Map<string, Promise<void>>();
 
     constructor(
-        private userProfileApiSvc: UserProfileApiService
+        private userProfileApiSvc: UserProfileApiService,
+        private sessionNotificationCenterSvc: SessionNotificationCenterService,
+        private userSvc: UserService,
     ) { }
 
     shouldAllow(actorUid: string | null | undefined, actionKey: string): ApiActionGuardDecision {
@@ -69,6 +74,7 @@ export class ApiActionGuardService {
                 newlyBlocked: false,
                 newlySessionLocked: false,
             };
+            this.publishGuardNotification(uid, decision, state.dayKey);
             void this.syncAbuseLockIfNeeded(uid, decision);
             return decision;
         }
@@ -79,7 +85,7 @@ export class ApiActionGuardService {
                 attempts: action.attempts.filter((attempt) => now - attempt <= this.burstWindowMs),
             };
             this.writeState(uid, state);
-            return {
+            decision = {
                 status: 'cooldown',
                 blockedUntil: action.blockedUntil,
                 blocksToday: state.blocksToday,
@@ -87,6 +93,8 @@ export class ApiActionGuardService {
                 newlyBlocked: false,
                 newlySessionLocked: false,
             };
+            this.publishGuardNotification(uid, decision, state.dayKey);
+            return decision;
         }
 
         const attempts = action.attempts.filter((attempt) => now - attempt <= this.burstWindowMs);
@@ -109,6 +117,7 @@ export class ApiActionGuardService {
                 newlyBlocked: true,
                 newlySessionLocked: sessionLocked,
             };
+            this.publishGuardNotification(uid, decision, state.dayKey);
             void this.syncAbuseLockIfNeeded(uid, decision);
             return decision;
         }
@@ -126,6 +135,29 @@ export class ApiActionGuardService {
             newlyBlocked: false,
             newlySessionLocked: false,
         };
+    }
+
+    getBlockedMessage(decision: ApiActionGuardDecision): string {
+        if (decision.status === 'cooldown') {
+            const countdown = this.formatDuration(decision.blockedUntil ? decision.blockedUntil - Date.now() : null);
+            return countdown
+                ? `Hemos detectado demasiadas solicitudes en muy poco tiempo. Hemos limitado temporalmente tus peticiones para proteger la estabilidad de la web. Razón: ${this.abuseReasonLabel} Podrás volver a intentarlo en ${countdown}.`
+                : `Hemos detectado demasiadas solicitudes en muy poco tiempo. Hemos limitado temporalmente tus peticiones para proteger la estabilidad de la web. Razón: ${this.abuseReasonLabel}`;
+        }
+        if (decision.status === 'session_locked') {
+            const countdown = this.formatDuration(this.resolveSessionLockReleaseAt(this.toDayKey(Date.now())) - Date.now());
+            return countdown
+                ? `Hemos observado un comportamiento inusual en esta sesión. Hemos limitado temporalmente tus peticiones para proteger la estabilidad de la web. Razón: ${this.abuseReasonLabel} La limitación de esta sesión termina en ${countdown}.`
+                : `Hemos observado un comportamiento inusual en esta sesión. Hemos limitado temporalmente tus peticiones para proteger la estabilidad de la web. Razón: ${this.abuseReasonLabel}`;
+        }
+        return '';
+    }
+
+    getBlockedToastDedupeKey(actorUid: string | null | undefined, status: ApiActionGuardStatus): string | null {
+        const uid = this.normalizeActorUid(actorUid);
+        if (uid.length < 1)
+            return null;
+        return `${this.guardNotificationKey(uid)}.toast.${status}`;
     }
 
     private readState(uid: string, now: number): ApiActionGuardState {
@@ -222,10 +254,14 @@ export class ApiActionGuardService {
         }
 
         const task = this.userProfileApiSvc.reportAbuseLock(payload)
-            .then(() => {
+            .then((response) => {
+                this.applyAbuseLockResponse(response);
                 sessionStorage.setItem(requestKey, new Date().toISOString());
+                this.publishAbuseLockSyncNotification(actorUid, decision, payload.clientDate, response);
             })
-            .catch(() => undefined)
+            .catch(() => {
+                this.publishAbuseLockSyncFailure(actorUid, decision, payload.clientDate);
+            })
             .finally(() => {
                 this.abuseLockSyncInFlight.delete(requestKey);
             });
@@ -249,5 +285,134 @@ export class ApiActionGuardService {
             localBlockCountToday,
             source: this.abuseLockSource,
         };
+    }
+
+    private publishGuardNotification(uid: string, decision: ApiActionGuardDecision, dayKey: string): void {
+        if (uid.length < 1 || (decision.status !== 'cooldown' && decision.status !== 'session_locked'))
+            return;
+
+        const countdownUntil = decision.status === 'session_locked'
+            ? this.resolveSessionLockReleaseAt(dayKey)
+            : decision.blockedUntil;
+        this.sessionNotificationCenterSvc.add({
+            dedupeKey: this.guardNotificationKey(uid),
+            source: 'toast',
+            level: 'warning',
+            title: decision.status === 'session_locked'
+                ? 'Tu sesión ha sido limitada temporalmente'
+                : 'Protección temporal activada',
+            message: decision.status === 'session_locked'
+                ? `Hemos observado un comportamiento inusual en esta sesión. Hemos limitado temporalmente tus peticiones para proteger la estabilidad de la web. Razón: ${this.abuseReasonLabel}`
+                : `Hemos detectado demasiadas solicitudes en muy poco tiempo. Hemos limitado temporalmente tus peticiones para proteger la estabilidad de la web. Razón: ${this.abuseReasonLabel}`,
+            countdownUntil,
+            countdownLabel: decision.status === 'session_locked'
+                ? 'Fin de la limitación de la sesión'
+                : 'Fin de la limitación temporal',
+        });
+    }
+
+    private publishAbuseLockSyncNotification(
+        uid: string,
+        decision: ApiActionGuardDecision,
+        clientDate: string,
+        response: any
+    ): void {
+        if (uid.length < 1)
+            return;
+
+        const compliance = response?.compliance ?? null;
+        const responseMessage = `${response?.message ?? ''}`.trim();
+        const sanctionEndsAt = this.toTimestamp(compliance?.activeSanction?.endsAtUtc);
+        const blockedUntil = this.toTimestamp(response?.blockedUntilUtc);
+        const countdownUntil = sanctionEndsAt
+            ?? blockedUntil
+            ?? this.resolveSessionLockReleaseAt(clientDate);
+        const restricted = compliance?.banned === true
+            || !!compliance?.activeSanction
+            || `${response?.status ?? ''}`.trim().toLowerCase() === 'blocked'
+            || `${response?.status ?? ''}`.trim().toLowerCase() === 'banned'
+            || `${response?.moderationStatus ?? ''}`.trim().toLowerCase() === 'blocked'
+            || `${response?.moderationStatus ?? ''}`.trim().toLowerCase() === 'banned'
+            || blockedUntil !== null
+            || response?.isPermanent === true;
+        const permanentRestriction = response?.isPermanent === true
+            || compliance?.activeSanction?.isPermanent === true
+            || (`${response?.status ?? ''}`.trim().toLowerCase() === 'banned' && blockedUntil === null);
+
+        this.sessionNotificationCenterSvc.add({
+            dedupeKey: this.guardNotificationKey(uid),
+            source: 'toast',
+            level: permanentRestriction ? 'error' : (restricted ? 'warning' : 'warning'),
+            title: restricted
+                ? (permanentRestriction ? 'Se ha aplicado una restricción de cuenta' : 'Se ha aplicado una restricción temporal')
+                : 'Seguimos vigilando esta sesión',
+            message: response?.status === 'ignored'
+                ? `Hemos revisado la actividad reciente y no se ha aplicado una sanción adicional a tu cuenta. La limitación temporal de esta sesión sigue activa. Razón: ${this.abuseReasonLabel}`
+                : restricted
+                    ? (responseMessage || `Tras revisar el exceso de peticiones, se ha aplicado ${permanentRestriction ? 'una restricción de cuenta' : 'una restricción temporal'} a tu cuenta. Revisa tu estado de cumplimiento y moderación desde tu perfil. Razón: ${this.abuseReasonLabel}`)
+                    : `La limitación temporal de esta sesión sigue activa mientras comprobamos la actividad reciente. Razón: ${this.abuseReasonLabel}`,
+            countdownUntil: permanentRestriction ? null : countdownUntil,
+            countdownLabel: restricted
+                ? (permanentRestriction ? 'Restricción activa' : 'Fin estimado de la restricción')
+                : (decision.status === 'session_locked' ? 'Fin de la limitación de la sesión' : 'Fin de la limitación temporal'),
+        });
+    }
+
+    private applyAbuseLockResponse(response: any): void {
+        const compliance = response?.compliance ?? null;
+        if (!compliance)
+            return;
+
+        this.userSvc.setCurrentCompliance(compliance);
+        void this.userSvc.refreshCurrentPrivateProfile().catch(() => undefined);
+    }
+
+    private publishAbuseLockSyncFailure(uid: string, decision: ApiActionGuardDecision, clientDate: string): void {
+        if (uid.length < 1)
+            return;
+
+        this.sessionNotificationCenterSvc.add({
+            dedupeKey: this.guardNotificationKey(uid),
+            source: 'toast',
+            level: 'error',
+            title: 'No se pudo confirmar el reporte de seguridad',
+            message: `La limitación temporal de esta sesión sigue activa, pero no se pudo confirmar el reporte de seguridad en este momento. Razón: ${this.abuseReasonLabel}`,
+            countdownUntil: decision.status === 'session_locked'
+                ? this.resolveSessionLockReleaseAt(clientDate)
+                : decision.blockedUntil,
+            countdownLabel: decision.status === 'session_locked'
+                ? 'Fin de la limitación de la sesión'
+                : 'Fin de la limitación temporal',
+        });
+    }
+
+    private guardNotificationKey(uid: string): string {
+        return `api-action-guard.${uid}`;
+    }
+
+    private resolveSessionLockReleaseAt(dayKey: string): number {
+        const source = `${dayKey ?? ''}`.trim();
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(source))
+            return Date.now();
+        return Date.parse(`${source}T00:00:00.000Z`) + 24 * 60 * 60 * 1000;
+    }
+
+    private toTimestamp(value: string | null | undefined): number | null {
+        const parsed = new Date(`${value ?? ''}`);
+        return Number.isNaN(parsed.getTime()) ? null : parsed.getTime();
+    }
+
+    private formatDuration(valueMs: number | null): string {
+        const totalSeconds = Math.ceil((valueMs ?? 0) / 1000);
+        if (!Number.isFinite(totalSeconds) || totalSeconds <= 0)
+            return '';
+        const hours = Math.floor(totalSeconds / 3600);
+        const minutes = Math.floor((totalSeconds % 3600) / 60);
+        const seconds = totalSeconds % 60;
+        if (hours > 0)
+            return `${hours} h ${minutes.toString().padStart(2, '0')} min`;
+        if (minutes > 0)
+            return `${minutes} min ${seconds.toString().padStart(2, '0')} s`;
+        return `${seconds} s`;
     }
 }

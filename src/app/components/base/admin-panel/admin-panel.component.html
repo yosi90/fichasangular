@@ -751,16 +751,16 @@
                                             <td>{{providerLabel(user.authProvider)}}</td>
                                             <td>
                                                 <div class="admin-user-actions">
-                                                    <mat-chip class="admin-user-actions__status-chip" [class.admin-user-actions__status-chip--warn]="user.banned">
-                                                        {{user.banned ? 'Ban efectivo' : 'Sin ban efectivo'}}
+                                                    <mat-chip class="admin-user-actions__status-chip" [class.admin-user-actions__status-chip--warn]="hasActiveAccountRestriction(user)">
+                                                        {{activeRestrictionStatusLabel(user)}}
                                                     </mat-chip>
                                                     <button
-                                                        *ngIf="user.banned; else sanctionActionButton"
+                                                        *ngIf="hasActiveAccountRestriction(user); else sanctionActionButton"
                                                         mat-raised-button
                                                         color="warn"
                                                         [disabled]="!canRevokeActiveBan(user)"
                                                         (click)="retirarBaneoActivo(user)">
-                                                        {{isRevokingActiveBan(user) ? 'Retirando...' : (user.isSystemEntity ? 'No revocable' : 'Retirar baneo')}}
+                                                        {{isRevokingActiveBan(user) ? 'Retirando...' : (user.isSystemEntity ? 'No revocable' : activeRestrictionActionTitle(user))}}
                                                     </button>
                                                     <ng-template #sanctionActionButton>
                                                         <button

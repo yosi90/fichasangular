@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { Auth } from '@angular/fire/auth';
 import { Database, get, onValue, ref, set } from '@angular/fire/database';
-import { Observable, combineLatest, map } from 'rxjs';
+import { BehaviorSubject, Observable, catchError, combineLatest, from, map, of, startWith, switchMap } from 'rxjs';
 import { CACHE_CONTRACT_MANIFEST } from '../config/cache-contract-manifest';
 import {
     EMPTY_USER_ACL,
@@ -24,6 +24,7 @@ export interface AdminUserRow {
     authProvider: AuthProviderType;
     role: UserRole;
     banned: boolean;
+    moderationStatus: string | null;
     admin: boolean;
     isSystemEntity: boolean;
     permissions: Record<PermissionResource, boolean>;
@@ -47,6 +48,8 @@ const SYSTEM_ENTITY_DISPLAY_NAMES = new Set(['yosiftware']);
     providedIn: 'root'
 })
 export class AdminUsersService {
+    private readonly adminViewRefresh$ = new BehaviorSubject<number>(0);
+
     constructor(
         private db: Database,
         private auth: Auth,
@@ -59,9 +62,14 @@ export class AdminUsersService {
         return combineLatest([
             this.watchPath('UserProfiles'),
             this.watchPath('Acl/users'),
+            this.watchCanonicalUsersList(),
         ]).pipe(
-            map(([profilesRaw, aclRaw]) => this.buildRows(profilesRaw, aclRaw))
+            map(([profilesRaw, aclRaw, apiUsers]) => this.buildRows(profilesRaw, aclRaw, apiUsers))
         );
+    }
+
+    refreshUsersAdminView(): void {
+        this.adminViewRefresh$.next(Date.now());
     }
 
     async setBanned(uid: string, value: boolean): Promise<void> {
@@ -182,6 +190,7 @@ export class AdminUsersService {
         await this.setPath('UserProfiles', cachePayload.userProfilesByUid);
         await this.setPath('Acl/users', cachePayload.aclByUid);
         await this.cacheSyncMetadataSvc.markSuccess('usuarios_acl_cache', USUARIOS_ACL_CACHE_SCHEMA_VERSION);
+        this.refreshUsersAdminView();
         return true;
     }
 
@@ -291,38 +300,84 @@ export class AdminUsersService {
         await this.listUsersApi();
     }
 
-    private buildRows(profilesRaw: any, aclRaw: any): AdminUserRow[] {
+    private watchCanonicalUsersList(): Observable<UsuarioListadoItemDto[] | null> {
+        return this.adminViewRefresh$.pipe(
+            switchMap(() => from(this.listUsersApi()).pipe(
+                map((items) => Array.isArray(items) ? items : []),
+                catchError(() => of(null)),
+                startWith(null),
+            ))
+        );
+    }
+
+    private buildRows(profilesRaw: any, aclRaw: any, apiUsers: UsuarioListadoItemDto[] | null): AdminUserRow[] {
         const perfiles = this.toProfilesByUid(profilesRaw);
         const aclByUid = this.toAclByUid(aclRaw);
+        const apiByUid = this.toApiUsersByUid(apiUsers);
 
         const uids = new Set<string>([
             ...Object.keys(perfiles),
             ...Object.keys(aclByUid),
+            ...Object.keys(apiByUid),
         ]);
 
         const rows: AdminUserRow[] = [];
         uids.forEach((uid) => {
             const profile = perfiles[uid];
             const acl = aclByUid[uid] ?? { ...EMPTY_USER_ACL };
-            const role = acl.roles?.type ?? 'jugador';
-            const isSystemEntity = this.isSystemEntityProfile(uid, profile);
+            const apiUser = apiByUid[uid] ?? null;
+            const rawAclEntry = (aclRaw?.[uid] as Record<string, any>) ?? null;
+            const role = apiUser?.role ?? acl.roles?.type ?? 'jugador';
+            const moderationSummary = this.normalizeModerationSummary(
+                apiUser?.moderationSummary ?? rawAclEntry?.['moderationSummary']
+            );
+            const moderationStatus = this.normalizeModerationStatus(
+                apiUser?.moderationStatus ?? rawAclEntry?.['moderationStatus'],
+                apiUser?.banned === true,
+                moderationSummary
+            );
+            const isSystemEntity = this.isSystemEntityProfile(uid, {
+                displayName: `${profile?.displayName ?? apiUser?.displayName ?? ''}`.trim(),
+                email: `${profile?.email ?? apiUser?.email ?? ''}`.trim(),
+            });
+            const permissions = apiUser
+                ? this.permissionsFromApi(role, apiUser.permissionsCreate)
+                : this.getPermissionsByResource(role, acl.permissions);
+            const updatedAt = this.resolveUpdatedAt(apiUser, rawAclEntry);
 
             rows.push({
                 uid,
-                displayName: `${profile?.displayName ?? ''}`.trim(),
-                email: `${profile?.email ?? ''}`.trim(),
-                authProvider: this.normalizeProvider(profile?.authProvider),
+                displayName: `${profile?.displayName ?? apiUser?.displayName ?? ''}`.trim(),
+                email: `${profile?.email ?? apiUser?.email ?? ''}`.trim(),
+                authProvider: this.normalizeProvider(profile?.authProvider ?? apiUser?.authProvider),
                 role,
-                banned: acl.status?.banned === true,
-                admin: role === 'admin',
+                banned: moderationStatus === 'blocked'
+                    || moderationStatus === 'banned'
+                    || apiUser?.banned === true
+                    || acl.status?.banned === true,
+                moderationStatus,
+                admin: role === 'admin' || apiUser?.admin === true,
                 isSystemEntity,
-                permissions: this.getPermissionsByResource(role, acl.permissions),
-                updatedAt: this.toOptionalNumber((aclRaw?.[uid] as Record<string, any>)?.['updatedAt']),
-                moderationSummary: this.normalizeModerationSummary((aclRaw?.[uid] as Record<string, any>)?.['moderationSummary']),
+                permissions,
+                updatedAt,
+                moderationSummary,
             });
         });
 
         return rows.sort((a, b) => this.sortRows(a, b));
+    }
+
+    private toApiUsersByUid(apiUsers: UsuarioListadoItemDto[] | null | undefined): Record<string, UsuarioListadoItemDto> {
+        if (!Array.isArray(apiUsers))
+            return {};
+
+        return apiUsers.reduce<Record<string, UsuarioListadoItemDto>>((acc, item) => {
+            const uid = `${item?.uid ?? ''}`.trim();
+            if (uid.length < 1)
+                return acc;
+            acc[uid] = item;
+            return acc;
+        }, {});
     }
 
     private toProfilesByUid(raw: any): Record<string, UserProfile> {
@@ -381,6 +436,23 @@ export class AdminUsersService {
             base[resource] = resource === 'personajes';
         });
         return base;
+    }
+
+    private permissionsFromApi(
+        role: UserRole,
+        permissionsCreate: UsuarioPermissionCreateDto[] | null | undefined
+    ): Record<PermissionResource, boolean> {
+        return this.toPermissionsMap(this.buildEffectivePermissionsCreate(role, permissionsCreate));
+    }
+
+    private resolveUpdatedAt(
+        apiUser: UsuarioListadoItemDto | null,
+        aclRawEntry: Record<string, any> | null
+    ): number | null {
+        const updatedAtApi = Date.parse(`${apiUser?.updatedAtUtc ?? ''}`.trim());
+        if (Number.isFinite(updatedAtApi))
+            return Math.trunc(updatedAtApi);
+        return this.toOptionalNumber(aclRawEntry?.['updatedAt']);
     }
 
     private normalizeProvider(raw: any): AuthProviderType {
@@ -482,6 +554,8 @@ export class AdminUsersService {
         } catch {
             await this.cacheSyncMetadataSvc.markStale('usuarios_acl_cache', 'admin_rtdb_write_pending_api_sync');
             // Backup best-effort: no bloquea la gestión en tiempo real de RTDB.
+        } finally {
+            this.refreshUsersAdminView();
         }
     }
 
@@ -617,6 +691,11 @@ export class AdminUsersService {
                 status: {
                     banned: row?.banned === true,
                 },
+                moderationStatus: this.normalizeModerationStatus(
+                    row?.moderationStatus,
+                    row?.banned === true,
+                    this.normalizeModerationSummary(row?.moderationSummary)
+                ),
                 permissions: permissionsRaw,
                 moderationSummary: this.normalizeModerationSummary(row?.moderationSummary),
                 updatedAt,
@@ -661,6 +740,23 @@ export class AdminUsersService {
             lastSanctionAtUtc: this.toNullableText(raw?.lastSanctionAtUtc),
             activeSanction: this.normalizeModerationSanction(raw?.activeSanction),
         };
+    }
+
+    private normalizeModerationStatus(
+        value: any,
+        banned: boolean,
+        moderationSummary: UserModerationSummary | null
+    ): string | null {
+        const normalized = `${value ?? ''}`.trim().toLowerCase();
+        if (normalized === 'none' || normalized === 'blocked' || normalized === 'banned')
+            return normalized;
+        if (moderationSummary?.activeSanction?.isPermanent === true)
+            return 'banned';
+        if (moderationSummary?.activeSanction)
+            return 'blocked';
+        if (banned)
+            return 'banned';
+        return null;
     }
 
     private normalizeModerationSanction(raw: any): UserModerationSanction | null {

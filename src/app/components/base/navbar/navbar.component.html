@@ -226,9 +226,11 @@
                 <div class="notification-entry__content">
                     <div class="notification-entry__meta">
                         <strong class="notification-entry__title">{{entry.title}}</strong>
+                        <span class="notification-entry__repeat" *ngIf="entry.repeatCount > 1">x{{entry.repeatCount}}</span>
                         <span class="notification-entry__time">{{formatNotificationTime(entry.createdAt)}}</span>
                     </div>
                     <p class="notification-entry__message">{{entry.message}}</p>
+                    <span class="notification-entry__countdown" *ngIf="formatNotificationCountdown(entry) as countdown">{{countdown}}</span>
                     <span class="notification-entry__action" *ngIf="entry.actionLabel">{{entry.actionLabel}}</span>
                 </div>
                 <button type="button" class="notification-entry__dismiss"

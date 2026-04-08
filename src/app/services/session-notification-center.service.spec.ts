@@ -4,7 +4,12 @@ describe('SessionNotificationCenterService', () => {
     let service: SessionNotificationCenterService;
 
     beforeEach(() => {
+        localStorage.clear();
         service = new SessionNotificationCenterService();
+    });
+
+    afterEach(() => {
+        localStorage.clear();
     });
 
     it('añade entradas en orden descendente de creación', () => {
@@ -142,6 +147,102 @@ describe('SessionNotificationCenterService', () => {
         expect(entries[0].level).toBe('warning');
         expect(entries[0].actionLabel).toBe('Abrir');
         expect(entries[0].action).toBe(action);
+    });
+
+    it('restaura notificaciones persistidas y poda las más antiguas de 24h', () => {
+        const now = Date.now();
+        localStorage.setItem('fichas3.5.session-notifications.v1', JSON.stringify([
+            {
+                id: 'fresh',
+                dedupeKey: 'guard.uid-1',
+                source: 'toast',
+                level: 'warning',
+                title: 'Reciente',
+                message: 'Sigue visible',
+                createdAt: now - 60_000,
+                seenAt: null,
+                countdownUntil: now + 30_000,
+                countdownLabel: 'Fin del bloqueo',
+                actionLabel: null,
+            },
+            {
+                id: 'stale',
+                dedupeKey: null,
+                source: 'toast',
+                level: 'info',
+                title: 'Vieja',
+                message: 'Debe podarse',
+                createdAt: now - (24 * 60 * 60 * 1000 + 1),
+                seenAt: null,
+                countdownUntil: null,
+                countdownLabel: null,
+                actionLabel: null,
+            },
+        ]));
+
+        service = new SessionNotificationCenterService();
+
+        let entries = [] as any[];
+        service.entries$.subscribe((value) => entries = value);
+
+        expect(entries.length).toBe(1);
+        expect(entries[0].id).toBe('fresh');
+        expect(entries[0].countdownLabel).toBe('Fin del bloqueo');
+    });
+
+    it('reutiliza la misma entrada persistida cuando llega otra con el mismo dedupeKey', () => {
+        const firstId = service.add({
+            dedupeKey: 'guard.uid-1',
+            source: 'toast',
+            level: 'warning',
+            title: 'Bloqueo',
+            message: 'Inicial',
+            countdownUntil: Date.now() + 60_000,
+            countdownLabel: 'Fin del cooldown',
+        });
+
+        const secondId = service.add({
+            dedupeKey: 'guard.uid-1',
+            source: 'toast',
+            level: 'error',
+            title: 'Bloqueo actualizado',
+            message: 'Backend confirmado',
+            countdownUntil: Date.now() + 120_000,
+            countdownLabel: 'Fin de la restricción',
+        });
+
+        let entries = [] as any[];
+        service.entries$.subscribe((value) => entries = value);
+
+        expect(firstId).toBe(secondId);
+        expect(entries.length).toBe(1);
+        expect(entries[0].title).toBe('Bloqueo actualizado');
+        expect(entries[0].level).toBe('error');
+    });
+
+    it('incrementa el contador cuando una entrada deduplicada explícitamente cambia de texto', () => {
+        service.add({
+            dedupeKey: 'guard.uid-1',
+            source: 'toast',
+            level: 'warning',
+            title: 'Protección temporal activada',
+            message: 'Primer aviso',
+        });
+
+        service.add({
+            dedupeKey: 'guard.uid-1',
+            source: 'toast',
+            level: 'warning',
+            title: 'Protección temporal activada',
+            message: 'Primer aviso actualizado',
+        });
+
+        let entries = [] as any[];
+        service.entries$.subscribe((value) => entries = value);
+
+        expect(entries.length).toBe(1);
+        expect(entries[0].message).toBe('Primer aviso actualizado');
+        expect(entries[0].repeatCount).toBe(2);
     });
 
     it('permite excluir explícitamente un swal del histórico', () => {

@@ -302,6 +302,16 @@ export class UserService {
         });
     }
 
+    public setCurrentCompliance(compliance: UserComplianceSnapshot | null | undefined): void {
+        if (this.privateProfileBase && compliance !== undefined) {
+            this.privateProfileBase = {
+                ...this.privateProfileBase,
+                compliance: this.sanitizeComplianceSnapshot(compliance),
+            };
+        }
+        this.setCanonicalCompliance(compliance);
+    }
+
     public async refreshCurrentPrivateProfile(): Promise<UserPrivateProfile | null> {
         if (!this.userProfileApiSvc)
             return this.CurrentPrivateProfile;
@@ -919,7 +929,7 @@ export class UserService {
 
     private buildBanStatus(compliance: UserComplianceSnapshot | null | undefined): UserBanStatus {
         const sanction = this.sanitizeModerationSanction(compliance?.activeSanction ?? null);
-        if (compliance?.banned !== true || !sanction)
+        if (!sanction)
             return this.buildEmptyBanStatus();
 
         if (sanction.isPermanent) {
@@ -935,7 +945,11 @@ export class UserService {
         const endsAtUtc = `${sanction?.endsAtUtc ?? ''}`.trim();
         if (endsAtUtc.length > 0) {
             const parsed = new Date(endsAtUtc);
-            const expiresInMs = Number.isNaN(parsed.getTime()) ? null : parsed.getTime() - Date.now();
+            if (Number.isNaN(parsed.getTime()))
+                return this.buildEmptyBanStatus();
+            const expiresInMs = parsed.getTime() - Date.now();
+            if ((expiresInMs ?? 0) <= 0)
+                return this.buildEmptyBanStatus();
             return {
                 restriction: 'temporaryBan',
                 sanction,

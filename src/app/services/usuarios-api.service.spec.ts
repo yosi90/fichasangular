@@ -111,6 +111,7 @@ describe('UsuariosApiService', () => {
             role: 'jugador',
             admin: false,
             banned: false,
+            moderationStatus: 'blocked',
             permissionsCreate: [{ resource: 'personajes', allowed: true }],
             moderationSummary: {
                 incidentCount: '3',
@@ -141,6 +142,8 @@ describe('UsuariosApiService', () => {
         expect(url).toContain('/usuarios/acl/uid-1');
         expect(options.headers.get('Authorization')).toBe('Bearer token-audit');
         expect(options.params).toEqual({ historyLimit: '7' });
+        expect(response.moderationStatus).toBe('blocked');
+        expect(response.banned).toBeTrue();
         expect(response.moderationSummary?.incidentCount).toBe(3);
         expect(response.moderationSummary?.activeSanction?.sanctionId).toBe(17);
         expect(response.recentModerationHistory?.[0].incidentId).toBe(44);
@@ -756,8 +759,8 @@ describe('UsuariosApiService', () => {
     });
 
     it('revokeModerationSanction usa la ruta propuesta y sanea el payload opcional', async () => {
-        const httpMock = jasmine.createSpyObj('HttpClient', ['post']);
-        httpMock.post.and.returnValue(of({
+        const httpMock = jasmine.createSpyObj('HttpClient', ['delete']);
+        httpMock.delete.and.returnValue(of({
             revoked: true,
             sanction: {
                 sanctionId: '19',
@@ -772,15 +775,15 @@ describe('UsuariosApiService', () => {
         }));
         const service = new UsuariosApiService(httpMock, authMock);
 
-        const response = await service.revokeModerationSanction(19, {
+        const response = await service.revokeModerationSanction('uid-19', {
             adminComment: ' Revisado por admin. ',
             userVisibleMessage: ' Se ha retirado la restricción. ',
         });
 
-        const [url, payload, options] = httpMock.post.calls.mostRecent().args;
-        expect(url).toContain('/usuarios/admin/moderation/sanctions/19/revoke');
+        const [url, options] = httpMock.delete.calls.mostRecent().args;
+        expect(url).toContain('/usuarios/admin/moderation/users/uid-19/sanctions');
         expect(options.headers.get('Authorization')).toBe('Bearer token-audit');
-        expect(payload).toEqual({
+        expect(options.body).toEqual({
             adminComment: 'Revisado por admin.',
             userVisibleMessage: 'Se ha retirado la restricción.',
         });
@@ -791,11 +794,11 @@ describe('UsuariosApiService', () => {
     });
 
     it('revokeModerationSanction rechaza ids inválidos', async () => {
-        const httpMock = jasmine.createSpyObj('HttpClient', ['post']);
+        const httpMock = jasmine.createSpyObj('HttpClient', ['delete']);
         const service = new UsuariosApiService(httpMock, authMock);
 
-        await expectAsync(service.revokeModerationSanction(0)).toBeRejectedWithError('Sanción inválida');
-        expect(httpMock.post).not.toHaveBeenCalled();
+        await expectAsync(service.revokeModerationSanction('')).toBeRejectedWithError('UID inválido');
+        expect(httpMock.delete).not.toHaveBeenCalled();
     });
 
     it('getUserModerationHistory usa paginación y conserva campos privados admin-only', async () => {

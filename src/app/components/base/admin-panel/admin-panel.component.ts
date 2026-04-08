@@ -746,7 +746,7 @@ export class AdminPanelComponent implements OnInit, OnDestroy {
     canRevokeActiveBan(row: AdminUserRow): boolean {
         if (!this.esAdmin)
             return false;
-        if (!row?.banned)
+        if (!this.hasActiveAccountRestriction(row))
             return false;
         if (this.isSystemEntityRow(row))
             return false;
@@ -754,7 +754,7 @@ export class AdminPanelComponent implements OnInit, OnDestroy {
             return false;
         if (this.isUserOpRunning(row.uid, 'revoke-ban'))
             return false;
-        return this.getActiveBanSanctionId(row) !== null;
+        return `${row?.uid ?? ''}`.trim().length > 0;
     }
 
     isRevokingActiveBan(row: AdminUserRow): boolean {
@@ -866,24 +866,26 @@ export class AdminPanelComponent implements OnInit, OnDestroy {
     }
 
     async retirarBaneoActivo(row: AdminUserRow): Promise<void> {
-        if (!row?.banned)
+        if (!this.hasActiveAccountRestriction(row))
             return;
 
-        const sanctionId = this.getActiveBanSanctionId(row);
-        if (!sanctionId) {
-            const message = 'No se ha encontrado una sanción activa identificable para retirar este ban.';
+        const uid = `${row?.uid ?? ''}`.trim();
+        if (uid.length < 1) {
+            const message = 'No se ha encontrado un usuario válido para retirar la restricción activa.';
             this.errorUsuarios = message;
             await Swal.fire({
                 icon: 'error',
-                title: 'Ban no revocable',
+                title: 'Restricción no revocable',
                 text: message,
             });
             return;
         }
 
         const confirmation = await Swal.fire({
-            title: 'Retirar baneo',
-            text: 'Se retirará la sanción activa que mantiene el ban efectivo actual de esta cuenta.',
+            title: this.activeRestrictionActionTitle(row),
+            text: this.hasEffectiveBan(row)
+                ? 'Se retirará la sanción activa que mantiene el ban efectivo actual de esta cuenta.'
+                : 'Se retirará la restricción activa que bloquea temporalmente esta cuenta.',
             input: 'textarea',
             inputLabel: 'Comentario admin opcional',
             inputPlaceholder: 'Motivo interno de la retirada anticipada',
@@ -892,7 +894,7 @@ export class AdminPanelComponent implements OnInit, OnDestroy {
             },
             inputAutoTrim: true,
             showCancelButton: true,
-            confirmButtonText: 'Retirar baneo',
+            confirmButtonText: this.activeRestrictionActionTitle(row),
             cancelButtonText: 'Cancelar',
             confirmButtonColor: '#c62828',
         });
@@ -907,10 +909,11 @@ export class AdminPanelComponent implements OnInit, OnDestroy {
                 adminComment: `${confirmation.value ?? ''}`.trim() || null,
                 userVisibleMessage: 'Administración ha retirado antes de tiempo la restricción activa de tu cuenta.',
             };
-            const response = await this.usuariosApiSvc.revokeModerationSanction(sanctionId, payload);
+            const response = await this.usuariosApiSvc.revokeModerationSanction(uid, payload);
             const preview = await this.usuariosApiSvc.getAclByUid(row.uid, 5);
             this.patchAdminUserRow(row.uid, {
                 banned: preview.banned,
+                moderationStatus: preview.moderationStatus ?? null,
                 moderationSummary: preview.moderationSummary ?? null,
             });
             if (this.previewModeracionUsuario?.uid === row.uid) {
@@ -922,7 +925,7 @@ export class AdminPanelComponent implements OnInit, OnDestroy {
 
             await Swal.fire({
                 icon: 'success',
-                title: response.revoked ? 'Ban retirado' : 'Sin cambios',
+                title: response.revoked ? this.activeRestrictionSuccessTitle(row) : 'Sin cambios',
                 text: response.revoked
                     ? 'La sanción activa se ha retirado correctamente.'
                     : 'La sanción ya no estaba activa y no ha sido necesario aplicar cambios.',
@@ -932,7 +935,7 @@ export class AdminPanelComponent implements OnInit, OnDestroy {
             this.errorUsuarios = message;
             await Swal.fire({
                 icon: 'error',
-                title: 'No se pudo retirar el baneo',
+                title: 'No se pudo retirar la restricción',
                 text: message,
             });
         } finally {
@@ -968,6 +971,7 @@ export class AdminPanelComponent implements OnInit, OnDestroy {
             const preview = await this.usuariosApiSvc.getAclByUid(row.uid, 5);
             this.patchAdminUserRow(row.uid, {
                 banned: preview.banned,
+                moderationStatus: preview.moderationStatus ?? null,
                 moderationSummary: preview.moderationSummary ?? null,
             });
             if (this.previewModeracionUsuario?.uid === row.uid) {
@@ -1215,9 +1219,41 @@ export class AdminPanelComponent implements OnInit, OnDestroy {
         return this.userOpsInFlight.has(this.userOpKey(uid, action));
     }
 
-    private getActiveBanSanctionId(row: AdminUserRow | null | undefined): number | null {
-        const sanctionId = Number(row?.moderationSummary?.activeSanction?.sanctionId ?? 0);
-        return Number.isFinite(sanctionId) && sanctionId > 0 ? sanctionId : null;
+    hasActiveAccountRestriction(row: AdminUserRow | null | undefined): boolean {
+        if (!row)
+            return false;
+        const moderationStatus = `${row.moderationStatus ?? ''}`.trim().toLowerCase();
+        return moderationStatus === 'blocked'
+            || moderationStatus === 'banned'
+            || !!row.moderationSummary?.activeSanction
+            || row.banned === true;
+    }
+
+    hasEffectiveBan(row: AdminUserRow | null | undefined): boolean {
+        if (!row)
+            return false;
+        const moderationStatus = `${row.moderationStatus ?? ''}`.trim().toLowerCase();
+        return moderationStatus === 'banned'
+            || row.moderationSummary?.activeSanction?.isPermanent === true;
+    }
+
+    activeRestrictionStatusLabel(row: AdminUserRow | null | undefined): string {
+        if (!row)
+            return 'Sin ban efectivo';
+        const moderationStatus = `${row.moderationStatus ?? ''}`.trim().toLowerCase();
+        if (moderationStatus === 'banned' || row.moderationSummary?.activeSanction?.isPermanent === true)
+            return 'Ban efectivo';
+        if (moderationStatus === 'blocked' || !!row.moderationSummary?.activeSanction || row.banned === true)
+            return 'Bloqueo activo';
+        return 'Sin ban efectivo';
+    }
+
+    activeRestrictionActionTitle(row: AdminUserRow | null | undefined): string {
+        return this.hasEffectiveBan(row) ? 'Retirar baneo' : 'Retirar bloqueo';
+    }
+
+    private activeRestrictionSuccessTitle(row: AdminUserRow | null | undefined): string {
+        return this.hasEffectiveBan(row) ? 'Ban retirado' : 'Bloqueo retirado';
     }
 
     private async validarAccesoAdmin(): Promise<void> {

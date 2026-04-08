@@ -10,7 +10,7 @@
             </div>
 
             <mat-chip class="admin-user-modal__status-chip">
-                {{user?.banned ? 'Cuenta ya baneada' : 'Sin ban efectivo'}}
+                {{user?.moderationStatus === 'banned' ? 'Cuenta ya baneada' : ((user?.moderationStatus === 'blocked' || user?.moderationSummary?.activeSanction) ? 'Cuenta bloqueada' : 'Sin ban efectivo')}}
             </mat-chip>
         </div>
 

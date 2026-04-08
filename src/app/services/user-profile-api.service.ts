@@ -507,11 +507,17 @@ export class UserProfileApiService {
         if (!raw || typeof raw !== 'object')
             return null;
 
+        const activeSanction = this.normalizeModerationSanction(raw?.activeSanction)
+            ?? this.buildEffectiveModerationSanction(raw);
+        const moderationStatus = this.normalizeAbuseLockStatus(raw?.moderationStatus ?? raw?.effectiveStatus);
         return {
-            banned: raw?.banned === true,
+            banned: raw?.banned === true
+                || moderationStatus === 'blocked'
+                || moderationStatus === 'banned'
+                || !!activeSanction,
             mustAcceptUsage: raw?.mustAcceptUsage === true,
             mustAcceptCreation: raw?.mustAcceptCreation === true,
-            activeSanction: this.normalizeModerationSanction(raw?.activeSanction),
+            activeSanction,
             usage: this.normalizeCompliancePolicy(raw?.usage),
             creation: this.normalizeCompliancePolicy(raw?.creation),
         };
@@ -564,11 +570,151 @@ export class UserProfileApiService {
     }
 
     private normalizeAbuseLockResponse(raw: any): UserAbuseLockReportResponse {
-        const status = `${raw?.status ?? ''}`.trim().toLowerCase();
+        const status = this.normalizeAbuseLockStatus(raw?.status) ?? 'ignored';
+        const moderationStatus = this.normalizeAbuseLockStatus(raw?.moderationStatus ?? raw?.effectiveStatus);
+        const explicitSanction = this.normalizeModerationSanction(raw?.activeSanction ?? raw?.sanction);
+        const blockedUntilUtc = this.toNullableText(raw?.blockedUntilUtc ?? explicitSanction?.endsAtUtc);
+        const isPermanent = this.normalizeOptionalBoolean(raw?.isPermanent ?? explicitSanction?.isPermanent);
+        const activeSanction = explicitSanction ?? this.buildFallbackAbuseLockSanction({
+            status,
+            moderationStatus,
+            blockedUntilUtc,
+            isPermanent,
+        });
         return {
-            status: status.length > 0 ? status : 'ignored',
-            compliance: this.normalizeCompliance(raw?.compliance ?? raw?.complianceSnapshot),
+            status,
+            moderationStatus,
+            message: this.normalizeMultilineText(raw?.message ?? raw?.userVisibleMessage),
+            activeSanction,
+            blockedUntilUtc,
+            isPermanent,
+            restrictedActions: this.normalizeRestrictedActions(raw?.restrictedActions),
+            compliance: this.normalizeAbuseLockCompliance(raw?.compliance ?? raw?.complianceSnapshot, {
+                status,
+                moderationStatus,
+                activeSanction,
+                blockedUntilUtc,
+                isPermanent,
+            }),
         };
+    }
+
+    private normalizeAbuseLockCompliance(
+        rawCompliance: any,
+        fallback: {
+            status: string;
+            moderationStatus: string | null;
+            activeSanction: UserModerationSanction | null;
+            blockedUntilUtc: string | null;
+            isPermanent: boolean | null;
+        }
+    ): UserComplianceSnapshot | null {
+        const normalized = this.normalizeCompliance(rawCompliance);
+        const fallbackSanction = fallback.activeSanction ?? this.buildFallbackAbuseLockSanction(fallback);
+        const fallbackBlocksAccess = this.abuseLockImpliesBlockingRestriction(fallback);
+
+        if (!normalized)
+            return fallbackBlocksAccess && fallbackSanction
+                ? {
+                    banned: true,
+                    mustAcceptUsage: false,
+                    mustAcceptCreation: false,
+                    activeSanction: fallbackSanction,
+                    usage: null,
+                    creation: null,
+                }
+                : null;
+
+        if (!fallbackBlocksAccess || !fallbackSanction)
+            return normalized;
+
+        return {
+            ...normalized,
+            banned: true,
+            activeSanction: normalized.activeSanction ?? fallbackSanction,
+        };
+    }
+
+    private buildFallbackAbuseLockSanction(fallback: {
+        status: string;
+        moderationStatus: string | null;
+        blockedUntilUtc: string | null;
+        isPermanent: boolean | null;
+    }): UserModerationSanction | null {
+        const status = this.normalizeAbuseLockStatus(fallback.status);
+        const moderationStatus = this.normalizeAbuseLockStatus(fallback.moderationStatus);
+        const endsAtUtc = this.toNullableText(fallback.blockedUntilUtc);
+        const isPermanent = fallback.isPermanent === true
+            || (endsAtUtc === null && (status === 'banned' || moderationStatus === 'banned'));
+        if (!isPermanent && !endsAtUtc)
+            return null;
+
+        return {
+            sanctionId: null,
+            kind: 'restriction',
+            code: isPermanent ? 'technical_account_restriction_permanent' : 'technical_account_restriction_temporary',
+            name: isPermanent ? 'Restricción permanente de cuenta' : 'Restricción temporal de cuenta',
+            startsAtUtc: null,
+            endsAtUtc,
+            isPermanent,
+        };
+    }
+
+    private buildEffectiveModerationSanction(raw: any): UserModerationSanction | null {
+        if (!raw || typeof raw !== 'object')
+            return null;
+
+        const moderationStatus = this.normalizeAbuseLockStatus(raw?.moderationStatus ?? raw?.effectiveStatus);
+        const blockedUntilUtc = this.toNullableText(raw?.blockedUntilUtc ?? raw?.expiresAtUtc ?? raw?.endAtUtc);
+        const isPermanent = this.normalizeOptionalBoolean(raw?.isPermanent);
+        if (moderationStatus !== 'blocked' && moderationStatus !== 'banned' && !blockedUntilUtc && isPermanent !== true)
+            return null;
+
+        return this.buildFallbackAbuseLockSanction({
+            status: raw?.banned === true ? 'banned' : 'ignored',
+            moderationStatus,
+            blockedUntilUtc,
+            isPermanent,
+        });
+    }
+
+    private abuseLockImpliesBlockingRestriction(fallback: {
+        status: string;
+        moderationStatus: string | null;
+        activeSanction: UserModerationSanction | null;
+        blockedUntilUtc: string | null;
+        isPermanent: boolean | null;
+    }): boolean {
+        const status = this.normalizeAbuseLockStatus(fallback.status);
+        const moderationStatus = this.normalizeAbuseLockStatus(fallback.moderationStatus);
+        return status === 'blocked'
+            || status === 'banned'
+            || moderationStatus === 'blocked'
+            || moderationStatus === 'banned'
+            || !!fallback.activeSanction
+            || `${fallback.blockedUntilUtc ?? ''}`.trim().length > 0
+            || fallback.isPermanent === true;
+    }
+
+    private normalizeRestrictedActions(raw: any): string[] {
+        if (!Array.isArray(raw))
+            return [];
+        return raw
+            .map((value) => `${value ?? ''}`.trim())
+            .filter((value, index, list) => value.length > 0 && list.indexOf(value) === index);
+    }
+
+    private normalizeAbuseLockStatus(value: any): string | null {
+        const normalized = `${value ?? ''}`.trim().toLowerCase();
+        return normalized.length > 0 ? normalized : null;
+    }
+
+    private normalizeOptionalBoolean(value: any): boolean | null {
+        if (value === true)
+            return true;
+        if (value === false)
+            return false;
+        return null;
     }
 
     private normalizeModerationHistoryResponse(

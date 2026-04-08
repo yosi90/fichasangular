@@ -41,8 +41,10 @@ export class NavbarComponent implements OnInit, OnDestroy {
     private unreadNotificationsSub?: Subscription;
     private ribbonMenuCloseTimer: ReturnType<typeof setTimeout> | null = null;
     private notificationSeenSyncTimer: ReturnType<typeof setTimeout> | null = null;
+    private notificationCountdownTimer: ReturnType<typeof setInterval> | null = null;
     private activeRibbonMenuTrigger: MatMenuTrigger | null = null;
     private lastRibbonMenuOpenedAt: number = 0;
+    private notificationNow: number = Date.now();
 
     constructor(
         private dSesion: MatDialog,
@@ -79,6 +81,8 @@ export class NavbarComponent implements OnInit, OnDestroy {
         this.sessionNotificationsSub = this.sessionNotificationCenterSvc.entries$
             .subscribe((entries) => {
                 this.sessionNotifications = entries;
+                this.notificationNow = Date.now();
+                this.syncNotificationCountdownTimer();
                 if (this.notificationMenuOpen)
                     this.scheduleVisibleNotificationsSeenSync();
             });
@@ -107,6 +111,7 @@ export class NavbarComponent implements OnInit, OnDestroy {
         this.unreadNotificationsSub?.unsubscribe();
         this.cancelarCierreRibbonMenu();
         this.cancelNotificationSeenSync();
+        this.stopNotificationCountdownTimer();
     }
 
     getCategorias(manual: ManualAsociadoDetalle): ManualCategoriaConIcono[] {
@@ -212,6 +217,31 @@ export class NavbarComponent implements OnInit, OnDestroy {
         }).format(date).replace(',', '');
     }
 
+    formatNotificationCountdown(entry: SessionNotificationEntry): string {
+        const countdownUntil = Number(entry?.countdownUntil ?? 0);
+        if (!Number.isFinite(countdownUntil) || countdownUntil <= this.notificationNow)
+            return '';
+
+        const totalSeconds = Math.ceil((countdownUntil - this.notificationNow) / 1000);
+        if (!Number.isFinite(totalSeconds) || totalSeconds <= 0)
+            return '';
+
+        const days = Math.floor(totalSeconds / 86400);
+        const hours = Math.floor(totalSeconds / 3600);
+        const minutes = Math.floor((totalSeconds % 3600) / 60);
+        const seconds = totalSeconds % 60;
+        const hourLabel = `${(days > 0 ? hours % 24 : hours).toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+        const value = days > 0
+            ? `${days} d ${hourLabel}`
+            : hours > 0
+                ? hourLabel
+            : minutes > 0
+                ? `${minutes} min ${seconds.toString().padStart(2, '0')} s`
+                : `${seconds} s`;
+        const prefix = `${entry?.countdownLabel ?? ''}`.trim();
+        return prefix.length > 0 ? `${prefix}: ${value}` : value;
+    }
+
     onRibbonTriggerClick(trigger: MatMenuTrigger): void {
         this.cancelarCierreRibbonMenu();
         this.activeRibbonMenuTrigger = trigger;
@@ -258,12 +288,15 @@ export class NavbarComponent implements OnInit, OnDestroy {
     onNotificationMenuOpened(trigger: MatMenuTrigger): void {
         this.notificationMenuOpen = true;
         this.onRibbonMenuOpened(trigger);
+        this.notificationNow = Date.now();
+        this.syncNotificationCountdownTimer();
         this.scheduleVisibleNotificationsSeenSync();
     }
 
     onNotificationMenuClosed(trigger: MatMenuTrigger): void {
         this.notificationMenuOpen = false;
         this.cancelNotificationSeenSync();
+        this.stopNotificationCountdownTimer();
         this.onRibbonMenuClosed(trigger);
     }
 
@@ -353,5 +386,29 @@ export class NavbarComponent implements OnInit, OnDestroy {
             return;
         clearTimeout(this.notificationSeenSyncTimer);
         this.notificationSeenSyncTimer = null;
+    }
+
+    private syncNotificationCountdownTimer(): void {
+        const hasActiveCountdowns = this.notificationMenuOpen
+            && this.sessionNotifications.some((entry) => Number(entry?.countdownUntil ?? 0) > this.notificationNow);
+        if (!hasActiveCountdowns) {
+            this.stopNotificationCountdownTimer();
+            return;
+        }
+        if (this.notificationCountdownTimer)
+            return;
+
+        this.notificationCountdownTimer = setInterval(() => {
+            this.notificationNow = Date.now();
+            if (!this.sessionNotifications.some((entry) => Number(entry?.countdownUntil ?? 0) > this.notificationNow))
+                this.stopNotificationCountdownTimer();
+        }, 1000);
+    }
+
+    private stopNotificationCountdownTimer(): void {
+        if (!this.notificationCountdownTimer)
+            return;
+        clearInterval(this.notificationCountdownTimer);
+        this.notificationCountdownTimer = null;
     }
 }

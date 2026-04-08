@@ -3,14 +3,18 @@ export type AppToastCategory = 'mensajes' | 'amistad' | 'campanas' | 'cuentaSist
 
 export interface AppToast {
     id: string;
+    dedupeKey: string | null;
     message: string;
     type: AppToastType;
     category?: AppToastCategory;
     createdAt: number;
     durationMs: number;
+    repeatCount: number;
 }
 
 export interface AppToastOptions {
     durationMs?: number;
     category?: AppToastCategory;
+    captureSessionNotification?: boolean;
+    dedupeKey?: string | null;
 }

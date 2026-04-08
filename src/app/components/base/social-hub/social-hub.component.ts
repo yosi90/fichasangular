@@ -1502,15 +1502,18 @@ export class SocialHubComponent implements OnInit, OnChanges, OnDestroy {
         }
 
         const decision = this.apiActionGuardSvc.shouldAllow(this.userSvc.CurrentUserUid, actionKey);
-        if (decision.newlySessionLocked) {
-            const message = 'Esta sesión ha quedado bloqueada por abuso de peticiones.';
+        if (decision.status !== 'allowed') {
+            const message = this.apiActionGuardSvc.getBlockedMessage(decision);
             if (errorTarget === 'activeConversation')
                 this.activeConversationError = message;
             else
-                this.appToastSvc.showError(message);
+                this.appToastSvc.showError(message, {
+                    captureSessionNotification: false,
+                    dedupeKey: this.apiActionGuardSvc.getBlockedToastDedupeKey(this.userSvc.CurrentUserUid, decision.status),
+                });
             return false;
         }
-        return decision.status === 'allowed';
+        return true;
     }
 
     private mapSocialActionError(error: any, fallback: string): string {

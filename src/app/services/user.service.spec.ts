@@ -890,6 +890,160 @@ describe('UserService', () => {
         expect(service.CurrentPrivateProfile?.compliance?.mustAcceptCreation).toBeTrue();
     });
 
+    it('permite actualizar compliance canónico desde una mutación API sin esperar a Firestore', async () => {
+        const apiMock = {
+            getMyProfile: jasmine.createSpy('getMyProfile').and.resolveTo(buildPrivateProfile({
+                compliance: null,
+            })),
+            getMyCompliance: jasmine.createSpy('getMyCompliance').and.resolveTo({
+                banned: false,
+                mustAcceptUsage: true,
+                mustAcceptCreation: false,
+                activeSanction: null,
+                usage: { version: '4', accepted: false },
+                creation: null,
+            }),
+        };
+        const firestoreMock = {
+            watchMyProfile: jasmine.createSpy('watchMyProfile').and.callFake((next: (profile: any) => void) => {
+                next(buildPrivateProfile({
+                    compliance: {
+                        banned: false,
+                        mustAcceptUsage: true,
+                        mustAcceptCreation: false,
+                        activeSanction: null,
+                        usage: { version: '4', accepted: false },
+                        creation: null,
+                    },
+                }));
+                return () => undefined;
+            }),
+        };
+        const service = new UserServiceProfileBootstrapTestDouble(apiMock, firestoreMock);
+
+        service.emitAuth({
+            uid: 'uid-1',
+            displayName: 'Aldric',
+            email: 'aldric@test.com',
+        } as User);
+        await service.flush();
+
+        service.setCurrentCompliance({
+            banned: false,
+            mustAcceptUsage: false,
+            mustAcceptCreation: false,
+            activeSanction: null,
+            usage: {
+                version: '4',
+                accepted: true,
+                acceptedAtUtc: '2026-04-08T10:00:00Z',
+            },
+            creation: null,
+        } as any);
+
+        expect(service.CurrentPrivateProfile?.compliance?.mustAcceptUsage).toBeFalse();
+        expect(service.getAccessRestriction('usage')).toBeNull();
+    });
+
+    it('setCurrentCompliance activa la restricción temporal efectiva sin esperar a Firestore', async () => {
+        const service = new UserServiceTestDouble();
+        service.emitAcl('uid-abuse-lock', {
+            roles: { admin: false, type: 'jugador' },
+            status: { banned: false },
+            permissions: { personajes: { create: true } },
+        });
+        service.emitAuth({
+            uid: 'uid-abuse-lock',
+            displayName: 'Aldric',
+            email: 'aldric@test.com',
+        } as User);
+        await service.flush();
+
+        service.setCurrentCompliance({
+            banned: true,
+            mustAcceptUsage: false,
+            mustAcceptCreation: false,
+            activeSanction: {
+                sanctionId: 77,
+                kind: 'restriction',
+                code: 'technical_account_restriction_temporary',
+                name: 'Restricción temporal de cuenta',
+                startsAtUtc: '2026-04-08T10:00:00Z',
+                endsAtUtc: '2999-04-08T20:00:00Z',
+                isPermanent: false,
+            },
+            usage: null,
+            creation: null,
+        });
+
+        expect(service.getAccessRestriction('usage')).toBe('temporaryBan');
+        expect(service.getCurrentBanStatus()).toEqual(jasmine.objectContaining({
+            restriction: 'temporaryBan',
+            isActiveNow: true,
+            endsAtUtc: '2999-04-08T20:00:00Z',
+        }));
+        expect(service.signOutCalls).toBe(0);
+    });
+
+    it('trata una sanción activa temporal como restricción efectiva aunque backend marque banned=false', async () => {
+        const service = new UserServiceTestDouble();
+        service.emitAcl('uid-blocked-temp', {
+            roles: { admin: false, type: 'jugador' },
+            status: { banned: false },
+            permissions: { personajes: { create: true } },
+        });
+        service.emitAuth({
+            uid: 'uid-blocked-temp',
+            displayName: 'Aldric',
+            email: 'aldric@test.com',
+        } as User);
+        await service.flush();
+
+        service.setCurrentPrivateProfile({
+            uid: 'uid-blocked-temp',
+            displayName: 'Aldric',
+            bio: null,
+            genderIdentity: null,
+            pronouns: null,
+            email: 'aldric@test.com',
+            emailVerified: true,
+            authProvider: 'correo',
+            photoUrl: null,
+            photoThumbUrl: null,
+            createdAt: null,
+            lastSeenAt: null,
+            role: 'jugador',
+            permissions: {
+                personajes: { create: true },
+            },
+            compliance: {
+                banned: false,
+                mustAcceptUsage: false,
+                mustAcceptCreation: false,
+                activeSanction: {
+                    sanctionId: 13,
+                    kind: 'restriction',
+                    code: 'technical_account_restriction_temporary',
+                    name: 'Restricción temporal de cuenta',
+                    startsAtUtc: '2026-04-02T09:00:00Z',
+                    endsAtUtc: '2999-04-02T10:11:00Z',
+                    isPermanent: false,
+                },
+                usage: null,
+                creation: null,
+            },
+        });
+        await service.flush();
+
+        expect(service.getCurrentBanStatus()).toEqual(jasmine.objectContaining({
+            restriction: 'temporaryBan',
+            isActiveNow: true,
+            endsAtUtc: '2999-04-02T10:11:00Z',
+        }));
+        expect(service.getAccessRestriction('usage')).toBe('temporaryBan');
+        expect(service.signOutCalls).toBe(0);
+    });
+
     it('limpia compliance vieja cuando Firestore reemite null explícito', async () => {
         const apiMock = {
             getMyProfile: jasmine.createSpy('getMyProfile').and.resolveTo(buildPrivateProfile({

@@ -100,7 +100,7 @@ describe('UserProfileApiService', () => {
 
         const compliance = await service.getMyCompliance();
 
-        expect(compliance?.banned).toBeFalse();
+        expect(compliance?.banned).toBeTrue();
         expect(compliance?.mustAcceptUsage).toBeTrue();
         expect(compliance?.mustAcceptCreation).toBeFalse();
         expect(compliance?.activeSanction?.sanctionId).toBe(7);
@@ -110,6 +110,29 @@ describe('UserProfileApiService', () => {
         const [url, options] = httpMock.get.calls.mostRecent().args;
         expect(url).toContain('/usuarios/me/compliance');
         expect(options.headers.get('Authorization')).toBe('Bearer token-settings');
+    });
+
+    it('getMyCompliance sintetiza una sanción activa cuando backend expone moderationStatus y blockedUntilUtc sin activeSanction', async () => {
+        const httpMock = jasmine.createSpyObj('HttpClient', ['get', 'put', 'post', 'patch']);
+        httpMock.get.and.returnValue(of({
+            banned: false,
+            moderationStatus: 'blocked',
+            blockedUntilUtc: '2026-04-08T20:00:00.000Z',
+            isPermanent: false,
+            mustAcceptUsage: false,
+            mustAcceptCreation: false,
+        }));
+        const service = new UserProfileApiService(httpMock, authMock);
+
+        const compliance = await service.getMyCompliance();
+
+        expect(compliance?.banned).toBeTrue();
+        expect(compliance?.activeSanction).toEqual(jasmine.objectContaining({
+            kind: 'restriction',
+            code: 'technical_account_restriction_temporary',
+            endsAtUtc: '2026-04-08T20:00:00.000Z',
+            isPermanent: false,
+        }));
     });
 
     it('getMySettings usa Firestore privado cuando el read model esta disponible', async () => {
@@ -635,6 +658,58 @@ describe('UserProfileApiService', () => {
         expect(options.headers.get('Authorization')).toBe('Bearer token-settings');
         expect(response.status).toBe('banned');
         expect(response.compliance?.banned).toBeTrue();
+        expect(response.moderationStatus).toBeNull();
+        expect(response.message).toBeNull();
+        expect(response.activeSanction).toEqual(jasmine.objectContaining({
+            kind: 'restriction',
+            code: 'technical_account_restriction_permanent',
+            name: 'Restricción permanente de cuenta',
+            isPermanent: true,
+        }));
+        expect(response.blockedUntilUtc).toBeNull();
+        expect(response.isPermanent).toBeNull();
+        expect(response.restrictedActions).toEqual([]);
+    });
+
+    it('reportAbuseLock sintetiza compliance bloqueante cuando backend devuelve shape nuevo sin compliance explícito', async () => {
+        const httpMock = jasmine.createSpyObj('HttpClient', ['get', 'put', 'post', 'patch']);
+        httpMock.post.and.returnValue(of({
+            status: 'blocked',
+            moderationStatus: 'blocked',
+            message: 'Tu cuenta queda restringida temporalmente hasta que termine la sanción activa.',
+            blockedUntilUtc: '2026-03-28T20:00:00.000Z',
+            isPermanent: false,
+            restrictedActions: ['social.messages', 'social.messages', 'campaigns.manage'],
+        }));
+        const service = new UserProfileApiService(httpMock, authMock);
+
+        const response = await service.reportAbuseLock({
+            reason: 'frontend_api_button_spam',
+            clientDate: '2026-03-28',
+            localBlockCountToday: 3,
+            source: 'web',
+        });
+
+        expect(response.status).toBe('blocked');
+        expect(response.moderationStatus).toBe('blocked');
+        expect(response.message).toContain('restringida temporalmente');
+        expect(response.blockedUntilUtc).toBe('2026-03-28T20:00:00.000Z');
+        expect(response.isPermanent).toBeFalse();
+        expect(response.restrictedActions).toEqual(['social.messages', 'campaigns.manage']);
+        expect(response.activeSanction).toEqual(jasmine.objectContaining({
+            kind: 'restriction',
+            name: 'Restricción temporal de cuenta',
+            endsAtUtc: '2026-03-28T20:00:00.000Z',
+            isPermanent: false,
+        }));
+        expect(response.compliance).toEqual(jasmine.objectContaining({
+            banned: true,
+            mustAcceptUsage: false,
+            mustAcceptCreation: false,
+            activeSanction: jasmine.objectContaining({
+                endsAtUtc: '2026-03-28T20:00:00.000Z',
+            }),
+        }));
     });
 
     it('getPublicProfile usa cache positiva y evita repetir la llamada HTTP', async () => {

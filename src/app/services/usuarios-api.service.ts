@@ -321,14 +321,17 @@ export class UsuariosApiService {
     }
 
     async revokeModerationSanction(
-        sanctionId: number,
+        uid: string,
         payload: ModerationSanctionRevokeRequestDto = {}
     ): Promise<ModerationSanctionRevokeResponseDto> {
-        const normalizedSanctionId = this.normalizeModerationSanctionId(sanctionId);
+        const normalizedUid = `${uid ?? ''}`.trim();
+        if (normalizedUid.length < 1)
+            throw new Error('UID inválido');
         const normalizedPayload = this.normalizeModerationSanctionRevokeRequest(payload);
         try {
             const response = await firstValueFrom(
-                this.http.post<any>(`${this.usuariosBaseUrl}/admin/moderation/sanctions/${normalizedSanctionId}/revoke`, normalizedPayload, {
+                this.http.delete<any>(`${this.usuariosBaseUrl}/admin/moderation/users/${encodeURIComponent(normalizedUid)}/sanctions`, {
+                    body: normalizedPayload,
                     headers: await this.buildAuthHeaders(),
                 })
             );
@@ -975,6 +978,12 @@ export class UsuariosApiService {
     }
 
     private normalizeListadoItem(raw: any): UsuarioListadoItemDto {
+        const moderationSummary = this.normalizeModerationSummary(raw?.moderationSummary);
+        const moderationStatus = this.normalizeModerationStatus(
+            raw?.moderationStatus,
+            raw?.banned === true,
+            moderationSummary
+        );
         return {
             userId: `${raw?.userId ?? ''}`.trim(),
             uid: `${raw?.uid ?? ''}`.trim(),
@@ -983,15 +992,22 @@ export class UsuariosApiService {
             authProvider: this.normalizeAuthProvider(raw?.authProvider),
             role: this.normalizeUserRole(raw?.role),
             admin: raw?.admin === true || `${raw?.role ?? ''}`.trim().toLowerCase() === 'admin',
-            banned: raw?.banned === true,
+            banned: raw?.banned === true || moderationStatus === 'blocked' || moderationStatus === 'banned',
+            moderationStatus,
             updatedAtUtc: this.toNullableText(raw?.updatedAtUtc),
             updatedByUserId: this.toNullableText(raw?.updatedByUserId),
             permissionsCreate: this.normalizePermissionsCreate(raw?.permissionsCreate),
-            moderationSummary: this.normalizeModerationSummary(raw?.moderationSummary),
+            moderationSummary,
         };
     }
 
     private normalizeAclResponse(raw: any, fallbackUid: string): UsuarioAclResponseDto {
+        const moderationSummary = this.normalizeModerationSummary(raw?.moderationSummary);
+        const moderationStatus = this.normalizeModerationStatus(
+            raw?.moderationStatus,
+            raw?.banned === true,
+            moderationSummary
+        );
         return {
             userId: this.toNullableText(raw?.userId),
             uid: this.toNullableText(raw?.uid) ?? fallbackUid,
@@ -1000,9 +1016,10 @@ export class UsuariosApiService {
             authProvider: raw?.authProvider ? this.normalizeAuthProvider(raw?.authProvider) : null,
             role: this.normalizeUserRole(raw?.role),
             admin: raw?.admin === true || `${raw?.role ?? ''}`.trim().toLowerCase() === 'admin',
-            banned: raw?.banned === true,
+            banned: raw?.banned === true || moderationStatus === 'blocked' || moderationStatus === 'banned',
+            moderationStatus,
             permissionsCreate: this.normalizePermissionsCreate(raw?.permissionsCreate),
-            moderationSummary: this.normalizeModerationSummary(raw?.moderationSummary),
+            moderationSummary,
             recentModerationHistory: Array.isArray(raw?.recentModerationHistory)
                 ? raw.recentModerationHistory.map((item: any) => this.normalizeModerationHistoryItem(item))
                 : [],
@@ -1083,6 +1100,23 @@ export class UsuariosApiService {
         const normalized = `${value ?? ''}`.trim().toLowerCase();
         if (normalized === 'reported' || normalized === 'sanctioned' || normalized === 'banned')
             return normalized;
+        return null;
+    }
+
+    private normalizeModerationStatus(
+        value: any,
+        banned: boolean,
+        moderationSummary: UserModerationSummary | null
+    ): string | null {
+        const normalized = `${value ?? ''}`.trim().toLowerCase();
+        if (normalized === 'none' || normalized === 'blocked' || normalized === 'banned')
+            return normalized;
+        if (moderationSummary?.activeSanction?.isPermanent === true)
+            return 'banned';
+        if (moderationSummary?.activeSanction)
+            return 'blocked';
+        if (banned)
+            return 'banned';
         return null;
     }
 

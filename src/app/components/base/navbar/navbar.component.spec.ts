@@ -75,11 +75,13 @@ describe('NavbarComponent', () => {
     }
 
     beforeEach(() => {
+        localStorage.clear();
         component = createComponent();
     });
 
     afterEach(() => {
         component.ngOnDestroy();
+        localStorage.clear();
         isLoggedIn$.complete();
         permisos$.complete();
         currentPrivateProfile$.complete();
@@ -340,6 +342,46 @@ describe('NavbarComponent', () => {
         expect(trigger.closeMenu).toHaveBeenCalled();
         expect(action).toHaveBeenCalled();
     });
+
+    it('formatea countdowns activos para el menú de notificaciones', () => {
+        (component as any).notificationNow = Date.now();
+        const entry = {
+            id: 'n-1',
+            dedupeKey: 'guard.uid-1',
+            source: 'toast',
+            level: 'warning',
+            title: 'Bloqueo',
+            message: 'Mensaje',
+            createdAt: Date.now(),
+            seenAt: null,
+            countdownUntil: Date.now() + 65_000,
+            countdownLabel: 'Fin del cooldown',
+            actionLabel: null,
+            action: null,
+        };
+
+        expect(component.formatNotificationCountdown(entry as any)).toContain('Fin del cooldown: 1 min 05 s');
+    });
+
+    it('mantiene segundos visibles también cuando el countdown está en horas', () => {
+        (component as any).notificationNow = Date.now();
+        const entry = {
+            id: 'n-2',
+            dedupeKey: 'guard.uid-2',
+            source: 'toast',
+            level: 'warning',
+            title: 'Bloqueo',
+            message: 'Mensaje',
+            createdAt: Date.now(),
+            seenAt: null,
+            countdownUntil: Date.now() + (10 * 60 * 60 * 1000) + 65_000,
+            countdownLabel: 'Fin de la restricción',
+            actionLabel: null,
+            action: null,
+        };
+
+        expect(component.formatNotificationCountdown(entry as any)).toContain('Fin de la restricción: 10:01:05');
+    });
 });
 
 describe('NavbarComponent template', () => {
@@ -349,6 +391,7 @@ describe('NavbarComponent template', () => {
     let userState: { nombre: string; correo: string; permisos: number; };
 
     beforeEach(async () => {
+        localStorage.clear();
         userState = { nombre: 'Invitado', correo: '', permisos: 0 };
         await TestBed.configureTestingModule({
             declarations: [NavbarComponent],
@@ -407,6 +450,7 @@ describe('NavbarComponent template', () => {
 
     afterEach(() => {
         fixture.destroy();
+        localStorage.clear();
     });
 
     it('crea la cinta iconificada y la campana a la derecha', () => {

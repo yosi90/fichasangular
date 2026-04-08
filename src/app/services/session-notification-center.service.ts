@@ -13,6 +13,8 @@ import {
     providedIn: 'root'
 })
 export class SessionNotificationCenterService {
+    private readonly storageKey = 'fichas3.5.session-notifications.v1';
+    private readonly maxEntryAgeMs = 24 * 60 * 60 * 1000;
     private readonly entriesSubject = new BehaviorSubject<SessionNotificationEntry[]>([]);
     private sequence = 0;
 
@@ -22,9 +24,17 @@ export class SessionNotificationCenterService {
         distinctUntilChanged()
     );
 
+    constructor() {
+        this.restoreEntries();
+    }
+
     add(entry: SessionNotificationEntryInput): string {
         const normalized = this.normalizeEntry(entry);
-        this.entriesSubject.next([normalized, ...this.entriesSubject.value]);
+        const nextEntries = [
+            normalized,
+            ...this.entriesSubject.value.filter((current) => current.id !== normalized.id),
+        ];
+        this.writeEntries(nextEntries);
         return normalized.id;
     }
 
@@ -32,13 +42,13 @@ export class SessionNotificationCenterService {
         const normalizedId = `${id ?? ''}`.trim();
         if (normalizedId.length < 1)
             return;
-        this.entriesSubject.next(this.entriesSubject.value.filter((entry) => entry.id !== normalizedId));
+        this.writeEntries(this.entriesSubject.value.filter((entry) => entry.id !== normalizedId));
     }
 
     clear(): void {
         if (this.entriesSubject.value.length < 1)
             return;
-        this.entriesSubject.next([]);
+        this.writeEntries([]);
     }
 
     markSeen(ids: string[]): void {
@@ -51,7 +61,7 @@ export class SessionNotificationCenterService {
             return;
 
         const now = Date.now();
-        this.entriesSubject.next(
+        this.writeEntries(
             this.entriesSubject.value.map((entry) => normalizedIds.has(entry.id) && entry.seenAt === null
                 ? { ...entry, seenAt: now }
                 : entry)
@@ -86,20 +96,146 @@ export class SessionNotificationCenterService {
     private normalizeEntry(entry: SessionNotificationEntryInput): SessionNotificationEntry {
         const title = `${entry?.title ?? ''}`.trim();
         const message = this.normalizeText(entry?.message);
+        const requestedDedupeKey = `${entry?.dedupeKey ?? ''}`.trim();
+        const hasExplicitDedupeKey = requestedDedupeKey.length > 0;
+        const countdownUntil = this.toFutureTimestamp(entry?.countdownUntil);
+        const countdownLabel = `${entry?.countdownLabel ?? ''}`.trim() || null;
         const fallbackTitle = title.length > 0
             ? title
             : (message.length > 0 ? this.truncate(message, 84) : 'Notificación');
+        const dedupeKey = hasExplicitDedupeKey
+            ? requestedDedupeKey
+            : this.buildAutomaticDedupeKey(
+                entry?.source === 'swal' ? 'swal' : 'toast',
+                this.normalizeLevel(entry?.level) ?? 'info',
+                fallbackTitle,
+                message,
+                `${entry?.actionLabel ?? ''}`.trim() || null,
+                countdownLabel
+            );
+        const existing = dedupeKey.length > 0
+            ? this.entriesSubject.value.find((item) => item.dedupeKey === dedupeKey) ?? null
+            : null;
+        const sameSignature = existing
+            && this.isSameEntrySignature(
+                existing,
+                entry?.source === 'swal' ? 'swal' : 'toast',
+                this.normalizeLevel(entry?.level) ?? 'info',
+                fallbackTitle,
+                message,
+                `${entry?.actionLabel ?? ''}`.trim() || null,
+                countdownLabel,
+                hasExplicitDedupeKey
+            );
         return {
-            id: `session-notification-${Date.now()}-${++this.sequence}`,
+            id: existing?.id ?? `session-notification-${Date.now()}-${++this.sequence}`,
+            dedupeKey: dedupeKey.length > 0 ? dedupeKey : null,
             source: entry?.source === 'swal' ? 'swal' : 'toast',
             level: this.normalizeLevel(entry?.level) ?? 'info',
             title: fallbackTitle,
             message,
             createdAt: Date.now(),
             seenAt: null,
+            countdownUntil,
+            countdownLabel,
+            repeatCount: sameSignature ? Math.max(1, Number(existing?.repeatCount ?? 1)) + 1 : 1,
             actionLabel: `${entry?.actionLabel ?? ''}`.trim() || null,
             action: typeof entry?.action === 'function' ? entry.action : null,
         };
+    }
+
+    private restoreEntries(): void {
+        this.writeEntries(this.readStoredEntries());
+    }
+
+    private readStoredEntries(): SessionNotificationEntry[] {
+        const storage = this.getStorage();
+        if (!storage)
+            return [];
+
+        try {
+            const raw = storage.getItem(this.storageKey);
+            if (!raw)
+                return [];
+
+            const now = Date.now();
+            const parsed = JSON.parse(raw);
+            if (!Array.isArray(parsed))
+                return [];
+
+            return parsed
+                .map((entry) => this.normalizeStoredEntry(entry, now))
+                .filter((entry): entry is SessionNotificationEntry => !!entry);
+        } catch {
+            return [];
+        }
+    }
+
+    private normalizeStoredEntry(raw: any, now: number): SessionNotificationEntry | null {
+        const createdAt = this.toPositiveTimestamp(raw?.createdAt);
+        if (createdAt === null || now - createdAt > this.maxEntryAgeMs)
+            return null;
+
+        const id = `${raw?.id ?? ''}`.trim();
+        if (id.length < 1)
+            return null;
+
+        return {
+            id,
+            dedupeKey: `${raw?.dedupeKey ?? ''}`.trim() || null,
+            source: raw?.source === 'swal' ? 'swal' : 'toast',
+            level: this.normalizeLevel(raw?.level) ?? 'info',
+            title: `${raw?.title ?? ''}`.trim() || 'Notificación',
+            message: this.normalizeText(raw?.message),
+            createdAt,
+            seenAt: this.toPositiveTimestamp(raw?.seenAt),
+            countdownUntil: this.toFutureTimestamp(raw?.countdownUntil),
+            countdownLabel: `${raw?.countdownLabel ?? ''}`.trim() || null,
+            repeatCount: this.toPositiveTimestamp(raw?.repeatCount) ?? 1,
+            actionLabel: null,
+            action: null,
+        };
+    }
+
+    private writeEntries(entries: SessionNotificationEntry[], persist: boolean = true): void {
+        const now = Date.now();
+        const normalizedEntries = (entries ?? [])
+            .filter((entry) => now - entry.createdAt <= this.maxEntryAgeMs)
+            .sort((a, b) => b.createdAt - a.createdAt);
+        this.entriesSubject.next(normalizedEntries);
+        if (!persist)
+            return;
+
+        const storage = this.getStorage();
+        if (!storage)
+            return;
+
+        try {
+            storage.setItem(this.storageKey, JSON.stringify(normalizedEntries.map((entry) => ({
+                id: entry.id,
+                dedupeKey: entry.dedupeKey,
+                source: entry.source,
+                level: entry.level,
+                title: entry.title,
+                message: entry.message,
+                createdAt: entry.createdAt,
+                seenAt: entry.seenAt,
+                countdownUntil: entry.countdownUntil,
+                countdownLabel: entry.countdownLabel,
+                repeatCount: entry.repeatCount,
+                actionLabel: entry.actionLabel,
+            }))));
+        } catch {
+            // Si localStorage falla, mantenemos el histórico en memoria.
+        }
+    }
+
+    private getStorage(): Storage | null {
+        try {
+            return globalThis?.localStorage ?? null;
+        } catch {
+            return null;
+        }
     }
 
     private buildSwalCapture(
@@ -227,5 +363,54 @@ export class SessionNotificationCenterService {
         if (normalized.length <= maxLength)
             return normalized;
         return `${normalized.slice(0, maxLength - 3).trim()}...`;
+    }
+
+    private toPositiveTimestamp(value: any): number | null {
+        const parsed = Math.trunc(Number(value));
+        return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+    }
+
+    private toFutureTimestamp(value: any): number | null {
+        const parsed = this.toPositiveTimestamp(value);
+        return parsed && parsed > Date.now() ? parsed : null;
+    }
+
+    private buildAutomaticDedupeKey(
+        source: SessionNotificationEntry['source'],
+        level: SessionNotificationEntry['level'],
+        title: string,
+        message: string,
+        actionLabel: string | null,
+        countdownLabel: string | null
+    ): string {
+        return [
+            'auto',
+            source,
+            level,
+            this.normalizeText(title),
+            this.normalizeText(message),
+            `${actionLabel ?? ''}`.trim().toLowerCase(),
+            `${countdownLabel ?? ''}`.trim().toLowerCase(),
+        ].join('|');
+    }
+
+    private isSameEntrySignature(
+        entry: SessionNotificationEntry,
+        source: SessionNotificationEntry['source'],
+        level: SessionNotificationEntry['level'],
+        title: string,
+        message: string,
+        actionLabel: string | null,
+        countdownLabel: string | null,
+        allowContentVariance: boolean
+    ): boolean {
+        if (allowContentVariance)
+            return entry.source === source;
+        return entry.source === source
+            && entry.level === level
+            && entry.title === title
+            && entry.message === message
+            && `${entry.actionLabel ?? ''}` === `${actionLabel ?? ''}`
+            && `${entry.countdownLabel ?? ''}` === `${countdownLabel ?? ''}`;
     }
 }

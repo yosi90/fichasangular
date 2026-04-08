@@ -2226,11 +2226,14 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
         }
 
         const decision = this.apiActionGuardSvc.shouldAllow(this.userSvc.CurrentUserUid, actionKey);
-        if (decision.newlySessionLocked) {
-            this.appToastSvc.showError('Esta sesión ha quedado bloqueada por abuso de peticiones.');
+        if (decision.status !== 'allowed') {
+            this.appToastSvc.showError(this.apiActionGuardSvc.getBlockedMessage(decision), {
+                captureSessionNotification: false,
+                dedupeKey: this.apiActionGuardSvc.getBlockedToastDedupeKey(this.userSvc.CurrentUserUid, decision.status),
+            });
             return false;
         }
-        return decision.status === 'allowed';
+        return true;
     }
 
     private async syncAuthDisplayName(displayName: string): Promise<void> {
@@ -2306,6 +2309,7 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
             ...currentProfile,
             compliance,
         };
+        this.userSvc.setCurrentCompliance(compliance);
         this.userSvc.setCurrentPrivateProfile(nextProfile);
         this.profile = nextProfile;
     }

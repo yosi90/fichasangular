@@ -119,7 +119,7 @@ describe('UserProfileComponent', () => {
         userSettingsSvc.loadSettings.and.resolveTo(settings);
         userSettingsSvc.saveSettings.and.resolveTo(settings);
         userSettingsSvc.clearPreviewPlacements.and.resolveTo();
-        apiActionGuardSvc = jasmine.createSpyObj<ApiActionGuardService>('ApiActionGuardService', ['shouldAllow']);
+        apiActionGuardSvc = jasmine.createSpyObj<ApiActionGuardService>('ApiActionGuardService', ['shouldAllow', 'getBlockedMessage', 'getBlockedToastDedupeKey']);
         apiActionGuardSvc.shouldAllow.and.returnValue({
             status: 'allowed',
             blockedUntil: null,
@@ -128,11 +128,14 @@ describe('UserProfileComponent', () => {
             newlyBlocked: false,
             newlySessionLocked: false,
         });
+        apiActionGuardSvc.getBlockedMessage.and.returnValue('Hemos observado un comportamiento inusual en esta sesión.');
+        apiActionGuardSvc.getBlockedToastDedupeKey.and.returnValue('api-action-guard.uid-1.toast.cooldown');
 
         userSvc = {
             currentPrivateProfile$: profileSubject.asObservable(),
             CurrentUserUid: 'uid-1',
             refreshCurrentPrivateProfile: jasmine.createSpy('refreshCurrentPrivateProfile').and.callFake(async () => profileSubject.value),
+            setCurrentCompliance: jasmine.createSpy('setCurrentCompliance'),
             setCurrentPrivateProfile: jasmine.createSpy('setCurrentPrivateProfile'),
             getCurrentRole: jasmine.createSpy('getCurrentRole').and.callFake(() => profileSubject.value?.role ?? 'jugador'),
             can: jasmine.createSpy('can').and.returnValue(true),
@@ -470,6 +473,9 @@ describe('UserProfileComponent', () => {
         tick();
 
         expect(apiSvc.acceptActivePolicy).toHaveBeenCalledWith('usage');
+        expect(userSvc.setCurrentCompliance).toHaveBeenCalledWith(jasmine.objectContaining({
+            mustAcceptUsage: false,
+        }));
         expect(userSvc.setCurrentPrivateProfile).toHaveBeenCalledWith(jasmine.objectContaining({
             compliance: jasmine.objectContaining({
                 mustAcceptUsage: false,
@@ -689,6 +695,42 @@ describe('UserProfileComponent', () => {
         tick();
 
         expect(toastSvc.showError).toHaveBeenCalledWith('Debes aceptar las normas de uso vigentes antes de continuar.');
+    }));
+
+    it('avisa del cooldown local y evita llamar a la API al guardar identidad', fakeAsync(() => {
+        const apiSvc = TestBed.inject(UserProfileApiService) as jasmine.SpyObj<UserProfileApiService>;
+        const toastSvc = TestBed.inject(AppToastService) as jasmine.SpyObj<AppToastService>;
+        apiActionGuardSvc.shouldAllow.and.returnValue({
+            status: 'cooldown',
+            blockedUntil: Date.now() + 30_000,
+            blocksToday: 1,
+            sessionLocked: false,
+            newlyBlocked: true,
+            newlySessionLocked: false,
+        });
+        apiActionGuardSvc.getBlockedMessage.and.returnValue(
+            'Hemos detectado demasiadas solicitudes en muy poco tiempo. Hemos limitado temporalmente tus peticiones para proteger la estabilidad de la web. Razón: Demasiadas solicitudes en un corto espacio de tiempo. Podrás volver a intentarlo en 30 s.'
+        );
+        apiActionGuardSvc.getBlockedToastDedupeKey.and.returnValue('api-action-guard.uid-1.toast.cooldown');
+
+        fixture.detectChanges();
+        tick();
+
+        component.displayNameDraft = 'Nombre válido';
+        component.bioDraft = 'Bio suficientemente larga';
+        component.genderIdentityDraft = 'No binario';
+        component.pronounsDraft = 'elle';
+        void component.guardarIdentidad();
+        tick();
+
+        expect(apiSvc.updateMyProfile).not.toHaveBeenCalled();
+        expect(toastSvc.showError).toHaveBeenCalledWith(
+            'Hemos detectado demasiadas solicitudes en muy poco tiempo. Hemos limitado temporalmente tus peticiones para proteger la estabilidad de la web. Razón: Demasiadas solicitudes en un corto espacio de tiempo. Podrás volver a intentarlo en 30 s.',
+            {
+                captureSessionNotification: false,
+                dedupeKey: 'api-action-guard.uid-1.toast.cooldown',
+            }
+        );
     }));
 
     it('asegura el chat de campaña y navega a Social > mensajes', fakeAsync(() => {

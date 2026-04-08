@@ -12,21 +12,29 @@ export interface SessionNotificationAction {
 
 export interface SessionNotificationEntry {
     id: string;
+    dedupeKey: string | null;
     source: SessionNotificationSource;
     level: SessionNotificationLevel;
     title: string;
     message: string;
     createdAt: number;
     seenAt: number | null;
+    countdownUntil: number | null;
+    countdownLabel: string | null;
+    repeatCount: number;
     actionLabel: string | null;
     action: SessionNotificationActionHandler | null;
 }
 
 export interface SessionNotificationEntryInput {
+    dedupeKey?: string | null;
     source: SessionNotificationSource;
     level: SessionNotificationLevel;
     title?: string | null;
     message?: string | null;
+    countdownUntil?: number | null;
+    countdownLabel?: string | null;
+    repeatCount?: number | null;
     actionLabel?: string | null;
     action?: SessionNotificationActionHandler | null;
 }

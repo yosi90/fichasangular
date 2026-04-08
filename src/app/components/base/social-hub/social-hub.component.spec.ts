@@ -159,7 +159,7 @@ describe('SocialHubComponent', () => {
             isBubbleFeatureEnabled: true,
             listWindow$: floatingListWindow$.asObservable(),
         });
-        apiActionGuardSvc = jasmine.createSpyObj<ApiActionGuardService>('ApiActionGuardService', ['shouldAllow']);
+        apiActionGuardSvc = jasmine.createSpyObj<ApiActionGuardService>('ApiActionGuardService', ['shouldAllow', 'getBlockedMessage', 'getBlockedToastDedupeKey']);
         apiActionGuardSvc.shouldAllow.and.returnValue({
             status: 'allowed',
             blockedUntil: null,
@@ -168,6 +168,8 @@ describe('SocialHubComponent', () => {
             newlyBlocked: false,
             newlySessionLocked: false,
         });
+        apiActionGuardSvc.getBlockedMessage.and.returnValue('Hemos observado un comportamiento inusual en esta sesión.');
+        apiActionGuardSvc.getBlockedToastDedupeKey.and.returnValue('api-action-guard.uid-1.toast.cooldown');
         appToastSvc = jasmine.createSpyObj<AppToastService>('AppToastService', ['showSuccess', 'showError', 'showInfo', 'showSystem']);
         userSettingsSvc.loadProfileSettings.and.resolveTo({
             ...createDefaultUserSettings().perfil,

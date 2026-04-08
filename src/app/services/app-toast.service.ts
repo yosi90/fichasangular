@@ -53,19 +53,30 @@ export class AppToastService {
         if (type !== 'error' && options?.category && this.socialAlertPrefsSvc?.isEnabled(options.category) === false)
             return;
 
-        const id = `app-toast-${Date.now()}-${++this.sequence}`;
+        const explicitDedupeKey = `${options?.dedupeKey ?? ''}`.trim();
+        const dedupeKey = this.resolveDedupeKey(type, message, options);
         const durationMs = this.resolveDuration(type, options?.durationMs);
+        const existing = dedupeKey
+            ? this.toastsSubject.value.find((toast) => toast.dedupeKey === dedupeKey) ?? null
+            : null;
         const toast: AppToast = {
-            id,
+            id: existing?.id ?? `app-toast-${Date.now()}-${++this.sequence}`,
+            dedupeKey,
             message,
             type,
             category: options?.category,
             createdAt: Date.now(),
             durationMs,
+            repeatCount: existing && this.sameToastSignature(existing, type, message, options?.category, explicitDedupeKey.length > 0)
+                ? existing.repeatCount + 1
+                : 1,
         };
-        this.toastsSubject.next([...this.toastsSubject.value, toast]);
-        this.sessionNotificationCenterSvc?.captureToast(type, message);
-        this.scheduleDismiss(id, durationMs);
+        this.toastsSubject.next(existing
+            ? [...this.toastsSubject.value.filter((item) => item.id !== existing.id), toast]
+            : [...this.toastsSubject.value, toast]);
+        if (options?.captureSessionNotification !== false)
+            this.sessionNotificationCenterSvc?.captureToast(type, message);
+        this.scheduleDismiss(toast.id, durationMs);
     }
 
     private resolveDuration(type: AppToastType, explicit?: number): number {
@@ -90,5 +101,27 @@ export class AppToastService {
             this.dismiss(id);
         }, durationMs);
         this.closeTimers.set(id, timer);
+    }
+
+    private resolveDedupeKey(type: AppToastType, message: string, options?: AppToastOptions): string | null {
+        const explicit = `${options?.dedupeKey ?? ''}`.trim();
+        if (explicit.length > 0)
+            return explicit;
+        const category = `${options?.category ?? ''}`.trim();
+        return `toast:${type}:${category}:${message}`.toLowerCase();
+    }
+
+    private sameToastSignature(
+        toast: AppToast,
+        type: AppToastType,
+        message: string,
+        category: AppToastOptions['category'],
+        allowMessageVariance: boolean
+    ): boolean {
+        if (allowMessageVariance)
+            return toast.type === type && `${toast.category ?? ''}` === `${category ?? ''}`;
+        return toast.type === type
+            && toast.message === message
+            && `${toast.category ?? ''}` === `${category ?? ''}`;
     }
 }

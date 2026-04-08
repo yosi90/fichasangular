@@ -22,6 +22,7 @@ export interface UsuarioAclResponseDto {
     role: UserRole;
     admin: boolean;
     banned: boolean;
+    moderationStatus?: string | null;
     permissionsCreate: UsuarioPermissionCreateDto[];
     moderationSummary?: UserModerationSummary | null;
     recentModerationHistory?: UserModerationHistoryItem[];
@@ -36,6 +37,7 @@ export interface UsuarioListadoItemDto {
     role: UserRole;
     admin: boolean;
     banned: boolean;
+    moderationStatus: string | null;
     updatedAtUtc: string | null;
     updatedByUserId: string | null;
     permissionsCreate: UsuarioPermissionCreateDto[];

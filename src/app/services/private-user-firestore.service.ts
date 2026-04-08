@@ -528,11 +528,17 @@ export class PrivateUserFirestoreService {
         if (!raw || typeof raw !== 'object')
             return null;
 
+        const activeSanction = this.normalizeModerationSanction(raw?.activeSanction)
+            ?? this.buildEffectiveModerationSanction(raw);
+        const moderationStatus = this.normalizeModerationStatus(raw?.moderationStatus ?? raw?.effectiveStatus);
         return {
-            banned: raw?.banned === true,
+            banned: raw?.banned === true
+                || moderationStatus === 'blocked'
+                || moderationStatus === 'banned'
+                || !!activeSanction,
             mustAcceptUsage: raw?.mustAcceptUsage === true,
             mustAcceptCreation: raw?.mustAcceptCreation === true,
-            activeSanction: this.normalizeModerationSanction(raw?.activeSanction),
+            activeSanction,
             usage: this.normalizeCompliancePolicy(raw?.usage),
             creation: this.normalizeCompliancePolicy(raw?.creation),
         };
@@ -579,6 +585,36 @@ export class PrivateUserFirestoreService {
             endsAtUtc,
             isPermanent,
         };
+    }
+
+    private buildEffectiveModerationSanction(raw: any): UserModerationSanction | null {
+        if (!raw || typeof raw !== 'object')
+            return null;
+
+        const moderationStatus = this.normalizeModerationStatus(raw?.moderationStatus ?? raw?.effectiveStatus);
+        const endsAtUtc = this.toNullableText(raw?.blockedUntilUtc ?? raw?.expiresAtUtc ?? raw?.endAtUtc);
+        const hasExplicitPermanent = raw?.isPermanent === true || raw?.permanent === true;
+        const isPermanent = hasExplicitPermanent || (moderationStatus === 'banned' && endsAtUtc === null);
+
+        if (moderationStatus !== 'blocked' && moderationStatus !== 'banned' && !endsAtUtc && !isPermanent)
+            return null;
+
+        return {
+            sanctionId: null,
+            kind: 'restriction',
+            code: isPermanent ? 'technical_account_restriction_permanent' : 'technical_account_restriction_temporary',
+            name: isPermanent ? 'Restricción permanente de cuenta' : 'Restricción temporal de cuenta',
+            startsAtUtc: null,
+            endsAtUtc,
+            isPermanent,
+        };
+    }
+
+    private normalizeModerationStatus(value: any): string | null {
+        const normalized = `${value ?? ''}`.trim().toLowerCase();
+        if (normalized === 'none' || normalized === 'blocked' || normalized === 'banned')
+            return normalized;
+        return null;
     }
 
     private normalizeAuthProvider(rawValue: any, currentUser: any): AuthProviderType {

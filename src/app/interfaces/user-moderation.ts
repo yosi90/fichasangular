@@ -88,6 +88,12 @@ export interface UserAbuseLockReportInput {
 }
 
 export interface UserAbuseLockReportResponse {
-    status: 'banned' | 'ignored' | string;
+    status: 'reported' | 'blocked' | 'banned' | 'ignored' | string;
+    moderationStatus: string | null;
+    message: string | null;
+    activeSanction: UserModerationSanction | null;
+    blockedUntilUtc: string | null;
+    isPermanent: boolean | null;
+    restrictedActions: string[];
     compliance: UserComplianceSnapshot | null;
 }
