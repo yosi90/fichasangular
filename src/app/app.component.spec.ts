@@ -9,6 +9,7 @@ describe('AppComponent Swal wrapper', () => {
     let component: AppComponent;
 
     beforeEach(() => {
+        localStorage.clear();
         originalFire = Swal.fire;
         sessionNotificationCenterSvc = new SessionNotificationCenterService();
         baseFireSpy = jasmine.createSpy('baseFire').and.resolveTo({ isConfirmed: false });
@@ -29,6 +30,7 @@ describe('AppComponent Swal wrapper', () => {
     });
 
     afterEach(() => {
+        localStorage.clear();
         (Swal as any).fire = originalFire;
         (AppComponent as any).swalConfigurado = false;
     });
@@ -91,5 +93,19 @@ describe('AppComponent Swal wrapper', () => {
         expect(entries[0].level).toBe('warning');
         expect(entries[0].action).toBe(action);
         expect(baseFireSpy.calls.mostRecent().args[0]['sessionNotification']).toBeUndefined();
+    });
+
+    it('sanea textos tecnicos en swals globales', async () => {
+        await component.ngOnInit();
+
+        await Swal.fire({
+            icon: 'warning',
+            title: 'Error al obtener la dote',
+            text: 'Violation of UNIQUE KEY constraint UQ_Dotes_Nombre.',
+        });
+
+        expect(baseFireSpy.calls.mostRecent().args[0]).toEqual(jasmine.objectContaining({
+            text: 'Error al obtener la dote.',
+        }));
     });
 });

@@ -161,4 +161,15 @@ describe('AppToastService', () => {
         expect(latest[0].message).toBe('Bloqueado. Inténtalo de nuevo en 29 s.');
         expect(latest[0].repeatCount).toBe(2);
     });
+
+    it('sanea mensajes tecnicos en toasts de error', () => {
+        const service = new AppToastService();
+        let latest: any[] = [];
+        service.toasts$.subscribe((toasts) => latest = toasts);
+
+        service.showError('Error de integridad de datos.');
+
+        expect(latest.length).toBe(1);
+        expect(latest[0].message).toBe('No se pudo completar la acción.');
+    });
 });

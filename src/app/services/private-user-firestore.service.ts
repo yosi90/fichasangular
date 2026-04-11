@@ -467,6 +467,9 @@ export class PrivateUserFirestoreService {
             Nombre: this.toNullableText(raw?.Nombre ?? raw?.n) ?? `Personaje ${id}`,
             ownerUid: this.toNullableText(raw?.ownerUid),
             ownerDisplayName: this.toNullableText(raw?.ownerDisplayName),
+            campaignId: this.toPositiveInt(raw?.campaignId ?? raw?.campaign_id ?? raw?.idCampana) ?? null,
+            campaignName: this.toNullableText(raw?.campaignName ?? raw?.campaign_name ?? raw?.nombreCampana),
+            accessReason: this.normalizeCharacterAccessReason(raw?.accessReason ?? raw?.access_reason),
             visible_otros_usuarios: raw?.visible_otros_usuarios === true,
             Id_region: idRegion,
             Region: {
@@ -483,6 +486,13 @@ export class PrivateUserFirestoreService {
             Subtrama: this.toNullableText(raw?.Subtrama ?? raw?.s) ?? 'Subtrama base',
             Archivado: raw?.Archivado === true || raw?.a === true,
         };
+    }
+
+    private normalizeCharacterAccessReason(value: any): PersonajeSimple['accessReason'] {
+        const normalized = `${value ?? ''}`.trim().toLowerCase();
+        if (normalized === 'owner' || normalized === 'campaign_public' || normalized === 'campaign_master')
+            return normalized;
+        return null;
     }
 
     private normalizePermissions(raw: any): UserPrivateProfile['permissions'] {

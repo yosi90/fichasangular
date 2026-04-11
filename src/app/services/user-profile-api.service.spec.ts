@@ -112,6 +112,26 @@ describe('UserProfileApiService', () => {
         expect(options.headers.get('Authorization')).toBe('Bearer token-settings');
     });
 
+    it('getMyCompliance obtiene currentUser e idToken dentro del injection context cuando está disponible', async () => {
+        const httpMock = jasmine.createSpyObj('HttpClient', ['get', 'put', 'post', 'patch']);
+        httpMock.get.and.returnValue(of({
+            banned: false,
+            mustAcceptUsage: false,
+            mustAcceptCreation: false,
+            activeSanction: null,
+            usage: null,
+            creation: null,
+        }));
+        const firebaseContextSvc = {
+            run: jasmine.createSpy('run').and.callFake((fn: any) => fn()),
+        } as any;
+        const service = new UserProfileApiService(httpMock, authMock, undefined, firebaseContextSvc);
+
+        await service.getMyCompliance();
+
+        expect(firebaseContextSvc.run).toHaveBeenCalledTimes(2);
+    });
+
     it('getMyCompliance sintetiza una sanción activa cuando backend expone moderationStatus y blockedUntilUtc sin activeSanction', async () => {
         const httpMock = jasmine.createSpyObj('HttpClient', ['get', 'put', 'post', 'patch']);
         httpMock.get.and.returnValue(of({

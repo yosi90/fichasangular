@@ -1,6 +1,6 @@
 import { Component, EventEmitter, Input, OnDestroy, OnInit, Output, SimpleChanges } from '@angular/core';
 import { Subject, takeUntil } from 'rxjs';
-import { ChatConversationDetail, ChatConversationSummary, ChatMessage, ChatNotificationPayload, ChatParticipant } from 'src/app/interfaces/chat';
+import { ChatConversationDetail, ChatConversationSummary, ChatMessage, ChatNotificationPayload, ChatParticipant, getChatConversationDisplayTitle } from 'src/app/interfaces/chat';
 import { FriendItem } from 'src/app/interfaces/social';
 import {
     FloatingWindowPlacementMinimized,
@@ -14,6 +14,7 @@ import { SocialApiService } from 'src/app/services/social-api.service';
 import { UserProfileNavigationService } from 'src/app/services/user-profile-navigation.service';
 import { resolveDefaultProfileAvatar } from 'src/app/services/utils/profile-avatar.util';
 import { UserService } from 'src/app/services/user.service';
+import { toUserFacingErrorMessage } from 'src/app/services/utils/user-facing-error.util';
 
 @Component({
     selector: 'app-chat-floating-conversation-window',
@@ -123,16 +124,7 @@ export class ChatFloatingConversationWindowComponent implements OnInit, OnDestro
 
     get title(): string {
         const conversation = this.detail ?? this.summary;
-        const title = `${conversation?.title ?? ''}`.trim();
-        if (title.length > 0)
-            return title;
-        if (conversation?.isSystemConversation)
-            return 'Yosiftware';
-        if (conversation?.type === 'campaign')
-            return 'Chat de campaña';
-        if (conversation?.type === 'group')
-            return 'Grupo';
-        return `Chat ${this.conversationId}`;
+        return getChatConversationDisplayTitle(conversation) || `Chat ${this.conversationId}`;
     }
 
     get bubbleImageUrl(): string {
@@ -644,7 +636,7 @@ export class ChatFloatingConversationWindowComponent implements OnInit, OnDestro
         const complianceError = this.userSvc.getComplianceErrorMessage(error, 'usage');
         if (complianceError.length > 0)
             return complianceError;
-        return `${error?.message ?? fallback}`.trim() || fallback;
+        return toUserFacingErrorMessage(error, fallback);
     }
 
     private getNotificationTone(notification: ChatNotificationPayload | null | undefined): 'default' | 'danger' {

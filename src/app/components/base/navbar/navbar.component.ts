@@ -45,6 +45,7 @@ export class NavbarComponent implements OnInit, OnDestroy {
     private activeRibbonMenuTrigger: MatMenuTrigger | null = null;
     private lastRibbonMenuOpenedAt: number = 0;
     private notificationNow: number = Date.now();
+    private previousLoggedInState: boolean = false;
 
     constructor(
         private dSesion: MatDialog,
@@ -64,8 +65,12 @@ export class NavbarComponent implements OnInit, OnDestroy {
             .subscribe((notice) => this.fallbackNotice = notice ?? '');
         this.loggedInSub = this.usrService.isLoggedIn$
             .subscribe((loggedIn) => {
-                this.isLoggedIn = loggedIn === true;
+                const nextLoggedInState = loggedIn === true;
+                if (this.previousLoggedInState && !nextLoggedInState)
+                    this.clearActorScopedNotificationsOnLogout();
+                this.isLoggedIn = nextLoggedInState;
                 this.syncUserState();
+                this.previousLoggedInState = nextLoggedInState;
             });
         this.permisosSub = this.usrService.permisos$
             .subscribe((permisos) => {
@@ -367,6 +372,13 @@ export class NavbarComponent implements OnInit, OnDestroy {
         this.manuales.forEach((manual) => {
             this.manualFlagNoticeSvc.notifyAdminIfNeeded(manual, this.isAdmin);
         });
+    }
+
+    private clearActorScopedNotificationsOnLogout(): void {
+        this.notificationMenuOpen = false;
+        this.cancelNotificationSeenSync();
+        this.stopNotificationCountdownTimer();
+        this.sessionNotificationCenterSvc.clear();
     }
 
     private scheduleVisibleNotificationsSeenSync(): void {

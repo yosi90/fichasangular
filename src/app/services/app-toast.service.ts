@@ -3,6 +3,7 @@ import { BehaviorSubject } from 'rxjs';
 import { AppToast, AppToastOptions, AppToastType } from '../interfaces/app-toast';
 import { SessionNotificationCenterService } from './session-notification-center.service';
 import { SocialAlertPreferencesService } from './social-alert-preferences.service';
+import { toUserFacingErrorMessage } from './utils/user-facing-error.util';
 
 @Injectable({
     providedIn: 'root'
@@ -47,7 +48,7 @@ export class AppToastService {
     }
 
     private show(type: AppToastType, rawMessage: string, options?: AppToastOptions): void {
-        const message = `${rawMessage ?? ''}`.trim();
+        const message = toUserFacingErrorMessage(rawMessage, this.getDefaultFallback(type));
         if (message.length < 1)
             return;
         if (type !== 'error' && options?.category && this.socialAlertPrefsSvc?.isEnabled(options.category) === false)
@@ -77,6 +78,14 @@ export class AppToastService {
         if (options?.captureSessionNotification !== false)
             this.sessionNotificationCenterSvc?.captureToast(type, message);
         this.scheduleDismiss(toast.id, durationMs);
+    }
+
+    private getDefaultFallback(type: AppToastType): string {
+        if (type === 'success')
+            return 'Acción completada.';
+        if (type === 'info' || type === 'system')
+            return 'Hay un aviso para revisar.';
+        return 'No se pudo completar la acción.';
     }
 
     private resolveDuration(type: AppToastType, explicit?: number): number {

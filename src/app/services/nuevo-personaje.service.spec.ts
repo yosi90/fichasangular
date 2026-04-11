@@ -800,6 +800,50 @@ describe('NuevoPersonajeService (borrador local)', () => {
         expect(service.restaurarBorradorLocal(uid)).toBeTrue();
         expect(service.EstadoFlujo.pasoActual).toBe('basicos');
     });
+
+    it('restaura el paso avanzado cuando el borrador sí tenía características generadas', () => {
+        const base = new NuevoPersonajeService();
+        base.seleccionarRaza(crearRazaDraft());
+        base.PersonajeCreacion.Nombre = 'Aldric';
+        base.activarPersistenciaBorradorLocal(uid);
+        base.persistirBorradorLocalAhora();
+        base.desactivarPersistenciaBorradorLocal();
+
+        const raw = localStorage.getItem(storageKey) as string;
+        const borrador = JSON.parse(raw);
+        borrador.estadoFlujoPersistible.pasoActual = 'clases';
+        borrador.estadoFlujoPersistible.caracteristicasGeneradas = true;
+        localStorage.setItem(storageKey, JSON.stringify(borrador));
+
+        const service = new NuevoPersonajeService();
+        expect(service.restaurarBorradorLocal(uid)).toBeTrue();
+        expect(service.EstadoFlujo.pasoActual).toBe('clases');
+        expect(service.EstadoFlujo.caracteristicasGeneradas).toBeTrue();
+    });
+
+    it('expone un resumen del borrador local con id de personaje persistido', () => {
+        const base = new NuevoPersonajeService();
+        base.seleccionarRaza(crearRazaDraft());
+        base.PersonajeCreacion.Id = 123;
+        base.PersonajeCreacion.Nombre = 'Aldric';
+        base.actualizarPasoActual('conjuros');
+        base.activarPersistenciaBorradorLocal(uid);
+        base.persistirBorradorLocalAhora();
+        base.desactivarPersistenciaBorradorLocal();
+
+        const raw = localStorage.getItem(storageKey) as string;
+        const borrador = JSON.parse(raw);
+        borrador.estadoFlujoPersistible.caracteristicasGeneradas = true;
+        localStorage.setItem(storageKey, JSON.stringify(borrador));
+
+        const service = new NuevoPersonajeService();
+        expect(service.getResumenBorradorLocal(uid)).toEqual(jasmine.objectContaining({
+            personajeId: 123,
+            nombre: 'Aldric',
+            pasoActual: 'conjuros',
+            caracteristicasGeneradas: true,
+        }));
+    });
 });
 
 describe('NuevoPersonajeService (ventajas/desventajas)', () => {

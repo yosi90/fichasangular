@@ -1,6 +1,5 @@
 import { Injectable } from '@angular/core';
 import { Auth } from '@angular/fire/auth';
-import { Database, Unsubscribe, onValue, ref, set, update } from '@angular/fire/database';
 import { Observable, firstValueFrom, of } from 'rxjs';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import {
@@ -10,10 +9,6 @@ import {
 } from '../interfaces/personaje';
 import { ProfileApiError } from '../interfaces/user-account';
 import { environment } from 'src/environments/environment';
-import { RazaSimple } from '../interfaces/simplificaciones/raza-simple';
-import Swal from 'sweetalert2';
-import { TipoCriatura } from '../interfaces/tipo_criatura';
-import { DoteContextual } from '../interfaces/dote-contextual';
 import { toDoteContextualArray, toDoteLegacyArray } from './utils/dote-mapper';
 import {
     CatalogoNombreIdDto,
@@ -29,7 +24,6 @@ import {
     normalizeCompaneroMonstruoDetalleArray,
     normalizeFamiliarMonstruoDetalleArray
 } from './utils/monstruo-mapper';
-import { FirebaseInjectionContextService } from './firebase-injection-context.service';
 import { normalizeRaciales } from './utils/racial-mapper';
 import { normalizeSubtipoRefArray } from './utils/subtipo-mapper';
 
@@ -52,9 +46,7 @@ export class PersonajeService {
 
     constructor(
         private auth: Auth,
-        private db: Database,
         private http: HttpClient,
-        private firebaseContextSvc: FirebaseInjectionContextService,
     ) { }
 
     async getDetallesPersonaje(id: number): Promise<Observable<Personaje>> {
@@ -64,7 +56,10 @@ export class PersonajeService {
 
         try {
             if (!this.auth.currentUser) {
-                const personajePublico = await this.readPublicDetalleFromCache(personajeId);
+                const response = await firstValueFrom(
+                    this.http.get<any>(`${environment.apiUrl}personajes/publicos/${personajeId}`)
+                );
+                const personajePublico = this.mapApiDetalleToPersonaje(response);
                 return of(personajePublico);
             }
 
@@ -72,10 +67,7 @@ export class PersonajeService {
             const response = await firstValueFrom(
                 this.http.get<any>(`${environment.apiUrl}personajes/${personajeId}`, { headers })
             );
-            const personaje = this.mapApiDetalleToPersonaje(response);
-            if (!this.hasArchivadoField(response))
-                personaje.Archivado = await this.readArchivadoStateFromCache(personajeId, personaje.Archivado);
-            return of(personaje);
+            return of(this.mapApiDetalleToPersonaje(response));
         } catch (error: any) {
             throw new Error(this.obtenerMensajeErrorHttp(error, 'No se pudo cargar el detalle del personaje.'));
         }
@@ -107,19 +99,6 @@ export class PersonajeService {
             )
         );
 
-        try {
-            await Promise.all([
-                this.firebaseContextSvc.run(() => update(ref(this.db, `Personajes/${id}`), {
-                    visible_otros_usuarios: !!visible,
-                })),
-                this.firebaseContextSvc.run(() => update(ref(this.db, `Personajes-simples/${id}`), {
-                    visible_otros_usuarios: !!visible,
-                })),
-            ]);
-        } catch {
-            // Usuarios no-admin pueden no tener permisos de escritura en RTDB.
-        }
-
         return {
             ...response,
             idPersonaje: Math.trunc(toNumber(response?.idPersonaje)),
@@ -146,22 +125,6 @@ export class PersonajeService {
                 { headers: await this.buildAuthHeaders() }
             )
         );
-
-        try {
-            await Promise.all([
-                this.firebaseContextSvc.run(() => update(ref(this.db, `Personajes/${id}`), {
-                    Archivado: !!archivado,
-                })),
-                this.firebaseContextSvc.run(() => update(ref(this.db, `Personajes-simples/${id}`), {
-                    Archivado: !!archivado,
-                })),
-                this.firebaseContextSvc.run(() => update(ref(this.db, `listado-personajes/${id}`), {
-                    Archivado: !!archivado,
-                })),
-            ]);
-        } catch {
-            // Usuarios no-admin pueden no tener permisos de escritura en RTDB.
-        }
 
         return {
             ...response,
@@ -940,57 +903,6 @@ export class PersonajeService {
         return clonado;
     }
 
-    public async guardarPersonajeEnFirebase(idPersonaje: number, personaje: Personaje): Promise<void> {
-        const id = Math.trunc(toNumber(idPersonaje));
-        if (id <= 0)
-            throw new Error('Id de personaje no válido para guardar en Firebase.');
-
-        const normalizado = this.normalizarPersonajeParaPersistenciaFinal(personaje, id);
-        const clasesDetalle = [...(normalizado?.desgloseClases ?? [])];
-        const detallePayload: Record<string, any> = {
-            ...normalizado,
-            Id: id,
-            ownerUid: toNullableText(normalizado?.ownerUid),
-            visible_otros_usuarios: !!normalizado?.visible_otros_usuarios,
-            Clases: clasesDetalle,
-            Campana: `${normalizado?.Campana ?? ''}`,
-            Trama: `${normalizado?.Trama ?? ''}`,
-            Subtrama: `${normalizado?.Subtrama ?? ''}`,
-        };
-
-        const simplePayload = {
-            Nombre: `${normalizado?.Nombre ?? ''}`.trim(),
-            ownerUid: toNullableText(normalizado?.ownerUid),
-            visible_otros_usuarios: !!normalizado?.visible_otros_usuarios,
-            Raza: normalizado?.Raza ?? null,
-            RazaBase: normalizado?.RazaBase ?? null,
-            Id_region: Math.max(0, Math.trunc(toNumber((normalizado as any)?.Id_region))),
-            Region: (normalizado as any)?.Region ?? { Id: 0, Nombre: 'Sin región' },
-            Clases: `${normalizado?.Clases ?? ''}`.trim(),
-            Contexto: `${normalizado?.Contexto ?? ''}`,
-            Personalidad: `${normalizado?.Personalidad ?? ''}`,
-            Campaña: `${normalizado?.Campana ?? ''}`,
-            Trama: `${normalizado?.Trama ?? ''}`,
-            Subtrama: `${normalizado?.Subtrama ?? ''}`,
-            Archivado: !!normalizado?.Archivado,
-        };
-
-        await Promise.all([
-            this.escribirRutaFirebase(`Personajes/${id}`, detallePayload),
-            this.escribirRutaFirebase(`Personajes-simples/${id}`, simplePayload),
-        ]);
-
-        try {
-            await this.escribirRutaFirebase(`listado-personajes/${id}`, simplePayload);
-        } catch {
-            // Ruta opcional de compatibilidad con listados legacy.
-        }
-    }
-
-    private escribirRutaFirebase(path: string, payload: any): Promise<void> {
-        return this.firebaseContextSvc.run(() => set(ref(this.db, path), payload));
-    }
-
     private obtenerMensajeErrorHttp(error: any, fallback: string): string {
         const body = error?.error;
         if (typeof body === 'string' && body.trim().length > 0)
@@ -1015,73 +927,6 @@ export class PersonajeService {
         return new ProfileApiError(this.obtenerMensajeErrorHttp(error, fallback), '', Number(error?.status ?? 0));
     }
 
-    private async readPublicDetalleFromCache(idPersonaje: number): Promise<Personaje> {
-        const payload = await this.readCacheSnapshot(`Personajes/${idPersonaje}`);
-        const raw = {
-            ...(payload ?? {}),
-            Id: toNumber(payload?.Id) > 0 ? payload.Id : idPersonaje,
-        };
-        if (!Array.isArray((raw as any).desgloseClases) && Array.isArray((raw as any).Clases))
-            (raw as any).desgloseClases = (raw as any).Clases;
-        const personaje = this.esPayloadPersonajeCanonico(raw)
-            ? this.normalizarPersonajeParaPersistenciaFinal(raw as Personaje, idPersonaje)
-            : this.mapApiDetalleToPersonaje(raw);
-
-        if (personaje.Id <= 0)
-            throw new Error('No se pudo cargar el detalle del personaje.');
-        if (!this.esDetalleVisibleParaInvitado(personaje))
-            throw new Error('El personaje solicitado no está disponible para invitados.');
-
-        return personaje;
-    }
-
-    private hasArchivadoField(payload: any): boolean {
-        if (!payload || typeof payload !== 'object')
-            return false;
-
-        return Object.prototype.hasOwnProperty.call(payload, 'archivado')
-            || Object.prototype.hasOwnProperty.call(payload, 'Archivado');
-    }
-
-    private async readArchivadoStateFromCache(idPersonaje: number, fallback: boolean): Promise<boolean> {
-        const id = Math.trunc(toNumber(idPersonaje));
-        if (id <= 0)
-            return !!fallback;
-
-        const paths = [
-            `Personajes/${id}`,
-            `Personajes-simples/${id}`,
-            `listado-personajes/${id}`,
-        ];
-
-        for (const path of paths) {
-            try {
-                const payload = await this.readCacheSnapshot(path);
-                if (this.hasArchivadoField(payload))
-                    return toBoolean(payload?.Archivado ?? payload?.archivado);
-            } catch {
-                // Best-effort: si una rama no existe intentamos la siguiente.
-            }
-        }
-
-        return !!fallback;
-    }
-
-    private async readCacheSnapshot(path: string): Promise<any> {
-        return new Promise((resolve, reject) => {
-            try {
-                this.firebaseContextSvc.run(() => onValue(
-                    ref(this.db, path),
-                    (snapshot) => resolve(snapshot.val()),
-                    reject,
-                    { onlyOnce: true }
-                ));
-            } catch (error) {
-                reject(error);
-            }
-        });
-    }
-
     private async buildAuthHeaders(): Promise<HttpHeaders> {
         const user = this.auth.currentUser;
         if (!user)
@@ -1094,12 +939,6 @@ export class PersonajeService {
         return new HttpHeaders({
             Authorization: `Bearer ${idToken}`,
         });
-    }
-
-    private esDetalleVisibleParaInvitado(personaje: Personaje): boolean {
-        return personaje?.visible_otros_usuarios === true
-            && personaje?.Archivado !== true
-            && normalizeLookupKey(personaje?.Campana) === 'sin campana';
     }
 
     private esPayloadPersonajeCanonico(payload: any): boolean {
@@ -1115,73 +954,122 @@ export class PersonajeService {
     }
 
     private mapApiDetalleToPersonaje(element: any): Personaje {
-        const tempcla = `${element?.cla ?? ''}`.split('|');
-        let nep = toNumber(element?.ra?.Dgs_adicionales?.Cantidad);
+        const rawClases = element?.cla ?? element?.Clases ?? '';
+        const legacyRaza = element?.ra ?? element?.Raza;
+        const tempcla = typeof rawClases === 'string'
+            ? `${rawClases}`.split('|')
+            : [];
+        let nep = toNumber(legacyRaza?.Dgs_adicionales?.Cantidad);
         const clas: { Nombre: string; Nivel: number; }[] = [];
-        tempcla.forEach((el: string) => {
-            const datos = el.split(';');
-            const nivelClase = toNumber(datos[1]);
-            if (`${datos[0] ?? ''}`.trim().length < 1)
-                return;
-            clas.push({
-                Nombre: datos[0].trim(),
-                Nivel: nivelClase,
+        if (Array.isArray(rawClases)) {
+            rawClases.forEach((entry: any) => {
+                const nombre = `${entry?.Nombre ?? entry?.nombre ?? ''}`.trim();
+                const nivelClase = toNumber(entry?.Nivel ?? entry?.nivel);
+                if (nombre.length < 1)
+                    return;
+                clas.push({
+                    Nombre: nombre,
+                    Nivel: nivelClase,
+                });
+                nep += nivelClase;
             });
-            nep += nivelClase;
-        });
+        } else if (typeof rawClases === 'string' && rawClases.includes(';')) {
+            tempcla.forEach((el: string) => {
+                const datos = el.split(';');
+                const nivelClase = toNumber(datos[1]);
+                if (`${datos[0] ?? ''}`.trim().length < 1)
+                    return;
+                clas.push({
+                    Nombre: datos[0].trim(),
+                    Nivel: nivelClase,
+                });
+                nep += nivelClase;
+            });
+        }
 
-        const ajusteNivelRaza = toNumber(element?.ra?.Ajuste_nivel);
+        const ajusteNivelRaza = toNumber(legacyRaza?.Ajuste_nivel);
         if (ajusteNivelRaza > 0)
             nep += ajusteNivelRaza;
-        (element?.pla ?? []).forEach((el: { Ajuste_nivel: number; Multiplicador_dgs_lic: number; }) => {
+        (element?.pla ?? element?.Plantillas ?? []).forEach((el: { Ajuste_nivel: number; Multiplicador_dgs_lic: number; }) => {
             nep += toNumber(el?.Ajuste_nivel) + toNumber(el?.Multiplicador_dgs_lic);
         });
 
         const experiencia = nep > 0 ? ((nep - 1) * nep / 2) * 1000 : 0;
-        const dotesContextuales = toDoteContextualArray(element?.dotes);
+        const dotesContextuales = toDoteContextualArray(element?.dotes ?? element?.DotesContextuales ?? element?.Dotes);
         const dotes = toDoteLegacyArray(dotesContextuales);
         const claseas: { Nombre: string; Extra: string; }[] = [];
-        for (let index = 0; index < (element?.esp ?? []).length; index++) {
-            claseas.push({
-                Nombre: element.esp[index],
-                Extra: element.espX?.[index] ?? 'Nada',
+        if (Array.isArray(element?.Claseas)) {
+            element.Claseas.forEach((entry: any) => {
+                claseas.push({
+                    Nombre: `${entry?.Nombre ?? ''}`.trim(),
+                    Extra: `${entry?.Extra ?? 'Nada'}`.trim() || 'Nada',
+                });
             });
+        } else {
+            for (let index = 0; index < (element?.esp ?? []).length; index++) {
+                claseas.push({
+                    Nombre: element.esp[index],
+                    Extra: element.espX?.[index] ?? 'Nada',
+                });
+            }
         }
 
         const habilidades: {
             Id: number; Nombre: string; Clasea: boolean; Car: string; Mod_car: number; Rangos: number; Rangos_varios: number; Extra: string;
             Varios: string; Custom: boolean;
         }[] = [];
-        for (let index = 0; index < (element?.habN ?? []).length; index++) {
-            habilidades.push({
-                Id: toNumber(element?.hab?.[index]),
-                Nombre: element.habN[index],
-                Clasea: toBoolean(element?.habC?.[index]),
-                Car: `${element?.habCa?.[index] ?? ''}`,
-                Mod_car: toNumber(element?.habMc?.[index]),
-                Rangos: toNumber(element?.habR?.[index]),
-                Rangos_varios: toNumber(element?.habRv?.[index]),
-                Extra: `${element?.habX?.[index] ?? ''}`,
-                Varios: `${element?.habV?.[index] ?? ''}`,
-                Custom: toBoolean(element?.habCu?.[index]),
+        if (Array.isArray(element?.Habilidades)) {
+            (element.Habilidades ?? []).forEach((entry: any) => {
+                habilidades.push({
+                    Id: toNumber(entry?.Id),
+                    Nombre: `${entry?.Nombre ?? ''}`,
+                    Clasea: toBoolean(entry?.Clasea),
+                    Car: `${entry?.Car ?? ''}`,
+                    Mod_car: toNumber(entry?.Mod_car),
+                    Rangos: toNumber(entry?.Rangos),
+                    Rangos_varios: toNumber(entry?.Rangos_varios),
+                    Extra: `${entry?.Extra ?? ''}`,
+                    Varios: `${entry?.Varios ?? ''}`,
+                    Custom: toBoolean(entry?.Custom),
+                });
             });
+        } else {
+            for (let index = 0; index < (element?.habN ?? []).length; index++) {
+                habilidades.push({
+                    Id: toNumber(element?.hab?.[index]),
+                    Nombre: element.habN[index],
+                    Clasea: toBoolean(element?.habC?.[index]),
+                    Car: `${element?.habCa?.[index] ?? ''}`,
+                    Mod_car: toNumber(element?.habMc?.[index]),
+                    Rangos: toNumber(element?.habR?.[index]),
+                    Rangos_varios: toNumber(element?.habRv?.[index]),
+                    Extra: `${element?.habX?.[index] ?? ''}`,
+                    Varios: `${element?.habV?.[index] ?? ''}`,
+                    Custom: toBoolean(element?.habCu?.[index]),
+                });
+            }
         }
 
         const cargas = {
-            Ligera: toNumber(element?.ccl),
-            Media: toNumber(element?.ccm),
-            Pesada: toNumber(element?.ccp),
+            Ligera: toNumber(element?.ccl ?? element?.Capacidad_carga?.Ligera ?? element?.Carga_ligera),
+            Media: toNumber(element?.ccm ?? element?.Capacidad_carga?.Media ?? element?.Carga_media),
+            Pesada: toNumber(element?.ccp ?? element?.Capacidad_carga?.Pesada ?? element?.Carga_pesada),
         };
         const escuela_esp = {
-            Nombre: `${element?.espa ?? ''}`,
-            Calificativo: `${element?.espan ?? ''}`,
+            Nombre: `${element?.espa ?? element?.Escuela_especialista?.Nombre ?? ''}`,
+            Calificativo: `${element?.espan ?? element?.Escuela_especialista?.Calificativo ?? ''}`,
         };
         const disciplina_esp = {
-            Nombre: `${element?.espp ?? ''}`,
-            Calificativo: `${element?.esppn ?? ''}`,
+            Nombre: `${element?.espp ?? element?.Disciplina_especialista?.Nombre ?? ''}`,
+            Calificativo: `${element?.esppn ?? element?.Disciplina_especialista?.Calificativo ?? ''}`,
         };
         const rds: { Modificador: string; Origen: string; }[] = [];
-        if (element?.rds)
+        if (Array.isArray(element?.Rds))
+            element.Rds.forEach((entry: any) => rds.push({
+                Modificador: `${entry?.Modificador ?? ''}`,
+                Origen: `${entry?.Origen ?? ''}`,
+            }));
+        else if (element?.rds)
             for (let index = 0; index < element.rds.length; index++) {
                 const partes = `${element.rds[index] ?? ''}`.split(';');
                 rds.push({
@@ -1190,7 +1078,12 @@ export class PersonajeService {
                 });
             }
         const rcs: { Modificador: string; Origen: string; }[] = [];
-        if (element?.rcs)
+        if (Array.isArray(element?.Rcs))
+            element.Rcs.forEach((entry: any) => rcs.push({
+                Modificador: `${entry?.Modificador ?? ''}`,
+                Origen: `${entry?.Origen ?? ''}`,
+            }));
+        else if (element?.rcs)
             for (let index = 0; index < element.rcs.length; index++) {
                 const partes = `${element.rcs[index] ?? ''}`.split(';');
                 rcs.push({
@@ -1199,7 +1092,12 @@ export class PersonajeService {
                 });
             }
         const res: { Modificador: string; Origen: string; }[] = [];
-        if (element?.res)
+        if (Array.isArray(element?.Res))
+            element.Res.forEach((entry: any) => res.push({
+                Modificador: `${entry?.Modificador ?? ''}`,
+                Origen: `${entry?.Origen ?? ''}`,
+            }));
+        else if (element?.res)
             for (let index = 0; index < element.res.length; index++) {
                 const partes = `${element.res[index] ?? ''}`.split(';');
                 res.push({
@@ -1208,11 +1106,16 @@ export class PersonajeService {
                 });
             }
 
-        const dom: string[] = `${element?.dom ?? ''}`.split('|').map((item: string) => item.trim()).filter((item: string) => item.length > 0);
-        const subtipos = normalizeSubtipoRefArray(element?.subtipos ?? element?.stc ?? '');
+        const domSource = element?.dom ?? element?.Dominios ?? '';
+        const dom: string[] = Array.isArray(domSource)
+            ? domSource
+                .map((item: any) => `${item?.Nombre ?? item ?? ''}`.trim())
+                .filter((item: string) => item.length > 0)
+            : `${domSource}`.split('|').map((item: string) => item.trim()).filter((item: string) => item.length > 0);
+        const subtipos = normalizeSubtipoRefArray(element?.subtipos ?? element?.Subtipos ?? element?.stc ?? '');
         const raciales = normalizeRaciales(element?.rac);
-        const ve = normalizeVentajasPersonaje(element?.ve);
-        const idiomas = normalizeIdiomasPersonaje(element?.idi);
+        const ve = normalizeVentajasPersonaje(element?.ve ?? element?.Ventajas);
+        const idiomas = normalizeIdiomasPersonaje(element?.idi ?? element?.Idiomas);
         const competenciasArma = normalizeCompetenciasPersonaje(element?.competencia_arma, {
             idKeys: ['Id', 'id', 'Id_arma', 'id_arma', 'i'],
             nombreKeys: ['Nombre', 'nombre', 'Arma', 'arma'],
@@ -1230,13 +1133,17 @@ export class PersonajeService {
             idKeys: ['Id', 'id', 'Id_grupo', 'id_grupo', 'IdGrupo', 'idGrupo', 'i'],
             nombreKeys: ['Nombre', 'nombre', 'Grupo', 'grupo'],
         });
-        const ecp: string[] = `${element?.ecp ?? ''}`.split('|').map((item: string) => item.trim()).filter((item: string) => item.length > 0);
-        const ataqueBase = `${element?.a ?? 0}`;
+        const ecpSource = element?.ecp ?? element?.Escuelas_prohibidas ?? '';
+        const ecp: string[] = Array.isArray(ecpSource)
+            ? ecpSource.map((item: any) => `${item?.Nombre ?? item ?? ''}`.trim()).filter((item: string) => item.length > 0)
+            : `${ecpSource}`.split('|').map((item: string) => item.trim()).filter((item: string) => item.length > 0);
+        const ataqueBase = `${element?.a ?? element?.Ataque_base ?? 0}`;
         const presaBase = +(ataqueBase.includes('/') ? ataqueBase.substring(0, ataqueBase.indexOf('/')) : ataqueBase);
         const razaBase = element?.RazaBase ?? element?.rb ?? element?.raza_base ?? null;
         const idRegion = Math.max(0, Math.trunc(toNumber(
             element?.id_region
             ?? element?.idRegion
+            ?? element?.Id_region
             ?? element?.Region?.Id
             ?? element?.Region?.id
             ?? element?.region?.Id
@@ -1249,7 +1156,7 @@ export class PersonajeService {
             ?? ''}`.trim();
 
         return {
-            Id: Math.trunc(toNumber(element?.i ?? element?.Id)),
+            Id: Math.trunc(toNumber(element?.i ?? element?.Id ?? element?.Id_personaje)),
             Nombre: `${element?.n ?? element?.Nombre ?? ''}`.trim(),
             ownerUid: extractOwnerUid(element),
             ownerDisplayName: extractOwnerDisplayName(element),
@@ -1259,56 +1166,58 @@ export class PersonajeService {
                 Id: idRegion,
                 Nombre: nombreRegion.length > 0 ? nombreRegion : (idRegion === 0 ? 'Sin región' : ''),
             },
-            Personalidad: `${element?.dcp ?? element?.Personalidad ?? ''}`,
-            Contexto: `${element?.dh ?? element?.Contexto ?? ''}`,
-            Ataque_base: element?.a,
-            Tamano: element?.ra?.Tamano?.Nombre,
-            Ca: element?.ca,
-            Armadura_natural: element?.an,
-            Ca_desvio: element?.cd,
-            Ca_varios: element?.cv,
-            Iniciativa_varios: element?.ini_v ?? [],
-            Presa: Number(presaBase + +element?.mf + +element?.ra?.Tamano?.Modificador_presa + +(element?.pr_v ?? []).reduce((c: number, v: { Valor: number; }) => c + Number(v.Valor), 0)),
-            Presa_varios: element?.pr_v ?? [],
-            Raza: element?.ra,
+            Personalidad: `${element?.dcp ?? element?.Personalidad ?? element?.Descripcion_personalidad ?? ''}`,
+            Contexto: `${element?.dh ?? element?.Contexto ?? element?.Descripcion_historia ?? ''}`,
+            Ataque_base: element?.a ?? element?.Ataque_base,
+            Tamano: legacyRaza?.Tamano?.Nombre,
+            Ca: element?.ca ?? element?.Ca,
+            Armadura_natural: element?.an ?? element?.Armadura_natural,
+            Ca_desvio: element?.cd ?? element?.Ca_desvio,
+            Ca_varios: element?.cv ?? element?.Ca_varios,
+            Iniciativa_varios: element?.ini_v ?? element?.Iniciativa_varios ?? [],
+            Presa: Number(presaBase + +(element?.mf ?? element?.ModFuerza) + +legacyRaza?.Tamano?.Modificador_presa + +((element?.pr_v ?? element?.Presa_varios ?? []).reduce((c: number, v: { Valor: number; }) => c + Number(v.Valor), 0))),
+            Presa_varios: element?.pr_v ?? element?.Presa_varios ?? [],
+            Raza: legacyRaza,
             RazaBase: razaBase,
-            Tipo_criatura: element?.tc,
-            Fuerza: element?.f,
-            ModFuerza: element?.mf,
-            Destreza: element?.d,
-            ModDestreza: element?.md,
-            Constitucion: element?.co,
-            ModConstitucion: element?.mco,
+            Tipo_criatura: element?.tc ?? element?.Tipo_criatura,
+            Fuerza: element?.f ?? element?.Fuerza,
+            ModFuerza: element?.mf ?? element?.ModFuerza,
+            Destreza: element?.d ?? element?.Destreza,
+            ModDestreza: element?.md ?? element?.ModDestreza,
+            Constitucion: element?.co ?? element?.Constitucion,
+            ModConstitucion: element?.mco ?? element?.ModConstitucion,
             Caracteristicas_perdidas: normalizeCaracteristicasPerdidasPersonaje(element?.cper, element?.cperd),
             Constitucion_perdida: toBoolean(element?.cperd),
-            Inteligencia: element?.int,
-            ModInteligencia: element?.mint,
-            Sabiduria: element?.s,
-            ModSabiduria: element?.ms,
-            Carisma: element?.car,
-            ModCarisma: element?.mcar,
+            Inteligencia: element?.int ?? element?.Inteligencia,
+            ModInteligencia: element?.mint ?? element?.ModInteligencia,
+            Sabiduria: element?.s ?? element?.Sabiduria,
+            ModSabiduria: element?.ms ?? element?.ModSabiduria,
+            Carisma: element?.car ?? element?.Carisma,
+            ModCarisma: element?.mcar ?? element?.ModCarisma,
             NEP: toNumber(nep),
             Experiencia: toNumber(experiencia),
-            Deidad: element?.de,
-            Alineamiento: element?.ali,
-            Genero: element?.g,
-            Campana: `${element?.ncam ?? element?.Campana ?? 'Sin campaña'}` || 'Sin campaña',
+            Deidad: element?.de ?? element?.Deidad,
+            Alineamiento: element?.ali ?? element?.Alineamiento,
+            Genero: element?.g ?? element?.Genero,
+            Campana: `${element?.ncam ?? element?.Campaña ?? element?.Campana ?? 'Sin campaña'}` || 'Sin campaña',
             Trama: `${element?.ntr ?? element?.Trama ?? 'Trama base'}` || 'Trama base',
             Subtrama: `${element?.nst ?? element?.Subtrama ?? 'Subtrama base'}` || 'Subtrama base',
-            Vida: element?.v,
-            Correr: element?.cor,
-            Nadar: element?.na,
-            Volar: element?.vo,
-            Trepar: element?.t,
-            Escalar: element?.e,
-            Oficial: element?.o,
-            Dados_golpe: element?.dg,
-            Pgs_lic: element?.pgl,
-            Jugador: element?.ju,
-            Edad: element?.edad,
-            Altura: element?.alt,
-            Peso: element?.peso,
-            Clases: clas.map((entrada) => `${entrada.Nombre} (${entrada.Nivel})`).join(', '),
+            Vida: element?.v ?? element?.Vida,
+            Correr: element?.cor ?? element?.Correr,
+            Nadar: element?.na ?? element?.Nadar,
+            Volar: element?.vo ?? element?.Volar,
+            Trepar: element?.t ?? element?.Trepar,
+            Escalar: element?.e ?? element?.Escalar,
+            Oficial: element?.o ?? element?.Oficial,
+            Dados_golpe: element?.dg ?? element?.Dados_golpe,
+            Pgs_lic: element?.pgl ?? element?.Pgs_lic,
+            Jugador: element?.ju ?? element?.Jugador,
+            Edad: element?.edad ?? element?.Edad,
+            Altura: element?.alt ?? element?.Altura,
+            Peso: element?.peso ?? element?.Peso,
+            Clases: clas.length > 0
+                ? clas.map((entrada) => `${entrada.Nombre} (${entrada.Nivel})`).join(', ')
+                : `${element?.Clases ?? ''}`.trim(),
             desgloseClases: clas,
             Dominios: dom.map((Nombre) => ({ Nombre })) as any,
             Subtipos: subtipos,
@@ -1316,19 +1225,19 @@ export class PersonajeService {
             competencia_armadura: competenciasArmadura as PersonajeCompetenciaArmaduraDirecta[],
             competencia_grupo_arma: competenciasGrupoArma as PersonajeCompetenciaDirecta[],
             competencia_grupo_armadura: competenciasGrupoArmadura as PersonajeCompetenciaDirecta[],
-            Plantillas: element?.pla ?? [],
-            Familiares: normalizeFamiliarMonstruoDetalleArray(element?.familiares, 1),
-            Companeros: normalizeCompaneroMonstruoDetalleArray(element?.companeros, 1),
-            Conjuros: element?.con ?? [],
+            Plantillas: element?.pla ?? element?.Plantillas ?? [],
+            Familiares: normalizeFamiliarMonstruoDetalleArray(element?.familiares ?? element?.Familiares, 1),
+            Companeros: normalizeCompaneroMonstruoDetalleArray(element?.companeros ?? element?.Companeros, 1),
+            Conjuros: element?.con ?? element?.Conjuros ?? [],
             Claseas: claseas,
-            Raciales: raciales,
+            Raciales: normalizeRaciales(element?.rac ?? element?.Raciales ?? raciales),
             Habilidades: habilidades,
             Dotes: dotes,
             DotesContextuales: dotesContextuales,
             Ventajas: ve,
             Idiomas: idiomas,
-            Sortilegas: element?.sor ?? [],
-            Salvaciones: element?.salv,
+            Sortilegas: element?.sor ?? element?.Sortilegas ?? [],
+            Salvaciones: element?.salv ?? element?.Salvaciones,
             Rds: rds,
             Rcs: rcs,
             Res: res,
@@ -1336,7 +1245,7 @@ export class PersonajeService {
             Oro_inicial: toNumber(calc_oro(nep)),
             Escuela_especialista: escuela_esp,
             Disciplina_especialista: disciplina_esp,
-            Disciplina_prohibida: element?.disp,
+            Disciplina_prohibida: element?.disp ?? element?.Disciplina_prohibida,
             Escuelas_prohibidas: ecp,
             Archivado: toBoolean(element?.archivado ?? element?.Archivado),
             CaracteristicasVarios: {
@@ -1350,38 +1259,6 @@ export class PersonajeService {
         } as Personaje;
     }
 
-    public async RenovarPersonajes(): Promise<boolean> {
-        try {
-            const headers = await this.buildAuthHeaders();
-            const response = await firstValueFrom(this.d_pjs(headers));
-            const personajes = Array.isArray(response)
-                ? response
-                : Object.values(response ?? {});
-
-            await Promise.all(
-                personajes.map((element: any) => {
-                    const personaje = this.mapApiDetalleToPersonaje(element);
-                    return this.guardarPersonajeEnFirebase(personaje.Id, personaje);
-                })
-            );
-
-            Swal.fire({
-                icon: 'success',
-                title: 'Listado de personajes actualizado con éxito',
-                showConfirmButton: true,
-                timer: 2000
-            });
-            return true;
-        } catch (error: any) {
-            Swal.fire({
-                icon: 'warning',
-                title: 'Error al actualizar el listado de personajes',
-                text: error?.message ?? 'Error no identificado',
-                showConfirmButton: true
-            });
-            return false;
-        }
-    }
 }
 
 function calc_oro(nep: number) {

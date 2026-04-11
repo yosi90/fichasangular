@@ -51,9 +51,12 @@ import { UserSettingsService } from 'src/app/services/user-settings.service';
 import { UserService } from 'src/app/services/user.service';
 import { ApiActionGuardService } from 'src/app/services/api-action-guard.service';
 import { resolveDefaultProfileAvatar } from 'src/app/services/utils/profile-avatar.util';
+import { toUserFacingErrorMessage } from 'src/app/services/utils/user-facing-error.util';
 
 type CampaignWorkspaceMode = 'idle' | 'create' | 'config' | 'peopleStories';
 type CampaignWorkspaceTab = 'usuarios' | 'historias';
+type IdentityFieldKey = 'displayName' | 'bio' | 'genderIdentity' | 'pronouns';
+type GenderIdentityPreset = 'male' | 'female' | 'hidden' | 'custom';
 
 @Component({
     selector: 'app-user-profile',
@@ -74,7 +77,15 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
     bioDraft = '';
     genderIdentityDraft = '';
     pronounsDraft = '';
+    genderIdentityPreset: GenderIdentityPreset = 'hidden';
     identitySaving = false;
+    private identitySubmitAttempted = false;
+    private readonly identityFieldTouched: Record<IdentityFieldKey, boolean> = {
+        displayName: false,
+        bio: false,
+        genderIdentity: false,
+        pronouns: false,
+    };
 
     settingsSaving = false;
     visibilidadPorDefectoPersonajes = false;
@@ -93,7 +104,9 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
     avatarUploading = false;
     avatarDeleting = false;
     avatarPreviewUrl: string | null = null;
+    avatarUrl = resolveDefaultProfileAvatar('');
     selectedAvatarFile: File | null = null;
+    private persistedAvatarUrl = '';
     private avatarFailedSource = '';
 
     currentPassword = '';
@@ -179,13 +192,20 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
     readonly campaignNameMaxLength = 150;
     readonly campaignMinimumRollMin = 3;
     readonly campaignMinimumRollMax = 13;
-    readonly campaignNepMin = 0;
+    readonly campaignNepMin = 1;
+    readonly campaignNepMax = 20;
     readonly campaignMaxTablesMin = 1;
     readonly campaignMaxTablesMax = 5;
     readonly campaignHomebrewSourcesMin = 1;
     readonly campaignHomebrewSourcesMax = 20;
     readonly generadorMinimoOpciones = Array.from({ length: 11 }, (_, index) => index + 3);
     readonly generadorTablasOpciones = Array.from({ length: 5 }, (_, index) => index + 1);
+    readonly genderIdentityPresetOptions: { value: GenderIdentityPreset; label: string; }[] = [
+        { value: 'male', label: 'Chico' },
+        { value: 'female', label: 'Chica' },
+        { value: 'hidden', label: 'No mostrar' },
+        { value: 'custom', label: 'Rellenar' },
+    ];
     private readonly dateFormatter = new Intl.DateTimeFormat('es-ES', {
         day: 'numeric',
         month: 'long',
@@ -221,7 +241,7 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
             .pipe(takeUntil(this.destroy$))
             .subscribe((profile) => {
                 this.profile = profile;
-                this.syncAvatarFailureState(profile);
+                this.syncAvatarStateFromProfile(profile);
                 if (profile && this.identityDraftsUid !== profile.uid) {
                     this.hydrateIdentityDraftsFromProfile(profile, true);
                     this.identityDraftsUid = profile.uid;
@@ -280,18 +300,8 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
         return base;
     }
 
-    get avatarUrl(): string {
-        if (this.avatarPreviewUrl)
-            return this.avatarPreviewUrl;
-        const profile = this.profile;
-        const persisted = `${profile?.photoUrl ?? profile?.photoThumbUrl ?? ''}`.trim();
-        if (persisted.length > 0 && persisted !== this.avatarFailedSource)
-            return persisted;
-        return this.defaultAvatarUrl;
-    }
-
     get hasPersistedAvatar(): boolean {
-        return `${this.profile?.photoUrl ?? this.profile?.photoThumbUrl ?? ''}`.trim().length > 0;
+        return this.persistedAvatarUrl.length > 0;
     }
 
     get authProviderLabel(): string {
@@ -336,6 +346,22 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
         return `${this.bioDraft ?? ''}`.length;
     }
 
+    get displayNameErrorMessage(): string | null {
+        return this.getDisplayNameValidationError(this.displayNameDraft);
+    }
+
+    get bioErrorMessage(): string | null {
+        return this.getBioValidationError(this.bioDraft);
+    }
+
+    get genderIdentityErrorMessage(): string | null {
+        return this.getGenderIdentityValidationError(this.genderIdentityDraft);
+    }
+
+    get pronounsErrorMessage(): string | null {
+        return this.getPronounsValidationError(this.pronounsDraft);
+    }
+
     get campaignNameLength(): number {
         return `${this.campaignCreateDraft ?? ''}`.trim().length;
     }
@@ -346,6 +372,14 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
 
     get pronounsLength(): number {
         return `${this.pronounsDraft ?? ''}`.trim().length;
+    }
+
+    get showCustomGenderIdentityInput(): boolean {
+        return this.genderIdentityPreset === 'custom';
+    }
+
+    get showPronounsField(): boolean {
+        return this.genderIdentityPreset === 'custom';
     }
 
     get selectedAvatarName(): string {
@@ -715,6 +749,7 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
                 this.campanaSvc.listProfileCampaigns().catch(() => []),
             ]);
             this.profile = profile;
+            this.syncAvatarStateFromProfile(profile);
             this.settings = settings;
             this.campaigns = this.filterManageableCampaigns(campaigns);
             this.campaignsLoaded = true;
@@ -783,6 +818,8 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
         this.releaseAvatarPreview();
         this.selectedAvatarFile = file;
         this.avatarPreviewUrl = URL.createObjectURL(file);
+        this.avatarFailedSource = '';
+        this.refreshResolvedAvatarUrl();
         input!.value = '';
     }
 
@@ -838,14 +875,17 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
             return;
 
         this.avatarFailedSource = failedSource;
-        if (target)
-            target.src = this.defaultAvatarUrl;
+        this.refreshResolvedAvatarUrl();
+        if (target && target.src !== this.avatarUrl)
+            target.src = this.avatarUrl;
     }
 
     async guardarIdentidad(): Promise<void> {
         if (this.identitySaving)
             return;
 
+        this.identitySubmitAttempted = true;
+        this.markAllIdentityFieldsTouched();
         const validationError = this.validateIdentityForm();
         if (validationError) {
             this.appToastSvc.showError(validationError);
@@ -855,17 +895,20 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
             return;
 
         const displayName = this.normalizeDisplayName(this.displayNameDraft);
+        const genderIdentity = this.buildGenderIdentityForSave();
+        const pronouns = this.buildPronounsForSave();
         this.identitySaving = true;
         try {
             const profile = await this.userProfileApiSvc.updateMyProfile({
                 displayName,
                 bio: this.normalizeOptionalMultilineText(this.bioDraft),
-                genderIdentity: this.normalizeOptionalSingleLineText(this.genderIdentityDraft),
-                pronouns: this.normalizeOptionalSingleLineText(this.pronounsDraft),
+                genderIdentity,
+                pronouns,
             });
             await this.syncAuthDisplayName(`${profile?.displayName ?? displayName}`.trim());
             this.userSvc.setCurrentPrivateProfile(profile);
             this.profile = profile;
+            this.syncAvatarStateFromProfile(profile);
             this.hydrateIdentityDraftsFromProfile(profile, true);
             this.identityDraftsUid = `${profile?.uid ?? ''}`.trim();
             this.appToastSvc.showSuccess('Identidad actualizada.');
@@ -874,6 +917,24 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
         } finally {
             this.identitySaving = false;
         }
+    }
+
+    markIdentityFieldTouched(field: IdentityFieldKey): void {
+        this.identityFieldTouched[field] = true;
+    }
+
+    onGenderIdentityPresetChange(value: GenderIdentityPreset | null | undefined): void {
+        const nextPreset = this.normalizeGenderIdentityPreset(value);
+        const previousPreset = this.genderIdentityPreset;
+        this.genderIdentityPreset = nextPreset;
+        this.identityFieldTouched.genderIdentity = true;
+        if (nextPreset === 'custom' && previousPreset !== 'custom')
+            this.genderIdentityDraft = '';
+    }
+
+    shouldShowIdentityFieldError(field: IdentityFieldKey): boolean {
+        return (this.identitySubmitAttempted || this.identityFieldTouched[field] === true)
+            && !!this.getIdentityFieldError(field);
     }
 
     async solicitarCambioRol(): Promise<void> {
@@ -1121,7 +1182,7 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
         );
     }
 
-    onCampaignHomebrewLimitChange(): void {
+    onCampaignHomebrewLimitBlur(): void {
         if (this.campaignHomebrewMode !== 'limitado')
             return;
 
@@ -1131,19 +1192,19 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
         );
     }
 
-    onCampaignMinimumRollChange(): void {
+    onCampaignMinimumRollBlur(): void {
         this.campaignCreatePolicyDraft.tiradaMinimaCaracteristica = this.normalizeCampaignMinimumRoll(
             this.campaignCreatePolicyDraft.tiradaMinimaCaracteristica
         );
     }
 
-    onCampaignMaxNepChange(): void {
+    onCampaignMaxNepBlur(): void {
         this.campaignCreatePolicyDraft.nepMaximoPersonajeNuevo = this.normalizeCampaignMaxNep(
             this.campaignCreatePolicyDraft.nepMaximoPersonajeNuevo
         );
     }
 
-    onCampaignMaxTablesChange(): void {
+    onCampaignMaxTablesBlur(): void {
         this.campaignCreatePolicyDraft.maxTablasDadosCaracteristicas = this.normalizeCampaignMaxTables(
             this.campaignCreatePolicyDraft.maxTablasDadosCaracteristicas
         );
@@ -2003,6 +2064,7 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
             };
             this.profile = nextProfile;
             this.userSvc.setCurrentPrivateProfile(nextProfile);
+            this.syncAvatarStateFromProfile(nextProfile);
         }
         this.avatarFailedSource = '';
         this.selectedAvatarFile = null;
@@ -2036,6 +2098,9 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
             this.genderIdentityDraft = `${profile.genderIdentity ?? ''}`.trim();
         if (force || `${this.pronounsDraft ?? ''}`.trim().length < 1)
             this.pronounsDraft = `${profile.pronouns ?? ''}`.trim();
+        this.genderIdentityPreset = this.resolveGenderIdentityPreset(this.genderIdentityDraft, this.pronounsDraft);
+        if (force)
+            this.resetIdentityValidationState();
     }
 
     private requestSection(request: UserPrivateProfileOpenRequest | UserPrivateProfileSectionId | null | undefined): void {
@@ -2077,6 +2142,7 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
         if (this.avatarPreviewUrl?.startsWith('blob:'))
             URL.revokeObjectURL(this.avatarPreviewUrl);
         this.avatarPreviewUrl = null;
+        this.refreshResolvedAvatarUrl();
     }
 
     private normalizeGeneradorMinimo(value: number): number {
@@ -2179,7 +2245,7 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
         const parsed = Math.trunc(Number(value));
         if (!Number.isFinite(parsed))
             return null;
-        return Math.max(this.campaignNepMin, parsed);
+        return Math.min(this.campaignNepMax, Math.max(this.campaignNepMin, parsed));
     }
 
     private normalizeCampaignMaxTables(value: number | null | undefined): number {
@@ -2197,26 +2263,58 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
     }
 
     private validateIdentityForm(): string | null {
-        const displayName = this.normalizeDisplayName(this.displayNameDraft);
-        const bio = this.normalizeOptionalMultilineText(this.bioDraft);
-        const genderIdentity = this.normalizeOptionalSingleLineText(this.genderIdentityDraft);
-        const pronouns = this.normalizeOptionalSingleLineText(this.pronounsDraft);
+        return this.getIdentityFieldError('displayName')
+            ?? this.getIdentityFieldError('bio')
+            ?? this.getIdentityFieldError('genderIdentity')
+            ?? this.getIdentityFieldError('pronouns');
+    }
 
+    private getIdentityFieldError(field: IdentityFieldKey): string | null {
+        if (field === 'displayName')
+            return this.getDisplayNameValidationError(this.displayNameDraft);
+        if (field === 'bio')
+            return this.getBioValidationError(this.bioDraft);
+        if (field === 'genderIdentity')
+            return this.getGenderIdentityValidationError(this.genderIdentityDraft);
+        return this.getPronounsValidationError(this.pronounsDraft);
+    }
+
+    private getDisplayNameValidationError(value: string | null | undefined): string | null {
+        const displayName = this.normalizeDisplayName(value);
         if (displayName.length < this.displayNameMinLength || displayName.length > this.displayNameMaxLength)
             return `El nombre visible debe tener entre ${this.displayNameMinLength} y ${this.displayNameMaxLength} caracteres.`;
         if (this.isNumericOnlyText(displayName))
             return 'El nombre visible no puede estar formado solo por números.';
+        return null;
+    }
+
+    private getBioValidationError(value: string | null | undefined): string | null {
+        const bio = this.normalizeOptionalMultilineText(value);
         if (bio && bio.length < this.bioMinLength)
             return `La bio debe tener al menos ${this.bioMinLength} caracteres o dejarse vacía.`;
         if (bio && this.isNumericOnlyText(bio))
             return 'La bio no puede estar formada solo por números.';
         if (bio && bio.length > this.bioMaxLength)
             return `La bio no puede superar ${this.bioMaxLength} caracteres.`;
-        if (this.hasLineBreak(this.genderIdentityDraft))
+        return null;
+    }
+
+    private getGenderIdentityValidationError(value: string | null | undefined): string | null {
+        if (this.genderIdentityPreset !== 'custom')
+            return null;
+        const genderIdentity = this.normalizeOptionalSingleLineText(value);
+        if (this.hasLineBreak(value))
             return 'La identidad de género no puede contener saltos de línea.';
         if (genderIdentity && genderIdentity.length > 80)
             return 'La identidad de género no puede superar 80 caracteres.';
-        if (this.hasLineBreak(this.pronounsDraft))
+        return null;
+    }
+
+    private getPronounsValidationError(value: string | null | undefined): string | null {
+        if (this.genderIdentityPreset !== 'custom')
+            return null;
+        const pronouns = this.normalizeOptionalSingleLineText(value);
+        if (this.hasLineBreak(value))
             return 'Los pronombres no pueden contener saltos de línea.';
         if (pronouns && pronouns.length > 80)
             return 'Los pronombres no pueden superar 80 caracteres.';
@@ -2241,6 +2339,22 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
         return text.length > 0 ? text : null;
     }
 
+    private buildGenderIdentityForSave(): string | null {
+        if (this.genderIdentityPreset === 'male')
+            return 'Chico';
+        if (this.genderIdentityPreset === 'female')
+            return 'Chica';
+        if (this.genderIdentityPreset === 'hidden')
+            return null;
+        return this.normalizeOptionalSingleLineText(this.genderIdentityDraft);
+    }
+
+    private buildPronounsForSave(): string | null {
+        if (this.genderIdentityPreset !== 'custom')
+            return null;
+        return this.normalizeOptionalSingleLineText(this.pronounsDraft);
+    }
+
     private normalizeOptionalMultilineText(value: string | null | undefined): string | null {
         const text = `${value ?? ''}`
             .replace(/\r\n/g, '\n')
@@ -2258,10 +2372,66 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
         return compact.length > 0 && /^\d+$/.test(compact);
     }
 
-    private syncAvatarFailureState(profile: UserPrivateProfile | null): void {
-        const persisted = `${profile?.photoUrl ?? profile?.photoThumbUrl ?? ''}`.trim();
-        if (persisted !== this.avatarFailedSource)
+    private normalizeGenderIdentityPreset(value: GenderIdentityPreset | null | undefined): GenderIdentityPreset {
+        if (value === 'male' || value === 'female' || value === 'custom' || value === 'hidden')
+            return value;
+        return 'hidden';
+    }
+
+    private resolveGenderIdentityPreset(
+        genderIdentityValue: string | null | undefined,
+        pronounsValue: string | null | undefined
+    ): GenderIdentityPreset {
+        const genderIdentity = this.normalizeOptionalSingleLineText(genderIdentityValue);
+        const pronouns = this.normalizeOptionalSingleLineText(pronounsValue);
+        const comparable = `${genderIdentity ?? ''}`.trim().toLocaleLowerCase('es');
+        if (comparable === 'chico')
+            return 'male';
+        if (comparable === 'chica')
+            return 'female';
+        if (!genderIdentity)
+            return pronouns ? 'custom' : 'hidden';
+        return 'custom';
+    }
+
+    private markAllIdentityFieldsTouched(): void {
+        this.identityFieldTouched.displayName = true;
+        this.identityFieldTouched.bio = true;
+        this.identityFieldTouched.genderIdentity = true;
+        this.identityFieldTouched.pronouns = true;
+    }
+
+    private resetIdentityValidationState(): void {
+        this.identitySubmitAttempted = false;
+        this.identityFieldTouched.displayName = false;
+        this.identityFieldTouched.bio = false;
+        this.identityFieldTouched.genderIdentity = false;
+        this.identityFieldTouched.pronouns = false;
+    }
+
+    private syncAvatarStateFromProfile(profile: UserPrivateProfile | null): void {
+        this.persistedAvatarUrl = this.resolvePersistedAvatarUrl(profile);
+        if (this.persistedAvatarUrl !== this.avatarFailedSource)
             this.avatarFailedSource = '';
+        this.refreshResolvedAvatarUrl();
+    }
+
+    private refreshResolvedAvatarUrl(): void {
+        if (this.avatarPreviewUrl) {
+            this.avatarUrl = this.avatarPreviewUrl;
+            return;
+        }
+
+        if (this.persistedAvatarUrl.length > 0 && this.persistedAvatarUrl !== this.avatarFailedSource) {
+            this.avatarUrl = this.persistedAvatarUrl;
+            return;
+        }
+
+        this.avatarUrl = this.defaultAvatarUrl;
+    }
+
+    private resolvePersistedAvatarUrl(profile: UserPrivateProfile | null): string {
+        return `${profile?.photoThumbUrl ?? profile?.photoUrl ?? ''}`.trim();
     }
 
     private shouldRunGuardedApiAction(actionKey: string): boolean {
@@ -2324,14 +2494,16 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
             if (error.code === 'AVATAR_IMAGE_INVALID')
                 return 'La imagen seleccionada no es válida.';
         }
-        return `${error?.message ?? fallback}`.trim() || fallback;
+        return toUserFacingErrorMessage(error, fallback);
     }
 
     private mapCampaignError(error: any, fallback: string, scope: UserAccessScope = 'usage'): string {
         const complianceError = this.resolveComplianceErrorMessage(error, scope);
         if (complianceError)
             return complianceError;
-        return `${error?.message ?? fallback}`.trim() || fallback;
+        return toUserFacingErrorMessage(error, fallback, {
+            duplicateNameEntity: this.isCampaignNameFallback(fallback) ? 'campaign' : undefined,
+        });
     }
 
     private mapPasswordError(error: any): string {
@@ -2359,6 +2531,7 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
         this.userSvc.setCurrentCompliance(compliance);
         this.userSvc.setCurrentPrivateProfile(nextProfile);
         this.profile = nextProfile;
+        this.syncAvatarStateFromProfile(nextProfile);
     }
 
     private buildCompliancePolicyModalHtml(
@@ -3054,6 +3227,11 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
             .replace(/[\u0300-\u036f]/g, '')
             .toLowerCase()
             .trim();
+    }
+
+    private isCampaignNameFallback(value: string): boolean {
+        const normalized = this.normalizeComparableText(value);
+        return normalized.includes('crear la campana') || normalized.includes('actualizar la campana');
     }
 
     private toModerationDateMs(value: string | null | undefined): number {

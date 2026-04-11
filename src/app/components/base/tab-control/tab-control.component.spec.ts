@@ -63,7 +63,7 @@ function crearComponente(overrides?: { pSvc?: any; }): TabControlComponent {
         armaSvc,
         armaduraSvc,
         deidadSvc,
-        {} as any,
+        { resetearCreacionNuevoPersonaje: jasmine.createSpy('resetearCreacionNuevoPersonaje') } as any,
         manualRefNavSvc,
         manualVistaNavSvc,
         cacheSyncMetadataSvc,
@@ -675,7 +675,7 @@ describe('TabControlComponent navegación por origen', () => {
         expect((component as any).activeTabKey).toBe('base:feedback-bug');
     }));
 
-    it('cerrar sesión cierra la tab privada de bugs pero mantiene accesible la de funcionalidades', fakeAsync(() => {
+    it('cerrar sesión también cierra la tab de funcionalidades', fakeAsync(() => {
         const component = crearComponente();
         const isLoggedIn$ = (component as any).__isLoggedIn$ as BehaviorSubject<boolean>;
 
@@ -691,7 +691,46 @@ describe('TabControlComponent navegación por origen', () => {
         tick(120);
 
         expect(component.feedbackBugTabOpen).toBeFalse();
-        expect(component.feedbackFeatureTabOpen).toBeTrue();
+        expect(component.feedbackFeatureTabOpen).toBeFalse();
+    }));
+
+    it('cerrar sesión cierra todas las tabs auxiliares y deja personajes', fakeAsync(() => {
+        const component = crearComponente();
+        const isLoggedIn$ = (component as any).__isLoggedIn$ as BehaviorSubject<boolean>;
+        const clase = crearClase(99, 'Hechicero');
+
+        component.ngOnInit();
+        isLoggedIn$.next(true);
+        tick();
+        component.abrirSocial({ section: 'campanas', requestId: 12 });
+        tick(120);
+        component.abrirFeedbackFeature();
+        tick(120);
+        component.abrirRoadmap();
+        tick(120);
+        component.abrirDetallesClase(clase);
+        tick(120);
+        component.abrirListadoTab('conjuros', 'insertar');
+        tick(120);
+        component.abrirPerfilPublico({ uid: 'uid-publico', initialDisplayName: 'Publico' });
+        tick(120);
+        component.AbrirNuevoPersonajeTab = 1;
+        (component as any).activeTabKey = 'listado:insertar:conjuros';
+
+        isLoggedIn$.next(false);
+        tick(120);
+
+        expect(component.privateProfileTabOpen).toBeFalse();
+        expect(component.restrictionTabOpen).toBeFalse();
+        expect(component.socialTabOpen).toBeFalse();
+        expect(component.socialOpenRequest).toBeNull();
+        expect(component.feedbackFeatureTabOpen).toBeFalse();
+        expect(component.roadmapTabOpen).toBeFalse();
+        expect(component.detallesClaseAbiertos.length).toBe(0);
+        expect(component.publicProfileTabs.length).toBe(0);
+        expect(component.listadoTabsAbiertos.length).toBe(0);
+        expect(component.AbrirNuevoPersonajeTab).toBe(0);
+        expect((component as any).activeTabKey).toBe('base:personajes');
     }));
 
     it('cerrar uso y acerca vuelve al origen', fakeAsync(() => {

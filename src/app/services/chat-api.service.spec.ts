@@ -15,7 +15,8 @@ describe('ChatApiService', () => {
         httpMock.get.and.returnValue(of({
             conversationId: '8',
             type: 'campaign',
-            title: ' Caballeros de Cormyr ',
+            title: ' Chat principal ',
+            campaignName: ' Caballeros de Cormyr ',
             photoThumbUrl: null,
             campaignId: '12',
             participantRole: 'admin',
@@ -54,7 +55,8 @@ describe('ChatApiService', () => {
 
         const detail = await service.getConversationDetail(8);
 
-        expect(detail.title).toBe('Caballeros de Cormyr');
+        expect(detail.title).toBe('Chat principal');
+        expect(detail.campaignName).toBe('Caballeros de Cormyr');
         expect(detail.campaignId).toBe(12);
         expect(detail.unreadCount).toBe(2);
         expect(detail.lastMessageNotification).toEqual({
@@ -139,7 +141,8 @@ describe('ChatApiService', () => {
         httpMock.get.and.returnValue(of({
             conversationId: '33',
             type: 'campaign',
-            title: ' Costa de la Espada ',
+            title: ' Chat principal ',
+            campaignName: ' Costa de la Espada ',
             photoThumbUrl: null,
             campaignId: '7',
             participantRole: 'member',
@@ -160,6 +163,7 @@ describe('ChatApiService', () => {
         expect(detail.conversationId).toBe(33);
         expect(detail.type).toBe('campaign');
         expect(detail.campaignId).toBe(7);
+        expect(detail.campaignName).toBe('Costa de la Espada');
         expect(httpMock.get.calls.mostRecent().args[0]).toContain('/chat/campaigns/7');
     });
 
@@ -292,5 +296,22 @@ describe('ChatApiService', () => {
         const [, body, options] = httpMock.post.calls.mostRecent().args;
         expect(body).toEqual({});
         expect(options.headers.get('Authorization')).toBe('Bearer token-chat');
+    });
+
+    it('requestWebSocketTicket obtiene currentUser e idToken dentro del injection context cuando está disponible', async () => {
+        const httpMock = jasmine.createSpyObj('HttpClient', ['get', 'post']);
+        httpMock.post.and.returnValue(of({
+            ticket: 'ticket-123',
+            expiresAtUtc: null,
+            websocketUrl: 'ws://localhost:8001/ws/chat',
+        }));
+        const firebaseContextSvc = {
+            run: jasmine.createSpy('run').and.callFake((fn: any) => fn()),
+        } as any;
+        const service = new ChatApiService(httpMock, authMock, firebaseContextSvc);
+
+        await service.requestWebSocketTicket();
+
+        expect(firebaseContextSvc.run).toHaveBeenCalledTimes(2);
     });
 });

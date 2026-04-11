@@ -32,6 +32,7 @@ import {
     UserModerationHistoryResult,
     UserModerationSanction,
 } from '../interfaces/user-moderation';
+import { FirebaseInjectionContextService } from './firebase-injection-context.service';
 import { PrivateUserFirestoreService } from './private-user-firestore.service';
 
 @Injectable({
@@ -44,7 +45,8 @@ export class UserProfileApiService {
     constructor(
         private http: HttpClient,
         private auth: Auth,
-        private privateUserFirestoreSvc?: PrivateUserFirestoreService
+        private privateUserFirestoreSvc?: PrivateUserFirestoreService,
+        private firebaseContextSvc?: FirebaseInjectionContextService,
     ) { }
 
     async getMyProfile(): Promise<UserPrivateProfile> {
@@ -348,11 +350,15 @@ export class UserProfileApiService {
     }
 
     private async buildAuthHeaders(): Promise<HttpHeaders> {
-        const user = this.auth.currentUser;
+        const user = this.firebaseContextSvc
+            ? this.firebaseContextSvc.run(() => this.auth.currentUser)
+            : this.auth.currentUser;
         if (!user)
             throw new ProfileApiError('Sesión no iniciada.', 'UNAUTHORIZED', 401);
 
-        const idToken = await user.getIdToken();
+        const idToken = this.firebaseContextSvc
+            ? await this.firebaseContextSvc.run(() => user.getIdToken())
+            : await user.getIdToken();
         if (`${idToken ?? ''}`.trim().length < 1)
             throw new ProfileApiError('Token no disponible.', 'TOKEN_INVALID', 401);
 

@@ -33,6 +33,7 @@ import { CampaignRealtimeSyncService } from './campaign-realtime-sync.service';
 import { FirebaseInjectionContextService } from './firebase-injection-context.service';
 import { PrivateUserFirestoreService } from './private-user-firestore.service';
 import { UserService } from './user.service';
+import { toUserFacingErrorMessage } from './utils/user-facing-error.util';
 
 @Injectable({
     providedIn: 'root'
@@ -375,10 +376,23 @@ export class CampanaService {
         }
 
         let active = true;
+        let emissionVersion = 0;
         const emit = (items: CampaignListItem[]) => {
             if (!active)
                 return;
-            next(this.mergeOptimisticCampaignSummaries(items));
+
+            const currentVersion = ++emissionVersion;
+            void this.normalizeWatchCampaignSummaries(items)
+                .then((normalized) => {
+                    if (!active || currentVersion !== emissionVersion)
+                        return;
+                    next(normalized);
+                })
+                .catch((error) => {
+                    if (!active || currentVersion !== emissionVersion)
+                        return;
+                    onError?.(error);
+                });
         };
 
         const watchStop = this.privateUserFirestoreSvc.watchCampaigns(
@@ -1075,23 +1089,70 @@ export class CampanaService {
         return merged.sort((a, b) => a.nombre.localeCompare(b.nombre, 'es', { sensitivity: 'base' }));
     }
 
+    private async normalizeWatchCampaignSummaries(items: CampaignListItem[]): Promise<CampaignListItem[]> {
+        const merged = this.mergeOptimisticCampaignSummaries(items);
+        if (merged.length < 1)
+            return [];
+
+        if (!merged.some((campana) => this.isSyntheticCampaignName(campana?.nombre, campana?.id))) {
+            return merged
+                .map((campana) => {
+                    const normalized = {
+                        ...campana,
+                        nombre: this.resolveCampaignDisplayName(campana?.nombre, campana?.id),
+                    };
+                    this.rememberCanonicalCampaignSummary(normalized);
+                    return normalized;
+                })
+                .sort((a, b) => a.nombre.localeCompare(b.nombre, 'es', { sensitivity: 'base' }));
+        }
+
+        const headers = await this.buildAuthHeaders();
+        const normalized = await Promise.all(
+            merged.map((campana) => this.ensureCanonicalCampaignName(campana, headers))
+        );
+        return normalized.sort((a, b) => a.nombre.localeCompare(b.nombre, 'es', { sensitivity: 'base' }));
+    }
+
+    private rememberCanonicalCampaignSummary(campana: CampaignListItem): void {
+        const id = this.toPositiveInt(campana?.id);
+        if (!id)
+            return;
+
+        const nombre = this.resolveCampaignDisplayName(campana?.nombre, id);
+        if (this.isSyntheticCampaignName(nombre, id))
+            return;
+
+        this.rememberCampaignSummaryMutation(id, {
+            nombre,
+            campaignRole: campana?.campaignRole ?? null,
+            membershipStatus: campana?.membershipStatus ?? null,
+            ...(campana?.isOwner === true ? { isOwner: true } : {}),
+        });
+    }
+
     private async ensureCanonicalCampaignName(
         campana: CampaignListItem,
         headers: HttpHeaders
     ): Promise<CampaignListItem> {
         const fallbackName = this.resolveCampaignDisplayName(campana?.nombre, campana?.id);
-        if (!this.isSyntheticCampaignName(campana?.nombre, campana?.id))
-            return {
+        if (!this.isSyntheticCampaignName(campana?.nombre, campana?.id)) {
+            const normalized = {
                 ...campana,
                 nombre: fallbackName,
             };
+            this.rememberCanonicalCampaignSummary(normalized);
+            return normalized;
+        }
 
         try {
             const detail = await this.fetchCampaignDetailHeader(campana.id, headers, false);
-            return {
+            const normalized = {
                 ...campana,
                 nombre: this.resolveCampaignDisplayName(detail.campaign.nombre, campana.id, campana.nombre),
             };
+            this.rememberCanonicalCampaignSummary(normalized);
+            return normalized;
         } catch {
             return {
                 ...campana,
@@ -1386,19 +1447,41 @@ export class CampanaService {
         if (error instanceof HttpErrorResponse) {
             const parsed = this.extractErrorBody(error.error);
             const bodyMessage = parsed.message;
-            const duplicateNameMessage = this.toDuplicateCampaignNameMessage(error.status, bodyMessage);
+            const duplicateNameMessage = this.toDuplicateCampaignNameMessage(error.status, bodyMessage, parsed.code, fallbackMessage);
             if (duplicateNameMessage)
                 return new ProfileApiError(duplicateNameMessage, parsed.code, error.status || 0);
             return new ProfileApiError(
-                bodyMessage || `${fallbackMessage} (HTTP ${error.status || 0})`,
+                toUserFacingErrorMessage(
+                    { ...error, message: bodyMessage || error.message, code: parsed.code },
+                    fallbackMessage,
+                    {
+                        duplicateNameEntity: this.isCampaignNameOperation(fallbackMessage) ? 'campaign' : undefined,
+                    }
+                ),
                 parsed.code,
                 error.status || 0
             );
         }
         if (error instanceof Error)
-            return error;
+            return new Error(
+                toUserFacingErrorMessage(
+                    error,
+                    fallbackMessage,
+                    {
+                        duplicateNameEntity: this.isCampaignNameOperation(fallbackMessage) ? 'campaign' : undefined,
+                    }
+                )
+            );
 
-        return new Error(`${error?.message ?? fallbackMessage}`.trim() || fallbackMessage);
+        return new Error(
+            toUserFacingErrorMessage(
+                error,
+                fallbackMessage,
+                {
+                    duplicateNameEntity: this.isCampaignNameOperation(fallbackMessage) ? 'campaign' : undefined,
+                }
+            )
+        );
     }
 
     private extractErrorBody(body: any): ProfileApiErrorResponse {
@@ -1422,24 +1505,36 @@ export class CampanaService {
         return { code: '', message: '' };
     }
 
-    private toDuplicateCampaignNameMessage(status: number, message: string): string {
+    private toDuplicateCampaignNameMessage(status: number, message: string, code: string, fallbackMessage: string): string {
         const normalized = `${message ?? ''}`.trim().toLowerCase();
-        if (normalized.length < 1)
-            return '';
+        const normalizedCode = `${code ?? ''}`.trim().toLowerCase();
+        const normalizedFallback = `${fallbackMessage ?? ''}`.trim().toLowerCase();
 
         const looksLikeDuplicate = normalized.includes('duplicate')
             || normalized.includes('duplicado')
             || normalized.includes('duplicada')
             || normalized.includes('unique')
             || normalized.includes('uq_')
-            || normalized.includes('ix_');
+            || normalized.includes('ix_')
+            || normalized.includes('integridad')
+            || normalizedCode.includes('duplicate')
+            || normalizedCode.includes('conflict')
+            || normalizedCode.includes('alreadyexists');
         const looksLikeCampaignName = normalized.includes('campa')
             || normalized.includes('nombre');
 
-        if ((status === 409 || status === 400 || status === 500) && looksLikeDuplicate && looksLikeCampaignName)
-            return 'No puedes usar ese nombre porque ya está en uso por otra campaña.';
+        if (!this.isCampaignNameOperation(normalizedFallback))
+            return '';
+
+        if ((status === 409 || status === 400 || status === 500) && (looksLikeDuplicate || looksLikeCampaignName))
+            return 'Ese nombre ya está en uso por otra campaña.';
 
         return '';
+    }
+
+    private isCampaignNameOperation(value: string): boolean {
+        const normalized = `${value ?? ''}`.trim().toLowerCase();
+        return normalized.includes('crear la campaña') || normalized.includes('renombrar la campaña');
     }
 
     private normalizeNullableHomebrewSourceLimit(value: any): number | null {

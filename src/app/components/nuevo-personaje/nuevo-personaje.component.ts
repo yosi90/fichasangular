@@ -68,6 +68,7 @@ import {
     DoteSelectorCandidato,
     EspecialidadMagicaPendiente,
     EspecialidadMagicaSeleccion,
+    NuevoPersonajeDraftResumen,
     NuevoPersonajeService,
     ResultadoCalculoVidaFinal,
     SeleccionAumentosClaseLanzadora,
@@ -506,11 +507,9 @@ export class NuevoPersonajeComponent {
     finalizacionState: {
         idPersonaje: number | null;
         sqlOk: boolean;
-        firebaseOk: boolean;
     } = {
             idPersonaje: null,
             sqlOk: false,
-            firebaseOk: false,
         };
     selectedInternalTabIndex = 0;
     private campanasSub?: Subscription;
@@ -612,8 +611,11 @@ export class NuevoPersonajeComponent {
 
     private async inicializarComponente(): Promise<void> {
         const uid = this.obtenerUidSesionActiva();
-        if (uid.length > 0)
-            await this.resolverRestauracionBorradorSiAplica(uid);
+        if (uid.length > 0) {
+            const restauracion = await this.resolverRestauracionBorradorSiAplica(uid);
+            if (restauracion === 'opened-existing')
+                return;
+        }
 
         this.nuevoPSvc.refrescarDerivadasPreviewNuevoPersonaje();
         this.Personaje = this.nuevoPSvc.PersonajeCreacion;
@@ -1187,6 +1189,10 @@ export class NuevoPersonajeComponent {
 
     get mostrarPanelDeidad(): boolean {
         return !this.esDeidadVaciaONeutra();
+    }
+
+    get puedeAbrirDetalleDeidadSeleccionada(): boolean {
+        return this.deidadSeleccionadaDetalle !== null;
     }
 
     get deidadSeleccionadaDetalle(): DeidadDetalle | null {
@@ -2455,6 +2461,13 @@ export class NuevoPersonajeComponent {
     }
 
     @Output() deidadDetallesPorNombre: EventEmitter<string> = new EventEmitter<string>();
+    abrirDetallesDeidadSeleccionada(): void {
+        const detalle = this.deidadSeleccionadaDetalle;
+        if (!detalle)
+            return;
+        this.verDetallesDeidadDesdeReferencia(detalle.Nombre);
+    }
+
     verDetallesDeidadDesdeReferencia(nombreDeidad: string): void {
         const nombre = `${nombreDeidad ?? ''}`.trim();
         if (nombre.length < 1)
@@ -4040,7 +4053,7 @@ export class NuevoPersonajeComponent {
             void Swal.fire({
                 icon: 'warning',
                 title: 'Finalizacion pendiente',
-                text: 'La creación ya comenzó y no se puede cerrar hasta completar Firebase y apertura de detalles.',
+                text: 'La creación ya comenzó y no se puede cerrar hasta completar la finalización y apertura de detalles.',
                 showConfirmButton: true,
                 target: document.body,
                 heightAuto: false,
@@ -4084,10 +4097,11 @@ export class NuevoPersonajeComponent {
         if (!await this.ensureCampaignCreationRulesSatisfied('finalizacion'))
             return;
 
-        let etapa: 'sql' | 'firebase' | 'navegacion' = 'sql';
+        let etapa: 'sql' | 'navegacion' = 'sql';
         this.finalizacionEnCurso = true;
         try {
             let idPersonaje = Math.trunc(Number(this.finalizacionState.idPersonaje ?? 0));
+            this.persistirBorradorLocalCritico();
 
             if (!this.finalizacionState.sqlOk) {
                 etapa = 'sql';
@@ -4110,12 +4124,7 @@ export class NuevoPersonajeComponent {
                 throw new Error('No hay id de personaje para continuar la finalizacion.');
 
             this.Personaje.Id = idPersonaje;
-
-            if (!this.finalizacionState.firebaseOk) {
-                etapa = 'firebase';
-                await this.personajeSvc.guardarPersonajeEnFirebase(idPersonaje, this.Personaje);
-                this.finalizacionState.firebaseOk = true;
-            }
+            this.persistirBorradorLocalCritico();
 
             const pjNormalizado = this.personajeSvc.normalizarPersonajeParaPersistenciaFinal(this.Personaje, idPersonaje);
             this.Personaje = pjNormalizado;
@@ -4136,9 +4145,7 @@ export class NuevoPersonajeComponent {
             const texto = `${complianceMessage || error?.message || 'Error no identificado'}`.trim();
             const titulo = etapa === 'sql'
                 ? 'No se pudo guardar en SQL'
-                : etapa === 'firebase'
-                    ? 'No se pudo guardar en Firebase'
-                    : 'No se pudo finalizar el personaje';
+                : 'No se pudo finalizar el personaje';
             await Swal.fire({
                 icon: 'warning',
                 title: titulo,
@@ -4151,6 +4158,13 @@ export class NuevoPersonajeComponent {
         } finally {
             this.finalizacionEnCurso = false;
         }
+    }
+
+    private persistirBorradorLocalCritico(): void {
+        const uid = this.obtenerUidSesionActiva();
+        if (uid.length < 1)
+            return;
+        this.nuevoPSvc.persistirBorradorLocalAhora(uid);
     }
 
     private resolverContextoIdsCreacion(): PersonajeContextoIdsDto {
@@ -4353,7 +4367,6 @@ export class NuevoPersonajeComponent {
         this.finalizacionState = {
             idPersonaje: null,
             sqlOk: false,
-            firebaseOk: false,
         };
     }
 
@@ -4429,9 +4442,13 @@ export class NuevoPersonajeComponent {
         }
     }
 
-    private async resolverRestauracionBorradorSiAplica(uid: string): Promise<void> {
+    private async resolverRestauracionBorradorSiAplica(uid: string): Promise<'none' | 'restored' | 'reset' | 'opened-existing'> {
         if (!this.nuevoPSvc.puedeOfrecerRestauracionBorrador(uid))
-            return;
+            return 'none';
+
+        const resumen = this.nuevoPSvc.getResumenBorradorLocal(uid);
+        if (resumen && await this.tryOpenPersistedCharacterFromDraft(uid, resumen))
+            return 'opened-existing';
 
         const result = await Swal.fire({
             icon: 'question',
@@ -4449,11 +4466,59 @@ export class NuevoPersonajeComponent {
 
         if (result.isConfirmed) {
             this.nuevoPSvc.restaurarBorradorLocal(uid);
-            return;
+            return 'restored';
         }
 
         this.nuevoPSvc.descartarBorradorLocal(uid);
         this.nuevoPSvc.reiniciar();
+        return 'reset';
+    }
+
+    private async tryOpenPersistedCharacterFromDraft(uid: string, resumen: NuevoPersonajeDraftResumen): Promise<boolean> {
+        const idPersonaje = Math.max(0, Math.trunc(Number(resumen?.personajeId ?? 0)));
+        if (idPersonaje <= 0)
+            return false;
+        if (!await this.draftPersistedCharacterExists(idPersonaje))
+            return false;
+
+        const nombre = `${resumen?.nombre ?? ''}`.trim();
+        const result = await Swal.fire({
+            icon: 'question',
+            title: 'Personaje ya creado',
+            text: nombre.length > 0
+                ? `La última creación de ${nombre} ya llegó a guardarse como personaje. ¿Quieres abrirlo o empezar de cero?`
+                : 'La última creación ya llegó a guardarse como personaje. ¿Quieres abrirlo o empezar de cero?',
+            showDenyButton: true,
+            confirmButtonText: 'Abrir personaje',
+            denyButtonText: 'Empezar de cero',
+            allowOutsideClick: false,
+            allowEscapeKey: false,
+            target: document.body,
+            heightAuto: false,
+            scrollbarPadding: false,
+        });
+
+        this.nuevoPSvc.descartarBorradorLocal(uid);
+        this.nuevoPSvc.reiniciar();
+        this.resetearEstadoFinalizacion();
+        if (result.isConfirmed) {
+            this.personajeFinalizado.emit(idPersonaje);
+            return true;
+        }
+        return false;
+    }
+
+    private async draftPersistedCharacterExists(idPersonaje: number): Promise<boolean> {
+        const id = Math.max(0, Math.trunc(Number(idPersonaje)));
+        if (id <= 0)
+            return false;
+        try {
+            const detalle$ = await this.personajeSvc.getDetallesPersonaje(id);
+            await firstValueFrom(detalle$.pipe(take(1)));
+            return true;
+        } catch {
+            return false;
+        }
     }
 
     private getIdPlantillaCompaneroSeleccionada(plantilla: CompaneroPlantillaSelector | null): number {

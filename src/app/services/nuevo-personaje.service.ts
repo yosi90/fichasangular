@@ -882,6 +882,15 @@ interface NuevoPersonajeDraftV1 {
     conjurosSesionPlaceholderPorId: Record<number, Conjuro>;
 }
 
+export interface NuevoPersonajeDraftResumen {
+    uid: string;
+    updatedAt: number;
+    personajeId: number;
+    nombre: string;
+    pasoActual: StepNuevoPersonaje;
+    caracteristicasGeneradas: boolean;
+}
+
 const NUEVO_PERSONAJE_DRAFT_VERSION = 1;
 const NUEVO_PERSONAJE_DRAFT_STORAGE_PREFIX = 'fichas35.nuevoPersonaje.draft.v1.';
 const NUEVO_PERSONAJE_DRAFT_AUTOSAVE_MS = 1200;
@@ -990,6 +999,26 @@ export class NuevoPersonajeService {
         this.hidratarDesdeBorradorLocal(borrador);
         this.draftUltimaFirmaPersistida = this.getFirmaBorradorLocal(`${borrador.uid ?? ''}`.trim());
         return true;
+    }
+
+    getResumenBorradorLocal(uid: string): NuevoPersonajeDraftResumen | null {
+        const borrador = this.leerBorradorLocal(uid);
+        if (!borrador)
+            return null;
+
+        return {
+            uid: `${borrador.uid ?? ''}`.trim(),
+            updatedAt: Math.max(0, Math.trunc(this.toNumber(borrador.updatedAt))),
+            personajeId: Math.max(0, Math.trunc(this.toNumber(borrador.personaje?.Id))),
+            nombre: `${borrador.personaje?.Nombre ?? ''}`.trim(),
+            pasoActual: this.normalizarPasoRestaurado(
+                borrador.estadoFlujoPersistible?.pasoActual ?? 'raza',
+                borrador.razaSeleccionada ?? null,
+                borrador.personaje ?? null,
+                borrador.estadoFlujoPersistible?.caracteristicasGeneradas === true
+            ),
+            caracteristicasGeneradas: borrador.estadoFlujoPersistible?.caracteristicasGeneradas === true,
+        };
     }
 
     descartarBorradorLocal(uid?: string): void {
@@ -7884,9 +7913,15 @@ export class NuevoPersonajeService {
 
         const flujoPersistido = borrador.estadoFlujoPersistible;
         if (flujoPersistido) {
-            this.estadoFlujo.pasoActual = this.normalizarPasoRestaurado(flujoPersistido.pasoActual);
+            const caracteristicasGeneradas = flujoPersistido.caracteristicasGeneradas === true;
             this.estadoFlujo.modalCaracteristicasAbierto = false;
-            this.estadoFlujo.caracteristicasGeneradas = flujoPersistido.caracteristicasGeneradas === true;
+            this.estadoFlujo.caracteristicasGeneradas = caracteristicasGeneradas;
+            this.estadoFlujo.pasoActual = this.normalizarPasoRestaurado(
+                flujoPersistido.pasoActual,
+                this.razaSeleccionada,
+                this.personajeCreacion,
+                caracteristicasGeneradas
+            );
             this.estadoFlujo.generador = this.clonarProfundo(flujoPersistido.generador ?? this.estadoFlujo.generador);
             this.estadoFlujo.plantillas = {
                 ...this.crearPlantillasFlujoBase(),
@@ -8032,11 +8067,21 @@ export class NuevoPersonajeService {
     }
 
     private resolverPasoPersistible(paso: StepNuevoPersonaje): StepNuevoPersonaje {
-        return this.normalizarPasoRestaurado(paso);
+        return this.normalizarPasoRestaurado(
+            paso,
+            this.razaSeleccionada,
+            this.personajeCreacion,
+            this.estadoFlujo.caracteristicasGeneradas === true
+        );
     }
 
-    private normalizarPasoRestaurado(paso: StepNuevoPersonaje): StepNuevoPersonaje {
-        if (!this.razaSeleccionada || this.toNumber(this.personajeCreacion?.Raza?.Id) <= 0)
+    private normalizarPasoRestaurado(
+        paso: StepNuevoPersonaje,
+        razaSeleccionada: Raza | null = this.razaSeleccionada,
+        personaje: Personaje | null = this.personajeCreacion,
+        caracteristicasGeneradas: boolean = this.estadoFlujo.caracteristicasGeneradas === true
+    ): StepNuevoPersonaje {
+        if (!razaSeleccionada || this.toNumber(personaje?.Raza?.Id) <= 0)
             return 'raza';
 
         const pasoNormalizado: StepNuevoPersonaje = (
@@ -8052,7 +8097,7 @@ export class NuevoPersonajeService {
         if (pasoNormalizado === 'raza')
             return 'basicos';
 
-        if (!this.estadoFlujo.caracteristicasGeneradas && this.pasoRequiereCaracteristicasGeneradas(pasoNormalizado))
+        if (!caracteristicasGeneradas && this.pasoRequiereCaracteristicasGeneradas(pasoNormalizado))
             return 'basicos';
 
         return pasoNormalizado;

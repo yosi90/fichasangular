@@ -292,6 +292,28 @@ describe('SocialHubComponent', () => {
         }));
     });
 
+    it('prioriza campaignName sobre title en conversaciones de campaña', () => {
+        fixture.detectChanges();
+
+        expect(component.getConversationLabel({
+            conversationId: 9,
+            type: 'campaign',
+            title: 'Chat principal',
+            campaignName: 'Caballeros de Cormyr',
+            photoThumbUrl: null,
+            campaignId: 4,
+            participantRole: 'member',
+            participantStatus: 'active',
+            lastMessagePreview: null,
+            lastMessageAtUtc: null,
+            unreadCount: 0,
+            canSend: true,
+            isSystemConversation: false,
+            counterpartUid: null,
+            lastMessageNotification: null,
+        } as any)).toBe('Caballeros de Cormyr');
+    });
+
     it('mantiene campañas visibles aunque falle la carga de invitaciones', fakeAsync(() => {
         campanaSvc.listSocialCampaigns.and.resolveTo([
             { id: 4, nombre: 'Caballeros de Cormyr', campaignRole: 'master', membershipStatus: 'activo' },

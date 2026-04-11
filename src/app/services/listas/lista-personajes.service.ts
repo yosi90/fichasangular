@@ -1,12 +1,11 @@
 import { Injectable } from '@angular/core';
 import { PersonajeSimple } from '../../interfaces/simplificaciones/personaje-simple';
-import { Database, onValue, ref, set } from '@angular/fire/database';
+import { Database, onValue, ref } from '@angular/fire/database';
 import { Auth, onAuthStateChanged } from '@angular/fire/auth';
 import { BehaviorSubject, Observable, firstValueFrom } from 'rxjs';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { environment } from 'src/environments/environment';
 import { RazaSimple } from 'src/app/interfaces/simplificaciones/raza-simple';
-import Swal from 'sweetalert2';
 import { FirebaseInjectionContextService } from '../firebase-injection-context.service';
 import { PrivateUserFirestoreService } from '../private-user-firestore.service';
 
@@ -114,58 +113,6 @@ export class ListaPersonajesService {
         return personajes;
     }
 
-    public async RenovarPersonajesSimples(): Promise<boolean> {
-        try {
-            const personajes = this.privateUserFirestoreSvc
-                ? await this.privateUserFirestoreSvc.listCharacters()
-                : await this.fetchPersonajesFromApi();
-            this.personajesLoaded = true;
-            this.personajesSubject.next([...personajes]);
-
-            await Promise.all(
-                personajes.map((personaje) => {
-                    return this.firebaseContextSvc.run(() => {
-                        return set(ref(this.db, `Personajes-simples/${personaje.Id}`), {
-                            Nombre: personaje.Nombre,
-                            ownerUid: personaje.ownerUid,
-                            ownerDisplayName: personaje.ownerDisplayName,
-                            visible_otros_usuarios: personaje.visible_otros_usuarios,
-                            Id_region: personaje.Id_region,
-                            Region: {
-                                Id: personaje.Region?.Id ?? 0,
-                                Nombre: personaje.Region?.Nombre ?? '',
-                            },
-                            Raza: personaje.Raza as RazaSimple,
-                            Clases: personaje.Clases,
-                            Contexto: personaje.Contexto,
-                            Personalidad: personaje.Personalidad,
-                            Campaña: personaje.Campana,
-                            Trama: personaje.Trama,
-                            Subtrama: personaje.Subtrama,
-                            Archivado: personaje.Archivado,
-                        });
-                    });
-                })
-            );
-
-            Swal.fire({
-                icon: 'success',
-                title: 'Listado de personajes simple actualizado con éxito',
-                showConfirmButton: true,
-                timer: 2000
-            });
-            return true;
-        } catch (error: any) {
-            Swal.fire({
-                icon: 'warning',
-                title: 'Error al actualizar el listado de personajes simple',
-                text: error?.message ?? 'Error no identificado',
-                showConfirmButton: true
-            });
-            return false;
-        }
-    }
-
     public actualizarVisibilidadEnCache(idPersonaje: number, visible: boolean): void {
         const id = Math.trunc(toNumber(idPersonaje));
         if (id <= 0 || !this.personajesLoaded)
@@ -206,6 +153,7 @@ export class ListaPersonajesService {
         const idRegion = Math.max(0, Math.trunc(toNumber(
             element?.id_region
             ?? element?.idRegion
+            ?? element?.Id_region
             ?? element?.Region?.Id
             ?? element?.Region?.id
             ?? element?.region?.Id
@@ -228,10 +176,12 @@ export class ListaPersonajesService {
         const contexto = `${element?.co
             ?? element?.dh
             ?? element?.Contexto
+            ?? element?.Descripcion_historia
             ?? ''}`.trim();
         const personalidad = `${element?.p
             ?? element?.dcp
             ?? element?.Personalidad
+            ?? element?.Descripcion_personalidad
             ?? ''}`.trim();
         const campana = this.resolveContextLabel(
             element?.ca
@@ -254,10 +204,13 @@ export class ListaPersonajesService {
         );
 
         return {
-            Id: Math.trunc(toNumber(element?.i ?? element?.Id)),
+            Id: Math.trunc(toNumber(element?.i ?? element?.Id ?? element?.Id_personaje)),
             Nombre: `${element?.n ?? element?.Nombre ?? ''}`.trim(),
             ownerUid: extractOwnerUid(element),
             ownerDisplayName: extractOwnerDisplayName(element),
+            campaignId: toNullablePositiveInt(element?.campaignId ?? element?.campaign_id ?? element?.idCampana),
+            campaignName: toNullableText(element?.campaignName ?? element?.campaign_name ?? element?.nombreCampana),
+            accessReason: normalizeAccessReason(element?.accessReason ?? element?.access_reason),
             visible_otros_usuarios: toBoolean(element?.visible_otros_usuarios),
             Id_region: idRegion,
             Region: {
@@ -370,10 +323,12 @@ export class ListaPersonajesService {
         if (!this.auth.currentUser)
             return this.readPublicPersonajesFromCache();
 
-        if (this.privateUserFirestoreSvc)
-            return this.privateUserFirestoreSvc.listCharacters();
+        const publicPersonajes = await this.readPublicPersonajesSafely();
+        const actorScopedPersonajes = this.privateUserFirestoreSvc
+            ? await this.privateUserFirestoreSvc.listCharacters()
+            : await this.fetchPersonajesFromApi();
 
-        return this.fetchPersonajesFromApi();
+        return this.mergePersonajes(publicPersonajes, actorScopedPersonajes);
     }
 
     private startPrivateCharactersSubscription(): void {
@@ -383,12 +338,10 @@ export class ListaPersonajesService {
         this.stopPrivateCharactersSubscription();
         this.privateCharactersUnsubscribe = this.privateUserFirestoreSvc.watchCharacters(
             (personajes) => {
-                this.personajesLoaded = true;
-                this.personajesSubject.next([...personajes]);
+                void this.publishMergedAuthenticatedCharacters(personajes);
             },
             () => {
-                this.personajesLoaded = true;
-                this.personajesSubject.next([]);
+                void this.publishMergedAuthenticatedCharacters([]);
             }
         );
     }
@@ -406,6 +359,41 @@ export class ListaPersonajesService {
         const response = await firstValueFrom(this.pjs(headers));
         return (Array.isArray(response) ? response : Object.values(response ?? {}))
             .map((element: any) => this.mapApiToPersonajeSimple(element));
+    }
+
+    private async publishMergedAuthenticatedCharacters(actorScopedPersonajes: PersonajeSimple[]): Promise<void> {
+        const publicPersonajes = await this.readPublicPersonajesSafely();
+        this.personajesLoaded = true;
+        this.personajesSubject.next(this.mergePersonajes(publicPersonajes, actorScopedPersonajes));
+    }
+
+    private async readPublicPersonajesSafely(): Promise<PersonajeSimple[]> {
+        try {
+            return await this.readPublicPersonajesFromCache();
+        } catch {
+            return [];
+        }
+    }
+
+    private mergePersonajes(
+        publicPersonajes: PersonajeSimple[],
+        actorScopedPersonajes: PersonajeSimple[],
+    ): PersonajeSimple[] {
+        const merged = new Map<number, PersonajeSimple>();
+
+        for (const personaje of publicPersonajes ?? []) {
+            const id = Math.trunc(toNumber(personaje?.Id));
+            if (id > 0)
+                merged.set(id, personaje);
+        }
+
+        for (const personaje of actorScopedPersonajes ?? []) {
+            const id = Math.trunc(toNumber(personaje?.Id));
+            if (id > 0)
+                merged.set(id, personaje);
+        }
+
+        return Array.from(merged.values());
     }
 
     private async readPublicPersonajesFromCache(): Promise<PersonajeSimple[]> {
@@ -503,6 +491,16 @@ function toNumber(value: any): number {
     return Number.isFinite(parsed) ? parsed : 0;
 }
 
+function toNullablePositiveInt(value: any): number | null {
+    const parsed = Math.trunc(toNumber(value));
+    return parsed > 0 ? parsed : null;
+}
+
+function toNullableText(value: any): string | null {
+    const text = `${value ?? ''}`.trim();
+    return text.length > 0 ? text : null;
+}
+
 function extractOwnerUid(value: any): string | null {
     if (!value || typeof value !== 'object')
         return null;
@@ -517,4 +515,11 @@ function extractOwnerDisplayName(value: any): string | null {
 
     const text = `${value.ownerDisplayName ?? ''}`.trim();
     return text.length > 0 ? text : null;
+}
+
+function normalizeAccessReason(value: any): PersonajeSimple['accessReason'] {
+    const normalized = `${value ?? ''}`.trim().toLowerCase();
+    if (normalized === 'owner' || normalized === 'campaign_public' || normalized === 'campaign_master')
+        return normalized;
+    return null;
 }

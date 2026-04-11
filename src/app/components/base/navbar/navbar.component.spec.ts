@@ -165,6 +165,22 @@ describe('NavbarComponent', () => {
         expect(userSvc.logOut).toHaveBeenCalled();
     });
 
+    it('limpia la campana al pasar de autenticado a invitado', () => {
+        userState = { nombre: 'Yosi', correo: 'yosi@test.dev', permisos: 0 };
+        isLoggedIn$.next(true);
+        sessionNotificationCenterSvc.add({
+            source: 'toast',
+            level: 'info',
+            title: 'Privada',
+            message: 'Solo para el actor autenticado',
+        });
+
+        isLoggedIn$.next(false);
+
+        expect(component.sessionNotifications).toEqual([]);
+        expect(component.hasUnreadNotifications).toBeFalse();
+    });
+
     it('mantiene manuales operativo y cierra el menú al abrir uno', () => {
         const trigger = jasmine.createSpyObj('MatMenuTrigger', ['closeMenu']);
         const manual = { Id: 5, Nombre: 'Manual del jugador', Oficial: true } as any;

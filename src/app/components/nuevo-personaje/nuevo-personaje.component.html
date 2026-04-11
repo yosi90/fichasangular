@@ -68,34 +68,25 @@
                                     </div>
                                 </div>
                                 <div class="deidad-bloque full-span">
-                                    <mat-form-field appearance="fill" class="tw-w-full tw-m-0">
-                                        <mat-label>Deidad</mat-label>
-                                        <mat-select [(ngModel)]="Personaje.Deidad" (selectionChange)="onDeidadChange()">
-                                            <mat-option *ngFor="let deidad of deidadesFiltradas" [value]="deidad.nombre" [disabled]="deidad.disabled">
-                                                {{deidad.etiqueta}}
-                                            </mat-option>
-                                        </mat-select>
-                                    </mat-form-field>
-                                    <div class="deidad-contexto" *ngIf="mostrarPanelDeidad">
-                                        <p class="tw-m-0"><strong>Deidad:</strong> {{deidadSeleccionadaTexto}}</p>
-                                        <p class="tw-m-0"><strong>Alineamiento de referencia:</strong> {{deidadAlineamientoInfo}}</p>
-                                        <p class="tw-m-0"><strong>Estado en catalogo:</strong> {{deidadOficialidadInfo}}</p>
-                                        <p class="tw-m-0"><strong>Pabellón:</strong> {{deidadPabellonInfo}}</p>
-                                        <p class="tw-m-0"><strong>Arma predilecta:</strong> {{deidadArmaInfo}}</p>
-                                        <p class="tw-m-0"><strong>Manual:</strong> {{deidadManualInfo}}</p>
-                                        <p class="tw-m-0">{{deidadDescripcionInfo}}</p>
-                                        <div class="deidad-tags tw-mt-2" *ngIf="deidadAmbitosInfo.length > 0">
-                                            <span class="deidad-tag-label">Ámbitos:</span>
-                                            <mat-chip-set>
-                                                <mat-chip *ngFor="let ambito of deidadAmbitosInfo">{{ambito}}</mat-chip>
-                                            </mat-chip-set>
-                                        </div>
-                                        <div class="deidad-tags tw-mt-2" *ngIf="deidadDominiosInfo.length > 0">
-                                            <span class="deidad-tag-label">Dominios:</span>
-                                            <mat-chip-set>
-                                                <mat-chip *ngFor="let dominio of deidadDominiosInfo">{{dominio}}</mat-chip>
-                                            </mat-chip-set>
-                                        </div>
+                                    <div class="deidad-selector-row">
+                                        <mat-form-field appearance="fill" class="deidad-selector-field tw-m-0">
+                                            <mat-label>Deidad</mat-label>
+                                            <mat-select [(ngModel)]="Personaje.Deidad" (selectionChange)="onDeidadChange()">
+                                                <mat-option *ngFor="let deidad of deidadesFiltradas" [value]="deidad.nombre" [disabled]="deidad.disabled">
+                                                    {{deidad.etiqueta}}
+                                                </mat-option>
+                                            </mat-select>
+                                        </mat-form-field>
+                                        <button
+                                            *ngIf="puedeAbrirDetalleDeidadSeleccionada"
+                                            type="button"
+                                            mat-icon-button
+                                            class="deidad-detalle-btn"
+                                            (click)="abrirDetallesDeidadSeleccionada()"
+                                            aria-label="Abrir detalles de la deidad seleccionada"
+                                            matTooltip="Ver detalles de la deidad">
+                                            <mat-icon>open_in_new</mat-icon>
+                                        </button>
                                     </div>
                                     <div class="alineamiento-feedback" *ngIf="tieneFeedbackDeidadBasicos">
                                         <p class="tw-m-0"><strong>Conflicto con la deidad</strong></p>

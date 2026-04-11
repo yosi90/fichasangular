@@ -39,6 +39,7 @@ export interface ChatConversationSummary {
     conversationId: number;
     type: ChatConversationType;
     title: string;
+    campaignName?: string | null;
     photoThumbUrl: string | null;
     campaignId: number | null;
     participantRole: ChatParticipantRole;
@@ -65,6 +66,27 @@ export interface ChatParticipant {
 
 export interface ChatConversationDetail extends ChatConversationSummary {
     participants: ChatParticipant[];
+}
+
+export function getChatConversationDisplayTitle(
+    conversation: Pick<ChatConversationSummary, 'type' | 'title' | 'campaignName' | 'isSystemConversation'> | null | undefined
+): string {
+    if (conversation?.isSystemConversation)
+        return 'Yosiftware';
+
+    const campaignName = `${conversation?.campaignName ?? ''}`.trim();
+    if (conversation?.type === 'campaign' && campaignName.length > 0)
+        return campaignName;
+
+    const title = `${conversation?.title ?? ''}`.trim();
+    if (title.length > 0)
+        return title;
+
+    if (conversation?.type === 'campaign')
+        return 'Chat de campaña';
+    if (conversation?.type === 'group')
+        return 'Grupo';
+    return 'Conversación';
 }
 
 export interface ChatGroupCreateDraft {

@@ -244,8 +244,6 @@ export class AdminPanelComponent implements OnInit, OnDestroy {
         private chatRealtimeSvc: ChatRealtimeService,
     ) {
         this.syncRunners = {
-            lista_personajes: () => this.lpSvc.RenovarPersonajesSimples(),
-            personajes: () => this.pSvc.RenovarPersonajes(),
             monstruos: () => this.monstruoSvc.RenovarMonstruos(),
             familiares: () => this.monstruoSvc.RenovarFamiliares(),
             companeros: () => this.monstruoSvc.RenovarCompaneros(),

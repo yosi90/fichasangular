@@ -660,7 +660,7 @@ describe('NuevoPersonajeComponent', () => {
                 idPersonaje: 123,
                 ownerUserId: '00000000-0000-0000-0000-000000000010',
             }),
-            guardarPersonajeEnFirebase: jasmine.createSpy('guardarPersonajeEnFirebase').and.resolveTo(),
+            getDetallesPersonaje: jasmine.createSpy('getDetallesPersonaje').and.resolveTo(of({ Id: 123, Nombre: 'Aldric' } as any)),
             normalizarPersonajeParaPersistenciaFinal: jasmine.createSpy('normalizarPersonajeParaPersistenciaFinal').and.callFake((pj: any, id: number) => ({
                 ...pj,
                 Id: id,
@@ -1514,6 +1514,35 @@ describe('NuevoPersonajeComponent', () => {
         component.onDeidadChange();
 
         expect(component.Personaje.Deidad).toBe('Gruumsh');
+    });
+
+    it('puedeAbrirDetalleDeidadSeleccionada solo vale true para deidades presentes en catálogo', () => {
+        component.Personaje.Deidad = 'Heironeous';
+        expect(component.puedeAbrirDetalleDeidadSeleccionada).toBeTrue();
+
+        component.Personaje.Deidad = component.deidadSinSeleccion;
+        expect(component.puedeAbrirDetalleDeidadSeleccionada).toBeFalse();
+
+        component.Personaje.Deidad = 'Dios inventado';
+        expect(component.puedeAbrirDetalleDeidadSeleccionada).toBeFalse();
+    });
+
+    it('abrirDetallesDeidadSeleccionada reutiliza el evento de detalles por nombre', () => {
+        component.Personaje.Deidad = 'Heironeous';
+        const emitSpy = spyOn(component.deidadDetallesPorNombre, 'emit');
+
+        component.abrirDetallesDeidadSeleccionada();
+
+        expect(emitSpy).toHaveBeenCalledOnceWith('Heironeous');
+    });
+
+    it('abrirDetallesDeidadSeleccionada no emite si la deidad no existe en catálogo', () => {
+        component.Personaje.Deidad = 'Dios inventado';
+        const emitSpy = spyOn(component.deidadDetallesPorNombre, 'emit');
+
+        component.abrirDetallesDeidadSeleccionada();
+
+        expect(emitSpy).not.toHaveBeenCalled();
     });
 
     it('si existe una deidad custom en el personaje, también aparece en el selector', () => {
@@ -4586,7 +4615,6 @@ describe('NuevoPersonajeComponent', () => {
         await component.onConfirmarSelectorVisibilidad(true);
         expect(component.Personaje.visible_otros_usuarios).toBeTrue();
         expect(personajeSvcMock.crearPersonajeApiDesdeCreacion).toHaveBeenCalledTimes(1);
-        expect(personajeSvcMock.guardarPersonajeEnFirebase).toHaveBeenCalledTimes(1);
         expect(fichasDescargaBgSvcMock.descargarFichas).toHaveBeenCalledTimes(1);
         expect(emitSpy).toHaveBeenCalledWith(123);
         expect(component.modalSelectorVisibilidadAbierto).toBeFalse();
@@ -4612,7 +4640,6 @@ describe('NuevoPersonajeComponent', () => {
         await (component as any).finalizarPersonajeCompleto();
 
         expect(personajeSvcMock.crearPersonajeApiDesdeCreacion).not.toHaveBeenCalled();
-        expect(personajeSvcMock.guardarPersonajeEnFirebase).not.toHaveBeenCalled();
         expect(`${(swalSpy.calls.mostRecent().args[0] as any).title ?? ''}`).toContain('La campaña bloquea la finalización');
     });
 
@@ -4625,7 +4652,6 @@ describe('NuevoPersonajeComponent', () => {
         await (component as any).finalizarPersonajeCompleto();
 
         expect(personajeSvcMock.crearPersonajeApiDesdeCreacion).not.toHaveBeenCalled();
-        expect(personajeSvcMock.guardarPersonajeEnFirebase).not.toHaveBeenCalled();
         expect((swalSpy.calls.mostRecent().args[0] as any).text).toBe('Debes aceptar las normas de creación vigentes antes de continuar.');
     });
 
@@ -4645,7 +4671,6 @@ describe('NuevoPersonajeComponent', () => {
         await (component as any).finalizarPersonajeCompleto();
 
         expect(personajeSvcMock.crearPersonajeApiDesdeCreacion).toHaveBeenCalledTimes(1);
-        expect(personajeSvcMock.guardarPersonajeEnFirebase).not.toHaveBeenCalled();
         expect((swalSpy.calls.mostRecent().args[0] as any).text).toBe('Debes aceptar las normas de creación vigentes antes de continuar.');
     });
 
@@ -4733,30 +4758,112 @@ describe('NuevoPersonajeComponent', () => {
         expect(component.modalSelectorVisibilidadAbierto).toBeFalse();
     });
 
-    it('si falla Firebase tras SQL ok, reintentar no repite POST /personajes/add', async () => {
+    it('si falla la finalización tras SQL ok, reintentar no repite POST /personajes/add', async () => {
         component.modalSelectorVisibilidadAbierto = true;
         personajeSvcMock.crearPersonajeApiDesdeCreacion.and.resolveTo({
             message: 'ok',
             idPersonaje: 456,
             ownerUserId: '00000000-0000-0000-0000-000000000009',
         });
-        personajeSvcMock.guardarPersonajeEnFirebase.and.returnValues(
-            Promise.reject(new Error('firebase caido')),
-            Promise.resolve()
-        );
+        personajeSvcMock.normalizarPersonajeParaPersistenciaFinal.and.callFake((pj: any, id: number) => {
+            if (personajeSvcMock.normalizarPersonajeParaPersistenciaFinal.calls.count() === 1)
+                throw new Error('normalizacion caida');
+            return {
+                ...pj,
+                Id: id,
+            };
+        });
         spyOn(Swal, 'fire').and.resolveTo({ isConfirmed: true } as any);
         const emitSpy = spyOn(component.personajeFinalizado, 'emit');
 
         await component.onConfirmarSelectorVisibilidad(true);
         expect(personajeSvcMock.crearPersonajeApiDesdeCreacion).toHaveBeenCalledTimes(1);
         expect(component.finalizacionState.sqlOk).toBeTrue();
-        expect(component.finalizacionState.firebaseOk).toBeFalse();
         expect(emitSpy).not.toHaveBeenCalled();
 
         await component.onConfirmarSelectorVisibilidad(true);
         expect(personajeSvcMock.crearPersonajeApiDesdeCreacion).toHaveBeenCalledTimes(1);
-        expect(personajeSvcMock.guardarPersonajeEnFirebase).toHaveBeenCalledTimes(2);
         expect(emitSpy).toHaveBeenCalledWith(456);
+    });
+
+    it('si SQL ok y falla la finalización, persiste el borrador crítico con el id ya asignado', async () => {
+        const uid = 'uid-finalizacion-parcial';
+        const storageKey = `fichas35.nuevoPersonaje.draft.v1.${uid}`;
+        const borradorSvc = new NuevoPersonajeService();
+        borradorSvc.seleccionarRaza(crearRazaMock());
+        borradorSvc.PersonajeCreacion.Nombre = 'Aldric';
+        borradorSvc.PersonajeCreacion.Fuerza = 16;
+        borradorSvc.PersonajeCreacion.Destreza = 12;
+        borradorSvc.PersonajeCreacion.Constitucion = 14;
+        borradorSvc.PersonajeCreacion.Inteligencia = 10;
+        borradorSvc.PersonajeCreacion.Sabiduria = 18;
+        borradorSvc.PersonajeCreacion.Carisma = 8;
+        borradorSvc.PersonajeCreacion.desgloseClases = [{ Nombre: 'Clérigo', Nivel: 5 }];
+        borradorSvc.PersonajeCreacion.Clases = 'Clérigo (5)';
+        borradorSvc.PersonajeCreacion.Dominios = [{ Nombre: 'Guerra' }, { Nombre: 'Ley' }] as any;
+        borradorSvc.PersonajeCreacion.Conjuros = [{ Id: 77, Nombre: 'Bendecir', Escuela: { Id: 2, Nombre: 'Encantamiento' } } as any];
+        borradorSvc.PersonajeCreacion.Idiomas = [{ Id: 1, Nombre: 'Común' }] as any;
+        borradorSvc.PersonajeCreacion.Habilidades = [{ Id: 1, Nombre: 'Concentración', Rangos: 8 }] as any;
+        borradorSvc.PersonajeCreacion.Dotes = [{ Nombre: 'Soltura con un arma' }] as any;
+        borradorSvc.actualizarPasoActual('conjuros');
+
+        personajeSvcMock.crearPersonajeApiDesdeCreacion.and.resolveTo({
+            message: 'ok',
+            idPersonaje: 456,
+            ownerUserId: '00000000-0000-0000-0000-000000000009',
+        });
+        personajeSvcMock.normalizarPersonajeParaPersistenciaFinal.and.callFake(() => {
+            throw new Error('normalizacion caida');
+        });
+        spyOn(Swal, 'fire').and.resolveTo({ isConfirmed: true } as any);
+
+        const componentParcial = new NuevoPersonajeComponent(
+            { currentUser: { uid, displayName: 'Aldric', email: 'aldric@test.com' } } as any,
+            borradorSvc,
+            campanaSvcMock,
+            alineamientoSvcMock,
+            claseSvcMock,
+            conjuroSvcMock,
+            escuelaSvcMock,
+            disciplinaSvcMock,
+            razaSvcMock,
+            plantillaSvcMock,
+            ventajaSvcMock,
+            habilidadSvcMock,
+            idiomaSvcMock,
+            doteSvcMock,
+            enemigoPredilectoSvcMock,
+            armaSvcMock,
+            armaduraSvcMock,
+            grupoArmaSvcMock,
+            grupoArmaduraSvcMock,
+            dominioSvcMock,
+            regionSvcMock,
+            deidadSvcMock,
+            tipoCriaturaSvcMock,
+            monstruoSvcMock,
+            especialSvcMock,
+            personajeSvcMock,
+            fichasDescargaBgSvcMock,
+            chatFloatingSvcMock,
+            userSvcMock,
+            userProfileNavigationSvcMock,
+        );
+        componentParcial.modalSelectorVisibilidadAbierto = true;
+
+        await (componentParcial as any).inicializarComponente();
+        await componentParcial.onConfirmarSelectorVisibilidad(true);
+
+        const raw = localStorage.getItem(storageKey);
+        expect(raw).not.toBeNull();
+        const borrador = JSON.parse(raw as string);
+        expect(borrador.personaje.Id).toBe(456);
+        expect(borrador.personaje.Clases).toBe('Clérigo (5)');
+        expect(borrador.personaje.Conjuros.length).toBe(1);
+        expect(borrador.personaje.Dominios.length).toBe(2);
+
+        componentParcial.ngOnDestroy();
+        localStorage.removeItem(storageKey);
     });
 
     it('lanza descarga background con pack completo aunque no haya secundarios', async () => {
@@ -4799,7 +4906,6 @@ describe('NuevoPersonajeComponent', () => {
         component.finalizacionState = {
             idPersonaje: 123,
             sqlOk: true,
-            firebaseOk: false,
         };
 
         component.onCerrarSelectorVisibilidad();
@@ -4920,6 +5026,70 @@ describe('NuevoPersonajeComponent', () => {
 
         componentRestaurado.ngOnDestroy();
         localStorage.removeItem(`fichas35.nuevoPersonaje.draft.v1.${uid}`);
+    });
+
+    it('abre el personaje ya persistido si el borrador local ya tenía id válido en backend', async () => {
+        const uid = 'uid-borrador-persistido';
+        const borradorSvc = new NuevoPersonajeService();
+        borradorSvc.seleccionarRaza(crearRazaMock());
+        borradorSvc.PersonajeCreacion.Id = 456;
+        borradorSvc.PersonajeCreacion.Nombre = 'Aldric';
+        borradorSvc.actualizarPasoActual('conjuros');
+        borradorSvc.activarPersistenciaBorradorLocal(uid);
+        borradorSvc.persistirBorradorLocalAhora();
+        borradorSvc.desactivarPersistenciaBorradorLocal();
+
+        const storageKey = `fichas35.nuevoPersonaje.draft.v1.${uid}`;
+        const raw = localStorage.getItem(storageKey) as string;
+        const borrador = JSON.parse(raw);
+        borrador.estadoFlujoPersistible.caracteristicasGeneradas = true;
+        localStorage.setItem(storageKey, JSON.stringify(borrador));
+
+        personajeSvcMock.getDetallesPersonaje.and.resolveTo(of({ Id: 456, Nombre: 'Aldric' } as any));
+        const fireSpy = spyOn(Swal, 'fire').and.resolveTo({ isConfirmed: true } as any);
+        const restauradoSvc = new NuevoPersonajeService();
+        const componentRestaurado = new NuevoPersonajeComponent(
+            { currentUser: { uid, displayName: 'Aldric', email: 'aldric@test.com' } } as any,
+            restauradoSvc,
+            campanaSvcMock,
+            alineamientoSvcMock,
+            claseSvcMock,
+            conjuroSvcMock,
+            escuelaSvcMock,
+            disciplinaSvcMock,
+            razaSvcMock,
+            plantillaSvcMock,
+            ventajaSvcMock,
+            habilidadSvcMock,
+            idiomaSvcMock,
+            doteSvcMock,
+            enemigoPredilectoSvcMock,
+            armaSvcMock,
+            armaduraSvcMock,
+            grupoArmaSvcMock,
+            grupoArmaduraSvcMock,
+            dominioSvcMock,
+            regionSvcMock,
+            deidadSvcMock,
+            tipoCriaturaSvcMock,
+            monstruoSvcMock,
+            especialSvcMock,
+            personajeSvcMock,
+            fichasDescargaBgSvcMock,
+            chatFloatingSvcMock,
+            userSvcMock,
+            userProfileNavigationSvcMock,
+        );
+        const emitSpy = spyOn(componentRestaurado.personajeFinalizado, 'emit');
+
+        await (componentRestaurado as any).inicializarComponente();
+
+        expect(fireSpy).toHaveBeenCalled();
+        expect(personajeSvcMock.getDetallesPersonaje).toHaveBeenCalledWith(456);
+        expect(emitSpy).toHaveBeenCalledWith(456);
+        expect(localStorage.getItem(storageKey)).toBeNull();
+
+        componentRestaurado.ngOnDestroy();
     });
 
     it('permite empezar de cero y limpia el borrador local', async () => {

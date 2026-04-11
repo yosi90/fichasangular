@@ -95,4 +95,24 @@ describe('ChatFloatingListWindowComponent', () => {
 
         expect(appToastSvc.showError).toHaveBeenCalledWith('Debes aceptar las normas de uso vigentes antes de continuar.');
     });
+
+    it('usa campaignName como etiqueta visible en conversaciones de campaña', () => {
+        expect(component.getConversationLabel({
+            conversationId: 9,
+            type: 'campaign',
+            title: 'Chat principal',
+            campaignName: 'Caballeros de Cormyr',
+            photoThumbUrl: null,
+            campaignId: 4,
+            participantRole: 'member',
+            participantStatus: 'active',
+            lastMessagePreview: null,
+            lastMessageAtUtc: null,
+            unreadCount: 0,
+            canSend: true,
+            isSystemConversation: false,
+            counterpartUid: null,
+            lastMessageNotification: null,
+        } as any)).toBe('Caballeros de Cormyr');
+    });
 });

@@ -1,7 +1,6 @@
 import { Injectable, OnDestroy } from '@angular/core';
-import { Auth } from '@angular/fire/auth';
 import { BehaviorSubject, Subject, Subscription } from 'rxjs';
-import { ChatAlertCandidate, ChatConversationSummary, ChatMessage, ChatMessageReadPayload } from '../interfaces/chat';
+import { ChatAlertCandidate, ChatConversationSummary, ChatMessage, ChatMessageReadPayload, getChatConversationDisplayTitle } from '../interfaces/chat';
 import { ProfileApiError } from '../interfaces/user-account';
 import { ChatApiService } from './chat-api.service';
 import { UserService } from './user.service';
@@ -33,6 +32,9 @@ export class ChatRealtimeService implements OnDestroy {
     private bootstrapFailureCount = 0;
     private suppressAutomaticRealtimeReconnect = false;
     private complianceRealtimeBlocked = false;
+    private activeSessionUid = '';
+    private startInFlightUid = '';
+    private sessionRunToken = 0;
 
     readonly conversations$ = this.conversationsSubject.asObservable();
     readonly unreadUserCount$ = this.unreadUserCountSubject.asObservable();
@@ -44,7 +46,6 @@ export class ChatRealtimeService implements OnDestroy {
     readonly messageRead$ = this.messageReadSubject.asObservable();
 
     constructor(
-        private auth: Auth,
         private userSvc: UserService,
         private chatApiSvc: ChatApiService,
     ) { }
@@ -56,7 +57,7 @@ export class ChatRealtimeService implements OnDestroy {
         this.initialized = true;
         this.authSub = this.userSvc.isLoggedIn$.subscribe((loggedIn) => {
             if (loggedIn === true) {
-                void this.startForCurrentSession();
+                this.startCurrentSessionIfNeeded();
                 return;
             }
             this.teardownSessionState();
@@ -147,19 +148,40 @@ export class ChatRealtimeService implements OnDestroy {
         }
     }
 
-    private async startForCurrentSession(): Promise<void> {
+    private startCurrentSessionIfNeeded(force: boolean = false): void {
+        const currentUid = `${this.userSvc.CurrentUserUid ?? ''}`.trim();
+        if (currentUid.length < 1)
+            return;
+        if (!force && (this.activeSessionUid === currentUid || this.startInFlightUid === currentUid))
+            return;
+
+        this.activeSessionUid = currentUid;
+        this.startInFlightUid = currentUid;
+        const sessionRunToken = ++this.sessionRunToken;
+        void this.startForCurrentSession(currentUid, sessionRunToken)
+            .finally(() => {
+                if (this.startInFlightUid === currentUid)
+                    this.startInFlightUid = '';
+            });
+    }
+
+    private async startForCurrentSession(sessionUid: string, sessionRunToken: number): Promise<void> {
+        if (!this.isCurrentSessionRun(sessionUid, sessionRunToken))
+            return;
         if (this.isRealtimeAccessBlocked()) {
             this.applyComplianceRealtimeBlock();
             return;
         }
         this.resetRealtimeBootstrapState();
         await this.refreshConversations(true);
-        if (this.complianceRealtimeBlocked || this.isRealtimeAccessBlocked())
+        if (!this.isCurrentSessionRun(sessionUid, sessionRunToken) || this.complianceRealtimeBlocked || this.isRealtimeAccessBlocked())
             return;
-        await this.connectWebSocket();
+        await this.connectWebSocket(sessionUid, sessionRunToken);
     }
 
-    private async connectWebSocket(): Promise<void> {
+    private async connectWebSocket(sessionUid: string, sessionRunToken: number): Promise<void> {
+        if (!this.isCurrentSessionRun(sessionUid, sessionRunToken))
+            return;
         if (this.suppressAutomaticRealtimeReconnect || this.isRealtimeAccessBlocked()) {
             this.applyComplianceRealtimeBlock();
             return;
@@ -168,39 +190,58 @@ export class ChatRealtimeService implements OnDestroy {
         this.closeSocket();
         this.clearPolling();
 
-        const currentUser = this.auth.currentUser;
-        if (!currentUser || typeof currentUser.getIdToken !== 'function') {
+        if (`${this.userSvc.CurrentUserUid ?? ''}`.trim().length < 1) {
             this.startPolling();
             return;
         }
 
         try {
             const ticketResponse = await this.chatApiSvc.requestWebSocketTicket();
+            if (!this.isCurrentSessionRun(sessionUid, sessionRunToken))
+                return;
             if (`${ticketResponse.ticket ?? ''}`.trim().length < 1) {
                 this.startPolling();
                 return;
             }
 
             const socketUrl = this.chatApiSvc.buildWebSocketUrl(ticketResponse.websocketUrl, ticketResponse.ticket);
-            this.socket = new WebSocket(socketUrl);
-            this.socket.onopen = () => {
+            const socket = new WebSocket(socketUrl);
+            if (!this.isCurrentSessionRun(sessionUid, sessionRunToken)) {
+                socket.close();
+                return;
+            }
+
+            this.socket = socket;
+            socket.onopen = () => {
+                if (this.socket !== socket || !this.isCurrentSessionRun(sessionUid, sessionRunToken))
+                    return;
                 this.clearPolling();
                 this.clearReconnect();
                 this.resetRealtimeBootstrapState();
                 this.startPingLoop();
             };
-            this.socket.onmessage = (event) => this.onSocketMessage(event.data);
-            this.socket.onerror = () => {
+            socket.onmessage = (event) => {
+                if (this.socket !== socket)
+                    return;
+                this.onSocketMessage(event.data);
+            };
+            socket.onerror = () => {
+                if (this.socket !== socket)
+                    return;
                 this.startPolling();
                 this.scheduleReconnect();
             };
-            this.socket.onclose = () => {
+            socket.onclose = () => {
+                if (this.socket !== socket)
+                    return;
                 this.stopPingLoop();
                 this.socket = null;
                 this.startPolling();
                 this.scheduleReconnect();
             };
         } catch (error) {
+            if (!this.isCurrentSessionRun(sessionUid, sessionRunToken))
+                return;
             this.startPolling();
             const shouldRetry = this.shouldRetryRealtimeBootstrap(error);
             this.reportRealtimeBootstrapError(error);
@@ -358,18 +399,26 @@ export class ChatRealtimeService implements OnDestroy {
     }
 
     private closeSocket(): void {
-        if (!this.socket)
+        const socket = this.socket;
+        if (!socket)
             return;
+        this.socket = null;
+        socket.onopen = null;
+        socket.onmessage = null;
+        socket.onerror = null;
+        socket.onclose = null;
         try {
-            this.socket.close();
+            socket.close();
         } catch {
             // noop
         }
-        this.socket = null;
         this.stopPingLoop();
     }
 
     private teardownSessionState(): void {
+        this.activeSessionUid = '';
+        this.startInFlightUid = '';
+        this.sessionRunToken += 1;
         this.clearPolling();
         this.clearReconnect();
         this.clearQueuedConversationRefresh();
@@ -398,7 +447,9 @@ export class ChatRealtimeService implements OnDestroy {
 
         this.complianceRealtimeBlocked = false;
         this.resetRealtimeBootstrapState();
-        void this.startForCurrentSession();
+        this.activeSessionUid = '';
+        this.startInFlightUid = '';
+        this.startCurrentSessionIfNeeded();
     }
 
     private clearQueuedConversationRefresh(): void {
@@ -513,7 +564,7 @@ export class ChatRealtimeService implements OnDestroy {
             messageId: this.toPositiveInt(message?.messageId),
             conversationId,
             conversationType: conversation?.type ?? null,
-            conversationTitle: `${conversation?.title ?? ''}`.trim() || null,
+            conversationTitle: getChatConversationDisplayTitle(conversation) || null,
             campaignId: this.toPositiveInt(conversation?.campaignId),
             isSystemConversation: conversation?.isSystemConversation === true,
             sender: {
@@ -550,7 +601,7 @@ export class ChatRealtimeService implements OnDestroy {
             messageId: null,
             conversationId,
             conversationType: conversation?.type ?? null,
-            conversationTitle: `${conversation?.title ?? ''}`.trim() || null,
+            conversationTitle: getChatConversationDisplayTitle(conversation) || null,
             campaignId: this.toPositiveInt(conversation?.campaignId),
             isSystemConversation: conversation?.isSystemConversation === true,
             sender: {
@@ -596,9 +647,10 @@ export class ChatRealtimeService implements OnDestroy {
 
         this.reconnectTimer = window.setTimeout(() => {
             this.reconnectTimer = null;
-            if (this.userSvc.CurrentUserUid.length < 1)
+            const currentUid = `${this.userSvc.CurrentUserUid ?? ''}`.trim();
+            if (currentUid.length < 1)
                 return;
-            void this.connectWebSocket();
+            void this.connectWebSocket(currentUid, this.sessionRunToken);
         }, 3000);
     }
 
@@ -606,6 +658,15 @@ export class ChatRealtimeService implements OnDestroy {
         if (this.reconnectTimer !== null)
             window.clearTimeout(this.reconnectTimer);
         this.reconnectTimer = null;
+    }
+
+    private isCurrentSessionRun(sessionUid: string, sessionRunToken: number): boolean {
+        const currentUid = `${this.userSvc.CurrentUserUid ?? ''}`.trim();
+        return sessionUid.length > 0
+            && currentUid.length > 0
+            && this.activeSessionUid === sessionUid
+            && currentUid === sessionUid
+            && this.sessionRunToken === sessionRunToken;
     }
 
     private upsertConversationInList(list: ChatConversationSummary[], conversation: ChatConversationSummary): ChatConversationSummary[] {

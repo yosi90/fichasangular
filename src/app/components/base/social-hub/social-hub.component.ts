@@ -1,6 +1,6 @@
 import { Component, Input, OnChanges, OnDestroy, OnInit, SimpleChanges } from '@angular/core';
 import { Subject, takeUntil } from 'rxjs';
-import { ChatConversationDetail, ChatConversationFilter, ChatConversationSummary, ChatGroupCreateDraft, ChatMessage, ChatNotificationPayload, ChatParticipant } from 'src/app/interfaces/chat';
+import { ChatConversationDetail, ChatConversationFilter, ChatConversationSummary, ChatGroupCreateDraft, ChatMessage, ChatNotificationPayload, ChatParticipant, getChatConversationDisplayTitle } from 'src/app/interfaces/chat';
 import { CampaignDetailViewModel, CampaignInvitationDecision, CampaignInvitationItem, CampaignListItem, CampaignMemberItem, CampaignRealtimeEvent, CampaignTramaItem } from 'src/app/interfaces/campaign-management';
 import {
     BlockedUserItem,
@@ -24,6 +24,7 @@ import { UserSettingsService } from 'src/app/services/user-settings.service';
 import { ApiActionGuardService } from 'src/app/services/api-action-guard.service';
 import { resolveDefaultProfileAvatar } from 'src/app/services/utils/profile-avatar.util';
 import { UserService } from 'src/app/services/user.service';
+import { toUserFacingErrorMessage } from 'src/app/services/utils/user-facing-error.util';
 
 @Component({
     selector: 'app-social-hub',
@@ -440,7 +441,7 @@ export class SocialHubComponent implements OnInit, OnChanges, OnDestroy {
                 .filter((item) => this.isVisibleSocialUser(item));
         } catch (error: any) {
             this.searchResults = [];
-            this.searchErrorMessage = `${error?.message ?? 'No se pudo buscar usuarios.'}`.trim();
+            this.searchErrorMessage = toUserFacingErrorMessage(error, 'No se pudo buscar usuarios.');
         } finally {
             this.searchLoading = false;
         }
@@ -458,7 +459,7 @@ export class SocialHubComponent implements OnInit, OnChanges, OnDestroy {
                 .filter((item) => this.isVisibleSocialUser(item));
         } catch (error: any) {
             this.newDirectResults = [];
-            this.newDirectSearchErrorMessage = `${error?.message ?? 'No se pudo buscar usuarios.'}`.trim();
+            this.newDirectSearchErrorMessage = toUserFacingErrorMessage(error, 'No se pudo buscar usuarios.');
         } finally {
             this.newDirectSearchLoading = false;
         }
@@ -959,7 +960,12 @@ export class SocialHubComponent implements OnInit, OnChanges, OnDestroy {
         const photo = `${conversation?.photoThumbUrl ?? ''}`.trim();
         if (photo.length > 0)
             return photo;
-        return resolveDefaultProfileAvatar(conversation?.counterpartUid ?? conversation?.title ?? '');
+        return resolveDefaultProfileAvatar(
+            conversation?.counterpartUid
+            ?? conversation?.campaignName
+            ?? conversation?.title
+            ?? ''
+        );
     }
 
     getConversationTypeIcon(conversation: ChatConversationSummary | null | undefined): string {
@@ -1001,16 +1007,7 @@ export class SocialHubComponent implements OnInit, OnChanges, OnDestroy {
     }
 
     getConversationLabel(conversation: ChatConversationSummary | null | undefined): string {
-        const title = `${conversation?.title ?? ''}`.trim();
-        if (title.length > 0)
-            return title;
-        if (conversation?.isSystemConversation)
-            return 'Yosiftware';
-        if (conversation?.type === 'campaign')
-            return 'Chat de campaña';
-        if (conversation?.type === 'group')
-            return 'Grupo';
-        return 'Conversación';
+        return getChatConversationDisplayTitle(conversation);
     }
 
     getConversationPreview(conversation: ChatConversationSummary | null | undefined): string {
@@ -1422,14 +1419,14 @@ export class SocialHubComponent implements OnInit, OnChanges, OnDestroy {
                 this.campaigns = campaignsResult.value;
             } else {
                 this.campaigns = [];
-                this.campaignsErrorMessage = `${campaignsResult.reason?.message ?? 'No se pudieron cargar las campañas.'}`.trim();
+                this.campaignsErrorMessage = toUserFacingErrorMessage(campaignsResult.reason, 'No se pudieron cargar las campañas.');
             }
 
             if (invitationsResult.status === 'fulfilled') {
                 this.campaignInvitations = invitationsResult.value;
             } else {
                 this.campaignInvitations = [];
-                this.campaignInvitationsErrorMessage = `${invitationsResult.reason?.message ?? 'No se pudieron cargar las invitaciones de campaña.'}`.trim();
+                this.campaignInvitationsErrorMessage = toUserFacingErrorMessage(invitationsResult.reason, 'No se pudieron cargar las invitaciones de campaña.');
             }
 
             const candidateIds = [
@@ -1532,7 +1529,7 @@ export class SocialHubComponent implements OnInit, OnChanges, OnDestroy {
         const complianceError = this.userSvc.getComplianceErrorMessage(error, 'usage');
         if (complianceError.length > 0)
             return complianceError;
-        return `${error?.message ?? fallback}`.trim() || fallback;
+        return toUserFacingErrorMessage(error, fallback);
     }
 
     private extractNotificationCampaignId(notification: ChatMessage['notification'] | null | undefined): number {

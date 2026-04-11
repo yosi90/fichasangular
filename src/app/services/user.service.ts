@@ -21,6 +21,7 @@ import { FirebaseInjectionContextService } from './firebase-injection-context.se
 import { PrivateUserFirestoreService } from './private-user-firestore.service';
 import { UserProfileApiService } from './user-profile-api.service';
 import { UsuariosApiService } from './usuarios-api.service';
+import { toUserFacingErrorMessage } from './utils/user-facing-error.util';
 
 @Injectable({
     providedIn: 'root'
@@ -790,10 +791,10 @@ export class UserService {
             return 'El navegador bloqueó la ventana de inicio de sesión.';
 
         if (context === 'register')
-            return `${error?.message ?? 'No se pudo completar el registro.'}`.trim() || 'No se pudo completar el registro.';
+            return toUserFacingErrorMessage(error, 'No se pudo completar el registro.');
         if (context === 'password-reset')
-            return `${error?.message ?? 'No se pudo iniciar la recuperación de contraseña.'}`.trim() || 'No se pudo iniciar la recuperación de contraseña.';
-        return `${error?.message ?? 'No se pudo iniciar sesión.'}`.trim() || 'No se pudo iniciar sesión.';
+            return toUserFacingErrorMessage(error, 'No se pudo iniciar la recuperación de contraseña.');
+        return toUserFacingErrorMessage(error, 'No se pudo iniciar sesión.');
     }
 
     private isActiveUser(uid: string): boolean {

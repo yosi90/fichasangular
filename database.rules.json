@@ -169,14 +169,12 @@
       ".write": "auth != null && root.child('Acl/users/' + auth.uid + '/roles/admin').val() === true && root.child('Acl/users/' + auth.uid + '/roles/type').val() === 'admin'"
     },
     "Personajes": {
-      "$id": {
-        ".read": "data.child('visible_otros_usuarios').val() === true && data.child('Archivado').val() !== true && (data.child('Campana').val() === 'Sin campaña' || data.child('Campana').val() === 'Sin campana')",
-        ".write": "auth != null && root.child('Acl/users/' + auth.uid + '/roles/admin').val() === true && root.child('Acl/users/' + auth.uid + '/roles/type').val() === 'admin'"
-      }
+      ".read": "false",
+      ".write": "false"
     },
     "Personajes-simples": {
-      ".read": "auth != null && root.child('Acl/users/' + auth.uid + '/roles/admin').val() === true && root.child('Acl/users/' + auth.uid + '/roles/type').val() === 'admin'",
-      ".write": "auth != null && root.child('Acl/users/' + auth.uid + '/roles/admin').val() === true && root.child('Acl/users/' + auth.uid + '/roles/type').val() === 'admin'"
+      ".read": "false",
+      ".write": "false"
     },
     "Plantillas": {
       ".read": "true",

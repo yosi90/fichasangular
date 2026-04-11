@@ -150,12 +150,8 @@ export class TabControlComponent implements OnInit, OnDestroy {
             .pipe(takeUntil(this.destroy$))
             .subscribe((loggedIn) => {
                 this.usrLoggedIn = loggedIn === true;
-                if (!this.usrLoggedIn) {
-                    this.cerrarPerfilPrivadoPorLogout();
-                    this.cerrarRestriccionCuenta();
-                    this.cerrarPanelAdministracionPorPermisos();
-                    this.cerrarFeedbackBugPorLogout();
-                }
+                if (!this.usrLoggedIn)
+                    this.cerrarTodasLasTabsPorLogout();
             });
         this.usrPerm = this.usrSvc.Usuario.permisos;
         this.usrSvc.permisos$
@@ -654,6 +650,19 @@ export class TabControlComponent implements OnInit, OnDestroy {
             this.selectTabByKey(this.getDefaultBaseTabKey(), true);
     }
 
+    private cerrarSocialPorLogout(): void {
+        if (!this.socialTabOpen)
+            return;
+        const wasActive = this.activeTabKey === this.TAB_SOCIAL;
+        this.socialTabOpen = false;
+        this.socialOpenRequest = null;
+        this.openerByTab.delete(this.TAB_SOCIAL);
+        if (wasActive)
+            this.selectTabByKey(this.getDefaultBaseTabKey(), true);
+        else if (!this.isTabKeyOpen(this.activeTabKey))
+            this.selectTabByKey(this.getDefaultBaseTabKey(), true);
+    }
+
     private cerrarRestriccionCuenta(): void {
         if (!this.restrictionTabOpen)
             return;
@@ -673,6 +682,20 @@ export class TabControlComponent implements OnInit, OnDestroy {
         const wasActive = this.activeTabKey === this.TAB_FEEDBACK_BUG;
         this.feedbackBugTabOpen = false;
         this.openerByTab.delete(this.TAB_FEEDBACK_BUG);
+        if (wasActive)
+            this.selectTabByKey(this.getDefaultBaseTabKey(), true);
+        else if (!this.isTabKeyOpen(this.activeTabKey))
+            this.selectTabByKey(this.getDefaultBaseTabKey(), true);
+    }
+
+    private cerrarNuevoPersonajePorLogout(): void {
+        if (!this.AbrirNuevoPersonajeTab)
+            return;
+        const wasActive = this.activeTabKey === this.TAB_NUEVO;
+        this.nuevoPSvc.resetearCreacionNuevoPersonaje();
+        this.AbrirNuevoPersonajeTab = 0;
+        this.openerByTab.delete(this.TAB_NUEVO);
+        this.CerrarNuevoPersonajeTab.emit();
         if (wasActive)
             this.selectTabByKey(this.getDefaultBaseTabKey(), true);
         else if (!this.isTabKeyOpen(this.activeTabKey))
@@ -708,11 +731,63 @@ export class TabControlComponent implements OnInit, OnDestroy {
             return;
         const wasActive = this.activeTabKey === this.TAB_ADMIN;
         this.adminPanelTabOpen = false;
+        this.adminPanelOpenRequest = null;
         this.openerByTab.delete(this.TAB_ADMIN);
         if (wasActive)
             this.selectTabByKey(this.getDefaultBaseTabKey(), true);
         else if (!this.isTabKeyOpen(this.activeTabKey))
             this.selectTabByKey(this.getDefaultBaseTabKey(), true);
+    }
+
+    private cerrarTodasLasTabsPorLogout(): void {
+        const hadNuevoPersonajeOpen = !!this.AbrirNuevoPersonajeTab;
+        const hadListadoTabsOpen = this.listadoTabsAbiertos.length > 0;
+
+        this.temporaryRestrictionActive = false;
+        this.privateProfileTabOpen = false;
+        this.privateProfileOpenRequest = null;
+        this.restrictionTabOpen = false;
+        this.restrictionOpenRequest = null;
+        this.socialTabOpen = false;
+        this.socialOpenRequest = null;
+        this.adminPanelTabOpen = false;
+        this.adminPanelOpenRequest = null;
+        this.roadmapTabOpen = false;
+        this.legalPrivacyTabOpen = false;
+        this.usageAboutTabOpen = false;
+        this.feedbackBugTabOpen = false;
+        this.feedbackFeatureTabOpen = false;
+        this.publicProfileTabs = [];
+        this.detallesPersonajeAbiertos = [];
+        this.detallesRazaAbiertos = [];
+        this.detallesConjuroAbiertos = [];
+        this.detallesSortilegaAbiertos = [];
+        this.detallesTipoCriaturaAbiertos = [];
+        this.detallesRasgoAbiertos = [];
+        this.detallesDoteAbiertos = [];
+        this.detallesClaseAbiertos = [];
+        this.detallesEspecialAbiertos = [];
+        this.detallesRacialAbiertos = [];
+        this.detallesManualAbiertos = [];
+        this.detallesPlantillaAbiertos = [];
+        this.detallesSubtipoAbiertos = [];
+        this.detallesVentajaAbiertos = [];
+        this.detallesMonstruoAbiertos = [];
+        this.detallesArmaAbiertos = [];
+        this.detallesArmaduraAbiertos = [];
+        this.detallesDeidadAbiertos = [];
+        this.listadoTabsAbiertos = [];
+        this.nuevoPSvc.resetearCreacionNuevoPersonaje();
+        this.AbrirNuevoPersonajeTab = 0;
+        this.openerByTab.clear();
+        this.activeTabKey = this.TAB_PERSONAJES;
+
+        if (hadNuevoPersonajeOpen)
+            this.CerrarNuevoPersonajeTab.emit();
+        if (hadListadoTabsOpen)
+            this.CerrarListadoTab.emit();
+        if (this.TabGroup)
+            this.selectTabByKey(this.TAB_PERSONAJES, true);
     }
 
     private openHelpTab(

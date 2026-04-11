@@ -10,7 +10,6 @@ describe('ChatRealtimeService', () => {
             CurrentUserUid: 'uid-propio',
         } as any;
         const service = new ChatRealtimeService(
-            {} as any,
             userSvc,
             {
                 parseWebSocketEvent: (raw: any) => raw,
@@ -78,7 +77,6 @@ describe('ChatRealtimeService', () => {
             CurrentUserUid: 'uid-propio',
         } as any;
         const service = new ChatRealtimeService(
-            {} as any,
             userSvc,
             {
                 parseWebSocketEvent: (raw: any) => raw,
@@ -141,7 +139,6 @@ describe('ChatRealtimeService', () => {
         } as any;
         let cycle = 0;
         const service = new ChatRealtimeService(
-            {} as any,
             userSvc,
             {
                 parseWebSocketEvent: (raw: any) => raw,
@@ -222,7 +219,6 @@ describe('ChatRealtimeService', () => {
             CurrentUserUid: 'uid-propio',
         } as any;
         const service = new ChatRealtimeService(
-            {} as any,
             userSvc,
             {
                 parseWebSocketEvent: (raw: any) => raw,
@@ -304,7 +300,6 @@ describe('ChatRealtimeService', () => {
             CurrentUserUid: 'uid-propio',
         } as any;
         const service = new ChatRealtimeService(
-            {} as any,
             userSvc,
             {
                 parseWebSocketEvent: (raw: any) => raw,
@@ -362,7 +357,6 @@ describe('ChatRealtimeService', () => {
             CurrentUserUid: 'uid-propio',
         } as any;
         const service = new ChatRealtimeService(
-            {} as any,
             userSvc,
             {
                 parseWebSocketEvent: (raw: any) => raw,
@@ -416,7 +410,6 @@ describe('ChatRealtimeService', () => {
             CurrentUserUid: 'uid-propio',
         } as any;
         const service = new ChatRealtimeService(
-            {} as any,
             userSvc,
             {
                 parseWebSocketEvent: (raw: any) => raw,
@@ -450,7 +443,6 @@ describe('ChatRealtimeService', () => {
             CurrentUserUid: 'uid-propio',
         } as any;
         const service = new ChatRealtimeService(
-            {} as any,
             userSvc,
             {
                 parseWebSocketEvent: (raw: any) => raw,
@@ -491,7 +483,6 @@ describe('ChatRealtimeService', () => {
             );
         });
         const service = new ChatRealtimeService(
-            { currentUser: { getIdToken: async () => 'token' } } as any,
             userSvc,
             {
                 parseWebSocketEvent: (raw: any) => raw,
@@ -509,7 +500,9 @@ describe('ChatRealtimeService', () => {
         const consoleErrorSpy = spyOn(console, 'error');
         spyOn(window, 'setInterval').and.returnValue(123 as any);
 
-        (service as any).connectWebSocket();
+        (service as any).activeSessionUid = 'uid-propio';
+        (service as any).sessionRunToken = 1;
+        (service as any).connectWebSocket('uid-propio', 1);
         tick();
 
         expect(requestWebSocketTicket).toHaveBeenCalled();
@@ -528,7 +521,6 @@ describe('ChatRealtimeService', () => {
             new ProfileApiError('Gateway caido.', 'CHAT_GATEWAY_DOWN', 502)
         );
         const service = new ChatRealtimeService(
-            { currentUser: { getIdToken: async () => 'token' } } as any,
             userSvc,
             {
                 parseWebSocketEvent: (raw: any) => raw,
@@ -547,13 +539,16 @@ describe('ChatRealtimeService', () => {
         spyOn(window, 'clearTimeout');
         const consoleWarnSpy = spyOn(console, 'warn');
 
-        (service as any).connectWebSocket();
+        (service as any).activeSessionUid = 'uid-propio';
+        (service as any).sessionRunToken = 1;
+        (service as any).connectWebSocket('uid-propio', 1);
         tick();
         expect(scheduleReconnectSpy).toHaveBeenCalledTimes(1);
         expect((service as any).suppressAutomaticRealtimeReconnect).toBeFalse();
 
         clearReconnectSpy();
-        (service as any).connectWebSocket();
+        (service as any).activeSessionUid = 'uid-propio';
+        (service as any).connectWebSocket('uid-propio', 1);
         tick();
 
         expect(scheduleReconnectSpy).toHaveBeenCalledTimes(1);
@@ -575,7 +570,6 @@ describe('ChatRealtimeService', () => {
             new ProfileApiError('Forbidden', 'USAGE_POLICY_ACCEPTANCE_REQUIRED', 403)
         );
         const service = new ChatRealtimeService(
-            { currentUser: { getIdToken: async () => 'token' } } as any,
             userSvc,
             {
                 parseWebSocketEvent: (raw: any) => raw,
@@ -592,7 +586,9 @@ describe('ChatRealtimeService', () => {
         const clearPollingSpy = spyOn<any>(service, 'clearPolling').and.callThrough();
         spyOn(window, 'setTimeout').and.returnValue(123 as any);
 
-        (service as any).connectWebSocket();
+        (service as any).activeSessionUid = 'uid-propio';
+        (service as any).sessionRunToken = 1;
+        (service as any).connectWebSocket('uid-propio', 1);
         tick();
 
         expect(requestWebSocketTicket).toHaveBeenCalled();
@@ -620,7 +616,6 @@ describe('ChatRealtimeService', () => {
             unreadSystemCount: 0,
         });
         const service = new ChatRealtimeService(
-            { currentUser: { getIdToken: async () => 'token' } } as any,
             userSvc,
             {
                 parseWebSocketEvent: (raw: any) => raw,
@@ -658,6 +653,44 @@ describe('ChatRealtimeService', () => {
 
         expect(startForCurrentSessionSpy).toHaveBeenCalledTimes(2);
         expect(listConversations).toHaveBeenCalledTimes(1);
+        expect(connectWebSocketSpy).toHaveBeenCalledTimes(1);
+    }));
+
+    it('no rebootstrapea realtime si isLoggedIn vuelve a emitir true para la misma sesión', fakeAsync(() => {
+        const isLoggedIn$ = new BehaviorSubject<boolean>(false);
+        const userSvc = {
+            isLoggedIn$,
+            currentPrivateProfile$: new BehaviorSubject<any>(null),
+            CurrentUserUid: 'uid-propio',
+            getAccessRestriction: jasmine.createSpy('getAccessRestriction').and.returnValue(null),
+            resolveComplianceRestrictionFromError: jasmine.createSpy('resolveComplianceRestrictionFromError').and.returnValue(null),
+        } as any;
+        const service = new ChatRealtimeService(
+            userSvc,
+            {
+                parseWebSocketEvent: (raw: any) => raw,
+                listConversations: jasmine.createSpy('listConversations').and.resolveTo({
+                    items: [],
+                    unreadUserCount: 0,
+                    unreadSystemCount: 0,
+                }),
+                requestWebSocketTicket: jasmine.createSpy('requestWebSocketTicket').and.resolveTo({
+                    ticket: 'ticket-ok',
+                    websocketUrl: 'ws://test/ws/chat',
+                }),
+                buildWebSocketUrl: jasmine.createSpy('buildWebSocketUrl').and.returnValue('ws://test/ws/chat'),
+            } as any,
+        );
+        const startForCurrentSessionSpy = spyOn<any>(service, 'startForCurrentSession').and.callThrough();
+        const connectWebSocketSpy = spyOn<any>(service, 'connectWebSocket').and.resolveTo();
+
+        service.init();
+        isLoggedIn$.next(true);
+        tick();
+        isLoggedIn$.next(true);
+        tick();
+
+        expect(startForCurrentSessionSpy).toHaveBeenCalledTimes(1);
         expect(connectWebSocketSpy).toHaveBeenCalledTimes(1);
     }));
 });

@@ -63,6 +63,26 @@ describe('SessionNotificationCenterService', () => {
         expect(hasUnread).toBeFalse();
     });
 
+    it('markSeen no vuelve a emitir cuando todas las entradas objetivo ya estaban vistas', () => {
+        const entryId = service.add({
+            source: 'toast',
+            level: 'info',
+            title: 'Primera',
+            message: 'A',
+        });
+
+        let emissions = 0;
+        service.entries$.subscribe(() => emissions += 1);
+
+        service.markSeen([entryId]);
+        const emissionsAfterFirstMark = emissions;
+
+        service.markSeen([entryId]);
+
+        expect(emissionsAfterFirstMark).toBeGreaterThan(1);
+        expect(emissions).toBe(emissionsAfterFirstMark);
+    });
+
     it('borra entradas individuales sin tocar el resto', () => {
         service.add({
             source: 'toast',

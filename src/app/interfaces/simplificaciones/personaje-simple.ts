@@ -5,6 +5,9 @@ export interface PersonajeSimple {
     Nombre: string;
     ownerUid?: string | null;
     ownerDisplayName?: string | null;
+    campaignId?: number | null;
+    campaignName?: string | null;
+    accessReason?: 'owner' | 'campaign_public' | 'campaign_master' | null;
     visible_otros_usuarios?: boolean;
     Id_region?: number;
     Region?: { Id: number; Nombre: string; } | null;

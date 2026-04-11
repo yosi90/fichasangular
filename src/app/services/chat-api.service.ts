@@ -6,20 +6,21 @@ import { environment } from 'src/environments/environment';
 import { ProfileApiError } from '../interfaces/user-account';
 import {
     ChatAnnouncementPayload,
-    ChatConversationDetail,
     ChatGroupCreateDraft,
     ChatConversationListResult,
+    ChatConversationDetail,
     ChatNotificationAction,
     ChatNotificationPayload,
-    ChatConversationSummary,
     ChatMessage,
+    ChatConversationSummary,
     ChatMessageEnvelope,
     ChatMessageReadPayload,
     ChatReadResponse,
-    ChatWebSocketTicketResponse,
     ChatWebSocketEvent,
+    ChatWebSocketTicketResponse,
 } from '../interfaces/chat';
 import { PagedListMeta } from '../interfaces/social';
+import { FirebaseInjectionContextService } from './firebase-injection-context.service';
 
 @Injectable({
     providedIn: 'root'
@@ -27,7 +28,11 @@ import { PagedListMeta } from '../interfaces/social';
 export class ChatApiService {
     private readonly chatBaseUrl = `${environment.apiUrl}chat`;
 
-    constructor(private http: HttpClient, private auth: Auth) { }
+    constructor(
+        private http: HttpClient,
+        private auth: Auth,
+        private firebaseContextSvc?: FirebaseInjectionContextService,
+    ) { }
 
     async listConversations(limit: number = 25, offset: number = 0): Promise<ChatConversationListResult> {
         try {
@@ -425,6 +430,7 @@ export class ChatApiService {
             conversationId: this.toPositiveInt(raw?.conversationId) ?? 0,
             type: this.normalizeConversationType(raw?.type),
             title: `${raw?.title ?? ''}`.trim(),
+            campaignName: this.toNullableText(raw?.campaignName),
             photoThumbUrl: this.toNullableText(raw?.photoThumbUrl),
             campaignId: this.toPositiveInt(raw?.campaignId),
             participantRole: `${raw?.participantRole ?? ''}`.trim().toLowerCase() === 'admin' ? 'admin' : 'member',
@@ -531,11 +537,15 @@ export class ChatApiService {
     }
 
     private async buildAuthHeaders(): Promise<HttpHeaders> {
-        const user = this.auth.currentUser;
+        const user = this.firebaseContextSvc
+            ? this.firebaseContextSvc.run(() => this.auth.currentUser)
+            : this.auth.currentUser;
         if (!user)
             throw new ProfileApiError('Sesión no iniciada.', 'UNAUTHORIZED', 401);
 
-        const idToken = await user.getIdToken();
+        const idToken = this.firebaseContextSvc
+            ? await this.firebaseContextSvc.run(() => user.getIdToken())
+            : await user.getIdToken();
         if (`${idToken ?? ''}`.trim().length < 1)
             throw new ProfileApiError('Token no disponible.', 'TOKEN_INVALID', 401);
 

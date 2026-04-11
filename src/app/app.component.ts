@@ -9,6 +9,7 @@ import { ChatFloatingService } from './services/chat-floating.service';
 import { ChatRealtimeService } from './services/chat-realtime.service';
 import { SessionNotificationCenterService } from './services/session-notification-center.service';
 import { SocialAlertPreferencesService } from './services/social-alert-preferences.service';
+import { toUserFacingErrorMessage } from './services/utils/user-facing-error.util';
 
 @Component({
     selector: 'app-root',
@@ -77,15 +78,21 @@ export class AppComponent implements OnInit, OnDestroy {
             if (normalizedArgs.length === 0)
                 return originalFire(baseConfig);
 
-            if (normalizedArgs.length === 1 && normalizedArgs[0] && typeof normalizedArgs[0] === 'object' && !Array.isArray(normalizedArgs[0]))
-                return originalFire({ ...baseConfig, ...normalizedArgs[0] });
+            if (normalizedArgs.length === 1 && normalizedArgs[0] && typeof normalizedArgs[0] === 'object' && !Array.isArray(normalizedArgs[0])) {
+                const options = normalizedArgs[0];
+                return originalFire({
+                    ...baseConfig,
+                    ...options,
+                    text: this.sanitizeSwalText(options?.text, options?.title, options?.icon),
+                });
+            }
 
             if (normalizedArgs.length <= 3) {
                 const [title, text, icon] = normalizedArgs;
                 return originalFire({
                     ...baseConfig,
                     title,
-                    text,
+                    text: this.sanitizeSwalText(text, title, icon),
                     icon,
                 });
             }
@@ -94,6 +101,32 @@ export class AppComponent implements OnInit, OnDestroy {
         }) as typeof Swal.fire;
 
         AppComponent.swalConfigurado = true;
+    }
+
+    private sanitizeSwalText(rawText: any, title: any, icon: any): string | undefined {
+        const text = `${rawText ?? ''}`.trim();
+        if (text.length < 1)
+            return undefined;
+
+        const fallback = this.resolveSwalFallback(title, icon);
+        return toUserFacingErrorMessage(text, fallback);
+    }
+
+    private resolveSwalFallback(title: any, icon: any): string {
+        const normalizedTitle = `${title ?? ''}`.trim();
+        const normalizedIcon = `${icon ?? ''}`.trim().toLowerCase();
+        const genericTitle = normalizedTitle.length < 1
+            || normalizedTitle.localeCompare('error', 'es', { sensitivity: 'base' }) === 0
+            || normalizedTitle.localeCompare('warning', 'es', { sensitivity: 'base' }) === 0
+            || normalizedTitle.localeCompare('aviso', 'es', { sensitivity: 'base' }) === 0;
+
+        if (!genericTitle)
+            return normalizedTitle.endsWith('.') ? normalizedTitle : `${normalizedTitle}.`;
+        if (normalizedIcon === 'success')
+            return 'Acción completada.';
+        if (normalizedIcon === 'info')
+            return 'Hay un aviso para revisar.';
+        return 'No se pudo completar la acción.';
     }
 }
 

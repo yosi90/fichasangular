@@ -4,6 +4,7 @@ import {
     ChatConversationFilter,
     ChatConversationSummary,
     ChatGroupCreateDraft,
+    getChatConversationDisplayTitle,
 } from 'src/app/interfaces/chat';
 import { FriendItem, SocialUserBasic } from 'src/app/interfaces/social';
 import {
@@ -18,6 +19,7 @@ import { SocialApiService } from 'src/app/services/social-api.service';
 import { UserSettingsService } from 'src/app/services/user-settings.service';
 import { resolveDefaultProfileAvatar } from 'src/app/services/utils/profile-avatar.util';
 import { UserService } from 'src/app/services/user.service';
+import { toUserFacingErrorMessage } from 'src/app/services/utils/user-facing-error.util';
 
 type ListComposerMode = 'none' | 'new-direct' | 'new-group';
 
@@ -376,16 +378,7 @@ export class ChatFloatingListWindowComponent implements OnInit, OnDestroy, After
     }
 
     getConversationLabel(conversation: ChatConversationSummary | null | undefined): string {
-        const title = `${conversation?.title ?? ''}`.trim();
-        if (title.length > 0)
-            return title;
-        if (conversation?.isSystemConversation)
-            return 'Yosiftware';
-        if (conversation?.type === 'campaign')
-            return 'Chat de campaña';
-        if (conversation?.type === 'group')
-            return 'Grupo';
-        return 'Conversación';
+        return getChatConversationDisplayTitle(conversation);
     }
 
     getConversationPreview(conversation: ChatConversationSummary | null | undefined): string {
@@ -416,7 +409,12 @@ export class ChatFloatingListWindowComponent implements OnInit, OnDestroy, After
         const photo = `${conversation?.photoThumbUrl ?? ''}`.trim();
         if (photo.length > 0)
             return photo;
-        return resolveDefaultProfileAvatar(conversation?.counterpartUid ?? conversation?.title ?? '');
+        return resolveDefaultProfileAvatar(
+            conversation?.counterpartUid
+            ?? conversation?.campaignName
+            ?? conversation?.title
+            ?? ''
+        );
     }
 
     getUserLabel(user: SocialUserBasic | FriendItem | null | undefined): string {
@@ -478,7 +476,7 @@ export class ChatFloatingListWindowComponent implements OnInit, OnDestroy, After
             this.newDirectResults = await this.socialApiSvc.searchUsers(query, 12);
         } catch (error: any) {
             this.newDirectResults = [];
-            this.newDirectSearchErrorMessage = `${error?.message ?? 'No se pudo buscar usuarios.'}`.trim();
+            this.newDirectSearchErrorMessage = toUserFacingErrorMessage(error, 'No se pudo buscar usuarios.');
         } finally {
             this.newDirectSearchLoading = false;
         }
@@ -543,7 +541,7 @@ export class ChatFloatingListWindowComponent implements OnInit, OnDestroy, After
         const complianceError = this.userSvc.getComplianceErrorMessage(error, 'usage');
         if (complianceError.length > 0)
             return complianceError;
-        return `${error?.message ?? fallback}`.trim() || fallback;
+        return toUserFacingErrorMessage(error, fallback);
     }
 
     private toDateMs(value: string | null | undefined): number {

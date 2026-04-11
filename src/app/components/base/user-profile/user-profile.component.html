@@ -329,7 +329,7 @@
                                                     [max]="campaignMinimumRollMax"
                                                     [(ngModel)]="campaignCreatePolicyDraft.tiradaMinimaCaracteristica"
                                                     [disabled]="campaignEditorFormDisabled"
-                                                    (ngModelChange)="onCampaignMinimumRollChange()" />
+                                                    (blur)="onCampaignMinimumRollBlur()" />
                                             </label>
                                             <label class="campaign-policy-field">
                                                 <span>Máx. tablas de dados</span>
@@ -340,7 +340,7 @@
                                                     [max]="campaignMaxTablesMax"
                                                     [(ngModel)]="campaignCreatePolicyDraft.maxTablasDadosCaracteristicas"
                                                     [disabled]="campaignEditorFormDisabled"
-                                                    (ngModelChange)="onCampaignMaxTablesChange()" />
+                                                    (blur)="onCampaignMaxTablesBlur()" />
                                             </label>
                                             <label class="campaign-policy-field">
                                                 <span>NEP máximo personaje nuevo</span>
@@ -348,9 +348,10 @@
                                                     class="campaign-text-input"
                                                     type="number"
                                                     [min]="campaignNepMin"
+                                                    [max]="campaignNepMax"
                                                     [(ngModel)]="campaignCreatePolicyDraft.nepMaximoPersonajeNuevo"
                                                     [disabled]="campaignEditorFormDisabled"
-                                                    (ngModelChange)="onCampaignMaxNepChange()" />
+                                                    (blur)="onCampaignMaxNepBlur()" />
                                             </label>
                                             <div class="campaign-policy-field campaign-policy-field--full">
                                                 <div class="campaign-policy-heading">
@@ -412,7 +413,7 @@
                                                     [max]="campaignHomebrewSourcesMax"
                                                     [(ngModel)]="campaignCreatePolicyDraft.maxFuentesHomebrewGeneralesPorPersonaje"
                                                     [disabled]="campaignHomebrewLimitDisabled"
-                                                    (ngModelChange)="onCampaignHomebrewLimitChange()" />
+                                                    (blur)="onCampaignHomebrewLimitBlur()" />
                                             </label>
                                             <div class="campaign-toggle-list campaign-policy-field campaign-policy-field--full" *ngIf="showCampaignHomebrewAdvancedToggles">
                                                 <mat-slide-toggle
@@ -765,11 +766,6 @@
                 <section class="profile-section" *ngIf="currentSection === 'identidad'">
                     <div class="profile-two-column">
                         <article class="profile-panel profile-panel--avatar">
-                            <div class="profile-panel__header">
-                                <h2>Avatar</h2>
-                                <p>Imagen actual y preview local.</p>
-                            </div>
-
                             <div class="profile-avatar-preview">
                                 <img [src]="avatarUrl" alt="Avatar actual" (error)="onAvatarImageError($event)" />
                             </div>
@@ -794,60 +790,108 @@
                         </article>
 
                         <article class="profile-panel profile-panel--identity">
-                            <div class="profile-panel__header">
-                                <h2>Identidad</h2>
-                                <p>Nombre visible, bio, identidad de género y pronombres.</p>
-                            </div>
-
                             <div class="profile-identity-form">
-                                <mat-form-field appearance="outline" class="profile-field">
-                                    <mat-label>Nombre visible</mat-label>
-                                    <input
-                                        matInput
-                                        id="display-name-input"
-                                        type="text"
-                                        [attr.maxlength]="displayNameMaxLength"
-                                        [(ngModel)]="displayNameDraft"
-                                        [disabled]="identitySaving" />
-                                    <mat-hint align="end">{{displayNameLength}}/{{displayNameMaxLength}}</mat-hint>
-                                </mat-form-field>
+                                <div class="profile-field-stack">
+                                    <mat-form-field
+                                        appearance="outline"
+                                        class="profile-field"
+                                        [class.profile-field--invalid]="shouldShowIdentityFieldError('displayName')">
+                                        <mat-label>Nombre visible</mat-label>
+                                        <input
+                                            matInput
+                                            id="display-name-input"
+                                            type="text"
+                                            [attr.maxlength]="displayNameMaxLength"
+                                            [(ngModel)]="displayNameDraft"
+                                            [disabled]="identitySaving"
+                                            (blur)="markIdentityFieldTouched('displayName')" />
+                                        <mat-hint align="end">{{displayNameLength}}/{{displayNameMaxLength}}</mat-hint>
+                                    </mat-form-field>
+                                    <p class="profile-field-error" *ngIf="shouldShowIdentityFieldError('displayName')">
+                                        {{displayNameErrorMessage}}
+                                    </p>
+                                </div>
 
-                                <mat-form-field appearance="outline" class="profile-field">
-                                    <mat-label>Bio</mat-label>
-                                    <textarea
-                                        matInput
-                                        id="bio-input"
-                                        rows="5"
-                                        [attr.maxlength]="bioMaxLength"
-                                        [(ngModel)]="bioDraft"
-                                        [disabled]="identitySaving"></textarea>
-                                    <mat-hint align="end">{{bioLength}}/{{bioMaxLength}}</mat-hint>
-                                </mat-form-field>
+                                <div class="profile-field-stack">
+                                    <mat-form-field
+                                        appearance="outline"
+                                        class="profile-field"
+                                        [class.profile-field--invalid]="shouldShowIdentityFieldError('bio')">
+                                        <mat-label>Bio</mat-label>
+                                        <textarea
+                                            matInput
+                                            id="bio-input"
+                                            rows="5"
+                                            [attr.maxlength]="bioMaxLength"
+                                            [(ngModel)]="bioDraft"
+                                            [disabled]="identitySaving"
+                                            (blur)="markIdentityFieldTouched('bio')"></textarea>
+                                        <mat-hint align="end">{{bioLength}}/{{bioMaxLength}}</mat-hint>
+                                    </mat-form-field>
+                                    <p class="profile-field-error" *ngIf="shouldShowIdentityFieldError('bio')">
+                                        {{bioErrorMessage}}
+                                    </p>
+                                </div>
 
                                 <div class="profile-identity-grid">
-                                    <mat-form-field appearance="outline" class="profile-field">
-                                        <mat-label>Identidad de género</mat-label>
-                                        <input
-                                            matInput
-                                            id="gender-identity-input"
-                                            type="text"
-                                            maxlength="80"
-                                            [(ngModel)]="genderIdentityDraft"
-                                            [disabled]="identitySaving" />
-                                        <mat-hint align="end">{{genderIdentityLength}}/80</mat-hint>
-                                    </mat-form-field>
+                                    <div class="profile-field-stack">
+                                        <mat-form-field
+                                            appearance="outline"
+                                            class="profile-field"
+                                            [class.profile-field--invalid]="shouldShowIdentityFieldError('genderIdentity') && showCustomGenderIdentityInput">
+                                            <mat-label>Identidad de género</mat-label>
+                                            <mat-select
+                                                id="gender-identity-select"
+                                                [value]="genderIdentityPreset"
+                                                [disabled]="identitySaving"
+                                                (selectionChange)="onGenderIdentityPresetChange($event.value)">
+                                                <mat-option *ngFor="let option of genderIdentityPresetOptions" [value]="option.value">
+                                                    {{option.label}}
+                                                </mat-option>
+                                            </mat-select>
+                                        </mat-form-field>
+                                        <mat-form-field
+                                            *ngIf="showCustomGenderIdentityInput"
+                                            appearance="outline"
+                                            class="profile-field"
+                                            [class.profile-field--invalid]="shouldShowIdentityFieldError('genderIdentity')">
+                                            <mat-label>Rellena tu identidad de género</mat-label>
+                                            <input
+                                                matInput
+                                                id="gender-identity-input"
+                                                type="text"
+                                                maxlength="80"
+                                                placeholder="Escribe cómo quieres mostrarlo"
+                                                [(ngModel)]="genderIdentityDraft"
+                                                [disabled]="identitySaving"
+                                                (blur)="markIdentityFieldTouched('genderIdentity')" />
+                                            <mat-hint align="end">{{genderIdentityLength}}/80</mat-hint>
+                                        </mat-form-field>
+                                        <p class="profile-field-error" *ngIf="shouldShowIdentityFieldError('genderIdentity')">
+                                            {{genderIdentityErrorMessage}}
+                                        </p>
+                                    </div>
 
-                                    <mat-form-field appearance="outline" class="profile-field">
-                                        <mat-label>Pronombres</mat-label>
-                                        <input
-                                            matInput
-                                            id="pronouns-input"
-                                            type="text"
-                                            maxlength="80"
-                                            [(ngModel)]="pronounsDraft"
-                                            [disabled]="identitySaving" />
-                                        <mat-hint align="end">{{pronounsLength}}/80</mat-hint>
-                                    </mat-form-field>
+                                    <div class="profile-field-stack" *ngIf="showPronounsField">
+                                        <mat-form-field
+                                            appearance="outline"
+                                            class="profile-field"
+                                            [class.profile-field--invalid]="shouldShowIdentityFieldError('pronouns')">
+                                            <mat-label>Pronombres</mat-label>
+                                            <input
+                                                matInput
+                                                id="pronouns-input"
+                                                type="text"
+                                                maxlength="80"
+                                                [(ngModel)]="pronounsDraft"
+                                                [disabled]="identitySaving"
+                                                (blur)="markIdentityFieldTouched('pronouns')" />
+                                            <mat-hint align="end">{{pronounsLength}}/80</mat-hint>
+                                        </mat-form-field>
+                                        <p class="profile-field-error" *ngIf="shouldShowIdentityFieldError('pronouns')">
+                                            {{pronounsErrorMessage}}
+                                        </p>
+                                    </div>
                                 </div>
                             </div>
 

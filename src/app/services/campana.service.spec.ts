@@ -5,6 +5,7 @@ import { BehaviorSubject, Subject, of } from 'rxjs';
 import { CampanaService } from './campana.service';
 import { CampaignRealtimeSyncService } from './campaign-realtime-sync.service';
 import { FirebaseInjectionContextService } from './firebase-injection-context.service';
+import { CampaignListItem } from '../interfaces/campaign-management';
 
 describe('CampanaService', () => {
     let httpMock: { get: jasmine.Spy; post: jasmine.Spy; patch: jasmine.Spy; delete: jasmine.Spy; };
@@ -118,7 +119,22 @@ describe('CampanaService', () => {
         });
 
         await expectAsync(service.createCampaign('Costa de la Espada')).toBeRejectedWithError(
-            'No puedes usar ese nombre porque ya está en uso por otra campaña.'
+            'Ese nombre ya está en uso por otra campaña.'
+        );
+    });
+
+    it('traduce errores vagos de integridad al renombrar una campaña como nombre ya usado', async () => {
+        httpMock.patch.and.callFake(() => {
+            throw new HttpErrorResponse({
+                status: 409,
+                error: {
+                    message: 'Error de integridad de datos.',
+                },
+            });
+        });
+
+        await expectAsync(service.updateCampaign(7, { nombre: 'Costa de la Espada' })).toBeRejectedWithError(
+            'Ese nombre ya está en uso por otra campaña.'
         );
     });
 
@@ -854,6 +870,43 @@ describe('CampanaService', () => {
             { id: 7, nombre: 'Caballeros de Cormyr', campaignRole: 'master', membershipStatus: 'activo' },
         ]);
     });
+
+    it('watchCampaignSummaries corrige nombres sintéticos del watcher y no vuelve a degradarlos', fakeAsync(() => {
+        httpMock.get.and.callFake((url: string) => {
+            if (url.endsWith('campanas/7'))
+                return of({
+                    idCampana: 7,
+                    nombre: 'Caballeros de Cormyr',
+                    campaignRole: 'master',
+                    membershipStatus: 'activo',
+                    ownerUid: 'actor-1',
+                    activeMasterUid: 'actor-1',
+                    tramas: [],
+                });
+            throw new Error(`URL inesperada: ${url}`);
+        });
+
+        const emissions: CampaignListItem[][] = [];
+        const stop = service.watchCampaignSummaries((items) => emissions.push(items));
+
+        watchState.next?.([
+            { id: 7, nombre: 'Campaña', campaignRole: 'master', membershipStatus: 'activo' },
+        ]);
+        tick();
+
+        watchState.next?.([
+            { id: 7, nombre: 'Campaña', campaignRole: 'master', membershipStatus: 'activo' },
+        ]);
+        tick();
+
+        expect(emissions).toEqual([
+            [{ id: 7, nombre: 'Caballeros de Cormyr', campaignRole: 'master', membershipStatus: 'activo' }],
+            [{ id: 7, nombre: 'Caballeros de Cormyr', campaignRole: 'master', membershipStatus: 'activo' }],
+        ]);
+        expect(httpMock.get.calls.allArgs().filter((args) => `${args[0]}`.match(/campanas\/7$/)).length).toBe(1);
+
+        stop();
+    }));
 
     it('getCampaignDetail compone miembros y árbol de tramas actor-scoped', async () => {
         httpMock.get.and.callFake((url: string) => {

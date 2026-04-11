@@ -765,6 +765,43 @@ describe('UserProfileComponent', () => {
         expect(component.pronounsDraft).toBe('elle');
     }));
 
+    it('hidrata el selector de identidad en modo personalizado cuando el perfil trae un valor fuera de presets', fakeAsync(() => {
+        fixture.detectChanges();
+        tick();
+
+        expect(component.genderIdentityPreset).toBe('custom');
+        expect(component.showCustomGenderIdentityInput).toBeTrue();
+        expect(component.showPronounsField).toBeTrue();
+    }));
+
+    it('hidrata el selector como no mostrar si no hay género ni pronombres guardados', fakeAsync(() => {
+        profileSubject.next({
+            ...buildProfile('correo'),
+            genderIdentity: null,
+            pronouns: null,
+        });
+
+        fixture.detectChanges();
+        tick();
+
+        expect(component.genderIdentityPreset).toBe('hidden');
+        expect(component.showCustomGenderIdentityInput).toBeFalse();
+        expect(component.showPronounsField).toBeFalse();
+    }));
+
+    it('al elegir rellenar limpia el input custom y vuelve a mostrar pronombres', fakeAsync(() => {
+        fixture.detectChanges();
+        tick();
+
+        component.genderIdentityDraft = 'Valor heredado';
+        component.onGenderIdentityPresetChange('male');
+        component.onGenderIdentityPresetChange('custom');
+
+        expect(component.genderIdentityDraft).toBe('');
+        expect(component.showCustomGenderIdentityInput).toBeTrue();
+        expect(component.showPronounsField).toBeTrue();
+    }));
+
     it('guarda la identidad completa y actualiza el perfil en memoria', fakeAsync(() => {
         const apiSvc = TestBed.inject(UserProfileApiService) as jasmine.SpyObj<UserProfileApiService>;
         const toastSvc = TestBed.inject(AppToastService) as jasmine.SpyObj<AppToastService>;
@@ -803,6 +840,32 @@ describe('UserProfileComponent', () => {
         expect(component.bioDraft).toBe('Bio nueva 2');
         expect(toastSvc.showSuccess).toHaveBeenCalled();
         expect(chatFloatingSvc.applyProfileSettings).not.toHaveBeenCalled();
+    }));
+
+    it('guarda un preset cerrado de género y limpia pronombres al persistir', fakeAsync(() => {
+        const apiSvc = TestBed.inject(UserProfileApiService) as jasmine.SpyObj<UserProfileApiService>;
+        apiSvc.updateMyProfile.and.resolveTo({
+            ...buildProfile('correo'),
+            genderIdentity: 'Chico',
+            pronouns: null,
+        } as any);
+
+        fixture.detectChanges();
+        tick();
+
+        component.displayNameDraft = 'Nombre válido';
+        component.bioDraft = 'Bio suficientemente larga';
+        component.pronounsDraft = 'elle';
+        component.onGenderIdentityPresetChange('male');
+        void component.guardarIdentidad();
+        tick();
+
+        expect(apiSvc.updateMyProfile).toHaveBeenCalledWith({
+            displayName: 'Nombre válido',
+            bio: 'Bio suficientemente larga',
+            genderIdentity: 'Chico',
+            pronouns: null,
+        });
     }));
 
     it('traduce 403 funcional mustAcceptUsage sin depender del mensaje backend al guardar identidad', fakeAsync(() => {
@@ -978,6 +1041,40 @@ describe('UserProfileComponent', () => {
         expect(toastSvc.showError).toHaveBeenCalledWith('La bio no puede estar formada solo por números.');
     }));
 
+    it('muestra error inline en bio al perder foco con un texto demasiado corto', fakeAsync(() => {
+        fixture.detectChanges();
+        tick();
+
+        component.currentSection = 'identidad';
+        fixture.detectChanges();
+        tick();
+
+        const bioInput = fixture.nativeElement.querySelector('#bio-input') as HTMLTextAreaElement;
+        bioInput.value = 'a';
+        bioInput.dispatchEvent(new Event('input'));
+        bioInput.dispatchEvent(new Event('blur'));
+        fixture.detectChanges();
+
+        expect(fixture.nativeElement.textContent).toContain('La bio debe tener al menos 10 caracteres o dejarse vacía.');
+    }));
+
+    it('muestra error inline en nombre visible al perder foco si solo contiene números', fakeAsync(() => {
+        fixture.detectChanges();
+        tick();
+
+        component.currentSection = 'identidad';
+        fixture.detectChanges();
+        tick();
+
+        const displayNameInput = fixture.nativeElement.querySelector('#display-name-input') as HTMLInputElement;
+        displayNameInput.value = '12345';
+        displayNameInput.dispatchEvent(new Event('input'));
+        displayNameInput.dispatchEvent(new Event('blur'));
+        fixture.detectChanges();
+
+        expect(fixture.nativeElement.textContent).toContain('El nombre visible no puede estar formado solo por números.');
+    }));
+
     it('cae al avatar por defecto si falla la carga de la imagen persistida', fakeAsync(() => {
         fixture.detectChanges();
         tick();
@@ -996,6 +1093,52 @@ describe('UserProfileComponent', () => {
                 currentSrc: 'https://cdn.test/avatar-roto.webp',
             },
         } as any);
+
+        expect(component.avatarUrl).toBe(resolveDefaultProfileAvatar('uid-1'));
+    }));
+
+    it('prioriza la miniatura persistida frente al original para el avatar del perfil', fakeAsync(() => {
+        fixture.detectChanges();
+        tick();
+
+        profileSubject.next({
+            ...buildProfile('correo'),
+            photoUrl: 'https://cdn.test/avatar-original.webp',
+            photoThumbUrl: 'https://cdn.test/avatar-thumb.webp',
+        });
+        fixture.detectChanges();
+        tick();
+
+        expect(component.avatarUrl).toBe('https://cdn.test/avatar-thumb.webp');
+    }));
+
+    it('mantiene el fallback del avatar si el mismo perfil roto se reemite en caliente', fakeAsync(() => {
+        const brokenAvatar = 'https://cdn.test/avatar-roto.webp';
+        fixture.detectChanges();
+        tick();
+
+        profileSubject.next({
+            ...buildProfile('correo'),
+            photoUrl: brokenAvatar,
+            photoThumbUrl: null,
+        });
+        fixture.detectChanges();
+        tick();
+
+        component.onAvatarImageError({
+            target: {
+                src: brokenAvatar,
+                currentSrc: brokenAvatar,
+            },
+        } as any);
+
+        profileSubject.next({
+            ...buildProfile('correo'),
+            photoUrl: brokenAvatar,
+            photoThumbUrl: null,
+        });
+        fixture.detectChanges();
+        tick();
 
         expect(component.avatarUrl).toBe(resolveDefaultProfileAvatar('uid-1'));
     }));
@@ -2369,24 +2512,32 @@ describe('UserProfileComponent', () => {
         expect(toastSvc.showError).toHaveBeenCalledWith('El nombre de campaña no puede estar formado solo por números.');
     }));
 
-    it('recorta los límites numéricos de campaña al máximo permitido', fakeAsync(() => {
+    it('acota los límites numéricos de campaña al perder foco y no durante la edición', fakeAsync(() => {
         fixture.detectChanges();
         tick();
 
         component.seleccionarNuevaCampana();
+        component.campaignCreatePolicyDraft.tiradaMinimaCaracteristica = null as any;
+        component.campaignCreatePolicyDraft.nepMaximoPersonajeNuevo = null as any;
+        component.campaignCreatePolicyDraft.maxTablasDadosCaracteristicas = null as any;
+        component.campaignCreatePolicyDraft.maxFuentesHomebrewGeneralesPorPersonaje = 99 as any;
+
+        expect(component.campaignCreatePolicyDraft.tiradaMinimaCaracteristica).toBeNull();
+        expect(component.campaignCreatePolicyDraft.nepMaximoPersonajeNuevo).toBeNull();
+        expect(component.campaignCreatePolicyDraft.maxTablasDadosCaracteristicas).toBeNull();
+
         component.campaignCreatePolicyDraft.tiradaMinimaCaracteristica = 99 as any;
         component.campaignCreatePolicyDraft.nepMaximoPersonajeNuevo = -4 as any;
         component.campaignCreatePolicyDraft.maxTablasDadosCaracteristicas = 99 as any;
-        component.campaignCreatePolicyDraft.maxFuentesHomebrewGeneralesPorPersonaje = 99 as any;
 
-        component.onCampaignMinimumRollChange();
-        component.onCampaignMaxNepChange();
-        component.onCampaignMaxTablesChange();
+        component.onCampaignMinimumRollBlur();
+        component.onCampaignMaxNepBlur();
+        component.onCampaignMaxTablesBlur();
         component.setCampaignHomebrewMode('limitado');
-        component.onCampaignHomebrewLimitChange();
+        component.onCampaignHomebrewLimitBlur();
 
         expect(component.campaignCreatePolicyDraft.tiradaMinimaCaracteristica).toBe(13);
-        expect(component.campaignCreatePolicyDraft.nepMaximoPersonajeNuevo).toBe(0);
+        expect(component.campaignCreatePolicyDraft.nepMaximoPersonajeNuevo).toBe(1);
         expect(component.campaignCreatePolicyDraft.maxTablasDadosCaracteristicas).toBe(5);
         expect(component.campaignCreatePolicyDraft.maxFuentesHomebrewGeneralesPorPersonaje).toBe(20);
     }));

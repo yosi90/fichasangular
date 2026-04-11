@@ -1,29 +1,19 @@
 import { of, throwError } from 'rxjs';
-import Swal from 'sweetalert2';
 import { Personaje } from '../interfaces/personaje';
 import { ProfileApiError } from '../interfaces/user-account';
-import { FirebaseInjectionContextService } from './firebase-injection-context.service';
 import { PersonajeService } from './personaje.service';
-
-const firebaseContextMock = {
-    run: <T>(fn: () => T) => fn(),
-} as FirebaseInjectionContextService;
 
 function crearServicio(httpMock: any): PersonajeService {
     return new PersonajeService(
         { currentUser: { getIdToken: async () => 'token' } } as any,
-        {} as any,
         httpMock,
-        firebaseContextMock
     );
 }
 
 function crearServicioInvitado(httpMock: any): PersonajeService {
     return new PersonajeService(
         { currentUser: null } as any,
-        {} as any,
         httpMock,
-        firebaseContextMock
     );
 }
 
@@ -366,20 +356,20 @@ describe('PersonajeService', () => {
         expect(personaje.Archivado).toBeTrue();
     });
 
-    it('getDetallesPersonaje recupera Archivado desde cache auxiliar cuando el detalle API no lo trae', async () => {
+    it('getDetallesPersonaje usa GET /personajes/publicos/:id para invitados', async () => {
         const httpMock = {
             get: jasmine.createSpy('get').and.returnValue(of({
-                i: 77,
-                n: 'Aldric',
-                ownerUid: 'uid-77',
-                ownerDisplayName: 'Aldric Owner',
+                i: 78,
+                n: 'Sir Test',
+                ownerUid: 'uid-78',
+                ownerDisplayName: 'Owner',
                 visible_otros_usuarios: true,
-                id_region: 4,
-                dcp: 'Personalidad',
-                dh: 'Historia',
+                id_region: 3,
+                dcp: 'Serio',
+                dh: 'Veterano de frontera',
                 a: '2',
-                ca: 16,
-                an: 1,
+                ca: 12,
+                an: 0,
                 cd: 0,
                 cv: 0,
                 ra: {
@@ -390,8 +380,8 @@ describe('PersonajeService', () => {
                     Dgs_adicionales: { Cantidad: 0 },
                 },
                 tc: { Id: 1, Nombre: 'Humanoide' },
-                f: 12,
-                mf: 1,
+                f: 10,
+                mf: 0,
                 d: 10,
                 md: 0,
                 co: 10,
@@ -400,15 +390,15 @@ describe('PersonajeService', () => {
                 mint: 0,
                 s: 10,
                 ms: 0,
-                car: 8,
-                mcar: -1,
+                car: 10,
+                mcar: 0,
                 de: 'No tener deidad',
                 ali: 'Neutral autentico',
                 g: 'Macho',
                 ncam: 'Sin campaña',
                 ntr: 'Trama base',
                 nst: 'Subtrama base',
-                v: 12,
+                v: 10,
                 cor: 30,
                 na: 0,
                 vo: 0,
@@ -466,136 +456,39 @@ describe('PersonajeService', () => {
                 ecp: '',
                 cper: {},
                 cperd: false,
+                archivado: false,
             })),
         } as any;
-        const service = crearServicio(httpMock);
-        spyOn<any>(service, 'readCacheSnapshot').and.resolveTo({ Archivado: true });
-
-        const observable = await service.getDetallesPersonaje(77);
-        const personaje = await new Promise<any>((resolve) => observable.subscribe(resolve));
-
-        expect(personaje.Archivado).toBeTrue();
-    });
-
-    it('getDetallesPersonaje usa cache pública para invitados cuando el personaje es visible', async () => {
-        const httpMock = {
-            get: jasmine.createSpy('get'),
-        } as any;
         const service = crearServicioInvitado(httpMock);
-        spyOn<any>(service, 'readCacheSnapshot').and.resolveTo({
-            Nombre: 'Aldric',
-            visible_otros_usuarios: true,
-            Campana: 'Sin campaña',
-            Trama: 'Trama base',
-            Subtrama: 'Subtrama base',
-            Clases: [{ Nombre: 'Guerrero', Nivel: 2 }],
-            Raza: {
-                Id: 1,
-                Nombre: 'Humano',
-                Ajuste_nivel: 0,
-                Tamano: { Nombre: 'Mediano', Modificador_presa: 0 },
-                Dgs_adicionales: { Cantidad: 0 },
-            },
-            Tipo_criatura: { Id: 1, Nombre: 'Humanoide' },
-            Fuerza: 10,
-            Destreza: 10,
-            Constitucion: 10,
-            Inteligencia: 10,
-            Sabiduria: 10,
-            Carisma: 10,
-            Vida: 10,
-            Ataque_base: '2',
-            Ca: 12,
-            Armadura_natural: 0,
-            Ca_desvio: 0,
-            Ca_varios: 0,
-            Presa: 2,
-            Presa_varios: [],
-            Iniciativa_varios: [],
-            Dominios: [],
-            Subtipos: [],
-            Plantillas: [],
-            Familiares: [],
-            Companeros: [],
-            Conjuros: [],
-            Claseas: [],
-            Raciales: [],
-            Habilidades: [],
-            Dotes: [],
-            DotesContextuales: [],
-            Ventajas: [],
-            Idiomas: [],
-            Sortilegas: [],
-            Rds: [],
-            Rcs: [],
-            Res: [],
-            Capacidad_carga: { Ligera: 0, Media: 0, Pesada: 0 },
-            Salvaciones: {},
-            Escuela_especialista: { Nombre: '', Calificativo: '' },
-            Disciplina_especialista: { Nombre: '', Calificativo: '' },
-            Disciplina_prohibida: '',
-            Escuelas_prohibidas: [],
-            CaracteristicasVarios: {
-                Fuerza: [],
-                Destreza: [],
-                Constitucion: [],
-                Inteligencia: [],
-                Sabiduria: [],
-                Carisma: [],
-            },
-        });
 
-        const observable = await service.getDetallesPersonaje(77);
+        const observable = await service.getDetallesPersonaje(78);
         const personaje = await new Promise<any>((resolve) => observable.subscribe(resolve));
 
-        expect(httpMock.get).not.toHaveBeenCalled();
-        expect(personaje.Id).toBe(77);
-        expect(personaje.visible_otros_usuarios).toBeTrue();
+        expect(httpMock.get).toHaveBeenCalledWith(
+            jasmine.stringMatching(/personajes\/publicos\/78$/)
+        );
+        expect(personaje.Id).toBe(78);
+        expect(personaje.Nombre).toBe('Sir Test');
+        expect(personaje.Contexto).toBe('Veterano de frontera');
+        expect(personaje.Personalidad).toBe('Serio');
         expect(personaje.Campana).toBe('Sin campaña');
-        expect(personaje.Fuerza).toBe(10);
-        expect(personaje.Vida).toBe(10);
         expect(personaje.Clases).toBe('Guerrero (2)');
     });
 
-    it('getDetallesPersonaje rechaza detalle cacheado no visible para invitados', async () => {
+    it('getDetallesPersonaje para invitados propaga el error del endpoint público y no cae a RTDB legacy', async () => {
         const httpMock = {
-            get: jasmine.createSpy('get'),
+            get: jasmine.createSpy('get').and.returnValue(throwError(() => ({
+                status: 404,
+                error: { message: 'No encontrado' },
+            }))),
         } as any;
         const service = crearServicioInvitado(httpMock);
-        spyOn<any>(service, 'readCacheSnapshot').and.resolveTo({
-            Id: 88,
-            Nombre: 'Privado',
-            visible_otros_usuarios: false,
-            Campana: 'Sin campaña',
-            Trama: 'Trama base',
-            Subtrama: 'Subtrama base',
-            Raza: { Id: 1, Nombre: 'Humano', Ajuste_nivel: 0, Tamano: { Nombre: 'Mediano', Modificador_presa: 0 }, Dgs_adicionales: { Cantidad: 0 } },
-            Tipo_criatura: { Id: 1, Nombre: 'Humanoide' },
-        });
-
-        await expectAsync(service.getDetallesPersonaje(88))
-            .toBeRejectedWithError('El personaje solicitado no está disponible para invitados.');
-    });
-
-    it('getDetallesPersonaje rechaza detalle archivado para invitados aunque sea visible', async () => {
-        const httpMock = {
-            get: jasmine.createSpy('get'),
-        } as any;
-        const service = crearServicioInvitado(httpMock);
-        spyOn<any>(service, 'readCacheSnapshot').and.resolveTo({
-            Id: 89,
-            Nombre: 'Archivado',
-            visible_otros_usuarios: true,
-            Archivado: true,
-            Campana: 'Sin campaña',
-            Trama: 'Trama base',
-            Subtrama: 'Subtrama base',
-            Raza: { Id: 1, Nombre: 'Humano', Ajuste_nivel: 0, Tamano: { Nombre: 'Mediano', Modificador_presa: 0 }, Dgs_adicionales: { Cantidad: 0 } },
-            Tipo_criatura: { Id: 1, Nombre: 'Humanoide' },
-        });
 
         await expectAsync(service.getDetallesPersonaje(89))
-            .toBeRejectedWithError('El personaje solicitado no está disponible para invitados.');
+            .toBeRejectedWithError('No encontrado');
+        expect(httpMock.get).toHaveBeenCalledWith(
+            jasmine.stringMatching(/personajes\/publicos\/89$/)
+        );
     });
 
     it('actualizarArchivadoPersonaje usa PATCH con Bearer y normaliza respuesta', async () => {
@@ -814,39 +707,6 @@ describe('PersonajeService', () => {
         expect(captured?.message).toBe('Debes aceptar las normas de creación vigentes antes de continuar.');
     });
 
-    it('guardarPersonajeEnFirebase escribe detalle y simple con forma compatible', async () => {
-        const httpMock = {
-            post: jasmine.createSpy('post').and.returnValue(of({})),
-        } as any;
-        const service = crearServicio(httpMock);
-        const pj = crearPersonajeMock();
-        pj.Id_region = 4;
-        pj.Region = { Id: 4, Nombre: 'Rashemen' } as any;
-        pj.competencia_arma = [{ Id: 11, Nombre: 'Arco corto' }];
-        pj.competencia_armadura = [{ Id: 12, Nombre: 'Escudo ligero', Es_escudo: true }];
-        const writeSpy = spyOn<any>(service, 'escribirRutaFirebase').and.resolveTo();
-
-        await service.guardarPersonajeEnFirebase(321, pj);
-
-        expect(writeSpy).toHaveBeenCalledTimes(3);
-        const llamadas = writeSpy.calls.allArgs();
-        const detalle = llamadas.find((args) => `${args[0] ?? ''}`.includes('Personajes/321'));
-        const simple = llamadas.find((args) => `${args[0] ?? ''}`.includes('Personajes-simples/321'));
-        const listado = llamadas.find((args) => `${args[0] ?? ''}`.includes('listado-personajes/321'));
-        expect(detalle).toBeDefined();
-        expect(simple).toBeDefined();
-        expect(listado).toBeDefined();
-        expect((detalle?.[1] as any)?.DotesContextuales?.[0]?.Contexto?.Id_personaje).toBe(321);
-        expect((detalle?.[1] as any)?.competencia_arma).toEqual([{ Id: 11, Nombre: 'Arco corto' }]);
-        expect((detalle?.[1] as any)?.competencia_armadura).toEqual([{ Id: 12, Nombre: 'Escudo ligero', Es_escudo: true }]);
-        expect((simple?.[1] as any)?.competencia_arma).toBeUndefined();
-        expect((listado?.[1] as any)?.competencia_armadura).toBeUndefined();
-        expect((simple?.[1] as any)?.Campaña).toBe('Sin campaña');
-        expect((detalle?.[1] as any)?.Id_region).toBe(4);
-        expect((simple?.[1] as any)?.Id_region).toBe(4);
-        expect((listado?.[1] as any)?.Id_region).toBe(4);
-    });
-
     it('normalizarPersonajeParaPersistenciaFinal deja competencias vacías y preserva Es_escudo', () => {
         const httpMock = {
             post: jasmine.createSpy('post').and.returnValue(of({})),
@@ -879,225 +739,4 @@ describe('PersonajeService', () => {
         expect(normalizado.Archivado).toBeTrue();
     });
 
-    it('RenovarPersonajes sincroniza competencias directas en cache detallada', async () => {
-        const httpMock = {
-            post: jasmine.createSpy('post').and.returnValue(of({})),
-        } as any;
-        const service = crearServicio(httpMock);
-        spyOn<any>(service, 'd_pjs').and.returnValue(of([{
-            i: 55,
-            n: 'Kara',
-            ownerUid: 'uid-55',
-            visible_otros_usuarios: true,
-            dcp: '',
-            dh: '',
-            a: '1',
-            ca: 10,
-            an: 0,
-            cd: 0,
-            cv: 0,
-            ra: { Nombre: 'Humano', Tamano: { Nombre: 'Mediano', Modificador_presa: 0 }, Dgs_adicionales: { Cantidad: 0 }, Ajuste_nivel: 0 },
-            tc: {},
-            f: 10,
-            mf: 0,
-            d: 10,
-            md: 0,
-            co: 10,
-            mco: 0,
-            int: 10,
-            mint: 0,
-            s: 10,
-            ms: 0,
-            car: 10,
-            mcar: 0,
-            de: 'No tener deidad',
-            ali: 'Neutral autentico',
-            g: 'Macho',
-            ncam: 'Sin campaña',
-            ntr: 'Trama base',
-            nst: 'Subtrama base',
-            v: 8,
-            cor: 30,
-            na: 0,
-            vo: 0,
-            t: 0,
-            e: 0,
-            o: true,
-            dg: 0,
-            cla: 'Guerrero;1',
-            dom: '',
-            stc: '',
-            competencia_arma: [{ Id: 2, Nombre: 'Espada corta' }],
-            competencia_armadura: [{ Id: 4, Nombre: 'Escudo ligero', Es_escudo: true }],
-            competencia_grupo_arma: [{ Id: 6, Nombre: 'Armas simples' }],
-            competencia_grupo_armadura: [{ Id: 8, Nombre: 'Escudos' }],
-            pla: [],
-            con: [],
-            esp: [],
-            espX: [],
-            rac: [],
-            hab: [],
-            habN: [],
-            habC: [],
-            habCa: [],
-            habMc: [],
-            habR: [],
-            habRv: [],
-            habX: [],
-            habV: [],
-            habCu: [],
-            dotes: [],
-            ve: '',
-            idi: [],
-            familiares: [],
-            companeros: [],
-            sor: [],
-            ju: '',
-            pgl: 0,
-            ini_v: [],
-            pr_v: [],
-            edad: 0,
-            alt: 0,
-            peso: 0,
-            salv: {},
-            rds: [],
-            rcs: [],
-            res: [],
-            ccl: 0,
-            ccm: 0,
-            ccp: 0,
-            espa: '',
-            espan: '',
-            espp: '',
-            esppn: '',
-            disp: '',
-            ecp: '',
-            cper: {},
-            cperd: false,
-        }]));
-        const writeSpy = spyOn<any>(service, 'escribirRutaFirebase').and.resolveTo();
-        spyOn(Swal, 'fire').and.resolveTo({} as any);
-
-        const ok = await service.RenovarPersonajes();
-
-        expect(ok).toBeTrue();
-        const detalleCall = writeSpy.calls.allArgs().find((args) => `${args[0] ?? ''}` === 'Personajes/55');
-        expect(detalleCall).toBeDefined();
-        expect((detalleCall?.[1] as any)?.competencia_arma).toEqual([{ Id: 2, Nombre: 'Espada corta' }]);
-        expect((detalleCall?.[1] as any)?.competencia_armadura).toEqual([{ Id: 4, Nombre: 'Escudo ligero', Es_escudo: true }]);
-        expect((detalleCall?.[1] as any)?.competencia_grupo_arma).toEqual([{ Id: 6, Nombre: 'Armas simples' }]);
-        expect((detalleCall?.[1] as any)?.competencia_grupo_armadura).toEqual([{ Id: 8, Nombre: 'Escudos' }]);
-    });
-
-    it('RenovarPersonajes descarta aliases legacy de owner en respuestas API', async () => {
-        const httpMock = {
-            post: jasmine.createSpy('post').and.returnValue(of({})),
-        } as any;
-        const service = crearServicio(httpMock);
-        spyOn<any>(service, 'd_pjs').and.returnValue(of([{
-            i: 56,
-            n: 'Legacy owner',
-            owner_uid: 'legacy-owner',
-            uid: 'legacy-uid',
-            owner_display_name: 'Legacy visible',
-            visible_otros_usuarios: true,
-            dcp: '',
-            dh: '',
-            a: '1',
-            ca: 10,
-            an: 0,
-            cd: 0,
-            cv: 0,
-            ra: { Nombre: 'Humano', Tamano: { Nombre: 'Mediano', Modificador_presa: 0 }, Dgs_adicionales: { Cantidad: 0 }, Ajuste_nivel: 0 },
-            tc: {},
-            f: 10,
-            mf: 0,
-            d: 10,
-            md: 0,
-            co: 10,
-            mco: 0,
-            int: 10,
-            mint: 0,
-            s: 10,
-            ms: 0,
-            car: 10,
-            mcar: 0,
-            de: 'No tener deidad',
-            ali: 'Neutral autentico',
-            g: 'Macho',
-            ncam: 'Sin campaña',
-            ntr: 'Trama base',
-            nst: 'Subtrama base',
-            v: 8,
-            cor: 30,
-            na: 0,
-            vo: 0,
-            t: 0,
-            e: 0,
-            o: true,
-            dg: 0,
-            cla: 'Guerrero;1',
-            dom: '',
-            stc: '',
-            competencia_arma: [],
-            competencia_armadura: [],
-            competencia_grupo_arma: [],
-            competencia_grupo_armadura: [],
-            pla: [],
-            con: [],
-            esp: [],
-            espX: [],
-            rac: [],
-            hab: [],
-            habN: [],
-            habC: [],
-            habCa: [],
-            habMc: [],
-            habR: [],
-            habRv: [],
-            habX: [],
-            habV: [],
-            habCu: [],
-            dotes: [],
-            ve: '',
-            idi: [],
-            familiares: [],
-            companeros: [],
-            sor: [],
-            ju: '',
-            pgl: 0,
-            ini_v: [],
-            pr_v: [],
-            edad: 0,
-            alt: 0,
-            peso: 0,
-            salv: {},
-            rds: [],
-            rcs: [],
-            res: [],
-            ccl: 0,
-            ccm: 0,
-            ccp: 0,
-            espa: '',
-            espan: '',
-            espp: '',
-            esppn: '',
-            disp: '',
-            ecp: '',
-            cper: {},
-            cperd: false,
-        }]));
-        const writeSpy = spyOn<any>(service, 'escribirRutaFirebase').and.resolveTo();
-        spyOn(Swal, 'fire').and.resolveTo({} as any);
-
-        const ok = await service.RenovarPersonajes();
-
-        expect(ok).toBeTrue();
-        const detalleCall = writeSpy.calls.allArgs().find((args) => `${args[0] ?? ''}` === 'Personajes/56');
-        const simpleCall = writeSpy.calls.allArgs().find((args) => `${args[0] ?? ''}` === 'Personajes-simples/56');
-        expect((detalleCall?.[1] as any)?.ownerUid ?? null).toBeNull();
-        expect((detalleCall?.[1] as any)?.ownerDisplayName ?? null).toBeNull();
-        expect((simpleCall?.[1] as any)?.ownerUid ?? null).toBeNull();
-        expect((simpleCall?.[1] as any)?.ownerDisplayName ?? null).toBeNull();
-    });
 });

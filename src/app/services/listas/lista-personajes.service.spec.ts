@@ -104,6 +104,166 @@ describe('ListaPersonajesService', () => {
         expect(personajes[0].Region).toEqual({ Id: 3, Nombre: '' });
     });
 
+    it('getPersonajes combina listado público y Firestore privado para autenticados y deduplica por Id', async () => {
+        const privateFirestoreMock = {
+            listCharacters: jasmine.createSpy('listCharacters').and.resolveTo([
+                {
+                    Id: 7,
+                    Nombre: 'Mi versión privada',
+                    ownerUid: 'uid-own',
+                    ownerDisplayName: 'Dueño',
+                    visible_otros_usuarios: false,
+                    Id_region: 2,
+                    Region: { Id: 2, Nombre: 'Cormyr' },
+                    Raza: { Id: 1, Nombre: 'Humano' },
+                    Clases: 'Clérigo 4',
+                    Contexto: 'Privado',
+                    Personalidad: 'Reservado',
+                    Campana: 'Sin campaña',
+                    Trama: 'Trama base',
+                    Subtrama: 'Subtrama base',
+                    Archivado: false,
+                },
+                {
+                    Id: 8,
+                    Nombre: 'Solo privado',
+                    ownerUid: 'uid-own',
+                    ownerDisplayName: 'Dueño',
+                    visible_otros_usuarios: false,
+                    Id_region: 0,
+                    Region: { Id: 0, Nombre: 'Sin región' },
+                    Raza: { Id: 1, Nombre: 'Humano' },
+                    Clases: 'Mago 2',
+                    Contexto: 'Privado',
+                    Personalidad: 'Analítico',
+                    Campana: 'Sin campaña',
+                    Trama: 'Trama base',
+                    Subtrama: 'Subtrama base',
+                    Archivado: false,
+                },
+            ]),
+            watchCharacters: jasmine.createSpy('watchCharacters').and.returnValue(() => undefined),
+        };
+        const service = new ListaPersonajesService(
+            { currentUser: { uid: 'uid-own', getIdToken: async () => 'token' } } as any,
+            {} as any,
+            { get: jasmine.createSpy('get') } as any,
+            firebaseContextMock,
+            privateFirestoreMock as any
+        );
+        spyOn<any>(service, 'readPublicPersonajesFromCache').and.resolveTo([
+            {
+                Id: 7,
+                Nombre: 'Versión pública',
+                ownerUid: 'uid-own',
+                ownerDisplayName: 'Dueño público',
+                visible_otros_usuarios: true,
+                Id_region: 1,
+                Region: { Id: 1, Nombre: 'Aguas Profundas' },
+                Raza: { Id: 1, Nombre: 'Humano' },
+                Clases: 'Clérigo 3',
+                Contexto: 'Público',
+                Personalidad: 'Abierto',
+                Campana: 'Sin campaña',
+                Trama: 'Trama base',
+                Subtrama: 'Subtrama base',
+                Archivado: false,
+            },
+            {
+                Id: 9,
+                Nombre: 'Solo público',
+                ownerUid: 'uid-otro',
+                ownerDisplayName: 'Otra persona',
+                visible_otros_usuarios: true,
+                Id_region: 0,
+                Region: { Id: 0, Nombre: 'Sin región' },
+                Raza: { Id: 1, Nombre: 'Humano' },
+                Clases: 'Guerrero 1',
+                Contexto: 'Público',
+                Personalidad: 'Directo',
+                Campana: 'Sin campaña',
+                Trama: 'Trama base',
+                Subtrama: 'Subtrama base',
+                Archivado: false,
+            },
+        ]);
+
+        const observable = await service.getPersonajes();
+        const personajes = await new Promise<any[]>((resolve) => observable.subscribe(resolve));
+
+        expect(privateFirestoreMock.listCharacters).toHaveBeenCalled();
+        expect(personajes).toHaveSize(3);
+        expect(personajes.find((item) => item.Id === 7)?.Nombre).toBe('Mi versión privada');
+        expect(personajes.find((item) => item.Id === 9)?.Nombre).toBe('Solo público');
+        expect(personajes.find((item) => item.Id === 8)?.Nombre).toBe('Solo privado');
+    });
+
+    it('la suscripción privada mantiene la parte pública del listado autenticado', async () => {
+        let onNext: any = null;
+        const privateFirestoreMock = {
+            listCharacters: jasmine.createSpy('listCharacters').and.resolveTo([]),
+            watchCharacters: jasmine.createSpy('watchCharacters').and.callFake((next: (personajes: any[]) => void) => {
+                onNext = next;
+                return () => undefined;
+            }),
+        };
+        const service = new ListaPersonajesService(
+            { currentUser: { uid: 'uid-own', getIdToken: async () => 'token' } } as any,
+            {} as any,
+            { get: jasmine.createSpy('get') } as any,
+            firebaseContextMock,
+            privateFirestoreMock as any
+        );
+        spyOn<any>(service, 'readPublicPersonajesFromCache').and.resolveTo([
+            {
+                Id: 22,
+                Nombre: 'Publico estable',
+                ownerUid: 'uid-otro',
+                ownerDisplayName: 'Otra persona',
+                visible_otros_usuarios: true,
+                Id_region: 0,
+                Region: { Id: 0, Nombre: 'Sin región' },
+                Raza: { Id: 1, Nombre: 'Humano' },
+                Clases: 'Bardo 1',
+                Contexto: 'Público',
+                Personalidad: 'Expresivo',
+                Campana: 'Sin campaña',
+                Trama: 'Trama base',
+                Subtrama: 'Subtrama base',
+                Archivado: false,
+            },
+        ]);
+
+        await (service as any).reloadPersonajesForCurrentActor();
+        expect(onNext).toBeTruthy();
+        if (onNext) {
+            onNext([
+                {
+                    Id: 33,
+                    Nombre: 'Privado emitido',
+                    ownerUid: 'uid-own',
+                    ownerDisplayName: 'Yo',
+                    visible_otros_usuarios: false,
+                    Id_region: 0,
+                    Region: { Id: 0, Nombre: 'Sin región' },
+                    Raza: { Id: 1, Nombre: 'Humano' },
+                    Clases: 'Explorador 1',
+                    Contexto: 'Privado',
+                    Personalidad: 'Cauto',
+                    Campana: 'Sin campaña',
+                    Trama: 'Trama base',
+                    Subtrama: 'Subtrama base',
+                    Archivado: false,
+                },
+            ]);
+        }
+        await new Promise((resolve) => setTimeout(resolve, 0));
+
+        const personajes = (service as any).personajesSubject.value;
+        expect(personajes.find((item: any) => item.Id === 22)?.Nombre).toBe('Publico estable');
+        expect(personajes.find((item: any) => item.Id === 33)?.Nombre).toBe('Privado emitido');
+    });
+
     it('usa cache pública para invitados y no llama a la API', async () => {
         const httpMock = {
             get: jasmine.createSpy('get'),
@@ -226,6 +386,51 @@ describe('ListaPersonajesService', () => {
         expect(personajes[0].Campana).toBe('Sin campaña');
         expect(personajes[0].Trama).toBe('Trama base');
         expect(personajes[0].Subtrama).toBe('Subtrama base');
+    });
+
+    it('mapea payload legacy de Personajes-simples con nombres autodescriptivos', () => {
+        const service = new ListaPersonajesService(
+            { currentUser: null } as any,
+            {} as any,
+            {} as any,
+            firebaseContextMock
+        );
+
+        const personaje = (service as any).mapApiToPersonajeSimple({
+            Id_personaje: 44,
+            Nombre: 'Sir Test',
+            ownerUid: 'uid-44',
+            ownerDisplayName: 'Owner',
+            campaignId: 7,
+            campaignName: 'Campaña A',
+            accessReason: 'campaign_public',
+            visible_otros_usuarios: true,
+            Id_region: 3,
+            Raza: { Id: 1, Nombre: 'Humano' },
+            Clases: 'Guerrero 2',
+            Descripcion_historia: 'Veterano de frontera',
+            Descripcion_personalidad: 'Serio',
+            Campaña: 'Sin campaña',
+            Trama: '',
+            Subtrama: '',
+            Archivado: false,
+        });
+
+        expect(personaje).toEqual(jasmine.objectContaining({
+            Id: 44,
+            Nombre: 'Sir Test',
+            ownerUid: 'uid-44',
+            ownerDisplayName: 'Owner',
+            campaignId: 7,
+            campaignName: 'Campaña A',
+            accessReason: 'campaign_public',
+            Id_region: 3,
+            Clases: 'Guerrero 2',
+            Contexto: 'Veterano de frontera',
+            Personalidad: 'Serio',
+            Campana: 'Sin campaña',
+            Archivado: false,
+        }));
     });
 
     it('filtra personajes archivados en cache pública aunque sean visibles', async () => {
@@ -397,7 +602,7 @@ describe('ListaPersonajesService', () => {
         await (service as any).reloadPersonajesForCurrentActor();
 
         expect(emisiones[0]?.[0]?.Nombre).toBe('Publico invitado');
-        expect((service as any).personajesSubject.value[0]?.Nombre).toBe('Visible para usuario');
+        expect((service as any).personajesSubject.value.find((item: any) => item.Id === 9)?.Nombre).toBe('Visible para usuario');
         sub.unsubscribe();
     });
 });

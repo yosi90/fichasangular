@@ -61,11 +61,16 @@ export class SessionNotificationCenterService {
             return;
 
         const now = Date.now();
-        this.writeEntries(
-            this.entriesSubject.value.map((entry) => normalizedIds.has(entry.id) && entry.seenAt === null
-                ? { ...entry, seenAt: now }
-                : entry)
-        );
+        let changed = false;
+        const nextEntries = this.entriesSubject.value.map((entry) => {
+            if (!normalizedIds.has(entry.id) || entry.seenAt !== null)
+                return entry;
+            changed = true;
+            return { ...entry, seenAt: now };
+        });
+        if (!changed)
+            return;
+        this.writeEntries(nextEntries);
     }
 
     captureToast(type: AppToastType, message: string): string {
