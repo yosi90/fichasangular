@@ -1,4 +1,4 @@
-import { AfterViewInit, Component, ElementRef, EventEmitter, HostListener, Input, OnDestroy, Output, ViewChild } from '@angular/core';
+import { AfterViewInit, Component, DoCheck, ElementRef, EventEmitter, HostListener, Input, OnDestroy, Output, ViewChild } from '@angular/core';
 import { Raza } from 'src/app/interfaces/raza';
 import {
     AsignacionCaracteristicas,
@@ -21,13 +21,36 @@ interface PreviewCaracteristica {
     modificador: number;
 }
 
+interface TablaVisibleVm {
+    numero: number;
+    valores: number[];
+    seleccionada: boolean;
+}
+
+interface PoolItemVm {
+    index: number;
+    texto: string;
+    usado: boolean;
+    draggable: boolean;
+}
+
+interface CaracteristicaVm {
+    key: CaracteristicaKey;
+    label: string;
+    modRacialTexto: string;
+    bloqueada: boolean;
+    conValor: boolean;
+    valorAsignadoTexto: string;
+    preview: PreviewCaracteristica | null;
+}
+
 @Component({
     selector: 'app-generador-caracteristicas-modal',
     templateUrl: './generador-caracteristicas-modal.component.html',
     styleUrls: ['./generador-caracteristicas-modal.component.sass'],
     standalone: false
 })
-export class GeneradorCaracteristicasModalComponent implements AfterViewInit, OnDestroy {
+export class GeneradorCaracteristicasModalComponent implements AfterViewInit, DoCheck, OnDestroy {
     @Input() raza!: Raza;
     @Input() caracteristicasPerdidas: CaracteristicasPerdidasState | null = null;
     @Input() pierdeConstitucion = false;
@@ -110,7 +133,11 @@ export class GeneradorCaracteristicasModalComponent implements AfterViewInit, On
     cuestionarioAuto: GeneradorAutoCuestionario = {};
     diagnosticoAuto: GeneradorAutoDiagnostico | null = null;
     autoStepperIndex = 0;
+    tablasVisiblesVm: TablaVisibleVm[] = [];
+    poolItemsVm: PoolItemVm[] = [];
+    caracteristicasVm: CaracteristicaVm[] = [];
     private resolverCuestionarioAuto: ((respuesta: GeneradorAutoCuestionario | null) => void) | null = null;
+    private firmaViewModel = '';
 
     constructor(private nuevoPSvc: NuevoPersonajeService) {
         this.nuevoPSvc.abrirModalCaracteristicas();
@@ -119,6 +146,10 @@ export class GeneradorCaracteristicasModalComponent implements AfterViewInit, On
 
     ngAfterViewInit(): void {
         this.programarFocoModal();
+    }
+
+    ngDoCheck(): void {
+        this.refreshViewModelSiNecesario();
     }
 
     ngOnDestroy(): void {
@@ -205,23 +236,27 @@ export class GeneradorCaracteristicasModalComponent implements AfterViewInit, On
     }
 
     onMinimoChange(value: number): void {
-        this.nuevoPSvc.setMinimoGenerador(Number(value));
+        const minimo = Number(value);
+        if (this.estado.minimoSeleccionado === minimo)
+            return;
+        this.nuevoPSvc.setMinimoGenerador(minimo);
         this.programarFocoModal();
     }
 
     onTablasPermitidasChange(value: number): void {
-        this.nuevoPSvc.setTablasPermitidasGenerador(Number(value));
+        const tablas = Number(value);
+        if (this.estado.tablasPermitidas === tablas)
+            return;
+        this.nuevoPSvc.setTablasPermitidasGenerador(tablas);
         this.programarFocoModal();
     }
 
     get tablasVisibles(): { numero: number; valores: number[]; }[] {
-        return Array.from({ length: this.estado.tablasPermitidas }, (_, i) => {
-            const numero = i + 1;
-            return {
-                numero,
-                valores: this.nuevoPSvc.getTiradasTabla(numero),
-            };
-        });
+        this.refreshViewModelSiNecesario();
+        return this.tablasVisiblesVm.map((tabla) => ({
+            numero: tabla.numero,
+            valores: tabla.valores.slice(),
+        }));
     }
 
     seleccionarTabla(tabla: number): void {
@@ -424,6 +459,12 @@ export class GeneradorCaracteristicasModalComponent implements AfterViewInit, On
         return this.estado.poolDisponible[index] < 0;
     }
 
+    trackByTablaNumero = (_index: number, tabla: TablaVisibleVm): number => tabla.numero;
+
+    trackByPoolIndex = (_index: number, item: PoolItemVm): number => item.index;
+
+    trackByCaracteristicaKey = (_index: number, item: CaracteristicaVm): string => item.key;
+
     getPreviewCaracteristica(caracteristica: CaracteristicaKey): PreviewCaracteristica | null {
         if (this.esCaracteristicaPerdida(caracteristica))
             return null;
@@ -549,5 +590,59 @@ export class GeneradorCaracteristicasModalComponent implements AfterViewInit, On
 
         const selectorBloqueado = 'input, textarea, select, button, a, [role="button"], [role="checkbox"], [role="option"], [role="listbox"], [role="menuitem"], .cdk-overlay-pane';
         return !!target.closest(selectorBloqueado);
+    }
+
+    private refreshViewModelSiNecesario(): void {
+        const firmaActual = this.construirFirmaViewModel();
+        if (firmaActual === this.firmaViewModel)
+            return;
+
+        this.firmaViewModel = firmaActual;
+        this.tablasVisiblesVm = Array.from({ length: this.estado.tablasPermitidas }, (_, i) => {
+            const numero = i + 1;
+            return {
+                numero,
+                valores: this.nuevoPSvc.getTiradasTabla(numero),
+                seleccionada: this.estado.tablaSeleccionada === numero,
+            };
+        });
+        this.poolItemsVm = this.estado.poolDisponible.map((valor, index) => ({
+            index,
+            texto: valor < 0 ? 'Usado' : `${valor}`,
+            usado: valor < 0,
+            draggable: valor >= 0,
+        }));
+        this.caracteristicasVm = this.caracteristicas.map((item) => {
+            const modRacial = this.getModRacial(item.key);
+            const preview = this.getPreviewCaracteristica(item.key);
+            return {
+                key: item.key,
+                label: item.label,
+                modRacialTexto: this.formatMod(modRacial),
+                bloqueada: this.caracteristicaBloqueada(item.key),
+                conValor: this.caracteristicaConValor(item.key),
+                valorAsignadoTexto: this.getValorAsignado(item.key),
+                preview,
+            };
+        });
+    }
+
+    private construirFirmaViewModel(): string {
+        const partes: string[] = [
+            `${this.estado.minimoSeleccionado}`,
+            `${this.estado.indiceMinimo}`,
+            `${this.estado.tablasPermitidas}`,
+            `${this.estado.tablaSeleccionada ?? 'null'}`,
+            this.estado.poolDisponible.join(','),
+        ];
+
+        this.caracteristicas.forEach((item) => {
+            const perdida = this.esCaracteristicaPerdida(item.key) ? '1' : '0';
+            const asignada = this.estado.asignaciones[item.key];
+            const modRacial = this.getModRacial(item.key);
+            partes.push(`${item.key}:${perdida}:${asignada === null ? 'null' : asignada}:${modRacial}`);
+        });
+
+        return partes.join('|');
     }
 }

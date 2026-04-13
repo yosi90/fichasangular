@@ -27,6 +27,7 @@ export class CloseFilterMenuOnMouseleaveDirective implements OnDestroy {
         this.hostListeners.push(
             this.listen(this.host.nativeElement, 'mouseenter', () => this.handleHostMouseEnter()),
             this.listen(this.host.nativeElement, 'mouseleave', () => this.scheduleClose()),
+            this.listen(this.host.nativeElement, 'mousedown', (event: Event) => this.handleHostPointerDown(event), { capture: true }),
             this.listen(this.host.nativeElement, 'click', (event: Event) => this.handleHostClick(event), { capture: true }),
         );
     }
@@ -48,6 +49,15 @@ export class CloseFilterMenuOnMouseleaveDirective implements OnDestroy {
     private handleHostClick(event: Event): void {
         const mouseEvent = event as MouseEvent;
         if ((mouseEvent?.detail ?? 0) < 1)
+            return;
+
+        event.preventDefault();
+        event.stopImmediatePropagation();
+    }
+
+    private handleHostPointerDown(event: Event): void {
+        const mouseEvent = event as MouseEvent;
+        if ((mouseEvent?.button ?? 0) !== 0)
             return;
 
         event.preventDefault();

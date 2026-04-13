@@ -561,6 +561,36 @@ describe('PersonajeService', () => {
         });
     });
 
+    it('permite crear personaje de campaña sin trama ni subtrama', () => {
+        const httpMock = {
+            post: jasmine.createSpy('post').and.returnValue(of({})),
+        } as any;
+        const service = crearServicio(httpMock);
+        const pj = crearPersonajeMock();
+        pj.Campana = 'Campaña A';
+        pj.Trama = 'Trama base';
+        pj.Subtrama = 'Subtrama base';
+
+        const payload = service.construirPayloadCreacionDesdePersonaje(
+            pj,
+            { idCampana: 1, idTrama: null, idSubtrama: null },
+            {
+                tiradaMinimaDeclarada: 10,
+                tablasDadosUsadas: 2,
+                overrideReglasCampana: false,
+            }
+        );
+
+        expect(payload.personaje.campana).toEqual({ id: 1 });
+        expect(payload.personaje.trama).toBeUndefined();
+        expect(payload.personaje.subtrama).toBeUndefined();
+        expect(payload.contextoCreacionCampana).toEqual({
+            tiradaMinimaDeclarada: 10,
+            tablasDadosUsadas: 2,
+            overrideReglasCampana: false,
+        });
+    });
+
     it('omite campaña, trama y subtrama al crear un personaje sin campaña', () => {
         const httpMock = {
             post: jasmine.createSpy('post').and.returnValue(of({})),
@@ -580,6 +610,22 @@ describe('PersonajeService', () => {
         expect(payload.personaje.trama).toBeUndefined();
         expect(payload.personaje.subtrama).toBeUndefined();
         expect(payload.contextoCreacionCampana).toBeUndefined();
+    });
+
+    it('rechaza historia de campaña incompleta cuando solo llega la trama', () => {
+        const httpMock = {
+            post: jasmine.createSpy('post').and.returnValue(of({})),
+        } as any;
+        const service = crearServicio(httpMock);
+        const pj = crearPersonajeMock();
+        pj.Campana = 'Campaña A';
+        pj.Trama = 'Trama visible';
+        pj.Subtrama = 'Subtrama base';
+
+        expect(() => service.construirPayloadCreacionDesdePersonaje(
+            pj,
+            { idCampana: 1, idTrama: 7, idSubtrama: null }
+        )).toThrowError('No se pudo resolver una historia de campaña completa: trama y subtrama deben viajar juntas.');
     });
 
     it('prioriza idRegion de contexto cuando está presente', () => {

@@ -1,0 +1,42 @@
+<div class="selector-overlay" (click)="onCerrar()">
+    <div class="selector-dialog" (click)="$event.stopPropagation()">
+        <div class="selector-header">
+            <div class="selector-header-main">
+                <h2 class="tw-m-0 selector-title">{{titulo}}</h2>
+                <p class="tw-m-0 selector-subtitle" *ngIf="descripcion.length > 0">{{descripcion}}</p>
+            </div>
+            <button mat-icon-button type="button" class="selector-icon-btn" aria-label="Cerrar" (click)="onCerrar()">
+                <mat-icon>close</mat-icon>
+            </button>
+        </div>
+
+        <div class="opciones-listado" *ngIf="opciones.length > 0; else sinOpcionesTpl">
+            <div class="opcion-row"
+                *ngFor="let opcion of opciones; trackBy: trackByClave"
+                [class.seleccionada]="esOpcionSeleccionada(opcion.clave)"
+                tabindex="0"
+                role="option"
+                [attr.aria-selected]="esOpcionSeleccionada(opcion.clave)"
+                (click)="seleccionarOpcion(opcion.clave)"
+                (keydown.enter)="seleccionarOpcion(opcion.clave); $event.preventDefault()"
+                (keydown.space)="seleccionarOpcion(opcion.clave); $event.preventDefault()">
+                <div class="opcion-head">
+                    <p class="tw-m-0 opcion-nombre">{{opcion.nombre}}</p>
+                    <mat-chip class="opcion-tipo-chip">{{getEtiquetaTipo(opcion.tipo)}}</mat-chip>
+                </div>
+                <p class="tw-m-0 opcion-extra" *ngIf="opcion.extra.length > 0">{{opcion.extra}}</p>
+            </div>
+        </div>
+
+        <ng-template #sinOpcionesTpl>
+            <p class="tw-m-0 detalle">No hay opciones disponibles para este grupo.</p>
+        </ng-template>
+
+        <div class="selector-actions">
+            <button mat-stroked-button type="button" (click)="onCerrar()">Cancelar</button>
+            <button mat-raised-button color="primary" type="button" [disabled]="!puedeConfirmar" (click)="onConfirmar()">
+                Confirmar elección
+            </button>
+        </div>
+    </div>
+</div>

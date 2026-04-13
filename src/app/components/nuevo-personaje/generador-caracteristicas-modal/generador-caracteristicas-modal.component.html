@@ -33,8 +33,8 @@
                 </div>
                 <div class="tablas-scroll">
                     <div class="tablas-grid">
-                        <div class="tabla-card" *ngFor="let tabla of tablasVisibles"
-                            [class.tabla-seleccionada]="isTablaSeleccionada(tabla.numero)"
+                        <div class="tabla-card" *ngFor="let tabla of tablasVisiblesVm; trackBy: trackByTablaNumero"
+                            [class.tabla-seleccionada]="tabla.seleccionada"
                             (click)="seleccionarTabla(tabla.numero)">
                             <h4>Tabla {{tabla.numero}}</h4>
                             <div class="valores">
@@ -55,12 +55,12 @@
                     <button
                         mat-stroked-button
                         class="pool-item"
-                        *ngFor="let _ of estado.poolDisponible; let i = index"
-                        [draggable]="estado.poolDisponible[i] >= 0"
-                        [class.pool-item-usado]="estado.poolDisponible[i] < 0"
-                        (dragstart)="iniciarArrastre(i, $event)"
-                        (click)="onClickPoolItem(i)">
-                        {{getPoolValor(i)}}
+                        *ngFor="let item of poolItemsVm; trackBy: trackByPoolIndex"
+                        [draggable]="item.draggable"
+                        [class.pool-item-usado]="item.usado"
+                        (dragstart)="iniciarArrastre(item.index, $event)"
+                        (click)="onClickPoolItem(item.index)">
+                        {{item.texto}}
                     </button>
                 </div>
             </section>
@@ -71,20 +71,20 @@
                     <p class="bloque-subtitulo tw-m-0">Una vez asignadas todas las características podrás continuar con la creación de tu personaje.</p>
                 </div>
                 <div class="atributos-grid">
-                    <div class="atributo-item" *ngFor="let item of caracteristicas">
+                    <div class="atributo-item" *ngFor="let item of caracteristicasVm; trackBy: trackByCaracteristicaKey">
                         <div class="atributo-label">{{item.label}}</div>
-                        <div class="atributo-mod">Mod. racial: {{formatMod(getModRacial(item.key))}}</div>
+                        <div class="atributo-mod">Mod. racial: {{item.modRacialTexto}}</div>
                         <div
                             class="atributo-drop"
-                            [class.atributo-drop-bloqueado]="caracteristicaBloqueada(item.key)"
+                            [class.atributo-drop-bloqueado]="item.bloqueada"
                             [class.atributo-drop-completo]="estado.asignaciones[item.key] !== null"
-                            [class.atributo-drop-clickable]="caracteristicaConValor(item.key)"
+                            [class.atributo-drop-clickable]="item.conValor"
                             (dragover)="permitirSoltar($event)"
                             (drop)="soltarEnCaracteristica(item.key, $event)"
                             (click)="onClickCaracteristica(item.key)">
-                            {{getValorAsignado(item.key)}}
+                            {{item.valorAsignadoTexto}}
                         </div>
-                        <div class="atributo-preview" *ngIf="getPreviewCaracteristica(item.key) as preview">
+                        <div class="atributo-preview" *ngIf="item.preview as preview">
                             <span>Resultado: {{preview.valorFinal}}</span>
                             <span>Mod: {{formatMod(preview.modificador)}}</span>
                         </div>

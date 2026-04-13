@@ -213,6 +213,23 @@ describe('DetallesPersonajeComponent', () => {
         expect(html).not.toContain('No tiene clase');
     });
 
+    it('muestra el total negativo de habilidades sin prefijo positivo redundante', () => {
+        component.pj.Habilidades = [{
+            Nombre: 'Trepar',
+            Rangos: 1,
+            Rangos_varios: 0,
+            Mod_car: -5,
+            Extra: '',
+            Varios: '',
+        } as any];
+
+        fixture.detectChanges();
+
+        const html = `${fixture.nativeElement.textContent ?? ''}`;
+        expect(html).toContain('Trepar -4');
+        expect(html).not.toContain('Trepar +-4');
+    });
+
     it('oculta contexto y personalidad de fallback semántico', () => {
         component.pj.Contexto = 'Eres totalmente antirol hijo mio.';
         component.pj.Personalidad = 'Rellena un fisco puto vago.';
@@ -454,6 +471,37 @@ describe('DetallesPersonajeComponent', () => {
         expect(html).toContain('Elfo');
         expect(html).toContain('Nivel');
         expect(html).toContain('Ventaja');
+    });
+
+    it('muestra el origen corregido para dotes de plantilla y progresión en la preview', () => {
+        component.esPreviewNuevoPersonaje = true;
+        component.pj.Dotes = [
+            {
+                Nombre: 'Alerta',
+                Descripcion: '',
+                Beneficio: '',
+                Pagina: 1,
+                Extra: '',
+                Origen: 'Licántropo (lince) [nacido]',
+            },
+            {
+                Nombre: 'Ataque poderoso',
+                Descripcion: '',
+                Beneficio: '',
+                Pagina: 1,
+                Extra: '',
+                Origen: 'Dote adicional por nivel 6',
+            },
+        ] as any;
+
+        fixture.detectChanges();
+
+        const origenes = fixture.debugElement.queryAll(By.css('.chip-origen'))
+            .map((el) => `${el.nativeElement.textContent ?? ''}`.trim())
+            .filter(Boolean);
+
+        expect(origenes).toContain('Licántropo (lince) [nacido]');
+        expect(origenes).toContain('Dote adicional por nivel 6');
     });
 
     it('aplica warm solo a chips de ventajas y mantiene click en preview', () => {
@@ -756,6 +804,27 @@ describe('DetallesPersonajeComponent', () => {
         expect(html).toContain('Exp 0');
         expect(html).toContain('Oro inicial');
         expect(html).toContain('0');
+    });
+
+    it('reordena bloques en la preview de nuevo personaje sin tocar el layout compacto', () => {
+        component.esPreviewNuevoPersonaje = true;
+        component.caracteristicasConfirmadas = true;
+        component.pj.Destreza = 12;
+        component.pj.ModDestreza = 1;
+        component.pj.Raza.Nombre = 'Elfo';
+        component.pj.Raza.Tamano.Nombre = 'Mediano';
+        component.pj.Tipo_criatura.Nombre = 'Humanoide';
+        component.pj.desgloseClases = [{ Nombre: 'Explorador', Nivel: 2 }] as any;
+
+        fixture.detectChanges();
+
+        const columnas = fixture.debugElement.queryAll(By.css('.detalle-col'));
+        expect(columnas.length).toBeGreaterThanOrEqual(2);
+        expect(columnas[0].query(By.css('.detalle-bloque--principal'))).not.toBeNull();
+        expect(columnas[0].query(By.css('.detalle-bloque--caracteristicas'))).not.toBeNull();
+        expect(columnas[0].query(By.css('.detalle-bloque--raza'))).toBeNull();
+        expect(columnas[1].query(By.css('.detalle-bloque--raza'))).not.toBeNull();
+        expect(columnas[1].query(By.css('.detalle-bloque--clases'))).not.toBeNull();
     });
 
     it('calcula iniciativa como ModDestreza + bonos varios', () => {

@@ -211,6 +211,19 @@ describe('GeneradorCaracteristicasModalComponent', () => {
         expect(component.tablasVisibles.length).toBe(5);
     });
 
+    it('refresca un view-model compacto para tablas, pool y previews', () => {
+        component.seleccionarTabla(1);
+        service.asignarDesdePoolACaracteristica('Fuerza', 0);
+
+        component.ngDoCheck();
+
+        expect(component.tablasVisiblesVm.length).toBe(3);
+        expect(component.tablasVisiblesVm[0].seleccionada).toBeTrue();
+        expect(component.poolItemsVm.length).toBe(6);
+        expect(component.poolItemsVm[0].usado).toBeTrue();
+        expect(component.caracteristicasVm.find((item) => item.key === 'Fuerza')?.preview).not.toBeNull();
+    });
+
     it('pierde constitucion permite finalizar con 5 asignaciones', () => {
         const servicioNoMuerto = new NuevoPersonajeService();
         servicioNoMuerto.seleccionarRaza(crearRazaMock(true));

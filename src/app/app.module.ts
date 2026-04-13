@@ -86,6 +86,8 @@ import { SelectorCompaneroModalComponent } from './components/nuevo-personaje/se
 import { SelectorPuntosGolpeModalComponent } from './components/nuevo-personaje/selector-puntos-golpe-modal/selector-puntos-golpe-modal.component';
 import { SelectorVisibilidadPersonajeModalComponent } from './components/nuevo-personaje/selector-visibilidad-personaje-modal/selector-visibilidad-personaje-modal.component';
 import { VentanaDetalleFlotanteComponent } from './components/nuevo-personaje/ventana-detalle-flotante/ventana-detalle-flotante.component';
+import { InformacionBasicosModalComponent } from './components/nuevo-personaje/informacion-basicos-modal/informacion-basicos-modal.component';
+import { SelectorClaseOpcionalModalComponent } from './components/nuevo-personaje/selector-clase-opcional-modal/selector-clase-opcional-modal.component';
 import { ListadoSubtiposComponent } from './components/shared/listado-subtipos/listado-subtipos.component';
 import { DetallesSubtipoComponent } from './components/detalles/detalles-subtipo/detalles-subtipo.component';
 import { DetallesVentajaComponent } from './components/detalles/detalles-ventaja/detalles-ventaja.component';
@@ -185,6 +187,8 @@ import { CloseFilterMenuOnMouseleaveDirective } from './directives/close-filter-
         SelectorCompaneroModalComponent,
         SelectorPuntosGolpeModalComponent,
         SelectorVisibilidadPersonajeModalComponent,
+        InformacionBasicosModalComponent,
+        SelectorClaseOpcionalModalComponent,
         SelectorRazaBaseModalComponent,
         SelectorRacialesOpcionalesModalComponent,
         VentanaDetalleFlotanteComponent,

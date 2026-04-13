@@ -137,12 +137,20 @@
     align-items: flex-start
     gap: 10px
 
+.field-help-row
+    display: flex
+    align-items: flex-start
+    gap: 10px
+
 .deidad-selector-row
     display: flex
     align-items: flex-start
     gap: 10px
 
 .campaign-selector-field
+    flex: 1 1 auto
+
+.field-help-main
     flex: 1 1 auto
 
 .deidad-selector-field
@@ -163,6 +171,34 @@
 
     &:hover
         background: rgba(255, 255, 255, 0.08)
+        border-color: rgba(255, 255, 255, 0.4)
+
+    &:focus-visible
+        outline: 2px solid rgba(255, 255, 255, 0.3)
+        outline-offset: 2px
+
+.field-help-btn
+    flex: 0 0 auto
+    margin-top: 8px
+    display: inline-flex
+    align-items: center
+    justify-content: center
+    width: 40px
+    height: 40px
+    border: 1px solid rgba(255, 255, 255, 0.28)
+    border-radius: 999px
+    background: rgba(0, 0, 0, 0.16)
+    color: rgba(255, 255, 255, 0.92)
+    cursor: pointer
+    padding: 0
+
+    mat-icon
+        font-size: 18px
+        width: 18px
+        height: 18px
+
+    &:hover
+        background: rgba(0, 0, 0, 0.24)
         border-color: rgba(255, 255, 255, 0.4)
 
     &:focus-visible
@@ -223,7 +259,16 @@
         ::ng-deep .mat-mdc-form-field-subscript-wrapper
             display: block
 
-.alineamiento-bloque, .edad-bloque, .deidad-bloque
+.form-field-no-subscript
+    ::ng-deep .mat-mdc-form-field-subscript-wrapper
+        height: 0 !important
+        min-height: 0 !important
+        padding: 0 !important
+
+    ::ng-deep .mat-mdc-form-field-bottom-align::before
+        display: none !important
+
+.alineamiento-bloque, .deidad-bloque
     display: flex
     flex-direction: column
     gap: 0
@@ -239,25 +284,14 @@
     ::ng-deep .mat-mdc-form-field-infix
         padding-bottom: 0 !important
 
-.alineamiento-preferencias
-    background-color: rgba(255, 255, 255, 0.04)
-    border: 0
-    border-bottom: 1px solid #5f5f5f
-    border-radius: 0
-    margin-top: -2px
-    padding: 8px
-    font-size: 0.9rem
-    line-height: 1.4
+.edad-bloque
+    display: flex
+    flex-direction: column
+    gap: 4px
 
-.edad-contexto
-    background-color: rgba(255, 255, 255, 0.04)
-    border: 0
-    border-bottom: 1px solid #5f5f5f
-    border-radius: 0
-    margin-top: -2px
-    padding: 8px
-    font-size: 0.9rem
-    line-height: 1.4
+    ::ng-deep .mat-mdc-form-field-subscript-wrapper
+        padding-top: 2px
+        white-space: normal
 
 .alineamiento-feedback
     background-color: rgba(255, 183, 0, 0.12)
@@ -272,6 +306,13 @@
 
 .plantillas-layout
     min-height: 0
+
+.plantillas-panel
+    background: rgba(255, 255, 255, 0.03)
+    border: 1px solid rgba(255, 255, 255, 0.12)
+
+.plantillas-panel__titulo
+    font-weight: 600
 
 .plantillas-filtros
     display: grid
@@ -302,12 +343,125 @@
     ::ng-deep .mat-mdc-chip .mdc-evolution-chip__action
         overflow: visible
 
-.chip-bloqueada
-    opacity: 0.75
+.plantillas-lista
+    display: flex
+    flex-direction: column
+    gap: 8px
+    margin: 4px
 
-.chip-seleccionada
-    display: inline-flex
+.plantillas-lista--seleccion
+    margin-top: 0
+
+.plantilla-card
+    width: 100%
+    box-sizing: border-box
+    border-radius: 8px
+    border: 1px solid rgba(255, 255, 255, 0.18)
+    background: rgba(255, 255, 255, 0.05)
+    color: #eef2ff
+    padding: 10px 12px
+    display: flex
+    flex-direction: column
+    gap: 8px
+    transition: background .15s ease, border-color .15s ease
+
+.plantilla-card--elegible
+    cursor: pointer
+    border-color: rgba(104, 199, 104, 0.3)
+    background: rgba(62, 146, 62, 0.08)
+
+    &:hover
+        background: rgba(62, 146, 62, 0.14)
+        border-color: rgba(104, 199, 104, 0.5)
+
+    &:focus-visible
+        outline: 2px solid rgba(104, 199, 104, 0.45)
+        outline-offset: 2px
+
+.plantilla-card--bloqueada
+    border-color: rgba(255, 173, 111, 0.42)
+    background: rgba(160, 95, 45, 0.12)
+
+.plantilla-card--seleccion
+    background: rgba(255, 255, 255, 0.05)
+
+.plantilla-card--seleccion-actual
+    border-color: rgba(159, 179, 255, 0.52)
+    background: rgba(122, 154, 255, 0.14)
+
+.plantilla-card--seleccion-confirmada
+    border-color: rgba(185, 196, 220, 0.32)
+    background: rgba(255, 255, 255, 0.04)
+
+.plantilla-card__head
+    display: flex
+    justify-content: space-between
+    align-items: flex-start
+    gap: 10px
+
+.plantilla-card__texto
+    min-width: 0
+    display: flex
+    flex-direction: column
+    gap: 3px
+
+.plantilla-card__nombre
+    color: #f6f8ff
+    font-weight: 600
+    font-size: 1rem
+
+.plantilla-card__meta
+    color: #d4dcef
+    font-size: .84rem
+
+.plantilla-card__acciones
+    display: flex
     align-items: center
+    gap: 6px
+    flex: 0 0 auto
+
+.plantilla-card__chips
+    display: flex
+    flex-wrap: wrap
+    gap: 6px
+
+.plantilla-card__motivos
+    border-top: 1px solid rgba(255, 255, 255, 0.14)
+    padding-top: 6px
+    font-size: .82rem
+    color: #ffd3c2
+    display: flex
+    flex-direction: column
+    gap: 3px
+
+.plantilla-card__advertencia
+    color: #ffe39a
+
+.plantilla-chip-estado
+    border-radius: 8px
+    font-size: .74rem
+    font-weight: 600
+    min-height: 28px
+
+.plantilla-chip-estado.ok
+    background: rgba(62, 146, 62, 0.25)
+    border: 1px solid rgba(104, 199, 104, 0.55)
+    color: #d2f3d2
+
+.plantilla-chip-estado.warm
+    background: rgba(160, 95, 45, 0.26)
+    border: 1px solid rgba(255, 173, 111, 0.62)
+    color: #ffe2ce
+
+.plantilla-chip-estado.info
+    background: rgba(122, 154, 255, 0.2)
+    border: 1px solid rgba(159, 179, 255, 0.5)
+    color: #d9e4ff
+
+.plantilla-chip-estado.fixed
+    background: rgba(134, 146, 172, 0.2)
+    border: 1px solid rgba(185, 196, 220, 0.38)
+    color: #eef2ff
 
 .plantillas-resumen-linea
     display: flex
@@ -321,13 +475,41 @@
     flex: 0 1 auto
 
 .plantilla-detalle-btn
-    margin-left: .25rem
+    width: 30px
+    height: 30px
+    line-height: 30px
+    color: #d6e3ff
+    border: 1px solid rgba(203, 216, 255, 0.4)
+    border-radius: 7px
+    background: rgba(255, 255, 255, 0.05)
+    padding: 2px
+
+.plantilla-remove-btn
+    width: 30px
+    height: 30px
+    line-height: 30px
+    color: #ffd7d7
+    border: 1px solid rgba(255, 173, 173, 0.35)
+    border-radius: 7px
+    background: rgba(120, 42, 42, 0.16)
+    padding: 2px
+
+.plantilla-remove-btn:hover
+    background: rgba(120, 42, 42, 0.28)
+    border-color: rgba(255, 173, 173, 0.55)
 
 .chip-alerta
     height: auto
     white-space: normal
     line-height: 1.3
     overflow-wrap: anywhere
+
+@media (max-width: 900px)
+    .plantilla-card__head
+        flex-direction: column
+    .plantilla-card__acciones
+        width: 100%
+        justify-content: flex-start
 
 textarea
     resize: vertical
@@ -418,6 +600,7 @@ textarea
         flex: 1 1 0
         min-height: 0
         min-width: 0
+        max-height: 100%
 
     .sombra-caja-sm
         display: flex
@@ -488,11 +671,17 @@ textarea
 .tabla-ventajas--seleccion
     table-layout: fixed
 
+    th, td
+        box-sizing: border-box
+
     th
         top: 0
         z-index: 3
         background: #2b2d33
         text-align: center
+        white-space: normal
+        overflow-wrap: anywhere
+        line-height: 1.2
 
     td
         background: rgba(46, 48, 54, 0.92)
@@ -681,6 +870,10 @@ textarea
     min-width: 36px
     font-weight: 600
     line-height: 1.1
+    display: inline-flex
+    align-items: center
+    justify-content: center
+    text-align: center
 
 .habilidad-rangos-wrap
     display: inline-flex
@@ -775,7 +968,7 @@ textarea
     overflow: auto
 
 .tabla-ventajas
-    width: 100%
+    color: #ccc
     border-collapse: collapse
     font-size: .92rem
 
@@ -815,7 +1008,7 @@ textarea
         width: 7%
 
     th:nth-child(3), td:nth-child(3)
-        width: 22%
+        width: 42%
 
     th:nth-child(4), td:nth-child(4)
         width: 11%
@@ -824,9 +1017,6 @@ textarea
         width: 10%
 
     th:nth-child(6), td:nth-child(6)
-        width: 20%
-
-    th:nth-child(7), td:nth-child(7)
         width: 10%
 
     .fila-clase:nth-child(odd)
@@ -859,6 +1049,14 @@ textarea
     display: flex
     flex-wrap: wrap
     gap: 4px
+
+.clase-estado-chip
+    min-width: 72px
+    font-weight: 400
+    line-height: 1.15
+    display: inline-flex
+    align-items: center
+    justify-content: center
 
 .clase-detalle-btn
     min-height: 36px
@@ -893,7 +1091,7 @@ textarea
         width: 7%
 
     th:nth-child(3), td:nth-child(3)
-        width: 20%
+        width: 38%
 
     th:nth-child(4), td:nth-child(4)
         width: 11%
@@ -902,12 +1100,9 @@ textarea
         width: 9%
 
     th:nth-child(6), td:nth-child(6)
-        width: 18%
-
-    th:nth-child(7), td:nth-child(7)
         width: 5%
 
-    th:nth-child(8), td:nth-child(8)
+    th:nth-child(7), td:nth-child(7)
         width: 10%
 
     ::ng-deep .mdc-evolution-chip__action,
@@ -991,6 +1186,9 @@ textarea
 .conjuros-tablas--single
     grid-template-columns: 1fr
 
+    .tabla-scroll
+        width: 100%
+
 .conjuros-view
     .tab-scroll
         color: #eef2ff
@@ -1005,6 +1203,7 @@ textarea
     vertical-align: middle
 
 .tabla-conjuros
+    width: 100%
     th
         background: #20242c
         color: #f2f6ff
@@ -1042,6 +1241,10 @@ textarea
     background: rgba(255, 255, 255, 0.06)
     color: #dbe4f4
 
+.tabla-conjuros-vacia__mensaje
+    text-align: center
+    padding: 1rem .75rem
+
 ::ng-deep .mat-mdc-form-field-subscript-wrapper
     padding: 0 2px
 
@@ -1049,11 +1252,17 @@ textarea
     .campaign-selector-row
         flex-direction: column
 
+    .field-help-row
+        flex-direction: column
+
     .deidad-selector-row
         flex-direction: column
 
     .campaign-manage-btn
         width: 56px
+
+    .field-help-btn
+        margin-top: 0
 
     .deidad-detalle-btn
         width: 56px
@@ -1080,5 +1289,3 @@ textarea
     .clase-homebrew-chip
         justify-self: start
         margin-top: 0
-
-

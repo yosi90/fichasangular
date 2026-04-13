@@ -225,6 +225,47 @@ describe('NuevoPersonajeService (generador)', () => {
         expect(userSettingsSvc.migrateLegacyLocalConfigOnce).toHaveBeenCalledWith(GENERADOR_CONFIG_STORAGE_KEY);
     });
 
+    it('sincronizarConfigGeneradorDesdeCuenta no pisa un reparto ya empezado', async () => {
+        const userSettingsSvc = jasmine.createSpyObj<UserSettingsService>('UserSettingsService', [
+            'loadGeneradorConfig',
+            'loadProfileSettings',
+            'saveGeneradorConfig',
+            'migrateLegacyLocalConfigOnce',
+        ]);
+        userSettingsSvc.loadProfileSettings.and.resolveTo({
+            ...createDefaultUserSettings().perfil,
+        });
+        userSettingsSvc.loadGeneradorConfig.and.resolveTo({
+            minimoSeleccionado: 8,
+            tablasPermitidas: 5,
+            updatedAt: Date.now(),
+        });
+        userSettingsSvc.saveGeneradorConfig.and.resolveTo();
+        userSettingsSvc.migrateLegacyLocalConfigOnce.and.resolveTo();
+
+        const service = new NuevoPersonajeService(userSettingsSvc);
+        service.seleccionarTablaGenerador(1);
+        service.asignarDesdePoolACaracteristica('Fuerza', 0);
+        const poolAntes = service.EstadoFlujo.generador.poolDisponible.slice();
+
+        await service.sincronizarConfigGeneradorDesdeCuenta();
+
+        expect(service.EstadoFlujo.generador.minimoSeleccionado).toBe(13);
+        expect(service.EstadoFlujo.generador.tablasPermitidas).toBe(3);
+        expect(service.EstadoFlujo.generador.tablaSeleccionada).toBe(1);
+        expect(service.EstadoFlujo.generador.poolDisponible).toEqual(poolAntes);
+        expect(service.EstadoFlujo.generador.asignaciones.Fuerza).not.toBeNull();
+
+        service.aplicarRestriccionCampanaGenerador({
+            tiradaMinimaCaracteristica: 3,
+            maxTablasDadosCaracteristicas: 1,
+        });
+        service.aplicarRestriccionCampanaGenerador(null);
+
+        expect(service.EstadoFlujo.generador.minimoSeleccionado).toBe(8);
+        expect(service.EstadoFlujo.generador.tablasPermitidas).toBe(5);
+    });
+
     it('evaluarClaseParaSeleccion considera competencias directas persistidas en el personaje', () => {
         const service = new NuevoPersonajeService();
         service.PersonajeCreacion.competencia_arma = [{ Id: 7, Nombre: 'Espada larga' }];
@@ -365,6 +406,36 @@ describe('NuevoPersonajeService (generador)', () => {
 
         expect(service.EstadoFlujo.generador.minimoSeleccionado).toBe(8);
         expect(service.EstadoFlujo.generador.tablasPermitidas).toBe(5);
+    });
+
+    it('preserva el reparto si la restricción de campaña sigue siendo compatible con la tabla elegida', () => {
+        const service = new NuevoPersonajeService();
+        service.seleccionarTablaGenerador(1);
+        service.asignarDesdePoolACaracteristica('Fuerza', 0);
+        const poolAntes = service.EstadoFlujo.generador.poolDisponible.slice();
+
+        service.aplicarRestriccionCampanaGenerador({
+            tiradaMinimaCaracteristica: 13,
+            maxTablasDadosCaracteristicas: 1,
+        });
+
+        expect(service.EstadoFlujo.generador.tablasPermitidas).toBe(1);
+        expect(service.EstadoFlujo.generador.tablaSeleccionada).toBe(1);
+        expect(service.EstadoFlujo.generador.poolDisponible).toEqual(poolAntes);
+        expect(service.EstadoFlujo.generador.asignaciones.Fuerza).not.toBeNull();
+    });
+
+    it('no resetea el reparto al retirar una restricción inexistente o ya equivalente', () => {
+        const service = new NuevoPersonajeService();
+        service.seleccionarTablaGenerador(1);
+        service.asignarDesdePoolACaracteristica('Fuerza', 0);
+        const poolAntes = service.EstadoFlujo.generador.poolDisponible.slice();
+
+        service.aplicarRestriccionCampanaGenerador(null);
+
+        expect(service.EstadoFlujo.generador.tablaSeleccionada).toBe(1);
+        expect(service.EstadoFlujo.generador.poolDisponible).toEqual(poolAntes);
+        expect(service.EstadoFlujo.generador.asignaciones.Fuerza).not.toBeNull();
     });
 
     it('usa fallback conservador 3/1 cuando la campaña no aporta política completa', () => {
@@ -714,6 +785,99 @@ describe('NuevoPersonajeService (borrador local)', () => {
         };
     }
 
+    function crearPlantillaDraft(partial?: Partial<Plantilla>): Plantilla {
+        return {
+            Id: 900,
+            Nombre: 'Plantilla draft',
+            Descripcion: '',
+            Manual: { Id: 1, Nombre: 'Manual', Pagina: 1 },
+            Tamano: { Id: 0, Nombre: '-', Modificador: 0, Modificador_presa: 0 },
+            Tipo_dado: { Id_tipo_dado: 0, Nombre: '' },
+            Actualiza_dg: false,
+            Modificacion_dg: { Id_paso_modificacion: 0, Nombre: '' },
+            Modificacion_tamano: { Id_paso_modificacion: 0, Nombre: '' },
+            Iniciativa: 0,
+            Velocidades: '',
+            Ca: '',
+            Ataque_base: 0,
+            Presa: 0,
+            Ataques: '',
+            Ataque_completo: '',
+            Reduccion_dano: '',
+            Resistencia_conjuros: '',
+            Resistencia_elemental: '',
+            Fortaleza: 0,
+            Reflejos: 0,
+            Voluntad: 0,
+            Modificadores_caracteristicas: {
+                Fuerza: 0,
+                Destreza: 0,
+                Constitucion: 0,
+                Inteligencia: 0,
+                Sabiduria: 0,
+                Carisma: 0,
+            },
+            Minimos_caracteristicas: {
+                Fuerza: 0,
+                Destreza: 0,
+                Constitucion: 0,
+                Inteligencia: 0,
+                Sabiduria: 0,
+                Carisma: 0,
+            },
+            Ajuste_nivel: 0,
+            Licantronia_dg: { Id_dado: 0, Dado: '', Multiplicador: 0, Suma: 0 },
+            Cd: 0,
+            Puntos_habilidad: { Suma: 0, Suma_fija: 0 },
+            Nacimiento: false,
+            Movimientos: { Correr: 0, Nadar: 0, Volar: 0, Trepar: 0, Escalar: 0 },
+            Maniobrabilidad: {
+                Id: 0,
+                Nombre: '',
+                Velocidad_avance: '',
+                Flotar: 0,
+                Volar_atras: 0,
+                Contramarcha: 0,
+                Giro: '',
+                Rotacion: '',
+                Giro_max: '',
+                Angulo_ascenso: '',
+                Velocidad_ascenso: '',
+                Angulo_descenso: '',
+                Descenso_ascenso: 0,
+            },
+            Alineamiento: {
+                Id: 0,
+                Basico: { Id_basico: 0, Nombre: '' },
+                Ley: { Id_ley: 0, Nombre: '' },
+                Moral: { Id_moral: 0, Nombre: '' },
+                Prioridad: { Id_prioridad: 0, Nombre: '' },
+                Descripcion: '',
+            },
+            Oficial: true,
+            Dotes: [],
+            Subtipos: [],
+            Habilidades: [],
+            Sortilegas: [],
+            Prerrequisitos_flags: {
+                actitud_requerido: false,
+                actitud_prohibido: false,
+                alineamiento_requerido: false,
+                caracteristica: false,
+                criaturas_compatibles: false,
+            },
+            Prerrequisitos: {
+                actitud_requerido: [],
+                actitud_prohibido: [],
+                alineamiento_requerido: [],
+                caracteristica: [],
+                criaturas_compatibles: [],
+            },
+            Compatibilidad_tipos: [],
+            ...partial,
+        } as Plantilla;
+    }
+
     beforeEach(() => {
         localStorage.removeItem(storageKey);
     });
@@ -833,6 +997,7 @@ describe('NuevoPersonajeService (borrador local)', () => {
 
         const raw = localStorage.getItem(storageKey) as string;
         const borrador = JSON.parse(raw);
+        borrador.estadoFlujoPersistible.pasoActual = 'conjuros';
         borrador.estadoFlujoPersistible.caracteristicasGeneradas = true;
         localStorage.setItem(storageKey, JSON.stringify(borrador));
 
@@ -843,6 +1008,55 @@ describe('NuevoPersonajeService (borrador local)', () => {
             pasoActual: 'conjuros',
             caracteristicasGeneradas: true,
         }));
+    });
+
+    it('restaura drafts legacy sin volver a sumar modificadores de plantilla sobre las características', () => {
+        const base = new NuevoPersonajeService();
+        base.seleccionarRaza(crearRazaDraft());
+        base.aplicarCaracteristicasGeneradas({
+            Fuerza: 14,
+            Destreza: 12,
+            Constitucion: 10,
+            Inteligencia: 10,
+            Sabiduria: 10,
+            Carisma: 10,
+        });
+        base.agregarPlantillaSeleccion(crearPlantillaDraft({
+            Id: 901,
+            Nombre: 'Licántropo lince',
+            Modificadores_caracteristicas: {
+                Fuerza: 2,
+                Destreza: 4,
+                Constitucion: 0,
+                Inteligencia: 0,
+                Sabiduria: 0,
+                Carisma: 0,
+            },
+        }));
+        base.activarPersistenciaBorradorLocal(uid);
+        base.persistirBorradorLocalAhora();
+        base.desactivarPersistenciaBorradorLocal();
+
+        const raw = localStorage.getItem(storageKey) as string;
+        const borrador = JSON.parse(raw);
+        delete borrador.estadoFlujoPersistible.ventajas.baseCaracteristicas;
+        delete borrador.estadoFlujoPersistible.ventajas.baseRaciales;
+        delete borrador.estadoFlujoPersistible.ventajas.baseIdiomas;
+        localStorage.setItem(storageKey, JSON.stringify(borrador));
+
+        const restaurado1 = new NuevoPersonajeService();
+        expect(restaurado1.restaurarBorradorLocal(uid)).toBeTrue();
+        expect(restaurado1.PersonajeCreacion.Fuerza).toBe(16);
+        expect(restaurado1.PersonajeCreacion.Destreza).toBe(16);
+
+        restaurado1.activarPersistenciaBorradorLocal(uid);
+        restaurado1.persistirBorradorLocalAhora();
+        restaurado1.desactivarPersistenciaBorradorLocal();
+
+        const restaurado2 = new NuevoPersonajeService();
+        expect(restaurado2.restaurarBorradorLocal(uid)).toBeTrue();
+        expect(restaurado2.PersonajeCreacion.Fuerza).toBe(16);
+        expect(restaurado2.PersonajeCreacion.Destreza).toBe(16);
     });
 });
 
@@ -1692,6 +1906,88 @@ describe('NuevoPersonajeService (clases)', () => {
         const dotesProgresion = service.registrarDotesPendientesPorProgresion('Guerrero nivel 1');
         expect(dotesProgresion.length).toBe(1);
         expect(dotesProgresion[0].fuente).toBe('nivel');
+    });
+
+    it('etiqueta la dote de progresión con el nivel efectivo visible del personaje', () => {
+        const tipo = crearTipoBase();
+        const raza = crearRazaBase(tipo);
+        raza.Ajuste_nivel = 0;
+        raza.Dgs_adicionales.Cantidad = 0;
+        service.seleccionarRaza(raza);
+        service.aplicarCaracteristicasGeneradas({
+            Fuerza: 14,
+            Destreza: 12,
+            Constitucion: 13,
+            Inteligencia: 10,
+            Sabiduria: 11,
+            Carisma: 9,
+        });
+        service.agregarPlantillaSeleccion({
+            Id: 955,
+            Nombre: 'Licántropo (lince) [nacido]',
+            Descripcion: '',
+            Manual: { Id: 1, Nombre: 'Manual', Pagina: 1 },
+            Tamano: { Id: 0, Nombre: '-', Modificador: 0, Modificador_presa: 0 },
+            Tipo_dado: { Id_tipo_dado: 0, Nombre: '' },
+            Actualiza_dg: false,
+            Modificacion_dg: { Id_paso_modificacion: 0, Nombre: '' },
+            Modificacion_tamano: { Id_paso_modificacion: 0, Nombre: '' },
+            Iniciativa: 0,
+            Velocidades: '',
+            Ca: '',
+            Ataque_base: 0,
+            Presa: 0,
+            Ataques: '',
+            Ataque_completo: '',
+            Reduccion_dano: '',
+            Resistencia_conjuros: '',
+            Resistencia_elemental: '',
+            Fortaleza: 0,
+            Reflejos: 0,
+            Voluntad: 0,
+            Modificadores_caracteristicas: { Fuerza: 0, Destreza: 0, Constitucion: 0, Inteligencia: 0, Sabiduria: 0, Carisma: 0 },
+            Minimos_caracteristicas: { Fuerza: 0, Destreza: 0, Constitucion: 0, Inteligencia: 0, Sabiduria: 0, Carisma: 0 },
+            Ajuste_nivel: 3,
+            Licantronia_dg: { Id_dado: 3, Dado: 'D8', Multiplicador: 1, Suma: 0 },
+            Cd: 0,
+            Puntos_habilidad: { Suma: 0, Suma_fija: 0 },
+            Nacimiento: false,
+            Movimientos: { Correr: 0, Nadar: 0, Volar: 0, Trepar: 0, Escalar: 0 },
+            Maniobrabilidad: { Id: 0, Nombre: '-', Velocidad_avance: '', Flotar: 0, Volar_atras: 0, Contramarcha: 0, Giro: '', Rotacion: '', Giro_max: '', Angulo_ascenso: '', Velocidad_ascenso: '', Angulo_descenso: '', Descenso_ascenso: 0 },
+            Alineamiento: { Id: 0, Basico: { Id_basico: 0, Nombre: 'No aplica' }, Ley: { Id_ley: 0, Nombre: 'No aplica' }, Moral: { Id_moral: 0, Nombre: 'No aplica' }, Prioridad: { Id_prioridad: 0, Nombre: 'No aplica' }, Descripcion: '' },
+            Oficial: true,
+            Dotes: [],
+            Subtipos: [],
+            Habilidades: [],
+            Sortilegas: [],
+            Prerrequisitos_flags: {},
+            Prerrequisitos: { actitud_requerido: [], actitud_prohibido: [], alineamiento_requerido: [], caracteristica: [], criaturas_compatibles: [], dote: [], habilidades: [], manual: [], nivel_lanzador: [], nivel_psiquico: [], poderes: [], poder_reserva: [], racial: [], racial_clase: [], rasgo: [], rasgo_clase: [], salvacion: [], sortilega: [], subtipo: [], tamano: [], tipo_criatura: [], special: [], clase: [] },
+        } as any);
+        service.aplicarSiguienteNivelClase(claseBase);
+        service.aplicarSiguienteNivelClase(claseBase);
+
+        const dote = {
+            Id: 501,
+            Nombre: 'Ataque poderoso',
+            Descripcion: '',
+            Beneficio: '',
+            Manual: { Id: 1, Nombre: 'Manual', Pagina: 1 },
+            Modificadores: {},
+        } as any;
+        service.setCatalogoDotes([dote]);
+
+        const [pendiente] = service.registrarDotesPendientesPorProgresion('Explorador nivel 2');
+        expect(pendiente.nivelProgresion).toBe(6);
+        expect(service.PersonajeCreacion.NEP).toBe(6);
+
+        expect(service.aplicarDotePendiente(pendiente.id, {
+            idDote: 501,
+            idExtra: 0,
+            extra: 'No aplica',
+        })).toBeTrue();
+
+        expect(service.PersonajeCreacion.Dotes.find((item) => item.Nombre === 'Ataque poderoso')?.Origen)
+            .toBe('Dote adicional por nivel 6');
     });
 
     it('la progresion de dotes sigue funcionando por niveles de clase aunque haya DGs raciales', () => {
@@ -2579,6 +2875,459 @@ describe('NuevoPersonajeService (clases)', () => {
         expect(service.cerrarSesionConjuros()).toBe('dotes');
     });
 
+    it('no crea sesión de conjuros para clases sin flags canónicos de lanzador', () => {
+        const claseSinFlags = crearClaseBase({
+            Id: 830,
+            Nombre: 'Pseudo lanzador',
+            Conjuros: {
+                ...crearClaseBase().Conjuros,
+                Arcanos: false,
+                Divinos: false,
+                Psionicos: false,
+                Alma: false,
+                Conocidos_total: true,
+                Listado: [{ Id: 1830, Nombre: 'Luz falsa', Nivel: 0, Espontaneo: true }],
+            },
+            Desglose_niveles: [{
+                Nivel: 1,
+                Ataque_base: '+0',
+                Salvaciones: { Fortaleza: '+0', Reflejos: '+0', Voluntad: '+2' },
+                Nivel_max_poder_accesible_nivel_lanzadorPsionico: -1,
+                Reserva_psionica: 0,
+                Aumentos_clase_lanzadora: [],
+                Conjuros_diarios: crearConjurosDiariosMock([0]),
+                Conjuros_conocidos_nivel_a_nivel: {},
+                Conjuros_conocidos_total: 1,
+                Dotes: [],
+                Especiales: [],
+            }],
+        });
+        service.setCatalogoClases([claseSinFlags]);
+        service.setCatalogoConjuros([]);
+
+        const res = service.aplicarSiguienteNivelClase(claseSinFlags);
+
+        expect(res.aplicado).toBeTrue();
+        expect(service.getConjurosSesionActual().activa).toBeFalse();
+    });
+
+    it('bardo nivel 1 entra en conjuros cuando Conjuros_diarios ya otorga acceso real a magia', () => {
+        const diariosBardo = crearConjurosDiariosMock([0]);
+        diariosBardo['Nivel_0'] = 2;
+        const bardo = crearClaseBase({
+            Id: 831,
+            Nombre: 'Bardo',
+            Conjuros: {
+                ...crearClaseBase().Conjuros,
+                Arcanos: true,
+                Conocidos_total: false,
+                Conocidos_nivel_a_nivel: true,
+                Listado: [
+                    { Id: 1831, Nombre: 'Prestidigitación', Nivel: 0, Espontaneo: true },
+                    { Id: 1832, Nombre: 'Luz', Nivel: 0, Espontaneo: true },
+                    { Id: 1833, Nombre: 'Abrir/Cerrar', Nivel: 0, Espontaneo: true },
+                    { Id: 1834, Nombre: 'Mano de mago', Nivel: 0, Espontaneo: true },
+                ],
+            },
+            Desglose_niveles: [{
+                Nivel: 1,
+                Ataque_base: '+0',
+                Salvaciones: { Fortaleza: '+0', Reflejos: '+2', Voluntad: '+2' },
+                Nivel_max_poder_accesible_nivel_lanzadorPsionico: -1,
+                Reserva_psionica: 0,
+                Aumentos_clase_lanzadora: [],
+                Conjuros_diarios: diariosBardo,
+                Conjuros_conocidos_nivel_a_nivel: { Nivel_0: 4 } as any,
+                Conjuros_conocidos_total: 0,
+                Dotes: [],
+                Especiales: [],
+            }],
+        });
+        service.setCatalogoClases([bardo]);
+        service.setCatalogoConjuros([
+            {
+                Id: 1831,
+                Nombre: 'Prestidigitación',
+                Arcano: true,
+                Divino: false,
+                Psionico: false,
+                Alma: false,
+                Escuela: { Id: 1, Nombre: 'Universal' } as any,
+                Disciplina: { Id: 0, Nombre: '' } as any,
+                Descriptores: [],
+                Nivel_clase: [{ Id_clase: 831, Clase: 'Bardo', Nivel: 0, Espontaneo: true }],
+                Nivel_dominio: [],
+                Nivel_disciplinas: [],
+                Oficial: true,
+            } as any,
+            {
+                Id: 1832,
+                Nombre: 'Luz',
+                Arcano: true,
+                Divino: false,
+                Psionico: false,
+                Alma: false,
+                Escuela: { Id: 1, Nombre: 'Evocacion' } as any,
+                Disciplina: { Id: 0, Nombre: '' } as any,
+                Descriptores: [],
+                Nivel_clase: [{ Id_clase: 831, Clase: 'Bardo', Nivel: 0, Espontaneo: true }],
+                Nivel_dominio: [],
+                Nivel_disciplinas: [],
+                Oficial: true,
+            } as any,
+            {
+                Id: 1833,
+                Nombre: 'Abrir/Cerrar',
+                Arcano: true,
+                Divino: false,
+                Psionico: false,
+                Alma: false,
+                Escuela: { Id: 1, Nombre: 'Transmutacion' } as any,
+                Disciplina: { Id: 0, Nombre: '' } as any,
+                Descriptores: [],
+                Nivel_clase: [{ Id_clase: 831, Clase: 'Bardo', Nivel: 0, Espontaneo: true }],
+                Nivel_dominio: [],
+                Nivel_disciplinas: [],
+                Oficial: true,
+            } as any,
+            {
+                Id: 1834,
+                Nombre: 'Mano de mago',
+                Arcano: true,
+                Divino: false,
+                Psionico: false,
+                Alma: false,
+                Escuela: { Id: 1, Nombre: 'Transmutacion' } as any,
+                Disciplina: { Id: 0, Nombre: '' } as any,
+                Descriptores: [],
+                Nivel_clase: [{ Id_clase: 831, Clase: 'Bardo', Nivel: 0, Espontaneo: true }],
+                Nivel_dominio: [],
+                Nivel_disciplinas: [],
+                Oficial: true,
+            } as any,
+        ]);
+
+        service.aplicarSiguienteNivelClase(bardo);
+        const sesion = service.getConjurosSesionActual();
+
+        expect(sesion.activa).toBeTrue();
+        expect(sesion.entradas[0].seleccionManual).toBeTrue();
+        expect(sesion.entradas[0].cupoPendiente.porNivel[0]).toBe(4);
+        expect(sesion.entradas[0].elegiblesIds.length).toBe(4);
+    });
+
+    it('explorador previo a nivel 4 no crea sesión de conjuros si todos los diarios siguen a -1', () => {
+        const explorador = crearClaseBase({
+            Id: 832,
+            Nombre: 'Explorador',
+            Conjuros: {
+                ...crearClaseBase().Conjuros,
+                Divinos: true,
+                Conocidos_total: false,
+                Conocidos_nivel_a_nivel: false,
+                Listado: [{ Id: 1835, Nombre: 'Hablar con los animales', Nivel: 1, Espontaneo: false }],
+            },
+            Desglose_niveles: [{
+                Nivel: 1,
+                Ataque_base: '+1',
+                Salvaciones: { Fortaleza: '+2', Reflejos: '+2', Voluntad: '+0' },
+                Nivel_max_poder_accesible_nivel_lanzadorPsionico: -1,
+                Reserva_psionica: 0,
+                Aumentos_clase_lanzadora: [],
+                Conjuros_diarios: crearConjurosDiariosMock(),
+                Conjuros_conocidos_nivel_a_nivel: {},
+                Conjuros_conocidos_total: 0,
+                Dotes: [],
+                Especiales: [],
+            }],
+        });
+        service.setCatalogoClases([explorador]);
+        service.setCatalogoConjuros([]);
+
+        const res = service.aplicarSiguienteNivelClase(explorador);
+
+        expect(res.aplicado).toBeTrue();
+        expect(service.getConjurosSesionActual().activa).toBeFalse();
+    });
+
+    it('explorador crea sesión de conjuros al llegar al primer nivel con diarios >= 0', () => {
+        const explorador = crearClaseBase({
+            Id: 833,
+            Nombre: 'Explorador progresivo',
+            Conjuros: {
+                ...crearClaseBase().Conjuros,
+                Divinos: true,
+                Conocidos_total: false,
+                Conocidos_nivel_a_nivel: false,
+                Listado: [{ Id: 1836, Nombre: 'Hablar con los animales', Nivel: 1, Espontaneo: false }],
+            },
+            Desglose_niveles: [
+                {
+                    Nivel: 1,
+                    Ataque_base: '+1',
+                    Salvaciones: { Fortaleza: '+2', Reflejos: '+2', Voluntad: '+0' },
+                    Nivel_max_poder_accesible_nivel_lanzadorPsionico: -1,
+                    Reserva_psionica: 0,
+                    Aumentos_clase_lanzadora: [],
+                    Conjuros_diarios: crearConjurosDiariosMock(),
+                    Conjuros_conocidos_nivel_a_nivel: {},
+                    Conjuros_conocidos_total: 0,
+                    Dotes: [],
+                    Especiales: [],
+                },
+                {
+                    Nivel: 2,
+                    Ataque_base: '+2',
+                    Salvaciones: { Fortaleza: '+3', Reflejos: '+3', Voluntad: '+0' },
+                    Nivel_max_poder_accesible_nivel_lanzadorPsionico: -1,
+                    Reserva_psionica: 0,
+                    Aumentos_clase_lanzadora: [],
+                    Conjuros_diarios: crearConjurosDiariosMock(),
+                    Conjuros_conocidos_nivel_a_nivel: {},
+                    Conjuros_conocidos_total: 0,
+                    Dotes: [],
+                    Especiales: [],
+                },
+                {
+                    Nivel: 3,
+                    Ataque_base: '+3',
+                    Salvaciones: { Fortaleza: '+3', Reflejos: '+3', Voluntad: '+1' },
+                    Nivel_max_poder_accesible_nivel_lanzadorPsionico: -1,
+                    Reserva_psionica: 0,
+                    Aumentos_clase_lanzadora: [],
+                    Conjuros_diarios: crearConjurosDiariosMock(),
+                    Conjuros_conocidos_nivel_a_nivel: {},
+                    Conjuros_conocidos_total: 0,
+                    Dotes: [],
+                    Especiales: [],
+                },
+                {
+                    Nivel: 4,
+                    Ataque_base: '+4',
+                    Salvaciones: { Fortaleza: '+4', Reflejos: '+4', Voluntad: '+1' },
+                    Nivel_max_poder_accesible_nivel_lanzadorPsionico: -1,
+                    Reserva_psionica: 0,
+                    Aumentos_clase_lanzadora: [],
+                    Conjuros_diarios: crearConjurosDiariosMock([1]),
+                    Conjuros_conocidos_nivel_a_nivel: {},
+                    Conjuros_conocidos_total: 0,
+                    Dotes: [],
+                    Especiales: [],
+                },
+            ],
+        });
+        service.setCatalogoClases([explorador]);
+        service.setCatalogoConjuros([{
+            Id: 1836,
+            Nombre: 'Hablar con los animales',
+            Arcano: false,
+            Divino: true,
+            Psionico: false,
+            Alma: false,
+            Escuela: { Id: 1, Nombre: 'Adivinacion' } as any,
+            Disciplina: { Id: 0, Nombre: '' } as any,
+            Descriptores: [],
+            Nivel_clase: [{ Id_clase: 833, Clase: 'Explorador progresivo', Nivel: 1, Espontaneo: false }],
+            Nivel_dominio: [],
+            Nivel_disciplinas: [],
+            Oficial: true,
+        } as any]);
+
+        service.aplicarSiguienteNivelClase(explorador);
+        expect(service.getConjurosSesionActual().activa).toBeFalse();
+        service.aplicarSiguienteNivelClase(explorador);
+        expect(service.getConjurosSesionActual().activa).toBeFalse();
+        service.aplicarSiguienteNivelClase(explorador);
+        expect(service.getConjurosSesionActual().activa).toBeFalse();
+        service.aplicarSiguienteNivelClase(explorador);
+
+        const sesion = service.getConjurosSesionActual();
+        expect(sesion.activa).toBeTrue();
+        expect(sesion.entradas[0].tipoLanzamiento).toBe('divino');
+        expect(sesion.entradas[0].nivelLanzadorPrevio).toBe(0);
+        expect(sesion.entradas[0].nivelLanzadorActual).toBe(1);
+    });
+
+    it('explorador en el siguiente avance progresa nivel de lanzador de 1 a 2', () => {
+        const explorador = crearClaseBase({
+            Id: 834,
+            Nombre: 'Explorador veterano',
+            Conjuros: {
+                ...crearClaseBase().Conjuros,
+                Divinos: true,
+                Conocidos_total: false,
+                Conocidos_nivel_a_nivel: false,
+                Listado: [{ Id: 1837, Nombre: 'Hablar con los animales', Nivel: 1, Espontaneo: false }],
+            },
+            Desglose_niveles: [
+                {
+                    Nivel: 1,
+                    Ataque_base: '+1',
+                    Salvaciones: { Fortaleza: '+2', Reflejos: '+2', Voluntad: '+0' },
+                    Nivel_max_poder_accesible_nivel_lanzadorPsionico: -1,
+                    Reserva_psionica: 0,
+                    Aumentos_clase_lanzadora: [],
+                    Conjuros_diarios: crearConjurosDiariosMock(),
+                    Conjuros_conocidos_nivel_a_nivel: {},
+                    Conjuros_conocidos_total: 0,
+                    Dotes: [],
+                    Especiales: [],
+                },
+                {
+                    Nivel: 2,
+                    Ataque_base: '+2',
+                    Salvaciones: { Fortaleza: '+3', Reflejos: '+3', Voluntad: '+0' },
+                    Nivel_max_poder_accesible_nivel_lanzadorPsionico: -1,
+                    Reserva_psionica: 0,
+                    Aumentos_clase_lanzadora: [],
+                    Conjuros_diarios: crearConjurosDiariosMock(),
+                    Conjuros_conocidos_nivel_a_nivel: {},
+                    Conjuros_conocidos_total: 0,
+                    Dotes: [],
+                    Especiales: [],
+                },
+                {
+                    Nivel: 3,
+                    Ataque_base: '+3',
+                    Salvaciones: { Fortaleza: '+3', Reflejos: '+3', Voluntad: '+1' },
+                    Nivel_max_poder_accesible_nivel_lanzadorPsionico: -1,
+                    Reserva_psionica: 0,
+                    Aumentos_clase_lanzadora: [],
+                    Conjuros_diarios: crearConjurosDiariosMock(),
+                    Conjuros_conocidos_nivel_a_nivel: {},
+                    Conjuros_conocidos_total: 0,
+                    Dotes: [],
+                    Especiales: [],
+                },
+                {
+                    Nivel: 4,
+                    Ataque_base: '+4',
+                    Salvaciones: { Fortaleza: '+4', Reflejos: '+4', Voluntad: '+1' },
+                    Nivel_max_poder_accesible_nivel_lanzadorPsionico: -1,
+                    Reserva_psionica: 0,
+                    Aumentos_clase_lanzadora: [],
+                    Conjuros_diarios: crearConjurosDiariosMock([1]),
+                    Conjuros_conocidos_nivel_a_nivel: {},
+                    Conjuros_conocidos_total: 0,
+                    Dotes: [],
+                    Especiales: [],
+                },
+                {
+                    Nivel: 5,
+                    Ataque_base: '+5',
+                    Salvaciones: { Fortaleza: '+4', Reflejos: '+4', Voluntad: '+1' },
+                    Nivel_max_poder_accesible_nivel_lanzadorPsionico: -1,
+                    Reserva_psionica: 0,
+                    Aumentos_clase_lanzadora: [],
+                    Conjuros_diarios: crearConjurosDiariosMock([1]),
+                    Conjuros_conocidos_nivel_a_nivel: {},
+                    Conjuros_conocidos_total: 0,
+                    Dotes: [],
+                    Especiales: [],
+                },
+            ],
+        });
+        service.setCatalogoClases([explorador]);
+        service.setCatalogoConjuros([{
+            Id: 1837,
+            Nombre: 'Hablar con los animales',
+            Arcano: false,
+            Divino: true,
+            Psionico: false,
+            Alma: false,
+            Escuela: { Id: 1, Nombre: 'Adivinacion' } as any,
+            Disciplina: { Id: 0, Nombre: '' } as any,
+            Descriptores: [],
+            Nivel_clase: [{ Id_clase: 834, Clase: 'Explorador veterano', Nivel: 1, Espontaneo: false }],
+            Nivel_dominio: [],
+            Nivel_disciplinas: [],
+            Oficial: true,
+        } as any]);
+
+        service.aplicarSiguienteNivelClase(explorador);
+        service.aplicarSiguienteNivelClase(explorador);
+        service.aplicarSiguienteNivelClase(explorador);
+        service.aplicarSiguienteNivelClase(explorador);
+        expect(service.getConjurosSesionActual().entradas[0].nivelLanzadorActual).toBe(1);
+
+        service.cerrarSesionConjuros();
+        service.aplicarSiguienteNivelClase(explorador);
+
+        const sesion = service.getConjurosSesionActual();
+        expect(sesion.activa).toBeTrue();
+        expect(sesion.entradas[0].nivelLanzadorPrevio).toBe(1);
+        expect(sesion.entradas[0].nivelLanzadorActual).toBe(2);
+    });
+
+    it('resolverNivelLanzadorMaximoPorTipo usa el progreso real de lanzador para explorador nivel 4', () => {
+        const explorador = crearClaseBase({
+            Id: 835,
+            Nombre: 'Explorador contexto',
+            Conjuros: {
+                ...crearClaseBase().Conjuros,
+                Divinos: true,
+            },
+            Desglose_niveles: [
+                {
+                    Nivel: 1,
+                    Ataque_base: '+1',
+                    Salvaciones: { Fortaleza: '+2', Reflejos: '+2', Voluntad: '+0' },
+                    Nivel_max_poder_accesible_nivel_lanzadorPsionico: -1,
+                    Reserva_psionica: 0,
+                    Aumentos_clase_lanzadora: [],
+                    Conjuros_diarios: crearConjurosDiariosMock(),
+                    Conjuros_conocidos_nivel_a_nivel: {},
+                    Conjuros_conocidos_total: 0,
+                    Dotes: [],
+                    Especiales: [],
+                },
+                {
+                    Nivel: 2,
+                    Ataque_base: '+2',
+                    Salvaciones: { Fortaleza: '+3', Reflejos: '+3', Voluntad: '+0' },
+                    Nivel_max_poder_accesible_nivel_lanzadorPsionico: -1,
+                    Reserva_psionica: 0,
+                    Aumentos_clase_lanzadora: [],
+                    Conjuros_diarios: crearConjurosDiariosMock(),
+                    Conjuros_conocidos_nivel_a_nivel: {},
+                    Conjuros_conocidos_total: 0,
+                    Dotes: [],
+                    Especiales: [],
+                },
+                {
+                    Nivel: 3,
+                    Ataque_base: '+3',
+                    Salvaciones: { Fortaleza: '+3', Reflejos: '+3', Voluntad: '+1' },
+                    Nivel_max_poder_accesible_nivel_lanzadorPsionico: -1,
+                    Reserva_psionica: 0,
+                    Aumentos_clase_lanzadora: [],
+                    Conjuros_diarios: crearConjurosDiariosMock(),
+                    Conjuros_conocidos_nivel_a_nivel: {},
+                    Conjuros_conocidos_total: 0,
+                    Dotes: [],
+                    Especiales: [],
+                },
+                {
+                    Nivel: 4,
+                    Ataque_base: '+4',
+                    Salvaciones: { Fortaleza: '+4', Reflejos: '+4', Voluntad: '+1' },
+                    Nivel_max_poder_accesible_nivel_lanzadorPsionico: -1,
+                    Reserva_psionica: 0,
+                    Aumentos_clase_lanzadora: [],
+                    Conjuros_diarios: crearConjurosDiariosMock([1]),
+                    Conjuros_conocidos_nivel_a_nivel: {},
+                    Conjuros_conocidos_total: 0,
+                    Dotes: [],
+                    Especiales: [],
+                },
+            ],
+        });
+        service.setCatalogoClases([explorador]);
+        service.PersonajeCreacion.desgloseClases = [{ Nombre: 'Explorador contexto', Nivel: 4 } as any];
+
+        expect((service as any).resolverNivelLanzadorMaximoPorTipo('divino')).toBe(1);
+    });
+
     it('aplica aumento de clase lanzadora sobre clase previa', () => {
         const claseBaseLanzadora = crearClaseBase({
             Id: 84,
@@ -2683,6 +3432,82 @@ describe('NuevoPersonajeService (clases)', () => {
         expect(sesion.activa).toBeTrue();
         expect(sesion.entradas[0].claseObjetivo.nombre).toBe('Mago base');
         expect(sesion.entradas[0].nivelLanzadorActual).toBe(2);
+    });
+
+    it('mago 10 con dos aumentos de archimago alcanza nivel de lanzador 12', () => {
+        const mago = crearClaseBase({
+            Id: 186,
+            Nombre: 'Mago veterano',
+            Conjuros: {
+                ...crearClaseBase().Conjuros,
+                Arcanos: true,
+                Conocidos_total: true,
+            },
+            Desglose_niveles: Array.from({ length: 12 }, (_, index) => {
+                const nivel = index + 1;
+                return {
+                    Nivel: nivel,
+                    Ataque_base: `+${Math.floor(index / 2)}`,
+                    Salvaciones: { Fortaleza: '+0', Reflejos: '+0', Voluntad: '+2' },
+                    Nivel_max_poder_accesible_nivel_lanzadorPsionico: -1,
+                    Reserva_psionica: 0,
+                    Aumentos_clase_lanzadora: [],
+                    Conjuros_diarios: crearConjurosDiariosMock(nivel >= 2 ? [0, 1] : [0]),
+                    Conjuros_conocidos_nivel_a_nivel: {},
+                    Conjuros_conocidos_total: nivel,
+                    Dotes: [],
+                    Especiales: [],
+                };
+            }),
+        });
+        const archimago = crearClaseBase({
+            Id: 187,
+            Nombre: 'Archimago',
+            Aumenta_clase_lanzadora: true,
+            Desglose_niveles: [
+                {
+                    Nivel: 1,
+                    Ataque_base: '+0',
+                    Salvaciones: { Fortaleza: '+0', Reflejos: '+0', Voluntad: '+2' },
+                    Nivel_max_poder_accesible_nivel_lanzadorPsionico: -1,
+                    Reserva_psionica: 0,
+                    Aumentos_clase_lanzadora: [{ Id: 186, Nombre: 'Mago veterano' }],
+                    Conjuros_diarios: crearConjurosDiariosMock([0]),
+                    Conjuros_conocidos_nivel_a_nivel: {},
+                    Conjuros_conocidos_total: 0,
+                    Dotes: [],
+                    Especiales: [],
+                },
+                {
+                    Nivel: 2,
+                    Ataque_base: '+1',
+                    Salvaciones: { Fortaleza: '+0', Reflejos: '+0', Voluntad: '+3' },
+                    Nivel_max_poder_accesible_nivel_lanzadorPsionico: -1,
+                    Reserva_psionica: 0,
+                    Aumentos_clase_lanzadora: [{ Id: 186, Nombre: 'Mago veterano' }],
+                    Conjuros_diarios: crearConjurosDiariosMock([0]),
+                    Conjuros_conocidos_nivel_a_nivel: {},
+                    Conjuros_conocidos_total: 0,
+                    Dotes: [],
+                    Especiales: [],
+                },
+            ],
+        });
+        service.setCatalogoClases([mago, archimago]);
+        service.PersonajeCreacion.desgloseClases = [{ Nombre: 'Mago veterano', Nivel: 10 } as any];
+
+        const resNivel1 = service.aplicarSiguienteNivelClase(archimago);
+        expect(resNivel1.aplicado).toBeTrue();
+        service.cerrarSesionConjuros();
+
+        const resNivel2 = service.aplicarSiguienteNivelClase(archimago);
+        expect(resNivel2.aplicado).toBeTrue();
+
+        expect((service as any).getNivelLanzadorEfectivoClase('Mago veterano')).toBe(12);
+        const sesion = service.getConjurosSesionActual();
+        expect(sesion.entradas[0].claseObjetivo.nombre).toBe('Mago veterano');
+        expect(sesion.entradas[0].nivelLanzadorPrevio).toBe(11);
+        expect(sesion.entradas[0].nivelLanzadorActual).toBe(12);
     });
 
     it('si hay varias clases lanzadoras previas, devuelve aumento de lanzador pendiente de selección', () => {
@@ -4577,6 +5402,51 @@ describe('NuevoPersonajeService (habilidades flujo)', () => {
         expect(avistar?.Rangos_varios).toBe(0);
     });
 
+    it('no permite bajar una habilidad por debajo del rango inicial confirmado de la sesión', () => {
+        const svc = new NuevoPersonajeService();
+        svc.setCatalogoHabilidades([
+            { Id_habilidad: 6, Nombre: 'Buscar', Id_caracteristica: 4, Caracteristica: 'Inteligencia', Descripcion: '', Soporta_extra: false, Entrenada: false, Extras: [] },
+        ]);
+        svc.seleccionarRaza(crearRazaConDgs());
+
+        svc.iniciarDistribucionHabilidadesPorRazaDG();
+        expect(svc.ajustarRangoHabilidad(6, 2)).toBeTrue();
+        svc.EstadoFlujo.habilidades.puntosRestantes = 0;
+        expect(svc.cerrarDistribucionHabilidades()).toBe('plantillas');
+
+        expect(svc.iniciarDistribucionHabilidadesPorRazaDG()).toBeTrue();
+        const buscar = svc.PersonajeCreacion.Habilidades.find((h) => h.Id === 6);
+
+        expect(buscar?.Rangos).toBe(2);
+        expect(svc.EstadoFlujo.habilidades.rangosIniciales?.[6]).toBe(2);
+        expect(svc.ajustarRangoHabilidad(6, -1)).toBeFalse();
+        expect(buscar?.Rangos).toBe(2);
+    });
+
+    it('solo deshace rangos nuevos y devuelve puntos de esa sesión hasta el suelo inicial', () => {
+        const svc = new NuevoPersonajeService();
+        svc.setCatalogoHabilidades([
+            { Id_habilidad: 6, Nombre: 'Buscar', Id_caracteristica: 4, Caracteristica: 'Inteligencia', Descripcion: '', Soporta_extra: false, Entrenada: false, Extras: [] },
+        ]);
+        svc.seleccionarRaza(crearRazaConDgs());
+
+        svc.iniciarDistribucionHabilidadesPorRazaDG();
+        expect(svc.ajustarRangoHabilidad(6, 2)).toBeTrue();
+        svc.EstadoFlujo.habilidades.puntosRestantes = 0;
+        expect(svc.cerrarDistribucionHabilidades()).toBe('plantillas');
+
+        expect(svc.iniciarDistribucionHabilidadesPorRazaDG()).toBeTrue();
+        expect(svc.ajustarRangoHabilidad(6, 2)).toBeTrue();
+
+        const buscar = svc.PersonajeCreacion.Habilidades.find((h) => h.Id === 6);
+        expect(buscar?.Rangos).toBe(3);
+        expect(svc.EstadoFlujo.habilidades.puntosRestantes).toBe(1);
+
+        expect(svc.ajustarRangoHabilidad(6, -3)).toBeTrue();
+        expect(buscar?.Rangos).toBe(2);
+        expect(svc.EstadoFlujo.habilidades.puntosRestantes).toBe(2);
+    });
+
     it('familias repetibles: artesanía reparte slots y pierde exceso sobre 3', () => {
         const svc = new NuevoPersonajeService();
         svc.setCatalogoHabilidades([
@@ -5101,6 +5971,55 @@ describe('NuevoPersonajeService (tipo y subtipos derivados)', () => {
         const idsRestantes = svc.PersonajeCreacion.Plantillas.map((p) => p.Id);
         expect(idsRestantes).toContain(plantillaFijada.Id);
         expect(idsRestantes).not.toContain(plantillaTemporal.Id);
+    });
+
+    it('reaplica dotes automáticas de plantilla sin duplicarlas y las retira al quitar la plantilla', () => {
+        const svc = new NuevoPersonajeService();
+        const tipoHumanoide = crearTipo(1, 'Humanoide');
+        svc.setCatalogoTiposCriatura([tipoHumanoide]);
+        svc.seleccionarRaza(crearRazaMock(tipoHumanoide, [{ Id: 11, Nombre: 'Humano' }]));
+        svc.aplicarCaracteristicasGeneradas({
+            Fuerza: 14,
+            Destreza: 12,
+            Constitucion: 13,
+            Inteligencia: 10,
+            Sabiduria: 11,
+            Carisma: 9,
+        });
+
+        const plantilla = crearPlantillaMock({
+            Id: 930,
+            Nombre: 'Licántropo (lince) [nacido]',
+            Dotes: [{
+                Dote: {
+                    Id: 650,
+                    Nombre: 'Alerta',
+                    Descripcion: '',
+                    Beneficio: '',
+                    Manual: { Id: 1, Nombre: 'Manual', Pagina: 1 },
+                    Modificadores: {},
+                },
+                Contexto: {
+                    Entidad: 'plantilla',
+                    Id_plantilla: 930,
+                    Id_extra: 0,
+                    Extra: 'No aplica',
+                },
+            }] as any,
+        });
+
+        svc.agregarPlantillaSeleccion(plantilla);
+        svc.recalcularSimulacionPlantillas();
+
+        expect(svc.PersonajeCreacion.Dotes.filter((item) => item.Nombre === 'Alerta').length).toBe(1);
+        expect(svc.PersonajeCreacion.Dotes.find((item) => item.Nombre === 'Alerta')?.Origen)
+            .toBe('Licántropo (lince) [nacido]');
+        expect(svc.PersonajeCreacion.DotesContextuales.filter((item) => item.Dote?.Id === 650).length).toBe(1);
+
+        svc.quitarPlantillaSeleccion(930);
+
+        expect(svc.PersonajeCreacion.Dotes.some((item) => item.Nombre === 'Alerta')).toBeFalse();
+        expect(svc.PersonajeCreacion.DotesContextuales.some((item) => item.Dote?.Id === 650)).toBeFalse();
     });
 
     it('limpiar plantillas restaura tipo y subtipos de la raza', () => {

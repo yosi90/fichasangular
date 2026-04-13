@@ -63,7 +63,27 @@
             }}</mat-option>
           </mat-select>
         </mat-form-field>
+        <mat-form-field (click)="$event.stopPropagation()">
+          <mat-label>Visibilidad</mat-label>
+          <mat-select
+            appearance="fill"
+            [(ngModel)]="filtroVisibilidad"
+            (selectionChange)="filtroPersonajes()"
+          >
+            <mat-option value="todos">Todos</mat-option>
+            <mat-option value="publicos">Solo públicos</mat-option>
+            <mat-option value="privados">Solo privados</mat-option>
+          </mat-select>
+        </mat-form-field>
       </div>
+      <mat-chip-option
+        color="accent"
+        class="tw-mt-4 tw-mb-1"
+        [selected]="mostrarSoloMios"
+        [disabled]="!sesionIniciada"
+        (click)="$event.stopPropagation(); AlternarSoloMios()"
+        >Míos</mat-chip-option
+      >
       <mat-chip-option
         #archivo
         color="warn"

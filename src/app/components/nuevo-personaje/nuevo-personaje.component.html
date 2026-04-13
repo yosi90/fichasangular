@@ -1,19 +1,13 @@
 <div class="nuevo-personaje-shell">
-    <mat-tab-group
-        #nuevoPersonajeTabControl
-        mat-stretch-tabs="false"
-        mat-align-tabs="start"
-        [selectedIndex]="selectedInternalTabIndex"
-        (selectedIndexChange)="onInternalTabIndexChange($event)">
+    <mat-tab-group #nuevoPersonajeTabControl mat-stretch-tabs="false" mat-align-tabs="start"
+        [selectedIndex]="selectedInternalTabIndex" (selectedIndexChange)="onInternalTabIndexChange($event)">
         <mat-tab label="raza">
             <ng-template mat-tab-label="">
                 <mat-icon class="tw-me-2">settings_accessibility</mat-icon>
                 Raza
             </ng-template>
-            <app-listado-razas
-                [homebrewSeleccionado]="homebrewForzado ? true : undefined"
-                [homebrewBloqueado]="homebrewForzado"
-                (razaDetalles)="verDetallesRaza($event)"
+            <app-listado-razas [homebrewSeleccionado]="homebrewForzado ? true : undefined"
+                [homebrewBloqueado]="homebrewForzado" (razaDetalles)="verDetallesRaza($event)"
                 (razaSeleccionada)="seleccionarRaza($event)">
             </app-listado-razas>
         </mat-tab>
@@ -22,185 +16,219 @@
                 <mat-icon class="tw-me-2">badge</mat-icon>
                 Básicos
             </ng-template>
-            <div class="tw-w-full tw-h-full tw-px-2 tw-py-2 basicos-view tab-frame" *ngIf="razaSeleccionada as raza; else sinRazaSeleccionada">
+            <div class="tw-w-full tw-h-full tw-px-2 tw-py-2 basicos-view tab-frame"
+                *ngIf="razaSeleccionada as raza; else sinRazaSeleccionada">
                 <div class="tab-scroll basicos-scroll">
                     <div class="tw-flex tw-flex-wrap basicos-content">
-                    <div class="tw-w-full md:tw-w-1/3 tw-p-2 basicos-col">
-                        <div class="sombra-caja-sm tw-rounded tw-p-2 tw-my-2 seccion-form">
-                            <mat-chip class="tw-h-auto sombra-caja-sm tw-py-2 seccion-titulo-chip">
-                                Nombre del personaje
-                                <mat-icon class="tw-ms-2">person</mat-icon>
-                            </mat-chip>
-                            <mat-form-field appearance="fill" class="tw-w-full nombre-hero__field">
-                                <mat-label>Nombre</mat-label>
-                                <input matInput [(ngModel)]="Personaje.Nombre" placeholder="Nombre del personaje">
-                            </mat-form-field>
-                        </div>
-                        <div class="sombra-caja-sm tw-rounded tw-p-2 tw-my-2 seccion-form">
-                            <mat-chip class="tw-h-auto sombra-caja-sm tw-py-2 seccion-titulo-chip">
-                                Identidad
-                                <mat-icon class="tw-ms-2">assignment_ind</mat-icon>
-                            </mat-chip>
-                            <div class="field-grid">
-                                <mat-form-field appearance="fill" class="full-span">
-                                    <mat-label>Genero</mat-label>
-                                    <mat-select [(value)]="Personaje.Genero">
-                                        <mat-option *ngFor="let genero of generos" [value]="genero">{{genero}}</mat-option>
-                                    </mat-select>
+                        <div class="tw-w-full md:tw-w-1/3 tw-p-2 basicos-col">
+                            <div class="sombra-caja-sm tw-rounded tw-p-2 tw-my-2 seccion-form">
+                                <mat-chip class="tw-h-auto sombra-caja-sm tw-py-2 seccion-titulo-chip">
+                                    Nombre del personaje
+                                    <mat-icon class="tw-ms-2">person</mat-icon>
+                                </mat-chip>
+                                <mat-form-field appearance="fill" class="tw-w-full nombre-hero__field">
+                                    <mat-label>Nombre</mat-label>
+                                    <input matInput [(ngModel)]="Personaje.Nombre" placeholder="Nombre del personaje">
                                 </mat-form-field>
-                                <div class="alineamiento-bloque full-span">
-                                    <mat-form-field appearance="fill" class="tw-w-full tw-m-0">
-                                        <mat-label>Alineamiento</mat-label>
-                                        <mat-select [(ngModel)]="Personaje.Alineamiento" [compareWith]="compararAlineamiento" (selectionChange)="onAlineamientoChange()">
-                                            <mat-option *ngFor="let alineamiento of alineamientosDisponibles" [value]="alineamiento">{{alineamiento}}</mat-option>
+                            </div>
+                            <div class="sombra-caja-sm tw-rounded tw-p-2 tw-my-2 seccion-form">
+                                <mat-chip class="tw-h-auto sombra-caja-sm tw-py-2 seccion-titulo-chip">
+                                    Identidad
+                                    <mat-icon class="tw-ms-2">assignment_ind</mat-icon>
+                                </mat-chip>
+                                <div class="field-grid">
+                                    <mat-form-field appearance="fill" class="full-span form-field-no-subscript">
+                                        <mat-label>Género</mat-label>
+                                        <mat-select [(value)]="Personaje.Genero">
+                                            <mat-option *ngFor="let genero of generos"
+                                                [value]="genero">{{genero}}</mat-option>
                                         </mat-select>
                                     </mat-form-field>
-                                    <div class="alineamiento-preferencias">
-                                        <p class="tw-m-0"><strong>Preferencias de la raza</strong></p>
-                                        <p class="tw-m-0" *ngFor="let pref of preferenciasRazaItems"><strong>{{pref.etiqueta}}:</strong> {{pref.valor}}</p>
-                                        <p class="tw-m-0" *ngIf="!tienePreferenciasRazaVisibles">Sin preferencias de alineamiento aplicables.</p>
+                                    <div class="alineamiento-bloque full-span">
+                                        <div class="field-help-row">
+                                            <mat-form-field appearance="fill" class="field-help-main tw-m-0">
+                                                <mat-label>Alineamiento</mat-label>
+                                                <mat-select [(ngModel)]="Personaje.Alineamiento"
+                                                    [compareWith]="compararAlineamiento"
+                                                    (selectionChange)="onAlineamientoChange()">
+                                                    <mat-option *ngFor="let alineamiento of alineamientosDisponibles"
+                                                        [value]="alineamiento">{{alineamiento}}</mat-option>
+                                                </mat-select>
+                                            </mat-form-field>
+                                            <button type="button" class="field-help-btn"
+                                                (click)="abrirInfoAlineamientoRacial($event)"
+                                                matTooltip="Ver guía de alineamiento racial"
+                                                aria-label="Información de alineamiento racial">
+                                                <mat-icon>help_outline</mat-icon>
+                                            </button>
+                                        </div>
+                                        <div class="alineamiento-feedback" *ngIf="tieneFeedbackRazaBasicos">
+                                            <p class="tw-m-0"><strong>Estado del alineamiento racial</strong></p>
+                                            <p class="tw-m-0" *ngFor="let info of advertenciasRazaPreview">{{info}}</p>
+                                            <p class="tw-m-0" *ngFor="let info of conflictosDurosRazaPreview">{{info}}
+                                            </p>
+                                            <p class="tw-m-0" *ngIf="tieneConflictoDuroRazaBasicos">Si continúas con
+                                                esta combinación, el personaje se marcará como homebrew (no oficial).
+                                            </p>
+                                        </div>
                                     </div>
-                                    <div class="alineamiento-feedback" *ngIf="tieneFeedbackRazaBasicos">
-                                        <p class="tw-m-0"><strong>Estado del alineamiento racial</strong></p>
-                                        <p class="tw-m-0" *ngFor="let info of advertenciasRazaPreview">{{info}}</p>
-                                        <p class="tw-m-0" *ngFor="let info of conflictosDurosRazaPreview">{{info}}</p>
-                                        <p class="tw-m-0" *ngIf="tieneConflictoDuroRazaBasicos">Si continúas con esta combinación, el personaje se marcará como homebrew (no oficial).</p>
+                                    <div class="deidad-bloque full-span">
+                                        <div class="deidad-selector-row">
+                                            <mat-form-field appearance="fill" class="deidad-selector-field tw-m-0">
+                                                <mat-label>Deidad</mat-label>
+                                                <mat-select [(ngModel)]="Personaje.Deidad"
+                                                    (selectionChange)="onDeidadChange()">
+                                                    <mat-option *ngFor="let deidad of deidadesFiltradas"
+                                                        [value]="deidad.nombre" [disabled]="deidad.disabled">
+                                                        {{deidad.etiqueta}}
+                                                    </mat-option>
+                                                </mat-select>
+                                            </mat-form-field>
+                                            <button *ngIf="puedeAbrirDetalleDeidadSeleccionada" type="button"
+                                                mat-icon-button class="deidad-detalle-btn"
+                                                (click)="abrirDetallesDeidadSeleccionada()"
+                                                aria-label="Abrir detalles de la deidad seleccionada"
+                                                matTooltip="Ver detalles de la deidad">
+                                                <mat-icon>open_in_new</mat-icon>
+                                            </button>
+                                        </div>
+                                        <div class="alineamiento-feedback" *ngIf="tieneFeedbackDeidadBasicos">
+                                            <p class="tw-m-0"><strong>Conflicto con la deidad</strong></p>
+                                            <p class="tw-m-0" *ngFor="let info of conflictosDurosDeidadPreview">{{info}}
+                                            </p>
+                                            <p class="tw-m-0">Si continúas con esta combinación, el personaje se marcará
+                                                como homebrew (no oficial).</p>
+                                        </div>
                                     </div>
+                                    <mat-form-field appearance="fill" class="full-span form-field-no-subscript">
+                                        <mat-label>Región de origen</mat-label>
+                                        <mat-select [value]="idRegionSeleccionadaBasicos"
+                                            (selectionChange)="onRegionOrigenChange($event.value)">
+                                            <mat-option [value]="0">Sin región</mat-option>
+                                            <mat-option *ngFor="let region of catalogoRegiones"
+                                                [value]="region.Id">{{region.Nombre}}</mat-option>
+                                        </mat-select>
+                                    </mat-form-field>
                                 </div>
-                                <div class="deidad-bloque full-span">
-                                    <div class="deidad-selector-row">
-                                        <mat-form-field appearance="fill" class="deidad-selector-field tw-m-0">
-                                            <mat-label>Deidad</mat-label>
-                                            <mat-select [(ngModel)]="Personaje.Deidad" (selectionChange)="onDeidadChange()">
-                                                <mat-option *ngFor="let deidad of deidadesFiltradas" [value]="deidad.nombre" [disabled]="deidad.disabled">
-                                                    {{deidad.etiqueta}}
-                                                </mat-option>
+                            </div>
+                        </div>
+                        <div class="tw-w-full md:tw-w-1/3 tw-p-2 basicos-col">
+                            <div class="sombra-caja-sm tw-rounded tw-p-2 tw-my-2 seccion-form">
+                                <mat-chip class="tw-h-auto sombra-caja-sm tw-py-2 seccion-titulo-chip">
+                                    Campaña
+                                    <mat-icon class="tw-ms-2">campaign</mat-icon>
+                                </mat-chip>
+                                <div class="field-grid">
+                                    <div class="full-span campaign-selector-row">
+                                        <mat-form-field appearance="fill" class="campaign-selector-field"
+                                            [class.form-field-no-subscript]="!campanasLoading">
+                                            <mat-label>Campaña</mat-label>
+                                            <mat-select [(value)]="Personaje.Campana"
+                                                (selectionChange)="actualizarTramas()">
+                                                <mat-option value="Sin campaña">Sin campaña</mat-option>
+                                                <mat-option *ngIf="campanasLoading" disabled>Cargando
+                                                    campañas...</mat-option>
+                                                <mat-option *ngFor="let campana of Campanas"
+                                                    [value]="campana.Nombre">{{campana.Nombre}}</mat-option>
                                             </mat-select>
+                                            <mat-hint *ngIf="campanasLoading">Cargando campañas y tramas
+                                                disponibles...</mat-hint>
                                         </mat-form-field>
-                                        <button
-                                            *ngIf="puedeAbrirDetalleDeidadSeleccionada"
-                                            type="button"
-                                            mat-icon-button
-                                            class="deidad-detalle-btn"
-                                            (click)="abrirDetallesDeidadSeleccionada()"
-                                            aria-label="Abrir detalles de la deidad seleccionada"
-                                            matTooltip="Ver detalles de la deidad">
-                                            <mat-icon>open_in_new</mat-icon>
+                                        <button *ngIf="canOpenCampaignManagement" type="button" mat-icon-button
+                                            class="campaign-manage-btn" (click)="abrirGestionCampanas()"
+                                            aria-label="Crear o gestionar campañas" matTooltip="Crear campaña">
+                                            <mat-icon>add</mat-icon>
                                         </button>
                                     </div>
-                                    <div class="alineamiento-feedback" *ngIf="tieneFeedbackDeidadBasicos">
-                                        <p class="tw-m-0"><strong>Conflicto con la deidad</strong></p>
-                                        <p class="tw-m-0" *ngFor="let info of conflictosDurosDeidadPreview">{{info}}</p>
-                                        <p class="tw-m-0">Si continúas con esta combinación, el personaje se marcará como homebrew (no oficial).</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="tw-w-full md:tw-w-1/3 tw-p-2 basicos-col">
-                        <div class="sombra-caja-sm tw-rounded tw-p-2 tw-my-2 seccion-form">
-                            <mat-chip class="tw-h-auto sombra-caja-sm tw-py-2 seccion-titulo-chip">
-                                Campaña
-                                <mat-icon class="tw-ms-2">campaign</mat-icon>
-                            </mat-chip>
-                            <div class="field-grid">
-                                <div class="full-span campaign-selector-row">
-                                    <mat-form-field appearance="fill" class="campaign-selector-field">
-                                        <mat-label>Campaña</mat-label>
-                                        <mat-select [(value)]="Personaje.Campana" (selectionChange)="actualizarTramas()">
-                                            <mat-option value="Sin campaña">Sin campaña</mat-option>
-                                            <mat-option *ngIf="campanasLoading" disabled>Cargando campañas...</mat-option>
-                                            <mat-option *ngFor="let campana of Campanas" [value]="campana.Nombre">{{campana.Nombre}}</mat-option>
+                                    <mat-form-field appearance="fill" class="form-field-no-subscript">
+                                        <mat-label>Trama</mat-label>
+                                        <mat-select [(value)]="Personaje.Trama"
+                                            (selectionChange)="actualizarSubtramas()">
+                                            <mat-option value="Trama base"
+                                                *ngIf="Personaje.Campana === 'Sin campaña'">Trama base</mat-option>
+                                            <mat-option [value]="tramaSinSeleccionCampana"
+                                                *ngIf="Personaje.Campana !== 'Sin campaña'">Sin trama</mat-option>
+                                            <mat-option *ngFor="let trama of Tramas"
+                                                [value]="trama.Nombre">{{trama.Nombre}}</mat-option>
                                         </mat-select>
-                                        <mat-hint *ngIf="campanasLoading">Cargando campañas y tramas disponibles...</mat-hint>
                                     </mat-form-field>
-                                    <button
-                                        *ngIf="canOpenCampaignManagement"
-                                        type="button"
-                                        mat-icon-button
-                                        class="campaign-manage-btn"
-                                        (click)="abrirGestionCampanas()"
-                                        aria-label="Crear o gestionar campañas"
-                                        matTooltip="Crear campaña">
-                                        <mat-icon>add</mat-icon>
-                                    </button>
+                                    <mat-form-field appearance="fill" class="form-field-no-subscript">
+                                        <mat-label>Subtrama</mat-label>
+                                        <mat-select [(value)]="Personaje.Subtrama" [disabled]="!tramaTieneSubtramas">
+                                            <mat-option value="Subtrama base"
+                                                *ngIf="!tramaTieneSubtramas && Personaje.Campana === 'Sin campaña'">Subtrama
+                                                base</mat-option>
+                                            <mat-option [value]="subtramaSinSeleccionCampana"
+                                                *ngIf="mostrarOpcionSinSubtramaCampana">Sin subtrama</mat-option>
+                                            <mat-option *ngFor="let subtrama of Subtramas"
+                                                [value]="subtrama.Nombre">{{subtrama.Nombre}}</mat-option>
+                                        </mat-select>
+                                    </mat-form-field>
                                 </div>
-                                <mat-form-field appearance="fill">
-                                    <mat-label>Trama</mat-label>
-                                    <mat-select [(value)]="Personaje.Trama" [disabled]="!campanaTieneTramas" (selectionChange)="actualizarSubtramas()">
-                                        <mat-option value="Trama base" *ngIf="Personaje.Campana === 'Sin campaña'">Trama base</mat-option>
-                                        <mat-option *ngFor="let trama of Tramas" [value]="trama.Nombre">{{trama.Nombre}}</mat-option>
-                                    </mat-select>
-                                </mat-form-field>
-                                <mat-form-field appearance="fill">
-                                    <mat-label>Subtrama</mat-label>
-                                    <mat-select [(value)]="Personaje.Subtrama" [disabled]="!tramaTieneSubtramas">
-                                        <mat-option value="Subtrama base" *ngIf="!tramaTieneSubtramas">Subtrama base</mat-option>
-                                        <mat-option *ngFor="let subtrama of Subtramas" [value]="subtrama.Nombre">{{subtrama.Nombre}}</mat-option>
-                                    </mat-select>
-                                </mat-form-field>
                             </div>
-                        </div>
-                        <div class="sombra-caja-sm tw-rounded tw-p-2 tw-my-2 seccion-form">
-                            <mat-chip class="tw-h-auto sombra-caja-sm tw-py-2 seccion-titulo-chip">
-                                Cuerpo
-                                <mat-icon class="tw-ms-2">straighten</mat-icon>
-                            </mat-chip>
-                            <div class="field-grid">
-                                    <div class="edad-bloque full-span">
-                                        <mat-form-field appearance="fill" class="tw-w-full tw-m-0">
-                                            <mat-label>Edad</mat-label>
-                                            <input matInput type="number" min="0" [ngModel]="Personaje.Edad" (ngModelChange)="onEdadChange($event)">
-                                        </mat-form-field>
-                                        <div class="edad-contexto">
-                                            <p class="tw-m-0"><strong>Etapas tipicas:</strong> {{rangoEdadTexto}}</p>
-                                            <p class="tw-m-0"><strong>Etapa actual:</strong> {{etapaEdadActual}}</p>
-                                            <p class="tw-m-0">{{edadMensajeContextual}}</p>
-                                    </div>
-                                </div>
-                                <mat-chip class="bad tw-mb-2 chip-alerta" *ngIf="edadFueraRango">
-                                    La edad elegida sale del rango tipico de la raza.
+                            <div class="sombra-caja-sm tw-rounded tw-p-2 tw-my-2 seccion-form">
+                                <mat-chip class="tw-h-auto sombra-caja-sm tw-py-2 seccion-titulo-chip">
+                                    Cuerpo
+                                    <mat-icon class="tw-ms-2">straighten</mat-icon>
                                 </mat-chip>
-                                <mat-form-field appearance="fill">
-                                    <mat-label>Peso (kg)</mat-label>
-                                    <input matInput type="number" min="0" step="0.01" [ngModel]="Personaje.Peso" (ngModelChange)="onPesoChange($event)">
-                                    <mat-hint>Recomendado {{raza.Peso_rango_inf}} - {{raza.Peso_rango_sup}}</mat-hint>
-                                </mat-form-field>
-                                <mat-form-field appearance="fill">
-                                    <mat-label>Altura (m)</mat-label>
-                                    <input matInput type="number" min="0" step="0.01" [ngModel]="Personaje.Altura" (ngModelChange)="onAlturaChange($event)">
-                                    <mat-hint>Recomendado {{raza.Altura_rango_inf}} - {{raza.Altura_rango_sup}}</mat-hint>
-                                </mat-form-field>
+                                <div class="field-grid">
+                                    <div class="edad-bloque full-span">
+                                        <div class="field-help-row">
+                                            <mat-form-field appearance="fill" class="field-help-main tw-m-0">
+                                                <mat-label>Edad</mat-label>
+                                                <input matInput type="number" min="0" [ngModel]="Personaje.Edad"
+                                                    (ngModelChange)="onEdadChange($event)">
+                                                <mat-hint>{{edadRangosHint}}</mat-hint>
+                                            </mat-form-field>
+                                            <button type="button" class="field-help-btn"
+                                                (click)="abrirInfoEdadRacial($event)"
+                                                matTooltip="Ver rangos de edad de la raza"
+                                                aria-label="Información de rangos de edad">
+                                                <mat-icon>help_outline</mat-icon>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <mat-chip class="bad tw-mb-2 chip-alerta" *ngIf="edadFueraRango">
+                                        La edad elegida sale del rango tipico de la raza.
+                                    </mat-chip>
+                                    <mat-form-field appearance="fill">
+                                        <mat-label>Peso (kg)</mat-label>
+                                        <input matInput type="number" min="0" step="0.01" [ngModel]="Personaje.Peso"
+                                            (ngModelChange)="onPesoChange($event)">
+                                        <mat-hint>Recomendado {{raza.Peso_rango_inf}} -
+                                            {{raza.Peso_rango_sup}}</mat-hint>
+                                    </mat-form-field>
+                                    <mat-form-field appearance="fill">
+                                        <mat-label>Altura (m)</mat-label>
+                                        <input matInput type="number" min="0" step="0.01" [ngModel]="Personaje.Altura"
+                                            (ngModelChange)="onAlturaChange($event)">
+                                        <mat-hint>Recomendado {{raza.Altura_rango_inf}} -
+                                            {{raza.Altura_rango_sup}}</mat-hint>
+                                    </mat-form-field>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="tw-w-full md:tw-w-1/3 tw-p-2 basicos-col">
+                            <div class="sombra-caja-sm tw-rounded tw-p-2 tw-my-2 seccion-form">
+                                <mat-chip class="tw-h-auto sombra-caja-sm tw-py-2 seccion-titulo-chip">
+                                    Trasfondo y Rasgos de personalidad
+                                    <mat-icon class="tw-ms-2">auto_stories</mat-icon>
+                                </mat-chip>
+                                <div class="field-grid">
+                                    <mat-form-field appearance="fill" class="full-span">
+                                        <mat-label>Trasfondo</mat-label>
+                                        <textarea matInput rows="7" [(ngModel)]="Personaje.Contexto"
+                                            [placeholder]="placeholderContexto"></textarea>
+                                    </mat-form-field>
+                                    <mat-form-field appearance="fill" class="full-span">
+                                        <mat-label>Rasgos de personalidad</mat-label>
+                                        <textarea matInput rows="7" [(ngModel)]="Personaje.Personalidad"
+                                            [placeholder]="placeholderPersonalidad"></textarea>
+                                    </mat-form-field>
+                                </div>
                             </div>
                         </div>
                     </div>
-                    <div class="tw-w-full md:tw-w-1/3 tw-p-2 basicos-col">
-                        <div class="sombra-caja-sm tw-rounded tw-p-2 tw-my-2 seccion-form">
-                            <mat-chip class="sombra-caja-sm seccion-titulo-chip">Región de origen</mat-chip>
-                            <mat-form-field appearance="fill" class="tw-w-full">
-                                <mat-label>Región</mat-label>
-                                <mat-select [value]="idRegionSeleccionadaBasicos" (selectionChange)="onRegionOrigenChange($event.value)">
-                                    <mat-option [value]="0">Sin región</mat-option>
-                                    <mat-option *ngFor="let region of catalogoRegiones" [value]="region.Id">{{region.Nombre}}</mat-option>
-                                </mat-select>
-                            </mat-form-field>
-                        </div>
-                        <div class="sombra-caja-sm tw-rounded tw-p-2 tw-my-2 seccion-form">
-                            <mat-chip class="sombra-caja-sm seccion-titulo-chip">Contexto</mat-chip>
-                            <mat-form-field appearance="fill" class="tw-w-full">
-                                <mat-label>Trasfondo</mat-label>
-                                <textarea matInput rows="7" [(ngModel)]="Personaje.Contexto" [placeholder]="placeholderContexto"></textarea>
-                            </mat-form-field>
-                        </div>
-                        <div class="sombra-caja-sm tw-rounded tw-p-2 tw-my-2 seccion-form">
-                            <mat-chip class="sombra-caja-sm seccion-titulo-chip">Personalidad</mat-chip>
-                            <mat-form-field appearance="fill" class="tw-w-full">
-                                <mat-label>Rasgos de personalidad</mat-label>
-                                <textarea matInput rows="7" [(ngModel)]="Personaje.Personalidad" [placeholder]="placeholderPersonalidad"></textarea>
-                            </mat-form-field>
-                        </div>
-                    </div>
-                </div>
                 </div>
                 <div class="tab-footer basicos-action-bar">
                     <div class="basicos-bloqueos" *ngIf="motivosBloqueoBasicos.length > 0">
@@ -209,7 +237,8 @@
                             <li *ngFor="let motivo of motivosBloqueoBasicos">{{motivo}}</li>
                         </ul>
                     </div>
-                    <button mat-raised-button color="primary" [disabled]="!puedeContinuarBasicos" (click)="continuarDesdeBasicos()">
+                    <button mat-raised-button color="primary" [disabled]="!puedeContinuarBasicos"
+                        (click)="continuarDesdeBasicos()">
                         Siguiente
                         <mat-icon>arrow_forward</mat-icon>
                     </button>
@@ -229,21 +258,26 @@
                 Plantillas
             </ng-template>
             <div class="tw-w-full tw-py-3 tw-h-full">
-                <mat-card class="tw-h-full sombra-caja-sm plantillas-skeleton tab-frame" *ngIf="mostrarBloquePlantillas; else bloqueoPlantillas">
+                <mat-card class="tw-h-full sombra-caja-sm plantillas-skeleton tab-frame"
+                    *ngIf="mostrarBloquePlantillas; else bloqueoPlantillas">
                     <div class="tab-head tw-px-3 tw-pt-2">
                         <div class="plantillas-filtros">
                             <mat-form-field appearance="fill" class="tw-w-full">
                                 <mat-label>Buscar plantilla</mat-label>
-                                <input matInput [ngModel]="filtroPlantillasTexto" (ngModelChange)="onFiltroPlantillasTextoChange($event)" placeholder="Nombre de plantilla">
+                                <input matInput [ngModel]="filtroPlantillasTexto"
+                                    (ngModelChange)="onFiltroPlantillasTextoChange($event)"
+                                    placeholder="Nombre de plantilla">
                             </mat-form-field>
                             <mat-form-field appearance="fill" class="tw-w-full">
                                 <mat-label>Manual</mat-label>
-                                <mat-select [value]="filtroPlantillasManual" (selectionChange)="onFiltroPlantillasManualChange($event.value)">
-                                    <mat-option *ngFor="let manual of manualesPlantillas" [value]="manual">{{manual}}</mat-option>
+                                <mat-select [value]="filtroPlantillasManual"
+                                    (selectionChange)="onFiltroPlantillasManualChange($event.value)">
+                                    <mat-option *ngFor="let manual of manualesPlantillas"
+                                        [value]="manual">{{manual}}</mat-option>
                                 </mat-select>
                             </mat-form-field>
-                            <mat-chip-option color="warn" class="filtro-chip" [selected]="incluirHomebrewPlantillasEfectivo"
-                                [disabled]="homebrewForzado"
+                            <mat-chip-option color="warn" class="filtro-chip"
+                                [selected]="incluirHomebrewPlantillasEfectivo" [disabled]="homebrewForzado"
                                 (click)="alternarHomebrewPlantillas()">
                                 {{incluirHomebrewPlantillasEfectivo ? 'Homebrew incluido' : 'Incluir homebrew'}}
                             </mat-chip-option>
@@ -253,109 +287,233 @@
                     <mat-card-content class="tw-px-3 tw-py-2 tw-flex tw-flex-col tw-gap-2 plantillas-layout tab-scroll">
                         <div class="tw-flex tw-flex-wrap plantillas-zonas">
                             <div class="tw-w-full md:tw-w-7/12 tw-box-border tw-p-1">
-                                <div class="sombra-caja-sm tw-rounded tw-p-2 tw-h-full">
-                                    <mat-chip class="tw-w-full sombra-caja-sm tw-mb-2">Plantillas elegibles</mat-chip>
+                                <div class="sombra-caja-sm tw-rounded tw-p-2 tw-h-full plantillas-panel">
+                                    <mat-chip class="tw-w-full sombra-caja-sm tw-mb-2 plantillas-panel__titulo">Plantillas elegibles</mat-chip>
                                     <div *ngIf="cargandoPlantillas" class="tw-text-center tw-p-3">
                                         <mat-chip>Cargando plantillas...</mat-chip>
                                     </div>
-                                    <div *ngIf="!cargandoPlantillas && plantillasElegibles.length < 1" class="tw-text-center tw-p-3">
+                                    <div *ngIf="!cargandoPlantillas && plantillasElegibles.length < 1"
+                                        class="tw-text-center tw-p-3">
                                         <mat-chip>No hay plantillas elegibles con los filtros actuales</mat-chip>
                                     </div>
-                                    <mat-chip-set class="tw-m-1" *ngIf="plantillasElegibles.length > 0">
-                                        <mat-chip *ngFor="let plantilla of plantillasElegibles" class="tw-h-auto chip-clic sombra3d-sm"
-                                            (click)="seleccionarPlantilla(plantilla)">
-                                            {{plantilla.Nombre}}
-                                            <mat-chip class="tw-m-1" *ngIf="plantilla.Ajuste_nivel > 0">Ajuste +{{plantilla.Ajuste_nivel}}</mat-chip>
-                                            <mat-chip class="tw-m-1" *ngIf="getEtiquetaDgsAdicionalesPlantilla(plantilla) as etiquetaDgs">{{etiquetaDgs}}</mat-chip>
-                                            <mat-chip class="tw-m-1" *ngIf="plantilla.Nacimiento">Heredada</mat-chip>
-                                            <mat-chip class="tw-m-1" *ngIf="!plantilla.Oficial">Homebrew</mat-chip>
-                                            <button mat-icon-button class="plantilla-detalle-btn"
-                                                (click)="verDetallesPlantilla(plantilla); $event.stopPropagation()"
-                                                aria-label="Ver detalle de plantilla" matTooltip="Ver detalles">
-                                                <mat-icon>open_in_new</mat-icon>
-                                            </button>
-                                        </mat-chip>
-                                    </mat-chip-set>
+                                    <div class="plantillas-lista" *ngIf="plantillasElegibles.length > 0">
+                                        <div *ngFor="let plantilla of plantillasElegibles"
+                                            class="plantilla-card plantilla-card--elegible sombra3d-sm"
+                                            role="button" tabindex="0"
+                                            (click)="seleccionarPlantilla(plantilla)"
+                                            (keyup.enter)="seleccionarPlantilla(plantilla)">
+                                            <div class="plantilla-card__head">
+                                                <div class="plantilla-card__texto">
+                                                    <p class="tw-m-0 plantilla-card__nombre">{{plantilla.Nombre}}</p>
+                                                    <p class="tw-m-0 plantilla-card__meta" *ngIf="plantilla.Manual.Nombre">
+                                                        {{plantilla.Manual.Nombre}}
+                                                        <span *ngIf="plantilla.Manual.Pagina"> (p. {{plantilla.Manual.Pagina}})</span>
+                                                    </p>
+                                                </div>
+                                                <div class="plantilla-card__acciones">
+                                                    <mat-chip class="plantilla-chip-estado ok">Elegible</mat-chip>
+                                                    <button mat-icon-button class="plantilla-detalle-btn"
+                                                        (click)="verDetallesPlantilla(plantilla); $event.stopPropagation()"
+                                                        aria-label="Ver detalle de plantilla" matTooltip="Ver detalles">
+                                                        <mat-icon>open_in_new</mat-icon>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                            <div class="plantilla-card__chips">
+                                                <mat-chip class="tw-m-0" *ngIf="plantilla.Ajuste_nivel > 0">Ajuste
+                                                    +{{plantilla.Ajuste_nivel}}</mat-chip>
+                                                <mat-chip class="tw-m-0"
+                                                    *ngIf="getEtiquetaDgsAdicionalesPlantilla(plantilla) as etiquetaDgs">{{etiquetaDgs}}</mat-chip>
+                                                <mat-chip class="tw-m-0" *ngIf="plantilla.Nacimiento">Heredada</mat-chip>
+                                                <mat-chip class="tw-m-0" *ngIf="!plantilla.Oficial">Homebrew</mat-chip>
+                                            </div>
+                                        </div>
+                                    </div>
 
-                                    <mat-chip class="tw-w-full sombra-caja-sm tw-mt-3 tw-mb-2" *ngIf="plantillasBloqueadasCampana.length > 0">
+                                    <mat-chip class="tw-w-full sombra-caja-sm tw-mt-3 tw-mb-2 plantillas-panel__titulo"
+                                        *ngIf="plantillasBloqueadasCampana.length > 0">
                                         Bloqueadas por política de campaña
                                     </mat-chip>
-                                    <mat-chip-set class="tw-m-1" *ngIf="plantillasBloqueadasCampana.length > 0">
-                                        <mat-chip *ngFor="let item of plantillasBloqueadasCampana" class="tw-h-auto sombra3d-sm chip-bloqueada"
-                                            [matTooltip]="getTooltipBloqueoUnknown(item)" matTooltipClass="tt-accent tt-multiline">
-                                            {{item.plantilla.Nombre}}
-                                            <mat-chip class="tw-m-1">Campaña</mat-chip>
-                                            <button mat-icon-button class="plantilla-detalle-btn"
-                                                (click)="verDetallesPlantilla(item.plantilla); $event.stopPropagation()"
-                                                aria-label="Ver detalle de plantilla" matTooltip="Ver detalles">
-                                                <mat-icon>open_in_new</mat-icon>
-                                            </button>
-                                        </mat-chip>
-                                    </mat-chip-set>
+                                    <div class="plantillas-lista" *ngIf="plantillasBloqueadasCampana.length > 0">
+                                        <div *ngFor="let item of plantillasBloqueadasCampana"
+                                            class="plantilla-card plantilla-card--bloqueada sombra3d-sm"
+                                            [matTooltip]="getTooltipBloqueoUnknown(item)"
+                                            matTooltipClass="tt-accent tt-multiline">
+                                            <div class="plantilla-card__head">
+                                                <div class="plantilla-card__texto">
+                                                    <p class="tw-m-0 plantilla-card__nombre">{{item.plantilla.Nombre}}</p>
+                                                    <p class="tw-m-0 plantilla-card__meta" *ngIf="item.plantilla.Manual.Nombre">
+                                                        {{item.plantilla.Manual.Nombre}}
+                                                        <span *ngIf="item.plantilla.Manual.Pagina"> (p. {{item.plantilla.Manual.Pagina}})</span>
+                                                    </p>
+                                                </div>
+                                                <div class="plantilla-card__acciones">
+                                                    <mat-chip class="plantilla-chip-estado warm">Campaña</mat-chip>
+                                                    <button mat-icon-button class="plantilla-detalle-btn"
+                                                        (click)="verDetallesPlantilla(item.plantilla); $event.stopPropagation()"
+                                                        aria-label="Ver detalle de plantilla" matTooltip="Ver detalles">
+                                                        <mat-icon>open_in_new</mat-icon>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                            <div class="plantilla-card__chips">
+                                                <mat-chip class="tw-m-0" *ngIf="item.plantilla.Ajuste_nivel > 0">Ajuste
+                                                    +{{item.plantilla.Ajuste_nivel}}</mat-chip>
+                                                <mat-chip class="tw-m-0"
+                                                    *ngIf="getEtiquetaDgsAdicionalesPlantilla(item.plantilla) as etiquetaDgs">{{etiquetaDgs}}</mat-chip>
+                                                <mat-chip class="tw-m-0" *ngIf="item.plantilla.Nacimiento">Heredada</mat-chip>
+                                                <mat-chip class="tw-m-0" *ngIf="!item.plantilla.Oficial">Homebrew</mat-chip>
+                                            </div>
+                                            <div class="plantilla-card__motivos"
+                                                *ngIf="item.evaluacion.razones.length > 0 || item.evaluacion.advertencias.length > 0">
+                                                <p class="tw-m-0" *ngFor="let razon of item.evaluacion.razones">• {{razon}}</p>
+                                                <p class="tw-m-0 plantilla-card__advertencia" *ngFor="let advertencia of item.evaluacion.advertencias">• {{advertencia}}</p>
+                                            </div>
+                                        </div>
+                                    </div>
 
-                                    <mat-chip class="tw-w-full sombra-caja-sm tw-mt-3 tw-mb-2" *ngIf="plantillasBloqueadasUnknown.length > 0">
+                                    <mat-chip class="tw-w-full sombra-caja-sm tw-mt-3 tw-mb-2 plantillas-panel__titulo"
+                                        *ngIf="plantillasBloqueadasUnknown.length > 0">
                                         Bloqueadas por formato de prerrequisito no soportado
                                     </mat-chip>
-                                    <mat-chip-set class="tw-m-1" *ngIf="plantillasBloqueadasUnknown.length > 0">
-                                        <mat-chip *ngFor="let item of plantillasBloqueadasUnknown" class="tw-h-auto sombra3d-sm chip-bloqueada"
-                                            [matTooltip]="getTooltipBloqueoUnknown(item)" matTooltipClass="tt-accent tt-multiline">
-                                            {{item.plantilla.Nombre}}
-                                            <mat-chip class="tw-m-1">Bloqueada</mat-chip>
-                                            <button mat-icon-button class="plantilla-detalle-btn"
-                                                (click)="verDetallesPlantilla(item.plantilla); $event.stopPropagation()"
-                                                aria-label="Ver detalle de plantilla" matTooltip="Ver detalles">
-                                                <mat-icon>open_in_new</mat-icon>
-                                            </button>
-                                        </mat-chip>
-                                    </mat-chip-set>
+                                    <div class="plantillas-lista" *ngIf="plantillasBloqueadasUnknown.length > 0">
+                                        <div *ngFor="let item of plantillasBloqueadasUnknown"
+                                            class="plantilla-card plantilla-card--bloqueada sombra3d-sm"
+                                            [matTooltip]="getTooltipBloqueoUnknown(item)"
+                                            matTooltipClass="tt-accent tt-multiline">
+                                            <div class="plantilla-card__head">
+                                                <div class="plantilla-card__texto">
+                                                    <p class="tw-m-0 plantilla-card__nombre">{{item.plantilla.Nombre}}</p>
+                                                    <p class="tw-m-0 plantilla-card__meta" *ngIf="item.plantilla.Manual.Nombre">
+                                                        {{item.plantilla.Manual.Nombre}}
+                                                        <span *ngIf="item.plantilla.Manual.Pagina"> (p. {{item.plantilla.Manual.Pagina}})</span>
+                                                    </p>
+                                                </div>
+                                                <div class="plantilla-card__acciones">
+                                                    <mat-chip class="plantilla-chip-estado warm">Bloqueada</mat-chip>
+                                                    <button mat-icon-button class="plantilla-detalle-btn"
+                                                        (click)="verDetallesPlantilla(item.plantilla); $event.stopPropagation()"
+                                                        aria-label="Ver detalle de plantilla" matTooltip="Ver detalles">
+                                                        <mat-icon>open_in_new</mat-icon>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                            <div class="plantilla-card__chips">
+                                                <mat-chip class="tw-m-0" *ngIf="item.plantilla.Ajuste_nivel > 0">Ajuste
+                                                    +{{item.plantilla.Ajuste_nivel}}</mat-chip>
+                                                <mat-chip class="tw-m-0"
+                                                    *ngIf="getEtiquetaDgsAdicionalesPlantilla(item.plantilla) as etiquetaDgs">{{etiquetaDgs}}</mat-chip>
+                                                <mat-chip class="tw-m-0" *ngIf="item.plantilla.Nacimiento">Heredada</mat-chip>
+                                                <mat-chip class="tw-m-0" *ngIf="!item.plantilla.Oficial">Homebrew</mat-chip>
+                                            </div>
+                                            <div class="plantilla-card__motivos"
+                                                *ngIf="item.evaluacion.razones.length > 0 || item.evaluacion.advertencias.length > 0">
+                                                <p class="tw-m-0" *ngFor="let razon of item.evaluacion.razones">• {{razon}}</p>
+                                                <p class="tw-m-0 plantilla-card__advertencia" *ngFor="let advertencia of item.evaluacion.advertencias">• {{advertencia}}</p>
+                                            </div>
+                                        </div>
+                                    </div>
 
-                                    <mat-chip class="tw-w-full sombra-caja-sm tw-mt-3 tw-mb-2"
+                                    <mat-chip class="tw-w-full sombra-caja-sm tw-mt-3 tw-mb-2 plantillas-panel__titulo"
                                         *ngIf="mostrarDiagnosticoPlantillas && plantillasBloqueadasFailed.length > 0">
-                                        Diagnostico temporal: bloqueadas por prerrequisitos no cumplidos
+                                        Diagnóstico temporal: bloqueadas por prerrequisitos no cumplidos
                                     </mat-chip>
-                                    <mat-chip-set class="tw-m-1" *ngIf="mostrarDiagnosticoPlantillas && plantillasBloqueadasFailed.length > 0">
-                                        <mat-chip *ngFor="let item of plantillasBloqueadasFailed" class="tw-h-auto sombra3d-sm chip-bloqueada"
-                                            [matTooltip]="getTooltipBloqueoUnknown(item)" matTooltipClass="tt-accent tt-multiline">
-                                            {{item.plantilla.Nombre}}
-                                            <mat-chip class="tw-m-1">No cumple</mat-chip>
-                                            <button mat-icon-button class="plantilla-detalle-btn"
-                                                (click)="verDetallesPlantilla(item.plantilla); $event.stopPropagation()"
-                                                aria-label="Ver detalle de plantilla" matTooltip="Ver detalles">
-                                                <mat-icon>open_in_new</mat-icon>
-                                            </button>
-                                        </mat-chip>
-                                    </mat-chip-set>
+                                    <div class="plantillas-lista"
+                                        *ngIf="mostrarDiagnosticoPlantillas && plantillasBloqueadasFailed.length > 0">
+                                        <div *ngFor="let item of plantillasBloqueadasFailed"
+                                            class="plantilla-card plantilla-card--bloqueada sombra3d-sm"
+                                            [matTooltip]="getTooltipBloqueoUnknown(item)"
+                                            matTooltipClass="tt-accent tt-multiline">
+                                            <div class="plantilla-card__head">
+                                                <div class="plantilla-card__texto">
+                                                    <p class="tw-m-0 plantilla-card__nombre">{{item.plantilla.Nombre}}</p>
+                                                    <p class="tw-m-0 plantilla-card__meta" *ngIf="item.plantilla.Manual.Nombre">
+                                                        {{item.plantilla.Manual.Nombre}}
+                                                        <span *ngIf="item.plantilla.Manual.Pagina"> (p. {{item.plantilla.Manual.Pagina}})</span>
+                                                    </p>
+                                                </div>
+                                                <div class="plantilla-card__acciones">
+                                                    <mat-chip class="plantilla-chip-estado warm">No cumple</mat-chip>
+                                                    <button mat-icon-button class="plantilla-detalle-btn"
+                                                        (click)="verDetallesPlantilla(item.plantilla); $event.stopPropagation()"
+                                                        aria-label="Ver detalle de plantilla" matTooltip="Ver detalles">
+                                                        <mat-icon>open_in_new</mat-icon>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                            <div class="plantilla-card__chips">
+                                                <mat-chip class="tw-m-0" *ngIf="item.plantilla.Ajuste_nivel > 0">Ajuste
+                                                    +{{item.plantilla.Ajuste_nivel}}</mat-chip>
+                                                <mat-chip class="tw-m-0"
+                                                    *ngIf="getEtiquetaDgsAdicionalesPlantilla(item.plantilla) as etiquetaDgs">{{etiquetaDgs}}</mat-chip>
+                                                <mat-chip class="tw-m-0" *ngIf="item.plantilla.Nacimiento">Heredada</mat-chip>
+                                                <mat-chip class="tw-m-0" *ngIf="!item.plantilla.Oficial">Homebrew</mat-chip>
+                                            </div>
+                                            <div class="plantilla-card__motivos"
+                                                *ngIf="item.evaluacion.razones.length > 0 || item.evaluacion.advertencias.length > 0">
+                                                <p class="tw-m-0" *ngFor="let razon of item.evaluacion.razones">• {{razon}}</p>
+                                                <p class="tw-m-0 plantilla-card__advertencia" *ngFor="let advertencia of item.evaluacion.advertencias">• {{advertencia}}</p>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
 
                             <div class="tw-w-full md:tw-w-5/12 tw-box-border tw-p-1">
-                                <div class="sombra-caja-sm tw-rounded tw-p-2 tw-h-full tw-flex tw-flex-col tw-gap-2">
+                                <div class="sombra-caja-sm tw-rounded tw-p-2 tw-h-full tw-flex tw-flex-col tw-gap-2 plantillas-panel">
                                     <div class="plantillas-resumen-linea">
-                                        <mat-chip class="sombra-caja-sm resumen-chip-seleccion">Seleccion actual</mat-chip>
+                                        <mat-chip class="sombra-caja-sm resumen-chip-seleccion">Seleccion
+                                            actual</mat-chip>
                                         <mat-chip class="resumen-chip-tipo warm" *ngIf="mostrarTipoCriaturaResultante">
                                             Tipo resultante: {{tipoCriaturaSimuladaTexto}}
                                         </mat-chip>
                                     </div>
-                                    <mat-chip class="tw-w-full" *ngIf="plantillasSeleccionadas.length < 1">Sin plantillas seleccionadas</mat-chip>
-                                    <mat-chip-set class="tw-m-1" *ngIf="plantillasSeleccionadas.length > 0">
-                                        <mat-chip *ngFor="let plantilla of plantillasSeleccionadas" class="tw-h-auto sombra3d-sm chip-seleccionada">
-                                            {{plantilla.Nombre}}
-                                            <mat-chip class="tw-m-1" *ngIf="esPlantillaConfirmada(plantilla)">Fijada</mat-chip>
-                                            <button mat-icon-button class="plantilla-detalle-btn"
-                                                (click)="verDetallesPlantilla(plantilla); $event.stopPropagation()"
-                                                aria-label="Ver detalle de plantilla" matTooltip="Ver detalles">
-                                                <mat-icon>open_in_new</mat-icon>
-                                            </button>
-                                            <button mat-icon-button class="tw-ms-1" (click)="quitarPlantillaSeleccion(plantilla.Id)"
-                                                [disabled]="esPlantillaConfirmada(plantilla)"
-                                                [matTooltip]="esPlantillaConfirmada(plantilla) ? 'Plantilla fijada en una vuelta anterior' : ''"
-                                                aria-label="Quitar plantilla">
-                                                <mat-icon>close</mat-icon>
-                                            </button>
-                                        </mat-chip>
-                                    </mat-chip-set>
+                                    <mat-chip class="tw-w-full" *ngIf="plantillasSeleccionadas.length < 1">Sin
+                                        plantillas seleccionadas</mat-chip>
+                                    <div class="plantillas-lista plantillas-lista--seleccion" *ngIf="plantillasSeleccionadas.length > 0">
+                                        <div *ngFor="let plantilla of plantillasSeleccionadas"
+                                            class="plantilla-card plantilla-card--seleccion sombra3d-sm"
+                                            [class.plantilla-card--seleccion-confirmada]="esPlantillaConfirmada(plantilla)"
+                                            [class.plantilla-card--seleccion-actual]="puedeQuitarPlantillaSeleccion(plantilla)">
+                                            <div class="plantilla-card__head">
+                                                <div class="plantilla-card__texto">
+                                                    <p class="tw-m-0 plantilla-card__nombre">{{plantilla.Nombre}}</p>
+                                                    <p class="tw-m-0 plantilla-card__meta" *ngIf="plantilla.Manual.Nombre">
+                                                        {{plantilla.Manual.Nombre}}
+                                                        <span *ngIf="plantilla.Manual.Pagina"> (p. {{plantilla.Manual.Pagina}})</span>
+                                                    </p>
+                                                </div>
+                                                <div class="plantilla-card__acciones">
+                                                    <mat-chip class="plantilla-chip-estado"
+                                                        [ngClass]="esPlantillaConfirmada(plantilla) ? 'fixed' : 'info'">
+                                                        {{esPlantillaConfirmada(plantilla) ? 'Fijada' : 'Actual'}}
+                                                    </mat-chip>
+                                                    <button mat-icon-button class="plantilla-detalle-btn"
+                                                        (click)="verDetallesPlantilla(plantilla); $event.stopPropagation()"
+                                                        aria-label="Ver detalle de plantilla" matTooltip="Ver detalles">
+                                                        <mat-icon>open_in_new</mat-icon>
+                                                    </button>
+                                                    <button *ngIf="puedeQuitarPlantillaSeleccion(plantilla)"
+                                                        mat-icon-button class="plantilla-remove-btn tw-ms-1"
+                                                        (click)="quitarPlantillaSeleccion(plantilla.Id)"
+                                                        aria-label="Quitar plantilla">
+                                                        <mat-icon>close</mat-icon>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                            <div class="plantilla-card__chips">
+                                                <mat-chip class="tw-m-0" *ngIf="plantilla.Ajuste_nivel > 0">Ajuste
+                                                    +{{plantilla.Ajuste_nivel}}</mat-chip>
+                                                <mat-chip class="tw-m-0"
+                                                    *ngIf="getEtiquetaDgsAdicionalesPlantilla(plantilla) as etiquetaDgs">{{etiquetaDgs}}</mat-chip>
+                                                <mat-chip class="tw-m-0" *ngIf="plantilla.Nacimiento">Heredada</mat-chip>
+                                                <mat-chip class="tw-m-0" *ngIf="!plantilla.Oficial">Homebrew</mat-chip>
+                                            </div>
+                                        </div>
+                                    </div>
                                     <div class="tw-flex tw-justify-end">
-                                        <button mat-stroked-button color="warn" (click)="limpiarSeleccionPlantillas()" [disabled]="!puedeLimpiarSeleccionPlantillas">
+                                        <button mat-stroked-button color="warn" (click)="limpiarSeleccionPlantillas()"
+                                            [disabled]="!puedeLimpiarSeleccionPlantillas">
                                             Limpiar seleccion
                                         </button>
                                     </div>
@@ -364,7 +522,8 @@
                         </div>
                     </mat-card-content>
                     <div class="tab-footer tw-p-3 tab-footer--dual-actions">
-                        <button mat-stroked-button color="accent" *ngIf="mostrarBotonFinalizarCreacion" (click)="onFinalizarCreacionTemporal()">
+                        <button mat-stroked-button color="accent" *ngIf="mostrarBotonFinalizarCreacion"
+                            (click)="onFinalizarCreacionTemporal()">
                             Finalizar
                             <mat-icon>task_alt</mat-icon>
                         </button>
@@ -376,7 +535,8 @@
                 </mat-card>
                 <ng-template #bloqueoPlantillas>
                     <div class="tw-flex tw-justify-center tw-items-center tw-h-full tw-w-full tw-px-3">
-                        <mat-chip class="tw-h-auto warm tw-p-3">Genera características para desbloquear esta pestaña.</mat-chip>
+                        <mat-chip class="tw-h-auto warm tw-p-3">Genera características para desbloquear esta
+                            pestaña.</mat-chip>
                     </div>
                 </ng-template>
             </div>
@@ -389,132 +549,135 @@
             <div class="tw-w-full tw-py-3 tw-h-full ventajas-view">
                 <mat-card class="tw-h-full sombra-caja-sm tw-p-2 tw-flex tw-flex-col tw-gap-2 tab-frame">
                     <div class="tab-head tw-flex tw-flex-col tw-gap-2">
-                    <mat-chip class="tw-w-full tw-h-auto homebrew-banner homebrew-banner--info">
-                        <span class="homebrew-banner-text">Sistema homebrew: solo con permiso del máster. Tu personaje no será oficial.</span>
-                        <button type="button" class="homebrew-help-chip" (click)="abrirInfoVentajasHomebrew($event)"
-                            matTooltip="Más info sobre este sistema" aria-label="Información sobre ventajas y desventajas homebrew">
-                            <mat-icon>help_outline</mat-icon>
-                        </button>
-                    </mat-chip>
+                        <mat-chip class="tw-w-full tw-h-auto homebrew-banner homebrew-banner--info">
+                            <span class="homebrew-banner-text">Sistema homebrew: solo con permiso del máster. Tu
+                                personaje solo dejará de ser oficial si llegas a usar ventajas o desventajas.</span>
+                            <button type="button" class="homebrew-help-chip" (click)="abrirInfoVentajasHomebrew($event)"
+                                matTooltip="Más info sobre este sistema"
+                                aria-label="Información sobre ventajas y desventajas homebrew">
+                                <mat-icon>help_outline</mat-icon>
+                            </button>
+                        </mat-chip>
 
-                    <div class="ventajas-resumen-barra">
-                        <mat-chip>Puntos disponibles: {{flujoVentajas.puntosDisponibles}}</mat-chip>
-                        <mat-chip>Puntos gastados: {{flujoVentajas.puntosGastados}}</mat-chip>
-                        <mat-chip [ngClass]="flujoVentajas.puntosRestantes < 0 ? 'bad' : ''">
-                            Restantes: {{flujoVentajas.puntosRestantes}}
-                        </mat-chip>
-                        <mat-chip [ngClass]="ventajasSeleccionadasCount >= 3 ? 'bad' : ''">
-                            Ventajas: {{ventajasSeleccionadasCount}}/3
-                        </mat-chip>
-                        <mat-chip-option color="warn" [selected]="homebrewVentajasSeleccionado"
-                            [disabled]="homebrewVentajasBloqueado" (click)="alternarHomebrewVentajas()">
-                            {{textoChipHomebrewVentajas}}
-                        </mat-chip-option>
-                        <mat-chip class="bad chip-deficit" *ngIf="flujoVentajas.hayDeficit">
-                            Tienes déficit de puntos de ventaja. Añade desventajas o quita ventajas para continuar.
-                        </mat-chip>
-                    </div>
+                        <div class="ventajas-resumen-barra">
+                            <mat-chip>Puntos disponibles: {{flujoVentajas.puntosDisponibles}}</mat-chip>
+                            <mat-chip>Puntos gastados: {{flujoVentajas.puntosGastados}}</mat-chip>
+                            <mat-chip [ngClass]="flujoVentajas.puntosRestantes < 0 ? 'bad' : ''">
+                                Restantes: {{flujoVentajas.puntosRestantes}}
+                            </mat-chip>
+                            <mat-chip [ngClass]="ventajasSeleccionadasCount >= 3 ? 'bad' : ''">
+                                Ventajas: {{ventajasSeleccionadasCount}}/3
+                            </mat-chip>
+                            <mat-chip class="bad chip-deficit" *ngIf="flujoVentajas.hayDeficit">
+                                Tienes déficit de puntos de ventaja. Añade desventajas o quita ventajas para continuar.
+                            </mat-chip>
+                        </div>
                     </div>
 
                     <div class="tab-scroll">
                         <div class="tw-flex tw-flex-wrap ventajas-listados">
-                        <div class="tw-w-full lg:tw-w-1/2 tw-box-border tw-p-1">
-                            <div class="sombra-caja-sm tw-rounded tw-p-2 tw-h-full ventajas-panel">
-                                <div class="ventajas-panel__title ventajas-panel__title--desventaja">
-                                    <mat-icon>thumb_down</mat-icon>
-                                    <span>Desventajas</span>
+                            <div class="tw-w-full lg:tw-w-1/2 tw-box-border tw-p-1">
+                                <div class="sombra-caja-sm tw-rounded tw-p-2 tw-h-full ventajas-panel">
+                                    <div class="ventajas-panel__title ventajas-panel__title--desventaja">
+                                        <mat-icon>thumb_down</mat-icon>
+                                        <span>Desventajas</span>
+                                    </div>
+                                    <div class="ventajas-panel__body">
+                                        <div *ngIf="cargandoVentajas" class="tw-text-center tw-p-2">
+                                            <mat-chip>Cargando desventajas...</mat-chip>
+                                        </div>
+                                        <div class="tabla-scroll tabla-scroll--ventajas" *ngIf="!cargandoVentajas">
+                                            <table class="tabla-ventajas tabla-ventajas--seleccion">
+                                                <thead>
+                                                    <tr>
+                                                        <th></th>
+                                                        <th>Nombre</th>
+                                                        <th>Coste</th>
+                                                        <th>Descripción</th>
+                                                        <th>Materia</th>
+                                                        <th>Mejora</th>
+                                                        <th>Disipable</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    <tr *ngFor="let item of desventajasVisibles"
+                                                        (click)="toggleDesventajaSeleccion(item)">
+                                                        <td>
+                                                            <mat-checkbox [checked]="isDesventajaSeleccionada(item.Id)"
+                                                                (click)="$event.stopPropagation()"
+                                                                (change)="toggleDesventajaSeleccion(item)">
+                                                            </mat-checkbox>
+                                                        </td>
+                                                        <td>{{item.Nombre}}</td>
+                                                        <td>{{item.Coste > 0 ? '+' : ''}}{{item.Coste}}</td>
+                                                        <td>{{item.Descripcion}}</td>
+                                                        <td>{{getMateriaVisible(item)}}</td>
+                                                        <td>{{getMejoraVisible(item)}}</td>
+                                                        <td>{{getDisipableVisible(item)}}</td>
+                                                    </tr>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
                                 </div>
-                                <div class="ventajas-panel__body">
-                                <div *ngIf="cargandoVentajas" class="tw-text-center tw-p-2">
-                                    <mat-chip>Cargando desventajas...</mat-chip>
-                                </div>
-                                <div class="tabla-scroll tabla-scroll--ventajas" *ngIf="!cargandoVentajas">
-                                    <table class="tabla-ventajas tabla-ventajas--seleccion">
-                                        <thead>
-                                            <tr>
-                                                <th></th>
-                                                <th>Nombre</th>
-                                                <th>Coste</th>
-                                                <th>Descripción</th>
-                                                <th>Materia</th>
-                                                <th>Mejora</th>
-                                                <th>Disipable</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            <tr *ngFor="let item of desventajasVisibles" (click)="toggleDesventajaSeleccion(item)">
-                                                <td>
-                                                    <mat-checkbox [checked]="isDesventajaSeleccionada(item.Id)"
-                                                        (click)="$event.stopPropagation()"
-                                                        (change)="toggleDesventajaSeleccion(item)">
-                                                    </mat-checkbox>
-                                                </td>
-                                                <td>{{item.Nombre}}</td>
-                                                <td>{{item.Coste > 0 ? '+' : ''}}{{item.Coste}}</td>
-                                                <td>{{item.Descripcion}}</td>
-                                                <td>{{getMateriaVisible(item)}}</td>
-                                                <td>{{getMejoraVisible(item)}}</td>
-                                                <td>{{getDisipableVisible(item)}}</td>
-                                            </tr>
-                                        </tbody>
-                                    </table>
-                                </div>
+                            </div>
+                            <div class="tw-w-full lg:tw-w-1/2 tw-box-border tw-p-1">
+                                <div class="sombra-caja-sm tw-rounded tw-p-2 tw-h-full ventajas-panel">
+                                    <div class="ventajas-panel__title ventajas-panel__title--ventaja">
+                                        <mat-icon>thumb_up</mat-icon>
+                                        <span>Ventajas</span>
+                                    </div>
+                                    <div class="ventajas-panel__body">
+                                        <div *ngIf="cargandoVentajas" class="tw-text-center tw-p-2">
+                                            <mat-chip>Cargando ventajas...</mat-chip>
+                                        </div>
+                                        <div class="tabla-scroll tabla-scroll--ventajas" *ngIf="!cargandoVentajas">
+                                            <table class="tabla-ventajas tabla-ventajas--seleccion">
+                                                <thead>
+                                                    <tr>
+                                                        <th></th>
+                                                        <th>Nombre</th>
+                                                        <th>Coste</th>
+                                                        <th>Descripción</th>
+                                                        <th>Materia</th>
+                                                        <th>Mejora</th>
+                                                        <th>Disipable</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    <tr *ngFor="let item of ventajasVisibles"
+                                                        [ngClass]="tieneIdiomaPendiente(item) ? 'fila-pendiente' : ''"
+                                                        (click)="toggleVentajaSeleccion(item)">
+                                                        <td>
+                                                            <mat-checkbox [checked]="isVentajaSeleccionada(item.Id)"
+                                                                (click)="$event.stopPropagation()"
+                                                                (change)="toggleVentajaSeleccion(item)">
+                                                            </mat-checkbox>
+                                                        </td>
+                                                        <td>
+                                                            {{item.Nombre}}
+                                                            <span class="tw-ms-1 texto-pendiente"
+                                                                *ngIf="tieneIdiomaPendiente(item)">Selecciona
+                                                                idioma</span>
+                                                        </td>
+                                                        <td>{{item.Coste > 0 ? '+' : ''}}{{item.Coste}}</td>
+                                                        <td>{{item.Descripcion}}</td>
+                                                        <td>{{getMateriaVisible(item)}}</td>
+                                                        <td>{{getMejoraVisible(item)}}</td>
+                                                        <td>{{getDisipableVisible(item)}}</td>
+                                                    </tr>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
-                        <div class="tw-w-full lg:tw-w-1/2 tw-box-border tw-p-1">
-                            <div class="sombra-caja-sm tw-rounded tw-p-2 tw-h-full ventajas-panel">
-                                <div class="ventajas-panel__title ventajas-panel__title--ventaja">
-                                    <mat-icon>thumb_up</mat-icon>
-                                    <span>Ventajas</span>
-                                </div>
-                                <div class="ventajas-panel__body">
-                                <div *ngIf="cargandoVentajas" class="tw-text-center tw-p-2">
-                                    <mat-chip>Cargando ventajas...</mat-chip>
-                                </div>
-                                <div class="tabla-scroll tabla-scroll--ventajas" *ngIf="!cargandoVentajas">
-                                    <table class="tabla-ventajas tabla-ventajas--seleccion">
-                                        <thead>
-                                            <tr>
-                                                <th></th>
-                                                <th>Nombre</th>
-                                                <th>Coste</th>
-                                                <th>Descripción</th>
-                                                <th>Materia</th>
-                                                <th>Mejora</th>
-                                                <th>Disipable</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            <tr *ngFor="let item of ventajasVisibles" [ngClass]="tieneIdiomaPendiente(item) ? 'fila-pendiente' : ''"
-                                                (click)="toggleVentajaSeleccion(item)">
-                                                <td>
-                                                    <mat-checkbox [checked]="isVentajaSeleccionada(item.Id)"
-                                                        (click)="$event.stopPropagation()"
-                                                        (change)="toggleVentajaSeleccion(item)">
-                                                    </mat-checkbox>
-                                                </td>
-                                                <td>
-                                                    {{item.Nombre}}
-                                                    <span class="tw-ms-1 texto-pendiente" *ngIf="tieneIdiomaPendiente(item)">Selecciona idioma</span>
-                                                </td>
-                                                <td>{{item.Coste > 0 ? '+' : ''}}{{item.Coste}}</td>
-                                                <td>{{item.Descripcion}}</td>
-                                                <td>{{getMateriaVisible(item)}}</td>
-                                                <td>{{getMejoraVisible(item)}}</td>
-                                                <td>{{getDisipableVisible(item)}}</td>
-                                            </tr>
-                                        </tbody>
-                                    </table>
-                                </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
                     </div>
 
                     <div class="tab-footer tw-p-2">
-                        <button mat-raised-button color="primary" [disabled]="!puedeContinuarVentajas" (click)="continuarDesdeVentajas()">
+                        <button mat-raised-button color="primary" [disabled]="!puedeContinuarVentajas"
+                            (click)="continuarDesdeVentajas()">
                             Siguiente
                             <mat-icon>arrow_forward</mat-icon>
                         </button>
@@ -530,188 +693,214 @@
             <div class="tw-w-full tw-py-3 tw-h-full clases-view">
                 <mat-card class="tw-h-full sombra-caja-sm tw-p-2 tw-flex tw-flex-col tw-gap-2 tab-frame">
                     <div class="tab-head">
-                    <div class="clases-filtros">
-                        <mat-form-field appearance="fill">
-                            <mat-label>Buscar clase</mat-label>
-                            <input matInput [ngModel]="filtroClasesTexto" (ngModelChange)="onFiltroClasesTextoChange($event)"
-                                placeholder="Nombre o descripción">
-                        </mat-form-field>
-                        <mat-form-field appearance="fill">
-                            <mat-label>Manual</mat-label>
-                            <mat-select [value]="filtroClasesManual" (selectionChange)="onFiltroClasesManualChange($event.value)">
-                                <mat-option *ngFor="let manual of manualesClases" [value]="manual">{{manual}}</mat-option>
-                            </mat-select>
-                        </mat-form-field>
-                        <mat-form-field appearance="fill">
-                            <mat-label>Tipo lanzador</mat-label>
-                            <mat-select [value]="filtroClasesTipoLanzador" (selectionChange)="onFiltroClasesTipoLanzadorChange($event.value)">
-                                <mat-option value="todas">Todas</mat-option>
-                                <mat-option value="no lanzador">No lanzador</mat-option>
-                                <mat-option value="arcano">Arcano</mat-option>
-                                <mat-option value="divino">Divino</mat-option>
-                                <mat-option value="psionico">Psiónico</mat-option>
-                                <mat-option value="alma">Alma</mat-option>
-                            </mat-select>
-                        </mat-form-field>
-                        <mat-form-field appearance="fill">
-                            <mat-label>Rol</mat-label>
-                            <mat-select [value]="filtroClasesRol" (selectionChange)="onFiltroClasesRolChange($event.value)">
-                                <mat-option value="todas">Todos</mat-option>
-                                <mat-option value="dps">DPS</mat-option>
-                                <mat-option value="tanque">Tanque</mat-option>
-                                <mat-option value="support">Support</mat-option>
-                                <mat-option value="utilidad">Utilidad</mat-option>
-                            </mat-select>
-                        </mat-form-field>
-                        <mat-form-field appearance="fill">
-                            <mat-label>Tipo de clase</mat-label>
-                            <mat-select [value]="filtroClasesPrestigio" (selectionChange)="onFiltroClasesPrestigioChange($event.value)">
-                                <mat-option value="todas">Todas</mat-option>
-                                <mat-option value="basica">Básica</mat-option>
-                                <mat-option value="prestigio">Prestigio</mat-option>
-                            </mat-select>
-                        </mat-form-field>
-                        <mat-chip-option color="warn" class="filtro-chip clase-homebrew-chip" [selected]="incluirHomebrewClasesEfectivo"
-                            [disabled]="homebrewForzado" (click)="alternarHomebrewClases()">
-                            {{incluirHomebrewClasesEfectivo ? 'Homebrew incluido' : 'Incluir homebrew'}}
-                        </mat-chip-option>
-                    </div>
+                        <div class="clases-filtros">
+                            <mat-form-field appearance="fill">
+                                <mat-label>Buscar clase</mat-label>
+                                <input matInput [ngModel]="filtroClasesTexto"
+                                    (ngModelChange)="onFiltroClasesTextoChange($event)"
+                                    placeholder="Nombre o descripción">
+                            </mat-form-field>
+                            <mat-form-field appearance="fill">
+                                <mat-label>Manual</mat-label>
+                                <mat-select [value]="filtroClasesManual"
+                                    (selectionChange)="onFiltroClasesManualChange($event.value)">
+                                    <mat-option *ngFor="let manual of manualesClases"
+                                        [value]="manual">{{manual}}</mat-option>
+                                </mat-select>
+                            </mat-form-field>
+                            <mat-form-field appearance="fill">
+                                <mat-label>Tipo lanzador</mat-label>
+                                <mat-select [value]="filtroClasesTipoLanzador"
+                                    (selectionChange)="onFiltroClasesTipoLanzadorChange($event.value)">
+                                    <mat-option value="todas">Todas</mat-option>
+                                    <mat-option value="no lanzador">No lanzador</mat-option>
+                                    <mat-option value="arcano">Arcano</mat-option>
+                                    <mat-option value="divino">Divino</mat-option>
+                                    <mat-option value="psionico">Psiónico</mat-option>
+                                    <mat-option value="alma">Alma</mat-option>
+                                </mat-select>
+                            </mat-form-field>
+                            <mat-form-field appearance="fill">
+                                <mat-label>Rol</mat-label>
+                                <mat-select [value]="filtroClasesRol"
+                                    (selectionChange)="onFiltroClasesRolChange($event.value)">
+                                    <mat-option value="todas">Todos</mat-option>
+                                    <mat-option value="dps">DPS</mat-option>
+                                    <mat-option value="tanque">Tanque</mat-option>
+                                    <mat-option value="support">Support</mat-option>
+                                    <mat-option value="utilidad">Utilidad</mat-option>
+                                </mat-select>
+                            </mat-form-field>
+                            <mat-form-field appearance="fill">
+                                <mat-label>Tipo de clase</mat-label>
+                                <mat-select [value]="filtroClasesPrestigio"
+                                    (selectionChange)="onFiltroClasesPrestigioChange($event.value)">
+                                    <mat-option value="todas">Todas</mat-option>
+                                    <mat-option value="basica">Básica</mat-option>
+                                    <mat-option value="prestigio">Prestigio</mat-option>
+                                </mat-select>
+                            </mat-form-field>
+                            <mat-chip-option color="warn" class="filtro-chip clase-homebrew-chip"
+                                [selected]="incluirHomebrewClasesEfectivo" [disabled]="homebrewForzado"
+                                (click)="alternarHomebrewClases()">
+                                {{incluirHomebrewClasesEfectivo ? 'Homebrew incluido' : 'Incluir homebrew'}}
+                            </mat-chip-option>
+                        </div>
                     </div>
 
                     <div class="tab-scroll">
-                    <div class="clases-resultados">
-                        <div *ngIf="cargandoClases" class="tw-text-center tw-p-3 clases-placeholder">
-                            <mat-chip>Cargando clases...</mat-chip>
-                        </div>
-                        <div *ngIf="!cargandoClases && clasesListadoFiltrado.length < 1" class="tw-text-center tw-p-3 clases-placeholder">
-                            <mat-chip>No hay clases que coincidan con los filtros</mat-chip>
-                        </div>
+                        <div class="clases-resultados">
+                            <div *ngIf="cargandoClases" class="tw-text-center tw-p-3 clases-placeholder">
+                                <mat-chip>Cargando clases...</mat-chip>
+                            </div>
+                            <div *ngIf="!cargandoClases && clasesListadoFiltrado.length < 1"
+                                class="tw-text-center tw-p-3 clases-placeholder">
+                                <mat-chip>No hay clases que coincidan con los filtros</mat-chip>
+                            </div>
 
-                        <div class="tabla-scroll clases-tabla-scroll" *ngIf="!cargandoClases && clasesListadoFiltrado.length > 0">
-                            <table class="tabla-ventajas tabla-clases"
-                                [class.tabla-clases--homebrew]="mostrarColumnaHomebrewClases">
-                                <thead>
-                                    <tr>
-                                        <th>Clase</th>
-                                        <th>Nivel</th>
-                                        <th>Siguientes dotes/especiales</th>
-                                        <th>Salvaciones</th>
-                                        <th>Rol</th>
-                                        <th>Manual</th>
-                                        <th *ngIf="mostrarColumnaHomebrewClases">Homebrew</th>
-                                        <th>Alineamiento</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr *ngFor="let item of clasesListadoFiltrado"
-                                        [ngClass]="getClaseFilaCss(item)"
-                                        (click)="seleccionarClaseParaAplicar(item.clase)">
-                                        <td>
-                                            <div class="clase-celda">
-                                                <button mat-stroked-button color="accent"
-                                                    class="tw-flex tw-justify-start sombra3d-sm tw-w-full clase-detalle-btn"
-                                                    (click)="verDetallesClase(item.clase); $event.stopPropagation()"
-                                                    aria-label="Ver detalle de clase" matTooltip="Ver detalles">
-                                                    <mat-icon>read_more</mat-icon>
-                                                    {{item.clase.Nombre}}
-                                                </button>
-                                                <div class="clase-celda-chipline">
-                                                    <mat-chip class="tw-m-1" *ngIf="item.elegida">Ya elegida</mat-chip>
-                                                    <mat-chip class="tw-m-1" *ngIf="item.clase.Prestigio">Prestigio</mat-chip>
-                                                    <mat-chip class="tw-m-1 bad" *ngIf="item.campaignBlockedReason">{{item.campaignBlockedReason}}</mat-chip>
+                            <div class="tabla-scroll clases-tabla-scroll"
+                                *ngIf="!cargandoClases && clasesListadoFiltrado.length > 0">
+                                <table class="tabla-ventajas tabla-clases"
+                                    [class.tabla-clases--homebrew]="mostrarColumnaHomebrewClases">
+                                    <thead>
+                                        <tr>
+                                            <th>Clase</th>
+                                            <th>Nivel</th>
+                                            <th>Siguientes dotes/especiales</th>
+                                            <th>Salvaciones</th>
+                                            <th>Rol</th>
+                                            <th *ngIf="mostrarColumnaHomebrewClases">Homebrew</th>
+                                            <th>Alineamiento</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr *ngFor="let item of clasesListadoFiltrado" [ngClass]="getClaseFilaCss(item)"
+                                            (click)="seleccionarClaseParaAplicar(item.clase)">
+                                            <td>
+                                                <div class="clase-celda">
+                                                    <button mat-stroked-button color="accent"
+                                                        class="tw-flex tw-justify-start sombra3d-sm tw-w-full clase-detalle-btn"
+                                                        (click)="verDetallesClase(item.clase); $event.stopPropagation()"
+                                                        aria-label="Ver detalle de clase" matTooltip="Ver detalles">
+                                                        <mat-icon>read_more</mat-icon>
+                                                        {{item.clase.Nombre}}
+                                                    </button>
+                                                    <div class="clase-celda-chipline">
+                                                        <mat-chip class="tw-m-1"
+                                                            *ngIf="item.clase.Prestigio">Prestigio</mat-chip>
+                                                        <mat-chip class="tw-m-1 bad"
+                                                            *ngIf="item.campaignBlockedReason">{{item.campaignBlockedReason}}</mat-chip>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                        </td>
-                                        <td>
-                                            <mat-chip class="sombra3d-sm">Nivel {{item.siguienteNivel}}</mat-chip>
-                                        </td>
-                                        <td>
-                                            <mat-chip *ngIf="item.beneficiosRender.length < 1" class="sombra-caja-sm">Sin beneficios directos</mat-chip>
-                                            <mat-chip-set class="beneficios-clase-chips" *ngIf="item.beneficiosRender.length > 0">
-                                                <ng-container *ngFor="let renderItem of item.beneficiosRender">
-                                                    <mat-chip *ngIf="renderItem.tipoRender === 'simple'"
-                                                        class="tw-h-auto chip-clic sombra3d-sm"
-                                                        matTooltip="Pulsa para abrir el detalle"
-                                                        matTooltipClass="tt-accent"
-                                                        (click)="abrirDetalleBeneficioClase(renderItem.beneficio, $event)">
-                                                        <span>{{renderItem.beneficio.nombre}}</span>
-                                                        <mat-chip class="tw-m-1" *ngIf="renderItem.beneficio.extra.length > 0">{{renderItem.beneficio.extra}}</mat-chip>
-                                                    </mat-chip>
-
-                                                    <mat-chip *ngIf="renderItem.tipoRender === 'grupo_opcional'"
-                                                        class="tw-h-auto sombra3d-sm chip-opcional-grupo"
-                                                        (click)="$event.stopPropagation()">
-                                                        <span class="chip-opcional-grupo-label">Elige entre</span>
-                                                        <span class="chip-opcional-grupo-opciones">
-                                                            <ng-container *ngFor="let opcion of renderItem.opciones; let ultima = last">
-                                                                <mat-chip
-                                                                    class="tw-h-auto chip-clic sombra3d-sm chip-opcional-subchip"
-                                                                    matTooltip="Pulsa para abrir el detalle"
-                                                                    matTooltipClass="tt-accent"
-                                                                    (click)="abrirDetalleBeneficioClase(opcion, $event)">
-                                                                    <span>{{opcion.nombre}}</span>
-                                                                    <mat-chip class="tw-m-1" *ngIf="opcion.extra.length > 0">{{opcion.extra}}</mat-chip>
-                                                                </mat-chip>
-                                                                <span class="chip-opcional-separador" *ngIf="!ultima">o</span>
-                                                            </ng-container>
-                                                        </span>
-                                                    </mat-chip>
-                                                </ng-container>
-                                            </mat-chip-set>
-                                        </td>
-                                        <td>
-                                            <mat-chip-set class="salvaciones-clase-chips">
-                                                <mat-chip class="sombra3d-sm">Fort {{formatSignedDeltaClase(item.salvacionesDelta.fortaleza)}}</mat-chip>
-                                                <mat-chip class="sombra3d-sm">Ref {{formatSignedDeltaClase(item.salvacionesDelta.reflejos)}}</mat-chip>
-                                                <mat-chip class="sombra3d-sm">Vol {{formatSignedDeltaClase(item.salvacionesDelta.voluntad)}}</mat-chip>
-                                            </mat-chip-set>
-                                        </td>
-                                        <td>
-                                            <mat-chip *ngIf="item.roles.length < 1" class="sombra-caja-sm">Sin rol definido</mat-chip>
-                                            <mat-chip-set *ngIf="item.roles.length > 0" class="roles-clase-chips">
-                                                <mat-chip *ngFor="let rol of item.roles" class="sombra3d-sm">{{rol}}</mat-chip>
-                                            </mat-chip-set>
-                                        </td>
-                                        <td>
-                                            {{item.clase.Manual.Nombre}} <span *ngIf="item.clase.Manual.Pagina > 0">(p. {{item.clase.Manual.Pagina}})</span>
-                                        </td>
-                                        <td *ngIf="mostrarColumnaHomebrewClases" class="tw-text-center">
-                                            <button mat-icon-button disabled [attr.aria-label]="item.esHomebrew ? 'Clase homebrew' : 'Clase oficial'">
-                                                <mat-icon>{{item.esHomebrew ? 'check_circle' : 'radio_button_unchecked'}}</mat-icon>
-                                            </button>
-                                        </td>
-                                        <td>
-                                            <div class="tw-flex tw-justify-center tw-items-center">
-                                                <p
-                                                    class="tw-inline-block sombra3d-sm tw-rounded tw-p-1 tw-mb-0 chip tw-text-center"
-                                                    [ngClass]="item.compatAlineamiento.estado === 'compatible' ? 'good' : 'bad'"
-                                                    [matTooltip]="item.compatAlineamiento.tooltip"
-                                                    matTooltipClass="tt-accent tt-multiline">
-                                                    {{item.compatAlineamiento.etiqueta}}
+                                            </td>
+                                            <td>
+                                                <p class="tw-inline-block sombra3d-sm tw-rounded tw-p-1 tw-mb-0 tw-text-center clase-estado-chip"
+                                                    [ngClass]="getClaseNivelChipCss(item)">
+                                                    Nivel {{item.siguienteNivel}}
                                                 </p>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                </tbody>
-                            </table>
+                                            </td>
+                                            <td>
+                                                <mat-chip *ngIf="item.beneficiosRender.length < 1"
+                                                    class="sombra-caja-sm">Sin beneficios directos</mat-chip>
+                                                <mat-chip-set class="beneficios-clase-chips"
+                                                    *ngIf="item.beneficiosRender.length > 0">
+                                                    <ng-container *ngFor="let renderItem of item.beneficiosRender">
+                                                        <mat-chip *ngIf="renderItem.tipoRender === 'simple'"
+                                                            class="tw-h-auto chip-clic sombra3d-sm"
+                                                            matTooltip="Pulsa para abrir el detalle"
+                                                            matTooltipClass="tt-accent"
+                                                            (click)="abrirDetalleBeneficioClase(renderItem.beneficio, $event)">
+                                                            <span>{{renderItem.beneficio.nombre}}</span>
+                                                            <mat-chip class="tw-m-1"
+                                                                *ngIf="renderItem.beneficio.extra.length > 0">{{renderItem.beneficio.extra}}</mat-chip>
+                                                        </mat-chip>
+
+                                                        <mat-chip *ngIf="renderItem.tipoRender === 'grupo_opcional'"
+                                                            class="tw-h-auto sombra3d-sm chip-opcional-grupo"
+                                                            (click)="$event.stopPropagation()">
+                                                            <span class="chip-opcional-grupo-label">Elige entre</span>
+                                                            <span class="chip-opcional-grupo-opciones">
+                                                                <ng-container
+                                                                    *ngFor="let opcion of renderItem.opciones; let ultima = last">
+                                                                    <mat-chip
+                                                                        class="tw-h-auto chip-clic sombra3d-sm chip-opcional-subchip"
+                                                                        matTooltip="Pulsa para abrir el detalle"
+                                                                        matTooltipClass="tt-accent"
+                                                                        (click)="abrirDetalleBeneficioClase(opcion, $event)">
+                                                                        <span>{{opcion.nombre}}</span>
+                                                                        <mat-chip class="tw-m-1"
+                                                                            *ngIf="opcion.extra.length > 0">{{opcion.extra}}</mat-chip>
+                                                                    </mat-chip>
+                                                                    <span class="chip-opcional-separador"
+                                                                        *ngIf="!ultima">o</span>
+                                                                </ng-container>
+                                                            </span>
+                                                        </mat-chip>
+                                                    </ng-container>
+                                                </mat-chip-set>
+                                            </td>
+                                            <td>
+                                                <div class="salvaciones-clase-chips">
+                                                    <p class="tw-inline-block sombra3d-sm tw-rounded tw-p-1 tw-mb-0 tw-text-center clase-estado-chip"
+                                                        [ngClass]="getClaseSalvacionChipCss(item.salvacionesDelta.fortaleza)">
+                                                        Fort {{formatSignedDeltaClase(item.salvacionesDelta.fortaleza)}}
+                                                    </p>
+                                                    <p class="tw-inline-block sombra3d-sm tw-rounded tw-p-1 tw-mb-0 tw-text-center clase-estado-chip"
+                                                        [ngClass]="getClaseSalvacionChipCss(item.salvacionesDelta.reflejos)">
+                                                        Ref {{formatSignedDeltaClase(item.salvacionesDelta.reflejos)}}
+                                                    </p>
+                                                    <p class="tw-inline-block sombra3d-sm tw-rounded tw-p-1 tw-mb-0 tw-text-center clase-estado-chip"
+                                                        [ngClass]="getClaseSalvacionChipCss(item.salvacionesDelta.voluntad)">
+                                                        Vol {{formatSignedDeltaClase(item.salvacionesDelta.voluntad)}}
+                                                    </p>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <mat-chip *ngIf="item.roles.length < 1" class="sombra-caja-sm">Sin rol
+                                                    definido</mat-chip>
+                                                <mat-chip-set *ngIf="item.roles.length > 0" class="roles-clase-chips">
+                                                    <mat-chip *ngFor="let rol of item.roles"
+                                                        class="sombra3d-sm">{{rol}}</mat-chip>
+                                                </mat-chip-set>
+                                            </td>
+                                            <td *ngIf="mostrarColumnaHomebrewClases" class="tw-text-center">
+                                                <button mat-icon-button disabled
+                                                    [attr.aria-label]="item.esHomebrew ? 'Clase homebrew' : 'Clase oficial'">
+                                                    <mat-icon>{{item.esHomebrew ? 'check_circle' :
+                                                        'radio_button_unchecked'}}</mat-icon>
+                                                </button>
+                                            </td>
+                                            <td>
+                                                <div class="tw-flex tw-justify-center tw-items-center">
+                                                    <p class="tw-inline-block sombra3d-sm tw-rounded tw-p-1 tw-mb-0 chip tw-text-center"
+                                                        [ngClass]="item.compatAlineamiento.estado === 'compatible' ? 'good' : 'bad'"
+                                                        [matTooltip]="item.compatAlineamiento.tooltip"
+                                                        matTooltipClass="tt-accent tt-multiline">
+                                                        {{item.compatAlineamiento.etiqueta}}
+                                                    </p>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
-                    </div>
                     </div>
 
                     <div class="tab-footer clases-acciones">
-                        <button type="button" class="clases-recomendaciones-btn"
-                            *ngIf="mostrarInfoRecomendacionesClase"
+                        <button type="button" class="clases-recomendaciones-btn" *ngIf="mostrarInfoRecomendacionesClase"
                             (click)="abrirInfoRecomendacionesClase($event)"
-                            matTooltip="Recordar recomendación de auto-reparto"
-                            aria-label="Recomendaciones de clase">
+                            matTooltip="Recordar recomendación de auto-reparto" aria-label="Recomendaciones de clase">
                             <mat-icon>info</mat-icon>
                             <span>Recomendaciones</span>
                         </button>
-                        <button mat-stroked-button color="accent" *ngIf="mostrarBotonFinalizarCreacion" (click)="onFinalizarCreacionTemporal()">
+                        <button mat-stroked-button color="accent" *ngIf="mostrarBotonFinalizarCreacion"
+                            (click)="onFinalizarCreacionTemporal()">
                             Finalizar
                             <mat-icon>task_alt</mat-icon>
                         </button>
-                        <button mat-raised-button color="primary" [disabled]="!puedeAplicarClaseSeleccionada" (click)="continuarDesdeClases()">
+                        <button mat-raised-button color="primary" [disabled]="!puedeAplicarClaseSeleccionada"
+                            (click)="continuarDesdeClases()">
                             Siguiente
                             <mat-icon>arrow_forward</mat-icon>
                         </button>
@@ -732,7 +921,8 @@
                                 <mat-chip>Origen: {{origenHabilidadesTexto}}</mat-chip>
                                 <mat-chip>Nivel referencia: {{flujoHabilidades.nivelPersonajeReferencia}}</mat-chip>
                                 <mat-chip [ngClass]="flujoHabilidades.puntosRestantes > 0 ? 'good' : 'bad'">
-                                    Puntos por distribuir: {{flujoHabilidades.puntosRestantes}} / {{flujoHabilidades.puntosTotales}}
+                                    Puntos por distribuir: {{flujoHabilidades.puntosRestantes}} /
+                                    {{flujoHabilidades.puntosTotales}}
                                 </mat-chip>
                             </div>
                             <mat-chip class="habilidad-entrenada-info-chip">
@@ -762,8 +952,7 @@
                                                 <div class="habilidad-clasea-wrap">
                                                     <mat-checkbox class="habilidad-clasea-check"
                                                         [checked]="esHabilidadClaseaEfectiva(habilidad.Id)"
-                                                        [disabled]="true"
-                                                        aria-label="Habilidad clásea">
+                                                        [disabled]="true" aria-label="Habilidad clásea">
                                                     </mat-checkbox>
                                                 </div>
                                             </td>
@@ -773,13 +962,14 @@
                                                 [class.habilidad-extra-pendiente]="esExtraPendienteHabilidad(habilidad)"
                                                 [matTooltip]="esExtraPendienteHabilidad(habilidad) ? 'Debes elegir un extra para esta habilidad clásea.' : ''"
                                                 matTooltipClass="tt-accent">
-                                                <ng-container *ngIf="esExtraEditableHabilidad(habilidad); else extraSoloTexto">
+                                                <ng-container
+                                                    *ngIf="esExtraEditableHabilidad(habilidad); else extraSoloTexto">
                                                     <div class="habilidad-extra-inline">
-                                                        <span class="habilidad-extra-valor">{{getTextoExtraHabilidad(habilidad)}}</span>
+                                                        <span
+                                                            class="habilidad-extra-valor">{{getTextoExtraHabilidad(habilidad)}}</span>
                                                         <button mat-icon-button color="primary"
                                                             (click)="abrirSelectorExtraHabilidad(habilidad)"
-                                                            aria-label="Elegir extra"
-                                                            matTooltip="Elegir extra">
+                                                            aria-label="Elegir extra" matTooltip="Elegir extra">
                                                             <mat-icon>tune</mat-icon>
                                                         </button>
                                                     </div>
@@ -789,10 +979,10 @@
                                                 </ng-template>
                                             </td>
                                             <td class="habilidad-rangos-col">
-                                                <ng-container *ngIf="tieneRangosHabilidad(habilidad); else sinRangosHabilidadTpl">
+                                                <ng-container
+                                                    *ngIf="tieneRangosHabilidad(habilidad); else sinRangosHabilidadTpl">
                                                     <div class="habilidad-rangos-wrap">
-                                                        <p
-                                                            class="tw-inline-block sombra3d-sm tw-rounded tw-p-1 tw-mb-0 chip habilidad-rango-chip"
+                                                        <p class="tw-inline-block sombra3d-sm tw-rounded tw-p-1 tw-mb-0 chip habilidad-rango-chip"
                                                             [ngClass]="esRangoNuevoHabilidad(habilidad) ? 'good' : 'bad'"
                                                             [matTooltip]="getTooltipRangoHabilidad(habilidad)"
                                                             matTooltipClass="tt-accent">
@@ -803,7 +993,8 @@
                                                 <ng-template #sinRangosHabilidadTpl>0</ng-template>
                                             </td>
                                             <td>{{habilidad.Rangos_varios}}</td>
-                                            <td [matTooltip]="getTextoVariosHabilidad(habilidad)" matTooltipClass="tt-accent tt-multiline">
+                                            <td [matTooltip]="getTextoVariosHabilidad(habilidad)"
+                                                matTooltipClass="tt-accent tt-multiline">
                                                 {{getTextoVariosHabilidad(habilidad)}}
                                             </td>
                                             <td>{{getLimiteRangoHabilidad(habilidad.Id)}}</td>
@@ -824,8 +1015,7 @@
                                                     <button mat-icon-button color="accent"
                                                         [disabled]="!puedeMaxearRangoHabilidad(habilidad)"
                                                         (click)="maxearRangoHabilidad(habilidad)"
-                                                        aria-label="Maxear rango"
-                                                        matTooltip="Subir al máximo posible">
+                                                        aria-label="Maxear rango" matTooltip="Subir al máximo posible">
                                                         <mat-icon>keyboard_double_arrow_up</mat-icon>
                                                     </button>
                                                 </div>
@@ -837,7 +1027,8 @@
                         </div>
 
                         <div class="tab-footer habilidades-acciones">
-                            <button mat-raised-button color="primary" [disabled]="!puedeContinuarHabilidades" (click)="continuarDesdeHabilidades()">
+                            <button mat-raised-button color="primary" [disabled]="!puedeContinuarHabilidades"
+                                (click)="continuarDesdeHabilidades()">
                                 Siguiente
                                 <mat-icon>arrow_forward</mat-icon>
                             </button>
@@ -857,42 +1048,57 @@
                         <div class="tab-head" *ngIf="entradaConjurosActual as entrada; else sinSesionConjuros">
                             <div class="conjuros-resumen">
                                 <mat-chip class="conjuros-chip">Origen: {{entrada.origen}}</mat-chip>
-                                <mat-chip class="conjuros-chip">Clase objetivo: {{entrada.claseObjetivo.nombre}}</mat-chip>
-                                <mat-chip class="conjuros-chip">Nivel lanzador: {{entrada.nivelLanzadorPrevio}} -> {{entrada.nivelLanzadorActual}}</mat-chip>
-                                <mat-chip class="conjuros-chip" *ngIf="entrada.tipoLanzamiento === 'psionico' && entrada.nivelMaxPoderAccesiblePsionico >= 0">
+                                <mat-chip class="conjuros-chip">Clase objetivo:
+                                    {{entrada.claseObjetivo.nombre}}</mat-chip>
+                                <mat-chip class="conjuros-chip">Nivel lanzador: {{entrada.nivelLanzadorPrevio}} ->
+                                    {{entrada.nivelLanzadorActual}}</mat-chip>
+                                <mat-chip class="conjuros-chip"
+                                    *ngIf="entrada.tipoLanzamiento === 'psionico' && entrada.nivelMaxPoderAccesiblePsionico >= 0">
                                     Nivel máximo de poder accesible: {{entrada.nivelMaxPoderAccesiblePsionico}}
                                 </mat-chip>
-                                <mat-chip class="conjuros-chip" [class.chip-alerta]="entrada.sinElegibles || entrada.almaPendiente">{{mensajeProgresoConjuros}}</mat-chip>
+                                <mat-chip class="conjuros-chip"
+                                    [class.chip-alerta]="entrada.sinElegibles || entrada.almaPendiente">{{mensajeProgresoConjuros}}</mat-chip>
                             </div>
                             <div class="conjuros-avisos" *ngIf="(entrada.avisos ?? []).length > 0">
-                                <mat-chip class="tw-h-auto warm conjuros-chip" *ngFor="let aviso of entrada.avisos">{{aviso}}</mat-chip>
+                                <mat-chip class="tw-h-auto warm conjuros-chip"
+                                    *ngFor="let aviso of entrada.avisos">{{aviso}}</mat-chip>
                             </div>
                         </div>
 
-                        <div class="conjuros-resumen-auto" *ngIf="entradaConjurosActual as entrada">
-                            <p class="tw-m-0" *ngIf="entrada.autoadicion">Este avance no requiere selección manual. Los conjuros elegibles se añadirán automáticamente al continuar.</p>
-                            <p class="tw-m-0" *ngIf="entrada.almaPendiente">La selección para conjuros de alma aún no está implementada y no bloquea el flujo.</p>
-                            <p class="tw-m-0" *ngIf="entrada.sinElegibles">No hay conjuros elegibles para este avance. Puedes continuar sin bloquear el proceso.</p>
-                            <p class="tw-m-0" *ngIf="!entrada.autoadicion && !entrada.almaPendiente && !entrada.sinElegibles && !entrada.seleccionManual">Este avance no otorga nuevos conjuros conocidos.</p>
+                        <ng-container *ngIf="entradaConjurosActual as entrada">
+                        <div class="conjuros-resumen-auto"
+                            *ngIf="entrada.autoadicion || entrada.almaPendiente">
+                            <p class="tw-m-0" *ngIf="entrada.autoadicion">Este avance no requiere selección manual. Los
+                                conjuros elegibles se añadirán automáticamente al continuar.</p>
+                            <p class="tw-m-0" *ngIf="entrada.almaPendiente">La selección para conjuros de alma aún no
+                                está implementada y no bloquea el flujo.</p>
                         </div>
+                        </ng-container>
 
                         <div class="tab-scroll" *ngIf="entradaConjurosActual as entrada">
-                            <div class="conjuros-filtros" *ngIf="entrada.seleccionManual && !entrada.almaPendiente && !entrada.sinElegibles">
+                            <div class="conjuros-filtros"
+                                *ngIf="entrada.seleccionManual && !entrada.almaPendiente && !entrada.sinElegibles">
                                 <mat-form-field appearance="fill" class="tw-w-full">
                                     <mat-label>Buscar conjuro</mat-label>
-                                    <input matInput [ngModel]="filtroConjurosTexto" (ngModelChange)="onFiltroConjurosTextoChange($event)" placeholder="Nombre de conjuro">
+                                    <input matInput [ngModel]="filtroConjurosTexto"
+                                        (ngModelChange)="onFiltroConjurosTextoChange($event)"
+                                        placeholder="Nombre de conjuro">
                                 </mat-form-field>
                                 <mat-form-field appearance="fill" class="tw-w-full">
                                     <mat-label>Nivel</mat-label>
-                                    <mat-select [value]="filtroConjurosNivel" (selectionChange)="onFiltroConjurosNivelChange($event.value)">
+                                    <mat-select [value]="filtroConjurosNivel"
+                                        (selectionChange)="onFiltroConjurosNivelChange($event.value)">
                                         <mat-option [value]="null">Todos</mat-option>
-                                        <mat-option *ngFor="let nivel of nivelesConjurosDisponibles" [value]="nivel">{{nivel}}</mat-option>
+                                        <mat-option *ngFor="let nivel of nivelesConjurosDisponibles"
+                                            [value]="nivel">{{nivel}}</mat-option>
                                     </mat-select>
                                 </mat-form-field>
                             </div>
 
-                            <div class="conjuros-tablas" [class.conjuros-tablas--single]="!entrada.seleccionManual || entrada.almaPendiente || entrada.sinElegibles">
-                                <div class="tabla-scroll" *ngIf="entrada.seleccionManual && !entrada.almaPendiente && !entrada.sinElegibles">
+                            <div class="conjuros-tablas"
+                                [class.conjuros-tablas--single]="!entrada.seleccionManual || entrada.almaPendiente || entrada.sinElegibles">
+                                <div class="tabla-scroll"
+                                    *ngIf="entrada.seleccionManual && !entrada.almaPendiente && !entrada.sinElegibles">
                                     <table class="tabla-ventajas tabla-conjuros">
                                         <thead>
                                             <tr>
@@ -913,7 +1119,9 @@
                                                 </td>
                                                 <td>{{getNivelConjuroEntrada(conjuro)}}</td>
                                                 <td>
-                                                    <button mat-icon-button color="primary" (click)="agregarConjuroSesion(conjuro)" aria-label="Añadir conjuro">
+                                                    <button mat-icon-button color="primary"
+                                                        (click)="agregarConjuroSesion(conjuro)"
+                                                        aria-label="Añadir conjuro">
                                                         <mat-icon>add</mat-icon>
                                                     </button>
                                                 </td>
@@ -938,7 +1146,8 @@
                                             <tr *ngFor="let conjuro of conjurosSeleccionadosActuales">
                                                 <td>
                                                     {{conjuro.Nombre}}
-                                                    <span class="conjuro-auto-tag" *ngIf="esConjuroAutoadicionado(conjuro)">auto</span>
+                                                    <span class="conjuro-auto-tag"
+                                                        *ngIf="esConjuroAutoadicionado(conjuro)">auto</span>
                                                     <button mat-icon-button class="conjuro-detalle-btn"
                                                         (click)="verDetallesConjuro(conjuro); $event.stopPropagation()"
                                                         aria-label="Ver detalle de conjuro" matTooltip="Ver detalles">
@@ -956,7 +1165,7 @@
                                                 </td>
                                             </tr>
                                             <tr *ngIf="conjurosSeleccionadosActuales.length < 1">
-                                                <td colspan="3">No se han obtenido conjuros en este avance.</td>
+                                                <td colspan="3" class="tabla-conjuros-vacia__mensaje">No se han obtenido conjuros en este avance.</td>
                                             </tr>
                                         </tbody>
                                     </table>
@@ -965,7 +1174,8 @@
                         </div>
 
                         <div class="tab-footer habilidades-acciones">
-                            <button mat-raised-button color="primary" [disabled]="!puedeContinuarConjuros" (click)="continuarDesdeConjuros()">
+                            <button mat-raised-button color="primary" [disabled]="!puedeContinuarConjuros"
+                                (click)="continuarDesdeConjuros()">
                                 Siguiente
                                 <mat-icon>arrow_forward</mat-icon>
                             </button>
@@ -973,7 +1183,8 @@
 
                         <ng-template #sinSesionConjuros>
                             <div class="tw-flex tw-h-full tw-w-full tw-items-center tw-justify-center tw-px-3">
-                                <mat-chip class="tw-h-auto warm">No hay sesión de conjuros activa para este paso.</mat-chip>
+                                <mat-chip class="tw-h-auto warm">No hay sesión de conjuros activa para este
+                                    paso.</mat-chip>
                             </div>
                         </ng-template>
                     </mat-card>
@@ -983,86 +1194,60 @@
     </mat-tab-group>
 
     <ng-container *ngIf="ventanaDetalleAbierta && !modalCaracteristicasAbierto">
-        <app-ventana-detalle-flotante
-            [titulo]="tituloVentanaDetalle"
-            [bloqueadaPorOverlay]="modalCaracteristicasAbierto"
-            [minimizedAnchorsToViewportSides]="false"
+        <app-ventana-detalle-flotante [titulo]="tituloVentanaDetalle"
+            [bloqueadaPorOverlay]="modalCaracteristicasAbierto" [minimizedAnchorsToViewportSides]="false"
             (cerrarSolicitado)="onSolicitarCerrarVentanaDetalle()">
-            <app-detalles-personaje
-                [pj]="Personaje"
-                [clasesCatalogo]="catalogoClases"
-                [mostrarBotonGenerarPdf]="false"
-                [esPreviewNuevoPersonaje]="true"
-                [caracteristicasConfirmadas]="caracteristicasGeneradas"
-                (razaDetalles)="verDetallesRazaDesdeFicha($event)"
-                (claseDetalles)="verDetallesClaseDesdeFicha($event)"
-                (plantillaDetalles)="verDetallesPlantillaDesdeFicha($event)"
-            (rasgoDetalles)="verDetallesRasgo($event)"
-            (racialDetallesPorNombre)="verDetallesRacialDesdeReferencia($event)"
-            (monstruoDetalles)="verDetallesMonstruoDesdeFicha($event)"
-            (deidadDetallesPorNombre)="verDetallesDeidadDesdeReferencia($event)"
-            (ventajaDetallesPorNombre)="verDetallesVentajaDesdeReferencia($event)">
+            <app-detalles-personaje [pj]="Personaje" [clasesCatalogo]="catalogoClases" [mostrarBotonGenerarPdf]="false"
+                [esPreviewNuevoPersonaje]="true" [caracteristicasConfirmadas]="caracteristicasGeneradas"
+                (razaDetalles)="verDetallesRazaDesdeFicha($event)" (claseDetalles)="verDetallesClaseDesdeFicha($event)"
+                (plantillaDetalles)="verDetallesPlantillaDesdeFicha($event)" (rasgoDetalles)="verDetallesRasgo($event)"
+                (racialDetallesPorNombre)="verDetallesRacialDesdeReferencia($event)"
+                (monstruoDetalles)="verDetallesMonstruoDesdeFicha($event)"
+                (deidadDetallesPorNombre)="verDetallesDeidadDesdeReferencia($event)"
+                (ventajaDetallesPorNombre)="verDetallesVentajaDesdeReferencia($event)">
             </app-detalles-personaje>
         </app-ventana-detalle-flotante>
     </ng-container>
 
     <ng-container *ngIf="modalCaracteristicasAbierto && razaSeleccionada as razaActual">
-        <app-generador-caracteristicas-modal
-            [raza]="razaActual"
+        <app-generador-caracteristicas-modal [raza]="razaActual"
             [caracteristicasPerdidas]="Personaje.Caracteristicas_perdidas ?? null"
-            [pierdeConstitucion]="razaActual.Tipo_criatura.Pierde_constitucion"
-            (cerrar)="cerrarModalCaracteristicas()"
+            [pierdeConstitucion]="razaActual.Tipo_criatura.Pierde_constitucion" (cerrar)="cerrarModalCaracteristicas()"
             (finalizar)="finalizarGeneracionCaracteristicas($event)">
         </app-generador-caracteristicas-modal>
     </ng-container>
 
     <ng-container *ngIf="modalSelectorEspecialidadMagicaAbierto">
-        <app-selector-especialidad-magica-modal
-            [titulo]="'Especialización mágica'"
-            [nombreClase]="selectorEspecialidadClaseNombre"
-            [mostrarArcano]="selectorEspecialidadRequiereArcano"
-            [mostrarPsionico]="selectorEspecialidadRequierePsionico"
-            [escuelas]="catalogoEscuelas"
-            [disciplinas]="catalogoDisciplinas"
-            (confirmar)="onConfirmarEspecialidadMagica($event)">
+        <app-selector-especialidad-magica-modal [titulo]="'Especialización mágica'"
+            [nombreClase]="selectorEspecialidadClaseNombre" [mostrarArcano]="selectorEspecialidadRequiereArcano"
+            [mostrarPsionico]="selectorEspecialidadRequierePsionico" [escuelas]="catalogoEscuelas"
+            [disciplinas]="catalogoDisciplinas" (confirmar)="onConfirmarEspecialidadMagica($event)">
         </app-selector-especialidad-magica-modal>
     </ng-container>
 
     <ng-container *ngIf="modalSelectorDotesAbierto">
-        <app-selector-dotes-modal
-            [titulo]="'Seleccionar dote'"
-            [pendiente]="selectorDotePendienteActual"
-            [candidatos]="selectorDoteCandidatos"
-            [pendientesRestantes]="selectorDotePendientesRestantes"
-            (detalle)="verDetallesDote($event)"
-            (confirmar)="onConfirmarDotePendiente($event)"
+        <app-selector-dotes-modal [titulo]="'Seleccionar dote'" [pendiente]="selectorDotePendienteActual"
+            [candidatos]="selectorDoteCandidatos" [pendientesRestantes]="selectorDotePendientesRestantes"
+            (detalle)="verDetallesDote($event)" (confirmar)="onConfirmarDotePendiente($event)"
             (omitir)="onOmitirDotePendiente()">
         </app-selector-dotes-modal>
     </ng-container>
 
     <ng-container *ngIf="modalSelectorEnemigoPredilectoAbierto">
-        <app-selector-enemigo-predilecto-modal
-            [titulo]="selectorEnemigoPredilectoTitulo"
-            [enemigos]="catalogoEnemigosPredilectos"
-            [enemigosYaElegidos]="Personaje.enemigosPredilectos ?? []"
+        <app-selector-enemigo-predilecto-modal [titulo]="selectorEnemigoPredilectoTitulo"
+            [enemigos]="catalogoEnemigosPredilectos" [enemigosYaElegidos]="Personaje.enemigosPredilectos ?? []"
             (confirmar)="onConfirmarEnemigoPredilecto($event)">
         </app-selector-enemigo-predilecto-modal>
     </ng-container>
 
     <ng-container *ngIf="modalSelectorFamiliarAbierto">
-        <app-selector-familiar-modal
-            [titulo]="selectorFamiliarTitulo"
-            [familiaresElegibles]="selectorFamiliarElegibles"
-            [familiaresBloqueados]="selectorFamiliarBloqueados"
-            [nivelesRequeridos]="selectorFamiliarNivelesRequeridos"
+        <app-selector-familiar-modal [titulo]="selectorFamiliarTitulo" [familiaresElegibles]="selectorFamiliarElegibles"
+            [familiaresBloqueados]="selectorFamiliarBloqueados" [nivelesRequeridos]="selectorFamiliarNivelesRequeridos"
             [familiaresSeleccionados]="Personaje.Familiares"
             [plantillaSeleccionada]="selectorFamiliarPlantillaSeleccionada"
-            [incluirHomebrew]="selectorFamiliarIncluirHomebrew"
-            [cuposDisponibles]="selectorFamiliarCuposDisponibles"
-            [nombreFamiliar]="selectorFamiliarNombre"
-            (confirmar)="onConfirmarSelectorFamiliar($event)"
-            (omitir)="onOmitirSelectorFamiliar()"
-            (detalle)="onDetalleSelectorFamiliar($event)"
+            [incluirHomebrew]="selectorFamiliarIncluirHomebrew" [cuposDisponibles]="selectorFamiliarCuposDisponibles"
+            [nombreFamiliar]="selectorFamiliarNombre" (confirmar)="onConfirmarSelectorFamiliar($event)"
+            (omitir)="onOmitirSelectorFamiliar()" (detalle)="onDetalleSelectorFamiliar($event)"
             (plantillaChange)="onCambioPlantillaSelectorFamiliar($event)"
             (incluirHomebrewChange)="onCambioHomebrewSelectorFamiliar($event)"
             (nombreFamiliarChange)="onCambioNombreSelectorFamiliar($event)">
@@ -1070,21 +1255,14 @@
     </ng-container>
 
     <ng-container *ngIf="modalSelectorCompaneroAbierto">
-        <app-selector-companero-modal
-            [titulo]="selectorCompaneroTitulo"
-            [companerosElegibles]="selectorCompaneroElegibles"
-            [companerosBloqueados]="selectorCompaneroBloqueados"
-            [nivelesRequeridos]="selectorCompaneroNivelesRequeridos"
-            [companerosSeleccionados]="Personaje.Companeros"
+        <app-selector-companero-modal [titulo]="selectorCompaneroTitulo"
+            [companerosElegibles]="selectorCompaneroElegibles" [companerosBloqueados]="selectorCompaneroBloqueados"
+            [nivelesRequeridos]="selectorCompaneroNivelesRequeridos" [companerosSeleccionados]="Personaje.Companeros"
             [plantillaSeleccionada]="selectorCompaneroPlantillaSeleccionada"
-            [incluirHomebrew]="selectorCompaneroIncluirHomebrew"
-            [cuposDisponibles]="selectorCompaneroCuposDisponibles"
-            [nombreCompanero]="selectorCompaneroNombre"
-            [nivelesDisponibles]="selectorCompaneroNivelesDisponibles"
-            [nivelSeleccionado]="selectorCompaneroNivelSeleccionado"
-            (confirmar)="onConfirmarSelectorCompanero($event)"
-            (omitir)="onOmitirSelectorCompanero()"
-            (detalle)="onDetalleSelectorCompanero($event)"
+            [incluirHomebrew]="selectorCompaneroIncluirHomebrew" [cuposDisponibles]="selectorCompaneroCuposDisponibles"
+            [nombreCompanero]="selectorCompaneroNombre" [nivelesDisponibles]="selectorCompaneroNivelesDisponibles"
+            [nivelSeleccionado]="selectorCompaneroNivelSeleccionado" (confirmar)="onConfirmarSelectorCompanero($event)"
+            (omitir)="onOmitirSelectorCompanero()" (detalle)="onDetalleSelectorCompanero($event)"
             (plantillaChange)="onCambioPlantillaSelectorCompanero($event)"
             (incluirHomebrewChange)="onCambioHomebrewSelectorCompanero($event)"
             (nombreCompaneroChange)="onCambioNombreSelectorCompanero($event)"
@@ -1093,99 +1271,84 @@
     </ng-container>
 
     <ng-container *ngIf="modalSelectorExtraHabilidadAbierto">
-        <app-selector-extra-habilidad-modal
-            [titulo]="selectorExtraHabilidadTitulo"
-            [habilidadNombre]="selectorExtraHabilidadNombre"
-            [opciones]="selectorExtraHabilidadOpciones"
+        <app-selector-extra-habilidad-modal [titulo]="selectorExtraHabilidadTitulo"
+            [habilidadNombre]="selectorExtraHabilidadNombre" [opciones]="selectorExtraHabilidadOpciones"
             [valorSeleccionadoInicial]="selectorExtraHabilidadValorInicial"
-            (confirmar)="onConfirmarSelectorExtraHabilidad($event)"
-            (cerrar)="onCerrarSelectorExtraHabilidad()">
+            (confirmar)="onConfirmarSelectorExtraHabilidad($event)" (cerrar)="onCerrarSelectorExtraHabilidad()">
         </app-selector-extra-habilidad-modal>
     </ng-container>
 
     <ng-container *ngIf="modalSelectorIdiomaAbierto">
-        <app-selector-idioma-modal
-            [idiomas]="catalogoIdiomas"
-            [idiomasYaSeleccionados]="idiomasSeleccionadosParaSelector"
-            [personajeOficial]="Personaje.Oficial"
-            [incluirHomebrew]="incluirHomebrewIdiomasEfectivo"
-            [titulo]="selectorIdiomaTitulo"
+        <app-selector-idioma-modal [idiomas]="catalogoIdiomas"
+            [idiomasYaSeleccionados]="idiomasSeleccionadosParaSelector" [personajeOficial]="Personaje.Oficial"
+            [incluirHomebrew]="incluirHomebrewIdiomasEfectivo" [titulo]="selectorIdiomaTitulo"
             [cantidadObjetivo]="selectorIdiomaCantidadObjetivo"
             [cantidadSeleccionada]="selectorIdiomaCantidadSeleccionada"
             [bloquearCierreHastaCompletar]="selectorIdiomaBloquearCierre"
-            (incluirHomebrewChange)="onCambioHomebrewModalIdiomas($event)"
-            (cerrar)="onCerrarModalIdioma()"
+            (incluirHomebrewChange)="onCambioHomebrewModalIdiomas($event)" (cerrar)="onCerrarModalIdioma()"
             (confirmar)="onConfirmarIdiomaVentaja($event)">
         </app-selector-idioma-modal>
     </ng-container>
 
     <ng-container *ngIf="modalSelectorDominiosAbierto">
-        <app-selector-dominios-modal
-            [opciones]="selectorDominiosOpciones"
-            [titulo]="selectorDominiosTitulo"
+        <app-selector-dominios-modal [opciones]="selectorDominiosOpciones" [titulo]="selectorDominiosTitulo"
             [cantidadObjetivo]="selectorDominiosCantidadObjetivo"
             [cantidadSeleccionada]="selectorDominiosCantidadSeleccionada"
             [bloquearCierreHastaCompletar]="selectorDominiosBloquearCierre"
-            (confirmar)="onConfirmarDominiosClase($event)"
-            (cerrar)="onCerrarModalDominiosClase()">
+            (confirmar)="onConfirmarDominiosClase($event)" (cerrar)="onCerrarModalDominiosClase()">
         </app-selector-dominios-modal>
     </ng-container>
 
+    <ng-container *ngIf="modalSelectorClaseOpcionalAbierto">
+        <app-selector-clase-opcional-modal [titulo]="selectorClaseOpcionalTitulo"
+            [descripcion]="selectorClaseOpcionalDescripcion" [opciones]="selectorClaseOpcionalOpciones"
+            (cerrar)="onCerrarModalSelectorClaseOpcional()" (confirmar)="onConfirmarSelectorClaseOpcional($event)">
+        </app-selector-clase-opcional-modal>
+    </ng-container>
+
     <ng-container *ngIf="modalSelectorAumentosAbierto">
-        <app-selector-aumentos-caracteristica-modal
-            [titulo]="selectorAumentosTitulo"
+        <app-selector-aumentos-caracteristica-modal [titulo]="selectorAumentosTitulo"
             [pendientes]="selectorAumentosPendientes"
             [caracteristicasActuales]="selectorAumentosCaracteristicasActuales"
             [caracteristicasPerdidas]="selectorAumentosCaracteristicasPerdidas"
-            [topesCaracteristicas]="selectorAumentosTopes"
-            (cerrar)="onCerrarModalAumentosCaracteristica()"
+            [topesCaracteristicas]="selectorAumentosTopes" (cerrar)="onCerrarModalAumentosCaracteristica()"
             (confirmar)="onConfirmarAumentosCaracteristica($event)">
         </app-selector-aumentos-caracteristica-modal>
     </ng-container>
 
     <ng-container *ngIf="modalSelectorRazaBaseAbierto">
-        <app-selector-raza-base-modal
-            [candidatas]="candidatasRazaBaseModal"
-            [incluirHomebrew]="incluirHomebrewRazaBase"
-            [titulo]="'Seleccionar raza base'"
-            (incluirHomebrewChange)="onToggleHomebrewRazaBase($event)"
-            (info)="onInformacionRazaMutada()"
-            (cerrar)="onCerrarModalRazaBase()"
+        <app-selector-raza-base-modal [candidatas]="candidatasRazaBaseModal" [incluirHomebrew]="incluirHomebrewRazaBase"
+            [titulo]="'Seleccionar raza base'" (incluirHomebrewChange)="onToggleHomebrewRazaBase($event)"
+            (info)="onInformacionRazaMutada()" (cerrar)="onCerrarModalRazaBase()"
             (confirmar)="onConfirmarRazaBase($event)">
         </app-selector-raza-base-modal>
     </ng-container>
 
     <ng-container *ngIf="modalSelectorRacialesOpcionalesAbierto">
-        <app-selector-raciales-opcionales-modal
-            [grupos]="gruposRacialesOpcionalesModal"
-            [titulo]="'Seleccionar raciales opcionales'"
-            [razaContextoNombre]="razaContextoOpcionalesNombre"
-            (info)="onInformacionRacialesOpcionales()"
-            (verDetalleRacial)="onVerDetalleRacialOpcional($event)"
-            (cerrar)="onCerrarModalRacialesOpcionales()"
-            (confirmar)="onConfirmarRacialesOpcionales($event)">
+        <app-selector-raciales-opcionales-modal [grupos]="gruposRacialesOpcionalesModal"
+            [titulo]="'Seleccionar raciales opcionales'" [razaContextoNombre]="razaContextoOpcionalesNombre"
+            (info)="onInformacionRacialesOpcionales()" (verDetalleRacial)="onVerDetalleRacialOpcional($event)"
+            (cerrar)="onCerrarModalRacialesOpcionales()" (confirmar)="onConfirmarRacialesOpcionales($event)">
         </app-selector-raciales-opcionales-modal>
     </ng-container>
 
     <ng-container *ngIf="modalSelectorPuntosGolpeAbierto">
-        <app-selector-puntos-golpe-modal
-            [resultado]="resultadoVidaActual"
-            [tiradasRestantes]="tiradasVidaRestantes"
-            [tiradasTotales]="tiradasVidaTotales"
-            (recalcular)="onRecalcularPuntosGolpe()"
-            (siguiente)="onSiguientePuntosGolpe()"
-            (cerrar)="onCerrarSelectorPuntosGolpe()">
+        <app-selector-puntos-golpe-modal [resultado]="resultadoVidaActual" [tiradasRestantes]="tiradasVidaRestantes"
+            [tiradasTotales]="tiradasVidaTotales" (recalcular)="onRecalcularPuntosGolpe()"
+            (siguiente)="onSiguientePuntosGolpe()" (cerrar)="onCerrarSelectorPuntosGolpe()">
         </app-selector-puntos-golpe-modal>
     </ng-container>
 
     <ng-container *ngIf="modalSelectorVisibilidadAbierto">
-        <app-selector-visibilidad-personaje-modal
-            [seleccionInicial]="selectorVisibilidadValorInicial"
-            [bloqueado]="finalizacionEnCurso"
-            (confirmar)="onConfirmarSelectorVisibilidad($event)"
+        <app-selector-visibilidad-personaje-modal [seleccionInicial]="selectorVisibilidadValorInicial"
+            [bloqueado]="finalizacionEnCurso" (confirmar)="onConfirmarSelectorVisibilidad($event)"
             (cerrar)="onCerrarSelectorVisibilidad()">
         </app-selector-visibilidad-personaje-modal>
     </ng-container>
+
+    <ng-container *ngIf="modalInformacionBasicosAbierto">
+        <app-informacion-basicos-modal [titulo]="informacionBasicosModalTitulo" [icono]="informacionBasicosModalIcono"
+            [secciones]="informacionBasicosModalSecciones" (cerrar)="onCerrarModalInformacionBasicos()">
+        </app-informacion-basicos-modal>
+    </ng-container>
 </div>
-
-

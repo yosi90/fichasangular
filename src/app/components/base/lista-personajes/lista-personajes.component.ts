@@ -11,6 +11,8 @@ import { CampanaService } from 'src/app/services/campana.service';
 import { UserService } from 'src/app/services/user.service';
 import { Subscription } from 'rxjs';
 
+type FiltroVisibilidadPersonajes = 'todos' | 'publicos' | 'privados';
+
 @Component({
     selector: 'app-lista-personajes',
     templateUrl: './lista-personajes.component.html',
@@ -40,6 +42,9 @@ export class ListaPersonajesComponent implements OnInit, AfterViewInit, OnDestro
     expandedElement!: PersonajeSimple;
     personajesCargados: boolean = false;
     mostrarArchivados = false;
+    mostrarSoloMios = false;
+    filtroVisibilidad: FiltroVisibilidadPersonajes = 'todos';
+    sesionIniciada = false;
     private personajesSub?: Subscription;
     private campanasSub?: Subscription;
     private sessionStateSub?: Subscription;
@@ -63,8 +68,13 @@ export class ListaPersonajesComponent implements OnInit, AfterViewInit, OnDestro
         ]);
 
         this.sessionStateSub = this.userSvc.isLoggedIn$.subscribe((loggedIn) => {
+            this.sesionIniciada = loggedIn;
+            if (!loggedIn && this.mostrarSoloMios)
+                this.mostrarSoloMios = false;
+
             if (this.lastLoggedInState === null) {
                 this.lastLoggedInState = loggedIn;
+                this.filtroPersonajes();
                 return;
             }
 
@@ -72,6 +82,7 @@ export class ListaPersonajesComponent implements OnInit, AfterViewInit, OnDestro
                 return;
 
             this.lastLoggedInState = loggedIn;
+            this.filtroPersonajes();
             void this.cargarCampanas();
         });
     }
@@ -122,6 +133,8 @@ export class ListaPersonajesComponent implements OnInit, AfterViewInit, OnDestro
             && (this.defaultCampana === undefined || this.defaultCampana === 'Sin campaña' || pj.Campana === this.defaultCampana)
             && (this.defaultTrama === undefined || this.defaultTrama === 'Trama base' || pj.Trama === this.defaultTrama)
             && (this.defaultSubtrama === undefined || this.defaultSubtrama === 'Subtrama base' || pj.Subtrama === this.defaultSubtrama)
+            && (!this.mostrarSoloMios || this.esPersonajePropio(pj))
+            && this.cumpleFiltroVisibilidad(pj)
             && (this.mostrarArchivados || !pj.Archivado)
         );
         this.personajesDS = new MatTableDataSource(pjFiltrados);
@@ -148,6 +161,14 @@ export class ListaPersonajesComponent implements OnInit, AfterViewInit, OnDestro
         if (!this.mostrarArchivados && hasArchivadoColumn)
             this.columnsToDisplay = this.columnsToDisplay.filter((column) => column !== '¿Archivado?');
         this.columnsToDisplayWithExpand = [...this.columnsToDisplay, 'expand'];
+        this.filtroPersonajes();
+    }
+
+    AlternarSoloMios() {
+        if (!this.sesionIniciada)
+            return;
+
+        this.mostrarSoloMios = !this.mostrarSoloMios;
         this.filtroPersonajes();
     }
 
@@ -223,6 +244,24 @@ export class ListaPersonajesComponent implements OnInit, AfterViewInit, OnDestro
 
     esPublicoPersonaje(personaje: PersonajeSimple): boolean {
         return personaje?.visible_otros_usuarios === true;
+    }
+
+    private esPersonajePropio(personaje: PersonajeSimple): boolean {
+        const actorUid = `${this.userSvc.CurrentUserUid ?? ''}`.trim();
+        if (actorUid.length < 1)
+            return false;
+
+        const ownerUid = `${personaje?.ownerUid ?? ''}`.trim();
+        return ownerUid === actorUid || personaje?.accessReason === 'owner';
+    }
+
+    private cumpleFiltroVisibilidad(personaje: PersonajeSimple): boolean {
+        const esPublico = this.esPublicoPersonaje(personaje);
+        if (this.filtroVisibilidad === 'publicos')
+            return esPublico;
+        if (this.filtroVisibilidad === 'privados')
+            return !esPublico;
+        return true;
     }
 
     private coincideConTextoFiltro(pj: PersonajeSimple, texto: string): boolean {

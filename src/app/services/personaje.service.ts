@@ -145,7 +145,8 @@ export class PersonajeService {
         const idTrama = Math.trunc(toNumber(contextoIds?.idTrama));
         const idSubtrama = Math.trunc(toNumber(contextoIds?.idSubtrama));
         const esSinCampana = normalizeLookupKey(personaje?.Campana) === 'sin campana';
-        const tieneContextoCampana = !esSinCampana && idCampana > 0 && idTrama > 0 && idSubtrama > 0;
+        const tieneCampana = !esSinCampana && idCampana > 0;
+        const tieneHistoriaCompletaCampana = tieneCampana && idTrama > 0 && idSubtrama > 0;
         const tieneClaseConNivel = (personaje?.desgloseClases ?? [])
             .some((entrada) => Math.trunc(toNumber(entrada?.Nivel)) > 0);
         const mapasCatalogo = {
@@ -166,8 +167,10 @@ export class PersonajeService {
             throw new Error('El tipo de criatura del personaje no es válido.');
         if (!tieneClaseConNivel)
             throw new Error('Debes tener al menos una clase con nivel mayor que 0.');
-        if (!esSinCampana && !tieneContextoCampana)
-            throw new Error('No se pudo resolver el contexto de campaña/trama/subtrama.');
+        if (!esSinCampana && !tieneCampana)
+            throw new Error('No se pudo resolver la campaña del personaje.');
+        if ((idTrama > 0 && idSubtrama <= 0) || (idTrama <= 0 && idSubtrama > 0))
+            throw new Error('No se pudo resolver una historia de campaña completa: trama y subtrama deben viajar juntas.');
 
         const idAlineamiento = Math.trunc(toNumber(contextoIds?.idAlineamiento))
             || this.resolverIdAlineamientoDesdeNombre(personaje?.Alineamiento);
@@ -242,7 +245,9 @@ export class PersonajeService {
         };
         if (idRazaBase > 0)
             personajePayload.idRazaBase = idRazaBase;
-        if (tieneContextoCampana) {
+        if (tieneCampana)
+            personajePayload.campana = { id: idCampana };
+        if (tieneHistoriaCompletaCampana) {
             personajePayload.campana = { id: idCampana };
             personajePayload.trama = { id: idTrama };
             personajePayload.subtrama = { id: idSubtrama };
@@ -291,7 +296,7 @@ export class PersonajeService {
             payload.modificadores = modificadores;
         if (Object.keys(colecciones).length > 0)
             payload.colecciones = colecciones;
-        if (tieneContextoCampana) {
+        if (tieneCampana) {
             payload.contextoCreacionCampana = {
                 tiradaMinimaDeclarada: this.toNonNegativeIntOrNull(contextoCreacionCampana?.tiradaMinimaDeclarada),
                 tablasDadosUsadas: this.toNonNegativeIntOrNull(contextoCreacionCampana?.tablasDadosUsadas),

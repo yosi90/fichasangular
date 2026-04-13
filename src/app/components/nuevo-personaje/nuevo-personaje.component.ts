@@ -91,6 +91,8 @@ import {
 import { SelectorFamiliarConfirmacion } from './selector-familiar-modal/selector-familiar-modal.component';
 import { SelectorCompaneroConfirmacion } from './selector-companero-modal/selector-companero-modal.component';
 import { SelectorEspecialidadMagicaConfirmacion } from './selector-especialidad-magica-modal/selector-especialidad-magica-modal.component';
+import { SelectorClaseOpcionalModalOpcion } from './selector-clase-opcional-modal/selector-clase-opcional-modal.component';
+import { InformacionBasicosModalSection } from './informacion-basicos-modal/informacion-basicos-modal.component';
 import { PlantillaService } from 'src/app/services/plantilla.service';
 import { RazaService } from 'src/app/services/raza.service';
 import { TipoCriaturaService } from 'src/app/services/tipo-criatura.service';
@@ -339,6 +341,8 @@ export class NuevoPersonajeComponent {
         'Sin genero',
     ];
     readonly deidadSinSeleccion = 'No tener deidad';
+    readonly tramaSinSeleccionCampana = 'Sin trama';
+    readonly subtramaSinSeleccionCampana = 'Sin subtrama';
 
     Personaje!: Personaje;
     Campanas: Campana[] = [];
@@ -356,12 +360,8 @@ export class NuevoPersonajeComponent {
     filtroPlantillasManual: string = 'Cualquiera';
     incluirHomebrewPlantillas: boolean = false;
     cargandoPlantillas: boolean = true;
-    incluirHomebrewVentajas: boolean = false;
     incluirHomebrewIdiomas: boolean = false;
-    private homebrewForzadoPorJugador: boolean = false;
-    private homebrewBloqueadoVentajas: boolean = false;
     private hardAlignmentOverrideConfirmed: boolean = false;
-    private controlHomebrewVentajasInicializado: boolean = false;
     catalogoVentajas: VentajaDetalle[] = [];
     catalogoDesventajas: VentajaDetalle[] = [];
     catalogoIdiomas: IdiomaDetalle[] = [];
@@ -414,6 +414,11 @@ export class NuevoPersonajeComponent {
     modalSelectorRacialesOpcionalesAbierto = false;
     modalSelectorPuntosGolpeAbierto = false;
     modalSelectorVisibilidadAbierto = false;
+    modalSelectorClaseOpcionalAbierto = false;
+    modalInformacionBasicosAbierto = false;
+    informacionBasicosModalTitulo = '';
+    informacionBasicosModalIcono = 'info';
+    informacionBasicosModalSecciones: InformacionBasicosModalSection[] = [];
     selectorDotePendienteActual: DotePendienteState | null = null;
     selectorDoteCandidatos: DoteSelectorCandidato[] = [];
     selectorDotePendientesRestantes = 0;
@@ -440,7 +445,11 @@ export class NuevoPersonajeComponent {
     selectorDominiosCantidadSeleccionada = 0;
     selectorDominiosBloquearCierre = false;
     selectorDominiosOpciones: { id: number; nombre: string; oficial: boolean; }[] = [];
+    selectorClaseOpcionalTitulo = 'Grupo opcional';
+    selectorClaseOpcionalDescripcion = 'Elige una opción para continuar con el nivel de clase.';
+    selectorClaseOpcionalOpciones: SelectorClaseOpcionalModalOpcion[] = [];
     private resolverSelectorDominios: ((seleccion: SeleccionDominiosClase | null) => void) | null = null;
+    private resolverSelectorClaseOpcional: ((seleccion: string | null) => void) | null = null;
     selectorAumentosTitulo = 'Seleccionar aumentos de caracteristica';
     selectorAumentosPendientes: AumentoCaracteristicaPendiente[] = [];
     selectorAumentosCaracteristicasActuales: Record<CaracteristicaAumentoKey, number> = {
@@ -611,8 +620,9 @@ export class NuevoPersonajeComponent {
 
     private async inicializarComponente(): Promise<void> {
         const uid = this.obtenerUidSesionActiva();
+        let restauracion: 'none' | 'restored' | 'reset' | 'opened-existing' = 'none';
         if (uid.length > 0) {
-            const restauracion = await this.resolverRestauracionBorradorSiAplica(uid);
+            restauracion = await this.resolverRestauracionBorradorSiAplica(uid);
             if (restauracion === 'opened-existing')
                 return;
         }
@@ -626,6 +636,7 @@ export class NuevoPersonajeComponent {
         this.normalizarAlineamientoSeleccionado();
         this.sincronizarTabConPaso();
         this.recalcularOficialidad();
+        this.rederivarVistaDetalleTrasRestauracion(restauracion);
         this.cargarCampanas();
         this.cargarRazasCatalogo();
         this.cargarPlantillas();
@@ -908,14 +919,6 @@ export class NuevoPersonajeComponent {
         return this.personajeNoOficial;
     }
 
-    get homebrewVentajasSeleccionado(): boolean {
-        return this.homebrewBloqueadoVentajas || this.homebrewForzadoPorJugador;
-    }
-
-    get homebrewVentajasBloqueado(): boolean {
-        return this.homebrewBloqueadoVentajas;
-    }
-
     get totalNivelesClaseActual(): number {
         return (this.Personaje?.desgloseClases ?? [])
             .reduce((acc, entrada) => acc + Math.max(0, Number(entrada?.Nivel ?? 0)), 0);
@@ -933,28 +936,16 @@ export class NuevoPersonajeComponent {
         return this.homebrewForzado || this.incluirHomebrewPlantillas;
     }
 
-    get incluirHomebrewVentajasEfectivo(): boolean {
-        return this.homebrewForzado || this.incluirHomebrewVentajas;
-    }
-
-    get textoChipHomebrewVentajas(): string {
-        return this.homebrewBloqueadoVentajas
-            ? 'El personaje es Homebrew'
-            : this.homebrewForzadoPorJugador
-                ? 'Cancelar homebrew y limpiar ventajas'
-            : 'Convertir en personaje Homebrew para listar las ventajas';
-    }
-
     get incluirHomebrewIdiomasEfectivo(): boolean {
         return this.homebrewForzado || this.incluirHomebrewIdiomas;
     }
 
     get ventajasVisibles(): VentajaDetalle[] {
-        return this.catalogoVentajas.filter(v => this.incluirHomebrewVentajasEfectivo || v.Oficial !== false);
+        return this.catalogoVentajas;
     }
 
     get desventajasVisibles(): VentajaDetalle[] {
-        return this.catalogoDesventajas.filter(v => this.incluirHomebrewVentajasEfectivo || v.Oficial !== false);
+        return this.catalogoDesventajas;
     }
 
     get idiomasSeleccionadosParaVentajas(): string[] {
@@ -1006,6 +997,7 @@ export class NuevoPersonajeComponent {
             && this.esNumeroValidoPositivo(this.Personaje.Peso)
             && this.esNumeroValidoPositivo(this.Personaje.Altura)
             && !this.selectedCampaignPolicyLoading
+            && !this.tieneHistoriaCampanaIncompleta
             && !this.hasCampaignBlockersForBasicos();
     }
 
@@ -1024,6 +1016,8 @@ export class NuevoPersonajeComponent {
             motivos.push('Debes elegir una trama.');
         if (!this.esTextoNoVacio(this.Personaje.Subtrama))
             motivos.push('Debes elegir una subtrama.');
+        if (this.tieneHistoriaCampanaIncompleta)
+            motivos.push('Si eliges una trama concreta para la campaña, debes elegir también una subtrama. Si no, deja la historia sin especificar por ahora.');
         if (!this.esNumeroValidoPositivo(this.Personaje.Edad))
             motivos.push('La edad debe ser un número mayor que 0.');
         if (!this.esNumeroValidoPositivo(this.Personaje.Peso))
@@ -1067,10 +1061,24 @@ export class NuevoPersonajeComponent {
     }
 
     get tramaTieneSubtramas(): boolean {
-        if (!this.campanaTieneTramas || this.Personaje.Trama === 'Trama base') {
+        if (!this.campanaTieneTramas || this.esTramaCampanaSinEspecificar(this.Personaje?.Trama)) {
             return false;
         }
         return this.Subtramas.length > 0;
+    }
+
+    get mostrarOpcionSinSubtramaCampana(): boolean {
+        return this.hasSelectedCampaignContext && this.esTramaCampanaSinEspecificar(this.Personaje?.Trama);
+    }
+
+    get tieneHistoriaCampanaIncompleta(): boolean {
+        if (!this.hasSelectedCampaignContext)
+            return false;
+
+        if (this.esTramaCampanaSinEspecificar(this.Personaje?.Trama))
+            return false;
+
+        return this.esSubtramaCampanaSinEspecificar(this.Personaje?.Subtrama);
     }
 
     get preferenciaLeyRaza(): string {
@@ -1098,12 +1106,22 @@ export class NuevoPersonajeComponent {
         return this.basicosDerivedState.preferenciasRazaItems.length > 0;
     }
 
-    get rangoEdadTexto(): string {
+    get edadRangosItems(): string[] {
         const raza = this.razaSeleccionada;
-        if (!raza) {
-            return 'Sin datos de edad';
-        }
-        return `Adulto: ${raza.Edad_adulto} | Mediana: ${raza.Edad_mediana} | Viejo: ${raza.Edad_viejo} | Venerable: ${raza.Edad_venerable}`;
+        if (!raza)
+            return [];
+        return [
+            `Adulto: ${raza.Edad_adulto}`,
+            `Mediana: ${raza.Edad_mediana}`,
+            `Viejo: ${raza.Edad_viejo}`,
+            `Venerable: ${raza.Edad_venerable}`,
+        ];
+    }
+
+    get edadRangosHint(): string {
+        return this.edadRangosItems
+            .map((item) => item.replace(':', ''))
+            .join(', ');
     }
 
     get etapaEdadActual(): string {
@@ -1298,6 +1316,17 @@ export class NuevoPersonajeComponent {
             .replace(/[\u0300-\u036f]/g, '')
             .trim()
             .toLowerCase();
+    }
+
+    private abrirModalInformacionBasicos(
+        titulo: string,
+        icono: string,
+        secciones: InformacionBasicosModalSection[]
+    ): void {
+        this.informacionBasicosModalTitulo = titulo;
+        this.informacionBasicosModalIcono = icono;
+        this.informacionBasicosModalSecciones = secciones;
+        this.modalInformacionBasicosAbierto = true;
     }
 
     private esPreferenciaAlineamientoVisible(valor: string): boolean {
@@ -1591,8 +1620,7 @@ export class NuevoPersonajeComponent {
         }) || this.homebrewPorClaseAplicada;
         const tieneVentajasODesventajas = this.flujoVentajas.seleccionVentajas.length > 0
             || this.flujoVentajas.seleccionDesventajas.length > 0;
-        this.Personaje.Oficial = !this.homebrewForzadoPorJugador
-            && razaEsOficial
+        this.Personaje.Oficial = razaEsOficial
             && evaluacion.otherOfficialBlockers.length === 0
             && !tieneConflictoDuroConfirmado
             && !this.hardAlignmentClassOverrideConfirmed
@@ -1933,8 +1961,31 @@ export class NuevoPersonajeComponent {
 
     private sincronizarTabConPaso(): void {
         this.asegurarPasoCompatibleConCampania();
-        this.inicializarControlHomebrewVentajasSiAplica();
         this.selectedInternalTabIndex = this.mapearPasoAIndex(this.flujo.pasoActual);
+    }
+
+    private rederivarVistaDetalleTrasRestauracion(restauracion: 'none' | 'restored' | 'reset' | 'opened-existing'): void {
+        if (restauracion !== 'restored')
+            return;
+        if (!this.debeReabrirVistaDetalleTrasRestauracion())
+            return;
+
+        this.nuevoPSvc.refrescarDerivadasPreviewNuevoPersonaje();
+        this.ventanaDetalleAbierta = true;
+    }
+
+    private debeReabrirVistaDetalleTrasRestauracion(): boolean {
+        if (this.modalCaracteristicasAbierto)
+            return false;
+        if (!this.isVentanaDetalleHabilitada())
+            return false;
+
+        return this.flujo.pasoActual === 'plantillas'
+            || this.flujo.pasoActual === 'ventajas'
+            || this.flujo.pasoActual === 'clases'
+            || this.flujo.pasoActual === 'habilidades'
+            || this.flujo.pasoActual === 'conjuros'
+            || this.flujo.pasoActual === 'dotes';
     }
 
     private restaurarChatTrasModalCaracteristicas(): void {
@@ -2190,7 +2241,9 @@ export class NuevoPersonajeComponent {
             || this.modalSelectorRazaBaseAbierto
             || this.modalSelectorRacialesOpcionalesAbierto
             || this.modalSelectorPuntosGolpeAbierto
-            || this.modalSelectorVisibilidadAbierto;
+            || this.modalSelectorVisibilidadAbierto
+            || this.modalSelectorClaseOpcionalAbierto
+            || this.modalInformacionBasicosAbierto;
     }
 
     private esElementoInteractivoParaEnter(target: HTMLElement | null): boolean {
@@ -2289,14 +2342,15 @@ export class NuevoPersonajeComponent {
 
         if (this.Tramas.length < 1) {
             this.Subtramas = [];
-            this.Personaje.Trama = 'Trama base';
-            this.Personaje.Subtrama = 'Subtrama base';
+            this.Personaje.Trama = this.tramaSinSeleccionCampana;
+            this.Personaje.Subtrama = this.subtramaSinSeleccionCampana;
             void this.syncSelectedCampaignPolicy();
             return;
         }
 
         if (!this.Tramas.find(t => t.Nombre === this.Personaje.Trama)) {
-            this.Personaje.Trama = this.Tramas[0].Nombre;
+            this.Personaje.Trama = this.tramaSinSeleccionCampana;
+            this.Personaje.Subtrama = this.subtramaSinSeleccionCampana;
         }
 
         void this.syncSelectedCampaignPolicy();
@@ -2330,18 +2384,24 @@ export class NuevoPersonajeComponent {
         }
 
         const tramaSeleccionada = campanaSeleccionada?.Tramas.find(t => t.Nombre === this.Personaje.Trama);
+        if (this.esTramaCampanaSinEspecificar(this.Personaje.Trama)) {
+            this.Subtramas = [];
+            this.Personaje.Subtrama = this.subtramaSinSeleccionCampana;
+            return;
+        }
+
         this.Subtramas = tramaSeleccionada?.Subtramas.map(s => ({
             Id: s.Id,
             Nombre: s.Nombre
         })) ?? [];
 
         if (this.Subtramas.length < 1) {
-            this.Personaje.Subtrama = 'Subtrama base';
+            this.Personaje.Subtrama = '';
             return;
         }
 
         if (!this.Subtramas.find(s => s.Nombre === this.Personaje.Subtrama)) {
-            this.Personaje.Subtrama = this.Subtramas[0].Nombre;
+            this.Personaje.Subtrama = '';
         }
     }
 
@@ -2842,6 +2902,10 @@ export class NuevoPersonajeComponent {
         return this.nuevoPSvc.esPlantillaConfirmada(Number(plantilla?.Id));
     }
 
+    puedeQuitarPlantillaSeleccion(plantilla: Plantilla): boolean {
+        return !this.esPlantillaConfirmada(plantilla);
+    }
+
     quitarPlantillaSeleccion(idPlantilla: number): void {
         this.nuevoPSvc.quitarPlantillaSeleccion(idPlantilla);
         this.recalcularPlantillasVisibles();
@@ -2861,6 +2925,7 @@ export class NuevoPersonajeComponent {
         if (!await this.ensureSelectedCampaignPolicyReady())
             return;
         const retornoFinNivelPendiente = this.nuevoPSvc.consumirRetornoFinNivelPendientePlantillas();
+        const plantillasPendientesConfirmacion = this.nuevoPSvc.getPlantillasSeleccionadasPendientesConfirmacion();
 
         this.nuevoPSvc.registrarAumentosPendientesPorProgresion('Plantillas confirmadas');
         const aumentosCompletados = await this.abrirSelectorAumentosCaracteristica();
@@ -2868,7 +2933,7 @@ export class NuevoPersonajeComponent {
             return;
 
         this.nuevoPSvc.confirmarSeleccionActualPlantillas();
-        if (this.nuevoPSvc.iniciarDistribucionHabilidadesPorPlantillasDG()) {
+        if (this.nuevoPSvc.iniciarDistribucionHabilidadesPorPlantillasDG(plantillasPendientesConfirmacion)) {
             this.Personaje = this.nuevoPSvc.PersonajeCreacion;
             this.recalcularPlantillasVisibles();
             this.recalcularClasesVisibles();
@@ -2880,8 +2945,6 @@ export class NuevoPersonajeComponent {
         this.nuevoPSvc.actualizarPasoActual(siguientePaso);
         this.recalcularPlantillasVisibles();
         this.recalcularClasesVisibles();
-        if (siguientePaso === 'ventajas')
-            this.inicializarControlHomebrewVentajasSiAplica();
         this.sincronizarTabConPaso();
     }
 
@@ -3511,7 +3574,10 @@ export class NuevoPersonajeComponent {
     puedeBajarRangoHabilidad(habilidad: Personaje['Habilidades'][number]): boolean {
         if (!habilidad)
             return false;
-        return Number(habilidad?.Rangos ?? 0) > 0;
+        const idHabilidad = Number(habilidad?.Id ?? 0);
+        const actuales = Math.max(0, Math.trunc(Number(habilidad?.Rangos ?? 0)));
+        const iniciales = this.getRangosInicialesSesionHabilidad(idHabilidad);
+        return actuales > iniciales;
     }
 
     puedeMaxearRangoHabilidad(habilidad: Personaje['Habilidades'][number]): boolean {
@@ -4180,9 +4246,11 @@ export class NuevoPersonajeComponent {
             .find((item) => this.normalizarTexto(item?.Nombre ?? '') === subtramaNorm);
 
         const esSinCampana = campanaNorm.length < 1 || campanaNorm === this.normalizarTexto('Sin campaña');
+        const esSinHistoriaCampana = this.esTramaCampanaSinEspecificar(this.Personaje?.Trama);
+        const esSubtramaBase = this.esSubtramaCampanaSinEspecificar(this.Personaje?.Subtrama);
         const idCampana = esSinCampana ? null : (this.toPositiveInt(campana?.Id) ?? null);
-        const idTrama = esSinCampana ? null : (this.toPositiveInt(trama?.Id) ?? null);
-        const idSubtrama = esSinCampana ? null : (this.toPositiveInt(subtrama?.Id) ?? null);
+        const idTrama = esSinCampana || esSinHistoriaCampana ? null : (this.toPositiveInt(trama?.Id) ?? null);
+        const idSubtrama = esSinCampana || esSinHistoriaCampana || esSubtramaBase ? null : (this.toPositiveInt(subtrama?.Id) ?? null);
         const ventajasCatalogo = [
             ...(this.catalogoVentajas ?? []),
             ...(this.catalogoDesventajas ?? []),
@@ -4225,6 +4293,20 @@ export class NuevoPersonajeComponent {
             tablasDadosUsadas,
             overrideReglasCampana: this.isSelectedCampaignActiveMaster,
         };
+    }
+
+    private esTramaCampanaSinEspecificar(value: any): boolean {
+        const normalizado = this.normalizarTexto(value ?? '');
+        return normalizado.length < 1
+            || normalizado === this.normalizarTexto(this.tramaSinSeleccionCampana)
+            || normalizado === this.normalizarTexto('Trama base');
+    }
+
+    private esSubtramaCampanaSinEspecificar(value: any): boolean {
+        const normalizado = this.normalizarTexto(value ?? '');
+        return normalizado.length < 1
+            || normalizado === this.normalizarTexto(this.subtramaSinSeleccionCampana)
+            || normalizado === this.normalizarTexto('Subtrama base');
     }
 
     private mapearCatalogoNombreId<T>(
@@ -4915,33 +4997,50 @@ export class NuevoPersonajeComponent {
     private async solicitarSeleccionesOpcionalesClase(grupos: ClaseGrupoOpcionalPendiente[]): Promise<SeleccionOpcionalesClase | null> {
         const selecciones: SeleccionOpcionalesClase = {};
         for (const grupo of grupos) {
-            const inputOptions: Record<string, string> = {};
-            grupo.opciones.forEach((opcion) => {
-                inputOptions[opcion.clave] = this.getEtiquetaOpcionInternaClase(opcion);
-            });
-
-            const result = await Swal.fire({
-                icon: 'question',
-                title: `Grupo opcional ${grupo.grupo}`,
-                text: 'Elige una opción para continuar con el nivel de clase.',
-                input: 'select',
-                inputOptions,
-                inputPlaceholder: 'Selecciona una opción',
-                showCancelButton: true,
-                confirmButtonText: 'Aplicar',
-                cancelButtonText: 'Cancelar',
-                target: document.body,
-                heightAuto: false,
-                scrollbarPadding: false,
-                inputValidator: (value) => value ? undefined : 'Debes elegir una opción',
-            });
-
-            if (!result.isConfirmed || !result.value)
+            const seleccion = await this.abrirSelectorClaseOpcional(grupo);
+            if (!seleccion)
                 return null;
-            selecciones[grupo.grupo] = `${result.value}`;
+            selecciones[grupo.grupo] = `${seleccion}`;
         }
 
         return selecciones;
+    }
+
+    private abrirSelectorClaseOpcional(grupo: ClaseGrupoOpcionalPendiente): Promise<string | null> {
+        this.selectorClaseOpcionalTitulo = `Grupo opcional ${grupo?.grupo ?? '?'}`;
+        this.selectorClaseOpcionalDescripcion = 'Elige una opción para continuar con el nivel de clase.';
+        this.selectorClaseOpcionalOpciones = (grupo?.opciones ?? []).map((opcion) => ({
+            clave: `${opcion?.clave ?? ''}`.trim(),
+            tipo: opcion?.tipo === 'especial' ? 'especial' : 'dote',
+            nombre: `${opcion?.nombre ?? ''}`.trim(),
+            extra: `${opcion?.extra ?? ''}`.trim(),
+        }));
+        this.modalSelectorClaseOpcionalAbierto = true;
+
+        return new Promise<string | null>((resolve) => {
+            this.resolverSelectorClaseOpcional = resolve;
+        });
+    }
+
+    onConfirmarSelectorClaseOpcional(clave: string): void {
+        const seleccion = `${clave ?? ''}`.trim();
+        this.cerrarSelectorClaseOpcionalContexto(seleccion.length > 0 ? seleccion : null);
+    }
+
+    onCerrarModalSelectorClaseOpcional(): void {
+        this.cerrarSelectorClaseOpcionalContexto(null);
+    }
+
+    private cerrarSelectorClaseOpcionalContexto(resultado: string | null): void {
+        this.modalSelectorClaseOpcionalAbierto = false;
+        this.selectorClaseOpcionalTitulo = 'Grupo opcional';
+        this.selectorClaseOpcionalDescripcion = 'Elige una opción para continuar con el nivel de clase.';
+        this.selectorClaseOpcionalOpciones = [];
+
+        const resolver = this.resolverSelectorClaseOpcional;
+        this.resolverSelectorClaseOpcional = null;
+        if (resolver)
+            resolver(resultado);
     }
 
     private async solicitarSeleccionesAumentosClaseLanzadora(
@@ -4985,18 +5084,6 @@ export class NuevoPersonajeComponent {
         return selecciones;
     }
 
-    private getEtiquetaOpcionInternaClase(opcion: {
-        tipo: 'dote' | 'especial';
-        nombre: string;
-        extra: string;
-    }): string {
-        const tipo = opcion.tipo === 'dote' ? 'Dote' : 'Especial';
-        const extra = `${opcion.extra ?? ''}`.trim();
-        return extra.length > 0
-            ? `${tipo}: ${opcion.nombre} (${extra})`
-            : `${tipo}: ${opcion.nombre}`;
-    }
-
     getClaseFilaCss(item: ClaseListadoItem): string {
         const clases = ['fila-clase'];
         if (Number(this.claseSeleccionadaId) === Number(item.clase.Id))
@@ -5031,31 +5118,6 @@ export class NuevoPersonajeComponent {
         return razones || advertencias || 'No se pudo evaluar por completo esta plantilla';
     }
 
-    alternarHomebrewVentajas(): void {
-        this.inicializarControlHomebrewVentajasSiAplica();
-        if (this.homebrewBloqueadoVentajas)
-            return;
-
-        if (!this.homebrewForzadoPorJugador) {
-            this.homebrewForzadoPorJugador = true;
-            this.incluirHomebrewVentajas = true;
-            this.incluirHomebrewPlantillas = true;
-            this.incluirHomebrewIdiomas = true;
-            this.recalcularOficialidad();
-            this.recalcularClasesVisibles();
-            return;
-        }
-
-        this.homebrewForzadoPorJugador = false;
-        this.incluirHomebrewVentajas = false;
-        this.incluirHomebrewPlantillas = false;
-        this.incluirHomebrewIdiomas = false;
-        this.nuevoPSvc.limpiarVentajasDesventajas();
-        this.cerrarSelectorIdiomaContexto();
-        this.recalcularOficialidad();
-        this.recalcularClasesVisibles();
-    }
-
     abrirInfoVentajasHomebrew(event?: Event): void {
         event?.preventDefault();
         event?.stopPropagation();
@@ -5070,6 +5132,10 @@ export class NuevoPersonajeComponent {
                     y, sobre todo, el roleo de los personajes.
                 </p>
                 <p style="text-align:left; margin-bottom:10px;">
+                    Consultar el listado no cambia nada por sí mismo. El personaje solo pasará a no oficial cuando
+                    confirmes una o más ventajas o desventajas.
+                </p>
+                <p style="text-align:left; margin-bottom:10px;">
                     La idea no es conseguir personajes más poderosos, sino darle sabor al roleo. Si solo te importan
                     los combates, te recomendamos no usar esta funcionalidad.
                 </p>
@@ -5082,6 +5148,69 @@ export class NuevoPersonajeComponent {
             `,
             confirmButtonText: 'Entendido',
         });
+    }
+
+    abrirInfoAlineamientoRacial(event?: Event): void {
+        event?.preventDefault();
+        event?.stopPropagation();
+
+        const feedback = [
+            ...this.advertenciasRazaPreview,
+            ...this.conflictosDurosRazaPreview,
+            ...(this.tieneConflictoDuroRazaBasicos
+                ? ['Si continúas con esta combinación, el personaje se marcará como homebrew (no oficial).']
+                : []),
+        ];
+
+        this.abrirModalInformacionBasicos(
+            'Alineamiento racial',
+            'balance',
+            [
+                {
+                    titulo: 'Preferencias de la raza',
+                    items: this.tienePreferenciasRazaVisibles
+                        ? this.preferenciasRazaItems.map((pref) => `${pref.etiqueta}: ${pref.valor}`)
+                        : [],
+                    lineas: this.tienePreferenciasRazaVisibles
+                        ? []
+                        : ['Sin preferencias de alineamiento aplicables.'],
+                },
+                {
+                    titulo: feedback.length > 0 ? 'Estado actual' : '',
+                    items: feedback,
+                    lineas: feedback.length > 0
+                        ? []
+                        : ['El alineamiento actual no entra en conflicto con las preferencias raciales visibles.'],
+                },
+            ]
+        );
+    }
+
+    abrirInfoEdadRacial(event?: Event): void {
+        event?.preventDefault();
+        event?.stopPropagation();
+
+        this.abrirModalInformacionBasicos(
+            'Rangos de edad',
+            'schedule',
+            [
+                {
+                    titulo: 'Rangos oficiales',
+                    items: this.edadRangosItems,
+                },
+                {
+                    titulo: 'Etapa actual',
+                    lineas: [this.etapaEdadActual, this.edadMensajeContextual],
+                },
+            ]
+        );
+    }
+
+    onCerrarModalInformacionBasicos(): void {
+        this.modalInformacionBasicosAbierto = false;
+        this.informacionBasicosModalTitulo = '';
+        this.informacionBasicosModalIcono = 'info';
+        this.informacionBasicosModalSecciones = [];
     }
 
     abrirInfoRecomendacionesClase(event?: Event): void {
@@ -5486,23 +5615,6 @@ export class NuevoPersonajeComponent {
                 this.cargandoVentajas = false;
             },
         });
-    }
-
-    private inicializarControlHomebrewVentajasSiAplica(): void {
-        if (this.controlHomebrewVentajasInicializado)
-            return;
-        if (this.flujo.pasoActual !== 'ventajas')
-            return;
-
-        this.controlHomebrewVentajasInicializado = true;
-        this.homebrewBloqueadoVentajas = this.Personaje.Oficial === false;
-        this.homebrewForzadoPorJugador = false;
-
-        if (this.homebrewBloqueadoVentajas) {
-            this.incluirHomebrewVentajas = true;
-            this.incluirHomebrewPlantillas = true;
-            this.incluirHomebrewIdiomas = true;
-        }
     }
 
     private get effectiveSelectedCampaignPolicy(): CampaignCreationPolicy | null {
@@ -6303,6 +6415,14 @@ export class NuevoPersonajeComponent {
         return `Fort ${this.formatSignedDeltaClase(item.salvacionesDelta.fortaleza)} | `
             + `Ref ${this.formatSignedDeltaClase(item.salvacionesDelta.reflejos)} | `
             + `Vol ${this.formatSignedDeltaClase(item.salvacionesDelta.voluntad)}`;
+    }
+
+    getClaseNivelChipCss(item: ClaseListadoItem): string {
+        return Number(item?.siguienteNivel ?? 0) > 1 ? 'good' : '';
+    }
+
+    getClaseSalvacionChipCss(value: number): string {
+        return Number(value ?? 0) > 0 ? 'good' : '';
     }
 
     formatSignedDeltaClase(value: number): string {

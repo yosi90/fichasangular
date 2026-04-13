@@ -1,9 +1,35 @@
 import { Subject, of } from 'rxjs';
 import { ListaPersonajesComponent } from './lista-personajes.component';
 import { Campana } from 'src/app/interfaces/campaña';
+import { PersonajeSimple } from 'src/app/interfaces/simplificaciones/personaje-simple';
 
 describe('ListaPersonajesComponent', () => {
-    function createComponent(campanas$: Subject<Campana[]>) {
+    function buildPersonaje(partial: Partial<PersonajeSimple> = {}): PersonajeSimple {
+        return {
+            Id: 1,
+            Nombre: 'Personaje',
+            ownerUid: null,
+            ownerDisplayName: null,
+            campaignId: null,
+            campaignName: null,
+            accessReason: null,
+            visible_otros_usuarios: false,
+            Id_region: 0,
+            Region: null,
+            Raza: { Id: 1, Nombre: 'Humano', Manual: '' } as any,
+            RazaBase: null,
+            Clases: 'Guerrero 1',
+            Personalidad: '',
+            Contexto: '',
+            Campana: 'Sin campaña',
+            Trama: 'Trama base',
+            Subtrama: 'Subtrama base',
+            Archivado: false,
+            ...partial,
+        };
+    }
+
+    function createComponent(campanas$: Subject<Campana[]>, userOverrides: Record<string, any> = {}) {
         return new ListaPersonajesComponent(
             {
                 ceateDataTable: () => [],
@@ -17,6 +43,8 @@ describe('ListaPersonajesComponent', () => {
             } as any,
             {
                 isLoggedIn$: of(true),
+                CurrentUserUid: 'uid-actor',
+                ...userOverrides,
             } as any,
         );
     }
@@ -66,5 +94,49 @@ describe('ListaPersonajesComponent', () => {
 
         expect(component.formatearClase({ Nombre: 'Clérigo', Nivel: 5 })).toBe('Clérigo (5)');
         expect(component.formatearClase({ Nombre: 'Monje', Nivel: null })).toBe('Monje');
+    });
+
+    it('filtroPersonajes permite mostrar solo personajes propios', () => {
+        const component = createComponent(new Subject<Campana[]>());
+        component.inputText = { nativeElement: { value: '' } } as any;
+        component.Personajes = [
+            buildPersonaje({ Id: 1, Nombre: 'Propio con ownerUid', ownerUid: 'uid-actor' }),
+            buildPersonaje({ Id: 2, Nombre: 'Propio por accessReason', ownerUid: null, accessReason: 'owner' }),
+            buildPersonaje({ Id: 3, Nombre: 'Ajeno', ownerUid: 'uid-otro', accessReason: 'campaign_public' }),
+        ];
+        component.mostrarSoloMios = true;
+
+        component.filtroPersonajes();
+
+        expect(component.personajesDS.data.map((item) => item.Id)).toEqual([1, 2]);
+    });
+
+    it('filtroPersonajes filtra por visibilidad publica o privada', () => {
+        const component = createComponent(new Subject<Campana[]>());
+        component.inputText = { nativeElement: { value: '' } } as any;
+        component.Personajes = [
+            buildPersonaje({ Id: 1, Nombre: 'Publico', visible_otros_usuarios: true }),
+            buildPersonaje({ Id: 2, Nombre: 'Privado', visible_otros_usuarios: false }),
+        ];
+
+        component.filtroVisibilidad = 'publicos';
+        component.filtroPersonajes();
+        expect(component.personajesDS.data.map((item) => item.Id)).toEqual([1]);
+
+        component.filtroVisibilidad = 'privados';
+        component.filtroPersonajes();
+        expect(component.personajesDS.data.map((item) => item.Id)).toEqual([2]);
+    });
+
+    it('AlternarSoloMios no activa el filtro si no hay sesion iniciada', () => {
+        const component = createComponent(new Subject<Campana[]>(), {
+            isLoggedIn$: of(false),
+            CurrentUserUid: '',
+        });
+        component.sesionIniciada = false;
+
+        component.AlternarSoloMios();
+
+        expect(component.mostrarSoloMios).toBeFalse();
     });
 });

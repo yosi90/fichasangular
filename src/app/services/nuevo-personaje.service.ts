@@ -4,6 +4,7 @@ import { Clase, ClaseConjuroRef, ClaseDoteNivel, ClaseEspecialNivel, ClaseNivelD
 import { Conjuro } from '../interfaces/conjuro';
 import { DisciplinaConjuros } from '../interfaces/disciplina-conjuros';
 import { Dote, DoteExtraItem } from '../interfaces/dote';
+import { DoteContextual, DoteLegacy } from '../interfaces/dote-contextual';
 import { EnemigoPredilectoDetalle } from '../interfaces/enemigo-predilecto-detalle';
 import { EnemigoPredilectoSeleccion } from '../interfaces/enemigo-predilecto-seleccion';
 import { EscuelaConjuros } from '../interfaces/escuela-conjuros';
@@ -681,6 +682,7 @@ export interface DotePendienteState {
     origen: string;
     tipoPermitido: string | null;
     estado: DoteEstadoPendiente;
+    nivelProgresion?: number | null;
 }
 
 export interface DoteEvaluacionResultado {
@@ -856,6 +858,15 @@ interface NuevoPersonajeDraftEstadoFlujoV1 {
     ventajas: {
         seleccionVentajas: SeleccionVentajaState[];
         seleccionDesventajas: SeleccionVentajaState[];
+        baseCaracteristicas?: Record<CaracteristicaKey, number> | null;
+        baseRaciales?: RacialDetalle[];
+        baseIdiomas?: {
+            Nombre: string;
+            Descripcion: string;
+            Secreto: boolean;
+            Oficial: boolean;
+            Origen?: string;
+        }[];
     };
     habilidades: HabilidadesFlujoState;
     conjuros: ConjurosFlujoState;
@@ -924,6 +935,7 @@ export class NuevoPersonajeService {
     private secuenciaDotePendiente = 1;
     private dotesProgresionConcedidas = 0;
     private dotesExtraRazaConcedidas = 0;
+    private firmasDotesPlantillaAplicadas = new Set<string>();
     private aumentosPendientesCaracteristica: AumentoCaracteristicaPendiente[] = [];
     private aumentosProgresionConcedidos = 0;
     private secuenciaAumentoPendiente = 1;
@@ -1072,7 +1084,8 @@ export class NuevoPersonajeService {
                 minimoSeleccionado: minimo,
                 tablasPermitidas,
             };
-            this.aplicarConfigGeneradorEfectiva();
+            if (!this.generadorTieneRepartoEnCurso())
+                this.aplicarConfigGeneradorEfectiva();
         } catch {
             // Si falla la lectura de settings remotos, mantenemos configuración en memoria.
         }
@@ -1083,7 +1096,7 @@ export class NuevoPersonajeService {
     ): void {
         if (!restriccion) {
             this.restriccionCampanaGenerador = null;
-            this.aplicarConfigGeneradorEfectiva();
+            this.aplicarConfigGeneradorEfectiva({ preservarRepartoCompatible: true });
             return;
         }
 
@@ -1102,7 +1115,7 @@ export class NuevoPersonajeService {
             minimoSeleccionado: minimo,
             tablasPermitidas,
         };
-        this.aplicarConfigGeneradorEfectiva();
+        this.aplicarConfigGeneradorEfectiva({ preservarRepartoCompatible: true });
     }
 
     reiniciar(): void {
@@ -1232,6 +1245,7 @@ export class NuevoPersonajeService {
         this.secuenciaDotePendiente = 1;
         this.dotesProgresionConcedidas = 0;
         this.dotesExtraRazaConcedidas = 0;
+        this.firmasDotesPlantillaAplicadas.clear();
         this.conjurosSesionPlaceholderPorId = {};
         this.bonusNivelLanzadorPorClase = {};
         this.aumentosPendientesCaracteristica = [];
@@ -1291,6 +1305,13 @@ export class NuevoPersonajeService {
                 merged.add(id);
         });
         this.estadoFlujo.plantillas.confirmadasIds = Array.from(merged);
+    }
+
+    getPlantillasSeleccionadasPendientesConfirmacion(): Plantilla[] {
+        const idsConfirmadas = this.getIdsPlantillasConfirmadasSet();
+        return (this.estadoFlujo.plantillas.seleccionadas ?? [])
+            .filter((plantilla) => !idsConfirmadas.has(this.toNumber(plantilla?.Id)))
+            .map((plantilla) => this.clonarProfundo(plantilla));
     }
 
     esPlantillaConfirmada(idPlantilla: number): boolean {
@@ -1654,8 +1675,8 @@ export class NuevoPersonajeService {
         return true;
     }
 
-    iniciarDistribucionHabilidadesPorPlantillasDG(): boolean {
-        const seleccionadas = this.estadoFlujo.plantillas.seleccionadas ?? [];
+    iniciarDistribucionHabilidadesPorPlantillasDG(plantillasObjetivo?: Plantilla[]): boolean {
+        const seleccionadas = plantillasObjetivo ?? this.estadoFlujo.plantillas.seleccionadas ?? [];
         if (seleccionadas.length < 1)
             return false;
 
@@ -1740,7 +1761,9 @@ export class NuevoPersonajeService {
             return true;
         }
 
-        const bajada = Math.min(Math.abs(cambio), actual);
+        const rangoInicial = this.obtenerRangoInicialHabilidadSesion(id);
+        const margenBajada = Math.max(0, actual - rangoInicial);
+        const bajada = Math.min(Math.abs(cambio), margenBajada);
         if (bajada < 1)
             return false;
 
@@ -2148,27 +2171,20 @@ export class NuevoPersonajeService {
     }
 
     registrarDotesPendientesPorProgresion(origen: string): DotePendienteState[] {
-        const nivelEfectivoDotes = this.getNivelEfectivoParaDotesProgresion();
-        const dgsRaciales = this.getDgsRacialesAdicionalesParaDotesProgresion();
-        const dotesBasePorDgsRaciales = Math.max(0, Math.floor(dgsRaciales / 3));
-        const doteInicialNivel = nivelEfectivoDotes > 0 && !this.tieneDgsAdicionalesParaDoteInicial() ? 1 : 0;
-        const totalPorProgresion = Math.max(
-            0,
-            doteInicialNivel + Math.floor((nivelEfectivoDotes + dgsRaciales) / 3) - dotesBasePorDgsRaciales
-        );
-        const nuevas = Math.max(0, totalPorProgresion - this.dotesProgresionConcedidas);
-        if (nuevas < 1)
+        const hitosDisponibles = this.getHitosDotesProgresion();
+        const hitosNuevos = hitosDisponibles.slice(this.dotesProgresionConcedidas);
+        if (hitosNuevos.length < 1)
             return [];
 
         const origenNormalizado = `${origen ?? ''}`.trim() || 'Progresion de nivel';
-        const creadas = Array.from({ length: nuevas }, () =>
-            this.crearDotePendiente('nivel', origenNormalizado, null)
+        const creadas = hitosNuevos.map((nivelProgresion) =>
+            this.crearDotePendiente('nivel', origenNormalizado, null, nivelProgresion)
         );
         this.dotesPendientes = [
             ...this.dotesPendientes,
             ...creadas,
         ];
-        this.dotesProgresionConcedidas += nuevas;
+        this.dotesProgresionConcedidas += hitosNuevos.length;
         return creadas.map((item) => ({ ...item }));
     }
 
@@ -2578,7 +2594,8 @@ export class NuevoPersonajeService {
     private crearDotePendiente(
         fuente: DoteFuentePendiente,
         origen: string,
-        tipoPermitido: string | null
+        tipoPermitido: string | null,
+        nivelProgresion: number | null = null
     ): DotePendienteState {
         const tipoNormalizado = `${tipoPermitido ?? ''}`.trim();
         return {
@@ -2587,6 +2604,9 @@ export class NuevoPersonajeService {
             origen: `${origen ?? ''}`.trim(),
             tipoPermitido: tipoNormalizado.length > 0 ? tipoNormalizado : null,
             estado: 'pendiente',
+            nivelProgresion: fuente === 'nivel'
+                ? Math.max(0, Math.trunc(this.toNumber(nivelProgresion))) || null
+                : null,
         };
     }
 
@@ -3145,10 +3165,8 @@ export class NuevoPersonajeService {
             const nombre = `${entrada?.Nombre ?? ''}`.trim();
             if (nombre.length < 1)
                 return;
-            const clase = this.catalogoClases.find((item) =>
-                this.normalizarTexto(item?.Nombre ?? '') === this.normalizarTexto(nombre)
-            );
-            if (!clase || !this.esClaseLanzadora(clase))
+            const clase = this.obtenerClaseCatalogoPorNombre(nombre);
+            if (!clase || !this.tieneLanzamientoPropio(clase))
                 return;
 
             const tipoClase = this.resolverTipoLanzamientoClase(clase);
@@ -3164,13 +3182,10 @@ export class NuevoPersonajeService {
         let maximo = -1;
         (this.personajeCreacion?.desgloseClases ?? []).forEach((entrada) => {
             const nombre = `${entrada?.Nombre ?? ''}`.trim();
-            const nivelActual = Math.max(0, this.toNumber(entrada?.Nivel));
-            if (nombre.length < 1 || nivelActual < 1)
+            if (nombre.length < 1)
                 return;
 
-            const clase = this.catalogoClases.find((item) =>
-                this.normalizarTexto(item?.Nombre ?? '') === this.normalizarTexto(nombre)
-            );
+            const clase = this.obtenerClaseCatalogoPorNombre(nombre);
             if (!clase)
                 return;
             if (tipo === 'arcano' && !clase?.Conjuros?.Arcanos)
@@ -3178,10 +3193,16 @@ export class NuevoPersonajeService {
             if (tipo === 'divino' && !clase?.Conjuros?.Divinos)
                 return;
 
-            const detalleActual = this.obtenerDetalleNivelClase(clase, nivelActual);
+            const nivelLanzadorActual = this.getNivelLanzadorEfectivoClase(nombre);
+            if (nivelLanzadorActual < 1)
+                return;
+
+            const detalleActual = this.obtenerDetallePorNivelLanzadorClase(clase, nivelLanzadorActual);
             if (!detalleActual)
                 return;
-            const detallePrevio = nivelActual > 1 ? this.obtenerDetalleNivelClase(clase, nivelActual - 1) : null;
+            const detallePrevio = nivelLanzadorActual > 1
+                ? this.obtenerDetallePorNivelLanzadorClase(clase, nivelLanzadorActual - 1)
+                : null;
             const acceso = this.resolverAccesoConjurosPorTipo(clase, detalleActual, detallePrevio);
             const niveles = acceso.nivelesAccesibles;
             if (!niveles || niveles.size < 1)
@@ -3197,17 +3218,18 @@ export class NuevoPersonajeService {
         let maximo = -1;
         (this.personajeCreacion?.desgloseClases ?? []).forEach((entrada) => {
             const nombre = `${entrada?.Nombre ?? ''}`.trim();
-            const nivelActual = Math.max(0, this.toNumber(entrada?.Nivel));
-            if (nombre.length < 1 || nivelActual < 1)
+            if (nombre.length < 1)
                 return;
 
-            const clase = this.catalogoClases.find((item) =>
-                this.normalizarTexto(item?.Nombre ?? '') === this.normalizarTexto(nombre)
-            );
+            const clase = this.obtenerClaseCatalogoPorNombre(nombre);
             if (!clase?.Conjuros?.Psionicos)
                 return;
 
-            const detalleActual = this.obtenerDetalleNivelClase(clase, nivelActual);
+            const nivelLanzadorActual = this.getNivelLanzadorEfectivoClase(nombre);
+            if (nivelLanzadorActual < 1)
+                return;
+
+            const detalleActual = this.obtenerDetallePorNivelLanzadorClase(clase, nivelLanzadorActual);
             if (!detalleActual)
                 return;
             maximo = Math.max(
@@ -3742,6 +3764,12 @@ export class NuevoPersonajeService {
     }
 
     private construirOrigenDoteDesdePendiente(pendiente: DotePendienteState): string {
+        if (pendiente.fuente === 'nivel') {
+            const nivelProgresion = Math.max(0, Math.trunc(this.toNumber(pendiente?.nivelProgresion)));
+            if (nivelProgresion > 0)
+                return `Dote adicional por nivel ${nivelProgresion}`;
+        }
+
         const prefijo = pendiente.fuente === 'nivel'
             ? 'Dote por nivel'
             : (pendiente.fuente === 'raza_dg' ? 'DGs de raza' : 'Dote adicional');
@@ -4397,14 +4425,14 @@ export class NuevoPersonajeService {
         const index = this.getIndexByMinimo(minimo);
         this.generadorConfigBase.minimoSeleccionado = this.getMinimoByIndex(index);
         this.persistirConfigGenerador();
-        this.aplicarConfigGeneradorEfectiva();
+        this.aplicarConfigGeneradorEfectiva({ forceReset: true });
     }
 
     setTablasPermitidasGenerador(cantidad: number): void {
         const tablas = this.normalizarTablasPermitidas(cantidad);
         this.generadorConfigBase.tablasPermitidas = tablas;
         this.persistirConfigGenerador();
-        this.aplicarConfigGeneradorEfectiva();
+        this.aplicarConfigGeneradorEfectiva({ forceReset: true });
     }
 
     seleccionarTablaGenerador(tabla: number): boolean {
@@ -5124,6 +5152,7 @@ export class NuevoPersonajeService {
     ): void {
         const seleccionadas = this.estadoFlujo.plantillas.seleccionadas;
         const raza = this.razaSeleccionada;
+        this.limpiarDotesAplicadasPorPlantillas();
 
         this.personajeCreacion.Correr = this.toNumber(raza?.Correr);
         this.personajeCreacion.Nadar = this.toNumber(raza?.Nadar);
@@ -5279,6 +5308,8 @@ export class NuevoPersonajeService {
                 });
             });
 
+            this.aplicarDotesPlantilla(plantilla, origen);
+
             const dadoDirecto = this.resolverDadoDesdePlantilla(plantilla);
             if (dadoDirecto > 0)
                 dadoGolpe = dadoDirecto;
@@ -5299,6 +5330,78 @@ export class NuevoPersonajeService {
         this.recalcularDerivadasEconomiaYProgresion(seleccionadas);
     }
 
+    private aplicarDotesPlantilla(plantilla: Plantilla, origen: string): void {
+        (plantilla?.Dotes ?? []).forEach((entrada) => {
+            const dote = entrada?.Dote;
+            const nombre = `${dote?.Nombre ?? ''}`.trim();
+            if (nombre.length < 1)
+                return;
+
+            const idExtra = this.toNumber((entrada?.Contexto as any)?.Id_extra);
+            const extra = `${(entrada?.Contexto as any)?.Extra ?? ''}`.trim() || 'No aplica';
+            this.agregarDoteAlPersonaje(dote, origen, idExtra, extra);
+            this.aplicarModificadoresDote(dote, origen, idExtra, extra);
+            this.registrarFirmaDotePlantilla(dote, origen, idExtra, extra);
+        });
+    }
+
+    private limpiarDotesAplicadasPorPlantillas(): void {
+        if (this.firmasDotesPlantillaAplicadas.size < 1)
+            return;
+
+        this.personajeCreacion.Dotes = (this.personajeCreacion.Dotes ?? []).filter((dote) =>
+            !this.firmasDotesPlantillaAplicadas.has(this.getFirmaDoteLegacy(dote))
+        );
+        this.personajeCreacion.DotesContextuales = (this.personajeCreacion.DotesContextuales ?? []).filter((entrada) =>
+            !this.firmasDotesPlantillaAplicadas.has(this.getFirmaDoteContextual(entrada))
+        );
+        this.firmasDotesPlantillaAplicadas.clear();
+    }
+
+    private registrarFirmaDotePlantilla(dote: Dote, origen: string, idExtra: number, extra: string): void {
+        const nombre = `${dote?.Nombre ?? ''}`.trim();
+        this.firmasDotesPlantillaAplicadas.add(this.getFirmaDoteNormalizada(nombre, extra, origen));
+        this.firmasDotesPlantillaAplicadas.add(
+            this.getFirmaDoteContextualNormalizada(this.toNumber(dote?.Id), nombre, idExtra, origen)
+        );
+    }
+
+    private getFirmaDoteLegacy(dote: DoteLegacy): string {
+        return this.getFirmaDoteNormalizada(
+            `${dote?.Nombre ?? ''}`.trim(),
+            `${dote?.Extra ?? ''}`.trim() || 'No aplica',
+            `${dote?.Origen ?? ''}`.trim()
+        );
+    }
+
+    private getFirmaDoteContextual(entrada: DoteContextual): string {
+        return this.getFirmaDoteContextualNormalizada(
+            this.toNumber(entrada?.Dote?.Id),
+            `${entrada?.Dote?.Nombre ?? ''}`.trim(),
+            this.toNumber(entrada?.Contexto?.Id_extra),
+            `${(entrada?.Contexto as any)?.Origen ?? ''}`.trim()
+        );
+    }
+
+    private getFirmaDoteNormalizada(nombre: string, extra: string, origen: string): string {
+        return [
+            this.normalizarTexto(nombre),
+            this.normalizarTexto(extra),
+            this.normalizarTexto(origen),
+        ].join('|');
+    }
+
+    private getFirmaDoteContextualNormalizada(idDote: number, nombre: string, idExtra: number, origen: string): string {
+        const identidad = Math.max(0, Math.trunc(this.toNumber(idDote))) > 0
+            ? `id:${Math.max(0, Math.trunc(this.toNumber(idDote)))}`
+            : `nombre:${this.normalizarTexto(nombre)}`;
+        return [
+            identidad,
+            `extra:${Math.max(0, Math.trunc(this.toNumber(idExtra)))}`,
+            `origen:${this.normalizarTexto(origen)}`,
+        ].join('|');
+    }
+
     private esHabilidadClaseaParaSesion(habilidad: Personaje['Habilidades'][number]): boolean {
         if (habilidad.Clasea)
             return true;
@@ -5310,6 +5413,19 @@ export class NuevoPersonajeService {
 
     private esHabilidadEntrenadaNoClaseaParaSesion(habilidad: Personaje['Habilidades'][number]): boolean {
         return !!habilidad?.Entrenada && !this.esHabilidadClaseaParaSesion(habilidad);
+    }
+
+    private obtenerRangoInicialHabilidadSesion(idHabilidad: number): number {
+        const id = Math.max(0, Math.trunc(this.toNumber(idHabilidad)));
+        if (id <= 0)
+            return 0;
+
+        const mapa = this.estadoFlujo?.habilidades?.rangosIniciales ?? {};
+        const valor = this.toNumber((mapa as Record<number, number>)?.[id] ?? 0);
+        if (!Number.isFinite(valor))
+            return 0;
+
+        return Math.max(0, Math.trunc(valor));
     }
 
     private esExtraHabilidadPendienteParaSesion(habilidad: Personaje['Habilidades'][number]): boolean {
@@ -5749,6 +5865,81 @@ export class NuevoPersonajeService {
         const nivelNormalizado = Math.max(1, Math.trunc(this.toNumber(nivel)));
         return (clase?.Desglose_niveles ?? [])
             .find((item) => this.toNumber(item?.Nivel) === nivelNormalizado) ?? null;
+    }
+
+    private obtenerClaseCatalogoPorNombre(nombreClase: string): Clase | null {
+        const nombreNorm = this.normalizarTexto(nombreClase);
+        if (nombreNorm.length < 1)
+            return null;
+        return this.catalogoClases.find((item) =>
+            this.normalizarTexto(item?.Nombre ?? '') === nombreNorm
+        ) ?? null;
+    }
+
+    private usaConjurosDiariosParaNivelLanzador(clase: Clase | null | undefined): boolean {
+        return !!clase?.Conjuros?.Arcanos
+            || !!clase?.Conjuros?.Divinos
+            || !!clase?.Conjuros?.Alma;
+    }
+
+    private tieneLanzamientoPropio(clase: Clase | null | undefined): boolean {
+        return this.usaConjurosDiariosParaNivelLanzador(clase)
+            || !!clase?.Conjuros?.Psionicos;
+    }
+
+    private puedeAumentarLanzador(clase: Clase | null | undefined): boolean {
+        return !!clase?.Aumenta_clase_lanzadora;
+    }
+
+    private detalleCuentaComoNivelLanzadorBase(clase: Clase | null | undefined, detalleNivel: ClaseNivelDetalle | null | undefined): boolean {
+        if (!clase || !detalleNivel)
+            return false;
+        if (this.usaConjurosDiariosParaNivelLanzador(clase))
+            return this.tieneAccesoRealConjurosDiarios(detalleNivel);
+        if (!!clase?.Conjuros?.Psionicos)
+            return Math.trunc(this.toNumber(detalleNivel?.Nivel_max_poder_accesible_nivel_lanzadorPsionico)) >= 0;
+        return false;
+    }
+
+    private requierePrimerEscalonLanzadorEnNivelUno(clase: Clase | null | undefined): boolean {
+        if (!this.tieneLanzamientoPropio(clase))
+            return false;
+        return (clase?.Conjuros?.Listado ?? []).some((ref) => Math.max(0, this.toNumber(ref?.Nivel)) === 0);
+    }
+
+    private obtenerNivelesClaseQueAumentanNivelLanzador(clase: Clase | null | undefined): number[] {
+        if (!this.tieneLanzamientoPropio(clase))
+            return [];
+        return (clase?.Desglose_niveles ?? [])
+            .filter((detalle) => this.detalleCuentaComoNivelLanzadorBase(clase, detalle))
+            .map((detalle) => Math.max(1, Math.trunc(this.toNumber(detalle?.Nivel))))
+            .filter((nivel, index, lista) => nivel > 0 && lista.indexOf(nivel) === index)
+            .sort((a, b) => a - b);
+    }
+
+    private obtenerNivelLanzadorBaseClase(nombreClase: string, nivelClaseMaximo?: number): number {
+        const clase = this.obtenerClaseCatalogoPorNombre(nombreClase);
+        if (!this.tieneLanzamientoPropio(clase))
+            return 0;
+        const nivelLimite = nivelClaseMaximo === undefined
+            ? this.obtenerNivelActualClase(nombreClase)
+            : Math.max(0, Math.trunc(this.toNumber(nivelClaseMaximo)));
+        if (nivelLimite < 1)
+            return 0;
+        return this.obtenerNivelesClaseQueAumentanNivelLanzador(clase)
+            .filter((nivelClase) => nivelClase <= nivelLimite)
+            .length;
+    }
+
+    private obtenerDetallePorNivelLanzadorClase(clase: Clase | null | undefined, nivelLanzador: number): ClaseNivelDetalle | null {
+        const nivelObjetivo = Math.max(0, Math.trunc(this.toNumber(nivelLanzador)));
+        if (!clase || nivelObjetivo < 1)
+            return null;
+        const hitos = this.obtenerNivelesClaseQueAumentanNivelLanzador(clase);
+        const nivelClase = hitos[nivelObjetivo - 1];
+        if (!Number.isFinite(nivelClase) || nivelClase < 1)
+            return null;
+        return this.obtenerDetalleNivelClase(clase, nivelClase);
     }
 
     private actualizarDesgloseClase(nombreClase: string, nivel: number): void {
@@ -6315,7 +6506,7 @@ export class NuevoPersonajeService {
             .filter((item) => this.normalizarTexto(item?.Nombre ?? '') !== nombreClaseAplicada)
             .map((item) => this.catalogoClases
                 .find((clase) => this.normalizarTexto(clase?.Nombre ?? '') === this.normalizarTexto(item?.Nombre ?? '')))
-            .filter((item): item is Clase => !!item && this.esClaseLanzadora(item));
+            .filter((item): item is Clase => !!item && this.tieneLanzamientoPropio(item));
 
         if (previas.length < 1)
             return [];
@@ -6374,17 +6565,29 @@ export class NuevoPersonajeService {
         const errores: string[] = [];
         const nivelReferencia = Math.max(1, Math.trunc(this.toNumber(nivelAplicado)));
 
-        if (this.esClaseLanzadora(claseAplicada)) {
+        if (this.tieneLanzamientoPropio(claseAplicada)) {
             const bonusActual = this.obtenerBonusNivelLanzadorClase(claseAplicada?.Nombre ?? '');
-            const nivelPrevio = Math.max(0, nivelReferencia - 1 + bonusActual);
-            const nivelActual = nivelPrevio + 1;
-            const detalleActual = this.obtenerDetalleNivelClase(claseAplicada, nivelActual);
-            if (!detalleActual) {
-                errores.push(`No existe desglose de nivel ${nivelActual} para validar el contrato de conjuros de ${claseAplicada?.Nombre ?? 'clase desconocida'}.`);
-            } else {
-                const detallePrevio = nivelPrevio > 0 ? this.obtenerDetalleNivelClase(claseAplicada, nivelPrevio) : null;
-                const acceso = this.resolverAccesoConjurosPorTipo(claseAplicada, detalleActual, detallePrevio);
-                errores.push(...acceso.errores);
+            const nivelPrevioBase = this.obtenerNivelLanzadorBaseClase(claseAplicada?.Nombre ?? '', nivelReferencia - 1);
+            const nivelActualBase = this.obtenerNivelLanzadorBaseClase(claseAplicada?.Nombre ?? '', nivelReferencia);
+            const nivelPrevio = Math.max(0, nivelPrevioBase + bonusActual);
+            const nivelActual = Math.max(0, nivelActualBase + bonusActual);
+            if (nivelActual > nivelPrevio) {
+                const detalleActual = this.obtenerDetallePorNivelLanzadorClase(claseAplicada, nivelActual);
+                if (!detalleActual) {
+                    errores.push(`No existe desglose equivalente al nivel de lanzador ${nivelActual} para validar el contrato de conjuros de ${claseAplicada?.Nombre ?? 'clase desconocida'}.`);
+                } else {
+                    const detallePrevio = nivelPrevio > 0 ? this.obtenerDetallePorNivelLanzadorClase(claseAplicada, nivelPrevio) : null;
+                    const acceso = this.resolverAccesoConjurosPorTipo(claseAplicada, detalleActual, detallePrevio);
+                    errores.push(...acceso.errores);
+                }
+            } else if (nivelReferencia === 1 && this.requierePrimerEscalonLanzadorEnNivelUno(claseAplicada)) {
+                const detalleActual = this.obtenerDetalleNivelClase(claseAplicada, 1);
+                if (!detalleActual) {
+                    errores.push(`No existe desglose de nivel 1 para validar el contrato de conjuros de ${claseAplicada?.Nombre ?? 'clase desconocida'}.`);
+                } else {
+                    const acceso = this.resolverAccesoConjurosPorTipo(claseAplicada, detalleActual, null);
+                    errores.push(...acceso.errores);
+                }
             }
         }
 
@@ -6402,12 +6605,15 @@ export class NuevoPersonajeService {
 
             const nivelPrevio = this.getNivelLanzadorEfectivoClase(objetivo.Nombre);
             const nivelActual = nivelPrevio + 1;
-            const detalleActual = this.obtenerDetalleNivelClase(objetivo, nivelActual);
+            if (!this.tieneLanzamientoPropio(objetivo))
+                return;
+
+            const detalleActual = this.obtenerDetallePorNivelLanzadorClase(objetivo, nivelActual);
             if (!detalleActual) {
-                errores.push(`No existe desglose de nivel ${nivelActual} para validar el contrato de conjuros de ${objetivo?.Nombre ?? 'clase desconocida'}.`);
+                errores.push(`No existe desglose equivalente al nivel de lanzador ${nivelActual} para validar el contrato de conjuros de ${objetivo?.Nombre ?? 'clase desconocida'}.`);
                 return;
             }
-            const detallePrevio = nivelPrevio > 0 ? this.obtenerDetalleNivelClase(objetivo, nivelPrevio) : null;
+            const detallePrevio = nivelPrevio > 0 ? this.obtenerDetallePorNivelLanzadorClase(objetivo, nivelPrevio) : null;
             const acceso = this.resolverAccesoConjurosPorTipo(objetivo, detalleActual, detallePrevio);
             errores.push(...acceso.errores);
         });
@@ -6427,19 +6633,24 @@ export class NuevoPersonajeService {
         const avisos: string[] = [...(advertenciasAumentos ?? [])];
         const origenBase = `${claseAplicada?.Nombre ?? 'Clase'} nivel ${Math.max(1, Math.trunc(this.toNumber(nivelAplicado)))}`;
 
-        if (this.esClaseLanzadora(claseAplicada)) {
+        if (this.tieneLanzamientoPropio(claseAplicada)) {
             const bonusActual = this.obtenerBonusNivelLanzadorClase(claseAplicada?.Nombre ?? '');
-            const nivelPrevio = Math.max(0, Math.max(1, Math.trunc(this.toNumber(nivelAplicado))) - 1 + bonusActual);
-            const nivelActual = nivelPrevio + 1;
-            const { entrada, avisos: avisosEntrada } = this.crearEntradaSesionConjuros(
-                claseAplicada,
-                `${origenBase} (clase)`,
-                nivelPrevio,
-                nivelActual
-            );
-            avisos.push(...avisosEntrada);
-            if (entrada)
-                entradas.push(entrada);
+            const nivelClaseActual = Math.max(1, Math.trunc(this.toNumber(nivelAplicado)));
+            const nivelPrevioBase = this.obtenerNivelLanzadorBaseClase(claseAplicada?.Nombre ?? '', nivelClaseActual - 1);
+            const nivelActualBase = this.obtenerNivelLanzadorBaseClase(claseAplicada?.Nombre ?? '', nivelClaseActual);
+            const nivelPrevio = Math.max(0, nivelPrevioBase + bonusActual);
+            const nivelActual = Math.max(0, nivelActualBase + bonusActual);
+            if (nivelActual > nivelPrevio) {
+                const { entrada, avisos: avisosEntrada } = this.crearEntradaSesionConjuros(
+                    claseAplicada,
+                    `${origenBase} (clase)`,
+                    nivelPrevio,
+                    nivelActual
+                );
+                avisos.push(...avisosEntrada);
+                if (entrada)
+                    entradas.push(entrada);
+            }
         }
 
         (aumentosLanzador ?? []).forEach((seleccion) => {
@@ -6453,6 +6664,8 @@ export class NuevoPersonajeService {
                 avisos.push(`No se pudo resolver la clase objetivo del aumento de lanzador #${this.toNumber(seleccion?.indice)}.`);
                 return;
             }
+            if (!this.tieneLanzamientoPropio(objetivo))
+                return;
 
             const nivelPrevio = this.getNivelLanzadorEfectivoClase(objetivo.Nombre);
             const nivelActual = nivelPrevio + 1;
@@ -6485,14 +6698,17 @@ export class NuevoPersonajeService {
         nivelLanzadorActual: number
     ): { entrada: ConjurosSesionStateEntrada | null; avisos: string[]; } {
         const avisos: string[] = [];
-        const detalleActual = this.obtenerDetalleNivelClase(claseObjetivo, nivelLanzadorActual);
+        const detalleActual = this.obtenerDetallePorNivelLanzadorClase(claseObjetivo, nivelLanzadorActual);
         const detallePrevio = nivelLanzadorPrevio > 0
-            ? this.obtenerDetalleNivelClase(claseObjetivo, nivelLanzadorPrevio)
+            ? this.obtenerDetallePorNivelLanzadorClase(claseObjetivo, nivelLanzadorPrevio)
             : null;
         if (!detalleActual) {
-            avisos.push(`No existe desglose de nivel ${nivelLanzadorActual} para conjuros de ${claseObjetivo?.Nombre ?? 'clase desconocida'}.`);
+            avisos.push(`No existe desglose equivalente al nivel de lanzador ${nivelLanzadorActual} para conjuros de ${claseObjetivo?.Nombre ?? 'clase desconocida'}.`);
             return { entrada: null, avisos };
         }
+
+        if (this.requiereAccesoRealConjurosDiarios(claseObjetivo) && !this.tieneAccesoRealConjurosDiarios(detalleActual))
+            return { entrada: null, avisos };
 
         const elegibles = this.obtenerConjurosElegiblesParaClase(
             claseObjetivo,
@@ -6524,9 +6740,6 @@ export class NuevoPersonajeService {
 
         const autoadicion = !usaConocidosTotal && !usaConocidosPorNivel && !almaPendiente;
         const sinElegibles = elegibles.conjuros.length < 1;
-        if (sinElegibles) {
-            avisos.push(`No hay conjuros elegibles para ${claseObjetivo.Nombre} en este nivel de lanzador.`);
-        }
         const idsAutoadicionados = autoadicion
             ? elegibles.conjuros
                 .filter((conjuro) => {
@@ -6632,6 +6845,15 @@ export class NuevoPersonajeService {
         return resultado;
     }
 
+    private requiereAccesoRealConjurosDiarios(clase: Clase | null | undefined): boolean {
+        return this.usaConjurosDiariosParaNivelLanzador(clase);
+    }
+
+    private tieneAccesoRealConjurosDiarios(detalleNivel: ClaseNivelDetalle | null | undefined): boolean {
+        const diarios = this.normalizarMapaConjurosDiarios(detalleNivel?.Conjuros_diarios);
+        return Object.values(diarios).some((valor) => this.toNumber(valor) >= 0);
+    }
+
     private resolverAccesoConjurosPorTipo(
         claseObjetivo: Clase,
         detalleActual: ClaseNivelDetalle,
@@ -6640,7 +6862,8 @@ export class NuevoPersonajeService {
         const requiereArcano = !!claseObjetivo?.Conjuros?.Arcanos;
         const requiereDivino = !!claseObjetivo?.Conjuros?.Divinos;
         const requierePsionico = !!claseObjetivo?.Conjuros?.Psionicos;
-        const usaArcanoDivino = requiereArcano || requiereDivino;
+        const requiereAlma = !!claseObjetivo?.Conjuros?.Alma;
+        const usaConjurosDiarios = requiereArcano || requiereDivino || requiereAlma;
         const errores: string[] = [];
 
         const diariosActual = this.normalizarMapaConjurosDiarios(detalleActual?.Conjuros_diarios);
@@ -6656,8 +6879,8 @@ export class NuevoPersonajeService {
             ? Math.max(-1, Math.trunc(this.toNumber(detallePrevio?.Nivel_max_poder_accesible_nivel_lanzadorPsionico)))
             : -1;
 
-        if (usaArcanoDivino && requierePsionico) {
-            errores.push(`Contrato de conjuros inválido en ${claseObjetivo?.Nombre ?? 'clase desconocida'}: no se admite mezcla arcana/divina con psiónica.`);
+        if (usaConjurosDiarios && requierePsionico) {
+            errores.push(`Contrato de conjuros inválido en ${claseObjetivo?.Nombre ?? 'clase desconocida'}: no se admite mezcla con conjuros diarios y psiónica.`);
             return {
                 nivelesAccesibles: null,
                 nivelesRecienDesbloqueados: new Set<number>(),
@@ -6666,12 +6889,16 @@ export class NuevoPersonajeService {
             };
         }
 
-        if (usaArcanoDivino) {
-            if (!diariosInformados)
-                errores.push(`Contrato de conjuros inválido en ${claseObjetivo?.Nombre ?? 'clase desconocida'}: lanzador arcano/divino sin Conjuros_diarios.`);
+        if (usaConjurosDiarios) {
+            if (!diariosInformados) {
+                const tipoContrato = requiereAlma && !requiereArcano && !requiereDivino
+                    ? 'lanzador de alma'
+                    : 'lanzador arcano/divino';
+                errores.push(`Contrato de conjuros inválido en ${claseObjetivo?.Nombre ?? 'clase desconocida'}: ${tipoContrato} sin Conjuros_diarios.`);
+            }
             if (nivelMaxPoderPsionico >= 0) {
                 errores.push(
-                    `Contrato de conjuros inválido en ${claseObjetivo?.Nombre ?? 'clase desconocida'}: nivel_max_poder_accesible_nivel_lanzadorPsionico no debe informarse en lanzadores arcanos/divinos.`
+                    `Contrato de conjuros inválido en ${claseObjetivo?.Nombre ?? 'clase desconocida'}: nivel_max_poder_accesible_nivel_lanzadorPsionico no debe informarse en lanzadores arcanos/divinos ni en clases que usan Conjuros_diarios.`
                 );
             }
 
@@ -6794,8 +7021,6 @@ export class NuevoPersonajeService {
             resultado.push(conjuro);
         });
 
-        if (resultado.length < 1)
-            avisos.push(`Sin conjuros elegibles para ${claseObjetivo.Nombre}.`);
         return { conjuros: resultado, nivelesPorConjuro, avisos, acceso };
     }
 
@@ -6884,13 +7109,6 @@ export class NuevoPersonajeService {
         return descriptores.some((descriptor) => opuestos.has(descriptor));
     }
 
-    private esClaseLanzadora(clase: Clase | null | undefined): boolean {
-        return !!clase?.Conjuros?.Arcanos
-            || !!clase?.Conjuros?.Divinos
-            || !!clase?.Conjuros?.Psionicos
-            || !!clase?.Conjuros?.Alma;
-    }
-
     private obtenerCatalogoEscuelasEspecializables(escuelasCatalogo: EscuelaConjuros[]): EscuelaConjuros[] {
         const usadas = new Set<number>();
         return (escuelasCatalogo ?? [])
@@ -6957,7 +7175,7 @@ export class NuevoPersonajeService {
     }
 
     private getNivelLanzadorEfectivoClase(nombreClase: string): number {
-        const nivelBase = this.obtenerNivelActualClase(nombreClase);
+        const nivelBase = this.obtenerNivelLanzadorBaseClase(nombreClase);
         const bonus = this.obtenerBonusNivelLanzadorClase(nombreClase);
         return Math.max(0, nivelBase + bonus);
     }
@@ -7875,6 +8093,9 @@ export class NuevoPersonajeService {
                 ventajas: {
                     seleccionVentajas: this.clonarProfundo(this.estadoFlujo.ventajas.seleccionVentajas),
                     seleccionDesventajas: this.clonarProfundo(this.estadoFlujo.ventajas.seleccionDesventajas),
+                    baseCaracteristicas: this.clonarProfundo(this.estadoFlujo.ventajas.baseCaracteristicas),
+                    baseRaciales: this.clonarProfundo(this.estadoFlujo.ventajas.baseRaciales),
+                    baseIdiomas: this.clonarProfundo(this.estadoFlujo.ventajas.baseIdiomas),
                 },
                 habilidades: this.clonarProfundo(this.estadoFlujo.habilidades),
                 conjuros: this.clonarProfundo(this.estadoFlujo.conjuros),
@@ -7948,6 +8169,7 @@ export class NuevoPersonajeService {
                 ...this.clonarProfundo(flujoPersistido.conjuros ?? this.crearConjurosFlujoBase()),
             };
         }
+        this.restaurarBasesVentajasDesdeBorrador(borrador);
 
         this.dotesPendientes = this.clonarProfundo(borrador.dotesPendientes ?? []);
         this.secuenciaDotePendiente = Math.max(1, Math.trunc(this.toNumber(borrador.secuenciaDotePendiente)));
@@ -7986,6 +8208,127 @@ export class NuevoPersonajeService {
         this.recalcularEfectosVentajas();
         this.recalcularSimulacionPlantillas();
         this.refrescarDerivadasPreviewNuevoPersonaje();
+    }
+
+    private restaurarBasesVentajasDesdeBorrador(borrador: NuevoPersonajeDraftV1): void {
+        const ventajasPersistidas = borrador.estadoFlujoPersistible?.ventajas;
+        this.estadoFlujo.ventajas.baseCaracteristicas = this.resolverBaseCaracteristicasRestaurada(
+            ventajasPersistidas?.baseCaracteristicas,
+            borrador
+        );
+        this.estadoFlujo.ventajas.baseRaciales = Array.isArray(ventajasPersistidas?.baseRaciales)
+            ? this.copiarRaciales(ventajasPersistidas?.baseRaciales)
+            : this.reconstruirBaseRacialesDesdeBorrador();
+        this.estadoFlujo.ventajas.baseIdiomas = Array.isArray(ventajasPersistidas?.baseIdiomas)
+            ? this.copiarIdiomas(ventajasPersistidas?.baseIdiomas)
+            : this.reconstruirBaseIdiomasDesdeBorrador();
+    }
+
+    private resolverBaseCaracteristicasRestaurada(
+        basePersistida: Record<CaracteristicaKey, number> | null | undefined,
+        borrador: NuevoPersonajeDraftV1
+    ): Record<CaracteristicaKey, number> {
+        if (basePersistida && typeof basePersistida === 'object') {
+            return {
+                Fuerza: this.toNumber(basePersistida.Fuerza),
+                Destreza: this.toNumber(basePersistida.Destreza),
+                Constitucion: this.toNumber(basePersistida.Constitucion),
+                Inteligencia: this.toNumber(basePersistida.Inteligencia),
+                Sabiduria: this.toNumber(basePersistida.Sabiduria),
+                Carisma: this.toNumber(basePersistida.Carisma),
+            };
+        }
+
+        const baseDesdeGenerador = this.intentarReconstruirBaseCaracteristicasDesdeGenerador(borrador);
+        if (baseDesdeGenerador)
+            return baseDesdeGenerador;
+
+        const personaje = borrador.personaje ?? this.personajeCreacion;
+        const caracteristicasVarios = personaje?.CaracteristicasVarios as Record<string, Array<{ valor?: number | null; Valor?: number | null; }>> | undefined;
+        const resultado = {} as Record<CaracteristicaKey, number>;
+
+        CARACTERISTICAS_KEYS.forEach((key) => {
+            if (this.esCaracteristicaPerdida(key)) {
+                resultado[key] = 0;
+                return;
+            }
+
+            const total = this.toNumber((personaje as Record<string, any>)?.[key]);
+            const suma = (Array.isArray(caracteristicasVarios?.[key]) ? caracteristicasVarios[key] : [])
+                .reduce((acc, item) => acc + this.toNumber(item?.valor ?? item?.Valor), 0);
+            resultado[key] = total - suma;
+        });
+
+        return resultado;
+    }
+
+    private intentarReconstruirBaseCaracteristicasDesdeGenerador(
+        borrador: NuevoPersonajeDraftV1
+    ): Record<CaracteristicaKey, number> | null {
+        if (borrador.estadoFlujoPersistible?.caracteristicasGeneradas !== true)
+            return null;
+        if (Math.max(0, Math.trunc(this.toNumber(borrador.aumentosProgresionConcedidos))) > 0)
+            return null;
+
+        const asignaciones = borrador.estadoFlujoPersistible?.generador?.asignaciones;
+        if (!asignaciones)
+            return null;
+
+        const razaMods = borrador.razaSeleccionada?.Modificadores ?? this.razaSeleccionada?.Modificadores;
+        const resultado = {} as Record<CaracteristicaKey, number>;
+
+        for (const key of CARACTERISTICAS_KEYS) {
+            if (this.esCaracteristicaPerdida(key)) {
+                resultado[key] = 0;
+                continue;
+            }
+
+            const asignada = asignaciones[key];
+            if (asignada === null || asignada === undefined)
+                return null;
+
+            resultado[key] = this.toNumber(asignada) + this.toNumber((razaMods as Record<string, any> | undefined)?.[key]);
+        }
+
+        return resultado;
+    }
+
+    private reconstruirBaseRacialesDesdeBorrador(): RacialDetalle[] {
+        const origenesExcluidos = this.getOrigenesExcluidosRestauracionBorrador();
+        return this.copiarRaciales((this.personajeCreacion.Raciales ?? []).filter((racial: any) => {
+            const origen = this.normalizarTexto(racial?.Origen ?? '');
+            return origen.length < 1 || !origenesExcluidos.has(origen);
+        }));
+    }
+
+    private reconstruirBaseIdiomasDesdeBorrador() {
+        const origenesExcluidos = this.getOrigenesExcluidosRestauracionBorrador();
+        return this.copiarIdiomas((this.personajeCreacion.Idiomas ?? []).filter((idioma) => {
+            const origen = this.normalizarTexto(idioma?.Origen ?? '');
+            return origen.length < 1 || !origenesExcluidos.has(origen);
+        }));
+    }
+
+    private getOrigenesExcluidosRestauracionBorrador(): Set<string> {
+        const origenes = new Set<string>();
+
+        (this.personajeCreacion.Ventajas ?? []).forEach((ventaja) => {
+            const nombre = this.normalizarTexto(
+                typeof ventaja === 'string'
+                    ? ventaja
+                    : (ventaja?.Nombre ?? '')
+            );
+            if (nombre.length > 0)
+                origenes.add(nombre);
+        });
+
+        (this.estadoFlujo.plantillas.seleccionadas ?? []).forEach((plantilla) => {
+            const nombre = this.normalizarTexto(plantilla?.Nombre ?? '');
+            if (nombre.length > 0)
+                origenes.add(nombre);
+        });
+
+        return origenes;
     }
 
     private leerBorradorLocal(uid: string): NuevoPersonajeDraftV1 | null {
@@ -8589,14 +8932,60 @@ export class NuevoPersonajeService {
         });
     }
 
-    private aplicarConfigGeneradorEfectiva(): void {
+    private aplicarConfigGeneradorEfectiva(options?: { forceReset?: boolean; preservarRepartoCompatible?: boolean; }): void {
         const config = this.getConfigGeneradorEfectiva();
+        const minimoPrevio = this.estadoFlujo.generador.minimoSeleccionado;
+        const indicePrevio = this.estadoFlujo.generador.indiceMinimo;
+        const tablasPrevias = this.estadoFlujo.generador.tablasPermitidas;
         const indiceMinimo = this.getIndexByMinimo(config.minimoSeleccionado);
-        this.estadoFlujo.generador.minimoSeleccionado = this.getMinimoByIndex(indiceMinimo);
+        const minimoNormalizado = this.getMinimoByIndex(indiceMinimo);
+        const configuracionSinCambios = minimoPrevio === minimoNormalizado
+            && tablasPrevias === config.tablasPermitidas;
+
+        this.estadoFlujo.generador.minimoSeleccionado = minimoNormalizado;
         this.estadoFlujo.generador.indiceMinimo = indiceMinimo;
         this.estadoFlujo.generador.tablasPermitidas = config.tablasPermitidas;
         this.asegurarTiradasPorIndice(indiceMinimo);
+
+        if (options?.forceReset) {
+            this.resetearGeneradorCaracteristicas();
+            return;
+        }
+
+        if (configuracionSinCambios)
+            return;
+
+        if (options?.preservarRepartoCompatible
+            && this.puedePreservarRepartoGenerador(indicePrevio, indiceMinimo, config.tablasPermitidas)) {
+            return;
+        }
+
         this.resetearGeneradorCaracteristicas();
+    }
+
+    private puedePreservarRepartoGenerador(indicePrevio: number, indiceNuevo: number, tablasPermitidasNuevas: number): boolean {
+        if (indicePrevio !== indiceNuevo)
+            return false;
+
+        const tablaSeleccionada = this.estadoFlujo.generador.tablaSeleccionada;
+        if (tablaSeleccionada === null)
+            return !this.generadorTieneRepartoEnCurso();
+
+        return tablaSeleccionada >= 1 && tablaSeleccionada <= tablasPermitidasNuevas;
+    }
+
+    private generadorTieneRepartoEnCurso(): boolean {
+        if (this.estadoFlujo.generador.tablaSeleccionada !== null)
+            return true;
+
+        if ((this.estadoFlujo.generador.poolDisponible?.length ?? 0) > 0)
+            return true;
+
+        return CARACTERISTICAS_KEYS.some((key) => {
+            if (this.esCaracteristicaPerdida(key))
+                return false;
+            return this.estadoFlujo.generador.asignaciones[key] !== null;
+        });
     }
 
     private getConfigGeneradorEfectiva(): { minimoSeleccionado: number; tablasPermitidas: number; } {
@@ -8876,8 +9265,47 @@ export class NuevoPersonajeService {
         return Math.max(0, nivelClases + dgsPlantillas);
     }
 
+    private getHitosDotesProgresion(): number[] {
+        const nivelEfectivoDotes = this.getNivelEfectivoParaDotesProgresion();
+        const dgsRaciales = this.getDgsRacialesAdicionalesParaDotesProgresion();
+        const dotesBasePorDgsRaciales = Math.max(0, Math.floor(dgsRaciales / 3));
+        const doteInicialNivel = nivelEfectivoDotes > 0 && !this.tieneDgsAdicionalesParaDoteInicial() ? 1 : 0;
+        const totalPorProgresion = Math.max(
+            0,
+            doteInicialNivel + Math.floor((nivelEfectivoDotes + dgsRaciales) / 3) - dotesBasePorDgsRaciales
+        );
+        if (totalPorProgresion < 1)
+            return [];
+
+        const nivelVisible = Math.max(
+            0,
+            this.toNumber(this.personajeCreacion?.NEP),
+            this.getNivelEfectivoPersonajeActual()
+        );
+        const hitosVisibles: number[] = [];
+        if (!this.tieneDgsAdicionalesParaDoteInicial())
+            hitosVisibles.push(1);
+
+        for (let nivel = 3; nivel <= nivelVisible; nivel += 3)
+            hitosVisibles.push(nivel);
+
+        const inicio = Math.max(0, hitosVisibles.length - totalPorProgresion);
+        return hitosVisibles.slice(inicio);
+    }
+
     private getDgsRacialesAdicionalesParaDotesProgresion(): number {
         return Math.max(0, this.toNumber(this.razaSeleccionada?.Dgs_adicionales?.Cantidad));
+    }
+
+    private getNivelEfectivoPersonajeActual(): number {
+        const nivelClases = (this.personajeCreacion?.desgloseClases ?? [])
+            .reduce((acc, clase) => acc + this.toNumber(clase?.Nivel), 0);
+        const dgsRaza = this.toNumber(this.razaSeleccionada?.Dgs_adicionales?.Cantidad);
+        const dgsPlantillas = this.getDgsAdicionalesDesdePlantillas(this.estadoFlujo.plantillas.seleccionadas);
+        const ajusteRaza = this.toNumber(this.razaSeleccionada?.Ajuste_nivel);
+        const ajustePlantillas = (this.estadoFlujo.plantillas.seleccionadas ?? [])
+            .reduce((acc, plantilla) => acc + this.toNumber(plantilla?.Ajuste_nivel), 0);
+        return Math.max(0, nivelClases + dgsRaza + dgsPlantillas + ajusteRaza + ajustePlantillas);
     }
 
     private tieneDgsAdicionalesParaDoteInicial(): boolean {

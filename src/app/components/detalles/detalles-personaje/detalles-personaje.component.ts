@@ -146,6 +146,13 @@ export class DetallesPersonajeComponent implements OnInit, OnChanges, AfterViewI
         this.regionesSub?.unsubscribe();
     }
 
+    getTotalVisibleHabilidad(
+        habilidad: { Mod_car: number; Rangos: number; Rangos_varios: number; }
+    ): string {
+        const total = Number(habilidad?.Rangos ?? 0) + Number(habilidad?.Rangos_varios ?? 0) + Number(habilidad?.Mod_car ?? 0);
+        return total >= 0 ? `+${total}` : `${total}`;
+    }
+
     @HostListener('window:resize')
     onWindowResize(): void {
         this.actualizarModoCompacto();
@@ -1065,6 +1072,10 @@ Fue/Des/Con: ${this.formatSigned(madurez.modFisico)} | Int/Sab/Car: ${this.forma
     getOrigenDote(dote: DoteLegacy): string | null {
         const origen = `${dote?.Origen ?? ''}`.trim();
         return this.tieneTextoVisible(origen) ? origen : null;
+    }
+
+    usaLayoutPreviewReordenado(): boolean {
+        return this.esPreviewNuevoPersonaje && !this.modoCompactoLayout;
     }
 
     getOrigenIdioma(idioma: { Origen?: string; }): string | null {

@@ -1,0 +1,29 @@
+<div class="info-overlay" (click)="onCerrar()">
+    <div class="info-dialog" (click)="$event.stopPropagation()">
+        <div class="info-header">
+            <div class="info-title-wrap">
+                <span class="info-icon-shell" aria-hidden="true">
+                    <mat-icon>{{icono}}</mat-icon>
+                </span>
+                <h2 class="tw-m-0 info-title">{{titulo}}</h2>
+            </div>
+            <button mat-icon-button type="button" class="info-icon-btn" aria-label="Cerrar" (click)="onCerrar()">
+                <mat-icon>close</mat-icon>
+            </button>
+        </div>
+
+        <div class="info-body">
+            <section class="info-section" *ngFor="let seccion of secciones">
+                <h3 class="tw-m-0 info-section-title" *ngIf="(seccion.titulo ?? '').length > 0">{{seccion.titulo}}</h3>
+                <ul class="info-list" *ngIf="(seccion.items ?? []).length > 0">
+                    <li *ngFor="let item of seccion.items">{{item}}</li>
+                </ul>
+                <p class="tw-m-0 info-line" *ngFor="let linea of seccion.lineas ?? []">{{linea}}</p>
+            </section>
+        </div>
+
+        <div class="info-actions">
+            <button mat-raised-button color="primary" type="button" (click)="onCerrar()">Entendido</button>
+        </div>
+    </div>
+</div>

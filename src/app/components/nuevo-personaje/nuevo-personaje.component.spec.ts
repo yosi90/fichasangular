@@ -237,6 +237,37 @@ function crearRazaConRacialesOpcionales(): Raza {
     return raza;
 }
 
+function crearVentajaMock(overrides: Partial<VentajaDetalle> = {}): VentajaDetalle {
+    return {
+        Id: 10,
+        Nombre: 'Fuerte',
+        Descripcion: '',
+        Disipable: false,
+        Coste: -1,
+        Mejora: 1,
+        Caracteristica: false,
+        Fuerza: true,
+        Destreza: false,
+        Constitucion: false,
+        Inteligencia: false,
+        Sabiduria: false,
+        Carisma: false,
+        Fortaleza: false,
+        Reflejos: false,
+        Voluntad: false,
+        Iniciativa: false,
+        Duplica_oro: false,
+        Aumenta_oro: false,
+        Idioma_extra: false,
+        Manual: { Id: 0, Nombre: '', Pagina: 0 },
+        Rasgo: { Id: 0, Nombre: '', Descripcion: '' },
+        Idioma: { Id: 0, Nombre: '', Descripcion: '' },
+        Habilidad: { Id: 0, Nombre: '', Descripcion: '' },
+        Oficial: true,
+        ...overrides,
+    };
+}
+
 function crearRazaMutadaConRacialesOpcionalesPrereq(): Raza {
     const raza = crearRazaConRacialesOpcionales();
     raza.Id = 301;
@@ -1182,7 +1213,7 @@ describe('NuevoPersonajeComponent', () => {
         expect(component.Subtramas).toEqual([]);
     });
 
-    it('actualizarTramas con campaña valida autoselecciona primera trama y primera subtrama', () => {
+    it('actualizarTramas con campaña valida deja la historia sin especificar por defecto', () => {
         const campanas: Campana[] = [{
             Id: 1,
             Nombre: 'Campaña A',
@@ -1198,8 +1229,8 @@ describe('NuevoPersonajeComponent', () => {
 
         component.actualizarTramas();
 
-        expect(component.Personaje.Trama).toBe('Trama 1');
-        expect(component.Personaje.Subtrama).toBe('Sub 1');
+        expect(component.Personaje.Trama).toBe(component.tramaSinSeleccionCampana);
+        expect(component.Personaje.Subtrama).toBe(component.subtramaSinSeleccionCampana);
     });
 
     it('actualizarTramas carga la politica aunque la campaña no tenga tramas', async () => {
@@ -1233,8 +1264,56 @@ describe('NuevoPersonajeComponent', () => {
 
         expect(campanaSvcMock.getCampaignDetail).toHaveBeenCalledWith(7);
         expect(component.selectedCampaignPolicy?.permitirHomebrewGeneral).toBeFalse();
-        expect(component.Personaje.Trama).toBe('Trama base');
-        expect(component.Personaje.Subtrama).toBe('Subtrama base');
+        expect(component.Personaje.Trama).toBe(component.tramaSinSeleccionCampana);
+        expect(component.Personaje.Subtrama).toBe(component.subtramaSinSeleccionCampana);
+    });
+
+    it('resolverContextoIdsCreacion mantiene idCampana y omite trama/subtrama cuando la historia queda sin especificar', () => {
+        component.Campanas = [{
+            Id: 1,
+            Nombre: 'Campaña A',
+            Tramas: [{ Id: 10, Nombre: 'Trama 1', Subtramas: [{ Id: 100, Nombre: 'Sub 1' }] }],
+        }];
+        component.Personaje.Campana = 'Campaña A';
+        component.Personaje.Trama = component.tramaSinSeleccionCampana;
+        component.Personaje.Subtrama = component.subtramaSinSeleccionCampana;
+
+        const contexto = (component as any).resolverContextoIdsCreacion();
+
+        expect(contexto.idCampana).toBe(1);
+        expect(contexto.idTrama).toBeNull();
+        expect(contexto.idSubtrama).toBeNull();
+    });
+
+    it('puedeContinuarBasicos permite campaña sin trama ni subtrama concretas', () => {
+        component.Personaje.Nombre = 'Aldric';
+        component.Personaje.Genero = 'Macho';
+        component.Personaje.Alineamiento = 'Legal bueno';
+        component.Personaje.Deidad = 'Heironeous';
+        component.Personaje.Campana = 'Campaña A';
+        component.Personaje.Trama = component.tramaSinSeleccionCampana;
+        component.Personaje.Subtrama = component.subtramaSinSeleccionCampana;
+        component.Personaje.Edad = 21;
+        component.Personaje.Peso = 75;
+        component.Personaje.Altura = 1.8;
+
+        expect(component.puedeContinuarBasicos).toBeTrue();
+    });
+
+    it('puedeContinuarBasicos bloquea trama concreta sin subtrama', () => {
+        component.Personaje.Nombre = 'Aldric';
+        component.Personaje.Genero = 'Macho';
+        component.Personaje.Alineamiento = 'Legal bueno';
+        component.Personaje.Deidad = 'Heironeous';
+        component.Personaje.Campana = 'Campaña A';
+        component.Personaje.Trama = 'Trama 1';
+        component.Personaje.Subtrama = '';
+        component.Personaje.Edad = 21;
+        component.Personaje.Peso = 75;
+        component.Personaje.Altura = 1.8;
+
+        expect(component.puedeContinuarBasicos).toBeFalse();
+        expect(component.motivosBloqueoBasicos).toContain('Si eliges una trama concreta para la campaña, debes elegir también una subtrama. Si no, deja la historia sin especificar por ahora.');
     });
 
     it('canOpenCampaignManagement solo se activa para master o superior con permiso de crear campañas', () => {
@@ -1543,6 +1622,53 @@ describe('NuevoPersonajeComponent', () => {
         component.abrirDetallesDeidadSeleccionada();
 
         expect(emitSpy).not.toHaveBeenCalled();
+    });
+
+    it('abrirInfoAlineamientoRacial abre el modal propio con preferencias y feedback', () => {
+        component.seleccionarRaza(crearRazaConConflictoDuroAlineamiento());
+        component.Personaje.Alineamiento = 'Neutral bueno';
+        component.onAlineamientoChange();
+
+        component.abrirInfoAlineamientoRacial();
+
+        expect(component.modalInformacionBasicosAbierto).toBeTrue();
+        expect(component.informacionBasicosModalTitulo).toBe('Alineamiento racial');
+        expect(component.informacionBasicosModalSecciones[0].titulo).toBe('Preferencias de la raza');
+        expect(component.informacionBasicosModalSecciones[0].items).toContain('Ley / normas: Siempre legal');
+        expect(component.informacionBasicosModalSecciones[1].titulo).toBe('Estado actual');
+        expect(component.informacionBasicosModalSecciones[1].items?.join(' ')).toContain('Neutral bueno');
+    });
+
+    it('abrirInfoAlineamientoRacial no lista valores de alineamiento que no aplican y unifica etiquetas', () => {
+        component.seleccionarRaza(crearRazaConPreferenciasSinBasico('Tendencia a ser caotico', 'Tendencia a ser bueno'));
+
+        component.abrirInfoAlineamientoRacial();
+
+        expect(component.informacionBasicosModalSecciones[0].items).toEqual([
+            'Ley / normas: Tendencia a ser caotico',
+            'Moral / trato: Tendencia a ser bueno',
+        ]);
+    });
+
+    it('abrirInfoEdadRacial abre el modal propio con rangos listados y contexto actual', () => {
+        component.seleccionarRaza(crearRazaMock());
+        component.onEdadChange(45);
+
+        component.abrirInfoEdadRacial();
+
+        expect(component.informacionBasicosModalTitulo).toBe('Rangos de edad');
+        expect(component.informacionBasicosModalSecciones[0].titulo).toBe('Rangos oficiales');
+        expect(component.informacionBasicosModalSecciones[0].items).toEqual([
+            'Adulto: 20',
+            'Mediana: 40',
+            'Viejo: 60',
+            'Venerable: 80',
+        ]);
+        expect(component.informacionBasicosModalSecciones[1].lineas).toEqual([
+            'Mediana edad',
+            'Tu personaje esta en mediana edad.',
+        ]);
+        expect(component.edadRangosHint).toBe('Adulto 20, Mediana 40, Viejo 60, Venerable 80');
     });
 
     it('si existe una deidad custom en el personaje, también aparece en el selector', () => {
@@ -2037,6 +2163,46 @@ describe('NuevoPersonajeComponent', () => {
         expect(component.selectedInternalTabIndex).toBe(5);
     });
 
+    it('aplica dotes automáticas de plantilla al personaje durante el flujo normal', async () => {
+        await component.finalizarGeneracionCaracteristicas({
+            Fuerza: 14,
+            Destreza: 15,
+            Constitucion: 13,
+            Inteligencia: 12,
+            Sabiduria: 10,
+            Carisma: 8,
+        });
+        const plantillaConDote = crearPlantillaMock({
+            Id: 820,
+            Nombre: 'Licántropo (lince) [nacido]',
+            Dotes: [{
+                Dote: {
+                    Id: 620,
+                    Nombre: 'Alerta',
+                    Descripcion: '',
+                    Beneficio: '',
+                    Manual: { Id: 1, Nombre: 'Manual base', Pagina: 1 },
+                    Modificadores: {},
+                },
+                Contexto: {
+                    Entidad: 'plantilla',
+                    Id_plantilla: 820,
+                    Id_extra: 0,
+                    Extra: 'No aplica',
+                },
+            }] as any,
+        });
+
+        component.seleccionarPlantilla(plantillaConDote);
+
+        expect(component.Personaje.Dotes.some((dote) =>
+            dote.Nombre === 'Alerta' && dote.Origen === 'Licántropo (lince) [nacido]'
+        )).toBeTrue();
+        expect(component.Personaje.DotesContextuales.some((dote) =>
+            dote.Dote?.Id === 620 && (dote.Contexto as any)?.Origen === 'Licántropo (lince) [nacido]'
+        )).toBeTrue();
+    });
+
     it('tras confirmar plantillas, las confirmadas quedan inmutables', async () => {
         await component.finalizarGeneracionCaracteristicas({
             Fuerza: 14,
@@ -2057,6 +2223,26 @@ describe('NuevoPersonajeComponent', () => {
         expect(component.esPlantillaConfirmada(plantillaFijada)).toBeTrue();
     });
 
+    it('solo permite quitar desde la UI plantillas no confirmadas', async () => {
+        await component.finalizarGeneracionCaracteristicas({
+            Fuerza: 14,
+            Destreza: 15,
+            Constitucion: 13,
+            Inteligencia: 12,
+            Sabiduria: 10,
+            Carisma: 8,
+        });
+        const plantillaFijada = crearPlantillaMock({ Id: 812, Nombre: 'Fijada' });
+        component.seleccionarPlantilla(plantillaFijada);
+        spyOn<any>(component, 'abrirSelectorAumentosCaracteristica').and.resolveTo(true);
+        await component.continuarDesdePlantillas();
+
+        const plantillaNueva = crearPlantillaMock({ Id: 813, Nombre: 'Nueva editable' });
+        component.seleccionarPlantilla(plantillaNueva);
+
+        expect(component.puedeQuitarPlantillaSeleccion(plantillaFijada)).toBeFalse();
+        expect(component.puedeQuitarPlantillaSeleccion(plantillaNueva)).toBeTrue();
+    });
     it('en vueltas posteriores solo limpia plantillas nuevas no confirmadas', async () => {
         await component.finalizarGeneracionCaracteristicas({
             Fuerza: 14,
@@ -2081,6 +2267,80 @@ describe('NuevoPersonajeComponent', () => {
         expect(ids).toContain(plantillaFijada.Id);
         expect(ids).not.toContain(plantillaNuevaA.Id);
         expect(ids).not.toContain(plantillaNuevaB.Id);
+    });
+
+    it('no reabre habilidades por DGs de plantillas ya confirmadas en una vuelta posterior', async () => {
+        await component.finalizarGeneracionCaracteristicas({
+            Fuerza: 14,
+            Destreza: 15,
+            Constitucion: 13,
+            Inteligencia: 12,
+            Sabiduria: 10,
+            Carisma: 8,
+        });
+        const plantillaFijada = crearPlantillaMock({
+            Id: 805,
+            Nombre: 'Licántropo fijado',
+            Licantronia_dg: { Id_dado: 3, Dado: 'D8', Multiplicador: 1, Suma: 0 },
+            Puntos_habilidad: { Suma: 0, Suma_fija: 4 },
+        });
+        component.seleccionarPlantilla(plantillaFijada);
+        spyOn<any>(component, 'abrirSelectorAumentosCaracteristica').and.resolveTo(true);
+
+        await component.continuarDesdePlantillas();
+
+        expect(nuevoPSvc.EstadoFlujo.pasoActual).toBe('habilidades');
+        expect(nuevoPSvc.EstadoFlujo.habilidades.puntosTotales).toBe(4);
+
+        nuevoPSvc.EstadoFlujo.habilidades.puntosRestantes = 0;
+        expect(nuevoPSvc.cerrarDistribucionHabilidades()).toBe('ventajas');
+        nuevoPSvc.actualizarPasoActual('plantillas');
+
+        const plantillaNueva = crearPlantillaMock({ Id: 806, Nombre: 'Nueva sin DG' });
+        component.seleccionarPlantilla(plantillaNueva);
+
+        await component.continuarDesdePlantillas();
+
+        expect(nuevoPSvc.EstadoFlujo.habilidades.activa).toBeFalse();
+        expect(nuevoPSvc.EstadoFlujo.pasoActual).toBe('ventajas');
+    });
+
+    it('en una vuelta posterior solo concede habilidades por los DGs de plantillas nuevas', async () => {
+        await component.finalizarGeneracionCaracteristicas({
+            Fuerza: 14,
+            Destreza: 15,
+            Constitucion: 13,
+            Inteligencia: 12,
+            Sabiduria: 10,
+            Carisma: 8,
+        });
+        const plantillaFijada = crearPlantillaMock({
+            Id: 807,
+            Nombre: 'Licántropo fijado',
+            Licantronia_dg: { Id_dado: 3, Dado: 'D8', Multiplicador: 1, Suma: 0 },
+            Puntos_habilidad: { Suma: 0, Suma_fija: 4 },
+        });
+        component.seleccionarPlantilla(plantillaFijada);
+        spyOn<any>(component, 'abrirSelectorAumentosCaracteristica').and.resolveTo(true);
+
+        await component.continuarDesdePlantillas();
+
+        nuevoPSvc.EstadoFlujo.habilidades.puntosRestantes = 0;
+        expect(nuevoPSvc.cerrarDistribucionHabilidades()).toBe('ventajas');
+        nuevoPSvc.actualizarPasoActual('plantillas');
+
+        const plantillaNueva = crearPlantillaMock({
+            Id: 808,
+            Nombre: 'Nueva con DG',
+            Licantronia_dg: { Id_dado: 3, Dado: 'D8', Multiplicador: 2, Suma: 0 },
+            Puntos_habilidad: { Suma: 0, Suma_fija: 2 },
+        });
+        component.seleccionarPlantilla(plantillaNueva);
+
+        await component.continuarDesdePlantillas();
+
+        expect(nuevoPSvc.EstadoFlujo.pasoActual).toBe('habilidades');
+        expect(nuevoPSvc.EstadoFlujo.habilidades.puntosTotales).toBe(2);
     });
 
     it('no muestra en bloqueadas plantillas ya seleccionadas o confirmadas', async () => {
@@ -2767,6 +3027,32 @@ describe('NuevoPersonajeComponent', () => {
         expect(component.esRangoNuevoHabilidad(habilidad)).toBeFalse();
     });
 
+    it('no permite bajar rangos cuando la habilidad está en el valor inicial de la sesión', () => {
+        const habilidad = {
+            Id: 12,
+            Nombre: 'Buscar',
+            Rangos: 3,
+            Clasea: true,
+            Entrenada: false,
+        } as any;
+        nuevoPSvc.EstadoFlujo.habilidades.rangosIniciales = { 12: 3 };
+
+        expect(component.puedeBajarRangoHabilidad(habilidad)).toBeFalse();
+    });
+
+    it('permite bajar rangos solo cuando la habilidad supera el valor inicial de la sesión', () => {
+        const habilidad = {
+            Id: 13,
+            Nombre: 'Buscar',
+            Rangos: 4,
+            Clasea: true,
+            Entrenada: false,
+        } as any;
+        nuevoPSvc.EstadoFlujo.habilidades.rangosIniciales = { 13: 3 };
+
+        expect(component.puedeBajarRangoHabilidad(habilidad)).toBeTrue();
+    });
+
     it('onExtraHabilidadChange actualiza extra y desbloquea continuar si era obligatorio', () => {
         component.Personaje.Habilidades = [
             {
@@ -3072,11 +3358,55 @@ describe('NuevoPersonajeComponent', () => {
         component.seleccionarClaseParaAplicar(claseConConjuros);
 
         await component.continuarDesdeClases();
-        (nuevoPSvc.EstadoFlujo.habilidades as any).returnStep = 'conjuros';
+        expect((nuevoPSvc.EstadoFlujo.habilidades as any).returnStep).toBe('conjuros');
         await component.continuarDesdeHabilidades();
 
         expect(nuevoPSvc.EstadoFlujo.pasoActual).toBe('conjuros');
         expect(component.selectedInternalTabIndex).toBe(6);
+    });
+
+    it('continuarDesdeHabilidades salta dotes si la clase divina aun no tiene acceso real a magia', async () => {
+        const explorador = crearClaseMock({
+            Id: 3481,
+            Nombre: 'Explorador',
+            Puntos_habilidad: { Id: 1, Valor: 0 },
+            Conjuros: {
+                ...crearClaseMock().Conjuros,
+                Divinos: true,
+                Conocidos_total: false,
+                Conocidos_nivel_a_nivel: false,
+                Listado: [{ Id: 4081, Nombre: 'Hablar con los animales', Nivel: 1, Espontaneo: false }],
+            },
+            Desglose_niveles: [{
+                Nivel: 1,
+                Ataque_base: '+1',
+                Salvaciones: { Fortaleza: '+2', Reflejos: '+2', Voluntad: '+0' },
+                Nivel_max_poder_accesible_nivel_lanzadorPsionico: -1,
+                Reserva_psionica: 0,
+                Aumentos_clase_lanzadora: [],
+                Conjuros_diarios: crearConjurosDiariosMock(),
+                Conjuros_conocidos_nivel_a_nivel: {},
+                Conjuros_conocidos_total: 0,
+                Dotes: [],
+                Especiales: [],
+            }],
+        });
+        component.catalogoClases = [explorador];
+        component.catalogoConjuros = [];
+        nuevoPSvc.setCatalogoClases(component.catalogoClases);
+        nuevoPSvc.setCatalogoConjuros(component.catalogoConjuros);
+        (component as any).recalcularClasesVisibles();
+        component.seleccionarClaseParaAplicar(explorador);
+        spyOn<any>(component, 'resolverFlujoPostDotesFinNivel').and.resolveTo(true);
+        spyOn<any>(component, 'resolverPasoPostDotesFinNivel').and.returnValue('clases');
+
+        await component.continuarDesdeClases();
+        expect((nuevoPSvc.EstadoFlujo.habilidades as any).returnStep).toBe('dotes');
+
+        await component.continuarDesdeHabilidades();
+
+        expect(nuevoPSvc.EstadoFlujo.pasoActual).toBe('clases');
+        expect(component.selectedInternalTabIndex).toBe(4);
     });
 
     it('continuarDesdeConjuros con retorno dotes completa pipeline y vuelve a clases', async () => {
@@ -3267,6 +3597,52 @@ describe('NuevoPersonajeComponent', () => {
         (nuevoPSvc.EstadoFlujo.habilidades as any).returnStep = 'conjuros';
         await component.continuarDesdeHabilidades();
 
+        expect(component.conjurosSeleccionadosActuales.length).toBe(0);
+    });
+
+    it('no duplica mensajes de sin elegibles en la sesión de conjuros', async () => {
+        const claseSinElegibles = crearClaseMock({
+            Id: 3511,
+            Nombre: 'Sin elegibles',
+            Puntos_habilidad: { Id: 1, Valor: 0 },
+            Conjuros: {
+                ...crearClaseMock().Conjuros,
+                Arcanos: true,
+                Conocidos_total: true,
+                Listado: [],
+            },
+            Desglose_niveles: [{
+                Nivel: 1,
+                Ataque_base: '+0',
+                Salvaciones: { Fortaleza: '+0', Reflejos: '+0', Voluntad: '+2' },
+                Nivel_max_poder_accesible_nivel_lanzadorPsionico: -1,
+                Reserva_psionica: 0,
+                Aumentos_clase_lanzadora: [],
+                Conjuros_diarios: crearConjurosDiariosMock([0]),
+                Conjuros_conocidos_nivel_a_nivel: {},
+                Conjuros_conocidos_total: 1,
+                Dotes: [],
+                Especiales: [],
+            }],
+        });
+        component.catalogoClases = [claseSinElegibles];
+        component.catalogoConjuros = [];
+        nuevoPSvc.setCatalogoClases(component.catalogoClases);
+        nuevoPSvc.setCatalogoConjuros(component.catalogoConjuros);
+        (component as any).recalcularClasesVisibles();
+        component.seleccionarClaseParaAplicar(claseSinElegibles);
+
+        await component.continuarDesdeClases();
+        expect((nuevoPSvc.EstadoFlujo.habilidades as any).returnStep).toBe('conjuros');
+        await component.continuarDesdeHabilidades();
+
+        const entrada = component.entradaConjurosActual;
+        expect(entrada).not.toBeNull();
+        expect(entrada?.sinElegibles).toBeTrue();
+        expect(component.mensajeProgresoConjuros).toBe('No hay conjuros elegibles para este avance.');
+        expect((entrada?.avisos ?? []).some((text) => text.toLowerCase().includes('sin conjuros elegibles para sin elegibles'))).toBeFalse();
+        expect((entrada?.avisos ?? []).some((text) => text.toLowerCase().includes('no hay conjuros elegibles para sin elegibles'))).toBeFalse();
+        expect(component.conjurosDisponiblesActuales.length).toBe(0);
         expect(component.conjurosSeleccionadosActuales.length).toBe(0);
     });
 
@@ -3494,6 +3870,48 @@ describe('NuevoPersonajeComponent', () => {
         await promise;
 
         expect(abrirIdiomasSpy).toHaveBeenCalledWith(2);
+    });
+
+    it('abre el selector propio para opcionales de clase y devuelve la selección confirmada', async () => {
+        const promise = (component as any).solicitarSeleccionesOpcionalesClase([{
+            grupo: 1,
+            opciones: [
+                { clave: 'dote:801', tipo: 'dote', nombre: 'Presa mejorada', extra: 'No aplica' },
+                { clave: 'especial:901', tipo: 'especial', nombre: 'Estilo de combate', extra: 'Combate con dos armas' },
+            ],
+        }]);
+        await Promise.resolve();
+
+        expect(component.modalSelectorClaseOpcionalAbierto).toBeTrue();
+        expect(component.selectorClaseOpcionalTitulo).toBe('Grupo opcional 1');
+        expect(component.selectorClaseOpcionalOpciones).toEqual([
+            { clave: 'dote:801', tipo: 'dote', nombre: 'Presa mejorada', extra: 'No aplica' },
+            { clave: 'especial:901', tipo: 'especial', nombre: 'Estilo de combate', extra: 'Combate con dos armas' },
+        ]);
+
+        component.onConfirmarSelectorClaseOpcional('especial:901');
+
+        await expectAsync(promise).toBeResolvedTo({ 1: 'especial:901' });
+        expect(component.modalSelectorClaseOpcionalAbierto).toBeFalse();
+        expect(component.selectorClaseOpcionalOpciones).toEqual([]);
+    });
+
+    it('cancelar el selector propio de opcionales de clase aborta la selección', async () => {
+        const promise = (component as any).solicitarSeleccionesOpcionalesClase([{
+            grupo: 2,
+            opciones: [
+                { clave: 'dote:802', tipo: 'dote', nombre: 'Puñetazo aturdidor', extra: 'No aplica' },
+            ],
+        }]);
+        await Promise.resolve();
+
+        expect(component.modalSelectorClaseOpcionalAbierto).toBeTrue();
+
+        component.onCerrarModalSelectorClaseOpcional();
+
+        await expectAsync(promise).toBeResolvedTo(null);
+        expect(component.modalSelectorClaseOpcionalAbierto).toBeFalse();
+        expect(component.selectorClaseOpcionalTitulo).toBe('Grupo opcional');
     });
 
     it('mago puede confirmar no especializarse y continuar el flujo', async () => {
@@ -3850,6 +4268,19 @@ describe('NuevoPersonajeComponent', () => {
             voluntad: 0,
         });
         expect(component.getTextoSalvacionesDeltaClase(fila)).toBe('Fort +1 | Ref +1 | Vol +0');
+    });
+
+    it('solo pinta el nivel de clase como good a partir de nivel 2', () => {
+        expect(component.getClaseNivelChipCss({ siguienteNivel: 1 } as any)).toBe('');
+        expect(component.getClaseNivelChipCss({ siguienteNivel: 2 } as any)).toBe('good');
+        expect(component.getClaseNivelChipCss({ siguienteNivel: 3 } as any)).toBe('good');
+    });
+
+    it('solo pinta como good las salvaciones que suman', () => {
+        expect(component.getClaseSalvacionChipCss(0)).toBe('');
+        expect(component.getClaseSalvacionChipCss(-1)).toBe('');
+        expect(component.getClaseSalvacionChipCss(1)).toBe('good');
+        expect(component.getClaseSalvacionChipCss(2)).toBe('good');
     });
 
     it('oculta no aplica y filtra beneficios con extra +0 o 0 en la tabla de clases', () => {
@@ -4914,11 +5345,31 @@ describe('NuevoPersonajeComponent', () => {
         expect(swalSpy).toHaveBeenCalled();
     });
 
-    it('chip homebrew queda bloqueado cuando el personaje no es oficial', () => {
-        component.Personaje.Oficial = false;
-        expect(component.homebrewForzado).toBeTrue();
-        expect(component.incluirHomebrewPlantillasEfectivo).toBeTrue();
-        expect(component.incluirHomebrewVentajasEfectivo).toBeTrue();
+    it('ventajas y desventajas muestran entradas homebrew sin toggle previo', () => {
+        component.catalogoVentajas = [
+            crearVentajaMock({ Id: 1, Nombre: 'Oficial', Oficial: true }),
+            crearVentajaMock({ Id: 2, Nombre: 'Homebrew', Oficial: false }),
+        ];
+        component.catalogoDesventajas = [
+            crearVentajaMock({ Id: 3, Nombre: 'Desventaja homebrew', Oficial: false }),
+        ];
+
+        expect(component.ventajasVisibles.map((item) => item.Nombre)).toEqual(['Oficial', 'Homebrew']);
+        expect(component.desventajasVisibles.map((item) => item.Nombre)).toEqual(['Desventaja homebrew']);
+    });
+
+    it('recupera oficialidad al quitar todas las ventajas y desventajas', () => {
+        const ventaja = crearVentajaMock({ Id: 12, Nombre: 'Uso real del sistema' });
+        nuevoPSvc.setCatalogosVentajas([ventaja], []);
+
+        component.recalcularOficialidad();
+        expect(component.Personaje.Oficial).toBeTrue();
+
+        component.toggleVentajaSeleccion(ventaja);
+        expect(component.Personaje.Oficial).toBeFalse();
+
+        component.toggleVentajaSeleccion(ventaja);
+        expect(component.Personaje.Oficial).toBeTrue();
     });
 
     it('limita edad, peso y altura al maximo de cifras permitido', () => {
@@ -5026,6 +5477,220 @@ describe('NuevoPersonajeComponent', () => {
 
         componentRestaurado.ngOnDestroy();
         localStorage.removeItem(`fichas35.nuevoPersonaje.draft.v1.${uid}`);
+    });
+
+    it('reabre la preview flotante al restaurar un draft avanzado en desktop', async () => {
+        const uid = 'uid-borrador-preview-desktop';
+        const borradorSvc = new NuevoPersonajeService();
+        borradorSvc.seleccionarRaza(crearRazaMock());
+        borradorSvc.PersonajeCreacion.Nombre = 'Aldric';
+        borradorSvc.actualizarPasoActual('habilidades');
+        borradorSvc.activarPersistenciaBorradorLocal(uid);
+        borradorSvc.persistirBorradorLocalAhora();
+        borradorSvc.desactivarPersistenciaBorradorLocal();
+
+        const storageKey = `fichas35.nuevoPersonaje.draft.v1.${uid}`;
+        const raw = localStorage.getItem(storageKey) as string;
+        const borrador = JSON.parse(raw);
+        borrador.estadoFlujoPersistible.pasoActual = 'habilidades';
+        borrador.estadoFlujoPersistible.caracteristicasGeneradas = true;
+        localStorage.setItem(storageKey, JSON.stringify(borrador));
+
+        spyOnProperty(window, 'innerWidth', 'get').and.returnValue(1600);
+        spyOnProperty(window, 'innerHeight', 'get').and.returnValue(900);
+        spyOn(Swal, 'fire').and.resolveTo({ isConfirmed: true } as any);
+        const restauradoSvc = new NuevoPersonajeService();
+        const componentRestaurado = new NuevoPersonajeComponent(
+            { currentUser: { uid, displayName: 'Aldric', email: 'aldric@test.com' } } as any,
+            restauradoSvc,
+            campanaSvcMock,
+            alineamientoSvcMock,
+            claseSvcMock,
+            conjuroSvcMock,
+            escuelaSvcMock,
+            disciplinaSvcMock,
+            razaSvcMock,
+            plantillaSvcMock,
+            ventajaSvcMock,
+            habilidadSvcMock,
+            idiomaSvcMock,
+            doteSvcMock,
+            enemigoPredilectoSvcMock,
+            armaSvcMock,
+            armaduraSvcMock,
+            grupoArmaSvcMock,
+            grupoArmaduraSvcMock,
+            dominioSvcMock,
+            regionSvcMock,
+            deidadSvcMock,
+            tipoCriaturaSvcMock,
+            monstruoSvcMock,
+            especialSvcMock,
+            personajeSvcMock,
+            fichasDescargaBgSvcMock,
+            chatFloatingSvcMock,
+            userSvcMock,
+            userProfileNavigationSvcMock,
+        );
+
+        await (componentRestaurado as any).inicializarComponente();
+
+        expect(componentRestaurado.selectedInternalTabIndex).toBe(5);
+        expect(componentRestaurado.ventanaDetalleAbierta).toBeTrue();
+
+        componentRestaurado.ngOnDestroy();
+        localStorage.removeItem(storageKey);
+    });
+
+    it('restaura dotes automáticas de plantilla al reabrir un borrador avanzado', async () => {
+        const uid = 'uid-borrador-plantilla-dotes';
+        const borradorSvc = new NuevoPersonajeService();
+        borradorSvc.seleccionarRaza(crearRazaMock());
+        borradorSvc.aplicarCaracteristicasGeneradas({
+            Fuerza: 14,
+            Destreza: 15,
+            Constitucion: 13,
+            Inteligencia: 12,
+            Sabiduria: 10,
+            Carisma: 8,
+        });
+        borradorSvc.agregarPlantillaSeleccion(crearPlantillaMock({
+            Id: 821,
+            Nombre: 'Licántropo (lince) [nacido]',
+            Dotes: [{
+                Dote: {
+                    Id: 621,
+                    Nombre: 'Alerta',
+                    Descripcion: '',
+                    Beneficio: '',
+                    Manual: { Id: 1, Nombre: 'Manual base', Pagina: 1 },
+                    Modificadores: {},
+                },
+                Contexto: {
+                    Entidad: 'plantilla',
+                    Id_plantilla: 821,
+                    Id_extra: 0,
+                    Extra: 'No aplica',
+                },
+            }] as any,
+        }));
+        borradorSvc.actualizarPasoActual('habilidades');
+        borradorSvc.activarPersistenciaBorradorLocal(uid);
+        borradorSvc.persistirBorradorLocalAhora();
+        borradorSvc.desactivarPersistenciaBorradorLocal();
+
+        const storageKey = `fichas35.nuevoPersonaje.draft.v1.${uid}`;
+        spyOnProperty(window, 'innerWidth', 'get').and.returnValue(1600);
+        spyOnProperty(window, 'innerHeight', 'get').and.returnValue(900);
+        spyOn(Swal, 'fire').and.resolveTo({ isConfirmed: true } as any);
+        const restauradoSvc = new NuevoPersonajeService();
+        const componentRestaurado = new NuevoPersonajeComponent(
+            { currentUser: { uid, displayName: 'Aldric', email: 'aldric@test.com' } } as any,
+            restauradoSvc,
+            campanaSvcMock,
+            alineamientoSvcMock,
+            claseSvcMock,
+            conjuroSvcMock,
+            escuelaSvcMock,
+            disciplinaSvcMock,
+            razaSvcMock,
+            plantillaSvcMock,
+            ventajaSvcMock,
+            habilidadSvcMock,
+            idiomaSvcMock,
+            doteSvcMock,
+            enemigoPredilectoSvcMock,
+            armaSvcMock,
+            armaduraSvcMock,
+            grupoArmaSvcMock,
+            grupoArmaduraSvcMock,
+            dominioSvcMock,
+            regionSvcMock,
+            deidadSvcMock,
+            tipoCriaturaSvcMock,
+            monstruoSvcMock,
+            especialSvcMock,
+            personajeSvcMock,
+            fichasDescargaBgSvcMock,
+            chatFloatingSvcMock,
+            userSvcMock,
+            userProfileNavigationSvcMock,
+        );
+
+        await (componentRestaurado as any).inicializarComponente();
+
+        expect(componentRestaurado.Personaje.Dotes.some((dote) =>
+            dote.Nombre === 'Alerta' && dote.Origen === 'Licántropo (lince) [nacido]'
+        )).toBeTrue();
+        expect(componentRestaurado.Personaje.DotesContextuales.some((dote) =>
+            dote.Dote?.Id === 621 && (dote.Contexto as any)?.Origen === 'Licántropo (lince) [nacido]'
+        )).toBeTrue();
+
+        componentRestaurado.ngOnDestroy();
+        localStorage.removeItem(storageKey);
+    });
+
+    it('no reabre la preview flotante al restaurar un draft avanzado fuera de desktop', async () => {
+        const uid = 'uid-borrador-preview-mobile';
+        const borradorSvc = new NuevoPersonajeService();
+        borradorSvc.seleccionarRaza(crearRazaMock());
+        borradorSvc.PersonajeCreacion.Nombre = 'Aldric';
+        borradorSvc.actualizarPasoActual('habilidades');
+        borradorSvc.activarPersistenciaBorradorLocal(uid);
+        borradorSvc.persistirBorradorLocalAhora();
+        borradorSvc.desactivarPersistenciaBorradorLocal();
+
+        const storageKey = `fichas35.nuevoPersonaje.draft.v1.${uid}`;
+        const raw = localStorage.getItem(storageKey) as string;
+        const borrador = JSON.parse(raw);
+        borrador.estadoFlujoPersistible.pasoActual = 'habilidades';
+        borrador.estadoFlujoPersistible.caracteristicasGeneradas = true;
+        localStorage.setItem(storageKey, JSON.stringify(borrador));
+
+        spyOnProperty(window, 'innerWidth', 'get').and.returnValue(1024);
+        spyOnProperty(window, 'innerHeight', 'get').and.returnValue(800);
+        spyOn(Swal, 'fire').and.resolveTo({ isConfirmed: true } as any);
+        const restauradoSvc = new NuevoPersonajeService();
+        const componentRestaurado = new NuevoPersonajeComponent(
+            { currentUser: { uid, displayName: 'Aldric', email: 'aldric@test.com' } } as any,
+            restauradoSvc,
+            campanaSvcMock,
+            alineamientoSvcMock,
+            claseSvcMock,
+            conjuroSvcMock,
+            escuelaSvcMock,
+            disciplinaSvcMock,
+            razaSvcMock,
+            plantillaSvcMock,
+            ventajaSvcMock,
+            habilidadSvcMock,
+            idiomaSvcMock,
+            doteSvcMock,
+            enemigoPredilectoSvcMock,
+            armaSvcMock,
+            armaduraSvcMock,
+            grupoArmaSvcMock,
+            grupoArmaduraSvcMock,
+            dominioSvcMock,
+            regionSvcMock,
+            deidadSvcMock,
+            tipoCriaturaSvcMock,
+            monstruoSvcMock,
+            especialSvcMock,
+            personajeSvcMock,
+            fichasDescargaBgSvcMock,
+            chatFloatingSvcMock,
+            userSvcMock,
+            userProfileNavigationSvcMock,
+        );
+
+        await (componentRestaurado as any).inicializarComponente();
+
+        expect(componentRestaurado.selectedInternalTabIndex).toBe(5);
+        expect(componentRestaurado.ventanaDetalleAbierta).toBeFalse();
+
+        componentRestaurado.ngOnDestroy();
+        localStorage.removeItem(storageKey);
     });
 
     it('abre el personaje ya persistido si el borrador local ya tenía id válido en backend', async () => {
@@ -5143,5 +5808,77 @@ describe('NuevoPersonajeComponent', () => {
         expect(localStorage.getItem(`fichas35.nuevoPersonaje.draft.v1.${uid}`)).toBeNull();
 
         componentLimpio.ngOnDestroy();
+    });
+
+    it('restaurar borrador sin ventajas reales limpia un Oficial stale', async () => {
+        const uid = 'uid-borrador-ventajas-stale';
+        const borradorSvc = new NuevoPersonajeService();
+        borradorSvc.seleccionarRaza(crearRazaMock());
+        borradorSvc.PersonajeCreacion.Nombre = 'Aldric';
+        borradorSvc.PersonajeCreacion.Oficial = false;
+        borradorSvc.actualizarPasoActual('ventajas');
+        borradorSvc.activarPersistenciaBorradorLocal(uid);
+        borradorSvc.persistirBorradorLocalAhora();
+        borradorSvc.desactivarPersistenciaBorradorLocal();
+
+        const storageKey = `fichas35.nuevoPersonaje.draft.v1.${uid}`;
+        const raw = localStorage.getItem(storageKey) as string;
+        const borrador = JSON.parse(raw);
+        borrador.estadoFlujoPersistible.pasoActual = 'ventajas';
+        borrador.estadoFlujoPersistible.caracteristicasGeneradas = true;
+        localStorage.setItem(storageKey, JSON.stringify(borrador));
+
+        spyOn(Swal, 'fire').and.resolveTo({ isConfirmed: true } as any);
+        const restauradoSvc = new NuevoPersonajeService();
+        const componentRestaurado = new NuevoPersonajeComponent(
+            { currentUser: { uid, displayName: 'Aldric', email: 'aldric@test.com' } } as any,
+            restauradoSvc,
+            campanaSvcMock,
+            alineamientoSvcMock,
+            claseSvcMock,
+            conjuroSvcMock,
+            escuelaSvcMock,
+            disciplinaSvcMock,
+            razaSvcMock,
+            plantillaSvcMock,
+            ventajaSvcMock,
+            habilidadSvcMock,
+            idiomaSvcMock,
+            doteSvcMock,
+            enemigoPredilectoSvcMock,
+            armaSvcMock,
+            armaduraSvcMock,
+            grupoArmaSvcMock,
+            grupoArmaduraSvcMock,
+            dominioSvcMock,
+            regionSvcMock,
+            deidadSvcMock,
+            tipoCriaturaSvcMock,
+            monstruoSvcMock,
+            especialSvcMock,
+            personajeSvcMock,
+            fichasDescargaBgSvcMock,
+            chatFloatingSvcMock,
+            userSvcMock,
+            userProfileNavigationSvcMock,
+        );
+
+        await (componentRestaurado as any).inicializarComponente();
+
+        expect(componentRestaurado.flujo.pasoActual).toBe('ventajas');
+        expect(componentRestaurado.flujoVentajas.seleccionVentajas.length).toBe(0);
+        expect(componentRestaurado.flujoVentajas.seleccionDesventajas.length).toBe(0);
+        expect(componentRestaurado.Personaje.Oficial).toBeTrue();
+
+        componentRestaurado.ngOnDestroy();
+        localStorage.removeItem(storageKey);
+    });
+
+    it('mantiene el personaje no oficial si existe una ventaja real seleccionada', () => {
+        component.flujoVentajas.seleccionVentajas.push({ id: 22, idioma: null });
+
+        component.recalcularOficialidad();
+
+        expect(component.Personaje.Oficial).toBeFalse();
     });
 });

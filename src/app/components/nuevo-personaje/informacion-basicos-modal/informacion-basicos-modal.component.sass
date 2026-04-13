@@ -1,0 +1,101 @@
+:host
+    position: absolute
+    inset: 0
+    z-index: 66
+
+.info-overlay
+    position: absolute
+    inset: 0
+    display: flex
+    justify-content: center
+    align-items: center
+    background: rgba(0, 0, 0, 0.64)
+    padding: 12px
+
+.info-dialog
+    width: min(640px, 96vw)
+    max-height: 92vh
+    overflow: auto
+    background: linear-gradient(180deg, #2f3137 0%, #272a30 100%)
+    border: 1px solid #6f7683
+    border-radius: 10px
+    padding: 16px
+    display: flex
+    flex-direction: column
+    gap: 14px
+    color: #edf2ff
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.42)
+
+.info-header
+    display: flex
+    justify-content: space-between
+    align-items: flex-start
+    gap: 10px
+
+.info-title-wrap
+    display: flex
+    align-items: center
+    gap: 10px
+
+.info-icon-shell
+    display: inline-flex
+    align-items: center
+    justify-content: center
+    width: 42px
+    height: 42px
+    border-radius: 999px
+    background: linear-gradient(135deg, rgba(54, 154, 233, 0.24), rgba(77, 196, 255, 0.18))
+    border: 1px solid rgba(112, 196, 255, 0.38)
+    color: #8fdbff
+
+    mat-icon
+        width: 22px
+        height: 22px
+        font-size: 22px
+
+.info-title
+    color: #f3f6ff
+    font-size: 1.25rem
+    font-weight: 700
+
+.info-icon-btn
+    color: #e9eefc
+    background: rgba(255, 255, 255, 0.08)
+
+    &:hover
+        background: rgba(255, 255, 255, 0.16)
+
+.info-body
+    display: flex
+    flex-direction: column
+    gap: 14px
+
+.info-section
+    display: flex
+    flex-direction: column
+    gap: 8px
+
+.info-section-title
+    color: #f6f8ff
+    font-size: 1rem
+    font-weight: 700
+
+.info-list
+    margin: 0
+    padding-left: 20px
+    display: flex
+    flex-direction: column
+    gap: 6px
+    color: #d9e2f3
+
+.info-line
+    color: #d9e2f3
+    line-height: 1.45
+
+.info-actions
+    display: flex
+    justify-content: flex-end
+
+:host ::ng-deep .info-dialog .mat-raised-button.mat-primary
+    background: linear-gradient(135deg, #d61a73 0%, #b8105f 100%)
+    color: #fff
