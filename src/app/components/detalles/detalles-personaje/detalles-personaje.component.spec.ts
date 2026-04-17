@@ -3,6 +3,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
 import { of } from 'rxjs';
 import { NuevoPersonajeService } from 'src/app/services/nuevo-personaje.service';
+import { ClaseService } from 'src/app/services/clase.service';
 import { FichasDescargaBackgroundService } from 'src/app/services/fichas-descarga-background.service';
 import { ListaPersonajesService } from 'src/app/services/listas/lista-personajes.service';
 import { PersonajeService } from 'src/app/services/personaje.service';
@@ -35,6 +36,12 @@ describe('DetallesPersonajeComponent', () => {
                 {
                     provide: FichasDescargaBackgroundService,
                     useValue: fichasDescargaBgSvcMock,
+                },
+                {
+                    provide: ClaseService,
+                    useValue: {
+                        getClases: () => of([]),
+                    },
                 },
                 {
                     provide: PersonajeService,
@@ -640,10 +647,81 @@ describe('DetallesPersonajeComponent', () => {
         const html = `${fixture.nativeElement.textContent ?? ''}`;
         expect(html).toContain('Mago 1');
         expect(html).toContain('Lanzador arcano');
+        expect(html).toContain('Nivel de lanzador 1');
         expect(html).toContain('Salvación (Inteligencia)');
         expect(html).toContain('Niveles diarios 0, 1');
         expect(html).toContain('Conocidos 3');
         expect(html).toContain('Dependiente de alineamiento');
+    });
+
+    it('muestra el nivel de lanzador efectivo por clase con aumentos persistidos', () => {
+        component.pj.desgloseClases = [
+            { Nombre: 'Mago', Nivel: 10 },
+            { Nombre: 'Archimago', Nivel: 2 },
+        ];
+        component.pj.ProgresionLanzador = {
+            selecciones: [
+                { idClaseAplicada: 187, nivelClaseAplicado: 1, indiceAumento: 1, idClaseObjetivo: 186 },
+                { idClaseAplicada: 187, nivelClaseAplicado: 2, indiceAumento: 1, idClaseObjetivo: 186 },
+            ],
+        };
+        component.clasesCatalogo = [
+            {
+                Id: 186,
+                Nombre: 'Mago',
+                Conjuros: {
+                    Arcanos: true,
+                    Divinos: false,
+                    Psionicos: false,
+                    Alma: false,
+                    Dependientes_alineamiento: false,
+                    Lanzamiento_espontaneo: false,
+                    Conocidos_total: false,
+                    Conocidos_nivel_a_nivel: false,
+                    Dominio: false,
+                    puede_elegir_especialidad: true,
+                    Clase_origen: { Id: 0, Nombre: '' },
+                    Listado: [],
+                },
+                Mod_salv_conjuros: 'Inteligencia',
+                Desglose_niveles: Array.from({ length: 20 }, (_item, index) => ({
+                    Nivel: index + 1,
+                    Nivel_max_poder_accesible_nivel_lanzadorPsionico: -1,
+                    Reserva_psionica: 0,
+                    Conjuros_diarios: {
+                        Nivel_0: 0,
+                        Nivel_1: 1,
+                    },
+                    Conjuros_conocidos_nivel_a_nivel: {},
+                    Conjuros_conocidos_total: 0,
+                    Ataque_base: '+0',
+                    Salvaciones: { Fortaleza: '+0', Reflejos: '+0', Voluntad: '+2' },
+                    Aumentos_clase_lanzadora: [],
+                    Dotes: [],
+                    Especiales: [],
+                })),
+            } as any,
+            {
+                Id: 187,
+                Nombre: 'Archimago',
+                Conjuros: {
+                    Arcanos: false,
+                    Divinos: false,
+                    Psionicos: false,
+                    Alma: false,
+                },
+                Aumenta_clase_lanzadora: true,
+                Desglose_niveles: [],
+            } as any,
+        ];
+
+        fixture.detectChanges();
+
+        const html = `${fixture.nativeElement.textContent ?? ''}`;
+        expect(html).toContain('Mago 10');
+        expect(html).toContain('Nivel de lanzador 12');
+        expect(component.getSubchipsLanzadorClase({ Nombre: 'Archimago', Nivel: 2 })).toEqual([]);
+        expect(component.pj.Niveles_lanzador?.[0]?.nivelLanzador).toBe(12);
     });
 
     it('emite claseDetalles al solicitar detalle de clase desde preview', () => {

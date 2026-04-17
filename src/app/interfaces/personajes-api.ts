@@ -106,6 +106,17 @@ export interface PersonajeContextoCreacionCampanaDto {
     overrideReglasCampana?: boolean;
 }
 
+export interface PersonajeProgresionLanzadorSeleccionDto {
+    idClaseAplicada: number;
+    nivelClaseAplicado: number;
+    indiceAumento: number;
+    idClaseObjetivo: number;
+}
+
+export interface PersonajeProgresionLanzadorDto {
+    selecciones: PersonajeProgresionLanzadorSeleccionDto[];
+}
+
 export interface PersonajeCreateRequestDto {
     personaje: {
         nombre: string;
@@ -159,6 +170,7 @@ export interface PersonajeCreateRequestDto {
     };
     modificadores?: PersonajeCreateModificadoresDto;
     colecciones?: PersonajeCreateColeccionesDto;
+    progresionLanzador?: PersonajeProgresionLanzadorDto;
     contextoCreacionCampana?: PersonajeContextoCreacionCampanaDto;
     familiar?: Record<string, any>;
     companero?: Record<string, any>;

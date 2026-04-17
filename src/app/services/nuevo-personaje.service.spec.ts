@@ -3504,6 +3504,22 @@ describe('NuevoPersonajeService (clases)', () => {
         expect(resNivel2.aplicado).toBeTrue();
 
         expect((service as any).getNivelLanzadorEfectivoClase('Mago veterano')).toBe(12);
+        expect(service.getProgresionLanzadorPersistible()).toEqual({
+            selecciones: [
+                {
+                    idClaseAplicada: 187,
+                    nivelClaseAplicado: 1,
+                    indiceAumento: 1,
+                    idClaseObjetivo: 186,
+                },
+                {
+                    idClaseAplicada: 187,
+                    nivelClaseAplicado: 2,
+                    indiceAumento: 1,
+                    idClaseObjetivo: 186,
+                },
+            ],
+        });
         const sesion = service.getConjurosSesionActual();
         expect(sesion.entradas[0].claseObjetivo.nombre).toBe('Mago veterano');
         expect(sesion.entradas[0].nivelLanzadorPrevio).toBe(11);
@@ -3613,6 +3629,58 @@ describe('NuevoPersonajeService (clases)', () => {
         expect(res.aplicado).toBeFalse();
         expect((res.aumentosClaseLanzadoraPendientes ?? []).length).toBe(1);
         expect((res.aumentosClaseLanzadoraPendientes?.[0]?.opciones ?? []).length).toBe(2);
+    });
+
+    it('no ofrece como objetivo de aumento una clase lanzadora que aún no empezó a lanzar', () => {
+        const explorador = crearClaseBase({
+            Id: 120,
+            Nombre: 'Explorador sin magia',
+            Conjuros: {
+                ...crearClaseBase().Conjuros,
+                Divinos: true,
+                Conocidos_total: true,
+            },
+            Desglose_niveles: [1, 2, 3, 4].map((nivel) => ({
+                Nivel: nivel,
+                Ataque_base: `+${nivel}`,
+                Salvaciones: { Fortaleza: '+2', Reflejos: '+2', Voluntad: '+0' },
+                Nivel_max_poder_accesible_nivel_lanzadorPsionico: -1,
+                Reserva_psionica: 0,
+                Aumentos_clase_lanzadora: [],
+                Conjuros_diarios: crearConjurosDiariosMock(nivel >= 4 ? [0] : [-1]),
+                Conjuros_conocidos_nivel_a_nivel: {},
+                Conjuros_conocidos_total: nivel >= 4 ? 1 : 0,
+                Dotes: [],
+                Especiales: [],
+            })),
+        });
+        const prestigio = crearClaseBase({
+            Id: 121,
+            Nombre: 'Prestigio temprano',
+            Aumenta_clase_lanzadora: true,
+            Desglose_niveles: [{
+                Nivel: 1,
+                Ataque_base: '+0',
+                Salvaciones: { Fortaleza: '+0', Reflejos: '+0', Voluntad: '+2' },
+                Nivel_max_poder_accesible_nivel_lanzadorPsionico: -1,
+                Reserva_psionica: 0,
+                Aumentos_clase_lanzadora: [{ Id: 0, Nombre: '' }],
+                Conjuros_diarios: crearConjurosDiariosMock([0]),
+                Conjuros_conocidos_nivel_a_nivel: {},
+                Conjuros_conocidos_total: 0,
+                Dotes: [],
+                Especiales: [],
+            }],
+        });
+        service.setCatalogoClases([explorador, prestigio]);
+        service.PersonajeCreacion.desgloseClases = [{ Nombre: 'Explorador sin magia', Nivel: 3 } as any];
+
+        const res = service.aplicarSiguienteNivelClase(prestigio);
+
+        expect(res.aplicado).toBeTrue();
+        expect(res.advertencias).toContain('No hay clases lanzadoras previas válidas para Aumento 1.');
+        expect(service.getProgresionLanzadorPersistible()).toBeNull();
+        expect((service as any).getNivelLanzadorEfectivoClase('Explorador sin magia')).toBe(0);
     });
 
     it('arcano/divino válido: permite aplicar nivel cuando Conjuros_diarios está informado', () => {

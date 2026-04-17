@@ -7,19 +7,21 @@ import { Dote } from 'src/app/interfaces/dote';
 import { DoteContextual, DoteLegacy } from 'src/app/interfaces/dote-contextual';
 import { EnemigoPredilectoSeleccion } from 'src/app/interfaces/enemigo-predilecto-seleccion';
 import { CompaneroMonstruoDetalle, FamiliarMonstruoDetalle, MonstruoDetalle } from 'src/app/interfaces/monstruo';
-import { CaracteristicaPerdidaKey, Personaje } from 'src/app/interfaces/personaje';
+import { CaracteristicaPerdidaKey, Personaje, PersonajeNivelLanzadorResumen } from 'src/app/interfaces/personaje';
 import { RacialDetalle, RacialReferencia } from 'src/app/interfaces/racial';
 import { RegionDetalle } from 'src/app/interfaces/region';
 import { Rasgo } from 'src/app/interfaces/rasgo';
 import { SubtipoRef } from 'src/app/interfaces/subtipo';
 import { TipoCriatura } from 'src/app/interfaces/tipo_criatura';
 import { FichasDescargaBackgroundService } from 'src/app/services/fichas-descarga-background.service';
+import { ClaseService } from 'src/app/services/clase.service';
 import { ListaPersonajesService } from 'src/app/services/listas/lista-personajes.service';
 import { PersonajeService } from 'src/app/services/personaje.service';
 import { RegionService } from 'src/app/services/region.service';
 import { UserProfileApiService } from 'src/app/services/user-profile-api.service';
 import { UserService } from 'src/app/services/user.service';
 import { resolverExtraHabilidadVisible } from 'src/app/services/utils/habilidad-extra-visible';
+import { calcularNivelesLanzadorPersonaje } from 'src/app/services/utils/nivel-lanzador-personaje';
 import Swal from 'sweetalert2';
 
 interface MadurezEdadResumen {
@@ -91,7 +93,10 @@ export class DetallesPersonajeComponent implements OnInit, OnChanges, AfterViewI
     private ownerUidCargado = '';
     private ownerProfileLookupSeq = 0;
     private regionesSub?: Subscription;
+    private clasesSub?: Subscription;
     private catalogoRegiones: RegionDetalle[] = [];
+    private clasesCatalogoInterno: Clase[] = [];
+    nivelesLanzador: PersonajeNivelLanzadorResumen[] = [];
     velDisclaimer: string = `
     Medido en pies
     5 pies equivalen a una casilla`;
@@ -99,6 +104,7 @@ export class DetallesPersonajeComponent implements OnInit, OnChanges, AfterViewI
 
     constructor(
         private fichasDescargaBgSvc: FichasDescargaBackgroundService,
+        private claseSvc: ClaseService,
         private pSvc: PersonajeService,
         private listaPersonajesSvc: ListaPersonajesService,
         private regionSvc: RegionService,
@@ -119,17 +125,24 @@ export class DetallesPersonajeComponent implements OnInit, OnChanges, AfterViewI
         Varios: ${this.pj.Ca_varios > 0 ? this.pj.Ca_varios : '0'}
         `;
         this.cargarCatalogoRegiones();
+        this.cargarCatalogoClasesSiNecesario();
+        this.actualizarNivelesLanzadorDerivados();
         void this.actualizarEtiquetaCreador();
     }
 
     ngOnChanges(changes: SimpleChanges): void {
         if (changes['pj'])
             void this.actualizarEtiquetaCreador();
+        if (changes['pj'] || changes['clasesCatalogo']) {
+            this.cargarCatalogoClasesSiNecesario();
+            this.actualizarNivelesLanzadorDerivados();
+        }
     }
 
     ngDoCheck(): void {
         this.actualizarValoresDerivadosVisuales();
         this.actualizarResumenSalvaciones();
+        this.actualizarNivelesLanzadorDerivados();
     }
 
     ngAfterViewInit(): void {
@@ -144,6 +157,7 @@ export class DetallesPersonajeComponent implements OnInit, OnChanges, AfterViewI
         this.resizeObserver?.disconnect();
         this.resizeObserver = null;
         this.regionesSub?.unsubscribe();
+        this.clasesSub?.unsubscribe();
     }
 
     getTotalVisibleHabilidad(
@@ -160,9 +174,11 @@ export class DetallesPersonajeComponent implements OnInit, OnChanges, AfterViewI
 
     generarFicha() {
         const jugadorFicha = this.resolverNombreJugadorFicha();
+        const nivelesLanzador = this.getNivelesLanzadorVisibles();
         const pjFicha: Personaje = {
             ...this.pj,
             Jugador: jugadorFicha,
+            Niveles_lanzador: nivelesLanzador,
         };
         this.fichasDescargaBgSvc.descargarFichas(pjFicha, {
             incluirConjuros: true,
@@ -306,6 +322,40 @@ export class DetallesPersonajeComponent implements OnInit, OnChanges, AfterViewI
                 this.catalogoRegiones = [];
             },
         });
+    }
+
+    private cargarCatalogoClasesSiNecesario(): void {
+        if ((this.clasesCatalogo ?? []).length > 0 || this.clasesSub)
+            return;
+
+        this.clasesSub = this.claseSvc.getClases().subscribe({
+            next: (clases) => {
+                this.clasesCatalogoInterno = clases ?? [];
+                this.actualizarNivelesLanzadorDerivados();
+            },
+            error: () => {
+                this.clasesCatalogoInterno = [];
+                this.actualizarNivelesLanzadorDerivados();
+            },
+        });
+    }
+
+    private getCatalogoClasesEfectivo(): Clase[] {
+        return (this.clasesCatalogo ?? []).length > 0 ? this.clasesCatalogo : this.clasesCatalogoInterno;
+    }
+
+    private actualizarNivelesLanzadorDerivados(): void {
+        const catalogo = this.getCatalogoClasesEfectivo();
+        const calculados = calcularNivelesLanzadorPersonaje(this.pj, catalogo);
+        this.nivelesLanzador = catalogo.length > 0
+            ? calculados
+            : (this.pj?.Niveles_lanzador ?? []);
+        if (this.pj)
+            this.pj.Niveles_lanzador = this.nivelesLanzador;
+    }
+
+    getNivelesLanzadorVisibles(): PersonajeNivelLanzadorResumen[] {
+        return (this.nivelesLanzador ?? []).filter((nivel) => this.toNumber(nivel?.nivelLanzador) > 0);
     }
 
     private ownerUidNormalizado(): string {
@@ -662,6 +712,9 @@ Fue/Des/Con: ${this.formatSigned(madurez.modFisico)} | Int/Sab/Car: ${this.forma
             chips.push('Lanzador psiónico');
         if (conjuros.Alma)
             chips.push('Lanzador de alma');
+        const resumenLanzador = this.getNivelLanzadorResumenClase(nombreClase);
+        if (resumenLanzador)
+            chips.push(`Nivel de lanzador ${resumenLanzador.nivelLanzador}`);
         if (conjuros.Lanzamiento_espontaneo)
             chips.push('Lanzamiento espontáneo');
         if (conjuros.Dependientes_alineamiento)
@@ -670,7 +723,8 @@ Fue/Des/Con: ${this.formatSigned(madurez.modFisico)} | Int/Sab/Car: ${this.forma
             chips.push(`Salvación (${claseCatalogo.Mod_salv_conjuros})`);
 
         const nivelClase = Math.max(0, this.toNumber(claseDesglose?.Nivel));
-        const detalleNivel = this.obtenerDetalleNivelClase(claseCatalogo, nivelClase);
+        const nivelDetalleObjetivo = resumenLanzador?.nivelDesgloseLanzador ?? nivelClase;
+        const detalleNivel = this.obtenerDetalleNivelClase(claseCatalogo, nivelDetalleObjetivo);
         if (detalleNivel) {
             if (conjuros.Psionicos) {
                 const reserva = this.toNumber(detalleNivel?.Reserva_psionica);
@@ -681,7 +735,7 @@ Fue/Des/Con: ${this.formatSigned(madurez.modFisico)} | Int/Sab/Car: ${this.forma
                     chips.push(`Poder máximo ${poderMax}`);
             }
 
-            if (conjuros.Arcanos || conjuros.Divinos) {
+            if (conjuros.Arcanos || conjuros.Divinos || conjuros.Alma) {
                 const nivelesDiarios = this.formatearNivelesDiariosAccesibles(detalleNivel?.Conjuros_diarios);
                 if (nivelesDiarios.length > 0)
                     chips.push(`Niveles diarios ${nivelesDiarios}`);
@@ -707,8 +761,17 @@ Fue/Des/Con: ${this.formatSigned(madurez.modFisico)} | Int/Sab/Car: ${this.forma
         const nombreNormalizado = this.normalizarTexto(nombreClase);
         if (nombreNormalizado.length < 1)
             return null;
-        return (this.clasesCatalogo ?? []).find((clase) =>
+        return this.getCatalogoClasesEfectivo().find((clase) =>
             this.normalizarTexto(clase?.Nombre ?? '') === nombreNormalizado
+        ) ?? null;
+    }
+
+    private getNivelLanzadorResumenClase(nombreClase: string): PersonajeNivelLanzadorResumen | null {
+        const nombreNormalizado = this.normalizarTexto(nombreClase);
+        if (nombreNormalizado.length < 1)
+            return null;
+        return (this.nivelesLanzador ?? []).find((resumen) =>
+            this.normalizarTexto(resumen?.nombreClase ?? '') === nombreNormalizado
         ) ?? null;
     }
 

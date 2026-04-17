@@ -89,6 +89,46 @@ describe('dote-elegibilidad', () => {
         expect(resultado.estado).toBe('eligible');
     });
 
+    it('evalua poder seleccionar compañero con el cupo calculado por el contexto', () => {
+        const dote = crearDoteBase({
+            Prerrequisitos: {
+                poder_seleccionar_companero: [{ Activo: true }],
+            },
+        });
+
+        const bloqueado = evaluarElegibilidadDote({
+            dote,
+            contexto: crearContextoBase({ puedeSeleccionarCompanero: false }),
+        });
+        const permitido = evaluarElegibilidadDote({
+            dote,
+            contexto: crearContextoBase({ puedeSeleccionarCompanero: true }),
+        });
+
+        expect(bloqueado.estado).toBe('blocked_failed');
+        expect(permitido.estado).toBe('eligible');
+    });
+
+    it('evalua poder seleccionar familiar con el cupo calculado por el contexto', () => {
+        const dote = crearDoteBase({
+            Prerrequisitos: {
+                poder_seleccionar_familiar: [{ Activo: true }],
+            },
+        });
+
+        const bloqueado = evaluarElegibilidadDote({
+            dote,
+            contexto: crearContextoBase({ puedeSeleccionarFamiliar: false }),
+        });
+        const permitido = evaluarElegibilidadDote({
+            dote,
+            contexto: crearContextoBase({ puedeSeleccionarFamiliar: true }),
+        });
+
+        expect(bloqueado.estado).toBe('blocked_failed');
+        expect(permitido.estado).toBe('eligible');
+    });
+
     it('bloquea por fallo si no cumple ataque base', () => {
         const dote = crearDoteBase({
             Prerrequisitos: {
@@ -212,6 +252,59 @@ describe('dote-elegibilidad', () => {
         });
 
         expect(resultado.estado).toBe('eligible');
+    });
+
+    it('conjuros_escuela cuenta conjuros accesibles efectivos y no solo conjuros seleccionados', () => {
+        const dote = crearDoteBase({
+            Prerrequisitos: {
+                conjuros_escuela: [{ Escuela: 'Nigromancia', Cantidad: 3 }],
+            },
+        });
+
+        const resultado = evaluarElegibilidadDote({
+            dote,
+            contexto: crearContextoBase({
+                conjuros: [
+                    { id: 1, nombre: 'Toque macabro', idEscuela: null, escuela: 'Nigromancia' },
+                    { id: 2, nombre: 'Rayo debilitador', idEscuela: null, escuela: 'Nigromancia' },
+                    { id: 3, nombre: 'Causar miedo', idEscuela: null, escuela: 'Nigromancia' },
+                ],
+                conjurosAccesibles: [],
+            }),
+        });
+
+        expect(resultado.estado).toBe('blocked_failed');
+    });
+
+    it('conjuros_escuela exige la cantidad minima en la lista accesible efectiva', () => {
+        const dote = crearDoteBase({
+            Prerrequisitos: {
+                conjuros_escuela: [{ Escuela: 'Nigromancia', Cantidad: 3 }],
+            },
+        });
+
+        const insuficiente = evaluarElegibilidadDote({
+            dote,
+            contexto: crearContextoBase({
+                conjurosAccesibles: [
+                    { id: 1, nombre: 'Toque macabro', idEscuela: null, escuela: 'Nigromancia' },
+                    { id: 2, nombre: 'Rayo debilitador', idEscuela: null, escuela: 'Nigromancia' },
+                ],
+            }),
+        });
+        const suficiente = evaluarElegibilidadDote({
+            dote,
+            contexto: crearContextoBase({
+                conjurosAccesibles: [
+                    { id: 1, nombre: 'Toque macabro', idEscuela: null, escuela: 'Nigromancia' },
+                    { id: 2, nombre: 'Rayo debilitador', idEscuela: null, escuela: 'Nigromancia' },
+                    { id: 3, nombre: 'Causar miedo', idEscuela: null, escuela: 'Nigromancia' },
+                ],
+            }),
+        });
+
+        expect(insuficiente.estado).toBe('blocked_failed');
+        expect(suficiente.estado).toBe('eligible');
     });
 
     it('id_extra negativo exige dote sin extra', () => {

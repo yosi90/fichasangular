@@ -107,4 +107,26 @@ describe('FichaPersonajeService', () => {
         expect(fetchSpy).toHaveBeenCalledWith('../../assets/pdf/compañero.pdf');
         expect(saveAsSpy).toHaveBeenCalled();
     });
+
+    it('formatea niveles de lanzador en notas de ficha', () => {
+        const pj = {
+            Niveles_lanzador: [
+                {
+                    idClase: 186,
+                    nombreClase: 'Mago',
+                    tipoLanzamiento: 'arcano',
+                    nivelClase: 10,
+                    nivelLanzadorBase: 10,
+                    bonusNivelLanzador: 2,
+                    nivelLanzador: 12,
+                    nivelDesgloseLanzador: 12,
+                },
+            ],
+        } as any;
+
+        const notas = (service as any).formatearNotasNivelesLanzador(pj);
+
+        expect(notas).toContain('Niveles de lanzador:');
+        expect(notas).toContain('Mago (arcano): 12, base 10 + 2');
+    });
 });

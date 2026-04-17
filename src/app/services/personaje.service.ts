@@ -17,6 +17,7 @@ import {
     PersonajeCreateApiResponseDto,
     PersonajeCreateColeccionesDto,
     PersonajeCreateModificadoresDto,
+    PersonajeProgresionLanzadorDto,
     PersonajeCreateRequestDto,
     PersonajeCreateResponseDto
 } from '../interfaces/personajes-api';
@@ -24,6 +25,7 @@ import {
     normalizeCompaneroMonstruoDetalleArray,
     normalizeFamiliarMonstruoDetalleArray
 } from './utils/monstruo-mapper';
+import { normalizarProgresionLanzadorPersonaje } from './utils/nivel-lanzador-personaje';
 import { normalizeRaciales } from './utils/racial-mapper';
 import { normalizeSubtipoRefArray } from './utils/subtipo-mapper';
 
@@ -136,7 +138,8 @@ export class PersonajeService {
     public construirPayloadCreacionDesdePersonaje(
         personaje: Personaje,
         contextoIds: PersonajeContextoIdsDto,
-        contextoCreacionCampana?: PersonajeContextoCreacionCampanaDto | null
+        contextoCreacionCampana?: PersonajeContextoCreacionCampanaDto | null,
+        progresionLanzador?: PersonajeProgresionLanzadorDto | null
     ): PersonajeCreateRequestDto {
         const nombre = `${personaje?.Nombre ?? ''}`.trim();
         const idRaza = Math.trunc(toNumber(personaje?.Raza?.Id));
@@ -208,6 +211,7 @@ export class PersonajeService {
         const idRazaBase = Math.trunc(toNumber((personaje as any)?.RazaBase?.Id));
         const modificadores = this.construirPayloadModificadores(personaje);
         const colecciones = this.construirPayloadColecciones(personaje, mapasCatalogo);
+        const progresionLanzadorNormalizada = this.normalizarProgresionLanzadorParaPayload(progresionLanzador);
 
         const personajePayload: PersonajeCreateRequestDto['personaje'] = {
             nombre,
@@ -296,6 +300,8 @@ export class PersonajeService {
             payload.modificadores = modificadores;
         if (Object.keys(colecciones).length > 0)
             payload.colecciones = colecciones;
+        if (progresionLanzadorNormalizada)
+            payload.progresionLanzador = progresionLanzadorNormalizada;
         if (tieneCampana) {
             payload.contextoCreacionCampana = {
                 tiradaMinimaDeclarada: this.toNonNegativeIntOrNull(contextoCreacionCampana?.tiradaMinimaDeclarada),
@@ -304,6 +310,27 @@ export class PersonajeService {
             };
         }
         return payload;
+    }
+
+    private normalizarProgresionLanzadorParaPayload(
+        progresionLanzador?: PersonajeProgresionLanzadorDto | null
+    ): PersonajeProgresionLanzadorDto | null {
+        const selecciones = toArray<any>(progresionLanzador?.selecciones)
+            .map((seleccion) => ({
+                idClaseAplicada: Math.trunc(toNumber(seleccion?.idClaseAplicada)),
+                nivelClaseAplicado: Math.trunc(toNumber(seleccion?.nivelClaseAplicado)),
+                indiceAumento: Math.trunc(toNumber(seleccion?.indiceAumento)),
+                idClaseObjetivo: Math.trunc(toNumber(seleccion?.idClaseObjetivo)),
+            }))
+            .filter((seleccion) =>
+                seleccion.idClaseAplicada > 0
+                && seleccion.nivelClaseAplicado > 0
+                && seleccion.indiceAumento > 0
+                && seleccion.idClaseObjetivo > 0
+            );
+        if (selecciones.length < 1)
+            return null;
+        return { selecciones };
     }
 
     private construirPayloadModificadores(personaje: Personaje): PersonajeCreateModificadoresDto {
@@ -886,6 +913,8 @@ export class PersonajeService {
             clonado?.Constitucion_perdida
         );
         clonado.Constitucion_perdida = !!clonado?.Caracteristicas_perdidas?.Constitucion;
+        clonado.ProgresionLanzador = normalizarProgresionLanzadorPersonaje(clonado?.ProgresionLanzador);
+        clonado.Niveles_lanzador = Array.isArray(clonado?.Niveles_lanzador) ? clonado.Niveles_lanzador : [];
         const idRegion = this.toNonNegativeIntOrNull(
             (clonado as any)?.Id_region
             ?? (clonado as any)?.id_region
@@ -1002,6 +1031,9 @@ export class PersonajeService {
         const experiencia = nep > 0 ? ((nep - 1) * nep / 2) * 1000 : 0;
         const dotesContextuales = toDoteContextualArray(element?.dotes ?? element?.DotesContextuales ?? element?.Dotes);
         const dotes = toDoteLegacyArray(dotesContextuales);
+        const progresionLanzador = normalizarProgresionLanzadorPersonaje(
+            element?.progresionLanzador ?? element?.ProgresionLanzador
+        );
         const claseas: { Nombre: string; Extra: string; }[] = [];
         if (Array.isArray(element?.Claseas)) {
             element.Claseas.forEach((entry: any) => {
@@ -1224,6 +1256,8 @@ export class PersonajeService {
                 ? clas.map((entrada) => `${entrada.Nombre} (${entrada.Nivel})`).join(', ')
                 : `${element?.Clases ?? ''}`.trim(),
             desgloseClases: clas,
+            ProgresionLanzador: progresionLanzador,
+            Niveles_lanzador: [],
             Dominios: dom.map((Nombre) => ({ Nombre })) as any,
             Subtipos: subtipos,
             competencia_arma: competenciasArma as PersonajeCompetenciaDirecta[],

@@ -5051,6 +5051,30 @@ describe('NuevoPersonajeComponent', () => {
         expect(component.modalSelectorVisibilidadAbierto).toBeFalse();
     });
 
+    it('finalizarPersonajeCompleto pasa progresionLanzador al payload de creación', async () => {
+        component.modalSelectorVisibilidadAbierto = true;
+        const progresionLanzador = {
+            selecciones: [
+                {
+                    idClaseAplicada: 187,
+                    nivelClaseAplicado: 2,
+                    indiceAumento: 1,
+                    idClaseObjetivo: 186,
+                },
+            ],
+        };
+        spyOn(nuevoPSvc, 'getProgresionLanzadorPersistible').and.returnValue(progresionLanzador);
+
+        await component.onConfirmarSelectorVisibilidad(true);
+
+        expect(personajeSvcMock.construirPayloadCreacionDesdePersonaje).toHaveBeenCalledWith(
+            component.Personaje,
+            jasmine.any(Object),
+            null,
+            progresionLanzador
+        );
+    });
+
     it('finalizarPersonajeCompleto bloquea el POST si la campaña sigue siendo incompatible por homebrew', async () => {
         component.Personaje.Campana = 'Campaña A';
         component.Personaje.Trama = 'Trama base';
@@ -5139,7 +5163,8 @@ describe('NuevoPersonajeComponent', () => {
                 tiradaMinimaDeclarada: 11,
                 tablasDadosUsadas: 2,
                 overrideReglasCampana: true,
-            })
+            }),
+            null
         );
     });
 
@@ -5177,7 +5202,8 @@ describe('NuevoPersonajeComponent', () => {
                 tiradaMinimaDeclarada: 9,
                 tablasDadosUsadas: 1,
                 overrideReglasCampana: false,
-            })
+            }),
+            null
         );
     });
 

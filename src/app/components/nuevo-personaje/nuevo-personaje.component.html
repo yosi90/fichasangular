@@ -284,10 +284,10 @@
                         </div>
                     </div>
 
-                    <mat-card-content class="tw-px-3 tw-py-2 tw-flex tw-flex-col tw-gap-2 plantillas-layout tab-scroll">
+                    <mat-card-content class="tw-px-3 tw-py-2 tw-flex tw-flex-col tw-gap-2 plantillas-layout">
                         <div class="tw-flex tw-flex-wrap plantillas-zonas">
-                            <div class="tw-w-full md:tw-w-7/12 tw-box-border tw-p-1">
-                                <div class="sombra-caja-sm tw-rounded tw-p-2 tw-h-full plantillas-panel">
+                            <div class="tw-w-full md:tw-w-7/12 tw-box-border tw-p-1 plantillas-zona">
+                                <div class="sombra-caja-sm tw-rounded tw-p-2 tw-h-full plantillas-panel plantillas-panel--scroll">
                                     <mat-chip class="tw-w-full sombra-caja-sm tw-mb-2 plantillas-panel__titulo">Plantillas elegibles</mat-chip>
                                     <div *ngIf="cargandoPlantillas" class="tw-text-center tw-p-3">
                                         <mat-chip>Cargando plantillas...</mat-chip>
@@ -459,8 +459,8 @@
                                 </div>
                             </div>
 
-                            <div class="tw-w-full md:tw-w-5/12 tw-box-border tw-p-1">
-                                <div class="sombra-caja-sm tw-rounded tw-p-2 tw-h-full tw-flex tw-flex-col tw-gap-2 plantillas-panel">
+                            <div class="tw-w-full md:tw-w-5/12 tw-box-border tw-p-1 plantillas-zona">
+                                <div class="sombra-caja-sm tw-rounded tw-p-2 tw-h-full tw-flex tw-flex-col tw-gap-2 plantillas-panel plantillas-panel--scroll">
                                     <div class="plantillas-resumen-linea">
                                         <mat-chip class="sombra-caja-sm resumen-chip-seleccion">Seleccion
                                             actual</mat-chip>
@@ -765,7 +765,7 @@
                                     <thead>
                                         <tr>
                                             <th>Clase</th>
-                                            <th>Nivel</th>
+                                            <th>Sig. nivel</th>
                                             <th>Siguientes dotes/especiales</th>
                                             <th>Salvaciones</th>
                                             <th>Rol</th>
@@ -796,7 +796,7 @@
                                             <td>
                                                 <p class="tw-inline-block sombra3d-sm tw-rounded tw-p-1 tw-mb-0 tw-text-center clase-estado-chip"
                                                     [ngClass]="getClaseNivelChipCss(item)">
-                                                    Nivel {{item.siguienteNivel}}
+                                                    {{item.siguienteNivel}}
                                                 </p>
                                             </td>
                                             <td>

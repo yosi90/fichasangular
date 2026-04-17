@@ -7,8 +7,21 @@ import { RacialDetalle } from "./racial";
 import { PersonajeSimple } from "./simplificaciones/personaje-simple";
 import { SubtipoRef } from "./subtipo";
 import { TipoCriatura } from "./tipo_criatura";
+import { PersonajeProgresionLanzadorDto } from "./personajes-api";
 
 export type CaracteristicaPerdidaKey = 'Fuerza' | 'Destreza' | 'Constitucion' | 'Inteligencia' | 'Sabiduria' | 'Carisma';
+export type PersonajeTipoLanzamiento = 'arcano' | 'divino' | 'psionico' | 'alma' | 'mixto';
+
+export interface PersonajeNivelLanzadorResumen {
+    idClase: number;
+    nombreClase: string;
+    tipoLanzamiento: PersonajeTipoLanzamiento;
+    nivelClase: number;
+    nivelLanzadorBase: number;
+    bonusNivelLanzador: number;
+    nivelLanzador: number;
+    nivelDesgloseLanzador: number;
+}
 
 export type CaracteristicasPerdidas = Partial<Record<CaracteristicaPerdidaKey, boolean>>;
 export type AutoRepartoRespuestaQ1 =
@@ -70,6 +83,8 @@ export interface Personaje extends PersonajeSimple {
     Id_region?: number;
     Region?: { Id: number; Nombre: string; } | null;
     RazaBase?: PersonajeSimple['Raza'] | null;
+    ProgresionLanzador?: PersonajeProgresionLanzadorDto;
+    Niveles_lanzador?: PersonajeNivelLanzadorResumen[];
     desgloseClases: {
         Nombre: string;
         Nivel: number;

@@ -149,6 +149,16 @@ export class ListaPersonajesService {
         );
     }
 
+    public upsertPersonajeCreadoEnCache(personajeRaw: any): void {
+        const personaje = this.mapApiToPersonajeSimple(personajeRaw);
+        const id = Math.trunc(toNumber(personaje?.Id));
+        if (id <= 0)
+            return;
+
+        this.personajesLoaded = true;
+        this.personajesSubject.next(this.mergePersonajes(this.personajesSubject.value, [personaje]));
+    }
+
     private mapApiToPersonajeSimple(element: any): PersonajeSimple {
         const idRegion = Math.max(0, Math.trunc(toNumber(
             element?.id_region

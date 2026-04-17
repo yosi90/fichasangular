@@ -1,4 +1,4 @@
-import { TestBed, fakeAsync, tick } from '@angular/core/testing';
+import { TestBed, fakeAsync, flushMicrotasks, tick } from '@angular/core/testing';
 import { BehaviorSubject } from 'rxjs';
 import { ProfileApiError } from '../interfaces/user-account';
 import { createDefaultUserSettings } from '../interfaces/user-settings';
@@ -243,14 +243,36 @@ describe('ChatFloatingService', () => {
         tick();
 
         service.closeListWindow();
+        flushMicrotasks();
+        const loadSettingsCallsAfterClose = userSettingsSvc.loadSettings.calls.count();
+
         isLoggedIn$.next(true);
         tick();
 
         let listWindow: any = null;
         service.listWindow$.subscribe((value) => listWindow = value);
 
-        expect(userSettingsSvc.loadSettings).toHaveBeenCalledTimes(1);
+        expect(userSettingsSvc.loadSettings.calls.count()).toBe(loadSettingsCallsAfterClose);
         expect(listWindow?.open).toBeFalse();
+    }));
+
+    it('al cerrar manualmente la ventana-listado desactiva la autoapertura persistida', fakeAsync(() => {
+        service.openOrFocusListWindow();
+
+        service.closeListWindow();
+        flushMicrotasks();
+
+        let listWindow: any = null;
+        service.listWindow$.subscribe((value) => listWindow = value);
+
+        const [payload] = userSettingsSvc.saveSettings.calls.mostRecent().args;
+        expect(listWindow?.open).toBeFalse();
+        expect(service.isAutoOpenListEnabled).toBeFalse();
+        expect(payload.perfil.autoAbrirVentanaChats).toBeFalse();
+        expect(payload.mensajeria_flotante?.ventana_chat).toEqual(jasmine.objectContaining({
+            version: 1,
+            mode: 'window',
+        }));
     }));
 
     it('persiste un bloque ventana_chat valido incluso si la ventana-listado aun no existe en runtime', fakeAsync(() => {

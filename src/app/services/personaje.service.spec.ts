@@ -612,6 +612,47 @@ describe('PersonajeService', () => {
         expect(payload.contextoCreacionCampana).toBeUndefined();
     });
 
+    it('incluye progresionLanzador normalizada cuando hay aumentos persistibles', () => {
+        const httpMock = {
+            post: jasmine.createSpy('post').and.returnValue(of({})),
+        } as any;
+        const service = crearServicio(httpMock);
+        const pj = crearPersonajeMock();
+
+        const payload = service.construirPayloadCreacionDesdePersonaje(
+            pj,
+            { idCampana: null, idTrama: null, idSubtrama: null },
+            null,
+            {
+                selecciones: [
+                    {
+                        idClaseAplicada: 187,
+                        nivelClaseAplicado: 2,
+                        indiceAumento: 1,
+                        idClaseObjetivo: 186,
+                    },
+                    {
+                        idClaseAplicada: 0,
+                        nivelClaseAplicado: 2,
+                        indiceAumento: 1,
+                        idClaseObjetivo: 186,
+                    },
+                ],
+            }
+        );
+
+        expect(payload.progresionLanzador).toEqual({
+            selecciones: [
+                {
+                    idClaseAplicada: 187,
+                    nivelClaseAplicado: 2,
+                    indiceAumento: 1,
+                    idClaseObjetivo: 186,
+                },
+            ],
+        });
+    });
+
     it('rechaza historia de campaña incompleta cuando solo llega la trama', () => {
         const httpMock = {
             post: jasmine.createSpy('post').and.returnValue(of({})),
@@ -783,6 +824,38 @@ describe('PersonajeService', () => {
         const normalizado = service.normalizarPersonajeParaPersistenciaFinal(pj, 77);
 
         expect(normalizado.Archivado).toBeTrue();
+    });
+
+    it('mapApiDetalleToPersonaje normaliza progresionLanzador actor-scoped', () => {
+        const service = crearServicio({} as any);
+        const personaje = (service as any).mapApiDetalleToPersonaje({
+            i: 9,
+            n: 'Aldric',
+            cla: 'Mago;10|Archimago;2',
+            ra: {
+                Nombre: 'Humano',
+                Ajuste_nivel: 0,
+                Tamano: { Nombre: 'Mediano', Modificador_presa: 0 },
+                Dgs_adicionales: { Cantidad: 0 },
+            },
+            progresionLanzador: {
+                selecciones: [
+                    { idClaseAplicada: '187', nivelClaseAplicado: '1', indiceAumento: '1', idClaseObjetivo: '186' },
+                    { idClaseAplicada: 0, nivelClaseAplicado: 1, indiceAumento: 1, idClaseObjetivo: 186 },
+                ],
+            },
+        } as any) as Personaje;
+
+        expect(personaje.desgloseClases).toEqual([
+            { Nombre: 'Mago', Nivel: 10 },
+            { Nombre: 'Archimago', Nivel: 2 },
+        ]);
+        expect(personaje.ProgresionLanzador).toEqual({
+            selecciones: [
+                { idClaseAplicada: 187, nivelClaseAplicado: 1, indiceAumento: 1, idClaseObjetivo: 186 },
+            ],
+        });
+        expect(personaje.Niveles_lanzador).toEqual([]);
     });
 
 });

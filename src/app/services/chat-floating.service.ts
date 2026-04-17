@@ -162,8 +162,11 @@ export class ChatFloatingService implements OnDestroy {
         this.listWindowSubject.next({
             ...current,
             open: false,
+            updatedAt: Date.now(),
         });
+        this.autoOpenListSubject.next(false);
         this.chatRealtimeSvc.setActiveConversationId(null);
+        void this.persistManualListWindowClose();
     }
 
     focusListWindow(): void {
@@ -452,6 +455,32 @@ export class ChatFloatingService implements OnDestroy {
 
             await this.userSettingsSvc.saveSettings({
                 ...currentSettings,
+                mensajeria_flotante: floatingSettings,
+            });
+            this.clearCachedFloatingSettingsDraft();
+        } catch (error) {
+            if (this.isUnsupportedSettingsShapeError(error)) {
+                this.automaticPersistenceBlocked = true;
+                this.clearPersistTimer();
+            }
+        }
+    }
+
+    private async persistManualListWindowClose(): Promise<void> {
+        if (this.userSvc.CurrentUserUid.length < 1 || this.automaticPersistenceBlocked)
+            return;
+
+        this.cacheFloatingSettingsDraft();
+        try {
+            const currentSettings = await this.userSettingsSvc.loadSettings();
+            const floatingSettings = this.buildFloatingSettingsPayload();
+
+            await this.userSettingsSvc.saveSettings({
+                ...currentSettings,
+                perfil: {
+                    ...currentSettings.perfil,
+                    autoAbrirVentanaChats: false,
+                },
                 mensajeria_flotante: floatingSettings,
             });
             this.clearCachedFloatingSettingsDraft();

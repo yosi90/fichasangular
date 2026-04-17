@@ -29,7 +29,8 @@ function crearNivelClase(
     nivel: number,
     plantilla = 1,
     prefLegal = 5,
-    prefMoral = 5
+    prefMoral = 5,
+    dote: { Id: number; Nombre: string; } = { Id: 0, Nombre: '' }
 ): MonstruoNivelClase {
     return {
         Clase: { Id: idClase, Nombre: `Clase ${idClase}` },
@@ -37,7 +38,7 @@ function crearNivelClase(
         Plantilla: { Id: plantilla, Nombre: `Plantilla ${plantilla}` },
         Preferencia_legal: { Id: prefLegal, Nombre: `${prefLegal}` },
         Preferencia_moral: { Id: prefMoral, Nombre: `${prefMoral}` },
-        Dote: { Id: 0, Nombre: '' },
+        Dote: dote,
     };
 }
 
@@ -213,6 +214,71 @@ describe('familiar-reglas', () => {
         });
 
         expect(filtrados.map((item) => item.Nombre)).toEqual(['Buho']);
+    });
+
+    it('bloquea una plantilla de familiar si falta la dote indicada en Niveles_clase', () => {
+        const estado: EstadoCuposFamiliar = {
+            especialId: 47,
+            fuentes: [{ idClase: 10, nombreClase: 'Mago', nivelActual: 3 }],
+            fuentesClaseIds: [10],
+            fuentesTotales: 1,
+            cuposConsumidos: 0,
+            cuposDisponibles: 1,
+            nivelLanzadorFamiliar: 3,
+        };
+        const familiarRemendado = crearFamiliarMock({
+            Id_familiar: 20,
+            Nombre: 'Cuervo remendado',
+            Plantilla: { Id: 4, Nombre: 'Remendado' },
+            Niveles_clase: [
+                crearNivelClase(10, 1, 4, 5, 5, { Id: 88, Nombre: 'Familiar de carne remendada' }),
+            ],
+        });
+
+        const evaluacion = evaluarFamiliaresElegibilidad({
+            familiares: [familiarRemendado],
+            estado,
+            alineamientoPersonaje: 'Neutral autentico',
+            plantillaSeleccionada: 4,
+            incluirHomebrew: true,
+            dotesActuales: [],
+        });
+
+        expect(evaluacion.length).toBe(1);
+        expect(evaluacion[0].elegible).toBeFalse();
+        expect(evaluacion[0].razones.join(' ')).toContain('Familiar de carne remendada');
+    });
+
+    it('permite una plantilla de familiar cuando el personaje ya tiene su dote habilitadora', () => {
+        const estado: EstadoCuposFamiliar = {
+            especialId: 47,
+            fuentes: [{ idClase: 10, nombreClase: 'Mago', nivelActual: 3 }],
+            fuentesClaseIds: [10],
+            fuentesTotales: 1,
+            cuposConsumidos: 0,
+            cuposDisponibles: 1,
+            nivelLanzadorFamiliar: 3,
+        };
+        const familiarRemendado = crearFamiliarMock({
+            Id_familiar: 21,
+            Nombre: 'Gato remendado',
+            Plantilla: { Id: 4, Nombre: 'Remendado' },
+            Niveles_clase: [
+                crearNivelClase(10, 1, 4, 5, 5, { Id: 88, Nombre: 'Familiar de carne remendada' }),
+            ],
+        });
+
+        const evaluacion = evaluarFamiliaresElegibilidad({
+            familiares: [familiarRemendado],
+            estado,
+            alineamientoPersonaje: 'Neutral autentico',
+            plantillaSeleccionada: 4,
+            incluirHomebrew: true,
+            dotesActuales: [{ id: 88, nombre: 'Familiar de carne remendada' }],
+        });
+
+        expect(evaluacion.length).toBe(1);
+        expect(evaluacion[0].elegible).toBeTrue();
     });
 
     it('deduplica por Id_familiar + Plantilla.Id', () => {

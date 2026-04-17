@@ -13,7 +13,7 @@ import { DominioDetalle } from '../interfaces/dominio';
 import { HabilidadBasicaDetalle, HabilidadBonoVario } from '../interfaces/habilidad';
 import { IdiomaDetalle } from '../interfaces/idioma';
 import { CompaneroMonstruoDetalle, FamiliarMonstruoDetalle } from '../interfaces/monstruo';
-import { Personaje } from '../interfaces/personaje';
+import { Personaje, PersonajeNivelLanzadorResumen } from '../interfaces/personaje';
 import { Plantilla } from '../interfaces/plantilla';
 import { RegionDetalle } from '../interfaces/region';
 import { RacialDetalle } from '../interfaces/racial';
@@ -22,6 +22,7 @@ import { RazaSimple } from '../interfaces/simplificaciones/raza-simple';
 import { SubtipoRef } from '../interfaces/subtipo';
 import { TipoCriatura } from '../interfaces/tipo_criatura';
 import { VentajaDetalle } from '../interfaces/ventaja';
+import { PersonajeProgresionLanzadorDto, PersonajeProgresionLanzadorSeleccionDto } from '../interfaces/personajes-api';
 import { resolverAlineamientoPlantillas, simularEstadoPlantillas } from './utils/plantilla-elegibilidad';
 import { extraerEjesAlineamientoDesdeContrato } from './utils/alineamiento-contrato';
 import { buildIdentidadPrerrequisitos } from './utils/identidad-prerrequisitos';
@@ -42,6 +43,7 @@ import {
     getPlantillaIdCompanero,
     resolverEstadoCuposCompaneroEspecial29
 } from './utils/companero-reglas';
+import { calcularNivelesLanzadorPersonaje } from './utils/nivel-lanzador-personaje';
 import { UserSettingsService } from './user-settings.service';
 import { NuevoPersonajeGeneradorConfig } from '../interfaces/user-settings';
 
@@ -888,6 +890,7 @@ interface NuevoPersonajeDraftV1 {
     aumentosProgresionConcedidos: number;
     secuenciaAumentoPendiente: number;
     bonusNivelLanzadorPorClase: Record<string, number>;
+    progresionLanzadorSelecciones?: PersonajeProgresionLanzadorSeleccionDto[];
     idsEspecialesInternosActivos: number[];
     idsDotesInternosActivos: number[];
     conjurosSesionPlaceholderPorId: Record<number, Conjuro>;
@@ -929,6 +932,7 @@ export class NuevoPersonajeService {
     private catalogoRegiones: RegionDetalle[] = [];
     private catalogoDeidades: DeidadDetalle[] = [];
     private bonusNivelLanzadorPorClase: Record<string, number> = {};
+    private progresionLanzadorSelecciones: PersonajeProgresionLanzadorSeleccionDto[] = [];
     private idsEspecialesInternosActivos = new Set<number>();
     private idsDotesInternosActivos = new Set<number>();
     private dotesPendientes: DotePendienteState[] = [];
@@ -967,6 +971,30 @@ export class NuevoPersonajeService {
 
     get TieneRestriccionCampanaGenerador(): boolean {
         return this.restriccionCampanaGenerador !== null;
+    }
+
+    getProgresionLanzadorPersistible(): PersonajeProgresionLanzadorDto | null {
+        const selecciones = this.progresionLanzadorSelecciones
+            .map((seleccion) => ({ ...seleccion }))
+            .filter((seleccion) =>
+                this.toNumber(seleccion.idClaseAplicada) > 0
+                && this.toNumber(seleccion.nivelClaseAplicado) > 0
+                && this.toNumber(seleccion.indiceAumento) > 0
+                && this.toNumber(seleccion.idClaseObjetivo) > 0
+            );
+        if (selecciones.length < 1)
+            return null;
+        return { selecciones };
+    }
+
+    getNivelesLanzadorPersistibles(): PersonajeNivelLanzadorResumen[] {
+        return calcularNivelesLanzadorPersonaje(
+            {
+                ...this.personajeCreacion,
+                ProgresionLanzador: this.getProgresionLanzadorPersistible() ?? { selecciones: [] },
+            },
+            this.catalogoClases
+        );
     }
 
     activarPersistenciaBorradorLocal(uid: string): void {
@@ -1138,6 +1166,7 @@ export class NuevoPersonajeService {
         this.idsDotesInternosActivos.clear();
         this.conjurosSesionPlaceholderPorId = {};
         this.bonusNivelLanzadorPorClase = {};
+        this.progresionLanzadorSelecciones = [];
         this.dotesPendientes = [];
         this.secuenciaDotePendiente = 1;
         this.dotesProgresionConcedidas = 0;
@@ -1248,6 +1277,7 @@ export class NuevoPersonajeService {
         this.firmasDotesPlantillaAplicadas.clear();
         this.conjurosSesionPlaceholderPorId = {};
         this.bonusNivelLanzadorPorClase = {};
+        this.progresionLanzadorSelecciones = [];
         this.aumentosPendientesCaracteristica = [];
         this.aumentosProgresionConcedidos = 0;
         this.secuenciaAumentoPendiente = 1;
@@ -2982,6 +3012,7 @@ export class NuevoPersonajeService {
                 escuela: `${conjuro?.Escuela?.Nombre ?? ''}`.trim(),
             }))
             .filter((item) => item.nombre.length > 0);
+        const conjurosAccesibles = this.resolverConjurosAccesiblesParaPrerrequisitosDote();
 
         const catalogoIdiomas = (this.estadoFlujo.ventajas.catalogoIdiomas ?? [])
             .map((idioma) => ({
@@ -3085,6 +3116,8 @@ export class NuevoPersonajeService {
         const nivelLanzadorArcano = this.resolverNivelLanzadorMaximoPorTipo('arcano');
         const nivelLanzadorDivino = this.resolverNivelLanzadorMaximoPorTipo('divino');
         const nivelLanzadorPsionico = this.resolverNivelLanzadorMaximoPorTipo('psionico');
+        const estadoCuposCompanero = this.getEstadoCuposCompaneroEspecial29();
+        const estadoCuposFamiliar = this.getEstadoCuposFamiliarEspecial47();
 
         const contexto: DoteEvaluacionContexto = {
             identidad,
@@ -3104,6 +3137,7 @@ export class NuevoPersonajeService {
             idiomas,
             habilidades,
             conjuros,
+            conjurosAccesibles,
             competenciasArmas: this.resolverCompetenciasArmasActuales(),
             competenciasArmaduras: this.resolverCompetenciasArmadurasActuales(),
             competenciasGrupoArmas: this.resolverCompetenciasGrupoArmasActuales(),
@@ -3136,8 +3170,8 @@ export class NuevoPersonajeService {
             },
             salvaciones: this.resolverSalvacionesTotales(),
             alineamiento: `${this.personajeCreacion.Alineamiento ?? ''}`.trim(),
-            puedeSeleccionarCompanero: this.tieneClaseaPorNombre('Compañero animal'),
-            puedeSeleccionarFamiliar: this.tieneClaseaPorNombre('Convocar a un familiar') || this.tieneClaseaPorNombre('Familiar'),
+            puedeSeleccionarCompanero: estadoCuposCompanero.cuposDisponibles > 0,
+            puedeSeleccionarFamiliar: estadoCuposFamiliar.cuposDisponibles > 0,
             catalogoIdiomas,
             catalogoHabilidades,
             catalogoClases,
@@ -3157,6 +3191,61 @@ export class NuevoPersonajeService {
             razones: [...(evaluacion.razones ?? [])],
             advertencias: [...(evaluacion.advertencias ?? [])],
         };
+    }
+
+    private resolverConjurosAccesiblesParaPrerrequisitosDote(): Array<{ id: number | null; nombre: string; idEscuela: number | null; escuela: string; }> {
+        const resultado = new Map<string, { id: number | null; nombre: string; idEscuela: number | null; escuela: string; }>();
+
+        (this.personajeCreacion?.desgloseClases ?? []).forEach((entrada) => {
+            const nombreClase = `${entrada?.Nombre ?? ''}`.trim();
+            if (nombreClase.length < 1)
+                return;
+
+            const clase = this.obtenerClaseCatalogoPorNombre(nombreClase);
+            if (!clase || !this.tieneLanzamientoPropio(clase))
+                return;
+
+            const nivelLanzadorActual = this.getNivelLanzadorEfectivoClase(nombreClase);
+            if (nivelLanzadorActual < 1)
+                return;
+
+            const detalleActual = this.obtenerDetallePorNivelLanzadorClase(clase, nivelLanzadorActual);
+            if (!detalleActual)
+                return;
+
+            const detallePrevio = nivelLanzadorActual > 1
+                ? this.obtenerDetallePorNivelLanzadorClase(clase, nivelLanzadorActual - 1)
+                : null;
+            const elegibles = this.obtenerConjurosElegiblesParaClase(
+                clase,
+                detalleActual,
+                nivelLanzadorActual,
+                detallePrevio,
+                true
+            ).conjuros;
+
+            elegibles.forEach((conjuro) => {
+                const id = this.toNumber(conjuro?.Id);
+                const nombre = `${conjuro?.Nombre ?? ''}`.trim();
+                const escuela = `${conjuro?.Escuela?.Nombre ?? ''}`.trim();
+                if (id <= 0 && nombre.length < 1)
+                    return;
+                const idEscuela = this.toNumber(conjuro?.Escuela?.Id);
+                const clave = id > 0
+                    ? `id:${id}`
+                    : `nombre:${this.normalizarTexto(nombre)}:escuela:${this.normalizarTexto(escuela)}`;
+                if (resultado.has(clave))
+                    return;
+                resultado.set(clave, {
+                    id: id > 0 ? id : null,
+                    nombre,
+                    idEscuela: idEscuela > 0 ? idEscuela : null,
+                    escuela,
+                });
+            });
+        });
+
+        return Array.from(resultado.values());
     }
 
     private resolverNivelLanzadorMaximoPorTipo(tipo: 'arcano' | 'divino' | 'psionico'): number {
@@ -6506,7 +6595,11 @@ export class NuevoPersonajeService {
             .filter((item) => this.normalizarTexto(item?.Nombre ?? '') !== nombreClaseAplicada)
             .map((item) => this.catalogoClases
                 .find((clase) => this.normalizarTexto(clase?.Nombre ?? '') === this.normalizarTexto(item?.Nombre ?? '')))
-            .filter((item): item is Clase => !!item && this.tieneLanzamientoPropio(item));
+            .filter((item): item is Clase =>
+                !!item
+                && this.tieneLanzamientoPropio(item)
+                && this.getNivelLanzadorEfectivoClase(item.Nombre) > 0
+            );
 
         if (previas.length < 1)
             return [];
@@ -6670,6 +6763,7 @@ export class NuevoPersonajeService {
             const nivelPrevio = this.getNivelLanzadorEfectivoClase(objetivo.Nombre);
             const nivelActual = nivelPrevio + 1;
             this.incrementarBonusNivelLanzadorClase(objetivo.Nombre, 1);
+            this.registrarSeleccionProgresionLanzador(claseAplicada, nivelAplicado, seleccion, objetivo);
             const { entrada, avisos: avisosEntrada } = this.crearEntradaSesionConjuros(
                 objetivo,
                 `${origenBase} (aumento de lanzador: ${objetivo.Nombre})`,
@@ -6946,7 +7040,8 @@ export class NuevoPersonajeService {
         claseObjetivo: Clase,
         detalleActual: ClaseNivelDetalle,
         nivelLanzadorActual: number,
-        detallePrevio: ClaseNivelDetalle | null = null
+        detallePrevio: ClaseNivelDetalle | null = null,
+        incluirConjurosYaConocidos = false
     ): { conjuros: Conjuro[]; nivelesPorConjuro: Record<number, number>; avisos: string[]; acceso: ConjurosAccesoNivelesInfo; } {
         const avisos: string[] = [];
         const resultado: Conjuro[] = [];
@@ -6985,7 +7080,7 @@ export class NuevoPersonajeService {
             const disciplina = this.normalizarTexto(conjuro?.Disciplina?.Nombre ?? '');
             if (disciplinaProhibida.length > 0 && disciplina === disciplinaProhibida)
                 return false;
-            if (this.esConjuroYaConocidoPorClase(claseObjetivo?.Nombre ?? '', id))
+            if (!incluirConjurosYaConocidos && this.esConjuroYaConocidoPorClase(claseObjetivo?.Nombre ?? '', id))
                 return false;
             return true;
         };
@@ -7193,6 +7288,39 @@ export class NuevoPersonajeService {
             return;
         const actual = this.obtenerBonusNivelLanzadorClase(nombreClase);
         this.bonusNivelLanzadorPorClase[key] = Math.max(0, actual + Math.max(0, Math.trunc(this.toNumber(delta))));
+    }
+
+    private registrarSeleccionProgresionLanzador(
+        claseAplicada: Clase,
+        nivelAplicado: number,
+        seleccion: ClaseAumentoLanzadorSeleccion,
+        claseObjetivo: Clase
+    ): void {
+        const entrada: PersonajeProgresionLanzadorSeleccionDto = {
+            idClaseAplicada: Math.trunc(this.toNumber(claseAplicada?.Id)),
+            nivelClaseAplicado: Math.trunc(this.toNumber(nivelAplicado)),
+            indiceAumento: Math.trunc(this.toNumber(seleccion?.indice)),
+            idClaseObjetivo: Math.trunc(this.toNumber(claseObjetivo?.Id)),
+        };
+        if (
+            entrada.idClaseAplicada <= 0
+            || entrada.nivelClaseAplicado <= 0
+            || entrada.indiceAumento <= 0
+            || entrada.idClaseObjetivo <= 0
+        ) {
+            return;
+        }
+
+        const existente = this.progresionLanzadorSelecciones.findIndex((item) =>
+            item.idClaseAplicada === entrada.idClaseAplicada
+            && item.nivelClaseAplicado === entrada.nivelClaseAplicado
+            && item.indiceAumento === entrada.indiceAumento
+        );
+        if (existente >= 0) {
+            this.progresionLanzadorSelecciones[existente] = entrada;
+            return;
+        }
+        this.progresionLanzadorSelecciones.push(entrada);
     }
 
     private getEntradaConjurosActiva(): ConjurosSesionStateEntrada | null {
@@ -8108,6 +8236,7 @@ export class NuevoPersonajeService {
             aumentosProgresionConcedidos: Math.max(0, Math.trunc(this.toNumber(this.aumentosProgresionConcedidos))),
             secuenciaAumentoPendiente: Math.max(1, Math.trunc(this.toNumber(this.secuenciaAumentoPendiente))),
             bonusNivelLanzadorPorClase: this.clonarProfundo(this.bonusNivelLanzadorPorClase),
+            progresionLanzadorSelecciones: this.getProgresionLanzadorPersistible()?.selecciones ?? [],
             idsEspecialesInternosActivos: Array.from(this.idsEspecialesInternosActivos.values()),
             idsDotesInternosActivos: Array.from(this.idsDotesInternosActivos.values()),
             conjurosSesionPlaceholderPorId: this.clonarProfundo(this.conjurosSesionPlaceholderPorId),
@@ -8179,6 +8308,9 @@ export class NuevoPersonajeService {
         this.aumentosProgresionConcedidos = Math.max(0, Math.trunc(this.toNumber(borrador.aumentosProgresionConcedidos)));
         this.secuenciaAumentoPendiente = Math.max(1, Math.trunc(this.toNumber(borrador.secuenciaAumentoPendiente)));
         this.bonusNivelLanzadorPorClase = this.clonarProfundo(borrador.bonusNivelLanzadorPorClase ?? {});
+        this.progresionLanzadorSelecciones = this.normalizarSeleccionesProgresionLanzadorBorrador(
+            borrador.progresionLanzadorSelecciones
+        );
         this.conjurosSesionPlaceholderPorId = this.clonarProfundo(borrador.conjurosSesionPlaceholderPorId ?? {});
         this.idsEspecialesInternosActivos = new Set<number>(
             (borrador.idsEspecialesInternosActivos ?? [])
@@ -8208,6 +8340,26 @@ export class NuevoPersonajeService {
         this.recalcularEfectosVentajas();
         this.recalcularSimulacionPlantillas();
         this.refrescarDerivadasPreviewNuevoPersonaje();
+    }
+
+    private normalizarSeleccionesProgresionLanzadorBorrador(
+        selecciones?: PersonajeProgresionLanzadorSeleccionDto[] | null
+    ): PersonajeProgresionLanzadorSeleccionDto[] {
+        return Array.isArray(selecciones)
+            ? selecciones
+                .map((seleccion) => ({
+                    idClaseAplicada: Math.trunc(this.toNumber(seleccion?.idClaseAplicada)),
+                    nivelClaseAplicado: Math.trunc(this.toNumber(seleccion?.nivelClaseAplicado)),
+                    indiceAumento: Math.trunc(this.toNumber(seleccion?.indiceAumento)),
+                    idClaseObjetivo: Math.trunc(this.toNumber(seleccion?.idClaseObjetivo)),
+                }))
+                .filter((seleccion) =>
+                    seleccion.idClaseAplicada > 0
+                    && seleccion.nivelClaseAplicado > 0
+                    && seleccion.indiceAumento > 0
+                    && seleccion.idClaseObjetivo > 0
+                )
+            : [];
     }
 
     private restaurarBasesVentajasDesdeBorrador(borrador: NuevoPersonajeDraftV1): void {
@@ -9657,6 +9809,8 @@ export class NuevoPersonajeService {
                 Oficial: true,
             },
             RazaBase: null,
+            ProgresionLanzador: { selecciones: [] },
+            Niveles_lanzador: [],
             Clases: '',
             desgloseClases: [],
             Personalidad: '',

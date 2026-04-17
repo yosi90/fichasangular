@@ -26,6 +26,7 @@ export interface FiltroFamiliaresElegiblesInput {
     alineamientoPersonaje: string;
     plantillaSeleccionada: FamiliarPlantillaId | null;
     incluirHomebrew: boolean;
+    dotesActuales?: Array<{ id: number | null; nombre: string; }>;
 }
 
 export interface FamiliarElegibilidadEvaluadaItem {
@@ -201,6 +202,44 @@ function claseOtorgaFuenteFamiliar(clase: Clase | null | undefined, nivelActual:
 function resolveAlineamientoBasicoId(nombre: string): number {
     const normalized = normalizeText(nombre);
     return ALIGNMENT_NAME_TO_ID[normalized] ?? 0;
+}
+
+function resolveDoteIdFromNivelClase(nivelClase: MonstruoNivelClase | null | undefined): number {
+    return toNumber(
+        nivelClase?.Dote?.Id
+        ?? (nivelClase?.Dote as any)?.id
+        ?? (nivelClase as any)?.Id_dote
+        ?? (nivelClase as any)?.id_dote
+    );
+}
+
+function resolveDoteNombreFromNivelClase(nivelClase: MonstruoNivelClase | null | undefined): string {
+    return `${nivelClase?.Dote?.Nombre
+        ?? (nivelClase?.Dote as any)?.nombre
+        ?? (nivelClase as any)?.Dote_nombre
+        ?? (nivelClase as any)?.dote_nombre
+        ?? ''}`.trim();
+}
+
+function resolverDoteRequeridaPlantilla(nivelesClasePlantilla: MonstruoNivelClase[]): { id: number; nombre: string; } | null {
+    const nivelConDote = nivelesClasePlantilla.find((nivelClase) => resolveDoteIdFromNivelClase(nivelClase) > 0);
+    if (!nivelConDote)
+        return null;
+    const id = resolveDoteIdFromNivelClase(nivelConDote);
+    return {
+        id,
+        nombre: resolveDoteNombreFromNivelClase(nivelConDote) || `Dote ${id}`,
+    };
+}
+
+function tieneDoteActual(dotesActuales: Array<{ id: number | null; nombre: string; }>, doteRequerida: { id: number; nombre: string; }): boolean {
+    const nombreRequerido = normalizeText(doteRequerida.nombre);
+    return dotesActuales.some((dote) => {
+        const id = toNumber(dote?.id);
+        if (doteRequerida.id > 0 && id === doteRequerida.id)
+            return true;
+        return nombreRequerido.length > 0 && normalizeText(dote?.nombre ?? '') === nombreRequerido;
+    });
 }
 
 function resolveAlineamientoBasicoIdFromRaw(item: any): number {
@@ -478,6 +517,7 @@ export function evaluarFamiliaresElegibilidad(input: FiltroFamiliaresElegiblesIn
     const includeHomebrew = !!input?.incluirHomebrew;
     const alineamientoPersonaje = normalizeText(input?.alineamientoPersonaje ?? '');
     const idAlineamientoBasico = resolveAlineamientoBasicoId(input?.alineamientoPersonaje ?? '');
+    const dotesActuales = Array.isArray(input?.dotesActuales) ? input.dotesActuales : [];
 
     const dedupe = new Map<string, FamiliarElegibilidadEvaluadaItem>();
 
@@ -493,13 +533,17 @@ export function evaluarFamiliaresElegibilidad(input: FiltroFamiliaresElegiblesIn
         if (!includeHomebrew && familiar?.Oficial === false)
             razones.push('Es una opción homebrew y el filtro Homebrew está desactivado.');
 
-        const nivelesClaseFuente = (familiar?.Niveles_clase ?? []).filter((nivelClase) =>
-            fuentesClaseIds.has(toNumber(nivelClase?.Clase?.Id))
-            && toNumber(nivelClase?.Nivel) >= 0
-        );
         const nivelesClasePlantilla = (familiar?.Niveles_clase ?? []).filter((nivelClase) =>
             toNumber(nivelClase?.Plantilla?.Id) === idPlantilla
             && toNumber(nivelClase?.Nivel) >= 0
+        );
+        const doteRequerida = resolverDoteRequeridaPlantilla(nivelesClasePlantilla);
+        if (doteRequerida && !tieneDoteActual(dotesActuales, doteRequerida))
+            razones.push(`Requiere la dote ${doteRequerida.nombre} para esta plantilla.`);
+
+        const nivelesClaseFuente = nivelesClasePlantilla.filter((nivelClase) =>
+            fuentesClaseIds.has(toNumber(nivelClase?.Clase?.Id))
+            && (!doteRequerida || resolveDoteIdFromNivelClase(nivelClase) === doteRequerida.id)
         );
         const nivelesClase = nivelesClaseFuente.filter((nivelClase) => toNumber(nivelClase?.Nivel) <= nivelLanzadorFamiliar);
         const nivelMinimoRequerido = nivelesClaseFuente.length > 0

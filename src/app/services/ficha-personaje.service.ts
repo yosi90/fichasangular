@@ -2,7 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { Auth } from '@angular/fire/auth';
 import { PDFDocument } from 'pdf-lib';
 import { saveAs } from 'file-saver';
-import { Personaje } from '../interfaces/personaje';
+import { Personaje, PersonajeNivelLanzadorResumen, PersonajeTipoLanzamiento } from '../interfaces/personaje';
 import { CompaneroMonstruoDetalle, FamiliarMonstruoDetalle, MonstruoDetalle } from '../interfaces/monstruo';
 
 
@@ -78,6 +78,7 @@ export class FichaPersonajeService {
         form.getTextField('mod_magico_voluntad').setText('0');
         form.getTextField('mod_varios_voluntad').setText(this.sumMods((pj as any)?.Salvaciones?.voluntad?.modsVarios).toString());
         var notas = `Personalidad:\r\n${pj.Personalidad}\r\n\r\nContexto:\r\n${pj.Contexto}`;
+        notas += this.formatearNotasNivelesLanzador(pj);
         if (pj.Rds && pj.Rds.length > 0) {
             if (pj.Rds[0].Modificador.length < 25)
                 form.getTextField('rd').setText(`${pj.Rds[0].Modificador} [${pj.Rds[0].Origen}]`);
@@ -657,6 +658,39 @@ export class FichaPersonajeService {
         } catch {
             // El template puede no contener el campo; no interrumpimos la generación.
         }
+    }
+
+    private formatearNotasNivelesLanzador(pj: Personaje): string {
+        const niveles = (pj?.Niveles_lanzador ?? [])
+            .filter((nivel) => Math.trunc(this.toNumber(nivel?.nivelLanzador)) > 0)
+            .sort((a, b) => `${a?.nombreClase ?? ''}`.localeCompare(`${b?.nombreClase ?? ''}`, 'es', { sensitivity: 'base' }));
+        if (niveles.length < 1)
+            return '';
+
+        const lineas = niveles.map((nivel) => this.formatearLineaNivelLanzador(nivel));
+        return `\r\n\r\nNiveles de lanzador:\r\n${lineas.join('\r\n')}`;
+    }
+
+    private formatearLineaNivelLanzador(nivel: PersonajeNivelLanzadorResumen): string {
+        const tipo = this.formatearTipoLanzamiento(nivel?.tipoLanzamiento);
+        const tipoLabel = tipo.length > 0 ? ` (${tipo})` : '';
+        const nivelLanzador = Math.max(0, Math.trunc(this.toNumber(nivel?.nivelLanzador)));
+        const base = Math.max(0, Math.trunc(this.toNumber(nivel?.nivelLanzadorBase)));
+        const bonus = Math.max(0, Math.trunc(this.toNumber(nivel?.bonusNivelLanzador)));
+        const desglose = bonus > 0 ? `, base ${base} + ${bonus}` : '';
+        return ` - ${nivel?.nombreClase ?? 'Clase'}${tipoLabel}: ${nivelLanzador}${desglose}`;
+    }
+
+    private formatearTipoLanzamiento(tipo: PersonajeTipoLanzamiento | null | undefined): string {
+        if (tipo === 'arcano')
+            return 'arcano';
+        if (tipo === 'divino')
+            return 'divino';
+        if (tipo === 'psionico')
+            return 'psionico';
+        if (tipo === 'alma')
+            return 'alma';
+        return '';
     }
 
     private resolverNombreJugador(pj: Personaje): string {

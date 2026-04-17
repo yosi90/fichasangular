@@ -131,7 +131,13 @@ export class DetallesDoteComponent {
             const familiaEtiqueta = this.getEtiquetaPrerrequisito(key);
 
             items.forEach((item: Record<string, any>) => {
-                const campos = this.getCamposPrerrequisito(item, key);
+                let campos = this.getCamposPrerrequisito(item, key);
+                if (campos.length < 1 && this.esPrerrequisitoFlagOnly(key)) {
+                    campos = [{
+                        etiqueta: 'Requisito',
+                        valor: familiaEtiqueta,
+                    }];
+                }
                 if (campos.length < 1)
                     return;
 
@@ -261,6 +267,9 @@ export class DetallesDoteComponent {
             return this.composePrimaryAndRemaining(principal, campos, ['Tipo dote', 'Tipo', 'Cantidad maxima', 'Cantidad máxima', 'Cantidad']);
         }
 
+        if (key === 'poderseleccionarcompanero' || key === 'poderseleccionarfamiliar')
+            return [condicion.familiaEtiqueta];
+
         if ([
             'clase',
             'competenciaarma',
@@ -314,6 +323,12 @@ export class DetallesDoteComponent {
         if (typeof valor === 'object')
             return Object.keys(valor as object).length > 0;
         return true;
+    }
+
+    private esPrerrequisitoFlagOnly(key: string): boolean {
+        const normalizada = this.normalizar(key).replace(/[_\s]/g, '');
+        return normalizada === 'poderseleccionarcompanero'
+            || normalizada === 'poderseleccionarfamiliar';
     }
 
     private formatearValorPrerrequisito(valor: unknown): string {

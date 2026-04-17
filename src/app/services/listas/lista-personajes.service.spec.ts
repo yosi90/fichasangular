@@ -553,6 +553,46 @@ describe('ListaPersonajesService', () => {
         expect(personajes[0].ownerDisplayName).toBeNull();
     });
 
+    it('upsertPersonajeCreadoEnCache publica el personaje creado sin esperar al refresco remoto', () => {
+        const service = new ListaPersonajesService(
+            { currentUser: { getIdToken: async () => 'token' } } as any,
+            {} as any,
+            { get: jasmine.createSpy('get') } as any,
+            firebaseContextMock
+        );
+        (service as any).personajesSubject.next([{
+            Id: 1,
+            Nombre: 'Existente',
+            visible_otros_usuarios: false,
+            Raza: { Id: 1, Nombre: 'Humano' },
+            Clases: 'Guerrero 1',
+            Contexto: '',
+            Personalidad: '',
+            Campana: 'Sin campaña',
+            Trama: 'Trama base',
+            Subtrama: 'Subtrama base',
+            Archivado: false,
+        }]);
+
+        service.upsertPersonajeCreadoEnCache({
+            Id: 2,
+            Nombre: 'Recien creado',
+            Raza: { Id: 2, Nombre: 'Elfo' },
+            Clases: 'Mago 1',
+            Contexto: 'Contexto',
+            Personalidad: 'Personalidad',
+            Campana: 'Sin campaña',
+            Trama: 'Trama base',
+            Subtrama: 'Subtrama base',
+            Archivado: false,
+        });
+
+        const personajes = (service as any).personajesSubject.value;
+        expect((service as any).personajesLoaded).toBeTrue();
+        expect(personajes.map((item: any) => item.Id).sort()).toEqual([1, 2]);
+        expect(personajes.find((item: any) => item.Id === 2)?.Nombre).toBe('Recien creado');
+    });
+
     it('recarga el listado cuando cambia la sesión de invitado a usuario autenticado', async () => {
         const authMock = { currentUser: null } as any;
         const service = new ListaPersonajesServiceAuthTestDouble(

@@ -48,6 +48,7 @@ import { MonstruoService } from 'src/app/services/monstruo.service';
 import { RegionService } from 'src/app/services/region.service';
 import { FichasDescargaBackgroundService } from 'src/app/services/fichas-descarga-background.service';
 import { PersonajeService } from 'src/app/services/personaje.service';
+import { ListaPersonajesService } from 'src/app/services/listas/lista-personajes.service';
 import { ChatFloatingService, FloatingChatOverlaySnapshot } from 'src/app/services/chat-floating.service';
 import { UserProfileNavigationService } from 'src/app/services/user-profile-navigation.service';
 import { UserService } from 'src/app/services/user.service';
@@ -579,6 +580,7 @@ export class NuevoPersonajeComponent {
         private chatFloatingSvc: ChatFloatingService,
         private userSvc: UserService,
         private userProfileNavigationSvc: UserProfileNavigationService,
+        private listaPersonajesSvc?: ListaPersonajesService,
     ) {
         this.Personaje = this.nuevoPSvc.PersonajeCreacion;
     }
@@ -4168,6 +4170,10 @@ export class NuevoPersonajeComponent {
         try {
             let idPersonaje = Math.trunc(Number(this.finalizacionState.idPersonaje ?? 0));
             this.persistirBorradorLocalCritico();
+            const progresionLanzador = this.nuevoPSvc.getProgresionLanzadorPersistible();
+            const nivelesLanzador = this.nuevoPSvc.getNivelesLanzadorPersistibles();
+            this.Personaje.ProgresionLanzador = progresionLanzador ?? { selecciones: [] };
+            this.Personaje.Niveles_lanzador = nivelesLanzador;
 
             if (!this.finalizacionState.sqlOk) {
                 etapa = 'sql';
@@ -4176,7 +4182,8 @@ export class NuevoPersonajeComponent {
                 const payload = this.personajeSvc.construirPayloadCreacionDesdePersonaje(
                     this.Personaje,
                     contextoIds,
-                    contextoCreacionCampana
+                    contextoCreacionCampana,
+                    progresionLanzador
                 );
                 const response = await this.personajeSvc.crearPersonajeApiDesdeCreacion(payload);
                 idPersonaje = Math.trunc(Number(response?.idPersonaje ?? 0));
@@ -4194,6 +4201,7 @@ export class NuevoPersonajeComponent {
 
             const pjNormalizado = this.personajeSvc.normalizarPersonajeParaPersistenciaFinal(this.Personaje, idPersonaje);
             this.Personaje = pjNormalizado;
+            this.listaPersonajesSvc?.upsertPersonajeCreadoEnCache(pjNormalizado);
 
             etapa = 'navegacion';
             this.modalSelectorVisibilidadAbierto = false;
@@ -4648,6 +4656,7 @@ export class NuevoPersonajeComponent {
             alineamientoPersonaje: `${this.Personaje?.Alineamiento ?? ''}`.trim(),
             plantillaSeleccionada: this.selectorFamiliarPlantillaSeleccionada,
             incluirHomebrew: incluirHomebrewEfectivo,
+            dotesActuales: this.getDotesActualesParaSelectores(),
         });
         const nivelesRequeridos: Record<string, number> = {};
         evaluaciones.forEach((item) => {
@@ -4668,6 +4677,35 @@ export class NuevoPersonajeComponent {
                 razones: [...(item.razones ?? [])],
                 nivelMinimoRequerido: item.nivelMinimoRequerido ?? null,
             }));
+    }
+
+    private getDotesActualesParaSelectores(): Array<{ id: number | null; nombre: string; }> {
+        const resultado: Array<{ id: number | null; nombre: string; }> = [];
+        const claves = new Set<string>();
+        const registrar = (idRaw: any, nombreRaw: any) => {
+            const id = Math.trunc(Number(idRaw ?? 0));
+            const nombre = `${nombreRaw ?? ''}`.trim();
+            if ((!Number.isFinite(id) || id <= 0) && nombre.length < 1)
+                return;
+            const clave = id > 0
+                ? `id:${id}`
+                : `nombre:${this.normalizarTexto(nombre)}`;
+            if (claves.has(clave))
+                return;
+            claves.add(clave);
+            resultado.push({
+                id: id > 0 ? id : null,
+                nombre,
+            });
+        };
+
+        (this.nuevoPSvc.PersonajeCreacion.DotesContextuales ?? []).forEach((item) =>
+            registrar(item?.Dote?.Id, item?.Dote?.Nombre)
+        );
+        (this.nuevoPSvc.PersonajeCreacion.Dotes ?? []).forEach((item: any) =>
+            registrar(item?.Id ?? item?.id, item?.Nombre ?? item?.nombre)
+        );
+        return resultado;
     }
 
     private async cargarNombresEspecialesFamiliar(): Promise<Record<number, string>> {

@@ -26,6 +26,7 @@ export interface DoteEvaluacionContexto {
     idiomas: Array<{ id: number | null; nombre: string; }>;
     habilidades: Array<{ id: number | null; nombre: string; rangos: number; extra: string; }>;
     conjuros: Array<{ id: number | null; nombre: string; idEscuela: number | null; escuela: string; }>;
+    conjurosAccesibles?: Array<{ id: number | null; nombre: string; idEscuela: number | null; escuela: string; }>;
     competenciasArmas: Array<{ id: number | null; nombre: string; }>;
     competenciasArmaduras?: Array<{ id: number | null; nombre: string; }>;
     competenciasGrupoArmas?: Array<{ id: number | null; nombre: string; }>;
@@ -785,7 +786,10 @@ function buildEvaluacionConjuroEscuela(entry: Record<string, any>, ctx: DoteEval
     const escuelaNorm = normalizarTextoPrerrequisito(escuela);
     const cantidad = Math.max(1, Math.trunc(toNumber(pick(entry, ['Cantidad', 'cantidad', 'Nivel', 'nivel']))));
     const evaluable = (idEscuela > 0 || escuelaNorm.length > 0) && cantidad > 0;
-    const total = ctx.conjuros.reduce((acc, conjuro) => {
+    const fuenteConjuros = ctx.conjurosAccesibles !== undefined
+        ? ctx.conjurosAccesibles
+        : ctx.conjuros;
+    const total = fuenteConjuros.reduce((acc, conjuro) => {
         const coincideEscuela = (idEscuela > 0 && toNumber(conjuro.idEscuela) === idEscuela)
             || (escuelaNorm.length > 0 && normalizarTextoPrerrequisito(conjuro.escuela) === escuelaNorm);
         return coincideEscuela ? acc + 1 : acc;

@@ -142,4 +142,20 @@ describe('DetallesDoteComponent', () => {
         expect(grupos[0].condiciones[1].familiaEtiqueta).toBe('Tener esta dote');
         expect(chipsDote).toEqual(['Ataque poderoso']);
     });
+
+    it('muestra prerrequisitos flag-only aunque no tengan campos descriptivos', () => {
+        component.dote = {
+            ...(component.doteData as any),
+            Prerrequisitos: {
+                poder_seleccionar_companero: [{ Activo: true }],
+            },
+        } as any;
+
+        const grupos = component.getPrerrequisitosAgrupados();
+
+        expect(grupos.length).toBe(1);
+        expect(grupos[0].condiciones.length).toBe(1);
+        expect(grupos[0].condiciones[0].familiaEtiqueta).toBe('Poder elegir un compañero nuevo');
+        expect(component.getTextosCondicionPrerrequisito(grupos[0].condiciones[0])).toEqual(['Poder elegir un compañero nuevo']);
+    });
 });
