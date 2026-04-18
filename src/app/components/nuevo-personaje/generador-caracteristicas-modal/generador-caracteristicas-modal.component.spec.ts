@@ -156,6 +156,37 @@ describe('GeneradorCaracteristicasModalComponent', () => {
         expect(component.estado.tablasPermitidas).toBe(1);
     });
 
+    it('avisa al master cuando supera sus restricciones de dados de campaña', () => {
+        service.aplicarRestriccionCampanaGenerador({
+            tiradaMinimaCaracteristica: 13,
+            maxTablasDadosCaracteristicas: 1,
+        }, { permitirOverride: true });
+
+        expect(component.generadorRestringidoPorCampana).toBeFalse();
+        expect(component.estado.minimoSeleccionado).toBe(13);
+        expect(component.estado.tablasPermitidas).toBe(3);
+        expect(component.avisoOverrideReglasCampana).toContain('tablas permitidas 3 frente a 1');
+    });
+
+    it('avisa al master cuando usa una tirada mínima más permisiva que la campaña', () => {
+        service.aplicarRestriccionCampanaGenerador({
+            tiradaMinimaCaracteristica: 8,
+            maxTablasDadosCaracteristicas: 3,
+        }, { permitirOverride: true });
+
+        expect(component.avisoOverrideReglasCampana).toContain('tirada mínima 13 frente a 8');
+    });
+
+    it('no avisa al master cuando respeta sus restricciones de dados de campaña', () => {
+        service.setTablasPermitidasGenerador(1);
+        service.aplicarRestriccionCampanaGenerador({
+            tiradaMinimaCaracteristica: 13,
+            maxTablasDadosCaracteristicas: 1,
+        }, { permitirOverride: true });
+
+        expect(component.avisoOverrideReglasCampana).toBeNull();
+    });
+
     it('reactiva los selectores si la restricción de campaña desaparece', () => {
         service.aplicarRestriccionCampanaGenerador({
             tiradaMinimaCaracteristica: 3,

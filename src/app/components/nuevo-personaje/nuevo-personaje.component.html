@@ -794,7 +794,7 @@
                                                 </div>
                                             </td>
                                             <td>
-                                                <p class="tw-inline-block sombra3d-sm tw-rounded tw-p-1 tw-mb-0 tw-text-center clase-estado-chip"
+                                                <p class="tw-inline-block sombra3d-sm tw-rounded tw-p-1 tw-mb-0 tw-text-center clase-estado-chip clase-estado-chip--nivel clase-estado-chip--neutral"
                                                     [ngClass]="getClaseNivelChipCss(item)">
                                                     {{item.siguienteNivel}}
                                                 </p>
@@ -841,15 +841,15 @@
                                             </td>
                                             <td>
                                                 <div class="salvaciones-clase-chips">
-                                                    <p class="tw-inline-block sombra3d-sm tw-rounded tw-p-1 tw-mb-0 tw-text-center clase-estado-chip"
+                                                    <p class="tw-inline-block sombra3d-sm tw-rounded tw-p-1 tw-mb-0 tw-text-center clase-estado-chip clase-estado-chip--salvacion clase-estado-chip--neutral"
                                                         [ngClass]="getClaseSalvacionChipCss(item.salvacionesDelta.fortaleza)">
                                                         Fort {{formatSignedDeltaClase(item.salvacionesDelta.fortaleza)}}
                                                     </p>
-                                                    <p class="tw-inline-block sombra3d-sm tw-rounded tw-p-1 tw-mb-0 tw-text-center clase-estado-chip"
+                                                    <p class="tw-inline-block sombra3d-sm tw-rounded tw-p-1 tw-mb-0 tw-text-center clase-estado-chip clase-estado-chip--salvacion clase-estado-chip--neutral"
                                                         [ngClass]="getClaseSalvacionChipCss(item.salvacionesDelta.reflejos)">
                                                         Ref {{formatSignedDeltaClase(item.salvacionesDelta.reflejos)}}
                                                     </p>
-                                                    <p class="tw-inline-block sombra3d-sm tw-rounded tw-p-1 tw-mb-0 tw-text-center clase-estado-chip"
+                                                    <p class="tw-inline-block sombra3d-sm tw-rounded tw-p-1 tw-mb-0 tw-text-center clase-estado-chip clase-estado-chip--salvacion clase-estado-chip--neutral"
                                                         [ngClass]="getClaseSalvacionChipCss(item.salvacionesDelta.voluntad)">
                                                         Vol {{formatSignedDeltaClase(item.salvacionesDelta.voluntad)}}
                                                     </p>

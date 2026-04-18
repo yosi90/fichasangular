@@ -1386,7 +1386,7 @@ describe('UserProfileComponent', () => {
             currentRole: 'jugador',
             requestedRole: 'master',
             status: 'rejected',
-            blockedUntilUtc: '2026-04-08T09:30:00.000Z',
+            blockedUntilUtc: '2099-04-08T09:30:00.000Z',
             requestId: 12,
             requestedAtUtc: '2026-03-10T10:00:00.000Z',
             resolvedAtUtc: '2026-03-11T10:00:00.000Z',
@@ -2300,6 +2300,32 @@ describe('UserProfileComponent', () => {
         expect(component.campaignWorkspaceMode).toBe('peopleStories');
         expect(component.campaignWorkspaceTab).toBe('usuarios');
         expect(component.isCampaignWorkspaceUsersTab).toBeTrue();
+    }));
+
+    it('abre historias directamente desde la navegación interna', fakeAsync(() => {
+        const campanaSvc = TestBed.inject(CampanaService) as jasmine.SpyObj<CampanaService>;
+        campanaSvc.listProfileCampaigns.and.resolveTo([{
+            id: 7,
+            nombre: 'Caballeros',
+            campaignRole: 'master',
+            membershipStatus: 'activo',
+        }]);
+        campanaSvc.getCampaignDetail.and.resolveTo(buildCampaignDetail());
+
+        fixture.detectChanges();
+        tick();
+        component.ngOnChanges({
+            openRequest: new SimpleChange(null, { section: 'campanas', requestId: 21 }, false),
+        });
+        tick();
+
+        void component.abrirHistoriasCampana(7);
+        tick();
+
+        expect(component.campaignWorkspaceMode).toBe('peopleStories');
+        expect(component.campaignWorkspaceTab).toBe('historias');
+        expect(component.isCampaignWorkspaceStoriesTab).toBeTrue();
+        expect(component.campaignWorkspaceTitle).toBe('Historias de campaña');
     }));
 
     it('permite editar allowDirectMessagesFromNonFriends al guardar preferencias', fakeAsync(() => {

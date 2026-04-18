@@ -1242,14 +1242,17 @@ export class CampanaService {
     }
 
     private normalizeCampaignCreationPolicy(raw: any): CampaignCreationPolicy {
+        const permitirHomebrewGeneral = this.toBoolean(raw?.permitirHomebrewGeneral, true);
         return {
             tiradaMinimaCaracteristica: this.toNullableNumber(raw?.tiradaMinimaCaracteristica),
             nepMaximoPersonajeNuevo: this.normalizeNullableNepLimit(raw?.nepMaximoPersonajeNuevo),
             maxTablasDadosCaracteristicas: this.toNullableNumber(raw?.maxTablasDadosCaracteristicas),
-            permitirHomebrewGeneral: this.toBoolean(raw?.permitirHomebrewGeneral, true),
+            permitirHomebrewGeneral,
             permitirVentajasDesventajas: this.toBoolean(raw?.permitirVentajasDesventajas, true),
             permitirIgnorarRestriccionesAlineamiento: this.toBoolean(raw?.permitirIgnorarRestriccionesAlineamiento, false),
-            maxFuentesHomebrewGeneralesPorPersonaje: this.normalizeNullableHomebrewSourceLimit(raw?.maxFuentesHomebrewGeneralesPorPersonaje),
+            maxFuentesHomebrewGeneralesPorPersonaje: permitirHomebrewGeneral
+                ? null
+                : this.normalizeNullableHomebrewSourceLimit(raw?.maxFuentesHomebrewGeneralesPorPersonaje),
         };
     }
 
@@ -1356,8 +1359,11 @@ export class CampanaService {
             payload.permitirVentajasDesventajas = this.toBoolean(raw.permitirVentajasDesventajas, true);
         if ('permitirIgnorarRestriccionesAlineamiento' in raw)
             payload.permitirIgnorarRestriccionesAlineamiento = this.toBoolean(raw.permitirIgnorarRestriccionesAlineamiento, false);
-        if ('maxFuentesHomebrewGeneralesPorPersonaje' in raw)
-            payload.maxFuentesHomebrewGeneralesPorPersonaje = this.toNullableNumber(raw.maxFuentesHomebrewGeneralesPorPersonaje);
+        if (payload.permitirHomebrewGeneral === true) {
+            payload.maxFuentesHomebrewGeneralesPorPersonaje = null;
+        } else if ('maxFuentesHomebrewGeneralesPorPersonaje' in raw) {
+            payload.maxFuentesHomebrewGeneralesPorPersonaje = this.normalizeNullableHomebrewSourceLimit(raw.maxFuentesHomebrewGeneralesPorPersonaje);
+        }
 
         return payload;
     }

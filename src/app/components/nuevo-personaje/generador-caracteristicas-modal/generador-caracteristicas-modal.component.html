@@ -5,6 +5,9 @@
         <mat-card-header class="modal-header">
             <div class="header-text">
                 <mat-card-title>{{tituloModal}}</mat-card-title>
+                <p class="campaign-override-warning tw-m-0" *ngIf="avisoOverrideReglasCampana as aviso">
+                    {{aviso}}
+                </p>
             </div>
             <div class="header-actions">
                 <mat-form-field appearance="fill" class="minimo-selector">

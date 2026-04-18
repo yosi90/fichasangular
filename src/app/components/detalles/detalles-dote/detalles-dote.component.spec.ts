@@ -143,19 +143,26 @@ describe('DetallesDoteComponent', () => {
         expect(chipsDote).toEqual(['Ataque poderoso']);
     });
 
-    it('muestra prerrequisitos flag-only aunque no tengan campos descriptivos', () => {
+    it('muestra prerrequisitos flag-only con descripcion legible', () => {
         component.dote = {
             ...(component.doteData as any),
             Prerrequisitos: {
                 poder_seleccionar_companero: [{ Activo: true }],
+                poder_seleccionar_familiar: [{ Activo: true }],
             },
         } as any;
 
         const grupos = component.getPrerrequisitosAgrupados();
 
         expect(grupos.length).toBe(1);
-        expect(grupos[0].condiciones.length).toBe(1);
+        expect(grupos[0].condiciones.length).toBe(2);
         expect(grupos[0].condiciones[0].familiaEtiqueta).toBe('Poder elegir un compañero nuevo');
-        expect(component.getTextosCondicionPrerrequisito(grupos[0].condiciones[0])).toEqual(['Poder elegir un compañero nuevo']);
+        expect(component.getTextosCondicionPrerrequisito(grupos[0].condiciones[0])).toEqual([
+            'Tener la capacidad de obtener un nuevo compañero animal en este momento.',
+        ]);
+        expect(grupos[0].condiciones[1].familiaEtiqueta).toBe('Poder elegir un familiar nuevo');
+        expect(component.getTextosCondicionPrerrequisito(grupos[0].condiciones[1])).toEqual([
+            'Tener la capacidad de obtener un nuevo familiar en este momento.',
+        ]);
     });
 });

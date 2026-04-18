@@ -86,6 +86,25 @@ describe('CampanaService', () => {
         }));
     });
 
+    it('createCampaign limpia el límite de fuentes cuando se permite homebrew general', async () => {
+        httpMock.post.and.returnValue(of({ idCampana: 7, nombre: 'Campaña nueva' }));
+
+        await service.createCampaign({
+            nombre: 'Campaña nueva',
+            politicaCreacion: {
+                permitirHomebrewGeneral: true,
+                maxFuentesHomebrewGeneralesPorPersonaje: 0,
+            },
+        });
+
+        expect(httpMock.post.calls.mostRecent().args[1]).toEqual(jasmine.objectContaining({
+            politicaCreacion: jasmine.objectContaining({
+                permitirHomebrewGeneral: true,
+                maxFuentesHomebrewGeneralesPorPersonaje: null,
+            }),
+        }));
+    });
+
     it('createCampaign rechaza nombres demasiado cortos', async () => {
         await expectAsync(service.createCampaign('Mini')).toBeRejectedWithError(
             'El nombre de campaña debe tener entre 5 y 150 caracteres.'
@@ -950,6 +969,31 @@ describe('CampanaService', () => {
         expect(detail.tramas[0].subtramas[0].nombre).toBe('Subtrama alfa');
         expect(detail.tramas[0].visibleParaJugadores).toBeTrue();
         expect(detail.tramas[0].subtramas[0].visibleParaJugadores).toBeFalse();
+    });
+
+    it('getCampaignDetail normaliza política permisiva legacy con límite 0 como sin límite', async () => {
+        httpMock.get.and.callFake((url: string) => {
+            if (url.endsWith('campanas/7'))
+                return of({
+                    idCampana: 7,
+                    nombre: 'Campaña visible',
+                    campaignRole: 'master',
+                    membershipStatus: 'activo',
+                    politicaCreacion: {
+                        permitirHomebrewGeneral: true,
+                        maxFuentesHomebrewGeneralesPorPersonaje: 0,
+                    },
+                    tramas: [],
+                });
+            if (url.endsWith('campanas/7/jugadores'))
+                return of([]);
+            throw new Error(`URL inesperada: ${url}`);
+        });
+
+        const detail = await service.getCampaignDetail(7, true);
+
+        expect(detail.politicaCreacion.permitirHomebrewGeneral).toBeTrue();
+        expect(detail.politicaCreacion.maxFuentesHomebrewGeneralesPorPersonaje).toBeNull();
     });
 
     it('getCampaignDetail acepta el shape canónico idCampana/nombre para jugador sin master activo', async () => {

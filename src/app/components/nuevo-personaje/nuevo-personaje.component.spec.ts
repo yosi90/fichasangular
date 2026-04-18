@@ -5098,6 +5098,29 @@ describe('NuevoPersonajeComponent', () => {
         expect(`${(swalSpy.calls.mostRecent().args[0] as any).title ?? ''}`).toContain('La campaña bloquea la finalización');
     });
 
+    it('trata permitirHomebrewGeneral con límite legacy 0 como campaña permisiva', () => {
+        component.Personaje.Campana = 'Campaña A';
+        component.Personaje.Trama = 'Trama base';
+        component.Personaje.Subtrama = 'Subtrama base';
+        component.seleccionarRaza(crearRazaMock(false));
+        component.selectedCampaignPolicy = {
+            tiradaMinimaCaracteristica: null,
+            nepMaximoPersonajeNuevo: null,
+            maxTablasDadosCaracteristicas: null,
+            permitirHomebrewGeneral: true,
+            permitirVentajasDesventajas: true,
+            permitirIgnorarRestriccionesAlineamiento: true,
+            maxFuentesHomebrewGeneralesPorPersonaje: 0,
+        };
+
+        const validation = (component as any).getCampaignCreationValidation();
+
+        expect(validation.mode).toBe('unrestricted');
+        expect(validation.maxSources).toBeNull();
+        expect(validation.blocksExistingHomebrew).toBeFalse();
+        expect(validation.blockers).toEqual([]);
+    });
+
     it('finalizarPersonajeCompleto bloquea el POST si compliance exige aceptar normas de creación', async () => {
         userSvcMock.getAccessRestrictionMessage.and.callFake((scope: string) => scope === 'creation'
             ? 'Debes aceptar las normas de creación vigentes antes de continuar.'

@@ -164,6 +164,10 @@ export class GeneradorCaracteristicasModalComponent implements AfterViewInit, Do
         return this.nuevoPSvc.TieneRestriccionCampanaGenerador;
     }
 
+    get avisoOverrideReglasCampana(): string | null {
+        return this.nuevoPSvc.AvisoOverrideRestriccionesCampanaGenerador;
+    }
+
     get puedeFinalizar(): boolean {
         return this.nuevoPSvc.puedeFinalizarGenerador();
     }

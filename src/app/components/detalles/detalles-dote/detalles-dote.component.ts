@@ -75,6 +75,10 @@ export class DetallesDoteComponent {
         tipo_criatura: 'Ser de este tipo de criatura',
         tipo_dote: 'Tener una dote de este tipo',
     };
+    private readonly descripcionesPrerrequisitosFlagOnly: Record<string, string> = {
+        poderseleccionarcompanero: 'Tener la capacidad de obtener un nuevo compañero animal en este momento.',
+        poderseleccionarfamiliar: 'Tener la capacidad de obtener un nuevo familiar en este momento.',
+    };
 
     @Input()
     set dote(value: Dote | DoteContextual) {
@@ -268,7 +272,7 @@ export class DetallesDoteComponent {
         }
 
         if (key === 'poderseleccionarcompanero' || key === 'poderseleccionarfamiliar')
-            return [condicion.familiaEtiqueta];
+            return [this.descripcionesPrerrequisitosFlagOnly[key] ?? condicion.familiaEtiqueta];
 
         if ([
             'clase',

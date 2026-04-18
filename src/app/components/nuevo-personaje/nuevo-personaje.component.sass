@@ -1049,6 +1049,7 @@ textarea
 
     th:nth-child(2), td:nth-child(2)
         width: 7%
+        text-align: center
 
     th:nth-child(3), td:nth-child(3)
         width: 42%
@@ -1094,12 +1095,20 @@ textarea
     gap: 4px
 
 .clase-estado-chip
-    min-width: 72px
     font-weight: 400
     line-height: 1.15
     display: inline-flex
     align-items: center
     justify-content: center
+
+.clase-estado-chip--neutral:not(.good):not(.bad)
+    background-color: rgb(68, 73, 82)
+
+.clase-estado-chip--nivel
+    min-width: 34px
+
+.clase-estado-chip--salvacion
+    min-width: 72px
 
 .clase-detalle-btn
     min-height: 36px

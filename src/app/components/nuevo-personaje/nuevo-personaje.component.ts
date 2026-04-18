@@ -5683,10 +5683,12 @@ export class NuevoPersonajeComponent {
     private getCurrentCampaignHomebrewMode(policy: CampaignCreationPolicy | null): CampaignHomebrewMode {
         if (!policy)
             return 'unrestricted';
+        if (policy.permitirHomebrewGeneral === true)
+            return 'unrestricted';
 
         const maxSources = this.normalizarCampaignMaxSources(policy.maxFuentesHomebrewGeneralesPorPersonaje);
         if (maxSources !== null) {
-            if (policy.permitirHomebrewGeneral === false && maxSources <= 0)
+            if (maxSources <= 0)
                 return 'forbidden';
             return 'limited';
         }
@@ -5809,7 +5811,9 @@ export class NuevoPersonajeComponent {
         const nepLimit = this.normalizarCampaignMaxNep(policy?.nepMaximoPersonajeNuevo ?? null);
         const currentNep = Math.max(0, Math.trunc(Number(this.Personaje?.NEP ?? 0)));
         const mode = this.getCurrentCampaignHomebrewMode(policy);
-        const maxSources = this.normalizarCampaignMaxSources(policy?.maxFuentesHomebrewGeneralesPorPersonaje ?? null);
+        const maxSources = mode === 'unrestricted'
+            ? null
+            : this.normalizarCampaignMaxSources(policy?.maxFuentesHomebrewGeneralesPorPersonaje ?? null);
         const sources = this.collectCampaignHomebrewSources();
         const sourceKeys = new Set(sources.map((source) => source.key));
         const sourceCount = sources.length;
@@ -5977,9 +5981,8 @@ export class NuevoPersonajeComponent {
             this.selectedCampaignActiveMasterUid = `${detail?.activeMasterUid ?? ''}`.trim() || null;
             this.selectedCampaignPolicyResolved = true;
             this.nuevoPSvc.aplicarRestriccionCampanaGenerador(
-                this.isSelectedCampaignActiveMaster
-                    ? null
-                    : (detail?.politicaCreacion ?? null)
+                detail?.politicaCreacion ?? null,
+                { permitirOverride: this.isSelectedCampaignActiveMaster }
             );
         } catch {
             if (this.selectedCampaignPolicyRequestKey !== requestKey)

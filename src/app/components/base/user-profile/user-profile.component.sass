@@ -481,12 +481,17 @@
 
 .campaign-inline-form--editor
     display: grid
-    grid-template-columns: minmax(0, 1fr) auto
+    grid-template-columns: minmax(0, 1fr)
     align-items: stretch
     min-width: 0
 
     > *
         min-width: 0
+
+.campaign-editor-actions
+    display: flex
+    justify-content: flex-end
+    margin-top: .35rem
 
 .campaign-policy-grid
     display: grid
@@ -679,19 +684,40 @@
 
 .campaign-nav-card__actions
     display: grid
-    grid-template-columns: repeat(2, minmax(0, 1fr))
+    grid-template-columns: repeat(3, 2.75rem)
+    justify-content: start
     gap: .55rem
 
 .campaign-nav-card__action
-    min-width: 0
+    display: inline-flex
+    align-items: center
+    justify-content: center
+    width: 2.75rem
+    height: 2.75rem
+    min-width: 2.75rem
     min-height: 2.75rem
-    padding: .45rem .8rem
-    line-height: 1.35
-    white-space: normal
+    padding: 0
+    border: 1px solid rgba(255, 255, 255, .14)
+    border-radius: .65rem
+    color: rgba(245, 247, 255, .86)
+    background: rgba(255, 255, 255, .035)
+    transition: border-color .2s ease, background-color .2s ease, color .2s ease
+
+    mat-icon
+        display: block
+        width: 1.25rem
+        height: 1.25rem
+        font-size: 1.25rem
+        line-height: 1.25rem
+
+    &:hover
+        border-color: rgba(194, 24, 91, .48)
+        background: rgba(255, 255, 255, .07)
 
 .campaign-nav-card__action--active
     border-color: rgba(194, 24, 91, .72) !important
     background: rgba(194, 24, 91, .14) !important
+    color: #ffffff !important
 
 .campaign-search-results__item
     border-style: dashed
@@ -756,22 +782,26 @@
     justify-content: center
     gap: .65rem
 
-.campaign-workspace-tabs
-    display: inline-flex
-    flex-wrap: wrap
-    gap: .55rem
+    .mat-mdc-icon-button
+        display: inline-flex
+        align-items: center
+        justify-content: center
+        width: 2.75rem
+        height: 2.75rem
+        min-width: 2.75rem
+        min-height: 2.75rem
+        padding: 0
+        border: 1px solid rgba(194, 24, 91, .45)
+        border-radius: .65rem
+        background: rgba(194, 24, 91, .1)
+        line-height: 1
 
-.campaign-workspace-tab
-    padding: .45rem .85rem
-    border-radius: 999px
-    border: 1px solid rgba(255, 255, 255, .12)
-    background: rgba(255, 255, 255, .04)
-    color: #f5f7ff
-    cursor: pointer
-
-.campaign-workspace-tab--active
-    border-color: rgba(194, 24, 91, .72)
-    background: rgba(194, 24, 91, .14)
+        mat-icon
+            display: block
+            width: 1.25rem
+            height: 1.25rem
+            font-size: 1.25rem
+            line-height: 1.25rem
 
 .campaign-users-tab,
 .campaign-stories-tab
@@ -1125,9 +1155,6 @@
     .campaign-card__header
         flex-direction: column
         align-items: flex-start
-
-    .campaign-nav-card__actions
-        grid-template-columns: 1fr
 
     .profile-summary__avatar img
         width: 8.5rem

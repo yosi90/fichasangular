@@ -223,20 +223,34 @@
 
                                     <div class="campaign-nav-card__actions">
                                         <button
-                                            mat-stroked-button
+                                            mat-icon-button
                                             type="button"
                                             class="campaign-nav-card__action"
+                                            aria-label="Abrir configuración de campaña"
+                                            matTooltip="Configuración"
                                             [class.campaign-nav-card__action--active]="isCampaignSelected(campaign.id) && isCampaignWorkspaceConfig"
                                             (click)="abrirConfiguracionCampana(campaign.id, $event)">
-                                            Configuración
+                                            <mat-icon>settings</mat-icon>
                                         </button>
                                         <button
-                                            mat-stroked-button
+                                            mat-icon-button
                                             type="button"
                                             class="campaign-nav-card__action"
-                                            [class.campaign-nav-card__action--active]="isCampaignSelected(campaign.id) && isCampaignWorkspacePeopleStories"
-                                            (click)="abrirUsuariosHistoriasCampana(campaign.id, $event)">
-                                            Usuarios e historias
+                                            aria-label="Abrir usuarios de campaña"
+                                            matTooltip="Usuarios"
+                                            [class.campaign-nav-card__action--active]="isCampaignSelected(campaign.id) && isCampaignWorkspaceUsersTab && isCampaignWorkspacePeopleStories"
+                                            (click)="abrirUsuariosCampana(campaign.id, $event)">
+                                            <mat-icon>group</mat-icon>
+                                        </button>
+                                        <button
+                                            mat-icon-button
+                                            type="button"
+                                            class="campaign-nav-card__action"
+                                            aria-label="Abrir historias de campaña"
+                                            matTooltip="Historias"
+                                            [class.campaign-nav-card__action--active]="isCampaignSelected(campaign.id) && isCampaignWorkspaceStoriesTab && isCampaignWorkspacePeopleStories"
+                                            (click)="abrirHistoriasCampana(campaign.id, $event)">
+                                            <mat-icon>auto_stories</mat-icon>
                                         </button>
                                     </div>
                                 </article>
@@ -298,14 +312,6 @@
                                                 [attr.maxlength]="campaignNameMaxLength"
                                                 [(ngModel)]="campaignCreateDraft"
                                                 [disabled]="campaignEditorFormDisabled" />
-                                            <button
-                                                mat-raised-button
-                                                color="primary"
-                                                *ngIf="campaignEditorCanSave"
-                                                (click)="guardarCampanaDesdeEditor()"
-                                                [disabled]="campaignEditorSaving">
-                                                {{campaignEditorSaving ? 'Guardando...' : campaignEditorSubmitLabel}}
-                                            </button>
                                         </div>
                                         <p class="profile-panel__hint">{{campaignNameLength}}/{{campaignNameMaxLength}}</p>
 
@@ -440,6 +446,15 @@
                                                 </div>
                                             </div>
                                         </div>
+                                        <div class="campaign-editor-actions" *ngIf="campaignEditorCanSave">
+                                            <button
+                                                mat-raised-button
+                                                color="primary"
+                                                (click)="guardarCampanaDesdeEditor()"
+                                                [disabled]="campaignEditorSaving">
+                                                {{campaignEditorSaving ? 'Guardando...' : campaignEditorSubmitLabel}}
+                                            </button>
+                                        </div>
                                     </ng-container>
 
                                     <article
@@ -457,31 +472,32 @@
                                         <mat-icon>view_sidebar</mat-icon>
                                         <p>Elige qué quieres revisar dentro de {{selectedCampaignSummary.nombre}}.</p>
                                         <div class="campaign-workspace-empty__actions">
-                                            <button mat-stroked-button color="primary" (click)="abrirConfiguracionCampana(selectedCampaignSummary.id)">
-                                                Configuración
+                                            <button
+                                                mat-icon-button
+                                                color="primary"
+                                                aria-label="Abrir configuración de campaña"
+                                                matTooltip="Configuración"
+                                                (click)="abrirConfiguracionCampana(selectedCampaignSummary.id)">
+                                                <mat-icon>settings</mat-icon>
                                             </button>
-                                            <button mat-stroked-button color="primary" (click)="abrirUsuariosHistoriasCampana(selectedCampaignSummary.id)">
-                                                Usuarios e historias
+                                            <button
+                                                mat-icon-button
+                                                color="primary"
+                                                aria-label="Abrir usuarios de campaña"
+                                                matTooltip="Usuarios"
+                                                (click)="abrirUsuariosCampana(selectedCampaignSummary.id)">
+                                                <mat-icon>group</mat-icon>
+                                            </button>
+                                            <button
+                                                mat-icon-button
+                                                color="primary"
+                                                aria-label="Abrir historias de campaña"
+                                                matTooltip="Historias"
+                                                (click)="abrirHistoriasCampana(selectedCampaignSummary.id)">
+                                                <mat-icon>auto_stories</mat-icon>
                                             </button>
                                         </div>
                                     </article>
-
-                                    <div class="campaign-workspace-tabs" *ngIf="selectedCampaignSummary && selectedCampaignDetail && isCampaignWorkspacePeopleStories">
-                                        <button
-                                            type="button"
-                                            class="campaign-workspace-tab"
-                                            [class.campaign-workspace-tab--active]="isCampaignWorkspaceUsersTab"
-                                            (click)="seleccionarCampaignWorkspaceTab('usuarios')">
-                                            Usuarios
-                                        </button>
-                                        <button
-                                            type="button"
-                                            class="campaign-workspace-tab"
-                                            [class.campaign-workspace-tab--active]="isCampaignWorkspaceStoriesTab"
-                                            (click)="seleccionarCampaignWorkspaceTab('historias')">
-                                            Historias
-                                        </button>
-                                    </div>
 
                                     <ng-container *ngIf="selectedCampaignSummary && selectedCampaignDetail && isCampaignWorkspacePeopleStories">
                                         <div class="campaign-users-tab" *ngIf="isCampaignWorkspaceUsersTab">

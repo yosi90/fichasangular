@@ -519,6 +519,15 @@ export interface AsignacionCaracteristicas {
     Carisma: number | null;
 }
 
+interface GeneradorCampanaRestriccionNormalizada {
+    minimoSeleccionado: number;
+    tablasPermitidas: number;
+}
+
+interface AplicarRestriccionCampanaGeneradorOptions {
+    permitirOverride?: boolean;
+}
+
 export interface GeneradorCaracteristicasState {
     minimoSeleccionado: number;
     indiceMinimo: number;
@@ -944,7 +953,9 @@ export class NuevoPersonajeService {
     private aumentosProgresionConcedidos = 0;
     private secuenciaAumentoPendiente = 1;
     private generadorConfigBase = this.getConfigGeneradorDefault();
-    private restriccionCampanaGenerador: { minimoSeleccionado: number; tablasPermitidas: number; } | null = null;
+    private restriccionCampanaGenerador: GeneradorCampanaRestriccionNormalizada | null = null;
+    private referenciaRestriccionCampanaGenerador: GeneradorCampanaRestriccionNormalizada | null = null;
+    private permiteOverrideRestriccionCampanaGenerador = false;
     private estadoFlujo: EstadoFlujoNuevoPersonaje = this.crearEstadoFlujoBase();
     private draftUidActivo = '';
     private draftAutosaveTimer: ReturnType<typeof setInterval> | null = null;
@@ -971,6 +982,24 @@ export class NuevoPersonajeService {
 
     get TieneRestriccionCampanaGenerador(): boolean {
         return this.restriccionCampanaGenerador !== null;
+    }
+
+    get AvisoOverrideRestriccionesCampanaGenerador(): string | null {
+        if (!this.permiteOverrideRestriccionCampanaGenerador || !this.referenciaRestriccionCampanaGenerador)
+            return null;
+
+        const avisos: string[] = [];
+        const minimoActual = this.estadoFlujo.generador.minimoSeleccionado;
+        const tablasActuales = this.estadoFlujo.generador.tablasPermitidas;
+        if (minimoActual > this.referenciaRestriccionCampanaGenerador.minimoSeleccionado)
+            avisos.push(`tirada mínima ${minimoActual} frente a ${this.referenciaRestriccionCampanaGenerador.minimoSeleccionado}`);
+        if (tablasActuales > this.referenciaRestriccionCampanaGenerador.tablasPermitidas)
+            avisos.push(`tablas permitidas ${tablasActuales} frente a ${this.referenciaRestriccionCampanaGenerador.tablasPermitidas}`);
+
+        if (avisos.length < 1)
+            return null;
+
+        return `Como master estás saltándote tus reglas de campaña: ${avisos.join(' y ')}.`;
     }
 
     getProgresionLanzadorPersistible(): PersonajeProgresionLanzadorDto | null {
@@ -1120,29 +1149,28 @@ export class NuevoPersonajeService {
     }
 
     aplicarRestriccionCampanaGenerador(
-        restriccion: { tiradaMinimaCaracteristica?: number | null; maxTablasDadosCaracteristicas?: number | null; } | null | undefined
+        restriccion: { tiradaMinimaCaracteristica?: number | null; maxTablasDadosCaracteristicas?: number | null; } | null | undefined,
+        options?: AplicarRestriccionCampanaGeneradorOptions
     ): void {
         if (!restriccion) {
+            this.restriccionCampanaGenerador = null;
+            this.referenciaRestriccionCampanaGenerador = null;
+            this.permiteOverrideRestriccionCampanaGenerador = false;
+            this.aplicarConfigGeneradorEfectiva({ preservarRepartoCompatible: true });
+            return;
+        }
+
+        const restriccionNormalizada = this.normalizarRestriccionCampanaGenerador(restriccion);
+        this.referenciaRestriccionCampanaGenerador = restriccionNormalizada;
+        this.permiteOverrideRestriccionCampanaGenerador = options?.permitirOverride === true;
+
+        if (this.permiteOverrideRestriccionCampanaGenerador) {
             this.restriccionCampanaGenerador = null;
             this.aplicarConfigGeneradorEfectiva({ preservarRepartoCompatible: true });
             return;
         }
 
-        const minimo = this.normalizarMinimo(
-            Number.isFinite(Number(restriccion.tiradaMinimaCaracteristica))
-                ? Number(restriccion.tiradaMinimaCaracteristica)
-                : MIN_TIRADA
-        );
-        const tablasPermitidas = this.normalizarTablasPermitidas(
-            Number.isFinite(Number(restriccion.maxTablasDadosCaracteristicas))
-                ? Number(restriccion.maxTablasDadosCaracteristicas)
-                : MIN_TABLAS
-        );
-
-        this.restriccionCampanaGenerador = {
-            minimoSeleccionado: minimo,
-            tablasPermitidas,
-        };
+        this.restriccionCampanaGenerador = restriccionNormalizada;
         this.aplicarConfigGeneradorEfectiva({ preservarRepartoCompatible: true });
     }
 
@@ -8794,6 +8822,26 @@ export class NuevoPersonajeService {
             return DEFAULT_TABLAS;
         }
         return Math.max(MIN_TABLAS, Math.min(MAX_TABLAS, normalizadas));
+    }
+
+    private normalizarRestriccionCampanaGenerador(
+        restriccion: { tiradaMinimaCaracteristica?: number | null; maxTablasDadosCaracteristicas?: number | null; }
+    ): GeneradorCampanaRestriccionNormalizada {
+        const minimo = this.normalizarMinimo(
+            Number.isFinite(Number(restriccion.tiradaMinimaCaracteristica))
+                ? Number(restriccion.tiradaMinimaCaracteristica)
+                : MIN_TIRADA
+        );
+        const tablasPermitidas = this.normalizarTablasPermitidas(
+            Number.isFinite(Number(restriccion.maxTablasDadosCaracteristicas))
+                ? Number(restriccion.maxTablasDadosCaracteristicas)
+                : MIN_TABLAS
+        );
+
+        return {
+            minimoSeleccionado: minimo,
+            tablasPermitidas,
+        };
     }
 
     private normalizarTablaSeleccionada(tabla: number): number | null {

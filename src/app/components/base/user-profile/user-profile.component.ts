@@ -681,8 +681,10 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
             return 'Nueva campaña';
         if (this.isCampaignWorkspaceConfig)
             return 'Configuración de campaña';
+        if (this.isCampaignWorkspacePeopleStories && this.isCampaignWorkspaceStoriesTab)
+            return 'Historias de campaña';
         if (this.isCampaignWorkspacePeopleStories)
-            return 'Usuarios e historias';
+            return 'Usuarios de campaña';
         if (this.selectedCampaignSummary)
             return this.selectedCampaignSummary.nombre;
         return 'Gestión de campañas';
@@ -1141,6 +1143,10 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
     }
 
     async abrirUsuariosHistoriasCampana(campaignId: number, event?: Event): Promise<void> {
+        await this.abrirUsuariosCampana(campaignId, event);
+    }
+
+    async abrirUsuariosCampana(campaignId: number, event?: Event): Promise<void> {
         event?.preventDefault();
         event?.stopPropagation();
         await this.loadCampaignSelection(campaignId, false);
@@ -1148,8 +1154,12 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
         this.campaignWorkspaceTab = 'usuarios';
     }
 
-    seleccionarCampaignWorkspaceTab(tab: CampaignWorkspaceTab): void {
-        this.campaignWorkspaceTab = tab;
+    async abrirHistoriasCampana(campaignId: number, event?: Event): Promise<void> {
+        event?.preventDefault();
+        event?.stopPropagation();
+        await this.loadCampaignSelection(campaignId, false);
+        this.campaignWorkspaceMode = 'peopleStories';
+        this.campaignWorkspaceTab = 'historias';
     }
 
     async guardarCampanaDesdeEditor(): Promise<void> {
