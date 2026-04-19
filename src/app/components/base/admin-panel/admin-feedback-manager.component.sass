@@ -1,0 +1,177 @@
+@use '../../../../assets/css/_variables' as *
+
+:host
+    display: block
+
+.admin-feedback-panel
+    padding: 1.2rem !important
+    border-radius: 1rem
+    background: rgba(255, 255, 255, 0.035)
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06)
+
+.admin-feedback__header
+    display: flex
+    align-items: center
+    justify-content: space-between
+    gap: 12px
+    flex-wrap: wrap
+    margin-bottom: 18px
+
+    h3
+        margin: 0
+        font-size: 18px
+
+    p
+        margin: 4px 0 0
+        opacity: 0.82
+
+.admin-feedback__filters
+    display: grid
+    grid-template-columns: minmax(180px, 220px) minmax(220px, 1fr) auto
+    gap: 10px
+    align-items: start
+    margin-bottom: 12px
+
+.admin-feedback__field
+    width: 100%
+
+.admin-feedback__filter-actions,
+.admin-feedback__quick-actions,
+.admin-feedback__attachments,
+.usuarios-admin-actions
+    display: flex
+    flex-wrap: wrap
+    gap: 8px
+
+.admin-feedback__filter-actions
+    align-items: center
+    min-height: 56px
+
+.usuarios-admin-actions
+    align-items: center
+    padding: .15rem 0 .45rem
+
+.usuarios-admin-estado
+    font-size: 13px
+    opacity: .9
+
+.usuarios-admin-tabla-scroll
+    max-height: 56vh
+    overflow: auto
+    background: rgba(255, 255, 255, 0.025)
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.05)
+
+.tabla-usuarios-admin
+    width: 100%
+    border-collapse: collapse
+
+    th, td
+        border: 1px solid rgba(255, 255, 255, 0.12)
+        padding: 12px 10px
+        vertical-align: top
+
+    th
+        position: sticky
+        top: 0
+        background: rgba(28, 29, 33, 0.98)
+        z-index: 1
+        font-weight: 600
+
+    td
+        background: rgba(255, 255, 255, 0.02)
+
+    tbody tr:nth-child(odd) td
+        background: rgba(255, 255, 255, 0.035)
+
+.tabla-usuarios-admin--feedback
+    min-width: 1180px
+
+.usuario-principal
+    font-weight: 600
+    margin-bottom: 2px
+
+.usuario-secundario
+    font-size: 12px
+    opacity: 0.85
+
+.admin-feedback__detail
+    margin-top: 18px
+    padding-top: 16px
+    border-top: 1px solid rgba(255, 255, 255, 0.08)
+
+.admin-feedback__detail-header
+    display: flex
+    align-items: flex-start
+    justify-content: space-between
+    gap: 12px
+    flex-wrap: wrap
+    margin-bottom: 12px
+
+    h3
+        margin: 0
+        font-size: 17px
+
+    p
+        margin: 4px 0 0
+        opacity: .76
+
+.admin-feedback__detail-grid
+    display: grid
+    grid-template-columns: minmax(0, 1fr) minmax(280px, 360px)
+    gap: 12px
+
+.admin-feedback__card,
+.admin-feedback__section
+    padding: 14px
+    border-radius: 12px
+    background: rgba(255, 255, 255, 0.055)
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08)
+
+    h4
+        margin: 0 0 10px 0
+        font-size: 15px
+
+    p
+        margin: 0 0 8px 0
+        line-height: 1.45
+        white-space: pre-wrap
+
+.admin-feedback__section
+    margin-top: 12px
+
+.admin-feedback__timeline
+    display: grid
+    gap: 10px
+    margin: 0
+    padding-left: 1.2rem
+
+    span
+        display: block
+        margin-top: 2px
+        color: rgba(245, 247, 255, .68)
+        font-size: 12px
+
+    p
+        margin: 6px 0 0
+        white-space: pre-wrap
+
+@media (max-width: 768px)
+    .admin-feedback-panel
+        padding: 12px !important
+
+    .admin-feedback__filters,
+    .admin-feedback__detail-grid
+        grid-template-columns: 1fr
+
+    .admin-feedback__filter-actions
+        min-height: 0
+
+    .usuarios-admin-tabla-scroll
+        max-height: 45vh
+
+    .tabla-usuarios-admin
+        min-width: 980px
+
+        th, td
+            padding: 8px
+            font-size: 12px

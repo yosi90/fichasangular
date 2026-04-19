@@ -144,6 +144,17 @@ export interface FeedbackUpdateDto {
     createdAtUtc: string | null;
 }
 
+export interface FeedbackActorSummaryDto {
+    userId: string | null;
+    uid: string | null;
+    displayName: string | null;
+}
+
+export interface FeedbackUpdateAdminDto extends FeedbackUpdateDto {
+    internalComment: string | null;
+    actor: FeedbackActorSummaryDto;
+}
+
 export interface FeedbackSubmissionSummaryDto {
     id: number;
     kind: FeedbackKind;
@@ -162,12 +173,37 @@ export interface FeedbackSubmissionDetailDto extends FeedbackSubmissionSummaryDt
     updates: FeedbackUpdateDto[];
 }
 
+export interface FeedbackAdminSubmissionSummaryDto extends FeedbackSubmissionSummaryDto {
+    reporter: FeedbackActorSummaryDto;
+}
+
+export interface FeedbackAdminSubmissionDetailDto extends FeedbackAdminSubmissionSummaryDto {
+    attachments: FeedbackAttachmentDto[];
+    updates: FeedbackUpdateAdminDto[];
+}
+
 export interface FeedbackListResponseDto {
     items: FeedbackSubmissionSummaryDto[];
     total: number;
     limit: number;
     offset: number;
     hasMore: boolean;
+}
+
+export interface FeedbackAdminListResponseDto {
+    items: FeedbackAdminSubmissionSummaryDto[];
+    total: number;
+    limit: number;
+    offset: number;
+    hasMore: boolean;
+}
+
+export interface FeedbackAdminListFiltersDto {
+    kind?: FeedbackKind | null;
+    status?: FeedbackStatus | null;
+    reporterUid?: string | null;
+    limit?: number | null;
+    offset?: number | null;
 }
 
 export interface FeedbackCreateBugRequestDto {
@@ -187,6 +223,13 @@ export interface FeedbackCreateFeatureRequestDto {
     useCase?: string | null;
     desiredOutcome?: string | null;
     images?: File[] | null;
+}
+
+export interface FeedbackAdminPatchRequestDto {
+    status?: FeedbackStatus | null;
+    priority?: FeedbackPriority | null;
+    internalComment?: string | null;
+    publicMessage?: string | null;
 }
 
 export interface AdminPolicyDraftDto {

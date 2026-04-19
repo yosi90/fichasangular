@@ -20,7 +20,7 @@ interface FeedbackSelectedImage {
     previewUrl: string;
 }
 
-type PrivateFeedbackWorkspaceView = 'compose' | 'detail';
+type PrivateFeedbackWorkspaceView = 'compose' | 'detail' | 'community';
 
 @Component({
     selector: 'app-help-feedback',
@@ -101,6 +101,13 @@ export class HelpFeedbackComponent implements OnInit, OnDestroy {
         if (!this.selectedPrivateSubmissionId)
             return null;
         return this.privateDetailById.get(this.selectedPrivateSubmissionId) ?? null;
+    }
+
+    get publicCommunityItems(): FeedbackSubmissionSummaryDto[] {
+        if (!this.isFeature)
+            return [];
+        const ownIds = new Set(this.privateItems.map((item) => item.id));
+        return this.publicItems.filter((item) => !ownIds.has(item.id));
     }
 
     ngOnInit(): void {
@@ -346,6 +353,17 @@ export class HelpFeedbackComponent implements OnInit, OnDestroy {
         this.selectedPrivateDetailLoading = false;
         this.selectedPrivateDetailError = '';
         this.resetForm();
+    }
+
+    openCommunitySubmissions(): void {
+        if (!this.isFeature)
+            return;
+        this.privateWorkspaceView = 'community';
+        this.selectedPrivateSubmissionId = null;
+        this.selectedPrivateDetailLoading = false;
+        this.selectedPrivateDetailError = '';
+        if (this.publicItems.length < 1 && !this.publicLoading)
+            void this.loadPublicSubmissions(true);
     }
 
     getStatusLabel(status: FeedbackSubmissionSummaryDto['status']): string {

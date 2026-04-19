@@ -268,6 +268,26 @@
                 </div>
             </section>
 
+            <section class="admin-section" *ngIf="currentSection === 'feedback-bugs'">
+                <app-admin-feedback-manager
+                    kind="bug"
+                    title="Informes de bugs"
+                    description="Gestiona triage, prioridad, comentarios y cierre de reportes enviados por usuarios."
+                    emptyLabel="No hay informes de bugs que coincidan con los filtros actuales"
+                    [quickActions]="bugFeedbackQuickActions">
+                </app-admin-feedback-manager>
+            </section>
+
+            <section class="admin-section" *ngIf="currentSection === 'feedback-features'">
+                <app-admin-feedback-manager
+                    kind="feature"
+                    title="Peticiones de funcionalidad"
+                    description="Gestiona planificacion, prioridad, comentarios y cierre de solicitudes de funcionalidad."
+                    emptyLabel="No hay peticiones de funcionalidad que coincidan con los filtros actuales"
+                    [quickActions]="featureFeedbackQuickActions">
+                </app-admin-feedback-manager>
+            </section>
+
             <section class="admin-section" *ngIf="currentSection === 'auditoria'">
                 <div class="usuarios-admin-panel tw-p-2 admin-audit-panel">
                             <div class="admin-audit__filters">

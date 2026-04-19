@@ -1,0 +1,188 @@
+<div class="admin-feedback-panel">
+    <div class="admin-feedback__header">
+        <div>
+            <h3>{{title}}</h3>
+            <p>{{description}}</p>
+        </div>
+        <button
+            mat-stroked-button
+            color="accent"
+            [disabled]="loading"
+            (click)="load(true)">
+            <mat-icon>{{loading ? 'hourglass_top' : 'refresh'}}</mat-icon>
+            {{loading ? 'Cargando...' : 'Actualizar'}}
+        </button>
+    </div>
+
+    <div class="admin-feedback__filters">
+        <mat-form-field appearance="outline" class="admin-feedback__field">
+            <mat-label>Estado</mat-label>
+            <mat-select [(ngModel)]="statusFilter">
+                <mat-option value="">Todos</mat-option>
+                <mat-option *ngFor="let status of statusOptions" [value]="status">
+                    {{statusLabel(status)}}
+                </mat-option>
+            </mat-select>
+        </mat-form-field>
+        <mat-form-field appearance="outline" class="admin-feedback__field">
+            <mat-label>Reporter UID</mat-label>
+            <input matInput [(ngModel)]="reporterUidFilter" placeholder="firebase-uid">
+        </mat-form-field>
+        <div class="admin-feedback__filter-actions">
+            <button mat-raised-button color="primary" [disabled]="loading" (click)="applyFilters()">
+                Aplicar
+            </button>
+            <button mat-stroked-button color="accent" [disabled]="loading" (click)="clearFilters()">
+                Limpiar
+            </button>
+        </div>
+    </div>
+
+    <div class="usuarios-admin-actions">
+        <button mat-stroked-button color="accent" [disabled]="!canGoPrevious" (click)="previousPage()">
+            Anterior
+        </button>
+        <span class="usuario-secundario">{{pageText}}</span>
+        <button mat-stroked-button color="accent" [disabled]="!canGoNext" (click)="nextPage()">
+            Siguiente
+        </button>
+    </div>
+
+    <div class="usuarios-admin-estado tw-text-center tw-p-2" *ngIf="stateLabel.length > 0">
+        <mat-chip>{{stateLabel}}</mat-chip>
+    </div>
+
+    <div class="tabla-scroll usuarios-admin-tabla-scroll" *ngIf="items.length > 0">
+        <table class="tabla-usuarios-admin tabla-usuarios-admin--feedback">
+            <thead>
+                <tr>
+                    <th>{{kind === 'feature' ? 'Funcionalidad' : 'Bug'}}</th>
+                    <th>Estado</th>
+                    <th>Prioridad</th>
+                    <th>Reporter</th>
+                    <th>Pagina</th>
+                    <th>Actualizado</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr *ngFor="let item of items; trackBy: trackByItem">
+                    <td>
+                        <div class="usuario-principal">{{item.title || itemFallbackTitle}}</div>
+                        <div class="usuario-secundario">#{{item.id}}</div>
+                    </td>
+                    <td>{{statusLabel(item.status)}}</td>
+                    <td>{{priorityLabel(item.priority)}}</td>
+                    <td>
+                        <div class="usuario-principal">{{reporterLabel(item)}}</div>
+                        <div class="usuario-secundario" *ngIf="item.reporter.uid">UID: {{item.reporter.uid}}</div>
+                    </td>
+                    <td>{{item.pageUrl || '-'}}</td>
+                    <td>{{formatUtc(item.updatedAtUtc || item.createdAtUtc)}}</td>
+                    <td>
+                        <button mat-stroked-button color="primary" (click)="loadDetail(item)" [disabled]="detailLoading">
+                            Detalle
+                        </button>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <section class="admin-feedback__detail" *ngIf="detail || detailLoading || detailError.length > 0">
+        <p class="usuarios-admin-estado" *ngIf="detailLoading">Cargando detalle...</p>
+        <p class="usuarios-admin-estado" *ngIf="detailError.length > 0">{{detailError}}</p>
+
+        <ng-container *ngIf="detail as selectedDetail">
+            <div class="admin-feedback__detail-header">
+                <div>
+                    <h3>{{selectedDetail.title || itemFallbackTitle}}</h3>
+                    <p>#{{selectedDetail.id}} · {{reporterLabel(selectedDetail)}} · {{formatUtc(selectedDetail.createdAtUtc)}}</p>
+                </div>
+                <div class="admin-feedback__quick-actions">
+                    <button
+                        mat-stroked-button
+                        *ngFor="let action of quickActions"
+                        [color]="action.color || 'primary'"
+                        [disabled]="saving"
+                        (click)="quickAction(action.status)">
+                        {{action.label}}
+                    </button>
+                </div>
+            </div>
+
+            <div class="admin-feedback__detail-grid">
+                <article class="admin-feedback__card">
+                    <h4>Datos enviados</h4>
+                    <p>{{selectedDetail.description}}</p>
+                    <p *ngIf="selectedDetail.pageUrl"><strong>Pagina:</strong> {{selectedDetail.pageUrl}}</p>
+                    <p *ngIf="selectedDetail.details.stepsToReproduce"><strong>Pasos:</strong> {{selectedDetail.details.stepsToReproduce}}</p>
+                    <p *ngIf="selectedDetail.details.expectedBehavior"><strong>Esperado:</strong> {{selectedDetail.details.expectedBehavior}}</p>
+                    <p *ngIf="selectedDetail.details.actualBehavior"><strong>Actual:</strong> {{selectedDetail.details.actualBehavior}}</p>
+                    <p *ngIf="selectedDetail.details.useCase"><strong>Caso de uso:</strong> {{selectedDetail.details.useCase}}</p>
+                    <p *ngIf="selectedDetail.details.desiredOutcome"><strong>Resultado deseado:</strong> {{selectedDetail.details.desiredOutcome}}</p>
+                </article>
+
+                <article class="admin-feedback__card">
+                    <h4>Actualizar informe</h4>
+                    <mat-form-field appearance="outline" class="admin-feedback__field">
+                        <mat-label>Estado</mat-label>
+                        <mat-select [(ngModel)]="patchStatus">
+                            <mat-option *ngFor="let status of statusOptions" [value]="status">
+                                {{statusLabel(status)}}
+                            </mat-option>
+                        </mat-select>
+                    </mat-form-field>
+                    <mat-form-field appearance="outline" class="admin-feedback__field">
+                        <mat-label>Prioridad</mat-label>
+                        <mat-select [(ngModel)]="patchPriority">
+                            <mat-option value="">Sin prioridad</mat-option>
+                            <mat-option *ngFor="let priority of priorityOptions" [value]="priority">
+                                {{priorityLabel(priority)}}
+                            </mat-option>
+                        </mat-select>
+                    </mat-form-field>
+                    <mat-form-field appearance="outline" class="admin-feedback__field">
+                        <mat-label>Comentario interno</mat-label>
+                        <textarea matInput rows="3" [(ngModel)]="internalComment"></textarea>
+                    </mat-form-field>
+                    <mat-form-field appearance="outline" class="admin-feedback__field">
+                        <mat-label>Mensaje publico</mat-label>
+                        <textarea matInput rows="3" [(ngModel)]="publicMessage"></textarea>
+                    </mat-form-field>
+                    <button mat-raised-button color="primary" [disabled]="!canSavePatch" (click)="savePatch()">
+                        {{saving ? 'Guardando...' : 'Guardar actualizacion'}}
+                    </button>
+                </article>
+            </div>
+
+            <section class="admin-feedback__section" *ngIf="selectedDetail.attachments.length > 0">
+                <h4>Adjuntos privados</h4>
+                <div class="admin-feedback__attachments">
+                    <button
+                        mat-stroked-button
+                        color="primary"
+                        *ngFor="let attachment of selectedDetail.attachments; trackBy: trackByAttachment"
+                        (click)="downloadAttachment(attachment)">
+                        {{attachment.filename || ('Adjunto #' + attachment.id)}}
+                    </button>
+                </div>
+            </section>
+
+            <section class="admin-feedback__section">
+                <h4>Timeline admin</h4>
+                <ol class="admin-feedback__timeline" *ngIf="selectedDetail.updates.length > 0; else noFeedbackUpdates">
+                    <li *ngFor="let update of selectedDetail.updates; trackBy: trackByUpdate">
+                        <strong>{{statusLabel(update.status)}}</strong>
+                        <span>{{formatUtc(update.createdAtUtc)}} · {{update.actor.displayName || update.actor.uid || 'Sistema'}}</span>
+                        <p *ngIf="update.publicMessage"><strong>Publico:</strong> {{update.publicMessage}}</p>
+                        <p *ngIf="update.internalComment"><strong>Interno:</strong> {{update.internalComment}}</p>
+                    </li>
+                </ol>
+                <ng-template #noFeedbackUpdates>
+                    <p class="usuario-secundario">Todavia no hay actualizaciones.</p>
+                </ng-template>
+            </section>
+        </ng-container>
+    </section>
+</div>

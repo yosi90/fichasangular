@@ -49,6 +49,7 @@ import { AdminUserModerationHistoryModalComponent } from './components/base/admi
 import { AdminUserModerationHistoryViewComponent } from './components/base/admin-panel/admin-user-moderation-history-view.component';
 import { AdminUserSanctionModalComponent } from './components/base/admin-panel/admin-user-sanction-modal.component';
 import { AdminModerationCaseModalComponent } from './components/base/admin-panel/admin-moderation-case-modal.component';
+import { AdminFeedbackManagerComponent } from './components/base/admin-panel/admin-feedback-manager.component';
 import { DetallesPersonajeComponent } from './components/detalles/detalles-personaje/detalles-personaje.component';
 import { NuevoPersonajeComponent } from './components/nuevo-personaje/nuevo-personaje.component';
 import { DetallesRazaComponent } from './components/detalles/detalles-raza/detalles-raza.component';
@@ -156,6 +157,7 @@ import { CloseFilterMenuOnMouseleaveDirective } from './directives/close-filter-
         AdminUserModerationHistoryViewComponent,
         AdminUserSanctionModalComponent,
         AdminModerationCaseModalComponent,
+        AdminFeedbackManagerComponent,
         DetallesPersonajeComponent,
         NuevoPersonajeComponent,
         DetallesRazaComponent,

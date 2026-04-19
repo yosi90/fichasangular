@@ -12,6 +12,16 @@
                         <span>{{ isBug ? 'Nuevo reporte' : 'Nueva solicitud' }}</span>
                     </button>
 
+                    <button
+                        type="button"
+                        class="feedback-bug-nav__new"
+                        *ngIf="isFeature"
+                        [class.feedback-bug-nav__new--active]="privateWorkspaceView === 'community'"
+                        (click)="openCommunitySubmissions()">
+                        <mat-icon>groups</mat-icon>
+                        <span>Comunidad</span>
+                    </button>
+
                     <p class="feedback-empty" *ngIf="privateLoading && privateItems.length < 1">
                         {{ isBug ? 'Cargando tus bugs...' : 'Cargando tus solicitudes...' }}
                     </p>
@@ -145,6 +155,75 @@
                     </ng-container>
 
                     <ng-template #privateDetailMode>
+                        <article class="feedback-panel feedback-panel--main" *ngIf="privateWorkspaceView === 'community'; else privateSubmissionDetailMode">
+                            <div class="feedback-panel__header">
+                                <div>
+                                    <h3>Peticiones de la comunidad</h3>
+                                    <p>Consulta propuestas públicas ya registradas antes de crear una nueva solicitud.</p>
+                                </div>
+                            </div>
+
+                            <div class="feedback-panel__body">
+                                <p class="feedback-error" *ngIf="publicError">{{ publicError }}</p>
+                                <p class="feedback-empty" *ngIf="publicLoading && publicCommunityItems.length < 1">Cargando peticiones públicas...</p>
+                                <p class="feedback-empty" *ngIf="!publicLoading && publicCommunityItems.length < 1 && !publicError">
+                                    No hay peticiones públicas distintas de las tuyas en la página actual.
+                                </p>
+
+                                <div class="feedback-list" *ngIf="publicCommunityItems.length > 0">
+                                    <article class="feedback-entry" *ngFor="let item of publicCommunityItems; trackBy: trackBySubmissionId">
+                                        <button class="feedback-entry__header" type="button" (click)="togglePublicExpanded(item.id)">
+                                            <span class="feedback-entry__title-wrap">
+                                                <span class="feedback-entry__title">{{ item.title || 'Petición sin título' }}</span>
+                                                <span class="feedback-entry__meta">
+                                                    <span class="feedback-badge feedback-badge--status">{{ getStatusLabel(item.status) }}</span>
+                                                    <span class="feedback-badge" *ngIf="item.priority">{{ getPriorityLabel(item.priority) }}</span>
+                                                </span>
+                                            </span>
+                                            <mat-icon>{{ isPublicExpanded(item.id) ? 'expand_less' : 'expand_more' }}</mat-icon>
+                                        </button>
+
+                                        <div class="feedback-entry__body" *ngIf="isPublicExpanded(item.id)">
+                                            <p>{{ item.description }}</p>
+
+                                            <dl class="feedback-facts" *ngIf="item.details.useCase || item.details.desiredOutcome || item.pageUrl">
+                                                <div *ngIf="item.details.useCase">
+                                                    <dt>Caso de uso</dt>
+                                                    <dd>{{ item.details.useCase }}</dd>
+                                                </div>
+                                                <div *ngIf="item.details.desiredOutcome">
+                                                    <dt>Resultado esperado</dt>
+                                                    <dd>{{ item.details.desiredOutcome }}</dd>
+                                                </div>
+                                                <div *ngIf="item.pageUrl">
+                                                    <dt>Página</dt>
+                                                    <dd>{{ item.pageUrl }}</dd>
+                                                </div>
+                                            </dl>
+
+                                            <p class="feedback-entry__dates">
+                                                Registrado {{ item.createdAtUtc | date:'short' }}
+                                                <span *ngIf="item.updatedAtUtc && item.updatedAtUtc !== item.createdAtUtc">
+                                                    · Actualizado {{ item.updatedAtUtc | date:'short' }}
+                                                </span>
+                                            </p>
+                                        </div>
+                                    </article>
+                                </div>
+
+                                <button
+                                    mat-stroked-button
+                                    color="primary"
+                                    type="button"
+                                    *ngIf="publicHasMore"
+                                    (click)="loadPublicSubmissions()"
+                                    [disabled]="publicLoading">
+                                    {{ publicLoading ? 'Cargando...' : 'Cargar más peticiones' }}
+                                </button>
+                            </div>
+                        </article>
+
+                        <ng-template #privateSubmissionDetailMode>
                         <article class="feedback-panel feedback-panel--main" *ngIf="selectedPrivateSubmissionId; else privateEmptySelection">
                             <p class="feedback-empty" *ngIf="selectedPrivateDetailLoading">Cargando detalle...</p>
                             <p class="feedback-error" *ngIf="selectedPrivateDetailError">{{ selectedPrivateDetailError }}</p>
@@ -224,6 +303,7 @@
                                 </div>
                             </ng-container>
                         </article>
+                        </ng-template>
                     </ng-template>
 
                     <ng-template #privateEmptySelection>

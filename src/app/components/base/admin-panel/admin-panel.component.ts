@@ -74,6 +74,7 @@ import {
     UserModerationHistoryResult,
     UserModerationSanction,
 } from 'src/app/interfaces/user-moderation';
+import { AdminFeedbackQuickAction } from './admin-feedback-manager.component';
 
 interface SyncItemConfig {
     key: CacheEntityKey;
@@ -92,7 +93,7 @@ interface AdminPolicyPanelItem {
     active: UserComplianceActivePolicy | null;
 }
 
-type AdminPanelViewSectionId = 'usuarios' | 'role-requests' | 'moderacion' | 'auditoria' | 'sync';
+type AdminPanelViewSectionId = 'usuarios' | 'role-requests' | 'feedback-bugs' | 'feedback-features' | 'moderacion' | 'auditoria' | 'sync';
 
 interface AdminPanelSectionItem {
     id: AdminPanelViewSectionId;
@@ -176,9 +177,25 @@ export class AdminPanelComponent implements OnInit, OnDestroy {
     casoModeracionModal: AdminModerationCaseModalState | null = null;
     guardandoCasoModeracion: boolean = false;
     private auditoriaCreacionesLoadedOnce: boolean = false;
+    readonly bugFeedbackQuickActions: AdminFeedbackQuickAction[] = [
+        { label: 'Resolver', status: 'resolved', color: 'primary' },
+        { label: 'Cerrar', status: 'closed', color: 'accent' },
+        { label: 'Rechazar', status: 'rejected', color: 'warn' },
+        { label: 'Reabrir', status: 'triaged', color: 'primary' },
+    ];
+    readonly featureFeedbackQuickActions: AdminFeedbackQuickAction[] = [
+        { label: 'Planificar', status: 'planned', color: 'primary' },
+        { label: 'En curso', status: 'in_progress', color: 'accent' },
+        { label: 'Resolver', status: 'resolved', color: 'primary' },
+        { label: 'Cerrar', status: 'closed', color: 'accent' },
+        { label: 'Rechazar', status: 'rejected', color: 'warn' },
+        { label: 'Reabrir', status: 'triaged', color: 'primary' },
+    ];
     readonly sectionItems: AdminPanelSectionItem[] = [
         { id: 'usuarios', label: 'Usuarios', icon: 'manage_accounts', hint: 'Sanciones, roles y permisos de creación.' },
         { id: 'role-requests', label: 'Solicitudes de rol', icon: 'pending_actions', hint: 'Peticiones pendientes e historico.' },
+        { id: 'feedback-bugs', label: 'Informes de bugs', icon: 'bug_report', hint: 'Triage, comentarios y cierre de reportes.' },
+        { id: 'feedback-features', label: 'Peticiones de funcionalidad', icon: 'lightbulb', hint: 'Planificacion y cierre de solicitudes.' },
         { id: 'moderacion', label: 'Moderacion', icon: 'gavel', hint: 'Politicas, incidencias y sanciones.' },
         { id: 'auditoria', label: 'Auditoria REST', icon: 'history', hint: 'Eventos de creacion y detalle HTTP.' },
         { id: 'sync', label: 'Sincronizacion', icon: 'sync_alt', hint: 'Herramientas de cache y resincronizacion.' },
@@ -1661,6 +1678,7 @@ export class AdminPanelComponent implements OnInit, OnDestroy {
         if (section === 'auditoria') {
             if (!this.auditoriaCreacionesLoadedOnce)
                 await this.cargarAuditoriaCreaciones(true);
+            return;
         }
     }
 

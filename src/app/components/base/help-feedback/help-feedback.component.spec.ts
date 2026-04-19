@@ -152,6 +152,39 @@ describe('HelpFeedbackComponent', () => {
         expect(fixture.nativeElement.textContent).toContain('Nueva solicitud');
     });
 
+    it('muestra comunidad en funcionalidades autenticadas y oculta IDs propios cargados', async () => {
+        usuariosApiSvc.listPublicFeatureRequests.and.resolveTo({
+            items: [buildSummary(11, 'feature'), buildSummary(12, 'feature')],
+            total: 2,
+            limit: 25,
+            offset: 0,
+            hasMore: false,
+        });
+        isLoggedIn$.next(true);
+        createComponent('feature');
+        await fixture.whenStable();
+        fixture.detectChanges();
+
+        expect(fixture.nativeElement.textContent).toContain('Comunidad');
+
+        component.openCommunitySubmissions();
+        fixture.detectChanges();
+
+        expect(component.privateWorkspaceView).toBe('community');
+        expect(component.publicCommunityItems.map((item) => item.id)).toEqual([11]);
+        expect(fixture.nativeElement.textContent).toContain('Peticiones de la comunidad');
+        expect(fixture.nativeElement.textContent).not.toContain('Adjuntos privados');
+    });
+
+    it('no muestra comunidad en la tab de bugs', async () => {
+        isLoggedIn$.next(true);
+        createComponent('bug');
+        await fixture.whenStable();
+        fixture.detectChanges();
+
+        expect(fixture.nativeElement.textContent).not.toContain('Comunidad');
+    });
+
     it('envía un bug con los campos específicos', async () => {
         isLoggedIn$.next(true);
         createComponent('bug');

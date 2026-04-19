@@ -10,6 +10,12 @@ import {
     CreationAuditListFiltersDto,
     CreationAuditListResponseDto,
     FeedbackAttachmentDto,
+    FeedbackActorSummaryDto,
+    FeedbackAdminListFiltersDto,
+    FeedbackAdminListResponseDto,
+    FeedbackAdminPatchRequestDto,
+    FeedbackAdminSubmissionDetailDto,
+    FeedbackAdminSubmissionSummaryDto,
     FeedbackCreateBugRequestDto,
     FeedbackCreateFeatureRequestDto,
     FeedbackDetailsDto,
@@ -19,6 +25,7 @@ import {
     FeedbackStatus,
     FeedbackSubmissionDetailDto,
     FeedbackSubmissionSummaryDto,
+    FeedbackUpdateAdminDto,
     FeedbackUpdateDto,
     ModerationAdminHistoryItemDto,
     ModerationAdminHistoryResponseDto,
@@ -204,6 +211,51 @@ export class UsuariosApiService {
             return filename;
         } catch (error) {
             throw await this.toApiErrorAsync(error, 'No se pudo descargar el adjunto de feedback');
+        }
+    }
+
+    async listAdminFeedbackSubmissions(filters: FeedbackAdminListFiltersDto = {}): Promise<FeedbackAdminListResponseDto> {
+        const requestedLimit = this.normalizeModerationPageSize(filters?.limit, 25);
+        const requestedOffset = this.toNonNegativeInt(filters?.offset, 0) ?? 0;
+        try {
+            const response = await firstValueFrom(
+                this.http.get<any>(`${this.usuariosBaseUrl}/admin/feedback/submissions`, {
+                    headers: await this.buildAuthHeaders(),
+                    params: this.buildAdminFeedbackQueryParams(filters),
+                })
+            );
+            return this.normalizeAdminFeedbackListResponse(response, filters?.kind ?? 'bug', requestedLimit, requestedOffset);
+        } catch (error) {
+            throw this.toApiError(error, 'No se pudo cargar la cola admin de feedback');
+        }
+    }
+
+    async getAdminFeedbackSubmission(id: number): Promise<FeedbackAdminSubmissionDetailDto> {
+        const normalizedId = this.normalizeFeedbackSubmissionId(id);
+        try {
+            const response = await firstValueFrom(
+                this.http.get<any>(`${this.usuariosBaseUrl}/admin/feedback/submissions/${normalizedId}`, {
+                    headers: await this.buildAuthHeaders(),
+                })
+            );
+            return this.normalizeAdminFeedbackSubmissionDetail(response, 'bug');
+        } catch (error) {
+            throw this.toApiError(error, 'No se pudo cargar el detalle admin del feedback');
+        }
+    }
+
+    async updateAdminFeedbackSubmission(id: number, payload: FeedbackAdminPatchRequestDto): Promise<FeedbackAdminSubmissionDetailDto> {
+        const normalizedId = this.normalizeFeedbackSubmissionId(id);
+        const normalizedPayload = this.normalizeFeedbackAdminPatchRequest(payload);
+        try {
+            const response = await firstValueFrom(
+                this.http.patch<any>(`${this.usuariosBaseUrl}/admin/feedback/submissions/${normalizedId}`, normalizedPayload, {
+                    headers: await this.buildAuthHeaders(),
+                })
+            );
+            return this.normalizeAdminFeedbackSubmissionDetail(response, 'bug');
+        } catch (error) {
+            throw this.toApiError(error, 'No se pudo actualizar el feedback');
         }
     }
 
@@ -557,7 +609,7 @@ export class UsuariosApiService {
 
         const limit = this.toNonNegativeInt(filters?.limit, null);
         if (limit !== null)
-            params['limit'] = `${limit}`;
+            params['limit'] = `${this.normalizeModerationPageSize(limit, 25)}`;
 
         const offset = this.toNonNegativeInt(filters?.offset, null);
         if (offset !== null)
@@ -571,6 +623,31 @@ export class UsuariosApiService {
         const limit = this.toNonNegativeInt(historyLimit, null);
         if (limit !== null && limit > 0)
             params['historyLimit'] = `${Math.min(20, limit)}`;
+        return params;
+    }
+
+    private buildAdminFeedbackQueryParams(filters: FeedbackAdminListFiltersDto): Record<string, string> {
+        const params: Record<string, string> = {};
+        const kind = this.normalizeOptionalFeedbackKind(filters?.kind);
+        if (kind)
+            params['kind'] = kind;
+
+        const status = this.normalizeOptionalFeedbackStatus(filters?.status);
+        if (status)
+            params['status'] = status;
+
+        const reporterUid = `${filters?.reporterUid ?? ''}`.trim();
+        if (reporterUid.length > 0)
+            params['reporterUid'] = reporterUid;
+
+        const limit = this.toNonNegativeInt(filters?.limit, null);
+        if (limit !== null)
+            params['limit'] = `${limit}`;
+
+        const offset = this.toNonNegativeInt(filters?.offset, null);
+        if (offset !== null)
+            params['offset'] = `${offset}`;
+
         return params;
     }
 
@@ -660,6 +737,24 @@ export class UsuariosApiService {
         return images.filter((image) => image instanceof File);
     }
 
+    private normalizeFeedbackAdminPatchRequest(payload: FeedbackAdminPatchRequestDto): FeedbackAdminPatchRequestDto {
+        const normalized: FeedbackAdminPatchRequestDto = {};
+        const status = this.normalizeOptionalFeedbackStatus(payload?.status);
+        if (status)
+            normalized.status = status;
+
+        const priority = this.normalizeOptionalFeedbackPriority(payload?.priority);
+        if (priority || payload?.priority === null)
+            normalized.priority = priority;
+
+        if (payload?.internalComment !== undefined)
+            normalized.internalComment = this.toNullableMultilineText(payload?.internalComment);
+        if (payload?.publicMessage !== undefined)
+            normalized.publicMessage = this.toNullableMultilineText(payload?.publicMessage);
+
+        return normalized;
+    }
+
     private normalizeFeedbackListResponse(
         raw: any,
         fallbackKind: FeedbackKind,
@@ -668,6 +763,27 @@ export class UsuariosApiService {
     ): FeedbackListResponseDto {
         const rawItems = this.extractListItems(raw);
         const items = rawItems.map((item) => this.normalizeFeedbackSubmissionSummary(item, fallbackKind));
+        const limit = this.normalizeModerationPageSize(raw?.limit, requestedLimit);
+        const offset = this.toNonNegativeInt(raw?.offset, requestedOffset) ?? requestedOffset;
+        const total = this.toNonNegativeInt(raw?.total, items.length) ?? items.length;
+
+        return {
+            items,
+            total,
+            limit,
+            offset,
+            hasMore: raw?.hasMore === true || offset + items.length < total,
+        };
+    }
+
+    private normalizeAdminFeedbackListResponse(
+        raw: any,
+        fallbackKind: FeedbackKind,
+        requestedLimit: number,
+        requestedOffset: number
+    ): FeedbackAdminListResponseDto {
+        const rawItems = this.extractListItems(raw);
+        const items = rawItems.map((item) => this.normalizeAdminFeedbackSubmissionSummary(item, fallbackKind));
         const limit = this.normalizeModerationPageSize(raw?.limit, requestedLimit);
         const offset = this.toNonNegativeInt(raw?.offset, requestedOffset) ?? requestedOffset;
         const total = this.toNonNegativeInt(raw?.total, items.length) ?? items.length;
@@ -709,6 +825,26 @@ export class UsuariosApiService {
         };
     }
 
+    private normalizeAdminFeedbackSubmissionSummary(raw: any, fallbackKind: FeedbackKind): FeedbackAdminSubmissionSummaryDto {
+        return {
+            ...this.normalizeFeedbackSubmissionSummary(raw, fallbackKind),
+            reporter: this.normalizeFeedbackActorSummary(raw?.reporter),
+        };
+    }
+
+    private normalizeAdminFeedbackSubmissionDetail(raw: any, fallbackKind: FeedbackKind): FeedbackAdminSubmissionDetailDto {
+        const summary = this.normalizeAdminFeedbackSubmissionSummary(raw, fallbackKind);
+        return {
+            ...summary,
+            attachments: Array.isArray(raw?.attachments)
+                ? raw.attachments.map((item: any) => this.normalizeFeedbackAttachment(item))
+                : [],
+            updates: Array.isArray(raw?.updates)
+                ? raw.updates.map((item: any) => this.normalizeFeedbackAdminUpdate(item))
+                : [],
+        };
+    }
+
     private normalizeFeedbackDetails(raw: any): FeedbackDetailsDto {
         return {
             stepsToReproduce: this.toNullableMultilineText(raw?.stepsToReproduce),
@@ -738,8 +874,31 @@ export class UsuariosApiService {
         };
     }
 
+    private normalizeFeedbackAdminUpdate(raw: any): FeedbackUpdateAdminDto {
+        return {
+            ...this.normalizeFeedbackUpdate(raw),
+            internalComment: this.toNullableMultilineText(raw?.internalComment),
+            actor: this.normalizeFeedbackActorSummary(raw?.actor),
+        };
+    }
+
+    private normalizeFeedbackActorSummary(raw: any): FeedbackActorSummaryDto {
+        return {
+            userId: this.toNullableText(raw?.userId),
+            uid: this.toNullableText(raw?.uid),
+            displayName: this.toNullableText(raw?.displayName),
+        };
+    }
+
     private normalizeFeedbackKind(value: any, fallback: FeedbackKind): FeedbackKind {
         return `${value ?? ''}`.trim().toLowerCase() === 'bug' ? 'bug' : fallback;
+    }
+
+    private normalizeOptionalFeedbackKind(value: any): FeedbackKind | null {
+        const normalized = `${value ?? ''}`.trim().toLowerCase();
+        if (normalized === 'bug' || normalized === 'feature')
+            return normalized;
+        return null;
     }
 
     private normalizeFeedbackStatus(value: any): FeedbackStatus {
@@ -750,11 +909,23 @@ export class UsuariosApiService {
         return 'submitted';
     }
 
+    private normalizeOptionalFeedbackStatus(value: any): FeedbackStatus | null {
+        const normalized = `${value ?? ''}`.trim().toLowerCase();
+        if (normalized === 'submitted' || normalized === 'triaged' || normalized === 'planned' || normalized === 'in_progress'
+            || normalized === 'resolved' || normalized === 'closed' || normalized === 'rejected')
+            return normalized;
+        return null;
+    }
+
     private normalizeFeedbackPriority(value: any): FeedbackPriority | null {
         const normalized = `${value ?? ''}`.trim().toLowerCase();
         if (normalized === 'low' || normalized === 'medium' || normalized === 'high' || normalized === 'critical')
             return normalized;
         return null;
+    }
+
+    private normalizeOptionalFeedbackPriority(value: any): FeedbackPriority | null {
+        return this.normalizeFeedbackPriority(value);
     }
 
     private normalizeFeedbackSubmissionId(value: any): number {

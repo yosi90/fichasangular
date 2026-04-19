@@ -166,8 +166,11 @@
     gap: 1rem
 
 .feedback-card
-    background: linear-gradient(180deg, rgba(36, 44, 54, 0.96), rgba(19, 24, 32, 0.98))
+    background: rgba(45, 45, 48, .96)
+    color: #f5f7ff
     border: 1px solid rgba(255, 255, 255, 0.08)
+    border-radius: 1rem
+    box-shadow: none
 
 .feedback-card--full
     grid-column: 1 / -1
@@ -194,12 +197,15 @@
 
 .feedback-previews
     display: grid
-    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr))
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 200px), 200px))
+    justify-content: start
     gap: 0.75rem
 
 .feedback-preview
     display: grid
     gap: 0.5rem
+    width: 100%
+    max-width: 200px
     padding: 0.75rem
     border-radius: 0.75rem
     background: rgba(255, 255, 255, 0.04)

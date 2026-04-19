@@ -412,6 +412,157 @@ describe('UsuariosApiService', () => {
         expect(filename).toBe('mockup.webp');
     });
 
+    it('listAdminFeedbackSubmissions envía filtros admin y normaliza reporter', async () => {
+        const httpMock = jasmine.createSpyObj('HttpClient', ['get']);
+        httpMock.get.and.returnValue(of({
+            items: [{
+                id: 77,
+                kind: 'bug',
+                status: 'submitted',
+                priority: 'critical',
+                title: 'Menú roto',
+                description: 'No cierra.',
+                pageUrl: '/perfil',
+                details: {
+                    stepsToReproduce: 'Abrir menú',
+                    expectedBehavior: 'Cerrar anterior',
+                    actualBehavior: 'Queda abierto',
+                },
+                reporter: {
+                    userId: 'user-77',
+                    uid: 'uid-77',
+                    displayName: 'Yosi',
+                },
+                createdAtUtc: '2026-04-19T10:00:00Z',
+                updatedAtUtc: '2026-04-19T10:30:00Z',
+            }],
+            total: 3,
+            limit: 25,
+            offset: 50,
+            hasMore: false,
+        }));
+        const service = new UsuariosApiService(httpMock, authMock);
+
+        const response = await service.listAdminFeedbackSubmissions({
+            kind: 'bug',
+            status: 'submitted',
+            reporterUid: ' uid-77 ',
+            limit: 25,
+            offset: 50,
+        });
+
+        const [url, options] = httpMock.get.calls.mostRecent().args;
+        expect(url).toContain('/usuarios/admin/feedback/submissions');
+        expect(options.headers.get('Authorization')).toBe('Bearer token-audit');
+        expect(options.params).toEqual({
+            kind: 'bug',
+            status: 'submitted',
+            reporterUid: 'uid-77',
+            limit: '25',
+            offset: '50',
+        });
+        expect(response.items[0].reporter.uid).toBe('uid-77');
+        expect(response.items[0].priority).toBe('critical');
+        expect(response.total).toBe(3);
+    });
+
+    it('getAdminFeedbackSubmission normaliza timeline admin y adjuntos', async () => {
+        const httpMock = jasmine.createSpyObj('HttpClient', ['get']);
+        httpMock.get.and.returnValue(of({
+            id: 77,
+            kind: 'bug',
+            status: 'triaged',
+            priority: 'high',
+            title: 'Menú roto',
+            description: 'No cierra.',
+            pageUrl: '/perfil',
+            details: {
+                stepsToReproduce: 'Abrir menú',
+                expectedBehavior: 'Cerrar anterior',
+                actualBehavior: 'Queda abierto',
+            },
+            reporter: {
+                userId: 'user-77',
+                uid: 'uid-77',
+                displayName: 'Yosi',
+            },
+            attachments: [{
+                id: 91,
+                filename: 'captura.webp',
+                mimeType: 'image/webp',
+                sizeBytes: 4096,
+                createdAtUtc: '2026-04-19T10:05:00Z',
+                url: '/usuarios/feedback/attachments/91',
+            }],
+            updates: [{
+                status: 'triaged',
+                publicMessage: 'Lo estamos revisando.',
+                internalComment: 'Reproducido en local.',
+                createdAtUtc: '2026-04-19T10:30:00Z',
+                actor: {
+                    userId: 'admin-1',
+                    uid: 'admin-uid',
+                    displayName: 'Admin',
+                },
+            }],
+            createdAtUtc: '2026-04-19T10:00:00Z',
+            updatedAtUtc: '2026-04-19T10:30:00Z',
+        }));
+        const service = new UsuariosApiService(httpMock, authMock);
+
+        const response = await service.getAdminFeedbackSubmission(77);
+
+        const [url, options] = httpMock.get.calls.mostRecent().args;
+        expect(url).toContain('/usuarios/admin/feedback/submissions/77');
+        expect(options.headers.get('Authorization')).toBe('Bearer token-audit');
+        expect(response.reporter.displayName).toBe('Yosi');
+        expect(response.attachments[0].filename).toBe('captura.webp');
+        expect(response.updates[0].internalComment).toBe('Reproducido en local.');
+        expect(response.updates[0].actor.uid).toBe('admin-uid');
+    });
+
+    it('updateAdminFeedbackSubmission envía patch admin normalizado', async () => {
+        const httpMock = jasmine.createSpyObj('HttpClient', ['patch']);
+        httpMock.patch.and.returnValue(of({
+            id: 77,
+            kind: 'bug',
+            status: 'closed',
+            priority: null,
+            title: 'Menú roto',
+            description: 'No cierra.',
+            pageUrl: '/perfil',
+            details: {},
+            reporter: {
+                userId: 'user-77',
+                uid: 'uid-77',
+                displayName: 'Yosi',
+            },
+            attachments: [],
+            updates: [],
+            createdAtUtc: '2026-04-19T10:00:00Z',
+            updatedAtUtc: '2026-04-19T11:00:00Z',
+        }));
+        const service = new UsuariosApiService(httpMock, authMock);
+
+        const response = await service.updateAdminFeedbackSubmission(77, {
+            status: 'closed',
+            priority: null,
+            internalComment: ' Cerrado por duplicado. ',
+            publicMessage: ' Lo cerramos por duplicado. ',
+        });
+
+        const [url, body, options] = httpMock.patch.calls.mostRecent().args;
+        expect(url).toContain('/usuarios/admin/feedback/submissions/77');
+        expect(options.headers.get('Authorization')).toBe('Bearer token-audit');
+        expect(body).toEqual({
+            status: 'closed',
+            priority: null,
+            internalComment: 'Cerrado por duplicado.',
+            publicMessage: 'Lo cerramos por duplicado.',
+        });
+        expect(response.status).toBe('closed');
+    });
+
     it('upsertUser no envía el campo legacy banned a POST /usuarios', async () => {
         const httpMock = jasmine.createSpyObj('HttpClient', ['get', 'post']);
         httpMock.post.and.returnValue(of({
