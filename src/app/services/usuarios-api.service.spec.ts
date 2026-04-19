@@ -171,6 +171,56 @@ describe('UsuariosApiService', () => {
         expect(response.markdown).toContain('Sin spam');
     });
 
+    it('updateAdminPolicyDraft usa la ruta canónica y normaliza el borrador actualizado', async () => {
+        const httpMock = jasmine.createSpyObj('HttpClient', ['put']);
+        httpMock.put.and.returnValue(of({
+            kind: 'usage',
+            title: 'Normas de uso',
+            markdown: '# Uso\n\nRespeta a la comunidad.',
+            version: 'usage-draft',
+            updatedAtUtc: '2026-04-02T11:00:00Z',
+        }));
+        const service = new UsuariosApiService(httpMock, authMock);
+
+        const response = await service.updateAdminPolicyDraft('usage', {
+            title: ' Normas de uso ',
+            markdown: ' # Uso\n\nRespeta a la comunidad. ',
+        });
+
+        const [url, payload, options] = httpMock.put.calls.mostRecent().args;
+        expect(url).toContain('/usuarios/admin/policies/usage/draft');
+        expect(payload).toEqual({
+            title: 'Normas de uso',
+            markdown: '# Uso\n\nRespeta a la comunidad.',
+        });
+        expect(options.headers.get('Authorization')).toBe('Bearer token-audit');
+        expect(response.kind).toBe('usage');
+        expect(response.markdown).toContain('Respeta');
+    });
+
+    it('publishAdminPolicy usa la ruta canónica y normaliza la política activa', async () => {
+        const httpMock = jasmine.createSpyObj('HttpClient', ['post']);
+        httpMock.post.and.returnValue(of({
+            policy: {
+                kind: 'creation',
+                title: 'Normas de creación',
+                markdown: '# Crear\n\nSin abuso.',
+                version: 'creation-v4',
+                publishedAtUtc: '2026-04-03T09:00:00Z',
+            },
+        }));
+        const service = new UsuariosApiService(httpMock, authMock);
+
+        const response = await service.publishAdminPolicy('creation');
+
+        const [url, payload, options] = httpMock.post.calls.mostRecent().args;
+        expect(url).toContain('/usuarios/admin/policies/creation/publish');
+        expect(payload).toEqual({});
+        expect(options.headers.get('Authorization')).toBe('Bearer token-audit');
+        expect(response.kind).toBe('creation');
+        expect(response.version).toBe('creation-v4');
+    });
+
     it('createBugReport compone FormData multipart con imágenes y bearer', async () => {
         const httpMock = jasmine.createSpyObj('HttpClient', ['post']);
         httpMock.post.and.returnValue(of({

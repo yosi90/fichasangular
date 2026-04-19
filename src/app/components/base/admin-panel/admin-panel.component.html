@@ -33,25 +33,17 @@
 
         <main class="admin-main sombra-caja-sm tw-rounded-md">
             <section class="admin-section" *ngIf="currentSection === 'sync'">
-                <div class="admin-section__header">
-                    <div>
-                        <p class="admin-section__eyebrow">Sincronizacion</p>
-                        <h2>SQL Server y Firebase</h2>
-                        <p class="admin-section__subtitle">Herramientas de resincronizacion y estado de cache del panel admin.</p>
-                    </div>
-                </div>
-
                 <div class="sync-list">
-                            <button
-                                *ngFor="let item of syncItemsOrdenados; trackBy: trackBySyncItem"
-                                mat-raised-button
-                                [color]="item.isPrimary ? 'warn' : 'accent'"
-                                class="sync-item-btn"
-                                [disabled]="estaEjecutando(item.key)"
-                                (click)="ejecutarSync(item)">
-                                <span class="sync-item-label">{{item.label}}</span>
-                                <span class="sync-item-date">{{item.lastSuccessTexto}}</span>
-                            </button>
+                    <button
+                        *ngFor="let item of syncItemsOrdenados; trackBy: trackBySyncItem"
+                        mat-raised-button
+                        [color]="item.isPrimary ? 'warn' : 'accent'"
+                        class="sync-item-btn"
+                        [disabled]="estaEjecutando(item.key)"
+                        (click)="ejecutarSync(item)">
+                        <span class="sync-item-label">{{item.label}}</span>
+                        <span class="sync-item-date">{{item.lastSuccessTexto}}</span>
+                    </button>
                 </div>
             </section>
 
@@ -454,17 +446,27 @@
                             id="admin-moderation-panel"
                             class="usuarios-admin-panel tw-p-2 admin-moderation-panel">
                             <div class="admin-moderation__header">
-                                <div>
-                                    <h3>Lectura operativa</h3>
-                                    <p>Resumen de políticas, supuestos, incidencias, sanciones e historial privado admin-only.</p>
+                                <div class="admin-moderation__tabs" role="tablist" aria-label="Secciones de moderación">
+                                    <button
+                                        type="button"
+                                        class="admin-moderation__tab"
+                                        *ngFor="let section of moderationSectionItems"
+                                        [class.admin-moderation__tab--active]="currentModerationSection === section.id"
+                                        [attr.aria-selected]="currentModerationSection === section.id"
+                                        role="tab"
+                                        (click)="setModerationSection(section.id)">
+                                        <mat-icon>{{section.icon}}</mat-icon>
+                                        <span>{{section.label}}</span>
+                                    </button>
                                 </div>
                                 <button
                                     mat-stroked-button
                                     color="accent"
+                                    class="admin-moderation__refresh"
                                     [disabled]="cargandoModeracionAdmin"
                                     (click)="cargarModeracionAdmin(true)">
                                     <mat-icon>{{cargandoModeracionAdmin ? 'hourglass_top' : 'refresh'}}</mat-icon>
-                                    {{cargandoModeracionAdmin ? 'Cargando...' : 'Actualizar lectura admin'}}
+                                    {{cargandoModeracionAdmin ? 'Cargando...' : 'Actualizar'}}
                                 </button>
                             </div>
 
@@ -473,7 +475,7 @@
                             </div>
 
                             <ng-container *ngIf="etiquetaEstadoModeracionAdmin.length < 1">
-                                <section class="admin-moderation__section">
+                                <section class="admin-moderation__section" *ngIf="currentModerationSection === 'policies'">
                                     <div class="admin-moderation__section-header">
                                         <h3>Políticas</h3>
                                         <p>Borrador admin y versión activa publicada para uso y creación.</p>
@@ -490,11 +492,27 @@
                                             <p><strong>Activa:</strong> {{item.active?.title || 'Sin política publicada'}}</p>
                                             <p><strong>Publicada:</strong> {{formatearFechaUtc(item.active?.publishedAtUtc, 'Sin fecha')}}</p>
                                             <p class="admin-moderation__excerpt">{{policyExcerpt(item)}}</p>
+                                            <div class="admin-moderation__policy-actions">
+                                                <button
+                                                    mat-stroked-button
+                                                    color="accent"
+                                                    [disabled]="!canEditPolicy(item)"
+                                                    (click)="editarBorradorPolitica(item)">
+                                                    {{isPolicyOperationRunning(item.kind, 'draft') ? 'Guardando...' : 'Editar borrador'}}
+                                                </button>
+                                                <button
+                                                    mat-raised-button
+                                                    color="primary"
+                                                    [disabled]="!canPublishPolicy(item)"
+                                                    (click)="publicarPolitica(item)">
+                                                    {{isPolicyOperationRunning(item.kind, 'publish') ? 'Publicando...' : 'Publicar'}}
+                                                </button>
+                                            </div>
                                         </article>
                                     </div>
                                 </section>
 
-                                <section class="admin-moderation__section">
+                                <section class="admin-moderation__section" *ngIf="currentModerationSection === 'cases'">
                                     <div class="admin-moderation__section-header admin-moderation__section-header--actions">
                                         <div>
                                             <h3>Supuestos moderables</h3>
@@ -515,7 +533,7 @@
                                     </div>
 
                                     <div class="tabla-scroll usuarios-admin-tabla-scroll" *ngIf="supuestosModerables.length > 0">
-                                        <table class="tabla-usuarios-admin tabla-usuarios-admin--moderation">
+                                        <table class="tabla-usuarios-admin tabla-usuarios-admin--moderation tabla-usuarios-admin--moderation-cases">
                                             <thead>
                                                 <tr>
                                                     <th>Caso</th>
@@ -561,7 +579,7 @@
                                     </div>
                                 </section>
 
-                                <section class="admin-moderation__section">
+                                <section class="admin-moderation__section" *ngIf="currentModerationSection === 'incidents'">
                                     <div class="admin-moderation__section-header">
                                         <h3>Incidencias recientes</h3>
                                         <p>Confirmaciones y sanciones aplicadas por backend en la vertical de moderación.</p>
@@ -606,7 +624,7 @@
                                     </div>
                                 </section>
 
-                                <section class="admin-moderation__section">
+                                <section class="admin-moderation__section" *ngIf="currentModerationSection === 'sanctions'">
                                     <div class="admin-moderation__section-header">
                                         <h3>Sanciones recientes</h3>
                                         <p>Vista rápida de sanciones activas o históricas sin pedir detalle por usuario.</p>
@@ -643,7 +661,7 @@
                                     </div>
                                 </section>
 
-                                <section class="admin-moderation__section">
+                                <section class="admin-moderation__section" *ngIf="currentModerationSection === 'history'">
                                     <div class="admin-moderation__section-header">
                                         <h3>Historial por usuario</h3>
                                         <p>Timeline admin canónica con campos privados, usando `GET /usuarios/admin/moderation/users/&lt;uid&gt;/history`.</p>
@@ -826,6 +844,74 @@
                 </div>
             </section>
         </main>
+    </div>
+</div>
+
+<div class="admin-policy-modal__overlay" *ngIf="politicaEditorModal as modal" (click)="cerrarEditorPolitica()">
+    <div
+        class="admin-policy-modal"
+        role="dialog"
+        aria-modal="true"
+        [attr.aria-label]="politicaEditorTitulo"
+        (click)="$event.stopPropagation()">
+        <div class="admin-policy-modal__header">
+            <div class="admin-policy-modal__header-main">
+                <p class="admin-policy-modal__eyebrow">Política de moderación</p>
+                <h3>{{politicaEditorTitulo}}</h3>
+            </div>
+            <button
+                mat-icon-button
+                type="button"
+                aria-label="Cerrar editor de política"
+                [disabled]="isPolicyOperationRunning(modal.kind, 'draft')"
+                (click)="cerrarEditorPolitica()">
+                <mat-icon>close</mat-icon>
+            </button>
+        </div>
+
+        <div class="admin-policy-modal__content">
+            <mat-form-field appearance="fill" class="admin-policy-modal__field">
+                <mat-label>Título</mat-label>
+                <input
+                    matInput
+                    [ngModel]="modal.titleDraft"
+                    [disabled]="isPolicyOperationRunning(modal.kind, 'draft')"
+                    (ngModelChange)="actualizarTituloPoliticaEditor($event)">
+            </mat-form-field>
+
+            <mat-form-field appearance="fill" class="admin-policy-modal__field admin-policy-modal__field--markdown">
+                <mat-label>Contenido markdown</mat-label>
+                <textarea
+                    matInput
+                    rows="16"
+                    [ngModel]="modal.markdownDraft"
+                    [disabled]="isPolicyOperationRunning(modal.kind, 'draft')"
+                    (ngModelChange)="actualizarMarkdownPoliticaEditor($event)">
+                </textarea>
+            </mat-form-field>
+
+            <p class="admin-policy-modal__error" *ngIf="errorPoliticaEditor.length > 0">
+                {{errorPoliticaEditor}}
+            </p>
+        </div>
+
+        <div class="admin-policy-modal__actions">
+            <button
+                mat-stroked-button
+                type="button"
+                [disabled]="isPolicyOperationRunning(modal.kind, 'draft')"
+                (click)="cerrarEditorPolitica()">
+                Cancelar
+            </button>
+            <button
+                mat-raised-button
+                color="primary"
+                type="button"
+                [disabled]="!puedeGuardarPoliticaEditor"
+                (click)="guardarEditorPolitica()">
+                {{isPolicyOperationRunning(modal.kind, 'draft') ? 'Guardando...' : 'Guardar borrador'}}
+            </button>
+        </div>
     </div>
 </div>
 

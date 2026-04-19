@@ -6,6 +6,7 @@ import { firstValueFrom } from 'rxjs';
 import { environment } from 'src/environments/environment';
 import {
     AdminPolicyDraftDto,
+    AdminPolicyDraftUpdateRequestDto,
     CreationAuditEventDetailDto,
     CreationAuditListFiltersDto,
     CreationAuditListResponseDto,
@@ -51,6 +52,7 @@ import {
 } from '../interfaces/usuarios-api';
 import {
     UserCompliancePolicyKind,
+    UserComplianceActivePolicy,
     UserModerationHistoryItem,
     UserModerationHistoryResult,
     UserModerationSanction,
@@ -94,6 +96,35 @@ export class UsuariosApiService {
             return this.normalizeAdminPolicyDraft(response, normalizedKind);
         } catch (error) {
             throw this.toApiError(error, `No se pudo cargar el borrador de política ${normalizedKind}`);
+        }
+    }
+
+    async updateAdminPolicyDraft(policyKind: UserCompliancePolicyKind, payload: AdminPolicyDraftUpdateRequestDto): Promise<AdminPolicyDraftDto> {
+        const normalizedKind = this.normalizePolicyKind(policyKind);
+        const normalizedPayload = this.normalizeAdminPolicyDraftUpdatePayload(payload);
+        try {
+            const response = await firstValueFrom(
+                this.http.put<any>(`${this.usuariosBaseUrl}/admin/policies/${normalizedKind}/draft`, normalizedPayload, {
+                    headers: await this.buildAuthHeaders(),
+                })
+            );
+            return this.normalizeAdminPolicyDraft(response, normalizedKind);
+        } catch (error) {
+            throw this.toApiError(error, `No se pudo actualizar el borrador de política ${normalizedKind}`);
+        }
+    }
+
+    async publishAdminPolicy(policyKind: UserCompliancePolicyKind): Promise<UserComplianceActivePolicy> {
+        const normalizedKind = this.normalizePolicyKind(policyKind);
+        try {
+            const response = await firstValueFrom(
+                this.http.post<any>(`${this.usuariosBaseUrl}/admin/policies/${normalizedKind}/publish`, {}, {
+                    headers: await this.buildAuthHeaders(),
+                })
+            );
+            return this.normalizeActivePolicy(response?.policy ?? response?.activePolicy ?? response, normalizedKind);
+        } catch (error) {
+            throw this.toApiError(error, `No se pudo publicar la política ${normalizedKind}`);
         }
     }
 
@@ -951,6 +982,27 @@ export class UsuariosApiService {
             version: this.toNullableText(raw?.version ?? raw?.versionTag ?? raw?.versionCode),
             publishedAtUtc: this.toNullableText(raw?.publishedAtUtc ?? raw?.effectiveAtUtc ?? raw?.activeSinceUtc),
             updatedAtUtc: this.toNullableText(raw?.updatedAtUtc ?? raw?.modifiedAtUtc ?? raw?.draftUpdatedAtUtc),
+        };
+    }
+
+    private normalizeAdminPolicyDraftUpdatePayload(payload: AdminPolicyDraftUpdateRequestDto): AdminPolicyDraftUpdateRequestDto {
+        const title = `${payload?.title ?? ''}`.trim();
+        const markdown = `${payload?.markdown ?? ''}`.trim();
+        if (title.length < 1)
+            throw new Error('El título de la política es obligatorio');
+        if (markdown.length < 1)
+            throw new Error('El contenido de la política es obligatorio');
+        return { title, markdown };
+    }
+
+    private normalizeActivePolicy(raw: any, fallbackKind: UserCompliancePolicyKind): UserComplianceActivePolicy {
+        const normalizedKind = this.normalizePolicyKind(raw?.kind ?? raw?.policyKind ?? fallbackKind);
+        return {
+            kind: normalizedKind,
+            version: this.toNullableText(raw?.version ?? raw?.versionTag ?? raw?.versionCode),
+            title: this.toNullableText(raw?.title ?? raw?.name),
+            markdown: this.toNullableMultilineText(raw?.markdown ?? raw?.content ?? raw?.body) ?? '',
+            publishedAtUtc: this.toNullableText(raw?.publishedAtUtc ?? raw?.effectiveAtUtc ?? raw?.activeSinceUtc),
         };
     }
 

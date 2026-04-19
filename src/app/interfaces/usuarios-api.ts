@@ -241,6 +241,11 @@ export interface AdminPolicyDraftDto {
     updatedAtUtc: string | null;
 }
 
+export interface AdminPolicyDraftUpdateRequestDto {
+    title: string;
+    markdown: string;
+}
+
 export type ModerationCaseSourceMode = 'manual_only' | 'technical_signal_auto';
 export type ModerationCaseOriginType = 'system_seed' | 'admin_custom';
 

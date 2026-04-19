@@ -94,6 +94,7 @@ interface AdminPolicyPanelItem {
 }
 
 type AdminPanelViewSectionId = 'usuarios' | 'role-requests' | 'feedback-bugs' | 'feedback-features' | 'moderacion' | 'auditoria' | 'sync';
+type AdminModerationSectionId = 'policies' | 'cases' | 'incidents' | 'sanctions' | 'history';
 
 interface AdminPanelSectionItem {
     id: AdminPanelViewSectionId;
@@ -102,9 +103,21 @@ interface AdminPanelSectionItem {
     hint: string;
 }
 
+interface AdminModerationSectionItem {
+    id: AdminModerationSectionId;
+    label: string;
+    icon: string;
+}
+
 interface AdminModerationCaseModalState {
     mode: AdminModerationCaseModalMode;
     item: ModerationCaseListItemDto | null;
+}
+
+interface AdminPolicyEditorModalState {
+    kind: UserCompliancePolicyKind;
+    titleDraft: string;
+    markdownDraft: string;
 }
 
 @Component({
@@ -140,6 +153,7 @@ export class AdminPanelComponent implements OnInit, OnDestroy {
     errorSolicitudesRol: string = '';
     roleRequestsSqlAccessDenied: boolean = false;
     currentSection: AdminPanelViewSectionId = 'usuarios';
+    currentModerationSection: AdminModerationSectionId = 'sanctions';
     resaltarSolicitudesPendientes: boolean = false;
     politicasModeracion: AdminPolicyPanelItem[] = [];
     supuestosModerables: ModerationCaseListItemDto[] = [];
@@ -176,6 +190,9 @@ export class AdminPanelComponent implements OnInit, OnDestroy {
     registrandoSancionUsuario: boolean = false;
     casoModeracionModal: AdminModerationCaseModalState | null = null;
     guardandoCasoModeracion: boolean = false;
+    politicaModeracionOperacion: string = '';
+    politicaEditorModal: AdminPolicyEditorModalState | null = null;
+    errorPoliticaEditor: string = '';
     private auditoriaCreacionesLoadedOnce: boolean = false;
     readonly bugFeedbackQuickActions: AdminFeedbackQuickAction[] = [
         { label: 'Resolver', status: 'resolved', color: 'primary' },
@@ -190,6 +207,13 @@ export class AdminPanelComponent implements OnInit, OnDestroy {
         { label: 'Cerrar', status: 'closed', color: 'accent' },
         { label: 'Rechazar', status: 'rejected', color: 'warn' },
         { label: 'Reabrir', status: 'triaged', color: 'primary' },
+    ];
+    readonly moderationSectionItems: AdminModerationSectionItem[] = [
+        { id: 'policies', label: 'Políticas', icon: 'policy' },
+        { id: 'cases', label: 'Supuestos moderables', icon: 'gavel' },
+        { id: 'incidents', label: 'Incidencias recientes', icon: 'report' },
+        { id: 'sanctions', label: 'Sanciones recientes', icon: 'block' },
+        { id: 'history', label: 'Historial por usuario', icon: 'manage_search' },
     ];
     readonly sectionItems: AdminPanelSectionItem[] = [
         { id: 'usuarios', label: 'Usuarios', icon: 'manage_accounts', hint: 'Sanciones, roles y permisos de creación.' },
@@ -554,6 +578,155 @@ export class AdminPanelComponent implements OnInit, OnDestroy {
         return `${text.slice(0, 220).trim()}...`;
     }
 
+    isPolicyOperationRunning(kind: UserCompliancePolicyKind, operation?: 'draft' | 'publish'): boolean {
+        const key = `${this.politicaModeracionOperacion ?? ''}`.trim();
+        if (operation)
+            return key === `${operation}:${kind}`;
+        return key.endsWith(`:${kind}`);
+    }
+
+    canEditPolicy(item: AdminPolicyPanelItem | null | undefined): boolean {
+        return this.esAdmin
+            && !!item
+            && !this.cargandoModeracionAdmin
+            && this.politicaModeracionOperacion.length < 1;
+    }
+
+    canPublishPolicy(item: AdminPolicyPanelItem | null | undefined): boolean {
+        return this.canEditPolicy(item)
+            && `${item?.draft?.title ?? ''}`.trim().length > 0
+            && `${item?.draft?.markdown ?? ''}`.trim().length > 0;
+    }
+
+    get politicaEditorTitulo(): string {
+        if (!this.politicaEditorModal)
+            return 'Editar política';
+        return `Editar ${this.policyKindLabel(this.politicaEditorModal.kind)}`;
+    }
+
+    get puedeGuardarPoliticaEditor(): boolean {
+        const modal = this.politicaEditorModal;
+        return !!modal
+            && modal.titleDraft.trim().length > 0
+            && modal.markdownDraft.trim().length > 0
+            && !this.isPolicyOperationRunning(modal.kind, 'draft');
+    }
+
+    editarBorradorPolitica(item: AdminPolicyPanelItem): void {
+        if (!this.canEditPolicy(item))
+            return;
+
+        const kind = item.kind;
+        this.errorPoliticaEditor = '';
+        this.politicaEditorModal = {
+            kind,
+            titleDraft: item.draft?.title ?? item.active?.title ?? '',
+            markdownDraft: item.draft?.markdown ?? item.active?.markdown ?? '',
+        };
+    }
+
+    cerrarEditorPolitica(): void {
+        if (this.politicaEditorModal && this.isPolicyOperationRunning(this.politicaEditorModal.kind, 'draft'))
+            return;
+
+        this.politicaEditorModal = null;
+        this.errorPoliticaEditor = '';
+    }
+
+    actualizarTituloPoliticaEditor(value: string): void {
+        if (!this.politicaEditorModal)
+            return;
+        this.politicaEditorModal = {
+            ...this.politicaEditorModal,
+            titleDraft: value,
+        };
+        this.errorPoliticaEditor = '';
+    }
+
+    actualizarMarkdownPoliticaEditor(value: string): void {
+        if (!this.politicaEditorModal)
+            return;
+        this.politicaEditorModal = {
+            ...this.politicaEditorModal,
+            markdownDraft: value,
+        };
+        this.errorPoliticaEditor = '';
+    }
+
+    async guardarEditorPolitica(): Promise<void> {
+        const modal = this.politicaEditorModal;
+        if (!modal)
+            return;
+
+        const kind = modal.kind;
+        const title = modal.titleDraft.trim();
+        const markdown = modal.markdownDraft.trim();
+        if (title.length < 1) {
+            this.errorPoliticaEditor = 'El título es obligatorio.';
+            return;
+        }
+        if (markdown.length < 1) {
+            this.errorPoliticaEditor = 'El contenido markdown es obligatorio.';
+            return;
+        }
+
+        this.politicaModeracionOperacion = `draft:${kind}`;
+        this.errorModeracionAdmin = '';
+        this.errorPoliticaEditor = '';
+        try {
+            const draft = await this.usuariosApiSvc.updateAdminPolicyDraft(kind, { title, markdown });
+            this.patchPoliticaModeracion(kind, { draft });
+            this.politicaEditorModal = null;
+        } catch (error: any) {
+            const message = error?.message ?? 'No se pudo actualizar el borrador de política';
+            this.errorModeracionAdmin = message;
+            this.errorPoliticaEditor = message;
+        } finally {
+            this.politicaModeracionOperacion = '';
+        }
+    }
+
+    async publicarPolitica(item: AdminPolicyPanelItem): Promise<void> {
+        if (!this.canPublishPolicy(item))
+            return;
+
+        const kind = item.kind;
+        const result = await Swal.fire({
+            icon: 'warning',
+            title: `Publicar ${this.policyKindLabel(kind)}`,
+            text: 'Publicar una nueva versión hará que los usuarios deban aceptar de nuevo esta política.',
+            showCancelButton: true,
+            confirmButtonText: 'Publicar',
+            cancelButtonText: 'Cancelar',
+        });
+        if (!result.isConfirmed)
+            return;
+
+        this.politicaModeracionOperacion = `publish:${kind}`;
+        this.errorModeracionAdmin = '';
+        try {
+            const active = await this.usuariosApiSvc.publishAdminPolicy(kind);
+            this.patchPoliticaModeracion(kind, { active });
+            this.moderacionAdminLoadedOnce = false;
+            await this.cargarModeracionAdmin(true);
+            await Swal.fire({
+                icon: 'success',
+                title: 'Política publicada',
+                text: 'La nueva versión ya está activa.',
+            });
+        } catch (error: any) {
+            const message = error?.message ?? 'No se pudo publicar la política';
+            this.errorModeracionAdmin = message;
+            await Swal.fire({
+                icon: 'error',
+                title: 'No se pudo publicar',
+                text: message,
+            });
+        } finally {
+            this.politicaModeracionOperacion = '';
+        }
+    }
+
     moderationCaseLabel(item: ModerationCaseListItemDto): string {
         return `${item?.name ?? item?.code ?? 'Caso sin nombre'}`.trim();
     }
@@ -793,6 +966,10 @@ export class AdminPanelComponent implements OnInit, OnDestroy {
         if (this.isSystemEntityRow(row))
             return false;
         return true;
+    }
+
+    setModerationSection(section: AdminModerationSectionId): void {
+        this.currentModerationSection = section;
     }
 
     permissionSummaryLabel(row: AdminUserRow): string {
@@ -1721,6 +1898,12 @@ export class AdminPanelComponent implements OnInit, OnDestroy {
 
         if (uidChanged || resetOffset)
             this.historialModeracionUsuarioOffset = 0;
+    }
+
+    private patchPoliticaModeracion(kind: UserCompliancePolicyKind, patch: Partial<AdminPolicyPanelItem>): void {
+        this.politicasModeracion = this.politicasModeracion.map((item) => item.kind === kind
+            ? { ...item, ...patch }
+            : item);
     }
 
     private isRealtimeRoleRequestNotification(candidate: ChatAlertCandidate | null | undefined): boolean {
