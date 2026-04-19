@@ -234,7 +234,7 @@ export class ListaPersonajesService {
             Campana: campana,
             Trama: trama,
             Subtrama: subtrama,
-            Archivado: toBoolean(element?.a ?? element?.archivado ?? element?.Archivado),
+            Archivado: toBoolean(element?.archivado ?? element?.Archivado ?? element?.a),
         };
     }
 

@@ -1,9 +1,12 @@
 import { Component, EventEmitter, Input, OnChanges, Output, SimpleChanges } from '@angular/core';
 import { SocialRelationshipProfile } from 'src/app/interfaces/social-v3';
 import { UserPublicProfile } from 'src/app/interfaces/user-account';
+import { AppToastService } from 'src/app/services/app-toast.service';
+import { SocialApiService } from 'src/app/services/social-api.service';
 import { SocialV3ApiService } from 'src/app/services/social-v3-api.service';
 import { UserProfileApiService } from 'src/app/services/user-profile-api.service';
 import { resolveDefaultProfileAvatar } from 'src/app/services/utils/profile-avatar.util';
+import { toUserFacingErrorMessage } from 'src/app/services/utils/user-facing-error.util';
 
 @Component({
     selector: 'app-public-user-profile',
@@ -20,6 +23,8 @@ export class PublicUserProfileComponent implements OnChanges {
     publicProfile: UserPublicProfile | null = null;
     relationshipProfile: SocialRelationshipProfile | null = null;
     loading = false;
+    relationshipActionInFlight = false;
+    relationshipActionErrorMessage = '';
     errorMessage = '';
     private readonly dateFormatter = new Intl.DateTimeFormat('es-ES', {
         day: 'numeric',
@@ -30,6 +35,8 @@ export class PublicUserProfileComponent implements OnChanges {
     constructor(
         private userProfileApiSvc: UserProfileApiService,
         private socialV3ApiSvc: SocialV3ApiService,
+        private socialApiSvc: SocialApiService,
+        private appToastSvc: AppToastService,
     ) { }
 
     ngOnChanges(changes: SimpleChanges): void {
@@ -104,6 +111,28 @@ export class PublicUserProfileComponent implements OnChanges {
         return 'Sin vínculo social activo.';
     }
 
+    get canSendFriendRequest(): boolean {
+        return this.relationshipState === 'none';
+    }
+
+    get canAcceptFriendRequest(): boolean {
+        return this.relationshipState === 'incoming_request';
+    }
+
+    get canRejectFriendRequest(): boolean {
+        return this.relationshipState === 'incoming_request';
+    }
+
+    get canCancelFriendRequest(): boolean {
+        return this.relationshipState === 'outgoing_request';
+    }
+
+    get hasRelationshipActions(): boolean {
+        return this.mode === 'relationship'
+            && !!this.relationshipProfile
+            && (this.canSendFriendRequest || this.canAcceptFriendRequest || this.canRejectFriendRequest || this.canCancelFriendRequest);
+    }
+
     get relationshipMetaItems(): { value: string; label: string; tone?: 'neutral' | 'warn'; }[] {
         if (!this.relationshipProfile)
             return [];
@@ -160,6 +189,7 @@ export class PublicUserProfileComponent implements OnChanges {
 
         this.loading = true;
         this.errorMessage = '';
+        this.relationshipActionErrorMessage = '';
         this.publicProfile = null;
         this.relationshipProfile = null;
         try {
@@ -178,6 +208,70 @@ export class PublicUserProfileComponent implements OnChanges {
             this.errorMessage = `${error?.message ?? 'No se pudo cargar el perfil público.'}`.trim();
         } finally {
             this.loading = false;
+        }
+    }
+
+    async sendFriendRequest(): Promise<void> {
+        await this.runRelationshipAction('Solicitud de amistad enviada.', async () => {
+            await this.socialApiSvc.sendFriendRequest(this.targetProfileUid);
+        });
+    }
+
+    async acceptFriendRequest(): Promise<void> {
+        await this.runRelationshipAction('Solicitud aceptada.', async () => {
+            const requestId = await this.findPendingFriendRequestId('received');
+            await this.socialApiSvc.resolveFriendRequest(requestId, 'accept');
+        });
+    }
+
+    async rejectFriendRequest(): Promise<void> {
+        await this.runRelationshipAction('Solicitud rechazada.', async () => {
+            const requestId = await this.findPendingFriendRequestId('received');
+            await this.socialApiSvc.resolveFriendRequest(requestId, 'reject');
+        });
+    }
+
+    async cancelFriendRequest(): Promise<void> {
+        await this.runRelationshipAction('Solicitud cancelada.', async () => {
+            const requestId = await this.findPendingFriendRequestId('sent');
+            await this.socialApiSvc.resolveFriendRequest(requestId, 'cancel');
+        });
+    }
+
+    private get relationshipState(): string {
+        return `${this.relationshipProfile?.relationship?.state ?? ''}`.trim();
+    }
+
+    private get targetProfileUid(): string {
+        return `${this.relationshipProfile?.profile?.uid ?? this.uid ?? ''}`.trim();
+    }
+
+    private async findPendingFriendRequestId(direction: 'received' | 'sent'): Promise<number> {
+        const targetUid = this.targetProfileUid;
+        const result = direction === 'received'
+            ? await this.socialApiSvc.listReceivedFriendRequests()
+            : await this.socialApiSvc.listSentFriendRequests();
+        const request = result.items.find((item) => item.status === 'pending' && item.target.uid === targetUid);
+        if (!request)
+            throw new Error('No se encontró una solicitud de amistad pendiente para este perfil.');
+        return request.requestId;
+    }
+
+    private async runRelationshipAction(successMessage: string, handler: () => Promise<void>): Promise<void> {
+        if (this.relationshipActionInFlight)
+            return;
+
+        this.relationshipActionInFlight = true;
+        this.relationshipActionErrorMessage = '';
+        try {
+            await handler();
+            this.appToastSvc.showSuccess(successMessage, { category: 'amistad' });
+            await this.cargar();
+        } catch (error) {
+            this.relationshipActionErrorMessage = toUserFacingErrorMessage(error, 'No se pudo actualizar la solicitud de amistad.');
+            this.appToastSvc.showError(this.relationshipActionErrorMessage);
+        } finally {
+            this.relationshipActionInFlight = false;
         }
     }
 

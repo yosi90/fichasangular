@@ -461,6 +461,36 @@ describe('ListaPersonajesService', () => {
         expect(personajes).toEqual([]);
     });
 
+    it('prioriza archivado sobre el alias legacy a en listados simplificados', async () => {
+        const service = new ListaPersonajesService(
+            { currentUser: null } as any,
+            {} as any,
+            {} as any,
+            firebaseContextMock
+        );
+        spyOn<any>(service, 'readCacheSnapshot').and.resolveTo({
+            '1': {
+                i: 1,
+                n: 'Archivado canonico',
+                visible_otros_usuarios: true,
+                r: { Id: 1, Nombre: 'Humano' },
+                c: 'Guerrero 1',
+                co: 'Contexto',
+                p: 'Personalidad',
+                ca: 'Sin campaña',
+                t: 'Trama base',
+                s: 'Subtrama base',
+                archivado: false,
+                a: true,
+            },
+        });
+
+        const personajes = await (service as any).readPublicPersonajesFromCache();
+
+        expect(personajes.length).toBe(1);
+        expect(personajes[0].Archivado).toBeFalse();
+    });
+
     it('actualizarArchivadoEnCache refleja el cambio en el listado cargado', () => {
         const service = new ListaPersonajesService(
             { currentUser: { getIdToken: async () => 'token' } } as any,

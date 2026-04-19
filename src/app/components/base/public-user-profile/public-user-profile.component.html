@@ -20,6 +20,26 @@
                 <p class="public-profile-bio" *ngIf="bioText.length > 0">{{bioText}}</p>
                 <p class="public-profile-relationship" *ngIf="mode === 'relationship' && relationshipProfile">{{relationshipStateLabel}}</p>
 
+                <div class="public-profile-actions" *ngIf="hasRelationshipActions">
+                    <button mat-stroked-button color="primary" type="button" *ngIf="canSendFriendRequest" [disabled]="relationshipActionInFlight" (click)="sendFriendRequest()">
+                        <mat-icon>person_add</mat-icon>
+                        Enviar solicitud
+                    </button>
+                    <button mat-stroked-button color="primary" type="button" *ngIf="canAcceptFriendRequest" [disabled]="relationshipActionInFlight" (click)="acceptFriendRequest()">
+                        <mat-icon>check</mat-icon>
+                        Aceptar
+                    </button>
+                    <button mat-stroked-button color="warn" type="button" *ngIf="canRejectFriendRequest" [disabled]="relationshipActionInFlight" (click)="rejectFriendRequest()">
+                        <mat-icon>close</mat-icon>
+                        Rechazar
+                    </button>
+                    <button mat-stroked-button color="warn" type="button" *ngIf="canCancelFriendRequest" [disabled]="relationshipActionInFlight" (click)="cancelFriendRequest()">
+                        <mat-icon>cancel</mat-icon>
+                        Cancelar solicitud
+                    </button>
+                </div>
+                <p class="public-profile-action-error" *ngIf="relationshipActionErrorMessage.length > 0">{{relationshipActionErrorMessage}}</p>
+
                 <div class="public-profile-stats">
                     <div class="public-profile-stat" *ngFor="let item of statsItems">
                         <strong>{{item.value}}</strong>

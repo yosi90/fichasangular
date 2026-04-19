@@ -1,19 +1,6 @@
 <section class="social-shell">
     <div class="social-layout">
         <aside class="social-nav sombra-caja-sm tw-rounded-md">
-            <div class="social-nav__identity">
-                <div class="social-nav__icon">
-                    <mat-icon>hub</mat-icon>
-                </div>
-                <div class="social-nav__copy">
-                    <h2>Social</h2>
-                    <p *ngIf="isLoggedIn; else guestModeCopy">Comunidad, amistades y mensajes.</p>
-                    <ng-template #guestModeCopy>
-                        <p>Modo limitado: búsqueda y perfiles públicos.</p>
-                    </ng-template>
-                </div>
-            </div>
-
             <div class="social-nav__items">
                 <button
                     type="button"
@@ -375,83 +362,91 @@
 
                 <div class="social-chat" *ngIf="isLoggedIn">
                     <aside class="social-chat__sidebar">
-                        <div class="social-chat__sidebar-actions">
-                            <button mat-stroked-button type="button" (click)="openFloatingChatWindow()" *ngIf="canOpenFloatingChatWindow">
-                                Ventana flotante
-                            </button>
-                        </div>
+                        <div class="social-chat__sidebar-scroll">
+                            <div class="social-chat__filters">
+                                <button
+                                    type="button"
+                                    class="social-chat__filter"
+                                    *ngFor="let filter of conversationFilters"
+                                    [class.social-chat__filter--active]="conversationFilter === filter.id"
+                                    (click)="selectConversationFilter(filter.id)">
+                                    {{filter.label}}
+                                </button>
+                            </div>
 
-                        <div class="social-chat__filters">
                             <button
                                 type="button"
-                                class="social-chat__filter"
-                                *ngFor="let filter of conversationFilters"
-                                [class.social-chat__filter--active]="conversationFilter === filter.id"
-                                (click)="selectConversationFilter(filter.id)">
-                                {{filter.label}}
+                                *ngIf="canOpenNewDirect"
+                                class="social-chat__conversation social-chat__conversation--new"
+                                [class.social-chat__conversation--active]="messageComposerMode === 'new-direct'"
+                                (click)="openNewDirectComposer()">
+                                <div class="social-chat__conversation-avatar social-chat__conversation-avatar--new">
+                                    <mat-icon>add_comment</mat-icon>
+                                </div>
+                                <div class="social-chat__conversation-body">
+                                    <div class="social-chat__conversation-main">
+                                        <strong>Nuevo chat</strong>
+                                    </div>
+                                    <small>Buscar un usuario y abrir un directo</small>
+                                </div>
                             </button>
+
+                            <button
+                                type="button"
+                                *ngIf="canCreateGroup"
+                                class="social-chat__conversation social-chat__conversation--new"
+                                [class.social-chat__conversation--active]="messageComposerMode === 'new-group'"
+                                (click)="openNewGroupComposer()">
+                                <div class="social-chat__conversation-avatar social-chat__conversation-avatar--new">
+                                    <mat-icon>groups</mat-icon>
+                                </div>
+                                <div class="social-chat__conversation-body">
+                                    <div class="social-chat__conversation-main">
+                                        <strong>Nuevo grupo</strong>
+                                    </div>
+                                    <small>Crear un grupo con tus amistades activas</small>
+                                </div>
+                            </button>
+
+                            <button
+                                type="button"
+                                class="social-chat__conversation"
+                                *ngFor="let conversation of filteredConversations; trackBy: trackByConversationId"
+                                [class.social-chat__conversation--active]="messageComposerMode === 'conversation' && conversation.conversationId === activeConversation?.conversationId"
+                                [class.social-chat__conversation--system-danger]="getConversationSystemTone(conversation) === 'danger'"
+                                (click)="selectConversation(conversation)">
+                                <div class="social-chat__conversation-avatar" *ngIf="isConversationAvatarVisible(conversation)">
+                                    <img [src]="getConversationAvatarUrl(conversation)" [alt]="getConversationLabel(conversation)">
+                                </div>
+                                <div class="social-chat__conversation-avatar social-chat__conversation-avatar--system" *ngIf="!isConversationAvatarVisible(conversation)">
+                                    <mat-icon>{{getConversationTypeIcon(conversation)}}</mat-icon>
+                                </div>
+                                <div class="social-chat__conversation-body">
+                                    <div class="social-chat__conversation-main">
+                                        <strong>{{getConversationLabel(conversation)}}</strong>
+                                        <span class="social-chat__badge" *ngIf="isConversationTypeBadgeVisible(conversation)">{{getConversationTypeLabel(conversation)}}</span>
+                                    </div>
+                                    <small>{{getConversationPreview(conversation)}}</small>
+                                </div>
+                                <span class="social-chat__unread" *ngIf="conversation.unreadCount > 0">{{conversation.unreadCount}}</span>
+                            </button>
+
+                            <div class="social-empty social-empty--inline social-empty--compact" *ngIf="filteredConversations.length < 1 && messageComposerMode === 'conversation'">
+                                <mat-icon>forum</mat-icon>
+                                <p>No hay conversaciones para ese filtro.</p>
+                            </div>
                         </div>
 
-                        <button
-                            type="button"
-                            *ngIf="canOpenNewDirect"
-                            class="social-chat__conversation social-chat__conversation--new"
-                            [class.social-chat__conversation--active]="messageComposerMode === 'new-direct'"
-                            (click)="openNewDirectComposer()">
-                            <div class="social-chat__conversation-avatar social-chat__conversation-avatar--new">
-                                <mat-icon>add_comment</mat-icon>
-                            </div>
-                            <div class="social-chat__conversation-body">
-                                <div class="social-chat__conversation-main">
-                                    <strong>Nuevo chat</strong>
-                                </div>
-                                <small>Buscar un usuario y abrir un directo</small>
-                            </div>
-                        </button>
-
-                        <button
-                            type="button"
-                            *ngIf="canCreateGroup"
-                            class="social-chat__conversation social-chat__conversation--new"
-                            [class.social-chat__conversation--active]="messageComposerMode === 'new-group'"
-                            (click)="openNewGroupComposer()">
-                            <div class="social-chat__conversation-avatar social-chat__conversation-avatar--new">
-                                <mat-icon>groups</mat-icon>
-                            </div>
-                            <div class="social-chat__conversation-body">
-                                <div class="social-chat__conversation-main">
-                                    <strong>Nuevo grupo</strong>
-                                </div>
-                                <small>Crear un grupo con tus amistades activas</small>
-                            </div>
-                        </button>
-
-                        <button
-                            type="button"
-                            class="social-chat__conversation"
-                            *ngFor="let conversation of filteredConversations; trackBy: trackByConversationId"
-                            [class.social-chat__conversation--active]="messageComposerMode === 'conversation' && conversation.conversationId === activeConversation?.conversationId"
-                            [class.social-chat__conversation--system-danger]="getConversationSystemTone(conversation) === 'danger'"
-                            (click)="selectConversation(conversation)">
-                            <div class="social-chat__conversation-avatar" *ngIf="isConversationAvatarVisible(conversation)">
-                                <img [src]="getConversationAvatarUrl(conversation)" [alt]="getConversationLabel(conversation)">
-                            </div>
-                            <div class="social-chat__conversation-avatar social-chat__conversation-avatar--system" *ngIf="!isConversationAvatarVisible(conversation)">
-                                <mat-icon>{{getConversationTypeIcon(conversation)}}</mat-icon>
-                            </div>
-                            <div class="social-chat__conversation-body">
-                                <div class="social-chat__conversation-main">
-                                    <strong>{{getConversationLabel(conversation)}}</strong>
-                                    <span class="social-chat__badge" *ngIf="isConversationTypeBadgeVisible(conversation)">{{getConversationTypeLabel(conversation)}}</span>
-                                </div>
-                                <small>{{getConversationPreview(conversation)}}</small>
-                            </div>
-                            <span class="social-chat__unread" *ngIf="conversation.unreadCount > 0">{{conversation.unreadCount}}</span>
-                        </button>
-
-                        <div class="social-empty social-empty--inline social-empty--compact" *ngIf="filteredConversations.length < 1 && messageComposerMode === 'conversation'">
-                            <mat-icon>forum</mat-icon>
-                            <p>No hay conversaciones para ese filtro.</p>
+                        <div class="social-chat__sidebar-actions" *ngIf="canOpenFloatingChatWindow">
+                            <button class="social-chat__floating-action" type="button" (click)="openFloatingChatWindow()">
+                                <span class="social-chat__floating-action-icon">
+                                    <mat-icon>open_in_new</mat-icon>
+                                </span>
+                                <span class="social-chat__floating-action-copy">
+                                    <strong>Abrir chats en ventana</strong>
+                                    <small>Para seguir conversando mientras navegas</small>
+                                </span>
+                            </button>
                         </div>
                     </aside>
 

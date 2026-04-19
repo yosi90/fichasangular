@@ -371,22 +371,60 @@ export class PrivateUserFirestoreService {
     }
 
     private mapFriendRequestItem(raw: any, docId: string, fallbackDirection: FriendRequestDirection): FriendRequestItem | null {
-        const requestId = this.toPositiveInt(raw?.requestId ?? raw?.id ?? docId) ?? 0;
+        const requestId = this.firstPositiveInt(
+            raw?.requestId,
+            raw?.friendRequestId,
+            raw?.friend_request_id,
+            raw?.idSolicitud,
+            raw?.solicitudId,
+            raw?.IdSolicitud,
+            raw?.RequestId,
+            raw?.id,
+            docId
+        );
+        if (!requestId)
+            return null;
+
         const target = this.mapSocialUserBasic(
-            raw?.target ?? raw?.user ?? raw?.targetUser ?? raw?.counterpart ?? raw,
-            this.toNullableText(raw?.targetUid) ?? docId
+            this.resolveFriendRequestTargetRaw(raw),
+            this.toNullableText(
+                raw?.targetUid
+                ?? raw?.targetFirebaseUid
+                ?? raw?.counterpartUid
+                ?? raw?.counterpartFirebaseUid
+                ?? raw?.requesterUid
+                ?? raw?.requesterFirebaseUid
+                ?? raw?.senderUid
+                ?? raw?.senderFirebaseUid
+                ?? raw?.fromUid
+                ?? raw?.fromFirebaseUid
+                ?? raw?.sourceUid
+                ?? raw?.sourceFirebaseUid
+                ?? raw?.recipientUid
+                ?? raw?.recipientFirebaseUid
+                ?? raw?.toUid
+                ?? raw?.toFirebaseUid
+                ?? raw?.solicitanteUid
+                ?? raw?.emisorUid
+                ?? raw?.remitenteUid
+                ?? raw?.destinatarioUid
+            ) ?? ''
         );
         if (!target)
             return null;
 
-        const directionRaw = `${raw?.direction ?? fallbackDirection}`.trim().toLowerCase();
-        const statusRaw = `${raw?.status ?? ''}`.trim().toLowerCase();
+        const directionRaw = `${raw?.direction ?? raw?.direccion ?? fallbackDirection}`.trim().toLowerCase();
+        const statusRaw = `${raw?.status ?? raw?.estado ?? raw?.Status ?? ''}`.trim().toLowerCase();
 
         return {
             requestId,
-            direction: directionRaw === 'received' ? 'received' : 'sent',
+            direction: directionRaw === 'received' || directionRaw === 'incoming' || directionRaw === 'recibida'
+                ? 'received'
+                : 'sent',
             status: statusRaw === 'accepted' || statusRaw === 'rejected' || statusRaw === 'canceled'
                 ? statusRaw
+                : statusRaw === 'cancelled'
+                    ? 'canceled'
                 : 'pending',
             createdAtUtc: this.toNullableText(raw?.createdAtUtc ?? raw?.createdAt ?? raw?.sentAtUtc),
             target,
@@ -396,9 +434,31 @@ export class PrivateUserFirestoreService {
     private mapSocialUserBasic(raw: any, fallbackUid: string): SocialUserBasic | null {
         const uid = this.toNullableText(
             raw?.uid
+            ?? raw?.firebaseUid
+            ?? raw?.FirebaseUid
+            ?? raw?.uidFirebase
             ?? raw?.targetUid
+            ?? raw?.targetFirebaseUid
             ?? raw?.friendUid
+            ?? raw?.friendFirebaseUid
             ?? raw?.counterpartUid
+            ?? raw?.counterpartFirebaseUid
+            ?? raw?.requesterUid
+            ?? raw?.requesterFirebaseUid
+            ?? raw?.senderUid
+            ?? raw?.senderFirebaseUid
+            ?? raw?.fromUid
+            ?? raw?.fromFirebaseUid
+            ?? raw?.sourceUid
+            ?? raw?.sourceFirebaseUid
+            ?? raw?.recipientUid
+            ?? raw?.recipientFirebaseUid
+            ?? raw?.toUid
+            ?? raw?.toFirebaseUid
+            ?? raw?.solicitanteUid
+            ?? raw?.emisorUid
+            ?? raw?.remitenteUid
+            ?? raw?.destinatarioUid
             ?? fallbackUid
         );
         if (!uid)
@@ -410,6 +470,23 @@ export class PrivateUserFirestoreService {
             photoThumbUrl: this.toNullableText(raw?.photoThumbUrl),
             allowDirectMessagesFromNonFriends: raw?.allowDirectMessagesFromNonFriends === true,
         };
+    }
+
+    private resolveFriendRequestTargetRaw(raw: any): any {
+        return raw?.target
+            ?? raw?.user
+            ?? raw?.targetUser
+            ?? raw?.counterpart
+            ?? raw?.requester
+            ?? raw?.sender
+            ?? raw?.fromUser
+            ?? raw?.recipient
+            ?? raw?.toUser
+            ?? raw?.solicitante
+            ?? raw?.emisor
+            ?? raw?.remitente
+            ?? raw?.destinatario
+            ?? raw;
     }
 
     private mapCampaignSummary(raw: any, docId: string): CampaignListItem | null {
@@ -484,7 +561,7 @@ export class PrivateUserFirestoreService {
             Campana: this.toNullableText(raw?.Campana ?? raw?.Campaña ?? raw?.ca) ?? 'Sin campaña',
             Trama: this.toNullableText(raw?.Trama ?? raw?.t) ?? 'Trama base',
             Subtrama: this.toNullableText(raw?.Subtrama ?? raw?.s) ?? 'Subtrama base',
-            Archivado: raw?.Archivado === true || raw?.a === true,
+            Archivado: this.toBoolean(raw?.archivado ?? raw?.Archivado ?? raw?.a),
         };
     }
 
@@ -832,9 +909,30 @@ export class PrivateUserFirestoreService {
         return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
     }
 
+    private firstPositiveInt(...values: any[]): number | null {
+        for (const value of values) {
+            const parsed = this.toPositiveInt(value);
+            if (parsed)
+                return parsed;
+        }
+        return null;
+    }
+
     private toNullableText(value: any): string | null {
         const text = `${value ?? ''}`.trim();
         return text.length > 0 ? text : null;
+    }
+
+    private toBoolean(value: any): boolean {
+        if (typeof value === 'boolean')
+            return value;
+        if (typeof value === 'number')
+            return value === 1;
+        if (typeof value === 'string') {
+            const normalized = value.trim().toLowerCase();
+            return normalized === '1' || normalized === 'true' || normalized === 'si' || normalized === 'sí';
+        }
+        return false;
     }
 
     private normalizeMultilineText(value: any): string | null {

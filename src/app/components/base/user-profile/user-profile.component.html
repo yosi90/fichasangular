@@ -10,16 +10,6 @@
     <ng-container *ngIf="!loading && canShowContent">
         <div class="profile-layout">
             <aside class="profile-nav sombra-caja-sm tw-rounded-md">
-                <div class="profile-nav__identity">
-                    <div class="profile-nav__avatar">
-                        <img [src]="avatarUrl" alt="Avatar del usuario" (error)="onAvatarImageError($event)" />
-                    </div>
-                    <div class="profile-nav__copy">
-                        <h2>{{profile?.displayName || 'Sin nombre visible'}}</h2>
-                        <p>{{profile?.email || 'Sin email'}}</p>
-                    </div>
-                </div>
-
                 <div class="profile-nav__items">
                     <button
                         type="button"

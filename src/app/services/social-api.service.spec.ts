@@ -86,4 +86,35 @@ describe('SocialApiService', () => {
         );
         expect(httpMock.get).not.toHaveBeenCalled();
     });
+
+    it('normaliza respuestas de solicitud de amistad con aliases transicionales', () => {
+        const httpMock = jasmine.createSpyObj('HttpClient', ['get', 'post', 'patch', 'delete']);
+        const service = new SocialApiService(httpMock, authMock);
+
+        const request = (service as any).normalizeFriendRequestItem({
+            idSolicitud: '44',
+            direccion: 'recibida',
+            estado: 'cancelled',
+            sender: {
+                senderUid: 'uid-sender',
+                displayName: 'Remitente',
+                photoThumbUrl: 'thumb.webp',
+                allowDirectMessagesFromNonFriends: true,
+            },
+            sentAtUtc: '2026-04-19T10:00:00.000Z',
+        });
+
+        expect(request).toEqual({
+            requestId: 44,
+            direction: 'received',
+            status: 'canceled',
+            createdAtUtc: '2026-04-19T10:00:00.000Z',
+            target: {
+                uid: 'uid-sender',
+                displayName: 'Remitente',
+                photoThumbUrl: 'thumb.webp',
+                allowDirectMessagesFromNonFriends: true,
+            },
+        });
+    });
 });

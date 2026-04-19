@@ -45,6 +45,7 @@ interface PersonajeArchiveUpdateResponse {
     providedIn: 'root'
 })
 export class PersonajeService {
+    private readonly archivadoOverrideStorageKey = 'fichas.personajes.archivado.override.v1';
 
     constructor(
         private auth: Auth,
@@ -127,6 +128,8 @@ export class PersonajeService {
                 { headers: await this.buildAuthHeaders() }
             )
         );
+
+        this.setArchivadoOverride(id, !!archivado);
 
         return {
             ...response,
@@ -1192,8 +1195,11 @@ export class PersonajeService {
             ?? element?.region?.nombre
             ?? ''}`.trim();
 
+        const idPersonaje = Math.trunc(toNumber(element?.i ?? element?.Id ?? element?.Id_personaje));
+        const archivado = this.resolveArchivadoDetalle(element, idPersonaje);
+
         return {
-            Id: Math.trunc(toNumber(element?.i ?? element?.Id ?? element?.Id_personaje)),
+            Id: idPersonaje,
             Nombre: `${element?.n ?? element?.Nombre ?? ''}`.trim(),
             ownerUid: extractOwnerUid(element),
             ownerDisplayName: extractOwnerDisplayName(element),
@@ -1286,7 +1292,7 @@ export class PersonajeService {
             Disciplina_especialista: disciplina_esp,
             Disciplina_prohibida: element?.disp ?? element?.Disciplina_prohibida,
             Escuelas_prohibidas: ecp,
-            Archivado: toBoolean(element?.archivado ?? element?.Archivado),
+            Archivado: archivado,
             CaracteristicasVarios: {
                 Fuerza: [],
                 Destreza: [],
@@ -1296,6 +1302,53 @@ export class PersonajeService {
                 Carisma: [],
             },
         } as Personaje;
+    }
+
+    private resolveArchivadoDetalle(element: any, idPersonaje: number): boolean {
+        const raw = element && typeof element === 'object' ? element : {};
+        const keys = ['archivado', 'Archivado', 'isArchived', 'archived'];
+        for (const key of keys) {
+            if (Object.prototype.hasOwnProperty.call(raw, key))
+                return toBoolean(raw[key]);
+        }
+
+        return this.getArchivadoOverride(idPersonaje) ?? false;
+    }
+
+    private getArchivadoOverride(idPersonaje: number): boolean | null {
+        const id = Math.trunc(toNumber(idPersonaje));
+        if (id <= 0)
+            return null;
+
+        try {
+            const raw = globalThis.localStorage?.getItem(this.archivadoOverrideStorageKey);
+            if (!raw)
+                return null;
+            const parsed = JSON.parse(raw);
+            if (!parsed || typeof parsed !== 'object')
+                return null;
+            if (!Object.prototype.hasOwnProperty.call(parsed, `${id}`))
+                return null;
+            return toBoolean(parsed[`${id}`]);
+        } catch {
+            return null;
+        }
+    }
+
+    private setArchivadoOverride(idPersonaje: number, archivado: boolean): void {
+        const id = Math.trunc(toNumber(idPersonaje));
+        if (id <= 0)
+            return;
+
+        try {
+            const raw = globalThis.localStorage?.getItem(this.archivadoOverrideStorageKey);
+            const parsed = raw ? JSON.parse(raw) : {};
+            const state = parsed && typeof parsed === 'object' ? parsed : {};
+            state[`${id}`] = !!archivado;
+            globalThis.localStorage?.setItem(this.archivadoOverrideStorageKey, JSON.stringify(state));
+        } catch {
+            // La persistencia local solo evita detalles stale; no debe bloquear la mutación real.
+        }
     }
 
 }

@@ -516,6 +516,70 @@ describe('PersonajeService', () => {
         expect(response.archivado).toBeTrue();
     });
 
+    it('mantiene el archivado recién cambiado si el detalle actor-scoped todavía no devuelve la flag', async () => {
+        localStorage.removeItem('fichas.personajes.archivado.override.v1');
+        const httpMock = {
+            patch: jasmine.createSpy('patch').and.returnValue(of({
+                message: 'ok',
+                idPersonaje: 77,
+                archivado: true,
+            })),
+            get: jasmine.createSpy('get').and.returnValue(of({
+                i: 77,
+                n: 'Archivado reciente',
+                ownerUid: 'uid-77',
+                visible_otros_usuarios: true,
+                a: '2',
+                ra: {
+                    Id: 1,
+                    Nombre: 'Humano',
+                    Ajuste_nivel: 0,
+                    Tamano: { Nombre: 'Mediano', Modificador_presa: 0 },
+                    Dgs_adicionales: { Cantidad: 0 },
+                },
+                tc: { Id: 1, Nombre: 'Humanoide' },
+                cla: 'Guerrero;2',
+            })),
+        } as any;
+        const service = crearServicio(httpMock);
+
+        await service.actualizarArchivadoPersonaje(77, true);
+        const observable = await service.getDetallesPersonaje(77);
+        const personaje = await new Promise<any>((resolve) => observable.subscribe(resolve));
+
+        expect(personaje.Archivado).toBeTrue();
+        localStorage.removeItem('fichas.personajes.archivado.override.v1');
+    });
+
+    it('no interpreta el campo a del detalle como archivado porque ahora es ataque base', async () => {
+        const httpMock = {
+            get: jasmine.createSpy('get').and.returnValue(of({
+                i: 88,
+                n: 'Ataque no archivo',
+                ownerUid: 'uid-88',
+                visible_otros_usuarios: true,
+                a: 2,
+                archivado: false,
+                ra: {
+                    Id: 1,
+                    Nombre: 'Humano',
+                    Ajuste_nivel: 0,
+                    Tamano: { Nombre: 'Mediano', Modificador_presa: 0 },
+                    Dgs_adicionales: { Cantidad: 0 },
+                },
+                tc: { Id: 1, Nombre: 'Humanoide' },
+                cla: 'Guerrero;2',
+            })),
+        } as any;
+        const service = crearServicio(httpMock);
+
+        const observable = await service.getDetallesPersonaje(88);
+        const personaje = await new Promise<any>((resolve) => observable.subscribe(resolve));
+
+        expect(personaje.Ataque_base).toBe(2);
+        expect(personaje.Archivado).toBeFalse();
+    });
+
     it('construye payload minimo valido para /personajes/add', () => {
         const httpMock = {
             post: jasmine.createSpy('post').and.returnValue(of({})),

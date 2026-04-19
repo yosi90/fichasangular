@@ -135,6 +135,11 @@ export class SocialApiService {
         if (!['accept', 'reject', 'cancel'].includes(`${decision ?? ''}`))
             throw new ProfileApiError('Decisión inválida.', 'SOCIAL_REQUEST_DECISION_INVALID', 400);
 
+        this.logSocialMutation('resolveFriendRequest', {
+            url: `${this.usuariosBaseUrl}/me/friend-requests/${id}`,
+            payload: { decision },
+        });
+
         try {
             const response = await firstValueFrom(
                 this.http.patch<any>(
@@ -148,6 +153,10 @@ export class SocialApiService {
                 item: response?.request ? this.normalizeFriendRequestItem(response.request) : null,
             };
         } catch (error) {
+            this.logSocialMutationError('resolveFriendRequest', error, {
+                requestId: id,
+                decision,
+            });
             throw this.toProfileApiError(error, 'No se pudo actualizar la solicitud de amistad.');
         }
     }
@@ -292,24 +301,84 @@ export class SocialApiService {
     }
 
     private normalizeFriendRequestItem(raw: any, fallbackDirection?: 'sent' | 'received'): FriendRequestItem {
-        const direction = `${raw?.direction ?? fallbackDirection ?? ''}`.trim().toLowerCase();
-        const status = `${raw?.status ?? ''}`.trim().toLowerCase();
+        const direction = `${raw?.direction ?? raw?.direccion ?? fallbackDirection ?? ''}`.trim().toLowerCase();
+        const status = `${raw?.status ?? raw?.estado ?? raw?.Status ?? ''}`.trim().toLowerCase();
         return {
-            requestId: this.toPositiveInt(raw?.requestId) ?? 0,
-            direction: direction === 'received' ? 'received' : 'sent',
-            status: status === 'accepted' || status === 'rejected' || status === 'canceled' ? status : 'pending',
-            createdAtUtc: this.toNullableText(raw?.createdAtUtc),
-            target: this.normalizeSocialUserBasic(raw?.target),
+            requestId: this.firstPositiveInt(
+                raw?.requestId,
+                raw?.friendRequestId,
+                raw?.friend_request_id,
+                raw?.idSolicitud,
+                raw?.solicitudId,
+                raw?.IdSolicitud,
+                raw?.RequestId,
+                raw?.id
+            ) ?? 0,
+            direction: direction === 'received' || direction === 'incoming' || direction === 'recibida'
+                ? 'received'
+                : 'sent',
+            status: status === 'accepted' || status === 'rejected' || status === 'canceled'
+                ? status
+                : status === 'cancelled'
+                    ? 'canceled'
+                    : 'pending',
+            createdAtUtc: this.toNullableText(raw?.createdAtUtc ?? raw?.createdAt ?? raw?.sentAtUtc),
+            target: this.normalizeSocialUserBasic(
+                this.resolveFriendRequestTargetRaw(raw)
+            ),
         };
     }
 
     private normalizeSocialUserBasic(raw: any): SocialUserBasic {
         return {
-            uid: `${raw?.uid ?? ''}`.trim(),
+            uid: `${raw?.uid
+                ?? raw?.firebaseUid
+                ?? raw?.FirebaseUid
+                ?? raw?.uidFirebase
+                ?? raw?.targetUid
+                ?? raw?.targetFirebaseUid
+                ?? raw?.friendUid
+                ?? raw?.friendFirebaseUid
+                ?? raw?.counterpartUid
+                ?? raw?.counterpartFirebaseUid
+                ?? raw?.requesterUid
+                ?? raw?.requesterFirebaseUid
+                ?? raw?.senderUid
+                ?? raw?.senderFirebaseUid
+                ?? raw?.fromUid
+                ?? raw?.fromFirebaseUid
+                ?? raw?.sourceUid
+                ?? raw?.sourceFirebaseUid
+                ?? raw?.recipientUid
+                ?? raw?.recipientFirebaseUid
+                ?? raw?.toUid
+                ?? raw?.toFirebaseUid
+                ?? raw?.solicitanteUid
+                ?? raw?.emisorUid
+                ?? raw?.remitenteUid
+                ?? raw?.destinatarioUid
+                ?? ''}`.trim(),
             displayName: this.toNullableText(raw?.displayName),
             photoThumbUrl: this.toNullableText(raw?.photoThumbUrl),
             allowDirectMessagesFromNonFriends: raw?.allowDirectMessagesFromNonFriends === true,
         };
+    }
+
+    private resolveFriendRequestTargetRaw(raw: any): any {
+        return raw?.target
+            ?? raw?.user
+            ?? raw?.targetUser
+            ?? raw?.counterpart
+            ?? raw?.requester
+            ?? raw?.sender
+            ?? raw?.fromUser
+            ?? raw?.recipient
+            ?? raw?.toUser
+            ?? raw?.solicitante
+            ?? raw?.emisor
+            ?? raw?.remitente
+            ?? raw?.destinatario
+            ?? raw;
     }
 
     private async buildAuthHeaders(): Promise<HttpHeaders> {
@@ -356,6 +425,15 @@ export class SocialApiService {
     private toPositiveInt(value: any): number | null {
         const parsed = Math.trunc(Number(value));
         return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+    }
+
+    private firstPositiveInt(...values: any[]): number | null {
+        for (const value of values) {
+            const parsed = this.toPositiveInt(value);
+            if (parsed)
+                return parsed;
+        }
+        return null;
     }
 
     private toNonNegativeInt(value: any): number {

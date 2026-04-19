@@ -590,20 +590,20 @@ describe('SocialHubComponent', () => {
         expect(chatFloatingSvc.openOrFocusListWindow).toHaveBeenCalled();
     }));
 
-    it('oculta el botón de ventana flotante si la ventana ya está abierta', fakeAsync(() => {
+    it('oculta el botón de chats en ventana si la ventana ya está abierta', fakeAsync(() => {
         fixture.detectChanges();
         isLoggedIn$.next(true);
         tick();
 
         component.currentSection = 'mensajes';
         fixture.detectChanges();
-        expect(fixture.nativeElement.textContent).toContain('Ventana flotante');
+        expect(fixture.nativeElement.textContent).toContain('Abrir chats en ventana');
 
         floatingListWindow$.next({ open: true });
         fixture.detectChanges();
 
         expect(component.canOpenFloatingChatWindow).toBeFalse();
-        expect(fixture.nativeElement.textContent).not.toContain('Ventana flotante');
+        expect(fixture.nativeElement.textContent).not.toContain('Abrir chats en ventana');
     }));
 
     it('popea la conversación activa a burbuja cuando la feature está disponible', () => {
