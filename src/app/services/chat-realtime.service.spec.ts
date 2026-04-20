@@ -426,10 +426,13 @@ describe('ChatRealtimeService', () => {
         spyOn(document, 'hasFocus').and.returnValue(true);
         const visibilityStateSpy = spyOnProperty(document, 'visibilityState', 'get').and.returnValue('visible');
 
+        expect(service.isConversationOpen(5)).toBeTrue();
+        expect(service.isConversationOpen(6)).toBeFalse();
         expect(service.isConversationFocused(5)).toBeTrue();
         expect(service.isConversationFocused(6)).toBeFalse();
 
         (document.hasFocus as jasmine.Spy).and.returnValue(false);
+        expect(service.isConversationOpen(5)).toBeTrue();
         expect(service.isConversationFocused(5)).toBeFalse();
 
         (document.hasFocus as jasmine.Spy).and.returnValue(true);

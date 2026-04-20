@@ -88,6 +88,11 @@ export class ChatRealtimeService implements OnDestroy {
             && document.hasFocus();
     }
 
+    isConversationOpen(conversationId: number | null | undefined): boolean {
+        const normalizedConversationId = this.toPositiveInt(conversationId);
+        return !!normalizedConversationId && this.activeConversationIdSubject.value === normalizedConversationId;
+    }
+
     upsertConversation(conversation: ChatConversationSummary): void {
         const normalized = this.sortConversations(this.upsertConversationInList(this.conversationsSubject.value, conversation));
         this.conversationsSubject.next(normalized);

@@ -77,7 +77,7 @@ export class ChatAlertService implements OnDestroy {
             return;
         }
 
-        if (this.chatRealtimeSvc.isConversationFocused(candidate.conversationId))
+        if (this.chatRealtimeSvc.isConversationOpen(candidate.conversationId))
             return;
 
         if (candidate.announcement) {

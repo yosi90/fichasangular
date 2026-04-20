@@ -37,6 +37,7 @@ describe('ChatAlertService', () => {
         chatRealtimeSvc = {
             alertCandidate$,
             isConversationFocused: jasmine.createSpy('isConversationFocused').and.returnValue(false),
+            isConversationOpen: jasmine.createSpy('isConversationOpen').and.returnValue(false),
             markConversationReadLocally: jasmine.createSpy('markConversationReadLocally'),
         };
         chatApiSvc = jasmine.createSpyObj('ChatApiService', ['listMessages', 'markAsRead']);
@@ -267,9 +268,9 @@ describe('ChatAlertService', () => {
         });
     });
 
-    it('suprime toast si la conversación está enfocada pero no suprime Swal', fakeAsync(() => {
+    it('suprime toast si la conversación está abierta pero no suprime Swal', fakeAsync(() => {
         const swalSpy = spyOn(Swal, 'fire').and.resolveTo({ isConfirmed: false } as any);
-        chatRealtimeSvc.isConversationFocused.and.returnValue(true);
+        chatRealtimeSvc.isConversationOpen.and.returnValue(true);
 
         service.init();
         alertCandidate$.next(buildCandidate({
