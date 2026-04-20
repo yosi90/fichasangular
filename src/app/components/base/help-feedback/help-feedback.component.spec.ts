@@ -63,6 +63,8 @@ describe('HelpFeedbackComponent', () => {
             'createFeatureRequest',
             'createBugReport',
             'downloadFeedbackAttachment',
+            'getFeedbackSubscriptionStates',
+            'setFeedbackSubscription',
         ]);
         appToastSvc = jasmine.createSpyObj<AppToastService>('AppToastService', ['showSuccess', 'showError']);
         dialog = jasmine.createSpyObj<MatDialog>('MatDialog', ['open']);
@@ -93,6 +95,14 @@ describe('HelpFeedbackComponent', () => {
         usuariosApiSvc.createFeatureRequest.and.resolveTo(buildDetail(30, 'feature'));
         usuariosApiSvc.createBugReport.and.resolveTo(buildDetail(40, 'bug'));
         usuariosApiSvc.downloadFeedbackAttachment.and.resolveTo('mockup.webp');
+        usuariosApiSvc.getFeedbackSubscriptionStates.and.callFake(async (ids: number[]) => ({
+            items: ids.map((id) => ({
+                submissionId: id,
+                subscribed: id === 12 || id === 21,
+                canSubscribe: true,
+            })),
+        }));
+        usuariosApiSvc.setFeedbackSubscription.and.resolveTo({ submissionId: 12, subscribed: false });
 
         await TestBed.configureTestingModule({
             declarations: [HelpFeedbackComponent],
@@ -174,6 +184,7 @@ describe('HelpFeedbackComponent', () => {
         expect(component.publicCommunityItems.map((item) => item.id)).toEqual([11]);
         expect(fixture.nativeElement.textContent).toContain('Peticiones de la comunidad');
         expect(fixture.nativeElement.textContent).not.toContain('Adjuntos privados');
+        expect(usuariosApiSvc.getFeedbackSubscriptionStates).toHaveBeenCalled();
     });
 
     it('no muestra comunidad en la tab de bugs', async () => {
@@ -239,5 +250,32 @@ describe('HelpFeedbackComponent', () => {
         expect(component.selectedPrivateDetail?.updates.length).toBe(1);
         expect(component.selectedPrivateDetail?.attachments.length).toBe(1);
         expect(fixture.nativeElement.textContent).toContain('Evolutivo');
+    });
+
+    it('alterna el seguimiento con estado confirmado por backend', async () => {
+        isLoggedIn$.next(true);
+        createComponent('feature');
+        await fixture.whenStable();
+
+        await component.selectPrivateSubmission(12);
+        await component.toggleFeedbackSubscription(12);
+
+        expect(usuariosApiSvc.setFeedbackSubscription).toHaveBeenCalledWith(12, false);
+        expect(component.getSubscriptionState(12)?.subscribed).toBeFalse();
+        expect(appToastSvc.showSuccess).toHaveBeenCalled();
+    });
+
+    it('marca como seguida una solicitud recien creada por la autosuscripcion backend', async () => {
+        isLoggedIn$.next(true);
+        createComponent('feature');
+        await fixture.whenStable();
+        component.form.patchValue({ description: 'Nueva mejora' });
+
+        await component.submit();
+
+        expect(component.getSubscriptionState(30)).toEqual(jasmine.objectContaining({
+            subscribed: true,
+            canSubscribe: true,
+        }));
     });
 });

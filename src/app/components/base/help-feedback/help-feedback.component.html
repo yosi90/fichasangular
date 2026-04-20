@@ -207,6 +207,22 @@
                                                     · Actualizado {{ item.updatedAtUtc | date:'short' }}
                                                 </span>
                                             </p>
+
+                                            <div class="feedback-subscription" *ngIf="canShowSubscriptionControl(item.id)">
+                                                <span>{{ getSubscriptionStatusLabel(item.id) }}</span>
+                                                <button
+                                                    mat-stroked-button
+                                                    color="accent"
+                                                    type="button"
+                                                    [disabled]="getSubscriptionState(item.id)?.loading"
+                                                    (click)="toggleFeedbackSubscription(item.id)">
+                                                    <mat-icon>{{ getSubscriptionState(item.id)?.subscribed ? 'notifications_active' : 'notifications' }}</mat-icon>
+                                                    {{ getSubscriptionButtonLabel(item.id) }}
+                                                </button>
+                                                <p class="feedback-error" *ngIf="getSubscriptionState(item.id)?.error">
+                                                    {{ getSubscriptionState(item.id)?.error }}
+                                                </p>
+                                            </div>
                                         </div>
                                     </article>
                                 </div>
@@ -245,6 +261,22 @@
                                 </div>
 
                                 <div class="feedback-panel__body">
+                                    <div class="feedback-subscription feedback-subscription--detail" *ngIf="canShowSubscriptionControl(detail.id)">
+                                        <span>{{ getSubscriptionStatusLabel(detail.id) }}</span>
+                                        <button
+                                            mat-stroked-button
+                                            color="accent"
+                                            type="button"
+                                            [disabled]="getSubscriptionState(detail.id)?.loading"
+                                            (click)="toggleFeedbackSubscription(detail.id)">
+                                            <mat-icon>{{ getSubscriptionState(detail.id)?.subscribed ? 'notifications_active' : 'notifications' }}</mat-icon>
+                                            {{ getSubscriptionButtonLabel(detail.id) }}
+                                        </button>
+                                        <p class="feedback-error" *ngIf="getSubscriptionState(detail.id)?.error">
+                                            {{ getSubscriptionState(detail.id)?.error }}
+                                        </p>
+                                    </div>
+
                                     <p>{{ detail.description }}</p>
 
                                     <dl class="feedback-facts" *ngIf="detail.pageUrl || detail.details.stepsToReproduce || detail.details.expectedBehavior || detail.details.actualBehavior || detail.details.useCase || detail.details.desiredOutcome">

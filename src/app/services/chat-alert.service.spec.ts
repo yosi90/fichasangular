@@ -429,6 +429,80 @@ describe('ChatAlertService', () => {
         expect(appToastSvc.showSystem).not.toHaveBeenCalled();
     }));
 
+    it('abre la conversacion de Yosiftware para feedback_updated', fakeAsync(() => {
+        spyOn(Swal, 'fire').and.resolveTo({ isConfirmed: true } as any);
+
+        service.init();
+        alertCandidate$.next(buildCandidate({
+            messageId: 72,
+            conversationId: 66,
+            sender: {
+                uid: 'system:yosiftware',
+                displayName: 'Yosiftware',
+                photoThumbUrl: null,
+                isSystemUser: true,
+            },
+            body: 'La petición Modo campaña tiene una actualización.',
+            notification: {
+                code: 'system.feedback_updated',
+                title: 'Feedback actualizado',
+                action: {
+                    target: 'social.messages',
+                    conversationId: 66,
+                },
+                context: {
+                    submissionId: 15,
+                    kind: 'feature',
+                    status: 'planned',
+                },
+            },
+        }));
+        tick();
+
+        expect(navSvc.openSocial).toHaveBeenCalledWith(jasmine.objectContaining({
+            section: 'mensajes',
+            conversationId: 66,
+        }));
+        expect(chatApiSvc.markAsRead).toHaveBeenCalledWith(66, 72);
+    }));
+
+    it('abre mensajes para feedback_created aunque el target sea admin.feedback', fakeAsync(() => {
+        spyOn(Swal, 'fire').and.resolveTo({ isConfirmed: true } as any);
+
+        service.init();
+        alertCandidate$.next(buildCandidate({
+            messageId: 73,
+            conversationId: 67,
+            sender: {
+                uid: 'system:yosiftware',
+                displayName: 'Yosiftware',
+                photoThumbUrl: null,
+                isSystemUser: true,
+            },
+            body: 'Hay un nuevo reporte de bug.',
+            notification: {
+                code: 'system.feedback_created',
+                title: 'Nuevo feedback',
+                action: {
+                    target: 'admin.feedback',
+                    conversationId: 67,
+                },
+                context: {
+                    submissionId: 16,
+                    kind: 'bug',
+                },
+            },
+        }));
+        tick();
+
+        expect(navSvc.openSocial).toHaveBeenCalledWith(jasmine.objectContaining({
+            section: 'mensajes',
+            conversationId: 67,
+        }));
+        expect(navSvc.openPrivateProfile).not.toHaveBeenCalled();
+        expect(navSvc.openAccountRestriction).not.toHaveBeenCalled();
+    }));
+
     it('no alerta si recibe un mensaje propio por error', () => {
         const swalSpy = spyOn(Swal, 'fire').and.resolveTo({ isConfirmed: false } as any);
 

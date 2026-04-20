@@ -1,4 +1,5 @@
-import { Component, Input, OnChanges, OnInit, SimpleChanges } from '@angular/core';
+import { Component, Input, OnChanges, OnDestroy, OnInit, SimpleChanges } from '@angular/core';
+import { Subscription } from 'rxjs';
 import {
     FeedbackAdminPatchRequestDto,
     FeedbackAdminSubmissionDetailDto,
@@ -8,6 +9,7 @@ import {
     FeedbackPriority,
     FeedbackStatus,
 } from 'src/app/interfaces/usuarios-api';
+import { ChatRealtimeService } from 'src/app/services/chat-realtime.service';
 import { UsuariosApiService } from 'src/app/services/usuarios-api.service';
 
 export interface AdminFeedbackQuickAction {
@@ -22,7 +24,7 @@ export interface AdminFeedbackQuickAction {
     styleUrls: ['./admin-feedback-manager.component.sass'],
     standalone: false
 })
-export class AdminFeedbackManagerComponent implements OnInit, OnChanges {
+export class AdminFeedbackManagerComponent implements OnInit, OnChanges, OnDestroy {
     @Input() kind: FeedbackKind = 'bug';
     @Input() title = 'Feedback';
     @Input() description = '';
@@ -45,12 +47,17 @@ export class AdminFeedbackManagerComponent implements OnInit, OnChanges {
     patchPriority: '' | FeedbackPriority = '';
     internalComment = '';
     publicMessage = '';
+    subscriptionSubscribed = false;
+    subscriptionCanSubscribe = false;
+    subscriptionLoading = false;
+    subscriptionError = '';
 
     readonly statusOptions: FeedbackStatus[] = ['submitted', 'triaged', 'planned', 'in_progress', 'resolved', 'closed', 'rejected'];
     readonly priorityOptions: FeedbackPriority[] = ['low', 'medium', 'high', 'critical'];
 
     private loadedOnce = false;
     private initialized = false;
+    private readonly subscriptions = new Subscription();
     private readonly dateFormatter = new Intl.DateTimeFormat('es-ES', {
         day: '2-digit',
         month: '2-digit',
@@ -60,11 +67,25 @@ export class AdminFeedbackManagerComponent implements OnInit, OnChanges {
         hour12: false,
     });
 
-    constructor(private usuariosApiSvc: UsuariosApiService) { }
+    constructor(
+        private usuariosApiSvc: UsuariosApiService,
+        private chatRealtimeSvc: ChatRealtimeService,
+    ) { }
 
     ngOnInit(): void {
         this.initialized = true;
+        this.subscriptions.add(
+            this.chatRealtimeSvc.alertCandidate$.subscribe((candidate) => {
+                if (!this.isRealtimeFeedbackCreatedForCurrentKind(candidate))
+                    return;
+                void this.load(true);
+            })
+        );
         void this.load(true);
+    }
+
+    ngOnDestroy(): void {
+        this.subscriptions.unsubscribe();
     }
 
     ngOnChanges(changes: SimpleChanges): void {
@@ -111,6 +132,20 @@ export class AdminFeedbackManagerComponent implements OnInit, OnChanges {
             || priorityChanged
             || this.internalComment.trim().length > 0
             || this.publicMessage.trim().length > 0;
+    }
+
+    get canShowSubscriptionControl(): boolean {
+        return !!this.detail && this.subscriptionCanSubscribe;
+    }
+
+    get subscriptionButtonLabel(): string {
+        if (this.subscriptionLoading)
+            return 'Actualizando...';
+        return this.subscriptionSubscribed ? 'Dejar de seguir' : 'Seguir cambios';
+    }
+
+    get subscriptionStatusLabel(): string {
+        return this.subscriptionSubscribed ? 'Siguiendo cambios' : 'Sin seguimiento';
     }
 
     get itemFallbackTitle(): string {
@@ -181,9 +216,11 @@ export class AdminFeedbackManagerComponent implements OnInit, OnChanges {
             const detail = await this.usuariosApiSvc.getAdminFeedbackSubmission(item.id);
             this.detail = detail;
             this.resetPatchForm(detail);
+            await this.refreshSubscriptionState(detail.id);
         } catch (error: any) {
             this.detail = null;
             this.detailError = error?.message ?? 'No se pudo cargar el detalle admin';
+            this.resetSubscriptionState();
         } finally {
             this.detailLoading = false;
         }
@@ -200,6 +237,25 @@ export class AdminFeedbackManagerComponent implements OnInit, OnChanges {
         if (!this.detail || this.saving)
             return;
         await this.update({ status });
+    }
+
+    async toggleSubscription(): Promise<void> {
+        if (!this.detail || !this.subscriptionCanSubscribe || this.subscriptionLoading)
+            return;
+
+        const previousSubscribed = this.subscriptionSubscribed;
+        this.subscriptionLoading = true;
+        this.subscriptionError = '';
+        try {
+            const response = await this.usuariosApiSvc.setFeedbackSubscription(this.detail.id, !previousSubscribed);
+            this.subscriptionSubscribed = response.subscribed;
+            this.subscriptionCanSubscribe = true;
+        } catch (error: any) {
+            this.subscriptionSubscribed = previousSubscribed;
+            this.subscriptionError = error?.message ?? 'No se pudo actualizar el seguimiento';
+        } finally {
+            this.subscriptionLoading = false;
+        }
     }
 
     async downloadAttachment(attachment: FeedbackAttachmentDto): Promise<void> {
@@ -297,6 +353,7 @@ export class AdminFeedbackManagerComponent implements OnInit, OnChanges {
         this.patchPriority = '';
         this.internalComment = '';
         this.publicMessage = '';
+        this.resetSubscriptionState();
     }
 
     private resetPatchForm(detail: FeedbackAdminSubmissionDetailDto): void {
@@ -304,6 +361,28 @@ export class AdminFeedbackManagerComponent implements OnInit, OnChanges {
         this.patchPriority = detail.priority ?? '';
         this.internalComment = '';
         this.publicMessage = '';
+    }
+
+    private async refreshSubscriptionState(submissionId: number): Promise<void> {
+        this.resetSubscriptionState();
+        try {
+            const response = await this.usuariosApiSvc.getFeedbackSubscriptionStates([submissionId]);
+            const state = response.items.find((item) => item.submissionId === submissionId);
+            if (!state)
+                return;
+            this.subscriptionSubscribed = state.subscribed;
+            this.subscriptionCanSubscribe = state.canSubscribe;
+            this.subscriptionError = '';
+        } catch {
+            this.resetSubscriptionState();
+        }
+    }
+
+    private resetSubscriptionState(): void {
+        this.subscriptionSubscribed = false;
+        this.subscriptionCanSubscribe = false;
+        this.subscriptionLoading = false;
+        this.subscriptionError = '';
     }
 
     private buildPatchPayload(): FeedbackAdminPatchRequestDto {
@@ -356,5 +435,14 @@ export class AdminFeedbackManagerComponent implements OnInit, OnChanges {
             updatedAtUtc: detail.updatedAtUtc,
             reporter: detail.reporter,
         };
+    }
+
+    private isRealtimeFeedbackCreatedForCurrentKind(candidate: any): boolean {
+        const notificationCode = `${candidate?.notification?.code ?? ''}`.trim().toLowerCase();
+        const actionTarget = `${candidate?.notification?.action?.target ?? ''}`.trim().toLowerCase();
+        const kind = `${candidate?.notification?.context?.kind ?? ''}`.trim().toLowerCase();
+        return notificationCode === 'system.feedback_created'
+            && actionTarget === 'admin.feedback'
+            && kind === this.kind;
     }
 }

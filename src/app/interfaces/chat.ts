@@ -13,11 +13,13 @@ export type ChatNotificationCode =
     | 'system.conversation_closed'
     | 'system.campaign_invitation_received'
     | 'system.campaign_invitation_resolved'
+    | 'system.feedback_created'
+    | 'system.feedback_updated'
     | 'chat.new_chat'
     | 'chat.new_message'
     | (string & {});
 export type ChatAnnouncementCode = 'chat.new_chat' | 'chat.new_message' | (string & {});
-export type ChatNotificationActionTarget = 'social.messages' | 'admin.role_requests' | (string & {});
+export type ChatNotificationActionTarget = 'social.messages' | 'admin.role_requests' | 'admin.feedback' | (string & {});
 
 export interface ChatNotificationAction {
     target: ChatNotificationActionTarget;

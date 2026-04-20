@@ -24,6 +24,9 @@ import {
     FeedbackListResponseDto,
     FeedbackPriority,
     FeedbackStatus,
+    FeedbackSubscriptionResponseDto,
+    FeedbackSubscriptionStateDto,
+    FeedbackSubscriptionStateListResponseDto,
     FeedbackSubmissionDetailDto,
     FeedbackSubmissionSummaryDto,
     FeedbackUpdateAdminDto,
@@ -222,6 +225,46 @@ export class UsuariosApiService {
             return this.normalizeFeedbackListResponse(response, 'feature', limit, offset);
         } catch (error) {
             throw this.toApiError(error, 'No se pudo cargar el listado público de peticiones');
+        }
+    }
+
+    async getFeedbackSubscriptionStates(submissionIds: number[]): Promise<FeedbackSubscriptionStateListResponseDto> {
+        const ids = this.normalizeFeedbackSubscriptionIds(submissionIds);
+        if (ids.length < 1)
+            return { items: [] };
+
+        try {
+            const response = await firstValueFrom(
+                this.http.get<any>(`${this.usuariosBaseUrl}/feedback/submissions/subscriptions`, {
+                    headers: await this.buildAuthHeaders(),
+                    params: { ids: ids.join(',') },
+                })
+            );
+            return {
+                items: this.extractListItems(response)
+                    .map((item: any) => this.normalizeFeedbackSubscriptionState(item))
+                    .filter((item): item is FeedbackSubscriptionStateDto => item !== null),
+            };
+        } catch (error) {
+            throw this.toApiError(error, 'No se pudo cargar el estado de seguimiento del feedback');
+        }
+    }
+
+    async setFeedbackSubscription(submissionId: number, subscribed: boolean): Promise<FeedbackSubscriptionResponseDto> {
+        const normalizedId = this.normalizeFeedbackSubmissionId(submissionId);
+        try {
+            const response = await firstValueFrom(
+                this.http.put<any>(`${this.usuariosBaseUrl}/feedback/submissions/${normalizedId}/subscription`, {
+                    subscribed: subscribed === true,
+                }, {
+                    headers: await this.buildAuthHeaders(),
+                })
+            );
+            return this.normalizeFeedbackSubscriptionResponse(response, normalizedId);
+        } catch (error) {
+            throw this.toApiError(error, subscribed
+                ? 'No se pudo activar el seguimiento del feedback'
+                : 'No se pudo desactivar el seguimiento del feedback');
         }
     }
 
@@ -918,6 +961,36 @@ export class UsuariosApiService {
             userId: this.toNullableText(raw?.userId),
             uid: this.toNullableText(raw?.uid),
             displayName: this.toNullableText(raw?.displayName),
+        };
+    }
+
+    private normalizeFeedbackSubscriptionIds(values: number[]): number[] {
+        if (!Array.isArray(values))
+            return [];
+        const ids = new Set<number>();
+        values.forEach((value) => {
+            const id = this.toPositiveInt(value);
+            if (id)
+                ids.add(id);
+        });
+        return Array.from(ids).slice(0, 100);
+    }
+
+    private normalizeFeedbackSubscriptionState(raw: any): FeedbackSubscriptionStateDto | null {
+        const submissionId = this.toPositiveInt(raw?.submissionId ?? raw?.id);
+        if (!submissionId)
+            return null;
+        return {
+            submissionId,
+            subscribed: raw?.subscribed === true,
+            canSubscribe: raw?.canSubscribe === true,
+        };
+    }
+
+    private normalizeFeedbackSubscriptionResponse(raw: any, fallbackId: number): FeedbackSubscriptionResponseDto {
+        return {
+            submissionId: this.toPositiveInt(raw?.submissionId ?? raw?.id) ?? fallbackId,
+            subscribed: raw?.subscribed === true,
         };
     }
 

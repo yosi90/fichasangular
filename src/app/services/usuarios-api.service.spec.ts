@@ -1,6 +1,6 @@
-import { HttpHeaders, HttpResponse } from '@angular/common/http';
+import { HttpErrorResponse, HttpHeaders, HttpResponse } from '@angular/common/http';
 import * as FileSaver from 'file-saver';
-import { of } from 'rxjs';
+import { of, throwError } from 'rxjs';
 
 import { UsuariosApiService } from './usuarios-api.service';
 
@@ -438,6 +438,58 @@ describe('UsuariosApiService', () => {
         expect(response.items[0].kind).toBe('feature');
         expect(response.offset).toBe(20);
         expect(response.hasMore).toBeTrue();
+    });
+
+    it('getFeedbackSubscriptionStates usa bearer, normaliza IDs y estados', async () => {
+        const httpMock = jasmine.createSpyObj('HttpClient', ['get']);
+        httpMock.get.and.returnValue(of({
+            items: [
+                { submissionId: '12', subscribed: true, canSubscribe: true },
+                { id: 13, subscribed: false, canSubscribe: true },
+                { submissionId: 0, subscribed: true, canSubscribe: true },
+            ],
+        }));
+        const service = new UsuariosApiService(httpMock, authMock);
+
+        const response = await service.getFeedbackSubscriptionStates([12, 13, 12, -1, Number.NaN]);
+
+        const [url, options] = httpMock.get.calls.mostRecent().args;
+        expect(url).toContain('/usuarios/feedback/submissions/subscriptions');
+        expect(options.headers.get('Authorization')).toBe('Bearer token-audit');
+        expect(options.params).toEqual({ ids: '12,13' });
+        expect(response.items).toEqual([
+            { submissionId: 12, subscribed: true, canSubscribe: true },
+            { submissionId: 13, subscribed: false, canSubscribe: true },
+        ]);
+    });
+
+    it('setFeedbackSubscription actualiza seguimiento con bearer', async () => {
+        const httpMock = jasmine.createSpyObj('HttpClient', ['put']);
+        httpMock.put.and.returnValue(of({ submissionId: 12, subscribed: false }));
+        const service = new UsuariosApiService(httpMock, authMock);
+
+        const response = await service.setFeedbackSubscription(12, false);
+
+        const [url, body, options] = httpMock.put.calls.mostRecent().args;
+        expect(url).toContain('/usuarios/feedback/submissions/12/subscription');
+        expect(body).toEqual({ subscribed: false });
+        expect(options.headers.get('Authorization')).toBe('Bearer token-audit');
+        expect(response).toEqual({ submissionId: 12, subscribed: false });
+    });
+
+    it('setFeedbackSubscription conserva status funcional en errores 403', async () => {
+        const httpMock = jasmine.createSpyObj('HttpClient', ['put']);
+        httpMock.put.and.returnValue(throwError(() => new HttpErrorResponse({
+            status: 403,
+            error: { message: 'Sin permisos para seguir este feedback' },
+        })));
+        const service = new UsuariosApiService(httpMock, authMock);
+
+        await expectAsync(service.setFeedbackSubscription(12, true)).toBeRejectedWith(jasmine.objectContaining({
+            message: 'Sin permisos para seguir este feedback',
+            status: 403,
+            code: 'FORBIDDEN',
+        }));
     });
 
     it('downloadFeedbackAttachment descarga el blob autenticado con nombre resuelto', async () => {

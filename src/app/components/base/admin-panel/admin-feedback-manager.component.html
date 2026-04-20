@@ -102,6 +102,15 @@
                 <div class="admin-feedback__quick-actions">
                     <button
                         mat-stroked-button
+                        color="accent"
+                        *ngIf="canShowSubscriptionControl"
+                        [disabled]="subscriptionLoading"
+                        (click)="toggleSubscription()">
+                        <mat-icon>{{subscriptionSubscribed ? 'notifications_active' : 'notifications'}}</mat-icon>
+                        {{subscriptionButtonLabel}}
+                    </button>
+                    <button
+                        mat-stroked-button
                         *ngFor="let action of quickActions"
                         [color]="action.color || 'primary'"
                         [disabled]="saving"
@@ -110,6 +119,8 @@
                     </button>
                 </div>
             </div>
+            <p class="usuarios-admin-estado" *ngIf="canShowSubscriptionControl">{{subscriptionStatusLabel}}</p>
+            <p class="usuarios-admin-estado" *ngIf="subscriptionError.length > 0">{{subscriptionError}}</p>
 
             <div class="admin-feedback__detail-grid">
                 <article class="admin-feedback__card">

@@ -20,6 +20,13 @@ interface FeedbackSelectedImage {
     previewUrl: string;
 }
 
+interface FeedbackSubscriptionUiState {
+    subscribed: boolean;
+    canSubscribe: boolean;
+    loading: boolean;
+    error: string;
+}
+
 type PrivateFeedbackWorkspaceView = 'compose' | 'detail' | 'community';
 
 @Component({
@@ -64,6 +71,7 @@ export class HelpFeedbackComponent implements OnInit, OnDestroy {
     selectedPrivateDetailLoading = false;
     selectedPrivateDetailError = '';
     private readonly privateDetailById = new Map<number, FeedbackSubmissionDetailDto>();
+    readonly subscriptionStateById = new Map<number, FeedbackSubscriptionUiState>();
 
     selectedImages: FeedbackSelectedImage[] = [];
     fileSelectionError = '';
@@ -166,6 +174,8 @@ export class HelpFeedbackComponent implements OnInit, OnDestroy {
                 if (this.publicItems[0]?.id)
                     this.expandedPublicIds.add(this.publicItems[0].id);
             }
+            if (this.isLoggedIn)
+                await this.refreshSubscriptionStates(response.items.map((item) => item.id));
         } catch (error: any) {
             this.publicError = `${error?.message ?? 'No se pudieron cargar las peticiones públicas.'}`.trim();
         } finally {
@@ -198,6 +208,7 @@ export class HelpFeedbackComponent implements OnInit, OnDestroy {
                 this.selectedPrivateSubmissionId = null;
                 this.privateWorkspaceView = 'compose';
             }
+            await this.refreshSubscriptionStates(response.items.map((item) => item.id));
         } catch (error: any) {
             this.privateError = `${error?.message ?? 'No se pudo cargar tu historial.'}`.trim();
         } finally {
@@ -225,6 +236,7 @@ export class HelpFeedbackComponent implements OnInit, OnDestroy {
                 ? await this.usuariosApiSvc.getMyBugReport(id)
                 : await this.usuariosApiSvc.getMyFeatureRequest(id);
             this.privateDetailById.set(id, detail);
+            await this.refreshSubscriptionStates([id]);
         } catch (error: any) {
             if (this.selectedPrivateSubmissionId === id)
                 this.selectedPrivateDetailError = `${error?.message ?? 'No se pudo cargar el detalle.'}`.trim();
@@ -308,6 +320,12 @@ export class HelpFeedbackComponent implements OnInit, OnDestroy {
                 : await this.usuariosApiSvc.createFeatureRequest(this.buildFeaturePayload());
 
             this.privateDetailById.set(response.id, response);
+            this.subscriptionStateById.set(response.id, {
+                subscribed: true,
+                canSubscribe: true,
+                loading: false,
+                error: '',
+            });
             this.resetForm();
             this.appToastSvc.showSuccess(this.isBug
                 ? 'El reporte de bug se ha enviado.'
@@ -325,6 +343,62 @@ export class HelpFeedbackComponent implements OnInit, OnDestroy {
         } finally {
             this.submitting = false;
         }
+    }
+
+    async toggleFeedbackSubscription(submissionId: number): Promise<void> {
+        if (!this.isLoggedIn || submissionId <= 0)
+            return;
+        const current = this.subscriptionStateById.get(submissionId);
+        if (!current?.canSubscribe || current.loading)
+            return;
+
+        this.subscriptionStateById.set(submissionId, {
+            ...current,
+            loading: true,
+            error: '',
+        });
+
+        const desired = !current.subscribed;
+        try {
+            const response = await this.usuariosApiSvc.setFeedbackSubscription(submissionId, desired);
+            this.subscriptionStateById.set(submissionId, {
+                subscribed: response.subscribed,
+                canSubscribe: true,
+                loading: false,
+                error: '',
+            });
+            this.appToastSvc.showSuccess(response.subscribed
+                ? 'Ahora sigues los cambios de este feedback.'
+                : 'Has dejado de seguir los cambios de este feedback.');
+        } catch (error: any) {
+            const message = `${error?.message ?? 'No se pudo actualizar el seguimiento.'}`.trim();
+            this.subscriptionStateById.set(submissionId, {
+                ...current,
+                loading: false,
+                error: message,
+            });
+            this.appToastSvc.showError(message);
+        }
+    }
+
+    getSubscriptionState(submissionId: number): FeedbackSubscriptionUiState | null {
+        return this.subscriptionStateById.get(submissionId) ?? null;
+    }
+
+    canShowSubscriptionControl(submissionId: number): boolean {
+        return this.isLoggedIn && this.subscriptionStateById.get(submissionId)?.canSubscribe === true;
+    }
+
+    getSubscriptionButtonLabel(submissionId: number): string {
+        const state = this.subscriptionStateById.get(submissionId);
+        if (state?.loading)
+            return 'Actualizando...';
+        return state?.subscribed ? 'Dejar de seguir' : 'Seguir cambios';
+    }
+
+    getSubscriptionStatusLabel(submissionId: number): string {
+        const state = this.subscriptionStateById.get(submissionId);
+        return state?.subscribed ? 'Siguiendo cambios' : 'Sin seguimiento';
     }
 
     openLoginDialog(): void {
@@ -364,6 +438,8 @@ export class HelpFeedbackComponent implements OnInit, OnDestroy {
         this.selectedPrivateDetailError = '';
         if (this.publicItems.length < 1 && !this.publicLoading)
             void this.loadPublicSubmissions(true);
+        else
+            void this.refreshSubscriptionStates(this.publicCommunityItems.map((item) => item.id));
     }
 
     getStatusLabel(status: FeedbackSubmissionSummaryDto['status']): string {
@@ -467,6 +543,30 @@ export class HelpFeedbackComponent implements OnInit, OnDestroy {
         this.selectedPrivateDetailLoading = false;
         this.selectedPrivateDetailError = '';
         this.privateDetailById.clear();
+        this.subscriptionStateById.clear();
+    }
+
+    private async refreshSubscriptionStates(submissionIds: number[]): Promise<void> {
+        if (!this.isLoggedIn)
+            return;
+        const ids = Array.from(new Set((submissionIds ?? []).filter((id) => Number.isFinite(id) && id > 0)));
+        if (ids.length < 1)
+            return;
+
+        try {
+            const response = await this.usuariosApiSvc.getFeedbackSubscriptionStates(ids);
+            response.items.forEach((item) => {
+                const previous = this.subscriptionStateById.get(item.submissionId);
+                this.subscriptionStateById.set(item.submissionId, {
+                    subscribed: item.subscribed,
+                    canSubscribe: item.canSubscribe,
+                    loading: previous?.loading === true ? previous.loading : false,
+                    error: previous?.error ?? '',
+                });
+            });
+        } catch {
+            // Si el backend aun no expone lectura de estado, ocultamos controles en vez de inventar estado.
+        }
     }
 
     private resetForm(): void {

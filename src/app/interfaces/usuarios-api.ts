@@ -232,6 +232,25 @@ export interface FeedbackAdminPatchRequestDto {
     publicMessage?: string | null;
 }
 
+export interface FeedbackSubscriptionStateDto {
+    submissionId: number;
+    subscribed: boolean;
+    canSubscribe: boolean;
+}
+
+export interface FeedbackSubscriptionStateListResponseDto {
+    items: FeedbackSubscriptionStateDto[];
+}
+
+export interface FeedbackSubscriptionRequestDto {
+    subscribed: boolean;
+}
+
+export interface FeedbackSubscriptionResponseDto {
+    submissionId: number;
+    subscribed: boolean;
+}
+
 export interface AdminPolicyDraftDto {
     kind: UserCompliancePolicyKind;
     title: string | null;

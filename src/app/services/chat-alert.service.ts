@@ -167,7 +167,7 @@ export class ChatAlertService implements OnDestroy {
             ? this.userSvc.getCurrentBanStatus()
             : null;
         const canOpenMessages = !isAccountBannedAlert
-            && notification.action?.target === 'social.messages'
+            && (notification.action?.target === 'social.messages' || this.isFeedbackNotification(candidate))
             && Math.trunc(Number(notification.action?.conversationId)) > 0;
         const notificationConversationId = Math.trunc(Number(notification.action?.conversationId));
         const campaignId = this.extractCampaignId(candidate);
@@ -325,6 +325,8 @@ export class ChatAlertService implements OnDestroy {
         const notificationCode = `${candidate?.notification?.code ?? ''}`.trim().toLowerCase();
         if (notificationCode === 'system.campaign_invitation_received' || notificationCode === 'system.campaign_invitation_resolved')
             return 'campanas';
+        if (notificationCode === 'system.feedback_created' || notificationCode === 'system.feedback_updated')
+            return 'cuentaSistema';
         if (notificationCode === 'system.role_request_created')
             return 'cuentaSistema';
         if (notificationCode === 'system.role_request_resolved'
@@ -357,6 +359,11 @@ export class ChatAlertService implements OnDestroy {
         const notificationCode = `${candidate?.notification?.code ?? ''}`.trim().toLowerCase();
         const actionTarget = `${candidate?.notification?.action?.target ?? ''}`.trim().toLowerCase();
         return notificationCode === 'system.role_request_created' || actionTarget === 'admin.role_requests';
+    }
+
+    private isFeedbackNotification(candidate: ChatAlertCandidate): boolean {
+        const notificationCode = `${candidate?.notification?.code ?? ''}`.trim().toLowerCase();
+        return notificationCode === 'system.feedback_created' || notificationCode === 'system.feedback_updated';
     }
 
     private isExpiredAccountBanAlert(candidate: ChatAlertCandidate): boolean {
