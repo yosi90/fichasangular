@@ -691,6 +691,10 @@ export class NuevoPersonajeComponent {
         return this.flujo.plantillas.seleccionadas;
     }
 
+    get plantillasOtorgadasRazaPendientes() {
+        return this.flujo.plantillas.otorgadasRazaPendientes ?? [];
+    }
+
     get puedeLimpiarSeleccionPlantillas(): boolean {
         return this.plantillasSeleccionadas
             .some((plantilla) => !this.esPlantillaConfirmada(plantilla));
@@ -2902,6 +2906,22 @@ export class NuevoPersonajeComponent {
 
     esPlantillaConfirmada(plantilla: Plantilla): boolean {
         return this.nuevoPSvc.esPlantillaConfirmada(Number(plantilla?.Id));
+    }
+
+    esPlantillaOtorgadaPorRaza(plantilla: Plantilla): boolean {
+        return this.nuevoPSvc.esPlantillaOtorgadaPorRaza(Number(plantilla?.Id));
+    }
+
+    getEtiquetaEstadoPlantillaSeleccionada(plantilla: Plantilla): string {
+        if (this.esPlantillaOtorgadaPorRaza(plantilla))
+            return 'Raza';
+        return this.esPlantillaConfirmada(plantilla) ? 'Fijada' : 'Actual';
+    }
+
+    getClaseEstadoPlantillaSeleccionada(plantilla: Plantilla): string {
+        if (this.esPlantillaOtorgadaPorRaza(plantilla))
+            return 'fixed';
+        return this.esPlantillaConfirmada(plantilla) ? 'fixed' : 'info';
     }
 
     puedeQuitarPlantillaSeleccion(plantilla: Plantilla): boolean {
@@ -7119,7 +7139,7 @@ export class NuevoPersonajeComponent {
             tamanoRazaId: Number(raza.Tamano?.Id ?? 0),
             tiposCriaturaMiembroIds: identidadCriaturaActualIds,
             tipoCriaturaActualId,
-            razaHeredada: !!raza.Heredada,
+            razaHeredada: this.flujo.plantillas.heredadaActiva === true,
             incluirHomebrew,
             seleccionadas: this.plantillasSeleccionadas.map((plantilla) => ({
                 Id: Number(plantilla.Id),

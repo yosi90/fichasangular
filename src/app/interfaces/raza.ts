@@ -31,6 +31,17 @@ export interface MutacionRaza {
     Heredada?: boolean;
 }
 
+export interface RazaPlantillaReferencia {
+    Id: number;
+    Nombre: string;
+    Descripcion?: string;
+}
+
+export interface RazaPlantillasPorSubtipo {
+    Subtipo: SubtipoRef;
+    Plantillas: RazaPlantillaReferencia[];
+}
+
 export interface RazaHabilidadBase {
     Id_habilidad: number;
     Habilidad: string;
@@ -133,4 +144,5 @@ export interface Raza {
     Habilidades: RazaHabilidades;
     DotesContextuales: DoteContextual[];
     Idiomas?: IdiomaDetalle[];
+    Plantillas_por_subtipo?: RazaPlantillasPorSubtipo[];
 }

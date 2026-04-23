@@ -5,6 +5,7 @@ import { Raza, RazaHabilidadBase, RazaHabilidadCustom } from 'src/app/interfaces
 import { SubtipoRef } from 'src/app/interfaces/subtipo';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
 import { resolverExtraHabilidadVisible } from 'src/app/services/utils/habilidad-extra-visible';
+import { buildManiobrabilidadInfoSecciones, tieneManiobrabilidadVisible } from 'src/app/services/utils/maniobrabilidad-info';
 import { getGrupoOpcionalRacial } from 'src/app/services/utils/racial-opcionales';
 
 interface GrupoRacialesDetalle {
@@ -34,6 +35,7 @@ export class DetallesRazaComponent {
     constructor(private manualDetalleNavSvc: ManualDetalleNavigationService) { }
 
     @Input() raza!: Raza;
+    mostrarInfoManiobrabilidad = false;
 
     @Output() racialDetallesPorNombre: EventEmitter<RacialReferencia> = new EventEmitter<RacialReferencia>();
     @Output() subtipoDetalles: EventEmitter<{ Id?: number | null; Nombre: string; }> = new EventEmitter<{ Id?: number | null; Nombre: string; }>();
@@ -143,6 +145,25 @@ export class DetallesRazaComponent {
 
     tieneAlineamientoVisible(): boolean {
         return this.getAlineamientoResumen().length > 0;
+    }
+
+    mostrarManiobrabilidad(): boolean {
+        return this.tieneNumeroNoCero(this.raza?.Volar)
+            && tieneManiobrabilidadVisible(this.raza?.Maniobrabilidad);
+    }
+
+    abrirInfoManiobrabilidad(event?: Event): void {
+        event?.preventDefault();
+        event?.stopPropagation();
+        this.mostrarInfoManiobrabilidad = true;
+    }
+
+    cerrarInfoManiobrabilidad(): void {
+        this.mostrarInfoManiobrabilidad = false;
+    }
+
+    getManiobrabilidadInfoSecciones() {
+        return buildManiobrabilidadInfoSecciones(this.raza?.Maniobrabilidad);
     }
 
     abrirDetalleSubtipo(subtipo: SubtipoRef) {

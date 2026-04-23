@@ -8,18 +8,15 @@ describe('ListadoDeidadesComponent', () => {
     let cdrMock: jasmine.SpyObj<ChangeDetectorRef>;
     let manualDetalleNavSvcMock: jasmine.SpyObj<ManualDetalleNavigationService>;
     let deidadSvcMock: any;
-    let manualSvcMock: any;
 
     beforeEach(() => {
         cdrMock = jasmine.createSpyObj<ChangeDetectorRef>('ChangeDetectorRef', ['detectChanges']);
         manualDetalleNavSvcMock = jasmine.createSpyObj<ManualDetalleNavigationService>('ManualDetalleNavigationService', ['abrirDetalleManual']);
         deidadSvcMock = { getDeidades: jasmine.createSpy('getDeidades').and.returnValue(of([])) };
-        manualSvcMock = { getManuales: jasmine.createSpy('getManuales').and.returnValue(of([])) };
 
         component = new ListadoDeidadesComponent(
             cdrMock,
             deidadSvcMock,
-            manualSvcMock,
             manualDetalleNavSvcMock
         );
         component.deidadSort = { active: '', direction: '', sortChange: of({}), initialized: of({}) } as any;

@@ -19,20 +19,28 @@ export class CloseFilterMenuOnMouseleaveDirective implements OnDestroy {
     private documentListeners: Array<() => void> = [];
     private lastPointerX: number | null = null;
     private lastPointerY: number | null = null;
+    private originalHandleClick?: (event: MouseEvent) => void;
 
     constructor() {
+        this.disableMatMenuTriggerMouseClick();
         this.trigger.menuOpened.subscribe(() => this.handleMenuOpened());
         this.trigger.menuClosed.subscribe(() => this.handleMenuClosed());
 
         this.hostListeners.push(
             this.listen(this.host.nativeElement, 'mouseenter', () => this.handleHostMouseEnter()),
             this.listen(this.host.nativeElement, 'mouseleave', () => this.scheduleClose()),
-            this.listen(this.host.nativeElement, 'mousedown', (event: Event) => this.handleHostPointerDown(event), { capture: true }),
-            this.listen(this.host.nativeElement, 'click', (event: Event) => this.handleHostClick(event), { capture: true }),
+            this.listen(this.host.nativeElement, 'pointerdown', (event: Event) => this.suppressMouseActivation(event), { capture: true }),
+            this.listen(this.host.nativeElement, 'pointerup', (event: Event) => this.suppressMouseActivation(event), { capture: true }),
+            this.listen(this.host.nativeElement, 'mousedown', (event: Event) => this.suppressMouseActivation(event), { capture: true }),
+            this.listen(this.host.nativeElement, 'mouseup', (event: Event) => this.suppressMouseActivation(event), { capture: true }),
+            this.listen(this.host.nativeElement, 'click', (event: Event) => this.suppressMouseActivation(event), { capture: true }),
+            this.listen(this.host.nativeElement, 'auxclick', (event: Event) => this.suppressMouseActivation(event), { capture: true }),
+            this.listen(this.host.nativeElement, 'dblclick', (event: Event) => this.suppressMouseActivation(event), { capture: true }),
         );
     }
 
     ngOnDestroy(): void {
+        this.restoreMatMenuTriggerMouseClick();
         this.handleMenuClosed();
         this.hostListeners.forEach(unlisten => unlisten());
         this.hostListeners = [];
@@ -46,22 +54,42 @@ export class CloseFilterMenuOnMouseleaveDirective implements OnDestroy {
         this.ngZone.run(() => this.trigger.openMenu());
     }
 
-    private handleHostClick(event: Event): void {
-        const mouseEvent = event as MouseEvent;
-        if ((mouseEvent?.detail ?? 0) < 1)
+    private disableMatMenuTriggerMouseClick(): void {
+        const triggerAny = this.trigger as any;
+        if (typeof triggerAny._handleClick !== 'function')
+            return;
+
+        this.originalHandleClick = triggerAny._handleClick;
+        triggerAny._handleClick = (event: MouseEvent) => {
+            if (this.isPrimaryMouseLikeEvent(event)) {
+                this.suppressMouseActivation(event);
+                return;
+            }
+            this.originalHandleClick?.call(this.trigger, event);
+        };
+    }
+
+    private restoreMatMenuTriggerMouseClick(): void {
+        if (!this.originalHandleClick)
+            return;
+        (this.trigger as any)._handleClick = this.originalHandleClick;
+        this.originalHandleClick = undefined;
+    }
+
+    private suppressMouseActivation(event: Event): void {
+        if (!this.isPrimaryMouseLikeEvent(event))
             return;
 
         event.preventDefault();
         event.stopImmediatePropagation();
     }
 
-    private handleHostPointerDown(event: Event): void {
-        const mouseEvent = event as MouseEvent;
-        if ((mouseEvent?.button ?? 0) !== 0)
-            return;
-
-        event.preventDefault();
-        event.stopImmediatePropagation();
+    private isPrimaryMouseLikeEvent(event: Event): boolean {
+        if (typeof PointerEvent !== 'undefined' && event instanceof PointerEvent)
+            return event.pointerType === 'mouse' && event.button === 0;
+        if (typeof MouseEvent !== 'undefined' && event instanceof MouseEvent)
+            return event.button === 0;
+        return false;
     }
 
     private handleMenuOpened(): void {

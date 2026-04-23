@@ -1,0 +1,76 @@
+
+> fichas3.5@0.0.0 start
+> ng serve --host 127.0.0.1 --port 4201
+
+
+[1mInitial chunk files[22m  [2m | [22m[1mNames[22m        [2m | [22m [1mRaw size[22m
+[32mmain.js[39m              [2m | [22m[2mmain[22m         [2m | [22m [36m12.11 MB[39m[2m | [22m
+[32mvendor.js[39m            [2m | [22m[2mvendor[22m       [2m | [22m [36m10.32 MB[39m[2m | [22m
+[32mpolyfills.js[39m         [2m | [22m[2mpolyfills[22m    [2m | [22m[36m238.77 kB[39m[2m | [22m
+[32mstyles.css, styles.js[39m[2m | [22m[2mstyles[22m       [2m | [22m[36m237.95 kB[39m[2m | [22m
+[32mruntime.js[39m           [2m | [22m[2mruntime[22m      [2m | [22m  [36m6.94 kB[39m[2m | [22m
+
+[1m [22m                    [2m | [22m[1mInitial total[22m[2m | [22m [1m22.91 MB[22m
+
+Build at: 2026-04-23T09:54:39.368Z - Hash: 28479e8d7153486c - Time: 24338ms
+
+** Angular Live Development Server is listening on 127.0.0.1:4201, open your browser on http://127.0.0.1:4201/ **
+
+
+√ Compiled successfully.
+
+[1mInitial chunk files[22m[2m | [22m[1mNames[22m  [2m | [22m[1mRaw size[22m
+[32mmain.js[39m            [2m | [22m[2mmain[22m   [2m | [22m[36m12.11 MB[39m[2m | [22m
+[32mruntime.js[39m         [2m | [22m[2mruntime[22m[2m | [22m [36m6.94 kB[39m[2m | [22m
+
+3 unchanged chunks
+
+Build at: 2026-04-23T10:09:12.967Z - Hash: 891a95eea7a9ee42 - Time: 8370ms
+
+√ Compiled successfully.
+
+[1mInitial chunk files[22m[2m | [22m[1mNames[22m  [2m | [22m[1mRaw size[22m
+[32mmain.js[39m            [2m | [22m[2mmain[22m   [2m | [22m[36m12.11 MB[39m[2m | [22m
+[32mruntime.js[39m         [2m | [22m[2mruntime[22m[2m | [22m [36m6.94 kB[39m[2m | [22m
+
+3 unchanged chunks
+
+Build at: 2026-04-23T10:09:15.646Z - Hash: 9fb63e00ddc1f29c - Time: 1944ms
+
+√ Compiled successfully.
+
+[1mInitial chunk files[22m[2m | [22m[1mNames[22m  [2m | [22m[1mRaw size[22m
+[32mmain.js[39m            [2m | [22m[2mmain[22m   [2m | [22m[36m12.12 MB[39m[2m | [22m
+[32mruntime.js[39m         [2m | [22m[2mruntime[22m[2m | [22m [36m6.94 kB[39m[2m | [22m
+
+3 unchanged chunks
+
+Build at: 2026-04-23T10:09:29.702Z - Hash: fc9c2927a4c35d89 - Time: 2708ms
+
+√ Compiled successfully.
+
+[1mInitial chunk files[22m[2m | [22m[1mNames[22m  [2m | [22m[1mRaw size[22m
+[32mmain.js[39m            [2m | [22m[2mmain[22m   [2m | [22m[36m12.12 MB[39m[2m | [22m
+[32mruntime.js[39m         [2m | [22m[2mruntime[22m[2m | [22m [36m6.94 kB[39m[2m | [22m
+
+3 unchanged chunks
+
+Build at: 2026-04-23T10:09:34.298Z - Hash: b1273d1b8d04d35f - Time: 2452ms
+
+√ Compiled successfully.
+
+
+
+5 unchanged chunks
+
+Build at: 2026-04-23T10:09:57.325Z - Hash: b1273d1b8d04d35f - Time: 1147ms
+
+√ Compiled successfully.
+
+
+
+5 unchanged chunks
+
+Build at: 2026-04-23T10:10:02.869Z - Hash: b1273d1b8d04d35f - Time: 1077ms
+
+√ Compiled successfully.

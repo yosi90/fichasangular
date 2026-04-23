@@ -70,6 +70,7 @@ export class NuevaConjuroComponent implements OnInit, OnDestroy {
     varianteActiva: ConjuroVariante = 'base';
     conjurosExistentes: Conjuro[] = [];
     manuales: Manual[] = [];
+    manualBusqueda: string = '';
     tiemposLanzamiento: ConjuroCatalogItem[] = [];
     alcances: ConjuroCatalogItem[] = [];
     componentesCatalogo: ConjuroCatalogItem[] = [];
@@ -166,6 +167,7 @@ export class NuevaConjuroComponent implements OnInit, OnDestroy {
                 },
                 error: () => {
                     this.manuales = [];
+                    this.manualBusqueda = '';
                 }
             });
 
@@ -417,6 +419,34 @@ export class NuevaConjuroComponent implements OnInit, OnDestroy {
         return nombre;
     }
 
+    getManualesFiltrados(): Manual[] {
+        const filtro = this.normalizar(this.manualBusqueda);
+        return this.manuales
+            .filter((manual) => filtro.length < 1 || this.normalizar(manual?.Nombre ?? '').includes(filtro))
+            .slice(0, 40);
+    }
+
+    actualizarManualBusqueda(value: string): void {
+        this.manualBusqueda = value ?? '';
+        this.form.controls.id_manual.setValue(0);
+        this.form.controls.id_manual.markAsDirty();
+        this.form.controls.id_manual.updateValueAndValidity();
+    }
+
+    seleccionarManual(id: number): void {
+        const idManual = this.toInt(id, 0);
+        const manual = this.manuales.find((item) => this.toInt(item?.Id, 0) === idManual);
+        this.form.controls.id_manual.setValue(idManual);
+        this.form.controls.id_manual.markAsDirty();
+        this.form.controls.id_manual.updateValueAndValidity();
+        this.manualBusqueda = `${manual?.Nombre ?? ''}`.trim();
+    }
+
+    trackByManualId(_: number, manual: Manual): number {
+        const parsed = Math.trunc(Number(manual?.Id));
+        return Number.isFinite(parsed) ? parsed : 0;
+    }
+
     agregarNivel(coleccion: NivelCollectionKey): void {
         this.getNivelRows(coleccion).push(this.crearNivelRow());
     }
@@ -627,14 +657,23 @@ export class NuevaConjuroComponent implements OnInit, OnDestroy {
         if (this.manuales.length < 1)
             return;
         const idActual = this.toInt(this.form.controls.id_manual.value, -1);
-        if (this.manuales.some((manual) => this.toInt(manual?.Id, 0) === idActual))
+        if (this.manuales.some((manual) => this.toInt(manual?.Id, 0) === idActual)) {
+            this.sincronizarManualBusquedaDesdeControl();
             return;
+        }
         const manualPredeterminado = this.manuales.find(
             (manual) => this.normalizar(manual?.Nombre ?? '') === 'compendio de conjuros'
         );
         this.form.controls.id_manual.setValue(
             this.toInt(manualPredeterminado?.Id ?? this.manuales[0]?.Id, 0)
         );
+        this.sincronizarManualBusquedaDesdeControl();
+    }
+
+    private sincronizarManualBusquedaDesdeControl(): void {
+        const idActual = this.toInt(this.form.controls.id_manual.value, 0);
+        const manual = this.manuales.find((item) => this.toInt(item?.Id, 0) === idActual);
+        this.manualBusqueda = `${manual?.Nombre ?? ''}`.trim();
     }
 
     private sincronizarSelectPorDefecto(

@@ -2,14 +2,14 @@
     <aside>
         <span
             class="tw-block"
-            [matTooltip]="canGestionar('personajes', 'create') ? '' : mensajePermisosInsuficientes"
-            [matTooltipDisabled]="canGestionar('personajes', 'create')">
+            [matTooltip]="tooltipNuevoPersonaje"
+            [matTooltipDisabled]="!nuevoPersonajeDeshabilitado">
             <button
                 id="nuevopj"
                 mat-raised-button
                 color="primary"
                 (click)="AbrirNuevoPersonaje();"
-                [disabled]="!canGestionar('personajes', 'create')"
+                [disabled]="nuevoPersonajeDeshabilitado"
                 class="tw-w-full sombra tw-mt-1 tw-mb-3">
                 Nuevo personaje
             </button>
@@ -22,9 +22,10 @@
                     </button>
                 </mat-expansion-panel-header>
                 <span
-                    [matTooltip]="canGestionar('razas', 'create') ? '' : mensajePermisosInsuficientes"
-                    [matTooltipDisabled]="canGestionar('razas', 'create')">
-                    <button mat-button color="primary" [disabled]="!canGestionar('razas', 'create')">Raza</button>
+                    [matTooltip]="canInsertarRazas() ? '' : mensajePermisosInsuficientes"
+                    [matTooltipDisabled]="canInsertarRazas()">
+                    <button mat-button color="primary" [disabled]="!canInsertarRazas()"
+                        (click)="onInsertarRaza()">Raza</button>
                 </span>
                 <span
                     [matTooltip]="canGestionar('clases', 'create') ? '' : mensajePermisosInsuficientes"
@@ -54,6 +55,7 @@
                     <button mat-button color="primary" [disabled]="!canGestionar('plantillas', 'create')">Plantilla</button>
                 </span>
                 <button mat-button color="primary" cdkOverlayOrigin #origenInsertar="cdkOverlayOrigin"
+                    [class.menu-otros-trigger--sin-opciones]="!tieneOpcionesOtros('insertar')"
                     (mouseenter)="abrirOtros('insertar')" (mouseleave)="programarCierreOtros()"
                     (click)="toggleOtros('insertar', $event)">
                     Otros
@@ -117,9 +119,9 @@
                         <span
                             matTooltipClass="menu-otros-tooltip"
                             matTooltipPosition="right"
-                            [matTooltip]="canGestionar('raciales', 'create') ? '' : mensajePermisosInsuficientes"
-                            [matTooltipDisabled]="canGestionar('raciales', 'create')">
-                            <button mat-button color="primary" [disabled]="!canGestionar('raciales', 'create')" (click)="cerrarOtros()">Raciales</button>
+                            [matTooltip]="canInsertarRaciales() ? '' : mensajePermisosInsuficientes"
+                            [matTooltipDisabled]="canInsertarRaciales()">
+                            <button mat-button color="primary" [disabled]="!canInsertarRaciales()" (click)="onInsertarRacial()">Raciales</button>
                         </span>
                         <span
                             matTooltipClass="menu-otros-tooltip"
@@ -168,6 +170,7 @@
                     <button mat-button color="primary" [disabled]="!canGestionar('plantillas', 'update')">Plantilla</button>
                 </span>
                 <button mat-button color="primary" cdkOverlayOrigin #origenModificar="cdkOverlayOrigin"
+                    [class.menu-otros-trigger--sin-opciones]="!tieneOpcionesOtros('modificar')"
                     (mouseenter)="abrirOtros('modificar')" (mouseleave)="programarCierreOtros()"
                     (click)="toggleOtros('modificar', $event)">
                     Otros

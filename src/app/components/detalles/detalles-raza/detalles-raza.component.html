@@ -83,7 +83,14 @@
                 <mat-chip class="sombra3d-sm tw-m-1" *ngIf="raza.Volar > 0">Volar {{raza.Volar}}'</mat-chip>
                 <mat-chip class="sombra3d-sm tw-m-1" *ngIf="raza.Trepar > 0">Trepar {{raza.Trepar}}'</mat-chip>
                 <mat-chip class="sombra3d-sm tw-m-1" *ngIf="raza.Escalar > 0">Escalar {{raza.Escalar}}'</mat-chip>
-                <mat-chip class="sombra3d-sm tw-m-1" *ngIf="raza.Maniobrabilidad && raza.Volar > 0 && tieneTextoVisible(raza.Maniobrabilidad.Nombre)">Maniobrabilidad {{raza.Maniobrabilidad.Nombre}}</mat-chip>
+                <mat-chip class="sombra3d-sm tw-m-1 maniobrabilidad-chip" *ngIf="mostrarManiobrabilidad()">
+                    Maniobrabilidad {{raza.Maniobrabilidad.Nombre}}
+                    <button mat-icon-button type="button" class="maniobrabilidad-help-btn"
+                        matTooltip="Reglas de maniobrabilidad" aria-label="Reglas de maniobrabilidad"
+                        (click)="abrirInfoManiobrabilidad($event)">
+                        <mat-icon>help_outline</mat-icon>
+                    </button>
+                </mat-chip>
             </div>
             <div class="tw-flex tw-flex-wrap tw-items-center sombra-caja-sm tw-rounded-md tw-p-2 tw-my-2">
                 <mat-chip class="tw-h-auto tw-w-full sombra-caja-sm tw-py-2 tw-m-1 tw-mb-2 chip-titulo">
@@ -226,4 +233,11 @@
             </mat-accordion>
         </div>
     </div>
+
+    <app-informacion-basicos-modal *ngIf="mostrarInfoManiobrabilidad"
+        titulo="Maniobrabilidad"
+        icono="flight"
+        [secciones]="getManiobrabilidadInfoSecciones()"
+        (cerrar)="cerrarInfoManiobrabilidad()">
+    </app-informacion-basicos-modal>
 </div>

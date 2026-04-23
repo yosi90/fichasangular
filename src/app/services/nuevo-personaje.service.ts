@@ -17,7 +17,7 @@ import { Personaje, PersonajeNivelLanzadorResumen } from '../interfaces/personaj
 import { Plantilla } from '../interfaces/plantilla';
 import { RegionDetalle } from '../interfaces/region';
 import { RacialDetalle } from '../interfaces/racial';
-import { Raza } from '../interfaces/raza';
+import { Raza, RazaPlantillaReferencia } from '../interfaces/raza';
 import { RazaSimple } from '../interfaces/simplificaciones/raza-simple';
 import { SubtipoRef } from '../interfaces/subtipo';
 import { TipoCriatura } from '../interfaces/tipo_criatura';
@@ -842,6 +842,8 @@ export interface PlantillasFlujoState {
     disponibles: Plantilla[];
     seleccionadas: Plantilla[];
     confirmadasIds: number[];
+    otorgadasRazaIds: number[];
+    otorgadasRazaPendientes: RazaPlantillaReferencia[];
     retornoFinNivelPendiente: boolean;
     tipoCriaturaSimulada: {
         Id: number;
@@ -858,6 +860,8 @@ interface NuevoPersonajeDraftEstadoFlujoV1 {
     plantillas: {
         seleccionadas: Plantilla[];
         confirmadasIds: number[];
+        otorgadasRazaIds?: number[];
+        otorgadasRazaPendientes?: RazaPlantillaReferencia[];
         retornoFinNivelPendiente: boolean;
         tipoCriaturaSimulada: {
             Id: number;
@@ -1284,8 +1288,10 @@ export class NuevoPersonajeService {
         this.estadoFlujo.caracteristicasGeneradas = false;
         this.cerrarModalCaracteristicas();
         this.resetearGeneradorCaracteristicas();
+        const plantillasDisponiblesActuales = this.estadoFlujo.plantillas.disponibles ?? [];
         this.estadoFlujo.plantillas = this.crearPlantillasFlujoBase();
-        this.estadoFlujo.plantillas.heredadaActiva = !!razaEfectiva.Heredada;
+        this.estadoFlujo.plantillas.disponibles = [...plantillasDisponiblesActuales];
+        this.sincronizarPlantillasOtorgadasPorRaza();
         this.estadoFlujo.habilidades = this.crearHabilidadesFlujoBase();
         this.estadoFlujo.conjuros = this.crearConjurosFlujoBase();
         this.personajeCreacion.Plantillas = [];
@@ -1324,6 +1330,7 @@ export class NuevoPersonajeService {
 
     setPlantillasDisponibles(plantillas: Plantilla[]): void {
         this.estadoFlujo.plantillas.disponibles = [...plantillas];
+        this.sincronizarPlantillasOtorgadasPorRaza();
         this.recalcularSimulacionPlantillas();
     }
 
@@ -1377,6 +1384,14 @@ export class NuevoPersonajeService {
         if (idObjetivo <= 0)
             return false;
         return this.getIdsPlantillasConfirmadasSet().has(idObjetivo);
+    }
+
+    esPlantillaOtorgadaPorRaza(idPlantilla: number): boolean {
+        const idObjetivo = this.toNumber(idPlantilla);
+        if (idObjetivo <= 0)
+            return false;
+        return (this.estadoFlujo.plantillas.otorgadasRazaIds ?? [])
+            .some((id) => this.toNumber(id) === idObjetivo);
     }
 
     setRetornoFinNivelPendientePlantillas(activo: boolean): void {
@@ -8037,7 +8052,7 @@ export class NuevoPersonajeService {
             Nombre: `${tipoResultante?.Nombre ?? '-'}`,
         };
         this.estadoFlujo.plantillas.licantropiaActiva = simulacion.licantropiaActiva;
-        this.estadoFlujo.plantillas.heredadaActiva = simulacion.heredadaActiva || !!this.razaSeleccionada?.Heredada;
+        this.estadoFlujo.plantillas.heredadaActiva = simulacion.heredadaActiva;
         this.personajeCreacion.Plantillas = seleccionadas.map(plantilla => this.mapPlantillaParaPersonaje(plantilla));
         this.sincronizarCaracteristicasPerdidasConTipoActual();
         if (this.estadoFlujo.caracteristicasGeneradas) {
@@ -8085,6 +8100,87 @@ export class NuevoPersonajeService {
                 actuales = this.unirSubtiposDeduplicados(actuales, subtiposPlantilla);
         });
         return actuales;
+    }
+
+    private sincronizarPlantillasOtorgadasPorRaza(): void {
+        const refs = this.getReferenciasPlantillasOtorgadasPorRaza();
+        const oldOtorgadas = new Set((this.estadoFlujo.plantillas.otorgadasRazaIds ?? []).map((id) => this.toNumber(id)));
+        const resolved: Plantilla[] = [];
+        const pendientes: RazaPlantillaReferencia[] = [];
+
+        refs.forEach((ref) => {
+            const plantilla = this.resolverPlantillaOtorgadaPorRaza(ref);
+            if (plantilla) {
+                if (!resolved.some((item) => this.toNumber(item.Id) === this.toNumber(plantilla.Id)))
+                    resolved.push(this.clonarProfundo(plantilla));
+                return;
+            }
+            pendientes.push(this.clonarProfundo(ref));
+        });
+
+        const resolvedIds = new Set(resolved.map((plantilla) => this.toNumber(plantilla.Id)).filter((id) => id > 0));
+        const seleccionadasSinOtorgadasStale = (this.estadoFlujo.plantillas.seleccionadas ?? [])
+            .filter((plantilla) => {
+                const id = this.toNumber(plantilla?.Id);
+                return !oldOtorgadas.has(id) || resolvedIds.has(id);
+            });
+        const idsSeleccionadas = new Set(seleccionadasSinOtorgadasStale.map((plantilla) => this.toNumber(plantilla?.Id)));
+
+        resolved.forEach((plantilla) => {
+            const id = this.toNumber(plantilla?.Id);
+            if (id > 0 && !idsSeleccionadas.has(id)) {
+                seleccionadasSinOtorgadasStale.push(plantilla);
+                idsSeleccionadas.add(id);
+            }
+        });
+
+        const confirmadas = new Set(
+            (this.estadoFlujo.plantillas.confirmadasIds ?? [])
+                .map((id) => this.toNumber(id))
+                .filter((id) => id > 0 && (!oldOtorgadas.has(id) || resolvedIds.has(id)))
+        );
+        resolvedIds.forEach((id) => confirmadas.add(id));
+
+        this.estadoFlujo.plantillas.seleccionadas = seleccionadasSinOtorgadasStale;
+        this.estadoFlujo.plantillas.confirmadasIds = Array.from(confirmadas);
+        this.estadoFlujo.plantillas.otorgadasRazaIds = Array.from(resolvedIds);
+        this.estadoFlujo.plantillas.otorgadasRazaPendientes = pendientes;
+    }
+
+    private getReferenciasPlantillasOtorgadasPorRaza(): RazaPlantillaReferencia[] {
+        const resultado: RazaPlantillaReferencia[] = [];
+        const vistos = new Set<string>();
+        (this.razaSeleccionada?.Plantillas_por_subtipo ?? []).forEach((grupo) => {
+            (grupo?.Plantillas ?? []).forEach((plantilla) => {
+                const id = this.toNumber(plantilla?.Id);
+                const nombre = `${plantilla?.Nombre ?? ''}`.trim();
+                const key = id > 0 ? `id:${id}` : `n:${this.normalizarTexto(nombre)}`;
+                if ((id <= 0 && nombre.length < 1) || vistos.has(key))
+                    return;
+                vistos.add(key);
+                resultado.push({
+                    Id: id,
+                    Nombre: nombre,
+                    Descripcion: `${plantilla?.Descripcion ?? ''}`.trim(),
+                });
+            });
+        });
+        return resultado;
+    }
+
+    private resolverPlantillaOtorgadaPorRaza(ref: RazaPlantillaReferencia): Plantilla | null {
+        const id = this.toNumber(ref?.Id);
+        if (id > 0) {
+            const porId = (this.estadoFlujo.plantillas.disponibles ?? [])
+                .find((plantilla) => this.toNumber(plantilla?.Id) === id);
+            if (porId)
+                return porId;
+        }
+        const nombre = this.normalizarTexto(ref?.Nombre ?? '');
+        if (nombre.length < 1)
+            return null;
+        return (this.estadoFlujo.plantillas.disponibles ?? [])
+            .find((plantilla) => this.normalizarTexto(plantilla?.Nombre ?? '') === nombre) ?? null;
     }
 
     private buscarTipoCriaturaPorId(idTipo: number): TipoCriatura | null {
@@ -8241,6 +8337,8 @@ export class NuevoPersonajeService {
                 plantillas: {
                     seleccionadas: this.clonarProfundo(this.estadoFlujo.plantillas.seleccionadas),
                     confirmadasIds: this.clonarProfundo(this.estadoFlujo.plantillas.confirmadasIds),
+                    otorgadasRazaIds: this.clonarProfundo(this.estadoFlujo.plantillas.otorgadasRazaIds),
+                    otorgadasRazaPendientes: this.clonarProfundo(this.estadoFlujo.plantillas.otorgadasRazaPendientes),
                     retornoFinNivelPendiente: this.estadoFlujo.plantillas.retornoFinNivelPendiente === true,
                     tipoCriaturaSimulada: this.clonarProfundo(this.estadoFlujo.plantillas.tipoCriaturaSimulada),
                     licantropiaActiva: this.estadoFlujo.plantillas.licantropiaActiva === true,
@@ -8305,6 +8403,8 @@ export class NuevoPersonajeService {
                 ...this.crearPlantillasFlujoBase(),
                 seleccionadas: this.clonarProfundo(flujoPersistido.plantillas?.seleccionadas ?? []),
                 confirmadasIds: this.clonarProfundo(flujoPersistido.plantillas?.confirmadasIds ?? []),
+                otorgadasRazaIds: this.clonarProfundo(flujoPersistido.plantillas?.otorgadasRazaIds ?? []),
+                otorgadasRazaPendientes: this.clonarProfundo(flujoPersistido.plantillas?.otorgadasRazaPendientes ?? []),
                 retornoFinNivelPendiente: flujoPersistido.plantillas?.retornoFinNivelPendiente === true,
                 tipoCriaturaSimulada: this.clonarProfundo(
                     flujoPersistido.plantillas?.tipoCriaturaSimulada ?? this.crearPlantillasFlujoBase().tipoCriaturaSimulada
@@ -8694,6 +8794,8 @@ export class NuevoPersonajeService {
             disponibles: [],
             seleccionadas: [],
             confirmadasIds: [],
+            otorgadasRazaIds: [],
+            otorgadasRazaPendientes: [],
             retornoFinNivelPendiente: false,
             tipoCriaturaSimulada: {
                 Id: this.toNumber(this.personajeCreacion?.Tipo_criatura?.Id),

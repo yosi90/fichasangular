@@ -81,7 +81,14 @@ export interface UserPublicProfileTab {
 }
 
 export type UserPrivateProfileSectionId = 'resumen' | 'campanas' | 'identidad' | 'preferencias' | 'seguridad';
-export type AdminPanelSectionId = 'usuarios' | 'role-requests';
+export type AdminPanelSectionId =
+    | 'usuarios'
+    | 'role-requests'
+    | 'feedback-bugs'
+    | 'feedback-features'
+    | 'moderacion'
+    | 'auditoria'
+    | 'sync';
 export type AccountRestrictionSectionId = 'resumen';
 
 export interface UserPrivateProfileOpenRequest {

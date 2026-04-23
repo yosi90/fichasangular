@@ -142,43 +142,85 @@ export class ArmaduraService {
     getArmaduras(): Observable<ArmaduraDetalle[]> {
         return new Observable((observador) => {
             let unsubscribe: Unsubscribe;
+            let fallbackEnCurso = false;
 
             const onNext = (snapshot: any) => {
-                const armaduras: ArmaduraDetalle[] = [];
-                snapshot.forEach((obj: any) => {
-                    const armadura = normalizeArmadura(obj.val());
-                    if (armadura.Id > 0)
-                        armaduras.push(armadura);
+                const armaduras = this.normalizeArmadurasSnapshot(snapshot);
+                if (armaduras.length > 0) {
+                    observador.next(armaduras);
+                    return;
+                }
+
+                if (fallbackEnCurso)
+                    return;
+                fallbackEnCurso = true;
+
+                this.syncArmaduras().subscribe({
+                    next: (response) => {
+                        const apiArmaduras = this.normalizeArmadurasResponse(response);
+                        observador.next(apiArmaduras);
+                        this.refrescarArmadurasCacheBestEffort(apiArmaduras);
+                    },
+                    error: (error) => observador.error(error),
+                    complete: () => fallbackEnCurso = false,
                 });
-                armaduras.sort((a, b) => a.Nombre.localeCompare(b.Nombre, "es", { sensitivity: "base" }));
-                observador.next(armaduras);
             };
 
             const onError = (error: any) => {
                 observador.error(error);
             };
 
-            unsubscribe = this.firebaseContextSvc.run(() => {
-                const dbRef = ref(this.db, "Armaduras");
-                return onValue(dbRef, onNext, onError);
-            });
+            unsubscribe = this.watchArmadurasPath(onNext, onError);
             return () => unsubscribe();
         });
+    }
+
+    protected watchArmadurasPath(onNext: (snapshot: any) => void, onError: (error: any) => void): Unsubscribe {
+        return this.firebaseContextSvc.run(() => {
+            const dbRef = ref(this.db, "Armaduras");
+            return onValue(dbRef, onNext, onError);
+        });
+    }
+
+    protected writeArmaduraCache(armadura: ArmaduraDetalle): Promise<void> {
+        return this.firebaseContextSvc.run(() => set(ref(this.db, `Armaduras/${armadura.Id}`), armadura));
     }
 
     private syncArmaduras() {
         return this.http.get(`${environment.apiUrl}armaduras`);
     }
 
+    private normalizeArmadurasSnapshot(snapshot: any): ArmaduraDetalle[] {
+        if (!snapshot?.exists?.())
+            return [];
+        return this.normalizeArmadurasResponse(snapshot.val?.());
+    }
+
+    private normalizeArmadurasResponse(response: any): ArmaduraDetalle[] {
+        const armaduras = toArray(response)
+            .map((raw: any) => normalizeArmadura(raw))
+            .filter((armadura) => armadura.Id > 0);
+        armaduras.sort((a, b) => a.Nombre.localeCompare(b.Nombre, "es", { sensitivity: "base" }));
+        return armaduras;
+    }
+
+    private async refrescarArmadurasCacheBestEffort(armaduras: ArmaduraDetalle[]): Promise<void> {
+        try {
+            await Promise.all(
+                armaduras.map((armadura) => this.writeArmaduraCache(armadura))
+            );
+        } catch {
+            // Best-effort: la respuesta REST ya alimenta la UI.
+        }
+    }
+
     public async RenovarArmaduras(): Promise<boolean> {
         try {
             const response = await firstValueFrom(this.syncArmaduras());
-            const armaduras = toArray(response)
-                .map((raw: any) => normalizeArmadura(raw))
-                .filter((armadura) => armadura.Id > 0);
+            const armaduras = this.normalizeArmadurasResponse(response);
 
             await Promise.all(
-                armaduras.map((armadura) => this.firebaseContextSvc.run(() => set(ref(this.db, `Armaduras/${armadura.Id}`), armadura)))
+                armaduras.map((armadura) => this.writeArmaduraCache(armadura))
             );
 
             Swal.fire({

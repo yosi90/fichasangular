@@ -1,5 +1,6 @@
-import { fakeAsync, tick } from '@angular/core/testing';
+import { fakeAsync, flushMicrotasks, tick } from '@angular/core/testing';
 import { BehaviorSubject, of, Subject } from 'rxjs';
+import Swal from 'sweetalert2';
 import { TabControlComponent } from './tab-control.component';
 
 function crearComponente(overrides?: { pSvc?: any; }): TabControlComponent {
@@ -570,6 +571,60 @@ describe('TabControlComponent navegación por origen', () => {
             pendingOnly: true,
             requestId: 91,
         });
+    }));
+
+    it('abre la alerta de caches pendientes directamente en sincronizacion admin', fakeAsync(() => {
+        const component = crearComponente();
+        component.usrPerm = 1;
+        const cacheSyncMetadataSvc = (component as any).__cacheSyncMetadataSvc;
+        cacheSyncMetadataSvc.getSnapshotOnce.and.resolveTo({
+            razas: {
+                lastSuccessAt: Date.now(),
+                lastSuccessIso: new Date().toISOString(),
+                schemaVersionApplied: 0,
+                staleReason: null,
+            },
+        });
+        cacheSyncMetadataSvc.buildUiState.and.returnValue([
+            { key: 'razas', label: 'Razas', schemaVersion: 5, lastSuccessAt: null, lastSuccessIso: null, isPrimary: true },
+        ]);
+        spyOn(Swal, 'fire').and.returnValue(Promise.resolve({ isConfirmed: true } as any) as any);
+
+        (component as any).verificarPendientesCacheAdminEnInicio();
+        flushMicrotasks();
+
+        expect(component.adminPanelTabOpen).toBeTrue();
+        expect(component.adminPanelOpenRequest).toEqual(jasmine.objectContaining({
+            section: 'sync',
+        }));
+        tick(80);
+    }));
+
+    it('reintenta la alerta de caches pendientes si una lectura previa falla', fakeAsync(() => {
+        const component = crearComponente();
+        component.usrPerm = 1;
+        const cacheSyncMetadataSvc = (component as any).__cacheSyncMetadataSvc;
+        cacheSyncMetadataSvc.getSnapshotOnce.and.rejectWith(new Error('permission_denied'));
+        spyOn(Swal, 'fire').and.returnValue(Promise.resolve({ isConfirmed: false } as any) as any);
+
+        (component as any).verificarPendientesCacheAdminEnInicio();
+        flushMicrotasks();
+
+        expect(Swal.fire).not.toHaveBeenCalled();
+
+        cacheSyncMetadataSvc.getSnapshotOnce.and.resolveTo({
+            maniobrabilidades: null,
+        });
+        cacheSyncMetadataSvc.buildUiState.and.returnValue([
+            { key: 'maniobrabilidades', label: 'Maniobrabilidades', schemaVersion: 1, lastSuccessAt: null, lastSuccessIso: null, isPrimary: true },
+        ]);
+
+        (component as any).verificarPendientesCacheAdminEnInicio();
+        flushMicrotasks();
+
+        expect(Swal.fire).toHaveBeenCalledWith(jasmine.objectContaining({
+            title: 'Hay catálogos desactualizados',
+        }));
     }));
 
     it('cerrar admin panel vuelve a la pestaña origen', fakeAsync(() => {

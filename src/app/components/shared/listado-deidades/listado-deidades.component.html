@@ -10,13 +10,11 @@
                     <mat-label>Incluye texto</mat-label>
                     <input #deidadTextInc matInput placeholder="Texto a buscar">
                 </mat-form-field>
-                <mat-form-field (click)="$event.stopPropagation();">
-                    <mat-label>Manual</mat-label>
-                    <mat-select appearance="fill" [(value)]="defaultManual" (selectionChange)="filtroDeidades();">
-                        <mat-option [value]="'Cualquiera'">Cualquiera</mat-option>
-                        <mat-option *ngFor="let manual of manuales" [value]="manual.Nombre">{{manual.Nombre}}</mat-option>
-                    </mat-select>
-                </mat-form-field>
+                <app-manual-autocomplete
+                    [manuales]="manuales"
+                    [(value)]="defaultManual"
+                    (selectionChange)="filtroDeidades()">
+                </app-manual-autocomplete>
                 <mat-form-field (click)="$event.stopPropagation();">
                     <mat-label>Alineamiento</mat-label>
                     <mat-select appearance="fill" [(value)]="defaultAlineamiento" (selectionChange)="filtroDeidades();">

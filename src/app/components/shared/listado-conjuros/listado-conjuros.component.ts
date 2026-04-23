@@ -3,9 +3,7 @@ import { MatPaginator } from '@angular/material/paginator';
 import { MatSort } from '@angular/material/sort';
 import { MatTableDataSource } from '@angular/material/table';
 import { Conjuro } from 'src/app/interfaces/conjuro';
-import { Manual } from 'src/app/interfaces/manual';
 import { ConjuroService } from 'src/app/services/conjuro.service';
-import { ManualService } from 'src/app/services/manual.service';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
 
 @Component({
@@ -16,7 +14,7 @@ import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-
 })
 export class ListadoConjurosComponent {
     conjuros: Conjuro[] = [];
-    Manuales: Manual[] = [];
+    Manuales: string[] = [];
     defaultManual: string = 'Cualquiera';
     conjurosDS = new MatTableDataSource(this.conjuros);
     conjuroColumns = ['Nombre', 'Manual', 'Arcano', 'Divino', 'Psionico', 'Alma'];
@@ -24,7 +22,6 @@ export class ListadoConjurosComponent {
     constructor(
         private cdr: ChangeDetectorRef,
         private cSvc: ConjuroService,
-        private mSvc: ManualService,
         private manualDetalleNavSvc: ManualDetalleNavigationService
     ) { }
 
@@ -37,13 +34,11 @@ export class ListadoConjurosComponent {
         this.conjurosDS.sort = this.conjuroSort;
         (this.cSvc.getConjuros()).subscribe(conjuros => {
             this.conjuros = conjuros;
-            (this.mSvc.getManuales()).subscribe(manuales => {
-                this.Manuales = [...manuales].sort((a, b) => a.Nombre.localeCompare(b.Nombre, 'es', { sensitivity: 'base' }));
-                this.defaultManual = 'Cualquiera';
-                this.cdr.detectChanges();
-                this.filtroConjuros();
-                this.cdr.detectChanges();
-            });
+            this.Manuales = this.buildManualesDisponibles(this.conjuros);
+            this.defaultManual = 'Cualquiera';
+            this.cdr.detectChanges();
+            this.filtroConjuros();
+            this.cdr.detectChanges();
         });
     }
 
@@ -90,5 +85,13 @@ export class ListadoConjurosComponent {
         event?.preventDefault();
         event?.stopPropagation();
         this.manualDetalleNavSvc.abrirDetalleManual(conjuro?.Manual);
+    }
+
+    private buildManualesDisponibles(conjuros: Conjuro[]): string[] {
+        return Array.from(new Set(
+            (conjuros ?? [])
+                .map((conjuro) => `${conjuro?.Manual ?? ''}`.trim())
+                .filter((nombre) => nombre.length > 0)
+        )).sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' }));
     }
 }

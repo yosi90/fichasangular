@@ -2,12 +2,10 @@ import { ChangeDetectorRef, Component, ElementRef, EventEmitter, OnDestroy, Outp
 import { MatPaginator } from '@angular/material/paginator';
 import { MatSort } from '@angular/material/sort';
 import { MatTableDataSource } from '@angular/material/table';
-import { Subject, combineLatest, takeUntil } from 'rxjs';
+import { Subject, takeUntil } from 'rxjs';
 import { ArmaDetalle } from 'src/app/interfaces/arma';
-import { Manual } from 'src/app/interfaces/manual';
 import { ArmaService } from 'src/app/services/arma.service';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
-import { ManualService } from 'src/app/services/manual.service';
 
 @Component({
     selector: 'app-listado-armas',
@@ -17,7 +15,7 @@ import { ManualService } from 'src/app/services/manual.service';
 })
 export class ListadoArmasComponent implements OnDestroy {
     armas: ArmaDetalle[] = [];
-    manuales: Manual[] = [];
+    manuales: string[] = [];
     defaultManual = 'Cualquiera';
     defaultTipoArma = 'Cualquiera';
     armasDS = new MatTableDataSource<ArmaDetalle>([]);
@@ -35,7 +33,6 @@ export class ListadoArmasComponent implements OnDestroy {
     constructor(
         private cdr: ChangeDetectorRef,
         private armaSvc: ArmaService,
-        private manualSvc: ManualService,
         private manualDetalleNavSvc: ManualDetalleNavigationService
     ) { }
 
@@ -48,16 +45,13 @@ export class ListadoArmasComponent implements OnDestroy {
         this.armasDS.sort = this.armaSort;
         this.armasDS.sortingDataAccessor = (item, property) => this.sortingAccessor(item, property);
 
-        combineLatest([
-            this.armaSvc.getArmas(),
-            this.manualSvc.getManuales(),
-        ])
+        this.armaSvc.getArmas()
             .pipe(takeUntil(this.destroy$))
-            .subscribe(([armas, manuales]) => {
+            .subscribe((armas) => {
                 this.armas = [...(armas ?? [])]
                     .filter(arma => Number(arma?.Id) > 0)
                     .sort((a, b) => a.Nombre.localeCompare(b.Nombre, 'es', { sensitivity: 'base' }));
-                this.manuales = [...(manuales ?? [])].sort((a, b) => a.Nombre.localeCompare(b.Nombre, 'es', { sensitivity: 'base' }));
+                this.manuales = this.buildManualesDisponibles(this.armas);
                 this.defaultManual = 'Cualquiera';
                 this.defaultTipoArma = 'Cualquiera';
                 this.filtroArmas();
@@ -161,6 +155,14 @@ export class ListadoArmasComponent implements OnDestroy {
         if (property === 'Tipo_dano')
             return `${item?.Tipo_dano?.Nombre ?? ''}`;
         return (item as any)?.[property] ?? '';
+    }
+
+    private buildManualesDisponibles(armas: ArmaDetalle[]): string[] {
+        return Array.from(new Set(
+            (armas ?? [])
+                .map((arma) => `${arma?.Manual?.Nombre ?? ''}`.trim())
+                .filter((nombre) => nombre.length > 0)
+        )).sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' }));
     }
 
     private normalizar(value: string | null | undefined): string {

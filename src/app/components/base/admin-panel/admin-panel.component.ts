@@ -4,6 +4,7 @@ import Swal from 'sweetalert2';
 import { CACHE_CONTRACT_MANIFEST, CacheEntityKey } from 'src/app/config/cache-contract-manifest';
 import { ClaseService } from 'src/app/services/clase.service';
 import { ConjuroService } from 'src/app/services/conjuro.service';
+import { ConjuroCatalogosService } from 'src/app/services/conjuro-catalogos.service';
 import { DisciplinaConjurosService } from 'src/app/services/disciplina-conjuros.service';
 import { DoteService } from 'src/app/services/dote.service';
 import { EscuelaConjurosService } from 'src/app/services/escuela-conjuros.service';
@@ -15,9 +16,9 @@ import { ManualService } from 'src/app/services/manual.service';
 import { ManualesAsociadosService } from 'src/app/services/manuales-asociados.service';
 import { PersonajeService } from 'src/app/services/personaje.service';
 import { PlantillaService } from 'src/app/services/plantilla.service';
-import { RacialService } from 'src/app/services/racial.service';
 import { RasgoService } from 'src/app/services/rasgo.service';
 import { RazaService } from 'src/app/services/raza.service';
+import { RazaCatalogosService } from 'src/app/services/raza-catalogos.service';
 import { SubtipoService } from 'src/app/services/subtipo.service';
 import { TipoCriaturaService } from 'src/app/services/tipo-criatura.service';
 import { VerifyConnectionService } from 'src/app/services/utils/verify-connection.service';
@@ -126,7 +127,7 @@ interface AdminPolicyEditorModalState {
     styleUrls: ['./admin-panel.component.sass'],
     standalone: false
 })
-export class AdminPanelComponent implements OnInit, OnDestroy {
+export class AdminPanelComponent implements OnInit, OnChanges, OnDestroy {
     @Input() openRequest: AdminPanelOpenRequest | null = null;
 
     hasCon?: boolean;
@@ -145,6 +146,8 @@ export class AdminPanelComponent implements OnInit, OnDestroy {
     serverStatus: string = 'Verificar conexión';
     syncItems: SyncItemUi[] = [];
     syncItemsOrdenados: SyncItemUi[] = [];
+    syncFiltroTexto: string = '';
+    syncSoloPendientes: boolean = false;
     solicitudesMasterPendientes: AdminRoleRequestItem[] = [];
     solicitudesColaboradorPendientes: AdminRoleRequestItem[] = [];
     solicitudesAprobadas: AdminRoleRequestItem[] = [];
@@ -230,6 +233,9 @@ export class AdminPanelComponent implements OnInit, OnDestroy {
     private readonly userOpsInFlight = new Set<string>();
     private readonly roleRequestOpsInFlight = new Set<number>();
     private roleRequestsLoadedOnce: boolean = false;
+    private roleRequestsLoadPendingForAdmin: boolean = false;
+    private roleRequestsLoadPromise: Promise<void> | null = null;
+    private roleRequestsNotificationRetryHandle: ReturnType<typeof setTimeout> | null = null;
     private moderacionAdminLoadedOnce: boolean = false;
     private readonly dateFormatter = new Intl.DateTimeFormat('es-ES', {
         day: '2-digit',
@@ -261,7 +267,6 @@ export class AdminPanelComponent implements OnInit, OnDestroy {
         private doSvc: DoteService,
         private clSvc: ClaseService,
         private espSvc: EspecialService,
-        private racialSvc: RacialService,
         private habSvc: HabilidadService,
         private idiSvc: IdiomaService,
         private enemigoPredilectoSvc: EnemigoPredilectoService,
@@ -283,6 +288,8 @@ export class AdminPanelComponent implements OnInit, OnDestroy {
         private usuariosApiSvc: UsuariosApiService,
         private userProfileApiSvc: UserProfileApiService,
         private chatRealtimeSvc: ChatRealtimeService,
+        private razaCatalogosSvc: RazaCatalogosService,
+        private conjuroCatalogosSvc: ConjuroCatalogosService,
     ) {
         this.syncRunners = {
             monstruos: () => this.monstruoSvc.RenovarMonstruos(),
@@ -299,7 +306,6 @@ export class AdminPanelComponent implements OnInit, OnDestroy {
             dotes: () => this.doSvc.RenovarDotes(),
             clases: () => this.clSvc.RenovarClases(),
             especiales: () => this.espSvc.RenovarEspeciales(),
-            raciales: () => this.racialSvc.RenovarRaciales(),
             escuelas_conjuros: () => this.escSvc.RenovarEscuelas(),
             disciplinas_conjuros: () => this.disSvc.RenovarDisciplinas(),
             subdisciplinas_conjuros: () => this.subdisSvc.RenovarSubdisciplinas(),
@@ -309,6 +315,13 @@ export class AdminPanelComponent implements OnInit, OnDestroy {
             alineamientos_prioridades: () => this.aSvc.RenovarAlineamientosPrioridades(),
             alineamientos_preferencia_ley: () => this.aSvc.RenovarAlineamientosPreferenciaLey(),
             alineamientos_preferencia_moral: () => this.aSvc.RenovarAlineamientosPreferenciaMoral(),
+            actitudes: () => this.aSvc.RenovarActitudes(),
+            maniobrabilidades: () => this.razaCatalogosSvc.RenovarManiobrabilidades(),
+            tipos_dado: () => this.razaCatalogosSvc.RenovarTiposDado(),
+            componentes_conjuros: () => this.conjuroCatalogosSvc.RenovarComponentes(),
+            tiempos_lanzamiento: () => this.conjuroCatalogosSvc.RenovarTiemposLanzamiento(),
+            alcances_conjuros: () => this.conjuroCatalogosSvc.RenovarAlcances(),
+            descriptores_conjuros: () => this.conjuroCatalogosSvc.RenovarDescriptores(),
             habilidades: () => this.habSvc.RenovarHabilidades(),
             habilidades_custom: () => this.habSvc.RenovarHabilidadesCustom(),
             idiomas: () => this.idiSvc.RenovarIdiomas(),
@@ -333,17 +346,15 @@ export class AdminPanelComponent implements OnInit, OnDestroy {
         this.userSvc.esAdmin$
             .pipe(takeUntil(this.destroy$))
             .subscribe((estado) => {
-                this.esAdmin = estado === true;
-                if (this.esAdmin)
-                    void this.validarAccesoAdmin();
+                void this.onAdminStateChanged(estado === true);
             });
         this.chatRealtimeSvc.alertCandidate$
             .pipe(takeUntil(this.destroy$))
             .subscribe((candidate) => {
                 if (!this.esAdmin || !this.isRealtimeRoleRequestNotification(candidate))
                     return;
-                if (this.currentSection === 'role-requests' && this.roleRequestsLoadedOnce)
-                    void this.cargarSolicitudesRolPendientes();
+                if (this.currentSection === 'role-requests')
+                    void this.cargarSolicitudesRolPendientes({ retryOnceIfEmpty: true });
             });
         this.adminUsersSvc.watchUsersAdminView()
             .pipe(takeUntil(this.destroy$))
@@ -391,6 +402,7 @@ export class AdminPanelComponent implements OnInit, OnDestroy {
     }
 
     ngOnDestroy(): void {
+        this.cancelRoleRequestsNotificationRetry();
         this.destroy$.next();
         this.destroy$.complete();
     }
@@ -415,6 +427,26 @@ export class AdminPanelComponent implements OnInit, OnDestroy {
                 return a.isPrimary ? -1 : 1;
             return a.label.localeCompare(b.label, 'es', { sensitivity: 'base' });
         });
+    }
+
+    get syncItemsVisibles(): SyncItemUi[] {
+        const filtro = this.normalizarTexto(this.syncFiltroTexto);
+        return this.syncItemsOrdenados.filter((item) => {
+            if (this.syncSoloPendientes && !item.isPrimary)
+                return false;
+            if (filtro.length < 1)
+                return true;
+            const texto = this.normalizarTexto(`${item.label} ${item.key} ${item.lastSuccessTexto}`);
+            return texto.includes(filtro);
+        });
+    }
+
+    get syncPendientesCount(): number {
+        return this.syncItemsOrdenados.filter((item) => item.isPrimary).length;
+    }
+
+    toggleSyncSoloPendientes(): void {
+        this.syncSoloPendientes = !this.syncSoloPendientes;
     }
 
     async ejecutarSync(item: SyncItemUi): Promise<void> {
@@ -1464,20 +1496,58 @@ export class AdminPanelComponent implements OnInit, OnDestroy {
         return this.hasEffectiveBan(row) ? 'Ban retirado' : 'Bloqueo retirado';
     }
 
-    private async validarAccesoAdmin(): Promise<void> {
+    private async onAdminStateChanged(isAdmin: boolean): Promise<void> {
+        this.esAdmin = isAdmin;
+        if (!this.esAdmin) {
+            this.roleRequestsLoadPendingForAdmin = false;
+            this.cancelRoleRequestsNotificationRetry();
+            return;
+        }
+
+        const hasRuntimeAccess = await this.validarAccesoAdmin();
+        if (!hasRuntimeAccess)
+            return;
+
+        if (this.currentSection === 'role-requests' || this.roleRequestsLoadPendingForAdmin) {
+            this.roleRequestsLoadPendingForAdmin = false;
+            await this.cargarSolicitudesRolPendientes({
+                retryOnceIfEmpty: this.resaltarSolicitudesPendientes,
+            });
+        }
+    }
+
+    private async validarAccesoAdmin(): Promise<boolean> {
         try {
             await this.adminUsersSvc.assertAdminAccess();
+            return true;
         } catch (error: any) {
             this.errorUsuarios = error?.message ?? 'No autorizado';
             this.userSvc.setCanonicalAdminAccess(false);
             this.esAdmin = false;
+            return false;
         }
     }
 
-    async cargarSolicitudesRolPendientes(): Promise<void> {
-        if (!this.esAdmin)
+    async cargarSolicitudesRolPendientes(options: { retryOnceIfEmpty?: boolean } = {}): Promise<void> {
+        if (!this.esAdmin) {
+            this.roleRequestsLoadPendingForAdmin = true;
             return;
+        }
 
+        if (this.roleRequestsLoadPromise) {
+            await this.roleRequestsLoadPromise;
+            return;
+        }
+
+        this.roleRequestsLoadPromise = this.cargarSolicitudesRolPendientesInternal(options);
+        try {
+            await this.roleRequestsLoadPromise;
+        } finally {
+            this.roleRequestsLoadPromise = null;
+        }
+    }
+
+    private async cargarSolicitudesRolPendientesInternal(options: { retryOnceIfEmpty?: boolean }): Promise<void> {
         this.cargandoSolicitudesRol = true;
         this.errorSolicitudesRol = '';
         try {
@@ -1496,6 +1566,10 @@ export class AdminPanelComponent implements OnInit, OnDestroy {
             this.solicitudesRechazadas = rechazadas;
             this.roleRequestsLoadedOnce = true;
             this.roleRequestsSqlAccessDenied = false;
+            if (options.retryOnceIfEmpty === true && !this.haySolicitudesRolPendientes)
+                this.scheduleRoleRequestsNotificationRetry();
+            else
+                this.cancelRoleRequestsNotificationRetry();
         } catch (error: any) {
             this.handleRoleRequestsLoadError(error, 'No se pudieron cargar las solicitudes pendientes');
         } finally {
@@ -1509,6 +1583,8 @@ export class AdminPanelComponent implements OnInit, OnDestroy {
 
     onSolicitudesPanelClosed(): void {
         this.currentSection = 'usuarios';
+        this.roleRequestsLoadPendingForAdmin = false;
+        this.cancelRoleRequestsNotificationRetry();
     }
 
     async onModeracionPanelOpened(): Promise<void> {
@@ -1828,17 +1904,35 @@ export class AdminPanelComponent implements OnInit, OnDestroy {
 
         this.currentSection = section;
         this.resaltarSolicitudesPendientes = false;
+        if (section !== 'role-requests') {
+            this.roleRequestsLoadPendingForAdmin = false;
+            this.cancelRoleRequestsNotificationRetry();
+        }
         await this.ensureSectionLoaded(section);
     }
 
     private aplicarOpenRequest(request: AdminPanelOpenRequest): void {
-        this.currentSection = request?.section === 'role-requests' ? 'role-requests' : 'usuarios';
-        this.resaltarSolicitudesPendientes = request?.section === 'role-requests' && request?.pendingOnly === true;
+        const section = this.resolveOpenRequestSection(request?.section);
+        this.currentSection = section;
+        this.resaltarSolicitudesPendientes = section === 'role-requests' && request?.pendingOnly === true;
 
-        if (request?.section === 'role-requests') {
-            void this.cargarSolicitudesRolPendientes();
+        if (section === 'role-requests') {
+            void this.cargarSolicitudesRolPendientes({
+                retryOnceIfEmpty: request?.pendingOnly === true,
+            });
             this.scrollToRoleRequests();
+            return;
         }
+
+        this.cancelRoleRequestsNotificationRetry();
+        this.roleRequestsLoadPendingForAdmin = false;
+        void this.ensureSectionLoaded(section);
+    }
+
+    private resolveOpenRequestSection(section: AdminPanelOpenRequest['section'] | null | undefined): AdminPanelViewSectionId {
+        return this.sectionItems.some((item) => item.id === section)
+            ? section as AdminPanelViewSectionId
+            : 'usuarios';
     }
 
     private async ensureSectionLoaded(section: AdminPanelViewSectionId): Promise<void> {
@@ -1869,6 +1963,25 @@ export class AdminPanelComponent implements OnInit, OnDestroy {
                 block: 'start',
             });
         }, 50);
+    }
+
+    private scheduleRoleRequestsNotificationRetry(): void {
+        this.cancelRoleRequestsNotificationRetry();
+        this.roleRequestsNotificationRetryHandle = setTimeout(() => {
+            this.roleRequestsNotificationRetryHandle = null;
+            if (!this.esAdmin || this.currentSection !== 'role-requests' || !this.resaltarSolicitudesPendientes)
+                return;
+
+            void this.cargarSolicitudesRolPendientes();
+        }, 900);
+    }
+
+    private cancelRoleRequestsNotificationRetry(): void {
+        if (!this.roleRequestsNotificationRetryHandle)
+            return;
+
+        clearTimeout(this.roleRequestsNotificationRetryHandle);
+        this.roleRequestsNotificationRetryHandle = null;
     }
 
     private scrollToModeration(): void {

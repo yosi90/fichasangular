@@ -17,12 +17,13 @@
                 <mat-label>Buscar dote</mat-label>
                 <input matInput [(ngModel)]="filtroTexto" (ngModelChange)="onFiltrosChange()" placeholder="Nombre, descripción o beneficio">
             </mat-form-field>
-            <mat-form-field appearance="fill" class="tw-w-full">
-                <mat-label>Manual</mat-label>
-                <mat-select [(ngModel)]="filtroManual" (ngModelChange)="onFiltrosChange()">
-                    <mat-option *ngFor="let manual of manualesDisponibles" [value]="manual">{{manual}}</mat-option>
-                </mat-select>
-            </mat-form-field>
+            <app-manual-autocomplete
+                class="tw-w-full"
+                [manuales]="manualesDisponibles"
+                [includeAny]="false"
+                [(value)]="filtroManual"
+                (selectionChange)="onFiltrosChange()">
+            </app-manual-autocomplete>
             <mat-form-field appearance="fill" class="tw-w-full">
                 <mat-label>Tipo</mat-label>
                 <mat-select [(ngModel)]="filtroTipo" (ngModelChange)="onFiltrosChange()">

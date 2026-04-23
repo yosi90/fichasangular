@@ -147,10 +147,12 @@
             {{getEtiquetaListadoTab(listadoTab)}}
             <button (click)="quitarListado(listadoTab)" mat-icon-button class="tw-ms-2"><mat-icon>close</mat-icon></button>
         </ng-template>
-        <ng-container *ngIf="listadoTab.operacion === 'insertar' && (listadoTab.tipo === 'dotes' || listadoTab.tipo === 'conjuros'); else listadoGenerico">
+        <ng-container *ngIf="listadoTab.operacion === 'insertar' && (listadoTab.tipo === 'dotes' || listadoTab.tipo === 'conjuros' || listadoTab.tipo === 'razas' || listadoTab.tipo === 'raciales'); else listadoGenerico">
             <div class="insercion-dotes-shell">
                 <app-nueva-dote *ngIf="listadoTab.tipo === 'dotes'"></app-nueva-dote>
                 <app-nueva-conjuro *ngIf="listadoTab.tipo === 'conjuros'"></app-nueva-conjuro>
+                <app-nueva-raza *ngIf="listadoTab.tipo === 'razas'"></app-nueva-raza>
+                <app-nueva-racial *ngIf="listadoTab.tipo === 'raciales'"></app-nueva-racial>
             </div>
         </ng-container>
         <ng-template #listadoGenerico>

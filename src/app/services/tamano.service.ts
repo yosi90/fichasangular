@@ -99,7 +99,7 @@ export class TamanoService {
                     if (tamano.Id > 0)
                         tamanos.push(tamano);
                 });
-                tamanos.sort((a, b) => a.Nombre.localeCompare(b.Nombre, "es", { sensitivity: "base" }));
+                tamanos.sort((a, b) => a.Id - b.Id);
                 observador.next(tamanos);
             };
 

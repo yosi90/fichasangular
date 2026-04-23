@@ -1,4 +1,7 @@
 @use '../../../../assets/css/preformas/_detalles' as *
+:host
+    position: relative
+
 .chip-clic
     cursor: pointer
 
@@ -32,4 +35,20 @@
 .combate-titulo
     width: calc(100% - .5rem)
 
+.maniobrabilidad-chip
+    ::ng-deep .mat-mdc-chip-action-label
+        display: inline-flex
+        align-items: center
+        gap: 0.25rem
 
+.maniobrabilidad-help-btn
+    width: 24px
+    height: 24px
+    padding: 0
+    margin-left: 0.15rem
+    color: inherit
+
+    mat-icon
+        width: 17px
+        height: 17px
+        font-size: 17px

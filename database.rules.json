@@ -56,11 +56,33 @@
         ".write": "auth != null && root.child('Acl/users/' + auth.uid + '/roles/admin').val() === true && root.child('Acl/users/' + auth.uid + '/roles/type').val() === 'admin'"
       }
     },
+    "CacheSyncReports": {
+      ".read": "false",
+      ".write": "false",
+      "CatalogMisses": {
+        ".read": "auth != null && root.child('Acl/users/' + auth.uid + '/roles/admin').val() === true && root.child('Acl/users/' + auth.uid + '/roles/type').val() === 'admin'",
+        ".write": "auth != null && root.child('Acl/users/' + auth.uid + '/roles/admin').val() === true && root.child('Acl/users/' + auth.uid + '/roles/type').val() === 'admin'",
+        "$cacheKey": {
+          "$uid": {
+            ".write": "auth != null && (auth.uid === $uid || (root.child('Acl/users/' + auth.uid + '/roles/admin').val() === true && root.child('Acl/users/' + auth.uid + '/roles/type').val() === 'admin'))",
+            ".validate": "newData.val() === null || (($cacheKey === 'actitudes' || $cacheKey === 'maniobrabilidades' || $cacheKey === 'tipos_dado' || $cacheKey === 'componentes_conjuros' || $cacheKey === 'tiempos_lanzamiento' || $cacheKey === 'alcances_conjuros' || $cacheKey === 'descriptores_conjuros') && newData.hasChildren(['cacheKey', 'uid', 'reportedAt', 'reportedAtIso', 'reason']) && newData.child('cacheKey').val() === $cacheKey && newData.child('uid').val() === $uid && newData.child('reportedAt').isNumber() && newData.child('reportedAtIso').isString() && newData.child('reason').val() === 'rtdb_empty_fallback_rest')"
+          }
+        }
+      }
+    },
     "Alineamientos": {
       ".read": "true",
       ".write": "auth != null && root.child('Acl/users/' + auth.uid + '/roles/admin').val() === true && root.child('Acl/users/' + auth.uid + '/roles/type').val() === 'admin'"
     },
     "AlineamientosCatalogo": {
+      ".read": "true",
+      ".write": "auth != null && root.child('Acl/users/' + auth.uid + '/roles/admin').val() === true && root.child('Acl/users/' + auth.uid + '/roles/type').val() === 'admin'"
+    },
+    "Actitudes": {
+      ".read": "true",
+      ".write": "auth != null && root.child('Acl/users/' + auth.uid + '/roles/admin').val() === true && root.child('Acl/users/' + auth.uid + '/roles/type').val() === 'admin'"
+    },
+    "AlcancesConjuros": {
       ".read": "true",
       ".write": "auth != null && root.child('Acl/users/' + auth.uid + '/roles/admin').val() === true && root.child('Acl/users/' + auth.uid + '/roles/type').val() === 'admin'"
     },
@@ -80,6 +102,10 @@
       ".read": "true",
       ".write": "auth != null && root.child('Acl/users/' + auth.uid + '/roles/admin').val() === true && root.child('Acl/users/' + auth.uid + '/roles/type').val() === 'admin'"
     },
+    "ComponentesConjuros": {
+      ".read": "true",
+      ".write": "auth != null && root.child('Acl/users/' + auth.uid + '/roles/admin').val() === true && root.child('Acl/users/' + auth.uid + '/roles/type').val() === 'admin'"
+    },
     "Companeros": {
       ".read": "true",
       ".write": "auth != null && root.child('Acl/users/' + auth.uid + '/roles/admin').val() === true && root.child('Acl/users/' + auth.uid + '/roles/type').val() === 'admin'"
@@ -89,6 +115,10 @@
       ".write": "auth != null && root.child('Acl/users/' + auth.uid + '/roles/admin').val() === true && root.child('Acl/users/' + auth.uid + '/roles/type').val() === 'admin'"
     },
     "Deidades": {
+      ".read": "true",
+      ".write": "auth != null && root.child('Acl/users/' + auth.uid + '/roles/admin').val() === true && root.child('Acl/users/' + auth.uid + '/roles/type').val() === 'admin'"
+    },
+    "DescriptoresConjuros": {
       ".read": "true",
       ".write": "auth != null && root.child('Acl/users/' + auth.uid + '/roles/admin').val() === true && root.child('Acl/users/' + auth.uid + '/roles/type').val() === 'admin'"
     },
@@ -152,6 +182,10 @@
       ".read": "true",
       ".write": "auth != null && root.child('Acl/users/' + auth.uid + '/roles/admin').val() === true && root.child('Acl/users/' + auth.uid + '/roles/type').val() === 'admin'"
     },
+    "Maniobrabilidades": {
+      ".read": "true",
+      ".write": "auth != null && root.child('Acl/users/' + auth.uid + '/roles/admin').val() === true && root.child('Acl/users/' + auth.uid + '/roles/type').val() === 'admin'"
+    },
     "Manuales": {
       ".read": "true",
       ".write": "auth != null && root.child('Acl/users/' + auth.uid + '/roles/admin').val() === true && root.child('Acl/users/' + auth.uid + '/roles/type').val() === 'admin'"
@@ -212,6 +246,14 @@
       ".read": "true",
       ".write": "auth != null && root.child('Acl/users/' + auth.uid + '/roles/admin').val() === true && root.child('Acl/users/' + auth.uid + '/roles/type').val() === 'admin'"
     },
+    "TiemposLanzamiento": {
+      ".read": "true",
+      ".write": "auth != null && root.child('Acl/users/' + auth.uid + '/roles/admin').val() === true && root.child('Acl/users/' + auth.uid + '/roles/type').val() === 'admin'"
+    },
+    "TiposDado": {
+      ".read": "true",
+      ".write": "auth != null && root.child('Acl/users/' + auth.uid + '/roles/admin').val() === true && root.child('Acl/users/' + auth.uid + '/roles/type').val() === 'admin'"
+    },
     "TiposCriatura": {
       ".read": "true",
       ".write": "auth != null && root.child('Acl/users/' + auth.uid + '/roles/admin').val() === true && root.child('Acl/users/' + auth.uid + '/roles/type').val() === 'admin'"
@@ -221,8 +263,8 @@
       ".write": "auth != null && root.child('Acl/users/' + auth.uid + '/roles/admin').val() === true && root.child('Acl/users/' + auth.uid + '/roles/type').val() === 'admin'"
     },
     "listado-personajes": {
+      ".read": "true",
       "$id": {
-        ".read": "data.child('visible_otros_usuarios').val() === true && data.child('Archivado').val() !== true && (data.child('Campaña').val() === 'Sin campaña' || data.child('Campana').val() === 'Sin campaña' || data.child('Campaña').val() === 'Sin campana' || data.child('Campana').val() === 'Sin campana')",
         ".write": "auth != null && root.child('Acl/users/' + auth.uid + '/roles/admin').val() === true && root.child('Acl/users/' + auth.uid + '/roles/type').val() === 'admin'"
       }
     },

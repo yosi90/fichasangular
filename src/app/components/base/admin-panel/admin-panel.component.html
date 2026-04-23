@@ -33,9 +33,27 @@
 
         <main class="admin-main sombra-caja-sm tw-rounded-md">
             <section class="admin-section" *ngIf="currentSection === 'sync'">
+                <div class="sync-filters">
+                    <mat-form-field appearance="fill" class="sync-filter-field">
+                        <mat-label>Filtrar catálogos</mat-label>
+                        <input
+                            matInput
+                            [ngModel]="syncFiltroTexto"
+                            (ngModelChange)="syncFiltroTexto = $event"
+                            placeholder="Nombre, clave o fecha">
+                    </mat-form-field>
+                    <mat-chip-listbox class="sync-filter-chip" aria-label="Filtros de sincronizacion">
+                        <mat-chip-option
+                            [selected]="syncSoloPendientes"
+                            (click)="toggleSyncSoloPendientes()">
+                            Pendientes {{syncPendientesCount}}
+                        </mat-chip-option>
+                    </mat-chip-listbox>
+                </div>
+
                 <div class="sync-list">
                     <button
-                        *ngFor="let item of syncItemsOrdenados; trackBy: trackBySyncItem"
+                        *ngFor="let item of syncItemsVisibles; trackBy: trackBySyncItem"
                         mat-raised-button
                         [color]="item.isPrimary ? 'warn' : 'accent'"
                         class="sync-item-btn"

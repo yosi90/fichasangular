@@ -10,14 +10,11 @@
                     <mat-label>Incluye texto</mat-label>
                     <input #tipoTextInc matInput placeholder="Texto a buscar">
                 </mat-form-field>
-                <mat-form-field (click)="$event.stopPropagation();">
-                    <mat-label>Manual</mat-label>
-                    <mat-select #manualconjuro appearance="fill" [(value)]="defaultManual"
-                        (selectionChange)="filtroTipos();">
-                        <mat-option [value]="'Cualquiera'">Cualquiera</mat-option>
-                        <mat-option *ngFor="let m of Manuales" [value]="m.Nombre">{{m.Nombre}}</mat-option>
-                    </mat-select>
-                </mat-form-field>
+                <app-manual-autocomplete
+                    [manuales]="Manuales"
+                    [(value)]="defaultManual"
+                    (selectionChange)="filtroTipos()">
+                </app-manual-autocomplete>
             </div>
             <mat-chip-option #conjurosHomebrew color="warn" class="tw-mt-4 tw-mb-1"
                 (click)="$event.stopPropagation(); AlternarTiposHombrew(conjurosHomebrew.value);">{{anuncioTiposHomebrew}}</mat-chip-option>

@@ -10,12 +10,12 @@
                     <mat-label>Incluye texto</mat-label>
                     <input #plantillaTextInc matInput placeholder="Texto a buscar">
                 </mat-form-field>
-                <mat-form-field (click)="$event.stopPropagation();">
-                    <mat-label>Manual</mat-label>
-                    <mat-select appearance="fill" [(value)]="defaultManual" (selectionChange)="filtroPlantillas();">
-                        <mat-option *ngFor="let m of manuales" [value]="m">{{m}}</mat-option>
-                    </mat-select>
-                </mat-form-field>
+                <app-manual-autocomplete
+                    [manuales]="manuales"
+                    [includeAny]="false"
+                    [(value)]="defaultManual"
+                    (selectionChange)="filtroPlantillas()">
+                </app-manual-autocomplete>
             </div>
             <div class="filtros-chips">
                 <mat-chip-option color="warn" class="filtro-chip" [selected]="incluirHomebrew"

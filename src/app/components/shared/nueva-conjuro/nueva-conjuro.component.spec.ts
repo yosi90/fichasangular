@@ -1,6 +1,7 @@
 import { NO_ERRORS_SCHEMA } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ReactiveFormsModule } from '@angular/forms';
+import { MatAutocompleteModule } from '@angular/material/autocomplete';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatChipsModule } from '@angular/material/chips';
@@ -42,6 +43,7 @@ describe('NuevaConjuroComponent', () => {
             imports: [
                 ReactiveFormsModule,
                 NoopAnimationsModule,
+                MatAutocompleteModule,
                 MatButtonModule,
                 MatCheckboxModule,
                 MatChipsModule,
@@ -160,6 +162,13 @@ describe('NuevaConjuroComponent', () => {
             'Manual sin conjuros',
         ]);
         expect(component.form.controls.id_manual.value).toBe(3);
+    });
+
+    it('trackByManualId no depende del contexto this de Angular', () => {
+        const trackBy = component.trackByManualId;
+
+        expect(trackBy(0, { Id: 12, Nombre: 'Manual base' } as any)).toBe(12);
+        expect(trackBy(1, { Id: 'x', Nombre: 'Manual invalido' } as any)).toBe(0);
     });
 
     it('permite dejar vacío el tiro de salvación', () => {

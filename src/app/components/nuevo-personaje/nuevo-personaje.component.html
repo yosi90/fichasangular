@@ -268,14 +268,13 @@
                                     (ngModelChange)="onFiltroPlantillasTextoChange($event)"
                                     placeholder="Nombre de plantilla">
                             </mat-form-field>
-                            <mat-form-field appearance="fill" class="tw-w-full">
-                                <mat-label>Manual</mat-label>
-                                <mat-select [value]="filtroPlantillasManual"
-                                    (selectionChange)="onFiltroPlantillasManualChange($event.value)">
-                                    <mat-option *ngFor="let manual of manualesPlantillas"
-                                        [value]="manual">{{manual}}</mat-option>
-                                </mat-select>
-                            </mat-form-field>
+                            <app-manual-autocomplete
+                                class="tw-w-full"
+                                [manuales]="manualesPlantillas"
+                                [includeAny]="false"
+                                [value]="filtroPlantillasManual"
+                                (selectionChange)="onFiltroPlantillasManualChange($any($event))">
+                            </app-manual-autocomplete>
                             <mat-chip-option color="warn" class="filtro-chip"
                                 [selected]="incluirHomebrewPlantillasEfectivo" [disabled]="homebrewForzado"
                                 (click)="alternarHomebrewPlantillas()">
@@ -470,6 +469,9 @@
                                     </div>
                                     <mat-chip class="tw-w-full" *ngIf="plantillasSeleccionadas.length < 1">Sin
                                         plantillas seleccionadas</mat-chip>
+                                    <mat-chip class="tw-w-full warm" *ngIf="plantillasOtorgadasRazaPendientes.length > 0">
+                                        Hay plantillas de raza pendientes de resolver contra el catalogo
+                                    </mat-chip>
                                     <div class="plantillas-lista plantillas-lista--seleccion" *ngIf="plantillasSeleccionadas.length > 0">
                                         <div *ngFor="let plantilla of plantillasSeleccionadas"
                                             class="plantilla-card plantilla-card--seleccion sombra3d-sm"
@@ -485,8 +487,8 @@
                                                 </div>
                                                 <div class="plantilla-card__acciones">
                                                     <mat-chip class="plantilla-chip-estado"
-                                                        [ngClass]="esPlantillaConfirmada(plantilla) ? 'fixed' : 'info'">
-                                                        {{esPlantillaConfirmada(plantilla) ? 'Fijada' : 'Actual'}}
+                                                        [ngClass]="getClaseEstadoPlantillaSeleccionada(plantilla)">
+                                                        {{getEtiquetaEstadoPlantillaSeleccionada(plantilla)}}
                                                     </mat-chip>
                                                     <button mat-icon-button class="plantilla-detalle-btn"
                                                         (click)="verDetallesPlantilla(plantilla); $event.stopPropagation()"
@@ -700,14 +702,12 @@
                                     (ngModelChange)="onFiltroClasesTextoChange($event)"
                                     placeholder="Nombre o descripción">
                             </mat-form-field>
-                            <mat-form-field appearance="fill">
-                                <mat-label>Manual</mat-label>
-                                <mat-select [value]="filtroClasesManual"
-                                    (selectionChange)="onFiltroClasesManualChange($event.value)">
-                                    <mat-option *ngFor="let manual of manualesClases"
-                                        [value]="manual">{{manual}}</mat-option>
-                                </mat-select>
-                            </mat-form-field>
+                            <app-manual-autocomplete
+                                [manuales]="manualesClases"
+                                [includeAny]="false"
+                                [value]="filtroClasesManual"
+                                (selectionChange)="onFiltroClasesManualChange($any($event))">
+                            </app-manual-autocomplete>
                             <mat-form-field appearance="fill">
                                 <mat-label>Tipo lanzador</mat-label>
                                 <mat-select [value]="filtroClasesTipoLanzador"

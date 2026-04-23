@@ -1,11 +1,10 @@
 import { HttpClient, HttpErrorResponse } from "@angular/common/http";
 import { Injectable } from "@angular/core";
-import { Database, Unsubscribe, onValue, ref, set } from "@angular/fire/database";
-import { Observable, firstValueFrom } from "rxjs";
-import Swal from "sweetalert2";
+import { Auth } from "@angular/fire/auth";
+import { Observable, firstValueFrom, map } from "rxjs";
 import { environment } from "src/environments/environment";
 import { RacialDetalle } from "../interfaces/racial";
-import { FirebaseInjectionContextService } from "./firebase-injection-context.service";
+import { RacialCreateApiResponse, RacialCreateRequest, RacialCreateResponse } from "../interfaces/raciales-api";
 import { normalizeRacial, normalizeRaciales } from "./utils/racial-mapper";
 
 function sortRaciales(raciales: RacialDetalle[]): RacialDetalle[] {
@@ -19,132 +18,99 @@ function sortRaciales(raciales: RacialDetalle[]): RacialDetalle[] {
 export class RacialService {
 
     constructor(
-        private db: Database,
+        private auth: Auth,
         private http: HttpClient,
-        private firebaseContextSvc: FirebaseInjectionContextService,
     ) { }
 
     getRacial(id: number): Observable<RacialDetalle> {
-        return new Observable((observador) => {
-            const dbRef = ref(this.db, `Raciales/${id}`);
-            let unsubscribe: Unsubscribe;
-
-            const onNext = (snapshot: any) => {
-                if (snapshot.exists()) {
-                    observador.next(normalizeRacial(snapshot.val()));
-                    return;
-                }
-
-                this.http.get(`${environment.apiUrl}razas/raciales/${id}`).subscribe({
-                    next: (raw: any) => observador.next(normalizeRacial(raw)),
-                    error: (error: HttpErrorResponse) => {
-                        if (error.status === 404) {
-                            Swal.fire({
-                                icon: "warning",
-                                title: "Racial no encontrada",
-                                text: `No existe la racial con id ${id}`,
-                                showConfirmButton: true,
-                            });
-                        } else {
-                            Swal.fire({
-                                icon: "warning",
-                                title: "Error al obtener la racial",
-                                text: error.message,
-                                showConfirmButton: true,
-                            });
-                        }
-                        observador.error(error);
-                    }
-                });
-            };
-
-            const onError = (error: any) => {
-                observador.error(error);
-            };
-
-            unsubscribe = this.firebaseContextSvc.run(() => onValue(dbRef, onNext, onError));
-
-            return () => {
-                unsubscribe();
-            };
-        });
+        return this.http.get(`${environment.apiUrl}razas/raciales/${id}`)
+            .pipe(map((raw: any) => normalizeRacial(raw)));
     }
 
     getRaciales(): Observable<RacialDetalle[]> {
-        return new Observable((observador) => {
-            const dbRef = ref(this.db, "Raciales");
-            let unsubscribe: Unsubscribe;
-
-            const onNext = (snapshot: any) => {
-                if (snapshot.exists()) {
-                    const raciales: RacialDetalle[] = [];
-                    snapshot.forEach((obj: any) => {
-                        raciales.push(normalizeRacial(obj.val()));
-                    });
-                    observador.next(sortRaciales(raciales));
-                    return;
-                }
-
-                this.http.get(`${environment.apiUrl}razas/raciales`).subscribe({
-                    next: (raw: any) => {
-                        const raciales = normalizeRaciales(raw);
-                        observador.next(sortRaciales(raciales));
-                    },
-                    error: (error: any) => observador.error(error),
-                });
-            };
-
-            const onError = (error: any) => {
-                observador.error(error);
-            };
-
-            unsubscribe = this.firebaseContextSvc.run(() => onValue(dbRef, onNext, onError));
-
-            return () => {
-                unsubscribe();
-            };
-        });
+        return this.http.get(`${environment.apiUrl}razas/raciales`)
+            .pipe(map((raw: any) => sortRaciales(normalizeRaciales(raw))));
     }
 
-    private syncRaciales(): Observable<any> {
-        return this.http.get(`${environment.apiUrl}razas/raciales`);
-    }
-
-    public async RenovarRaciales(): Promise<boolean> {
+    public async crearRacial(payload: RacialCreateRequest): Promise<RacialCreateResponse> {
         try {
-            const response = await firstValueFrom(this.syncRaciales());
-            const raciales = normalizeRaciales(response);
-            await Promise.all(
-                raciales.map((racial) => {
-                    return this.firebaseContextSvc.run(() => set(ref(this.db, `Raciales/${racial.Id}`), racial));
-                })
+            const headers = await this.buildAuthHeaders();
+            const response = await firstValueFrom(
+                this.http.post<RacialCreateApiResponse>(`${environment.apiUrl}razas/raciales/add`, payload, { headers })
             );
+            const idRacial = Math.trunc(Number(response?.idRacial ?? 0));
+            if (!Number.isFinite(idRacial) || idRacial <= 0)
+                throw new Error("La API no devolvió un idRacial válido");
 
-            Swal.fire({
-                icon: "success",
-                title: "Listado de raciales actualizado con éxito",
-                showConfirmButton: true,
-                timer: 2000
-            });
-            return true;
+            return {
+                message: `${response?.message ?? "Racial creado"}`,
+                idRacial,
+                racial: normalizeRacial(response?.racial ?? { Id: idRacial, Nombre: payload.racial.nombre, Descripcion: payload.racial.descripcion ?? "" }),
+            };
         } catch (error: any) {
-            const httpError = error as HttpErrorResponse;
-            if (httpError.status === 404) {
-                Swal.fire({
-                    icon: "warning",
-                    title: "Endpoint de raciales no disponible",
-                    text: "No se encontró /razas/raciales en la API",
-                    showConfirmButton: true
-                });
-            } else {
-                Swal.fire({
-                    icon: "warning",
-                    title: "Error al actualizar el listado de raciales",
-                    text: error?.message ?? "Error no identificado",
-                    showConfirmButton: true
-                });
-            }
-            return false;
+            throw this.mapCrearRacialError(error);
         }
+    }
+
+    private mapCrearRacialError(error: any): Error {
+        if (!(error instanceof HttpErrorResponse))
+            return error instanceof Error ? error : new Error("No se pudo crear el racial");
+
+        const backendMessage = this.extractErrorMessage(error.error);
+        const suffix = backendMessage.length > 0 ? ` ${backendMessage}` : "";
+
+        if (error.status === 400)
+            return new Error(`Solicitud inválida para crear el racial.${suffix}`.trim());
+        if (error.status === 401)
+            return new Error(`Sesión no válida para crear raciales.${suffix}`.trim());
+        if (error.status === 403)
+            return new Error(`No tienes permisos para crear raciales.${suffix}`.trim());
+        if (error.status === 404)
+            return new Error(`No se encontró una referencia requerida para crear el racial.${suffix}`.trim());
+        if (error.status === 409) {
+            const conflictText = backendMessage.toLowerCase();
+            if (conflictText.includes("nombre") || conflictText.includes("duplic") || conflictText.includes("existe"))
+                return new Error("Ya existe un racial con ese nombre.");
+            return new Error(`Conflicto al crear el racial.${suffix}`.trim());
+        }
+        if (error.status === 502)
+            return new Error(`No se pudo sincronizar el racial con la caché del backend.${suffix}`.trim());
+
+        if (backendMessage.length > 0)
+            return new Error(backendMessage);
+
+        return new Error(`No se pudo crear el racial (HTTP ${error.status || 0})`);
+    }
+
+    private extractErrorMessage(errorBody: any): string {
+        if (!errorBody)
+            return "";
+
+        if (typeof errorBody === "string") {
+            const message = errorBody.trim();
+            return message.length > 0 ? message : "";
+        }
+
+        if (typeof errorBody === "object") {
+            const message = `${errorBody?.message ?? errorBody?.error ?? ""}`.trim();
+            if (message.length > 0)
+                return message;
+        }
+
+        return "";
+    }
+
+    private async buildAuthHeaders(): Promise<{ Authorization: string; }> {
+        const user = this.auth.currentUser;
+        if (!user)
+            throw new Error("Sesión no iniciada");
+
+        const idToken = await user.getIdToken();
+        if (`${idToken ?? ""}`.trim().length < 1)
+            throw new Error("Token no disponible");
+
+        return {
+            Authorization: `Bearer ${idToken}`,
+        };
     }
 }

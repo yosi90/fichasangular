@@ -3,6 +3,7 @@ import { DoteContextual } from 'src/app/interfaces/dote-contextual';
 import { MonstruoDetalle } from 'src/app/interfaces/monstruo';
 import { RacialDetalle } from 'src/app/interfaces/racial';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
+import { buildManiobrabilidadInfoSecciones, tieneManiobrabilidadVisible } from 'src/app/services/utils/maniobrabilidad-info';
 
 @Component({
     selector: 'app-detalles-monstruo',
@@ -16,6 +17,7 @@ export class DetallesMonstruoComponent {
     private static readonly CLASE_IDS_COMPANERO = new Set<number>([5, 6]);
     private static readonly CLASE_IDS_FAMILIAR = new Set<number>([8, 9]);
     private monstruoData!: MonstruoDetalle;
+    mostrarInfoManiobrabilidad = false;
 
     constructor(private manualDetalleNavSvc: ManualDetalleNavigationService) { }
 
@@ -328,13 +330,21 @@ export class DetallesMonstruoComponent {
         const vuela = this.toNumber(this.monstruo?.Movimientos?.Volar) > 0;
         if (!vuela)
             return false;
+        return tieneManiobrabilidadVisible(this.monstruo?.Maniobrabilidad);
+    }
 
-        const maniobrabilidad = `${this.monstruo?.Maniobrabilidad?.Nombre ?? ''}`.trim();
-        if (!this.tieneTextoVisible(maniobrabilidad))
-            return false;
+    abrirInfoManiobrabilidad(event?: Event): void {
+        event?.preventDefault();
+        event?.stopPropagation();
+        this.mostrarInfoManiobrabilidad = true;
+    }
 
-        const normalizado = this.normalizar(maniobrabilidad).replace(/[.]/g, '');
-        return normalizado !== 'no vuela' && normalizado !== 'no modifica';
+    cerrarInfoManiobrabilidad(): void {
+        this.mostrarInfoManiobrabilidad = false;
+    }
+
+    getManiobrabilidadInfoSecciones() {
+        return buildManiobrabilidadInfoSecciones(this.monstruo?.Maniobrabilidad);
     }
 
     tieneTextoVisible(texto: string | undefined | null): boolean {

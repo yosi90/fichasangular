@@ -2,9 +2,7 @@ import { ChangeDetectorRef, Component, ElementRef, EventEmitter, Output, ViewChi
 import { MatPaginator } from '@angular/material/paginator';
 import { MatSort } from '@angular/material/sort';
 import { MatTableDataSource } from '@angular/material/table';
-import { Manual } from 'src/app/interfaces/manual';
 import { SubtipoResumen } from 'src/app/interfaces/subtipo';
-import { ManualService } from 'src/app/services/manual.service';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
 import { SubtipoService } from 'src/app/services/subtipo.service';
 
@@ -16,7 +14,7 @@ import { SubtipoService } from 'src/app/services/subtipo.service';
 })
 export class ListadoSubtiposComponent {
     subtipos: SubtipoResumen[] = [];
-    manuales: Manual[] = [];
+    manuales: string[] = [];
     defaultManual = 'Cualquiera';
     subtiposDS = new MatTableDataSource(this.subtipos);
     subtipoColumns = ['Nombre', 'Manual', 'Heredada'];
@@ -25,7 +23,6 @@ export class ListadoSubtiposComponent {
     constructor(
         private cdr: ChangeDetectorRef,
         private subtipoSvc: SubtipoService,
-        private manualSvc: ManualService,
         private manualDetalleNavSvc: ManualDetalleNavigationService
     ) { }
 
@@ -38,13 +35,11 @@ export class ListadoSubtiposComponent {
         this.subtiposDS.sort = this.subtipoSort;
         this.subtipoSvc.getSubtipos().subscribe(subtipos => {
             this.subtipos = subtipos.filter(s => s.Nombre !== 'Cualquiera');
-            this.manualSvc.getManuales().subscribe(manuales => {
-                this.manuales = [...manuales].sort((a, b) => a.Nombre.localeCompare(b.Nombre, 'es', { sensitivity: 'base' }));
-                this.defaultManual = 'Cualquiera';
-                this.cdr.detectChanges();
-                this.filtroSubtipos();
-                this.cdr.detectChanges();
-            });
+            this.manuales = this.buildManualesDisponibles(this.subtipos);
+            this.defaultManual = 'Cualquiera';
+            this.cdr.detectChanges();
+            this.filtroSubtipos();
+            this.cdr.detectChanges();
         });
     }
 
@@ -98,6 +93,14 @@ export class ListadoSubtiposComponent {
             id: subtipo?.Manual?.Id,
             nombre: subtipo?.Manual?.Nombre,
         });
+    }
+
+    private buildManualesDisponibles(subtipos: SubtipoResumen[]): string[] {
+        return Array.from(new Set(
+            (subtipos ?? [])
+                .map((subtipo) => `${subtipo?.Manual?.Nombre ?? ''}`.trim())
+                .filter((nombre) => nombre.length > 0)
+        )).sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' }));
     }
 
     private normalizar(value: string): string {

@@ -905,6 +905,36 @@ describe('DetallesPersonajeComponent', () => {
         expect(columnas[1].query(By.css('.detalle-bloque--clases'))).not.toBeNull();
     });
 
+    it('muestra ayuda de maniobrabilidad cuando el personaje vuela', () => {
+        component.pj.Volar = 40;
+        (component.pj as any).Raza = {
+            ...(component.pj as any).Raza,
+            Maniobrabilidad: {
+                Nombre: 'Perfecta',
+                Velocidad_avance: 'Normal',
+                Flotar: 1,
+                Volar_atras: 1,
+                Contramarcha: 1,
+                Giro: 'Cualquiera',
+                Rotacion: 'Cualquiera',
+                Giro_max: 'Cualquiera',
+                Angulo_ascenso: 'Cualquiera',
+                Velocidad_ascenso: 'Normal',
+                Angulo_descenso: 'Cualquiera',
+                Descenso_ascenso: 1,
+            },
+        };
+
+        expect(component.mostrarManiobrabilidad()).toBeTrue();
+        component.abrirInfoManiobrabilidad();
+
+        const texto = JSON.stringify(component.getManiobrabilidadInfoSecciones());
+        expect(component.mostrarInfoManiobrabilidad).toBeTrue();
+        expect(component.getManiobrabilidadNombre()).toBe('Perfecta');
+        expect(texto).toContain('Perfecta');
+        expect(texto).toContain('Flotar: Si.');
+    });
+
     it('calcula iniciativa como ModDestreza + bonos varios', () => {
         component.pj.Raza.Nombre = 'Humano';
         component.pj.ModDestreza = 2;

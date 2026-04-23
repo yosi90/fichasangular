@@ -97,8 +97,11 @@ import { ListadoMonstruosComponent } from './components/shared/listado-monstruos
 import { DetallesMonstruoComponent } from './components/detalles/detalles-monstruo/detalles-monstruo.component';
 import { FichasDescargaToastHostComponent } from './components/shared/fichas-descarga-toast-host/fichas-descarga-toast-host.component';
 import { AppToastHostComponent } from './components/shared/app-toast-host/app-toast-host.component';
+import { ManualAutocompleteComponent } from './components/shared/manual-autocomplete/manual-autocomplete.component';
 import { NuevaDoteComponent } from './components/shared/nueva-dote/nueva-dote.component';
 import { NuevaConjuroComponent } from './components/shared/nueva-conjuro/nueva-conjuro.component';
+import { NuevaRazaComponent } from './components/shared/nueva-raza/nueva-raza.component';
+import { NuevaRacialComponent } from './components/shared/nueva-racial/nueva-racial.component';
 import { PrerrequisitoCatalogEditorComponent } from './components/shared/prerrequisito-editor/prerrequisito-catalog-editor.component';
 import { PrerrequisitoCatalogValueEditorComponent } from './components/shared/prerrequisito-editor/prerrequisito-catalog-value-editor.component';
 import { PrerrequisitoEditorHostComponent } from './components/shared/prerrequisito-editor/prerrequisito-editor-host.component';
@@ -211,8 +214,11 @@ import { CloseFilterMenuOnMouseleaveDirective } from './directives/close-filter-
         ListadoDeidadesComponent,
         AppToastHostComponent,
         FichasDescargaToastHostComponent,
+        ManualAutocompleteComponent,
         NuevaDoteComponent,
         NuevaConjuroComponent,
+        NuevaRazaComponent,
+        NuevaRacialComponent,
         PrerrequisitoEditorHostComponent,
         PrerrequisitoFlagEditorComponent,
         PrerrequisitoValueEditorComponent,

@@ -8,18 +8,15 @@ describe('ListadoArmasComponent', () => {
     let cdrMock: jasmine.SpyObj<ChangeDetectorRef>;
     let manualDetalleNavSvcMock: jasmine.SpyObj<ManualDetalleNavigationService>;
     let armaSvcMock: any;
-    let manualSvcMock: any;
 
     beforeEach(() => {
         cdrMock = jasmine.createSpyObj<ChangeDetectorRef>('ChangeDetectorRef', ['detectChanges']);
         manualDetalleNavSvcMock = jasmine.createSpyObj<ManualDetalleNavigationService>('ManualDetalleNavigationService', ['abrirDetalleManual']);
         armaSvcMock = { getArmas: jasmine.createSpy('getArmas').and.returnValue(of([])) };
-        manualSvcMock = { getManuales: jasmine.createSpy('getManuales').and.returnValue(of([])) };
 
         component = new ListadoArmasComponent(
             cdrMock,
             armaSvcMock,
-            manualSvcMock,
             manualDetalleNavSvcMock
         );
         component.armaSort = { active: '', direction: '', sortChange: of({}), initialized: of({}) } as any;

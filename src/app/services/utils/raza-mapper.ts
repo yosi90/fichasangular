@@ -148,6 +148,26 @@ function normalizeSubtiposApi(raw: any): SubtipoRef[] {
     return output;
 }
 
+function normalizePlantillasPorSubtipoApi(raw: any): Raza["Plantillas_por_subtipo"] {
+    return toStrictArray(raw)
+        .map((item: any) => {
+            const subtipoRaw = item?.Subtipo ?? item?.subtipo;
+            const subtipo = {
+                Id: toNumber(subtipoRaw?.Id ?? subtipoRaw?.id),
+                Nombre: toText(subtipoRaw?.Nombre ?? subtipoRaw?.nombre).trim(),
+            };
+            const plantillas = toStrictArray(item?.Plantillas ?? item?.plantillas)
+                .map((plantilla: any) => ({
+                    Id: toNumber(plantilla?.Id ?? plantilla?.id),
+                    Nombre: toText(plantilla?.Nombre ?? plantilla?.nombre).trim(),
+                    Descripcion: toText(plantilla?.Descripcion ?? plantilla?.descripcion).trim(),
+                }))
+                .filter((plantilla) => plantilla.Id > 0 || plantilla.Nombre.length > 0);
+            return { Subtipo: subtipo, Plantillas: plantillas };
+        })
+        .filter((item) => (item.Subtipo.Id > 0 || item.Subtipo.Nombre.length > 0) && item.Plantillas.length > 0);
+}
+
 function normalizeIdiomasApi(raw: any): IdiomaDetalle[] {
     return toStrictArray(raw)
         .map((item: any) => ({
@@ -348,6 +368,7 @@ export function normalizeRazaApi(raw: any): Raza {
         Habilidades: normalizeHabilidadesApi(raw?.Habilidades),
         DotesContextuales: dotesContextuales,
         Idiomas: normalizeIdiomasApi(raw?.Idiomas),
+        Plantillas_por_subtipo: normalizePlantillasPorSubtipoApi(raw?.Plantillas_por_subtipo),
     };
 }
 

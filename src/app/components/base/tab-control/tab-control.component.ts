@@ -115,6 +115,7 @@ export class TabControlComponent implements OnInit, OnDestroy {
     private activeTabKey: string = this.TAB_PERSONAJES;
     private openerByTab = new Map<string, string>();
     private avisoCachePendienteMostrado = false;
+    private avisoCachePendienteEnCurso = false;
     private readonly destroy$ = new Subject<void>();
 
     constructor(
@@ -947,10 +948,10 @@ export class TabControlComponent implements OnInit, OnDestroy {
     }
 
     private async verificarPendientesCacheAdminEnInicio(): Promise<void> {
-        if (this.usrPerm !== 1 || this.avisoCachePendienteMostrado)
+        if (this.usrPerm !== 1 || this.avisoCachePendienteMostrado || this.avisoCachePendienteEnCurso)
             return;
 
-        this.avisoCachePendienteMostrado = true;
+        this.avisoCachePendienteEnCurso = true;
 
         try {
             const metaSnapshot = await this.cacheSyncMetadataSvc.getSnapshotOnce();
@@ -963,6 +964,7 @@ export class TabControlComponent implements OnInit, OnDestroy {
             if (!hayPendientes)
                 return;
 
+            this.avisoCachePendienteMostrado = true;
             const result = await Swal.fire({
                 icon: 'warning',
                 title: 'Hay catálogos desactualizados',
@@ -978,17 +980,22 @@ export class TabControlComponent implements OnInit, OnDestroy {
             if (!result.isConfirmed)
                 return;
 
-            this.irAlPanelAdministracion();
+            this.irAlPanelAdministracion('sync');
         } catch (error) {
             // Si falla la lectura de metadata, no bloqueamos el resto del flujo de tabs.
+        } finally {
+            this.avisoCachePendienteEnCurso = false;
         }
     }
 
-    private irAlPanelAdministracion(): void {
+    private irAlPanelAdministracion(section: AdminPanelOpenRequest['section'] = 'usuarios'): void {
         if (this.usrPerm !== 1)
             return;
 
-        const navegar = () => this.abrirPanelAdministracion();
+        const navegar = () => this.abrirPanelAdministracion({
+            section,
+            requestId: Date.now(),
+        });
 
         this.ngZone.run(navegar);
         setTimeout(() => this.ngZone.run(navegar), 0);

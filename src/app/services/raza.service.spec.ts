@@ -1,4 +1,5 @@
-import { firstValueFrom, of } from 'rxjs';
+import { HttpErrorResponse } from '@angular/common/http';
+import { firstValueFrom, of, throwError } from 'rxjs';
 import Swal from 'sweetalert2';
 import { normalizeRazaApi } from './utils/raza-mapper';
 import { RazaService, normalizeAlineamientoRaza, normalizeHabilidadesRaza, normalizeIdiomasRaza, normalizeRazaLegacy } from './raza.service';
@@ -227,6 +228,23 @@ describe('RazaService helpers', () => {
         expect(raza.Alineamiento.Basico.Nombre).toBe('Neutral');
         expect(raza.Subtipos).toEqual([{ Id: 11, Nombre: 'Humano' }]);
         expect(raza.Raciales[0].Nombre).toBe('Vision en la penumbra');
+    });
+
+    it('normaliza plantillas por subtipo desde contrato HTTP', () => {
+        const raza = normalizeRazaApi(createRazaApiRaw({
+            Plantillas_por_subtipo: [{
+                Subtipo: { Id: 12, Nombre: 'Arconte' },
+                Plantillas: [
+                    { Id: 20, Nombre: 'Celestial', Descripcion: 'Plantilla heredada' },
+                    { Id: 0, Nombre: '   ' },
+                ],
+            }],
+        }));
+
+        expect(raza.Plantillas_por_subtipo).toEqual([{
+            Subtipo: { Id: 12, Nombre: 'Arconte' },
+            Plantillas: [{ Id: 20, Nombre: 'Celestial', Descripcion: 'Plantilla heredada' }],
+        }]);
     });
 
     it('descarta aliases cache legacy en el mapper HTTP de raza', () => {
@@ -512,5 +530,83 @@ describe('RazaService helpers', () => {
         expect(emitted[0].Nombre).toBe('Legacy cache');
         expect(emitted[0].Subtipos).toEqual([{ Id: 12, Nombre: 'Celestial' }]);
         expect(emitted[0].Raciales[0].Nombre).toBe('Legacy racial');
+    });
+
+    it('crearRaza envia POST /razas/add con Bearer, sin auditoria, y refresca cache best-effort', async () => {
+        const payload = {
+            raza: {
+                nombre: 'Nueva raza',
+                descripcion: 'Descripcion suficiente',
+            },
+            uid: 'no-debe-ir',
+            firebaseUid: 'no-debe-ir',
+            createdAt: 'no-debe-ir',
+        } as any;
+        delete payload.uid;
+        delete payload.firebaseUid;
+        delete payload.createdAt;
+
+        const http = {
+            post: jasmine.createSpy().and.returnValue(of({ message: 'ok', idRaza: '44' })),
+            get: jasmine.createSpy().and.returnValue(of(createRazaApiRaw({ i: 44, n: 'Nueva raza' }))),
+        };
+        const firebaseContextSvc = {
+            run: (fn: () => any) => fn(),
+        };
+        const auth = {
+            currentUser: {
+                getIdToken: jasmine.createSpy().and.resolveTo('token-firebase'),
+            },
+        };
+        const service = new TestRazaService({} as any, http as any, firebaseContextSvc as any, auth as any);
+
+        const response = await service.crearRaza(payload);
+
+        expect(response).toEqual({ message: 'ok', idRaza: 44 });
+        expect(http.post).toHaveBeenCalledWith(
+            jasmine.stringMatching(/razas\/add$/),
+            payload,
+            jasmine.objectContaining({
+                headers: jasmine.anything(),
+            })
+        );
+        const postArgs = http.post.calls.mostRecent().args;
+        expect(postArgs[2].headers.Authorization).toBe('Bearer token-firebase');
+        expect(Object.prototype.hasOwnProperty.call(postArgs[1], 'uid')).toBeFalse();
+        expect(Object.prototype.hasOwnProperty.call(postArgs[1], 'firebaseUid')).toBeFalse();
+        expect(Object.prototype.hasOwnProperty.call(postArgs[1], 'createdAt')).toBeFalse();
+        expect(http.get).toHaveBeenCalledWith(
+            jasmine.stringMatching(/razas\/44$/),
+            jasmine.objectContaining({ headers: { Authorization: 'Bearer token-firebase' } })
+        );
+    });
+
+    [
+        { status: 400, expected: 'Solicitud invalida' },
+        { status: 403, expected: 'No tienes permisos' },
+        { status: 404, expected: 'No se encontro una referencia requerida' },
+        { status: 409, expected: 'Ya existe una raza con ese nombre' },
+    ].forEach(({ status, expected }) => {
+        it(`crearRaza traduce error HTTP ${status}`, async () => {
+            const http = {
+                post: jasmine.createSpy().and.returnValue(throwError(() => new HttpErrorResponse({
+                    status,
+                    error: { message: 'duplicado' },
+                }))),
+                get: jasmine.createSpy(),
+            };
+            const firebaseContextSvc = {
+                run: (fn: () => any) => fn(),
+            };
+            const auth = {
+                currentUser: {
+                    getIdToken: jasmine.createSpy().and.resolveTo('token-firebase'),
+                },
+            };
+            const service = new TestRazaService({} as any, http as any, firebaseContextSvc as any, auth as any);
+
+            await expectAsync(service.crearRaza({ raza: { nombre: 'Duplicada' } } as any))
+                .toBeRejectedWithError(new RegExp(expected));
+        });
     });
 });

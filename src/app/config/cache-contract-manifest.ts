@@ -13,7 +13,6 @@ export type CacheEntityKey =
     | "dotes"
     | "clases"
     | "especiales"
-    | "raciales"
     | "escuelas_conjuros"
     | "disciplinas_conjuros"
     | "subdisciplinas_conjuros"
@@ -23,6 +22,13 @@ export type CacheEntityKey =
     | "alineamientos_prioridades"
     | "alineamientos_preferencia_ley"
     | "alineamientos_preferencia_moral"
+    | "actitudes"
+    | "maniobrabilidades"
+    | "tipos_dado"
+    | "componentes_conjuros"
+    | "tiempos_lanzamiento"
+    | "alcances_conjuros"
+    | "descriptores_conjuros"
     | "habilidades"
     | "habilidades_custom"
     | "idiomas"
@@ -62,7 +68,6 @@ export const CACHE_CONTRACT_MANIFEST: CacheContractEntry[] = [
     { key: "dotes", label: "Dotes", schemaVersion: 2 },
     { key: "clases", label: "Clases", schemaVersion: 3 },
     { key: "especiales", label: "Especiales", schemaVersion: 1 },
-    { key: "raciales", label: "Raciales", schemaVersion: 2 },
     { key: "escuelas_conjuros", label: "Escuelas de conjuros", schemaVersion: 1 },
     { key: "disciplinas_conjuros", label: "Disciplinas de conjuros", schemaVersion: 1 },
     { key: "subdisciplinas_conjuros", label: "Subdisciplinas de conjuros", schemaVersion: 1 },
@@ -72,6 +77,13 @@ export const CACHE_CONTRACT_MANIFEST: CacheContractEntry[] = [
     { key: "alineamientos_prioridades", label: "Prioridades de alineamiento", schemaVersion: 1 },
     { key: "alineamientos_preferencia_ley", label: "Preferencia legal de alineamiento", schemaVersion: 1 },
     { key: "alineamientos_preferencia_moral", label: "Preferencia moral de alineamiento", schemaVersion: 1 },
+    { key: "actitudes", label: "Actitudes", schemaVersion: 1 },
+    { key: "maniobrabilidades", label: "Maniobrabilidades", schemaVersion: 1 },
+    { key: "tipos_dado", label: "Tipos de dado", schemaVersion: 1 },
+    { key: "componentes_conjuros", label: "Componentes de conjuros", schemaVersion: 1 },
+    { key: "tiempos_lanzamiento", label: "Tiempos de lanzamiento", schemaVersion: 1 },
+    { key: "alcances_conjuros", label: "Alcances de conjuros", schemaVersion: 1 },
+    { key: "descriptores_conjuros", label: "Descriptores de conjuros", schemaVersion: 1 },
     { key: "habilidades", label: "Habilidades", schemaVersion: 1 },
     { key: "habilidades_custom", label: "Habilidades custom", schemaVersion: 1 },
     { key: "idiomas", label: "Idiomas", schemaVersion: 1 },

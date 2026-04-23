@@ -2,10 +2,8 @@ import { ChangeDetectorRef, Component, ElementRef, EventEmitter, Input, OnDestro
 import { MatPaginator } from '@angular/material/paginator';
 import { MatSort } from '@angular/material/sort';
 import { MatTableDataSource } from '@angular/material/table';
-import { Subscription, combineLatest } from 'rxjs';
-import { Manual } from 'src/app/interfaces/manual';
+import { Subscription } from 'rxjs';
 import { Raza } from 'src/app/interfaces/raza';
-import { ManualService } from 'src/app/services/manual.service';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
 import { RazaService } from 'src/app/services/raza.service';
 
@@ -17,7 +15,7 @@ import { RazaService } from 'src/app/services/raza.service';
 })
 export class ListadoRazasComponent implements OnDestroy {
     razas: Raza[] = [];
-    Manuales: Manual[] = [];
+    Manuales: string[] = [];
     defaultManual: string = 'Cualquiera';
     razasDS = new MatTableDataSource(this.razas);
     razaColumns = ['Nombre', 'Modificadores', 'Clase_predilecta', 'Manual', 'Ajuste_nivel', 'Dgs_adicionales'];
@@ -29,7 +27,6 @@ export class ListadoRazasComponent implements OnDestroy {
     constructor(
         private cdr: ChangeDetectorRef,
         private rSvc: RazaService,
-        private mSvc: ManualService,
         private manualDetalleNavSvc: ManualDetalleNavigationService
     ) { }
 
@@ -40,12 +37,9 @@ export class ListadoRazasComponent implements OnDestroy {
     ngAfterViewInit() {
         this.vistaInicializada = true;
         this.catalogosSub?.unsubscribe();
-        this.catalogosSub = combineLatest([
-            this.rSvc.getRazas(),
-            this.mSvc.getManuales(),
-        ]).subscribe(([razas, manuales]) => {
+        this.catalogosSub = this.rSvc.getRazas().subscribe((razas) => {
             this.razas = (razas ?? []).map((raza) => this.normalizarRaza(raza));
-            this.Manuales = [...(manuales ?? [])].sort((a, b) => a.Nombre.localeCompare(b.Nombre, 'es', { sensitivity: 'base' }));
+            this.Manuales = this.buildManualesDisponibles(this.razas);
             this.defaultManual = 'Cualquiera';
             this.sincronizarColumnaHomebrew();
             this.filtroRazas();
@@ -225,5 +219,13 @@ export class ListadoRazasComponent implements OnDestroy {
         event?.preventDefault();
         event?.stopPropagation();
         this.manualDetalleNavSvc.abrirDetalleManual(raza?.Manual);
+    }
+
+    private buildManualesDisponibles(razas: Raza[]): string[] {
+        return Array.from(new Set(
+            (razas ?? [])
+                .map((raza) => `${raza?.Manual ?? ''}`.trim())
+                .filter((nombre) => nombre.length > 0)
+        )).sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' }));
     }
 }

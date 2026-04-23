@@ -208,4 +208,33 @@ describe('DetallesMonstruoComponent', () => {
         expect(nivelesFamiliar[0].nombreClase).toBe('Mago');
         expect(nivelesFamiliar[0].dote).toBe('Familiar mejorado');
     });
+
+    it('muestra ayuda de maniobrabilidad cuando el monstruo vuela', () => {
+        component.monstruo = crearMonstruoMock({
+            Movimientos: { Correr: 40, Nadar: 0, Volar: 60, Trepar: 0, Escalar: 0 },
+            Maniobrabilidad: {
+                Id: 3,
+                Nombre: 'Buena',
+                Velocidad_avance: 'Normal',
+                Flotar: 0,
+                Volar_atras: 0,
+                Contramarcha: 0,
+                Giro: '90 grados',
+                Rotacion: '180 grados',
+                Giro_max: '180 grados',
+                Angulo_ascenso: '60 grados',
+                Velocidad_ascenso: 'Mitad',
+                Angulo_descenso: 'Cualquiera',
+                Descenso_ascenso: 1,
+            },
+        });
+
+        expect(component.mostrarManiobrabilidad()).toBeTrue();
+        component.abrirInfoManiobrabilidad();
+
+        const texto = JSON.stringify(component.getManiobrabilidadInfoSecciones());
+        expect(component.mostrarInfoManiobrabilidad).toBeTrue();
+        expect(texto).toContain('Buena');
+        expect(texto).toContain('Giro: 90 grados.');
+    });
 });

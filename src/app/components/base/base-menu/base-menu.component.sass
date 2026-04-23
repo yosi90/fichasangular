@@ -16,10 +16,17 @@
         #nuevopj
             transition: .3s
 
-            &:hover
+            &[disabled]
+                background-color: $contrast-dark
+                opacity: 1
+
+                ::ng-deep .mdc-button__label
+                    color: #B0BEC5
+
+            &:hover:not([disabled])
                 transform: scale(102%)
 
-            &:active
+            &:active:not([disabled])
                 transform: scale(98%)
 
         mat-expansion-panel
@@ -67,11 +74,31 @@
                         
                         font-size: 25px
 
-                button:nth-child(even):not([disabled]):not([mat-raised-button])
+                > button:nth-child(even):not([disabled]):not([mat-raised-button]),
+                > span:nth-child(even) > button:not([disabled]):not([mat-raised-button])
                     background-color: #ccc
 
-                button:nth-child(odd):not([disabled]):not([mat-raised-button])
+                > button:nth-child(odd):not([disabled]):not([mat-raised-button]),
+                > span:nth-child(odd) > button:not([disabled]):not([mat-raised-button])
                     background-color: lightgray
+
+                span > button[disabled],
+                button[disabled]:not([mat-raised-button])
+                    background-color: $contrast-dark
+                    opacity: 1
+
+                    ::ng-deep .mdc-button__label
+                        color: #B0BEC5
+
+                button.menu-otros-trigger--sin-opciones
+                    background-color: $contrast-dark !important
+                    opacity: 1
+
+                    mat-icon
+                        color: #B0BEC5
+
+                    ::ng-deep .mdc-button__label
+                        color: #B0BEC5
 
         mat-expansion-panel:last-child
             display: flex !important
@@ -216,14 +243,17 @@
         width: 100%
         border-radius: 0
 
-    button:nth-child(odd):not([disabled])
+    > button:nth-child(odd):not([disabled]),
+    > span:nth-child(odd) > button:not([disabled])
         background-color: lightgray
 
-    button:nth-child(even):not([disabled])
+    > button:nth-child(even):not([disabled]),
+    > span:nth-child(even) > button:not([disabled])
         background-color: #ccc
 
-    > span > button[disabled]
-        background-color: #373C41
+    > span > button[disabled],
+    > button[disabled]
+        background-color: $contrast-dark
         opacity: 1
 
         ::ng-deep .mdc-button__label

@@ -10,13 +10,11 @@
                     <mat-label>Incluye texto</mat-label>
                     <input #armaTextInc matInput placeholder="Texto a buscar">
                 </mat-form-field>
-                <mat-form-field (click)="$event.stopPropagation();">
-                    <mat-label>Manual</mat-label>
-                    <mat-select appearance="fill" [(value)]="defaultManual" (selectionChange)="filtroArmas();">
-                        <mat-option [value]="'Cualquiera'">Cualquiera</mat-option>
-                        <mat-option *ngFor="let m of manuales" [value]="m.Nombre">{{m.Nombre}}</mat-option>
-                    </mat-select>
-                </mat-form-field>
+                <app-manual-autocomplete
+                    [manuales]="manuales"
+                    [(value)]="defaultManual"
+                    (selectionChange)="filtroArmas()">
+                </app-manual-autocomplete>
                 <mat-form-field (click)="$event.stopPropagation();">
                     <mat-label>Tipo de arma</mat-label>
                     <mat-select appearance="fill" [(value)]="defaultTipoArma" (selectionChange)="filtroArmas();">

@@ -21,6 +21,7 @@ import { RegionService } from 'src/app/services/region.service';
 import { UserProfileApiService } from 'src/app/services/user-profile-api.service';
 import { UserService } from 'src/app/services/user.service';
 import { resolverExtraHabilidadVisible } from 'src/app/services/utils/habilidad-extra-visible';
+import { buildManiobrabilidadInfoSecciones, ManiobrabilidadLike, tieneManiobrabilidadVisible } from 'src/app/services/utils/maniobrabilidad-info';
 import { calcularNivelesLanzadorPersonaje } from 'src/app/services/utils/nivel-lanzador-personaje';
 import Swal from 'sweetalert2';
 
@@ -87,6 +88,7 @@ export class DetallesPersonajeComponent implements OnInit, OnChanges, AfterViewI
     cPesada: string = "0 Kilogramos";
     actualizandoVisibilidad = false;
     actualizandoArchivado = false;
+    mostrarInfoManiobrabilidad = false;
     etiquetaCreador = 'Desconocido';
     perfilPublicoDisponible = false;
     perfilPublicoComprobando = false;
@@ -589,6 +591,44 @@ export class DetallesPersonajeComponent implements OnInit, OnChanges, AfterViewI
 
     tieneVelocidadVisible(valor: number): boolean {
         return this.tieneNumeroVisible(valor);
+    }
+
+    mostrarManiobrabilidad(): boolean {
+        return this.tieneNumeroVisible(this.pj?.Volar)
+            && tieneManiobrabilidadVisible(this.getManiobrabilidadPersonaje());
+    }
+
+    getManiobrabilidadPersonaje(): ManiobrabilidadLike | null {
+        const directa = (this.pj as any)?.Maniobrabilidad;
+        if (tieneManiobrabilidadVisible(directa))
+            return directa;
+        const raza = (this.pj as any)?.Raza?.Maniobrabilidad;
+        if (tieneManiobrabilidadVisible(raza))
+            return raza;
+        const plantilla = (this.pj?.Plantillas ?? [])
+            .map((item: any) => item?.Maniobrabilidad)
+            .find((item: any) => tieneManiobrabilidadVisible(typeof item === 'string' ? { Nombre: item } : item));
+        if (plantilla && typeof plantilla === 'string')
+            return { Nombre: plantilla };
+        return plantilla ?? null;
+    }
+
+    getManiobrabilidadNombre(): string {
+        return `${this.getManiobrabilidadPersonaje()?.Nombre ?? ''}`.trim();
+    }
+
+    abrirInfoManiobrabilidad(event?: Event): void {
+        event?.preventDefault();
+        event?.stopPropagation();
+        this.mostrarInfoManiobrabilidad = true;
+    }
+
+    cerrarInfoManiobrabilidad(): void {
+        this.mostrarInfoManiobrabilidad = false;
+    }
+
+    getManiobrabilidadInfoSecciones() {
+        return buildManiobrabilidadInfoSecciones(this.getManiobrabilidadPersonaje());
     }
 
     tieneCapacidadCargaVisible(): boolean {

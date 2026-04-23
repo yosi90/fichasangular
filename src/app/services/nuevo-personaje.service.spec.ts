@@ -5758,6 +5758,58 @@ describe('NuevoPersonajeService (tipo y subtipos derivados)', () => {
         expect(svc.PersonajeCreacion.Subtipos).toEqual([{ Id: 11, Nombre: 'Humano' }]);
     });
 
+    it('seleccionarRaza incorpora plantillas por subtipo como confirmadas no removibles', () => {
+        const svc = new NuevoPersonajeService();
+        const tipoHumanoide = crearTipo(1, 'Humanoide');
+        const celestial = crearPlantillaMock({ Id: 20, Nombre: 'Celestial', Nacimiento: true });
+        svc.setCatalogoTiposCriatura([tipoHumanoide]);
+        svc.setPlantillasDisponibles([celestial]);
+        const raza = {
+            ...crearRazaMock(tipoHumanoide, [{ Id: 12, Nombre: 'Arconte' }]),
+            Plantillas_por_subtipo: [{
+                Subtipo: { Id: 12, Nombre: 'Arconte' },
+                Plantillas: [{ Id: 20, Nombre: 'Celestial' }],
+            }],
+        } as Raza;
+
+        svc.seleccionarRaza(raza);
+
+        expect(svc.EstadoFlujo.plantillas.seleccionadas.map((p) => p.Id)).toEqual([20]);
+        expect(svc.esPlantillaConfirmada(20)).toBeTrue();
+        expect(svc.esPlantillaOtorgadaPorRaza(20)).toBeTrue();
+        expect(svc.EstadoFlujo.plantillas.heredadaActiva).toBeTrue();
+
+        svc.quitarPlantillaSeleccion(20);
+        expect(svc.EstadoFlujo.plantillas.seleccionadas.map((p) => p.Id)).toEqual([20]);
+
+        svc.limpiarPlantillasSeleccion();
+        expect(svc.EstadoFlujo.plantillas.seleccionadas.map((p) => p.Id)).toEqual([20]);
+    });
+
+    it('resuelve plantillas por subtipo cuando el catalogo llega despues de seleccionar raza', () => {
+        const svc = new NuevoPersonajeService();
+        const tipoHumanoide = crearTipo(1, 'Humanoide');
+        svc.setCatalogoTiposCriatura([tipoHumanoide]);
+        const raza = {
+            ...crearRazaMock(tipoHumanoide, [{ Id: 12, Nombre: 'Arconte' }]),
+            Plantillas_por_subtipo: [{
+                Subtipo: { Id: 12, Nombre: 'Arconte' },
+                Plantillas: [{ Id: 20, Nombre: 'Celestial' }],
+            }],
+        } as Raza;
+
+        svc.seleccionarRaza(raza);
+
+        expect(svc.EstadoFlujo.plantillas.seleccionadas).toEqual([]);
+        expect(svc.EstadoFlujo.plantillas.otorgadasRazaPendientes).toEqual([{ Id: 20, Nombre: 'Celestial', Descripcion: '' }]);
+
+        svc.setPlantillasDisponibles([crearPlantillaMock({ Id: 20, Nombre: 'Celestial', Nacimiento: true })]);
+
+        expect(svc.EstadoFlujo.plantillas.seleccionadas.map((p) => p.Id)).toEqual([20]);
+        expect(svc.EstadoFlujo.plantillas.otorgadasRazaPendientes).toEqual([]);
+        expect(svc.esPlantillaConfirmada(20)).toBeTrue();
+    });
+
     it('seleccionarRaza mutada sin base no aplica cambios', () => {
         const svc = new NuevoPersonajeService();
         const tipoHumanoide = crearTipo(1, 'Humanoide');

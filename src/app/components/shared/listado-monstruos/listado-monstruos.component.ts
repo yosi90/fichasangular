@@ -2,11 +2,9 @@ import { ChangeDetectorRef, Component, ElementRef, EventEmitter, OnDestroy, Outp
 import { MatPaginator } from '@angular/material/paginator';
 import { MatSort } from '@angular/material/sort';
 import { MatTableDataSource } from '@angular/material/table';
-import { Subject, combineLatest, takeUntil } from 'rxjs';
-import { Manual } from 'src/app/interfaces/manual';
+import { Subject, takeUntil } from 'rxjs';
 import { MonstruoDetalle } from 'src/app/interfaces/monstruo';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
-import { ManualService } from 'src/app/services/manual.service';
 import { MonstruoService } from 'src/app/services/monstruo.service';
 
 @Component({
@@ -17,7 +15,7 @@ import { MonstruoService } from 'src/app/services/monstruo.service';
 })
 export class ListadoMonstruosComponent implements OnDestroy {
     monstruos: MonstruoDetalle[] = [];
-    Manuales: Manual[] = [];
+    Manuales: string[] = [];
     defaultManual: string = 'Cualquiera';
     monstruosDS = new MatTableDataSource<MonstruoDetalle>([]);
     monstruoColumns = ['Nombre', 'Manual', 'Valor_desafio', 'Familiar', 'Companero'];
@@ -36,7 +34,6 @@ export class ListadoMonstruosComponent implements OnDestroy {
     constructor(
         private cdr: ChangeDetectorRef,
         private monstruoSvc: MonstruoService,
-        private manualSvc: ManualService,
         private manualDetalleNavSvc: ManualDetalleNavigationService
     ) { }
 
@@ -49,16 +46,13 @@ export class ListadoMonstruosComponent implements OnDestroy {
         this.monstruosDS.sort = this.monstruoSort;
         this.monstruosDS.sortingDataAccessor = (item, property) => this.sortingAccessor(item, property);
 
-        combineLatest([
-            this.monstruoSvc.getMonstruos(),
-            this.manualSvc.getManuales(),
-        ])
+        this.monstruoSvc.getMonstruos()
             .pipe(takeUntil(this.destroy$))
-            .subscribe(([monstruos, manuales]) => {
+            .subscribe((monstruos) => {
                 this.monstruos = [...(monstruos ?? [])]
                     .filter(monstruo => this.toNumber(monstruo?.Id) > 0)
                     .sort((a, b) => a.Nombre.localeCompare(b.Nombre, 'es', { sensitivity: 'base' }));
-                this.Manuales = [...(manuales ?? [])].sort((a, b) => a.Nombre.localeCompare(b.Nombre, 'es', { sensitivity: 'base' }));
+                this.Manuales = this.buildManualesDisponibles(this.monstruos);
                 this.defaultManual = 'Cualquiera';
                 this.sincronizarColumnaHomebrew();
                 this.filtroMonstruos();
@@ -166,6 +160,14 @@ export class ListadoMonstruosComponent implements OnDestroy {
 
     private getManualNombre(monstruo: MonstruoDetalle): string {
         return `${monstruo?.Manual?.Nombre ?? ''}`.trim();
+    }
+
+    private buildManualesDisponibles(monstruos: MonstruoDetalle[]): string[] {
+        return Array.from(new Set(
+            (monstruos ?? [])
+                .map((monstruo) => this.getManualNombre(monstruo))
+                .filter((nombre) => nombre.length > 0)
+        )).sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' }));
     }
 
     private toNumber(value: any): number {

@@ -20,9 +20,10 @@
 
                     <mat-form-field appearance="fill">
                         <mat-label>Manual</mat-label>
-                        <mat-select formControlName="id_manual">
-                            <mat-option *ngFor="let manual of manuales" [value]="manual.Id">{{manual.Nombre}}</mat-option>
-                        </mat-select>
+                        <input matInput [value]="manualBusqueda" (input)="actualizarManualBusqueda($any($event.target).value)" [matAutocomplete]="manualAuto" />
+                        <mat-autocomplete #manualAuto="matAutocomplete" (optionSelected)="seleccionarManual($event.option.value)">
+                            <mat-option *ngFor="let manual of getManualesFiltrados(); trackBy: trackByManualId" [value]="manual.Id">{{manual.Nombre}}</mat-option>
+                        </mat-autocomplete>
                         <mat-error *ngIf="form.controls.id_manual.invalid">Manual obligatorio.</mat-error>
                     </mat-form-field>
 

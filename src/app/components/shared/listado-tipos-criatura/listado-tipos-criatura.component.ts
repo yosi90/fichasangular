@@ -2,9 +2,7 @@ import { ChangeDetectorRef, Component, ElementRef, EventEmitter, Output, ViewChi
 import { MatPaginator } from '@angular/material/paginator';
 import { MatSort } from '@angular/material/sort';
 import { MatTableDataSource } from '@angular/material/table';
-import { Manual } from 'src/app/interfaces/manual';
 import { TipoCriatura } from 'src/app/interfaces/tipo_criatura';
-import { ManualService } from 'src/app/services/manual.service';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
 import { TipoCriaturaService } from 'src/app/services/tipo-criatura.service';
 
@@ -16,7 +14,7 @@ import { TipoCriaturaService } from 'src/app/services/tipo-criatura.service';
 })
 export class ListadoTiposCriaturaComponent {
     tipos: TipoCriatura[] = [];
-    Manuales: Manual[] = [];
+    Manuales: string[] = [];
     defaultManual: string = 'Cualquiera';
     tiposDS = new MatTableDataSource(this.tipos);
     tipoColumns = ['Nombre', 'Manual'];
@@ -24,7 +22,6 @@ export class ListadoTiposCriaturaComponent {
     constructor(
         private cdr: ChangeDetectorRef,
         private tSvc: TipoCriaturaService,
-        private mSvc: ManualService,
         private manualDetalleNavSvc: ManualDetalleNavigationService
     ) { }
 
@@ -37,13 +34,11 @@ export class ListadoTiposCriaturaComponent {
         this.tiposDS.sort = this.tipoSort;
         (this.tSvc.getTiposCriatura()).subscribe(tipos => {
             this.tipos = tipos.filter(t => t.Nombre !== 'Cualquiera');
-            (this.mSvc.getManuales()).subscribe(manuales => {
-                this.Manuales = [...manuales].sort((a, b) => a.Nombre.localeCompare(b.Nombre, 'es', { sensitivity: 'base' }));
-                this.defaultManual = 'Cualquiera';
-                this.cdr.detectChanges();
-                this.filtroTipos();
-                this.cdr.detectChanges();
-            });
+            this.Manuales = this.buildManualesDisponibles(this.tipos);
+            this.defaultManual = 'Cualquiera';
+            this.cdr.detectChanges();
+            this.filtroTipos();
+            this.cdr.detectChanges();
         });
     }
 
@@ -90,5 +85,13 @@ export class ListadoTiposCriaturaComponent {
         event?.preventDefault();
         event?.stopPropagation();
         this.manualDetalleNavSvc.abrirDetalleManual(tipo?.Manual);
+    }
+
+    private buildManualesDisponibles(tipos: TipoCriatura[]): string[] {
+        return Array.from(new Set(
+            (tipos ?? [])
+                .map((tipo) => `${tipo?.Manual ?? ''}`.trim())
+                .filter((nombre) => nombre.length > 0)
+        )).sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' }));
     }
 }

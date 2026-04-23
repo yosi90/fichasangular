@@ -226,4 +226,30 @@ describe('DetallesRazaComponent', () => {
         expect(component.tieneAlineamientoVisible()).toBeFalse();
         expect(html).not.toContain('Alineamiento');
     });
+
+    it('muestra ayuda de maniobrabilidad cuando la raza vuela', () => {
+        component.raza.Volar = 40;
+        component.raza.Maniobrabilidad = {
+            Nombre: 'Regular',
+            Velocidad_avance: 'Mitad',
+            Flotar: 0,
+            Volar_atras: 0,
+            Contramarcha: 0,
+            Giro: '45 grados',
+            Rotacion: '45 grados',
+            Giro_max: '90 grados',
+            Angulo_ascenso: '60 grados',
+            Velocidad_ascenso: 'Mitad',
+            Angulo_descenso: 'Cualquiera',
+            Descenso_ascenso: 1,
+        } as any;
+
+        expect(component.mostrarManiobrabilidad()).toBeTrue();
+        component.abrirInfoManiobrabilidad();
+
+        const texto = JSON.stringify(component.getManiobrabilidadInfoSecciones());
+        expect(component.mostrarInfoManiobrabilidad).toBeTrue();
+        expect(texto).toContain('Regular');
+        expect(texto).toContain('Velocidad de avance: Mitad.');
+    });
 });

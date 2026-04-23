@@ -2,12 +2,10 @@ import { ChangeDetectorRef, Component, ElementRef, EventEmitter, OnDestroy, Outp
 import { MatPaginator } from '@angular/material/paginator';
 import { MatSort } from '@angular/material/sort';
 import { MatTableDataSource } from '@angular/material/table';
-import { Subject, combineLatest, takeUntil } from 'rxjs';
+import { Subject, takeUntil } from 'rxjs';
 import { DeidadDetalle } from 'src/app/interfaces/deidad';
-import { Manual } from 'src/app/interfaces/manual';
 import { DeidadService } from 'src/app/services/deidad.service';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
-import { ManualService } from 'src/app/services/manual.service';
 
 @Component({
     selector: 'app-listado-deidades',
@@ -17,7 +15,7 @@ import { ManualService } from 'src/app/services/manual.service';
 })
 export class ListadoDeidadesComponent implements OnDestroy {
     deidades: DeidadDetalle[] = [];
-    manuales: Manual[] = [];
+    manuales: string[] = [];
     defaultManual = 'Cualquiera';
     defaultAlineamiento = 'Cualquiera';
     defaultPabellon = 'Cualquiera';
@@ -30,7 +28,6 @@ export class ListadoDeidadesComponent implements OnDestroy {
     constructor(
         private cdr: ChangeDetectorRef,
         private deidadSvc: DeidadService,
-        private manualSvc: ManualService,
         private manualDetalleNavSvc: ManualDetalleNavigationService
     ) { }
 
@@ -43,16 +40,13 @@ export class ListadoDeidadesComponent implements OnDestroy {
         this.deidadesDS.sort = this.deidadSort;
         this.deidadesDS.sortingDataAccessor = (item, property) => this.sortingAccessor(item, property);
 
-        combineLatest([
-            this.deidadSvc.getDeidades(),
-            this.manualSvc.getManuales(),
-        ])
+        this.deidadSvc.getDeidades()
             .pipe(takeUntil(this.destroy$))
-            .subscribe(([deidades, manuales]) => {
+            .subscribe((deidades) => {
                 this.deidades = [...(deidades ?? [])]
                     .filter((deidad) => Number(deidad?.Id) > 0)
                     .sort((a, b) => a.Nombre.localeCompare(b.Nombre, 'es', { sensitivity: 'base' }));
-                this.manuales = [...(manuales ?? [])].sort((a, b) => a.Nombre.localeCompare(b.Nombre, 'es', { sensitivity: 'base' }));
+                this.manuales = this.buildManualesDisponibles(this.deidades);
                 this.defaultManual = 'Cualquiera';
                 this.defaultAlineamiento = 'Cualquiera';
                 this.defaultPabellon = 'Cualquiera';
@@ -163,6 +157,14 @@ export class ListadoDeidadesComponent implements OnDestroy {
         if (property === 'Alineamiento')
             return `${item?.Alineamiento?.Nombre ?? ''}`;
         return (item as any)?.[property] ?? '';
+    }
+
+    private buildManualesDisponibles(deidades: DeidadDetalle[]): string[] {
+        return Array.from(new Set(
+            (deidades ?? [])
+                .map((deidad) => `${deidad?.Manual?.Nombre ?? ''}`.trim())
+                .filter((nombre) => nombre.length > 0)
+        )).sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' }));
     }
 
     private normalizar(value: string | null | undefined): string {

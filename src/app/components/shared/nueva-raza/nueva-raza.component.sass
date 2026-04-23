@@ -1,0 +1,574 @@
+@use '../../../../assets/css/preformas/_inserciones' as inserciones
+
+.nueva-raza-shell
+    @include inserciones.insercion-shell
+
+.nueva-raza-form
+    @include inserciones.insercion-form-base
+
+.permiso-msg
+    margin: 0
+    padding: 0.75rem 1rem
+    border-radius: 0.5rem
+    background: rgba(244, 67, 54, 0.08)
+    color: #8b1f16
+
+.grid-base,
+.grid-content,
+.selectors-grid,
+.lookup-grid,
+.base-body-grid
+    display: grid
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr))
+    gap: 1rem
+
+.base-body-grid
+    grid-template-columns: repeat(4, minmax(170px, 1fr))
+    align-items: start
+
+.form-panel
+    min-width: 0
+    padding: 0.75rem 0.85rem 0.25rem
+    border: 1px solid rgba(255, 255, 255, 0.1)
+    border-radius: 8px
+    background: rgba(255, 255, 255, 0.035)
+
+.form-panel-title
+    margin: 0 0 0.65rem
+    color: #f3f4f6
+    font-size: 0.92rem
+    font-weight: 700
+    letter-spacing: 0
+
+    &--with-note
+        display: flex
+        flex-wrap: wrap
+        align-items: baseline
+        gap: 0.5rem
+
+.form-panel-note
+    color: rgba(229, 231, 235, 0.62)
+    font-size: 0.78rem
+    font-weight: 500
+
+.source-grid
+    display: grid
+    grid-template-columns: minmax(180px, 1fr) minmax(240px, 1.35fr) minmax(82px, 0.35fr) minmax(190px, 1fr) auto
+    gap: 0.85rem
+    align-items: start
+
+.source-status
+    min-height: 56px
+    align-items: center
+    margin-top: 0
+    transform: translateY(-5px)
+
+.physical-grid
+    display: grid
+    grid-template-columns: repeat(3, minmax(120px, 1fr))
+    gap: 0.75rem
+    align-items: start
+
+.speed-grid
+    display: grid
+    grid-template-columns: repeat(6, minmax(110px, 1fr))
+    gap: 0.85rem
+    align-items: start
+
+.grid-base--primary
+    grid-template-columns: minmax(280px, 2fr) minmax(220px, 1fr) minmax(140px, 0.6fr)
+
+.grid-base--secondary
+    grid-template-columns: minmax(220px, 1fr) minmax(360px, 2fr) minmax(180px, 0.8fr)
+    align-items: start
+
+.grid-content
+    grid-template-columns: repeat(auto-fit, minmax(190px, 1fr))
+
+.numbers-grid
+    display: grid
+    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr))
+    gap: 1rem
+    margin-bottom: 1rem
+
+.values-card-grid
+    display: grid
+    grid-template-columns: repeat(4, minmax(170px, 1fr))
+    gap: 1rem
+    align-items: start
+
+.values-panel
+    padding-bottom: 0.45rem
+
+.values-characteristics
+    grid-column: span 2
+
+.values-dgs
+    grid-column: span 2
+
+.values-other
+    grid-column: 1 / -1
+
+.values-body,
+.values-age
+    grid-column: span 2
+
+.values-grid
+    display: grid
+    gap: 0.8rem
+    align-items: start
+
+    mat-form-field
+        min-width: 0
+
+    &--six
+        grid-template-columns: repeat(6, minmax(105px, 1fr))
+
+    &--four
+        grid-template-columns: repeat(4, minmax(105px, 1fr))
+
+.values-grid--dgs
+    grid-template-columns: repeat(5, minmax(72px, 1fr))
+
+.values-characteristics
+    .values-grid--six
+        grid-template-columns: repeat(3, minmax(105px, 1fr))
+
+.values-wide-field
+    grid-column: span 2
+
+.values-dgs-dice-field
+    grid-column: span 2
+
+.values-dgs-creature-field
+    grid-column: span 3
+
+.span-2
+    grid-column: span 2
+
+.span-3
+    grid-column: span 3
+
+.span-4
+    grid-column: 1 / -1
+
+.estado-row
+    display: flex
+    flex-wrap: wrap
+    gap: 1rem
+    margin-top: 0.75rem
+
+.panel-title-row
+    display: flex
+    align-items: center
+    gap: 0.6rem
+    min-width: 0
+
+.help-chip-btn
+    margin-left: auto
+    display: inline-flex
+    align-items: center
+    justify-content: center
+    width: 34px
+    height: 34px
+    border: 1px solid rgba(255, 255, 255, 0.28)
+    border-radius: 999px
+    background: rgba(0, 0, 0, 0.16)
+    color: #d1d5db
+    cursor: pointer
+    padding: 0
+
+    mat-icon
+        width: 18px
+        height: 18px
+        font-size: 18px
+
+    &:hover
+        background: rgba(0, 0, 0, 0.24)
+        color: #f3f4f6
+
+    &:disabled
+        cursor: default
+        opacity: 0.45
+
+.field-with-help
+    display: grid
+    grid-template-columns: minmax(0, 1fr) 34px
+    gap: 0.45rem
+    align-items: start
+    min-width: 0
+
+    mat-form-field
+        min-width: 0
+
+    .help-chip-btn
+        margin-left: 0
+        margin-top: 0.55rem
+
+.editors-accordion
+    display: block
+
+    h4
+        margin: 1rem 0 0.5rem
+        font-size: 0.95rem
+        font-weight: 700
+
+.row-editor
+    display: grid
+    grid-template-columns: minmax(220px, 2fr) repeat(3, minmax(120px, 1fr)) 48px
+    gap: 0.75rem
+    align-items: center
+    margin-bottom: 0.75rem
+
+    &--compact
+        grid-template-columns: minmax(220px, 2fr) minmax(120px, 1fr) 48px
+
+    &--skill
+        grid-template-columns: minmax(220px, 2fr) minmax(120px, 1fr) minmax(170px, 1.4fr) minmax(160px, 1.2fr) 48px
+
+.raza-stepper
+    background: transparent
+    color: #e5e7eb
+
+    ::ng-deep .mat-horizontal-stepper-header-container
+        overflow-x: auto
+        padding-bottom: 0.25rem
+
+    ::ng-deep .mat-horizontal-content-container
+        padding: 0.75rem 0 0
+
+    ::ng-deep .mat-step-label,
+    ::ng-deep .mat-step-optional
+        color: rgba(229, 231, 235, 0.74)
+
+    ::ng-deep .mat-step-label-active
+        color: #f3f4f6
+
+    ::ng-deep .mat-step-icon
+        background: rgba(255, 255, 255, 0.18)
+
+    ::ng-deep .mat-step-icon-selected,
+    ::ng-deep .mat-step-icon-state-edit
+        background: #3f51b5
+
+.step-layout
+    display: flex
+    flex-direction: column
+    height: calc(100vh - 235px)
+    min-height: 0
+    max-height: calc(100vh - 235px)
+    overflow: hidden
+
+@supports (height: 100dvh)
+    .step-layout
+        height: calc(100dvh - 235px)
+        max-height: calc(100dvh - 235px)
+
+.step-main
+    display: flex
+    flex: 1 1 auto
+    flex-direction: column
+    gap: 1.35rem
+    min-height: 0
+    overflow: auto
+    padding-right: 0.35rem
+    scrollbar-gutter: stable
+
+.step-section
+    min-width: 0
+
+.step-actions
+    flex: 0 0 auto
+    display: flex
+    justify-content: flex-end
+    gap: 0.6rem
+    margin-top: 0
+    padding: 0.75rem 0.1rem 0
+
+.mode-chips,
+.boolean-chips
+    display: flex
+    flex-wrap: wrap
+    gap: 0.5rem
+
+    ::ng-deep .mat-mdc-chip-option
+        border: 1px solid rgba(255, 255, 255, 0.18)
+        background: rgba(255, 255, 255, 0.06)
+        color: #e5e7eb
+
+    ::ng-deep .mat-mdc-chip-selected
+        border-color: rgba(233, 30, 99, 0.64)
+        background: rgba(233, 30, 99, 0.22)
+        color: #fff
+
+.alignment-builder
+    display: flex
+    flex-direction: column
+    gap: 0.7rem
+    min-width: 0
+    padding-bottom: 0.55rem
+
+.alignment-fields
+    display: grid
+    grid-template-columns: repeat(3, minmax(140px, 1fr))
+    gap: 0.8rem
+
+.alignment-preferences
+    display: grid
+    grid-template-columns: repeat(2, minmax(180px, 1fr))
+    gap: 0.8rem
+
+.field-error
+    margin: -0.25rem 0 0
+    color: #ff8a80
+    font-size: 0.82rem
+
+.detalle
+    margin: 0
+    color: rgba(229, 231, 235, 0.68)
+    font-size: 0.88rem
+
+.lookup-grid
+    align-items: start
+
+.lookup-block
+    min-width: 0
+
+.single-lookup-block
+    min-width: 0
+
+.selected-chips
+    display: flex
+    flex-wrap: wrap
+    gap: 0.45rem
+    min-height: 34px
+
+    &--single
+        margin-top: -0.65rem
+
+.selected-chip
+    display: inline-flex
+    align-items: center
+    gap: 0.25rem
+    max-width: 100%
+    min-height: 32px
+    padding: 0.15rem 0.2rem 0.15rem 0.65rem
+    border: 1px solid rgba(255, 255, 255, 0.18)
+    border-radius: 999px
+    background: rgba(255, 255, 255, 0.07)
+    color: #f3f4f6
+    font-size: 0.88rem
+
+    button
+        width: 26px
+        height: 26px
+        padding: 0
+        color: #d1d5db
+
+    mat-icon
+        width: 18px
+        height: 18px
+        font-size: 18px
+
+.mutacion-panel
+    display: flex
+    flex-direction: column
+    gap: 0.75rem
+    margin-top: 0.75rem
+
+.subpanel-head
+    display: flex
+    align-items: center
+    justify-content: space-between
+    gap: 0.75rem
+
+.subpanel-title
+    margin: 0
+    color: #f3f4f6
+    font-size: 0.95rem
+    font-weight: 700
+
+.mod-preview
+    display: flex
+    flex-wrap: wrap
+    gap: 0.4rem
+
+.mod-chip
+    border: 1px solid rgba(255, 255, 255, 0.2)
+    background: rgba(255, 255, 255, 0.08)
+
+.error-section
+    padding-left: 0.75rem
+    border-left: 3px solid rgba(244, 67, 54, 0.7)
+
+.selector-overlay
+    position: fixed
+    inset: 0
+    display: flex
+    justify-content: center
+    align-items: center
+    padding: 12px
+    background: rgba(0, 0, 0, 0.6)
+    z-index: 1200
+
+.selector-dialog
+    width: min(720px, 96vw)
+    max-height: calc(100vh - 24px)
+    overflow: auto
+    display: flex
+    flex-direction: column
+    gap: 10px
+    padding: 14px
+    border: 1px solid #6f7683
+    border-radius: 10px
+    background: linear-gradient(180deg, #2f3137 0%, #272a30 100%)
+    color: #edf2ff
+
+.selector-header
+    display: flex
+    justify-content: space-between
+    align-items: flex-start
+    gap: 8px
+
+.selector-header-main
+    display: flex
+    flex-direction: column
+    gap: 4px
+
+.selector-title
+    color: #f3f6ff
+    font-size: 1.25rem
+    font-weight: 700
+
+.selector-subtitle
+    color: #d5dcef
+    font-size: 0.86rem
+
+.selector-icon-btn
+    color: #e9eefc
+    background: rgba(255, 255, 255, 0.08)
+
+    &:hover
+        background: rgba(255, 255, 255, 0.16)
+
+.selector-tools
+    display: flex
+    justify-content: space-between
+    align-items: center
+    gap: 8px
+
+.selector-tools--inline
+    align-items: flex-start
+
+    ::ng-deep .mat-mdc-form-field
+        flex: 1 1 auto
+
+    button
+        flex: 0 0 auto
+        min-height: 56px
+
+.extras-listado
+    display: flex
+    flex-direction: column
+    gap: 8px
+    max-height: 44vh
+    overflow-y: auto
+    overflow-x: hidden
+    padding-right: 4px
+
+.extra-row
+    padding: 9px 10px
+    border: 1px solid rgba(255, 255, 255, 0.18)
+    border-radius: 8px
+    background: rgba(255, 255, 255, 0.05)
+    cursor: pointer
+    transition: border-color .15s ease, background .15s ease
+
+    &:hover
+        background: rgba(255, 255, 255, 0.1)
+
+.selector-actions
+    display: flex
+    justify-content: flex-end
+    gap: 8px
+    padding-top: 4px
+
+.inline-actions
+    display: flex
+    flex-wrap: wrap
+    gap: 0.5rem
+
+.selector-dialog--wide
+    width: min(1180px, calc(100vw - 48px))
+    max-height: min(90vh, 920px)
+    overflow: auto
+
+::ng-deep .selector-dialog .mat-mdc-form-field
+    width: 100%
+
+::ng-deep .selector-dialog .mat-mdc-form-field .mdc-text-field--filled
+    background: rgba(255, 255, 255, 0.09)
+
+::ng-deep .selector-dialog .mat-mdc-form-field .mdc-floating-label
+    color: #dbe5ff !important
+
+::ng-deep .selector-dialog .mat-mdc-input-element
+    color: #f6f8ff !important
+
+::ng-deep .selector-dialog .mat-mdc-checkbox .mdc-form-field > label,
+::ng-deep .selector-dialog .mdc-label
+    color: #edf2ff
+
+::ng-deep .selector-dialog .mat-mdc-button.mat-mdc-outlined-button
+    border-color: rgba(203, 216, 255, 0.45)
+    color: #f1f5ff
+
+::ng-deep .selector-dialog .mat-mdc-raised-button.mat-primary
+    background: linear-gradient(135deg, #d61a73 0%, #b8105f 100%)
+    color: #fff
+
+@media (max-width: 720px)
+    .span-2,
+    .span-3
+        grid-column: span 1
+
+    .row-editor,
+    .row-editor--compact
+        grid-template-columns: 1fr
+
+    .row-editor--skill
+        grid-template-columns: 1fr
+
+    .grid-base--primary,
+    .grid-base--secondary,
+    .alignment-preferences,
+    .alignment-fields,
+    .base-body-grid,
+    .source-grid,
+    .speed-grid,
+    .physical-grid,
+    .values-card-grid,
+    .values-grid,
+    .values-grid--six,
+    .values-grid--four,
+    .values-grid--dgs
+        grid-template-columns: 1fr
+
+    .values-characteristics,
+    .values-dgs,
+    .values-body,
+    .values-age,
+    .values-other,
+    .values-wide-field,
+    .values-dgs-dice-field,
+    .values-dgs-creature-field
+        grid-column: span 1
+
+    .source-status
+        transform: none
+
+    .subpanel-head,
+    .selector-tools,
+    .selector-actions
+        align-items: stretch
+        flex-direction: column

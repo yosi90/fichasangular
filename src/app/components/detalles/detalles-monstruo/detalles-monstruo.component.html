@@ -66,7 +66,14 @@
                     <mat-chip class="sombra3d-sm tw-m-1" *ngIf="monstruo.Movimientos.Volar > 0">Volar {{monstruo.Movimientos.Volar}}'</mat-chip>
                     <mat-chip class="sombra3d-sm tw-m-1" *ngIf="monstruo.Movimientos.Trepar > 0">Trepar {{monstruo.Movimientos.Trepar}}'</mat-chip>
                     <mat-chip class="sombra3d-sm tw-m-1" *ngIf="monstruo.Movimientos.Escalar > 0">Escalar {{monstruo.Movimientos.Escalar}}'</mat-chip>
-                    <mat-chip class="sombra3d-sm tw-m-1" *ngIf="mostrarManiobrabilidad()">Maniobrabilidad {{monstruo.Maniobrabilidad.Nombre}}</mat-chip>
+                    <mat-chip class="sombra3d-sm tw-m-1 maniobrabilidad-chip" *ngIf="mostrarManiobrabilidad()">
+                        Maniobrabilidad {{monstruo.Maniobrabilidad.Nombre}}
+                        <button mat-icon-button type="button" class="maniobrabilidad-help-btn"
+                            matTooltip="Reglas de maniobrabilidad" aria-label="Reglas de maniobrabilidad"
+                            (click)="abrirInfoManiobrabilidad($event)">
+                            <mat-icon>help_outline</mat-icon>
+                        </button>
+                    </mat-chip>
                     <mat-chip class="sombra3d-sm tw-m-1" *ngIf="tieneTextoVisible(monstruo.Defensa.Reduccion_dano)">RD: {{monstruo.Defensa.Reduccion_dano}}</mat-chip>
                     <mat-chip class="sombra3d-sm tw-m-1" *ngIf="tieneTextoVisible(monstruo.Defensa.Resistencia_conjuros)">RC: {{monstruo.Defensa.Resistencia_conjuros}}</mat-chip>
                     <mat-chip class="sombra3d-sm tw-m-1" *ngIf="tieneTextoVisible(monstruo.Defensa.Resistencia_elemental)">RE: {{monstruo.Defensa.Resistencia_elemental}}</mat-chip>
@@ -301,4 +308,11 @@
             </mat-accordion>
         </div>
     </div>
+
+    <app-informacion-basicos-modal *ngIf="mostrarInfoManiobrabilidad"
+        titulo="Maniobrabilidad"
+        icono="flight"
+        [secciones]="getManiobrabilidadInfoSecciones()"
+        (cerrar)="cerrarInfoManiobrabilidad()">
+    </app-informacion-basicos-modal>
 </div>

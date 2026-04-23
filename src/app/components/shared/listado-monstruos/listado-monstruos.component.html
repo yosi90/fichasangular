@@ -10,13 +10,11 @@
                     <mat-label>Incluye texto</mat-label>
                     <input #monstruoTextInc matInput placeholder="Texto a buscar">
                 </mat-form-field>
-                <mat-form-field (click)="$event.stopPropagation();">
-                    <mat-label>Manual</mat-label>
-                    <mat-select appearance="fill" [(value)]="defaultManual" (selectionChange)="filtroMonstruos();">
-                        <mat-option [value]="'Cualquiera'">Cualquiera</mat-option>
-                        <mat-option *ngFor="let m of Manuales" [value]="m.Nombre">{{m.Nombre}}</mat-option>
-                    </mat-select>
-                </mat-form-field>
+                <app-manual-autocomplete
+                    [manuales]="Manuales"
+                    [(value)]="defaultManual"
+                    (selectionChange)="filtroMonstruos()">
+                </app-manual-autocomplete>
             </div>
             <mat-chip-option color="warn" class="tw-mt-4 tw-mb-1"
                 [selected]="monstruoColumns.includes('Homebrew')"

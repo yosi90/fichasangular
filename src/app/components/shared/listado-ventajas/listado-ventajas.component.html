@@ -15,13 +15,11 @@
                     <mat-label>Incluye texto</mat-label>
                     <input #ventajaTextInc matInput placeholder="Texto a buscar">
                 </mat-form-field>
-                <mat-form-field (click)="$event.stopPropagation();">
-                    <mat-label>Manual</mat-label>
-                    <mat-select appearance="fill" [(value)]="defaultManual" (selectionChange)="filtroVentajas();">
-                        <mat-option [value]="'Cualquiera'">Cualquiera</mat-option>
-                        <mat-option *ngFor="let manual of manuales" [value]="manual">{{manual}}</mat-option>
-                    </mat-select>
-                </mat-form-field>
+                <app-manual-autocomplete
+                    [manuales]="manuales"
+                    [(value)]="defaultManual"
+                    (selectionChange)="filtroVentajas()">
+                </app-manual-autocomplete>
             </div>
         </mat-menu>
 

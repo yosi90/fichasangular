@@ -1,8 +1,10 @@
 import { Injectable } from '@angular/core';
+import { Auth } from '@angular/fire/auth';
 import { Database, Unsubscribe, onValue, ref, set } from '@angular/fire/database';
 import { Observable, firstValueFrom } from 'rxjs';
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { MutacionRaza, Raza, RazaHabilidades, RazaPrerrequisitos, RazaPrerrequisitosFlags } from '../interfaces/raza';
+import { RazaCreateApiResponse, RazaCreateRequest, RazaCreateResponse } from '../interfaces/razas-api';
 import { environment } from 'src/environments/environment';
 import Swal from 'sweetalert2';
 import { Alineamiento } from '../interfaces/alineamiento';
@@ -66,6 +68,26 @@ export function normalizeIdiomasRaza(raw: any) {
         Secreto: toBoolean(item?.Secreto ?? item?.secreto),
         Oficial: toBoolean(item?.Oficial ?? item?.oficial),
     })).filter((idioma) => idioma.Nombre.trim().length > 0);
+}
+
+function normalizePlantillasPorSubtipo(raw: any): Raza['Plantillas_por_subtipo'] {
+    return toArray(raw)
+        .map((item: any) => {
+            const subtipoRaw = pick(item, 'Subtipo', 'subtipo') ?? {};
+            const subtipo = {
+                Id: toNumber(pick(subtipoRaw, 'Id', 'id', 'i')),
+                Nombre: `${pick(subtipoRaw, 'Nombre', 'nombre', 'n') ?? ''}`.trim(),
+            };
+            const plantillas = toArray(pick(item, 'Plantillas', 'plantillas'))
+                .map((plantilla: any) => ({
+                    Id: toNumber(pick(plantilla, 'Id', 'id', 'i')),
+                    Nombre: `${pick(plantilla, 'Nombre', 'nombre', 'n') ?? ''}`.trim(),
+                    Descripcion: `${pick(plantilla, 'Descripcion', 'descripcion', 'd') ?? ''}`.trim(),
+                }))
+                .filter((plantilla) => plantilla.Id > 0 || plantilla.Nombre.length > 0);
+            return { Subtipo: subtipo, Plantillas: plantillas };
+        })
+        .filter((item) => (item.Subtipo.Id > 0 || item.Subtipo.Nombre.length > 0) && item.Plantillas.length > 0);
 }
 
 export function normalizeAlineamientoRaza(raw: any): Alineamiento {
@@ -301,6 +323,7 @@ function mapRazaDesdeRaw(raw: any, id: any, dotesContextuales: DoteContextual[],
         Habilidades: normalizeHabilidadesRaza(raw?.Habilidades ?? raw?.habilidades ?? raw?.hab),
         DotesContextuales: dotesContextuales,
         Idiomas: normalizeIdiomasRaza(raw?.Idiomas ?? raw?.idiomas ?? raw?.idi),
+        Plantillas_por_subtipo: normalizePlantillasPorSubtipo(raw?.Plantillas_por_subtipo ?? raw?.plantillas_por_subtipo),
     };
 }
 
@@ -319,7 +342,8 @@ export class RazaService {
     constructor(
         private db: Database,
         private http: HttpClient,
-        private firebaseContextSvc: FirebaseInjectionContextService
+        private firebaseContextSvc: FirebaseInjectionContextService,
+        private auth?: Auth,
     ) { }
 
     protected watchRazaPath(id: number, onNext: (snapshot: any) => void, onError: (error: any) => void): Unsubscribe {
@@ -468,6 +492,28 @@ export class RazaService {
         return res;
     }
 
+    public async crearRaza(payload: RazaCreateRequest): Promise<RazaCreateResponse> {
+        try {
+            const headers = await this.buildAuthHeaders();
+            const response = await firstValueFrom(
+                this.http.post<RazaCreateApiResponse>(`${environment.apiUrl}razas/add`, payload, { headers })
+            );
+            const idRaza = Math.trunc(Number(response?.idRaza ?? 0));
+            if (!Number.isFinite(idRaza) || idRaza <= 0)
+                throw new Error('La API no devolvio un idRaza valido');
+
+            const normalizedResponse: RazaCreateResponse = {
+                message: `${response?.message ?? 'Raza creada'}`,
+                idRaza,
+            };
+
+            await this.refrescarRazaCacheBestEffort(idRaza, headers);
+            return normalizedResponse;
+        } catch (error: any) {
+            throw this.mapCrearRazaError(error);
+        }
+    }
+
     public async RenovarRazas(): Promise<boolean> {
         try {
             const response = await firstValueFrom(this.syncRazas());
@@ -501,5 +547,77 @@ export class RazaService {
             });
             return false;
         }
+    }
+
+    private async refrescarRazaCacheBestEffort(idRaza: number, headers: { Authorization: string; }): Promise<void> {
+        try {
+            const raw = await firstValueFrom(this.http.get(`${environment.apiUrl}razas/${idRaza}`, { headers }));
+            const normalized = normalizeRazaApi(raw);
+            if (normalized.Id <= 0)
+                return;
+            await this.firebaseContextSvc.run(() => set(ref(this.db, `Razas/${normalized.Id}`), normalized));
+        } catch {
+            // Best-effort: no bloquea flujo de creacion.
+        }
+    }
+
+    private mapCrearRazaError(error: any): Error {
+        if (!(error instanceof HttpErrorResponse))
+            return error instanceof Error ? error : new Error('No se pudo crear la raza');
+
+        const backendMessage = this.extractErrorMessage(error.error);
+        const suffix = backendMessage.length > 0 ? ` ${backendMessage}` : '';
+
+        if (error.status === 400)
+            return new Error(`Solicitud invalida para crear la raza.${suffix}`.trim());
+        if (error.status === 401)
+            return new Error(`Sesion no valida para crear razas.${suffix}`.trim());
+        if (error.status === 403)
+            return new Error(`No tienes permisos para crear razas.${suffix}`.trim());
+        if (error.status === 404)
+            return new Error(`No se encontro una referencia requerida para crear la raza.${suffix}`.trim());
+        if (error.status === 409) {
+            const conflictText = backendMessage.toLowerCase();
+            if (conflictText.includes('nombre') || conflictText.includes('duplic') || conflictText.includes('existe'))
+                return new Error('Ya existe una raza con ese nombre.');
+            return new Error(`Conflicto al crear la raza.${suffix}`.trim());
+        }
+
+        if (backendMessage.length > 0)
+            return new Error(backendMessage);
+
+        return new Error(`No se pudo crear la raza (HTTP ${error.status || 0})`);
+    }
+
+    private extractErrorMessage(errorBody: any): string {
+        if (!errorBody)
+            return '';
+
+        if (typeof errorBody === 'string') {
+            const message = errorBody.trim();
+            return message.length > 0 ? message : '';
+        }
+
+        if (typeof errorBody === 'object') {
+            const message = `${errorBody?.message ?? errorBody?.error ?? ''}`.trim();
+            if (message.length > 0)
+                return message;
+        }
+
+        return '';
+    }
+
+    private async buildAuthHeaders(): Promise<{ Authorization: string; }> {
+        const user = this.auth?.currentUser;
+        if (!user)
+            throw new Error('Sesión no iniciada');
+
+        const idToken = await user.getIdToken();
+        if (`${idToken ?? ''}`.trim().length < 1)
+            throw new Error('Token no disponible');
+
+        return {
+            Authorization: `Bearer ${idToken}`,
+        };
     }
 }

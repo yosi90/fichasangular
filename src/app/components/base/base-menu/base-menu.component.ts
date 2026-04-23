@@ -8,6 +8,7 @@ import { ConnectedPosition } from '@angular/cdk/overlay';
 
 type SeccionOtros = 'insertar' | 'modificar' | 'detalles';
 type PermissionAction = 'create' | 'update';
+type PermissionResource = string;
 
 @Component({
     selector: 'app-base-menu',
@@ -24,6 +25,27 @@ export class BaseMenuComponent implements OnInit, OnDestroy {
     usr: string = 'Invitado';
     otrosAbierto: SeccionOtros | null = null;
     private timerCierreOtros: ReturnType<typeof setTimeout> | null = null;
+    private readonly recursosOtrosInsertar: readonly PermissionResource[] = [
+        'tipos_criatura',
+        'armas',
+        'armaduras',
+        'deidades',
+        'subtipos',
+        'rasgos',
+        'especiales',
+        'ventajas',
+    ];
+    private readonly recursosOtrosModificar: readonly PermissionResource[] = [
+        'tipos_criatura',
+        'armas',
+        'armaduras',
+        'deidades',
+        'subtipos',
+        'rasgos',
+        'especiales',
+        'raciales',
+        'ventajas',
+    ];
     readonly posicionesOtros: ConnectedPosition[] = [
         { originX: 'end', overlayX: 'start', originY: 'top', overlayY: 'top', offsetX: 4 },
         { originX: 'end', overlayX: 'start', originY: 'bottom', overlayY: 'bottom', offsetX: 4 },
@@ -95,6 +117,12 @@ export class BaseMenuComponent implements OnInit, OnDestroy {
 
     @Output() NuevoPersonajeTab: EventEmitter<any> = new EventEmitter();
     AbrirNuevoPersonaje(): void {
+        if (this.esInvitado) {
+            this.openSesionDialog();
+            return;
+        }
+        if (!this.canCrearPersonajes)
+            return;
         this.NuevoPersonajeTab.emit();
     }
 
@@ -111,12 +139,63 @@ export class BaseMenuComponent implements OnInit, OnDestroy {
         return this.usrService.can(resource, action);
     }
 
+    get esInvitado(): boolean {
+        const nombre = `${this.usrService.Usuario.nombre ?? ''}`.trim();
+        const correo = `${this.usrService.Usuario.correo ?? ''}`.trim();
+        return nombre === 'Invitado' || correo.length < 1;
+    }
+
+    get canCrearPersonajes(): boolean {
+        return this.canGestionar('personajes', 'create');
+    }
+
+    get nuevoPersonajeDeshabilitado(): boolean {
+        return !this.esInvitado && !this.canCrearPersonajes;
+    }
+
+    get tooltipNuevoPersonaje(): string {
+        return this.nuevoPersonajeDeshabilitado ? this.mensajePermisosInsuficientes : '';
+    }
+
+    tieneOpcionesOtros(seccion: SeccionOtros): boolean {
+        if (seccion === 'insertar')
+            return this.recursosOtrosInsertar.some(resource => this.canGestionar(resource, 'create'))
+                || this.canInsertarRaciales();
+        if (seccion === 'modificar')
+            return this.recursosOtrosModificar.some(resource => this.canGestionar(resource, 'update'));
+        return true;
+    }
+
     canInsertarDotes(): boolean {
         return this.usrService.can('dotes', 'create');
     }
 
+    canInsertarRazas(): boolean {
+        return this.usrService.can('razas', 'create');
+    }
+
+    canInsertarRaciales(): boolean {
+        return this.usrService.can('razas', 'create');
+    }
+
     canInsertarConjuros(): boolean {
         return this.usrService.can('conjuros', 'create');
+    }
+
+    onInsertarRaza(): void {
+        if (!this.canInsertarRazas())
+            return;
+        this.AbrirListado('razas', 'insertar');
+        this.closeAcordion();
+        this.cerrarOtros();
+    }
+
+    onInsertarRacial(): void {
+        if (!this.canInsertarRaciales())
+            return;
+        this.AbrirListado('raciales', 'insertar');
+        this.closeAcordion();
+        this.cerrarOtros();
     }
 
     onInsertarDote(): void {

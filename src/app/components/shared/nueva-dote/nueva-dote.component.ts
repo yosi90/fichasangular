@@ -146,6 +146,7 @@ export class NuevaDoteComponent implements OnInit, OnDestroy {
     habilidadesCatalogoPrerrequisito: ExtraSelectorItem[] = [];
     tiposDoteCatalogoPrerrequisito: ExtraSelectorItem[] = [];
     manuales: Manual[] = [];
+    manualBusqueda: string = '';
     tiposDote: Array<{ Id: number; Nombre: string; }> = [];
     modificadoresEditor: ModificadorEditorItem[] = [];
     habilidadesCatalogo: HabilidadBasicaDetalle[] = [];
@@ -202,7 +203,7 @@ export class NuevaDoteComponent implements OnInit, OnDestroy {
         descripcion: ['', [Validators.required, Validators.minLength(10)]],
         normal: ['No especifica'],
         especial: ['No especifica'],
-        id_manual: [0, [Validators.required, Validators.min(0)]],
+        id_manual: [0, [Validators.required, Validators.min(1)]],
         pagina: [1, [Validators.required, Validators.min(0)]],
         id_tipo: [1, [Validators.required, Validators.min(0)]],
         id_tipo2: [0, [Validators.required, Validators.min(0)]],
@@ -287,11 +288,13 @@ export class NuevaDoteComponent implements OnInit, OnDestroy {
             .pipe(takeUntil(this.destroy$))
             .subscribe({
                 next: (manuales) => {
-                    this.manuales = Array.isArray(manuales) ? [...manuales] : [];
+                    this.manuales = (Array.isArray(manuales) ? [...manuales] : [])
+                        .sort((a, b) => `${a.Nombre ?? ''}`.localeCompare(`${b.Nombre ?? ''}`, 'es', { sensitivity: 'base' }));
                     this.sincronizarManualSeleccionado();
                 },
                 error: () => {
                     this.manuales = [];
+                    this.manualBusqueda = '';
                 }
             });
 
@@ -536,6 +539,34 @@ export class NuevaDoteComponent implements OnInit, OnDestroy {
         }
 
         await this.crearDote();
+    }
+
+    getManualesFiltrados(): Manual[] {
+        const filtro = this.normalizar(this.manualBusqueda);
+        return this.manuales
+            .filter((manual) => filtro.length < 1 || this.normalizar(manual?.Nombre ?? '').includes(filtro))
+            .slice(0, 40);
+    }
+
+    actualizarManualBusqueda(value: string): void {
+        this.manualBusqueda = value ?? '';
+        this.form.controls.id_manual.setValue(0);
+        this.form.controls.id_manual.markAsDirty();
+        this.form.controls.id_manual.updateValueAndValidity();
+    }
+
+    seleccionarManual(id: number): void {
+        const idManual = this.toInt(id, 0);
+        const manual = this.manuales.find((item) => this.toInt(item?.Id, 0) === idManual);
+        this.form.controls.id_manual.setValue(idManual);
+        this.form.controls.id_manual.markAsDirty();
+        this.form.controls.id_manual.updateValueAndValidity();
+        this.manualBusqueda = `${manual?.Nombre ?? ''}`.trim();
+    }
+
+    trackByManualId(_: number, manual: Manual): number {
+        const parsed = Math.trunc(Number(manual?.Id));
+        return Number.isFinite(parsed) ? parsed : 0;
     }
 
     async abrirSelectorExtras(): Promise<void> {
@@ -1080,6 +1111,7 @@ export class NuevaDoteComponent implements OnInit, OnDestroy {
         const idActual = this.toInt(this.form.controls.id_manual.value, -1);
         if (!this.manuales.some((manual) => this.toInt(manual?.Id, -1) === idActual))
             this.form.controls.id_manual.setValue(this.getManualPorDefectoId());
+        this.sincronizarManualBusquedaDesdeControl();
     }
 
     private getManualPorDefectoId(): number {
@@ -1089,6 +1121,12 @@ export class NuevaDoteComponent implements OnInit, OnDestroy {
         if (manualPreferido)
             return this.toInt(manualPreferido.Id, 0);
         return this.toInt(this.manuales[0]?.Id, 0);
+    }
+
+    private sincronizarManualBusquedaDesdeControl(): void {
+        const idActual = this.toInt(this.form.controls.id_manual.value, 0);
+        const manual = this.manuales.find((item) => this.toInt(item?.Id, 0) === idActual);
+        this.manualBusqueda = `${manual?.Nombre ?? ''}`.trim();
     }
 
     private validarReglasDominio(): string {

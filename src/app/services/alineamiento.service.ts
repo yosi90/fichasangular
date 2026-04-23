@@ -99,6 +99,10 @@ export class AlineamientoService {
         return this.http.get(`${environment.apiUrl}alineamientos/preferencia-moral`);
     }
 
+    private syncActitudes(): Observable<any> {
+        return this.http.get(`${environment.apiUrl}actitudes`);
+    }
+
     public async RenovarAlineamientos(): Promise<boolean> {
         try {
             const response = await firstValueFrom(this.syncAlineamientos());
@@ -183,6 +187,15 @@ export class AlineamientoService {
         });
     }
 
+    public async RenovarActitudes(): Promise<boolean> {
+        return this.renovarCatalogoSimple({
+            getter: () => firstValueFrom(this.syncActitudes()),
+            dbPath: 'Actitudes',
+            successTitle: 'Catálogo de actitudes actualizado con éxito',
+            errorTitle: 'Error al actualizar el catálogo de actitudes',
+        });
+    }
+
     private normalizeArrayResponse(response: any): any[] {
         return Array.isArray(response)
             ? response
@@ -198,7 +211,7 @@ export class AlineamientoService {
                 snapshot.forEach((child: any) => {
                     items.push(child.val() as T);
                 });
-                observador.next(items);
+                observador.next(this.sortById(items));
             };
 
             const onError = (error: any) => {
@@ -221,7 +234,7 @@ export class AlineamientoService {
     }): Promise<boolean> {
         try {
             const response = await params.getter();
-            const items = this.normalizeArrayResponse(response);
+            const items = this.sortById(this.normalizeArrayResponse(response));
             await this.firebaseContextSvc.run(() => set(ref(this.db, params.dbPath), items));
             Swal.fire({
                 icon: 'success',
@@ -239,5 +252,14 @@ export class AlineamientoService {
             });
             return false;
         }
+    }
+
+    private sortById<T>(items: T[]): T[] {
+        return [...items].sort((a: any, b: any) => this.toNumber(a?.Id) - this.toNumber(b?.Id));
+    }
+
+    private toNumber(value: any): number {
+        const parsed = Number(value);
+        return Number.isFinite(parsed) ? parsed : 0;
     }
 }

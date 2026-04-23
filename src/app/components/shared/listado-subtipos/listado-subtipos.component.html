@@ -10,13 +10,11 @@
                     <mat-label>Incluye texto</mat-label>
                     <input #subtipoTextInc matInput placeholder="Texto a buscar">
                 </mat-form-field>
-                <mat-form-field (click)="$event.stopPropagation();">
-                    <mat-label>Manual</mat-label>
-                    <mat-select appearance="fill" [(value)]="defaultManual" (selectionChange)="filtroSubtipos();">
-                        <mat-option [value]="'Cualquiera'">Cualquiera</mat-option>
-                        <mat-option *ngFor="let m of manuales" [value]="m.Nombre">{{m.Nombre}}</mat-option>
-                    </mat-select>
-                </mat-form-field>
+                <app-manual-autocomplete
+                    [manuales]="manuales"
+                    [(value)]="defaultManual"
+                    (selectionChange)="filtroSubtipos()">
+                </app-manual-autocomplete>
             </div>
             <mat-chip-option #subtiposHomebrew color="warn" class="tw-mt-4 tw-mb-1"
                 (click)="$event.stopPropagation(); alternarSubtiposHomebrew(subtiposHomebrew.value);">

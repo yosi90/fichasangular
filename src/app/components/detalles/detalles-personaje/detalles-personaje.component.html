@@ -33,6 +33,14 @@
             <mat-chip class="tw-m-1" *ngIf="tieneVelocidadVisible(pj.Correr)" [matTooltip]="velDisclaimer" matTooltipClass="tt-accent tt-multiline">Velocidad {{pj.Correr}}'</mat-chip>
             <mat-chip class="tw-m-1" *ngIf="tieneVelocidadVisible(pj.Nadar)" [matTooltip]="velDisclaimer" matTooltipClass="tt-accent tt-multiline">Nadar {{pj.Nadar}}'</mat-chip>
             <mat-chip class="tw-m-1" *ngIf="tieneVelocidadVisible(pj.Volar)" [matTooltip]="velDisclaimer" matTooltipClass="tt-accent tt-multiline">Volar {{pj.Volar}}'</mat-chip>
+            <mat-chip class="tw-m-1 maniobrabilidad-chip" *ngIf="mostrarManiobrabilidad()">
+                Maniobrabilidad {{getManiobrabilidadNombre()}}
+                <button mat-icon-button type="button" class="maniobrabilidad-help-btn"
+                    matTooltip="Reglas de maniobrabilidad" aria-label="Reglas de maniobrabilidad"
+                    (click)="abrirInfoManiobrabilidad($event)">
+                    <mat-icon>help_outline</mat-icon>
+                </button>
+            </mat-chip>
             <mat-chip class="tw-m-1" *ngIf="tieneVelocidadVisible(pj.Trepar)" [matTooltip]="velDisclaimer" matTooltipClass="tt-accent tt-multiline">Trepar {{pj.Trepar}}'</mat-chip>
             <mat-chip class="tw-m-1" *ngIf="tieneVelocidadVisible(pj.Escalar)" [matTooltip]="velDisclaimer" matTooltipClass="tt-accent tt-multiline">Escalar {{pj.Escalar}}'</mat-chip>
             <mat-chip class="tw-h-auto tw-m-1" *ngIf="tieneCapacidadCargaVisible()" matTooltip="Medida en libras" matTooltipClass="tt-accent">Capacidad de carga
@@ -430,4 +438,11 @@
         </div>
     </div>
 </div>
+
+<app-informacion-basicos-modal *ngIf="mostrarInfoManiobrabilidad"
+    titulo="Maniobrabilidad"
+    icono="flight"
+    [secciones]="getManiobrabilidadInfoSecciones()"
+    (cerrar)="cerrarInfoManiobrabilidad()">
+</app-informacion-basicos-modal>
 

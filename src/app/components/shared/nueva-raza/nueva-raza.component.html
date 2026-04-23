@@ -1,0 +1,698 @@
+<div class="nueva-raza-shell">
+    <form class="nueva-raza-form" [formGroup]="form" (ngSubmit)="crearRaza()">
+        <p class="permiso-msg" *ngIf="!puedeCrear">
+            {{mensajePermisosInsuficientes}}
+        </p>
+
+        <mat-horizontal-stepper class="raza-stepper" [linear]="false" [selectedIndex]="pasoActivoIndex" (selectionChange)="onStepSelectionChange($event)">
+            <mat-step>
+                <ng-template matStepLabel>Base y cuerpo</ng-template>
+
+                <div class="step-layout">
+                    <div class="step-main">
+                        <section class="step-section">
+                            <div class="base-body-grid">
+                                <section class="form-panel source-panel span-4">
+                                    <div class="source-grid">
+                                        <mat-form-field appearance="fill" class="name-field">
+                                            <mat-label>Nombre</mat-label>
+                                            <input matInput formControlName="nombre" maxlength="30" />
+                                            <mat-error *ngIf="form.controls.nombre.invalid">Nombre obligatorio entre 3 y 30 caracteres.</mat-error>
+                                        </mat-form-field>
+
+                                        <mat-form-field appearance="fill" class="manual-field">
+                                            <mat-label>Manual</mat-label>
+                                            <input matInput [value]="manualBusqueda" (input)="actualizarManualBusqueda($any($event.target).value)" [matAutocomplete]="manualAuto" />
+                                            <mat-autocomplete #manualAuto="matAutocomplete" (optionSelected)="seleccionarManual($event.option.value)">
+                                                <mat-option *ngFor="let manual of getManualesFiltrados(); trackBy: trackById" [value]="manual.Id">{{manual.Nombre}}</mat-option>
+                                            </mat-autocomplete>
+                                            <mat-error *ngIf="form.controls.id_manual.invalid">Manual obligatorio.</mat-error>
+                                        </mat-form-field>
+
+                                        <mat-form-field appearance="fill" class="page-field">
+                                            <mat-label>Página</mat-label>
+                                            <input matInput type="number" min="0" formControlName="pagina" />
+                                        </mat-form-field>
+
+                                        <mat-form-field appearance="fill" class="favored-class-field">
+                                            <mat-label>Clase predilecta</mat-label>
+                                            <input matInput [value]="clasePredilectaBusqueda" (input)="actualizarClasePredilectaBusqueda($any($event.target).value)" [matAutocomplete]="clasePredilectaAuto" />
+                                            <mat-autocomplete #clasePredilectaAuto="matAutocomplete" (optionSelected)="seleccionarClasePredilecta($event.option.value)">
+                                                <mat-option *ngFor="let clase of getClasesPredilectasFiltradas(); trackBy: trackById" [value]="clase.Id">{{clase.Nombre}}</mat-option>
+                                            </mat-autocomplete>
+                                            <mat-error *ngIf="form.controls.id_clase_predilecta.invalid">Clase obligatoria.</mat-error>
+                                        </mat-form-field>
+
+                                        <div class="estado-row source-status">
+                                            <mat-chip-listbox class="boolean-chips" aria-label="Estado de la raza">
+                                                <mat-chip-option [selected]="form.controls.oficial.value === true" (click)="toggleBooleanControl('oficial')">
+                                                    Oficial
+                                                </mat-chip-option>
+                                            </mat-chip-listbox>
+                                        </div>
+                                    </div>
+                                </section>
+
+                                <mat-form-field appearance="fill" class="span-2">
+                                    <mat-label>Descripción</mat-label>
+                                    <textarea matInput rows="4" maxlength="5000" formControlName="descripcion"></textarea>
+                                    <mat-error *ngIf="form.controls.descripcion.invalid">Descripción obligatoria, entre 10 y 5000 caracteres.</mat-error>
+                                </mat-form-field>
+
+                                <section class="form-panel alignment-builder span-2">
+                                    <div class="panel-title-row">
+                                        <mat-chip-listbox class="mode-chips" aria-label="Tipo de alineamiento">
+                                            <mat-chip-option [selected]="form.controls.alineamiento_modo.value === 'basico'" (click)="setAlineamientoModo('basico')">Básico</mat-chip-option>
+                                            <mat-chip-option [selected]="form.controls.alineamiento_modo.value === 'preferencia'" (click)="setAlineamientoModo('preferencia')">Preferencias</mat-chip-option>
+                                        </mat-chip-listbox>
+                                        <button type="button" class="help-chip-btn" (click)="abrirInfoAlineamiento($event)" matTooltip="Información de alineamiento" aria-label="Información de alineamiento">
+                                            <mat-icon>help_outline</mat-icon>
+                                        </button>
+                                    </div>
+
+                                    <div class="alignment-fields">
+                                        <mat-form-field appearance="fill" *ngIf="form.controls.alineamiento_modo.value === 'basico'">
+                                            <mat-label>Alineamiento básico</mat-label>
+                                            <mat-select formControlName="id_alineamiento_basico">
+                                                <mat-option *ngFor="let alineamiento of alineamientosBasicos; trackBy: trackById" [value]="alineamiento.Id">{{alineamiento.Nombre}}</mat-option>
+                                            </mat-select>
+                                        </mat-form-field>
+
+                                        <ng-container *ngIf="form.controls.alineamiento_modo.value === 'preferencia'">
+                                            <mat-form-field appearance="fill">
+                                                <mat-label>Preferencia legal</mat-label>
+                                                <mat-select formControlName="id_preferencia_ley">
+                                                    <mat-option *ngFor="let preferencia of preferenciasLey; trackBy: trackById" [value]="preferencia.Id">{{preferencia.Nombre}}</mat-option>
+                                                </mat-select>
+                                            </mat-form-field>
+
+                                            <mat-form-field appearance="fill">
+                                                <mat-label>Preferencia moral</mat-label>
+                                                <mat-select formControlName="id_preferencia_moral">
+                                                    <mat-option *ngFor="let preferencia of preferenciasMoral; trackBy: trackById" [value]="preferencia.Id">{{preferencia.Nombre}}</mat-option>
+                                                </mat-select>
+                                            </mat-form-field>
+                                        </ng-container>
+
+                                        <mat-form-field appearance="fill">
+                                            <mat-label>Prioridad</mat-label>
+                                            <mat-select formControlName="id_prioridad_alineamiento">
+                                                <mat-option *ngFor="let prioridad of getPrioridadesAlineamientoVisibles(); trackBy: trackById" [value]="prioridad.Id">{{prioridad.Nombre}}</mat-option>
+                                            </mat-select>
+                                            <mat-error *ngIf="form.controls.id_prioridad_alineamiento.invalid">Prioridad obligatoria.</mat-error>
+                                        </mat-form-field>
+                                    </div>
+
+                                    <p class="field-error" *ngIf="form.controls.id_alineamiento.invalid && form.controls.id_alineamiento.touched">
+                                        No existe una combinación de alineamiento válida para la selección.
+                                    </p>
+                                </section>
+
+                                <mat-form-field appearance="fill" class="span-2">
+                                    <mat-label>Ataques naturales</mat-label>
+                                    <textarea matInput rows="4" maxlength="1000" formControlName="ataques_naturales"></textarea>
+                                    <mat-error *ngIf="form.controls.ataques_naturales.invalid">Déjalo vacío o escribe entre 5 y 1000 caracteres.</mat-error>
+                                </mat-form-field>
+
+                                <section class="form-panel physical-panel span-2">
+                                    <div class="physical-grid">
+                                        <div class="field-with-help">
+                                            <mat-form-field appearance="fill">
+                                                <mat-label>Tamaño base</mat-label>
+                                                <mat-select formControlName="id_tamano">
+                                                    <mat-option *ngFor="let tamano of tamanos; trackBy: trackById" [value]="tamano.Id">{{tamano.Nombre}}</mat-option>
+                                                </mat-select>
+                                                <mat-error *ngIf="form.controls.id_tamano.invalid">Tamaño obligatorio.</mat-error>
+                                            </mat-form-field>
+                                            <button type="button" class="help-chip-btn" (click)="abrirInfoTamano($event)" [disabled]="!getTamanoSeleccionado()" matTooltip="Modificadores del tamaño" aria-label="Modificadores del tamaño">
+                                                <mat-icon>help_outline</mat-icon>
+                                            </button>
+                                        </div>
+
+                                        <mat-form-field appearance="fill">
+                                            <mat-label>Tipo de criatura</mat-label>
+                                            <mat-select formControlName="id_tipo_criatura">
+                                                <mat-option *ngFor="let tipo of tiposCriatura; trackBy: trackById" [value]="tipo.Id">{{tipo.Nombre}}</mat-option>
+                                            </mat-select>
+                                            <mat-error *ngIf="form.controls.id_tipo_criatura.invalid">Tipo obligatorio.</mat-error>
+                                        </mat-form-field>
+
+                                        <div class="single-lookup-block">
+                                            <mat-form-field appearance="fill">
+                                                <mat-label>Subtipo</mat-label>
+                                                <input matInput [value]="subtipoBusqueda" (input)="actualizarSubtipoBusqueda($any($event.target).value)" [matAutocomplete]="subtipoUnicoAuto" />
+                                                <mat-autocomplete #subtipoUnicoAuto="matAutocomplete" (optionSelected)="seleccionarSubtipo($event.option.value)">
+                                                    <mat-option *ngFor="let subtipo of getSubtiposFiltrados(); trackBy: trackById" [value]="subtipo.Id">{{subtipo.Nombre}}</mat-option>
+                                                </mat-autocomplete>
+                                            </mat-form-field>
+                                            <div class="selected-chips selected-chips--single" *ngIf="subtiposSeleccionados.length > 0">
+                                                <span class="selected-chip">
+                                                    {{getSubtipoSeleccionadoLabel()}}
+                                                    <button mat-icon-button type="button" matTooltip="Quitar" (click)="limpiarSubtipo()"><mat-icon>close</mat-icon></button>
+                                                </span>
+                                            </div>
+                                        </div>
+
+                                        <mat-form-field appearance="fill">
+                                            <mat-label>Espacio</mat-label>
+                                            <input matInput type="number" min="0" max="40" formControlName="espacio" />
+                                            <mat-error *ngIf="form.controls.espacio.invalid">Entre 0 y 40.</mat-error>
+                                        </mat-form-field>
+
+                                        <mat-form-field appearance="fill">
+                                            <mat-label>Alcance</mat-label>
+                                            <input matInput type="number" min="0" max="40" formControlName="alcance" />
+                                            <mat-error *ngIf="form.controls.alcance.invalid">Entre 0 y 40.</mat-error>
+                                        </mat-form-field>
+                                    </div>
+                                </section>
+
+                                <section class="form-panel speed-panel span-4">
+                                    <div class="speed-grid">
+                                        <mat-form-field appearance="fill">
+                                            <mat-label>Correr</mat-label>
+                                            <input matInput type="number" min="0" max="200" formControlName="correr" />
+                                            <mat-error *ngIf="form.controls.correr.invalid">Entre 0 y 200.</mat-error>
+                                        </mat-form-field>
+
+                                        <mat-form-field appearance="fill">
+                                            <mat-label>Nadar</mat-label>
+                                            <input matInput type="number" min="0" max="200" formControlName="nadar" />
+                                            <mat-error *ngIf="form.controls.nadar.invalid">Entre 0 y 200.</mat-error>
+                                        </mat-form-field>
+
+                                        <mat-form-field appearance="fill">
+                                            <mat-label>Volar</mat-label>
+                                            <input matInput type="number" min="0" max="200" formControlName="volar" />
+                                            <mat-error *ngIf="form.controls.volar.invalid">Entre 0 y 200.</mat-error>
+                                        </mat-form-field>
+
+                                        <div class="field-with-help" *ngIf="tieneVelocidadVuelo()">
+                                            <mat-form-field appearance="fill">
+                                                <mat-label>Maniobrabilidad</mat-label>
+                                                <mat-select formControlName="id_maniobrabilidad">
+                                                    <mat-option *ngFor="let item of getManiobrabilidadesVisibles(); trackBy: trackById" [value]="item.Id">{{item.Nombre}}</mat-option>
+                                                </mat-select>
+                                            </mat-form-field>
+                                            <button type="button" class="help-chip-btn" (click)="abrirInfoManiobrabilidad($event)" [disabled]="!getManiobrabilidadSeleccionada()" matTooltip="Reglas de maniobrabilidad" aria-label="Reglas de maniobrabilidad">
+                                                <mat-icon>help_outline</mat-icon>
+                                            </button>
+                                        </div>
+
+                                        <mat-form-field appearance="fill">
+                                            <mat-label>Trepar</mat-label>
+                                            <input matInput type="number" min="0" max="200" formControlName="trepar" />
+                                            <mat-error *ngIf="form.controls.trepar.invalid">Entre 0 y 200.</mat-error>
+                                        </mat-form-field>
+
+                                        <mat-form-field appearance="fill">
+                                            <mat-label>Escalar</mat-label>
+                                            <input matInput type="number" min="0" max="200" formControlName="escalar" />
+                                            <mat-error *ngIf="form.controls.escalar.invalid">Entre 0 y 200.</mat-error>
+                                        </mat-form-field>
+                                    </div>
+                                </section>
+                            </div>
+                        </section>
+                    </div>
+
+                    <div class="step-actions">
+                        <button mat-flat-button color="primary" type="submit" [disabled]="guardando">
+                            <mat-icon>{{guardando ? 'hourglass_top' : 'save'}}</mat-icon>
+                            Guardar raza
+                        </button>
+                        <button mat-raised-button color="primary" type="button" matStepperNext>Siguiente</button>
+                    </div>
+                </div>
+            </mat-step>
+
+            <mat-step>
+                <ng-template matStepLabel>Valores</ng-template>
+
+                <div class="step-layout">
+                    <div class="step-main">
+                        <section class="step-section">
+                            <div class="values-card-grid" [class.error-section]="form.errors?.['rangosInvalidos']">
+                                <section class="form-panel values-panel values-characteristics">
+                                    <h3 class="form-panel-title">Características</h3>
+                                    <div class="values-grid values-grid--six">
+                                        <mat-form-field appearance="fill"><mat-label>Fue</mat-label><input matInput type="number" formControlName="mod_fue" /></mat-form-field>
+                                        <mat-form-field appearance="fill"><mat-label>Des</mat-label><input matInput type="number" formControlName="mod_des" /></mat-form-field>
+                                        <mat-form-field appearance="fill"><mat-label>Con</mat-label><input matInput type="number" formControlName="mod_cons" /></mat-form-field>
+                                        <mat-form-field appearance="fill"><mat-label>Int</mat-label><input matInput type="number" formControlName="mod_int" /></mat-form-field>
+                                        <mat-form-field appearance="fill"><mat-label>Sab</mat-label><input matInput type="number" formControlName="mod_sab" /></mat-form-field>
+                                        <mat-form-field appearance="fill"><mat-label>Car</mat-label><input matInput type="number" formControlName="mod_car" /></mat-form-field>
+                                    </div>
+                                </section>
+
+                                <section class="form-panel values-panel values-dgs">
+                                    <h3 class="form-panel-title">DGS extra</h3>
+                                    <div class="values-grid values-grid--dgs">
+                                        <mat-form-field appearance="fill"><mat-label>DG extra</mat-label><input matInput type="number" min="0" formControlName="dgs_extra" /></mat-form-field>
+                                        <mat-form-field appearance="fill" *ngIf="tieneDgsExtra()"><mat-label>Ataque base DG</mat-label><input matInput type="number" formControlName="ataque_base" /></mat-form-field>
+                                        <mat-form-field appearance="fill" *ngIf="tieneDgsExtra()"><mat-label>Dotes por DG</mat-label><input matInput type="number" min="0" formControlName="dotes_dg" /></mat-form-field>
+                                        <mat-form-field appearance="fill" *ngIf="tieneDgsExtra()"><mat-label>Puntos de habilidad</mat-label><input matInput type="number" formControlName="puntos_hab" /></mat-form-field>
+                                        <mat-form-field appearance="fill" *ngIf="tieneDgsExtra()"><mat-label>Multiplicador de puntos de habilidad</mat-label><input matInput type="number" formControlName="puntos_hab_mult" /></mat-form-field>
+                                        <mat-form-field appearance="fill" class="values-dgs-dice-field" *ngIf="tieneDgsExtra()">
+                                            <mat-label>Tipo de dado</mat-label>
+                                            <mat-select formControlName="id_tipo_dado">
+                                                <mat-option *ngFor="let item of tiposDado; trackBy: trackById" [value]="item.Id">{{item.Nombre}}</mat-option>
+                                            </mat-select>
+                                            <mat-error *ngIf="form.controls.id_tipo_dado.invalid">Tipo de dado obligatorio.</mat-error>
+                                        </mat-form-field>
+                                        <mat-form-field appearance="fill" class="values-dgs-creature-field" *ngIf="tieneDgsExtra()">
+                                            <mat-label>Tipo de criatura de DG</mat-label>
+                                            <input matInput [value]="tipoCriaturaDgsBusqueda" (input)="actualizarTipoCriaturaDgsBusqueda($any($event.target).value)" [matAutocomplete]="tipoCriaturaDgsAuto" />
+                                            <mat-autocomplete #tipoCriaturaDgsAuto="matAutocomplete" (optionSelected)="seleccionarTipoCriaturaDgs($event.option.value)">
+                                                <mat-option *ngFor="let tipo of getTiposCriaturaDgsFiltrados(); trackBy: trackById" [value]="tipo.Id">{{tipo.Nombre}}</mat-option>
+                                            </mat-autocomplete>
+                                            <mat-error *ngIf="form.controls.id_tipo_criatura_dgs.invalid">Tipo obligatorio.</mat-error>
+                                        </mat-form-field>
+                                    </div>
+                                </section>
+
+                                <section class="form-panel values-panel values-body">
+                                    <h3 class="form-panel-title form-panel-title--with-note">
+                                        <span>Cuerpo</span>
+                                        <span class="form-panel-note">valores en centímetros y kilogramos</span>
+                                    </h3>
+                                    <div class="values-grid values-grid--four">
+                                        <mat-form-field appearance="fill"><mat-label>Altura mín.</mat-label><input matInput type="number" min="1" max="1000" formControlName="altura_rango_inf" /><mat-error>Entre 1 y 1000.</mat-error></mat-form-field>
+                                        <mat-form-field appearance="fill"><mat-label>Altura máx.</mat-label><input matInput type="number" min="1" max="1000" formControlName="altura_rango_sup" /><mat-error>Entre 1 y 1000.</mat-error></mat-form-field>
+                                        <mat-form-field appearance="fill"><mat-label>Peso mín.</mat-label><input matInput type="number" min="1" max="10000" formControlName="peso_rango_inf" /><mat-error>Entre 1 y 10000.</mat-error></mat-form-field>
+                                        <mat-form-field appearance="fill"><mat-label>Peso máx.</mat-label><input matInput type="number" min="1" max="10000" formControlName="peso_rango_sup" /><mat-error>Entre 1 y 10000.</mat-error></mat-form-field>
+                                    </div>
+                                    <p class="field-error" *ngIf="form.errors?.['rangosInvalidos']">Revisa que los mínimos no superen los máximos.</p>
+                                </section>
+
+                                <section class="form-panel values-panel values-age">
+                                    <h3 class="form-panel-title">Rangos de edad</h3>
+                                    <div class="values-grid values-grid--four">
+                                        <mat-form-field appearance="fill"><mat-label>Adulto</mat-label><input matInput type="number" min="1" formControlName="edad_adulto" /><mat-error>Mínimo 1.</mat-error></mat-form-field>
+                                        <mat-form-field appearance="fill"><mat-label>Mediana edad</mat-label><input matInput type="number" min="1" formControlName="edad_mediana" /><mat-error>Mínimo 1.</mat-error></mat-form-field>
+                                        <mat-form-field appearance="fill"><mat-label>Viejo</mat-label><input matInput type="number" min="1" formControlName="edad_viejo" /><mat-error>Mínimo 1.</mat-error></mat-form-field>
+                                        <mat-form-field appearance="fill"><mat-label>Venerable</mat-label><input matInput type="number" min="1" formControlName="edad_venerable" /><mat-error>Mínimo 1.</mat-error></mat-form-field>
+                                    </div>
+                                    <p class="field-error" *ngIf="form.errors?.['rangosInvalidos']">Orden esperado: adulto, mediana edad, viejo y venerable.</p>
+                                </section>
+
+                                <section class="form-panel values-panel values-other">
+                                    <h3 class="form-panel-title">Otros valores</h3>
+                                    <div class="values-grid values-grid--six">
+                                        <mat-form-field appearance="fill"><mat-label>Armadura natural</mat-label><input matInput type="number" formControlName="armadura_natural" /></mat-form-field>
+                                        <mat-form-field appearance="fill"><mat-label>Varios de armadura</mat-label><input matInput type="number" formControlName="varios_armadura" /></mat-form-field>
+                                        <mat-form-field appearance="fill"><mat-label>Ajuste de nivel</mat-label><input matInput type="number" min="0" max="20" formControlName="ajuste_nivel" /><mat-error>Entre 0 y 20.</mat-error></mat-form-field>
+                                        <mat-form-field appearance="fill"><mat-label>Fortaleza</mat-label><input matInput type="number" formControlName="fortaleza" /></mat-form-field>
+                                        <mat-form-field appearance="fill"><mat-label>Reflejos</mat-label><input matInput type="number" formControlName="reflejos" /></mat-form-field>
+                                        <mat-form-field appearance="fill"><mat-label>Voluntad</mat-label><input matInput type="number" formControlName="voluntad" /></mat-form-field>
+                                        <mat-form-field appearance="fill"><mat-label>Dotes extra</mat-label><input matInput type="number" min="0" max="10" formControlName="dotes_extra" /><mat-error>Entre 0 y 10.</mat-error></mat-form-field>
+                                        <mat-form-field appearance="fill" class="values-wide-field"><mat-label>Puntos de habilidad extra al nivel 1</mat-label><input matInput type="number" min="0" max="20" placeholder="Puntos de habilidad extra al nivel 1" formControlName="puntos_extra_1" /><mat-error>Entre 0 y 20.</mat-error></mat-form-field>
+                                        <mat-form-field appearance="fill" class="values-wide-field"><mat-label>Puntos de habilidad extra por nivel</mat-label><input matInput type="number" min="0" max="20" placeholder="Puntos de habilidad extra por nivel" formControlName="puntos_extra" /><mat-error>Entre 0 y 20.</mat-error></mat-form-field>
+                                        <mat-form-field appearance="fill" class="values-wide-field"><mat-label>Reducción de daño</mat-label><textarea matInput rows="2" maxlength="1000" formControlName="reduccion_dano"></textarea><mat-error>Déjalo vacío o escribe entre 5 y 1000 caracteres.</mat-error></mat-form-field>
+                                        <mat-form-field appearance="fill" class="values-wide-field"><mat-label>Resistencia a conjuros</mat-label><textarea matInput rows="2" maxlength="1000" formControlName="resistencia_conjuros"></textarea><mat-error>Déjalo vacío o escribe entre 5 y 1000 caracteres.</mat-error></mat-form-field>
+                                        <mat-form-field appearance="fill" class="values-wide-field"><mat-label>Resistencia a energía</mat-label><textarea matInput rows="2" maxlength="1000" formControlName="resistencia_energia"></textarea><mat-error>Déjalo vacío o escribe entre 5 y 1000 caracteres.</mat-error></mat-form-field>
+                                    </div>
+                                </section>
+                            </div>
+                        </section>
+                    </div>
+
+                    <div class="step-actions">
+                        <button mat-stroked-button type="button" matStepperPrevious>Anterior</button>
+                        <button mat-flat-button color="primary" type="submit" [disabled]="guardando">
+                            <mat-icon>{{guardando ? 'hourglass_top' : 'save'}}</mat-icon>
+                            Guardar raza
+                        </button>
+                        <button mat-raised-button color="primary" type="button" matStepperNext>Siguiente</button>
+                    </div>
+                </div>
+            </mat-step>
+
+            <mat-step>
+                <ng-template matStepLabel>Relaciones</ng-template>
+
+                <div class="step-layout">
+                    <div class="step-main">
+                        <section class="step-section">
+                            <div class="lookup-grid">
+                                <div class="lookup-block">
+                                    <mat-form-field appearance="fill">
+                                        <mat-label>Buscar idioma</mat-label>
+                                        <input matInput [value]="relacionQueries.idiomasSeleccionados" (input)="actualizarRelacionQuery('idiomasSeleccionados', $any($event.target).value)" [matAutocomplete]="idiomasAuto" />
+                                        <mat-autocomplete #idiomasAuto="matAutocomplete" [displayWith]="displayAutocompleteVacio" (optionSelected)="agregarSeleccion('idiomasSeleccionados', $event.option.value)">
+                                            <mat-option *ngFor="let idioma of getOpcionesRelacion('idiomasSeleccionados', idiomas); trackBy: trackById" [value]="idioma.Id">{{idioma.Nombre}}</mat-option>
+                                        </mat-autocomplete>
+                                    </mat-form-field>
+                                    <div class="selected-chips">
+                                        <span class="selected-chip" *ngFor="let id of idiomasSeleccionados">
+                                            {{getEtiquetaRelacion(idiomas, id)}}
+                                            <button mat-icon-button type="button" matTooltip="Quitar" (click)="quitarSeleccion('idiomasSeleccionados', id)"><mat-icon>close</mat-icon></button>
+                                        </span>
+                                    </div>
+                                </div>
+
+                                <div class="lookup-block">
+                                    <mat-form-field appearance="fill">
+                                        <mat-label>Buscar arma con competencia</mat-label>
+                                        <input matInput [value]="relacionQueries.armasCompetenciaSeleccionadas" (input)="actualizarRelacionQuery('armasCompetenciaSeleccionadas', $any($event.target).value)" [matAutocomplete]="armasAuto" />
+                                        <mat-autocomplete #armasAuto="matAutocomplete" [displayWith]="displayAutocompleteVacio" (optionSelected)="agregarSeleccion('armasCompetenciaSeleccionadas', $event.option.value)">
+                                            <mat-option *ngFor="let arma of getOpcionesRelacion('armasCompetenciaSeleccionadas', armas); trackBy: trackById" [value]="arma.Id">{{arma.Nombre}}</mat-option>
+                                        </mat-autocomplete>
+                                    </mat-form-field>
+                                    <div class="selected-chips">
+                                        <span class="selected-chip" *ngFor="let id of armasCompetenciaSeleccionadas">
+                                            {{getEtiquetaRelacion(armas, id)}}
+                                            <button mat-icon-button type="button" matTooltip="Quitar" (click)="quitarSeleccion('armasCompetenciaSeleccionadas', id)"><mat-icon>close</mat-icon></button>
+                                        </span>
+                                    </div>
+                                </div>
+
+                                <div class="lookup-block">
+                                    <mat-form-field appearance="fill">
+                                        <mat-label>Buscar armadura con competencia</mat-label>
+                                        <input matInput [value]="relacionQueries.armadurasCompetenciaSeleccionadas" (input)="actualizarRelacionQuery('armadurasCompetenciaSeleccionadas', $any($event.target).value)" [matAutocomplete]="armadurasAuto" />
+                                        <mat-autocomplete #armadurasAuto="matAutocomplete" [displayWith]="displayAutocompleteVacio" (optionSelected)="agregarSeleccion('armadurasCompetenciaSeleccionadas', $event.option.value)">
+                                            <mat-option *ngFor="let armadura of getOpcionesRelacion('armadurasCompetenciaSeleccionadas', armaduras); trackBy: trackById" [value]="armadura.Id">{{armadura.Nombre}}</mat-option>
+                                        </mat-autocomplete>
+                                    </mat-form-field>
+                                    <div class="selected-chips">
+                                        <span class="selected-chip" *ngFor="let id of armadurasCompetenciaSeleccionadas">
+                                            {{getEtiquetaRelacion(armaduras, id)}}
+                                            <button mat-icon-button type="button" matTooltip="Quitar" (click)="quitarSeleccion('armadurasCompetenciaSeleccionadas', id)"><mat-icon>close</mat-icon></button>
+                                        </span>
+                                    </div>
+                                </div>
+
+                                <div class="lookup-block">
+                                    <mat-form-field appearance="fill">
+                                        <mat-label>Buscar grupo de arma</mat-label>
+                                        <input matInput [value]="relacionQueries.gruposArmaSeleccionados" (input)="actualizarRelacionQuery('gruposArmaSeleccionados', $any($event.target).value)" [matAutocomplete]="gruposArmaAuto" />
+                                        <mat-autocomplete #gruposArmaAuto="matAutocomplete" [displayWith]="displayAutocompleteVacio" (optionSelected)="agregarSeleccion('gruposArmaSeleccionados', $event.option.value)">
+                                            <mat-option *ngFor="let grupo of getOpcionesRelacion('gruposArmaSeleccionados', gruposArmas); trackBy: trackById" [value]="grupo.Id">{{grupo.Nombre}}</mat-option>
+                                        </mat-autocomplete>
+                                    </mat-form-field>
+                                    <div class="selected-chips">
+                                        <span class="selected-chip" *ngFor="let id of gruposArmaSeleccionados">
+                                            {{getEtiquetaRelacion(gruposArmas, id)}}
+                                            <button mat-icon-button type="button" matTooltip="Quitar" (click)="quitarSeleccion('gruposArmaSeleccionados', id)"><mat-icon>close</mat-icon></button>
+                                        </span>
+                                    </div>
+                                </div>
+
+                                <div class="lookup-block">
+                                    <mat-form-field appearance="fill">
+                                        <mat-label>Buscar grupo de armadura</mat-label>
+                                        <input matInput [value]="relacionQueries.gruposArmaduraSeleccionados" (input)="actualizarRelacionQuery('gruposArmaduraSeleccionados', $any($event.target).value)" [matAutocomplete]="gruposArmaduraAuto" />
+                                        <mat-autocomplete #gruposArmaduraAuto="matAutocomplete" [displayWith]="displayAutocompleteVacio" (optionSelected)="agregarSeleccion('gruposArmaduraSeleccionados', $event.option.value)">
+                                            <mat-option *ngFor="let grupo of getOpcionesRelacion('gruposArmaduraSeleccionados', gruposArmaduras); trackBy: trackById" [value]="grupo.Id">{{grupo.Nombre}}</mat-option>
+                                        </mat-autocomplete>
+                                    </mat-form-field>
+                                    <div class="selected-chips">
+                                        <span class="selected-chip" *ngFor="let id of gruposArmaduraSeleccionados">
+                                            {{getEtiquetaRelacion(gruposArmaduras, id)}}
+                                            <button mat-icon-button type="button" matTooltip="Quitar" (click)="quitarSeleccion('gruposArmaduraSeleccionados', id)"><mat-icon>close</mat-icon></button>
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        </section>
+                    </div>
+
+                    <div class="step-actions">
+                        <button mat-stroked-button type="button" matStepperPrevious>Anterior</button>
+                        <button mat-flat-button color="primary" type="submit" [disabled]="guardando">
+                            <mat-icon>{{guardando ? 'hourglass_top' : 'save'}}</mat-icon>
+                            Guardar raza
+                        </button>
+                        <button mat-raised-button color="primary" type="button" matStepperNext>Siguiente</button>
+                    </div>
+                </div>
+            </mat-step>
+
+            <mat-step>
+                <ng-template matStepLabel>Rasgos</ng-template>
+
+                <div class="step-layout">
+                    <div class="step-main">
+                        <mat-accordion class="editors-accordion" multi>
+                            <mat-expansion-panel expanded>
+                                <mat-expansion-panel-header>
+                                    <mat-panel-title>Habilidades base</mat-panel-title>
+                                </mat-expansion-panel-header>
+                                <div class="row-editor row-editor--skill" *ngFor="let row of habilidadesBaseRows; let i = index; trackBy: trackByUid">
+                                    <mat-form-field appearance="fill">
+                                        <mat-label>Buscar habilidad</mat-label>
+                                        <input matInput [value]="row.busqueda || ''" (input)="actualizarHabilidadBase(i, { busqueda: $any($event.target).value })" [matAutocomplete]="habBaseAuto" />
+                                        <mat-autocomplete #habBaseAuto="matAutocomplete" (optionSelected)="seleccionarHabilidadBase(i, $event.option.value)">
+                                            <mat-option [value]="0">Sin habilidad</mat-option>
+                                            <mat-option *ngFor="let habilidad of getHabilidadesBaseFiltradas(row)" [value]="habilidad.Id_habilidad">{{habilidad.Nombre}}</mat-option>
+                                        </mat-autocomplete>
+                                    </mat-form-field>
+                                    <mat-form-field appearance="fill"><mat-label>Cantidad</mat-label><input matInput type="number" [value]="row.cantidad" (input)="actualizarHabilidadBase(i, { cantidad: $any($event.target).value })" /></mat-form-field>
+                                    <mat-form-field appearance="fill" *ngIf="habilidadBaseSoportaExtra(row)">
+                                        <mat-label>Extra</mat-label>
+                                        <input matInput [value]="row.extraBusqueda || ''" (input)="actualizarHabilidadBase(i, { extraBusqueda: $any($event.target).value })" [matAutocomplete]="habBaseExtraAuto" />
+                                        <mat-autocomplete #habBaseExtraAuto="matAutocomplete" (optionSelected)="seleccionarExtraHabilidadBase(i, $event.option.value)">
+                                            <mat-option [value]="0">Sin extra</mat-option>
+                                            <mat-option *ngFor="let extra of getExtrasHabilidadBaseFiltrados(row); trackBy: trackById" [value]="extra.Id">{{extra.Nombre}}</mat-option>
+                                        </mat-autocomplete>
+                                    </mat-form-field>
+                                    <mat-form-field appearance="fill"><mat-label>Varios</mat-label><input matInput [value]="row.varios" (input)="actualizarHabilidadBase(i, { varios: $any($event.target).value })" /></mat-form-field>
+                                    <button mat-icon-button type="button" matTooltip="Quitar" (click)="quitarHabilidadBase(i)"><mat-icon>delete</mat-icon></button>
+                                </div>
+                                <button mat-stroked-button type="button" (click)="agregarHabilidadBase()"><mat-icon>add</mat-icon> Añadir habilidad base</button>
+                            </mat-expansion-panel>
+
+                            <mat-expansion-panel>
+                                <mat-expansion-panel-header>
+                                    <mat-panel-title>Habilidades personalizadas</mat-panel-title>
+                                </mat-expansion-panel-header>
+                                <div class="row-editor row-editor--compact" *ngFor="let row of habilidadesCustomRows; let i = index; trackBy: trackByUid">
+                                    <mat-form-field appearance="fill">
+                                        <mat-label>Buscar habilidad</mat-label>
+                                        <input matInput [value]="row.busqueda || ''" (input)="actualizarHabilidadCustom(i, { busqueda: $any($event.target).value })" [matAutocomplete]="habCustomAuto" />
+                                        <mat-autocomplete #habCustomAuto="matAutocomplete" (optionSelected)="seleccionarHabilidadCustom(i, $event.option.value)">
+                                            <mat-option [value]="0">Sin habilidad</mat-option>
+                                            <mat-option *ngFor="let habilidad of getHabilidadesCustomFiltradas(row)" [value]="habilidad.Id_habilidad">{{habilidad.Nombre}}</mat-option>
+                                        </mat-autocomplete>
+                                    </mat-form-field>
+                                    <mat-form-field appearance="fill"><mat-label>Cantidad</mat-label><input matInput type="number" [value]="row.cantidad" (input)="actualizarHabilidadCustom(i, { cantidad: $any($event.target).value })" /></mat-form-field>
+                                    <button mat-icon-button type="button" matTooltip="Quitar" (click)="quitarHabilidadCustom(i)"><mat-icon>delete</mat-icon></button>
+                                </div>
+                                <button mat-stroked-button type="button" (click)="agregarHabilidadCustom()"><mat-icon>add</mat-icon> Añadir habilidad personalizada</button>
+                            </mat-expansion-panel>
+
+                            <mat-expansion-panel>
+                                <mat-expansion-panel-header>
+                                    <mat-panel-title>Dotes, raciales y sortilegios</mat-panel-title>
+                                </mat-expansion-panel-header>
+
+                                <h4>Dotes</h4>
+                                <div class="row-editor row-editor--compact" *ngFor="let row of dotesRows; let i = index; trackBy: trackByUid">
+                                    <mat-form-field appearance="fill">
+                                        <mat-label>Buscar dote</mat-label>
+                                        <input matInput [value]="row.busqueda || ''" (input)="actualizarDote(i, { busqueda: $any($event.target).value })" [matAutocomplete]="doteAuto" />
+                                        <mat-autocomplete #doteAuto="matAutocomplete" (optionSelected)="seleccionarDote(i, $event.option.value)">
+                                            <mat-option [value]="0">Sin dote</mat-option>
+                                            <mat-option *ngFor="let dote of getDotesFiltradas(row); trackBy: trackById" [value]="dote.Id">{{dote.Nombre}}</mat-option>
+                                        </mat-autocomplete>
+                                    </mat-form-field>
+                                    <mat-form-field appearance="fill" *ngIf="getOpcionesExtraDote(row.id_dote).length > 0">
+                                        <mat-label>Extra</mat-label>
+                                        <input matInput [value]="row.extraBusqueda || ''" (input)="actualizarDote(i, { extraBusqueda: $any($event.target).value })" [matAutocomplete]="doteExtraAuto" />
+                                        <mat-autocomplete #doteExtraAuto="matAutocomplete" (optionSelected)="seleccionarExtraDote(i, $event.option.value)">
+                                            <mat-option [value]="0">Sin extra</mat-option>
+                                            <mat-option *ngFor="let extra of getExtrasDoteFiltrados(row); trackBy: trackById" [value]="extra.Id">{{extra.Nombre}}</mat-option>
+                                        </mat-autocomplete>
+                                        <mat-hint *ngIf="doteRequiereExtra(row.id_dote) && row.id_extra <= 0">Esta dote requiere extra.</mat-hint>
+                                    </mat-form-field>
+                                    <button mat-icon-button type="button" matTooltip="Quitar" (click)="quitarDote(i)"><mat-icon>delete</mat-icon></button>
+                                </div>
+                                <button mat-stroked-button type="button" (click)="agregarDote()"><mat-icon>add</mat-icon> Añadir dote</button>
+
+                                <h4>Raciales</h4>
+                                <div class="row-editor row-editor--compact" *ngFor="let row of racialesRows; let i = index; trackBy: trackByUid">
+                                    <mat-form-field appearance="fill">
+                                        <mat-label>Buscar racial</mat-label>
+                                        <input matInput [value]="row.busqueda || ''" (input)="actualizarRacial(i, { busqueda: $any($event.target).value })" [matAutocomplete]="racialAuto" />
+                                        <mat-autocomplete #racialAuto="matAutocomplete" (optionSelected)="seleccionarRacial(i, $event.option.value)">
+                                            <mat-option [value]="0">Sin racial</mat-option>
+                                            <mat-option *ngFor="let racial of getRacialesFiltrados(row); trackBy: trackById" [value]="racial.Id">{{racial.Nombre}}</mat-option>
+                                        </mat-autocomplete>
+                                    </mat-form-field>
+                                    <mat-form-field appearance="fill"><mat-label>Opcional</mat-label><input matInput type="number" [value]="row.opcional" (input)="actualizarRacial(i, { opcional: $any($event.target).value })" /></mat-form-field>
+                                    <button mat-icon-button type="button" matTooltip="Quitar" (click)="quitarRacial(i)"><mat-icon>delete</mat-icon></button>
+                                </div>
+                                <div class="inline-actions">
+                                    <button mat-stroked-button type="button" (click)="agregarRacial()"><mat-icon>add</mat-icon> Añadir racial</button>
+                                    <button mat-stroked-button type="button" (click)="abrirModalNuevoRacial()"><mat-icon>add_circle</mat-icon> Crear racial</button>
+                                </div>
+
+                                <h4>Sortilegios</h4>
+                                <div class="row-editor" *ngFor="let row of sortilegiosRows; let i = index; trackBy: trackByUid">
+                                    <mat-form-field appearance="fill">
+                                        <mat-label>Buscar conjuro</mat-label>
+                                        <input matInput [value]="row.busqueda || ''" (input)="actualizarSortilegio(i, { busqueda: $any($event.target).value })" [matAutocomplete]="sortilegioAuto" />
+                                        <mat-autocomplete #sortilegioAuto="matAutocomplete" (optionSelected)="seleccionarSortilegio(i, $event.option.value)">
+                                            <mat-option [value]="0">Sin conjuro</mat-option>
+                                            <mat-option *ngFor="let conjuro of getSortilegiosFiltrados(row); trackBy: trackById" [value]="conjuro.Id">{{conjuro.Nombre}}</mat-option>
+                                        </mat-autocomplete>
+                                    </mat-form-field>
+                                    <mat-form-field appearance="fill"><mat-label>Nivel lanzador</mat-label><input matInput type="number" [value]="row.nivel_lanzador" (input)="actualizarSortilegio(i, { nivel_lanzador: $any($event.target).value })" /></mat-form-field>
+                                    <mat-form-field appearance="fill"><mat-label>Usos diarios</mat-label><input matInput [value]="row.usos_diarios" (input)="actualizarSortilegio(i, { usos_diarios: $any($event.target).value })" /></mat-form-field>
+                                    <mat-form-field appearance="fill"><mat-label>Descripción</mat-label><input matInput [value]="row.descripcion" (input)="actualizarSortilegio(i, { descripcion: $any($event.target).value })" /></mat-form-field>
+                                    <button mat-icon-button type="button" matTooltip="Quitar" (click)="quitarSortilegio(i)"><mat-icon>delete</mat-icon></button>
+                                </div>
+                                <button mat-stroked-button type="button" (click)="agregarSortilegio()"><mat-icon>add</mat-icon> Añadir sortilegio</button>
+                            </mat-expansion-panel>
+                        </mat-accordion>
+                    </div>
+
+                    <div class="step-actions">
+                        <button mat-stroked-button type="button" matStepperPrevious>Anterior</button>
+                        <button mat-flat-button color="primary" type="submit" [disabled]="guardando">
+                            <mat-icon>{{guardando ? 'hourglass_top' : 'save'}}</mat-icon>
+                            Guardar raza
+                        </button>
+                        <button mat-raised-button color="primary" type="button" matStepperNext>Siguiente</button>
+                    </div>
+                </div>
+            </mat-step>
+
+            <mat-step>
+                <ng-template matStepLabel>Mutación y revisión</ng-template>
+
+                <div class="step-layout">
+                    <div class="step-main">
+                        <section class="step-section">
+                            <div class="estado-row">
+                                <mat-chip-listbox class="boolean-chips" aria-label="Mutación de raza">
+                                    <mat-chip-option [selected]="form.controls.mutada.value === true" (click)="toggleBooleanControl('mutada')">
+                                        Raza mutada
+                                    </mat-chip-option>
+                                    <mat-chip-option *ngIf="form.controls.mutada.value === true" [selected]="form.controls.tamano_mutacion_dependiente.value === true" (click)="toggleBooleanControl('tamano_mutacion_dependiente')">
+                                        Tamaño dependiente de la raza base
+                                    </mat-chip-option>
+                                </mat-chip-listbox>
+                            </div>
+
+                            <div class="mutacion-panel" *ngIf="form.controls.mutada.value === true">
+                                <div class="subpanel-head">
+                                    <h3 class="subpanel-title">Condiciones</h3>
+                                    <button type="button" mat-stroked-button (click)="abrirSelectorPrerrequisitosMutacion()">
+                                        Elegir prerrequisitos
+                                    </button>
+                                </div>
+
+                                <div class="mod-preview" *ngIf="hayPrerrequisitosMutacionMarcados">
+                                    <mat-chip *ngFor="let tipo of prerrequisitosMutacionSeleccionados" class="mod-chip">
+                                        {{getEtiquetaPrerrequisitoMutacion(tipo)}}
+                                    </mat-chip>
+                                </div>
+
+                                <app-prerrequisito-editor-host
+                                    #prerrequisitoMutacionHost
+                                    [selectedTypes]="prerrequisitosMutacionSeleccionados"
+                                    [rows]="prerrequisitosMutacionRows"
+                                    [catalogContext]="prerrequisitosMutacionCatalogContext"
+                                    [ensureCatalogs]="ensureMutacionPrerequisiteCatalogs"
+                                    [disabled]="guardando"
+                                    [emptyMessage]="'Elige los prerrequisitos que debe cumplir la raza base para poder mutar.'"
+                                    [loadingMessage]="'Cargando configuración de prerrequisitos...'"
+                                    (selectedTypesChange)="onPrerrequisitosMutacionSeleccionadosChange($event)"
+                                    (rowsChange)="onPrerrequisitosMutacionRowsChange($event)">
+                                </app-prerrequisito-editor-host>
+                            </div>
+                        </section>
+                    </div>
+
+                    <div class="step-actions">
+                        <button mat-stroked-button type="button" matStepperPrevious>Anterior</button>
+                        <button mat-flat-button color="primary" type="submit" [disabled]="guardando">
+                            <mat-icon>{{guardando ? 'hourglass_top' : 'save'}}</mat-icon>
+                            Guardar raza
+                        </button>
+                    </div>
+                </div>
+            </mat-step>
+        </mat-horizontal-stepper>
+    </form>
+
+    <section class="selector-overlay" *ngIf="selectorPrerrequisitosMutacionVisible" (click)="cerrarSelectorPrerrequisitosMutacion()">
+        <div class="selector-dialog" (click)="$event.stopPropagation()">
+            <div class="selector-header">
+                <div class="selector-header-main">
+                    <h2 class="tw-m-0 selector-title">Seleccionar prerrequisitos</h2>
+                    <p class="tw-m-0 selector-subtitle">
+                        Marca las condiciones que debe cumplir la raza base y después configura cada fila.
+                    </p>
+                </div>
+                <button mat-icon-button type="button" class="selector-icon-btn" aria-label="Cerrar" (click)="cerrarSelectorPrerrequisitosMutacion()">
+                    <mat-icon>close</mat-icon>
+                </button>
+            </div>
+
+            <div class="selector-tools selector-tools--inline">
+                <mat-form-field appearance="fill" class="tw-w-full">
+                    <mat-label>Buscar prerrequisito</mat-label>
+                    <input matInput [value]="selectorPrerrequisitosMutacionFiltro" (input)="selectorPrerrequisitosMutacionFiltro = $any($event.target).value" placeholder="Filtrar por nombre">
+                </mat-form-field>
+                <button type="button" mat-stroked-button (click)="limpiarPrerrequisitosMutacionTemporales()">
+                    Limpiar
+                </button>
+            </div>
+
+            <div class="extras-listado" *ngIf="prerrequisitosMutacionFiltrados.length > 0; else sinPrerreqMutacionFiltradosTpl">
+                <label class="extra-row" *ngFor="let item of prerrequisitosMutacionFiltrados">
+                    <mat-checkbox
+                        [checked]="isTipoPrerrequisitoMutacionTemporalSeleccionado(item.key)"
+                        (change)="toggleTipoPrerrequisitoMutacionTemporal(item.key, $event.checked === true)">
+                        {{item.label}}
+                    </mat-checkbox>
+                </label>
+            </div>
+
+            <ng-template #sinPrerreqMutacionFiltradosTpl>
+                <p class="tw-m-0 detalle">No hay prerrequisitos que encajen con el filtro actual.</p>
+            </ng-template>
+
+            <div class="selector-actions">
+                <button mat-stroked-button type="button" (click)="cerrarSelectorPrerrequisitosMutacion()">Cancelar</button>
+                <button mat-raised-button color="primary" type="button" (click)="confirmarSelectorPrerrequisitosMutacion()">
+                    Confirmar selección
+                </button>
+            </div>
+        </div>
+    </section>
+
+    <app-informacion-basicos-modal *ngIf="mostrarInfoAlineamiento"
+        titulo="Alineamiento de raza"
+        icono="help_outline"
+        [secciones]="getAlineamientoInfoSecciones()"
+        (cerrar)="cerrarInfoAlineamiento()">
+    </app-informacion-basicos-modal>
+
+    <app-informacion-basicos-modal *ngIf="mostrarInfoTamano"
+        titulo="Tamaño de raza"
+        icono="straighten"
+        [secciones]="getTamanoInfoSecciones()"
+        (cerrar)="cerrarInfoTamano()">
+    </app-informacion-basicos-modal>
+
+    <app-informacion-basicos-modal *ngIf="mostrarInfoManiobrabilidad"
+        titulo="Maniobrabilidad"
+        icono="flight"
+        [secciones]="getManiobrabilidadInfoSecciones()"
+        (cerrar)="cerrarInfoManiobrabilidad()">
+    </app-informacion-basicos-modal>
+
+    <section class="selector-overlay" *ngIf="modalNuevoRacialVisible" (click)="cerrarModalNuevoRacial()">
+        <div class="selector-dialog selector-dialog--wide" (click)="$event.stopPropagation()">
+            <app-nueva-racial
+                [modal]="true"
+                (cerrar)="cerrarModalNuevoRacial()"
+                (racialCreado)="onRacialCreadoDesdeModal($event)">
+            </app-nueva-racial>
+        </div>
+    </section>
+</div>
