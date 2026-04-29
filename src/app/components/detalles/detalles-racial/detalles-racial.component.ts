@@ -10,6 +10,7 @@ import { resolverExtraHabilidadVisible } from 'src/app/services/utils/habilidad-
 })
 export class DetallesRacialComponent {
     @Input() racial!: RacialDetalle;
+    @Output() razaDetallesId: EventEmitter<number> = new EventEmitter<number>();
     @Output() doteDetallesId: EventEmitter<number> = new EventEmitter<number>();
     @Output() conjuroDetallesId: EventEmitter<number> = new EventEmitter<number>();
 
@@ -75,6 +76,30 @@ export class DetallesRacialComponent {
         const id = Number(idDote);
         if (Number.isFinite(id) && id > 0)
             this.doteDetallesId.emit(id);
+    }
+
+    getNombrePrerrequisitoRaza(item: Record<string, any> | null | undefined): string {
+        const nombre = `${item?.['Raza'] ?? item?.['raza'] ?? item?.['Nombre_raza'] ?? item?.['nombre_raza'] ?? item?.['Nombre'] ?? item?.['nombre'] ?? ''}`.trim();
+        return nombre;
+    }
+
+    getIdPrerrequisitoRaza(item: Record<string, any> | null | undefined): number {
+        const id = Number(item?.['Id_raza'] ?? item?.['id_raza'] ?? item?.['IdRaza'] ?? item?.['idRaza'] ?? 0);
+        return Number.isFinite(id) && id > 0 ? id : 0;
+    }
+
+    tienePrerrequisitoRazaNavegable(item: Record<string, any> | null | undefined): boolean {
+        return this.getIdPrerrequisitoRaza(item) > 0;
+    }
+
+    tienePrerrequisitoRazaNombrado(item: Record<string, any> | null | undefined): boolean {
+        return this.getNombrePrerrequisitoRaza(item).length > 0;
+    }
+
+    emitirRaza(idRaza: number | null | undefined): void {
+        const id = Number(idRaza);
+        if (Number.isFinite(id) && id > 0)
+            this.razaDetallesId.emit(id);
     }
 
     puedeAbrirConjuro(sortilega: { Conjuro?: { Id?: number | null; } | null; } | null | undefined): boolean {

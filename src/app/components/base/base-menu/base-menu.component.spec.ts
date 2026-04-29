@@ -110,4 +110,22 @@ describe('BaseMenuComponent', () => {
 
         expect(emitSpy).not.toHaveBeenCalled();
     });
+
+    it('abre la modificación de raciales con permiso update', () => {
+        permissions['raciales:update'] = true;
+        const emitSpy = spyOn(component.ListadoTab, 'emit');
+
+        component.onModificarRacial();
+
+        expect(emitSpy).toHaveBeenCalledOnceWith({ tipo: 'raciales', operacion: 'modificar' });
+        expect(component.primero.close).toHaveBeenCalled();
+    });
+
+    it('no abre la modificación de raciales sin permiso update', () => {
+        const emitSpy = spyOn(component.ListadoTab, 'emit');
+
+        component.onModificarRacial();
+
+        expect(emitSpy).not.toHaveBeenCalled();
+    });
 });

@@ -102,6 +102,7 @@ import { NuevaDoteComponent } from './components/shared/nueva-dote/nueva-dote.co
 import { NuevaConjuroComponent } from './components/shared/nueva-conjuro/nueva-conjuro.component';
 import { NuevaRazaComponent } from './components/shared/nueva-raza/nueva-raza.component';
 import { NuevaRacialComponent } from './components/shared/nueva-racial/nueva-racial.component';
+import { NuevaIdiomaComponent } from './components/shared/nueva-idioma/nueva-idioma.component';
 import { PrerrequisitoCatalogEditorComponent } from './components/shared/prerrequisito-editor/prerrequisito-catalog-editor.component';
 import { PrerrequisitoCatalogValueEditorComponent } from './components/shared/prerrequisito-editor/prerrequisito-catalog-value-editor.component';
 import { PrerrequisitoEditorHostComponent } from './components/shared/prerrequisito-editor/prerrequisito-editor-host.component';
@@ -114,6 +115,8 @@ import { ListadoArmasComponent } from './components/shared/listado-armas/listado
 import { ListadoArmadurasComponent } from './components/shared/listado-armaduras/listado-armaduras.component';
 import { DetallesDeidadComponent } from './components/detalles/detalles-deidad/detalles-deidad.component';
 import { ListadoDeidadesComponent } from './components/shared/listado-deidades/listado-deidades.component';
+import { ListadoIdiomasComponent } from './components/shared/listado-idiomas/listado-idiomas.component';
+import { DetallesIdiomaComponent } from './components/detalles/detalles-idioma/detalles-idioma.component';
 import { UserProfileComponent } from './components/base/user-profile/user-profile.component';
 import { PublicUserProfileComponent } from './components/base/public-user-profile/public-user-profile.component';
 import { SocialHubComponent } from './components/base/social-hub/social-hub.component';
@@ -212,6 +215,8 @@ import { CloseFilterMenuOnMouseleaveDirective } from './directives/close-filter-
         ListadoArmadurasComponent,
         DetallesDeidadComponent,
         ListadoDeidadesComponent,
+        ListadoIdiomasComponent,
+        DetallesIdiomaComponent,
         AppToastHostComponent,
         FichasDescargaToastHostComponent,
         ManualAutocompleteComponent,
@@ -219,6 +224,7 @@ import { CloseFilterMenuOnMouseleaveDirective } from './directives/close-filter-
         NuevaConjuroComponent,
         NuevaRazaComponent,
         NuevaRacialComponent,
+        NuevaIdiomaComponent,
         PrerrequisitoEditorHostComponent,
         PrerrequisitoFlagEditorComponent,
         PrerrequisitoValueEditorComponent,

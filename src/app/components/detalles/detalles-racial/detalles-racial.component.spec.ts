@@ -1,5 +1,6 @@
 import { NO_ERRORS_SCHEMA } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { By } from '@angular/platform-browser';
 import { DetallesRacialComponent } from './detalles-racial.component';
 import { normalizeRacial } from 'src/app/services/utils/racial-mapper';
 
@@ -30,7 +31,7 @@ describe('DetallesRacialComponent', () => {
             Ataques: [{ Descripcion: 'Mordisco 1d6' }],
             Prerrequisitos_flags: { raza: true, caracteristica_minima: false },
             Prerrequisitos: {
-                raza: [{ raza: 'Elfo' }],
+                raza: [{ id_raza: 2, raza: 'Elfo' }],
                 caracteristica: [{ caracteristica: 'Inteligencia', cantidad: 13 }],
             },
         });
@@ -55,5 +56,21 @@ describe('DetallesRacialComponent', () => {
 
         expect(doteSpy).toHaveBeenCalledWith(4);
         expect(conjuroSpy).toHaveBeenCalledWith(12);
+    });
+
+    it('emite navegación por id para la raza prerrequerida y renderiza su nombre sin el id', () => {
+        const razaSpy = spyOn(component.razaDetallesId, 'emit');
+
+        fixture.detectChanges();
+        const html = `${fixture.nativeElement.textContent ?? ''}`;
+        const chipRaza = fixture.debugElement.queryAll(By.css('mat-chip'))
+            .find((debug) => `${debug.nativeElement.textContent ?? ''}`.includes('Elfo'));
+        component.emitirRaza(2);
+
+        expect(html).toContain('Requiere');
+        expect(html).toContain('Elfo');
+        expect(html).not.toContain('id_raza');
+        expect(chipRaza).toBeTruthy();
+        expect(razaSpy).toHaveBeenCalledWith(2);
     });
 });

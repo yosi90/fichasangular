@@ -334,6 +334,24 @@
 .lookup-block
     min-width: 0
 
+.lookup-with-action
+    display: grid
+    grid-template-columns: minmax(0, 1fr) 42px
+    gap: 0.45rem
+    align-items: start
+
+    mat-form-field
+        min-width: 0
+
+.lookup-action-btn
+    margin-top: 0.45rem
+    color: #e5e7eb
+
+    mat-icon
+        width: 22px
+        height: 22px
+        font-size: 22px
+
 .single-lookup-block
     min-width: 0
 
@@ -538,6 +556,12 @@
 
     .row-editor--skill
         grid-template-columns: 1fr
+
+    .lookup-with-action
+        grid-template-columns: 1fr
+
+    .lookup-action-btn
+        margin-top: -0.35rem
 
     .grid-base--primary,
     .grid-base--secondary,

@@ -49,8 +49,11 @@ Thumbs.db
 .firebase
 *-debug.log
 .runtimeconfig.json
+database.rules.json
+firestore.fichas-rol.rules
 
 # Ejemplos para las ias
 /Ejemplos app escritorio
 /docs
 agents.md
+.codex

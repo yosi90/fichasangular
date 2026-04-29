@@ -1,7 +1,7 @@
 import { HttpClient, HttpErrorResponse, HttpHeaders } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { Auth, onAuthStateChanged } from '@angular/fire/auth';
-import { Observable, catchError, filter, firstValueFrom, from, map, merge, of, scan, shareReplay, skip, switchMap, timer } from 'rxjs';
+import { Observable, Subscription, catchError, filter, firstValueFrom, from, map, merge, of, scan, shareReplay, skip, switchMap, timer } from 'rxjs';
 import { Campana } from '../interfaces/campaña';
 import {
     CampaignCreationPolicy,
@@ -43,6 +43,8 @@ export class CampanaService {
     private static readonly CAMPAIGN_NAME_MAX_LENGTH = 150;
     private static readonly CAMPAIGN_MAX_HOMEBREW_SOURCES = 20;
     private static readonly CAMPAIGN_UNNAMED_LABEL = 'Campaña';
+    private static readonly CAMPAIGN_LIGHT_REFRESH_MS = 30000;
+    private static readonly CAMPAIGN_FULL_REFRESH_MS = 300000;
     private readonly campanasBaseUrl = `${environment.apiUrl}campanas`;
     private readonly tramasBaseUrl = `${environment.apiUrl}tramas`;
     private readonly subtramasBaseUrl = `${environment.apiUrl}subtramas`;
@@ -149,14 +151,21 @@ export class CampanaService {
                     { headers: await this.buildAuthHeaders() }
                 )
             );
-            this.notifyCampaignListChange(this.toPositiveInt(response?.idCampana));
-
-            return {
+            const created: CampaignListItem = {
                 id: this.toPositiveInt(response?.idCampana) ?? 0,
                 nombre: `${response?.nombre ?? payload.nombre}`.trim() || payload.nombre,
                 campaignRole: 'master',
                 membershipStatus: 'activo',
             };
+            this.rememberCampaignSummaryMutation(created.id, {
+                nombre: created.nombre,
+                campaignRole: 'master',
+                membershipStatus: 'activo',
+                isOwner: true,
+            });
+            this.notifyCampaignListChange(created.id);
+
+            return created;
         } catch (error) {
             throw this.toError(error, 'No se pudo crear la campaña.');
         }
@@ -525,27 +534,36 @@ export class CampanaService {
             let active = true;
             let current = [this.buildSinCampanaOption()];
             let latestSummaries: CampaignListItem[] = [];
+            let lastHydratedSignature: string | null = null;
 
             const emitCurrent = () => {
                 if (active)
                     subscriber.next(current);
             };
-            const rebuildTree = async (forceReloadSummaries: boolean = false) => {
+            const rebuildTree = async (options: { reloadSummaries?: boolean; forceHydration?: boolean; } = {}) => {
                 try {
                     if (this.isUsageBlockedForCampaignReads()) {
                         current = [this.buildSinCampanaOption()];
+                        lastHydratedSignature = null;
                         emitCurrent();
                         return;
                     }
 
-                    if (forceReloadSummaries || latestSummaries.length < 1)
+                    if (options.reloadSummaries === true || latestSummaries.length < 1)
                         latestSummaries = await this.fetchCampaignSummaries();
 
+                    const activeSummaries = latestSummaries.filter((campana) => this.hasActiveMembership(campana));
+                    const nextSignature = this.buildCampaignHydrationSignature(activeSummaries);
+                    if (options.forceHydration !== true
+                        && nextSignature !== null
+                        && nextSignature === lastHydratedSignature) {
+                        emitCurrent();
+                        return;
+                    }
+
                     const headers = await this.buildAuthHeaders();
-                    current = await this.buildCampanasTree(
-                        latestSummaries.filter((campana) => this.hasActiveMembership(campana)),
-                        headers
-                    );
+                    current = await this.buildCampanasTree(activeSummaries, headers);
+                    lastHydratedSignature = nextSignature;
                 } catch {
                     // Conservamos la última emisión válida si falla una reconstrucción.
                 }
@@ -555,19 +573,30 @@ export class CampanaService {
             const watchStop = this.privateUserFirestoreSvc!.watchCampaigns(
                 (summaries) => {
                     latestSummaries = summaries;
-                    void rebuildTree(false);
+                    void rebuildTree();
                 },
                 () => emitCurrent()
             );
-            const refreshSources: Observable<unknown>[] = [
-                this.campaignRealtimeSyncSvc.listInvalidations$,
-                timer(30000, 30000),
-            ];
+            const refreshSub = new Subscription();
+            refreshSub.add(this.campaignRealtimeSyncSvc.listInvalidations$.subscribe(() => {
+                void rebuildTree({ reloadSummaries: true, forceHydration: true });
+            }));
+            refreshSub.add(timer(
+                CampanaService.CAMPAIGN_LIGHT_REFRESH_MS,
+                CampanaService.CAMPAIGN_LIGHT_REFRESH_MS
+            ).subscribe(() => {
+                void rebuildTree({ reloadSummaries: true });
+            }));
+            refreshSub.add(timer(
+                CampanaService.CAMPAIGN_FULL_REFRESH_MS,
+                CampanaService.CAMPAIGN_FULL_REFRESH_MS
+            ).subscribe(() => {
+                void rebuildTree({ reloadSummaries: true });
+            }));
             if (this.userSvc)
-                refreshSources.push(this.userSvc.currentPrivateProfile$.pipe(skip(1)));
-            const refreshSub = merge(...refreshSources).subscribe(() => {
-                void rebuildTree(true);
-            });
+                refreshSub.add(this.userSvc.currentPrivateProfile$.pipe(skip(1)).subscribe(() => {
+                    void rebuildTree({ reloadSummaries: true, forceHydration: true });
+                }));
 
             emitCurrent();
             return () => {
@@ -712,6 +741,29 @@ export class CampanaService {
             this.buildSinCampanaOption(),
             ...campaignTrees,
         ];
+    }
+
+    private buildCampaignHydrationSignature(campanas: CampaignListItem[]): string | null {
+        const active = (campanas ?? [])
+            .filter((campana) => !!campana && this.hasActiveMembership(campana))
+            .sort((a, b) => a.id - b.id);
+
+        const parts: string[] = [];
+        for (const campana of active) {
+            const revision = `${campana.detailRevision ?? ''}`.trim();
+            if (revision.length < 1)
+                return null;
+            parts.push([
+                campana.id,
+                this.resolveCampaignDisplayName(campana.nombre, campana.id),
+                campana.campaignRole ?? '',
+                campana.membershipStatus ?? '',
+                campana.isOwner === true ? '1' : '0',
+                revision,
+            ].join('\u001f'));
+        }
+
+        return parts.join('\u001e');
     }
 
     private hasActiveMembership(campana: CampaignListItem | null | undefined): boolean {
@@ -878,12 +930,14 @@ export class CampanaService {
             ?? raw?.Estado;
 
         const isOwner = raw?.isOwner === true;
+        const detailRevision = this.toNullableText(raw?.detailRevision ?? raw?.DetailRevision);
         return {
             id,
             nombre: `${raw?.n ?? raw?.Nombre ?? raw?.nombre ?? raw?.NombreCampana ?? ''}`.trim(),
             campaignRole: this.normalizeNullableCampaignRole(normalizedRoleSource),
             membershipStatus: this.normalizeNullableMembershipStatus(normalizedStatusSource),
             ...(isOwner ? { isOwner: true } : {}),
+            ...(detailRevision ? { detailRevision } : {}),
         };
     }
 

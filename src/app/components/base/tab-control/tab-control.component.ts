@@ -1,4 +1,4 @@
-import { Component, EventEmitter, HostListener, Input, NgZone, OnDestroy, OnInit, Output, SimpleChanges, ViewChild } from '@angular/core';
+import { Component, EventEmitter, HostListener, Input, NgZone, OnDestroy, OnInit, Output, QueryList, SimpleChanges, ViewChild, ViewChildren } from '@angular/core';
 import { AccountRestrictionOpenRequest, AdminPanelOpenRequest, SocialHubOpenRequest, UserPrivateProfileOpenRequest, UserPrivateProfileSectionId, UserPublicProfileTab } from 'src/app/interfaces/user-account';
 import { UserBanStatus } from 'src/app/interfaces/user-moderation';
 import { UserService } from '../../../services/user.service';
@@ -47,11 +47,27 @@ import { ArmaduraService } from 'src/app/services/armadura.service';
 import { DeidadDetalle } from 'src/app/interfaces/deidad';
 import { DeidadService } from 'src/app/services/deidad.service';
 import { UserProfileNavigationService } from 'src/app/services/user-profile-navigation.service';
+import { NuevaRacialComponent } from '../../shared/nueva-racial/nueva-racial.component';
+import { NuevaRazaComponent } from '../../shared/nueva-raza/nueva-raza.component';
+import { NuevaIdiomaComponent } from '../../shared/nueva-idioma/nueva-idioma.component';
+import { IdiomaDetalle } from 'src/app/interfaces/idioma';
 
 interface ListadoTabAbierto {
     key: string;
     tipo: string;
     operacion: string;
+}
+
+interface EdicionRacialTabAbierto {
+    key: string;
+    idRacial: number;
+    nombre: string;
+}
+
+interface EdicionIdiomaTabAbierto {
+    key: string;
+    idIdioma: number;
+    nombre: string;
 }
 
 @Component({
@@ -100,7 +116,10 @@ export class TabControlComponent implements OnInit, OnDestroy {
     public detallesArmaAbiertos: ArmaDetalle[] = [];
     public detallesArmaduraAbiertos: ArmaduraDetalle[] = [];
     public detallesDeidadAbiertos: DeidadDetalle[] = [];
+    public detallesIdiomaAbiertos: IdiomaDetalle[] = [];
     public listadoTabsAbiertos: ListadoTabAbierto[] = [];
+    public edicionRacialesAbiertos: EdicionRacialTabAbierto[] = [];
+    public edicionIdiomasAbiertos: EdicionIdiomaTabAbierto[] = [];
     private readonly TAB_PERSONAJES = 'base:personajes';
     private readonly TAB_PROFILE = 'base:perfil';
     private readonly TAB_RESTRICTION = 'base:restriction';
@@ -145,6 +164,9 @@ export class TabControlComponent implements OnInit, OnDestroy {
     ) { }
 
     @ViewChild(MatTabGroup) TabGroup!: MatTabGroup;
+    @ViewChildren(NuevaRazaComponent) nuevasRazasInsertadas!: QueryList<NuevaRazaComponent>;
+    @ViewChildren(NuevaRacialComponent) racialesEditables!: QueryList<NuevaRacialComponent>;
+    @ViewChildren(NuevaIdiomaComponent) idiomasEditables!: QueryList<NuevaIdiomaComponent>;
 
     ngOnInit() {
         this.usrSvc.isLoggedIn$
@@ -311,7 +333,15 @@ export class TabControlComponent implements OnInit, OnDestroy {
             return;
         }
         if (activeKey?.startsWith('listado:')) {
-            this.quitarListado(activeKey);
+            void this.quitarListado(activeKey);
+            return;
+        }
+        if (activeKey?.startsWith('edicion:racial:')) {
+            void this.quitarEdicionRacial(activeKey);
+            return;
+        }
+        if (activeKey?.startsWith('edicion:idioma:')) {
+            void this.quitarEdicionIdioma(activeKey);
             return;
         }
         if (this.detallesPersonajeAbiertos.map(p => p.Nombre).includes(tabLabel) && this.quitarDetallesPersonaje(tabLabel))
@@ -348,6 +378,8 @@ export class TabControlComponent implements OnInit, OnDestroy {
             return;
         else if (this.detallesDeidadAbiertos.map(d => this.getEtiquetaDeidad(d)).includes(tabLabel) && this.quitarDetallesDeidad(tabLabel))
             return;
+        else if (this.detallesIdiomaAbiertos.map(i => this.getEtiquetaIdioma(i)).includes(tabLabel) && this.quitarDetallesIdioma(tabLabel))
+            return;
         else if (this.detallesManualAbiertos.map(m => this.getEtiquetaManual(m)).includes(tabLabel) && this.quitarDetallesManual(tabLabel))
             return;
     }
@@ -381,6 +413,8 @@ export class TabControlComponent implements OnInit, OnDestroy {
         if (this.AbrirNuevoPersonajeTab)
             keys.push(this.TAB_NUEVO);
         keys.push(...this.listadoTabsAbiertos.map((tab) => tab.key));
+        keys.push(...this.edicionRacialesAbiertos.map((tab) => tab.key));
+        keys.push(...this.edicionIdiomasAbiertos.map((tab) => tab.key));
         keys.push(...this.detallesManualAbiertos.map((manual) => this.getManualTabKey(manual)));
         keys.push(...this.detallesRazaAbiertos.map((raza) => this.getRazaTabKey(raza)));
         keys.push(...this.detallesConjuroAbiertos.map((conjuro) => this.getConjuroTabKey(conjuro)));
@@ -398,6 +432,7 @@ export class TabControlComponent implements OnInit, OnDestroy {
         keys.push(...this.detallesArmaAbiertos.map((arma) => this.getArmaTabKey(arma)));
         keys.push(...this.detallesArmaduraAbiertos.map((armadura) => this.getArmaduraTabKey(armadura)));
         keys.push(...this.detallesDeidadAbiertos.map((deidad) => this.getDeidadTabKey(deidad)));
+        keys.push(...this.detallesIdiomaAbiertos.map((idioma) => this.getIdiomaTabKey(idioma)));
         return keys;
     }
 
@@ -777,7 +812,10 @@ export class TabControlComponent implements OnInit, OnDestroy {
         this.detallesArmaAbiertos = [];
         this.detallesArmaduraAbiertos = [];
         this.detallesDeidadAbiertos = [];
+        this.detallesIdiomaAbiertos = [];
         this.listadoTabsAbiertos = [];
+        this.edicionRacialesAbiertos = [];
+        this.edicionIdiomasAbiertos = [];
         this.nuevoPSvc.resetearCreacionNuevoPersonaje();
         this.AbrirNuevoPersonajeTab = 0;
         this.openerByTab.clear();
@@ -913,7 +951,15 @@ export class TabControlComponent implements OnInit, OnDestroy {
         tab.initialDisplayName = `${payload?.displayName ?? ''}`.trim() || tab.initialDisplayName || null;
     }
 
-    recibirObjetoListado(value: { item: any, tipo: string }) {
+    recibirObjetoListado(value: { item: any, tipo: string }, operacion: string = 'detalles') {
+        if (this.normalizar(operacion) === 'modificar' && value.tipo === 'raciales') {
+            this.abrirEdicionRacial(value.item);
+            return;
+        }
+        if (this.normalizar(operacion) === 'modificar' && value.tipo === 'idiomas') {
+            this.abrirEdicionIdioma(value.item);
+            return;
+        }
         if (value.tipo === 'razas') {
             this.abrirDetallesRaza(value.item);
         } else if (value.tipo === 'conjuros') {
@@ -944,6 +990,8 @@ export class TabControlComponent implements OnInit, OnDestroy {
             this.abrirDetallesArmadura(value.item);
         } else if (value.tipo === 'deidades') {
             this.abrirDetallesDeidad(value.item);
+        } else if (value.tipo === 'idiomas') {
+            this.abrirDetallesIdioma(value.item);
         }
     }
 
@@ -1247,6 +1295,10 @@ export class TabControlComponent implements OnInit, OnDestroy {
         return `${deidad.Nombre} (Deidad)`;
     }
 
+    getEtiquetaIdioma(idioma: IdiomaDetalle): string {
+        return `${idioma.Nombre} (Idioma)`;
+    }
+
     getEtiquetaListadoTab(tab: ListadoTabAbierto): string {
         const tipo = `${tab?.tipo ?? ''}`.trim();
         const operacion = this.normalizar(tab?.operacion ?? '');
@@ -1255,6 +1307,14 @@ export class TabControlComponent implements OnInit, OnDestroy {
         if (operacion === 'modificar')
             return `Modificar ${tipo}`;
         return `Lista de ${tipo}`;
+    }
+
+    getEtiquetaEdicionRacialTab(tab: EdicionRacialTabAbierto): string {
+        return `Modificar racial: ${tab.nombre}`;
+    }
+
+    getEtiquetaEdicionIdiomaTab(tab: EdicionIdiomaTabAbierto): string {
+        return `Modificar idioma: ${tab.nombre}`;
     }
 
     private getPersonajeTabKey(personaje: Personaje): string {
@@ -1338,6 +1398,10 @@ export class TabControlComponent implements OnInit, OnDestroy {
         return `deidad:${Number(deidad?.Id ?? 0)}`;
     }
 
+    private getIdiomaTabKey(idioma: IdiomaDetalle): string {
+        return `idioma:${Number(idioma?.Id ?? 0)}`;
+    }
+
     private getListadoTabKey(tipo: string, operacion: string): string {
         const tipoKey = this.normalizar(tipo).replace(/\s+/g, '-');
         const operacionKey = this.normalizar(operacion).replace(/\s+/g, '-');
@@ -1346,6 +1410,22 @@ export class TabControlComponent implements OnInit, OnDestroy {
 
     private getListadoTabByKey(key: string): ListadoTabAbierto | undefined {
         return this.listadoTabsAbiertos.find((tab) => tab.key === key);
+    }
+
+    private getEdicionRacialTabKey(idRacial: number): string {
+        return `edicion:racial:${Math.trunc(Number(idRacial ?? 0))}`;
+    }
+
+    private getEdicionRacialTabByKey(key: string): EdicionRacialTabAbierto | undefined {
+        return this.edicionRacialesAbiertos.find((tab) => tab.key === key);
+    }
+
+    private getEdicionIdiomaTabKey(idIdioma: number): string {
+        return `edicion:idioma:${Math.trunc(Number(idIdioma ?? 0))}`;
+    }
+
+    private getEdicionIdiomaTabByKey(key: string): EdicionIdiomaTabAbierto | undefined {
+        return this.edicionIdiomasAbiertos.find((tab) => tab.key === key);
     }
 
     private getManualTabKey(manual: ManualAsociadoDetalle): string {
@@ -1570,6 +1650,114 @@ export class TabControlComponent implements OnInit, OnDestroy {
             this.registerOpenContext(targetKey, this.getSafeOpenerKey());
             this.focusOpenedTab(targetKey);
         }
+    }
+
+    abrirEdicionRacial(racial: RacialDetalle): void {
+        const idRacial = Number(racial?.Id);
+        if (!Number.isFinite(idRacial) || idRacial <= 0)
+            return;
+
+        const key = this.getEdicionRacialTabKey(idRacial);
+        const abierto = this.getEdicionRacialTabByKey(key);
+        if (abierto) {
+            if (`${racial?.Nombre ?? ''}`.trim().length > 0)
+                abierto.nombre = `${racial.Nombre}`.trim();
+            this.selectTabByKey(abierto.key);
+            return;
+        }
+
+        const tab: EdicionRacialTabAbierto = {
+            key,
+            idRacial,
+            nombre: `${racial?.Nombre ?? ''}`.trim() || `#${idRacial}`,
+        };
+        this.edicionRacialesAbiertos.push(tab);
+        this.registerOpenContext(key, this.getSafeOpenerKey());
+        this.focusOpenedTab(key);
+    }
+
+    async quitarEdicionRacial(value?: string | EdicionRacialTabAbierto): Promise<boolean> {
+        const key = typeof value === 'string'
+            ? value
+            : value?.key ?? (this.activeTabKey.startsWith('edicion:racial:') ? this.activeTabKey : '');
+        const tab = this.getEdicionRacialTabByKey(key);
+        if (!tab)
+            return false;
+        if (!(await this.puedeCerrarEdicionRacial(tab)))
+            return false;
+
+        return this.closeTabWithNavigation(tab.key, () => {
+            const indexTab = this.edicionRacialesAbiertos.indexOf(tab);
+            if (indexTab < 0)
+                return false;
+            this.edicionRacialesAbiertos.splice(indexTab, 1);
+            return true;
+        });
+    }
+
+    abrirEdicionIdioma(idioma: IdiomaDetalle): void {
+        const idIdioma = Number(idioma?.Id);
+        if (!Number.isFinite(idIdioma) || idIdioma <= 0)
+            return;
+
+        const key = this.getEdicionIdiomaTabKey(idIdioma);
+        const abierto = this.getEdicionIdiomaTabByKey(key);
+        if (abierto) {
+            if (`${idioma?.Nombre ?? ''}`.trim().length > 0)
+                abierto.nombre = `${idioma.Nombre}`.trim();
+            this.selectTabByKey(abierto.key);
+            return;
+        }
+
+        const tab: EdicionIdiomaTabAbierto = {
+            key,
+            idIdioma,
+            nombre: `${idioma?.Nombre ?? ''}`.trim() || `#${idIdioma}`,
+        };
+        this.edicionIdiomasAbiertos.push(tab);
+        this.registerOpenContext(key, this.getSafeOpenerKey());
+        this.focusOpenedTab(key);
+    }
+
+    async quitarEdicionIdioma(value?: string | EdicionIdiomaTabAbierto): Promise<boolean> {
+        const key = typeof value === 'string'
+            ? value
+            : value?.key ?? (this.activeTabKey.startsWith('edicion:idioma:') ? this.activeTabKey : '');
+        const tab = this.getEdicionIdiomaTabByKey(key);
+        if (!tab)
+            return false;
+        if (!(await this.puedeCerrarEdicionIdioma(tab)))
+            return false;
+
+        return this.closeTabWithNavigation(tab.key, () => {
+            const indexTab = this.edicionIdiomasAbiertos.indexOf(tab);
+            if (indexTab < 0)
+                return false;
+            this.edicionIdiomasAbiertos.splice(indexTab, 1);
+            return true;
+        });
+    }
+
+    onIdiomaActualizadoDesdeEdicion(idioma: IdiomaDetalle): void {
+        if (!idioma || Number(idioma.Id) <= 0)
+            return;
+
+        const editTab = this.getEdicionIdiomaTabByKey(this.getEdicionIdiomaTabKey(idioma.Id));
+        if (editTab)
+            editTab.nombre = `${idioma.Nombre ?? ''}`.trim() || editTab.nombre;
+    }
+
+    onRacialActualizadoDesdeEdicion(racial: RacialDetalle): void {
+        if (!racial || Number(racial.Id) <= 0)
+            return;
+
+        const detalleIndex = this.detallesRacialAbiertos.findIndex((item) => Number(item.Id) === Number(racial.Id));
+        if (detalleIndex >= 0)
+            this.detallesRacialAbiertos.splice(detalleIndex, 1, racial);
+
+        const editTab = this.getEdicionRacialTabByKey(this.getEdicionRacialTabKey(racial.Id));
+        if (editTab)
+            editTab.nombre = `${racial.Nombre ?? ''}`.trim() || editTab.nombre;
     }
 
     abrirDetallesRacialPorId(idRacial: number) {
@@ -1983,6 +2171,38 @@ export class TabControlComponent implements OnInit, OnDestroy {
         });
     }
 
+    abrirDetallesIdioma(idioma: IdiomaDetalle) {
+        if (!idioma || Number(idioma?.Id) <= 0)
+            return;
+
+        const abierto = this.detallesIdiomaAbiertos.find((item) => Number(item.Id) === Number(idioma.Id));
+        if (abierto) {
+            this.selectTabByKey(this.getIdiomaTabKey(abierto));
+            return;
+        }
+
+        const targetKey = this.getIdiomaTabKey(idioma);
+        this.detallesIdiomaAbiertos.push(idioma);
+        this.registerOpenContext(targetKey, this.getSafeOpenerKey());
+        this.focusOpenedTab(targetKey);
+    }
+
+    quitarDetallesIdioma(value: string | IdiomaDetalle): boolean {
+        const tab = typeof value === 'string'
+            ? this.detallesIdiomaAbiertos.find((item) => this.getEtiquetaIdioma(item) === value)
+            : this.detallesIdiomaAbiertos.find((item) => Number(item.Id) === Number(value.Id));
+        if (!tab)
+            return false;
+        const closingKey = this.getIdiomaTabKey(tab);
+        return this.closeTabWithNavigation(closingKey, () => {
+            const indexTab = this.detallesIdiomaAbiertos.indexOf(tab);
+            if (indexTab < 0)
+                return false;
+            this.detallesIdiomaAbiertos.splice(indexTab, 1);
+            return true;
+        });
+    }
+
     quitarDetallesArmadura(value: string | ArmaduraDetalle): boolean {
         const tab = typeof value === 'string'
             ? this.detallesArmaduraAbiertos.find(a => this.getEtiquetaArmadura(a) === value)
@@ -2270,12 +2490,14 @@ export class TabControlComponent implements OnInit, OnDestroy {
         this.focusOpenedTab(key);
     }
 
-    quitarListado(value?: string | ListadoTabAbierto): boolean {
+    async quitarListado(value?: string | ListadoTabAbierto): Promise<boolean> {
         const key = typeof value === 'string'
             ? value
             : value?.key ?? (this.activeTabKey.startsWith('listado:') ? this.activeTabKey : '');
         const tab = this.getListadoTabByKey(key);
         if (!tab)
+            return false;
+        if (!(await this.puedeCerrarListado(tab)))
             return false;
         return this.closeTabWithNavigation(tab.key, () => {
             const indexTab = this.listadoTabsAbiertos.indexOf(tab);
@@ -2337,7 +2559,10 @@ export class TabControlComponent implements OnInit, OnDestroy {
         this.detallesArmaAbiertos = [];
         this.detallesArmaduraAbiertos = [];
         this.detallesDeidadAbiertos = [];
+        this.detallesIdiomaAbiertos = [];
         this.listadoTabsAbiertos = [];
+        this.edicionRacialesAbiertos = [];
+        this.edicionIdiomasAbiertos = [];
         this.AbrirNuevoPersonajeTab = 0;
 
         Array.from(this.openerByTab.keys())
@@ -2349,6 +2574,37 @@ export class TabControlComponent implements OnInit, OnDestroy {
         if (this.temporaryRestrictionActive && this.restrictionTabOpen)
             return this.TAB_RESTRICTION;
         return this.TAB_PERSONAJES;
+    }
+
+    private async puedeCerrarListado(tab: ListadoTabAbierto): Promise<boolean> {
+        if (tab.tipo !== 'razas' || tab.operacion !== 'insertar')
+            return true;
+        const componente = this.nuevasRazasInsertadas?.first;
+        if (!componente)
+            return true;
+        return componente.confirmarSalidaConRacialesPendientes();
+    }
+
+    private async puedeCerrarEdicionRacial(tab: EdicionRacialTabAbierto): Promise<boolean> {
+        const componente = this.getEditorRacialPorTabKey(tab.key);
+        if (!componente)
+            return true;
+        return componente.confirmarSalidaSiHayCambios();
+    }
+
+    private async puedeCerrarEdicionIdioma(tab: EdicionIdiomaTabAbierto): Promise<boolean> {
+        const componente = this.getEditorIdiomaPorTabKey(tab.key);
+        if (!componente)
+            return true;
+        return componente.confirmarSalidaSiHayCambios();
+    }
+
+    private getEditorRacialPorTabKey(key: string): NuevaRacialComponent | undefined {
+        return this.racialesEditables?.toArray().find((component) => component.editorTabKey === key);
+    }
+
+    private getEditorIdiomaPorTabKey(key: string): NuevaIdiomaComponent | undefined {
+        return this.idiomasEditables?.toArray().find((component) => component.editorTabKey === key);
     }
 
     private normalizar(value: string): string {

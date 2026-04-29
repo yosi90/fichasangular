@@ -160,9 +160,11 @@ export class BaseMenuComponent implements OnInit, OnDestroy {
     tieneOpcionesOtros(seccion: SeccionOtros): boolean {
         if (seccion === 'insertar')
             return this.recursosOtrosInsertar.some(resource => this.canGestionar(resource, 'create'))
-                || this.canInsertarRaciales();
+                || this.canInsertarRaciales()
+                || this.canGestionarIdiomas();
         if (seccion === 'modificar')
-            return this.recursosOtrosModificar.some(resource => this.canGestionar(resource, 'update'));
+            return this.recursosOtrosModificar.some(resource => this.canGestionar(resource, 'update'))
+                || this.canGestionarIdiomas();
         return true;
     }
 
@@ -175,6 +177,10 @@ export class BaseMenuComponent implements OnInit, OnDestroy {
     }
 
     canInsertarRaciales(): boolean {
+        return this.usrService.can('razas', 'create');
+    }
+
+    canGestionarIdiomas(): boolean {
         return this.usrService.can('razas', 'create');
     }
 
@@ -194,6 +200,30 @@ export class BaseMenuComponent implements OnInit, OnDestroy {
         if (!this.canInsertarRaciales())
             return;
         this.AbrirListado('raciales', 'insertar');
+        this.closeAcordion();
+        this.cerrarOtros();
+    }
+
+    onModificarRacial(): void {
+        if (!this.canGestionar('raciales', 'update'))
+            return;
+        this.AbrirListado('raciales', 'modificar');
+        this.closeAcordion();
+        this.cerrarOtros();
+    }
+
+    onInsertarIdioma(): void {
+        if (!this.canGestionarIdiomas())
+            return;
+        this.AbrirListado('idiomas', 'insertar');
+        this.closeAcordion();
+        this.cerrarOtros();
+    }
+
+    onModificarIdioma(): void {
+        if (!this.canGestionarIdiomas())
+            return;
+        this.AbrirListado('idiomas', 'modificar');
         this.closeAcordion();
         this.cerrarOtros();
     }

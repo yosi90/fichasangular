@@ -6,3 +6,572 @@
 √ Browser application bundle generation complete.
 √ Browser application bundle generation complete.
 √ Browser application bundle generation complete.
+√ Browser application bundle generation complete.
+√ Browser application bundle generation complete.
+√ Browser application bundle generation complete.
+√ Browser application bundle generation complete.
+√ Browser application bundle generation complete.
+√ Browser application bundle generation complete.
+√ Browser application bundle generation complete.
+√ Browser application bundle generation complete.
+√ Browser application bundle generation complete.
+√ Browser application bundle generation complete.
+√ Browser application bundle generation complete.
+√ Browser application bundle generation complete.
+√ Browser application bundle generation complete.
+√ Browser application bundle generation complete.
+√ Browser application bundle generation complete.
+√ Browser application bundle generation complete.
+√ Browser application bundle generation complete.
+√ Browser application bundle generation complete.
+√ Browser application bundle generation complete.
+√ Browser application bundle generation complete.
+√ Browser application bundle generation complete.
+[1m[31m
+Error: [96msrc/app/components/shared/nueva-raza/nueva-raza.component.ts[0m:[93m1329[0m:[93m13[0m - [91merror[0m[90m TS2741: [0mProperty 'racialesPendientesRazaEnCreacionIds' is missing in type '{ habilidadesBaseRows: HabilidadBaseRow[]; habilidadesCustomRows: HabilidadCustomRow[]; dotesRows: DoteRow[]; racialesRows: RacialRow[]; sortilegiosRows: SortilegioRow[]; prerrequisitosMutacionRows: PrerequisiteRowModel[]; prerrequisitosMutacionSeleccionados: MutacionPrerequisiteType[]; }' but required in type 'NuevaRazaDraftRows'.
+
+[7m1329[0m             rows: {
+[7m    [0m [91m            ~~~~[0m
+
+  [96msrc/app/services/nueva-raza-draft.service.ts[0m:[93m24[0m:[93m5[0m
+    [7m24[0m     racialesPendientesRazaEnCreacionIds: number[];
+    [7m  [0m [96m    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+    'racialesPendientesRazaEnCreacionIds' is declared here.
+
+
+[39m[22m
+√ Browser application bundle generation complete.
+√ Browser application bundle generation complete.
+√ Browser application bundle generation complete.
+√ Browser application bundle generation complete.
+√ Browser application bundle generation complete.
+√ Browser application bundle generation complete.
+√ Browser application bundle generation complete.
+√ Browser application bundle generation complete.
+√ Browser application bundle generation complete.
+√ Browser application bundle generation complete.
+√ Browser application bundle generation complete.
+√ Browser application bundle generation complete.
+√ Browser application bundle generation complete.
+√ Browser application bundle generation complete.
+√ Browser application bundle generation complete.
+√ Browser application bundle generation complete.
+√ Browser application bundle generation complete.
+[1m[31m
+Error: [96msrc/app/components/shared/nueva-racial/nueva-racial.component.ts[0m:[93m119[0m:[93m14[0m - [91merror[0m[90m TS2420: [0mClass 'NuevaRacialComponent' incorrectly implements interface 'OnChanges'.
+  Property 'ngOnChanges' is missing in type 'NuevaRacialComponent' but required in type 'OnChanges'.
+
+[7m119[0m export class NuevaRacialComponent implements OnInit, OnDestroy, OnChanges {
+[7m   [0m [91m             ~~~~~~~~~~~~~~~~~~~~[0m
+
+  [96mnode_modules/@angular/core/index.d.ts[0m:[93m677[0m:[93m5[0m
+    [7m677[0m     ngOnChanges(changes: SimpleChanges): void;
+    [7m   [0m [96m    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+    'ngOnChanges' is declared here.
+
+
+[39m[22m
+√ Browser application bundle generation complete.
+[1m[31m
+Error: [96msrc/app/components/shared/nueva-racial/nueva-racial.component.ts[0m:[93m206[0m:[93m14[0m - [91merror[0m[90m TS2339: [0mProperty 'cargarEdicionSiAplica' does not exist on type 'NuevaRacialComponent'.
+
+[7m206[0m         this.cargarEdicionSiAplica();
+[7m   [0m [91m             ~~~~~~~~~~~~~~~~~~~~~[0m
+
+
+Error: [96msrc/app/components/shared/nueva-racial/nueva-racial.component.ts[0m:[93m216[0m:[93m18[0m - [91merror[0m[90m TS2339: [0mProperty 'cargarEdicionSiAplica' does not exist on type 'NuevaRacialComponent'.
+
+[7m216[0m             this.cargarEdicionSiAplica();
+[7m   [0m [91m                 ~~~~~~~~~~~~~~~~~~~~~[0m
+
+
+Error: [96msrc/app/components/shared/nueva-racial/nueva-racial.component.ts[0m:[93m258[0m:[93m21[0m - [91merror[0m[90m TS2339: [0mProperty 'buildEditSnapshot' does not exist on type 'NuevaRacialComponent'.
+
+[7m258[0m         return this.buildEditSnapshot() !== this.initialEditSnapshot;
+[7m   [0m [91m                    ~~~~~~~~~~~~~~~~~[0m
+
+
+[39m[22m
+√ Browser application bundle generation complete.
+[1m[31m
+Error: [96msrc/app/components/shared/nueva-racial/nueva-racial.component.ts[0m:[93m206[0m:[93m14[0m - [91merror[0m[90m TS2339: [0mProperty 'cargarEdicionSiAplica' does not exist on type 'NuevaRacialComponent'.
+
+[7m206[0m         this.cargarEdicionSiAplica();
+[7m   [0m [91m             ~~~~~~~~~~~~~~~~~~~~~[0m
+
+
+Error: [96msrc/app/components/shared/nueva-racial/nueva-racial.component.ts[0m:[93m216[0m:[93m18[0m - [91merror[0m[90m TS2339: [0mProperty 'cargarEdicionSiAplica' does not exist on type 'NuevaRacialComponent'.
+
+[7m216[0m             this.cargarEdicionSiAplica();
+[7m   [0m [91m                 ~~~~~~~~~~~~~~~~~~~~~[0m
+
+
+Error: [96msrc/app/components/shared/nueva-racial/nueva-racial.component.ts[0m:[93m258[0m:[93m21[0m - [91merror[0m[90m TS2339: [0mProperty 'buildEditSnapshot' does not exist on type 'NuevaRacialComponent'.
+
+[7m258[0m         return this.buildEditSnapshot() !== this.initialEditSnapshot;
+[7m   [0m [91m                    ~~~~~~~~~~~~~~~~~[0m
+
+
+Error: [96msrc/app/components/shared/nueva-racial/nueva-racial.component.ts[0m:[93m302[0m:[93m22[0m - [91merror[0m[90m TS2339: [0mProperty 'hidratarDesdeRacial' does not exist on type 'NuevaRacialComponent'.
+
+[7m302[0m                 this.hidratarDesdeRacial(response.racial);
+[7m   [0m [91m                     ~~~~~~~~~~~~~~~~~~~[0m
+
+
+[39m[22m
+√ Browser application bundle generation complete.
+[1m[31m
+Error: [96msrc/app/components/shared/nueva-racial/nueva-racial.component.ts[0m:[93m258[0m:[93m21[0m - [91merror[0m[90m TS2339: [0mProperty 'buildEditSnapshot' does not exist on type 'NuevaRacialComponent'.
+
+[7m258[0m         return this.buildEditSnapshot() !== this.initialEditSnapshot;
+[7m   [0m [91m                    ~~~~~~~~~~~~~~~~~[0m
+
+
+Error: [96msrc/app/components/shared/nueva-racial/nueva-racial.component.ts[0m:[93m626[0m:[93m30[0m - [91merror[0m[90m TS2339: [0mProperty 'hidratarDotes' does not exist on type 'NuevaRacialComponent'.
+
+[7m626[0m         this.doteRows = this.hidratarDotes(racial);
+[7m   [0m [91m                             ~~~~~~~~~~~~~[0m
+
+
+Error: [96msrc/app/components/shared/nueva-racial/nueva-racial.component.ts[0m:[93m627[0m:[93m41[0m - [91merror[0m[90m TS2551: [0mProperty 'hidratarHabilidadesBase' does not exist on type 'NuevaRacialComponent'. Did you mean 'quitarHabilidadBase'?
+
+[7m627[0m         this.habilidadesBaseRows = this.hidratarHabilidadesBase(racial);
+[7m   [0m [91m                                        ~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+  [96msrc/app/components/shared/nueva-racial/nueva-racial.component.ts[0m:[93m395[0m:[93m5[0m
+    [7m395[0m     quitarHabilidadBase(index: number): void {
+    [7m   [0m [96m    ~~~~~~~~~~~~~~~~~~~[0m
+    'quitarHabilidadBase' is declared here.
+
+
+Error: [96msrc/app/components/shared/nueva-racial/nueva-racial.component.ts[0m:[93m628[0m:[93m43[0m - [91merror[0m[90m TS2551: [0mProperty 'hidratarHabilidadesCustom' does not exist on type 'NuevaRacialComponent'. Did you mean 'habilidadesCustom'?
+
+[7m628[0m         this.habilidadesCustomRows = this.hidratarHabilidadesCustom(racial);
+[7m   [0m [91m                                          ~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+  [96msrc/app/components/shared/nueva-racial/nueva-racial.component.ts[0m:[93m141[0m:[93m5[0m
+    [7m141[0m     habilidadesCustom: HabilidadBasicaDetalle[] = [];
+    [7m   [0m [96m    ~~~~~~~~~~~~~~~~~[0m
+    'habilidadesCustom' is declared here.
+
+
+Error: [96msrc/app/components/shared/nueva-racial/nueva-racial.component.ts[0m:[93m629[0m:[93m41[0m - [91merror[0m[90m TS2551: [0mProperty 'hidratarCaracteristicas' does not exist on type 'NuevaRacialComponent'. Did you mean 'quitarCaracteristica'?
+
+[7m629[0m         this.caracteristicasRows = this.hidratarCaracteristicas(racial);
+[7m   [0m [91m                                        ~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+  [96msrc/app/components/shared/nueva-racial/nueva-racial.component.ts[0m:[93m441[0m:[93m5[0m
+    [7m441[0m     quitarCaracteristica(index: number): void {
+    [7m   [0m [96m    ~~~~~~~~~~~~~~~~~~~~[0m
+    'quitarCaracteristica' is declared here.
+
+
+Error: [96msrc/app/components/shared/nueva-racial/nueva-racial.component.ts[0m:[93m630[0m:[93m37[0m - [91merror[0m[90m TS2339: [0mProperty 'hidratarSalvaciones' does not exist on type 'NuevaRacialComponent'.
+
+[7m630[0m         this.salvacionesRows = this.hidratarSalvaciones(racial);
+[7m   [0m [91m                                    ~~~~~~~~~~~~~~~~~~~[0m
+
+
+Error: [96msrc/app/components/shared/nueva-racial/nueva-racial.component.ts[0m:[93m631[0m:[93m36[0m - [91merror[0m[90m TS2551: [0mProperty 'hidratarSortilegas' does not exist on type 'NuevaRacialComponent'. Did you mean 'quitarSortilega'?
+
+[7m631[0m         this.sortilegasRows = this.hidratarSortilegas(racial);
+[7m   [0m [91m                                   ~~~~~~~~~~~~~~~~~~[0m
+
+  [96msrc/app/components/shared/nueva-racial/nueva-racial.component.ts[0m:[93m457[0m:[93m5[0m
+    [7m457[0m     quitarSortilega(index: number): void {
+    [7m   [0m [96m    ~~~~~~~~~~~~~~~[0m
+    'quitarSortilega' is declared here.
+
+
+Error: [96msrc/app/components/shared/nueva-racial/nueva-racial.component.ts[0m:[93m632[0m:[93m33[0m - [91merror[0m[90m TS2339: [0mProperty 'hidratarAtaques' does not exist on type 'NuevaRacialComponent'.
+
+[7m632[0m         this.ataquesRows = this.hidratarAtaques(racial);
+[7m   [0m [91m                                ~~~~~~~~~~~~~~~[0m
+
+
+Error: [96msrc/app/components/shared/nueva-racial/nueva-racial.component.ts[0m:[93m633[0m:[93m14[0m - [91merror[0m[90m TS2339: [0mProperty 'hidratarPrerrequisitos' does not exist on type 'NuevaRacialComponent'.
+
+[7m633[0m         this.hidratarPrerrequisitos(racial);
+[7m   [0m [91m             ~~~~~~~~~~~~~~~~~~~~~~[0m
+
+
+Error: [96msrc/app/components/shared/nueva-racial/nueva-racial.component.ts[0m:[93m634[0m:[93m41[0m - [91merror[0m[90m TS2339: [0mProperty 'buildEditSnapshot' does not exist on type 'NuevaRacialComponent'.
+
+[7m634[0m         this.initialEditSnapshot = this.buildEditSnapshot();
+[7m   [0m [91m                                        ~~~~~~~~~~~~~~~~~[0m
+
+
+[39m[22m
+√ Browser application bundle generation complete.
+[1m[31m
+Error: [96msrc/app/components/shared/nueva-racial/nueva-racial.component.ts[0m:[93m626[0m:[93m30[0m - [91merror[0m[90m TS2339: [0mProperty 'hidratarDotes' does not exist on type 'NuevaRacialComponent'.
+
+[7m626[0m         this.doteRows = this.hidratarDotes(racial);
+[7m   [0m [91m                             ~~~~~~~~~~~~~[0m
+
+
+Error: [96msrc/app/components/shared/nueva-racial/nueva-racial.component.ts[0m:[93m627[0m:[93m41[0m - [91merror[0m[90m TS2551: [0mProperty 'hidratarHabilidadesBase' does not exist on type 'NuevaRacialComponent'. Did you mean 'quitarHabilidadBase'?
+
+[7m627[0m         this.habilidadesBaseRows = this.hidratarHabilidadesBase(racial);
+[7m   [0m [91m                                        ~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+  [96msrc/app/components/shared/nueva-racial/nueva-racial.component.ts[0m:[93m395[0m:[93m5[0m
+    [7m395[0m     quitarHabilidadBase(index: number): void {
+    [7m   [0m [96m    ~~~~~~~~~~~~~~~~~~~[0m
+    'quitarHabilidadBase' is declared here.
+
+
+Error: [96msrc/app/components/shared/nueva-racial/nueva-racial.component.ts[0m:[93m628[0m:[93m43[0m - [91merror[0m[90m TS2551: [0mProperty 'hidratarHabilidadesCustom' does not exist on type 'NuevaRacialComponent'. Did you mean 'habilidadesCustom'?
+
+[7m628[0m         this.habilidadesCustomRows = this.hidratarHabilidadesCustom(racial);
+[7m   [0m [91m                                          ~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+  [96msrc/app/components/shared/nueva-racial/nueva-racial.component.ts[0m:[93m141[0m:[93m5[0m
+    [7m141[0m     habilidadesCustom: HabilidadBasicaDetalle[] = [];
+    [7m   [0m [96m    ~~~~~~~~~~~~~~~~~[0m
+    'habilidadesCustom' is declared here.
+
+
+Error: [96msrc/app/components/shared/nueva-racial/nueva-racial.component.ts[0m:[93m629[0m:[93m41[0m - [91merror[0m[90m TS2551: [0mProperty 'hidratarCaracteristicas' does not exist on type 'NuevaRacialComponent'. Did you mean 'quitarCaracteristica'?
+
+[7m629[0m         this.caracteristicasRows = this.hidratarCaracteristicas(racial);
+[7m   [0m [91m                                        ~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+  [96msrc/app/components/shared/nueva-racial/nueva-racial.component.ts[0m:[93m441[0m:[93m5[0m
+    [7m441[0m     quitarCaracteristica(index: number): void {
+    [7m   [0m [96m    ~~~~~~~~~~~~~~~~~~~~[0m
+    'quitarCaracteristica' is declared here.
+
+
+Error: [96msrc/app/components/shared/nueva-racial/nueva-racial.component.ts[0m:[93m630[0m:[93m37[0m - [91merror[0m[90m TS2339: [0mProperty 'hidratarSalvaciones' does not exist on type 'NuevaRacialComponent'.
+
+[7m630[0m         this.salvacionesRows = this.hidratarSalvaciones(racial);
+[7m   [0m [91m                                    ~~~~~~~~~~~~~~~~~~~[0m
+
+
+Error: [96msrc/app/components/shared/nueva-racial/nueva-racial.component.ts[0m:[93m631[0m:[93m36[0m - [91merror[0m[90m TS2551: [0mProperty 'hidratarSortilegas' does not exist on type 'NuevaRacialComponent'. Did you mean 'quitarSortilega'?
+
+[7m631[0m         this.sortilegasRows = this.hidratarSortilegas(racial);
+[7m   [0m [91m                                   ~~~~~~~~~~~~~~~~~~[0m
+
+  [96msrc/app/components/shared/nueva-racial/nueva-racial.component.ts[0m:[93m457[0m:[93m5[0m
+    [7m457[0m     quitarSortilega(index: number): void {
+    [7m   [0m [96m    ~~~~~~~~~~~~~~~[0m
+    'quitarSortilega' is declared here.
+
+
+Error: [96msrc/app/components/shared/nueva-racial/nueva-racial.component.ts[0m:[93m632[0m:[93m33[0m - [91merror[0m[90m TS2339: [0mProperty 'hidratarAtaques' does not exist on type 'NuevaRacialComponent'.
+
+[7m632[0m         this.ataquesRows = this.hidratarAtaques(racial);
+[7m   [0m [91m                                ~~~~~~~~~~~~~~~[0m
+
+
+Error: [96msrc/app/components/shared/nueva-racial/nueva-racial.component.ts[0m:[93m633[0m:[93m14[0m - [91merror[0m[90m TS2339: [0mProperty 'hidratarPrerrequisitos' does not exist on type 'NuevaRacialComponent'.
+
+[7m633[0m         this.hidratarPrerrequisitos(racial);
+[7m   [0m [91m             ~~~~~~~~~~~~~~~~~~~~~~[0m
+
+
+[39m[22m
+√ Browser application bundle generation complete.
+[1m[31m
+Error: [96msrc/app/components/shared/nueva-racial/nueva-racial.component.ts[0m:[93m915[0m:[93m39[0m - [91merror[0m[90m TS2339: [0mProperty 'pick' does not exist on type 'NuevaRacialComponent'.
+
+[7m915[0m             id_dote: this.entero(this.pick(item, 'Id_dote', 'id_dote', 'id', 'Id')),
+[7m   [0m [91m                                      ~~~~[0m
+
+
+Error: [96msrc/app/components/shared/nueva-racial/nueva-racial.component.ts[0m:[93m916[0m:[93m40[0m - [91merror[0m[90m TS2339: [0mProperty 'pick' does not exist on type 'NuevaRacialComponent'.
+
+[7m916[0m             id_extra: this.entero(this.pick(item, 'Id_extra', 'id_extra', 'i_ex', 'ie')),
+[7m   [0m [91m                                       ~~~~[0m
+
+
+Error: [96msrc/app/components/shared/nueva-racial/nueva-racial.component.ts[0m:[93m917[0m:[93m39[0m - [91merror[0m[90m TS2339: [0mProperty 'pick' does not exist on type 'NuevaRacialComponent'.
+
+[7m917[0m             busqueda: this.texto(this.pick(item, 'Dote', 'dote', 'Nombre', 'nombre')),
+[7m   [0m [91m                                      ~~~~[0m
+
+
+Error: [96msrc/app/components/shared/nueva-racial/nueva-racial.component.ts[0m:[93m918[0m:[93m44[0m - [91merror[0m[90m TS2339: [0mProperty 'pick' does not exist on type 'NuevaRacialComponent'.
+
+[7m918[0m             extraBusqueda: this.texto(this.pick(item, 'Extra', 'extra', 'x')),
+[7m   [0m [91m                                           ~~~~[0m
+
+
+Error: [96msrc/app/components/shared/nueva-racial/nueva-racial.component.ts[0m:[93m926[0m:[93m44[0m - [91merror[0m[90m TS2339: [0mProperty 'pick' does not exist on type 'NuevaRacialComponent'.
+
+[7m926[0m             id_habilidad: this.entero(this.pick(item, 'Id_habilidad', 'id_habilidad', 'id_h', 'ih', 'Id', 'id')),
+[7m   [0m [91m                                           ~~~~[0m
+
+
+Error: [96msrc/app/components/shared/nueva-racial/nueva-racial.component.ts[0m:[93m927[0m:[93m38[0m - [91merror[0m[90m TS2339: [0mProperty 'pick' does not exist on type 'NuevaRacialComponent'.
+
+[7m927[0m             rangos: this.entero(this.pick(item, 'Rangos', 'rangos', 'Cantidad', 'cantidad', 'r')),
+[7m   [0m [91m                                     ~~~~[0m
+
+
+Error: [96msrc/app/components/shared/nueva-racial/nueva-racial.component.ts[0m:[93m928[0m:[93m40[0m - [91merror[0m[90m TS2339: [0mProperty 'pick' does not exist on type 'NuevaRacialComponent'.
+
+[7m928[0m             id_extra: this.entero(this.pick(item, 'Id_extra', 'id_extra', 'i_ex', 'ie')),
+[7m   [0m [91m                                       ~~~~[0m
+
+
+Error: [96msrc/app/components/shared/nueva-racial/nueva-racial.component.ts[0m:[93m929[0m:[93m39[0m - [91merror[0m[90m TS2339: [0mProperty 'toBoolean' does not exist on type 'NuevaRacialComponent'.
+
+[7m929[0m             se_considera_clasea: this.toBoolean(this.pick(item, 'Se_considera_clasea', 'se_considera_clasea', 'Clasea', 'clasea', 'sc')),
+[7m   [0m [91m                                      ~~~~~~~~~[0m
+
+
+Error: [96msrc/app/components/shared/nueva-racial/nueva-racial.component.ts[0m:[93m929[0m:[93m54[0m - [91merror[0m[90m TS2339: [0mProperty 'pick' does not exist on type 'NuevaRacialComponent'.
+
+[7m929[0m             se_considera_clasea: this.toBoolean(this.pick(item, 'Se_considera_clasea', 'se_considera_clasea', 'Clasea', 'clasea', 'sc')),
+[7m   [0m [91m                                                     ~~~~[0m
+
+
+Error: [96msrc/app/components/shared/nueva-racial/nueva-racial.component.ts[0m:[93m930[0m:[93m40[0m - [91merror[0m[90m TS2339: [0mProperty 'pick' does not exist on type 'NuevaRacialComponent'.
+
+[7m930[0m             condicion: this.texto(this.pick(item, 'Condicion', 'condicion', 'c'), 'No especifica'),
+[7m   [0m [91m                                       ~~~~[0m
+
+
+Error: [96msrc/app/components/shared/nueva-racial/nueva-racial.component.ts[0m:[93m931[0m:[93m39[0m - [91merror[0m[90m TS2339: [0mProperty 'pick' does not exist on type 'NuevaRacialComponent'.
+
+[7m931[0m             busqueda: this.texto(this.pick(item, 'Habilidad', 'habilidad', 'Nombre', 'nombre', 'n')),
+[7m   [0m [91m                                      ~~~~[0m
+
+
+Error: [96msrc/app/components/shared/nueva-racial/nueva-racial.component.ts[0m:[93m932[0m:[93m44[0m - [91merror[0m[90m TS2339: [0mProperty 'pick' does not exist on type 'NuevaRacialComponent'.
+
+[7m932[0m             extraBusqueda: this.texto(this.pick(item, 'Extra', 'extra', 'x')),
+[7m   [0m [91m                                           ~~~~[0m
+
+
+Error: [96msrc/app/components/shared/nueva-racial/nueva-racial.component.ts[0m:[93m940[0m:[93m44[0m - [91merror[0m[90m TS2339: [0mProperty 'pick' does not exist on type 'NuevaRacialComponent'.
+
+[7m940[0m             id_habilidad: this.entero(this.pick(item, 'Id_habilidad', 'id_habilidad', 'id_h', 'ih', 'Id', 'id')),
+[7m   [0m [91m                                           ~~~~[0m
+
+
+Error: [96msrc/app/components/shared/nueva-racial/nueva-racial.component.ts[0m:[93m941[0m:[93m38[0m - [91merror[0m[90m TS2339: [0mProperty 'pick' does not exist on type 'NuevaRacialComponent'.
+
+[7m941[0m             rangos: this.entero(this.pick(item, 'Rangos', 'rangos', 'Cantidad', 'cantidad', 'r')),
+[7m   [0m [91m                                     ~~~~[0m
+
+
+Error: [96msrc/app/components/shared/nueva-racial/nueva-racial.component.ts[0m:[93m942[0m:[93m40[0m - [91merror[0m[90m TS2339: [0mProperty 'pick' does not exist on type 'NuevaRacialComponent'.
+
+[7m942[0m             id_extra: this.entero(this.pick(item, 'Id_extra', 'id_extra', 'i_ex', 'ie')),
+[7m   [0m [91m                                       ~~~~[0m
+
+
+Error: [96msrc/app/components/shared/nueva-racial/nueva-racial.component.ts[0m:[93m943[0m:[93m39[0m - [91merror[0m[90m TS2339: [0mProperty 'toBoolean' does not exist on type 'NuevaRacialComponent'.
+
+[7m943[0m             se_considera_clasea: this.toBoolean(this.pick(item, 'Se_considera_clasea', 'se_considera_clasea', 'Clasea', 'clasea', 'sc')),
+[7m   [0m [91m                                      ~~~~~~~~~[0m
+
+
+Error: [96msrc/app/components/shared/nueva-racial/nueva-racial.component.ts[0m:[93m943[0m:[93m54[0m - [91merror[0m[90m TS2339: [0mProperty 'pick' does not exist on type 'NuevaRacialComponent'.
+
+[7m943[0m             se_considera_clasea: this.toBoolean(this.pick(item, 'Se_considera_clasea', 'se_considera_clasea', 'Clasea', 'clasea', 'sc')),
+[7m   [0m [91m                                                     ~~~~[0m
+
+
+Error: [96msrc/app/components/shared/nueva-racial/nueva-racial.component.ts[0m:[93m944[0m:[93m39[0m - [91merror[0m[90m TS2339: [0mProperty 'pick' does not exist on type 'NuevaRacialComponent'.
+
+[7m944[0m             busqueda: this.texto(this.pick(item, 'Habilidad', 'habilidad', 'Nombre', 'nombre', 'n')),
+[7m   [0m [91m                                      ~~~~[0m
+
+
+Error: [96msrc/app/components/shared/nueva-racial/nueva-racial.component.ts[0m:[93m945[0m:[93m44[0m - [91merror[0m[90m TS2339: [0mProperty 'pick' does not exist on type 'NuevaRacialComponent'.
+
+[7m945[0m             extraBusqueda: this.texto(this.pick(item, 'Extra', 'extra', 'x')),
+[7m   [0m [91m                                           ~~~~[0m
+
+
+Error: [96msrc/app/components/shared/nueva-racial/nueva-racial.component.ts[0m:[93m953[0m:[93m49[0m - [91merror[0m[90m TS2339: [0mProperty 'pick' does not exist on type 'NuevaRacialComponent'.
+
+[7m953[0m             id_caracteristica: this.entero(this.pick(item, 'Id_caracteristica', 'id_caracteristica', 'Id', 'id')),
+[7m   [0m [91m                                                ~~~~[0m
+
+
+Error: [96msrc/app/components/shared/nueva-racial/nueva-racial.component.ts[0m:[93m954[0m:[93m40[0m - [91merror[0m[90m TS2339: [0mProperty 'pick' does not exist on type 'NuevaRacialComponent'.
+
+[7m954[0m             cantidad: this.entero(this.pick(item, 'Cantidad', 'cantidad', 'c')),
+[7m   [0m [91m                                       ~~~~[0m
+
+
+Error: [96msrc/app/components/shared/nueva-racial/nueva-racial.component.ts[0m:[93m962[0m:[93m44[0m - [91merror[0m[90m TS2339: [0mProperty 'pick' does not exist on type 'NuevaRacialComponent'.
+
+[7m962[0m             id_salvacion: this.entero(this.pick(item, 'Id_salvacion', 'id_salvacion', 'Id', 'id')),
+[7m   [0m [91m                                           ~~~~[0m
+
+
+Error: [96msrc/app/components/shared/nueva-racial/nueva-racial.component.ts[0m:[93m963[0m:[93m40[0m - [91merror[0m[90m TS2339: [0mProperty 'pick' does not exist on type 'NuevaRacialComponent'.
+
+[7m963[0m             cantidad: this.entero(this.pick(item, 'Cantidad', 'cantidad', 'c')),
+[7m   [0m [91m                                       ~~~~[0m
+
+
+Error: [96msrc/app/components/shared/nueva-racial/nueva-racial.component.ts[0m:[93m964[0m:[93m40[0m - [91merror[0m[90m TS2339: [0mProperty 'pick' does not exist on type 'NuevaRacialComponent'.
+
+[7m964[0m             condicion: this.texto(this.pick(item, 'Condicion', 'condicion', 'd'), 'No especifica'),
+[7m   [0m [91m                                       ~~~~[0m
+
+
+Error: [96msrc/app/components/shared/nueva-racial/nueva-racial.component.ts[0m:[93m972[0m:[93m63[0m - [91merror[0m[90m TS2339: [0mProperty 'pick' does not exist on type 'NuevaRacialComponent'.
+
+[7m972[0m             id_conjuro: this.entero(item?.Conjuro?.Id ?? this.pick(item, 'Id_conjuro', 'id_conjuro', 'Id', 'id')),
+[7m   [0m [91m                                                              ~~~~[0m
+
+
+Error: [96msrc/app/components/shared/nueva-racial/nueva-racial.component.ts[0m:[93m973[0m:[93m58[0m - [91merror[0m[90m TS2339: [0mProperty 'pick' does not exist on type 'NuevaRacialComponent'.
+
+[7m973[0m             nivel_lanzador: Math.max(1, this.entero(this.pick(item, 'Nivel_lanzador', 'nivel_lanzador', 'nl'), 1)),
+[7m   [0m [91m                                                         ~~~~[0m
+
+
+Error: [96msrc/app/components/shared/nueva-racial/nueva-racial.component.ts[0m:[93m974[0m:[93m43[0m - [91merror[0m[90m TS2339: [0mProperty 'pick' does not exist on type 'NuevaRacialComponent'.
+
+[7m974[0m             usos_diarios: this.texto(this.pick(item, 'Usos_diarios', 'usos_diarios', 'ud'), '1/día'),
+[7m   [0m [91m                                          ~~~~[0m
+
+
+Error: [96msrc/app/components/shared/nueva-racial/nueva-racial.component.ts[0m:[93m975[0m:[93m64[0m - [91merror[0m[90m TS2339: [0mProperty 'pick' does not exist on type 'NuevaRacialComponent'.
+
+[7m975[0m             busqueda: this.texto(item?.Conjuro?.Nombre ?? this.pick(item, 'Conjuro', 'conjuro', 'Nombre', 'nombre')),
+[7m   [0m [91m                                                               ~~~~[0m
+
+
+Error: [96msrc/app/components/shared/nueva-racial/nueva-racial.component.ts[0m:[93m983[0m:[93m42[0m - [91merror[0m[90m TS2339: [0mProperty 'pick' does not exist on type 'NuevaRacialComponent'.
+
+[7m983[0m             descripcion: this.texto(this.pick(item, 'Descripcion', 'descripcion', 'd')),
+[7m   [0m [91m                                         ~~~~[0m
+
+
+Error: [96msrc/app/components/shared/nueva-racial/nueva-racial.component.ts[0m:[93m993[0m:[93m45[0m - [91merror[0m[90m TS2339: [0mProperty 'pick' does not exist on type 'NuevaRacialComponent'.
+
+[7m993[0m             const idRaza = this.entero(this.pick(item, 'Id_raza', 'id_raza', 'Id', 'id'));
+[7m   [0m [91m                                            ~~~~[0m
+
+
+Error: [96msrc/app/components/shared/nueva-racial/nueva-racial.component.ts[0m:[93m1002[0m:[93m44[0m - [91merror[0m[90m TS2339: [0mProperty 'pick' does not exist on type 'NuevaRacialComponent'.
+
+[7m1002[0m                 opcional: this.entero(this.pick(item, 'Opcional', 'opcional', 'o')),
+[7m    [0m [91m                                           ~~~~[0m
+
+
+Error: [96msrc/app/components/shared/nueva-racial/nueva-racial.component.ts[0m:[93m1011[0m:[93m55[0m - [91merror[0m[90m TS2339: [0mProperty 'pick' does not exist on type 'NuevaRacialComponent'.
+
+[7m1011[0m             const idCaracteristica = this.entero(this.pick(item, 'Id_caracteristica', 'id_caracteristica', 'Id', 'id'));
+[7m    [0m [91m                                                      ~~~~[0m
+
+
+Error: [96msrc/app/components/shared/nueva-racial/nueva-racial.component.ts[0m:[93m1012[0m:[93m47[0m - [91merror[0m[90m TS2339: [0mProperty 'pick' does not exist on type 'NuevaRacialComponent'.
+
+[7m1012[0m             const cantidad = this.entero(this.pick(item, 'Cantidad', 'cantidad', 'c'));
+[7m    [0m [91m                                              ~~~~[0m
+
+
+Error: [96msrc/app/components/shared/nueva-racial/nueva-racial.component.ts[0m:[93m1021[0m:[93m44[0m - [91merror[0m[90m TS2339: [0mProperty 'pick' does not exist on type 'NuevaRacialComponent'.
+
+[7m1021[0m                 opcional: this.entero(this.pick(item, 'Opcional', 'opcional', 'o')),
+[7m    [0m [91m                                           ~~~~[0m
+
+
+[39m[22m
+√ Browser application bundle generation complete.
+√ Browser application bundle generation complete.
+√ Browser application bundle generation complete.
+√ Browser application bundle generation complete.
+√ Browser application bundle generation complete.
+√ Browser application bundle generation complete.
+[1m[31m
+Error: [96msrc/app/components/base/tab-control/tab-control.component.ts[0m:[93m329[0m:[93m23[0m - [91merror[0m[90m TS2339: [0mProperty 'quitarEdicionRacial' does not exist on type 'TabControlComponent'.
+
+[7m329[0m             void this.quitarEdicionRacial(activeKey);
+[7m   [0m [91m                      ~~~~~~~~~~~~~~~~~~~[0m
+
+
+[39m[22m
+√ Browser application bundle generation complete.
+[1m[31m
+Error: [96msrc/app/components/base/tab-control/tab-control.component.ts[0m:[93m329[0m:[93m23[0m - [91merror[0m[90m TS2339: [0mProperty 'quitarEdicionRacial' does not exist on type 'TabControlComponent'.
+
+[7m329[0m             void this.quitarEdicionRacial(activeKey);
+[7m   [0m [91m                      ~~~~~~~~~~~~~~~~~~~[0m
+
+
+[39m[22m
+√ Browser application bundle generation complete.
+[1m[31m
+Error: [96msrc/app/components/base/tab-control/tab-control.component.ts[0m:[93m329[0m:[93m23[0m - [91merror[0m[90m TS2339: [0mProperty 'quitarEdicionRacial' does not exist on type 'TabControlComponent'.
+
+[7m329[0m             void this.quitarEdicionRacial(activeKey);
+[7m   [0m [91m                      ~~~~~~~~~~~~~~~~~~~[0m
+
+
+Error: [96msrc/app/components/base/tab-control/tab-control.component.ts[0m:[93m935[0m:[93m18[0m - [91merror[0m[90m TS2339: [0mProperty 'abrirEdicionRacial' does not exist on type 'TabControlComponent'.
+
+[7m935[0m             this.abrirEdicionRacial(value.item);
+[7m   [0m [91m                 ~~~~~~~~~~~~~~~~~~[0m
+
+
+[39m[22m
+√ Browser application bundle generation complete.
+[1m[31m
+Error: [96msrc/app/components/base/tab-control/tab-control.component.ts[0m:[93m329[0m:[93m23[0m - [91merror[0m[90m TS2339: [0mProperty 'quitarEdicionRacial' does not exist on type 'TabControlComponent'.
+
+[7m329[0m             void this.quitarEdicionRacial(activeKey);
+[7m   [0m [91m                      ~~~~~~~~~~~~~~~~~~~[0m
+
+
+Error: [96msrc/app/components/base/tab-control/tab-control.component.ts[0m:[93m935[0m:[93m18[0m - [91merror[0m[90m TS2339: [0mProperty 'abrirEdicionRacial' does not exist on type 'TabControlComponent'.
+
+[7m935[0m             this.abrirEdicionRacial(value.item);
+[7m   [0m [91m                 ~~~~~~~~~~~~~~~~~~[0m
+
+
+[39m[22m
+√ Browser application bundle generation complete.
+[1m[31m
+Error: [96msrc/app/components/base/tab-control/tab-control.component.ts[0m:[93m329[0m:[93m23[0m - [91merror[0m[90m TS2339: [0mProperty 'quitarEdicionRacial' does not exist on type 'TabControlComponent'.
+
+[7m329[0m             void this.quitarEdicionRacial(activeKey);
+[7m   [0m [91m                      ~~~~~~~~~~~~~~~~~~~[0m
+
+
+Error: [96msrc/app/components/base/tab-control/tab-control.component.ts[0m:[93m935[0m:[93m18[0m - [91merror[0m[90m TS2339: [0mProperty 'abrirEdicionRacial' does not exist on type 'TabControlComponent'.
+
+[7m935[0m             this.abrirEdicionRacial(value.item);
+[7m   [0m [91m                 ~~~~~~~~~~~~~~~~~~[0m
+
+
+[39m[22m
+√ Browser application bundle generation complete.
+[1m[31m
+Error: [96msrc/app/components/base/tab-control/tab-control.component.ts[0m:[93m1639[0m:[93m26[0m - [91merror[0m[90m TS2339: [0mProperty 'puedeCerrarEdicionRacial' does not exist on type 'TabControlComponent'.
+
+[7m1639[0m         if (!(await this.puedeCerrarEdicionRacial(tab)))
+[7m    [0m [91m                         ~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+
+[39m[22m
+√ Browser application bundle generation complete.
+√ Browser application bundle generation complete.
+√ Browser application bundle generation complete.
+√ Browser application bundle generation complete.
+√ Browser application bundle generation complete.
+√ Browser application bundle generation complete.
+√ Browser application bundle generation complete.
+√ Browser application bundle generation complete.
+√ Browser application bundle generation complete.
+√ Browser application bundle generation complete.
+√ Browser application bundle generation complete.
+√ Browser application bundle generation complete.
+√ Browser application bundle generation complete.
+√ Browser application bundle generation complete.
+√ Browser application bundle generation complete.
+√ Browser application bundle generation complete.
+√ Browser application bundle generation complete.
+√ Browser application bundle generation complete.

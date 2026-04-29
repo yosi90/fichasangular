@@ -22,6 +22,7 @@ export interface CampaignListItem {
     campaignRole: CampaignRoleCode | null;
     membershipStatus: CampaignMembershipStatus | null;
     isOwner?: boolean;
+    detailRevision?: string | null;
 }
 
 export interface CampaignMemberItem {

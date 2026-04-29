@@ -29,6 +29,8 @@ import { ListadoArmadurasComponent } from '../listado-armaduras/listado-armadura
 import { ArmaduraDetalle } from 'src/app/interfaces/armadura';
 import { ListadoDeidadesComponent } from '../listado-deidades/listado-deidades.component';
 import { DeidadDetalle } from 'src/app/interfaces/deidad';
+import { ListadoIdiomasComponent } from '../listado-idiomas/listado-idiomas.component';
+import { IdiomaDetalle } from 'src/app/interfaces/idioma';
 
 @Component({
     selector: 'app-listado',
@@ -58,6 +60,7 @@ export class ListadoComponent {
         'armas': ListadoArmasComponent,
         'armaduras': ListadoArmadurasComponent,
         'deidades': ListadoDeidadesComponent,
+        'idiomas': ListadoIdiomasComponent,
     };
 
     constructor(private cdr: ChangeDetectorRef) { }
@@ -182,6 +185,13 @@ export class ListadoComponent {
                 this.handleItemDetalles(item);
             });
             componentRef.instance.deidadSeleccionada.subscribe((item: DeidadDetalle) => {
+                this.handleItemSeleccionado(item);
+            });
+        } else if (componentRef.instance instanceof ListadoIdiomasComponent) {
+            componentRef.instance.idiomaDetalles.subscribe((item: IdiomaDetalle) => {
+                this.handleItemDetalles(item);
+            });
+            componentRef.instance.idiomaSeleccionado.subscribe((item: IdiomaDetalle) => {
                 this.handleItemSeleccionado(item);
             });
         }

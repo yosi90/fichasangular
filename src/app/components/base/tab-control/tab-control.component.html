@@ -147,22 +147,55 @@
             {{getEtiquetaListadoTab(listadoTab)}}
             <button (click)="quitarListado(listadoTab)" mat-icon-button class="tw-ms-2"><mat-icon>close</mat-icon></button>
         </ng-template>
-        <ng-container *ngIf="listadoTab.operacion === 'insertar' && (listadoTab.tipo === 'dotes' || listadoTab.tipo === 'conjuros' || listadoTab.tipo === 'razas' || listadoTab.tipo === 'raciales'); else listadoGenerico">
+        <ng-container *ngIf="listadoTab.operacion === 'insertar' && (listadoTab.tipo === 'dotes' || listadoTab.tipo === 'conjuros' || listadoTab.tipo === 'razas' || listadoTab.tipo === 'raciales' || listadoTab.tipo === 'idiomas'); else listadoGenerico">
             <div class="insercion-dotes-shell">
                 <app-nueva-dote *ngIf="listadoTab.tipo === 'dotes'"></app-nueva-dote>
                 <app-nueva-conjuro *ngIf="listadoTab.tipo === 'conjuros'"></app-nueva-conjuro>
                 <app-nueva-raza *ngIf="listadoTab.tipo === 'razas'"></app-nueva-raza>
                 <app-nueva-racial *ngIf="listadoTab.tipo === 'raciales'"></app-nueva-racial>
+                <app-nueva-idioma *ngIf="listadoTab.tipo === 'idiomas'"></app-nueva-idioma>
             </div>
         </ng-container>
         <ng-template #listadoGenerico>
             <app-listado
-                (abrirDetalles)="recibirObjetoListado($event)"
-                (itemSeleccionado)="recibirObjetoListado($event)"
+                (abrirDetalles)="recibirObjetoListado($event, 'detalles')"
+                (itemSeleccionado)="recibirObjetoListado($event, listadoTab.operacion)"
                 [tipoLista]="listadoTab.tipo"
                 [tipoOperacion]="listadoTab.operacion">
             </app-listado>
         </ng-template>
+    </mat-tab>
+    <mat-tab *ngFor="let racialTab of edicionRacialesAbiertos" [label]="getEtiquetaEdicionRacialTab(racialTab)">
+        <ng-template mat-tab-label>
+            <mat-icon class="tw-me-2">edit_square</mat-icon>
+            {{getEtiquetaEdicionRacialTab(racialTab)}}
+            <button (click)="quitarEdicionRacial(racialTab)" mat-icon-button class="tw-ms-2"><mat-icon>close</mat-icon></button>
+        </ng-template>
+        <div class="insercion-dotes-shell">
+            <app-nueva-racial
+                modo="editar"
+                [idRacial]="racialTab.idRacial"
+                [editorTabKey]="racialTab.key"
+                (cerrar)="quitarEdicionRacial(racialTab)"
+                (racialActualizado)="onRacialActualizadoDesdeEdicion($event)">
+            </app-nueva-racial>
+        </div>
+    </mat-tab>
+    <mat-tab *ngFor="let idiomaTab of edicionIdiomasAbiertos" [label]="getEtiquetaEdicionIdiomaTab(idiomaTab)">
+        <ng-template mat-tab-label>
+            <mat-icon class="tw-me-2">edit_square</mat-icon>
+            {{getEtiquetaEdicionIdiomaTab(idiomaTab)}}
+            <button (click)="quitarEdicionIdioma(idiomaTab)" mat-icon-button class="tw-ms-2"><mat-icon>close</mat-icon></button>
+        </ng-template>
+        <div class="insercion-dotes-shell">
+            <app-nueva-idioma
+                modo="editar"
+                [idIdioma]="idiomaTab.idIdioma"
+                [editorTabKey]="idiomaTab.key"
+                (cerrar)="quitarEdicionIdioma(idiomaTab)"
+                (idiomaActualizado)="onIdiomaActualizadoDesdeEdicion($event)">
+            </app-nueva-idioma>
+        </div>
     </mat-tab>
     <mat-tab *ngFor="let manual of detallesManualAbiertos; let index = index" [label]="getEtiquetaManual(manual)">
         <ng-template mat-tab-label>
@@ -255,6 +288,7 @@
         </ng-template>
         <app-detalles-racial
             [racial]="detallesRacialAbiertos[index]"
+            (razaDetallesId)="abrirDetallesRazaPorId($event)"
             (doteDetallesId)="abrirDetallesDotePorId($event)"
             (conjuroDetallesId)="abrirDetallesConjuroPorId($event)">
         </app-detalles-racial>
@@ -349,6 +383,14 @@
             [deidad]="detallesDeidadAbiertos[index]"
             (armaDetallesId)="abrirDetallesArmaPorId($event)">
         </app-detalles-deidad>
+    </mat-tab>
+    <mat-tab *ngFor="let idioma of detallesIdiomaAbiertos; let index = index" [label]="getEtiquetaIdioma(idioma)">
+        <ng-template mat-tab-label>
+            <mat-icon class="tw-me-2">translate</mat-icon>
+            {{getEtiquetaIdioma(idioma)}}
+            <button (click)="quitarDetallesIdioma(idioma)" mat-icon-button class="tw-ms-2"><mat-icon>close</mat-icon></button>
+        </ng-template>
+        <app-detalles-idioma [idioma]="detallesIdiomaAbiertos[index]"></app-detalles-idioma>
     </mat-tab>
 </mat-tab-group>
 

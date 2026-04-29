@@ -69,6 +69,7 @@ interface CrearRacialEmitPayload {
     nombre: string;
     racial: RacialDetalle;
     tienePrerrequisitoRaza?: boolean;
+    prerrequisitoRazaEnCreacion?: boolean;
 }
 
 interface CatalogItem {
@@ -142,6 +143,7 @@ interface MutacionPrerequisiteOption {
 const NUEVA_RAZA_DRAFT_AUTOSAVE_MS = 1200;
 const NUEVA_RAZA_DRAFT_DEBOUNCE_MS = 300;
 const NUEVA_RAZA_MAX_STEP_INDEX = 4;
+const HABILIDAD_EXTRA_ELEGIR: CatalogItem = { Id: 0, Nombre: 'Elegir' };
 
 @Component({
     selector: 'app-nueva-raza',
@@ -159,6 +161,7 @@ export class NuevaRazaComponent implements OnInit, OnDestroy {
     private draftInicializacionHabilitada: boolean = false;
     private draftInicializado: boolean = false;
     private draftInicializando: boolean = false;
+    private racialesPendientesRazaEnCreacionIds = new Set<number>();
     private readonly mutacionPrerequisiteTypes: MutacionPrerequisiteType[] = [
         'actitud_requerido',
         'actitud_prohibido',
@@ -206,6 +209,7 @@ export class NuevaRazaComponent implements OnInit, OnDestroy {
     mostrarInfoTamano: boolean = false;
     mostrarInfoManiobrabilidad: boolean = false;
     modalNuevoRacialVisible: boolean = false;
+    modalNuevoIdiomaVisible: boolean = false;
 
     subtiposSeleccionados: number[] = [];
     idiomasSeleccionados: number[] = [];
@@ -282,8 +286,8 @@ export class NuevaRazaComponent implements OnInit, OnDestroy {
         reduccion_dano: ['No especifica', [this.textoOpcionalValidator(5, 1000)]],
         resistencia_conjuros: ['No especifica', [this.textoOpcionalValidator(5, 1000)]],
         resistencia_energia: ['No especifica', [this.textoOpcionalValidator(5, 1000)]],
-        altura_rango_inf: [0, [Validators.min(1), Validators.max(1000)]],
-        altura_rango_sup: [0, [Validators.min(1), Validators.max(1000)]],
+        altura_rango_inf: [0, [Validators.min(0.01), Validators.max(10)]],
+        altura_rango_sup: [0, [Validators.min(0.01), Validators.max(10)]],
         peso_rango_inf: [0, [Validators.min(1), Validators.max(10000)]],
         peso_rango_sup: [0, [Validators.min(1), Validators.max(10000)]],
         edad_adulto: [0, [Validators.min(1)]],
@@ -385,9 +389,13 @@ export class NuevaRazaComponent implements OnInit, OnDestroy {
         this.destroy$.complete();
     }
 
-    @HostListener('window:beforeunload')
-    onBeforeUnload(): void {
+    @HostListener('window:beforeunload', ['$event'])
+    onBeforeUnload(event?: BeforeUnloadEvent): void {
         this.persistirBorradorLocalAhora();
+        if (event && this.tieneRacialesPendientesRazaEnCreacion()) {
+            event.preventDefault();
+            event.returnValue = '';
+        }
     }
 
     async crearRaza(): Promise<void> {
@@ -415,15 +423,19 @@ export class NuevaRazaComponent implements OnInit, OnDestroy {
         }
 
         const payload = this.buildPayload();
+        console.log('[NuevaRaza] Payload crear raza', this.clonarProfundo(payload));
         this.guardando = true;
         try {
             const response = await this.razaSvc.crearRaza(payload);
+            const racialesPendientesSinCompletar = await this.completarRacialesPendientesRazaEnCreacion(response.idRaza);
             await Swal.fire({
-                icon: 'success',
-                title: 'Raza creada',
-                text: 'La raza se guardó correctamente.',
-                timer: 1800,
-                showConfirmButton: false,
+                icon: racialesPendientesSinCompletar.length > 0 ? 'warning' : 'success',
+                title: racialesPendientesSinCompletar.length > 0 ? 'Raza creada con incidencias' : 'Raza creada',
+                text: racialesPendientesSinCompletar.length > 0
+                    ? `La raza se guardó, pero ${racialesPendientesSinCompletar.length === 1 ? 'un racial pendiente no se pudo completar automáticamente' : 'algunos raciales pendientes no se pudieron completar automáticamente'}.`
+                    : 'La raza se guardó correctamente.',
+                timer: racialesPendientesSinCompletar.length > 0 ? undefined : 1800,
+                showConfirmButton: racialesPendientesSinCompletar.length > 0,
             });
             this.razaCreada.emit({ idRaza: response.idRaza, nombre: payload.raza.nombre });
             this.descartarBorradorLocalActivo();
@@ -477,8 +489,8 @@ export class NuevaRazaComponent implements OnInit, OnDestroy {
                 reduccion_dano: this.textoTecnico(raw.reduccion_dano),
                 resistencia_conjuros: this.textoTecnico(raw.resistencia_conjuros),
                 resistencia_energia: this.textoTecnico(raw.resistencia_energia),
-                altura_rango_inf: this.numero(raw.altura_rango_inf),
-                altura_rango_sup: this.numero(raw.altura_rango_sup),
+                altura_rango_inf: this.numeroDecimal(raw.altura_rango_inf),
+                altura_rango_sup: this.numeroDecimal(raw.altura_rango_sup),
                 peso_rango_inf: this.numero(raw.peso_rango_inf),
                 peso_rango_sup: this.numero(raw.peso_rango_sup),
                 edad_adulto: this.numero(raw.edad_adulto),
@@ -491,8 +503,8 @@ export class NuevaRazaComponent implements OnInit, OnDestroy {
                 reflejos: this.numero(raw.reflejos),
                 voluntad: this.numero(raw.voluntad),
                 dgs_extra: this.numero(raw.dgs_extra),
-                id_tipo_dado: this.tieneDgsExtra() ? this.numero(raw.id_tipo_dado) : 0,
-                id_tipo_criatura_dgs: this.tieneDgsExtra() ? this.numero(raw.id_tipo_criatura_dgs) : 0,
+                id_tipo_dado: this.getIdTipoDadoPayload(),
+                id_tipo_criatura_dgs: this.getIdTipoCriaturaDgsPayload(),
                 dotes_dg: this.tieneDgsExtra() ? this.numero(raw.dotes_dg) : 0,
                 puntos_hab: this.tieneDgsExtra() ? this.numero(raw.puntos_hab) : 0,
                 puntos_hab_mult: this.tieneDgsExtra() ? this.numero(raw.puntos_hab_mult) : 0,
@@ -507,12 +519,16 @@ export class NuevaRazaComponent implements OnInit, OnDestroy {
                 base: this.dedupeByKey(
                     this.habilidadesBaseRows
                         .filter((row) => this.numero(row.id_habilidad) > 0)
-                        .map((row) => ({
-                            id_habilidad: this.numero(row.id_habilidad),
-                            cantidad: this.numero(row.cantidad),
-                            id_extra: this.getIdExtraHabilidadBase(row),
-                            varios: this.textoTecnico(row.varios),
-                        })),
+                        .map((row) => {
+                            const idExtra = this.getIdExtraHabilidadBase(row);
+                            const enviarExtra = this.habilidadBaseSoportaExtra(row) && this.esExtraHabilidadBaseValido(row, idExtra);
+                            return {
+                                id_habilidad: this.numero(row.id_habilidad),
+                                cantidad: this.numero(row.cantidad),
+                                ...(enviarExtra ? { id_extra: idExtra } : {}),
+                                varios: this.textoTecnico(row.varios),
+                            };
+                        }),
                     (item) => `${item.id_habilidad}:${item.id_extra}`
                 ),
                 custom: this.dedupeByKey(
@@ -528,10 +544,13 @@ export class NuevaRazaComponent implements OnInit, OnDestroy {
             dotes: this.dedupeByKey(
                 this.dotesRows
                     .filter((row) => this.numero(row.id_dote) > 0)
-                    .map((row) => ({
-                        id_dote: this.numero(row.id_dote),
-                        id_extra: this.numero(row.id_extra),
-                    })),
+                    .map((row) => {
+                        const idExtra = this.numero(row.id_extra);
+                        return {
+                            id_dote: this.numero(row.id_dote),
+                            ...(idExtra > 0 ? { id_extra: idExtra } : {}),
+                        };
+                    }),
                 (item) => `${item.id_dote}:${item.id_extra}`
             ),
             raciales: this.dedupeByKey(
@@ -596,6 +615,16 @@ export class NuevaRazaComponent implements OnInit, OnDestroy {
     displayAutocompleteVacio(): string {
         return '';
     }
+
+    displayManualAutocomplete = (id: number | string | null | undefined): string => {
+        const manual = this.buscarCatalogo(this.manuales, id);
+        return manual ? this.getCatalogLabel(manual) : '';
+    };
+
+    displayClasePredilectaAutocomplete = (id: number | string | null | undefined): string => {
+        const clase = this.buscarCatalogo(this.clases, id);
+        return clase ? this.getCatalogLabel(clase) : '';
+    };
 
     onStepSelectionChange(event: { selectedIndex?: number } | null | undefined): void {
         this.pasoActivoIndex = this.normalizarPasoIndex(event?.selectedIndex);
@@ -931,6 +960,14 @@ export class NuevaRazaComponent implements OnInit, OnDestroy {
         this.modalNuevoRacialVisible = false;
     }
 
+    abrirModalNuevoIdioma(): void {
+        this.modalNuevoIdiomaVisible = true;
+    }
+
+    cerrarModalNuevoIdioma(): void {
+        this.modalNuevoIdiomaVisible = false;
+    }
+
     agregarSortilegio(): void {
         this.sortilegiosRows = [...this.sortilegiosRows, this.crearSortilegioRow()];
     }
@@ -1065,6 +1102,8 @@ export class NuevaRazaComponent implements OnInit, OnDestroy {
         };
         const nextRaciales = this.raciales.filter((item) => this.numero(item.Id) !== this.numero(racial.Id));
         this.raciales = this.ordenar([...nextRaciales, racial]);
+        if (event.prerrequisitoRazaEnCreacion === true)
+            this.registrarRacialPendienteRazaEnCreacion(racial.Id);
 
         if (event.tienePrerrequisitoRaza === true || !this.esRacialCompatibleConRazaActual(racial)) {
             this.cerrarModalNuevoRacial();
@@ -1090,6 +1129,42 @@ export class NuevaRazaComponent implements OnInit, OnDestroy {
         this.cerrarModalNuevoRacial();
     }
 
+    onIdiomaCreadoDesdeModal(idioma: IdiomaDetalle): void {
+        if (!idioma || this.numero(idioma.Id) <= 0)
+            return;
+        const nextIdiomas = this.idiomas.filter((item) => this.numero(item.Id) !== this.numero(idioma.Id));
+        this.idiomas = this.ordenar([...nextIdiomas, idioma]);
+        this.agregarSeleccion('idiomasSeleccionados', idioma.Id);
+        this.cerrarModalNuevoIdioma();
+    }
+
+    tieneRacialesPendientesRazaEnCreacion(): boolean {
+        return this.racialesPendientesRazaEnCreacionIds.size > 0;
+    }
+
+    async confirmarSalidaConRacialesPendientes(): Promise<boolean> {
+        if (!this.tieneRacialesPendientesRazaEnCreacion())
+            return true;
+
+        const nombres = this.getNombresRacialesPendientesRazaEnCreacion();
+        const detalle = nombres.length > 0
+            ? nombres.slice(0, 3).join(', ')
+            : 'algún racial recién creado';
+        const result = await Swal.fire({
+            icon: 'warning',
+            title: 'Racial pendiente de completar',
+            text: `Si cierras ahora, ${detalle} ${nombres.length === 1 ? 'quedará' : 'quedarán'} sin enlazar a la raza real y tendrás que completar ese prerrequisito después.`,
+            showCancelButton: true,
+            confirmButtonText: 'Cerrar igualmente',
+            cancelButtonText: 'Seguir editando',
+            target: document.body,
+            heightAuto: false,
+            scrollbarPadding: false,
+        });
+
+        return result.isConfirmed === true;
+    }
+
     seleccionarSortilegio(index: number, id: number): void {
         const conjuro = this.buscarCatalogo(this.conjuros, id);
         this.actualizarSortilegio(index, {
@@ -1100,12 +1175,15 @@ export class NuevaRazaComponent implements OnInit, OnDestroy {
 
     habilidadBaseSoportaExtra(row: HabilidadBaseRow): boolean {
         const habilidad = this.buscarCatalogo(this.habilidades, row.id_habilidad);
-        return habilidad?.Soporta_extra === true && (habilidad.Extras ?? []).length > 0;
+        return habilidad?.Soporta_extra === true;
     }
 
     getExtrasHabilidadBase(row: HabilidadBaseRow): CatalogItem[] {
         const habilidad = this.buscarCatalogo(this.habilidades, row.id_habilidad);
-        return this.ordenar((habilidad?.Extras ?? []).map((extra) => ({ Id: extra.Id_extra, Nombre: extra.Extra })));
+        const extras = (habilidad?.Extras ?? []).map((extra) => ({ Id: this.numero(extra.Id_extra), Nombre: extra.Extra }));
+        if (habilidad?.Soporta_extra === true && !extras.some((extra) => extra.Id === HABILIDAD_EXTRA_ELEGIR.Id))
+            extras.push(HABILIDAD_EXTRA_ELEGIR);
+        return this.ordenar(extras);
     }
 
     getExtrasHabilidadBaseFiltrados(row: HabilidadBaseRow): CatalogItem[] {
@@ -1330,6 +1408,7 @@ export class NuevaRazaComponent implements OnInit, OnDestroy {
                 habilidadesCustomRows: this.clonarProfundo(this.habilidadesCustomRows),
                 dotesRows: this.clonarProfundo(this.dotesRows),
                 racialesRows: this.clonarProfundo(this.racialesRows),
+                racialesPendientesRazaEnCreacionIds: this.idsOrdenados(Array.from(this.racialesPendientesRazaEnCreacionIds)),
                 sortilegiosRows: this.clonarProfundo(this.sortilegiosRows),
                 prerrequisitosMutacionRows: this.clonarProfundo(this.prerrequisitosMutacionRows),
                 prerrequisitosMutacionSeleccionados: [...this.prerrequisitosMutacionSeleccionados],
@@ -1369,6 +1448,7 @@ export class NuevaRazaComponent implements OnInit, OnDestroy {
         this.habilidadesCustomRows = this.restaurarRows(borrador.rows?.habilidadesCustomRows, () => this.crearHabilidadCustomRow()) as HabilidadCustomRow[];
         this.dotesRows = this.restaurarRows(borrador.rows?.dotesRows, () => this.crearDoteRow()) as DoteRow[];
         this.racialesRows = this.restaurarRows(borrador.rows?.racialesRows, () => this.crearRacialRow()) as RacialRow[];
+        this.racialesPendientesRazaEnCreacionIds = new Set(this.idsOrdenados(borrador.rows?.racialesPendientesRazaEnCreacionIds));
         this.sortilegiosRows = this.restaurarRows(borrador.rows?.sortilegiosRows, () => this.crearSortilegioRow()) as SortilegioRow[];
         this.prerrequisitosMutacionSeleccionados = (borrador.rows?.prerrequisitosMutacionSeleccionados ?? [])
             .filter((type): type is MutacionPrerequisiteType => this.esTipoPrerrequisitoMutacion(type as PrerequisiteType));
@@ -1726,10 +1806,29 @@ export class NuevaRazaComponent implements OnInit, OnDestroy {
         if (!this.habilidadBaseSoportaExtra(row))
             return 0;
         const extraId = this.numero(row.id_extra);
-        return this.getExtrasHabilidadBase(row).some((extra) => extra.Id === extraId) ? extraId : 0;
+        return this.esExtraHabilidadBaseValido(row, extraId) ? extraId : 0;
     }
 
-    private buscarCatalogo<T>(items: T[] | null | undefined, id: number): T | undefined {
+    private esExtraHabilidadBaseValido(row: HabilidadBaseRow, idExtra: number): boolean {
+        return this.getExtrasHabilidadBase(row).some((extra) => this.numero(extra.Id) === this.numero(idExtra));
+    }
+
+    private getIdTipoDadoPayload(): number {
+        const current = this.numero(this.form.controls.id_tipo_dado.value);
+        if (current > 0)
+            return current;
+        return this.numero(this.tiposDado[0]?.Id);
+    }
+
+    private getIdTipoCriaturaDgsPayload(): number {
+        const current = this.numero(this.form.controls.id_tipo_criatura_dgs.value);
+        if (current > 0)
+            return current;
+        const humanoide = this.tiposCriatura.find((item) => this.normalizarTexto(item.Nombre).includes('humanoide'));
+        return this.numero(humanoide?.Id ?? this.tiposCriatura[0]?.Id);
+    }
+
+    private buscarCatalogo<T>(items: T[] | null | undefined, id: unknown): T | undefined {
         const target = this.numero(id);
         return (items ?? []).find((item) => this.getCatalogId(item) === target);
     }
@@ -1776,15 +1875,16 @@ export class NuevaRazaComponent implements OnInit, OnDestroy {
 
     private rangosValidator(): ValidatorFn {
         return (control: AbstractControl): ValidationErrors | null => {
-            const get = (name: string) => this.numero(control.get(name)?.value);
-            const alturaInf = get('altura_rango_inf');
-            const alturaSup = get('altura_rango_sup');
-            const pesoInf = get('peso_rango_inf');
-            const pesoSup = get('peso_rango_sup');
-            const adulto = get('edad_adulto');
-            const mediana = get('edad_mediana');
-            const viejo = get('edad_viejo');
-            const venerable = get('edad_venerable');
+            const getDecimal = (name: string) => this.numeroDecimal(control.get(name)?.value);
+            const getInt = (name: string) => this.numero(control.get(name)?.value);
+            const alturaInf = getDecimal('altura_rango_inf');
+            const alturaSup = getDecimal('altura_rango_sup');
+            const pesoInf = getInt('peso_rango_inf');
+            const pesoSup = getInt('peso_rango_sup');
+            const adulto = getInt('edad_adulto');
+            const mediana = getInt('edad_mediana');
+            const viejo = getInt('edad_viejo');
+            const venerable = getInt('edad_venerable');
             const invalid = (alturaInf > 0 && alturaSup > 0 && alturaInf > alturaSup)
                 || (pesoInf > 0 && pesoSup > 0 && pesoInf > pesoSup)
                 || ([adulto, mediana, viejo, venerable].every((value) => value > 0)
@@ -1907,6 +2007,7 @@ export class NuevaRazaComponent implements OnInit, OnDestroy {
         this.habilidadesCustomRows = [this.crearHabilidadCustomRow()];
         this.dotesRows = [this.crearDoteRow()];
         this.racialesRows = [this.crearRacialRow()];
+        this.racialesPendientesRazaEnCreacionIds.clear();
         this.sortilegiosRows = [this.crearSortilegioRow()];
     }
 
@@ -2007,6 +2108,51 @@ export class NuevaRazaComponent implements OnInit, OnDestroy {
         this.sincronizarSelectConFallback('id_preferencia_moral', this.preferenciasMoral, 'ninguna preferencia');
         this.sincronizarManiobrabilidadConVuelo();
         this.sincronizarAlineamientoDesdeSeleccion();
+    }
+
+    private async completarRacialesPendientesRazaEnCreacion(idRaza: number): Promise<string[]> {
+        const pendientes = this.idsOrdenados(Array.from(this.racialesPendientesRazaEnCreacionIds));
+        if (pendientes.length < 1 || this.numero(idRaza) <= 0)
+            return [];
+
+        const fallidos: string[] = [];
+        for (const idRacial of pendientes) {
+            try {
+                const response = await this.racialSvc.anadirPrerrequisitosRacial(idRacial, {
+                    raza: [{ id_raza: this.numero(idRaza) }],
+                });
+                this.reemplazarRacialEnCatalogo(response.racial);
+                this.racialesPendientesRazaEnCreacionIds.delete(idRacial);
+            } catch {
+                fallidos.push(this.getNombreRacialPendienteRazaEnCreacion(idRacial));
+            }
+        }
+
+        return fallidos;
+    }
+
+    private registrarRacialPendienteRazaEnCreacion(idRacial: number): void {
+        const id = this.numero(idRacial);
+        if (id > 0)
+            this.racialesPendientesRazaEnCreacionIds.add(id);
+    }
+
+    private reemplazarRacialEnCatalogo(racial: RacialDetalle | null | undefined): void {
+        if (!racial || this.numero(racial.Id) <= 0)
+            return;
+        const next = this.raciales.filter((item) => this.numero(item.Id) !== this.numero(racial.Id));
+        this.raciales = this.ordenar([...next, racial]);
+    }
+
+    private getNombresRacialesPendientesRazaEnCreacion(): string[] {
+        return this.idsOrdenados(Array.from(this.racialesPendientesRazaEnCreacionIds))
+            .map((id) => this.getNombreRacialPendienteRazaEnCreacion(id));
+    }
+
+    private getNombreRacialPendienteRazaEnCreacion(idRacial: number): string {
+        const racial = this.raciales.find((item) => this.numero(item.Id) === this.numero(idRacial));
+        const nombre = this.texto(racial?.Nombre);
+        return nombre.length > 0 ? nombre : `racial ${this.numero(idRacial)}`;
     }
 
     private crearHabilidadBaseRow(): HabilidadBaseRow {
@@ -2235,6 +2381,13 @@ export class NuevaRazaComponent implements OnInit, OnDestroy {
     private numero(value: any): number {
         const parsed = Number(value);
         return Number.isFinite(parsed) ? Math.trunc(parsed) : 0;
+    }
+
+    private numeroDecimal(value: any): number {
+        const parsed = Number(value);
+        if (!Number.isFinite(parsed))
+            return 0;
+        return Math.round(parsed * 100) / 100;
     }
 
     private normalizarTexto(value: any): string {

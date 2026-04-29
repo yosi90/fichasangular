@@ -99,6 +99,7 @@ function crearComponente(overrides?: { pSvc?: any; }): TabControlComponent {
         if (component.AbrirNuevoPersonajeTab)
             tabs.push({ textLabel: 'Nuevo personaje' });
         (component.listadoTabsAbiertos ?? []).forEach((tab: any) => tabs.push({ textLabel: component.getEtiquetaListadoTab(tab) }));
+        (component.edicionRacialesAbiertos ?? []).forEach((tab: any) => tabs.push({ textLabel: component.getEtiquetaEdicionRacialTab(tab) }));
         (component.detallesManualAbiertos ?? []).forEach((manual: any) => tabs.push({ textLabel: component.getEtiquetaManual(manual) }));
         (component.detallesRazaAbiertos ?? []).forEach((raza: any) => tabs.push({ textLabel: raza.Nombre }));
         (component.detallesConjuroAbiertos ?? []).forEach((conjuro: any) => tabs.push({ textLabel: conjuro.Nombre }));
@@ -337,6 +338,123 @@ describe('TabControlComponent navegación por origen', () => {
         expect((component as any).activeTabKey).toBe('arma:31');
     }));
 
+    it('en modificar raciales la fila abre una tab de edición y no el detalle', fakeAsync(() => {
+        const component = crearComponente();
+        const racial = {
+            Id: 41,
+            Nombre: 'Alas',
+        } as any;
+
+        component.abrirListadoTab('raciales', 'modificar');
+        tick(120);
+        component.recibirObjetoListado({ item: racial, tipo: 'raciales' }, 'modificar');
+        tick(120);
+
+        expect(component.edicionRacialesAbiertos).toEqual([{
+            key: 'edicion:racial:41',
+            idRacial: 41,
+            nombre: 'Alas',
+        }]);
+        expect(component.detallesRacialAbiertos.length).toBe(0);
+        expect((component as any).activeTabKey).toBe('edicion:racial:41');
+    }));
+
+    it('abrir detalles desde listado de raciales sigue abriendo el detalle', fakeAsync(() => {
+        const component = crearComponente();
+        const racial = {
+            Id: 42,
+            Nombre: 'Visión en la penumbra',
+            Descripcion: '',
+            Dotes: [],
+            Habilidades: { Base: [], Custom: [] },
+            Caracteristicas: [],
+            Salvaciones: [],
+            Sortilegas: [],
+            Ataques: [],
+            Prerrequisitos_flags: { raza: false, caracteristica_minima: false },
+            Prerrequisitos: { raza: [], caracteristica: [] },
+        } as any;
+
+        component.abrirListadoTab('raciales', 'modificar');
+        tick(120);
+        component.recibirObjetoListado({ item: racial, tipo: 'raciales' }, 'detalles');
+        tick(120);
+
+        expect(component.detallesRacialAbiertos.length).toBe(1);
+        expect(component.edicionRacialesAbiertos.length).toBe(0);
+        expect((component as any).activeTabKey).toBe('racial:42');
+    }));
+
+    it('avisa antes de cerrar una edición de racial con cambios pendientes', async () => {
+        const component = crearComponente();
+        component.edicionRacialesAbiertos = [{
+            key: 'edicion:racial:41',
+            idRacial: 41,
+            nombre: 'Alas',
+        }];
+        (component as any).racialesEditables = {
+            toArray: () => [{
+                editorTabKey: 'edicion:racial:41',
+                confirmarSalidaSiHayCambios: jasmine.createSpy('confirmarSalidaSiHayCambios').and.resolveTo(false),
+            }],
+        };
+
+        const cerrado = await component.quitarEdicionRacial('edicion:racial:41');
+
+        expect(cerrado).toBeFalse();
+        expect(component.edicionRacialesAbiertos.length).toBe(1);
+    });
+
+    it('actualizar un racial sustituye su detalle abierto y renombra la tab de edición', () => {
+        const component = crearComponente();
+        component.detallesRacialAbiertos = [{
+            Id: 41,
+            Nombre: 'Alas',
+        } as any];
+        component.edicionRacialesAbiertos = [{
+            key: 'edicion:racial:41',
+            idRacial: 41,
+            nombre: 'Alas',
+        }];
+
+        component.onRacialActualizadoDesdeEdicion({
+            Id: 41,
+            Nombre: 'Alas perfeccionadas',
+            Descripcion: 'Nueva descripción',
+            Dotes: [],
+            Habilidades: { Base: [], Custom: [] },
+            Caracteristicas: [],
+            Salvaciones: [],
+            Sortilegas: [],
+            Ataques: [],
+            Prerrequisitos_flags: { raza: false, caracteristica_minima: false },
+            Prerrequisitos: { raza: [], caracteristica: [] },
+        });
+
+        expect(component.detallesRacialAbiertos[0].Nombre).toBe('Alas perfeccionadas');
+        expect(component.edicionRacialesAbiertos[0].nombre).toBe('Alas perfeccionadas');
+    });
+
+    it('cerrar edición de racial sin cambios quita la tab cuando el editor lo emite', async () => {
+        const component = crearComponente();
+        component.edicionRacialesAbiertos = [{
+            key: 'edicion:racial:41',
+            idRacial: 41,
+            nombre: 'Alas',
+        }];
+        (component as any).racialesEditables = {
+            toArray: () => [{
+                editorTabKey: 'edicion:racial:41',
+                confirmarSalidaSiHayCambios: jasmine.createSpy('confirmarSalidaSiHayCambios').and.resolveTo(true),
+            }],
+        };
+
+        const cerrado = await component.quitarEdicionRacial('edicion:racial:41');
+
+        expect(cerrado).toBeTrue();
+        expect(component.edicionRacialesAbiertos.length).toBe(0);
+    });
+
     it('abre detalle de armadura por id', () => {
         const component = crearComponente();
 
@@ -441,10 +559,26 @@ describe('TabControlComponent navegación por origen', () => {
         tick(120);
 
         component.onEscPressed();
+        flushMicrotasks();
 
         expect(component.listadoTabsAbiertos.length).toBe(0);
         expect((component as any).activeTabKey).toBe('clase:15');
     }));
+
+    it('avisa antes de cerrar insertar razas si hay raciales pendientes', async () => {
+        const component = crearComponente();
+        component.abrirListadoTab('razas', 'insertar');
+        (component as any).nuevasRazasInsertadas = {
+            first: {
+                confirmarSalidaConRacialesPendientes: jasmine.createSpy('confirmarSalidaConRacialesPendientes').and.resolveTo(false),
+            },
+        };
+
+        const cerrado = await component.quitarListado('listado:insertar:razas');
+
+        expect(cerrado).toBeFalse();
+        expect(component.listadoTabsAbiertos.length).toBe(1);
+    });
 
     it('abre mi perfil como tab dinamica y la puede cerrar con ESC', fakeAsync(() => {
         const component = crearComponente();

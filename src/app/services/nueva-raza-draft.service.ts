@@ -21,6 +21,7 @@ export interface NuevaRazaDraftRows {
     habilidadesCustomRows: any[];
     dotesRows: any[];
     racialesRows: any[];
+    racialesPendientesRazaEnCreacionIds: number[];
     sortilegiosRows: any[];
     prerrequisitosMutacionRows: any[];
     prerrequisitosMutacionSeleccionados: string[];
@@ -154,6 +155,7 @@ export class NuevaRazaDraftService {
                 habilidadesCustomRows: this.clonarArray(contenido.rows?.habilidadesCustomRows),
                 dotesRows: this.clonarArray(contenido.rows?.dotesRows),
                 racialesRows: this.clonarArray(contenido.rows?.racialesRows),
+                racialesPendientesRazaEnCreacionIds: this.normalizarIds(contenido.rows?.racialesPendientesRazaEnCreacionIds),
                 sortilegiosRows: this.clonarArray(contenido.rows?.sortilegiosRows),
                 prerrequisitosMutacionRows: this.clonarArray(contenido.rows?.prerrequisitosMutacionRows),
                 prerrequisitosMutacionSeleccionados: this.normalizarTextos(contenido.rows?.prerrequisitosMutacionSeleccionados),

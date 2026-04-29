@@ -88,3 +88,17 @@ export interface RacialCreateResponse {
     idRacial: number;
     racial: RacialDetalle;
 }
+
+export interface RacialUpdateRequest extends RacialCreateRequest {}
+
+export interface RacialUpdateApiResponse extends RacialCreateApiResponse {}
+
+export interface RacialUpdateResponse extends RacialCreateResponse {}
+
+export interface RacialPrerequisitosPatchRequest {
+    prerrequisitos: RacialCreatePrerequisitos;
+}
+
+export interface RacialPrerequisitosPatchApiResponse extends RacialCreateApiResponse {}
+
+export interface RacialPrerequisitosPatchResponse extends RacialCreateResponse {}

@@ -1,0 +1,56 @@
+<div id="container-lista" class="tw-w-full tw-bg-[#212529] tw-h-full">
+    <div class="lista-row tw-w-full tw-relative tw-flex tw-justify-center tw-items-center">
+        <button id="filtros" matTooltip="Filtros de idiomas" #filtros mat-icon-button
+            [matMenuTriggerFor]="menuIdiomas" class="filtros">
+            <mat-icon>filter_alt</mat-icon>
+        </button>
+        <mat-menu id="containerMenu" #menuIdiomas="matMenu" class="tw-me-1 menu-filtros-estandar">
+            <div id="menu">
+                <mat-form-field (click)="$event.stopPropagation();" (keyup)="filtroIdiomas();">
+                    <mat-label>Incluye texto</mat-label>
+                    <input #idiomaTextInc matInput placeholder="Texto a buscar">
+                </mat-form-field>
+            </div>
+        </mat-menu>
+
+        <table id="idiomas" #tablaIdiomas mat-table [dataSource]="idiomasDS" matSort *ngIf="idiomas.length > 0; else cargando">
+            <ng-container matColumnDef="{{column}}" *ngFor="let column of idiomaColumns">
+                <th class="tw-text-lg tw-font-medium" [class.center-cell]="column != 'Nombre'" mat-header-cell *matHeaderCellDef mat-sort-header sortActionDescription="Ordenar por {{column}}">
+                    {{column.replace('_', ' ')}}
+                </th>
+                <td mat-cell *matCellDef="let element" [class.center-cell]="column != 'Nombre'">
+                    <button mat-stroked-button matTooltip="Clic para ver este idioma" [matTooltipShowDelay]="200" *ngIf="column == 'Nombre'" color="accent"
+                        class="tw-flex tw-justify-start sombra3d tw-w-full" (click)="verDetallesIdioma(element.Id); $event.stopPropagation();">
+                        <mat-icon>read_more</mat-icon>
+                        {{element[column]}}
+                    </button>
+                    <mat-checkbox
+                        *ngIf="column != 'Nombre'"
+                        class="boolean-cell"
+                        [checked]="element[column] === true"
+                        [disabled]="true"
+                        [attr.aria-label]="column + ': ' + (element[column] ? 'Sí' : 'No')">
+                    </mat-checkbox>
+                </td>
+            </ng-container>
+            <tr mat-header-row *matHeaderRowDef="idiomaColumns; sticky: true"></tr>
+            <tr mat-row *matRowDef="let element; columns: idiomaColumns;" class="element-row elegir"
+                (click)="seleccionarIdioma(element.Id)"></tr>
+            <tr class="mat-row" *matNoDataRow>
+                <td class="mat-cell tw-text-center tw-text-white tw-p-3" [attr.colspan]="idiomaColumns.length">
+                    Ningún idioma encaja con los filtros
+                </td>
+            </tr>
+        </table>
+        <ng-template #cargando>
+            <div class="superballs">
+                <div class="superballs__dot"></div>
+                <div class="superballs__dot"></div>
+            </div>
+        </ng-template>
+    </div>
+    <div class="lista-row tw-w-full tw-flex tw-items-center">
+        <mat-paginator class="tw-w-full" [pageSizeOptions]="[10, 20, 30, 40]" showFirstLastButtons aria-label="Selecciona una página de idiomas">
+        </mat-paginator>
+    </div>
+</div>

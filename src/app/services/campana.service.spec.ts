@@ -457,6 +457,81 @@ describe('CampanaService', () => {
         expect(httpMock.get.calls.allArgs().filter((args) => `${args[0]}`.match(/campanas\/7$/)).length).toBe(2);
     }));
 
+    it('getListCampanas evita rehidratar detalles si detailRevision no cambia en el polling ligero', fakeAsync(() => {
+        privateUserFirestoreSvcMock.listCampaigns.and.resolveTo([
+            { id: 7, nombre: 'Campaña visible', campaignRole: 'master', membershipStatus: 'activo', detailRevision: 'campaign-7:aaa' },
+        ]);
+        httpMock.get.and.callFake((url: string) => {
+            if (url.endsWith('campanas/7'))
+                return of({
+                    i: 7,
+                    n: 'Campaña visible',
+                    campaignRole: 'master',
+                    membershipStatus: 'activo',
+                    tramas: [],
+                });
+            throw new Error(`URL inesperada: ${url}`);
+        });
+
+        let observable: any;
+        service.getListCampanas().then((value) => observable = value);
+        tick();
+
+        const subscription = observable.subscribe();
+        tick();
+        watchState.next?.([
+            { id: 7, nombre: 'Campaña visible', campaignRole: 'master', membershipStatus: 'activo', detailRevision: 'campaign-7:aaa' },
+        ]);
+        tick();
+
+        expect(httpMock.get.calls.allArgs().filter((args) => `${args[0]}`.match(/campanas\/7$/)).length).toBe(1);
+
+        tick(30000);
+        expect(privateUserFirestoreSvcMock.listCampaigns.calls.count()).toBe(1);
+        expect(httpMock.get.calls.allArgs().filter((args) => `${args[0]}`.match(/campanas\/7$/)).length).toBe(1);
+
+        tick(270000);
+        expect(privateUserFirestoreSvcMock.listCampaigns.calls.count()).toBeGreaterThan(1);
+        expect(httpMock.get.calls.allArgs().filter((args) => `${args[0]}`.match(/campanas\/7$/)).length).toBe(1);
+
+        subscription.unsubscribe();
+    }));
+
+    it('getListCampanas mantiene refresco REST defensivo si falta detailRevision', fakeAsync(() => {
+        privateUserFirestoreSvcMock.listCampaigns.and.resolveTo([
+            { id: 7, nombre: 'Campaña visible', campaignRole: 'master', membershipStatus: 'activo' },
+        ]);
+        httpMock.get.and.callFake((url: string) => {
+            if (url.endsWith('campanas/7'))
+                return of({
+                    i: 7,
+                    n: 'Campaña visible',
+                    campaignRole: 'master',
+                    membershipStatus: 'activo',
+                    tramas: [],
+                });
+            throw new Error(`URL inesperada: ${url}`);
+        });
+
+        let observable: any;
+        service.getListCampanas().then((value) => observable = value);
+        tick();
+
+        const subscription = observable.subscribe();
+        tick();
+        watchState.next?.([
+            { id: 7, nombre: 'Campaña visible', campaignRole: 'master', membershipStatus: 'activo' },
+        ]);
+        tick();
+
+        expect(httpMock.get.calls.allArgs().filter((args) => `${args[0]}`.match(/campanas\/7$/)).length).toBe(1);
+
+        tick(30000);
+        expect(httpMock.get.calls.allArgs().filter((args) => `${args[0]}`.match(/campanas\/7$/)).length).toBe(2);
+
+        subscription.unsubscribe();
+    }));
+
     it('getListCampanas usa watcher Firestore privado y reconstruye tramas tras invalidación', fakeAsync(() => {
         const watchState: { next: ((items: any[]) => void) | null; } = { next: null };
         let tramaCycle = 0;
@@ -589,6 +664,65 @@ describe('CampanaService', () => {
         tick();
 
         void firestoreBackedService.resolveCampaignInvitation(8, 'accept');
+        tick();
+        invalidations$.next({
+            code: 'campaign.local_change',
+            campaignId: 7,
+            conversationId: null,
+            source: 'local',
+        });
+        tick();
+
+        expect(emissions).toContain(['Sin campaña', 'Caballeros de Cormyr']);
+        subscription.unsubscribe();
+    }));
+
+    it('getListCampanas expone de forma optimista una campaña creada antes de que Firestore emita', fakeAsync(() => {
+        const watchState: { next: ((items: any[]) => void) | null; } = { next: null };
+        const privateUserFirestoreSvcMock = {
+            watchCampaigns: jasmine.createSpy('watchCampaigns').and.callFake((next: (items: any[]) => void) => {
+                watchState.next = next;
+                return () => undefined;
+            }),
+            listCampaigns: jasmine.createSpy('listCampaigns').and.resolveTo([]),
+        };
+        const firestoreBackedService = new CampanaService(
+            { currentUser: { uid: 'actor-1', getIdToken: async () => 'token' } } as any,
+            httpMock as any,
+            { run: <T>(fn: () => T) => fn() } as FirebaseInjectionContextService,
+            campaignRealtimeSyncSvcMock,
+            privateUserFirestoreSvcMock as any
+        );
+
+        httpMock.post.and.callFake((url: string) => {
+            if (url.endsWith('campanas'))
+                return of({ idCampana: 7, nombre: 'Caballeros de Cormyr' });
+            throw new Error(`URL inesperada: ${url}`);
+        });
+        httpMock.get.and.callFake((url: string) => {
+            if (url.endsWith('campanas/7'))
+                return of({
+                    i: 7,
+                    n: 'Caballeros de Cormyr',
+                    campaignRole: 'master',
+                    membershipStatus: 'activo',
+                    tramas: [],
+                });
+            throw new Error(`URL inesperada: ${url}`);
+        });
+
+        let observable: any;
+        firestoreBackedService.getListCampanas().then((value) => observable = value);
+        tick();
+
+        const emissions: string[][] = [];
+        const subscription = observable.subscribe((campanas: any[]) => emissions.push(campanas.map((item) => item.Nombre)));
+        tick();
+
+        watchState.next?.([]);
+        tick();
+
+        void firestoreBackedService.createCampaign('Caballeros de Cormyr');
         tick();
         invalidations$.next({
             code: 'campaign.local_change',

@@ -23,7 +23,7 @@
                                         <mat-form-field appearance="fill" class="manual-field">
                                             <mat-label>Manual</mat-label>
                                             <input matInput [value]="manualBusqueda" (input)="actualizarManualBusqueda($any($event.target).value)" [matAutocomplete]="manualAuto" />
-                                            <mat-autocomplete #manualAuto="matAutocomplete" (optionSelected)="seleccionarManual($event.option.value)">
+                                            <mat-autocomplete #manualAuto="matAutocomplete" [displayWith]="displayManualAutocomplete" (optionSelected)="seleccionarManual($event.option.value)">
                                                 <mat-option *ngFor="let manual of getManualesFiltrados(); trackBy: trackById" [value]="manual.Id">{{manual.Nombre}}</mat-option>
                                             </mat-autocomplete>
                                             <mat-error *ngIf="form.controls.id_manual.invalid">Manual obligatorio.</mat-error>
@@ -37,7 +37,7 @@
                                         <mat-form-field appearance="fill" class="favored-class-field">
                                             <mat-label>Clase predilecta</mat-label>
                                             <input matInput [value]="clasePredilectaBusqueda" (input)="actualizarClasePredilectaBusqueda($any($event.target).value)" [matAutocomplete]="clasePredilectaAuto" />
-                                            <mat-autocomplete #clasePredilectaAuto="matAutocomplete" (optionSelected)="seleccionarClasePredilecta($event.option.value)">
+                                            <mat-autocomplete #clasePredilectaAuto="matAutocomplete" [displayWith]="displayClasePredilectaAutocomplete" (optionSelected)="seleccionarClasePredilecta($event.option.value)">
                                                 <mat-option *ngFor="let clase of getClasesPredilectasFiltradas(); trackBy: trackById" [value]="clase.Id">{{clase.Nombre}}</mat-option>
                                             </mat-autocomplete>
                                             <mat-error *ngIf="form.controls.id_clase_predilecta.invalid">Clase obligatoria.</mat-error>
@@ -274,11 +274,11 @@
                                 <section class="form-panel values-panel values-body">
                                     <h3 class="form-panel-title form-panel-title--with-note">
                                         <span>Cuerpo</span>
-                                        <span class="form-panel-note">valores en centímetros y kilogramos</span>
+                                        <span class="form-panel-note">valores en metros y kilogramos</span>
                                     </h3>
                                     <div class="values-grid values-grid--four">
-                                        <mat-form-field appearance="fill"><mat-label>Altura mín.</mat-label><input matInput type="number" min="1" max="1000" formControlName="altura_rango_inf" /><mat-error>Entre 1 y 1000.</mat-error></mat-form-field>
-                                        <mat-form-field appearance="fill"><mat-label>Altura máx.</mat-label><input matInput type="number" min="1" max="1000" formControlName="altura_rango_sup" /><mat-error>Entre 1 y 1000.</mat-error></mat-form-field>
+                                        <mat-form-field appearance="fill"><mat-label>Altura mín. (m)</mat-label><input matInput type="number" min="0.01" max="10" step="0.01" formControlName="altura_rango_inf" /><mat-error>Entre 0,01 y 10 m.</mat-error></mat-form-field>
+                                        <mat-form-field appearance="fill"><mat-label>Altura máx. (m)</mat-label><input matInput type="number" min="0.01" max="10" step="0.01" formControlName="altura_rango_sup" /><mat-error>Entre 0,01 y 10 m.</mat-error></mat-form-field>
                                         <mat-form-field appearance="fill"><mat-label>Peso mín.</mat-label><input matInput type="number" min="1" max="10000" formControlName="peso_rango_inf" /><mat-error>Entre 1 y 10000.</mat-error></mat-form-field>
                                         <mat-form-field appearance="fill"><mat-label>Peso máx.</mat-label><input matInput type="number" min="1" max="10000" formControlName="peso_rango_sup" /><mat-error>Entre 1 y 10000.</mat-error></mat-form-field>
                                     </div>
@@ -336,13 +336,18 @@
                         <section class="step-section">
                             <div class="lookup-grid">
                                 <div class="lookup-block">
-                                    <mat-form-field appearance="fill">
-                                        <mat-label>Buscar idioma</mat-label>
-                                        <input matInput [value]="relacionQueries.idiomasSeleccionados" (input)="actualizarRelacionQuery('idiomasSeleccionados', $any($event.target).value)" [matAutocomplete]="idiomasAuto" />
-                                        <mat-autocomplete #idiomasAuto="matAutocomplete" [displayWith]="displayAutocompleteVacio" (optionSelected)="agregarSeleccion('idiomasSeleccionados', $event.option.value)">
-                                            <mat-option *ngFor="let idioma of getOpcionesRelacion('idiomasSeleccionados', idiomas); trackBy: trackById" [value]="idioma.Id">{{idioma.Nombre}}</mat-option>
-                                        </mat-autocomplete>
-                                    </mat-form-field>
+                                    <div class="lookup-with-action">
+                                        <mat-form-field appearance="fill">
+                                            <mat-label>Buscar idioma</mat-label>
+                                            <input matInput [value]="relacionQueries.idiomasSeleccionados" (input)="actualizarRelacionQuery('idiomasSeleccionados', $any($event.target).value)" [matAutocomplete]="idiomasAuto" />
+                                            <mat-autocomplete #idiomasAuto="matAutocomplete" [displayWith]="displayAutocompleteVacio" (optionSelected)="agregarSeleccion('idiomasSeleccionados', $event.option.value)">
+                                                <mat-option *ngFor="let idioma of getOpcionesRelacion('idiomasSeleccionados', idiomas); trackBy: trackById" [value]="idioma.Id">{{idioma.Nombre}}</mat-option>
+                                            </mat-autocomplete>
+                                        </mat-form-field>
+                                        <button mat-icon-button type="button" class="lookup-action-btn" aria-label="Añadir nuevo idioma" matTooltip="Añadir nuevo idioma" (click)="abrirModalNuevoIdioma()">
+                                            <mat-icon>add</mat-icon>
+                                        </button>
+                                    </div>
                                     <div class="selected-chips">
                                         <span class="selected-chip" *ngFor="let id of idiomasSeleccionados">
                                             {{getEtiquetaRelacion(idiomas, id)}}
@@ -453,7 +458,6 @@
                                         <mat-label>Extra</mat-label>
                                         <input matInput [value]="row.extraBusqueda || ''" (input)="actualizarHabilidadBase(i, { extraBusqueda: $any($event.target).value })" [matAutocomplete]="habBaseExtraAuto" />
                                         <mat-autocomplete #habBaseExtraAuto="matAutocomplete" (optionSelected)="seleccionarExtraHabilidadBase(i, $event.option.value)">
-                                            <mat-option [value]="0">Sin extra</mat-option>
                                             <mat-option *ngFor="let extra of getExtrasHabilidadBaseFiltrados(row); trackBy: trackById" [value]="extra.Id">{{extra.Nombre}}</mat-option>
                                         </mat-autocomplete>
                                     </mat-form-field>
@@ -560,7 +564,7 @@
             </mat-step>
 
             <mat-step>
-                <ng-template matStepLabel>Mutación y revisión</ng-template>
+                <ng-template matStepLabel>Mutación</ng-template>
 
                 <div class="step-layout">
                     <div class="step-main">
@@ -690,9 +694,20 @@
         <div class="selector-dialog selector-dialog--wide" (click)="$event.stopPropagation()">
             <app-nueva-racial
                 [modal]="true"
+                [permitirRazaEnCreacionPrerrequisito]="true"
                 (cerrar)="cerrarModalNuevoRacial()"
                 (racialCreado)="onRacialCreadoDesdeModal($event)">
             </app-nueva-racial>
+        </div>
+    </section>
+
+    <section class="selector-overlay" *ngIf="modalNuevoIdiomaVisible" (click)="cerrarModalNuevoIdioma()">
+        <div class="selector-dialog" (click)="$event.stopPropagation()">
+            <app-nueva-idioma
+                [modal]="true"
+                (cerrar)="cerrarModalNuevoIdioma()"
+                (idiomaCreado)="onIdiomaCreadoDesdeModal($event)">
+            </app-nueva-idioma>
         </div>
     </section>
 </div>

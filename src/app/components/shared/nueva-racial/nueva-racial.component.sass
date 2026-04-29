@@ -25,8 +25,77 @@
         grid-template-columns: repeat(2, minmax(220px, 1fr))
         gap: 0.75rem
 
+    .plain-section
+        display: flex
+        flex-direction: column
+        gap: 0.65rem
+
     .full-span
         grid-column: 1 / -1
+
+    .editors-accordion
+        display: block
+
+        h4
+            margin: 1rem 0 0.5rem
+            font-size: 0.95rem
+            font-weight: 700
+
+    .racial-stepper
+        background: transparent
+        color: #e5e7eb
+
+        ::ng-deep .mat-horizontal-stepper-header-container
+            overflow-x: auto
+            padding-bottom: 0.25rem
+
+        ::ng-deep .mat-horizontal-content-container
+            padding: 0.75rem 0 0
+
+        ::ng-deep .mat-step-label,
+        ::ng-deep .mat-step-optional
+            color: rgba(229, 231, 235, 0.74)
+
+        ::ng-deep .mat-step-label-active
+            color: #f3f4f6
+
+        ::ng-deep .mat-step-icon
+            background: rgba(255, 255, 255, 0.18)
+
+        ::ng-deep .mat-step-icon-selected,
+        ::ng-deep .mat-step-icon-state-edit
+            background: #3f51b5
+
+    .step-layout
+        display: flex
+        flex-direction: column
+        height: calc(100vh - 235px)
+        min-height: 0
+        max-height: calc(100vh - 235px)
+        overflow: hidden
+
+    @supports (height: 100dvh)
+        .step-layout
+            height: calc(100dvh - 235px)
+            max-height: calc(100dvh - 235px)
+
+    .step-main
+        display: flex
+        flex: 1 1 auto
+        flex-direction: column
+        gap: 1.35rem
+        min-height: 0
+        overflow: auto
+        padding-right: 0.35rem
+        scrollbar-gutter: stable
+
+    .step-actions
+        flex: 0 0 auto
+        display: flex
+        justify-content: flex-end
+        gap: 0.6rem
+        margin-top: 0
+        padding: 0.75rem 0.1rem 0
 
     .row-editor
         display: grid
@@ -68,6 +137,9 @@
         flex-wrap: wrap
         gap: 0.75rem
         margin-bottom: 0.65rem
+
+    .prerrequisitos-section
+        margin-top: 0.1rem
 
     mat-checkbox
         color: #e5e7eb

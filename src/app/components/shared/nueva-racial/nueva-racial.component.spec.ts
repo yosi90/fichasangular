@@ -6,37 +6,53 @@ import { NuevaRacialComponent } from './nueva-racial.component';
 describe('NuevaRacialComponent', () => {
     let component: NuevaRacialComponent;
     let canCreate: boolean;
+    let canUpdate: boolean;
     let racialSvc: jasmine.SpyObj<any>;
     const acl$ = new Subject<void>();
     const isLoggedIn$ = new Subject<boolean>();
+    const buildRacial = (overrides: Partial<any> = {}) => ({
+        Id: 41,
+        Nombre: 'Piel pétrea',
+        Descripcion: '',
+        Dotes: [],
+        Habilidades: { Base: [], Custom: [] },
+        Caracteristicas: [],
+        Salvaciones: [],
+        Sortilegas: [],
+        Ataques: [],
+        Prerrequisitos_flags: { raza: false, caracteristica_minima: false },
+        Prerrequisitos: { raza: [], caracteristica: [] },
+        ...overrides,
+    });
 
     beforeEach(() => {
         canCreate = true;
-        racialSvc = jasmine.createSpyObj('RacialService', ['crearRacial']);
+        canUpdate = true;
+        racialSvc = jasmine.createSpyObj('RacialService', ['crearRacial', 'actualizarRacial', 'getRacial']);
         racialSvc.crearRacial.and.resolveTo({
             message: 'Creado',
             idRacial: 41,
-            racial: {
-                Id: 41,
-                Nombre: 'Piel pétrea',
-                Descripcion: '',
-                Dotes: [],
-                Habilidades: { Base: [], Custom: [] },
-                Caracteristicas: [],
-                Salvaciones: [],
-                Sortilegas: [],
-                Ataques: [],
-                Prerrequisitos_flags: { raza: false, caracteristica_minima: false },
-                Prerrequisitos: { raza: [], caracteristica: [] },
-            },
+            racial: buildRacial(),
         });
+        racialSvc.actualizarRacial.and.resolveTo({
+            message: 'Actualizado',
+            idRacial: 41,
+            racial: buildRacial({ Nombre: 'Piel pétrea mejorada' }),
+        });
+        racialSvc.getRacial.and.returnValue(of(buildRacial()));
 
         component = new NuevaRacialComponent(
             new FormBuilder(),
             {
                 acl$: acl$.asObservable(),
                 isLoggedIn$: isLoggedIn$.asObservable(),
-                can: jasmine.createSpy('can').and.callFake((resource: string, action: string) => resource === 'razas' && action === 'create' && canCreate),
+                can: jasmine.createSpy('can').and.callFake((resource: string, action: string) => {
+                    if (resource === 'razas' && action === 'create')
+                        return canCreate;
+                    if (resource === 'raciales' && action === 'update')
+                        return canUpdate;
+                    return false;
+                }),
                 getPermissionDeniedMessage: jasmine.createSpy('getPermissionDeniedMessage').and.returnValue('Sin permisos suficientes.'),
             } as any,
             racialSvc as any,
@@ -133,6 +149,34 @@ describe('NuevaRacialComponent', () => {
         });
     });
 
+    it('no arrastra filas residuales de prerrequisitos desmarcados al payload', () => {
+        component.form.patchValue({ nombre: 'Piel pétrea' });
+        component.prerrequisitosSeleccionados = [];
+        component.prerrequisitosRows = [
+            { uid: 'r1', tipo: 'raza', id: 2, valor: 1, opcional: 0, id_extra: null, repetido: 1, requiere_extra: false, salvacion_tipo: 'fortaleza' },
+        ];
+
+        const payload = (component as any).construirPayload();
+
+        expect(payload.prerrequisitos).toBeUndefined();
+    });
+
+    it('ofrece la raza en creación en modo modal y no la envía como id inexistente', () => {
+        component.permitirRazaEnCreacionPrerrequisito = true;
+        component.form.patchValue({ nombre: 'Piel pétrea' });
+        component.prerrequisitosSeleccionados = ['raza'];
+        component.prerrequisitosRows = [
+            { uid: 'r1', tipo: 'raza', id: 2147483647, valor: 1, opcional: 0, id_extra: null, repetido: 1, requiere_extra: false, salvacion_tipo: 'fortaleza' },
+        ];
+
+        const catalogo = (component as any).getCatalogoPrerrequisito('raza');
+        const payload = (component as any).construirPayload();
+
+        expect(catalogo[0]).toEqual({ id: 2147483647, nombre: 'La raza que estoy creando' });
+        expect(payload.prerrequisitos).toBeUndefined();
+        expect((component as any).tienePrerrequisitoRazaEnCreacion()).toBeTrue();
+    });
+
     it('emite racialCreado tras crear correctamente', async () => {
         component.form.patchValue({ nombre: 'Piel pétrea' });
         const emitSpy = spyOn(component.racialCreado, 'emit');
@@ -161,6 +205,24 @@ describe('NuevaRacialComponent', () => {
         }));
     });
 
+    it('emite marca local cuando el prerrequisito es la raza en creación', async () => {
+        component.permitirRazaEnCreacionPrerrequisito = true;
+        component.form.patchValue({ nombre: 'Entrenamiento propio' });
+        component.prerrequisitosSeleccionados = ['raza'];
+        component.prerrequisitosRows = [
+            { uid: 'r1', tipo: 'raza', id: 2147483647, valor: 1, opcional: 0, id_extra: null, repetido: 1, requiere_extra: false, salvacion_tipo: 'fortaleza' },
+        ];
+        const emitSpy = spyOn(component.racialCreado, 'emit');
+
+        await component.crearRacial();
+
+        expect(racialSvc.crearRacial.calls.mostRecent().args[0].prerrequisitos).toBeUndefined();
+        expect(emitSpy).toHaveBeenCalledWith(jasmine.objectContaining({
+            tienePrerrequisitoRaza: false,
+            prerrequisitoRazaEnCreacion: true,
+        }));
+    });
+
     it('bloquea creación sin razas.create', async () => {
         canCreate = false;
         isLoggedIn$.next(true);
@@ -169,5 +231,139 @@ describe('NuevaRacialComponent', () => {
         await component.crearRacial();
 
         expect(racialSvc.crearRacial).not.toHaveBeenCalled();
+    });
+
+    it('hidrata modo edición desde GET /razas/raciales/{id}', () => {
+        const detalle = buildRacial({
+            Nombre: 'Linaje de piedra',
+            Descripcion: 'Descripción editada',
+            Dotes: [{ Id_dote: 5, Dote: 'Alerta', Id_extra: 0, Extra: '' }],
+            Habilidades: {
+                Base: [{ Id_habilidad: 7, Habilidad: 'Avistar', Rangos: 2, Id_extra: 0, Condicion: 'No especifica', Se_considera_clasea: true }],
+                Custom: [{ Id_habilidad: 8, Habilidad: 'Saber antiguo', Rangos: 3, Id_extra: 0, Se_considera_clasea: false }],
+            },
+            Caracteristicas: [{ Id_caracteristica: 1, Cantidad: 2 }],
+            Salvaciones: [{ Id_salvacion: 1, Cantidad: 2, Condicion: 'No especifica' }],
+            Sortilegas: [{ Conjuro: { Id: 9, Nombre: 'Luz' }, Nivel_lanzador: '1', Usos_diarios: '1/día' }],
+            Ataques: [{ Descripcion: 'Mordisco 1d6' }],
+            Prerrequisitos_flags: { raza: true, caracteristica_minima: true },
+            Prerrequisitos: {
+                raza: [{ id_raza: 2 }],
+                caracteristica: [{ id_caracteristica: 1, cantidad: 13, opcional: 2 }],
+            },
+        });
+        racialSvc.getRacial.and.returnValue(of(detalle));
+        component.modo = 'editar';
+        component.idRacial = 41;
+
+        component.ngOnChanges({
+            modo: { currentValue: 'editar', previousValue: 'crear', firstChange: false, isFirstChange: () => false },
+            idRacial: { currentValue: 41, previousValue: null, firstChange: false, isFirstChange: () => false },
+        });
+
+        expect(racialSvc.getRacial).toHaveBeenCalledWith(41);
+        expect(component.form.value.nombre).toBe('Linaje de piedra');
+        expect(component.doteRows[0].id_dote).toBe(5);
+        expect(component.habilidadesBaseRows[0].id_habilidad).toBe(7);
+        expect(component.caracteristicasRows[0].id_caracteristica).toBe(1);
+        expect(component.prerrequisitosSeleccionados).toEqual(['raza', 'caracteristica']);
+        expect(component.isDirty).toBeFalse();
+    });
+
+    it('usa PUT para actualizar en modo edición', async () => {
+        racialSvc.getRacial.and.returnValues(
+            of(buildRacial()),
+            of(buildRacial({ Nombre: 'Piel pétrea mejorada' })),
+        );
+        racialSvc.actualizarRacial.and.resolveTo({
+            message: 'Actualizado',
+            idRacial: 41,
+            racial: buildRacial({ Nombre: 'Piel pétrea mejorada' }),
+        });
+        component.modo = 'editar';
+        component.idRacial = 41;
+        component.ngOnChanges({
+            modo: { currentValue: 'editar', previousValue: 'crear', firstChange: false, isFirstChange: () => false },
+            idRacial: { currentValue: 41, previousValue: null, firstChange: false, isFirstChange: () => false },
+        });
+        component.form.patchValue({ nombre: 'Piel pétrea mejorada' });
+        const emitSpy = spyOn(component.racialActualizado, 'emit');
+        const cerrarSpy = spyOn(component.cerrar, 'emit');
+
+        await component.guardarRacial();
+
+        expect(racialSvc.actualizarRacial).toHaveBeenCalledWith(41, jasmine.objectContaining({
+            racial: jasmine.objectContaining({ nombre: 'Piel pétrea mejorada' }),
+        }));
+        expect(Swal.fire).toHaveBeenCalledWith(jasmine.objectContaining({
+            title: 'Racial actualizado',
+            showConfirmButton: true,
+            showCloseButton: true,
+            confirmButtonText: 'Cerrar',
+        }));
+        expect(emitSpy).toHaveBeenCalledWith(jasmine.objectContaining({
+            Nombre: 'Piel pétrea mejorada',
+        }));
+        expect(cerrarSpy).toHaveBeenCalled();
+        expect(component.isDirty).toBeFalse();
+    });
+
+    it('limpia residuos de prerrequisito de raza también al actualizar', async () => {
+        racialSvc.getRacial.and.returnValue(of(buildRacial()));
+        component.modo = 'editar';
+        component.idRacial = 41;
+        component.ngOnChanges({
+            modo: { currentValue: 'editar', previousValue: 'crear', firstChange: false, isFirstChange: () => false },
+            idRacial: { currentValue: 41, previousValue: null, firstChange: false, isFirstChange: () => false },
+        });
+        component.form.patchValue({ nombre: 'Piel pétrea' });
+        component.prerrequisitosSeleccionados = [];
+        component.prerrequisitosRows = [
+            { uid: 'r1', tipo: 'raza', id: 2, valor: 1, opcional: 0, id_extra: null, repetido: 1, requiere_extra: false, salvacion_tipo: 'fortaleza' },
+        ];
+
+        await component.guardarRacial();
+
+        expect(racialSvc.actualizarRacial.calls.mostRecent().args[1].prerrequisitos).toBeUndefined();
+    });
+
+    it('dirty solo cambia con modificaciones reales', () => {
+        const detalle = buildRacial({
+            Nombre: 'Linaje de piedra',
+            Descripcion: 'Descripción editada',
+        });
+        racialSvc.getRacial.and.returnValue(of(detalle));
+        component.modo = 'editar';
+        component.idRacial = 41;
+        component.ngOnChanges({
+            modo: { currentValue: 'editar', previousValue: 'crear', firstChange: false, isFirstChange: () => false },
+            idRacial: { currentValue: 41, previousValue: null, firstChange: false, isFirstChange: () => false },
+        });
+
+        expect(component.isDirty).toBeFalse();
+
+        component.form.patchValue({ nombre: 'Linaje de piedra' });
+        expect(component.isDirty).toBeFalse();
+
+        component.form.patchValue({ nombre: 'Linaje de hierro' });
+        expect(component.isDirty).toBeTrue();
+    });
+
+    it('confirma salida solo en edición con cambios pendientes', async () => {
+        racialSvc.getRacial.and.returnValue(of(buildRacial({ Nombre: 'Linaje de piedra' })));
+        component.modo = 'editar';
+        component.idRacial = 41;
+        component.ngOnChanges({
+            modo: { currentValue: 'editar', previousValue: 'crear', firstChange: false, isFirstChange: () => false },
+            idRacial: { currentValue: 41, previousValue: null, firstChange: false, isFirstChange: () => false },
+        });
+        component.form.patchValue({ nombre: 'Linaje de hierro' });
+
+        const permitido = await component.confirmarSalidaSiHayCambios();
+
+        expect(Swal.fire).toHaveBeenCalledWith(jasmine.objectContaining({
+            title: 'Hay cambios sin guardar',
+        }));
+        expect(permitido).toBeTrue();
     });
 });

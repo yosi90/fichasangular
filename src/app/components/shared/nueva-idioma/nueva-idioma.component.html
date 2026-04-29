@@ -1,0 +1,48 @@
+<div class="nueva-idioma-shell" [class.nueva-idioma-shell--modal]="modal">
+    <form class="nueva-idioma-form" [formGroup]="form" (ngSubmit)="guardarIdioma()">
+        <div class="modal-head" *ngIf="modal">
+            <h3>{{tituloFormulario}}</h3>
+            <button mat-icon-button type="button" aria-label="Cerrar" (click)="cancelar()">
+                <mat-icon>close</mat-icon>
+            </button>
+        </div>
+
+        <p class="permiso-msg" *ngIf="cargandoEdicion">Cargando idioma...</p>
+        <p class="permiso-msg" *ngIf="!puedeGuardar && !cargandoEdicion">{{mensajePermisoInsuficiente}}</p>
+
+        <div class="idioma-grid">
+            <mat-form-field appearance="fill">
+                <mat-label>Nombre</mat-label>
+                <input matInput formControlName="nombre" maxlength="50">
+                <mat-error *ngIf="nombreControl.hasError('required')">Nombre obligatorio.</mat-error>
+                <mat-error *ngIf="nombreControl.hasError('minlength')">Mínimo 2 caracteres.</mat-error>
+                <mat-error *ngIf="nombreControl.hasError('maxlength')">Máximo 50 caracteres.</mat-error>
+            </mat-form-field>
+
+            <div class="estado-row idioma-status-row">
+                <mat-checkbox formControlName="secreto">Secreto</mat-checkbox>
+                <mat-chip-listbox class="boolean-chips" aria-label="Estado del idioma">
+                    <mat-chip-option [selected]="form.controls.oficial.value === true" (click)="toggleOficial()">
+                        Oficial
+                    </mat-chip-option>
+                </mat-chip-listbox>
+            </div>
+
+            <mat-form-field appearance="fill" class="full-span">
+                <mat-label>Descripción</mat-label>
+                <textarea matInput formControlName="descripcion" rows="4" maxlength="300"></textarea>
+                <mat-error *ngIf="descripcionControl.hasError('required')">Descripción obligatoria.</mat-error>
+                <mat-error *ngIf="descripcionControl.hasError('minlength')">Mínimo 5 caracteres.</mat-error>
+                <mat-error *ngIf="descripcionControl.hasError('maxlength')">Máximo 300 caracteres.</mat-error>
+            </mat-form-field>
+        </div>
+
+        <div class="actions-row">
+            <button mat-stroked-button type="button" *ngIf="modal" (click)="cancelar()">Cancelar</button>
+            <button mat-raised-button color="primary" type="submit" [disabled]="guardadoBloqueado">
+                <mat-icon>save</mat-icon>
+                {{etiquetaAccionPrincipal}}
+            </button>
+        </div>
+    </form>
+</div>

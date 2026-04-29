@@ -46,6 +46,7 @@ describe('NuevaRazaDraftService', () => {
                 habilidadesCustomRows: [{ uid: 'hc1', id_habilidad: 13, cantidad: 1 }],
                 dotesRows: [{ uid: 'd1', id_dote: 14, id_extra: 0 }],
                 racialesRows: [{ uid: 'r1', id_racial: 15, opcional: 0 }],
+                racialesPendientesRazaEnCreacionIds: [],
                 sortilegiosRows: [{ uid: 's1', id_conjuro: 16, nivel_lanzador: 1 }],
                 prerrequisitosMutacionRows: [{ uid: 'p1', tipo: 'tipo_criatura', id: 3 }],
                 prerrequisitosMutacionSeleccionados: ['tipo_criatura'],

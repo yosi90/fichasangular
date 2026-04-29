@@ -105,9 +105,25 @@
             <div class="sombra-caja-sm tw-rounded-md tw-p-2 tw-my-2" *ngIf="tieneColeccionVisible(prerrequisitosRaza) || tieneColeccionVisible(prerrequisitosCaracteristica)">
                 <mat-chip class="tw-w-full sombra-caja-sm tw-m-1 tw-mb-2 chip-titulo">Prerrequisitos</mat-chip>
                 <mat-chip-set class="tw-m-1" *ngIf="tieneColeccionVisible(prerrequisitosRaza)">
-                    <mat-chip class="tw-h-auto sombra3d-sm tw-m-1" *ngFor="let item of prerrequisitosRaza">
-                        Raza: {{formatOpenObject(item)}}
-                    </mat-chip>
+                    <ng-container *ngFor="let item of prerrequisitosRaza">
+                        <mat-chip class="tw-h-auto sombra3d-sm tw-m-1"
+                            *ngIf="tienePrerrequisitoRazaNombrado(item); else prerrequisitoRazaGenerico">
+                            Requiere
+                            <mat-chip class="sombra3d-sm tw-m-1"
+                                [ngClass]="tienePrerrequisitoRazaNavegable(item) ? 'chip-clic' : ''"
+                                [matTooltip]="tienePrerrequisitoRazaNavegable(item) ? 'Pulsa para ver los detalles de la raza' : ''"
+                                [matTooltipShowDelay]="250"
+                                matTooltipClass="tt-accent"
+                                (click)="emitirRaza(getIdPrerrequisitoRaza(item)); $event.stopPropagation()">
+                                {{getNombrePrerrequisitoRaza(item)}}
+                            </mat-chip>
+                        </mat-chip>
+                        <ng-template #prerrequisitoRazaGenerico>
+                            <mat-chip class="tw-h-auto sombra3d-sm tw-m-1">
+                                {{formatOpenObject(item)}}
+                            </mat-chip>
+                        </ng-template>
+                    </ng-container>
                 </mat-chip-set>
                 <mat-chip-set class="tw-m-1" *ngIf="tieneColeccionVisible(prerrequisitosCaracteristica)">
                     <mat-chip class="tw-h-auto sombra3d-sm tw-m-1" *ngFor="let item of prerrequisitosCaracteristica">

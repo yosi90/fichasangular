@@ -1,0 +1,67 @@
+@use '../../../../assets/css/preformas/_inserciones' as inserciones
+
+.nueva-idioma-shell
+    @include inserciones.insercion-shell
+    display: flex
+    min-height: 100%
+
+.nueva-idioma-shell--modal
+    display: block
+    max-height: min(78vh, 620px)
+    min-height: auto
+    overflow: auto
+
+.nueva-idioma-form
+    @include inserciones.insercion-form-base
+    flex: 1 1 auto
+    min-height: 100%
+
+    .modal-head
+        display: flex
+        align-items: center
+        justify-content: space-between
+        gap: 1rem
+
+        h3
+            margin: 0
+            color: #f3f4f6
+
+    .idioma-grid
+        display: grid
+        grid-template-columns: minmax(220px, 1fr) minmax(180px, 0.6fr)
+        gap: 0.75rem
+        align-items: start
+
+    .full-span
+        grid-column: 1 / -1
+
+    .estado-row
+        display: flex
+        flex-wrap: wrap
+        gap: 0.75rem
+        min-height: 56px
+        align-items: center
+
+    .idioma-status-row
+        justify-content: flex-start
+
+    .actions-row
+        margin-top: auto
+
+    mat-checkbox
+        color: #e5e7eb
+
+.nueva-idioma-shell--modal
+    .nueva-idioma-form
+        min-height: auto
+
+        .actions-row
+            margin-top: 0
+
+@media (max-width: 720px)
+    .nueva-idioma-form
+        .idioma-grid
+            grid-template-columns: 1fr
+
+        .full-span
+            grid-column: auto

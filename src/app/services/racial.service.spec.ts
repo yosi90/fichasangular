@@ -9,7 +9,7 @@ describe('RacialService', () => {
     let service: RacialService;
 
     beforeEach(() => {
-        http = jasmine.createSpyObj('HttpClient', ['get', 'post']);
+        http = jasmine.createSpyObj('HttpClient', ['get', 'post', 'put', 'patch']);
         auth = {
             currentUser: {
                 getIdToken: jasmine.createSpy('getIdToken').and.resolveTo('token-racial'),
@@ -64,5 +64,32 @@ describe('RacialService', () => {
 
         await expectAsync(service.crearRacial({ racial: { nombre: 'Alas' } } as any))
             .toBeRejectedWithError('No tienes permisos para crear raciales. Falta razas.create');
+    });
+
+    it('actualizarRacial usa PUT y normaliza la respuesta', async () => {
+        http.put.and.returnValue(of({ message: 'ok', idRacial: 31, racial: { Id: 31, Nombre: 'Alas actualizadas' } }));
+        const payload = { racial: { nombre: 'Alas actualizadas', descripcion: 'Nueva desc' } };
+
+        const response = await service.actualizarRacial(31, payload as any);
+
+        expect(http.put).toHaveBeenCalledWith(
+            `${environment.apiUrl}razas/raciales/31`,
+            payload,
+            { headers: { Authorization: 'Bearer token-racial' } }
+        );
+        expect(response.racial.Nombre).toBe('Alas actualizadas');
+    });
+
+    it('anadirPrerrequisitosRacial usa PATCH y normaliza la respuesta', async () => {
+        http.patch.and.returnValue(of({ message: 'ok', idRacial: 31, racial: { Id: 31, Nombre: 'Alas' } }));
+
+        const response = await service.anadirPrerrequisitosRacial(31, { raza: [{ id_raza: 99 }] });
+
+        expect(http.patch).toHaveBeenCalledWith(
+            `${environment.apiUrl}razas/raciales/31/prerrequisitos`,
+            { prerrequisitos: { raza: [{ id_raza: 99 }] } },
+            { headers: { Authorization: 'Bearer token-racial' } }
+        );
+        expect(response.idRacial).toBe(31);
     });
 });

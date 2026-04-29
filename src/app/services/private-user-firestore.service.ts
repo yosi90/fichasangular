@@ -494,6 +494,7 @@ export class PrivateUserFirestoreService {
         if (!id)
             return null;
 
+        const detailRevision = this.toNullableText(raw?.detailRevision ?? raw?.DetailRevision);
         return {
             id,
             nombre: this.toNullableText(raw?.nombre ?? raw?.Nombre ?? raw?.NombreCampana ?? raw?.n) ?? `Campaña ${id}`,
@@ -516,6 +517,7 @@ export class PrivateUserFirestoreService {
                 ?? raw?.Estado
             ),
             ...(raw?.isOwner === true ? { isOwner: true } : {}),
+            ...(detailRevision ? { detailRevision } : {}),
         };
     }
 

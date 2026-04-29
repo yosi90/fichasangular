@@ -1,293 +1,326 @@
 <div class="nueva-racial-shell" [class.nueva-racial-shell--modal]="modal">
-    <form class="nueva-racial-form" [formGroup]="form" (ngSubmit)="crearRacial()">
+    <form class="nueva-racial-form" [formGroup]="form" (ngSubmit)="guardarRacial()">
         <div class="modal-head" *ngIf="modal">
-            <h3>Crear racial</h3>
+            <h3>{{tituloFormulario}}</h3>
             <button mat-icon-button type="button" aria-label="Cerrar" (click)="cancelar()">
                 <mat-icon>close</mat-icon>
             </button>
         </div>
 
-        <p class="permiso-msg" *ngIf="!puedeCrear">
-            No tienes permisos para crear raciales.
+        <p class="permiso-msg" *ngIf="cargandoEdicion">
+            Cargando racial...
         </p>
 
-        <section class="panel-card">
-            <h3 class="panel-title">Datos base</h3>
-            <div class="base-grid">
-                <mat-form-field appearance="fill">
-                    <mat-label>Nombre</mat-label>
-                    <input matInput formControlName="nombre" maxlength="200">
-                    <mat-error *ngIf="nombreControl.hasError('required')">Nombre obligatorio.</mat-error>
-                    <mat-error *ngIf="nombreControl.hasError('minlength')">Mínimo 3 caracteres.</mat-error>
-                    <mat-error *ngIf="nombreControl.hasError('maxlength')">Máximo 200 caracteres.</mat-error>
-                </mat-form-field>
+        <p class="permiso-msg" *ngIf="!puedeGuardar && !cargandoEdicion">
+            {{mensajePermisoInsuficiente}}
+        </p>
 
-                <mat-form-field appearance="fill" class="full-span">
-                    <mat-label>Descripción</mat-label>
-                    <textarea matInput formControlName="descripcion" rows="4" maxlength="5000"></textarea>
-                    <mat-error *ngIf="descripcionControl.hasError('maxlength')">Máximo 5000 caracteres.</mat-error>
-                </mat-form-field>
-            </div>
-        </section>
+        <mat-horizontal-stepper class="racial-stepper" [linear]="false">
+            <mat-step>
+                <ng-template matStepLabel>Base</ng-template>
 
-        <section class="panel-card">
-            <h3 class="panel-title">Dotes</h3>
-            <div class="row-editor row-editor--dote" *ngFor="let row of doteRows; let i = index; trackBy: trackByUid">
-                <mat-form-field appearance="fill">
-                    <mat-label>Buscar dote</mat-label>
-                    <input matInput [value]="row.busqueda" (input)="row.busqueda = $any($event.target).value" [matAutocomplete]="doteAuto">
-                    <mat-autocomplete #doteAuto="matAutocomplete" (optionSelected)="seleccionarDote(i, $event.option.value)">
-                        <mat-option [value]="0">Sin dote</mat-option>
-                        <mat-option *ngFor="let dote of getDotesFiltradas(row); trackBy: trackById" [value]="dote.Id">{{dote.Nombre}}</mat-option>
-                    </mat-autocomplete>
-                </mat-form-field>
+                <div class="step-layout">
+                    <div class="step-main">
+                        <section class="plain-section">
+                            <div class="base-grid">
+                                <mat-form-field appearance="fill">
+                                    <mat-label>Nombre</mat-label>
+                                    <input matInput formControlName="nombre" maxlength="200">
+                                    <mat-error *ngIf="nombreControl.hasError('required')">Nombre obligatorio.</mat-error>
+                                    <mat-error *ngIf="nombreControl.hasError('minlength')">Mínimo 3 caracteres.</mat-error>
+                                    <mat-error *ngIf="nombreControl.hasError('maxlength')">Máximo 200 caracteres.</mat-error>
+                                </mat-form-field>
 
-                <mat-form-field appearance="fill" *ngIf="getDoteExtras(row).length > 0">
-                    <mat-label>Extra</mat-label>
-                    <input matInput [value]="row.extraBusqueda" (input)="row.extraBusqueda = $any($event.target).value" [matAutocomplete]="doteExtraAuto">
-                    <mat-autocomplete #doteExtraAuto="matAutocomplete" (optionSelected)="seleccionarExtraDote(i, $event.option.value)">
-                        <mat-option [value]="0">Sin extra</mat-option>
-                        <mat-option *ngFor="let extra of getDoteExtrasFiltrados(row); trackBy: trackById" [value]="extra.Id_extra">{{extra.Extra}}</mat-option>
-                    </mat-autocomplete>
-                </mat-form-field>
+                                <mat-form-field appearance="fill" class="full-span">
+                                    <mat-label>Descripción</mat-label>
+                                    <textarea matInput formControlName="descripcion" rows="4" maxlength="5000"></textarea>
+                                    <mat-error *ngIf="descripcionControl.hasError('maxlength')">Máximo 5000 caracteres.</mat-error>
+                                </mat-form-field>
+                            </div>
+                        </section>
 
-                <button mat-icon-button type="button" class="row-action-btn" aria-label="Quitar dote" (click)="quitarDote(i)">
-                    <mat-icon>delete</mat-icon>
-                </button>
-            </div>
-            <button mat-stroked-button type="button" (click)="agregarDote()">
-                <mat-icon>add</mat-icon>
-                Añadir dote
-            </button>
-        </section>
+                        <section class="plain-section">
+                            <div class="subgrid">
+                                <div class="subpanel">
+                                    <h4 class="subpanel-title">Características</h4>
+                                    <div class="row-editor row-editor--small" *ngFor="let row of caracteristicasRows; let i = index; trackBy: trackByUid">
+                                        <mat-form-field appearance="fill">
+                                            <mat-label>Característica</mat-label>
+                                            <mat-select [(ngModel)]="row.id_caracteristica" [ngModelOptions]="{standalone: true}">
+                                                <mat-option [value]="0">Sin característica</mat-option>
+                                                <mat-option *ngFor="let caracteristica of caracteristicasCatalogo; trackBy: trackById" [value]="caracteristica.id">{{caracteristica.nombre}}</mat-option>
+                                            </mat-select>
+                                        </mat-form-field>
 
-        <section class="panel-card">
-            <h3 class="panel-title">Habilidades base</h3>
-            <div class="row-editor row-editor--skill" *ngFor="let row of habilidadesBaseRows; let i = index; trackBy: trackByUid">
-                <mat-form-field appearance="fill">
-                    <mat-label>Buscar habilidad</mat-label>
-                    <input matInput [value]="row.busqueda" (input)="row.busqueda = $any($event.target).value" [matAutocomplete]="habBaseAuto">
-                    <mat-autocomplete #habBaseAuto="matAutocomplete" (optionSelected)="seleccionarHabilidadBase(i, $event.option.value)">
-                        <mat-option [value]="0">Sin habilidad</mat-option>
-                        <mat-option *ngFor="let habilidad of getHabilidadesBaseFiltradas(row); trackBy: trackById" [value]="habilidad.Id_habilidad">{{habilidad.Nombre}}</mat-option>
-                    </mat-autocomplete>
-                </mat-form-field>
+                                        <mat-form-field appearance="fill">
+                                            <mat-label>Cantidad</mat-label>
+                                            <input matInput type="number" min="-100" max="100" [(ngModel)]="row.cantidad" [ngModelOptions]="{standalone: true}">
+                                        </mat-form-field>
 
-                <mat-form-field appearance="fill">
-                    <mat-label>Rangos</mat-label>
-                    <input matInput type="number" min="0" max="200" [(ngModel)]="row.rangos" [ngModelOptions]="{standalone: true}">
-                </mat-form-field>
+                                        <button mat-icon-button type="button" class="row-action-btn" aria-label="Quitar característica" (click)="quitarCaracteristica(i)">
+                                            <mat-icon>delete</mat-icon>
+                                        </button>
+                                    </div>
+                                    <button mat-stroked-button type="button" (click)="agregarCaracteristica()">
+                                        <mat-icon>add</mat-icon>
+                                        Añadir característica
+                                    </button>
+                                </div>
 
-                <mat-form-field appearance="fill" *ngIf="getHabilidadBaseExtras(row).length > 0">
-                    <mat-label>Extra</mat-label>
-                    <input matInput [value]="row.extraBusqueda" (input)="row.extraBusqueda = $any($event.target).value" [matAutocomplete]="habBaseExtraAuto">
-                    <mat-autocomplete #habBaseExtraAuto="matAutocomplete" (optionSelected)="seleccionarExtraHabilidadBase(i, $event.option.value)">
-                        <mat-option [value]="0">Sin extra</mat-option>
-                        <mat-option *ngFor="let extra of getHabilidadBaseExtrasFiltradas(row); trackBy: trackById" [value]="extra.Id_extra">{{extra.Extra}}</mat-option>
-                    </mat-autocomplete>
-                </mat-form-field>
+                                <div class="subpanel">
+                                    <h4 class="subpanel-title">Salvaciones</h4>
+                                    <div class="row-editor row-editor--save" *ngFor="let row of salvacionesRows; let i = index; trackBy: trackByUid">
+                                        <mat-form-field appearance="fill">
+                                            <mat-label>Progresión</mat-label>
+                                            <mat-select [(ngModel)]="row.id_salvacion" [ngModelOptions]="{standalone: true}">
+                                                <mat-option [value]="0">Sin progresión</mat-option>
+                                                <mat-option *ngFor="let salvacion of salvacionesCatalogo; trackBy: trackById" [value]="salvacion.Id">{{salvacion.Nombre}}</mat-option>
+                                            </mat-select>
+                                        </mat-form-field>
 
-                <mat-form-field appearance="fill">
-                    <mat-label>Condición</mat-label>
-                    <input matInput [(ngModel)]="row.condicion" [ngModelOptions]="{standalone: true}">
-                </mat-form-field>
+                                        <mat-form-field appearance="fill">
+                                            <mat-label>Cantidad</mat-label>
+                                            <input matInput type="number" min="-100" max="100" [(ngModel)]="row.cantidad" [ngModelOptions]="{standalone: true}">
+                                        </mat-form-field>
 
-                <mat-checkbox [(ngModel)]="row.se_considera_clasea" [ngModelOptions]="{standalone: true}">Clásea</mat-checkbox>
+                                        <mat-form-field appearance="fill">
+                                            <mat-label>Condición</mat-label>
+                                            <input matInput [(ngModel)]="row.condicion" [ngModelOptions]="{standalone: true}">
+                                        </mat-form-field>
 
-                <button mat-icon-button type="button" class="row-action-btn" aria-label="Quitar habilidad" (click)="quitarHabilidadBase(i)">
-                    <mat-icon>delete</mat-icon>
-                </button>
-            </div>
-            <button mat-stroked-button type="button" (click)="agregarHabilidadBase()">
-                <mat-icon>add</mat-icon>
-                Añadir habilidad base
-            </button>
-        </section>
+                                        <button mat-icon-button type="button" class="row-action-btn" aria-label="Quitar salvación" (click)="quitarSalvacion(i)">
+                                            <mat-icon>delete</mat-icon>
+                                        </button>
+                                    </div>
+                                    <button mat-stroked-button type="button" (click)="agregarSalvacion()">
+                                        <mat-icon>add</mat-icon>
+                                        Añadir salvación
+                                    </button>
+                                </div>
+                            </div>
+                        </section>
 
-        <section class="panel-card">
-            <h3 class="panel-title">Habilidades custom</h3>
-            <div class="row-editor row-editor--custom" *ngFor="let row of habilidadesCustomRows; let i = index; trackBy: trackByUid">
-                <mat-form-field appearance="fill">
-                    <mat-label>Buscar habilidad</mat-label>
-                    <input matInput [value]="row.busqueda" (input)="row.busqueda = $any($event.target).value" [matAutocomplete]="habCustomAuto">
-                    <mat-autocomplete #habCustomAuto="matAutocomplete" (optionSelected)="seleccionarHabilidadCustom(i, $event.option.value)">
-                        <mat-option [value]="0">Sin habilidad</mat-option>
-                        <mat-option *ngFor="let habilidad of getHabilidadesCustomFiltradas(row); trackBy: trackById" [value]="habilidad.Id_habilidad">{{habilidad.Nombre}}</mat-option>
-                    </mat-autocomplete>
-                </mat-form-field>
+                        <section class="plain-section">
+                            <div class="subpanel">
+                                <h4 class="subpanel-title">Ataques</h4>
+                                <div class="row-editor row-editor--attack" *ngFor="let row of ataquesRows; let i = index; trackBy: trackByUid">
+                                    <mat-form-field appearance="fill">
+                                        <mat-label>Ataque racial</mat-label>
+                                        <textarea matInput rows="2" [(ngModel)]="row.descripcion" [ngModelOptions]="{standalone: true}"></textarea>
+                                    </mat-form-field>
 
-                <mat-form-field appearance="fill">
-                    <mat-label>Rangos</mat-label>
-                    <input matInput type="number" min="0" max="200" [(ngModel)]="row.rangos" [ngModelOptions]="{standalone: true}">
-                </mat-form-field>
+                                    <button mat-icon-button type="button" class="row-action-btn" aria-label="Quitar ataque" (click)="quitarAtaque(i)">
+                                        <mat-icon>delete</mat-icon>
+                                    </button>
+                                </div>
+                                <button mat-stroked-button type="button" (click)="agregarAtaque()">
+                                    <mat-icon>add</mat-icon>
+                                    Añadir ataque
+                                </button>
+                            </div>
+                        </section>
+                    </div>
 
-                <mat-form-field appearance="fill" *ngIf="getHabilidadCustomExtras(row).length > 0">
-                    <mat-label>Extra</mat-label>
-                    <input matInput [value]="row.extraBusqueda" (input)="row.extraBusqueda = $any($event.target).value" [matAutocomplete]="habCustomExtraAuto">
-                    <mat-autocomplete #habCustomExtraAuto="matAutocomplete" (optionSelected)="seleccionarExtraHabilidadCustom(i, $event.option.value)">
-                        <mat-option [value]="0">Sin extra</mat-option>
-                        <mat-option *ngFor="let extra of getHabilidadCustomExtrasFiltradas(row); trackBy: trackById" [value]="extra.Id_extra">{{extra.Extra}}</mat-option>
-                    </mat-autocomplete>
-                </mat-form-field>
+                    <div class="step-actions">
+                        <button mat-stroked-button type="button" *ngIf="modal" (click)="cancelar()">Cancelar</button>
+                        <button mat-raised-button color="primary" type="button" matStepperNext>Siguiente</button>
+                    </div>
+                </div>
+            </mat-step>
 
-                <mat-checkbox [(ngModel)]="row.se_considera_clasea" [ngModelOptions]="{standalone: true}">Clásea</mat-checkbox>
+            <mat-step>
+                <ng-template matStepLabel>Rasgos</ng-template>
 
-                <button mat-icon-button type="button" class="row-action-btn" aria-label="Quitar habilidad" (click)="quitarHabilidadCustom(i)">
-                    <mat-icon>delete</mat-icon>
-                </button>
-            </div>
-            <button mat-stroked-button type="button" (click)="agregarHabilidadCustom()">
-                <mat-icon>add</mat-icon>
-                Añadir habilidad custom
-            </button>
-        </section>
+                <div class="step-layout">
+                    <div class="step-main">
+                        <mat-accordion class="editors-accordion" multi>
+                            <mat-expansion-panel>
+                                <mat-expansion-panel-header>
+                                    <mat-panel-title>Dotes</mat-panel-title>
+                                </mat-expansion-panel-header>
+                                <div class="row-editor row-editor--dote" *ngFor="let row of doteRows; let i = index; trackBy: trackByUid">
+                                    <mat-form-field appearance="fill">
+                                        <mat-label>Buscar dote</mat-label>
+                                        <input matInput [value]="row.busqueda" (input)="row.busqueda = $any($event.target).value" [matAutocomplete]="doteAuto">
+                                        <mat-autocomplete #doteAuto="matAutocomplete" (optionSelected)="seleccionarDote(i, $event.option.value)">
+                                            <mat-option [value]="0">Sin dote</mat-option>
+                                            <mat-option *ngFor="let dote of getDotesFiltradas(row); trackBy: trackById" [value]="dote.Id">{{dote.Nombre}}</mat-option>
+                                        </mat-autocomplete>
+                                    </mat-form-field>
 
-        <section class="panel-card">
-            <h3 class="panel-title">Valores numéricos</h3>
-            <div class="subgrid">
-                <div class="subpanel">
-                    <h4 class="subpanel-title">Características</h4>
-                    <div class="row-editor row-editor--small" *ngFor="let row of caracteristicasRows; let i = index; trackBy: trackByUid">
-                        <mat-form-field appearance="fill">
-                            <mat-label>Característica</mat-label>
-                            <mat-select [(ngModel)]="row.id_caracteristica" [ngModelOptions]="{standalone: true}">
-                                <mat-option [value]="0">Sin característica</mat-option>
-                                <mat-option *ngFor="let caracteristica of caracteristicasCatalogo; trackBy: trackById" [value]="caracteristica.id">{{caracteristica.nombre}}</mat-option>
-                            </mat-select>
-                        </mat-form-field>
+                                    <mat-form-field appearance="fill" *ngIf="getDoteExtras(row).length > 0">
+                                        <mat-label>Extra</mat-label>
+                                        <input matInput [value]="row.extraBusqueda" (input)="row.extraBusqueda = $any($event.target).value" [matAutocomplete]="doteExtraAuto">
+                                        <mat-autocomplete #doteExtraAuto="matAutocomplete" (optionSelected)="seleccionarExtraDote(i, $event.option.value)">
+                                            <mat-option [value]="0">Sin extra</mat-option>
+                                            <mat-option *ngFor="let extra of getDoteExtrasFiltrados(row); trackBy: trackById" [value]="extra.Id_extra">{{extra.Extra}}</mat-option>
+                                        </mat-autocomplete>
+                                    </mat-form-field>
 
-                        <mat-form-field appearance="fill">
-                            <mat-label>Cantidad</mat-label>
-                            <input matInput type="number" min="-100" max="100" [(ngModel)]="row.cantidad" [ngModelOptions]="{standalone: true}">
-                        </mat-form-field>
+                                    <button mat-icon-button type="button" class="row-action-btn" aria-label="Quitar dote" (click)="quitarDote(i)">
+                                        <mat-icon>delete</mat-icon>
+                                    </button>
+                                </div>
+                                <button mat-stroked-button type="button" (click)="agregarDote()">
+                                    <mat-icon>add</mat-icon>
+                                    Añadir dote
+                                </button>
+                            </mat-expansion-panel>
 
-                        <button mat-icon-button type="button" class="row-action-btn" aria-label="Quitar característica" (click)="quitarCaracteristica(i)">
-                            <mat-icon>delete</mat-icon>
+                            <mat-expansion-panel expanded>
+                                <mat-expansion-panel-header>
+                                    <mat-panel-title>Habilidades base</mat-panel-title>
+                                </mat-expansion-panel-header>
+                                <div class="row-editor row-editor--skill" *ngFor="let row of habilidadesBaseRows; let i = index; trackBy: trackByUid">
+                                    <mat-form-field appearance="fill">
+                                        <mat-label>Buscar habilidad</mat-label>
+                                        <input matInput [value]="row.busqueda" (input)="row.busqueda = $any($event.target).value" [matAutocomplete]="habBaseAuto">
+                                        <mat-autocomplete #habBaseAuto="matAutocomplete" (optionSelected)="seleccionarHabilidadBase(i, $event.option.value)">
+                                            <mat-option [value]="0">Sin habilidad</mat-option>
+                                            <mat-option *ngFor="let habilidad of getHabilidadesBaseFiltradas(row); trackBy: trackById" [value]="habilidad.Id_habilidad">{{habilidad.Nombre}}</mat-option>
+                                        </mat-autocomplete>
+                                    </mat-form-field>
+
+                                    <mat-form-field appearance="fill">
+                                        <mat-label>Rangos</mat-label>
+                                        <input matInput type="number" min="0" max="200" [(ngModel)]="row.rangos" [ngModelOptions]="{standalone: true}">
+                                    </mat-form-field>
+
+                                    <mat-form-field appearance="fill" *ngIf="getHabilidadBaseExtras(row).length > 0">
+                                        <mat-label>Extra</mat-label>
+                                        <input matInput [value]="row.extraBusqueda" (input)="row.extraBusqueda = $any($event.target).value" [matAutocomplete]="habBaseExtraAuto">
+                                        <mat-autocomplete #habBaseExtraAuto="matAutocomplete" (optionSelected)="seleccionarExtraHabilidadBase(i, $event.option.value)">
+                                            <mat-option [value]="0">Sin extra</mat-option>
+                                            <mat-option *ngFor="let extra of getHabilidadBaseExtrasFiltradas(row); trackBy: trackById" [value]="extra.Id_extra">{{extra.Extra}}</mat-option>
+                                        </mat-autocomplete>
+                                    </mat-form-field>
+
+                                    <mat-form-field appearance="fill">
+                                        <mat-label>Condición</mat-label>
+                                        <input matInput [(ngModel)]="row.condicion" [ngModelOptions]="{standalone: true}">
+                                    </mat-form-field>
+
+                                    <mat-checkbox [(ngModel)]="row.se_considera_clasea" [ngModelOptions]="{standalone: true}">Clásea</mat-checkbox>
+
+                                    <button mat-icon-button type="button" class="row-action-btn" aria-label="Quitar habilidad" (click)="quitarHabilidadBase(i)">
+                                        <mat-icon>delete</mat-icon>
+                                    </button>
+                                </div>
+                                <button mat-stroked-button type="button" (click)="agregarHabilidadBase()">
+                                    <mat-icon>add</mat-icon>
+                                    Añadir habilidad base
+                                </button>
+                            </mat-expansion-panel>
+
+                            <mat-expansion-panel>
+                                <mat-expansion-panel-header>
+                                    <mat-panel-title>Habilidades custom</mat-panel-title>
+                                </mat-expansion-panel-header>
+                                <div class="row-editor row-editor--custom" *ngFor="let row of habilidadesCustomRows; let i = index; trackBy: trackByUid">
+                                    <mat-form-field appearance="fill">
+                                        <mat-label>Buscar habilidad</mat-label>
+                                        <input matInput [value]="row.busqueda" (input)="row.busqueda = $any($event.target).value" [matAutocomplete]="habCustomAuto">
+                                        <mat-autocomplete #habCustomAuto="matAutocomplete" (optionSelected)="seleccionarHabilidadCustom(i, $event.option.value)">
+                                            <mat-option [value]="0">Sin habilidad</mat-option>
+                                            <mat-option *ngFor="let habilidad of getHabilidadesCustomFiltradas(row); trackBy: trackById" [value]="habilidad.Id_habilidad">{{habilidad.Nombre}}</mat-option>
+                                        </mat-autocomplete>
+                                    </mat-form-field>
+
+                                    <mat-form-field appearance="fill">
+                                        <mat-label>Rangos</mat-label>
+                                        <input matInput type="number" min="0" max="200" [(ngModel)]="row.rangos" [ngModelOptions]="{standalone: true}">
+                                    </mat-form-field>
+
+                                    <mat-form-field appearance="fill" *ngIf="getHabilidadCustomExtras(row).length > 0">
+                                        <mat-label>Extra</mat-label>
+                                        <input matInput [value]="row.extraBusqueda" (input)="row.extraBusqueda = $any($event.target).value" [matAutocomplete]="habCustomExtraAuto">
+                                        <mat-autocomplete #habCustomExtraAuto="matAutocomplete" (optionSelected)="seleccionarExtraHabilidadCustom(i, $event.option.value)">
+                                            <mat-option [value]="0">Sin extra</mat-option>
+                                            <mat-option *ngFor="let extra of getHabilidadCustomExtrasFiltradas(row); trackBy: trackById" [value]="extra.Id_extra">{{extra.Extra}}</mat-option>
+                                        </mat-autocomplete>
+                                    </mat-form-field>
+
+                                    <mat-checkbox [(ngModel)]="row.se_considera_clasea" [ngModelOptions]="{standalone: true}">Clásea</mat-checkbox>
+
+                                    <button mat-icon-button type="button" class="row-action-btn" aria-label="Quitar habilidad" (click)="quitarHabilidadCustom(i)">
+                                        <mat-icon>delete</mat-icon>
+                                    </button>
+                                </div>
+                                <button mat-stroked-button type="button" (click)="agregarHabilidadCustom()">
+                                    <mat-icon>add</mat-icon>
+                                    Añadir habilidad custom
+                                </button>
+                            </mat-expansion-panel>
+
+                            <mat-expansion-panel>
+                                <mat-expansion-panel-header>
+                                    <mat-panel-title>Sortílegas</mat-panel-title>
+                                </mat-expansion-panel-header>
+                                <div class="row-editor row-editor--spell" *ngFor="let row of sortilegasRows; let i = index; trackBy: trackByUid">
+                                    <mat-form-field appearance="fill">
+                                        <mat-label>Buscar conjuro</mat-label>
+                                        <input matInput [value]="row.busqueda" (input)="row.busqueda = $any($event.target).value" [matAutocomplete]="conjuroAuto">
+                                        <mat-autocomplete #conjuroAuto="matAutocomplete" (optionSelected)="seleccionarConjuro(i, $event.option.value)">
+                                            <mat-option [value]="0">Sin conjuro</mat-option>
+                                            <mat-option *ngFor="let conjuro of getConjurosFiltrados(row); trackBy: trackById" [value]="conjuro.Id">{{conjuro.Nombre}}</mat-option>
+                                        </mat-autocomplete>
+                                    </mat-form-field>
+
+                                    <mat-form-field appearance="fill">
+                                        <mat-label>Nivel lanzador</mat-label>
+                                        <input matInput type="number" min="1" max="100" [(ngModel)]="row.nivel_lanzador" [ngModelOptions]="{standalone: true}">
+                                    </mat-form-field>
+
+                                    <mat-form-field appearance="fill">
+                                        <mat-label>Usos diarios</mat-label>
+                                        <input matInput [(ngModel)]="row.usos_diarios" [ngModelOptions]="{standalone: true}">
+                                    </mat-form-field>
+
+                                    <button mat-icon-button type="button" class="row-action-btn" aria-label="Quitar sortílega" (click)="quitarSortilega(i)">
+                                        <mat-icon>delete</mat-icon>
+                                    </button>
+                                </div>
+                                <button mat-stroked-button type="button" (click)="agregarSortilega()">
+                                    <mat-icon>add</mat-icon>
+                                    Añadir sortílega
+                                </button>
+                            </mat-expansion-panel>
+                        </mat-accordion>
+
+                        <section class="plain-section prerrequisitos-section">
+                            <h4 class="subpanel-title">Prerrequisitos</h4>
+                            <div class="prerrequisito-toggles">
+                                <mat-checkbox
+                                    *ngFor="let option of tiposPrerrequisito"
+                                    [checked]="isPrerrequisitoActivo(option.key)"
+                                    (change)="togglePrerrequisito(option.key, $event.checked === true)">
+                                    {{option.label}}
+                                </mat-checkbox>
+                            </div>
+
+                            <app-prerrequisito-editor-host
+                                [selectedTypes]="prerrequisitosSeleccionados"
+                                [rows]="prerrequisitosRows"
+                                [catalogContext]="prerrequisitosCatalogContext"
+                                [disabled]="creacionBloqueada"
+                                [ensureCatalogs]="ensurePrerequisiteCatalogs"
+                                emptyMessage="Marca los prerrequisitos aplicables para configurarlos."
+                                (selectedTypesChange)="onPrerrequisitosSeleccionadosChange($event)"
+                                (rowsChange)="onPrerrequisitosRowsChange($event)">
+                            </app-prerrequisito-editor-host>
+                        </section>
+                    </div>
+
+                    <div class="step-actions">
+                        <button mat-stroked-button type="button" matStepperPrevious>Anterior</button>
+                        <button mat-stroked-button type="button" *ngIf="modal" (click)="cancelar()">Cancelar</button>
+                        <button mat-raised-button color="primary" type="submit" [disabled]="creacionBloqueada">
+                            <mat-icon>save</mat-icon>
+                            {{etiquetaAccionPrincipal}}
                         </button>
                     </div>
-                    <button mat-stroked-button type="button" (click)="agregarCaracteristica()">
-                        <mat-icon>add</mat-icon>
-                        Añadir característica
-                    </button>
                 </div>
-
-                <div class="subpanel">
-                    <h4 class="subpanel-title">Salvaciones</h4>
-                    <div class="row-editor row-editor--save" *ngFor="let row of salvacionesRows; let i = index; trackBy: trackByUid">
-                        <mat-form-field appearance="fill">
-                            <mat-label>Progresión</mat-label>
-                            <mat-select [(ngModel)]="row.id_salvacion" [ngModelOptions]="{standalone: true}">
-                                <mat-option [value]="0">Sin progresión</mat-option>
-                                <mat-option *ngFor="let salvacion of salvacionesCatalogo; trackBy: trackById" [value]="salvacion.Id">{{salvacion.Nombre}}</mat-option>
-                            </mat-select>
-                        </mat-form-field>
-
-                        <mat-form-field appearance="fill">
-                            <mat-label>Cantidad</mat-label>
-                            <input matInput type="number" min="-100" max="100" [(ngModel)]="row.cantidad" [ngModelOptions]="{standalone: true}">
-                        </mat-form-field>
-
-                        <mat-form-field appearance="fill">
-                            <mat-label>Condición</mat-label>
-                            <input matInput [(ngModel)]="row.condicion" [ngModelOptions]="{standalone: true}">
-                        </mat-form-field>
-
-                        <button mat-icon-button type="button" class="row-action-btn" aria-label="Quitar salvación" (click)="quitarSalvacion(i)">
-                            <mat-icon>delete</mat-icon>
-                        </button>
-                    </div>
-                    <button mat-stroked-button type="button" (click)="agregarSalvacion()">
-                        <mat-icon>add</mat-icon>
-                        Añadir salvación
-                    </button>
-                </div>
-            </div>
-        </section>
-
-        <section class="panel-card">
-            <h3 class="panel-title">Sortílegas y ataques</h3>
-            <div class="subgrid">
-                <div class="subpanel">
-                    <h4 class="subpanel-title">Sortílegas</h4>
-                    <div class="row-editor row-editor--spell" *ngFor="let row of sortilegasRows; let i = index; trackBy: trackByUid">
-                        <mat-form-field appearance="fill">
-                            <mat-label>Buscar conjuro</mat-label>
-                            <input matInput [value]="row.busqueda" (input)="row.busqueda = $any($event.target).value" [matAutocomplete]="conjuroAuto">
-                            <mat-autocomplete #conjuroAuto="matAutocomplete" (optionSelected)="seleccionarConjuro(i, $event.option.value)">
-                                <mat-option [value]="0">Sin conjuro</mat-option>
-                                <mat-option *ngFor="let conjuro of getConjurosFiltrados(row); trackBy: trackById" [value]="conjuro.Id">{{conjuro.Nombre}}</mat-option>
-                            </mat-autocomplete>
-                        </mat-form-field>
-
-                        <mat-form-field appearance="fill">
-                            <mat-label>Nivel lanzador</mat-label>
-                            <input matInput type="number" min="1" max="100" [(ngModel)]="row.nivel_lanzador" [ngModelOptions]="{standalone: true}">
-                        </mat-form-field>
-
-                        <mat-form-field appearance="fill">
-                            <mat-label>Usos diarios</mat-label>
-                            <input matInput [(ngModel)]="row.usos_diarios" [ngModelOptions]="{standalone: true}">
-                        </mat-form-field>
-
-                        <button mat-icon-button type="button" class="row-action-btn" aria-label="Quitar sortílega" (click)="quitarSortilega(i)">
-                            <mat-icon>delete</mat-icon>
-                        </button>
-                    </div>
-                    <button mat-stroked-button type="button" (click)="agregarSortilega()">
-                        <mat-icon>add</mat-icon>
-                        Añadir sortílega
-                    </button>
-                </div>
-
-                <div class="subpanel">
-                    <h4 class="subpanel-title">Ataques</h4>
-                    <div class="row-editor row-editor--attack" *ngFor="let row of ataquesRows; let i = index; trackBy: trackByUid">
-                        <mat-form-field appearance="fill">
-                            <mat-label>Ataque racial</mat-label>
-                            <textarea matInput rows="2" [(ngModel)]="row.descripcion" [ngModelOptions]="{standalone: true}"></textarea>
-                        </mat-form-field>
-
-                        <button mat-icon-button type="button" class="row-action-btn" aria-label="Quitar ataque" (click)="quitarAtaque(i)">
-                            <mat-icon>delete</mat-icon>
-                        </button>
-                    </div>
-                    <button mat-stroked-button type="button" (click)="agregarAtaque()">
-                        <mat-icon>add</mat-icon>
-                        Añadir ataque
-                    </button>
-                </div>
-            </div>
-        </section>
-
-        <section class="panel-card">
-            <h3 class="panel-title">Prerrequisitos</h3>
-            <div class="prerrequisito-toggles">
-                <mat-checkbox
-                    *ngFor="let option of tiposPrerrequisito"
-                    [checked]="isPrerrequisitoActivo(option.key)"
-                    (change)="togglePrerrequisito(option.key, $event.checked === true)">
-                    {{option.label}}
-                </mat-checkbox>
-            </div>
-
-            <app-prerrequisito-editor-host
-                [selectedTypes]="prerrequisitosSeleccionados"
-                [rows]="prerrequisitosRows"
-                [catalogContext]="prerrequisitosCatalogContext"
-                [disabled]="creacionBloqueada"
-                [ensureCatalogs]="ensurePrerequisiteCatalogs"
-                emptyMessage="Marca los prerrequisitos aplicables para configurarlos."
-                (selectedTypesChange)="onPrerrequisitosSeleccionadosChange($event)"
-                (rowsChange)="onPrerrequisitosRowsChange($event)">
-            </app-prerrequisito-editor-host>
-        </section>
-
-        <div class="actions-row">
-            <button mat-stroked-button type="button" *ngIf="modal" (click)="cancelar()">Cancelar</button>
-            <button mat-raised-button color="primary" type="submit" [disabled]="guardando || !puedeCrear">
-                <mat-icon>save</mat-icon>
-                Crear racial
-            </button>
-        </div>
+            </mat-step>
+        </mat-horizontal-stepper>
     </form>
 </div>

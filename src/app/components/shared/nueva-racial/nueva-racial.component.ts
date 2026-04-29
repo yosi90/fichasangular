@@ -1,6 +1,6 @@
-import { Component, EventEmitter, Input, OnDestroy, OnInit, Output, ViewChild } from '@angular/core';
+import { Component, EventEmitter, Input, OnChanges, OnDestroy, OnInit, Output, SimpleChanges, ViewChild } from '@angular/core';
 import { FormBuilder, Validators } from '@angular/forms';
-import { Subject, takeUntil } from 'rxjs';
+import { Subject, firstValueFrom, take, takeUntil } from 'rxjs';
 import Swal from 'sweetalert2';
 import { Conjuro } from 'src/app/interfaces/conjuro';
 import { Dote } from 'src/app/interfaces/dote';
@@ -16,6 +16,7 @@ import {
     RacialCreateRequest,
     RacialCreateSalvacion,
     RacialCreateSortilega,
+    RacialUpdateRequest,
 } from 'src/app/interfaces/raciales-api';
 import { Raza } from 'src/app/interfaces/raza';
 import { ConjuroService } from 'src/app/services/conjuro.service';
@@ -38,12 +39,15 @@ import {
 } from '../prerrequisito-editor/prerrequisito-editor.registry';
 
 type RacialPrerequisiteType = Extract<PrerequisiteType, 'raza' | 'caracteristica'>;
+const RAZA_EN_CREACION_PREREQ_ID = 2147483647;
+const RAZA_EN_CREACION_PREREQ_LABEL = 'La raza que estoy creando';
 
 interface RacialCreadoEmitPayload {
     idRacial: number;
     nombre: string;
     racial: RacialDetalle;
     tienePrerrequisitoRaza?: boolean;
+    prerrequisitoRazaEnCreacion?: boolean;
 }
 
 interface NombreIdItem {
@@ -112,17 +116,26 @@ interface AtaqueRow {
     styleUrls: ['./nueva-racial.component.sass'],
     standalone: false,
 })
-export class NuevaRacialComponent implements OnInit, OnDestroy {
+export class NuevaRacialComponent implements OnInit, OnDestroy, OnChanges {
     @Input() modal: boolean = false;
+    @Input() permitirRazaEnCreacionPrerrequisito: boolean = false;
+    @Input() modo: 'crear' | 'editar' = 'crear';
+    @Input() idRacial: number | null = null;
+    @Input() editorTabKey: string = '';
     @Output() cerrar = new EventEmitter<void>();
     @Output() racialCreado = new EventEmitter<RacialCreadoEmitPayload>();
+    @Output() racialActualizado = new EventEmitter<RacialDetalle>();
     @ViewChild(PrerrequisitoEditorHostComponent) prerrequisitoEditorHost?: PrerrequisitoEditorHostComponent;
 
     private readonly destroy$ = new Subject<void>();
     private uidCounter: number = 0;
+    private initialEditSnapshot: string = '';
+    private ultimoIdRacialCargado: number = 0;
 
     guardando: boolean = false;
+    cargandoEdicion: boolean = false;
     puedeCrear: boolean = false;
+    puedeActualizar: boolean = false;
     dotes: Dote[] = [];
     habilidadesBase: HabilidadBasicaDetalle[] = [];
     habilidadesCustom: HabilidadBasicaDetalle[] = [];
@@ -190,11 +203,17 @@ export class NuevaRacialComponent implements OnInit, OnDestroy {
             .pipe(takeUntil(this.destroy$))
             .subscribe(() => this.actualizarPermisos());
         this.cargarCatalogos();
+        this.cargarEdicionSiAplica();
     }
 
     ngOnDestroy(): void {
         this.destroy$.next();
         this.destroy$.complete();
+    }
+
+    ngOnChanges(changes: SimpleChanges): void {
+        if (changes['modo'] || changes['idRacial'])
+            this.cargarEdicionSiAplica();
     }
 
     get nombreControl() {
@@ -206,11 +225,41 @@ export class NuevaRacialComponent implements OnInit, OnDestroy {
     }
 
     get creacionBloqueada(): boolean {
-        return this.guardando || !this.puedeCrear;
+        return this.guardando || this.cargandoEdicion || !this.puedeGuardar;
     }
 
-    async crearRacial(): Promise<void> {
-        if (!this.puedeCrear) {
+    get esModoEdicion(): boolean {
+        return this.modo === 'editar';
+    }
+
+    get puedeGuardar(): boolean {
+        return this.esModoEdicion ? this.puedeActualizar : this.puedeCrear;
+    }
+
+    get mensajePermisoInsuficiente(): string {
+        return this.esModoEdicion
+            ? 'No tienes permisos para modificar raciales.'
+            : 'No tienes permisos para crear raciales.';
+    }
+
+    get tituloFormulario(): string {
+        return this.esModoEdicion ? 'Modificar racial' : 'Crear racial';
+    }
+
+    get etiquetaAccionPrincipal(): string {
+        if (this.guardando)
+            return this.esModoEdicion ? 'Guardando cambios...' : 'Creando racial...';
+        return this.esModoEdicion ? 'Actualizar racial' : 'Crear racial';
+    }
+
+    get isDirty(): boolean {
+        if (!this.esModoEdicion || this.cargandoEdicion)
+            return false;
+        return this.buildEditSnapshot() !== this.initialEditSnapshot;
+    }
+
+    async guardarRacial(): Promise<void> {
+        if (!this.puedeGuardar) {
             await Swal.fire({
                 icon: 'warning',
                 title: 'Permisos insuficientes',
@@ -235,28 +284,53 @@ export class NuevaRacialComponent implements OnInit, OnDestroy {
         }
 
         const payload = this.construirPayload();
-        const tienePrerrequisitoRaza = (payload.prerrequisitos?.raza?.length ?? 0) > 0;
         this.guardando = true;
         try {
-            const response = await this.racialSvc.crearRacial(payload);
-            await Swal.fire({
-                icon: 'success',
-                title: 'Racial creado',
-                text: response.message,
-                timer: 1800,
-                showConfirmButton: false,
-            });
-            this.racialCreado.emit({
-                idRacial: response.idRacial,
-                nombre: response.racial.Nombre,
-                racial: response.racial,
-                tienePrerrequisitoRaza,
-            });
-            this.resetFormulario();
+            if (this.esModoEdicion) {
+                const idRacial = this.entero(this.idRacial);
+                if (idRacial <= 0)
+                    throw new Error('No se encontró un id de racial válido para editar.');
+
+                const response = await this.racialSvc.actualizarRacial(idRacial, payload as RacialUpdateRequest);
+                const racialActualizado = await firstValueFrom(this.racialSvc.getRacial(response.idRacial).pipe(take(1)));
+                await Swal.fire({
+                    icon: 'success',
+                    title: 'Racial actualizado',
+                    text: response.message,
+                    timer: 1800,
+                    showConfirmButton: true,
+                    showCloseButton: true,
+                    confirmButtonText: 'Cerrar',
+                });
+                this.hidratarDesdeRacial(racialActualizado);
+                this.racialActualizado.emit(racialActualizado);
+                this.cerrar.emit();
+            } else {
+                const tienePrerrequisitoRaza = (payload.prerrequisitos?.raza?.length ?? 0) > 0;
+                const prerrequisitoRazaEnCreacion = this.tienePrerrequisitoRazaEnCreacion();
+                const response = await this.racialSvc.crearRacial(payload);
+                await Swal.fire({
+                    icon: 'success',
+                    title: 'Racial creado',
+                    text: response.message,
+                    timer: 1800,
+                    showConfirmButton: true,
+                    showCloseButton: true,
+                    confirmButtonText: 'Cerrar',
+                });
+                this.racialCreado.emit({
+                    idRacial: response.idRacial,
+                    nombre: response.racial.Nombre,
+                    racial: response.racial,
+                    tienePrerrequisitoRaza,
+                    prerrequisitoRazaEnCreacion,
+                });
+                this.resetFormulario();
+            }
         } catch (error: any) {
             await Swal.fire({
                 icon: 'error',
-                title: 'No se pudo crear el racial',
+                title: this.esModoEdicion ? 'No se pudo actualizar el racial' : 'No se pudo crear el racial',
                 text: error?.message ?? 'Error no identificado',
                 showConfirmButton: true,
             });
@@ -265,8 +339,28 @@ export class NuevaRacialComponent implements OnInit, OnDestroy {
         }
     }
 
+    async crearRacial(): Promise<void> {
+        await this.guardarRacial();
+    }
+
     cancelar(): void {
         this.cerrar.emit();
+    }
+
+    async confirmarSalidaSiHayCambios(): Promise<boolean> {
+        if (!this.esModoEdicion || !this.isDirty)
+            return true;
+
+        const result = await Swal.fire({
+            icon: 'warning',
+            title: 'Hay cambios sin guardar',
+            text: 'Si cierras esta pestaña perderás los cambios del racial.',
+            showCancelButton: true,
+            confirmButtonText: 'Cerrar sin guardar',
+            cancelButtonText: 'Seguir editando',
+        });
+
+        return result.isConfirmed === true;
     }
 
     agregarDote(): void {
@@ -405,6 +499,9 @@ export class NuevaRacialComponent implements OnInit, OnDestroy {
         this.prerrequisitosSeleccionados = types.filter((type): type is RacialPrerequisiteType =>
             type === 'raza' || type === 'caracteristica'
         );
+        this.prerrequisitosRows = this.prerrequisitosRows.filter((row) =>
+            this.prerrequisitosSeleccionados.includes(row.tipo as RacialPrerequisiteType)
+        );
     }
 
     onPrerrequisitosRowsChange(rows: PrerequisiteRowModel[]): void {
@@ -473,6 +570,38 @@ export class NuevaRacialComponent implements OnInit, OnDestroy {
         return Number(item.Id ?? item.id ?? item.Id_habilidad ?? item.Id_extra ?? 0);
     }
 
+    private cargarEdicionSiAplica(): void {
+        if (!this.esModoEdicion) {
+            this.ultimoIdRacialCargado = 0;
+            this.initialEditSnapshot = '';
+            return;
+        }
+
+        const idRacial = this.entero(this.idRacial);
+        if (idRacial <= 0 || idRacial === this.ultimoIdRacialCargado)
+            return;
+
+        this.cargandoEdicion = true;
+        this.racialSvc.getRacial(idRacial)
+            .pipe(take(1))
+            .subscribe({
+                next: (racial) => {
+                    this.hidratarDesdeRacial(racial);
+                    this.ultimoIdRacialCargado = idRacial;
+                    this.cargandoEdicion = false;
+                },
+                error: async (error) => {
+                    this.cargandoEdicion = false;
+                    await Swal.fire({
+                        icon: 'error',
+                        title: 'No se pudo cargar el racial',
+                        text: error?.message ?? 'Error no identificado',
+                        showConfirmButton: true,
+                    });
+                },
+            });
+    }
+
     private cargarCatalogos(): void {
         this.doteSvc.getDotes()
             .pipe(takeUntil(this.destroy$))
@@ -492,6 +621,23 @@ export class NuevaRacialComponent implements OnInit, OnDestroy {
                 next: (items) => this.razasCatalogo = this.ordenar(items).map((raza) => ({ id: raza.Id, nombre: raza.Nombre })),
                 error: () => this.razasCatalogo = [],
             });
+    }
+
+    private hidratarDesdeRacial(racial: RacialDetalle): void {
+        this.form.reset({
+            nombre: this.texto(racial?.Nombre),
+            descripcion: this.texto(racial?.Descripcion),
+        });
+
+        this.doteRows = this.hidratarDotes(racial);
+        this.habilidadesBaseRows = this.hidratarHabilidadesBase(racial);
+        this.habilidadesCustomRows = this.hidratarHabilidadesCustom(racial);
+        this.caracteristicasRows = this.hidratarCaracteristicas(racial);
+        this.salvacionesRows = this.hidratarSalvaciones(racial);
+        this.sortilegasRows = this.hidratarSortilegas(racial);
+        this.ataquesRows = this.hidratarAtaques(racial);
+        this.hidratarPrerrequisitos(racial);
+        this.initialEditSnapshot = this.buildEditSnapshot();
     }
 
     private construirPayload(): RacialCreateRequest {
@@ -531,6 +677,85 @@ export class NuevaRacialComponent implements OnInit, OnDestroy {
             payload.prerrequisitos = prerrequisitos;
 
         return payload;
+    }
+
+    private buildEditSnapshot(): string {
+        return JSON.stringify(this.normalizarPayloadParaComparacion(this.construirPayload()));
+    }
+
+    private normalizarPayloadParaComparacion(payload: RacialCreateRequest): RacialCreateRequest {
+        const normalizado: RacialCreateRequest = {
+            racial: {
+                nombre: this.texto(payload?.racial?.nombre),
+                ...(this.texto(payload?.racial?.descripcion).length > 0
+                    ? { descripcion: this.texto(payload?.racial?.descripcion) }
+                    : {}),
+            },
+        };
+
+        if ((payload.dotes?.length ?? 0) > 0) {
+            normalizado.dotes = [...(payload.dotes ?? [])]
+                .sort((a, b) => this.entero(a.id_dote) - this.entero(b.id_dote) || this.entero(a.id_extra) - this.entero(b.id_extra));
+        }
+
+        if ((payload.habilidades?.base?.length ?? 0) > 0 || (payload.habilidades?.custom?.length ?? 0) > 0) {
+            normalizado.habilidades = {
+                ...(payload.habilidades?.base?.length
+                    ? {
+                        base: [...payload.habilidades.base]
+                            .sort((a, b) => this.entero(a.id_habilidad) - this.entero(b.id_habilidad) || this.entero(a.id_extra) - this.entero(b.id_extra)),
+                    }
+                    : {}),
+                ...(payload.habilidades?.custom?.length
+                    ? {
+                        custom: [...payload.habilidades.custom]
+                            .sort((a, b) => this.entero(a.id_habilidad) - this.entero(b.id_habilidad) || this.entero(a.id_extra) - this.entero(b.id_extra)),
+                    }
+                    : {}),
+            };
+        }
+
+        if ((payload.caracteristicas?.length ?? 0) > 0) {
+            normalizado.caracteristicas = [...(payload.caracteristicas ?? [])]
+                .sort((a, b) => this.entero(a.id_caracteristica) - this.entero(b.id_caracteristica) || this.entero(a.cantidad) - this.entero(b.cantidad));
+        }
+
+        if ((payload.salvaciones?.length ?? 0) > 0) {
+            normalizado.salvaciones = [...(payload.salvaciones ?? [])]
+                .sort((a, b) => this.entero(a.id_salvacion) - this.entero(b.id_salvacion) || this.entero(a.cantidad) - this.entero(b.cantidad));
+        }
+
+        if ((payload.sortilegas?.length ?? 0) > 0) {
+            normalizado.sortilegas = [...(payload.sortilegas ?? [])]
+                .sort((a, b) => this.entero(a.id_conjuro) - this.entero(b.id_conjuro));
+        }
+
+        if ((payload.ataques?.length ?? 0) > 0) {
+            normalizado.ataques = [...(payload.ataques ?? [])]
+                .sort((a, b) => this.texto(a.descripcion).localeCompare(this.texto(b.descripcion), 'es', { sensitivity: 'base' }));
+        }
+
+        if ((payload.prerrequisitos?.raza?.length ?? 0) > 0 || (payload.prerrequisitos?.caracteristica?.length ?? 0) > 0) {
+            normalizado.prerrequisitos = {
+                ...(payload.prerrequisitos?.raza?.length
+                    ? {
+                        raza: [...payload.prerrequisitos.raza]
+                            .sort((a, b) => this.entero(a.id_raza) - this.entero(b.id_raza)),
+                    }
+                    : {}),
+                ...(payload.prerrequisitos?.caracteristica?.length
+                    ? {
+                        caracteristica: [...payload.prerrequisitos.caracteristica]
+                            .sort((a, b) =>
+                                this.entero(a.id_caracteristica) - this.entero(b.id_caracteristica)
+                                || this.entero(a.cantidad) - this.entero(b.cantidad)
+                                || this.entero(a.opcional) - this.entero(b.opcional)),
+                    }
+                    : {}),
+            };
+        }
+
+        return normalizado;
     }
 
     private construirDotesPayload(): RacialCreateDote[] {
@@ -603,36 +828,43 @@ export class NuevaRacialComponent implements OnInit, OnDestroy {
 
     private construirPrerrequisitosPayload(): RacialCreatePrerequisitos {
         const prerrequisitos: RacialCreatePrerequisitos = {};
-        this.prerrequisitosRows.forEach((row) => {
-            if (row.tipo === 'raza') {
-                const idRaza = this.entero(row.id);
-                if (idRaza > 0)
-                    prerrequisitos.raza = [...(prerrequisitos.raza ?? []), { id_raza: idRaza }];
-                return;
-            }
-
-            if (row.tipo === 'caracteristica') {
-                const idCaracteristica = this.entero(row.id);
-                const cantidad = this.entero(row.valor);
-                if (idCaracteristica > 0 && cantidad > 0) {
-                    const opcional = this.entero(row.opcional);
-                    prerrequisitos.caracteristica = [
-                        ...(prerrequisitos.caracteristica ?? []),
-                        {
-                            id_caracteristica: idCaracteristica,
-                            cantidad,
-                            ...(opcional > 0 ? { opcional } : {}),
-                        },
-                    ];
+        const tiposActivos = new Set(this.prerrequisitosSeleccionados);
+        this.prerrequisitosRows
+            .filter((row) => tiposActivos.has(row.tipo as RacialPrerequisiteType))
+            .forEach((row) => {
+                if (row.tipo === 'raza') {
+                    const idRaza = this.entero(row.id);
+                    if (idRaza === RAZA_EN_CREACION_PREREQ_ID)
+                        return;
+                    if (idRaza > 0)
+                        prerrequisitos.raza = [...(prerrequisitos.raza ?? []), { id_raza: idRaza }];
+                    return;
                 }
-            }
-        });
+
+                if (row.tipo === 'caracteristica') {
+                    const idCaracteristica = this.entero(row.id);
+                    const cantidad = this.entero(row.valor);
+                    if (idCaracteristica > 0 && cantidad > 0) {
+                        const opcional = this.entero(row.opcional);
+                        prerrequisitos.caracteristica = [
+                            ...(prerrequisitos.caracteristica ?? []),
+                            {
+                                id_caracteristica: idCaracteristica,
+                                cantidad,
+                                ...(opcional > 0 ? { opcional } : {}),
+                            },
+                        ];
+                    }
+                }
+            });
         return prerrequisitos;
     }
 
     private resetFormulario(): void {
         this.form.reset({ nombre: '', descripcion: '' });
         this.resetFilas();
+        this.initialEditSnapshot = '';
+        this.ultimoIdRacialCargado = 0;
     }
 
     private resetFilas(): void {
@@ -649,18 +881,159 @@ export class NuevaRacialComponent implements OnInit, OnDestroy {
 
     private actualizarPermisos(): void {
         this.puedeCrear = this.userSvc.can('razas', 'create');
+        this.puedeActualizar = this.userSvc.can('raciales', 'update');
     }
 
     private getCatalogoPrerrequisito(type: PrerequisiteType): PrerequisiteCatalogItem[] {
         if (type === 'raza')
-            return this.razasCatalogo;
+            return this.getRazasCatalogoPrerrequisito();
         if (type === 'caracteristica')
             return this.caracteristicasCatalogo;
         return [];
     }
 
     private getNombreCatalogoPrerrequisito(type: PrerequisiteType, id: number): string {
+        if (type === 'raza' && this.entero(id) === RAZA_EN_CREACION_PREREQ_ID)
+            return RAZA_EN_CREACION_PREREQ_LABEL;
         return findCatalogName(type, id, this.getCatalogoPrerrequisito(type));
+    }
+
+    private getRazasCatalogoPrerrequisito(): PrerequisiteCatalogItem[] {
+        if (!this.permitirRazaEnCreacionPrerrequisito)
+            return this.razasCatalogo;
+        return [
+            { id: RAZA_EN_CREACION_PREREQ_ID, nombre: RAZA_EN_CREACION_PREREQ_LABEL },
+            ...this.razasCatalogo,
+        ];
+    }
+
+    private tienePrerrequisitoRazaEnCreacion(): boolean {
+        if (!this.permitirRazaEnCreacionPrerrequisito || !this.prerrequisitosSeleccionados.includes('raza'))
+            return false;
+        return this.prerrequisitosRows.some((row) =>
+            row.tipo === 'raza' && this.entero(row.id) === RAZA_EN_CREACION_PREREQ_ID
+        );
+    }
+
+    private hidratarDotes(racial: RacialDetalle): DoteRow[] {
+        const rows = (racial?.Dotes ?? []).map((item) => ({
+            uid: this.uid(),
+            id_dote: this.entero(this.pick(item, 'Id_dote', 'id_dote', 'id', 'Id')),
+            id_extra: this.entero(this.pick(item, 'Id_extra', 'id_extra', 'i_ex', 'ie')),
+            busqueda: this.texto(this.pick(item, 'Dote', 'dote', 'Nombre', 'nombre')),
+            extraBusqueda: this.texto(this.pick(item, 'Extra', 'extra', 'x')),
+        }));
+        return rows.length > 0 ? rows : [this.crearDoteRow()];
+    }
+
+    private hidratarHabilidadesBase(racial: RacialDetalle): HabilidadBaseRow[] {
+        const rows = (racial?.Habilidades?.Base ?? []).map((item) => ({
+            uid: this.uid(),
+            id_habilidad: this.entero(this.pick(item, 'Id_habilidad', 'id_habilidad', 'id_h', 'ih', 'Id', 'id')),
+            rangos: this.entero(this.pick(item, 'Rangos', 'rangos', 'Cantidad', 'cantidad', 'r')),
+            id_extra: this.entero(this.pick(item, 'Id_extra', 'id_extra', 'i_ex', 'ie')),
+            se_considera_clasea: this.toBoolean(this.pick(item, 'Se_considera_clasea', 'se_considera_clasea', 'Clasea', 'clasea', 'sc')),
+            condicion: this.texto(this.pick(item, 'Condicion', 'condicion', 'c'), 'No especifica'),
+            busqueda: this.texto(this.pick(item, 'Habilidad', 'habilidad', 'Nombre', 'nombre', 'n')),
+            extraBusqueda: this.texto(this.pick(item, 'Extra', 'extra', 'x')),
+        }));
+        return rows.length > 0 ? rows : [this.crearHabilidadBaseRow()];
+    }
+
+    private hidratarHabilidadesCustom(racial: RacialDetalle): HabilidadCustomRow[] {
+        const rows = (racial?.Habilidades?.Custom ?? []).map((item) => ({
+            uid: this.uid(),
+            id_habilidad: this.entero(this.pick(item, 'Id_habilidad', 'id_habilidad', 'id_h', 'ih', 'Id', 'id')),
+            rangos: this.entero(this.pick(item, 'Rangos', 'rangos', 'Cantidad', 'cantidad', 'r')),
+            id_extra: this.entero(this.pick(item, 'Id_extra', 'id_extra', 'i_ex', 'ie')),
+            se_considera_clasea: this.toBoolean(this.pick(item, 'Se_considera_clasea', 'se_considera_clasea', 'Clasea', 'clasea', 'sc')),
+            busqueda: this.texto(this.pick(item, 'Habilidad', 'habilidad', 'Nombre', 'nombre', 'n')),
+            extraBusqueda: this.texto(this.pick(item, 'Extra', 'extra', 'x')),
+        }));
+        return rows.length > 0 ? rows : [this.crearHabilidadCustomRow()];
+    }
+
+    private hidratarCaracteristicas(racial: RacialDetalle): CaracteristicaRow[] {
+        const rows = (racial?.Caracteristicas ?? []).map((item) => ({
+            uid: this.uid(),
+            id_caracteristica: this.entero(this.pick(item, 'Id_caracteristica', 'id_caracteristica', 'Id', 'id')),
+            cantidad: this.entero(this.pick(item, 'Cantidad', 'cantidad', 'c')),
+        }));
+        return rows.length > 0 ? rows : [this.crearCaracteristicaRow()];
+    }
+
+    private hidratarSalvaciones(racial: RacialDetalle): SalvacionRow[] {
+        const rows = (racial?.Salvaciones ?? []).map((item) => ({
+            uid: this.uid(),
+            id_salvacion: this.entero(this.pick(item, 'Id_salvacion', 'id_salvacion', 'Id', 'id')),
+            cantidad: this.entero(this.pick(item, 'Cantidad', 'cantidad', 'c')),
+            condicion: this.texto(this.pick(item, 'Condicion', 'condicion', 'd'), 'No especifica'),
+        }));
+        return rows.length > 0 ? rows : [this.crearSalvacionRow()];
+    }
+
+    private hidratarSortilegas(racial: RacialDetalle): SortilegaRow[] {
+        const rows = (racial?.Sortilegas ?? []).map((item) => ({
+            uid: this.uid(),
+            id_conjuro: this.entero(item?.Conjuro?.Id ?? this.pick(item, 'Id_conjuro', 'id_conjuro', 'Id', 'id')),
+            nivel_lanzador: Math.max(1, this.entero(this.pick(item, 'Nivel_lanzador', 'nivel_lanzador', 'nl'), 1)),
+            usos_diarios: this.texto(this.pick(item, 'Usos_diarios', 'usos_diarios', 'ud'), '1/día'),
+            busqueda: this.texto(item?.Conjuro?.Nombre ?? this.pick(item, 'Conjuro', 'conjuro', 'Nombre', 'nombre')),
+        }));
+        return rows.length > 0 ? rows : [this.crearSortilegaRow()];
+    }
+
+    private hidratarAtaques(racial: RacialDetalle): AtaqueRow[] {
+        const rows = (racial?.Ataques ?? []).map((item) => ({
+            uid: this.uid(),
+            descripcion: this.texto(this.pick(item, 'Descripcion', 'descripcion', 'd')),
+        }));
+        return rows.length > 0 ? rows : [this.crearAtaqueRow()];
+    }
+
+    private hidratarPrerrequisitos(racial: RacialDetalle): void {
+        const rows: PrerequisiteRowModel[] = [];
+        const seleccionados = new Set<RacialPrerequisiteType>();
+
+        (racial?.Prerrequisitos?.raza ?? []).forEach((item) => {
+            const idRaza = this.entero(this.pick(item, 'Id_raza', 'id_raza', 'Id', 'id'));
+            if (idRaza <= 0)
+                return;
+            seleccionados.add('raza');
+            rows.push({
+                uid: this.uid(),
+                tipo: 'raza',
+                id: idRaza,
+                valor: 1,
+                opcional: this.entero(this.pick(item, 'Opcional', 'opcional', 'o')),
+                id_extra: null,
+                repetido: 1,
+                requiere_extra: false,
+                salvacion_tipo: 'fortaleza',
+            });
+        });
+
+        (racial?.Prerrequisitos?.caracteristica ?? []).forEach((item) => {
+            const idCaracteristica = this.entero(this.pick(item, 'Id_caracteristica', 'id_caracteristica', 'Id', 'id'));
+            const cantidad = this.entero(this.pick(item, 'Cantidad', 'cantidad', 'c'));
+            if (idCaracteristica <= 0 || cantidad <= 0)
+                return;
+            seleccionados.add('caracteristica');
+            rows.push({
+                uid: this.uid(),
+                tipo: 'caracteristica',
+                id: idCaracteristica,
+                valor: cantidad,
+                opcional: this.entero(this.pick(item, 'Opcional', 'opcional', 'o')),
+                id_extra: null,
+                repetido: 1,
+                requiere_extra: false,
+                salvacion_tipo: 'fortaleza',
+            });
+        });
+
+        this.prerrequisitosSeleccionados = Array.from(seleccionados);
+        this.prerrequisitosRows = rows;
     }
 
     private crearDoteRow(): DoteRow {
@@ -754,6 +1127,16 @@ export class NuevaRacialComponent implements OnInit, OnDestroy {
             .trim();
     }
 
+    private pick(source: any, ...keys: string[]): any {
+        if (!source || typeof source !== 'object')
+            return undefined;
+        for (const key of keys) {
+            if (Object.prototype.hasOwnProperty.call(source, key))
+                return source[key];
+        }
+        return undefined;
+    }
+
     private texto(value: unknown, fallback: string = ''): string {
         const text = `${value ?? ''}`.trim();
         return text.length > 0 ? text : fallback;
@@ -762,5 +1145,17 @@ export class NuevaRacialComponent implements OnInit, OnDestroy {
     private entero(value: unknown, fallback: number = 0): number {
         const parsed = Number(value);
         return Number.isFinite(parsed) ? Math.trunc(parsed) : fallback;
+    }
+
+    private toBoolean(value: unknown): boolean {
+        if (typeof value === 'boolean')
+            return value;
+        if (typeof value === 'number')
+            return value !== 0;
+        if (typeof value === 'string') {
+            const normalizado = value.trim().toLowerCase();
+            return ['1', 'true', 'si', 'sí', 'yes'].includes(normalizado);
+        }
+        return false;
     }
 }

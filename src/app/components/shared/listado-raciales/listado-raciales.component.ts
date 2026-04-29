@@ -1,7 +1,8 @@
-import { ChangeDetectorRef, Component, ElementRef, EventEmitter, Output, ViewChild } from '@angular/core';
+import { ChangeDetectorRef, Component, ElementRef, EventEmitter, OnDestroy, Output, ViewChild } from '@angular/core';
 import { MatPaginator } from '@angular/material/paginator';
 import { MatSort } from '@angular/material/sort';
 import { MatTableDataSource } from '@angular/material/table';
+import { Subject, takeUntil } from 'rxjs';
 import { RacialDetalle } from 'src/app/interfaces/racial';
 import { RacialService } from 'src/app/services/racial.service';
 
@@ -11,7 +12,8 @@ import { RacialService } from 'src/app/services/racial.service';
     styleUrls: ['./listado-raciales.component.sass'],
     standalone: false
 })
-export class ListadoRacialesComponent {
+export class ListadoRacialesComponent implements OnDestroy {
+    private readonly destroy$ = new Subject<void>();
     raciales: RacialDetalle[] = [];
     racialesDS = new MatTableDataSource(this.raciales);
     racialColumns = ['Nombre'];
@@ -25,12 +27,15 @@ export class ListadoRacialesComponent {
     ngAfterViewInit() {
         this.racialesDS.paginator = this.racialPaginator;
         this.racialesDS.sort = this.racialSort;
-        this.rSvc.getRaciales().subscribe(raciales => {
-            this.raciales = raciales;
-            this.cdr.detectChanges();
-            this.filtroRaciales();
-            this.cdr.detectChanges();
-        });
+        this.cargarRaciales();
+        this.rSvc.racialesMutados$
+            .pipe(takeUntil(this.destroy$))
+            .subscribe(() => this.cargarRaciales());
+    }
+
+    ngOnDestroy(): void {
+        this.destroy$.next();
+        this.destroy$.complete();
     }
 
     filtroRaciales() {
@@ -70,5 +75,16 @@ export class ListadoRacialesComponent {
             .replace(/[\u0300-\u036f]/g, '')
             .trim()
             .toLowerCase();
+    }
+
+    private cargarRaciales(): void {
+        this.rSvc.getRaciales()
+            .pipe(takeUntil(this.destroy$))
+            .subscribe((raciales) => {
+                this.raciales = raciales;
+                this.cdr.detectChanges();
+                this.filtroRaciales();
+                this.cdr.detectChanges();
+            });
     }
 }

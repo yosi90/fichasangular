@@ -29,6 +29,7 @@ describe('NuevaRazaComponent', () => {
     let canCreate: boolean;
     let currentUid: string;
     let razaSvc: jasmine.SpyObj<RazaService>;
+    let racialSvc: jasmine.SpyObj<RacialService>;
     let draftSvc: NuevaRazaDraftService;
     const acl$ = new Subject<void>();
     const isLoggedIn$ = new Subject<boolean>();
@@ -38,8 +39,20 @@ describe('NuevaRazaComponent', () => {
         currentUid = '';
         localStorage.clear();
         razaSvc = jasmine.createSpyObj<RazaService>('RazaService', ['getRazas', 'crearRaza']);
+        racialSvc = jasmine.createSpyObj<RacialService>('RacialService', ['getRaciales', 'anadirPrerrequisitosRacial']);
         razaSvc.getRazas.and.returnValue(of([]));
         razaSvc.crearRaza.and.resolveTo({ message: 'ok', idRaza: 99 });
+        racialSvc.getRaciales.and.returnValue(of([{ Id: 15, Nombre: 'Vision en la penumbra' } as any]));
+        racialSvc.anadirPrerrequisitosRacial.and.callFake(async (idRacial: number, prerrequisitos: any) => ({
+            message: 'ok',
+            idRacial,
+            racial: {
+                Id: idRacial,
+                Nombre: idRacial === 41 ? 'Entrenamiento propio' : 'Vision en la penumbra',
+                Prerrequisitos_flags: { raza: true, caracteristica_minima: false },
+                Prerrequisitos: { raza: prerrequisitos?.raza ?? [], caracteristica: [] },
+            } as any,
+        }));
 
         await TestBed.configureTestingModule({
             imports: [ReactiveFormsModule],
@@ -95,7 +108,7 @@ describe('NuevaRazaComponent', () => {
                     getHabilidadesCustom: () => of([{ Id_habilidad: 13, Nombre: 'Saber antiguo' }]),
                 } },
                 { provide: DoteService, useValue: { getDotes: () => of([{ Id: 14, Nombre: 'Alerta', Extras_soportados: {}, Extras_disponibles: { Armas: [], Armaduras: [], Escuelas: [], Habilidades: [] } }]) } },
-                { provide: RacialService, useValue: { getRaciales: () => of([{ Id: 15, Nombre: 'Vision en la penumbra' }]) } },
+                { provide: RacialService, useValue: racialSvc },
                 { provide: ConjuroService, useValue: { getConjuros: () => of([{ Id: 16, Nombre: 'Luz' }]) } },
                 { provide: ArmaService, useValue: { getArmas: () => of([{ Id: 17, Nombre: 'Espada larga' }]) } },
                 { provide: ArmaduraService, useValue: { getArmaduras: () => of([{ Id: 23, Nombre: 'Camisote de mallas' }]) } },
@@ -172,8 +185,8 @@ describe('NuevaRazaComponent', () => {
             edad_mediana: 35,
             edad_viejo: 53,
             edad_venerable: 70,
-            altura_rango_inf: 150,
-            altura_rango_sup: 190,
+            altura_rango_inf: 1.5,
+            altura_rango_sup: 1.9,
             peso_rango_inf: 50,
             peso_rango_sup: 90,
         });
@@ -209,8 +222,8 @@ describe('NuevaRazaComponent', () => {
                 edad_mediana: 35,
                 edad_viejo: 53,
                 edad_venerable: 70,
-                altura_rango_inf: 150,
-                altura_rango_sup: 190,
+                altura_rango_inf: 1.5,
+                altura_rango_sup: 1.9,
                 peso_rango_inf: 50,
                 peso_rango_sup: 90,
                 mutada: true,
@@ -243,6 +256,7 @@ describe('NuevaRazaComponent', () => {
                 habilidadesCustomRows: [{ uid: 'hc', id_habilidad: 13, cantidad: 1, busqueda: 'Saber' }],
                 dotesRows: [{ uid: 'd', id_dote: 14, id_extra: 0, busqueda: 'Alerta' }],
                 racialesRows: [{ uid: 'r', id_racial: 15, opcional: 0, busqueda: 'Vision' }],
+                racialesPendientesRazaEnCreacionIds: [],
                 sortilegiosRows: [{ uid: 's', id_conjuro: 16, nivel_lanzador: 2, usos_diarios: '1/dia', descripcion: 'No especifica', busqueda: 'Luz' }],
                 prerrequisitosMutacionRows: [prerreqRow('tipo_criatura', 3, 2)],
                 prerrequisitosMutacionSeleccionados: ['tipo_criatura'],
@@ -304,9 +318,13 @@ describe('NuevaRazaComponent', () => {
         expect(payload.subtipos).toEqual([6, 8]);
         expect(payload.idiomas).toEqual([7, 9]);
         expect(payload.competencias).toEqual({ armas: [17], armaduras: [23], gruposArma: [18], gruposArmadura: [19] });
-        expect(payload.habilidades?.base?.length).toBe(1);
+        expect(payload.habilidades?.base).toEqual([{
+            id_habilidad: 11,
+            cantidad: 2,
+            varios: 'No especifica',
+        }]);
         expect(payload.habilidades?.custom).toEqual([{ id_habilidad: 13, cantidad: 1 }]);
-        expect(payload.dotes).toEqual([{ id_dote: 14, id_extra: 0 }]);
+        expect(payload.dotes).toEqual([{ id_dote: 14 }]);
         expect(payload.raciales).toEqual([{ id_racial: 15, opcional: 0 }]);
         expect(payload.sortilegios).toEqual([{ id_conjuro: 16, nivel_lanzador: 3, usos_diarios: '1/dia', descripcion: 'No especifica' }]);
         expect(payload.prerrequisitos).toEqual({
@@ -338,6 +356,31 @@ describe('NuevaRazaComponent', () => {
             opcional: 0,
             busqueda: 'Piel pétrea',
         }));
+    });
+
+    it('selecciona automáticamente el racial creado para la raza en creación', () => {
+        component.racialesRows = [{ uid: 'r1', id_racial: 0, opcional: 1, busqueda: '' }];
+        component.modalNuevoRacialVisible = true;
+
+        component.onRacialCreadoDesdeModal({
+            idRacial: 41,
+            nombre: 'Entrenamiento propio',
+            racial: {
+                Id: 41,
+                Nombre: 'Entrenamiento propio',
+                Prerrequisitos_flags: { raza: false },
+                Prerrequisitos: { raza: [] },
+            } as any,
+            prerrequisitoRazaEnCreacion: true,
+        });
+
+        expect(component.modalNuevoRacialVisible).toBeFalse();
+        expect(component.racialesRows[0]).toEqual(jasmine.objectContaining({
+            id_racial: 41,
+            opcional: 0,
+            busqueda: 'Entrenamiento propio',
+        }));
+        expect(component.tieneRacialesPendientesRazaEnCreacion()).toBeTrue();
     });
 
     it('no ofrece raciales con prerrequisitos de raza en nueva raza', () => {
@@ -578,7 +621,35 @@ describe('NuevaRazaComponent', () => {
         }]);
     });
 
-    it('fuerza extra cero en habilidad base sin extras soportados', () => {
+    it('permite extra Elegir con id 0 en habilidades base con extra libre', () => {
+        component.habilidades = [{
+            Id: 31,
+            Id_habilidad: 31,
+            Nombre: 'Saber',
+            Soporta_extra: true,
+            Extras: [],
+        } as any];
+        component.habilidadesBaseRows = [{
+            uid: 'a',
+            id_habilidad: 31,
+            cantidad: 1,
+            id_extra: 0,
+            varios: 'No especifica',
+        }];
+
+        const extras = component.getExtrasHabilidadBase(component.habilidadesBaseRows[0]);
+        const payload = component.buildPayload();
+
+        expect(extras).toContain(jasmine.objectContaining({ Id: 0, Nombre: 'Elegir' }));
+        expect(payload.habilidades?.base).toEqual([{
+            id_habilidad: 31,
+            cantidad: 1,
+            id_extra: 0,
+            varios: 'No especifica',
+        }]);
+    });
+
+    it('omite extra en habilidad base sin extras soportados', () => {
         component.habilidades = [{
             Id: 12,
             Id_habilidad: 12,
@@ -596,7 +667,11 @@ describe('NuevaRazaComponent', () => {
 
         const payload = component.buildPayload();
 
-        expect(payload.habilidades?.base?.[0].id_extra).toBe(0);
+        expect(payload.habilidades?.base?.[0]).toEqual({
+            id_habilidad: 12,
+            cantidad: 2,
+            varios: 'No especifica',
+        });
     });
 
     it('filtra relaciones y excluye ids ya seleccionados', () => {
@@ -632,6 +707,8 @@ describe('NuevaRazaComponent', () => {
 
         expect(component.manualBusqueda).toBe('Manual base');
         expect(component.clasePredilectaBusqueda).toBe('Guerrero');
+        expect(component.displayManualAutocomplete(1)).toBe('Manual base');
+        expect(component.displayClasePredilectaAutocomplete(1)).toBe('Guerrero');
         expect(component.buildPayload().raza.id_manual).toBe(1);
         expect(component.buildPayload().raza.id_clase_predilecta).toBe(1);
     });
@@ -671,8 +748,8 @@ describe('NuevaRazaComponent', () => {
             dotes_dg: 0,
             puntos_hab: 0,
             puntos_hab_mult: 0,
-            id_tipo_dado: 0,
-            id_tipo_criatura_dgs: 0,
+            id_tipo_dado: 22,
+            id_tipo_criatura_dgs: 3,
         }));
 
         component.form.patchValue({ dgs_extra: 1 });
@@ -731,8 +808,8 @@ describe('NuevaRazaComponent', () => {
 
     it('valida rangos y orden de edades', () => {
         component.form.patchValue({
-            altura_rango_inf: 190,
-            altura_rango_sup: 150,
+            altura_rango_inf: 1.9,
+            altura_rango_sup: 1.5,
             edad_adulto: 30,
             edad_mediana: 20,
         });
@@ -744,7 +821,7 @@ describe('NuevaRazaComponent', () => {
     it('valida limites de cuerpo, edades y otros valores numericos', () => {
         component.form.patchValue({
             altura_rango_inf: 0,
-            altura_rango_sup: 1001,
+            altura_rango_sup: 10.01,
             peso_rango_inf: 0,
             peso_rango_sup: 10001,
             edad_adulto: 0,
@@ -764,6 +841,18 @@ describe('NuevaRazaComponent', () => {
         expect(component.form.controls.dotes_extra.invalid).toBeTrue();
         expect(component.form.controls.puntos_extra_1.invalid).toBeTrue();
         expect(component.form.controls.puntos_extra.invalid).toBeTrue();
+    });
+
+    it('conserva altura decimal en metros dentro del payload', () => {
+        component.form.patchValue({
+            altura_rango_inf: 1.52,
+            altura_rango_sup: 1.87,
+        });
+
+        const payload = component.buildPayload();
+
+        expect(payload.raza.altura_rango_inf).toBe(1.52);
+        expect(payload.raza.altura_rango_sup).toBe(1.87);
     });
 
     it('permite textos tecnicos vacios como no especifica y valida longitudes si se rellenan', () => {
@@ -868,6 +957,80 @@ describe('NuevaRazaComponent', () => {
         const borrador = draftSvc.leerBorradorLocal(uid);
         expect(borrador?.formValue['nombre']).toBe('Raza persistida');
         expect(borrador?.selectedIndex).toBe(2);
+    });
+
+    it('persiste y restaura raciales pendientes de completar la raza en creación', async () => {
+        const uid = 'uid-raciales-pendientes';
+        await recrearComponenteConUid(uid);
+        component.form.patchValue({
+            nombre: 'Raza persistida',
+            descripcion: 'Descripción suficientemente larga para persistir',
+        });
+        component.onRacialCreadoDesdeModal({
+            idRacial: 41,
+            nombre: 'Entrenamiento propio',
+            racial: { Id: 41, Nombre: 'Entrenamiento propio', Prerrequisitos_flags: { raza: false }, Prerrequisitos: { raza: [] } } as any,
+            prerrequisitoRazaEnCreacion: true,
+        });
+
+        component.onBeforeUnload();
+        fixture.destroy();
+        currentUid = uid;
+        spyOn(Swal, 'fire').and.resolveTo({ isConfirmed: true } as any);
+        fixture = TestBed.createComponent(NuevaRazaComponent);
+        component = fixture.componentInstance;
+        fixture.detectChanges();
+        await Promise.resolve();
+
+        expect(component.tieneRacialesPendientesRazaEnCreacion()).toBeTrue();
+    });
+
+    it('completa prerrequisitos pendientes cuando la raza se crea', async () => {
+        setFormularioValido();
+        component.onRacialCreadoDesdeModal({
+            idRacial: 41,
+            nombre: 'Entrenamiento propio',
+            racial: { Id: 41, Nombre: 'Entrenamiento propio', Prerrequisitos_flags: { raza: false }, Prerrequisitos: { raza: [] } } as any,
+            prerrequisitoRazaEnCreacion: true,
+        });
+        spyOn(Swal, 'fire').and.resolveTo({ isConfirmed: true } as any);
+
+        await component.crearRaza();
+
+        expect(racialSvc.anadirPrerrequisitosRacial).toHaveBeenCalledWith(41, {
+            raza: [{ id_raza: 99 }],
+        });
+        expect(component.tieneRacialesPendientesRazaEnCreacion()).toBeFalse();
+    });
+
+    it('hace log del payload antes de crear la raza', async () => {
+        setFormularioValido();
+        spyOn(Swal, 'fire').and.resolveTo({ isConfirmed: true } as any);
+        const consoleSpy = spyOn(console, 'log');
+
+        await component.crearRaza();
+
+        expect(consoleSpy).toHaveBeenCalledWith(
+            '[NuevaRaza] Payload crear raza',
+            razaSvc.crearRaza.calls.mostRecent().args[0]
+        );
+    });
+
+    it('avisa al intentar salir si quedan raciales pendientes de completar', async () => {
+        component.onRacialCreadoDesdeModal({
+            idRacial: 41,
+            nombre: 'Entrenamiento propio',
+            racial: { Id: 41, Nombre: 'Entrenamiento propio', Prerrequisitos_flags: { raza: false }, Prerrequisitos: { raza: [] } } as any,
+            prerrequisitoRazaEnCreacion: true,
+        });
+        spyOn(Swal, 'fire').and.resolveTo({ isConfirmed: false } as any);
+
+        const puedeCerrar = await component.confirmarSalidaConRacialesPendientes();
+
+        expect(puedeCerrar).toBeFalse();
+        expect(Swal.fire).toHaveBeenCalledWith(jasmine.objectContaining({
+            title: 'Racial pendiente de completar',
+        }));
     });
 
     it('limpia borrador tras crear raza correctamente', async () => {
