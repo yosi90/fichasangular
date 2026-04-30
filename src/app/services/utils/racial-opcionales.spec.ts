@@ -12,6 +12,7 @@ function racial(id: number, nombre: string, opcional: any): RacialDetalle {
         Id: id,
         Nombre: nombre,
         Descripcion: '',
+        Oficial: true,
         Opcional: opcional,
         Dotes: [],
         Habilidades: { Base: [], Custom: [] },

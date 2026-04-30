@@ -1,14 +1,20 @@
 @use '../../../../assets/css/preformas/_inserciones' as inserciones
 
+:host
+    display: block
+    min-height: 0
+
 .nueva-racial-shell
     @include inserciones.insercion-shell
 
 .nueva-racial-shell--modal
-    max-height: min(86vh, 900px)
-    overflow: auto
+    display: flex
+    min-height: 0
+    overflow: hidden
 
 .nueva-racial-form
     @include inserciones.insercion-form-base
+    min-height: 0
 
     .modal-head
         display: flex
@@ -32,6 +38,10 @@
 
     .full-span
         grid-column: 1 / -1
+
+    .racial-status-row
+        align-items: center
+        min-height: 56px
 
     .editors-accordion
         display: block

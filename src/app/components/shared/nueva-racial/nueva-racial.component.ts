@@ -181,6 +181,7 @@ export class NuevaRacialComponent implements OnInit, OnDestroy, OnChanges {
     readonly form = this.fb.group({
         nombre: ['', [Validators.required, Validators.minLength(3), Validators.maxLength(200)]],
         descripcion: ['', [Validators.maxLength(5000)]],
+        oficial: [true],
     });
 
     constructor(
@@ -345,6 +346,12 @@ export class NuevaRacialComponent implements OnInit, OnDestroy, OnChanges {
 
     cancelar(): void {
         this.cerrar.emit();
+    }
+
+    toggleOficial(): void {
+        this.form.controls.oficial.setValue(this.form.controls.oficial.value !== true);
+        this.form.controls.oficial.markAsDirty();
+        this.form.controls.oficial.markAsTouched();
     }
 
     async confirmarSalidaSiHayCambios(): Promise<boolean> {
@@ -627,6 +634,7 @@ export class NuevaRacialComponent implements OnInit, OnDestroy, OnChanges {
         this.form.reset({
             nombre: this.texto(racial?.Nombre),
             descripcion: this.texto(racial?.Descripcion),
+            oficial: racial?.Oficial !== false,
         });
 
         this.doteRows = this.hidratarDotes(racial);
@@ -645,8 +653,8 @@ export class NuevaRacialComponent implements OnInit, OnDestroy, OnChanges {
         const descripcion = this.texto(this.form.value.descripcion);
         const payload: RacialCreateRequest = {
             racial: descripcion.length > 0
-                ? { nombre, descripcion }
-                : { nombre },
+                ? { nombre, descripcion, oficial: this.form.value.oficial === true }
+                : { nombre, oficial: this.form.value.oficial === true },
         };
 
         const dotes = this.construirDotesPayload();
@@ -687,6 +695,7 @@ export class NuevaRacialComponent implements OnInit, OnDestroy, OnChanges {
         const normalizado: RacialCreateRequest = {
             racial: {
                 nombre: this.texto(payload?.racial?.nombre),
+                oficial: payload?.racial?.oficial === true,
                 ...(this.texto(payload?.racial?.descripcion).length > 0
                     ? { descripcion: this.texto(payload?.racial?.descripcion) }
                     : {}),
@@ -861,7 +870,7 @@ export class NuevaRacialComponent implements OnInit, OnDestroy, OnChanges {
     }
 
     private resetFormulario(): void {
-        this.form.reset({ nombre: '', descripcion: '' });
+        this.form.reset({ nombre: '', descripcion: '', oficial: true });
         this.resetFilas();
         this.initialEditSnapshot = '';
         this.ultimoIdRacialCargado = 0;

@@ -31,6 +31,14 @@
                                     <mat-error *ngIf="nombreControl.hasError('maxlength')">Máximo 200 caracteres.</mat-error>
                                 </mat-form-field>
 
+                                <div class="estado-row racial-status-row">
+                                    <mat-chip-listbox class="boolean-chips" aria-label="Estado del racial">
+                                        <mat-chip-option [selected]="form.controls.oficial.value === true" (click)="toggleOficial()">
+                                            Oficial
+                                        </mat-chip-option>
+                                    </mat-chip-listbox>
+                                </div>
+
                                 <mat-form-field appearance="fill" class="full-span">
                                     <mat-label>Descripción</mat-label>
                                     <textarea matInput formControlName="descripcion" rows="4" maxlength="5000"></textarea>

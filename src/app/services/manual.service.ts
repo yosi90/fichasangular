@@ -1,4 +1,5 @@
 import { Injectable } from '@angular/core';
+import { Auth } from '@angular/fire/auth';
 import { Database, Unsubscribe, onValue, ref, set } from '@angular/fire/database';
 import { Observable, firstValueFrom } from 'rxjs';
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
@@ -62,6 +63,7 @@ export class ManualService {
         private db: Database,
         private http: HttpClient,
         private firebaseContextSvc: FirebaseInjectionContextService,
+        private auth?: Auth,
     ) { }
 
     getManual(id: number): Observable<Manual> {
@@ -157,8 +159,9 @@ export class ManualService {
         }, {} as ManualFlagsPatchPayload);
 
         try {
+            const headers = await this.buildAuthHeaders();
             const response = await firstValueFrom(
-                this.http.patch(`${environment.apiUrl}manuales/${id}`, requestBody)
+                this.http.patch(`${environment.apiUrl}manuales/${id}`, requestBody, { headers })
             );
             const manual = normalizeManual(response);
             if (manual.Id <= 0 || `${manual.Nombre ?? ''}`.trim().length < 1)
@@ -167,6 +170,10 @@ export class ManualService {
         } catch (error: any) {
             if (error instanceof HttpErrorResponse) {
                 const backendMessage = this.extractErrorMessage(error.error);
+                if (error.status === 401)
+                    throw new Error(`Sesión no válida para actualizar manuales${backendMessage.length > 0 ? `. ${backendMessage}` : ''}`);
+                if (error.status === 403)
+                    throw new Error(`No tienes permisos para actualizar manuales${backendMessage.length > 0 ? `. ${backendMessage}` : ''}`);
                 if (backendMessage.length > 0)
                     throw new Error(backendMessage);
                 if (error.status === 404)
@@ -233,5 +240,19 @@ export class ManualService {
         }
 
         return '';
+    }
+
+    private async buildAuthHeaders(): Promise<{ Authorization: string; }> {
+        const user = this.auth?.currentUser;
+        if (!user)
+            throw new Error('Sesión no iniciada');
+
+        const idToken = await user.getIdToken();
+        if (`${idToken ?? ''}`.trim().length < 1)
+            throw new Error('Token no disponible');
+
+        return {
+            Authorization: `Bearer ${idToken}`,
+        };
     }
 }

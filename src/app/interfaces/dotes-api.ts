@@ -41,7 +41,6 @@ export interface DoteCreateRequest {
 export interface DoteCreateApiResponse {
     message: string;
     idDote: number;
-    uid: string;
 }
 
 export interface DoteCreateResponse {

@@ -169,7 +169,7 @@ describe('DoteService', () => {
 
     it('devuelve respuesta normalizada cuando el POST es exitoso', async () => {
         const httpMock = jasmine.createSpyObj('HttpClient', ['post', 'get']);
-        httpMock.post.and.returnValue(of({ message: 'Dote creada', idDote: 9, uid: 'uid-1' }));
+        httpMock.post.and.returnValue(of({ message: 'Dote creada', idDote: 9 }));
         httpMock.get.and.returnValue(throwError(() => new Error('refresh fail')));
         const service = new DoteService(authMock, {} as any, httpMock, firebaseContextMock);
 
@@ -190,6 +190,10 @@ describe('DoteService', () => {
                 }),
             })
         );
+        const body = JSON.stringify(httpMock.post.calls.mostRecent().args[1]);
+        expect(body).not.toContain('uid');
+        expect(body).not.toContain('firebaseUid');
+        expect(body).not.toContain('createdAt');
     });
 
     it('mapea 409 de duplicado a mensaje específico de nombre', async () => {

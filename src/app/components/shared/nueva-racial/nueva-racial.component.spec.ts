@@ -14,6 +14,7 @@ describe('NuevaRacialComponent', () => {
         Id: 41,
         Nombre: 'Piel pétrea',
         Descripcion: '',
+        Oficial: true,
         Dotes: [],
         Habilidades: { Base: [], Custom: [] },
         Caracteristicas: [],
@@ -77,7 +78,17 @@ describe('NuevaRacialComponent', () => {
 
         const payload = (component as any).construirPayload();
 
-        expect(payload).toEqual({ racial: { nombre: 'Piel pétrea' } });
+        expect(payload).toEqual({ racial: { nombre: 'Piel pétrea', oficial: true } });
+    });
+
+    it('permite alternar oficial y lo incluye en el payload', () => {
+        component.form.patchValue({ nombre: 'Piel pétrea' });
+
+        component.toggleOficial();
+        const payload = (component as any).construirPayload();
+
+        expect(component.form.controls.oficial.value).toBeFalse();
+        expect(payload.racial.oficial).toBeFalse();
     });
 
     it('construye dotes con id_extra -1 cuando no hay extra', () => {
@@ -263,6 +274,7 @@ describe('NuevaRacialComponent', () => {
 
         expect(racialSvc.getRacial).toHaveBeenCalledWith(41);
         expect(component.form.value.nombre).toBe('Linaje de piedra');
+        expect(component.form.value.oficial).toBeTrue();
         expect(component.doteRows[0].id_dote).toBe(5);
         expect(component.habilidadesBaseRows[0].id_habilidad).toBe(7);
         expect(component.caracteristicasRows[0].id_caracteristica).toBe(1);
@@ -293,7 +305,7 @@ describe('NuevaRacialComponent', () => {
         await component.guardarRacial();
 
         expect(racialSvc.actualizarRacial).toHaveBeenCalledWith(41, jasmine.objectContaining({
-            racial: jasmine.objectContaining({ nombre: 'Piel pétrea mejorada' }),
+            racial: jasmine.objectContaining({ nombre: 'Piel pétrea mejorada', oficial: true }),
         }));
         expect(Swal.fire).toHaveBeenCalledWith(jasmine.objectContaining({
             title: 'Racial actualizado',
@@ -343,6 +355,11 @@ describe('NuevaRacialComponent', () => {
         expect(component.isDirty).toBeFalse();
 
         component.form.patchValue({ nombre: 'Linaje de piedra' });
+        expect(component.isDirty).toBeFalse();
+
+        component.toggleOficial();
+        expect(component.isDirty).toBeTrue();
+        component.toggleOficial();
         expect(component.isDirty).toBeFalse();
 
         component.form.patchValue({ nombre: 'Linaje de hierro' });

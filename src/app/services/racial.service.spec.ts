@@ -42,7 +42,7 @@ describe('RacialService', () => {
 
     it('crearRacial envia Bearer, no envia auditoria y normaliza respuesta', async () => {
         http.post.and.returnValue(of({ message: 'ok', idRacial: 31, racial: { Id: 31, Nombre: 'Alas' } }));
-        const payload = { racial: { nombre: 'Alas' } };
+        const payload = { racial: { nombre: 'Alas', oficial: true } };
 
         const response = await service.crearRacial(payload as any);
 
@@ -51,7 +51,11 @@ describe('RacialService', () => {
             payload,
             { headers: { Authorization: 'Bearer token-racial' } }
         );
-        expect(JSON.stringify(http.post.calls.mostRecent().args[1])).not.toContain('uid');
+        const body = JSON.stringify(http.post.calls.mostRecent().args[1]);
+        expect(body).toContain('"oficial":true');
+        expect(body).not.toContain('uid');
+        expect(body).not.toContain('firebaseUid');
+        expect(body).not.toContain('createdAt');
         expect(response.idRacial).toBe(31);
         expect(response.racial.Nombre).toBe('Alas');
     });
@@ -62,13 +66,13 @@ describe('RacialService', () => {
             error: { message: 'Falta razas.create' },
         })));
 
-        await expectAsync(service.crearRacial({ racial: { nombre: 'Alas' } } as any))
+        await expectAsync(service.crearRacial({ racial: { nombre: 'Alas', oficial: true } } as any))
             .toBeRejectedWithError('No tienes permisos para crear raciales. Falta razas.create');
     });
 
     it('actualizarRacial usa PUT y normaliza la respuesta', async () => {
         http.put.and.returnValue(of({ message: 'ok', idRacial: 31, racial: { Id: 31, Nombre: 'Alas actualizadas' } }));
-        const payload = { racial: { nombre: 'Alas actualizadas', descripcion: 'Nueva desc' } };
+        const payload = { racial: { nombre: 'Alas actualizadas', descripcion: 'Nueva desc', oficial: false } };
 
         const response = await service.actualizarRacial(31, payload as any);
 
@@ -77,6 +81,11 @@ describe('RacialService', () => {
             payload,
             { headers: { Authorization: 'Bearer token-racial' } }
         );
+        const body = JSON.stringify(http.put.calls.mostRecent().args[1]);
+        expect(body).toContain('"oficial":false');
+        expect(body).not.toContain('uid');
+        expect(body).not.toContain('firebaseUid');
+        expect(body).not.toContain('createdAt');
         expect(response.racial.Nombre).toBe('Alas actualizadas');
     });
 
@@ -90,6 +99,10 @@ describe('RacialService', () => {
             { prerrequisitos: { raza: [{ id_raza: 99 }] } },
             { headers: { Authorization: 'Bearer token-racial' } }
         );
+        const body = JSON.stringify(http.patch.calls.mostRecent().args[1]);
+        expect(body).not.toContain('uid');
+        expect(body).not.toContain('firebaseUid');
+        expect(body).not.toContain('createdAt');
         expect(response.idRacial).toBe(31);
     });
 });

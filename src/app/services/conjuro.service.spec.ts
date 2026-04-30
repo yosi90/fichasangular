@@ -203,7 +203,7 @@ describe('ConjuroService', () => {
 
     it('devuelve respuesta normalizada cuando el POST es exitoso', async () => {
         const httpMock = jasmine.createSpyObj('HttpClient', ['post', 'get']);
-        httpMock.post.and.returnValue(of({ message: 'Conjuro creado', idConjuro: 9, uid: 'uid-1' }));
+        httpMock.post.and.returnValue(of({ message: 'Conjuro creado', idConjuro: 9 }));
         httpMock.get.and.returnValue(of([]));
         const service = new ConjuroService(authMock, {} as any, httpMock, firebaseContextMock);
 
@@ -224,6 +224,10 @@ describe('ConjuroService', () => {
                 }),
             })
         );
+        const body = JSON.stringify(httpMock.post.calls.mostRecent().args[1]);
+        expect(body).not.toContain('uid');
+        expect(body).not.toContain('firebaseUid');
+        expect(body).not.toContain('createdAt');
     });
 
     it('mapea 409 de duplicado a mensaje específico de nombre', async () => {

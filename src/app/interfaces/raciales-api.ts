@@ -3,6 +3,7 @@ import { RacialDetalle } from "./racial";
 export interface RacialCreateCore {
     nombre: string;
     descripcion?: string;
+    oficial: boolean;
 }
 
 export interface RacialCreateDote {

@@ -50,7 +50,6 @@ export interface ConjuroCreateRequest {
 export interface ConjuroCreateApiResponse {
     message: string;
     idConjuro: number;
-    uid: string;
 }
 
 export interface ConjuroCreateResponse {

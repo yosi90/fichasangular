@@ -136,6 +136,7 @@ describe('DetallesMonstruoComponent', () => {
             Id: 5,
             Nombre: 'Mordisco mejorado',
             Descripcion: '',
+            Oficial: true,
             Dotes: [],
             Habilidades: { Base: [], Custom: [] },
             Caracteristicas: [],

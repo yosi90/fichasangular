@@ -274,6 +274,7 @@ function normalizeRacialesApi(raw: any): RacialDetalle[] {
         Id: toNumber(item?.Id),
         Nombre: toText(item?.Nombre),
         Descripcion: toText(item?.Descripcion),
+        Oficial: item?.Oficial === undefined ? true : toBoolean(item?.Oficial),
         Origen: toText(item?.Origen).trim(),
         Opcional: toNumber(item?.Opcional),
         Dotes: toStrictArray(item?.Dotes).map((dote: any) => ({

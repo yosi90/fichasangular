@@ -519,7 +519,11 @@
 .selector-dialog--wide
     width: min(1180px, calc(100vw - 48px))
     max-height: min(90vh, 920px)
-    overflow: auto
+    overflow: hidden
+
+    app-nueva-racial
+        display: block
+        min-height: 0
 
 ::ng-deep .selector-dialog .mat-mdc-form-field
     width: 100%

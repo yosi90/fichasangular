@@ -7,6 +7,7 @@ function crearRacialBase(): RacialDetalle {
         Id: 1,
         Nombre: 'Racial de prueba',
         Descripcion: '',
+        Oficial: true,
         Opcional: 1,
         Dotes: [],
         Habilidades: { Base: [], Custom: [] },

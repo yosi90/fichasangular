@@ -421,6 +421,7 @@ describe('TabControlComponent navegación por origen', () => {
             Id: 41,
             Nombre: 'Alas perfeccionadas',
             Descripcion: 'Nueva descripción',
+            Oficial: true,
             Dotes: [],
             Habilidades: { Base: [], Custom: [] },
             Caracteristicas: [],
