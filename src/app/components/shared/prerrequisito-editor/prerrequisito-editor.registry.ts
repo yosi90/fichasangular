@@ -82,6 +82,10 @@ function buildCatalogPayload(
         return { ...base, Id_grupo: id, Grupo: context.getCatalogName(tipo, id) };
     if (tipo === 'conjuros_escuela')
         return { ...base, Id_escuela: id, Escuela: context.getCatalogName(tipo, id), Cantidad: valor };
+    if (tipo === 'conjuro_conocido')
+        return { ...base, Id_conjuro: id, Conjuro: context.getCatalogName(tipo, id) };
+    if (tipo === 'conocer_poder_psionico')
+        return { ...base, Id_conjuro: id, Conjuro: context.getCatalogName(tipo, id) };
     if (tipo === 'dominio')
         return { ...base, Id_dominio: id, Dominio: context.getCatalogName(tipo, id) };
     if (tipo === 'dote')
@@ -107,6 +111,8 @@ function buildCatalogPayload(
         return { ...base, Id_clase: id, Clase: context.getCatalogName(tipo, id), Nivel: valor };
     if (tipo === 'raza')
         return { ...base, Id_raza: id, Raza: context.getCatalogName(tipo, id) };
+    if (tipo === 'no_raza')
+        return { ...base, Id_raza: id, Raza: context.getCatalogName(tipo, id) };
     if (tipo === 'region')
         return { ...base, Id_region: id, Region: context.getCatalogName(tipo, id) };
     if (tipo === 'salvacion_minimo') {
@@ -121,6 +127,8 @@ function buildCatalogPayload(
     }
     if (tipo === 'tamano_maximo' || tipo === 'tamano_minimo')
         return { ...base, Id_tamano: id, Tamano: context.getCatalogName(tipo, id) };
+    if (tipo === 'subtipo')
+        return { ...base, Id_subtipo: id, Subtipo: context.getCatalogName(tipo, id) };
     if (tipo === 'tipo_criatura')
         return { ...base, Id_tipo: id, Tipo: context.getCatalogName(tipo, id) };
     if (tipo === 'tipo_dote')
@@ -133,7 +141,7 @@ function buildValuePayload(row: PrerequisiteRowModel): Record<string, any> {
     const valor = toInt(row.valor, 0);
     const base = buildBase(row);
 
-    if (tipo === 'ataque_base' || tipo === 'dg' || tipo === 'nivel' || tipo === 'nivel_max')
+    if (tipo === 'ataque_base' || tipo === 'dg' || tipo === 'nivel' || tipo === 'nivel_max' || tipo === 'reserva_psionica')
         return { ...base, Cantidad: valor };
 
     return { ...base, Nivel: valor };
@@ -243,10 +251,27 @@ export const PREREQUISITE_EDITOR_DEFINITIONS: PrerequisiteEditorDefinition[] = [
         isComplete: isCatalogValueComplete,
         toPayload: buildCatalogPayload,
     }),
+    definition('conjuro_conocido', 'Conjuro conocido', 'catalog-only', {
+        requiredCatalogs: ['conjuros'],
+        catalogLabel: 'Conjuro',
+        isComplete: isCatalogOnlyComplete,
+        toPayload: buildCatalogPayload,
+    }),
+    definition('conocer_poder_psionico', 'Conocer poder psionico concreto', 'catalog-only', {
+        requiredCatalogs: ['conjuros'],
+        catalogLabel: 'Poder',
+        isComplete: isCatalogOnlyComplete,
+        toPayload: buildCatalogPayload,
+    }),
     definition('dg', 'Cantidad de DGs minima', 'value-only', {
         valueLabel: 'DG minimos',
         isComplete: isValueOnlyComplete,
         toPayload: (row) => buildValuePayload(row),
+    }),
+    definition('genero', 'Genero requerido', 'catalog-only', {
+        catalogLabel: 'Genero',
+        isComplete: isCatalogOnlyComplete,
+        toPayload: (row) => ({ ...buildBase(row), Id_genero: toInt(row.id, 0), Genero: row.id === 1 ? 'Masculino' : row.id === 2 ? 'Femenino' : 'Otro' }),
     }),
     definition('dominio', 'Dominio requerido', 'catalog-only', {
         requiredCatalogs: ['dominios'],
@@ -321,6 +346,11 @@ export const PREREQUISITE_EDITOR_DEFINITIONS: PrerequisiteEditorDefinition[] = [
         isComplete: isValueOnlyComplete,
         toPayload: (row) => buildValuePayload(row),
     }),
+    definition('lanzar_poder_psionico_nivel', 'Nivel minimo de poder psionico', 'value-only', {
+        valueLabel: 'Nivel',
+        isComplete: isValueOnlyComplete,
+        toPayload: (row) => buildValuePayload(row),
+    }),
     definition('limite_tipo_dote', 'Limitada a X dotes de X tipo', 'catalog-plus-value', {
         requiredCatalogs: ['tipos_dote'],
         catalogLabel: 'Tipo dote',
@@ -359,11 +389,22 @@ export const PREREQUISITE_EDITOR_DEFINITIONS: PrerequisiteEditorDefinition[] = [
         isComplete: isCatalogOnlyComplete,
         toPayload: buildCatalogPayload,
     }),
+    definition('no_raza', 'Raza prohibida', 'catalog-only', {
+        requiredCatalogs: ['razas'],
+        catalogLabel: 'Raza',
+        isComplete: isCatalogOnlyComplete,
+        toPayload: buildCatalogPayload,
+    }),
     definition('region', 'Region requerida', 'catalog-only', {
         requiredCatalogs: ['regiones'],
         catalogLabel: 'Region',
         isComplete: isCatalogOnlyComplete,
         toPayload: buildCatalogPayload,
+    }),
+    definition('reserva_psionica', 'Reserva psionica minima', 'value-only', {
+        valueLabel: 'Reserva minima',
+        isComplete: isValueOnlyComplete,
+        toPayload: (row) => buildValuePayload(row),
     }),
     definition('salvacion_minimo', 'Puntuacion minima en una salvacion', 'catalog-plus-value', {
         valueLabel: 'Puntuacion minima',
@@ -380,6 +421,12 @@ export const PREREQUISITE_EDITOR_DEFINITIONS: PrerequisiteEditorDefinition[] = [
     definition('tamano_minimo', 'Tamaño mínimo', 'catalog-only', {
         requiredCatalogs: ['tamanos'],
         catalogLabel: 'Tamaño',
+        isComplete: isCatalogOnlyComplete,
+        toPayload: buildCatalogPayload,
+    }),
+    definition('subtipo', 'Subtipo requerido', 'catalog-only', {
+        requiredCatalogs: ['subtipos'],
+        catalogLabel: 'Subtipo',
         isComplete: isCatalogOnlyComplete,
         toPayload: buildCatalogPayload,
     }),

@@ -29,10 +29,25 @@ export interface DoteCreateExtrasDisponiblesDto {
     [key: string]: any;
 }
 
+export interface DoteHabilidadOtorgadaDto {
+    id_habilidad: number;
+    id_extra?: number;
+    rangos: number;
+    custom?: boolean;
+    [key: string]: any;
+}
+
+export interface DoteHabilidadesOtorgadasDto {
+    base?: DoteHabilidadOtorgadaDto[];
+    custom?: DoteHabilidadOtorgadaDto[];
+}
+
+export type DoteHabilidadesOtorgadasPayload = DoteHabilidadOtorgadaDto[] | DoteHabilidadesOtorgadasDto;
+
 export interface DoteCreateRequest {
     dote: DoteCreateDoteDto;
     modificadores?: Record<string, number>;
-    habilidades_otorgadas?: Array<Record<string, any>>;
+    habilidades_otorgadas?: DoteHabilidadesOtorgadasPayload;
     extras_disponibles?: DoteCreateExtrasDisponiblesDto;
     prerrequisitos?: Record<string, Array<Record<string, any>>>;
     [key: string]: any;

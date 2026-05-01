@@ -150,6 +150,10 @@ export class NuevaRacialComponent implements OnInit, OnDestroy, OnChanges {
     ataquesRows: AtaqueRow[] = [];
     prerrequisitosSeleccionados: RacialPrerequisiteType[] = [];
     prerrequisitosRows: PrerequisiteRowModel[] = [];
+    customModalAbierto = false;
+    customModalModo: 'crear' | 'editar' = 'crear';
+    customModalRowUid = '';
+    customModalHabilidad: HabilidadBasicaDetalle | null = null;
 
     readonly caracteristicasCatalogo: PrerequisiteCatalogItem[] = [
         { id: 1, nombre: 'Fuerza' },
@@ -428,6 +432,50 @@ export class NuevaRacialComponent implements OnInit, OnDestroy, OnChanges {
         this.habilidadesCustomRows = [...this.habilidadesCustomRows, this.crearHabilidadCustomRow()];
     }
 
+    abrirCrearCustom(): void {
+        this.customModalModo = 'crear';
+        this.customModalRowUid = '';
+        this.customModalHabilidad = null;
+        this.customModalAbierto = true;
+    }
+
+    abrirEditarCustom(row: HabilidadCustomRow): void {
+        if (Number(row.id_habilidad) <= 0)
+            return;
+        const habilidad = this.buscarHabilidad(this.habilidadesCustom, row.id_habilidad);
+        if (!habilidad)
+            return;
+        this.customModalModo = 'editar';
+        this.customModalRowUid = row.uid;
+        this.customModalHabilidad = habilidad;
+        this.customModalAbierto = true;
+    }
+
+    cerrarCustomModal(): void {
+        this.customModalAbierto = false;
+        this.customModalRowUid = '';
+        this.customModalHabilidad = null;
+    }
+
+    onHabilidadCustomGuardada(habilidad: HabilidadBasicaDetalle): void {
+        this.upsertHabilidadCustom(habilidad);
+        const targetUid = this.customModalRowUid;
+        if (targetUid) {
+            this.habilidadesCustomRows = this.habilidadesCustomRows.map((row) => row.uid === targetUid
+                ? { ...row, id_habilidad: habilidad.Id_habilidad, busqueda: habilidad.Nombre, id_extra: 0, extraBusqueda: '' }
+                : row);
+        } else {
+            const empty = this.habilidadesCustomRows.find((row) => Number(row.id_habilidad) <= 0);
+            if (empty)
+                this.habilidadesCustomRows = this.habilidadesCustomRows.map((row) => row.uid === empty.uid
+                    ? { ...row, id_habilidad: habilidad.Id_habilidad, busqueda: habilidad.Nombre, id_extra: 0, extraBusqueda: '' }
+                    : row);
+            else
+                this.habilidadesCustomRows = [...this.habilidadesCustomRows, { ...this.crearHabilidadCustomRow(), id_habilidad: habilidad.Id_habilidad, busqueda: habilidad.Nombre }];
+        }
+        this.cerrarCustomModal();
+    }
+
     quitarHabilidadCustom(index: number): void {
         this.habilidadesCustomRows = this.quitarFila(this.habilidadesCustomRows, index, this.crearHabilidadCustomRow());
     }
@@ -619,6 +667,9 @@ export class NuevaRacialComponent implements OnInit, OnDestroy, OnChanges {
         this.habilidadSvc.getHabilidadesCustom()
             .pipe(takeUntil(this.destroy$))
             .subscribe({ next: (items) => this.habilidadesCustom = this.ordenarHabilidades(items), error: () => this.habilidadesCustom = [] });
+        this.habilidadSvc.habilidadesCustomMutadas$
+            .pipe(takeUntil(this.destroy$))
+            .subscribe((habilidad) => this.upsertHabilidadCustom(habilidad));
         this.conjuroSvc.getConjuros()
             .pipe(takeUntil(this.destroy$))
             .subscribe({ next: (items) => this.conjuros = this.ordenar(items), error: () => this.conjuros = [] });
@@ -1055,6 +1106,16 @@ export class NuevaRacialComponent implements OnInit, OnDestroy, OnChanges {
 
     private crearHabilidadCustomRow(): HabilidadCustomRow {
         return { uid: this.uid(), id_habilidad: 0, rangos: 0, id_extra: 0, se_considera_clasea: false, busqueda: '', extraBusqueda: '' };
+    }
+
+    private upsertHabilidadCustom(habilidad: HabilidadBasicaDetalle): void {
+        if (!habilidad || this.entero(habilidad.Id_habilidad) <= 0)
+            return;
+        const others = this.habilidadesCustom.filter((item) => this.entero(item.Id_habilidad) !== this.entero(habilidad.Id_habilidad));
+        this.habilidadesCustom = this.ordenarHabilidades([...others, habilidad]);
+        this.habilidadesCustomRows = this.habilidadesCustomRows.map((row) => this.entero(row.id_habilidad) === this.entero(habilidad.Id_habilidad)
+            ? { ...row, busqueda: habilidad.Nombre }
+            : row);
     }
 
     private crearCaracteristicaRow(): CaracteristicaRow {

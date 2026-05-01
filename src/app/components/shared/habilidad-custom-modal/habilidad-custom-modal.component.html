@@ -1,0 +1,32 @@
+<div class="selector-dialog-backdrop" *ngIf="abierto" (click)="cerrar()">
+    <div class="selector-dialog custom-dialog" (click)="$event.stopPropagation()">
+        <div class="selector-dialog__head">
+            <h3>{{modo === 'editar' ? 'Modificar habilidad custom' : 'Crear habilidad custom'}}</h3>
+            <button mat-icon-button type="button" aria-label="Cerrar" matTooltip="Cerrar" (click)="cerrar()">
+                <mat-icon>close</mat-icon>
+            </button>
+        </div>
+        <form class="custom-form" [formGroup]="form" (ngSubmit)="guardar()">
+            <mat-form-field appearance="fill">
+                <mat-label>Nombre</mat-label>
+                <input matInput formControlName="nombre">
+                <mat-error *ngIf="form.controls.nombre.hasError('required')">Nombre obligatorio.</mat-error>
+            </mat-form-field>
+            <mat-form-field appearance="fill">
+                <mat-label>Característica</mat-label>
+                <mat-select formControlName="id_caracteristica">
+                    <mat-option *ngFor="let caracteristica of caracteristicas" [value]="caracteristica.Id">
+                        {{caracteristica.Nombre}}
+                    </mat-option>
+                </mat-select>
+            </mat-form-field>
+            <div class="actions-row">
+                <button mat-button type="button" (click)="cerrar()">Cancelar</button>
+                <button mat-raised-button color="primary" type="submit" [disabled]="guardando">
+                    <mat-icon>save</mat-icon>
+                    {{guardando ? 'Guardando...' : 'Guardar'}}
+                </button>
+            </div>
+        </form>
+    </div>
+</div>

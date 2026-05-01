@@ -1,0 +1,228 @@
+<div class="nueva-especial-shell">
+    <form class="nueva-especial-form" [formGroup]="form" (ngSubmit)="guardarEspecial()">
+        <p class="permiso-msg" *ngIf="cargandoEdicion">Cargando especial...</p>
+        <p class="permiso-msg" *ngIf="!puedeGuardar && !cargandoEdicion">{{mensajePermisoInsuficiente}}</p>
+
+        <mat-horizontal-stepper>
+            <mat-step label="Base">
+                <div class="step-body">
+                    <div class="panel-card">
+                        <span class="panel-title">
+                            <mat-icon>stars</mat-icon>
+                            {{tituloFormulario}}
+                        </span>
+                        <div class="base-grid">
+                            <mat-form-field appearance="fill">
+                                <mat-label>Nombre</mat-label>
+                                <input matInput formControlName="nombre" maxlength="200">
+                                <mat-error *ngIf="form.controls.nombre.hasError('required')">Nombre obligatorio.</mat-error>
+                                <mat-error *ngIf="form.controls.nombre.hasError('minlength')">Mínimo 3 caracteres.</mat-error>
+                            </mat-form-field>
+
+                            <mat-form-field appearance="fill">
+                                <mat-label>Característica asociada</mat-label>
+                                <mat-select formControlName="caracteristica">
+                                    <mat-option *ngFor="let caracteristica of caracteristicas" [value]="caracteristica.Id">
+                                        {{caracteristica.Nombre}}
+                                    </mat-option>
+                                </mat-select>
+                            </mat-form-field>
+
+                            <mat-form-field appearance="fill">
+                                <mat-label>Subtipo</mat-label>
+                                <input matInput formControlName="subtipoBusqueda" [matAutocomplete]="subtipoAuto">
+                                <mat-autocomplete #subtipoAuto="matAutocomplete" (optionSelected)="seleccionarSubtipo($event.option.value)">
+                                    <mat-option [value]="0">No aplica</mat-option>
+                                    <mat-option *ngFor="let subtipo of getSubtiposFiltrados()" [value]="subtipo.Id">
+                                        {{subtipo.Nombre}}
+                                    </mat-option>
+                                </mat-autocomplete>
+                            </mat-form-field>
+
+                            <div class="estado-row">
+                                <mat-chip-listbox class="boolean-chips" aria-label="Estados de especial">
+                                    <mat-chip-option [selected]="form.controls.oficial.value === true" (click)="toggleBoolean('oficial')">Oficial</mat-chip-option>
+                                    <mat-chip-option [selected]="form.controls.extra.value === true" (click)="toggleBoolean('extra')">Usa extra</mat-chip-option>
+                                    <mat-chip-option [selected]="form.controls.repetible.value === true" (click)="toggleBoolean('repetible')">Repetible</mat-chip-option>
+                                    <mat-chip-option [selected]="form.controls.rep_mismo_extra.value === true" (click)="toggleBoolean('rep_mismo_extra')">Repite mismo extra</mat-chip-option>
+                                    <mat-chip-option [selected]="form.controls.rep_comb.value === true" (click)="toggleBoolean('rep_comb')">Repite combinación</mat-chip-option>
+                                    <mat-chip-option [selected]="form.controls.act_extra.value === true" (click)="toggleBoolean('act_extra')">Activa extra</mat-chip-option>
+                                </mat-chip-listbox>
+                            </div>
+
+                            <mat-form-field appearance="fill" class="full-span">
+                                <mat-label>Descripción</mat-label>
+                                <textarea matInput formControlName="descripcion" rows="5" maxlength="5000"></textarea>
+                                <mat-error *ngIf="form.controls.descripcion.hasError('maxlength')">Máximo 5000 caracteres.</mat-error>
+                            </mat-form-field>
+                        </div>
+                    </div>
+                </div>
+                <div class="actions-row">
+                    <button mat-raised-button color="primary" type="button" matStepperNext>Siguiente</button>
+                    <button mat-raised-button color="primary" type="submit" [disabled]="guardadoBloqueado">
+                        <mat-icon>save</mat-icon>
+                        {{etiquetaAccionPrincipal}}
+                    </button>
+                </div>
+            </mat-step>
+
+            <mat-step label="Bonos">
+                <div class="step-body">
+                    <div class="panel-card">
+                        <span class="panel-title">
+                            <mat-icon>add_chart</mat-icon>
+                            Bonificadores
+                        </span>
+                        <div class="bonus-grid">
+                            <mat-form-field appearance="fill"><mat-label>Fuerza</mat-label><input matInput type="number" formControlName="fuerza"></mat-form-field>
+                            <mat-form-field appearance="fill"><mat-label>Destreza</mat-label><input matInput type="number" formControlName="destreza"></mat-form-field>
+                            <mat-form-field appearance="fill"><mat-label>Constitución</mat-label><input matInput type="number" formControlName="constitucion"></mat-form-field>
+                            <mat-form-field appearance="fill"><mat-label>Inteligencia</mat-label><input matInput type="number" formControlName="inteligencia"></mat-form-field>
+                            <mat-form-field appearance="fill"><mat-label>Sabiduría</mat-label><input matInput type="number" formControlName="sabiduria"></mat-form-field>
+                            <mat-form-field appearance="fill"><mat-label>Carisma</mat-label><input matInput type="number" formControlName="carisma"></mat-form-field>
+                            <mat-form-field appearance="fill"><mat-label>CA</mat-label><input matInput type="number" formControlName="ca"></mat-form-field>
+                            <mat-form-field appearance="fill"><mat-label>Armadura natural</mat-label><input matInput type="number" formControlName="arm_nat"></mat-form-field>
+                            <mat-form-field appearance="fill"><mat-label>RD</mat-label><input matInput type="number" formControlName="rd"></mat-form-field>
+                            <mat-form-field appearance="fill">
+                                <mat-label>Característica para CA</mat-label>
+                                <mat-select formControlName="id_caracteristica_ca">
+                                    <mat-option *ngFor="let caracteristica of caracteristicas" [value]="caracteristica.Id">
+                                        {{caracteristica.Nombre}}
+                                    </mat-option>
+                                </mat-select>
+                            </mat-form-field>
+                        </div>
+                    </div>
+
+                    <div class="panel-card">
+                        <span class="panel-title">
+                            <mat-icon>flag</mat-icon>
+                            Flags extra
+                        </span>
+                        <mat-chip-listbox class="boolean-chips" aria-label="Flags extra">
+                            <mat-chip-option [selected]="form.controls.no_aplica.value === true" (click)="toggleBoolean('no_aplica')">No aplica</mat-chip-option>
+                            <mat-chip-option [selected]="form.controls.da_ca.value === true" (click)="toggleBoolean('da_ca')">Da CA</mat-chip-option>
+                            <mat-chip-option [selected]="form.controls.da_armadura_natural.value === true" (click)="toggleBoolean('da_armadura_natural')">Da armadura natural</mat-chip-option>
+                            <mat-chip-option [selected]="form.controls.da_rd.value === true" (click)="toggleBoolean('da_rd')">Da RD</mat-chip-option>
+                            <mat-chip-option [selected]="form.controls.da_velocidad.value === true" (click)="toggleBoolean('da_velocidad')">Da velocidad</mat-chip-option>
+                        </mat-chip-listbox>
+                    </div>
+                </div>
+                <div class="actions-row">
+                    <button mat-stroked-button type="button" matStepperPrevious>Anterior</button>
+                    <button mat-raised-button color="primary" type="button" matStepperNext>Siguiente</button>
+                    <button mat-raised-button color="primary" type="submit" [disabled]="guardadoBloqueado">
+                        <mat-icon>save</mat-icon>
+                        {{etiquetaAccionPrincipal}}
+                    </button>
+                </div>
+            </mat-step>
+
+            <mat-step label="Relaciones">
+                <div class="step-body">
+                    <div class="panel-card">
+                        <div class="subpanel-head">
+                            <span class="panel-title">
+                                <mat-icon>category</mat-icon>
+                                Extras disponibles
+                            </span>
+                            <button mat-stroked-button type="button" (click)="agregarExtra()">
+                                <mat-icon>add</mat-icon>
+                                Añadir fila
+                            </button>
+                        </div>
+                        <div class="repeat-row extra-row" *ngFor="let row of extraRows; let i = index">
+                            <mat-form-field appearance="fill">
+                                <mat-label>Extra</mat-label>
+                                <input matInput [(ngModel)]="row.busqueda" [ngModelOptions]="{standalone: true}" [matAutocomplete]="extraAuto">
+                                <mat-autocomplete #extraAuto="matAutocomplete" (optionSelected)="seleccionarExtra(i, $event.option.value)">
+                                    <mat-option *ngFor="let extra of getExtrasFiltrados(row)" [value]="extra.Id">{{extra.Nombre}}</mat-option>
+                                </mat-autocomplete>
+                            </mat-form-field>
+                            <mat-form-field appearance="fill">
+                                <mat-label>Orden</mat-label>
+                                <input matInput type="number" min="1" [(ngModel)]="row.orden" [ngModelOptions]="{standalone: true}">
+                            </mat-form-field>
+                            <button mat-icon-button type="button" class="row-action-btn" aria-label="Borrar extra" matTooltip="Borrar extra" (click)="quitarExtra(i)">
+                                <mat-icon>delete</mat-icon>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="panel-card">
+                        <div class="subpanel-head">
+                            <span class="panel-title">
+                                <mat-icon>psychology</mat-icon>
+                                Habilidades otorgadas
+                            </span>
+                            <span class="button-group">
+                                <button mat-stroked-button type="button" (click)="agregarHabilidad('base')">
+                                    <mat-icon>add</mat-icon>
+                                    Base
+                                </button>
+                                <button mat-stroked-button type="button" (click)="agregarHabilidad('custom')">
+                                    <mat-icon>add</mat-icon>
+                                    Custom
+                                </button>
+                                <button mat-stroked-button type="button" (click)="abrirCrearCustom()">
+                                    <mat-icon>add_circle</mat-icon>
+                                    Nueva custom
+                                </button>
+                            </span>
+                        </div>
+                        <div class="repeat-row habilidad-row" *ngFor="let row of habilidadRows; let i = index">
+                            <mat-form-field appearance="fill">
+                                <mat-label>Tipo</mat-label>
+                                <mat-select [(ngModel)]="row.tipo" [ngModelOptions]="{standalone: true}">
+                                    <mat-option value="base">Base</mat-option>
+                                    <mat-option value="custom">Custom</mat-option>
+                                </mat-select>
+                            </mat-form-field>
+                            <mat-form-field appearance="fill">
+                                <mat-label>Habilidad</mat-label>
+                                <input matInput [(ngModel)]="row.busqueda" [ngModelOptions]="{standalone: true}" [matAutocomplete]="habAuto">
+                                <mat-autocomplete #habAuto="matAutocomplete" (optionSelected)="seleccionarHabilidad(i, $event.option.value)">
+                                    <mat-option *ngFor="let habilidad of getHabilidadesFiltradas(row)" [value]="habilidad.Id_habilidad">{{habilidad.Nombre}}</mat-option>
+                                </mat-autocomplete>
+                            </mat-form-field>
+                            <mat-form-field appearance="fill">
+                                <mat-label>Extra</mat-label>
+                                <input matInput [(ngModel)]="row.extraBusqueda" [ngModelOptions]="{standalone: true}" [matAutocomplete]="habExtraAuto" [disabled]="getExtrasHabilidad(row).length < 1">
+                                <mat-autocomplete #habExtraAuto="matAutocomplete" (optionSelected)="seleccionarExtraHabilidad(i, $event.option.value)">
+                                    <mat-option *ngFor="let extra of getExtrasHabilidadFiltrados(row)" [value]="extra.Id_extra">{{extra.Extra}}</mat-option>
+                                </mat-autocomplete>
+                            </mat-form-field>
+                            <mat-form-field appearance="fill">
+                                <mat-label>Rangos</mat-label>
+                                <input matInput type="number" min="0" [(ngModel)]="row.rangos" [ngModelOptions]="{standalone: true}">
+                            </mat-form-field>
+                            <button mat-icon-button type="button" class="row-action-btn" aria-label="Editar custom" matTooltip="Editar habilidad custom"
+                                [disabled]="row.tipo !== 'custom' || row.id_habilidad <= 0" (click)="abrirEditarCustom(row)">
+                                <mat-icon>edit_square</mat-icon>
+                            </button>
+                            <button mat-icon-button type="button" class="row-action-btn" aria-label="Borrar habilidad" matTooltip="Borrar habilidad" (click)="quitarHabilidad(i)">
+                                <mat-icon>delete</mat-icon>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="actions-row">
+                    <button mat-stroked-button type="button" matStepperPrevious>Anterior</button>
+                    <button mat-raised-button color="primary" type="submit" [disabled]="guardadoBloqueado">
+                        <mat-icon>save</mat-icon>
+                        {{etiquetaAccionPrincipal}}
+                    </button>
+                </div>
+            </mat-step>
+        </mat-horizontal-stepper>
+    </form>
+</div>
+
+<app-habilidad-custom-modal
+    [abierto]="customModalAbierto"
+    [modo]="customModalModo"
+    [habilidad]="customModalHabilidad"
+    (cerrado)="cerrarCustomModal()"
+    (guardada)="onCustomGuardada($event)">
+</app-habilidad-custom-modal>

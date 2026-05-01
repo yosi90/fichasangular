@@ -210,6 +210,10 @@ export class NuevaRazaComponent implements OnInit, OnDestroy {
     mostrarInfoManiobrabilidad: boolean = false;
     modalNuevoRacialVisible: boolean = false;
     modalNuevoIdiomaVisible: boolean = false;
+    customModalAbierto: boolean = false;
+    customModalModo: 'crear' | 'editar' = 'crear';
+    customModalRowUid: string = '';
+    customModalHabilidad: HabilidadBasicaDetalle | null = null;
 
     subtiposSeleccionados: number[] = [];
     idiomasSeleccionados: number[] = [];
@@ -942,6 +946,50 @@ export class NuevaRazaComponent implements OnInit, OnDestroy {
 
     agregarHabilidadCustom(): void {
         this.habilidadesCustomRows = [...this.habilidadesCustomRows, this.crearHabilidadCustomRow()];
+    }
+
+    abrirCrearCustom(): void {
+        this.customModalModo = 'crear';
+        this.customModalRowUid = '';
+        this.customModalHabilidad = null;
+        this.customModalAbierto = true;
+    }
+
+    abrirEditarCustom(row: HabilidadCustomRow): void {
+        if (this.numero(row.id_habilidad) <= 0)
+            return;
+        const habilidad = this.habilidadesCustom.find((item) => this.numero(item.Id_habilidad) === this.numero(row.id_habilidad));
+        if (!habilidad)
+            return;
+        this.customModalModo = 'editar';
+        this.customModalRowUid = row.uid;
+        this.customModalHabilidad = habilidad;
+        this.customModalAbierto = true;
+    }
+
+    cerrarCustomModal(): void {
+        this.customModalAbierto = false;
+        this.customModalRowUid = '';
+        this.customModalHabilidad = null;
+    }
+
+    onHabilidadCustomGuardada(habilidad: HabilidadBasicaDetalle): void {
+        this.upsertHabilidadCustom(habilidad);
+        const targetUid = this.customModalRowUid;
+        if (targetUid) {
+            this.habilidadesCustomRows = this.habilidadesCustomRows.map((row) => row.uid === targetUid
+                ? { ...row, id_habilidad: habilidad.Id_habilidad, busqueda: habilidad.Nombre }
+                : row);
+        } else {
+            const empty = this.habilidadesCustomRows.find((row) => this.numero(row.id_habilidad) <= 0);
+            if (empty)
+                this.habilidadesCustomRows = this.habilidadesCustomRows.map((row) => row.uid === empty.uid
+                    ? { ...row, id_habilidad: habilidad.Id_habilidad, busqueda: habilidad.Nombre }
+                    : row);
+            else
+                this.habilidadesCustomRows = [...this.habilidadesCustomRows, { ...this.crearHabilidadCustomRow(), id_habilidad: habilidad.Id_habilidad, busqueda: habilidad.Nombre }];
+        }
+        this.cerrarCustomModal();
     }
 
     agregarDote(): void {
@@ -1682,6 +1730,9 @@ export class NuevaRazaComponent implements OnInit, OnDestroy {
         this.habilidadSvc.getHabilidadesCustom()
             .pipe(takeUntil(this.destroy$))
             .subscribe({ next: (habilidades) => this.habilidadesCustom = this.ordenar(habilidades.map((item) => ({ ...item, Id: item.Id_habilidad }))), error: () => this.habilidadesCustom = [] });
+        this.habilidadSvc.habilidadesCustomMutadas$
+            .pipe(takeUntil(this.destroy$))
+            .subscribe((habilidad) => this.upsertHabilidadCustom(habilidad));
 
         this.doteSvc.getDotes()
             .pipe(takeUntil(this.destroy$))
@@ -2161,6 +2212,17 @@ export class NuevaRazaComponent implements OnInit, OnDestroy {
 
     private crearHabilidadCustomRow(): HabilidadCustomRow {
         return { uid: this.nuevoUid(), id_habilidad: 0, cantidad: 0, busqueda: '' };
+    }
+
+    private upsertHabilidadCustom(habilidad: HabilidadBasicaDetalle): void {
+        if (!habilidad || this.numero(habilidad.Id_habilidad) <= 0)
+            return;
+        const others = this.habilidadesCustom.filter((item) => this.numero(item.Id_habilidad) !== this.numero(habilidad.Id_habilidad));
+        this.habilidadesCustom = [...others, { ...habilidad, Id: habilidad.Id_habilidad } as HabilidadBasicaDetalle]
+            .sort((a, b) => `${a.Nombre ?? ''}`.localeCompare(`${b.Nombre ?? ''}`, 'es', { sensitivity: 'base' }));
+        this.habilidadesCustomRows = this.habilidadesCustomRows.map((row) => this.numero(row.id_habilidad) === this.numero(habilidad.Id_habilidad)
+            ? { ...row, busqueda: habilidad.Nombre }
+            : row);
     }
 
     private crearDoteRow(): DoteRow {

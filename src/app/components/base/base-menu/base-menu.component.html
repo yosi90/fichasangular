@@ -30,7 +30,8 @@
                 <span
                     [matTooltip]="canGestionar('clases', 'create') ? '' : mensajePermisosInsuficientes"
                     [matTooltipDisabled]="canGestionar('clases', 'create')">
-                    <button mat-button color="primary" [disabled]="!canGestionar('clases', 'create')">Clase</button>
+                    <button mat-button color="primary" [disabled]="!canGestionar('clases', 'create')"
+                        (click)="onInsertarClase()">Clase</button>
                 </span>
                 <span
                     [matTooltip]="canInsertarDotes() ? '' : mensajePermisosInsuficientes"
@@ -91,9 +92,9 @@
                         <span
                             matTooltipClass="menu-otros-tooltip"
                             matTooltipPosition="right"
-                            [matTooltip]="canGestionar('especiales', 'create') ? '' : mensajePermisosInsuficientes"
-                            [matTooltipDisabled]="canGestionar('especiales', 'create')">
-                            <button mat-button color="primary" [disabled]="!canGestionar('especiales', 'create')" (click)="cerrarOtros()">Especiales</button>
+                            [matTooltip]="canGestionar('clases', 'create') ? '' : mensajePermisosInsuficientes"
+                            [matTooltipDisabled]="canGestionar('clases', 'create')">
+                            <button mat-button color="primary" [disabled]="!canGestionar('clases', 'create')" (click)="onInsertarEspecial()">Especiales</button>
                         </span>
                         <span
                             matTooltipClass="menu-otros-tooltip"
@@ -154,7 +155,8 @@
                 <span
                     [matTooltip]="canGestionar('clases', 'update') ? '' : mensajePermisosInsuficientes"
                     [matTooltipDisabled]="canGestionar('clases', 'update')">
-                    <button mat-button color="primary" [disabled]="!canGestionar('clases', 'update')">Clase</button>
+                    <button mat-button color="primary" [disabled]="!canGestionar('clases', 'update')"
+                        (click)="onModificarClase()">Clase</button>
                 </span>
                 <span
                     [matTooltip]="canGestionar('dotes', 'update') ? '' : mensajePermisosInsuficientes"
@@ -213,9 +215,9 @@
                         <span
                             matTooltipClass="menu-otros-tooltip"
                             matTooltipPosition="right"
-                            [matTooltip]="canGestionar('especiales', 'update') ? '' : mensajePermisosInsuficientes"
-                            [matTooltipDisabled]="canGestionar('especiales', 'update')">
-                            <button mat-button color="primary" [disabled]="!canGestionar('especiales', 'update')" (click)="cerrarOtros()">Especiales</button>
+                            [matTooltip]="(canGestionar('especiales', 'update') || canGestionar('clases', 'update')) ? '' : mensajePermisosInsuficientes"
+                            [matTooltipDisabled]="canGestionar('especiales', 'update') || canGestionar('clases', 'update')">
+                            <button mat-button color="primary" [disabled]="!canGestionar('especiales', 'update') && !canGestionar('clases', 'update')" (click)="onModificarEspecial()">Especiales</button>
                         </span>
                         <span
                             matTooltipClass="menu-otros-tooltip"

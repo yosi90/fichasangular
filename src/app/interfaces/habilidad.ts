@@ -19,3 +19,23 @@ export interface HabilidadBonoVario {
     valor: number;
     origen: string;
 }
+
+export interface HabilidadCustomCreateRequest {
+    nombre: string;
+    id_caracteristica: number;
+}
+
+export type HabilidadCustomUpdateRequest = Partial<HabilidadCustomCreateRequest>;
+
+export interface HabilidadCustomMutationApiResponse {
+    message?: string;
+    idHabilidad?: number;
+    id_habilidad?: number;
+    habilidad?: HabilidadBasicaDetalle;
+}
+
+export interface HabilidadCustomMutationResponse {
+    message: string;
+    idHabilidad: number;
+    habilidad: HabilidadBasicaDetalle;
+}

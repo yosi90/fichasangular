@@ -1,0 +1,42 @@
+.selector-dialog-backdrop
+    position: fixed
+    inset: 0
+    z-index: 1200
+    display: flex
+    align-items: center
+    justify-content: center
+    padding: 24px
+    background: rgba(0, 0, 0, .58)
+
+.selector-dialog
+    width: min(520px, 100%)
+    max-height: calc(100vh - 48px)
+    display: flex
+    flex-direction: column
+    gap: 16px
+    padding: 18px
+    border: 1px solid rgba(255, 255, 255, .14)
+    border-radius: 8px
+    background: #2D2D30
+    box-shadow: 0 22px 48px rgba(0, 0, 0, .45)
+
+.selector-dialog__head
+    display: flex
+    align-items: center
+    justify-content: space-between
+    gap: 12px
+
+    h3
+        margin: 0
+        font-size: 1.05rem
+        font-weight: 600
+
+.custom-form
+    display: grid
+    gap: 14px
+
+.actions-row
+    display: flex
+    justify-content: flex-end
+    gap: 0.5rem
+    padding: 0.25rem 0.1rem 0.1rem

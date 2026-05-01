@@ -18,7 +18,7 @@ import {
     getPrerequisiteCatalogsForTypes,
     getPrerequisiteDefinition,
 } from '../prerrequisito-editor/prerrequisito-editor.registry';
-import { DoteCreateRequest, DoteCreateResponse } from 'src/app/interfaces/dotes-api';
+import { DoteCreateRequest, DoteCreateResponse, DoteHabilidadOtorgadaDto } from 'src/app/interfaces/dotes-api';
 import { Dote } from 'src/app/interfaces/dote';
 import { ArmaduraDetalle } from 'src/app/interfaces/armadura';
 import { EspecialClaseDetalle } from 'src/app/interfaces/especial';
@@ -88,6 +88,15 @@ export class NuevaDoteComponent implements OnInit, OnDestroy {
     private static readonly bodyModalClass = 'nueva-dote-modal-open';
     private static readonly preferredManualName = 'Compendio de dotes';
     private readonly extraFamilyKeys: ExtraFamilyKey[] = ['extra_arma', 'extra_armadura', 'extra_escuela', 'extra_habilidad'];
+    private readonly prerrequisitosSoloClase = new Set<PrerequisiteType>([
+        'conjuro_conocido',
+        'conocer_poder_psionico',
+        'genero',
+        'lanzar_poder_psionico_nivel',
+        'no_raza',
+        'reserva_psionica',
+        'subtipo',
+    ]);
     readonly modificadoresCatalogo: ModificadorCatalogoItem[] = [
         { key: 'puntos_golpe_nivel', label: 'Puntos de golpe adicionales por nivel' },
         { key: 'puntos_golpe_unica_vez', label: 'Puntos de golpe adicionales 1 vez' },
@@ -118,7 +127,7 @@ export class NuevaDoteComponent implements OnInit, OnDestroy {
         { key: 'velocidad_escalar', label: 'Aumenta velocidad de escalada' },
     ];
     readonly prerrequisitoOpciones: PrerrequisitoOption[] = PREREQUISITE_EDITOR_DEFINITIONS
-        .filter((item) => item.type !== 'inherente')
+        .filter((item) => item.type !== 'inherente' && !this.prerrequisitosSoloClase.has(item.type))
         .map((item) => ({ key: item.type, label: item.label }));
     readonly caracteristicasCatalogo: ExtraSelectorItem[] = [
         { id: 1, nombre: 'Fuerza' },
@@ -150,6 +159,7 @@ export class NuevaDoteComponent implements OnInit, OnDestroy {
     tiposDote: Array<{ Id: number; Nombre: string; }> = [];
     modificadoresEditor: ModificadorEditorItem[] = [];
     habilidadesCatalogo: HabilidadBasicaDetalle[] = [];
+    habilidadesCustomCatalogo: HabilidadBasicaDetalle[] = [];
     armasCatalogo: ExtraSelectorItem[] = [];
     armadurasCatalogo: ArmaduraSelectorItem[] = [];
     escuelasCatalogo: ExtraSelectorItem[] = [];
@@ -182,6 +192,10 @@ export class NuevaDoteComponent implements OnInit, OnDestroy {
     selectorPrerrequisitosVisible: boolean = false;
     selectorPrerrequisitosFiltro: string = '';
     selectorPrerrequisitosTempKeys: PrerequisiteType[] = [];
+    customModalAbierto: boolean = false;
+    customModalModo: 'crear' | 'editar' = 'crear';
+    customModalRowIndex: number = -1;
+    customModalHabilidad: HabilidadBasicaDetalle | null = null;
     opcionesExtraDotePorId = new Map<number, ExtraSelectorItem[]>();
     cargandoCatalogos = new Set<PrerequisiteCatalogKey>();
     catalogosCargados = new Set<PrerequisiteCatalogKey>();
@@ -196,6 +210,11 @@ export class NuevaDoteComponent implements OnInit, OnDestroy {
         especialPermiteExtra: (idEspecial) => this.especialCatalogoPermiteExtra(idEspecial),
     };
     readonly ensurePrerequisiteCatalogs = (types: PrerequisiteType[]) => this.asegurarCatalogosPrerrequisitos(types);
+
+    get habilidadesOtorgadasCatalogo(): HabilidadBasicaDetalle[] {
+        return [...this.habilidadesCatalogo, ...this.habilidadesCustomCatalogo]
+            .sort((a, b) => `${a.Nombre ?? ''}`.localeCompare(`${b.Nombre ?? ''}`, 'es', { sensitivity: 'base' }));
+    }
 
     readonly form = this.fb.group({
         nombre: ['', [Validators.required, Validators.minLength(3)]],
@@ -303,7 +322,7 @@ export class NuevaDoteComponent implements OnInit, OnDestroy {
             .subscribe({
                 next: (habilidades) => {
                     this.habilidadesCatalogo = Array.isArray(habilidades) ? [...habilidades] : [];
-                    this.actualizarCatalogoHabilidadesPrerrequisito(this.habilidadesCatalogo);
+                    this.actualizarCatalogoHabilidadesPrerrequisito(this.habilidadesOtorgadasCatalogo);
                     this.catalogosCargados.add('habilidades');
                 },
                 error: () => {
@@ -311,6 +330,23 @@ export class NuevaDoteComponent implements OnInit, OnDestroy {
                     this.habilidadesCatalogoPrerrequisito = [];
                 }
             });
+
+        this.habilidadSvc.getHabilidadesCustom()
+            .pipe(takeUntil(this.destroy$))
+            .subscribe({
+                next: (habilidades) => {
+                    this.habilidadesCustomCatalogo = Array.isArray(habilidades) ? [...habilidades] : [];
+                    this.actualizarCatalogoHabilidadesPrerrequisito(this.habilidadesOtorgadasCatalogo);
+                },
+                error: () => {
+                    this.habilidadesCustomCatalogo = [];
+                    this.actualizarCatalogoHabilidadesPrerrequisito(this.habilidadesCatalogo);
+                }
+            });
+
+        this.habilidadSvc.habilidadesCustomMutadas$
+            .pipe(takeUntil(this.destroy$))
+            .subscribe((habilidad) => this.upsertHabilidadCustom(habilidad));
     }
 
     ngOnDestroy(): void {
@@ -730,16 +766,61 @@ export class NuevaDoteComponent implements OnInit, OnDestroy {
         this.habilidadesOtorgadasEditor = this.habilidadesOtorgadasEditor.map((row, i) => i === index ? next : row);
     }
 
+    abrirCrearCustom(): void {
+        this.customModalModo = 'crear';
+        this.customModalRowIndex = -1;
+        this.customModalHabilidad = null;
+        this.customModalAbierto = true;
+    }
+
+    abrirEditarCustomOtorgada(index: number): void {
+        const row = this.habilidadesOtorgadasEditor[index];
+        if (!row || this.toInt(row.id_habilidad, 0) <= 0)
+            return;
+        const habilidad = this.habilidadesCustomCatalogo.find((item) => this.toInt(item.Id_habilidad, 0) === this.toInt(row.id_habilidad, 0));
+        if (!habilidad)
+            return;
+        this.customModalModo = 'editar';
+        this.customModalRowIndex = index;
+        this.customModalHabilidad = habilidad;
+        this.customModalAbierto = true;
+    }
+
+    cerrarCustomModal(): void {
+        this.customModalAbierto = false;
+        this.customModalRowIndex = -1;
+        this.customModalHabilidad = null;
+    }
+
+    onHabilidadCustomGuardada(habilidad: HabilidadBasicaDetalle): void {
+        this.upsertHabilidadCustom(habilidad);
+        const targetIndex = this.customModalRowIndex;
+        if (targetIndex >= 0 && targetIndex < this.habilidadesOtorgadasEditor.length) {
+            this.onHabilidadOtorgadaChange(targetIndex, { id_habilidad: habilidad.Id_habilidad, id_extra: 0 });
+        } else {
+            const emptyIndex = this.habilidadesOtorgadasEditor.findIndex((row) => this.toInt(row.id_habilidad, 0) <= 0);
+            if (emptyIndex >= 0)
+                this.onHabilidadOtorgadaChange(emptyIndex, { id_habilidad: habilidad.Id_habilidad, id_extra: 0 });
+            else
+                this.habilidadesOtorgadasEditor = [...this.habilidadesOtorgadasEditor, { id_habilidad: habilidad.Id_habilidad, id_extra: 0, rangos: 0 }];
+        }
+        this.cerrarCustomModal();
+    }
+
     habilidadPermiteExtra(idHabilidad: number): boolean {
-        const habilidad = this.habilidadesCatalogo.find((item) => item.Id_habilidad === this.toInt(idHabilidad, 0));
+        const habilidad = this.habilidadesOtorgadasCatalogo.find((item) => item.Id_habilidad === this.toInt(idHabilidad, 0));
         return !!habilidad?.Soporta_extra;
     }
 
     getExtrasDeHabilidad(idHabilidad: number): Array<{ Id_extra: number; Extra: string; }> {
-        const habilidad = this.habilidadesCatalogo.find((item) => item.Id_habilidad === this.toInt(idHabilidad, 0));
+        const habilidad = this.habilidadesOtorgadasCatalogo.find((item) => item.Id_habilidad === this.toInt(idHabilidad, 0));
         if (!habilidad?.Extras)
             return [];
         return habilidad.Extras;
+    }
+
+    esHabilidadCustom(idHabilidad: number): boolean {
+        return this.habilidadesCustomCatalogo.some((item) => this.toInt(item.Id_habilidad, 0) === this.toInt(idHabilidad, 0));
     }
 
     abrirSelectorPrerrequisitos(): void {
@@ -875,7 +956,7 @@ export class NuevaDoteComponent implements OnInit, OnDestroy {
     }
 
     habilidadCatalogoPermiteExtra(idHabilidad: number): boolean {
-        const habilidad = this.habilidadesCatalogo.find((item) => this.toInt(item?.Id_habilidad, 0) === this.toInt(idHabilidad, 0));
+        const habilidad = this.habilidadesOtorgadasCatalogo.find((item) => this.toInt(item?.Id_habilidad, 0) === this.toInt(idHabilidad, 0));
         return !!habilidad?.Soporta_extra;
     }
 
@@ -1176,6 +1257,15 @@ export class NuevaDoteComponent implements OnInit, OnDestroy {
             .sort((a, b) => a.nombre.localeCompare(b.nombre, 'es', { sensitivity: 'base' }));
     }
 
+    private upsertHabilidadCustom(habilidad: HabilidadBasicaDetalle): void {
+        if (!habilidad || this.toInt(habilidad.Id_habilidad, 0) <= 0)
+            return;
+        const others = this.habilidadesCustomCatalogo.filter((item) => this.toInt(item.Id_habilidad, 0) !== this.toInt(habilidad.Id_habilidad, 0));
+        this.habilidadesCustomCatalogo = [...others, habilidad]
+            .sort((a, b) => `${a.Nombre ?? ''}`.localeCompare(`${b.Nombre ?? ''}`, 'es', { sensitivity: 'base' }));
+        this.actualizarCatalogoHabilidadesPrerrequisito(this.habilidadesOtorgadasCatalogo);
+    }
+
     private actualizarCatalogoEspecialesPrerrequisito(especiales: EspecialClaseDetalle[]): void {
         this.especialesDetalleCatalogo = Array.isArray(especiales) ? [...especiales] : [];
         this.especialesCatalogo = this.especialesDetalleCatalogo
@@ -1365,7 +1455,9 @@ export class NuevaDoteComponent implements OnInit, OnDestroy {
         if (clave === 'habilidades') {
             const habilidades = await firstValueFrom(this.habilidadSvc.getHabilidades());
             this.habilidadesCatalogo = Array.isArray(habilidades) ? [...habilidades] : [];
-            this.actualizarCatalogoHabilidadesPrerrequisito(this.habilidadesCatalogo);
+            const custom = await firstValueFrom(this.habilidadSvc.getHabilidadesCustom());
+            this.habilidadesCustomCatalogo = Array.isArray(custom) ? [...custom] : [];
+            this.actualizarCatalogoHabilidadesPrerrequisito(this.habilidadesOtorgadasCatalogo);
             return;
         }
 
@@ -1450,12 +1542,13 @@ export class NuevaDoteComponent implements OnInit, OnDestroy {
         return out;
     }
 
-    private construirHabilidadesOtorgadasPayload(): Array<Record<string, any>> {
+    private construirHabilidadesOtorgadasPayload(): DoteHabilidadOtorgadaDto[] {
         return this.habilidadesOtorgadasEditor
             .map((item) => ({
                 id_habilidad: this.toInt(item.id_habilidad, 0),
                 id_extra: this.toInt(item.id_extra, 0),
                 rangos: this.toInt(item.rangos, 0),
+                custom: this.esHabilidadCustom(item.id_habilidad),
             }))
             .filter((item) => item.id_habilidad > 0)
             .map((item) => item.id_extra > 0 ? item : { ...item, id_extra: 0 });
@@ -1519,7 +1612,7 @@ export class NuevaDoteComponent implements OnInit, OnDestroy {
         if (tipo === 'extra_escuela')
             return this.escuelasCatalogo;
         if (tipo === 'extra_habilidad')
-            return this.habilidadesCatalogo
+            return this.habilidadesOtorgadasCatalogo
                 .map((item) => ({ id: this.toInt(item?.Id_habilidad, 0), nombre: `${item?.Nombre ?? ''}`.trim() }))
                 .filter((item) => item.id > 0 && item.nombre.length > 0)
                 .sort((a, b) => a.nombre.localeCompare(b.nombre, 'es', { sensitivity: 'base' }));

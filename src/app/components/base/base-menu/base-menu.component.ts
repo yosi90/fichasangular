@@ -188,6 +188,22 @@ export class BaseMenuComponent implements OnInit, OnDestroy {
         return this.usrService.can('conjuros', 'create');
     }
 
+    onInsertarClase(): void {
+        if (!this.canGestionar('clases', 'create'))
+            return;
+        this.AbrirListado('clases', 'insertar');
+        this.closeAcordion();
+        this.cerrarOtros();
+    }
+
+    onModificarClase(): void {
+        if (!this.canGestionar('clases', 'update'))
+            return;
+        this.AbrirListado('clases', 'modificar');
+        this.closeAcordion();
+        this.cerrarOtros();
+    }
+
     onInsertarRaza(): void {
         if (!this.canInsertarRazas())
             return;
@@ -216,6 +232,22 @@ export class BaseMenuComponent implements OnInit, OnDestroy {
         if (!this.canGestionarIdiomas())
             return;
         this.AbrirListado('idiomas', 'insertar');
+        this.closeAcordion();
+        this.cerrarOtros();
+    }
+
+    onInsertarEspecial(): void {
+        if (!this.canGestionar('clases', 'create'))
+            return;
+        this.AbrirListado('especiales', 'insertar');
+        this.closeAcordion();
+        this.cerrarOtros();
+    }
+
+    onModificarEspecial(): void {
+        if (!this.canGestionar('especiales', 'update') && !this.canGestionar('clases', 'update'))
+            return;
+        this.AbrirListado('especiales', 'modificar');
         this.closeAcordion();
         this.cerrarOtros();
     }

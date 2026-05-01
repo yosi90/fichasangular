@@ -215,9 +215,15 @@
                 <section class="subpanel">
                     <div class="subpanel-head">
                         <h3 class="subpanel-title">Habilidades otorgadas</h3>
-                        <button type="button" mat-stroked-button (click)="agregarHabilidadOtorgada()">
-                            Añadir fila
-                        </button>
+                        <div class="inline-actions">
+                            <button type="button" mat-stroked-button (click)="agregarHabilidadOtorgada()">
+                                Añadir fila
+                            </button>
+                            <button type="button" mat-stroked-button (click)="abrirCrearCustom()">
+                                <mat-icon>add_circle</mat-icon>
+                                Nueva custom
+                            </button>
+                        </div>
                     </div>
 
                     <div class="skill-grid head">
@@ -232,7 +238,9 @@
                             <mat-label>Habilidad</mat-label>
                             <mat-select [value]="row.id_habilidad" (selectionChange)="onHabilidadOtorgadaChange(i, { id_habilidad: $event.value, id_extra: 0 })">
                                 <mat-option [value]="0">Sin habilidad</mat-option>
-                                <mat-option *ngFor="let habilidad of habilidadesCatalogo" [value]="habilidad.Id_habilidad">{{habilidad.Nombre}}</mat-option>
+                                <mat-option *ngFor="let habilidad of habilidadesOtorgadasCatalogo" [value]="habilidad.Id_habilidad">
+                                    {{habilidad.Nombre}}{{esHabilidadCustom(habilidad.Id_habilidad) ? ' (custom)' : ''}}
+                                </mat-option>
                             </mat-select>
                         </mat-form-field>
 
@@ -250,6 +258,10 @@
                             <mat-label>Rangos</mat-label>
                             <input matInput type="number" [value]="row.rangos" (input)="onHabilidadOtorgadaChange(i, { rangos: +$any($event.target).value || 0 })">
                         </mat-form-field>
+
+                        <button type="button" mat-icon-button class="row-action-btn" matTooltip="Editar custom" [disabled]="!esHabilidadCustom(row.id_habilidad)" (click)="abrirEditarCustomOtorgada(i)">
+                            <mat-icon>edit</mat-icon>
+                        </button>
 
                         <button type="button" mat-icon-button class="row-action-btn" (click)="eliminarHabilidadOtorgada(i)" [disabled]="habilidadesOtorgadasEditor.length < 2">
                             <mat-icon>delete</mat-icon>
@@ -403,4 +415,12 @@
             </div>
         </div>
     </section>
+
+    <app-habilidad-custom-modal
+        [abierto]="customModalAbierto"
+        [modo]="customModalModo"
+        [habilidad]="customModalHabilidad"
+        (cerrado)="cerrarCustomModal()"
+        (guardada)="onHabilidadCustomGuardada($event)">
+    </app-habilidad-custom-modal>
 </div>

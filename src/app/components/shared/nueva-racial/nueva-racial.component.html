@@ -250,14 +250,24 @@
 
                                     <mat-checkbox [(ngModel)]="row.se_considera_clasea" [ngModelOptions]="{standalone: true}">Clásea</mat-checkbox>
 
+                                    <button mat-icon-button type="button" class="row-action-btn" aria-label="Editar custom" matTooltip="Editar custom" [disabled]="row.id_habilidad <= 0" (click)="abrirEditarCustom(row)">
+                                        <mat-icon>edit</mat-icon>
+                                    </button>
+
                                     <button mat-icon-button type="button" class="row-action-btn" aria-label="Quitar habilidad" (click)="quitarHabilidadCustom(i)">
                                         <mat-icon>delete</mat-icon>
                                     </button>
                                 </div>
-                                <button mat-stroked-button type="button" (click)="agregarHabilidadCustom()">
-                                    <mat-icon>add</mat-icon>
-                                    Añadir habilidad custom
-                                </button>
+                                <div class="inline-actions">
+                                    <button mat-stroked-button type="button" (click)="agregarHabilidadCustom()">
+                                        <mat-icon>add</mat-icon>
+                                        Añadir habilidad custom
+                                    </button>
+                                    <button mat-stroked-button type="button" (click)="abrirCrearCustom()">
+                                        <mat-icon>add_circle</mat-icon>
+                                        Nueva custom
+                                    </button>
+                                </div>
                             </mat-expansion-panel>
 
                             <mat-expansion-panel>
@@ -331,4 +341,12 @@
             </mat-step>
         </mat-horizontal-stepper>
     </form>
+
+    <app-habilidad-custom-modal
+        [abierto]="customModalAbierto"
+        [modo]="customModalModo"
+        [habilidad]="customModalHabilidad"
+        (cerrado)="cerrarCustomModal()"
+        (guardada)="onHabilidadCustomGuardada($event)">
+    </app-habilidad-custom-modal>
 </div>

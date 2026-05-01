@@ -147,13 +147,15 @@
             {{getEtiquetaListadoTab(listadoTab)}}
             <button (click)="quitarListado(listadoTab)" mat-icon-button class="tw-ms-2"><mat-icon>close</mat-icon></button>
         </ng-template>
-        <ng-container *ngIf="listadoTab.operacion === 'insertar' && (listadoTab.tipo === 'dotes' || listadoTab.tipo === 'conjuros' || listadoTab.tipo === 'razas' || listadoTab.tipo === 'raciales' || listadoTab.tipo === 'idiomas'); else listadoGenerico">
+        <ng-container *ngIf="listadoTab.operacion === 'insertar' && (listadoTab.tipo === 'dotes' || listadoTab.tipo === 'conjuros' || listadoTab.tipo === 'razas' || listadoTab.tipo === 'raciales' || listadoTab.tipo === 'idiomas' || listadoTab.tipo === 'especiales' || listadoTab.tipo === 'clases'); else listadoGenerico">
             <div class="insercion-dotes-shell">
                 <app-nueva-dote *ngIf="listadoTab.tipo === 'dotes'"></app-nueva-dote>
                 <app-nueva-conjuro *ngIf="listadoTab.tipo === 'conjuros'"></app-nueva-conjuro>
                 <app-nueva-raza *ngIf="listadoTab.tipo === 'razas'"></app-nueva-raza>
+                <app-nueva-clase *ngIf="listadoTab.tipo === 'clases'"></app-nueva-clase>
                 <app-nueva-racial *ngIf="listadoTab.tipo === 'raciales'"></app-nueva-racial>
                 <app-nueva-idioma *ngIf="listadoTab.tipo === 'idiomas'"></app-nueva-idioma>
+                <app-nueva-especial *ngIf="listadoTab.tipo === 'especiales'"></app-nueva-especial>
             </div>
         </ng-container>
         <ng-template #listadoGenerico>
@@ -195,6 +197,38 @@
                 (cerrar)="quitarEdicionIdioma(idiomaTab)"
                 (idiomaActualizado)="onIdiomaActualizadoDesdeEdicion($event)">
             </app-nueva-idioma>
+        </div>
+    </mat-tab>
+    <mat-tab *ngFor="let especialTab of edicionEspecialesAbiertos" [label]="getEtiquetaEdicionEspecialTab(especialTab)">
+        <ng-template mat-tab-label>
+            <mat-icon class="tw-me-2">edit_square</mat-icon>
+            {{getEtiquetaEdicionEspecialTab(especialTab)}}
+            <button (click)="quitarEdicionEspecial(especialTab)" mat-icon-button class="tw-ms-2"><mat-icon>close</mat-icon></button>
+        </ng-template>
+        <div class="insercion-dotes-shell">
+            <app-nueva-especial
+                modo="editar"
+                [idEspecial]="especialTab.idEspecial"
+                [editorTabKey]="especialTab.key"
+                (cerrar)="quitarEdicionEspecial(especialTab)"
+                (especialActualizado)="onEspecialActualizadoDesdeEdicion($event)">
+            </app-nueva-especial>
+        </div>
+    </mat-tab>
+    <mat-tab *ngFor="let claseTab of edicionClasesAbiertos" [label]="getEtiquetaEdicionClaseTab(claseTab)">
+        <ng-template mat-tab-label>
+            <mat-icon class="tw-me-2">edit_square</mat-icon>
+            {{getEtiquetaEdicionClaseTab(claseTab)}}
+            <button (click)="quitarEdicionClase(claseTab)" mat-icon-button class="tw-ms-2"><mat-icon>close</mat-icon></button>
+        </ng-template>
+        <div class="insercion-dotes-shell">
+            <app-nueva-clase
+                modo="editar"
+                [idClase]="claseTab.idClase"
+                [editorTabKey]="claseTab.key"
+                (cerrar)="quitarEdicionClase(claseTab)"
+                (claseActualizada)="onClaseActualizadaDesdeEdicion($event)">
+            </app-nueva-clase>
         </div>
     </mat-tab>
     <mat-tab *ngFor="let manual of detallesManualAbiertos; let index = index" [label]="getEtiquetaManual(manual)">

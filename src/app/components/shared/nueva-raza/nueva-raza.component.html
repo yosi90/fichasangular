@@ -481,9 +481,13 @@
                                         </mat-autocomplete>
                                     </mat-form-field>
                                     <mat-form-field appearance="fill"><mat-label>Cantidad</mat-label><input matInput type="number" [value]="row.cantidad" (input)="actualizarHabilidadCustom(i, { cantidad: $any($event.target).value })" /></mat-form-field>
+                                    <button mat-icon-button type="button" matTooltip="Editar custom" [disabled]="row.id_habilidad <= 0" (click)="abrirEditarCustom(row)"><mat-icon>edit</mat-icon></button>
                                     <button mat-icon-button type="button" matTooltip="Quitar" (click)="quitarHabilidadCustom(i)"><mat-icon>delete</mat-icon></button>
                                 </div>
-                                <button mat-stroked-button type="button" (click)="agregarHabilidadCustom()"><mat-icon>add</mat-icon> Añadir habilidad personalizada</button>
+                                <div class="inline-actions">
+                                    <button mat-stroked-button type="button" (click)="agregarHabilidadCustom()"><mat-icon>add</mat-icon> Añadir habilidad personalizada</button>
+                                    <button mat-stroked-button type="button" (click)="abrirCrearCustom()"><mat-icon>add_circle</mat-icon> Nueva custom</button>
+                                </div>
                             </mat-expansion-panel>
 
                             <mat-expansion-panel>
@@ -710,4 +714,12 @@
             </app-nueva-idioma>
         </div>
     </section>
+
+    <app-habilidad-custom-modal
+        [abierto]="customModalAbierto"
+        [modo]="customModalModo"
+        [habilidad]="customModalHabilidad"
+        (cerrado)="cerrarCustomModal()"
+        (guardada)="onHabilidadCustomGuardada($event)">
+    </app-habilidad-custom-modal>
 </div>

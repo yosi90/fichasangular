@@ -1,0 +1,107 @@
+@use '../../../../assets/css/preformas/_inserciones' as inserciones
+
+.nueva-especial-shell
+    @include inserciones.insercion-shell
+    display: flex
+    min-height: 100%
+
+.nueva-especial-form
+    @include inserciones.insercion-form-base
+    flex: 1 1 auto
+    min-height: 100%
+
+    mat-horizontal-stepper
+        background: transparent
+        color: #e5e7eb
+
+    ::ng-deep .mat-horizontal-content-container
+        padding: 0.75rem 0.25rem 0
+
+    .step-body
+        display: flex
+        flex-direction: column
+        gap: 0.75rem
+        max-height: calc(100vh - 230px)
+        overflow: auto
+        padding-right: 0.25rem
+
+    .panel-title
+        gap: 0.45rem
+
+    .base-grid
+        display: grid
+        grid-template-columns: minmax(220px, 1.1fr) minmax(180px, 0.7fr) minmax(220px, 0.8fr)
+        gap: 0.75rem
+        align-items: start
+
+    .bonus-grid
+        display: grid
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr))
+        gap: 0.75rem
+
+    .full-span
+        grid-column: 1 / -1
+
+    .repeat-row
+        display: grid
+        gap: 0.55rem
+        align-items: start
+        margin-bottom: 0.5rem
+
+    .extra-row
+        grid-template-columns: minmax(220px, 1fr) minmax(100px, 140px) 42px
+
+    .habilidad-row
+        grid-template-columns: minmax(110px, 140px) minmax(220px, 1fr) minmax(180px, 0.8fr) minmax(90px, 120px) 42px 42px
+
+    .button-group
+        display: flex
+        flex-wrap: wrap
+        gap: 0.5rem
+
+.selector-dialog-backdrop
+    position: fixed
+    inset: 0
+    z-index: 1000
+    display: flex
+    align-items: center
+    justify-content: center
+    padding: 1rem
+    background: rgba(0, 0, 0, 0.62)
+
+.selector-dialog
+    width: min(560px, 96vw)
+    max-height: 86vh
+    overflow: auto
+    border: 1px solid rgba(255, 255, 255, 0.16)
+    border-radius: 8px
+    background: #252a2f
+    box-shadow: 0 18px 50px rgba(0, 0, 0, 0.45)
+    color: #e5e7eb
+
+.selector-dialog__head
+    display: flex
+    align-items: center
+    justify-content: space-between
+    gap: 1rem
+    padding: 0.8rem 0.9rem
+    border-bottom: 1px solid rgba(255, 255, 255, 0.12)
+
+    h3
+        margin: 0
+        font-size: 1.05rem
+
+.custom-form
+    @include inserciones.insercion-form-base
+    padding: 0.9rem
+
+@media (max-width: 900px)
+    .nueva-especial-form
+        .base-grid,
+        .extra-row,
+        .habilidad-row
+            grid-template-columns: 1fr
+
+        .full-span
+            grid-column: auto
+

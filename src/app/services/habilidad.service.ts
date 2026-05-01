@@ -1,10 +1,18 @@
 import { HttpClient, HttpErrorResponse } from "@angular/common/http";
 import { Injectable } from "@angular/core";
+import { Auth } from "@angular/fire/auth";
 import { Database, Unsubscribe, onValue, ref, set } from "@angular/fire/database";
-import { Observable, firstValueFrom } from "rxjs";
+import { Observable, Subject, firstValueFrom } from "rxjs";
 import Swal from "sweetalert2";
 import { environment } from "src/environments/environment";
-import { HabilidadBasicaDetalle, HabilidadExtraRef } from "../interfaces/habilidad";
+import {
+    HabilidadBasicaDetalle,
+    HabilidadCustomCreateRequest,
+    HabilidadCustomMutationApiResponse,
+    HabilidadCustomMutationResponse,
+    HabilidadCustomUpdateRequest,
+    HabilidadExtraRef,
+} from "../interfaces/habilidad";
 import { FirebaseInjectionContextService } from "./firebase-injection-context.service";
 
 function toBoolean(value: any): boolean {
@@ -62,8 +70,11 @@ export function normalizeHabilidadBasica(raw: any): HabilidadBasicaDetalle {
     providedIn: "root"
 })
 export class HabilidadService {
+    private readonly habilidadesCustomMutadasSubject = new Subject<HabilidadBasicaDetalle>();
+    readonly habilidadesCustomMutadas$ = this.habilidadesCustomMutadasSubject.asObservable();
 
     constructor(
+        private auth: Auth,
         private db: Database,
         private http: HttpClient,
         private firebaseContextSvc: FirebaseInjectionContextService,
@@ -114,6 +125,40 @@ export class HabilidadService {
 
     private syncHabilidadesCustom() {
         return this.http.get(`${environment.apiUrl}habilidades/custom`);
+    }
+
+    public async crearHabilidadCustom(payload: HabilidadCustomCreateRequest): Promise<HabilidadCustomMutationResponse> {
+        try {
+            const headers = await this.buildAuthHeaders();
+            const response = await firstValueFrom(
+                this.http.post<HabilidadCustomMutationApiResponse>(`${environment.apiUrl}habilidades/custom/add`, payload, { headers })
+            );
+            const normalized = this.normalizarMutacionCustomResponse(response, payload, "Habilidad custom creada");
+            await this.actualizarCacheCustom(normalized.habilidad);
+            this.notificarCustomMutada(normalized.habilidad);
+            return normalized;
+        } catch (error: any) {
+            throw this.mapHabilidadCustomError(error, "crear");
+        }
+    }
+
+    public async actualizarHabilidadCustom(
+        idHabilidad: number,
+        payload: HabilidadCustomUpdateRequest
+    ): Promise<HabilidadCustomMutationResponse> {
+        try {
+            const headers = await this.buildAuthHeaders();
+            const id = Math.trunc(toNumber(idHabilidad));
+            const response = await firstValueFrom(
+                this.http.patch<HabilidadCustomMutationApiResponse>(`${environment.apiUrl}habilidades/custom/${id}`, payload, { headers })
+            );
+            const normalized = this.normalizarMutacionCustomResponse(response, payload, "Habilidad custom actualizada", id);
+            await this.actualizarCacheCustom(normalized.habilidad);
+            this.notificarCustomMutada(normalized.habilidad);
+            return normalized;
+        } catch (error: any) {
+            throw this.mapHabilidadCustomError(error, "actualizar");
+        }
     }
 
     public async RenovarHabilidades(): Promise<boolean> {
@@ -168,6 +213,75 @@ export class HabilidadService {
         return habilidades.length;
     }
 
+    private normalizarMutacionCustomResponse(
+        response: HabilidadCustomMutationApiResponse,
+        payload: HabilidadCustomCreateRequest | HabilidadCustomUpdateRequest,
+        fallbackMessage: string,
+        fallbackId: number = 0,
+    ): HabilidadCustomMutationResponse {
+        const idHabilidad = Math.trunc(toNumber(response?.idHabilidad ?? response?.id_habilidad ?? response?.habilidad?.Id_habilidad ?? fallbackId));
+        if (!Number.isFinite(idHabilidad) || idHabilidad <= 0)
+            throw new Error("La API no devolvió un idHabilidad válido");
+
+        return {
+            message: `${response?.message ?? fallbackMessage}`,
+            idHabilidad,
+            habilidad: normalizeHabilidadBasica(response?.habilidad ?? {
+                Id_habilidad: idHabilidad,
+                Nombre: payload.nombre ?? "",
+                Id_caracteristica: payload.id_caracteristica ?? 0,
+                Caracteristica: "",
+                Descripcion: "",
+                Soporta_extra: false,
+                Entrenada: false,
+                Extras: [],
+            }),
+        };
+    }
+
+    private async actualizarCacheCustom(habilidad: HabilidadBasicaDetalle): Promise<void> {
+        if (!habilidad || Number(habilidad.Id_habilidad) <= 0)
+            return;
+        await this.firebaseContextSvc.run(() => set(ref(this.db, `HabilidadesCustom/${habilidad.Id_habilidad}`), habilidad));
+    }
+
+    private notificarCustomMutada(habilidad: HabilidadBasicaDetalle): void {
+        if (!habilidad || Number(habilidad.Id_habilidad) <= 0)
+            return;
+        this.habilidadesCustomMutadasSubject.next(habilidad);
+    }
+
+    private mapHabilidadCustomError(error: any, accion: "crear" | "actualizar"): Error {
+        if (!(error instanceof HttpErrorResponse))
+            return error instanceof Error ? error : new Error(`No se pudo ${accion} la habilidad custom`);
+
+        const backendMessage = this.extractErrorMessage(error.error);
+        const suffix = backendMessage.length > 0 ? ` ${backendMessage}` : "";
+        if (error.status === 400)
+            return new Error(`Solicitud inválida para ${accion} la habilidad custom.${suffix}`.trim());
+        if (error.status === 401)
+            return new Error(`Sesión no válida para ${accion} habilidades custom.${suffix}`.trim());
+        if (error.status === 403)
+            return new Error(`No tienes permisos para ${accion} habilidades custom.${suffix}`.trim());
+        if (error.status === 404)
+            return new Error(`No se encontró la habilidad custom solicitada.${suffix}`.trim());
+        if (error.status === 409)
+            return new Error(`Ya existe una habilidad custom con ese nombre.${suffix}`.trim());
+        if (backendMessage.length > 0)
+            return new Error(backendMessage);
+        return new Error(`No se pudo ${accion} la habilidad custom (HTTP ${error.status || 0})`);
+    }
+
+    private extractErrorMessage(errorBody: any): string {
+        if (!errorBody)
+            return "";
+        if (typeof errorBody === "string")
+            return errorBody.trim();
+        if (typeof errorBody === "object")
+            return `${errorBody?.message ?? errorBody?.error ?? ""}`.trim();
+        return "";
+    }
+
     private handleError(error: any, tipo: "habilidades" | "habilidades custom") {
         const httpError = error as HttpErrorResponse;
         if (httpError.status === 404) {
@@ -186,5 +300,15 @@ export class HabilidadService {
             text: error?.message ?? "Error no identificado",
             showConfirmButton: true
         });
+    }
+
+    private async buildAuthHeaders(): Promise<{ Authorization: string; }> {
+        const user = this.auth.currentUser;
+        if (!user)
+            throw new Error("Sesión no iniciada");
+        const idToken = await user.getIdToken();
+        if (`${idToken ?? ""}`.trim().length < 1)
+            throw new Error("Token no disponible");
+        return { Authorization: `Bearer ${idToken}` };
     }
 }

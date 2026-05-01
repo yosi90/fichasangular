@@ -103,6 +103,9 @@ import { NuevaConjuroComponent } from './components/shared/nueva-conjuro/nueva-c
 import { NuevaRazaComponent } from './components/shared/nueva-raza/nueva-raza.component';
 import { NuevaRacialComponent } from './components/shared/nueva-racial/nueva-racial.component';
 import { NuevaIdiomaComponent } from './components/shared/nueva-idioma/nueva-idioma.component';
+import { NuevaEspecialComponent } from './components/shared/nueva-especial/nueva-especial.component';
+import { NuevaClaseComponent } from './components/shared/nueva-clase/nueva-clase.component';
+import { HabilidadCustomModalComponent } from './components/shared/habilidad-custom-modal/habilidad-custom-modal.component';
 import { PrerrequisitoCatalogEditorComponent } from './components/shared/prerrequisito-editor/prerrequisito-catalog-editor.component';
 import { PrerrequisitoCatalogValueEditorComponent } from './components/shared/prerrequisito-editor/prerrequisito-catalog-value-editor.component';
 import { PrerrequisitoEditorHostComponent } from './components/shared/prerrequisito-editor/prerrequisito-editor-host.component';
@@ -225,6 +228,9 @@ import { CloseFilterMenuOnMouseleaveDirective } from './directives/close-filter-
         NuevaRazaComponent,
         NuevaRacialComponent,
         NuevaIdiomaComponent,
+        NuevaEspecialComponent,
+        NuevaClaseComponent,
+        HabilidadCustomModalComponent,
         PrerrequisitoEditorHostComponent,
         PrerrequisitoFlagEditorComponent,
         PrerrequisitoValueEditorComponent,

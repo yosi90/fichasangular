@@ -62,6 +62,17 @@ export interface ClaseHabilidades {
     Custom: Record<string, any>[];
 }
 
+export interface ClaseHabilidadMutationRef {
+    Id_habilidad?: number;
+    id_habilidad?: number;
+    Id_extra?: number;
+    id_extra?: number;
+    Extra?: string;
+    Habilidad?: string;
+    Varios?: string;
+    varios?: string;
+}
+
 export interface ClaseIdioma {
     Id: number;
     Nombre: string;
@@ -190,6 +201,12 @@ export interface Clase {
     Manual: ClaseManual;
     Tipo_dado: ClaseTipoDado;
     Puntos_habilidad: ClasePuntosHabilidad;
+    Ataque_base?: ClaseProgresionBaseMutationRef;
+    Salvaciones?: {
+        Fortaleza?: ClaseProgresionBaseMutationRef;
+        Reflejos?: ClaseProgresionBaseMutationRef;
+        Voluntad?: ClaseProgresionBaseMutationRef;
+    };
     Nivel_max_claseo: number;
     Mod_salv_conjuros: string;
     Conjuros: ClaseConjurosConfig;
@@ -206,4 +223,60 @@ export interface Clase {
     Desglose_niveles: ClaseNivelDetalle[];
     Prerrequisitos_flags: ClasePrerrequisitosFlags;
     Prerrequisitos: ClasePrerrequisitos;
+}
+
+export interface ClaseProgresionBaseMutationRef {
+    Id: number;
+    Nombre?: string;
+    Valores?: string[];
+}
+
+export interface ClaseMutationRequest extends Omit<Clase, 'Id'> {
+    Id?: number;
+    Ataque_base: ClaseProgresionBaseMutationRef;
+    Salvaciones: {
+        Fortaleza: ClaseProgresionBaseMutationRef;
+        Reflejos: ClaseProgresionBaseMutationRef;
+        Voluntad: ClaseProgresionBaseMutationRef;
+    };
+}
+
+export interface ClaseMutationApiResponse {
+    message?: string;
+    idClase?: number;
+    id_clase?: number;
+    clase?: Clase;
+}
+
+export interface ClaseMutationResponse {
+    message: string;
+    idClase: number;
+    clase: Clase;
+}
+
+export interface ClasePrerequisitosUpdateRequest {
+    Prerrequisitos: ClasePrerrequisitos | Record<string, Record<string, any>[]>;
+}
+
+export interface ClaseProgressionCatalogItem {
+    Id: number;
+    Nombre: string;
+    Valores: string[];
+}
+
+export interface ClasePuntosHabilidadCatalogItem {
+    Id: number;
+    Valor: number;
+}
+
+export interface ClaseAumentoClaseLanzadoraCatalogItem {
+    Id: number;
+    Nombre: string;
+}
+
+export interface ClaseProgressionCatalogs {
+    ataques_base: ClaseProgressionCatalogItem[];
+    salvaciones: ClaseProgressionCatalogItem[];
+    puntos_habilidad: ClasePuntosHabilidadCatalogItem[];
+    aumentos_clase_lanzadora: ClaseAumentoClaseLanzadoraCatalogItem[];
 }

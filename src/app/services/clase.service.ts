@@ -1,11 +1,23 @@
 import { HttpClient, HttpErrorResponse } from "@angular/common/http";
 import { Injectable } from "@angular/core";
+import { Auth } from "@angular/fire/auth";
 import { Database, Unsubscribe, onValue, ref, set } from "@angular/fire/database";
-import { Observable, firstValueFrom, map } from "rxjs";
+import { Observable, Subject, firstValueFrom, map } from "rxjs";
 import Swal from "sweetalert2";
 import { environment } from "src/environments/environment";
 import { Alineamiento } from "../interfaces/alineamiento";
-import { Clase, ClaseConjurosConfig, ClaseNivelDetalle, ClasePrerrequisitos, ClasePrerrequisitosFlags } from "../interfaces/clase";
+import {
+    Clase,
+    ClaseConjurosConfig,
+    ClaseMutationApiResponse,
+    ClaseMutationRequest,
+    ClaseMutationResponse,
+    ClaseNivelDetalle,
+    ClasePrerequisitosUpdateRequest,
+    ClaseProgressionCatalogs,
+    ClasePrerrequisitos,
+    ClasePrerrequisitosFlags
+} from "../interfaces/clase";
 import { FirebaseInjectionContextService } from "./firebase-injection-context.service";
 
 const CLAVES_PRERREQUISITOS: (keyof ClasePrerrequisitos)[] = [
@@ -181,6 +193,14 @@ function normalizeAlineamiento(raw: any): Alineamiento {
     };
 }
 
+function normalizeProgressionRef(raw: any): any {
+    return {
+        Id: toNumber(raw?.Id),
+        Nombre: toText(raw?.Nombre),
+        Valores: toArray(raw?.Valores).map((item) => toText(item)),
+    };
+}
+
 function normalizeNivel(raw: any): ClaseNivelDetalle {
     const diariosRaw = raw?.Conjuros_diarios ?? {};
     const conocidosNivelRaw = raw?.Conjuros_conocidos_nivel_a_nivel ?? {};
@@ -276,6 +296,12 @@ export function normalizeClase(raw: any): Clase {
             Id: toNumber(raw?.Puntos_habilidad?.Id),
             Valor: toNumber(raw?.Puntos_habilidad?.Valor),
         },
+        Ataque_base: normalizeProgressionRef(raw?.Ataque_base),
+        Salvaciones: {
+            Fortaleza: normalizeProgressionRef(raw?.Salvaciones?.Fortaleza),
+            Reflejos: normalizeProgressionRef(raw?.Salvaciones?.Reflejos),
+            Voluntad: normalizeProgressionRef(raw?.Salvaciones?.Voluntad),
+        },
         Nivel_max_claseo: toNumber(raw?.Nivel_max_claseo),
         Mod_salv_conjuros: toText(raw?.Mod_salv_conjuros),
         Conjuros: normalizeConjuros(raw?.Conjuros),
@@ -318,8 +344,11 @@ export function normalizeClase(raw: any): Clase {
     providedIn: "root"
 })
 export class ClaseService {
+    private readonly clasesMutadasSubject = new Subject<Clase>();
+    readonly clasesMutadas$ = this.clasesMutadasSubject.asObservable();
 
     constructor(
+        private auth: Auth,
         private db: Database,
         private http: HttpClient,
         private firebaseContextSvc: FirebaseInjectionContextService
@@ -408,6 +437,77 @@ export class ClaseService {
         );
     }
 
+    getCatalogosProgresion(): Observable<ClaseProgressionCatalogs> {
+        return this.http.get(`${environment.apiUrl}clases/catalogos/progresion`)
+            .pipe(map((raw: any) => ({
+                ataques_base: toArray(raw?.ataques_base).map(normalizeProgressionRef),
+                salvaciones: toArray(raw?.salvaciones).map(normalizeProgressionRef),
+                puntos_habilidad: toArray(raw?.puntos_habilidad).map((item: any) => ({
+                    Id: toNumber(item?.Id),
+                    Valor: toNumber(item?.Valor),
+                })),
+                aumentos_clase_lanzadora: toArray(raw?.aumentos_clase_lanzadora).map((item: any) => ({
+                    Id: toNumber(item?.Id),
+                    Nombre: toText(item?.Nombre),
+                })),
+            })));
+    }
+
+    getClaseFresca(id: number): Observable<Clase> {
+        return this.http.get(`${environment.apiUrl}clases/${Math.trunc(toNumber(id))}`)
+            .pipe(map((raw: any) => normalizeClase(raw)));
+    }
+
+    public async crearClase(payload: ClaseMutationRequest): Promise<ClaseMutationResponse> {
+        try {
+            const headers = await this.buildAuthHeaders();
+            const response = await firstValueFrom(
+                this.http.post<ClaseMutationApiResponse>(`${environment.apiUrl}clases/add`, this.sanitizeMutationPayload(payload), { headers })
+            );
+            const normalized = this.normalizarMutacionResponse(response, payload, "Clase creada");
+            await this.actualizarCacheLocal(normalized.clase);
+            this.notificarClaseMutada(normalized.clase);
+            return normalized;
+        } catch (error: any) {
+            throw this.mapClaseError(error, "crear");
+        }
+    }
+
+    public async actualizarClase(idClase: number, payload: ClaseMutationRequest): Promise<ClaseMutationResponse> {
+        try {
+            const headers = await this.buildAuthHeaders();
+            const id = Math.trunc(toNumber(idClase));
+            const response = await firstValueFrom(
+                this.http.put<ClaseMutationApiResponse>(`${environment.apiUrl}clases/${id}`, this.sanitizeMutationPayload(payload), { headers })
+            );
+            const normalized = this.normalizarMutacionResponse(response, payload, "Clase actualizada", id);
+            await this.actualizarCacheLocal(normalized.clase);
+            this.notificarClaseMutada(normalized.clase);
+            return normalized;
+        } catch (error: any) {
+            throw this.mapClaseError(error, "actualizar");
+        }
+    }
+
+    public async actualizarPrerrequisitosClase(
+        idClase: number,
+        payload: ClasePrerequisitosUpdateRequest
+    ): Promise<ClaseMutationResponse> {
+        try {
+            const headers = await this.buildAuthHeaders();
+            const id = Math.trunc(toNumber(idClase));
+            const response = await firstValueFrom(
+                this.http.patch<ClaseMutationApiResponse>(`${environment.apiUrl}clases/${id}/prerrequisitos`, this.sanitizeMutationPayload(payload), { headers })
+            );
+            const normalized = this.normalizarMutacionResponse(response, { Id: id } as any, "Prerrequisitos actualizados", id);
+            await this.actualizarCacheLocal(normalized.clase);
+            this.notificarClaseMutada(normalized.clase);
+            return normalized;
+        } catch (error: any) {
+            throw this.mapClaseError(error, "actualizar");
+        }
+    }
+
     private syncClases(): Observable<any> {
         return this.http.get(`${environment.apiUrl}clases`);
     }
@@ -456,5 +556,75 @@ export class ClaseService {
             .replace(/[\u0300-\u036f]/g, "")
             .trim()
             .toLowerCase();
+    }
+
+    private async buildAuthHeaders(): Promise<Record<string, string>> {
+        const token = await this.auth.currentUser?.getIdToken();
+        if (!token)
+            throw new Error("Debes iniciar sesión para gestionar clases");
+        return { Authorization: `Bearer ${token}` };
+    }
+
+    private sanitizeMutationPayload<T>(payload: T): T {
+        const clone: any = JSON.parse(JSON.stringify(payload ?? {}));
+        delete clone.uid;
+        delete clone.firebaseUid;
+        delete clone.actorUid;
+        return clone;
+    }
+
+    private normalizarMutacionResponse(
+        response: ClaseMutationApiResponse,
+        payload: Partial<ClaseMutationRequest>,
+        fallbackMessage: string,
+        fallbackId: number = 0,
+    ): ClaseMutationResponse {
+        const idClase = Math.trunc(toNumber(response?.idClase ?? response?.id_clase ?? response?.clase?.Id ?? payload?.Id ?? fallbackId));
+        if (!Number.isFinite(idClase) || idClase <= 0)
+            throw new Error("La API no devolvió un idClase válido");
+        const clase = normalizeClase(response?.clase ?? { ...payload, Id: idClase });
+        return {
+            message: `${response?.message ?? fallbackMessage}`,
+            idClase,
+            clase: { ...clase, Id: clase.Id > 0 ? clase.Id : idClase },
+        };
+    }
+
+    private async actualizarCacheLocal(clase: Clase): Promise<void> {
+        if (!clase || Number(clase.Id) <= 0)
+            return;
+        await this.firebaseContextSvc.run(() => set(ref(this.db, `Clases/${clase.Id}`), clase));
+    }
+
+    private notificarClaseMutada(clase: Clase): void {
+        if (!clase || Number(clase.Id) <= 0)
+            return;
+        this.clasesMutadasSubject.next(clase);
+    }
+
+    private mapClaseError(error: any, accion: "crear" | "actualizar"): Error {
+        if (!(error instanceof HttpErrorResponse))
+            return error instanceof Error ? error : new Error(`No se pudo ${accion} la clase`);
+        const backendMessage = this.extractErrorMessage(error.error);
+        const suffix = backendMessage.length > 0 ? ` ${backendMessage}` : "";
+        if (error.status === 400)
+            return new Error(`Datos de clase inválidos.${suffix}`);
+        if (error.status === 401)
+            return new Error(`Sesión no válida para ${accion} clases.${suffix}`);
+        if (error.status === 403)
+            return new Error(`No tienes permisos para ${accion} clases.${suffix}`);
+        if (error.status === 404)
+            return new Error(`Clase o referencia no encontrada.${suffix}`);
+        if (error.status === 409)
+            return new Error(`Ya existe una clase con ese nombre.${suffix}`);
+        return new Error(`No se pudo ${accion} la clase.${suffix || ` ${error.message}`}`);
+    }
+
+    private extractErrorMessage(errorBody: any): string {
+        if (!errorBody)
+            return "";
+        if (typeof errorBody === "string")
+            return errorBody;
+        return `${errorBody.error ?? errorBody.message ?? errorBody.detail ?? ""}`.trim();
     }
 }
