@@ -442,6 +442,7 @@ export class UserProfileApiService {
             role: this.normalizeUserRole(raw?.role),
             permissions: this.normalizePermissionsMap(raw?.permissions),
             compliance: this.normalizeCompliance(raw?.compliance),
+            excludeFromAnalytics: raw?.excludeFromAnalytics === true,
         };
     }
 

@@ -57,3 +57,7 @@ firestore.fichas-rol.rules
 /docs
 agents.md
 .codex
+
+# Kits de referencia externos (Yosiftadisticas / Notificapp)
+/estadisticas-kit/
+/plugin-kit/

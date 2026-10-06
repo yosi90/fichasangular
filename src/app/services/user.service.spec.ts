@@ -1408,4 +1408,38 @@ describe('UserService', () => {
             'No dispones de los permisos necesarios para realizar esta acción. Puedes solicitar convertirte en colaborador desde tu perfil.'
         );
     });
+
+    it('marca el dispositivo como excluido de Yosiftadisticas y no la borra después', () => {
+        const service = new UserServiceTestDouble();
+        const perfil = (excludeFromAnalytics?: boolean) => ({
+            uid: 'uid-propietario',
+            displayName: 'Propietario',
+            bio: null,
+            genderIdentity: null,
+            pronouns: null,
+            email: 'propietario@test.com',
+            emailVerified: true,
+            authProvider: 'correo' as const,
+            photoUrl: null,
+            photoThumbUrl: null,
+            createdAt: null,
+            lastSeenAt: null,
+            role: 'jugador' as const,
+            permissions: {},
+            excludeFromAnalytics,
+        });
+        localStorage.removeItem('yosiftadisticas:excluir');
+
+        service.setCurrentPrivateProfile(perfil());
+        expect(localStorage.getItem('yosiftadisticas:excluir')).toBeNull();
+
+        service.setCurrentPrivateProfile(perfil(true));
+        expect(localStorage.getItem('yosiftadisticas:excluir')).toBe('1');
+
+        service.setCurrentPrivateProfile(perfil(false));
+        service.setCurrentPrivateProfile(null);
+        expect(localStorage.getItem('yosiftadisticas:excluir')).toBe('1');
+
+        localStorage.removeItem('yosiftadisticas:excluir');
+    });
 });

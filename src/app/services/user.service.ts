@@ -291,6 +291,8 @@ export class UserService {
     }
 
     public setCurrentPrivateProfile(profile: UserPrivateProfile | null): void {
+        if (profile?.excludeFromAnalytics === true)
+            this.marcarDispositivoExcluidoDeEstadisticas();
         const mergedProfile = this.mergeIncomingPrivateProfile(profile);
         const hasExplicitCompliance = !!profile && Object.prototype.hasOwnProperty.call(profile, 'compliance');
         if (this.userProfileApiSvc && !this.complianceBootstrapPending && hasExplicitCompliance && profile?.compliance === null)
@@ -821,6 +823,15 @@ export class UserService {
             permissions: this.mergeEffectivePermissions(profile.permissions, this.acl.permissions),
             compliance: effectiveCompliance,
         };
+    }
+
+    // Yosiftadisticas: la marca nunca se borra (ni al cerrar sesion ni si el campo llega a false).
+    private marcarDispositivoExcluidoDeEstadisticas(): void {
+        try {
+            localStorage.setItem('yosiftadisticas:excluir', '1');
+        } catch {
+            // localStorage puede fallar en modo privado; no debe afectar a la sesion.
+        }
     }
 
     private mergeIncomingPrivateProfile(profile: UserPrivateProfile | null): UserPrivateProfile | null {
