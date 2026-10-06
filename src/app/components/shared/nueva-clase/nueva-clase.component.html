@@ -3,161 +3,209 @@
         <p class="permiso-msg" *ngIf="cargandoEdicion">Cargando clase...</p>
         <p class="permiso-msg" *ngIf="!puedeGuardar && !cargandoEdicion">{{mensajePermisoInsuficiente}}</p>
 
-        <mat-horizontal-stepper>
+        <mat-horizontal-stepper class="clase-stepper">
             <mat-step label="Base">
                 <div class="step-body">
-                    <div class="panel-card">
-                        <span class="panel-title">
-                            <mat-icon>school</mat-icon>
-                            {{tituloFormulario}}
-                        </span>
+                    <div class="base-grid">
+                        <mat-form-field appearance="fill">
+                            <mat-label>Nombre</mat-label>
+                            <input matInput formControlName="nombre" maxlength="200">
+                            <mat-error *ngIf="form.controls.nombre.hasError('required')">Nombre obligatorio.</mat-error>
+                        </mat-form-field>
 
-                        <div class="base-grid">
-                            <mat-form-field appearance="fill">
-                                <mat-label>Nombre</mat-label>
-                                <input matInput formControlName="nombre" maxlength="200">
-                                <mat-error *ngIf="form.controls.nombre.hasError('required')">Nombre obligatorio.</mat-error>
-                            </mat-form-field>
+                        <mat-form-field appearance="fill">
+                            <mat-label>Manual</mat-label>
+                            <input matInput [(ngModel)]="manualBusqueda" [ngModelOptions]="{standalone: true}" [matAutocomplete]="manualAuto">
+                            <mat-autocomplete #manualAuto="matAutocomplete" (optionSelected)="seleccionarManual($event.option.value)">
+                                <mat-option *ngFor="let manual of getManualesFiltrados()" [value]="manual.Id">{{manual.Nombre}}</mat-option>
+                            </mat-autocomplete>
+                            <mat-error *ngIf="form.controls.id_manual.hasError('min')">Selecciona un manual.</mat-error>
+                        </mat-form-field>
 
-                            <mat-form-field appearance="fill">
-                                <mat-label>Manual</mat-label>
-                                <input matInput [(ngModel)]="manualBusqueda" [ngModelOptions]="{standalone: true}" [matAutocomplete]="manualAuto">
-                                <mat-autocomplete #manualAuto="matAutocomplete" (optionSelected)="seleccionarManual($event.option.value)">
-                                    <mat-option *ngFor="let manual of getManualesFiltrados()" [value]="manual.Id">{{manual.Nombre}}</mat-option>
-                                </mat-autocomplete>
-                                <mat-error *ngIf="form.controls.id_manual.hasError('min')">Selecciona un manual.</mat-error>
-                            </mat-form-field>
+                        <mat-form-field appearance="fill">
+                            <mat-label>Pagina</mat-label>
+                            <input matInput type="number" min="0" formControlName="pagina">
+                        </mat-form-field>
 
-                            <mat-form-field appearance="fill">
-                                <mat-label>Pagina</mat-label>
-                                <input matInput type="number" min="0" formControlName="pagina">
-                            </mat-form-field>
+                        <mat-form-field appearance="fill">
+                            <mat-label>Dado de golpe</mat-label>
+                            <mat-select formControlName="tipo_dado">
+                                <mat-option *ngFor="let dado of dados" [value]="dado.Id">{{dado.Nombre}}</mat-option>
+                            </mat-select>
+                        </mat-form-field>
 
-                            <mat-form-field appearance="fill">
-                                <mat-label>Dado</mat-label>
-                                <mat-select formControlName="tipo_dado">
-                                    <mat-option *ngFor="let dado of dados" [value]="dado.Id">{{dado.Nombre}}</mat-option>
-                                </mat-select>
-                            </mat-form-field>
+                        <mat-form-field appearance="fill">
+                            <mat-label>Puntos de habilidad</mat-label>
+                            <mat-select formControlName="puntos_habilidad_id">
+                                <mat-option *ngFor="let puntos of puntosHabilidadCatalogo" [value]="puntos.Id">{{puntos.Valor}}</mat-option>
+                            </mat-select>
+                        </mat-form-field>
 
-                            <mat-form-field appearance="fill">
-                                <mat-label>Puntos de habilidad</mat-label>
-                                <mat-select formControlName="puntos_habilidad_id">
-                                    <mat-option *ngFor="let puntos of puntosHabilidadCatalogo" [value]="puntos.Id">{{puntos.Valor}}</mat-option>
-                                </mat-select>
-                            </mat-form-field>
+                        <mat-form-field appearance="fill">
+                            <mat-label>Nivel maximo</mat-label>
+                            <input matInput type="number" min="1" max="30" formControlName="nivel_max_claseo">
+                        </mat-form-field>
 
-                            <mat-form-field appearance="fill">
-                                <mat-label>Nivel maximo</mat-label>
-                                <input matInput type="number" min="1" max="30" formControlName="nivel_max_claseo">
-                            </mat-form-field>
+                        <mat-form-field appearance="fill">
+                            <mat-label>Dominios obtenibles</mat-label>
+                            <input matInput type="number" min="0" formControlName="dominio_cantidad">
+                        </mat-form-field>
 
-                            <mat-form-field appearance="fill">
-                                <mat-label>Salvacion conjuros</mat-label>
-                                <mat-select formControlName="mod_salv_conjuros">
-                                    <mat-option *ngFor="let caracteristica of caracteristicas" [value]="caracteristica.Nombre">{{caracteristica.Nombre}}</mat-option>
-                                </mat-select>
-                            </mat-form-field>
+                        <mat-form-field appearance="fill" class="full-span">
+                            <mat-label>Descripcion</mat-label>
+                            <textarea matInput formControlName="descripcion" rows="5" maxlength="8000"></textarea>
+                        </mat-form-field>
 
+                        <div class="toggle-toolbar full-span">
                             <div class="estado-row">
-                                <mat-chip-listbox class="boolean-chips" aria-label="Estados de clase">
+                                <mat-chip-listbox class="boolean-chips" aria-label="Estados de clase" [multiple]="true">
                                     <mat-chip-option [selected]="form.controls.oficial.value === true" (click)="toggleBoolean('oficial')">Oficial</mat-chip-option>
                                     <mat-chip-option [selected]="form.controls.prestigio.value === true" (click)="toggleBoolean('prestigio')">Prestigio</mat-chip-option>
                                     <mat-chip-option [selected]="form.controls.es_predilecta.value === true" (click)="toggleBoolean('es_predilecta')">Predilecta</mat-chip-option>
-                                    <mat-chip-option [selected]="form.controls.aumenta_clase_lanzadora.value === true" (click)="toggleBoolean('aumenta_clase_lanzadora')">Aumenta lanzadora</mat-chip-option>
                                 </mat-chip-listbox>
                             </div>
 
-                            <div class="estado-row">
-                                <mat-chip-listbox class="boolean-chips" aria-label="Roles de clase">
+                            <div class="estado-row estado-row--end">
+                                <mat-chip-listbox class="boolean-chips" aria-label="Roles de clase" [multiple]="true">
                                     <mat-chip-option [selected]="form.controls.rol_dps.value === true" (click)="toggleBoolean('rol_dps')">DPS</mat-chip-option>
                                     <mat-chip-option [selected]="form.controls.rol_tanque.value === true" (click)="toggleBoolean('rol_tanque')">Tanque</mat-chip-option>
                                     <mat-chip-option [selected]="form.controls.rol_support.value === true" (click)="toggleBoolean('rol_support')">Support</mat-chip-option>
                                     <mat-chip-option [selected]="form.controls.rol_utilidad.value === true" (click)="toggleBoolean('rol_utilidad')">Utilidad</mat-chip-option>
                                 </mat-chip-listbox>
                             </div>
-
-                            <mat-form-field appearance="fill" class="full-span">
-                                <mat-label>Descripcion</mat-label>
-                                <textarea matInput formControlName="descripcion" rows="5" maxlength="8000"></textarea>
-                            </mat-form-field>
                         </div>
+
+                        <section class="panel-card magic-basics-card full-span">
+                            <div class="magic-block">
+                                <div class="magic-primary-row">
+                                    <mat-chip-listbox class="boolean-chips magic-primary-chips" aria-label="Tipo de lanzador" [multiple]="true">
+                                        <mat-chip-option [selected]="form.controls.conjuros_arcanos.value === true" (click)="toggleBoolean('conjuros_arcanos')">Arcano</mat-chip-option>
+                                        <mat-chip-option [selected]="form.controls.conjuros_divinos.value === true" (click)="toggleBoolean('conjuros_divinos')">Divino</mat-chip-option>
+                                        <mat-chip-option [selected]="form.controls.conjuros_psionicos.value === true" (click)="toggleBoolean('conjuros_psionicos')">Psionico</mat-chip-option>
+                                    </mat-chip-listbox>
+                                </div>
+
+                                <hr class="magic-separator" *ngIf="esLanzadorConjuros">
+
+                                <div class="magic-options" *ngIf="esLanzadorConjuros">
+                                    <mat-chip-listbox class="boolean-chips" aria-label="Opciones de lanzamiento" [multiple]="true">
+                                        <mat-chip-option
+                                            [selected]="form.controls.lanzamiento_espontaneo.value === true"
+                                            (click)="toggleBoolean('lanzamiento_espontaneo')"
+                                            matTooltip="Esta clase lanza sus conjuros de forma espontánea espontánea">
+                                            Espontaneo
+                                        </mat-chip-option>
+                                        <mat-chip-option *ngIf="puedeEspecializarse" [selected]="form.controls.puede_elegir_especialidad.value === true" (click)="toggleBoolean('puede_elegir_especialidad')">
+                                            {{etiquetaEspecialidadLanzador}}
+                                        </mat-chip-option>
+                                        <mat-chip-option *ngIf="esLanzadorArcanoODivino" [selected]="form.controls.conjuros_dependientes_alineamiento.value === true" (click)="toggleBoolean('conjuros_dependientes_alineamiento')">
+                                            Solo puede lanzar conjuros de su alineamiento
+                                        </mat-chip-option>
+                                    </mat-chip-listbox>
+
+                                    <mat-form-field appearance="fill" class="magic-save-field">
+                                        <mat-label>Salvacion conjuros</mat-label>
+                                        <mat-select formControlName="mod_salv_conjuros">
+                                            <mat-option *ngFor="let caracteristica of caracteristicas" [value]="caracteristica.Nombre">{{caracteristica.Nombre}}</mat-option>
+                                        </mat-select>
+                                    </mat-form-field>
+
+                                    <ng-container *ngIf="esLanzadorArcanoODivino">
+                                        <mat-chip-listbox class="boolean-chips magic-arcane-options" aria-label="Opciones independientes de conjuros arcanos o divinos" [multiple]="true">
+                                            <mat-chip-option *ngIf="muestraAumentaClaseLanzadora" [selected]="form.controls.aumenta_clase_lanzadora.value === true" (click)="toggleBoolean('aumenta_clase_lanzadora')">
+                                                Aumenta nivel de clase lanzadora
+                                            </mat-chip-option>
+                                        </mat-chip-listbox>
+
+                                        <div class="magic-known-options">
+                                            <mat-chip-listbox class="boolean-chips" aria-label="Limite de conjuros conocidos" [multiple]="true">
+                                                <mat-chip-option [selected]="conjurosConocidosLimitados" (click)="toggleConjurosConocidosLimitados()">
+                                                    Conjuros conocidos limitados
+                                                </mat-chip-option>
+                                            </mat-chip-listbox>
+
+                                            <mat-chip-listbox *ngIf="conjurosConocidosLimitados" class="boolean-chips magic-known-mode" aria-label="Tipo de limite de conjuros conocidos">
+                                                <mat-chip-option [selected]="form.controls.conocidos_nivel.value === true" (click)="setModoConjurosConocidos('nivel')">
+                                                    Valor segun espacios de conjuro
+                                                </mat-chip-option>
+                                                <mat-chip-option [selected]="form.controls.conocidos_total.value === true" (click)="setModoConjurosConocidos('total')">
+                                                    Valor total
+                                                </mat-chip-option>
+                                            </mat-chip-listbox>
+                                        </div>
+                                    </ng-container>
+                                </div>
+                            </div>
+                        </section>
+
                     </div>
                 </div>
                 <div class="actions-row">
-                    <button mat-raised-button color="primary" type="button" matStepperNext>Siguiente</button>
                     <button mat-raised-button color="primary" type="submit" [disabled]="guardadoBloqueado">
                         <mat-icon>save</mat-icon>
                         {{etiquetaAccionPrincipal}}
                     </button>
+                    <button mat-raised-button color="primary" type="button" matStepperNext>Siguiente</button>
                 </div>
             </mat-step>
 
             <mat-step label="Progresion">
                 <div class="step-body">
-                    <div class="panel-card">
-                        <span class="panel-title">
-                            <mat-icon>timeline</mat-icon>
-                            Progresion base
-                        </span>
-                        <div class="progression-controls">
-                            <mat-form-field appearance="fill">
-                                <mat-label>Ataque base</mat-label>
-                                <mat-select formControlName="id_ataque_base">
-                                    <mat-option *ngFor="let item of ataqueBaseCatalogo" [value]="item.Id">{{item.Nombre}}</mat-option>
-                                </mat-select>
-                            </mat-form-field>
-                            <mat-form-field appearance="fill">
-                                <mat-label>Fortaleza</mat-label>
-                                <mat-select formControlName="fortaleza_id">
-                                    <mat-option *ngFor="let item of salvacionCatalogo" [value]="item.Id">{{item.Nombre}}</mat-option>
-                                </mat-select>
-                            </mat-form-field>
-                            <mat-form-field appearance="fill">
-                                <mat-label>Reflejos</mat-label>
-                                <mat-select formControlName="reflejos_id">
-                                    <mat-option *ngFor="let item of salvacionCatalogo" [value]="item.Id">{{item.Nombre}}</mat-option>
-                                </mat-select>
-                            </mat-form-field>
-                            <mat-form-field appearance="fill">
-                                <mat-label>Voluntad</mat-label>
-                                <mat-select formControlName="voluntad_id">
-                                    <mat-option *ngFor="let item of salvacionCatalogo" [value]="item.Id">{{item.Nombre}}</mat-option>
-                                </mat-select>
-                            </mat-form-field>
-                        </div>
+                    <div class="progression-controls">
+                        <mat-form-field appearance="fill">
+                            <mat-label>Ataque base</mat-label>
+                            <mat-select formControlName="id_ataque_base">
+                                <mat-option *ngFor="let item of ataqueBaseCatalogo" [value]="item.Id">{{item.Nombre}}</mat-option>
+                            </mat-select>
+                        </mat-form-field>
+                        <mat-form-field appearance="fill">
+                            <mat-label>Fortaleza</mat-label>
+                            <mat-select formControlName="fortaleza_id">
+                                <mat-option *ngFor="let item of salvacionCatalogo" [value]="item.Id">{{item.Nombre}}</mat-option>
+                            </mat-select>
+                        </mat-form-field>
+                        <mat-form-field appearance="fill">
+                            <mat-label>Reflejos</mat-label>
+                            <mat-select formControlName="reflejos_id">
+                                <mat-option *ngFor="let item of salvacionCatalogo" [value]="item.Id">{{item.Nombre}}</mat-option>
+                            </mat-select>
+                        </mat-form-field>
+                        <mat-form-field appearance="fill">
+                            <mat-label>Voluntad</mat-label>
+                            <mat-select formControlName="voluntad_id">
+                                <mat-option *ngFor="let item of salvacionCatalogo" [value]="item.Id">{{item.Nombre}}</mat-option>
+                            </mat-select>
+                        </mat-form-field>
+                    </div>
 
-                        <div class="progression-table">
-                            <div class="progression-head">
-                                <span>Nivel</span>
-                                <span>BAB</span>
-                                <span>Fort</span>
-                                <span>Ref</span>
-                                <span>Vol</span>
-                                <span>Reserva</span>
-                                <span>Poder</span>
-                                <span>Conocidos</span>
-                            </div>
-                            <div class="progression-row" *ngFor="let nivel of niveles">
-                                <span>{{nivel.nivel}}</span>
-                                <span>{{ataqueBaseSeleccionado.Valores[nivel.nivel - 1]}}</span>
-                                <span>{{fortalezaSeleccionada.Valores[nivel.nivel - 1]}}</span>
-                                <span>{{reflejosSeleccionados.Valores[nivel.nivel - 1]}}</span>
-                                <span>{{voluntadSeleccionada.Valores[nivel.nivel - 1]}}</span>
-                                <input type="number" [(ngModel)]="nivel.reserva_psionica" [ngModelOptions]="{standalone: true}">
-                                <input type="number" [(ngModel)]="nivel.nivel_max_poder" [ngModelOptions]="{standalone: true}">
-                                <input type="number" [(ngModel)]="nivel.conjuros_conocidos_total" [ngModelOptions]="{standalone: true}">
-                            </div>
+                    <div class="progression-table">
+                        <div class="progression-head">
+                            <span>Nivel</span>
+                            <span>BAB</span>
+                            <span>Fort</span>
+                            <span>Ref</span>
+                            <span>Vol</span>
+                            <span *ngIf="esLanzadorPsionico">Reserva</span>
+                            <span *ngIf="esLanzadorPsionico">Poder</span>
+                        </div>
+                        <div class="progression-row" *ngFor="let nivel of niveles">
+                            <span>{{nivel.nivel}}</span>
+                            <span>{{ataqueBaseSeleccionado.Valores[nivel.nivel - 1]}}</span>
+                            <span>{{fortalezaSeleccionada.Valores[nivel.nivel - 1]}}</span>
+                            <span>{{reflejosSeleccionados.Valores[nivel.nivel - 1]}}</span>
+                            <span>{{voluntadSeleccionada.Valores[nivel.nivel - 1]}}</span>
+                            <input *ngIf="esLanzadorPsionico" type="number" [(ngModel)]="nivel.reserva_psionica" [ngModelOptions]="{standalone: true}">
+                            <input *ngIf="esLanzadorPsionico" type="number" [(ngModel)]="nivel.nivel_max_poder" [ngModelOptions]="{standalone: true}">
                         </div>
                     </div>
                 </div>
                 <div class="actions-row">
                     <button mat-stroked-button type="button" matStepperPrevious>Anterior</button>
-                    <button mat-raised-button color="primary" type="button" matStepperNext>Siguiente</button>
                     <button mat-raised-button color="primary" type="submit" [disabled]="guardadoBloqueado">
                         <mat-icon>save</mat-icon>
                         {{etiquetaAccionPrincipal}}
                     </button>
+                    <button mat-raised-button color="primary" type="button" matStepperNext>Siguiente</button>
                 </div>
             </mat-step>
 
@@ -216,11 +264,11 @@
                 </div>
                 <div class="actions-row">
                     <button mat-stroked-button type="button" matStepperPrevious>Anterior</button>
-                    <button mat-raised-button color="primary" type="button" matStepperNext>Siguiente</button>
                     <button mat-raised-button color="primary" type="submit" [disabled]="guardadoBloqueado">
                         <mat-icon>save</mat-icon>
                         {{etiquetaAccionPrincipal}}
                     </button>
+                    <button mat-raised-button color="primary" type="button" matStepperNext>Siguiente</button>
                 </div>
             </mat-step>
 
@@ -272,11 +320,11 @@
                 </div>
                 <div class="actions-row">
                     <button mat-stroked-button type="button" matStepperPrevious>Anterior</button>
-                    <button mat-raised-button color="primary" type="button" matStepperNext>Siguiente</button>
                     <button mat-raised-button color="primary" type="submit" [disabled]="guardadoBloqueado">
                         <mat-icon>save</mat-icon>
                         {{etiquetaAccionPrincipal}}
                     </button>
+                    <button mat-raised-button color="primary" type="button" matStepperNext>Siguiente</button>
                 </div>
             </mat-step>
 
@@ -293,32 +341,44 @@
                                     <mat-option *ngFor="let clase of getClasesFiltradas()" [value]="clase.Id">{{clase.Nombre}}</mat-option>
                                 </mat-autocomplete>
                             </mat-form-field>
-                            <mat-form-field appearance="fill">
-                                <mat-label>Dominios</mat-label>
-                                <input matInput type="number" min="0" formControlName="dominio_cantidad">
-                            </mat-form-field>
-                            <div class="estado-row full-span">
-                                <mat-chip-listbox class="boolean-chips" aria-label="Flags de magia">
-                                    <mat-chip-option [selected]="form.controls.conjuros_arcanos.value === true" (click)="toggleBoolean('conjuros_arcanos')">Arcanos</mat-chip-option>
-                                    <mat-chip-option [selected]="form.controls.conjuros_divinos.value === true" (click)="toggleBoolean('conjuros_divinos')">Divinos</mat-chip-option>
-                                    <mat-chip-option [selected]="form.controls.conjuros_psionicos.value === true" (click)="toggleBoolean('conjuros_psionicos')">Psionicos</mat-chip-option>
-                                    <mat-chip-option [selected]="form.controls.conocidos_total.value === true" (click)="toggleBoolean('conocidos_total')">Conocidos total</mat-chip-option>
-                                    <mat-chip-option [selected]="form.controls.conocidos_nivel.value === true" (click)="toggleBoolean('conocidos_nivel')">Conocidos por nivel</mat-chip-option>
-                                    <mat-chip-option [selected]="form.controls.dominio.value === true" (click)="toggleBoolean('dominio')">Dominios</mat-chip-option>
-                                    <mat-chip-option [selected]="form.controls.puede_elegir_especialidad.value === true" (click)="toggleBoolean('puede_elegir_especialidad')">Especialidad</mat-chip-option>
-                                    <mat-chip-option [selected]="form.controls.lanzamiento_espontaneo.value === true" (click)="toggleBoolean('lanzamiento_espontaneo')">Espontaneo</mat-chip-option>
-                                </mat-chip-listbox>
+                        </div>
+
+                        <div class="spell-known-table" *ngIf="muestraConjurosConocidosTotal || muestraConjurosConocidosPorNivel">
+                            <div class="spell-known-table__grid spell-known-table__grid--levels" *ngIf="muestraConjurosConocidosPorNivel">
+                                <div class="spell-known-head">
+                                    <span>Nivel</span>
+                                    <span *ngFor="let nivelConjuro of nivelesConjuro">{{nivelConjuro}}</span>
+                                </div>
+                                <div class="spell-known-row" *ngFor="let nivel of niveles">
+                                    <span>{{nivel.nivel}}</span>
+                                    <input
+                                        *ngFor="let nivelConjuro of nivelesConjuro"
+                                        type="number"
+                                        [(ngModel)]="nivel.conjuros_conocidos_nivel[nivelConjuro]"
+                                        [ngModelOptions]="{standalone: true}">
+                                </div>
+                            </div>
+
+                            <div class="spell-known-table__grid spell-known-table__grid--total" *ngIf="muestraConjurosConocidosTotal">
+                                <div class="spell-known-head">
+                                    <span>Nivel</span>
+                                    <span>Valor</span>
+                                </div>
+                                <div class="spell-known-row" *ngFor="let nivel of niveles">
+                                    <span>{{nivel.nivel}}</span>
+                                    <input type="number" [(ngModel)]="nivel.conjuros_conocidos_total" [ngModelOptions]="{standalone: true}">
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
                 <div class="actions-row">
                     <button mat-stroked-button type="button" matStepperPrevious>Anterior</button>
-                    <button mat-raised-button color="primary" type="button" matStepperNext>Siguiente</button>
                     <button mat-raised-button color="primary" type="submit" [disabled]="guardadoBloqueado">
                         <mat-icon>save</mat-icon>
                         {{etiquetaAccionPrincipal}}
                     </button>
+                    <button mat-raised-button color="primary" type="button" matStepperNext>Siguiente</button>
                 </div>
             </mat-step>
 
@@ -383,11 +443,11 @@
                 </div>
                 <div class="actions-row">
                     <button mat-stroked-button type="button" matStepperPrevious>Anterior</button>
-                    <button mat-raised-button color="primary" type="button" matStepperNext>Siguiente</button>
                     <button mat-raised-button color="primary" type="submit" [disabled]="guardadoBloqueado">
                         <mat-icon>save</mat-icon>
                         {{etiquetaAccionPrincipal}}
                     </button>
+                    <button mat-raised-button color="primary" type="button" matStepperNext>Siguiente</button>
                 </div>
             </mat-step>
 

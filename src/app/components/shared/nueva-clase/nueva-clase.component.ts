@@ -366,6 +366,46 @@ export class NuevaClaseComponent implements OnInit, OnDestroy, OnChanges {
         return this.salvacionCatalogo.find((item) => item.Id === this.entero(this.form.controls.voluntad_id.value, 2)) ?? this.salvacionCatalogo[1];
     }
 
+    get esLanzadorArcanoODivino(): boolean {
+        return this.form.controls.conjuros_arcanos.value === true || this.form.controls.conjuros_divinos.value === true;
+    }
+
+    get esLanzadorPsionico(): boolean {
+        return this.form.controls.conjuros_psionicos.value === true;
+    }
+
+    get esLanzadorConjuros(): boolean {
+        return this.esLanzadorArcanoODivino || this.esLanzadorPsionico;
+    }
+
+    get muestraConjurosConocidosTotal(): boolean {
+        return this.esLanzadorArcanoODivino && this.form.controls.conocidos_total.value === true;
+    }
+
+    get muestraConjurosConocidosPorNivel(): boolean {
+        return this.esLanzadorArcanoODivino && this.form.controls.conocidos_nivel.value === true;
+    }
+
+    get conjurosConocidosLimitados(): boolean {
+        return this.esLanzadorArcanoODivino && (this.form.controls.conocidos_total.value === true || this.form.controls.conocidos_nivel.value === true);
+    }
+
+    get muestraAumentaClaseLanzadora(): boolean {
+        return this.esLanzadorArcanoODivino && this.form.controls.prestigio.value === true;
+    }
+
+    get puedeEspecializarse(): boolean {
+        return this.esLanzadorConjuros && this.form.controls.conjuros_divinos.value !== true;
+    }
+
+    get etiquetaEspecialidadLanzador(): string {
+        if (this.form.controls.conjuros_arcanos.value === true && this.esLanzadorPsionico)
+            return 'Puede especializarse en una escuela o disciplina psionica';
+        if (this.esLanzadorPsionico)
+            return 'Puede especializarse en una disciplina psionica';
+        return 'Puede especializarse en una escuela arcana';
+    }
+
     async guardarClase(): Promise<void> {
         if (!this.puedeGuardar) {
             await Swal.fire({ icon: 'warning', title: 'Permisos insuficientes', text: this.userSvc.getPermissionDeniedMessage(), showConfirmButton: true });
@@ -418,6 +458,68 @@ export class NuevaClaseComponent implements OnInit, OnDestroy, OnChanges {
         control.setValue(control.value !== true);
         control.markAsDirty();
         control.markAsTouched();
+        this.normalizarControlesMagia(controlName);
+    }
+
+    toggleConjurosConocidosLimitados(): void {
+        const activar = !this.conjurosConocidosLimitados;
+        this.form.patchValue({
+            conocidos_total: activar,
+            conocidos_nivel: false,
+        }, { emitEvent: false });
+        this.form.controls.conocidos_total.markAsDirty();
+        this.form.controls.conocidos_total.markAsTouched();
+        this.form.controls.conocidos_nivel.markAsDirty();
+        this.form.controls.conocidos_nivel.markAsTouched();
+    }
+
+    setModoConjurosConocidos(modo: 'total' | 'nivel'): void {
+        this.form.patchValue({
+            conocidos_total: modo === 'total',
+            conocidos_nivel: modo === 'nivel',
+        }, { emitEvent: false });
+        this.form.controls.conocidos_total.markAsDirty();
+        this.form.controls.conocidos_total.markAsTouched();
+        this.form.controls.conocidos_nivel.markAsDirty();
+        this.form.controls.conocidos_nivel.markAsTouched();
+    }
+
+    private normalizarControlesMagia(controlName: keyof typeof this.form.controls): void {
+        if (controlName === 'conjuros_psionicos' && this.form.controls.conjuros_psionicos.value === true) {
+            this.form.patchValue({
+                conjuros_arcanos: false,
+                conjuros_divinos: false,
+            }, { emitEvent: false });
+        }
+        if ((controlName === 'conjuros_arcanos' || controlName === 'conjuros_divinos') && this.esLanzadorArcanoODivino)
+            this.form.controls.conjuros_psionicos.setValue(false, { emitEvent: false });
+
+        if (controlName === 'conocidos_total' && this.form.controls.conocidos_total.value === true)
+            this.form.controls.conocidos_nivel.setValue(false);
+        if (controlName === 'conocidos_nivel' && this.form.controls.conocidos_nivel.value === true)
+            this.form.controls.conocidos_total.setValue(false);
+
+        if (!this.esLanzadorArcanoODivino) {
+            this.form.patchValue({
+                aumenta_clase_lanzadora: false,
+                conjuros_dependientes_alineamiento: false,
+                conocidos_total: false,
+                conocidos_nivel: false,
+            }, { emitEvent: false });
+        }
+
+        if (!this.muestraAumentaClaseLanzadora)
+            this.form.controls.aumenta_clase_lanzadora.setValue(false, { emitEvent: false });
+
+        if (!this.puedeEspecializarse)
+            this.form.controls.puede_elegir_especialidad.setValue(false, { emitEvent: false });
+
+        if (!this.esLanzadorConjuros) {
+            this.form.patchValue({
+                lanzamiento_espontaneo: false,
+                puede_elegir_especialidad: false,
+            }, { emitEvent: false });
+        }
     }
 
     seleccionarManual(id: number): void {
@@ -687,7 +789,7 @@ export class NuevaClaseComponent implements OnInit, OnDestroy, OnChanges {
                 Alma: raw.conjuros_alma === true,
                 Conocidos_total: raw.conocidos_total === true,
                 Conocidos_nivel_a_nivel: raw.conocidos_nivel === true,
-                Dominio: raw.dominio === true,
+                Dominio: this.entero(raw.dominio_cantidad) > 0,
                 Dominio_cantidad: this.entero(raw.dominio_cantidad),
                 puede_elegir_especialidad: raw.puede_elegir_especialidad === true,
                 Lanzamiento_espontaneo: raw.lanzamiento_espontaneo === true,
