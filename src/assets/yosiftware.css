@@ -1,8 +1,8 @@
 /*
  * Aspecto de Rol para lo que pinta el SDK de Yosiftware (ecosistema-kit/ESTILOS.md, «La hoja de la web»).
  * El SDK la aplica dentro de sus elementos y la manda a sus ventanas (entrar, perfil, reportar, denunciar).
- * Las ventanas de la plataforma no leen las variables --yosi-color-* (petición
- * ventanas-del-sdk-cerrar-fuera-y-estilos-de-la-web.md), así que cada pieza se pinta también por su nombre.
+ * Desde el SDK 1.15, las ventanas también toman de esta hoja las variables declaradas sobre [part~="raiz"].
+ * Los elementos de la página las leen de fuera: están también en src/styles.sass, con los mismos valores.
  * Solo cambia el aspecto: la marca de Yosiftware, las normas y los avisos se siguen viendo igual.
  * Colores de docs/guias-estilo/GUIA_ESTILO_WEB_GENERAL.md. Rol solo tiene tema oscuro. Hasta 64 KB.
  */
@@ -31,92 +31,29 @@
     --rol-sombra: 0 12px 32px rgba(0, 0, 0, 0.45);
 }
 
-/* Fondo de las ventanas; el perfil ocupa la ventana entera sin tarjeta. */
-[part~="ventana"],
-[part~="perfil"],
-[part~="reporte"],
-[part~="denuncia"] {
-    background-color: var(--yosi-color-fondo);
-    color: var(--yosi-color-texto);
-}
-
 [part~="tarjeta"],
 [part~="panel"] {
-    font-family: var(--yosi-fuente);
-    background: var(--yosi-color-fondo);
-    color: var(--yosi-color-texto);
-    border-color: var(--yosi-color-borde);
     box-shadow: var(--rol-sombra);
 }
 
-[part~="titulo"],
-[part~="etiqueta"] {
-    color: var(--yosi-color-texto);
-}
-
-[part~="ayuda"],
-[part~="separador"] {
-    color: var(--yosi-color-texto-suave);
-}
-
-[part~="boton"] {
-    font-family: var(--yosi-fuente);
-    border-radius: var(--yosi-radio);
-}
-
 [part~="boton"][part~="principal"] {
-    background: var(--yosi-color-principal);
-    border-color: var(--yosi-color-principal);
-    color: var(--yosi-color-principal-texto);
     font-weight: 500;
     letter-spacing: 0.02em;
-}
-
-[part~="boton"]:focus-visible {
-    outline: 2px solid rgba(240, 98, 146, 0.75);
-    outline-offset: 2px;
 }
 
 [part~="boton"][part~="principal"]:hover {
     filter: brightness(1.08);
 }
 
-[part~="boton"][part~="secundario"],
-[part~="boton"][part~="google"] {
-    background: var(--yosi-color-fondo-suave);
-    border-color: var(--yosi-color-borde-fuerte);
-    color: var(--yosi-color-texto);
+[part~="boton"]:focus-visible,
+[part~="campo"]:focus-visible {
+    outline: 2px solid rgba(240, 98, 146, 0.75);
+    outline-offset: 2px;
 }
 
+/* El granate principal se lee mal como texto sobre el fondo oscuro. */
 [part~="enlace"] {
     color: #f06292;
-}
-
-[part~="campo"] {
-    font-family: var(--yosi-fuente);
-    border-radius: var(--yosi-radio);
-    background: var(--yosi-color-fondo-suave);
-    border-color: var(--yosi-color-borde);
-    color: var(--yosi-color-texto);
-}
-
-[part~="campo"]:focus {
-    border-color: var(--yosi-color-principal);
-    outline: 2px solid rgba(194, 24, 91, 0.55);
-    outline-offset: 1px;
-}
-
-[part~="casilla"],
-[part~="interruptor"] {
-    accent-color: var(--yosi-color-principal);
-}
-
-[part~="segmento"][part~="activo"],
-[part~="opcion"][part~="activo"],
-[part~="chip"][part~="activo"] {
-    background: var(--yosi-color-principal-suave);
-    border-color: var(--yosi-color-principal);
-    color: var(--yosi-color-texto);
 }
 
 [part~="ventana"]::backdrop {

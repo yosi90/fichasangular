@@ -106,3 +106,26 @@ body.swal2-shown
 // Mientras una ventana modal de Rol necesita toda la pantalla, el chat de la plataforma se oculta.
 body.rol-ocultar-chat yosi-chat
     display: none !important
+
+// Colores de Rol para los elementos del SDK que van en la página (chat, campana, privacidad, normas…), que leen
+// las variables --yosi-* desde fuera (ecosistema-kit/ESTILOS.md, «Las variables»). Las ventanas de la plataforma
+// no las heredan: las toman de src/assets/yosiftware.css, con los mismos valores.
+:root
+    --yosi-color-principal: #c2185b
+    --yosi-color-principal-texto: #ffffff
+    --yosi-color-principal-suave: rgba(194, 24, 91, 0.18)
+    --yosi-color-fondo: #2d2d30
+    --yosi-color-fondo-suave: #373c41
+    --yosi-color-fondo-pagina: #26272b
+    --yosi-color-texto: #f5f7ff
+    --yosi-color-texto-suave: #adbdc4
+    --yosi-color-borde: rgba(255, 255, 255, 0.08)
+    --yosi-color-borde-fuerte: rgba(255, 255, 255, 0.16)
+    --yosi-color-acento: #c2185b
+    --yosi-color-acento-suave: rgba(194, 24, 91, 0.18)
+    --yosi-color-exito: #66bb6a
+    --yosi-color-error: #ef5350
+    --yosi-color-error-suave: rgba(239, 83, 80, 0.14)
+    --yosi-fuente: "Roboto", "Segoe UI", system-ui, sans-serif
+    --yosi-radio: 6px
+    --yosi-radio-ventana: 10px
