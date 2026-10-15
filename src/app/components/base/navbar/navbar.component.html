@@ -141,7 +141,8 @@
                 <mat-icon>account_circle</mat-icon>
                 <span>Perfil de Yosiftware</span>
             </button>
-            <button mat-menu-item [disabled]="!isLoggedIn" (click)="abrirPrivacidad()">
+            <!-- Sin sesión, el SDK explica qué sabe Yosiftware de quien usa Rol sin cuenta. -->
+            <button mat-menu-item (click)="abrirPrivacidad()">
                 <mat-icon>lock</mat-icon>
                 <span>Privacidad</span>
             </button>
