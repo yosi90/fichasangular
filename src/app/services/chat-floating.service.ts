@@ -12,7 +12,7 @@ import { PlatformSessionService } from './platform-session.service';
 import { UserSettingsService } from './user-settings.service';
 import { UserService } from './user.service';
 
-// El chat flotante de Rol (docs/roadmaps/ACTIVO_chat-flotante-de-rol): las ventanas, las burbujas y su sitio son de Rol,
+// El chat flotante de Rol (docs/roadmaps/FINALIZADO_chat-flotante-de-rol): las ventanas, las burbujas y su sitio son de Rol,
 // y dentro van los elementos del chat de la plataforma (`<yosi-chat-bandeja>` y `<yosi-chat-conversacion>`,
 // ecosistema-kit/CHAT.md). Solo en escritorio; en el móvil se usa `<yosi-chat>`.
 
