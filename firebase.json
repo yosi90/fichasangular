@@ -25,6 +25,15 @@
             "value": "same-origin-allow-popups"
           }
         ]
+      },
+      {
+        "source": "/assets/yosiftware.css",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "no-cache"
+          }
+        ]
       }
     ]
   },
