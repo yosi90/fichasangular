@@ -64,11 +64,6 @@
             <span>Social</span>
         </button>
 
-        <button mat-menu-item *ngIf="isLoggedIn && isAdmin" (click)="abrirAdminPanel()">
-            <mat-icon>admin_panel_settings</mat-icon>
-            <span>Admin panel</span>
-        </button>
-
         <div class="menu-separator" *ngIf="isLoggedIn" (click)="$event.stopPropagation()"></div>
 
         <button mat-menu-item *ngIf="isLoggedIn" class="menu-entry-danger" (click)="logOut()">
@@ -101,7 +96,7 @@
         </p>
 
         <p class="menu-estado" *ngIf="!isLoading && !errorState && manuales.length === 0">
-            No hay manuales en cache. Sincroniza en Admin panel.
+            Todavía no hay manuales en la caché.
         </p>
 
         <div class="manuales-lista" *ngIf="!isLoading && !errorState && manuales.length > 0">

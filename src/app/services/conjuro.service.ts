@@ -162,38 +162,6 @@ export class ConjuroService {
         return this.http.get(`${environment.apiUrl}conjuros`);
     }
 
-    public async RenovarConjuros(): Promise<boolean> {
-        try {
-            const response = await firstValueFrom(this.syncConjuros());
-            const conjuros = Array.isArray(response)
-                ? response
-                : Object.values(response ?? {});
-
-            await Promise.all(
-                conjuros.map((raw: any) => {
-                    const conjuro = normalizeConjuroApi(raw);
-                    return this.firebaseContextSvc.run(() => set(ref(this.db, `Conjuros/${conjuro.Id}`), conjuro));
-                })
-            );
-
-            Swal.fire({
-                icon: 'success',
-                title: 'Listado de conjuros actualizado con éxito',
-                showConfirmButton: true,
-                timer: 2000
-            });
-            return true;
-        } catch (error: any) {
-            Swal.fire({
-                icon: 'warning',
-                title: 'Error al actualizar el listado de conjuros',
-                text: error?.message ?? 'Error no identificado',
-                showConfirmButton: true
-            });
-            return false;
-        }
-    }
-
     private async refrescarConjuroCacheBestEffort(idConjuro: number): Promise<void> {
         try {
             const raw = await firstValueFrom(this.syncConjuros());
@@ -206,7 +174,8 @@ export class ConjuroService {
             if (!encontrado)
                 return;
 
-            await this.firebaseContextSvc.run(() => set(ref(this.db, `Conjuros/${encontrado.Id}`), encontrado));
+            if (environment.sincronizacionCaches)
+                await this.firebaseContextSvc.run(() => set(ref(this.db, `Conjuros/${encontrado.Id}`), encontrado));
         } catch {
             // Best-effort: no bloquea flujo de creacion.
         }

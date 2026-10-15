@@ -1,7 +1,7 @@
 import { HttpClient, HttpErrorResponse } from "@angular/common/http";
 import { Injectable } from "@angular/core";
-import { Database, Unsubscribe, onValue, ref, set } from "@angular/fire/database";
-import { Observable, firstValueFrom } from "rxjs";
+import { Database, Unsubscribe, onValue, ref } from "@angular/fire/database";
+import { Observable } from "rxjs";
 import Swal from "sweetalert2";
 import { environment } from "src/environments/environment";
 import { AmbitoDetalle } from "../interfaces/ambito";
@@ -112,46 +112,4 @@ export class AmbitoService {
         });
     }
 
-    private syncAmbitos() {
-        return this.http.get(`${environment.apiUrl}ambitos`);
-    }
-
-    public async RenovarAmbitos(): Promise<boolean> {
-        try {
-            const response = await firstValueFrom(this.syncAmbitos());
-            const ambitos = toArray(response)
-                .map((raw: any) => normalizeAmbito(raw))
-                .filter((ambito) => ambito.Id > 0);
-
-            await Promise.all(
-                ambitos.map((ambito) => this.firebaseContextSvc.run(() => set(ref(this.db, `Ambitos/${ambito.Id}`), ambito)))
-            );
-
-            Swal.fire({
-                icon: "success",
-                title: "Listado de ambitos actualizado con exito",
-                showConfirmButton: true,
-                timer: 2000
-            });
-            return true;
-        } catch (error: any) {
-            const httpError = error as HttpErrorResponse;
-            if (httpError.status === 404) {
-                Swal.fire({
-                    icon: "warning",
-                    title: "Endpoint de ambitos no disponible",
-                    text: "No se encontro /ambitos en la API",
-                    showConfirmButton: true
-                });
-            } else {
-                Swal.fire({
-                    icon: "warning",
-                    title: "Error al actualizar el listado de ambitos",
-                    text: error?.message ?? "Error no identificado",
-                    showConfirmButton: true
-                });
-            }
-            return false;
-        }
-    }
 }

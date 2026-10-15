@@ -488,11 +488,6 @@ export class RazaService {
         });
     }
 
-    private syncRazas(): Observable<any> {
-        const res = this.http.get(`${environment.apiUrl}razas`);
-        return res;
-    }
-
     public async crearRaza(payload: RazaCreateRequest): Promise<RazaCreateResponse> {
         try {
             const headers = await this.buildAuthHeaders();
@@ -515,48 +510,14 @@ export class RazaService {
         }
     }
 
-    public async RenovarRazas(): Promise<boolean> {
-        try {
-            const response = await firstValueFrom(this.syncRazas());
-            const razas = Array.isArray(response)
-                ? response
-                : Object.values(response ?? {});
-            const razasNormalizadas = razas
-                .map((element: any) => normalizeRazaApi(element))
-                .filter((raza) => raza.Id > 0);
-
-            await Promise.all(
-                razasNormalizadas.map((raza) => this.firebaseContextSvc.run(() => set(
-                    ref(this.db, `Razas/${raza.Id}`),
-                    raza
-                )))
-            );
-
-            Swal.fire({
-                icon: 'success',
-                title: 'Listado de razas actualizado con éxito',
-                showConfirmButton: true,
-                timer: 2000
-            });
-            return true;
-        } catch (error: any) {
-            Swal.fire({
-                icon: 'warning',
-                title: 'Error al actualizar el listado de razas',
-                text: error?.message ?? 'Error no identificado',
-                showConfirmButton: true
-            });
-            return false;
-        }
-    }
-
     private async refrescarRazaCacheBestEffort(idRaza: number, headers: { Authorization: string; }): Promise<void> {
         try {
             const raw = await firstValueFrom(this.http.get(`${environment.apiUrl}razas/${idRaza}`, { headers }));
             const normalized = normalizeRazaApi(raw);
             if (normalized.Id <= 0)
                 return;
-            await this.firebaseContextSvc.run(() => set(ref(this.db, `Razas/${normalized.Id}`), normalized));
+            if (environment.sincronizacionCaches)
+                await this.firebaseContextSvc.run(() => set(ref(this.db, `Razas/${normalized.Id}`), normalized));
         } catch {
             // Best-effort: no bloquea flujo de creacion.
         }

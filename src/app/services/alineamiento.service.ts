@@ -1,8 +1,7 @@
 import { HttpClient } from "@angular/common/http";
 import { Injectable } from "@angular/core";
-import { Database, Unsubscribe, onValue, ref, set } from '@angular/fire/database';
-import { Observable, firstValueFrom } from "rxjs";
-import { environment } from "src/environments/environment";
+import { Database, Unsubscribe, onValue, ref } from '@angular/fire/database';
+import { Observable } from "rxjs";
 import Swal from "sweetalert2";
 import {
     Alineamiento,
@@ -75,133 +74,6 @@ export class AlineamientoService {
         return this.watchArrayPath<PreferenciaMoralCatalogItem>('AlineamientosCatalogo/PreferenciaMoral');
     }
 
-    private syncAlineamientos(): Observable<any> {
-        return this.http.get(`${environment.apiUrl}alineamientos`);
-    }
-
-    private syncAlineamientosBasicos(): Observable<any> {
-        return this.http.get(`${environment.apiUrl}alineamientos/basicos`);
-    }
-
-    private syncAlineamientosCombinaciones(): Observable<any> {
-        return this.http.get(`${environment.apiUrl}alineamientos/combinaciones`);
-    }
-
-    private syncAlineamientosPrioridades(): Observable<any> {
-        return this.http.get(`${environment.apiUrl}alineamientos/prioridades`);
-    }
-
-    private syncAlineamientosPreferenciaLey(): Observable<any> {
-        return this.http.get(`${environment.apiUrl}alineamientos/preferencia-ley`);
-    }
-
-    private syncAlineamientosPreferenciaMoral(): Observable<any> {
-        return this.http.get(`${environment.apiUrl}alineamientos/preferencia-moral`);
-    }
-
-    private syncActitudes(): Observable<any> {
-        return this.http.get(`${environment.apiUrl}actitudes`);
-    }
-
-    public async RenovarAlineamientos(): Promise<boolean> {
-        try {
-            const response = await firstValueFrom(this.syncAlineamientos());
-            const alineamientos = this.normalizeArrayResponse(response);
-
-            await Promise.all(
-                alineamientos.map((element: {
-                    i: number; b: any; l: any; m: any; p: any; d: boolean;
-                }) => {
-                    return this.firebaseContextSvc.run(() => set(
-                        ref(this.db, `Alineamientos/${element.i}`), {
-                        Id: element.i,
-                        Basico: element.b,
-                        Ley: element.l,
-                        Moral: element.m,
-                        Prioridad: element.p,
-                        Descripcion: element.d
-                    }));
-                })
-            );
-
-            Swal.fire({
-                icon: 'success',
-                title: 'Listado de alineamientos actualizado con éxito',
-                showConfirmButton: true,
-                timer: 2000
-            });
-            return true;
-        } catch (error: any) {
-            Swal.fire({
-                icon: 'warning',
-                title: 'Error al actualizar el listado de alineamientos',
-                text: error?.message ?? 'Error no identificado',
-                showConfirmButton: true
-            });
-            return false;
-        }
-    }
-
-    public async RenovarAlineamientosBasicos(): Promise<boolean> {
-        return this.renovarCatalogoSimple({
-            getter: () => firstValueFrom(this.syncAlineamientosBasicos()),
-            dbPath: 'AlineamientosCatalogo/Basicos',
-            successTitle: 'Catálogo de alineamientos básicos actualizado con éxito',
-            errorTitle: 'Error al actualizar el catálogo de alineamientos básicos',
-        });
-    }
-
-    public async RenovarAlineamientosCombinaciones(): Promise<boolean> {
-        return this.renovarCatalogoSimple({
-            getter: () => firstValueFrom(this.syncAlineamientosCombinaciones()),
-            dbPath: 'AlineamientosCatalogo/Combinaciones',
-            successTitle: 'Catálogo de combinaciones de alineamiento actualizado con éxito',
-            errorTitle: 'Error al actualizar el catálogo de combinaciones de alineamiento',
-        });
-    }
-
-    public async RenovarAlineamientosPrioridades(): Promise<boolean> {
-        return this.renovarCatalogoSimple({
-            getter: () => firstValueFrom(this.syncAlineamientosPrioridades()),
-            dbPath: 'AlineamientosCatalogo/Prioridades',
-            successTitle: 'Catálogo de prioridades de alineamiento actualizado con éxito',
-            errorTitle: 'Error al actualizar el catálogo de prioridades de alineamiento',
-        });
-    }
-
-    public async RenovarAlineamientosPreferenciaLey(): Promise<boolean> {
-        return this.renovarCatalogoSimple({
-            getter: () => firstValueFrom(this.syncAlineamientosPreferenciaLey()),
-            dbPath: 'AlineamientosCatalogo/PreferenciaLey',
-            successTitle: 'Catálogo de preferencia legal actualizado con éxito',
-            errorTitle: 'Error al actualizar el catálogo de preferencia legal',
-        });
-    }
-
-    public async RenovarAlineamientosPreferenciaMoral(): Promise<boolean> {
-        return this.renovarCatalogoSimple({
-            getter: () => firstValueFrom(this.syncAlineamientosPreferenciaMoral()),
-            dbPath: 'AlineamientosCatalogo/PreferenciaMoral',
-            successTitle: 'Catálogo de preferencia moral actualizado con éxito',
-            errorTitle: 'Error al actualizar el catálogo de preferencia moral',
-        });
-    }
-
-    public async RenovarActitudes(): Promise<boolean> {
-        return this.renovarCatalogoSimple({
-            getter: () => firstValueFrom(this.syncActitudes()),
-            dbPath: 'Actitudes',
-            successTitle: 'Catálogo de actitudes actualizado con éxito',
-            errorTitle: 'Error al actualizar el catálogo de actitudes',
-        });
-    }
-
-    private normalizeArrayResponse(response: any): any[] {
-        return Array.isArray(response)
-            ? response
-            : Object.values(response ?? {});
-    }
-
     private watchArrayPath<T>(path: string): Observable<T[]> {
         return new Observable((observador) => {
             let unsubscribe: Unsubscribe;
@@ -224,34 +96,6 @@ export class AlineamientoService {
             });
             return () => unsubscribe();
         });
-    }
-
-    private async renovarCatalogoSimple(params: {
-        getter: () => Promise<any>;
-        dbPath: string;
-        successTitle: string;
-        errorTitle: string;
-    }): Promise<boolean> {
-        try {
-            const response = await params.getter();
-            const items = this.sortById(this.normalizeArrayResponse(response));
-            await this.firebaseContextSvc.run(() => set(ref(this.db, params.dbPath), items));
-            Swal.fire({
-                icon: 'success',
-                title: params.successTitle,
-                showConfirmButton: true,
-                timer: 2000
-            });
-            return true;
-        } catch (error: any) {
-            Swal.fire({
-                icon: 'warning',
-                title: params.errorTitle,
-                text: error?.message ?? 'Error no identificado',
-                showConfirmButton: true
-            });
-            return false;
-        }
     }
 
     private sortById<T>(items: T[]): T[] {

@@ -1,7 +1,7 @@
 import { HttpClient, HttpErrorResponse } from "@angular/common/http";
 import { Injectable } from "@angular/core";
 import { Database, Unsubscribe, onValue, ref, set } from "@angular/fire/database";
-import { Observable, firstValueFrom, map } from "rxjs";
+import { Observable, map } from "rxjs";
 import Swal from "sweetalert2";
 import { environment } from "src/environments/environment";
 import { SubtipoDetalle, SubtipoResumen } from "../interfaces/subtipo";
@@ -74,7 +74,8 @@ export class SubtipoService {
                     next: async (raw: any) => {
                         const detalle = normalizeSubtipoDetalle(raw);
                         try {
-                            await this.firebaseContextSvc.run(() => set(ref(this.db, `Subtipos/${detalle.Id}`), detalle));
+                            if (environment.sincronizacionCaches)
+                                await this.firebaseContextSvc.run(() => set(ref(this.db, `Subtipos/${detalle.Id}`), detalle));
                         } catch {
                             // Si falla el cacheado no bloqueamos la apertura del detalle.
                         }
@@ -112,49 +113,6 @@ export class SubtipoService {
         return this.getSubtipos().pipe(
             map((subtipos) => subtipos.find((s) => this.normalizar(s.Nombre) === objetivo) ?? null)
         );
-    }
-
-    private syncSubtipos(): Observable<any> {
-        return this.http.get(`${environment.apiUrl}subtipos`);
-    }
-
-    public async RenovarSubtipos(): Promise<boolean> {
-        try {
-            const response = await firstValueFrom(this.syncSubtipos());
-            const subtipos = toArray(response)
-                .map((raw: any) => normalizeSubtipoResumen(raw))
-                .filter((subtipo) => subtipo.Id > 0);
-
-            await Promise.all(
-                subtipos.map((subtipo) => this.firebaseContextSvc.run(() => set(ref(this.db, `Subtipos/${subtipo.Id}`), subtipo)))
-            );
-
-            Swal.fire({
-                icon: "success",
-                title: "Listado de subtipos actualizado con exito",
-                showConfirmButton: true,
-                timer: 2000
-            });
-            return true;
-        } catch (error: any) {
-            const httpError = error as HttpErrorResponse;
-            if (httpError.status === 404) {
-                Swal.fire({
-                    icon: "warning",
-                    title: "Endpoint de subtipos no disponible",
-                    text: "No se encontro /subtipos en la API",
-                    showConfirmButton: true
-                });
-            } else {
-                Swal.fire({
-                    icon: "warning",
-                    title: "Error al actualizar el listado de subtipos",
-                    text: error?.message ?? "Error no identificado",
-                    showConfirmButton: true
-                });
-            }
-            return false;
-        }
     }
 
     private normalizar(value: string): string {

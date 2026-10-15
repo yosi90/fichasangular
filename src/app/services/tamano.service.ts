@@ -1,7 +1,7 @@
 import { HttpClient, HttpErrorResponse } from "@angular/common/http";
 import { Injectable } from "@angular/core";
-import { Database, Unsubscribe, onValue, ref, set } from "@angular/fire/database";
-import { Observable, firstValueFrom } from "rxjs";
+import { Database, Unsubscribe, onValue, ref } from "@angular/fire/database";
+import { Observable } from "rxjs";
 import Swal from "sweetalert2";
 import { environment } from "src/environments/environment";
 import { Tamano } from "../interfaces/tamaño";
@@ -110,46 +110,4 @@ export class TamanoService {
         });
     }
 
-    private syncTamanos() {
-        return this.http.get(`${environment.apiUrl}tamanos`);
-    }
-
-    public async RenovarTamanos(): Promise<boolean> {
-        try {
-            const response = await firstValueFrom(this.syncTamanos());
-            const tamanos = toArray(response)
-                .map((raw: any) => normalizeTamano(raw))
-                .filter((tamano) => tamano.Id > 0);
-
-            await Promise.all(
-                tamanos.map((tamano) => this.firebaseContextSvc.run(() => set(ref(this.db, `Tamanos/${tamano.Id}`), tamano)))
-            );
-
-            Swal.fire({
-                icon: "success",
-                title: "Listado de tamaños actualizado con exito",
-                showConfirmButton: true,
-                timer: 2000
-            });
-            return true;
-        } catch (error: any) {
-            const httpError = error as HttpErrorResponse;
-            if (httpError.status === 404) {
-                Swal.fire({
-                    icon: "warning",
-                    title: "Endpoint de tamaños no disponible",
-                    text: "No se encontro /tamanos en la API",
-                    showConfirmButton: true
-                });
-            } else {
-                Swal.fire({
-                    icon: "warning",
-                    title: "Error al actualizar el listado de tamaños",
-                    text: error?.message ?? "Error no identificado",
-                    showConfirmButton: true
-                });
-            }
-            return false;
-        }
-    }
 }

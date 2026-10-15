@@ -509,48 +509,6 @@ export class ClaseService {
         }
     }
 
-    private syncClases(): Observable<any> {
-        return this.http.get(`${environment.apiUrl}clases`);
-    }
-
-    public async RenovarClases(): Promise<boolean> {
-        try {
-            const response = await firstValueFrom(this.syncClases());
-            await Promise.all(
-                toArray(response).map((raw: any) => {
-                    const clase = normalizeClase(raw);
-                    return this.firebaseContextSvc.run(() => set(ref(this.db, `Clases/${clase.Id}`), clase));
-                })
-            );
-
-            Swal.fire({
-                icon: "success",
-                title: "Listado de clases actualizado con éxito",
-                showConfirmButton: true,
-                timer: 2000
-            });
-            return true;
-        } catch (error: any) {
-            const httpError = error as HttpErrorResponse;
-            if (httpError.status === 404) {
-                Swal.fire({
-                    icon: "warning",
-                    title: "Endpoint de clases no disponible",
-                    text: "No se encontró /clases en la API",
-                    showConfirmButton: true
-                });
-            } else {
-                Swal.fire({
-                    icon: "warning",
-                    title: "Error al actualizar el listado de clases",
-                    text: error?.message ?? "Error no identificado",
-                    showConfirmButton: true
-                });
-            }
-            return false;
-        }
-    }
-
     private normalizar(value: string): string {
         return (value ?? "")
             .normalize("NFD")
@@ -593,6 +551,9 @@ export class ClaseService {
 
     private async actualizarCacheLocal(clase: Clase): Promise<void> {
         if (!clase || Number(clase.Id) <= 0)
+            return;
+        // Las cachés públicas viven en la RTDB de producción: desde desarrollo no se escriben.
+        if (!environment.sincronizacionCaches)
             return;
         await this.firebaseContextSvc.run(() => set(ref(this.db, `Clases/${clase.Id}`), clase));
     }

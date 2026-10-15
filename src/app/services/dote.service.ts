@@ -162,53 +162,12 @@ export class DoteService {
         }
     }
 
-    public async RenovarDotes(): Promise<boolean> {
-        try {
-            const response = await firstValueFrom(this.syncDotes());
-            const dotes = Array.isArray(response)
-                ? response
-                : Object.values(response ?? {});
-
-            await Promise.all(
-                dotes.map((raw: any) => {
-                    const dote = normalizeDoteApi(raw);
-                    return this.firebaseContextSvc.run(() => set(ref(this.db, `Dotes/${dote.Id}`), dote));
-                })
-            );
-
-            Swal.fire({
-                icon: "success",
-                title: "Listado de dotes actualizado con éxito",
-                showConfirmButton: true,
-                timer: 2000
-            });
-            return true;
-        } catch (error: any) {
-            const httpError = error as HttpErrorResponse;
-            if (httpError.status === 404) {
-                Swal.fire({
-                    icon: "warning",
-                    title: "Endpoint de dotes no disponible",
-                    text: "No se encontró /dotes en la API",
-                    showConfirmButton: true
-                });
-            } else {
-                Swal.fire({
-                    icon: "warning",
-                    title: "Error al actualizar el listado de dotes",
-                    text: error?.message ?? "Error no identificado",
-                    showConfirmButton: true
-                });
-            }
-            return false;
-        }
-    }
-
     private async refrescarDoteCacheBestEffort(idDote: number): Promise<void> {
         try {
             const raw = await firstValueFrom(this.http.get(`${environment.apiUrl}dotes/${idDote}`));
             const normalized = normalizeDoteApi(raw);
-            await this.firebaseContextSvc.run(() => set(ref(this.db, `Dotes/${normalized.Id}`), normalized));
+            if (environment.sincronizacionCaches)
+                await this.firebaseContextSvc.run(() => set(ref(this.db, `Dotes/${normalized.Id}`), normalized));
         } catch {
             // Best-effort: no bloquea flujo de creacion.
         }

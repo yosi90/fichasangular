@@ -1,7 +1,7 @@
 import { HttpClient, HttpErrorResponse } from "@angular/common/http";
 import { Injectable } from "@angular/core";
 import { Database, Unsubscribe, onValue, ref, set } from "@angular/fire/database";
-import { Observable, firstValueFrom } from "rxjs";
+import { Observable } from "rxjs";
 import Swal from "sweetalert2";
 import { environment } from "src/environments/environment";
 import { ArmaduraDetalle } from "../interfaces/armadura";
@@ -183,6 +183,9 @@ export class ArmaduraService {
     }
 
     protected writeArmaduraCache(armadura: ArmaduraDetalle): Promise<void> {
+        // Las cachés públicas viven en la RTDB de producción: desde desarrollo no se escriben.
+        if (!environment.sincronizacionCaches)
+            return Promise.resolve();
         return this.firebaseContextSvc.run(() => set(ref(this.db, `Armaduras/${armadura.Id}`), armadura));
     }
 
@@ -214,40 +217,4 @@ export class ArmaduraService {
         }
     }
 
-    public async RenovarArmaduras(): Promise<boolean> {
-        try {
-            const response = await firstValueFrom(this.syncArmaduras());
-            const armaduras = this.normalizeArmadurasResponse(response);
-
-            await Promise.all(
-                armaduras.map((armadura) => this.writeArmaduraCache(armadura))
-            );
-
-            Swal.fire({
-                icon: "success",
-                title: "Listado de armaduras actualizado con exito",
-                showConfirmButton: true,
-                timer: 2000
-            });
-            return true;
-        } catch (error: any) {
-            const httpError = error as HttpErrorResponse;
-            if (httpError.status === 404) {
-                Swal.fire({
-                    icon: "warning",
-                    title: "Endpoint de armaduras no disponible",
-                    text: "No se encontro /armaduras en la API",
-                    showConfirmButton: true
-                });
-            } else {
-                Swal.fire({
-                    icon: "warning",
-                    title: "Error al actualizar el listado de armaduras",
-                    text: error?.message ?? "Error no identificado",
-                    showConfirmButton: true
-                });
-            }
-            return false;
-        }
-    }
 }

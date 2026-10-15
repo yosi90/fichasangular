@@ -64,23 +64,4 @@ describe('ConjuroCatalogosService', () => {
         expect(service.writes).toEqual([]);
     });
 
-    it('RenovarDescriptores escribe el nodo RTDB correcto', async () => {
-        spyOn(Swal, 'fire');
-        const httpMock = {
-            get: jasmine.createSpy('get').and.returnValue(of([
-                { Id: 4, Nombre: 'Fuego' },
-            ])),
-        };
-        const service = createService(httpMock);
-
-        const ok = await service.RenovarDescriptores();
-
-        expect(ok).toBeTrue();
-        expect(service.writes).toEqual([
-            {
-                path: 'DescriptoresConjuros',
-                items: [{ Id: 4, Nombre: 'Fuego' }],
-            },
-        ]);
-    });
 });

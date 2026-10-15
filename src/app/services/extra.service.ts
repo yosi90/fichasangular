@@ -1,7 +1,7 @@
 import { HttpClient, HttpErrorResponse } from "@angular/common/http";
 import { Injectable } from "@angular/core";
-import { Database, Unsubscribe, onValue, ref, set } from "@angular/fire/database";
-import { Observable, firstValueFrom } from "rxjs";
+import { Database, Unsubscribe, onValue, ref } from "@angular/fire/database";
+import { Observable } from "rxjs";
 import Swal from "sweetalert2";
 import { environment } from "src/environments/environment";
 import { ExtraDetalle } from "../interfaces/extra";
@@ -102,46 +102,4 @@ export class ExtraService {
         });
     }
 
-    private syncExtras() {
-        return this.http.get(`${environment.apiUrl}extras`);
-    }
-
-    public async RenovarExtras(): Promise<boolean> {
-        try {
-            const response = await firstValueFrom(this.syncExtras());
-            const extras = toArray(response)
-                .map((raw: any) => normalizeExtra(raw))
-                .filter((extra) => extra.Id > 0 && extra.Nombre.trim().length > 0);
-
-            await Promise.all(
-                extras.map((extra) => this.firebaseContextSvc.run(() => set(ref(this.db, `Extras/${extra.Id}`), extra)))
-            );
-
-            Swal.fire({
-                icon: "success",
-                title: `Listado de extras actualizado (${extras.length})`,
-                showConfirmButton: true,
-                timer: 2000
-            });
-            return true;
-        } catch (error: any) {
-            const httpError = error as HttpErrorResponse;
-            if (httpError.status === 404) {
-                Swal.fire({
-                    icon: "warning",
-                    title: "Endpoint de extras no disponible",
-                    text: "No se encontro /extras en la API",
-                    showConfirmButton: true
-                });
-            } else {
-                Swal.fire({
-                    icon: "warning",
-                    title: "Error al actualizar el listado de extras",
-                    text: error?.message ?? "Error no identificado",
-                    showConfirmButton: true
-                });
-            }
-            return false;
-        }
-    }
 }

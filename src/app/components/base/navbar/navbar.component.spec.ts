@@ -40,7 +40,7 @@ describe('NavbarComponent', () => {
         manualVistaNavSvc = jasmine.createSpyObj<ManualVistaNavigationService>('ManualVistaNavigationService', ['emitirApertura']);
         userProfileNavSvc = jasmine.createSpyObj<UserProfileNavigationService>(
             'UserProfileNavigationService',
-            ['openPrivateProfile', 'openSocial', 'openAdminPanel', 'openRoadmap', 'openLegalPrivacy', 'openUsageAbout', 'openFeedbackBug', 'openFeedbackFeature', 'abrirVista']
+            ['openPrivateProfile', 'openSocial', 'openRoadmap', 'openLegalPrivacy', 'openUsageAbout', 'openFeedbackBug', 'openFeedbackFeature', 'abrirVista']
         );
         platformSessionSvc = jasmine.createSpyObj<PlatformSessionService>('PlatformSessionService', ['editarPerfil', 'privacidad']);
         platformSessionSvc.editarPerfil.and.resolveTo(false);
@@ -124,26 +124,6 @@ describe('NavbarComponent', () => {
         component.abrirSocial();
 
         expect(userProfileNavSvc.openSocial).toHaveBeenCalledWith('resumen');
-    });
-
-    it('abre admin panel solo para admins', () => {
-        userState = { nombre: 'Yosi', correo: 'yosi@test.dev', permisos: 1 };
-        isLoggedIn$.next(true);
-        permisos$.next(1);
-
-        component.abrirAdminPanel();
-
-        expect(userProfileNavSvc.openAdminPanel).toHaveBeenCalled();
-    });
-
-    it('no abre admin panel si el usuario no es admin', () => {
-        userState = { nombre: 'Yosi', correo: 'yosi@test.dev', permisos: 0 };
-        isLoggedIn$.next(true);
-        permisos$.next(0);
-
-        component.abrirAdminPanel();
-
-        expect(userProfileNavSvc.openAdminPanel).not.toHaveBeenCalled();
     });
 
     it('abre el acceso de Yosiftware para invitados', () => {
@@ -359,7 +339,7 @@ describe('NavbarComponent template', () => {
                     provide: UserProfileNavigationService,
                     useValue: jasmine.createSpyObj<UserProfileNavigationService>(
                         'UserProfileNavigationService',
-                        ['openPrivateProfile', 'openSocial', 'openAdminPanel', 'openRoadmap', 'openLegalPrivacy', 'openUsageAbout', 'openFeedbackBug', 'openFeedbackFeature']
+                        ['openPrivateProfile', 'openSocial', 'openRoadmap', 'openLegalPrivacy', 'openUsageAbout', 'openFeedbackBug', 'openFeedbackFeature']
                     ),
                 },
                 { provide: PlatformSessionService, useValue: jasmine.createSpyObj<PlatformSessionService>('PlatformSessionService', ['editarPerfil', 'privacidad']) },

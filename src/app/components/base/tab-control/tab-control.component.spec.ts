@@ -30,21 +30,13 @@ function crearComponente(overrides?: { pSvc?: any; }): TabControlComponent {
     const pSvc = overrides?.pSvc ?? {} as any;
     const manualRefNavSvc = { aperturas$: new Subject<any>() } as any;
     const manualVistaNavSvc = { aperturas$: new Subject<any>() } as any;
-    const cacheSyncMetadataSvc = {
-        getSnapshotOnce: jasmine.createSpy('getSnapshotOnce').and.resolveTo(null),
-        buildUiState: jasmine.createSpy('buildUiState').and.returnValue([]),
-    } as any;
     const userProfileNavSvc = {
         privateProfileOpen$: new Subject<any>(),
         publicProfileOpen$: new Subject<any>(),
-        accountRestrictionOpen$: new Subject<any>(),
         socialOpen$: new Subject<any>(),
-        adminPanelOpen$: new Subject<any>(),
         roadmapOpen$: new Subject<void>(),
         legalPrivacyOpen$: new Subject<void>(),
         usageAboutOpen$: new Subject<void>(),
-        feedbackBugOpen$: new Subject<void>(),
-        feedbackFeatureOpen$: new Subject<void>(),
     } as any;
     const component = new TabControlComponent(
         userSvc,
@@ -67,7 +59,6 @@ function crearComponente(overrides?: { pSvc?: any; }): TabControlComponent {
         { resetearCreacionNuevoPersonaje: jasmine.createSpy('resetearCreacionNuevoPersonaje') } as any,
         manualRefNavSvc,
         manualVistaNavSvc,
-        cacheSyncMetadataSvc,
         ngZone,
         userProfileNavSvc,
     );
@@ -79,8 +70,6 @@ function crearComponente(overrides?: { pSvc?: any; }): TabControlComponent {
             tabs.push({ textLabel: 'Mi perfil' });
         if (component.socialTabOpen)
             tabs.push({ textLabel: 'Social' });
-        if (component.usrPerm === 1 && component.adminPanelTabOpen)
-            tabs.push({ textLabel: 'Panel de administración' });
         if (component.roadmapTabOpen)
             tabs.push({ textLabel: 'Roadmap' });
         if (component.legalPrivacyTabOpen)
@@ -124,7 +113,6 @@ function crearComponente(overrides?: { pSvc?: any; }): TabControlComponent {
     (component as any).__permisos$ = permisos$;
     (component as any).__banStatus$ = banStatus$;
     (component as any).__userProfileNavSvc = userProfileNavSvc;
-    (component as any).__cacheSyncMetadataSvc = cacheSyncMetadataSvc;
 
     return component;
 }
@@ -516,78 +504,6 @@ describe('TabControlComponent navegación por origen', () => {
         expect((component as any).activeTabKey).toBe('base:personajes');
     }));
 
-    it('abre admin panel como tab dinámica y la puede cerrar con ESC', fakeAsync(() => {
-        const component = crearComponente();
-        component.usrPerm = 1;
-
-        component.abrirPanelAdministracion();
-        tick(120);
-
-        expect(component.adminPanelTabOpen).toBeTrue();
-        expect((component as any).activeTabKey).toBe('base:admin');
-
-        component.onEscPressed();
-
-        expect(component.adminPanelTabOpen).toBeFalse();
-        expect((component as any).activeTabKey).toBe('base:personajes');
-    }));
-
-    it('reintenta la alerta de caches pendientes si una lectura previa falla', fakeAsync(() => {
-        const component = crearComponente();
-        component.usrPerm = 1;
-        const cacheSyncMetadataSvc = (component as any).__cacheSyncMetadataSvc;
-        cacheSyncMetadataSvc.getSnapshotOnce.and.rejectWith(new Error('permission_denied'));
-        spyOn(Swal, 'fire').and.returnValue(Promise.resolve({ isConfirmed: false } as any) as any);
-
-        (component as any).verificarPendientesCacheAdminEnInicio();
-        flushMicrotasks();
-
-        expect(Swal.fire).not.toHaveBeenCalled();
-
-        cacheSyncMetadataSvc.getSnapshotOnce.and.resolveTo({
-            maniobrabilidades: null,
-        });
-        cacheSyncMetadataSvc.buildUiState.and.returnValue([
-            { key: 'maniobrabilidades', label: 'Maniobrabilidades', schemaVersion: 1, lastSuccessAt: null, lastSuccessIso: null, isPrimary: true },
-        ]);
-
-        (component as any).verificarPendientesCacheAdminEnInicio();
-        flushMicrotasks();
-
-        expect(Swal.fire).toHaveBeenCalledWith(jasmine.objectContaining({
-            title: 'Hay catálogos desactualizados',
-        }));
-    }));
-
-    it('cerrar admin panel vuelve a la pestaña origen', fakeAsync(() => {
-        const component = crearComponente();
-        const clase = crearClase(16, 'Bardo');
-        component.usrPerm = 1;
-
-        component.abrirDetallesClase(clase);
-        tick(120);
-        component.abrirPanelAdministracion();
-        tick(120);
-
-        component.quitarPanelAdministracion();
-
-        expect(component.adminPanelTabOpen).toBeFalse();
-        expect((component as any).activeTabKey).toBe('clase:16');
-    }));
-
-    it('no duplica admin panel cuando ya está abierta', fakeAsync(() => {
-        const component = crearComponente();
-        component.usrPerm = 1;
-
-        component.abrirPanelAdministracion();
-        tick(120);
-        component.abrirPanelAdministracion();
-        tick(120);
-
-        expect(component.adminPanelTabOpen).toBeTrue();
-        expect((component as any).activeTabKey).toBe('base:admin');
-    }));
-
     it('abre roadmap como tab dinámica y la cierra con ESC', fakeAsync(() => {
         const component = crearComponente();
 
@@ -630,46 +546,4 @@ describe('TabControlComponent navegación por origen', () => {
         expect((component as any).activeTabKey).toBe('clase:17');
     }));
 
-    it('cierra admin panel si se pierde el permiso admin', fakeAsync(() => {
-        const component = crearComponente();
-        const permisos$ = (component as any).__permisos$ as BehaviorSubject<number>;
-        const userSvc = (component as any).__userSvc as any;
-        userSvc.Usuario.permisos = 1;
-        component.ngOnInit();
-        permisos$.next(1);
-        component.usrPerm = 1;
-
-        component.abrirPanelAdministracion();
-        tick(120);
-
-        userSvc.Usuario.permisos = 0;
-        permisos$.next(0);
-        tick(120);
-
-        expect(component.adminPanelTabOpen).toBeFalse();
-        expect((component as any).activeTabKey).toBe('base:personajes');
-    }));
-
-    it('cierra admin panel al cerrar sesión desde la suscripción de auth', fakeAsync(() => {
-        const component = crearComponente();
-        const isLoggedIn$ = (component as any).__isLoggedIn$ as BehaviorSubject<boolean>;
-        const permisos$ = (component as any).__permisos$ as BehaviorSubject<number>;
-        const userSvc = (component as any).__userSvc as any;
-        userSvc.Usuario.permisos = 1;
-        component.ngOnInit();
-        isLoggedIn$.next(true);
-        permisos$.next(1);
-        component.usrPerm = 1;
-
-        component.abrirPanelAdministracion();
-        tick(120);
-
-        userSvc.Usuario.permisos = 0;
-        isLoggedIn$.next(false);
-        permisos$.next(0);
-        tick(120);
-
-        expect(component.adminPanelTabOpen).toBeFalse();
-        expect((component as any).activeTabKey).toBe('base:personajes');
-    }));
 });

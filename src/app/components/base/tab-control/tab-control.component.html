@@ -26,14 +26,6 @@
         </ng-template>
         <app-social-hub [openRequest]="socialOpenRequest"></app-social-hub>
     </mat-tab>
-    <mat-tab label="Panel de administración" *ngIf="usrPerm === 1 && adminPanelTabOpen">
-        <ng-template mat-tab-label>
-            <mat-icon class="tw-me-2">admin_panel_settings</mat-icon>
-            Admin panel
-            <button (click)="quitarPanelAdministracion()" mat-icon-button class="tw-ms-2"><mat-icon>close</mat-icon></button>
-        </ng-template>
-        <app-admin-panel></app-admin-panel>
-    </mat-tab>
     <mat-tab label="Roadmap" *ngIf="roadmapTabOpen">
         <ng-template mat-tab-label>
             <mat-icon class="tw-me-2">map</mat-icon>

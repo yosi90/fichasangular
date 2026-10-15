@@ -1,8 +1,7 @@
 import { HttpClient } from "@angular/common/http";
 import { Injectable } from "@angular/core";
-import { Database, Unsubscribe, onValue, ref, set } from '@angular/fire/database';
-import { Observable, firstValueFrom } from "rxjs";
-import { environment } from "src/environments/environment";
+import { Database, Unsubscribe, onValue, ref } from '@angular/fire/database';
+import { Observable } from "rxjs";
 import Swal from "sweetalert2";
 import { TipoCriatura } from "../interfaces/tipo_criatura";
 import { FirebaseInjectionContextService } from "./firebase-injection-context.service";
@@ -115,66 +114,4 @@ export class TipoCriaturaService {
         });
     }
 
-    private syncTiposCriatura(): Observable<any> {
-        const res = this.http.get(`${environment.apiUrl}tiposCriatura`);
-        return res;
-    }
-
-    public async RenovarTiposCriatura(): Promise<boolean> {
-        try {
-            const response = await firstValueFrom(this.syncTiposCriatura());
-            const tipos = Array.isArray(response)
-                ? response
-                : Object.values(response ?? {});
-
-            await Promise.all(
-                tipos.map((element: {
-                    i: number; n: string; d: string; ma: any; itd: number; ntd: string; ia: number; ift: number; ir: number; iv: number; iph: number; c: boolean; r: Boolean; du: boolean; cr: boolean; f: boolean; pc: boolean;
-                    li: number; t: string; ial: number; ra: any; o: boolean;
-                }) => {
-                    return this.firebaseContextSvc.run(() => set(
-                        ref(this.db, `TiposCriatura/${element.i}`), {
-                        Id: element.i,
-                        Nombre: element.n,
-                        Descripcion: element.d,
-                        Manual: element.ma,
-                        Id_tipo_dado: element.itd,
-                        Tipo_dado: element.ntd,
-                        Id_ataque: element.ia,
-                        Id_fortaleza: element.ift,
-                        Id_reflejos: element.ir,
-                        Id_voluntad: element.iv,
-                        Id_puntos_habilidad: element.iph,
-                        Come: element.c,
-                        Respira: element.r,
-                        Duerme: element.du,
-                        Recibe_críticos: element.cr,
-                        Puede_ser_flanqueado: element.f,
-                        Pierde_constitucion: element.pc,
-                        Limite_inteligencia: element.li,
-                        Tesoro: element.t,
-                        Id_alineamiento: element.ial,
-                        Rasgos: element.ra,
-                        Oficial: element.o
-                    }));
-                })
-            );
-
-            Swal.fire({
-                icon: 'success',
-                title: 'Listado de tipos de criatura actualizado con éxito',
-                showConfirmButton: true,
-                timer: 2000
-            });
-            return true;
-        } catch (error: any) {
-            Swal.fire({
-                icon: 'warning',
-                title: 'Error al actualizar el listado de tipos de criatura',
-                text: error?.message ?? 'Error no identificado',
-                showConfirmButton: true
-            });
-            return false;
-        }
-    }
 }

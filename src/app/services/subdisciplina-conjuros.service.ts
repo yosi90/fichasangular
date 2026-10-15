@@ -1,8 +1,7 @@
 import { HttpClient } from "@angular/common/http";
 import { Injectable } from "@angular/core";
-import { Database, onValue, ref, set } from '@angular/fire/database';
-import { Observable, firstValueFrom } from "rxjs";
-import { environment } from "src/environments/environment";
+import { Database, onValue, ref } from '@angular/fire/database';
+import { Observable } from "rxjs";
 import Swal from "sweetalert2";
 import { SubdisciplinaCatalogItem } from "../interfaces/conjuro-catalogos";
 import { FirebaseInjectionContextService } from "./firebase-injection-context.service";
@@ -81,41 +80,4 @@ export class SubdisciplinaConjurosService {
         });
     }
 
-    private syncSubdisciplinas(): Observable<any> {
-        return this.http.get(`${environment.apiUrl}subdisciplinas`);
-    }
-
-    public async RenovarSubdisciplinas(): Promise<boolean> {
-        try {
-            const response = await firstValueFrom(this.syncSubdisciplinas());
-            const subdisciplinas = Array.isArray(response)
-                ? response
-                : Object.values(response ?? {});
-
-            await Promise.all(
-                subdisciplinas.map((raw: any) => {
-                    const item = normalizeSubdisciplina(raw);
-                    if (item.Id <= 0 || item.id_disciplina <= 0 || item.Nombre.length < 1)
-                        return Promise.resolve();
-                    return this.firebaseContextSvc.run(() => set(ref(this.db, `Subdisciplinas/${item.Id}`), item));
-                })
-            );
-
-            Swal.fire({
-                icon: 'success',
-                title: 'Listado de subdisciplinas actualizado con éxito',
-                showConfirmButton: true,
-                timer: 2000
-            });
-            return true;
-        } catch (error: any) {
-            Swal.fire({
-                icon: 'warning',
-                title: 'Error al actualizar el listado de subdisciplinas',
-                text: error?.message ?? 'Error no identificado',
-                showConfirmButton: true
-            });
-            return false;
-        }
-    }
 }

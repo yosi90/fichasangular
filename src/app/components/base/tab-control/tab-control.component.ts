@@ -30,7 +30,6 @@ import { ManualAsociadoDetalle } from 'src/app/interfaces/manual-asociado';
 import { ManualVistaNavigationService } from 'src/app/services/manual-vista-navigation.service';
 import { Plantilla } from 'src/app/interfaces/plantilla';
 import { PlantillaService } from 'src/app/services/plantilla.service';
-import { CacheSyncMetadataService } from 'src/app/services/cache-sync-metadata.service';
 import { RasgoService } from 'src/app/services/rasgo.service';
 import { SubtipoDetalle, SubtipoResumen } from 'src/app/interfaces/subtipo';
 import { SubtipoService } from 'src/app/services/subtipo.service';
@@ -100,7 +99,6 @@ export class TabControlComponent implements OnInit, OnDestroy {
     public privateProfileOpenRequest: UserPrivateProfileOpenRequest | null = null;
     public socialTabOpen = false;
     public socialOpenRequest: SocialHubOpenRequest | null = null;
-    public adminPanelTabOpen = false;
     public roadmapTabOpen = false;
     public legalPrivacyTabOpen = false;
     public usageAboutTabOpen = false;
@@ -132,15 +130,12 @@ export class TabControlComponent implements OnInit, OnDestroy {
     private readonly TAB_PERSONAJES = 'base:personajes';
     private readonly TAB_PROFILE = 'base:perfil';
     private readonly TAB_SOCIAL = 'base:social';
-    private readonly TAB_ADMIN = 'base:admin';
     private readonly TAB_ROADMAP = 'base:roadmap';
     private readonly TAB_LEGAL = 'base:legal';
     private readonly TAB_USAGE = 'base:usage';
     private readonly TAB_NUEVO = 'base:nuevo';
     private activeTabKey: string = this.TAB_PERSONAJES;
     private openerByTab = new Map<string, string>();
-    private avisoCachePendienteMostrado = false;
-    private avisoCachePendienteEnCurso = false;
     private readonly destroy$ = new Subject<void>();
 
     constructor(
@@ -164,7 +159,6 @@ export class TabControlComponent implements OnInit, OnDestroy {
         private nuevoPSvc: NuevoPersonajeService,
         private manualRefNavSvc: ManualReferenciaNavigationService,
         private manualVistaNavSvc: ManualVistaNavigationService,
-        private cacheSyncMetadataSvc: CacheSyncMetadataService,
         private ngZone: NgZone,
         private userProfileNavSvc?: UserProfileNavigationService,
     ) { }
@@ -189,12 +183,6 @@ export class TabControlComponent implements OnInit, OnDestroy {
             .pipe(takeUntil(this.destroy$))
             .subscribe((permisos) => {
                 this.usrPerm = Number(permisos) === 1 ? 1 : 0;
-                if (this.usrPerm !== 1) {
-                    this.cerrarPanelAdministracionPorPermisos();
-                    return;
-                }
-                if (this.TabGroup)
-                    void this.verificarPendientesCacheAdminEnInicio();
             });
         this.manualRefNavSvc.aperturas$
             .pipe(takeUntil(this.destroy$))
@@ -208,9 +196,6 @@ export class TabControlComponent implements OnInit, OnDestroy {
         this.userProfileNavSvc?.socialOpen$
             .pipe(takeUntil(this.destroy$))
             .subscribe((request) => this.abrirSocial(request));
-        this.userProfileNavSvc?.adminPanelOpen$
-            .pipe(takeUntil(this.destroy$))
-            .subscribe(() => this.abrirPanelAdministracion());
         this.userProfileNavSvc?.roadmapOpen$
             .pipe(takeUntil(this.destroy$))
             .subscribe(() => this.abrirRoadmap());
@@ -247,7 +232,6 @@ export class TabControlComponent implements OnInit, OnDestroy {
 
     ngAfterViewInit() {
         this.activeTabKey = this.TAB_PERSONAJES;
-        this.verificarPendientesCacheAdminEnInicio();
     }
 
     ngOnChanges(changes: SimpleChanges) {
@@ -305,10 +289,6 @@ export class TabControlComponent implements OnInit, OnDestroy {
         }
         if (activeKey === this.TAB_SOCIAL) {
             this.quitarSocial();
-            return;
-        }
-        if (activeKey === this.TAB_ADMIN) {
-            this.quitarPanelAdministracion();
             return;
         }
         if (activeKey === this.TAB_ROADMAP) {
@@ -398,8 +378,6 @@ export class TabControlComponent implements OnInit, OnDestroy {
             keys.push(this.TAB_PROFILE);
         if (this.socialTabOpen)
             keys.push(this.TAB_SOCIAL);
-        if (this.usrPerm === 1 && this.adminPanelTabOpen)
-            keys.push(this.TAB_ADMIN);
         if (this.roadmapTabOpen)
             keys.push(this.TAB_ROADMAP);
         if (this.legalPrivacyTabOpen)
@@ -579,28 +557,6 @@ export class TabControlComponent implements OnInit, OnDestroy {
         });
     }
 
-    public abrirPanelAdministracion(): void {
-        if (this.usrPerm !== 1)
-            return;
-        if (this.adminPanelTabOpen) {
-            this.selectTabByKey(this.TAB_ADMIN, true);
-            return;
-        }
-        this.adminPanelTabOpen = true;
-        this.registerOpenContext(this.TAB_ADMIN, this.getSafeOpenerKey());
-        this.focusOpenedTab(this.TAB_ADMIN);
-    }
-
-    public quitarPanelAdministracion(): boolean {
-        if (!this.adminPanelTabOpen)
-            return false;
-
-        return this.closeTabWithNavigation(this.TAB_ADMIN, () => {
-            this.adminPanelTabOpen = false;
-            return true;
-        });
-    }
-
     public abrirRoadmap(): void {
         this.openHelpTab(this.TAB_ROADMAP, 'roadmapTabOpen');
     }
@@ -633,18 +589,6 @@ export class TabControlComponent implements OnInit, OnDestroy {
         };
     }
 
-    private cerrarPanelAdministracionPorPermisos(): void {
-        if (!this.adminPanelTabOpen)
-            return;
-        const wasActive = this.activeTabKey === this.TAB_ADMIN;
-        this.adminPanelTabOpen = false;
-        this.openerByTab.delete(this.TAB_ADMIN);
-        if (wasActive)
-            this.selectTabByKey(this.getDefaultBaseTabKey(), true);
-        else if (!this.isTabKeyOpen(this.activeTabKey))
-            this.selectTabByKey(this.getDefaultBaseTabKey(), true);
-    }
-
     private cerrarTodasLasTabsPorLogout(): void {
         const hadNuevoPersonajeOpen = !!this.AbrirNuevoPersonajeTab;
         const hadListadoTabsOpen = this.listadoTabsAbiertos.length > 0;
@@ -653,7 +597,6 @@ export class TabControlComponent implements OnInit, OnDestroy {
         this.privateProfileOpenRequest = null;
         this.socialTabOpen = false;
         this.socialOpenRequest = null;
-        this.adminPanelTabOpen = false;
         this.roadmapTabOpen = false;
         this.legalPrivacyTabOpen = false;
         this.usageAboutTabOpen = false;
@@ -850,58 +793,6 @@ export class TabControlComponent implements OnInit, OnDestroy {
         } else if (value.tipo === 'idiomas') {
             this.abrirDetallesIdioma(value.item);
         }
-    }
-
-    private async verificarPendientesCacheAdminEnInicio(): Promise<void> {
-        if (this.usrPerm !== 1 || this.avisoCachePendienteMostrado || this.avisoCachePendienteEnCurso)
-            return;
-
-        this.avisoCachePendienteEnCurso = true;
-
-        try {
-            const metaSnapshot = await this.cacheSyncMetadataSvc.getSnapshotOnce();
-            const uiState = this.cacheSyncMetadataSvc.buildUiState(metaSnapshot);
-            const hayPendientes = uiState.some((item) => {
-                if (!item.isPrimary)
-                    return false;
-                return metaSnapshot[item.key]?.staleReason !== 'manual_flag_mismatch';
-            });
-            if (!hayPendientes)
-                return;
-
-            this.avisoCachePendienteMostrado = true;
-            const result = await Swal.fire({
-                icon: 'warning',
-                title: 'Hay catálogos desactualizados',
-                text: 'Se detectaron sincronizaciones pendientes en el Admin panel.',
-                target: document.body,
-                heightAuto: false,
-                scrollbarPadding: false,
-                showCancelButton: true,
-                confirmButtonText: 'Ir al admin panel',
-                cancelButtonText: 'Luego',
-            });
-
-            if (!result.isConfirmed)
-                return;
-
-            this.irAlPanelAdministracion();
-        } catch (error) {
-            // Si falla la lectura de metadata, no bloqueamos el resto del flujo de tabs.
-        } finally {
-            this.avisoCachePendienteEnCurso = false;
-        }
-    }
-
-    private irAlPanelAdministracion(): void {
-        if (this.usrPerm !== 1)
-            return;
-
-        const navegar = () => this.abrirPanelAdministracion();
-
-        this.ngZone.run(navegar);
-        setTimeout(() => this.ngZone.run(navegar), 0);
-        setTimeout(() => this.ngZone.run(navegar), 80);
     }
 
     async abrirDetallesRaza(raza: Raza) {

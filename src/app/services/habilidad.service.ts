@@ -120,14 +120,6 @@ export class HabilidadService {
         });
     }
 
-    private syncHabilidades() {
-        return this.http.get(`${environment.apiUrl}habilidades`);
-    }
-
-    private syncHabilidadesCustom() {
-        return this.http.get(`${environment.apiUrl}habilidades/custom`);
-    }
-
     public async crearHabilidadCustom(payload: HabilidadCustomCreateRequest): Promise<HabilidadCustomMutationResponse> {
         try {
             const headers = await this.buildAuthHeaders();
@@ -162,58 +154,6 @@ export class HabilidadService {
         }
     }
 
-    public async RenovarHabilidades(): Promise<boolean> {
-        try {
-            const response = await firstValueFrom(this.syncHabilidades());
-            const total = await this.persistirHabilidades("Habilidades", response);
-            Swal.fire({
-                icon: "success",
-                title: `Listado de habilidades actualizado (${total})`,
-                showConfirmButton: true,
-                timer: 2000
-            });
-            return true;
-        } catch (error: any) {
-            this.handleError(error, "habilidades");
-            return false;
-        }
-    }
-
-    public async RenovarHabilidadesCustom(): Promise<boolean> {
-        try {
-            const response = await firstValueFrom(this.syncHabilidadesCustom());
-            const total = await this.persistirHabilidades("HabilidadesCustom", response);
-            Swal.fire({
-                icon: "success",
-                title: `Listado de habilidades custom actualizado (${total})`,
-                showConfirmButton: true,
-                timer: 2000
-            });
-            return true;
-        } catch (error: any) {
-            this.handleError(error, "habilidades custom");
-            return false;
-        }
-    }
-
-    public async RenovarHabilidadesYCustom(): Promise<boolean> {
-        const okHabilidades = await this.RenovarHabilidades();
-        const okCustom = await this.RenovarHabilidadesCustom();
-        return okHabilidades && okCustom;
-    }
-
-    private async persistirHabilidades(path: "Habilidades" | "HabilidadesCustom", response: any): Promise<number> {
-        const habilidades = toArray(response)
-            .map((raw: any) => normalizeHabilidadBasica(raw))
-            .filter((h) => h.Id_habilidad > 0);
-
-        await Promise.all(
-            habilidades.map((h) => this.firebaseContextSvc.run(() => set(ref(this.db, `${path}/${h.Id_habilidad}`), h)))
-        );
-
-        return habilidades.length;
-    }
-
     private normalizarMutacionCustomResponse(
         response: HabilidadCustomMutationApiResponse,
         payload: HabilidadCustomCreateRequest | HabilidadCustomUpdateRequest,
@@ -242,6 +182,9 @@ export class HabilidadService {
 
     private async actualizarCacheCustom(habilidad: HabilidadBasicaDetalle): Promise<void> {
         if (!habilidad || Number(habilidad.Id_habilidad) <= 0)
+            return;
+        // Las cachés públicas viven en la RTDB de producción: desde desarrollo no se escriben.
+        if (!environment.sincronizacionCaches)
             return;
         await this.firebaseContextSvc.run(() => set(ref(this.db, `HabilidadesCustom/${habilidad.Id_habilidad}`), habilidad));
     }
@@ -281,26 +224,6 @@ export class HabilidadService {
         if (typeof errorBody === "object")
             return `${errorBody?.message ?? errorBody?.error ?? ""}`.trim();
         return "";
-    }
-
-    private handleError(error: any, tipo: "habilidades" | "habilidades custom") {
-        const httpError = error as HttpErrorResponse;
-        if (httpError.status === 404) {
-            Swal.fire({
-                icon: "warning",
-                title: `Endpoint de ${tipo} no disponible`,
-                text: `No se encontro /${tipo === "habilidades" ? "habilidades" : "habilidades/custom"} en la API`,
-                showConfirmButton: true
-            });
-            return;
-        }
-
-        Swal.fire({
-            icon: "warning",
-            title: `Error al actualizar el listado de ${tipo}`,
-            text: error?.message ?? "Error no identificado",
-            showConfirmButton: true
-        });
     }
 
     private async buildAuthHeaders(): Promise<{ Authorization: string; }> {

@@ -1,7 +1,7 @@
 import { HttpClient } from "@angular/common/http";
 import { Injectable } from "@angular/core";
 import { Database, Unsubscribe, onValue, ref, set } from "@angular/fire/database";
-import { Observable, firstValueFrom } from "rxjs";
+import { Observable } from "rxjs";
 import { environment } from "src/environments/environment";
 import Swal from "sweetalert2";
 import { CacheEntityKey } from "../config/cache-contract-manifest";
@@ -66,6 +66,9 @@ export class RazaCatalogosService {
     }
 
     protected writeCatalogPath(path: string, items: RazaCatalogItem[]): Promise<void> {
+        // Las cachés públicas viven en la RTDB de producción: desde desarrollo no se escriben.
+        if (!environment.sincronizacionCaches)
+            return Promise.resolve();
         const payload = items.reduce((acc, item) => {
             acc[String(item.Id)] = item;
             return acc;
@@ -122,52 +125,4 @@ export class RazaCatalogosService {
         return sortCatalog(toArray(raw).map((item) => normalizeCatalogItem(item, preserveRaw)));
     }
 
-    public RenovarManiobrabilidades(): Promise<boolean> {
-        return this.renovarCatalogoSimple({
-            path: "Maniobrabilidades",
-            endpoint: "maniobrabilidades",
-            successTitle: "Catálogo de maniobrabilidades actualizado con éxito",
-            errorTitle: "Error al actualizar el catálogo de maniobrabilidades",
-        });
-    }
-
-    public RenovarTiposDado(): Promise<boolean> {
-        return this.renovarCatalogoSimple({
-            path: "TiposDado",
-            endpoint: "tipos-dado",
-            successTitle: "Catálogo de tipos de dado actualizado con éxito",
-            errorTitle: "Error al actualizar el catálogo de tipos de dado",
-        });
-    }
-
-    private async renovarCatalogoSimple(params: {
-        path: "Maniobrabilidades" | "TiposDado";
-        endpoint: "maniobrabilidades" | "tipos-dado";
-        successTitle: string;
-        errorTitle: string;
-    }): Promise<boolean> {
-        try {
-            const raw = await firstValueFrom(this.http.get(`${environment.apiUrl}${params.endpoint}`));
-            const items = sortCatalog(toArray(raw).map((item) => normalizeCatalogItem(item, params.endpoint === "maniobrabilidades")));
-            if (items.length < 1)
-                throw new Error("La API respondió sin elementos válidos para cachear.");
-
-            await this.writeCatalogPath(params.path, items);
-            Swal.fire({
-                icon: "success",
-                title: params.successTitle,
-                showConfirmButton: true,
-                timer: 2000,
-            });
-            return true;
-        } catch (error: any) {
-            Swal.fire({
-                icon: "warning",
-                title: params.errorTitle,
-                text: error?.message ?? "Error no identificado",
-                showConfirmButton: true,
-            });
-            return false;
-        }
-    }
 }

@@ -1,7 +1,7 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { Database, Unsubscribe, onValue, ref, set } from '@angular/fire/database';
-import { Observable, firstValueFrom } from 'rxjs';
+import { Observable } from 'rxjs';
 import { environment } from 'src/environments/environment';
 import Swal from 'sweetalert2';
 import { CacheEntityKey } from '../config/cache-contract-manifest';
@@ -58,47 +58,14 @@ export class ConjuroCatalogosService {
         return this.getCatalogoCacheFirst('DescriptoresConjuros', 'descriptores', 'descriptores_conjuros');
     }
 
-    public RenovarComponentes(): Promise<boolean> {
-        return this.renovarCatalogoSimple({
-            path: 'ComponentesConjuros',
-            endpoint: 'componentes-conjuros',
-            successTitle: 'Catálogo de componentes de conjuros actualizado con éxito',
-            errorTitle: 'Error al actualizar el catálogo de componentes de conjuros',
-        });
-    }
-
-    public RenovarTiemposLanzamiento(): Promise<boolean> {
-        return this.renovarCatalogoSimple({
-            path: 'TiemposLanzamiento',
-            endpoint: 'tiempos-lanzamiento',
-            successTitle: 'Catálogo de tiempos de lanzamiento actualizado con éxito',
-            errorTitle: 'Error al actualizar el catálogo de tiempos de lanzamiento',
-        });
-    }
-
-    public RenovarAlcances(): Promise<boolean> {
-        return this.renovarCatalogoSimple({
-            path: 'AlcancesConjuros',
-            endpoint: 'alcances-conjuros',
-            successTitle: 'Catálogo de alcances de conjuros actualizado con éxito',
-            errorTitle: 'Error al actualizar el catálogo de alcances de conjuros',
-        });
-    }
-
-    public RenovarDescriptores(): Promise<boolean> {
-        return this.renovarCatalogoSimple({
-            path: 'DescriptoresConjuros',
-            endpoint: 'descriptores',
-            successTitle: 'Catálogo de descriptores de conjuros actualizado con éxito',
-            errorTitle: 'Error al actualizar el catálogo de descriptores de conjuros',
-        });
-    }
-
     protected watchCatalogPath(path: string, onNext: (snapshot: any) => void, onError: (error: any) => void): Unsubscribe {
         return this.firebaseContextSvc.run(() => onValue(ref(this.db, path), onNext, onError));
     }
 
     protected writeCatalogPath(path: string, items: ConjuroCatalogItem[]): Promise<void> {
+        // Las cachés públicas viven en la RTDB de producción: desde desarrollo no se escriben.
+        if (!environment.sincronizacionCaches)
+            return Promise.resolve();
         const payload = items.reduce((acc, item) => {
             acc[String(item.Id)] = item;
             return acc;
@@ -145,34 +112,4 @@ export class ConjuroCatalogosService {
         return sortCatalog(toArray(snapshot.val?.()).map(normalizeCatalogItem));
     }
 
-    private async renovarCatalogoSimple(params: {
-        path: 'ComponentesConjuros' | 'TiemposLanzamiento' | 'AlcancesConjuros' | 'DescriptoresConjuros';
-        endpoint: 'componentes-conjuros' | 'tiempos-lanzamiento' | 'alcances-conjuros' | 'descriptores';
-        successTitle: string;
-        errorTitle: string;
-    }): Promise<boolean> {
-        try {
-            const raw = await firstValueFrom(this.http.get<any[]>(`${environment.apiUrl}${params.endpoint}`));
-            const items = sortCatalog(toArray(raw).map(normalizeCatalogItem));
-            if (items.length < 1)
-                throw new Error('La API respondió sin elementos válidos para cachear.');
-
-            await this.writeCatalogPath(params.path, items);
-            Swal.fire({
-                icon: 'success',
-                title: params.successTitle,
-                showConfirmButton: true,
-                timer: 2000,
-            });
-            return true;
-        } catch (error: any) {
-            Swal.fire({
-                icon: 'warning',
-                title: params.errorTitle,
-                text: error?.message ?? 'Error no identificado',
-                showConfirmButton: true,
-            });
-            return false;
-        }
-    }
 }

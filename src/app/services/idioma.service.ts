@@ -139,45 +139,6 @@ export class IdiomaService {
         }
     }
 
-    public async RenovarIdiomas(): Promise<boolean> {
-        try {
-            const response = await firstValueFrom(this.syncIdiomas());
-            const idiomas = toArray(response)
-                .map((raw: any) => normalizeIdioma(raw))
-                .filter((idioma) => idioma.Id > 0);
-
-            await Promise.all(
-                idiomas.map((idioma) => this.firebaseContextSvc.run(() => set(ref(this.db, `Idiomas/${idioma.Id}`), idioma)))
-            );
-
-            Swal.fire({
-                icon: "success",
-                title: "Listado de idiomas actualizado con exito",
-                showConfirmButton: true,
-                timer: 2000
-            });
-            return true;
-        } catch (error: any) {
-            const httpError = error as HttpErrorResponse;
-            if (httpError.status === 404) {
-                Swal.fire({
-                    icon: "warning",
-                    title: "Endpoint de idiomas no disponible",
-                    text: "No se encontro /idiomas en la API",
-                    showConfirmButton: true
-                });
-            } else {
-                Swal.fire({
-                    icon: "warning",
-                    title: "Error al actualizar el listado de idiomas",
-                    text: error?.message ?? "Error no identificado",
-                    showConfirmButton: true
-                });
-            }
-            return false;
-        }
-    }
-
     private normalizarMutacionResponse(
         response: IdiomaMutacionApiResponse,
         fallbackNombre: string,
@@ -203,6 +164,9 @@ export class IdiomaService {
 
     private async actualizarCacheLocal(idioma: IdiomaDetalle): Promise<void> {
         if (!idioma || Number(idioma.Id) <= 0)
+            return;
+        // Las cachés públicas viven en la RTDB de producción: desde desarrollo no se escriben.
+        if (!environment.sincronizacionCaches)
             return;
         await this.firebaseContextSvc.run(() => set(ref(this.db, `Idiomas/${idioma.Id}`), idioma));
     }

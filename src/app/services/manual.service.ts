@@ -1,14 +1,13 @@
 import { Injectable } from '@angular/core';
 import { Auth } from '@angular/fire/auth';
-import { Database, Unsubscribe, onValue, ref, set } from '@angular/fire/database';
-import { Observable, firstValueFrom } from 'rxjs';
+import { Database, Unsubscribe, onValue, ref } from '@angular/fire/database';
+import { Observable } from 'rxjs';
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { environment } from 'src/environments/environment';
 import Swal from 'sweetalert2';
 import { Manual } from '../interfaces/manual';
 import { ManualIncludeFlag } from '../config/manual-secciones.config';
 import { FirebaseInjectionContextService } from './firebase-injection-context.service';
-import { obtenerTokenApi } from './platform-session.service';
 
 function toBoolean(value: any): boolean {
     return value === true || value === 1 || value === '1';
@@ -140,120 +139,4 @@ export class ManualService {
         });
     }
 
-    private syncManuales(): Observable<any> {
-        return this.http.get(`${environment.apiUrl}manuales`);
-    }
-
-    public async patchManualFlags(idManual: number, payload: ManualFlagsPatchPayload): Promise<Manual> {
-        const id = Math.trunc(Number(idManual));
-        if (!Number.isFinite(id) || id <= 0)
-            throw new Error('Id de manual inválido');
-
-        const allowedEntries = Object.entries(payload ?? {})
-            .filter(([_, value]) => typeof value === 'boolean');
-        if (allowedEntries.length < 1)
-            throw new Error('No hay flags de manual para actualizar');
-
-        const requestBody = allowedEntries.reduce((acc, [key, value]) => {
-            acc[key as ManualIncludeFlag] = value;
-            return acc;
-        }, {} as ManualFlagsPatchPayload);
-
-        try {
-            const headers = await this.buildAuthHeaders();
-            const response = await firstValueFrom(
-                this.http.patch(`${environment.apiUrl}manuales/${id}`, requestBody, { headers })
-            );
-            const manual = normalizeManual(response);
-            if (manual.Id <= 0 || `${manual.Nombre ?? ''}`.trim().length < 1)
-                throw new Error('La API devolvió un manual inválido');
-            return manual;
-        } catch (error: any) {
-            if (error instanceof HttpErrorResponse) {
-                const backendMessage = this.extractErrorMessage(error.error);
-                if (error.status === 401)
-                    throw new Error(`Sesión no válida para actualizar manuales${backendMessage.length > 0 ? `. ${backendMessage}` : ''}`);
-                if (error.status === 403)
-                    throw new Error(`No tienes permisos para actualizar manuales${backendMessage.length > 0 ? `. ${backendMessage}` : ''}`);
-                if (backendMessage.length > 0)
-                    throw new Error(backendMessage);
-                if (error.status === 404)
-                    throw new Error(`No existe el manual con id ${id}`);
-                if (error.status === 400)
-                    throw new Error('La API rechazó las flags del manual');
-            }
-
-            throw new Error(error?.message ?? `No se pudieron actualizar las flags del manual ${id}`);
-        }
-    }
-
-    public async RenovarManuales(showFeedback: boolean = true): Promise<boolean> {
-        try {
-            const response = await firstValueFrom(this.syncManuales());
-            const manuales = Array.isArray(response)
-                ? response
-                : Object.values(response ?? {});
-            const manualesValidos = manuales
-                .map((raw: any) => normalizeManual(raw))
-                .filter((manual) => manual.Id > 0 && `${manual.Nombre ?? ''}`.trim().length > 0);
-
-            await Promise.all(
-                manualesValidos.map((manual) => {
-                    return this.firebaseContextSvc.run(() => set(ref(this.db, `Manuales/${manual.Id}`), manual));
-                })
-            );
-
-            if (showFeedback) {
-                Swal.fire({
-                    icon: 'success',
-                    title: 'Listado de manuales actualizado con éxito',
-                    showConfirmButton: true,
-                    timer: 2000
-                });
-            }
-            return true;
-        } catch (error: any) {
-            if (showFeedback) {
-                Swal.fire({
-                    icon: 'warning',
-                    title: 'Error al actualizar el listado de manuales',
-                    text: error?.message ?? 'Error no identificado',
-                    showConfirmButton: true
-                });
-            }
-            return false;
-        }
-    }
-
-    private extractErrorMessage(errorBody: any): string {
-        if (!errorBody)
-            return '';
-
-        if (typeof errorBody === 'string') {
-            const message = errorBody.trim();
-            return message.length > 0 ? message : '';
-        }
-
-        if (typeof errorBody === 'object') {
-            const message = `${errorBody?.message ?? errorBody?.error ?? ''}`.trim();
-            if (message.length > 0)
-                return message;
-        }
-
-        return '';
-    }
-
-    private async buildAuthHeaders(): Promise<{ Authorization: string; }> {
-        const user = this.auth?.currentUser;
-        if (!user)
-            throw new Error('Sesión no iniciada');
-
-        const idToken = await obtenerTokenApi();
-        if (`${idToken ?? ''}`.trim().length < 1)
-            throw new Error('Token no disponible');
-
-        return {
-            Authorization: `Bearer ${idToken}`,
-        };
-    }
 }

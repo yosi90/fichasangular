@@ -1,9 +1,8 @@
-import { HttpClient, HttpErrorResponse } from "@angular/common/http";
+import { HttpClient } from "@angular/common/http";
 import { Injectable } from "@angular/core";
-import { Database, Unsubscribe, onValue, ref, set } from "@angular/fire/database";
-import { Observable, firstValueFrom } from "rxjs";
+import { Database, Unsubscribe, onValue, ref } from "@angular/fire/database";
+import { Observable } from "rxjs";
 import Swal from "sweetalert2";
-import { environment } from "src/environments/environment";
 import { EnemigoPredilectoDetalle } from "../interfaces/enemigo-predilecto-detalle";
 import { FirebaseInjectionContextService } from "./firebase-injection-context.service";
 
@@ -72,46 +71,4 @@ export class EnemigoPredilectoService {
         });
     }
 
-    private syncEnemigosPredilectos() {
-        return this.http.get(`${environment.apiUrl}enemigos-predilectos`);
-    }
-
-    public async RenovarEnemigosPredilectos(): Promise<boolean> {
-        try {
-            const response = await firstValueFrom(this.syncEnemigosPredilectos());
-            const enemigos = toArray(response)
-                .map((raw: any) => normalizeEnemigoPredilecto(raw))
-                .filter((enemigo) => enemigo.Id > 0 && enemigo.Nombre.trim().length > 0);
-
-            await Promise.all(
-                enemigos.map((enemigo) => this.firebaseContextSvc.run(() => set(ref(this.db, `EnemigosPredilectos/${enemigo.Id}`), enemigo)))
-            );
-
-            Swal.fire({
-                icon: "success",
-                title: "Listado de enemigos predilectos actualizado con exito",
-                showConfirmButton: true,
-                timer: 2000
-            });
-            return true;
-        } catch (error: any) {
-            const httpError = error as HttpErrorResponse;
-            if (httpError.status === 404) {
-                Swal.fire({
-                    icon: "warning",
-                    title: "Endpoint de enemigos predilectos no disponible",
-                    text: "No se encontro /enemigos-predilectos en la API",
-                    showConfirmButton: true
-                });
-            } else {
-                Swal.fire({
-                    icon: "warning",
-                    title: "Error al actualizar el listado de enemigos predilectos",
-                    text: error?.message ?? "Error no identificado",
-                    showConfirmButton: true
-                });
-            }
-            return false;
-        }
-    }
 }

@@ -1,8 +1,7 @@
 import { HttpClient } from "@angular/common/http";
 import { Injectable } from "@angular/core";
-import { Database, onValue, ref, set } from '@angular/fire/database';
-import { Observable, firstValueFrom } from "rxjs";
-import { environment } from "src/environments/environment";
+import { Database, onValue, ref } from '@angular/fire/database';
+import { Observable } from "rxjs";
 import Swal from "sweetalert2";
 import { DisciplinaConjuros, Subdisciplinas } from "../interfaces/disciplina-conjuros";
 import { FirebaseInjectionContextService } from "./firebase-injection-context.service";
@@ -133,48 +132,4 @@ export class DisciplinaConjurosService {
         });
     }
 
-    private syncConjuros(): Observable<any> {
-        const res = this.http.get(`${environment.apiUrl}disciplinas`);
-        return res;
-    }
-
-    public async RenovarDisciplinas(): Promise<boolean> {
-        try {
-            const response = await firstValueFrom(this.syncConjuros());
-            const disciplinas = Array.isArray(response)
-                ? response
-                : Object.values(response ?? {});
-
-            await Promise.all(
-                disciplinas.map((element: any) => {
-                    const disciplina = normalizeDisciplina(element);
-                    if (disciplina.Id <= 0 || disciplina.Nombre.length < 1)
-                        return Promise.resolve();
-                    return this.firebaseContextSvc.run(() => set(
-                        ref(this.db, `Disciplinas/${disciplina.Id}`), {
-                        Id: disciplina.Id,
-                        Nombre: disciplina.Nombre,
-                        Nombre_especial: disciplina.Nombre_especial,
-                        Subdisciplinas: disciplina.Subdisciplinas
-                    }));
-                })
-            );
-
-            Swal.fire({
-                icon: 'success',
-                title: 'Listado de disciplinas actualizado con éxito',
-                showConfirmButton: true,
-                timer: 2000
-            });
-            return true;
-        } catch (error: any) {
-            Swal.fire({
-                icon: 'warning',
-                title: 'Error al actualizar el listado de disciplinas',
-                text: error?.message ?? 'Error no identificado',
-                showConfirmButton: true
-            });
-            return false;
-        }
-    }
 }

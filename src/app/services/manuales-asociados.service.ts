@@ -1,23 +1,16 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { Database, onValue, ref, set } from '@angular/fire/database';
-import { BehaviorSubject, Observable, Subscription, catchError, combineLatest, firstValueFrom, map } from 'rxjs';
+import { BehaviorSubject, Observable, Subscription, catchError, combineLatest, map } from 'rxjs';
 import { environment } from 'src/environments/environment';
 import Swal from 'sweetalert2';
-import { ManualIncludeFlag, getManualFlagMismatches } from '../config/manual-secciones.config';
-import { Clase } from '../interfaces/clase';
-import { Conjuro } from '../interfaces/conjuro';
-import { Dote } from '../interfaces/dote';
 import { ManualAsociadoDetalle, ManualAsociados, ReferenciaCorta } from '../interfaces/manual-asociado';
-import { Plantilla } from '../interfaces/plantilla';
-import { Raza } from '../interfaces/raza';
 import { SubtipoResumen } from '../interfaces/subtipo';
-import { TipoCriatura } from '../interfaces/tipo_criatura';
 import { ClaseService } from './clase.service';
 import { ConjuroService } from './conjuro.service';
 import { DoteService } from './dote.service';
 import { FirebaseInjectionContextService } from './firebase-injection-context.service';
-import { ManualFlagsPatchPayload, ManualService } from './manual.service';
+import { ManualService } from './manual.service';
 import { PlantillaService } from './plantilla.service';
 import { RazaService } from './raza.service';
 import { SubtipoService } from './subtipo.service';
@@ -129,34 +122,6 @@ export class ManualesAsociadosService {
                 unsubscribe();
             };
         });
-    }
-
-    async RenovarManualesAsociados(): Promise<boolean> {
-        try {
-            this.showProgressToast('Cargando manuales asociados desde la API...');
-            const response = await firstValueFrom(this.http.get<any>(this.asociadosUrl));
-            const manuales = this.normalizeApiResponse(response);
-            const reconciliacion = await this.reconciliarFlagsManuales(manuales);
-            const manualesCacheados = reconciliacion.manuales;
-            await this.persistirCacheManualesAsociados(manualesCacheados);
-            this.showProgressToast('Actualizando caché de manuales...');
-            const manualesOk = await this.manualSvc.RenovarManuales(false);
-            Swal.close();
-            this.clearFallbackNotice();
-            const ok = reconciliacion.ok && manualesOk;
-            await this.showResultadoFinalSync(reconciliacion, ok, manualesOk);
-            return ok;
-        } catch (error) {
-            Swal.close();
-            this.setFallbackNotice('Aviso: la última sincronización de manuales asociados falló. Se seguirá usando cache/fallback local.');
-            await Swal.fire({
-                icon: 'warning',
-                title: 'Error al actualizar manuales asociados',
-                text: error instanceof Error ? error.message : 'No se pudo completar la sincronización.',
-                showConfirmButton: true,
-            });
-            return false;
-        }
     }
 
     private normalizeManualAsociado(raw: any): ManualAsociadoDetalle {
@@ -281,6 +246,9 @@ export class ManualesAsociadosService {
     }
 
     private async persistirCacheManualesAsociados(manuales: ManualAsociadoDetalle[]): Promise<void> {
+        // Las cachés públicas viven en la RTDB de producción: desde desarrollo no se escriben.
+        if (!environment.sincronizacionCaches)
+            return;
         const payload: Record<string, any> = {};
         manuales.forEach((manual) => {
             if (manual.Id <= 0)
@@ -288,52 +256,6 @@ export class ManualesAsociadosService {
             payload[String(manual.Id)] = this.sanitizarParaFirebase(manual);
         });
         await this.firebaseContextSvc.run(() => set(ref(this.db, this.cachePath), payload));
-    }
-
-    private async reconciliarFlagsManuales(manuales: ManualAsociadoDetalle[]): Promise<{
-        manuales: ManualAsociadoDetalle[];
-        ok: boolean;
-        patchedCount: number;
-        failedCount: number;
-    }> {
-        const resultados: { id: number; ok: boolean; payload: ManualFlagsPatchPayload | null; }[] = [];
-
-        for (const manual of manuales) {
-            const payload = this.buildManualFlagPatchPayload(manual);
-            if (!payload)
-                resultados.push({ id: manual.Id, ok: true, payload: null });
-            else {
-                this.showProgressToast(`Reconciliando flags del manual "${manual.Nombre}"...`);
-
-                try {
-                    const actualizado = await this.manualSvc.patchManualFlags(manual.Id, payload);
-                    resultados.push({
-                        id: manual.Id,
-                        ok: true,
-                        payload: this.extractFlagsFromManual(actualizado),
-                    });
-                } catch (error) {
-                    resultados.push({
-                        id: manual.Id,
-                        ok: false,
-                        payload: null,
-                    });
-                }
-            }
-        }
-
-        const payloadsById = new Map<number, ManualFlagsPatchPayload>();
-        resultados.forEach((resultado) => {
-            if (resultado.payload)
-                payloadsById.set(resultado.id, resultado.payload);
-        });
-
-        return {
-            manuales: manuales.map((manual) => this.applyManualFlagPatchPayload(manual, payloadsById.get(manual.Id))),
-            ok: resultados.every((resultado) => resultado.ok),
-            patchedCount: resultados.filter((resultado) => !!resultado.payload).length,
-            failedCount: resultados.filter((resultado) => !resultado.ok).length,
-        };
     }
 
     private sanitizarParaFirebase<T>(input: T): T {
@@ -566,84 +488,4 @@ export class ManualesAsociadosService {
         coleccion.push(ref);
     }
 
-    private buildManualFlagPatchPayload(manual: ManualAsociadoDetalle): ManualFlagsPatchPayload | null {
-        const payload = getManualFlagMismatches(manual).reduce((acc, mismatch) => {
-            acc[mismatch.includeFlag] = mismatch.effective;
-            return acc;
-        }, {} as ManualFlagsPatchPayload);
-
-        return Object.keys(payload).length > 0 ? payload : null;
-    }
-
-    private extractFlagsFromManual(manual: Partial<Record<ManualIncludeFlag, boolean>>): ManualFlagsPatchPayload {
-        return {
-            Incluye_dotes: !!manual.Incluye_dotes,
-            Incluye_conjuros: !!manual.Incluye_conjuros,
-            Incluye_plantillas: !!manual.Incluye_plantillas,
-            Incluye_monstruos: !!manual.Incluye_monstruos,
-            Incluye_razas: !!manual.Incluye_razas,
-            Incluye_clases: !!manual.Incluye_clases,
-            Incluye_tipos: !!manual.Incluye_tipos,
-            Incluye_subtipos: !!manual.Incluye_subtipos,
-        };
-    }
-
-    private applyManualFlagPatchPayload(
-        manual: ManualAsociadoDetalle,
-        payload?: ManualFlagsPatchPayload | null
-    ): ManualAsociadoDetalle {
-        if (!payload)
-            return manual;
-
-        const updated = { ...manual };
-        Object.entries(payload).forEach(([key, value]) => {
-            if (typeof value !== 'boolean')
-                return;
-            updated[key as ManualIncludeFlag] = value;
-        });
-        return updated;
-    }
-
-    private showProgressToast(title: string): void {
-        void Swal.fire({
-            toast: true,
-            position: 'top-end',
-            title,
-            showConfirmButton: false,
-            allowOutsideClick: false,
-            allowEscapeKey: false,
-            didOpen: () => {
-                Swal.showLoading();
-            },
-        });
-    }
-
-    private async showResultadoFinalSync(
-        reconciliacion: { patchedCount: number; failedCount: number; },
-        ok: boolean,
-        manualesCacheOk: boolean,
-    ): Promise<void> {
-        if (ok) {
-            const text = reconciliacion.patchedCount > 0
-                ? `Sincronización completada. Se reconciliaron ${reconciliacion.patchedCount} manuales y se refrescaron las cachés.`
-                : 'Sincronización completada. No hizo falta reconciliar flags.';
-            await Swal.fire({
-                icon: 'success',
-                title: 'Manuales asociados actualizados',
-                text,
-                showConfirmButton: true,
-            });
-            return;
-        }
-
-        const text = !manualesCacheOk
-            ? 'La reconciliación terminó, pero no se pudo refrescar la caché de manuales.'
-            : `La caché se actualizó, pero quedaron ${reconciliacion.failedCount} manuales sin reconciliar.`;
-        await Swal.fire({
-            icon: 'warning',
-            title: 'Sincronización parcial de manuales asociados',
-            text,
-            showConfirmButton: true,
-        });
-    }
 }

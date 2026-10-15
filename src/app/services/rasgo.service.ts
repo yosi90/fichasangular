@@ -1,8 +1,7 @@
 import { HttpClient } from "@angular/common/http";
 import { Injectable } from "@angular/core";
-import { Database, Unsubscribe, onValue, ref, set } from '@angular/fire/database';
-import { Observable, firstValueFrom } from "rxjs";
-import { environment } from "src/environments/environment";
+import { Database, Unsubscribe, onValue, ref } from '@angular/fire/database';
+import { Observable } from "rxjs";
 import Swal from "sweetalert2";
 import { Rasgo } from "../interfaces/rasgo";
 import { FirebaseInjectionContextService } from "./firebase-injection-context.service";
@@ -103,50 +102,4 @@ export class RasgoService {
         });
     }
 
-    private syncRasgos(): Observable<any> {
-        const res = this.http.get(`${environment.apiUrl}rasgos`);
-        return res;
-    }
-
-    public async RenovarRasgos(): Promise<boolean> {
-        try {
-            const response = await firstValueFrom(this.syncRasgos());
-            const rasgos = Array.isArray(response)
-                ? response
-                : Object.values(response ?? {});
-
-            await Promise.all(
-                rasgos.map((element: any) => {
-                    const id = Number(element?.i ?? element?.Id ?? 0);
-                    const nombre = `${element?.n ?? element?.Nombre ?? ''}`.trim();
-                    const descripcion = `${element?.d ?? element?.Descripcion ?? ''}`;
-                    if (!Number.isFinite(id) || id <= 0)
-                        return Promise.resolve();
-                    return this.firebaseContextSvc.run(() => set(
-                        ref(this.db, `Rasgos/${id}`), {
-                        Id: id,
-                        Nombre: nombre,
-                        Descripcion: descripcion,
-                        Oficial: this.toBoolean(element?.o ?? element?.Oficial ?? element?.oficial, true),
-                    }));
-                })
-            );
-
-            Swal.fire({
-                icon: 'success',
-                title: 'Listado de rasgos actualizado con éxito',
-                showConfirmButton: true,
-                timer: 2000
-            });
-            return true;
-        } catch (error: any) {
-            Swal.fire({
-                icon: 'warning',
-                title: 'Error al actualizar el listado de rasgos',
-                text: error?.message ?? 'Error no identificado',
-                showConfirmButton: true
-            });
-            return false;
-        }
-    }
 }

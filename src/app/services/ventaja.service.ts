@@ -1,9 +1,8 @@
-import { HttpClient, HttpErrorResponse } from "@angular/common/http";
+import { HttpClient } from "@angular/common/http";
 import { Injectable } from "@angular/core";
 import { Database, Unsubscribe, onValue, ref, set } from "@angular/fire/database";
-import { Observable, firstValueFrom } from "rxjs";
+import { Observable } from "rxjs";
 import Swal from "sweetalert2";
-import { environment } from "src/environments/environment";
 import { VentajaDetalle } from "../interfaces/ventaja";
 import { FirebaseInjectionContextService } from "./firebase-injection-context.service";
 
@@ -197,108 +196,4 @@ export class VentajaService {
         });
     }
 
-    private syncVentajas() {
-        return this.http.get(`${environment.apiUrl}ventajas`);
-    }
-
-    private syncDesventajas() {
-        return this.http.get(`${environment.apiUrl}desventajas`);
-    }
-
-    public async RenovarVentajasYDesventajas(): Promise<boolean> {
-        let resVentajas: any;
-        try {
-            resVentajas = await firstValueFrom(this.syncVentajas());
-        } catch (error: any) {
-            this.handleError(error, "ventajas");
-            return false;
-        }
-
-        let totalVentajas = 0;
-        try {
-            totalVentajas = await this.persistirColeccion("Ventajas", resVentajas);
-        } catch (error: any) {
-            this.handlePersistError(error, "Ventajas");
-            return false;
-        }
-
-        let resDesventajas: any;
-        try {
-            resDesventajas = await firstValueFrom(this.syncDesventajas());
-        } catch (error: any) {
-            this.handleError(error, "desventajas");
-            return false;
-        }
-
-        let totalDesventajas = 0;
-        try {
-            totalDesventajas = await this.persistirColeccion("Desventajas", resDesventajas);
-        } catch (error: any) {
-            this.handlePersistError(error, "Desventajas");
-            return false;
-        }
-
-        if (totalVentajas < 1 && totalDesventajas < 1) {
-            Swal.fire({
-                icon: "warning",
-                title: "No se encontraron registros válidos",
-                text: "La API respondió, pero no se detectaron ventajas/desventajas con Id válido para guardar en Firebase.",
-                showConfirmButton: true
-            });
-            return false;
-        }
-
-        Swal.fire({
-            icon: "success",
-            title: `Ventajas/Desventajas actualizadas (${totalVentajas}/${totalDesventajas})`,
-            showConfirmButton: true,
-            timer: 2000
-        });
-        return true;
-    }
-
-    private async persistirColeccion(path: "Ventajas" | "Desventajas", response: any): Promise<number> {
-        const coleccion = toArray<any>(response);
-        const normalizadas = coleccion
-            .map((raw) => normalizeVentaja(raw))
-            .filter((item) => item.Id > 0);
-
-        await Promise.all(
-            normalizadas.map((item) => {
-                const safeValue = removeUndefinedDeep(item);
-                return this.firebaseContextSvc.run(() => set(ref(this.db, `${path}/${item.Id}`), safeValue));
-            })
-        );
-
-        return normalizadas.length;
-    }
-
-    private handlePersistError(error: any, path: "Ventajas" | "Desventajas") {
-        Swal.fire({
-            icon: "warning",
-            title: `Error guardando ${path} en Firebase`,
-            text: error?.message ?? "Error no identificado al persistir datos",
-            showConfirmButton: true
-        });
-    }
-
-    private handleError(error: any, tipo: "ventajas" | "desventajas") {
-        const httpError = error as HttpErrorResponse;
-        if (httpError.status === 404) {
-            Swal.fire({
-                icon: "warning",
-                title: `Endpoint de ${tipo} no disponible`,
-                text: `No se encontro /${tipo} en la API`,
-                showConfirmButton: true
-            });
-            return;
-        }
-
-        Swal.fire({
-            icon: "warning",
-            title: `Error al actualizar el listado de ${tipo}`,
-            text: error?.message ?? "Error no identificado",
-            showConfirmButton: true
-        });
-    }
 }

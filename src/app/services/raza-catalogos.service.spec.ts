@@ -151,47 +151,4 @@ describe("RazaCatalogosService", () => {
         expect(service.writes).toEqual([]);
     });
 
-    it("RenovarManiobrabilidades escribe el nodo completo desde REST", async () => {
-        spyOn(Swal, "fire");
-        const http = {
-            get: jasmine.createSpy().and.returnValue(of([
-                { Id: 3, Nombre: "Regular" },
-                { Id: 0, Nombre: "No vuela" },
-            ])),
-        };
-        const service = createService(http);
-
-        const ok = await service.RenovarManiobrabilidades();
-
-        expect(ok).toBeTrue();
-        expect(service.writes).toEqual([
-            {
-                path: "Maniobrabilidades",
-                items: [
-                    { Id: 0, Nombre: "No vuela" },
-                    { Id: 3, Nombre: "Regular" },
-                ],
-            },
-        ]);
-    });
-
-    it("RenovarTiposDado escribe el nodo completo desde REST", async () => {
-        spyOn(Swal, "fire");
-        const http = {
-            get: jasmine.createSpy().and.returnValue(of([
-                { Id_tipo_dado: 4, Nombre: "D4" },
-            ])),
-        };
-        const service = createService(http);
-
-        const ok = await service.RenovarTiposDado();
-
-        expect(ok).toBeTrue();
-        expect(service.writes).toEqual([
-            {
-                path: "TiposDado",
-                items: [{ Id: 4, Nombre: "D4" }],
-            },
-        ]);
-    });
 });

@@ -148,12 +148,6 @@ export class NavbarComponent implements OnInit, OnDestroy {
             evento.preventDefault();
     }
 
-    abrirAdminPanel(): void {
-        if (!this.isLoggedIn || !this.isAdmin)
-            return;
-        this.userProfileNavSvc.openAdminPanel();
-    }
-
     abrirRoadmap(): void {
         this.userProfileNavSvc.openRoadmap();
     }

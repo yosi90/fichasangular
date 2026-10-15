@@ -1,7 +1,7 @@
 import { HttpClient, HttpErrorResponse } from "@angular/common/http";
 import { Injectable } from "@angular/core";
-import { Database, Unsubscribe, onValue, ref, set } from "@angular/fire/database";
-import { Observable, firstValueFrom, map } from "rxjs";
+import { Database, Unsubscribe, onValue, ref } from "@angular/fire/database";
+import { Observable, map } from "rxjs";
 import Swal from "sweetalert2";
 import { environment } from "src/environments/environment";
 import { AmbitoDetalle } from "../interfaces/ambito";
@@ -178,46 +178,4 @@ export class DeidadService {
             .pipe(map((listado) => toArray(listado).map((raw: any) => normalizeDeidad(raw))));
     }
 
-    private syncDeidades() {
-        return this.http.get(`${environment.apiUrl}deidades`);
-    }
-
-    public async RenovarDeidades(): Promise<boolean> {
-        try {
-            const response = await firstValueFrom(this.syncDeidades());
-            const deidades = toArray(response)
-                .map((raw: any) => normalizeDeidad(raw))
-                .filter((deidad) => deidad.Id > 0);
-
-            await Promise.all(
-                deidades.map((deidad) => this.firebaseContextSvc.run(() => set(ref(this.db, `Deidades/${deidad.Id}`), deidad)))
-            );
-
-            Swal.fire({
-                icon: "success",
-                title: "Listado de deidades actualizado con exito",
-                showConfirmButton: true,
-                timer: 2000
-            });
-            return true;
-        } catch (error: any) {
-            const httpError = error as HttpErrorResponse;
-            if (httpError.status === 404) {
-                Swal.fire({
-                    icon: "warning",
-                    title: "Endpoint de deidades no disponible",
-                    text: "No se encontro /deidades en la API",
-                    showConfirmButton: true
-                });
-            } else {
-                Swal.fire({
-                    icon: "warning",
-                    title: "Error al actualizar el listado de deidades",
-                    text: error?.message ?? "Error no identificado",
-                    showConfirmButton: true
-                });
-            }
-            return false;
-        }
-    }
 }

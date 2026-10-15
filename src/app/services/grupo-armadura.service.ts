@@ -1,7 +1,7 @@
 import { HttpClient, HttpErrorResponse } from "@angular/common/http";
 import { Injectable } from "@angular/core";
-import { Database, Unsubscribe, onValue, ref, set } from "@angular/fire/database";
-import { Observable, firstValueFrom } from "rxjs";
+import { Database, Unsubscribe, onValue, ref } from "@angular/fire/database";
+import { Observable } from "rxjs";
 import Swal from "sweetalert2";
 import { environment } from "src/environments/environment";
 import { GrupoCompetencia } from "../interfaces/grupo-competencia";
@@ -116,46 +116,4 @@ export class GrupoArmaduraService {
         });
     }
 
-    private syncGruposArmaduras() {
-        return this.http.get(`${environment.apiUrl}grupos-armaduras`);
-    }
-
-    public async RenovarGruposArmaduras(): Promise<boolean> {
-        try {
-            const response = await firstValueFrom(this.syncGruposArmaduras());
-            const grupos = toArray(response)
-                .map((raw: any) => normalizeGrupoArmadura(raw))
-                .filter((grupo) => grupo.Id > 0);
-
-            await Promise.all(
-                grupos.map((grupo) => this.firebaseContextSvc.run(() => set(ref(this.db, `GruposArmaduras/${grupo.Id}`), grupo)))
-            );
-
-            Swal.fire({
-                icon: "success",
-                title: "Listado de grupos de armaduras actualizado con exito",
-                showConfirmButton: true,
-                timer: 2000
-            });
-            return true;
-        } catch (error: any) {
-            const httpError = error as HttpErrorResponse;
-            if (httpError.status === 404) {
-                Swal.fire({
-                    icon: "warning",
-                    title: "Endpoint de grupos de armaduras no disponible",
-                    text: "No se encontro /grupos-armaduras en la API",
-                    showConfirmButton: true
-                });
-            } else {
-                Swal.fire({
-                    icon: "warning",
-                    title: "Error al actualizar el listado de grupos de armaduras",
-                    text: error?.message ?? "Error no identificado",
-                    showConfirmButton: true
-                });
-            }
-            return false;
-        }
-    }
 }

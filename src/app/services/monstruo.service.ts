@@ -1,18 +1,15 @@
 import { HttpClient, HttpErrorResponse } from "@angular/common/http";
 import { Injectable } from "@angular/core";
-import { Database, Unsubscribe, onValue, ref, set } from "@angular/fire/database";
-import { Observable, firstValueFrom } from "rxjs";
+import { Database, Unsubscribe, onValue, ref } from "@angular/fire/database";
+import { Observable } from "rxjs";
 import Swal from "sweetalert2";
 import { environment } from "src/environments/environment";
 import { CompaneroMonstruoDetalle, FamiliarMonstruoDetalle, MonstruoDetalle } from "../interfaces/monstruo";
 import { FirebaseInjectionContextService } from "./firebase-injection-context.service";
 import {
     normalizeCompaneroMonstruoDetalle,
-    normalizeCompaneroMonstruoDetalleArray,
     normalizeFamiliarMonstruoDetalle,
-    normalizeFamiliarMonstruoDetalleArray,
     normalizeMonstruoDetalle,
-    normalizeMonstruoDetalleArray
 } from "./utils/monstruo-mapper";
 
 @Injectable({
@@ -230,126 +227,4 @@ export class MonstruoService {
         });
     }
 
-    private syncMonstruos() {
-        return this.http.get(`${environment.apiUrl}monstruos`);
-    }
-
-    private syncFamiliares() {
-        return this.http.get(`${environment.apiUrl}familiares`);
-    }
-
-    private syncCompaneros() {
-        return this.http.get(`${environment.apiUrl}companeros`);
-    }
-
-    public async RenovarMonstruos(): Promise<boolean> {
-        try {
-            const response = await firstValueFrom(this.syncMonstruos());
-            const monstruos = normalizeMonstruoDetalleArray(response, 1);
-
-            await Promise.all(
-                monstruos.map((monstruo) => this.firebaseContextSvc.run(() => set(ref(this.db, `Monstruos/${monstruo.Id}`), monstruo)))
-            );
-
-            Swal.fire({
-                icon: "success",
-                title: "Listado de monstruos actualizado con exito",
-                showConfirmButton: true,
-                timer: 2000
-            });
-            return true;
-        } catch (error: any) {
-            const httpError = error as HttpErrorResponse;
-            if (httpError.status === 404) {
-                Swal.fire({
-                    icon: "warning",
-                    title: "Endpoint de monstruos no disponible",
-                    text: "No se encontro /monstruos en la API",
-                    showConfirmButton: true
-                });
-            } else {
-                Swal.fire({
-                    icon: "warning",
-                    title: "Error al actualizar el listado de monstruos",
-                    text: error?.message ?? "Error no identificado",
-                    showConfirmButton: true
-                });
-            }
-            return false;
-        }
-    }
-
-    public async RenovarFamiliares(): Promise<boolean> {
-        try {
-            const response = await firstValueFrom(this.syncFamiliares());
-            const familiares = normalizeFamiliarMonstruoDetalleArray(response, 1);
-
-            await Promise.all(
-                familiares.map((familiar) => this.firebaseContextSvc.run(() => set(ref(this.db, `Familiares/${familiar.Id_familiar}`), familiar)))
-            );
-
-            Swal.fire({
-                icon: "success",
-                title: "Listado de familiares actualizado con exito",
-                showConfirmButton: true,
-                timer: 2000
-            });
-            return true;
-        } catch (error: any) {
-            const httpError = error as HttpErrorResponse;
-            if (httpError.status === 404) {
-                Swal.fire({
-                    icon: "warning",
-                    title: "Endpoint de familiares no disponible",
-                    text: "No se encontro /familiares en la API",
-                    showConfirmButton: true
-                });
-            } else {
-                Swal.fire({
-                    icon: "warning",
-                    title: "Error al actualizar el listado de familiares",
-                    text: error?.message ?? "Error no identificado",
-                    showConfirmButton: true
-                });
-            }
-            return false;
-        }
-    }
-
-    public async RenovarCompaneros(): Promise<boolean> {
-        try {
-            const response = await firstValueFrom(this.syncCompaneros());
-            const companeros = normalizeCompaneroMonstruoDetalleArray(response, 1);
-
-            await Promise.all(
-                companeros.map((companero) => this.firebaseContextSvc.run(() => set(ref(this.db, `Companeros/${companero.Id_companero}`), companero)))
-            );
-
-            Swal.fire({
-                icon: "success",
-                title: "Listado de compañeros animales actualizado con exito",
-                showConfirmButton: true,
-                timer: 2000
-            });
-            return true;
-        } catch (error: any) {
-            const httpError = error as HttpErrorResponse;
-            if (httpError.status === 404) {
-                Swal.fire({
-                    icon: "warning",
-                    title: "Endpoint de compañeros no disponible",
-                    text: "No se encontro /companeros en la API",
-                    showConfirmButton: true
-                });
-            } else {
-                Swal.fire({
-                    icon: "warning",
-                    title: "Error al actualizar el listado de compañeros animales",
-                    text: error?.message ?? "Error no identificado",
-                    showConfirmButton: true
-                });
-            }
-            return false;
-        }
-    }
 }

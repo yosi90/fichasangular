@@ -42,7 +42,6 @@ import { forceWebSockets } from 'firebase/database';
 import { getApp } from 'firebase/app';
 import { TabControlComponent } from './components/base/tab-control/tab-control.component';
 import { BaseMenuComponent } from './components/base/base-menu/base-menu.component';
-import { AdminPanelComponent } from './components/base/admin-panel/admin-panel.component';
 import { DetallesPersonajeComponent } from './components/detalles/detalles-personaje/detalles-personaje.component';
 import { NuevoPersonajeComponent } from './components/nuevo-personaje/nuevo-personaje.component';
 import { DetallesRazaComponent } from './components/detalles/detalles-raza/detalles-raza.component';
@@ -140,7 +139,6 @@ import { CloseFilterMenuOnMouseleaveDirective } from './directives/close-filter-
         HelpLegalComponent,
         HelpUsageAboutComponent,
         CloseFilterMenuOnMouseleaveDirective,
-        AdminPanelComponent,
         DetallesPersonajeComponent,
         NuevoPersonajeComponent,
         DetallesRazaComponent,

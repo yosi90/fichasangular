@@ -68,7 +68,7 @@ describe('SocialHubComponent', () => {
             events$: new Subject<any>().asObservable(),
         });
 
-        userProfileNavSvc = jasmine.createSpyObj<UserProfileNavigationService>('UserProfileNavigationService', ['openPublicProfile', 'openSocial', 'openPrivateProfile', 'openAdminPanel']);
+        userProfileNavSvc = jasmine.createSpyObj<UserProfileNavigationService>('UserProfileNavigationService', ['openPublicProfile', 'openSocial', 'openPrivateProfile']);
         apiActionGuardSvc = jasmine.createSpyObj<ApiActionGuardService>('ApiActionGuardService', ['shouldAllow', 'getBlockedMessage', 'getBlockedToastDedupeKey']);
         apiActionGuardSvc.shouldAllow.and.returnValue({
             status: 'allowed',
