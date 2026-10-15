@@ -14,6 +14,7 @@ import { normalizeRazaApi } from './utils/raza-mapper';
 import { toDoteContextualArray } from './utils/dote-mapper';
 import { normalizeRaciales } from './utils/racial-mapper';
 import { normalizeSubtipoRefArray } from './utils/subtipo-mapper';
+import { obtenerTokenApi } from './platform-session.service';
 
 function toBoolean(value: any, fallback: boolean = false): boolean {
     if (typeof value === 'boolean')
@@ -612,7 +613,7 @@ export class RazaService {
         if (!user)
             throw new Error('Sesión no iniciada');
 
-        const idToken = await user.getIdToken();
+        const idToken = await obtenerTokenApi();
         if (`${idToken ?? ''}`.trim().length < 1)
             throw new Error('Token no disponible');
 

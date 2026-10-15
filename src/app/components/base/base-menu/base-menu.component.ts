@@ -1,6 +1,5 @@
 import { Component, EventEmitter, OnDestroy, OnInit, Output, ViewChild } from '@angular/core';
 import { MatDialog } from '@angular/material/dialog';
-import { SesionDialogComponent } from '../../sesion-dialog/sesion-dialog.component';
 import { UserService } from '../../../services/user.service';
 import { UserProfileNavigationService } from '../../../services/user-profile-navigation.service';
 import { MatExpansionPanel } from '@angular/material/expansion';
@@ -276,16 +275,9 @@ export class BaseMenuComponent implements OnInit, OnDestroy {
         this.cerrarOtros();
     }
 
+    /** Entrar es de la plataforma: abre el acceso de Yosiftware sobre la web. */
     openSesionDialog(): void {
-        const dialogRef = this.dSesion.open(SesionDialogComponent, {
-            // width: '80vw',
-            // height: '70vh'
-            // msg: {name: this.name, animal: this.animal}
-        });
-
-        dialogRef.afterClosed().subscribe(result => {
-            //hacer algo cuando se cierra el modal, si quieres claro..
-        });
+        void this.usrService.entrar().catch(() => undefined);
     }
 
     logOut() {

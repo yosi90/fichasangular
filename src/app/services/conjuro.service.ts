@@ -9,6 +9,7 @@ import { Conjuro } from "../interfaces/conjuro";
 import { ConjuroCreateApiResponse, ConjuroCreateRequest, ConjuroCreateResponse } from "../interfaces/conjuros-api";
 import { FirebaseInjectionContextService } from "./firebase-injection-context.service";
 import { normalizeConjuroApi, normalizeConjuroLegacy } from "./utils/conjuro-mapper";
+import { obtenerTokenApi } from './platform-session.service';
 
 @Injectable({
     providedIn: 'root'
@@ -260,7 +261,7 @@ export class ConjuroService {
         if (!user)
             throw new Error("Sesión no iniciada");
 
-        const idToken = await user.getIdToken();
+        const idToken = await obtenerTokenApi();
         if (`${idToken ?? ""}`.trim().length < 1)
             throw new Error("Token no disponible");
 

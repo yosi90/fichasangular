@@ -1,6 +1,13 @@
 export type UserModerationHistoryResult = 'reported' | 'sanctioned' | 'banned';
 export type UserAccessScope = 'usage' | 'creation';
-export type UserAccessRestrictionReason = 'temporaryBan' | 'permanentBan' | 'mustAcceptUsage' | 'mustAcceptCreation';
+export type UserAccessRestrictionReason =
+    | 'temporaryBan'
+    | 'permanentBan'
+    | 'mustAcceptUsage'
+    | 'mustAcceptCreation'
+    // Restricciones de moderación de la plataforma (`restricciones` de la sesión).
+    | 'creationRestricted'
+    | 'communityRestricted';
 export type UserCompliancePolicyKind = 'usage' | 'creation';
 
 export interface UserModerationSanction {

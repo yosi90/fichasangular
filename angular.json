@@ -63,7 +63,27 @@
               "vendorChunk": true,
               "extractLicenses": false,
               "sourceMap": true,
-              "namedChunks": true
+              "namedChunks": true,
+              "fileReplacements": [
+                {
+                  "replace": "src/environments/environment.ts",
+                  "with": "src/environments/environment.qa.ts"
+                }
+              ]
+            },
+            "qa": {
+              "buildOptimizer": false,
+              "optimization": false,
+              "vendorChunk": true,
+              "extractLicenses": false,
+              "sourceMap": true,
+              "namedChunks": true,
+              "fileReplacements": [
+                {
+                  "replace": "src/environments/environment.ts",
+                  "with": "src/environments/environment.qa.ts"
+                }
+              ]
             }
           },
           "defaultConfiguration": "production"
@@ -75,7 +95,24 @@
               "buildTarget": "fichas3.5:build:production"
             },
             "development": {
-              "buildTarget": "fichas3.5:build:development"
+              "buildTarget": "fichas3.5:build:development",
+              "proxyConfig": "proxy.qa.json"
+            },
+            "qa": {
+              "buildTarget": "fichas3.5:build:qa",
+              "host": "127.0.0.14",
+              "port": 443,
+              "ssl": true,
+              "sslCert": "C:/Users/Yosi/yosiftware-cuentas/certificados-desarrollo/certificates/_.dev.yosiftware.es.crt",
+              "sslKey": "C:/Users/Yosi/yosiftware-cuentas/certificados-desarrollo/certificates/_.dev.yosiftware.es.key",
+              "proxyConfig": "proxy.qa.json",
+              "allowedHosts": [
+                "rol.dev.yosiftware.es"
+              ],
+              "headers": {
+                "Content-Security-Policy": "default-src 'self'; script-src 'self' https://qa-cuentas.yosiftware.es https://estadisticas.yosiftware.es; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https://qa-cuentas-api.yosiftware.es; connect-src 'self' ws://127.0.0.1:8011 https://qa-cuentas-api.yosiftware.es wss://qa-cuentas-ws.yosiftware.es https://estadisticas.yosiftware.es https://*.googleapis.com https://*.firebasedatabase.app wss://*.firebasedatabase.app; frame-src https://qa-cuentas.yosiftware.es; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'self'",
+                "Cross-Origin-Opener-Policy": "same-origin-allow-popups"
+              }
             }
           },
           "defaultConfiguration": "development"

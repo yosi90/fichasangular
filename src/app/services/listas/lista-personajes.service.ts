@@ -8,6 +8,7 @@ import { environment } from 'src/environments/environment';
 import { RazaSimple } from 'src/app/interfaces/simplificaciones/raza-simple';
 import { FirebaseInjectionContextService } from '../firebase-injection-context.service';
 import { PrivateUserFirestoreService } from '../private-user-firestore.service';
+import { obtenerTokenApi } from '../platform-session.service';
 
 @Injectable({
     providedIn: 'root'
@@ -244,7 +245,7 @@ export class ListaPersonajesService {
         if (!user)
             throw new Error('Sesión no iniciada');
 
-        const idToken = await user.getIdToken();
+        const idToken = await obtenerTokenApi();
         if (`${idToken ?? ''}`.trim().length < 1)
             throw new Error('Token no disponible');
 

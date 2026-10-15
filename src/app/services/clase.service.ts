@@ -19,6 +19,7 @@ import {
     ClasePrerrequisitosFlags
 } from "../interfaces/clase";
 import { FirebaseInjectionContextService } from "./firebase-injection-context.service";
+import { obtenerTokenApi } from './platform-session.service';
 
 const CLAVES_PRERREQUISITOS: (keyof ClasePrerrequisitos)[] = [
     "subtipo",
@@ -559,7 +560,7 @@ export class ClaseService {
     }
 
     private async buildAuthHeaders(): Promise<Record<string, string>> {
-        const token = await this.auth.currentUser?.getIdToken();
+        const token = (this.auth.currentUser ? await obtenerTokenApi() : undefined);
         if (!token)
             throw new Error("Debes iniciar sesión para gestionar clases");
         return { Authorization: `Bearer ${token}` };

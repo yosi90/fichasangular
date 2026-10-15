@@ -61,6 +61,7 @@ import {
     UserModerationSanction,
     UserModerationSummary,
 } from '../interfaces/user-moderation';
+import { obtenerTokenApi } from './platform-session.service';
 
 @Injectable({
     providedIn: 'root'
@@ -1720,7 +1721,7 @@ export class UsuariosApiService {
         if (!user)
             throw new Error('Sesión no iniciada');
 
-        const idToken = await user.getIdToken();
+        const idToken = await obtenerTokenApi();
         if (`${idToken ?? ''}`.trim().length < 1)
             throw new Error('Token no disponible');
 

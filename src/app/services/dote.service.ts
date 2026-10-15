@@ -9,6 +9,7 @@ import { environment } from "src/environments/environment";
 import Swal from "sweetalert2";
 import { FirebaseInjectionContextService } from "./firebase-injection-context.service";
 import { normalizeDoteApi, normalizeDoteLegacy } from "./utils/dote-mapper";
+import { obtenerTokenApi } from './platform-session.service';
 
 @Injectable({
     providedIn: "root"
@@ -262,7 +263,7 @@ export class DoteService {
         if (!user)
             throw new Error("Sesión no iniciada");
 
-        const idToken = await user.getIdToken();
+        const idToken = await obtenerTokenApi();
         if (`${idToken ?? ""}`.trim().length < 1)
             throw new Error("Token no disponible");
 

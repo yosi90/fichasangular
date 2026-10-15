@@ -12,7 +12,13 @@ export const environment = {
         messagingSenderId: '89131912577',
     },
 
-    // apiUrl: 'http://88.8.92.76:5000/'
-    // apiUrl: 'http://127.0.0.1:5000/'
-    apiUrl: 'https://fichas-api.yosiftware.es/'
+    apiUrl: 'https://fichas-api.yosiftware.es/',
+
+    // Plataforma Yosiftware (ecosistema-kit/ACCESO.md): la cuenta, la sesión y lo social son suyos.
+    plataforma: {
+        entorno: 'produccion',
+        sdkUrl: 'https://cuentas.yosiftware.es/sdk/v1/yosiftware.js',
+        apiUrl: 'https://cuentas-api.yosiftware.es',
+        socialUrl: 'https://social.yosiftware.es',
+    },
 }

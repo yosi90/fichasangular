@@ -21,6 +21,7 @@ import {
 } from '../interfaces/chat';
 import { PagedListMeta } from '../interfaces/social';
 import { FirebaseInjectionContextService } from './firebase-injection-context.service';
+import { obtenerTokenApi } from './platform-session.service';
 
 @Injectable({
     providedIn: 'root'
@@ -543,9 +544,7 @@ export class ChatApiService {
         if (!user)
             throw new ProfileApiError('Sesión no iniciada.', 'UNAUTHORIZED', 401);
 
-        const idToken = this.firebaseContextSvc
-            ? await this.firebaseContextSvc.run(() => user.getIdToken())
-            : await user.getIdToken();
+        const idToken = await obtenerTokenApi();
         if (`${idToken ?? ''}`.trim().length < 1)
             throw new ProfileApiError('Token no disponible.', 'TOKEN_INVALID', 401);
 

@@ -35,12 +35,11 @@ import { FormsModule } from '@angular/forms';
 import { ListaPersonajesComponent } from './components/base/lista-personajes/lista-personajes.component';
 import { provideHttpClient, withInterceptorsFromDi } from '@angular/common/http';
 import { DataServices } from './data.services';
-import { provideAuth, getAuth } from '@angular/fire/auth';
+import { provideAuth, initializeAuth, inMemoryPersistence } from '@angular/fire/auth';
 import { provideDatabase, getDatabase } from '@angular/fire/database';
 import { provideFirestore, getFirestore } from '@angular/fire/firestore';
 import { forceWebSockets } from 'firebase/database';
 import { getApp } from 'firebase/app';
-import { SesionDialogComponent } from './components/sesion-dialog/sesion-dialog.component';
 import { TabControlComponent } from './components/base/tab-control/tab-control.component';
 import { BaseMenuComponent } from './components/base/base-menu/base-menu.component';
 import { AdminPanelComponent } from './components/base/admin-panel/admin-panel.component';
@@ -142,7 +141,6 @@ import { CloseFilterMenuOnMouseleaveDirective } from './directives/close-filter-
         NavbarComponent,
         ContPrincipalComponent,
         ListaPersonajesComponent,
-        SesionDialogComponent,
         TabControlComponent,
         BaseMenuComponent,
         UserProfileComponent,
@@ -269,7 +267,9 @@ import { CloseFilterMenuOnMouseleaveDirective } from './directives/close-filter-
         DataServices,
         provideHttpClient(withInterceptorsFromDi()),
         provideFirebaseApp(() => initializeApp(environment.firebase)),
-        provideAuth(() => getAuth()),
+        // La sesión de Firebase sale del token propio que da la API con la sesión de la plataforma: solo en
+        // memoria, sin tokens en el almacenamiento del navegador (ecosistema-kit/ACCESO.md).
+        provideAuth(() => initializeAuth(getApp(), { persistence: inMemoryPersistence })),
         provideDatabase(() => {
             forceWebSockets();
             return getDatabase();

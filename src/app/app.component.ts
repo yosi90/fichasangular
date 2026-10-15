@@ -7,6 +7,8 @@ import { CampaignRealtimeSyncService } from './services/campaign-realtime-sync.s
 import { ChatAlertService } from './services/chat-alert.service';
 import { ChatFloatingService } from './services/chat-floating.service';
 import { ChatRealtimeService } from './services/chat-realtime.service';
+import { FirebaseSessionBridgeService } from './services/firebase-session-bridge.service';
+import { PlatformSessionService } from './services/platform-session.service';
 import { SessionNotificationCenterService } from './services/session-notification-center.service';
 import { SocialAlertPreferencesService } from './services/social-alert-preferences.service';
 import { toUserFacingErrorMessage } from './services/utils/user-facing-error.util';
@@ -33,10 +35,14 @@ export class AppComponent implements OnInit, OnDestroy {
         private chatAlertSvc: ChatAlertService,
         private sessionNotificationCenterSvc: SessionNotificationCenterService,
         private socialAlertPrefsSvc: SocialAlertPreferencesService,
+        private platformSessionSvc: PlatformSessionService,
+        private firebaseSessionBridgeSvc: FirebaseSessionBridgeService,
     ) { }
 
     async ngOnInit(): Promise<void> {
         this.configurarSwalGlobal();
+        this.firebaseSessionBridgeSvc.iniciar();
+        this.platformSessionSvc.iniciar();
         this.compliancePolicyNoticeSvc.init();
         this.adminRoleRequestNotifierSvc.init();
         this.chatRealtimeSvc.init();

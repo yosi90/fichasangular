@@ -6,7 +6,6 @@ import { getManualCategorias, ManualCategoriaConIcono } from 'src/app/config/man
 import { SessionNotificationEntry } from 'src/app/interfaces/session-notification';
 import { UserPrivateProfileSectionId } from 'src/app/interfaces/user-account';
 import { ManualAsociadoDetalle } from 'src/app/interfaces/manual-asociado';
-import { SesionDialogComponent } from 'src/app/components/sesion-dialog/sesion-dialog.component';
 import { ManualFlagConsistencyNoticeService } from 'src/app/services/manual-flag-consistency-notice.service';
 import { ManualesAsociadosService } from 'src/app/services/manuales-asociados.service';
 import { ManualVistaNavigationService } from 'src/app/services/manual-vista-navigation.service';
@@ -131,8 +130,9 @@ export class NavbarComponent implements OnInit, OnDestroy {
         trigger?.closeMenu();
     }
 
+    /** Entrar es de la plataforma: abre el acceso de Yosiftware sobre la web. */
     openSesionDialog(): void {
-        this.dSesion.open(SesionDialogComponent);
+        void this.usrService.entrar().catch(() => undefined);
     }
 
     logOut(): void {

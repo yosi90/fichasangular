@@ -34,6 +34,7 @@ import {
 } from '../interfaces/user-moderation';
 import { FirebaseInjectionContextService } from './firebase-injection-context.service';
 import { PrivateUserFirestoreService } from './private-user-firestore.service';
+import { obtenerTokenApi } from './platform-session.service';
 
 @Injectable({
     providedIn: 'root'
@@ -356,9 +357,7 @@ export class UserProfileApiService {
         if (!user)
             throw new ProfileApiError('Sesión no iniciada.', 'UNAUTHORIZED', 401);
 
-        const idToken = this.firebaseContextSvc
-            ? await this.firebaseContextSvc.run(() => user.getIdToken())
-            : await user.getIdToken();
+        const idToken = await obtenerTokenApi();
         if (`${idToken ?? ''}`.trim().length < 1)
             throw new ProfileApiError('Token no disponible.', 'TOKEN_INVALID', 401);
 

@@ -34,6 +34,7 @@ import { FirebaseInjectionContextService } from './firebase-injection-context.se
 import { PrivateUserFirestoreService } from './private-user-firestore.service';
 import { UserService } from './user.service';
 import { toUserFacingErrorMessage } from './utils/user-facing-error.util';
+import { obtenerTokenApi } from './platform-session.service';
 
 @Injectable({
     providedIn: 'root'
@@ -1617,7 +1618,7 @@ export class CampanaService {
         if (!user)
             throw new Error('Sesión no iniciada');
 
-        const idToken = await user.getIdToken();
+        const idToken = await obtenerTokenApi();
         if (`${idToken ?? ''}`.trim().length < 1)
             throw new Error('Token no disponible');
 

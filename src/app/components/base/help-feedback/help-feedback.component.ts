@@ -2,7 +2,6 @@ import { Component, Input, OnDestroy, OnInit } from '@angular/core';
 import { FormBuilder, Validators } from '@angular/forms';
 import { MatDialog } from '@angular/material/dialog';
 import { Subject, takeUntil } from 'rxjs';
-import { SesionDialogComponent } from 'src/app/components/sesion-dialog/sesion-dialog.component';
 import {
     FeedbackAttachmentDto,
     FeedbackCreateBugRequestDto,
@@ -402,7 +401,7 @@ export class HelpFeedbackComponent implements OnInit, OnDestroy {
     }
 
     openLoginDialog(): void {
-        this.dialog.open(SesionDialogComponent);
+        void this.userSvc.entrar().catch(() => undefined);
     }
 
     async downloadAttachment(attachment: FeedbackAttachmentDto): Promise<void> {

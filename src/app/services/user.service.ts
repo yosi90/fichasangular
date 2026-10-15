@@ -1,27 +1,16 @@
 import { Injectable } from '@angular/core';
-import {
-    Auth,
-    GoogleAuthProvider,
-    User,
-    createUserWithEmailAndPassword,
-    onAuthStateChanged,
-    sendPasswordResetEmail,
-    signInWithEmailAndPassword,
-    signInWithPopup,
-    signOut,
-} from '@angular/fire/auth';
-import { Database, get, onValue, ref, set } from '@angular/fire/database';
+import { Auth, User, onAuthStateChanged } from '@angular/fire/auth';
+import { Database, onValue, ref } from '@angular/fire/database';
 import { BehaviorSubject, map } from 'rxjs';
 import { UserPrivateProfile } from '../interfaces/user-account';
 import { Usuario } from '../interfaces/usuario';
 import { EMPTY_USER_ACL, UserAcl, UserRole, normalizeUserAcl } from '../interfaces/user-acl';
-import { AuthProviderType, UserProfile } from '../interfaces/user-profile';
 import { UserAccessRestrictionReason, UserAccessScope, UserBanStatus, UserComplianceSnapshot, UserModerationSanction } from '../interfaces/user-moderation';
 import { FirebaseInjectionContextService } from './firebase-injection-context.service';
+import { EstadoPlataforma, PlatformSessionService, RestriccionesPlataforma } from './platform-session.service';
 import { PrivateUserFirestoreService } from './private-user-firestore.service';
 import { UserProfileApiService } from './user-profile-api.service';
 import { UsuariosApiService } from './usuarios-api.service';
-import { toUserFacingErrorMessage } from './utils/user-facing-error.util';
 
 @Injectable({
     providedIn: 'root'
@@ -34,11 +23,11 @@ export class UserService {
     private authUidActivo: string = '';
     private aclUnsubscribe: (() => void) | null = null;
     private privateProfileUnsubscribe: (() => void) | null = null;
-    private banSignOutInProgress: boolean = false;
     private complianceBootstrapPending: boolean = false;
     private complianceCanonicalOverride: UserComplianceSnapshot | null | undefined = undefined;
     private canonicalAdminAccess: boolean | null = null;
     private canonicalAdminValidationInFlight: Promise<boolean> | null = null;
+    private estadoPlataforma: EstadoPlataforma = { tipo: 'comprobando' };
     private isLoggedInSubject = new BehaviorSubject<boolean>(false);
     private permisosSubject = new BehaviorSubject<number>(0);
     private isBannedSubject = new BehaviorSubject<boolean>(false);
@@ -91,6 +80,9 @@ export class UserService {
         if (!this.sesionAbierta)
             return null;
 
+        const restriccion = this.getPlatformRestriction(scope);
+        if (restriccion)
+            return restriccion;
         const compliance = this.getCurrentCompliance();
         if (!compliance)
             return null;
@@ -145,10 +137,12 @@ export class UserService {
         private userProfileApiSvc?: UserProfileApiService,
         private privateUserFirestoreSvc?: PrivateUserFirestoreService,
         private usuariosApiSvc?: UsuariosApiService,
+        private platformSessionSvc?: PlatformSessionService,
     ) {
         this.subscribeAuthState((firebaseUser) => {
             this.actualizarSesionDesdeAuth(firebaseUser);
         });
+        this.platformSessionSvc?.estado$.subscribe((estado) => this.aplicarEstadoPlataforma(estado));
     }
 
     public setLoggedIn(usr: Usuario): void {
@@ -199,59 +193,17 @@ export class UserService {
         return base;
     }
 
-    register({ email, password }: any) {
-        if (this.sesionAbierta)
-            return null;
-
-        const emailNormalizado = `${email ?? ''}`.trim();
-        const passwordNormalizada = `${password ?? ''}`;
-        return this.authCreateUserWithEmailAndPassword(emailNormalizado, passwordNormalizada)
-            .catch((error) => {
-                throw this.mapAuthError(error, 'register');
-            });
+    /** Abre el acceso de Yosiftware sobre la web (ecosistema-kit/ACCESO.md). */
+    entrar(vista: 'entrar' | 'registro' = 'entrar'): Promise<boolean> {
+        if (!this.platformSessionSvc)
+            return Promise.resolve(false);
+        return this.platformSessionSvc.entrar(vista);
     }
 
-    loginEmailPass({ email, password }: any) {
-        if (this.sesionAbierta)
-            return null;
-
-        const emailNormalizado = `${email ?? ''}`.trim();
-        const passwordNormalizada = `${password ?? ''}`;
-        return this.authSignInWithEmailAndPassword(emailNormalizado, passwordNormalizada)
-            .catch((error) => {
-                throw this.mapAuthError(error, 'login');
-            });
-    }
-
-    loginGoogle() {
-        if (!this.sesionAbierta) {
-            return this.authSignInWithPopup()
-                .catch((error) => {
-                    throw this.mapAuthError(error, 'google-login');
-                });
-        } else return null;
-    }
-
-    requestPasswordReset(email: string): Promise<void> {
-        const emailNormalizado = `${email ?? ''}`.trim();
-        return this.authSendPasswordResetEmail(emailNormalizado)
-            .catch((error) => {
-                const code = this.normalizeAuthErrorCode(error);
-                if (code === 'auth/user-not-found')
-                    return;
-                throw this.mapAuthError(error, 'password-reset');
-            });
-    }
-
-    loginAnon() {
-        if (!this.sesionAbierta) {
-            throw new Error('Not implemented')  // Método de inicio de sesión anónimo
-        } else return null;
-    }
-
+    /** Cierra la sesión en todas las webs de Yosiftware; la de Firebase la cierra el puente al pasar a `sin_sesion`. */
     logOut() {
-        if (this.sesionAbierta) {
-            return this.ejecutarSignOut();
+        if (this.sesionAbierta && this.platformSessionSvc) {
+            return this.platformSessionSvc.salir();
         } else return null;
     }
 
@@ -261,7 +213,6 @@ export class UserService {
 
         if (!firebaseUser) {
             this.authUidActivo = '';
-            this.banSignOutInProgress = false;
             this.complianceBootstrapPending = false;
             this.complianceCanonicalOverride = undefined;
             this.canonicalAdminAccess = null;
@@ -273,15 +224,16 @@ export class UserService {
         }
 
         this.authUidActivo = `${firebaseUser.uid ?? ''}`.trim();
-        this.complianceBootstrapPending = !!this.userProfileApiSvc;
+        this.complianceBootstrapPending = false;
         this.complianceCanonicalOverride = undefined;
         this.canonicalAdminAccess = null;
         this.canonicalAdminValidationInFlight = null;
 
         this.setAclRaw(null);
+        const cuenta = this.platformSessionSvc?.cuenta;
         this.setLoggedIn({
-            nombre: `${firebaseUser.displayName ?? ''}`.trim(),
-            correo: `${firebaseUser.email ?? ''}`.trim(),
+            nombre: `${cuenta?.alias ?? firebaseUser.displayName ?? 'Usuario'}`.trim() || 'Usuario',
+            correo: `${cuenta?.correo ?? firebaseUser.email ?? ''}`.trim(),
             permisos: 0,
         });
 
@@ -291,8 +243,6 @@ export class UserService {
     }
 
     public setCurrentPrivateProfile(profile: UserPrivateProfile | null): void {
-        if (profile?.excludeFromAnalytics === true)
-            this.marcarDispositivoExcluidoDeEstadisticas();
         const mergedProfile = this.mergeIncomingPrivateProfile(profile);
         const hasExplicitCompliance = !!profile && Object.prototype.hasOwnProperty.call(profile, 'compliance');
         if (this.userProfileApiSvc && !this.complianceBootstrapPending && hasExplicitCompliance && profile?.compliance === null)
@@ -303,19 +253,17 @@ export class UserService {
         this.banStatusSubject.next(this.buildBanStatus(effectiveProfile?.compliance ?? null));
         this.isBannedSubject.next(this.isBanned());
         this.actualizarPermisosDesdeAcl();
-        this.evaluarSesionBaneada();
 
         if (!effectiveProfile || !this.sesionAbierta)
             return;
 
-        const email = `${effectiveProfile.email ?? ''}`.trim();
         const displayName = `${effectiveProfile.displayName ?? ''}`.trim();
-        const fallbackName = email.length > 0 ? this.fallbackDisplayName(email) : this.usuario.nombre;
         this.actualizarUsuarioSesion({
-            nombre: displayName.length > 0 ? displayName : fallbackName,
-            correo: email.length > 0 ? email : this.usuario.correo,
+            nombre: displayName.length > 0 ? displayName : this.usuario.nombre,
+            correo: this.usuario.correo,
             permisos: this.usuario.permisos,
         });
+        void this.validateCurrentAdminAccess(true);
     }
 
     public setCurrentCompliance(compliance: UserComplianceSnapshot | null | undefined): void {
@@ -338,58 +286,13 @@ export class UserService {
     }
 
     public async refreshCurrentPrivateProfile(): Promise<UserPrivateProfile | null> {
-        if (!this.userProfileApiSvc)
-            return this.CurrentPrivateProfile;
-
-        const uid = this.CurrentUserUid;
-        if (uid.length < 1) {
-            this.setCurrentPrivateProfile(null);
-            return null;
-        }
-
-        const [profileResult, complianceResult] = await Promise.allSettled([
-            this.userProfileApiSvc.getMyProfile(),
-            this.userProfileApiSvc.getMyCompliance(),
-        ]);
-
-        if (!this.isActiveUser(uid))
-            return this.CurrentPrivateProfile;
-
-        if (complianceResult.status === 'fulfilled')
-            this.setCanonicalCompliance(complianceResult.value);
-        else if (this.complianceCanonicalOverride === undefined)
-            this.setCanonicalCompliance(null);
-
-        if (profileResult.status === 'fulfilled')
-            this.setCurrentPrivateProfile(profileResult.value);
-
+        // El perfil privado llega por Firestore (`private_users/{uid}/meta/profile`) y lo proyecta el backend.
         await this.validateCurrentAdminAccess(true);
-
         return this.CurrentPrivateProfile;
     }
 
     protected subscribeAuthState(handler: (firebaseUser: User | null) => void): void {
         this.firebaseContextSvc.run(() => onAuthStateChanged(this.auth, handler));
-    }
-
-    protected ejecutarSignOut(): Promise<void> {
-        return signOut(this.auth);
-    }
-
-    protected authCreateUserWithEmailAndPassword(email: string, password: string) {
-        return createUserWithEmailAndPassword(this.auth, email, password);
-    }
-
-    protected authSignInWithEmailAndPassword(email: string, password: string) {
-        return signInWithEmailAndPassword(this.auth, email, password);
-    }
-
-    protected authSignInWithPopup() {
-        return signInWithPopup(this.auth, new GoogleAuthProvider());
-    }
-
-    protected authSendPasswordResetEmail(email: string): Promise<void> {
-        return sendPasswordResetEmail(this.auth, email);
     }
 
     protected watchAclPath(uid: string, onData: (rawAcl: any) => void, onError: () => void): () => void {
@@ -405,16 +308,6 @@ export class UserService {
 
     protected runFirebaseOperation<T>(fn: () => T): T {
         return this.firebaseContextSvc.run(fn);
-    }
-
-    protected async getProfileSnapshot(uid: string): Promise<any> {
-        const profileRef = this.runFirebaseOperation(() => ref(this.db, `UserProfiles/${uid}`));
-        return this.runFirebaseOperation(() => get(profileRef));
-    }
-
-    protected saveUserProfile(uid: string, payload: UserProfile): Promise<void> {
-        const profileRef = this.runFirebaseOperation(() => ref(this.db, `UserProfiles/${uid}`));
-        return this.runFirebaseOperation(() => set(profileRef, payload));
     }
 
     protected getCurrentAuthUid(): string {
@@ -455,20 +348,6 @@ export class UserService {
         return `${this.auth.currentUser?.uid ?? ''}`.trim();
     }
 
-    protected getAuthProviderIds(firebaseUser: User): string[] {
-        return (firebaseUser?.providerData ?? [])
-            .map((provider) => `${provider?.providerId ?? ''}`.trim().toLowerCase())
-            .filter((providerId) => providerId.length > 0);
-    }
-
-    protected getFirebaseUserDisplayName(firebaseUser: User): string {
-        return `${firebaseUser.displayName ?? ''}`.trim();
-    }
-
-    protected getFirebaseUserEmail(firebaseUser: User): string {
-        return `${firebaseUser.email ?? ''}`.trim();
-    }
-
     protected getFirebaseUserUid(firebaseUser: User): string {
         return `${firebaseUser?.uid ?? ''}`.trim();
     }
@@ -477,46 +356,61 @@ export class UserService {
         return snapshot?.val?.() ?? null;
     }
 
-    protected toUserProfilePayload(firebaseUser: User, createdAt: number, lastSeenAt: number): UserProfile {
-        const displayName = this.getFirebaseUserDisplayName(firebaseUser);
-        const email = this.getFirebaseUserEmail(firebaseUser);
-        return {
-            uid: this.getFirebaseUserUid(firebaseUser),
-            displayName: displayName.length > 0 ? displayName : this.fallbackDisplayName(email),
-            email,
-            authProvider: this.resolveAuthProvider(firebaseUser),
-            createdAt,
-            lastSeenAt,
-        };
+    private aplicarEstadoPlataforma(estado: EstadoPlataforma): void {
+        this.estadoPlataforma = estado;
+        if (estado.tipo === 'con_sesion' && this.sesionAbierta) {
+            // El alias de la cuenta, si el perfil de Rol aún no ha llegado.
+            const nombreActual = `${this.privateProfileSubject.value?.displayName ?? ''}`.trim();
+            this.actualizarUsuarioSesion({
+                nombre: nombreActual.length > 0 ? nombreActual : estado.cuenta.alias,
+                correo: `${estado.cuenta.correo ?? ''}`.trim(),
+                permisos: this.usuario.permisos,
+            });
+        }
+        this.setCanonicalCompliance(estado.tipo === 'con_sesion'
+            ? {
+                banned: false,
+                mustAcceptUsage: false,
+                mustAcceptCreation: estado.normasPendientes === true,
+                activeSanction: null,
+                usage: null,
+                creation: null,
+            }
+            : undefined);
     }
 
-    protected readCreatedAt(raw: any, fallback: number): number {
-        const createdAtRaw = Number(raw?.createdAt);
-        return Number.isFinite(createdAtRaw) && createdAtRaw > 0 ? Math.trunc(createdAtRaw) : fallback;
+    /** Restricción de moderación de la plataforma que afecta al alcance pedido, si sigue vigente. */
+    private getPlatformRestriction(scope: UserAccessScope): UserAccessRestrictionReason | null {
+        const estado = this.estadoPlataforma;
+        if (estado.tipo !== 'con_sesion' || !estado.restricciones)
+            return null;
+        if (!this.restriccionVigente(estado.restricciones))
+            return null;
+        const alcances = (estado.restricciones.alcances ?? []).map((alcance) => `${alcance}`.trim().toLowerCase());
+        if (scope === 'creation' && alcances.includes('creacion'))
+            return 'creationRestricted';
+        return null;
     }
 
-    protected getCurrentUserUidForProfile(): string {
-        return this.getFirebaseUserUid(this.auth.currentUser as User);
+    /** ¿Tiene limitada la participación en la comunidad (buscador de partidas)? */
+    public hasCommunityRestriction(): boolean {
+        const estado = this.estadoPlataforma;
+        return estado.tipo === 'con_sesion'
+            && !!estado.restricciones
+            && this.restriccionVigente(estado.restricciones)
+            && (estado.restricciones.alcances ?? []).some((alcance) => `${alcance}`.trim().toLowerCase() === 'comunidad');
     }
 
-    protected createProfilePayload(firebaseUser: User, existente: any, now: number): UserProfile {
-        return this.toUserProfilePayload(
-            firebaseUser,
-            this.readCreatedAt(existente, now),
-            now
-        );
+    private restriccionVigente(restricciones: RestriccionesPlataforma): boolean {
+        const hasta = this.fechaRestriccion(restricciones.hasta);
+        return hasta === null || hasta.getTime() > Date.now();
     }
 
-    protected async persistUserProfile(firebaseUser: User): Promise<void> {
-        const uid = this.getFirebaseUserUid(firebaseUser);
-        if (uid.length < 1)
-            return;
-
-        const now = Date.now();
-        const snapshot = await this.getProfileSnapshot(uid);
-        const existente = this.getSnapshotValue(snapshot);
-        const payload = this.createProfilePayload(firebaseUser, existente, now);
-        await this.saveUserProfile(uid, payload);
+    private fechaRestriccion(valor: RestriccionesPlataforma['hasta']): Date | null {
+        if (valor === null || valor === undefined || `${valor}`.trim() === '')
+            return null;
+        const fecha = typeof valor === 'number' ? new Date(valor < 1e12 ? valor * 1000 : valor) : new Date(valor);
+        return Number.isNaN(fecha.getTime()) ? null : fecha;
     }
 
     private actualizarUsuarioSesion(value: Usuario): void {
@@ -526,7 +420,8 @@ export class UserService {
             permisos: 0,
         };
 
-        const abrirSesion: boolean = this.usuario.nombre !== 'Invitado' && this.usuario.correo !== '';
+        // La sesión de Firebase solo existe con sesión en la plataforma; la cuenta puede no tener correo.
+        const abrirSesion: boolean = this.usuario.nombre !== 'Invitado' && this.authUidActivo.length > 0;
         this.isLoggedInSubject.next(abrirSesion);
         this.sesionAbierta = abrirSesion;
         this.actualizarPermisosDesdeAcl();
@@ -535,12 +430,12 @@ export class UserService {
     private setAclRaw(raw: any): void {
         this.aclHasSourceData = !!raw && typeof raw === 'object';
         this.acl = normalizeUserAcl(raw);
+        void this.validateCurrentAdminAccess(true);
         this.aclSubject.next(this.acl);
         this.privateProfileSubject.next(this.buildEffectivePrivateProfile(this.privateProfileBase));
         this.banStatusSubject.next(this.buildBanStatus(this.privateProfileSubject.value?.compliance ?? null));
         this.isBannedSubject.next(this.isBanned());
         this.actualizarPermisosDesdeAcl();
-        this.evaluarSesionBaneada();
     }
 
     private isAdmin(): boolean {
@@ -582,22 +477,6 @@ export class UserService {
             permisos,
         };
         this.permisosSubject.next(permisos);
-    }
-
-    private evaluarSesionBaneada(): void {
-        if (this.complianceBootstrapPending
-            || !this.sesionAbierta
-            || this.getCurrentBanStatus().restriction !== 'permanentBan'
-            || this.banSignOutInProgress) {
-            return;
-        }
-
-        this.banSignOutInProgress = true;
-        this.ejecutarSignOut()
-            .catch(() => undefined)
-            .finally(() => {
-                this.banSignOutInProgress = false;
-            });
     }
 
     private startAclSubscription(uid: string): void {
@@ -660,88 +539,11 @@ export class UserService {
 
     private async hidratarSesion(firebaseUser: User): Promise<void> {
         const uid = `${firebaseUser.uid ?? ''}`.trim();
-        if (uid.length < 1)
+        if (uid.length < 1 || !this.isActiveUser(uid))
             return;
-
-        if (!this.isActiveUser(uid))
-            return;
-        try {
-            await this.persistUserProfile(firebaseUser);
-        } catch {
-            // Mantiene sesión y permisos aunque falle escritura de perfil.
-        }
-
-        if (!this.userProfileApiSvc) {
-            await this.validateCurrentAdminAccess(true);
-            return;
-        }
-
-        try {
-            const [profileResult, complianceResult] = await Promise.allSettled([
-                this.userProfileApiSvc.getMyProfile(),
-                this.userProfileApiSvc.getMyCompliance(),
-            ]);
-            if (!this.isActiveUser(uid))
-                return;
-
-            this.setCanonicalCompliance(
-                complianceResult.status === 'fulfilled'
-                    ? complianceResult.value
-                    : null
-            );
-
-            if (profileResult.status === 'fulfilled')
-                this.setCurrentPrivateProfile(profileResult.value);
-        } catch {
-            // El perfil privado mejora la UI pero no bloquea la sesión.
-        } finally {
-            await this.validateCurrentAdminAccess(true);
-            if (this.isActiveUser(uid)) {
-                this.complianceBootstrapPending = false;
-                this.isBannedSubject.next(this.isBanned());
-                this.actualizarPermisosDesdeAcl();
-                this.evaluarSesionBaneada();
-            }
-        }
-    }
-
-    private fallbackDisplayName(email: string): string {
-        const emailNormalizado = `${email ?? ''}`.trim();
-        if (emailNormalizado.length < 1)
-            return 'Usuario';
-        const atPos = emailNormalizado.indexOf('@');
-        if (atPos > 0)
-            return emailNormalizado.substring(0, atPos);
-        return emailNormalizado;
-    }
-
-    private resolveAuthProvider(firebaseUser: User): AuthProviderType {
-        const providerIds = this.getAuthProviderIds(firebaseUser);
-
-        if (providerIds.includes('google.com'))
-            return 'google';
-        if (providerIds.includes('password') || providerIds.includes('email'))
-            return 'correo';
-        return 'otro';
-    }
-
-    private truncate(value: string, maxLength: number): string {
-        const text = `${value ?? ''}`.trim();
-        if (text.length <= maxLength)
-            return text;
-        return text.substring(0, maxLength).trim();
-    }
-
-    private mapAuthError(error: any, context: 'register' | 'login' | 'password-reset' | 'google-login'): Error {
-        const code = this.normalizeAuthErrorCode(error);
-        const mapped = new Error(this.resolveAuthErrorMessage(code, context, error));
-        (mapped as any).code = code;
-        (mapped as any).cause = error;
-        return mapped;
-    }
-
-    private normalizeAuthErrorCode(error: any): string {
-        return `${error?.code ?? ''}`.trim().toLowerCase();
+        await this.validateCurrentAdminAccess(true);
+        this.isBannedSubject.next(this.isBanned());
+        this.actualizarPermisosDesdeAcl();
     }
 
     private normalizeFunctionalErrorCode(value: unknown): string {
@@ -763,40 +565,6 @@ export class UserService {
     private isCreationPolicyFunctionalErrorCode(code: string): boolean {
         return code.includes('mustacceptcreation')
             || code.includes('creationpolicyacceptancerequired');
-    }
-
-    private resolveAuthErrorMessage(
-        code: string,
-        context: 'register' | 'login' | 'password-reset' | 'google-login',
-        error: any
-    ): string {
-        if (code.includes('email-already-in-use'))
-            return 'Ese correo ya está registrado.';
-        if (code.includes('wrong-password') || code.includes('invalid-credential'))
-            return 'Las credenciales no son correctas.';
-        if (code.includes('user-not-found')) {
-            if (context === 'password-reset')
-                return 'Si la cuenta existe, recibirás un correo para restablecer la contraseña.';
-            return 'No existe ninguna cuenta con ese correo.';
-        }
-        if (code.includes('too-many-requests'))
-            return 'Demasiados intentos. Inténtalo de nuevo más tarde.';
-        if (code.includes('invalid-email'))
-            return 'Debes indicar un correo electrónico válido.';
-        if (code.includes('weak-password'))
-            return 'La contraseña es demasiado débil.';
-        if (code.includes('network-request-failed'))
-            return 'No se pudo conectar con el servicio. Revisa tu conexión e inténtalo de nuevo.';
-        if (code.includes('popup-closed-by-user'))
-            return 'Se canceló el inicio de sesión con Google.';
-        if (code.includes('popup-blocked'))
-            return 'El navegador bloqueó la ventana de inicio de sesión.';
-
-        if (context === 'register')
-            return toUserFacingErrorMessage(error, 'No se pudo completar el registro.');
-        if (context === 'password-reset')
-            return toUserFacingErrorMessage(error, 'No se pudo iniciar la recuperación de contraseña.');
-        return toUserFacingErrorMessage(error, 'No se pudo iniciar sesión.');
     }
 
     private isActiveUser(uid: string): boolean {
@@ -823,15 +591,6 @@ export class UserService {
             permissions: this.mergeEffectivePermissions(profile.permissions, this.acl.permissions),
             compliance: effectiveCompliance,
         };
-    }
-
-    // Yosiftadisticas: la marca nunca se borra (ni al cerrar sesion ni si el campo llega a false).
-    private marcarDispositivoExcluidoDeEstadisticas(): void {
-        try {
-            localStorage.setItem('yosiftadisticas:excluir', '1');
-        } catch {
-            // localStorage puede fallar en modo privado; no debe afectar a la sesion.
-        }
     }
 
     private mergeIncomingPrivateProfile(profile: UserPrivateProfile | null): UserPrivateProfile | null {
@@ -878,7 +637,6 @@ export class UserService {
         this.banStatusSubject.next(this.buildBanStatus(this.getCurrentCompliance()));
         this.isBannedSubject.next(this.isBanned());
         this.actualizarPermisosDesdeAcl();
-        this.evaluarSesionBaneada();
     }
 
     private mergeEffectivePermissions(
@@ -939,7 +697,16 @@ export class UserService {
         if (restriction === 'mustAcceptUsage')
             return 'Debes aceptar las normas de uso vigentes antes de continuar.';
         if (restriction === 'mustAcceptCreation')
-            return 'Debes aceptar las normas de creación vigentes antes de continuar.';
+            return 'Debes aceptar las normas de Rol vigentes antes de crear o editar contenido.';
+        if (restriction === 'creationRestricted' || restriction === 'communityRestricted') {
+            const estado = this.estadoPlataforma;
+            const hasta = estado.tipo === 'con_sesion' ? this.fechaRestriccion(estado.restricciones?.hasta) : null;
+            const que = restriction === 'creationRestricted' ? 'la creación de contenido' : 'la participación en la comunidad';
+            const cuando = hasta
+                ? ` hasta el ${hasta.toLocaleString('es-ES', { dateStyle: 'long', timeStyle: 'short' })}`
+                : ' de forma indefinida';
+            return `Tu cuenta tiene limitada ${que}${cuando}. Puedes ver el motivo en la moderación de tu cuenta de Yosiftware.`;
+        }
         return '';
     }
 
@@ -986,32 +753,14 @@ export class UserService {
     }
 
     private async validateCurrentAdminAccess(force: boolean = false): Promise<boolean> {
-        if (!this.sesionAbierta || !this.usuariosApiSvc) {
-            this.setCanonicalAdminAccess(false);
-            return false;
-        }
-        if (!force && this.canonicalAdminAccess !== null)
-            return this.canonicalAdminAccess === true;
-        if (this.canonicalAdminValidationInFlight)
-            return this.canonicalAdminValidationInFlight;
-
-        const task = this.usuariosApiSvc.listUsers()
-            .then(() => {
-                if (this.sesionAbierta)
-                    this.setCanonicalAdminAccess(true);
-                return true;
-            })
-            .catch(() => {
-                if (this.sesionAbierta)
-                    this.setCanonicalAdminAccess(false);
-                return false;
-            })
-            .finally(() => {
-                this.canonicalAdminValidationInFlight = null;
-            });
-
-        this.canonicalAdminValidationInFlight = task;
-        return task;
+        void force;
+        const esAdmin = this.sesionAbierta && (
+            this.normalizeUserRoleValue(this.privateProfileBase?.role) === 'admin'
+            || (this.acl.roles?.admin === true && this.normalizeUserRoleValue(this.acl.roles?.type) === 'admin')
+        );
+        if (this.canonicalAdminAccess !== esAdmin)
+            this.setCanonicalAdminAccess(esAdmin);
+        return esAdmin;
     }
 
     private buildBanStatus(compliance: UserComplianceSnapshot | null | undefined): UserBanStatus {

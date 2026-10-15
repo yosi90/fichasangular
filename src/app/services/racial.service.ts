@@ -17,6 +17,7 @@ import {
     RacialUpdateResponse,
 } from "../interfaces/raciales-api";
 import { normalizeRacial, normalizeRaciales } from "./utils/racial-mapper";
+import { obtenerTokenApi } from './platform-session.service';
 
 function sortRaciales(raciales: RacialDetalle[]): RacialDetalle[] {
     return [...raciales]
@@ -223,7 +224,7 @@ export class RacialService {
         if (!user)
             throw new Error("Sesión no iniciada");
 
-        const idToken = await user.getIdToken();
+        const idToken = await obtenerTokenApi();
         if (`${idToken ?? ""}`.trim().length < 1)
             throw new Error("Token no disponible");
 

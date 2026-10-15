@@ -14,6 +14,7 @@ import {
     HabilidadExtraRef,
 } from "../interfaces/habilidad";
 import { FirebaseInjectionContextService } from "./firebase-injection-context.service";
+import { obtenerTokenApi } from './platform-session.service';
 
 function toBoolean(value: any): boolean {
     return value === true || value === 1 || value === "1";
@@ -306,7 +307,7 @@ export class HabilidadService {
         const user = this.auth.currentUser;
         if (!user)
             throw new Error("Sesión no iniciada");
-        const idToken = await user.getIdToken();
+        const idToken = await obtenerTokenApi();
         if (`${idToken ?? ""}`.trim().length < 1)
             throw new Error("Token no disponible");
         return { Authorization: `Bearer ${idToken}` };

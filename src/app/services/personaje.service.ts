@@ -28,6 +28,7 @@ import {
 import { normalizarProgresionLanzadorPersonaje } from './utils/nivel-lanzador-personaje';
 import { normalizeRaciales } from './utils/racial-mapper';
 import { normalizeSubtipoRefArray } from './utils/subtipo-mapper';
+import { obtenerTokenApi } from './platform-session.service';
 
 interface PersonajeVisibilityUpdateResponse {
     message: string;
@@ -969,7 +970,7 @@ export class PersonajeService {
         if (!user)
             throw new Error('Sesión no iniciada');
 
-        const idToken = await user.getIdToken();
+        const idToken = await obtenerTokenApi();
         if (`${idToken ?? ''}`.trim().length < 1)
             throw new Error('Token no disponible');
 

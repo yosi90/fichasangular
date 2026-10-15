@@ -15,6 +15,7 @@ import {
     SocialUserBasic,
 } from '../interfaces/social';
 import { PrivateUserFirestoreService } from './private-user-firestore.service';
+import { obtenerTokenApi } from './platform-session.service';
 
 @Injectable({
     providedIn: 'root'
@@ -386,7 +387,7 @@ export class SocialApiService {
         if (!user)
             throw new ProfileApiError('Sesión no iniciada.', 'UNAUTHORIZED', 401);
 
-        const idToken = await user.getIdToken();
+        const idToken = await obtenerTokenApi();
         if (`${idToken ?? ''}`.trim().length < 1)
             throw new ProfileApiError('Token no disponible.', 'TOKEN_INVALID', 401);
 
