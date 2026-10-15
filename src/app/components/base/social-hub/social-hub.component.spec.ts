@@ -6,6 +6,7 @@ import { SocialHubComponent } from './social-hub.component';
 import { AppToastService } from 'src/app/services/app-toast.service';
 import { CampanaService } from 'src/app/services/campana.service';
 import { CampaignRealtimeSyncService } from 'src/app/services/campaign-realtime-sync.service';
+import { ChatFloatingService } from 'src/app/services/chat-floating.service';
 import { PlatformSessionService } from 'src/app/services/platform-session.service';
 import { SocialRealtimeService } from 'src/app/services/social-realtime.service';
 import { UserProfileNavigationService } from 'src/app/services/user-profile-navigation.service';
@@ -16,6 +17,7 @@ describe('SocialHubComponent', () => {
     let fixture: ComponentFixture<SocialHubComponent>;
     let component: SocialHubComponent;
     let isLoggedIn$: BehaviorSubject<boolean>;
+    let chatFloatingSvc: jasmine.SpyObj<ChatFloatingService>;
     let campanaSvc: jasmine.SpyObj<CampanaService>;
     let campaignRealtimeSyncSvc: jasmine.SpyObj<CampaignRealtimeSyncService>;
     let userProfileNavSvc: jasmine.SpyObj<UserProfileNavigationService>;
@@ -79,10 +81,12 @@ describe('SocialHubComponent', () => {
         apiActionGuardSvc.getBlockedMessage.and.returnValue('Hemos observado un comportamiento inusual en esta sesión.');
         apiActionGuardSvc.getBlockedToastDedupeKey.and.returnValue('api-action-guard.uid-1.toast.cooldown');
         appToastSvc = jasmine.createSpyObj<AppToastService>('AppToastService', ['showSuccess', 'showError', 'showInfo', 'showSystem']);
-        platformSessionSvc = jasmine.createSpyObj<PlatformSessionService>('PlatformSessionService', ['abrirChat', 'denunciar', 'urlSocial']);
-        platformSessionSvc.abrirChat.and.resolveTo(true);
+        platformSessionSvc = jasmine.createSpyObj<PlatformSessionService>('PlatformSessionService', ['denunciar', 'urlSocial']);
         platformSessionSvc.denunciar.and.resolveTo(true);
         platformSessionSvc.urlSocial.and.returnValue('https://qa-social.yosiftware.es');
+
+        chatFloatingSvc = jasmine.createSpyObj<ChatFloatingService>('ChatFloatingService', ['abrir']);
+        chatFloatingSvc.abrir.and.resolveTo(true);
 
         await TestBed.configureTestingModule({
             declarations: [SocialHubComponent],
@@ -111,6 +115,7 @@ describe('SocialHubComponent', () => {
                 { provide: UserProfileNavigationService, useValue: userProfileNavSvc },
                 { provide: ApiActionGuardService, useValue: apiActionGuardSvc },
                 { provide: AppToastService, useValue: appToastSvc },
+                { provide: ChatFloatingService, useValue: chatFloatingSvc },
                 { provide: PlatformSessionService, useValue: platformSessionSvc },
             ],
             schemas: [NO_ERRORS_SCHEMA],
@@ -145,7 +150,7 @@ describe('SocialHubComponent', () => {
         tick();
 
         expect(campanaSvc.getCampaignConversation).toHaveBeenCalledWith(4);
-        expect(platformSessionSvc.abrirChat).toHaveBeenCalledWith('conv-4');
+        expect(chatFloatingSvc.abrir).toHaveBeenCalledWith('conv-4');
     }));
 
     it('lleva los mensajes al chat de la plataforma', () => {
@@ -155,7 +160,7 @@ describe('SocialHubComponent', () => {
             openRequest: { currentValue: { section: 'mensajes', requestId: 1 } } as any,
         });
 
-        expect(platformSessionSvc.abrirChat).toHaveBeenCalled();
+        expect(chatFloatingSvc.abrir).toHaveBeenCalled();
         expect(component.currentSection).toBe('resumen');
     });
 

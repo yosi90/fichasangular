@@ -1,0 +1,20 @@
+<app-ventana-detalle-flotante
+    [titulo]="titulo"
+    [minWidth]="320"
+    [minHeight]="520"
+    [fixedWidth]="320"
+    [resizable]="false"
+    [persistPreviewPlacements]="false"
+    [restoredPlacementInput]="restoredPlacement"
+    [minimizedPlacementInput]="minimizedPlacement"
+    [windowMode]="mode"
+    [minimizedAnchorsToViewportSides]="false"
+    [zIndex]="zIndex"
+    (focoSolicitado)="focusRequested.emit()"
+    (cerrarSolicitado)="closeRequested.emit()"
+    (windowModeChange)="onWindowModeChange($event)"
+    (restoredPlacementChange)="onRestoredPlacementChange($event)"
+    (minimizedPlacementChange)="onMinimizedPlacementChange($event)">
+    <!-- La bandeja del chat de la plataforma (ecosistema-kit/CHAT.md): al elegir una conversación, se abre su ventana. -->
+    <yosi-chat-bandeja class="chat-float-bandeja" (yosi-chat-seleccion)="onSeleccion($event)"></yosi-chat-bandeja>
+</app-ventana-detalle-flotante>

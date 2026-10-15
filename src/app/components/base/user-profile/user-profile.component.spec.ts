@@ -10,6 +10,7 @@ import { CampanaService } from 'src/app/services/campana.service';
 import { CampaignRealtimeSyncService } from 'src/app/services/campaign-realtime-sync.service';
 import { UserProfileApiService } from 'src/app/services/user-profile-api.service';
 import { UserProfileNavigationService } from 'src/app/services/user-profile-navigation.service';
+import { ChatFloatingService } from 'src/app/services/chat-floating.service';
 import { PlatformSessionService } from 'src/app/services/platform-session.service';
 import { UserSettingsService } from 'src/app/services/user-settings.service';
 import { UserService } from 'src/app/services/user.service';
@@ -24,6 +25,7 @@ describe('UserProfileComponent', () => {
     let campaignRealtimeEvents$: Subject<any>;
     let watchedCampaignSummariesNext: ((items: any[]) => void) | null;
     let userSvc: any;
+    let chatFloatingSvc: jasmine.SpyObj<ChatFloatingService>;
     let userSettingsSvc: jasmine.SpyObj<UserSettingsService>;
     let apiActionGuardSvc: jasmine.SpyObj<ApiActionGuardService>;
 
@@ -157,6 +159,9 @@ describe('UserProfileComponent', () => {
             }),
         };
 
+        chatFloatingSvc = jasmine.createSpyObj<ChatFloatingService>('ChatFloatingService', ['abrir', 'applyProfileSettings']);
+        chatFloatingSvc.abrir.and.resolveTo(true);
+
         await TestBed.configureTestingModule({
             declarations: [UserProfileComponent],
             imports: [FormsModule],
@@ -205,9 +210,10 @@ describe('UserProfileComponent', () => {
                     useValue: jasmine.createSpyObj<UserProfileNavigationService>('UserProfileNavigationService', ['openSocial', 'openAccountRestriction']),
                 },
                 { provide: UserSettingsService, useValue: userSettingsSvc },
+                { provide: ChatFloatingService, useValue: chatFloatingSvc },
                 {
                     provide: PlatformSessionService,
-                    useValue: jasmine.createSpyObj<PlatformSessionService>('PlatformSessionService', ['editarPerfil', 'privacidad', 'abrirChat', 'urlSocial']),
+                    useValue: jasmine.createSpyObj<PlatformSessionService>('PlatformSessionService', ['editarPerfil', 'privacidad', 'urlSocial']),
                 },
                 {
                     provide: AppToastService,

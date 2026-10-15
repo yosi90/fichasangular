@@ -18,6 +18,7 @@ describe('AppComponent Swal wrapper', () => {
             { init: initSpy } as any,
             { iniciar: initSpy } as any,
             { iniciar: initSpy } as any,
+            { init: initSpy } as any,
         );
     });
 

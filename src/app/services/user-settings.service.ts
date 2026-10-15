@@ -171,11 +171,17 @@ export class UserSettingsService {
             return createDefaultUserSettings();
 
         const normalizado = this.normalizeSettingsDocument(settings);
-        // Solo lo que es de Rol: el perfil público, los mensajes y los avisos son de la plataforma.
+        // Solo lo que es de Rol: el perfil público, los mensajes y los avisos son de la plataforma. Las ventanas del chat
+        // flotante son de Rol (con el chat de la plataforma dentro), así que su sitio y sus preferencias van aquí.
         const bloque = await this.platformSessionSvc.guardarAjustes({
             version: 1,
             nuevo_personaje: normalizado.nuevo_personaje,
-            perfil: { visibilidadPorDefectoPersonajes: normalizado.perfil.visibilidadPorDefectoPersonajes },
+            perfil: {
+                visibilidadPorDefectoPersonajes: normalizado.perfil.visibilidadPorDefectoPersonajes,
+                autoAbrirVentanaChats: normalizado.perfil.autoAbrirVentanaChats,
+                permitirBurbujasChat: normalizado.perfil.permitirBurbujasChat,
+            },
+            mensajeria_flotante: normalizado.mensajeria_flotante,
         });
         const guardado = this.normalizeSettingsDocument((bloque?.documento ?? null) as unknown as UserSettingsV1 | null);
         this.settingsCache = this.cloneSettings(guardado);

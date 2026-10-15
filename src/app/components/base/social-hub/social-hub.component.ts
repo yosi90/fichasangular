@@ -12,6 +12,7 @@ import { SocialRealtimeService } from 'src/app/services/social-realtime.service'
 import { UserProfileNavigationService } from 'src/app/services/user-profile-navigation.service';
 import { ApiActionGuardService } from 'src/app/services/api-action-guard.service';
 import { UserService } from 'src/app/services/user.service';
+import { ChatFloatingService } from 'src/app/services/chat-floating.service';
 import { PlatformSessionService } from 'src/app/services/platform-session.service';
 import { toUserFacingErrorMessage } from 'src/app/services/utils/user-facing-error.util';
 
@@ -59,6 +60,7 @@ export class SocialHubComponent implements OnInit, OnChanges, OnDestroy {
         private appToastSvc: AppToastService,
         private apiActionGuardSvc: ApiActionGuardService,
         private platformSessionSvc: PlatformSessionService,
+        private chatFloatingSvc: ChatFloatingService,
     ) { }
 
     ngOnInit(): void {
@@ -142,7 +144,7 @@ export class SocialHubComponent implements OnInit, OnChanges, OnDestroy {
 
         try {
             const conversacion = await this.campanaSvc.getCampaignConversation(this.selectedCampaignId);
-            const abierta = await this.platformSessionSvc.abrirChat(conversacion.conversacionId);
+            const abierta = await this.chatFloatingSvc.abrir(conversacion.conversacionId);
             if (!abierta)
                 this.appToastSvc.showError('El chat de Yosiftware no está disponible ahora mismo.');
         } catch (error: any) {
@@ -184,7 +186,7 @@ export class SocialHubComponent implements OnInit, OnChanges, OnDestroy {
     }
 
     abrirChat(): void {
-        void this.platformSessionSvc.abrirChat().catch(() => undefined);
+        void this.chatFloatingSvc.abrir().catch(() => undefined);
     }
 
     get selectedCampaignSummary(): CampaignListItem | null {

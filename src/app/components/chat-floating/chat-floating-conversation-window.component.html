@@ -1,0 +1,22 @@
+<app-ventana-detalle-flotante
+    [titulo]="title"
+    [minWidth]="520"
+    [minHeight]="420"
+    [minimizedVariant]="(bubbleFeatureEnabled$ | async) === false ? 'bar' : 'bubble'"
+    [minimizedBubbleImageUrl]="bubbleImageUrl"
+    [minimizedBubbleIcon]="bubbleIcon"
+    [minimizedBubbleLabel]="bubbleLabel"
+    [persistPreviewPlacements]="false"
+    [restoredPlacementInput]="restoredPlacement"
+    [minimizedPlacementInput]="bubblePlacement"
+    [windowMode]="mode === 'bubble' ? 'minimized' : mode"
+    [minimizedAnchorsToViewportSides]="mode === 'bubble'"
+    [zIndex]="zIndex"
+    (focoSolicitado)="focusRequested.emit()"
+    (cerrarSolicitado)="closeRequested.emit()"
+    (windowModeChange)="onWindowModeChange($event)"
+    (restoredPlacementChange)="onRestoredPlacementChange($event)"
+    (minimizedPlacementChange)="onBubblePlacementChange($event)">
+    <!-- La conversación del chat de la plataforma (ecosistema-kit/CHAT.md). -->
+    <yosi-chat-conversacion class="chat-float-conversacion" [attr.conversacion]="conversationId" (yosi-chat-fuera)="onFuera()"></yosi-chat-conversacion>
+</app-ventana-detalle-flotante>

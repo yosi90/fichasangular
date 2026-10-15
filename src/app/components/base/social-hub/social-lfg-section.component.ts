@@ -15,6 +15,7 @@ import { UserProfileNavigationService } from 'src/app/services/user-profile-navi
 import { UserService } from 'src/app/services/user.service';
 import { resolveDefaultProfileAvatar } from 'src/app/services/utils/profile-avatar.util';
 import { AppToastService } from 'src/app/services/app-toast.service';
+import { ChatFloatingService } from 'src/app/services/chat-floating.service';
 import { PlatformSessionService } from 'src/app/services/platform-session.service';
 
 @Component({
@@ -107,6 +108,7 @@ export class SocialLfgSectionComponent implements OnInit, OnChanges, OnDestroy {
         private userProfileNavSvc: UserProfileNavigationService,
         private appToastSvc: AppToastService,
         private platformSessionSvc: PlatformSessionService,
+        private chatFloatingSvc: ChatFloatingService,
     ) { }
 
     ngOnInit(): void {
@@ -465,9 +467,9 @@ export class SocialLfgSectionComponent implements OnInit, OnChanges, OnDestroy {
         this.contactSaving = true;
         this.applicationsErrorMessage = '';
         try {
-            // Una conversación de la web en el chat de la plataforma (`<yosi-chat>`).
+            // Una conversación de la web en el chat de la plataforma, en su ventana de Rol.
             const response = await this.socialV3ApiSvc.openLfgContactConversation(this.selectedPost.id);
-            const abierta = await this.platformSessionSvc.abrirChat(response.conversationId);
+            const abierta = await this.chatFloatingSvc.abrir(response.conversationId);
             if (!abierta)
                 this.appToastSvc.showError('El chat de Yosiftware no está disponible ahora mismo.');
             else if (response.pendingMembers)

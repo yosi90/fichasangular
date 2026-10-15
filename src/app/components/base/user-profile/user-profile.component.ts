@@ -33,6 +33,7 @@ import { UserProfileApiService } from 'src/app/services/user-profile-api.service
 import { UserProfileNavigationService } from 'src/app/services/user-profile-navigation.service';
 import { UserService } from 'src/app/services/user.service';
 import { UserSettingsService } from 'src/app/services/user-settings.service';
+import { ChatFloatingService } from 'src/app/services/chat-floating.service';
 import { PlatformSessionService } from 'src/app/services/platform-session.service';
 import { ApiActionGuardService } from 'src/app/services/api-action-guard.service';
 import { toUserFacingErrorMessage } from 'src/app/services/utils/user-facing-error.util';
@@ -66,6 +67,8 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
 
     settingsSaving = false;
     visibilidadPorDefectoPersonajes = false;
+    autoAbrirVentanaChats = true;
+    permitirBurbujasChat = true;
     generadorMinimoSeleccionado = 13;
     generadorTablasPermitidas = 3;
     previewResetting = false;
@@ -171,6 +174,7 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
         private appToastSvc: AppToastService,
         private apiActionGuardSvc: ApiActionGuardService,
         private platformSessionSvc: PlatformSessionService,
+        private chatFloatingSvc: ChatFloatingService,
     ) { }
 
     ngOnInit(): void {
@@ -641,6 +645,8 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
                 perfil: {
                     ...current.perfil,
                     visibilidadPorDefectoPersonajes: this.visibilidadPorDefectoPersonajes === true,
+                    autoAbrirVentanaChats: this.autoAbrirVentanaChats !== false,
+                    permitirBurbujasChat: this.permitirBurbujasChat !== false,
                 },
                 nuevo_personaje: {
                     ...current.nuevo_personaje,
@@ -648,6 +654,7 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
                 },
             });
             this.applySettingsToForm(saved);
+            this.chatFloatingSvc.applyProfileSettings(saved.perfil);
             this.appToastSvc.showSuccess('Preferencias guardadas.');
         } catch (error: any) {
             this.appToastSvc.showError(this.mapProfileError(error, 'No se pudieron guardar las preferencias.'));
@@ -691,6 +698,8 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
     private applySettingsToForm(settings: UserSettingsV1 | null): void {
         this.settings = settings;
         this.visibilidadPorDefectoPersonajes = settings?.perfil?.visibilidadPorDefectoPersonajes === true;
+        this.autoAbrirVentanaChats = settings?.perfil?.autoAbrirVentanaChats !== false;
+        this.permitirBurbujasChat = settings?.perfil?.permitirBurbujasChat !== false;
         this.generadorMinimoSeleccionado = this.normalizeGeneradorMinimo(settings?.nuevo_personaje?.generador_config?.minimoSeleccionado ?? 13);
         this.generadorTablasPermitidas = this.normalizeGeneradorTablas(settings?.nuevo_personaje?.generador_config?.tablasPermitidas ?? 3);
     }
@@ -960,7 +969,7 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
 
         try {
             const conversacion = await this.campanaSvc.getCampaignConversation(this.selectedCampaignId);
-            const abierta = await this.platformSessionSvc.abrirChat(conversacion.conversacionId);
+            const abierta = await this.chatFloatingSvc.abrir(conversacion.conversacionId);
             if (!abierta)
                 this.appToastSvc.showError('El chat de Yosiftware no está disponible ahora mismo.');
         } catch (error: any) {

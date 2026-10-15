@@ -8,12 +8,14 @@ import { SocialV3ApiService } from 'src/app/services/social-v3-api.service';
 import { UserProfileNavigationService } from 'src/app/services/user-profile-navigation.service';
 import { UserService } from 'src/app/services/user.service';
 import { AppToastService } from 'src/app/services/app-toast.service';
+import { ChatFloatingService } from 'src/app/services/chat-floating.service';
 import { PlatformSessionService } from 'src/app/services/platform-session.service';
 
 describe('SocialLfgSectionComponent', () => {
     let fixture: ComponentFixture<SocialLfgSectionComponent>;
     let component: SocialLfgSectionComponent;
     let socialV3ApiSvc: jasmine.SpyObj<SocialV3ApiService>;
+    let chatFloatingSvc: jasmine.SpyObj<ChatFloatingService>;
     let userProfileNavSvc: jasmine.SpyObj<UserProfileNavigationService>;
     let appToastSvc: jasmine.SpyObj<AppToastService>;
     let platformSessionSvc: jasmine.SpyObj<PlatformSessionService>;
@@ -149,12 +151,14 @@ describe('SocialLfgSectionComponent', () => {
             type: 'web',
             pendingMembers: false,
         });
-        platformSessionSvc = jasmine.createSpyObj<PlatformSessionService>('PlatformSessionService', ['abrirChat', 'denunciar']);
-        platformSessionSvc.abrirChat.and.resolveTo(true);
+        platformSessionSvc = jasmine.createSpyObj<PlatformSessionService>('PlatformSessionService', ['denunciar']);
         platformSessionSvc.denunciar.and.resolveTo(true);
 
         userProfileNavSvc = jasmine.createSpyObj<UserProfileNavigationService>('UserProfileNavigationService', ['openSocial', 'openPublicProfile']);
         appToastSvc = jasmine.createSpyObj<AppToastService>('AppToastService', ['showSuccess', 'showError', 'showInfo']);
+
+        chatFloatingSvc = jasmine.createSpyObj<ChatFloatingService>('ChatFloatingService', ['abrir']);
+        chatFloatingSvc.abrir.and.resolveTo(true);
 
         await TestBed.configureTestingModule({
             declarations: [SocialLfgSectionComponent],
@@ -177,6 +181,7 @@ describe('SocialLfgSectionComponent', () => {
                 },
                 { provide: UserProfileNavigationService, useValue: userProfileNavSvc },
                 { provide: AppToastService, useValue: appToastSvc },
+                { provide: ChatFloatingService, useValue: chatFloatingSvc },
                 { provide: PlatformSessionService, useValue: platformSessionSvc },
             ],
             schemas: [NO_ERRORS_SCHEMA],
@@ -425,7 +430,7 @@ describe('SocialLfgSectionComponent', () => {
         void component.openContactConversation();
         tick();
 
-        expect(platformSessionSvc.abrirChat).toHaveBeenCalledWith('conv-44');
+        expect(chatFloatingSvc.abrir).toHaveBeenCalledWith('conv-44');
         expect(userProfileNavSvc.openSocial).not.toHaveBeenCalled();
     }));
 

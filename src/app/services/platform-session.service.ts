@@ -43,6 +43,16 @@ export interface DenunciaPlataforma {
     persona?: string;
 }
 
+/** Una conversación de la bandeja del chat de la plataforma: lo que Rol usa para titular su ventana. */
+export interface ConversacionChatPlataforma {
+    id: number;
+    tipo: 'directa' | 'grupo' | 'web';
+    titulo: string | null;
+    /** En las directas, la otra persona. */
+    persona: { id: string; alias: string; nombre: string | null; avatar: { miniatura: string } | null; borrada?: boolean } | null;
+    web: { clave: string; nombre: string } | null;
+}
+
 /** Bloque de ajustes de Rol en la plataforma (`yosiftware.ajustes`): solo lo lee y lo escribe esta web. */
 export interface BloqueAjustes {
     version: number;
@@ -63,7 +73,9 @@ interface YosiftwareSdk {
     reportar(opciones?: { tipo?: 'error' | 'propuesta' }): Promise<boolean>;
     denunciar(datos: DenunciaPlataforma): Promise<boolean>;
     chat: {
-        abrir(idConversacion?: string): Promise<boolean>;
+        abrir(idConversacion?: number): boolean;
+        alCambiarNoLeidos(oyente: (noLeidos: number) => void): () => void;
+        conversaciones(): Promise<ConversacionChatPlataforma[] | null>;
     };
     ajustes: {
         leer(): Promise<BloqueAjustes | null>;
@@ -158,9 +170,23 @@ export class PlatformSessionService {
         return (await this.cargarSdk()).denunciar(datos);
     }
 
-    /** Abre el chat de la plataforma (`<yosi-chat>`), en una conversación si se indica (ecosistema-kit/CHAT.md). */
-    async abrirChat(idConversacion?: string): Promise<boolean> {
+    /**
+     * Abre el chat flotante de la plataforma (`<yosi-chat>`, solo en el móvil), en una conversación si se indica
+     * (ecosistema-kit/CHAT.md). En escritorio, el chat es el de Rol: `ChatFloatingService.abrir`.
+     */
+    async abrirChat(idConversacion?: number): Promise<boolean> {
         return (await this.cargarSdk()).chat.abrir(idConversacion);
+    }
+
+    /** Conversaciones con mensajes sin leer, más invitaciones a grupos: avisa ahora y en cada cambio. */
+    async alCambiarNoLeidosChat(oyente: (noLeidos: number) => void): Promise<() => void> {
+        const sdk = await this.cargarSdk();
+        return sdk.chat.alCambiarNoLeidos((noLeidos) => this.zone.run(() => oyente(noLeidos)));
+    }
+
+    /** La bandeja del chat, la de actividad más reciente primero; `null` sin sesión. */
+    async conversacionesChat(): Promise<ConversacionChatPlataforma[] | null> {
+        return (await this.cargarSdk()).chat.conversaciones();
     }
 
     /** Los ajustes de Rol de la cuenta; `null` sin sesión. */

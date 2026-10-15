@@ -36,6 +36,7 @@ export interface ChatFloatingWindowState {
 
 export interface ChatFloatingBubbleState {
     version: 1;
+    /** Identificador de la conversación en el chat de la plataforma. */
     conversationId: number;
     mode: ChatFloatingBubbleMode;
     restoredPlacement: FloatingWindowPlacementRestored | null;

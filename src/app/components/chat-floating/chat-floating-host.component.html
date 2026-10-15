@@ -1,0 +1,26 @@
+<div class="chat-floating-host">
+    <ng-container *ngIf="listWindow$ | async as listWindow">
+        <app-chat-floating-list-window
+            *ngIf="listWindow.open"
+            [mode]="listWindow.mode"
+            [restoredPlacement]="listWindow.restoredPlacement"
+            [minimizedPlacement]="listWindow.minimizedPlacement"
+            [zIndex]="listWindow.zIndex"
+            (closeRequested)="chatFloatingSvc.closeListWindow()"
+            (focusRequested)="chatFloatingSvc.focusListWindow()"
+            (stateChange)="updateListState($event)">
+        </app-chat-floating-list-window>
+    </ng-container>
+
+    <app-chat-floating-conversation-window
+        *ngFor="let bubble of (bubbles$ | async); trackBy: trackByConversationId"
+        [conversationId]="bubble.conversationId"
+        [mode]="bubble.mode"
+        [restoredPlacement]="bubble.restoredPlacement"
+        [bubblePlacement]="bubble.bubblePlacement"
+        [zIndex]="bubble.zIndex"
+        (closeRequested)="chatFloatingSvc.closeConversation(bubble.conversationId)"
+        (focusRequested)="chatFloatingSvc.focusConversation(bubble.conversationId)"
+        (stateChange)="updateBubbleState(bubble.conversationId, $event)">
+    </app-chat-floating-conversation-window>
+</div>

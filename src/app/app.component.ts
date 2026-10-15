@@ -2,6 +2,7 @@ import { Component, OnDestroy, OnInit } from '@angular/core';
 import { Observable, Subject, fromEvent, takeUntil } from 'rxjs';
 import Swal from 'sweetalert2';
 import { CampaignRealtimeSyncService } from './services/campaign-realtime-sync.service';
+import { ChatFloatingService } from './services/chat-floating.service';
 import { FirebaseSessionBridgeService } from './services/firebase-session-bridge.service';
 import { PlatformSessionService } from './services/platform-session.service';
 import { toUserFacingErrorMessage } from './services/utils/user-facing-error.util';
@@ -23,6 +24,7 @@ export class AppComponent implements OnInit, OnDestroy {
         private campaignRealtimeSyncSvc: CampaignRealtimeSyncService,
         private platformSessionSvc: PlatformSessionService,
         private firebaseSessionBridgeSvc: FirebaseSessionBridgeService,
+        private chatFloatingSvc: ChatFloatingService,
     ) { }
 
     async ngOnInit(): Promise<void> {
@@ -30,6 +32,7 @@ export class AppComponent implements OnInit, OnDestroy {
         this.firebaseSessionBridgeSvc.iniciar();
         this.platformSessionSvc.iniciar();
         this.campaignRealtimeSyncSvc.init();
+        this.chatFloatingSvc.init();
         this.resize$
             .pipe(takeUntil(this.destroy$))
             .subscribe(() => {
@@ -44,7 +47,7 @@ export class AppComponent implements OnInit, OnDestroy {
     }
 
     get isDesktopLayout(): boolean {
-        return this.width > 1250 && this.height > 700 && this.height < this.width;
+        return ChatFloatingService.esEscritorio(this.width, this.height);
     }
 
     private configurarSwalGlobal(): void {

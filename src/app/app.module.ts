@@ -114,6 +114,9 @@ import { ListadoIdiomasComponent } from './components/shared/listado-idiomas/lis
 import { DetallesIdiomaComponent } from './components/detalles/detalles-idioma/detalles-idioma.component';
 import { UserProfileComponent } from './components/base/user-profile/user-profile.component';
 import { PublicUserProfileComponent } from './components/base/public-user-profile/public-user-profile.component';
+import { ChatFloatingConversationWindowComponent } from './components/chat-floating/chat-floating-conversation-window.component';
+import { ChatFloatingHostComponent } from './components/chat-floating/chat-floating-host.component';
+import { ChatFloatingListWindowComponent } from './components/chat-floating/chat-floating-list-window.component';
 import { SocialHubComponent } from './components/base/social-hub/social-hub.component';
 import { SocialCommunitySectionComponent } from './components/base/social-hub/social-community-section.component';
 import { SocialLfgSectionComponent } from './components/base/social-hub/social-lfg-section.component';
@@ -132,6 +135,9 @@ import { CloseFilterMenuOnMouseleaveDirective } from './directives/close-filter-
         BaseMenuComponent,
         UserProfileComponent,
         PublicUserProfileComponent,
+        ChatFloatingHostComponent,
+        ChatFloatingListWindowComponent,
+        ChatFloatingConversationWindowComponent,
         SocialHubComponent,
         SocialCommunitySectionComponent,
         SocialLfgSectionComponent,

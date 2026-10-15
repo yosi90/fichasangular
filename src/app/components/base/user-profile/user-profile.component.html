@@ -145,6 +145,22 @@
 
                         <article class="profile-panel">
                             <div class="profile-panel__header">
+                                <h2>Chat</h2>
+                                <p>Las ventanas flotantes del chat en el ordenador.</p>
+                            </div>
+
+                            <div class="profile-toggle-list">
+                                <mat-slide-toggle color="primary" [(ngModel)]="autoAbrirVentanaChats" [disabled]="settingsSaving">
+                                    Autoabrir ventana de chats al entrar o recargar
+                                </mat-slide-toggle>
+                                <mat-slide-toggle color="primary" [(ngModel)]="permitirBurbujasChat" [disabled]="settingsSaving">
+                                    Permitir burbujas de chat flotantes
+                                </mat-slide-toggle>
+                            </div>
+                        </article>
+
+                        <article class="profile-panel">
+                            <div class="profile-panel__header">
                                 <h2>Tiradas iniciales</h2>
                                 <p>Ajustes base del generador de características.</p>
                             </div>
