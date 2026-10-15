@@ -50,7 +50,7 @@
                         mat-raised-button
                         [color]="item.isPrimary ? 'warn' : 'accent'"
                         class="sync-item-btn"
-                        [disabled]="!esAdmin || estaEjecutando(item.key)"
+                        [disabled]="!esAdmin || !sincronizacionPermitida || estaEjecutando(item.key)"
                         (click)="ejecutarSync(item)">
                         <span class="sync-item-label">{{item.label}}</span>
                         <span class="sync-item-date">{{item.lastSuccessTexto}}</span>

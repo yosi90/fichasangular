@@ -37,6 +37,7 @@ import { ExtraService } from 'src/app/services/extra.service';
 import { TamanoService } from 'src/app/services/tamano.service';
 import { SubdisciplinaConjurosService } from 'src/app/services/subdisciplina-conjuros.service';
 import { UserService } from 'src/app/services/user.service';
+import { environment } from 'src/environments/environment';
 
 interface SyncItemConfig {
     key: CacheEntityKey;
@@ -61,7 +62,10 @@ interface SyncItemUi extends SyncItemConfig, CacheSyncUiState {
 })
 export class AdminPanelComponent implements OnInit, OnDestroy {
     esAdmin: boolean = false;
-    errorSync: string = '';
+    readonly sincronizacionPermitida = environment.sincronizacionCaches === true;
+    errorSync: string = this.sincronizacionPermitida
+        ? ''
+        : 'En este entorno no se sincronizan las cachés: escribirían en la RTDB de producción.';
     serverStatusIcon: string = 'question_mark';
     serverStatus: string = 'Verificar conexión';
     syncItems: SyncItemUi[] = [];
@@ -242,7 +246,7 @@ export class AdminPanelComponent implements OnInit, OnDestroy {
     }
 
     async ejecutarSync(item: SyncItemUi): Promise<void> {
-        if (!this.esAdmin || this.keysEjecutando.has(item.key))
+        if (!this.esAdmin || !this.sincronizacionPermitida || this.keysEjecutando.has(item.key))
             return;
 
         this.errorSync = '';
