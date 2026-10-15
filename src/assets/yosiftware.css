@@ -56,6 +56,30 @@
     color: #f06292;
 }
 
+/* La campana va en la barra de Rol: con la medida del SDK (40 px) la estiraba. Mismo tamaño que sus botones. */
+[part~="campana"] {
+    width: 34px;
+    height: 22px;
+    margin: 2px 0;
+    border-radius: 4px;
+}
+
+[part~="campana"]:hover {
+    background: #ffffff;
+    color: #000000;
+}
+
+[part~="campana"] svg {
+    width: 18px;
+    height: 18px;
+}
+
+/* El icono del botón del chat, como el de las burbujas flotantes de Rol (28 px). */
+[part~="lanzador"] svg {
+    width: 28px;
+    height: 28px;
+}
+
 [part~="ventana"]::backdrop {
     background: rgba(10, 10, 12, 0.55);
 }

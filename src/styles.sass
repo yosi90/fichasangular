@@ -129,3 +129,23 @@ body.rol-ocultar-chat yosi-chat
     --yosi-fuente: "Roboto", "Segoe UI", system-ui, sans-serif
     --yosi-radio: 6px
     --yosi-radio-ventana: 10px
+
+// El botón del chat y las conversaciones minimizadas, con el aspecto de las burbujas flotantes de Rol
+// (ventana-detalle-flotante, .ventana-burbuja). El tamaño del icono va en src/assets/yosiftware.css.
+yosi-chat::part(lanzador),
+yosi-chat::part(burbuja-flotante)
+    background: linear-gradient(180deg, #4b5058 0%, #373c43 100%)
+    color: #f4f6fb
+    border: 0
+    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.38)
+    transition: transform .12s ease, box-shadow .12s ease
+
+yosi-chat::part(lanzador)
+    width: 56px
+    height: 56px
+    border-radius: 50%
+
+yosi-chat::part(lanzador):hover,
+yosi-chat::part(burbuja-flotante):hover
+    transform: translateY(-1px)
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.44)
