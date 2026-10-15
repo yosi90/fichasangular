@@ -276,12 +276,17 @@ export class UserService {
         this.setCanonicalCompliance(compliance);
     }
 
+    /**
+     * Antes lo decidía una llamada de administración a la API. Ahora ser administrador sale solo del rol
+     * (`meta/profile` y `Acl/users`, que escribe el backend): se ignora el valor y se vuelve a calcular.
+     */
     public setCanonicalAdminAccess(value: boolean | null | undefined): void {
-        this.canonicalAdminAccess = value === true
-            ? true
-            : value === false
-                ? false
-                : null;
+        void value;
+        void this.validateCurrentAdminAccess(true);
+    }
+
+    private aplicarAccesoAdmin(esAdmin: boolean): void {
+        this.canonicalAdminAccess = esAdmin;
         this.actualizarPermisosDesdeAcl();
     }
 
@@ -371,7 +376,7 @@ export class UserService {
             ? {
                 banned: false,
                 mustAcceptUsage: false,
-                mustAcceptCreation: estado.normasPendientes === true,
+                mustAcceptCreation: !!estado.normasPendientes,
                 activeSanction: null,
                 usage: null,
                 creation: null,
@@ -759,7 +764,7 @@ export class UserService {
             || (this.acl.roles?.admin === true && this.normalizeUserRoleValue(this.acl.roles?.type) === 'admin')
         );
         if (this.canonicalAdminAccess !== esAdmin)
-            this.setCanonicalAdminAccess(esAdmin);
+            this.aplicarAccesoAdmin(esAdmin);
         return esAdmin;
     }
 

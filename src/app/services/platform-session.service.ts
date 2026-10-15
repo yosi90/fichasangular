@@ -20,11 +20,20 @@ export interface RestriccionesPlataforma {
     hasta?: string | number | null;
 }
 
+/** Normas propias de Rol que la persona aún no ha aceptado (el SDK se las enseña solo). */
+export interface NormasPendientesPlataforma {
+    id: number;
+    version: number;
+    titulo: string;
+    importante: boolean;
+    publicadas: string;
+}
+
 export type EstadoPlataforma =
     | { tipo: 'comprobando' }
     | { tipo: 'sin_sesion'; motivo?: string }
     | { tipo: 'no_disponible' }
-    | { tipo: 'con_sesion'; cuenta: CuentaPlataforma; restricciones?: RestriccionesPlataforma; normasPendientes?: boolean };
+    | { tipo: 'con_sesion'; cuenta: CuentaPlataforma; restricciones?: RestriccionesPlataforma; normasPendientes?: NormasPendientesPlataforma };
 
 export interface DenunciaPlataforma {
     tipo: string;
