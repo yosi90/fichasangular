@@ -195,6 +195,8 @@ export class PlatformSessionService {
             const script = document.createElement('script');
             script.type = 'module';
             script.src = environment.plataforma.sdkUrl;
+            // El aspecto de Rol para lo que pinta el SDK, también en sus ventanas (ecosistema-kit/ESTILOS.md).
+            script.dataset['estilos'] = '/assets/yosiftware.css';
             script.onload = () => {
                 const sdk = (window as any).yosiftware as YosiftwareSdk | undefined;
                 if (sdk)

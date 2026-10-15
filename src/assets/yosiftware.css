@@ -1,0 +1,124 @@
+/*
+ * Aspecto de Rol para lo que pinta el SDK de Yosiftware (ecosistema-kit/ESTILOS.md, «La hoja de la web»).
+ * El SDK la aplica dentro de sus elementos y la manda a sus ventanas (entrar, perfil, reportar, denunciar).
+ * Las ventanas de la plataforma no leen las variables --yosi-color-* (petición
+ * ventanas-del-sdk-cerrar-fuera-y-estilos-de-la-web.md), así que cada pieza se pinta también por su nombre.
+ * Solo cambia el aspecto: la marca de Yosiftware, las normas y los avisos se siguen viendo igual.
+ * Colores de docs/guias-estilo/GUIA_ESTILO_WEB_GENERAL.md. Rol solo tiene tema oscuro. Hasta 64 KB.
+ */
+
+[part~="raiz"],
+[part~="raiz"][data-tema="claro"],
+[part~="raiz"][data-tema="oscuro"] {
+    --yosi-color-principal: #c2185b;
+    --yosi-color-principal-texto: #ffffff;
+    --yosi-color-principal-suave: rgba(194, 24, 91, 0.18);
+    --yosi-color-fondo: #2d2d30;
+    --yosi-color-fondo-suave: #373c41;
+    --yosi-color-fondo-pagina: #26272b;
+    --yosi-color-texto: #f5f7ff;
+    --yosi-color-texto-suave: #adbdc4;
+    --yosi-color-borde: rgba(255, 255, 255, 0.08);
+    --yosi-color-borde-fuerte: rgba(255, 255, 255, 0.16);
+    --yosi-color-acento: #c2185b;
+    --yosi-color-acento-suave: rgba(194, 24, 91, 0.18);
+    --yosi-color-exito: #66bb6a;
+    --yosi-color-error: #ef5350;
+    --yosi-color-error-suave: rgba(239, 83, 80, 0.14);
+    --yosi-fuente: "Roboto", "Segoe UI", system-ui, sans-serif;
+    --yosi-radio: 6px;
+    --yosi-radio-ventana: 10px;
+    --rol-sombra: 0 12px 32px rgba(0, 0, 0, 0.45);
+}
+
+/* Fondo de las ventanas; el perfil ocupa la ventana entera sin tarjeta. */
+[part~="ventana"],
+[part~="perfil"],
+[part~="reporte"],
+[part~="denuncia"] {
+    background-color: var(--yosi-color-fondo);
+    color: var(--yosi-color-texto);
+}
+
+[part~="tarjeta"],
+[part~="panel"] {
+    font-family: var(--yosi-fuente);
+    background: var(--yosi-color-fondo);
+    color: var(--yosi-color-texto);
+    border-color: var(--yosi-color-borde);
+    box-shadow: var(--rol-sombra);
+}
+
+[part~="titulo"],
+[part~="etiqueta"] {
+    color: var(--yosi-color-texto);
+}
+
+[part~="ayuda"],
+[part~="separador"] {
+    color: var(--yosi-color-texto-suave);
+}
+
+[part~="boton"] {
+    font-family: var(--yosi-fuente);
+    border-radius: var(--yosi-radio);
+}
+
+[part~="boton"][part~="principal"] {
+    background: var(--yosi-color-principal);
+    border-color: var(--yosi-color-principal);
+    color: var(--yosi-color-principal-texto);
+    font-weight: 500;
+    letter-spacing: 0.02em;
+}
+
+[part~="boton"]:focus-visible {
+    outline: 2px solid rgba(240, 98, 146, 0.75);
+    outline-offset: 2px;
+}
+
+[part~="boton"][part~="principal"]:hover {
+    filter: brightness(1.08);
+}
+
+[part~="boton"][part~="secundario"],
+[part~="boton"][part~="google"] {
+    background: var(--yosi-color-fondo-suave);
+    border-color: var(--yosi-color-borde-fuerte);
+    color: var(--yosi-color-texto);
+}
+
+[part~="enlace"] {
+    color: #f06292;
+}
+
+[part~="campo"] {
+    font-family: var(--yosi-fuente);
+    border-radius: var(--yosi-radio);
+    background: var(--yosi-color-fondo-suave);
+    border-color: var(--yosi-color-borde);
+    color: var(--yosi-color-texto);
+}
+
+[part~="campo"]:focus {
+    border-color: var(--yosi-color-principal);
+    outline: 2px solid rgba(194, 24, 91, 0.55);
+    outline-offset: 1px;
+}
+
+[part~="casilla"],
+[part~="interruptor"] {
+    accent-color: var(--yosi-color-principal);
+}
+
+[part~="segmento"][part~="activo"],
+[part~="opcion"][part~="activo"],
+[part~="chip"][part~="activo"] {
+    background: var(--yosi-color-principal-suave);
+    border-color: var(--yosi-color-principal);
+    color: var(--yosi-color-texto);
+}
+
+[part~="ventana"]::backdrop {
+    background: rgba(10, 10, 12, 0.55);
+}
