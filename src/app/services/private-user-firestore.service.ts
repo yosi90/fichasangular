@@ -327,7 +327,6 @@ export class PrivateUserFirestoreService {
                 ?? raw?.privateState?.compliance
                 ?? raw?.access?.compliance
             ),
-            excludeFromAnalytics: raw?.excludeFromAnalytics === true,
         };
     }
 

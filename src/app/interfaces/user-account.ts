@@ -26,7 +26,6 @@ export interface UserPrivateProfile {
     role: UserRole;
     permissions: UserPermissionMap;
     compliance?: UserComplianceSnapshot | null;
-    excludeFromAnalytics?: boolean;
 }
 
 export interface UserPublicProfileStats {
