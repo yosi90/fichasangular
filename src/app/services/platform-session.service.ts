@@ -196,7 +196,8 @@ export class PlatformSessionService {
             script.type = 'module';
             script.src = environment.plataforma.sdkUrl;
             // El aspecto de Rol para lo que pinta el SDK, también en sus ventanas (ecosistema-kit/ESTILOS.md).
-            script.dataset['estilos'] = '/assets/yosiftware.css';
+            // Se sirve con `no-cache` (firebase.json); la versión fuerza a pedirla de nuevo a quien la guardó antes.
+            script.dataset['estilos'] = '/assets/yosiftware.css?v=2';
             script.onload = () => {
                 const sdk = (window as any).yosiftware as YosiftwareSdk | undefined;
                 if (sdk)

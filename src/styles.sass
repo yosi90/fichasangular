@@ -145,6 +145,14 @@ yosi-chat::part(lanzador)
     height: 56px
     border-radius: 50%
 
+// Se arrastran (SDK 1.16): el cursor de las burbujas de Rol y, mientras se mueven, más sombra.
+yosi-chat::part(lanzador),
+yosi-chat::part(burbuja-flotante)
+    cursor: move
+
+yosi-chat::part(arrastrando)
+    box-shadow: 0 14px 32px rgba(0, 0, 0, 0.5)
+
 yosi-chat::part(lanzador):hover,
 yosi-chat::part(burbuja-flotante):hover
     transform: translateY(-1px)
