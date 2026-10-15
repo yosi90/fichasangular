@@ -13,10 +13,6 @@ describe("RazaCatalogosService", () => {
             return () => undefined;
         }
 
-        protected override writeCatalogPath(path: string, items: RazaCatalogItem[]): Promise<void> {
-            this.writes.push({ path, items });
-            return Promise.resolve();
-        }
     }
 
     function snapshot(value: any, exists = true): any {

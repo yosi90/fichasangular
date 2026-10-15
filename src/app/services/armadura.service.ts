@@ -1,6 +1,6 @@
 import { HttpClient, HttpErrorResponse } from "@angular/common/http";
 import { Injectable } from "@angular/core";
-import { Database, Unsubscribe, onValue, ref, set } from "@angular/fire/database";
+import { Database, Unsubscribe, onValue, ref } from "@angular/fire/database";
 import { Observable } from "rxjs";
 import Swal from "sweetalert2";
 import { environment } from "src/environments/environment";
@@ -159,7 +159,6 @@ export class ArmaduraService {
                     next: (response) => {
                         const apiArmaduras = this.normalizeArmadurasResponse(response);
                         observador.next(apiArmaduras);
-                        this.refrescarArmadurasCacheBestEffort(apiArmaduras);
                     },
                     error: (error) => observador.error(error),
                     complete: () => fallbackEnCurso = false,
@@ -182,13 +181,6 @@ export class ArmaduraService {
         });
     }
 
-    protected writeArmaduraCache(armadura: ArmaduraDetalle): Promise<void> {
-        // Las cachés públicas viven en la RTDB de producción: desde desarrollo no se escriben.
-        if (!environment.sincronizacionCaches)
-            return Promise.resolve();
-        return this.firebaseContextSvc.run(() => set(ref(this.db, `Armaduras/${armadura.Id}`), armadura));
-    }
-
     private syncArmaduras() {
         return this.http.get(`${environment.apiUrl}armaduras`);
     }
@@ -205,16 +197,6 @@ export class ArmaduraService {
             .filter((armadura) => armadura.Id > 0);
         armaduras.sort((a, b) => a.Nombre.localeCompare(b.Nombre, "es", { sensitivity: "base" }));
         return armaduras;
-    }
-
-    private async refrescarArmadurasCacheBestEffort(armaduras: ArmaduraDetalle[]): Promise<void> {
-        try {
-            await Promise.all(
-                armaduras.map((armadura) => this.writeArmaduraCache(armadura))
-            );
-        } catch {
-            // Best-effort: la respuesta REST ya alimenta la UI.
-        }
     }
 
 }

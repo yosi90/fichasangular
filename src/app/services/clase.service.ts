@@ -1,7 +1,7 @@
 import { HttpClient, HttpErrorResponse } from "@angular/common/http";
 import { Injectable } from "@angular/core";
 import { Auth } from "@angular/fire/auth";
-import { Database, Unsubscribe, onValue, ref, set } from "@angular/fire/database";
+import { Database, Unsubscribe, onValue, ref } from "@angular/fire/database";
 import { Observable, Subject, firstValueFrom, map } from "rxjs";
 import Swal from "sweetalert2";
 import { environment } from "src/environments/environment";
@@ -466,7 +466,6 @@ export class ClaseService {
                 this.http.post<ClaseMutationApiResponse>(`${environment.apiUrl}clases/add`, this.sanitizeMutationPayload(payload), { headers })
             );
             const normalized = this.normalizarMutacionResponse(response, payload, "Clase creada");
-            await this.actualizarCacheLocal(normalized.clase);
             this.notificarClaseMutada(normalized.clase);
             return normalized;
         } catch (error: any) {
@@ -482,7 +481,6 @@ export class ClaseService {
                 this.http.put<ClaseMutationApiResponse>(`${environment.apiUrl}clases/${id}`, this.sanitizeMutationPayload(payload), { headers })
             );
             const normalized = this.normalizarMutacionResponse(response, payload, "Clase actualizada", id);
-            await this.actualizarCacheLocal(normalized.clase);
             this.notificarClaseMutada(normalized.clase);
             return normalized;
         } catch (error: any) {
@@ -501,7 +499,6 @@ export class ClaseService {
                 this.http.patch<ClaseMutationApiResponse>(`${environment.apiUrl}clases/${id}/prerrequisitos`, this.sanitizeMutationPayload(payload), { headers })
             );
             const normalized = this.normalizarMutacionResponse(response, { Id: id } as any, "Prerrequisitos actualizados", id);
-            await this.actualizarCacheLocal(normalized.clase);
             this.notificarClaseMutada(normalized.clase);
             return normalized;
         } catch (error: any) {
@@ -547,15 +544,6 @@ export class ClaseService {
             idClase,
             clase: { ...clase, Id: clase.Id > 0 ? clase.Id : idClase },
         };
-    }
-
-    private async actualizarCacheLocal(clase: Clase): Promise<void> {
-        if (!clase || Number(clase.Id) <= 0)
-            return;
-        // Las cachés públicas viven en la RTDB de producción: desde desarrollo no se escriben.
-        if (!environment.sincronizacionCaches)
-            return;
-        await this.firebaseContextSvc.run(() => set(ref(this.db, `Clases/${clase.Id}`), clase));
     }
 
     private notificarClaseMutada(clase: Clase): void {

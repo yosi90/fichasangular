@@ -14,9 +14,6 @@ export const environment = {
 
     apiUrl: 'https://fichas-api.yosiftware.es/',
 
-    // Sincronización de las cachés públicas de catálogos desde el panel de administración de la web.
-    sincronizacionCaches: true,
-
     // Plataforma Yosiftware (ecosistema-kit/ACCESO.md): la cuenta, la sesión y lo social son suyos.
     plataforma: {
         entorno: 'produccion',

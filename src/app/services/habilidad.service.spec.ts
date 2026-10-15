@@ -19,7 +19,7 @@ describe('HabilidadService custom mutations', () => {
         return { service, http, context };
     }
 
-    it('crea habilidad custom con POST y cache local', async () => {
+    it('crea habilidad custom con POST sin escribir la caché (la renueva el backend)', async () => {
         const { service, http, context } = createService();
         http.post.and.returnValue(of({
             message: 'Creada',
@@ -44,7 +44,7 @@ describe('HabilidadService custom mutations', () => {
             { headers: { Authorization: 'Bearer token-123' } },
         );
         expect(JSON.stringify(http.post.calls.mostRecent().args[1])).not.toContain('uid');
-        expect(context.run).toHaveBeenCalled();
+        expect(context.run).not.toHaveBeenCalled();
         expect(response.habilidad.Nombre).toBe('Pilotar aeronave');
     });
 

@@ -1,6 +1,6 @@
 import { HttpClient } from "@angular/common/http";
 import { Injectable } from "@angular/core";
-import { Database, Unsubscribe, onValue, ref, set } from "@angular/fire/database";
+import { Database, Unsubscribe, onValue, ref } from "@angular/fire/database";
 import { Observable } from "rxjs";
 import { environment } from "src/environments/environment";
 import Swal from "sweetalert2";
@@ -63,17 +63,6 @@ export class RazaCatalogosService {
 
     protected watchCatalogPath(path: string, onNext: (snapshot: any) => void, onError: (error: any) => void): Unsubscribe {
         return this.firebaseContextSvc.run(() => onValue(ref(this.db, path), onNext, onError));
-    }
-
-    protected writeCatalogPath(path: string, items: RazaCatalogItem[]): Promise<void> {
-        // Las cachés públicas viven en la RTDB de producción: desde desarrollo no se escriben.
-        if (!environment.sincronizacionCaches)
-            return Promise.resolve();
-        const payload = items.reduce((acc, item) => {
-            acc[String(item.Id)] = item;
-            return acc;
-        }, {} as Record<string, RazaCatalogItem>);
-        return this.firebaseContextSvc.run(() => set(ref(this.db, path), payload));
     }
 
     private getCatalogoCacheFirst(

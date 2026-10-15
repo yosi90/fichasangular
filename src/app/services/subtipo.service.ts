@@ -1,6 +1,6 @@
 import { HttpClient, HttpErrorResponse } from "@angular/common/http";
 import { Injectable } from "@angular/core";
-import { Database, Unsubscribe, onValue, ref, set } from "@angular/fire/database";
+import { Database, Unsubscribe, onValue, ref } from "@angular/fire/database";
 import { Observable, map } from "rxjs";
 import Swal from "sweetalert2";
 import { environment } from "src/environments/environment";
@@ -73,12 +73,6 @@ export class SubtipoService {
                 this.http.get(`${environment.apiUrl}subtipos/${subtipoId}`).subscribe({
                     next: async (raw: any) => {
                         const detalle = normalizeSubtipoDetalle(raw);
-                        try {
-                            if (environment.sincronizacionCaches)
-                                await this.firebaseContextSvc.run(() => set(ref(this.db, `Subtipos/${detalle.Id}`), detalle));
-                        } catch {
-                            // Si falla el cacheado no bloqueamos la apertura del detalle.
-                        }
                         observador.next(detalle);
                     },
                     error: (error: HttpErrorResponse) => {

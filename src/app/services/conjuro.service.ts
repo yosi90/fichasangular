@@ -1,7 +1,7 @@
 import { HttpClient, HttpErrorResponse } from "@angular/common/http";
 import { Injectable } from "@angular/core";
 import { Auth } from "@angular/fire/auth";
-import { Database, Unsubscribe, onValue, ref, set } from '@angular/fire/database';
+import { Database, Unsubscribe, onValue, ref } from '@angular/fire/database';
 import { Observable, firstValueFrom } from "rxjs";
 import { environment } from "src/environments/environment";
 import Swal from "sweetalert2";
@@ -150,8 +150,6 @@ export class ConjuroService {
                 message: `${response?.message ?? "Conjuro creado"}`,
                 idConjuro,
             };
-
-            await this.refrescarConjuroCacheBestEffort(idConjuro);
             return normalizedResponse;
         } catch (error: any) {
             throw this.mapCrearConjuroError(error);
@@ -160,25 +158,6 @@ export class ConjuroService {
 
     private syncConjuros(): Observable<any> {
         return this.http.get(`${environment.apiUrl}conjuros`);
-    }
-
-    private async refrescarConjuroCacheBestEffort(idConjuro: number): Promise<void> {
-        try {
-            const raw = await firstValueFrom(this.syncConjuros());
-            const conjuros = Array.isArray(raw)
-                ? raw
-                : Object.values(raw ?? {});
-            const encontrado = conjuros
-                .map((item: any) => normalizeConjuroApi(item))
-                .find((item) => item.Id === idConjuro);
-            if (!encontrado)
-                return;
-
-            if (environment.sincronizacionCaches)
-                await this.firebaseContextSvc.run(() => set(ref(this.db, `Conjuros/${encontrado.Id}`), encontrado));
-        } catch {
-            // Best-effort: no bloquea flujo de creacion.
-        }
     }
 
     private mapCrearConjuroError(error: any): Error {

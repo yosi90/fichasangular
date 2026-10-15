@@ -12,10 +12,6 @@ describe("ArmaduraService", () => {
             return () => undefined;
         }
 
-        protected override writeArmaduraCache(armadura: ArmaduraDetalle): Promise<void> {
-            this.writes.push(armadura);
-            return Promise.resolve();
-        }
     }
 
     function snapshot(value: any, exists = true): any {
@@ -66,7 +62,7 @@ describe("ArmaduraService", () => {
         expect(service.writes).toEqual([]);
     });
 
-    it("getArmaduras usa GET /armaduras y refresca cache si RTDB esta vacio", async () => {
+    it("getArmaduras usa GET /armaduras si RTDB esta vacio y no escribe la caché (la escribe el backend)", async () => {
         const http = {
             get: jasmine.createSpy().and.returnValue(of([
                 rawArmadura(4, "Camisote de mallas"),
@@ -80,6 +76,6 @@ describe("ArmaduraService", () => {
 
         expect(http.get).toHaveBeenCalledWith(jasmine.stringMatching(/armaduras$/));
         expect(armaduras.map((item) => item.Id)).toEqual([2, 4]);
-        expect(service.writes.map((item) => item.Id)).toEqual([2, 4]);
+        expect(service.writes).toEqual([]);
     });
 });

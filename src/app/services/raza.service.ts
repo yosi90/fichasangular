@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { Auth } from '@angular/fire/auth';
-import { Database, Unsubscribe, onValue, ref, set } from '@angular/fire/database';
+import { Database, Unsubscribe, onValue, ref } from '@angular/fire/database';
 import { Observable, firstValueFrom } from 'rxjs';
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { MutacionRaza, Raza, RazaHabilidades, RazaPrerrequisitos, RazaPrerrequisitosFlags } from '../interfaces/raza';
@@ -502,24 +502,9 @@ export class RazaService {
                 message: `${response?.message ?? 'Raza creada'}`,
                 idRaza,
             };
-
-            await this.refrescarRazaCacheBestEffort(idRaza, headers);
             return normalizedResponse;
         } catch (error: any) {
             throw this.mapCrearRazaError(error);
-        }
-    }
-
-    private async refrescarRazaCacheBestEffort(idRaza: number, headers: { Authorization: string; }): Promise<void> {
-        try {
-            const raw = await firstValueFrom(this.http.get(`${environment.apiUrl}razas/${idRaza}`, { headers }));
-            const normalized = normalizeRazaApi(raw);
-            if (normalized.Id <= 0)
-                return;
-            if (environment.sincronizacionCaches)
-                await this.firebaseContextSvc.run(() => set(ref(this.db, `Razas/${normalized.Id}`), normalized));
-        } catch {
-            // Best-effort: no bloquea flujo de creacion.
         }
     }
 

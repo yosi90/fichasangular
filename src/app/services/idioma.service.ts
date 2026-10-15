@@ -1,7 +1,7 @@
 import { HttpClient, HttpErrorResponse } from "@angular/common/http";
 import { Injectable } from "@angular/core";
 import { Auth } from "@angular/fire/auth";
-import { Database, Unsubscribe, onValue, ref, set } from "@angular/fire/database";
+import { Database, Unsubscribe, onValue, ref } from "@angular/fire/database";
 import { Observable, Subject, firstValueFrom, map } from "rxjs";
 import Swal from "sweetalert2";
 import { environment } from "src/environments/environment";
@@ -116,7 +116,6 @@ export class IdiomaService {
                 this.http.post<IdiomaMutacionApiResponse>(`${environment.apiUrl}idiomas/add`, payload, { headers })
             );
             const normalized = this.normalizarMutacionResponse(response, payload.nombre, payload.descripcion, "Idioma creado");
-            await this.actualizarCacheLocal(normalized.idioma);
             this.notificarIdiomaMutado(normalized.idioma);
             return normalized;
         } catch (error: any) {
@@ -131,7 +130,6 @@ export class IdiomaService {
                 this.http.patch<IdiomaMutacionApiResponse>(`${environment.apiUrl}idiomas/${Math.trunc(Number(idIdioma ?? 0))}`, payload, { headers })
             );
             const normalized = this.normalizarMutacionResponse(response, payload.nombre ?? "", payload.descripcion ?? "", "Idioma actualizado");
-            await this.actualizarCacheLocal(normalized.idioma);
             this.notificarIdiomaMutado(normalized.idioma);
             return normalized;
         } catch (error: any) {
@@ -160,15 +158,6 @@ export class IdiomaService {
                 Oficial: true,
             }),
         };
-    }
-
-    private async actualizarCacheLocal(idioma: IdiomaDetalle): Promise<void> {
-        if (!idioma || Number(idioma.Id) <= 0)
-            return;
-        // Las cachés públicas viven en la RTDB de producción: desde desarrollo no se escriben.
-        if (!environment.sincronizacionCaches)
-            return;
-        await this.firebaseContextSvc.run(() => set(ref(this.db, `Idiomas/${idioma.Id}`), idioma));
     }
 
     private notificarIdiomaMutado(idioma: IdiomaDetalle): void {

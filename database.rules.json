@@ -6,65 +6,19 @@
       ".read": "false",
       ".write": "false",
       "users": {
-        ".read": "auth != null && root.child('Acl/users/' + auth.uid + '/roles/admin').val() === true && root.child('Acl/users/' + auth.uid + '/roles/type').val() === 'admin'",
-        ".write": "auth != null && root.child('Acl/users/' + auth.uid + '/roles/admin').val() === true && root.child('Acl/users/' + auth.uid + '/roles/type').val() === 'admin'",
         "$uid": {
-          ".read": "auth != null && (auth.uid === $uid || (root.child('Acl/users/' + auth.uid + '/roles/admin').val() === true && root.child('Acl/users/' + auth.uid + '/roles/type').val() === 'admin'))",
-          ".write": "auth != null && root.child('Acl/users/' + auth.uid + '/roles/admin').val() === true && root.child('Acl/users/' + auth.uid + '/roles/type').val() === 'admin'",
-          "roles": {
-            "admin": {
-              ".validate": "(newData.val() === true && newData.parent().child('type').val() === 'admin') || (newData.val() === false && newData.parent().child('type').val() !== 'admin')"
-            },
-            "type": {
-              ".validate": "(newData.val() === 'admin' && newData.parent().child('admin').val() === true) || ((newData.val() === 'jugador' || newData.val() === 'master' || newData.val() === 'colaborador') && newData.parent().child('admin').val() === false)"
-            }
-          },
-          "permissions": {
-            "$resource": {
-              "create": {
-                ".validate": "(newData.parent().parent().parent().child('roles/type').val() === 'admin' && newData.val() === true) || (newData.parent().parent().parent().child('roles/type').val() !== 'admin' && (newData.val() === true || newData.val() === false))"
-              }
-            }
-          },
-          "status": {
-            "banned": {
-              ".validate": "newData.val() === true || newData.val() === false"
-            }
-          }
+          ".read": "auth != null && auth.uid === $uid",
+          ".write": "false"
         }
-      }
-    },
-    "UserProfiles": {
-      ".read": "auth != null && root.child('Acl/users/' + auth.uid + '/roles/admin').val() === true && root.child('Acl/users/' + auth.uid + '/roles/type').val() === 'admin'",
-      ".write": "auth != null && root.child('Acl/users/' + auth.uid + '/roles/admin').val() === true && root.child('Acl/users/' + auth.uid + '/roles/type').val() === 'admin'",
-      "$uid": {
-        ".read": "auth != null && (auth.uid === $uid || (root.child('Acl/users/' + auth.uid + '/roles/admin').val() === true && root.child('Acl/users/' + auth.uid + '/roles/type').val() === 'admin'))",
-        ".write": "auth != null && (auth.uid === $uid || (root.child('Acl/users/' + auth.uid + '/roles/admin').val() === true && root.child('Acl/users/' + auth.uid + '/roles/type').val() === 'admin'))"
-      }
-    },
-    "UserSettings": {
-      "$uid": {
-        ".read": "auth != null && auth.uid === $uid",
-        ".write": "auth != null && auth.uid === $uid && root.child('Acl/users/' + auth.uid + '/status/banned').val() !== true"
-      }
-    },
-    "CacheSyncMeta": {
-      ".read": "false",
-      ".write": "false",
-      "AdminPanel": {
-        ".read": "auth != null && root.child('Acl/users/' + auth.uid + '/roles/admin').val() === true && root.child('Acl/users/' + auth.uid + '/roles/type').val() === 'admin'",
-        ".write": "auth != null && root.child('Acl/users/' + auth.uid + '/roles/admin').val() === true && root.child('Acl/users/' + auth.uid + '/roles/type').val() === 'admin'"
       }
     },
     "CacheSyncReports": {
       ".read": "false",
       ".write": "false",
       "CatalogMisses": {
-        ".read": "auth != null && root.child('Acl/users/' + auth.uid + '/roles/admin').val() === true && root.child('Acl/users/' + auth.uid + '/roles/type').val() === 'admin'",
-        ".write": "auth != null && root.child('Acl/users/' + auth.uid + '/roles/admin').val() === true && root.child('Acl/users/' + auth.uid + '/roles/type').val() === 'admin'",
         "$cacheKey": {
           "$uid": {
-            ".write": "auth != null && (auth.uid === $uid || (root.child('Acl/users/' + auth.uid + '/roles/admin').val() === true && root.child('Acl/users/' + auth.uid + '/roles/type').val() === 'admin'))",
+            ".write": "auth != null && auth.uid === $uid",
             ".validate": "newData.val() === null || (($cacheKey === 'actitudes' || $cacheKey === 'maniobrabilidades' || $cacheKey === 'tipos_dado' || $cacheKey === 'componentes_conjuros' || $cacheKey === 'tiempos_lanzamiento' || $cacheKey === 'alcances_conjuros' || $cacheKey === 'descriptores_conjuros') && newData.hasChildren(['cacheKey', 'uid', 'reportedAt', 'reportedAtIso', 'reason']) && newData.child('cacheKey').val() === $cacheKey && newData.child('uid').val() === $uid && newData.child('reportedAt').isNumber() && newData.child('reportedAtIso').isString() && newData.child('reason').val() === 'rtdb_empty_fallback_rest')"
           }
         }
@@ -72,135 +26,135 @@
     },
     "Alineamientos": {
       ".read": "true",
-      ".write": "auth != null && root.child('Acl/users/' + auth.uid + '/roles/admin').val() === true && root.child('Acl/users/' + auth.uid + '/roles/type').val() === 'admin'"
+      ".write": "false"
     },
     "AlineamientosCatalogo": {
       ".read": "true",
-      ".write": "auth != null && root.child('Acl/users/' + auth.uid + '/roles/admin').val() === true && root.child('Acl/users/' + auth.uid + '/roles/type').val() === 'admin'"
+      ".write": "false"
     },
     "Actitudes": {
       ".read": "true",
-      ".write": "auth != null && root.child('Acl/users/' + auth.uid + '/roles/admin').val() === true && root.child('Acl/users/' + auth.uid + '/roles/type').val() === 'admin'"
+      ".write": "false"
     },
     "AlcancesConjuros": {
       ".read": "true",
-      ".write": "auth != null && root.child('Acl/users/' + auth.uid + '/roles/admin').val() === true && root.child('Acl/users/' + auth.uid + '/roles/type').val() === 'admin'"
+      ".write": "false"
     },
     "Ambitos": {
       ".read": "true",
-      ".write": "auth != null && root.child('Acl/users/' + auth.uid + '/roles/admin').val() === true && root.child('Acl/users/' + auth.uid + '/roles/type').val() === 'admin'"
+      ".write": "false"
     },
     "Armaduras": {
       ".read": "true",
-      ".write": "auth != null && root.child('Acl/users/' + auth.uid + '/roles/admin').val() === true && root.child('Acl/users/' + auth.uid + '/roles/type').val() === 'admin'"
+      ".write": "false"
     },
     "Armas": {
       ".read": "true",
-      ".write": "auth != null && root.child('Acl/users/' + auth.uid + '/roles/admin').val() === true && root.child('Acl/users/' + auth.uid + '/roles/type').val() === 'admin'"
+      ".write": "false"
     },
     "Clases": {
       ".read": "true",
-      ".write": "auth != null && root.child('Acl/users/' + auth.uid + '/roles/admin').val() === true && root.child('Acl/users/' + auth.uid + '/roles/type').val() === 'admin'"
+      ".write": "false"
     },
     "ComponentesConjuros": {
       ".read": "true",
-      ".write": "auth != null && root.child('Acl/users/' + auth.uid + '/roles/admin').val() === true && root.child('Acl/users/' + auth.uid + '/roles/type').val() === 'admin'"
+      ".write": "false"
     },
     "Companeros": {
       ".read": "true",
-      ".write": "auth != null && root.child('Acl/users/' + auth.uid + '/roles/admin').val() === true && root.child('Acl/users/' + auth.uid + '/roles/type').val() === 'admin'"
+      ".write": "false"
     },
     "Conjuros": {
       ".read": "true",
-      ".write": "auth != null && root.child('Acl/users/' + auth.uid + '/roles/admin').val() === true && root.child('Acl/users/' + auth.uid + '/roles/type').val() === 'admin'"
+      ".write": "false"
     },
     "Deidades": {
       ".read": "true",
-      ".write": "auth != null && root.child('Acl/users/' + auth.uid + '/roles/admin').val() === true && root.child('Acl/users/' + auth.uid + '/roles/type').val() === 'admin'"
+      ".write": "false"
     },
     "DescriptoresConjuros": {
       ".read": "true",
-      ".write": "auth != null && root.child('Acl/users/' + auth.uid + '/roles/admin').val() === true && root.child('Acl/users/' + auth.uid + '/roles/type').val() === 'admin'"
+      ".write": "false"
     },
     "Desventajas": {
       ".read": "true",
-      ".write": "auth != null && root.child('Acl/users/' + auth.uid + '/roles/admin').val() === true && root.child('Acl/users/' + auth.uid + '/roles/type').val() === 'admin'"
+      ".write": "false"
     },
     "Disciplinas": {
       ".read": "true",
-      ".write": "auth != null && root.child('Acl/users/' + auth.uid + '/roles/admin').val() === true && root.child('Acl/users/' + auth.uid + '/roles/type').val() === 'admin'"
+      ".write": "false"
     },
     "disciplinas": {
       ".read": "true",
-      ".write": "auth != null && root.child('Acl/users/' + auth.uid + '/roles/admin').val() === true && root.child('Acl/users/' + auth.uid + '/roles/type').val() === 'admin'"
+      ".write": "false"
     },
     "Dominios": {
       ".read": "true",
-      ".write": "auth != null && root.child('Acl/users/' + auth.uid + '/roles/admin').val() === true && root.child('Acl/users/' + auth.uid + '/roles/type').val() === 'admin'"
+      ".write": "false"
     },
     "Dotes": {
       ".read": "true",
-      ".write": "auth != null && root.child('Acl/users/' + auth.uid + '/roles/admin').val() === true && root.child('Acl/users/' + auth.uid + '/roles/type').val() === 'admin'"
+      ".write": "false"
     },
     "EnemigosPredilectos": {
       ".read": "true",
-      ".write": "auth != null && root.child('Acl/users/' + auth.uid + '/roles/admin').val() === true && root.child('Acl/users/' + auth.uid + '/roles/type').val() === 'admin'"
+      ".write": "false"
     },
     "Escuelas": {
       ".read": "true",
-      ".write": "auth != null && root.child('Acl/users/' + auth.uid + '/roles/admin').val() === true && root.child('Acl/users/' + auth.uid + '/roles/type').val() === 'admin'"
+      ".write": "false"
     },
     "Especiales": {
       ".read": "true",
-      ".write": "auth != null && root.child('Acl/users/' + auth.uid + '/roles/admin').val() === true && root.child('Acl/users/' + auth.uid + '/roles/type').val() === 'admin'"
+      ".write": "false"
     },
     "Extras": {
       ".read": "true",
-      ".write": "auth != null && root.child('Acl/users/' + auth.uid + '/roles/admin').val() === true && root.child('Acl/users/' + auth.uid + '/roles/type').val() === 'admin'"
+      ".write": "false"
     },
     "Familiares": {
       ".read": "true",
-      ".write": "auth != null && root.child('Acl/users/' + auth.uid + '/roles/admin').val() === true && root.child('Acl/users/' + auth.uid + '/roles/type').val() === 'admin'"
+      ".write": "false"
     },
     "GruposArmaduras": {
       ".read": "true",
-      ".write": "auth != null && root.child('Acl/users/' + auth.uid + '/roles/admin').val() === true && root.child('Acl/users/' + auth.uid + '/roles/type').val() === 'admin'"
+      ".write": "false"
     },
     "GruposArmas": {
       ".read": "true",
-      ".write": "auth != null && root.child('Acl/users/' + auth.uid + '/roles/admin').val() === true && root.child('Acl/users/' + auth.uid + '/roles/type').val() === 'admin'"
+      ".write": "false"
     },
     "Habilidades": {
       ".read": "true",
-      ".write": "auth != null && root.child('Acl/users/' + auth.uid + '/roles/admin').val() === true && root.child('Acl/users/' + auth.uid + '/roles/type').val() === 'admin'"
+      ".write": "false"
     },
     "HabilidadesCustom": {
       ".read": "true",
-      ".write": "auth != null && root.child('Acl/users/' + auth.uid + '/roles/admin').val() === true && root.child('Acl/users/' + auth.uid + '/roles/type').val() === 'admin'"
+      ".write": "false"
     },
     "Idiomas": {
       ".read": "true",
-      ".write": "auth != null && root.child('Acl/users/' + auth.uid + '/roles/admin').val() === true && root.child('Acl/users/' + auth.uid + '/roles/type').val() === 'admin'"
+      ".write": "false"
     },
     "Maniobrabilidades": {
       ".read": "true",
-      ".write": "auth != null && root.child('Acl/users/' + auth.uid + '/roles/admin').val() === true && root.child('Acl/users/' + auth.uid + '/roles/type').val() === 'admin'"
+      ".write": "false"
     },
     "Manuales": {
       ".read": "true",
-      ".write": "auth != null && root.child('Acl/users/' + auth.uid + '/roles/admin').val() === true && root.child('Acl/users/' + auth.uid + '/roles/type').val() === 'admin'"
+      ".write": "false"
     },
     "ManualesAsociados": {
       ".read": "true",
-      ".write": "auth != null && root.child('Acl/users/' + auth.uid + '/roles/admin').val() === true && root.child('Acl/users/' + auth.uid + '/roles/type').val() === 'admin'"
+      ".write": "false"
     },
     "Monstruos": {
       ".read": "true",
-      ".write": "auth != null && root.child('Acl/users/' + auth.uid + '/roles/admin').val() === true && root.child('Acl/users/' + auth.uid + '/roles/type').val() === 'admin'"
+      ".write": "false"
     },
     "Pabellones": {
       ".read": "true",
-      ".write": "auth != null && root.child('Acl/users/' + auth.uid + '/roles/admin').val() === true && root.child('Acl/users/' + auth.uid + '/roles/type').val() === 'admin'"
+      ".write": "false"
     },
     "Personajes": {
       ".read": "false",
@@ -212,61 +166,59 @@
     },
     "Plantillas": {
       ".read": "true",
-      ".write": "auth != null && root.child('Acl/users/' + auth.uid + '/roles/admin').val() === true && root.child('Acl/users/' + auth.uid + '/roles/type').val() === 'admin'"
+      ".write": "false"
     },
     "Raciales": {
       ".read": "true",
-      ".write": "auth != null && root.child('Acl/users/' + auth.uid + '/roles/admin').val() === true && root.child('Acl/users/' + auth.uid + '/roles/type').val() === 'admin'"
+      ".write": "false"
     },
     "Rasgos": {
       ".read": "true",
-      ".write": "auth != null && root.child('Acl/users/' + auth.uid + '/roles/admin').val() === true && root.child('Acl/users/' + auth.uid + '/roles/type').val() === 'admin'"
+      ".write": "false"
     },
     "Razas": {
       ".read": "true",
-      ".write": "auth != null && root.child('Acl/users/' + auth.uid + '/roles/admin').val() === true && root.child('Acl/users/' + auth.uid + '/roles/type').val() === 'admin'"
+      ".write": "false"
     },
     "Regiones": {
       ".read": "true",
-      ".write": "auth != null && root.child('Acl/users/' + auth.uid + '/roles/admin').val() === true && root.child('Acl/users/' + auth.uid + '/roles/type').val() === 'admin'"
+      ".write": "false"
     },
     "Subdisciplinas": {
       ".read": "true",
-      ".write": "auth != null && root.child('Acl/users/' + auth.uid + '/roles/admin').val() === true && root.child('Acl/users/' + auth.uid + '/roles/type').val() === 'admin'"
+      ".write": "false"
     },
     "subdisciplinas": {
       ".read": "true",
-      ".write": "auth != null && root.child('Acl/users/' + auth.uid + '/roles/admin').val() === true && root.child('Acl/users/' + auth.uid + '/roles/type').val() === 'admin'"
+      ".write": "false"
     },
     "Subtipos": {
       ".read": "true",
-      ".write": "auth != null && root.child('Acl/users/' + auth.uid + '/roles/admin').val() === true && root.child('Acl/users/' + auth.uid + '/roles/type').val() === 'admin'"
+      ".write": "false"
     },
     "Tamanos": {
       ".read": "true",
-      ".write": "auth != null && root.child('Acl/users/' + auth.uid + '/roles/admin').val() === true && root.child('Acl/users/' + auth.uid + '/roles/type').val() === 'admin'"
+      ".write": "false"
     },
     "TiemposLanzamiento": {
       ".read": "true",
-      ".write": "auth != null && root.child('Acl/users/' + auth.uid + '/roles/admin').val() === true && root.child('Acl/users/' + auth.uid + '/roles/type').val() === 'admin'"
+      ".write": "false"
     },
     "TiposDado": {
       ".read": "true",
-      ".write": "auth != null && root.child('Acl/users/' + auth.uid + '/roles/admin').val() === true && root.child('Acl/users/' + auth.uid + '/roles/type').val() === 'admin'"
+      ".write": "false"
     },
     "TiposCriatura": {
       ".read": "true",
-      ".write": "auth != null && root.child('Acl/users/' + auth.uid + '/roles/admin').val() === true && root.child('Acl/users/' + auth.uid + '/roles/type').val() === 'admin'"
+      ".write": "false"
     },
     "Ventajas": {
       ".read": "true",
-      ".write": "auth != null && root.child('Acl/users/' + auth.uid + '/roles/admin').val() === true && root.child('Acl/users/' + auth.uid + '/roles/type').val() === 'admin'"
+      ".write": "false"
     },
     "listado-personajes": {
       ".read": "true",
-      "$id": {
-        ".write": "auth != null && root.child('Acl/users/' + auth.uid + '/roles/admin').val() === true && root.child('Acl/users/' + auth.uid + '/roles/type').val() === 'admin'"
-      }
+      ".write": "false"
     },
     "$other": {
       ".read": "false",

@@ -16,10 +16,6 @@ export const environment = {
     // (127.0.0.1:5010) por el proxy del servidor de desarrollo (proxy.qa.json).
     apiUrl: '/api/',
 
-    // Las cachés públicas de catálogos viven en la RTDB de producción: desde desarrollo no se escriben
-    // (los datos vendrían de `rol_dev`).
-    sincronizacionCaches: false,
-
     // Plataforma Yosiftware (ecosistema-kit/ACCESO.md): la cuenta, la sesión y lo social son suyos.
     plataforma: {
         entorno: 'qa',

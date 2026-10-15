@@ -535,7 +535,7 @@ describe('RazaService helpers', () => {
         expect(emitted[0].Raciales[0].Nombre).toBe('Legacy racial');
     });
 
-    it('crearRaza envia POST /razas/add con Bearer, sin auditoria, y refresca cache best-effort', async () => {
+    it('crearRaza envia POST /razas/add con Bearer y sin auditoria; la caché la renueva el backend', async () => {
         const payload = {
             raza: {
                 nombre: 'Nueva raza',
@@ -578,10 +578,7 @@ describe('RazaService helpers', () => {
         expect(Object.prototype.hasOwnProperty.call(postArgs[1], 'uid')).toBeFalse();
         expect(Object.prototype.hasOwnProperty.call(postArgs[1], 'firebaseUid')).toBeFalse();
         expect(Object.prototype.hasOwnProperty.call(postArgs[1], 'createdAt')).toBeFalse();
-        expect(http.get).toHaveBeenCalledWith(
-            jasmine.stringMatching(/razas\/44$/),
-            jasmine.objectContaining({ headers: { Authorization: 'Bearer token-firebase' } })
-        );
+        expect(http.get).not.toHaveBeenCalled();
     });
 
     [

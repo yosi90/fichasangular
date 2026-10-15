@@ -1,7 +1,7 @@
 import { HttpClient, HttpErrorResponse } from "@angular/common/http";
 import { Injectable } from "@angular/core";
 import { Auth } from "@angular/fire/auth";
-import { Database, Unsubscribe, onValue, ref, set } from "@angular/fire/database";
+import { Database, Unsubscribe, onValue, ref } from "@angular/fire/database";
 import { Observable, Subject, firstValueFrom } from "rxjs";
 import Swal from "sweetalert2";
 import { environment } from "src/environments/environment";
@@ -127,7 +127,6 @@ export class HabilidadService {
                 this.http.post<HabilidadCustomMutationApiResponse>(`${environment.apiUrl}habilidades/custom/add`, payload, { headers })
             );
             const normalized = this.normalizarMutacionCustomResponse(response, payload, "Habilidad custom creada");
-            await this.actualizarCacheCustom(normalized.habilidad);
             this.notificarCustomMutada(normalized.habilidad);
             return normalized;
         } catch (error: any) {
@@ -146,7 +145,6 @@ export class HabilidadService {
                 this.http.patch<HabilidadCustomMutationApiResponse>(`${environment.apiUrl}habilidades/custom/${id}`, payload, { headers })
             );
             const normalized = this.normalizarMutacionCustomResponse(response, payload, "Habilidad custom actualizada", id);
-            await this.actualizarCacheCustom(normalized.habilidad);
             this.notificarCustomMutada(normalized.habilidad);
             return normalized;
         } catch (error: any) {
@@ -178,15 +176,6 @@ export class HabilidadService {
                 Extras: [],
             }),
         };
-    }
-
-    private async actualizarCacheCustom(habilidad: HabilidadBasicaDetalle): Promise<void> {
-        if (!habilidad || Number(habilidad.Id_habilidad) <= 0)
-            return;
-        // Las cachés públicas viven en la RTDB de producción: desde desarrollo no se escriben.
-        if (!environment.sincronizacionCaches)
-            return;
-        await this.firebaseContextSvc.run(() => set(ref(this.db, `HabilidadesCustom/${habilidad.Id_habilidad}`), habilidad));
     }
 
     private notificarCustomMutada(habilidad: HabilidadBasicaDetalle): void {

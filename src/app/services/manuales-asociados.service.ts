@@ -97,9 +97,6 @@ export class ManualesAsociadosService {
                         fetchSub = this.fetchFromApiWithFallback().subscribe({
                             next: ({ manuales, source }) => {
                                 if (source === 'api') {
-                                    this.persistirCacheManualesAsociados(manuales)
-                                        .then(() => this.clearFallbackNotice())
-                                        .catch(() => { });
                                     this.clearFallbackNotice();
                                 } else {
                                     this.setFallbackNotice('Aviso: no se pudo cargar /manuales/asociados. Se está usando fallback local y puede haber secciones incompletas.');
@@ -243,19 +240,6 @@ export class ManualesAsociadosService {
         });
 
         return this.sortManuales(manuales);
-    }
-
-    private async persistirCacheManualesAsociados(manuales: ManualAsociadoDetalle[]): Promise<void> {
-        // Las cachés públicas viven en la RTDB de producción: desde desarrollo no se escriben.
-        if (!environment.sincronizacionCaches)
-            return;
-        const payload: Record<string, any> = {};
-        manuales.forEach((manual) => {
-            if (manual.Id <= 0)
-                return;
-            payload[String(manual.Id)] = this.sanitizarParaFirebase(manual);
-        });
-        await this.firebaseContextSvc.run(() => set(ref(this.db, this.cachePath), payload));
     }
 
     private sanitizarParaFirebase<T>(input: T): T {
