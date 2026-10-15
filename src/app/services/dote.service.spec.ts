@@ -5,12 +5,15 @@ import { DoteCreateRequest } from '../interfaces/dotes-api';
 import { FirebaseInjectionContextService } from './firebase-injection-context.service';
 import { DoteService } from './dote.service';
 import { normalizeDoteApi, normalizeDoteLegacy } from './utils/dote-mapper';
+import { simularTokenApi } from 'src/testing/simular-token-api';
 
 const firebaseContextMock = {
     run: <T>(fn: () => T) => fn(),
 } as FirebaseInjectionContextService;
 
 describe('DoteService', () => {
+    beforeEach(() => simularTokenApi('token-dote'));
+
     const authMock = {
         currentUser: {
             getIdToken: jasmine.createSpy('getIdToken').and.resolveTo('token-dote'),

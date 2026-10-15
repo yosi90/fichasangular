@@ -15,6 +15,5 @@ export interface AppToast {
 export interface AppToastOptions {
     durationMs?: number;
     category?: AppToastCategory;
-    captureSessionNotification?: boolean;
     dedupeKey?: string | null;
 }

@@ -163,7 +163,6 @@ export class SocialCommunitySectionComponent implements OnChanges {
         const payload: UserPublicProfileTab = {
             uid: user.uid,
             initialDisplayName: user.displayName ?? null,
-            mode: 'relationship',
         };
         this.userProfileNavSvc.openPublicProfile(payload);
     }

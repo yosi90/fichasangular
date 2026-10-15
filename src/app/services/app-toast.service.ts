@@ -1,8 +1,6 @@
 import { Injectable } from '@angular/core';
 import { BehaviorSubject } from 'rxjs';
 import { AppToast, AppToastOptions, AppToastType } from '../interfaces/app-toast';
-import { SessionNotificationCenterService } from './session-notification-center.service';
-import { SocialAlertPreferencesService } from './social-alert-preferences.service';
 import { toUserFacingErrorMessage } from './utils/user-facing-error.util';
 
 @Injectable({
@@ -14,11 +12,6 @@ export class AppToastService {
     private sequence = 0;
 
     readonly toasts$ = this.toastsSubject.asObservable();
-
-    constructor(
-        private socialAlertPrefsSvc?: SocialAlertPreferencesService,
-        private sessionNotificationCenterSvc?: SessionNotificationCenterService,
-    ) { }
 
     showSuccess(message: string, options?: AppToastOptions): void {
         this.show('success', message, options);
@@ -51,8 +44,6 @@ export class AppToastService {
         const message = toUserFacingErrorMessage(rawMessage, this.getDefaultFallback(type));
         if (message.length < 1)
             return;
-        if (type !== 'error' && options?.category && this.socialAlertPrefsSvc?.isEnabled(options.category) === false)
-            return;
 
         const explicitDedupeKey = `${options?.dedupeKey ?? ''}`.trim();
         const dedupeKey = this.resolveDedupeKey(type, message, options);
@@ -75,8 +66,6 @@ export class AppToastService {
         this.toastsSubject.next(existing
             ? [...this.toastsSubject.value.filter((item) => item.id !== existing.id), toast]
             : [...this.toastsSubject.value, toast]);
-        if (options?.captureSessionNotification !== false)
-            this.sessionNotificationCenterSvc?.captureToast(type, message);
         this.scheduleDismiss(toast.id, durationMs);
     }
 

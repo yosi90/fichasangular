@@ -5,8 +5,11 @@ import Swal from 'sweetalert2';
 import { environment } from 'src/environments/environment';
 import { FirebaseInjectionContextService } from './firebase-injection-context.service';
 import { ManualService } from './manual.service';
+import { simularTokenApi } from 'src/testing/simular-token-api';
 
 describe('ManualService', () => {
+    beforeEach(() => simularTokenApi('token-manual'));
+
     it('RenovarManuales persiste solo respuestas canónicas de la API', async () => {
         const contextMock = {
             run: jasmine.createSpy('run').and.returnValue(Promise.resolve()),

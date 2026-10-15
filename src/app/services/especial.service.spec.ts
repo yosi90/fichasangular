@@ -1,8 +1,11 @@
 import { of } from 'rxjs';
 import { EspecialClaseMutationRequest } from '../interfaces/especial';
 import { EspecialService } from './especial.service';
+import { simularTokenApi } from 'src/testing/simular-token-api';
 
 describe('EspecialService', () => {
+    beforeEach(() => simularTokenApi('token-123'));
+
     const payload: EspecialClaseMutationRequest = {
         especial: {
             nombre: 'Aura de mando',

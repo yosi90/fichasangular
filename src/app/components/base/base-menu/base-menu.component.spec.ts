@@ -5,16 +5,20 @@ describe('BaseMenuComponent', () => {
     let canCreateRazas: boolean;
     let permissions: Record<string, boolean>;
     let component: BaseMenuComponent;
-    let dialogOpenSpy: jasmine.Spy;
+    let logueado: boolean;
     let userSvc: any;
 
     beforeEach(() => {
         canCreateRazas = true;
         permissions = {};
-        dialogOpenSpy = jasmine.createSpy('open').and.returnValue({ afterClosed: () => of(undefined) });
+        logueado = false;
         userSvc = {
             Usuario: { nombre: '', correo: '', permisos: 0 },
+            get IsLoggedIn() {
+                return logueado;
+            },
             isLoggedIn$: new Subject<boolean>(),
+            entrar: jasmine.createSpy('entrar').and.resolveTo(true),
             can: jasmine.createSpy().and.callFake((resource: string, action: string) => {
                 if (resource === 'razas' && action === 'create')
                     return canCreateRazas;
@@ -23,7 +27,7 @@ describe('BaseMenuComponent', () => {
             getPermissionDeniedMessage: jasmine.createSpy().and.returnValue('Sin permisos suficientes.'),
             logOut: jasmine.createSpy(),
         };
-        component = new BaseMenuComponent({ open: dialogOpenSpy } as any, userSvc as any, {} as any);
+        component = new BaseMenuComponent(userSvc as any, {} as any);
         component.primero = { expanded: true, close: jasmine.createSpy() } as any;
         component.segundo = { expanded: false, close: jasmine.createSpy() } as any;
         component.tercero = { expanded: false, close: jasmine.createSpy() } as any;
@@ -48,33 +52,35 @@ describe('BaseMenuComponent', () => {
         expect(emitSpy).not.toHaveBeenCalled();
     });
 
-    it('abre el dialogo de sesion al intentar crear personaje como invitado', () => {
+    it('abre el acceso de Yosiftware al intentar crear personaje como invitado', () => {
         const emitSpy = spyOn(component.NuevoPersonajeTab, 'emit');
 
         component.AbrirNuevoPersonaje();
 
-        expect(dialogOpenSpy).toHaveBeenCalled();
+        expect(userSvc.entrar).toHaveBeenCalled();
         expect(emitSpy).not.toHaveBeenCalled();
     });
 
     it('abre nuevo personaje si el usuario autenticado puede crear personajes', () => {
-        userSvc.Usuario = { nombre: 'Aldric', correo: 'aldric@test.com', permisos: 0 };
+        userSvc.Usuario = { nombre: 'Aldric', correo: '', permisos: 0 };
+        logueado = true;
         permissions['personajes:create'] = true;
         const emitSpy = spyOn(component.NuevoPersonajeTab, 'emit');
 
         component.AbrirNuevoPersonaje();
 
-        expect(dialogOpenSpy).not.toHaveBeenCalled();
+        expect(userSvc.entrar).not.toHaveBeenCalled();
         expect(emitSpy).toHaveBeenCalled();
     });
 
     it('mantiene bloqueado nuevo personaje para usuario autenticado sin permiso', () => {
         userSvc.Usuario = { nombre: 'Aldric', correo: 'aldric@test.com', permisos: 0 };
+        logueado = true;
         const emitSpy = spyOn(component.NuevoPersonajeTab, 'emit');
 
         component.AbrirNuevoPersonaje();
 
-        expect(dialogOpenSpy).not.toHaveBeenCalled();
+        expect(userSvc.entrar).not.toHaveBeenCalled();
         expect(emitSpy).not.toHaveBeenCalled();
         expect(component.nuevoPersonajeDeshabilitado).toBeTrue();
     });

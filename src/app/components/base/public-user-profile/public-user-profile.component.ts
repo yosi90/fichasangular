@@ -1,31 +1,40 @@
-import { Component, EventEmitter, Input, OnChanges, Output, SimpleChanges } from '@angular/core';
+import { Component, EventEmitter, Input, OnChanges, OnDestroy, OnInit, Output, SimpleChanges } from '@angular/core';
+import { Subject, distinctUntilChanged, skip, takeUntil } from 'rxjs';
+import Swal from 'sweetalert2';
 import { SocialRelationshipProfile } from 'src/app/interfaces/social-v3';
-import { UserPublicProfile } from 'src/app/interfaces/user-account';
 import { AppToastService } from 'src/app/services/app-toast.service';
-import { SocialApiService } from 'src/app/services/social-api.service';
+import { PlatformSessionService } from 'src/app/services/platform-session.service';
+import { PlatformSocialError, PlatformSocialService, RelacionPlataforma } from 'src/app/services/platform-social.service';
 import { SocialV3ApiService } from 'src/app/services/social-v3-api.service';
-import { UserProfileApiService } from 'src/app/services/user-profile-api.service';
+import { UserService } from 'src/app/services/user.service';
 import { resolveDefaultProfileAvatar } from 'src/app/services/utils/profile-avatar.util';
-import { toUserFacingErrorMessage } from 'src/app/services/utils/user-facing-error.util';
 
+/**
+ * Ficha de otra persona en la comunidad de Rol: sus datos de Rol vienen de la API
+ * (`GET /social/users/{uid}/relationship-profile`) y la biografía, los pronombres y la relación (amistad,
+ * seguimiento y bloqueo), de la plataforma (ecosistema-kit/SOCIAL.md). Hace falta sesión.
+ */
 @Component({
     selector: 'app-public-user-profile',
     templateUrl: './public-user-profile.component.html',
     styleUrls: ['./public-user-profile.component.sass'],
     standalone: false
 })
-export class PublicUserProfileComponent implements OnChanges {
+export class PublicUserProfileComponent implements OnInit, OnChanges, OnDestroy {
     @Input() uid = '';
     @Input() initialDisplayName: string | null = null;
-    @Input() mode: 'public' | 'relationship' = 'public';
     @Output() profileLoaded = new EventEmitter<{ uid: string; displayName: string | null; }>();
 
-    publicProfile: UserPublicProfile | null = null;
+    isLoggedIn = false;
     relationshipProfile: SocialRelationshipProfile | null = null;
+    relacion: RelacionPlataforma | null = null;
+    bio = '';
+    pronouns = '';
     loading = false;
-    relationshipActionInFlight = false;
-    relationshipActionErrorMessage = '';
+    actionInFlight = false;
     errorMessage = '';
+    private loadSeq = 0;
+    private readonly destroy$ = new Subject<void>();
     private readonly dateFormatter = new Intl.DateTimeFormat('es-ES', {
         day: 'numeric',
         month: 'long',
@@ -33,39 +42,56 @@ export class PublicUserProfileComponent implements OnChanges {
     });
 
     constructor(
-        private userProfileApiSvc: UserProfileApiService,
         private socialV3ApiSvc: SocialV3ApiService,
-        private socialApiSvc: SocialApiService,
+        private platformSocialSvc: PlatformSocialService,
+        private platformSessionSvc: PlatformSessionService,
+        private userSvc: UserService,
         private appToastSvc: AppToastService,
     ) { }
 
+    ngOnInit(): void {
+        this.isLoggedIn = this.userSvc.IsLoggedIn;
+        this.userSvc.isLoggedIn$
+            .pipe(distinctUntilChanged(), skip(1), takeUntil(this.destroy$))
+            .subscribe((logueado) => {
+                this.isLoggedIn = logueado === true;
+                void this.cargar();
+            });
+        void this.cargar();
+    }
+
     ngOnChanges(changes: SimpleChanges): void {
-        if ((changes['uid'] || changes['mode']) && `${this.uid ?? ''}`.trim().length > 0)
+        if (changes['uid'] && !changes['uid'].firstChange)
             void this.cargar();
     }
 
+    ngOnDestroy(): void {
+        this.destroy$.next();
+        this.destroy$.complete();
+    }
+
     get avatarUrl(): string {
-        const image = `${this.relationshipProfile?.profile?.photoThumbUrl ?? this.publicProfile?.photoThumbUrl ?? ''}`.trim();
+        const image = `${this.relationshipProfile?.profile?.photoThumbUrl ?? ''}`.trim();
         if (image.length > 0)
             return image;
         return resolveDefaultProfileAvatar(this.uid || this.initialDisplayName || this.profileLabel || '');
     }
 
     get profileLabel(): string {
-        return `${this.relationshipProfile?.profile?.displayName ?? this.publicProfile?.displayName ?? this.initialDisplayName ?? ''}`.trim()
-            || 'Perfil público';
+        return `${this.relationshipProfile?.profile?.displayName ?? this.initialDisplayName ?? ''}`.trim() || 'Perfil';
     }
 
-    get bioText(): string {
-        return `${this.relationshipProfile?.profile?.bio ?? this.publicProfile?.bio ?? ''}`.trim();
+    get isSelf(): boolean {
+        return this.relationshipProfile?.relationship?.state === 'self';
     }
 
-    get pronounsText(): string {
-        return `${this.relationshipProfile?.profile?.pronouns ?? this.publicProfile?.pronouns ?? ''}`.trim();
+    /** Has bloqueado a esta persona: la API ya no la enseña, pero se puede desbloquear desde aquí. */
+    get isBlockedByMe(): boolean {
+        return this.relacion?.bloqueada === true;
     }
 
     get statsItems(): { value: number; label: string; }[] {
-        const stats = (this.relationshipProfile?.stats ?? this.publicProfile?.stats ?? null) as any;
+        const stats = this.relationshipProfile?.stats as any;
         if (!stats)
             return [];
 
@@ -78,201 +104,173 @@ export class PublicUserProfileComponent implements OnChanges {
         ];
     }
 
+    get sharedItems(): { value: number; label: string; }[] {
+        const relationship = this.relationshipProfile?.relationship;
+        if (!relationship || this.isSelf)
+            return [];
+        return [
+            { value: this.toNumber(relationship.mutualFriendsCount), label: 'Amistades en común' },
+            { value: this.toNumber(relationship.mutualCampaignsCount), label: 'Campañas en común' },
+        ];
+    }
+
     get formattedMemberSince(): string {
-        const raw = `${this.relationshipProfile?.profile?.joinedAtUtc ?? this.publicProfile?.memberSince ?? ''}`.trim();
-        if (raw.length < 1)
-            return 'fecha desconocida';
-
+        const raw = `${this.relationshipProfile?.profile?.joinedAtUtc ?? ''}`.trim();
         const parsed = new Date(raw);
-        if (Number.isNaN(parsed.getTime()))
-            return 'fecha desconocida';
-
+        if (raw.length < 1 || Number.isNaN(parsed.getTime()))
+            return '';
         return this.dateFormatter.format(parsed);
     }
 
-    get tagLabel(): string {
-        return this.mode === 'relationship' ? 'Perfil social relacional' : 'Perfil público del creador';
+    get relationshipLabel(): string {
+        if (this.isSelf)
+            return 'Este perfil es el tuyo.';
+        const relacion = this.relacion;
+        if (!relacion)
+            return '';
+        const partes: string[] = [];
+        if (relacion.amistad === 'amistades')
+            partes.push('Sois amistades.');
+        else if (relacion.amistad === 'solicitud_enviada')
+            partes.push('Le has pedido amistad.');
+        else if (relacion.amistad === 'solicitud_recibida')
+            partes.push('Te ha pedido amistad.');
+        if (relacion.sigo)
+            partes.push('La sigues.');
+        if (relacion.meSigue)
+            partes.push('Te sigue.');
+        return partes.join(' ');
     }
 
-    get relationshipStateLabel(): string {
-        const state = `${this.relationshipProfile?.relationship?.state ?? ''}`.trim();
-        if (state === 'self')
-            return 'Este perfil corresponde a tu propia cuenta.';
-        if (state === 'friend')
-            return 'Amistad activa.';
-        if (state === 'incoming_request')
-            return 'Solicitud de amistad recibida.';
-        if (state === 'outgoing_request')
-            return 'Solicitud de amistad enviada.';
-        if (state === 'blocked_by_actor')
-            return 'Has bloqueado a esta persona.';
-        if (state === 'blocked_actor')
-            return 'Esta persona te ha bloqueado o no puede interactuar contigo.';
-        return 'Sin vínculo social activo.';
+    get urlWebSocial(): string {
+        return this.platformSessionSvc.urlSocial();
     }
 
-    get canSendFriendRequest(): boolean {
-        return this.relationshipState === 'none';
-    }
-
-    get canAcceptFriendRequest(): boolean {
-        return this.relationshipState === 'incoming_request';
-    }
-
-    get canRejectFriendRequest(): boolean {
-        return this.relationshipState === 'incoming_request';
-    }
-
-    get canCancelFriendRequest(): boolean {
-        return this.relationshipState === 'outgoing_request';
-    }
-
-    get hasRelationshipActions(): boolean {
-        return this.mode === 'relationship'
-            && !!this.relationshipProfile
-            && (this.canSendFriendRequest || this.canAcceptFriendRequest || this.canRejectFriendRequest || this.canCancelFriendRequest);
-    }
-
-    get relationshipMetaItems(): { value: string; label: string; tone?: 'neutral' | 'warn'; }[] {
-        if (!this.relationshipProfile)
-            return [];
-
-        const items: { value: string; label: string; tone?: 'neutral' | 'warn'; }[] = [
-            {
-                value: `${this.relationshipProfile.relationship.mutualFriendsCount}`,
-                label: 'Amistades en común',
-            },
-            {
-                value: `${this.relationshipProfile.relationship.mutualCampaignsCount}`,
-                label: 'Campañas en común',
-            },
-        ];
-
-        if (this.relationshipProfile.relationship.blockedByActor)
-            items.push({ value: 'Sí', label: 'Bloqueado por ti', tone: 'warn' });
-        if (this.relationshipProfile.relationship.blockedActor)
-            items.push({ value: 'Sí', label: 'Te bloquea o restringe', tone: 'warn' });
-
-        return items;
-    }
-
-    get visibilityItems(): { value: string; label: string; }[] {
-        if (!this.relationshipProfile)
-            return [];
-
-        return [
-            {
-                value: this.relationshipProfile.visibility.showAuthenticatedBlock ? 'Visible' : 'Oculto',
-                label: 'Bloque autenticado',
-            },
-            {
-                value: this.relationshipProfile.visibility.showFriendsBlock ? 'Visible' : 'Oculto',
-                label: 'Bloque de amistades',
-            },
-            {
-                value: this.relationshipProfile.visibility.showRecentActivity ? 'Visible' : 'Oculta',
-                label: 'Actividad reciente',
-            },
-        ];
-    }
-
-    get recentActivityItems(): SocialRelationshipProfile['recentActivity'] {
-        if (!this.relationshipProfile?.visibility?.showRecentActivity)
-            return [];
-        return this.relationshipProfile.recentActivity ?? [];
+    entrar(): void {
+        void this.platformSessionSvc.entrar().catch(() => undefined);
     }
 
     async cargar(): Promise<void> {
         const uid = `${this.uid ?? ''}`.trim();
-        if (uid.length < 1)
+        const seq = ++this.loadSeq;
+        this.relationshipProfile = null;
+        this.relacion = null;
+        this.bio = '';
+        this.pronouns = '';
+        this.errorMessage = '';
+        if (uid.length < 1 || !this.isLoggedIn) {
+            this.loading = false;
             return;
+        }
 
         this.loading = true;
-        this.errorMessage = '';
-        this.relationshipActionErrorMessage = '';
-        this.publicProfile = null;
-        this.relationshipProfile = null;
         try {
-            if (this.mode === 'relationship')
-                this.relationshipProfile = await this.socialV3ApiSvc.getRelationshipProfile(uid);
-            else
-                this.publicProfile = await this.userProfileApiSvc.getPublicProfile(uid);
+            const [perfilRol, relacion, perfilPlataforma] = await Promise.allSettled([
+                this.socialV3ApiSvc.getRelationshipProfile(uid),
+                this.platformSocialSvc.relacion(uid),
+                this.platformSocialSvc.perfil(uid),
+            ]);
+            if (seq !== this.loadSeq)
+                return;
 
-            this.profileLoaded.emit({
-                uid,
-                displayName: this.profileLabel || null,
-            });
-        } catch (error: any) {
-            this.publicProfile = null;
-            this.relationshipProfile = null;
-            this.errorMessage = `${error?.message ?? 'No se pudo cargar el perfil público.'}`.trim();
+            if (relacion.status === 'fulfilled')
+                this.relacion = relacion.value;
+            if (perfilPlataforma.status === 'fulfilled') {
+                this.bio = `${perfilPlataforma.value?.biografia ?? ''}`.trim();
+                this.pronouns = `${perfilPlataforma.value?.pronombres ?? ''}`.trim();
+            }
+            if (perfilRol.status === 'fulfilled') {
+                this.relationshipProfile = perfilRol.value;
+                this.profileLoaded.emit({ uid, displayName: this.profileLabel || null });
+            } else if (!this.isBlockedByMe) {
+                this.errorMessage = `${perfilRol.reason?.message ?? 'No se pudo cargar el perfil.'}`.trim();
+            }
         } finally {
-            this.loading = false;
+            if (seq === this.loadSeq)
+                this.loading = false;
         }
     }
 
-    async sendFriendRequest(): Promise<void> {
-        await this.runRelationshipAction('Solicitud de amistad enviada.', async () => {
-            await this.socialApiSvc.sendFriendRequest(this.targetProfileUid);
-        });
+    pedirAmistad(): Promise<void> {
+        return this.ejecutar('Solicitud de amistad enviada.', () => this.platformSocialSvc.pedirAmistad(this.uid));
     }
 
-    async acceptFriendRequest(): Promise<void> {
-        await this.runRelationshipAction('Solicitud aceptada.', async () => {
-            const requestId = await this.findPendingFriendRequestId('received');
-            await this.socialApiSvc.resolveFriendRequest(requestId, 'accept');
-        });
+    aceptarSolicitud(): Promise<void> {
+        return this.responderSolicitud('aceptar', 'Ahora sois amistades.');
     }
 
-    async rejectFriendRequest(): Promise<void> {
-        await this.runRelationshipAction('Solicitud rechazada.', async () => {
-            const requestId = await this.findPendingFriendRequestId('received');
-            await this.socialApiSvc.resolveFriendRequest(requestId, 'reject');
-        });
+    rechazarSolicitud(): Promise<void> {
+        return this.responderSolicitud('rechazar', 'Solicitud rechazada.');
     }
 
-    async cancelFriendRequest(): Promise<void> {
-        await this.runRelationshipAction('Solicitud cancelada.', async () => {
-            const requestId = await this.findPendingFriendRequestId('sent');
-            await this.socialApiSvc.resolveFriendRequest(requestId, 'cancel');
-        });
+    retirarSolicitud(): Promise<void> {
+        const idSolicitud = this.relacion?.idSolicitud;
+        if (!idSolicitud)
+            return Promise.resolve();
+        return this.ejecutar('Solicitud retirada.', () => this.platformSocialSvc.retirarSolicitud(idSolicitud));
     }
 
-    private get relationshipState(): string {
-        return `${this.relationshipProfile?.relationship?.state ?? ''}`.trim();
-    }
-
-    private get targetProfileUid(): string {
-        return `${this.relationshipProfile?.profile?.uid ?? this.uid ?? ''}`.trim();
-    }
-
-    private async findPendingFriendRequestId(direction: 'received' | 'sent'): Promise<number> {
-        const targetUid = this.targetProfileUid;
-        const result = direction === 'received'
-            ? await this.socialApiSvc.listReceivedFriendRequests()
-            : await this.socialApiSvc.listSentFriendRequests();
-        const request = result.items.find((item) => item.status === 'pending' && item.target.uid === targetUid);
-        if (!request)
-            throw new Error('No se encontró una solicitud de amistad pendiente para este perfil.');
-        return request.requestId;
-    }
-
-    private async runRelationshipAction(successMessage: string, handler: () => Promise<void>): Promise<void> {
-        if (this.relationshipActionInFlight)
+    async dejarAmistad(): Promise<void> {
+        if (!await this.confirmar(`¿Dejar de ser amistades de ${this.profileLabel}?`, 'Dejar la amistad'))
             return;
+        await this.ejecutar('Ya no sois amistades.', () => this.platformSocialSvc.dejarAmistad(this.uid));
+    }
 
-        this.relationshipActionInFlight = true;
-        this.relationshipActionErrorMessage = '';
+    alternarSeguir(): Promise<void> {
+        const seguir = this.relacion?.sigo !== true;
+        return this.ejecutar(seguir ? 'Ahora la sigues.' : 'Has dejado de seguirla.', () => this.platformSocialSvc.seguir(this.uid, seguir));
+    }
+
+    async bloquear(): Promise<void> {
+        const texto = `${this.profileLabel} dejará de verte en todas las webs de Yosiftware y se terminarán la amistad, las solicitudes y los seguimientos entre vosotros.`;
+        if (!await this.confirmar(texto, 'Bloquear'))
+            return;
+        await this.ejecutar('Persona bloqueada.', () => this.platformSocialSvc.bloquear(this.uid, true));
+    }
+
+    desbloquear(): Promise<void> {
+        return this.ejecutar('Persona desbloqueada.', () => this.platformSocialSvc.bloquear(this.uid, false));
+    }
+
+    async denunciar(): Promise<void> {
         try {
-            await handler();
-            this.appToastSvc.showSuccess(successMessage, { category: 'amistad' });
-            await this.cargar();
-        } catch (error) {
-            this.relationshipActionErrorMessage = toUserFacingErrorMessage(error, 'No se pudo actualizar la solicitud de amistad.');
-            this.appToastSvc.showError(this.relationshipActionErrorMessage);
-        } finally {
-            this.relationshipActionInFlight = false;
+            await this.platformSessionSvc.denunciar({ tipo: 'persona', referencia: this.uid, nombre: this.profileLabel });
+        } catch {
+            this.appToastSvc.showError('No se pudo abrir la denuncia ahora mismo.');
         }
+    }
+
+    private responderSolicitud(respuesta: 'aceptar' | 'rechazar', mensaje: string): Promise<void> {
+        const idSolicitud = this.relacion?.idSolicitud;
+        if (!idSolicitud)
+            return Promise.resolve();
+        return this.ejecutar(mensaje, () => this.platformSocialSvc.responderSolicitud(idSolicitud, respuesta));
+    }
+
+    private async ejecutar(mensaje: string, accion: () => Promise<void>): Promise<void> {
+        if (this.actionInFlight || `${this.uid ?? ''}`.trim().length < 1)
+            return;
+        this.actionInFlight = true;
+        try {
+            await accion();
+            this.appToastSvc.showSuccess(mensaje, { category: 'amistad' });
+        } catch (error) {
+            this.appToastSvc.showError(error instanceof PlatformSocialError ? error.message : 'No se pudo completar la acción.');
+        } finally {
+            this.actionInFlight = false;
+        }
+        await this.cargar();
+    }
+
+    private async confirmar(texto: string, boton: string): Promise<boolean> {
+        const resultado = await Swal.fire({
+            text: texto,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: boton,
+            cancelButtonText: 'Cancelar',
+        });
+        return resultado.isConfirmed === true;
     }
 
     private toNumber(value: any): number {

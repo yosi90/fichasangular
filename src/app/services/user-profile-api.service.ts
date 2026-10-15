@@ -6,30 +6,17 @@ import { environment } from 'src/environments/environment';
 import {
     ProfileApiError,
     ProfileApiErrorResponse,
-    UserAvatarResponse,
-    UserPrivateProfile,
-    UserPrivateProfileUpdate,
     UserPublicProfile,
 } from '../interfaces/user-account';
 import {
-    AdminRoleRequestItem,
-    ResolveRoleRequestInput,
-    UserRoleRequestListFilters,
     UserRoleRequestStatus,
     UserRoleRequestTarget,
 } from '../interfaces/user-role-request';
-import { UserSettingsV1, createDefaultUserSettings } from '../interfaces/user-settings';
 import {
     UserAbuseLockReportInput,
     UserAbuseLockReportResponse,
-    UserComplianceAcceptResponse,
-    UserComplianceActivePolicy,
-    UserCompliancePolicyKind,
     UserCompliancePolicyState,
     UserComplianceSnapshot,
-    UserModerationHistoryItem,
-    UserModerationHistoryListResponse,
-    UserModerationHistoryResult,
     UserModerationSanction,
 } from '../interfaces/user-moderation';
 import { FirebaseInjectionContextService } from './firebase-injection-context.service';
@@ -50,99 +37,6 @@ export class UserProfileApiService {
         private firebaseContextSvc?: FirebaseInjectionContextService,
     ) { }
 
-    async getMyProfile(): Promise<UserPrivateProfile> {
-        const response = await this.requirePrivateReadModel('perfil privado').getMyProfile();
-        return this.normalizePrivateProfile(response ?? this.buildFallbackPrivateProfile());
-    }
-
-    async getMyCompliance(): Promise<UserComplianceSnapshot | null> {
-        try {
-            const response = await firstValueFrom(
-                this.http.get<any>(
-                    `${this.usuariosBaseUrl}/me/compliance`,
-                    { headers: await this.buildAuthHeaders() }
-                )
-            );
-            return this.normalizeCompliance(response);
-        } catch (error) {
-            throw this.toProfileApiError(error, 'No se pudo cargar tu estado de cumplimiento.');
-        }
-    }
-
-    async updateMyProfile(input: UserPrivateProfileUpdate): Promise<UserPrivateProfile> {
-        const payload = this.buildProfilePatchPayload(input);
-        if (Object.keys(payload).length < 1)
-            throw new ProfileApiError('No hay cambios de perfil para guardar.', 'PROFILE_PATCH_EMPTY', 400);
-
-        try {
-            const response = await firstValueFrom(
-                this.http.patch<UserPrivateProfile>(
-                    `${this.usuariosBaseUrl}/me`,
-                    payload,
-                    { headers: await this.buildAuthHeaders() }
-                )
-            );
-            return this.normalizePrivateProfile(response);
-        } catch (error) {
-            throw this.toProfileApiError(error, 'No se pudo actualizar tu perfil.');
-        }
-    }
-
-    async updateDisplayName(displayName: string): Promise<UserPrivateProfile> {
-        return await this.updateMyProfile({ displayName });
-    }
-
-    async getMySettings(): Promise<UserSettingsV1> {
-        const response = await this.requirePrivateReadModel('ajustes privados').getMySettings();
-        return this.normalizeSettings(response ?? createDefaultUserSettings());
-    }
-
-    async listMyModerationHistory(limit: number = 10, offset: number = 0): Promise<UserModerationHistoryListResponse> {
-        try {
-            const headers = await this.buildAuthHeaders();
-            const response = await firstValueFrom(
-                this.http.get<UserModerationHistoryListResponse>(`${this.usuariosBaseUrl}/me/moderation/history`, {
-                    headers,
-                    params: this.buildPaginationParams(limit, offset),
-                })
-            );
-            return this.normalizeModerationHistoryResponse(response, limit, offset);
-        } catch (error) {
-            throw this.toProfileApiError(error, 'No se pudo cargar tu historial de moderación.');
-        }
-    }
-
-    async getActivePolicy(policyKind: UserCompliancePolicyKind): Promise<UserComplianceActivePolicy> {
-        const normalizedKind = this.normalizePolicyKind(policyKind);
-        try {
-            const response = await firstValueFrom(
-                this.http.get<any>(
-                    `${this.usuariosBaseUrl}/me/policies/${normalizedKind}/active`,
-                    { headers: await this.buildAuthHeaders() }
-                )
-            );
-            return this.normalizeActivePolicy(response, normalizedKind);
-        } catch (error) {
-            throw this.toProfileApiError(error, `No se pudo cargar la política activa de ${normalizedKind}.`);
-        }
-    }
-
-    async acceptActivePolicy(policyKind: UserCompliancePolicyKind): Promise<UserComplianceAcceptResponse> {
-        const normalizedKind = this.normalizePolicyKind(policyKind);
-        try {
-            const response = await firstValueFrom(
-                this.http.post<any>(
-                    `${this.usuariosBaseUrl}/me/policies/${normalizedKind}/accept`,
-                    {},
-                    { headers: await this.buildAuthHeaders() }
-                )
-            );
-            return this.normalizePolicyAcceptResponse(response, normalizedKind);
-        } catch (error) {
-            throw this.toProfileApiError(error, `No se pudo aceptar la política activa de ${normalizedKind}.`);
-        }
-    }
-
     async reportAbuseLock(input: UserAbuseLockReportInput): Promise<UserAbuseLockReportResponse> {
         const payload = this.normalizeAbuseLockPayload(input);
         try {
@@ -156,50 +50,6 @@ export class UserProfileApiService {
             return this.normalizeAbuseLockResponse(response);
         } catch (error) {
             throw this.toProfileApiError(error, 'No se pudo escalar el bloqueo técnico por abuso.');
-        }
-    }
-
-    async replaceMySettings(settings: UserSettingsV1): Promise<UserSettingsV1> {
-        try {
-            const response = await firstValueFrom(
-                this.http.put<UserSettingsV1>(
-                    `${this.usuariosBaseUrl}/me/settings`,
-                    settings,
-                    { headers: await this.buildAuthHeaders() }
-                )
-            );
-            return this.normalizeSettings(response);
-        } catch (error) {
-            throw this.toProfileApiError(error, 'No se pudieron guardar los ajustes de usuario.');
-        }
-    }
-
-    async uploadAvatar(file: File): Promise<UserAvatarResponse> {
-        const formData = new FormData();
-        formData.append('file', file);
-
-        try {
-            return await firstValueFrom(
-                this.http.post<UserAvatarResponse>(
-                    `${this.usuariosBaseUrl}/me/avatar`,
-                    formData,
-                    { headers: await this.buildAuthHeaders() }
-                )
-            );
-        } catch (error) {
-            throw this.toProfileApiError(error, 'No se pudo subir el avatar.');
-        }
-    }
-
-    async deleteAvatar(): Promise<void> {
-        try {
-            await firstValueFrom(
-                this.http.delete<void>(`${this.usuariosBaseUrl}/me/avatar`, {
-                    headers: await this.buildAuthHeaders(),
-                })
-            );
-        } catch (error) {
-            throw this.toProfileApiError(error, 'No se pudo eliminar el avatar.');
         }
     }
 
@@ -240,94 +90,19 @@ export class UserProfileApiService {
         }
     }
 
-    async listRoleRequests(filters: UserRoleRequestListFilters = {}): Promise<AdminRoleRequestItem[]> {
-        const params: Record<string, string> = {};
-        const status = `${filters?.status ?? ''}`.trim().toLowerCase();
-        const requestedRole = `${filters?.requestedRole ?? ''}`.trim().toLowerCase();
-
-        if (status === 'pending' || status === 'approved' || status === 'rejected')
-            params['status'] = status;
-        if (requestedRole === 'master' || requestedRole === 'colaborador')
-            params['requestedRole'] = requestedRole;
-
-        try {
-            const headers = await this.buildAuthHeaders();
-            const response = await firstValueFrom(
-                this.http.get<AdminRoleRequestItem[]>(`${this.usuariosBaseUrl}/role-requests`, {
-                    headers,
-                    params,
-                })
-            );
-            return Array.isArray(response)
-                ? response.map((item) => this.normalizeAdminRoleRequestItem(item))
-                : [];
-        } catch (error) {
-            throw this.toProfileApiError(error, 'No se pudieron cargar las solicitudes de rol.');
-        }
-    }
-
-    async resolveRoleRequest(requestId: number, input: ResolveRoleRequestInput): Promise<void> {
-        const id = Math.trunc(Number(requestId));
-        if (!Number.isFinite(id) || id <= 0)
-            throw new ProfileApiError('Solicitud inválida.', 'ROLE_REQUEST_INVALID', 400);
-
-        const payload = {
-            decision: input.decision,
-            blockedUntilUtc: input.blockedUntilUtc ?? null,
-            adminComment: `${input.adminComment ?? ''}`.trim() || null,
-            notifyUser: input.notifyUser ?? true,
-        };
-
-        try {
-            const headers = await this.buildAuthHeaders();
-            await firstValueFrom(
-                this.http.patch<void>(
-                    `${this.usuariosBaseUrl}/role-requests/${id}`,
-                    payload,
-                    { headers }
-                )
-            );
-        } catch (error) {
-            throw this.toProfileApiError(error, 'No se pudo resolver la solicitud.');
-        }
-    }
-
-    async getPublicProfile(uid: string, forceRefresh: boolean = false): Promise<UserPublicProfile> {
-        const uidNormalizado = `${uid ?? ''}`.trim();
-        if (uidNormalizado.length < 1)
-            throw new ProfileApiError('UID inválido.', 'PUBLIC_PROFILE_UID_INVALID', 400);
-
-        if (!forceRefresh && this.publicProfileCache.has(uidNormalizado)) {
-            const cached = this.publicProfileCache.get(uidNormalizado);
-            if (cached)
-                return cached;
-            throw new ProfileApiError('Perfil público no disponible.', 'PUBLIC_PROFILE_NOT_FOUND', 404);
-        }
-
-        try {
-            const response = await firstValueFrom(
-                this.http.get<UserPublicProfile>(`${this.usuariosBaseUrl}/${encodeURIComponent(uidNormalizado)}/public`)
-            );
-            const normalized = this.normalizePublicProfile(response);
-            this.publicProfileCache.set(uidNormalizado, normalized);
-            return normalized;
-        } catch (error) {
-            const apiError = this.toProfileApiError(error, 'No se pudo cargar el perfil público.');
-            if (apiError.status === 404)
-                this.publicProfileCache.set(uidNormalizado, null);
-            throw apiError;
-        }
-    }
-
-    async hasPublicProfile(uid: string): Promise<boolean> {
-        try {
-            await this.getPublicProfile(uid);
-            return true;
-        } catch (error) {
-            if (error instanceof ProfileApiError && error.status === 404)
-                return false;
-            throw error;
-        }
+    /** Descarga de lo que Rol guarda de la persona (`GET /usuarios/me/datos`), como archivo JSON. */
+    async downloadMyData(): Promise<void> {
+        const headers = await this.buildAuthHeaders();
+        const blob = await firstValueFrom(
+            this.http.get(`${this.usuariosBaseUrl}/me/datos`, { headers, responseType: 'blob' })
+        );
+        const fecha = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+        const url = URL.createObjectURL(blob);
+        const enlace = document.createElement('a');
+        enlace.href = url;
+        enlace.download = `rol-mis-datos-${fecha}.json`;
+        enlace.click();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
     }
 
     clearPublicProfileCache(uid?: string): void {
@@ -337,17 +112,6 @@ export class UserProfileApiService {
             return;
         }
         this.publicProfileCache.clear();
-    }
-
-    private requirePrivateReadModel(scope: string): PrivateUserFirestoreService {
-        if (this.privateUserFirestoreSvc)
-            return this.privateUserFirestoreSvc;
-
-        throw new ProfileApiError(
-            `El ${scope} debe leerse desde Firestore y el read model privado no está disponible.`,
-            'PRIVATE_READ_MODEL_UNAVAILABLE',
-            500
-        );
     }
 
     private async buildAuthHeaders(): Promise<HttpHeaders> {
@@ -407,108 +171,6 @@ export class UserProfileApiService {
         return { code: '', message: '' };
     }
 
-    private buildProfilePatchPayload(input: UserPrivateProfileUpdate | null | undefined): UserPrivateProfileUpdate {
-        const payload: UserPrivateProfileUpdate = {};
-        if (!input || typeof input !== 'object')
-            return payload;
-
-        if (Object.prototype.hasOwnProperty.call(input, 'displayName'))
-            payload.displayName = `${input.displayName ?? ''}`.trim();
-        if (Object.prototype.hasOwnProperty.call(input, 'bio'))
-            payload.bio = this.normalizeMultilineText(input.bio);
-        if (Object.prototype.hasOwnProperty.call(input, 'genderIdentity'))
-            payload.genderIdentity = this.toNullableText(input.genderIdentity);
-        if (Object.prototype.hasOwnProperty.call(input, 'pronouns'))
-            payload.pronouns = this.toNullableText(input.pronouns);
-
-        return payload;
-    }
-
-    private normalizePrivateProfile(raw: UserPrivateProfile | null | undefined): UserPrivateProfile {
-        return {
-            uid: `${raw?.uid ?? ''}`.trim(),
-            displayName: this.toNullableText(raw?.displayName),
-            bio: this.normalizeMultilineText(raw?.bio),
-            genderIdentity: this.toNullableText(raw?.genderIdentity),
-            pronouns: this.toNullableText(raw?.pronouns),
-            email: this.toNullableText(raw?.email),
-            emailVerified: raw?.emailVerified === true,
-            authProvider: this.normalizeAuthProvider(raw?.authProvider),
-            photoUrl: this.toNullableText(raw?.photoUrl),
-            photoThumbUrl: this.toNullableText(raw?.photoThumbUrl),
-            createdAt: this.toNullableText(raw?.createdAt),
-            lastSeenAt: this.toNullableText(raw?.lastSeenAt),
-            role: this.normalizeUserRole(raw?.role),
-            permissions: this.normalizePermissionsMap(raw?.permissions),
-            compliance: this.normalizeCompliance(raw?.compliance),
-            excludeFromAnalytics: raw?.excludeFromAnalytics === true,
-        };
-    }
-
-    private buildFallbackPrivateProfile(): UserPrivateProfile {
-        const currentUser = this.auth.currentUser;
-        const email = this.toNullableText(currentUser?.email);
-        const displayName = this.toNullableText(currentUser?.displayName)
-            ?? this.fallbackDisplayName(email)
-            ?? 'Usuario';
-
-        return {
-            uid: `${currentUser?.uid ?? ''}`.trim(),
-            displayName,
-            bio: null,
-            genderIdentity: null,
-            pronouns: null,
-            email,
-            emailVerified: currentUser?.emailVerified === true,
-            authProvider: this.normalizeAuthProvider(null),
-            photoUrl: null,
-            photoThumbUrl: null,
-            createdAt: null,
-            lastSeenAt: null,
-            role: 'jugador',
-            permissions: {},
-            compliance: null,
-        };
-    }
-
-    private normalizePublicProfile(raw: UserPublicProfile | null | undefined): UserPublicProfile {
-        return {
-            uid: `${raw?.uid ?? ''}`.trim(),
-            displayName: this.toNullableText(raw?.displayName),
-            bio: this.normalizeMultilineText(raw?.bio),
-            pronouns: this.toNullableText(raw?.pronouns),
-            photoThumbUrl: this.toNullableText(raw?.photoThumbUrl),
-            memberSince: this.toNullableText(raw?.memberSince),
-            stats: this.normalizePublicProfileStats(raw?.stats),
-        };
-    }
-
-    private normalizePublicProfileStats(raw: UserPublicProfile['stats'] | null | undefined): UserPublicProfile['stats'] {
-        return {
-            totalPersonajes: this.toNonNegativeInt(raw?.totalPersonajes),
-            publicos: this.toNonNegativeInt(raw?.publicos),
-            campanasActivas: this.toNonNegativeInt(raw?.campanasActivas),
-            campanasMaster: this.toNonNegativeInt(raw?.campanasMaster),
-            campanasCreadas: this.toNonNegativeInt(raw?.campanasCreadas),
-        };
-    }
-
-    private normalizePermissionsMap(raw: UserPrivateProfile['permissions'] | null | undefined): UserPrivateProfile['permissions'] {
-        if (!raw || typeof raw !== 'object')
-            return {};
-
-        return Object.entries(raw).reduce<UserPrivateProfile['permissions']>((acc, [resource, value]) => {
-            const key = `${resource ?? ''}`.trim();
-            if (key.length < 1)
-                return acc;
-
-            acc[key] = {
-                create: value?.create === true,
-            };
-            return acc;
-        }, {});
-    }
-
     private normalizeCompliance(raw: any): UserComplianceSnapshot | null {
         if (!raw || typeof raw !== 'object')
             return null;
@@ -539,28 +201,6 @@ export class UserProfileApiService {
             acceptedAtUtc: this.toNullableText(raw?.acceptedAtUtc ?? raw?.acceptedAt),
             publishedAtUtc: this.toNullableText(raw?.publishedAtUtc ?? raw?.effectiveAtUtc ?? raw?.activeSinceUtc),
             title: this.toNullableText(raw?.title ?? raw?.name),
-        };
-    }
-
-    private normalizeActivePolicy(raw: any, fallbackKind: UserCompliancePolicyKind): UserComplianceActivePolicy {
-        const normalizedKind = this.normalizePolicyKind(raw?.kind ?? raw?.policyKind ?? fallbackKind);
-        return {
-            kind: normalizedKind,
-            version: this.toNullableText(raw?.version ?? raw?.versionTag ?? raw?.versionCode),
-            title: this.toNullableText(raw?.title ?? raw?.name),
-            markdown: this.normalizeMultilineText(raw?.markdown ?? raw?.content ?? raw?.body),
-            publishedAtUtc: this.toNullableText(raw?.publishedAtUtc ?? raw?.effectiveAtUtc ?? raw?.activeSinceUtc),
-        };
-    }
-
-    private normalizePolicyAcceptResponse(raw: any, fallbackKind: UserCompliancePolicyKind): UserComplianceAcceptResponse {
-        const policySource = raw?.policy ?? raw?.activePolicy ?? raw;
-        const complianceSource = raw?.compliance ?? raw?.complianceSnapshot ?? null;
-        return {
-            policy: policySource && typeof policySource === 'object'
-                ? this.normalizeActivePolicy(policySource, fallbackKind)
-                : null,
-            compliance: this.normalizeCompliance(complianceSource),
         };
     }
 
@@ -723,51 +363,6 @@ export class UserProfileApiService {
         return null;
     }
 
-    private normalizeModerationHistoryResponse(
-        raw: any,
-        requestedLimit: number,
-        requestedOffset: number
-    ): UserModerationHistoryListResponse {
-        const rawItems = Array.isArray(raw)
-            ? raw
-            : (Array.isArray(raw?.items) ? raw.items : []);
-        const items = rawItems.map((item: any) => this.normalizeModerationHistoryItem(item));
-        const limit = this.normalizeModerationPageSize(
-            Array.isArray(raw) ? items.length || requestedLimit : raw?.limit,
-            requestedLimit
-        );
-        const offset = this.toNonNegativeInt(Array.isArray(raw) ? requestedOffset : raw?.offset)
-            ?? this.toNonNegativeInt(requestedOffset)
-            ?? 0;
-        const total = this.toNonNegativeInt(Array.isArray(raw) ? items.length : raw?.total) ?? items.length;
-        const hasMore = Array.isArray(raw)
-            ? false
-            : (raw?.hasMore === true || offset + items.length < total);
-
-        return {
-            items,
-            total,
-            limit,
-            offset,
-            hasMore,
-        };
-    }
-
-    private normalizeModerationHistoryItem(raw: any): UserModerationHistoryItem {
-        return {
-            incidentId: this.toPositiveIntOrNull(raw?.incidentId) ?? 0,
-            caseId: this.toPositiveIntOrNull(raw?.caseId),
-            caseCode: this.toNullableText(raw?.caseCode),
-            caseName: this.toNullableText(raw?.caseName),
-            mode: this.toNullableText(raw?.mode),
-            confirmedAtUtc: this.toNullableText(raw?.confirmedAtUtc),
-            createdAtUtc: this.toNullableText(raw?.createdAtUtc),
-            userVisibleMessage: this.normalizeMultilineText(raw?.userVisibleMessage),
-            result: this.normalizeModerationResult(raw?.result),
-            sanction: this.normalizeModerationSanction(raw?.sanction),
-        };
-    }
-
     private normalizeModerationSanction(raw: any): UserModerationSanction | null {
         if (!raw || typeof raw !== 'object')
             return null;
@@ -798,82 +393,6 @@ export class UserProfileApiService {
         };
     }
 
-    private normalizeModerationResult(value: any): UserModerationHistoryResult | null {
-        const normalized = `${value ?? ''}`.trim().toLowerCase();
-        if (normalized === 'reported' || normalized === 'sanctioned' || normalized === 'banned')
-            return normalized;
-        return null;
-    }
-
-    private normalizeAuthProvider(value: any): UserPrivateProfile['authProvider'] {
-        const normalized = `${value ?? ''}`.trim().toLowerCase();
-        if (normalized === 'correo' || normalized === 'google')
-            return normalized;
-
-        const providerIds = (this.auth.currentUser?.providerData ?? [])
-            .map((provider) => `${provider?.providerId ?? ''}`.trim().toLowerCase())
-            .filter((providerId) => providerId.length > 0);
-        if (providerIds.includes('google.com'))
-            return 'google';
-        if (providerIds.includes('password') || providerIds.includes('email'))
-            return 'correo';
-        return 'otro';
-    }
-
-    private normalizeUserRole(value: any): UserPrivateProfile['role'] {
-        const normalized = `${value ?? ''}`.trim().toLowerCase();
-        if (normalized === 'master' || normalized === 'colaborador' || normalized === 'admin')
-            return normalized;
-        return 'jugador';
-    }
-
-    private normalizePolicyKind(value: any): UserCompliancePolicyKind {
-        return `${value ?? ''}`.trim().toLowerCase() === 'creation' ? 'creation' : 'usage';
-    }
-
-    private buildPaginationParams(limit: number, offset: number): Record<string, string> {
-        const params: Record<string, string> = {};
-        params['limit'] = `${this.normalizeModerationPageSize(limit, 10)}`;
-        params['offset'] = `${this.toNonNegativeInt(offset) ?? 0}`;
-        return params;
-    }
-
-    private normalizeModerationPageSize(value: any, fallback: number): number {
-        const parsed = this.toNonNegativeInt(value);
-        if (parsed === null || parsed < 1)
-            return fallback;
-        return Math.min(100, parsed);
-    }
-
-    private normalizeSettings(raw: UserSettingsV1 | null | undefined): UserSettingsV1 {
-        const base = createDefaultUserSettings();
-        if (!raw || typeof raw !== 'object')
-            return base;
-
-        return {
-            version: 1,
-            nuevo_personaje: {
-                generador_config: raw?.nuevo_personaje?.generador_config ?? null,
-                preview_minimizada: raw?.nuevo_personaje?.preview_minimizada ?? null,
-                preview_restaurada: raw?.nuevo_personaje?.preview_restaurada ?? null,
-            },
-            perfil: {
-                visibilidadPorDefectoPersonajes: raw?.perfil?.visibilidadPorDefectoPersonajes === true,
-                mostrarPerfilPublico: raw?.perfil?.mostrarPerfilPublico !== false,
-                allowDirectMessagesFromNonFriends: raw?.perfil?.allowDirectMessagesFromNonFriends === true,
-                autoAbrirVentanaChats: raw?.perfil?.autoAbrirVentanaChats !== false,
-                permitirBurbujasChat: raw?.perfil?.permitirBurbujasChat !== false,
-                notificaciones: {
-                    mensajes: raw?.perfil?.notificaciones?.mensajes !== false,
-                    amistad: raw?.perfil?.notificaciones?.amistad !== false,
-                    campanas: raw?.perfil?.notificaciones?.campanas !== false,
-                    cuentaSistema: raw?.perfil?.notificaciones?.cuentaSistema !== false,
-                },
-            },
-            mensajeria_flotante: raw?.mensajeria_flotante ?? null,
-        };
-    }
-
     private normalizeRoleRequestStatus(raw: UserRoleRequestStatus | null | undefined): UserRoleRequestStatus {
         return {
             currentRole: (raw?.currentRole ?? 'jugador') as UserRoleRequestStatus['currentRole'],
@@ -888,27 +407,6 @@ export class UserProfileApiService {
             currentRoleAtRequest: raw?.currentRoleAtRequest ?? null,
             requestComment: this.normalizeMultilineText(raw?.requestComment),
             adminComment: this.toNullableText(raw?.adminComment),
-        };
-    }
-
-    private normalizeAdminRoleRequestItem(raw: AdminRoleRequestItem | null | undefined): AdminRoleRequestItem {
-        return {
-            requestId: this.toPositiveIntOrNull(raw?.requestId) ?? 0,
-            userId: `${raw?.userId ?? ''}`.trim(),
-            status: raw?.status ?? 'pending',
-            requestedRole: raw?.requestedRole ?? 'master',
-            currentRoleAtRequest: raw?.currentRoleAtRequest ?? 'jugador',
-            requestedAtUtc: this.toNullableText(raw?.requestedAtUtc),
-            requestedByUserId: this.toNullableText(raw?.requestedByUserId),
-            resolvedAtUtc: this.toNullableText(raw?.resolvedAtUtc),
-            resolvedByUserId: this.toNullableText(raw?.resolvedByUserId),
-            blockedUntilUtc: this.toNullableText(raw?.blockedUntilUtc),
-            requestComment: this.normalizeMultilineText(raw?.requestComment),
-            adminComment: this.toNullableText(raw?.adminComment),
-            uid: `${raw?.uid ?? ''}`.trim(),
-            displayName: this.toNullableText(raw?.displayName),
-            email: this.toNullableText(raw?.email),
-            currentRole: (raw?.currentRole ?? 'jugador') as AdminRoleRequestItem['currentRole'],
         };
     }
 
@@ -937,14 +435,4 @@ export class UserProfileApiService {
         return text.length > 0 ? text : null;
     }
 
-    private fallbackDisplayName(email: string | null): string | null {
-        const normalized = `${email ?? ''}`.trim();
-        if (normalized.length < 1)
-            return null;
-
-        const atPos = normalized.indexOf('@');
-        if (atPos > 0)
-            return normalized.substring(0, atPos);
-        return normalized;
-    }
 }

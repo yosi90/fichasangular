@@ -1,16 +1,13 @@
 import { Injectable } from '@angular/core';
 import { Observable, Subject } from 'rxjs';
 import {
-    AccountRestrictionOpenRequest,
-    AccountRestrictionSectionId,
-    AdminPanelOpenRequest,
-    AdminPanelSectionId,
     SocialHubOpenRequest,
     SocialHubSectionId,
     UserPrivateProfileOpenRequest,
     UserPrivateProfileSectionId,
     UserPublicProfileTab
 } from '../interfaces/user-account';
+import { PlatformSessionService } from './platform-session.service';
 
 @Injectable({
     providedIn: 'root'
@@ -19,24 +16,20 @@ export class UserProfileNavigationService {
     private readonly privateProfileSubject = new Subject<UserPrivateProfileOpenRequest>();
     private readonly publicProfileSubject = new Subject<UserPublicProfileTab>();
     private readonly socialSubject = new Subject<SocialHubOpenRequest>();
-    private readonly adminPanelSubject = new Subject<AdminPanelOpenRequest>();
-    private readonly accountRestrictionSubject = new Subject<AccountRestrictionOpenRequest>();
+    private readonly adminPanelSubject = new Subject<void>();
     private readonly roadmapSubject = new Subject<void>();
     private readonly legalPrivacySubject = new Subject<void>();
     private readonly usageAboutSubject = new Subject<void>();
-    private readonly feedbackBugSubject = new Subject<void>();
-    private readonly feedbackFeatureSubject = new Subject<void>();
 
     readonly privateProfileOpen$: Observable<UserPrivateProfileOpenRequest> = this.privateProfileSubject.asObservable();
     readonly publicProfileOpen$: Observable<UserPublicProfileTab> = this.publicProfileSubject.asObservable();
     readonly socialOpen$: Observable<SocialHubOpenRequest> = this.socialSubject.asObservable();
-    readonly adminPanelOpen$: Observable<AdminPanelOpenRequest> = this.adminPanelSubject.asObservable();
-    readonly accountRestrictionOpen$: Observable<AccountRestrictionOpenRequest> = this.accountRestrictionSubject.asObservable();
+    readonly adminPanelOpen$: Observable<void> = this.adminPanelSubject.asObservable();
     readonly roadmapOpen$: Observable<void> = this.roadmapSubject.asObservable();
     readonly legalPrivacyOpen$: Observable<void> = this.legalPrivacySubject.asObservable();
     readonly usageAboutOpen$: Observable<void> = this.usageAboutSubject.asObservable();
-    readonly feedbackBugOpen$: Observable<void> = this.feedbackBugSubject.asObservable();
-    readonly feedbackFeatureOpen$: Observable<void> = this.feedbackFeatureSubject.asObservable();
+
+    constructor(private platformSessionSvc: PlatformSessionService) { }
 
     openPrivateProfile(request?: UserPrivateProfileOpenRequest | UserPrivateProfileSectionId): void {
         if (typeof request === 'string' || !request) {
@@ -69,41 +62,18 @@ export class UserProfileNavigationService {
 
         this.socialSubject.next({
             section: request?.section ?? 'resumen',
-            conversationId: Number(request?.conversationId) > 0 ? Number(request?.conversationId) : null,
             campaignId: Number(request?.campaignId) > 0 ? Number(request?.campaignId) : null,
             requestId: Number(request?.requestId) > 0 ? Number(request?.requestId) : Date.now(),
         });
     }
 
-    openAdminPanel(request?: AdminPanelOpenRequest | AdminPanelSectionId): void {
-        if (typeof request === 'string') {
-            this.adminPanelSubject.next({
-                section: request,
-                requestId: Date.now(),
-            });
-            return;
-        }
-
-        this.adminPanelSubject.next({
-            section: request?.section ?? 'usuarios',
-            pendingOnly: request?.pendingOnly === true,
-            requestId: Number(request?.requestId) > 0 ? Number(request?.requestId) : Date.now(),
-        });
+    openAdminPanel(): void {
+        this.adminPanelSubject.next();
     }
 
-    openAccountRestriction(request?: AccountRestrictionOpenRequest | AccountRestrictionSectionId): void {
-        if (typeof request === 'string' || !request) {
-            this.accountRestrictionSubject.next({
-                section: request ?? 'resumen',
-                requestId: Date.now(),
-            });
-            return;
-        }
-
-        this.accountRestrictionSubject.next({
-            section: request.section ?? 'resumen',
-            requestId: Number(request.requestId) > 0 ? Number(request.requestId) : Date.now(),
-        });
+    /** La moderación de la cuenta (avisos, limitaciones y alegaciones) está en la web social de Yosiftware. */
+    openAccountRestriction(): void {
+        window.open(this.platformSessionSvc.urlSocial('moderacion'), '_blank', 'noopener');
     }
 
     openRoadmap(): void {
@@ -118,11 +88,34 @@ export class UserProfileNavigationService {
         this.usageAboutSubject.next();
     }
 
+    /** Errores y propuestas: el formulario de la plataforma, sobre la web (ecosistema-kit/ACCESO.md). */
     openFeedbackBug(): void {
-        this.feedbackBugSubject.next();
+        void this.platformSessionSvc.reportar('error').catch(() => undefined);
     }
 
     openFeedbackFeature(): void {
-        this.feedbackFeatureSubject.next();
+        void this.platformSessionSvc.reportar('propuesta').catch(() => undefined);
+    }
+
+    /**
+     * Los enlaces de las notificaciones de Rol en el centro de la plataforma (docs/publica/MIGRACION_PLATAFORMA_FRONT.md):
+     * `?vista=campanas&campana={id}` y `?vista=cuenta`. Devuelve `true` si el enlace era de una vista de Rol.
+     */
+    abrirVista(parametros: URLSearchParams): boolean {
+        const vista = `${parametros.get('vista') ?? ''}`.trim();
+        if (vista === 'campanas') {
+            const campana = Math.trunc(Number(parametros.get('campana')));
+            this.openSocial({
+                section: 'campanas',
+                campaignId: Number.isFinite(campana) && campana > 0 ? campana : null,
+                requestId: Date.now(),
+            });
+            return true;
+        }
+        if (vista === 'cuenta') {
+            this.openPrivateProfile('resumen');
+            return true;
+        }
+        return false;
     }
 }

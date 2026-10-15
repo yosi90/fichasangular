@@ -15,6 +15,7 @@ import { UserProfileNavigationService } from 'src/app/services/user-profile-navi
 import { UserService } from 'src/app/services/user.service';
 import { resolveDefaultProfileAvatar } from 'src/app/services/utils/profile-avatar.util';
 import { AppToastService } from 'src/app/services/app-toast.service';
+import { PlatformSessionService } from 'src/app/services/platform-session.service';
 
 @Component({
     selector: 'app-social-lfg-section',
@@ -105,6 +106,7 @@ export class SocialLfgSectionComponent implements OnInit, OnChanges, OnDestroy {
         private userSvc: UserService,
         private userProfileNavSvc: UserProfileNavigationService,
         private appToastSvc: AppToastService,
+        private platformSessionSvc: PlatformSessionService,
     ) { }
 
     ngOnInit(): void {
@@ -463,16 +465,40 @@ export class SocialLfgSectionComponent implements OnInit, OnChanges, OnDestroy {
         this.contactSaving = true;
         this.applicationsErrorMessage = '';
         try {
+            // Una conversación de la web en el chat de la plataforma (`<yosi-chat>`).
             const response = await this.socialV3ApiSvc.openLfgContactConversation(this.selectedPost.id);
-            this.userProfileNavSvc.openSocial({
-                section: 'mensajes',
-                conversationId: response.conversationId,
-                requestId: Date.now(),
-            });
+            const abierta = await this.platformSessionSvc.abrirChat(response.conversationId);
+            if (!abierta)
+                this.appToastSvc.showError('El chat de Yosiftware no está disponible ahora mismo.');
+            else if (response.pendingMembers)
+                this.appToastSvc.showInfo('La otra persona verá la conversación cuando vuelva a entrar en Rol.');
         } catch (error: any) {
             this.appToastSvc.showError(this.mapLfgActionError(error, 'No se pudo abrir la conversación.'));
         } finally {
             this.contactSaving = false;
+        }
+    }
+
+    get canReportSelectedPost(): boolean {
+        const authorUid = `${this.selectedPost?.author?.uid ?? ''}`.trim();
+        return this.isLoggedIn && authorUid.length > 0 && authorUid !== `${this.userSvc.CurrentUserUid ?? ''}`.trim();
+    }
+
+    /** La convocatoria es de Rol: se denuncia a quien la publica, con su texto como extracto (ecosistema-kit/MODERACION.md). */
+    async reportSelectedPost(): Promise<void> {
+        const post = this.selectedPost;
+        if (!post || !this.canReportSelectedPost)
+            return;
+        const extracto = [post.title, post.summary].map((texto) => `${texto ?? ''}`.trim()).filter((texto) => texto.length > 0).join(' — ');
+        try {
+            await this.platformSessionSvc.denunciar({
+                tipo: 'persona',
+                referencia: post.author.uid,
+                nombre: post.author.displayName ?? undefined,
+                extracto: extracto.slice(0, 500) || undefined,
+            });
+        } catch {
+            this.appToastSvc.showError('No se pudo abrir la denuncia ahora mismo.');
         }
     }
 
@@ -483,7 +509,6 @@ export class SocialLfgSectionComponent implements OnInit, OnChanges, OnDestroy {
         this.userProfileNavSvc.openPublicProfile({
             uid,
             initialDisplayName: post?.author?.displayName ?? null,
-            mode: 'relationship',
         });
     }
 

@@ -175,6 +175,10 @@
                                 <button mat-stroked-button color="primary" type="button" *ngIf="canOpenContactConversation" (click)="openContactConversation()" [disabled]="contactSaving">
                                     {{contactSaving ? 'Abriendo...' : 'Abrir conversación'}}
                                 </button>
+                                <button mat-stroked-button color="warn" type="button" *ngIf="canReportSelectedPost" (click)="reportSelectedPost()">
+                                    <mat-icon>flag</mat-icon>
+                                    Denunciar
+                                </button>
                             </div>
                         </div>
 

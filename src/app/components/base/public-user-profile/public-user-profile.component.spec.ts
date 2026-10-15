@@ -1,230 +1,125 @@
-import { ComponentFixture, TestBed, fakeAsync, tick } from '@angular/core/testing';
-import { SimpleChange } from '@angular/core';
-import { MatButtonModule } from '@angular/material/button';
-import { MatIconModule } from '@angular/material/icon';
-
+import { BehaviorSubject } from 'rxjs';
 import { PublicUserProfileComponent } from './public-user-profile.component';
-import { AppToastService } from 'src/app/services/app-toast.service';
-import { SocialApiService } from 'src/app/services/social-api.service';
-import { SocialV3ApiService } from 'src/app/services/social-v3-api.service';
-import { UserProfileApiService } from 'src/app/services/user-profile-api.service';
+import { PlatformSocialError, RelacionPlataforma } from 'src/app/services/platform-social.service';
 
 describe('PublicUserProfileComponent', () => {
-    let fixture: ComponentFixture<PublicUserProfileComponent>;
     let component: PublicUserProfileComponent;
-    let apiSvc: jasmine.SpyObj<UserProfileApiService>;
-    let socialV3ApiSvc: jasmine.SpyObj<SocialV3ApiService>;
-    let socialApiSvc: jasmine.SpyObj<SocialApiService>;
-    let appToastSvc: jasmine.SpyObj<AppToastService>;
+    let socialV3ApiSvc: any;
+    let platformSocialSvc: any;
+    let platformSessionSvc: any;
+    let userSvc: any;
+    let appToastSvc: any;
+    let isLoggedIn$: BehaviorSubject<boolean>;
 
-    beforeEach(async () => {
-        apiSvc = jasmine.createSpyObj<UserProfileApiService>('UserProfileApiService', ['getPublicProfile']);
-        socialV3ApiSvc = jasmine.createSpyObj<SocialV3ApiService>('SocialV3ApiService', ['getRelationshipProfile']);
-        socialApiSvc = jasmine.createSpyObj<SocialApiService>('SocialApiService', [
-            'sendFriendRequest',
-            'listReceivedFriendRequests',
-            'listSentFriendRequests',
-            'resolveFriendRequest',
+    const perfilRol = {
+        profile: { uid: 'uid-2', displayName: 'Yuna', photoThumbUrl: null, bio: null, pronouns: null, joinedAtUtc: '2026-01-02T00:00:00Z' },
+        relationship: { state: 'none', mutualFriendsCount: 1, mutualCampaignsCount: 2 },
+        visibility: { showAuthenticatedBlock: true, showFriendsBlock: false },
+        stats: { totalCharacters: 3, publicCharacters: 1, activeCampaigns: 1, campaignsAsMaster: 0, campaignsCreated: 0 },
+    };
+    const sinRelacion: RelacionPlataforma = { amistad: 'ninguna', idSolicitud: null, sigo: false, meSigue: false, bloqueada: false };
+
+    function crear(logueado = true): void {
+        isLoggedIn$ = new BehaviorSubject<boolean>(logueado);
+        userSvc = { IsLoggedIn: logueado, isLoggedIn$ };
+        component = new PublicUserProfileComponent(socialV3ApiSvc, platformSocialSvc, platformSessionSvc, userSvc, appToastSvc);
+        component.uid = 'uid-2';
+        component.isLoggedIn = logueado;
+    }
+
+    beforeEach(() => {
+        socialV3ApiSvc = jasmine.createSpyObj('SocialV3ApiService', ['getRelationshipProfile']);
+        socialV3ApiSvc.getRelationshipProfile.and.resolveTo(perfilRol);
+        platformSocialSvc = jasmine.createSpyObj('PlatformSocialService', [
+            'relacion', 'perfil', 'pedirAmistad', 'responderSolicitud', 'retirarSolicitud', 'dejarAmistad', 'seguir', 'bloquear',
         ]);
-        appToastSvc = jasmine.createSpyObj<AppToastService>('AppToastService', ['showSuccess', 'showError']);
-
-        await TestBed.configureTestingModule({
-            declarations: [PublicUserProfileComponent],
-            imports: [
-                MatButtonModule,
-                MatIconModule,
-            ],
-            providers: [
-                { provide: UserProfileApiService, useValue: apiSvc },
-                { provide: SocialV3ApiService, useValue: socialV3ApiSvc },
-                { provide: SocialApiService, useValue: socialApiSvc },
-                { provide: AppToastService, useValue: appToastSvc },
-            ],
-        }).compileComponents();
-
-        fixture = TestBed.createComponent(PublicUserProfileComponent);
-        component = fixture.componentInstance;
+        platformSocialSvc.relacion.and.resolveTo(sinRelacion);
+        platformSocialSvc.perfil.and.resolveTo({ id: 'uid-2', alias: 'yuna', nombre: 'Yuna', biografia: 'Barda', pronombres: 'ella', privado: false });
+        platformSocialSvc.pedirAmistad.and.resolveTo();
+        platformSocialSvc.responderSolicitud.and.resolveTo();
+        platformSocialSvc.bloquear.and.resolveTo();
+        platformSessionSvc = jasmine.createSpyObj('PlatformSessionService', ['entrar', 'denunciar', 'urlSocial']);
+        platformSessionSvc.entrar.and.resolveTo(true);
+        platformSessionSvc.denunciar.and.resolveTo(true);
+        platformSessionSvc.urlSocial.and.returnValue('https://qa-social.yosiftware.es');
+        appToastSvc = jasmine.createSpyObj('AppToastService', ['showSuccess', 'showError']);
     });
 
-    it('renderiza bio, pronombres y cinco estadisticas cuando existen', fakeAsync(() => {
-        apiSvc.getPublicProfile.and.resolveTo({
-            uid: 'uid-publico',
-            displayName: 'Perfil publico',
-            bio: 'Jugador de campañas largas.',
-            pronouns: 'elle/they',
-            photoThumbUrl: null,
-            memberSince: '2026-01-01T00:00:00.000Z',
-            stats: {
-                totalPersonajes: 2,
-                publicos: 1,
-                campanasActivas: 3,
-                campanasMaster: 1,
-                campanasCreadas: 2,
-            },
-        });
+    afterEach(() => component?.ngOnDestroy());
 
-        component.uid = 'uid-publico';
-        component.ngOnChanges({
-            uid: new SimpleChange('', 'uid-publico', true),
-        });
-        tick();
-        fixture.detectChanges();
+    it('sin sesión no pide nada y ofrece entrar', async () => {
+        crear(false);
+        component.ngOnInit();
+        await component.cargar();
 
-        const html = fixture.nativeElement as HTMLElement;
-        expect(html.textContent).toContain('Perfil publico');
-        expect(html.textContent).toContain('elle/they');
-        expect(html.textContent).toContain('Jugador de campañas largas.');
-        expect(html.querySelectorAll('.public-profile-stat').length).toBe(5);
-        expect(html.textContent).toContain('Campañas activas');
-        expect(html.textContent).toContain('Campañas creadas');
-    }));
+        expect(socialV3ApiSvc.getRelationshipProfile).not.toHaveBeenCalled();
+        expect(component.relationshipProfile).toBeNull();
+        component.entrar();
+        expect(platformSessionSvc.entrar).toHaveBeenCalled();
+    });
 
-    it('oculta bio y pronombres cuando no existen', fakeAsync(() => {
-        apiSvc.getPublicProfile.and.resolveTo({
-            uid: 'uid-publico',
-            displayName: 'Perfil minimo',
-            bio: null,
-            pronouns: null,
-            photoThumbUrl: null,
-            memberSince: null,
-            stats: {
-                totalPersonajes: 0,
-                publicos: 0,
-                campanasActivas: 0,
-                campanasMaster: 0,
-                campanasCreadas: 0,
-            },
-        });
+    it('junta la ficha de Rol con la biografía y la relación de la plataforma', async () => {
+        crear();
+        await component.cargar();
 
-        component.uid = 'uid-publico';
-        component.ngOnChanges({
-            uid: new SimpleChange('', 'uid-publico', true),
-        });
-        tick();
-        fixture.detectChanges();
+        expect(component.profileLabel).toBe('Yuna');
+        expect(component.bio).toBe('Barda');
+        expect(component.pronouns).toBe('ella');
+        expect(component.relacion).toEqual(sinRelacion);
+        expect(component.sharedItems.map((item) => item.value)).toEqual([1, 2]);
+    });
 
-        const html = fixture.nativeElement as HTMLElement;
-        expect(html.querySelector('.public-profile-pronouns')).toBeNull();
-        expect(html.querySelector('.public-profile-bio')).toBeNull();
-        expect(html.querySelectorAll('.public-profile-stat').length).toBe(5);
-    }));
+    it('pide amistad en la plataforma y recarga la relación', async () => {
+        crear();
+        await component.cargar();
 
-    it('carga el perfil relacional cuando se abre en modo relationship', fakeAsync(() => {
-        socialV3ApiSvc.getRelationshipProfile.and.resolveTo({
-            profile: {
-                uid: 'uid-social',
-                displayName: 'Perfil social',
-                photoThumbUrl: null,
-                bio: 'Juega campañas abiertas.',
-                pronouns: 'ella',
-                joinedAtUtc: '2026-01-01T00:00:00.000Z',
-            },
-            relationship: {
-                state: 'friend',
-                blockedByActor: false,
-                blockedActor: false,
-                mutualFriendsCount: 2,
-                mutualCampaignsCount: 1,
-            },
-            visibility: {
-                showAuthenticatedBlock: true,
-                showFriendsBlock: true,
-                showRecentActivity: true,
-            },
-            stats: {
-                totalCharacters: 3,
-                publicCharacters: 2,
-                activeCampaigns: 1,
-                campaignsAsMaster: 1,
-                campaignsCreated: 1,
-            },
-            recentActivity: [{
-                kind: 'campaign.created',
-                createdAtUtc: '2026-03-20T10:00:00.000Z',
-                summary: 'Creó una campaña nueva.',
-            }],
-        });
+        await component.pedirAmistad();
 
-        component.uid = 'uid-social';
-        component.mode = 'relationship';
-        component.ngOnChanges({
-            uid: new SimpleChange('', 'uid-social', true),
-            mode: new SimpleChange('public', 'relationship', true),
-        });
-        tick();
-        fixture.detectChanges();
+        expect(platformSocialSvc.pedirAmistad).toHaveBeenCalledWith('uid-2');
+        expect(platformSocialSvc.relacion).toHaveBeenCalledTimes(2);
+        expect(appToastSvc.showSuccess).toHaveBeenCalled();
+    });
 
-        const html = fixture.nativeElement as HTMLElement;
-        expect(socialV3ApiSvc.getRelationshipProfile).toHaveBeenCalledWith('uid-social');
-        expect(html.textContent).toContain('Perfil social relacional');
-        expect(html.textContent).toContain('Amistad activa.');
-        expect(html.textContent).toContain('Amistades en común');
-        expect(html.textContent).toContain('Actividad reciente');
-    }));
+    it('acepta la solicitud recibida con su id', async () => {
+        platformSocialSvc.relacion.and.resolveTo({ ...sinRelacion, amistad: 'solicitud_recibida', idSolicitud: 12 });
+        crear();
+        await component.cargar();
 
-    it('acepta una solicitud recibida desde el perfil relacional usando el requestId privado', fakeAsync(() => {
-        socialV3ApiSvc.getRelationshipProfile.and.resolveTo({
-            profile: {
-                uid: 'uid-social',
-                displayName: 'Perfil social',
-                photoThumbUrl: null,
-                bio: null,
-                pronouns: null,
-                joinedAtUtc: '2026-01-01T00:00:00.000Z',
-            },
-            relationship: {
-                state: 'incoming_request',
-                blockedByActor: false,
-                blockedActor: false,
-                mutualFriendsCount: 0,
-                mutualCampaignsCount: 0,
-            },
-            visibility: {
-                showAuthenticatedBlock: true,
-                showFriendsBlock: false,
-                showRecentActivity: false,
-            },
-            stats: {
-                totalCharacters: 0,
-                publicCharacters: 0,
-                activeCampaigns: 0,
-                campaignsAsMaster: 0,
-                campaignsCreated: 0,
-            },
-            recentActivity: [],
-        });
-        socialApiSvc.listReceivedFriendRequests.and.resolveTo({
-            items: [{
-                requestId: 77,
-                direction: 'received',
-                status: 'pending',
-                createdAtUtc: null,
-                target: {
-                    uid: 'uid-social',
-                    displayName: 'Perfil social',
-                    photoThumbUrl: null,
-                    allowDirectMessagesFromNonFriends: true,
-                },
-            }],
-            meta: { totalCount: 1, limit: 25, offset: 0, hasMore: false },
-        });
-        socialApiSvc.resolveFriendRequest.and.resolveTo({
-            message: 'Solicitud aceptada.',
-            item: null,
-        });
+        await component.aceptarSolicitud();
 
-        component.uid = 'uid-social';
-        component.mode = 'relationship';
-        component.ngOnChanges({
-            uid: new SimpleChange('', 'uid-social', true),
-            mode: new SimpleChange('public', 'relationship', true),
-        });
-        tick();
+        expect(platformSocialSvc.responderSolicitud).toHaveBeenCalledWith(12, 'aceptar');
+    });
 
-        void component.acceptFriendRequest();
-        tick();
+    it('enseña el error de la plataforma sin romper la ficha', async () => {
+        platformSocialSvc.pedirAmistad.and.rejectWith(new PlatformSocialError('Ya le has pedido amistad.', 'solicitud_ya_enviada', 409));
+        crear();
+        await component.cargar();
 
-        expect(socialApiSvc.resolveFriendRequest).toHaveBeenCalledWith(77, 'accept');
-        expect(appToastSvc.showSuccess).toHaveBeenCalledWith('Solicitud aceptada.', { category: 'amistad' });
-    }));
+        await component.pedirAmistad();
+
+        expect(appToastSvc.showError).toHaveBeenCalledWith('Ya le has pedido amistad.');
+    });
+
+    it('si la tienes bloqueada, la API no la enseña pero se puede desbloquear', async () => {
+        socialV3ApiSvc.getRelationshipProfile.and.rejectWith(new Error('El perfil de comunidad no esta disponible.'));
+        platformSocialSvc.relacion.and.resolveTo({ ...sinRelacion, bloqueada: true });
+        crear();
+        await component.cargar();
+
+        expect(component.relationshipProfile).toBeNull();
+        expect(component.isBlockedByMe).toBeTrue();
+        expect(component.errorMessage).toBe('');
+
+        await component.desbloquear();
+        expect(platformSocialSvc.bloquear).toHaveBeenCalledWith('uid-2', false);
+    });
+
+    it('denuncia a la persona con la ventana de la plataforma', async () => {
+        crear();
+        await component.cargar();
+
+        await component.denunciar();
+
+        expect(platformSessionSvc.denunciar).toHaveBeenCalledWith({ tipo: 'persona', referencia: 'uid-2', nombre: 'Yuna' });
+    });
 });

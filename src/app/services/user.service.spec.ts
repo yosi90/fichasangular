@@ -2,6 +2,8 @@ import { Auth, User } from '@angular/fire/auth';
 import { Database } from '@angular/fire/database';
 import { FirebaseInjectionContextService } from './firebase-injection-context.service';
 import { UserService } from './user.service';
+import { BehaviorSubject } from 'rxjs';
+import { EstadoPlataforma } from './platform-session.service';
 
 class UserServiceTestDouble extends UserService {
     private authHandler?: ((firebaseUser: User | null) => void) | null;
@@ -29,38 +31,6 @@ class UserServiceTestDouble extends UserService {
         this.authHandler = handler;
     }
 
-    protected override ejecutarSignOut(): Promise<void> {
-        this.signOutCalls += 1;
-        return Promise.resolve();
-    }
-
-    protected override authCreateUserWithEmailAndPassword(email: string, password: string): Promise<any> {
-        this.registerCalls.push({ email, password });
-        if (this.registerError)
-            return Promise.reject(this.registerError);
-        return Promise.resolve({ user: { uid: 'uid-register' } });
-    }
-
-    protected override authSignInWithEmailAndPassword(email: string, password: string): Promise<any> {
-        this.loginCalls.push({ email, password });
-        if (this.loginError)
-            return Promise.reject(this.loginError);
-        return Promise.resolve({ user: { uid: 'uid-login' } });
-    }
-
-    protected override authSignInWithPopup(): Promise<any> {
-        if (this.googleError)
-            return Promise.reject(this.googleError);
-        return Promise.resolve({ user: { uid: 'uid-google' } });
-    }
-
-    protected override authSendPasswordResetEmail(email: string): Promise<void> {
-        this.resetCalls.push(email);
-        if (this.resetError)
-            return Promise.reject(this.resetError);
-        return Promise.resolve();
-    }
-
     protected override watchAclPath(uid: string, onData: (rawAcl: any) => void, onError: () => void): () => void {
         this.aclWatchers.set(uid, { onData, onError });
         onData(this.aclByUid.get(uid) ?? null);
@@ -69,11 +39,6 @@ class UserServiceTestDouble extends UserService {
             if (watcher?.onData === onData)
                 this.aclWatchers.delete(uid);
         };
-    }
-
-    protected override persistUserProfile(_: User): Promise<void> {
-        this.persistProfileCalls += 1;
-        return Promise.resolve();
     }
 
     emitAuth(firebaseUser: User | null): void {
@@ -137,15 +102,6 @@ class UserServiceProfileBootstrapTestDouble extends UserService {
         this.authHandler = handler;
     }
 
-    protected override persistUserProfile(_: User): Promise<void> {
-        return Promise.resolve();
-    }
-
-    protected override ejecutarSignOut(): Promise<void> {
-        this.signOutCalls += 1;
-        return Promise.resolve();
-    }
-
     protected override watchAclPath(_: string, onData: (rawAcl: any) => void, __: () => void): () => void {
         this.aclOnData = onData;
         onData(this.aclRaw);
@@ -197,104 +153,11 @@ function buildPrivateProfile(overrides: Partial<any> = {}): any {
 }
 
 describe('UserService', () => {
-    it('actualiza usuario e isLoggedIn desde cambios de auth', async () => {
-        const service = new UserServiceTestDouble();
-        let loggedIn = false;
-        service.isLoggedIn$.subscribe((value) => loggedIn = value);
-
-        service.emitAcl('uid-1', {
-            roles: { admin: false, type: 'jugador' },
-            status: { banned: false },
-            permissions: { personajes: { create: true } },
-        });
-        service.emitAuth({
-            uid: 'uid-1',
-            displayName: 'Aldric',
-            email: 'aldric@test.com',
-        } as User);
-        await service.flush();
-
-        expect(service.Usuario.nombre).toBe('Aldric');
-        expect(service.Usuario.correo).toBe('aldric@test.com');
-        expect(loggedIn).toBeTrue();
-        expect(service.persistProfileCalls).toBe(1);
-    });
 
     it('mantiene permisos en 0 cuando ACL de RTDB no existe', async () => {
         const service = new UserServiceTestDouble();
         service.emitAuth({
             uid: 'uid-2',
-            displayName: 'Aldric',
-            email: 'aldric@test.com',
-        } as User);
-        await service.flush();
-
-        expect(service.Usuario.permisos).toBe(0);
-    });
-
-    it('no concede permisos admin solo porque ACL RTDB devuelva admin', async () => {
-        const service = new UserServiceTestDouble();
-        service.emitAcl('uid-admin', {
-            roles: { admin: true, type: 'admin' },
-            status: { banned: false },
-            permissions: {},
-        });
-        service.emitAuth({
-            uid: 'uid-admin',
-            displayName: 'Aldric',
-            email: 'aldric@test.com',
-        } as User);
-        await service.flush();
-
-        expect(service.Usuario.permisos).toBe(0);
-    });
-
-    it('ignora elevaciones admin procedentes solo de ACL RTDB en caliente', async () => {
-        const service = new UserServiceTestDouble();
-        const capturados: number[] = [];
-        service.permisos$.subscribe((value) => capturados.push(value));
-
-        service.emitAcl('uid-dinamico', {
-            roles: { admin: false, type: 'jugador' },
-            status: { banned: false },
-            permissions: { personajes: { create: true } },
-        });
-        service.emitAuth({
-            uid: 'uid-dinamico',
-            displayName: 'Aldric',
-            email: 'aldric@test.com',
-        } as User);
-        await service.flush();
-
-        service.emitAcl('uid-dinamico', {
-            roles: { admin: true, type: 'admin' },
-            status: { banned: false },
-            permissions: {},
-        });
-        await service.flush();
-
-        service.emitAcl('uid-dinamico', {
-            roles: { admin: false, type: 'jugador' },
-            status: { banned: false },
-            permissions: { personajes: { create: true } },
-        });
-        await service.flush();
-
-        expect(service.Usuario.permisos).toBe(0);
-        expect(capturados).not.toContain(1);
-        expect(capturados[capturados.length - 1]).toBe(0);
-    });
-
-    it('la hidratacion no conserva permisos admin desde RTDB sin validacion backend', async () => {
-        const service = new UserServiceTestDouble();
-        service.emitAcl('uid-admin', {
-            roles: { admin: true, type: 'admin' },
-            status: { banned: false },
-            permissions: {},
-        });
-
-        service.emitAuth({
-            uid: 'uid-admin',
             displayName: 'Aldric',
             email: 'aldric@test.com',
         } as User);
@@ -385,60 +248,6 @@ describe('UserService', () => {
         expect(service.getCurrentCompliance()?.banned).toBeTrue();
     });
 
-    it('ban permanente actor-scoped sigue forzando logout', async () => {
-        const service = new UserServiceTestDouble();
-        service.emitAcl('uid-compliance-ban-permanent', {
-            roles: { admin: false, type: 'jugador' },
-            status: { banned: false },
-            permissions: { personajes: { create: true } },
-        });
-        service.emitAuth({
-            uid: 'uid-compliance-ban-permanent',
-            displayName: 'Aldric',
-            email: 'aldric@test.com',
-        } as User);
-        await service.flush();
-
-        service.setCurrentPrivateProfile({
-            uid: 'uid-compliance-ban-permanent',
-            displayName: 'Aldric',
-            bio: null,
-            genderIdentity: null,
-            pronouns: null,
-            email: 'aldric@test.com',
-            emailVerified: true,
-            authProvider: 'correo',
-            photoUrl: null,
-            photoThumbUrl: null,
-            createdAt: null,
-            lastSeenAt: null,
-            role: 'jugador',
-            permissions: {
-                personajes: { create: true },
-            },
-            compliance: {
-                banned: true,
-                mustAcceptUsage: false,
-                mustAcceptCreation: false,
-                activeSanction: {
-                    sanctionId: 10,
-                    kind: 'ban',
-                    code: 'manual-ban-permanent',
-                    name: 'Ban permanente',
-                    startsAtUtc: '2026-04-02T09:00:00Z',
-                    endsAtUtc: null,
-                    isPermanent: true,
-                },
-                usage: null,
-                creation: null,
-            },
-        });
-        await service.flush();
-
-        expect(service.signOutCalls).toBeGreaterThan(0);
-        expect(service.getCurrentBanStatus().restriction).toBe('permanentBan');
-    });
-
     it('rol jugador respeta permisos create del ACL', async () => {
         const service = new UserServiceTestDouble();
         service.emitAcl('uid-rol-jugador', {
@@ -479,56 +288,6 @@ describe('UserService', () => {
 
         expect(service.can('personajes', 'create')).toBeTrue();
         expect(service.can('dotes', 'create')).toBeTrue();
-    });
-
-    it('bloquea creación cuando compliance exige aceptar normas de creación sin cerrar la sesión', async () => {
-        const service = new UserServiceTestDouble();
-        service.emitAcl('uid-must-create', {
-            roles: { admin: false, type: 'master' },
-            status: { banned: false },
-            permissions: {
-                campanas: { create: true },
-            },
-        });
-        service.emitAuth({
-            uid: 'uid-must-create',
-            displayName: 'Aldric',
-            email: 'aldric@test.com',
-        } as User);
-        await service.flush();
-
-        service.setCurrentPrivateProfile({
-            uid: 'uid-must-create',
-            displayName: 'Aldric',
-            bio: null,
-            genderIdentity: null,
-            pronouns: null,
-            email: 'aldric@test.com',
-            emailVerified: true,
-            authProvider: 'correo',
-            photoUrl: null,
-            photoThumbUrl: null,
-            createdAt: null,
-            lastSeenAt: null,
-            role: 'master',
-            permissions: {
-                campanas: { create: true },
-            },
-            compliance: {
-                banned: false,
-                mustAcceptUsage: false,
-                mustAcceptCreation: true,
-                activeSanction: null,
-                usage: null,
-                creation: null,
-            },
-        });
-
-        expect(service.canProceed('usage')).toBeTrue();
-        expect(service.canProceed('creation')).toBeFalse();
-        expect(service.can('campanas', 'create')).toBeFalse();
-        expect(service.getPermissionDeniedMessage()).toBe('Debes aceptar las normas de creación vigentes antes de continuar.');
-        expect(service.signOutCalls).toBe(0);
     });
 
     it('bloquea uso normal cuando compliance exige aceptar normas de uso', async () => {
@@ -581,25 +340,6 @@ describe('UserService', () => {
         expect(service.signOutCalls).toBe(0);
     });
 
-    it('getComplianceErrorMessage traduce mustAcceptCreation desde el código funcional', () => {
-        const service = new UserServiceTestDouble();
-
-        expect(service.getComplianceErrorMessage({ code: 'mustAcceptCreation', status: 403 }, 'creation')).toBe(
-            'Debes aceptar las normas de creación vigentes antes de continuar.'
-        );
-    });
-
-    it('getComplianceErrorMessage traduce los códigos canónicos nuevos de aceptación de políticas', () => {
-        const service = new UserServiceTestDouble();
-
-        expect(service.getComplianceErrorMessage({ code: 'USAGE_POLICY_ACCEPTANCE_REQUIRED', status: 403 }, 'usage')).toBe(
-            'Debes aceptar las normas de uso vigentes antes de continuar.'
-        );
-        expect(service.getComplianceErrorMessage({ code: 'CREATION_POLICY_ACCEPTANCE_REQUIRED', status: 403 }, 'creation')).toBe(
-            'Debes aceptar las normas de creación vigentes antes de continuar.'
-        );
-    });
-
     it('getComplianceErrorMessage usa el restriction local como fallback en 403 opacos', async () => {
         const service = new UserServiceTestDouble();
         service.emitAcl('uid-must-usage-fallback', {
@@ -646,24 +386,6 @@ describe('UserService', () => {
         expect(service.getComplianceErrorMessage({ status: 403 }, 'usage')).toBe(
             'Debes aceptar las normas de uso vigentes antes de continuar.'
         );
-    });
-
-    it('logOut delega en signOut cuando hay sesión abierta', async () => {
-        const service = new UserServiceTestDouble();
-        service.emitAcl('uid-3', {
-            roles: { admin: false, type: 'jugador' },
-            status: { banned: false },
-            permissions: { personajes: { create: true } },
-        });
-        service.emitAuth({
-            uid: 'uid-3',
-            displayName: 'Aldric',
-            email: 'aldric@test.com',
-        } as User);
-
-        await service.logOut();
-
-        expect(service.signOutCalls).toBe(1);
     });
 
     it('usa permisos del perfil privado como fallback si el ACL todavía no está en RTDB', async () => {
@@ -774,120 +496,6 @@ describe('UserService', () => {
 
         expect(service.getCurrentRole()).toBe('admin');
         expect(service.CurrentPrivateProfile?.role).toBe('admin');
-    });
-
-    it('no eleva a admin desde el perfil privado si el ACL activo ya marca otro rol', async () => {
-        const service = new UserServiceTestDouble();
-        service.emitAcl('uid-admin-stale', {
-            roles: { admin: false, type: 'jugador' },
-            status: { banned: false },
-            permissions: {
-                personajes: { create: true },
-            },
-        });
-        service.emitAuth({
-            uid: 'uid-admin-stale',
-            displayName: 'Aldric',
-            email: 'aldric@test.com',
-        } as User);
-        await service.flush();
-
-        service.setCurrentPrivateProfile({
-            uid: 'uid-admin-stale',
-            displayName: 'Aldric',
-            bio: null,
-            genderIdentity: null,
-            pronouns: null,
-            email: 'aldric@test.com',
-            emailVerified: true,
-            authProvider: 'correo',
-            photoUrl: null,
-            photoThumbUrl: null,
-            createdAt: null,
-            lastSeenAt: null,
-            role: 'admin',
-            permissions: {
-                personajes: { create: true },
-            },
-        });
-
-        expect(service.getCurrentRole()).toBe('jugador');
-        expect(service.CurrentPrivateProfile?.role).toBe('jugador');
-        expect(service.Usuario.permisos).toBe(0);
-    });
-
-    it('hidrata compliance actor-scoped desde API al iniciar sesión aunque exista Firestore', async () => {
-        const apiMock = {
-            getMyProfile: jasmine.createSpy('getMyProfile').and.resolveTo(buildPrivateProfile({
-                compliance: null,
-            })),
-            getMyCompliance: jasmine.createSpy('getMyCompliance').and.resolveTo({
-                banned: false,
-                mustAcceptUsage: true,
-                mustAcceptCreation: false,
-                activeSanction: null,
-                usage: { version: '4' },
-                creation: null,
-            }),
-        };
-        const firestoreMock = {
-            watchMyProfile: jasmine.createSpy('watchMyProfile').and.callFake((next: (profile: any) => void) => {
-                next(buildPrivateProfile({ compliance: null }));
-                return () => undefined;
-            }),
-        };
-        const service = new UserServiceProfileBootstrapTestDouble(apiMock, firestoreMock);
-
-        service.emitAuth({
-            uid: 'uid-1',
-            displayName: 'Aldric',
-            email: 'aldric@test.com',
-        } as User);
-        await service.flush();
-
-        expect(apiMock.getMyProfile).toHaveBeenCalled();
-        expect(apiMock.getMyCompliance).toHaveBeenCalled();
-        expect(service.CurrentPrivateProfile?.compliance?.mustAcceptUsage).toBeTrue();
-    });
-
-    it('conserva compliance ya hidratado si Firestore reemite un perfil sin ese bloque', async () => {
-        const apiMock = {
-            getMyProfile: jasmine.createSpy('getMyProfile').and.resolveTo(buildPrivateProfile({
-                compliance: null,
-            })),
-            getMyCompliance: jasmine.createSpy('getMyCompliance').and.resolveTo({
-                banned: false,
-                mustAcceptUsage: false,
-                mustAcceptCreation: true,
-                activeSanction: null,
-                usage: null,
-                creation: { version: '2' },
-            }),
-        };
-        const firestoreMock = {
-            watchMyProfile: jasmine.createSpy('watchMyProfile').and.callFake((next: (profile: any) => void) => {
-                next(buildPrivateProfile({ compliance: null }));
-                return () => undefined;
-            }),
-        };
-        const service = new UserServiceProfileBootstrapTestDouble(apiMock, firestoreMock);
-
-        service.emitAuth({
-            uid: 'uid-1',
-            displayName: 'Aldric',
-            email: 'aldric@test.com',
-        } as User);
-        await service.flush();
-
-        const firestoreProfile = buildPrivateProfile({
-            displayName: 'Aldric actualizado',
-        });
-        delete firestoreProfile.compliance;
-        service.emitFirestoreProfile(firestoreProfile);
-        await service.flush();
-
-        expect(service.CurrentPrivateProfile?.displayName).toBe('Aldric actualizado');
-        expect(service.CurrentPrivateProfile?.compliance?.mustAcceptCreation).toBeTrue();
     });
 
     it('permite actualizar compliance canónico desde una mutación API sin esperar a Firestore', async () => {
@@ -1044,47 +652,6 @@ describe('UserService', () => {
         expect(service.signOutCalls).toBe(0);
     });
 
-    it('mantiene la compliance canónica cuando Firestore reemite null explícito', async () => {
-        const apiMock = {
-            getMyProfile: jasmine.createSpy('getMyProfile').and.resolveTo(buildPrivateProfile({
-                compliance: null,
-            })),
-            getMyCompliance: jasmine.createSpy('getMyCompliance').and.resolveTo({
-                banned: false,
-                mustAcceptUsage: false,
-                mustAcceptCreation: true,
-                activeSanction: null,
-                usage: null,
-                creation: { version: '2' },
-            }),
-        };
-        const firestoreMock = {
-            watchMyProfile: jasmine.createSpy('watchMyProfile').and.callFake((next: (profile: any) => void) => {
-                next(buildPrivateProfile({ compliance: null }));
-                return () => undefined;
-            }),
-        };
-        const service = new UserServiceProfileBootstrapTestDouble(apiMock, firestoreMock);
-
-        service.emitAuth({
-            uid: 'uid-1',
-            displayName: 'Aldric',
-            email: 'aldric@test.com',
-        } as User);
-        await service.flush();
-
-        service.emitFirestoreProfile(buildPrivateProfile({
-            displayName: 'Aldric actualizado',
-            compliance: null,
-        }));
-        await service.flush();
-
-        expect(service.CurrentPrivateProfile?.displayName).toBe('Aldric actualizado');
-        expect(service.CurrentPrivateProfile?.compliance?.banned).toBeFalse();
-        expect(service.CurrentPrivateProfile?.compliance?.mustAcceptCreation).toBeTrue();
-        expect(service.CurrentPrivateProfile?.compliance?.creation?.version).toBe('2');
-    });
-
     it('ignora un ACL legacy stale cuando la capa actor-scoped ya no marca ban', async () => {
         const apiMock = {
             getMyProfile: jasmine.createSpy('getMyProfile').and.resolveTo(buildPrivateProfile({
@@ -1112,57 +679,6 @@ describe('UserService', () => {
             displayName: 'Aldric',
             email: 'aldric@test.com',
         } as User);
-        await service.flush();
-
-        expect(service.getCurrentBanStatus().restriction).toBeNull();
-        expect(service.canProceed('usage')).toBeTrue();
-    });
-
-    it('no cierra sesión si Firestore emite un ban stale antes de la hidratación canónica limpia', async () => {
-        const resolverHolder: { resolve: ((value: any) => void) | null; } = { resolve: null };
-        const apiMock = {
-            getMyProfile: jasmine.createSpy('getMyProfile').and.resolveTo(buildPrivateProfile({
-                compliance: {
-                    banned: true,
-                    mustAcceptUsage: false,
-                    mustAcceptCreation: false,
-                    activeSanction: null,
-                    usage: null,
-                    creation: null,
-                },
-            })),
-            getMyCompliance: jasmine.createSpy('getMyCompliance').and.returnValue(new Promise((resolve) => {
-                resolverHolder.resolve = resolve;
-            })),
-        };
-        const firestoreMock = {
-            watchMyProfile: jasmine.createSpy('watchMyProfile').and.callFake((next: (profile: any) => void) => {
-                next(buildPrivateProfile({
-                    compliance: {
-                        banned: true,
-                        mustAcceptUsage: false,
-                        mustAcceptCreation: false,
-                        activeSanction: null,
-                        usage: null,
-                        creation: null,
-                    },
-                }));
-                return () => undefined;
-            }),
-        };
-        const service = new UserServiceProfileBootstrapTestDouble(apiMock, firestoreMock);
-
-        service.emitAuth({
-            uid: 'uid-1',
-            displayName: 'Aldric',
-            email: 'aldric@test.com',
-        } as User);
-        await service.flush();
-
-        expect(apiMock.getMyCompliance).toHaveBeenCalled();
-        expect(service.signOutCalls).toBe(0);
-
-        resolverHolder.resolve?.(null);
         await service.flush();
 
         expect(service.getCurrentBanStatus().restriction).toBeNull();
@@ -1259,110 +775,6 @@ describe('UserService', () => {
         expect(service.signOutCalls).toBe(0);
     });
 
-    it('sigue una sanción permanente activa cuando backend marca banned=true e isPermanent=true', async () => {
-        const service = new UserServiceTestDouble();
-        service.emitAcl('uid-temp-ban', {
-            roles: { admin: false, type: 'jugador' },
-            status: { banned: false },
-            permissions: { personajes: { create: true } },
-        });
-        service.emitAuth({
-            uid: 'uid-temp-ban',
-            displayName: 'Aldric',
-            email: 'aldric@test.com',
-        } as User);
-        await service.flush();
-
-        service.setCurrentPrivateProfile({
-            uid: 'uid-temp-ban',
-            displayName: 'Aldric',
-            bio: null,
-            genderIdentity: null,
-            pronouns: null,
-            email: 'aldric@test.com',
-            emailVerified: true,
-            authProvider: 'correo',
-            photoUrl: null,
-            photoThumbUrl: null,
-            createdAt: null,
-            lastSeenAt: null,
-            role: 'jugador',
-            permissions: {
-                personajes: { create: true },
-            },
-            compliance: {
-                banned: true,
-                mustAcceptUsage: false,
-                mustAcceptCreation: false,
-                activeSanction: {
-                    sanctionId: 12,
-                    kind: 'ban',
-                    code: 'admin_manual_account_ban',
-                    name: 'Ban manual admin',
-                    startsAtUtc: '2026-04-02T09:00:00Z',
-                    endsAtUtc: '2099-04-02T10:11:00Z',
-                    isPermanent: true,
-                },
-                usage: null,
-                creation: null,
-            },
-        });
-        await service.flush();
-
-        expect(service.getCurrentBanStatus().restriction).toBe('permanentBan');
-        expect(service.getCurrentBanStatus().sanction?.isPermanent).toBeTrue();
-        expect(service.signOutCalls).toBeGreaterThan(0);
-    });
-
-    it('register traduce email-already-in-use a un mensaje de usuario', async () => {
-        const service = new UserServiceTestDouble();
-        service.setRegisterError({ code: 'auth/email-already-in-use' });
-
-        await expectAsync(service.register({ email: 'aldric@test.com', password: '12345678' }) as Promise<any>)
-            .toBeRejectedWithError('Ese correo ya está registrado.');
-        expect(service.registerCalls).toEqual([{ email: 'aldric@test.com', password: '12345678' }]);
-    });
-
-    it('loginEmailPass traduce invalid-credential a credenciales incorrectas', async () => {
-        const service = new UserServiceTestDouble();
-        service.setLoginError({ code: 'auth/invalid-credential' });
-
-        await expectAsync(service.loginEmailPass({ email: 'aldric@test.com', password: '12345678' }) as Promise<any>)
-            .toBeRejectedWithError('Las credenciales no son correctas.');
-        expect(service.loginCalls).toEqual([{ email: 'aldric@test.com', password: '12345678' }]);
-    });
-
-    it('loginEmailPass traduce too-many-requests', async () => {
-        const service = new UserServiceTestDouble();
-        service.setLoginError({ code: 'auth/too-many-requests' });
-
-        await expectAsync(service.loginEmailPass({ email: 'aldric@test.com', password: '12345678' }) as Promise<any>)
-            .toBeRejectedWithError('Demasiados intentos. Inténtalo de nuevo más tarde.');
-    });
-
-    it('requestPasswordReset llama a Firebase con el email normalizado', async () => {
-        const service = new UserServiceTestDouble();
-
-        await service.requestPasswordReset('  aldric@test.com  ');
-
-        expect(service.resetCalls).toEqual(['aldric@test.com']);
-    });
-
-    it('requestPasswordReset no falla si Firebase responde user-not-found', async () => {
-        const service = new UserServiceTestDouble();
-        service.setResetError({ code: 'auth/user-not-found' });
-
-        await expectAsync(service.requestPasswordReset('aldric@test.com')).toBeResolved();
-    });
-
-    it('requestPasswordReset traduce errores de red a mensaje usable', async () => {
-        const service = new UserServiceTestDouble();
-        service.setResetError({ code: 'auth/network-request-failed' });
-
-        await expectAsync(service.requestPasswordReset('aldric@test.com'))
-            .toBeRejectedWithError('No se pudo conectar con el servicio. Revisa tu conexión e inténtalo de nuevo.');
-    });
-
     it('getPermissionDeniedMessage invita a registrarse cuando no hay sesión', () => {
         const service = new UserServiceTestDouble();
 
@@ -1409,37 +821,108 @@ describe('UserService', () => {
         );
     });
 
-    it('marca el dispositivo como excluido de Yosiftadisticas y no la borra después', () => {
-        const service = new UserServiceTestDouble();
-        const perfil = (excludeFromAnalytics?: boolean) => ({
-            uid: 'uid-propietario',
-            displayName: 'Propietario',
-            bio: null,
-            genderIdentity: null,
-            pronouns: null,
-            email: 'propietario@test.com',
-            emailVerified: true,
-            authProvider: 'correo' as const,
-            photoUrl: null,
-            photoThumbUrl: null,
-            createdAt: null,
-            lastSeenAt: null,
-            role: 'jugador' as const,
-            permissions: {},
-            excludeFromAnalytics,
+});
+
+function crearPlataformaFalsa() {
+    const estado$ = new BehaviorSubject<EstadoPlataforma>({ tipo: 'comprobando' });
+    return {
+        estado$,
+        cuenta: null,
+        entrar: jasmine.createSpy('entrar').and.resolveTo(true),
+        salir: jasmine.createSpy('salir').and.resolveTo(),
+    };
+}
+
+class UserServicePlataformaDouble extends UserService {
+    private authHandler?: ((firebaseUser: User | null) => void) | null;
+    readonly plataforma: ReturnType<typeof crearPlataformaFalsa>;
+
+    constructor(plataforma = crearPlataformaFalsa()) {
+        super(
+            {} as Auth,
+            {} as Database,
+            { run: <T>(fn: () => T) => fn() } as FirebaseInjectionContextService,
+            undefined,
+            undefined,
+            plataforma as any,
+        );
+        this.plataforma = plataforma;
+    }
+
+    protected override subscribeAuthState(handler: (firebaseUser: User | null) => void): void {
+        this.authHandler = handler;
+    }
+
+    protected override watchAclPath(_: string, onData: (rawAcl: any) => void, __: () => void): () => void {
+        onData(null);
+        return () => undefined;
+    }
+
+    entrarConCuenta(estado: Partial<Extract<EstadoPlataforma, { tipo: 'con_sesion' }>> = {}): void {
+        this.authHandler?.({ uid: 'sub-1', displayName: null, email: null } as unknown as User);
+        this.plataforma.estado$.next({ tipo: 'con_sesion', cuenta: { id: 'sub-1', alias: 'aldric', correo: null }, ...estado });
+    }
+}
+
+describe('UserService con la cuenta de Yosiftware', () => {
+    it('abre la sesión de Rol aunque la cuenta no tenga correo', () => {
+        const service = new UserServicePlataformaDouble();
+        service.entrarConCuenta();
+
+        expect(service.IsLoggedIn).toBeTrue();
+        expect(service.canProceed('creation')).toBeTrue();
+    });
+
+    it('con normas de Rol pendientes no deja crear y lo explica', () => {
+        const service = new UserServicePlataformaDouble();
+        service.entrarConCuenta({
+            normasPendientes: { id: 3, version: 2, titulo: 'Normas de Rol', importante: true, publicadas: '2026-10-01' },
         });
-        localStorage.removeItem('yosiftadisticas:excluir');
 
-        service.setCurrentPrivateProfile(perfil());
-        expect(localStorage.getItem('yosiftadisticas:excluir')).toBeNull();
+        expect(service.canProceed('creation')).toBeFalse();
+        expect(service.getAccessRestrictionMessage('creation')).toBe('Debes aceptar las normas de Rol vigentes antes de crear o editar contenido.');
+    });
 
-        service.setCurrentPrivateProfile(perfil(true));
-        expect(localStorage.getItem('yosiftadisticas:excluir')).toBe('1');
+    it('aplica la limitación de creación de la plataforma mientras está vigente', () => {
+        const service = new UserServicePlataformaDouble();
+        const manana = new Date(Date.now() + 86_400_000).toISOString();
+        service.entrarConCuenta({ restricciones: { alcances: ['creacion'], hasta: manana } });
 
-        service.setCurrentPrivateProfile(perfil(false));
-        service.setCurrentPrivateProfile(null);
-        expect(localStorage.getItem('yosiftadisticas:excluir')).toBe('1');
+        expect(service.canProceed('creation')).toBeFalse();
+        expect(service.getAccessRestrictionMessage('creation')).toContain('Tu cuenta tiene limitada la creación de contenido hasta el');
+        expect(service.hasCommunityRestriction()).toBeFalse();
+    });
 
-        localStorage.removeItem('yosiftadisticas:excluir');
+    it('ignora una limitación ya caducada', () => {
+        const service = new UserServicePlataformaDouble();
+        const ayer = new Date(Date.now() - 86_400_000).toISOString();
+        service.entrarConCuenta({ restricciones: { alcances: ['creacion', 'comunidad'], hasta: ayer } });
+
+        expect(service.canProceed('creation')).toBeTrue();
+        expect(service.hasCommunityRestriction()).toBeFalse();
+    });
+
+    it('detecta la limitación de comunidad', () => {
+        const service = new UserServicePlataformaDouble();
+        service.entrarConCuenta({ restricciones: { alcances: ['comunidad'], hasta: null } });
+
+        expect(service.hasCommunityRestriction()).toBeTrue();
+        expect(service.canProceed('creation')).toBeTrue();
+    });
+
+    it('cierra la sesión en la plataforma', () => {
+        const service = new UserServicePlataformaDouble();
+        service.entrarConCuenta();
+
+        service.logOut();
+
+        expect(service.plataforma.salir).toHaveBeenCalled();
+    });
+
+    it('sin sesión no pide cerrar nada', () => {
+        const service = new UserServicePlataformaDouble();
+
+        expect(service.logOut()).toBeNull();
+        expect(service.plataforma.salir).not.toHaveBeenCalled();
     });
 });

@@ -596,7 +596,6 @@ describe('NuevoPersonajeComponent', () => {
     let especialSvcMock: any;
     let personajeSvcMock: any;
     let fichasDescargaBgSvcMock: any;
-    let chatFloatingSvcMock: any;
     let userSvcMock: any;
     let userProfileNavigationSvcMock: any;
 
@@ -700,11 +699,6 @@ describe('NuevoPersonajeComponent', () => {
         fichasDescargaBgSvcMock = {
             descargarFichas: jasmine.createSpy('descargarFichas').and.callFake(() => undefined),
         };
-        chatFloatingSvcMock = {
-            isListWindowOpen: false,
-            hideAllFloatingWindowsForOverlay: jasmine.createSpy('hideAllFloatingWindowsForOverlay').and.returnValue(null),
-            restoreFloatingWindowsAfterOverlay: jasmine.createSpy('restoreFloatingWindowsAfterOverlay').and.callFake(() => undefined),
-        };
         userSvcMock = {
             CurrentPrivateProfile: {
                 role: 'jugador',
@@ -746,7 +740,6 @@ describe('NuevoPersonajeComponent', () => {
             especialSvcMock,
             personajeSvcMock,
             fichasDescargaBgSvcMock,
-            chatFloatingSvcMock,
             userSvcMock,
             userProfileNavigationSvcMock,
         );
@@ -5325,7 +5318,6 @@ describe('NuevoPersonajeComponent', () => {
             especialSvcMock,
             personajeSvcMock,
             fichasDescargaBgSvcMock,
-            chatFloatingSvcMock,
             userSvcMock,
             userProfileNavigationSvcMock,
         );
@@ -5463,7 +5455,6 @@ describe('NuevoPersonajeComponent', () => {
             especialSvcMock,
             personajeSvcMock,
             fichasDescargaBgSvcMock,
-            chatFloatingSvcMock,
             userSvcMock,
             userProfileNavigationSvcMock,
         );
@@ -5513,7 +5504,6 @@ describe('NuevoPersonajeComponent', () => {
             especialSvcMock,
             personajeSvcMock,
             fichasDescargaBgSvcMock,
-            chatFloatingSvcMock,
             userSvcMock,
             userProfileNavigationSvcMock,
         );
@@ -5577,7 +5567,6 @@ describe('NuevoPersonajeComponent', () => {
             especialSvcMock,
             personajeSvcMock,
             fichasDescargaBgSvcMock,
-            chatFloatingSvcMock,
             userSvcMock,
             userProfileNavigationSvcMock,
         );
@@ -5661,7 +5650,6 @@ describe('NuevoPersonajeComponent', () => {
             especialSvcMock,
             personajeSvcMock,
             fichasDescargaBgSvcMock,
-            chatFloatingSvcMock,
             userSvcMock,
             userProfileNavigationSvcMock,
         );
@@ -5728,7 +5716,6 @@ describe('NuevoPersonajeComponent', () => {
             especialSvcMock,
             personajeSvcMock,
             fichasDescargaBgSvcMock,
-            chatFloatingSvcMock,
             userSvcMock,
             userProfileNavigationSvcMock,
         );
@@ -5790,7 +5777,6 @@ describe('NuevoPersonajeComponent', () => {
             especialSvcMock,
             personajeSvcMock,
             fichasDescargaBgSvcMock,
-            chatFloatingSvcMock,
             userSvcMock,
             userProfileNavigationSvcMock,
         );
@@ -5845,7 +5831,6 @@ describe('NuevoPersonajeComponent', () => {
             especialSvcMock,
             personajeSvcMock,
             fichasDescargaBgSvcMock,
-            chatFloatingSvcMock,
             userSvcMock,
             userProfileNavigationSvcMock,
         );
@@ -5907,7 +5892,6 @@ describe('NuevoPersonajeComponent', () => {
             especialSvcMock,
             personajeSvcMock,
             fichasDescargaBgSvcMock,
-            chatFloatingSvcMock,
             userSvcMock,
             userProfileNavigationSvcMock,
         );

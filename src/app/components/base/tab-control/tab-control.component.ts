@@ -1,6 +1,5 @@
 import { Component, EventEmitter, HostListener, Input, NgZone, OnDestroy, OnInit, Output, QueryList, SimpleChanges, ViewChild, ViewChildren } from '@angular/core';
-import { AccountRestrictionOpenRequest, AdminPanelOpenRequest, SocialHubOpenRequest, UserPrivateProfileOpenRequest, UserPrivateProfileSectionId, UserPublicProfileTab } from 'src/app/interfaces/user-account';
-import { UserBanStatus } from 'src/app/interfaces/user-moderation';
+import { SocialHubOpenRequest, UserPrivateProfileOpenRequest, UserPrivateProfileSectionId, UserPublicProfileTab } from 'src/app/interfaces/user-account';
 import { UserService } from '../../../services/user.service';
 import { PersonajeService } from 'src/app/services/personaje.service';
 import { MatTabGroup } from '@angular/material/tabs';
@@ -16,7 +15,7 @@ import { DoteContextual } from 'src/app/interfaces/dote-contextual';
 import { RazaService } from 'src/app/services/raza.service';
 import { Clase } from 'src/app/interfaces/clase';
 import { ClaseService } from 'src/app/services/clase.service';
-import { Subject, take, takeUntil } from 'rxjs';
+import { Subject, filter, take, takeUntil } from 'rxjs';
 import { ConjuroService } from 'src/app/services/conjuro.service';
 import { DoteService } from 'src/app/services/dote.service';
 import { EspecialClaseDetalle } from 'src/app/interfaces/especial';
@@ -99,18 +98,12 @@ export class TabControlComponent implements OnInit, OnDestroy {
     public usrPerm: number = 0;
     public privateProfileTabOpen = false;
     public privateProfileOpenRequest: UserPrivateProfileOpenRequest | null = null;
-    public restrictionTabOpen = false;
-    public restrictionOpenRequest: AccountRestrictionOpenRequest | null = null;
-    public temporaryRestrictionActive = false;
     public socialTabOpen = false;
     public socialOpenRequest: SocialHubOpenRequest | null = null;
     public adminPanelTabOpen = false;
-    public adminPanelOpenRequest: AdminPanelOpenRequest | null = null;
     public roadmapTabOpen = false;
     public legalPrivacyTabOpen = false;
     public usageAboutTabOpen = false;
-    public feedbackBugTabOpen = false;
-    public feedbackFeatureTabOpen = false;
     public publicProfileTabs: UserPublicProfileTab[] = [];
     public detallesPersonajeAbiertos: Personaje[] = [];
     public detallesRazaAbiertos: Raza[] = [];
@@ -138,14 +131,11 @@ export class TabControlComponent implements OnInit, OnDestroy {
     public edicionClasesAbiertos: EdicionClaseTabAbierto[] = [];
     private readonly TAB_PERSONAJES = 'base:personajes';
     private readonly TAB_PROFILE = 'base:perfil';
-    private readonly TAB_RESTRICTION = 'base:restriction';
     private readonly TAB_SOCIAL = 'base:social';
     private readonly TAB_ADMIN = 'base:admin';
     private readonly TAB_ROADMAP = 'base:roadmap';
     private readonly TAB_LEGAL = 'base:legal';
     private readonly TAB_USAGE = 'base:usage';
-    private readonly TAB_FEEDBACK_BUG = 'base:feedback-bug';
-    private readonly TAB_FEEDBACK_FEATURE = 'base:feedback-feature';
     private readonly TAB_NUEVO = 'base:nuevo';
     private activeTabKey: string = this.TAB_PERSONAJES;
     private openerByTab = new Map<string, string>();
@@ -215,15 +205,12 @@ export class TabControlComponent implements OnInit, OnDestroy {
         this.userProfileNavSvc?.privateProfileOpen$
             .pipe(takeUntil(this.destroy$))
             .subscribe((request) => this.abrirPerfilPrivado(request));
-        this.userProfileNavSvc?.accountRestrictionOpen$
-            .pipe(takeUntil(this.destroy$))
-            .subscribe((request) => this.abrirRestriccionCuenta(request));
         this.userProfileNavSvc?.socialOpen$
             .pipe(takeUntil(this.destroy$))
             .subscribe((request) => this.abrirSocial(request));
         this.userProfileNavSvc?.adminPanelOpen$
             .pipe(takeUntil(this.destroy$))
-            .subscribe((request) => this.abrirPanelAdministracion(request));
+            .subscribe(() => this.abrirPanelAdministracion());
         this.userProfileNavSvc?.roadmapOpen$
             .pipe(takeUntil(this.destroy$))
             .subscribe(() => this.abrirRoadmap());
@@ -233,18 +220,24 @@ export class TabControlComponent implements OnInit, OnDestroy {
         this.userProfileNavSvc?.usageAboutOpen$
             .pipe(takeUntil(this.destroy$))
             .subscribe(() => this.abrirUsoYAcerca());
-        this.userProfileNavSvc?.feedbackBugOpen$
-            .pipe(takeUntil(this.destroy$))
-            .subscribe(() => this.abrirFeedbackBug());
-        this.userProfileNavSvc?.feedbackFeatureOpen$
-            .pipe(takeUntil(this.destroy$))
-            .subscribe(() => this.abrirFeedbackFeature());
         this.userProfileNavSvc?.publicProfileOpen$
             .pipe(takeUntil(this.destroy$))
             .subscribe((payload) => this.abrirPerfilPublico(payload));
-        this.usrSvc.banStatus$
-            .pipe(takeUntil(this.destroy$))
-            .subscribe((status) => this.syncTemporaryRestrictionState(status));
+        this.atenderVistaDeLaUrl();
+    }
+
+    /** `?vista=campanas&campana={id}` y `?vista=cuenta` (notificaciones de Rol): se abren al tener sesión. */
+    private atenderVistaDeLaUrl(): void {
+        const url = new URL(window.location.href);
+        if (!url.searchParams.has('vista'))
+            return;
+        const parametros = new URLSearchParams(url.searchParams);
+        url.searchParams.delete('vista');
+        url.searchParams.delete('campana');
+        window.history.replaceState(window.history.state, '', url);
+        this.usrSvc.isLoggedIn$
+            .pipe(filter((logueado) => logueado === true), take(1), takeUntil(this.destroy$))
+            .subscribe(() => this.userProfileNavSvc?.abrirVista(parametros));
     }
 
     ngOnDestroy(): void {
@@ -310,10 +303,6 @@ export class TabControlComponent implements OnInit, OnDestroy {
             this.quitarPerfilPrivado();
             return;
         }
-        if (activeKey === this.TAB_RESTRICTION) {
-            this.quitarRestriccionCuenta();
-            return;
-        }
         if (activeKey === this.TAB_SOCIAL) {
             this.quitarSocial();
             return;
@@ -332,14 +321,6 @@ export class TabControlComponent implements OnInit, OnDestroy {
         }
         if (activeKey === this.TAB_USAGE) {
             this.quitarUsoYAcerca();
-            return;
-        }
-        if (activeKey === this.TAB_FEEDBACK_BUG) {
-            this.quitarFeedbackBug();
-            return;
-        }
-        if (activeKey === this.TAB_FEEDBACK_FEATURE) {
-            this.quitarFeedbackFeature();
             return;
         }
         if (activeKey?.startsWith('perfil-publico:')) {
@@ -412,14 +393,9 @@ export class TabControlComponent implements OnInit, OnDestroy {
 
     private buildOrderedTabKeys(): string[] {
         const keys: string[] = [];
-        if (this.temporaryRestrictionActive && this.restrictionTabOpen)
-            keys.push(this.TAB_RESTRICTION);
-        else
-            keys.push(this.TAB_PERSONAJES);
+        keys.push(this.TAB_PERSONAJES);
         if (this.usrLoggedIn && this.privateProfileTabOpen)
             keys.push(this.TAB_PROFILE);
-        if (!this.temporaryRestrictionActive && this.restrictionTabOpen)
-            keys.push(this.TAB_RESTRICTION);
         if (this.socialTabOpen)
             keys.push(this.TAB_SOCIAL);
         if (this.usrPerm === 1 && this.adminPanelTabOpen)
@@ -430,10 +406,6 @@ export class TabControlComponent implements OnInit, OnDestroy {
             keys.push(this.TAB_LEGAL);
         if (this.usageAboutTabOpen)
             keys.push(this.TAB_USAGE);
-        if (this.feedbackBugTabOpen)
-            keys.push(this.TAB_FEEDBACK_BUG);
-        if (this.feedbackFeatureTabOpen)
-            keys.push(this.TAB_FEEDBACK_FEATURE);
         keys.push(...this.detallesPersonajeAbiertos.map((pj) => this.getPersonajeTabKey(pj)));
         keys.push(...this.publicProfileTabs.map((tab) => this.getPublicProfileTabKey(tab)));
         if (this.AbrirNuevoPersonajeTab)
@@ -575,32 +547,6 @@ export class TabControlComponent implements OnInit, OnDestroy {
         this.focusOpenedTab(this.TAB_PROFILE);
     }
 
-    public abrirRestriccionCuenta(request?: AccountRestrictionOpenRequest | null): void {
-        if (!this.temporaryRestrictionActive)
-            return;
-        this.restrictionOpenRequest = this.buildRestrictionOpenRequest(request);
-        if (this.restrictionTabOpen) {
-            this.selectTabByKey(this.TAB_RESTRICTION, true);
-            return;
-        }
-        this.restrictionTabOpen = true;
-        this.registerOpenContext(this.TAB_RESTRICTION, this.getSafeOpenerKey());
-        this.focusOpenedTab(this.TAB_RESTRICTION);
-    }
-
-    public quitarRestriccionCuenta(): boolean {
-        if (!this.restrictionTabOpen)
-            return false;
-        if (this.temporaryRestrictionActive)
-            return false;
-
-        return this.closeTabWithNavigation(this.TAB_RESTRICTION, () => {
-            this.restrictionTabOpen = false;
-            this.restrictionOpenRequest = null;
-            return true;
-        });
-    }
-
     public quitarPerfilPrivado(): boolean {
         if (!this.privateProfileTabOpen)
             return false;
@@ -612,8 +558,6 @@ export class TabControlComponent implements OnInit, OnDestroy {
     }
 
     public abrirSocial(request?: SocialHubOpenRequest | null): void {
-        if (this.temporaryRestrictionActive)
-            return;
         this.socialOpenRequest = this.buildSocialOpenRequest(request);
         if (this.socialTabOpen) {
             this.selectTabByKey(this.TAB_SOCIAL, true);
@@ -635,10 +579,9 @@ export class TabControlComponent implements OnInit, OnDestroy {
         });
     }
 
-    public abrirPanelAdministracion(request?: AdminPanelOpenRequest | null): void {
+    public abrirPanelAdministracion(): void {
         if (this.usrPerm !== 1)
             return;
-        this.adminPanelOpenRequest = this.buildAdminPanelOpenRequest(request);
         if (this.adminPanelTabOpen) {
             this.selectTabByKey(this.TAB_ADMIN, true);
             return;
@@ -654,7 +597,6 @@ export class TabControlComponent implements OnInit, OnDestroy {
 
         return this.closeTabWithNavigation(this.TAB_ADMIN, () => {
             this.adminPanelTabOpen = false;
-            this.adminPanelOpenRequest = null;
             return true;
         });
     }
@@ -683,109 +625,10 @@ export class TabControlComponent implements OnInit, OnDestroy {
         return this.closeHelpTab(this.TAB_USAGE, 'usageAboutTabOpen');
     }
 
-    public abrirFeedbackBug(): void {
-        if (!this.usrLoggedIn)
-            return;
-        this.openHelpTab(this.TAB_FEEDBACK_BUG, 'feedbackBugTabOpen');
-    }
-
-    public quitarFeedbackBug(): boolean {
-        return this.closeHelpTab(this.TAB_FEEDBACK_BUG, 'feedbackBugTabOpen');
-    }
-
-    public abrirFeedbackFeature(): void {
-        this.openHelpTab(this.TAB_FEEDBACK_FEATURE, 'feedbackFeatureTabOpen');
-    }
-
-    public quitarFeedbackFeature(): boolean {
-        return this.closeHelpTab(this.TAB_FEEDBACK_FEATURE, 'feedbackFeatureTabOpen');
-    }
-
-    private cerrarPerfilPrivadoPorLogout(): void {
-        if (!this.privateProfileTabOpen)
-            return;
-        const wasActive = this.activeTabKey === this.TAB_PROFILE;
-        this.privateProfileTabOpen = false;
-        this.privateProfileOpenRequest = null;
-        this.openerByTab.delete(this.TAB_PROFILE);
-        if (wasActive)
-            this.selectTabByKey(this.getDefaultBaseTabKey(), true);
-        else if (!this.isTabKeyOpen(this.activeTabKey))
-            this.selectTabByKey(this.getDefaultBaseTabKey(), true);
-    }
-
-    private cerrarSocialPorLogout(): void {
-        if (!this.socialTabOpen)
-            return;
-        const wasActive = this.activeTabKey === this.TAB_SOCIAL;
-        this.socialTabOpen = false;
-        this.socialOpenRequest = null;
-        this.openerByTab.delete(this.TAB_SOCIAL);
-        if (wasActive)
-            this.selectTabByKey(this.getDefaultBaseTabKey(), true);
-        else if (!this.isTabKeyOpen(this.activeTabKey))
-            this.selectTabByKey(this.getDefaultBaseTabKey(), true);
-    }
-
-    private cerrarRestriccionCuenta(): void {
-        if (!this.restrictionTabOpen)
-            return;
-        const wasActive = this.activeTabKey === this.TAB_RESTRICTION;
-        this.restrictionTabOpen = false;
-        this.restrictionOpenRequest = null;
-        this.openerByTab.delete(this.TAB_RESTRICTION);
-        if (wasActive)
-            this.selectTabByKey(this.getDefaultBaseTabKey(), true);
-        else if (!this.isTabKeyOpen(this.activeTabKey))
-            this.selectTabByKey(this.getDefaultBaseTabKey(), true);
-    }
-
-    private cerrarFeedbackBugPorLogout(): void {
-        if (!this.feedbackBugTabOpen)
-            return;
-        const wasActive = this.activeTabKey === this.TAB_FEEDBACK_BUG;
-        this.feedbackBugTabOpen = false;
-        this.openerByTab.delete(this.TAB_FEEDBACK_BUG);
-        if (wasActive)
-            this.selectTabByKey(this.getDefaultBaseTabKey(), true);
-        else if (!this.isTabKeyOpen(this.activeTabKey))
-            this.selectTabByKey(this.getDefaultBaseTabKey(), true);
-    }
-
-    private cerrarNuevoPersonajePorLogout(): void {
-        if (!this.AbrirNuevoPersonajeTab)
-            return;
-        const wasActive = this.activeTabKey === this.TAB_NUEVO;
-        this.nuevoPSvc.resetearCreacionNuevoPersonaje();
-        this.AbrirNuevoPersonajeTab = 0;
-        this.openerByTab.delete(this.TAB_NUEVO);
-        this.CerrarNuevoPersonajeTab.emit();
-        if (wasActive)
-            this.selectTabByKey(this.getDefaultBaseTabKey(), true);
-        else if (!this.isTabKeyOpen(this.activeTabKey))
-            this.selectTabByKey(this.getDefaultBaseTabKey(), true);
-    }
-
-    private buildAdminPanelOpenRequest(request?: AdminPanelOpenRequest | null): AdminPanelOpenRequest {
-        return {
-            section: request?.section ?? 'usuarios',
-            pendingOnly: request?.pendingOnly === true,
-            requestId: Number(request?.requestId) > 0 ? Number(request?.requestId) : Date.now(),
-        };
-    }
-
     private buildSocialOpenRequest(request?: SocialHubOpenRequest | null): SocialHubOpenRequest {
         return {
             section: request?.section ?? 'resumen',
-            conversationId: Number(request?.conversationId) > 0 ? Number(request?.conversationId) : null,
             campaignId: Number(request?.campaignId) > 0 ? Number(request?.campaignId) : null,
-            requestId: Number(request?.requestId) > 0 ? Number(request?.requestId) : Date.now(),
-        };
-    }
-
-    private buildRestrictionOpenRequest(request?: AccountRestrictionOpenRequest | null): AccountRestrictionOpenRequest {
-        return {
-            section: request?.section ?? 'resumen',
             requestId: Number(request?.requestId) > 0 ? Number(request?.requestId) : Date.now(),
         };
     }
@@ -795,7 +638,6 @@ export class TabControlComponent implements OnInit, OnDestroy {
             return;
         const wasActive = this.activeTabKey === this.TAB_ADMIN;
         this.adminPanelTabOpen = false;
-        this.adminPanelOpenRequest = null;
         this.openerByTab.delete(this.TAB_ADMIN);
         if (wasActive)
             this.selectTabByKey(this.getDefaultBaseTabKey(), true);
@@ -807,20 +649,14 @@ export class TabControlComponent implements OnInit, OnDestroy {
         const hadNuevoPersonajeOpen = !!this.AbrirNuevoPersonajeTab;
         const hadListadoTabsOpen = this.listadoTabsAbiertos.length > 0;
 
-        this.temporaryRestrictionActive = false;
         this.privateProfileTabOpen = false;
         this.privateProfileOpenRequest = null;
-        this.restrictionTabOpen = false;
-        this.restrictionOpenRequest = null;
         this.socialTabOpen = false;
         this.socialOpenRequest = null;
         this.adminPanelTabOpen = false;
-        this.adminPanelOpenRequest = null;
         this.roadmapTabOpen = false;
         this.legalPrivacyTabOpen = false;
         this.usageAboutTabOpen = false;
-        this.feedbackBugTabOpen = false;
-        this.feedbackFeatureTabOpen = false;
         this.publicProfileTabs = [];
         this.detallesPersonajeAbiertos = [];
         this.detallesRazaAbiertos = [];
@@ -861,10 +697,8 @@ export class TabControlComponent implements OnInit, OnDestroy {
 
     private openHelpTab(
         key: string,
-        flag: 'roadmapTabOpen' | 'legalPrivacyTabOpen' | 'usageAboutTabOpen' | 'feedbackBugTabOpen' | 'feedbackFeatureTabOpen'
+        flag: 'roadmapTabOpen' | 'legalPrivacyTabOpen' | 'usageAboutTabOpen'
     ): void {
-        if (this.temporaryRestrictionActive)
-            return;
         if (this.getHelpTabFlag(flag)) {
             this.selectTabByKey(key, true);
             return;
@@ -876,7 +710,7 @@ export class TabControlComponent implements OnInit, OnDestroy {
 
     private closeHelpTab(
         key: string,
-        flag: 'roadmapTabOpen' | 'legalPrivacyTabOpen' | 'usageAboutTabOpen' | 'feedbackBugTabOpen' | 'feedbackFeatureTabOpen'
+        flag: 'roadmapTabOpen' | 'legalPrivacyTabOpen' | 'usageAboutTabOpen'
     ): boolean {
         if (!this.getHelpTabFlag(flag))
             return false;
@@ -888,7 +722,7 @@ export class TabControlComponent implements OnInit, OnDestroy {
     }
 
     private getHelpTabFlag(
-        flag: 'roadmapTabOpen' | 'legalPrivacyTabOpen' | 'usageAboutTabOpen' | 'feedbackBugTabOpen' | 'feedbackFeatureTabOpen'
+        flag: 'roadmapTabOpen' | 'legalPrivacyTabOpen' | 'usageAboutTabOpen'
     ): boolean {
         if (flag === 'roadmapTabOpen')
             return this.roadmapTabOpen;
@@ -896,15 +730,11 @@ export class TabControlComponent implements OnInit, OnDestroy {
             return this.legalPrivacyTabOpen;
         if (flag === 'usageAboutTabOpen')
             return this.usageAboutTabOpen;
-        if (flag === 'feedbackBugTabOpen')
-            return this.feedbackBugTabOpen;
-        if (flag === 'feedbackFeatureTabOpen')
-            return this.feedbackFeatureTabOpen;
         return this.usageAboutTabOpen;
     }
 
     private setHelpTabFlag(
-        flag: 'roadmapTabOpen' | 'legalPrivacyTabOpen' | 'usageAboutTabOpen' | 'feedbackBugTabOpen' | 'feedbackFeatureTabOpen',
+        flag: 'roadmapTabOpen' | 'legalPrivacyTabOpen' | 'usageAboutTabOpen',
         value: boolean
     ): void {
         if (flag === 'roadmapTabOpen') {
@@ -915,15 +745,7 @@ export class TabControlComponent implements OnInit, OnDestroy {
             this.legalPrivacyTabOpen = value;
             return;
         }
-        if (flag === 'usageAboutTabOpen') {
-            this.usageAboutTabOpen = value;
-            return;
-        }
-        if (flag === 'feedbackBugTabOpen') {
-            this.feedbackBugTabOpen = value;
-            return;
-        }
-        this.feedbackFeatureTabOpen = value;
+        this.usageAboutTabOpen = value;
     }
 
     public abrirPerfilPublico(payload: UserPublicProfileTab): void {
@@ -935,8 +757,6 @@ export class TabControlComponent implements OnInit, OnDestroy {
         if (existente) {
             if (!existente.initialDisplayName && payload.initialDisplayName)
                 existente.initialDisplayName = payload.initialDisplayName;
-            if (payload.mode === 'relationship')
-                existente.mode = 'relationship';
             this.selectTabByKey(this.getPublicProfileTabKey(existente));
             return;
         }
@@ -944,7 +764,6 @@ export class TabControlComponent implements OnInit, OnDestroy {
         const tab: UserPublicProfileTab = {
             uid,
             initialDisplayName: `${payload?.initialDisplayName ?? ''}`.trim() || null,
-            mode: payload?.mode === 'relationship' ? 'relationship' : 'public',
         };
         const targetKey = this.getPublicProfileTabKey(tab);
         this.publicProfileTabs.push(tab);
@@ -1066,7 +885,7 @@ export class TabControlComponent implements OnInit, OnDestroy {
             if (!result.isConfirmed)
                 return;
 
-            this.irAlPanelAdministracion('sync');
+            this.irAlPanelAdministracion();
         } catch (error) {
             // Si falla la lectura de metadata, no bloqueamos el resto del flujo de tabs.
         } finally {
@@ -1074,14 +893,11 @@ export class TabControlComponent implements OnInit, OnDestroy {
         }
     }
 
-    private irAlPanelAdministracion(section: AdminPanelOpenRequest['section'] = 'usuarios'): void {
+    private irAlPanelAdministracion(): void {
         if (this.usrPerm !== 1)
             return;
 
-        const navegar = () => this.abrirPanelAdministracion({
-            section,
-            requestId: Date.now(),
-        });
+        const navegar = () => this.abrirPanelAdministracion();
 
         this.ngZone.run(navegar);
         setTimeout(() => this.ngZone.run(navegar), 0);
@@ -2683,72 +2499,7 @@ export class TabControlComponent implements OnInit, OnDestroy {
         });
     }
 
-    private syncTemporaryRestrictionState(status: UserBanStatus | null): void {
-        const temporaryBanActive = status?.restriction === 'temporaryBan';
-        if (temporaryBanActive) {
-            const wasInactive = this.temporaryRestrictionActive !== true;
-            this.temporaryRestrictionActive = true;
-            this.closeNonAccountTabsForTemporaryBan();
-            this.abrirRestriccionCuenta({
-                section: 'resumen',
-                requestId: Date.now(),
-            });
-            if (wasInactive)
-                this.selectTabByKey(this.TAB_RESTRICTION, true);
-            return;
-        }
-
-        const wasTemporary = this.temporaryRestrictionActive === true;
-        this.temporaryRestrictionActive = false;
-        if (wasTemporary)
-            this.cerrarRestriccionCuenta();
-    }
-
-    private closeNonAccountTabsForTemporaryBan(): void {
-        this.socialTabOpen = false;
-        this.socialOpenRequest = null;
-        this.adminPanelTabOpen = false;
-        this.adminPanelOpenRequest = null;
-        this.roadmapTabOpen = false;
-        this.legalPrivacyTabOpen = false;
-        this.usageAboutTabOpen = false;
-        this.feedbackBugTabOpen = false;
-        this.feedbackFeatureTabOpen = false;
-        this.publicProfileTabs = [];
-        this.detallesPersonajeAbiertos = [];
-        this.detallesRazaAbiertos = [];
-        this.detallesConjuroAbiertos = [];
-        this.detallesSortilegaAbiertos = [];
-        this.detallesTipoCriaturaAbiertos = [];
-        this.detallesRasgoAbiertos = [];
-        this.detallesDoteAbiertos = [];
-        this.detallesClaseAbiertos = [];
-        this.detallesEspecialAbiertos = [];
-        this.detallesRacialAbiertos = [];
-        this.detallesManualAbiertos = [];
-        this.detallesPlantillaAbiertos = [];
-        this.detallesSubtipoAbiertos = [];
-        this.detallesVentajaAbiertos = [];
-        this.detallesMonstruoAbiertos = [];
-        this.detallesArmaAbiertos = [];
-        this.detallesArmaduraAbiertos = [];
-        this.detallesDeidadAbiertos = [];
-        this.detallesIdiomaAbiertos = [];
-        this.listadoTabsAbiertos = [];
-        this.edicionRacialesAbiertos = [];
-        this.edicionIdiomasAbiertos = [];
-        this.edicionEspecialesAbiertos = [];
-        this.edicionClasesAbiertos = [];
-        this.AbrirNuevoPersonajeTab = 0;
-
-        Array.from(this.openerByTab.keys())
-            .filter((key) => key !== this.TAB_PROFILE && key !== this.TAB_RESTRICTION)
-            .forEach((key) => this.openerByTab.delete(key));
-    }
-
     private getDefaultBaseTabKey(): string {
-        if (this.temporaryRestrictionActive && this.restrictionTabOpen)
-            return this.TAB_RESTRICTION;
         return this.TAB_PERSONAJES;
     }
 

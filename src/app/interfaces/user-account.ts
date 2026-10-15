@@ -78,35 +78,14 @@ export class ProfileApiError extends Error {
 export interface UserPublicProfileTab {
     uid: string;
     initialDisplayName?: string | null;
-    mode?: 'public' | 'relationship';
 }
 
-export type UserPrivateProfileSectionId = 'resumen' | 'campanas' | 'identidad' | 'preferencias' | 'seguridad';
-export type AdminPanelSectionId =
-    | 'usuarios'
-    | 'role-requests'
-    | 'feedback-bugs'
-    | 'feedback-features'
-    | 'moderacion'
-    | 'auditoria'
-    | 'sync';
-export type AccountRestrictionSectionId = 'resumen';
+export type UserPrivateProfileSectionId = 'resumen' | 'preferencias' | 'campanas';
 
 export interface UserPrivateProfileOpenRequest {
     section: UserPrivateProfileSectionId;
     requestId: number;
     campaignId?: number | null;
-}
-
-export interface AdminPanelOpenRequest {
-    section: AdminPanelSectionId;
-    pendingOnly?: boolean;
-    requestId: number;
-}
-
-export interface AccountRestrictionOpenRequest {
-    section: AccountRestrictionSectionId;
-    requestId: number;
 }
 
 export type { SocialHubSectionId, SocialHubOpenRequest };

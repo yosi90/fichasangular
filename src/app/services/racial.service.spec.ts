@@ -2,8 +2,11 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { of, throwError } from 'rxjs';
 import { environment } from 'src/environments/environment';
 import { RacialService } from './racial.service';
+import { simularTokenApi } from 'src/testing/simular-token-api';
 
 describe('RacialService', () => {
+    beforeEach(() => simularTokenApi('token-racial'));
+
     let http: jasmine.SpyObj<any>;
     let auth: any;
     let service: RacialService;

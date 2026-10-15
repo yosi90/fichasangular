@@ -2,6 +2,7 @@ import { of, throwError } from 'rxjs';
 import { Personaje } from '../interfaces/personaje';
 import { ProfileApiError } from '../interfaces/user-account';
 import { PersonajeService } from './personaje.service';
+import { simularTokenApi } from 'src/testing/simular-token-api';
 
 function crearServicio(httpMock: any): PersonajeService {
     return new PersonajeService(
@@ -233,6 +234,8 @@ function crearPersonajeMock(): Personaje {
 }
 
 describe('PersonajeService', () => {
+    beforeEach(() => simularTokenApi('token'));
+
     it('getDetallesPersonaje usa API actor-scoped con Bearer y shape canónico', async () => {
         const httpMock = {
             get: jasmine.createSpy('get').and.returnValue(of({

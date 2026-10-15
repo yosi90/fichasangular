@@ -1,4 +1,4 @@
-import { NgModule } from '@angular/core';
+import { NgModule, CUSTOM_ELEMENTS_SCHEMA } from '@angular/core';
 import { BrowserModule } from '@angular/platform-browser';
 import { initializeApp, provideFirebaseApp } from '@angular/fire/app';
 import { environment } from '../environments/environment';
@@ -43,12 +43,6 @@ import { getApp } from 'firebase/app';
 import { TabControlComponent } from './components/base/tab-control/tab-control.component';
 import { BaseMenuComponent } from './components/base/base-menu/base-menu.component';
 import { AdminPanelComponent } from './components/base/admin-panel/admin-panel.component';
-import { AdminUserPermissionsModalComponent } from './components/base/admin-panel/admin-user-permissions-modal.component';
-import { AdminUserModerationHistoryModalComponent } from './components/base/admin-panel/admin-user-moderation-history-modal.component';
-import { AdminUserModerationHistoryViewComponent } from './components/base/admin-panel/admin-user-moderation-history-view.component';
-import { AdminUserSanctionModalComponent } from './components/base/admin-panel/admin-user-sanction-modal.component';
-import { AdminModerationCaseModalComponent } from './components/base/admin-panel/admin-moderation-case-modal.component';
-import { AdminFeedbackManagerComponent } from './components/base/admin-panel/admin-feedback-manager.component';
 import { DetallesPersonajeComponent } from './components/detalles/detalles-personaje/detalles-personaje.component';
 import { NuevoPersonajeComponent } from './components/nuevo-personaje/nuevo-personaje.component';
 import { DetallesRazaComponent } from './components/detalles/detalles-raza/detalles-raza.component';
@@ -122,17 +116,11 @@ import { DetallesIdiomaComponent } from './components/detalles/detalles-idioma/d
 import { UserProfileComponent } from './components/base/user-profile/user-profile.component';
 import { PublicUserProfileComponent } from './components/base/public-user-profile/public-user-profile.component';
 import { SocialHubComponent } from './components/base/social-hub/social-hub.component';
-import { SocialActivitySectionComponent } from './components/base/social-hub/social-activity-section.component';
 import { SocialCommunitySectionComponent } from './components/base/social-hub/social-community-section.component';
 import { SocialLfgSectionComponent } from './components/base/social-hub/social-lfg-section.component';
 import { HelpRoadmapComponent } from './components/base/help-roadmap/help-roadmap.component';
 import { HelpLegalComponent } from './components/base/help-legal/help-legal.component';
-import { HelpFeedbackComponent } from './components/base/help-feedback/help-feedback.component';
 import { HelpUsageAboutComponent } from './components/base/help-usage-about/help-usage-about.component';
-import { AccountRestrictionTabComponent } from './components/base/account-restriction-tab/account-restriction-tab.component';
-import { ChatFloatingConversationWindowComponent } from './components/chat-floating/chat-floating-conversation-window.component';
-import { ChatFloatingHostComponent } from './components/chat-floating/chat-floating-host.component';
-import { ChatFloatingListWindowComponent } from './components/chat-floating/chat-floating-list-window.component';
 import { CloseFilterMenuOnMouseleaveDirective } from './directives/close-filter-menu-on-mouseleave.directive';
 
 @NgModule({
@@ -147,24 +135,12 @@ import { CloseFilterMenuOnMouseleaveDirective } from './directives/close-filter-
         PublicUserProfileComponent,
         SocialHubComponent,
         SocialCommunitySectionComponent,
-        SocialActivitySectionComponent,
         SocialLfgSectionComponent,
         HelpRoadmapComponent,
         HelpLegalComponent,
-        HelpFeedbackComponent,
         HelpUsageAboutComponent,
-        AccountRestrictionTabComponent,
-        ChatFloatingHostComponent,
-        ChatFloatingListWindowComponent,
-        ChatFloatingConversationWindowComponent,
         CloseFilterMenuOnMouseleaveDirective,
         AdminPanelComponent,
-        AdminUserPermissionsModalComponent,
-        AdminUserModerationHistoryModalComponent,
-        AdminUserModerationHistoryViewComponent,
-        AdminUserSanctionModalComponent,
-        AdminModerationCaseModalComponent,
-        AdminFeedbackManagerComponent,
         DetallesPersonajeComponent,
         NuevoPersonajeComponent,
         DetallesRazaComponent,
@@ -276,6 +252,8 @@ import { CloseFilterMenuOnMouseleaveDirective } from './directives/close-filter-
         }),
         provideFirestore(() => getFirestore(getApp(), environment.firestoreDatabaseId)),
     ],
+    // Elementos de la plataforma (<yosi-chat>, <yosi-notificaciones>…), registrados por su SDK.
+    schemas: [CUSTOM_ELEMENTS_SCHEMA],
     bootstrap: [AppComponent]
 })
 export class AppModule { }

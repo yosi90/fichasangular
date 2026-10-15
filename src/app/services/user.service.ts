@@ -10,7 +10,6 @@ import { FirebaseInjectionContextService } from './firebase-injection-context.se
 import { EstadoPlataforma, PlatformSessionService, RestriccionesPlataforma } from './platform-session.service';
 import { PrivateUserFirestoreService } from './private-user-firestore.service';
 import { UserProfileApiService } from './user-profile-api.service';
-import { UsuariosApiService } from './usuarios-api.service';
 
 @Injectable({
     providedIn: 'root'
@@ -45,6 +44,10 @@ export class UserService {
 
     public get Usuario() {
         return this.usuario;
+    }
+
+    public get IsLoggedIn(): boolean {
+        return this.isLoggedInSubject.value;
     }
 
     public get CurrentUserUid(): string {
@@ -136,7 +139,6 @@ export class UserService {
         private firebaseContextSvc: FirebaseInjectionContextService,
         private userProfileApiSvc?: UserProfileApiService,
         private privateUserFirestoreSvc?: PrivateUserFirestoreService,
-        private usuariosApiSvc?: UsuariosApiService,
         private platformSessionSvc?: PlatformSessionService,
     ) {
         this.subscribeAuthState((firebaseUser) => {

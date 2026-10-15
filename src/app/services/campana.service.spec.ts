@@ -6,8 +6,11 @@ import { CampanaService } from './campana.service';
 import { CampaignRealtimeSyncService } from './campaign-realtime-sync.service';
 import { FirebaseInjectionContextService } from './firebase-injection-context.service';
 import { CampaignListItem } from '../interfaces/campaign-management';
+import { simularTokenApi } from 'src/testing/simular-token-api';
 
 describe('CampanaService', () => {
+    beforeEach(() => simularTokenApi('token'));
+
     let httpMock: { get: jasmine.Spy; post: jasmine.Spy; patch: jasmine.Spy; delete: jasmine.Spy; };
     let service: CampanaService;
     let invalidations$: Subject<any>;

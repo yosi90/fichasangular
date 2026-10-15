@@ -1,7 +1,10 @@
 import { of } from 'rxjs';
 import { HabilidadService } from './habilidad.service';
+import { simularTokenApi } from 'src/testing/simular-token-api';
 
 describe('HabilidadService custom mutations', () => {
+    beforeEach(() => simularTokenApi('token-123'));
+
     function createService() {
         const auth = {
             currentUser: {

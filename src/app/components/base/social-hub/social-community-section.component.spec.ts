@@ -92,19 +92,6 @@ describe('SocialCommunitySectionComponent', () => {
         expect(component.statCards[0]).toEqual({ label: 'Usuarios visibles', value: 12 });
     }));
 
-    it('abre perfil relacional reutilizando la tab existente', () => {
-        component.openRelationshipProfile({
-            uid: 'uid-2',
-            displayName: 'Yuna',
-        } as any);
-
-        expect(userProfileNavSvc.openPublicProfile).toHaveBeenCalledWith({
-            uid: 'uid-2',
-            initialDisplayName: 'Yuna',
-            mode: 'relationship',
-        });
-    });
-
     it('resetea su estado al salir de sesión', () => {
         component.users = [{
             uid: 'uid-2',

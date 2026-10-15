@@ -1,5 +1,4 @@
 import { Component, EventEmitter, OnDestroy, OnInit, Output, ViewChild } from '@angular/core';
-import { MatDialog } from '@angular/material/dialog';
 import { UserService } from '../../../services/user.service';
 import { UserProfileNavigationService } from '../../../services/user-profile-navigation.service';
 import { MatExpansionPanel } from '@angular/material/expansion';
@@ -52,7 +51,6 @@ export class BaseMenuComponent implements OnInit, OnDestroy {
     ];
 
     constructor(
-        public dSesion: MatDialog,
         private usrService: UserService,
         private userProfileNavSvc: UserProfileNavigationService
     ) { }
@@ -139,9 +137,7 @@ export class BaseMenuComponent implements OnInit, OnDestroy {
     }
 
     get esInvitado(): boolean {
-        const nombre = `${this.usrService.Usuario.nombre ?? ''}`.trim();
-        const correo = `${this.usrService.Usuario.correo ?? ''}`.trim();
-        return nombre === 'Invitado' || correo.length < 1;
+        return !this.usrService.IsLoggedIn;
     }
 
     get canCrearPersonajes(): boolean {
@@ -285,7 +281,7 @@ export class BaseMenuComponent implements OnInit, OnDestroy {
     }
 
     abrirMiPerfil(): void {
-        if (this.usr === 'Invitado')
+        if (this.esInvitado)
             return;
         this.userProfileNavSvc.openPrivateProfile();
         this.closeAcordion();

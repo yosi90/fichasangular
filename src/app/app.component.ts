@@ -1,16 +1,9 @@
 import { Component, OnDestroy, OnInit } from '@angular/core';
 import { Observable, Subject, fromEvent, takeUntil } from 'rxjs';
 import Swal from 'sweetalert2';
-import { CompliancePolicyNoticeService } from './services/compliance-policy-notice.service';
-import { AdminRoleRequestNotifierService } from './services/admin-role-request-notifier.service';
 import { CampaignRealtimeSyncService } from './services/campaign-realtime-sync.service';
-import { ChatAlertService } from './services/chat-alert.service';
-import { ChatFloatingService } from './services/chat-floating.service';
-import { ChatRealtimeService } from './services/chat-realtime.service';
 import { FirebaseSessionBridgeService } from './services/firebase-session-bridge.service';
 import { PlatformSessionService } from './services/platform-session.service';
-import { SessionNotificationCenterService } from './services/session-notification-center.service';
-import { SocialAlertPreferencesService } from './services/social-alert-preferences.service';
 import { toUserFacingErrorMessage } from './services/utils/user-facing-error.util';
 
 @Component({
@@ -27,14 +20,7 @@ export class AppComponent implements OnInit, OnDestroy {
     resize$: Observable<Event> = fromEvent(window, 'resize');
 
     constructor(
-        private compliancePolicyNoticeSvc: CompliancePolicyNoticeService,
-        private adminRoleRequestNotifierSvc: AdminRoleRequestNotifierService,
         private campaignRealtimeSyncSvc: CampaignRealtimeSyncService,
-        private chatRealtimeSvc: ChatRealtimeService,
-        private chatFloatingSvc: ChatFloatingService,
-        private chatAlertSvc: ChatAlertService,
-        private sessionNotificationCenterSvc: SessionNotificationCenterService,
-        private socialAlertPrefsSvc: SocialAlertPreferencesService,
         private platformSessionSvc: PlatformSessionService,
         private firebaseSessionBridgeSvc: FirebaseSessionBridgeService,
     ) { }
@@ -43,13 +29,7 @@ export class AppComponent implements OnInit, OnDestroy {
         this.configurarSwalGlobal();
         this.firebaseSessionBridgeSvc.iniciar();
         this.platformSessionSvc.iniciar();
-        this.compliancePolicyNoticeSvc.init();
-        this.adminRoleRequestNotifierSvc.init();
-        this.chatRealtimeSvc.init();
-        this.chatFloatingSvc.init();
         this.campaignRealtimeSyncSvc.init();
-        this.socialAlertPrefsSvc.init();
-        this.chatAlertSvc.init();
         this.resize$
             .pipe(takeUntil(this.destroy$))
             .subscribe(() => {
@@ -79,7 +59,7 @@ export class AppComponent implements OnInit, OnDestroy {
         };
 
         (Swal as any).fire = ((...args: any[]) => {
-            const normalizedArgs = this.sessionNotificationCenterSvc.prepareSwalInvocation(args);
+            const normalizedArgs = args;
 
             if (normalizedArgs.length === 0)
                 return originalFire(baseConfig);

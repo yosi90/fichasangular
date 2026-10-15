@@ -10,7 +10,6 @@ export type SocialHubSectionId =
 
 export interface SocialHubOpenRequest {
     section: SocialHubSectionId;
-    conversationId?: number | null;
     campaignId?: number | null;
     requestId: number;
 }

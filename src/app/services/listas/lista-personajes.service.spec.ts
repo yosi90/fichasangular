@@ -1,6 +1,7 @@
 import { of } from 'rxjs';
 import { FirebaseInjectionContextService } from '../firebase-injection-context.service';
 import { ListaPersonajesService } from './lista-personajes.service';
+import { simularTokenApi } from 'src/testing/simular-token-api';
 
 const firebaseContextMock = {
     run: <T>(fn: () => T) => fn(),
@@ -16,6 +17,8 @@ class ListaPersonajesServiceAuthTestDouble extends ListaPersonajesService {
 }
 
 describe('ListaPersonajesService', () => {
+    beforeEach(() => simularTokenApi('token'));
+
     it('getPersonajes usa API detallada actor-scoped con Bearer', async () => {
         const httpMock = {
             get: jasmine.createSpy('get').and.returnValue(of([{

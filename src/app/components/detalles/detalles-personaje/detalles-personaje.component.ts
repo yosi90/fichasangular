@@ -18,7 +18,6 @@ import { ClaseService } from 'src/app/services/clase.service';
 import { ListaPersonajesService } from 'src/app/services/listas/lista-personajes.service';
 import { PersonajeService } from 'src/app/services/personaje.service';
 import { RegionService } from 'src/app/services/region.service';
-import { UserProfileApiService } from 'src/app/services/user-profile-api.service';
 import { UserService } from 'src/app/services/user.service';
 import { resolverExtraHabilidadVisible } from 'src/app/services/utils/habilidad-extra-visible';
 import { buildManiobrabilidadInfoSecciones, ManiobrabilidadLike, tieneManiobrabilidadVisible } from 'src/app/services/utils/maniobrabilidad-info';
@@ -91,9 +90,7 @@ export class DetallesPersonajeComponent implements OnInit, OnChanges, AfterViewI
     mostrarInfoManiobrabilidad = false;
     etiquetaCreador = 'Desconocido';
     perfilPublicoDisponible = false;
-    perfilPublicoComprobando = false;
     private ownerUidCargado = '';
-    private ownerProfileLookupSeq = 0;
     private regionesSub?: Subscription;
     private clasesSub?: Subscription;
     private catalogoRegiones: RegionDetalle[] = [];
@@ -111,7 +108,6 @@ export class DetallesPersonajeComponent implements OnInit, OnChanges, AfterViewI
         private listaPersonajesSvc: ListaPersonajesService,
         private regionSvc: RegionService,
         private userSvc: UserService,
-        private userProfileApiSvc: UserProfileApiService,
         private hostElement: ElementRef<HTMLElement>
     ) { }
 
@@ -212,7 +208,8 @@ export class DetallesPersonajeComponent implements OnInit, OnChanges, AfterViewI
     }
 
     get chipCreadorClickable(): boolean {
-        return this.perfilPublicoDisponible && !this.perfilPublicoComprobando;
+        // La ficha de comunidad necesita sesión; si la persona no la enseña, la pestaña lo dice.
+        return this.perfilPublicoDisponible && this.userSvc.IsLoggedIn;
     }
 
     get nombreRegionPrincipal(): string {
@@ -393,7 +390,6 @@ export class DetallesPersonajeComponent implements OnInit, OnChanges, AfterViewI
             this.etiquetaCreador = ownerDisplayName.length > 0 ? ownerDisplayName : 'Desconocido';
             this.ownerUidCargado = '';
             this.perfilPublicoDisponible = false;
-            this.perfilPublicoComprobando = false;
             return;
         }
 
@@ -402,29 +398,12 @@ export class DetallesPersonajeComponent implements OnInit, OnChanges, AfterViewI
             this.etiquetaCreador = 'Tú';
             this.ownerUidCargado = ownerUid;
             this.perfilPublicoDisponible = false;
-            this.perfilPublicoComprobando = false;
             return;
         }
 
         this.ownerUidCargado = ownerUid;
         this.etiquetaCreador = ownerDisplayName.length > 0 ? ownerDisplayName : 'Desconocido';
-        this.perfilPublicoDisponible = false;
-        this.perfilPublicoComprobando = true;
-
-        const lookupSeq = ++this.ownerProfileLookupSeq;
-        try {
-            const disponible = await this.userProfileApiSvc.hasPublicProfile(ownerUid);
-            if (this.ownerUidNormalizado() !== ownerUid || this.ownerProfileLookupSeq !== lookupSeq)
-                return;
-            this.perfilPublicoDisponible = disponible;
-        } catch {
-            if (this.ownerUidNormalizado() !== ownerUid || this.ownerProfileLookupSeq !== lookupSeq)
-                return;
-            this.perfilPublicoDisponible = false;
-        } finally {
-            if (this.ownerUidNormalizado() === ownerUid && this.ownerProfileLookupSeq === lookupSeq)
-                this.perfilPublicoComprobando = false;
-        }
+        this.perfilPublicoDisponible = true;
     }
 
     private toNumber(value: any): number {

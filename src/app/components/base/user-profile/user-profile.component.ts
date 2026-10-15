@@ -1,13 +1,9 @@
 import { Component, Input, OnChanges, OnDestroy, OnInit, SimpleChanges } from '@angular/core';
-import { Auth } from '@angular/fire/auth';
-import { updateProfile } from 'firebase/auth';
-import { EmailAuthProvider, reauthenticateWithCredential, updatePassword } from 'firebase/auth';
 import { Subject, concatMap, debounceTime, from, takeUntil } from 'rxjs';
 import Swal from 'sweetalert2';
 import {
     CampaignCreationPolicy,
     CampaignDetailViewModel,
-    CampaignInvitationDecision,
     CampaignInvitationItem,
     CampaignListItem,
     CampaignMemberItem,
@@ -19,10 +15,9 @@ import {
 } from 'src/app/interfaces/campaign-management';
 import {
     ProfileApiError,
-    UserAvatarResponse,
     UserPrivateProfile,
     UserPrivateProfileOpenRequest,
-    UserPrivateProfileSectionId
+    UserPrivateProfileSectionId,
 } from 'src/app/interfaces/user-account';
 import { UserRoleRequestStatus, UserRoleRequestTarget } from 'src/app/interfaces/user-role-request';
 import { NuevoPersonajeGeneradorConfig, UserSettingsV1 } from 'src/app/interfaces/user-settings';
@@ -30,27 +25,16 @@ import { PERMISSION_RESOURCES } from 'src/app/interfaces/user-acl';
 import {
     UserAccessRestrictionReason,
     UserAccessScope,
-    UserBanStatus,
-    UserComplianceActivePolicy,
-    UserCompliancePolicyKind,
-    UserCompliancePolicyState,
-    UserComplianceSnapshot,
-    UserModerationHistoryItem,
-    UserModerationSanction,
 } from 'src/app/interfaces/user-moderation';
 import { AppToastService } from 'src/app/services/app-toast.service';
 import { CampanaService } from 'src/app/services/campana.service';
 import { CampaignRealtimeSyncService } from 'src/app/services/campaign-realtime-sync.service';
-import { ChatApiService } from 'src/app/services/chat-api.service';
-import { ChatFloatingService } from 'src/app/services/chat-floating.service';
-import { ChatRealtimeService } from 'src/app/services/chat-realtime.service';
 import { UserProfileApiService } from 'src/app/services/user-profile-api.service';
 import { UserProfileNavigationService } from 'src/app/services/user-profile-navigation.service';
-import { SocialAlertPreferencesService } from 'src/app/services/social-alert-preferences.service';
-import { UserSettingsService } from 'src/app/services/user-settings.service';
 import { UserService } from 'src/app/services/user.service';
+import { UserSettingsService } from 'src/app/services/user-settings.service';
+import { PlatformSessionService } from 'src/app/services/platform-session.service';
 import { ApiActionGuardService } from 'src/app/services/api-action-guard.service';
-import { resolveDefaultProfileAvatar } from 'src/app/services/utils/profile-avatar.util';
 import { toUserFacingErrorMessage } from 'src/app/services/utils/user-facing-error.util';
 
 type CampaignWorkspaceMode = 'idle' | 'create' | 'config' | 'peopleStories';
@@ -73,13 +57,6 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
     loadErrorMessage = '';
     currentSection: UserPrivateProfileSectionId = 'resumen';
 
-    displayNameDraft = '';
-    bioDraft = '';
-    genderIdentityDraft = '';
-    pronounsDraft = '';
-    genderIdentityPreset: GenderIdentityPreset = 'hidden';
-    identitySaving = false;
-    private identitySubmitAttempted = false;
     private readonly identityFieldTouched: Record<IdentityFieldKey, boolean> = {
         displayName: false,
         bio: false,
@@ -89,42 +66,15 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
 
     settingsSaving = false;
     visibilidadPorDefectoPersonajes = false;
-    mostrarPerfilPublico = true;
-    allowDirectMessagesFromNonFriends = false;
-    autoAbrirVentanaChats = true;
-    permitirBurbujasChat = true;
-    socialAlertsMensajes = true;
-    socialAlertsAmistad = true;
-    socialAlertsCampanas = true;
-    socialAlertsCuentaSistema = true;
     generadorMinimoSeleccionado = 13;
     generadorTablasPermitidas = 3;
     previewResetting = false;
 
-    avatarUploading = false;
-    avatarDeleting = false;
-    avatarPreviewUrl: string | null = null;
-    avatarUrl = resolveDefaultProfileAvatar('');
-    selectedAvatarFile: File | null = null;
-    private persistedAvatarUrl = '';
-    private avatarFailedSource = '';
 
-    currentPassword = '';
-    newPassword = '';
-    confirmPassword = '';
-    passwordSaving = false;
     roleRequestStatus: UserRoleRequestStatus | null = null;
     roleRequestLoading = false;
     roleRequestSubmitting = false;
     roleRequestCommentDraft = '';
-    moderationHistory: UserModerationHistoryItem[] = [];
-    moderationHistoryLoading = false;
-    moderationHistoryErrorMessage = '';
-    moderationHistoryHasMore = false;
-    private moderationHistoryTotal = 0;
-    readonly moderationHistoryPageSize = 10;
-    policyViewingKind: UserCompliancePolicyKind | null = null;
-    policyAcceptingKind: UserCompliancePolicyKind | null = null;
 
     campaigns: CampaignListItem[] = [];
     campaignsLoading = false;
@@ -147,10 +97,6 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
     memberSearchErrorMessage = '';
     memberInviteInFlightUid = '';
     memberRemoveInFlightUid = '';
-    receivedCampaignInvitations: CampaignInvitationItem[] = [];
-    receivedCampaignInvitationsLoading = false;
-    receivedCampaignInvitationsErrorMessage = '';
-    receivedCampaignInviteResolveInFlightId: number | null = null;
     campaignInviteCancelInFlightId: number | null = null;
     transferSearchQuery = '';
     transferSearchLoading = false;
@@ -181,13 +127,8 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
     private memberSearchTimerId: number | null = null;
     private transferSearchTimerId: number | null = null;
     private campaignSummariesWatchStop: (() => void) | null = null;
-    private identityDraftsUid = '';
     private readonly campaignPolicyAutofixInFlight = new Set<number>();
     private campaignSummariesLiveReady = false;
-    readonly displayNameMinLength = 3;
-    readonly displayNameMaxLength = 150;
-    readonly bioMinLength = 10;
-    readonly bioMaxLength = 600;
     readonly campaignNameMinLength = 5;
     readonly campaignNameMaxLength = 150;
     readonly campaignMinimumRollMin = 3;
@@ -221,19 +162,15 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
     });
 
     constructor(
-        private auth: Auth,
         private userSvc: UserService,
         private userProfileApiSvc: UserProfileApiService,
         private userSettingsSvc: UserSettingsService,
         private campanaSvc: CampanaService,
         private campaignRealtimeSyncSvc: CampaignRealtimeSyncService,
-        private chatApiSvc: ChatApiService,
-        private chatRealtimeSvc: ChatRealtimeService,
-        private chatFloatingSvc: ChatFloatingService,
         private userProfileNavSvc: UserProfileNavigationService,
         private appToastSvc: AppToastService,
-        private socialAlertPrefsSvc: SocialAlertPreferencesService,
         private apiActionGuardSvc: ApiActionGuardService,
+        private platformSessionSvc: PlatformSessionService,
     ) { }
 
     ngOnInit(): void {
@@ -241,13 +178,6 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
             .pipe(takeUntil(this.destroy$))
             .subscribe((profile) => {
                 this.profile = profile;
-                this.syncAvatarStateFromProfile(profile);
-                if (profile && this.identityDraftsUid !== profile.uid) {
-                    this.hydrateIdentityDraftsFromProfile(profile, true);
-                    this.identityDraftsUid = profile.uid;
-                }
-                if (!this.canChangePassword && this.currentSection === 'seguridad')
-                    this.currentSection = 'resumen';
                 this.resolvePendingRequestedSection();
             });
         this.campaignRealtimeSyncSvc.events$
@@ -276,11 +206,50 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
     ngOnDestroy(): void {
         this.destroy$.next();
         this.destroy$.complete();
-        this.releaseAvatarPreview();
         this.clearSearchTimer('member');
         this.clearSearchTimer('transfer');
         this.campaignSummariesWatchStop?.();
         this.campaignSummariesWatchStop = null;
+    }
+
+    downloadingData = false;
+
+    get accountAlias(): string {
+        return `${this.platformSessionSvc.cuenta?.alias ?? ''}`.trim();
+    }
+
+    get urlCuentaPlataforma(): string {
+        return this.platformSessionSvc.urlSocial('cuenta');
+    }
+
+    get urlModeracionPlataforma(): string {
+        return this.platformSessionSvc.urlSocial('moderacion');
+    }
+
+    /** Normas de Rol pendientes o limitaciones de la cuenta, si las hay. */
+    get accountNotice(): string {
+        return this.userSvc.getAccessRestrictionMessage('creation');
+    }
+
+    editarPerfilPlataforma(): void {
+        void this.platformSessionSvc.editarPerfil().catch(() => undefined);
+    }
+
+    abrirPrivacidad(): void {
+        void this.platformSessionSvc.privacidad().catch(() => undefined);
+    }
+
+    async descargarMisDatos(): Promise<void> {
+        if (this.downloadingData)
+            return;
+        this.downloadingData = true;
+        try {
+            await this.userProfileApiSvc.downloadMyData();
+        } catch (error: any) {
+            this.appToastSvc.showError(toUserFacingErrorMessage(error, 'No se pudieron preparar tus datos.'));
+        } finally {
+            this.downloadingData = false;
+        }
     }
 
     get canShowContent(): boolean {
@@ -289,32 +258,12 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
 
     get sectionItems(): { id: UserPrivateProfileSectionId; label: string; icon: string; }[] {
         const base: { id: UserPrivateProfileSectionId; label: string; icon: string; }[] = [
-            { id: 'resumen', label: 'Resumen', icon: 'badge' },
-            { id: 'identidad', label: 'Identidad', icon: 'account_circle' },
-            { id: 'preferencias', label: 'Preferencias', icon: 'tune' },
+            { id: 'resumen', label: 'Mi cuenta', icon: 'badge' },
+            { id: 'preferencias', label: 'Preferencias de Rol', icon: 'tune' },
         ];
         if (this.canAccessCampaignManagementSection)
-            base.splice(1, 0, { id: 'campanas', label: 'Gestión de campañas', icon: 'diversity_3' });
-        if (this.canChangePassword)
-            base.push({ id: 'seguridad', label: 'Seguridad', icon: 'lock' });
+            base.push({ id: 'campanas', label: 'Gestión de campañas', icon: 'diversity_3' });
         return base;
-    }
-
-    get hasPersistedAvatar(): boolean {
-        return this.persistedAvatarUrl.length > 0;
-    }
-
-    get authProviderLabel(): string {
-        const provider = `${this.profile?.authProvider ?? ''}`.trim();
-        if (provider === 'correo')
-            return 'Correo';
-        if (provider === 'google')
-            return 'Google';
-        return 'Otro';
-    }
-
-    get canChangePassword(): boolean {
-        return `${this.profile?.authProvider ?? ''}`.trim() === 'correo';
     }
 
     get allCreatePermissionsEnabled(): boolean {
@@ -338,57 +287,8 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
         return this.permisosCreateActivos.join(', ');
     }
 
-    get displayNameLength(): number {
-        return this.displayNameDraft.trim().length;
-    }
-
-    get bioLength(): number {
-        return `${this.bioDraft ?? ''}`.length;
-    }
-
-    get displayNameErrorMessage(): string | null {
-        return this.getDisplayNameValidationError(this.displayNameDraft);
-    }
-
-    get bioErrorMessage(): string | null {
-        return this.getBioValidationError(this.bioDraft);
-    }
-
-    get genderIdentityErrorMessage(): string | null {
-        return this.getGenderIdentityValidationError(this.genderIdentityDraft);
-    }
-
-    get pronounsErrorMessage(): string | null {
-        return this.getPronounsValidationError(this.pronounsDraft);
-    }
-
     get campaignNameLength(): number {
         return `${this.campaignCreateDraft ?? ''}`.trim().length;
-    }
-
-    get genderIdentityLength(): number {
-        return `${this.genderIdentityDraft ?? ''}`.trim().length;
-    }
-
-    get pronounsLength(): number {
-        return `${this.pronounsDraft ?? ''}`.trim().length;
-    }
-
-    get showCustomGenderIdentityInput(): boolean {
-        return this.genderIdentityPreset === 'custom';
-    }
-
-    get showPronounsField(): boolean {
-        return this.genderIdentityPreset === 'custom';
-    }
-
-    get selectedAvatarName(): string {
-        return `${this.selectedAvatarFile?.name ?? ''}`.trim();
-    }
-
-    get defaultAvatarUrl(): string {
-        const profile = this.profile;
-        return resolveDefaultProfileAvatar(profile?.uid ?? profile?.displayName ?? profile?.email ?? '');
     }
 
     get formattedCreatedAt(): string {
@@ -397,20 +297,6 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
 
     get formattedLastSeenAt(): string {
         return this.formatDateLabel(this.profile?.lastSeenAt, 'Sin dato');
-    }
-
-    get compliance(): UserComplianceSnapshot | null {
-        return this.profile?.compliance ?? null;
-    }
-
-    get hasComplianceRestrictions(): boolean {
-        const compliance = this.compliance;
-        if (!compliance)
-            return false;
-        return compliance.banned
-            || compliance.mustAcceptUsage
-            || compliance.mustAcceptCreation
-            || !!compliance.activeSanction;
     }
 
     get effectiveProfileRole(): 'jugador' | 'master' | 'colaborador' | 'admin' {
@@ -554,18 +440,6 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
         return this.campaigns.filter((campaign) => campaign.campaignRole === 'master' || campaign.isOwner === true);
     }
 
-    get masterCampaigns(): CampaignListItem[] {
-        return this.manageableCampaigns.filter((campaign) => campaign.campaignRole === 'master');
-    }
-
-    get participantCampaigns(): CampaignListItem[] {
-        return [];
-    }
-
-    get hasManageableCampaigns(): boolean {
-        return this.manageableCampaigns.length > 0;
-    }
-
     get selectedCampaignSummary(): CampaignListItem | null {
         if (!this.selectedCampaignId)
             return null;
@@ -648,10 +522,6 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
             && this.selectedCampaignMembers.length <= 1;
     }
 
-    get campaignListsHaveData(): boolean {
-        return this.manageableCampaigns.length > 0;
-    }
-
     get isCreatingCampaign(): boolean {
         return this.campaignWorkspaceMode === 'create';
     }
@@ -688,12 +558,6 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
         if (this.selectedCampaignSummary)
             return this.selectedCampaignSummary.nombre;
         return 'Gestión de campañas';
-    }
-
-    get campaignEditorTitle(): string {
-        return this.isCreatingCampaign
-            ? 'Nueva campaña'
-            : 'Configuración de campaña';
     }
 
     get campaignEditorSubmitLabel(): string {
@@ -736,30 +600,20 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
         return this.campaignEditorFormDisabled || !this.showCampaignHomebrewLimitInput;
     }
 
-    get hasReceivedCampaignInvitations(): boolean {
-        return this.receivedCampaignInvitations.length > 0;
-    }
-
     async cargar(): Promise<void> {
         this.loading = true;
         this.loadErrorMessage = '';
-        this.resetModerationHistory();
         try {
             const [profile, settings, campaigns] = await Promise.all([
                 this.userSvc.refreshCurrentPrivateProfile(),
-                this.userSettingsSvc.loadSettings(true),
+                this.userSettingsSvc.loadSettings(true).catch(() => null),
                 this.campanaSvc.listProfileCampaigns().catch(() => []),
             ]);
             this.profile = profile;
-            this.syncAvatarStateFromProfile(profile);
-            this.settings = settings;
+            this.applySettingsToForm(settings);
             this.campaigns = this.filterManageableCampaigns(campaigns);
             this.campaignsLoaded = true;
-            this.applySettingsToForm(settings);
-            this.hydrateIdentityDraftsFromProfile(profile, true);
-            this.identityDraftsUid = `${profile?.uid ?? ''}`.trim();
             await this.cargarEstadoSolicitudRol();
-            void this.cargarHistorialModeracion(true);
             if (!this.canAccessCampaignManagementSection && this.currentSection === 'campanas')
                 this.currentSection = 'resumen';
         } catch (error: any) {
@@ -769,200 +623,7 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
         }
     }
 
-    async cargarHistorialModeracion(reset: boolean = false): Promise<void> {
-        if (this.moderationHistoryLoading)
-            return;
-
-        const profileUid = `${this.profile?.uid ?? ''}`.trim();
-        if (profileUid.length < 1) {
-            this.resetModerationHistory();
-            return;
-        }
-
-        const nextOffset = reset ? 0 : this.moderationHistory.length;
-        this.moderationHistoryLoading = true;
-        if (reset)
-            this.moderationHistoryErrorMessage = '';
-
-        try {
-            const response = await this.userProfileApiSvc.listMyModerationHistory(this.moderationHistoryPageSize, nextOffset);
-            const items = Array.isArray(response?.items) ? response.items : [];
-            this.moderationHistory = reset
-                ? items
-                : this.mergeModerationHistory(this.moderationHistory, items);
-            this.moderationHistoryTotal = Math.max(this.moderationHistory.length, Number(response?.total ?? 0) || 0);
-            this.moderationHistoryHasMore = response?.hasMore === true
-                || this.moderationHistory.length < this.moderationHistoryTotal;
-            this.moderationHistoryErrorMessage = '';
-        } catch (error: any) {
-            this.moderationHistoryErrorMessage = this.mapProfileError(error, 'No se pudo cargar tu historial de moderación.');
-            if (reset)
-                this.moderationHistory = [];
-            this.moderationHistoryHasMore = false;
-        } finally {
-            this.moderationHistoryLoading = false;
-        }
-    }
-
-    onAvatarSelected(event: Event): void {
-        const input = event.target as HTMLInputElement | null;
-        const file = input?.files?.[0] ?? null;
-        if (!file)
-            return;
-
-        const validationError = this.validateAvatarFile(file);
-        if (validationError) {
-            this.appToastSvc.showError(validationError);
-            input!.value = '';
-            return;
-        }
-
-        this.releaseAvatarPreview();
-        this.selectedAvatarFile = file;
-        this.avatarPreviewUrl = URL.createObjectURL(file);
-        this.avatarFailedSource = '';
-        this.refreshResolvedAvatarUrl();
-        input!.value = '';
-    }
-
-    async guardarAvatar(): Promise<void> {
-        if (!this.selectedAvatarFile || this.avatarUploading)
-            return;
-        if (!this.shouldRunGuardedApiAction('profile.avatar.upload'))
-            return;
-
-        this.avatarUploading = true;
-        try {
-            const response = await this.userProfileApiSvc.uploadAvatar(this.selectedAvatarFile);
-            await this.syncAuthProfileImage(response);
-            this.applyAvatarResponse(response);
-            this.appToastSvc.showSuccess('Avatar actualizado.');
-        } catch (error: any) {
-            this.appToastSvc.showError(this.mapProfileError(error, 'No se pudo subir el avatar.'));
-        } finally {
-            this.avatarUploading = false;
-        }
-    }
-
-    async eliminarAvatar(): Promise<void> {
-        if (this.avatarDeleting || (!this.hasPersistedAvatar && !this.selectedAvatarFile))
-            return;
-
-        if (!this.hasPersistedAvatar && this.selectedAvatarFile) {
-            this.selectedAvatarFile = null;
-            this.releaseAvatarPreview();
-            this.appToastSvc.showInfo('Selección de avatar descartada.');
-            return;
-        }
-        if (!this.shouldRunGuardedApiAction('profile.avatar.delete'))
-            return;
-
-        this.avatarDeleting = true;
-        try {
-            await this.userProfileApiSvc.deleteAvatar();
-            await this.syncAuthProfileImage({ photoUrl: null, photoThumbUrl: null });
-            this.applyAvatarResponse({ photoUrl: null, photoThumbUrl: null });
-            this.appToastSvc.showSuccess('Avatar eliminado.');
-        } catch (error: any) {
-            this.appToastSvc.showError(this.mapProfileError(error, 'No se pudo eliminar el avatar.'));
-        } finally {
-            this.avatarDeleting = false;
-        }
-    }
-
-    onAvatarImageError(event: Event): void {
-        const target = event.target as HTMLImageElement | null;
-        const failedSource = `${target?.currentSrc ?? target?.src ?? ''}`.trim();
-        if (failedSource.length < 1 || failedSource === this.defaultAvatarUrl || failedSource.startsWith('blob:'))
-            return;
-
-        this.avatarFailedSource = failedSource;
-        this.refreshResolvedAvatarUrl();
-        if (target && target.src !== this.avatarUrl)
-            target.src = this.avatarUrl;
-    }
-
-    async guardarIdentidad(): Promise<void> {
-        if (this.identitySaving)
-            return;
-
-        this.identitySubmitAttempted = true;
-        this.markAllIdentityFieldsTouched();
-        const validationError = this.validateIdentityForm();
-        if (validationError) {
-            this.appToastSvc.showError(validationError);
-            return;
-        }
-        if (!this.shouldRunGuardedApiAction('profile.identity.save'))
-            return;
-
-        const displayName = this.normalizeDisplayName(this.displayNameDraft);
-        const genderIdentity = this.buildGenderIdentityForSave();
-        const pronouns = this.buildPronounsForSave();
-        this.identitySaving = true;
-        try {
-            const profile = await this.userProfileApiSvc.updateMyProfile({
-                displayName,
-                bio: this.normalizeOptionalMultilineText(this.bioDraft),
-                genderIdentity,
-                pronouns,
-            });
-            await this.syncAuthDisplayName(`${profile?.displayName ?? displayName}`.trim());
-            this.userSvc.setCurrentPrivateProfile(profile);
-            this.profile = profile;
-            this.syncAvatarStateFromProfile(profile);
-            this.hydrateIdentityDraftsFromProfile(profile, true);
-            this.identityDraftsUid = `${profile?.uid ?? ''}`.trim();
-            this.appToastSvc.showSuccess('Identidad actualizada.');
-        } catch (error: any) {
-            this.appToastSvc.showError(this.mapProfileError(error, 'No se pudo guardar la identidad.'));
-        } finally {
-            this.identitySaving = false;
-        }
-    }
-
-    markIdentityFieldTouched(field: IdentityFieldKey): void {
-        this.identityFieldTouched[field] = true;
-    }
-
-    onGenderIdentityPresetChange(value: GenderIdentityPreset | null | undefined): void {
-        const nextPreset = this.normalizeGenderIdentityPreset(value);
-        const previousPreset = this.genderIdentityPreset;
-        this.genderIdentityPreset = nextPreset;
-        this.identityFieldTouched.genderIdentity = true;
-        if (nextPreset === 'custom' && previousPreset !== 'custom')
-            this.genderIdentityDraft = '';
-    }
-
-    shouldShowIdentityFieldError(field: IdentityFieldKey): boolean {
-        return (this.identitySubmitAttempted || this.identityFieldTouched[field] === true)
-            && !!this.getIdentityFieldError(field);
-    }
-
-    async solicitarCambioRol(): Promise<void> {
-        const target = this.requestedRoleTarget;
-        if (!target || !this.canRequestRole || this.roleRequestSubmitting)
-            return;
-        if (!this.shouldRunGuardedApiAction(`profile.role-request.${target}`))
-            return;
-
-        this.roleRequestSubmitting = true;
-        try {
-            this.roleRequestStatus = await this.userProfileApiSvc.createRoleRequest(
-                target,
-                this.normalizeOptionalMultilineText(this.roleRequestCommentDraft)
-            );
-            this.roleRequestCommentDraft = '';
-            this.appToastSvc.showSuccess(`Solicitud para ser ${this.requestedRoleLabel} enviada. Queda pendiente de revisión.`, {
-                category: 'cuentaSistema',
-            });
-        } catch (error: any) {
-            this.appToastSvc.showError(this.mapProfileError(error, 'No se pudo registrar la solicitud.'));
-        } finally {
-            this.roleRequestSubmitting = false;
-        }
-    }
-
+    /** Preferencias propias de Rol, guardadas en los ajustes de la web en la cuenta de Yosiftware. */
     async guardarPreferencias(): Promise<void> {
         if (this.settingsSaving)
             return;
@@ -974,33 +635,19 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
                 tablasPermitidas: this.normalizeGeneradorTablas(this.generadorTablasPermitidas),
                 updatedAt: Date.now(),
             };
-
             const current = this.settings ?? await this.userSettingsSvc.loadSettings();
-            const nextSettings: UserSettingsV1 = {
+            const saved = await this.userSettingsSvc.saveSettings({
                 ...current,
                 perfil: {
+                    ...current.perfil,
                     visibilidadPorDefectoPersonajes: this.visibilidadPorDefectoPersonajes === true,
-                    mostrarPerfilPublico: this.mostrarPerfilPublico !== false,
-                    allowDirectMessagesFromNonFriends: this.allowDirectMessagesFromNonFriends === true,
-                    autoAbrirVentanaChats: this.autoAbrirVentanaChats !== false,
-                    permitirBurbujasChat: this.permitirBurbujasChat !== false,
-                    notificaciones: {
-                        mensajes: this.socialAlertsMensajes !== false,
-                        amistad: this.socialAlertsAmistad !== false,
-                        campanas: this.socialAlertsCampanas !== false,
-                        cuentaSistema: this.socialAlertsCuentaSistema !== false,
-                    },
                 },
                 nuevo_personaje: {
                     ...current.nuevo_personaje,
                     generador_config: nextGeneradorConfig,
                 },
-            };
-            const saved = await this.userSettingsSvc.saveSettings(nextSettings);
-            this.settings = saved;
+            });
             this.applySettingsToForm(saved);
-            this.socialAlertPrefsSvc.applyProfileSettings(saved.perfil);
-            this.chatFloatingSvc.applyProfileSettings(saved.perfil);
             this.appToastSvc.showSuccess('Preferencias guardadas.');
         } catch (error: any) {
             this.appToastSvc.showError(this.mapProfileError(error, 'No se pudieron guardar las preferencias.'));
@@ -1041,54 +688,54 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
         this.generadorTablasPermitidas = this.normalizeGeneradorTablas(Number(value));
     }
 
-    async cambiarPassword(): Promise<void> {
-        if (!this.canChangePassword || this.passwordSaving)
+    private applySettingsToForm(settings: UserSettingsV1 | null): void {
+        this.settings = settings;
+        this.visibilidadPorDefectoPersonajes = settings?.perfil?.visibilidadPorDefectoPersonajes === true;
+        this.generadorMinimoSeleccionado = this.normalizeGeneradorMinimo(settings?.nuevo_personaje?.generador_config?.minimoSeleccionado ?? 13);
+        this.generadorTablasPermitidas = this.normalizeGeneradorTablas(settings?.nuevo_personaje?.generador_config?.tablasPermitidas ?? 3);
+    }
+
+    private normalizeGeneradorMinimo(value: number): number {
+        const parsed = Math.trunc(Number(value));
+        if (!Number.isFinite(parsed))
+            return 13;
+        return Math.min(13, Math.max(3, parsed));
+    }
+
+    private normalizeGeneradorTablas(value: number): number {
+        const parsed = Math.trunc(Number(value));
+        if (!Number.isFinite(parsed))
+            return 3;
+        return Math.min(5, Math.max(1, parsed));
+    }
+
+    async solicitarCambioRol(): Promise<void> {
+        const target = this.requestedRoleTarget;
+        if (!target || !this.canRequestRole || this.roleRequestSubmitting)
+            return;
+        if (!this.shouldRunGuardedApiAction(`profile.role-request.${target}`))
             return;
 
-        const currentPassword = `${this.currentPassword ?? ''}`;
-        const newPassword = `${this.newPassword ?? ''}`;
-        const confirmPassword = `${this.confirmPassword ?? ''}`;
-        if (currentPassword.length < 1) {
-            this.appToastSvc.showError('Debes indicar la contraseña actual.');
-            return;
-        }
-        if (newPassword.length < 6) {
-            this.appToastSvc.showError('La nueva contraseña debe tener al menos 6 caracteres.');
-            return;
-        }
-        if (newPassword !== confirmPassword) {
-            this.appToastSvc.showError('La confirmación de contraseña no coincide.');
-            return;
-        }
-
-        const currentUser = this.auth.currentUser;
-        const email = `${currentUser?.email ?? this.profile?.email ?? ''}`.trim();
-        if (!currentUser || email.length < 1) {
-            this.appToastSvc.showError('No se pudo resolver la sesión actual para cambiar la contraseña.');
-            return;
-        }
-        if (!this.shouldRunGuardedApiAction('profile.password.change'))
-            return;
-
-        this.passwordSaving = true;
+        this.roleRequestSubmitting = true;
         try {
-            const credential = EmailAuthProvider.credential(email, currentPassword);
-            await reauthenticateWithCredential(currentUser, credential);
-            await updatePassword(currentUser, newPassword);
-            this.currentPassword = '';
-            this.newPassword = '';
-            this.confirmPassword = '';
-            this.appToastSvc.showSuccess('Contraseña actualizada.');
+            this.roleRequestStatus = await this.userProfileApiSvc.createRoleRequest(
+                target,
+                this.normalizeOptionalMultilineText(this.roleRequestCommentDraft)
+            );
+            this.roleRequestCommentDraft = '';
+            this.appToastSvc.showSuccess(`Solicitud para ser ${this.requestedRoleLabel} enviada. Queda pendiente de revisión.`, {
+                category: 'cuentaSistema',
+            });
         } catch (error: any) {
-            this.appToastSvc.showError(this.mapPasswordError(error));
+            this.appToastSvc.showError(this.mapProfileError(error, 'No se pudo registrar la solicitud.'));
         } finally {
-            this.passwordSaving = false;
+            this.roleRequestSubmitting = false;
         }
     }
 
     async setSection(section: UserPrivateProfileSectionId, preferredCampaignId?: number | null): Promise<void> {
-        if (section === 'seguridad' && !this.canChangePassword)
-            return;
+        if (section !== 'resumen' && section !== 'preferencias' && section !== 'campanas')
+            section = 'resumen';
         if (section === 'campanas' && !this.canAccessCampaignManagementSection) {
             this.currentSection = 'resumen';
             return;
@@ -1140,10 +787,6 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
         await this.loadCampaignSelection(campaignId, false);
         this.campaignWorkspaceMode = 'config';
         this.campaignWorkspaceTab = 'usuarios';
-    }
-
-    async abrirUsuariosHistoriasCampana(campaignId: number, event?: Event): Promise<void> {
-        await this.abrirUsuariosCampana(campaignId, event);
     }
 
     async abrirUsuariosCampana(campaignId: number, event?: Event): Promise<void> {
@@ -1316,13 +959,10 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
             return;
 
         try {
-            const detail = await this.chatApiSvc.ensureCampaignConversation(this.selectedCampaignId);
-            this.chatRealtimeSvc.upsertConversation(detail);
-            this.userProfileNavSvc.openSocial({
-                section: 'mensajes',
-                conversationId: detail.conversationId,
-                requestId: Date.now(),
-            });
+            const conversacion = await this.campanaSvc.getCampaignConversation(this.selectedCampaignId);
+            const abierta = await this.platformSessionSvc.abrirChat(conversacion.conversacionId);
+            if (!abierta)
+                this.appToastSvc.showError('El chat de Yosiftware no está disponible ahora mismo.');
         } catch (error: any) {
             this.appToastSvc.showError(this.mapCampaignError(error, 'No se pudo abrir el chat de la campaña.'));
         }
@@ -1335,13 +975,6 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
         this.userProfileNavSvc.openSocial({
             section: 'campanas',
             campaignId: this.selectedCampaignId,
-            requestId: Date.now(),
-        });
-    }
-
-    abrirCampanasSociales(): void {
-        this.userProfileNavSvc.openSocial({
-            section: 'campanas',
             requestId: Date.now(),
         });
     }
@@ -1426,41 +1059,6 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
             this.appToastSvc.showError(this.mapCampaignError(error, 'No se pudo enviar la invitación.'));
         } finally {
             this.memberInviteInFlightUid = '';
-        }
-    }
-
-    async responderInvitacionCampana(invitation: CampaignInvitationItem, decision: CampaignInvitationDecision): Promise<void> {
-        const inviteId = Math.trunc(Number(invitation?.inviteId));
-        if (inviteId <= 0 || this.receivedCampaignInviteResolveInFlightId === inviteId)
-            return;
-        if (!this.shouldRunGuardedApiAction(`campaign.invitation.respond.${inviteId}.${decision}`))
-            return;
-
-        this.receivedCampaignInviteResolveInFlightId = inviteId;
-        try {
-            const response = await this.campanaSvc.resolveCampaignInvitation(inviteId, decision);
-            await this.refreshReceivedCampaignInvitations();
-            if (decision === 'accept') {
-                this.showCampaignSuccess('Invitación aceptada. Ya formas parte de la campaña.');
-                await this.reloadCampaigns(response.invitation.campaignId);
-            } else {
-                this.showCampaignSuccess('Invitación rechazada.');
-                if (this.selectedCampaignId)
-                    await this.loadCampaignSelection(this.selectedCampaignId, true, this.selectedCampaignDetail?.includeInactiveMembers === true);
-            }
-        } catch (error: any) {
-            await this.refreshReceivedCampaignInvitations();
-            if (this.isCampaignStateOutdatedError(error)) {
-                if (decision === 'accept')
-                    await this.reloadCampaigns(invitation.campaignId);
-                else if (this.selectedCampaignId)
-                    await this.loadCampaignSelection(this.selectedCampaignId, true, this.selectedCampaignDetail?.includeInactiveMembers === true);
-                this.showCampaignInfo('La invitación ya cambió en otra sesión. Se ha refrescado el estado.');
-                return;
-            }
-            this.appToastSvc.showError(this.mapCampaignError(error, 'No se pudo responder la invitación.'));
-        } finally {
-            this.receivedCampaignInviteResolveInFlightId = null;
         }
     }
 
@@ -1730,10 +1328,6 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
         return this.memberInviteInFlightUid === uid;
     }
 
-    isResolvingReceivedCampaignInvitation(inviteId: number): boolean {
-        return this.receivedCampaignInviteResolveInFlightId === inviteId;
-    }
-
     isCancelingCampaignInvitation(inviteId: number): boolean {
         return this.campaignInviteCancelInFlightId === inviteId;
     }
@@ -1794,239 +1388,6 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
         return this.formatDateTimeLabel(value, fallback);
     }
 
-    complianceAccessLabel(compliance: UserComplianceSnapshot | null | undefined): string {
-        if (!compliance)
-            return 'Estado no disponible';
-        if (compliance.banned)
-            return 'Cuenta baneada';
-        if (compliance.activeSanction)
-            return `Sanción activa: ${this.formatModerationSanctionLabel(compliance.activeSanction)}`;
-        if (compliance.mustAcceptUsage && compliance.mustAcceptCreation)
-            return 'Acceso restringido hasta aceptar normas de uso y creación';
-        if (compliance.mustAcceptUsage)
-            return 'Acceso restringido hasta aceptar normas de uso';
-        if (compliance.mustAcceptCreation)
-            return 'Creación restringida hasta aceptar normas de creación';
-        return 'Acceso normal';
-    }
-
-    compliancePolicyLabel(policy: UserCompliancePolicyState | null | undefined, mustAccept: boolean): string {
-        if (!policy)
-            return mustAccept ? 'Pendientes' : 'Sin datos';
-
-        const version = policy.version ? `v${policy.version}` : 'versión activa';
-        if (mustAccept)
-            return `Pendientes (${version})`;
-        if (policy.accepted)
-            return `Aceptadas (${version})`;
-        return `No aceptadas (${version})`;
-    }
-
-    isViewingPolicy(kind: UserCompliancePolicyKind): boolean {
-        return this.policyViewingKind === kind;
-    }
-
-    policyRequiresAcceptance(kind: UserCompliancePolicyKind): boolean {
-        if (kind === 'creation')
-            return this.compliance?.mustAcceptCreation === true;
-        return this.compliance?.mustAcceptUsage === true;
-    }
-
-    canAcceptPolicy(kind: UserCompliancePolicyKind): boolean {
-        return this.policyRequiresAcceptance(kind)
-            && this.policyAcceptingKind !== kind;
-    }
-
-    get hasModerationEvents(): boolean {
-        return this.moderationHistory.length > 0 || !!this.compliance?.activeSanction;
-    }
-
-    get currentBanStatus(): UserBanStatus | null {
-        return typeof this.userSvc.getCurrentBanStatus === 'function'
-            ? this.userSvc.getCurrentBanStatus()
-            : null;
-    }
-
-    get hasActiveAccountRestriction(): boolean {
-        return this.currentBanStatus?.restriction === 'temporaryBan'
-            || this.currentBanStatus?.restriction === 'permanentBan';
-    }
-
-    get activeAccountRestrictionButtonLabel(): string {
-        if (this.currentBanStatus?.restriction === 'permanentBan')
-            return 'Cuenta baneada';
-        if (this.currentBanStatus?.restriction === 'temporaryBan')
-            return 'Cuenta bloqueada';
-        return 'Cuenta restringida';
-    }
-
-    get moderationStatusButtonLabel(): string {
-        if (this.moderationHistoryLoading && !this.hasModerationEvents)
-            return 'Cargando...';
-        return this.hasModerationEvents ? 'Ver historial' : 'Estás limpi@';
-    }
-
-    compliancePolicyViewerTitle(policy: UserComplianceActivePolicy | null | undefined): string {
-        const label = policy?.kind === 'creation' ? 'Normas de creación' : 'Normas de uso';
-        const title = `${policy?.title ?? ''}`.trim();
-        return title.length > 0 ? title : label;
-    }
-
-    compliancePolicyViewerMeta(policy: UserComplianceActivePolicy | null | undefined): string {
-        if (!policy)
-            return 'Sin versión activa cargada.';
-
-        const parts: string[] = [];
-        if (policy.version)
-            parts.push(`Versión ${policy.version}`);
-        if (policy.publishedAtUtc)
-            parts.push(`Publicada ${this.formatOptionalDateTime(policy.publishedAtUtc, 'sin fecha')}`);
-        return parts.join(' · ') || 'Versión activa';
-    }
-
-    async abrirPoliticaCumplimiento(kind: UserCompliancePolicyKind): Promise<void> {
-        if (this.policyViewingKind === kind)
-            return;
-
-        this.policyViewingKind = kind;
-
-        try {
-            const policy = await this.userProfileApiSvc.getActivePolicy(kind);
-            await Swal.fire({
-                title: this.compliancePolicyViewerTitle(policy),
-                html: this.buildCompliancePolicyModalHtml(policy, this.policyRequiresAcceptance(kind)),
-                confirmButtonText: 'Cerrar',
-                customClass: {
-                    popup: 'profile-swal',
-                    title: 'profile-swal__title',
-                    htmlContainer: 'swal2-html-container--policy',
-                    confirmButton: 'profile-swal__confirm',
-                    cancelButton: 'profile-swal__cancel',
-                },
-                width: 760,
-            });
-        } catch (error: any) {
-            this.appToastSvc.showError(this.mapProfileError(error, 'No se pudo cargar la política activa.'));
-        } finally {
-            this.policyViewingKind = null;
-        }
-    }
-
-    async aceptarPoliticaCumplimiento(kind: UserCompliancePolicyKind): Promise<void> {
-        if (!this.policyRequiresAcceptance(kind) || this.policyAcceptingKind === kind)
-            return;
-
-        this.policyAcceptingKind = kind;
-        try {
-            const response = await this.userProfileApiSvc.acceptActivePolicy(kind);
-            this.applyComplianceUpdate(response.compliance);
-            this.appToastSvc.showSuccess(
-                kind === 'creation'
-                    ? 'Normas de creación aceptadas.'
-                    : 'Normas de uso aceptadas.',
-                { category: 'cuentaSistema' }
-            );
-        } catch (error: any) {
-            this.appToastSvc.showError(this.mapProfileError(error, 'No se pudo aceptar la política activa.'));
-        } finally {
-            this.policyAcceptingKind = null;
-        }
-    }
-
-    moderationCaseLabel(item: UserModerationHistoryItem): string {
-        return `${item.caseName ?? item.caseCode ?? 'Incidencia de moderación'}`.trim();
-    }
-
-    moderationResultLabel(result: UserModerationHistoryItem['result']): string {
-        const normalized = `${result ?? ''}`.trim().toLowerCase();
-        if (normalized === 'banned')
-            return 'Ban';
-        if (normalized === 'sanctioned')
-            return 'Sanción';
-        if (normalized === 'reported')
-            return 'Reporte confirmado';
-        return 'Moderación';
-    }
-
-    moderationModeLabel(mode: string | null | undefined): string {
-        const normalized = `${mode ?? ''}`.trim().toLowerCase();
-        if (normalized === 'force_sanction')
-            return 'Sanción forzada';
-        if (normalized === 'report')
-            return 'Reporte';
-        return normalized.length > 0 ? normalized : 'Sin modo';
-    }
-
-    async abrirHistorialModeracionModal(): Promise<void> {
-        if (!this.hasModerationEvents && !this.moderationHistoryLoading && this.moderationHistoryErrorMessage.length < 1)
-            return;
-        if (this.moderationHistoryLoading && this.moderationHistory.length < 1)
-            return;
-
-        if (this.moderationHistory.length < 1 || this.moderationHistoryHasMore)
-            await this.cargarHistorialModeracionCompleto();
-
-        if (this.moderationHistoryErrorMessage.length > 0) {
-            this.appToastSvc.showError(this.moderationHistoryErrorMessage);
-            return;
-        }
-        if (this.moderationHistory.length < 1 && !this.compliance?.activeSanction)
-            return;
-
-        await Swal.fire({
-            title: 'Moderación y avisos',
-            html: this.buildModerationHistoryModalHtml(),
-            confirmButtonText: 'Cerrar',
-            width: 780,
-            customClass: {
-                popup: 'profile-swal',
-                title: 'profile-swal__title',
-                htmlContainer: 'swal2-html-container--policy',
-                confirmButton: 'profile-swal__confirm',
-                cancelButton: 'profile-swal__cancel',
-            },
-        });
-    }
-
-    async abrirRestriccionCuentaResumenModal(): Promise<void> {
-        if (!this.hasActiveAccountRestriction)
-            return;
-
-        if (this.moderationHistory.length < 1 || this.moderationHistoryHasMore)
-            await this.cargarHistorialModeracionCompleto();
-
-        if (this.moderationHistoryErrorMessage.length > 0) {
-            this.appToastSvc.showError(this.moderationHistoryErrorMessage);
-            return;
-        }
-
-        await Swal.fire({
-            title: this.activeAccountRestrictionButtonLabel,
-            html: this.buildActiveRestrictionModalHtml(),
-            confirmButtonText: 'Cerrar',
-            width: 760,
-            customClass: {
-                popup: 'profile-swal',
-                title: 'profile-swal__title',
-                htmlContainer: 'swal2-html-container--policy',
-                confirmButton: 'profile-swal__confirm',
-                cancelButton: 'profile-swal__cancel',
-            },
-        });
-    }
-
-    formatModerationSanctionLabel(sanction: UserModerationSanction | null | undefined): string {
-        if (!sanction)
-            return 'Sin sanción activa';
-
-        const label = `${sanction.name ?? sanction.code ?? sanction.kind ?? 'Sanción'}`.trim();
-        if (sanction.isPermanent)
-            return `${label} permanente`;
-        if (`${sanction.endsAtUtc ?? ''}`.trim().length > 0)
-            return `${label} hasta ${this.formatDateTimeLabel(sanction.endsAtUtc, 'fecha no disponible')}`;
-        return label;
-    }
-
     private formatRoleLabel(role: string | null | undefined, fallback: string = 'Sin rol'): string {
         const normalized = `${role ?? ''}`.trim().toLowerCase();
         if (normalized === 'admin')
@@ -2060,59 +1421,6 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
         return item.uid;
     }
 
-    trackByModerationIncident(index: number, item: UserModerationHistoryItem): number {
-        return item.incidentId;
-    }
-
-    private applyAvatarResponse(response: UserAvatarResponse): void {
-        const current = this.profile;
-        if (current) {
-            const nextProfile: UserPrivateProfile = {
-                ...current,
-                photoUrl: response.photoUrl ?? null,
-                photoThumbUrl: response.photoThumbUrl ?? null,
-            };
-            this.profile = nextProfile;
-            this.userSvc.setCurrentPrivateProfile(nextProfile);
-            this.syncAvatarStateFromProfile(nextProfile);
-        }
-        this.avatarFailedSource = '';
-        this.selectedAvatarFile = null;
-        this.releaseAvatarPreview();
-    }
-
-    private applySettingsToForm(settings: UserSettingsV1 | null): void {
-        this.settings = settings;
-        this.visibilidadPorDefectoPersonajes = settings?.perfil?.visibilidadPorDefectoPersonajes === true;
-        this.mostrarPerfilPublico = settings?.perfil?.mostrarPerfilPublico !== false;
-        this.allowDirectMessagesFromNonFriends = settings?.perfil?.allowDirectMessagesFromNonFriends === true;
-        this.autoAbrirVentanaChats = settings?.perfil?.autoAbrirVentanaChats !== false;
-        this.permitirBurbujasChat = settings?.perfil?.permitirBurbujasChat !== false;
-        this.socialAlertsMensajes = settings?.perfil?.notificaciones?.mensajes !== false;
-        this.socialAlertsAmistad = settings?.perfil?.notificaciones?.amistad !== false;
-        this.socialAlertsCampanas = settings?.perfil?.notificaciones?.campanas !== false;
-        this.socialAlertsCuentaSistema = settings?.perfil?.notificaciones?.cuentaSistema !== false;
-        this.generadorMinimoSeleccionado = this.normalizeGeneradorMinimo(settings?.nuevo_personaje?.generador_config?.minimoSeleccionado ?? 13);
-        this.generadorTablasPermitidas = this.normalizeGeneradorTablas(settings?.nuevo_personaje?.generador_config?.tablasPermitidas ?? 3);
-    }
-
-    private hydrateIdentityDraftsFromProfile(profile: UserPrivateProfile | null, force: boolean = false): void {
-        if (!profile)
-            return;
-
-        if (force || this.displayNameDraft.trim().length < 1)
-            this.displayNameDraft = `${profile.displayName ?? ''}`.trim();
-        if (force || `${this.bioDraft ?? ''}`.length < 1)
-            this.bioDraft = `${profile.bio ?? ''}`;
-        if (force || `${this.genderIdentityDraft ?? ''}`.trim().length < 1)
-            this.genderIdentityDraft = `${profile.genderIdentity ?? ''}`.trim();
-        if (force || `${this.pronounsDraft ?? ''}`.trim().length < 1)
-            this.pronounsDraft = `${profile.pronouns ?? ''}`.trim();
-        this.genderIdentityPreset = this.resolveGenderIdentityPreset(this.genderIdentityDraft, this.pronounsDraft);
-        if (force)
-            this.resetIdentityValidationState();
-    }
-
     private requestSection(request: UserPrivateProfileOpenRequest | UserPrivateProfileSectionId | null | undefined): void {
         const target = typeof request === 'string'
             ? request
@@ -2128,45 +1436,8 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
         if (!this.pendingRequestedSection)
             return;
 
-        if (this.pendingRequestedSection === 'seguridad') {
-            if (!this.profile)
-                return;
-            void this.setSection(this.canChangePassword ? 'seguridad' : 'resumen');
-            return;
-        }
 
         void this.setSection(this.pendingRequestedSection, this.pendingRequestedCampaignId);
-    }
-
-    private validateAvatarFile(file: File): string | null {
-        const mime = `${file?.type ?? ''}`.trim().toLowerCase();
-        const allowed = ['image/jpeg', 'image/png', 'image/webp'];
-        if (!allowed.includes(mime))
-            return 'El avatar debe ser JPEG, PNG o WEBP.';
-        if (Number(file?.size ?? 0) > 5 * 1024 * 1024)
-            return 'El avatar no puede superar 5 MB.';
-        return null;
-    }
-
-    private releaseAvatarPreview(): void {
-        if (this.avatarPreviewUrl?.startsWith('blob:'))
-            URL.revokeObjectURL(this.avatarPreviewUrl);
-        this.avatarPreviewUrl = null;
-        this.refreshResolvedAvatarUrl();
-    }
-
-    private normalizeGeneradorMinimo(value: number): number {
-        const parsed = Math.trunc(Number(value));
-        if (!Number.isFinite(parsed))
-            return 13;
-        return Math.min(13, Math.max(3, parsed));
-    }
-
-    private normalizeGeneradorTablas(value: number): number {
-        const parsed = Math.trunc(Number(value));
-        if (!Number.isFinite(parsed))
-            return 3;
-        return Math.min(5, Math.max(1, parsed));
     }
 
     private showCampaignSuccess(message: string): void {
@@ -2175,35 +1446,6 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
 
     private showCampaignInfo(message: string): void {
         this.appToastSvc.showInfo(message, { category: 'campanas' });
-    }
-
-    private resetModerationHistory(): void {
-        this.moderationHistory = [];
-        this.moderationHistoryLoading = false;
-        this.moderationHistoryErrorMessage = '';
-        this.moderationHistoryHasMore = false;
-        this.moderationHistoryTotal = 0;
-    }
-
-    private mergeModerationHistory(
-        current: UserModerationHistoryItem[],
-        incoming: UserModerationHistoryItem[]
-    ): UserModerationHistoryItem[] {
-        const map = new Map<number, UserModerationHistoryItem>();
-        [...current, ...incoming].forEach((item) => {
-            if (!item?.incidentId)
-                return;
-            map.set(item.incidentId, item);
-        });
-        return [...map.values()].sort((a, b) => this.compareModerationItems(a, b));
-    }
-
-    private compareModerationItems(a: UserModerationHistoryItem, b: UserModerationHistoryItem): number {
-        const aTime = this.toModerationDateMs(a.confirmedAtUtc ?? a.createdAtUtc);
-        const bTime = this.toModerationDateMs(b.confirmedAtUtc ?? b.createdAtUtc);
-        if (aTime !== bTime)
-            return bTime - aTime;
-        return b.incidentId - a.incidentId;
     }
 
     private createDefaultCampaignPolicyDraft(): CampaignCreationPolicy {
@@ -2272,65 +1514,6 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
         return Math.min(this.campaignHomebrewSourcesMax, Math.max(fallback, parsed));
     }
 
-    private validateIdentityForm(): string | null {
-        return this.getIdentityFieldError('displayName')
-            ?? this.getIdentityFieldError('bio')
-            ?? this.getIdentityFieldError('genderIdentity')
-            ?? this.getIdentityFieldError('pronouns');
-    }
-
-    private getIdentityFieldError(field: IdentityFieldKey): string | null {
-        if (field === 'displayName')
-            return this.getDisplayNameValidationError(this.displayNameDraft);
-        if (field === 'bio')
-            return this.getBioValidationError(this.bioDraft);
-        if (field === 'genderIdentity')
-            return this.getGenderIdentityValidationError(this.genderIdentityDraft);
-        return this.getPronounsValidationError(this.pronounsDraft);
-    }
-
-    private getDisplayNameValidationError(value: string | null | undefined): string | null {
-        const displayName = this.normalizeDisplayName(value);
-        if (displayName.length < this.displayNameMinLength || displayName.length > this.displayNameMaxLength)
-            return `El nombre visible debe tener entre ${this.displayNameMinLength} y ${this.displayNameMaxLength} caracteres.`;
-        if (this.isNumericOnlyText(displayName))
-            return 'El nombre visible no puede estar formado solo por números.';
-        return null;
-    }
-
-    private getBioValidationError(value: string | null | undefined): string | null {
-        const bio = this.normalizeOptionalMultilineText(value);
-        if (bio && bio.length < this.bioMinLength)
-            return `La bio debe tener al menos ${this.bioMinLength} caracteres o dejarse vacía.`;
-        if (bio && this.isNumericOnlyText(bio))
-            return 'La bio no puede estar formada solo por números.';
-        if (bio && bio.length > this.bioMaxLength)
-            return `La bio no puede superar ${this.bioMaxLength} caracteres.`;
-        return null;
-    }
-
-    private getGenderIdentityValidationError(value: string | null | undefined): string | null {
-        if (this.genderIdentityPreset !== 'custom')
-            return null;
-        const genderIdentity = this.normalizeOptionalSingleLineText(value);
-        if (this.hasLineBreak(value))
-            return 'La identidad de género no puede contener saltos de línea.';
-        if (genderIdentity && genderIdentity.length > 80)
-            return 'La identidad de género no puede superar 80 caracteres.';
-        return null;
-    }
-
-    private getPronounsValidationError(value: string | null | undefined): string | null {
-        if (this.genderIdentityPreset !== 'custom')
-            return null;
-        const pronouns = this.normalizeOptionalSingleLineText(value);
-        if (this.hasLineBreak(value))
-            return 'Los pronombres no pueden contener saltos de línea.';
-        if (pronouns && pronouns.length > 80)
-            return 'Los pronombres no pueden superar 80 caracteres.';
-        return null;
-    }
-
     private validateCampaignName(value: string | null | undefined): string | null {
         const name = `${value ?? ''}`.trim();
         if (name.length < this.campaignNameMinLength || name.length > this.campaignNameMaxLength)
@@ -2338,31 +1521,6 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
         if (this.isNumericOnlyText(name))
             return 'El nombre de campaña no puede estar formado solo por números.';
         return null;
-    }
-
-    private normalizeDisplayName(value: string | null | undefined): string {
-        return `${value ?? ''}`.trim();
-    }
-
-    private normalizeOptionalSingleLineText(value: string | null | undefined): string | null {
-        const text = `${value ?? ''}`.trim();
-        return text.length > 0 ? text : null;
-    }
-
-    private buildGenderIdentityForSave(): string | null {
-        if (this.genderIdentityPreset === 'male')
-            return 'Chico';
-        if (this.genderIdentityPreset === 'female')
-            return 'Chica';
-        if (this.genderIdentityPreset === 'hidden')
-            return null;
-        return this.normalizeOptionalSingleLineText(this.genderIdentityDraft);
-    }
-
-    private buildPronounsForSave(): string | null {
-        if (this.genderIdentityPreset !== 'custom')
-            return null;
-        return this.normalizeOptionalSingleLineText(this.pronounsDraft);
     }
 
     private normalizeOptionalMultilineText(value: string | null | undefined): string | null {
@@ -2373,75 +1531,9 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
         return text.length > 0 ? text : null;
     }
 
-    private hasLineBreak(value: string | null | undefined): boolean {
-        return /[\r\n]/.test(`${value ?? ''}`);
-    }
-
     private isNumericOnlyText(value: string | null | undefined): boolean {
         const compact = `${value ?? ''}`.replace(/\s+/g, '');
         return compact.length > 0 && /^\d+$/.test(compact);
-    }
-
-    private normalizeGenderIdentityPreset(value: GenderIdentityPreset | null | undefined): GenderIdentityPreset {
-        if (value === 'male' || value === 'female' || value === 'custom' || value === 'hidden')
-            return value;
-        return 'hidden';
-    }
-
-    private resolveGenderIdentityPreset(
-        genderIdentityValue: string | null | undefined,
-        pronounsValue: string | null | undefined
-    ): GenderIdentityPreset {
-        const genderIdentity = this.normalizeOptionalSingleLineText(genderIdentityValue);
-        const pronouns = this.normalizeOptionalSingleLineText(pronounsValue);
-        const comparable = `${genderIdentity ?? ''}`.trim().toLocaleLowerCase('es');
-        if (comparable === 'chico')
-            return 'male';
-        if (comparable === 'chica')
-            return 'female';
-        if (!genderIdentity)
-            return pronouns ? 'custom' : 'hidden';
-        return 'custom';
-    }
-
-    private markAllIdentityFieldsTouched(): void {
-        this.identityFieldTouched.displayName = true;
-        this.identityFieldTouched.bio = true;
-        this.identityFieldTouched.genderIdentity = true;
-        this.identityFieldTouched.pronouns = true;
-    }
-
-    private resetIdentityValidationState(): void {
-        this.identitySubmitAttempted = false;
-        this.identityFieldTouched.displayName = false;
-        this.identityFieldTouched.bio = false;
-        this.identityFieldTouched.genderIdentity = false;
-        this.identityFieldTouched.pronouns = false;
-    }
-
-    private syncAvatarStateFromProfile(profile: UserPrivateProfile | null): void {
-        this.persistedAvatarUrl = this.resolvePersistedAvatarUrl(profile);
-        if (this.persistedAvatarUrl !== this.avatarFailedSource)
-            this.avatarFailedSource = '';
-        this.refreshResolvedAvatarUrl();
-    }
-
-    private refreshResolvedAvatarUrl(): void {
-        if (this.avatarPreviewUrl) {
-            this.avatarUrl = this.avatarPreviewUrl;
-            return;
-        }
-
-        if (this.persistedAvatarUrl.length > 0 && this.persistedAvatarUrl !== this.avatarFailedSource) {
-            this.avatarUrl = this.persistedAvatarUrl;
-            return;
-        }
-
-        this.avatarUrl = this.defaultAvatarUrl;
-    }
-
-    private resolvePersistedAvatarUrl(profile: UserPrivateProfile | null): string {
-        return `${profile?.photoThumbUrl ?? profile?.photoUrl ?? ''}`.trim();
     }
 
     private shouldRunGuardedApiAction(actionKey: string): boolean {
@@ -2455,32 +1547,11 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
         const decision = this.apiActionGuardSvc.shouldAllow(this.userSvc.CurrentUserUid, actionKey);
         if (decision.status !== 'allowed') {
             this.appToastSvc.showError(this.apiActionGuardSvc.getBlockedMessage(decision), {
-                captureSessionNotification: false,
                 dedupeKey: this.apiActionGuardSvc.getBlockedToastDedupeKey(this.userSvc.CurrentUserUid, decision.status),
             });
             return false;
         }
         return true;
-    }
-
-    private async syncAuthDisplayName(displayName: string): Promise<void> {
-        if (!this.auth.currentUser)
-            return;
-        try {
-            await updateProfile(this.auth.currentUser, { displayName });
-        } catch {
-            // El source of truth ya es la API; esto solo evita deriva local.
-        }
-    }
-
-    private async syncAuthProfileImage(response: UserAvatarResponse): Promise<void> {
-        if (!this.auth.currentUser)
-            return;
-        try {
-            await updateProfile(this.auth.currentUser, { photoURL: response.photoUrl ?? null });
-        } catch {
-            // La API ya guardó el estado correcto; esta sync es best effort.
-        }
     }
 
     private mapProfileError(error: any, fallback: string, scope: UserAccessScope = 'usage'): string {
@@ -2514,170 +1585,6 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
         return toUserFacingErrorMessage(error, fallback, {
             duplicateNameEntity: this.isCampaignNameFallback(fallback) ? 'campaign' : undefined,
         });
-    }
-
-    private mapPasswordError(error: any): string {
-        const code = `${error?.code ?? ''}`.trim().toLowerCase();
-        if (code.includes('wrong-password') || code.includes('invalid-credential'))
-            return 'La contraseña actual no es correcta.';
-        if (code.includes('weak-password'))
-            return 'La nueva contraseña es demasiado débil.';
-        if (code.includes('too-many-requests'))
-            return 'Demasiados intentos. Inténtalo de nuevo más tarde.';
-        if (code.includes('requires-recent-login'))
-            return 'Necesitas volver a autenticarte antes de cambiar la contraseña.';
-        return `${error?.message ?? 'No se pudo actualizar la contraseña.'}`.trim();
-    }
-
-    private applyComplianceUpdate(compliance: UserComplianceSnapshot | null): void {
-        if (!compliance || !this.profile)
-            return;
-
-        const currentProfile = this.profile;
-        const nextProfile: UserPrivateProfile = {
-            ...currentProfile,
-            compliance,
-        };
-        this.userSvc.setCurrentCompliance(compliance);
-        this.userSvc.setCurrentPrivateProfile(nextProfile);
-        this.profile = nextProfile;
-        this.syncAvatarStateFromProfile(nextProfile);
-    }
-
-    private buildCompliancePolicyModalHtml(
-        policy: UserComplianceActivePolicy,
-        requiresAcceptance: boolean
-    ): string {
-        const meta = this.escapeHtml(this.compliancePolicyViewerMeta(policy));
-        const status = requiresAcceptance ? 'Aceptación pendiente' : 'Aceptada o no requerida';
-        const markdown = this.escapeHtml(`${policy?.markdown ?? ''}`.trim() || 'Esta política activa no incluye contenido visible.');
-        const versionBadge = policy?.version
-            ? `<span style="display:inline-flex;padding:.28rem .65rem;border-radius:999px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);font-size:.82rem;">v${this.escapeHtml(policy.version)}</span>`
-            : '';
-
-        return [
-            '<div style="display:flex;flex-direction:column;gap:1rem;text-align:left;">',
-            '  <div style="display:flex;flex-wrap:wrap;gap:.5rem;align-items:center;">',
-            versionBadge,
-            `    <span style="display:inline-flex;padding:.28rem .65rem;border-radius:999px;background:${requiresAcceptance ? 'rgba(212, 165, 32, .14)' : 'rgba(255,255,255,.08)'};border:1px solid ${requiresAcceptance ? 'rgba(212, 165, 32, .4)' : 'rgba(255,255,255,.12)'};font-size:.82rem;">${status}</span>`,
-            '  </div>',
-            `  <p style="margin:0;color:rgba(255,255,255,.72);line-height:1.5;">${meta || 'Versión activa'}</p>`,
-            `  <pre style="margin:0;padding:1rem;border-radius:1rem;background:rgba(0,0,0,.18);border:1px solid rgba(255,255,255,.08);color:rgba(245,247,255,.92);white-space:pre-wrap;word-break:break-word;line-height:1.55;font-family:Consolas,'Courier New',monospace;max-height:24rem;overflow:auto;">${markdown}</pre>`,
-            '</div>',
-        ].filter(Boolean).join('');
-    }
-
-    private async cargarHistorialModeracionCompleto(): Promise<void> {
-        let safety = 0;
-        if (this.moderationHistory.length < 1)
-            await this.cargarHistorialModeracion(true);
-
-        while (this.moderationHistoryHasMore && safety < 20) {
-            safety += 1;
-            await this.cargarHistorialModeracion();
-            if (this.moderationHistoryErrorMessage.length > 0)
-                break;
-        }
-    }
-
-    private buildModerationHistoryModalHtml(): string {
-        const activeSanction = this.compliance?.activeSanction ?? null;
-        const sanctionHtml = activeSanction
-            ? [
-                '<div style="padding:1rem;border-radius:1rem;background:rgba(255,193,7,.08);border:1px solid rgba(255,193,7,.22);text-align:left;">',
-                '  <div style="display:flex;flex-direction:column;gap:.35rem;">',
-                '    <strong style="font-size:1rem;">Sanción activa</strong>',
-                `    <span style="color:rgba(255,255,255,.82);line-height:1.5;">${this.escapeHtml(this.formatModerationSanctionLabel(activeSanction))}</span>`,
-                '  </div>',
-                '</div>',
-            ].join('')
-            : '';
-
-        const itemsHtml = this.moderationHistory.map((item) => [
-            '<article style="padding:1rem;border-radius:1rem;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);text-align:left;">',
-            '  <div style="display:flex;justify-content:space-between;gap:1rem;align-items:flex-start;">',
-            '    <div style="display:flex;flex-direction:column;gap:.45rem;min-width:0;">',
-            `      <strong style="font-size:1rem;word-break:break-word;">${this.escapeHtml(this.moderationCaseLabel(item))}</strong>`,
-            '      <div style="display:flex;flex-wrap:wrap;gap:.5rem;">',
-            `        <span style="display:inline-flex;padding:.28rem .65rem;border-radius:999px;background:rgba(255,193,7,.14);border:1px solid rgba(255,193,7,.38);font-size:.82rem;">${this.escapeHtml(this.moderationResultLabel(item.result))}</span>`,
-            `        <span style="display:inline-flex;padding:.28rem .65rem;border-radius:999px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);font-size:.82rem;">${this.escapeHtml(this.moderationModeLabel(item.mode))}</span>`,
-            '      </div>',
-            '    </div>',
-            `    <span style="color:rgba(255,255,255,.6);font-size:.86rem;white-space:nowrap;">${this.escapeHtml(this.formatOptionalDateTime(item.confirmedAtUtc || item.createdAtUtc, 'Sin fecha'))}</span>`,
-            '  </div>',
-            item.userVisibleMessage
-                ? `  <p style="margin:.8rem 0 0;color:rgba(245,247,255,.86);white-space:pre-line;line-height:1.55;">${this.escapeHtml(item.userVisibleMessage)}</p>`
-                : '',
-            item.sanction
-                ? `  <p style="margin:.7rem 0 0;color:rgba(245,247,255,.68);line-height:1.5;">${this.escapeHtml(this.formatModerationSanctionLabel(item.sanction))}</p>`
-                : '',
-            '</article>',
-        ].filter(Boolean).join('')).join('');
-
-        return [
-            '<div style="display:flex;flex-direction:column;gap:1rem;">',
-            sanctionHtml,
-            itemsHtml,
-            '</div>',
-        ].filter(Boolean).join('');
-    }
-
-    private buildActiveRestrictionModalHtml(): string {
-        const banStatus = this.currentBanStatus;
-        const sanction = banStatus?.sanction ?? this.compliance?.activeSanction ?? null;
-        const latestMatchingItem = this.findLatestRestrictionHistoryItem(sanction);
-        const stateLabel = banStatus?.restriction === 'permanentBan' ? 'Baneo activo' : 'Bloqueo activo';
-        const reasonLabel = this.formatModerationSanctionLabel(sanction);
-        const visibleMessage = `${latestMatchingItem?.userVisibleMessage ?? ''}`.trim();
-        const endsAtLabel = banStatus?.restriction === 'temporaryBan'
-            ? this.formatDateTimeLabel(banStatus?.endsAtUtc, 'Sin fecha de finalización')
-            : 'Permanente';
-
-        return [
-            '<div style="display:flex;flex-direction:column;gap:1rem;text-align:left;">',
-            '  <div style="padding:1rem;border-radius:1rem;background:rgba(160,36,36,.18);border:1px solid rgba(255,120,120,.28);">',
-            `    <div style="display:flex;flex-wrap:wrap;gap:.5rem;margin-bottom:.75rem;"><span style="display:inline-flex;padding:.28rem .65rem;border-radius:999px;background:rgba(255,120,120,.16);border:1px solid rgba(255,120,120,.28);font-size:.82rem;">${this.escapeHtml(stateLabel)}</span></div>`,
-            `    <p style="margin:0;color:rgba(255,238,238,.94);line-height:1.6;">${this.escapeHtml(visibleMessage || 'Tu cuenta tiene ahora mismo una restricción activa confirmada por backend.')}</p>`,
-            '  </div>',
-            '  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(14rem,1fr));gap:.75rem;">',
-            `    <article style="padding:1rem;border-radius:1rem;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);"><div style="color:rgba(245,247,255,.62);font-size:.82rem;text-transform:uppercase;letter-spacing:.05em;margin-bottom:.35rem;">Razón</div><strong style="font-size:1rem;">${this.escapeHtml(reasonLabel)}</strong></article>`,
-            `    <article style="padding:1rem;border-radius:1rem;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);"><div style="color:rgba(245,247,255,.62);font-size:.82rem;text-transform:uppercase;letter-spacing:.05em;margin-bottom:.35rem;">${banStatus?.restriction === 'temporaryBan' ? 'Termina' : 'Duración'}</div><strong style="font-size:1rem;">${this.escapeHtml(endsAtLabel)}</strong></article>`,
-            '  </div>',
-            (latestMatchingItem && latestMatchingItem !== this.moderationHistory[0])
-                ? `  <p style="margin:0;color:rgba(245,247,255,.68);line-height:1.55;">Último evento relacionado: ${this.escapeHtml(this.moderationCaseLabel(latestMatchingItem))}.</p>`
-                : '',
-            '</div>',
-        ].filter(Boolean).join('');
-    }
-
-    private findLatestRestrictionHistoryItem(sanction: UserModerationSanction | null | undefined): UserModerationHistoryItem | null {
-        if (this.moderationHistory.length < 1)
-            return null;
-
-        const sanctionId = Number(sanction?.sanctionId ?? 0);
-        if (sanctionId > 0) {
-            const bySanctionId = this.moderationHistory.find((item) => Number(item?.sanction?.sanctionId ?? 0) === sanctionId) ?? null;
-            if (bySanctionId)
-                return bySanctionId;
-        }
-
-        const normalizedCode = `${sanction?.code ?? ''}`.trim().toLowerCase();
-        if (normalizedCode.length > 0) {
-            const byCode = this.moderationHistory.find((item) => `${item?.sanction?.code ?? ''}`.trim().toLowerCase() === normalizedCode) ?? null;
-            if (byCode)
-                return byCode;
-        }
-
-        return this.moderationHistory.find((item) => item?.sanction != null) ?? this.moderationHistory[0] ?? null;
-    }
-
-    private escapeHtml(value: string): string {
-        return `${value ?? ''}`
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;')
-            .replace(/'/g, '&#39;');
     }
 
     private resolveComplianceErrorMessage(error: any, scope: UserAccessScope): string {
@@ -3203,19 +2110,6 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
         });
     }
 
-    private async refreshReceivedCampaignInvitations(): Promise<void> {
-        this.receivedCampaignInvitationsLoading = true;
-        this.receivedCampaignInvitationsErrorMessage = '';
-        try {
-            this.receivedCampaignInvitations = await this.campanaSvc.listReceivedCampaignInvitations();
-        } catch (error: any) {
-            this.receivedCampaignInvitations = [];
-            this.receivedCampaignInvitationsErrorMessage = this.mapCampaignError(error, 'No se pudieron cargar las invitaciones recibidas.');
-        } finally {
-            this.receivedCampaignInvitationsLoading = false;
-        }
-    }
-
     private async handleCampaignRealtimeEvent(event: CampaignRealtimeEvent): Promise<void> {
         if (this.currentSection !== 'campanas')
             return;
@@ -3242,11 +2136,6 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
     private isCampaignNameFallback(value: string): boolean {
         const normalized = this.normalizeComparableText(value);
         return normalized.includes('crear la campana') || normalized.includes('actualizar la campana');
-    }
-
-    private toModerationDateMs(value: string | null | undefined): number {
-        const parsed = new Date(`${value ?? ''}`);
-        return Number.isNaN(parsed.getTime()) ? 0 : parsed.getTime();
     }
 
     private toPositiveInt(value: any): number | null {

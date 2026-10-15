@@ -5,12 +5,15 @@ import { ConjuroCreateRequest } from '../interfaces/conjuros-api';
 import { FirebaseInjectionContextService } from './firebase-injection-context.service';
 import { ConjuroService } from './conjuro.service';
 import { normalizeConjuroApi, normalizeConjuroLegacy } from './utils/conjuro-mapper';
+import { simularTokenApi } from 'src/testing/simular-token-api';
 
 const firebaseContextMock = {
     run: <T>(fn: () => T) => fn(),
 } as FirebaseInjectionContextService;
 
 describe('ConjuroService', () => {
+    beforeEach(() => simularTokenApi('token-conjuro'));
+
     const authMock = {
         currentUser: {
             getIdToken: jasmine.createSpy('getIdToken').and.resolveTo('token-conjuro'),

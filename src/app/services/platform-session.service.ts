@@ -43,6 +43,12 @@ export interface DenunciaPlataforma {
     persona?: string;
 }
 
+/** Bloque de ajustes de Rol en la plataforma (`yosiftware.ajustes`): solo lo lee y lo escribe esta web. */
+export interface BloqueAjustes {
+    version: number;
+    documento: Record<string, unknown>;
+}
+
 // Lo que usa Rol del SDK (los tipos completos están en <SDK>/sdk/v1/yosiftware.d.ts).
 interface YosiftwareSdk {
     readonly estado: EstadoPlataforma;
@@ -51,10 +57,18 @@ interface YosiftwareSdk {
     entrar(opciones?: { vista?: 'entrar' | 'registro' }): Promise<boolean>;
     salir(): Promise<void>;
     token(): Promise<string | null>;
+    tokenPlataforma(): Promise<string | null>;
     editarPerfil(): Promise<boolean>;
     privacidad(opciones?: { recorrido?: boolean }): Promise<void>;
     reportar(opciones?: { tipo?: 'error' | 'propuesta' }): Promise<boolean>;
     denunciar(datos: DenunciaPlataforma): Promise<boolean>;
+    chat: {
+        abrir(idConversacion?: string): Promise<boolean>;
+    };
+    ajustes: {
+        leer(): Promise<BloqueAjustes | null>;
+        guardar(cambios: Record<string, unknown>): Promise<BloqueAjustes>;
+    };
 }
 
 const REINTENTO_SDK_MS = 60_000;
@@ -112,6 +126,14 @@ export class PlatformSessionService {
         return token;
     }
 
+    /** Token de la API de la plataforma (audiencia `cuentas`), para lo social de las páginas de comunidad. */
+    async tokenPlataforma(): Promise<string> {
+        const token = await (await this.cargarSdk()).tokenPlataforma();
+        if (!token)
+            throw new Error('Sesión no iniciada');
+        return token;
+    }
+
     async entrar(vista: 'entrar' | 'registro' = 'entrar'): Promise<boolean> {
         return (await this.cargarSdk()).entrar({ vista });
     }
@@ -134,6 +156,21 @@ export class PlatformSessionService {
 
     async denunciar(datos: DenunciaPlataforma): Promise<boolean> {
         return (await this.cargarSdk()).denunciar(datos);
+    }
+
+    /** Abre el chat de la plataforma (`<yosi-chat>`), en una conversación si se indica (ecosistema-kit/CHAT.md). */
+    async abrirChat(idConversacion?: string): Promise<boolean> {
+        return (await this.cargarSdk()).chat.abrir(idConversacion);
+    }
+
+    /** Los ajustes de Rol de la cuenta; `null` sin sesión. */
+    async leerAjustes(): Promise<BloqueAjustes | null> {
+        return (await this.cargarSdk()).ajustes.leer();
+    }
+
+    /** Guarda claves de primer nivel (`null` quita la clave) y devuelve el bloque resultante. */
+    async guardarAjustes(cambios: Record<string, unknown>): Promise<BloqueAjustes> {
+        return (await this.cargarSdk()).ajustes.guardar(cambios);
     }
 
     private async conectar(): Promise<void> {

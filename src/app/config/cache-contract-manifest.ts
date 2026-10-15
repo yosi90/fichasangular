@@ -44,8 +44,7 @@ export type CacheEntityKey =
     | "pabellones"
     | "deidades"
     | "plantillas"
-    | "ventajas_desventajas"
-    | "usuarios_acl_cache";
+    | "ventajas_desventajas";
 
 export interface CacheContractEntry {
     key: CacheEntityKey;
@@ -100,5 +99,4 @@ export const CACHE_CONTRACT_MANIFEST: CacheContractEntry[] = [
     { key: "deidades", label: "Deidades", schemaVersion: 1 },
     { key: "plantillas", label: "Plantillas", schemaVersion: 2 },
     { key: "ventajas_desventajas", label: "Ventajas y desventajas", schemaVersion: 1 },
-    { key: "usuarios_acl_cache", label: "Usuarios y ACL (API -> Firebase)", schemaVersion: 1 },
 ];

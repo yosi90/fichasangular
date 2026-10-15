@@ -74,12 +74,9 @@ function crearComponente(overrides?: { pSvc?: any; }): TabControlComponent {
 
     const buildTabs = () => {
         const tabs: any[] = [];
-        if (!component.temporaryRestrictionActive)
-            tabs.push({ textLabel: 'Personajes' });
+        tabs.push({ textLabel: 'Personajes' });
         if (component.usrLoggedIn && component.privateProfileTabOpen)
             tabs.push({ textLabel: 'Mi perfil' });
-        if (component.restrictionTabOpen)
-            tabs.push({ textLabel: 'Cuenta restringida' });
         if (component.socialTabOpen)
             tabs.push({ textLabel: 'Social' });
         if (component.usrPerm === 1 && component.adminPanelTabOpen)
@@ -90,10 +87,6 @@ function crearComponente(overrides?: { pSvc?: any; }): TabControlComponent {
             tabs.push({ textLabel: 'Legal y privacidad' });
         if (component.usageAboutTabOpen)
             tabs.push({ textLabel: 'Uso y acerca' });
-        if (component.feedbackBugTabOpen)
-            tabs.push({ textLabel: 'Reportar bug' });
-        if (component.feedbackFeatureTabOpen)
-            tabs.push({ textLabel: 'Solicitar funcionalidad' });
         (component.detallesPersonajeAbiertos ?? []).forEach((pj: any) => tabs.push({ textLabel: pj.Nombre }));
         (component.publicProfileTabs ?? []).forEach((tab: any) => tabs.push({ textLabel: component.getEtiquetaPerfilPublico(tab) }));
         if (component.AbrirNuevoPersonajeTab)
@@ -220,96 +213,6 @@ describe('TabControlComponent navegación por origen', () => {
 
         expect((component as any).activeTabKey).toBe('clase:14');
         expect(component.detallesConjuroAbiertos.length).toBe(0);
-    }));
-
-    it('autoabre la pestaña de restricción y cierra social cuando entra un ban temporal', fakeAsync(() => {
-        const component = crearComponente();
-        const banStatus$ = (component as any).__banStatus$ as BehaviorSubject<any>;
-        const isLoggedIn$ = (component as any).__isLoggedIn$ as BehaviorSubject<boolean>;
-
-        component.ngOnInit();
-        isLoggedIn$.next(true);
-        component.abrirSocial({ section: 'mensajes', requestId: 1 });
-        tick(120);
-
-        banStatus$.next({
-            restriction: 'temporaryBan',
-            sanction: {
-                sanctionId: 7,
-                kind: 'ban',
-                code: 'manual-ban',
-                name: 'Ban temporal',
-                startsAtUtc: '2026-04-02T09:00:00Z',
-                endsAtUtc: '2026-04-02T10:00:00Z',
-                isPermanent: false,
-            },
-            isActiveNow: true,
-            endsAtUtc: '2026-04-02T10:00:00Z',
-            expiresInMs: 60_000,
-        });
-        tick(120);
-
-        expect(component.temporaryRestrictionActive).toBeTrue();
-        expect(component.restrictionTabOpen).toBeTrue();
-        expect(component.socialTabOpen).toBeFalse();
-        expect((component as any).activeTabKey).toBe('base:restriction');
-    }));
-
-    it('la navegación puede abrir la pestaña de restricción temporal', fakeAsync(() => {
-        const component = crearComponente();
-        const banStatus$ = (component as any).__banStatus$ as BehaviorSubject<any>;
-        const navSvc = (component as any).__userProfileNavSvc as any;
-
-        component.ngOnInit();
-        banStatus$.next({
-            restriction: 'temporaryBan',
-            sanction: null,
-            isActiveNow: true,
-            endsAtUtc: '2026-04-02T10:00:00Z',
-            expiresInMs: 60_000,
-        });
-        tick(120);
-
-        navSvc.accountRestrictionOpen$.next({ section: 'resumen', requestId: 2 });
-        tick(120);
-
-        expect(component.restrictionTabOpen).toBeTrue();
-        expect((component as any).activeTabKey).toBe('base:restriction');
-    }));
-
-    it('cierra la pestaña de restricción al levantarse el bloqueo y sale del estado restringido', fakeAsync(() => {
-        const component = crearComponente();
-        const banStatus$ = (component as any).__banStatus$ as BehaviorSubject<any>;
-        const isLoggedIn$ = (component as any).__isLoggedIn$ as BehaviorSubject<boolean>;
-
-        component.ngOnInit();
-        isLoggedIn$.next(true);
-        component.abrirPerfilPrivado({ section: 'resumen', requestId: 1 });
-        tick(120);
-
-        banStatus$.next({
-            restriction: 'temporaryBan',
-            sanction: null,
-            isActiveNow: true,
-            endsAtUtc: '2026-04-02T10:00:00Z',
-            expiresInMs: 60_000,
-        });
-        tick(120);
-        expect(component.restrictionTabOpen).toBeTrue();
-        expect((component as any).activeTabKey).toBe('base:restriction');
-
-        banStatus$.next({
-            restriction: null,
-            sanction: null,
-            isActiveNow: false,
-            endsAtUtc: null,
-            expiresInMs: null,
-        });
-        tick(120);
-
-        expect(component.temporaryRestrictionActive).toBeFalse();
-        expect(component.restrictionTabOpen).toBeFalse();
-        expect((component as any).activeTabKey).toBe('base:personajes');
     }));
 
     it('abre detalle de monstruo desde listado dinámico', fakeAsync(() => {
@@ -597,18 +500,6 @@ describe('TabControlComponent navegación por origen', () => {
         expect((component as any).activeTabKey).toBe('base:personajes');
     }));
 
-    it('abre mi perfil con la sección solicitada y la conserva en el request activo', fakeAsync(() => {
-        const component = crearComponente();
-        component.usrLoggedIn = true;
-
-        component.abrirPerfilPrivado('preferencias');
-        tick(120);
-
-        expect(component.privateProfileTabOpen).toBeTrue();
-        expect(component.privateProfileOpenRequest?.section).toBe('preferencias');
-        expect((component as any).activeTabKey).toBe('base:perfil');
-    }));
-
     it('abre social como tab dinámica y la puede cerrar con ESC', fakeAsync(() => {
         const component = crearComponente();
 
@@ -625,59 +516,6 @@ describe('TabControlComponent navegación por origen', () => {
         expect((component as any).activeTabKey).toBe('base:personajes');
     }));
 
-    it('la navegación social por servicio propaga la sección y la conversación pedidas', fakeAsync(() => {
-        const component = crearComponente();
-        const userProfileNavSvc = (component as any).__userProfileNavSvc as any;
-
-        component.ngOnInit();
-        userProfileNavSvc.socialOpen$.next({ section: 'mensajes', conversationId: 55, requestId: 9 });
-        tick(120);
-
-        expect(component.socialTabOpen).toBeTrue();
-        expect(component.socialOpenRequest).toEqual({
-            section: 'mensajes',
-            conversationId: 55,
-            campaignId: null,
-            requestId: 9,
-        });
-    }));
-
-    it('la navegación de perfil por servicio propaga la sección pedida', fakeAsync(() => {
-        const component = crearComponente();
-        const isLoggedIn$ = (component as any).__isLoggedIn$ as BehaviorSubject<boolean>;
-        const userProfileNavSvc = (component as any).__userProfileNavSvc as any;
-
-        component.ngOnInit();
-        isLoggedIn$.next(true);
-        tick();
-
-        userProfileNavSvc.privateProfileOpen$.next({ section: 'identidad', requestId: 7 });
-        tick(120);
-
-        expect(component.privateProfileTabOpen).toBeTrue();
-        expect(component.privateProfileOpenRequest).toEqual({
-            section: 'identidad',
-            requestId: 7,
-            campaignId: null,
-        });
-    }));
-
-    it('reutiliza la misma tab de perfil y la promociona a relationship cuando Social lo solicita', fakeAsync(() => {
-        const component = crearComponente();
-
-        component.abrirPerfilPublico({ uid: 'uid-2', initialDisplayName: 'Yuna' });
-        tick(120);
-        component.abrirPerfilPublico({ uid: 'uid-2', initialDisplayName: 'Yuna', mode: 'relationship' });
-        tick(120);
-
-        expect(component.publicProfileTabs.length).toBe(1);
-        expect(component.publicProfileTabs[0]).toEqual({
-            uid: 'uid-2',
-            initialDisplayName: 'Yuna',
-            mode: 'relationship',
-        });
-    }));
-
     it('abre admin panel como tab dinámica y la puede cerrar con ESC', fakeAsync(() => {
         const component = crearComponente();
         component.usrPerm = 1;
@@ -692,47 +530,6 @@ describe('TabControlComponent navegación por origen', () => {
 
         expect(component.adminPanelTabOpen).toBeFalse();
         expect((component as any).activeTabKey).toBe('base:personajes');
-    }));
-
-    it('propaga el openRequest del panel admin cuando se abre enfocado en pendientes', fakeAsync(() => {
-        const component = crearComponente();
-        component.usrPerm = 1;
-
-        component.abrirPanelAdministracion({ section: 'role-requests', pendingOnly: true, requestId: 91 });
-        tick(120);
-
-        expect(component.adminPanelOpenRequest).toEqual({
-            section: 'role-requests',
-            pendingOnly: true,
-            requestId: 91,
-        });
-    }));
-
-    it('abre la alerta de caches pendientes directamente en sincronizacion admin', fakeAsync(() => {
-        const component = crearComponente();
-        component.usrPerm = 1;
-        const cacheSyncMetadataSvc = (component as any).__cacheSyncMetadataSvc;
-        cacheSyncMetadataSvc.getSnapshotOnce.and.resolveTo({
-            razas: {
-                lastSuccessAt: Date.now(),
-                lastSuccessIso: new Date().toISOString(),
-                schemaVersionApplied: 0,
-                staleReason: null,
-            },
-        });
-        cacheSyncMetadataSvc.buildUiState.and.returnValue([
-            { key: 'razas', label: 'Razas', schemaVersion: 5, lastSuccessAt: null, lastSuccessIso: null, isPrimary: true },
-        ]);
-        spyOn(Swal, 'fire').and.returnValue(Promise.resolve({ isConfirmed: true } as any) as any);
-
-        (component as any).verificarPendientesCacheAdminEnInicio();
-        flushMicrotasks();
-
-        expect(component.adminPanelTabOpen).toBeTrue();
-        expect(component.adminPanelOpenRequest).toEqual(jasmine.objectContaining({
-            section: 'sync',
-        }));
-        tick(80);
     }));
 
     it('reintenta la alerta de caches pendientes si una lectura previa falla', fakeAsync(() => {
@@ -818,111 +615,6 @@ describe('TabControlComponent navegación por origen', () => {
         expect((component as any).activeTabKey).toBe('base:legal');
     }));
 
-    it('abre reportar bug solo con sesión iniciada', fakeAsync(() => {
-        const component = crearComponente();
-        const isLoggedIn$ = (component as any).__isLoggedIn$ as BehaviorSubject<boolean>;
-
-        component.ngOnInit();
-        component.abrirFeedbackBug();
-        tick(120);
-
-        expect(component.feedbackBugTabOpen).toBeFalse();
-
-        isLoggedIn$.next(true);
-        tick();
-        component.abrirFeedbackBug();
-        tick(120);
-
-        expect(component.feedbackBugTabOpen).toBeTrue();
-        expect((component as any).activeTabKey).toBe('base:feedback-bug');
-    }));
-
-    it('abre solicitar funcionalidad también para invitados', fakeAsync(() => {
-        const component = crearComponente();
-
-        component.abrirFeedbackFeature();
-        tick(120);
-
-        expect(component.feedbackFeatureTabOpen).toBeTrue();
-        expect((component as any).activeTabKey).toBe('base:feedback-feature');
-    }));
-
-    it('la navegación por servicio puede abrir ambas tabs de feedback', fakeAsync(() => {
-        const component = crearComponente();
-        const isLoggedIn$ = (component as any).__isLoggedIn$ as BehaviorSubject<boolean>;
-        const userProfileNavSvc = (component as any).__userProfileNavSvc as any;
-
-        component.ngOnInit();
-        userProfileNavSvc.feedbackFeatureOpen$.next();
-        tick(120);
-        expect(component.feedbackFeatureTabOpen).toBeTrue();
-
-        isLoggedIn$.next(true);
-        tick();
-        userProfileNavSvc.feedbackBugOpen$.next();
-        tick(120);
-        expect(component.feedbackBugTabOpen).toBeTrue();
-        expect((component as any).activeTabKey).toBe('base:feedback-bug');
-    }));
-
-    it('cerrar sesión también cierra la tab de funcionalidades', fakeAsync(() => {
-        const component = crearComponente();
-        const isLoggedIn$ = (component as any).__isLoggedIn$ as BehaviorSubject<boolean>;
-
-        component.ngOnInit();
-        isLoggedIn$.next(true);
-        tick();
-        component.abrirFeedbackFeature();
-        tick(120);
-        component.abrirFeedbackBug();
-        tick(120);
-
-        isLoggedIn$.next(false);
-        tick(120);
-
-        expect(component.feedbackBugTabOpen).toBeFalse();
-        expect(component.feedbackFeatureTabOpen).toBeFalse();
-    }));
-
-    it('cerrar sesión cierra todas las tabs auxiliares y deja personajes', fakeAsync(() => {
-        const component = crearComponente();
-        const isLoggedIn$ = (component as any).__isLoggedIn$ as BehaviorSubject<boolean>;
-        const clase = crearClase(99, 'Hechicero');
-
-        component.ngOnInit();
-        isLoggedIn$.next(true);
-        tick();
-        component.abrirSocial({ section: 'campanas', requestId: 12 });
-        tick(120);
-        component.abrirFeedbackFeature();
-        tick(120);
-        component.abrirRoadmap();
-        tick(120);
-        component.abrirDetallesClase(clase);
-        tick(120);
-        component.abrirListadoTab('conjuros', 'insertar');
-        tick(120);
-        component.abrirPerfilPublico({ uid: 'uid-publico', initialDisplayName: 'Publico' });
-        tick(120);
-        component.AbrirNuevoPersonajeTab = 1;
-        (component as any).activeTabKey = 'listado:insertar:conjuros';
-
-        isLoggedIn$.next(false);
-        tick(120);
-
-        expect(component.privateProfileTabOpen).toBeFalse();
-        expect(component.restrictionTabOpen).toBeFalse();
-        expect(component.socialTabOpen).toBeFalse();
-        expect(component.socialOpenRequest).toBeNull();
-        expect(component.feedbackFeatureTabOpen).toBeFalse();
-        expect(component.roadmapTabOpen).toBeFalse();
-        expect(component.detallesClaseAbiertos.length).toBe(0);
-        expect(component.publicProfileTabs.length).toBe(0);
-        expect(component.listadoTabsAbiertos.length).toBe(0);
-        expect(component.AbrirNuevoPersonajeTab).toBe(0);
-        expect((component as any).activeTabKey).toBe('base:personajes');
-    }));
-
     it('cerrar uso y acerca vuelve al origen', fakeAsync(() => {
         const component = crearComponente();
         const clase = crearClase(17, 'Paladín');
@@ -936,18 +628,6 @@ describe('TabControlComponent navegación por origen', () => {
 
         expect(component.usageAboutTabOpen).toBeFalse();
         expect((component as any).activeTabKey).toBe('clase:17');
-    }));
-
-    it('cerrar sesion elimina la tab privada abierta', fakeAsync(() => {
-        const component = crearComponente();
-        component.usrLoggedIn = true;
-        component.abrirPerfilPrivado();
-        tick(120);
-
-        (component as any).cerrarPerfilPrivadoPorLogout();
-
-        expect(component.privateProfileTabOpen).toBeFalse();
-        expect((component as any).activeTabKey).toBe('base:personajes');
     }));
 
     it('cierra admin panel si se pierde el permiso admin', fakeAsync(() => {

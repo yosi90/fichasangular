@@ -13,7 +13,7 @@ import {
     createDefaultUserSettings,
 } from '../interfaces/user-settings';
 import { FirebaseInjectionContextService } from './firebase-injection-context.service';
-import { UserProfileApiService } from './user-profile-api.service';
+import { PlatformSessionService } from './platform-session.service';
 
 const GENERADOR_MIGRATION_FLAG_PATH = 'migrations/generador_config_local_v1_done';
 
@@ -27,7 +27,7 @@ export class UserSettingsService {
 
     constructor(
         private auth: Auth,
-        private userProfileApiSvc: UserProfileApiService,
+        private platformSessionSvc: PlatformSessionService,
         private firebaseContextSvc: FirebaseInjectionContextService
     ) {
         this.authReadyPromise = new Promise((resolve) => {
@@ -159,7 +159,9 @@ export class UserSettingsService {
         if (!forceRefresh && this.settingsCache)
             return this.cloneSettings(this.settingsCache);
 
-        const settings = await this.userProfileApiSvc.getMySettings();
+        // Los ajustes de Rol viven en la plataforma (`yosiftware.ajustes`, ecosistema-kit/ACCESO.md).
+        const bloque = await this.platformSessionSvc.leerAjustes();
+        const settings = this.normalizeSettingsDocument((bloque?.documento ?? null) as unknown as UserSettingsV1 | null);
         this.settingsCache = this.cloneSettings(settings);
         return this.cloneSettings(settings);
     }
@@ -169,9 +171,15 @@ export class UserSettingsService {
             return createDefaultUserSettings();
 
         const normalizado = this.normalizeSettingsDocument(settings);
-        const response = await this.userProfileApiSvc.replaceMySettings(normalizado);
-        this.settingsCache = this.cloneSettings(response);
-        return this.cloneSettings(response);
+        // Solo lo que es de Rol: el perfil público, los mensajes y los avisos son de la plataforma.
+        const bloque = await this.platformSessionSvc.guardarAjustes({
+            version: 1,
+            nuevo_personaje: normalizado.nuevo_personaje,
+            perfil: { visibilidadPorDefectoPersonajes: normalizado.perfil.visibilidadPorDefectoPersonajes },
+        });
+        const guardado = this.normalizeSettingsDocument((bloque?.documento ?? null) as unknown as UserSettingsV1 | null);
+        this.settingsCache = this.cloneSettings(guardado);
+        return this.cloneSettings(guardado);
     }
 
     async loadProfileSettings(): Promise<UserSettingsV1['perfil']> {

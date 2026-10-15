@@ -77,10 +77,14 @@
     mat-icon
         margin-right: .35rem
 
-.public-profile-action-error
-    margin: .65rem 0 0
-    color: #ff9b9b
-    font-weight: 600
+.public-profile-note
+    margin: .75rem 0 0
+    color: rgba(245, 247, 255, .66)
+    font-size: .9rem
+
+    a
+        color: inherit
+        text-decoration: underline
 
 .public-profile-stats
     display: grid
@@ -109,51 +113,6 @@
 
 .public-profile-stat span
     color: rgba(245, 247, 255, .66)
-
-.public-profile-stat--warn
-    border-color: rgba(255, 124, 124, .3)
-    background: rgba(255, 124, 124, .08)
-
-.public-profile-visibility
-    display: grid
-    grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr))
-    gap: .8rem
-    margin-top: .95rem
-
-.public-profile-visibility__item
-    display: flex
-    justify-content: space-between
-    gap: .75rem
-    padding: .75rem .9rem
-    border-radius: .9rem
-    background: rgba(255, 255, 255, .04)
-    border: 1px solid rgba(255, 255, 255, .08)
-
-    span
-        color: rgba(245, 247, 255, .68)
-
-.public-profile-activity
-    display: flex
-    flex-direction: column
-    gap: .7rem
-    margin-top: 1rem
-
-    h3
-        margin: 0
-        font-size: 1rem
-
-.public-profile-activity__item
-    display: flex
-    flex-direction: column
-    gap: .2rem
-    padding: .75rem .9rem
-    border-radius: .9rem
-    background: rgba(255, 255, 255, .04)
-    border: 1px solid rgba(255, 255, 255, .08)
-
-    span
-        color: rgba(245, 247, 255, .62)
-        text-transform: capitalize
 
 @media (max-width: 720px)
     .public-profile-layout

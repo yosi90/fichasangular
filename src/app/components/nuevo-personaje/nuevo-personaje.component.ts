@@ -49,7 +49,6 @@ import { RegionService } from 'src/app/services/region.service';
 import { FichasDescargaBackgroundService } from 'src/app/services/fichas-descarga-background.service';
 import { PersonajeService } from 'src/app/services/personaje.service';
 import { ListaPersonajesService } from 'src/app/services/listas/lista-personajes.service';
-import { ChatFloatingService, FloatingChatOverlaySnapshot } from 'src/app/services/chat-floating.service';
 import { UserProfileNavigationService } from 'src/app/services/user-profile-navigation.service';
 import { UserService } from 'src/app/services/user.service';
 import {
@@ -539,7 +538,7 @@ export class NuevoPersonajeComponent {
     private conjurosCatalogoCargado = false;
     private escuelasCatalogoCargado = false;
     private disciplinasCatalogoCargado = false;
-    private chatOverlaySnapshotModalCaracteristicas: FloatingChatOverlaySnapshot | null = null;
+    private chatOcultoPorModalCaracteristicas = false;
     private dominiosSub?: Subscription;
     private regionesSub?: Subscription;
     private enemigosPredilectosSub?: Subscription;
@@ -577,7 +576,6 @@ export class NuevoPersonajeComponent {
         private especialSvc: EspecialService,
         private personajeSvc: PersonajeService,
         private fichasDescargaBgSvc: FichasDescargaBackgroundService,
-        private chatFloatingSvc: ChatFloatingService,
         private userSvc: UserService,
         private userProfileNavigationSvc: UserProfileNavigationService,
         private listaPersonajesSvc?: ListaPersonajesService,
@@ -1903,7 +1901,9 @@ export class NuevoPersonajeComponent {
     }
 
     abrirModalCaracteristicas(): void {
-        this.chatOverlaySnapshotModalCaracteristicas = this.chatFloatingSvc.hideAllFloatingWindowsForOverlay();
+        // El chat flotante de la plataforma no debe tapar el generador de características.
+        document.body.classList.add('rol-ocultar-chat');
+        this.chatOcultoPorModalCaracteristicas = true;
         this.nuevoPSvc.abrirModalCaracteristicas();
     }
 
@@ -1995,11 +1995,11 @@ export class NuevoPersonajeComponent {
     }
 
     private restaurarChatTrasModalCaracteristicas(): void {
-        if (!this.chatOverlaySnapshotModalCaracteristicas)
+        if (!this.chatOcultoPorModalCaracteristicas)
             return;
 
-        this.chatFloatingSvc.restoreFloatingWindowsAfterOverlay(this.chatOverlaySnapshotModalCaracteristicas);
-        this.chatOverlaySnapshotModalCaracteristicas = null;
+        document.body.classList.remove('rol-ocultar-chat');
+        this.chatOcultoPorModalCaracteristicas = false;
     }
 
     onInternalTabIndexChange(index: number): void {

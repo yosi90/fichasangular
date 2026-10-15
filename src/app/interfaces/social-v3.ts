@@ -1,22 +1,8 @@
 export type SocialCommunityRole = 'jugador' | 'master' | 'colaborador' | 'admin';
 export type SocialCommunitySort = 'recent' | 'active' | 'characters' | 'campaigns_mastered' | 'campaigns_joined';
 export type SocialRankingMetric = 'public_characters' | 'campaigns_created' | 'campaigns_as_master' | 'active_campaigns' | 'seniority';
-export type SocialRelationshipStateDetailed =
-    | 'self'
-    | 'friend'
-    | 'incoming_request'
-    | 'outgoing_request'
-    | 'blocked_by_actor'
-    | 'blocked_actor'
-    | 'none';
-export type SocialFeedScope = 'global' | 'friends' | 'self';
-export type SocialFeedKind =
-    | 'friendship.created'
-    | 'campaign.created'
-    | 'campaign.joined'
-    | 'group.created'
-    | 'character.published';
-export type SocialFeedVisibility = 'global' | 'friends' | 'self';
+/** Con la plataforma: la propia cuenta, una amistad o nada (el detalle de la relación lo da la plataforma). */
+export type SocialRelationshipStateDetailed = 'self' | 'friend' | 'none';
 export type SocialLfgStatus = 'open' | 'paused' | 'closed';
 export type SocialLfgApplicationStatus = 'pending' | 'accepted' | 'rejected' | 'withdrawn';
 
@@ -81,7 +67,6 @@ export interface SocialCommunityRankings {
 export interface SocialVisibilityFlags {
     showAuthenticatedBlock: boolean;
     showFriendsBlock: boolean;
-    showRecentActivity: boolean;
 }
 
 export interface SocialProfileBlock {
@@ -95,16 +80,8 @@ export interface SocialProfileBlock {
 
 export interface SocialRelationshipDetail {
     state: SocialRelationshipStateDetailed;
-    blockedByActor: boolean;
-    blockedActor: boolean;
     mutualFriendsCount: number;
     mutualCampaignsCount: number;
-}
-
-export interface SocialRecentActivityItem {
-    kind: string;
-    createdAtUtc: string | null;
-    summary: string;
 }
 
 export interface SocialRelationshipProfile {
@@ -112,36 +89,6 @@ export interface SocialRelationshipProfile {
     relationship: SocialRelationshipDetail;
     visibility: SocialVisibilityFlags;
     stats: SocialPublicStatsV3;
-    recentActivity: SocialRecentActivityItem[];
-}
-
-export interface SocialFeedActor {
-    uid: string;
-    displayName: string | null;
-    photoThumbUrl: string | null;
-}
-
-export interface SocialFeedSubject {
-    type: string;
-    id: string | null;
-    title: string | null;
-}
-
-export interface SocialFeedCta {
-    type: string;
-    uid: string | null;
-}
-
-export interface SocialFeedItem {
-    id: string;
-    kind: string;
-    createdAtUtc: string | null;
-    visibility: SocialFeedVisibility;
-    actor: SocialFeedActor;
-    subject: SocialFeedSubject;
-    summary: string;
-    cta: SocialFeedCta;
-    metadata: Record<string, any>;
 }
 
 export interface SocialLfgAuthor {
@@ -201,10 +148,13 @@ export interface SocialLfgApplication {
     permissions: SocialLfgApplicationPermissions;
 }
 
+/** Conversación de la web en el chat de la plataforma, con quien publica la convocatoria y quien contacta. */
 export interface SocialContactConversationResponse {
-    conversationId: number;
+    conversationId: string;
     created: boolean;
-    type: 'direct';
+    type: 'web';
+    /** La otra persona aún no ha entrado en Rol: se unirá a la conversación cuando lo haga. */
+    pendingMembers: boolean;
 }
 
 export interface SocialWebSocketTicketResponse {
@@ -214,7 +164,6 @@ export interface SocialWebSocketTicketResponse {
 }
 
 export type SocialWebSocketEvent =
-    | { type: 'feed.item_created'; payload: SocialFeedItem }
     | { type: 'lfg.post_created'; payload: SocialLfgPost }
     | { type: 'lfg.post_updated'; payload: SocialLfgPost }
     | { type: 'lfg.post_closed'; payload: SocialLfgPost }

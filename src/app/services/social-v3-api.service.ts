@@ -12,9 +12,6 @@ import {
     SocialCommunityUserItem,
     SocialContactConversationResponse,
     SocialEnvelope,
-    SocialFeedItem,
-    SocialFeedKind,
-    SocialFeedScope,
     SocialLfgApplication,
     SocialLfgApplicationStatus,
     SocialLfgPost,
@@ -122,30 +119,6 @@ export class SocialV3ApiService {
             return this.normalizeRelationshipProfile(response);
         } catch (error) {
             throw this.toProfileApiError(error, 'No se pudo cargar el perfil relacional.');
-        }
-    }
-
-    async getFeed(filters: {
-        scope?: SocialFeedScope | null;
-        kind?: SocialFeedKind | null;
-        limit?: number;
-        offset?: number;
-    } = {}): Promise<SocialEnvelope<SocialFeedItem>> {
-        try {
-            const response = await firstValueFrom(
-                this.http.get<any>(`${this.socialBaseUrl}/feed`, {
-                    headers: await this.buildAuthHeaders(),
-                    params: this.compactParams({
-                        scope: this.toNullableText(filters.scope) ?? 'global',
-                        kind: this.toNullableText(filters.kind),
-                        limit: `${this.normalizeLimit(filters.limit, 25)}`,
-                        offset: `${this.normalizeOffset(filters.offset)}`,
-                    }),
-                })
-            );
-            return this.normalizeEnvelope(response, (raw) => this.normalizeFeedItem(raw));
-        } catch (error) {
-            throw this.toProfileApiError(error, 'No se pudo cargar la actividad social.');
         }
     }
 
@@ -306,18 +279,14 @@ export class SocialV3ApiService {
                     { headers: await this.buildAuthHeaders() }
                 )
             );
-            const conversationId = this.toPositiveInt(
-                response?.conversationId
-                ?? response?.idConversacion
-                ?? response?.conversation?.conversationId
-                ?? response?.conversation?.id
-            );
-            if (!conversationId)
+            const conversationId = `${response?.conversationId ?? ''}`.trim();
+            if (conversationId.length < 1)
                 throw new ProfileApiError('La API no devolvió una conversación válida.', 'SOCIAL_LFG_CONTACT_CONVERSATION_INVALID', 500);
             return {
                 conversationId,
                 created: response?.created === true,
-                type: 'direct',
+                type: 'web',
+                pendingMembers: response?.pendingMembers === true,
             };
         } catch (error) {
             throw this.toProfileApiError(error, 'No se pudo abrir la conversación contextual.');
@@ -373,8 +342,6 @@ export class SocialV3ApiService {
 
     parseWebSocketEvent(raw: any): SocialWebSocketEvent | null {
         const type = `${raw?.type ?? ''}`.trim();
-        if (type === 'feed.item_created')
-            return { type, payload: this.normalizeFeedItem(raw?.payload) };
         if (type === 'lfg.post_created' || type === 'lfg.post_updated' || type === 'lfg.post_closed')
             return { type, payload: this.normalizeLfgPost(raw?.payload) } as SocialWebSocketEvent;
         if (type === 'pong')
@@ -438,15 +405,12 @@ export class SocialV3ApiService {
             },
             relationship: {
                 state: this.normalizeRelationshipState(raw?.relationship?.state),
-                blockedByActor: raw?.relationship?.blockedByActor === true,
-                blockedActor: raw?.relationship?.blockedActor === true,
                 mutualFriendsCount: this.toNonNegativeInt(raw?.relationship?.mutualFriendsCount),
                 mutualCampaignsCount: this.toNonNegativeInt(raw?.relationship?.mutualCampaignsCount),
             },
             visibility: {
                 showAuthenticatedBlock: raw?.visibility?.showAuthenticatedBlock === true,
                 showFriendsBlock: raw?.visibility?.showFriendsBlock === true,
-                showRecentActivity: raw?.visibility?.showRecentActivity === true,
             },
             stats: {
                 totalCharacters: this.toNonNegativeInt(raw?.stats?.totalCharacters),
@@ -455,40 +419,6 @@ export class SocialV3ApiService {
                 campaignsAsMaster: this.toNonNegativeInt(raw?.stats?.campaignsAsMaster),
                 campaignsCreated: this.toNonNegativeInt(raw?.stats?.campaignsCreated),
             },
-            recentActivity: Array.isArray(raw?.recentActivity)
-                ? raw.recentActivity.map((item: any) => ({
-                    kind: `${item?.kind ?? ''}`.trim(),
-                    createdAtUtc: this.toNullableText(item?.createdAtUtc),
-                    summary: `${item?.summary ?? ''}`.trim(),
-                })).filter((item: any) => item.kind.length > 0 && item.summary.length > 0)
-                : [],
-        };
-    }
-
-    private normalizeFeedItem(raw: any): SocialFeedItem {
-        return {
-            id: `${raw?.id ?? ''}`.trim(),
-            kind: `${raw?.kind ?? ''}`.trim(),
-            createdAtUtc: this.toNullableText(raw?.createdAtUtc),
-            visibility: this.normalizeFeedVisibility(raw?.visibility),
-            actor: {
-                uid: `${raw?.actor?.uid ?? ''}`.trim(),
-                displayName: this.toNullableText(raw?.actor?.displayName),
-                photoThumbUrl: this.toNullableText(raw?.actor?.photoThumbUrl),
-            },
-            subject: {
-                type: `${raw?.subject?.type ?? ''}`.trim(),
-                id: this.toNullableText(raw?.subject?.id),
-                title: this.toNullableText(raw?.subject?.title),
-            },
-            summary: `${raw?.summary ?? ''}`.trim(),
-            cta: {
-                type: `${raw?.cta?.type ?? ''}`.trim(),
-                uid: this.toNullableText(raw?.cta?.uid),
-            },
-            metadata: raw?.metadata && typeof raw.metadata === 'object' && !Array.isArray(raw.metadata)
-                ? { ...raw.metadata }
-                : {},
         };
     }
 
@@ -724,12 +654,7 @@ export class SocialV3ApiService {
 
     private normalizeRelationshipState(value: any): SocialRelationshipProfile['relationship']['state'] {
         const normalized = `${value ?? ''}`.trim().toLowerCase();
-        if (normalized === 'self'
-            || normalized === 'friend'
-            || normalized === 'incoming_request'
-            || normalized === 'outgoing_request'
-            || normalized === 'blocked_by_actor'
-            || normalized === 'blocked_actor')
+        if (normalized === 'self' || normalized === 'friend')
             return normalized;
         return 'none';
     }
@@ -742,13 +667,6 @@ export class SocialV3ApiService {
             || normalized === 'seniority')
             return normalized;
         return 'public_characters';
-    }
-
-    private normalizeFeedVisibility(value: any): SocialFeedItem['visibility'] {
-        const normalized = `${value ?? ''}`.trim().toLowerCase();
-        if (normalized === 'friends' || normalized === 'self')
-            return normalized;
-        return 'global';
     }
 
     private normalizeLfgStatus(value: any): SocialLfgStatus {

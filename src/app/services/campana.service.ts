@@ -1,7 +1,7 @@
 import { HttpClient, HttpErrorResponse, HttpHeaders } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { Auth, onAuthStateChanged } from '@angular/fire/auth';
-import { Observable, Subscription, catchError, filter, firstValueFrom, from, map, merge, of, scan, shareReplay, skip, switchMap, timer } from 'rxjs';
+import { Observable, Subscription, filter, firstValueFrom, from, map, merge, of, shareReplay, skip, timer } from 'rxjs';
 import { Campana } from '../interfaces/campaña';
 import {
     CampaignCreationPolicy,
@@ -88,6 +88,21 @@ export class CampanaService {
             return await this.filterCampaignsForProfile(campaigns, headers, actorUid);
         } catch (error) {
             throw this.toError(error, 'No se pudieron cargar las campañas del perfil.');
+        }
+    }
+
+    /** La conversación de la campaña en el chat de la plataforma (`GET /campanas/{id}/conversacion`). */
+    async getCampaignConversation(idCampana: number): Promise<{ conversacionId: string; idExterno: string; }> {
+        try {
+            const headers = await this.buildAuthHeaders();
+            return await firstValueFrom(
+                this.http.get<{ conversacionId: string; idExterno: string; }>(
+                    `${this.campanasBaseUrl}/${idCampana}/conversacion`,
+                    { headers }
+                )
+            );
+        } catch (error) {
+            throw this.toError(error, 'No se pudo abrir el chat de la campaña.');
         }
     }
 

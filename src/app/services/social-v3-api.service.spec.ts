@@ -1,8 +1,11 @@
 import { of, throwError } from 'rxjs';
 import { HttpErrorResponse } from '@angular/common/http';
 import { SocialV3ApiService } from './social-v3-api.service';
+import { simularTokenApi } from 'src/testing/simular-token-api';
 
 describe('SocialV3ApiService', () => {
+    beforeEach(() => simularTokenApi('token-social-v3'));
+
     const authMock = {
         currentUser: {
             getIdToken: jasmine.createSpy('getIdToken').and.resolveTo('token-social-v3'),
@@ -77,71 +80,6 @@ describe('SocialV3ApiService', () => {
             sort: 'active',
             limit: '25',
             offset: '0',
-        });
-    });
-
-    it('normaliza feed y CTA open_profile', async () => {
-        const httpMock = jasmine.createSpyObj('HttpClient', ['get', 'post', 'patch']);
-        httpMock.get.and.returnValue(of({
-            items: [{
-                id: ' feed-1 ',
-                kind: 'friendship.created',
-                createdAtUtc: '2026-03-12T10:00:00.000Z',
-                visibility: 'friends',
-                actor: {
-                    uid: ' uid-2 ',
-                    displayName: ' Yuna ',
-                    photoThumbUrl: ' thumb.webp ',
-                },
-                subject: {
-                    type: 'user',
-                    id: 'uid-2',
-                    title: 'Yuna',
-                },
-                summary: ' Yuna y Marcus ahora son amistad. ',
-                cta: {
-                    type: 'open_profile',
-                    uid: ' uid-2 ',
-                },
-                metadata: {
-                    foo: 'bar',
-                },
-            }],
-            total: 1,
-            limit: 25,
-            offset: 0,
-            hasMore: false,
-        }));
-        const service = new SocialV3ApiService(httpMock, authMock);
-
-        const result = await service.getFeed({
-            scope: 'friends',
-            kind: 'friendship.created',
-        });
-
-        expect(result.items[0]).toEqual({
-            id: 'feed-1',
-            kind: 'friendship.created',
-            createdAtUtc: '2026-03-12T10:00:00.000Z',
-            visibility: 'friends',
-            actor: {
-                uid: 'uid-2',
-                displayName: 'Yuna',
-                photoThumbUrl: 'thumb.webp',
-            },
-            subject: {
-                type: 'user',
-                id: 'uid-2',
-                title: 'Yuna',
-            },
-            summary: 'Yuna y Marcus ahora son amistad.',
-            cta: {
-                type: 'open_profile',
-                uid: 'uid-2',
-            },
-            metadata: {
-                foo: 'bar',
-            },
         });
     });
 
@@ -227,26 +165,6 @@ describe('SocialV3ApiService', () => {
         }));
 
         expect(httpMock.patch).not.toHaveBeenCalled();
-    });
-
-    it('normaliza la conversacion contextual LFG aunque llegue anidada', async () => {
-        const httpMock = jasmine.createSpyObj('HttpClient', ['get', 'post', 'patch']);
-        httpMock.post.and.returnValue(of({
-            created: false,
-            type: 'direct',
-            conversation: {
-                id: 44,
-            },
-        }));
-        const service = new SocialV3ApiService(httpMock, authMock);
-
-        const response = await service.openLfgContactConversation(3);
-
-        expect(response).toEqual({
-            conversationId: 44,
-            created: false,
-            type: 'direct',
-        });
     });
 
     it('convierte localhost a 127.0.0.1 al construir la url websocket', () => {

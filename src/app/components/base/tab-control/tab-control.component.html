@@ -1,5 +1,5 @@
 <mat-tab-group #TabControl mat-stretch-tabs="false" mat-align-tabs="start" (selectedTabChange)="onTabChange($event)">
-    <mat-tab label="Personajes" *ngIf="!temporaryRestrictionActive">
+    <mat-tab label="Personajes">
         <ng-template mat-tab-label="">
             <mat-icon class="tw-me-2">people_alt</mat-icon>
             Personajes
@@ -18,13 +18,6 @@
         </ng-template>
         <app-user-profile [openRequest]="privateProfileOpenRequest"></app-user-profile>
     </mat-tab>
-    <mat-tab label="Cuenta restringida" *ngIf="restrictionTabOpen">
-        <ng-template mat-tab-label>
-            <mat-icon class="tw-me-2">gpp_bad</mat-icon>
-            Cuenta restringida
-        </ng-template>
-        <app-account-restriction-tab [openRequest]="restrictionOpenRequest"></app-account-restriction-tab>
-    </mat-tab>
     <mat-tab label="Social" *ngIf="socialTabOpen">
         <ng-template mat-tab-label>
             <mat-icon class="tw-me-2">hub</mat-icon>
@@ -39,7 +32,7 @@
             Admin panel
             <button (click)="quitarPanelAdministracion()" mat-icon-button class="tw-ms-2"><mat-icon>close</mat-icon></button>
         </ng-template>
-        <app-admin-panel [openRequest]="adminPanelOpenRequest"></app-admin-panel>
+        <app-admin-panel></app-admin-panel>
     </mat-tab>
     <mat-tab label="Roadmap" *ngIf="roadmapTabOpen">
         <ng-template mat-tab-label>
@@ -64,22 +57,6 @@
             <button (click)="quitarUsoYAcerca()" mat-icon-button class="tw-ms-2"><mat-icon>close</mat-icon></button>
         </ng-template>
         <app-help-usage-about></app-help-usage-about>
-    </mat-tab>
-    <mat-tab label="Reportar bug" *ngIf="feedbackBugTabOpen">
-        <ng-template mat-tab-label>
-            <mat-icon class="tw-me-2">bug_report</mat-icon>
-            Reportar bug
-            <button (click)="quitarFeedbackBug()" mat-icon-button class="tw-ms-2"><mat-icon>close</mat-icon></button>
-        </ng-template>
-        <app-help-feedback kind="bug"></app-help-feedback>
-    </mat-tab>
-    <mat-tab label="Solicitar funcionalidad" *ngIf="feedbackFeatureTabOpen">
-        <ng-template mat-tab-label>
-            <mat-icon class="tw-me-2">lightbulb</mat-icon>
-            Solicitar funcionalidad
-            <button (click)="quitarFeedbackFeature()" mat-icon-button class="tw-ms-2"><mat-icon>close</mat-icon></button>
-        </ng-template>
-        <app-help-feedback kind="feature"></app-help-feedback>
     </mat-tab>
     <mat-tab *ngFor="let pj of detallesPersonajeAbiertos; let index = index" [label]="pj.Nombre">
         <ng-template mat-tab-label>
@@ -115,7 +92,6 @@
         <app-public-user-profile
             [uid]="publicProfileTab.uid"
             [initialDisplayName]="publicProfileTab.initialDisplayName ?? null"
-            [mode]="publicProfileTab.mode ?? 'public'"
             (profileLoaded)="actualizarEtiquetaPerfilPublico($event)">
         </app-public-user-profile>
     </mat-tab>

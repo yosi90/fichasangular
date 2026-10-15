@@ -8,6 +8,7 @@ import { SocialV3ApiService } from 'src/app/services/social-v3-api.service';
 import { UserProfileNavigationService } from 'src/app/services/user-profile-navigation.service';
 import { UserService } from 'src/app/services/user.service';
 import { AppToastService } from 'src/app/services/app-toast.service';
+import { PlatformSessionService } from 'src/app/services/platform-session.service';
 
 describe('SocialLfgSectionComponent', () => {
     let fixture: ComponentFixture<SocialLfgSectionComponent>;
@@ -15,6 +16,7 @@ describe('SocialLfgSectionComponent', () => {
     let socialV3ApiSvc: jasmine.SpyObj<SocialV3ApiService>;
     let userProfileNavSvc: jasmine.SpyObj<UserProfileNavigationService>;
     let appToastSvc: jasmine.SpyObj<AppToastService>;
+    let platformSessionSvc: jasmine.SpyObj<PlatformSessionService>;
     let events$: Subject<any>;
     let refetchRequested$: Subject<void>;
 
@@ -142,13 +144,17 @@ describe('SocialLfgSectionComponent', () => {
             },
         }) as any);
         socialV3ApiSvc.openLfgContactConversation.and.resolveTo({
-            conversationId: 44,
+            conversationId: 'conv-44',
             created: true,
-            type: 'direct',
+            type: 'web',
+            pendingMembers: false,
         });
+        platformSessionSvc = jasmine.createSpyObj<PlatformSessionService>('PlatformSessionService', ['abrirChat', 'denunciar']);
+        platformSessionSvc.abrirChat.and.resolveTo(true);
+        platformSessionSvc.denunciar.and.resolveTo(true);
 
         userProfileNavSvc = jasmine.createSpyObj<UserProfileNavigationService>('UserProfileNavigationService', ['openSocial', 'openPublicProfile']);
-        appToastSvc = jasmine.createSpyObj<AppToastService>('AppToastService', ['showSuccess', 'showError']);
+        appToastSvc = jasmine.createSpyObj<AppToastService>('AppToastService', ['showSuccess', 'showError', 'showInfo']);
 
         await TestBed.configureTestingModule({
             declarations: [SocialLfgSectionComponent],
@@ -171,6 +177,7 @@ describe('SocialLfgSectionComponent', () => {
                 },
                 { provide: UserProfileNavigationService, useValue: userProfileNavSvc },
                 { provide: AppToastService, useValue: appToastSvc },
+                { provide: PlatformSessionService, useValue: platformSessionSvc },
             ],
             schemas: [NO_ERRORS_SCHEMA],
         }).compileComponents();
@@ -409,7 +416,7 @@ describe('SocialLfgSectionComponent', () => {
         expect(socialV3ApiSvc.updateLfgApplication).toHaveBeenCalledWith(3, 7, 'withdrawn');
     }));
 
-    it('abre la conversación contextual y navega a Social > Mensajes', fakeAsync(() => {
+    it('abre la conversación contextual en el chat de la plataforma', fakeAsync(() => {
         component.selectedPost = {
             id: 3,
             author: { uid: 'uid-master', displayName: 'Master', photoThumbUrl: null },
@@ -418,11 +425,57 @@ describe('SocialLfgSectionComponent', () => {
         void component.openContactConversation();
         tick();
 
-        expect(userProfileNavSvc.openSocial).toHaveBeenCalledWith(jasmine.objectContaining({
-            section: 'mensajes',
-            conversationId: 44,
-        }));
+        expect(platformSessionSvc.abrirChat).toHaveBeenCalledWith('conv-44');
+        expect(userProfileNavSvc.openSocial).not.toHaveBeenCalled();
     }));
+
+    it('avisa si la otra persona aún no ha entrado en Rol', fakeAsync(() => {
+        socialV3ApiSvc.openLfgContactConversation.and.resolveTo({
+            conversationId: 'conv-44',
+            created: true,
+            type: 'web',
+            pendingMembers: true,
+        });
+        component.selectedPost = {
+            id: 3,
+            author: { uid: 'uid-master', displayName: 'Master', photoThumbUrl: null },
+        } as any;
+
+        void component.openContactConversation();
+        tick();
+
+        expect(appToastSvc.showInfo).toHaveBeenCalled();
+    }));
+
+    it('denuncia a quien publica la convocatoria, con su texto como extracto', fakeAsync(() => {
+        component.isLoggedIn = true;
+        component.selectedPost = {
+            id: 3,
+            title: 'Mesa 3.5',
+            summary: 'Resumen',
+            author: { uid: 'uid-master', displayName: 'Master', photoThumbUrl: null },
+        } as any;
+
+        void component.reportSelectedPost();
+        tick();
+
+        expect(platformSessionSvc.denunciar).toHaveBeenCalledWith({
+            tipo: 'persona',
+            referencia: 'uid-master',
+            nombre: 'Master',
+            extracto: 'Mesa 3.5 — Resumen',
+        });
+    }));
+
+    it('no ofrece denunciar una convocatoria propia', () => {
+        component.isLoggedIn = true;
+        component.selectedPost = {
+            id: 3,
+            author: { uid: 'uid-actor', displayName: 'Actor', photoThumbUrl: null },
+        } as any;
+
+        expect(component.canReportSelectedPost).toBeFalse();
+    });
 
     it('no ofrece abrir conversación contextual sobre una convocatoria propia', () => {
         component.selectedPost = {

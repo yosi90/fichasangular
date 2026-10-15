@@ -3,8 +3,11 @@ import { firstValueFrom, of, throwError } from 'rxjs';
 import Swal from 'sweetalert2';
 import { normalizeRazaApi } from './utils/raza-mapper';
 import { RazaService, normalizeAlineamientoRaza, normalizeHabilidadesRaza, normalizeIdiomasRaza, normalizeRazaLegacy } from './raza.service';
+import { simularTokenApi } from 'src/testing/simular-token-api';
 
 describe('RazaService helpers', () => {
+    beforeEach(() => simularTokenApi('token-firebase'));
+
     class TestRazaService extends RazaService {
         snapshotFactory: (() => any) | null = null;
         razasSnapshotFactory: (() => any) | null = null;
