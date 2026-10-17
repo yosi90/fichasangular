@@ -297,7 +297,6 @@
                                             {{getCampaignRoleLabel(selectedCampaignActorRole, selectedCampaignSummary.isOwner === true)}} · {{getMembershipStatusLabel(selectedCampaignActorStatus)}}
                                         </span>
                                         <span class="profile-pill" *ngIf="selectedCampaignCanManage">Modo gestión</span>
-                                        <span class="profile-pill" *ngIf="!selectedCampaignCanManage">Pendiente de recuperación</span>
                                     </div>
                                 </div>
 
@@ -314,14 +313,6 @@
                                         *ngIf="canOpenSelectedCampaignChat"
                                         (click)="abrirChatCampanaSeleccionada()">
                                         Abrir chat
-                                    </button>
-                                    <button
-                                        type="button"
-                                        class="campaign-recover-button"
-                                        *ngIf="selectedCampaignCanRecoverMaster"
-                                        (click)="abrirInfoRecuperarMaster($event)">
-                                        <mat-icon>help_outline</mat-icon>
-                                        <span>Convertirte en master</span>
                                     </button>
                                 </div>
                             </div>
@@ -345,13 +336,23 @@
                                         </div>
                                         <p class="profile-panel__hint">{{campaignNameLength}}/{{campaignNameMaxLength}}</p>
 
-                                        <div class="profile-action-row" *ngIf="selectedCampaignSummary && !selectedCampaignCanManage && selectedCampaignCanRecoverMaster">
+                                        <div class="campaign-entry-mode" *ngIf="selectedCampaignSummary && !isCreatingCampaign && selectedCampaignSpace">
+                                            <label class="campaign-checkbox">
+                                                <input
+                                                    type="checkbox"
+                                                    [checked]="selectedCampaignAcceptsRequests"
+                                                    [disabled]="entryModeSaving || !selectedCampaignCanManage"
+                                                    (change)="cambiarEntradaCampana($any($event.target).checked)" />
+                                                <span>Admitir solicitudes para entrar</span>
+                                            </label>
                                             <button
+                                                mat-icon-button
                                                 type="button"
-                                                class="campaign-recover-button"
-                                                (click)="abrirInfoRecuperarMaster($event)">
-                                                <mat-icon>help_outline</mat-icon>
-                                                <span>Convertirte en master</span>
+                                                *ngIf="selectedCampaignAcceptsRequests"
+                                                aria-label="Copiar el enlace para pedir entrar"
+                                                matTooltip="Copiar el enlace para pedir entrar"
+                                                (click)="copiarEnlaceCampana()">
+                                                <mat-icon>link</mat-icon>
                                             </button>
                                         </div>
 
@@ -540,31 +541,34 @@
                                                     <p class="profile-panel__hint" *ngIf="selectedCampaignHasActiveMaster">
                                                         Master actual: {{selectedCampaignDetail.activeMasterDisplayName || getUserDisplayLabel(selectedCampaignMaster?.displayName, selectedCampaignMaster?.email, selectedCampaignMaster?.uid || '')}}
                                                     </p>
-                                                    <p class="profile-panel__hint" *ngIf="!selectedCampaignHasActiveMaster && selectedCampaignDetail.ownerDisplayName">
-                                                        Creador persistido: {{selectedCampaignDetail.ownerDisplayName}}
+                                                    <p class="profile-panel__hint" *ngIf="selectedCampaignDetail.ownerDisplayName && selectedCampaignDetail.ownerUid !== selectedCampaignDetail.activeMasterUid">
+                                                        Creada por: {{selectedCampaignDetail.ownerDisplayName}}
                                                     </p>
-                                                    <p class="profile-panel__hint" *ngIf="selectedCampaignShowLegacyRecoverHint">
-                                                        Esta campaña no tiene master activo y tampoco un creador recuperable en el detalle. Si es una campaña legacy, hará falta revisarla desde administración.
+                                                    <p class="profile-panel__hint">
+                                                        {{selectedCampaignAcceptsRequests ? 'Se entra por invitación o pidiendo entrar.' : 'Solo se entra por invitación.'}}
                                                     </p>
-                                                    <p class="profile-panel__hint" *ngIf="selectedCampaignCanManage">
-                                                        La configuración general se edita en el panel de configuración.
-                                                    </p>
-                                                    <p class="profile-panel__hint" *ngIf="!selectedCampaignCanManage">
-                                                        Hasta recuperar el rol de master, esta campaña se mantiene en modo solo lectura dentro de la gestión privada.
+                                                    <p class="profile-panel__hint" *ngIf="!selectedCampaignSpace">
+                                                        La campaña aún no tiene su espacio en Yosiftware: podrás invitar en cuanto esté listo.
                                                     </p>
                                                 </article>
 
                                                 <article class="campaign-card" *ngIf="selectedCampaignCanTransferMaster">
                                                     <div class="profile-panel__header">
-                                                        <h3>Transferir master</h3>
+                                                        <h3>Traspasar el máster</h3>
                                                     </div>
 
-                                                    <label class="campaign-checkbox">
-                                                        <input type="checkbox" [(ngModel)]="keepPreviousMasterAsPlayer" [disabled]="transferSaving" />
-                                                        <span>Mantener al master saliente como jugador</span>
-                                                    </label>
+                                                    <div class="campaign-transfer-selection" *ngIf="selectedCampaignPendingTransfer">
+                                                        <p class="profile-panel__hint">
+                                                            Traspaso ofrecido a {{selectedCampaignPendingTransferLabel}}: pasará a ser el máster cuando lo acepte, y tú te quedarás como jugador.
+                                                        </p>
+                                                        <div class="profile-action-row">
+                                                            <button mat-stroked-button color="warn" (click)="cancelarTraspaso()" [disabled]="transferCancelInFlight">
+                                                                {{transferCancelInFlight ? 'Cancelando...' : 'Cancelar el traspaso'}}
+                                                            </button>
+                                                        </div>
+                                                    </div>
 
-                                                    <div class="campaign-search-results campaign-search-results--transfer">
+                                                    <div class="campaign-search-results campaign-search-results--transfer" *ngIf="!selectedCampaignPendingTransfer">
                                                         <div class="campaign-search-results__header">Jugadores activos</div>
                                                         <button
                                                             type="button"
@@ -572,17 +576,17 @@
                                                             *ngFor="let member of selectedCampaignTransferCandidates; trackBy: trackByMemberUid"
                                                             (click)="seleccionarNuevoMaster(member)">
                                                             <strong>{{getUserDisplayLabel(member.displayName, member.email, member.uid)}}</strong>
-                                                            <span>Seleccionar como nuevo Master</span>
+                                                            <span>Ofrecerle el máster</span>
                                                         </button>
                                                     </div>
 
-                                                    <div class="campaign-transfer-selection" *ngIf="transferSelectedUser">
+                                                    <div class="campaign-transfer-selection" *ngIf="transferSelectedUser && !selectedCampaignPendingTransfer">
                                                         <p class="profile-panel__hint">
-                                                            Nuevo master: {{getUserDisplayLabel(transferSelectedUser.displayName, null, transferSelectedUser.uid || '')}}
+                                                            Nuevo master: {{getUserDisplayLabel(transferSelectedUser.displayName, null, transferSelectedUser.uid || '')}}. Tendrá que aceptarlo, y tú te quedarás como jugador.
                                                         </p>
                                                         <div class="profile-action-row">
                                                             <button mat-raised-button color="primary" (click)="transferirMaster()" [disabled]="transferSaving">
-                                                                {{transferSaving ? 'Transfiriendo...' : 'Transferir master'}}
+                                                                {{transferSaving ? 'Ofreciendo...' : 'Ofrecer el traspaso'}}
                                                             </button>
                                                             <button mat-stroked-button color="accent" (click)="limpiarNuevoMaster()" [disabled]="transferSaving">
                                                                 Cambiar selección
@@ -605,13 +609,25 @@
                                                     </mat-chip-option>
                                                 </div>
 
-                                                <div class="campaign-inline-form" *ngIf="selectedCampaignCanManage">
+                                                <div class="campaign-inline-form" *ngIf="selectedCampaignCanManage && selectedCampaignSpace">
                                                     <input
                                                         class="campaign-text-input"
                                                         type="text"
                                                         placeholder="Buscar usuario para invitar"
                                                         [(ngModel)]="memberSearchQuery"
                                                         (ngModelChange)="onMemberSearchQueryChange()" />
+                                                </div>
+                                                <div class="campaign-inline-form" *ngIf="selectedCampaignCanManage && selectedCampaignSpace">
+                                                    <input
+                                                        class="campaign-text-input"
+                                                        type="email"
+                                                        placeholder="O invitar por correo"
+                                                        [(ngModel)]="memberInviteEmailDraft"
+                                                        [disabled]="memberInviteEmailSending"
+                                                        (keyup.enter)="invitarPorCorreo()" />
+                                                    <button mat-stroked-button color="primary" (click)="invitarPorCorreo()" [disabled]="memberInviteEmailSending">
+                                                        {{memberInviteEmailSending ? 'Enviando...' : 'Invitar'}}
+                                                    </button>
                                                 </div>
 
                                                 <p class="profile-panel__hint" *ngIf="memberSearchLoading">Buscando usuarios...</p>
@@ -637,19 +653,36 @@
                                                     <div class="campaign-member-row" *ngFor="let invitation of selectedCampaignPendingInvitations">
                                                         <div class="campaign-member-row__copy">
                                                             <div class="campaign-member-row__identity">
-                                                                <strong>{{getUserDisplayLabel(invitation.invitedUser.displayName, invitation.invitedUser.email, invitation.invitedUser.uid)}}</strong>
-                                                                <span>Invitación pendiente</span>
+                                                                <strong>{{invitation.alias || invitation.correo || 'Invitación'}}</strong>
+                                                                <span>{{invitation.correo ? 'Invitación por correo' : 'Invitación pendiente'}}</span>
                                                             </div>
-                                                            <span class="campaign-member-row__meta" *ngIf="invitation.createdAtUtc">Enviada: {{formatOptionalDateTime(invitation.createdAtUtc)}}</span>
+                                                            <span class="campaign-member-row__meta" *ngIf="invitation.caduca">Caduca: {{formatOptionalDateTime(invitation.caduca)}}</span>
                                                         </div>
                                                         <button
                                                             mat-stroked-button
                                                             color="warn"
                                                             *ngIf="selectedCampaignCanManage"
                                                             (click)="cancelarInvitacionCampana(invitation)"
-                                                            [disabled]="isCancelingCampaignInvitation(invitation.inviteId)">
-                                                            {{isCancelingCampaignInvitation(invitation.inviteId) ? 'Cancelando...' : 'Cancelar'}}
+                                                            [disabled]="isCancelingCampaignInvitation(invitation.id)">
+                                                            {{isCancelingCampaignInvitation(invitation.id) ? 'Retirando...' : 'Retirar'}}
                                                         </button>
+                                                    </div>
+                                                </div>
+
+                                                <div class="campaign-member-list campaign-member-list--pending" *ngIf="selectedCampaignCanManage && selectedCampaignJoinRequests.length > 0">
+                                                    <div class="campaign-search-results__header">Solicitudes para entrar</div>
+                                                    <div class="campaign-member-row" *ngFor="let request of selectedCampaignJoinRequests">
+                                                        <div class="campaign-member-row__copy">
+                                                            <div class="campaign-member-row__identity">
+                                                                <strong>{{request.nombre || request.alias || 'Alguien'}}</strong>
+                                                                <span>{{request.mensaje || 'Pide entrar en la campaña'}}</span>
+                                                            </div>
+                                                            <span class="campaign-member-row__meta" *ngIf="request.creada">Pedida: {{formatOptionalDateTime(request.creada)}}</span>
+                                                        </div>
+                                                        <div class="profile-action-row">
+                                                            <button mat-stroked-button color="primary" (click)="resolverSolicitud(request, 'aprobar')" [disabled]="joinRequestInFlightId === request.id">Aprobar</button>
+                                                            <button mat-stroked-button color="warn" (click)="resolverSolicitud(request, 'rechazar')" [disabled]="joinRequestInFlightId === request.id">Rechazar</button>
+                                                        </div>
                                                     </div>
                                                 </div>
 
@@ -665,10 +698,10 @@
                                                         <button
                                                             mat-stroked-button
                                                             color="warn"
-                                                            *ngIf="selectedCampaignCanManage && member.campaignRole !== 'master'"
+                                                            *ngIf="selectedCampaignCanManage && selectedCampaignSpace && member.campaignRole !== 'master' && member.isActive"
                                                             (click)="retirarJugador(member)"
                                                             [disabled]="isRemovingMember(member.uid)">
-                                                            {{isRemovingMember(member.uid) ? 'Aplicando...' : 'Quitar'}}
+                                                            {{isRemovingMember(member.uid) ? 'Sacando...' : 'Sacar'}}
                                                         </button>
                                                     </div>
                                                 </div>

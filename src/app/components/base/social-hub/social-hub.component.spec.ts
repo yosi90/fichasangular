@@ -2,12 +2,14 @@ import { NO_ERRORS_SCHEMA } from '@angular/core';
 import { ComponentFixture, TestBed, fakeAsync, tick } from '@angular/core/testing';
 import { FormsModule } from '@angular/forms';
 import { BehaviorSubject, Subject } from 'rxjs';
+import Swal from 'sweetalert2';
 import { SocialHubComponent } from './social-hub.component';
 import { AppToastService } from 'src/app/services/app-toast.service';
 import { CampanaService } from 'src/app/services/campana.service';
 import { CampaignRealtimeSyncService } from 'src/app/services/campaign-realtime-sync.service';
 import { ChatFloatingService } from 'src/app/services/chat-floating.service';
 import { PlatformSessionService } from 'src/app/services/platform-session.service';
+import { PlatformSpacesService } from 'src/app/services/platform-spaces.service';
 import { SocialRealtimeService } from 'src/app/services/social-realtime.service';
 import { UserProfileNavigationService } from 'src/app/services/user-profile-navigation.service';
 import { UserService } from 'src/app/services/user.service';
@@ -24,19 +26,29 @@ describe('SocialHubComponent', () => {
     let apiActionGuardSvc: jasmine.SpyObj<ApiActionGuardService>;
     let appToastSvc: jasmine.SpyObj<AppToastService>;
     let platformSessionSvc: jasmine.SpyObj<PlatformSessionService>;
+    let platformSpacesSvc: jasmine.SpyObj<PlatformSpacesService>;
 
     beforeEach(async () => {
         sessionStorage.clear();
         isLoggedIn$ = new BehaviorSubject<boolean>(false);
         campanaSvc = jasmine.createSpyObj<CampanaService>('CampanaService', [
-            'listReceivedCampaignInvitations',
             'listSocialCampaigns',
             'getCampaignDetail',
-            'resolveCampaignInvitation',
             'getCampaignConversation',
+            'getCampaignEntry',
+            'syncMembership',
         ]);
-        campanaSvc.listReceivedCampaignInvitations.and.resolveTo([]);
         campanaSvc.listSocialCampaigns.and.resolveTo([]);
+        campanaSvc.syncMembership.and.resolveTo();
+        platformSpacesSvc = jasmine.createSpyObj<PlatformSpacesService>('PlatformSpacesService', [
+            'misInvitaciones',
+            'aceptarInvitacion',
+            'rechazarInvitacion',
+            'pedirEntrar',
+            'salir',
+            'responderTraspaso',
+        ]);
+        platformSpacesSvc.misInvitaciones.and.resolveTo([]);
         campanaSvc.getCampaignConversation.and.resolveTo({ conversacionId: 'conv-4', idExterno: 'campana-4' });
         campanaSvc.getCampaignDetail.and.resolveTo({
             campaign: {
@@ -49,7 +61,7 @@ describe('SocialHubComponent', () => {
             ownerDisplayName: 'MrYosi90',
             activeMasterUid: 'uid-master',
             activeMasterDisplayName: 'MrYosi90',
-            canRecoverMaster: false,
+            espacio: { id: 41, entrada: 'invitacion' },
             politicaCreacion: {
                 tiradaMinimaCaracteristica: null,
                 maxTablasDadosCaracteristicas: null,
@@ -60,6 +72,8 @@ describe('SocialHubComponent', () => {
             },
             members: [],
             pendingInvitations: [],
+            joinRequests: [],
+            pendingTransfer: null,
             includeInactiveMembers: false,
             tramas: [],
             loadingInvitations: false,
@@ -117,6 +131,7 @@ describe('SocialHubComponent', () => {
                 { provide: AppToastService, useValue: appToastSvc },
                 { provide: ChatFloatingService, useValue: chatFloatingSvc },
                 { provide: PlatformSessionService, useValue: platformSessionSvc },
+                { provide: PlatformSpacesService, useValue: platformSpacesSvc },
             ],
             schemas: [NO_ERRORS_SCHEMA],
         }).compileComponents();
@@ -185,7 +200,7 @@ describe('SocialHubComponent', () => {
         campanaSvc.listSocialCampaigns.and.resolveTo([
             { id: 4, nombre: 'Caballeros de Cormyr', campaignRole: 'master', membershipStatus: 'activo' },
         ] as any);
-        campanaSvc.listReceivedCampaignInvitations.and.rejectWith(new Error('Fallo invitaciones'));
+        platformSpacesSvc.misInvitaciones.and.rejectWith(new Error('Fallo invitaciones'));
 
         fixture.detectChanges();
         isLoggedIn$.next(true);
@@ -198,6 +213,67 @@ describe('SocialHubComponent', () => {
         expect(component.campaignInvitations).toEqual([]);
         expect(component.campaignInvitationsErrorMessage).toBe('Fallo invitaciones');
         expect(component.campaignsErrorMessage).toBe('');
+    }));
+
+    it('acepta una invitación en la plataforma, pone al día la campaña y la abre', fakeAsync(() => {
+        const invitation = { id: 9, espacio: { id: 41, idExterno: 'campana-4', nombre: 'Caballeros de Cormyr' }, de: { cuenta: 'uid-master', nombre: 'MrYosi90' }, miembros: 2, caduca: null };
+        platformSpacesSvc.aceptarInvitacion.and.resolveTo();
+        fixture.detectChanges();
+        isLoggedIn$.next(true);
+        tick();
+        campanaSvc.listSocialCampaigns.and.resolveTo([
+            { id: 4, nombre: 'Caballeros de Cormyr', campaignRole: 'jugador', membershipStatus: 'activo' },
+        ] as any);
+
+        void component.respondCampaignInvitation(invitation, 'aceptar');
+        tick();
+
+        expect(platformSpacesSvc.aceptarInvitacion).toHaveBeenCalledWith(9);
+        expect(campanaSvc.syncMembership).toHaveBeenCalledWith(4);
+        expect(component.selectedCampaignId).toBe(4);
+    }));
+
+    it('un jugador sale de la campaña en la plataforma; el máster no ve esa opción', fakeAsync(() => {
+        campanaSvc.listSocialCampaigns.and.resolveTo([
+            { id: 4, nombre: 'Caballeros de Cormyr', campaignRole: 'jugador', membershipStatus: 'activo' },
+        ] as any);
+        platformSpacesSvc.salir.and.resolveTo();
+        const swal = spyOn(Swal, 'fire').and.resolveTo({ isConfirmed: true } as any);
+        fixture.detectChanges();
+        isLoggedIn$.next(true);
+        tick();
+        component.selectSection('campanas');
+        tick();
+
+        expect(component.selectedCampaignCanLeave).toBeTrue();
+        void component.leaveSelectedCampaign();
+        tick();
+
+        expect(swal).toHaveBeenCalled();
+        expect(platformSpacesSvc.salir).toHaveBeenCalledWith(41);
+        expect(campanaSvc.syncMembership).toHaveBeenCalledWith(4);
+    }));
+
+    it('desde el enlace de una campaña con solicitudes ofrece pedir entrar', fakeAsync(() => {
+        campanaSvc.getCampaignEntry.and.resolveTo({
+            idCampana: 7, nombre: 'La tumba', masterDisplayName: 'Ana', esMiembro: false, espacio: { id: 50, entrada: 'solicitud' },
+        });
+        platformSpacesSvc.pedirEntrar.and.resolveTo();
+        fixture.detectChanges();
+        isLoggedIn$.next(true);
+        tick();
+
+        component.ngOnChanges({ openRequest: { currentValue: { section: 'campanas', campaignId: 7, requestId: 1 } } as any });
+        component.openRequest = { section: 'campanas', campaignId: 7, requestId: 1 } as any;
+        tick();
+
+        expect(component.entryCandidate?.nombre).toBe('La tumba');
+        component.entryRequestMessage = 'Hola, me apunto';
+        void component.requestCampaignEntry();
+        tick();
+
+        expect(platformSpacesSvc.pedirEntrar).toHaveBeenCalledWith(50, 'Hola, me apunto');
+        expect(component.entryRequestSent).toBeTrue();
     }));
 
     it('activa el realtime social solo cuando la sesión está abierta', fakeAsync(() => {

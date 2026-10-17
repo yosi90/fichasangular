@@ -4,11 +4,10 @@ import Swal from 'sweetalert2';
 import {
     CampaignCreationPolicy,
     CampaignDetailViewModel,
-    CampaignInvitationItem,
     CampaignListItem,
     CampaignMemberItem,
-    CampaignMemberRemovalStatus,
     CampaignRealtimeEvent,
+    CampaignSpace,
     CampaignSubtramaItem,
     CampaignTramaItem,
     CampaignUserSearchResult,
@@ -29,6 +28,7 @@ import {
 import { AppToastService } from 'src/app/services/app-toast.service';
 import { CampanaService } from 'src/app/services/campana.service';
 import { CampaignRealtimeSyncService } from 'src/app/services/campaign-realtime-sync.service';
+import { InvitacionEnviadaEspacio, PlatformSpacesService, SolicitudEspacio, TraspasoEspacio } from 'src/app/services/platform-spaces.service';
 import { UserProfileApiService } from 'src/app/services/user-profile-api.service';
 import { UserProfileNavigationService } from 'src/app/services/user-profile-navigation.service';
 import { UserService } from 'src/app/services/user.service';
@@ -106,8 +106,12 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
     transferSearchResults: CampaignUserSearchResult[] = [];
     transferSearchErrorMessage = '';
     transferSelectedUser: CampaignUserSearchResult | null = null;
-    keepPreviousMasterAsPlayer = true;
     transferSaving = false;
+    transferCancelInFlight = false;
+    memberInviteEmailDraft = '';
+    memberInviteEmailSending = false;
+    joinRequestInFlightId: number | null = null;
+    entryModeSaving = false;
     tramaCreateDraft = '';
     tramaCreateVisibleParaJugadores = true;
     tramaCreateSaving = false;
@@ -175,6 +179,7 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
         private apiActionGuardSvc: ApiActionGuardService,
         private platformSessionSvc: PlatformSessionService,
         private chatFloatingSvc: ChatFloatingService,
+        private platformSpacesSvc: PlatformSpacesService,
     ) { }
 
     ngOnInit(): void {
@@ -441,7 +446,7 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
     }
 
     get manageableCampaigns(): CampaignListItem[] {
-        return this.campaigns.filter((campaign) => campaign.campaignRole === 'master' || campaign.isOwner === true);
+        return this.campaigns.filter((campaign) => campaign.campaignRole === 'master');
     }
 
     get selectedCampaignSummary(): CampaignListItem | null {
@@ -480,7 +485,34 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
     }
 
     get selectedCampaignCanTransferMaster(): boolean {
-        return this.selectedCampaignActorRole === 'master' && this.selectedCampaignTransferCandidates.length > 0;
+        return this.selectedCampaignCanManage
+            && !!this.selectedCampaignSpace
+            && (this.selectedCampaignTransferCandidates.length > 0 || !!this.selectedCampaignPendingTransfer);
+    }
+
+    /** El espacio de la plataforma que lleva la pertenencia: sin él no se puede invitar ni traspasar todavía. */
+    get selectedCampaignSpace(): CampaignSpace | null {
+        return this.selectedCampaignDetail?.espacio ?? null;
+    }
+
+    get selectedCampaignAcceptsRequests(): boolean {
+        return this.selectedCampaignSpace?.entrada === 'solicitud';
+    }
+
+    get selectedCampaignJoinRequests(): SolicitudEspacio[] {
+        return this.selectedCampaignDetail?.joinRequests ?? [];
+    }
+
+    get selectedCampaignPendingTransfer(): TraspasoEspacio | null {
+        return this.selectedCampaignDetail?.pendingTransfer ?? null;
+    }
+
+    get selectedCampaignPendingTransferLabel(): string {
+        const transfer = this.selectedCampaignPendingTransfer;
+        if (!transfer)
+            return '';
+        const member = this.selectedCampaignMembers.find((item) => item.uid.toLowerCase() === transfer.cuenta.toLowerCase());
+        return member ? this.getUserDisplayLabel(member.displayName, member.email, member.uid) : 'un jugador';
     }
 
     get selectedCampaignMembers(): CampaignMemberItem[] {
@@ -495,7 +527,7 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
         return this.selectedCampaignDetail?.tramas ?? [];
     }
 
-    get selectedCampaignPendingInvitations(): CampaignInvitationItem[] {
+    get selectedCampaignPendingInvitations(): InvitacionEnviadaEspacio[] {
         return this.selectedCampaignDetail?.pendingInvitations ?? [];
     }
 
@@ -505,25 +537,6 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
 
     get selectedCampaignHasActiveMaster(): boolean {
         return !!this.selectedCampaignMaster;
-    }
-
-    get selectedCampaignOwnerMatchesCurrentUser(): boolean {
-        const currentUid = `${this.userSvc.CurrentUserUid || this.profile?.uid || ''}`.trim();
-        const ownerUid = `${this.selectedCampaignDetail?.ownerUid ?? ''}`.trim();
-        return currentUid.length > 0 && ownerUid.length > 0 && currentUid === ownerUid;
-    }
-
-    get selectedCampaignCanRecoverMaster(): boolean {
-        return this.userSvc.canProceed('usage') && (
-            this.selectedCampaignDetail?.canRecoverMaster === true
-            || (!this.selectedCampaignHasActiveMaster && this.selectedCampaignOwnerMatchesCurrentUser)
-        );
-    }
-
-    get selectedCampaignShowLegacyRecoverHint(): boolean {
-        return !this.selectedCampaignHasActiveMaster
-            && !this.selectedCampaignCanRecoverMaster
-            && this.selectedCampaignMembers.length <= 1;
     }
 
     get isCreatingCampaign(): boolean {
@@ -998,72 +1011,26 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
         await this.cambiarHistorialMiembros(!(this.selectedCampaignDetail?.includeInactiveMembers === true));
     }
 
-    async abrirInfoRecuperarMaster(event?: Event): Promise<void> {
-        event?.preventDefault();
-        event?.stopPropagation();
-
-        if (!this.selectedCampaignCanRecoverMaster)
-            return;
-
-        const result = await Swal.fire({
-            icon: 'info',
-            title: 'Convertirte en master',
-            html: `
-                <p style="text-align:left; margin-bottom:12px;">
-                    Esta campaña ha quedado huérfana o vacía de jugadores, así que ahora mismo nadie puede gestionarla.
-                </p>
-                <p style="text-align:left; margin-bottom:12px;">
-                    Para poder gestionarla de nuevo, el creador debe convertirse a sí mismo en master de la campaña.
-                </p>
-                <p style="text-align:left; margin-bottom:0;">
-                    Esto puede ocurrir en campañas legacy o en campañas afectadas por usuarios baneados.
-                </p>
-            `,
-            showCancelButton: true,
-            confirmButtonText: 'Convertirme en master',
-            cancelButtonText: 'Cancelar',
-        });
-
-        if (!result.isConfirmed)
-            return;
-
-        await this.recuperarMasterCampana();
-    }
-
-    private async recuperarMasterCampana(): Promise<void> {
-        if (!this.selectedCampaignId || !this.selectedCampaignCanRecoverMaster)
-            return;
-        if (!this.shouldRunGuardedApiAction(`campaign.master.recover.${this.selectedCampaignId}`))
-            return;
-
-        try {
-            await this.campanaSvc.recoverCampaignMaster(this.selectedCampaignId);
-            this.showCampaignSuccess('Has recuperado el rol de master de la campaña.');
-            await this.reloadCampaigns(this.selectedCampaignId);
-        } catch (error: any) {
-            this.appToastSvc.showError(this.mapCampaignError(error, 'No se pudo recuperar el master de la campaña.'));
-        }
-    }
-
     onMemberSearchQueryChange(): void {
         this.memberSearchErrorMessage = '';
         this.scheduleUserSearch('member');
     }
 
     async agregarJugador(result: CampaignUserSearchResult): Promise<void> {
-        if (!this.selectedCampaignId || !this.selectedCampaignCanManage)
+        const espacio = this.selectedCampaignSpace;
+        if (!this.selectedCampaignId || !this.selectedCampaignCanManage || !espacio)
             return;
         if (!this.shouldRunGuardedApiAction(`campaign.member.invite.${this.selectedCampaignId}.${result.uid}`))
             return;
 
         this.memberInviteInFlightUid = result.uid;
         try {
-            await this.campanaSvc.inviteCampaignMember(this.selectedCampaignId, result.uid);
+            await this.platformSpacesSvc.invitarCuenta(espacio.id, result.uid);
             this.memberSearchQuery = '';
             this.memberSearchResults = [];
             this.memberSearchErrorMessage = '';
-            this.showCampaignSuccess('Invitación enviada correctamente.');
-            await this.loadCampaignSelection(this.selectedCampaignId, true, this.selectedCampaignDetail?.includeInactiveMembers === true);
+            this.showCampaignSuccess('Invitación enviada. Le llegará un aviso para aceptarla en Rol.');
+            await this.reloadSelectedCampaign();
         } catch (error: any) {
             this.appToastSvc.showError(this.mapCampaignError(error, 'No se pudo enviar la invitación.'));
         } finally {
@@ -1071,51 +1038,126 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
         }
     }
 
-    async cancelarInvitacionCampana(invitation: CampaignInvitationItem): Promise<void> {
-        const inviteId = Math.trunc(Number(invitation?.inviteId));
-        if (inviteId <= 0 || this.campaignInviteCancelInFlightId === inviteId)
+    /** La plataforma envía el correo y nunca dice si es de una cuenta. */
+    async invitarPorCorreo(): Promise<void> {
+        const espacio = this.selectedCampaignSpace;
+        const correo = `${this.memberInviteEmailDraft ?? ''}`.trim();
+        if (!this.selectedCampaignId || !this.selectedCampaignCanManage || !espacio || this.memberInviteEmailSending)
+            return;
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(correo)) {
+            this.appToastSvc.showError('Escribe un correo válido.');
+            return;
+        }
+        if (!this.shouldRunGuardedApiAction(`campaign.member.invite-email.${this.selectedCampaignId}`))
+            return;
+
+        this.memberInviteEmailSending = true;
+        try {
+            await this.platformSpacesSvc.invitarCorreo(espacio.id, correo);
+            this.memberInviteEmailDraft = '';
+            this.showCampaignSuccess('Invitación enviada a ese correo.');
+            await this.reloadSelectedCampaign();
+        } catch (error: any) {
+            this.appToastSvc.showError(this.mapCampaignError(error, 'No se pudo enviar la invitación.'));
+        } finally {
+            this.memberInviteEmailSending = false;
+        }
+    }
+
+    async cancelarInvitacionCampana(invitation: InvitacionEnviadaEspacio): Promise<void> {
+        const espacio = this.selectedCampaignSpace;
+        const inviteId = Math.trunc(Number(invitation?.id));
+        if (!espacio || inviteId <= 0 || this.campaignInviteCancelInFlightId === inviteId)
             return;
         if (!this.shouldRunGuardedApiAction(`campaign.invitation.cancel.${inviteId}`))
             return;
 
         this.campaignInviteCancelInFlightId = inviteId;
         try {
-            await this.campanaSvc.cancelCampaignInvitation(inviteId);
-            this.showCampaignSuccess('Invitación cancelada.');
-            if (this.selectedCampaignId)
-                await this.loadCampaignSelection(this.selectedCampaignId, true, this.selectedCampaignDetail?.includeInactiveMembers === true);
+            await this.platformSpacesSvc.retirarInvitacion(espacio.id, inviteId);
+            this.showCampaignSuccess('Invitación retirada.');
+            await this.reloadSelectedCampaign();
         } catch (error: any) {
-            if (this.isCampaignStateOutdatedError(error)) {
-                if (this.selectedCampaignId)
-                    await this.loadCampaignSelection(this.selectedCampaignId, true, this.selectedCampaignDetail?.includeInactiveMembers === true);
-                this.showCampaignInfo('La invitación ya había cambiado en otra sesión. Se ha refrescado la campaña.');
-                return;
-            }
-            this.appToastSvc.showError(this.mapCampaignError(error, 'No se pudo cancelar la invitación.'));
+            this.appToastSvc.showError(this.mapCampaignError(error, 'No se pudo retirar la invitación.'));
         } finally {
             this.campaignInviteCancelInFlightId = null;
         }
     }
 
+    async resolverSolicitud(request: SolicitudEspacio, accion: 'aprobar' | 'rechazar'): Promise<void> {
+        const espacio = this.selectedCampaignSpace;
+        if (!this.selectedCampaignId || !this.selectedCampaignCanManage || !espacio || this.joinRequestInFlightId === request.id)
+            return;
+        if (!this.shouldRunGuardedApiAction(`campaign.request.${request.id}.${accion}`))
+            return;
+
+        this.joinRequestInFlightId = request.id;
+        try {
+            await this.platformSpacesSvc.resolverSolicitud(espacio.id, request.id, accion);
+            if (accion === 'aprobar')
+                await this.campanaSvc.syncMembership(this.selectedCampaignId);
+            this.showCampaignSuccess(accion === 'aprobar' ? 'Solicitud aprobada: ya está en la campaña.' : 'Solicitud rechazada.');
+            await this.reloadSelectedCampaign();
+        } catch (error: any) {
+            this.appToastSvc.showError(this.mapCampaignError(error, 'No se pudo responder a la solicitud.'));
+        } finally {
+            this.joinRequestInFlightId = null;
+        }
+    }
+
+    /** Solo por invitación o también por solicitud (Rol no ofrece la entrada abierta). */
+    async cambiarEntradaCampana(admitirSolicitudes: boolean): Promise<void> {
+        const espacio = this.selectedCampaignSpace;
+        if (!this.selectedCampaignId || !this.selectedCampaignCanManage || !espacio || this.entryModeSaving)
+            return;
+        if (!this.shouldRunGuardedApiAction(`campaign.entry.${this.selectedCampaignId}`))
+            return;
+
+        this.entryModeSaving = true;
+        try {
+            await this.platformSpacesSvc.cambiarEntrada(espacio.id, admitirSolicitudes ? 'solicitud' : 'invitacion');
+            await this.campanaSvc.syncMembership(this.selectedCampaignId);
+            this.showCampaignSuccess(admitirSolicitudes
+                ? 'La campaña admite solicitudes: comparte su enlace para que pidan entrar.'
+                : 'La campaña solo admite invitaciones.');
+            await this.reloadSelectedCampaign();
+        } catch (error: any) {
+            this.appToastSvc.showError(this.mapCampaignError(error, 'No se pudo cambiar cómo se entra en la campaña.'));
+        } finally {
+            this.entryModeSaving = false;
+        }
+    }
+
+    get selectedCampaignEntryLink(): string {
+        if (!this.selectedCampaignId)
+            return '';
+        return `${window.location.origin}/?vista=campanas&campana=${this.selectedCampaignId}`;
+    }
+
+    async copiarEnlaceCampana(): Promise<void> {
+        const enlace = this.selectedCampaignEntryLink;
+        if (!enlace)
+            return;
+        try {
+            await navigator.clipboard.writeText(enlace);
+            this.showCampaignInfo('Enlace copiado.');
+        } catch {
+            this.appToastSvc.showError('No se pudo copiar el enlace.');
+        }
+    }
+
     async retirarJugador(member: CampaignMemberItem): Promise<void> {
-        if (!this.selectedCampaignId || !this.selectedCampaignCanManage || member.campaignRole === 'master')
+        const espacio = this.selectedCampaignSpace;
+        if (!this.selectedCampaignId || !this.selectedCampaignCanManage || !espacio || member.campaignRole === 'master')
             return;
 
         const result = await Swal.fire({
-            title: 'Retirar jugador de la campaña',
-            text: `Selecciona cómo quieres dejar a ${this.getUserDisplayLabel(member.displayName, member.email, member.uid)} en el histórico.`,
-            input: 'select',
-            inputValue: 'expulsado',
-            inputOptions: {
-                expulsado: 'Expulsado',
-                inactivo: 'Inactivo',
-            },
+            icon: 'warning',
+            title: 'Sacar de la campaña',
+            text: `${this.getUserDisplayLabel(member.displayName, member.email, member.uid)} dejará de ver la campaña. Sus personajes se quedan en ella, y solo podrá volver con una invitación nueva.`,
             showCancelButton: true,
-            confirmButtonText: 'Aplicar cambio',
+            confirmButtonText: 'Sacar',
             cancelButtonText: 'Cancelar',
-            inputValidator: (value) => value === 'inactivo' || value === 'expulsado'
-                ? null
-                : 'Debes seleccionar un estado válido.',
         });
         if (!result.isConfirmed)
             return;
@@ -1124,15 +1166,12 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
 
         this.memberRemoveInFlightUid = member.uid;
         try {
-            await this.campanaSvc.removeCampaignMember(
-                this.selectedCampaignId,
-                member.uid,
-                result.value as CampaignMemberRemovalStatus
-            );
-            this.showCampaignSuccess('Jugador retirado de la campaña.');
-            await this.loadCampaignSelection(this.selectedCampaignId, true, this.selectedCampaignDetail?.includeInactiveMembers === true);
+            await this.platformSpacesSvc.sacar(espacio.id, member.uid);
+            await this.campanaSvc.syncMembership(this.selectedCampaignId);
+            this.showCampaignSuccess('Jugador fuera de la campaña.');
+            await this.reloadSelectedCampaign();
         } catch (error: any) {
-            this.appToastSvc.showError(this.mapCampaignError(error, 'No se pudo retirar el jugador.'));
+            this.appToastSvc.showError(this.mapCampaignError(error, 'No se pudo sacar al jugador.'));
         } finally {
             this.memberRemoveInFlightUid = '';
         }
@@ -1157,8 +1196,10 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
         this.clearSearchTimer('transfer');
     }
 
+    /** El traspaso de la plataforma: el jugador tiene que aceptarlo (7 días); el máster saliente queda como jugador. */
     async transferirMaster(): Promise<void> {
-        if (!this.selectedCampaignId || !this.selectedCampaignCanManage || !this.transferSelectedUser || this.transferSaving)
+        const espacio = this.selectedCampaignSpace;
+        if (!this.selectedCampaignId || !this.selectedCampaignCanManage || !espacio || !this.transferSelectedUser || this.transferSaving)
             return;
 
         if (this.transferSelectedUser.uid === this.selectedCampaignMaster?.uid) {
@@ -1170,18 +1211,39 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
 
         this.transferSaving = true;
         try {
-            await this.campanaSvc.transferCampaignMaster(this.selectedCampaignId, {
-                targetUid: this.transferSelectedUser.uid,
-                keepPreviousAsPlayer: this.keepPreviousMasterAsPlayer !== false,
-            });
-            this.showCampaignSuccess('Master de campaña transferido correctamente.');
+            await this.platformSpacesSvc.ofrecerTraspaso(espacio.id, this.transferSelectedUser.uid);
+            this.showCampaignSuccess('Traspaso ofrecido. Pasará a ser el máster cuando lo acepte.');
             this.limpiarNuevoMaster();
-            await this.reloadCampaigns(this.selectedCampaignId);
+            await this.reloadSelectedCampaign();
         } catch (error: any) {
-            this.appToastSvc.showError(this.mapCampaignError(error, 'No se pudo transferir el master.'));
+            this.appToastSvc.showError(this.mapCampaignError(error, 'No se pudo ofrecer el traspaso.'));
         } finally {
             this.transferSaving = false;
         }
+    }
+
+    async cancelarTraspaso(): Promise<void> {
+        const espacio = this.selectedCampaignSpace;
+        if (!this.selectedCampaignId || !this.selectedCampaignCanManage || !espacio || this.transferCancelInFlight)
+            return;
+        if (!this.shouldRunGuardedApiAction(`campaign.master.transfer-cancel.${this.selectedCampaignId}`))
+            return;
+
+        this.transferCancelInFlight = true;
+        try {
+            await this.platformSpacesSvc.cancelarTraspaso(espacio.id);
+            this.showCampaignSuccess('Traspaso cancelado.');
+            await this.reloadSelectedCampaign();
+        } catch (error: any) {
+            this.appToastSvc.showError(this.mapCampaignError(error, 'No se pudo cancelar el traspaso.'));
+        } finally {
+            this.transferCancelInFlight = false;
+        }
+    }
+
+    private async reloadSelectedCampaign(): Promise<void> {
+        if (this.selectedCampaignId)
+            await this.loadCampaignSelection(this.selectedCampaignId, true, this.selectedCampaignDetail?.includeInactiveMembers === true);
     }
 
     async crearTrama(): Promise<void> {
@@ -1735,19 +1797,11 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
         const previousManageable = [...this.campaigns];
         const previousById = new Map(previousManageable.map((campaign) => [campaign.id, campaign]));
         const incoming = Array.isArray(items) ? items : [];
-        const incomingIds = new Set(incoming.map((campaign) => campaign.id));
 
-        const merged = [
-            ...previousManageable.filter((campaign) => campaign.isOwner === true && !incomingIds.has(campaign.id)),
-            ...incoming.map((campaign) => {
-                const previous = previousById.get(campaign.id);
-                return {
-                    ...previous,
-                    ...campaign,
-                    ...((campaign.isOwner === true || previous?.isOwner === true) ? { isOwner: true } : {}),
-                };
-            }),
-        ];
+        const merged = incoming.map((campaign) => ({
+            ...previousById.get(campaign.id),
+            ...campaign,
+        }));
 
         const nextManageable = this.filterManageableCampaigns(merged);
         this.campaigns = nextManageable;
@@ -1849,63 +1903,12 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
         } catch (error: any) {
             if (this.selectedCampaignId !== id)
                 return;
-            const ownerRecoveryFallback = this.buildRecoverableOwnerFallbackDetail(id, includeInactive, error);
-            if (ownerRecoveryFallback) {
-                this.selectedCampaignDetail = ownerRecoveryFallback;
-                this.selectedCampaignErrorMessage = '';
-                this.campaignRenameDraft = ownerRecoveryFallback.campaign.nombre;
-                this.syncCampaignEditorFromDetail(ownerRecoveryFallback);
-                this.resetCampaignDetailEditors();
-                return;
-            }
             this.selectedCampaignDetail = null;
             this.selectedCampaignErrorMessage = this.mapCampaignError(error, 'No se pudo cargar el detalle de la campaña.');
         } finally {
             if (this.selectedCampaignId === id)
                 this.selectedCampaignLoading = false;
         }
-    }
-
-    private buildRecoverableOwnerFallbackDetail(
-        campaignId: number,
-        includeInactive: boolean,
-        error: any
-    ): CampaignDetailViewModel | null {
-        const summary = this.manageableCampaigns.find((campaign) => campaign.id === campaignId) ?? null;
-        if (!summary?.isOwner || summary.campaignRole === 'master')
-            return null;
-        if (!this.isOwnerRecoverAccessDeniedError(error))
-            return null;
-
-        const currentUid = `${this.userSvc.CurrentUserUid || this.profile?.uid || ''}`.trim();
-        const ownerDisplayName = this.profile?.displayName ?? null;
-
-        return {
-            campaign: {
-                ...summary,
-            },
-            ownerUid: currentUid.length > 0 ? currentUid : null,
-            ownerDisplayName,
-            activeMasterUid: null,
-            activeMasterDisplayName: null,
-            canRecoverMaster: true,
-            politicaCreacion: this.hydrateCampaignPolicyDraft(null),
-            members: [],
-            pendingInvitations: [],
-            includeInactiveMembers: includeInactive === true,
-            tramas: [],
-            loadingInvitations: false,
-            loadingMembers: false,
-            loadingTramas: false,
-        };
-    }
-
-    private isOwnerRecoverAccessDeniedError(error: any): boolean {
-        const message = `${error?.message ?? ''}`.trim().toLowerCase();
-        return message.includes('no pertenece a la campaña')
-            || message.includes('http 403')
-            || message.includes('forbidden')
-            || message.includes('acceso denegado');
     }
 
     private resetCampaignDetailEditors(): void {
@@ -1922,8 +1925,11 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
         this.transferSearchLoading = false;
         this.transferSearchErrorMessage = '';
         this.transferSelectedUser = null;
-        this.keepPreviousMasterAsPlayer = true;
         this.transferSaving = false;
+        this.transferCancelInFlight = false;
+        this.memberInviteEmailDraft = '';
+        this.memberInviteEmailSending = false;
+        this.joinRequestInFlightId = null;
         this.tramaCreateDraft = '';
         this.tramaCreateVisibleParaJugadores = true;
         this.tramaCreateSaving = false;
@@ -2008,7 +2014,7 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
 
     private filterManageableCampaigns(campaigns: CampaignListItem[]): CampaignListItem[] {
         return (campaigns ?? [])
-            .filter((campaign) => campaign?.campaignRole === 'master' || campaign?.isOwner === true)
+            .filter((campaign) => campaign?.campaignRole === 'master')
             .sort((a, b) => a.nombre.localeCompare(b.nombre, 'es', { sensitivity: 'base' }));
     }
 
@@ -2100,7 +2106,7 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
         );
         const invitedUids = new Set(
             this.selectedCampaignPendingInvitations
-                .map((invitation) => `${invitation.invitedUser?.uid ?? ''}`.trim())
+                .map((invitation) => `${invitation.cuenta ?? ''}`.trim())
                 .filter((uid) => uid.length > 0)
         );
         const currentActorUid = `${this.profile?.uid ?? ''}`.trim();
@@ -2124,14 +2130,6 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
             return;
 
         await this.reloadCampaigns(this.selectedCampaignId ?? event.campaignId);
-    }
-
-    private isCampaignStateOutdatedError(error: any): boolean {
-        const normalized = this.normalizeComparableText(`${error?.message ?? error ?? ''}`);
-        return normalized.includes('ya no esta pendiente')
-            || normalized.includes('ya formas parte de la campana')
-            || normalized.includes('ya es miembro activo de la campana')
-            || normalized.includes('la campana solicitada ya no esta disponible para tu usuario');
     }
 
     private normalizeComparableText(value: string | null | undefined): string {

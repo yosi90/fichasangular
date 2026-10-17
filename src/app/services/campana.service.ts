@@ -6,23 +6,18 @@ import { Campana } from '../interfaces/campaña';
 import {
     CampaignCreationPolicy,
     CampaignDetailViewModel,
-    CampaignInvitationDecision,
-    CampaignInvitationItem,
-    CampaignInvitationResponse,
-    CampaignInvitationStatus,
-    CampaignInvitationUser,
+    CampaignEntryInfo,
     CampaignListItem,
     CampaignMemberItem,
-    CampaignMemberRemovalStatus,
     CampaignMembershipStatus,
     CampaignRoleCode,
+    CampaignSpace,
     CampaignSubtramaItem,
     CampaignTramaItem,
     CampaignUserSearchResult,
     CreateCampaignInput,
     CreateCampaignSubtramaInput,
     CreateCampaignTramaInput,
-    TransferCampaignMasterInput,
     UpdateCampaignInput,
     UpdateCampaignSubtramaInput,
     UpdateCampaignTramaInput,
@@ -35,6 +30,7 @@ import { PrivateUserFirestoreService } from './private-user-firestore.service';
 import { UserService } from './user.service';
 import { toUserFacingErrorMessage } from './utils/user-facing-error.util';
 import { obtenerTokenApi } from './platform-session.service';
+import { InvitacionEnviadaEspacio, PlatformSpacesService, SolicitudEspacio, TraspasoEspacio } from './platform-spaces.service';
 
 @Injectable({
     providedIn: 'root'
@@ -61,6 +57,7 @@ export class CampanaService {
         private campaignRealtimeSyncSvc: CampaignRealtimeSyncService,
         private privateUserFirestoreSvc?: PrivateUserFirestoreService,
         private userSvc?: UserService,
+        private platformSpacesSvc?: PlatformSpacesService,
     ) {
         this.authReadyPromise = this.createAuthReadyPromise();
         this.liveCampanas$ = this.privateUserFirestoreSvc
@@ -128,11 +125,11 @@ export class CampanaService {
         try {
             const headers = await this.buildAuthHeaders();
             const campaignDetail = await this.fetchCampaignDetailHeader(id, headers);
+            const isMaster = campaignDetail.campaign.campaignRole === 'master';
 
-            const [members, pendingInvitations, tramas] = await Promise.all([
+            const [members, spaceState] = await Promise.all([
                 this.fetchCampaignMembers(id, headers, includeInactive),
-                this.fetchCampaignInvitationsBestEffort(id, headers),
-                Promise.resolve(campaignDetail.tramas),
+                this.fetchSpaceStateBestEffort(campaignDetail.espacio, isMaster),
             ]);
 
             return {
@@ -141,12 +138,14 @@ export class CampanaService {
                 ownerDisplayName: campaignDetail.ownerDisplayName,
                 activeMasterUid: campaignDetail.activeMasterUid,
                 activeMasterDisplayName: campaignDetail.activeMasterDisplayName,
-                canRecoverMaster: campaignDetail.canRecoverMaster,
+                espacio: campaignDetail.espacio,
                 politicaCreacion: campaignDetail.politicaCreacion,
                 members,
-                pendingInvitations,
+                pendingInvitations: spaceState.pendingInvitations,
+                joinRequests: spaceState.joinRequests,
+                pendingTransfer: spaceState.pendingTransfer,
                 includeInactiveMembers: includeInactive === true,
-                tramas,
+                tramas: campaignDetail.tramas,
                 loadingInvitations: false,
                 loadingMembers: false,
                 loadingTramas: false,
@@ -222,172 +221,42 @@ export class CampanaService {
         }
     }
 
-    async inviteCampaignMember(idCampana: number, targetUid: string): Promise<CampaignInvitationResponse> {
-        const id = this.toPositiveInt(idCampana);
-        const uid = `${targetUid ?? ''}`.trim();
-        if (!id || uid.length < 1)
-            throw new Error('Datos inválidos para invitar al jugador.');
-
-        const payload = { targetUid: uid };
-
+    /**
+     * Pone al día en el acto la copia de la API tras una acción de pertenencia hecha en la plataforma (invitar,
+     * aceptar, pedir entrar, aprobar, salir, sacar, traspasar). Si la plataforma no responde, la copia se pone al día
+     * sola en unos minutos: no es un error para la persona.
+     */
+    async syncMembership(idCampana?: number | null): Promise<void> {
         try {
-            const headers = await this.buildAuthHeaders();
-            const response = await firstValueFrom(
-                this.http.post<any>(
-                    `${this.campanasBaseUrl}/${id}/jugadores`,
-                    payload,
-                    { headers }
-                )
+            await firstValueFrom(
+                this.http.post<void>(`${this.campanasBaseUrl}/pertenencia/sincronizar`, {}, { headers: await this.buildAuthHeaders() })
             );
-            this.notifyCampaignListChange(id);
-            return this.normalizeCampaignInvitationResponse(response);
-        } catch (error) {
-            throw this.toError(error, 'No se pudo enviar la invitación.');
+        } catch {
+            // La lectura periódica del feed lo pondrá al día.
         }
+        this.notifyCampaignListChange(this.toPositiveInt(idCampana) ?? undefined);
     }
 
-    async listReceivedCampaignInvitations(): Promise<CampaignInvitationItem[]> {
+    /** Lo justo para pedir entrar en una campaña que admite solicitudes (`GET /campanas/{id}/entrada`); null si no. */
+    async getCampaignEntry(idCampana: number): Promise<CampaignEntryInfo | null> {
+        const id = this.toPositiveInt(idCampana);
+        if (!id)
+            return null;
         try {
             const response = await firstValueFrom(
-                this.http.get<any[]>(`${this.campanasBaseUrl}/invitaciones/received`, {
-                    headers: await this.buildAuthHeaders(),
-                })
+                this.http.get<any>(`${this.campanasBaseUrl}/${id}/entrada`, { headers: await this.buildAuthHeaders() })
             );
-            const raw = Array.isArray(response) ? response : Object.values(response ?? {});
-            return raw
-                .map((item) => this.normalizeCampaignInvitation(item))
-                .filter((item): item is CampaignInvitationItem => item !== null)
-                .sort((a, b) => this.toDateMs(b.createdAtUtc) - this.toDateMs(a.createdAtUtc));
+            return {
+                idCampana: this.toPositiveInt(response?.idCampana) ?? id,
+                nombre: `${response?.nombre ?? ''}`.trim() || CampanaService.CAMPAIGN_UNNAMED_LABEL,
+                masterDisplayName: this.toNullableText(response?.masterDisplayName),
+                esMiembro: response?.esMiembro === true,
+                espacio: this.normalizeCampaignSpace(response?.espacio),
+            };
         } catch (error) {
-            throw this.toError(error, 'No se pudieron cargar las invitaciones recibidas.');
-        }
-    }
-
-    async listCampaignInvitations(idCampana: number): Promise<CampaignInvitationItem[]> {
-        const id = this.toPositiveInt(idCampana);
-        if (!id)
-            throw new Error('Campaña inválida.');
-
-        try {
-            return await this.fetchCampaignInvitations(id, await this.buildAuthHeaders());
-        } catch (error) {
-            throw this.toError(error, 'No se pudieron cargar las invitaciones de la campaña.');
-        }
-    }
-
-    async resolveCampaignInvitation(inviteId: number, decision: CampaignInvitationDecision): Promise<CampaignInvitationResponse> {
-        const id = this.toPositiveInt(inviteId);
-        if (!id)
-            throw new Error('Invitación inválida.');
-
-        try {
-            const response = await firstValueFrom(
-                this.http.patch<any>(
-                    `${this.campanasBaseUrl}/invitaciones/${id}`,
-                    { decision },
-                    { headers: await this.buildAuthHeaders() }
-                )
-            );
-            if (decision === 'accept')
-                this.rememberAcceptedCampaignSummary(response?.invitation);
-            this.notifyCampaignListChange(response?.invitation?.campaignId);
-            return this.normalizeCampaignInvitationResponse(response);
-        } catch (error) {
-            throw this.toError(error, 'No se pudo resolver la invitación.');
-        }
-    }
-
-    async cancelCampaignInvitation(inviteId: number): Promise<void> {
-        const id = this.toPositiveInt(inviteId);
-        if (!id)
-            throw new Error('Invitación inválida.');
-
-        try {
-            await firstValueFrom(
-                this.http.delete<void>(
-                    `${this.campanasBaseUrl}/invitaciones/${id}`,
-                    { headers: await this.buildAuthHeaders() }
-                )
-            );
-            this.notifyCampaignListChange();
-        } catch (error) {
-            throw this.toError(error, 'No se pudo cancelar la invitación.');
-        }
-    }
-
-    async removeCampaignMember(
-        idCampana: number,
-        targetUid: string,
-        status: CampaignMemberRemovalStatus = 'expulsado'
-    ): Promise<void> {
-        const id = this.toPositiveInt(idCampana);
-        const uid = `${targetUid ?? ''}`.trim();
-        if (!id || uid.length < 1)
-            throw new Error('Datos inválidos para retirar el jugador.');
-
-        try {
-            await firstValueFrom(
-                this.http.delete<void>(
-                    `${this.campanasBaseUrl}/${id}/jugadores/${encodeURIComponent(uid)}`,
-                    {
-                        body: { status },
-                        headers: await this.buildAuthHeaders(),
-                    }
-                )
-            );
-            this.notifyCampaignListChange(id);
-        } catch (error) {
-            throw this.toError(error, 'No se pudo retirar el jugador de la campaña.');
-        }
-    }
-
-    async transferCampaignMaster(idCampana: number, input: TransferCampaignMasterInput): Promise<void> {
-        const id = this.toPositiveInt(idCampana);
-        const targetUid = `${input?.targetUid ?? ''}`.trim();
-        if (!id || targetUid.length < 1)
-            throw new Error('Datos inválidos para transferir el master de la campaña.');
-
-        try {
-            await firstValueFrom(
-                this.http.patch<void>(
-                    `${this.campanasBaseUrl}/${id}/master`,
-                    {
-                        targetUid,
-                        keepPreviousAsPlayer: input.keepPreviousAsPlayer !== false,
-                    },
-                    { headers: await this.buildAuthHeaders() }
-                )
-            );
-            this.rememberCampaignSummaryMutation(id, {
-                campaignRole: input.keepPreviousAsPlayer !== false ? 'jugador' : null,
-                membershipStatus: input.keepPreviousAsPlayer !== false ? 'activo' : null,
-            });
-            this.notifyCampaignListChange(id);
-        } catch (error) {
-            throw this.toError(error, 'No se pudo transferir el master de la campaña.');
-        }
-    }
-
-    async recoverCampaignMaster(idCampana: number): Promise<void> {
-        const id = this.toPositiveInt(idCampana);
-        if (!id)
-            throw new Error('Campaña inválida.');
-
-        try {
-            await firstValueFrom(
-                this.http.post<void>(
-                    `${this.campanasBaseUrl}/${id}/master/recover`,
-                    {},
-                    { headers: await this.buildAuthHeaders() }
-                )
-            );
-            this.rememberCampaignSummaryMutation(id, {
-                campaignRole: 'master',
-                membershipStatus: 'activo',
-            });
-            this.notifyCampaignListChange(id);
-        } catch (error) {
-            throw this.toError(error, 'No se pudo recuperar el master de la campaña.');
+            if (error instanceof HttpErrorResponse && error.status === 404)
+                return null;
+            throw this.toError(error, 'No se pudo abrir la campaña.');
         }
     }
 
@@ -813,7 +682,7 @@ export class CampanaService {
         idCampana: number,
         headers: HttpHeaders,
         includeTramasFallback: boolean = true
-    ): Promise<Pick<CampaignDetailViewModel, 'campaign' | 'ownerUid' | 'ownerDisplayName' | 'activeMasterUid' | 'activeMasterDisplayName' | 'canRecoverMaster' | 'politicaCreacion' | 'tramas'>> {
+    ): Promise<Pick<CampaignDetailViewModel, 'campaign' | 'ownerUid' | 'ownerDisplayName' | 'activeMasterUid' | 'activeMasterDisplayName' | 'espacio' | 'politicaCreacion' | 'tramas'>> {
         const response = await firstValueFrom(
             this.http.get<any>(`${this.campanasBaseUrl}/${idCampana}`, { headers })
         );
@@ -834,7 +703,7 @@ export class CampanaService {
             ownerDisplayName: this.toNullableText(response?.ownerDisplayName),
             activeMasterUid: this.toNullableText(response?.activeMasterUid),
             activeMasterDisplayName: this.toNullableText(response?.activeMasterDisplayName),
-            canRecoverMaster: response?.canRecoverMaster === true,
+            espacio: this.normalizeCampaignSpace(response?.espacio),
             politicaCreacion: this.normalizeCampaignCreationPolicy(response?.politicaCreacion),
             tramas,
         };
@@ -862,29 +731,28 @@ export class CampanaService {
             });
     }
 
-    private async fetchCampaignInvitations(
-        idCampana: number,
-        headers: HttpHeaders
-    ): Promise<CampaignInvitationItem[]> {
-        const response = await firstValueFrom(
-            this.http.get<any[]>(`${this.campanasBaseUrl}/${idCampana}/invitaciones`, { headers })
-        );
-        const raw = Array.isArray(response) ? response : Object.values(response ?? {});
-        return raw
-            .map((item) => this.normalizeCampaignInvitation(item))
-            .filter((item): item is CampaignInvitationItem => item !== null)
-            .sort((a, b) => this.toDateMs(b.createdAtUtc) - this.toDateMs(a.createdAtUtc));
-    }
-
-    private async fetchCampaignInvitationsBestEffort(
-        idCampana: number,
-        headers: HttpHeaders
-    ): Promise<CampaignInvitationItem[]> {
-        try {
-            return await this.fetchCampaignInvitations(idCampana, headers);
-        } catch {
-            return [];
-        }
+    /**
+     * Lo que solo está en la plataforma: las invitaciones y solicitudes pendientes (para el máster) y el traspaso
+     * pendiente. Si la plataforma no responde, la gestión sigue con lo de Rol.
+     */
+    private async fetchSpaceStateBestEffort(
+        espacio: CampaignSpace | null,
+        isMaster: boolean
+    ): Promise<{ pendingInvitations: InvitacionEnviadaEspacio[]; joinRequests: SolicitudEspacio[]; pendingTransfer: TraspasoEspacio | null; }> {
+        const empty = { pendingInvitations: [], joinRequests: [], pendingTransfer: null };
+        if (!espacio || !this.platformSpacesSvc)
+            return empty;
+        const spaces = this.platformSpacesSvc;
+        const [space, invitations, requests] = await Promise.allSettled([
+            spaces.espacio(espacio.id),
+            isMaster ? spaces.invitacionesEnviadas(espacio.id) : Promise.resolve([]),
+            isMaster && espacio.entrada === 'solicitud' ? spaces.solicitudes(espacio.id) : Promise.resolve([]),
+        ]);
+        return {
+            pendingInvitations: invitations.status === 'fulfilled' ? invitations.value : [],
+            joinRequests: requests.status === 'fulfilled' ? requests.value : [],
+            pendingTransfer: space.status === 'fulfilled' ? space.value.traspaso : null,
+        };
     }
 
     private async fetchCampaignTramas(idCampana: number, headers: HttpHeaders): Promise<CampaignTramaItem[]> {
@@ -923,6 +791,13 @@ export class CampanaService {
             .map((item) => this.normalizeCampaignSubtrama(item))
             .filter((item): item is CampaignSubtramaItem => item !== null)
             .sort((a, b) => a.nombre.localeCompare(b.nombre, 'es', { sensitivity: 'base' }));
+    }
+
+    private normalizeCampaignSpace(raw: any): CampaignSpace | null {
+        const id = this.toPositiveInt(raw?.id);
+        if (!id)
+            return null;
+        return { id, entrada: raw?.entrada === 'solicitud' ? 'solicitud' : 'invitacion' };
     }
 
     private normalizeCampaignSummary(raw: any): CampaignListItem | null {
@@ -1034,65 +909,6 @@ export class CampanaService {
             displayName: this.toNullableText(raw?.displayName),
             photoThumbUrl: this.toNullableText(raw?.photoThumbUrl),
         };
-    }
-
-    private normalizeCampaignInvitationUser(raw: any): CampaignInvitationUser | null {
-        const uid = `${raw?.uid ?? ''}`.trim();
-        if (uid.length < 1)
-            return null;
-
-        return {
-            userId: this.toNullableText(raw?.userId),
-            uid,
-            displayName: this.toNullableText(raw?.displayName),
-            email: this.toNullableText(raw?.email),
-        };
-    }
-
-    private normalizeCampaignInvitation(raw: any): CampaignInvitationItem | null {
-        const inviteId = this.toPositiveInt(raw?.inviteId);
-        const campaignId = this.toPositiveInt(raw?.campaignId);
-        const invitedUser = this.normalizeCampaignInvitationUser(raw?.invitedUser);
-        const invitedBy = this.normalizeCampaignInvitationUser(raw?.invitedBy);
-        if (!inviteId || !campaignId || !invitedUser || !invitedBy)
-            return null;
-
-        return {
-            inviteId,
-            status: this.normalizeInvitationStatus(raw?.status),
-            createdAtUtc: this.toNullableText(raw?.createdAtUtc),
-            resolvedAtUtc: this.toNullableText(raw?.resolvedAtUtc),
-            campaignId,
-            campaignName: this.toNullableText(raw?.campaignName),
-            invitedUser,
-            invitedBy,
-            resolvedByUserId: this.toNullableText(raw?.resolvedByUserId),
-        };
-    }
-
-    private normalizeCampaignInvitationResponse(raw: any): CampaignInvitationResponse {
-        const invitation = this.normalizeCampaignInvitation(raw?.invitation);
-        if (!invitation)
-            throw new Error('La invitación devuelta por la API no es válida.');
-
-        return {
-            message: `${raw?.message ?? ''}`.trim() || 'Invitación procesada correctamente.',
-            invitation,
-        };
-    }
-
-    private rememberAcceptedCampaignSummary(rawInvitation: any): void {
-        const campaignId = this.toPositiveInt(rawInvitation?.campaignId);
-        if (!campaignId)
-            return;
-
-        const campaignName = `${rawInvitation?.campaignName ?? ''}`.trim();
-        this.optimisticCampaignSummaries.set(campaignId, {
-            id: campaignId,
-            nombre: this.resolveCampaignDisplayName(campaignName, campaignId),
-            campaignRole: 'jugador',
-            membershipStatus: 'activo',
-        });
     }
 
     private rememberCampaignSummaryMutation(
@@ -1300,17 +1116,6 @@ export class CampanaService {
         return null;
     }
 
-    private normalizeInvitationStatus(value: any): CampaignInvitationStatus {
-        const normalized = `${value ?? ''}`.trim().toLowerCase();
-        if (normalized === 'accepted')
-            return 'accepted';
-        if (normalized === 'rejected')
-            return 'rejected';
-        if (normalized === 'canceled')
-            return 'canceled';
-        return 'pending';
-    }
-
     private normalizeCampaignCreationPolicy(raw: any): CampaignCreationPolicy {
         const permitirHomebrewGeneral = this.toBoolean(raw?.permitirHomebrewGeneral, true);
         return {
@@ -1506,11 +1311,6 @@ export class CampanaService {
         if (value === 'false')
             return false;
         return fallback;
-    }
-
-    private toDateMs(value: string | null | undefined): number {
-        const parsed = new Date(`${value ?? ''}`);
-        return Number.isNaN(parsed.getTime()) ? 0 : parsed.getTime();
     }
 
     private getDisplayLabel(member: CampaignMemberItem): string {

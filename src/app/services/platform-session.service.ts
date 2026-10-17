@@ -1,5 +1,5 @@
 import { Injectable, NgZone } from '@angular/core';
-import { BehaviorSubject } from 'rxjs';
+import { BehaviorSubject, Subject } from 'rxjs';
 import { environment } from 'src/environments/environment';
 
 // La cuenta de Yosiftware en el navegador, por el SDK de la plataforma (ecosistema-kit/ACCESO.md). Rol no tiene
@@ -53,6 +53,12 @@ export interface ConversacionChatPlataforma {
     web: { clave: string; nombre: string } | null;
 }
 
+/** Lo que avisa la ventana de invitaciones del SDK al aceptar una (evento `yosiftware:espacio`). */
+export interface EspacioAceptado {
+    id: number;
+    idExterno: string;
+}
+
 /** Bloque de ajustes de Rol en la plataforma (`yosiftware.ajustes`): solo lo lee y lo escribe esta web. */
 export interface BloqueAjustes {
     version: number;
@@ -81,6 +87,9 @@ interface YosiftwareSdk {
         leer(): Promise<BloqueAjustes | null>;
         guardar(cambios: Record<string, unknown>): Promise<BloqueAjustes>;
     };
+    espacios: {
+        verInvitaciones(opciones?: { codigo?: string }): Promise<void>;
+    };
 }
 
 const REINTENTO_SDK_MS = 60_000;
@@ -102,7 +111,11 @@ export class PlatformSessionService {
     private cargaSdk: Promise<YosiftwareSdk> | null = null;
     private iniciado = false;
 
+    private readonly espacioAceptadoSubject = new Subject<EspacioAceptado>();
+
     readonly estado$ = this.estadoSubject.asObservable();
+    /** Se ha aceptado una invitación a una campaña en la ventana del SDK (ecosistema-kit/ESPACIOS.md). */
+    readonly espacioAceptado$ = this.espacioAceptadoSubject.asObservable();
 
     constructor(private zone: NgZone) {
         instancia = this;
@@ -189,6 +202,14 @@ export class PlatformSessionService {
         return (await this.cargarSdk()).chat.conversaciones();
     }
 
+    /**
+     * La ventana de la plataforma con las invitaciones pendientes a campañas, para aceptarlas o rechazarlas. El SDK
+     * la abre solo con los enlaces `#yosi-invitacion=<código>` (correo) y `#yosi-invitaciones` (campana).
+     */
+    async verInvitacionesEspacios(): Promise<void> {
+        await (await this.cargarSdk()).espacios.verInvitaciones();
+    }
+
     /** Los ajustes de Rol de la cuenta; `null` sin sesión. */
     async leerAjustes(): Promise<BloqueAjustes | null> {
         return (await this.cargarSdk()).ajustes.leer();
@@ -203,6 +224,7 @@ export class PlatformSessionService {
         try {
             const sdk = await this.cargarSdk();
             sdk.alCambiar((estado) => this.zone.run(() => this.estadoSubject.next(estado)));
+            window.addEventListener('yosiftware:espacio', (evento) => this.zone.run(() => this.alResolverInvitacion(evento)));
             this.abrirReporteDesdeUrl(sdk);
         } catch {
             this.estadoSubject.next({ tipo: 'no_disponible' });
@@ -241,6 +263,14 @@ export class PlatformSessionService {
             throw error;
         });
         return this.cargaSdk;
+    }
+
+    private alResolverInvitacion(evento: Event): void {
+        const detalle = (evento as CustomEvent).detail;
+        const id = Number(detalle?.espacio?.id);
+        if (detalle?.tipo !== 'aceptada' || !Number.isFinite(id))
+            return;
+        this.espacioAceptadoSubject.next({ id, idExterno: `${detalle.espacio.idExterno ?? ''}` });
     }
 
     // ?reportar: la APK 3.5 Companion abre aquí los errores y propuestas (ecosistema-kit/APK.md).

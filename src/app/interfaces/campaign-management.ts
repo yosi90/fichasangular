@@ -1,8 +1,9 @@
+import { InvitacionEnviadaEspacio, SolicitudEspacio, TraspasoEspacio } from '../services/platform-spaces.service';
+
 export type CampaignRoleCode = 'master' | 'jugador';
 export type CampaignMembershipStatus = 'activo' | 'inactivo' | 'expulsado';
-export type CampaignMemberRemovalStatus = 'inactivo' | 'expulsado';
-export type CampaignInvitationStatus = 'pending' | 'accepted' | 'rejected' | 'canceled';
-export type CampaignInvitationDecision = 'accept' | 'reject';
+/** Cómo se entra en una campaña: solo por invitación o también por solicitud (Rol no ofrece la entrada abierta). */
+export type CampaignEntryMode = 'invitacion' | 'solicitud';
 export type CampaignRealtimeEventCode =
     | 'system.campaign_invitation_received'
     | 'system.campaign_invitation_resolved'
@@ -43,28 +44,19 @@ export interface CampaignUserSearchResult {
     photoThumbUrl: string | null;
 }
 
-export interface CampaignInvitationUser {
-    userId: string | null;
-    uid: string;
-    displayName: string | null;
-    email: string | null;
+/** El espacio de la plataforma que lleva la pertenencia de la campaña (`espacio` del detalle). */
+export interface CampaignSpace {
+    id: number;
+    entrada: CampaignEntryMode;
 }
 
-export interface CampaignInvitationItem {
-    inviteId: number;
-    status: CampaignInvitationStatus;
-    createdAtUtc: string | null;
-    resolvedAtUtc: string | null;
-    campaignId: number;
-    campaignName: string | null;
-    invitedUser: CampaignInvitationUser;
-    invitedBy: CampaignInvitationUser;
-    resolvedByUserId: string | null;
-}
-
-export interface CampaignInvitationResponse {
-    message: string;
-    invitation: CampaignInvitationItem;
+/** `GET /campanas/{id}/entrada`: lo justo para pedir entrar en una campaña que admite solicitudes. */
+export interface CampaignEntryInfo {
+    idCampana: number;
+    nombre: string;
+    masterDisplayName: string | null;
+    esMiembro: boolean;
+    espacio: CampaignSpace | null;
 }
 
 export interface CampaignCreationPolicy {
@@ -126,18 +118,17 @@ export interface CampaignDetailViewModel {
     ownerDisplayName: string | null;
     activeMasterUid: string | null;
     activeMasterDisplayName: string | null;
-    canRecoverMaster: boolean;
+    espacio: CampaignSpace | null;
     politicaCreacion: CampaignCreationPolicy;
     members: CampaignMemberItem[];
-    pendingInvitations: CampaignInvitationItem[];
+    /** Solo para el máster, de la plataforma: invitaciones y solicitudes pendientes. */
+    pendingInvitations: InvitacionEnviadaEspacio[];
+    joinRequests: SolicitudEspacio[];
+    /** El traspaso pendiente, para el máster que lo ofrece y para quien lo recibe. */
+    pendingTransfer: TraspasoEspacio | null;
     includeInactiveMembers: boolean;
     tramas: CampaignTramaItem[];
     loadingInvitations: boolean;
     loadingMembers: boolean;
     loadingTramas: boolean;
-}
-
-export interface TransferCampaignMasterInput {
-    targetUid: string;
-    keepPreviousAsPlayer: boolean;
 }

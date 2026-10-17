@@ -12,6 +12,7 @@ import { UserProfileApiService } from 'src/app/services/user-profile-api.service
 import { UserProfileNavigationService } from 'src/app/services/user-profile-navigation.service';
 import { ChatFloatingService } from 'src/app/services/chat-floating.service';
 import { PlatformSessionService } from 'src/app/services/platform-session.service';
+import { PlatformSpacesService } from 'src/app/services/platform-spaces.service';
 import { UserSettingsService } from 'src/app/services/user-settings.service';
 import { UserService } from 'src/app/services/user.service';
 import { ApiActionGuardService } from 'src/app/services/api-action-guard.service';
@@ -92,10 +93,12 @@ describe('UserProfileComponent', () => {
         ownerDisplayName: 'Yosi',
         activeMasterUid: 'uid-1',
         activeMasterDisplayName: 'Yosi',
-        canRecoverMaster: false,
+        espacio: { id: 41, entrada: 'invitacion' as const },
         politicaCreacion: buildCampaignPolicy(partial['politicaCreacion']),
         members: [],
         pendingInvitations: [],
+        joinRequests: [],
+        pendingTransfer: null,
         includeInactiveMembers: false,
         tramas: [],
         loadingInvitations: false,
@@ -182,16 +185,11 @@ describe('UserProfileComponent', () => {
                         'listSocialCampaigns',
                         'listVisibleCampaigns',
                         'getCampaignDetail',
-                        'recoverCampaignMaster',
                         'createCampaign',
                         'updateCampaign',
                         'searchUsers',
-                        'inviteCampaignMember',
-                        'listReceivedCampaignInvitations',
-                        'cancelCampaignInvitation',
-                        'resolveCampaignInvitation',
-                        'removeCampaignMember',
-                        'transferCampaignMaster',
+                        'syncMembership',
+                        'getCampaignEntry',
                         'createTrama',
                         'updateTrama',
                         'createSubtrama',
@@ -220,6 +218,19 @@ describe('UserProfileComponent', () => {
                     useValue: jasmine.createSpyObj<AppToastService>('AppToastService', ['showSuccess', 'showError', 'showInfo']),
                 },
                 { provide: ApiActionGuardService, useValue: apiActionGuardSvc },
+                {
+                    provide: PlatformSpacesService,
+                    useValue: jasmine.createSpyObj<PlatformSpacesService>('PlatformSpacesService', [
+                        'invitarCuenta',
+                        'invitarCorreo',
+                        'retirarInvitacion',
+                        'resolverSolicitud',
+                        'cambiarEntrada',
+                        'sacar',
+                        'ofrecerTraspaso',
+                        'cancelarTraspaso',
+                    ]),
+                },
             ],
             schemas: [NO_ERRORS_SCHEMA],
         }).compileComponents();
@@ -266,7 +277,7 @@ describe('UserProfileComponent', () => {
             watchedCampaignSummariesNext = next;
             return () => undefined;
         });
-        campanaSvc.listReceivedCampaignInvitations.and.resolveTo([]);
+        campanaSvc.syncMembership.and.resolveTo();
         campanaSvc.getCampaignDetail.and.resolveTo(buildCampaignDetail());
     });
 
@@ -837,25 +848,12 @@ describe('UserProfileComponent', () => {
                 addedByUserId: null,
             }],
             pendingInvitations: [{
-                inviteId: 18,
-                status: 'pending',
-                createdAtUtc: '2026-03-13T10:15:00.000Z',
-                resolvedAtUtc: null,
-                campaignId: 7,
-                campaignName: 'Caballeros',
-                invitedUser: {
-                    userId: 'u-3',
-                    uid: 'uid-pending',
-                    displayName: 'Pendiente',
-                    email: 'pending@test.dev',
-                },
-                invitedBy: {
-                    userId: 'u-1',
-                    uid: 'uid-1',
-                    displayName: 'Yosi',
-                    email: 'yosi@test.dev',
-                },
-                resolvedByUserId: null,
+                id: 18,
+                cuenta: 'uid-pending',
+                alias: 'Pendiente',
+                correo: null,
+                creada: null,
+                caduca: null,
             }],
         });
         campanaSvc.searchUsers.and.resolveTo([
@@ -900,25 +898,12 @@ describe('UserProfileComponent', () => {
         campanaSvc.getCampaignDetail.and.returnValues(
             Promise.resolve(buildCampaignDetail({
                 pendingInvitations: [{
-                    inviteId: 31,
-                    status: 'pending',
-                    createdAtUtc: '2026-03-13T10:15:00.000Z',
-                    resolvedAtUtc: null,
-                    campaignId: 7,
-                    campaignName: 'Campaña de prueba',
-                    invitedUser: {
-                        userId: 'u-2',
-                        uid: 'uid-new',
-                        displayName: 'Nuevo',
-                        email: 'new@test.dev',
-                    },
-                    invitedBy: {
-                        userId: 'u-1',
-                        uid: 'uid-1',
-                        displayName: 'Yosi',
-                        email: 'yosi@test.dev',
-                    },
-                    resolvedByUserId: null,
+                    id: 31,
+                    cuenta: 'uid-new',
+                    alias: 'Nuevo',
+                    correo: null,
+                    creada: null,
+                    caduca: null,
                 }],
             })),
             Promise.resolve(buildCampaignDetail({
@@ -957,103 +942,109 @@ describe('UserProfileComponent', () => {
         expect(toastSvc.showInfo).not.toHaveBeenCalled();
     }));
 
-    it('permite cancelar una invitación pendiente emitida desde el detalle de campaña', fakeAsync(() => {
+    it('permite retirar una invitación pendiente en el espacio de la campaña', fakeAsync(() => {
         const campanaSvc = TestBed.inject(CampanaService) as jasmine.SpyObj<CampanaService>;
+        const spacesSvc = TestBed.inject(PlatformSpacesService) as jasmine.SpyObj<PlatformSpacesService>;
         const toastSvc = TestBed.inject(AppToastService) as jasmine.SpyObj<AppToastService>;
+        component.campaigns = [{ id: 7, nombre: 'Campaña de prueba', campaignRole: 'master', membershipStatus: 'activo' }];
         component.selectedCampaignId = 7;
         component.selectedCampaignDetail = buildCampaignDetail({
-            campaign: {
-                id: 7,
-                nombre: 'Caballeros',
-                campaignRole: 'master',
-                membershipStatus: 'activo',
-            },
-            members: [],
-            pendingInvitations: [{
-                inviteId: 18,
-                status: 'pending',
-                createdAtUtc: '2026-03-13T10:15:00.000Z',
-                resolvedAtUtc: null,
-                campaignId: 7,
-                campaignName: 'Caballeros',
-                invitedUser: {
-                    userId: 'u-3',
-                    uid: 'uid-pending',
-                    displayName: 'Pendiente',
-                    email: 'pending@test.dev',
-                },
-                invitedBy: {
-                    userId: 'u-1',
-                    uid: 'uid-1',
-                    displayName: 'Yosi',
-                    email: 'yosi@test.dev',
-                },
-                resolvedByUserId: null,
-            }],
+            pendingInvitations: [{ id: 18, cuenta: 'uid-pending', alias: 'Pendiente', correo: null, creada: null, caduca: null }],
         });
-        campanaSvc.cancelCampaignInvitation.and.resolveTo();
-        campanaSvc.getCampaignDetail.and.resolveTo(buildCampaignDetail({
-            ...(component.selectedCampaignDetail as any),
-            pendingInvitations: [],
-        }));
+        spacesSvc.retirarInvitacion.and.resolveTo();
+        campanaSvc.getCampaignDetail.and.resolveTo(buildCampaignDetail());
 
         void component.cancelarInvitacionCampana(component.selectedCampaignDetail!.pendingInvitations[0]);
         tick();
 
-        expect(campanaSvc.cancelCampaignInvitation).toHaveBeenCalledWith(18);
-        expect(toastSvc.showSuccess).toHaveBeenCalledWith('Invitación cancelada.', {
-            category: 'campanas',
-        });
+        expect(spacesSvc.retirarInvitacion).toHaveBeenCalledWith(41, 18);
+        expect(toastSvc.showSuccess).toHaveBeenCalledWith('Invitación retirada.', { category: 'campanas' });
     }));
 
-    it('si cancelar falla porque la invitación ya cambió, refresca el detalle y muestra aviso no bloqueante', fakeAsync(() => {
+    it('invita por correo en el espacio de la campaña y rechaza correos no válidos', fakeAsync(() => {
         const campanaSvc = TestBed.inject(CampanaService) as jasmine.SpyObj<CampanaService>;
+        const spacesSvc = TestBed.inject(PlatformSpacesService) as jasmine.SpyObj<PlatformSpacesService>;
         const toastSvc = TestBed.inject(AppToastService) as jasmine.SpyObj<AppToastService>;
+        component.campaigns = [{ id: 7, nombre: 'Campaña de prueba', campaignRole: 'master', membershipStatus: 'activo' }];
+        component.selectedCampaignId = 7;
+        component.selectedCampaignDetail = buildCampaignDetail();
+        spacesSvc.invitarCorreo.and.resolveTo();
+        campanaSvc.getCampaignDetail.and.resolveTo(buildCampaignDetail());
+
+        component.memberInviteEmailDraft = 'no-es-un-correo';
+        void component.invitarPorCorreo();
+        tick();
+        expect(spacesSvc.invitarCorreo).not.toHaveBeenCalled();
+        expect(toastSvc.showError).toHaveBeenCalledWith('Escribe un correo válido.');
+
+        component.memberInviteEmailDraft = 'ana@ejemplo.es';
+        void component.invitarPorCorreo();
+        tick();
+        expect(spacesSvc.invitarCorreo).toHaveBeenCalledWith(41, 'ana@ejemplo.es');
+        expect(component.memberInviteEmailDraft).toBe('');
+    }));
+
+    it('aprobar una solicitud la resuelve en la plataforma y pone al día la campaña', fakeAsync(() => {
+        const campanaSvc = TestBed.inject(CampanaService) as jasmine.SpyObj<CampanaService>;
+        const spacesSvc = TestBed.inject(PlatformSpacesService) as jasmine.SpyObj<PlatformSpacesService>;
+        component.campaigns = [{ id: 7, nombre: 'Campaña de prueba', campaignRole: 'master', membershipStatus: 'activo' }];
         component.selectedCampaignId = 7;
         component.selectedCampaignDetail = buildCampaignDetail({
-            campaign: {
-                id: 7,
-                nombre: 'Caballeros',
-                campaignRole: 'master',
-                membershipStatus: 'activo',
-            },
-            members: [],
-            pendingInvitations: [{
-                inviteId: 18,
-                status: 'pending',
-                createdAtUtc: '2026-03-13T10:15:00.000Z',
-                resolvedAtUtc: null,
-                campaignId: 7,
-                campaignName: 'Caballeros',
-                invitedUser: {
-                    userId: 'u-3',
-                    uid: 'uid-pending',
-                    displayName: 'Pendiente',
-                    email: 'pending@test.dev',
-                },
-                invitedBy: {
-                    userId: 'u-1',
-                    uid: 'uid-1',
-                    displayName: 'Yosi',
-                    email: 'yosi@test.dev',
-                },
-                resolvedByUserId: null,
-            }],
+            espacio: { id: 41, entrada: 'solicitud' },
+            joinRequests: [{ id: 5, cuenta: 'uid-x', alias: 'x', nombre: 'Ana', mensaje: 'Hola', creada: null }],
         });
-        campanaSvc.cancelCampaignInvitation.and.rejectWith(new Error('La invitación ya no está pendiente.'));
-        campanaSvc.getCampaignDetail.and.resolveTo(buildCampaignDetail({
-            ...(component.selectedCampaignDetail as any),
-            pendingInvitations: [],
-        }));
+        spacesSvc.resolverSolicitud.and.resolveTo();
+        campanaSvc.getCampaignDetail.and.resolveTo(buildCampaignDetail());
 
-        void component.cancelarInvitacionCampana(component.selectedCampaignDetail!.pendingInvitations[0]);
+        void component.resolverSolicitud(component.selectedCampaignJoinRequests[0], 'aprobar');
         tick();
 
-        expect(campanaSvc.getCampaignDetail).toHaveBeenCalledWith(7, false);
-        expect(toastSvc.showInfo).toHaveBeenCalledWith('La invitación ya había cambiado en otra sesión. Se ha refrescado la campaña.', {
-            category: 'campanas',
-        });
-        expect(toastSvc.showError).not.toHaveBeenCalled();
+        expect(spacesSvc.resolverSolicitud).toHaveBeenCalledWith(41, 5, 'aprobar');
+        expect(campanaSvc.syncMembership).toHaveBeenCalledWith(7);
+    }));
+
+    it('abrir la campaña a solicitudes cambia la entrada del espacio y sincroniza', fakeAsync(() => {
+        const campanaSvc = TestBed.inject(CampanaService) as jasmine.SpyObj<CampanaService>;
+        const spacesSvc = TestBed.inject(PlatformSpacesService) as jasmine.SpyObj<PlatformSpacesService>;
+        component.campaigns = [{ id: 7, nombre: 'Campaña de prueba', campaignRole: 'master', membershipStatus: 'activo' }];
+        component.selectedCampaignId = 7;
+        component.selectedCampaignDetail = buildCampaignDetail();
+        spacesSvc.cambiarEntrada.and.resolveTo();
+        campanaSvc.getCampaignDetail.and.resolveTo(buildCampaignDetail({ espacio: { id: 41, entrada: 'solicitud' } }));
+
+        void component.cambiarEntradaCampana(true);
+        tick();
+
+        expect(spacesSvc.cambiarEntrada).toHaveBeenCalledWith(41, 'solicitud');
+        expect(campanaSvc.syncMembership).toHaveBeenCalledWith(7);
+        expect(component.selectedCampaignAcceptsRequests).toBeTrue();
+        expect(component.selectedCampaignEntryLink).toContain('?vista=campanas&campana=7');
+    }));
+
+    it('ofrece el traspaso del máster en la plataforma y no deja sacar al máster', fakeAsync(() => {
+        const campanaSvc = TestBed.inject(CampanaService) as jasmine.SpyObj<CampanaService>;
+        const spacesSvc = TestBed.inject(PlatformSpacesService) as jasmine.SpyObj<PlatformSpacesService>;
+        const master = { userId: 'u-1', uid: 'uid-1', displayName: 'Yosi', email: null, campaignRole: 'master' as const, membershipStatus: 'activo' as const, isActive: true, addedAtUtc: null, addedByUserId: null };
+        const player = { ...master, userId: 'u-2', uid: 'uid-2', displayName: 'Lia', campaignRole: 'jugador' as const };
+        component.campaigns = [{ id: 7, nombre: 'Campaña de prueba', campaignRole: 'master', membershipStatus: 'activo' }];
+        component.selectedCampaignId = 7;
+        component.selectedCampaignDetail = buildCampaignDetail({ members: [master, player] });
+        spacesSvc.ofrecerTraspaso.and.resolveTo();
+        campanaSvc.getCampaignDetail.and.resolveTo(buildCampaignDetail({
+            members: [master, player],
+            pendingTransfer: { cuenta: 'uid-2', rolSaliente: 'jugador', caduca: null },
+        }));
+
+        component.seleccionarNuevoMaster(player);
+        void component.transferirMaster();
+        tick();
+
+        expect(spacesSvc.ofrecerTraspaso).toHaveBeenCalledWith(41, 'uid-2');
+        expect(component.selectedCampaignPendingTransferLabel).toBe('Lia');
+
+        void component.retirarJugador(master);
+        tick();
+        expect(spacesSvc.sacar).not.toHaveBeenCalled();
     }));
 
     it('no ofrece transferir master si la campaña solo tiene al master activo', fakeAsync(() => {
@@ -1117,7 +1108,6 @@ describe('UserProfileComponent', () => {
             },
             activeMasterUid: null,
             activeMasterDisplayName: null,
-            canRecoverMaster: true,
             members: [{
                 userId: 'u-1',
                 uid: 'uid-1',
@@ -1141,7 +1131,6 @@ describe('UserProfileComponent', () => {
         expect(component.selectedCampaignSummary).toBeNull();
         expect(component.selectedCampaignCanManage).toBeFalse();
         expect(component.selectedCampaignCanTransferMaster).toBeFalse();
-        expect(component.selectedCampaignCanRecoverMaster).toBeFalse();
     }));
 
     it('expone solo jugadores activos como candidatos a transferir master', fakeAsync(() => {
@@ -1225,75 +1214,6 @@ describe('UserProfileComponent', () => {
         expect(toastSvc.showInfo).toHaveBeenCalledWith('Ahora eres Master de la campaña Caballeros de Cormyr.', {
             category: 'campanas',
         });
-    }));
-
-    it('permite recuperar master en legacy si ownerUid coincide aunque canRecoverMaster venga false', fakeAsync(() => {
-        const campanaSvc = TestBed.inject(CampanaService) as jasmine.SpyObj<CampanaService>;
-        campanaSvc.listProfileCampaigns.and.resolveTo([{
-            id: 7,
-            nombre: 'Legacy',
-            campaignRole: null,
-            membershipStatus: null,
-            isOwner: true,
-        }]);
-        campanaSvc.getCampaignDetail.and.resolveTo(buildCampaignDetail({
-            campaign: {
-                id: 7,
-                nombre: 'Legacy',
-                campaignRole: null,
-                membershipStatus: null,
-                isOwner: true,
-            },
-            activeMasterUid: null,
-            activeMasterDisplayName: null,
-            canRecoverMaster: false,
-            members: [{
-                userId: 'u-1',
-                uid: 'uid-1',
-                displayName: 'Yosi',
-                email: 'yosi@test.dev',
-                campaignRole: 'jugador',
-                membershipStatus: 'activo',
-                isActive: true,
-                addedAtUtc: null,
-                addedByUserId: null,
-            }],
-        }));
-
-        fixture.detectChanges();
-        tick();
-        component.ngOnChanges({
-            openRequest: new SimpleChange(null, { section: 'campanas', requestId: 8 }, false),
-        });
-        tick();
-
-        expect(component.selectedCampaignOwnerMatchesCurrentUser).toBeTrue();
-        expect(component.selectedCampaignCanRecoverMaster).toBeTrue();
-    }));
-
-    it('construye fallback de recuperación cuando el creador ve la campaña pero el detalle devuelve 403 por no ser miembro activo', fakeAsync(() => {
-        const campanaSvc = TestBed.inject(CampanaService) as jasmine.SpyObj<CampanaService>;
-        campanaSvc.listProfileCampaigns.and.resolveTo([{
-            id: 7,
-            nombre: 'Legacy',
-            campaignRole: null,
-            membershipStatus: null,
-            isOwner: true,
-        }]);
-        campanaSvc.getCampaignDetail.and.rejectWith(new Error('El usuario no pertenece a la campaña.'));
-
-        fixture.detectChanges();
-        tick();
-        component.ngOnChanges({
-            openRequest: new SimpleChange(null, { section: 'campanas', requestId: 113 }, false),
-        });
-        tick();
-
-        expect(component.selectedCampaignSummary?.id).toBe(7);
-        expect(component.selectedCampaignDetail?.campaign.id).toBe(7);
-        expect(component.selectedCampaignErrorMessage).toBe('');
-        expect(component.selectedCampaignCanRecoverMaster).toBeTrue();
-        expect(component.selectedCampaignCanManage).toBeFalse();
     }));
 
     it('seleccionar una campaña deja el workspace en modo neutro', fakeAsync(() => {

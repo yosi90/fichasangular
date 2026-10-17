@@ -2,6 +2,7 @@ import { Component, OnDestroy, OnInit } from '@angular/core';
 import { Observable, Subject, fromEvent, takeUntil } from 'rxjs';
 import Swal from 'sweetalert2';
 import { CampaignRealtimeSyncService } from './services/campaign-realtime-sync.service';
+import { CampaignSpacesBridgeService } from './services/campaign-spaces-bridge.service';
 import { ChatFloatingService } from './services/chat-floating.service';
 import { FirebaseSessionBridgeService } from './services/firebase-session-bridge.service';
 import { PlatformSessionService } from './services/platform-session.service';
@@ -25,6 +26,7 @@ export class AppComponent implements OnInit, OnDestroy {
         private platformSessionSvc: PlatformSessionService,
         private firebaseSessionBridgeSvc: FirebaseSessionBridgeService,
         private chatFloatingSvc: ChatFloatingService,
+        private campaignSpacesBridgeSvc: CampaignSpacesBridgeService,
     ) { }
 
     async ngOnInit(): Promise<void> {
@@ -33,6 +35,7 @@ export class AppComponent implements OnInit, OnDestroy {
         this.platformSessionSvc.iniciar();
         this.campaignRealtimeSyncSvc.init();
         this.chatFloatingSvc.init();
+        this.campaignSpacesBridgeSvc.init();
         this.resize$
             .pipe(takeUntil(this.destroy$))
             .subscribe(() => {

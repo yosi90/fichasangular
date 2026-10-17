@@ -1,6 +1,7 @@
 import { Component, Input, OnChanges, OnDestroy, OnInit, SimpleChanges } from '@angular/core';
 import { Subject, takeUntil } from 'rxjs';
-import { CampaignDetailViewModel, CampaignInvitationDecision, CampaignInvitationItem, CampaignListItem, CampaignMemberItem, CampaignRealtimeEvent, CampaignTramaItem } from 'src/app/interfaces/campaign-management';
+import Swal from 'sweetalert2';
+import { CampaignDetailViewModel, CampaignEntryInfo, CampaignListItem, CampaignMemberItem, CampaignRealtimeEvent, CampaignTramaItem } from 'src/app/interfaces/campaign-management';
 import {
     SocialHubOpenRequest,
     SocialHubSectionId,
@@ -14,6 +15,7 @@ import { ApiActionGuardService } from 'src/app/services/api-action-guard.service
 import { UserService } from 'src/app/services/user.service';
 import { ChatFloatingService } from 'src/app/services/chat-floating.service';
 import { PlatformSessionService } from 'src/app/services/platform-session.service';
+import { InvitacionRecibidaEspacio, PlatformSpacesService } from 'src/app/services/platform-spaces.service';
 import { toUserFacingErrorMessage } from 'src/app/services/utils/user-facing-error.util';
 
 @Component({
@@ -28,7 +30,7 @@ export class SocialHubComponent implements OnInit, OnChanges, OnDestroy {
     currentSection: SocialHubSectionId = 'resumen';
     isLoggedIn = false;
     loading = false;
-    campaignInvitations: CampaignInvitationItem[] = [];
+    campaignInvitations: InvitacionRecibidaEspacio[] = [];
     campaigns: CampaignListItem[] = [];
     campaignsLoading = false;
     campaignsErrorMessage = '';
@@ -39,6 +41,12 @@ export class SocialHubComponent implements OnInit, OnChanges, OnDestroy {
     selectedCampaignLoading = false;
     selectedCampaignErrorMessage = '';
     campaignInviteResolveInFlightId: number | null = null;
+    campaignMembershipActionInFlight = false;
+    /** La campaña del enlace `?vista=campanas&campana={id}` en la que la persona aún no está y puede pedir entrar. */
+    entryCandidate: CampaignEntryInfo | null = null;
+    entryRequestMessage = '';
+    entryRequestSending = false;
+    entryRequestSent = false;
 
     private readonly destroy$ = new Subject<void>();
     private pendingCampaignId: number | null = null;
@@ -61,6 +69,7 @@ export class SocialHubComponent implements OnInit, OnChanges, OnDestroy {
         private apiActionGuardSvc: ApiActionGuardService,
         private platformSessionSvc: PlatformSessionService,
         private chatFloatingSvc: ChatFloatingService,
+        private platformSpacesSvc: PlatformSpacesService,
     ) { }
 
     ngOnInit(): void {
@@ -110,28 +119,115 @@ export class SocialHubComponent implements OnInit, OnChanges, OnDestroy {
             void this.ensureCampaignSectionLoaded();
     }
 
-    /** El chat de la campaña: su conversación en el chat de la plataforma (`GET /campanas/{id}/conversacion`). */
-    async respondCampaignInvitation(invitation: CampaignInvitationItem, decision: CampaignInvitationDecision): Promise<void> {
-        const inviteId = this.toPositiveInt(invitation?.inviteId);
+    /** Las invitaciones son de la plataforma (espacios): se aceptan desde Rol y después se pone al día la copia. */
+    async respondCampaignInvitation(invitation: InvitacionRecibidaEspacio, respuesta: 'aceptar' | 'rechazar'): Promise<void> {
+        const inviteId = this.toPositiveInt(invitation?.id);
         if (!inviteId || this.campaignInviteResolveInFlightId === inviteId)
             return;
-        if (!this.shouldRunGuardedApiAction(`social.campaign.invitation.${inviteId}.${decision}`))
+        if (!this.shouldRunGuardedApiAction(`social.campaign.invitation.${inviteId}.${respuesta}`))
             return;
 
         this.campaignInviteResolveInFlightId = inviteId;
         try {
-            await this.campanaSvc.resolveCampaignInvitation(inviteId, decision);
-            await this.reloadCampaignData(invitation.campaignId);
+            if (respuesta === 'aceptar')
+                await this.platformSpacesSvc.aceptarInvitacion(inviteId);
+            else
+                await this.platformSpacesSvc.rechazarInvitacion(inviteId);
+            const campaignId = this.campaignIdFromSpaceKey(invitation.espacio.idExterno);
+            await this.campanaSvc.syncMembership(campaignId);
+            await this.reloadCampaignData(respuesta === 'aceptar' ? campaignId : this.selectedCampaignId);
             this.appToastSvc.showSuccess(
-                decision === 'accept'
-                    ? 'Invitación de campaña aceptada.'
-                    : 'Invitación de campaña rechazada.',
+                respuesta === 'aceptar' ? 'Ya estás en la campaña.' : 'Invitación rechazada.',
                 { category: 'campanas' }
             );
         } catch (error: any) {
-            this.appToastSvc.showError(this.mapSocialActionError(error, 'No se pudo resolver la invitación.'));
+            this.appToastSvc.showError(this.mapSocialActionError(error, 'No se pudo responder a la invitación.'));
         } finally {
             this.campaignInviteResolveInFlightId = null;
+        }
+    }
+
+    /** Pide entrar en la campaña del enlace (solo si admite solicitudes); la aprueba el máster. */
+    async requestCampaignEntry(): Promise<void> {
+        const entry = this.entryCandidate;
+        if (!entry?.espacio || this.entryRequestSending || this.entryRequestSent)
+            return;
+        if (!this.shouldRunGuardedApiAction(`social.campaign.entry.${entry.idCampana}`))
+            return;
+
+        this.entryRequestSending = true;
+        try {
+            const mensaje = `${this.entryRequestMessage ?? ''}`.trim().slice(0, 500);
+            await this.platformSpacesSvc.pedirEntrar(entry.espacio.id, mensaje.length > 0 ? mensaje : null);
+            this.entryRequestSent = true;
+            this.appToastSvc.showSuccess('Solicitud enviada. El máster la verá al abrir la campaña.', { category: 'campanas' });
+        } catch (error: any) {
+            this.appToastSvc.showError(this.mapSocialActionError(error, 'No se pudo pedir entrar en la campaña.'));
+        } finally {
+            this.entryRequestSending = false;
+        }
+    }
+
+    dismissCampaignEntry(): void {
+        this.entryCandidate = null;
+        this.entryRequestMessage = '';
+        this.entryRequestSent = false;
+    }
+
+    /** Un jugador sale de la campaña por su cuenta; sus personajes se quedan con la campaña puesta. */
+    async leaveSelectedCampaign(): Promise<void> {
+        const espacio = this.selectedCampaignDetail?.espacio;
+        const campaignId = this.selectedCampaignId;
+        if (!espacio || !campaignId || !this.selectedCampaignCanLeave || this.campaignMembershipActionInFlight)
+            return;
+        const result = await Swal.fire({
+            icon: 'warning',
+            title: 'Salir de la campaña',
+            text: `Dejarás de ver «${this.selectedCampaignSummary?.nombre ?? 'la campaña'}». Tus personajes se quedan en ella. Para volver, el máster tendrá que invitarte otra vez.`,
+            showCancelButton: true,
+            confirmButtonText: 'Salir',
+            cancelButtonText: 'Cancelar',
+        });
+        if (!result.isConfirmed || !this.shouldRunGuardedApiAction(`social.campaign.leave.${campaignId}`))
+            return;
+
+        this.campaignMembershipActionInFlight = true;
+        try {
+            await this.platformSpacesSvc.salir(espacio.id);
+            await this.campanaSvc.syncMembership(campaignId);
+            this.selectedCampaignId = null;
+            this.selectedCampaignDetail = null;
+            await this.reloadCampaignData(null);
+            this.appToastSvc.showSuccess('Has salido de la campaña.', { category: 'campanas' });
+        } catch (error: any) {
+            this.appToastSvc.showError(this.mapSocialActionError(error, 'No se pudo salir de la campaña.'));
+        } finally {
+            this.campaignMembershipActionInFlight = false;
+        }
+    }
+
+    /** El máster le ofrece la campaña a este jugador: si acepta, pasa a ser el máster. */
+    async respondCampaignTransfer(respuesta: 'aceptar' | 'rechazar'): Promise<void> {
+        const espacio = this.selectedCampaignDetail?.espacio;
+        const campaignId = this.selectedCampaignId;
+        if (!espacio || !campaignId || !this.selectedCampaignTransferIsForMe || this.campaignMembershipActionInFlight)
+            return;
+        if (!this.shouldRunGuardedApiAction(`social.campaign.transfer.${campaignId}.${respuesta}`))
+            return;
+
+        this.campaignMembershipActionInFlight = true;
+        try {
+            await this.platformSpacesSvc.responderTraspaso(espacio.id, respuesta);
+            await this.campanaSvc.syncMembership(campaignId);
+            await this.reloadCampaignData(campaignId);
+            this.appToastSvc.showSuccess(
+                respuesta === 'aceptar' ? 'Ahora eres el máster de la campaña.' : 'Has rechazado el traspaso.',
+                { category: 'campanas' }
+            );
+        } catch (error: any) {
+            this.appToastSvc.showError(this.mapSocialActionError(error, 'No se pudo responder al traspaso.'));
+        } finally {
+            this.campaignMembershipActionInFlight = false;
         }
     }
 
@@ -208,7 +304,19 @@ export class SocialHubComponent implements OnInit, OnChanges, OnDestroy {
     }
 
     get selectedCampaignCanOpenManagement(): boolean {
-        return this.selectedCampaignSummary?.campaignRole === 'master' || this.selectedCampaignSummary?.isOwner === true;
+        return this.selectedCampaignSummary?.campaignRole === 'master';
+    }
+
+    get selectedCampaignCanLeave(): boolean {
+        return !!this.selectedCampaignDetail?.espacio
+            && this.selectedCampaignSummary?.campaignRole === 'jugador'
+            && this.selectedCampaignSummary?.membershipStatus === 'activo';
+    }
+
+    get selectedCampaignTransferIsForMe(): boolean {
+        const transfer = this.selectedCampaignDetail?.pendingTransfer;
+        const me = `${this.userSvc.CurrentUserUid ?? ''}`.trim().toLowerCase();
+        return !!transfer && me.length > 0 && transfer.cuenta.toLowerCase() === me;
     }
 
     async selectCampaign(campaignId: number, forceReload: boolean = false): Promise<void> {
@@ -299,6 +407,8 @@ export class SocialHubComponent implements OnInit, OnChanges, OnDestroy {
         this.selectedCampaignLoading = false;
         this.selectedCampaignErrorMessage = '';
         this.campaignInviteResolveInFlightId = null;
+        this.campaignMembershipActionInFlight = false;
+        this.dismissCampaignEntry();
         this.pendingCampaignId = null;
         this.socialRealtimeSvc.deactivate();
         this.currentSection = 'resumen';
@@ -306,16 +416,29 @@ export class SocialHubComponent implements OnInit, OnChanges, OnDestroy {
 
     private async tryOpenPendingCampaign(): Promise<void> {
         const campaignId = this.pendingCampaignId;
-        if (!campaignId || this.campaigns.length < 1)
-            return;
-
-        const target = this.campaigns.find((item) => item.id === campaignId) ?? null;
-        if (!target)
+        if (!campaignId || this.campaignsLoading)
             return;
 
         this.pendingCampaignId = null;
         this.currentSection = 'campanas';
-        await this.selectCampaign(target.id);
+        const target = this.campaigns.find((item) => item.id === campaignId) ?? null;
+        if (target) {
+            await this.selectCampaign(target.id);
+            return;
+        }
+        // No está en ella: si la campaña admite solicitudes, se le ofrece pedir entrar.
+        try {
+            const entry = await this.campanaSvc.getCampaignEntry(campaignId);
+            if (entry && !entry.esMiembro && entry.espacio?.entrada === 'solicitud') {
+                this.entryCandidate = entry;
+                this.entryRequestMessage = '';
+                this.entryRequestSent = false;
+            } else if (!entry) {
+                this.appToastSvc.showInfo('No puedes abrir esa campaña: solo se entra con una invitación del máster.');
+            }
+        } catch (error: any) {
+            this.appToastSvc.showError(this.mapSocialActionError(error, 'No se pudo abrir la campaña.'));
+        }
     }
 
     private applyOpenRequest(request: SocialHubOpenRequest | null): void {
@@ -335,9 +458,12 @@ export class SocialHubComponent implements OnInit, OnChanges, OnDestroy {
         }
         this.currentSection = section === 'actividad' ? 'resumen' : section;
         this.pendingCampaignId = this.toPositiveInt(request.campaignId);
-        if (this.currentSection === 'campanas' && this.isLoggedIn)
-            void this.ensureCampaignSectionLoaded();
-        if (this.pendingCampaignId && this.isLoggedIn)
+        if (!this.isLoggedIn)
+            return;
+        // Primero la lista: la campaña pedida se abre si está en ella, y si no, se ofrece pedir entrar.
+        if (this.currentSection === 'campanas')
+            void this.ensureCampaignSectionLoaded().then(() => this.tryOpenPendingCampaign());
+        else if (this.pendingCampaignId)
             void this.tryOpenPendingCampaign();
     }
 
@@ -355,7 +481,7 @@ export class SocialHubComponent implements OnInit, OnChanges, OnDestroy {
         try {
             const [campaignsResult, invitationsResult] = await Promise.allSettled([
                 this.campanaSvc.listSocialCampaigns(),
-                this.campanaSvc.listReceivedCampaignInvitations(),
+                this.platformSpacesSvc.misInvitaciones(),
             ]);
 
             if (campaignsResult.status === 'fulfilled') {
@@ -396,6 +522,11 @@ export class SocialHubComponent implements OnInit, OnChanges, OnDestroy {
 
     private async handleCampaignRealtimeEvent(event: CampaignRealtimeEvent): Promise<void> {
         await this.reloadCampaignData(this.selectedCampaignId ?? event.campaignId);
+    }
+
+    private campaignIdFromSpaceKey(idExterno: string): number | null {
+        const match = /^campana-(\d+)$/.exec(`${idExterno ?? ''}`);
+        return match ? this.toPositiveInt(match[1]) : null;
     }
 
     private toPositiveInt(value: any): number | null {

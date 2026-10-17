@@ -68,6 +68,35 @@
                 </div>
 
                 <ng-container *ngIf="isLoggedIn">
+                    <article class="social-panel social-campaign-entry" *ngIf="entryCandidate">
+                        <div class="social-campaign-detail__header">
+                            <div>
+                                <h3>{{entryCandidate.nombre}}</h3>
+                                <p class="social-inline-hint" *ngIf="entryCandidate.masterDisplayName">Máster: {{entryCandidate.masterDisplayName}}</p>
+                            </div>
+                            <button mat-icon-button type="button" aria-label="Cerrar" matTooltip="Cerrar" (click)="dismissCampaignEntry()">
+                                <mat-icon>close</mat-icon>
+                            </button>
+                        </div>
+                        <ng-container *ngIf="!entryRequestSent; else solicitudEnviada">
+                            <textarea
+                                class="social-campaign-entry__message"
+                                rows="3"
+                                maxlength="500"
+                                placeholder="Mensaje para el máster (opcional)"
+                                [(ngModel)]="entryRequestMessage"
+                                [disabled]="entryRequestSending"></textarea>
+                            <div class="social-user-card__actions social-campaign-entry__actions">
+                                <button mat-raised-button color="primary" type="button" (click)="requestCampaignEntry()" [disabled]="entryRequestSending">
+                                    {{entryRequestSending ? 'Enviando...' : 'Pedir entrar'}}
+                                </button>
+                            </div>
+                        </ng-container>
+                        <ng-template #solicitudEnviada>
+                            <p class="social-inline-hint">Solicitud enviada. Entrarás cuando el máster la apruebe.</p>
+                        </ng-template>
+                    </article>
+
                     <div class="social-campaigns-grid">
                         <article class="social-panel">
                             <h3>Invitaciones recibidas</h3>
@@ -77,14 +106,14 @@
                             <div class="social-user-list" *ngIf="campaignInvitations.length > 0">
                                 <article class="social-user-card social-user-card--campaign" *ngFor="let invitation of campaignInvitations">
                                     <div class="social-user-card__main">
-                                        <strong>{{invitation.campaignName || 'Campaña sin nombre'}}</strong>
-                                        <span class="social-user-card__meta">{{invitation.invitedBy.displayName || invitation.invitedBy.email || 'Usuario'}} te ha invitado</span>
+                                        <strong>{{invitation.espacio.nombre || 'Campaña sin nombre'}}</strong>
+                                        <span class="social-user-card__meta">{{invitation.de.nombre || 'Alguien'}} te ha invitado</span>
                                     </div>
                                     <div class="social-user-card__actions">
-                                        <button mat-stroked-button color="primary" (click)="respondCampaignInvitation(invitation, 'accept')" [disabled]="campaignInviteResolveInFlightId === invitation.inviteId">
-                                            {{campaignInviteResolveInFlightId === invitation.inviteId ? 'Aplicando...' : 'Aceptar'}}
+                                        <button mat-stroked-button color="primary" (click)="respondCampaignInvitation(invitation, 'aceptar')" [disabled]="campaignInviteResolveInFlightId === invitation.id">
+                                            {{campaignInviteResolveInFlightId === invitation.id ? 'Aplicando...' : 'Aceptar'}}
                                         </button>
-                                        <button mat-stroked-button color="warn" (click)="respondCampaignInvitation(invitation, 'reject')" [disabled]="campaignInviteResolveInFlightId === invitation.inviteId">
+                                        <button mat-stroked-button color="warn" (click)="respondCampaignInvitation(invitation, 'rechazar')" [disabled]="campaignInviteResolveInFlightId === invitation.id">
                                             Rechazar
                                         </button>
                                     </div>
@@ -130,6 +159,15 @@
                             <div class="social-user-card__actions">
                                 <button mat-stroked-button color="primary" *ngIf="canOpenSelectedCampaignChat" (click)="openSelectedCampaignChat()">Abrir chat</button>
                                 <button mat-stroked-button color="primary" *ngIf="selectedCampaignCanOpenManagement" (click)="openSelectedCampaignManagement()">Abrir gestión</button>
+                                <button mat-stroked-button color="warn" *ngIf="selectedCampaignCanLeave" (click)="leaveSelectedCampaign()" [disabled]="campaignMembershipActionInFlight">Salir de la campaña</button>
+                            </div>
+                        </div>
+
+                        <div class="social-campaign-transfer" *ngIf="selectedCampaignTransferIsForMe">
+                            <p class="social-inline-hint">El máster te ofrece dirigir esta campaña. Si aceptas, pasas a ser el máster y él se queda como jugador.</p>
+                            <div class="social-user-card__actions">
+                                <button mat-raised-button color="primary" type="button" (click)="respondCampaignTransfer('aceptar')" [disabled]="campaignMembershipActionInFlight">Aceptar</button>
+                                <button mat-stroked-button color="warn" type="button" (click)="respondCampaignTransfer('rechazar')" [disabled]="campaignMembershipActionInFlight">Rechazar</button>
                             </div>
                         </div>
 

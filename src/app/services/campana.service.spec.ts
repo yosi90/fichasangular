@@ -1,6 +1,6 @@
 import { fakeAsync, tick } from '@angular/core/testing';
 import { HttpErrorResponse } from '@angular/common/http';
-import { BehaviorSubject, Subject, of } from 'rxjs';
+import { BehaviorSubject, Subject, of, throwError } from 'rxjs';
 
 import { CampanaService } from './campana.service';
 import { CampaignRealtimeSyncService } from './campaign-realtime-sync.service';
@@ -225,7 +225,6 @@ describe('CampanaService', () => {
                     membershipStatus: 'activo',
                     ownerUid: 'actor-1',
                     activeMasterUid: 'actor-1',
-                    canRecoverMaster: false,
                     politicaCreacion: {
                         tiradaMinimaCaracteristica: 8,
                         nepMaximoPersonajeNuevo: 6,
@@ -597,89 +596,6 @@ describe('CampanaService', () => {
         subscription.unsubscribe();
     }));
 
-    it('getListCampanas expone de forma optimista una campaña aceptada antes de que Firestore emita', fakeAsync(() => {
-        const watchState: { next: ((items: any[]) => void) | null; } = { next: null };
-        const privateUserFirestoreSvcMock = {
-            watchCampaigns: jasmine.createSpy('watchCampaigns').and.callFake((next: (items: any[]) => void) => {
-                watchState.next = next;
-                return () => undefined;
-            }),
-            listCampaigns: jasmine.createSpy('listCampaigns').and.resolveTo([]),
-        };
-        const firestoreBackedService = new CampanaService(
-            { currentUser: { uid: 'actor-1', getIdToken: async () => 'token' } } as any,
-            httpMock as any,
-            { run: <T>(fn: () => T) => fn() } as FirebaseInjectionContextService,
-            campaignRealtimeSyncSvcMock,
-            privateUserFirestoreSvcMock as any
-        );
-
-        httpMock.get.and.callFake((url: string) => {
-            if (url.endsWith('campanas/7'))
-                return of({
-                    i: 7,
-                    n: 'Caballeros de Cormyr',
-                    campaignRole: 'jugador',
-                    membershipStatus: 'activo',
-                    tramas: [],
-                });
-            throw new Error(`URL inesperada: ${url}`);
-        });
-        httpMock.patch.and.callFake((url: string) => {
-            if (url.endsWith('campanas/invitaciones/8')) {
-                return of({
-                    message: 'Invitacion aceptada',
-                    invitation: {
-                        inviteId: 8,
-                        status: 'accepted',
-                        createdAtUtc: '2026-03-13T10:15:00.000Z',
-                        resolvedAtUtc: '2026-03-13T10:20:00.000Z',
-                        campaignId: 7,
-                        campaignName: 'Caballeros de Cormyr',
-                        invitedUser: {
-                            userId: 'user-2',
-                            uid: 'actor-1',
-                            displayName: 'Actor',
-                            email: 'actor@test.dev',
-                        },
-                        invitedBy: {
-                            userId: 'user-9',
-                            uid: 'uid-master',
-                            displayName: 'Master',
-                            email: 'master@test.dev',
-                        },
-                        resolvedByUserId: 'user-2',
-                    },
-                });
-            }
-            throw new Error(`URL inesperada: ${url}`);
-        });
-
-        let observable: any;
-        firestoreBackedService.getListCampanas().then((value) => observable = value);
-        tick();
-
-        const emissions: string[][] = [];
-        const subscription = observable.subscribe((campanas: any[]) => emissions.push(campanas.map((item) => item.Nombre)));
-        tick();
-
-        watchState.next?.([]);
-        tick();
-
-        void firestoreBackedService.resolveCampaignInvitation(8, 'accept');
-        tick();
-        invalidations$.next({
-            code: 'campaign.local_change',
-            campaignId: 7,
-            conversationId: null,
-            source: 'local',
-        });
-        tick();
-
-        expect(emissions).toContain(['Sin campaña', 'Caballeros de Cormyr']);
-        subscription.unsubscribe();
-    }));
-
     it('getListCampanas expone de forma optimista una campaña creada antes de que Firestore emita', fakeAsync(() => {
         const watchState: { next: ((items: any[]) => void) | null; } = { next: null };
         const privateUserFirestoreSvcMock = {
@@ -977,7 +893,6 @@ describe('CampanaService', () => {
                     ownerDisplayName: 'Actor',
                     activeMasterUid: null,
                     activeMasterDisplayName: null,
-                    canRecoverMaster: true,
                 });
             if (url.endsWith('campanas/9'))
                 return of({
@@ -989,7 +904,6 @@ describe('CampanaService', () => {
                     ownerDisplayName: 'Otro',
                     activeMasterUid: 'uid-master',
                     activeMasterDisplayName: 'Master',
-                    canRecoverMaster: false,
                 });
             throw new Error(`URL inesperada: ${url}`);
         });
@@ -1076,7 +990,6 @@ describe('CampanaService', () => {
                     ownerDisplayName: 'Owner',
                     activeMasterUid: 'uid-master',
                     activeMasterDisplayName: 'Master',
-                    canRecoverMaster: false,
                     politicaCreacion: {
                         permitirHomebrewGeneral: true,
                     },
@@ -1145,7 +1058,6 @@ describe('CampanaService', () => {
                     ownerDisplayName: 'Owner',
                     activeMasterUid: null,
                     activeMasterDisplayName: null,
-                    canRecoverMaster: true,
                 });
             if (url.endsWith('campanas/9/jugadores'))
                 return of([{ uid: 'uid-owner', displayName: 'Owner', campaignRole: 'jugador', membershipStatus: 'activo', isActive: true }]);
@@ -1162,7 +1074,8 @@ describe('CampanaService', () => {
             campaignRole: 'jugador',
             membershipStatus: 'activo',
         });
-        expect(detail.canRecoverMaster).toBeTrue();
+        expect(detail.espacio).toBeNull();
+        expect(detail.pendingTransfer).toBeNull();
         expect(detail.activeMasterUid).toBeNull();
     });
 
@@ -1255,7 +1168,6 @@ describe('CampanaService', () => {
                     ownerDisplayName: 'Owner',
                     activeMasterUid: 'uid-master',
                     activeMasterDisplayName: 'Master',
-                    canRecoverMaster: false,
                 });
             if (url.endsWith('campanas/7/jugadores'))
                 return of([
@@ -1274,145 +1186,107 @@ describe('CampanaService', () => {
         ]);
     });
 
-    it('recoverCampaignMaster usa la ruta canónica y refresca cache en best-effort', async () => {
-        httpMock.post.and.callFake((url: string) => {
-            if (url.endsWith('campanas/7/master/recover'))
-                return of({ message: 'ok' });
-            throw new Error(`URL inesperada: ${url}`);
-        });
-
-        await service.recoverCampaignMaster(7);
-
-        expect(httpMock.post.calls.mostRecent().args[0]).toMatch(/campanas\/7\/master\/recover$/);
-    });
-
-    it('inviteCampaignMember envía Bearer y targetUid al endpoint canónico y devuelve invitación', async () => {
-        httpMock.post.and.callFake((url: string, body: any, options: any) => {
-            if (url.endsWith('campanas/7/jugadores')) {
-                expect(body).toEqual({ targetUid: 'uid-target' });
-                expect(options.headers.get('Authorization')).toBe('Bearer token');
-                return of({
-                    message: 'Invitacion enviada correctamente',
-                    invitation: {
-                        inviteId: 17,
-                        status: 'pending',
-                        createdAtUtc: '2026-03-13T10:15:00.000Z',
-                        resolvedAtUtc: null,
-                        campaignId: 7,
-                        campaignName: 'Campaña visible',
-                        invitedUser: {
-                            userId: 'user-2',
-                            uid: 'uid-target',
-                            displayName: 'Jugador invitado',
-                            email: 'jugador@test.dev',
-                        },
-                        invitedBy: {
-                            userId: 'user-1',
-                            uid: 'actor-1',
-                            displayName: 'Actor',
-                            email: 'actor@test.dev',
-                        },
-                        resolvedByUserId: null,
-                    },
-                });
-            }
-            throw new Error(`URL inesperada: ${url}`);
-        });
-
-        const response = await service.inviteCampaignMember(7, 'uid-target');
-
-        expect(httpMock.post.calls.count()).toBe(1);
-        expect(httpMock.post.calls.mostRecent().args[0]).toMatch(/campanas\/7\/jugadores$/);
-        expect(response.invitation.inviteId).toBe(17);
-        expect(response.invitation.invitedUser.uid).toBe('uid-target');
-    });
-
-    it('listReceivedCampaignInvitations normaliza invitaciones pendientes', async () => {
+    it('getCampaignDetail del máster trae el espacio y lo pendiente de la plataforma', async () => {
+        const spacesMock = {
+            espacio: jasmine.createSpy('espacio').and.resolveTo({ id: 41, traspaso: { cuenta: 'uid-jugador', rolSaliente: 'jugador', caduca: null } }),
+            invitacionesEnviadas: jasmine.createSpy('invitacionesEnviadas').and.resolveTo([{ id: 3, cuenta: null, alias: null, correo: 'a***@x.es', creada: null, caduca: null }]),
+            solicitudes: jasmine.createSpy('solicitudes').and.resolveTo([{ id: 5, cuenta: 'uid-x', alias: 'x', nombre: null, mensaje: 'Hola', creada: null }]),
+        };
+        const spacesService = new CampanaService(
+            { currentUser: { uid: 'actor-1', getIdToken: async () => 'token' } } as any,
+            httpMock as any,
+            { run: <T>(fn: () => T) => fn() } as FirebaseInjectionContextService,
+            campaignRealtimeSyncSvcMock,
+            privateUserFirestoreSvcMock as any,
+            undefined,
+            spacesMock as any,
+        );
         httpMock.get.and.callFake((url: string) => {
-            if (url.endsWith('campanas/invitaciones/received'))
-                return of([{
-                    inviteId: 8,
-                    status: 'pending',
-                    createdAtUtc: '2026-03-13T10:15:00.000Z',
-                    resolvedAtUtc: null,
-                    campaignId: 7,
-                    campaignName: 'Campaña visible',
-                    invitedUser: {
-                        userId: 'user-2',
-                        uid: 'actor-1',
-                        displayName: 'Actor',
-                        email: 'actor@test.dev',
-                    },
-                    invitedBy: {
-                        userId: 'user-9',
-                        uid: 'uid-master',
-                        displayName: 'Master',
-                        email: 'master@test.dev',
-                    },
-                    resolvedByUserId: null,
-                }]);
-            throw new Error(`URL inesperada: ${url}`);
-        });
-
-        const invitations = await service.listReceivedCampaignInvitations();
-
-        expect(invitations).toEqual([jasmine.objectContaining({
-            inviteId: 8,
-            campaignId: 7,
-            status: 'pending',
-        })]);
-    });
-
-    it('resolveCampaignInvitation usa PATCH y refresca cache en best-effort', async () => {
-        httpMock.patch.and.callFake((url: string, body: any) => {
-            if (url.endsWith('campanas/invitaciones/8')) {
-                expect(body).toEqual({ decision: 'accept' });
+            if (url.endsWith('campanas/7'))
                 return of({
-                    message: 'Invitacion aceptada',
-                    invitation: {
-                        inviteId: 8,
-                        status: 'accepted',
-                        createdAtUtc: '2026-03-13T10:15:00.000Z',
-                        resolvedAtUtc: '2026-03-13T10:20:00.000Z',
-                        campaignId: 7,
-                        campaignName: 'Campaña visible',
-                        invitedUser: {
-                            userId: 'user-2',
-                            uid: 'actor-1',
-                            displayName: 'Actor',
-                            email: 'actor@test.dev',
-                        },
-                        invitedBy: {
-                            userId: 'user-9',
-                            uid: 'uid-master',
-                            displayName: 'Master',
-                            email: 'master@test.dev',
-                        },
-                        resolvedByUserId: 'user-2',
-                    },
+                    idCampana: 7,
+                    nombre: 'La tumba',
+                    campaignRole: 'master',
+                    membershipStatus: 'activo',
+                    espacio: { id: 41, entrada: 'solicitud' },
+                    tramas: [],
                 });
-            }
+            if (url.endsWith('campanas/7/jugadores'))
+                return of([]);
             throw new Error(`URL inesperada: ${url}`);
         });
 
-        const response = await service.resolveCampaignInvitation(8, 'accept');
+        const detail = await spacesService.getCampaignDetail(7);
 
-        expect(response.invitation.status).toBe('accepted');
-        expect(httpMock.patch.calls.mostRecent().args[0]).toMatch(/campanas\/invitaciones\/8$/);
-        expect(campaignRealtimeSyncSvcMock.notifyLocalChange).toHaveBeenCalledWith(7);
+        expect(detail.espacio).toEqual({ id: 41, entrada: 'solicitud' });
+        expect(detail.pendingInvitations.length).toBe(1);
+        expect(detail.joinRequests.length).toBe(1);
+        expect(detail.pendingTransfer?.cuenta).toBe('uid-jugador');
+        expect(spacesMock.invitacionesEnviadas).toHaveBeenCalledWith(41);
     });
 
-    it('cancelCampaignInvitation usa DELETE contra la ruta canónica', async () => {
-        httpMock.delete.and.callFake((url: string) => {
-            if (url.endsWith('campanas/invitaciones/8'))
-                return of(void 0);
+    it('getCampaignDetail de un jugador no pide a la plataforma invitaciones ni solicitudes', async () => {
+        const spacesMock = {
+            espacio: jasmine.createSpy('espacio').and.rejectWith(new Error('caída')),
+            invitacionesEnviadas: jasmine.createSpy('invitacionesEnviadas'),
+            solicitudes: jasmine.createSpy('solicitudes'),
+        };
+        const spacesService = new CampanaService(
+            { currentUser: { uid: 'actor-1', getIdToken: async () => 'token' } } as any,
+            httpMock as any,
+            { run: <T>(fn: () => T) => fn() } as FirebaseInjectionContextService,
+            campaignRealtimeSyncSvcMock,
+            privateUserFirestoreSvcMock as any,
+            undefined,
+            spacesMock as any,
+        );
+        httpMock.get.and.callFake((url: string) => {
+            if (url.endsWith('campanas/7'))
+                return of({ idCampana: 7, nombre: 'La tumba', campaignRole: 'jugador', membershipStatus: 'activo', espacio: { id: 41, entrada: 'invitacion' }, tramas: [] });
+            if (url.endsWith('campanas/7/jugadores'))
+                return of([]);
             throw new Error(`URL inesperada: ${url}`);
         });
 
-        await service.cancelCampaignInvitation(8);
+        const detail = await spacesService.getCampaignDetail(7);
 
-        expect(httpMock.delete.calls.mostRecent().args[0]).toMatch(/campanas\/invitaciones\/8$/);
-        expect(campaignRealtimeSyncSvcMock.notifyLocalChange).toHaveBeenCalled();
+        expect(detail.espacio).toEqual({ id: 41, entrada: 'invitacion' });
+        expect(detail.pendingTransfer).toBeNull();
+        expect(spacesMock.invitacionesEnviadas).not.toHaveBeenCalled();
+        expect(spacesMock.solicitudes).not.toHaveBeenCalled();
+    });
+
+    it('syncMembership pide a la API que se ponga al día y avisa del cambio aunque falle', async () => {
+        httpMock.post.and.callFake((url: string) => {
+            if (url.endsWith('campanas/pertenencia/sincronizar'))
+                return of({ aplicados: 1 });
+            throw new Error(`URL inesperada: ${url}`);
+        });
+        await service.syncMembership(7);
+        expect(httpMock.post.calls.mostRecent().args[0]).toMatch(/campanas\/pertenencia\/sincronizar$/);
+        expect(campaignRealtimeSyncSvcMock.notifyLocalChange).toHaveBeenCalledWith(7);
+
+        httpMock.post.and.returnValue(throwError(() => new HttpErrorResponse({ status: 503 })));
+        await expectAsync(service.syncMembership(7)).toBeResolved();
+    });
+
+    it('getCampaignEntry da la campaña con solicitudes y null si no se enseña', async () => {
+        httpMock.get.and.callFake((url: string) => {
+            if (url.endsWith('campanas/7/entrada'))
+                return of({ idCampana: 7, nombre: 'La tumba', masterDisplayName: 'Ana', esMiembro: false, espacio: { id: 41, entrada: 'solicitud' } });
+            if (url.endsWith('campanas/8/entrada'))
+                return throwError(() => new HttpErrorResponse({ status: 404 }));
+            throw new Error(`URL inesperada: ${url}`);
+        });
+
+        expect(await service.getCampaignEntry(7)).toEqual({
+            idCampana: 7,
+            nombre: 'La tumba',
+            masterDisplayName: 'Ana',
+            esMiembro: false,
+            espacio: { id: 41, entrada: 'solicitud' },
+        });
+        expect(await service.getCampaignEntry(8)).toBeNull();
     });
 
     it('searchUsers usa el endpoint público de búsqueda', async () => {
