@@ -5,6 +5,7 @@ import { MatTableDataSource } from '@angular/material/table';
 import { Subject, takeUntil } from 'rxjs';
 import { RacialDetalle } from 'src/app/interfaces/racial';
 import { RacialService } from 'src/app/services/racial.service';
+import { ordenarEnEspanol } from 'src/app/services/utils/orden-tabla';
 
 @Component({
     selector: 'app-listado-raciales',
@@ -27,6 +28,7 @@ export class ListadoRacialesComponent implements OnDestroy {
     ngAfterViewInit() {
         this.racialesDS.paginator = this.racialPaginator;
         this.racialesDS.sort = this.racialSort;
+        ordenarEnEspanol(this.racialesDS);
         this.cargarRaciales();
         this.rSvc.racialesMutados$
             .pipe(takeUntil(this.destroy$))
@@ -49,6 +51,7 @@ export class ListadoRacialesComponent implements OnDestroy {
         this.racialesDS = new MatTableDataSource(racialesFiltradas);
         setTimeout(() => {
             this.racialesDS.sort = this.racialSort;
+            ordenarEnEspanol(this.racialesDS);
         }, 200);
         this.racialesDS.paginator = this.racialPaginator;
         this.racialSort.active = 'Nombre';

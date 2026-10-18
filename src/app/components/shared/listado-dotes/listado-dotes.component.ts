@@ -5,6 +5,7 @@ import { MatTableDataSource } from '@angular/material/table';
 import { Dote } from 'src/app/interfaces/dote';
 import { DoteService } from 'src/app/services/dote.service';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
+import { ordenarEnEspanol } from 'src/app/services/utils/orden-tabla';
 
 @Component({
     selector: 'app-listado-dotes',
@@ -34,6 +35,7 @@ export class ListadoDotesComponent {
     ngAfterViewInit() {
         this.dotesDS.paginator = this.dotePaginator;
         this.dotesDS.sort = this.doteSort;
+        ordenarEnEspanol(this.dotesDS);
         this.dSvc.getDotes().subscribe(dotes => {
             this.dotes = dotes;
             this.manuales = ['Cualquiera', ...Array.from(new Set(dotes.map(d => d.Manual?.Nombre).filter(Boolean)))];
@@ -60,6 +62,7 @@ export class ListadoDotesComponent {
         this.dotesDS = new MatTableDataSource(dotesFiltradas);
         setTimeout(() => {
             this.dotesDS.sort = this.doteSort;
+            ordenarEnEspanol(this.dotesDS);
         }, 200);
         this.dotesDS.paginator = this.dotePaginator;
         this.doteSort.active = 'Nombre';

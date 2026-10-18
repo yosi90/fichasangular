@@ -4,6 +4,7 @@ import { MatSort } from '@angular/material/sort';
 import { MatTableDataSource } from '@angular/material/table';
 import { EspecialClaseDetalle } from 'src/app/interfaces/especial';
 import { EspecialService } from 'src/app/services/especial.service';
+import { ordenarEnEspanol } from 'src/app/services/utils/orden-tabla';
 
 @Component({
     selector: 'app-listado-especiales',
@@ -25,6 +26,7 @@ export class ListadoEspecialesComponent {
     ngAfterViewInit() {
         this.especialesDS.paginator = this.especialPaginator;
         this.especialesDS.sort = this.especialSort;
+        ordenarEnEspanol(this.especialesDS);
         this.eSvc.getEspeciales().subscribe(especiales => {
             this.especiales = (especiales ?? []).filter((especial) => this.esEspecialValido(especial));
             this.cdr.detectChanges();
@@ -47,6 +49,7 @@ export class ListadoEspecialesComponent {
         this.especialesDS = new MatTableDataSource(especialesFiltrados);
         setTimeout(() => {
             this.especialesDS.sort = this.especialSort;
+            ordenarEnEspanol(this.especialesDS);
         }, 200);
         this.especialesDS.paginator = this.especialPaginator;
         this.especialSort.active = 'Nombre';

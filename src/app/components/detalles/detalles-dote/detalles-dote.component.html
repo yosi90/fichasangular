@@ -95,8 +95,9 @@
                             <div class="prerrequisito-condicion sombra-caja-sm tw-m-1 tw-p-2"
                                 *ngFor="let condicion of grupo.condiciones; let i = index">
                                 <p class="tw-mb-2 tw-font-bold">{{grupo.opcional ? 'Opcion' : 'Condicion'}} {{i + 1}}</p>
+                                <!-- El tipo va como texto delante de su valor: con dos chips parecía que eran dos requisitos. -->
                                 <mat-chip-set class="tw-m-0" *ngIf="condicion.campos.length > 0; else condicionSinCampos">
-                                    <mat-chip class="sombra3d-sm tw-m-1 chip-familia">{{condicion.familiaEtiqueta}}</mat-chip>
+                                    <span class="tw-m-1 familia-condicion">{{condicion.familiaEtiqueta}}:</span>
                                     <mat-chip class="sombra3d-sm tw-m-1"
                                         [ngClass]="tienePrerrequisitoNavegable(condicion.key, condicion.item) ? 'chip-clic' : ''"
                                         *ngFor="let texto of getTextosCondicionPrerrequisito(condicion)"

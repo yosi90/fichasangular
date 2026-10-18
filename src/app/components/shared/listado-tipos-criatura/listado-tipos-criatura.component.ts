@@ -5,6 +5,7 @@ import { MatTableDataSource } from '@angular/material/table';
 import { TipoCriatura } from 'src/app/interfaces/tipo_criatura';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
 import { TipoCriaturaService } from 'src/app/services/tipo-criatura.service';
+import { ordenarEnEspanol } from 'src/app/services/utils/orden-tabla';
 
 @Component({
     selector: 'app-listado-tipos-criatura',
@@ -32,6 +33,7 @@ export class ListadoTiposCriaturaComponent {
     ngAfterViewInit() {
         this.tiposDS.paginator = this.tipoPaginator;
         this.tiposDS.sort = this.tipoSort;
+        ordenarEnEspanol(this.tiposDS);
         (this.tSvc.getTiposCriatura()).subscribe(tipos => {
             this.tipos = tipos.filter(t => t.Nombre !== 'Cualquiera');
             this.Manuales = this.buildManualesDisponibles(this.tipos);
@@ -53,6 +55,7 @@ export class ListadoTiposCriaturaComponent {
         this.tiposDS = new MatTableDataSource(tiposFiltrados);
         setTimeout(() => {
             this.tiposDS.sort = this.tipoSort;
+            ordenarEnEspanol(this.tiposDS);
         }, 200);
         this.tiposDS.paginator = this.tipoPaginator;
         this.tipoSort.active = 'Nombre';

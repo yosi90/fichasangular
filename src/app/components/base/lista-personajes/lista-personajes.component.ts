@@ -10,6 +10,7 @@ import { Campana, Tramas, Super } from 'src/app/interfaces/campaña';
 import { CampanaService } from 'src/app/services/campana.service';
 import { UserService } from 'src/app/services/user.service';
 import { Subscription } from 'rxjs';
+import { ordenarEnEspanol } from 'src/app/services/utils/orden-tabla';
 
 type FiltroVisibilidadPersonajes = 'todos' | 'publicos' | 'privados';
 
@@ -146,6 +147,7 @@ export class ListaPersonajesComponent implements OnInit, AfterViewInit, OnDestro
             return (item as any)?.[property];
         };
         this.personajesDS.sort = this.sort;
+        ordenarEnEspanol(this.personajesDS);
         this.personajesDS.paginator = this.paginator;
     }
 

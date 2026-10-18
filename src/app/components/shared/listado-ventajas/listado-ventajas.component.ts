@@ -7,6 +7,7 @@ import Swal from 'sweetalert2';
 import { VentajaDetalle } from 'src/app/interfaces/ventaja';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
 import { VentajaService } from 'src/app/services/ventaja.service';
+import { ordenarEnEspanol } from 'src/app/services/utils/orden-tabla';
 
 interface VentajaListadoItem extends VentajaDetalle {
     Tipo: 'Ventaja' | 'Desventaja';
@@ -40,6 +41,7 @@ export class ListadoVentajasComponent implements OnDestroy {
     ngAfterViewInit() {
         this.ventajasDS.paginator = this.ventajaPaginator;
         this.ventajasDS.sort = this.ventajaSort;
+        ordenarEnEspanol(this.ventajasDS);
 
         combineLatest([
             this.ventajaSvc.getVentajas(),
@@ -82,6 +84,7 @@ export class ListadoVentajasComponent implements OnDestroy {
         this.ventajasDS = new MatTableDataSource<VentajaListadoItem>(filtradas);
         setTimeout(() => {
             this.ventajasDS.sort = this.ventajaSort;
+            ordenarEnEspanol(this.ventajasDS);
             this.ventajaSort.active = 'Nombre';
             this.ventajaSort.direction = 'asc';
         }, 50);

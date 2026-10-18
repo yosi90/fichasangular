@@ -6,6 +6,7 @@ import { Subject, takeUntil } from 'rxjs';
 import { DeidadDetalle } from 'src/app/interfaces/deidad';
 import { DeidadService } from 'src/app/services/deidad.service';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
+import { ordenarEnEspanol } from 'src/app/services/utils/orden-tabla';
 
 @Component({
     selector: 'app-listado-deidades',
@@ -38,6 +39,7 @@ export class ListadoDeidadesComponent implements OnDestroy {
     ngAfterViewInit() {
         this.deidadesDS.paginator = this.deidadPaginator;
         this.deidadesDS.sort = this.deidadSort;
+        ordenarEnEspanol(this.deidadesDS);
         this.deidadesDS.sortingDataAccessor = (item, property) => this.sortingAccessor(item, property);
 
         this.deidadSvc.getDeidades()
@@ -111,6 +113,7 @@ export class ListadoDeidadesComponent implements OnDestroy {
         this.deidadesDS = new MatTableDataSource<DeidadDetalle>(filtradas);
         setTimeout(() => {
             this.deidadesDS.sort = this.deidadSort;
+            ordenarEnEspanol(this.deidadesDS);
             if (this.deidadSort?.active !== undefined) {
                 this.deidadSort.active = 'Nombre';
                 this.deidadSort.direction = 'asc';

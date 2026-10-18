@@ -5,6 +5,7 @@ import { MatTableDataSource } from '@angular/material/table';
 import { Subject, takeUntil } from 'rxjs';
 import { IdiomaDetalle } from 'src/app/interfaces/idioma';
 import { IdiomaService } from 'src/app/services/idioma.service';
+import { ordenarEnEspanol } from 'src/app/services/utils/orden-tabla';
 
 @Component({
     selector: 'app-listado-idiomas',
@@ -27,6 +28,7 @@ export class ListadoIdiomasComponent implements OnDestroy {
     ngAfterViewInit(): void {
         this.idiomasDS.paginator = this.idiomaPaginator;
         this.idiomasDS.sort = this.idiomaSort;
+        ordenarEnEspanol(this.idiomasDS);
         this.cargarIdiomas();
         this.idiomaSvc.idiomasMutados$
             .pipe(takeUntil(this.destroy$))
@@ -49,6 +51,7 @@ export class ListadoIdiomasComponent implements OnDestroy {
         this.idiomasDS = new MatTableDataSource(idiomasFiltrados);
         setTimeout(() => {
             this.idiomasDS.sort = this.idiomaSort;
+            ordenarEnEspanol(this.idiomasDS);
         }, 200);
         this.idiomasDS.paginator = this.idiomaPaginator;
         this.idiomaSort.active = 'Nombre';

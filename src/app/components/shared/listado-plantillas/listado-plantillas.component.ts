@@ -5,6 +5,7 @@ import { MatTableDataSource } from '@angular/material/table';
 import { Plantilla } from 'src/app/interfaces/plantilla';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
 import { PlantillaService } from 'src/app/services/plantilla.service';
+import { ordenarEnEspanol } from 'src/app/services/utils/orden-tabla';
 
 @Component({
     selector: 'app-listado-plantillas',
@@ -33,6 +34,7 @@ export class ListadoPlantillasComponent {
     ngAfterViewInit() {
         this.plantillasDS.paginator = this.plantillaPaginator;
         this.plantillasDS.sort = this.plantillaSort;
+        ordenarEnEspanol(this.plantillasDS);
         this.plantillaSvc.getPlantillas().subscribe(plantillas => {
             this.plantillas = plantillas;
             this.manuales = ['Cualquiera', ...Array.from(new Set(plantillas.map(p => p.Manual?.Nombre).filter(Boolean)))];
@@ -57,6 +59,7 @@ export class ListadoPlantillasComponent {
         this.plantillasDS = new MatTableDataSource<Plantilla>(filtradas);
         setTimeout(() => {
             this.plantillasDS.sort = this.plantillaSort;
+            ordenarEnEspanol(this.plantillasDS);
         }, 100);
         this.plantillasDS.paginator = this.plantillaPaginator;
         this.plantillaSort.active = 'Nombre';

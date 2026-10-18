@@ -4,6 +4,7 @@ import { MatSort } from '@angular/material/sort';
 import { MatTableDataSource } from '@angular/material/table';
 import { Rasgo } from 'src/app/interfaces/rasgo';
 import { RasgoService } from 'src/app/services/rasgo.service';
+import { ordenarEnEspanol } from 'src/app/services/utils/orden-tabla';
 
 @Component({
     selector: 'app-listado-rasgo',
@@ -25,6 +26,7 @@ export class ListadoRasgoRacialComponent {
     ngAfterViewInit() {
         this.rasgosDS.paginator = this.tipoPaginator;
         this.rasgosDS.sort = this.tipoSort;
+        ordenarEnEspanol(this.rasgosDS);
         (this.rSvc.getRasgos()).subscribe(rasgos => {
             this.rasgos = rasgos;
             this.cdr.detectChanges();
@@ -43,6 +45,7 @@ export class ListadoRasgoRacialComponent {
         this.rasgosDS = new MatTableDataSource(rasgosFiltrados);
         setTimeout(() => {
             this.rasgosDS.sort = this.tipoSort;
+            ordenarEnEspanol(this.rasgosDS);
         }, 200);
         this.rasgosDS.paginator = this.tipoPaginator;
         this.tipoSort.active = 'Nombre';

@@ -6,6 +6,7 @@ import { Subject, takeUntil } from 'rxjs';
 import { MonstruoDetalle } from 'src/app/interfaces/monstruo';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
 import { MonstruoService } from 'src/app/services/monstruo.service';
+import { ordenarEnEspanol } from 'src/app/services/utils/orden-tabla';
 
 @Component({
     selector: 'app-listado-monstruos',
@@ -44,6 +45,7 @@ export class ListadoMonstruosComponent implements OnDestroy {
     ngAfterViewInit() {
         this.monstruosDS.paginator = this.monstruoPaginator;
         this.monstruosDS.sort = this.monstruoSort;
+        ordenarEnEspanol(this.monstruosDS);
         this.monstruosDS.sortingDataAccessor = (item, property) => this.sortingAccessor(item, property);
 
         this.monstruoSvc.getMonstruos()
@@ -78,6 +80,7 @@ export class ListadoMonstruosComponent implements OnDestroy {
         this.monstruosDS = new MatTableDataSource<MonstruoDetalle>(monstruosFiltrados);
         setTimeout(() => {
             this.monstruosDS.sort = this.monstruoSort;
+            ordenarEnEspanol(this.monstruosDS);
             if (this.monstruoSort?.active !== undefined) {
                 this.monstruoSort.active = 'Nombre';
                 this.monstruoSort.direction = 'asc';

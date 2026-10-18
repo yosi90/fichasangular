@@ -5,6 +5,7 @@ import { MatTableDataSource } from '@angular/material/table';
 import { Conjuro } from 'src/app/interfaces/conjuro';
 import { ConjuroService } from 'src/app/services/conjuro.service';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
+import { ordenarEnEspanol } from 'src/app/services/utils/orden-tabla';
 
 @Component({
     selector: 'app-listado-conjuros',
@@ -32,6 +33,7 @@ export class ListadoConjurosComponent {
     ngAfterViewInit() {
         this.conjurosDS.paginator = this.conjuroPaginator;
         this.conjurosDS.sort = this.conjuroSort;
+        ordenarEnEspanol(this.conjurosDS);
         (this.cSvc.getConjuros()).subscribe(conjuros => {
             this.conjuros = conjuros;
             this.Manuales = this.buildManualesDisponibles(this.conjuros);
@@ -53,6 +55,7 @@ export class ListadoConjurosComponent {
         this.conjurosDS = new MatTableDataSource(conjurosFiltrados);
         setTimeout(() => {
             this.conjurosDS.sort = this.conjuroSort;
+            ordenarEnEspanol(this.conjurosDS);
         }, 200);
         this.conjurosDS.paginator = this.conjuroPaginator;
         this.conjuroSort.active = 'Nombre';

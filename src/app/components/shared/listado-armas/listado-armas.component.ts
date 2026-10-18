@@ -6,6 +6,7 @@ import { Subject, takeUntil } from 'rxjs';
 import { ArmaDetalle } from 'src/app/interfaces/arma';
 import { ArmaService } from 'src/app/services/arma.service';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
+import { ordenarEnEspanol } from 'src/app/services/utils/orden-tabla';
 
 @Component({
     selector: 'app-listado-armas',
@@ -43,6 +44,7 @@ export class ListadoArmasComponent implements OnDestroy {
     ngAfterViewInit() {
         this.armasDS.paginator = this.armaPaginator;
         this.armasDS.sort = this.armaSort;
+        ordenarEnEspanol(this.armasDS);
         this.armasDS.sortingDataAccessor = (item, property) => this.sortingAccessor(item, property);
 
         this.armaSvc.getArmas()
@@ -103,6 +105,7 @@ export class ListadoArmasComponent implements OnDestroy {
         this.armasDS = new MatTableDataSource<ArmaDetalle>(armasFiltradas);
         setTimeout(() => {
             this.armasDS.sort = this.armaSort;
+            ordenarEnEspanol(this.armasDS);
             if (this.armaSort?.active !== undefined) {
                 this.armaSort.active = 'Nombre';
                 this.armaSort.direction = 'asc';

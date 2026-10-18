@@ -5,6 +5,7 @@ import { MatTableDataSource } from '@angular/material/table';
 import { Clase } from 'src/app/interfaces/clase';
 import { ClaseService } from 'src/app/services/clase.service';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
+import { ordenarEnEspanol } from 'src/app/services/utils/orden-tabla';
 
 @Component({
     selector: 'app-listado-clases',
@@ -35,6 +36,7 @@ export class ListadoClasesComponent {
     ngAfterViewInit() {
         this.clasesDS.paginator = this.clasePaginator;
         this.clasesDS.sort = this.claseSort;
+        ordenarEnEspanol(this.clasesDS);
         this.claseSvc.getClases().subscribe(clases => {
             this.clases = clases.filter((clase) => Number(clase?.Id ?? 0) > 0);
             this.manuales = ['Cualquiera', ...Array.from(new Set(this.clases.map(c => c.Manual?.Nombre).filter(Boolean)))];
@@ -61,6 +63,7 @@ export class ListadoClasesComponent {
         this.clasesDS = new MatTableDataSource(clasesFiltradas);
         setTimeout(() => {
             this.clasesDS.sort = this.claseSort;
+            ordenarEnEspanol(this.clasesDS);
         }, 200);
         this.clasesDS.paginator = this.clasePaginator;
         this.claseSort.active = 'Nombre';

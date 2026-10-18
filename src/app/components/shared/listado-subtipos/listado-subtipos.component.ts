@@ -5,6 +5,7 @@ import { MatTableDataSource } from '@angular/material/table';
 import { SubtipoResumen } from 'src/app/interfaces/subtipo';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
 import { SubtipoService } from 'src/app/services/subtipo.service';
+import { ordenarEnEspanol } from 'src/app/services/utils/orden-tabla';
 
 @Component({
     selector: 'app-listado-subtipos',
@@ -33,6 +34,7 @@ export class ListadoSubtiposComponent {
     ngAfterViewInit() {
         this.subtiposDS.paginator = this.subtipoPaginator;
         this.subtiposDS.sort = this.subtipoSort;
+        ordenarEnEspanol(this.subtiposDS);
         this.subtipoSvc.getSubtipos().subscribe(subtipos => {
             this.subtipos = subtipos.filter(s => s.Nombre !== 'Cualquiera');
             this.manuales = this.buildManualesDisponibles(this.subtipos);
@@ -55,6 +57,7 @@ export class ListadoSubtiposComponent {
         this.subtiposDS = new MatTableDataSource(subtiposFiltrados);
         setTimeout(() => {
             this.subtiposDS.sort = this.subtipoSort;
+            ordenarEnEspanol(this.subtiposDS);
         }, 200);
         this.subtiposDS.paginator = this.subtipoPaginator;
         this.subtipoSort.active = 'Nombre';

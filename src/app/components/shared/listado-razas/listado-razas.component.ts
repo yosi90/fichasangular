@@ -6,6 +6,7 @@ import { Subscription } from 'rxjs';
 import { Raza } from 'src/app/interfaces/raza';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
 import { RazaService } from 'src/app/services/raza.service';
+import { ordenarEnEspanol } from 'src/app/services/utils/orden-tabla';
 
 @Component({
     selector: 'app-listado-razas',
@@ -78,6 +79,7 @@ export class ListadoRazasComponent implements OnDestroy {
         this.razasDS = new MatTableDataSource(razasFiltradas);
         if (this.razaSort) {
             this.razasDS.sort = this.razaSort;
+            ordenarEnEspanol(this.razasDS);
         }
         if (this.razaPaginator) {
             this.razasDS.paginator = this.razaPaginator;
