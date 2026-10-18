@@ -1,0 +1,19 @@
+<ng-template #enLinea let-trozos>
+    <ng-container *ngFor="let t of trozos"><strong *ngIf="t.negrita">{{t.texto}}</strong><em *ngIf="t.cursiva">{{t.texto}}</em><ng-container *ngIf="!t.negrita && !t.cursiva">{{t.texto}}</ng-container></ng-container>
+</ng-template>
+<ng-container *ngFor="let bloque of bloques">
+    <p class="tw-m-1" *ngIf="bloque.tipo === 'parrafo'"><ng-container *ngTemplateOutlet="enLinea; context: {$implicit: bloque.trozos}"></ng-container></p>
+    <h3 class="texto-manual-titulo tw-m-1" *ngIf="bloque.tipo === 'titulo'"><ng-container *ngTemplateOutlet="enLinea; context: {$implicit: bloque.trozos}"></ng-container></h3>
+    <div class="texto-manual-tabla tw-m-1" *ngIf="bloque.tipo === 'tabla'">
+        <table>
+            <thead *ngIf="bloque.cabecera.length">
+                <tr><th *ngFor="let celda of bloque.cabecera"><ng-container *ngTemplateOutlet="enLinea; context: {$implicit: celda}"></ng-container></th></tr>
+            </thead>
+            <tbody>
+                <tr *ngFor="let fila of bloque.filas">
+                    <td *ngFor="let celda of fila"><ng-container *ngTemplateOutlet="enLinea; context: {$implicit: celda}"></ng-container></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</ng-container>

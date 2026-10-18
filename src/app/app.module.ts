@@ -55,6 +55,7 @@ import { DetallesRasgoRacialComponent } from './components/detalles/detalles-ras
 import { ListadoRasgoRacialComponent } from './components/shared/listado-rasgo/listado-rasgo.component';
 import { ListadoDotesComponent } from './components/shared/listado-dotes/listado-dotes.component';
 import { DetallesDoteComponent } from './components/detalles/detalles-dote/detalles-dote.component';
+import { TextoManualComponent } from './components/shared/texto-manual/texto-manual.component';
 import { ListadoClasesComponent } from './components/shared/listado-clases/listado-clases.component';
 import { DetallesClaseComponent } from './components/detalles/detalles-clase/detalles-clase.component';
 import { ListadoEspecialesComponent } from './components/shared/listado-especiales/listado-especiales.component';
@@ -158,6 +159,7 @@ import { CloseFilterMenuOnMouseleaveDirective } from './directives/close-filter-
         ListadoRasgoRacialComponent,
         ListadoDotesComponent,
         DetallesDoteComponent,
+        TextoManualComponent,
         ListadoClasesComponent,
         DetallesClaseComponent,
         ListadoEspecialesComponent,
