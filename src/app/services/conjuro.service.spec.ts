@@ -1,4 +1,4 @@
-import { HttpErrorResponse } from '@angular/common/http';
+import { HttpErrorResponse, HttpHeaders, HttpResponse } from '@angular/common/http';
 import { firstValueFrom, of, throwError } from 'rxjs';
 import Swal from 'sweetalert2';
 import { ConjuroCreateRequest } from '../interfaces/conjuros-api';
@@ -288,10 +288,11 @@ describe('ConjuroService', () => {
 
     it('getConjuros usa fallback HTTP cuando no existe la colección cacheada', async () => {
         const httpMock = jasmine.createSpyObj('HttpClient', ['post', 'get']);
-        httpMock.get.and.returnValue(of([
-            { Id: 9, Nombre: 'Luz' },
-            { Id: 10, Nombre: 'Escudo' },
-        ]));
+        // La API pagina: primero una página con X-Has-More y luego la última.
+        httpMock.get.and.returnValues(
+            of(new HttpResponse({ body: [{ Id: 9, Nombre: 'Luz' }], headers: new HttpHeaders({ 'X-Has-More': 'true' }) })),
+            of(new HttpResponse({ body: [{ Id: 10, Nombre: 'Escudo' }], headers: new HttpHeaders({ 'X-Has-More': 'false' }) })),
+        );
         spyOn(Swal, 'fire');
         const service = new TestConjuroService(authMock, {} as any, httpMock, firebaseContextMock);
         service.conjurosSnapshotFactory = () => ({
@@ -301,7 +302,8 @@ describe('ConjuroService', () => {
 
         const emitted = await firstValueFrom(service.getConjuros());
 
-        expect(httpMock.get).toHaveBeenCalledWith(jasmine.stringMatching(/conjuros$/));
+        expect(httpMock.get).toHaveBeenCalledWith(jasmine.stringMatching(/conjuros\?limit=100&offset=0$/), { observe: 'response' });
+        expect(httpMock.get).toHaveBeenCalledWith(jasmine.stringMatching(/conjuros\?limit=100&offset=100$/), { observe: 'response' });
         expect(emitted.map((item) => item.Nombre)).toEqual(['Luz', 'Escudo']);
     });
 

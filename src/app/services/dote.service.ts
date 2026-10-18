@@ -1,3 +1,4 @@
+import { catalogosDesdeApi, leerListadoCompleto, sinCache } from './catalogo-api';
 import { HttpClient, HttpErrorResponse } from "@angular/common/http";
 import { Injectable } from "@angular/core";
 import { Auth } from "@angular/fire/auth";
@@ -25,6 +26,8 @@ export class DoteService {
 
     protected watchDotePath(id: number, onNext: (snapshot: any) => void, onError: (error: any) => void): Unsubscribe {
         return this.firebaseContextSvc.run(() => {
+            if (catalogosDesdeApi())
+                return sinCache(onNext);
             const dbRef = ref(this.db, `Dotes/${id}`);
             return onValue(dbRef, onNext, onError);
         });
@@ -32,6 +35,8 @@ export class DoteService {
 
     protected watchDotesPath(onNext: (snapshot: any) => void, onError: (error: any) => void): Unsubscribe {
         return this.firebaseContextSvc.run(() => {
+            if (catalogosDesdeApi())
+                return sinCache(onNext);
             const dbRef = ref(this.db, "Dotes");
             return onValue(dbRef, onNext, onError);
         });
@@ -137,7 +142,7 @@ export class DoteService {
     }
 
     private syncDotes(): Observable<any> {
-        return this.http.get(`${environment.apiUrl}dotes`);
+        return leerListadoCompleto(this.http, `${environment.apiUrl}dotes`);
     }
 
     public async crearDote(payload: DoteCreateRequest): Promise<DoteCreateResponse> {

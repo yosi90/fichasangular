@@ -1,3 +1,4 @@
+import { catalogosDesdeApi, leerListadoCompleto, sinCache } from './catalogo-api';
 import { HttpClient, HttpErrorResponse } from "@angular/common/http";
 import { Injectable } from "@angular/core";
 import { Auth } from "@angular/fire/auth";
@@ -25,6 +26,8 @@ export class ConjuroService {
 
     protected watchConjuroPath(id: number, onNext: (snapshot: any) => void, onError: (error: any) => void): Unsubscribe {
         return this.firebaseContextSvc.run(() => {
+            if (catalogosDesdeApi())
+                return sinCache(onNext);
             const dbRef = ref(this.db, `Conjuros/${id}`);
             return onValue(dbRef, onNext, onError);
         });
@@ -32,6 +35,8 @@ export class ConjuroService {
 
     protected watchConjurosPath(onNext: (snapshot: any) => void, onError: (error: any) => void): Unsubscribe {
         return this.firebaseContextSvc.run(() => {
+            if (catalogosDesdeApi())
+                return sinCache(onNext);
             const dbRef = ref(this.db, 'Conjuros');
             return onValue(dbRef, onNext, onError);
         });
@@ -157,7 +162,7 @@ export class ConjuroService {
     }
 
     private syncConjuros(): Observable<any> {
-        return this.http.get(`${environment.apiUrl}conjuros`);
+        return leerListadoCompleto(this.http, `${environment.apiUrl}conjuros`);
     }
 
     private mapCrearConjuroError(error: any): Error {

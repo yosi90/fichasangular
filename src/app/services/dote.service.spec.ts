@@ -1,4 +1,4 @@
-import { HttpErrorResponse } from '@angular/common/http';
+import { HttpErrorResponse, HttpHeaders, HttpResponse } from '@angular/common/http';
 import { firstValueFrom, of, throwError } from 'rxjs';
 import Swal from 'sweetalert2';
 import { DoteCreateRequest } from '../interfaces/dotes-api';
@@ -254,10 +254,11 @@ describe('DoteService', () => {
 
     it('getDotes usa fallback HTTP cuando no existe la colección cacheada', async () => {
         const httpMock = jasmine.createSpyObj('HttpClient', ['post', 'get']);
-        httpMock.get.and.returnValue(of([
-            { Id: 9, Nombre: 'Alerta' },
-            { Id: 10, Nombre: 'Soltura' },
-        ]));
+        // La API pagina: primero una página con X-Has-More y luego la última.
+        httpMock.get.and.returnValues(
+            of(new HttpResponse({ body: [{ Id: 9, Nombre: 'Alerta' }], headers: new HttpHeaders({ 'X-Has-More': 'true' }) })),
+            of(new HttpResponse({ body: [{ Id: 10, Nombre: 'Soltura' }], headers: new HttpHeaders({ 'X-Has-More': 'false' }) })),
+        );
         spyOn(Swal, 'fire');
         const service = new TestDoteService(authMock, {} as any, httpMock, firebaseContextMock);
         service.dotesSnapshotFactory = () => ({
@@ -267,7 +268,8 @@ describe('DoteService', () => {
 
         const emitted = await firstValueFrom(service.getDotes());
 
-        expect(httpMock.get).toHaveBeenCalledWith(jasmine.stringMatching(/dotes$/));
+        expect(httpMock.get).toHaveBeenCalledWith(jasmine.stringMatching(/dotes\?limit=100&offset=0$/), { observe: 'response' });
+        expect(httpMock.get).toHaveBeenCalledWith(jasmine.stringMatching(/dotes\?limit=100&offset=100$/), { observe: 'response' });
         expect(emitted.map((item) => item.Nombre)).toEqual(['Alerta', 'Soltura']);
     });
 
