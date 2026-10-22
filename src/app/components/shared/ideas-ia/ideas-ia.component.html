@@ -1,0 +1,49 @@
+<ng-container [ngSwitch]="disponibilidad">
+    <div class="ideas-ia" *ngSwitchCase="'lista'">
+        <div class="ideas-ia__barra">
+            <span class="ideas-ia__titulo">
+                <mat-icon>auto_awesome</mat-icon>
+                Ideas con IA
+            </span>
+            <button type="button" mat-stroked-button class="ideas-ia__boton" *ngFor="let tipo of tipos"
+                [disabled]="!!cargando" (click)="pedir(tipo)">
+                {{etiqueta(tipo)}}
+            </button>
+            <app-modelo-ia-menu></app-modelo-ia-menu>
+        </div>
+
+        <div class="ideas-ia__cargando" *ngIf="cargando" role="status">
+            <mat-icon class="ideas-ia__girando" aria-hidden="true">autorenew</mat-icon>
+            <span>Pensando una idea…</span>
+        </div>
+
+        <div class="ideas-ia__error" *ngIf="error && !cargando" role="alert">
+            <mat-icon>error_outline</mat-icon>
+            <span>
+                {{error.message}}
+                <a *ngIf="error.esDeLaClave" [href]="urlGestion" target="_blank" rel="noopener">Ir a tus claves de IA</a>
+            </span>
+        </div>
+
+        <div class="ideas-ia__propuesta" *ngIf="propuesta && !cargando">
+            <p class="ideas-ia__propuesta-titulo">{{etiqueta(propuesta.tipo)}}</p>
+            <app-texto-manual [texto]="propuesta.texto"></app-texto-manual>
+            <p class="ideas-ia__aviso" *ngIf="propuesta.recortada">
+                La respuesta llegó cortada (puede que al tope de tu clave le quede poco).
+            </p>
+            <div class="ideas-ia__acciones">
+                <button type="button" mat-button (click)="descartar()">Descartar</button>
+                <button type="button" mat-button (click)="otra()">
+                    <mat-icon>refresh</mat-icon>
+                    Otra
+                </button>
+                <button type="button" mat-raised-button color="primary" (click)="aplicar()">{{destino(propuesta.tipo)}}</button>
+            </div>
+        </div>
+    </div>
+
+    <p class="ideas-ia__gestion" *ngSwitchCase="'sin_clave'">
+        <mat-icon>auto_awesome</mat-icon>
+        <a [href]="urlGestion" target="_blank" rel="noopener">Tus claves de IA y su tope se gestionan en tu cuenta de Yosiftware</a>
+    </p>
+</ng-container>

@@ -1,0 +1,43 @@
+<ng-container [ngSwitch]="disponibilidad">
+    <div class="ideas-ia" *ngSwitchCase="'lista'">
+        <div class="ideas-ia__barra">
+            <button type="button" mat-stroked-button class="ideas-ia__boton" [disabled]="cargando" (click)="queHable()"
+                matTooltip="Una frase suya, con tu clave de IA">
+                <mat-icon>record_voice_over</mat-icon>
+                {{frase ? 'Otra frase' : 'Que hable'}}
+            </button>
+            <button type="button" mat-stroked-button class="ideas-ia__boton" *ngIf="hablando" (click)="parar()">
+                <mat-icon>stop</mat-icon>
+                Parar
+            </button>
+            <button type="button" mat-icon-button *ngIf="frase && puedeHablar && !hablando && !cargando" (click)="hablar()"
+                matTooltip="Volver a oírla" aria-label="Volver a oír la frase">
+                <mat-icon>volume_up</mat-icon>
+            </button>
+            <app-modelo-ia-menu></app-modelo-ia-menu>
+        </div>
+
+        <div class="ideas-ia__cargando" *ngIf="cargando" role="status">
+            <mat-icon class="ideas-ia__girando" aria-hidden="true">autorenew</mat-icon>
+            <span>Pensando qué decir…</span>
+        </div>
+
+        <div class="ideas-ia__error" *ngIf="error && !cargando" role="alert">
+            <mat-icon>error_outline</mat-icon>
+            <span>
+                {{error.message}}
+                <a *ngIf="error.esDeLaClave" [href]="urlGestion" target="_blank" rel="noopener">Ir a tus claves de IA</a>
+            </span>
+        </div>
+
+        <div class="ideas-ia__propuesta" *ngIf="frase && !cargando" aria-live="polite">
+            <app-texto-manual [texto]="frase"></app-texto-manual>
+            <p class="ideas-ia__aviso" *ngIf="!puedeHablar">Tu navegador no puede leerla en voz alta.</p>
+        </div>
+    </div>
+
+    <p class="ideas-ia__gestion" *ngSwitchCase="'sin_clave'">
+        <mat-icon>record_voice_over</mat-icon>
+        <a [href]="urlGestion" target="_blank" rel="noopener">Tus claves de IA y su tope se gestionan en tu cuenta de Yosiftware</a>
+    </p>
+</ng-container>

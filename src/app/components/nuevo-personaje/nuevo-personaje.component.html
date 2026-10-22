@@ -214,6 +214,8 @@
                                     Trasfondo y Rasgos de personalidad
                                     <mat-icon class="tw-ms-2">auto_stories</mat-icon>
                                 </mat-chip>
+                                <app-ideas-ia [obtenerDatos]="datosParaIdeasIa" [textoActual]="textoActualIdeaIa"
+                                    (usar)="usarIdeaIa($event)"></app-ideas-ia>
                                 <div class="field-grid">
                                     <mat-form-field appearance="fill" class="full-span">
                                         <mat-label>Trasfondo</mat-label>

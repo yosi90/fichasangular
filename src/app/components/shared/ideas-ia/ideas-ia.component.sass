@@ -1,0 +1,115 @@
+@use '../../../../assets/css/_variables' as *
+
+// Ayudas con IA (ideas y voz de los personajes): discretas, dentro de la sección a la que ayudan.
+
+:host
+    display: block
+    width: 100%
+
+.ideas-ia
+    display: flex
+    flex-direction: column
+    gap: 8px
+    margin: 4px 0 8px
+
+.ideas-ia__barra
+    display: flex
+    flex-wrap: wrap
+    align-items: center
+    gap: 6px
+
+.ideas-ia__titulo
+    display: inline-flex
+    align-items: center
+    gap: 4px
+    font-size: .85rem
+    color: $accent
+
+    mat-icon
+        font-size: 18px
+        width: 18px
+        height: 18px
+
+.ideas-ia__boton
+    min-height: 32px
+    line-height: 1.2
+    font-size: .85rem
+
+.ideas-ia__modelo
+    color: $accent
+
+.ideas-ia__cargando,
+.ideas-ia__error,
+.ideas-ia__gestion
+    display: flex
+    align-items: center
+    gap: 6px
+    margin: 0
+    font-size: .85rem
+    overflow-wrap: anywhere
+
+    mat-icon
+        flex: 0 0 auto
+        font-size: 18px
+        width: 18px
+        height: 18px
+
+.ideas-ia__error
+    padding: 6px 8px
+    border-radius: 6px
+    border: 1px solid rgba(239, 83, 80, .45)
+    background: rgba(239, 83, 80, .1)
+
+.ideas-ia__gestion
+    color: $accent
+
+a
+    color: $accent
+    text-decoration: underline
+
+.ideas-ia__propuesta
+    padding: 8px
+    border-radius: 8px
+    border: 1px solid rgba(255, 255, 255, .12)
+    background: rgba(255, 255, 255, .04)
+
+.ideas-ia__propuesta-titulo
+    margin: 0 0 4px
+    font-size: .8rem
+    text-transform: uppercase
+    letter-spacing: .04em
+    color: $accent
+
+.ideas-ia__aviso
+    margin: 4px 0 0
+    font-size: .8rem
+    color: rgb(255, 196, 0)
+
+.ideas-ia__acciones
+    display: flex
+    flex-wrap: wrap
+    justify-content: flex-end
+    gap: 6px
+    margin-top: 6px
+
+.ideas-ia__girando
+    animation: ideas-ia-girar 1.2s linear infinite
+
+@keyframes ideas-ia-girar
+    to
+        transform: rotate(360deg)
+
+@media (prefers-reduced-motion: reduce)
+    .ideas-ia__girando
+        animation: none
+
+.menu-modelo-ia__grupo,
+.menu-modelo-ia__nota
+    margin: 0
+    padding: 6px 16px 2px
+    font-size: .75rem
+    color: $accent
+
+.menu-modelo-ia__grupo
+    text-transform: uppercase
+    letter-spacing: .04em

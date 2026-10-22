@@ -1,0 +1,24 @@
+<button type="button" mat-icon-button class="ideas-ia__modelo" [matMenuTriggerFor]="menuModelo" (menuOpened)="cargar()"
+    [matTooltip]="descripcion" [attr.aria-label]="descripcion">
+    <mat-icon>tune</mat-icon>
+</button>
+<mat-menu #menuModelo="matMenu" class="menu-modelo-ia">
+    <button mat-menu-item (click)="elegir(null)">
+        <mat-icon>{{seleccion ? 'radio_button_unchecked' : 'radio_button_checked'}}</mat-icon>
+        <span>Automático</span>
+    </button>
+    <p class="menu-modelo-ia__nota" *ngIf="cargando">Cargando los modelos de tu clave…</p>
+    <p class="menu-modelo-ia__nota" *ngIf="error">No se han podido cargar los modelos.</p>
+    <ng-container *ngFor="let grupo of modelos ?? []">
+        <p class="menu-modelo-ia__grupo">{{nombreProveedor(grupo.proveedor)}}</p>
+        <button mat-menu-item disabled *ngIf="grupo.modelos.length === 0">
+            <mat-icon>block</mat-icon>
+            <span>{{motivoSinModelos(grupo.error)}}</span>
+        </button>
+        <button mat-menu-item *ngFor="let modelo of grupo.modelos"
+            (click)="elegir({ proveedor: grupo.proveedor, modelo: modelo.id, nombre: modelo.nombre })">
+            <mat-icon>{{esElegido(grupo.proveedor, modelo.id) ? 'radio_button_checked' : 'radio_button_unchecked'}}</mat-icon>
+            <span>{{modelo.nombre}}</span>
+        </button>
+    </ng-container>
+</mat-menu>

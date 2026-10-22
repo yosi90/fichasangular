@@ -112,6 +112,8 @@ import { CatalogoNombreIdDto, PersonajeContextoCreacionCampanaDto, PersonajeCont
 import { CampaignCreationPolicy } from 'src/app/interfaces/campaign-management';
 import { environment } from 'src/environments/environment';
 import Swal from 'sweetalert2';
+import { DatosIdeaIa, datosIdeaDePersonaje, TipoIdeaIa } from 'src/app/services/ideas-ia.service';
+import { UsoIdeaIa } from '../shared/ideas-ia/ideas-ia.component';
 
 interface VectorAlineamiento {
     ley: number;
@@ -321,6 +323,11 @@ export class NuevoPersonajeComponent {
     };
     readonly placeholderContexto = 'De donde viene tu personaje, cual es su familia, linaje, maestros, etc. Esto te ayudara a saber como deberia reaccionar tu personaje ante diversos estimulos.';
     readonly placeholderPersonalidad = 'Altivo, compasivo, incapaz de estarse quieto, maduro o incomprendido. Dale adjetivos a tu personaje para reforzar su interpretacion.';
+    /** Ideas con IA de Básicos (`app-ideas-ia`): lo que hay del personaje en el momento de pedirlas. */
+    readonly datosParaIdeasIa = (): DatosIdeaIa => datosIdeaDePersonaje(this.Personaje);
+    /** La idea de personaje va al trasfondo, como punto de partida. */
+    readonly textoActualIdeaIa = (tipo: TipoIdeaIa): string =>
+        `${(tipo === 'personalidad' ? this.Personaje?.Personalidad : this.Personaje?.Contexto) ?? ''}`;
     readonly fallbackContexto = 'Eres totalmente antirol hijo mio.';
     readonly fallbackPersonalidad = 'Rellena un fisco puto vago.';
     readonly alineamientos: string[] = [
@@ -2045,6 +2052,13 @@ export class NuevoPersonajeComponent {
     private esNumeroValidoPositivo(value: number): boolean {
         const parsed = Number(value);
         return Number.isFinite(parsed) && parsed > 0;
+    }
+
+    usarIdeaIa(uso: UsoIdeaIa): void {
+        if (uso.tipo === 'personalidad')
+            this.Personaje.Personalidad = uso.texto;
+        else
+            this.Personaje.Contexto = uso.texto;
     }
 
     onEdadChange(value: number | string | null | undefined): void {
