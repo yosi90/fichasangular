@@ -53,6 +53,22 @@ export interface ModelosIaProveedor {
     error: string | null;
 }
 
+export type ProveedorDeVoz = 'elevenlabs' | 'openai';
+
+export interface VozIa {
+    id: string;
+    nombre: string;
+    idioma: string | null;
+    /** Un audio de muestra del proveedor, si lo hay. */
+    muestra: string | null;
+}
+
+export interface VocesIaProveedor {
+    proveedor: ProveedorDeVoz;
+    voces: VozIa[];
+    error: string | null;
+}
+
 /** Modelo elegido para las ideas; `null` deja el del backend (Claude Haiku 5.5 o GPT-5.4 mini). */
 export interface SeleccionModeloIa {
     proveedor: ProveedorIa;
@@ -168,6 +184,21 @@ export class IdeasIaService {
         }
     }
 
+    /** Las voces de la persona, por proveedor (`GET /v1/ia/voces`): se eligen de una lista, nunca escritas. */
+    async voces(): Promise<VocesIaProveedor[]> {
+        const respuesta = await this.getPlataforma<{ proveedores?: any[] }>('/v1/ia/voces');
+        const proveedores = Array.isArray(respuesta?.proveedores) ? respuesta.proveedores : [];
+        return proveedores
+            .filter(p => p?.proveedor === 'elevenlabs' || p?.proveedor === 'openai')
+            .map(p => ({
+                proveedor: p.proveedor as ProveedorDeVoz,
+                voces: (Array.isArray(p.voces) ? p.voces : [])
+                    .filter((v: any) => typeof v?.id === 'string' && v.id.trim().length > 0)
+                    .map((v: any) => ({ id: v.id, nombre: `${v.nombre ?? v.id}`, idioma: v.idioma ?? null, muestra: v.muestra ?? null })),
+                error: typeof p.error === 'string' ? p.error : null,
+            }));
+    }
+
     private async consultarModelos(): Promise<ModelosIaProveedor[]> {
         const respuesta = await this.getPlataforma<{ proveedores?: any[] }>('/v1/ia/modelos');
         const proveedores = Array.isArray(respuesta?.proveedores) ? respuesta.proveedores : [];
@@ -191,21 +222,30 @@ export class IdeasIaService {
     }
 
     private aError(error: unknown): IdeasIaError {
-        if (error instanceof IdeasIaError)
-            return error;
-        if (error instanceof HttpErrorResponse) {
-            const cuerpo = error.error && typeof error.error === 'object' ? error.error : {};
-            const code = `${cuerpo.code ?? ''}`.trim();
-            const mensaje = `${cuerpo.error ?? cuerpo.message ?? ''}`.trim();
-            if (['sin_clave_de_ia', 'tope_sin_fijar', 'tope_de_gasto', 'clave_de_ia_rechazada'].includes(code))
-                this.olvidarEstado();
-            const field = typeof cuerpo.field === 'string' ? cuerpo.field : null;
-            if (error.status === 0)
-                return new IdeasIaError('No hay conexión con Rol. Revisa tu red y vuelve a probar.', 'sin_conexion', 0);
-            return new IdeasIaError(mensaje || ERROR_GENERICO, code, error.status, field);
-        }
-        return new IdeasIaError(ERROR_GENERICO, '', 0);
+        const traducido = errorDeIa(error, ERROR_GENERICO);
+        if (traducido.esDeLaClave)
+            this.olvidarEstado();
+        return traducido;
     }
+}
+
+/**
+ * Un error de una ruta de Rol que usa la IA (`POST /personajes/ideas`, `/personajes/{id}/voz`), con el formato
+ * objetivo de errores: su frase se puede enseñar tal cual.
+ */
+export function errorDeIa(error: unknown, porDefecto: string): IdeasIaError {
+    if (error instanceof IdeasIaError)
+        return error;
+    if (error instanceof HttpErrorResponse) {
+        const cuerpo = error.error && typeof error.error === 'object' ? error.error : {};
+        const code = `${cuerpo.code ?? ''}`.trim();
+        const mensaje = `${cuerpo.error ?? cuerpo.message ?? ''}`.trim();
+        const field = typeof cuerpo.field === 'string' ? cuerpo.field : null;
+        if (error.status === 0)
+            return new IdeasIaError('No hay conexión con Rol. Revisa tu red y vuelve a probar.', 'sin_conexion', 0);
+        return new IdeasIaError(mensaje || porDefecto, code, error.status, field);
+    }
+    return new IdeasIaError(porDefecto, '', 0);
 }
 
 function texto(valor: unknown): string | undefined {

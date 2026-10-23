@@ -3,6 +3,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { BehaviorSubject } from 'rxjs';
 import { IdeasIaError, IdeasIaService } from 'src/app/services/ideas-ia.service';
 import { PlatformSessionService } from 'src/app/services/platform-session.service';
+import { VozPersonajeService } from 'src/app/services/voz-personaje.service';
 import Swal from 'sweetalert2';
 import { IdeasIaComponent } from './ideas-ia.component';
 import { VozPersonajeComponent } from './voz-personaje.component';
@@ -14,6 +15,24 @@ function crearServicio() {
         disponibilidad: jasmine.createSpy('disponibilidad').and.resolveTo('lista'),
         pedir: jasmine.createSpy('pedir').and.resolveTo({ texto: 'Hijo de la forja.', proveedor: 'anthropic', modelo: 'claude-haiku-5-5', recortada: false }),
         modelos: jasmine.createSpy('modelos').and.resolveTo([]),
+        voces: jasmine.createSpy('voces').and.resolveTo([
+            { proveedor: 'elevenlabs', error: null, voces: [{ id: 'emilio', nombre: 'Emilio', idioma: 'es', muestra: null }] },
+        ]),
+        olvidarEstado: jasmine.createSpy('olvidarEstado'),
+    };
+}
+
+const VOZ_GUARDADA = {
+    texto: '¡Por Moradin!', proveedor: 'elevenlabs', voz: 'emilio', nombreVoz: 'Emilio', modelo: 'eleven_multilingual_v2',
+    tipo: 'audio/mpeg', creada: '2026-10-23T18:30:00Z',
+};
+
+function crearServicioDeVoz(guardada: any = null) {
+    return {
+        guardada: jasmine.createSpy('guardada').and.resolveTo(guardada),
+        audio: jasmine.createSpy('audio').and.resolveTo(new Blob(['mp3'], { type: 'audio/mpeg' })),
+        generar: jasmine.createSpy('generar').and.resolveTo(VOZ_GUARDADA),
+        borrar: jasmine.createSpy('borrar').and.resolveTo(),
     };
 }
 
@@ -126,15 +145,21 @@ describe('VozPersonajeComponent', () => {
     let fixture: ComponentFixture<VozPersonajeComponent>;
     let component: VozPersonajeComponent;
     let servicio: ReturnType<typeof crearServicio>;
+    let voz: ReturnType<typeof crearServicioDeVoz>;
 
     beforeEach(async () => {
         servicio = crearServicio();
+        voz = crearServicioDeVoz();
         servicio.pedir.and.resolveTo({ texto: '«¡Por Moradin!»', proveedor: 'openai', modelo: 'gpt-5.4-mini', recortada: false });
         await TestBed.configureTestingModule({
             declarations: [VozPersonajeComponent],
             providers: [
                 { provide: IdeasIaService, useValue: servicio },
-                { provide: PlatformSessionService, useValue: { estado$: new BehaviorSubject<any>({ tipo: 'con_sesion' }) } },
+                { provide: VozPersonajeService, useValue: voz },
+                {
+                    provide: PlatformSessionService,
+                    useValue: { estado$: new BehaviorSubject<any>({ tipo: 'con_sesion' }), cuenta: { id: 'sub-del-dueno' } },
+                },
             ],
             schemas: [NO_ERRORS_SCHEMA],
         }).compileComponents();
@@ -180,5 +205,60 @@ describe('VozPersonajeComponent', () => {
         fixture.detectChanges();
         expect(component.visible).toBeTrue();
         expect((fixture.nativeElement as HTMLElement).textContent).toContain('Tus claves de IA y su tope se gestionan en tu cuenta de Yosiftware');
+    });
+
+    describe('su voz guardada', () => {
+        it('la oye quien ve la ficha, aunque no tenga clave de IA', async () => {
+            voz.guardada.and.resolveTo(VOZ_GUARDADA);
+            servicio.disponibilidad.and.resolveTo('sin_sesion');
+            await component.comprobar();
+            await component.leerGuardada();
+            fixture.detectChanges();
+            expect(voz.guardada).toHaveBeenCalledWith(7);
+            expect(component.visible).toBeTrue();
+            expect((fixture.nativeElement as HTMLElement).textContent).toContain('Escuchar su voz');
+            expect((fixture.nativeElement as HTMLElement).textContent).toContain('Emilio (ElevenLabs)');
+        });
+
+        it('escucharla descarga el audio una vez y lo reproduce', async () => {
+            voz.guardada.and.resolveTo(VOZ_GUARDADA);
+            await component.leerGuardada();
+            const reproducir = spyOn(HTMLMediaElement.prototype, 'play').and.resolveTo();
+            await component.escucharGuardada();
+            expect(voz.audio).toHaveBeenCalledWith(7);
+            expect(reproducir).toHaveBeenCalled();
+            expect(component.reproduciendo).toBeTrue();
+            await component.escucharGuardada();
+            expect(component.reproduciendo).toBeFalse();
+            await component.escucharGuardada();
+            expect(voz.audio).toHaveBeenCalledTimes(1);
+        });
+
+        it('solo el dueño la genera con una voz de su cuenta', async () => {
+            component.pj = { ...component.pj, ownerUid: 'sub-del-dueno' } as any;
+            component.frase = '¡Por Moradin!';
+            expect(component.esDueno).toBeTrue();
+            spyOn(HTMLMediaElement.prototype, 'play').and.resolveTo();
+            await component.abrirVoces();
+            expect(component.textoParaGuardar).toBe('¡Por Moradin!');
+            expect(component.vozElegida?.voz.id).toBe('emilio');
+            await component.guardarConVoz();
+            expect(voz.generar).toHaveBeenCalledWith(7, { texto: '¡Por Moradin!', proveedor: 'elevenlabs', voz: 'emilio', nombreVoz: 'Emilio' });
+            expect(component.guardada?.nombreVoz).toBe('Emilio');
+            expect(component.eligiendo).toBeFalse();
+        });
+
+        it('quien no es el dueño no puede cambiarla', () => {
+            component.pj = { ...component.pj, ownerUid: 'otra-cuenta' } as any;
+            expect(component.esDueno).toBeFalse();
+        });
+
+        it('el dueño la borra', async () => {
+            voz.guardada.and.resolveTo(VOZ_GUARDADA);
+            await component.leerGuardada();
+            await component.borrarVoz();
+            expect(voz.borrar).toHaveBeenCalledWith(7);
+            expect(component.guardada).toBeNull();
+        });
     });
 });

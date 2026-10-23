@@ -1,3 +1,16 @@
+<div class="ideas-ia ideas-ia--guardada" *ngIf="guardada">
+    <div class="ideas-ia__barra">
+        <button type="button" mat-stroked-button class="ideas-ia__boton" (click)="escucharGuardada()">
+            <mat-icon>{{reproduciendo ? 'stop' : 'play_arrow'}}</mat-icon>
+            {{reproduciendo ? 'Parar' : 'Escuchar su voz'}}
+        </button>
+        <button type="button" mat-icon-button *ngIf="esDueno" (click)="borrarVoz()" matTooltip="Borrar su voz" aria-label="Borrar su voz">
+            <mat-icon>delete_outline</mat-icon>
+        </button>
+    </div>
+    <p class="ideas-ia__aviso">«{{guardada.texto}}» · {{guardada.nombreVoz || guardada.voz}} ({{nombreProveedor}})</p>
+</div>
+
 <ng-container [ngSwitch]="disponibilidad">
     <div class="ideas-ia" *ngSwitchCase="'lista'">
         <div class="ideas-ia__barra">
@@ -34,6 +47,42 @@
             <app-texto-manual [texto]="frase"></app-texto-manual>
             <p class="ideas-ia__aviso" *ngIf="!puedeHablar">Tu navegador no puede leerla en voz alta.</p>
         </div>
+
+        <!-- Solo el dueño: la frase con una voz de su cuenta, generada con su clave y guardada en la ficha. -->
+        <ng-container *ngIf="esDueno && (frase || guardada) && !cargando">
+            <button type="button" mat-stroked-button class="ideas-ia__boton" *ngIf="!eligiendo" (click)="abrirVoces()"
+                matTooltip="Con ElevenLabs o la voz de OpenAI, con tu clave de IA">
+                <mat-icon>graphic_eq</mat-icon>
+                {{guardada ? 'Cambiar su voz' : 'Guardar con una voz'}}
+            </button>
+            <div class="ideas-ia__voz" *ngIf="eligiendo">
+                <mat-form-field appearance="outline" class="ideas-ia__campo">
+                    <mat-label>Lo que dice</mat-label>
+                    <textarea matInput [(ngModel)]="textoParaGuardar" maxlength="300" rows="2"></textarea>
+                    <mat-hint align="end">{{textoParaGuardar.length}} / 300</mat-hint>
+                </mat-form-field>
+                <p class="ideas-ia__aviso" *ngIf="voces === null">Buscando tus voces…</p>
+                <p class="ideas-ia__aviso" *ngIf="voces?.length === 0">
+                    No hay voces con tus claves de IA. Añade una de ElevenLabs u OpenAI en
+                    <a [href]="urlGestion" target="_blank" rel="noopener"><span class="simbolo-yosiftware" aria-hidden="true"></span>tus claves de IA</a>.
+                </p>
+                <mat-form-field appearance="outline" class="ideas-ia__campo" *ngIf="voces?.length">
+                    <mat-label>Voz</mat-label>
+                    <mat-select [(ngModel)]="vozElegida">
+                        <mat-option *ngFor="let v of voces" [value]="v">
+                            {{v.voz.nombre}} · {{v.proveedor === 'openai' ? 'OpenAI' : 'ElevenLabs'}}
+                        </mat-option>
+                    </mat-select>
+                </mat-form-field>
+                <div class="ideas-ia__acciones">
+                    <button type="button" mat-flat-button color="primary" [disabled]="!vozElegida || !textoParaGuardar.trim() || generando"
+                        (click)="guardarConVoz()">
+                        {{generando ? 'Generando…' : 'Generar y guardar'}}
+                    </button>
+                    <button type="button" mat-button (click)="eligiendo = false" [disabled]="generando">Cancelar</button>
+                </div>
+            </div>
+        </ng-container>
     </div>
 
     <p class="ideas-ia__gestion" *ngSwitchCase="'sin_clave'">
