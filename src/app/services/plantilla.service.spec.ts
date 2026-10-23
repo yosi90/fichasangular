@@ -1,4 +1,4 @@
-import { normalizePlantilla } from './plantilla.service';
+import { normalizePlantilla } from './utils/plantilla-mapper';
 import { normalizePlantillaApi } from './utils/plantilla-mapper';
 
 describe('Plantilla mappers', () => {

@@ -8,6 +8,7 @@ import {
 } from "src/app/interfaces/plantilla";
 import { SubtipoRef } from "src/app/interfaces/subtipo";
 import { toDoteContextualArray } from "./dote-mapper";
+import { normalizeSubtipoRefArray } from "./subtipo-mapper";
 import { normalizarTexto, toArray, toNumber, toText } from 'src/app/services/utils/normalizacion';
 
 function toBoolean(value: any): boolean {
@@ -122,9 +123,8 @@ function normalizeCompatibilidadesApi(prerrequisitosRaw: any): PlantillaCompatib
         .filter((item) => item.Id_tipo_comp > 0);
 }
 
-export function normalizePlantillaApi(raw: any): Plantilla {
-    const prerrequisitos = normalizePrerrequisitosApi(raw?.Prerrequisitos);
-
+/** Lo que comparten el mapper de la API y el de la caché: todo salvo las partes que cada uno lee a su manera. */
+function construirPlantilla(raw: any, partes: Pick<Plantilla, 'Dotes' | 'Subtipos' | 'Prerrequisitos' | 'Compatibilidad_tipos'>): Plantilla {
     return {
         Id: toNumber(raw?.Id),
         Nombre: toText(raw?.Nombre),
@@ -214,8 +214,8 @@ export function normalizePlantillaApi(raw: any): Plantilla {
             Descripcion: toText(raw?.Alineamiento?.Descripcion),
         },
         Oficial: toBoolean(raw?.Oficial),
-        Dotes: toDoteContextualArray(raw?.Dotes),
-        Subtipos: normalizeSubtipoRefsApi(raw?.Subtipos),
+        Dotes: partes.Dotes,
+        Subtipos: partes.Subtipos,
         Habilidades: toArray(raw?.Habilidades).map((h: any) => ({
             Id_habilidad: toNumber(h?.Id_habilidad),
             Habilidad: toText(h?.Habilidad),
@@ -236,7 +236,114 @@ export function normalizePlantillaApi(raw: any): Plantilla {
             Dg: toNumber(s?.Dg),
         })),
         Prerrequisitos_flags: normalizePrerrequisitosFlags(raw?.Prerrequisitos_flags),
-        Prerrequisitos: prerrequisitos,
-        Compatibilidad_tipos: normalizeCompatibilidadesApi(raw?.Prerrequisitos),
+        Prerrequisitos: partes.Prerrequisitos,
+        Compatibilidad_tipos: partes.Compatibilidad_tipos,
     };
+}
+
+export function normalizePlantillaApi(raw: any): Plantilla {
+    return construirPlantilla(raw, {
+        Dotes: toDoteContextualArray(raw?.Dotes),
+        Subtipos: normalizeSubtipoRefsApi(raw?.Subtipos),
+        Prerrequisitos: normalizePrerrequisitosApi(raw?.Prerrequisitos),
+        Compatibilidad_tipos: normalizeCompatibilidadesApi(raw?.Prerrequisitos),
+    });
+}
+
+function normalizePrerrequisitos(raw: any): PlantillaPrerrequisitos {
+    return {
+        actitud_requerido: toArray(raw?.actitud_requerido),
+        actitud_prohibido: toArray(raw?.actitud_prohibido),
+        alineamiento_requerido: toArray(raw?.alineamiento_requerido),
+        caracteristica: toArray(raw?.caracteristica),
+        criaturas_compatibles: toArray(raw?.criaturas_compatibles),
+    };
+}
+
+function getNumberFromCandidates(raw: any, candidates: string[]): number {
+    if (!raw || typeof raw !== "object")
+        return 0;
+
+    for (const key of candidates) {
+        if (!(key in raw))
+            continue;
+        const value = raw[key as keyof typeof raw];
+        if (typeof value === "object" && value !== null) {
+            const nested = toNumber((value as any).Id);
+            if (nested > 0)
+                return nested;
+        }
+        const n = toNumber(value);
+        if (n > 0)
+            return n;
+    }
+
+    return 0;
+}
+
+function getTextFromCandidates(raw: any, candidates: string[]): string {
+    if (!raw || typeof raw !== "object")
+        return "";
+
+    for (const key of candidates) {
+        if (!(key in raw))
+            continue;
+        const value = raw[key as keyof typeof raw];
+        if (typeof value === "object" && value !== null) {
+            const nested = toText((value as any).Nombre);
+            if (nested.trim().length > 0)
+                return nested;
+        }
+        const text = toText(value).trim();
+        if (text.length > 0)
+            return text;
+    }
+
+    return "";
+}
+
+function normalizeCompatibilidades(prerrequisitosRaw: any): PlantillaCompatibilidadTipo[] {
+    const source = toArray(prerrequisitosRaw?.criaturas_compatibles);
+
+    return source.map((item: any) => {
+        const idTipoComp = getNumberFromCandidates(item, [
+            "Id_tipo_compatible",
+            "id_tipo_compatible",
+            "Id_tipo_comp",
+            "id_tipo_comp",
+            "Id_tipo",
+            "id_tipo",
+            "i",
+            "id",
+            "Id",
+        ]);
+        const idTipoNuevo = getNumberFromCandidates(item, [
+            "Id_tipo_nuevo",
+            "id_tipo_nuevo",
+            "Id_nuevo",
+            "id_nuevo",
+            "Id_tipo_resultante",
+            "id_tipo_resultante",
+            "Id_nuevo_tipo",
+            "id_nuevo_tipo",
+        ]);
+
+        return {
+            Id_tipo_comp: idTipoComp,
+            Id_tipo_nuevo: idTipoNuevo,
+            Tipo_comp: getTextFromCandidates(item, ["Tipo_comp", "tipo_comp", "Tipo_compatible", "tipo_compatible", "Nombre_tipo_comp", "nombre_tipo_comp"]),
+            Tipo_nuevo: getTextFromCandidates(item, ["Tipo_nuevo", "tipo_nuevo", "Nombre_tipo_nuevo", "nombre_tipo_nuevo"]),
+            Opcional: toNumber(item?.opcional ?? item?.o),
+        };
+    }).filter(item => item.Id_tipo_comp > 0);
+}
+
+/** Mapper permisivo de la caché de la RTDB, mientras haya productores con los nombres antiguos. */
+export function normalizePlantilla(raw: any): Plantilla {
+    return construirPlantilla(raw, {
+        Dotes: toDoteContextualArray(raw?.Dotes ?? raw?.DotesContextuales),
+        Subtipos: normalizeSubtipoRefArray(raw?.Subtipos ?? raw?.subtipos),
+        Prerrequisitos: normalizePrerrequisitos(raw?.Prerrequisitos),
+        Compatibilidad_tipos: normalizeCompatibilidades(raw?.Prerrequisitos),
+    });
 }
