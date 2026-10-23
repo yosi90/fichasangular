@@ -178,52 +178,8 @@ describe('VozPersonajeComponent', () => {
 
     afterEach(() => fixture.destroy());
 
-    it('pide una frase del personaje y la lee en español con su tono', async () => {
-        if (!component.puedeHablar)
-            pending('Este navegador no tiene speechSynthesis');
-        const hablar = spyOn(window.speechSynthesis, 'speak');
-        spyOn(window.speechSynthesis, 'cancel');
-        await component.queHable();
-        expect(servicio.pedir).toHaveBeenCalledWith('frase', jasmine.objectContaining({ nombre: 'Thorin', raza: 'Enano', genero: 'Masculino' }));
-        expect(component.frase).toBe('«¡Por Moradin!»');
-        const locucion = hablar.calls.mostRecent().args[0] as SpeechSynthesisUtterance;
-        expect(locucion.text).toBe('¡Por Moradin!');
-        expect(locucion.lang).toBe('es-ES');
-        expect(locucion.pitch).toBeCloseTo(0.8, 2);
-        expect(component.hablando).toBeTrue();
-
-        component.parar();
-        expect(window.speechSynthesis.cancel).toHaveBeenCalled();
-        expect(component.hablando).toBeFalse();
-    });
-
-    it('no cancela sin nada sonando y avisa solo de un fallo de verdad al leerla', async () => {
-        if (!component.puedeHablar)
-            pending('Este navegador no tiene speechSynthesis');
-        const hablar = spyOn(window.speechSynthesis, 'speak');
-        const cancelar = spyOn(window.speechSynthesis, 'cancel');
-        component.frase = '¡Por Moradin!';
-        component.hablar();
-        expect(cancelar).not.toHaveBeenCalled();
-        const locucion = hablar.calls.mostRecent().args[0] as SpeechSynthesisUtterance;
-
-        locucion.onerror!({ error: 'interrupted' } as SpeechSynthesisErrorEvent);
-        expect(component.hablando).toBeFalse();
-        expect(component.error).toBeNull();
-
-        locucion.onerror!({ error: 'synthesis-failed' } as SpeechSynthesisErrorEvent);
-        expect(component.error?.message).toBe('Tu navegador no ha podido leerla en voz alta.');
-    });
-
-    it('sin síntesis de voz enseña solo la frase', async () => {
-        (component as any).puedeHablar = false;
-        await component.queHable();
-        fixture.detectChanges();
-        expect(component.hablando).toBeFalse();
-        expect((fixture.nativeElement as HTMLElement).textContent).toContain('Tu navegador no puede leerla en voz alta.');
-    });
-
-    it('sin clave lista solo enseña el enlace a la gestión', async () => {
+    it('sin clave lista solo enseña al dueño el enlace a la gestión', async () => {
+        component.pj = { ...component.pj, ownerUid: 'sub-del-dueno' } as any;
         servicio.disponibilidad.and.resolveTo('sin_clave');
         await component.comprobar();
         fixture.detectChanges();
@@ -304,9 +260,15 @@ describe('VozPersonajeComponent', () => {
             });
         });
 
-        it('quien no es el dueño no puede cambiarla', () => {
+        it('quien no es el dueño no puede generarla: sin voz guardada no ve nada', async () => {
             component.pj = { ...component.pj, ownerUid: 'otra-cuenta' } as any;
+            await component.comprobar();
+            fixture.detectChanges();
             expect(component.esDueno).toBeFalse();
+            expect(component.visible).toBeFalse();
+            const texto = (fixture.nativeElement as HTMLElement).textContent ?? '';
+            expect(texto).not.toContain('Darle voz');
+            expect(texto).not.toContain('Que hable');
         });
 
         it('el dueño la borra', async () => {

@@ -3,7 +3,7 @@ import { Subscription } from 'rxjs';
 import { Personaje } from 'src/app/interfaces/personaje';
 import { datosIdeaDePersonaje, DisponibilidadIa, IdeasIaError, IdeasIaService, ProveedorDeVoz, VocesIaProveedor, VozIa } from 'src/app/services/ideas-ia.service';
 import { PlatformSessionService } from 'src/app/services/platform-session.service';
-import { ajustesVoz, elegirVoz, elegirVozAutomatica, sintesisDisponible, textoParaLeer } from 'src/app/services/utils/voz-personaje';
+import { elegirVozAutomatica } from 'src/app/services/utils/voz-personaje';
 import { VozGuardada, VozPersonajeService } from 'src/app/services/voz-personaje.service';
 
 /** Una voz de la lista, con su proveedor. */
@@ -15,8 +15,8 @@ interface VozElegible {
 /**
  * La voz del personaje. Arriba, su voz guardada, si la tiene: la oye quien ve la ficha. El dueño le da voz en un solo
  * paso (propietario, 2026-10-23): escribe lo que dice o lo genera con IA, elige la voz («Automática» o la última que
- * eligió) y la API la genera con su clave (ElevenLabs o la voz de OpenAI); 3.5 Companion solo la reproduce. Quien no es
- * el dueño tiene «Que hable»: una frase suya de la IA, que lee el navegador con `speechSynthesis`.
+ * eligió) y la API la genera con su clave (ElevenLabs o la voz de OpenAI); 3.5 Companion solo la reproduce. Nadie más
+ * genera voces para un personaje que no es suyo (propietario, 2026-10-23): quien no es el dueño solo oye la guardada.
  */
 @Component({
     selector: 'app-voz-personaje',
@@ -27,11 +27,8 @@ interface VozElegible {
 export class VozPersonajeComponent implements OnInit, OnChanges, OnDestroy {
     @Input() pj: Personaje | null = null;
 
-    readonly puedeHablar = sintesisDisponible();
     disponibilidad: DisponibilidadIa = 'sin_sesion';
     cargando = false;
-    hablando = false;
-    frase: string | null = null;
     error: IdeasIaError | null = null;
 
     guardada: VozGuardada | null = null;
@@ -58,9 +55,9 @@ export class VozPersonajeComponent implements OnInit, OnChanges, OnDestroy {
         private zone: NgZone,
     ) { }
 
-    /** Si hay algo que enseñar: su voz guardada, el botón (clave lista) o el enlace a la gestión de las claves. */
+    /** Si hay algo que enseñar: su voz guardada o, al dueño, el botón (clave lista) o el enlace a la gestión de las claves. */
     get visible(): boolean {
-        return !!this.guardada || this.disponibilidad === 'lista' || this.disponibilidad === 'sin_clave';
+        return !!this.guardada || (this.esDueno && (this.disponibilidad === 'lista' || this.disponibilidad === 'sin_clave'));
     }
 
     /** Solo el dueño del personaje genera o borra su voz. */
@@ -86,8 +83,6 @@ export class VozPersonajeComponent implements OnInit, OnChanges, OnDestroy {
         const anterior = changes['pj']?.previousValue as Personaje | null | undefined;
         const actual = changes['pj']?.currentValue as Personaje | null | undefined;
         if (changes['pj'] && !changes['pj'].firstChange && anterior?.Id !== actual?.Id) {
-            this.parar();
-            this.frase = null;
             this.error = null;
             this.eligiendo = false;
             this.olvidarAudio();
@@ -97,7 +92,6 @@ export class VozPersonajeComponent implements OnInit, OnChanges, OnDestroy {
 
     ngOnDestroy(): void {
         this.estadoSub?.unsubscribe();
-        this.parar();
         this.olvidarAudio();
     }
 
@@ -123,7 +117,6 @@ export class VozPersonajeComponent implements OnInit, OnChanges, OnDestroy {
             this.reproduciendo = false;
             return;
         }
-        this.parar();
         const id = Number(this.pj?.Id);
         try {
             if (!this.urlAudio)
@@ -141,7 +134,6 @@ export class VozPersonajeComponent implements OnInit, OnChanges, OnDestroy {
 
     /** El único paso del dueño: la caja con lo que dice, el selector de voz y «Generar voz». */
     async abrirPanel(): Promise<void> {
-        this.parar();
         this.eligiendo = true;
         this.error = null;
         this.textoParaGuardar = this.guardada?.texto ?? '';
@@ -255,57 +247,5 @@ export class VozPersonajeComponent implements OnInit, OnChanges, OnDestroy {
         const disponibilidad = await this.ideasIaSvc.disponibilidad();
         if (consulta === this.consulta)
             this.disponibilidad = disponibilidad;
-    }
-
-    async queHable(): Promise<void> {
-        if (this.cargando)
-            return;
-        this.parar();
-        this.cargando = true;
-        this.error = null;
-        try {
-            const idea = await this.ideasIaSvc.pedir('frase', datosIdeaDePersonaje(this.pj));
-            this.frase = idea.texto;
-            this.hablar();
-        } catch (error) {
-            this.error = error instanceof IdeasIaError ? error : new IdeasIaError('No se ha podido pedir la frase.', '', 0);
-            if (this.error.esDeLaClave)
-                void this.comprobar();
-        } finally {
-            this.cargando = false;
-        }
-    }
-
-    hablar(): void {
-        const texto = textoParaLeer(this.frase);
-        if (!this.puedeHablar || !texto)
-            return;
-        const sintesis = window.speechSynthesis;
-        // Cancelar sin nada sonando y hablar en el acto deja muda la frase en algunos navegadores.
-        if (sintesis.speaking || sintesis.pending)
-            sintesis.cancel();
-        const locucion = new SpeechSynthesisUtterance(texto);
-        const { tono, velocidad } = ajustesVoz(this.pj?.Raza?.Nombre, this.pj?.Genero);
-        locucion.lang = 'es-ES';
-        locucion.pitch = tono;
-        locucion.rate = velocidad;
-        const voz = elegirVoz(sintesis.getVoices());
-        if (voz)
-            locucion.voice = voz;
-        locucion.onend = () => this.zone.run(() => this.hablando = false);
-        locucion.onerror = evento => this.zone.run(() => {
-            this.hablando = false;
-            // Parar o cambiar de frase también acaba en error; solo se avisa de un fallo de verdad.
-            if (evento.error !== 'interrupted' && evento.error !== 'canceled')
-                this.error = new IdeasIaError('Tu navegador no ha podido leerla en voz alta.', '', 0);
-        });
-        this.hablando = true;
-        sintesis.speak(locucion);
-    }
-
-    parar(): void {
-        if (this.puedeHablar && (this.hablando || window.speechSynthesis.speaking))
-            window.speechSynthesis.cancel();
-        this.hablando = false;
     }
 }
