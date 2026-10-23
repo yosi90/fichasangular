@@ -141,6 +141,9 @@ export class PlatformSessionService {
         return estado.tipo === 'con_sesion' ? estado.cuenta : null;
     }
 
+    /** La APK de 3.5 Companion, que sirve la plataforma desde «Apps» de la web social (`GET /v1/webs/rol/apk`). */
+    readonly urlCompanion = `${environment.plataforma.apiUrl}/v1/webs/rol/apk`;
+
     /** URL de la web social, con una vista si se pide (`cuenta`, `privacidad`, `moderacion`…). */
     urlSocial(vista?: string): string {
         const base = environment.plataforma.socialUrl;

@@ -160,6 +160,10 @@ export class NavbarComponent implements OnInit, OnDestroy {
         this.userProfileNavSvc.openUsageAbout();
     }
 
+    get urlCompanion(): string {
+        return this.platformSessionSvc.urlCompanion;
+    }
+
     abrirReportarBug(): void {
         if (!this.isLoggedIn) {
             this.openSesionDialog();
