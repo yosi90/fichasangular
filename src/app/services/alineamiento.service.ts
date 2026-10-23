@@ -12,6 +12,7 @@ import {
     PrioridadAlineamientoCatalogItem,
 } from "../interfaces/alineamiento";
 import { FirebaseInjectionContextService } from "./firebase-injection-context.service";
+import { toNumber } from 'src/app/services/utils/normalizacion';
 
 @Injectable({
     providedIn: 'root'
@@ -99,11 +100,7 @@ export class AlineamientoService {
     }
 
     private sortById<T>(items: T[]): T[] {
-        return [...items].sort((a: any, b: any) => this.toNumber(a?.Id) - this.toNumber(b?.Id));
+        return [...items].sort((a: any, b: any) => toNumber(a?.Id) - toNumber(b?.Id));
     }
 
-    private toNumber(value: any): number {
-        const parsed = Number(value);
-        return Number.isFinite(parsed) ? parsed : 0;
-    }
 }

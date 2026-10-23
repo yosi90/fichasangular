@@ -4,6 +4,7 @@ import { PDFDocument } from 'pdf-lib';
 import { saveAs } from 'file-saver';
 import { Personaje, PersonajeNivelLanzadorResumen, PersonajeTipoLanzamiento } from '../interfaces/personaje';
 import { CompaneroMonstruoDetalle, FamiliarMonstruoDetalle, MonstruoDetalle } from '../interfaces/monstruo';
+import { toArray, toNumber } from 'src/app/services/utils/normalizacion';
 
 
 @Injectable({
@@ -199,9 +200,9 @@ export class FichaPersonajeService {
             racialesCont++;
         });
 
-        const experiencia = Math.max(0, Math.trunc(this.toNumber(pj?.Experiencia)));
+        const experiencia = Math.max(0, Math.trunc(toNumber(pj?.Experiencia)));
         const ajusteNivel = this.getAjusteNivelParaFicha(pj);
-        const nep = Math.max(0, Math.trunc(this.toNumber(pj?.NEP)));
+        const nep = Math.max(0, Math.trunc(toNumber(pj?.NEP)));
         this.trySetText(form, 'experiencia', `${experiencia}`);
         this.trySetText(form, 'exp_sig_nivel', `${this.calcularExpSiguienteNivel(pj, ajusteNivel)}`);
         this.trySetText(form, 'ajuste_nivel', `${ajusteNivel}`);
@@ -250,7 +251,7 @@ export class FichaPersonajeService {
             var notas = "";
             var contHabsCustom = 1;
             (pj.Habilidades ?? []).forEach(h => {
-                const habilidadId = self.toNumber((h as any)?.Id);
+                const habilidadId = toNumber((h as any)?.Id);
                 if (habilidadId <= 0)
                     return;
 
@@ -258,7 +259,7 @@ export class FichaPersonajeService {
                 if (h.Clasea)
                     self.tryCheck(form, `clasea${habilidadIndex}`, true);
 
-                self.trySetText(form, `rangos${habilidadIndex}`, `${self.toNumber(h.Rangos)}`);
+                self.trySetText(form, `rangos${habilidadIndex}`, `${toNumber(h.Rangos)}`);
                 if (h.Extra != "" && h.Extra != "Elegir") {
                     self.trySetText(form, `extra${habilidadIndex}`, `${h.Extra ?? ''}`);
                 } else if (h.Custom) {
@@ -267,8 +268,8 @@ export class FichaPersonajeService {
                         self.trySetText(form, `custom${contHabsCustom}`, `${h.Nombre ?? ''}`);
                         self.trySetText(form, `car${contHabsCustom}`, car);
                         self.trySetText(form, `mod_custom${contHabsCustom}`, h.Mod_car == 1 ? `${pj.ModFuerza}` : h.Mod_car == 2 ? `${pj.ModDestreza}` : h.Mod_car == 3 ? `${pj.ModConstitucion}` : h.Mod_car == 4 ? `${pj.ModInteligencia}` : h.Mod_car == 5 ? `${pj.ModSabiduria}` : `${pj.ModCarisma}`);
-                        self.trySetText(form, `rangos_custom${contHabsCustom}`, `${self.toNumber(h.Rangos)}`);
-                        self.trySetText(form, `varios_custom${contHabsCustom}`, `${self.toNumber(h.Rangos_varios)}`);
+                        self.trySetText(form, `rangos_custom${contHabsCustom}`, `${toNumber(h.Rangos)}`);
+                        self.trySetText(form, `varios_custom${contHabsCustom}`, `${toNumber(h.Rangos_varios)}`);
                         if (h.Varios != "") {
                             if (!notas.includes('Habilidades con rangos circunstanciales:'))
                                 notas += '\r\n\r\nHabilidades con rangos circunstanciales:\r\n';
@@ -283,7 +284,7 @@ export class FichaPersonajeService {
                 }
                 if (!h.Custom) {
                     if (h.Rangos_varios > 0) {
-                        self.trySetText(form, `varios${habilidadIndex}`, `${self.toNumber(h.Rangos_varios)}`);
+                        self.trySetText(form, `varios${habilidadIndex}`, `${toNumber(h.Rangos_varios)}`);
                     }
                     if (h.Varios != "") {
                         if (!notas.includes('Habilidades con rangos circunstanciales:'))
@@ -322,7 +323,7 @@ export class FichaPersonajeService {
         sortilegas.forEach(s => {
             this.trySetText(form, `conjuro${contador}`, `${s?.Conjuro?.Nombre ?? ''}`);
             this.trySetText(form, `pag_con${contador}`, `${s?.Conjuro?.Manual ?? ''}`);
-            this.trySetText(form, `desc_con${contador}`, `Usos diarios: ${this.toNumber((s as any)?.Usos_diarios)}\r\nNivel de lanzador:${this.toNumber((s as any)?.Nivel_lanzador)}\r\n${s?.Descripcion ? s.Descripcion : ''}`);
+            this.trySetText(form, `desc_con${contador}`, `Usos diarios: ${toNumber((s as any)?.Usos_diarios)}\r\nNivel de lanzador:${toNumber((s as any)?.Nivel_lanzador)}\r\n${s?.Descripcion ? s.Descripcion : ''}`);
             contador++;
         });
 
@@ -380,15 +381,15 @@ export class FichaPersonajeService {
         this.trySetText(form, 'raza', this.resolverEtiquetaRazaCompania(monstruo, esFamiliar));
         this.trySetText(form, 'alineamiento', 'Neutral');
         this.trySetText(form, 'tamaño', `${monstruo?.Tamano?.Nombre ?? ''}`);
-        this.trySetText(form, 'presa', `${this.toNumber((monstruo as any)?.Ataque?.Presa ?? (monstruo as any)?.Presa)}`);
-        this.trySetText(form, 'iniciativa', `${this.toNumber(monstruo?.Iniciativa)}`);
+        this.trySetText(form, 'presa', `${toNumber((monstruo as any)?.Ataque?.Presa ?? (monstruo as any)?.Presa)}`);
+        this.trySetText(form, 'iniciativa', `${toNumber(monstruo?.Iniciativa)}`);
 
-        const fue = this.toNumber(monstruo?.Caracteristicas?.Fuerza);
-        const des = this.toNumber(monstruo?.Caracteristicas?.Destreza);
-        const con = this.toNumber(monstruo?.Caracteristicas?.Constitucion);
-        const intel = this.toNumber(monstruo?.Caracteristicas?.Inteligencia);
-        const sab = this.toNumber(monstruo?.Caracteristicas?.Sabiduria);
-        const car = this.toNumber(monstruo?.Caracteristicas?.Carisma);
+        const fue = toNumber(monstruo?.Caracteristicas?.Fuerza);
+        const des = toNumber(monstruo?.Caracteristicas?.Destreza);
+        const con = toNumber(monstruo?.Caracteristicas?.Constitucion);
+        const intel = toNumber(monstruo?.Caracteristicas?.Inteligencia);
+        const sab = toNumber(monstruo?.Caracteristicas?.Sabiduria);
+        const car = toNumber(monstruo?.Caracteristicas?.Carisma);
 
         this.trySetText(form, 'fue', `${fue}`);
         this.trySetText(form, 'des', `${des}`);
@@ -403,15 +404,15 @@ export class FichaPersonajeService {
         this.trySetText(form, 'mod_sab', this.formatSigned(this.calcularModificador(sab)));
         this.trySetText(form, 'mod_car', this.formatSigned(this.calcularModificador(car)));
 
-        this.trySetText(form, 'ca', `${this.toNumber(monstruo?.Defensa?.Ca)}`);
+        this.trySetText(form, 'ca', `${toNumber(monstruo?.Defensa?.Ca)}`);
         this.trySetText(form, 'ca_armadura', '0');
         this.trySetText(form, 'ca_escudo', '0');
-        this.trySetText(form, 'armadura_natural', `${this.toNumber(monstruo?.Defensa?.Armadura_natural)}`);
+        this.trySetText(form, 'armadura_natural', `${toNumber(monstruo?.Defensa?.Armadura_natural)}`);
         this.trySetText(form, 'mod_desvio', '0');
         this.trySetText(form, 'mod_varios_ca', '0');
-        this.trySetText(form, 'ca_toque', `${this.toNumber(monstruo?.Defensa?.Toque)}`);
-        this.trySetText(form, 'ca_desprevenido', `${this.toNumber(monstruo?.Defensa?.Desprevenido)}`);
-        this.trySetText(form, 'pg', `${this.toNumber((monstruo as any)?.Vida)}`);
+        this.trySetText(form, 'ca_toque', `${toNumber(monstruo?.Defensa?.Toque)}`);
+        this.trySetText(form, 'ca_desprevenido', `${toNumber(monstruo?.Defensa?.Desprevenido)}`);
+        this.trySetText(form, 'pg', `${toNumber((monstruo as any)?.Vida)}`);
 
         const mods = this.calcularBonosDotesMonstruo(monstruo);
         this.trySetText(form, 'mod_varios_presa', `${mods.presa}`);
@@ -420,32 +421,32 @@ export class FichaPersonajeService {
         this.trySetText(form, 'mod_varios_reflejos', `${mods.reflejos}`);
         this.trySetText(form, 'mod_varios_voluntad', `${mods.voluntad}`);
 
-        this.trySetText(form, 'fort_clase', `${this.toNumber(monstruo?.Salvaciones?.Fortaleza)}`);
+        this.trySetText(form, 'fort_clase', `${toNumber(monstruo?.Salvaciones?.Fortaleza)}`);
         this.trySetText(form, 'mod_magico_fortaleza', '0');
-        this.trySetText(form, 'ref_clase', `${this.toNumber(monstruo?.Salvaciones?.Reflejos)}`);
+        this.trySetText(form, 'ref_clase', `${toNumber(monstruo?.Salvaciones?.Reflejos)}`);
         this.trySetText(form, 'mod_magico_reflejos', '0');
-        this.trySetText(form, 'vol_clase', `${this.toNumber(monstruo?.Salvaciones?.Voluntad)}`);
+        this.trySetText(form, 'vol_clase', `${toNumber(monstruo?.Salvaciones?.Voluntad)}`);
         this.trySetText(form, 'mod_magico_voluntad', '0');
 
         this.trySetText(form, 'rc', `${monstruo?.Defensa?.Resistencia_conjuros ?? ''}`);
-        const ataqueBase = this.toNumber(monstruo?.Ataque?.Ataque_base);
+        const ataqueBase = toNumber(monstruo?.Ataque?.Ataque_base);
         this.trySetText(form, 'ataque_base', `${ataqueBase}`);
         this.trySetText(form, 'mod_ataque_base', `${ataqueBase}`);
-        this.trySetText(form, 'velocidad', `${this.toNumber(monstruo?.Movimientos?.Correr)}`);
+        this.trySetText(form, 'velocidad', `${toNumber(monstruo?.Movimientos?.Correr)}`);
     }
 
     private rellenarHabilidadesMonstruo(form: any, monstruo: MonstruoDetalle): void {
         const habilidades = Array.isArray(monstruo?.Habilidades) ? monstruo.Habilidades : [];
         let contadorCustom = 1;
         habilidades.forEach((habilidad) => {
-            const id = this.toNumber((habilidad as any)?.Id_habilidad ?? (habilidad as any)?.Id);
+            const id = toNumber((habilidad as any)?.Id_habilidad ?? (habilidad as any)?.Id);
             if (id <= 0)
                 return;
 
             const index = id - 1;
             if ((habilidad as any)?.Clasea === true || (habilidad as any)?.Clasea === 1)
                 this.tryCheck(form, `clasea${index}`, true);
-            this.trySetText(form, `rangos${index}`, `${this.toNumber(habilidad?.Rangos)}`);
+            this.trySetText(form, `rangos${index}`, `${toNumber(habilidad?.Rangos)}`);
 
             const extra = `${(habilidad as any)?.Extra ?? ''}`.trim();
             const custom = (habilidad as any)?.Custom === true;
@@ -459,13 +460,13 @@ export class FichaPersonajeService {
                 this.trySetText(form, `custom${contadorCustom}`, `${(habilidad as any)?.Habilidad ?? (habilidad as any)?.Nombre ?? ''}`.trim());
                 this.trySetText(form, `car${contadorCustom}`, caracteristica.substring(0, 3).toUpperCase());
                 this.trySetText(form, `mod_custom${contadorCustom}`, `${this.calcularModHabilidadMonstruo(monstruo, habilidad)}`);
-                this.trySetText(form, `rangos_custom${contadorCustom}`, `${this.toNumber(habilidad?.Rangos)}`);
-                this.trySetText(form, `varios_custom${contadorCustom}`, `${this.toNumber((habilidad as any)?.Rangos_varios)}`);
+                this.trySetText(form, `rangos_custom${contadorCustom}`, `${toNumber(habilidad?.Rangos)}`);
+                this.trySetText(form, `varios_custom${contadorCustom}`, `${toNumber((habilidad as any)?.Rangos_varios)}`);
                 contadorCustom++;
                 return;
             }
 
-            this.trySetText(form, `varios${index}`, `${this.toNumber((habilidad as any)?.Rangos_varios)}`);
+            this.trySetText(form, `varios${index}`, `${toNumber((habilidad as any)?.Rangos_varios)}`);
         });
     }
 
@@ -483,7 +484,7 @@ export class FichaPersonajeService {
             cont++;
         }
 
-        const rasgos = this.toArray((monstruo as any)?.Tipo?.Rasgos);
+        const rasgos = toArray((monstruo as any)?.Tipo?.Rasgos);
         if (rasgos.length > 0) {
             this.trySetText(form, `conjuro${cont}`, 'Rasgos otorgados por tipos y subtipos:');
             cont++;
@@ -501,11 +502,11 @@ export class FichaPersonajeService {
             const extra = `${doteCtx?.Contexto?.Extra ?? ''}`.trim();
             this.trySetText(form, `conjuro${cont}`, extra.length > 0 && extra !== 'No aplica' ? `${nombre} (${extra})` : nombre);
             this.trySetText(form, `desc_con${cont}`, `${doteCtx?.Dote?.Descripcion ?? ''}`.trim());
-            this.trySetText(form, `pag_con${cont}`, `${doteCtx?.Dote?.Manual?.Nombre ?? ''} ${this.toNumber(doteCtx?.Dote?.Manual?.Pagina)}`.trim());
+            this.trySetText(form, `pag_con${cont}`, `${doteCtx?.Dote?.Manual?.Nombre ?? ''} ${toNumber(doteCtx?.Dote?.Manual?.Pagina)}`.trim());
             cont++;
         });
 
-        const especiales = this.toArray((monstruo as any)?.Especiales);
+        const especiales = toArray((monstruo as any)?.Especiales);
         especiales.forEach((especial: any) => {
             const nombre = `${especial?.Especial?.Nombre ?? especial?.Nombre ?? ''}`.trim();
             if (nombre.length < 1)
@@ -538,7 +539,7 @@ export class FichaPersonajeService {
             const nombre = `${sortilega?.Conjuro?.Nombre ?? ''}`.trim();
             if (nombre.length < 1)
                 return;
-            this.trySetText(form, `conjuro${cont}`, `${nombre} como lanzador de nivel: ${this.toNumber(sortilega?.Nivel_lanzador)} (${sortilega?.Usos_diarios ?? ''})`);
+            this.trySetText(form, `conjuro${cont}`, `${nombre} como lanzador de nivel: ${toNumber(sortilega?.Nivel_lanzador)} (${sortilega?.Usos_diarios ?? ''})`);
             this.trySetText(form, `desc_con${cont}`, `${sortilega?.Conjuro?.Descripcion ?? ''}`.trim());
             this.trySetText(form, `pag_con${cont}`, `${sortilega?.Conjuro?.Manual ?? ''}`.trim());
             cont++;
@@ -547,7 +548,7 @@ export class FichaPersonajeService {
 
     private resolverEtiquetaRazaCompania(monstruo: MonstruoDetalle, esFamiliar: boolean): string {
         const nombreBase = `${monstruo?.Nombre ?? ''}`.trim();
-        const idPlantilla = this.toNumber((monstruo as any)?.Plantilla?.Id ?? (monstruo as any)?.Id_plantilla);
+        const idPlantilla = toNumber((monstruo as any)?.Plantilla?.Id ?? (monstruo as any)?.Id_plantilla);
         if (nombreBase.length < 1)
             return '-';
 
@@ -571,15 +572,15 @@ export class FichaPersonajeService {
     private getNotasTipoCriatura(monstruo: MonstruoDetalle): string {
         const tipo: any = monstruo?.Tipo ?? {};
         const notas: string[] = [];
-        if (this.toNumber(tipo?.Come) === 1)
+        if (toNumber(tipo?.Come) === 1)
             notas.push('Debes comer');
-        if (this.toNumber(tipo?.Respira) === 1)
+        if (toNumber(tipo?.Respira) === 1)
             notas.push('Debes respirar');
-        if (this.toNumber(tipo?.Duerme) === 1)
+        if (toNumber(tipo?.Duerme) === 1)
             notas.push('Debes dormir');
-        if (this.toNumber(tipo?.Recibe_criticos) === 0 || this.toNumber(tipo?.Criticos) === 1)
+        if (toNumber(tipo?.Recibe_criticos) === 0 || toNumber(tipo?.Criticos) === 1)
             notas.push('No puedes recibir criticos');
-        if (this.toNumber(tipo?.Puede_ser_flanqueado) === 0 || this.toNumber(tipo?.Flanqueado) === 1)
+        if (toNumber(tipo?.Puede_ser_flanqueado) === 0 || toNumber(tipo?.Flanqueado) === 1)
             notas.push('No puedes ser flanqueado');
         return notas.join('\r\n');
     }
@@ -603,7 +604,7 @@ export class FichaPersonajeService {
             const mods = (entrada?.Dote?.Modificadores ?? {}) as Record<string, any>;
             Object.entries(mods).forEach(([clave, value]) => {
                 const normalizada = `${clave ?? ''}`.trim().toLowerCase();
-                const valor = this.toNumber(value);
+                const valor = toNumber(value);
                 if (valor === 0)
                     return;
                 if (normalizada.includes('presa'))
@@ -623,19 +624,19 @@ export class FichaPersonajeService {
     }
 
     private calcularModHabilidadMonstruo(monstruo: MonstruoDetalle, habilidad: any): number {
-        const idCar = this.toNumber(habilidad?.Id_caracteristica);
+        const idCar = toNumber(habilidad?.Id_caracteristica);
         if (idCar === 1)
-            return this.calcularModificador(this.toNumber(monstruo?.Caracteristicas?.Fuerza));
+            return this.calcularModificador(toNumber(monstruo?.Caracteristicas?.Fuerza));
         if (idCar === 2)
-            return this.calcularModificador(this.toNumber(monstruo?.Caracteristicas?.Destreza));
+            return this.calcularModificador(toNumber(monstruo?.Caracteristicas?.Destreza));
         if (idCar === 3)
-            return this.calcularModificador(this.toNumber(monstruo?.Caracteristicas?.Constitucion));
+            return this.calcularModificador(toNumber(monstruo?.Caracteristicas?.Constitucion));
         if (idCar === 4)
-            return this.calcularModificador(this.toNumber(monstruo?.Caracteristicas?.Inteligencia));
+            return this.calcularModificador(toNumber(monstruo?.Caracteristicas?.Inteligencia));
         if (idCar === 5)
-            return this.calcularModificador(this.toNumber(monstruo?.Caracteristicas?.Sabiduria));
+            return this.calcularModificador(toNumber(monstruo?.Caracteristicas?.Sabiduria));
         if (idCar === 6)
-            return this.calcularModificador(this.toNumber(monstruo?.Caracteristicas?.Carisma));
+            return this.calcularModificador(toNumber(monstruo?.Caracteristicas?.Carisma));
         return 0;
     }
 
@@ -662,7 +663,7 @@ export class FichaPersonajeService {
 
     private formatearNotasNivelesLanzador(pj: Personaje): string {
         const niveles = (pj?.Niveles_lanzador ?? [])
-            .filter((nivel) => Math.trunc(this.toNumber(nivel?.nivelLanzador)) > 0)
+            .filter((nivel) => Math.trunc(toNumber(nivel?.nivelLanzador)) > 0)
             .sort((a, b) => `${a?.nombreClase ?? ''}`.localeCompare(`${b?.nombreClase ?? ''}`, 'es', { sensitivity: 'base' }));
         if (niveles.length < 1)
             return '';
@@ -674,9 +675,9 @@ export class FichaPersonajeService {
     private formatearLineaNivelLanzador(nivel: PersonajeNivelLanzadorResumen): string {
         const tipo = this.formatearTipoLanzamiento(nivel?.tipoLanzamiento);
         const tipoLabel = tipo.length > 0 ? ` (${tipo})` : '';
-        const nivelLanzador = Math.max(0, Math.trunc(this.toNumber(nivel?.nivelLanzador)));
-        const base = Math.max(0, Math.trunc(this.toNumber(nivel?.nivelLanzadorBase)));
-        const bonus = Math.max(0, Math.trunc(this.toNumber(nivel?.bonusNivelLanzador)));
+        const nivelLanzador = Math.max(0, Math.trunc(toNumber(nivel?.nivelLanzador)));
+        const base = Math.max(0, Math.trunc(toNumber(nivel?.nivelLanzadorBase)));
+        const bonus = Math.max(0, Math.trunc(toNumber(nivel?.bonusNivelLanzador)));
         const desglose = bonus > 0 ? `, base ${base} + ${bonus}` : '';
         return ` - ${nivel?.nombreClase ?? 'Clase'}${tipoLabel}: ${nivelLanzador}${desglose}`;
     }
@@ -740,8 +741,8 @@ export class FichaPersonajeService {
     }
 
     private obtenerRacialesParaFicha(pj: Personaje): Array<{ nombre: string; origen: string; }> {
-        const base = this.toArray((pj as any)?.Raciales);
-        const fallbackRaza = this.toArray((pj as any)?.Raza?.Raciales);
+        const base = toArray((pj as any)?.Raciales);
+        const fallbackRaza = toArray((pj as any)?.Raza?.Raciales);
         const fuente = base.length > 0 ? base : fallbackRaza;
         const vistos = new Set<string>();
         const raciales: Array<{ nombre: string; origen: string; }> = [];
@@ -763,22 +764,22 @@ export class FichaPersonajeService {
 
     private getAjusteNivelParaFicha(pj: Personaje): number {
         const desdePlantillas = (pj?.Plantillas ?? [])
-            .reduce((acum, plantilla) => acum + this.toNumber((plantilla as any)?.Ajuste_nivel), 0);
+            .reduce((acum, plantilla) => acum + toNumber((plantilla as any)?.Ajuste_nivel), 0);
         return Math.max(0, Math.trunc(desdePlantillas));
     }
 
     private calcularExpSiguienteNivel(pj: Personaje, ajusteNivel: number): number {
         let nivelClases = (pj?.desgloseClases ?? [])
-            .reduce((acum, clase) => acum + Math.max(0, Math.trunc(this.toNumber(clase?.Nivel))), 0);
+            .reduce((acum, clase) => acum + Math.max(0, Math.trunc(toNumber(clase?.Nivel))), 0);
         if (nivelClases <= 0) {
             const clasesTexto = `${pj?.Clases ?? ''}`;
             const coincidencias = (clasesTexto.match(/\((\d+)\)/g) ?? []) as string[];
             nivelClases = coincidencias.reduce((acum: number, bloque: string) => {
                 const limpio = bloque.replace(/[()]/g, '');
-                return acum + Math.max(0, Math.trunc(this.toNumber(limpio)));
+                return acum + Math.max(0, Math.trunc(toNumber(limpio)));
             }, 0);
         }
-        const nivelObjetivo = Math.max(0, nivelClases + Math.max(0, Math.trunc(this.toNumber(ajusteNivel))));
+        const nivelObjetivo = Math.max(0, nivelClases + Math.max(0, Math.trunc(toNumber(ajusteNivel))));
         let acumulado = 0;
         for (let i = 0; i <= nivelObjetivo; i++)
             acumulado += i * 1000;
@@ -794,31 +795,18 @@ export class FichaPersonajeService {
             .toLowerCase();
     }
 
-    private toNumber(value: any): number {
-        const parsed = Number(value);
-        return Number.isFinite(parsed) ? parsed : 0;
-    }
-
     private sumMods(mods: any): number {
         const arr = Array.isArray(mods) ? mods : [];
-        return arr.reduce((acum, mod) => acum + this.toNumber((mod as any)?.valor ?? (mod as any)?.Valor), 0);
+        return arr.reduce((acum, mod) => acum + toNumber((mod as any)?.valor ?? (mod as any)?.Valor), 0);
     }
 
     private formatSigned(value: number): string {
-        const v = this.toNumber(value);
+        const v = toNumber(value);
         return v > 0 ? `+${v}` : `${v}`;
     }
 
     private calcularModificador(valor: number): number {
-        return Math.floor((this.toNumber(valor) - 10) / 2);
-    }
-
-    private toArray(value: any): any[] {
-        if (Array.isArray(value))
-            return value;
-        if (value && typeof value === 'object')
-            return Object.values(value);
-        return [];
+        return Math.floor((toNumber(valor) - 10) / 2);
     }
 
     private normalizarNombreArchivo(nombre: string): string {

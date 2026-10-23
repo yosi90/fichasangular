@@ -3,6 +3,7 @@ import { DoteContextual } from 'src/app/interfaces/dote-contextual';
 import { Rasgo } from 'src/app/interfaces/rasgo';
 import { SubtipoDetalle } from 'src/app/interfaces/subtipo';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
+import { toNumber } from 'src/app/services/utils/normalizacion';
 
 @Component({
     selector: 'app-detalles-subtipo',
@@ -76,7 +77,7 @@ export class DetallesSubtipoComponent {
     }
 
     get manualPagina(): number {
-        return this.toNumber(this.subtipo?.Manual?.Pagina);
+        return toNumber(this.subtipo?.Manual?.Pagina);
     }
 
     get maniobrabilidadNombre(): string {
@@ -85,7 +86,7 @@ export class DetallesSubtipoComponent {
     }
 
     getMovimientoValor(tipo: 'Correr' | 'Nadar' | 'Volar' | 'Trepar' | 'Escalar'): number {
-        return this.toNumber(this.subtipo?.Movimientos?.[tipo]);
+        return toNumber(this.subtipo?.Movimientos?.[tipo]);
     }
 
     get tieneSeccionCombateDefensas(): boolean {
@@ -188,8 +189,4 @@ export class DetallesSubtipoComponent {
             .toLowerCase();
     }
 
-    private toNumber(value: any): number {
-        const parsed = Number(value);
-        return Number.isFinite(parsed) ? parsed : 0;
-    }
 }

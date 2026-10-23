@@ -6,17 +6,7 @@ import Swal from "sweetalert2";
 import { environment } from "src/environments/environment";
 import { ArmaDetalle } from "../interfaces/arma";
 import { FirebaseInjectionContextService } from "./firebase-injection-context.service";
-
-function toNumber(value: any, fallback = 0): number {
-    const parsed = Number(value);
-    return Number.isFinite(parsed) ? parsed : fallback;
-}
-
-function toText(value: any, fallback = ""): string {
-    if (value === null || value === undefined)
-        return fallback;
-    return `${value}`;
-}
+import { toArray, toNumber, toText } from 'src/app/services/utils/normalizacion';
 
 function toBoolean(value: any): boolean {
     if (typeof value === "boolean")
@@ -28,14 +18,6 @@ function toBoolean(value: any): boolean {
         return normalized === "1" || normalized === "true" || normalized === "si" || normalized === "sí";
     }
     return false;
-}
-
-function toArray<T = any>(value: any): T[] {
-    if (Array.isArray(value))
-        return value;
-    if (value && typeof value === "object")
-        return Object.values(value) as T[];
-    return [];
 }
 
 export function normalizeArma(raw: any): ArmaDetalle {

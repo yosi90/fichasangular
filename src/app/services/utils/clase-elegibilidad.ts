@@ -1,6 +1,7 @@
 import { Clase } from "src/app/interfaces/clase";
 import { IdentidadPrerrequisitos, existeCoincidenciaClaveEntidad, normalizarTextoPrerrequisito } from "./identidad-prerrequisitos";
 import { getAlineamientoBasicoIdPorNombre } from "./alineamiento-contrato";
+import { toArray, toNumber } from 'src/app/services/utils/normalizacion';
 
 export type EstadoElegibilidadClase = "eligible" | "blocked_failed" | "blocked_unknown";
 
@@ -76,11 +77,6 @@ const FLAGS_SOPORTADAS: (keyof Clase["Prerrequisitos_flags"])[] = [
     "tamano_minimo",
 ];
 
-function toNumber(value: any, fallback: number = 0): number {
-    const n = Number(value);
-    return Number.isFinite(n) ? n : fallback;
-}
-
 function toBoolean(value: any): boolean {
     if (typeof value === "boolean")
         return value;
@@ -91,14 +87,6 @@ function toBoolean(value: any): boolean {
         return n === "1" || n === "true" || n === "si" || n === "sí";
     }
     return false;
-}
-
-function toArray<T = any>(value: any): T[] {
-    if (Array.isArray(value))
-        return value;
-    if (value && typeof value === "object")
-        return Object.values(value) as T[];
-    return [];
 }
 
 function pick(entry: Record<string, any>, keys: string[]): any {

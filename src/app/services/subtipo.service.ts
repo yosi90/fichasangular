@@ -7,14 +7,7 @@ import { environment } from "src/environments/environment";
 import { SubtipoDetalle, SubtipoResumen } from "../interfaces/subtipo";
 import { FirebaseInjectionContextService } from "./firebase-injection-context.service";
 import { normalizeSubtipoDetalle, normalizeSubtipoResumen } from "./utils/subtipo-mapper";
-
-function toArray<T = any>(raw: any): T[] {
-    if (Array.isArray(raw))
-        return raw;
-    if (raw && typeof raw === "object")
-        return Object.values(raw) as T[];
-    return [];
-}
+import { toArray } from 'src/app/services/utils/normalizacion';
 
 @Injectable({
     providedIn: "root"

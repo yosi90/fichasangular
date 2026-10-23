@@ -29,6 +29,7 @@ import { normalizarProgresionLanzadorPersonaje } from './utils/nivel-lanzador-pe
 import { normalizeRaciales } from './utils/racial-mapper';
 import { normalizeSubtipoRefArray } from './utils/subtipo-mapper';
 import { obtenerTokenApi } from './platform-session.service';
+import { toArray, toNumber, toText } from 'src/app/services/utils/normalizacion';
 
 interface PersonajeVisibilityUpdateResponse {
     message: string;
@@ -1384,17 +1385,6 @@ function calc_oro(nep: number) {
         return Math.round(760000 * (1.3 * (nepValue - 20)));
 }
 
-function toNumber(value: any): number {
-    const parsed = Number(value);
-    return Number.isFinite(parsed) ? parsed : 0;
-}
-
-function toText(value: any): string {
-    if (value === null || value === undefined)
-        return '';
-    return `${value}`;
-}
-
 function normalizeLookupKey(value: any): string {
     return toText(value)
         .normalize('NFD')
@@ -1437,14 +1427,6 @@ function toBoolean(value: any): boolean {
         return normalizado === '1' || normalizado === 'true' || normalizado === 'si' || normalizado === 'sí';
     }
     return false;
-}
-
-function toArray<T = any>(value: any): T[] {
-    if (Array.isArray(value))
-        return value;
-    if (value && typeof value === 'object')
-        return Object.values(value) as T[];
-    return [];
 }
 
 function normalizeVentajasPersonaje(raw: any): (string | { Nombre: string; Origen?: string; })[] {

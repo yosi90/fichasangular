@@ -14,28 +14,10 @@ import {
 } from "../interfaces/idioma";
 import { FirebaseInjectionContextService } from "./firebase-injection-context.service";
 import { obtenerTokenApi } from './platform-session.service';
+import { toArray, toNumber, toText } from 'src/app/services/utils/normalizacion';
 
 function toBoolean(value: any): boolean {
     return value === true || value === 1 || value === "1";
-}
-
-function toNumber(value: any, fallback = 0): number {
-    const parsed = Number(value);
-    return Number.isFinite(parsed) ? parsed : fallback;
-}
-
-function toText(value: any, fallback = ""): string {
-    if (value === null || value === undefined)
-        return fallback;
-    return `${value}`;
-}
-
-function toArray<T = any>(value: any): T[] {
-    if (Array.isArray(value))
-        return value;
-    if (value && typeof value === "object")
-        return Object.values(value) as T[];
-    return [];
 }
 
 export function normalizeIdioma(raw: any): IdiomaDetalle {

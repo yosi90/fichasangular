@@ -6,6 +6,7 @@ import { RacialDetalle } from "src/app/interfaces/racial";
 import { MutacionRaza, Raza, RazaHabilidades, RazaPrerrequisitos, RazaPrerrequisitosFlags } from "src/app/interfaces/raza";
 import { SubtipoRef } from "src/app/interfaces/subtipo";
 import { toDoteContextualArray } from "./dote-mapper";
+import { toNumber, toText } from 'src/app/services/utils/normalizacion';
 
 function toBoolean(value: any, fallback: boolean = false): boolean {
     if (typeof value === "boolean")
@@ -20,19 +21,6 @@ function toBoolean(value: any, fallback: boolean = false): boolean {
             return false;
     }
     return fallback;
-}
-
-function toNumber(value: any): number {
-    const parsed = Number(value);
-    return Number.isFinite(parsed) ? parsed : 0;
-}
-
-function toText(value: any): string {
-    if (typeof value === "string")
-        return value;
-    if (value === null || value === undefined)
-        return "";
-    return `${value}`;
 }
 
 function toStrictArray<T = any>(value: any): T[] {

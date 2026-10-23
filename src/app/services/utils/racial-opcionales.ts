@@ -1,4 +1,5 @@
 import { RacialDetalle } from 'src/app/interfaces/racial';
+import { toNumber } from 'src/app/services/utils/normalizacion';
 
 export type SeleccionRacialesOpcionales = Record<number, string>;
 
@@ -10,11 +11,6 @@ export interface GrupoRacialesOpcionales {
 export interface AgrupacionRacialesOpcionales {
     obligatorias: RacialDetalle[];
     grupos: GrupoRacialesOpcionales[];
-}
-
-function toNumber(value: any): number {
-    const parsed = Number(value);
-    return Number.isFinite(parsed) ? parsed : 0;
 }
 
 function normalizarTexto(value: string): string {

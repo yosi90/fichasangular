@@ -4,6 +4,7 @@ import {
     existeCoincidenciaClaveEntidad,
     normalizarTextoPrerrequisito,
 } from './identidad-prerrequisitos';
+import { toArray, toNumber } from 'src/app/services/utils/normalizacion';
 
 export type EstadoEvaluacionRacial = 'eligible' | 'blocked' | 'eligible_with_warning';
 
@@ -37,11 +38,6 @@ interface EstadoGrupoOpcional {
     unknown: boolean;
 }
 
-function toNumber(value: any): number {
-    const parsed = Number(value);
-    return Number.isFinite(parsed) ? parsed : 0;
-}
-
 function toBoolean(value: any): boolean {
     if (typeof value === 'boolean')
         return value;
@@ -52,14 +48,6 @@ function toBoolean(value: any): boolean {
         return normalized === '1' || normalized === 'true' || normalized === 'si' || normalized === 'sí';
     }
     return false;
-}
-
-function toArray<T = any>(value: any): T[] {
-    if (Array.isArray(value))
-        return value;
-    if (value && typeof value === 'object')
-        return Object.values(value) as T[];
-    return [];
 }
 
 function pick(raw: any, ...keys: string[]): any {

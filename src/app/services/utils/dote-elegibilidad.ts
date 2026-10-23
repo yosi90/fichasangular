@@ -5,6 +5,7 @@ import {
     normalizarTextoPrerrequisito,
 } from './identidad-prerrequisitos';
 import { getAlineamientoBasicoIdPorNombre } from './alineamiento-contrato';
+import { toArray, toNumber } from 'src/app/services/utils/normalizacion';
 
 export type EstadoElegibilidadDote = 'eligible' | 'blocked_failed' | 'blocked_unknown';
 
@@ -97,11 +98,6 @@ interface GrupoOpcionalEstado {
     unknown: boolean;
 }
 
-function toNumber(value: any): number {
-    const parsed = Number(value);
-    return Number.isFinite(parsed) ? parsed : 0;
-}
-
 function toBoolean(value: any): boolean {
     if (typeof value === 'boolean')
         return value;
@@ -112,14 +108,6 @@ function toBoolean(value: any): boolean {
         return normalizado === '1' || normalizado === 'true' || normalizado === 'si' || normalizado === 'sí';
     }
     return false;
-}
-
-function toArray<T = any>(value: any): T[] {
-    if (Array.isArray(value))
-        return value;
-    if (value && typeof value === 'object')
-        return Object.values(value) as T[];
-    return [];
 }
 
 function pick(entry: Record<string, any>, keys: string[]): any {

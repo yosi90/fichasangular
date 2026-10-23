@@ -1,6 +1,7 @@
 import { Raza } from 'src/app/interfaces/raza';
 import { SubtipoRef } from 'src/app/interfaces/subtipo';
 import { TipoCriatura } from 'src/app/interfaces/tipo_criatura';
+import { toArray, toNumber } from 'src/app/services/utils/normalizacion';
 
 export interface ClaveEntidadPrerrequisito {
     id: number | null;
@@ -11,19 +12,6 @@ export interface IdentidadPrerrequisitos {
     razas: ClaveEntidadPrerrequisito[];
     tiposCriatura: ClaveEntidadPrerrequisito[];
     subtipos: ClaveEntidadPrerrequisito[];
-}
-
-function toNumber(value: any): number {
-    const parsed = Number(value);
-    return Number.isFinite(parsed) ? parsed : 0;
-}
-
-function toArray<T = any>(value: any): T[] {
-    if (Array.isArray(value))
-        return value;
-    if (value && typeof value === 'object')
-        return Object.values(value) as T[];
-    return [];
 }
 
 export function normalizarTextoPrerrequisito(value: string): string {

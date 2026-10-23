@@ -4,6 +4,7 @@ import { FichasDescargaJobView, FichasDescargaOpciones } from '../interfaces/fic
 import { CompaneroMonstruoDetalle, FamiliarMonstruoDetalle } from '../interfaces/monstruo';
 import { Personaje } from '../interfaces/personaje';
 import { FichaPersonajeService } from './ficha-personaje.service';
+import { toArray } from 'src/app/services/utils/normalizacion';
 
 @Injectable({
     providedIn: 'root'
@@ -42,13 +43,13 @@ export class FichasDescargaBackgroundService {
                 await this.fichaSvc.generarPDF_Conjuros(personaje);
 
             if (opciones.incluirFamiliares) {
-                const familiares = this.toArray<FamiliarMonstruoDetalle>((personaje as any)?.Familiares);
+                const familiares = toArray<FamiliarMonstruoDetalle>((personaje as any)?.Familiares);
                 for (let i = 0; i < familiares.length; i++)
                     await this.fichaSvc.generarPDF_Familiar(personaje, familiares[i], i);
             }
 
             if (opciones.incluirCompaneros) {
-                const companeros = this.toArray<CompaneroMonstruoDetalle>((personaje as any)?.Companeros);
+                const companeros = toArray<CompaneroMonstruoDetalle>((personaje as any)?.Companeros);
                 for (let i = 0; i < companeros.length; i++)
                     await this.fichaSvc.generarPDF_Companero(personaje, companeros[i], i);
             }
@@ -77,10 +78,10 @@ export class FichasDescargaBackgroundService {
         return {
             ...personaje,
             Nombre: nombre,
-            Conjuros: this.toArray((personaje as any)?.Conjuros),
-            Sortilegas: this.toArray((personaje as any)?.Sortilegas),
-            Familiares: this.toArray((personaje as any)?.Familiares),
-            Companeros: this.toArray((personaje as any)?.Companeros),
+            Conjuros: toArray((personaje as any)?.Conjuros),
+            Sortilegas: toArray((personaje as any)?.Sortilegas),
+            Familiares: toArray((personaje as any)?.Familiares),
+            Companeros: toArray((personaje as any)?.Companeros),
         };
     }
 
@@ -90,8 +91,8 @@ export class FichasDescargaBackgroundService {
     }
 
     private tieneConjuros(personaje: Personaje): boolean {
-        const conjuros = this.toArray((personaje as any)?.Conjuros);
-        const sortilegas = this.toArray((personaje as any)?.Sortilegas);
+        const conjuros = toArray((personaje as any)?.Conjuros);
+        const sortilegas = toArray((personaje as any)?.Sortilegas);
         return conjuros.length > 0 || sortilegas.length > 0;
     }
 
@@ -134,11 +135,4 @@ export class FichasDescargaBackgroundService {
         this.closeTimers.set(id, timer);
     }
 
-    private toArray<T>(value: any): T[] {
-        if (Array.isArray(value))
-            return value as T[];
-        if (value && typeof value === 'object')
-            return Object.values(value) as T[];
-        return [];
-    }
 }

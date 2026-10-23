@@ -1,6 +1,7 @@
 import { Clase } from 'src/app/interfaces/clase';
 import { CompaneroMonstruoDetalle, MonstruoDetalle, MonstruoNivelClase } from 'src/app/interfaces/monstruo';
 import { Personaje } from 'src/app/interfaces/personaje';
+import { toNumber } from 'src/app/services/utils/normalizacion';
 
 export type CompaneroPlantillaSelector = 'base' | 'elevado' | 'sabandija';
 
@@ -89,11 +90,6 @@ const PLANTILLA_SELECTOR_TO_DOTE: Record<CompaneroPlantillaSelector, number> = {
     elevado: DOTE_PLANTILLA_ELEVADO,
     sabandija: DOTE_PLANTILLA_SABANDIJA,
 };
-
-function toNumber(value: any, fallback = 0): number {
-    const parsed = Number(value);
-    return Number.isFinite(parsed) ? parsed : fallback;
-}
 
 function normalizeText(value: string): string {
     return `${value ?? ''}`

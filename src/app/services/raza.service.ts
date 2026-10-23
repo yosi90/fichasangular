@@ -15,6 +15,7 @@ import { toDoteContextualArray } from './utils/dote-mapper';
 import { normalizeRaciales } from './utils/racial-mapper';
 import { normalizeSubtipoRefArray } from './utils/subtipo-mapper';
 import { obtenerTokenApi } from './platform-session.service';
+import { toArray, toNumber } from 'src/app/services/utils/normalizacion';
 
 function toBoolean(value: any, fallback: boolean = false): boolean {
     if (typeof value === 'boolean')
@@ -31,24 +32,11 @@ function toBoolean(value: any, fallback: boolean = false): boolean {
     return fallback;
 }
 
-function toNumber(value: any): number {
-    const parsed = Number(value);
-    return Number.isFinite(parsed) ? parsed : 0;
-}
-
 function parseIdExtra(value: any): number {
     if (value === undefined || value === null || `${value}`.trim() === '')
         return -1;
     const parsed = Number(value);
     return Number.isFinite(parsed) ? parsed : -1;
-}
-
-function toArray<T = any>(value: any): T[] {
-    if (Array.isArray(value))
-        return value;
-    if (value && typeof value === 'object')
-        return Object.values(value) as T[];
-    return [];
 }
 
 function pick(source: any, ...keys: string[]): any {

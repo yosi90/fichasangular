@@ -8,19 +8,7 @@ import {
     SubtipoSortilega,
 } from "src/app/interfaces/subtipo";
 import { toDoteContextualArray } from "./dote-mapper";
-
-function toNumber(value: any, fallback: number = 0): number {
-    const n = Number(value);
-    return Number.isFinite(n) ? n : fallback;
-}
-
-function toText(value: any, fallback: string = ""): string {
-    if (typeof value === "string")
-        return value;
-    if (value === null || value === undefined)
-        return fallback;
-    return `${value}`;
-}
+import { toArray, toNumber, toText } from 'src/app/services/utils/normalizacion';
 
 function toBoolean(value: any): boolean {
     if (typeof value === "boolean")
@@ -32,14 +20,6 @@ function toBoolean(value: any): boolean {
         return normalized === "1" || normalized === "true" || normalized === "si" || normalized === "sí";
     }
     return false;
-}
-
-function toArray<T = any>(raw: any): T[] {
-    if (Array.isArray(raw))
-        return raw;
-    if (raw && typeof raw === "object")
-        return Object.values(raw) as T[];
-    return [];
 }
 
 function normalizeManual(raw: any): { Id: number; Nombre: string; Pagina: number; } {

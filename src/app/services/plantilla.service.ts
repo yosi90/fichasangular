@@ -16,11 +16,7 @@ import { FirebaseInjectionContextService } from "./firebase-injection-context.se
 import { normalizePlantillaApi } from "./utils/plantilla-mapper";
 import { toDoteContextualArray } from "./utils/dote-mapper";
 import { normalizeSubtipoRefArray } from "./utils/subtipo-mapper";
-
-function toNumber(value: any, fallback: number = 0): number {
-    const n = Number(value);
-    return Number.isFinite(n) ? n : fallback;
-}
+import { toArray, toNumber, toText } from 'src/app/services/utils/normalizacion';
 
 function toBoolean(value: any): boolean {
     if (typeof value === "boolean")
@@ -32,22 +28,6 @@ function toBoolean(value: any): boolean {
         return normalized === "1" || normalized === "true";
     }
     return false;
-}
-
-function toText(value: any, fallback: string = ""): string {
-    if (typeof value === "string")
-        return value;
-    if (value === null || value === undefined)
-        return fallback;
-    return `${value}`;
-}
-
-function toArray<T = any>(raw: any): T[] {
-    if (Array.isArray(raw))
-        return raw;
-    if (raw && typeof raw === "object")
-        return Object.values(raw) as T[];
-    return [];
 }
 
 function hasValidId(raw: any): boolean {

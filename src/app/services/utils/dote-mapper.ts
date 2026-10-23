@@ -1,19 +1,9 @@
 import { Dote, DoteExtraItem, DoteManual, DoteTipo } from "src/app/interfaces/dote";
 import { DoteContexto, DoteContextual, DoteLegacy } from "src/app/interfaces/dote-contextual";
-
-function toNumber(value: any, fallback: number = 0): number {
-    const n = Number(value);
-    return Number.isFinite(n) ? n : fallback;
-}
+import { toNumber, toText } from 'src/app/services/utils/normalizacion';
 
 function toBoolean(value: any): boolean {
     return value === true || value === 1 || value === "1";
-}
-
-function toText(value: any, fallback: string = ""): string {
-    if (value === null || value === undefined)
-        return fallback;
-    return `${value}`;
 }
 
 function asArray(raw: any): any[] {

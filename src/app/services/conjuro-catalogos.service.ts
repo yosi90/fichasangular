@@ -8,6 +8,7 @@ import { CacheEntityKey } from '../config/cache-contract-manifest';
 import { ConjuroCatalogItem } from '../interfaces/conjuro-catalogos';
 import { CacheCatalogMissReportService } from './cache-catalog-miss-report.service';
 import { FirebaseInjectionContextService } from './firebase-injection-context.service';
+import { toArray } from 'src/app/services/utils/normalizacion';
 
 function normalizeCatalogItem(raw: any): ConjuroCatalogItem {
     return {
@@ -20,14 +21,6 @@ function sortCatalog(items: ConjuroCatalogItem[]): ConjuroCatalogItem[] {
     return items
         .filter((item) => item.Id > 0 && item.Nombre.length > 0)
         .sort((a, b) => a.Nombre.localeCompare(b.Nombre, 'es', { sensitivity: 'base' }));
-}
-
-function toArray(value: any): any[] {
-    if (Array.isArray(value))
-        return value;
-    if (value && typeof value === 'object')
-        return Object.values(value);
-    return [];
 }
 
 @Injectable({

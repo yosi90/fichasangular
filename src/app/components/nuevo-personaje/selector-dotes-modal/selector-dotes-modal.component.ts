@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, EventEmitter, HostListener, Input, OnChanges, Output, SimpleChanges } from '@angular/core';
 import { Dote } from 'src/app/interfaces/dote';
 import { DoteSeleccionConfirmada, DoteSelectorCandidato, DotePendienteState } from 'src/app/services/nuevo-personaje.service';
+import { toNumber } from 'src/app/services/utils/normalizacion';
 
 @Component({
     selector: 'app-selector-dotes-modal',
@@ -39,8 +40,8 @@ export class SelectorDotesModalComponent implements OnChanges {
 
     ngOnChanges(changes: SimpleChanges): void {
         if (changes['candidatos']) {
-            this.idDoteSeleccionada = this.toNumber(this.idDoteSeleccionada);
-            this.idExtraSeleccionado = this.toNumber(this.idExtraSeleccionado);
+            this.idDoteSeleccionada = toNumber(this.idDoteSeleccionada);
+            this.idExtraSeleccionado = toNumber(this.idExtraSeleccionado);
         }
         this.refreshViewModel();
     }
@@ -67,7 +68,7 @@ export class SelectorDotesModalComponent implements OnChanges {
     };
 
     esSeleccionada(candidato: DoteSelectorCandidato): boolean {
-        return this.toNumber(candidato?.dote?.Id) === this.toNumber(this.idDoteSeleccionada);
+        return toNumber(candidato?.dote?.Id) === toNumber(this.idDoteSeleccionada);
     }
 
     esCandidatoElegible(candidato: DoteSelectorCandidato): boolean {
@@ -104,7 +105,7 @@ export class SelectorDotesModalComponent implements OnChanges {
     seleccionarCandidato(candidato: DoteSelectorCandidato): void {
         if (!candidato)
             return;
-        this.idDoteSeleccionada = this.toNumber(candidato?.dote?.Id);
+        this.idDoteSeleccionada = toNumber(candidato?.dote?.Id);
         this.idExtraSeleccionado = 0;
         this.syncSelectedCandidateState();
     }
@@ -141,10 +142,10 @@ export class SelectorDotesModalComponent implements OnChanges {
         if (!candidato)
             return;
 
-        const idDote = this.toNumber(candidato?.dote?.Id);
-        const idExtra = candidato.requiereExtra ? this.toNumber(this.idExtraSeleccionado) : 0;
+        const idDote = toNumber(candidato?.dote?.Id);
+        const idExtra = candidato.requiereExtra ? toNumber(this.idExtraSeleccionado) : 0;
         const extraNombre = candidato.requiereExtra
-            ? (this.extrasCandidatoSeleccionado.find((extra) => this.toNumber(extra?.Id) === idExtra)?.Nombre ?? '')
+            ? (this.extrasCandidatoSeleccionado.find((extra) => toNumber(extra?.Id) === idExtra)?.Nombre ?? '')
             : 'No aplica';
 
         this.confirmar.emit({
@@ -212,20 +213,20 @@ export class SelectorDotesModalComponent implements OnChanges {
     }
 
     private syncSelectedCandidateState(): void {
-        const id = this.toNumber(this.idDoteSeleccionada);
+        const id = toNumber(this.idDoteSeleccionada);
         this.candidatoSeleccionado = id > 0
-            ? (this.candidatos ?? []).find((candidato) => this.toNumber(candidato?.dote?.Id) === id) ?? null
+            ? (this.candidatos ?? []).find((candidato) => toNumber(candidato?.dote?.Id) === id) ?? null
             : null;
         this.requiereExtraSeleccionado = !!this.candidatoSeleccionado?.requiereExtra;
         this.extrasCandidatoSeleccionado = (this.candidatoSeleccionado?.extrasDisponibles ?? [])
             .map((extra) => ({
-                Id: this.toNumber(extra?.Id),
+                Id: toNumber(extra?.Id),
                 Nombre: `${extra?.Nombre ?? ''}`.trim(),
             }))
             .filter((extra) => extra.Id > 0 && extra.Nombre.length > 0);
 
         if (this.requiereExtraSeleccionado
-            && !this.extrasCandidatoSeleccionado.some((extra) => this.toNumber(extra?.Id) === this.toNumber(this.idExtraSeleccionado))) {
+            && !this.extrasCandidatoSeleccionado.some((extra) => toNumber(extra?.Id) === toNumber(this.idExtraSeleccionado))) {
             this.idExtraSeleccionado = 0;
         }
 
@@ -240,7 +241,7 @@ export class SelectorDotesModalComponent implements OnChanges {
         if (!candidato.requiereExtra)
             return true;
 
-        return this.extrasCandidatoSeleccionado.some((extra) => this.toNumber(extra?.Id) === this.toNumber(this.idExtraSeleccionado));
+        return this.extrasCandidatoSeleccionado.some((extra) => toNumber(extra?.Id) === toNumber(this.idExtraSeleccionado));
     }
 
     private buildManualesDisponibles(): string[] {
@@ -265,11 +266,6 @@ export class SelectorDotesModalComponent implements OnChanges {
             return true;
         const selector = 'input, textarea, select, button, a, [role="button"], [role="checkbox"], [role="option"], [role="listbox"], [role="menuitem"], .cdk-overlay-pane';
         return !!target.closest(selector);
-    }
-
-    private toNumber(value: any): number {
-        const parsed = Number(value);
-        return Number.isFinite(parsed) ? parsed : 0;
     }
 
     private normalizarTexto(value: string): string {

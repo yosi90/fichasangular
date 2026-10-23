@@ -5,14 +5,7 @@ import { Observable } from "rxjs";
 import Swal from "sweetalert2";
 import { DisciplinaConjuros, Subdisciplinas } from "../interfaces/disciplina-conjuros";
 import { FirebaseInjectionContextService } from "./firebase-injection-context.service";
-
-function toArray<T = any>(value: any): T[] {
-    if (Array.isArray(value))
-        return value;
-    if (value && typeof value === 'object')
-        return Object.values(value) as T[];
-    return [];
-}
+import { toArray } from 'src/app/services/utils/normalizacion';
 
 function toInt(value: any, fallback: number = 0): number {
     const parsed = Number(value);

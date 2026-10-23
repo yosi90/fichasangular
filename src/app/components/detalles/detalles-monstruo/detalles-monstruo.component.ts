@@ -4,6 +4,7 @@ import { MonstruoDetalle } from 'src/app/interfaces/monstruo';
 import { RacialDetalle } from 'src/app/interfaces/racial';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
 import { buildManiobrabilidadInfoSecciones, tieneManiobrabilidadVisible } from 'src/app/services/utils/maniobrabilidad-info';
+import { toNumber } from 'src/app/services/utils/normalizacion';
 
 @Component({
     selector: 'app-detalles-monstruo',
@@ -46,13 +47,13 @@ export class DetallesMonstruoComponent {
     }
 
     abrirDetallesConjuro(idConjuro: number) {
-        const id = this.toNumber(idConjuro);
+        const id = toNumber(idConjuro);
         if (id > 0)
             this.conjuroDetallesId.emit(id);
     }
 
     abrirDetallesDote(doteCtx: DoteContextual) {
-        const id = this.toNumber(doteCtx?.Dote?.Id);
+        const id = toNumber(doteCtx?.Dote?.Id);
         if (id > 0)
             this.doteDetalles.emit(doteCtx);
     }
@@ -63,7 +64,7 @@ export class DetallesMonstruoComponent {
     }
 
     abrirDetallesClase(idClase: number) {
-        const id = this.toNumber(idClase);
+        const id = toNumber(idClase);
         if (id > 0)
             this.claseDetallesId.emit(id);
     }
@@ -72,7 +73,7 @@ export class DetallesMonstruoComponent {
         const nombre = `${subtipo?.Nombre ?? ''}`.trim();
         if (!this.tieneTextoVisible(nombre))
             return;
-        const id = this.toNumber(subtipo?.Id);
+        const id = toNumber(subtipo?.Id);
         this.subtipoDetalles.emit({
             Id: id > 0 ? id : null,
             Nombre: nombre,
@@ -80,13 +81,13 @@ export class DetallesMonstruoComponent {
     }
 
     abrirDetallesTipoCriatura(idTipo: number) {
-        const id = this.toNumber(idTipo);
+        const id = toNumber(idTipo);
         if (id > 0)
             this.tipoCriaturaDetallesId.emit(id);
     }
 
     abrirDetallesMonstruoRelacionado(monstruo: MonstruoDetalle) {
-        if (!monstruo || this.toNumber(monstruo.Id) <= 0)
+        if (!monstruo || toNumber(monstruo.Id) <= 0)
             return;
         this.monstruoRelacionadoDetalles.emit(monstruo);
     }
@@ -100,7 +101,7 @@ export class DetallesMonstruoComponent {
 
     getManualLabel(): string {
         const nombre = `${this.monstruo?.Manual?.Nombre ?? ''}`.trim();
-        const pagina = this.toNumber(this.monstruo?.Manual?.Pagina);
+        const pagina = toNumber(this.monstruo?.Manual?.Pagina);
         if (nombre.length < 1)
             return 'Sin manual';
         return pagina > 0 ? `${nombre} (p. ${pagina})` : nombre;
@@ -118,11 +119,11 @@ export class DetallesMonstruoComponent {
     }
 
     get tieneRelacionFamiliarExtendida(): boolean {
-        return this.toNumber((this.monstruo as any)?.Id_familiar) > 0;
+        return toNumber((this.monstruo as any)?.Id_familiar) > 0;
     }
 
     get tieneRelacionCompaneroExtendida(): boolean {
-        return this.toNumber((this.monstruo as any)?.Id_companero) > 0;
+        return toNumber((this.monstruo as any)?.Id_companero) > 0;
     }
 
     get esDetalleFamiliarOCompanero(): boolean {
@@ -130,23 +131,23 @@ export class DetallesMonstruoComponent {
     }
 
     get idFamiliarExtendido(): number {
-        return this.toNumber((this.monstruo as any)?.Id_familiar);
+        return toNumber((this.monstruo as any)?.Id_familiar);
     }
 
     get idCompaneroExtendido(): number {
-        return this.toNumber((this.monstruo as any)?.Id_companero);
+        return toNumber((this.monstruo as any)?.Id_companero);
     }
 
     get vidaRelacionExtendida(): number {
-        return this.toNumber((this.monstruo as any)?.Vida);
+        return toNumber((this.monstruo as any)?.Vida);
     }
 
     get dgAdicionalCompanero(): number {
-        return this.toNumber((this.monstruo as any)?.Dg_adi);
+        return toNumber((this.monstruo as any)?.Dg_adi);
     }
 
     get trucosAdicionalesCompanero(): number {
-        return this.toNumber((this.monstruo as any)?.Trucos_adi);
+        return toNumber((this.monstruo as any)?.Trucos_adi);
     }
 
     get monstruoOrigenLabel(): string {
@@ -160,9 +161,9 @@ export class DetallesMonstruoComponent {
     get personajesDirectosRelacionados(): Array<{ Id_personaje: number; Nombre: string; }> {
         const lista = Array.isArray((this.monstruo as any)?.Personajes) ? (this.monstruo as any).Personajes : [];
         return lista
-            .filter((item: any) => this.toNumber(item?.Id_personaje) > 0 && this.tieneTextoVisible(item?.Nombre))
+            .filter((item: any) => toNumber(item?.Id_personaje) > 0 && this.tieneTextoVisible(item?.Nombre))
             .map((item: any) => ({
-                Id_personaje: this.toNumber(item?.Id_personaje),
+                Id_personaje: toNumber(item?.Id_personaje),
                 Nombre: `${item?.Nombre ?? ''}`.trim(),
             }));
     }
@@ -179,13 +180,13 @@ export class DetallesMonstruoComponent {
 
     getFamiliaresRelacionados(): MonstruoDetalle[] {
         return (this.monstruo?.Familiares ?? [])
-            .filter(item => this.toNumber(item?.Id) > 0 && this.tieneTextoVisible(item?.Nombre))
+            .filter(item => toNumber(item?.Id) > 0 && this.tieneTextoVisible(item?.Nombre))
             .sort((a, b) => a.Nombre.localeCompare(b.Nombre, 'es', { sensitivity: 'base' }));
     }
 
     getCompanerosRelacionados(): MonstruoDetalle[] {
         return (this.monstruo?.Companeros ?? [])
-            .filter(item => this.toNumber(item?.Id) > 0 && this.tieneTextoVisible(item?.Nombre))
+            .filter(item => toNumber(item?.Id) > 0 && this.tieneTextoVisible(item?.Nombre))
             .sort((a, b) => a.Nombre.localeCompare(b.Nombre, 'es', { sensitivity: 'base' }));
     }
 
@@ -201,7 +202,7 @@ export class DetallesMonstruoComponent {
         return (this.monstruo?.Habilidades ?? [])
             .map((habilidad) => ({
                 Habilidad: `${habilidad?.Habilidad ?? ''}`.trim(),
-                Rangos: this.toNumber(habilidad?.Rangos),
+                Rangos: toNumber(habilidad?.Rangos),
                 Extra: `${habilidad?.Extra ?? ''}`.trim(),
             }))
             .filter((habilidad) => this.tieneTextoVisible(habilidad.Habilidad) && habilidad.Rangos > 0);
@@ -261,7 +262,7 @@ export class DetallesMonstruoComponent {
         return this.formatearListaPersonajes(lista.map(item => ({
             id: item?.Id_personaje,
             nombre: item?.Nombre,
-            extra: `F#${this.toNumber(item?.Id_familiar)}`,
+            extra: `F#${toNumber(item?.Id_familiar)}`,
         })));
     }
 
@@ -270,7 +271,7 @@ export class DetallesMonstruoComponent {
         return this.formatearListaPersonajes(lista.map(item => ({
             id: item?.Id_personaje,
             nombre: item?.Nombre,
-            extra: `C#${this.toNumber(item?.Id_companero)}`,
+            extra: `C#${toNumber(item?.Id_companero)}`,
         })));
     }
 
@@ -278,7 +279,7 @@ export class DetallesMonstruoComponent {
         return (this.monstruo?.Subtipos ?? [])
             .filter(subtipo => this.tieneTextoVisible(subtipo?.Nombre))
             .map(subtipo => ({
-                Id: this.toNumber(subtipo?.Id),
+                Id: toNumber(subtipo?.Id),
                 Nombre: `${subtipo?.Nombre ?? ''}`.trim(),
             }))
             .sort((a, b) => a.Nombre.localeCompare(b.Nombre, 'es', { sensitivity: 'base' }));
@@ -327,7 +328,7 @@ export class DetallesMonstruoComponent {
     }
 
     mostrarManiobrabilidad(): boolean {
-        const vuela = this.toNumber(this.monstruo?.Movimientos?.Volar) > 0;
+        const vuela = toNumber(this.monstruo?.Movimientos?.Volar) > 0;
         if (!vuela)
             return false;
         return tieneManiobrabilidadVisible(this.monstruo?.Maniobrabilidad);
@@ -362,7 +363,7 @@ export class DetallesMonstruoComponent {
 
     private formatearListaPersonajes(items: Array<{ id: any; nombre: any; extra?: string; }>): string {
         const textos = items
-            .filter(item => this.toNumber(item?.id) > 0 && this.tieneTextoVisible(`${item?.nombre ?? ''}`))
+            .filter(item => toNumber(item?.id) > 0 && this.tieneTextoVisible(`${item?.nombre ?? ''}`))
             .map(item => `${item.nombre}${item.extra ? ` (${item.extra})` : ''}`);
         if (textos.length < 1)
             return '-';
@@ -379,11 +380,6 @@ export class DetallesMonstruoComponent {
         return entries.map(([key, value]) => `${key}: ${value}`).join(' | ');
     }
 
-    private toNumber(value: any): number {
-        const parsed = Number(value);
-        return Number.isFinite(parsed) ? parsed : 0;
-    }
-
     private getNivelesClaseNormalizados(): Array<{
         idClase: number;
         nombreClase: string;
@@ -394,14 +390,14 @@ export class DetallesMonstruoComponent {
         dote: string;
     }> {
         return (this.monstruo?.Niveles_clase ?? [])
-            .filter(item => this.toNumber(item?.Clase?.Id) > 0 && this.tieneTextoVisible(item?.Clase?.Nombre))
+            .filter(item => toNumber(item?.Clase?.Id) > 0 && this.tieneTextoVisible(item?.Clase?.Nombre))
             .map((item) => ({
-                idClase: this.toNumber(item?.Clase?.Id),
+                idClase: toNumber(item?.Clase?.Id),
                 nombreClase: `${item?.Clase?.Nombre ?? ''}`.trim(),
-                nivel: this.toNumber(item?.Nivel),
-                plantillaId: this.toNumber(item?.Plantilla?.Id),
+                nivel: toNumber(item?.Nivel),
+                plantillaId: toNumber(item?.Plantilla?.Id),
                 plantilla: `${item?.Plantilla?.Nombre ?? ''}`.trim(),
-                doteId: this.toNumber(item?.Dote?.Id),
+                doteId: toNumber(item?.Dote?.Id),
                 dote: `${item?.Dote?.Nombre ?? ''}`.trim(),
             }));
     }
@@ -419,23 +415,23 @@ export class DetallesMonstruoComponent {
         const claseNormalizada = this.normalizar(nivel?.nombreClase ?? '');
         const plantillaNormalizada = this.normalizar(nivel?.plantilla ?? '');
 
-        if (DetallesMonstruoComponent.DOTE_IDS_COMPANERO.has(this.toNumber(nivel?.doteId))
+        if (DetallesMonstruoComponent.DOTE_IDS_COMPANERO.has(toNumber(nivel?.doteId))
             || doteNormalizada.includes('companero')
             || doteNormalizada.includes('compañero')) {
             contextos.add('Companero');
         }
-        if (DetallesMonstruoComponent.DOTE_IDS_FAMILIAR.has(this.toNumber(nivel?.doteId))
+        if (DetallesMonstruoComponent.DOTE_IDS_FAMILIAR.has(toNumber(nivel?.doteId))
             || doteNormalizada.includes('familiar')) {
             contextos.add('Familiar');
         }
 
-        if (DetallesMonstruoComponent.CLASE_IDS_COMPANERO.has(this.toNumber(nivel?.idClase))
+        if (DetallesMonstruoComponent.CLASE_IDS_COMPANERO.has(toNumber(nivel?.idClase))
             || claseNormalizada === 'druida'
             || claseNormalizada === 'explorador'
             || claseNormalizada === 'ranger') {
             contextos.add('Companero');
         }
-        if (DetallesMonstruoComponent.CLASE_IDS_FAMILIAR.has(this.toNumber(nivel?.idClase))
+        if (DetallesMonstruoComponent.CLASE_IDS_FAMILIAR.has(toNumber(nivel?.idClase))
             || claseNormalizada === 'mago'
             || claseNormalizada === 'hechicero'
             || claseNormalizada === 'wizard'
@@ -443,7 +439,7 @@ export class DetallesMonstruoComponent {
             contextos.add('Familiar');
         }
 
-        if (this.toNumber(nivel?.plantillaId) > 0 || plantillaNormalizada !== 'no aplica')
+        if (toNumber(nivel?.plantillaId) > 0 || plantillaNormalizada !== 'no aplica')
             contextos.add('Familiar');
 
         if (contextos.size < 1) {

@@ -7,6 +7,7 @@ import { Raza } from 'src/app/interfaces/raza';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
 import { RazaService } from 'src/app/services/raza.service';
 import { ordenarEnEspanol } from 'src/app/services/utils/orden-tabla';
+import { toNumber } from 'src/app/services/utils/normalizacion';
 
 @Component({
     selector: 'app-listado-razas',
@@ -64,7 +65,7 @@ export class ListadoRazasComponent implements OnDestroy {
         const homebrew = this.isHomebrewActivo();
         const razasFiltradas = this.razas
             .filter(raza =>
-                this.toNumber((raza as any).Id) > 0
+                toNumber((raza as any).Id) > 0
                 && (texto === '' || this.coincideConTexto(raza, texto))
                 && (this.defaultManual == 'Cualquiera' || `${raza.Manual ?? ''}`.includes(this.defaultManual))
                 && (homebrew || this.esOficialParaFiltro(raza))
@@ -74,7 +75,7 @@ export class ListadoRazasComponent implements OnDestroy {
                 const nombreB = this.normalizarTexto(b?.Nombre ?? '');
                 const byNombre = nombreA.localeCompare(nombreB, 'es', { sensitivity: 'base' });
                 if (byNombre !== 0) return byNombre;
-                return this.toNumber((a as any).Id) - this.toNumber((b as any).Id);
+                return toNumber((a as any).Id) - toNumber((b as any).Id);
             });
         this.razasDS = new MatTableDataSource(razasFiltradas);
         if (this.razaSort) {
@@ -165,21 +166,21 @@ export class ListadoRazasComponent implements OnDestroy {
 
     private normalizarModificadores(mods: any) {
         return {
-            Fuerza: this.toNumber(mods?.Fuerza),
-            Destreza: this.toNumber(mods?.Destreza),
-            Constitucion: this.toNumber(mods?.Constitucion),
-            Inteligencia: this.toNumber(mods?.Inteligencia),
-            Sabiduria: this.toNumber(mods?.Sabiduria),
-            Carisma: this.toNumber(mods?.Carisma),
+            Fuerza: toNumber(mods?.Fuerza),
+            Destreza: toNumber(mods?.Destreza),
+            Constitucion: toNumber(mods?.Constitucion),
+            Inteligencia: toNumber(mods?.Inteligencia),
+            Sabiduria: toNumber(mods?.Sabiduria),
+            Carisma: toNumber(mods?.Carisma),
         };
     }
 
     getModificador(mods: any, key: 'Fuerza' | 'Destreza' | 'Constitucion' | 'Inteligencia' | 'Sabiduria' | 'Carisma'): number {
-        return this.toNumber(mods?.[key]);
+        return toNumber(mods?.[key]);
     }
 
     getDgsCantidad(dgs: any): number {
-        return this.toNumber(dgs?.Cantidad);
+        return toNumber(dgs?.Cantidad);
     }
 
     getDgsDado(dgs: any): string {
@@ -195,11 +196,6 @@ export class ListadoRazasComponent implements OnDestroy {
 
     private esOficialParaFiltro(raza: Raza): boolean {
         return this.toBoolean((raza as any)?.Oficial, true);
-    }
-
-    private toNumber(value: any): number {
-        const parsed = Number(value);
-        return Number.isFinite(parsed) ? parsed : 0;
     }
 
     private toBoolean(value: any, fallback: boolean = false): boolean {

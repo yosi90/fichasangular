@@ -1,6 +1,7 @@
 import { Clase } from 'src/app/interfaces/clase';
 import { FamiliarMonstruoDetalle, MonstruoDetalle, MonstruoNivelClase } from 'src/app/interfaces/monstruo';
 import { Personaje } from 'src/app/interfaces/personaje';
+import { toNumber } from 'src/app/services/utils/normalizacion';
 
 export type FamiliarPlantillaId = 1 | 2 | 3 | 4 | 5;
 
@@ -142,11 +143,6 @@ const ALIGNMENT_ID_TO_NAME: Record<number, string> = {
     8: 'Caótico neutral',
     9: 'Caótico maligno',
 };
-
-function toNumber(value: any, fallback = 0): number {
-    const parsed = Number(value);
-    return Number.isFinite(parsed) ? parsed : fallback;
-}
 
 function normalizeText(value: string): string {
     return `${value ?? ''}`

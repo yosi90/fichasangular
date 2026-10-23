@@ -15,20 +15,10 @@ import {
 } from "../interfaces/habilidad";
 import { FirebaseInjectionContextService } from "./firebase-injection-context.service";
 import { obtenerTokenApi } from './platform-session.service';
+import { toNumber, toText } from 'src/app/services/utils/normalizacion';
 
 function toBoolean(value: any): boolean {
     return value === true || value === 1 || value === "1";
-}
-
-function toNumber(value: any, fallback = 0): number {
-    const parsed = Number(value);
-    return Number.isFinite(parsed) ? parsed : fallback;
-}
-
-function toText(value: any, fallback = ""): string {
-    if (value === null || value === undefined)
-        return fallback;
-    return `${value}`;
 }
 
 function toArray<T = any>(value: any): T[] {

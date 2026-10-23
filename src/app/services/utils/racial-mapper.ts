@@ -1,14 +1,6 @@
 import { Conjuro } from "src/app/interfaces/conjuro";
 import { RacialDetalle } from "src/app/interfaces/racial";
-
-function toNumber(value: any, fallback: number = 0): number {
-    const n = Number(value);
-    return Number.isFinite(n) ? n : fallback;
-}
-
-function toText(value: any, fallback: string = ""): string {
-    return typeof value === "string" ? value : (value ?? fallback).toString();
-}
+import { toArray, toNumber, toText } from 'src/app/services/utils/normalizacion';
 
 function toBoolean(value: any): boolean {
     return value === true || value === 1 || value === "1";
@@ -25,14 +17,6 @@ function toOptionalNumber(value: any): number {
     if (!Number.isFinite(n))
         return 0;
     return Math.max(0, Math.trunc(n));
-}
-
-function toArray<T = any>(value: any): T[] {
-    if (Array.isArray(value))
-        return value;
-    if (value && typeof value === "object")
-        return Object.values(value) as T[];
-    return [];
 }
 
 function pick(raw: any, ...keys: string[]): any {

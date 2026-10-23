@@ -8,6 +8,7 @@ import { CacheEntityKey } from "../config/cache-contract-manifest";
 import { ActitudCatalogItem, RazaCatalogItem, TipoDadoCatalogItem } from "../interfaces/raza-catalogos";
 import { CacheCatalogMissReportService } from "./cache-catalog-miss-report.service";
 import { FirebaseInjectionContextService } from "./firebase-injection-context.service";
+import { toArray } from 'src/app/services/utils/normalizacion';
 
 function normalizeCatalogItem(raw: any, preserveRaw = false): RazaCatalogItem {
     const rawId = raw?.Id ?? raw?.id ?? raw?.Id_maniobrabilidad ?? raw?.Id_tipo_dado ?? raw?.Id_actitud ?? raw?.id_actitud;
@@ -22,14 +23,6 @@ function sortCatalog<T extends RazaCatalogItem>(items: T[]): T[] {
     return items
         .filter((item) => Number.isFinite(item.Id) && item.Id >= 0 && item.Nombre.length > 0)
         .sort((a, b) => a.Nombre.localeCompare(b.Nombre, "es", { sensitivity: "base" }));
-}
-
-function toArray(value: any): any[] {
-    if (Array.isArray(value))
-        return value;
-    if (value && typeof value === "object")
-        return Object.values(value);
-    return [];
 }
 
 @Injectable({

@@ -9,6 +9,7 @@ import { RazaSimple } from 'src/app/interfaces/simplificaciones/raza-simple';
 import { FirebaseInjectionContextService } from '../firebase-injection-context.service';
 import { PrivateUserFirestoreService } from '../private-user-firestore.service';
 import { obtenerTokenApi } from '../platform-session.service';
+import { toNumber } from 'src/app/services/utils/normalizacion';
 
 @Injectable({
     providedIn: 'root'
@@ -495,11 +496,6 @@ function toBoolean(value: any): boolean {
         return normalizado === '1' || normalizado === 'true' || normalizado === 'si' || normalizado === 'sí';
     }
     return false;
-}
-
-function toNumber(value: any): number {
-    const parsed = Number(value);
-    return Number.isFinite(parsed) ? parsed : 0;
 }
 
 function toNullablePositiveInt(value: any): number | null {

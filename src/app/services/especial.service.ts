@@ -18,26 +18,10 @@ import {
 } from "../interfaces/especial";
 import { FirebaseInjectionContextService } from "./firebase-injection-context.service";
 import { obtenerTokenApi } from './platform-session.service';
-
-function toNumber(value: any, fallback: number = 0): number {
-    const n = Number(value);
-    return Number.isFinite(n) ? n : fallback;
-}
+import { toArray, toNumber, toText } from 'src/app/services/utils/normalizacion';
 
 function toBoolean(value: any): boolean {
     return value === true || value === 1 || value === "1";
-}
-
-function toText(value: any, fallback: string = ""): string {
-    return typeof value === "string" ? value : (value ?? fallback).toString();
-}
-
-function toArray<T = any>(value: any): T[] {
-    if (Array.isArray(value))
-        return value;
-    if (value && typeof value === "object")
-        return Object.values(value) as T[];
-    return [];
 }
 
 function normalizeRefSimple(raw: any): EspecialRefSimple {

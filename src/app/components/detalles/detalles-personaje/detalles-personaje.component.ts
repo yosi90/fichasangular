@@ -23,6 +23,7 @@ import { resolverExtraHabilidadVisible } from 'src/app/services/utils/habilidad-
 import { buildManiobrabilidadInfoSecciones, ManiobrabilidadLike, tieneManiobrabilidadVisible } from 'src/app/services/utils/maniobrabilidad-info';
 import { calcularNivelesLanzadorPersonaje } from 'src/app/services/utils/nivel-lanzador-personaje';
 import Swal from 'sweetalert2';
+import { toArray, toNumber } from 'src/app/services/utils/normalizacion';
 
 interface MadurezEdadResumen {
     id: number;
@@ -187,7 +188,7 @@ export class DetallesPersonajeComponent implements OnInit, OnChanges, AfterViewI
 
     get mostrarControlVisibilidad(): boolean {
         return !this.esPreviewNuevoPersonaje
-            && this.toNumber(this.pj?.Id) > 0
+            && toNumber(this.pj?.Id) > 0
             && this.actorPuedeGestionarEstadoPersonaje();
     }
 
@@ -226,7 +227,7 @@ export class DetallesPersonajeComponent implements OnInit, OnChanges, AfterViewI
             return '';
 
         const catalogo = (this.catalogoRegiones ?? [])
-            .find((item) => this.toNumber(item?.Id) === idRegion);
+            .find((item) => toNumber(item?.Id) === idRegion);
         const nombreCatalogo = `${catalogo?.Nombre ?? ''}`.trim();
         return nombreCatalogo.length > 0 ? nombreCatalogo : `#${idRegion}`;
     }
@@ -354,7 +355,7 @@ export class DetallesPersonajeComponent implements OnInit, OnChanges, AfterViewI
     }
 
     getNivelesLanzadorVisibles(): PersonajeNivelLanzadorResumen[] {
-        return (this.nivelesLanzador ?? []).filter((nivel) => this.toNumber(nivel?.nivelLanzador) > 0);
+        return (this.nivelesLanzador ?? []).filter((nivel) => toNumber(nivel?.nivelLanzador) > 0);
     }
 
     private ownerUidNormalizado(): string {
@@ -406,19 +407,14 @@ export class DetallesPersonajeComponent implements OnInit, OnChanges, AfterViewI
         this.perfilPublicoDisponible = true;
     }
 
-    private toNumber(value: any): number {
-        const parsed = Number(value);
-        return Number.isFinite(parsed) ? parsed : 0;
-    }
-
     private sumarMods(mods: { valor: number, origen: string }[] | undefined): number {
-        return (mods ?? []).reduce((c, v) => c + this.toNumber(v?.valor), 0);
+        return (mods ?? []).reduce((c, v) => c + toNumber(v?.valor), 0);
     }
 
     private getNivelPersonaje(): number {
-        const nivelesClase = (this.pj?.desgloseClases ?? []).reduce((c, clase) => c + this.toNumber(clase?.Nivel), 0);
-        const ajusteRaza = this.toNumber(this.pj?.Raza?.Ajuste_nivel);
-        const ajustesPlantillas = (this.pj?.Plantillas ?? []).reduce((c, p) => c + this.toNumber(p?.Ajuste_nivel), 0);
+        const nivelesClase = (this.pj?.desgloseClases ?? []).reduce((c, clase) => c + toNumber(clase?.Nivel), 0);
+        const ajusteRaza = toNumber(this.pj?.Raza?.Ajuste_nivel);
+        const ajustesPlantillas = (this.pj?.Plantillas ?? []).reduce((c, p) => c + toNumber(p?.Ajuste_nivel), 0);
         return nivelesClase + ajusteRaza + ajustesPlantillas;
     }
 
@@ -741,15 +737,15 @@ Fue/Des/Con: ${this.formatSigned(madurez.modFisico)} | Int/Sab/Car: ${this.forma
         if (this.tieneTextoVisible(claseCatalogo.Mod_salv_conjuros))
             chips.push(`Salvación (${claseCatalogo.Mod_salv_conjuros})`);
 
-        const nivelClase = Math.max(0, this.toNumber(claseDesglose?.Nivel));
+        const nivelClase = Math.max(0, toNumber(claseDesglose?.Nivel));
         const nivelDetalleObjetivo = resumenLanzador?.nivelDesgloseLanzador ?? nivelClase;
         const detalleNivel = this.obtenerDetalleNivelClase(claseCatalogo, nivelDetalleObjetivo);
         if (detalleNivel) {
             if (conjuros.Psionicos) {
-                const reserva = this.toNumber(detalleNivel?.Reserva_psionica);
+                const reserva = toNumber(detalleNivel?.Reserva_psionica);
                 if (reserva > 0)
                     chips.push(`Reserva ${reserva}`);
-                const poderMax = this.toNumber(detalleNivel?.Nivel_max_poder_accesible_nivel_lanzadorPsionico);
+                const poderMax = toNumber(detalleNivel?.Nivel_max_poder_accesible_nivel_lanzadorPsionico);
                 if (poderMax >= 0)
                     chips.push(`Poder máximo ${poderMax}`);
             }
@@ -761,7 +757,7 @@ Fue/Des/Con: ${this.formatSigned(madurez.modFisico)} | Int/Sab/Car: ${this.forma
             }
 
             if (conjuros.Conocidos_total) {
-                const totalConocidos = this.toNumber(detalleNivel?.Conjuros_conocidos_total);
+                const totalConocidos = toNumber(detalleNivel?.Conjuros_conocidos_total);
                 if (totalConocidos > 0)
                     chips.push(`Conocidos ${totalConocidos}`);
             }
@@ -795,12 +791,12 @@ Fue/Des/Con: ${this.formatSigned(madurez.modFisico)} | Int/Sab/Car: ${this.forma
     }
 
     private obtenerDetalleNivelClase(clase: Clase, nivelClase: number): any | null {
-        const nivelObjetivo = Math.max(1, Math.trunc(this.toNumber(nivelClase)));
+        const nivelObjetivo = Math.max(1, Math.trunc(toNumber(nivelClase)));
         if (nivelObjetivo <= 0)
             return null;
 
         const desglose = Array.isArray(clase?.Desglose_niveles) ? clase.Desglose_niveles : [];
-        return desglose.find((nivel) => Math.trunc(this.toNumber(nivel?.Nivel)) === nivelObjetivo) ?? null;
+        return desglose.find((nivel) => Math.trunc(toNumber(nivel?.Nivel)) === nivelObjetivo) ?? null;
     }
 
     private formatearNivelesDiariosAccesibles(mapa: Record<string, number> | null | undefined): string {
@@ -809,7 +805,7 @@ Fue/Des/Con: ${this.formatSigned(madurez.modFisico)} | Int/Sab/Car: ${this.forma
         const niveles = Object.keys(mapa)
             .map((key) => ({
                 nivel: this.parseNivelConjuroKey(key),
-                valor: this.toNumber((mapa as Record<string, any>)[key]),
+                valor: toNumber((mapa as Record<string, any>)[key]),
             }))
             .filter((item) => Number.isFinite(item.nivel) && item.nivel >= 0)
             .filter((item) => item.valor >= 0)
@@ -825,7 +821,7 @@ Fue/Des/Con: ${this.formatSigned(madurez.modFisico)} | Int/Sab/Car: ${this.forma
         const entradas = Object.keys(mapa)
             .map((key) => {
                 const nivel = this.parseNivelConjuroKey(key);
-                const valor = this.toNumber((mapa as Record<string, any>)[key]);
+                const valor = toNumber((mapa as Record<string, any>)[key]);
                 return { nivel, valor };
             })
             .filter((item) => Number.isFinite(item.nivel) && item.nivel >= 0 && item.valor > 0)
@@ -906,14 +902,6 @@ Fue/Des/Con: ${this.formatSigned(madurez.modFisico)} | Int/Sab/Car: ${this.forma
         });
     }
 
-    private toArray(value: any): any[] {
-        if (Array.isArray(value))
-            return value;
-        if (value && typeof value === 'object')
-            return Object.values(value);
-        return [];
-    }
-
     private toPositiveNumberOrNull(...values: any[]): number | null {
         for (const value of values) {
             const parsed = Number(value);
@@ -924,10 +912,10 @@ Fue/Des/Con: ${this.formatSigned(madurez.modFisico)} | Int/Sab/Car: ${this.forma
     }
 
     getRacialesVisibles(): RacialReferencia[] {
-        const racialesDesdePersonaje = this.toArray((this.pj as any)?.Raciales);
+        const racialesDesdePersonaje = toArray((this.pj as any)?.Raciales);
         const racialesFuente = racialesDesdePersonaje.length > 0
             ? racialesDesdePersonaje
-            : this.toArray((this.pj as any)?.Raza?.Raciales);
+            : toArray((this.pj as any)?.Raza?.Raciales);
 
         return racialesFuente
             .map((racial: RacialDetalle | string | Record<string, any>) => {
@@ -969,7 +957,7 @@ Fue/Des/Con: ${this.formatSigned(madurez.modFisico)} | Int/Sab/Car: ${this.forma
     }
 
     getDominiosVisibles(): string[] {
-        const fuente = this.toArray((this.pj as any)?.Dominios);
+        const fuente = toArray((this.pj as any)?.Dominios);
         return fuente
             .map((dominio: string | Record<string, any>) => {
                 if (typeof dominio === 'string')
@@ -981,33 +969,33 @@ Fue/Des/Con: ${this.formatSigned(madurez.modFisico)} | Int/Sab/Car: ${this.forma
     }
 
     getEnemigosPredilectosVisibles(): EnemigoPredilectoSeleccion[] {
-        const fuente = this.toArray((this.pj as any)?.enemigosPredilectos);
+        const fuente = toArray((this.pj as any)?.enemigosPredilectos);
         return fuente
             .map((item: Record<string, any>) => ({
-                id: this.toNumber(item?.['id'] ?? item?.['Id']),
+                id: toNumber(item?.['id'] ?? item?.['Id']),
                 nombre: `${item?.['nombre'] ?? item?.['Nombre'] ?? ''}`.trim(),
-                bono: Math.max(0, this.toNumber(item?.['bono'] ?? item?.['Bono'])),
-                veces: Math.max(0, this.toNumber(item?.['veces'] ?? item?.['Veces'])),
+                bono: Math.max(0, toNumber(item?.['bono'] ?? item?.['Bono'])),
+                veces: Math.max(0, toNumber(item?.['veces'] ?? item?.['Veces'])),
             }))
             .filter((item) => item.id > 0 && this.tieneTextoVisible(item.nombre) && item.bono > 0)
             .sort((a, b) => a.nombre.localeCompare(b.nombre, 'es', { sensitivity: 'base' }));
     }
 
     getTextoBonoEnemigoPredilecto(item: EnemigoPredilectoSeleccion): string {
-        return `+${Math.max(0, this.toNumber(item?.bono))}`;
+        return `+${Math.max(0, toNumber(item?.bono))}`;
     }
 
     private actualizarValoresDerivadosVisuales(): void {
-        const iniciativaTotal = this.toNumber(this.pj?.ModDestreza)
-            + (this.pj?.Iniciativa_varios ?? []).reduce((c, v) => c + this.toNumber(v?.Valor), 0);
+        const iniciativaTotal = toNumber(this.pj?.ModDestreza)
+            + (this.pj?.Iniciativa_varios ?? []).reduce((c, v) => c + toNumber(v?.Valor), 0);
         this.iniciativa = this.formatSigned(iniciativaTotal);
 
-        const presaTotal = this.toNumber(this.pj?.Presa);
+        const presaTotal = toNumber(this.pj?.Presa);
         this.presa = this.formatSigned(presaTotal);
 
-        const ligera = this.toNumber(this.pj?.Capacidad_carga?.Ligera);
-        const media = this.toNumber(this.pj?.Capacidad_carga?.Media);
-        const pesada = this.toNumber(this.pj?.Capacidad_carga?.Pesada);
+        const ligera = toNumber(this.pj?.Capacidad_carga?.Ligera);
+        const media = toNumber(this.pj?.Capacidad_carga?.Media);
+        const pesada = toNumber(this.pj?.Capacidad_carga?.Pesada);
         this.cLigera = `${parseFloat((ligera * 0.453592).toFixed(2))} Kilogramos`;
         this.cMedia = `${parseFloat((media * 0.453592).toFixed(2))} Kilogramos`;
         const cargaPesadaKg = parseFloat((pesada * 0.453592).toFixed(2));
@@ -1058,13 +1046,13 @@ Fue/Des/Con: ${this.formatSigned(madurez.modFisico)} | Int/Sab/Car: ${this.forma
         if (!this.esPreviewNuevoPersonaje)
             return false;
 
-        const nivelClases = (this.pj?.desgloseClases ?? []).reduce((acc, clase) => acc + this.toNumber(clase?.Nivel), 0);
-        const ajusteRaza = this.toNumber(this.pj?.Raza?.Ajuste_nivel);
+        const nivelClases = (this.pj?.desgloseClases ?? []).reduce((acc, clase) => acc + toNumber(clase?.Nivel), 0);
+        const ajusteRaza = toNumber(this.pj?.Raza?.Ajuste_nivel);
         const ajustePlantillas = (this.pj?.Plantillas ?? [])
-            .reduce((acc, plantilla) => acc + this.toNumber(plantilla?.Ajuste_nivel), 0);
-        const dgsRaza = this.toNumber(this.pj?.Raza?.Dgs_adicionales?.Cantidad);
+            .reduce((acc, plantilla) => acc + toNumber(plantilla?.Ajuste_nivel), 0);
+        const dgsRaza = toNumber(this.pj?.Raza?.Dgs_adicionales?.Cantidad);
         const dgsPlantillas = (this.pj?.Plantillas ?? [])
-            .reduce((acc, plantilla) => acc + this.toNumber(plantilla?.Multiplicador_dgs_lic), 0);
+            .reduce((acc, plantilla) => acc + toNumber(plantilla?.Multiplicador_dgs_lic), 0);
         return nivelClases > 0 || ajusteRaza > 0 || ajustePlantillas > 0 || dgsRaza > 0 || dgsPlantillas > 0;
     }
 
@@ -1096,16 +1084,16 @@ Fue/Des/Con: ${this.formatSigned(madurez.modFisico)} | Int/Sab/Car: ${this.forma
     }
 
     getFamiliaresVisibles(): FamiliarMonstruoDetalle[] {
-        return this.toArray((this.pj as any)?.Familiares)
+        return toArray((this.pj as any)?.Familiares)
             .map((item) => item as FamiliarMonstruoDetalle)
-            .filter((familiar) => this.toNumber((familiar as any)?.Id) > 0 && this.tieneTextoVisible(familiar?.Nombre))
+            .filter((familiar) => toNumber((familiar as any)?.Id) > 0 && this.tieneTextoVisible(familiar?.Nombre))
             .sort((a, b) => `${a?.Nombre ?? ''}`.localeCompare(`${b?.Nombre ?? ''}`, 'es', { sensitivity: 'base' }));
     }
 
     getCompanerosVisibles(): CompaneroMonstruoDetalle[] {
-        return this.toArray((this.pj as any)?.Companeros)
+        return toArray((this.pj as any)?.Companeros)
             .map((item) => item as CompaneroMonstruoDetalle)
-            .filter((companero) => this.toNumber((companero as any)?.Id) > 0 && this.tieneTextoVisible(companero?.Nombre))
+            .filter((companero) => toNumber((companero as any)?.Id) > 0 && this.tieneTextoVisible(companero?.Nombre))
             .sort((a, b) => `${a?.Nombre ?? ''}`.localeCompare(`${b?.Nombre ?? ''}`, 'es', { sensitivity: 'base' }));
     }
 
@@ -1372,7 +1360,7 @@ Fue/Des/Con: ${this.formatSigned(madurez.modFisico)} | Int/Sab/Car: ${this.forma
 
     @Output() monstruoDetalles: EventEmitter<MonstruoDetalle> = new EventEmitter<MonstruoDetalle>();
     verDetallesMonstruo(monstruo: MonstruoDetalle): void {
-        const id = this.toNumber(monstruo?.Id);
+        const id = toNumber(monstruo?.Id);
         if (!Number.isFinite(id) || id <= 0)
             return;
         this.monstruoDetalles.emit(monstruo);

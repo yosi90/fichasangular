@@ -9,6 +9,7 @@ import {
     parseLeyDesdePreferencia,
     parseMoralDesdePreferencia,
 } from "./alineamiento-contrato";
+import { toArray, toNumber } from 'src/app/services/utils/normalizacion';
 
 export type EstadoElegibilidadRazaBase = "eligible" | "eligible_with_warning" | "blocked";
 
@@ -32,11 +33,6 @@ interface RestriccionAlineamientoRaza {
     moral: number | null;
 }
 
-function toNumber(value: any, fallback: number = 0): number {
-    const n = Number(value);
-    return Number.isFinite(n) ? n : fallback;
-}
-
 function toBoolean(value: any): boolean {
     return value === true || value === 1 || value === "1";
 }
@@ -46,14 +42,6 @@ function parseIdExtra(value: any): number {
         return -1;
     const parsed = Number(value);
     return Number.isFinite(parsed) ? parsed : -1;
-}
-
-function toArray<T = any>(value: any): T[] {
-    if (Array.isArray(value))
-        return value;
-    if (value && typeof value === "object")
-        return Object.values(value) as T[];
-    return [];
 }
 
 function normalizeText(value: string): string {

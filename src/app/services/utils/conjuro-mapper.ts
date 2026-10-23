@@ -1,4 +1,5 @@
 import { Conjuro } from 'src/app/interfaces/conjuro';
+import { toArray, toText } from 'src/app/services/utils/normalizacion';
 
 function toBoolean(value: any): boolean {
     if (typeof value === 'boolean')
@@ -15,20 +16,6 @@ function toBoolean(value: any): boolean {
 function toNumber(value: any, fallback: number = 0): number {
     const parsed = Number(value);
     return Number.isFinite(parsed) ? Math.trunc(parsed) : fallback;
-}
-
-function toText(value: any, fallback: string = ''): string {
-    if (value === null || value === undefined)
-        return fallback;
-    return `${value}`;
-}
-
-function toArray<T = any>(value: any): T[] {
-    if (Array.isArray(value))
-        return value;
-    if (value && typeof value === 'object')
-        return Object.values(value) as T[];
-    return [];
 }
 
 function toStrictArray<T = any>(value: any): T[] {

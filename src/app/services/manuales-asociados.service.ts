@@ -15,20 +15,12 @@ import { PlantillaService } from './plantilla.service';
 import { RazaService } from './raza.service';
 import { SubtipoService } from './subtipo.service';
 import { TipoCriaturaService } from './tipo-criatura.service';
+import { toNumber, toText } from 'src/app/services/utils/normalizacion';
 
 type ColeccionAsociadosKey = keyof ManualAsociados;
 
 function toBoolean(value: any): boolean {
     return value === true || value === 1 || value === '1';
-}
-
-function toNumber(value: any, fallback: number = 0): number {
-    const n = Number(value);
-    return Number.isFinite(n) ? n : fallback;
-}
-
-function toText(value: any): string {
-    return typeof value === 'string' ? value : (value ?? '').toString();
 }
 
 function ordenarReferencias(items: ReferenciaCorta[]): ReferenciaCorta[] {

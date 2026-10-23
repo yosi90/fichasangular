@@ -8,11 +8,7 @@ import {
     PersonajeProgresionLanzadorDto,
     PersonajeProgresionLanzadorSeleccionDto
 } from 'src/app/interfaces/personajes-api';
-
-function toNumber(value: any): number {
-    const parsed = Number(value);
-    return Number.isFinite(parsed) ? parsed : 0;
-}
+import { toNumber } from 'src/app/services/utils/normalizacion';
 
 function normalizarTexto(value: any): string {
     return `${value ?? ''}`

@@ -4,6 +4,7 @@ import { Plantilla, PlantillaPrerrequisitos } from 'src/app/interfaces/plantilla
 import { SubtipoRef } from 'src/app/interfaces/subtipo';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
 import { resolverExtraHabilidadVisible } from 'src/app/services/utils/habilidad-extra-visible';
+import { toNumber } from 'src/app/services/utils/normalizacion';
 
 type PrerrequisitoCondicion = {
     familiaEtiqueta: string;
@@ -106,11 +107,11 @@ export class DetallesPlantillaComponent {
         if (!mov)
             return false;
 
-        return this.toNumber(mov.Correr) > 0
-            || this.toNumber(mov.Nadar) > 0
-            || this.toNumber(mov.Volar) > 0
-            || this.toNumber(mov.Trepar) > 0
-            || this.toNumber(mov.Escalar) > 0
+        return toNumber(mov.Correr) > 0
+            || toNumber(mov.Nadar) > 0
+            || toNumber(mov.Volar) > 0
+            || toNumber(mov.Trepar) > 0
+            || toNumber(mov.Escalar) > 0
             || this.tieneManiobrabilidadVisible();
     }
 
@@ -120,11 +121,11 @@ export class DetallesPlantillaComponent {
             return [];
 
         const cambios: CambioNumerico[] = [
-            { etiqueta: 'Correr', valor: this.toNumber(mov.Correr) },
-            { etiqueta: 'Nadar', valor: this.toNumber(mov.Nadar) },
-            { etiqueta: 'Volar', valor: this.toNumber(mov.Volar) },
-            { etiqueta: 'Trepar', valor: this.toNumber(mov.Trepar) },
-            { etiqueta: 'Escalar', valor: this.toNumber(mov.Escalar) },
+            { etiqueta: 'Correr', valor: toNumber(mov.Correr) },
+            { etiqueta: 'Nadar', valor: toNumber(mov.Nadar) },
+            { etiqueta: 'Volar', valor: toNumber(mov.Volar) },
+            { etiqueta: 'Trepar', valor: toNumber(mov.Trepar) },
+            { etiqueta: 'Escalar', valor: toNumber(mov.Escalar) },
         ];
 
         return cambios.filter(c => c.valor > 0);
@@ -154,15 +155,15 @@ export class DetallesPlantillaComponent {
     }
 
     getDgsOtorgadosPlantilla(): number {
-        return this.toNumber(this.plantillaData?.Licantronia_dg?.Multiplicador);
+        return toNumber(this.plantillaData?.Licantronia_dg?.Multiplicador);
     }
 
     getMultiplicadorDgsPlantilla(): number {
-        return this.toNumber(this.plantillaData?.Licantronia_dg?.Multiplicador);
+        return toNumber(this.plantillaData?.Licantronia_dg?.Multiplicador);
     }
 
     getSumaPgsPlantilla(): number {
-        return this.toNumber(this.plantillaData?.Licantronia_dg?.Suma);
+        return toNumber(this.plantillaData?.Licantronia_dg?.Suma);
     }
 
     getDadoDgsPlantilla(): string {
@@ -178,12 +179,12 @@ export class DetallesPlantillaComponent {
 
     getCambiosCombateNumericos(): CambioNumerico[] {
         return [
-            { etiqueta: 'Ataque base', valor: this.toNumber(this.plantillaData?.Ataque_base) },
-            { etiqueta: 'Iniciativa', valor: this.toNumber(this.plantillaData?.Iniciativa) },
-            { etiqueta: 'Presa', valor: this.toNumber(this.plantillaData?.Presa) },
-            { etiqueta: 'Fortaleza', valor: this.toNumber(this.plantillaData?.Fortaleza) },
-            { etiqueta: 'Reflejos', valor: this.toNumber(this.plantillaData?.Reflejos) },
-            { etiqueta: 'Voluntad', valor: this.toNumber(this.plantillaData?.Voluntad) },
+            { etiqueta: 'Ataque base', valor: toNumber(this.plantillaData?.Ataque_base) },
+            { etiqueta: 'Iniciativa', valor: toNumber(this.plantillaData?.Iniciativa) },
+            { etiqueta: 'Presa', valor: toNumber(this.plantillaData?.Presa) },
+            { etiqueta: 'Fortaleza', valor: toNumber(this.plantillaData?.Fortaleza) },
+            { etiqueta: 'Reflejos', valor: toNumber(this.plantillaData?.Reflejos) },
+            { etiqueta: 'Voluntad', valor: toNumber(this.plantillaData?.Voluntad) },
         ].filter(c => c.valor !== 0);
     }
 
@@ -208,12 +209,12 @@ export class DetallesPlantillaComponent {
             return [];
 
         return [
-            { etiqueta: 'Fue', valor: this.toNumber(mod.Fuerza) },
-            { etiqueta: 'Des', valor: this.toNumber(mod.Destreza) },
-            { etiqueta: 'Con', valor: this.toNumber(mod.Constitucion) },
-            { etiqueta: 'Int', valor: this.toNumber(mod.Inteligencia) },
-            { etiqueta: 'Sab', valor: this.toNumber(mod.Sabiduria) },
-            { etiqueta: 'Car', valor: this.toNumber(mod.Carisma) },
+            { etiqueta: 'Fue', valor: toNumber(mod.Fuerza) },
+            { etiqueta: 'Des', valor: toNumber(mod.Destreza) },
+            { etiqueta: 'Con', valor: toNumber(mod.Constitucion) },
+            { etiqueta: 'Int', valor: toNumber(mod.Inteligencia) },
+            { etiqueta: 'Sab', valor: toNumber(mod.Sabiduria) },
+            { etiqueta: 'Car', valor: toNumber(mod.Carisma) },
         ].filter(c => c.valor !== 0);
     }
 
@@ -223,12 +224,12 @@ export class DetallesPlantillaComponent {
             return [];
 
         return [
-            { etiqueta: 'Fue', valor: this.toNumber(min.Fuerza) },
-            { etiqueta: 'Des', valor: this.toNumber(min.Destreza) },
-            { etiqueta: 'Con', valor: this.toNumber(min.Constitucion) },
-            { etiqueta: 'Int', valor: this.toNumber(min.Inteligencia) },
-            { etiqueta: 'Sab', valor: this.toNumber(min.Sabiduria) },
-            { etiqueta: 'Car', valor: this.toNumber(min.Carisma) },
+            { etiqueta: 'Fue', valor: toNumber(min.Fuerza) },
+            { etiqueta: 'Des', valor: toNumber(min.Destreza) },
+            { etiqueta: 'Con', valor: toNumber(min.Constitucion) },
+            { etiqueta: 'Int', valor: toNumber(min.Inteligencia) },
+            { etiqueta: 'Sab', valor: toNumber(min.Sabiduria) },
+            { etiqueta: 'Car', valor: toNumber(min.Carisma) },
         ].filter(c => c.valor > 0);
     }
 
@@ -416,7 +417,7 @@ export class DetallesPlantillaComponent {
             return 0;
 
         const raw = item['opcional'] ?? item['Opcional'] ?? item['o'] ?? item['O'] ?? 0;
-        const valor = this.toNumber(raw);
+        const valor = toNumber(raw);
         return valor > 0 ? valor : 0;
     }
 
@@ -554,8 +555,4 @@ export class DetallesPlantillaComponent {
             .toLowerCase();
     }
 
-    private toNumber(value: any): number {
-        const parsed = Number(value);
-        return Number.isFinite(parsed) ? parsed : 0;
-    }
 }

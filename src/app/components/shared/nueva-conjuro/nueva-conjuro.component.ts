@@ -19,6 +19,7 @@ import { EscuelaConjurosService } from 'src/app/services/escuela-conjuros.servic
 import { ManualService } from 'src/app/services/manual.service';
 import { SubdisciplinaConjurosService } from 'src/app/services/subdisciplina-conjuros.service';
 import { UserService } from 'src/app/services/user.service';
+import { toArray } from 'src/app/services/utils/normalizacion';
 
 interface CrearConjuroEmitPayload {
     idConjuro: number;
@@ -705,7 +706,7 @@ export class NuevaConjuroComponent implements OnInit, OnDestroy {
             const disciplina = this.disciplinas.find((item: any) =>
                 this.toInt(item?.Id ?? item?.id ?? item?.i, 0) === idDisciplina
             );
-            this.subdisciplinasActuales = this.toArray((disciplina as any)?.Subdisciplinas ?? (disciplina as any)?.subdisciplinas ?? (disciplina as any)?.sd)
+            this.subdisciplinasActuales = toArray((disciplina as any)?.Subdisciplinas ?? (disciplina as any)?.subdisciplinas ?? (disciplina as any)?.sd)
                 .map((item, index) => {
                     if (typeof item === 'string')
                         return { Id: index + 1, Nombre: `${item}`.trim() };
@@ -831,11 +832,4 @@ export class NuevaConjuroComponent implements OnInit, OnDestroy {
             .toLowerCase();
     }
 
-    private toArray<T = any>(value: any): T[] {
-        if (Array.isArray(value))
-            return value;
-        if (value && typeof value === 'object')
-            return Object.values(value) as T[];
-        return [];
-    }
 }

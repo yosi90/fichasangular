@@ -6,6 +6,7 @@ import {
     getVectorDesdeNombreBasico,
     nombreBasicoDesdeVector,
 } from "./alineamiento-contrato";
+import { toNumber } from 'src/app/services/utils/normalizacion';
 
 export type EstadoElegibilidadPlantilla = "eligible" | "blocked_failed" | "blocked_unknown";
 
@@ -47,11 +48,6 @@ export interface ResolucionAlineamientoPlantillas {
     alineamiento: string;
     conflicto: boolean;
     razones: string[];
-}
-
-function toNumber(value: any, fallback: number = 0): number {
-    const n = Number(value);
-    return Number.isFinite(n) ? n : fallback;
 }
 
 function normalize(value: string): string {
