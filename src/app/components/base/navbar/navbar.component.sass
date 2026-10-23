@@ -52,9 +52,16 @@
     padding: 0 10px
     --yosi-color-campana: white
 
+// En bloque, no en flex: el SDK pinta su panel como hijo absoluto del elemento, y en un flex centrado el panel se
+// centraba en vertical sobre la cinta y salía cortado por arriba. La cinta (flex) ya los centra.
 .ribbon-yosi
-    display: inline-flex
-    align-items: center
+    display: block
+
+// Los paneles de la cinta (webs, cuenta, campana) prevalecen sobre las ventanas del chat flotante (z-index 1490).
+.ribbon-yosi,
+.ribbon-notificaciones
+    position: relative
+    z-index: 1500
 
 .ribbon-yosi--cuenta
     padding: 0 6px 0 4px

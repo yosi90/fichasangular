@@ -108,6 +108,11 @@ body.rol-ocultar-chat yosi-chat,
 body.rol-ocultar-chat app-chat-floating-host
     display: none !important
 
+// Un menú abierto prevalece sobre las ventanas del chat flotante (z-index 1490). Solo mientras está abierto, para no
+// cambiar el orden de los diálogos y los avisos, que van en la misma capa.
+.cdk-overlay-container:has(.mat-mdc-menu-panel)
+    z-index: 1700
+
 // El símbolo de Yosiftware delante de todo enlace a la web social (ecosistema-kit/MARCA.md), en el color del enlace.
 .simbolo-yosiftware
     display: inline-block
