@@ -43,6 +43,7 @@ import { RazaService } from 'src/app/services/raza.service';
 import { SubtipoService } from 'src/app/services/subtipo.service';
 import { TamanoService } from 'src/app/services/tamano.service';
 import { TipoCriaturaService } from 'src/app/services/tipo-criatura.service';
+import { recargandoPorCambioDeIdentidad } from 'src/app/services/platform-session.service';
 import { UserService } from 'src/app/services/user.service';
 import { buildManiobrabilidadInfoSecciones } from 'src/app/services/utils/maniobrabilidad-info';
 import { PrerrequisitoEditorHostComponent } from '../prerrequisito-editor/prerrequisito-editor-host.component';
@@ -396,7 +397,7 @@ export class NuevaRazaComponent implements OnInit, OnDestroy {
     @HostListener('window:beforeunload', ['$event'])
     onBeforeUnload(event?: BeforeUnloadEvent): void {
         this.persistirBorradorLocalAhora();
-        if (event && this.tieneRacialesPendientesRazaEnCreacion()) {
+        if (event && this.tieneRacialesPendientesRazaEnCreacion() && !recargandoPorCambioDeIdentidad()) {
             event.preventDefault();
             event.returnValue = '';
         }

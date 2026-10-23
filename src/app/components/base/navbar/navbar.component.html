@@ -42,6 +42,9 @@
     <div class="ribbon-spacer" aria-hidden="true"></div>
     <!-- El centro de notificaciones de Yosiftware (ecosistema-kit/NOTIFICACIONES.md): sin sesión no enseña nada. -->
     <yosi-notificaciones class="ribbon-notificaciones" (yosi-notificacion-abrir)="onNotificacionAbrir($event)"></yosi-notificaciones>
+    <!-- Las webs del ecosistema y el panel de cuentas, obligatorios en la cabecera (ecosistema-kit/ACCESO.md). -->
+    <yosi-webs class="ribbon-yosi"></yosi-webs>
+    <yosi-acceso class="ribbon-yosi ribbon-yosi--cuenta"></yosi-acceso>
 </div>
 
 <mat-menu #menuArchivo="matMenu" [class]="'menuSuperficieOscura'">

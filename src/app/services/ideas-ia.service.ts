@@ -175,8 +175,10 @@ export class IdeasIaService {
             .filter(p => p?.proveedor === 'anthropic' || p?.proveedor === 'openai')
             .map(p => ({
                 proveedor: p.proveedor as ProveedorIa,
+                // Solo los que escriben texto: la lista trae también voz, imágenes y transcripción (kit 1.48 y 1.49).
                 modelos: (Array.isArray(p.modelos) ? p.modelos : [])
                     .filter((m: any) => typeof m?.id === 'string' && m.id.trim().length > 0)
+                    .filter((m: any) => !Array.isArray(m?.usos) || m.usos.includes('texto'))
                     .map((m: any) => ({ id: m.id, nombre: `${m.nombre ?? m.id}` })),
                 error: typeof p.error === 'string' ? p.error : null,
             }));

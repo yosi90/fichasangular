@@ -96,6 +96,14 @@ const REINTENTO_SDK_MS = 60_000;
 
 let instancia: PlatformSessionService | null = null;
 
+/**
+ * La página se está recargando porque ha cambiado la cuenta: quien avise al salir de la página («¿Seguro que quieres
+ * salir?») no debe frenarlo, o se quedaría a la vista lo de la cuenta anterior.
+ */
+export function recargandoPorCambioDeIdentidad(): boolean {
+    return instancia?.recargando ?? false;
+}
+
 /** Token de la API de Rol (audiencia `fichas-api`) para la petición que se va a hacer. No se guarda. */
 export function obtenerTokenApi(): Promise<string> {
     if (!instancia)
@@ -110,6 +118,9 @@ export class PlatformSessionService {
     private readonly estadoSubject = new BehaviorSubject<EstadoPlataforma>({ tipo: 'comprobando' });
     private cargaSdk: Promise<YosiftwareSdk> | null = null;
     private iniciado = false;
+    /** La última cuenta que ha visto la web en esta carga de la página. */
+    private cuentaConfirmada: string | null = null;
+    recargando = false;
 
     private readonly espacioAceptadoSubject = new Subject<EspacioAceptado>();
 
@@ -223,13 +234,48 @@ export class PlatformSessionService {
     private async conectar(): Promise<void> {
         try {
             const sdk = await this.cargarSdk();
-            sdk.alCambiar((estado) => this.zone.run(() => this.estadoSubject.next(estado)));
+            sdk.alCambiar((estado) => this.zone.run(() => this.aplicarEstado(estado)));
+            window.addEventListener('yosiftware:identidad', () => this.zone.run(() => {
+                if (this.cuentaConfirmada)
+                    this.recargarPorCambioDeIdentidad();
+            }));
             window.addEventListener('yosiftware:espacio', (evento) => this.zone.run(() => this.alResolverInvitacion(evento)));
             this.abrirReporteDesdeUrl(sdk);
         } catch {
             this.estadoSubject.next({ tipo: 'no_disponible' });
             setTimeout(() => void this.conectar(), REINTENTO_SDK_MS);
         }
+    }
+
+    /**
+     * Cambio de cuenta (ecosistema-kit/CAMBIO_DE_CUENTA.md): de A a B, de A a sin sesión, o el aviso
+     * `yosiftware:identidad` del SDK (que llega antes de confirmar y cubre A → B → A). Rol guarda datos de la cuenta en
+     * muchos servicios, pestañas, ventanas del chat, temporizadores y suscripciones; en vez de limpiarlos uno a uno, la
+     * página se recarga antes de que nadie vea la cuenta nueva. Así nada de A queda en memoria ni llega tarde. Los
+     * borradores de A se guardan con su `beforeunload`, en las claves de A (cada entorno tiene su origen y sus cuentas).
+     */
+    private aplicarEstado(estado: EstadoPlataforma): void {
+        const anterior = this.cuentaConfirmada;
+        const cambia = estado.tipo === 'sin_sesion'
+            || (estado.tipo === 'con_sesion' && estado.cuenta.id !== anterior);
+        if (anterior && cambia) {
+            this.recargarPorCambioDeIdentidad();
+            return;
+        }
+        if (estado.tipo === 'con_sesion')
+            this.cuentaConfirmada = estado.cuenta.id;
+        this.estadoSubject.next(estado);
+    }
+
+    private recargarPorCambioDeIdentidad(): void {
+        if (this.recargando)
+            return;
+        this.recargando = true;
+        this.recargarPagina();
+    }
+
+    protected recargarPagina(): void {
+        window.location.reload();
     }
 
     // El SDK se carga siempre de la plataforma, nunca se empaqueta. Si falla (sin red), se reintenta después.

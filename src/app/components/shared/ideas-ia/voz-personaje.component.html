@@ -26,7 +26,7 @@
             <mat-icon>error_outline</mat-icon>
             <span>
                 {{error.message}}
-                <a *ngIf="error.esDeLaClave" [href]="urlGestion" target="_blank" rel="noopener">Ir a tus claves de IA</a>
+                <a *ngIf="error.esDeLaClave" [href]="urlGestion" target="_blank" rel="noopener"><span class="simbolo-yosiftware" aria-hidden="true"></span>Ir a tus claves de IA</a>
             </span>
         </div>
 
@@ -38,6 +38,6 @@
 
     <p class="ideas-ia__gestion" *ngSwitchCase="'sin_clave'">
         <mat-icon>record_voice_over</mat-icon>
-        <a [href]="urlGestion" target="_blank" rel="noopener">Tus claves de IA y su tope se gestionan en tu cuenta de Yosiftware</a>
+        <a [href]="urlGestion" target="_blank" rel="noopener"><span class="simbolo-yosiftware" aria-hidden="true"></span>Tus claves de IA y su tope se gestionan en tu cuenta de Yosiftware</a>
     </p>
 </ng-container>

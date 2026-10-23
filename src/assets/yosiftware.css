@@ -74,6 +74,44 @@
     height: 18px;
 }
 
+/* Las webs del ecosistema y la cuenta, también en la barra: a la medida de la campana. */
+[part~="webs"] {
+    width: 34px;
+    height: 22px;
+    margin: 2px 0;
+    border-radius: 4px;
+    color: #ffffff;
+}
+
+[part~="webs"]:hover,
+[part~="webs"][aria-expanded="true"] {
+    background: #ffffff;
+    color: #000000;
+}
+
+[part~="webs"] svg {
+    width: 18px;
+    height: 18px;
+}
+
+[part~="cuenta"] {
+    padding: 1px;
+}
+
+[part~="cuenta"] [part~="avatar"] {
+    width: 22px;
+    height: 22px;
+    font-size: 12px;
+}
+
+/* «Entrar», sin sesión, en la barra. */
+.raiz > [part~="boton"][part~="principal"] {
+    padding: 2px 12px;
+    margin: 2px 0;
+    border-radius: 4px;
+    font-size: 13px;
+}
+
 /* El icono del botón del chat, como el de las burbujas flotantes de Rol (28 px). */
 [part~="lanzador"] svg {
     width: 28px;
