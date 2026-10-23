@@ -1,5 +1,6 @@
 import { Component, EventEmitter, HostListener, Input, Output } from '@angular/core';
 import { IdiomaDetalle } from 'src/app/interfaces/idioma';
+import { normalizarTexto } from 'src/app/services/utils/normalizacion';
 
 @Component({
     selector: 'app-selector-idioma-modal',
@@ -28,10 +29,10 @@ export class SelectorIdiomaModalComponent {
     }
 
     get idiomasDisponibles(): IdiomaDetalle[] {
-        const yaIncluidos = new Set(this.idiomasYaSeleccionados.map((x) => this.normalizarTexto(x)));
+        const yaIncluidos = new Set(this.idiomasYaSeleccionados.map((x) => normalizarTexto(x)));
         return this.idiomas
             .filter((idioma) => !idioma.Secreto)
-            .filter((idioma) => !yaIncluidos.has(this.normalizarTexto(idioma.Nombre)))
+            .filter((idioma) => !yaIncluidos.has(normalizarTexto(idioma.Nombre)))
             .filter((idioma) => this.incluirHomebrewEfectivo || idioma.Oficial)
             .sort((a, b) => a.Nombre.localeCompare(b.Nombre, 'es', { sensitivity: 'base' }));
     }
@@ -144,14 +145,6 @@ export class SelectorIdiomaModalComponent {
         if (!this.puedeCerrar)
             return;
         this.cerrar.emit();
-    }
-
-    private normalizarTexto(valor: string): string {
-        return `${valor ?? ''}`
-            .normalize('NFD')
-            .replace(/[\u0300-\u036f]/g, '')
-            .trim()
-            .toLowerCase();
     }
 
     private esElementoInteractivoParaEnter(target: HTMLElement | null): boolean {

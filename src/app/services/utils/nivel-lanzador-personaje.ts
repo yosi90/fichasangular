@@ -8,15 +8,7 @@ import {
     PersonajeProgresionLanzadorDto,
     PersonajeProgresionLanzadorSeleccionDto
 } from 'src/app/interfaces/personajes-api';
-import { toNumber } from 'src/app/services/utils/normalizacion';
-
-function normalizarTexto(value: any): string {
-    return `${value ?? ''}`
-        .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g, '')
-        .trim()
-        .toLowerCase();
-}
+import { normalizarTexto, toNumber } from 'src/app/services/utils/normalizacion';
 
 function tieneLanzamientoPropio(clase: Clase | null | undefined): boolean {
     const conjuros = clase?.Conjuros;

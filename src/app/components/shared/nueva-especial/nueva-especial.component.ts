@@ -15,6 +15,7 @@ import { ExtraService } from 'src/app/services/extra.service';
 import { HabilidadService } from 'src/app/services/habilidad.service';
 import { SubtipoService } from 'src/app/services/subtipo.service';
 import { UserService } from 'src/app/services/user.service';
+import { normalizarTexto } from 'src/app/services/utils/normalizacion';
 
 interface NombreIdItem {
     Id: number;
@@ -685,33 +686,29 @@ export class NuevaEspecialComponent implements OnInit, OnDestroy, OnChanges {
     }
 
     private filtrarPorNombre<T extends { Nombre: string; }>(items: T[], query: string): T[] {
-        const filtro = this.normalizar(query);
+        const filtro = normalizarTexto(query);
         if (filtro.length < 1)
             return items.slice(0, 40);
-        return items.filter((item) => this.normalizar(item.Nombre).includes(filtro)).slice(0, 40);
+        return items.filter((item) => normalizarTexto(item.Nombre).includes(filtro)).slice(0, 40);
     }
 
     private filtrarHabilidades(items: HabilidadBasicaDetalle[], query: string): HabilidadBasicaDetalle[] {
-        const filtro = this.normalizar(query);
+        const filtro = normalizarTexto(query);
         if (filtro.length < 1)
             return items.slice(0, 40);
-        return items.filter((item) => this.normalizar(item.Nombre).includes(filtro)).slice(0, 40);
+        return items.filter((item) => normalizarTexto(item.Nombre).includes(filtro)).slice(0, 40);
     }
 
     private filtrarExtras<T extends { Extra: string; }>(items: T[], query: string): T[] {
-        const filtro = this.normalizar(query);
+        const filtro = normalizarTexto(query);
         if (filtro.length < 1)
             return items.slice(0, 40);
-        return items.filter((item) => this.normalizar(item.Extra).includes(filtro)).slice(0, 40);
+        return items.filter((item) => normalizarTexto(item.Extra).includes(filtro)).slice(0, 40);
     }
 
     private uid(): string {
         this.uidCounter += 1;
         return `especial_${Date.now()}_${this.uidCounter}`;
-    }
-
-    private normalizar(value: unknown): string {
-        return `${value ?? ''}`.normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase();
     }
 
     private texto(value: unknown): string {

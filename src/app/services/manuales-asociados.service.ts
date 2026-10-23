@@ -15,7 +15,7 @@ import { PlantillaService } from './plantilla.service';
 import { RazaService } from './raza.service';
 import { SubtipoService } from './subtipo.service';
 import { TipoCriaturaService } from './tipo-criatura.service';
-import { toNumber, toText } from 'src/app/services/utils/normalizacion';
+import { normalizarTexto, toNumber, toText } from 'src/app/services/utils/normalizacion';
 
 type ColeccionAsociadosKey = keyof ManualAsociados;
 
@@ -293,11 +293,11 @@ export class ManualesAsociadosService {
                 const byName = new Map<string, ManualAsociadoDetalle>();
                 base.forEach((manual) => {
                     byId.set(manual.Id, manual);
-                    byName.set(this.normalizarTexto(manual.Nombre), manual);
+                    byName.set(normalizarTexto(manual.Nombre), manual);
                 });
 
                 const manualesPorLongitud = [...base].sort(
-                    (a, b) => this.normalizarTexto(b.Nombre).length - this.normalizarTexto(a.Nombre).length
+                    (a, b) => normalizarTexto(b.Nombre).length - normalizarTexto(a.Nombre).length
                 );
 
                 dotes.forEach((item) => {
@@ -391,14 +391,6 @@ export class ManualesAsociadosService {
         };
     }
 
-    private normalizarTexto(value: string): string {
-        return toText(value)
-            .normalize('NFD')
-            .replace(/[\u0300-\u036f]/g, '')
-            .trim()
-            .toLowerCase();
-    }
-
     private resolveManualIdByObject(
         manualRef: { Id?: any, Nombre?: any } | null | undefined,
         byId: Map<number, ManualAsociadoDetalle>,
@@ -408,7 +400,7 @@ export class ManualesAsociadosService {
         if (id > 0 && byId.has(id))
             return id;
 
-        const nombre = this.normalizarTexto(toText(manualRef?.Nombre));
+        const nombre = normalizarTexto(toText(manualRef?.Nombre));
         if (nombre.length < 1)
             return undefined;
 
@@ -417,15 +409,15 @@ export class ManualesAsociadosService {
     }
 
     private resolveManualIdByText(manualText: any, manualesOrdenados: ManualAsociadoDetalle[]): number | undefined {
-        const texto = this.normalizarTexto(toText(manualText));
+        const texto = normalizarTexto(toText(manualText));
         if (texto.length < 1)
             return undefined;
 
-        const exact = manualesOrdenados.find(manual => this.normalizarTexto(manual.Nombre) === texto);
+        const exact = manualesOrdenados.find(manual => normalizarTexto(manual.Nombre) === texto);
         if (exact)
             return exact.Id;
 
-        const included = manualesOrdenados.find(manual => texto.includes(this.normalizarTexto(manual.Nombre)));
+        const included = manualesOrdenados.find(manual => texto.includes(normalizarTexto(manual.Nombre)));
         return included?.Id;
     }
 

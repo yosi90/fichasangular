@@ -6,6 +6,7 @@ import { Subject, takeUntil } from 'rxjs';
 import { RacialDetalle } from 'src/app/interfaces/racial';
 import { RacialService } from 'src/app/services/racial.service';
 import { ordenarEnEspanol } from 'src/app/services/utils/orden-tabla';
+import { normalizarTexto } from 'src/app/services/utils/normalizacion';
 
 @Component({
     selector: 'app-listado-raciales',
@@ -41,11 +42,11 @@ export class ListadoRacialesComponent implements OnDestroy {
     }
 
     filtroRaciales() {
-        const texto = this.normalizar(this.nombreText?.nativeElement.value);
+        const texto = normalizarTexto(this.nombreText?.nativeElement.value);
         const racialesFiltradas = this.raciales.filter(racial =>
             texto === ''
-            || this.normalizar(racial.Nombre).includes(texto)
-            || this.normalizar(racial.Descripcion).includes(texto)
+            || normalizarTexto(racial.Nombre).includes(texto)
+            || normalizarTexto(racial.Descripcion).includes(texto)
         );
 
         this.racialesDS = new MatTableDataSource(racialesFiltradas);
@@ -70,14 +71,6 @@ export class ListadoRacialesComponent implements OnDestroy {
         const racial = this.raciales.find(r => r.Id === id);
         if (racial)
             this.racialSeleccionada.emit(racial);
-    }
-
-    private normalizar(value: string): string {
-        return (value ?? '')
-            .normalize('NFD')
-            .replace(/[\u0300-\u036f]/g, '')
-            .trim()
-            .toLowerCase();
     }
 
     private cargarRaciales(): void {

@@ -51,6 +51,7 @@ import { NuevaIdiomaComponent } from '../../shared/nueva-idioma/nueva-idioma.com
 import { NuevaEspecialComponent } from '../../shared/nueva-especial/nueva-especial.component';
 import { NuevaClaseComponent } from '../../shared/nueva-clase/nueva-clase.component';
 import { IdiomaDetalle } from 'src/app/interfaces/idioma';
+import { normalizarTexto } from 'src/app/services/utils/normalizacion';
 
 interface ListadoTabAbierto {
     key: string;
@@ -744,19 +745,19 @@ export class TabControlComponent implements OnInit, OnDestroy {
     }
 
     recibirObjetoListado(value: { item: any, tipo: string }, operacion: string = 'detalles') {
-        if (this.normalizar(operacion) === 'modificar' && value.tipo === 'raciales') {
+        if (normalizarTexto(operacion) === 'modificar' && value.tipo === 'raciales') {
             this.abrirEdicionRacial(value.item);
             return;
         }
-        if (this.normalizar(operacion) === 'modificar' && value.tipo === 'idiomas') {
+        if (normalizarTexto(operacion) === 'modificar' && value.tipo === 'idiomas') {
             this.abrirEdicionIdioma(value.item);
             return;
         }
-        if (this.normalizar(operacion) === 'modificar' && value.tipo === 'especiales') {
+        if (normalizarTexto(operacion) === 'modificar' && value.tipo === 'especiales') {
             this.abrirEdicionEspecial(value.item);
             return;
         }
-        if (this.normalizar(operacion) === 'modificar' && value.tipo === 'clases') {
+        if (normalizarTexto(operacion) === 'modificar' && value.tipo === 'clases') {
             this.abrirEdicionClase(value.item);
             return;
         }
@@ -961,7 +962,7 @@ export class TabControlComponent implements OnInit, OnDestroy {
 
         const abierto = this.detallesRasgoAbiertos.find(r =>
             (Number(r.Id) > 0 && Number(rasgo.Id) > 0 && Number(r.Id) === Number(rasgo.Id))
-            || this.normalizar(r.Nombre) === this.normalizar(nombre));
+            || normalizarTexto(r.Nombre) === normalizarTexto(nombre));
         if (abierto) {
             this.selectTabByKey(this.getRasgoTabKey(abierto));
             return;
@@ -1046,7 +1047,7 @@ export class TabControlComponent implements OnInit, OnDestroy {
 
     getEtiquetaListadoTab(tab: ListadoTabAbierto): string {
         const tipo = `${tab?.tipo ?? ''}`.trim();
-        const operacion = this.normalizar(tab?.operacion ?? '');
+        const operacion = normalizarTexto(tab?.operacion ?? '');
         if (operacion === 'insertar')
             return `Insertar ${tipo}`;
         if (operacion === 'modificar')
@@ -1103,7 +1104,7 @@ export class TabControlComponent implements OnInit, OnDestroy {
         const id = Number(rasgo?.Id ?? 0);
         if (Number.isFinite(id) && id > 0)
             return `rasgo:${id}`;
-        return `rasgo:name:${this.normalizar(rasgo?.Nombre ?? '')}`;
+        return `rasgo:name:${normalizarTexto(rasgo?.Nombre ?? '')}`;
     }
 
     private getClaseTabKey(clase: Clase): string {
@@ -1156,8 +1157,8 @@ export class TabControlComponent implements OnInit, OnDestroy {
     }
 
     private getListadoTabKey(tipo: string, operacion: string): string {
-        const tipoKey = this.normalizar(tipo).replace(/\s+/g, '-');
-        const operacionKey = this.normalizar(operacion).replace(/\s+/g, '-');
+        const tipoKey = normalizarTexto(tipo).replace(/\s+/g, '-');
+        const operacionKey = normalizarTexto(operacion).replace(/\s+/g, '-');
         return `listado:${operacionKey}:${tipoKey}`;
     }
 
@@ -1253,14 +1254,14 @@ export class TabControlComponent implements OnInit, OnDestroy {
         if (this.esNombreNoAplicable(nombreDote))
             return;
 
-        const abierto = this.detallesDoteAbiertos.find(d => this.normalizar(d?.Dote?.Nombre ?? '') === this.normalizar(nombreDote));
+        const abierto = this.detallesDoteAbiertos.find(d => normalizarTexto(d?.Dote?.Nombre ?? '') === normalizarTexto(nombreDote));
         if (abierto) {
             this.selectTabByKey(this.getDoteTabKey(abierto));
             return;
         }
 
         this.doteSvc.getDotes().pipe(take(1)).subscribe(dotes => {
-            const encontrada = dotes.find(d => this.normalizar(d?.Nombre ?? '') === this.normalizar(nombreDote));
+            const encontrada = dotes.find(d => normalizarTexto(d?.Nombre ?? '') === normalizarTexto(nombreDote));
             if (encontrada) {
                 this.abrirDetallesDote(encontrada);
                 return;
@@ -1279,7 +1280,7 @@ export class TabControlComponent implements OnInit, OnDestroy {
         if (!nombreClase || nombreClase.trim().length < 1)
             return;
 
-        const encontrado = this.detallesClaseAbiertos.find(c => this.normalizar(c.Nombre) === this.normalizar(nombreClase));
+        const encontrado = this.detallesClaseAbiertos.find(c => normalizarTexto(c.Nombre) === normalizarTexto(nombreClase));
         if (encontrado) {
             this.selectTabByKey(this.getClaseTabKey(encontrado));
             return;
@@ -1363,21 +1364,21 @@ export class TabControlComponent implements OnInit, OnDestroy {
         if (this.esNombreNoAplicable(nombreEspecial))
             return;
 
-        const abierto = this.detallesEspecialAbiertos.find(e => this.normalizar(e.Nombre) === this.normalizar(nombreEspecial));
+        const abierto = this.detallesEspecialAbiertos.find(e => normalizarTexto(e.Nombre) === normalizarTexto(nombreEspecial));
         if (abierto) {
             this.selectTabByKey(this.getEspecialTabKey(abierto));
             return;
         }
 
         this.especialSvc.getEspeciales().pipe(take(1)).subscribe(especiales => {
-            const encontrado = especiales.find(e => this.normalizar(e.Nombre) === this.normalizar(nombreEspecial));
+            const encontrado = especiales.find(e => normalizarTexto(e.Nombre) === normalizarTexto(nombreEspecial));
             if (encontrado) {
                 this.abrirDetallesEspecial(encontrado);
                 return;
             }
 
             this.doteSvc.getDotes().pipe(take(1)).subscribe(dotes => {
-                const doteEncontrada = dotes.find(d => this.normalizar(d?.Nombre ?? '') === this.normalizar(nombreEspecial));
+                const doteEncontrada = dotes.find(d => normalizarTexto(d?.Nombre ?? '') === normalizarTexto(nombreEspecial));
                 if (doteEncontrada) {
                     this.abrirDetallesDote(doteEncontrada);
                     return;
@@ -1746,7 +1747,7 @@ export class TabControlComponent implements OnInit, OnDestroy {
         if (!nombrePlantilla || nombrePlantilla.trim().length < 1)
             return;
 
-        const abierta = this.detallesPlantillaAbiertos.find(p => this.normalizar(p.Nombre) === this.normalizar(nombrePlantilla));
+        const abierta = this.detallesPlantillaAbiertos.find(p => normalizarTexto(p.Nombre) === normalizarTexto(nombrePlantilla));
         if (abierta) {
             this.selectTabByKey(this.getPlantillaTabKey(abierta));
             return;
@@ -1809,7 +1810,7 @@ export class TabControlComponent implements OnInit, OnDestroy {
         if (!nombreSubtipo || nombreSubtipo.trim().length < 1)
             return;
 
-        const abierto = this.detallesSubtipoAbiertos.find(s => this.normalizar(s.Nombre) === this.normalizar(nombreSubtipo));
+        const abierto = this.detallesSubtipoAbiertos.find(s => normalizarTexto(s.Nombre) === normalizarTexto(nombreSubtipo));
         if (abierto) {
             this.selectTabByKey(this.getSubtipoTabKey(abierto));
             return;
@@ -2000,11 +2001,11 @@ export class TabControlComponent implements OnInit, OnDestroy {
 
     abrirDetallesDeidadPorNombre(nombreDeidad: string) {
         const nombre = `${nombreDeidad ?? ''}`.trim();
-        const nombreNormalizado = this.normalizar(nombre);
+        const nombreNormalizado = normalizarTexto(nombre);
         if (nombreNormalizado.length < 1 || nombreNormalizado === 'no tener deidad')
             return;
 
-        const abierta = this.detallesDeidadAbiertos.find((item) => this.normalizar(item?.Nombre ?? '') === nombreNormalizado);
+        const abierta = this.detallesDeidadAbiertos.find((item) => normalizarTexto(item?.Nombre ?? '') === nombreNormalizado);
         if (abierta) {
             this.selectTabByKey(this.getDeidadTabKey(abierta));
             return;
@@ -2012,7 +2013,7 @@ export class TabControlComponent implements OnInit, OnDestroy {
 
         this.deidadSvc.getDeidades().pipe(take(1)).subscribe({
             next: (deidades) => {
-                const encontrada = (deidades ?? []).find((item) => this.normalizar(item?.Nombre ?? '') === nombreNormalizado);
+                const encontrada = (deidades ?? []).find((item) => normalizarTexto(item?.Nombre ?? '') === nombreNormalizado);
                 if (encontrada) {
                     this.abrirDetallesDeidad(encontrada);
                     return;
@@ -2447,14 +2448,6 @@ export class TabControlComponent implements OnInit, OnDestroy {
         return this.clasesEditables?.toArray().find((component) => component.editorTabKey === key);
     }
 
-    private normalizar(value: string): string {
-        return (value ?? '')
-            .normalize('NFD')
-            .replace(/[\u0300-\u036f]/g, '')
-            .trim()
-            .toLowerCase();
-    }
-
     private toBoolean(value: any, fallback: boolean = false): boolean {
         if (typeof value === 'boolean')
             return value;
@@ -2471,7 +2464,7 @@ export class TabControlComponent implements OnInit, OnDestroy {
     }
 
     private esNombreNoAplicable(value: string): boolean {
-        const normalizado = this.normalizar(value).replace(/[.]/g, '');
+        const normalizado = normalizarTexto(value).replace(/[.]/g, '');
         return normalizado.length < 1
             || normalizado === 'no aplica'
             || normalizado === 'no especifica'
@@ -2481,13 +2474,13 @@ export class TabControlComponent implements OnInit, OnDestroy {
 
     private nombreRacialBase(value: string): string {
         const sinParentesis = `${value ?? ''}`.replace(/\s*\([^)]*\)\s*/g, ' ').trim();
-        return this.normalizar(sinParentesis);
+        return normalizarTexto(sinParentesis);
     }
 
     private buscarVentajaPorNombre(coleccion: VentajaDetalle[], nombre: string): VentajaDetalle | null {
-        const objetivo = this.normalizar(nombre);
+        const objetivo = normalizarTexto(nombre);
         const candidatas = coleccion
-            .filter(v => this.normalizar(v?.Nombre ?? '') === objetivo)
+            .filter(v => normalizarTexto(v?.Nombre ?? '') === objetivo)
             .sort((a, b) => Number(a.Id) - Number(b.Id));
         return candidatas[0] ?? null;
     }
@@ -2498,7 +2491,7 @@ export class TabControlComponent implements OnInit, OnDestroy {
         ventajas: VentajaDetalle[],
         desventajas: VentajaDetalle[]
     ): VentajaDetalle | null {
-        const origenNormalizado = this.normalizar(origen);
+        const origenNormalizado = normalizarTexto(origen);
 
         if (origenNormalizado === 'desventaja')
             return this.buscarVentajaPorNombre(desventajas, nombre) ?? this.buscarVentajaPorNombre(ventajas, nombre);
@@ -2510,10 +2503,10 @@ export class TabControlComponent implements OnInit, OnDestroy {
     }
 
     private buscarRacialPorNombre(raciales: RacialDetalle[], nombreRacial: string): RacialDetalle | undefined {
-        const objetivo = this.normalizar(nombreRacial);
+        const objetivo = normalizarTexto(nombreRacial);
         const objetivoBase = this.nombreRacialBase(nombreRacial);
 
-        const exacta = raciales.find(r => this.normalizar(r.Nombre) === objetivo);
+        const exacta = raciales.find(r => normalizarTexto(r.Nombre) === objetivo);
         if (exacta)
             return exacta;
 
@@ -2522,7 +2515,7 @@ export class TabControlComponent implements OnInit, OnDestroy {
             return porBase;
 
         return raciales.find((r) => {
-            const actual = this.normalizar(r.Nombre);
+            const actual = normalizarTexto(r.Nombre);
             const actualBase = this.nombreRacialBase(r.Nombre);
             return actual.includes(objetivo)
                 || objetivo.includes(actual)

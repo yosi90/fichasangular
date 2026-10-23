@@ -1,6 +1,7 @@
 import { Component, EventEmitter, HostListener, Input, Output } from '@angular/core';
 import { CompaneroMonstruoDetalle } from 'src/app/interfaces/monstruo';
 import { CompaneroPlantillaSelector } from 'src/app/services/utils/companero-reglas';
+import { normalizarTexto } from 'src/app/services/utils/normalizacion';
 
 export interface SelectorCompaneroConfirmacion {
     companero: CompaneroMonstruoDetalle;
@@ -48,12 +49,12 @@ export class SelectorCompaneroModalComponent {
     idPlantillaSeleccionada = 0;
 
     get companerosFiltrados(): CompaneroMonstruoDetalle[] {
-        const filtro = this.normalizarTexto(this.filtroTexto);
+        const filtro = normalizarTexto(this.filtroTexto);
         const listado = this.companerosListado;
         if (filtro.length < 1)
             return listado;
         return listado.filter((companero) =>
-            this.normalizarTexto(companero?.Nombre ?? '').includes(filtro)
+            normalizarTexto(companero?.Nombre ?? '').includes(filtro)
         );
     }
 
@@ -206,7 +207,7 @@ export class SelectorCompaneroModalComponent {
     }
 
     private normalizarPlantilla(value: CompaneroPlantillaSelector | string): CompaneroPlantillaSelector {
-        const normalized = this.normalizarTexto(`${value ?? ''}`);
+        const normalized = normalizarTexto(`${value ?? ''}`);
         if (normalized.includes('elevado'))
             return 'elevado';
         if (normalized.includes('sabandija'))
@@ -258,11 +259,4 @@ export class SelectorCompaneroModalComponent {
         return this.getClaveCompanero(a) === this.getClaveCompanero(b);
     }
 
-    private normalizarTexto(value: string): string {
-        return `${value ?? ''}`
-            .normalize('NFD')
-            .replace(/[\u0300-\u036f]/g, '')
-            .trim()
-            .toLowerCase();
-    }
 }

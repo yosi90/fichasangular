@@ -1,6 +1,7 @@
 import { Component, EventEmitter, HostListener, Input, Output } from '@angular/core';
 import { EnemigoPredilectoDetalle } from 'src/app/interfaces/enemigo-predilecto-detalle';
 import { EnemigoPredilectoSeleccion } from 'src/app/interfaces/enemigo-predilecto-seleccion';
+import { normalizarTexto } from 'src/app/services/utils/normalizacion';
 
 @Component({
     selector: 'app-selector-enemigo-predilecto-modal',
@@ -29,12 +30,12 @@ export class SelectorEnemigoPredilectoModalComponent {
     }
 
     get enemigosFiltrados(): EnemigoPredilectoDetalle[] {
-        const filtro = this.normalizarTexto(this.filtroTexto);
+        const filtro = normalizarTexto(this.filtroTexto);
         if (filtro.length < 1)
             return this.enemigosDisponibles;
 
         return this.enemigosDisponibles.filter((enemigo) =>
-            this.normalizarTexto(enemigo?.Nombre ?? '').includes(filtro)
+            normalizarTexto(enemigo?.Nombre ?? '').includes(filtro)
         );
     }
 
@@ -141,14 +142,6 @@ export class SelectorEnemigoPredilectoModalComponent {
             return true;
         const selector = 'input, textarea, select, button, a, [role="button"], [role="checkbox"], [role="option"], [role="listbox"], [role="menuitem"], .cdk-overlay-pane';
         return !!target.closest(selector);
-    }
-
-    private normalizarTexto(value: string): string {
-        return `${value ?? ''}`
-            .normalize('NFD')
-            .replace(/[\u0300-\u036f]/g, '')
-            .trim()
-            .toLowerCase();
     }
 
     private normalizarEnemigosYaElegidos(value: EnemigoPredilectoSeleccion[] | null | undefined): EnemigoPredilectoSeleccion[] {

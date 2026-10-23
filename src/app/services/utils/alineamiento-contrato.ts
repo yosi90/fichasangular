@@ -1,3 +1,5 @@
+import { normalizarTexto } from 'src/app/services/utils/normalizacion';
+
 export interface AlineamientoVector {
     ley: number;
     moral: number;
@@ -44,30 +46,22 @@ const NOMBRE_POR_VECTOR: Record<string, string> = {
     "-1,-1": "Caotico maligno",
 };
 
-export function normalizarAlineamientoTexto(valor: string): string {
-    return (valor ?? "")
-        .normalize("NFD")
-        .replace(/[\u0300-\u036f]/g, "")
-        .trim()
-        .toLowerCase();
-}
-
 export function esAlineamientoSinPreferencia(valor: string): boolean {
-    const n = normalizarAlineamientoTexto(valor);
+    const n = normalizarTexto(valor);
     return n.length < 1 || n.includes("ninguna preferencia") || n.includes("no aplica");
 }
 
 export function getAlineamientoBasicoIdPorNombre(nombre: string): number {
-    return BASICO_ID_POR_NOMBRE[normalizarAlineamientoTexto(nombre)] ?? 0;
+    return BASICO_ID_POR_NOMBRE[normalizarTexto(nombre)] ?? 0;
 }
 
 export function getVectorDesdeNombreBasico(nombre: string): AlineamientoVector | null {
-    const vector = ALINEAMIENTO_POR_NOMBRE[normalizarAlineamientoTexto(nombre)];
+    const vector = ALINEAMIENTO_POR_NOMBRE[normalizarTexto(nombre)];
     return vector ? { ...vector } : null;
 }
 
 export function parseLeyDesdePreferencia(nombre: string): number | null {
-    const n = normalizarAlineamientoTexto(nombre);
+    const n = normalizarTexto(nombre);
     if (esAlineamientoSinPreferencia(n))
         return null;
     if (n.includes("legal"))
@@ -80,7 +74,7 @@ export function parseLeyDesdePreferencia(nombre: string): number | null {
 }
 
 export function parseMoralDesdePreferencia(nombre: string): number | null {
-    const n = normalizarAlineamientoTexto(nombre);
+    const n = normalizarTexto(nombre);
     if (esAlineamientoSinPreferencia(n))
         return null;
     if (n.includes("malign"))

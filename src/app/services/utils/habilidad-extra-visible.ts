@@ -1,11 +1,4 @@
-function normalizarTexto(value: string): string {
-    return `${value ?? ''}`
-        .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g, '')
-        .trim()
-        .toLowerCase();
-}
-
+import { normalizarTexto } from 'src/app/services/utils/normalizacion';
 function toBoolean(value: any): boolean {
     if (typeof value === 'boolean')
         return value;

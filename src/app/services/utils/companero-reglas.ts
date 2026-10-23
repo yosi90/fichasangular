@@ -1,7 +1,7 @@
 import { Clase } from 'src/app/interfaces/clase';
 import { CompaneroMonstruoDetalle, MonstruoDetalle, MonstruoNivelClase } from 'src/app/interfaces/monstruo';
 import { Personaje } from 'src/app/interfaces/personaje';
-import { toNumber } from 'src/app/services/utils/normalizacion';
+import { normalizarTexto, toNumber } from 'src/app/services/utils/normalizacion';
 
 export type CompaneroPlantillaSelector = 'base' | 'elevado' | 'sabandija';
 
@@ -91,14 +91,6 @@ const PLANTILLA_SELECTOR_TO_DOTE: Record<CompaneroPlantillaSelector, number> = {
     sabandija: DOTE_PLANTILLA_SABANDIJA,
 };
 
-function normalizeText(value: string): string {
-    return `${value ?? ''}`
-        .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g, '')
-        .trim()
-        .toLowerCase();
-}
-
 function resolveEspecialId(especialRaw: any): number {
     return toNumber(
         especialRaw?.Id
@@ -112,12 +104,12 @@ function isEspecialCompanero(especialRaw: any): boolean {
     const id = resolveEspecialId(especialRaw);
     if (id === ESPECIAL_COMPANERO_ID)
         return true;
-    const nombre = normalizeText(`${especialRaw?.Nombre ?? especialRaw?.nombre ?? ''}`);
+    const nombre = normalizarTexto(`${especialRaw?.Nombre ?? especialRaw?.nombre ?? ''}`);
     return nombre.includes('companero animal');
 }
 
 function resolveAlineamientoBasicoId(nombre: string): number {
-    const normalized = normalizeText(nombre);
+    const normalized = normalizarTexto(nombre);
     return ALIGNMENT_NAME_TO_ID[normalized] ?? 0;
 }
 
@@ -159,17 +151,17 @@ function normalizeAlineamientosRequeridos(raw: any[]): AlineamientoRequeridoNorm
     items.forEach((item) => {
         const id = resolveAlineamientoBasicoIdFromRaw(item);
         const nombreRaw = `${item?.Nombre ?? item?.nombre ?? ''}`.trim();
-        const nombreNormalizado = normalizeText(nombreRaw);
+        const nombreNormalizado = normalizarTexto(nombreRaw);
         const nombreVisible = isAlineamientoNombreVisible(nombreNormalizado) ? nombreRaw : '';
         if (id <= 0 && nombreVisible.length < 1)
             return;
-        const clave = `${id}:${normalizeText(nombreVisible)}`;
+        const clave = `${id}:${normalizarTexto(nombreVisible)}`;
         if (dedupe.has(clave))
             return;
         dedupe.set(clave, {
             id: Math.max(0, id),
             nombre: nombreVisible,
-            nombreNormalizado: normalizeText(nombreVisible),
+            nombreNormalizado: normalizarTexto(nombreVisible),
         });
     });
 
@@ -305,7 +297,7 @@ function getPreferenciaEjeLabel(
     eje: 'legal' | 'moral'
 ): string | null {
     const nombre = `${nombrePreferencia ?? ''}`.trim();
-    const nombreNormalizado = normalizeText(nombre);
+    const nombreNormalizado = normalizarTexto(nombre);
     const nombreVisible = nombre.length > 0
         && nombreNormalizado !== 'ninguna preferencia'
         && nombreNormalizado !== 'no aplica'
@@ -402,7 +394,7 @@ export function resolverEstadoCuposCompaneroEspecial29(
         const nombreClase = `${entrada?.Nombre ?? ''}`.trim();
         const nivelActual = Math.max(0, Math.trunc(toNumber(entrada?.Nivel)));
         const clase = clases.find((item) =>
-            normalizeText(item?.Nombre ?? '') === normalizeText(nombreClase)
+            normalizarTexto(item?.Nombre ?? '') === normalizarTexto(nombreClase)
         );
         if (!claseOtorgaFuenteCompanero(clase, nivelActual))
             return null;
@@ -451,7 +443,7 @@ export function evaluarCompanerosElegibilidad(input: FiltroCompanerosElegiblesIn
     const nivelEfectivoCompanero = Math.max(0, toNumber(input?.estado?.nivelEfectivoCompanero));
     const plantillaSeleccionada = input?.plantillaSeleccionada ?? null;
     const includeHomebrew = !!input?.incluirHomebrew;
-    const alineamientoPersonaje = normalizeText(input?.alineamientoPersonaje ?? '');
+    const alineamientoPersonaje = normalizarTexto(input?.alineamientoPersonaje ?? '');
     const idAlineamientoBasico = resolveAlineamientoBasicoId(input?.alineamientoPersonaje ?? '');
     const nivelSeleccionado = Math.max(0, Math.trunc(toNumber(input?.nivelSeleccionado)));
     const plantillaIdEsperada = plantillaSeleccionada ? getPlantillaIdCompanero(plantillaSeleccionada) : 0;

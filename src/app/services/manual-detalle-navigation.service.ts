@@ -4,6 +4,7 @@ import Swal from 'sweetalert2';
 import { ManualAsociadoDetalle } from '../interfaces/manual-asociado';
 import { ManualesAsociadosService } from './manuales-asociados.service';
 import { ManualVistaNavigationService } from './manual-vista-navigation.service';
+import { normalizarTexto } from 'src/app/services/utils/normalizacion';
 
 export interface ManualDetalleReferencia {
     id?: number | null;
@@ -71,17 +72,17 @@ export class ManualDetalleNavigationService {
         if (!this.esNombreNavegable(nombre))
             return null;
 
-        const nombreNormalizado = this.normalizarTexto(nombre);
-        const porNombreExacto = manuales.find((manual) => this.normalizarTexto(manual?.Nombre) === nombreNormalizado);
+        const nombreNormalizado = normalizarTexto(nombre);
+        const porNombreExacto = manuales.find((manual) => normalizarTexto(manual?.Nombre) === nombreNormalizado);
         if (porNombreExacto)
             return porNombreExacto;
 
         const manualesOrdenados = [...manuales].sort(
-            (a, b) => this.normalizarTexto(b?.Nombre).length - this.normalizarTexto(a?.Nombre).length
+            (a, b) => normalizarTexto(b?.Nombre).length - normalizarTexto(a?.Nombre).length
         );
 
         const porInclusion = manualesOrdenados.find((manual) => {
-            const manualNombre = this.normalizarTexto(manual?.Nombre);
+            const manualNombre = normalizarTexto(manual?.Nombre);
             return manualNombre.length > 0 && nombreNormalizado.includes(manualNombre);
         });
 
@@ -107,7 +108,7 @@ export class ManualDetalleNavigationService {
     }
 
     private esNombreNavegable(value: string | null | undefined): boolean {
-        const normalizado = this.normalizarTexto(value);
+        const normalizado = normalizarTexto(value);
         if (normalizado.length < 1)
             return false;
 
@@ -123,11 +124,4 @@ export class ManualDetalleNavigationService {
         return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
     }
 
-    private normalizarTexto(value: string | null | undefined): string {
-        return `${value ?? ''}`
-            .normalize('NFD')
-            .replace(/[\u0300-\u036f]/g, '')
-            .trim()
-            .toLowerCase();
-    }
 }

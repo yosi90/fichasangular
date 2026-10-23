@@ -2,6 +2,7 @@ import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { Clase, ClaseDoteNivel, ClaseNivelDetalle, ClasePrerrequisitos } from 'src/app/interfaces/clase';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
 import { resolverExtraHabilidadVisible } from 'src/app/services/utils/habilidad-extra-visible';
+import { normalizarTexto } from 'src/app/services/utils/normalizacion';
 
 type PrerrequisitoActivo = {
     clave: keyof ClasePrerrequisitos;
@@ -523,7 +524,7 @@ export class DetallesClaseComponent {
 
     trackByRenderEspecial = (index: number, item: ResumenEspecialRenderItem): string => {
         if (item.tipoRender === 'simple') {
-            const nombre = this.normalizar(item.item.nombreEntidad || item.item.texto || '');
+            const nombre = normalizarTexto(item.item.nombreEntidad || item.item.texto || '');
             const id = Number(item.item.idEntidad ?? 0);
             return `s|${item.item.tipo}|${id}|${nombre}|${item.item.grupoOpcional}|${item.item.extras.join('|')}`;
         }
@@ -531,7 +532,7 @@ export class DetallesClaseComponent {
         const opciones = item.opciones
             .map((opcion) => {
                 const id = Number(opcion.idEntidad ?? 0);
-                const nombre = this.normalizar(opcion.nombreEntidad || opcion.texto || '');
+                const nombre = normalizarTexto(opcion.nombreEntidad || opcion.texto || '');
                 return `${opcion.tipo}:${id}:${nombre}:${opcion.extras.join('|')}`;
             })
             .join('||');
@@ -540,7 +541,7 @@ export class DetallesClaseComponent {
 
     trackByResumenEspecial = (index: number, item: ResumenEspecial): string => {
         const id = Number(item?.idEntidad ?? 0);
-        const nombre = this.normalizar(item?.nombreEntidad || item?.texto || '');
+        const nombre = normalizarTexto(item?.nombreEntidad || item?.texto || '');
         return `${item?.tipo ?? 'especial'}|${id}|${nombre}|${item?.grupoOpcional ?? 0}|${(item?.extras ?? []).join('|')}`;
     };
 
@@ -716,7 +717,7 @@ export class DetallesClaseComponent {
         const extras = this.detectarExtras(entradas);
         const esHabilidad = this.esRegistroHabilidad(item);
         const extraVisible = esHabilidad ? this.getExtraVisibleRegistroHabilidad(item) : '';
-        if (this.tieneTextoVisible(extraVisible) && !extras.valores.some((extra) => this.normalizar(extra) === this.normalizar(extraVisible)))
+        if (this.tieneTextoVisible(extraVisible) && !extras.valores.some((extra) => normalizarTexto(extra) === normalizarTexto(extraVisible)))
             extras.valores.unshift(extraVisible);
         const detalle = this.detectarDetalle(entradas, nombre.origen, extras.clavesOrigen);
 
@@ -969,7 +970,7 @@ export class DetallesClaseComponent {
 
     private getNombreEspecialNivel(especialNivel: any): string {
         const nombreDesdeEspecial = this.getNombreEspecial(especialNivel?.Especial ?? {});
-        if (this.tieneTextoVisible(nombreDesdeEspecial) && this.normalizar(nombreDesdeEspecial) !== 'especial')
+        if (this.tieneTextoVisible(nombreDesdeEspecial) && normalizarTexto(nombreDesdeEspecial) !== 'especial')
             return nombreDesdeEspecial;
 
         const candidatos = [
@@ -1206,15 +1207,8 @@ export class DetallesClaseComponent {
     }
 
     private esExtraDesconocido(extra: string): boolean {
-        const base = this.normalizar(extra);
+        const base = normalizarTexto(extra);
         return base === 'desconocido' || base === 'sin especificar';
     }
 
-    private normalizar(value: string): string {
-        return `${value ?? ''}`
-            .normalize('NFD')
-            .replace(/[\u0300-\u036f]/g, '')
-            .trim()
-            .toLowerCase();
-    }
 }

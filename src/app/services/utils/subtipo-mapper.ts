@@ -8,7 +8,7 @@ import {
     SubtipoSortilega,
 } from "src/app/interfaces/subtipo";
 import { toDoteContextualArray } from "./dote-mapper";
-import { toArray, toNumber, toText } from 'src/app/services/utils/normalizacion';
+import { normalizarTexto, toArray, toNumber, toText } from 'src/app/services/utils/normalizacion';
 
 function toBoolean(value: any): boolean {
     if (typeof value === "boolean")
@@ -199,7 +199,7 @@ function dedupeSubtipos(items: SubtipoRef[]): SubtipoRef[] {
         if (nombre.length < 1 && id <= 0)
             return;
 
-        const key = id > 0 ? `id:${id}` : `name:${normalizar(nombre)}`;
+        const key = id > 0 ? `id:${id}` : `name:${normalizarTexto(nombre)}`;
         if (seen.has(key))
             return;
 
@@ -211,12 +211,4 @@ function dedupeSubtipos(items: SubtipoRef[]): SubtipoRef[] {
     });
 
     return output;
-}
-
-function normalizar(value: string): string {
-    return (value ?? "")
-        .normalize("NFD")
-        .replace(/[\u0300-\u036f]/g, "")
-        .trim()
-        .toLowerCase();
 }

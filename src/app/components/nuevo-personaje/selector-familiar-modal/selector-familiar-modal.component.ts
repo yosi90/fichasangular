@@ -1,6 +1,7 @@
 import { Component, EventEmitter, HostListener, Input, Output } from '@angular/core';
 import { FamiliarMonstruoDetalle } from 'src/app/interfaces/monstruo';
 import { FamiliarPlantillaId } from 'src/app/services/utils/familiar-reglas';
+import { normalizarTexto } from 'src/app/services/utils/normalizacion';
 
 export interface SelectorFamiliarConfirmacion {
     familiar: FamiliarMonstruoDetalle;
@@ -44,12 +45,12 @@ export class SelectorFamiliarModalComponent {
     idPlantillaSeleccionada = 0;
 
     get familiaresFiltrados(): FamiliarMonstruoDetalle[] {
-        const filtro = this.normalizarTexto(this.filtroTexto);
+        const filtro = normalizarTexto(this.filtroTexto);
         const listado = this.familiaresListado;
         if (filtro.length < 1)
             return listado;
         return listado.filter((familiar) =>
-            this.normalizarTexto(familiar?.Nombre ?? '').includes(filtro)
+            normalizarTexto(familiar?.Nombre ?? '').includes(filtro)
         );
     }
 
@@ -249,11 +250,4 @@ export class SelectorFamiliarModalComponent {
         return 1;
     }
 
-    private normalizarTexto(value: string): string {
-        return `${value ?? ''}`
-            .normalize('NFD')
-            .replace(/[\u0300-\u036f]/g, '')
-            .trim()
-            .toLowerCase();
-    }
 }

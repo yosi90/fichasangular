@@ -50,6 +50,7 @@ import { SubtipoService } from 'src/app/services/subtipo.service';
 import { TamanoService } from 'src/app/services/tamano.service';
 import { TipoCriaturaService } from 'src/app/services/tipo-criatura.service';
 import { UserService } from 'src/app/services/user.service';
+import { normalizarTexto } from 'src/app/services/utils/normalizacion';
 
 interface NombreIdItem {
     Id: number;
@@ -744,10 +745,10 @@ export class NuevaClaseComponent implements OnInit, OnDestroy, OnChanges {
     }
 
     getPrerrequisitosFiltrados() {
-        const filtro = this.normalizar(this.selectorPrerrequisitosFiltro);
+        const filtro = normalizarTexto(this.selectorPrerrequisitosFiltro);
         if (filtro.length < 1)
             return this.prerrequisitoOpciones;
-        return this.prerrequisitoOpciones.filter((item) => this.normalizar(item.label).includes(filtro));
+        return this.prerrequisitoOpciones.filter((item) => normalizarTexto(item.label).includes(filtro));
     }
 
     async confirmarSalidaSiHayCambios(): Promise<boolean> {
@@ -1478,24 +1479,24 @@ export class NuevaClaseComponent implements OnInit, OnDestroy, OnChanges {
     }
 
     private filtrarPorNombre<T extends { Nombre?: string; }>(items: T[], query: string): T[] {
-        const filtro = this.normalizar(query);
+        const filtro = normalizarTexto(query);
         if (filtro.length < 1)
             return items.slice(0, 50);
-        return items.filter((item) => this.normalizar(item.Nombre ?? '').includes(filtro)).slice(0, 50);
+        return items.filter((item) => normalizarTexto(item.Nombre ?? '').includes(filtro)).slice(0, 50);
     }
 
     private filtrarHabilidades(items: HabilidadBasicaDetalle[], query: string): HabilidadBasicaDetalle[] {
-        const filtro = this.normalizar(query);
+        const filtro = normalizarTexto(query);
         if (filtro.length < 1)
             return items.slice(0, 50);
-        return items.filter((item) => this.normalizar(item.Nombre).includes(filtro)).slice(0, 50);
+        return items.filter((item) => normalizarTexto(item.Nombre).includes(filtro)).slice(0, 50);
     }
 
     private filtrarExtras<T extends { Extra: string; }>(items: T[], query: string): T[] {
-        const filtro = this.normalizar(query);
+        const filtro = normalizarTexto(query);
         if (filtro.length < 1)
             return items.slice(0, 50);
-        return items.filter((item) => this.normalizar(item.Extra).includes(filtro)).slice(0, 50);
+        return items.filter((item) => normalizarTexto(item.Extra).includes(filtro)).slice(0, 50);
     }
 
     private toNombreId(items: any[]): NombreIdItem[] {
@@ -1532,10 +1533,6 @@ export class NuevaClaseComponent implements OnInit, OnDestroy, OnChanges {
     private uid(): string {
         this.uidCounter += 1;
         return `clase_${Date.now()}_${this.uidCounter}`;
-    }
-
-    private normalizar(value: unknown): string {
-        return `${value ?? ''}`.normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase();
     }
 
     private texto(value: unknown, fallback: string = ''): string {

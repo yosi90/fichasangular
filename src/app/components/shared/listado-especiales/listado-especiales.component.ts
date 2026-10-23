@@ -5,6 +5,7 @@ import { MatTableDataSource } from '@angular/material/table';
 import { EspecialClaseDetalle } from 'src/app/interfaces/especial';
 import { EspecialService } from 'src/app/services/especial.service';
 import { ordenarEnEspanol } from 'src/app/services/utils/orden-tabla';
+import { normalizarTexto } from 'src/app/services/utils/normalizacion';
 
 @Component({
     selector: 'app-listado-especiales',
@@ -36,14 +37,14 @@ export class ListadoEspecialesComponent {
     }
 
     filtroEspeciales() {
-        const texto = this.normalizar(this.nombreText?.nativeElement.value);
+        const texto = normalizarTexto(this.nombreText?.nativeElement.value);
         const especialesFiltrados = this.especiales.filter((especial) => {
             if (!this.esEspecialValido(especial))
                 return false;
 
             return texto === ''
-                || this.normalizar(especial.Nombre).includes(texto)
-                || this.normalizar(especial.Descripcion).includes(texto);
+                || normalizarTexto(especial.Nombre).includes(texto)
+                || normalizarTexto(especial.Descripcion).includes(texto);
         });
 
         this.especialesDS = new MatTableDataSource(especialesFiltrados);
@@ -68,14 +69,6 @@ export class ListadoEspecialesComponent {
         const especial = this.especiales.find(e => e.Id === id);
         if (especial)
             this.especialSeleccionado.emit(especial);
-    }
-
-    private normalizar(value: string): string {
-        return (value ?? '')
-            .normalize('NFD')
-            .replace(/[\u0300-\u036f]/g, '')
-            .trim()
-            .toLowerCase();
     }
 
     private esEspecialValido(especial: EspecialClaseDetalle | null | undefined): boolean {

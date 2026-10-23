@@ -46,7 +46,7 @@ import {
 import { calcularNivelesLanzadorPersonaje } from './utils/nivel-lanzador-personaje';
 import { UserSettingsService } from './user-settings.service';
 import { NuevoPersonajeGeneradorConfig } from '../interfaces/user-settings';
-import { toNumber } from 'src/app/services/utils/normalizacion';
+import { normalizarTexto, toNumber } from 'src/app/services/utils/normalizacion';
 
 export type StepNuevoPersonaje = 'raza' | 'basicos' | 'plantillas' | 'ventajas' | 'clases' | 'habilidades' | 'conjuros' | 'dotes';
 export type HabilidadesFlujoOrigen = 'raza_dg' | 'plantilla_dg' | 'clase_nivel';
@@ -1564,12 +1564,12 @@ export class NuevoPersonajeService {
                     return acc;
 
                 const extra = `${habilidad?.Extra ?? ''}`.trim();
-                const extraNorm = this.normalizarTexto(extra);
+                const extraNorm = normalizarTexto(extra);
                 let idExtra: number | null = null;
                 const extrasDisponibles = Array.isArray(habilidad?.Extras) ? habilidad.Extras : [];
                 if (extraNorm.length > 0) {
                     const extraEncontrado = extrasDisponibles.find((item) =>
-                        this.normalizarTexto(item?.Extra ?? '') === extraNorm
+                        normalizarTexto(item?.Extra ?? '') === extraNorm
                     );
                     const idExtraEncontrado = toNumber(extraEncontrado?.Id_extra);
                     if (idExtraEncontrado > 0)
@@ -1866,12 +1866,12 @@ export class NuevoPersonajeService {
             return false;
 
         const extraLimpio = `${extra ?? ''}`.trim();
-        const extraNormalizado = this.normalizarTexto(extraLimpio);
+        const extraNormalizado = normalizarTexto(extraLimpio);
         const opciones = (habilidad.Extras ?? [])
             .map((item) => `${item?.Extra ?? ''}`.trim())
             .filter((item) => item.length > 0);
         if (opciones.length > 0 && !this.esExtraHabilidadPendienteValor(extraNormalizado)) {
-            const existeOpcion = opciones.some((opcion) => this.normalizarTexto(opcion) === extraNormalizado);
+            const existeOpcion = opciones.some((opcion) => normalizarTexto(opcion) === extraNormalizado);
             if (!existeOpcion)
                 return false;
         }
@@ -1932,7 +1932,7 @@ export class NuevoPersonajeService {
         if (!entrada || !entrada.seleccionManual)
             return [];
 
-        const filtro = this.normalizarTexto(filtroTexto);
+        const filtro = normalizarTexto(filtroTexto);
         const nivelFiltro = nivelConjuro === null ? null : Math.max(0, Math.trunc(toNumber(nivelConjuro)));
         const idsNoDisponibles = new Set<number>([
             ...(entrada.seleccionadosIds ?? []),
@@ -1944,7 +1944,7 @@ export class NuevoPersonajeService {
             .filter((conjuro) => {
                 if (filtro.length < 1)
                     return true;
-                return this.normalizarTexto(conjuro?.Nombre ?? '').includes(filtro);
+                return normalizarTexto(conjuro?.Nombre ?? '').includes(filtro);
             })
             .filter((conjuro) => {
                 if (nivelFiltro === null)
@@ -2286,12 +2286,12 @@ export class NuevoPersonajeService {
 
         listaEspeciales.forEach((especialNivel) => {
             const especial = (especialNivel?.Especial ?? {}) as Record<string, any>;
-            const nombreEspecial = this.normalizarTexto(`${especial?.['Nombre'] ?? especial?.['nombre'] ?? ''}`);
-            if (nombreEspecial !== this.normalizarTexto('Dote adicional'))
+            const nombreEspecial = normalizarTexto(`${especial?.['Nombre'] ?? especial?.['nombre'] ?? ''}`);
+            if (nombreEspecial !== normalizarTexto('Dote adicional'))
                 return;
 
             const extra = `${especialNivel?.Extra ?? ''}`.trim();
-            const tipoPermitido = this.normalizarTexto(extra) === this.normalizarTexto('No aplica')
+            const tipoPermitido = normalizarTexto(extra) === normalizarTexto('No aplica')
                 || extra.length < 1
                 ? null
                 : extra;
@@ -2367,7 +2367,7 @@ export class NuevoPersonajeService {
             return false;
 
         const extraTexto = this.resolverExtraTextoDote(dote, idExtra, extraSeleccion);
-        if (requiereExtra && this.normalizarTexto(extraTexto).length < 1)
+        if (requiereExtra && normalizarTexto(extraTexto).length < 1)
             return false;
 
         const origen = this.construirOrigenDoteDesdePendiente(pendiente);
@@ -2697,11 +2697,11 @@ export class NuevoPersonajeService {
                 Nombre: `${item?.Nombre ?? item?.nombre ?? ''}`.trim(),
                 Es_escudo: this.toBooleanValue(item?.Es_escudo),
             }))
-            .filter((item) => item.Id > 0 || this.normalizarTexto(item.Nombre).length > 0)
+            .filter((item) => item.Id > 0 || normalizarTexto(item.Nombre).length > 0)
             .filter((item) => {
                 const clave = item.Id > 0
                     ? `id:${item.Id}`
-                    : `nombre:${this.normalizarTexto(item.Nombre)}`;
+                    : `nombre:${normalizarTexto(item.Nombre)}`;
                 if (seen.has(clave))
                     return false;
                 seen.add(clave);
@@ -2845,11 +2845,11 @@ export class NuevoPersonajeService {
     }
 
     private cumpleRestriccionTipoDote(dote: Dote, tipoPermitido: string | null): boolean {
-        const tipoNorm = this.normalizarTexto(`${tipoPermitido ?? ''}`);
+        const tipoNorm = normalizarTexto(`${tipoPermitido ?? ''}`);
         if (tipoNorm.length < 1)
             return true;
         const tipos = Array.isArray(dote?.Tipos) ? dote.Tipos : [];
-        return tipos.some((tipo) => this.normalizarTexto(`${tipo?.Nombre ?? ''}`) === tipoNorm);
+        return tipos.some((tipo) => normalizarTexto(`${tipo?.Nombre ?? ''}`) === tipoNorm);
     }
 
     private resolverExtrasDisponiblesDote(dote: Dote): DoteExtraOpcion[] {
@@ -2863,7 +2863,7 @@ export class NuevoPersonajeService {
         const normalizar = (items: DoteExtraItem[] | null | undefined): DoteExtraOpcion[] =>
             this.normalizarCatalogoExtras(items as Array<{ Id: number; Nombre: string; }>);
         const contieneElegir = (items: DoteExtraOpcion[]): boolean =>
-            items.some((item) => this.normalizarTexto(item?.Nombre ?? '') === this.normalizarTexto('Elegir'));
+            items.some((item) => normalizarTexto(item?.Nombre ?? '') === normalizarTexto('Elegir'));
 
         const extras: DoteExtraOpcion[] = [];
         if (this.toBooleanValue(dote?.Extras_soportados?.Extra_arma)) {
@@ -2895,7 +2895,7 @@ export class NuevoPersonajeService {
         if (!this.toBooleanValue(dote?.Repetible_distinto_extra))
             return extras;
 
-        const doteNorm = this.normalizarTexto(`${dote?.Nombre ?? ''}`);
+        const doteNorm = normalizarTexto(`${dote?.Nombre ?? ''}`);
         const idDote = toNumber(dote?.Id);
         const usadosId = new Set<number>();
         const usadosNombre = new Set<string>();
@@ -2903,21 +2903,21 @@ export class NuevoPersonajeService {
         (this.personajeCreacion.DotesContextuales ?? [])
             .filter((item) => {
                 const idActual = toNumber(item?.Dote?.Id);
-                const nombreActual = this.normalizarTexto(item?.Dote?.Nombre ?? '');
+                const nombreActual = normalizarTexto(item?.Dote?.Nombre ?? '');
                 return (idDote > 0 && idActual === idDote) || (doteNorm.length > 0 && nombreActual === doteNorm);
             })
             .forEach((item) => {
                 const idExtra = toNumber(item?.Contexto?.Id_extra);
                 if (idExtra > 0)
                     usadosId.add(idExtra);
-                const extra = this.normalizarTexto(item?.Contexto?.Extra ?? '');
+                const extra = normalizarTexto(item?.Contexto?.Extra ?? '');
                 if (extra.length > 0)
                     usadosNombre.add(extra);
             });
 
         return extras.filter((extra) => {
             const id = toNumber(extra?.Id);
-            const nombreNorm = this.normalizarTexto(extra?.Nombre ?? '');
+            const nombreNorm = normalizarTexto(extra?.Nombre ?? '');
             if (id > 0 && usadosId.has(id))
                 return false;
             if (nombreNorm.length > 0 && usadosNombre.has(nombreNorm))
@@ -2928,16 +2928,16 @@ export class NuevoPersonajeService {
 
     private validarRepeticionDote(dote: Dote, idExtra: number, extraTexto: string): boolean {
         const idDote = toNumber(dote?.Id);
-        const nombreNorm = this.normalizarTexto(`${dote?.Nombre ?? ''}`);
+        const nombreNorm = normalizarTexto(`${dote?.Nombre ?? ''}`);
         const repetibleDistintoExtra = this.toBooleanValue(dote?.Repetible_distinto_extra) && this.doteTieneExtrasSoportados(dote);
         const contextuales = (this.personajeCreacion.DotesContextuales ?? []).filter((item) => {
             const id = toNumber(item?.Dote?.Id);
-            const nombre = this.normalizarTexto(item?.Dote?.Nombre ?? '');
+            const nombre = normalizarTexto(item?.Dote?.Nombre ?? '');
             return (idDote > 0 && id === idDote) || (nombreNorm.length > 0 && nombre === nombreNorm);
         });
 
         const legacy = (this.personajeCreacion.Dotes ?? []).filter((item) =>
-            this.normalizarTexto(item?.Nombre ?? '') === nombreNorm
+            normalizarTexto(item?.Nombre ?? '') === nombreNorm
         );
         const yaExiste = contextuales.length > 0 || legacy.length > 0;
 
@@ -2946,13 +2946,13 @@ export class NuevoPersonajeService {
 
         if (repetibleDistintoExtra) {
             const idExtraNorm = Math.max(0, toNumber(idExtra));
-            const extraNorm = this.normalizarTexto(extraTexto ?? '');
+            const extraNorm = normalizarTexto(extraTexto ?? '');
             if (idExtraNorm <= 0 && extraNorm.length < 1)
                 return false;
 
             const repetidaContextual = contextuales.some((item) => {
                 const existenteIdExtra = toNumber(item?.Contexto?.Id_extra);
-                const existenteExtraNorm = this.normalizarTexto(item?.Contexto?.Extra ?? '');
+                const existenteExtraNorm = normalizarTexto(item?.Contexto?.Extra ?? '');
                 if (idExtraNorm > 0 && existenteIdExtra > 0)
                     return existenteIdExtra === idExtraNorm;
                 if (extraNorm.length > 0 && existenteExtraNorm.length > 0)
@@ -2960,7 +2960,7 @@ export class NuevoPersonajeService {
                 return existenteIdExtra === idExtraNorm;
             });
             const repetidaLegacy = legacy.some((item) =>
-                this.normalizarTexto(item?.Extra ?? '') === extraNorm
+                normalizarTexto(item?.Extra ?? '') === extraNorm
             );
             return !repetidaContextual && !repetidaLegacy;
         }
@@ -2981,7 +2981,7 @@ export class NuevoPersonajeService {
         const nivelesClase = (this.personajeCreacion.desgloseClases ?? []).map((clase) => {
             const nombre = `${clase?.Nombre ?? ''}`.trim();
             const idClase = this.catalogoClases.find((item) =>
-                this.normalizarTexto(item?.Nombre ?? '') === this.normalizarTexto(nombre)
+                normalizarTexto(item?.Nombre ?? '') === normalizarTexto(nombre)
             );
             return {
                 id: toNumber(idClase?.Id) > 0 ? toNumber(idClase?.Id) : null,
@@ -3000,8 +3000,8 @@ export class NuevoPersonajeService {
             .filter((item) => item.nombre.length > 0);
         const legacySinContexto = (this.personajeCreacion.Dotes ?? [])
             .filter((item) => {
-                const nombre = this.normalizarTexto(item?.Nombre ?? '');
-                return !dotes.some((ctxDote) => this.normalizarTexto(ctxDote.nombre) === nombre);
+                const nombre = normalizarTexto(item?.Nombre ?? '');
+                return !dotes.some((ctxDote) => normalizarTexto(ctxDote.nombre) === nombre);
             })
             .map((item) => ({
                 id: null,
@@ -3100,7 +3100,7 @@ export class NuevoPersonajeService {
             const registrar = (tipo: any) => {
                 const id = toNumber(tipo?.Id) > 0 ? toNumber(tipo?.Id) : null;
                 const nombre = `${tipo?.Nombre ?? ''}`.trim();
-                const nombreNorm = this.normalizarTexto(nombre);
+                const nombreNorm = normalizarTexto(nombre);
                 if (id === null && nombreNorm.length < 1)
                     return;
                 if (id !== null) {
@@ -3116,10 +3116,10 @@ export class NuevoPersonajeService {
                 resultado.push({ id: null, nombre });
             };
             const buscarCatalogo = (idDote: number, nombreDote: string) => {
-                const nombreNorm = this.normalizarTexto(nombreDote);
+                const nombreNorm = normalizarTexto(nombreDote);
                 return catalogoDotesRaw.find((item) =>
                     (idDote > 0 && toNumber(item?.Id) === idDote)
-                    || (nombreNorm.length > 0 && this.normalizarTexto(item?.Nombre ?? '') === nombreNorm)
+                    || (nombreNorm.length > 0 && normalizarTexto(item?.Nombre ?? '') === nombreNorm)
                 );
             };
             (this.personajeCreacion.DotesContextuales ?? []).forEach((item) => {
@@ -3277,7 +3277,7 @@ export class NuevoPersonajeService {
                 const idEscuela = toNumber(conjuro?.Escuela?.Id);
                 const clave = id > 0
                     ? `id:${id}`
-                    : `nombre:${this.normalizarTexto(nombre)}:escuela:${this.normalizarTexto(escuela)}`;
+                    : `nombre:${normalizarTexto(nombre)}:escuela:${normalizarTexto(escuela)}`;
                 if (resultado.has(clave))
                     return;
                 resultado.set(clave, {
@@ -3382,7 +3382,7 @@ export class NuevoPersonajeService {
                 return;
 
             const clase = this.catalogoClases.find((item) =>
-                this.normalizarTexto(item?.Nombre ?? '') === this.normalizarTexto(nombre)
+                normalizarTexto(item?.Nombre ?? '') === normalizarTexto(nombre)
             );
             if (!clase?.Conjuros?.Psionicos)
                 return;
@@ -3408,11 +3408,11 @@ export class NuevoPersonajeService {
     }
 
     private resolverIdEscuelaPorNombre(nombreEscuela: string): number | null {
-        const nombreNorm = this.normalizarTexto(nombreEscuela);
+        const nombreNorm = normalizarTexto(nombreEscuela);
         if (nombreNorm.length < 1)
             return null;
         const escuela = (this.catalogoEscuelasDotes ?? [])
-            .find((item) => this.normalizarTexto(item?.Nombre ?? '') === nombreNorm);
+            .find((item) => normalizarTexto(item?.Nombre ?? '') === nombreNorm);
         const id = toNumber(escuela?.Id);
         return id > 0 ? id : null;
     }
@@ -3446,7 +3446,7 @@ export class NuevoPersonajeService {
             if (nombre.length < 1)
                 return;
             const clase = this.catalogoClases.find((item) =>
-                this.normalizarTexto(item?.Nombre ?? '') === this.normalizarTexto(nombre)
+                normalizarTexto(item?.Nombre ?? '') === normalizarTexto(nombre)
             );
             if (!clase)
                 return;
@@ -3516,7 +3516,7 @@ export class NuevoPersonajeService {
             if (id === null && nombre.length < 1)
                 return;
 
-            const key = id !== null ? `id:${id}` : `nombre:${this.normalizarTexto(nombre)}`;
+            const key = id !== null ? `id:${id}` : `nombre:${normalizarTexto(nombre)}`;
             if (vistos.has(key))
                 return;
             vistos.add(key);
@@ -3587,11 +3587,11 @@ export class NuevoPersonajeService {
     }
 
     private tieneClaseaPorNombre(texto: string): boolean {
-        const objetivo = this.normalizarTexto(`${texto ?? ''}`);
+        const objetivo = normalizarTexto(`${texto ?? ''}`);
         if (objetivo.length < 1)
             return false;
         return (this.personajeCreacion.Claseas ?? []).some((especial) =>
-            this.normalizarTexto(especial?.Nombre ?? '').includes(objetivo)
+            normalizarTexto(especial?.Nombre ?? '').includes(objetivo)
         );
     }
 
@@ -3638,7 +3638,7 @@ export class NuevoPersonajeService {
     }
 
     private normalizarPlantillaCompanero(plantilla: CompaneroPlantillaSelector | string): CompaneroPlantillaSelector {
-        const normalizada = this.normalizarTexto(`${plantilla ?? ''}`);
+        const normalizada = normalizarTexto(`${plantilla ?? ''}`);
         if (normalizada.includes('elevado'))
             return 'elevado';
         if (normalizada.includes('sabandija'))
@@ -3771,7 +3771,7 @@ export class NuevoPersonajeService {
         const yaExiste = (this.personajeCreacion.DotesContextuales ?? []).some((item) =>
             toNumber(item?.Dote?.Id) === DOTE_FAMILIAR_ID
         ) || (this.personajeCreacion.Dotes ?? []).some((item) =>
-            this.normalizarTexto(item?.Nombre ?? '') === this.normalizarTexto('Alerta')
+            normalizarTexto(item?.Nombre ?? '') === normalizarTexto('Alerta')
             || toNumber((item as Record<string, any>)?.['Id']) === DOTE_FAMILIAR_ID
         );
         if (yaExiste)
@@ -3792,8 +3792,8 @@ export class NuevoPersonajeService {
         const nombreEspecial = `${nombresEspecialesPorId?.[idEspecial] ?? nombreFallback}`.trim() || nombreFallback;
         const extra = 'Familiar';
         const duplicado = (this.personajeCreacion.Claseas ?? []).some((especial) =>
-            this.normalizarTexto(especial?.Nombre ?? '') === this.normalizarTexto(nombreEspecial)
-            && this.normalizarTexto(especial?.Extra ?? '') === this.normalizarTexto(extra)
+            normalizarTexto(especial?.Nombre ?? '') === normalizarTexto(nombreEspecial)
+            && normalizarTexto(especial?.Extra ?? '') === normalizarTexto(extra)
         );
         if (duplicado)
             return false;
@@ -3811,8 +3811,8 @@ export class NuevoPersonajeService {
         const nombreEspecial = `${nombresEspecialesPorId?.[idEspecial] ?? nombreFallback}`.trim() || nombreFallback;
         const extra = 'Compañero animal';
         const duplicado = (this.personajeCreacion.Claseas ?? []).some((especial) =>
-            this.normalizarTexto(especial?.Nombre ?? '') === this.normalizarTexto(nombreEspecial)
-            && this.normalizarTexto(especial?.Extra ?? '') === this.normalizarTexto(extra)
+            normalizarTexto(especial?.Nombre ?? '') === normalizarTexto(nombreEspecial)
+            && normalizarTexto(especial?.Extra ?? '') === normalizarTexto(extra)
         );
         if (duplicado)
             return false;
@@ -3835,7 +3835,7 @@ export class NuevoPersonajeService {
         const especiales = Array.isArray(companero?.Especiales) ? [...companero.Especiales] : [];
         const duplicado = especiales.some((item) =>
             toNumber((item as any)?.Especial?.Id) === idEspecial
-            || this.normalizarTexto((item as any)?.Especial?.Nombre ?? '') === this.normalizarTexto(nombreEspecial)
+            || normalizarTexto((item as any)?.Especial?.Nombre ?? '') === normalizarTexto(nombreEspecial)
         );
         if (duplicado)
             return false;
@@ -3936,9 +3936,9 @@ export class NuevoPersonajeService {
         const origenNormalizado = `${origen ?? ''}`.trim();
 
         const duplicadaLegacy = (this.personajeCreacion.Dotes ?? []).some((item) =>
-            this.normalizarTexto(item?.Nombre ?? '') === this.normalizarTexto(nombre)
-            && this.normalizarTexto(item?.Extra ?? '') === this.normalizarTexto(extra)
-            && this.normalizarTexto(item?.Origen ?? '') === this.normalizarTexto(origenNormalizado)
+            normalizarTexto(item?.Nombre ?? '') === normalizarTexto(nombre)
+            && normalizarTexto(item?.Extra ?? '') === normalizarTexto(extra)
+            && normalizarTexto(item?.Origen ?? '') === normalizarTexto(origenNormalizado)
         );
         let agregadoLegacy = false;
         if (!duplicadaLegacy) {
@@ -3959,7 +3959,7 @@ export class NuevoPersonajeService {
             const duplicadaContextual = (this.personajeCreacion.DotesContextuales ?? []).some((item) =>
                 toNumber(item?.Dote?.Id) === idDote
                 && toNumber(item?.Contexto?.Id_extra) === idExtraNormalizado
-                && this.normalizarTexto((item?.Contexto as any)?.Origen ?? '') === this.normalizarTexto(origenNormalizado)
+                && normalizarTexto((item?.Contexto as any)?.Origen ?? '') === normalizarTexto(origenNormalizado)
             );
             if (!duplicadaContextual) {
                 this.personajeCreacion.DotesContextuales.push({
@@ -4037,14 +4037,14 @@ export class NuevoPersonajeService {
     ): void {
         const requiereExtraHabilidad = this.toBooleanValue(dote?.Extras_soportados?.Extra_habilidad);
         const idObjetivo = requiereExtraHabilidad ? Math.max(0, toNumber(idExtra)) : 0;
-        const extraNorm = this.normalizarTexto(extraTexto ?? '');
+        const extraNorm = normalizarTexto(extraTexto ?? '');
 
         const objetivo = (this.personajeCreacion.Habilidades ?? []).find((habilidad) => {
             if (idObjetivo > 0 && toNumber(habilidad?.Id) === idObjetivo)
                 return true;
             if (!requiereExtraHabilidad)
                 return false;
-            return extraNorm.length > 0 && this.normalizarTexto(habilidad?.Nombre ?? '') === extraNorm;
+            return extraNorm.length > 0 && normalizarTexto(habilidad?.Nombre ?? '') === extraNorm;
         });
         if (!objetivo)
             return;
@@ -4065,7 +4065,7 @@ export class NuevoPersonajeService {
         const origenNormalizado = `${origen ?? ''}`.trim();
         const existentes = new Set(
             (this.personajeCreacion.Idiomas ?? [])
-                .map((idioma) => this.normalizarTexto(idioma?.Nombre ?? ''))
+                .map((idioma) => normalizarTexto(idioma?.Nombre ?? ''))
                 .filter((nombre) => nombre.length > 0)
         );
 
@@ -4077,7 +4077,7 @@ export class NuevoPersonajeService {
             if (nombre.length < 1)
                 return;
 
-            const nombreNorm = this.normalizarTexto(nombre);
+            const nombreNorm = normalizarTexto(nombre);
             if (existentes.has(nombreNorm))
                 return;
 
@@ -4226,7 +4226,7 @@ export class NuevoPersonajeService {
             const nombreClase = `${entradaActual?.claseObjetivo?.nombre ?? ''}`.trim();
             const claseObjetivo = this.catalogoClases.find((clase) =>
                 (idClase > 0 && toNumber(clase?.Id) === idClase)
-                || (nombreClase.length > 0 && this.normalizarTexto(clase?.Nombre ?? '') === this.normalizarTexto(nombreClase))
+                || (nombreClase.length > 0 && normalizarTexto(clase?.Nombre ?? '') === normalizarTexto(nombreClase))
             ) ?? null;
 
             if (!claseObjetivo) {
@@ -4389,7 +4389,7 @@ export class NuevoPersonajeService {
     }
 
     private esMensajeRelacionAlineamiento(mensaje: string): boolean {
-        const normalizado = this.normalizarTexto(mensaje);
+        const normalizado = normalizarTexto(mensaje);
         if (normalizado.length < 1)
             return false;
         if (normalizado.includes('alineamiento') || normalizado.includes('actitud'))
@@ -5100,7 +5100,7 @@ export class NuevoPersonajeService {
 
     private resolverTipoSalvacionRacial(item: any): SalvacionKey | null {
         const raw = `${item?.Salvacion ?? item?.salvacion ?? item?.Nombre ?? item?.nombre ?? item?.Tipo ?? item?.tipo ?? ''}`.trim();
-        const normalizado = this.normalizarTexto(raw);
+        const normalizado = normalizarTexto(raw);
         if (normalizado.length < 1)
             return null;
         if (normalizado.includes('fort') || normalizado.includes('fortitude'))
@@ -5187,11 +5187,11 @@ export class NuevoPersonajeService {
                 return porId;
         }
 
-        const nombreObjetivo = this.normalizarTexto(detalle.Habilidad?.Nombre ?? '');
+        const nombreObjetivo = normalizarTexto(detalle.Habilidad?.Nombre ?? '');
         if (nombreObjetivo.length < 1)
             return null;
 
-        return this.personajeCreacion.Habilidades.find((h) => this.normalizarTexto(h.Nombre) === nombreObjetivo) ?? null;
+        return this.personajeCreacion.Habilidades.find((h) => normalizarTexto(h.Nombre) === nombreObjetivo) ?? null;
     }
 
     private aplicarBonosHabilidadEnPersonaje(): void {
@@ -5214,7 +5214,7 @@ export class NuevoPersonajeService {
         if (nombre.length < 1)
             return;
 
-        const existe = raciales.some(r => this.normalizarTexto(r.Nombre) === this.normalizarTexto(nombre));
+        const existe = raciales.some(r => normalizarTexto(r.Nombre) === normalizarTexto(nombre));
         if (!existe) {
             const nuevoRasgo = createRacialPlaceholder(nombre);
             nuevoRasgo.Origen = origen;
@@ -5235,7 +5235,7 @@ export class NuevoPersonajeService {
             const nombre = `${seleccion.idioma.Nombre ?? ''}`.trim();
             if (nombre.length < 1)
                 return;
-            if (idiomas.some(i => this.normalizarTexto(i.Nombre) === this.normalizarTexto(nombre)))
+            if (idiomas.some(i => normalizarTexto(i.Nombre) === normalizarTexto(nombre)))
                 return;
 
             idiomas.push({
@@ -5251,7 +5251,7 @@ export class NuevoPersonajeService {
         const nombreIdioma = `${detalle.Idioma?.Nombre ?? ''}`.trim();
         if (nombreIdioma.length < 1)
             return;
-        if (idiomas.some(i => this.normalizarTexto(i.Nombre) === this.normalizarTexto(nombreIdioma)))
+        if (idiomas.some(i => normalizarTexto(i.Nombre) === normalizarTexto(nombreIdioma)))
             return;
 
         idiomas.push({
@@ -5328,7 +5328,7 @@ export class NuevoPersonajeService {
         const hayReglasAlineamiento = seleccionadas.some((plantilla) => this.tieneRestriccionAlineamientoPlantilla(plantilla));
         if (hayReglasAlineamiento) {
             const alineamientoResuelto = resolverAlineamientoPlantillas(this.personajeCreacion.Alineamiento, seleccionadas);
-            if (!alineamientoResuelto.conflicto && this.normalizarTexto(alineamientoResuelto.alineamiento).length > 0)
+            if (!alineamientoResuelto.conflicto && normalizarTexto(alineamientoResuelto.alineamiento).length > 0)
                 this.personajeCreacion.Alineamiento = alineamientoResuelto.alineamiento;
         }
 
@@ -5391,7 +5391,7 @@ export class NuevoPersonajeService {
             const textoCa = `${plantilla?.Ca ?? ''}`.trim();
             const valorCa = this.extraerPrimerEnteroConSigno(textoCa);
             if (valorCa !== 0) {
-                const normalizado = this.normalizarTexto(textoCa);
+                const normalizado = normalizarTexto(textoCa);
                 if (normalizado.includes('natural'))
                     armaduraNatural += valorCa;
                 else
@@ -5518,20 +5518,20 @@ export class NuevoPersonajeService {
 
     private getFirmaDoteNormalizada(nombre: string, extra: string, origen: string): string {
         return [
-            this.normalizarTexto(nombre),
-            this.normalizarTexto(extra),
-            this.normalizarTexto(origen),
+            normalizarTexto(nombre),
+            normalizarTexto(extra),
+            normalizarTexto(origen),
         ].join('|');
     }
 
     private getFirmaDoteContextualNormalizada(idDote: number, nombre: string, idExtra: number, origen: string): string {
         const identidad = Math.max(0, Math.trunc(toNumber(idDote))) > 0
             ? `id:${Math.max(0, Math.trunc(toNumber(idDote)))}`
-            : `nombre:${this.normalizarTexto(nombre)}`;
+            : `nombre:${normalizarTexto(nombre)}`;
         return [
             identidad,
             `extra:${Math.max(0, Math.trunc(toNumber(idExtra)))}`,
-            `origen:${this.normalizarTexto(origen)}`,
+            `origen:${normalizarTexto(origen)}`,
         ].join('|');
     }
 
@@ -5567,7 +5567,7 @@ export class NuevoPersonajeService {
         if (!this.toBooleanValue(habilidad?.Soporta_extra))
             return false;
 
-        return this.esExtraHabilidadPendienteValor(this.normalizarTexto(`${habilidad?.Extra ?? ''}`));
+        return this.esExtraHabilidadPendienteValor(normalizarTexto(`${habilidad?.Extra ?? ''}`));
     }
 
     private esExtraHabilidadPendienteValor(extraNormalizado: string): boolean {
@@ -5581,7 +5581,7 @@ export class NuevoPersonajeService {
         if (familia)
             return `familia:${familia}`;
 
-        const base = this.normalizarTexto(nombre).replace(/\s+\d+$/, '').trim();
+        const base = normalizarTexto(nombre).replace(/\s+\d+$/, '').trim();
         if (base.length > 0)
             return `nombre:${base}`;
         if (id > 0)
@@ -5610,7 +5610,7 @@ export class NuevoPersonajeService {
                 return false;
             if (this.getClaveGrupoExtraHabilidad(habilidad) !== claveGrupo)
                 return false;
-            const extraNormalizado = this.normalizarTexto(`${habilidad?.Extra ?? ''}`);
+            const extraNormalizado = normalizarTexto(`${habilidad?.Extra ?? ''}`);
             if (this.esExtraHabilidadPendienteValor(extraNormalizado))
                 return false;
             return extraNormalizado === extraNormalizadoObjetivo;
@@ -5626,7 +5626,7 @@ export class NuevoPersonajeService {
             if (!this.toBooleanValue(habilidad?.Soporta_extra))
                 continue;
 
-            const extraNormalizado = this.normalizarTexto(`${habilidad?.Extra ?? ''}`);
+            const extraNormalizado = normalizarTexto(`${habilidad?.Extra ?? ''}`);
             if (this.esExtraHabilidadPendienteValor(extraNormalizado))
                 continue;
 
@@ -5645,7 +5645,7 @@ export class NuevoPersonajeService {
 
     private resolverFamiliaRepetiblePorReferencia(idHabilidad: number, nombre: string): HabilidadFamiliaRepetibleKey | null {
         const id = toNumber(idHabilidad);
-        const nombreNorm = this.normalizarTexto(nombre);
+        const nombreNorm = normalizarTexto(nombre);
 
         const familias = Object.entries(HABILIDAD_FAMILIAS_REPETIBLES) as Array<[
             HabilidadFamiliaRepetibleKey,
@@ -5721,7 +5721,7 @@ export class NuevoPersonajeService {
             referencia?.['Id_habilidad'] ?? referencia?.['id_habilidad'] ?? referencia?.['Id'] ?? referencia?.['id']
         );
         const nombreObjetivo = `${referencia?.['Habilidad'] ?? referencia?.['habilidad'] ?? referencia?.['Nombre'] ?? referencia?.['nombre'] ?? ''}`.trim();
-        const nombreNorm = this.normalizarTexto(nombreObjetivo);
+        const nombreNorm = normalizarTexto(nombreObjetivo);
         const catalogo = this.buscarDefinicionHabilidadCatalogo(idObjetivoRaw, nombreNorm, !!opciones.customPreferido);
         const detalleCatalogo = catalogo.detalle;
         const idObjetivoCatalogo = toNumber(detalleCatalogo?.Id_habilidad);
@@ -5752,7 +5752,7 @@ export class NuevoPersonajeService {
         }
         if (!existente && nombreNorm.length > 0) {
             existente = this.personajeCreacion.Habilidades
-                .find((h) => this.normalizarTexto(h.Nombre) === nombreNorm) ?? null;
+                .find((h) => normalizarTexto(h.Nombre) === nombreNorm) ?? null;
         }
 
         const familia = this.resolverFamiliaRepetiblePorReferencia(idObjetivo, nombreObjetivo);
@@ -5839,7 +5839,7 @@ export class NuevoPersonajeService {
         ].sort((a, b) => a.Nombre.localeCompare(b.Nombre, 'es', { sensitivity: 'base' }));
 
         return this.personajeCreacion.Habilidades
-            .find((h) => toNumber(h.Id) === nuevoId || this.normalizarTexto(h.Nombre) === this.normalizarTexto(nuevoNombre))
+            .find((h) => toNumber(h.Id) === nuevoId || normalizarTexto(h.Nombre) === normalizarTexto(nuevoNombre))
             ?? null;
     }
 
@@ -5855,7 +5855,7 @@ export class NuevoPersonajeService {
                     return porId;
             }
             if (nombreNorm.length > 0) {
-                return catalogo.find((h) => this.normalizarTexto(h?.Nombre ?? '') === nombreNorm) ?? null;
+                return catalogo.find((h) => normalizarTexto(h?.Nombre ?? '') === nombreNorm) ?? null;
             }
             return null;
         };
@@ -5911,7 +5911,7 @@ export class NuevoPersonajeService {
         extrasDisponibles: Array<{ Id_extra: number; Extra: string; Descripcion: string; }>
     ): { bloqueado: boolean; valor: string; } {
         const extraRaw = `${referencia?.['Extra'] ?? referencia?.['extra'] ?? ''}`.trim();
-        const extraNorm = this.normalizarTexto(extraRaw);
+        const extraNorm = normalizarTexto(extraRaw);
         if (extraRaw.length > 0 && !this.esExtraHabilidadPendienteValor(extraNorm))
             return { bloqueado: true, valor: extraRaw };
 
@@ -5923,7 +5923,7 @@ export class NuevoPersonajeService {
 
         const encontrado = extrasDisponibles.find((item) => toNumber(item?.Id_extra) === idExtra);
         const valor = `${encontrado?.Extra ?? ''}`.trim();
-        const valorNorm = this.normalizarTexto(valor);
+        const valorNorm = normalizarTexto(valor);
         if (valor.length > 0 && !this.esExtraHabilidadPendienteValor(valorNorm))
             return { bloqueado: true, valor };
 
@@ -5982,11 +5982,11 @@ export class NuevoPersonajeService {
     }
 
     private obtenerNivelActualClase(nombreClase: string): number {
-        const nombreNorm = this.normalizarTexto(nombreClase);
+        const nombreNorm = normalizarTexto(nombreClase);
         if (nombreNorm.length < 1)
             return 0;
         const encontrada = (this.personajeCreacion.desgloseClases ?? [])
-            .find((clase) => this.normalizarTexto(clase?.Nombre ?? '') === nombreNorm);
+            .find((clase) => normalizarTexto(clase?.Nombre ?? '') === nombreNorm);
         return toNumber(encontrada?.Nivel);
     }
 
@@ -6001,11 +6001,11 @@ export class NuevoPersonajeService {
     }
 
     private obtenerClaseCatalogoPorNombre(nombreClase: string): Clase | null {
-        const nombreNorm = this.normalizarTexto(nombreClase);
+        const nombreNorm = normalizarTexto(nombreClase);
         if (nombreNorm.length < 1)
             return null;
         return this.catalogoClases.find((item) =>
-            this.normalizarTexto(item?.Nombre ?? '') === nombreNorm
+            normalizarTexto(item?.Nombre ?? '') === nombreNorm
         ) ?? null;
     }
 
@@ -6080,10 +6080,10 @@ export class NuevoPersonajeService {
         if (nombre.length < 1)
             return;
 
-        const nombreNorm = this.normalizarTexto(nombre);
+        const nombreNorm = normalizarTexto(nombre);
         const nivelNormalizado = Math.max(1, Math.trunc(toNumber(nivel)));
         const desglose = [...(this.personajeCreacion.desgloseClases ?? [])];
-        const index = desglose.findIndex((item) => this.normalizarTexto(item?.Nombre ?? '') === nombreNorm);
+        const index = desglose.findIndex((item) => normalizarTexto(item?.Nombre ?? '') === nombreNorm);
 
         if (index >= 0) {
             desglose[index] = {
@@ -6241,14 +6241,14 @@ export class NuevoPersonajeService {
         const excluirHomebrew = this.personajeCreacion.Oficial !== false;
         const dominiosActuales = new Set(
             (this.personajeCreacion.Dominios ?? [])
-                .map((dominio) => this.normalizarTexto(dominio?.Nombre ?? ''))
+                .map((dominio) => normalizarTexto(dominio?.Nombre ?? ''))
                 .filter((nombre) => nombre.length > 0)
         );
 
         return fuente
             .filter((dominio) => toNumber(dominio?.Id) > 0 && `${dominio?.Nombre ?? ''}`.trim().length > 0)
             .filter((dominio) => !excluirHomebrew || dominio?.Oficial !== false)
-            .filter((dominio) => !dominiosActuales.has(this.normalizarTexto(dominio?.Nombre ?? '')))
+            .filter((dominio) => !dominiosActuales.has(normalizarTexto(dominio?.Nombre ?? '')))
             .map((dominio) => ({
                 id: toNumber(dominio.Id),
                 nombre: `${dominio.Nombre ?? ''}`.trim(),
@@ -6272,10 +6272,10 @@ export class NuevoPersonajeService {
             const id = Math.trunc(toNumber(value));
             if (id > 0)
                 return candidatas.find((opcion) => opcion.id === id) ?? null;
-            const nombreNorm = this.normalizarTexto(`${value ?? ''}`);
+            const nombreNorm = normalizarTexto(`${value ?? ''}`);
             if (nombreNorm.length < 1)
                 return null;
-            return candidatas.find((opcion) => this.normalizarTexto(opcion.nombre) === nombreNorm) ?? null;
+            return candidatas.find((opcion) => normalizarTexto(opcion.nombre) === nombreNorm) ?? null;
         };
 
         const unicos = new Set<number>();
@@ -6304,7 +6304,7 @@ export class NuevoPersonajeService {
 
         const nombresActuales = new Set(
             (this.personajeCreacion.Dominios ?? [])
-                .map((dominio) => this.normalizarTexto(dominio?.Nombre ?? ''))
+                .map((dominio) => normalizarTexto(dominio?.Nombre ?? ''))
                 .filter((nombre) => nombre.length > 0)
         );
 
@@ -6312,7 +6312,7 @@ export class NuevoPersonajeService {
             const nombre = `${dominio?.nombre ?? ''}`.trim();
             if (nombre.length < 1)
                 return;
-            const nombreNorm = this.normalizarTexto(nombre);
+            const nombreNorm = normalizarTexto(nombre);
             if (nombresActuales.has(nombreNorm))
                 return;
             this.personajeCreacion.Dominios.push({ Nombre: nombre });
@@ -6326,10 +6326,10 @@ export class NuevoPersonajeService {
     }
 
     private obtenerDeidadSeleccionada(): DeidadDetalle | null {
-        const deidadNorm = this.normalizarTexto(this.personajeCreacion.Deidad ?? '');
-        if (deidadNorm.length < 1 || deidadNorm === this.normalizarTexto('No tener deidad'))
+        const deidadNorm = normalizarTexto(this.personajeCreacion.Deidad ?? '');
+        if (deidadNorm.length < 1 || deidadNorm === normalizarTexto('No tener deidad'))
             return null;
-        return this.catalogoDeidades.find((deidad) => this.normalizarTexto(deidad?.Nombre ?? '') === deidadNorm) ?? null;
+        return this.catalogoDeidades.find((deidad) => normalizarTexto(deidad?.Nombre ?? '') === deidadNorm) ?? null;
     }
 
     private agregarIdiomaABaseVentajas(idioma: {
@@ -6339,11 +6339,11 @@ export class NuevoPersonajeService {
         Oficial: boolean;
         Origen?: string;
     }): void {
-        const nombreNorm = this.normalizarTexto(idioma?.Nombre ?? '');
+        const nombreNorm = normalizarTexto(idioma?.Nombre ?? '');
         if (nombreNorm.length < 1)
             return;
         if (this.estadoFlujo.ventajas.baseIdiomas
-            .some((item) => this.normalizarTexto(item?.Nombre ?? '') === nombreNorm)) {
+            .some((item) => normalizarTexto(item?.Nombre ?? '') === nombreNorm)) {
             return;
         }
         this.estadoFlujo.ventajas.baseIdiomas.push({ ...idioma });
@@ -6550,8 +6550,8 @@ export class NuevoPersonajeService {
                 return;
             const extra = `${especialNivel?.Extra ?? ''}`.trim();
             const duplicado = (this.personajeCreacion.Claseas ?? []).some((especial) =>
-                this.normalizarTexto(especial?.Nombre ?? '') === this.normalizarTexto(nombre)
-                && this.normalizarTexto(especial?.Extra ?? '') === this.normalizarTexto(extra)
+                normalizarTexto(especial?.Nombre ?? '') === normalizarTexto(nombre)
+                && normalizarTexto(especial?.Extra ?? '') === normalizarTexto(extra)
             );
             if (!duplicado) {
                 const especialRaw = (especialNivel?.Especial as Record<string, any>) ?? {};
@@ -6603,9 +6603,9 @@ export class NuevoPersonajeService {
 
             const valorSeleccionado = entradas[index];
             const idSeleccion = Math.trunc(toNumber(valorSeleccionado));
-            const nombreSeleccion = this.normalizarTexto(`${valorSeleccionado ?? ''}`);
+            const nombreSeleccion = normalizarTexto(`${valorSeleccionado ?? ''}`);
             const opcion = opciones.find((item) => toNumber(item.idClase) === idSeleccion)
-                ?? opciones.find((item) => this.normalizarTexto(item.nombreClase) === nombreSeleccion)
+                ?? opciones.find((item) => normalizarTexto(item.nombreClase) === nombreSeleccion)
                 ?? null;
 
             if (!opcion) {
@@ -6633,12 +6633,12 @@ export class NuevoPersonajeService {
             Nombre: string;
         }
     ): ClaseAumentoLanzadorOpcion[] {
-        const nombreClaseAplicada = this.normalizarTexto(claseAplicada?.Nombre ?? '');
+        const nombreClaseAplicada = normalizarTexto(claseAplicada?.Nombre ?? '');
         const previas = (this.personajeCreacion.desgloseClases ?? [])
             .filter((item) => toNumber(item?.Nivel) > 0)
-            .filter((item) => this.normalizarTexto(item?.Nombre ?? '') !== nombreClaseAplicada)
+            .filter((item) => normalizarTexto(item?.Nombre ?? '') !== nombreClaseAplicada)
             .map((item) => this.catalogoClases
-                .find((clase) => this.normalizarTexto(clase?.Nombre ?? '') === this.normalizarTexto(item?.Nombre ?? '')))
+                .find((clase) => normalizarTexto(clase?.Nombre ?? '') === normalizarTexto(item?.Nombre ?? '')))
             .filter((item): item is Clase =>
                 !!item
                 && this.tieneLanzamientoPropio(item)
@@ -6649,7 +6649,7 @@ export class NuevoPersonajeService {
             return [];
 
         const hintId = toNumber(aumento?.Id);
-        const hintNombre = this.normalizarTexto(`${aumento?.Nombre ?? ''}`);
+        const hintNombre = normalizarTexto(`${aumento?.Nombre ?? ''}`);
         let candidatas = [...previas];
 
         if (hintId > 0) {
@@ -6657,7 +6657,7 @@ export class NuevoPersonajeService {
             if (porId.length > 0)
                 candidatas = porId;
         } else if (hintNombre.length > 0) {
-            const porNombre = candidatas.filter((clase) => this.normalizarTexto(clase?.Nombre ?? '') === hintNombre);
+            const porNombre = candidatas.filter((clase) => normalizarTexto(clase?.Nombre ?? '') === hintNombre);
             if (porNombre.length > 0) {
                 candidatas = porNombre;
             } else {
@@ -6733,7 +6733,7 @@ export class NuevoPersonajeService {
             const nombreClase = `${seleccion?.objetivo?.nombreClase ?? ''}`.trim();
             const objetivo = this.catalogoClases.find((clase) =>
                 (idClase > 0 && toNumber(clase?.Id) === idClase)
-                || (nombreClase.length > 0 && this.normalizarTexto(clase?.Nombre ?? '') === this.normalizarTexto(nombreClase))
+                || (nombreClase.length > 0 && normalizarTexto(clase?.Nombre ?? '') === normalizarTexto(nombreClase))
             );
             if (!objetivo) {
                 errores.push(`No se pudo resolver la clase objetivo del aumento de lanzador #${toNumber(seleccion?.indice)} para validar contrato de conjuros.`);
@@ -6795,7 +6795,7 @@ export class NuevoPersonajeService {
             const nombreClase = `${seleccion?.objetivo?.nombreClase ?? ''}`.trim();
             const objetivo = this.catalogoClases.find((clase) =>
                 (idClase > 0 && toNumber(clase?.Id) === idClase)
-                || (nombreClase.length > 0 && this.normalizarTexto(clase?.Nombre ?? '') === this.normalizarTexto(nombreClase))
+                || (nombreClase.length > 0 && normalizarTexto(clase?.Nombre ?? '') === normalizarTexto(nombreClase))
             );
             if (!objetivo) {
                 avisos.push(`No se pudo resolver la clase objetivo del aumento de lanzador #${toNumber(seleccion?.indice)}.`);
@@ -6893,7 +6893,7 @@ export class NuevoPersonajeService {
         const autoadicionActiva = autoadicion && !sinElegibles && idsAutoadicionados.length > 0;
 
         const entrada: ConjurosSesionStateEntrada = {
-            id: `${this.normalizarTexto(claseObjetivo.Nombre)}:${origen}:${nivelLanzadorActual}`,
+            id: `${normalizarTexto(claseObjetivo.Nombre)}:${origen}:${nivelLanzadorActual}`,
             origen: `${origen ?? ''}`.trim() || `${claseObjetivo.Nombre} nivel ${nivelLanzadorActual}`,
             claseObjetivo: {
                 id: toNumber(claseObjetivo?.Id),
@@ -7096,15 +7096,15 @@ export class NuevoPersonajeService {
         const incluirSoloOficiales = this.personajeCreacion?.Oficial !== false;
         const dominiosSeleccionados = new Set(
             (this.personajeCreacion?.Dominios ?? [])
-                .map((dominio) => this.normalizarTexto(dominio?.Nombre ?? ''))
+                .map((dominio) => normalizarTexto(dominio?.Nombre ?? ''))
                 .filter((nombre) => nombre.length > 0)
         );
         const escuelasProhibidas = new Set(
             (this.personajeCreacion?.Escuelas_prohibidas ?? [])
-                .map((escuela) => this.normalizarTexto(this.extraerNombreEscuelaProhibida(escuela)))
+                .map((escuela) => normalizarTexto(this.extraerNombreEscuelaProhibida(escuela)))
                 .filter((nombre) => nombre.length > 0)
         );
-        const disciplinaProhibida = this.normalizarTexto(this.personajeCreacion?.Disciplina_prohibida ?? '');
+        const disciplinaProhibida = normalizarTexto(this.personajeCreacion?.Disciplina_prohibida ?? '');
 
         const puedeAgregar = (conjuro: Conjuro, nivelConjuro: number): boolean => {
             const id = toNumber(conjuro?.Id);
@@ -7118,10 +7118,10 @@ export class NuevoPersonajeService {
                 return false;
             if (claseObjetivo?.Conjuros?.Dependientes_alineamiento && this.esConjuroOpuestoAAlineamientoActual(conjuro))
                 return false;
-            const escuela = this.normalizarTexto(conjuro?.Escuela?.Nombre ?? '');
+            const escuela = normalizarTexto(conjuro?.Escuela?.Nombre ?? '');
             if (escuela.length > 0 && escuelasProhibidas.has(escuela))
                 return false;
-            const disciplina = this.normalizarTexto(conjuro?.Disciplina?.Nombre ?? '');
+            const disciplina = normalizarTexto(conjuro?.Disciplina?.Nombre ?? '');
             if (disciplinaProhibida.length > 0 && disciplina === disciplinaProhibida)
                 return false;
             if (!incluirConjurosYaConocidos && this.esConjuroYaConocidoPorClase(claseObjetivo?.Nombre ?? '', id))
@@ -7168,7 +7168,7 @@ export class NuevoPersonajeService {
         conjuro: Conjuro,
         dominiosSeleccionados: Set<string>
     ): number | null {
-        const nombreClaseNorm = this.normalizarTexto(claseObjetivo?.Nombre ?? '');
+        const nombreClaseNorm = normalizarTexto(claseObjetivo?.Nombre ?? '');
         const idClase = toNumber(claseObjetivo?.Id);
         const nivelesClase = Array.isArray(conjuro?.Nivel_clase)
             ? conjuro.Nivel_clase
@@ -7178,7 +7178,7 @@ export class NuevoPersonajeService {
         const nivelClase = nivelesClase
             .map((nivel) => ({
                 id: toNumber((nivel as Record<string, any>)?.['Id_clase'] ?? (nivel as Record<string, any>)?.['id_clase']),
-                nombre: this.normalizarTexto((nivel as Record<string, any>)?.['Clase'] ?? (nivel as Record<string, any>)?.['clase'] ?? ''),
+                nombre: normalizarTexto((nivel as Record<string, any>)?.['Clase'] ?? (nivel as Record<string, any>)?.['clase'] ?? ''),
                 nivel: toNumber((nivel as Record<string, any>)?.['Nivel'] ?? (nivel as Record<string, any>)?.['nivel']),
             }))
             .find((item) => (idClase > 0 && item.id === idClase) || (nombreClaseNorm.length > 0 && item.nombre === nombreClaseNorm));
@@ -7193,7 +7193,7 @@ export class NuevoPersonajeService {
                     : []);
             const compatibles = nivelesDominio
                 .map((nivel) => ({
-                    dominio: this.normalizarTexto((nivel as Record<string, any>)?.['Dominio'] ?? (nivel as Record<string, any>)?.['dominio'] ?? ''),
+                    dominio: normalizarTexto((nivel as Record<string, any>)?.['Dominio'] ?? (nivel as Record<string, any>)?.['dominio'] ?? ''),
                     nivel: toNumber((nivel as Record<string, any>)?.['Nivel'] ?? (nivel as Record<string, any>)?.['nivel']),
                 }))
                 .filter((item) => item.dominio.length > 0 && dominiosSeleccionados.has(item.dominio) && item.nivel >= 0)
@@ -7222,7 +7222,7 @@ export class NuevoPersonajeService {
     }
 
     private esConjuroOpuestoAAlineamientoActual(conjuro: Conjuro): boolean {
-        const alineamiento = this.normalizarTexto(this.personajeCreacion?.Alineamiento ?? '');
+        const alineamiento = normalizarTexto(this.personajeCreacion?.Alineamiento ?? '');
         if (alineamiento.length < 1)
             return false;
 
@@ -7243,7 +7243,7 @@ export class NuevoPersonajeService {
             : (conjuro?.Descriptores && typeof conjuro.Descriptores === 'object'
                 ? Object.values(conjuro.Descriptores as any)
                 : [])
-        ).map((item) => this.normalizarTexto((item as Record<string, any>)?.['Nombre'] ?? (item as Record<string, any>)?.['nombre'] ?? `${item ?? ''}`));
+        ).map((item) => normalizarTexto((item as Record<string, any>)?.['Nombre'] ?? (item as Record<string, any>)?.['nombre'] ?? `${item ?? ''}`));
 
         return descriptores.some((descriptor) => opuestos.has(descriptor));
     }
@@ -7285,7 +7285,7 @@ export class NuevoPersonajeService {
     }
 
     private esNombreAdivinacion(value: string): boolean {
-        return this.normalizarTexto(value ?? '') === 'adivinacion';
+        return normalizarTexto(value ?? '') === 'adivinacion';
     }
 
     private extraerNombreEscuelaProhibida(value: string | { Nombre?: string; } | null | undefined): string {
@@ -7320,14 +7320,14 @@ export class NuevoPersonajeService {
     }
 
     private obtenerBonusNivelLanzadorClase(nombreClase: string): number {
-        const key = this.normalizarTexto(nombreClase);
+        const key = normalizarTexto(nombreClase);
         if (key.length < 1)
             return 0;
         return Math.max(0, toNumber(this.bonusNivelLanzadorPorClase[key]));
     }
 
     private incrementarBonusNivelLanzadorClase(nombreClase: string, delta: number): void {
-        const key = this.normalizarTexto(nombreClase);
+        const key = normalizarTexto(nombreClase);
         if (key.length < 1)
             return;
         const actual = this.obtenerBonusNivelLanzadorClase(nombreClase);
@@ -7430,7 +7430,7 @@ export class NuevoPersonajeService {
             : (conjuro.Nivel_clase && typeof conjuro.Nivel_clase === 'object' ? Object.values(conjuro.Nivel_clase as any) : []);
         const yaTieneNivelClase = nivelesClase.some((nivel) =>
             toNumber((nivel as Record<string, any>)?.['Id_clase']) === idClase
-            || this.normalizarTexto((nivel as Record<string, any>)?.['Clase'] ?? '') === this.normalizarTexto(nombreClase)
+            || normalizarTexto((nivel as Record<string, any>)?.['Clase'] ?? '') === normalizarTexto(nombreClase)
         );
         if (!yaTieneNivelClase && idClase > 0) {
             nivelesClase.push({
@@ -7543,11 +7543,11 @@ export class NuevoPersonajeService {
         if (id <= 0)
             return false;
 
-        const claseNorm = this.normalizarTexto(nombreClase);
+        const claseNorm = normalizarTexto(nombreClase);
         return (this.personajeCreacion.Conjuros ?? []).some((conjuro) => {
             if (toNumber(conjuro?.Id) !== id)
                 return false;
-            const origenClase = this.normalizarTexto(
+            const origenClase = normalizarTexto(
                 `${(conjuro as Record<string, any>)?.['Clase_origen'] ?? (conjuro as Record<string, any>)?.['Origen_clase'] ?? ''}`
             );
             if (origenClase.length < 1)
@@ -7624,31 +7624,31 @@ export class NuevoPersonajeService {
     }
 
     private resolverIdIdiomaPorNombre(nombreIdioma: string): number | null {
-        const nombreNorm = this.normalizarTexto(nombreIdioma);
+        const nombreNorm = normalizarTexto(nombreIdioma);
         if (nombreNorm.length < 1)
             return null;
         const idioma = (this.estadoFlujo.ventajas.catalogoIdiomas ?? [])
-            .find((item) => this.normalizarTexto(item?.Nombre ?? '') === nombreNorm);
+            .find((item) => normalizarTexto(item?.Nombre ?? '') === nombreNorm);
         const id = toNumber(idioma?.Id);
         return id > 0 ? id : null;
     }
 
     private resolverIdDominioPorNombre(nombreDominio: string): number | null {
-        const nombreNorm = this.normalizarTexto(nombreDominio);
+        const nombreNorm = normalizarTexto(nombreDominio);
         if (nombreNorm.length < 1)
             return null;
         const dominio = (this.catalogoDominios ?? [])
-            .find((item) => this.normalizarTexto(item?.Nombre ?? '') === nombreNorm);
+            .find((item) => normalizarTexto(item?.Nombre ?? '') === nombreNorm);
         const id = toNumber(dominio?.Id);
         return id > 0 ? id : null;
     }
 
     private resolverIdRegionPorNombre(nombreRegion: string): number | null {
-        const nombreNorm = this.normalizarTexto(nombreRegion);
+        const nombreNorm = normalizarTexto(nombreRegion);
         if (nombreNorm.length < 1)
             return null;
         const region = (this.catalogoRegiones ?? [])
-            .find((item) => this.normalizarTexto(item?.Nombre ?? '') === nombreNorm);
+            .find((item) => normalizarTexto(item?.Nombre ?? '') === nombreNorm);
         const id = toNumber(region?.Id);
         return id > 0 ? id : null;
     }
@@ -7672,7 +7672,7 @@ export class NuevoPersonajeService {
                 return acumulado;
 
             const claseCatalogo = this.catalogoClases
-                .find((clase) => this.normalizarTexto(clase?.Nombre ?? '') === this.normalizarTexto(nombre));
+                .find((clase) => normalizarTexto(clase?.Nombre ?? '') === normalizarTexto(nombre));
             if (!claseCatalogo)
                 return acumulado;
 
@@ -7716,7 +7716,7 @@ export class NuevoPersonajeService {
     }
 
     private esTextoReglaValido(valor: string): boolean {
-        const normalizado = this.normalizarTexto(valor);
+        const normalizado = normalizarTexto(valor);
         if (normalizado.length < 1)
             return false;
         return normalizado !== 'no especifica'
@@ -7850,7 +7850,7 @@ export class NuevoPersonajeService {
         if (Object.prototype.hasOwnProperty.call(CARGA_MULTIPLICADOR_BIPEDO_POR_MOD_PRESA, modPresa))
             return CARGA_MULTIPLICADOR_BIPEDO_POR_MOD_PRESA[modPresa];
 
-        const nombreTamano = this.normalizarTexto(this.personajeCreacion?.Raza?.Tamano?.Nombre ?? '');
+        const nombreTamano = normalizarTexto(this.personajeCreacion?.Raza?.Tamano?.Nombre ?? '');
         if (nombreTamano.includes('colosal'))
             return 16;
         if (nombreTamano.includes('gargantuesc'))
@@ -7909,7 +7909,7 @@ export class NuevoPersonajeService {
         if (!this.esTextoReglaValido(limpio))
             return;
         const nombreRacial = `${prefijo}: ${limpio}`.trim();
-        const existe = raciales.some(r => this.normalizarTexto(r.Nombre) === this.normalizarTexto(nombreRacial));
+        const existe = raciales.some(r => normalizarTexto(r.Nombre) === normalizarTexto(nombreRacial));
         if (existe)
             return;
 
@@ -7995,7 +7995,7 @@ export class NuevoPersonajeService {
                     Origen: origen.length > 0 ? origen : undefined,
                 };
             })
-            .filter((r) => this.normalizarTexto(r.Nombre).length > 0);
+            .filter((r) => normalizarTexto(r.Nombre).length > 0);
     }
 
     private copiarSortilegas(value: AptitudSortilega[] | null | undefined): AptitudSortilega[] {
@@ -8012,7 +8012,7 @@ export class NuevoPersonajeService {
                 Dgs_necesarios: toNumber(s?.Dgs_necesarios),
                 Origen: `${s?.Origen ?? ''}`.trim(),
             }))
-            .filter((s) => this.normalizarTexto(`${s?.Conjuro?.Nombre ?? ''}`).length > 0);
+            .filter((s) => normalizarTexto(`${s?.Conjuro?.Nombre ?? ''}`).length > 0);
     }
 
     private copiarIdiomas(value: { Nombre: string; Descripcion: string; Secreto: boolean; Oficial: boolean; Origen?: string; }[] | null | undefined) {
@@ -8155,7 +8155,7 @@ export class NuevoPersonajeService {
             (grupo?.Plantillas ?? []).forEach((plantilla) => {
                 const id = toNumber(plantilla?.Id);
                 const nombre = `${plantilla?.Nombre ?? ''}`.trim();
-                const key = id > 0 ? `id:${id}` : `n:${this.normalizarTexto(nombre)}`;
+                const key = id > 0 ? `id:${id}` : `n:${normalizarTexto(nombre)}`;
                 if ((id <= 0 && nombre.length < 1) || vistos.has(key))
                     return;
                 vistos.add(key);
@@ -8177,11 +8177,11 @@ export class NuevoPersonajeService {
             if (porId)
                 return porId;
         }
-        const nombre = this.normalizarTexto(ref?.Nombre ?? '');
+        const nombre = normalizarTexto(ref?.Nombre ?? '');
         if (nombre.length < 1)
             return null;
         return (this.estadoFlujo.plantillas.disponibles ?? [])
-            .find((plantilla) => this.normalizarTexto(plantilla?.Nombre ?? '') === nombre) ?? null;
+            .find((plantilla) => normalizarTexto(plantilla?.Nombre ?? '') === nombre) ?? null;
     }
 
     private buscarTipoCriaturaPorId(idTipo: number): TipoCriatura | null {
@@ -8263,7 +8263,7 @@ export class NuevoPersonajeService {
 
         [...base, ...extra].forEach((subtipo) => {
             const id = toNumber(subtipo?.Id);
-            const nombreNorm = this.normalizarTexto(`${subtipo?.Nombre ?? ''}`);
+            const nombreNorm = normalizarTexto(`${subtipo?.Nombre ?? ''}`);
             const key = id > 0 ? `id:${id}` : `n:${nombreNorm}`;
             if ((id <= 0 && nombreNorm.length < 1) || vistos.has(key))
                 return;
@@ -8278,17 +8278,17 @@ export class NuevoPersonajeService {
     }
 
     private idiomaYaEnPersonajeOSeleccion(nombreIdioma: string, exceptVentajaId?: number): boolean {
-        const normalizado = this.normalizarTexto(nombreIdioma);
+        const normalizado = normalizarTexto(nombreIdioma);
         if (normalizado.length < 1)
             return false;
 
-        const enBase = this.estadoFlujo.ventajas.baseIdiomas.some(i => this.normalizarTexto(i.Nombre) === normalizado);
+        const enBase = this.estadoFlujo.ventajas.baseIdiomas.some(i => normalizarTexto(i.Nombre) === normalizado);
         if (enBase)
             return true;
 
         return this.estadoFlujo.ventajas.seleccionVentajas
             .filter(v => v.id !== exceptVentajaId)
-            .some((v) => this.normalizarTexto(v.idioma?.Nombre ?? '') === normalizado);
+            .some((v) => normalizarTexto(v.idioma?.Nombre ?? '') === normalizado);
     }
 
     private comprobarPersistenciaBorradorActiva(): void {
@@ -8577,7 +8577,7 @@ export class NuevoPersonajeService {
     private reconstruirBaseRacialesDesdeBorrador(): RacialDetalle[] {
         const origenesExcluidos = this.getOrigenesExcluidosRestauracionBorrador();
         return this.copiarRaciales((this.personajeCreacion.Raciales ?? []).filter((racial: any) => {
-            const origen = this.normalizarTexto(racial?.Origen ?? '');
+            const origen = normalizarTexto(racial?.Origen ?? '');
             return origen.length < 1 || !origenesExcluidos.has(origen);
         }));
     }
@@ -8585,7 +8585,7 @@ export class NuevoPersonajeService {
     private reconstruirBaseIdiomasDesdeBorrador() {
         const origenesExcluidos = this.getOrigenesExcluidosRestauracionBorrador();
         return this.copiarIdiomas((this.personajeCreacion.Idiomas ?? []).filter((idioma) => {
-            const origen = this.normalizarTexto(idioma?.Origen ?? '');
+            const origen = normalizarTexto(idioma?.Origen ?? '');
             return origen.length < 1 || !origenesExcluidos.has(origen);
         }));
     }
@@ -8594,7 +8594,7 @@ export class NuevoPersonajeService {
         const origenes = new Set<string>();
 
         (this.personajeCreacion.Ventajas ?? []).forEach((ventaja) => {
-            const nombre = this.normalizarTexto(
+            const nombre = normalizarTexto(
                 typeof ventaja === 'string'
                     ? ventaja
                     : (ventaja?.Nombre ?? '')
@@ -8604,7 +8604,7 @@ export class NuevoPersonajeService {
         });
 
         (this.estadoFlujo.plantillas.seleccionadas ?? []).forEach((plantilla) => {
-            const nombre = this.normalizarTexto(plantilla?.Nombre ?? '');
+            const nombre = normalizarTexto(plantilla?.Nombre ?? '');
             if (nombre.length > 0)
                 origenes.add(nombre);
         });
@@ -9037,7 +9037,7 @@ export class NuevoPersonajeService {
     }
 
     private getAfinidadClaseConTop3Auto(claseNombre: string, top3: CaracteristicaKey): number {
-        const normalizado = this.normalizarTexto(claseNombre);
+        const normalizado = normalizarTexto(claseNombre);
         const afinidades = GENERADOR_AUTO_AFINIDAD_CLASES[normalizado] ?? [];
         return afinidades.includes(top3) ? 1 : 0;
     }
@@ -9445,9 +9445,9 @@ export class NuevoPersonajeService {
     }
 
     private resolverCarasDadoClaseParaVida(nombreClase: string, fallback: number): number {
-        const nombreNorm = this.normalizarTexto(nombreClase);
+        const nombreNorm = normalizarTexto(nombreClase);
         const clase = (this.catalogoClases ?? [])
-            .find((item) => this.normalizarTexto(item?.Nombre ?? '') === nombreNorm) ?? null;
+            .find((item) => normalizarTexto(item?.Nombre ?? '') === nombreNorm) ?? null;
         const dadoClase = this.resolverCarasDadoClase(clase);
         if (dadoClase > 0)
             return dadoClase;
@@ -9525,7 +9525,7 @@ export class NuevoPersonajeService {
     }
 
     private normalizarClaveModificadorDote(clave: string): string {
-        return this.normalizarTexto(`${clave ?? ''}`).replace(/[^a-z0-9]/g, '');
+        return normalizarTexto(`${clave ?? ''}`).replace(/[^a-z0-9]/g, '');
     }
 
     private calcularModificador(valor: number): number {
@@ -9643,7 +9643,7 @@ export class NuevoPersonajeService {
 
     private esEspecialEnemigoPredilecto(especialNivel: ClaseEspecialNivel): boolean {
         const especialRaw = (especialNivel?.Especial ?? {}) as Record<string, any>;
-        const nombre = this.normalizarTexto(`${especialRaw?.['Nombre'] ?? especialRaw?.['nombre'] ?? ''}`);
+        const nombre = normalizarTexto(`${especialRaw?.['Nombre'] ?? especialRaw?.['nombre'] ?? ''}`);
         if (nombre.length < 1)
             return false;
         return nombre.includes('enemigo predilecto')
@@ -9694,14 +9694,6 @@ export class NuevoPersonajeService {
             this.setModCaracteristica(key, 0);
         });
         this.sincronizarAliasConstitucionPerdida();
-    }
-
-    private normalizarTexto(valor: string): string {
-        return `${valor ?? ''}`
-            .normalize('NFD')
-            .replace(/[\u0300-\u036f]/g, '')
-            .trim()
-            .toLowerCase();
     }
 
     private asignarOrigenRaciales(raciales: RacialDetalle[], origen: string): RacialDetalle[] {
@@ -9832,7 +9824,7 @@ export class NuevoPersonajeService {
     }
 
     private resolverCaracteristicaPorTexto(texto: string): CaracteristicaKey {
-        const normalizado = this.normalizarTexto(texto);
+        const normalizado = normalizarTexto(texto);
         if (normalizado.startsWith('fue') || normalizado.includes('fuerza'))
             return 'Fuerza';
         if (normalizado.startsWith('des') || normalizado.includes('destreza'))

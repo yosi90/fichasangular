@@ -4,7 +4,7 @@ import { Plantilla, PlantillaPrerrequisitos } from 'src/app/interfaces/plantilla
 import { SubtipoRef } from 'src/app/interfaces/subtipo';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
 import { resolverExtraHabilidadVisible } from 'src/app/services/utils/habilidad-extra-visible';
-import { toNumber } from 'src/app/services/utils/normalizacion';
+import { normalizarTexto, toNumber } from 'src/app/services/utils/normalizacion';
 
 type PrerrequisitoCondicion = {
     familiaEtiqueta: string;
@@ -133,7 +133,7 @@ export class DetallesPlantillaComponent {
 
     tieneManiobrabilidadVisible(): boolean {
         const nombre = `${this.plantillaData?.Maniobrabilidad?.Nombre ?? ''}`;
-        const normalizado = this.normalizar(nombre);
+        const normalizado = normalizarTexto(nombre);
         if (!this.tieneTextoVisible(nombre))
             return false;
 
@@ -144,7 +144,7 @@ export class DetallesPlantillaComponent {
 
     tieneTipoDadoVisible(): boolean {
         const nombre = `${this.plantillaData?.Tipo_dado?.Nombre ?? ''}`;
-        const normalizado = this.normalizar(nombre);
+        const normalizado = normalizarTexto(nombre);
         if (!this.tieneTextoVisible(nombre))
             return false;
 
@@ -329,7 +329,7 @@ export class DetallesPlantillaComponent {
             .map(item => {
                 const tipoComp = this.tieneTextoVisible(item.Tipo_comp) ? `${item.Tipo_comp}` : `Tipo #${item.Id_tipo_comp}`;
                 const tipoNuevoRaw = `${item.Tipo_nuevo ?? ''}`;
-                if (this.normalizar(tipoNuevoRaw) === 'cualquiera') {
+                if (normalizarTexto(tipoNuevoRaw) === 'cualquiera') {
                     return {
                         tipoComp,
                         tipoNuevo: tipoComp,
@@ -347,7 +347,7 @@ export class DetallesPlantillaComponent {
 
     getNombreDote(doteCtx: DoteContextual): string {
         const extra = doteCtx?.Contexto?.Extra;
-        if (this.tieneTextoVisible(extra) && this.normalizar(extra) !== 'no aplica')
+        if (this.tieneTextoVisible(extra) && normalizarTexto(extra) !== 'no aplica')
             return `${doteCtx.Dote.Nombre} (${extra})`;
         return doteCtx.Dote.Nombre;
     }
@@ -440,7 +440,7 @@ export class DetallesPlantillaComponent {
 
         if (base === 'tiponuevo' || base === 'tiponuevotipo' || base === 'tiporesultante') {
             const tipoNuevo = this.extraerValorSimple(valor);
-            if (this.normalizar(tipoNuevo) === 'cualquiera') {
+            if (normalizarTexto(tipoNuevo) === 'cualquiera') {
                 return {
                     etiqueta: 'Tipo nuevo',
                     valor: this.getTipoCompatibleEnCondicion(item),
@@ -545,14 +545,6 @@ export class DetallesPlantillaComponent {
             return this.formatearValor(valor);
         }
         return '';
-    }
-
-    private normalizar(value: string): string {
-        return (value ?? '')
-            .normalize('NFD')
-            .replace(/[\u0300-\u036f]/g, '')
-            .trim()
-            .toLowerCase();
     }
 
 }

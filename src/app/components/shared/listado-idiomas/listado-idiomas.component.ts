@@ -6,6 +6,7 @@ import { Subject, takeUntil } from 'rxjs';
 import { IdiomaDetalle } from 'src/app/interfaces/idioma';
 import { IdiomaService } from 'src/app/services/idioma.service';
 import { ordenarEnEspanol } from 'src/app/services/utils/orden-tabla';
+import { normalizarTexto } from 'src/app/services/utils/normalizacion';
 
 @Component({
     selector: 'app-listado-idiomas',
@@ -41,11 +42,11 @@ export class ListadoIdiomasComponent implements OnDestroy {
     }
 
     filtroIdiomas(): void {
-        const texto = this.normalizar(this.nombreText?.nativeElement.value);
+        const texto = normalizarTexto(this.nombreText?.nativeElement.value);
         const idiomasFiltrados = this.idiomas.filter(idioma =>
             texto === ''
-            || this.normalizar(idioma.Nombre).includes(texto)
-            || this.normalizar(idioma.Descripcion).includes(texto)
+            || normalizarTexto(idioma.Nombre).includes(texto)
+            || normalizarTexto(idioma.Descripcion).includes(texto)
         );
 
         this.idiomasDS = new MatTableDataSource(idiomasFiltrados);
@@ -83,11 +84,4 @@ export class ListadoIdiomasComponent implements OnDestroy {
             });
     }
 
-    private normalizar(value: string): string {
-        return (value ?? '')
-            .normalize('NFD')
-            .replace(/[\u0300-\u036f]/g, '')
-            .trim()
-            .toLowerCase();
-    }
 }

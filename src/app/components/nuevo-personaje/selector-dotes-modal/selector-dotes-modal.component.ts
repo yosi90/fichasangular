@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, EventEmitter, HostListener, Input, OnChanges, Output, SimpleChanges } from '@angular/core';
 import { Dote } from 'src/app/interfaces/dote';
 import { DoteSeleccionConfirmada, DoteSelectorCandidato, DotePendienteState } from 'src/app/services/nuevo-personaje.service';
-import { toNumber } from 'src/app/services/utils/normalizacion';
+import { normalizarTexto, toNumber } from 'src/app/services/utils/normalizacion';
 
 @Component({
     selector: 'app-selector-dotes-modal',
@@ -177,9 +177,9 @@ export class SelectorDotesModalComponent implements OnChanges {
     }
 
     private refreshFilteredCandidates(): void {
-        const textoNorm = this.normalizarTexto(this.filtroTexto);
-        const manualNorm = this.normalizarTexto(this.filtroManual);
-        const tipoNorm = this.normalizarTexto(this.filtroTipo);
+        const textoNorm = normalizarTexto(this.filtroTexto);
+        const manualNorm = normalizarTexto(this.filtroManual);
+        const tipoNorm = normalizarTexto(this.filtroTipo);
 
         this.candidatosFiltrados = (this.candidatos ?? [])
             .filter((candidato) => {
@@ -190,21 +190,21 @@ export class SelectorDotesModalComponent implements OnChanges {
             .filter((candidato) => {
                 if (textoNorm.length < 1)
                     return true;
-                const nombre = this.normalizarTexto(candidato?.dote?.Nombre ?? '');
-                const descripcion = this.normalizarTexto(candidato?.dote?.Descripcion ?? '');
-                const beneficio = this.normalizarTexto(candidato?.dote?.Beneficio ?? '');
+                const nombre = normalizarTexto(candidato?.dote?.Nombre ?? '');
+                const descripcion = normalizarTexto(candidato?.dote?.Descripcion ?? '');
+                const beneficio = normalizarTexto(candidato?.dote?.Beneficio ?? '');
                 return nombre.includes(textoNorm) || descripcion.includes(textoNorm) || beneficio.includes(textoNorm);
             })
             .filter((candidato) => {
-                if (manualNorm.length < 1 || manualNorm === this.normalizarTexto('Cualquiera'))
+                if (manualNorm.length < 1 || manualNorm === normalizarTexto('Cualquiera'))
                     return true;
-                return this.normalizarTexto(candidato?.dote?.Manual?.Nombre ?? '') === manualNorm;
+                return normalizarTexto(candidato?.dote?.Manual?.Nombre ?? '') === manualNorm;
             })
             .filter((candidato) => {
-                if (tipoNorm.length < 1 || tipoNorm === this.normalizarTexto('Cualquiera'))
+                if (tipoNorm.length < 1 || tipoNorm === normalizarTexto('Cualquiera'))
                     return true;
                 return (candidato?.dote?.Tipos ?? [])
-                    .some((tipo) => this.normalizarTexto(tipo?.Nombre ?? '') === tipoNorm);
+                    .some((tipo) => normalizarTexto(tipo?.Nombre ?? '') === tipoNorm);
             })
             .sort((a, b) => `${a?.dote?.Nombre ?? ''}`.localeCompare(`${b?.dote?.Nombre ?? ''}`, 'es', { sensitivity: 'base' }));
         this.candidatosColumnaA = this.candidatosFiltrados.filter((_candidato, index) => index % 2 === 0);
@@ -268,11 +268,4 @@ export class SelectorDotesModalComponent implements OnChanges {
         return !!target.closest(selector);
     }
 
-    private normalizarTexto(value: string): string {
-        return `${value ?? ''}`
-            .normalize('NFD')
-            .replace(/[\u0300-\u036f]/g, '')
-            .trim()
-            .toLowerCase();
-    }
 }

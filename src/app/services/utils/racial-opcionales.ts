@@ -1,5 +1,5 @@
 import { RacialDetalle } from 'src/app/interfaces/racial';
-import { toNumber } from 'src/app/services/utils/normalizacion';
+import { normalizarTexto, toNumber } from 'src/app/services/utils/normalizacion';
 
 export type SeleccionRacialesOpcionales = Record<number, string>;
 
@@ -11,14 +11,6 @@ export interface GrupoRacialesOpcionales {
 export interface AgrupacionRacialesOpcionales {
     obligatorias: RacialDetalle[];
     grupos: GrupoRacialesOpcionales[];
-}
-
-function normalizarTexto(value: string): string {
-    return `${value ?? ''}`
-        .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g, '')
-        .trim()
-        .toLowerCase();
 }
 
 function dedupeRaciales(raciales: RacialDetalle[]): RacialDetalle[] {

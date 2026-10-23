@@ -1,6 +1,7 @@
 import { Component, Input } from '@angular/core';
 import { VentajaDetalle } from 'src/app/interfaces/ventaja';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
+import { normalizarTexto } from 'src/app/services/utils/normalizacion';
 
 @Component({
     selector: 'app-detalles-ventaja',
@@ -91,16 +92,8 @@ export class DetallesVentajaComponent {
         return `${texto ?? ''}`.trim().length > 0;
     }
 
-    private normalizarTexto(texto: string | undefined | null): string {
-        return `${texto ?? ''}`
-            .normalize('NFD')
-            .replace(/[\u0300-\u036f]/g, '')
-            .trim()
-            .toLowerCase();
-    }
-
     private esNombreReferenciaNoValido(nombre: string | undefined | null): boolean {
-        const normalizado = this.normalizarTexto(nombre);
+        const normalizado = normalizarTexto(nombre);
         return normalizado.length < 1
             || normalizado === 'ninguno'
             || normalizado === 'no aplica'
@@ -124,7 +117,7 @@ export class DetallesVentajaComponent {
 
     tieneHabilidadVisible(): boolean {
         const id = Number(this.ventaja?.Habilidad?.Id ?? -1);
-        const nombreNormalizado = this.normalizarTexto(this.ventaja?.Habilidad?.Nombre);
+        const nombreNormalizado = normalizarTexto(this.ventaja?.Habilidad?.Nombre);
         if (id < 0)
             return false;
         if (id === 0)

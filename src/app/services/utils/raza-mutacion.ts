@@ -9,7 +9,7 @@ import {
     parseLeyDesdePreferencia,
     parseMoralDesdePreferencia,
 } from "./alineamiento-contrato";
-import { toArray, toNumber } from 'src/app/services/utils/normalizacion';
+import { normalizarTexto, toArray, toNumber } from 'src/app/services/utils/normalizacion';
 
 export type EstadoElegibilidadRazaBase = "eligible" | "eligible_with_warning" | "blocked";
 
@@ -44,14 +44,6 @@ function parseIdExtra(value: any): number {
     return Number.isFinite(parsed) ? parsed : -1;
 }
 
-function normalizeText(value: string): string {
-    return `${value ?? ""}`
-        .normalize("NFD")
-        .replace(/[\u0300-\u036f]/g, "")
-        .trim()
-        .toLowerCase();
-}
-
 function uniqueTexts(values: string[]): string[] {
     return Array.from(
         new Set(
@@ -69,7 +61,7 @@ function deepClone<T>(value: T): T {
 }
 
 function hasMeaningfulText(value: string): boolean {
-    const normalized = normalizeText(value);
+    const normalized = normalizarTexto(value);
     return normalized.length > 0
         && normalized !== "no especifica"
         && normalized !== "no se especifica"
@@ -343,30 +335,30 @@ function mergeByKey<T>(base: T[], extra: T[], keyGetter: (item: T) => string): T
 
 function normalizeDoteKey(dote: DoteContextual): string {
     const doteId = toNumber(dote?.Dote?.Id);
-    const nombre = normalizeText(`${dote?.Dote?.Nombre ?? ""}`);
-    const extra = normalizeText(`${dote?.Contexto?.Extra ?? ""}`);
+    const nombre = normalizarTexto(`${dote?.Dote?.Nombre ?? ""}`);
+    const extra = normalizarTexto(`${dote?.Contexto?.Extra ?? ""}`);
     return `${doteId > 0 ? doteId : nombre}|${extra}`;
 }
 
 function normalizeRacialKey(racial: RacialDetalle): string {
     const id = toNumber(racial?.Id);
-    const nombre = normalizeText(`${racial?.Nombre ?? ""}`);
+    const nombre = normalizarTexto(`${racial?.Nombre ?? ""}`);
     return id > 0 ? `id:${id}` : `n:${nombre}`;
 }
 
 function normalizeSubtipoKey(subtipo: SubtipoRef): string {
     const id = toNumber(subtipo?.Id);
-    const nombre = normalizeText(`${subtipo?.Nombre ?? ""}`);
+    const nombre = normalizarTexto(`${subtipo?.Nombre ?? ""}`);
     return id > 0 ? `id:${id}` : `n:${nombre}`;
 }
 
 function normalizeSortilegaKey(sortilega: AptitudSortilega): string {
-    return normalizeText(`${sortilega?.Conjuro?.Nombre ?? ""}`);
+    return normalizarTexto(`${sortilega?.Conjuro?.Nombre ?? ""}`);
 }
 
 function normalizeHabilidadRazaKey(raw: any): string {
     const id = toNumber(raw?.Id_habilidad ?? raw?.id_habilidad ?? raw?.Id ?? raw?.id);
-    const nombre = normalizeText(`${raw?.Habilidad ?? raw?.habilidad ?? raw?.Nombre ?? raw?.nombre ?? ""}`);
+    const nombre = normalizarTexto(`${raw?.Habilidad ?? raw?.habilidad ?? raw?.Nombre ?? raw?.nombre ?? ""}`);
     if (id > 0)
         return `id:${id}`;
     if (nombre.length > 0)

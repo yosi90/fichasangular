@@ -6,6 +6,7 @@ import { SubtipoResumen } from 'src/app/interfaces/subtipo';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
 import { SubtipoService } from 'src/app/services/subtipo.service';
 import { ordenarEnEspanol } from 'src/app/services/utils/orden-tabla';
+import { normalizarTexto } from 'src/app/services/utils/normalizacion';
 
 @Component({
     selector: 'app-listado-subtipos',
@@ -46,10 +47,10 @@ export class ListadoSubtiposComponent {
     }
 
     filtroSubtipos() {
-        const texto = this.normalizar(this.nombreText?.nativeElement.value ?? '');
+        const texto = normalizarTexto(this.nombreText?.nativeElement.value ?? '');
         const homebrew = this.anuncioSubtiposHomebrew !== 'Clic para mostar subtipos homebrew';
         const subtiposFiltrados = this.subtipos.filter(subtipo =>
-            (texto === '' || this.normalizar(subtipo.Nombre).includes(texto))
+            (texto === '' || normalizarTexto(subtipo.Nombre).includes(texto))
             && (this.defaultManual === 'Cualquiera' || `${subtipo.Manual?.Nombre ?? ''}` === this.defaultManual)
             && (homebrew || subtipo.Oficial)
         );
@@ -106,11 +107,4 @@ export class ListadoSubtiposComponent {
         )).sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' }));
     }
 
-    private normalizar(value: string): string {
-        return (value ?? '')
-            .normalize('NFD')
-            .replace(/[\u0300-\u036f]/g, '')
-            .trim()
-            .toLowerCase();
-    }
 }

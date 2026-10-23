@@ -8,6 +8,7 @@ import { VentajaDetalle } from 'src/app/interfaces/ventaja';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
 import { VentajaService } from 'src/app/services/ventaja.service';
 import { ordenarEnEspanol } from 'src/app/services/utils/orden-tabla';
+import { normalizarTexto } from 'src/app/services/utils/normalizacion';
 
 interface VentajaListadoItem extends VentajaDetalle {
     Tipo: 'Ventaja' | 'Desventaja';
@@ -72,9 +73,9 @@ export class ListadoVentajasComponent implements OnDestroy {
     }
 
     filtroVentajas() {
-        const texto = this.normalizar(this.nombreText?.nativeElement.value ?? '');
+        const texto = normalizarTexto(this.nombreText?.nativeElement.value ?? '');
         const filtradas = this.ventajas.filter((ventaja) => {
-            const nombre = this.normalizar(ventaja.Nombre);
+            const nombre = normalizarTexto(ventaja.Nombre);
             const manual = `${ventaja.Manual?.Nombre ?? ''}`.trim();
             const visiblePorManual = this.defaultManual === 'Cualquiera' || manual === this.defaultManual;
             const visiblePorTexto = texto.length < 1 || nombre.includes(texto);
@@ -146,11 +147,4 @@ export class ListadoVentajasComponent implements OnDestroy {
         });
     }
 
-    private normalizar(value: string): string {
-        return (value ?? '')
-            .normalize('NFD')
-            .replace(/[\u0300-\u036f]/g, '')
-            .trim()
-            .toLowerCase();
-    }
 }

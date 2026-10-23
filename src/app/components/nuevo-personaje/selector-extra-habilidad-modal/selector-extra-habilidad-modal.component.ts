@@ -1,4 +1,5 @@
 import { Component, EventEmitter, HostListener, Input, OnChanges, Output } from '@angular/core';
+import { normalizarTexto } from 'src/app/services/utils/normalizacion';
 
 export interface SelectorExtraHabilidadModalOpcion {
     valor: string;
@@ -25,20 +26,20 @@ export class SelectorExtraHabilidadModalComponent implements OnChanges {
 
     ngOnChanges(): void {
         const inicial = `${this.valorSeleccionadoInicial ?? ''}`.trim();
-        const existe = (this.opciones ?? []).some((item) => this.normalizarTexto(item?.valor ?? '') === this.normalizarTexto(inicial));
+        const existe = (this.opciones ?? []).some((item) => normalizarTexto(item?.valor ?? '') === normalizarTexto(inicial));
         this.valorSeleccionado = existe ? inicial : '';
         this.filtroTexto = '';
     }
 
     get opcionesFiltradas(): SelectorExtraHabilidadModalOpcion[] {
-        const filtro = this.normalizarTexto(this.filtroTexto);
+        const filtro = normalizarTexto(this.filtroTexto);
         return (this.opciones ?? [])
             .filter((opcion) => `${opcion?.valor ?? ''}`.trim().length > 0)
             .filter((opcion) => {
                 if (filtro.length < 1)
                     return true;
-                const valor = this.normalizarTexto(opcion?.valor ?? '');
-                const descripcion = this.normalizarTexto(opcion?.descripcion ?? '');
+                const valor = normalizarTexto(opcion?.valor ?? '');
+                const descripcion = normalizarTexto(opcion?.descripcion ?? '');
                 return valor.includes(filtro) || descripcion.includes(filtro);
             })
             .sort((a, b) => `${a?.valor ?? ''}`.localeCompare(`${b?.valor ?? ''}`, 'es', { sensitivity: 'base' }));
@@ -48,7 +49,7 @@ export class SelectorExtraHabilidadModalComponent implements OnChanges {
         const valor = `${this.valorSeleccionado ?? ''}`.trim();
         if (valor.length < 1)
             return false;
-        return (this.opciones ?? []).some((opcion) => this.normalizarTexto(opcion?.valor ?? '') === this.normalizarTexto(valor));
+        return (this.opciones ?? []).some((opcion) => normalizarTexto(opcion?.valor ?? '') === normalizarTexto(valor));
     }
 
     seleccionarOpcion(valor: string): void {
@@ -59,7 +60,7 @@ export class SelectorExtraHabilidadModalComponent implements OnChanges {
     }
 
     esOpcionSeleccionada(valor: string): boolean {
-        return this.normalizarTexto(valor ?? '') === this.normalizarTexto(this.valorSeleccionado ?? '');
+        return normalizarTexto(valor ?? '') === normalizarTexto(this.valorSeleccionado ?? '');
     }
 
     onConfirmar(): void {
@@ -92,11 +93,4 @@ export class SelectorExtraHabilidadModalComponent implements OnChanges {
         return !!target.closest(selectorBloqueado);
     }
 
-    private normalizarTexto(value: string): string {
-        return `${value ?? ''}`
-            .normalize('NFD')
-            .replace(/[\u0300-\u036f]/g, '')
-            .trim()
-            .toLowerCase();
-    }
 }

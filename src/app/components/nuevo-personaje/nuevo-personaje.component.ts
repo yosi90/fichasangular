@@ -114,6 +114,7 @@ import { environment } from 'src/environments/environment';
 import Swal from 'sweetalert2';
 import { DatosIdeaIa, datosIdeaDePersonaje, TipoIdeaIa } from 'src/app/services/ideas-ia.service';
 import { UsoIdeaIa } from '../shared/ideas-ia/ideas-ia.component';
+import { normalizarTexto } from 'src/app/services/utils/normalizacion';
 
 interface VectorAlineamiento {
     ley: number;
@@ -972,7 +973,7 @@ export class NuevoPersonajeComponent {
         const vistos = new Set<string>();
         const resultado: string[] = [];
         nombres.forEach((nombre) => {
-            const clave = this.normalizarTexto(nombre);
+            const clave = normalizarTexto(nombre);
             if (clave.length < 1 || vistos.has(clave))
                 return;
             vistos.add(clave);
@@ -1225,10 +1226,10 @@ export class NuevoPersonajeComponent {
     }
 
     get deidadSeleccionadaDetalle(): DeidadDetalle | null {
-        const nombreNorm = this.normalizarTexto(this.Personaje.Deidad ?? '');
-        if (nombreNorm.length < 1 || nombreNorm === this.normalizarTexto(this.deidadSinSeleccion))
+        const nombreNorm = normalizarTexto(this.Personaje.Deidad ?? '');
+        if (nombreNorm.length < 1 || nombreNorm === normalizarTexto(this.deidadSinSeleccion))
             return null;
-        return this.catalogoDeidades.find((deidad) => this.normalizarTexto(deidad?.Nombre ?? '') === nombreNorm) ?? null;
+        return this.catalogoDeidades.find((deidad) => normalizarTexto(deidad?.Nombre ?? '') === nombreNorm) ?? null;
     }
 
     get deidadSeleccionadaTexto(): string {
@@ -1321,14 +1322,6 @@ export class NuevoPersonajeComponent {
             .map(conflicto => `Has elegido ${conflicto.elegido}, mientras que tu deidad exige ${conflicto.requerido}.`);
     }
 
-    private normalizarTexto(valor: string): string {
-        return (valor ?? '')
-            .normalize('NFD')
-            .replace(/[\u0300-\u036f]/g, '')
-            .trim()
-            .toLowerCase();
-    }
-
     private abrirModalInformacionBasicos(
         titulo: string,
         icono: string,
@@ -1341,7 +1334,7 @@ export class NuevoPersonajeComponent {
     }
 
     private esPreferenciaAlineamientoVisible(valor: string): boolean {
-        const normalizado = this.normalizarTexto(valor ?? '');
+        const normalizado = normalizarTexto(valor ?? '');
         return normalizado.length > 0
             && normalizado !== 'no aplica'
             && normalizado !== 'no especificado'
@@ -1356,8 +1349,8 @@ export class NuevoPersonajeComponent {
     }
 
     private esDeidadVaciaONeutra(): boolean {
-        const deidad = this.normalizarTexto(this.Personaje.Deidad ?? '');
-        return deidad.length < 1 || deidad === this.normalizarTexto(this.deidadSinSeleccion);
+        const deidad = normalizarTexto(this.Personaje.Deidad ?? '');
+        return deidad.length < 1 || deidad === normalizarTexto(this.deidadSinSeleccion);
     }
 
     private esDeidadOficial(): boolean {
@@ -1379,7 +1372,7 @@ export class NuevoPersonajeComponent {
     }
 
     private getSeveridadPreferenciaTexto(valor: string): 'none' | 'soft' | 'hard' {
-        const normalizado = this.normalizarTexto(valor ?? '');
+        const normalizado = normalizarTexto(valor ?? '');
         if (normalizado.includes('casi siempre'))
             return 'soft';
         if (normalizado.includes('siempre'))
@@ -1626,7 +1619,7 @@ export class NuevoPersonajeComponent {
             const nombre = `${entrada?.Nombre ?? ''}`.trim();
             if (nombre.length < 1)
                 return false;
-            const claseCatalogo = this.catalogoClases.find((clase) => this.normalizarTexto(clase?.Nombre ?? '') === this.normalizarTexto(nombre));
+            const claseCatalogo = this.catalogoClases.find((clase) => normalizarTexto(clase?.Nombre ?? '') === normalizarTexto(nombre));
             return claseCatalogo?.Oficial === false;
         }) || this.homebrewPorClaseAplicada;
         const tieneVentajasODesventajas = this.flujoVentajas.seleccionVentajas.length > 0
@@ -1730,7 +1723,7 @@ export class NuevoPersonajeComponent {
         }, ...candidatas];
         const deidadActual = `${this.Personaje.Deidad ?? ''}`.trim();
         if (deidadActual.length > 0) {
-            const existe = lista.some((item) => this.normalizarTexto(item.nombre) === this.normalizarTexto(deidadActual));
+            const existe = lista.some((item) => normalizarTexto(item.nombre) === normalizarTexto(deidadActual));
             if (!existe)
                 lista.push({
                     nombre: deidadActual,
@@ -1750,7 +1743,7 @@ export class NuevoPersonajeComponent {
         const vistos = new Set<string>();
         const resultado: string[] = [];
         fuente.forEach((nombre) => {
-            const normalizado = this.normalizarTexto(nombre);
+            const normalizado = normalizarTexto(nombre);
             if (normalizado.length < 1 || vistos.has(normalizado) || normalizado === 'no aplica')
                 return;
             vistos.add(normalizado);
@@ -2177,11 +2170,11 @@ export class NuevoPersonajeComponent {
     }
 
     private resolverIdRegionCatalogoPorNombre(nombreRegion: string): number | null {
-        const nombreNorm = this.normalizarTexto(nombreRegion ?? '');
+        const nombreNorm = normalizarTexto(nombreRegion ?? '');
         if (nombreNorm.length < 1)
             return null;
         const region = (this.catalogoRegiones ?? [])
-            .find((item) => this.normalizarTexto(item?.Nombre ?? '') === nombreNorm);
+            .find((item) => normalizarTexto(item?.Nombre ?? '') === nombreNorm);
         const id = Math.trunc(Number(region?.Id ?? 0));
         if (!Number.isFinite(id) || id <= 0)
             return null;
@@ -2230,15 +2223,15 @@ export class NuevoPersonajeComponent {
     }
 
     compararAlineamiento = (a: string | null, b: string | null): boolean => {
-        return this.normalizarTexto(a ?? '') === this.normalizarTexto(b ?? '');
+        return normalizarTexto(a ?? '') === normalizarTexto(b ?? '');
     };
 
     private normalizarAlineamientoSeleccionado(): void {
         const alineamientosDisponibles = this.buildAlineamientosDisponibles();
         this.basicosDerivedState.alineamientosDisponibles = alineamientosDisponibles;
         const actual = this.Personaje.Alineamiento ?? '';
-        const normalizado = this.normalizarTexto(actual);
-        const encontrado = alineamientosDisponibles.find(a => this.normalizarTexto(a) === normalizado);
+        const normalizado = normalizarTexto(actual);
+        const encontrado = alineamientosDisponibles.find(a => normalizarTexto(a) === normalizado);
 
         if (encontrado) {
             this.Personaje.Alineamiento = encontrado;
@@ -2302,21 +2295,21 @@ export class NuevoPersonajeComponent {
     }
 
     private filtrarCampanasDuplicadasEnSelector(campanas: Campana[]): Campana[] {
-        const sinCampana = this.normalizarTexto('Sin campaña');
-        return (campanas ?? []).filter((campana) => this.normalizarTexto(campana?.Nombre ?? '') !== sinCampana);
+        const sinCampana = normalizarTexto('Sin campaña');
+        return (campanas ?? []).filter((campana) => normalizarTexto(campana?.Nombre ?? '') !== sinCampana);
     }
 
     private sincronizarNombreCampanaSeleccionada(campanas: Campana[]): void {
         const currentName = `${this.Personaje?.Campana ?? ''}`.trim();
-        if (currentName.length < 1 || this.normalizarTexto(currentName) === this.normalizarTexto('Sin campaña'))
+        if (currentName.length < 1 || normalizarTexto(currentName) === normalizarTexto('Sin campaña'))
             return;
 
-        const currentStillExists = (campanas ?? []).some((campana) => this.normalizarTexto(campana?.Nombre ?? '') === this.normalizarTexto(currentName));
+        const currentStillExists = (campanas ?? []).some((campana) => normalizarTexto(campana?.Nombre ?? '') === normalizarTexto(currentName));
         if (currentStillExists)
             return;
 
         const previousCampaignId = this.toPositiveInt(
-            this.Campanas.find((campana) => this.normalizarTexto(campana?.Nombre ?? '') === this.normalizarTexto(currentName))?.Id
+            this.Campanas.find((campana) => normalizarTexto(campana?.Nombre ?? '') === normalizarTexto(currentName))?.Id
         );
         if (!previousCampaignId)
             return;
@@ -2462,22 +2455,22 @@ export class NuevoPersonajeComponent {
             return;
         }
 
-        const nombreBuscado = this.normalizarTexto(value?.Nombre ?? '');
+        const nombreBuscado = normalizarTexto(value?.Nombre ?? '');
         if (nombreBuscado.length < 1)
             return;
-        const porNombre = (this.catalogoConjuros ?? []).find((conjuro) => this.normalizarTexto(conjuro?.Nombre ?? '') === nombreBuscado)
-            ?? (this.Personaje?.Conjuros ?? []).find((conjuro) => this.normalizarTexto(conjuro?.Nombre ?? '') === nombreBuscado);
+        const porNombre = (this.catalogoConjuros ?? []).find((conjuro) => normalizarTexto(conjuro?.Nombre ?? '') === nombreBuscado)
+            ?? (this.Personaje?.Conjuros ?? []).find((conjuro) => normalizarTexto(conjuro?.Nombre ?? '') === nombreBuscado);
         if (porNombre)
             this.conjuroDetalles.emit(porNombre);
     }
 
     verDetallesClaseDesdeFicha(nombreClase: string): void {
-        const nombreBuscado = this.normalizarTexto(nombreClase ?? '');
+        const nombreBuscado = normalizarTexto(nombreClase ?? '');
         if (nombreBuscado.length < 1)
             return;
 
         const clase = (this.catalogoClases ?? [])
-            .find((item) => this.normalizarTexto(item?.Nombre ?? '') === nombreBuscado);
+            .find((item) => normalizarTexto(item?.Nombre ?? '') === nombreBuscado);
         if (!clase)
             return;
 
@@ -2505,11 +2498,11 @@ export class NuevoPersonajeComponent {
             }
         }
 
-        const nombreBuscado = this.normalizarTexto(payload?.nombre ?? '');
+        const nombreBuscado = normalizarTexto(payload?.nombre ?? '');
         if (nombreBuscado.length < 1)
             return;
-        const porNombre = this.plantillasCatalogo.find((p) => this.normalizarTexto(p.Nombre) === nombreBuscado)
-            ?? this.plantillasSeleccionadas.find((p) => this.normalizarTexto(p.Nombre) === nombreBuscado);
+        const porNombre = this.plantillasCatalogo.find((p) => normalizarTexto(p.Nombre) === nombreBuscado)
+            ?? this.plantillasSeleccionadas.find((p) => normalizarTexto(p.Nombre) === nombreBuscado);
         if (porNombre)
             this.plantillaDetalles.emit(porNombre);
     }
@@ -3416,7 +3409,7 @@ export class NuevoPersonajeComponent {
     }
 
     getCaracteristicaAbreviada(caracteristica: string): string {
-        const normalizada = this.normalizarTexto(caracteristica ?? '');
+        const normalizada = normalizarTexto(caracteristica ?? '');
         if (normalizada.startsWith('fue') || normalizada.includes('fuerza'))
             return 'Fue';
         if (normalizada.startsWith('des') || normalizada.includes('destreza'))
@@ -3450,19 +3443,19 @@ export class NuevoPersonajeComponent {
             return [];
 
         const claveGrupo = this.getClaveGrupoExtraHabilidad(habilidad);
-        const extraActualNorm = this.normalizarTexto(`${habilidad?.Extra ?? ''}`);
+        const extraActualNorm = normalizarTexto(`${habilidad?.Extra ?? ''}`);
         const usados = new Set(
             (this.Personaje?.Habilidades ?? [])
                 .filter((otra) => Number(otra?.Id) !== idHabilidad)
                 .filter((otra) => !!otra?.Soporta_extra)
                 .filter((otra) => this.esHabilidadClaseaEfectiva(Number(otra?.Id)))
                 .filter((otra) => this.getClaveGrupoExtraHabilidad(otra) === claveGrupo)
-                .map((otra) => this.normalizarTexto(`${otra?.Extra ?? ''}`))
+                .map((otra) => normalizarTexto(`${otra?.Extra ?? ''}`))
                 .filter((extraNorm) => !this.esExtraPendienteValor(extraNorm))
         );
 
         return opciones.filter((opcion) => {
-            const extraNorm = this.normalizarTexto(opcion.Extra);
+            const extraNorm = normalizarTexto(opcion.Extra);
             return !usados.has(extraNorm) || extraNorm === extraActualNorm;
         });
     }
@@ -3477,7 +3470,7 @@ export class NuevoPersonajeComponent {
         if (!this.esExtraObligatorioHabilidad(habilidad))
             return false;
 
-        const extraNormalizado = this.normalizarTexto(`${habilidad?.Extra ?? ''}`);
+        const extraNormalizado = normalizarTexto(`${habilidad?.Extra ?? ''}`);
         if (extraNormalizado.length < 1)
             return true;
         return EXTRA_PENDIENTE_PLACEHOLDERS.has(extraNormalizado);
@@ -3540,7 +3533,7 @@ export class NuevoPersonajeComponent {
     }
 
     private getClaveGrupoExtraHabilidad(habilidad: Personaje['Habilidades'][number]): string {
-        const nombre = this.normalizarTexto(`${habilidad?.Nombre ?? ''}`);
+        const nombre = normalizarTexto(`${habilidad?.Nombre ?? ''}`);
         if (nombre.startsWith('artesania'))
             return 'familia:artesania';
         if (nombre.startsWith('saber'))
@@ -3665,7 +3658,7 @@ export class NuevoPersonajeComponent {
     }
 
     private esNombreHabilidadOcultaEnTabla(nombre: string): boolean {
-        const normalizado = this.normalizarTexto(nombre ?? '');
+        const normalizado = normalizarTexto(nombre ?? '');
         return normalizado === 'crear 1' || normalizado === 'crear 2';
     }
 
@@ -4276,18 +4269,18 @@ export class NuevoPersonajeComponent {
     }
 
     private resolverContextoIdsCreacion(): PersonajeContextoIdsDto {
-        const campanaNorm = this.normalizarTexto(this.Personaje.Campana ?? '');
-        const tramaNorm = this.normalizarTexto(this.Personaje.Trama ?? '');
-        const subtramaNorm = this.normalizarTexto(this.Personaje.Subtrama ?? '');
+        const campanaNorm = normalizarTexto(this.Personaje.Campana ?? '');
+        const tramaNorm = normalizarTexto(this.Personaje.Trama ?? '');
+        const subtramaNorm = normalizarTexto(this.Personaje.Subtrama ?? '');
         const campana = (this.Campanas ?? [])
-            .find((item) => this.normalizarTexto(item?.Nombre ?? '') === campanaNorm);
+            .find((item) => normalizarTexto(item?.Nombre ?? '') === campanaNorm);
 
         const trama = (campana?.Tramas ?? [])
-            .find((item) => this.normalizarTexto(item?.Nombre ?? '') === tramaNorm);
+            .find((item) => normalizarTexto(item?.Nombre ?? '') === tramaNorm);
         const subtrama = (trama?.Subtramas ?? [])
-            .find((item) => this.normalizarTexto(item?.Nombre ?? '') === subtramaNorm);
+            .find((item) => normalizarTexto(item?.Nombre ?? '') === subtramaNorm);
 
-        const esSinCampana = campanaNorm.length < 1 || campanaNorm === this.normalizarTexto('Sin campaña');
+        const esSinCampana = campanaNorm.length < 1 || campanaNorm === normalizarTexto('Sin campaña');
         const esSinHistoriaCampana = this.esTramaCampanaSinEspecificar(this.Personaje?.Trama);
         const esSubtramaBase = this.esSubtramaCampanaSinEspecificar(this.Personaje?.Subtrama);
         const idCampana = esSinCampana ? null : (this.toPositiveInt(campana?.Id) ?? null);
@@ -4338,17 +4331,17 @@ export class NuevoPersonajeComponent {
     }
 
     private esTramaCampanaSinEspecificar(value: any): boolean {
-        const normalizado = this.normalizarTexto(value ?? '');
+        const normalizado = normalizarTexto(value ?? '');
         return normalizado.length < 1
-            || normalizado === this.normalizarTexto(this.tramaSinSeleccionCampana)
-            || normalizado === this.normalizarTexto('Trama base');
+            || normalizado === normalizarTexto(this.tramaSinSeleccionCampana)
+            || normalizado === normalizarTexto('Trama base');
     }
 
     private esSubtramaCampanaSinEspecificar(value: any): boolean {
-        const normalizado = this.normalizarTexto(value ?? '');
+        const normalizado = normalizarTexto(value ?? '');
         return normalizado.length < 1
-            || normalizado === this.normalizarTexto(this.subtramaSinSeleccionCampana)
-            || normalizado === this.normalizarTexto('Subtrama base');
+            || normalizado === normalizarTexto(this.subtramaSinSeleccionCampana)
+            || normalizado === normalizarTexto('Subtrama base');
     }
 
     private mapearCatalogoNombreId<T>(
@@ -4368,9 +4361,9 @@ export class NuevoPersonajeComponent {
     }
 
     private resolverIdAlineamientoCreacion(): number | null {
-        const nombreNorm = this.normalizarTexto(this.Personaje?.Alineamiento ?? '');
+        const nombreNorm = normalizarTexto(this.Personaje?.Alineamiento ?? '');
         const desdeCatalogo = (this.catalogoAlineamientosBasicos ?? [])
-            .find((item) => this.normalizarTexto(item?.Nombre ?? '') === nombreNorm);
+            .find((item) => normalizarTexto(item?.Nombre ?? '') === nombreNorm);
         const idCatalogo = this.toPositiveInt(desdeCatalogo?.Id);
         if (idCatalogo)
             return idCatalogo;
@@ -4391,11 +4384,11 @@ export class NuevoPersonajeComponent {
     }
 
     private resolverIdDeidadCreacion(): number {
-        const deidadNorm = this.normalizarTexto(this.Personaje?.Deidad ?? '');
-        if (deidadNorm.length < 1 || deidadNorm === this.normalizarTexto(this.deidadSinSeleccion))
+        const deidadNorm = normalizarTexto(this.Personaje?.Deidad ?? '');
+        if (deidadNorm.length < 1 || deidadNorm === normalizarTexto(this.deidadSinSeleccion))
             return 0;
         const encontrada = (this.catalogoDeidades ?? [])
-            .find((item) => this.normalizarTexto(item?.Nombre ?? '') === deidadNorm);
+            .find((item) => normalizarTexto(item?.Nombre ?? '') === deidadNorm);
         return this.toPositiveInt(encontrada?.Id) ?? 0;
     }
 
@@ -4423,7 +4416,7 @@ export class NuevoPersonajeComponent {
     }
 
     private resolverIdGeneroCreacion(): number | null {
-        const genero = this.normalizarTexto(this.Personaje?.Genero ?? '');
+        const genero = normalizarTexto(this.Personaje?.Genero ?? '');
         if (genero === 'macho')
             return 1;
         if (genero === 'hembra')
@@ -4445,29 +4438,29 @@ export class NuevoPersonajeComponent {
     }
 
     private resolverIdEscuelaEspecialistaCreacion(): number {
-        const nombreNorm = this.normalizarTexto((this.Personaje?.Escuela_especialista as any)?.Nombre ?? '');
+        const nombreNorm = normalizarTexto((this.Personaje?.Escuela_especialista as any)?.Nombre ?? '');
         if (nombreNorm.length < 1 || nombreNorm === 'no especifica')
             return 0;
         const escuela = (this.catalogoEscuelas ?? [])
-            .find((item) => this.normalizarTexto(item?.Nombre ?? '') === nombreNorm);
+            .find((item) => normalizarTexto(item?.Nombre ?? '') === nombreNorm);
         return this.toPositiveInt((escuela as any)?.Id) ?? 0;
     }
 
     private resolverIdDisciplinaEspecialistaCreacion(): number {
-        const nombreNorm = this.normalizarTexto((this.Personaje?.Disciplina_especialista as any)?.Nombre ?? '');
+        const nombreNorm = normalizarTexto((this.Personaje?.Disciplina_especialista as any)?.Nombre ?? '');
         if (nombreNorm.length < 1 || nombreNorm === 'no especifica')
             return 0;
         const disciplina = (this.catalogoDisciplinas ?? [])
-            .find((item) => this.normalizarTexto(item?.Nombre ?? '') === nombreNorm);
+            .find((item) => normalizarTexto(item?.Nombre ?? '') === nombreNorm);
         return this.toPositiveInt((disciplina as any)?.Id) ?? 0;
     }
 
     private resolverIdDisciplinaProhibidaCreacion(): number {
-        const nombreNorm = this.normalizarTexto(this.Personaje?.Disciplina_prohibida ?? '');
+        const nombreNorm = normalizarTexto(this.Personaje?.Disciplina_prohibida ?? '');
         if (nombreNorm.length < 1 || nombreNorm === 'ninguna' || nombreNorm === 'no especifica')
             return 0;
         const disciplina = (this.catalogoDisciplinas ?? [])
-            .find((item) => this.normalizarTexto(item?.Nombre ?? '') === nombreNorm);
+            .find((item) => normalizarTexto(item?.Nombre ?? '') === nombreNorm);
         return this.toPositiveInt((disciplina as any)?.Id) ?? 0;
     }
 
@@ -4517,7 +4510,7 @@ export class NuevoPersonajeComponent {
     }
 
     private normalizarPlantillaCompanero(value: CompaneroPlantillaSelector | string): CompaneroPlantillaSelector {
-        const normalizada = this.normalizarTexto(`${value ?? ''}`);
+        const normalizada = normalizarTexto(`${value ?? ''}`);
         if (normalizada.includes('elevado'))
             return 'elevado';
         if (normalizada.includes('sabandija'))
@@ -4723,7 +4716,7 @@ export class NuevoPersonajeComponent {
                 return;
             const clave = id > 0
                 ? `id:${id}`
-                : `nombre:${this.normalizarTexto(nombre)}`;
+                : `nombre:${normalizarTexto(nombre)}`;
             if (claves.has(clave))
                 return;
             claves.add(clave);
@@ -5544,7 +5537,7 @@ export class NuevoPersonajeComponent {
             return false;
 
         const yaExiste = this.idiomasSeleccionadosParaSelector
-            .some((n) => this.normalizarTexto(n) === this.normalizarTexto(nombre));
+            .some((n) => normalizarTexto(n) === normalizarTexto(nombre));
         if (yaExiste)
             return false;
 
@@ -5612,7 +5605,7 @@ export class NuevoPersonajeComponent {
 
     getMateriaVisible(item: VentajaDetalle): string {
         const materia = `${this.getMateriaVentaja(item) ?? ''}`.trim();
-        return this.normalizarTexto(materia) === 'elegir' ? '' : materia;
+        return normalizarTexto(materia) === 'elegir' ? '' : materia;
     }
 
     getMejoraVisible(item: VentajaDetalle): string {
@@ -5705,7 +5698,7 @@ export class NuevoPersonajeComponent {
     }
 
     private get hasSelectedCampaignContext(): boolean {
-        return this.normalizarTexto(this.Personaje?.Campana ?? '') !== this.normalizarTexto('Sin campaña');
+        return normalizarTexto(this.Personaje?.Campana ?? '') !== normalizarTexto('Sin campaña');
     }
 
     private get canIgnoreAlignmentRestrictionsForCurrentContext(): boolean {
@@ -5803,13 +5796,13 @@ export class NuevoPersonajeComponent {
 
         const clasesByNombre = new Map<string, Clase>();
         (this.catalogoClases ?? []).forEach((clase) => {
-            const key = this.normalizarTexto(clase?.Nombre ?? '');
+            const key = normalizarTexto(clase?.Nombre ?? '');
             if (key.length > 0 && !clasesByNombre.has(key))
                 clasesByNombre.set(key, clase);
         });
         (this.Personaje?.desgloseClases ?? []).forEach((entrada) => {
             const nombre = `${entrada?.Nombre ?? ''}`.trim();
-            const key = this.normalizarTexto(nombre);
+            const key = normalizarTexto(nombre);
             const clase = key.length > 0 ? (clasesByNombre.get(key) ?? null) : null;
             if (clase?.Oficial === false) {
                 addSource(this.buildCampaignHomebrewSource('clase', Number(clase?.Id ?? 0), nombre));
@@ -6337,7 +6330,7 @@ export class NuevoPersonajeComponent {
     }
 
     private recalcularClasesVisibles(): void {
-        const texto = this.normalizarTexto(this.filtroClasesTexto);
+        const texto = normalizarTexto(this.filtroClasesTexto);
         const manual = this.filtroClasesManual;
         const evaluadas: ClaseListadoItem[] = [];
 
@@ -6356,8 +6349,8 @@ export class NuevoPersonajeComponent {
                 return;
 
             if (texto.length > 0) {
-                const nombreNorm = this.normalizarTexto(nombre);
-                const descNorm = this.normalizarTexto(descripcion);
+                const nombreNorm = normalizarTexto(nombre);
+                const descNorm = normalizarTexto(descripcion);
                 if (!nombreNorm.includes(texto) && !descNorm.includes(texto))
                     return;
             }
@@ -6459,11 +6452,11 @@ export class NuevoPersonajeComponent {
     }
 
     private getNivelActualClasePorNombre(nombreClase: string): number {
-        const nombreNorm = this.normalizarTexto(nombreClase);
+        const nombreNorm = normalizarTexto(nombreClase);
         if (nombreNorm.length < 1)
             return 0;
         const encontrada = (this.Personaje?.desgloseClases ?? [])
-            .find((item) => this.normalizarTexto(item?.Nombre ?? '') === nombreNorm);
+            .find((item) => normalizarTexto(item?.Nombre ?? '') === nombreNorm);
         return Number(encontrada?.Nivel ?? 0) || 0;
     }
 
@@ -6678,7 +6671,7 @@ export class NuevoPersonajeComponent {
         if (extra.length < 1)
             return extra;
 
-        const extraNorm = this.normalizarTexto(extra).replace(/\s+/g, ' ');
+        const extraNorm = normalizarTexto(extra).replace(/\s+/g, ' ');
         if (extraNorm === 'no aplica'
             || extraNorm === 'n a'
             || extraNorm === 'na'
@@ -6810,7 +6803,7 @@ export class NuevoPersonajeComponent {
         const limpio = `${extra ?? ''}`.trim();
         if (limpio.length < 1)
             return false;
-        const normalizado = this.normalizarTexto(limpio).replace(/\s+/g, ' ');
+        const normalizado = normalizarTexto(limpio).replace(/\s+/g, ' ');
         return normalizado !== 'desconocido'
             && normalizado !== 'sin especificar'
             && normalizado !== 'sin especificacion'
@@ -6928,7 +6921,7 @@ export class NuevoPersonajeComponent {
     }
 
     private esTextoAlineamientoConContenido(valor: string): boolean {
-        const normalizado = this.normalizarTexto(valor ?? '');
+        const normalizado = normalizarTexto(valor ?? '');
         return normalizado.length > 0
             && normalizado !== 'no aplica'
             && normalizado !== 'no especifica'
@@ -6938,7 +6931,7 @@ export class NuevoPersonajeComponent {
     }
 
     private parseReglaAlineamientoBasico(texto: string): { tipo: 'require' | 'forbid'; eje: 'basico'; valor: { ley: number; moral: number; }; texto: string; } | null {
-        const normalizado = this.normalizarTexto(texto ?? '');
+        const normalizado = normalizarTexto(texto ?? '');
         if (!this.esTextoAlineamientoConContenido(texto))
             return null;
 
@@ -6961,7 +6954,7 @@ export class NuevoPersonajeComponent {
         if (!this.esTextoAlineamientoConContenido(texto))
             return null;
 
-        const normalizado = this.normalizarTexto(texto);
+        const normalizado = normalizarTexto(texto);
         const esProhibicion = normalizado.includes('nunca') || normalizado.includes('jamas') || normalizado.includes('prohib');
         const valor = eje === 'ley'
             ? this.extraerValorLeyDesdeTexto(normalizado)
@@ -7020,7 +7013,7 @@ export class NuevoPersonajeComponent {
             return;
         }
 
-        const search = this.normalizarTexto(this.filtroPlantillasTexto);
+        const search = normalizarTexto(this.filtroPlantillasTexto);
         const porManual = this.filtroPlantillasManual;
         const ctx = this.getContextoEvaluacionPlantillas(raza, this.incluirHomebrewPlantillasEfectivo);
 
@@ -7038,7 +7031,7 @@ export class NuevoPersonajeComponent {
                 || this.nuevoPSvc.esPlantillaConfirmada(idPlantilla))
                 return;
 
-            const nombre = this.normalizarTexto(plantilla.Nombre);
+            const nombre = normalizarTexto(plantilla.Nombre);
             if (search.length > 0 && !nombre.includes(search))
                 return;
 

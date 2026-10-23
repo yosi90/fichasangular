@@ -7,6 +7,7 @@ import { ArmaduraDetalle } from 'src/app/interfaces/armadura';
 import { ArmaduraService } from 'src/app/services/armadura.service';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
 import { ordenarEnEspanol } from 'src/app/services/utils/orden-tabla';
+import { normalizarTexto } from 'src/app/services/utils/normalizacion';
 
 @Component({
     selector: 'app-listado-armaduras',
@@ -88,16 +89,16 @@ export class ListadoArmadurasComponent implements OnDestroy {
     }
 
     filtroArmaduras() {
-        const texto = this.normalizar(this.nombreText?.nativeElement?.value ?? '');
-        const tipoArmadura = this.normalizar(this.defaultTipoArmadura);
+        const texto = normalizarTexto(this.nombreText?.nativeElement?.value ?? '');
+        const tipoArmadura = normalizarTexto(this.defaultTipoArmadura);
         const armadurasFiltradas = this.armaduras.filter((armadura) => {
             const visiblePorTexto = texto.length < 1
-                || this.normalizar(armadura?.Nombre).includes(texto)
-                || this.normalizar(armadura?.Descripcion).includes(texto);
+                || normalizarTexto(armadura?.Nombre).includes(texto)
+                || normalizarTexto(armadura?.Descripcion).includes(texto);
             const visiblePorManual = this.defaultManual === 'Cualquiera'
-                || this.normalizar(armadura?.Manual?.Nombre) === this.normalizar(this.defaultManual);
+                || normalizarTexto(armadura?.Manual?.Nombre) === normalizarTexto(this.defaultManual);
             const visiblePorTipo = this.defaultTipoArmadura === 'Cualquiera'
-                || this.normalizar(armadura?.Tipo_armadura?.Nombre) === tipoArmadura;
+                || normalizarTexto(armadura?.Tipo_armadura?.Nombre) === tipoArmadura;
             const visiblePorEscudo = !this.soloEscudos || this.toBoolean(armadura?.Es_escudo);
             const visiblePorHomebrew = this.mostrarHomebrew || this.toBoolean(armadura?.Oficial, true);
             return visiblePorTexto && visiblePorManual && visiblePorTipo && visiblePorEscudo && visiblePorHomebrew;
@@ -161,14 +162,6 @@ export class ListadoArmadurasComponent implements OnDestroy {
                 .map((armadura) => `${armadura?.Manual?.Nombre ?? ''}`.trim())
                 .filter((nombre) => nombre.length > 0)
         )).sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' }));
-    }
-
-    private normalizar(value: string | null | undefined): string {
-        return `${value ?? ''}`
-            .normalize('NFD')
-            .replace(/[\u0300-\u036f]/g, '')
-            .trim()
-            .toLowerCase();
     }
 
     private toBoolean(value: any, fallback: boolean = false): boolean {

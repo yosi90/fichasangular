@@ -37,6 +37,7 @@ import {
     findCatalogName,
     syncPrerequisiteRows,
 } from '../prerrequisito-editor/prerrequisito-editor.registry';
+import { normalizarTexto } from 'src/app/services/utils/normalizacion';
 
 type RacialPrerequisiteType = Extract<PrerequisiteType, 'raza' | 'caracteristica'>;
 const RAZA_EN_CREACION_PREREQ_ID = 2147483647;
@@ -1155,29 +1156,29 @@ export class NuevaRacialComponent implements OnInit, OnDestroy, OnChanges {
     }
 
     private filtrarPorNombre<T extends { Nombre: string; }>(items: T[], query: string): T[] {
-        const filtro = this.normalizar(query);
+        const filtro = normalizarTexto(query);
         if (filtro.length < 1)
             return items.slice(0, 40);
         return items
-            .filter((item) => this.normalizar(item.Nombre).includes(filtro))
+            .filter((item) => normalizarTexto(item.Nombre).includes(filtro))
             .slice(0, 40);
     }
 
     private filtrarHabilidades(items: HabilidadBasicaDetalle[], query: string): HabilidadBasicaDetalle[] {
-        const filtro = this.normalizar(query);
+        const filtro = normalizarTexto(query);
         if (filtro.length < 1)
             return items.slice(0, 40);
         return items
-            .filter((item) => this.normalizar(item.Nombre).includes(filtro))
+            .filter((item) => normalizarTexto(item.Nombre).includes(filtro))
             .slice(0, 40);
     }
 
     private filtrarExtras(items: HabilidadExtraRef[], query: string): HabilidadExtraRef[] {
-        const filtro = this.normalizar(query);
+        const filtro = normalizarTexto(query);
         if (filtro.length < 1)
             return items.slice(0, 40);
         return items
-            .filter((item) => this.normalizar(item.Extra).includes(filtro))
+            .filter((item) => normalizarTexto(item.Extra).includes(filtro))
             .slice(0, 40);
     }
 
@@ -1187,14 +1188,6 @@ export class NuevaRacialComponent implements OnInit, OnDestroy, OnChanges {
 
     private ordenarHabilidades(items: HabilidadBasicaDetalle[]): HabilidadBasicaDetalle[] {
         return [...items].sort((a, b) => a.Nombre.localeCompare(b.Nombre, 'es', { sensitivity: 'base' }));
-    }
-
-    private normalizar(value: unknown): string {
-        return `${value ?? ''}`
-            .normalize('NFD')
-            .replace(/[\u0300-\u036f]/g, '')
-            .toLowerCase()
-            .trim();
     }
 
     private pick(source: any, ...keys: string[]): any {

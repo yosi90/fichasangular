@@ -1,7 +1,7 @@
 import { Clase } from 'src/app/interfaces/clase';
 import { FamiliarMonstruoDetalle, MonstruoDetalle, MonstruoNivelClase } from 'src/app/interfaces/monstruo';
 import { Personaje } from 'src/app/interfaces/personaje';
-import { toNumber } from 'src/app/services/utils/normalizacion';
+import { normalizarTexto, toNumber } from 'src/app/services/utils/normalizacion';
 
 export type FamiliarPlantillaId = 1 | 2 | 3 | 4 | 5;
 
@@ -144,14 +144,6 @@ const ALIGNMENT_ID_TO_NAME: Record<number, string> = {
     9: 'Caótico maligno',
 };
 
-function normalizeText(value: string): string {
-    return `${value ?? ''}`
-        .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g, '')
-        .trim()
-        .toLowerCase();
-}
-
 function resolveEspecialId(especialRaw: any): number {
     return toNumber(
         especialRaw?.Id
@@ -165,7 +157,7 @@ function isEspecialConvocarFamiliar(especialRaw: any): boolean {
     const id = resolveEspecialId(especialRaw);
     if (id === ESPECIAL_CONVOCAR_FAMILIAR_ID)
         return true;
-    const nombre = normalizeText(
+    const nombre = normalizarTexto(
         `${especialRaw?.Nombre ?? especialRaw?.nombre ?? ''}`
     );
     return nombre.includes('convocar a un familiar');
@@ -196,7 +188,7 @@ function claseOtorgaFuenteFamiliar(clase: Clase | null | undefined, nivelActual:
 }
 
 function resolveAlineamientoBasicoId(nombre: string): number {
-    const normalized = normalizeText(nombre);
+    const normalized = normalizarTexto(nombre);
     return ALIGNMENT_NAME_TO_ID[normalized] ?? 0;
 }
 
@@ -229,12 +221,12 @@ function resolverDoteRequeridaPlantilla(nivelesClasePlantilla: MonstruoNivelClas
 }
 
 function tieneDoteActual(dotesActuales: Array<{ id: number | null; nombre: string; }>, doteRequerida: { id: number; nombre: string; }): boolean {
-    const nombreRequerido = normalizeText(doteRequerida.nombre);
+    const nombreRequerido = normalizarTexto(doteRequerida.nombre);
     return dotesActuales.some((dote) => {
         const id = toNumber(dote?.id);
         if (doteRequerida.id > 0 && id === doteRequerida.id)
             return true;
-        return nombreRequerido.length > 0 && normalizeText(dote?.nombre ?? '') === nombreRequerido;
+        return nombreRequerido.length > 0 && normalizarTexto(dote?.nombre ?? '') === nombreRequerido;
     });
 }
 
@@ -267,17 +259,17 @@ function normalizeAlineamientosRequeridos(raw: any[]): AlineamientoRequeridoNorm
     items.forEach((item) => {
         const id = resolveAlineamientoBasicoIdFromRaw(item);
         const nombreRaw = `${item?.Nombre ?? item?.nombre ?? ''}`.trim();
-        const nombreNormalizado = normalizeText(nombreRaw);
+        const nombreNormalizado = normalizarTexto(nombreRaw);
         const nombreVisible = isAlineamientoNombreVisible(nombreNormalizado) ? nombreRaw : '';
         if (id <= 0 && nombreVisible.length < 1)
             return;
-        const clave = `${id}:${normalizeText(nombreVisible)}`;
+        const clave = `${id}:${normalizarTexto(nombreVisible)}`;
         if (dedupe.has(clave))
             return;
         dedupe.set(clave, {
             id: Math.max(0, id),
             nombre: nombreVisible,
-            nombreNormalizado: normalizeText(nombreVisible),
+            nombreNormalizado: normalizarTexto(nombreVisible),
         });
     });
 
@@ -351,7 +343,7 @@ function getPreferenciaEjeLabel(
     eje: 'legal' | 'moral'
 ): string | null {
     const nombre = `${nombrePreferencia ?? ''}`.trim();
-    const nombreNormalizado = normalizeText(nombre);
+    const nombreNormalizado = normalizarTexto(nombre);
     const nombreVisible = nombre.length > 0
         && nombreNormalizado !== 'ninguna preferencia'
         && nombreNormalizado !== 'no aplica'
@@ -461,7 +453,7 @@ export function resolverEstadoCuposFamiliarEspecial47(
         const nombreClase = `${entrada?.Nombre ?? ''}`.trim();
         const nivelActual = Math.max(0, Math.trunc(toNumber(entrada?.Nivel)));
         const clase = clases.find((item) =>
-            normalizeText(item?.Nombre ?? '') === normalizeText(nombreClase)
+            normalizarTexto(item?.Nombre ?? '') === normalizarTexto(nombreClase)
         );
         if (!claseOtorgaFuenteFamiliar(clase, nivelActual))
             return null;
@@ -511,7 +503,7 @@ export function evaluarFamiliaresElegibilidad(input: FiltroFamiliaresElegiblesIn
         ? (Math.trunc(plantillaRaw) as FamiliarPlantillaId)
         : null;
     const includeHomebrew = !!input?.incluirHomebrew;
-    const alineamientoPersonaje = normalizeText(input?.alineamientoPersonaje ?? '');
+    const alineamientoPersonaje = normalizarTexto(input?.alineamientoPersonaje ?? '');
     const idAlineamientoBasico = resolveAlineamientoBasicoId(input?.alineamientoPersonaje ?? '');
     const dotesActuales = Array.isArray(input?.dotesActuales) ? input.dotesActuales : [];
 

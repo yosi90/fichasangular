@@ -2,9 +2,8 @@ import { RacialDetalle } from 'src/app/interfaces/racial';
 import {
     IdentidadPrerrequisitos,
     existeCoincidenciaClaveEntidad,
-    normalizarTextoPrerrequisito,
 } from './identidad-prerrequisitos';
-import { toArray, toNumber } from 'src/app/services/utils/normalizacion';
+import { normalizarTexto, toArray, toNumber } from 'src/app/services/utils/normalizacion';
 
 export type EstadoEvaluacionRacial = 'eligible' | 'blocked' | 'eligible_with_warning';
 
@@ -82,7 +81,7 @@ function uniqueTexts(values: string[]): string[] {
     const seen = new Set<string>();
     const result: string[] = [];
     values.forEach((value) => {
-        const normalized = normalizarTextoPrerrequisito(value);
+        const normalized = normalizarTexto(value);
         if (normalized.length < 1 || seen.has(normalized))
             return;
         seen.add(normalized);
@@ -140,7 +139,7 @@ function caracteristicaNombreDesdeId(id: number): string {
 }
 
 function normalizarCaracteristicaNombre(name: string): string {
-    const normalized = normalizarTextoPrerrequisito(name);
+    const normalized = normalizarTexto(name);
     if (normalized.startsWith('fue') || normalized.includes('fuerza'))
         return 'Fuerza';
     if (normalized.startsWith('des') || normalized.includes('destreza'))

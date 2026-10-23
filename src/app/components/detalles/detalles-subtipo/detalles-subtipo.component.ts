@@ -3,7 +3,7 @@ import { DoteContextual } from 'src/app/interfaces/dote-contextual';
 import { Rasgo } from 'src/app/interfaces/rasgo';
 import { SubtipoDetalle } from 'src/app/interfaces/subtipo';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
-import { toNumber } from 'src/app/services/utils/normalizacion';
+import { normalizarTexto, toNumber } from 'src/app/services/utils/normalizacion';
 
 @Component({
     selector: 'app-detalles-subtipo',
@@ -53,7 +53,7 @@ export class DetallesSubtipoComponent {
 
     getNombreDote(doteCtx: DoteContextual): string {
         const extra = `${doteCtx?.Contexto?.Extra ?? ''}`.trim();
-        if (this.tieneTextoVisible(extra) && this.normalizar(extra) !== 'no aplica')
+        if (this.tieneTextoVisible(extra) && normalizarTexto(extra) !== 'no aplica')
             return `${doteCtx.Dote.Nombre} (${extra})`;
         return doteCtx.Dote.Nombre;
     }
@@ -169,7 +169,7 @@ export class DetallesSubtipoComponent {
     tieneTextoVisible(texto: string | undefined | null): boolean {
         if (!texto)
             return false;
-        const base = this.normalizar(texto);
+        const base = normalizarTexto(texto);
         if (!base)
             return false;
         const limpiado = base.replace(/[.]/g, '');
@@ -179,14 +179,6 @@ export class DetallesSubtipoComponent {
             && limpiado !== 'no modifica'
             && limpiado !== 'no vuela'
             && limpiado !== '-';
-    }
-
-    private normalizar(value: string): string {
-        return (value ?? '')
-            .normalize('NFD')
-            .replace(/[\u0300-\u036f]/g, '')
-            .trim()
-            .toLowerCase();
     }
 
 }

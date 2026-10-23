@@ -2,6 +2,7 @@ import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { Dote } from 'src/app/interfaces/dote';
 import { DoteContexto, DoteContextual } from 'src/app/interfaces/dote-contextual';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
+import { normalizarTexto } from 'src/app/services/utils/normalizacion';
 
 interface PrerrequisitoCampoDetalle {
     etiqueta: string;
@@ -210,7 +211,7 @@ export class DetallesDoteComponent {
     }
 
     getTextosCondicionPrerrequisito(condicion: PrerrequisitoCondicionDetalle): string[] {
-        const key = this.normalizar(condicion?.key ?? '').replace(/[_\s]/g, '');
+        const key = normalizarTexto(condicion?.key ?? '').replace(/[_\s]/g, '');
         const campos = Array.isArray(condicion?.campos) ? condicion.campos : [];
 
         if (key === 'ataquebase')
@@ -330,7 +331,7 @@ export class DetallesDoteComponent {
     }
 
     private esPrerrequisitoFlagOnly(key: string): boolean {
-        const normalizada = this.normalizar(key).replace(/[_\s]/g, '');
+        const normalizada = normalizarTexto(key).replace(/[_\s]/g, '');
         return normalizada === 'poderseleccionarcompanero'
             || normalizada === 'poderseleccionarfamiliar';
     }
@@ -393,10 +394,10 @@ export class DetallesDoteComponent {
     }
 
     private esCampoExtraSinValor(campo: PrerrequisitoCampoDetalle): boolean {
-        if (this.normalizar(`${campo?.etiqueta ?? ''}`) !== 'extra')
+        if (normalizarTexto(`${campo?.etiqueta ?? ''}`) !== 'extra')
             return false;
 
-        const valor = this.normalizar(`${campo?.valor ?? ''}`);
+        const valor = normalizarTexto(`${campo?.valor ?? ''}`);
         return valor === 'nada'
             || valor === 'no aplica'
             || valor === 'noaplica'
@@ -406,8 +407,8 @@ export class DetallesDoteComponent {
     }
 
     private getEtiquetaCampoPrerrequisito(prerequisiteKey: string, fieldKey: string): string {
-        const tipo = this.normalizar(prerequisiteKey).replace(/[_\s]/g, '');
-        const campo = this.normalizar(fieldKey).replace(/[_\s]/g, '');
+        const tipo = normalizarTexto(prerequisiteKey).replace(/[_\s]/g, '');
+        const campo = normalizarTexto(fieldKey).replace(/[_\s]/g, '');
 
         if (tipo === 'claseespecial' && (campo === 'especial' || campo === 'claseespecial'))
             return 'Especial de clase';
@@ -416,8 +417,8 @@ export class DetallesDoteComponent {
     }
 
     private getCampoValor(campos: PrerrequisitoCampoDetalle[], etiquetas: string[]): string {
-        const normalizadas = etiquetas.map((etiqueta) => this.normalizar(etiqueta).replace(/[_\s]/g, ''));
-        const encontrado = campos.find((campo) => normalizadas.includes(this.normalizar(campo.etiqueta).replace(/[_\s]/g, '')));
+        const normalizadas = etiquetas.map((etiqueta) => normalizarTexto(etiqueta).replace(/[_\s]/g, ''));
+        const encontrado = campos.find((campo) => normalizadas.includes(normalizarTexto(campo.etiqueta).replace(/[_\s]/g, '')));
         return `${encontrado?.valor ?? ''}`.trim();
     }
 
@@ -436,24 +437,16 @@ export class DetallesDoteComponent {
 
     private getCamposRestantesComoTexto(campos: PrerrequisitoCampoDetalle[], omitLabels: string[]): string[] {
         const omitidos = omitLabels
-            .map((label) => this.normalizar(label).replace(/[_\s]/g, ''))
+            .map((label) => normalizarTexto(label).replace(/[_\s]/g, ''))
             .filter((label) => label.length > 0);
 
         return campos
-            .filter((campo) => !omitidos.includes(this.normalizar(campo.etiqueta).replace(/[_\s]/g, '')))
+            .filter((campo) => !omitidos.includes(normalizarTexto(campo.etiqueta).replace(/[_\s]/g, '')))
             .map((campo) => `${campo.etiqueta}: ${campo.valor}`);
     }
 
     private getCamposComoTexto(campos: PrerrequisitoCampoDetalle[]): string[] {
         return campos.map((campo) => `${campo.etiqueta}: ${campo.valor}`);
-    }
-
-    private normalizar(texto: string): string {
-        return `${texto ?? ''}`
-            .normalize('NFD')
-            .replace(/[\u0300-\u036f]/g, '')
-            .trim()
-            .toLowerCase();
     }
 
     getExtrasDisponibles(): { nombre: string, items: { Id: number, Nombre: string }[] }[] {

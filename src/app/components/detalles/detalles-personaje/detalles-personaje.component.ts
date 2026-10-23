@@ -23,7 +23,7 @@ import { resolverExtraHabilidadVisible } from 'src/app/services/utils/habilidad-
 import { buildManiobrabilidadInfoSecciones, ManiobrabilidadLike, tieneManiobrabilidadVisible } from 'src/app/services/utils/maniobrabilidad-info';
 import { calcularNivelesLanzadorPersonaje } from 'src/app/services/utils/nivel-lanzador-personaje';
 import Swal from 'sweetalert2';
-import { toArray, toNumber } from 'src/app/services/utils/normalizacion';
+import { normalizarTexto, toArray, toNumber } from 'src/app/services/utils/normalizacion';
 
 interface MadurezEdadResumen {
     id: number;
@@ -421,7 +421,7 @@ export class DetallesPersonajeComponent implements OnInit, OnChanges, AfterViewI
     tieneTextoVisible(texto: string | undefined | null): boolean {
         if (!texto)
             return false;
-        const base = this.normalizarTexto(texto);
+        const base = normalizarTexto(texto);
         if (!base)
             return false;
         const limpiado = base.replace(/[.]/g, '');
@@ -773,20 +773,20 @@ Fue/Des/Con: ${this.formatSigned(madurez.modFisico)} | Int/Sab/Car: ${this.forma
     }
 
     private obtenerClaseCatalogoPorNombre(nombreClase: string): Clase | null {
-        const nombreNormalizado = this.normalizarTexto(nombreClase);
+        const nombreNormalizado = normalizarTexto(nombreClase);
         if (nombreNormalizado.length < 1)
             return null;
         return this.getCatalogoClasesEfectivo().find((clase) =>
-            this.normalizarTexto(clase?.Nombre ?? '') === nombreNormalizado
+            normalizarTexto(clase?.Nombre ?? '') === nombreNormalizado
         ) ?? null;
     }
 
     private getNivelLanzadorResumenClase(nombreClase: string): PersonajeNivelLanzadorResumen | null {
-        const nombreNormalizado = this.normalizarTexto(nombreClase);
+        const nombreNormalizado = normalizarTexto(nombreClase);
         if (nombreNormalizado.length < 1)
             return null;
         return (this.nivelesLanzador ?? []).find((resumen) =>
-            this.normalizarTexto(resumen?.nombreClase ?? '') === nombreNormalizado
+            normalizarTexto(resumen?.nombreClase ?? '') === nombreNormalizado
         ) ?? null;
     }
 
@@ -870,17 +870,17 @@ Fue/Des/Con: ${this.formatSigned(madurez.modFisico)} | Int/Sab/Car: ${this.forma
     }
 
     tienePersonalidadVisible(): boolean {
-        const value = this.normalizarTexto(this.pj?.Personalidad ?? '');
+        const value = normalizarTexto(this.pj?.Personalidad ?? '');
         if (!this.tieneTextoVisible(value))
             return false;
-        return value !== this.normalizarTexto('Rellena un fisco puto vago.');
+        return value !== normalizarTexto('Rellena un fisco puto vago.');
     }
 
     tieneContextoVisible(): boolean {
-        const value = this.normalizarTexto(this.pj?.Contexto ?? '');
+        const value = normalizarTexto(this.pj?.Contexto ?? '');
         if (!this.tieneTextoVisible(value))
             return false;
-        return value !== this.normalizarTexto('Eres totalmente antirol hijo mio.');
+        return value !== normalizarTexto('Eres totalmente antirol hijo mio.');
     }
 
     getClaseasVisibles() {
@@ -1159,7 +1159,7 @@ Fue/Des/Con: ${this.formatSigned(madurez.modFisico)} | Int/Sab/Car: ${this.forma
     }
 
     esVentajaConEstiloWarm(ventaja: VentajaVisible): boolean {
-        const origen = this.normalizarTexto(`${this.normalizarVentajaReferencia(ventaja).origen ?? ''}`);
+        const origen = normalizarTexto(`${this.normalizarVentajaReferencia(ventaja).origen ?? ''}`);
         return origen === 'ventaja';
     }
 
@@ -1195,7 +1195,7 @@ Fue/Des/Con: ${this.formatSigned(madurez.modFisico)} | Int/Sab/Car: ${this.forma
             };
         }
 
-        const origenExplicitoNormalizado = this.normalizarTexto(origenRaw);
+        const origenExplicitoNormalizado = normalizarTexto(origenRaw);
         if (origenExplicitoNormalizado === 'ventaja' || origenExplicitoNormalizado === 'desventaja') {
             return {
                 nombre: nombreRaw,
@@ -1205,7 +1205,7 @@ Fue/Des/Con: ${this.formatSigned(madurez.modFisico)} | Int/Sab/Car: ${this.forma
 
         const prefijo = nombreRaw.match(/^\s*(ventaja|desventaja)\s*[:\-]\s*(.+)$/i);
         if (prefijo) {
-            const origen = this.normalizarTexto(prefijo[1]) === 'ventaja' ? 'Ventaja' : 'Desventaja';
+            const origen = normalizarTexto(prefijo[1]) === 'ventaja' ? 'Ventaja' : 'Desventaja';
             const nombre = `${prefijo[2] ?? ''}`.trim();
             return { nombre, origen };
         }
@@ -1376,14 +1376,6 @@ Fue/Des/Con: ${this.formatSigned(madurez.modFisico)} | Int/Sab/Car: ${this.forma
             Id: Number.isFinite(id) && id > 0 ? id : null,
             Nombre: nombre,
         });
-    }
-
-    private normalizarTexto(texto: string): string {
-        return `${texto ?? ''}`
-            .normalize('NFD')
-            .replace(/[\u0300-\u036f]/g, '')
-            .trim()
-            .toLowerCase();
     }
 
     private toBoolean(value: any): boolean {

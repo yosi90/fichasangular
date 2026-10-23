@@ -7,6 +7,7 @@ import { ArmaDetalle } from 'src/app/interfaces/arma';
 import { ArmaService } from 'src/app/services/arma.service';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
 import { ordenarEnEspanol } from 'src/app/services/utils/orden-tabla';
+import { normalizarTexto } from 'src/app/services/utils/normalizacion';
 
 @Component({
     selector: 'app-listado-armas',
@@ -88,16 +89,16 @@ export class ListadoArmasComponent implements OnDestroy {
     }
 
     filtroArmas() {
-        const texto = this.normalizar(this.nombreText?.nativeElement?.value ?? '');
-        const tipoArma = this.normalizar(this.defaultTipoArma);
+        const texto = normalizarTexto(this.nombreText?.nativeElement?.value ?? '');
+        const tipoArma = normalizarTexto(this.defaultTipoArma);
         const armasFiltradas = this.armas.filter((arma) => {
             const visiblePorTexto = texto.length < 1
-                || this.normalizar(arma?.Nombre).includes(texto)
-                || this.normalizar(arma?.Descripcion).includes(texto);
+                || normalizarTexto(arma?.Nombre).includes(texto)
+                || normalizarTexto(arma?.Descripcion).includes(texto);
             const visiblePorManual = this.defaultManual === 'Cualquiera'
-                || this.normalizar(arma?.Manual?.Nombre) === this.normalizar(this.defaultManual);
+                || normalizarTexto(arma?.Manual?.Nombre) === normalizarTexto(this.defaultManual);
             const visiblePorTipo = this.defaultTipoArma === 'Cualquiera'
-                || this.normalizar(arma?.Tipo_arma?.Nombre) === tipoArma;
+                || normalizarTexto(arma?.Tipo_arma?.Nombre) === tipoArma;
             const visiblePorHomebrew = this.mostrarHomebrew || this.toBoolean(arma?.Oficial, true);
             return visiblePorTexto && visiblePorManual && visiblePorTipo && visiblePorHomebrew;
         });
@@ -166,14 +167,6 @@ export class ListadoArmasComponent implements OnDestroy {
                 .map((arma) => `${arma?.Manual?.Nombre ?? ''}`.trim())
                 .filter((nombre) => nombre.length > 0)
         )).sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' }));
-    }
-
-    private normalizar(value: string | null | undefined): string {
-        return `${value ?? ''}`
-            .normalize('NFD')
-            .replace(/[\u0300-\u036f]/g, '')
-            .trim()
-            .toLowerCase();
     }
 
     private toBoolean(value: any, fallback: boolean = false): boolean {

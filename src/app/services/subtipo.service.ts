@@ -7,7 +7,7 @@ import { environment } from "src/environments/environment";
 import { SubtipoDetalle, SubtipoResumen } from "../interfaces/subtipo";
 import { FirebaseInjectionContextService } from "./firebase-injection-context.service";
 import { normalizeSubtipoDetalle, normalizeSubtipoResumen } from "./utils/subtipo-mapper";
-import { toArray } from 'src/app/services/utils/normalizacion';
+import { normalizarTexto, toArray } from 'src/app/services/utils/normalizacion';
 
 @Injectable({
     providedIn: "root"
@@ -96,17 +96,10 @@ export class SubtipoService {
     }
 
     buscarPorNombre(nombre: string): Observable<SubtipoResumen | null> {
-        const objetivo = this.normalizar(nombre);
+        const objetivo = normalizarTexto(nombre);
         return this.getSubtipos().pipe(
-            map((subtipos) => subtipos.find((s) => this.normalizar(s.Nombre) === objetivo) ?? null)
+            map((subtipos) => subtipos.find((s) => normalizarTexto(s.Nombre) === objetivo) ?? null)
         );
     }
 
-    private normalizar(value: string): string {
-        return (value ?? "")
-            .normalize("NFD")
-            .replace(/[\u0300-\u036f]/g, "")
-            .trim()
-            .toLowerCase();
-    }
 }

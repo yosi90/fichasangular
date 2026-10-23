@@ -7,6 +7,7 @@ import { DeidadDetalle } from 'src/app/interfaces/deidad';
 import { DeidadService } from 'src/app/services/deidad.service';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
 import { ordenarEnEspanol } from 'src/app/services/utils/orden-tabla';
+import { normalizarTexto } from 'src/app/services/utils/normalizacion';
 
 @Component({
     selector: 'app-listado-deidades',
@@ -92,20 +93,20 @@ export class ListadoDeidadesComponent implements OnDestroy {
     }
 
     filtroDeidades() {
-        const texto = this.normalizar(this.nombreText?.nativeElement?.value ?? '');
-        const alineamiento = this.normalizar(this.defaultAlineamiento);
-        const pabellon = this.normalizar(this.defaultPabellon);
+        const texto = normalizarTexto(this.nombreText?.nativeElement?.value ?? '');
+        const alineamiento = normalizarTexto(this.defaultAlineamiento);
+        const pabellon = normalizarTexto(this.defaultPabellon);
 
         const filtradas = this.deidades.filter((deidad) => {
             const visiblePorTexto = texto.length < 1
-                || this.normalizar(deidad?.Nombre).includes(texto)
-                || this.normalizar(deidad?.Descripcion).includes(texto);
+                || normalizarTexto(deidad?.Nombre).includes(texto)
+                || normalizarTexto(deidad?.Descripcion).includes(texto);
             const visiblePorManual = this.defaultManual === 'Cualquiera'
-                || this.normalizar(deidad?.Manual?.Nombre) === this.normalizar(this.defaultManual);
+                || normalizarTexto(deidad?.Manual?.Nombre) === normalizarTexto(this.defaultManual);
             const visiblePorAlineamiento = this.defaultAlineamiento === 'Cualquiera'
-                || this.normalizar(deidad?.Alineamiento?.Nombre) === alineamiento;
+                || normalizarTexto(deidad?.Alineamiento?.Nombre) === alineamiento;
             const visiblePorPabellon = this.defaultPabellon === 'Cualquiera'
-                || this.normalizar(deidad?.Pabellon?.Nombre) === pabellon;
+                || normalizarTexto(deidad?.Pabellon?.Nombre) === pabellon;
             const visiblePorHomebrew = this.mostrarHomebrew || this.toBoolean(deidad?.Oficial, true);
             return visiblePorTexto && visiblePorManual && visiblePorAlineamiento && visiblePorPabellon && visiblePorHomebrew;
         });
@@ -168,14 +169,6 @@ export class ListadoDeidadesComponent implements OnDestroy {
                 .map((deidad) => `${deidad?.Manual?.Nombre ?? ''}`.trim())
                 .filter((nombre) => nombre.length > 0)
         )).sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' }));
-    }
-
-    private normalizar(value: string | null | undefined): string {
-        return `${value ?? ''}`
-            .normalize('NFD')
-            .replace(/[\u0300-\u036f]/g, '')
-            .trim()
-            .toLowerCase();
     }
 
     private toBoolean(value: any, fallback: boolean = false): boolean {

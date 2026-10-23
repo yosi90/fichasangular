@@ -20,7 +20,7 @@ import {
 } from "../interfaces/clase";
 import { FirebaseInjectionContextService } from "./firebase-injection-context.service";
 import { obtenerTokenApi } from './platform-session.service';
-import { toArray, toNumber, toText } from 'src/app/services/utils/normalizacion';
+import { normalizarTexto, toArray, toNumber, toText } from 'src/app/services/utils/normalizacion';
 
 const CLAVES_PRERREQUISITOS: (keyof ClasePrerrequisitos)[] = [
     "subtipo",
@@ -416,9 +416,9 @@ export class ClaseService {
     }
 
     buscarPorNombre(nombre: string): Observable<Clase | null> {
-        const objetivo = this.normalizar(nombre);
+        const objetivo = normalizarTexto(nombre);
         return this.getClases().pipe(
-            map(clases => clases.find(c => this.normalizar(c.Nombre) === objetivo) ?? null)
+            map(clases => clases.find(c => normalizarTexto(c.Nombre) === objetivo) ?? null)
         );
     }
 
@@ -488,14 +488,6 @@ export class ClaseService {
         } catch (error: any) {
             throw this.mapClaseError(error, "actualizar");
         }
-    }
-
-    private normalizar(value: string): string {
-        return (value ?? "")
-            .normalize("NFD")
-            .replace(/[\u0300-\u036f]/g, "")
-            .trim()
-            .toLowerCase();
     }
 
     private async buildAuthHeaders(): Promise<Record<string, string>> {

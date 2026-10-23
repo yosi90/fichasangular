@@ -4,7 +4,7 @@ import { MonstruoDetalle } from 'src/app/interfaces/monstruo';
 import { RacialDetalle } from 'src/app/interfaces/racial';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
 import { buildManiobrabilidadInfoSecciones, tieneManiobrabilidadVisible } from 'src/app/services/utils/maniobrabilidad-info';
-import { toNumber } from 'src/app/services/utils/normalizacion';
+import { normalizarTexto, toNumber } from 'src/app/services/utils/normalizacion';
 
 @Component({
     selector: 'app-detalles-monstruo',
@@ -94,7 +94,7 @@ export class DetallesMonstruoComponent {
 
     getNombreDote(doteCtx: DoteContextual): string {
         const extra = `${doteCtx?.Contexto?.Extra ?? ''}`.trim();
-        if (this.tieneTextoVisible(extra) && this.normalizar(extra) !== 'no aplica')
+        if (this.tieneTextoVisible(extra) && normalizarTexto(extra) !== 'no aplica')
             return `${doteCtx.Dote.Nombre} (${extra})`;
         return doteCtx?.Dote?.Nombre ?? '';
     }
@@ -351,7 +351,7 @@ export class DetallesMonstruoComponent {
     tieneTextoVisible(texto: string | undefined | null): boolean {
         if (!texto)
             return false;
-        const base = this.normalizar(texto);
+        const base = normalizarTexto(texto);
         if (!base)
             return false;
         const limpiado = base.replace(/[.]/g, '');
@@ -411,9 +411,9 @@ export class DetallesMonstruoComponent {
         dote: string;
     }): Array<'Familiar' | 'Companero'> {
         const contextos = new Set<'Familiar' | 'Companero'>();
-        const doteNormalizada = this.normalizar(nivel?.dote ?? '');
-        const claseNormalizada = this.normalizar(nivel?.nombreClase ?? '');
-        const plantillaNormalizada = this.normalizar(nivel?.plantilla ?? '');
+        const doteNormalizada = normalizarTexto(nivel?.dote ?? '');
+        const claseNormalizada = normalizarTexto(nivel?.nombreClase ?? '');
+        const plantillaNormalizada = normalizarTexto(nivel?.plantilla ?? '');
 
         if (DetallesMonstruoComponent.DOTE_IDS_COMPANERO.has(toNumber(nivel?.doteId))
             || doteNormalizada.includes('companero')
@@ -456,11 +456,4 @@ export class DetallesMonstruoComponent {
         return Array.from(contextos.values());
     }
 
-    private normalizar(value: string): string {
-        return `${value ?? ''}`
-            .normalize('NFD')
-            .replace(/[\u0300-\u036f]/g, '')
-            .trim()
-            .toLowerCase();
-    }
 }

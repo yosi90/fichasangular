@@ -1,7 +1,7 @@
 import { Raza } from 'src/app/interfaces/raza';
 import { SubtipoRef } from 'src/app/interfaces/subtipo';
 import { TipoCriatura } from 'src/app/interfaces/tipo_criatura';
-import { toArray, toNumber } from 'src/app/services/utils/normalizacion';
+import { normalizarTexto, toArray, toNumber } from 'src/app/services/utils/normalizacion';
 
 export interface ClaveEntidadPrerrequisito {
     id: number | null;
@@ -14,18 +14,10 @@ export interface IdentidadPrerrequisitos {
     subtipos: ClaveEntidadPrerrequisito[];
 }
 
-export function normalizarTextoPrerrequisito(value: string): string {
-    return `${value ?? ''}`
-        .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g, '')
-        .trim()
-        .toLowerCase();
-}
-
 function crearClave(id: any, nombre: any): ClaveEntidadPrerrequisito | null {
     const idNum = toNumber(id);
     const nombreLimpio = `${nombre ?? ''}`.trim();
-    if (idNum <= 0 && normalizarTextoPrerrequisito(nombreLimpio).length < 1)
+    if (idNum <= 0 && normalizarTexto(nombreLimpio).length < 1)
         return null;
 
     return {
@@ -44,7 +36,7 @@ function dedupeClaves(claves: (ClaveEntidadPrerrequisito | null | undefined)[]):
             return;
 
         const id = toNumber(clave.id);
-        const nombreNorm = normalizarTextoPrerrequisito(clave.nombre);
+        const nombreNorm = normalizarTexto(clave.nombre);
 
         if (id > 0) {
             if (byId.has(id))
@@ -115,11 +107,11 @@ export function coincideClaveEntidad(
     if (reqId > 0 && toNumber(clave.id) === reqId)
         return true;
 
-    const reqNombre = normalizarTextoPrerrequisito(`${requeridoNombre ?? ''}`);
+    const reqNombre = normalizarTexto(`${requeridoNombre ?? ''}`);
     if (reqNombre.length < 1)
         return false;
 
-    return normalizarTextoPrerrequisito(clave.nombre) === reqNombre;
+    return normalizarTexto(clave.nombre) === reqNombre;
 }
 
 export function existeCoincidenciaClaveEntidad(

@@ -44,6 +44,7 @@ import { ConjuroService } from 'src/app/services/conjuro.service';
 import { EspecialService } from 'src/app/services/especial.service';
 import { AlineamientoService } from 'src/app/services/alineamiento.service';
 import { TamanoService } from 'src/app/services/tamano.service';
+import { normalizarTexto } from 'src/app/services/utils/normalizacion';
 
 type RepeticionKey = 'repetible' | 'repetible_distinto_extra' | 'repetible_comb';
 type ExtraFamilyKey = 'extra_arma' | 'extra_armadura' | 'extra_escuela' | 'extra_habilidad';
@@ -469,11 +470,11 @@ export class NuevaDoteComponent implements OnInit, OnDestroy {
     }
 
     get itemsSelectorExtrasFiltrados(): ExtraSelectorItem[] {
-        const filtro = this.normalizar(this.selectorExtrasFiltro);
+        const filtro = normalizarTexto(this.selectorExtrasFiltro);
         return this.itemsSelectorExtrasActual.filter((item) => {
             if (filtro.length < 1)
                 return true;
-            return this.normalizar(item.nombre).includes(filtro);
+            return normalizarTexto(item.nombre).includes(filtro);
         });
     }
 
@@ -502,11 +503,11 @@ export class NuevaDoteComponent implements OnInit, OnDestroy {
     }
 
     get prerrequisitosSelectorFiltrados(): PrerrequisitoOption[] {
-        const filtro = this.normalizar(this.selectorPrerrequisitosFiltro);
+        const filtro = normalizarTexto(this.selectorPrerrequisitosFiltro);
         return this.prerrequisitoOpciones.filter((item) => {
             if (filtro.length < 1)
                 return true;
-            return this.normalizar(item.label).includes(filtro);
+            return normalizarTexto(item.label).includes(filtro);
         });
     }
 
@@ -578,9 +579,9 @@ export class NuevaDoteComponent implements OnInit, OnDestroy {
     }
 
     getManualesFiltrados(): Manual[] {
-        const filtro = this.normalizar(this.manualBusqueda);
+        const filtro = normalizarTexto(this.manualBusqueda);
         return this.manuales
-            .filter((manual) => filtro.length < 1 || this.normalizar(manual?.Nombre ?? '').includes(filtro))
+            .filter((manual) => filtro.length < 1 || normalizarTexto(manual?.Nombre ?? '').includes(filtro))
             .slice(0, 40);
     }
 
@@ -1197,7 +1198,7 @@ export class NuevaDoteComponent implements OnInit, OnDestroy {
 
     private getManualPorDefectoId(): number {
         const manualPreferido = this.manuales.find((manual) =>
-            this.normalizar(`${manual?.Nombre ?? ''}`) === this.normalizar(NuevaDoteComponent.preferredManualName)
+            normalizarTexto(`${manual?.Nombre ?? ''}`) === normalizarTexto(NuevaDoteComponent.preferredManualName)
         );
         if (manualPreferido)
             return this.toInt(manualPreferido.Id, 0);
@@ -1758,7 +1759,7 @@ export class NuevaDoteComponent implements OnInit, OnDestroy {
     }
 
     private contieneOpcionElegir(items: ExtraSelectorItem[]): boolean {
-        return (items ?? []).some((item) => this.normalizar(item?.nombre ?? '') === this.normalizar('Elegir'));
+        return (items ?? []).some((item) => normalizarTexto(item?.nombre ?? '') === normalizarTexto('Elegir'));
     }
 
     private filtraArmaduraPorSoporteDote(dote: Dote, item: ArmaduraSelectorItem): boolean {
@@ -1772,23 +1773,15 @@ export class NuevaDoteComponent implements OnInit, OnDestroy {
     }
 
     private esNombreDuplicado(nombre: string): boolean {
-        const objetivo = this.normalizar(nombre);
+        const objetivo = normalizarTexto(nombre);
         if (objetivo.length < 1)
             return false;
-        return this.dotesExistentes.some((dote) => this.normalizar(dote?.Nombre ?? '') === objetivo);
+        return this.dotesExistentes.some((dote) => normalizarTexto(dote?.Nombre ?? '') === objetivo);
     }
 
     private toInt(value: any, fallback: number): number {
         const parsed = Math.trunc(Number(value));
         return Number.isFinite(parsed) ? parsed : fallback;
-    }
-
-    private normalizar(value: string): string {
-        return `${value ?? ''}`
-            .normalize('NFD')
-            .replace(/[\u0300-\u036f]/g, '')
-            .trim()
-            .toLowerCase();
     }
 
     private esExtraFamilyKey(value: any): value is ExtraFamilyKey {

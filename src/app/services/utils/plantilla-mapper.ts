@@ -8,7 +8,7 @@ import {
 } from "src/app/interfaces/plantilla";
 import { SubtipoRef } from "src/app/interfaces/subtipo";
 import { toDoteContextualArray } from "./dote-mapper";
-import { toArray, toNumber, toText } from 'src/app/services/utils/normalizacion';
+import { normalizarTexto, toArray, toNumber, toText } from 'src/app/services/utils/normalizacion';
 
 function toBoolean(value: any): boolean {
     if (typeof value === "boolean")
@@ -96,7 +96,7 @@ function normalizeSubtipoRefsApi(raw: any): SubtipoRef[] {
         if (id <= 0 && nombre.length < 1)
             return;
 
-        const key = id > 0 ? `id:${id}` : `name:${normalizar(nombre)}`;
+        const key = id > 0 ? `id:${id}` : `name:${normalizarTexto(nombre)}`;
         if (seen.has(key))
             return;
 
@@ -239,12 +239,4 @@ export function normalizePlantillaApi(raw: any): Plantilla {
         Prerrequisitos: prerrequisitos,
         Compatibilidad_tipos: normalizeCompatibilidadesApi(raw?.Prerrequisitos),
     };
-}
-
-function normalizar(value: string): string {
-    return (value ?? "")
-        .normalize("NFD")
-        .replace(/[\u0300-\u036f]/g, "")
-        .trim()
-        .toLowerCase();
 }

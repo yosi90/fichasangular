@@ -7,7 +7,7 @@ import { MonstruoDetalle } from 'src/app/interfaces/monstruo';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
 import { MonstruoService } from 'src/app/services/monstruo.service';
 import { ordenarEnEspanol } from 'src/app/services/utils/orden-tabla';
-import { toNumber } from 'src/app/services/utils/normalizacion';
+import { normalizarTexto, toNumber } from 'src/app/services/utils/normalizacion';
 
 @Component({
     selector: 'app-listado-monstruos',
@@ -69,11 +69,11 @@ export class ListadoMonstruosComponent implements OnDestroy {
     }
 
     filtroMonstruos() {
-        const texto = this.normalizar(this.nombreText?.nativeElement?.value ?? '');
+        const texto = normalizarTexto(this.nombreText?.nativeElement?.value ?? '');
         const monstruosFiltrados = this.monstruos.filter(monstruo => {
-            const manualNombre = this.normalizar(this.getManualNombre(monstruo));
-            const visiblePorTexto = texto.length < 1 || this.normalizar(monstruo?.Nombre).includes(texto);
-            const visiblePorManual = this.defaultManual === 'Cualquiera' || manualNombre === this.normalizar(this.defaultManual);
+            const manualNombre = normalizarTexto(this.getManualNombre(monstruo));
+            const visiblePorTexto = texto.length < 1 || normalizarTexto(monstruo?.Nombre).includes(texto);
+            const visiblePorManual = this.defaultManual === 'Cualquiera' || manualNombre === normalizarTexto(this.defaultManual);
             const visiblePorHomebrew = this.mostrarHomebrew || this.toBoolean(monstruo?.Oficial, true);
             return visiblePorTexto && visiblePorManual && visiblePorHomebrew;
         });
@@ -189,11 +189,4 @@ export class ListadoMonstruosComponent implements OnDestroy {
         return fallback;
     }
 
-    private normalizar(value: string): string {
-        return `${value ?? ''}`
-            .normalize('NFD')
-            .replace(/[\u0300-\u036f]/g, '')
-            .trim()
-            .toLowerCase();
-    }
 }

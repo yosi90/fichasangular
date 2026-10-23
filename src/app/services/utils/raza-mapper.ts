@@ -6,7 +6,7 @@ import { RacialDetalle } from "src/app/interfaces/racial";
 import { MutacionRaza, Raza, RazaHabilidades, RazaPrerrequisitos, RazaPrerrequisitosFlags } from "src/app/interfaces/raza";
 import { SubtipoRef } from "src/app/interfaces/subtipo";
 import { toDoteContextualArray } from "./dote-mapper";
-import { toNumber, toText } from 'src/app/services/utils/normalizacion';
+import { normalizarTexto, toNumber, toText } from 'src/app/services/utils/normalizacion';
 
 function toBoolean(value: any, fallback: boolean = false): boolean {
     if (typeof value === "boolean")
@@ -122,7 +122,7 @@ function normalizeSubtiposApi(raw: any): SubtipoRef[] {
         if (id <= 0 && nombre.length < 1)
             return;
 
-        const key = id > 0 ? `id:${id}` : `name:${normalizar(nombre)}`;
+        const key = id > 0 ? `id:${id}` : `name:${normalizarTexto(nombre)}`;
         if (seen.has(key))
             return;
 
@@ -359,12 +359,4 @@ export function normalizeRazaApi(raw: any): Raza {
         Idiomas: normalizeIdiomasApi(raw?.Idiomas),
         Plantillas_por_subtipo: normalizePlantillasPorSubtipoApi(raw?.Plantillas_por_subtipo),
     };
-}
-
-function normalizar(value: string): string {
-    return (value ?? "")
-        .normalize("NFD")
-        .replace(/[\u0300-\u036f]/g, "")
-        .trim()
-        .toLowerCase();
 }

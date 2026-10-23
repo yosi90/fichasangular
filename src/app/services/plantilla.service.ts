@@ -16,7 +16,7 @@ import { FirebaseInjectionContextService } from "./firebase-injection-context.se
 import { normalizePlantillaApi } from "./utils/plantilla-mapper";
 import { toDoteContextualArray } from "./utils/dote-mapper";
 import { normalizeSubtipoRefArray } from "./utils/subtipo-mapper";
-import { toArray, toNumber, toText } from 'src/app/services/utils/normalizacion';
+import { normalizarTexto, toArray, toNumber, toText } from 'src/app/services/utils/normalizacion';
 
 function toBoolean(value: any): boolean {
     if (typeof value === "boolean")
@@ -382,17 +382,10 @@ export class PlantillaService {
     }
 
     buscarPorNombre(nombre: string): Observable<Plantilla | null> {
-        const objetivo = this.normalizar(nombre);
+        const objetivo = normalizarTexto(nombre);
         return this.getPlantillas().pipe(
-            map(plantillas => plantillas.find(p => this.normalizar(p.Nombre) === objetivo) ?? null)
+            map(plantillas => plantillas.find(p => normalizarTexto(p.Nombre) === objetivo) ?? null)
         );
     }
 
-    private normalizar(value: string): string {
-        return (value ?? "")
-            .normalize("NFD")
-            .replace(/[\u0300-\u036f]/g, "")
-            .trim()
-            .toLowerCase();
-    }
 }

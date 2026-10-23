@@ -19,7 +19,7 @@ import { EscuelaConjurosService } from 'src/app/services/escuela-conjuros.servic
 import { ManualService } from 'src/app/services/manual.service';
 import { SubdisciplinaConjurosService } from 'src/app/services/subdisciplina-conjuros.service';
 import { UserService } from 'src/app/services/user.service';
-import { toArray } from 'src/app/services/utils/normalizacion';
+import { normalizarTexto, toArray } from 'src/app/services/utils/normalizacion';
 
 interface CrearConjuroEmitPayload {
     idConjuro: number;
@@ -319,7 +319,7 @@ export class NuevaConjuroComponent implements OnInit, OnDestroy {
     get componentesCatalogoActual(): ConjuroCatalogItem[] {
         const permitidos = this.varianteActualEsBase ? this.componentesBase : this.componentesPsionicos;
         return (this.componentesCatalogo ?? [])
-            .filter((item) => permitidos.has(this.normalizar(item?.Nombre ?? '')))
+            .filter((item) => permitidos.has(normalizarTexto(item?.Nombre ?? '')))
             .map((item) => ({
                 ...item,
                 Nombre: this.getEtiquetaComponente(item),
@@ -415,15 +415,15 @@ export class NuevaConjuroComponent implements OnInit, OnDestroy {
 
     getEtiquetaComponente(item: ConjuroCatalogItem): string {
         const nombre = `${item?.Nombre ?? ''}`.trim();
-        if (this.normalizar(nombre) === 'olfavito')
+        if (normalizarTexto(nombre) === 'olfavito')
             return 'Olfativo';
         return nombre;
     }
 
     getManualesFiltrados(): Manual[] {
-        const filtro = this.normalizar(this.manualBusqueda);
+        const filtro = normalizarTexto(this.manualBusqueda);
         return this.manuales
-            .filter((manual) => filtro.length < 1 || this.normalizar(manual?.Nombre ?? '').includes(filtro))
+            .filter((manual) => filtro.length < 1 || normalizarTexto(manual?.Nombre ?? '').includes(filtro))
             .slice(0, 40);
     }
 
@@ -663,7 +663,7 @@ export class NuevaConjuroComponent implements OnInit, OnDestroy {
             return;
         }
         const manualPredeterminado = this.manuales.find(
-            (manual) => this.normalizar(manual?.Nombre ?? '') === 'compendio de conjuros'
+            (manual) => normalizarTexto(manual?.Nombre ?? '') === 'compendio de conjuros'
         );
         this.form.controls.id_manual.setValue(
             this.toInt(manualPredeterminado?.Id ?? this.manuales[0]?.Id, 0)
@@ -716,7 +716,7 @@ export class NuevaConjuroComponent implements OnInit, OnDestroy {
                     };
                 })
                 .filter((item) => {
-                    const nombre = this.normalizar(item.Nombre);
+                    const nombre = normalizarTexto(item.Nombre);
                     return item.Nombre.length > 0 && nombre !== 'ninguna' && nombre !== 'sin subdisciplina';
                 })
                 .sort((a, b) => a.Nombre.localeCompare(b.Nombre, 'es', { sensitivity: 'base' }));
@@ -799,10 +799,10 @@ export class NuevaConjuroComponent implements OnInit, OnDestroy {
     }
 
     private esNombreDuplicado(nombre: string): boolean {
-        const objetivo = this.normalizar(nombre);
+        const objetivo = normalizarTexto(nombre);
         if (objetivo.length < 1)
             return false;
-        return this.conjurosExistentes.some((conjuro) => this.normalizar(conjuro?.Nombre ?? '') === objetivo);
+        return this.conjurosExistentes.some((conjuro) => normalizarTexto(conjuro?.Nombre ?? '') === objetivo);
     }
 
     private crearNivelRow(): NivelEditorRow {
@@ -822,14 +822,6 @@ export class NuevaConjuroComponent implements OnInit, OnDestroy {
     private toInt(value: any, fallback: number): number {
         const parsed = Math.trunc(Number(value));
         return Number.isFinite(parsed) ? parsed : fallback;
-    }
-
-    private normalizar(value: string): string {
-        return `${value ?? ''}`
-            .normalize('NFD')
-            .replace(/[\u0300-\u036f]/g, '')
-            .trim()
-            .toLowerCase();
     }
 
 }

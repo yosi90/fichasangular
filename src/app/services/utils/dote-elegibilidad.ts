@@ -2,10 +2,9 @@ import { Dote } from 'src/app/interfaces/dote';
 import {
     IdentidadPrerrequisitos,
     existeCoincidenciaClaveEntidad,
-    normalizarTextoPrerrequisito,
 } from './identidad-prerrequisitos';
 import { getAlineamientoBasicoIdPorNombre } from './alineamiento-contrato';
-import { toArray, toNumber } from 'src/app/services/utils/normalizacion';
+import { normalizarTexto, toArray, toNumber } from 'src/app/services/utils/normalizacion';
 
 export type EstadoElegibilidadDote = 'eligible' | 'blocked_failed' | 'blocked_unknown';
 
@@ -158,14 +157,14 @@ function parseText(entry: Record<string, any>, keys: string[]): string {
 }
 
 function normalizarClavePrerrequisito(key: string): string {
-    return normalizarTextoPrerrequisito(`${key ?? ''}`).replace(/\s+/g, '_');
+    return normalizarTexto(`${key ?? ''}`).replace(/\s+/g, '_');
 }
 
 function dedupeTextList(values: string[]): string[] {
     const seen = new Set<string>();
     const result: string[] = [];
     values.forEach((value) => {
-        const norm = normalizarTextoPrerrequisito(value);
+        const norm = normalizarTexto(value);
         if (norm.length < 1 || seen.has(norm))
             return;
         seen.add(norm);
@@ -247,7 +246,7 @@ function parseAlineamientoId(alineamiento: string): number {
     if (porNombre > 0)
         return porNombre;
 
-    const normalizado = normalizarTextoPrerrequisito(alineamiento);
+    const normalizado = normalizarTexto(alineamiento);
     if (normalizado.includes('legal') && normalizado.includes('bueno'))
         return 1;
     if (normalizado.includes('legal') && normalizado.includes('neutral'))
@@ -371,7 +370,7 @@ function buildEvaluacionRaza(entry: Record<string, any>, ctx: DoteEvaluacionCont
     const idRaza = parseId(entry, ['Id_raza', 'id_raza', 'IdRaza', 'idRaza']);
     const nombreRaza = parseText(entry, ['Raza', 'raza', 'Nombre', 'nombre']);
     const nombreObjetivo = `${nombreRaza ?? ''}`.trim() || (idRaza > 0 ? `Raza ${idRaza}` : 'Raza requerida');
-    const evaluable = idRaza > 0 || normalizarTextoPrerrequisito(nombreRaza).length > 0;
+    const evaluable = idRaza > 0 || normalizarTexto(nombreRaza).length > 0;
     return {
         grupoOpcional,
         evaluable,
@@ -385,13 +384,13 @@ function buildEvaluacionIdioma(entry: Record<string, any>, ctx: DoteEvaluacionCo
     const grupoOpcional = parseOpcional(entry);
     const idIdioma = parseId(entry, ['Id_idioma', 'id_idioma', 'Id', 'id']);
     const nombreIdioma = parseText(entry, ['Idioma', 'idioma', 'Nombre', 'nombre']);
-    const nombreNorm = normalizarTextoPrerrequisito(nombreIdioma);
+    const nombreNorm = normalizarTexto(nombreIdioma);
     const nombreObjetivo = resolverNombrePorId(idIdioma, nombreIdioma, ctx.catalogoIdiomas, 'Idioma');
     const evaluable = idIdioma > 0 || nombreNorm.length > 0;
     const cumple = ctx.idiomas.some((idioma) => {
         if (idIdioma > 0 && toNumber(idioma.id) === idIdioma)
             return true;
-        return nombreNorm.length > 0 && normalizarTextoPrerrequisito(idioma.nombre) === nombreNorm;
+        return nombreNorm.length > 0 && normalizarTexto(idioma.nombre) === nombreNorm;
     });
     return {
         grupoOpcional,
@@ -406,7 +405,7 @@ function buildEvaluacionHabilidad(entry: Record<string, any>, ctx: DoteEvaluacio
     const grupoOpcional = parseOpcional(entry);
     const idHabilidad = parseId(entry, ['Id_habilidad', 'id_habilidad', 'Id', 'id']);
     const nombreHabilidad = parseText(entry, ['Habilidad', 'habilidad', 'Nombre', 'nombre']);
-    const nombreNorm = normalizarTextoPrerrequisito(nombreHabilidad);
+    const nombreNorm = normalizarTexto(nombreHabilidad);
     const minimo = toNumber(pick(entry, ['Cantidad', 'cantidad', 'Valor', 'valor']));
     const requiereExtra = toBoolean(pick(entry, ['Requiere_extra', 'requiere_extra']));
     const evaluable = (idHabilidad > 0 || nombreNorm.length > 0) && minimo > 0;
@@ -415,10 +414,10 @@ function buildEvaluacionHabilidad(entry: Record<string, any>, ctx: DoteEvaluacio
     const habilidad = ctx.habilidades.find((item) => {
         if (idHabilidad > 0 && toNumber(item.id) === idHabilidad)
             return true;
-        return nombreNorm.length > 0 && normalizarTextoPrerrequisito(item.nombre) === nombreNorm;
+        return nombreNorm.length > 0 && normalizarTexto(item.nombre) === nombreNorm;
     });
     const rangos = toNumber(habilidad?.rangos);
-    const extra = normalizarTextoPrerrequisito(habilidad?.extra ?? '');
+    const extra = normalizarTexto(habilidad?.extra ?? '');
     const cumpleExtra = !requiereExtra || extra.length > 0;
 
     return {
@@ -434,13 +433,13 @@ function buildEvaluacionNivelClase(entry: Record<string, any>, ctx: DoteEvaluaci
     const grupoOpcional = parseOpcional(entry);
     const idClase = parseId(entry, ['Id_clase', 'id_clase', 'IdClase', 'idClase']);
     const nombreClase = parseText(entry, ['Clase', 'clase', 'Nombre', 'nombre']);
-    const nombreNorm = normalizarTextoPrerrequisito(nombreClase);
+    const nombreNorm = normalizarTexto(nombreClase);
     const nivel = toNumber(pick(entry, ['Nivel', 'nivel', 'Cantidad', 'cantidad']));
     const nombreObjetivo = resolverNombrePorId(idClase, nombreClase, ctx.catalogoClases, 'Clase');
     const evaluable = (idClase > 0 || nombreNorm.length > 0) && nivel > 0;
     const cumple = ctx.nivelesClase.some((clase) => {
         const coincideClase = (idClase > 0 && toNumber(clase.id) === idClase)
-            || (nombreNorm.length > 0 && normalizarTextoPrerrequisito(clase.nombre) === nombreNorm);
+            || (nombreNorm.length > 0 && normalizarTexto(clase.nombre) === nombreNorm);
         if (!coincideClase)
             return false;
         return toNumber(clase.nivel) >= nivel;
@@ -480,13 +479,13 @@ function buildEvaluacionClaseEspecial(entry: Record<string, any>, ctx: DoteEvalu
     const grupoOpcional = parseOpcional(entry);
     const idEspecial = parseId(entry, ['Id_especial', 'id_especial', 'IdClaseEspecial', 'idClaseEspecial', 'Id', 'id', 'i']);
     const nombreEspecial = parseText(entry, ['Clase_especial', 'clase_especial', 'Especial', 'especial', 'Nombre', 'nombre']);
-    const nombreNorm = normalizarTextoPrerrequisito(nombreEspecial);
+    const nombreNorm = normalizarTexto(nombreEspecial);
     const idExtraReq = parseIdOpcional(entry, ['Id_extra', 'id_extra', 'IdExtra', 'idExtra', 'e']);
     const evaluable = idEspecial > 0 || nombreNorm.length > 0;
     const claseas = ctx.claseas ?? [];
     const cumple = claseas.some((especial) => {
         const coincide = (idEspecial > 0 && toNumber(especial.id) === idEspecial)
-            || (nombreNorm.length > 0 && normalizarTextoPrerrequisito(especial.nombre) === nombreNorm);
+            || (nombreNorm.length > 0 && normalizarTexto(especial.nombre) === nombreNorm);
         if (!coincide)
             return false;
         if (!Number.isFinite(idExtraReq))
@@ -517,12 +516,12 @@ function buildEvaluacionCompetencia(
     const grupoOpcional = parseOpcional(entry);
     const idReq = parseId(entry, idKeys);
     const nombreReq = parseText(entry, nombreKeys);
-    const nombreReqNorm = normalizarTextoPrerrequisito(nombreReq);
+    const nombreReqNorm = normalizarTexto(nombreReq);
     const evaluable = idReq > 0 || nombreReqNorm.length > 0;
     const cumple = (actuales ?? []).some((actual) => {
         if (idReq > 0 && toNumber(actual.id) === idReq)
             return true;
-        return nombreReqNorm.length > 0 && normalizarTextoPrerrequisito(actual.nombre) === nombreReqNorm;
+        return nombreReqNorm.length > 0 && normalizarTexto(actual.nombre) === nombreReqNorm;
     });
     return {
         grupoOpcional,
@@ -537,13 +536,13 @@ function buildEvaluacionDominio(entry: Record<string, any>, ctx: DoteEvaluacionC
     const grupoOpcional = parseOpcional(entry);
     const idDominio = parseId(entry, ['Id_dominio', 'id_dominio', 'Id', 'id', 'i']);
     const nombreDominio = parseText(entry, ['Dominio', 'dominio', 'Nombre', 'nombre']);
-    const nombreNorm = normalizarTextoPrerrequisito(nombreDominio);
+    const nombreNorm = normalizarTexto(nombreDominio);
     const dominios = ctx.dominios ?? [];
     const evaluable = idDominio > 0 || nombreNorm.length > 0;
     const cumple = dominios.some((dominio) => {
         if (idDominio > 0 && toNumber(dominio.id) === idDominio)
             return true;
-        return nombreNorm.length > 0 && normalizarTextoPrerrequisito(dominio.nombre) === nombreNorm;
+        return nombreNorm.length > 0 && normalizarTexto(dominio.nombre) === nombreNorm;
     });
     return {
         grupoOpcional,
@@ -572,11 +571,11 @@ function buildEvaluacionEscuelaNivel(entry: Record<string, any>, ctx: DoteEvalua
     const grupoOpcional = parseOpcional(entry);
     const idEscuelaReq = parseId(entry, ['Id_escuela', 'id_escuela', 'IdEscuela', 'idEscuela', 'Id', 'id', 'i']);
     const nombreEscuelaReq = parseText(entry, ['Escuela', 'escuela', 'Nombre', 'nombre']);
-    const nombreEscuelaReqNorm = normalizarTextoPrerrequisito(nombreEscuelaReq);
+    const nombreEscuelaReqNorm = normalizarTexto(nombreEscuelaReq);
     const nivelReq = parseNumber(entry, ['Nivel', 'nivel', 'Cantidad', 'cantidad', 'Valor', 'valor', 'c', 'n']);
     const escuelaEspecialista = ctx.escuelaEspecialista;
     const idEscuelaActual = toNumber(escuelaEspecialista?.id);
-    const nombreEscuelaActualNorm = normalizarTextoPrerrequisito(escuelaEspecialista?.nombre ?? '');
+    const nombreEscuelaActualNorm = normalizarTexto(escuelaEspecialista?.nombre ?? '');
     const nivelArcanoActual = toNumber(escuelaEspecialista?.nivelArcano ?? ctx.lanzador.arcano);
     const tieneEscuelaReq = idEscuelaReq > 0 || nombreEscuelaReqNorm.length > 0;
     const tieneEscuelaActual = idEscuelaActual > 0 || nombreEscuelaActualNorm.length > 0;
@@ -651,9 +650,9 @@ function buildEvaluacionTipoCriatura(entry: Record<string, any>, ctx: DoteEvalua
     const grupoOpcional = parseOpcional(entry);
     const tipoIdReq = parseId(entry, ['Id_tipo', 'id_tipo', 'Id_tipo_criatura', 'id_tipo_criatura', 'Id', 'id', 'i']);
     const tipoNombreReq = parseText(entry, ['Tipo', 'tipo', 'Tipo_criatura', 'tipo_criatura', 'Nombre', 'nombre']);
-    const tipoNombreReqNorm = normalizarTextoPrerrequisito(tipoNombreReq);
+    const tipoNombreReqNorm = normalizarTexto(tipoNombreReq);
     const tipoActualId = Math.trunc(toNumber(ctx.tipoCriaturaId));
-    const tipoActualNombreNorm = normalizarTextoPrerrequisito(ctx.tipoCriaturaNombre ?? '');
+    const tipoActualNombreNorm = normalizarTexto(ctx.tipoCriaturaNombre ?? '');
     const evaluable = (tipoIdReq > 0 || tipoNombreReqNorm.length > 0)
         && (tipoActualId > 0 || tipoActualNombreNorm.length > 0);
     const cumplePorId = tipoIdReq > 0 && tipoActualId > 0 && tipoActualId === tipoIdReq;
@@ -678,13 +677,13 @@ function buildEvaluacionTipoDote(
     const grupoOpcional = parseOpcional(entry);
     const idTipoReq = parseId(entry, ['Id_tipo', 'id_tipo', 'IdTipo', 'idTipo', 'Id', 'id', 'i']);
     const nombreTipoReq = parseText(entry, ['Tipo', 'tipo', 'Tipo_dote', 'tipo_dote', 'Nombre', 'nombre']);
-    const nombreTipoReqNorm = normalizarTextoPrerrequisito(nombreTipoReq);
+    const nombreTipoReqNorm = normalizarTexto(nombreTipoReq);
     const evaluable = idTipoReq > 0 || nombreTipoReqNorm.length > 0;
     const tipos = ctx.tiposDote ?? [];
     const cumple = tipos.some((tipo) => {
         if (idTipoReq > 0 && toNumber(tipo.id) === idTipoReq)
             return true;
-        return nombreTipoReqNorm.length > 0 && normalizarTextoPrerrequisito(tipo.nombre) === nombreTipoReqNorm;
+        return nombreTipoReqNorm.length > 0 && normalizarTexto(tipo.nombre) === nombreTipoReqNorm;
     });
     return {
         grupoOpcional,
@@ -699,21 +698,21 @@ function buildEvaluacionRegion(entry: Record<string, any>, ctx: DoteEvaluacionCo
     const grupoOpcional = parseOpcional(entry);
     const idRegionReq = parseId(entry, ['Id_region', 'id_region', 'IdRegion', 'idRegion', 'Id', 'id', 'i']);
     const nombreRegionReq = parseText(entry, ['Region', 'region', 'Nombre', 'nombre']);
-    const nombreRegionReqNorm = normalizarTextoPrerrequisito(nombreRegionReq);
+    const nombreRegionReqNorm = normalizarTexto(nombreRegionReq);
     const regionIdRaw = ctx.region?.id as any;
     const regionIdActual = toNumber(regionIdRaw);
     const regionIdConocido = regionIdRaw !== null
         && regionIdRaw !== undefined
         && `${regionIdRaw}`.trim().length > 0
         && Number.isFinite(Number(regionIdRaw));
-    const regionNombreActualNorm = normalizarTextoPrerrequisito(ctx.region?.nombre ?? '');
+    const regionNombreActualNorm = normalizarTexto(ctx.region?.nombre ?? '');
     const catalogoRegiones = ctx.catalogoRegiones ?? [];
-    const nombreRegionReqCatalogoNorm = normalizarTextoPrerrequisito(
+    const nombreRegionReqCatalogoNorm = normalizarTexto(
         idRegionReq > 0
             ? catalogoRegiones.find((item) => toNumber(item.id) === idRegionReq)?.nombre ?? ''
             : ''
     );
-    const nombreRegionActualCatalogoNorm = normalizarTextoPrerrequisito(
+    const nombreRegionActualCatalogoNorm = normalizarTexto(
         regionIdActual > 0
             ? catalogoRegiones.find((item) => toNumber(item.id) === regionIdActual)?.nombre ?? ''
             : ''
@@ -771,7 +770,7 @@ function buildEvaluacionConjuroEscuela(entry: Record<string, any>, ctx: DoteEval
     const grupoOpcional = parseOpcional(entry);
     const idEscuela = parseId(entry, ['Id_escuela', 'id_escuela', 'IdEscuela', 'idEscuela']);
     const escuela = parseText(entry, ['Escuela', 'escuela', 'Nombre', 'nombre']);
-    const escuelaNorm = normalizarTextoPrerrequisito(escuela);
+    const escuelaNorm = normalizarTexto(escuela);
     const cantidad = Math.max(1, Math.trunc(toNumber(pick(entry, ['Cantidad', 'cantidad', 'Nivel', 'nivel']))));
     const evaluable = (idEscuela > 0 || escuelaNorm.length > 0) && cantidad > 0;
     const fuenteConjuros = ctx.conjurosAccesibles !== undefined
@@ -779,7 +778,7 @@ function buildEvaluacionConjuroEscuela(entry: Record<string, any>, ctx: DoteEval
         : ctx.conjuros;
     const total = fuenteConjuros.reduce((acc, conjuro) => {
         const coincideEscuela = (idEscuela > 0 && toNumber(conjuro.idEscuela) === idEscuela)
-            || (escuelaNorm.length > 0 && normalizarTextoPrerrequisito(conjuro.escuela) === escuelaNorm);
+            || (escuelaNorm.length > 0 && normalizarTexto(conjuro.escuela) === escuelaNorm);
         return coincideEscuela ? acc + 1 : acc;
     }, 0);
     return {
@@ -795,12 +794,12 @@ function buildEvaluacionLanzEspontaneo(entry: Record<string, any>, ctx: DoteEval
     const grupoOpcional = parseOpcional(entry);
     const idConjuro = parseId(entry, ['Id_conjuro', 'id_conjuro', 'IdConjuro', 'idConjuro']);
     const nombreConjuro = parseText(entry, ['Conjuro', 'conjuro', 'Nombre', 'nombre']);
-    const nombreNorm = normalizarTextoPrerrequisito(nombreConjuro);
+    const nombreNorm = normalizarTexto(nombreConjuro);
     const evaluable = idConjuro > 0 || nombreNorm.length > 0;
     const cumple = ctx.conjuros.some((conjuro) => {
         if (idConjuro > 0 && toNumber(conjuro.id) === idConjuro)
             return true;
-        return nombreNorm.length > 0 && normalizarTextoPrerrequisito(conjuro.nombre) === nombreNorm;
+        return nombreNorm.length > 0 && normalizarTexto(conjuro.nombre) === nombreNorm;
     });
     return {
         grupoOpcional,
@@ -861,10 +860,10 @@ function buildEvaluacionCompArma(
     const grupoOpcional = parseOpcional(entry);
     const idArma = parseId(entry, ['Id_arma', 'id_arma', 'IdArma', 'idArma']);
     const arma = parseText(entry, ['Arma', 'arma', 'Nombre', 'nombre']);
-    const armaNorm = normalizarTextoPrerrequisito(arma);
+    const armaNorm = normalizarTexto(arma);
     const esElegir = armaNorm === 'elegir' || armaNorm.length < 1 || idArma <= 0;
 
-    if (esElegir && idExtraSeleccionado <= 0 && normalizarTextoPrerrequisito(extraSeleccionado).length < 1) {
+    if (esElegir && idExtraSeleccionado <= 0 && normalizarTexto(extraSeleccionado).length < 1) {
         return {
             grupoOpcional,
             evaluable: true,
@@ -876,13 +875,13 @@ function buildEvaluacionCompArma(
 
     const idObjetivo = esElegir ? Math.max(0, toNumber(idExtraSeleccionado)) : idArma;
     const nombreObjetivo = esElegir ? `${extraSeleccionado ?? ''}`.trim() : arma;
-    const nombreObjetivoNorm = normalizarTextoPrerrequisito(nombreObjetivo);
+    const nombreObjetivoNorm = normalizarTexto(nombreObjetivo);
 
     const evaluable = idObjetivo > 0 || nombreObjetivoNorm.length > 0;
     const cumple = ctx.competenciasArmas.some((comp) => {
         if (idObjetivo > 0 && toNumber(comp.id) === idObjetivo)
             return true;
-        return nombreObjetivoNorm.length > 0 && normalizarTextoPrerrequisito(comp.nombre) === nombreObjetivoNorm;
+        return nombreObjetivoNorm.length > 0 && normalizarTexto(comp.nombre) === nombreObjetivoNorm;
     });
 
     return {
@@ -903,7 +902,7 @@ function buildEvaluacionDote(
     const grupoOpcional = parseOpcional(entry);
     const idDoteReq = parseId(entry, ['Id_dote_prerrequisito', 'id_dote_prerrequisito', 'Id_dote', 'id_dote', 'Id', 'id']);
     const nombreDoteReq = parseText(entry, ['Dote_prerrequisito', 'dote_prerrequisito', 'Dote', 'dote', 'Nombre', 'nombre']);
-    const nombreNorm = normalizarTextoPrerrequisito(nombreDoteReq);
+    const nombreNorm = normalizarTexto(nombreDoteReq);
     const rawIdExtraReq = pick(entry, ['Id_extra', 'id_extra', 'IdExtra', 'idExtra', 'e']);
     const idExtraReq = rawIdExtraReq === undefined || rawIdExtraReq === null || `${rawIdExtraReq}`.trim().length < 1
         ? Number.NaN
@@ -915,7 +914,7 @@ function buildEvaluacionDote(
 
     const coincidencias = ctx.dotes.filter((dote) => {
         const coincideDote = (idDoteReq > 0 && toNumber(dote.id) === idDoteReq)
-            || (nombreNorm.length > 0 && normalizarTextoPrerrequisito(dote.nombre) === nombreNorm);
+            || (nombreNorm.length > 0 && normalizarTexto(dote.nombre) === nombreNorm);
         if (!coincideDote)
             return false;
 
@@ -929,9 +928,9 @@ function buildEvaluacionDote(
         if (idExtraSeleccionado > 0)
             return toNumber(dote.idExtra) === idExtraSeleccionado;
 
-        const extraSelNorm = normalizarTextoPrerrequisito(extraSeleccionado);
+        const extraSelNorm = normalizarTexto(extraSeleccionado);
         if (extraSelNorm.length > 0)
-            return normalizarTextoPrerrequisito(dote.extra) === extraSelNorm;
+            return normalizarTexto(dote.extra) === extraSelNorm;
 
         return true;
     });

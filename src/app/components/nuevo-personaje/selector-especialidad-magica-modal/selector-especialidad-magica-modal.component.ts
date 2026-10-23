@@ -1,6 +1,7 @@
 import { Component, EventEmitter, HostListener, Input, Output } from '@angular/core';
 import { DisciplinaConjuros } from 'src/app/interfaces/disciplina-conjuros';
 import { EscuelaConjuros } from 'src/app/interfaces/escuela-conjuros';
+import { normalizarTexto } from 'src/app/services/utils/normalizacion';
 
 export interface SelectorEspecialidadArcanaConfirmacion {
     especializar: boolean;
@@ -59,7 +60,7 @@ export class SelectorEspecialidadMagicaModalComponent {
         return this.escuelasEspecializables
             .filter((escuela) => Number(escuela?.Id ?? 0) !== idEspecialista)
             .filter((escuela) => !!escuela?.Prohibible)
-            .filter((escuela) => this.normalizarTexto(escuela?.Nombre ?? '') !== 'adivinacion');
+            .filter((escuela) => normalizarTexto(escuela?.Nombre ?? '') !== 'adivinacion');
     }
 
     get disciplinasEspecializables(): DisciplinaConjuros[] {
@@ -79,7 +80,7 @@ export class SelectorEspecialidadMagicaModalComponent {
         const escuela = this.escuelaEspecialistaSeleccionada;
         if (!escuela)
             return 0;
-        return this.normalizarTexto(escuela.Nombre) === 'adivinacion' ? 1 : 2;
+        return normalizarTexto(escuela.Nombre) === 'adivinacion' ? 1 : 2;
     }
 
     get arcanoValido(): boolean {
@@ -260,14 +261,6 @@ export class SelectorEspecialidadMagicaModalComponent {
         if (!Number.isFinite(id))
             return 0;
         return id > 0 ? id : 0;
-    }
-
-    private normalizarTexto(value: string): string {
-        return `${value ?? ''}`
-            .normalize('NFD')
-            .replace(/[\u0300-\u036f]/g, '')
-            .trim()
-            .toLowerCase();
     }
 
     private esElementoInteractivoParaEnter(target: HTMLElement | null): boolean {
