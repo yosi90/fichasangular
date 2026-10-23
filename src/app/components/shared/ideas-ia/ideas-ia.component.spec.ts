@@ -3,9 +3,12 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { BehaviorSubject } from 'rxjs';
 import { IdeasIaError, IdeasIaService } from 'src/app/services/ideas-ia.service';
 import { PlatformSessionService } from 'src/app/services/platform-session.service';
+import { ImagenesPersonajeService } from 'src/app/services/imagenes-personaje.service';
 import { VozPersonajeService } from 'src/app/services/voz-personaje.service';
 import Swal from 'sweetalert2';
 import { IdeasIaComponent } from './ideas-ia.component';
+import { ImagenesPersonajeComponent } from './imagenes-personaje.component';
+import { ModeloIaMenuComponent } from './modelo-ia-menu.component';
 import { VozPersonajeComponent } from './voz-personaje.component';
 
 function crearServicio() {
@@ -25,20 +28,22 @@ function crearServicio() {
             },
         ]),
         olvidarEstado: jasmine.createSpy('olvidarEstado'),
+        seleccionImagen: signal<any>(null),
+        modelosDeImagen: jasmine.createSpy('modelosDeImagen').and.resolveTo([{ id: 'gpt-image-2', nombre: 'GPT Image 2' }]),
     };
 }
 
 const VOZ_GUARDADA = {
-    texto: '¡Por Moradin!', proveedor: 'elevenlabs', voz: 'emilio', nombreVoz: 'Emilio', modelo: 'eleven_multilingual_v2',
+    id: 1, texto: '¡Por Moradin!', proveedor: 'elevenlabs', voz: 'emilio', nombreVoz: 'Emilio', modelo: 'eleven_multilingual_v2',
     tipo: 'audio/mpeg', creada: '2026-10-23T18:30:00Z',
 };
 
-function crearServicioDeVoz(guardada: any = null) {
+function crearServicioDeVoz(guardadas: any[] = []) {
     return {
-        guardada: jasmine.createSpy('guardada').and.resolveTo(guardada),
+        voces: jasmine.createSpy('voces').and.resolveTo({ voces: guardadas, maximo: 3 }),
         audio: jasmine.createSpy('audio').and.resolveTo(new Blob(['mp3'], { type: 'audio/mpeg' })),
         generar: jasmine.createSpy('generar').and.resolveTo(VOZ_GUARDADA),
-        borrar: jasmine.createSpy('borrar').and.resolveTo(),
+        descartar: jasmine.createSpy('descartar').and.resolveTo(),
     };
 }
 
@@ -187,31 +192,38 @@ describe('VozPersonajeComponent', () => {
         expect((fixture.nativeElement as HTMLElement).textContent).toContain('Tus claves de IA y su tope se gestionan en tu cuenta de Yosiftware');
     });
 
-    describe('su voz guardada', () => {
-        it('la oye quien ve la ficha, aunque no tenga clave de IA', async () => {
-            voz.guardada.and.resolveTo(VOZ_GUARDADA);
+    describe('sus voces guardadas', () => {
+        const OTRA = { ...VOZ_GUARDADA, id: 2, texto: '¡Mi hacha no olvida!' };
+
+        it('las oye quien ve la ficha, aunque no tenga clave de IA', async () => {
+            voz.voces.and.resolveTo({ voces: [VOZ_GUARDADA, OTRA], maximo: 3 });
             servicio.disponibilidad.and.resolveTo('sin_sesion');
             await component.comprobar();
-            await component.leerGuardada();
+            await component.leerGuardadas();
             fixture.detectChanges();
-            expect(voz.guardada).toHaveBeenCalledWith(7);
+            expect(voz.voces).toHaveBeenCalledWith(7);
             expect(component.visible).toBeTrue();
-            expect((fixture.nativeElement as HTMLElement).textContent).toContain('Escuchar su voz');
-            expect((fixture.nativeElement as HTMLElement).textContent).toContain('Emilio (ElevenLabs)');
+            const texto = (fixture.nativeElement as HTMLElement).textContent ?? '';
+            expect(texto).toContain('«¡Por Moradin!» · Emilio (ElevenLabs)');
+            expect(texto).toContain('«¡Mi hacha no olvida!»');
+            expect(texto).not.toContain('Descartar');
         });
 
-        it('escucharla descarga el audio una vez y lo reproduce', async () => {
-            voz.guardada.and.resolveTo(VOZ_GUARDADA);
-            await component.leerGuardada();
+        it('cada una descarga su audio una vez y suena de una en una', async () => {
+            voz.voces.and.resolveTo({ voces: [VOZ_GUARDADA, OTRA], maximo: 3 });
+            await component.leerGuardadas();
             const reproducir = spyOn(HTMLMediaElement.prototype, 'play').and.resolveTo();
-            await component.escucharGuardada();
-            expect(voz.audio).toHaveBeenCalledWith(7);
+            await component.escuchar(VOZ_GUARDADA as any);
+            expect(voz.audio).toHaveBeenCalledWith(7, 1);
             expect(reproducir).toHaveBeenCalled();
-            expect(component.reproduciendo).toBeTrue();
-            await component.escucharGuardada();
-            expect(component.reproduciendo).toBeFalse();
-            await component.escucharGuardada();
-            expect(voz.audio).toHaveBeenCalledTimes(1);
+            expect(component.sonando).toBe(1);
+            await component.escuchar(OTRA as any);
+            expect(voz.audio).toHaveBeenCalledWith(7, 2);
+            expect(component.sonando).toBe(2);
+            await component.escuchar(OTRA as any);
+            expect(component.sonando).toBeNull();
+            await component.escuchar(VOZ_GUARDADA as any);
+            expect(voz.audio).toHaveBeenCalledTimes(2);
         });
 
         describe('el dueño, en un solo paso', () => {
@@ -224,6 +236,8 @@ describe('VozPersonajeComponent', () => {
             afterEach(() => localStorage.removeItem('rol.voz.ultima.sub-del-dueno'));
 
             it('escribe la frase a mano y la genera con la voz automática', async () => {
+                voz.voces.and.resolveTo({ voces: [OTRA], maximo: 3 });
+                await component.leerGuardadas();
                 expect(component.esDueno).toBeTrue();
                 await component.abrirPanel();
                 expect(component.textoParaGuardar).toBe('');
@@ -235,7 +249,37 @@ describe('VozPersonajeComponent', () => {
                 expect(servicio.pedir).not.toHaveBeenCalled();
                 expect(voz.generar).toHaveBeenCalledWith(7, { texto: '¡Por Moradin!', proveedor: 'elevenlabs', voz: 'emilio', nombreVoz: 'Emilio' });
                 expect(component.eligiendo).toBeFalse();
+                expect(component.guardadas.map(v => v.id)).toEqual([2, 1]);
                 expect(localStorage.getItem('rol.voz.ultima.sub-del-dueno')).toBeNull();
+            });
+
+            it('con 3 voces no puede generar otra hasta descartar una', async () => {
+                const tres = [VOZ_GUARDADA, OTRA, { ...VOZ_GUARDADA, id: 3 }];
+                voz.voces.and.resolveTo({ voces: tres, maximo: 3 });
+                await component.leerGuardadas();
+                await component.comprobar();
+                fixture.detectChanges();
+                const texto = (fixture.nativeElement as HTMLElement).textContent ?? '';
+                expect(component.llena).toBeTrue();
+                expect(texto).toContain('Tiene 3 voces, el máximo. Descarta una para generar otra.');
+                expect(texto).not.toContain('Darle otra voz');
+                await component.abrirPanel();
+                expect(component.eligiendo).toBeFalse();
+
+                await component.descartar(OTRA as any);
+                expect(voz.descartar).toHaveBeenCalledWith(7, 2);
+                expect(component.guardadas.map(v => v.id)).toEqual([1, 3]);
+                expect(component.llena).toBeFalse();
+            });
+
+            it('si la API dice que ya tiene 3, vuelve a leer sus voces', async () => {
+                voz.generar.and.rejectWith(new IdeasIaError('Este personaje ya tiene 3 voces.', 'tope_de_voces', 409));
+                await component.abrirPanel();
+                component.textoParaGuardar = 'Hola';
+                voz.voces.calls.reset();
+                await component.guardarConVoz();
+                expect(component.error?.code).toBe('tope_de_voces');
+                expect(voz.voces).toHaveBeenCalledWith(7);
             });
 
             it('o la genera con IA, avisando de que es de la IA', async () => {
@@ -249,12 +293,12 @@ describe('VozPersonajeComponent', () => {
 
             it('recuerda la última voz elegida a mano', async () => {
                 await component.abrirPanel();
-                component.vozElegida = component.voces!.find(v => v.voz.id === 'lucia')!;
+                component.vozElegida = component.vocesDisponibles!.find(v => v.voz.id === 'lucia')!;
                 component.textoParaGuardar = 'Hola';
                 await component.guardarConVoz();
                 expect(localStorage.getItem('rol.voz.ultima.sub-del-dueno')).toBe('elevenlabs:lucia');
 
-                component.voces = null;
+                component.vocesDisponibles = null;
                 await component.abrirPanel();
                 expect(component.vozElegida?.voz.id).toBe('lucia');
             });
@@ -271,12 +315,152 @@ describe('VozPersonajeComponent', () => {
             expect(texto).not.toContain('Que hable');
         });
 
-        it('el dueño la borra', async () => {
-            voz.guardada.and.resolveTo(VOZ_GUARDADA);
-            await component.leerGuardada();
-            await component.borrarVoz();
-            expect(voz.borrar).toHaveBeenCalledWith(7);
-            expect(component.guardada).toBeNull();
+        it('el dueño ve «Descartar» en cada una', async () => {
+            component.pj = { ...component.pj, ownerUid: 'sub-del-dueno' } as any;
+            voz.voces.and.resolveTo({ voces: [VOZ_GUARDADA], maximo: 3 });
+            await component.leerGuardadas();
+            fixture.detectChanges();
+            expect((fixture.nativeElement as HTMLElement).querySelector('[aria-label="Descartar esta voz"]')).not.toBeNull();
         });
+    });
+});
+
+describe('ImagenesPersonajeComponent', () => {
+    let fixture: ComponentFixture<ImagenesPersonajeComponent>;
+    let component: ImagenesPersonajeComponent;
+    let servicio: ReturnType<typeof crearServicio>;
+    let imagenes: any;
+    const RETRATO = { tipo: 'retrato', ancho: 512, alto: 512, origen: 'subida', creada: '2026-10-23T20:00:00Z', imagen: '/personajes/7/imagenes/retrato?v=1' };
+    const CUERPO_IA = { tipo: 'cuerpo', ancho: 768, alto: 1152, origen: 'ia', creada: '2026-10-23T20:00:00Z', imagen: '/personajes/7/imagenes/cuerpo?v=2' };
+
+    beforeEach(async () => {
+        servicio = crearServicio();
+        imagenes = {
+            imagenes: jasmine.createSpy('imagenes').and.resolveTo({ retrato: RETRATO, cuerpo: null }),
+            archivo: jasmine.createSpy('archivo').and.resolveTo(new Blob(['webp'], { type: 'image/webp' })),
+            subir: jasmine.createSpy('subir').and.resolveTo(RETRATO),
+            generar: jasmine.createSpy('generar').and.resolveTo(CUERPO_IA),
+            quitar: jasmine.createSpy('quitar').and.resolveTo(),
+        };
+        await TestBed.configureTestingModule({
+            declarations: [ImagenesPersonajeComponent],
+            providers: [
+                { provide: IdeasIaService, useValue: servicio },
+                { provide: ImagenesPersonajeService, useValue: imagenes },
+                {
+                    provide: PlatformSessionService,
+                    useValue: { estado$: new BehaviorSubject<any>({ tipo: 'con_sesion' }), cuenta: { id: 'sub-del-dueno' } },
+                },
+            ],
+            schemas: [NO_ERRORS_SCHEMA],
+        }).compileComponents();
+        fixture = TestBed.createComponent(ImagenesPersonajeComponent);
+        component = fixture.componentInstance;
+        component.pj = { Id: 7, Nombre: 'Thorin', Raza: { Nombre: 'Enano' }, Genero: 'Masculino', desgloseClases: [] } as any;
+        fixture.detectChanges();
+        await fixture.whenStable();
+    });
+
+    afterEach(() => fixture.destroy());
+
+    it('quien ve la ficha ve sus imágenes, sin poder cambiarlas', async () => {
+        fixture.detectChanges();
+        expect(imagenes.imagenes).toHaveBeenCalledWith(7);
+        expect(imagenes.archivo).toHaveBeenCalledOnceWith(RETRATO.imagen);
+        expect(component.urls.retrato).toMatch(/^blob:/);
+        expect(component.esDueno).toBeFalse();
+        expect(component.visible).toBeTrue();
+        const html = fixture.nativeElement as HTMLElement;
+        expect(html.querySelector('img')?.getAttribute('alt')).toBe('Retrato de Thorin');
+        expect(html.textContent).not.toContain('Subir');
+    });
+
+    it('sin imágenes y sin ser el dueño, no se enseña', async () => {
+        imagenes.imagenes.and.resolveTo({ retrato: null, cuerpo: null });
+        await component.leer();
+        expect(component.visible).toBeFalse();
+    });
+
+    describe('el dueño', () => {
+        beforeEach(() => {
+            component.pj = { ...component.pj, ownerUid: 'sub-del-dueno' } as any;
+            fixture.detectChanges();
+        });
+
+        it('sube una imagen y la ve', async () => {
+            const archivo = new File(['png'], 'thorin.png', { type: 'image/png' });
+            await component.subir('retrato', { target: { files: [archivo], value: 'thorin.png' } } as any);
+            expect(imagenes.subir).toHaveBeenCalledWith(7, 'retrato', archivo, 'thorin.png');
+            expect(component.urls.retrato).toMatch(/^blob:/);
+            expect(component.ocupado).toBeNull();
+        });
+
+        it('no manda las de más de 10 MB', async () => {
+            const grande = { size: 11 * 1024 * 1024, name: 'enorme.png' };
+            await component.subir('cuerpo', { target: { files: [grande], value: 'x' } } as any);
+            expect(imagenes.subir).not.toHaveBeenCalled();
+            expect(component.error?.message).toBe('La imagen no puede pasar de 10 MB.');
+        });
+
+        it('la genera con IA, con sus detalles y el modelo elegido', async () => {
+            servicio.seleccionImagen.set({ proveedor: 'openai', modelo: 'gpt-image-2', nombre: 'GPT Image 2' });
+            component.abrirIa('cuerpo');
+            component.detalles = '  Barba pelirroja  ';
+            await component.generar();
+            expect(imagenes.generar).toHaveBeenCalledWith(7, 'cuerpo', {
+                datos: jasmine.objectContaining({ raza: 'Enano', genero: 'Masculino' }),
+                detalles: 'Barba pelirroja',
+                modelo: 'gpt-image-2',
+            });
+            expect(component.imagenes.cuerpo?.origen).toBe('ia');
+            expect(component.conIa).toBeNull();
+        });
+
+        it('pregunta antes de sustituir una que ya tiene, y si cancela no gasta', async () => {
+            const fuego = spyOn(Swal, 'fire').and.resolveTo({ isConfirmed: false } as any);
+            component.abrirIa('retrato');
+            await component.generar();
+            expect(fuego).toHaveBeenCalled();
+            expect(imagenes.generar).not.toHaveBeenCalled();
+        });
+
+        it('la quita tras confirmarlo', async () => {
+            spyOn(Swal, 'fire').and.resolveTo({ isConfirmed: true } as any);
+            await component.quitar('retrato');
+            expect(imagenes.quitar).toHaveBeenCalledWith(7, 'retrato');
+            expect(component.imagenes.retrato).toBeNull();
+            expect(component.urls.retrato).toBeUndefined();
+        });
+
+        it('un error de la clave se enseña con el enlace a la gestión', async () => {
+            imagenes.generar.and.rejectWith(new IdeasIaError('Tus claves de IA han llegado a su tope.', 'tope_de_gasto', 429));
+            component.abrirIa('cuerpo');
+            await component.generar();
+            fixture.detectChanges();
+            const texto = (fixture.nativeElement as HTMLElement).textContent ?? '';
+            expect(texto).toContain('Tus claves de IA han llegado a su tope.');
+            expect(texto).toContain('Ir a tus claves de IA');
+            expect(component.conIa).toBe('cuerpo');
+        });
+    });
+});
+
+describe('ModeloIaMenuComponent', () => {
+    it('con uso «imagen» ofrece los modelos de imagen y guarda su propia elección', async () => {
+        const servicio = crearServicio();
+        await TestBed.configureTestingModule({
+            declarations: [ModeloIaMenuComponent],
+            providers: [{ provide: IdeasIaService, useValue: servicio }],
+            schemas: [NO_ERRORS_SCHEMA],
+        }).overrideTemplate(ModeloIaMenuComponent, '').compileComponents();
+        const menu = TestBed.createComponent(ModeloIaMenuComponent).componentInstance;
+        menu.uso = 'imagen';
+        await menu.cargar();
+        expect(servicio.modelos).not.toHaveBeenCalled();
+        expect(menu.modelos?.[0].modelos.map(m => m.id)).toEqual(['gpt-image-2']);
+        menu.elegir({ proveedor: 'openai', modelo: 'gpt-image-2', nombre: 'GPT Image 2' });
+        expect(servicio.seleccionImagen()?.modelo).toBe('gpt-image-2');
+        expect(servicio.seleccion()).toBeNull();
+        expect(menu.descripcion).toBe('Modelo de imagen: GPT Image 2');
     });
 });

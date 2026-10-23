@@ -1,0 +1,64 @@
+<div class="ideas-ia" *ngIf="visible">
+    <div class="imagenes-pj">
+        <figure class="imagenes-pj__hueco" *ngFor="let tipo of tipos" [class.imagenes-pj__hueco--cuerpo]="tipo === 'cuerpo'">
+            <div class="imagenes-pj__marco">
+                <img *ngIf="urls[tipo]" [src]="urls[tipo]" [alt]="nombre(tipo) + ' de ' + (pj?.Nombre || 'el personaje')">
+                <span class="imagenes-pj__vacia" *ngIf="!urls[tipo]">
+                    <mat-icon aria-hidden="true">{{tipo === 'retrato' ? 'account_circle' : 'accessibility_new'}}</mat-icon>
+                </span>
+                <div class="ideas-ia__cargando imagenes-pj__ocupado" *ngIf="ocupado === tipo" role="status">
+                    <mat-icon class="ideas-ia__girando" aria-hidden="true">autorenew</mat-icon>
+                    <span>{{conIa === tipo ? 'Dibujando…' : 'Subiendo…'}}</span>
+                </div>
+            </div>
+            <figcaption>{{nombre(tipo)}}</figcaption>
+            <div class="ideas-ia__barra imagenes-pj__acciones" *ngIf="esDueno">
+                <button type="button" mat-stroked-button class="ideas-ia__boton" [disabled]="!!ocupado" (click)="archivo.click()"
+                    matTooltip="JPEG, PNG o WebP de hasta 10 MB">
+                    <mat-icon>upload</mat-icon>
+                    Subir
+                </button>
+                <input #archivo type="file" accept="image/jpeg,image/png,image/webp" hidden (change)="subir(tipo, $event)">
+                <button type="button" mat-icon-button *ngIf="iaLista" [disabled]="!!ocupado" (click)="abrirIa(tipo)"
+                    matTooltip="Generarla con IA, con tu clave" aria-label="Generarla con IA">
+                    <mat-icon>auto_awesome</mat-icon>
+                </button>
+                <button type="button" mat-icon-button *ngIf="imagenes[tipo]" [disabled]="!!ocupado" (click)="quitar(tipo)"
+                    matTooltip="Quitar la imagen" aria-label="Quitar la imagen">
+                    <mat-icon>delete_outline</mat-icon>
+                </button>
+            </div>
+        </figure>
+    </div>
+
+    <!-- Generar con IA: una opción; lo principal es subirla. -->
+    <div class="ideas-ia__voz" *ngIf="conIa && esDueno">
+        <mat-form-field appearance="outline" class="ideas-ia__campo">
+            <mat-label>{{nombre(conIa)}} con IA: detalles de su aspecto (opcional)</mat-label>
+            <textarea matInput [(ngModel)]="detalles" maxlength="500" rows="2"
+                placeholder="Pelo, ropa, armas, expresión…"></textarea>
+            <mat-hint>Se usan también su raza, sus clases, su género y su edad.</mat-hint>
+            <mat-hint align="end">{{detalles.length}} / 500</mat-hint>
+        </mat-form-field>
+        <div class="ideas-ia__acciones">
+            <app-modelo-ia-menu uso="imagen"></app-modelo-ia-menu>
+            <button type="button" mat-flat-button color="primary" [disabled]="!!ocupado" (click)="generar()">
+                {{ocupado ? 'Dibujando… (puede tardar un minuto)' : 'Generar imagen'}}
+            </button>
+            <button type="button" mat-button (click)="conIa = null" [disabled]="!!ocupado">Cancelar</button>
+        </div>
+    </div>
+
+    <p class="ideas-ia__gestion" *ngIf="esDueno && disponibilidad === 'sin_clave'">
+        <mat-icon>auto_awesome</mat-icon>
+        <a [href]="urlGestion" target="_blank" rel="noopener"><span class="simbolo-yosiftware" aria-hidden="true"></span>Para generarlas con IA, añade una clave de OpenAI en tu cuenta de Yosiftware</a>
+    </p>
+
+    <div class="ideas-ia__error" *ngIf="error" role="alert">
+        <mat-icon>error_outline</mat-icon>
+        <span>
+            {{error.message}}
+            <a *ngIf="error.esDeLaClave" [href]="urlGestion" target="_blank" rel="noopener"><span class="simbolo-yosiftware" aria-hidden="true"></span>Ir a tus claves de IA</a>
+        </span>
+    </div>
+</div>

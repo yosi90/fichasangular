@@ -1,24 +1,25 @@
-<div class="ideas-ia ideas-ia--guardada" *ngIf="guardada">
+<div class="ideas-ia ideas-ia--guardada" *ngFor="let voz of guardadas">
     <div class="ideas-ia__barra">
-        <button type="button" mat-stroked-button class="ideas-ia__boton" (click)="escucharGuardada()">
-            <mat-icon>{{reproduciendo ? 'stop' : 'play_arrow'}}</mat-icon>
-            {{reproduciendo ? 'Parar' : 'Escuchar su voz'}}
+        <button type="button" mat-stroked-button class="ideas-ia__boton" (click)="escuchar(voz)">
+            <mat-icon>{{sonando === voz.id ? 'stop' : 'play_arrow'}}</mat-icon>
+            {{sonando === voz.id ? 'Parar' : 'Escuchar'}}
         </button>
-        <button type="button" mat-icon-button *ngIf="esDueno" (click)="borrarVoz()" matTooltip="Borrar su voz" aria-label="Borrar su voz">
+        <button type="button" mat-icon-button *ngIf="esDueno" (click)="descartar(voz)" matTooltip="Descartar esta voz" aria-label="Descartar esta voz">
             <mat-icon>delete_outline</mat-icon>
         </button>
     </div>
-    <p class="ideas-ia__aviso">«{{guardada.texto}}» · {{guardada.nombreVoz || guardada.voz}} ({{nombreProveedor}})</p>
+    <p class="ideas-ia__aviso">«{{voz.texto}}» · {{voz.nombreVoz || voz.voz}} ({{nombreProveedor(voz)}})</p>
 </div>
 
 <!-- Solo el dueño le da voz, en un solo paso. -->
 <ng-container [ngSwitch]="disponibilidad" *ngIf="esDueno">
     <div class="ideas-ia" *ngSwitchCase="'lista'">
-        <button type="button" mat-stroked-button class="ideas-ia__boton" *ngIf="!eligiendo" (click)="abrirPanel()"
+        <button type="button" mat-stroked-button class="ideas-ia__boton" *ngIf="!eligiendo && !llena" (click)="abrirPanel()"
             matTooltip="Con ElevenLabs o la voz de OpenAI, con tu clave de IA">
             <mat-icon>graphic_eq</mat-icon>
-            {{guardada ? 'Cambiar su voz' : 'Darle voz'}}
+            {{guardadas.length ? 'Darle otra voz' : 'Darle voz'}}
         </button>
+        <p class="ideas-ia__aviso" *ngIf="llena">Tiene {{maximo}} voces, el máximo. Descarta una para generar otra.</p>
         <div class="ideas-ia__voz" *ngIf="eligiendo">
             <mat-form-field appearance="outline" class="ideas-ia__campo">
                 <mat-label>Lo que dice</mat-label>
@@ -35,16 +36,16 @@
                 </button>
                 <app-modelo-ia-menu></app-modelo-ia-menu>
             </div>
-            <p class="ideas-ia__aviso" *ngIf="voces === null">Buscando tus voces…</p>
-            <p class="ideas-ia__aviso" *ngIf="voces?.length === 0">
+            <p class="ideas-ia__aviso" *ngIf="vocesDisponibles === null">Buscando tus voces…</p>
+            <p class="ideas-ia__aviso" *ngIf="vocesDisponibles?.length === 0">
                 No hay voces con tus claves de IA. Añade una de ElevenLabs u OpenAI en
                 <a [href]="urlGestion" target="_blank" rel="noopener"><span class="simbolo-yosiftware" aria-hidden="true"></span>tus claves de IA</a>.
             </p>
-            <mat-form-field appearance="outline" class="ideas-ia__campo" *ngIf="voces?.length">
+            <mat-form-field appearance="outline" class="ideas-ia__campo" *ngIf="vocesDisponibles?.length">
                 <mat-label>Voz</mat-label>
                 <mat-select [(ngModel)]="vozElegida">
                     <mat-option [value]="null">Automática{{vozQueSeUsara && !vozElegida ? ' (' + vozQueSeUsara.voz.nombre + ')' : ''}}</mat-option>
-                    <mat-option *ngFor="let v of voces" [value]="v">
+                    <mat-option *ngFor="let v of vocesDisponibles" [value]="v">
                         {{v.voz.nombre}} · {{v.proveedor === 'openai' ? 'OpenAI' : 'ElevenLabs'}}
                     </mat-option>
                 </mat-select>

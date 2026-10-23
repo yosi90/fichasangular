@@ -125,3 +125,61 @@ a
 
 .ideas-ia__campo
     width: 100%
+
+// Imágenes del personaje: el retrato (cuadrado) y el cuerpo entero (2:3), uno junto al otro.
+.imagenes-pj
+    display: flex
+    flex-wrap: wrap
+    gap: 12px
+
+.imagenes-pj__hueco
+    display: flex
+    flex-direction: column
+    align-items: center
+    gap: 4px
+    margin: 0
+    width: 160px
+
+    figcaption
+        font-size: .8rem
+        color: $accent
+
+.imagenes-pj__marco
+    position: relative
+    width: 160px
+    height: 160px
+    border-radius: 8px
+    border: 1px solid rgba(255, 255, 255, .12)
+    background: rgba(255, 255, 255, .04)
+    overflow: hidden
+
+    img
+        width: 100%
+        height: 100%
+        object-fit: contain
+        display: block
+
+.imagenes-pj__hueco--cuerpo .imagenes-pj__marco
+    height: 240px
+
+.imagenes-pj__vacia
+    display: flex
+    align-items: center
+    justify-content: center
+    width: 100%
+    height: 100%
+    color: rgba(255, 255, 255, .25)
+
+    mat-icon
+        font-size: 56px
+        width: 56px
+        height: 56px
+
+.imagenes-pj__ocupado
+    position: absolute
+    inset: 0
+    justify-content: center
+    background: rgba(45, 45, 48, .8)
+
+.imagenes-pj__acciones
+    justify-content: center

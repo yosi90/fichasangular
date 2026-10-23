@@ -11,7 +11,7 @@ describe('VozPersonajeService', () => {
     let http: HttpTestingController;
     let sesion: { estado: any; tokenApi: jasmine.Spy };
     let ideas: { olvidarEstado: jasmine.Spy };
-    const ruta = `${environment.apiUrl}personajes/12/voz`;
+    const ruta = `${environment.apiUrl}personajes/12/voces`;
 
     beforeEach(() => {
         sesion = { estado: { tipo: 'con_sesion' }, tokenApi: jasmine.createSpy('tokenApi').and.resolveTo('token-api') };
@@ -38,26 +38,37 @@ describe('VozPersonajeService', () => {
         return { resultado: await promesa.catch(e => e), peticion };
     }
 
-    it('lee la voz guardada con el token de la API', async () => {
-        const { resultado, peticion } = await responder(servicio.guardada(12), 'GET', ruta, {
-            texto: 'Hola', proveedor: 'elevenlabs', voz: 'emilio', nombreVoz: 'Emilio', modelo: 'm', tipo: 'audio/mpeg', creada: 'x',
-            audio: '/personajes/12/voz/audio',
+    it('lee sus voces guardadas con el token de la API', async () => {
+        const { resultado, peticion } = await responder(servicio.voces(12), 'GET', ruta, {
+            voces: [{
+                id: 4, texto: 'Hola', proveedor: 'elevenlabs', voz: 'emilio', nombreVoz: 'Emilio', modelo: 'm', tipo: 'audio/mpeg', creada: 'x',
+                audio: '/personajes/12/voces/4/audio',
+            }],
+            maximo: 3,
         });
         expect(peticion.request.headers.get('Authorization')).toBe('Bearer token-api');
-        expect((resultado as any).nombreVoz).toBe('Emilio');
+        expect((resultado as any).maximo).toBe(3);
+        expect((resultado as any).voces[0].id).toBe(4);
+        expect((resultado as any).voces[0].nombreVoz).toBe('Emilio');
     });
 
-    it('sin voz guardada es null, y sin sesión no manda token', async () => {
+    it('sin voces la lista está vacía, y sin sesión no manda token', async () => {
         sesion.estado = { tipo: 'sin_sesion' };
-        const { resultado, peticion } = await responder(servicio.guardada(12), 'GET', ruta,
-            { error: 'Este personaje aún no tiene voz.', code: 'sin_voz' }, { status: 404, statusText: 'Not Found' });
-        expect(resultado).toBeNull();
+        const { resultado, peticion } = await responder(servicio.voces(12), 'GET', ruta, { voces: [], maximo: 3 });
+        expect((resultado as any).voces).toEqual([]);
         expect(peticion.request.headers.has('Authorization')).toBeFalse();
+    });
+
+    it('el audio y el descarte van a la voz concreta', async () => {
+        const audio = await responder(servicio.audio(12, 4), 'GET', `${ruta}/4/audio`, new Blob(['mp3']));
+        expect(audio.peticion.request.responseType).toBe('blob');
+        const descarte = await responder(servicio.descartar(12, 4), 'DELETE', `${ruta}/4`, null, { status: 204, statusText: 'No Content' });
+        expect(descarte.peticion.request.headers.get('Authorization')).toBe('Bearer token-api');
     });
 
     it('genera con la voz elegida', async () => {
         const cuerpo = { texto: 'Hola', proveedor: 'openai' as const, voz: 'alloy', nombreVoz: 'Alloy' };
-        const { peticion } = await responder(servicio.generar(12, cuerpo), 'POST', ruta, { ...cuerpo, modelo: 'tts-1', tipo: 'audio/mpeg', creada: 'x' });
+        const { peticion } = await responder(servicio.generar(12, cuerpo), 'POST', ruta, { ...cuerpo, id: 5, modelo: 'tts-1', tipo: 'audio/mpeg', creada: 'x' });
         expect(peticion.request.body).toEqual(cuerpo);
     });
 

@@ -13,10 +13,10 @@ interface VozElegible {
 }
 
 /**
- * La voz del personaje. Arriba, su voz guardada, si la tiene: la oye quien ve la ficha. El dueño le da voz en un solo
- * paso (propietario, 2026-10-23): escribe lo que dice o lo genera con IA, elige la voz («Automática» o la última que
- * eligió) y la API la genera con su clave (ElevenLabs o la voz de OpenAI); 3.5 Companion solo la reproduce. Nadie más
- * genera voces para un personaje que no es suyo (propietario, 2026-10-23): quien no es el dueño solo oye la guardada.
+ * Las voces del personaje. Arriba, sus voces guardadas: las oye quien ve la ficha. El dueño le da otra en un solo paso
+ * (propietario, 2026-10-23): escribe lo que dice o lo genera con IA, elige la voz («Automática» o la última que eligió)
+ * y la API la genera con su clave (ElevenLabs o la voz de OpenAI); 3.5 Companion solo las reproduce. Como mucho tiene 3:
+ * con 3, el dueño descarta una para generar otra. Nadie más genera voces para un personaje que no es suyo.
  */
 @Component({
     selector: 'app-voz-personaje',
@@ -31,10 +31,12 @@ export class VozPersonajeComponent implements OnInit, OnChanges, OnDestroy {
     cargando = false;
     error: IdeasIaError | null = null;
 
-    guardada: VozGuardada | null = null;
-    reproduciendo = false;
+    guardadas: VozGuardada[] = [];
+    maximo = 3;
+    /** La voz guardada que suena, si alguna. */
+    sonando: number | null = null;
     eligiendo = false;
-    voces: VozElegible[] | null = null;
+    vocesDisponibles: VozElegible[] | null = null;
     /** null es «Automática». */
     vozElegida: VozElegible | null = null;
     textoParaGuardar = '';
@@ -44,9 +46,9 @@ export class VozPersonajeComponent implements OnInit, OnChanges, OnDestroy {
 
     private estadoSub?: Subscription;
     private consulta = 0;
-    private consultaDeVoz = 0;
+    private consultaDeVoces = 0;
     private audio: HTMLAudioElement | null = null;
-    private urlAudio: string | null = null;
+    private urlsDeAudio = new Map<number, string>();
 
     constructor(
         private ideasIaSvc: IdeasIaService,
@@ -55,28 +57,32 @@ export class VozPersonajeComponent implements OnInit, OnChanges, OnDestroy {
         private zone: NgZone,
     ) { }
 
-    /** Si hay algo que enseñar: su voz guardada o, al dueño, el botón (clave lista) o el enlace a la gestión de las claves. */
+    /** Si hay algo que enseñar: sus voces o, al dueño, el botón (clave lista) o el enlace a la gestión de las claves. */
     get visible(): boolean {
-        return !!this.guardada || (this.esDueno && (this.disponibilidad === 'lista' || this.disponibilidad === 'sin_clave'));
+        return this.guardadas.length > 0 || (this.esDueno && (this.disponibilidad === 'lista' || this.disponibilidad === 'sin_clave'));
     }
 
-    /** Solo el dueño del personaje genera o borra su voz. */
+    /** Solo el dueño del personaje genera o descarta sus voces. */
     get esDueno(): boolean {
         const cuenta = `${this.platformSessionSvc.cuenta?.id ?? ''}`.trim();
         return cuenta.length > 0 && cuenta === `${this.pj?.ownerUid ?? ''}`.trim();
     }
 
-    get nombreProveedor(): string {
-        return this.guardada?.proveedor === 'openai' ? 'OpenAI' : 'ElevenLabs';
+    get llena(): boolean {
+        return this.guardadas.length >= this.maximo;
     }
 
     get urlGestion(): string {
         return this.ideasIaSvc.urlGestion;
     }
 
+    nombreProveedor(voz: VozGuardada): string {
+        return voz.proveedor === 'openai' ? 'OpenAI' : 'ElevenLabs';
+    }
+
     ngOnInit(): void {
         this.estadoSub = this.platformSessionSvc.estado$.subscribe(() => void this.comprobar());
-        void this.leerGuardada();
+        void this.leerGuardadas();
     }
 
     ngOnChanges(changes: SimpleChanges): void {
@@ -85,68 +91,76 @@ export class VozPersonajeComponent implements OnInit, OnChanges, OnDestroy {
         if (changes['pj'] && !changes['pj'].firstChange && anterior?.Id !== actual?.Id) {
             this.error = null;
             this.eligiendo = false;
-            this.olvidarAudio();
-            void this.leerGuardada();
+            this.olvidarAudios();
+            void this.leerGuardadas();
         }
     }
 
     ngOnDestroy(): void {
         this.estadoSub?.unsubscribe();
-        this.olvidarAudio();
+        this.olvidarAudios();
     }
 
-    /** Su voz guardada, si la tiene. Sin ella (o si falla), solo queda «Que hable». */
-    async leerGuardada(): Promise<void> {
-        const consulta = ++this.consultaDeVoz;
+    /** Sus voces guardadas. Si fallan, el bloque se queda sin ellas. */
+    async leerGuardadas(): Promise<void> {
+        const consulta = ++this.consultaDeVoces;
         const id = Number(this.pj?.Id);
-        this.guardada = null;
+        this.guardadas = [];
         if (!(id > 0))
             return;
         try {
-            const guardada = await this.vozSvc.guardada(id);
-            if (consulta === this.consultaDeVoz)
-                this.guardada = guardada;
+            const { voces, maximo } = await this.vozSvc.voces(id);
+            if (consulta === this.consultaDeVoces) {
+                this.guardadas = voces;
+                this.maximo = maximo;
+            }
         } catch {
-            // Sin su voz guardada se puede seguir con «Que hable».
+            // Sin sus voces, el dueño aún puede darle una.
         }
     }
 
-    async escucharGuardada(): Promise<void> {
-        if (this.reproduciendo) {
-            this.audio?.pause();
-            this.reproduciendo = false;
+    /** Escuchar una de sus voces, o pararla si es la que suena. */
+    async escuchar(voz: VozGuardada): Promise<void> {
+        const sonaba = this.sonando;
+        this.audio?.pause();
+        this.sonando = null;
+        if (sonaba === voz.id)
             return;
-        }
         const id = Number(this.pj?.Id);
         try {
-            if (!this.urlAudio)
-                this.urlAudio = URL.createObjectURL(await this.vozSvc.audio(id));
+            let url = this.urlsDeAudio.get(voz.id);
+            if (!url) {
+                url = URL.createObjectURL(await this.vozSvc.audio(id, voz.id));
+                this.urlsDeAudio.set(voz.id, url);
+            }
             this.audio ??= new Audio();
-            this.audio.src = this.urlAudio;
-            this.audio.onended = () => this.zone.run(() => this.reproduciendo = false);
-            this.reproduciendo = true;
+            this.audio.src = url;
+            this.audio.onended = () => this.zone.run(() => this.sonando = null);
+            this.sonando = voz.id;
             await this.audio.play();
         } catch (error) {
-            this.reproduciendo = false;
+            this.sonando = null;
             this.error = error instanceof IdeasIaError ? error : new IdeasIaError('No se ha podido reproducir su voz.', '', 0);
         }
     }
 
     /** El único paso del dueño: la caja con lo que dice, el selector de voz y «Generar voz». */
     async abrirPanel(): Promise<void> {
+        if (this.llena)
+            return;
         this.eligiendo = true;
         this.error = null;
-        this.textoParaGuardar = this.guardada?.texto ?? '';
+        this.textoParaGuardar = '';
         this.textoDeIa = false;
-        if (this.voces)
+        if (this.vocesDisponibles)
             return;
         try {
             const proveedores: VocesIaProveedor[] = await this.ideasIaSvc.voces();
-            this.voces = proveedores.flatMap(p => p.voces.map(voz => ({ proveedor: p.proveedor, voz })));
+            this.vocesDisponibles = proveedores.flatMap(p => p.voces.map(voz => ({ proveedor: p.proveedor, voz })));
             const ultima = this.leerUltimaVoz();
-            this.vozElegida = this.voces.find(v => `${v.proveedor}:${v.voz.id}` === ultima) ?? null;
+            this.vozElegida = this.vocesDisponibles.find(v => `${v.proveedor}:${v.voz.id}` === ultima) ?? null;
         } catch {
-            this.voces = [];
+            this.vocesDisponibles = [];
         }
     }
 
@@ -170,27 +184,29 @@ export class VozPersonajeComponent implements OnInit, OnChanges, OnDestroy {
 
     /** La voz con la que se generará: la elegida o, con «Automática», una en español del género del personaje. */
     get vozQueSeUsara(): VozElegible | null {
-        return this.vozElegida ?? elegirVozAutomatica(this.voces ?? [], this.pj?.Genero);
+        return this.vozElegida ?? elegirVozAutomatica(this.vocesDisponibles ?? [], this.pj?.Genero);
     }
 
     async guardarConVoz(): Promise<void> {
         const id = Number(this.pj?.Id);
         const texto = this.textoParaGuardar.trim();
         const voz = this.vozQueSeUsara;
-        if (!voz || !texto || this.generando || !(id > 0))
+        if (!voz || !texto || this.generando || this.llena || !(id > 0))
             return;
         this.generando = true;
         this.error = null;
         try {
-            this.guardada = await this.vozSvc.generar(id, { texto, proveedor: voz.proveedor, voz: voz.voz.id, nombreVoz: voz.voz.nombre });
+            const nueva = await this.vozSvc.generar(id, { texto, proveedor: voz.proveedor, voz: voz.voz.id, nombreVoz: voz.voz.nombre });
+            this.guardadas = [...this.guardadas, nueva];
             this.guardarUltimaVoz(this.vozElegida);
             this.eligiendo = false;
-            this.olvidarAudio();
-            void this.escucharGuardada();
+            void this.escuchar(nueva);
         } catch (error) {
             this.error = error instanceof IdeasIaError ? error : new IdeasIaError('No se ha podido generar su voz.', '', 0);
             if (this.error.esDeLaClave)
                 void this.comprobar();
+            if (this.error.code === 'tope_de_voces')
+                void this.leerGuardadas();
         } finally {
             this.generando = false;
         }
@@ -223,23 +239,29 @@ export class VozPersonajeComponent implements OnInit, OnChanges, OnDestroy {
         }
     }
 
-    async borrarVoz(): Promise<void> {
+    async descartar(voz: VozGuardada): Promise<void> {
         const id = Number(this.pj?.Id);
         try {
-            await this.vozSvc.borrar(id);
-            this.guardada = null;
-            this.olvidarAudio();
+            await this.vozSvc.descartar(id, voz.id);
+            if (this.sonando === voz.id) {
+                this.audio?.pause();
+                this.sonando = null;
+            }
+            const url = this.urlsDeAudio.get(voz.id);
+            if (url)
+                URL.revokeObjectURL(url);
+            this.urlsDeAudio.delete(voz.id);
+            this.guardadas = this.guardadas.filter(v => v.id !== voz.id);
         } catch (error) {
-            this.error = error instanceof IdeasIaError ? error : new IdeasIaError('No se ha podido borrar su voz.', '', 0);
+            this.error = error instanceof IdeasIaError ? error : new IdeasIaError('No se ha podido descartar su voz.', '', 0);
         }
     }
 
-    private olvidarAudio(): void {
+    private olvidarAudios(): void {
         this.audio?.pause();
-        this.reproduciendo = false;
-        if (this.urlAudio)
-            URL.revokeObjectURL(this.urlAudio);
-        this.urlAudio = null;
+        this.sonando = null;
+        this.urlsDeAudio.forEach(url => URL.revokeObjectURL(url));
+        this.urlsDeAudio.clear();
     }
 
     async comprobar(): Promise<void> {

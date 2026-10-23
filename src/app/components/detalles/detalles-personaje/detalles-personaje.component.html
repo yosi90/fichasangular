@@ -227,6 +227,11 @@
                 <p>{{pj.Contexto}}</p>
             </div>
             <div class="sombra-caja-sm tw-rounded-md tw-p-2 tw-my-2" *ngIf="!esPreviewNuevoPersonaje"
+                [class.tw-hidden]="!imagenes.visible">
+                <mat-chip class="tw-w-full sombra-caja-sm tw-mb-2 chip-titulo">Imágenes</mat-chip>
+                <app-imagenes-personaje #imagenes [pj]="pj"></app-imagenes-personaje>
+            </div>
+            <div class="sombra-caja-sm tw-rounded-md tw-p-2 tw-my-2" *ngIf="!esPreviewNuevoPersonaje"
                 [class.tw-hidden]="!voz.visible">
                 <mat-chip class="tw-w-full sombra-caja-sm tw-mb-2 chip-titulo">Voz</mat-chip>
                 <app-voz-personaje #voz [pj]="pj"></app-voz-personaje>

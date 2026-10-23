@@ -103,9 +103,11 @@ const ERROR_GENERICO = 'No se ha podido pedir la idea. Inténtalo de nuevo.';
 })
 export class IdeasIaService {
     readonly seleccion = signal<SeleccionModeloIa | null>(null);
+    /** Modelo elegido para las imágenes del personaje (de OpenAI); `null` deja el del backend (gpt-image-1-mini). */
+    readonly seleccionImagen = signal<SeleccionModeloIa | null>(null);
 
     private estadoEnCurso: { hasta: number; promesa: Promise<DisponibilidadIa> } | null = null;
-    private modelosEnCurso: { hasta: number; promesa: Promise<ModelosIaProveedor[]> } | null = null;
+    private modelosEnCurso: { hasta: number; promesa: Promise<any[]> } | null = null;
 
     constructor(private http: HttpClient, private platformSessionSvc: PlatformSessionService) { }
 
@@ -128,11 +130,29 @@ export class IdeasIaService {
         this.estadoEnCurso = null;
     }
 
-    /** Los modelos a los que llega la clave de la persona, por proveedor (`GET /v1/ia/modelos`). */
+    /** Los modelos de texto a los que llega la clave de la persona, por proveedor (`GET /v1/ia/modelos`). */
     async modelos(): Promise<ModelosIaProveedor[]> {
+        return (await this.modelosDeLaPlataforma())
+            .filter(p => p?.proveedor === 'anthropic' || p?.proveedor === 'openai')
+            .map(p => ({
+                proveedor: p.proveedor as ProveedorIa,
+                // Solo los que escriben texto: la lista trae también voz, imágenes y transcripción (kit 1.48 y 1.49).
+                modelos: modelosDeUso(p, 'texto', true),
+                error: typeof p.error === 'string' ? p.error : null,
+            }));
+    }
+
+    /** Los modelos de imagen de OpenAI a los que llega la clave (`usos` `imagen`), para las imágenes del personaje. */
+    async modelosDeImagen(): Promise<ModeloIa[]> {
+        const openai = (await this.modelosDeLaPlataforma()).find(p => p?.proveedor === 'openai');
+        return openai ? modelosDeUso(openai, 'imagen', false) : [];
+    }
+
+    private modelosDeLaPlataforma(): Promise<any[]> {
         const ahora = Date.now();
         if (!this.modelosEnCurso || this.modelosEnCurso.hasta < ahora) {
-            const promesa = this.consultarModelos();
+            const promesa = this.getPlataforma<{ proveedores?: any[] }>('/v1/ia/modelos')
+                .then(respuesta => Array.isArray(respuesta?.proveedores) ? respuesta.proveedores : []);
             this.modelosEnCurso = { hasta: ahora + VIGENCIA_MODELOS_MS, promesa };
             promesa.catch(() => this.modelosEnCurso = null);
         }
@@ -201,22 +221,6 @@ export class IdeasIaService {
             }));
     }
 
-    private async consultarModelos(): Promise<ModelosIaProveedor[]> {
-        const respuesta = await this.getPlataforma<{ proveedores?: any[] }>('/v1/ia/modelos');
-        const proveedores = Array.isArray(respuesta?.proveedores) ? respuesta.proveedores : [];
-        return proveedores
-            .filter(p => p?.proveedor === 'anthropic' || p?.proveedor === 'openai')
-            .map(p => ({
-                proveedor: p.proveedor as ProveedorIa,
-                // Solo los que escriben texto: la lista trae también voz, imágenes y transcripción (kit 1.48 y 1.49).
-                modelos: (Array.isArray(p.modelos) ? p.modelos : [])
-                    .filter((m: any) => typeof m?.id === 'string' && m.id.trim().length > 0)
-                    .filter((m: any) => !Array.isArray(m?.usos) || m.usos.includes('texto'))
-                    .map((m: any) => ({ id: m.id, nombre: `${m.nombre ?? m.id}` })),
-                error: typeof p.error === 'string' ? p.error : null,
-            }));
-    }
-
     private async getPlataforma<T>(ruta: string): Promise<T> {
         const token = await this.platformSessionSvc.tokenPlataforma();
         const headers = new HttpHeaders({ Authorization: `Bearer ${token}`, Accept: 'application/json' });
@@ -231,8 +235,16 @@ export class IdeasIaService {
     }
 }
 
+/** Los modelos de un proveedor de `GET /v1/ia/modelos` para [uso]; sin `usos`, se cuentan si [sinUsos]. */
+function modelosDeUso(proveedor: any, uso: string, sinUsos: boolean): ModeloIa[] {
+    return (Array.isArray(proveedor?.modelos) ? proveedor.modelos : [])
+        .filter((m: any) => typeof m?.id === 'string' && m.id.trim().length > 0)
+        .filter((m: any) => Array.isArray(m?.usos) ? m.usos.includes(uso) : sinUsos)
+        .map((m: any) => ({ id: m.id, nombre: `${m.nombre ?? m.id}` }));
+}
+
 /**
- * Un error de una ruta de Rol que usa la IA (`POST /personajes/ideas`, `/personajes/{id}/voz`), con el formato
+ * Un error de una ruta de Rol que usa la IA (`POST /personajes/ideas`, `/personajes/{id}/voces` e `/imagenes`), con el formato
  * objetivo de errores: su frase se puede enseñar tal cual.
  */
 export function errorDeIa(error: unknown, porDefecto: string): IdeasIaError {
