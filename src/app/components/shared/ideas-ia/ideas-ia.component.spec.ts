@@ -197,6 +197,24 @@ describe('VozPersonajeComponent', () => {
         expect(component.hablando).toBeFalse();
     });
 
+    it('no cancela sin nada sonando y avisa solo de un fallo de verdad al leerla', async () => {
+        if (!component.puedeHablar)
+            pending('Este navegador no tiene speechSynthesis');
+        const hablar = spyOn(window.speechSynthesis, 'speak');
+        const cancelar = spyOn(window.speechSynthesis, 'cancel');
+        component.frase = '¡Por Moradin!';
+        component.hablar();
+        expect(cancelar).not.toHaveBeenCalled();
+        const locucion = hablar.calls.mostRecent().args[0] as SpeechSynthesisUtterance;
+
+        locucion.onerror!({ error: 'interrupted' } as SpeechSynthesisErrorEvent);
+        expect(component.hablando).toBeFalse();
+        expect(component.error).toBeNull();
+
+        locucion.onerror!({ error: 'synthesis-failed' } as SpeechSynthesisErrorEvent);
+        expect(component.error?.message).toBe('Tu navegador no ha podido leerla en voz alta.');
+    });
+
     it('sin síntesis de voz enseña solo la frase', async () => {
         (component as any).puedeHablar = false;
         await component.queHable();

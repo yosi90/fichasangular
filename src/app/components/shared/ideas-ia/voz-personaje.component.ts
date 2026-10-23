@@ -281,7 +281,9 @@ export class VozPersonajeComponent implements OnInit, OnChanges, OnDestroy {
         if (!this.puedeHablar || !texto)
             return;
         const sintesis = window.speechSynthesis;
-        sintesis.cancel();
+        // Cancelar sin nada sonando y hablar en el acto deja muda la frase en algunos navegadores.
+        if (sintesis.speaking || sintesis.pending)
+            sintesis.cancel();
         const locucion = new SpeechSynthesisUtterance(texto);
         const { tono, velocidad } = ajustesVoz(this.pj?.Raza?.Nombre, this.pj?.Genero);
         locucion.lang = 'es-ES';
@@ -290,9 +292,13 @@ export class VozPersonajeComponent implements OnInit, OnChanges, OnDestroy {
         const voz = elegirVoz(sintesis.getVoices());
         if (voz)
             locucion.voice = voz;
-        const terminar = () => this.zone.run(() => this.hablando = false);
-        locucion.onend = terminar;
-        locucion.onerror = terminar;
+        locucion.onend = () => this.zone.run(() => this.hablando = false);
+        locucion.onerror = evento => this.zone.run(() => {
+            this.hablando = false;
+            // Parar o cambiar de frase también acaba en error; solo se avisa de un fallo de verdad.
+            if (evento.error !== 'interrupted' && evento.error !== 'canceled')
+                this.error = new IdeasIaError('Tu navegador no ha podido leerla en voz alta.', '', 0);
+        });
         this.hablando = true;
         sintesis.speak(locucion);
     }
