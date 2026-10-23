@@ -28,6 +28,7 @@ const BASICO_ID_POR_NOMBRE: Record<string, number> = {
     "legal maligno": 3,
     "neutral bueno": 4,
     "neutral autentico": 5,
+    "neutral verdadero": 5,
     "neutral maligno": 6,
     "caotico bueno": 7,
     "caotico neutral": 8,

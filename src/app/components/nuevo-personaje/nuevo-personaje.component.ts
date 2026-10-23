@@ -115,6 +115,7 @@ import Swal from 'sweetalert2';
 import { DatosIdeaIa, datosIdeaDePersonaje, TipoIdeaIa } from 'src/app/services/ideas-ia.service';
 import { UsoIdeaIa } from '../shared/ideas-ia/ideas-ia.component';
 import { normalizarTexto } from 'src/app/services/utils/normalizacion';
+import { getAlineamientoBasicoIdPorNombre } from 'src/app/services/utils/alineamiento-contrato';
 
 interface VectorAlineamiento {
     ley: number;
@@ -4368,19 +4369,7 @@ export class NuevoPersonajeComponent {
         if (idCatalogo)
             return idCatalogo;
 
-        const fallback: Record<string, number> = {
-            'legal bueno': 1,
-            'legal neutral': 2,
-            'legal maligno': 3,
-            'neutral bueno': 4,
-            'neutral autentico': 5,
-            'neutral maligno': 6,
-            'caotico bueno': 7,
-            'caotico neutral': 8,
-            'caotico maligno': 9,
-        };
-        const idFallback = fallback[nombreNorm];
-        return this.toPositiveInt(idFallback);
+        return this.toPositiveInt(getAlineamientoBasicoIdPorNombre(nombreNorm));
     }
 
     private resolverIdDeidadCreacion(): number {

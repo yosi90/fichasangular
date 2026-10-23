@@ -30,6 +30,7 @@ import { normalizeRaciales } from './utils/racial-mapper';
 import { normalizeSubtipoRefArray } from './utils/subtipo-mapper';
 import { obtenerTokenApi } from './platform-session.service';
 import { toArray, toNumber, toText } from 'src/app/services/utils/normalizacion';
+import { getAlineamientoBasicoIdPorNombre } from './utils/alineamiento-contrato';
 
 interface PersonajeVisibilityUpdateResponse {
     message: string;
@@ -810,19 +811,7 @@ export class PersonajeService {
     }
 
     private resolverIdAlineamientoDesdeNombre(nombreAlineamiento: any): number {
-        const key = normalizeLookupKey(nombreAlineamiento);
-        const mapa: Record<string, number> = {
-            'legal bueno': 1,
-            'legal neutral': 2,
-            'legal maligno': 3,
-            'neutral bueno': 4,
-            'neutral autentico': 5,
-            'neutral maligno': 6,
-            'caotico bueno': 7,
-            'caotico neutral': 8,
-            'caotico maligno': 9,
-        };
-        return Math.trunc(toNumber(mapa[key] ?? 0));
+        return getAlineamientoBasicoIdPorNombre(normalizeLookupKey(nombreAlineamiento));
     }
 
     private resolverIdCargaDesdeFuerza(fuerza: any): number {
