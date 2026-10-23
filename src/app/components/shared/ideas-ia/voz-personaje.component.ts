@@ -3,7 +3,7 @@ import { Subscription } from 'rxjs';
 import { Personaje } from 'src/app/interfaces/personaje';
 import { datosIdeaDePersonaje, DisponibilidadIa, IdeasIaError, IdeasIaService, ProveedorDeVoz, VocesIaProveedor, VozIa } from 'src/app/services/ideas-ia.service';
 import { PlatformSessionService } from 'src/app/services/platform-session.service';
-import { elegirVozAutomatica } from 'src/app/services/utils/voz-personaje';
+import { elegirVozAutomatica, ordenarVoces } from 'src/app/services/utils/voz-personaje';
 import { VozGuardada, VozPersonajeService } from 'src/app/services/voz-personaje.service';
 
 /** Una voz de la lista, con su proveedor. */
@@ -14,7 +14,8 @@ interface VozElegible {
 
 /**
  * Las voces del personaje. Arriba, sus voces guardadas: las oye quien ve la ficha. El dueño le da otra en un solo paso
- * (propietario, 2026-10-23): escribe lo que dice o lo genera con IA, elige la voz («Automática» o la última que eligió)
+ * (propietario, 2026-10-23): escribe lo que dice o lo genera con IA, elige la voz («Automática», con ElevenLabs si la
+ * cuenta lo tiene, o la última que eligió)
  * y la API la genera con su clave (ElevenLabs o la voz de OpenAI); 3.5 Companion solo las reproduce. Como mucho tiene 3:
  * con 3, el dueño descarta una para generar otra. Nadie más genera voces para un personaje que no es suyo.
  */
@@ -156,7 +157,7 @@ export class VozPersonajeComponent implements OnInit, OnChanges, OnDestroy {
             return;
         try {
             const proveedores: VocesIaProveedor[] = await this.ideasIaSvc.voces();
-            this.vocesDisponibles = proveedores.flatMap(p => p.voces.map(voz => ({ proveedor: p.proveedor, voz })));
+            this.vocesDisponibles = ordenarVoces(proveedores.flatMap(p => p.voces.map(voz => ({ proveedor: p.proveedor, voz }))));
             const ultima = this.leerUltimaVoz();
             this.vozElegida = this.vocesDisponibles.find(v => `${v.proveedor}:${v.voz.id}` === ultima) ?? null;
         } catch {
