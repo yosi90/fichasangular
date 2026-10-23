@@ -16,7 +16,13 @@ function crearServicio() {
         pedir: jasmine.createSpy('pedir').and.resolveTo({ texto: 'Hijo de la forja.', proveedor: 'anthropic', modelo: 'claude-haiku-5-5', recortada: false }),
         modelos: jasmine.createSpy('modelos').and.resolveTo([]),
         voces: jasmine.createSpy('voces').and.resolveTo([
-            { proveedor: 'elevenlabs', error: null, voces: [{ id: 'emilio', nombre: 'Emilio', idioma: 'es', muestra: null }] },
+            {
+                proveedor: 'elevenlabs', error: null, voces: [
+                    { id: 'alice', nombre: 'Alice', idioma: 'en', genero: 'female', muestra: null },
+                    { id: 'lucia', nombre: 'Lucía', idioma: 'es', genero: 'female', muestra: null },
+                    { id: 'emilio', nombre: 'Emilio', idioma: 'es', genero: 'male', muestra: null },
+                ],
+            },
         ]),
         olvidarEstado: jasmine.createSpy('olvidarEstado'),
     };
@@ -234,18 +240,50 @@ describe('VozPersonajeComponent', () => {
             expect(voz.audio).toHaveBeenCalledTimes(1);
         });
 
-        it('solo el dueño la genera con una voz de su cuenta', async () => {
-            component.pj = { ...component.pj, ownerUid: 'sub-del-dueno' } as any;
-            component.frase = '¡Por Moradin!';
-            expect(component.esDueno).toBeTrue();
-            spyOn(HTMLMediaElement.prototype, 'play').and.resolveTo();
-            await component.abrirVoces();
-            expect(component.textoParaGuardar).toBe('¡Por Moradin!');
-            expect(component.vozElegida?.voz.id).toBe('emilio');
-            await component.guardarConVoz();
-            expect(voz.generar).toHaveBeenCalledWith(7, { texto: '¡Por Moradin!', proveedor: 'elevenlabs', voz: 'emilio', nombreVoz: 'Emilio' });
-            expect(component.guardada?.nombreVoz).toBe('Emilio');
-            expect(component.eligiendo).toBeFalse();
+        describe('el dueño, en un solo paso', () => {
+            beforeEach(() => {
+                component.pj = { ...component.pj, ownerUid: 'sub-del-dueno' } as any;
+                localStorage.removeItem('rol.voz.ultima.sub-del-dueno');
+                spyOn(HTMLMediaElement.prototype, 'play').and.resolveTo();
+            });
+
+            afterEach(() => localStorage.removeItem('rol.voz.ultima.sub-del-dueno'));
+
+            it('escribe la frase a mano y la genera con la voz automática', async () => {
+                expect(component.esDueno).toBeTrue();
+                await component.abrirPanel();
+                expect(component.textoParaGuardar).toBe('');
+                expect(component.vozElegida).toBeNull();
+                // Thorin es «Masculino»: una voz en español de hombre.
+                expect(component.vozQueSeUsara?.voz.id).toBe('emilio');
+                component.textoParaGuardar = '¡Por Moradin!';
+                await component.guardarConVoz();
+                expect(servicio.pedir).not.toHaveBeenCalled();
+                expect(voz.generar).toHaveBeenCalledWith(7, { texto: '¡Por Moradin!', proveedor: 'elevenlabs', voz: 'emilio', nombreVoz: 'Emilio' });
+                expect(component.eligiendo).toBeFalse();
+                expect(localStorage.getItem('rol.voz.ultima.sub-del-dueno')).toBeNull();
+            });
+
+            it('o la genera con IA, avisando de que es de la IA', async () => {
+                servicio.pedir.and.resolveTo({ texto: '¡Mi hacha no olvida!', proveedor: 'anthropic', modelo: 'claude-haiku-5-5', recortada: false });
+                await component.abrirPanel();
+                await component.generarTexto();
+                expect(servicio.pedir).toHaveBeenCalledWith('frase', jasmine.objectContaining({ nombre: 'Thorin' }));
+                expect(component.textoParaGuardar).toBe('¡Mi hacha no olvida!');
+                expect(component.textoDeIa).toBeTrue();
+            });
+
+            it('recuerda la última voz elegida a mano', async () => {
+                await component.abrirPanel();
+                component.vozElegida = component.voces!.find(v => v.voz.id === 'lucia')!;
+                component.textoParaGuardar = 'Hola';
+                await component.guardarConVoz();
+                expect(localStorage.getItem('rol.voz.ultima.sub-del-dueno')).toBe('elevenlabs:lucia');
+
+                component.voces = null;
+                await component.abrirPanel();
+                expect(component.vozElegida?.voz.id).toBe('lucia');
+            });
         });
 
         it('quien no es el dueño no puede cambiarla', () => {

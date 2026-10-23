@@ -59,6 +59,8 @@ export interface VozIa {
     id: string;
     nombre: string;
     idioma: string | null;
+    /** `male`, `female` o lo que diga el proveedor; null si no lo dice. */
+    genero: string | null;
     /** Un audio de muestra del proveedor, si lo hay. */
     muestra: string | null;
 }
@@ -194,7 +196,7 @@ export class IdeasIaService {
                 proveedor: p.proveedor as ProveedorDeVoz,
                 voces: (Array.isArray(p.voces) ? p.voces : [])
                     .filter((v: any) => typeof v?.id === 'string' && v.id.trim().length > 0)
-                    .map((v: any) => ({ id: v.id, nombre: `${v.nombre ?? v.id}`, idioma: v.idioma ?? null, muestra: v.muestra ?? null })),
+                    .map((v: any) => ({ id: v.id, nombre: `${v.nombre ?? v.id}`, idioma: v.idioma ?? null, genero: v.genero ?? null, muestra: v.muestra ?? null })),
                 error: typeof p.error === 'string' ? p.error : null,
             }));
     }

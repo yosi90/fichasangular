@@ -3,7 +3,7 @@ import { Subscription } from 'rxjs';
 import { Personaje } from 'src/app/interfaces/personaje';
 import { datosIdeaDePersonaje, DisponibilidadIa, IdeasIaError, IdeasIaService, ProveedorDeVoz, VocesIaProveedor, VozIa } from 'src/app/services/ideas-ia.service';
 import { PlatformSessionService } from 'src/app/services/platform-session.service';
-import { ajustesVoz, elegirVoz, sintesisDisponible, textoParaLeer } from 'src/app/services/utils/voz-personaje';
+import { ajustesVoz, elegirVoz, elegirVozAutomatica, sintesisDisponible, textoParaLeer } from 'src/app/services/utils/voz-personaje';
 import { VozGuardada, VozPersonajeService } from 'src/app/services/voz-personaje.service';
 
 /** Una voz de la lista, con su proveedor. */
@@ -13,10 +13,10 @@ interface VozElegible {
 }
 
 /**
- * La voz del personaje. Arriba, su voz guardada, si la tiene: la oye quien ve la ficha. Debajo, «Que hable»: pide a la
- * IA una frase suya (con la clave de la persona) y la lee el navegador con `speechSynthesis`; sin síntesis, solo se
- * enseña la frase. El dueño puede guardar esa frase con una voz de su cuenta (ElevenLabs o la voz de OpenAI), que
- * genera la API con su clave; 3.5 Companion solo la reproduce.
+ * La voz del personaje. Arriba, su voz guardada, si la tiene: la oye quien ve la ficha. El dueño le da voz en un solo
+ * paso (propietario, 2026-10-23): escribe lo que dice o lo genera con IA, elige la voz («Automática» o la última que
+ * eligió) y la API la genera con su clave (ElevenLabs o la voz de OpenAI); 3.5 Companion solo la reproduce. Quien no es
+ * el dueño tiene «Que hable»: una frase suya de la IA, que lee el navegador con `speechSynthesis`.
  */
 @Component({
     selector: 'app-voz-personaje',
@@ -38,8 +38,11 @@ export class VozPersonajeComponent implements OnInit, OnChanges, OnDestroy {
     reproduciendo = false;
     eligiendo = false;
     voces: VozElegible[] | null = null;
+    /** null es «Automática». */
     vozElegida: VozElegible | null = null;
     textoParaGuardar = '';
+    /** El texto de la caja lo ha escrito la IA (se avisa; la persona lo puede cambiar). */
+    textoDeIa = false;
     generando = false;
 
     private estadoSub?: Subscription;
@@ -136,36 +139,59 @@ export class VozPersonajeComponent implements OnInit, OnChanges, OnDestroy {
         }
     }
 
-    /** Elegir una voz de la cuenta (`GET /v1/ia/voces`) para guardar la frase con ella. */
-    async abrirVoces(): Promise<void> {
+    /** El único paso del dueño: la caja con lo que dice, el selector de voz y «Generar voz». */
+    async abrirPanel(): Promise<void> {
+        this.parar();
         this.eligiendo = true;
         this.error = null;
-        this.textoParaGuardar = this.frase ?? this.guardada?.texto ?? '';
+        this.textoParaGuardar = this.guardada?.texto ?? '';
+        this.textoDeIa = false;
         if (this.voces)
             return;
         try {
             const proveedores: VocesIaProveedor[] = await this.ideasIaSvc.voces();
             this.voces = proveedores.flatMap(p => p.voces.map(voz => ({ proveedor: p.proveedor, voz })));
-            this.vozElegida = this.voces.find(v => v.voz.id === this.guardada?.voz) ?? this.voces[0] ?? null;
+            const ultima = this.leerUltimaVoz();
+            this.vozElegida = this.voces.find(v => `${v.proveedor}:${v.voz.id}` === ultima) ?? null;
         } catch {
             this.voces = [];
         }
     }
 
+    /** «Generar con IA»: una frase corta y con gancho del personaje, que se puede cambiar antes de darle voz. */
+    async generarTexto(): Promise<void> {
+        if (this.cargando)
+            return;
+        this.cargando = true;
+        this.error = null;
+        try {
+            this.textoParaGuardar = (await this.ideasIaSvc.pedir('frase', datosIdeaDePersonaje(this.pj))).texto.slice(0, 300);
+            this.textoDeIa = true;
+        } catch (error) {
+            this.error = error instanceof IdeasIaError ? error : new IdeasIaError('No se ha podido pedir la frase.', '', 0);
+            if (this.error.esDeLaClave)
+                void this.comprobar();
+        } finally {
+            this.cargando = false;
+        }
+    }
+
+    /** La voz con la que se generará: la elegida o, con «Automática», una en español del género del personaje. */
+    get vozQueSeUsara(): VozElegible | null {
+        return this.vozElegida ?? elegirVozAutomatica(this.voces ?? [], this.pj?.Genero);
+    }
+
     async guardarConVoz(): Promise<void> {
         const id = Number(this.pj?.Id);
         const texto = this.textoParaGuardar.trim();
-        if (!this.vozElegida || !texto || this.generando || !(id > 0))
+        const voz = this.vozQueSeUsara;
+        if (!voz || !texto || this.generando || !(id > 0))
             return;
         this.generando = true;
         this.error = null;
         try {
-            this.guardada = await this.vozSvc.generar(id, {
-                texto,
-                proveedor: this.vozElegida.proveedor,
-                voz: this.vozElegida.voz.id,
-                nombreVoz: this.vozElegida.voz.nombre,
-            });
+            this.guardada = await this.vozSvc.generar(id, { texto, proveedor: voz.proveedor, voz: voz.voz.id, nombreVoz: voz.voz.nombre });
+            this.guardarUltimaVoz(this.vozElegida);
             this.eligiendo = false;
             this.olvidarAudio();
             void this.escucharGuardada();
@@ -175,6 +201,33 @@ export class VozPersonajeComponent implements OnInit, OnChanges, OnDestroy {
                 void this.comprobar();
         } finally {
             this.generando = false;
+        }
+    }
+
+    // La última voz elegida a mano, por cuenta (ecosistema-kit/CAMBIO_DE_CUENTA.md): con «Automática» se olvida.
+    private claveUltimaVoz(): string | null {
+        const cuenta = `${this.platformSessionSvc.cuenta?.id ?? ''}`.trim();
+        return cuenta ? `rol.voz.ultima.${cuenta}` : null;
+    }
+
+    private leerUltimaVoz(): string | null {
+        const clave = this.claveUltimaVoz();
+        try {
+            return clave ? localStorage.getItem(clave) : null;
+        } catch {
+            return null;
+        }
+    }
+
+    private guardarUltimaVoz(voz: VozElegible | null): void {
+        const clave = this.claveUltimaVoz();
+        try {
+            if (clave && voz)
+                localStorage.setItem(clave, `${voz.proveedor}:${voz.voz.id}`);
+            else if (clave)
+                localStorage.removeItem(clave);
+        } catch {
+            // Sin almacenamiento, la próxima vez vuelve a «Automática».
         }
     }
 

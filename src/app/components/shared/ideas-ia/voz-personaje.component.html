@@ -13,54 +13,29 @@
 
 <ng-container [ngSwitch]="disponibilidad">
     <div class="ideas-ia" *ngSwitchCase="'lista'">
-        <div class="ideas-ia__barra">
-            <button type="button" mat-stroked-button class="ideas-ia__boton" [disabled]="cargando" (click)="queHable()"
-                matTooltip="Una frase suya, con tu clave de IA">
-                <mat-icon>record_voice_over</mat-icon>
-                {{frase ? 'Otra frase' : 'Que hable'}}
-            </button>
-            <button type="button" mat-stroked-button class="ideas-ia__boton" *ngIf="hablando" (click)="parar()">
-                <mat-icon>stop</mat-icon>
-                Parar
-            </button>
-            <button type="button" mat-icon-button *ngIf="frase && puedeHablar && !hablando && !cargando" (click)="hablar()"
-                matTooltip="Volver a oírla" aria-label="Volver a oír la frase">
-                <mat-icon>volume_up</mat-icon>
-            </button>
-            <app-modelo-ia-menu></app-modelo-ia-menu>
-        </div>
-
-        <div class="ideas-ia__cargando" *ngIf="cargando" role="status">
-            <mat-icon class="ideas-ia__girando" aria-hidden="true">autorenew</mat-icon>
-            <span>Pensando qué decir…</span>
-        </div>
-
-        <div class="ideas-ia__error" *ngIf="error && !cargando" role="alert">
-            <mat-icon>error_outline</mat-icon>
-            <span>
-                {{error.message}}
-                <a *ngIf="error.esDeLaClave" [href]="urlGestion" target="_blank" rel="noopener"><span class="simbolo-yosiftware" aria-hidden="true"></span>Ir a tus claves de IA</a>
-            </span>
-        </div>
-
-        <div class="ideas-ia__propuesta" *ngIf="frase && !cargando" aria-live="polite">
-            <app-texto-manual [texto]="frase"></app-texto-manual>
-            <p class="ideas-ia__aviso" *ngIf="!puedeHablar">Tu navegador no puede leerla en voz alta.</p>
-        </div>
-
-        <!-- Solo el dueño: la frase con una voz de su cuenta, generada con su clave y guardada en la ficha. -->
-        <ng-container *ngIf="esDueno && (frase || guardada) && !cargando">
-            <button type="button" mat-stroked-button class="ideas-ia__boton" *ngIf="!eligiendo" (click)="abrirVoces()"
+        <!-- El dueño: un solo paso para darle voz. -->
+        <ng-container *ngIf="esDueno">
+            <button type="button" mat-stroked-button class="ideas-ia__boton" *ngIf="!eligiendo" (click)="abrirPanel()"
                 matTooltip="Con ElevenLabs o la voz de OpenAI, con tu clave de IA">
                 <mat-icon>graphic_eq</mat-icon>
-                {{guardada ? 'Cambiar su voz' : 'Guardar con una voz'}}
+                {{guardada ? 'Cambiar su voz' : 'Darle voz'}}
             </button>
             <div class="ideas-ia__voz" *ngIf="eligiendo">
                 <mat-form-field appearance="outline" class="ideas-ia__campo">
                     <mat-label>Lo que dice</mat-label>
-                    <textarea matInput [(ngModel)]="textoParaGuardar" maxlength="300" rows="2"></textarea>
+                    <textarea matInput [(ngModel)]="textoParaGuardar" (ngModelChange)="textoDeIa = false" maxlength="300" rows="2"
+                        placeholder="Escribe una frase suya o genérala con IA"></textarea>
+                    <mat-hint *ngIf="textoDeIa">Frase escrita por IA: cámbiala si quieres.</mat-hint>
                     <mat-hint align="end">{{textoParaGuardar.length}} / 300</mat-hint>
                 </mat-form-field>
+                <div class="ideas-ia__barra">
+                    <button type="button" mat-stroked-button class="ideas-ia__boton" [disabled]="cargando || generando" (click)="generarTexto()"
+                        matTooltip="Una frase corta y con gancho, con tu clave de IA">
+                        <mat-icon>auto_awesome</mat-icon>
+                        {{cargando ? 'Pensando…' : 'Generar con IA'}}
+                    </button>
+                    <app-modelo-ia-menu></app-modelo-ia-menu>
+                </div>
                 <p class="ideas-ia__aviso" *ngIf="voces === null">Buscando tus voces…</p>
                 <p class="ideas-ia__aviso" *ngIf="voces?.length === 0">
                     No hay voces con tus claves de IA. Añade una de ElevenLabs u OpenAI en
@@ -69,20 +44,57 @@
                 <mat-form-field appearance="outline" class="ideas-ia__campo" *ngIf="voces?.length">
                     <mat-label>Voz</mat-label>
                     <mat-select [(ngModel)]="vozElegida">
+                        <mat-option [value]="null">Automática{{vozQueSeUsara && !vozElegida ? ' (' + vozQueSeUsara.voz.nombre + ')' : ''}}</mat-option>
                         <mat-option *ngFor="let v of voces" [value]="v">
                             {{v.voz.nombre}} · {{v.proveedor === 'openai' ? 'OpenAI' : 'ElevenLabs'}}
                         </mat-option>
                     </mat-select>
                 </mat-form-field>
                 <div class="ideas-ia__acciones">
-                    <button type="button" mat-flat-button color="primary" [disabled]="!vozElegida || !textoParaGuardar.trim() || generando"
+                    <button type="button" mat-flat-button color="primary" [disabled]="!vozQueSeUsara || !textoParaGuardar.trim() || generando || cargando"
                         (click)="guardarConVoz()">
-                        {{generando ? 'Generando…' : 'Generar y guardar'}}
+                        {{generando ? 'Generando su voz…' : 'Generar voz'}}
                     </button>
                     <button type="button" mat-button (click)="eligiendo = false" [disabled]="generando">Cancelar</button>
                 </div>
             </div>
         </ng-container>
+
+        <!-- Quien no es el dueño: una frase suya, leída por el navegador. -->
+        <ng-container *ngIf="!esDueno">
+            <div class="ideas-ia__barra">
+                <button type="button" mat-stroked-button class="ideas-ia__boton" [disabled]="cargando" (click)="queHable()"
+                    matTooltip="Una frase suya, con tu clave de IA">
+                    <mat-icon>record_voice_over</mat-icon>
+                    {{frase ? 'Otra frase' : 'Que hable'}}
+                </button>
+                <button type="button" mat-stroked-button class="ideas-ia__boton" *ngIf="hablando" (click)="parar()">
+                    <mat-icon>stop</mat-icon>
+                    Parar
+                </button>
+                <button type="button" mat-icon-button *ngIf="frase && puedeHablar && !hablando && !cargando" (click)="hablar()"
+                    matTooltip="Volver a oírla" aria-label="Volver a oír la frase">
+                    <mat-icon>volume_up</mat-icon>
+                </button>
+                <app-modelo-ia-menu></app-modelo-ia-menu>
+            </div>
+            <div class="ideas-ia__cargando" *ngIf="cargando" role="status">
+                <mat-icon class="ideas-ia__girando" aria-hidden="true">autorenew</mat-icon>
+                <span>Pensando qué decir…</span>
+            </div>
+            <div class="ideas-ia__propuesta" *ngIf="frase && !cargando" aria-live="polite">
+                <app-texto-manual [texto]="frase"></app-texto-manual>
+                <p class="ideas-ia__aviso" *ngIf="!puedeHablar">Tu navegador no puede leerla en voz alta.</p>
+            </div>
+        </ng-container>
+
+        <div class="ideas-ia__error" *ngIf="error && !cargando" role="alert">
+            <mat-icon>error_outline</mat-icon>
+            <span>
+                {{error.message}}
+                <a *ngIf="error.esDeLaClave" [href]="urlGestion" target="_blank" rel="noopener"><span class="simbolo-yosiftware" aria-hidden="true"></span>Ir a tus claves de IA</a>
+            </span>
+        </div>
     </div>
 
     <p class="ideas-ia__gestion" *ngSwitchCase="'sin_clave'">
