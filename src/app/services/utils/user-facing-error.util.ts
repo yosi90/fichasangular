@@ -1,3 +1,5 @@
+import { normalizarTexto } from 'src/app/services/utils/normalizacion';
+
 export interface UserFacingErrorOptions {
     duplicateNameEntity?: 'campaign' | 'generic';
     sessionRequiredMessage?: string;
@@ -53,8 +55,8 @@ export function toUserFacingErrorMessage(
     const normalizedFallback = `${fallback ?? ''}`.trim() || 'No se pudo completar la acción.';
     const details = extractErrorDetails(error);
     const rawMessage = details.message;
-    const normalizedMessage = normalizeComparableText(rawMessage);
-    const normalizedCode = normalizeComparableText(details.code);
+    const normalizedMessage = normalizarTexto(rawMessage);
+    const normalizedCode = normalizarTexto(details.code);
 
     if (isSessionRequiredError(normalizedMessage, normalizedCode, details.status))
         return options.sessionRequiredMessage ?? SESSION_REQUIRED_MESSAGE;
@@ -138,12 +140,4 @@ function looksTechnicalMessage(message: string): boolean {
         return true;
 
     return TECHNICAL_MESSAGE_PATTERNS.some((pattern) => message.includes(pattern));
-}
-
-function normalizeComparableText(value: string | null | undefined): string {
-    return `${value ?? ''}`
-        .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g, '')
-        .toLowerCase()
-        .trim();
 }

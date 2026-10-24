@@ -15,13 +15,9 @@ import { PlantillaService } from './plantilla.service';
 import { RazaService } from './raza.service';
 import { SubtipoService } from './subtipo.service';
 import { TipoCriaturaService } from './tipo-criatura.service';
-import { normalizarTexto, toNumber, toText } from 'src/app/services/utils/normalizacion';
+import { normalizarTexto, toBoolean, toNumber, toText } from 'src/app/services/utils/normalizacion';
 
 type ColeccionAsociadosKey = keyof ManualAsociados;
-
-function toBoolean(value: any): boolean {
-    return value === true || value === 1 || value === '1';
-}
 
 function ordenarReferencias(items: ReferenciaCorta[]): ReferenciaCorta[] {
     return [...items].sort((a, b) => a.Nombre.localeCompare(b.Nombre, 'es', { sensitivity: 'base' }));

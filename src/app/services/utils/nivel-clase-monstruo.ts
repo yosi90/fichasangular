@@ -1,5 +1,5 @@
 import { MonstruoNivelClase } from 'src/app/interfaces/monstruo';
-import { normalizarTexto, toNumber } from 'src/app/services/utils/normalizacion';
+import { normalizarTexto, toInt, toNumber } from 'src/app/services/utils/normalizacion';
 
 // Lo común de las reglas de compañeros animales (companero-reglas.ts) y familiares (familiar-reglas.ts): leer lo que
 // pide cada nivel de clase del monstruo (especial, dote y alineamiento) y explicarlo.
@@ -221,7 +221,7 @@ export function getDetallePreferenciasAlineamiento(nivelesClase: MonstruoNivelCl
             return;
 
         const nombreClase = `${nivelClase?.Clase?.Nombre ?? ''}`.trim();
-        const nivel = Math.max(0, Math.trunc(toNumber(nivelClase?.Nivel)));
+        const nivel = Math.max(0, toInt(nivelClase?.Nivel));
         const prefijo = nombreClase.length > 0
             ? `${nombreClase} nivel ${nivel}`
             : `Nivel ${nivel}`;

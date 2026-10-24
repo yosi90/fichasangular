@@ -23,7 +23,8 @@ import { resolverExtraHabilidadVisible } from 'src/app/services/utils/habilidad-
 import { buildManiobrabilidadInfoSecciones, ManiobrabilidadLike, tieneManiobrabilidadVisible } from 'src/app/services/utils/maniobrabilidad-info';
 import { calcularNivelesLanzadorPersonaje } from 'src/app/services/utils/nivel-lanzador-personaje';
 import Swal from 'sweetalert2';
-import { normalizarTexto, toArray, toNumber } from 'src/app/services/utils/normalizacion';
+import { normalizarTexto, toArray, toBoolean, toInt, toNumber } from 'src/app/services/utils/normalizacion';
+import { tieneTextoVisible } from 'src/app/services/utils/texto-visible';
 
 interface MadurezEdadResumen {
     id: number;
@@ -193,11 +194,11 @@ export class DetallesPersonajeComponent implements OnInit, OnChanges, AfterViewI
     }
 
     get personajeVisiblePublicamente(): boolean {
-        return this.toBoolean(this.pj?.visible_otros_usuarios);
+        return toBoolean(this.pj?.visible_otros_usuarios);
     }
 
     get personajeArchivado(): boolean {
-        return this.toBoolean(this.pj?.Archivado);
+        return toBoolean(this.pj?.Archivado);
     }
 
     get actualizandoEstadoPersonaje(): boolean {
@@ -419,27 +420,10 @@ export class DetallesPersonajeComponent implements OnInit, OnChanges, AfterViewI
     }
 
     tieneTextoVisible(texto: string | undefined | null): boolean {
-        if (!texto)
-            return false;
-        const base = normalizarTexto(texto);
-        if (!base)
-            return false;
-        const limpiado = base.replace(/[.]/g, '');
-        if (limpiado === 'no modifica' || limpiado === 'no vuela')
-            return false;
+        // Sin ocultar faltantes se enseña todo lo que no esté vacío; si no, la regla común (fuera de la clase).
         if (!this.modoOcultarFaltantes)
-            return limpiado.length > 0;
-        return limpiado !== 'no especifica'
-            && limpiado !== 'no se especifica'
-            && limpiado !== 'no aplica'
-            && limpiado !== 'nada'
-            && limpiado !== 'sin genero'
-            && limpiado !== 'no tener deidad'
-            && limpiado !== '-'
-            && limpiado !== 'desconocido'
-            && limpiado !== 'cualquiera'
-            && limpiado !== 'ninguna'
-            && limpiado !== 'placeholder';
+            return `${texto ?? ''}`.trim().length > 0;
+        return tieneTextoVisible(texto);
     }
 
     tieneNumeroVisible(value: number | string | null | undefined): boolean {
@@ -791,12 +775,12 @@ Fue/Des/Con: ${this.formatSigned(madurez.modFisico)} | Int/Sab/Car: ${this.forma
     }
 
     private obtenerDetalleNivelClase(clase: Clase, nivelClase: number): any | null {
-        const nivelObjetivo = Math.max(1, Math.trunc(toNumber(nivelClase)));
+        const nivelObjetivo = Math.max(1, toInt(nivelClase));
         if (nivelObjetivo <= 0)
             return null;
 
         const desglose = Array.isArray(clase?.Desglose_niveles) ? clase.Desglose_niveles : [];
-        return desglose.find((nivel) => Math.trunc(toNumber(nivel?.Nivel)) === nivelObjetivo) ?? null;
+        return desglose.find((nivel) => toInt(nivel?.Nivel) === nivelObjetivo) ?? null;
     }
 
     private formatearNivelesDiariosAccesibles(mapa: Record<string, number> | null | undefined): string {
@@ -863,9 +847,9 @@ Fue/Des/Con: ${this.formatSigned(madurez.modFisico)} | Int/Sab/Car: ${this.forma
 
     tieneCaracteristicaPerdida(key: CaracteristicaPerdidaKey): boolean {
         const perdidas = this.pj?.Caracteristicas_perdidas ?? {};
-        const perdidaPorMapa = this.toBoolean((perdidas as Record<string, any>)?.[key]);
+        const perdidaPorMapa = toBoolean((perdidas as Record<string, any>)?.[key]);
         if (key === 'Constitucion')
-            return perdidaPorMapa || this.toBoolean(this.pj?.Constitucion_perdida);
+            return perdidaPorMapa || toBoolean(this.pj?.Constitucion_perdida);
         return perdidaPorMapa;
     }
 
@@ -940,11 +924,7 @@ Fue/Des/Con: ${this.formatSigned(madurez.modFisico)} | Int/Sab/Car: ${this.forma
 
     trackByRacial = (_index: number, racial: RacialReferencia): string => {
         const id = Number(racial?.id);
-        const nombre = `${racial?.nombre ?? ''}`
-            .normalize('NFD')
-            .replace(/[\u0300-\u036f]/g, '')
-            .trim()
-            .toLowerCase();
+        const nombre = normalizarTexto(racial?.nombre);
         return `${Number.isFinite(id) && id > 0 ? id : 0}|${nombre}`;
     }
 
@@ -1376,18 +1356,6 @@ Fue/Des/Con: ${this.formatSigned(madurez.modFisico)} | Int/Sab/Car: ${this.forma
             Id: Number.isFinite(id) && id > 0 ? id : null,
             Nombre: nombre,
         });
-    }
-
-    private toBoolean(value: any): boolean {
-        if (typeof value === 'boolean')
-            return value;
-        if (typeof value === 'number')
-            return value === 1;
-        if (typeof value === 'string') {
-            const normalizado = value.trim().toLowerCase();
-            return normalizado === '1' || normalizado === 'true' || normalizado === 'si' || normalizado === 'sí';
-        }
-        return false;
     }
 
     private actualizarModoCompacto(): void {

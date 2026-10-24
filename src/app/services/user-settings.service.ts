@@ -14,6 +14,7 @@ import {
 } from '../interfaces/user-settings';
 import { FirebaseInjectionContextService } from './firebase-injection-context.service';
 import { PlatformSessionService } from './platform-session.service';
+import { toBoolean } from 'src/app/services/utils/normalizacion';
 
 const GENERADOR_MIGRATION_FLAG_PATH = 'migrations/generador_config_local_v1_done';
 
@@ -408,19 +409,6 @@ export class UserSettingsService {
         } catch {
             // Ignorado: localStorage puede no estar disponible.
         }
-    }
-
-    private toBoolean(value: any): boolean {
-        if (typeof value === 'boolean')
-            return value;
-        if (typeof value === 'number')
-            return value !== 0;
-        if (typeof value === 'string') {
-            const normalizado = value.trim().toLowerCase();
-            if (normalizado === 'true' || normalizado === '1' || normalizado === 'si' || normalizado === 'sí')
-                return true;
-        }
-        return false;
     }
 
     private normalizeSettingsDocument(raw: UserSettingsV1 | null | undefined): UserSettingsV1 {

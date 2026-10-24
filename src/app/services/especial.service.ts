@@ -1,7 +1,7 @@
 import { HttpClient, HttpErrorResponse } from "@angular/common/http";
 import { Injectable } from "@angular/core";
 import { Auth } from "@angular/fire/auth";
-import { Database, Unsubscribe, onValue, ref, set } from "@angular/fire/database";
+import { Database, ref, set } from "@angular/fire/database";
 import { Observable, Subject, firstValueFrom, map } from "rxjs";
 import Swal from "sweetalert2";
 import { environment } from "src/environments/environment";
@@ -18,11 +18,8 @@ import {
 } from "../interfaces/especial";
 import { FirebaseInjectionContextService } from "./firebase-injection-context.service";
 import { cabeceraApiConFirebase } from './platform-session.service';
-import { toArray, toNumber, toText } from 'src/app/services/utils/normalizacion';
-
-function toBoolean(value: any): boolean {
-    return value === true || value === 1 || value === "1";
-}
+import { toArray, toBoolean, toInt, toNumber, toText } from 'src/app/services/utils/normalizacion';
+import { cacheRtdbOApi, escucharRtdb } from './catalogo-api';
 
 function normalizeRefSimple(raw: any): EspecialRefSimple {
     return {
@@ -108,89 +105,35 @@ export class EspecialService {
     ) { }
 
     getEspecial(id: number): Observable<EspecialClaseDetalle> {
-        return new Observable((observador) => {
-            const dbRef = ref(this.db, `Especiales/${id}`);
-            let unsubscribe: Unsubscribe;
-
-            const onNext = (snapshot: any) => {
-                if (snapshot.exists()) {
-                    observador.next(normalizeEspecial(snapshot.val()));
-                    return;
-                }
-
-                this.http.get(`${environment.apiUrl}clases/habilidades/${id}`).subscribe({
-                    next: (raw: any) => observador.next(normalizeEspecial(raw)),
-                    error: (error: HttpErrorResponse) => {
-                        if (error.status === 404) {
-                            Swal.fire({
-                                icon: "warning",
-                                title: "Especial no encontrado",
-                                text: `No existe el especial con id ${id}`,
-                                showConfirmButton: true,
-                            });
-                        } else {
-                            Swal.fire({
-                                icon: "warning",
-                                title: "Error al obtener el especial",
-                                text: error.message,
-                                showConfirmButton: true,
-                            });
-                        }
-                        observador.error(error);
-                    }
-                });
-            };
-
-            const onError = (error: any) => {
-                observador.error(error);
-            };
-
-            unsubscribe = this.firebaseContextSvc.run(() => onValue(dbRef, onNext, onError));
-
-            return () => {
-                unsubscribe();
-            };
+        return cacheRtdbOApi({
+            escuchar: escucharRtdb(this.db, this.firebaseContextSvc, `Especiales/${id}`),
+            desdeCache: (snapshot) => normalizeEspecial(snapshot.val()),
+            pedir: () => this.http.get(`${environment.apiUrl}clases/habilidades/${id}`),
+            desdeApi: (raw) => normalizeEspecial(raw),
+            avisos: {
+                noEncontrado: { titulo: "Especial no encontrado", texto: `No existe el especial con id ${id}` },
+                error: "Error al obtener el especial",
+            },
         });
     }
 
     getEspecialFresco(id: number): Observable<EspecialClaseDetalle> {
-        return this.http.get(`${environment.apiUrl}clases/habilidades/${Math.trunc(toNumber(id))}`)
+        return this.http.get(`${environment.apiUrl}clases/habilidades/${toInt(id)}`)
             .pipe(map((raw: any) => normalizeEspecial(raw)));
     }
 
     getEspeciales(): Observable<EspecialClaseDetalle[]> {
-        return new Observable((observador) => {
-            const dbRef = ref(this.db, "Especiales");
-            let unsubscribe: Unsubscribe;
-
-            const onNext = (snapshot: any) => {
-                if (snapshot.exists()) {
-                    const especiales: EspecialClaseDetalle[] = [];
-                    snapshot.forEach((obj: any) => {
-                        especiales.push(normalizeEspecial(obj.val()));
-                    });
-                    observador.next(especiales);
-                    return;
-                }
-
-                this.http.get(`${environment.apiUrl}clases/habilidades`).subscribe({
-                    next: (raw: any) => {
-                        const especiales = toArray(raw).map(normalizeEspecial);
-                        observador.next(especiales);
-                    },
-                    error: (error: any) => observador.error(error),
+        return cacheRtdbOApi({
+            escuchar: escucharRtdb(this.db, this.firebaseContextSvc, "Especiales"),
+            desdeCache: (snapshot) => {
+                const especiales: EspecialClaseDetalle[] = [];
+                snapshot.forEach((obj: any) => {
+                    especiales.push(normalizeEspecial(obj.val()));
                 });
-            };
-
-            const onError = (error: any) => {
-                observador.error(error);
-            };
-
-            unsubscribe = this.firebaseContextSvc.run(() => onValue(dbRef, onNext, onError));
-
-            return () => {
-                unsubscribe();
-            };
+                return especiales;
+            },
+            pedir: () => this.http.get(`${environment.apiUrl}clases/habilidades`),
+            desdeApi: (raw) => toArray(raw).map(normalizeEspecial),
         });
     }
 
@@ -216,7 +159,7 @@ export class EspecialService {
     public async actualizarEspecial(idEspecial: number, payload: EspecialClaseMutationRequest): Promise<EspecialClaseMutationResponse> {
         try {
             const headers = await cabeceraApiConFirebase(this.auth);
-            const id = Math.trunc(toNumber(idEspecial));
+            const id = toInt(idEspecial);
             const response = await firstValueFrom(
                 this.http.put<EspecialClaseMutationApiResponse>(`${environment.apiUrl}clases/habilidades/${id}`, payload, { headers })
             );
@@ -272,7 +215,7 @@ export class EspecialService {
         payload: EspecialClaseMutationRequest,
         fallbackMessage: string,
     ): EspecialClaseMutationResponse {
-        const idEspecial = Math.trunc(toNumber(response?.idEspecial ?? response?.id_especial ?? response?.especial?.Id));
+        const idEspecial = toInt(response?.idEspecial ?? response?.id_especial ?? response?.especial?.Id);
         if (!Number.isFinite(idEspecial) || idEspecial <= 0)
             throw new Error("La API no devolvió un idEspecial válido");
 

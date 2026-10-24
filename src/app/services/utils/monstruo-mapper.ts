@@ -1,7 +1,6 @@
 import { Alineamiento } from "src/app/interfaces/alineamiento";
 import { Conjuro } from "src/app/interfaces/conjuro";
 import { DoteContextual } from "src/app/interfaces/dote-contextual";
-import { DoteManual } from "src/app/interfaces/dote";
 import { IdiomaDetalle } from "src/app/interfaces/idioma";
 import {
     CompaneroMonstruoDetalle,
@@ -31,41 +30,15 @@ import { normalizeEspecial } from "../especial.service";
 import { normalizeIdioma } from "../idioma.service";
 import { toDoteContextualArray } from "./dote-mapper";
 import { normalizeRacial } from "./racial-mapper";
-import { toArray, toNumber, toText } from 'src/app/services/utils/normalizacion';
-
-function toBoolean(value: any): boolean {
-    if (typeof value === "boolean")
-        return value;
-    if (typeof value === "number")
-        return value > 0;
-    if (typeof value === "string") {
-        const normalized = value.trim().toLowerCase();
-        return normalized === "1" || normalized === "true" || normalized === "si" || normalized === "sí";
-    }
-    return false;
-}
+import { toArray, toBoolean, toNumber, toText } from 'src/app/services/utils/normalizacion';
+import { normalizeConjuroLegacy } from './conjuro-mapper';
+import { normalizeManualLegacy } from './manual-mapper';
 
 function normalizeDepth(depth: number): number {
     const parsed = Number(depth);
     if (!Number.isFinite(parsed))
         return 0;
     return Math.max(0, Math.trunc(parsed));
-}
-
-function normalizeManual(raw: any): DoteManual {
-    if (typeof raw === "string") {
-        return {
-            Id: 0,
-            Nombre: raw,
-            Pagina: 0,
-        };
-    }
-
-    return {
-        Id: toNumber(raw?.Id),
-        Nombre: toText(raw?.Nombre),
-        Pagina: toNumber(raw?.Pagina),
-    };
 }
 
 function normalizeTamano(raw: any): Tamano {
@@ -188,64 +161,9 @@ function normalizeCaracteristicas(raw: any): MonstruoCaracteristicas {
     };
 }
 
-function normalizeConjuro(raw: any): Conjuro {
-    return {
-        Id: toNumber(raw?.Id),
-        Nombre: toText(raw?.Nombre),
-        Descripcion: toText(raw?.Descripcion),
-        Tiempo_lanzamiento: toText(raw?.Tiempo_lanzamiento),
-        Alcance: toText(raw?.Alcance),
-        Escuela: raw?.Escuela ?? {},
-        Disciplina: raw?.Disciplina ?? {},
-        Manual: toText(raw?.Manual),
-        Objetivo: toText(raw?.Objetivo),
-        Efecto: toText(raw?.Efecto),
-        Area: toText(raw?.Area),
-        Arcano: toBoolean(raw?.Arcano),
-        Divino: toBoolean(raw?.Divino),
-        Psionico: toBoolean(raw?.Psionico),
-        Alma: toBoolean(raw?.Alma ?? raw?.alma),
-        Duracion: toText(raw?.Duracion),
-        Tipo_salvacion: toText(raw?.Tipo_salvacion),
-        Resistencia_conjuros: toBoolean(raw?.Resistencia_conjuros),
-        Resistencia_poderes: toBoolean(raw?.Resistencia_poderes),
-        Descripcion_componentes: toText(raw?.Descripcion_componentes),
-        Permanente: toBoolean(raw?.Permanente),
-        Puntos_poder: toNumber(raw?.Puntos_poder),
-        Descripcion_aumentos: toText(raw?.Descripcion_aumentos),
-        Descriptores: toArray(raw?.Descriptores).map((item) => ({
-            Id: toNumber(item?.Id),
-            Nombre: toText(item?.Nombre),
-        })),
-        Nivel_clase: toArray(raw?.Nivel_clase ?? raw?.Niveles_clase).map((item) => ({
-            Id_clase: toNumber(item?.Id_clase),
-            Clase: toText(item?.Clase),
-            Nivel: toNumber(item?.Nivel),
-            Espontaneo: toBoolean(item?.Espontaneo),
-        })),
-        Nivel_dominio: toArray(raw?.Nivel_dominio ?? raw?.Niveles_dominio).map((item) => ({
-            Id_dominio: toNumber(item?.Id_dominio),
-            Dominio: toText(item?.Dominio),
-            Nivel: toNumber(item?.Nivel),
-            Espontaneo: toBoolean(item?.Espontaneo),
-        })),
-        Nivel_disciplinas: toArray(raw?.Nivel_disciplinas ?? raw?.Niveles_disciplina).map((item) => ({
-            Id_disciplina: toNumber(item?.Id_disciplina),
-            Disciplina: toText(item?.Disciplina),
-            Nivel: toNumber(item?.Nivel),
-            Espontaneo: toBoolean(item?.Espontaneo),
-        })),
-        Componentes: toArray(raw?.Componentes).map((item) => ({
-            Id_componente: toNumber(item?.Id_componente),
-            Componente: toText(item?.Componente),
-        })),
-        Oficial: toBoolean(raw?.Oficial),
-    };
-}
-
 function normalizeSortilega(raw: any): MonstruoSortilega {
     return {
-        Conjuro: normalizeConjuro(raw?.Conjuro),
+        Conjuro: normalizeConjuroLegacy(raw?.Conjuro),
         Nivel_lanzador: toNumber(raw?.Nivel_lanzador),
         Usos_diarios: toText(raw?.Usos_diarios),
     };
@@ -349,7 +267,7 @@ function normalizeMonstruoBase(raw: any, depth: number): MonstruoDetalle {
         Id: toNumber(raw?.Id),
         Nombre: toText(raw?.Nombre),
         Descripcion: toText(raw?.Descripcion),
-        Manual: normalizeManual(raw?.Manual),
+        Manual: normalizeManualLegacy(raw?.Manual),
         Tipo: normalizeMonstruoTipo(raw?.Tipo),
         Tamano: normalizeTamano(raw?.Tamano),
         Dados_golpe: normalizeDadosGolpe(raw?.Dados_golpe),

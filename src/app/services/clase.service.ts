@@ -1,9 +1,8 @@
 import { HttpClient, HttpErrorResponse } from "@angular/common/http";
 import { Injectable } from "@angular/core";
 import { Auth } from "@angular/fire/auth";
-import { Database, Unsubscribe, onValue, ref } from "@angular/fire/database";
+import { Database } from "@angular/fire/database";
 import { Observable, Subject, firstValueFrom, map } from "rxjs";
-import Swal from "sweetalert2";
 import { environment } from "src/environments/environment";
 import { Alineamiento } from "../interfaces/alineamiento";
 import {
@@ -19,8 +18,10 @@ import {
     ClasePrerrequisitosFlags
 } from "../interfaces/clase";
 import { FirebaseInjectionContextService } from "./firebase-injection-context.service";
-import { obtenerTokenApi } from './platform-session.service';
-import { normalizarTexto, toArray, toNumber, toText } from 'src/app/services/utils/normalizacion';
+import { cabeceraApiConFirebase } from './platform-session.service';
+import { normalizarTexto, toArray, toBoolean, toInt, toNumber, toText } from 'src/app/services/utils/normalizacion';
+import { normalizeManualApi } from 'src/app/services/utils/manual-mapper';
+import { cacheRtdbOApi, escucharRtdb, listaRtdb } from './catalogo-api';
 
 const CLAVES_PRERREQUISITOS: (keyof ClasePrerrequisitos)[] = [
     "subtipo",
@@ -91,18 +92,6 @@ const ALIAS_PRERREQUISITOS: Record<keyof ClasePrerrequisitos, string[]> = {
     raza: ["raza"],
     no_raza: ["no_raza"],
 };
-
-function toBoolean(value: any): boolean {
-    if (typeof value === "boolean")
-        return value;
-    if (typeof value === "number")
-        return value > 0;
-    if (typeof value === "string") {
-        const normalized = value.trim().toLowerCase();
-        return normalized === "1" || normalized === "true" || normalized === "si" || normalized === "sí";
-    }
-    return false;
-}
 
 function hasVisiblePrerrequisitos(prerrequisitos: ClasePrerrequisitos): boolean {
     return CLAVES_PRERREQUISITOS.some((key) => {
@@ -268,11 +257,7 @@ export function normalizeClase(raw: any): Clase {
         Id: toNumber(raw?.Id),
         Nombre: toText(raw?.Nombre),
         Descripcion: toText(raw?.Descripcion),
-        Manual: {
-            Id: toNumber(raw?.Manual?.Id),
-            Nombre: toText(raw?.Manual?.Nombre),
-            Pagina: toNumber(raw?.Manual?.Pagina),
-        },
+        Manual: normalizeManualApi(raw?.Manual),
         Tipo_dado: {
             Id: toNumber(raw?.Tipo_dado?.Id),
             Nombre: toText(raw?.Tipo_dado?.Nombre),
@@ -340,79 +325,23 @@ export class ClaseService {
     ) { }
 
     getClase(id: number): Observable<Clase> {
-        return new Observable((observador) => {
-            let unsubscribe: Unsubscribe;
-
-            const onNext = (snapshot: any) => {
-                if (snapshot.exists()) {
-                    observador.next(normalizeClase(snapshot.val()));
-                    return;
-                }
-
-                this.http.get(`${environment.apiUrl}clases/${id}`).subscribe({
-                    next: (raw: any) => observador.next(normalizeClase(raw)),
-                    error: (error: HttpErrorResponse) => {
-                        if (error.status === 404) {
-                            Swal.fire({
-                                icon: "warning",
-                                title: "Clase no encontrada",
-                                text: `No existe la clase con id ${id}`,
-                                showConfirmButton: true,
-                            });
-                        } else {
-                            Swal.fire({
-                                icon: "warning",
-                                title: "Error al obtener la clase",
-                                text: error.message,
-                                showConfirmButton: true,
-                            });
-                        }
-                        observador.error(error);
-                    }
-                });
-            };
-
-            const onError = (error: any) => {
-                observador.error(error);
-            };
-
-            unsubscribe = this.firebaseContextSvc.run(() => {
-                const dbRef = ref(this.db, `Clases/${id}`);
-                return onValue(dbRef, onNext, onError);
-            });
-
-            return () => {
-                unsubscribe();
-            };
+        return cacheRtdbOApi({
+            escuchar: escucharRtdb(this.db, this.firebaseContextSvc, `Clases/${id}`),
+            desdeCache: (snapshot) => normalizeClase(snapshot.val()),
+            pedir: () => this.http.get(`${environment.apiUrl}clases/${id}`),
+            desdeApi: (raw) => normalizeClase(raw),
+            avisos: {
+                noEncontrado: { titulo: "Clase no encontrada", texto: `No existe la clase con id ${id}` },
+                error: "Error al obtener la clase",
+            },
         });
     }
 
     getClases(): Observable<Clase[]> {
-        return new Observable((observador) => {
-            let unsubscribe: Unsubscribe;
-
-            const onNext = (snapshot: any) => {
-                const clases: Clase[] = [];
-                snapshot.forEach((obj: any) => {
-                    clases.push(normalizeClase(obj.val()));
-                });
-                clases.sort((a, b) => a.Nombre.localeCompare(b.Nombre, "es", { sensitivity: "base" }));
-                observador.next(clases);
-            };
-
-            const onError = (error: any) => {
-                observador.error(error);
-            };
-
-            unsubscribe = this.firebaseContextSvc.run(() => {
-                const dbRef = ref(this.db, "Clases");
-                return onValue(dbRef, onNext, onError);
-            });
-
-            return () => {
-                unsubscribe();
-            };
-        });
+        return listaRtdb(
+            escucharRtdb(this.db, this.firebaseContextSvc, "Clases"),
+            (valor) => normalizeClase(valor),
+        );
     }
 
     buscarPorNombre(nombre: string): Observable<Clase | null> {
@@ -439,7 +368,7 @@ export class ClaseService {
     }
 
     getClaseFresca(id: number): Observable<Clase> {
-        return this.http.get(`${environment.apiUrl}clases/${Math.trunc(toNumber(id))}`)
+        return this.http.get(`${environment.apiUrl}clases/${toInt(id)}`)
             .pipe(map((raw: any) => normalizeClase(raw)));
     }
 
@@ -460,7 +389,7 @@ export class ClaseService {
     public async actualizarClase(idClase: number, payload: ClaseMutationRequest): Promise<ClaseMutationResponse> {
         try {
             const headers = await this.buildAuthHeaders();
-            const id = Math.trunc(toNumber(idClase));
+            const id = toInt(idClase);
             const response = await firstValueFrom(
                 this.http.put<ClaseMutationApiResponse>(`${environment.apiUrl}clases/${id}`, this.sanitizeMutationPayload(payload), { headers })
             );
@@ -478,7 +407,7 @@ export class ClaseService {
     ): Promise<ClaseMutationResponse> {
         try {
             const headers = await this.buildAuthHeaders();
-            const id = Math.trunc(toNumber(idClase));
+            const id = toInt(idClase);
             const response = await firstValueFrom(
                 this.http.patch<ClaseMutationApiResponse>(`${environment.apiUrl}clases/${id}/prerrequisitos`, this.sanitizeMutationPayload(payload), { headers })
             );
@@ -490,11 +419,8 @@ export class ClaseService {
         }
     }
 
-    private async buildAuthHeaders(): Promise<Record<string, string>> {
-        const token = (this.auth.currentUser ? await obtenerTokenApi() : undefined);
-        if (!token)
-            throw new Error("Debes iniciar sesión para gestionar clases");
-        return { Authorization: `Bearer ${token}` };
+    private buildAuthHeaders(): Promise<Record<string, string>> {
+        return cabeceraApiConFirebase(this.auth, () => new Error("Debes iniciar sesión para gestionar clases"));
     }
 
     private sanitizeMutationPayload<T>(payload: T): T {
@@ -511,7 +437,7 @@ export class ClaseService {
         fallbackMessage: string,
         fallbackId: number = 0,
     ): ClaseMutationResponse {
-        const idClase = Math.trunc(toNumber(response?.idClase ?? response?.id_clase ?? response?.clase?.Id ?? payload?.Id ?? fallbackId));
+        const idClase = toInt(response?.idClase ?? response?.id_clase ?? response?.clase?.Id ?? payload?.Id ?? fallbackId);
         if (!Number.isFinite(idClase) || idClase <= 0)
             throw new Error("La API no devolvió un idClase válido");
         const clase = normalizeClase(response?.clase ?? { ...payload, Id: idClase });

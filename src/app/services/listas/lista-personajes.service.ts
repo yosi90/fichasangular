@@ -9,7 +9,7 @@ import { RazaSimple } from 'src/app/interfaces/simplificaciones/raza-simple';
 import { esperarSesionFirebase, FirebaseInjectionContextService } from '../firebase-injection-context.service';
 import { PrivateUserFirestoreService } from '../private-user-firestore.service';
 import { cabeceraApiConFirebase } from '../platform-session.service';
-import { toNumber } from 'src/app/services/utils/normalizacion';
+import { normalizarTexto, toBoolean, toInt, toNumber } from 'src/app/services/utils/normalizacion';
 
 @Injectable({
     providedIn: 'root'
@@ -116,13 +116,13 @@ export class ListaPersonajesService {
     }
 
     public actualizarVisibilidadEnCache(idPersonaje: number, visible: boolean): void {
-        const id = Math.trunc(toNumber(idPersonaje));
+        const id = toInt(idPersonaje);
         if (id <= 0 || !this.personajesLoaded)
             return;
 
         this.personajesSubject.next(
             this.personajesSubject.value.map((personaje) => {
-                if (Math.trunc(toNumber(personaje?.Id)) !== id)
+                if (toInt(personaje?.Id) !== id)
                     return personaje;
 
                 return {
@@ -134,13 +134,13 @@ export class ListaPersonajesService {
     }
 
     public actualizarArchivadoEnCache(idPersonaje: number, archivado: boolean): void {
-        const id = Math.trunc(toNumber(idPersonaje));
+        const id = toInt(idPersonaje);
         if (id <= 0 || !this.personajesLoaded)
             return;
 
         this.personajesSubject.next(
             this.personajesSubject.value.map((personaje) => {
-                if (Math.trunc(toNumber(personaje?.Id)) !== id)
+                if (toInt(personaje?.Id) !== id)
                     return personaje;
 
                 return {
@@ -153,7 +153,7 @@ export class ListaPersonajesService {
 
     public upsertPersonajeCreadoEnCache(personajeRaw: any): void {
         const personaje = this.mapApiToPersonajeSimple(personajeRaw);
-        const id = Math.trunc(toNumber(personaje?.Id));
+        const id = toInt(personaje?.Id);
         if (id <= 0)
             return;
 
@@ -162,7 +162,7 @@ export class ListaPersonajesService {
     }
 
     private mapApiToPersonajeSimple(element: any): PersonajeSimple {
-        const idRegion = Math.max(0, Math.trunc(toNumber(
+        const idRegion = Math.max(0, toInt(
             element?.id_region
             ?? element?.idRegion
             ?? element?.Id_region
@@ -170,7 +170,7 @@ export class ListaPersonajesService {
             ?? element?.Region?.id
             ?? element?.region?.Id
             ?? element?.region?.id
-        )));
+        ));
         const nombreRegion = `${element?.Region?.Nombre
             ?? element?.Region?.nombre
             ?? element?.region?.Nombre
@@ -216,7 +216,7 @@ export class ListaPersonajesService {
         );
 
         return {
-            Id: Math.trunc(toNumber(element?.i ?? element?.Id ?? element?.Id_personaje)),
+            Id: toInt(element?.i ?? element?.Id ?? element?.Id_personaje),
             Nombre: `${element?.n ?? element?.Nombre ?? ''}`.trim(),
             ownerUid: extractOwnerUid(element),
             ownerDisplayName: extractOwnerDisplayName(element),
@@ -356,13 +356,13 @@ export class ListaPersonajesService {
         const merged = new Map<number, PersonajeSimple>();
 
         for (const personaje of publicPersonajes ?? []) {
-            const id = Math.trunc(toNumber(personaje?.Id));
+            const id = toInt(personaje?.Id);
             if (id > 0)
                 merged.set(id, personaje);
         }
 
         for (const personaje of actorScopedPersonajes ?? []) {
-            const id = Math.trunc(toNumber(personaje?.Id));
+            const id = toInt(personaje?.Id);
             if (id > 0)
                 merged.set(id, personaje);
         }
@@ -419,11 +419,7 @@ export class ListaPersonajesService {
     }
 
     private normalizarCampana(value: any): string {
-        return this.resolveContextLabel(value, 'Sin campaña')
-            .trim()
-            .normalize('NFD')
-            .replace(/[\u0300-\u036f]/g, '')
-            .toLowerCase();
+        return normalizarTexto(this.resolveContextLabel(value, 'Sin campaña'));
     }
 
     private resolveContextLabel(value: any, fallback: string): string {
@@ -448,20 +444,8 @@ export class ListaPersonajesService {
     }
 }
 
-function toBoolean(value: any): boolean {
-    if (typeof value === 'boolean')
-        return value;
-    if (typeof value === 'number')
-        return value === 1;
-    if (typeof value === 'string') {
-        const normalizado = value.trim().toLowerCase();
-        return normalizado === '1' || normalizado === 'true' || normalizado === 'si' || normalizado === 'sí';
-    }
-    return false;
-}
-
 function toNullablePositiveInt(value: any): number | null {
-    const parsed = Math.trunc(toNumber(value));
+    const parsed = toInt(value);
     return parsed > 0 ? parsed : null;
 }
 

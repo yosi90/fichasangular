@@ -7,7 +7,7 @@ import { ArmaduraDetalle } from 'src/app/interfaces/armadura';
 import { ArmaduraService } from 'src/app/services/armadura.service';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
 import { ordenarEnEspanol } from 'src/app/services/utils/orden-tabla';
-import { normalizarTexto } from 'src/app/services/utils/normalizacion';
+import { normalizarTexto, toBoolean } from 'src/app/services/utils/normalizacion';
 
 @Component({
     selector: 'app-listado-armaduras',
@@ -99,8 +99,8 @@ export class ListadoArmadurasComponent implements OnDestroy {
                 || normalizarTexto(armadura?.Manual?.Nombre) === normalizarTexto(this.defaultManual);
             const visiblePorTipo = this.defaultTipoArmadura === 'Cualquiera'
                 || normalizarTexto(armadura?.Tipo_armadura?.Nombre) === tipoArmadura;
-            const visiblePorEscudo = !this.soloEscudos || this.toBoolean(armadura?.Es_escudo);
-            const visiblePorHomebrew = this.mostrarHomebrew || this.toBoolean(armadura?.Oficial, true);
+            const visiblePorEscudo = !this.soloEscudos || toBoolean(armadura?.Es_escudo);
+            const visiblePorHomebrew = this.mostrarHomebrew || toBoolean(armadura?.Oficial, true);
             return visiblePorTexto && visiblePorManual && visiblePorTipo && visiblePorEscudo && visiblePorHomebrew;
         });
 
@@ -164,18 +164,4 @@ export class ListadoArmadurasComponent implements OnDestroy {
         )).sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' }));
     }
 
-    private toBoolean(value: any, fallback: boolean = false): boolean {
-        if (typeof value === 'boolean')
-            return value;
-        if (typeof value === 'number')
-            return value !== 0;
-        if (typeof value === 'string') {
-            const normalizado = value.trim().toLowerCase();
-            if (['true', '1', 'si', 'sí', 'yes'].includes(normalizado))
-                return true;
-            if (['false', '0', 'no'].includes(normalizado))
-                return false;
-        }
-        return fallback;
-    }
 }

@@ -1,10 +1,7 @@
-import { Dote, DoteExtraItem, DoteManual, DoteTipo } from "src/app/interfaces/dote";
+import { Dote, DoteExtraItem, DoteTipo } from "src/app/interfaces/dote";
 import { DoteContexto, DoteContextual, DoteLegacy } from "src/app/interfaces/dote-contextual";
-import { toNumber, toText } from 'src/app/services/utils/normalizacion';
-
-function toBoolean(value: any): boolean {
-    return value === true || value === 1 || value === "1";
-}
+import { toBoolean, toNumber, toText } from 'src/app/services/utils/normalizacion';
+import { normalizeManualApi, normalizeManualLegacy } from './manual-mapper';
 
 function asArray(raw: any): any[] {
     if (Array.isArray(raw))
@@ -56,30 +53,6 @@ function normalizeTiposLegacy(raw: any): DoteTipo[] {
             Usado: toNumber(item?.Usado, 0),
         }))
         .filter(item => item.Id > 0 || item.Nombre.trim().length > 0);
-}
-
-function normalizeManualApi(raw: any): DoteManual {
-    return {
-        Id: toNumber(raw?.Id, 0),
-        Nombre: toText(raw?.Nombre, ""),
-        Pagina: toNumber(raw?.Pagina, 0),
-    };
-}
-
-function normalizeManualLegacy(raw: any): DoteManual {
-    if (typeof raw === "string") {
-        return {
-            Id: 0,
-            Nombre: raw,
-            Pagina: 0,
-        };
-    }
-
-    return {
-        Id: toNumber(raw?.Id, 0),
-        Nombre: toText(raw?.Nombre, ""),
-        Pagina: toNumber(raw?.Pagina, 0),
-    };
 }
 
 function normalizeModificadores(raw: any): { [key: string]: number } {

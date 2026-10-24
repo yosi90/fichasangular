@@ -37,7 +37,7 @@ import {
     findCatalogName,
     syncPrerequisiteRows,
 } from '../prerrequisito-editor/prerrequisito-editor.registry';
-import { normalizarTexto } from 'src/app/services/utils/normalizacion';
+import { normalizarTexto, toBoolean } from 'src/app/services/utils/normalizacion';
 
 type RacialPrerequisiteType = Extract<PrerequisiteType, 'raza' | 'caracteristica'>;
 const RAZA_EN_CREACION_PREREQ_ID = 2147483647;
@@ -993,7 +993,7 @@ export class NuevaRacialComponent implements OnInit, OnDestroy, OnChanges {
             id_habilidad: this.entero(this.pick(item, 'Id_habilidad', 'id_habilidad', 'id_h', 'ih', 'Id', 'id')),
             rangos: this.entero(this.pick(item, 'Rangos', 'rangos', 'Cantidad', 'cantidad', 'r')),
             id_extra: this.entero(this.pick(item, 'Id_extra', 'id_extra', 'i_ex', 'ie')),
-            se_considera_clasea: this.toBoolean(this.pick(item, 'Se_considera_clasea', 'se_considera_clasea', 'Clasea', 'clasea', 'sc')),
+            se_considera_clasea: toBoolean(this.pick(item, 'Se_considera_clasea', 'se_considera_clasea', 'Clasea', 'clasea', 'sc')),
             condicion: this.texto(this.pick(item, 'Condicion', 'condicion', 'c'), 'No especifica'),
             busqueda: this.texto(this.pick(item, 'Habilidad', 'habilidad', 'Nombre', 'nombre', 'n')),
             extraBusqueda: this.texto(this.pick(item, 'Extra', 'extra', 'x')),
@@ -1007,7 +1007,7 @@ export class NuevaRacialComponent implements OnInit, OnDestroy, OnChanges {
             id_habilidad: this.entero(this.pick(item, 'Id_habilidad', 'id_habilidad', 'id_h', 'ih', 'Id', 'id')),
             rangos: this.entero(this.pick(item, 'Rangos', 'rangos', 'Cantidad', 'cantidad', 'r')),
             id_extra: this.entero(this.pick(item, 'Id_extra', 'id_extra', 'i_ex', 'ie')),
-            se_considera_clasea: this.toBoolean(this.pick(item, 'Se_considera_clasea', 'se_considera_clasea', 'Clasea', 'clasea', 'sc')),
+            se_considera_clasea: toBoolean(this.pick(item, 'Se_considera_clasea', 'se_considera_clasea', 'Clasea', 'clasea', 'sc')),
             busqueda: this.texto(this.pick(item, 'Habilidad', 'habilidad', 'Nombre', 'nombre', 'n')),
             extraBusqueda: this.texto(this.pick(item, 'Extra', 'extra', 'x')),
         }));
@@ -1210,15 +1210,4 @@ export class NuevaRacialComponent implements OnInit, OnDestroy, OnChanges {
         return Number.isFinite(parsed) ? Math.trunc(parsed) : fallback;
     }
 
-    private toBoolean(value: unknown): boolean {
-        if (typeof value === 'boolean')
-            return value;
-        if (typeof value === 'number')
-            return value !== 0;
-        if (typeof value === 'string') {
-            const normalizado = value.trim().toLowerCase();
-            return ['1', 'true', 'si', 'sí', 'yes'].includes(normalizado);
-        }
-        return false;
-    }
 }

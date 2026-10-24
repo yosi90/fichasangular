@@ -1,4 +1,5 @@
 import { InformacionBasicosModalSection } from 'src/app/components/nuevo-personaje/informacion-basicos-modal/informacion-basicos-modal.component';
+import { normalizarTexto } from 'src/app/services/utils/normalizacion';
 
 export interface ManiobrabilidadLike {
     Id?: number;
@@ -49,7 +50,7 @@ export function buildManiobrabilidadInfoSecciones(
 }
 
 export function tieneManiobrabilidadVisible(maniobrabilidad: ManiobrabilidadLike | null | undefined): boolean {
-    const nombre = normalizarTexto(maniobrabilidad?.Nombre);
+    const nombre = normalizarTexto(maniobrabilidad?.Nombre, true);
     if (!nombre)
         return false;
     const limpio = nombre.replace(/[.]/g, '');
@@ -69,7 +70,7 @@ function formatearBooleanoCatalogo(value: any): string {
     const numero = Number(value);
     if (Number.isFinite(numero))
         return numero > 0 ? 'Si' : 'No';
-    const normalizado = normalizarTexto(value);
+    const normalizado = normalizarTexto(value, true);
     if (['si', 'true', '1'].includes(normalizado))
         return 'Si';
     if (['no', 'false', '0'].includes(normalizado))
@@ -85,13 +86,4 @@ function valorCatalogoTexto(item: any, key: string): string {
 
 function texto(value: any): string {
     return `${value ?? ''}`.trim();
-}
-
-function normalizarTexto(value: any): string {
-    return `${value ?? ''}`
-        .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g, '')
-        .trim()
-        .toLowerCase()
-        .replace(/\s+/g, ' ');
 }

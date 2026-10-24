@@ -1,6 +1,7 @@
 import { Component, Input } from '@angular/core';
 import { ArmaduraDetalle } from 'src/app/interfaces/armadura';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
+import { tieneTextoVisible } from 'src/app/services/utils/texto-visible';
 
 @Component({
     selector: 'app-detalles-armadura',
@@ -35,19 +36,7 @@ export class DetallesArmaduraComponent {
         return `+${valor}`;
     }
 
-    tieneTextoVisible(texto: string | null | undefined): boolean {
-        const normalizado = `${texto ?? ''}`.trim();
-        if (normalizado.length < 1)
-            return false;
-        const base = normalizado
-            .normalize('NFD')
-            .replace(/[\u0300-\u036f]/g, '')
-            .toLowerCase();
-        return base !== 'no aplica'
-            && base !== 'no especifica'
-            && base !== 'no se especifica'
-            && base !== '-';
-    }
+    readonly tieneTextoVisible = tieneTextoVisible;
 
     tieneNumeroVisible(valor: unknown): boolean {
         const numero = Number(valor);

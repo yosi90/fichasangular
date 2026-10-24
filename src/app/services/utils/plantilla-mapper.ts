@@ -9,38 +9,11 @@ import {
 import { SubtipoRef } from "src/app/interfaces/subtipo";
 import { toDoteContextualArray } from "./dote-mapper";
 import { normalizeSubtipoRefArray } from "./subtipo-mapper";
-import { normalizarTexto, toArray, toNumber, toText } from 'src/app/services/utils/normalizacion';
-
-function toBoolean(value: any): boolean {
-    if (typeof value === "boolean")
-        return value;
-    if (typeof value === "number")
-        return value === 1;
-    if (typeof value === "string") {
-        const normalized = value.trim().toLowerCase();
-        return normalized === "1" || normalized === "true";
-    }
-    return false;
-}
+import { normalizarTexto, toArray, toBoolean, toNumber, toText } from 'src/app/services/utils/normalizacion';
+import { normalizeManualLegacy } from './manual-mapper';
 
 function toStrictArray<T = any>(raw: any): T[] {
     return Array.isArray(raw) ? raw : [];
-}
-
-function normalizeManual(raw: any): { Id: number; Nombre: string; Pagina: number } {
-    if (typeof raw === "string") {
-        return {
-            Id: 0,
-            Nombre: raw,
-            Pagina: 0,
-        };
-    }
-
-    return {
-        Id: toNumber(raw?.Id),
-        Nombre: toText(raw?.Nombre),
-        Pagina: toNumber(raw?.Pagina),
-    };
 }
 
 function normalizeCaracteristicas(raw: any): PlantillaCaracteristicas {
@@ -129,7 +102,7 @@ function construirPlantilla(raw: any, partes: Pick<Plantilla, 'Dotes' | 'Subtipo
         Id: toNumber(raw?.Id),
         Nombre: toText(raw?.Nombre),
         Descripcion: toText(raw?.Descripcion),
-        Manual: normalizeManual(raw?.Manual),
+        Manual: normalizeManualLegacy(raw?.Manual),
         Tamano: {
             Id: toNumber(raw?.Tamano?.Id),
             Nombre: toText(raw?.Tamano?.Nombre),

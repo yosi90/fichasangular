@@ -4,7 +4,8 @@ import { PDFDocument } from 'pdf-lib';
 import { saveAs } from 'file-saver';
 import { Personaje, PersonajeNivelLanzadorResumen, PersonajeTipoLanzamiento } from '../interfaces/personaje';
 import { CompaneroMonstruoDetalle, FamiliarMonstruoDetalle, MonstruoDetalle } from '../interfaces/monstruo';
-import { toArray, toNumber } from 'src/app/services/utils/normalizacion';
+import { normalizarTexto, toArray, toBoolean, toInt, toNumber } from 'src/app/services/utils/normalizacion';
+import { experienciaParaNivel } from './utils/experiencia-nivel';
 
 
 @Injectable({
@@ -200,9 +201,9 @@ export class FichaPersonajeService {
             racialesCont++;
         });
 
-        const experiencia = Math.max(0, Math.trunc(toNumber(pj?.Experiencia)));
+        const experiencia = Math.max(0, toInt(pj?.Experiencia));
         const ajusteNivel = this.getAjusteNivelParaFicha(pj);
-        const nep = Math.max(0, Math.trunc(toNumber(pj?.NEP)));
+        const nep = Math.max(0, toInt(pj?.NEP));
         this.trySetText(form, 'experiencia', `${experiencia}`);
         this.trySetText(form, 'exp_sig_nivel', `${this.calcularExpSiguienteNivel(pj, ajusteNivel)}`);
         this.trySetText(form, 'ajuste_nivel', `${ajusteNivel}`);
@@ -444,7 +445,7 @@ export class FichaPersonajeService {
                 return;
 
             const index = id - 1;
-            if ((habilidad as any)?.Clasea === true || (habilidad as any)?.Clasea === 1)
+            if (toBoolean((habilidad as any)?.Clasea))
                 this.tryCheck(form, `clasea${index}`, true);
             this.trySetText(form, `rangos${index}`, `${toNumber(habilidad?.Rangos)}`);
 
@@ -663,7 +664,7 @@ export class FichaPersonajeService {
 
     private formatearNotasNivelesLanzador(pj: Personaje): string {
         const niveles = (pj?.Niveles_lanzador ?? [])
-            .filter((nivel) => Math.trunc(toNumber(nivel?.nivelLanzador)) > 0)
+            .filter((nivel) => toInt(nivel?.nivelLanzador) > 0)
             .sort((a, b) => `${a?.nombreClase ?? ''}`.localeCompare(`${b?.nombreClase ?? ''}`, 'es', { sensitivity: 'base' }));
         if (niveles.length < 1)
             return '';
@@ -675,9 +676,9 @@ export class FichaPersonajeService {
     private formatearLineaNivelLanzador(nivel: PersonajeNivelLanzadorResumen): string {
         const tipo = this.formatearTipoLanzamiento(nivel?.tipoLanzamiento);
         const tipoLabel = tipo.length > 0 ? ` (${tipo})` : '';
-        const nivelLanzador = Math.max(0, Math.trunc(toNumber(nivel?.nivelLanzador)));
-        const base = Math.max(0, Math.trunc(toNumber(nivel?.nivelLanzadorBase)));
-        const bonus = Math.max(0, Math.trunc(toNumber(nivel?.bonusNivelLanzador)));
+        const nivelLanzador = Math.max(0, toInt(nivel?.nivelLanzador));
+        const base = Math.max(0, toInt(nivel?.nivelLanzadorBase));
+        const bonus = Math.max(0, toInt(nivel?.bonusNivelLanzador));
         const desglose = bonus > 0 ? `, base ${base} + ${bonus}` : '';
         return ` - ${nivel?.nombreClase ?? 'Clase'}${tipoLabel}: ${nivelLanzador}${desglose}`;
     }
@@ -722,8 +723,8 @@ export class FichaPersonajeService {
     }
 
     private esEspecialidadValida(nombre: string, calificativo: string): boolean {
-        const nombreNorm = this.normalizarTexto(nombre);
-        const calificativoNorm = this.normalizarTexto(calificativo);
+        const nombreNorm = normalizarTexto(nombre, true);
+        const calificativoNorm = normalizarTexto(calificativo, true);
         if (nombreNorm.length < 1 || calificativoNorm.length < 1)
             return false;
         const placeholders = new Set([
@@ -752,7 +753,7 @@ export class FichaPersonajeService {
             if (nombre.length < 1)
                 return;
             const origen = `${entrada?.Origen ?? entrada?.origen ?? ''}`.trim();
-            const clave = `${this.normalizarTexto(nombre)}|${this.normalizarTexto(origen)}`;
+            const clave = `${normalizarTexto(nombre, true)}|${normalizarTexto(origen, true)}`;
             if (vistos.has(clave))
                 return;
             vistos.add(clave);
@@ -770,29 +771,17 @@ export class FichaPersonajeService {
 
     private calcularExpSiguienteNivel(pj: Personaje, ajusteNivel: number): number {
         let nivelClases = (pj?.desgloseClases ?? [])
-            .reduce((acum, clase) => acum + Math.max(0, Math.trunc(toNumber(clase?.Nivel))), 0);
+            .reduce((acum, clase) => acum + Math.max(0, toInt(clase?.Nivel)), 0);
         if (nivelClases <= 0) {
             const clasesTexto = `${pj?.Clases ?? ''}`;
             const coincidencias = (clasesTexto.match(/\((\d+)\)/g) ?? []) as string[];
             nivelClases = coincidencias.reduce((acum: number, bloque: string) => {
                 const limpio = bloque.replace(/[()]/g, '');
-                return acum + Math.max(0, Math.trunc(toNumber(limpio)));
+                return acum + Math.max(0, toInt(limpio));
             }, 0);
         }
-        const nivelObjetivo = Math.max(0, nivelClases + Math.max(0, Math.trunc(toNumber(ajusteNivel))));
-        let acumulado = 0;
-        for (let i = 0; i <= nivelObjetivo; i++)
-            acumulado += i * 1000;
-        return acumulado;
-    }
-
-    private normalizarTexto(value: any): string {
-        return `${value ?? ''}`
-            .normalize('NFD')
-            .replace(/[\u0300-\u036f]/g, '')
-            .replace(/\s+/g, ' ')
-            .trim()
-            .toLowerCase();
+        const nivelObjetivo = Math.max(0, nivelClases + Math.max(0, toInt(ajusteNivel)));
+        return experienciaParaNivel(nivelObjetivo + 1);
     }
 
     private sumMods(mods: any): number {

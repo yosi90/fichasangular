@@ -1,35 +1,20 @@
-import { HttpClient, HttpErrorResponse } from "@angular/common/http";
+import { HttpClient } from "@angular/common/http";
 import { Injectable } from "@angular/core";
-import { Database, Unsubscribe, onValue, ref } from "@angular/fire/database";
+import { Database } from "@angular/fire/database";
 import { Observable } from "rxjs";
-import Swal from "sweetalert2";
 import { environment } from "src/environments/environment";
 import { ArmaDetalle } from "../interfaces/arma";
 import { FirebaseInjectionContextService } from "./firebase-injection-context.service";
-import { toArray, toNumber, toText } from 'src/app/services/utils/normalizacion';
-
-function toBoolean(value: any): boolean {
-    if (typeof value === "boolean")
-        return value;
-    if (typeof value === "number")
-        return value > 0;
-    if (typeof value === "string") {
-        const normalized = value.trim().toLowerCase();
-        return normalized === "1" || normalized === "true" || normalized === "si" || normalized === "sí";
-    }
-    return false;
-}
+import { toArray, toBoolean, toNumber, toText } from 'src/app/services/utils/normalizacion';
+import { normalizeManualApi } from 'src/app/services/utils/manual-mapper';
+import { cacheRtdbOApi, escucharRtdb, listaRtdb } from './catalogo-api';
 
 export function normalizeArma(raw: any): ArmaDetalle {
     return {
         Id: toNumber(raw?.Id),
         Nombre: toText(raw?.Nombre),
         Descripcion: toText(raw?.Descripcion),
-        Manual: {
-            Id: toNumber(raw?.Manual?.Id),
-            Nombre: toText(raw?.Manual?.Nombre),
-            Pagina: toNumber(raw?.Manual?.Pagina),
-        },
+        Manual: normalizeManualApi(raw?.Manual),
         Dano: toText(raw?.Dano),
         Tipo_dano: {
             Id: toNumber(raw?.Tipo_dano?.Id),
@@ -75,75 +60,24 @@ export class ArmaService {
     ) { }
 
     getArma(id: number): Observable<ArmaDetalle> {
-        return new Observable((observador) => {
-            let unsubscribe: Unsubscribe;
-
-            const onNext = (snapshot: any) => {
-                if (snapshot.exists()) {
-                    observador.next(normalizeArma(snapshot.val()));
-                    return;
-                }
-
-                this.http.get(`${environment.apiUrl}armas/${id}`).subscribe({
-                    next: (raw: any) => observador.next(normalizeArma(raw)),
-                    error: (error: HttpErrorResponse) => {
-                        if (error.status === 404) {
-                            Swal.fire({
-                                icon: "warning",
-                                title: "Arma no encontrada",
-                                text: `No existe el arma con id ${id}`,
-                                showConfirmButton: true,
-                            });
-                        } else {
-                            Swal.fire({
-                                icon: "warning",
-                                title: "Error al obtener el arma",
-                                text: error.message,
-                                showConfirmButton: true,
-                            });
-                        }
-                        observador.error(error);
-                    }
-                });
-            };
-
-            const onError = (error: any) => {
-                observador.error(error);
-            };
-
-            unsubscribe = this.firebaseContextSvc.run(() => {
-                const dbRef = ref(this.db, `Armas/${id}`);
-                return onValue(dbRef, onNext, onError);
-            });
-            return () => unsubscribe();
+        return cacheRtdbOApi({
+            escuchar: escucharRtdb(this.db, this.firebaseContextSvc, `Armas/${id}`),
+            desdeCache: (snapshot) => normalizeArma(snapshot.val()),
+            pedir: () => this.http.get(`${environment.apiUrl}armas/${id}`),
+            desdeApi: (raw) => normalizeArma(raw),
+            avisos: {
+                noEncontrado: { titulo: "Arma no encontrada", texto: `No existe el arma con id ${id}` },
+                error: "Error al obtener el arma",
+            },
         });
     }
 
     getArmas(): Observable<ArmaDetalle[]> {
-        return new Observable((observador) => {
-            let unsubscribe: Unsubscribe;
-
-            const onNext = (snapshot: any) => {
-                const armas: ArmaDetalle[] = [];
-                snapshot.forEach((obj: any) => {
-                    const arma = normalizeArma(obj.val());
-                    if (arma.Id > 0)
-                        armas.push(arma);
-                });
-                armas.sort((a, b) => a.Nombre.localeCompare(b.Nombre, "es", { sensitivity: "base" }));
-                observador.next(armas);
-            };
-
-            const onError = (error: any) => {
-                observador.error(error);
-            };
-
-            unsubscribe = this.firebaseContextSvc.run(() => {
-                const dbRef = ref(this.db, "Armas");
-                return onValue(dbRef, onNext, onError);
-            });
-            return () => unsubscribe();
-        });
+        return listaRtdb(
+            escucharRtdb(this.db, this.firebaseContextSvc, "Armas"),
+            (valor) => normalizeArma(valor),
+            (arma) => arma.Id > 0,
+        );
     }
 
 }

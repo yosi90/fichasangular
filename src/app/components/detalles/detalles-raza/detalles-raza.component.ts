@@ -7,6 +7,8 @@ import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-
 import { resolverExtraHabilidadVisible } from 'src/app/services/utils/habilidad-extra-visible';
 import { buildManiobrabilidadInfoSecciones, tieneManiobrabilidadVisible } from 'src/app/services/utils/maniobrabilidad-info';
 import { getGrupoOpcionalRacial } from 'src/app/services/utils/racial-opcionales';
+import { normalizarTexto, toBoolean } from 'src/app/services/utils/normalizacion';
+import { tieneTextoVisible } from 'src/app/services/utils/texto-visible';
 
 interface GrupoRacialesDetalle {
     grupo: number;
@@ -92,7 +94,7 @@ export class DetallesRazaComponent {
         return (this.raza?.Idiomas ?? [])
             .filter(idioma => this.tieneTextoVisible(idioma?.Nombre))
             .filter((idioma) => {
-                const key = idioma.Nombre.normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase();
+                const key = normalizarTexto(idioma.Nombre);
                 if (!key || vistos.has(key))
                     return false;
                 vistos.add(key);
@@ -177,20 +179,7 @@ export class DetallesRazaComponent {
         });
     }
 
-    tieneTextoVisible(texto: string | undefined | null): boolean {
-        if (!texto)
-            return false;
-        const base = texto.normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase();
-        if (!base)
-            return false;
-        const limpiado = base.replace(/[.]/g, '');
-        return limpiado !== 'no especifica'
-            && limpiado !== 'no se especifica'
-            && limpiado !== 'no aplica'
-            && limpiado !== 'no modifica'
-            && limpiado !== 'no vuela'
-            && limpiado !== '-';
-    }
+    readonly tieneTextoVisible = tieneTextoVisible;
 
     tieneNumeroNoCero(valor: number | string | null | undefined): boolean {
         const parsed = Number(valor);
@@ -225,11 +214,11 @@ export class DetallesRazaComponent {
             const idExtra = Number.isFinite(idExtraRaw) ? idExtraRaw : 0;
             const extra = `${(raw as any)?.Extra ?? (raw as any)?.extra ?? (raw as any)?.x ?? ''}`.trim();
             const soportaExtraRaw = (raw as any)?.Soporta_extra ?? (raw as any)?.soporta_extra;
-            const soportaExtra = soportaExtraRaw === true || soportaExtraRaw === 1 || soportaExtraRaw === '1';
+            const soportaExtra = toBoolean(soportaExtraRaw);
             const varios = `${(raw as any)?.Varios ?? (raw as any)?.varios ?? ''}`.trim();
             const key = idHabilidad > 0
                 ? `id:${idHabilidad}`
-                : `n:${nombre.normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase()}`;
+                : `n:${normalizarTexto(nombre)}`;
 
             const existente = acumulado.get(key);
             if (!existente) {

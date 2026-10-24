@@ -1,35 +1,20 @@
-import { HttpClient, HttpErrorResponse } from "@angular/common/http";
+import { HttpClient } from "@angular/common/http";
 import { Injectable } from "@angular/core";
-import { Database, Unsubscribe, onValue, ref } from "@angular/fire/database";
+import { Database, Unsubscribe } from "@angular/fire/database";
 import { Observable } from "rxjs";
-import Swal from "sweetalert2";
 import { environment } from "src/environments/environment";
 import { ArmaduraDetalle } from "../interfaces/armadura";
 import { FirebaseInjectionContextService } from "./firebase-injection-context.service";
-import { toArray, toNumber, toText } from 'src/app/services/utils/normalizacion';
-
-function toBoolean(value: any): boolean {
-    if (typeof value === "boolean")
-        return value;
-    if (typeof value === "number")
-        return value > 0;
-    if (typeof value === "string") {
-        const normalized = value.trim().toLowerCase();
-        return normalized === "1" || normalized === "true" || normalized === "si" || normalized === "sí";
-    }
-    return false;
-}
+import { toArray, toBoolean, toNumber, toText } from 'src/app/services/utils/normalizacion';
+import { normalizeManualApi } from 'src/app/services/utils/manual-mapper';
+import { cacheRtdbOApi, escucharRtdb } from './catalogo-api';
 
 export function normalizeArmadura(raw: any): ArmaduraDetalle {
     return {
         Id: toNumber(raw?.Id),
         Nombre: toText(raw?.Nombre),
         Descripcion: toText(raw?.Descripcion),
-        Manual: {
-            Id: toNumber(raw?.Manual?.Id),
-            Nombre: toText(raw?.Manual?.Nombre),
-            Pagina: toNumber(raw?.Manual?.Pagina),
-        },
+        Manual: normalizeManualApi(raw?.Manual),
         Ca: toNumber(raw?.Ca),
         Bon_des: toNumber(raw?.Bon_des),
         Penalizador: toNumber(raw?.Penalizador),
@@ -77,90 +62,33 @@ export class ArmaduraService {
     ) { }
 
     getArmadura(id: number): Observable<ArmaduraDetalle> {
-        return new Observable((observador) => {
-            let unsubscribe: Unsubscribe;
-
-            const onNext = (snapshot: any) => {
-                if (snapshot.exists()) {
-                    observador.next(normalizeArmadura(snapshot.val()));
-                    return;
-                }
-
-                this.http.get(`${environment.apiUrl}armaduras/${id}`).subscribe({
-                    next: (raw: any) => observador.next(normalizeArmadura(raw)),
-                    error: (error: HttpErrorResponse) => {
-                        if (error.status === 404) {
-                            Swal.fire({
-                                icon: "warning",
-                                title: "Armadura no encontrada",
-                                text: `No existe la armadura con id ${id}`,
-                                showConfirmButton: true,
-                            });
-                        } else {
-                            Swal.fire({
-                                icon: "warning",
-                                title: "Error al obtener la armadura",
-                                text: error.message,
-                                showConfirmButton: true,
-                            });
-                        }
-                        observador.error(error);
-                    }
-                });
-            };
-
-            const onError = (error: any) => {
-                observador.error(error);
-            };
-
-            unsubscribe = this.firebaseContextSvc.run(() => {
-                const dbRef = ref(this.db, `Armaduras/${id}`);
-                return onValue(dbRef, onNext, onError);
-            });
-            return () => unsubscribe();
+        return cacheRtdbOApi({
+            escuchar: escucharRtdb(this.db, this.firebaseContextSvc, `Armaduras/${id}`),
+            desdeCache: (snapshot) => normalizeArmadura(snapshot.val()),
+            pedir: () => this.http.get(`${environment.apiUrl}armaduras/${id}`),
+            desdeApi: (raw) => normalizeArmadura(raw),
+            avisos: {
+                noEncontrado: { titulo: "Armadura no encontrada", texto: `No existe la armadura con id ${id}` },
+                error: "Error al obtener la armadura",
+            },
         });
     }
 
     getArmaduras(): Observable<ArmaduraDetalle[]> {
-        return new Observable((observador) => {
-            let unsubscribe: Unsubscribe;
-            let fallbackEnCurso = false;
-
-            const onNext = (snapshot: any) => {
-                const armaduras = this.normalizeArmadurasSnapshot(snapshot);
-                if (armaduras.length > 0) {
-                    observador.next(armaduras);
-                    return;
-                }
-
-                if (fallbackEnCurso)
-                    return;
-                fallbackEnCurso = true;
-
-                this.syncArmaduras().subscribe({
-                    next: (response) => {
-                        const apiArmaduras = this.normalizeArmadurasResponse(response);
-                        observador.next(apiArmaduras);
-                    },
-                    error: (error) => observador.error(error),
-                    complete: () => fallbackEnCurso = false,
-                });
-            };
-
-            const onError = (error: any) => {
-                observador.error(error);
-            };
-
-            unsubscribe = this.watchArmadurasPath(onNext, onError);
-            return () => unsubscribe();
+        return cacheRtdbOApi({
+            escuchar: (onNext, onError) => this.watchArmadurasPath(onNext, onError),
+            // El normalizador ya trata la caché vacía o inexistente: si queda vacía, se va a la API.
+            sirveLaCache: () => true,
+            desdeCache: (snapshot) => this.normalizeArmadurasSnapshot(snapshot),
+            cacheIncompleta: (armaduras) => armaduras.length < 1,
+            pedir: () => this.syncArmaduras(),
+            desdeApi: (response) => this.normalizeArmadurasResponse(response),
+            unaPeticionALaVez: true,
         });
     }
 
     protected watchArmadurasPath(onNext: (snapshot: any) => void, onError: (error: any) => void): Unsubscribe {
-        return this.firebaseContextSvc.run(() => {
-            const dbRef = ref(this.db, "Armaduras");
-            return onValue(dbRef, onNext, onError);
-        });
+        return escucharRtdb(this.db, this.firebaseContextSvc, "Armaduras")(onNext, onError);
     }
 
     private syncArmaduras() {

@@ -6,7 +6,7 @@ import {
     getVectorDesdeNombreBasico,
     nombreBasicoDesdeVector,
 } from "./alineamiento-contrato";
-import { toNumber } from 'src/app/services/utils/normalizacion';
+import { normalizarTexto, toNumber } from 'src/app/services/utils/normalizacion';
 
 export type EstadoElegibilidadPlantilla = "eligible" | "blocked_failed" | "blocked_unknown";
 
@@ -50,16 +50,8 @@ export interface ResolucionAlineamientoPlantillas {
     razones: string[];
 }
 
-function normalize(value: string): string {
-    return (value ?? "")
-        .normalize("NFD")
-        .replace(/[\u0300-\u036f]/g, "")
-        .trim()
-        .toLowerCase();
-}
-
 function esTipoNuevoSinCambio(tipoNuevo: string): boolean {
-    return normalize(tipoNuevo) === "cualquiera";
+    return normalizarTexto(tipoNuevo) === "cualquiera";
 }
 
 function getAlineamientoBasicoId(alineamiento: string): number {
@@ -396,7 +388,7 @@ function getStatById(caracteristicas: CaracteristicasEvaluacion, id: number): nu
 }
 
 export function esNombreLicantropo(nombre: string): boolean {
-    return normalize(nombre).includes("licantropo");
+    return normalizarTexto(nombre).includes("licantropo");
 }
 
 export function obtenerCompatibilidadTipo(plantilla: Plantilla, tipoActualId: number): PlantillaCompatibilidadTipo | null {
@@ -460,12 +452,12 @@ export function evaluarElegibilidadPlantilla(
     const fail: string[] = [];
     const unknown: string[] = [];
 
-    const nombreNormalizado = normalize(plantilla.Nombre);
+    const nombreNormalizado = normalizarTexto(plantilla.Nombre);
 
     if (!ctx.incluirHomebrew && !plantilla.Oficial)
         fail.push("Plantilla no oficial");
 
-    if (ctx.seleccionadas.some(s => s.Id === plantilla.Id || normalize(s.Nombre) === nombreNormalizado))
+    if (ctx.seleccionadas.some(s => s.Id === plantilla.Id || normalizarTexto(s.Nombre) === nombreNormalizado))
         fail.push("Ya seleccionada");
 
     const licantropiaActiva = ctx.seleccionadas.some(s => esNombreLicantropo(s.Nombre));

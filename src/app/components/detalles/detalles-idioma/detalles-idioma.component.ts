@@ -1,5 +1,6 @@
 import { Component, Input } from '@angular/core';
 import { IdiomaDetalle } from 'src/app/interfaces/idioma';
+import { tieneTextoVisible } from 'src/app/services/utils/texto-visible';
 
 @Component({
     selector: 'app-detalles-idioma',
@@ -10,7 +11,5 @@ import { IdiomaDetalle } from 'src/app/interfaces/idioma';
 export class DetallesIdiomaComponent {
     @Input() idioma!: IdiomaDetalle;
 
-    tieneTextoVisible(texto: string | undefined | null): boolean {
-        return `${texto ?? ''}`.trim().length > 0;
-    }
+    readonly tieneTextoVisible = tieneTextoVisible;
 }

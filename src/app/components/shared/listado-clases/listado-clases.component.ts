@@ -6,6 +6,7 @@ import { Clase } from 'src/app/interfaces/clase';
 import { ClaseService } from 'src/app/services/clase.service';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
 import { ordenarEnEspanol } from 'src/app/services/utils/orden-tabla';
+import { normalizarTexto } from 'src/app/services/utils/normalizacion';
 
 @Component({
     selector: 'app-listado-clases',
@@ -48,12 +49,12 @@ export class ListadoClasesComponent {
     }
 
     filtroClases() {
-        const texto = this.claseTextInc?.nativeElement?.value?.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase() ?? '';
+        const texto = normalizarTexto(this.claseTextInc?.nativeElement?.value, true);
 
         const clasesFiltradas = this.clases.filter(clase =>
             (texto === ''
-                || clase.Nombre.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().includes(texto)
-                || clase.Descripcion.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().includes(texto))
+                || normalizarTexto(clase.Nombre, true).includes(texto)
+                || normalizarTexto(clase.Descripcion, true).includes(texto))
             && (this.defaultManual === 'Cualquiera' || clase.Manual?.Nombre === this.defaultManual)
             && (!this.soloPrestigio || clase.Prestigio)
             && (!this.ocultarConPrerrequisitos || !this.tienePrerrequisitos(clase))

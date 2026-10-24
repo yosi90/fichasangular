@@ -8,11 +8,36 @@ export function toNumber(value: any, fallback: number = 0): number {
     return Number.isFinite(parsed) ? parsed : fallback;
 }
 
+/** El entero (truncado) que representa `value`, o `fallback` si no es un número finito. */
+export function toInt(value: any, fallback: number = 0): number {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? Math.trunc(parsed) : fallback;
+}
+
 /** `value` como texto; `null` y `undefined` dan `fallback`. No recorta espacios. */
 export function toText(value: any, fallback: string = ''): string {
     if (value === null || value === undefined)
         return fallback;
     return `${value}`;
+}
+
+const VALORES_SI = new Set(['true', '1', 'sí', 'si', 'yes']);
+
+/**
+ * Sí o no, con una sola regla para toda la web (propietario, 2026-10-24): sí con `true`, `1` y los textos «true», «1»,
+ * «sí», «si» y «yes», sin distinguir mayúsculas ni espacios alrededor; todo lo demás, no (también `2`, `-1` o «no»).
+ * `siFalta` es lo que vale cuando el campo no viene (`null` o `undefined`), para los campos con un valor por defecto.
+ */
+export function toBoolean(value: unknown, siFalta: boolean = false): boolean {
+    if (value === null || value === undefined)
+        return siFalta;
+    if (typeof value === 'boolean')
+        return value;
+    if (typeof value === 'number')
+        return value === 1;
+    if (typeof value === 'string')
+        return VALORES_SI.has(value.trim().toLowerCase());
+    return false;
 }
 
 /** `value` como lista: una lista tal cual, los valores de un objeto (las listas de la RTDB) o una lista vacía. */
@@ -24,11 +49,15 @@ export function toArray<T = any>(value: any): T[] {
     return [];
 }
 
-/** Texto para comparar y buscar: sin tildes ni diacríticos, sin espacios a los lados y en minúsculas. */
-export function normalizarTexto(value: unknown): string {
-    return `${value ?? ''}`
+/**
+ * Texto para comparar y buscar: sin tildes ni diacríticos, sin espacios a los lados y en minúsculas. Con
+ * `juntarEspacios`, además, los espacios seguidos cuentan como uno (los buscadores lo usan así: propietario, 2026-10-24).
+ */
+export function normalizarTexto(value: unknown, juntarEspacios: boolean = false): string {
+    const texto = `${value ?? ''}`
         .normalize('NFD')
         .replace(/[̀-ͯ]/g, '')
         .trim()
         .toLowerCase();
+    return juntarEspacios ? texto.replace(/\s+/g, ' ') : texto;
 }

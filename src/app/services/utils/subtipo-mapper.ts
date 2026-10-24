@@ -8,27 +8,8 @@ import {
     SubtipoSortilega,
 } from "src/app/interfaces/subtipo";
 import { toDoteContextualArray } from "./dote-mapper";
-import { normalizarTexto, toArray, toNumber, toText } from 'src/app/services/utils/normalizacion';
-
-function toBoolean(value: any): boolean {
-    if (typeof value === "boolean")
-        return value;
-    if (typeof value === "number")
-        return value === 1;
-    if (typeof value === "string") {
-        const normalized = value.trim().toLowerCase();
-        return normalized === "1" || normalized === "true" || normalized === "si" || normalized === "sí";
-    }
-    return false;
-}
-
-function normalizeManual(raw: any): { Id: number; Nombre: string; Pagina: number; } {
-    return {
-        Id: toNumber(raw?.Id),
-        Nombre: toText(raw?.Nombre),
-        Pagina: toNumber(raw?.Pagina),
-    };
-}
+import { normalizarTexto, toArray, toBoolean, toNumber, toText } from 'src/app/services/utils/normalizacion';
+import { normalizeManualApi } from './manual-mapper';
 
 function normalizeSubtipoRefItem(raw: any): SubtipoRef | null {
     if (typeof raw === "string") {
@@ -106,7 +87,7 @@ export function normalizeSubtipoResumen(raw: any): SubtipoResumen {
         Id: toNumber(raw?.Id),
         Nombre: toText(raw?.Nombre),
         Descripcion: toText(raw?.Descripcion),
-        Manual: normalizeManual(raw?.Manual),
+        Manual: normalizeManualApi(raw?.Manual),
         Heredada: toBoolean(raw?.Heredada),
         Oficial: toBoolean(raw?.Oficial),
     };
@@ -119,7 +100,7 @@ export function normalizeSubtipoDetalle(raw: any): SubtipoDetalle {
         Id: toNumber(raw?.Id),
         Nombre: toText(raw?.Nombre),
         Descripcion: toText(raw?.Descripcion),
-        Manual: normalizeManual(raw?.Manual),
+        Manual: normalizeManualApi(raw?.Manual),
         Heredada: toBoolean(raw?.Heredada),
         Oficial: toBoolean(raw?.Oficial),
         Modificadores_caracteristicas: {

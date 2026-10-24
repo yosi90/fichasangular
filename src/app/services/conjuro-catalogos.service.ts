@@ -1,14 +1,14 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable } from '@angular/core';
-import { Database, Unsubscribe, onValue, ref } from '@angular/fire/database';
+import { Database, Unsubscribe } from '@angular/fire/database';
 import { Observable } from 'rxjs';
 import { environment } from 'src/environments/environment';
-import Swal from 'sweetalert2';
 import { CacheEntityKey } from '../config/cache-contract-manifest';
 import { ConjuroCatalogItem } from '../interfaces/conjuro-catalogos';
 import { CacheCatalogMissReportService } from './cache-catalog-miss-report.service';
 import { FirebaseInjectionContextService } from './firebase-injection-context.service';
 import { toArray } from 'src/app/services/utils/normalizacion';
+import { cacheRtdbOApi, escucharRtdb } from './catalogo-api';
 
 function normalizeCatalogItem(raw: any): ConjuroCatalogItem {
     return {
@@ -52,7 +52,7 @@ export class ConjuroCatalogosService {
     }
 
     protected watchCatalogPath(path: string, onNext: (snapshot: any) => void, onError: (error: any) => void): Unsubscribe {
-        return this.firebaseContextSvc.run(() => onValue(ref(this.db, path), onNext, onError));
+        return escucharRtdb(this.db, this.firebaseContextSvc, path)(onNext, onError);
     }
 
     private getCatalogoCacheFirst(
@@ -60,31 +60,16 @@ export class ConjuroCatalogosService {
         endpoint: 'componentes-conjuros' | 'tiempos-lanzamiento' | 'alcances-conjuros' | 'descriptores',
         cacheKey: CacheEntityKey,
     ): Observable<ConjuroCatalogItem[]> {
-        return new Observable((observer) => {
-            let unsubscribe: Unsubscribe;
-            let fallbackEnCurso = false;
-
-            const onNext = (snapshot: any) => {
-                const cached = this.normalizeSnapshot(snapshot);
-                if (cached.length > 0) {
-                    observer.next(cached);
-                    return;
-                }
-
-                if (fallbackEnCurso)
-                    return;
-                fallbackEnCurso = true;
-                void this.cacheMissReportSvc.reportEmptyCacheFallback(cacheKey);
-
-                this.http.get<any[]>(`${environment.apiUrl}${endpoint}`).subscribe({
-                    next: (raw) => observer.next(sortCatalog(toArray(raw).map(normalizeCatalogItem))),
-                    error: (error) => observer.error(error),
-                    complete: () => fallbackEnCurso = false,
-                });
-            };
-
-            unsubscribe = this.watchCatalogPath(path, onNext, (error) => observer.error(error));
-            return () => unsubscribe();
+        return cacheRtdbOApi({
+            escuchar: (onNext, onError) => this.watchCatalogPath(path, onNext, onError),
+            // El normalizador ya trata la caché vacía o inexistente: si queda vacía, se va a la API.
+            sirveLaCache: () => true,
+            desdeCache: (snapshot) => this.normalizeSnapshot(snapshot),
+            cacheIncompleta: (cached) => cached.length < 1,
+            pedir: () => this.http.get<any[]>(`${environment.apiUrl}${endpoint}`),
+            desdeApi: (raw) => sortCatalog(toArray(raw).map(normalizeCatalogItem)),
+            unaPeticionALaVez: true,
+            alIrALaApi: () => void this.cacheMissReportSvc.reportEmptyCacheFallback(cacheKey),
         });
     }
 

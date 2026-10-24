@@ -1,13 +1,12 @@
-import { catalogosDesdeApi, leerListadoCompleto, sinCache } from './catalogo-api';
+import { cacheRtdbOApi, catalogosDesdeApi, escucharRtdb, leerListadoCompleto, sinCache } from './catalogo-api';
 import { HttpClient, HttpErrorResponse } from "@angular/common/http";
 import { Injectable } from "@angular/core";
 import { Auth } from "@angular/fire/auth";
-import { Database, Unsubscribe, onValue, ref } from "@angular/fire/database";
+import { Database, Unsubscribe } from "@angular/fire/database";
 import { Observable, firstValueFrom } from "rxjs";
 import { Dote } from "../interfaces/dote";
 import { DoteCreateApiResponse, DoteCreateRequest, DoteCreateResponse } from "../interfaces/dotes-api";
 import { environment } from "src/environments/environment";
-import Swal from "sweetalert2";
 import { FirebaseInjectionContextService } from "./firebase-injection-context.service";
 import { normalizeDoteApi, normalizeDoteLegacy } from "./utils/dote-mapper";
 import { cabeceraApiConFirebase } from './platform-session.service';
@@ -25,119 +24,48 @@ export class DoteService {
     ) { }
 
     protected watchDotePath(id: number, onNext: (snapshot: any) => void, onError: (error: any) => void): Unsubscribe {
-        return this.firebaseContextSvc.run(() => {
-            if (catalogosDesdeApi())
-                return sinCache(onNext);
-            const dbRef = ref(this.db, `Dotes/${id}`);
-            return onValue(dbRef, onNext, onError);
-        });
+        if (catalogosDesdeApi())
+            return sinCache(onNext);
+        return escucharRtdb(this.db, this.firebaseContextSvc, `Dotes/${id}`)(onNext, onError);
     }
 
     protected watchDotesPath(onNext: (snapshot: any) => void, onError: (error: any) => void): Unsubscribe {
-        return this.firebaseContextSvc.run(() => {
-            if (catalogosDesdeApi())
-                return sinCache(onNext);
-            const dbRef = ref(this.db, "Dotes");
-            return onValue(dbRef, onNext, onError);
-        });
+        if (catalogosDesdeApi())
+            return sinCache(onNext);
+        return escucharRtdb(this.db, this.firebaseContextSvc, "Dotes")(onNext, onError);
     }
 
     getDote(id: number): Observable<Dote> {
-        return new Observable((observador) => {
-            let unsubscribe: Unsubscribe;
-
-            const onNext = (snapshot: any) => {
-                if (snapshot.exists()) {
-                    observador.next(normalizeDoteLegacy(snapshot.val()));
-                    return;
-                }
-
-                this.http.get(`${environment.apiUrl}dotes/${id}`).subscribe({
-                    next: (raw: any) => observador.next(normalizeDoteApi(raw)),
-                    error: (error: HttpErrorResponse) => {
-                        if (error.status === 404) {
-                            Swal.fire({
-                                icon: "warning",
-                                title: "Dote no encontrada",
-                                text: `No existe la dote con id ${id}`,
-                                showConfirmButton: true,
-                            });
-                        } else {
-                            Swal.fire({
-                                icon: "warning",
-                                title: "Error al obtener la dote",
-                                text: error.message,
-                                showConfirmButton: true,
-                            });
-                        }
-                        observador.error(error);
-                    }
-                });
-            };
-
-            const onError = (error: any) => {
-                observador.error(error);
-            };
-
-            unsubscribe = this.watchDotePath(id, onNext, onError);
-
-            return () => {
-                unsubscribe();
-            };
+        return cacheRtdbOApi({
+            escuchar: (onNext, onError) => this.watchDotePath(id, onNext, onError),
+            desdeCache: (snapshot) => normalizeDoteLegacy(snapshot.val()),
+            pedir: () => this.http.get(`${environment.apiUrl}dotes/${id}`),
+            desdeApi: (raw) => normalizeDoteApi(raw),
+            avisos: {
+                noEncontrado: { titulo: "Dote no encontrada", texto: `No existe la dote con id ${id}` },
+                error: "Error al obtener la dote",
+            },
         });
     }
 
     getDotes(): Observable<Dote[]> {
-        return new Observable((observador) => {
-            let unsubscribe: Unsubscribe;
-
-            const onNext = (snapshot: any) => {
-                if (!snapshot.exists()) {
-                    this.syncDotes().subscribe({
-                        next: (raw: any) => {
-                            const dotes = (Array.isArray(raw) ? raw : Object.values(raw ?? {}))
-                                .map((item: any) => normalizeDoteApi(item))
-                                .filter((dote) => dote.Id > 0);
-                            observador.next(dotes);
-                        },
-                        error: (error: HttpErrorResponse) => {
-                            if (error.status === 404) {
-                                Swal.fire({
-                                    icon: "warning",
-                                    title: "Listado de dotes no disponible",
-                                    text: "No se encontró /dotes en la API",
-                                    showConfirmButton: true,
-                                });
-                            } else {
-                                Swal.fire({
-                                    icon: "warning",
-                                    title: "Error al obtener el listado de dotes",
-                                    text: error.message,
-                                    showConfirmButton: true,
-                                });
-                            }
-                            observador.error(error);
-                        }
-                    });
-                    return;
-                }
-
+        return cacheRtdbOApi({
+            escuchar: (onNext, onError) => this.watchDotesPath(onNext, onError),
+            desdeCache: (snapshot) => {
                 const dotes: Dote[] = [];
                 snapshot.forEach((obj: any) => {
                     dotes.push(normalizeDoteLegacy(obj.val()));
                 });
-                observador.next(dotes);
-            };
-
-            const onError = (error: any) => {
-                observador.error(error);
-            };
-
-            unsubscribe = this.watchDotesPath(onNext, onError);
-
-            return () => {
-                unsubscribe();
-            };
+                return dotes;
+            },
+            pedir: () => this.syncDotes(),
+            desdeApi: (raw) => (Array.isArray(raw) ? raw : Object.values(raw ?? {}))
+                .map((item: any) => normalizeDoteApi(item))
+                .filter((dote) => dote.Id > 0),
+            avisos: {
+                noEncontrado: { titulo: "Listado de dotes no disponible", texto: "No se encontró /dotes en la API" },
+                error: "Error al obtener el listado de dotes",
+            },
         });
     }
 

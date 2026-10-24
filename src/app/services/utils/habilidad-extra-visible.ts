@@ -1,16 +1,4 @@
-import { normalizarTexto } from 'src/app/services/utils/normalizacion';
-function toBoolean(value: any): boolean {
-    if (typeof value === 'boolean')
-        return value;
-    if (typeof value === 'number')
-        return value === 1;
-    if (typeof value === 'string') {
-        const normalized = normalizarTexto(value);
-        return normalized === '1' || normalized === 'true' || normalized === 'si' || normalized === 'sí';
-    }
-    return false;
-}
-
+import { normalizarTexto, toBoolean } from 'src/app/services/utils/normalizacion';
 export interface ResolverExtraHabilidadOptions {
     extra?: any;
     idExtra?: any;

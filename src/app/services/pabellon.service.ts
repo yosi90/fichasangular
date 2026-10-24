@@ -1,12 +1,12 @@
-import { HttpClient, HttpErrorResponse } from "@angular/common/http";
+import { HttpClient } from "@angular/common/http";
 import { Injectable } from "@angular/core";
-import { Database, Unsubscribe, onValue, ref } from "@angular/fire/database";
+import { Database } from "@angular/fire/database";
 import { Observable } from "rxjs";
-import Swal from "sweetalert2";
 import { environment } from "src/environments/environment";
 import { PabellonDetalle } from "../interfaces/pabellon";
 import { FirebaseInjectionContextService } from "./firebase-injection-context.service";
-import { toArray, toNumber, toText } from 'src/app/services/utils/normalizacion';
+import { toNumber, toText } from 'src/app/services/utils/normalizacion';
+import { cacheRtdbOApi, escucharRtdb, listaRtdb } from './catalogo-api';
 
 export function normalizePabellon(raw: any): PabellonDetalle {
     return {
@@ -27,71 +27,24 @@ export class PabellonService {
     ) { }
 
     getPabellon(id: number): Observable<PabellonDetalle> {
-        return new Observable((observador) => {
-            const dbRef = ref(this.db, `Pabellones/${id}`);
-            let unsubscribe: Unsubscribe;
-
-            const onNext = (snapshot: any) => {
-                if (snapshot.exists()) {
-                    observador.next(normalizePabellon(snapshot.val()));
-                    return;
-                }
-
-                this.http.get(`${environment.apiUrl}pabellones/${id}`).subscribe({
-                    next: (raw: any) => observador.next(normalizePabellon(raw)),
-                    error: (error: HttpErrorResponse) => {
-                        if (error.status === 404) {
-                            Swal.fire({
-                                icon: "warning",
-                                title: "Pabellon no encontrado",
-                                text: `No existe el pabellon con id ${id}`,
-                                showConfirmButton: true,
-                            });
-                        } else {
-                            Swal.fire({
-                                icon: "warning",
-                                title: "Error al obtener el pabellon",
-                                text: error.message,
-                                showConfirmButton: true,
-                            });
-                        }
-                        observador.error(error);
-                    }
-                });
-            };
-
-            const onError = (error: any) => {
-                observador.error(error);
-            };
-
-            unsubscribe = this.firebaseContextSvc.run(() => onValue(dbRef, onNext, onError));
-            return () => unsubscribe();
+        return cacheRtdbOApi({
+            escuchar: escucharRtdb(this.db, this.firebaseContextSvc, `Pabellones/${id}`),
+            desdeCache: (snapshot) => normalizePabellon(snapshot.val()),
+            pedir: () => this.http.get(`${environment.apiUrl}pabellones/${id}`),
+            desdeApi: (raw) => normalizePabellon(raw),
+            avisos: {
+                noEncontrado: { titulo: "Pabellon no encontrado", texto: `No existe el pabellon con id ${id}` },
+                error: "Error al obtener el pabellon",
+            },
         });
     }
 
     getPabellones(): Observable<PabellonDetalle[]> {
-        return new Observable((observador) => {
-            const dbRef = ref(this.db, "Pabellones");
-            let unsubscribe: Unsubscribe;
-
-            const onNext = (snapshot: any) => {
-                const pabellones: PabellonDetalle[] = [];
-                snapshot.forEach((obj: any) => {
-                    const pabellon = normalizePabellon(obj.val());
-                    if (pabellon.Id > 0)
-                        pabellones.push(pabellon);
-                });
-                pabellones.sort((a, b) => a.Nombre.localeCompare(b.Nombre, "es", { sensitivity: "base" }));
-                observador.next(pabellones);
-            };
-
-            const onError = (error: any) => {
-                observador.error(error);
-            };
-
-            unsubscribe = this.firebaseContextSvc.run(() => onValue(dbRef, onNext, onError));
-            return () => unsubscribe();
-        });
+        return listaRtdb(
+            escucharRtdb(this.db, this.firebaseContextSvc, "Pabellones"),
+            (valor) => normalizePabellon(valor),
+            (pabellon) => pabellon.Id > 0,
+        );
     }
 
 }

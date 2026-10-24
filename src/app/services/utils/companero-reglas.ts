@@ -1,7 +1,7 @@
 import { Clase } from 'src/app/interfaces/clase';
 import { CompaneroMonstruoDetalle, MonstruoDetalle, MonstruoNivelClase } from 'src/app/interfaces/monstruo';
 import { Personaje } from 'src/app/interfaces/personaje';
-import { normalizarTexto, toNumber } from 'src/app/services/utils/normalizacion';
+import { normalizarTexto, toInt, toNumber } from 'src/app/services/utils/normalizacion';
 import { getAlineamientoBasicoIdPorNombre } from 'src/app/services/utils/alineamiento-contrato';
 import {
     resolveEspecialId,
@@ -85,7 +85,7 @@ function claseOtorgaFuenteCompanero(clase: Clase | null | undefined, nivelActual
     if (!clase)
         return false;
 
-    const nivelMaximo = Math.max(0, Math.trunc(toNumber(nivelActual)));
+    const nivelMaximo = Math.max(0, toInt(nivelActual));
     if (nivelMaximo < 1)
         return false;
 
@@ -127,7 +127,7 @@ function dedupeFuentes(fuentes: CompaneroFuenteClase[]): CompaneroFuenteClase[] 
 }
 
 function resolveNivelEfectivoCompaneroByClase(idClase: number, nivelActual: number): number {
-    const nivel = Math.max(0, Math.trunc(toNumber(nivelActual)));
+    const nivel = Math.max(0, toInt(nivelActual));
     if (idClase === 5)
         return nivel;
     if (idClase === 6)
@@ -152,7 +152,7 @@ export function resolverEstadoCuposCompaneroEspecial29(
 
     const fuentesRaw: CompaneroFuenteClase[] = desglose.map((entrada) => {
         const nombreClase = `${entrada?.Nombre ?? ''}`.trim();
-        const nivelActual = Math.max(0, Math.trunc(toNumber(entrada?.Nivel)));
+        const nivelActual = Math.max(0, toInt(entrada?.Nivel));
         const clase = clases.find((item) =>
             normalizarTexto(item?.Nombre ?? '') === normalizarTexto(nombreClase)
         );
@@ -205,7 +205,7 @@ export function evaluarCompanerosElegibilidad(input: FiltroCompanerosElegiblesIn
     const includeHomebrew = !!input?.incluirHomebrew;
     const alineamientoPersonaje = normalizarTexto(input?.alineamientoPersonaje ?? '');
     const idAlineamientoBasico = getAlineamientoBasicoIdPorNombre(input?.alineamientoPersonaje ?? '');
-    const nivelSeleccionado = Math.max(0, Math.trunc(toNumber(input?.nivelSeleccionado)));
+    const nivelSeleccionado = Math.max(0, toInt(input?.nivelSeleccionado));
     const plantillaIdEsperada = plantillaSeleccionada ? getPlantillaIdCompanero(plantillaSeleccionada) : 0;
     const dedupe = new Map<string, CompaneroElegibilidadEvaluadaItem>();
 
@@ -254,7 +254,7 @@ export function evaluarCompanerosElegibilidad(input: FiltroCompanerosElegiblesIn
             return true;
         });
         const nivelMinimoRequerido = nivelesClaseFuenteYDote.length > 0
-            ? Math.min(...nivelesClaseFuenteYDote.map((nivelClase) => Math.max(0, Math.trunc(toNumber(nivelClase?.Nivel)))))
+            ? Math.min(...nivelesClaseFuenteYDote.map((nivelClase) => Math.max(0, toInt(nivelClase?.Nivel))))
             : null;
         if (nivelesClaseFuenteYDote.length < 1) {
             razones.push('Esta criatura no tiene progresión válida para tus clases con compañero animal.');
@@ -340,7 +340,7 @@ export function resolverNivelesCompaneroDisponibles(input: Omit<FiltroCompaneros
     companeros.forEach((companero) => {
         (companero?.Niveles_clase ?? []).forEach((nivelClase) => {
             const idClase = toNumber(nivelClase?.Clase?.Id);
-            const nivel = Math.trunc(toNumber(nivelClase?.Nivel));
+            const nivel = toInt(nivelClase?.Nivel);
             const idDote = resolveDoteIdFromNivelClase(nivelClase);
             if (!fuentesClaseIds.has(idClase))
                 return;

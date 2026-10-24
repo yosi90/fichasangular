@@ -3,8 +3,8 @@ import { PrivateUserFirestoreService } from './private-user-firestore.service';
 import { FirebaseInjectionContextService } from './firebase-injection-context.service';
 
 describe('PrivateUserFirestoreService', () => {
-    it('getMyProfile acepta role top-level y permisos create proyectados en campos raiz', async () => {
-        const service = new PrivateUserFirestoreService(
+    function crearServicio(): PrivateUserFirestoreService {
+        return new PrivateUserFirestoreService(
             {
                 currentUser: {
                     uid: 'uid-firestore',
@@ -17,21 +17,17 @@ describe('PrivateUserFirestoreService', () => {
             {} as any,
             { run: <T>(fn: () => T) => fn() } as FirebaseInjectionContextService,
         );
-        spyOn<any>(service, 'getDocumentRef').and.returnValue({} as any);
-        spyOn<any>(service, 'readDocument').and.resolveTo({
-            exists: () => true,
-            data: () => ({
-                uid: 'uid-firestore',
-                displayName: 'Perfil Firestore',
-                email: 'perfil@test.dev',
-                role: 'master',
-                personajes: { create: true },
-                campanas: { create: true },
-                tramas: { create: true },
-            }),
-        } as any);
+    }
 
-        const profile = await service.getMyProfile();
+    it('el perfil acepta role top-level y permisos create proyectados en campos raiz', () => {
+        const profile = (crearServicio() as any).mapPrivateProfile({
+            uid: 'uid-firestore',
+            displayName: 'Perfil Firestore',
+            role: 'master',
+            personajes: { create: true },
+            campanas: { create: true },
+            tramas: { create: true },
+        }, 'uid-firestore');
 
         expect(profile?.role).toBe('master');
         expect(profile?.permissions['personajes']?.create).toBeTrue();
@@ -39,47 +35,27 @@ describe('PrivateUserFirestoreService', () => {
         expect(profile?.permissions['tramas']?.create).toBeTrue();
     });
 
-    it('getMyProfile sintetiza la sanción activa desde moderationStatus y blockedUntilUtc en compliance', async () => {
-        const service = new PrivateUserFirestoreService(
-            {
-                currentUser: {
-                    uid: 'uid-firestore',
-                    email: 'perfil@test.dev',
-                    displayName: 'Perfil Firestore',
-                    emailVerified: true,
-                    providerData: [],
-                },
-            } as unknown as Auth,
-            {} as any,
-            { run: <T>(fn: () => T) => fn() } as FirebaseInjectionContextService,
-        );
-        spyOn<any>(service, 'getDocumentRef').and.returnValue({} as any);
-        spyOn<any>(service, 'readDocument').and.resolveTo({
-            exists: () => true,
-            data: () => ({
-                uid: 'uid-firestore',
-                displayName: 'Perfil Firestore',
-                email: 'perfil@test.dev',
-                compliance: {
-                    banned: false,
-                    moderationStatus: 'blocked',
-                    blockedUntilUtc: '2026-04-08T20:00:00.000Z',
-                    isPermanent: false,
-                    mustAcceptUsage: false,
-                    mustAcceptCreation: false,
-                },
-            }),
-        } as any);
+    it('el perfil solo trae lo que proyecta el backend: sin cumplimiento ni campos retirados', () => {
+        const profile = (crearServicio() as any).mapPrivateProfile({
+            uid: 'uid-firestore',
+            displayName: 'Perfil Firestore',
+            photoThumbUrl: 'https://cuentas/avatar',
+            email: 'perfil@test.dev',
+            bio: 'Antigua',
+            authProvider: 'google',
+            compliance: { banned: true, moderationStatus: 'blocked' },
+        }, 'uid-firestore');
 
-        const profile = await service.getMyProfile();
-
-        expect(profile?.compliance?.banned).toBeTrue();
-        expect(profile?.compliance?.activeSanction).toEqual(jasmine.objectContaining({
-            kind: 'restriction',
-            code: 'technical_account_restriction_temporary',
-            endsAtUtc: '2026-04-08T20:00:00.000Z',
-            isPermanent: false,
-        }));
+        expect(profile).toEqual({
+            uid: 'uid-firestore',
+            displayName: 'Perfil Firestore',
+            photoThumbUrl: 'https://cuentas/avatar',
+            createdAt: null,
+            lastSeenAt: null,
+            role: jasmine.any(String),
+            permissions: jasmine.any(Object),
+            compliance: null,
+        });
     });
 
     it('normaliza personajes privados archivados con la clave canonica en minúsculas', () => {

@@ -23,7 +23,7 @@ import {
     SocialWebSocketEvent,
     SocialWebSocketTicketResponse,
 } from '../interfaces/social-v3';
-import { obtenerTokenApi } from './platform-session.service';
+import { cabeceraApiConFirebase } from './platform-session.service';
 
 @Injectable({
     providedIn: 'root'
@@ -526,17 +526,7 @@ export class SocialV3ApiService {
     }
 
     private async buildAuthHeaders(): Promise<HttpHeaders> {
-        const user = this.auth.currentUser;
-        if (!user)
-            throw new ProfileApiError('Sesión no iniciada.', 'UNAUTHORIZED', 401);
-
-        const idToken = await obtenerTokenApi();
-        if (`${idToken ?? ''}`.trim().length < 1)
-            throw new ProfileApiError('Token no disponible.', 'TOKEN_INVALID', 401);
-
-        return new HttpHeaders({
-            Authorization: `Bearer ${idToken}`,
-        });
+        return new HttpHeaders(await cabeceraApiConFirebase(this.auth, ProfileApiError.sinSesion));
     }
 
     private toProfileApiError(error: any, fallbackMessage: string): ProfileApiError {

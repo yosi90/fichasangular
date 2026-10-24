@@ -7,7 +7,7 @@ import { ArmaDetalle } from 'src/app/interfaces/arma';
 import { ArmaService } from 'src/app/services/arma.service';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
 import { ordenarEnEspanol } from 'src/app/services/utils/orden-tabla';
-import { normalizarTexto } from 'src/app/services/utils/normalizacion';
+import { normalizarTexto, toBoolean } from 'src/app/services/utils/normalizacion';
 
 @Component({
     selector: 'app-listado-armas',
@@ -99,7 +99,7 @@ export class ListadoArmasComponent implements OnDestroy {
                 || normalizarTexto(arma?.Manual?.Nombre) === normalizarTexto(this.defaultManual);
             const visiblePorTipo = this.defaultTipoArma === 'Cualquiera'
                 || normalizarTexto(arma?.Tipo_arma?.Nombre) === tipoArma;
-            const visiblePorHomebrew = this.mostrarHomebrew || this.toBoolean(arma?.Oficial, true);
+            const visiblePorHomebrew = this.mostrarHomebrew || toBoolean(arma?.Oficial, true);
             return visiblePorTexto && visiblePorManual && visiblePorTipo && visiblePorHomebrew;
         });
 
@@ -169,18 +169,4 @@ export class ListadoArmasComponent implements OnDestroy {
         )).sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' }));
     }
 
-    private toBoolean(value: any, fallback: boolean = false): boolean {
-        if (typeof value === 'boolean')
-            return value;
-        if (typeof value === 'number')
-            return value !== 0;
-        if (typeof value === 'string') {
-            const normalizado = value.trim().toLowerCase();
-            if (['true', '1', 'si', 'sí', 'yes'].includes(normalizado))
-                return true;
-            if (['false', '0', 'no'].includes(normalizado))
-                return false;
-        }
-        return fallback;
-    }
 }

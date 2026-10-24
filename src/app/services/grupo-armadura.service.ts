@@ -1,12 +1,12 @@
-import { HttpClient, HttpErrorResponse } from "@angular/common/http";
+import { HttpClient } from "@angular/common/http";
 import { Injectable } from "@angular/core";
-import { Database, Unsubscribe, onValue, ref } from "@angular/fire/database";
+import { Database } from "@angular/fire/database";
 import { Observable } from "rxjs";
-import Swal from "sweetalert2";
 import { environment } from "src/environments/environment";
 import { GrupoCompetencia } from "../interfaces/grupo-competencia";
 import { FirebaseInjectionContextService } from "./firebase-injection-context.service";
-import { toArray, toNumber, toText } from 'src/app/services/utils/normalizacion';
+import { toNumber, toText } from 'src/app/services/utils/normalizacion';
+import { cacheRtdbOApi, escucharRtdb, listaRtdb } from './catalogo-api';
 
 export function normalizeGrupoArmadura(raw: any): GrupoCompetencia {
     return {
@@ -27,75 +27,24 @@ export class GrupoArmaduraService {
     ) { }
 
     getGrupoArmadura(id: number): Observable<GrupoCompetencia> {
-        return new Observable((observador) => {
-            let unsubscribe: Unsubscribe;
-
-            const onNext = (snapshot: any) => {
-                if (snapshot.exists()) {
-                    observador.next(normalizeGrupoArmadura(snapshot.val()));
-                    return;
-                }
-
-                this.http.get(`${environment.apiUrl}grupos-armaduras/${id}`).subscribe({
-                    next: (raw: any) => observador.next(normalizeGrupoArmadura(raw)),
-                    error: (error: HttpErrorResponse) => {
-                        if (error.status === 404) {
-                            Swal.fire({
-                                icon: "warning",
-                                title: "Grupo de armadura no encontrado",
-                                text: `No existe el grupo de armadura con id ${id}`,
-                                showConfirmButton: true,
-                            });
-                        } else {
-                            Swal.fire({
-                                icon: "warning",
-                                title: "Error al obtener el grupo de armadura",
-                                text: error.message,
-                                showConfirmButton: true,
-                            });
-                        }
-                        observador.error(error);
-                    }
-                });
-            };
-
-            const onError = (error: any) => {
-                observador.error(error);
-            };
-
-            unsubscribe = this.firebaseContextSvc.run(() => {
-                const dbRef = ref(this.db, `GruposArmaduras/${id}`);
-                return onValue(dbRef, onNext, onError);
-            });
-            return () => unsubscribe();
+        return cacheRtdbOApi({
+            escuchar: escucharRtdb(this.db, this.firebaseContextSvc, `GruposArmaduras/${id}`),
+            desdeCache: (snapshot) => normalizeGrupoArmadura(snapshot.val()),
+            pedir: () => this.http.get(`${environment.apiUrl}grupos-armaduras/${id}`),
+            desdeApi: (raw) => normalizeGrupoArmadura(raw),
+            avisos: {
+                noEncontrado: { titulo: "Grupo de armadura no encontrado", texto: `No existe el grupo de armadura con id ${id}` },
+                error: "Error al obtener el grupo de armadura",
+            },
         });
     }
 
     getGruposArmaduras(): Observable<GrupoCompetencia[]> {
-        return new Observable((observador) => {
-            let unsubscribe: Unsubscribe;
-
-            const onNext = (snapshot: any) => {
-                const grupos: GrupoCompetencia[] = [];
-                snapshot.forEach((obj: any) => {
-                    const grupo = normalizeGrupoArmadura(obj.val());
-                    if (grupo.Id > 0)
-                        grupos.push(grupo);
-                });
-                grupos.sort((a, b) => a.Nombre.localeCompare(b.Nombre, "es", { sensitivity: "base" }));
-                observador.next(grupos);
-            };
-
-            const onError = (error: any) => {
-                observador.error(error);
-            };
-
-            unsubscribe = this.firebaseContextSvc.run(() => {
-                const dbRef = ref(this.db, "GruposArmaduras");
-                return onValue(dbRef, onNext, onError);
-            });
-            return () => unsubscribe();
-        });
+        return listaRtdb(
+            escucharRtdb(this.db, this.firebaseContextSvc, "GruposArmaduras"),
+            (valor) => normalizeGrupoArmadura(valor),
+            (grupo) => grupo.Id > 0,
+        );
     }
 
 }

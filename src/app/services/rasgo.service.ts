@@ -5,6 +5,7 @@ import { Observable } from "rxjs";
 import Swal from "sweetalert2";
 import { Rasgo } from "../interfaces/rasgo";
 import { FirebaseInjectionContextService } from "./firebase-injection-context.service";
+import { toBoolean } from 'src/app/services/utils/normalizacion';
 
 @Injectable({
     providedIn: 'root'
@@ -16,21 +17,6 @@ export class RasgoService {
         private http: HttpClient,
         private firebaseContextSvc: FirebaseInjectionContextService
     ) { }
-
-    private toBoolean(value: any, fallback: boolean = false): boolean {
-        if (typeof value === 'boolean')
-            return value;
-        if (typeof value === 'number')
-            return value !== 0;
-        if (typeof value === 'string') {
-            const normalizado = value.trim().toLowerCase();
-            if (['true', '1', 'si', 'sí', 'yes'].includes(normalizado))
-                return true;
-            if (['false', '0', 'no'].includes(normalizado))
-                return false;
-        }
-        return fallback;
-    }
 
     private readSnapshotValue(snapshot: any, keys: string[]): any {
         for (const key of keys) {
@@ -50,7 +36,7 @@ export class RasgoService {
                     Id: id,
                     Nombre: this.readSnapshotValue(snapshot, ['Nombre', 'n']) ?? '',
                     Descripcion: this.readSnapshotValue(snapshot, ['Descripcion', 'd']) ?? '',
-                    Oficial: this.toBoolean(this.readSnapshotValue(snapshot, ['Oficial', 'oficial', 'o']), true),
+                    Oficial: toBoolean(this.readSnapshotValue(snapshot, ['Oficial', 'oficial', 'o']), true),
                 };
                 observador.next(rasgo);
             };
@@ -80,7 +66,7 @@ export class RasgoService {
                         Id: Number(this.readSnapshotValue(obj, ['Id', 'i']) ?? 0),
                         Nombre: this.readSnapshotValue(obj, ['Nombre', 'n']) ?? '',
                         Descripcion: this.readSnapshotValue(obj, ['Descripcion', 'd']) ?? '',
-                        Oficial: this.toBoolean(this.readSnapshotValue(obj, ['Oficial', 'oficial', 'o']), true),
+                        Oficial: toBoolean(this.readSnapshotValue(obj, ['Oficial', 'oficial', 'o']), true),
                     };
                     rasgos.push(rasgo);
                 });

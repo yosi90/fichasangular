@@ -1,9 +1,8 @@
 import { HttpClient, HttpErrorResponse } from "@angular/common/http";
 import { Injectable } from "@angular/core";
 import { Auth } from "@angular/fire/auth";
-import { Database, Unsubscribe, onValue, ref } from "@angular/fire/database";
+import { Database } from "@angular/fire/database";
 import { Observable, Subject, firstValueFrom, map } from "rxjs";
-import Swal from "sweetalert2";
 import { environment } from "src/environments/environment";
 import {
     IdiomaCreateRequest,
@@ -14,11 +13,8 @@ import {
 } from "../interfaces/idioma";
 import { FirebaseInjectionContextService } from "./firebase-injection-context.service";
 import { cabeceraApiConFirebase } from './platform-session.service';
-import { toArray, toNumber, toText } from 'src/app/services/utils/normalizacion';
-
-function toBoolean(value: any): boolean {
-    return value === true || value === 1 || value === "1";
-}
+import { toArray, toBoolean, toNumber, toText } from 'src/app/services/utils/normalizacion';
+import { escucharRtdb, listaRtdb } from './catalogo-api';
 
 export function normalizeIdioma(raw: any): IdiomaDetalle {
     return {
@@ -45,34 +41,11 @@ export class IdiomaService {
     ) { }
 
     getIdiomas(): Observable<IdiomaDetalle[]> {
-        return new Observable((observador) => {
-            let unsubscribe: Unsubscribe;
-
-            const onNext = (snapshot: any) => {
-                const idiomas: IdiomaDetalle[] = [];
-                snapshot.forEach((obj: any) => {
-                    const idioma = normalizeIdioma(obj.val());
-                    if (idioma.Id > 0)
-                        idiomas.push(idioma);
-                });
-
-                idiomas.sort((a, b) => a.Nombre.localeCompare(b.Nombre, "es", { sensitivity: "base" }));
-                observador.next(idiomas);
-            };
-
-            const onError = (error: any) => {
-                observador.error(error);
-            };
-
-            unsubscribe = this.firebaseContextSvc.run(() => {
-                const dbRef = ref(this.db, "Idiomas");
-                return onValue(dbRef, onNext, onError);
-            });
-
-            return () => {
-                unsubscribe();
-            };
-        });
+        return listaRtdb(
+            escucharRtdb(this.db, this.firebaseContextSvc, "Idiomas"),
+            (valor) => normalizeIdioma(valor),
+            (idioma) => idioma.Id > 0,
+        );
     }
 
     private syncIdiomas() {

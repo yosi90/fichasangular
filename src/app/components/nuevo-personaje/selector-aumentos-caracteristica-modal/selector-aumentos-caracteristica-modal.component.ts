@@ -5,6 +5,7 @@ import {
     CaracteristicaKeyAumento,
 } from 'src/app/services/nuevo-personaje.service';
 import { esElementoInteractivoParaEnter } from 'src/app/services/utils/teclado';
+import { toBoolean } from 'src/app/services/utils/normalizacion';
 
 type CaracteristicaKey = CaracteristicaKeyAumento;
 
@@ -189,22 +190,11 @@ export class SelectorAumentosCaracteristicaModalComponent {
     }
 
     private esCaracteristicaPerdida(caracteristica: CaracteristicaKey): boolean {
-        return this.toBoolean((this.caracteristicasPerdidas as Record<string, any> | null)?.[caracteristica]);
+        return toBoolean((this.caracteristicasPerdidas as Record<string, any> | null)?.[caracteristica]);
     }
 
     private esCaracteristicaValida(valor: string): valor is CaracteristicaKey {
         return this.caracteristicas.some((caracteristica) => caracteristica.key === valor);
     }
 
-    private toBoolean(value: any): boolean {
-        if (typeof value === 'boolean')
-            return value;
-        if (typeof value === 'number')
-            return value === 1;
-        if (typeof value === 'string') {
-            const normalizado = value.trim().toLowerCase();
-            return normalizado === '1' || normalizado === 'true' || normalizado === 'si' || normalizado === 'sí';
-        }
-        return false;
-    }
 }

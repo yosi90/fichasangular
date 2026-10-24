@@ -1,8 +1,7 @@
-import { HttpClient, HttpErrorResponse } from "@angular/common/http";
+import { HttpClient } from "@angular/common/http";
 import { Injectable } from "@angular/core";
-import { Database, Unsubscribe, onValue, ref } from "@angular/fire/database";
+import { Database } from "@angular/fire/database";
 import { Observable, map } from "rxjs";
-import Swal from "sweetalert2";
 import { environment } from "src/environments/environment";
 import { AmbitoDetalle } from "../interfaces/ambito";
 import { DeidadDetalle } from "../interfaces/deidad";
@@ -11,19 +10,9 @@ import { normalizeAmbito } from "./ambito.service";
 import { FirebaseInjectionContextService } from "./firebase-injection-context.service";
 import { normalizeDominio } from "./dominio.service";
 import { normalizePabellon } from "./pabellon.service";
-import { toArray, toNumber, toText } from 'src/app/services/utils/normalizacion';
-
-function toBoolean(value: any): boolean {
-    if (typeof value === "boolean")
-        return value;
-    if (typeof value === "number")
-        return value > 0;
-    if (typeof value === "string") {
-        const normalized = value.trim().toLowerCase();
-        return normalized === "1" || normalized === "true" || normalized === "si" || normalized === "sí";
-    }
-    return false;
-}
+import { toArray, toBoolean, toNumber, toText } from 'src/app/services/utils/normalizacion';
+import { normalizeManualApi } from 'src/app/services/utils/manual-mapper';
+import { cacheRtdbOApi, escucharRtdb, listaRtdb } from './catalogo-api';
 
 function normalizeAmbitos(raw: any): AmbitoDetalle[] {
     return toArray(raw)
@@ -42,11 +31,7 @@ export function normalizeDeidad(raw: any): DeidadDetalle {
         Id: toNumber(raw?.Id),
         Nombre: toText(raw?.Nombre),
         Descripcion: toText(raw?.Descripcion),
-        Manual: {
-            Id: toNumber(raw?.Manual?.Id),
-            Nombre: toText(raw?.Manual?.Nombre),
-            Pagina: toNumber(raw?.Manual?.Pagina),
-        },
+        Manual: normalizeManualApi(raw?.Manual),
         Alineamiento: {
             Id: toNumber(raw?.Alineamiento?.Id),
             Id_basico: toNumber(raw?.Alineamiento?.Id_basico),
@@ -79,75 +64,24 @@ export class DeidadService {
     ) { }
 
     getDeidad(id: number): Observable<DeidadDetalle> {
-        return new Observable((observador) => {
-            let unsubscribe: Unsubscribe;
-
-            const onNext = (snapshot: any) => {
-                if (snapshot.exists()) {
-                    observador.next(normalizeDeidad(snapshot.val()));
-                    return;
-                }
-
-                this.http.get(`${environment.apiUrl}deidades/${id}`).subscribe({
-                    next: (raw: any) => observador.next(normalizeDeidad(raw)),
-                    error: (error: HttpErrorResponse) => {
-                        if (error.status === 404) {
-                            Swal.fire({
-                                icon: "warning",
-                                title: "Deidad no encontrada",
-                                text: `No existe la deidad con id ${id}`,
-                                showConfirmButton: true,
-                            });
-                        } else {
-                            Swal.fire({
-                                icon: "warning",
-                                title: "Error al obtener la deidad",
-                                text: error.message,
-                                showConfirmButton: true,
-                            });
-                        }
-                        observador.error(error);
-                    }
-                });
-            };
-
-            const onError = (error: any) => {
-                observador.error(error);
-            };
-
-            unsubscribe = this.firebaseContextSvc.run(() => {
-                const dbRef = ref(this.db, `Deidades/${id}`);
-                return onValue(dbRef, onNext, onError);
-            });
-            return () => unsubscribe();
+        return cacheRtdbOApi({
+            escuchar: escucharRtdb(this.db, this.firebaseContextSvc, `Deidades/${id}`),
+            desdeCache: (snapshot) => normalizeDeidad(snapshot.val()),
+            pedir: () => this.http.get(`${environment.apiUrl}deidades/${id}`),
+            desdeApi: (raw) => normalizeDeidad(raw),
+            avisos: {
+                noEncontrado: { titulo: "Deidad no encontrada", texto: `No existe la deidad con id ${id}` },
+                error: "Error al obtener la deidad",
+            },
         });
     }
 
     getDeidades(): Observable<DeidadDetalle[]> {
-        return new Observable((observador) => {
-            let unsubscribe: Unsubscribe;
-
-            const onNext = (snapshot: any) => {
-                const deidades: DeidadDetalle[] = [];
-                snapshot.forEach((obj: any) => {
-                    const deidad = normalizeDeidad(obj.val());
-                    if (deidad.Id > 0)
-                        deidades.push(deidad);
-                });
-                deidades.sort((a, b) => a.Nombre.localeCompare(b.Nombre, "es", { sensitivity: "base" }));
-                observador.next(deidades);
-            };
-
-            const onError = (error: any) => {
-                observador.error(error);
-            };
-
-            unsubscribe = this.firebaseContextSvc.run(() => {
-                const dbRef = ref(this.db, "Deidades");
-                return onValue(dbRef, onNext, onError);
-            });
-            return () => unsubscribe();
-        });
+        return listaRtdb(
+            escucharRtdb(this.db, this.firebaseContextSvc, "Deidades"),
+            (valor) => normalizeDeidad(valor),
+            (deidad) => deidad.Id > 0,
+        );
     }
 
     getDeidadesPorPabellon(idPabellon: number): Observable<DeidadDetalle[]> {

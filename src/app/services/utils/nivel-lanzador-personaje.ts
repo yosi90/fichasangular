@@ -8,7 +8,7 @@ import {
     PersonajeProgresionLanzadorDto,
     PersonajeProgresionLanzadorSeleccionDto
 } from 'src/app/interfaces/personajes-api';
-import { normalizarTexto, toNumber } from 'src/app/services/utils/normalizacion';
+import { normalizarTexto, toInt, toNumber } from 'src/app/services/utils/normalizacion';
 
 function tieneLanzamientoPropio(clase: Clase | null | undefined): boolean {
     const conjuros = clase?.Conjuros;
@@ -48,7 +48,7 @@ function tieneEscalonLanzador(clase: Clase, detalle: ClaseNivelDetalle): boolean
 function obtenerNivelesDesgloseLanzador(clase: Clase): number[] {
     return (Array.isArray(clase?.Desglose_niveles) ? clase.Desglose_niveles : [])
         .filter((detalle) => tieneEscalonLanzador(clase, detalle))
-        .map((detalle) => Math.trunc(toNumber(detalle?.Nivel)))
+        .map((detalle) => toInt(detalle?.Nivel))
         .filter((nivel) => nivel > 0)
         .sort((a, b) => a - b);
 }
@@ -59,10 +59,10 @@ function normalizarSeleccionesProgresion(
     return Array.isArray(progresion?.selecciones)
         ? progresion.selecciones
             .map((seleccion) => ({
-                idClaseAplicada: Math.trunc(toNumber(seleccion?.idClaseAplicada)),
-                nivelClaseAplicado: Math.trunc(toNumber(seleccion?.nivelClaseAplicado)),
-                indiceAumento: Math.trunc(toNumber(seleccion?.indiceAumento)),
-                idClaseObjetivo: Math.trunc(toNumber(seleccion?.idClaseObjetivo)),
+                idClaseAplicada: toInt(seleccion?.idClaseAplicada),
+                nivelClaseAplicado: toInt(seleccion?.nivelClaseAplicado),
+                indiceAumento: toInt(seleccion?.indiceAumento),
+                idClaseObjetivo: toInt(seleccion?.idClaseObjetivo),
             }))
             .filter((seleccion) =>
                 seleccion.idClaseAplicada > 0
@@ -101,7 +101,7 @@ export function calcularNivelesLanzadorPersonaje(
     return desglose
         .map((entrada) => {
             const nombreClase = `${entrada?.Nombre ?? ''}`.trim();
-            const nivelClase = Math.max(0, Math.trunc(toNumber(entrada?.Nivel)));
+            const nivelClase = Math.max(0, toInt(entrada?.Nivel));
             if (nombreClase.length < 1 || nivelClase < 1)
                 return null;
 
@@ -111,7 +111,7 @@ export function calcularNivelesLanzadorPersonaje(
             if (!clase || !tieneLanzamientoPropio(clase))
                 return null;
 
-            const idClase = Math.trunc(toNumber(clase?.Id));
+            const idClase = toInt(clase?.Id);
             if (idClase <= 0 || usados.has(idClase))
                 return null;
             usados.add(idClase);

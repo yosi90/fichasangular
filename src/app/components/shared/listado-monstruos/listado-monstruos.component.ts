@@ -7,7 +7,7 @@ import { MonstruoDetalle } from 'src/app/interfaces/monstruo';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
 import { MonstruoService } from 'src/app/services/monstruo.service';
 import { ordenarEnEspanol } from 'src/app/services/utils/orden-tabla';
-import { normalizarTexto, toNumber } from 'src/app/services/utils/normalizacion';
+import { normalizarTexto, toBoolean, toNumber } from 'src/app/services/utils/normalizacion';
 
 @Component({
     selector: 'app-listado-monstruos',
@@ -74,7 +74,7 @@ export class ListadoMonstruosComponent implements OnDestroy {
             const manualNombre = normalizarTexto(this.getManualNombre(monstruo));
             const visiblePorTexto = texto.length < 1 || normalizarTexto(monstruo?.Nombre).includes(texto);
             const visiblePorManual = this.defaultManual === 'Cualquiera' || manualNombre === normalizarTexto(this.defaultManual);
-            const visiblePorHomebrew = this.mostrarHomebrew || this.toBoolean(monstruo?.Oficial, true);
+            const visiblePorHomebrew = this.mostrarHomebrew || toBoolean(monstruo?.Oficial, true);
             return visiblePorTexto && visiblePorManual && visiblePorHomebrew;
         });
 
@@ -139,7 +139,7 @@ export class ListadoMonstruosComponent implements OnDestroy {
     }
 
     isFlagActiva(value: any): boolean {
-        return this.toBoolean(value);
+        return toBoolean(value);
     }
 
     private sincronizarColumnaHomebrew(): void {
@@ -156,9 +156,9 @@ export class ListadoMonstruosComponent implements OnDestroy {
         if (property === 'Valor_desafio')
             return `${item?.Valor_desafio ?? ''}`;
         if (property === 'Familiar')
-            return this.toBoolean(item?.Familiar) ? 1 : 0;
+            return toBoolean(item?.Familiar) ? 1 : 0;
         if (property === 'Companero')
-            return this.toBoolean(item?.Companero) ? 1 : 0;
+            return toBoolean(item?.Companero) ? 1 : 0;
         return `${(item as any)?.[property] ?? ''}`;
     }
 
@@ -172,21 +172,6 @@ export class ListadoMonstruosComponent implements OnDestroy {
                 .map((monstruo) => this.getManualNombre(monstruo))
                 .filter((nombre) => nombre.length > 0)
         )).sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' }));
-    }
-
-    private toBoolean(value: any, fallback: boolean = false): boolean {
-        if (typeof value === 'boolean')
-            return value;
-        if (typeof value === 'number')
-            return value !== 0;
-        if (typeof value === 'string') {
-            const normalizado = value.trim().toLowerCase();
-            if (['true', '1', 'si', 'sí', 'yes'].includes(normalizado))
-                return true;
-            if (['false', '0', 'no'].includes(normalizado))
-                return false;
-        }
-        return fallback;
     }
 
 }

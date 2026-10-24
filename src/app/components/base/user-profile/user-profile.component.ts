@@ -37,6 +37,7 @@ import { ChatFloatingService } from 'src/app/services/chat-floating.service';
 import { PlatformSessionService } from 'src/app/services/platform-session.service';
 import { ApiActionGuardService } from 'src/app/services/api-action-guard.service';
 import { toUserFacingErrorMessage } from 'src/app/services/utils/user-facing-error.util';
+import { normalizarTexto } from 'src/app/services/utils/normalizacion';
 
 type CampaignWorkspaceMode = 'idle' | 'create' | 'config' | 'peopleStories';
 type CampaignWorkspaceTab = 'usuarios' | 'historias';
@@ -2132,16 +2133,8 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
         await this.reloadCampaigns(this.selectedCampaignId ?? event.campaignId);
     }
 
-    private normalizeComparableText(value: string | null | undefined): string {
-        return `${value ?? ''}`
-            .normalize('NFD')
-            .replace(/[\u0300-\u036f]/g, '')
-            .toLowerCase()
-            .trim();
-    }
-
     private isCampaignNameFallback(value: string): boolean {
-        const normalized = this.normalizeComparableText(value);
+        const normalized = normalizarTexto(value);
         return normalized.includes('crear la campana') || normalized.includes('actualizar la campana');
     }
 

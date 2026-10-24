@@ -6,6 +6,7 @@ import { TipoCriatura } from 'src/app/interfaces/tipo_criatura';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
 import { TipoCriaturaService } from 'src/app/services/tipo-criatura.service';
 import { ordenarEnEspanol } from 'src/app/services/utils/orden-tabla';
+import { normalizarTexto } from 'src/app/services/utils/normalizacion';
 
 @Component({
     selector: 'app-listado-tipos-criatura',
@@ -45,10 +46,10 @@ export class ListadoTiposCriaturaComponent {
     }
 
     filtroTipos() {
-        const texto = this.nombreText?.nativeElement.value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase() ?? '';
+        const texto = normalizarTexto(this.nombreText?.nativeElement.value, true);
         const homebrew = !(this.anuncioTiposHomebrew === 'Clic para mostar tipos homebrew');
         const tiposFiltrados = this.tipos.filter(tipo =>
-            (texto === undefined || texto === '' || tipo.Nombre.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().includes(texto))
+            (texto === undefined || texto === '' || normalizarTexto(tipo.Nombre, true).includes(texto))
             && (this.defaultManual == 'Cualquiera' || tipo.Manual.includes(this.defaultManual))
             && (homebrew || !homebrew && tipo.Oficial)
         );

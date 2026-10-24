@@ -2,6 +2,7 @@ import { Component, Input } from '@angular/core';
 import { VentajaDetalle } from 'src/app/interfaces/ventaja';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
 import { normalizarTexto } from 'src/app/services/utils/normalizacion';
+import { tieneTextoVisible } from 'src/app/services/utils/texto-visible';
 
 @Component({
     selector: 'app-detalles-ventaja',
@@ -88,18 +89,7 @@ export class DetallesVentajaComponent {
         return flags;
     }
 
-    tieneTextoVisible(texto: string | undefined | null): boolean {
-        return `${texto ?? ''}`.trim().length > 0;
-    }
-
-    private esNombreReferenciaNoValido(nombre: string | undefined | null): boolean {
-        const normalizado = normalizarTexto(nombre);
-        return normalizado.length < 1
-            || normalizado === 'ninguno'
-            || normalizado === 'no aplica'
-            || normalizado === 'no especifica'
-            || normalizado === 'no se especifica';
-    }
+    readonly tieneTextoVisible = tieneTextoVisible;
 
     tieneManualVisible(): boolean {
         return this.tieneTextoVisible(this.ventaja?.Manual?.Nombre);
@@ -107,12 +97,12 @@ export class DetallesVentajaComponent {
 
     tieneRasgoVisible(): boolean {
         const id = Number(this.ventaja?.Rasgo?.Id ?? 0);
-        return id > 0 && !this.esNombreReferenciaNoValido(this.ventaja?.Rasgo?.Nombre);
+        return id > 0 && this.tieneTextoVisible(this.ventaja?.Rasgo?.Nombre);
     }
 
     tieneIdiomaVisible(): boolean {
         const id = Number(this.ventaja?.Idioma?.Id ?? 0);
-        return id > 0 && !this.esNombreReferenciaNoValido(this.ventaja?.Idioma?.Nombre);
+        return id > 0 && this.tieneTextoVisible(this.ventaja?.Idioma?.Nombre);
     }
 
     tieneHabilidadVisible(): boolean {
@@ -122,6 +112,6 @@ export class DetallesVentajaComponent {
             return false;
         if (id === 0)
             return nombreNormalizado === 'elegir';
-        return !this.esNombreReferenciaNoValido(this.ventaja?.Habilidad?.Nombre);
+        return this.tieneTextoVisible(this.ventaja?.Habilidad?.Nombre);
     }
 }

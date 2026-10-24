@@ -233,6 +233,27 @@ describe('RazaService helpers', () => {
         expect(raza.Raciales[0].Nombre).toBe('Vision en la penumbra');
     });
 
+    it('el conjuro de las sortílegas de la API usa normalizeConjuroApi (Niveles_clase, alma, Nombre_esp)', () => {
+        const raza = normalizeRazaApi(createRazaApiRaw({
+            sor: [{
+                Conjuro: {
+                    Id: 9,
+                    Nombre: 'Oscuridad',
+                    Escuela: { Id: 4, Nombre: 'Evocación', Nombre_esp: 'Evocador', Prohibible: 1 },
+                    Niveles_clase: [{ Id_clase: 2, Clase: 'Hechicero', Nivel: 2, Espontaneo: 1 }],
+                    alma: 1,
+                },
+                Nivel_lanzador: 3,
+                Usos_diarios: '1/día',
+            }],
+        }));
+
+        const conjuro = raza.Sortilegas[0].Conjuro;
+        expect(conjuro.Escuela).toEqual({ Id: 4, Nombre: 'Evocación', Nombre_especial: 'Evocador', Prohibible: true });
+        expect(conjuro.Nivel_clase).toEqual([{ Id_clase: 2, Clase: 'Hechicero', Nivel: 2, Espontaneo: true }]);
+        expect(conjuro.Alma).toBeTrue();
+    });
+
     it('normaliza plantillas por subtipo desde contrato HTTP', () => {
         const raza = normalizeRazaApi(createRazaApiRaw({
             Plantillas_por_subtipo: [{

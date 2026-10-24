@@ -4,17 +4,15 @@ import {
     Firestore,
     collection,
     doc,
-    getDoc,
     getDocs,
     onSnapshot,
 } from '@angular/fire/firestore';
 import { UserPrivateProfile } from '../interfaces/user-account';
 import { CampaignListItem } from '../interfaces/campaign-management';
 import { PersonajeSimple } from '../interfaces/simplificaciones/personaje-simple';
-import { AuthProviderType } from '../interfaces/user-profile';
 import { UserRole } from '../interfaces/user-acl';
 import { FirebaseInjectionContextService } from './firebase-injection-context.service';
-import { UserCompliancePolicyState, UserComplianceSnapshot, UserModerationSanction } from '../interfaces/user-moderation';
+import { toBoolean } from 'src/app/services/utils/normalizacion';
 
 @Injectable({
     providedIn: 'root'
@@ -25,17 +23,6 @@ export class PrivateUserFirestoreService {
         private firestore: Firestore,
         private firebaseContextSvc: FirebaseInjectionContextService
     ) { }
-
-    async getMyProfile(): Promise<UserPrivateProfile | null> {
-        const uid = this.getCurrentUid();
-        if (!uid)
-            return null;
-
-        const snapshot = await this.readDocument(
-            this.getDocumentRef('private_users', uid, 'meta', 'profile')
-        );
-        return this.mapPrivateProfile(snapshot.exists() ? snapshot.data() : null, uid);
-    }
 
     watchMyProfile(
         next: (profile: UserPrivateProfile | null) => void,
@@ -134,10 +121,6 @@ export class PrivateUserFirestoreService {
         return doc(this.firestore as any, ...(pathSegments as any));
     }
 
-    private readDocument(documentRef: any): Promise<any> {
-        return this.firebaseContextSvc.run(() => getDoc(documentRef));
-    }
-
     private getCurrentUid(): string {
         return `${this.auth.currentUser?.uid ?? ''}`.trim();
     }
@@ -149,16 +132,11 @@ export class PrivateUserFirestoreService {
             ?? this.fallbackDisplayName(fallbackEmail)
             ?? 'Usuario';
 
+        // `meta/profile` trae solo esto (docs/publica/endpoints/usuarios.md). El cumplimiento ya no viene en el
+        // perfil: lo da la plataforma en el estado de la sesión (UserService).
         return {
             uid: this.toNullableText(raw?.uid) ?? fallbackUid,
             displayName: this.toNullableText(raw?.displayName) ?? fallbackDisplayName,
-            bio: this.normalizeMultilineText(raw?.bio),
-            genderIdentity: this.toNullableText(raw?.genderIdentity),
-            pronouns: this.toNullableText(raw?.pronouns),
-            email: this.toNullableText(raw?.email) ?? fallbackEmail,
-            emailVerified: raw?.emailVerified === true || currentUser?.emailVerified === true,
-            authProvider: this.normalizeAuthProvider(raw?.authProvider, currentUser),
-            photoUrl: this.toNullableText(raw?.photoUrl),
             photoThumbUrl: this.toNullableText(raw?.photoThumbUrl),
             createdAt: this.toNullableText(raw?.createdAt),
             lastSeenAt: this.toNullableText(raw?.lastSeenAt),
@@ -176,11 +154,7 @@ export class PrivateUserFirestoreService {
                 ?? raw?.permissionsCreate
                 ?? raw
             ),
-            compliance: this.normalizeCompliance(
-                raw?.compliance
-                ?? raw?.privateState?.compliance
-                ?? raw?.access?.compliance
-            ),
+            compliance: null,
         };
     }
 
@@ -258,7 +232,7 @@ export class PrivateUserFirestoreService {
             Campana: this.toNullableText(raw?.Campana ?? raw?.Campaña ?? raw?.ca) ?? 'Sin campaña',
             Trama: this.toNullableText(raw?.Trama ?? raw?.t) ?? 'Trama base',
             Subtrama: this.toNullableText(raw?.Subtrama ?? raw?.s) ?? 'Subtrama base',
-            Archivado: this.toBoolean(raw?.archivado ?? raw?.Archivado ?? raw?.a),
+            Archivado: toBoolean(raw?.archivado ?? raw?.Archivado ?? raw?.a),
         };
     }
 
@@ -308,114 +282,6 @@ export class PrivateUserFirestoreService {
         }, {});
     }
 
-    private normalizeCompliance(raw: any): UserComplianceSnapshot | null {
-        if (!raw || typeof raw !== 'object')
-            return null;
-
-        const activeSanction = this.normalizeModerationSanction(raw?.activeSanction)
-            ?? this.buildEffectiveModerationSanction(raw);
-        const moderationStatus = this.normalizeModerationStatus(raw?.moderationStatus ?? raw?.effectiveStatus);
-        return {
-            banned: raw?.banned === true
-                || moderationStatus === 'blocked'
-                || moderationStatus === 'banned'
-                || !!activeSanction,
-            mustAcceptUsage: raw?.mustAcceptUsage === true,
-            mustAcceptCreation: raw?.mustAcceptCreation === true,
-            activeSanction,
-            usage: this.normalizeCompliancePolicy(raw?.usage),
-            creation: this.normalizeCompliancePolicy(raw?.creation),
-        };
-    }
-
-    private normalizeCompliancePolicy(raw: any): UserCompliancePolicyState | null {
-        if (!raw || typeof raw !== 'object')
-            return null;
-
-        return {
-            version: this.toNullableText(raw?.version ?? raw?.versionTag ?? raw?.versionCode),
-            accepted: raw?.accepted === true || raw?.isAccepted === true || raw?.acceptedVersionMatchesActive === true,
-            acceptedAtUtc: this.toNullableText(raw?.acceptedAtUtc ?? raw?.acceptedAt),
-            publishedAtUtc: this.toNullableText(raw?.publishedAtUtc ?? raw?.effectiveAtUtc ?? raw?.activeSinceUtc),
-            title: this.toNullableText(raw?.title ?? raw?.name),
-        };
-    }
-
-    private normalizeModerationSanction(raw: any): UserModerationSanction | null {
-        if (!raw || typeof raw !== 'object')
-            return null;
-
-        const sanctionId = this.toPositiveInt(raw?.sanctionId ?? raw?.id);
-        const kind = this.toNullableText(raw?.kind ?? raw?.sanctionKind ?? raw?.type);
-        const code = this.toNullableText(raw?.code ?? raw?.sanctionCode);
-        const name = this.toNullableText(raw?.name ?? raw?.title ?? raw?.label);
-        const startsAtUtc = this.toNullableText(raw?.startsAtUtc ?? raw?.startAtUtc ?? raw?.appliedAtUtc);
-        const endsAtUtc = this.toNullableText(raw?.endsAtUtc ?? raw?.endAtUtc ?? raw?.expiresAtUtc);
-        const hasExplicitPermanent = raw?.isPermanent === true || raw?.permanent === true;
-        const hasExplicitNullEnd = (Object.prototype.hasOwnProperty.call(raw, 'endsAtUtc') && raw?.endsAtUtc === null)
-            || (Object.prototype.hasOwnProperty.call(raw, 'endAtUtc') && raw?.endAtUtc === null)
-            || (Object.prototype.hasOwnProperty.call(raw, 'expiresAtUtc') && raw?.expiresAtUtc === null);
-        const isPermanent = hasExplicitPermanent || hasExplicitNullEnd;
-
-        if (!sanctionId && !kind && !code && !name && !startsAtUtc && !endsAtUtc && !isPermanent)
-            return null;
-
-        return {
-            sanctionId,
-            kind,
-            code,
-            name,
-            startsAtUtc,
-            endsAtUtc,
-            isPermanent,
-        };
-    }
-
-    private buildEffectiveModerationSanction(raw: any): UserModerationSanction | null {
-        if (!raw || typeof raw !== 'object')
-            return null;
-
-        const moderationStatus = this.normalizeModerationStatus(raw?.moderationStatus ?? raw?.effectiveStatus);
-        const endsAtUtc = this.toNullableText(raw?.blockedUntilUtc ?? raw?.expiresAtUtc ?? raw?.endAtUtc);
-        const hasExplicitPermanent = raw?.isPermanent === true || raw?.permanent === true;
-        const isPermanent = hasExplicitPermanent || (moderationStatus === 'banned' && endsAtUtc === null);
-
-        if (moderationStatus !== 'blocked' && moderationStatus !== 'banned' && !endsAtUtc && !isPermanent)
-            return null;
-
-        return {
-            sanctionId: null,
-            kind: 'restriction',
-            code: isPermanent ? 'technical_account_restriction_permanent' : 'technical_account_restriction_temporary',
-            name: isPermanent ? 'Restricción permanente de cuenta' : 'Restricción temporal de cuenta',
-            startsAtUtc: null,
-            endsAtUtc,
-            isPermanent,
-        };
-    }
-
-    private normalizeModerationStatus(value: any): string | null {
-        const normalized = `${value ?? ''}`.trim().toLowerCase();
-        if (normalized === 'none' || normalized === 'blocked' || normalized === 'banned')
-            return normalized;
-        return null;
-    }
-
-    private normalizeAuthProvider(rawValue: any, currentUser: any): AuthProviderType {
-        const normalized = `${rawValue ?? ''}`.trim().toLowerCase();
-        if (normalized === 'correo' || normalized === 'google')
-            return normalized;
-
-        const providerIds = Array.isArray(currentUser?.providerData)
-            ? currentUser.providerData.map((provider: any) => `${provider?.providerId ?? ''}`.trim().toLowerCase())
-            : [];
-        if (providerIds.includes('google.com'))
-            return 'google';
-        if (providerIds.includes('password') || providerIds.includes('email'))
-            return 'correo';
-        return 'otro';
-    }
-
     private normalizeRole(value: any): UserRole {
         const normalized = `${value ?? ''}`.trim().toLowerCase();
         if (normalized === 'admin' || normalized === 'colaborador' || normalized === 'master')
@@ -450,26 +316,6 @@ export class PrivateUserFirestoreService {
 
     private toNullableText(value: any): string | null {
         const text = `${value ?? ''}`.trim();
-        return text.length > 0 ? text : null;
-    }
-
-    private toBoolean(value: any): boolean {
-        if (typeof value === 'boolean')
-            return value;
-        if (typeof value === 'number')
-            return value === 1;
-        if (typeof value === 'string') {
-            const normalized = value.trim().toLowerCase();
-            return normalized === '1' || normalized === 'true' || normalized === 'si' || normalized === 'sí';
-        }
-        return false;
-    }
-
-    private normalizeMultilineText(value: any): string | null {
-        const text = `${value ?? ''}`
-            .replace(/\r\n/g, '\n')
-            .replace(/\r/g, '\n')
-            .trim();
         return text.length > 0 ? text : null;
     }
 

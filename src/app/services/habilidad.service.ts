@@ -15,11 +15,7 @@ import {
 } from "../interfaces/habilidad";
 import { FirebaseInjectionContextService } from "./firebase-injection-context.service";
 import { cabeceraApiConFirebase } from './platform-session.service';
-import { toNumber, toText } from 'src/app/services/utils/normalizacion';
-
-function toBoolean(value: any): boolean {
-    return value === true || value === 1 || value === "1";
-}
+import { toBoolean, toInt, toNumber, toText } from 'src/app/services/utils/normalizacion';
 
 function toArray<T = any>(value: any): T[] {
     if (Array.isArray(value))
@@ -130,7 +126,7 @@ export class HabilidadService {
     ): Promise<HabilidadCustomMutationResponse> {
         try {
             const headers = await cabeceraApiConFirebase(this.auth);
-            const id = Math.trunc(toNumber(idHabilidad));
+            const id = toInt(idHabilidad);
             const response = await firstValueFrom(
                 this.http.patch<HabilidadCustomMutationApiResponse>(`${environment.apiUrl}habilidades/custom/${id}`, payload, { headers })
             );
@@ -148,7 +144,7 @@ export class HabilidadService {
         fallbackMessage: string,
         fallbackId: number = 0,
     ): HabilidadCustomMutationResponse {
-        const idHabilidad = Math.trunc(toNumber(response?.idHabilidad ?? response?.id_habilidad ?? response?.habilidad?.Id_habilidad ?? fallbackId));
+        const idHabilidad = toInt(response?.idHabilidad ?? response?.id_habilidad ?? response?.habilidad?.Id_habilidad ?? fallbackId);
         if (!Number.isFinite(idHabilidad) || idHabilidad <= 0)
             throw new Error("La API no devolvió un idHabilidad válido");
 

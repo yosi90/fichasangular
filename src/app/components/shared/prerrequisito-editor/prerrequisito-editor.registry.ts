@@ -7,11 +7,7 @@ import {
     PrerequisiteRowModel,
     PrerequisiteType,
 } from './prerrequisito-editor.models';
-
-function toInt(value: unknown, fallback: number): number {
-    const parsed = Number(value);
-    return Number.isFinite(parsed) ? Math.trunc(parsed) : fallback;
-}
+import { toInt } from 'src/app/services/utils/normalizacion';
 
 function withOpcional(base: Record<string, any>, payload: Record<string, any>): Record<string, any> {
     const out = { ...base };

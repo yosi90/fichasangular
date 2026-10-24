@@ -1,12 +1,11 @@
 import { Injectable } from '@angular/core';
 import { Auth } from '@angular/fire/auth';
-import { Database, Unsubscribe, onValue, ref } from '@angular/fire/database';
+import { Database, Unsubscribe } from '@angular/fire/database';
 import { Observable, firstValueFrom } from 'rxjs';
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { MutacionRaza, Raza, RazaHabilidades, RazaPrerrequisitos, RazaPrerrequisitosFlags } from '../interfaces/raza';
 import { RazaCreateApiResponse, RazaCreateRequest, RazaCreateResponse } from '../interfaces/razas-api';
 import { environment } from 'src/environments/environment';
-import Swal from 'sweetalert2';
 import { Alineamiento } from '../interfaces/alineamiento';
 import { DoteContextual } from '../interfaces/dote-contextual';
 import { FirebaseInjectionContextService } from './firebase-injection-context.service';
@@ -15,22 +14,8 @@ import { toDoteContextualArray } from './utils/dote-mapper';
 import { normalizeRaciales } from './utils/racial-mapper';
 import { normalizeSubtipoRefArray } from './utils/subtipo-mapper';
 import { cabeceraApiConFirebase } from './platform-session.service';
-import { toArray, toNumber } from 'src/app/services/utils/normalizacion';
-
-function toBoolean(value: any, fallback: boolean = false): boolean {
-    if (typeof value === 'boolean')
-        return value;
-    if (typeof value === 'number')
-        return value !== 0;
-    if (typeof value === 'string') {
-        const normalizado = value.trim().toLowerCase();
-        if (['true', '1', 'si', 'sí', 'yes'].includes(normalizado))
-            return true;
-        if (['false', '0', 'no'].includes(normalizado))
-            return false;
-    }
-    return fallback;
-}
+import { toArray, toBoolean, toNumber } from 'src/app/services/utils/normalizacion';
+import { cacheRtdbOApi, escucharRtdb } from './catalogo-api';
 
 function parseIdExtra(value: any): number {
     if (value === undefined || value === null || `${value}`.trim() === '')
@@ -323,6 +308,19 @@ export function normalizeRazaLegacy(raw: any, id: any = raw?.Id ?? raw?.i): Raza
     return mapRazaDesdeRaw(raw ?? {}, id, dotesContextuales, subtipos, raciales);
 }
 
+/** Una raza de la caché de la RTDB (permisivo: acepta `Subtipos` o `subtipos`). */
+function razaDesdeSnapshot(snapshot: any, id: any): Raza {
+    const dotesContextuales = toDoteContextualArray(snapshot.child('DotesContextuales').val());
+    const subtipos = normalizeSubtipoRefArray(snapshot.child('Subtipos').val() ?? snapshot.child('subtipos').val());
+    return mapRazaDesdeRaw(
+        snapshot.val() ?? {},
+        id,
+        dotesContextuales,
+        subtipos,
+        snapshot.child('Raciales').val()
+    );
+}
+
 @Injectable({
     providedIn: 'root'
 })
@@ -336,143 +334,44 @@ export class RazaService {
     ) { }
 
     protected watchRazaPath(id: number, onNext: (snapshot: any) => void, onError: (error: any) => void): Unsubscribe {
-        return this.firebaseContextSvc.run(() => {
-            const dbRef = ref(this.db, `Razas/${id}`);
-            return onValue(dbRef, onNext, onError);
-        });
+        return escucharRtdb(this.db, this.firebaseContextSvc, `Razas/${id}`)(onNext, onError);
     }
 
     protected watchRazasPath(onNext: (snapshot: any) => void, onError: (error: any) => void): Unsubscribe {
-        return this.firebaseContextSvc.run(() => {
-            const dbRef = ref(this.db, 'Razas');
-            return onValue(dbRef, onNext, onError);
-        });
+        return escucharRtdb(this.db, this.firebaseContextSvc, 'Razas')(onNext, onError);
     }
 
     async getRaza(id: number): Promise<Observable<Raza>> {
-        return new Observable((observador) => {
-            let unsubscribe: Unsubscribe;
-
-            const onNext = (snapshot: any) => {
-                if (!snapshot.exists()) {
-                    this.http.get(`${environment.apiUrl}razas/${id}`).subscribe({
-                        next: (raw: any) => observador.next(normalizeRazaApi(raw)),
-                        error: (error: HttpErrorResponse) => {
-                            if (error.status === 404) {
-                                Swal.fire({
-                                    icon: 'warning',
-                                    title: 'Raza no encontrada',
-                                    text: `No existe la raza con id ${id}`,
-                                    showConfirmButton: true,
-                                });
-                            } else {
-                                Swal.fire({
-                                    icon: 'warning',
-                                    title: 'Error al obtener la raza',
-                                    text: error.message,
-                                    showConfirmButton: true,
-                                });
-                            }
-                            observador.error(error);
-                        }
-                    });
-                    return;
-                }
-
-                const dotesContextuales = toDoteContextualArray(snapshot.child('DotesContextuales').val());
-                const subtipos = normalizeSubtipoRefArray(snapshot.child('Subtipos').val() ?? snapshot.child('subtipos').val());
-                const raza: Raza = mapRazaDesdeRaw(
-                    snapshot.val() ?? {},
-                    id,
-                    dotesContextuales,
-                    subtipos,
-                    snapshot.child('Raciales').val()
-                );
-                observador.next(raza); // Emitir el array de personajes
-            };
-
-            const onError = (error: any) => {
-                observador.error(error); // Manejar el error
-            };
-
-            // const onComplete = () => {
-            //     observador.complete();  Completar el observable
-            // };
-
-            // unsubscribe = onValue(dbRef, onNext, onError, onComplete);
-            unsubscribe = this.watchRazaPath(id, onNext, onError);
-
-            return () => {
-                unsubscribe(); // Cancelar la suscripción al evento onValue
-            };
+        return cacheRtdbOApi({
+            escuchar: (onNext, onError) => this.watchRazaPath(id, onNext, onError),
+            desdeCache: (snapshot) => razaDesdeSnapshot(snapshot, id),
+            pedir: () => this.http.get(`${environment.apiUrl}razas/${id}`),
+            desdeApi: (raw) => normalizeRazaApi(raw),
+            avisos: {
+                noEncontrado: { titulo: 'Raza no encontrada', texto: `No existe la raza con id ${id}` },
+                error: 'Error al obtener la raza',
+            },
         });
     }
 
     getRazas(): Observable<Raza[]> {
-        return new Observable((observador) => {
-            let unsubscribe: Unsubscribe;
-
-            const onNext = (snapshot: any) => {
-                if (!snapshot.exists()) {
-                    this.http.get(`${environment.apiUrl}razas`).subscribe({
-                        next: (raw: any) => {
-                            const razas = (Array.isArray(raw) ? raw : Object.values(raw ?? {}))
-                                .map((item: any) => normalizeRazaApi(item))
-                                .filter((raza) => raza.Id > 0);
-                            observador.next(razas);
-                        },
-                        error: (error: HttpErrorResponse) => {
-                            if (error.status === 404) {
-                                Swal.fire({
-                                    icon: 'warning',
-                                    title: 'Listado de razas no disponible',
-                                    text: 'No se encontró /razas en la API',
-                                    showConfirmButton: true,
-                                });
-                            } else {
-                                Swal.fire({
-                                    icon: 'warning',
-                                    title: 'Error al obtener el listado de razas',
-                                    text: error.message,
-                                    showConfirmButton: true,
-                                });
-                            }
-                            observador.error(error);
-                        }
-                    });
-                    return;
-                }
-
-                const Razas: Raza[] = [];
+        return cacheRtdbOApi({
+            escuchar: (onNext, onError) => this.watchRazasPath(onNext, onError),
+            desdeCache: (snapshot) => {
+                const razas: Raza[] = [];
                 snapshot.forEach((obj: any) => {
-                    const dotesContextuales = toDoteContextualArray(obj.child('DotesContextuales').val());
-                    const subtipos = normalizeSubtipoRefArray(obj.child('Subtipos').val() ?? obj.child('subtipos').val());
-                    const raza: Raza = mapRazaDesdeRaw(
-                        obj.val() ?? {},
-                        obj.key,
-                        dotesContextuales,
-                        subtipos,
-                        obj.child('Raciales').val()
-                    );
-                    Razas.push(raza);
+                    razas.push(razaDesdeSnapshot(obj, obj.key));
                 });
-                observador.next(Razas); // Emitir el array de personajes
-            };
-
-            const onError = (error: any) => {
-                observador.error(error); // Manejar el error
-            };
-
-            // const onComplete = () => {
-            //     observador.complete();  Completar el observable
-            // };
-
-            // unsubscribe = onValue(dbRef, onNext, onError, onComplete);
-            unsubscribe = this.watchRazasPath(onNext, onError);
-
-            return () => {
-                unsubscribe(); // Cancelar la suscripción al evento onValue
-            };
+                return razas;
+            },
+            pedir: () => this.http.get(`${environment.apiUrl}razas`),
+            desdeApi: (raw) => (Array.isArray(raw) ? raw : Object.values(raw ?? {}))
+                .map((item: any) => normalizeRazaApi(item))
+                .filter((raza) => raza.Id > 0),
+            avisos: {
+                noEncontrado: { titulo: 'Listado de razas no disponible', texto: 'No se encontró /razas en la API' },
+                error: 'Error al obtener el listado de razas',
+            },
         });
     }
 

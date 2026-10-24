@@ -11,6 +11,7 @@ import { CampanaService } from 'src/app/services/campana.service';
 import { UserService } from 'src/app/services/user.service';
 import { Subscription } from 'rxjs';
 import { ordenarEnEspanol } from 'src/app/services/utils/orden-tabla';
+import { normalizarTexto } from 'src/app/services/utils/normalizacion';
 
 type FiltroVisibilidadPersonajes = 'todos' | 'publicos' | 'privados';
 
@@ -129,7 +130,7 @@ export class ListaPersonajesComponent implements OnInit, AfterViewInit, OnDestro
     }
 
     filtroPersonajes() {
-        const texto = this.normalizarTexto(this.inputText?.nativeElement?.value ?? '');
+        const texto = normalizarTexto(this.inputText?.nativeElement?.value ?? '', true);
         const pjFiltrados = this.Personajes.filter(pj => (texto === '' || this.coincideConTextoFiltro(pj, texto))
             && (this.defaultCampana === undefined || this.defaultCampana === 'Sin campaña' || pj.Campana === this.defaultCampana)
             && (this.defaultTrama === undefined || this.defaultTrama === 'Trama base' || pj.Trama === this.defaultTrama)
@@ -267,21 +268,14 @@ export class ListaPersonajesComponent implements OnInit, AfterViewInit, OnDestro
     }
 
     private coincideConTextoFiltro(pj: PersonajeSimple, texto: string): boolean {
-        return this.normalizarTexto(pj?.Nombre).includes(texto)
-            || this.normalizarTexto(pj?.Contexto).includes(texto)
-            || this.normalizarTexto(pj?.Personalidad).includes(texto)
-            || this.normalizarTexto(pj?.Clases).includes(texto)
-            || this.normalizarTexto(pj?.Raza?.Nombre).includes(texto)
-            || this.normalizarTexto(pj?.Campana).includes(texto)
-            || this.normalizarTexto(pj?.Trama).includes(texto)
-            || this.normalizarTexto(pj?.Subtrama).includes(texto);
-    }
-
-    private normalizarTexto(value: any): string {
-        return `${value ?? ''}`
-            .normalize("NFD")
-            .replace(/[\u0300-\u036f]/g, "")
-            .toLowerCase();
+        return normalizarTexto(pj?.Nombre, true).includes(texto)
+            || normalizarTexto(pj?.Contexto, true).includes(texto)
+            || normalizarTexto(pj?.Personalidad, true).includes(texto)
+            || normalizarTexto(pj?.Clases, true).includes(texto)
+            || normalizarTexto(pj?.Raza?.Nombre, true).includes(texto)
+            || normalizarTexto(pj?.Campana, true).includes(texto)
+            || normalizarTexto(pj?.Trama, true).includes(texto)
+            || normalizarTexto(pj?.Subtrama, true).includes(texto);
     }
 
     private async cargarPersonajes(): Promise<void> {
