@@ -1,8 +1,8 @@
-import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { HttpClient } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { environment } from 'src/environments/environment';
-import { DatosIdeaIa, errorDeIa, IdeasIaError, IdeasIaService } from './ideas-ia.service';
+import { cabecerasConSesionOpcional, DatosIdeaIa, errorDeIa, IdeasIaService } from './ideas-ia.service';
 import { PlatformSessionService } from './platform-session.service';
 
 // Las imágenes de un personaje (docs/publica/endpoints/personajes.md, «Las imágenes de un personaje»): un retrato y una
@@ -43,7 +43,7 @@ export class ImagenesPersonajeService {
 
     async imagenes(idPersonaje: number): Promise<ImagenesPersonaje> {
         try {
-            const respuesta = await firstValueFrom(this.http.get<any>(this.ruta(idPersonaje), { headers: await this.cabeceras(false) }));
+            const respuesta = await firstValueFrom(this.http.get<any>(this.ruta(idPersonaje), { headers: await cabecerasConSesionOpcional(this.platformSessionSvc, false) }));
             return { retrato: deRespuesta(respuesta?.retrato), cuerpo: deRespuesta(respuesta?.cuerpo) };
         } catch (error) {
             throw errorDeIa(error, ERROR_GENERICO);
@@ -53,7 +53,7 @@ export class ImagenesPersonajeService {
     /** El archivo de una imagen ([ruta] es la `imagen` que da la API). */
     async archivo(ruta: string): Promise<Blob> {
         try {
-            return await firstValueFrom(this.http.get(`${environment.apiUrl}${ruta.replace(/^\//, '')}`, { headers: await this.cabeceras(false), responseType: 'blob' }));
+            return await firstValueFrom(this.http.get(`${environment.apiUrl}${ruta.replace(/^\//, '')}`, { headers: await cabecerasConSesionOpcional(this.platformSessionSvc, false), responseType: 'blob' }));
         } catch (error) {
             throw errorDeIa(error, ERROR_GENERICO);
         }
@@ -63,7 +63,7 @@ export class ImagenesPersonajeService {
         const formulario = new FormData();
         formulario.append('imagen', archivo, nombre);
         try {
-            const respuesta = await firstValueFrom(this.http.put<any>(`${this.ruta(idPersonaje)}/${tipo}`, formulario, { headers: await this.cabeceras(true) }));
+            const respuesta = await firstValueFrom(this.http.put<any>(`${this.ruta(idPersonaje)}/${tipo}`, formulario, { headers: await cabecerasConSesionOpcional(this.platformSessionSvc, true) }));
             return deRespuesta(respuesta)!;
         } catch (error) {
             throw errorDeIa(error, ERROR_GENERICO);
@@ -72,7 +72,7 @@ export class ImagenesPersonajeService {
 
     async generar(idPersonaje: number, tipo: TipoImagenPersonaje, peticion: PeticionImagenIa): Promise<ImagenPersonaje> {
         try {
-            const respuesta = await firstValueFrom(this.http.post<any>(`${this.ruta(idPersonaje)}/${tipo}/ia`, peticion, { headers: await this.cabeceras(true) }));
+            const respuesta = await firstValueFrom(this.http.post<any>(`${this.ruta(idPersonaje)}/${tipo}/ia`, peticion, { headers: await cabecerasConSesionOpcional(this.platformSessionSvc, true) }));
             return deRespuesta(respuesta)!;
         } catch (error) {
             const traducido = errorDeIa(error, ERROR_GENERICO);
@@ -84,7 +84,7 @@ export class ImagenesPersonajeService {
 
     async quitar(idPersonaje: number, tipo: TipoImagenPersonaje): Promise<void> {
         try {
-            await firstValueFrom(this.http.delete(`${this.ruta(idPersonaje)}/${tipo}`, { headers: await this.cabeceras(true) }));
+            await firstValueFrom(this.http.delete(`${this.ruta(idPersonaje)}/${tipo}`, { headers: await cabecerasConSesionOpcional(this.platformSessionSvc, true) }));
         } catch (error) {
             throw errorDeIa(error, ERROR_GENERICO);
         }
@@ -92,16 +92,6 @@ export class ImagenesPersonajeService {
 
     private ruta(idPersonaje: number): string {
         return `${environment.apiUrl}personajes/${idPersonaje}/imagenes`;
-    }
-
-    /** Con sesión, el token de la API; sin ella, nada (se ven los personajes públicos). */
-    private async cabeceras(obligatoria: boolean): Promise<HttpHeaders> {
-        if (this.platformSessionSvc.estado.tipo !== 'con_sesion') {
-            if (obligatoria)
-                throw new IdeasIaError('Tienes que iniciar sesión.', 'UNAUTHORIZED', 401);
-            return new HttpHeaders();
-        }
-        return new HttpHeaders({ Authorization: `Bearer ${await this.platformSessionSvc.tokenApi()}` });
     }
 }
 

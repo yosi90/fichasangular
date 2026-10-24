@@ -1,8 +1,8 @@
-import { HttpClient, HttpErrorResponse, HttpHeaders } from '@angular/common/http';
+import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { environment } from 'src/environments/environment';
-import { PlatformSessionService } from './platform-session.service';
+import { cabecerasPlataforma, PlatformSessionService } from './platform-session.service';
 
 // La pertenencia de las campañas en los espacios de la plataforma (ecosistema-kit/ESPACIOS.md, «Con tu propia
 // interfaz»): las rutas /v1/espacios con el token de la plataforma. Rol no guarda invitaciones ni solicitudes; tras
@@ -242,10 +242,7 @@ export class PlatformSpacesService {
     }
 
     private async peticion<T>(method: 'GET' | 'POST' | 'PATCH' | 'DELETE', ruta: string, body?: unknown): Promise<T> {
-        const token = await this.platformSessionSvc.tokenPlataforma();
-        let headers = new HttpHeaders({ Authorization: `Bearer ${token}`, Accept: 'application/json' });
-        if (body !== undefined)
-            headers = headers.set('Content-Type', 'application/json');
+        const headers = await cabecerasPlataforma(this.platformSessionSvc, body !== undefined);
         try {
             return await firstValueFrom(this.http.request<T>(method, `${this.api}${ruta}`, { headers, body }));
         } catch (error) {

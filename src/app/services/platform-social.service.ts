@@ -1,8 +1,8 @@
-import { HttpClient, HttpErrorResponse, HttpHeaders } from '@angular/common/http';
+import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { environment } from 'src/environments/environment';
-import { PlatformSessionService } from './platform-session.service';
+import { cabecerasPlataforma, PlatformSessionService } from './platform-session.service';
 
 // Las relaciones de la plataforma desde las páginas de comunidad de Rol (ecosistema-kit/SOCIAL.md, «Con páginas
 // propias»): las mismas rutas que la web social, con el token de la plataforma. Rol no guarda amistades ni bloqueos.
@@ -90,10 +90,7 @@ export class PlatformSocialService {
     }
 
     private async peticion<T>(method: 'GET' | 'POST' | 'PUT' | 'DELETE', ruta: string, body?: unknown): Promise<T> {
-        const token = await this.platformSessionSvc.tokenPlataforma();
-        let headers = new HttpHeaders({ Authorization: `Bearer ${token}`, Accept: 'application/json' });
-        if (body !== undefined)
-            headers = headers.set('Content-Type', 'application/json');
+        const headers = await cabecerasPlataforma(this.platformSessionSvc, body !== undefined);
         try {
             return await firstValueFrom(this.http.request<T>(method, `${this.api}${ruta}`, { headers, body }));
         } catch (error) {

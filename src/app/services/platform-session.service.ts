@@ -1,3 +1,4 @@
+import { HttpHeaders } from '@angular/common/http';
 import { Injectable, NgZone } from '@angular/core';
 import { BehaviorSubject, Subject } from 'rxjs';
 import { environment } from 'src/environments/environment';
@@ -109,6 +110,16 @@ export function obtenerTokenApi(): Promise<string> {
     if (!instancia)
         return Promise.reject(new Error('Sesión no iniciada'));
     return instancia.tokenApi();
+}
+
+/**
+ * Cabeceras para la API de la plataforma (`/v1/...`) con el token de la persona (audiencia `cuentas`); con cuerpo, también
+ * el tipo JSON. Si no hay sesión, falla como `tokenPlataforma()`.
+ */
+export async function cabecerasPlataforma(sesion: Pick<PlatformSessionService, 'tokenPlataforma'>, conCuerpo: boolean = false): Promise<HttpHeaders> {
+    const token = await sesion.tokenPlataforma();
+    const headers = new HttpHeaders({ Authorization: `Bearer ${token}`, Accept: 'application/json' });
+    return conCuerpo ? headers.set('Content-Type', 'application/json') : headers;
 }
 
 @Injectable({

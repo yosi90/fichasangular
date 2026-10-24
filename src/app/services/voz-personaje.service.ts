@@ -1,8 +1,8 @@
-import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { HttpClient } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { environment } from 'src/environments/environment';
-import { errorDeIa, IdeasIaError, IdeasIaService, ProveedorDeVoz } from './ideas-ia.service';
+import { cabecerasConSesionOpcional, errorDeIa, IdeasIaService, ProveedorDeVoz } from './ideas-ia.service';
 import { PlatformSessionService } from './platform-session.service';
 
 // Las voces guardadas de un personaje (docs/publica/endpoints/personajes.md, «Las voces de un personaje»): su dueño las
@@ -46,7 +46,7 @@ export class VozPersonajeService {
     /** Sus voces, de la más antigua a la más nueva. */
     async voces(idPersonaje: number): Promise<VocesGuardadas> {
         try {
-            const respuesta = await firstValueFrom(this.http.get<any>(this.ruta(idPersonaje), { headers: await this.cabeceras(false) }));
+            const respuesta = await firstValueFrom(this.http.get<any>(this.ruta(idPersonaje), { headers: await cabecerasConSesionOpcional(this.platformSessionSvc, false) }));
             const maximo = Number(respuesta?.maximo);
             return {
                 voces: (Array.isArray(respuesta?.voces) ? respuesta.voces : []).map(deRespuesta).filter((v: VozGuardada) => v.id > 0),
@@ -59,7 +59,7 @@ export class VozPersonajeService {
 
     async audio(idPersonaje: number, idVoz: number): Promise<Blob> {
         try {
-            return await firstValueFrom(this.http.get(`${this.ruta(idPersonaje)}/${idVoz}/audio`, { headers: await this.cabeceras(false), responseType: 'blob' }));
+            return await firstValueFrom(this.http.get(`${this.ruta(idPersonaje)}/${idVoz}/audio`, { headers: await cabecerasConSesionOpcional(this.platformSessionSvc, false), responseType: 'blob' }));
         } catch (error) {
             throw errorDeIa(error, ERROR_GENERICO);
         }
@@ -68,7 +68,7 @@ export class VozPersonajeService {
     /** Genera otra con la clave de IA de la persona y la guarda. Solo el dueño, y con menos de 3. */
     async generar(idPersonaje: number, peticion: PeticionDeVoz): Promise<VozGuardada> {
         try {
-            const respuesta = await firstValueFrom(this.http.post<any>(this.ruta(idPersonaje), peticion, { headers: await this.cabeceras(true) }));
+            const respuesta = await firstValueFrom(this.http.post<any>(this.ruta(idPersonaje), peticion, { headers: await cabecerasConSesionOpcional(this.platformSessionSvc, true) }));
             return deRespuesta(respuesta);
         } catch (error) {
             const traducido = errorDeIa(error, ERROR_GENERICO);
@@ -80,7 +80,7 @@ export class VozPersonajeService {
 
     async descartar(idPersonaje: number, idVoz: number): Promise<void> {
         try {
-            await firstValueFrom(this.http.delete(`${this.ruta(idPersonaje)}/${idVoz}`, { headers: await this.cabeceras(true) }));
+            await firstValueFrom(this.http.delete(`${this.ruta(idPersonaje)}/${idVoz}`, { headers: await cabecerasConSesionOpcional(this.platformSessionSvc, true) }));
         } catch (error) {
             throw errorDeIa(error, ERROR_GENERICO);
         }
@@ -88,16 +88,6 @@ export class VozPersonajeService {
 
     private ruta(idPersonaje: number): string {
         return `${environment.apiUrl}personajes/${idPersonaje}/voces`;
-    }
-
-    /** Con sesión, el token de la API; sin ella, nada (se oyen los personajes públicos). */
-    private async cabeceras(obligatoria: boolean): Promise<HttpHeaders> {
-        if (this.platformSessionSvc.estado.tipo !== 'con_sesion') {
-            if (obligatoria)
-                throw new IdeasIaError('Tienes que iniciar sesión.', 'UNAUTHORIZED', 401);
-            return new HttpHeaders();
-        }
-        return new HttpHeaders({ Authorization: `Bearer ${await this.platformSessionSvc.tokenApi()}` });
     }
 }
 

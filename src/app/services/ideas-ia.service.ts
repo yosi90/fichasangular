@@ -3,7 +3,7 @@ import { Injectable, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { environment } from 'src/environments/environment';
 import { Personaje } from '../interfaces/personaje';
-import { PlatformSessionService } from './platform-session.service';
+import { cabecerasPlataforma, PlatformSessionService } from './platform-session.service';
 
 // Ideas para los personajes con la clave de IA de cada persona (docs/publica/IDEAS_CON_IA.md). La web nunca ve la
 // clave ni llama al proveedor: pregunta a la plataforma si hay una clave lista (`GET /v1/ia/estado`, con el token de
@@ -222,8 +222,7 @@ export class IdeasIaService {
     }
 
     private async getPlataforma<T>(ruta: string): Promise<T> {
-        const token = await this.platformSessionSvc.tokenPlataforma();
-        const headers = new HttpHeaders({ Authorization: `Bearer ${token}`, Accept: 'application/json' });
+        const headers = await cabecerasPlataforma(this.platformSessionSvc);
         return firstValueFrom(this.http.get<T>(`${environment.plataforma.apiUrl}${ruta}`, { headers }));
     }
 
@@ -247,6 +246,19 @@ function modelosDeUso(proveedor: any, uso: string, sinUsos: boolean): ModeloIa[]
  * Un error de una ruta de Rol que usa la IA (`POST /personajes/ideas`, `/personajes/{id}/voces` e `/imagenes`), con el formato
  * objetivo de errores: su frase se puede enseñar tal cual.
  */
+/**
+ * Cabeceras para las rutas de la API de Rol que también atienden sin sesión (las voces y las imágenes de un personaje
+ * público): con sesión, el token de la API; sin ella, ninguna, o el error si la acción la necesita.
+ */
+export async function cabecerasConSesionOpcional(sesion: Pick<PlatformSessionService, 'estado' | 'tokenApi'>, obligatoria: boolean): Promise<HttpHeaders> {
+    if (sesion.estado.tipo !== 'con_sesion') {
+        if (obligatoria)
+            throw new IdeasIaError('Tienes que iniciar sesión.', 'UNAUTHORIZED', 401);
+        return new HttpHeaders();
+    }
+    return new HttpHeaders({ Authorization: `Bearer ${await sesion.tokenApi()}` });
+}
+
 export function errorDeIa(error: unknown, porDefecto: string): IdeasIaError {
     if (error instanceof IdeasIaError)
         return error;
