@@ -1,7 +1,6 @@
 import { Alineamiento } from "src/app/interfaces/alineamiento";
 import { Conjuro } from "src/app/interfaces/conjuro";
 import { DoteContextual } from "src/app/interfaces/dote-contextual";
-import { DoteManual } from "src/app/interfaces/dote";
 import { IdiomaDetalle } from "src/app/interfaces/idioma";
 import {
     CompaneroMonstruoDetalle,
@@ -33,28 +32,13 @@ import { toDoteContextualArray } from "./dote-mapper";
 import { normalizeRacial } from "./racial-mapper";
 import { toArray, toBoolean, toNumber, toText } from 'src/app/services/utils/normalizacion';
 import { normalizeConjuroLegacy } from './conjuro-mapper';
+import { normalizeManualLegacy } from './manual-mapper';
 
 function normalizeDepth(depth: number): number {
     const parsed = Number(depth);
     if (!Number.isFinite(parsed))
         return 0;
     return Math.max(0, Math.trunc(parsed));
-}
-
-function normalizeManual(raw: any): DoteManual {
-    if (typeof raw === "string") {
-        return {
-            Id: 0,
-            Nombre: raw,
-            Pagina: 0,
-        };
-    }
-
-    return {
-        Id: toNumber(raw?.Id),
-        Nombre: toText(raw?.Nombre),
-        Pagina: toNumber(raw?.Pagina),
-    };
 }
 
 function normalizeTamano(raw: any): Tamano {
@@ -283,7 +267,7 @@ function normalizeMonstruoBase(raw: any, depth: number): MonstruoDetalle {
         Id: toNumber(raw?.Id),
         Nombre: toText(raw?.Nombre),
         Descripcion: toText(raw?.Descripcion),
-        Manual: normalizeManual(raw?.Manual),
+        Manual: normalizeManualLegacy(raw?.Manual),
         Tipo: normalizeMonstruoTipo(raw?.Tipo),
         Tamano: normalizeTamano(raw?.Tamano),
         Dados_golpe: normalizeDadosGolpe(raw?.Dados_golpe),

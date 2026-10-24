@@ -9,14 +9,7 @@ import {
 } from "src/app/interfaces/subtipo";
 import { toDoteContextualArray } from "./dote-mapper";
 import { normalizarTexto, toArray, toBoolean, toNumber, toText } from 'src/app/services/utils/normalizacion';
-
-function normalizeManual(raw: any): { Id: number; Nombre: string; Pagina: number; } {
-    return {
-        Id: toNumber(raw?.Id),
-        Nombre: toText(raw?.Nombre),
-        Pagina: toNumber(raw?.Pagina),
-    };
-}
+import { normalizeManualApi } from './manual-mapper';
 
 function normalizeSubtipoRefItem(raw: any): SubtipoRef | null {
     if (typeof raw === "string") {
@@ -94,7 +87,7 @@ export function normalizeSubtipoResumen(raw: any): SubtipoResumen {
         Id: toNumber(raw?.Id),
         Nombre: toText(raw?.Nombre),
         Descripcion: toText(raw?.Descripcion),
-        Manual: normalizeManual(raw?.Manual),
+        Manual: normalizeManualApi(raw?.Manual),
         Heredada: toBoolean(raw?.Heredada),
         Oficial: toBoolean(raw?.Oficial),
     };
@@ -107,7 +100,7 @@ export function normalizeSubtipoDetalle(raw: any): SubtipoDetalle {
         Id: toNumber(raw?.Id),
         Nombre: toText(raw?.Nombre),
         Descripcion: toText(raw?.Descripcion),
-        Manual: normalizeManual(raw?.Manual),
+        Manual: normalizeManualApi(raw?.Manual),
         Heredada: toBoolean(raw?.Heredada),
         Oficial: toBoolean(raw?.Oficial),
         Modificadores_caracteristicas: {
