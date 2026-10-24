@@ -11,6 +11,7 @@ import { FirebaseInjectionContextService } from "./firebase-injection-context.se
 import { normalizeDominio } from "./dominio.service";
 import { normalizePabellon } from "./pabellon.service";
 import { toArray, toBoolean, toNumber, toText } from 'src/app/services/utils/normalizacion';
+import { normalizeManualApi } from 'src/app/services/utils/manual-mapper';
 import { cacheRtdbOApi, escucharRtdb, listaRtdb } from './catalogo-api';
 
 function normalizeAmbitos(raw: any): AmbitoDetalle[] {
@@ -30,11 +31,7 @@ export function normalizeDeidad(raw: any): DeidadDetalle {
         Id: toNumber(raw?.Id),
         Nombre: toText(raw?.Nombre),
         Descripcion: toText(raw?.Descripcion),
-        Manual: {
-            Id: toNumber(raw?.Manual?.Id),
-            Nombre: toText(raw?.Manual?.Nombre),
-            Pagina: toNumber(raw?.Manual?.Pagina),
-        },
+        Manual: normalizeManualApi(raw?.Manual),
         Alineamiento: {
             Id: toNumber(raw?.Alineamiento?.Id),
             Id_basico: toNumber(raw?.Alineamiento?.Id_basico),

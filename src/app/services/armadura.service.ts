@@ -6,6 +6,7 @@ import { environment } from "src/environments/environment";
 import { ArmaduraDetalle } from "../interfaces/armadura";
 import { FirebaseInjectionContextService } from "./firebase-injection-context.service";
 import { toArray, toBoolean, toNumber, toText } from 'src/app/services/utils/normalizacion';
+import { normalizeManualApi } from 'src/app/services/utils/manual-mapper';
 import { cacheRtdbOApi, escucharRtdb } from './catalogo-api';
 
 export function normalizeArmadura(raw: any): ArmaduraDetalle {
@@ -13,11 +14,7 @@ export function normalizeArmadura(raw: any): ArmaduraDetalle {
         Id: toNumber(raw?.Id),
         Nombre: toText(raw?.Nombre),
         Descripcion: toText(raw?.Descripcion),
-        Manual: {
-            Id: toNumber(raw?.Manual?.Id),
-            Nombre: toText(raw?.Manual?.Nombre),
-            Pagina: toNumber(raw?.Manual?.Pagina),
-        },
+        Manual: normalizeManualApi(raw?.Manual),
         Ca: toNumber(raw?.Ca),
         Bon_des: toNumber(raw?.Bon_des),
         Penalizador: toNumber(raw?.Penalizador),

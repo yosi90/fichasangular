@@ -6,6 +6,7 @@ import { environment } from "src/environments/environment";
 import { ArmaDetalle } from "../interfaces/arma";
 import { FirebaseInjectionContextService } from "./firebase-injection-context.service";
 import { toArray, toBoolean, toNumber, toText } from 'src/app/services/utils/normalizacion';
+import { normalizeManualApi } from 'src/app/services/utils/manual-mapper';
 import { cacheRtdbOApi, escucharRtdb, listaRtdb } from './catalogo-api';
 
 export function normalizeArma(raw: any): ArmaDetalle {
@@ -13,11 +14,7 @@ export function normalizeArma(raw: any): ArmaDetalle {
         Id: toNumber(raw?.Id),
         Nombre: toText(raw?.Nombre),
         Descripcion: toText(raw?.Descripcion),
-        Manual: {
-            Id: toNumber(raw?.Manual?.Id),
-            Nombre: toText(raw?.Manual?.Nombre),
-            Pagina: toNumber(raw?.Manual?.Pagina),
-        },
+        Manual: normalizeManualApi(raw?.Manual),
         Dano: toText(raw?.Dano),
         Tipo_dano: {
             Id: toNumber(raw?.Tipo_dano?.Id),

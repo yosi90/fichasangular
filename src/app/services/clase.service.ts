@@ -20,6 +20,7 @@ import {
 import { FirebaseInjectionContextService } from "./firebase-injection-context.service";
 import { cabeceraApiConFirebase } from './platform-session.service';
 import { normalizarTexto, toArray, toBoolean, toNumber, toText } from 'src/app/services/utils/normalizacion';
+import { normalizeManualApi } from 'src/app/services/utils/manual-mapper';
 import { cacheRtdbOApi, escucharRtdb, listaRtdb } from './catalogo-api';
 
 const CLAVES_PRERREQUISITOS: (keyof ClasePrerrequisitos)[] = [
@@ -256,11 +257,7 @@ export function normalizeClase(raw: any): Clase {
         Id: toNumber(raw?.Id),
         Nombre: toText(raw?.Nombre),
         Descripcion: toText(raw?.Descripcion),
-        Manual: {
-            Id: toNumber(raw?.Manual?.Id),
-            Nombre: toText(raw?.Manual?.Nombre),
-            Pagina: toNumber(raw?.Manual?.Pagina),
-        },
+        Manual: normalizeManualApi(raw?.Manual),
         Tipo_dado: {
             Id: toNumber(raw?.Tipo_dado?.Id),
             Nombre: toText(raw?.Tipo_dado?.Nombre),
