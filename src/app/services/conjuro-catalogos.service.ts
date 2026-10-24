@@ -1,6 +1,6 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable } from '@angular/core';
-import { Database, Unsubscribe, onValue, ref } from '@angular/fire/database';
+import { Database, Unsubscribe } from '@angular/fire/database';
 import { Observable } from 'rxjs';
 import { environment } from 'src/environments/environment';
 import { CacheEntityKey } from '../config/cache-contract-manifest';
@@ -8,7 +8,7 @@ import { ConjuroCatalogItem } from '../interfaces/conjuro-catalogos';
 import { CacheCatalogMissReportService } from './cache-catalog-miss-report.service';
 import { FirebaseInjectionContextService } from './firebase-injection-context.service';
 import { toArray } from 'src/app/services/utils/normalizacion';
-import { cacheRtdbOApi } from './catalogo-api';
+import { cacheRtdbOApi, escucharRtdb } from './catalogo-api';
 
 function normalizeCatalogItem(raw: any): ConjuroCatalogItem {
     return {
@@ -52,7 +52,7 @@ export class ConjuroCatalogosService {
     }
 
     protected watchCatalogPath(path: string, onNext: (snapshot: any) => void, onError: (error: any) => void): Unsubscribe {
-        return this.firebaseContextSvc.run(() => onValue(ref(this.db, path), onNext, onError));
+        return escucharRtdb(this.db, this.firebaseContextSvc, path)(onNext, onError);
     }
 
     private getCatalogoCacheFirst(

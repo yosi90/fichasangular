@@ -1,6 +1,6 @@
 import { HttpClient } from "@angular/common/http";
 import { Injectable } from "@angular/core";
-import { Database, Unsubscribe, onValue, ref } from "@angular/fire/database";
+import { Database, Unsubscribe } from "@angular/fire/database";
 import { Observable } from "rxjs";
 import { environment } from "src/environments/environment";
 import { CacheEntityKey } from "../config/cache-contract-manifest";
@@ -8,7 +8,7 @@ import { ActitudCatalogItem, RazaCatalogItem, TipoDadoCatalogItem } from "../int
 import { CacheCatalogMissReportService } from "./cache-catalog-miss-report.service";
 import { FirebaseInjectionContextService } from "./firebase-injection-context.service";
 import { toArray } from 'src/app/services/utils/normalizacion';
-import { cacheRtdbOApi } from './catalogo-api';
+import { cacheRtdbOApi, escucharRtdb } from './catalogo-api';
 
 function normalizeCatalogItem(raw: any, preserveRaw = false): RazaCatalogItem {
     const rawId = raw?.Id ?? raw?.id ?? raw?.Id_maniobrabilidad ?? raw?.Id_tipo_dado ?? raw?.Id_actitud ?? raw?.id_actitud;
@@ -55,7 +55,7 @@ export class RazaCatalogosService {
     }
 
     protected watchCatalogPath(path: string, onNext: (snapshot: any) => void, onError: (error: any) => void): Unsubscribe {
-        return this.firebaseContextSvc.run(() => onValue(ref(this.db, path), onNext, onError));
+        return escucharRtdb(this.db, this.firebaseContextSvc, path)(onNext, onError);
     }
 
     private getCatalogoCacheFirst(

@@ -1,6 +1,6 @@
 import { HttpClient } from "@angular/common/http";
 import { Injectable } from "@angular/core";
-import { Database, Unsubscribe, onValue, ref } from "@angular/fire/database";
+import { Database, Unsubscribe } from "@angular/fire/database";
 import { Observable } from "rxjs";
 import { environment } from "src/environments/environment";
 import { ArmaduraDetalle } from "../interfaces/armadura";
@@ -91,10 +91,7 @@ export class ArmaduraService {
     }
 
     protected watchArmadurasPath(onNext: (snapshot: any) => void, onError: (error: any) => void): Unsubscribe {
-        return this.firebaseContextSvc.run(() => {
-            const dbRef = ref(this.db, "Armaduras");
-            return onValue(dbRef, onNext, onError);
-        });
+        return escucharRtdb(this.db, this.firebaseContextSvc, "Armaduras")(onNext, onError);
     }
 
     private syncArmaduras() {

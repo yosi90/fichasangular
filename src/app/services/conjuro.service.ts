@@ -1,8 +1,8 @@
-import { cacheRtdbOApi, catalogosDesdeApi, leerListadoCompleto, sinCache } from './catalogo-api';
+import { cacheRtdbOApi, catalogosDesdeApi, escucharRtdb, leerListadoCompleto, sinCache } from './catalogo-api';
 import { HttpClient, HttpErrorResponse } from "@angular/common/http";
 import { Injectable } from "@angular/core";
 import { Auth } from "@angular/fire/auth";
-import { Database, Unsubscribe, onValue, ref } from '@angular/fire/database';
+import { Database, Unsubscribe } from '@angular/fire/database';
 import { Observable, firstValueFrom } from "rxjs";
 import { environment } from "src/environments/environment";
 import { Conjuro } from "../interfaces/conjuro";
@@ -24,21 +24,15 @@ export class ConjuroService {
     ) { }
 
     protected watchConjuroPath(id: number, onNext: (snapshot: any) => void, onError: (error: any) => void): Unsubscribe {
-        return this.firebaseContextSvc.run(() => {
-            if (catalogosDesdeApi())
-                return sinCache(onNext);
-            const dbRef = ref(this.db, `Conjuros/${id}`);
-            return onValue(dbRef, onNext, onError);
-        });
+        if (catalogosDesdeApi())
+            return sinCache(onNext);
+        return escucharRtdb(this.db, this.firebaseContextSvc, `Conjuros/${id}`)(onNext, onError);
     }
 
     protected watchConjurosPath(onNext: (snapshot: any) => void, onError: (error: any) => void): Unsubscribe {
-        return this.firebaseContextSvc.run(() => {
-            if (catalogosDesdeApi())
-                return sinCache(onNext);
-            const dbRef = ref(this.db, 'Conjuros');
-            return onValue(dbRef, onNext, onError);
-        });
+        if (catalogosDesdeApi())
+            return sinCache(onNext);
+        return escucharRtdb(this.db, this.firebaseContextSvc, 'Conjuros')(onNext, onError);
     }
 
     getConjuro(id: number): Observable<Conjuro> {

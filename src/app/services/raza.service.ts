@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { Auth } from '@angular/fire/auth';
-import { Database, Unsubscribe, onValue, ref } from '@angular/fire/database';
+import { Database, Unsubscribe } from '@angular/fire/database';
 import { Observable, firstValueFrom } from 'rxjs';
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { MutacionRaza, Raza, RazaHabilidades, RazaPrerrequisitos, RazaPrerrequisitosFlags } from '../interfaces/raza';
@@ -15,7 +15,7 @@ import { normalizeRaciales } from './utils/racial-mapper';
 import { normalizeSubtipoRefArray } from './utils/subtipo-mapper';
 import { cabeceraApiConFirebase } from './platform-session.service';
 import { toArray, toBoolean, toNumber } from 'src/app/services/utils/normalizacion';
-import { cacheRtdbOApi } from './catalogo-api';
+import { cacheRtdbOApi, escucharRtdb } from './catalogo-api';
 
 function parseIdExtra(value: any): number {
     if (value === undefined || value === null || `${value}`.trim() === '')
@@ -334,17 +334,11 @@ export class RazaService {
     ) { }
 
     protected watchRazaPath(id: number, onNext: (snapshot: any) => void, onError: (error: any) => void): Unsubscribe {
-        return this.firebaseContextSvc.run(() => {
-            const dbRef = ref(this.db, `Razas/${id}`);
-            return onValue(dbRef, onNext, onError);
-        });
+        return escucharRtdb(this.db, this.firebaseContextSvc, `Razas/${id}`)(onNext, onError);
     }
 
     protected watchRazasPath(onNext: (snapshot: any) => void, onError: (error: any) => void): Unsubscribe {
-        return this.firebaseContextSvc.run(() => {
-            const dbRef = ref(this.db, 'Razas');
-            return onValue(dbRef, onNext, onError);
-        });
+        return escucharRtdb(this.db, this.firebaseContextSvc, 'Razas')(onNext, onError);
     }
 
     async getRaza(id: number): Promise<Observable<Raza>> {
