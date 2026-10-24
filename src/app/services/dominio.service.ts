@@ -1,12 +1,12 @@
-import { HttpClient, HttpErrorResponse } from "@angular/common/http";
+import { HttpClient } from "@angular/common/http";
 import { Injectable } from "@angular/core";
 import { Database, Unsubscribe, onValue, ref } from "@angular/fire/database";
 import { Observable } from "rxjs";
-import Swal from "sweetalert2";
 import { environment } from "src/environments/environment";
 import { DominioDetalle } from "../interfaces/dominio";
 import { FirebaseInjectionContextService } from "./firebase-injection-context.service";
-import { toArray, toNumber, toText } from 'src/app/services/utils/normalizacion';
+import { toNumber, toText } from 'src/app/services/utils/normalizacion';
+import { cacheRtdbOApi, escucharRtdb } from './catalogo-api';
 
 function toBoolean(value: any): boolean {
     if (typeof value === "boolean")
@@ -40,47 +40,15 @@ export class DominioService {
     ) { }
 
     getDominio(id: number): Observable<DominioDetalle> {
-        return new Observable((observador) => {
-            let unsubscribe: Unsubscribe;
-
-            const onNext = (snapshot: any) => {
-                if (snapshot.exists()) {
-                    observador.next(normalizeDominio(snapshot.val()));
-                    return;
-                }
-
-                this.http.get(`${environment.apiUrl}dominios/${id}`).subscribe({
-                    next: (raw: any) => observador.next(normalizeDominio(raw)),
-                    error: (error: HttpErrorResponse) => {
-                        if (error.status === 404) {
-                            Swal.fire({
-                                icon: "warning",
-                                title: "Dominio no encontrado",
-                                text: `No existe el dominio con id ${id}`,
-                                showConfirmButton: true,
-                            });
-                        } else {
-                            Swal.fire({
-                                icon: "warning",
-                                title: "Error al obtener el dominio",
-                                text: error.message,
-                                showConfirmButton: true,
-                            });
-                        }
-                        observador.error(error);
-                    }
-                });
-            };
-
-            const onError = (error: any) => {
-                observador.error(error);
-            };
-
-            unsubscribe = this.firebaseContextSvc.run(() => {
-                const dbRef = ref(this.db, `Dominios/${id}`);
-                return onValue(dbRef, onNext, onError);
-            });
-            return () => unsubscribe();
+        return cacheRtdbOApi({
+            escuchar: escucharRtdb(this.db, this.firebaseContextSvc, `Dominios/${id}`),
+            desdeCache: (snapshot) => normalizeDominio(snapshot.val()),
+            pedir: () => this.http.get(`${environment.apiUrl}dominios/${id}`),
+            desdeApi: (raw) => normalizeDominio(raw),
+            avisos: {
+                noEncontrado: { titulo: "Dominio no encontrado", texto: `No existe el dominio con id ${id}` },
+                error: "Error al obtener el dominio",
+            },
         });
     }
 

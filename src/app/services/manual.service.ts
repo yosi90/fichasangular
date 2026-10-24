@@ -2,12 +2,12 @@ import { Injectable } from '@angular/core';
 import { Auth } from '@angular/fire/auth';
 import { Database, Unsubscribe, onValue, ref } from '@angular/fire/database';
 import { Observable } from 'rxjs';
-import { HttpClient, HttpErrorResponse } from '@angular/common/http';
+import { HttpClient } from '@angular/common/http';
 import { environment } from 'src/environments/environment';
-import Swal from 'sweetalert2';
 import { Manual } from '../interfaces/manual';
 import { ManualIncludeFlag } from '../config/manual-secciones.config';
 import { FirebaseInjectionContextService } from './firebase-injection-context.service';
+import { cacheRtdbOApi, escucharRtdb } from './catalogo-api';
 
 function toBoolean(value: any): boolean {
     return value === true || value === 1 || value === '1';
@@ -67,48 +67,15 @@ export class ManualService {
     ) { }
 
     getManual(id: number): Observable<Manual> {
-        return new Observable((observador) => {
-            const dbRef = ref(this.db, `Manuales/${id}`);
-            let unsubscribe: Unsubscribe;
-
-            const onNext = (snapshot: any) => {
-                if (snapshot.exists()) {
-                    observador.next(normalizeManual(snapshot.val()));
-                    return;
-                }
-
-                this.http.get(`${environment.apiUrl}manuales/${id}`).subscribe({
-                    next: (raw: any) => observador.next(normalizeManual(raw)),
-                    error: (error: HttpErrorResponse) => {
-                        if (error.status === 404) {
-                            Swal.fire({
-                                icon: 'warning',
-                                title: 'Manual no encontrado',
-                                text: `No existe el manual con id ${id}`,
-                                showConfirmButton: true,
-                            });
-                        } else {
-                            Swal.fire({
-                                icon: 'warning',
-                                title: 'Error al obtener el manual',
-                                text: error.message,
-                                showConfirmButton: true,
-                            });
-                        }
-                        observador.error(error);
-                    }
-                });
-            };
-
-            const onError = (error: any) => {
-                observador.error(error);
-            };
-
-            unsubscribe = this.firebaseContextSvc.run(() => onValue(dbRef, onNext, onError));
-
-            return () => {
-                unsubscribe();
-            };
+        return cacheRtdbOApi({
+            escuchar: escucharRtdb(this.db, this.firebaseContextSvc, `Manuales/${id}`),
+            desdeCache: (snapshot) => normalizeManual(snapshot.val()),
+            pedir: () => this.http.get(`${environment.apiUrl}manuales/${id}`),
+            desdeApi: (raw) => normalizeManual(raw),
+            avisos: {
+                noEncontrado: { titulo: "Manual no encontrado", texto: `No existe el manual con id ${id}` },
+                error: "Error al obtener el manual",
+            },
         });
     }
 

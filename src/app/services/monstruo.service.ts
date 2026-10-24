@@ -1,8 +1,7 @@
-import { HttpClient, HttpErrorResponse } from "@angular/common/http";
+import { HttpClient } from "@angular/common/http";
 import { Injectable } from "@angular/core";
 import { Database, Unsubscribe, onValue, ref } from "@angular/fire/database";
 import { Observable } from "rxjs";
-import Swal from "sweetalert2";
 import { environment } from "src/environments/environment";
 import { CompaneroMonstruoDetalle, FamiliarMonstruoDetalle, MonstruoDetalle } from "../interfaces/monstruo";
 import { FirebaseInjectionContextService } from "./firebase-injection-context.service";
@@ -11,6 +10,7 @@ import {
     normalizeFamiliarMonstruoDetalle,
     normalizeMonstruoDetalle,
 } from "./utils/monstruo-mapper";
+import { cacheRtdbOApi, escucharRtdb } from './catalogo-api';
 
 @Injectable({
     providedIn: "root"
@@ -24,45 +24,15 @@ export class MonstruoService {
     ) { }
 
     getMonstruo(id: number): Observable<MonstruoDetalle> {
-        return new Observable((observador) => {
-            const dbRef = ref(this.db, `Monstruos/${id}`);
-            let unsubscribe: Unsubscribe;
-
-            const onNext = (snapshot: any) => {
-                if (snapshot.exists()) {
-                    observador.next(normalizeMonstruoDetalle(snapshot.val(), 1));
-                    return;
-                }
-
-                this.http.get(`${environment.apiUrl}monstruos/${id}`).subscribe({
-                    next: (raw: any) => observador.next(normalizeMonstruoDetalle(raw, 1)),
-                    error: (error: HttpErrorResponse) => {
-                        if (error.status === 404) {
-                            Swal.fire({
-                                icon: "warning",
-                                title: "Monstruo no encontrado",
-                                text: `No existe el monstruo con id ${id}`,
-                                showConfirmButton: true,
-                            });
-                        } else {
-                            Swal.fire({
-                                icon: "warning",
-                                title: "Error al obtener el monstruo",
-                                text: error.message,
-                                showConfirmButton: true,
-                            });
-                        }
-                        observador.error(error);
-                    }
-                });
-            };
-
-            const onError = (error: any) => {
-                observador.error(error);
-            };
-
-            unsubscribe = this.firebaseContextSvc.run(() => onValue(dbRef, onNext, onError));
-            return () => unsubscribe();
+        return cacheRtdbOApi({
+            escuchar: escucharRtdb(this.db, this.firebaseContextSvc, `Monstruos/${id}`),
+            desdeCache: (snapshot) => normalizeMonstruoDetalle(snapshot.val(), 1),
+            pedir: () => this.http.get(`${environment.apiUrl}monstruos/${id}`),
+            desdeApi: (raw) => normalizeMonstruoDetalle(raw, 1),
+            avisos: {
+                noEncontrado: { titulo: "Monstruo no encontrado", texto: `No existe el monstruo con id ${id}` },
+                error: "Error al obtener el monstruo",
+            },
         });
     }
 
@@ -92,45 +62,15 @@ export class MonstruoService {
     }
 
     getFamiliar(idFamiliar: number): Observable<FamiliarMonstruoDetalle> {
-        return new Observable((observador) => {
-            const dbRef = ref(this.db, `Familiares/${idFamiliar}`);
-            let unsubscribe: Unsubscribe;
-
-            const onNext = (snapshot: any) => {
-                if (snapshot.exists()) {
-                    observador.next(normalizeFamiliarMonstruoDetalle(snapshot.val(), 1));
-                    return;
-                }
-
-                this.http.get(`${environment.apiUrl}familiares/${idFamiliar}`).subscribe({
-                    next: (raw: any) => observador.next(normalizeFamiliarMonstruoDetalle(raw, 1)),
-                    error: (error: HttpErrorResponse) => {
-                        if (error.status === 404) {
-                            Swal.fire({
-                                icon: "warning",
-                                title: "Familiar no encontrado",
-                                text: `No existe el familiar con id ${idFamiliar}`,
-                                showConfirmButton: true,
-                            });
-                        } else {
-                            Swal.fire({
-                                icon: "warning",
-                                title: "Error al obtener el familiar",
-                                text: error.message,
-                                showConfirmButton: true,
-                            });
-                        }
-                        observador.error(error);
-                    }
-                });
-            };
-
-            const onError = (error: any) => {
-                observador.error(error);
-            };
-
-            unsubscribe = this.firebaseContextSvc.run(() => onValue(dbRef, onNext, onError));
-            return () => unsubscribe();
+        return cacheRtdbOApi({
+            escuchar: escucharRtdb(this.db, this.firebaseContextSvc, `Familiares/${idFamiliar}`),
+            desdeCache: (snapshot) => normalizeFamiliarMonstruoDetalle(snapshot.val(), 1),
+            pedir: () => this.http.get(`${environment.apiUrl}familiares/${idFamiliar}`),
+            desdeApi: (raw) => normalizeFamiliarMonstruoDetalle(raw, 1),
+            avisos: {
+                noEncontrado: { titulo: "Familiar no encontrado", texto: `No existe el familiar con id ${idFamiliar}` },
+                error: "Error al obtener el familiar",
+            },
         });
     }
 
@@ -160,45 +100,15 @@ export class MonstruoService {
     }
 
     getCompanero(idCompanero: number): Observable<CompaneroMonstruoDetalle> {
-        return new Observable((observador) => {
-            const dbRef = ref(this.db, `Companeros/${idCompanero}`);
-            let unsubscribe: Unsubscribe;
-
-            const onNext = (snapshot: any) => {
-                if (snapshot.exists()) {
-                    observador.next(normalizeCompaneroMonstruoDetalle(snapshot.val(), 1));
-                    return;
-                }
-
-                this.http.get(`${environment.apiUrl}companeros/${idCompanero}`).subscribe({
-                    next: (raw: any) => observador.next(normalizeCompaneroMonstruoDetalle(raw, 1)),
-                    error: (error: HttpErrorResponse) => {
-                        if (error.status === 404) {
-                            Swal.fire({
-                                icon: "warning",
-                                title: "Compañero animal no encontrado",
-                                text: `No existe el compañero animal con id ${idCompanero}`,
-                                showConfirmButton: true,
-                            });
-                        } else {
-                            Swal.fire({
-                                icon: "warning",
-                                title: "Error al obtener el compañero animal",
-                                text: error.message,
-                                showConfirmButton: true,
-                            });
-                        }
-                        observador.error(error);
-                    }
-                });
-            };
-
-            const onError = (error: any) => {
-                observador.error(error);
-            };
-
-            unsubscribe = this.firebaseContextSvc.run(() => onValue(dbRef, onNext, onError));
-            return () => unsubscribe();
+        return cacheRtdbOApi({
+            escuchar: escucharRtdb(this.db, this.firebaseContextSvc, `Companeros/${idCompanero}`),
+            desdeCache: (snapshot) => normalizeCompaneroMonstruoDetalle(snapshot.val(), 1),
+            pedir: () => this.http.get(`${environment.apiUrl}companeros/${idCompanero}`),
+            desdeApi: (raw) => normalizeCompaneroMonstruoDetalle(raw, 1),
+            avisos: {
+                noEncontrado: { titulo: "Compañero animal no encontrado", texto: `No existe el compañero animal con id ${idCompanero}` },
+                error: "Error al obtener el compañero animal",
+            },
         });
     }
 

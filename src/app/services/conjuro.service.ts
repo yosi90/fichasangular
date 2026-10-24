@@ -1,11 +1,10 @@
-import { catalogosDesdeApi, leerListadoCompleto, sinCache } from './catalogo-api';
+import { cacheRtdbOApi, catalogosDesdeApi, leerListadoCompleto, sinCache } from './catalogo-api';
 import { HttpClient, HttpErrorResponse } from "@angular/common/http";
 import { Injectable } from "@angular/core";
 import { Auth } from "@angular/fire/auth";
 import { Database, Unsubscribe, onValue, ref } from '@angular/fire/database';
 import { Observable, firstValueFrom } from "rxjs";
 import { environment } from "src/environments/environment";
-import Swal from "sweetalert2";
 import { Conjuro } from "../interfaces/conjuro";
 import { ConjuroCreateApiResponse, ConjuroCreateRequest, ConjuroCreateResponse } from "../interfaces/conjuros-api";
 import { FirebaseInjectionContextService } from "./firebase-injection-context.service";
@@ -43,101 +42,36 @@ export class ConjuroService {
     }
 
     getConjuro(id: number): Observable<Conjuro> {
-        return new Observable((observador) => {
-            let unsubscribe: Unsubscribe;
-
-            const onNext = (snapshot: any) => {
-                if (!snapshot.exists()) {
-                    this.http.get(`${environment.apiUrl}conjuros/${id}`).subscribe({
-                        next: (raw: any) => observador.next(normalizeConjuroApi(raw)),
-                        error: (error: HttpErrorResponse) => {
-                            if (error.status === 404) {
-                                Swal.fire({
-                                    icon: 'warning',
-                                    title: 'Conjuro no encontrado',
-                                    text: `No existe el conjuro con id ${id}`,
-                                    showConfirmButton: true,
-                                });
-                            } else {
-                                Swal.fire({
-                                    icon: 'warning',
-                                    title: 'Error al obtener el conjuro',
-                                    text: error.message,
-                                    showConfirmButton: true,
-                                });
-                            }
-                            observador.error(error);
-                        }
-                    });
-                    return;
-                }
-
-                observador.next(normalizeConjuroLegacy(snapshot?.val?.() ?? { Id: id }));
-            };
-
-            const onError = (error: any) => {
-                observador.error(error);
-            };
-
-            unsubscribe = this.watchConjuroPath(id, onNext, onError);
-
-            return () => {
-                unsubscribe();
-            };
+        return cacheRtdbOApi({
+            escuchar: (onNext, onError) => this.watchConjuroPath(id, onNext, onError),
+            desdeCache: (snapshot) => normalizeConjuroLegacy(snapshot?.val?.() ?? { Id: id }),
+            pedir: () => this.http.get(`${environment.apiUrl}conjuros/${id}`),
+            desdeApi: (raw) => normalizeConjuroApi(raw),
+            avisos: {
+                noEncontrado: { titulo: 'Conjuro no encontrado', texto: `No existe el conjuro con id ${id}` },
+                error: 'Error al obtener el conjuro',
+            },
         });
     }
 
     getConjuros(): Observable<Conjuro[]> {
-        return new Observable((observador) => {
-            let unsubscribe: Unsubscribe;
-
-            const onNext = (snapshot: any) => {
-                if (!snapshot.exists()) {
-                    this.syncConjuros().subscribe({
-                        next: (raw: any) => {
-                            const conjuros = (Array.isArray(raw) ? raw : Object.values(raw ?? {}))
-                                .map((item: any) => normalizeConjuroApi(item))
-                                .filter((conjuro) => conjuro.Id > 0);
-                            observador.next(conjuros);
-                        },
-                        error: (error: HttpErrorResponse) => {
-                            if (error.status === 404) {
-                                Swal.fire({
-                                    icon: 'warning',
-                                    title: 'Listado de conjuros no disponible',
-                                    text: 'No se encontró /conjuros en la API',
-                                    showConfirmButton: true,
-                                });
-                            } else {
-                                Swal.fire({
-                                    icon: 'warning',
-                                    title: 'Error al obtener el listado de conjuros',
-                                    text: error.message,
-                                    showConfirmButton: true,
-                                });
-                            }
-                            observador.error(error);
-                        }
-                    });
-                    return;
-                }
-
+        return cacheRtdbOApi({
+            escuchar: (onNext, onError) => this.watchConjurosPath(onNext, onError),
+            desdeCache: (snapshot) => {
                 const conjuros: Conjuro[] = [];
                 snapshot.forEach((obj: any) => {
                     conjuros.push(normalizeConjuroLegacy(obj.val()));
                 });
-                observador.next(conjuros);
-            };
-
-            const onError = (error: any) => {
-                observador.error(error);
-            };
-
-            unsubscribe = this.watchConjurosPath(onNext, onError);
-
-            return () => {
-                unsubscribe();
-            };
+                return conjuros;
+            },
+            pedir: () => this.syncConjuros(),
+            desdeApi: (raw) => (Array.isArray(raw) ? raw : Object.values(raw ?? {}))
+                .map((item: any) => normalizeConjuroApi(item))
+                .filter((conjuro) => conjuro.Id > 0),
+            avisos: {
+                noEncontrado: { titulo: 'Listado de conjuros no disponible', texto: 'No se encontró /conjuros en la API' },
+                error: 'Error al obtener el listado de conjuros',
+            },
         });
     }
 

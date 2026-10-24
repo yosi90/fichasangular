@@ -1,13 +1,13 @@
-import { HttpClient, HttpErrorResponse } from "@angular/common/http";
+import { HttpClient } from "@angular/common/http";
 import { Injectable } from "@angular/core";
 import { Database, Unsubscribe, onValue, ref } from "@angular/fire/database";
-import { Observable, map } from "rxjs";
-import Swal from "sweetalert2";
+import { Observable, map, throwError } from "rxjs";
 import { environment } from "src/environments/environment";
 import { SubtipoDetalle, SubtipoResumen } from "../interfaces/subtipo";
 import { FirebaseInjectionContextService } from "./firebase-injection-context.service";
 import { normalizeSubtipoDetalle, normalizeSubtipoResumen } from "./utils/subtipo-mapper";
-import { normalizarTexto, toArray } from 'src/app/services/utils/normalizacion';
+import { normalizarTexto } from 'src/app/services/utils/normalizacion';
+import { cacheRtdbOApi, escucharRtdb } from './catalogo-api';
 
 @Injectable({
     providedIn: "root"
@@ -43,55 +43,24 @@ export class SubtipoService {
     }
 
     getSubtipo(id: number): Observable<SubtipoDetalle> {
-        return new Observable((observador) => {
-            const subtipoId = Number(id);
-            if (!Number.isFinite(subtipoId) || subtipoId <= 0) {
-                observador.error(new Error("Id de subtipo invalido"));
-                return;
-            }
+        const subtipoId = Number(id);
+        if (!Number.isFinite(subtipoId) || subtipoId <= 0)
+            return throwError(() => new Error("Id de subtipo invalido"));
 
-            const dbRef = ref(this.db, `Subtipos/${subtipoId}`);
-            let unsubscribe: Unsubscribe;
-
-            const onNext = (snapshot: any) => {
-                if (snapshot.exists()) {
-                    const raw = snapshot.val();
-                    // Si el cache solo tiene resumen, se pide detalle remoto.
-                    if (raw && typeof raw === "object" && raw.Habilidades && raw.Movimientos) {
-                        observador.next(normalizeSubtipoDetalle(raw));
-                        return;
-                    }
-                }
-
-                this.http.get(`${environment.apiUrl}subtipos/${subtipoId}`).subscribe({
-                    next: async (raw: any) => {
-                        const detalle = normalizeSubtipoDetalle(raw);
-                        observador.next(detalle);
-                    },
-                    error: (error: HttpErrorResponse) => {
-                        if (error.status === 404) {
-                            Swal.fire({
-                                icon: "warning",
-                                title: "Subtipo no encontrado",
-                                text: `No existe el subtipo con id ${subtipoId}`,
-                                showConfirmButton: true,
-                            });
-                        } else {
-                            Swal.fire({
-                                icon: "warning",
-                                title: "Error al obtener el subtipo",
-                                text: error.message,
-                                showConfirmButton: true,
-                            });
-                        }
-                        observador.error(error);
-                    }
-                });
-            };
-
-            const onError = (error: any) => observador.error(error);
-            unsubscribe = this.firebaseContextSvc.run(() => onValue(dbRef, onNext, onError));
-            return () => unsubscribe();
+        return cacheRtdbOApi({
+            escuchar: escucharRtdb(this.db, this.firebaseContextSvc, `Subtipos/${subtipoId}`),
+            // Si la caché solo tiene el resumen, se pide el detalle a la API.
+            sirveLaCache: (snapshot) => {
+                const raw = snapshot.exists() ? snapshot.val() : null;
+                return !!raw && typeof raw === "object" && !!raw.Habilidades && !!raw.Movimientos;
+            },
+            desdeCache: (snapshot) => normalizeSubtipoDetalle(snapshot.val()),
+            pedir: () => this.http.get(`${environment.apiUrl}subtipos/${subtipoId}`),
+            desdeApi: (raw) => normalizeSubtipoDetalle(raw),
+            avisos: {
+                noEncontrado: { titulo: "Subtipo no encontrado", texto: `No existe el subtipo con id ${subtipoId}` },
+                error: "Error al obtener el subtipo",
+            },
         });
     }
 

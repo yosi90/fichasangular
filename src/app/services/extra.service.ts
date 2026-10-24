@@ -1,12 +1,12 @@
-import { HttpClient, HttpErrorResponse } from "@angular/common/http";
+import { HttpClient } from "@angular/common/http";
 import { Injectable } from "@angular/core";
 import { Database, Unsubscribe, onValue, ref } from "@angular/fire/database";
-import { Observable } from "rxjs";
-import Swal from "sweetalert2";
+import { Observable, throwError } from "rxjs";
 import { environment } from "src/environments/environment";
 import { ExtraDetalle } from "../interfaces/extra";
 import { FirebaseInjectionContextService } from "./firebase-injection-context.service";
-import { toArray, toNumber, toText } from 'src/app/services/utils/normalizacion';
+import { toNumber, toText } from 'src/app/services/utils/normalizacion';
+import { cacheRtdbOApi, escucharRtdb } from './catalogo-api';
 
 export function normalizeExtra(raw: any): ExtraDetalle {
     return {
@@ -53,34 +53,15 @@ export class ExtraService {
     }
 
     getExtra(id: number): Observable<ExtraDetalle> {
-        return new Observable((observador) => {
-            const idNormalizado = Math.trunc(toNumber(id));
-            if (idNormalizado <= 0) {
-                observador.error(new Error("Id de extra invalido"));
-                return;
-            }
+        const idNormalizado = Math.trunc(toNumber(id));
+        if (idNormalizado <= 0)
+            return throwError(() => new Error("Id de extra invalido"));
 
-            const dbRef = ref(this.db, `Extras/${idNormalizado}`);
-            let unsubscribe: Unsubscribe;
-
-            const onNext = (snapshot: any) => {
-                if (snapshot.exists()) {
-                    observador.next(normalizeExtra(snapshot.val()));
-                    return;
-                }
-
-                this.http.get(`${environment.apiUrl}extras/${idNormalizado}`).subscribe({
-                    next: (raw: any) => observador.next(normalizeExtra(raw)),
-                    error: (error: HttpErrorResponse) => observador.error(error),
-                });
-            };
-
-            const onError = (error: any) => {
-                observador.error(error);
-            };
-
-            unsubscribe = this.firebaseContextSvc.run(() => onValue(dbRef, onNext, onError));
-            return () => unsubscribe();
+        return cacheRtdbOApi({
+            escuchar: escucharRtdb(this.db, this.firebaseContextSvc, `Extras/${idNormalizado}`),
+            desdeCache: (snapshot) => normalizeExtra(snapshot.val()),
+            pedir: () => this.http.get(`${environment.apiUrl}extras/${idNormalizado}`),
+            desdeApi: (raw) => normalizeExtra(raw),
         });
     }
 
