@@ -7,7 +7,7 @@ import { DeidadDetalle } from 'src/app/interfaces/deidad';
 import { DeidadService } from 'src/app/services/deidad.service';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
 import { ordenarEnEspanol } from 'src/app/services/utils/orden-tabla';
-import { normalizarTexto } from 'src/app/services/utils/normalizacion';
+import { normalizarTexto, toBoolean } from 'src/app/services/utils/normalizacion';
 
 @Component({
     selector: 'app-listado-deidades',
@@ -107,7 +107,7 @@ export class ListadoDeidadesComponent implements OnDestroy {
                 || normalizarTexto(deidad?.Alineamiento?.Nombre) === alineamiento;
             const visiblePorPabellon = this.defaultPabellon === 'Cualquiera'
                 || normalizarTexto(deidad?.Pabellon?.Nombre) === pabellon;
-            const visiblePorHomebrew = this.mostrarHomebrew || this.toBoolean(deidad?.Oficial, true);
+            const visiblePorHomebrew = this.mostrarHomebrew || toBoolean(deidad?.Oficial, true);
             return visiblePorTexto && visiblePorManual && visiblePorAlineamiento && visiblePorPabellon && visiblePorHomebrew;
         });
 
@@ -171,18 +171,4 @@ export class ListadoDeidadesComponent implements OnDestroy {
         )).sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' }));
     }
 
-    private toBoolean(value: any, fallback: boolean = false): boolean {
-        if (typeof value === 'boolean')
-            return value;
-        if (typeof value === 'number')
-            return value !== 0;
-        if (typeof value === 'string') {
-            const normalizado = value.trim().toLowerCase();
-            if (['true', '1', 'si', 'sí', 'yes'].includes(normalizado))
-                return true;
-            if (['false', '0', 'no'].includes(normalizado))
-                return false;
-        }
-        return fallback;
-    }
 }

@@ -23,7 +23,7 @@ import { resolverExtraHabilidadVisible } from 'src/app/services/utils/habilidad-
 import { buildManiobrabilidadInfoSecciones, ManiobrabilidadLike, tieneManiobrabilidadVisible } from 'src/app/services/utils/maniobrabilidad-info';
 import { calcularNivelesLanzadorPersonaje } from 'src/app/services/utils/nivel-lanzador-personaje';
 import Swal from 'sweetalert2';
-import { normalizarTexto, toArray, toNumber } from 'src/app/services/utils/normalizacion';
+import { normalizarTexto, toArray, toBoolean, toNumber } from 'src/app/services/utils/normalizacion';
 
 interface MadurezEdadResumen {
     id: number;
@@ -193,11 +193,11 @@ export class DetallesPersonajeComponent implements OnInit, OnChanges, AfterViewI
     }
 
     get personajeVisiblePublicamente(): boolean {
-        return this.toBoolean(this.pj?.visible_otros_usuarios);
+        return toBoolean(this.pj?.visible_otros_usuarios);
     }
 
     get personajeArchivado(): boolean {
-        return this.toBoolean(this.pj?.Archivado);
+        return toBoolean(this.pj?.Archivado);
     }
 
     get actualizandoEstadoPersonaje(): boolean {
@@ -863,9 +863,9 @@ Fue/Des/Con: ${this.formatSigned(madurez.modFisico)} | Int/Sab/Car: ${this.forma
 
     tieneCaracteristicaPerdida(key: CaracteristicaPerdidaKey): boolean {
         const perdidas = this.pj?.Caracteristicas_perdidas ?? {};
-        const perdidaPorMapa = this.toBoolean((perdidas as Record<string, any>)?.[key]);
+        const perdidaPorMapa = toBoolean((perdidas as Record<string, any>)?.[key]);
         if (key === 'Constitucion')
-            return perdidaPorMapa || this.toBoolean(this.pj?.Constitucion_perdida);
+            return perdidaPorMapa || toBoolean(this.pj?.Constitucion_perdida);
         return perdidaPorMapa;
     }
 
@@ -1376,18 +1376,6 @@ Fue/Des/Con: ${this.formatSigned(madurez.modFisico)} | Int/Sab/Car: ${this.forma
             Id: Number.isFinite(id) && id > 0 ? id : null,
             Nombre: nombre,
         });
-    }
-
-    private toBoolean(value: any): boolean {
-        if (typeof value === 'boolean')
-            return value;
-        if (typeof value === 'number')
-            return value === 1;
-        if (typeof value === 'string') {
-            const normalizado = value.trim().toLowerCase();
-            return normalizado === '1' || normalizado === 'true' || normalizado === 'si' || normalizado === 'sí';
-        }
-        return false;
     }
 
     private actualizarModoCompacto(): void {

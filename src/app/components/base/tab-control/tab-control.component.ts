@@ -51,7 +51,7 @@ import { NuevaIdiomaComponent } from '../../shared/nueva-idioma/nueva-idioma.com
 import { NuevaEspecialComponent } from '../../shared/nueva-especial/nueva-especial.component';
 import { NuevaClaseComponent } from '../../shared/nueva-clase/nueva-clase.component';
 import { IdiomaDetalle } from 'src/app/interfaces/idioma';
-import { normalizarTexto } from 'src/app/services/utils/normalizacion';
+import { normalizarTexto, toBoolean } from 'src/app/services/utils/normalizacion';
 
 interface ListadoTabAbierto {
     key: string;
@@ -935,13 +935,13 @@ export class TabControlComponent implements OnInit, OnDestroy {
                     Id: id,
                     Nombre: `${detalle?.Nombre ?? rasgo?.Nombre ?? ''}`.trim(),
                     Descripcion: `${detalle?.Descripcion ?? rasgo?.Descripcion ?? ''}`,
-                    Oficial: this.toBoolean(detalle?.Oficial ?? rasgo?.Oficial, true),
+                    Oficial: toBoolean(detalle?.Oficial ?? rasgo?.Oficial, true),
                 }),
                 error: () => this.abrirDetallesRasgoConDatos({
                     Id: id,
                     Nombre: `${rasgo?.Nombre ?? ''}`.trim(),
                     Descripcion: `${rasgo?.Descripcion ?? ''}`,
-                    Oficial: this.toBoolean(rasgo?.Oficial, true),
+                    Oficial: toBoolean(rasgo?.Oficial, true),
                 }),
             });
             return;
@@ -951,7 +951,7 @@ export class TabControlComponent implements OnInit, OnDestroy {
             Id: 0,
             Nombre: `${rasgo?.Nombre ?? ''}`.trim(),
             Descripcion: `${rasgo?.Descripcion ?? ''}`,
-            Oficial: this.toBoolean(rasgo?.Oficial, true),
+            Oficial: toBoolean(rasgo?.Oficial, true),
         });
     }
 
@@ -972,7 +972,7 @@ export class TabControlComponent implements OnInit, OnDestroy {
             Id: Number(rasgo?.Id) > 0 ? Number(rasgo.Id) : 0,
             Nombre: nombre,
             Descripcion: `${rasgo?.Descripcion ?? ''}`,
-            Oficial: this.toBoolean(rasgo?.Oficial, true),
+            Oficial: toBoolean(rasgo?.Oficial, true),
         };
         const targetKey = this.getRasgoTabKey(creado);
         this.detallesRasgoAbiertos.push({
@@ -2446,21 +2446,6 @@ export class TabControlComponent implements OnInit, OnDestroy {
 
     private getEditorClasePorTabKey(key: string): NuevaClaseComponent | undefined {
         return this.clasesEditables?.toArray().find((component) => component.editorTabKey === key);
-    }
-
-    private toBoolean(value: any, fallback: boolean = false): boolean {
-        if (typeof value === 'boolean')
-            return value;
-        if (typeof value === 'number')
-            return value !== 0;
-        if (typeof value === 'string') {
-            const normalizado = value.trim().toLowerCase();
-            if (['true', '1', 'si', 'sí', 'yes'].includes(normalizado))
-                return true;
-            if (['false', '0', 'no'].includes(normalizado))
-                return false;
-        }
-        return fallback;
     }
 
     private esNombreNoAplicable(value: string): boolean {

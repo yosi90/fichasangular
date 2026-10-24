@@ -6,22 +6,7 @@ import { RacialDetalle } from "src/app/interfaces/racial";
 import { MutacionRaza, Raza, RazaHabilidades, RazaPrerrequisitos, RazaPrerrequisitosFlags } from "src/app/interfaces/raza";
 import { SubtipoRef } from "src/app/interfaces/subtipo";
 import { toDoteContextualArray } from "./dote-mapper";
-import { normalizarTexto, toNumber, toText } from 'src/app/services/utils/normalizacion';
-
-function toBoolean(value: any, fallback: boolean = false): boolean {
-    if (typeof value === "boolean")
-        return value;
-    if (typeof value === "number")
-        return value !== 0;
-    if (typeof value === "string") {
-        const normalizado = value.trim().toLowerCase();
-        if (["true", "1", "si", "sí", "yes"].includes(normalizado))
-            return true;
-        if (["false", "0", "no"].includes(normalizado))
-            return false;
-    }
-    return fallback;
-}
+import { normalizarTexto, toBoolean, toNumber, toText } from 'src/app/services/utils/normalizacion';
 
 function toStrictArray<T = any>(value: any): T[] {
     return Array.isArray(value) ? value : [];

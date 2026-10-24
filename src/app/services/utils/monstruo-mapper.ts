@@ -31,19 +31,7 @@ import { normalizeEspecial } from "../especial.service";
 import { normalizeIdioma } from "../idioma.service";
 import { toDoteContextualArray } from "./dote-mapper";
 import { normalizeRacial } from "./racial-mapper";
-import { toArray, toNumber, toText } from 'src/app/services/utils/normalizacion';
-
-function toBoolean(value: any): boolean {
-    if (typeof value === "boolean")
-        return value;
-    if (typeof value === "number")
-        return value > 0;
-    if (typeof value === "string") {
-        const normalized = value.trim().toLowerCase();
-        return normalized === "1" || normalized === "true" || normalized === "si" || normalized === "sí";
-    }
-    return false;
-}
+import { toArray, toBoolean, toNumber, toText } from 'src/app/services/utils/normalizacion';
 
 function normalizeDepth(depth: number): number {
     const parsed = Number(depth);

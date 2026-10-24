@@ -9,7 +9,7 @@ import {
     parseLeyDesdePreferencia,
     parseMoralDesdePreferencia,
 } from "./alineamiento-contrato";
-import { normalizarTexto, toArray, toNumber } from 'src/app/services/utils/normalizacion';
+import { normalizarTexto, toArray, toBoolean, toNumber } from 'src/app/services/utils/normalizacion';
 
 export type EstadoElegibilidadRazaBase = "eligible" | "eligible_with_warning" | "blocked";
 
@@ -31,10 +31,6 @@ interface RestriccionAlineamientoRaza {
     alineamientoBasicoId: number;
     ley: number | null;
     moral: number | null;
-}
-
-function toBoolean(value: any): boolean {
-    return value === true || value === 1 || value === "1";
 }
 
 function parseIdExtra(value: any): number {

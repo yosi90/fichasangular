@@ -4,20 +4,8 @@ import { Database } from "@angular/fire/database";
 import { Observable } from "rxjs";
 import { RegionDetalle } from "../interfaces/region";
 import { FirebaseInjectionContextService } from "./firebase-injection-context.service";
-import { toNumber, toText } from 'src/app/services/utils/normalizacion';
+import { toBoolean, toNumber, toText } from 'src/app/services/utils/normalizacion';
 import { escucharRtdb, listaRtdb } from './catalogo-api';
-
-function toBoolean(value: any): boolean {
-    if (typeof value === "boolean")
-        return value;
-    if (typeof value === "number")
-        return value > 0;
-    if (typeof value === "string") {
-        const normalized = value.trim().toLowerCase();
-        return normalized === "1" || normalized === "true" || normalized === "si" || normalized === "sí";
-    }
-    return false;
-}
 
 function hasCanonicalRegionShape(raw: any): boolean {
     return !!raw

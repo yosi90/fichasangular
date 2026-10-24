@@ -1,16 +1,6 @@
 import { Conjuro } from "src/app/interfaces/conjuro";
 import { RacialDetalle } from "src/app/interfaces/racial";
-import { toArray, toNumber, toText } from 'src/app/services/utils/normalizacion';
-
-function toBoolean(value: any): boolean {
-    return value === true || value === 1 || value === "1";
-}
-
-function toBooleanWithFallback(value: any, fallback: boolean): boolean {
-    if (value === undefined || value === null || `${value}`.trim() === "")
-        return fallback;
-    return toBoolean(value);
-}
+import { toArray, toBoolean, toNumber, toText } from 'src/app/services/utils/normalizacion';
 
 function toOptionalNumber(value: any): number {
     const n = Number(value);
@@ -113,7 +103,7 @@ export function normalizeRacial(raw: any): RacialDetalle {
         Id: toNumber(pick(raw, "Id", "id", "i")),
         Nombre: toText(pick(raw, "Nombre", "nombre", "n")),
         Descripcion: toText(pick(raw, "Descripcion", "descripcion", "d")),
-        Oficial: toBooleanWithFallback(pick(raw, "Oficial", "oficial", "o"), true),
+        Oficial: toBoolean(pick(raw, "Oficial", "oficial", "o"), true),
         Origen: toText(raw?.Origen ?? raw?.origen).trim(),
         Opcional: toOptionalNumber(pick(raw, "Opcional", "opcional", "o")),
         Dotes: toArray(dotesRaw).map((item: any) => ({

@@ -8,10 +8,7 @@ import { Manual } from '../interfaces/manual';
 import { ManualIncludeFlag } from '../config/manual-secciones.config';
 import { FirebaseInjectionContextService } from './firebase-injection-context.service';
 import { cacheRtdbOApi, escucharRtdb, listaRtdb } from './catalogo-api';
-
-function toBoolean(value: any): boolean {
-    return value === true || value === 1 || value === '1';
-}
+import { toBoolean } from 'src/app/services/utils/normalizacion';
 
 function hasCanonicalManualShape(raw: any): boolean {
     return !!raw

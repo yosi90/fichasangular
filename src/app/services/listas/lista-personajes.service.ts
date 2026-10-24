@@ -9,7 +9,7 @@ import { RazaSimple } from 'src/app/interfaces/simplificaciones/raza-simple';
 import { esperarSesionFirebase, FirebaseInjectionContextService } from '../firebase-injection-context.service';
 import { PrivateUserFirestoreService } from '../private-user-firestore.service';
 import { cabeceraApiConFirebase } from '../platform-session.service';
-import { toNumber } from 'src/app/services/utils/normalizacion';
+import { toBoolean, toNumber } from 'src/app/services/utils/normalizacion';
 
 @Injectable({
     providedIn: 'root'
@@ -446,18 +446,6 @@ export class ListaPersonajesService {
         const uid = `${user?.uid ?? ''}`.trim();
         return uid.length > 0 ? `user:${uid}` : 'guest';
     }
-}
-
-function toBoolean(value: any): boolean {
-    if (typeof value === 'boolean')
-        return value;
-    if (typeof value === 'number')
-        return value === 1;
-    if (typeof value === 'string') {
-        const normalizado = value.trim().toLowerCase();
-        return normalizado === '1' || normalizado === 'true' || normalizado === 'si' || normalizado === 'sí';
-    }
-    return false;
 }
 
 function toNullablePositiveInt(value: any): number | null {

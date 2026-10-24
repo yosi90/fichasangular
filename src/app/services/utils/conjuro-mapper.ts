@@ -1,17 +1,5 @@
 import { Conjuro } from 'src/app/interfaces/conjuro';
-import { toArray, toText } from 'src/app/services/utils/normalizacion';
-
-function toBoolean(value: any): boolean {
-    if (typeof value === 'boolean')
-        return value;
-    if (typeof value === 'number')
-        return value !== 0;
-    if (typeof value === 'string') {
-        const normalized = value.trim().toLowerCase();
-        return normalized === '1' || normalized === 'true' || normalized === 'si' || normalized === 'sí' || normalized === 'yes';
-    }
-    return false;
-}
+import { toArray, toBoolean, toText } from 'src/app/services/utils/normalizacion';
 
 function toNumber(value: any, fallback: number = 0): number {
     const parsed = Number(value);

@@ -9,19 +9,7 @@ import {
 import { SubtipoRef } from "src/app/interfaces/subtipo";
 import { toDoteContextualArray } from "./dote-mapper";
 import { normalizeSubtipoRefArray } from "./subtipo-mapper";
-import { normalizarTexto, toArray, toNumber, toText } from 'src/app/services/utils/normalizacion';
-
-function toBoolean(value: any): boolean {
-    if (typeof value === "boolean")
-        return value;
-    if (typeof value === "number")
-        return value === 1;
-    if (typeof value === "string") {
-        const normalized = value.trim().toLowerCase();
-        return normalized === "1" || normalized === "true";
-    }
-    return false;
-}
+import { normalizarTexto, toArray, toBoolean, toNumber, toText } from 'src/app/services/utils/normalizacion';
 
 function toStrictArray<T = any>(raw: any): T[] {
     return Array.isArray(raw) ? raw : [];

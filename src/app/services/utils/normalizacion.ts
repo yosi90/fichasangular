@@ -15,6 +15,25 @@ export function toText(value: any, fallback: string = ''): string {
     return `${value}`;
 }
 
+const VALORES_SI = new Set(['true', '1', 'sí', 'si', 'yes']);
+
+/**
+ * Sí o no, con una sola regla para toda la web (propietario, 2026-10-24): sí con `true`, `1` y los textos «true», «1»,
+ * «sí», «si» y «yes», sin distinguir mayúsculas ni espacios alrededor; todo lo demás, no (también `2`, `-1` o «no»).
+ * `siFalta` es lo que vale cuando el campo no viene (`null` o `undefined`), para los campos con un valor por defecto.
+ */
+export function toBoolean(value: unknown, siFalta: boolean = false): boolean {
+    if (value === null || value === undefined)
+        return siFalta;
+    if (typeof value === 'boolean')
+        return value;
+    if (typeof value === 'number')
+        return value === 1;
+    if (typeof value === 'string')
+        return VALORES_SI.has(value.trim().toLowerCase());
+    return false;
+}
+
 /** `value` como lista: una lista tal cual, los valores de un objeto (las listas de la RTDB) o una lista vacía. */
 export function toArray<T = any>(value: any): T[] {
     if (Array.isArray(value))

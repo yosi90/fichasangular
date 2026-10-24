@@ -5,6 +5,7 @@ import { Observable } from "rxjs";
 import Swal from "sweetalert2";
 import { EscuelaConjuros } from "../interfaces/escuela-conjuros";
 import { FirebaseInjectionContextService } from "./firebase-injection-context.service";
+import { toBoolean } from 'src/app/services/utils/normalizacion';
 
 function toInt(value: any, fallback: number = 0): number {
     const parsed = Number(value);
@@ -13,18 +14,6 @@ function toInt(value: any, fallback: number = 0): number {
 
 function toText(value: any): string {
     return `${value ?? ''}`.trim();
-}
-
-function toBoolean(value: any): boolean {
-    if (typeof value === 'boolean')
-        return value;
-    if (typeof value === 'number')
-        return value > 0;
-    if (typeof value === 'string') {
-        const normalized = value.trim().toLowerCase();
-        return normalized === '1' || normalized === 'true' || normalized === 'si' || normalized === 'sí';
-    }
-    return false;
 }
 
 function normalizeEscuela(raw: any, fallbackId: number = 0): EscuelaConjuros {

@@ -1,10 +1,6 @@
 import { Dote, DoteExtraItem, DoteManual, DoteTipo } from "src/app/interfaces/dote";
 import { DoteContexto, DoteContextual, DoteLegacy } from "src/app/interfaces/dote-contextual";
-import { toNumber, toText } from 'src/app/services/utils/normalizacion';
-
-function toBoolean(value: any): boolean {
-    return value === true || value === 1 || value === "1";
-}
+import { toBoolean, toNumber, toText } from 'src/app/services/utils/normalizacion';
 
 function asArray(raw: any): any[] {
     if (Array.isArray(raw))

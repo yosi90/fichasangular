@@ -29,7 +29,7 @@ import { normalizarProgresionLanzadorPersonaje } from './utils/nivel-lanzador-pe
 import { normalizeRaciales } from './utils/racial-mapper';
 import { normalizeSubtipoRefArray } from './utils/subtipo-mapper';
 import { cabeceraApiConFirebase } from './platform-session.service';
-import { toArray, toNumber, toText } from 'src/app/services/utils/normalizacion';
+import { toArray, toBoolean, toNumber, toText } from 'src/app/services/utils/normalizacion';
 import { getAlineamientoBasicoIdPorNombre } from './utils/alineamiento-contrato';
 import { calcularOroPorNep } from './utils/oro-inicial';
 
@@ -1356,18 +1356,6 @@ function extractOwnerDisplayName(value: any): string | null {
     return toNullableText(
         value.ownerDisplayName
     );
-}
-
-function toBoolean(value: any): boolean {
-    if (typeof value === 'boolean')
-        return value;
-    if (typeof value === 'number')
-        return value === 1;
-    if (typeof value === 'string') {
-        const normalizado = value.trim().toLowerCase();
-        return normalizado === '1' || normalizado === 'true' || normalizado === 'si' || normalizado === 'sí';
-    }
-    return false;
 }
 
 function normalizeVentajasPersonaje(raw: any): (string | { Nombre: string; Origen?: string; })[] {

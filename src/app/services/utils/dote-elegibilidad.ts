@@ -4,7 +4,7 @@ import {
     existeCoincidenciaClaveEntidad,
 } from './identidad-prerrequisitos';
 import { getAlineamientoBasicoIdPorNombre } from './alineamiento-contrato';
-import { normalizarTexto, toArray, toNumber } from 'src/app/services/utils/normalizacion';
+import { normalizarTexto, toArray, toBoolean, toNumber } from 'src/app/services/utils/normalizacion';
 
 export type EstadoElegibilidadDote = 'eligible' | 'blocked_failed' | 'blocked_unknown';
 
@@ -95,18 +95,6 @@ interface GrupoOpcionalEstado {
     cumple: boolean;
     falla: boolean;
     unknown: boolean;
-}
-
-function toBoolean(value: any): boolean {
-    if (typeof value === 'boolean')
-        return value;
-    if (typeof value === 'number')
-        return value === 1;
-    if (typeof value === 'string') {
-        const normalizado = value.trim().toLowerCase();
-        return normalizado === '1' || normalizado === 'true' || normalizado === 'si' || normalizado === 'sí';
-    }
-    return false;
 }
 
 function pick(entry: Record<string, any>, keys: string[]): any {

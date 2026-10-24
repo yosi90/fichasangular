@@ -3,7 +3,7 @@ import {
     IdentidadPrerrequisitos,
     existeCoincidenciaClaveEntidad,
 } from './identidad-prerrequisitos';
-import { normalizarTexto, toArray, toNumber } from 'src/app/services/utils/normalizacion';
+import { normalizarTexto, toArray, toBoolean, toNumber } from 'src/app/services/utils/normalizacion';
 
 export type EstadoEvaluacionRacial = 'eligible' | 'blocked' | 'eligible_with_warning';
 
@@ -35,18 +35,6 @@ interface EstadoGrupoOpcional {
     cumple: boolean;
     falla: boolean;
     unknown: boolean;
-}
-
-function toBoolean(value: any): boolean {
-    if (typeof value === 'boolean')
-        return value;
-    if (typeof value === 'number')
-        return value === 1;
-    if (typeof value === 'string') {
-        const normalized = value.trim().toLowerCase();
-        return normalized === '1' || normalized === 'true' || normalized === 'si' || normalized === 'sí';
-    }
-    return false;
 }
 
 function pick(raw: any, ...keys: string[]): any {

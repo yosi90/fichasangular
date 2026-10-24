@@ -18,12 +18,8 @@ import {
 } from "../interfaces/especial";
 import { FirebaseInjectionContextService } from "./firebase-injection-context.service";
 import { cabeceraApiConFirebase } from './platform-session.service';
-import { toArray, toNumber, toText } from 'src/app/services/utils/normalizacion';
+import { toArray, toBoolean, toNumber, toText } from 'src/app/services/utils/normalizacion';
 import { cacheRtdbOApi, escucharRtdb } from './catalogo-api';
-
-function toBoolean(value: any): boolean {
-    return value === true || value === 1 || value === "1";
-}
 
 function normalizeRefSimple(raw: any): EspecialRefSimple {
     return {

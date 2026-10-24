@@ -31,6 +31,7 @@ import { UserService } from './user.service';
 import { toUserFacingErrorMessage } from './utils/user-facing-error.util';
 import { cabeceraApiConFirebase } from './platform-session.service';
 import { InvitacionEnviadaEspacio, PlatformSpacesService, SolicitudEspacio, TraspasoEspacio } from './platform-spaces.service';
+import { toBoolean } from 'src/app/services/utils/normalizacion';
 
 @Injectable({
     providedIn: 'root'
@@ -876,7 +877,7 @@ export class CampanaService {
         return {
             id,
             nombre: `${raw?.n ?? raw?.Nombre ?? raw?.nombre ?? ''}`.trim(),
-            visibleParaJugadores: this.toBoolean(
+            visibleParaJugadores: toBoolean(
                 raw?.visibleParaJugadores ?? raw?.VisibleParaJugadores,
                 true
             ),
@@ -892,7 +893,7 @@ export class CampanaService {
         return {
             id,
             nombre: `${raw?.n ?? raw?.Nombre ?? raw?.nombre ?? ''}`.trim(),
-            visibleParaJugadores: this.toBoolean(
+            visibleParaJugadores: toBoolean(
                 raw?.visibleParaJugadores ?? raw?.VisibleParaJugadores,
                 true
             ),
@@ -1117,14 +1118,14 @@ export class CampanaService {
     }
 
     private normalizeCampaignCreationPolicy(raw: any): CampaignCreationPolicy {
-        const permitirHomebrewGeneral = this.toBoolean(raw?.permitirHomebrewGeneral, true);
+        const permitirHomebrewGeneral = toBoolean(raw?.permitirHomebrewGeneral, true);
         return {
             tiradaMinimaCaracteristica: this.toNullableNumber(raw?.tiradaMinimaCaracteristica),
             nepMaximoPersonajeNuevo: this.normalizeNullableNepLimit(raw?.nepMaximoPersonajeNuevo),
             maxTablasDadosCaracteristicas: this.toNullableNumber(raw?.maxTablasDadosCaracteristicas),
             permitirHomebrewGeneral,
-            permitirVentajasDesventajas: this.toBoolean(raw?.permitirVentajasDesventajas, true),
-            permitirIgnorarRestriccionesAlineamiento: this.toBoolean(raw?.permitirIgnorarRestriccionesAlineamiento, false),
+            permitirVentajasDesventajas: toBoolean(raw?.permitirVentajasDesventajas, true),
+            permitirIgnorarRestriccionesAlineamiento: toBoolean(raw?.permitirIgnorarRestriccionesAlineamiento, false),
             maxFuentesHomebrewGeneralesPorPersonaje: permitirHomebrewGeneral
                 ? null
                 : this.normalizeNullableHomebrewSourceLimit(raw?.maxFuentesHomebrewGeneralesPorPersonaje),
@@ -1229,11 +1230,11 @@ export class CampanaService {
         if ('maxTablasDadosCaracteristicas' in raw)
             payload.maxTablasDadosCaracteristicas = this.toNullableNumber(raw.maxTablasDadosCaracteristicas);
         if ('permitirHomebrewGeneral' in raw)
-            payload.permitirHomebrewGeneral = this.toBoolean(raw.permitirHomebrewGeneral, true);
+            payload.permitirHomebrewGeneral = toBoolean(raw.permitirHomebrewGeneral, true);
         if ('permitirVentajasDesventajas' in raw)
-            payload.permitirVentajasDesventajas = this.toBoolean(raw.permitirVentajasDesventajas, true);
+            payload.permitirVentajasDesventajas = toBoolean(raw.permitirVentajasDesventajas, true);
         if ('permitirIgnorarRestriccionesAlineamiento' in raw)
-            payload.permitirIgnorarRestriccionesAlineamiento = this.toBoolean(raw.permitirIgnorarRestriccionesAlineamiento, false);
+            payload.permitirIgnorarRestriccionesAlineamiento = toBoolean(raw.permitirIgnorarRestriccionesAlineamiento, false);
         if (payload.permitirHomebrewGeneral === true) {
             payload.maxFuentesHomebrewGeneralesPorPersonaje = null;
         } else if ('maxFuentesHomebrewGeneralesPorPersonaje' in raw) {
@@ -1301,16 +1302,6 @@ export class CampanaService {
     private toNullableText(value: any): string | null {
         const text = `${value ?? ''}`.trim();
         return text.length > 0 ? text : null;
-    }
-
-    private toBoolean(value: any, fallback: boolean): boolean {
-        if (typeof value === 'boolean')
-            return value;
-        if (value === 'true')
-            return true;
-        if (value === 'false')
-            return false;
-        return fallback;
     }
 
     private getDisplayLabel(member: CampaignMemberItem): string {

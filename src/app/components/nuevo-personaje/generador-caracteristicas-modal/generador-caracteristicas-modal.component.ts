@@ -14,6 +14,7 @@ import {
 } from 'src/app/services/nuevo-personaje.service';
 import Swal from 'sweetalert2';
 import { esElementoInteractivoParaEnter } from 'src/app/services/utils/teclado';
+import { toBoolean } from 'src/app/services/utils/normalizacion';
 
 type CaracteristicaKey = keyof AsignacionCaracteristicas;
 type CaracteristicasPerdidasState = Partial<Record<CaracteristicaKey, boolean>>;
@@ -490,22 +491,10 @@ export class GeneradorCaracteristicasModalComponent implements AfterViewInit, Do
     }
 
     private esCaracteristicaPerdida(caracteristica: CaracteristicaKey): boolean {
-        const perdidaPorMapa = this.toBoolean((this.caracteristicasPerdidas as Record<string, any> | null)?.[caracteristica]);
+        const perdidaPorMapa = toBoolean((this.caracteristicasPerdidas as Record<string, any> | null)?.[caracteristica]);
         if (caracteristica === 'Constitucion')
-            return perdidaPorMapa || this.toBoolean(this.pierdeConstitucion);
+            return perdidaPorMapa || toBoolean(this.pierdeConstitucion);
         return perdidaPorMapa;
-    }
-
-    private toBoolean(value: any): boolean {
-        if (typeof value === 'boolean')
-            return value;
-        if (typeof value === 'number')
-            return value === 1;
-        if (typeof value === 'string') {
-            const normalizado = value.trim().toLowerCase();
-            return normalizado === '1' || normalizado === 'true' || normalizado === 'si' || normalizado === 'sí';
-        }
-        return false;
     }
 
     private tieneAsignacionesPrevias(): boolean {

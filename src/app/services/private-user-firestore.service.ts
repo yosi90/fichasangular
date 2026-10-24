@@ -15,6 +15,7 @@ import { AuthProviderType } from '../interfaces/user-profile';
 import { UserRole } from '../interfaces/user-acl';
 import { FirebaseInjectionContextService } from './firebase-injection-context.service';
 import { UserCompliancePolicyState, UserComplianceSnapshot, UserModerationSanction } from '../interfaces/user-moderation';
+import { toBoolean } from 'src/app/services/utils/normalizacion';
 
 @Injectable({
     providedIn: 'root'
@@ -258,7 +259,7 @@ export class PrivateUserFirestoreService {
             Campana: this.toNullableText(raw?.Campana ?? raw?.Campaña ?? raw?.ca) ?? 'Sin campaña',
             Trama: this.toNullableText(raw?.Trama ?? raw?.t) ?? 'Trama base',
             Subtrama: this.toNullableText(raw?.Subtrama ?? raw?.s) ?? 'Subtrama base',
-            Archivado: this.toBoolean(raw?.archivado ?? raw?.Archivado ?? raw?.a),
+            Archivado: toBoolean(raw?.archivado ?? raw?.Archivado ?? raw?.a),
         };
     }
 
@@ -451,18 +452,6 @@ export class PrivateUserFirestoreService {
     private toNullableText(value: any): string | null {
         const text = `${value ?? ''}`.trim();
         return text.length > 0 ? text : null;
-    }
-
-    private toBoolean(value: any): boolean {
-        if (typeof value === 'boolean')
-            return value;
-        if (typeof value === 'number')
-            return value === 1;
-        if (typeof value === 'string') {
-            const normalized = value.trim().toLowerCase();
-            return normalized === '1' || normalized === 'true' || normalized === 'si' || normalized === 'sí';
-        }
-        return false;
     }
 
     private normalizeMultilineText(value: any): string | null {

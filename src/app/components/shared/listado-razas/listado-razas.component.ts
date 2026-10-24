@@ -7,7 +7,7 @@ import { Raza } from 'src/app/interfaces/raza';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
 import { RazaService } from 'src/app/services/raza.service';
 import { ordenarEnEspanol } from 'src/app/services/utils/orden-tabla';
-import { toNumber } from 'src/app/services/utils/normalizacion';
+import { toBoolean, toNumber } from 'src/app/services/utils/normalizacion';
 
 @Component({
     selector: 'app-listado-razas',
@@ -195,22 +195,7 @@ export class ListadoRazasComponent implements OnDestroy {
     }
 
     private esOficialParaFiltro(raza: Raza): boolean {
-        return this.toBoolean((raza as any)?.Oficial, true);
-    }
-
-    private toBoolean(value: any, fallback: boolean = false): boolean {
-        if (typeof value === 'boolean')
-            return value;
-        if (typeof value === 'number')
-            return value !== 0;
-        if (typeof value === 'string') {
-            const normalizado = value.trim().toLowerCase();
-            if (['true', '1', 'si', 'sí', 'yes'].includes(normalizado))
-                return true;
-            if (['false', '0', 'no'].includes(normalizado))
-                return false;
-        }
-        return fallback;
+        return toBoolean((raza as any)?.Oficial, true);
     }
 
     abrirDetalleManual(raza: Raza, event?: Event) {

@@ -1,3 +1,5 @@
+import { toBoolean } from 'src/app/services/utils/normalizacion';
+
 export type UserAclPermissions = Record<string, Record<string, boolean>>;
 export type UserRole = 'jugador' | 'master' | 'colaborador' | 'admin';
 export type PermissionResource =
@@ -52,22 +54,6 @@ export const EMPTY_USER_ACL: UserAcl = {
     },
     permissions: {},
 };
-
-function toBoolean(value: any): boolean {
-    if (typeof value === 'boolean')
-        return value;
-    if (typeof value === 'number')
-        return value === 1;
-    if (typeof value === 'string') {
-        const normalizado = value.trim().toLowerCase();
-        return normalizado === '1'
-            || normalizado === 'true'
-            || normalizado === 'si'
-            || normalizado === 'sí'
-            || normalizado === 'yes';
-    }
-    return false;
-}
 
 function toKey(value: any): string {
     return `${value ?? ''}`.trim().toLowerCase();

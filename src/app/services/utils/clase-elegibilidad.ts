@@ -1,7 +1,7 @@
 import { Clase } from "src/app/interfaces/clase";
 import { IdentidadPrerrequisitos, existeCoincidenciaClaveEntidad } from "./identidad-prerrequisitos";
 import { getAlineamientoBasicoIdPorNombre } from "./alineamiento-contrato";
-import { normalizarTexto, toArray, toNumber } from 'src/app/services/utils/normalizacion';
+import { normalizarTexto, toArray, toBoolean, toNumber } from 'src/app/services/utils/normalizacion';
 
 export type EstadoElegibilidadClase = "eligible" | "blocked_failed" | "blocked_unknown";
 
@@ -76,18 +76,6 @@ const FLAGS_SOPORTADAS: (keyof Clase["Prerrequisitos_flags"])[] = [
     "tamano_maximo",
     "tamano_minimo",
 ];
-
-function toBoolean(value: any): boolean {
-    if (typeof value === "boolean")
-        return value;
-    if (typeof value === "number")
-        return value === 1;
-    if (typeof value === "string") {
-        const n = value.trim().toLowerCase();
-        return n === "1" || n === "true" || n === "si" || n === "sí";
-    }
-    return false;
-}
 
 function pick(entry: Record<string, any>, keys: string[]): any {
     for (const key of keys) {

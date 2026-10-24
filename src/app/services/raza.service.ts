@@ -14,23 +14,8 @@ import { toDoteContextualArray } from './utils/dote-mapper';
 import { normalizeRaciales } from './utils/racial-mapper';
 import { normalizeSubtipoRefArray } from './utils/subtipo-mapper';
 import { cabeceraApiConFirebase } from './platform-session.service';
-import { toArray, toNumber } from 'src/app/services/utils/normalizacion';
+import { toArray, toBoolean, toNumber } from 'src/app/services/utils/normalizacion';
 import { cacheRtdbOApi } from './catalogo-api';
-
-function toBoolean(value: any, fallback: boolean = false): boolean {
-    if (typeof value === 'boolean')
-        return value;
-    if (typeof value === 'number')
-        return value !== 0;
-    if (typeof value === 'string') {
-        const normalizado = value.trim().toLowerCase();
-        if (['true', '1', 'si', 'sí', 'yes'].includes(normalizado))
-            return true;
-        if (['false', '0', 'no'].includes(normalizado))
-            return false;
-    }
-    return fallback;
-}
 
 function parseIdExtra(value: any): number {
     if (value === undefined || value === null || `${value}`.trim() === '')

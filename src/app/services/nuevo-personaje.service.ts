@@ -46,7 +46,7 @@ import {
 import { calcularNivelesLanzadorPersonaje } from './utils/nivel-lanzador-personaje';
 import { UserSettingsService } from './user-settings.service';
 import { NuevoPersonajeGeneradorConfig } from '../interfaces/user-settings';
-import { normalizarTexto, toNumber } from 'src/app/services/utils/normalizacion';
+import { normalizarTexto, toBoolean, toNumber } from 'src/app/services/utils/normalizacion';
 import { calcularOroPorNep } from './utils/oro-inicial';
 
 export type StepNuevoPersonaje = 'raza' | 'basicos' | 'plantillas' | 'ventajas' | 'clases' | 'habilidades' | 'conjuros' | 'dotes';
@@ -1859,11 +1859,11 @@ export class NuevoPersonajeService {
         if (!habilidad)
             return false;
 
-        if (!this.toBooleanValue(habilidad?.Soporta_extra))
+        if (!toBoolean(habilidad?.Soporta_extra))
             return false;
         if (!this.esHabilidadClaseaParaSesion(habilidad))
             return false;
-        if (this.toBooleanValue(habilidad?.Extra_bloqueado))
+        if (toBoolean(habilidad?.Extra_bloqueado))
             return false;
 
         const extraLimpio = `${extra ?? ''}`.trim();
@@ -2696,7 +2696,7 @@ export class NuevoPersonajeService {
             .map((item: any) => ({
                 Id: toNumber(item?.Id ?? item?.id ?? item?.Id_habilidad ?? item?.IdHabilidad),
                 Nombre: `${item?.Nombre ?? item?.nombre ?? ''}`.trim(),
-                Es_escudo: this.toBooleanValue(item?.Es_escudo),
+                Es_escudo: toBoolean(item?.Es_escudo),
             }))
             .filter((item) => item.Id > 0 || normalizarTexto(item.Nombre).length > 0)
             .filter((item) => {
@@ -2715,24 +2715,24 @@ export class NuevoPersonajeService {
     }
 
     private doteSoportaArmaduras(dote: Dote | null | undefined): boolean {
-        return this.toBooleanValue(
+        return toBoolean(
             dote?.Extras_soportados?.Extra_armadura_armaduras ?? dote?.Extras_soportados?.Extra_armadura
         );
     }
 
     private doteSoportaEscudos(dote: Dote | null | undefined): boolean {
-        return this.toBooleanValue(
+        return toBoolean(
             dote?.Extras_soportados?.Extra_armadura_escudos ?? dote?.Extras_soportados?.Extra_armadura
         );
     }
 
     private doteTieneExtrasSoportados(dote: Dote | null | undefined): boolean {
         return !!(
-            this.toBooleanValue(dote?.Extras_soportados?.Extra_arma)
+            toBoolean(dote?.Extras_soportados?.Extra_arma)
             || this.doteSoportaArmaduras(dote)
             || this.doteSoportaEscudos(dote)
-            || this.toBooleanValue(dote?.Extras_soportados?.Extra_escuela)
-            || this.toBooleanValue(dote?.Extras_soportados?.Extra_habilidad)
+            || toBoolean(dote?.Extras_soportados?.Extra_escuela)
+            || toBoolean(dote?.Extras_soportados?.Extra_habilidad)
         );
     }
 
@@ -2867,7 +2867,7 @@ export class NuevoPersonajeService {
             items.some((item) => normalizarTexto(item?.Nombre ?? '') === normalizarTexto('Elegir'));
 
         const extras: DoteExtraOpcion[] = [];
-        if (this.toBooleanValue(dote?.Extras_soportados?.Extra_arma)) {
+        if (toBoolean(dote?.Extras_soportados?.Extra_arma)) {
             const directos = normalizar(dote?.Extras_disponibles?.Armas ?? []);
             const usarCatalogo = directos.length < 1 || contieneElegir(directos);
             extras.push(...(usarCatalogo ? this.catalogoArmasDotes : directos));
@@ -2878,12 +2878,12 @@ export class NuevoPersonajeService {
             const catalogo = this.filtrarExtrasArmaduraPorSoporte(dote, this.catalogoArmadurasDotes);
             extras.push(...(usarCatalogo ? catalogo : directos));
         }
-        if (this.toBooleanValue(dote?.Extras_soportados?.Extra_escuela)) {
+        if (toBoolean(dote?.Extras_soportados?.Extra_escuela)) {
             const directos = normalizar(dote?.Extras_disponibles?.Escuelas ?? []);
             const usarCatalogo = directos.length < 1 || contieneElegir(directos);
             extras.push(...(usarCatalogo ? this.catalogoEscuelasDotes : directos));
         }
-        if (this.toBooleanValue(dote?.Extras_soportados?.Extra_habilidad)) {
+        if (toBoolean(dote?.Extras_soportados?.Extra_habilidad)) {
             const directos = normalizar(dote?.Extras_disponibles?.Habilidades ?? []);
             const usarCatalogo = directos.length < 1 || contieneElegir(directos);
             extras.push(...(usarCatalogo ? fuenteHabilidades : directos));
@@ -2893,7 +2893,7 @@ export class NuevoPersonajeService {
     }
 
     private filtrarExtrasPorRepeticionDote(dote: Dote, extras: DoteExtraOpcion[]): DoteExtraOpcion[] {
-        if (!this.toBooleanValue(dote?.Repetible_distinto_extra))
+        if (!toBoolean(dote?.Repetible_distinto_extra))
             return extras;
 
         const doteNorm = normalizarTexto(`${dote?.Nombre ?? ''}`);
@@ -2930,7 +2930,7 @@ export class NuevoPersonajeService {
     private validarRepeticionDote(dote: Dote, idExtra: number, extraTexto: string): boolean {
         const idDote = toNumber(dote?.Id);
         const nombreNorm = normalizarTexto(`${dote?.Nombre ?? ''}`);
-        const repetibleDistintoExtra = this.toBooleanValue(dote?.Repetible_distinto_extra) && this.doteTieneExtrasSoportados(dote);
+        const repetibleDistintoExtra = toBoolean(dote?.Repetible_distinto_extra) && this.doteTieneExtrasSoportados(dote);
         const contextuales = (this.personajeCreacion.DotesContextuales ?? []).filter((item) => {
             const id = toNumber(item?.Dote?.Id);
             const nombre = normalizarTexto(item?.Dote?.Nombre ?? '');
@@ -2966,7 +2966,7 @@ export class NuevoPersonajeService {
             return !repetidaContextual && !repetidaLegacy;
         }
 
-        if (this.toBooleanValue(dote?.Repetible))
+        if (toBoolean(dote?.Repetible))
             return true;
 
         return false;
@@ -4036,7 +4036,7 @@ export class NuevoPersonajeService {
         idExtra: number,
         extraTexto: string
     ): void {
-        const requiereExtraHabilidad = this.toBooleanValue(dote?.Extras_soportados?.Extra_habilidad);
+        const requiereExtraHabilidad = toBoolean(dote?.Extras_soportados?.Extra_habilidad);
         const idObjetivo = requiereExtraHabilidad ? Math.max(0, toNumber(idExtra)) : 0;
         const extraNorm = normalizarTexto(extraTexto ?? '');
 
@@ -4099,7 +4099,7 @@ export class NuevoPersonajeService {
         const nivel = Math.max(0, Math.trunc(toNumber(nivelAplicado)));
         if (nivel !== 1)
             return null;
-        if (!this.toBooleanValue(clase?.Conjuros?.puede_elegir_especialidad))
+        if (!toBoolean(clase?.Conjuros?.puede_elegir_especialidad))
             return null;
 
         const requiereArcano = !!clase?.Conjuros?.Arcanos;
@@ -4126,7 +4126,7 @@ export class NuevoPersonajeService {
 
         if (pendiente.requiereArcano) {
             const arcana = seleccion?.arcana;
-            const especializar = this.toBooleanValue(arcana?.especializar);
+            const especializar = toBoolean(arcana?.especializar);
             if (!especializar) {
                 this.personajeCreacion.Escuela_especialista = {
                     Nombre: 'Cualquiera',
@@ -5565,7 +5565,7 @@ export class NuevoPersonajeService {
     private esExtraHabilidadPendienteParaSesion(habilidad: Personaje['Habilidades'][number]): boolean {
         if (!this.esHabilidadClaseaParaSesion(habilidad))
             return false;
-        if (!this.toBooleanValue(habilidad?.Soporta_extra))
+        if (!toBoolean(habilidad?.Soporta_extra))
             return false;
 
         return this.esExtraHabilidadPendienteValor(normalizarTexto(`${habilidad?.Extra ?? ''}`));
@@ -5607,7 +5607,7 @@ export class NuevoPersonajeService {
                 return false;
             if (!this.esHabilidadClaseaParaSesion(habilidad))
                 return false;
-            if (!this.toBooleanValue(habilidad?.Soporta_extra))
+            if (!toBoolean(habilidad?.Soporta_extra))
                 return false;
             if (this.getClaveGrupoExtraHabilidad(habilidad) !== claveGrupo)
                 return false;
@@ -5624,7 +5624,7 @@ export class NuevoPersonajeService {
         for (const habilidad of (this.personajeCreacion.Habilidades ?? [])) {
             if (!this.esHabilidadClaseaParaSesion(habilidad))
                 continue;
-            if (!this.toBooleanValue(habilidad?.Soporta_extra))
+            if (!toBoolean(habilidad?.Soporta_extra))
                 continue;
 
             const extraNormalizado = normalizarTexto(`${habilidad?.Extra ?? ''}`);
@@ -5731,7 +5731,7 @@ export class NuevoPersonajeService {
         const custom = !!(opciones.customPreferido || referencia?.['Custom'] || referencia?.['custom'] || catalogo.esCustom);
         const marcarClasea = opciones.marcarClasea !== false;
         const expandirFamiliaConDuplicados = opciones.expandirFamiliaConDuplicados !== false;
-        const entrenada = this.toBooleanValue(
+        const entrenada = toBoolean(
             referencia?.['Entrenada'] ?? referencia?.['entrenada'] ?? detalleCatalogo?.Entrenada
         );
         const idCaracteristica = toNumber(
@@ -5740,7 +5740,7 @@ export class NuevoPersonajeService {
             ?? detalleCatalogo?.Id_caracteristica
         );
         const textoCaracteristica = `${referencia?.['Caracteristica'] ?? referencia?.['caracteristica'] ?? detalleCatalogo?.Caracteristica ?? ''}`.trim();
-        const soportaExtra = this.toBooleanValue(
+        const soportaExtra = toBoolean(
             referencia?.['Soporta_extra'] ?? referencia?.['soporta_extra'] ?? detalleCatalogo?.Soporta_extra
         );
         const extras = this.resolverExtrasHabilidadDesdeReferencia(referencia, detalleCatalogo);
@@ -5758,7 +5758,7 @@ export class NuevoPersonajeService {
 
         const familia = this.resolverFamiliaRepetiblePorReferencia(idObjetivo, nombreObjetivo);
         if (familia) {
-            if (!expandirFamiliaConDuplicados && existente && this.toBooleanValue(existente?.Clasea))
+            if (!expandirFamiliaConDuplicados && existente && toBoolean(existente?.Clasea))
                 return existente;
             const slotFamilia = this.resolverSlotFamiliaParaOtorgamiento(familia, existente);
             if (slotFamilia) {
@@ -7267,7 +7267,7 @@ export class NuevoPersonajeService {
         const idEspecialistaNum = toNumber(idEspecialista);
         return this.obtenerCatalogoEscuelasEspecializables(escuelasCatalogo)
             .filter((escuela) => toNumber(escuela?.Id) !== idEspecialistaNum)
-            .filter((escuela) => this.toBooleanValue(escuela?.Prohibible))
+            .filter((escuela) => toBoolean(escuela?.Prohibible))
             .filter((escuela) => !this.esNombreAdivinacion(`${escuela?.Nombre ?? ''}`));
     }
 
@@ -7953,7 +7953,7 @@ export class NuevoPersonajeService {
             Edad_mediana: toNumber(raza?.Edad_mediana),
             Edad_viejo: toNumber(raza?.Edad_viejo),
             Edad_venerable: toNumber(raza?.Edad_venerable),
-            Oficial: this.toBooleanValue(raza?.Oficial),
+            Oficial: toBoolean(raza?.Oficial),
         };
     }
 
@@ -8179,17 +8179,17 @@ export class NuevoPersonajeService {
             Id_reflejos: toNumber(tipo.Id_reflejos),
             Id_voluntad: toNumber(tipo.Id_voluntad),
             Id_puntos_habilidad: toNumber(tipo.Id_puntos_habilidad),
-            Come: this.toBooleanValue(tipo.Come),
-            Respira: this.toBooleanValue(tipo.Respira),
-            Duerme: this.toBooleanValue(tipo.Duerme),
-            Recibe_criticos: this.toBooleanValue(tipo.Recibe_criticos),
-            Puede_ser_flanqueado: this.toBooleanValue(tipo.Puede_ser_flanqueado),
-            Pierde_constitucion: this.toBooleanValue(tipo.Pierde_constitucion),
+            Come: toBoolean(tipo.Come),
+            Respira: toBoolean(tipo.Respira),
+            Duerme: toBoolean(tipo.Duerme),
+            Recibe_criticos: toBoolean(tipo.Recibe_criticos),
+            Puede_ser_flanqueado: toBoolean(tipo.Puede_ser_flanqueado),
+            Pierde_constitucion: toBoolean(tipo.Pierde_constitucion),
             Limite_inteligencia: toNumber(tipo.Limite_inteligencia),
             Tesoro: `${tipo.Tesoro ?? ''}`,
             Id_alineamiento: toNumber(tipo.Id_alineamiento),
             Rasgos: this.asignarOrigenRasgosTipo(tipo.Rasgos, tipo.Nombre),
-            Oficial: this.toBooleanValue(tipo.Oficial),
+            Oficial: toBoolean(tipo.Oficial),
         };
     }
 
@@ -9299,7 +9299,7 @@ export class NuevoPersonajeService {
         plantillas.forEach((plantilla) => {
             const dadoDirecto = this.resolverDadoDesdePlantilla(plantilla);
             const pasoDado = Math.trunc(toNumber(plantilla?.Modificacion_dg?.Id_paso_modificacion));
-            const actualizaDg = this.toBooleanValue(plantilla?.Actualiza_dg);
+            const actualizaDg = toBoolean(plantilla?.Actualiza_dg);
             const multiplicadorLic = Math.max(0, Math.trunc(toNumber(plantilla?.Licantronia_dg?.Multiplicador)));
             const sumaLic = toNumber(plantilla?.Licantronia_dg?.Suma);
 
@@ -9390,8 +9390,8 @@ export class NuevoPersonajeService {
     }
 
     private resolverModConstitucionParaVida(): { aplica: boolean; modificador: number; } {
-        const pierdeConstitucion = this.toBooleanValue(this.personajeCreacion?.Tipo_criatura?.Pierde_constitucion)
-            || this.toBooleanValue(this.personajeCreacion?.Constitucion_perdida);
+        const pierdeConstitucion = toBoolean(this.personajeCreacion?.Tipo_criatura?.Pierde_constitucion)
+            || toBoolean(this.personajeCreacion?.Constitucion_perdida);
         if (pierdeConstitucion)
             return { aplica: false, modificador: 0 };
         return {
@@ -9504,18 +9504,6 @@ export class NuevoPersonajeService {
         return Math.floor((valor - 10) / 2);
     }
 
-    private toBooleanValue(value: any): boolean {
-        if (typeof value === 'boolean')
-            return value;
-        if (typeof value === 'number')
-            return value === 1;
-        if (typeof value === 'string') {
-            const normalizado = value.trim().toLowerCase();
-            return normalizado === '1' || normalizado === 'true' || normalizado === 'si' || normalizado === 'sí';
-        }
-        return false;
-    }
-
     private esCaracteristicaAumentoValida(value: string): value is CaracteristicaKey {
         return (CARACTERISTICAS_KEYS as string[]).includes(`${value ?? ''}`.trim());
     }
@@ -9624,16 +9612,16 @@ export class NuevoPersonajeService {
 
     private esCaracteristicaPerdida(key: CaracteristicaKey): boolean {
         const mapa = this.personajeCreacion?.Caracteristicas_perdidas ?? {};
-        const valorMapa = this.toBooleanValue((mapa as Record<string, any>)?.[key]);
+        const valorMapa = toBoolean((mapa as Record<string, any>)?.[key]);
         if (key === 'Constitucion') {
-            const legado = this.toBooleanValue(this.personajeCreacion?.Constitucion_perdida);
+            const legado = toBoolean(this.personajeCreacion?.Constitucion_perdida);
             return valorMapa || legado;
         }
         return valorMapa;
     }
 
     private setCaracteristicaPerdida(key: CaracteristicaKey, estado: any, _origen?: string): void {
-        const valor = this.toBooleanValue(estado);
+        const valor = toBoolean(estado);
         const perdidasActuales = {
             ...this.personajeCreacion.Caracteristicas_perdidas,
             [key]: valor,
@@ -9654,7 +9642,7 @@ export class NuevoPersonajeService {
 
     private sincronizarCaracteristicasPerdidasConTipoActual(): void {
         const tipoActual = this.personajeCreacion?.Tipo_criatura;
-        const pierdeConstitucion = this.toBooleanValue(tipoActual?.Pierde_constitucion);
+        const pierdeConstitucion = toBoolean(tipoActual?.Pierde_constitucion);
         this.setCaracteristicaPerdida('Constitucion', pierdeConstitucion, 'tipo_criatura');
     }
 

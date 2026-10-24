@@ -13,12 +13,8 @@ import {
 } from "../interfaces/idioma";
 import { FirebaseInjectionContextService } from "./firebase-injection-context.service";
 import { cabeceraApiConFirebase } from './platform-session.service';
-import { toArray, toNumber, toText } from 'src/app/services/utils/normalizacion';
+import { toArray, toBoolean, toNumber, toText } from 'src/app/services/utils/normalizacion';
 import { escucharRtdb, listaRtdb } from './catalogo-api';
-
-function toBoolean(value: any): boolean {
-    return value === true || value === 1 || value === "1";
-}
 
 export function normalizeIdioma(raw: any): IdiomaDetalle {
     return {

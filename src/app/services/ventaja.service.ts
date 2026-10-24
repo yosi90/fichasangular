@@ -5,11 +5,7 @@ import { Observable } from "rxjs";
 import Swal from "sweetalert2";
 import { VentajaDetalle } from "../interfaces/ventaja";
 import { FirebaseInjectionContextService } from "./firebase-injection-context.service";
-import { toNumber, toText } from 'src/app/services/utils/normalizacion';
-
-function toBoolean(value: any): boolean {
-    return value === true || value === 1 || value === "1";
-}
+import { toBoolean, toNumber, toText } from 'src/app/services/utils/normalizacion';
 
 function toArray<T = any>(value: any): T[] {
     if (Array.isArray(value))
