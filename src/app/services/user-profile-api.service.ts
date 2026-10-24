@@ -19,9 +19,7 @@ import {
     UserComplianceSnapshot,
     UserModerationSanction,
 } from '../interfaces/user-moderation';
-import { FirebaseInjectionContextService } from './firebase-injection-context.service';
-import { PrivateUserFirestoreService } from './private-user-firestore.service';
-import { obtenerTokenApi } from './platform-session.service';
+import { cabeceraApiConFirebase } from './platform-session.service';
 
 @Injectable({
     providedIn: 'root'
@@ -33,8 +31,6 @@ export class UserProfileApiService {
     constructor(
         private http: HttpClient,
         private auth: Auth,
-        private privateUserFirestoreSvc?: PrivateUserFirestoreService,
-        private firebaseContextSvc?: FirebaseInjectionContextService,
     ) { }
 
     async reportAbuseLock(input: UserAbuseLockReportInput): Promise<UserAbuseLockReportResponse> {
@@ -115,19 +111,7 @@ export class UserProfileApiService {
     }
 
     private async buildAuthHeaders(): Promise<HttpHeaders> {
-        const user = this.firebaseContextSvc
-            ? this.firebaseContextSvc.run(() => this.auth.currentUser)
-            : this.auth.currentUser;
-        if (!user)
-            throw new ProfileApiError('Sesión no iniciada.', 'UNAUTHORIZED', 401);
-
-        const idToken = await obtenerTokenApi();
-        if (`${idToken ?? ''}`.trim().length < 1)
-            throw new ProfileApiError('Token no disponible.', 'TOKEN_INVALID', 401);
-
-        return new HttpHeaders({
-            Authorization: `Bearer ${idToken}`,
-        });
+        return new HttpHeaders(await cabeceraApiConFirebase(this.auth, ProfileApiError.sinSesion));
     }
 
     private toProfileApiError(error: any, fallbackMessage: string): ProfileApiError {

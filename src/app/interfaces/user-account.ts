@@ -72,6 +72,13 @@ export class ProfileApiError extends Error {
         super(message);
         this.name = 'ProfileApiError';
     }
+
+    /** El error de las llamadas a la API sin sesión o sin token (para `cabeceraApiConFirebase`). */
+    static sinSesion(motivo: 'sin_sesion' | 'sin_token'): ProfileApiError {
+        return motivo === 'sin_sesion'
+            ? new ProfileApiError('Sesión no iniciada.', 'UNAUTHORIZED', 401)
+            : new ProfileApiError('Token no disponible.', 'TOKEN_INVALID', 401);
+    }
 }
 
 export interface UserPublicProfileTab {

@@ -1,5 +1,7 @@
 import { NgZone } from '@angular/core';
-import { EstadoPlataforma, PlatformSessionService, recargandoPorCambioDeIdentidad } from './platform-session.service';
+import { ProfileApiError } from '../interfaces/user-account';
+import { cabeceraApiConFirebase, EstadoPlataforma, PlatformSessionService, recargandoPorCambioDeIdentidad } from './platform-session.service';
+import { simularTokenApi } from 'src/testing/simular-token-api';
 
 class PlatformSessionServicePrueba extends PlatformSessionService {
     recargas = 0;
@@ -69,5 +71,40 @@ describe('PlatformSessionService, cambio de cuenta', () => {
         servicio.aplicar(conSesion('a'));
 
         expect(servicio.recargas).toBe(0);
+    });
+});
+
+describe('cabeceraApiConFirebase', () => {
+    const conFirebase = { currentUser: { uid: 'a' } };
+
+    it('manda el token de la API de Rol como Bearer', async () => {
+        simularTokenApi('token-api');
+
+        expect(await cabeceraApiConFirebase(conFirebase)).toEqual({ Authorization: 'Bearer token-api' });
+    });
+
+    it('sin la sesión de Firebase no pide el token', async () => {
+        const token = simularTokenApi('token-api');
+
+        await expectAsync(cabeceraApiConFirebase({ currentUser: null })).toBeRejectedWithError('Sesión no iniciada');
+        expect(token).not.toHaveBeenCalled();
+    });
+
+    it('sin token, el error que construya quien llama', async () => {
+        simularTokenApi('  ');
+
+        await expectAsync(cabeceraApiConFirebase(conFirebase)).toBeRejectedWithError('Token no disponible');
+        const error = await cabeceraApiConFirebase(conFirebase, ProfileApiError.sinSesion).catch((e) => e);
+        expect(error).toEqual(jasmine.any(ProfileApiError));
+        expect(error.code).toBe('TOKEN_INVALID');
+        expect(error.status).toBe(401);
+    });
+
+    it('sin sesión, ProfileApiError.sinSesion da UNAUTHORIZED', async () => {
+        const error = await cabeceraApiConFirebase(null, ProfileApiError.sinSesion).catch((e) => e);
+
+        expect(error.message).toBe('Sesión no iniciada.');
+        expect(error.code).toBe('UNAUTHORIZED');
+        expect(error.status).toBe(401);
     });
 });

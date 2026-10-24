@@ -19,7 +19,7 @@ import {
     ClasePrerrequisitosFlags
 } from "../interfaces/clase";
 import { FirebaseInjectionContextService } from "./firebase-injection-context.service";
-import { obtenerTokenApi } from './platform-session.service';
+import { cabeceraApiConFirebase } from './platform-session.service';
 import { normalizarTexto, toArray, toNumber, toText } from 'src/app/services/utils/normalizacion';
 
 const CLAVES_PRERREQUISITOS: (keyof ClasePrerrequisitos)[] = [
@@ -490,11 +490,8 @@ export class ClaseService {
         }
     }
 
-    private async buildAuthHeaders(): Promise<Record<string, string>> {
-        const token = (this.auth.currentUser ? await obtenerTokenApi() : undefined);
-        if (!token)
-            throw new Error("Debes iniciar sesión para gestionar clases");
-        return { Authorization: `Bearer ${token}` };
+    private buildAuthHeaders(): Promise<Record<string, string>> {
+        return cabeceraApiConFirebase(this.auth, () => new Error("Debes iniciar sesión para gestionar clases"));
     }
 
     private sanitizeMutationPayload<T>(payload: T): T {

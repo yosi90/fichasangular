@@ -1,4 +1,6 @@
-import { normalizeClase } from './clase.service';
+import { of } from 'rxjs';
+import { ClaseService, normalizeClase } from './clase.service';
+import { simularTokenApi } from 'src/testing/simular-token-api';
 
 describe('ClaseService normalizeClase', () => {
     function crearRawNivel(overrides?: Record<string, any>): Record<string, any> {
@@ -72,5 +74,27 @@ describe('ClaseService normalizeClase', () => {
         });
 
         expect(clase.Conjuros.puede_elegir_especialidad).toBeTrue();
+    });
+});
+
+describe('ClaseService, cabecera de la API', () => {
+    it('sin la sesión de Firebase avisa de que hay que iniciar sesión y no llama a la API', async () => {
+        const http = jasmine.createSpyObj('HttpClient', ['post']);
+        const service = new ClaseService({ currentUser: null } as any, {} as any, http, {} as any);
+
+        await expectAsync(service.crearClase({ Nombre: 'Prueba' } as any))
+            .toBeRejectedWithError('Debes iniciar sesión para gestionar clases');
+        expect(http.post).not.toHaveBeenCalled();
+    });
+
+    it('con sesión manda el token de la API como Bearer', async () => {
+        simularTokenApi('token-clase');
+        const http = jasmine.createSpyObj('HttpClient', ['post']);
+        http.post.and.returnValue(of({ idClase: 7, message: 'ok' }));
+        const service = new ClaseService({ currentUser: { uid: 'a' } } as any, {} as any, http, {} as any);
+
+        await service.crearClase({ Nombre: 'Prueba' } as any);
+
+        expect(http.post.calls.argsFor(0)[2].headers).toEqual({ Authorization: 'Bearer token-clase' });
     });
 });

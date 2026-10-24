@@ -112,17 +112,27 @@ export function obtenerTokenApi(): Promise<string> {
     return instancia.tokenApi();
 }
 
+/** Por qué no se ha podido montar la cabecera de la API: sin sesión de Firebase o sin token. */
+export type MotivoSinCabeceraApi = 'sin_sesion' | 'sin_token';
+
+const errorSinCabeceraApi = (motivo: MotivoSinCabeceraApi): Error =>
+    new Error(motivo === 'sin_sesion' ? 'Sesión no iniciada' : 'Token no disponible');
+
 /**
  * Cabecera `Authorization` con el token de la API de Rol, para los servicios que además exigen la sesión de Firebase ya
- * abierta (`auth.currentUser`, la del token que da `POST /usuarios/me/firebase-token`).
+ * abierta (`auth.currentUser`, la del token que da `POST /usuarios/me/firebase-token`). Quien enseñe otro error a la
+ * persona lo construye con `crearError`.
  */
-export async function cabeceraApiConFirebase(auth: { currentUser: unknown } | null | undefined): Promise<{ Authorization: string }> {
+export async function cabeceraApiConFirebase(
+    auth: { currentUser: unknown } | null | undefined,
+    crearError: (motivo: MotivoSinCabeceraApi) => Error = errorSinCabeceraApi,
+): Promise<{ Authorization: string }> {
     if (!auth?.currentUser)
-        throw new Error('Sesión no iniciada');
+        throw crearError('sin_sesion');
 
     const idToken = await obtenerTokenApi();
     if (`${idToken ?? ''}`.trim().length < 1)
-        throw new Error('Token no disponible');
+        throw crearError('sin_token');
 
     return { Authorization: `Bearer ${idToken}` };
 }
