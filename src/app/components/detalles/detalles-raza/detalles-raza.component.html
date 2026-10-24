@@ -226,7 +226,7 @@
                             <mat-chip class="sombra3d-sm tw-m-1">Nivel de lanzador {{s.Nivel_lanzador}}</mat-chip>
                             <mat-chip class="sombra3d-sm tw-m-1">Usos {{s.Usos_diarios}}</mat-chip>
                             <mat-chip class="sombra3d-sm tw-m-1" *ngIf="s.Dgs_necesarios > 0">DGs min {{s.Dgs_necesarios}}</mat-chip>
-                            <div class="chip-descripcion-bloque" *ngIf="s.Descripcion && s.Descripcion !== 'No especifica'">{{s.Descripcion}}</div>
+                            <div class="chip-descripcion-bloque" *ngIf="tieneTextoVisible(s.Descripcion)">{{s.Descripcion}}</div>
                         </mat-chip>
                     </mat-chip-set>
                 </mat-expansion-panel>

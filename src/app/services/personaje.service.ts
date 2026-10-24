@@ -43,6 +43,7 @@ import { getAlineamientoBasicoIdPorNombre } from './utils/alineamiento-contrato'
 import { calcularOroPorNep } from './utils/oro-inicial';
 import { modificadoresDePartes } from './utils/personaje-totales';
 import { resumenClases } from './utils/resumen-clases';
+import { leerComodin } from './utils/comodin';
 
 interface PersonajeVisibilityUpdateResponse {
     message: string;
@@ -1125,6 +1126,7 @@ export class PersonajeService {
             Escuela_especialista: {
                 Nombre: toText(element?.espa),
                 Calificativo: toText(element?.espan),
+                Comodin: leerComodin(element?.espaComodin),
             },
             Disciplina_especialista: {
                 Nombre: toText(element?.espp),

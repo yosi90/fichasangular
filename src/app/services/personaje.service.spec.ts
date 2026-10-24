@@ -216,6 +216,7 @@ function crearPersonajeMock(): Personaje {
                     Escuelas: [],
                     Habilidades: [],
                 },
+                Extras_de_todo_el_catalogo: { Armas: false, Armaduras: false, Escuelas: false, Habilidades: false },
                 Modificadores: {},
                 Prerrequisitos: {},
             },
@@ -360,7 +361,8 @@ describe('PersonajeService', () => {
         expect(personaje.Subtrama).toBe('');
         expect(personaje.Id_region).toBe(0);
         expect(personaje.Region).toBeNull();
-        expect(personaje.Escuela_especialista).toEqual({ Nombre: 'Cualquiera', Calificativo: '' });
+        // «Cualquiera» se conserva (no es relleno) y la ficha lo marca en `espaComodin`.
+        expect(personaje.Escuela_especialista).toEqual({ Nombre: 'Cualquiera', Calificativo: '', Comodin: 'cualquiera' });
         expect(personaje.Disciplina_especialista).toEqual({ Nombre: '', Calificativo: '' });
         expect(personaje.Disciplina_prohibida).toBe('');
     });

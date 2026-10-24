@@ -1,3 +1,5 @@
+import { Comodin } from "./comodin";
+
 export interface EspecialRefSimple {
     Id: number;
     Nombre: string;
@@ -26,6 +28,8 @@ export interface EspecialFlagsExtra {
 export interface EspecialExtraRef {
     Id_extra: number;
     Extra: string;
+    /** «cualquiera» (el extra 13) o «elegir» (el 110). */
+    Extra_comodin?: Comodin | null;
     Orden: number;
 }
 
@@ -34,6 +38,7 @@ export interface EspecialHabilidadRef {
     Habilidad: string;
     Id_extra: number;
     Extra: string;
+    Extra_comodin?: Comodin | null;
     Rangos: number;
 }
 

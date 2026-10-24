@@ -5,6 +5,7 @@ import {
 } from './identidad-prerrequisitos';
 import { getAlineamientoBasicoIdPorNombre } from './alineamiento-contrato';
 import { normalizarTexto, toArray, toBoolean, toInt, toNumber } from 'src/app/services/utils/normalizacion';
+import { leerComodin } from './comodin';
 
 export type EstadoElegibilidadDote = 'eligible' | 'blocked_failed' | 'blocked_unknown';
 
@@ -468,6 +469,7 @@ function buildEvaluacionClaseEspecial(entry: Record<string, any>, ctx: DoteEvalu
     const idEspecial = parseId(entry, ['Id_especial', 'id_especial', 'IdClaseEspecial', 'idClaseEspecial', 'Id', 'id', 'i']);
     const nombreEspecial = parseText(entry, ['Clase_especial', 'clase_especial', 'Especial', 'especial', 'Nombre', 'nombre']);
     const nombreNorm = normalizarTexto(nombreEspecial);
+    // Sin `Id_extra` (`null` desde el 2026-10-24, donde antes venía el extra 0 «Nada») o con 0, vale cualquier extra.
     const idExtraReq = parseIdOpcional(entry, ['Id_extra', 'id_extra', 'IdExtra', 'idExtra', 'e']);
     const evaluable = idEspecial > 0 || nombreNorm.length > 0;
     const claseas = ctx.claseas ?? [];
@@ -848,8 +850,8 @@ function buildEvaluacionCompArma(
     const grupoOpcional = parseOpcional(entry);
     const idArma = parseId(entry, ['Id_arma', 'id_arma', 'IdArma', 'idArma']);
     const arma = parseText(entry, ['Arma', 'arma', 'Nombre', 'nombre']);
-    const armaNorm = normalizarTexto(arma);
-    const esElegir = armaNorm === 'elegir' || armaNorm.length < 1 || idArma <= 0;
+    // «Elegir» (la competencia con el arma que se elija como extra de la dote) lo marca la API en `Arma_comodin`.
+    const esElegir = leerComodin(entry?.['Arma_comodin']) === 'elegir';
 
     if (esElegir && idExtraSeleccionado <= 0 && normalizarTexto(extraSeleccionado).length < 1) {
         return {

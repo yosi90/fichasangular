@@ -303,7 +303,7 @@ describe('ListaPersonajesService', () => {
         expect(personajes).toEqual(personajesInvitado);
     });
 
-    it('filtra en cache pública solo personajes públicos sin campaña', async () => {
+    it('filtra en cache pública solo personajes públicos sin campaña (por campaignId, no por el nombre)', async () => {
         const service = new ListaPersonajesService(
             { currentUser: null } as any,
             {} as any,
@@ -341,23 +341,35 @@ describe('ListaPersonajesService', () => {
                 i: 3,
                 n: 'Visible con campaña',
                 visible_otros_usuarios: true,
+                campaignId: 7,
                 r: { Id: 1, Nombre: 'Humano' },
                 c: 'Mago 1',
                 co: 'Contexto',
                 p: 'Personalidad',
                 ca: 'Campaña visible',
-                t: 'Trama base',
-                s: 'Subtrama base',
+                t: 'Inicio',
+                s: 'Partida 1',
                 a: false,
+            },
+            '4': {
+                Id: 4,
+                Nombre: 'Visible con la forma nueva',
+                visible_otros_usuarios: true,
+                Raza: { Id: 1, Nombre: 'Humano' },
+                Clases: 'Bardo 1',
+                Archivado: false,
             },
         });
 
         const personajes = await (service as any).readPublicPersonajesFromCache();
 
         expect((service as any).readCacheSnapshot).toHaveBeenCalledWith('listado-personajes');
-        expect(personajes).toHaveSize(1);
-        expect(personajes[0].Id).toBe(1);
+        expect(personajes.map((p: any) => p.Id)).toEqual([1, 4]);
         expect(personajes[0].Nombre).toBe('Visible sin campaña');
+        // Sin campaña, trama, subtrama ni región (claves que en la RTDB no están), quedan vacías: sin el relleno de antes.
+        expect(personajes[1]).toEqual(jasmine.objectContaining({
+            Campana: '', Trama: '', Subtrama: '', Id_region: 0, Region: { Id: 0, Nombre: '' },
+        }));
     });
 
     it('acepta proyecciones públicas donde Campana llega como objeto', async () => {

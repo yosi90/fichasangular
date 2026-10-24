@@ -47,6 +47,7 @@ export class DetallesRacialComponent {
         return resolverExtraHabilidadVisible({
             extra: item['Extra'] ?? item['extra'] ?? item['x'],
             idExtra: item['Id_extra'] ?? item['id_extra'] ?? item['i_ex'] ?? item['ie'],
+            extraComodin: item['Extra_comodin'],
             soportaExtra: item['Soporta_extra'] ?? item['soporta_extra'],
             allowIdZeroAsChoose: hasIdExtra,
         });

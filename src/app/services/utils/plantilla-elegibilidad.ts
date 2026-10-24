@@ -7,6 +7,7 @@ import {
     nombreBasicoDesdeVector,
 } from "./alineamiento-contrato";
 import { normalizarTexto, toNumber } from 'src/app/services/utils/normalizacion';
+import { leerComodin } from './comodin';
 
 export type EstadoElegibilidadPlantilla = "eligible" | "blocked_failed" | "blocked_unknown";
 
@@ -50,8 +51,9 @@ export interface ResolucionAlineamientoPlantillas {
     razones: string[];
 }
 
-function esTipoNuevoSinCambio(tipoNuevo: string): boolean {
-    return normalizarTexto(tipoNuevo) === "cualquiera";
+/** «Cualquiera» como tipo nuevo (`Tipo_nuevo_comodin` de la API): la plantilla no cambia el tipo de la criatura. */
+function esTipoNuevoSinCambio(compat: PlantillaCompatibilidadTipo): boolean {
+    return compat.Tipo_nuevo_comodin === "cualquiera";
 }
 
 function getAlineamientoBasicoId(alineamiento: string): number {
@@ -401,6 +403,7 @@ export function obtenerCompatibilidadTipo(plantilla: Plantilla, tipoActualId: nu
         Id_tipo_nuevo: parseTipoNuevoId(entry),
         Tipo_comp: `${entry?.["Tipo_comp"] ?? entry?.["tipo_comp"] ?? entry?.["Tipo_compatible"] ?? entry?.["tipo_compatible"] ?? ""}`,
         Tipo_nuevo: `${entry?.["Tipo_nuevo"] ?? entry?.["tipo_nuevo"] ?? ""}`,
+        Tipo_nuevo_comodin: leerComodin(entry?.["Tipo_nuevo_comodin"]),
         Opcional: parseOpcional(entry).value,
     })).filter(item => item.Id_tipo_comp > 0 && item.Id_tipo_comp === tipoActualId);
 
@@ -424,8 +427,8 @@ export function simularEstadoPlantillas(
         if (!compat)
             return;
 
-        // Si Tipo_nuevo es "Cualquiera", la plantilla no altera el tipo de criatura actual.
-        if (esTipoNuevoSinCambio(`${compat.Tipo_nuevo ?? ""}`))
+        // Si el tipo nuevo es el comodín «Cualquiera», la plantilla no altera el tipo de criatura actual.
+        if (esTipoNuevoSinCambio(compat))
             return;
 
         if (compat.Id_tipo_nuevo > 0) {

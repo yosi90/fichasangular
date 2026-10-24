@@ -43,7 +43,6 @@ export class PabellonService {
         return listaRtdb(
             escucharRtdb(this.db, this.firebaseContextSvc, "Pabellones"),
             (valor) => normalizePabellon(valor),
-            (pabellon) => pabellon.Id > 0,
         );
     }
 

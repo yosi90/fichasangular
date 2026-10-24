@@ -424,7 +424,8 @@ export class DetallesMonstruoComponent {
             contextos.add('Familiar');
         }
 
-        if (toNumber(nivel?.plantillaId) > 0 || plantillaNormalizada !== 'no aplica')
+        // Sin plantilla, la API da `null` (antes, «No aplica»).
+        if (toNumber(nivel?.plantillaId) > 0 || plantillaNormalizada.length > 0)
             contextos.add('Familiar');
 
         if (contextos.size < 1) {

@@ -223,16 +223,17 @@ export class PrivateUserFirestoreService {
             Id_region: idRegion,
             Region: {
                 Id: idRegion,
-                Nombre: regionNombre ?? (idRegion === 0 ? 'Sin region' : ''),
+                Nombre: regionNombre ?? '',
             },
             Raza: raw?.Raza ?? raw?.r ?? { Id: 0, Nombre: 'Sin raza' },
             RazaBase: raw?.RazaBase ?? raw?.razaBase ?? null,
             Clases: this.toNullableText(raw?.Clases ?? raw?.c) ?? '',
             Contexto: this.toNullableText(raw?.Contexto ?? raw?.co) ?? '',
             Personalidad: this.toNullableText(raw?.Personalidad ?? raw?.p) ?? '',
-            Campana: this.toNullableText(raw?.Campana ?? raw?.Campaña ?? raw?.ca) ?? 'Sin campaña',
-            Trama: this.toNullableText(raw?.Trama ?? raw?.t) ?? 'Trama base',
-            Subtrama: this.toNullableText(raw?.Subtrama ?? raw?.s) ?? 'Subtrama base',
+            // Sin campaña, trama o subtrama, la proyección los da a `null`: quedan vacíos (se agrupa por `campaignId`).
+            Campana: this.toNullableText(raw?.Campana ?? raw?.Campaña ?? raw?.ca) ?? '',
+            Trama: this.toNullableText(raw?.Trama ?? raw?.t) ?? '',
+            Subtrama: this.toNullableText(raw?.Subtrama ?? raw?.s) ?? '',
             Archivado: toBoolean(raw?.archivado ?? raw?.Archivado ?? raw?.a),
         };
     }

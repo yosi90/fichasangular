@@ -17,6 +17,7 @@ import { cabeceraApiConFirebase } from './platform-session.service';
 import { toArray, toBoolean, toNumber } from 'src/app/services/utils/normalizacion';
 import { cacheRtdbOApi, escucharRtdb } from './catalogo-api';
 import { ElementoDeCatalogo, errorDeCatalogo } from 'src/app/services/utils/error-catalogo';
+import { leerComodin } from 'src/app/services/utils/comodin';
 
 const RAZA: ElementoDeCatalogo = { singular: 'raza', plural: 'razas', femenino: true };
 
@@ -131,6 +132,7 @@ function normalizeHabilidadRazaBase(raw: any): Raza['Habilidades']['Base'][numbe
         Entrenada: toBoolean(pick(raw, 'Entrenada', 'entrenada')),
         Id_extra: parseIdExtra(pick(raw, 'Id_extra', 'id_extra', 'IdExtra', 'idExtra', 'i_ex', 'ie')),
         Extra: `${pick(raw, 'Extra', 'extra', 'x') ?? ''}`.trim(),
+        Extra_comodin: leerComodin(pick(raw, 'Extra_comodin')),
         Cantidad: toNumber(pick(raw, 'Cantidad', 'cantidad', 'Rangos', 'rangos')),
         Varios: `${pick(raw, 'Varios', 'varios') ?? ''}`.trim(),
         Soporta_extra: rawSoportaExtra === undefined ? undefined : toBoolean(rawSoportaExtra),
@@ -154,8 +156,10 @@ function normalizeHabilidadRazaCustom(raw: any): Raza['Habilidades']['Custom'][n
         Caracteristica: `${pick(raw, 'Caracteristica', 'caracteristica') ?? ''}`.trim(),
         Id_extra: parseIdExtra(pick(raw, 'Id_extra', 'id_extra', 'IdExtra', 'idExtra', 'i_ex', 'ie')),
         Extra: `${pick(raw, 'Extra', 'extra', 'x') ?? ''}`.trim(),
+        Extra_comodin: leerComodin(pick(raw, 'Extra_comodin')),
         Cantidad: toNumber(pick(raw, 'Cantidad', 'cantidad', 'Rangos', 'rangos')),
-        Soporta_extra: rawSoportaExtra === undefined ? undefined : toBoolean(rawSoportaExtra),
+        Soporta_extra
+: rawSoportaExtra === undefined ? undefined : toBoolean(rawSoportaExtra),
         Custom: true,
         Clasea: toBoolean(pick(raw, 'Clasea', 'clasea')),
         Clase: toBoolean(pick(raw, 'Clase', 'clase')),

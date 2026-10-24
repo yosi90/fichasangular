@@ -1,4 +1,5 @@
 import { Alineamiento } from "./alineamiento";
+import { Comodin } from "./comodin";
 import { Conjuro } from "./conjuro";
 import { DoteContextual } from "./dote-contextual";
 import { Maniobrabilidad } from "./maniobrabilidad";
@@ -89,6 +90,8 @@ export interface PlantillaCompatibilidadTipo {
     Id_tipo_nuevo: number;
     Tipo_comp?: string;
     Tipo_nuevo?: string;
+    /** «cualquiera»: la criatura conserva su tipo. */
+    Tipo_nuevo_comodin?: Comodin | null;
     Opcional: number;
 }
 
@@ -99,6 +102,8 @@ export interface Plantilla {
     Manual: ManualReferencia;
     Tamano: Tamano;
     Tipo_dado: PlantillaTipoDado;
+    /** «elegir»: la plantilla no cambia el dado de golpe (la regla que aplica la web). */
+    Tipo_dado_comodin?: Comodin | null;
     Actualiza_dg: boolean;
     Modificacion_dg: PlantillaModificacionRef;
     Modificacion_tamano: PlantillaModificacionRef;
@@ -118,7 +123,8 @@ export interface Plantilla {
     Modificadores_caracteristicas: PlantillaCaracteristicas;
     Minimos_caracteristicas: PlantillaCaracteristicas;
     Ajuste_nivel: number;
-    Licantronia_dg: PlantillaLicantroniaDg;
+    /** Los DG del animal base de un licántropo; `null` en las demás plantillas, que no añaden DG de animal. */
+    Licantronia_dg: PlantillaLicantroniaDg | null;
     Cd: number;
     Puntos_habilidad: PlantillaPuntosHabilidad;
     Nacimiento: boolean;

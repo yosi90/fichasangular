@@ -187,13 +187,14 @@ describe("plantilla-elegibilidad", () => {
         expect(res.estado).toBe("blocked_unknown");
     });
 
-    it("no cambia el tipo simulado cuando Tipo_nuevo es Cualquiera", () => {
+    it("no cambia el tipo simulado cuando el tipo nuevo es el comodín «Cualquiera» (Tipo_nuevo_comodin)", () => {
         const plantilla = crearPlantillaMock({
             Compatibilidad_tipos: [{
                 Id_tipo_comp: 1,
                 Id_tipo_nuevo: 99,
                 Tipo_comp: "Humanoide",
                 Tipo_nuevo: "Cualquiera",
+                Tipo_nuevo_comodin: "cualquiera",
                 Opcional: 0,
             }],
         });
@@ -201,6 +202,22 @@ describe("plantilla-elegibilidad", () => {
         const sim = simularEstadoPlantillas({ Id: 1, Nombre: "Humanoide" } as any, [plantilla]);
         expect(sim.tipoCriaturaActualId).toBe(1);
         expect(sim.tipoCriaturaActualNombre).toBe("Humanoide");
+    });
+
+    it("sin la marca de comodín, el nombre «Cualquiera» no se compara: cambia al tipo nuevo", () => {
+        const plantilla = crearPlantillaMock({
+            Compatibilidad_tipos: [{
+                Id_tipo_comp: 1,
+                Id_tipo_nuevo: 99,
+                Tipo_comp: "Humanoide",
+                Tipo_nuevo: "Cualquiera",
+                Tipo_nuevo_comodin: null,
+                Opcional: 0,
+            }],
+        });
+
+        const sim = simularEstadoPlantillas({ Id: 1, Nombre: "Humanoide" } as any, [plantilla]);
+        expect(sim.tipoCriaturaActualId).toBe(99);
     });
 
     it("resuelve alineamiento por prioridad de plantillas", () => {

@@ -1,4 +1,4 @@
-import { Dote, DoteExtraItem, DoteTipo } from "src/app/interfaces/dote";
+import { Dote, DoteExtraItem, DoteExtrasDeTodoElCatalogo, DoteTipo } from "src/app/interfaces/dote";
 import { DoteContexto, DoteContextual, DoteLegacy } from "src/app/interfaces/dote-contextual";
 import { toBoolean, toNumber, toText } from 'src/app/services/utils/normalizacion';
 import { normalizeManualApi, normalizeManualLegacy } from './manual-mapper';
@@ -55,6 +55,15 @@ function normalizeTiposLegacy(raw: any): DoteTipo[] {
         .filter(item => item.Id > 0 || item.Nombre.trim().length > 0);
 }
 
+function normalizeExtrasDeTodoElCatalogo(raw: any): DoteExtrasDeTodoElCatalogo {
+    return {
+        Armas: toBoolean(raw?.Armas),
+        Armaduras: toBoolean(raw?.Armaduras),
+        Escuelas: toBoolean(raw?.Escuelas),
+        Habilidades: toBoolean(raw?.Habilidades),
+    };
+}
+
 function normalizeModificadores(raw: any): { [key: string]: number } {
     const source = raw && typeof raw === "object" ? raw : {};
     const output: { [key: string]: number } = {};
@@ -101,8 +110,8 @@ export function normalizeDoteApi(raw: any): Dote {
         Nombre: toText(raw?.Nombre, ""),
         Descripcion: toText(raw?.Descripcion, ""),
         Beneficio: toText(raw?.Beneficio, ""),
-        Normal: toText(raw?.Normal, "No especifica"),
-        Especial: toText(raw?.Especial, "No especifica"),
+        Normal: toText(raw?.Normal, ""),
+        Especial: toText(raw?.Especial, ""),
         Manual: normalizeManualApi(raw?.Manual),
         Tipos: normalizeTiposApi(raw?.Tipos),
         Repetible: toNumber(raw?.Repetible, 0),
@@ -124,6 +133,7 @@ export function normalizeDoteApi(raw: any): Dote {
             Escuelas: normalizeExtraItemsApi(raw?.Extras_disponibles?.Escuelas),
             Habilidades: normalizeExtraItemsApi(raw?.Extras_disponibles?.Habilidades),
         },
+        Extras_de_todo_el_catalogo: normalizeExtrasDeTodoElCatalogo(raw?.Extras_de_todo_el_catalogo),
         Modificadores: normalizeModificadores(raw?.Modificadores),
         Prerrequisitos: normalizePrerrequisitosApi(raw?.Prerrequisitos),
     };
@@ -144,8 +154,8 @@ export function normalizeDoteLegacy(raw: any): Dote {
         Nombre: toText(raw?.Nombre, ""),
         Descripcion: toText(raw?.Descripcion, ""),
         Beneficio: toText(raw?.Beneficio, ""),
-        Normal: toText(raw?.Normal, "No especifica"),
-        Especial: toText(raw?.Especial, "No especifica"),
+        Normal: toText(raw?.Normal, ""),
+        Especial: toText(raw?.Especial, ""),
         Manual: normalizeManualLegacy(raw?.Manual),
         Tipos: normalizeTiposLegacy(raw?.Tipos),
         Repetible: toNumber(raw?.Repetible, 0),
@@ -167,6 +177,7 @@ export function normalizeDoteLegacy(raw: any): Dote {
             Escuelas: normalizeExtraItemsLegacy(raw?.Extras_disponibles?.Escuelas),
             Habilidades: normalizeExtraItemsLegacy(raw?.Extras_disponibles?.Habilidades),
         },
+        Extras_de_todo_el_catalogo: normalizeExtrasDeTodoElCatalogo(raw?.Extras_de_todo_el_catalogo),
         Modificadores: normalizeModificadores(raw?.Modificadores),
         Prerrequisitos: normalizePrerrequisitosLegacy(raw?.Prerrequisitos),
     };
@@ -180,13 +191,17 @@ function getEntidad(raw: any): "personaje" | "raza" | "plantilla" {
     return "personaje";
 }
 
+/**
+ * El contexto de una dote de una raza, una plantilla o un personaje. Sin extra, la API (y la caché) dan `Extra` a
+ * `null`: queda vacío, sin volver a poner el «No aplica» de antes (el borrador de la creación sí lo usa como suyo).
+ */
 export function normalizeContexto(raw: any): DoteContexto {
     const entidad = getEntidad(raw);
 
     if (entidad === "raza") {
         return {
             Entidad: "raza",
-            Extra: raw?.Extra ?? "No aplica",
+            Extra: raw?.Extra ?? "",
             Id_extra: toNumber(raw?.Id_extra, 0),
             Id_raza: toNumber(raw?.Id_raza, 0),
         };
@@ -195,7 +210,7 @@ export function normalizeContexto(raw: any): DoteContexto {
     if (entidad === "plantilla") {
         return {
             Entidad: "plantilla",
-            Extra: raw?.Extra ?? "No aplica",
+            Extra: raw?.Extra ?? "",
             Id_extra: toNumber(raw?.Id_extra, 0),
             Id_plantilla: toNumber(raw?.Id_plantilla, 0),
             Dg: toNumber(raw?.Dg, 0),
@@ -204,7 +219,7 @@ export function normalizeContexto(raw: any): DoteContexto {
 
     return {
         Entidad: "personaje",
-        Extra: raw?.Extra ?? "No aplica",
+        Extra: raw?.Extra ?? "",
         Id_extra: toNumber(raw?.Id_extra, 0),
         Id_personaje: toNumber(raw?.Id_personaje, 0),
         Origen: raw?.Origen ?? "Desconocido",
@@ -237,7 +252,7 @@ export function toDoteLegacyArray(ctx: DoteContextual[]): DoteLegacy[] {
         Descripcion: item.Dote.Descripcion,
         Beneficio: item.Dote.Beneficio,
         Pagina: item.Dote.Manual?.Pagina ?? 0,
-        Extra: item.Contexto?.Extra ?? "No aplica",
+        Extra: item.Contexto?.Extra ?? "",
         Origen: getOrigenFromContexto(item.Contexto),
     }));
 }

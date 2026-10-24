@@ -1,4 +1,5 @@
 import { Alineamiento } from "./alineamiento";
+import { Comodin } from "./comodin";
 import { Dote } from "./dote";
 import { ManualReferencia } from "./manual";
 
@@ -79,8 +80,10 @@ export interface ClaseIdioma {
 export interface ClaseDoteNivel {
     Dote: Dote;
     Nivel: number;
-    Id_extra: number;
+    /** `null` sin extra (la API ya no manda el extra de relleno «No aplica»). */
+    Id_extra: number | null;
     Extra: string;
+    Extra_comodin?: Comodin | null;
     Opcional: number;
     Id_interno: number;
     Id_especial_requerido: number;
@@ -90,8 +93,10 @@ export interface ClaseDoteNivel {
 export interface ClaseEspecialNivel {
     Especial: Record<string, any>;
     Nivel: number;
-    Id_extra: number;
+    /** `null` sin extra (la API ya no manda el extra de relleno «No aplica»). */
+    Id_extra: number | null;
     Extra: string;
+    Extra_comodin?: Comodin | null;
     Opcional: number;
     Id_interno: number;
     Id_especial_requerido: number;
@@ -192,6 +197,8 @@ export interface ClasePrerrequisitos {
 export interface Clase {
     Id: number;
     Nombre: string;
+    /** «cualquiera» en la clase 0: un listado de consulta la esconde. */
+    Comodin?: Comodin | null;
     Descripcion: string;
     Manual: ManualReferencia;
     Tipo_dado: ClaseTipoDado;

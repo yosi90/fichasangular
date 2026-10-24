@@ -20,6 +20,7 @@ import { PersonajeService } from 'src/app/services/personaje.service';
 import { RegionService } from 'src/app/services/region.service';
 import { UserService } from 'src/app/services/user.service';
 import { resolverExtraHabilidadVisible } from 'src/app/services/utils/habilidad-extra-visible';
+import { esNombreComodin } from 'src/app/services/utils/comodin';
 import { buildManiobrabilidadInfoSecciones, ManiobrabilidadLike, tieneManiobrabilidadVisible } from 'src/app/services/utils/maniobrabilidad-info';
 import { calcularNivelesLanzadorPersonaje } from 'src/app/services/utils/nivel-lanzador-personaje';
 import Swal from 'sweetalert2';
@@ -1060,6 +1061,12 @@ Fue/Des/Con: ${this.formatSigned(madurez.modFisico)} | Int/Sab/Car: ${this.forma
             .filter((nombre) => this.tieneTextoVisible(nombre));
     }
 
+    /** La escuela especialista, si la hay: «Cualquiera» (`espaComodin` en la ficha) es que no se especializa. */
+    tieneEscuelaEspecialista(): boolean {
+        const escuela = this.pj?.Escuela_especialista;
+        return `${escuela?.Nombre ?? ''}`.trim().length > 0 && !esNombreComodin(escuela, 'cualquiera');
+    }
+
     tieneEscuelasProhibidasVisibles(): boolean {
         return this.getEscuelasProhibidasVisibles().length > 0;
     }
@@ -1211,8 +1218,8 @@ Fue/Des/Con: ${this.formatSigned(madurez.modFisico)} | Int/Sab/Car: ${this.forma
             Nombre: dote.Nombre,
             Descripcion: dote.Descripcion,
             Beneficio: dote.Beneficio,
-            Normal: "No especifica",
-            Especial: "No especifica",
+            Normal: "",
+            Especial: "",
             Manual: {
                 Id: 0,
                 Nombre: "Desconocido",
@@ -1238,6 +1245,12 @@ Fue/Des/Con: ${this.formatSigned(madurez.modFisico)} | Int/Sab/Car: ${this.forma
                 Escuelas: [],
                 Habilidades: [],
             },
+            Extras_de_todo_el_catalogo: {
+                Armas: false,
+                Armaduras: false,
+                Escuelas: false,
+                Habilidades: false,
+            },
             Modificadores: {},
             Prerrequisitos: {},
         };
@@ -1248,7 +1261,7 @@ Fue/Des/Con: ${this.formatSigned(madurez.modFisico)} | Int/Sab/Car: ${this.forma
                 Entidad: 'personaje',
                 Id_personaje: this.pj.Id,
                 Id_extra: -1,
-                Extra: dote.Extra ?? 'No aplica',
+                Extra: dote.Extra ?? '',
                 Origen: dote.Origen ?? 'Desconocido',
             }
         };
@@ -1259,7 +1272,7 @@ Fue/Des/Con: ${this.formatSigned(madurez.modFisico)} | Int/Sab/Car: ${this.forma
         if (this.pj.DotesContextuales && this.pj.DotesContextuales.length > 0) {
             const contextual = this.pj.DotesContextuales.find(dc =>
                 dc.Dote.Nombre === dote.Nombre &&
-                (dc.Contexto.Extra ?? 'No aplica') === (dote.Extra ?? 'No aplica')
+                (dc.Contexto.Extra ?? '') === (dote.Extra ?? '')
             );
             if (contextual) {
                 this.doteDetalles.emit(contextual);

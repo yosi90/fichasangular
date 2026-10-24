@@ -80,7 +80,6 @@ export class DeidadService {
         return listaRtdb(
             escucharRtdb(this.db, this.firebaseContextSvc, "Deidades"),
             (valor) => normalizeDeidad(valor),
-            (deidad) => deidad.Id > 0,
         );
     }
 

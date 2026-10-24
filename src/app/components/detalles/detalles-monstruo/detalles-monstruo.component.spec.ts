@@ -121,6 +121,7 @@ describe('DetallesMonstruoComponent', () => {
                 Oficial: true,
                 Extras_soportados: { Extra_arma: 0, Extra_armadura: 0, Extra_escuela: 0, Extra_habilidad: 0 },
                 Extras_disponibles: { Armas: [], Armaduras: [], Escuelas: [], Habilidades: [] },
+                Extras_de_todo_el_catalogo: { Armas: false, Armaduras: false, Escuelas: false, Habilidades: false },
                 Modificadores: {},
                 Prerrequisitos: {},
             },
@@ -182,7 +183,8 @@ describe('DetallesMonstruoComponent', () => {
                 {
                     Clase: { Id: 5, Nombre: 'Druida' },
                     Nivel: 4,
-                    Plantilla: { Id: 0, Nombre: 'No aplica' },
+                    // Sin plantilla, la API la da a null (antes, «No aplica»).
+                    Plantilla: null,
                     Preferencia_legal: { Id: 10, Nombre: 'Ninguna preferencia' },
                     Preferencia_moral: { Id: 10, Nombre: 'Ninguna preferencia' },
                     Dote: { Id: 53, Nombre: 'Compañero elevado' },

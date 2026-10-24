@@ -4276,7 +4276,7 @@ describe('NuevoPersonajeComponent', () => {
         expect(component.getClaseSalvacionChipCss(2)).toBe('good');
     });
 
-    it('oculta no aplica y filtra beneficios con extra +0 o 0 en la tabla de clases', () => {
+    it('deja vacío el extra sin dato (null desde la API) y filtra beneficios con extra +0 o 0 en la tabla de clases', () => {
         const claseConFiltrosExtra = crearClaseMock({
             Id: 36,
             Nombre: 'Psi guerrero',
@@ -4294,8 +4294,8 @@ describe('NuevoPersonajeComponent', () => {
                     {
                         Dote: { Id: 410, Nombre: 'Talento innato' } as any,
                         Nivel: 1,
-                        Id_extra: 0,
-                        Extra: 'No aplica',
+                        Id_extra: null,
+                        Extra: '',
                         Opcional: 0,
                         Id_interno: 0,
                         Id_especial_requerido: 0,
@@ -4326,8 +4326,8 @@ describe('NuevoPersonajeComponent', () => {
                     {
                         Especial: { Nombre: 'Talento innato mejorado' },
                         Nivel: 1,
-                        Id_extra: 0,
-                        Extra: 'No aplica',
+                        Id_extra: null,
+                        Extra: '',
                         Opcional: 0,
                         Id_interno: 0,
                         Id_especial_requerido: 0,

@@ -1,3 +1,5 @@
+import { Comodin } from './comodin';
+
 export interface PersonajeContextoIdsDto {
     idCampana?: number | null;
     idTrama?: number | null;
@@ -194,7 +196,7 @@ export interface PersonajeCreateResponseDto {
  */
 
 /** «Elegir» (falta escoger el extra) o «Cualquiera» (vale cualquiera), marcados por la API en los extras de la ficha. */
-export type PersonajeExtraComodinDto = 'elegir' | 'cualquiera';
+export type PersonajeExtraComodinDto = Comodin;
 
 export interface PersonajeNombreIdDto {
     id: number;

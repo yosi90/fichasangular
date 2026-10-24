@@ -1,8 +1,11 @@
+import { Comodin } from "./comodin";
 import { Rasgo } from "./rasgo";
 
 export interface TipoCriatura {
     Id: number;
     Nombre: string;
+    /** «cualquiera» en el tipo 0: un listado de consulta lo esconde. */
+    Comodin?: Comodin | null;
     Descripcion: string;
     Manual: string;
     Id_tipo_dado: number;

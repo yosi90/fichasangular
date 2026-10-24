@@ -325,11 +325,12 @@ describe('DetallesPersonajeComponent', () => {
         expect(html).not.toContain('Altura 170 m');
     });
 
-    it('muestra subtipos válidos y oculta placeholders', () => {
+    it('muestra subtipos válidos y oculta los textos que no se enseñan', () => {
+        // «Placeholder» ya no llega de la API (sale null); «No aplica» es de los que pone la propia web.
         component.pj.Raza.Nombre = 'Aasimar';
         component.pj.Subtipos = [
             { Id: 1, Nombre: 'Angelical' },
-            { Id: 2, Nombre: 'Placeholder' },
+            { Id: 2, Nombre: 'No aplica' },
         ];
 
         fixture.detectChanges();
@@ -337,7 +338,7 @@ describe('DetallesPersonajeComponent', () => {
         const html = `${fixture.nativeElement.textContent ?? ''}`;
         expect(html).toContain('Subtipos');
         expect(html).toContain('Angelical');
-        expect(html).not.toContain('Placeholder');
+        expect(html).not.toContain('No aplica');
     });
 
     it('muestra raza base cuando existe', () => {

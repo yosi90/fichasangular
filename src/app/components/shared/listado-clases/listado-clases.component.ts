@@ -7,6 +7,7 @@ import { ClaseService } from 'src/app/services/clase.service';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
 import { ordenarEnEspanol } from 'src/app/services/utils/orden-tabla';
 import { normalizarTexto } from 'src/app/services/utils/normalizacion';
+import { esFilaComodin } from 'src/app/services/utils/comodin';
 
 @Component({
     selector: 'app-listado-clases',
@@ -39,7 +40,8 @@ export class ListadoClasesComponent {
         this.clasesDS.sort = this.claseSort;
         ordenarEnEspanol(this.clasesDS);
         this.claseSvc.getClases().subscribe(clases => {
-            this.clases = clases.filter((clase) => Number(clase?.Id ?? 0) > 0);
+            // La clase 0, «Cualquiera», es un comodín de los prerrequisitos y los editores: aquí no se lista.
+            this.clases = clases.filter((clase) => !esFilaComodin(clase));
             this.manuales = ['Cualquiera', ...Array.from(new Set(this.clases.map(c => c.Manual?.Nombre).filter(Boolean)))];
             this.defaultManual = this.manuales[0];
             this.cdr.detectChanges();

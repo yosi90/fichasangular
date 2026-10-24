@@ -115,6 +115,7 @@ import Swal from 'sweetalert2';
 import { DatosIdeaIa, datosIdeaDePersonaje, TipoIdeaIa } from 'src/app/services/ideas-ia.service';
 import { UsoIdeaIa } from '../shared/ideas-ia/ideas-ia.component';
 import { normalizarTexto, primerEntero } from 'src/app/services/utils/normalizacion';
+import { esTextoExtraPorElegir } from 'src/app/services/utils/habilidad-extra-visible';
 import { getAlineamientoBasicoIdPorNombre } from 'src/app/services/utils/alineamiento-contrato';
 import { compararTexto, porNombre } from 'src/app/services/utils/orden-texto';
 
@@ -219,19 +220,6 @@ interface ExtraHabilidadSelectorOpcion {
     descripcion: string;
 }
 
-const EXTRA_PENDIENTE_PLACEHOLDERS = new Set([
-    '-',
-    'no aplica',
-    'no especifica',
-    'no se especifica',
-    'ninguna',
-    'nada',
-    'desconocido',
-    'placeholder',
-    'elegir',
-    'a elegir',
-    'elige',
-]);
 
 interface ClaseCompatibilidadAlineamientoItem {
     estado: EstadoCompatibilidadAlineamientoClase;
@@ -3472,10 +3460,11 @@ export class NuevoPersonajeComponent {
         if (!this.esExtraObligatorioHabilidad(habilidad))
             return false;
 
+        // Un extra vacío o «Elegir» está por escoger. Los textos de relleno («-», «No aplica»…) ya no llegan de la API.
         const extraNormalizado = normalizarTexto(`${habilidad?.Extra ?? ''}`);
         if (extraNormalizado.length < 1)
             return true;
-        return EXTRA_PENDIENTE_PLACEHOLDERS.has(extraNormalizado);
+        return esTextoExtraPorElegir(extraNormalizado);
     }
 
     getTextoExtraHabilidad(habilidad: Personaje['Habilidades'][number]): string {
@@ -3531,7 +3520,7 @@ export class NuevoPersonajeComponent {
     }
 
     private esExtraPendienteValor(extraNormalizado: string): boolean {
-        return extraNormalizado.length < 1 || EXTRA_PENDIENTE_PLACEHOLDERS.has(extraNormalizado);
+        return extraNormalizado.length < 1 || esTextoExtraPorElegir(extraNormalizado);
     }
 
     private getClaveGrupoExtraHabilidad(habilidad: Personaje['Habilidades'][number]): string {
@@ -6647,20 +6636,9 @@ export class NuevoPersonajeComponent {
         return compactado === '+0' || compactado === '0';
     }
 
+    /** El extra de una dote o un especial de un nivel de clase. Sin extra, la API da `null` (antes, «No aplica»). */
     private normalizarExtraBeneficio(extraRaw: string): string {
-        const extra = `${extraRaw ?? ''}`.trim();
-        if (extra.length < 1)
-            return extra;
-
-        const extraNorm = normalizarTexto(extra).replace(/\s+/g, ' ');
-        if (extraNorm === 'no aplica'
-            || extraNorm === 'n a'
-            || extraNorm === 'na'
-            || extraNorm === 'ninguno'
-            || extraNorm === 'ninguna') {
-            return '';
-        }
-        return extra;
+        return `${extraRaw ?? ''}`.trim();
     }
 
     private resolverExtraBeneficioClase(extraRaw: string, idExtra: number, rawDote: Dote | null, rawEspecial: any): string {
@@ -6901,12 +6879,10 @@ export class NuevoPersonajeComponent {
         };
     }
 
+    /** Si una parte del alineamiento de una clase restringe algo. Sin dato, la API da `null` (antes, «No aplica»). */
     private esTextoAlineamientoConContenido(valor: string): boolean {
         const normalizado = normalizarTexto(valor ?? '');
         return normalizado.length > 0
-            && normalizado !== 'no aplica'
-            && normalizado !== 'no especifica'
-            && normalizado !== 'no especificado'
             && normalizado !== 'ninguna preferencia'
             && normalizado !== 'cualquiera';
     }

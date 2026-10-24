@@ -11,7 +11,7 @@
                 <mat-chip class="tw-h-auto sombra3d-sm tw-m-1">Usos diarios <mat-chip class="sombra3d-sm tw-m-1">{{ap.Usos_diarios}}</mat-chip></mat-chip>
                 <mat-chip class="sombra3d-sm tw-m-1" *ngIf="ap.Dgs_necesarios > 0">solo la puede usar si tiene al menos {{ap.Dgs_necesarios}} DGs</mat-chip>
                 <mat-chip class="sombra3d-sm tw-m-1" *ngIf="ap.Origen != fuente">La obtuvo de: {{ap.Origen}}</mat-chip>
-                <div class="tw-flex tw-flex-wrap tw-items-center tw-rounded-md tw-p-1 tw-mt-2" *ngIf="ap.Descripcion && ap.Descripcion != 'No especifica'">
+                <div class="tw-flex tw-flex-wrap tw-items-center tw-rounded-md tw-p-1 tw-mt-2" *ngIf="ap.Descripcion">
                     <mat-chip class="tw-w-full sombra-caja-sm tw-m-1 tw-mb-2 chip-titulo">Descripción <mat-icon class="tw-ms-2">short_text</mat-icon></mat-chip>
                     <app-texto-manual [texto]="ap.Descripcion"></app-texto-manual>
                 </div>
@@ -46,31 +46,31 @@
                 <mat-chip class="tw-h-auto tw-w-full sombra-caja-sm tw-py-2 tw-m-1 tw-mb-2 chip-titulo">Detalles<mat-icon class="tw-ms-2">format_list_numbered</mat-icon></mat-chip>
                 <mat-chip class="tw-h-auto sombra3d-sm tw-m-1" *ngIf="conjuro.Tiempo_lanzamiento">Tiempo de lanzamiento <mat-chip class="sombra3d-sm tw-m-1">{{conjuro.Tiempo_lanzamiento}}</mat-chip></mat-chip>
                 <mat-chip class="tw-h-auto sombra3d-sm tw-m-1" *ngIf="conjuro.Alcance">Alcance <mat-chip class="sombra3d-sm tw-m-1">{{conjuro.Alcance != '0' ? conjuro.Alcance : 'Personal'}}</mat-chip></mat-chip>
-                <mat-chip class="tw-h-auto sombra3d-sm tw-m-1" *ngIf="conjuro.Objetivo && conjuro.Objetivo != 'No especifica'">
+                <mat-chip class="tw-h-auto sombra3d-sm tw-m-1" *ngIf="conjuro.Objetivo">
                     Objetivo 
                     <mat-chip class="sombra3d-sm tw-m-1" [ngClass]="conjuro.Objetivo.length > 60 ? 'chip-multilinea' : ''">
                         {{conjuro.Objetivo}}
                     </mat-chip>
                 </mat-chip>
-                <mat-chip class="tw-h-auto sombra3d-sm tw-m-1" *ngIf="conjuro.Efecto && conjuro.Efecto != 'No especifica'">
+                <mat-chip class="tw-h-auto sombra3d-sm tw-m-1" *ngIf="conjuro.Efecto">
                     Efecto 
                     <mat-chip class="sombra3d-sm tw-m-1" [ngClass]="conjuro.Efecto.length > 60 ? 'chip-multilinea' : ''">
                         {{conjuro.Efecto}}
                     </mat-chip>
                 </mat-chip>
-                <mat-chip class="tw-h-auto sombra3d-sm tw-m-1" *ngIf="conjuro.Area && conjuro.Area != 'No especifica'">
+                <mat-chip class="tw-h-auto sombra3d-sm tw-m-1" *ngIf="conjuro.Area">
                     Área 
                     <mat-chip class="sombra3d-sm tw-ms-2" [ngClass]="conjuro.Area.length > 60 ? 'chip-multilinea' : ''">
                         {{conjuro.Area}}
                     </mat-chip>
                 </mat-chip>
-                <mat-chip class="tw-h-auto sombra3d-sm tw-m-1" *ngIf="conjuro.Duracion && conjuro.Duracion != 'No especifica'">
+                <mat-chip class="tw-h-auto sombra3d-sm tw-m-1" *ngIf="conjuro.Duracion">
                     Duración 
                     <mat-chip class="sombra3d-sm tw-ms-2" [ngClass]="conjuro.Duracion.length > 60 ? 'chip-multilinea' : ''">
                         {{conjuro.Duracion}}
                     </mat-chip>
                 </mat-chip>
-                <mat-chip class="tw-h-auto sombra3d-sm tw-m-1" *ngIf="conjuro.Tipo_salvacion && conjuro.Tipo_salvacion != 'No especifica'">
+                <mat-chip class="tw-h-auto sombra3d-sm tw-m-1" *ngIf="conjuro.Tipo_salvacion">
                     Tiro de salvación 
                     <mat-chip class="sombra3d-sm tw-ms-2" [ngClass]="conjuro.Tipo_salvacion.length > 60 ? 'chip-multilinea' : ''">
                         {{conjuro.Tipo_salvacion}}
@@ -97,7 +97,7 @@
                             {{c.Componente}}
                         </mat-chip>
                     </mat-chip-set>
-                    <div class="tw-flex tw-flex-wrap tw-items-center tw-p-1" *ngIf="conjuro.Descripcion_componentes && conjuro.Descripcion_componentes != 'No especifica'">
+                    <div class="tw-flex tw-flex-wrap tw-items-center tw-p-1" *ngIf="conjuro.Descripcion_componentes">
                         <mat-chip class="tw-w-full sombra-caja-sm tw-m-1 tw-mb-2 chip-titulo">Descripción<mat-icon class="tw-ms-2">short_text</mat-icon></mat-chip>
                         <p class="tw-m-1">{{conjuro.Descripcion_componentes}}</p>
                     </div>

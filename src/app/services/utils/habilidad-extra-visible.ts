@@ -1,38 +1,45 @@
+import { Comodin } from 'src/app/interfaces/comodin';
 import { normalizarTexto, toBoolean } from 'src/app/services/utils/normalizacion';
 export interface ResolverExtraHabilidadOptions {
     extra?: any;
     idExtra?: any;
+    /**
+     * La marca de la API (`Extra_comodin`): «elegir» es un extra por escoger y «cualquiera», que vale cualquiera. Sin
+     * marca (`null`, o el borrador de la creación, que no la tiene), el extra se lee por su id y su texto.
+     */
+    extraComodin?: Comodin | null;
     soportaExtra?: any;
     allowIdZeroAsChoose?: boolean;
 }
 
+/** Si un texto de extra dice que está por elegir. Solo para los datos propios de la web (el borrador de la creación). */
+export function esTextoExtraPorElegir(extra: unknown): boolean {
+    const normalizado = normalizarTexto(extra);
+    return normalizado === 'elegir' || normalizado === 'a elegir' || normalizado === 'elige';
+}
+
 export function resolverExtraHabilidadVisible(options: ResolverExtraHabilidadOptions): string {
     const extraRaw = `${options?.extra ?? ''}`.trim();
-    const extraNormalizado = normalizarTexto(extraRaw);
-    const idExtra = Number(options?.idExtra);
-    const idExtraEsNumero = Number.isFinite(idExtra);
 
-    // -1 (u otros negativos) significa "sin extra": nunca se muestra.
-    if (idExtraEsNumero && idExtra < 0)
+    // Sin id de extra (`null`, que la API manda cuando el extra era de relleno, o que no venga) no hay extra: no se lee
+    // como el 0 de «Elegir». -1 (u otros negativos) también es "sin extra".
+    const idExtraRaw = options?.idExtra;
+    const idExtra = idExtraRaw === null || idExtraRaw === undefined || `${idExtraRaw}`.trim() === ''
+        ? Number.NaN
+        : Number(idExtraRaw);
+    if (Number.isFinite(idExtra) && idExtra < 0)
         return '';
 
-    if (extraNormalizado === 'elegir' || extraNormalizado === 'a elegir' || extraNormalizado === 'elige')
+    if (options?.extraComodin === 'elegir')
+        return 'Elegir';
+    if (options?.extraComodin === 'cualquiera')
+        return extraRaw;
+
+    // Sin marca: el borrador de la creación dice «Elegir» con el texto.
+    if (esTextoExtraPorElegir(extraRaw))
         return 'Elegir';
 
-    const placeholders = new Set([
-        '',
-        '-',
-        '-1',
-        'no especifica',
-        'no se especifica',
-        'no aplica',
-        'ninguna',
-        'nada',
-        'desconocido',
-        'placeholder',
-    ]);
-
-    if (!placeholders.has(extraNormalizado))
+    if (extraRaw.length > 0 && extraRaw !== '-1')
         return extraRaw;
 
     const idExtraEsCero = Number.isFinite(idExtra) && idExtra === 0;
@@ -61,5 +68,5 @@ export function resolverExtraHabilidadVisible(options: ResolverExtraHabilidadOpt
 export function habilidadConExtraPorElegir(habilidad: { Extra?: string | null; Extra_comodin?: string | null; } | null | undefined): boolean {
     if (habilidad?.Extra_comodin !== undefined)
         return habilidad.Extra_comodin === 'elegir';
-    return normalizarTexto(habilidad?.Extra) === 'elegir';
+    return esTextoExtraPorElegir(habilidad?.Extra);
 }

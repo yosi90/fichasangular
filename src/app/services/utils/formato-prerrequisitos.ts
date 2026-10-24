@@ -10,6 +10,21 @@ export function esCampoId(clave: string): boolean {
     return normalizada === 'id' || normalizada.startsWith('id');
 }
 
+/** Si la clave es una marca de comodín (`Comodin`, `Extra_comodin`, `Arma_comodin`…): se lee, pero no se enseña. */
+export function esCampoComodin(clave: string): boolean {
+    return clave.replace(/[_\s]/g, '').toLowerCase().endsWith('comodin');
+}
+
+/** Si la clave de un prerrequisito es técnica (el grupo opcional, si requiere extra, las marcas de comodín). */
+export function esCampoTecnicoPrerrequisito(clave: string): boolean {
+    const normalizada = clave.replace(/[_\s]/g, '').toLowerCase();
+    return normalizada === 'opcional'
+        || normalizada === 'o'
+        || normalizada === 'requiereextra'
+        || normalizada === 'requierex'
+        || esCampoComodin(clave);
+}
+
 /** Una clave como etiqueta: guiones bajos por espacios y la primera letra en mayúscula. */
 export function formatearClave(texto: string): string {
     if (!texto)
@@ -30,7 +45,7 @@ export function formatearValor(valor: unknown): string {
         return valor.map(v => formatearValor(v)).filter(v => v.trim().length > 0).join(', ');
     if (typeof valor === 'object') {
         return Object.entries(valor as Record<string, unknown>)
-            .filter(([key]) => !esCampoId(key))
+            .filter(([key]) => !esCampoId(key) && !esCampoComodin(key))
             .map(([key, v]) => `${formatearClave(key)}: ${formatearValor(v)}`)
             .filter(v => v.trim().length > 0)
             .join(' | ');
@@ -71,6 +86,7 @@ export function extraVisibleDesdeRegistro(item: Record<string, any>, extraRaw: u
     return resolverExtraHabilidadVisible({
         extra: extraerValorSimple(extraRaw),
         idExtra: item?.['Id_extra'] ?? item?.['id_extra'] ?? item?.['i_ex'] ?? item?.['ie'],
+        extraComodin: item?.['Extra_comodin'],
         soportaExtra: item?.['Soporta_extra'] ?? item?.['soporta_extra'],
         allowIdZeroAsChoose: hasIdExtra,
     });

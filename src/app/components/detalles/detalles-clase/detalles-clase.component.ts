@@ -4,7 +4,7 @@ import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-
 import { resolverExtraHabilidadVisible } from 'src/app/services/utils/habilidad-extra-visible';
 import { normalizarTexto } from 'src/app/services/utils/normalizacion';
 import { idiomasVisibles, tieneTextoVisible } from 'src/app/services/utils/texto-visible';
-import { esCampoId, extraVisibleDesdeRegistro, extraerValorSimple, formatearClave, formatearValor } from 'src/app/services/utils/formato-prerrequisitos';
+import { esCampoId, esCampoTecnicoPrerrequisito, extraVisibleDesdeRegistro, extraerValorSimple, formatearClave, formatearValor } from 'src/app/services/utils/formato-prerrequisitos';
 
 type PrerrequisitoActivo = {
     clave: keyof ClasePrerrequisitos;
@@ -333,7 +333,7 @@ export class DetallesClaseComponent {
 
         return Object.entries(item)
             .filter(([clave]) => !esCampoId(clave))
-            .filter(([clave]) => !this.esCampoTecnicoPrerrequisito(clave))
+            .filter(([clave]) => !esCampoTecnicoPrerrequisito(clave))
             .filter(([, valor]) => this.tieneValorMostrable(valor))
             .map(([clave, valor]) => this.mapCampoPrerrequisito(clave, valor, item))
             .filter(campo => campo.valor.trim().length > 0)
@@ -795,18 +795,12 @@ export class DetallesClaseComponent {
         return resolverExtraHabilidadVisible({
             extra: item?.['Extra'] ?? item?.['extra'] ?? item?.['x'],
             idExtra: item?.['Id_extra'] ?? item?.['id_extra'] ?? item?.['i_ex'] ?? item?.['ie'],
+            extraComodin: item?.['Extra_comodin'],
             soportaExtra: item?.['Soporta_extra'] ?? item?.['soporta_extra'],
             allowIdZeroAsChoose: hasIdExtra,
         });
     }
 
-    private esCampoTecnicoPrerrequisito(clave: string): boolean {
-        const base = clave.replace(/[_\s]/g, '').toLowerCase();
-        return base === 'opcional'
-            || base === 'o'
-            || base === 'requiereextra'
-            || base === 'requierex';
-    }
 
     private mapCampoPrerrequisito(clave: string, valor: unknown, item: Record<string, any>): { etiqueta: string, valor: string } {
         const base = clave.replace(/[_\s]/g, '').toLowerCase();

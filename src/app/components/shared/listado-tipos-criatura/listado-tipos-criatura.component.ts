@@ -8,6 +8,7 @@ import { TipoCriaturaService } from 'src/app/services/tipo-criatura.service';
 import { ordenarEnEspanol } from 'src/app/services/utils/orden-tabla';
 import { normalizarTexto } from 'src/app/services/utils/normalizacion';
 import { compararTexto } from 'src/app/services/utils/orden-texto';
+import { esFilaComodin } from 'src/app/services/utils/comodin';
 
 @Component({
     selector: 'app-listado-tipos-criatura',
@@ -37,7 +38,8 @@ export class ListadoTiposCriaturaComponent {
         this.tiposDS.sort = this.tipoSort;
         ordenarEnEspanol(this.tiposDS);
         (this.tSvc.getTiposCriatura()).subscribe(tipos => {
-            this.tipos = tipos.filter(t => t.Nombre !== 'Cualquiera');
+            // El tipo 0, «Cualquiera», es un comodín de los prerrequisitos y los editores: aquí no se lista.
+            this.tipos = tipos.filter(t => !esFilaComodin(t));
             this.Manuales = this.buildManualesDisponibles(this.tipos);
             this.defaultManual = 'Cualquiera';
             this.cdr.detectChanges();

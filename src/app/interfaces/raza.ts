@@ -1,4 +1,5 @@
 import { Alineamiento } from "./alineamiento";
+import { Comodin } from "./comodin";
 import { AptitudSortilega } from "./aptitud-sortilega";
 import { DoteContextual } from "./dote-contextual";
 import { IdiomaDetalle } from "./idioma";
@@ -51,6 +52,8 @@ export interface RazaHabilidadBase {
     Entrenada?: boolean;
     Id_extra?: number;
     Extra?: string;
+    /** «elegir»: un extra por escoger (un Saber, una Artesanía). */
+    Extra_comodin?: Comodin | null;
     Cantidad: number;
     Varios: string;
     Soporta_extra?: boolean;
@@ -67,6 +70,7 @@ export interface RazaHabilidadCustom {
     Caracteristica: string;
     Id_extra?: number;
     Extra?: string;
+    Extra_comodin?: Comodin | null;
     Cantidad: number;
     Soporta_extra?: boolean;
     Custom?: boolean;

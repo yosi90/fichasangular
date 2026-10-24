@@ -9,6 +9,7 @@ import {
 import { SubtipoRef } from "src/app/interfaces/subtipo";
 import { toDoteContextualArray } from "./dote-mapper";
 import { normalizeSubtipoRefArray } from "./subtipo-mapper";
+import { leerComodin } from "./comodin";
 import { normalizarTexto, toArray, toBoolean, toNumber, toText } from 'src/app/services/utils/normalizacion';
 import { normalizeManualLegacy } from './manual-mapper';
 
@@ -91,6 +92,7 @@ function normalizeCompatibilidadesApi(prerrequisitosRaw: any): PlantillaCompatib
             Id_tipo_nuevo: toNumber(item?.Id_tipo_nuevo),
             Tipo_comp: toText(item?.Tipo_comp),
             Tipo_nuevo: toText(item?.Tipo_nuevo),
+            Tipo_nuevo_comodin: leerComodin(item?.Tipo_nuevo_comodin),
             Opcional: toNumber(item?.Opcional),
         }))
         .filter((item) => item.Id_tipo_comp > 0);
@@ -113,6 +115,7 @@ function construirPlantilla(raw: any, partes: Pick<Plantilla, 'Dotes' | 'Subtipo
             Id_tipo_dado: toNumber(raw?.Tipo_dado?.Id_tipo_dado),
             Nombre: toText(raw?.Tipo_dado?.Nombre),
         },
+        Tipo_dado_comodin: leerComodin(raw?.Tipo_dado_comodin),
         Actualiza_dg: toBoolean(raw?.Actualiza_dg),
         Modificacion_dg: {
             Id_paso_modificacion: toNumber(raw?.Modificacion_dg?.Id_paso_modificacion),
@@ -138,11 +141,12 @@ function construirPlantilla(raw: any, partes: Pick<Plantilla, 'Dotes' | 'Subtipo
         Modificadores_caracteristicas: normalizeCaracteristicas(raw?.Modificadores_caracteristicas),
         Minimos_caracteristicas: normalizeCaracteristicas(raw?.Minimos_caracteristicas),
         Ajuste_nivel: toNumber(raw?.Ajuste_nivel),
-        Licantronia_dg: {
-            Id_dado: toNumber(raw?.Licantronia_dg?.Id_dado),
-            Dado: toText(raw?.Licantronia_dg?.Dado),
-            Multiplicador: toNumber(raw?.Licantronia_dg?.Multiplicador),
-            Suma: toNumber(raw?.Licantronia_dg?.Suma),
+        // Solo los licántropos traen los DG de su animal; en las demás, la API (y la caché) los dan a `null`.
+        Licantronia_dg: raw?.Licantronia_dg === null || raw?.Licantronia_dg === undefined ? null : {
+            Id_dado: toNumber(raw.Licantronia_dg.Id_dado),
+            Dado: toText(raw.Licantronia_dg.Dado),
+            Multiplicador: toNumber(raw.Licantronia_dg.Multiplicador),
+            Suma: toNumber(raw.Licantronia_dg.Suma),
         },
         Cd: toNumber(raw?.Cd),
         Puntos_habilidad: {
@@ -306,6 +310,7 @@ function normalizeCompatibilidades(prerrequisitosRaw: any): PlantillaCompatibili
             Id_tipo_nuevo: idTipoNuevo,
             Tipo_comp: getTextFromCandidates(item, ["Tipo_comp", "tipo_comp", "Tipo_compatible", "tipo_compatible", "Nombre_tipo_comp", "nombre_tipo_comp"]),
             Tipo_nuevo: getTextFromCandidates(item, ["Tipo_nuevo", "tipo_nuevo", "Nombre_tipo_nuevo", "nombre_tipo_nuevo"]),
+            Tipo_nuevo_comodin: leerComodin(item?.Tipo_nuevo_comodin),
             Opcional: toNumber(item?.opcional ?? item?.o),
         };
     }).filter(item => item.Id_tipo_comp > 0);

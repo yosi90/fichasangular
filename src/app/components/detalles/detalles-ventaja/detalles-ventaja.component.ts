@@ -1,7 +1,6 @@
 import { Component, Input } from '@angular/core';
 import { VentajaDetalle } from 'src/app/interfaces/ventaja';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
-import { normalizarTexto } from 'src/app/services/utils/normalizacion';
 import { tieneTextoVisible } from 'src/app/services/utils/texto-visible';
 
 @Component({
@@ -106,12 +105,8 @@ export class DetallesVentajaComponent {
     }
 
     tieneHabilidadVisible(): boolean {
-        const id = Number(this.ventaja?.Habilidad?.Id ?? -1);
-        const nombreNormalizado = normalizarTexto(this.ventaja?.Habilidad?.Nombre);
-        if (id < 0)
-            return false;
-        if (id === 0)
-            return nombreNormalizado === 'elegir';
-        return this.tieneTextoVisible(this.ventaja?.Habilidad?.Nombre);
+        // Sin habilidad, la API da `null` (antes, la habilidad 0 «No»). Ninguna ventaja tiene una habilidad comodín.
+        const id = Number(this.ventaja?.Habilidad?.Id ?? 0);
+        return id > 0 && this.tieneTextoVisible(this.ventaja?.Habilidad?.Nombre);
     }
 }

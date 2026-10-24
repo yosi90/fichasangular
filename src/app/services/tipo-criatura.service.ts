@@ -5,6 +5,7 @@ import { Observable } from "rxjs";
 import Swal from "sweetalert2";
 import { TipoCriatura } from "../interfaces/tipo_criatura";
 import { FirebaseInjectionContextService } from "./firebase-injection-context.service";
+import { leerComodin } from "./utils/comodin";
 
 @Injectable({
     providedIn: 'root'
@@ -25,6 +26,7 @@ export class TipoCriaturaService {
                 let tipoCriatura: TipoCriatura = {
                     Id: id,
                     Nombre: snapshot.child('Nombre').val(),
+                    Comodin: leerComodin(snapshot.child('Comodin').val()),
                     Descripcion: snapshot.child('Descripcion').val(),
                     Manual: snapshot.child('Manual').val(),
                     Id_tipo_dado: snapshot.child('Id_tipo_dado').val(),
@@ -73,6 +75,7 @@ export class TipoCriaturaService {
                     const tipoCriatura: TipoCriatura = {
                         Id: obj.child('Id').val(),
                         Nombre: obj.child('Nombre').val(),
+                        Comodin: leerComodin(obj.child('Comodin').val()),
                         Descripcion: obj.child('Descripcion').val(),
                         Manual: obj.child('Manual').val(),
                         Id_tipo_dado: obj.child('Id_tipo_dado').val(),

@@ -45,7 +45,6 @@ export class RegionService {
         return listaRtdb(
             escucharRtdb(this.db, this.firebaseContextSvc, "Regiones"),
             (valor) => normalizeRegion(valor),
-            (region) => region.Id > 0 && region.Nombre.trim().length > 0,
         );
     }
 

@@ -9,7 +9,7 @@ import { RazaSimple } from 'src/app/interfaces/simplificaciones/raza-simple';
 import { esperarSesionFirebase, FirebaseInjectionContextService } from '../firebase-injection-context.service';
 import { PrivateUserFirestoreService } from '../private-user-firestore.service';
 import { cabeceraApiConFirebase } from '../platform-session.service';
-import { normalizarTexto, toBoolean, toInt, toNumber } from 'src/app/services/utils/normalizacion';
+import { toBoolean, toInt, toNumber } from 'src/app/services/utils/normalizacion';
 import { resumenClases } from '../utils/resumen-clases';
 
 @Injectable({
@@ -198,24 +198,26 @@ export class ListaPersonajesService {
             ?? element?.Personalidad
             ?? element?.Descripcion_personalidad
             ?? ''}`.trim();
+        // Sin campaña, trama, subtrama o región, las copias de Firebase y la API los dan a `null` (o no los traen):
+        // quedan vacíos, sin volver a poner «Sin campaña», «Trama base», «Subtrama base» ni «Sin región».
         const campana = this.resolveContextLabel(
             element?.ca
             ?? element?.ncam
             ?? element?.Campaña
             ?? element?.Campana,
-            'Sin campaña'
+            ''
         );
         const trama = this.resolveContextLabel(
             element?.t
             ?? element?.ntr
             ?? element?.Trama,
-            'Trama base'
+            ''
         );
         const subtrama = this.resolveContextLabel(
             element?.s
             ?? element?.nst
             ?? element?.Subtrama,
-            'Subtrama base'
+            ''
         );
 
         return {
@@ -230,7 +232,7 @@ export class ListaPersonajesService {
             Id_region: idRegion,
             Region: {
                 Id: idRegion,
-                Nombre: nombreRegion.length > 0 ? nombreRegion : (idRegion === 0 ? 'Sin región' : ''),
+                Nombre: nombreRegion,
             },
             Raza: raza,
             Clases: clases,
@@ -415,14 +417,11 @@ export class ListaPersonajesService {
         });
     }
 
+    /** Lo que ve una visita: los personajes públicos, sin archivar y sin campaña (por `campaignId`, no por el nombre). */
     private esVisibleParaInvitado(personaje: PersonajeSimple): boolean {
         return personaje?.visible_otros_usuarios === true
             && personaje?.Archivado !== true
-            && this.normalizarCampana(personaje?.Campana) === 'sin campana';
-    }
-
-    private normalizarCampana(value: any): string {
-        return normalizarTexto(this.resolveContextLabel(value, 'Sin campaña'));
+            && (personaje?.campaignId ?? null) === null;
     }
 
     private resolveContextLabel(value: any, fallback: string): string {

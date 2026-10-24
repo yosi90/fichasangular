@@ -56,15 +56,9 @@ function deepClone<T>(value: T): T {
     return JSON.parse(JSON.stringify(value));
 }
 
+/** Si un texto de la raza mutada tiene algo. Sin dato, la API da `null` (antes, «No especifica», «No modifica»…). */
 function hasMeaningfulText(value: string): boolean {
-    const normalized = normalizarTexto(value);
-    return normalized.length > 0
-        && normalized !== "no especifica"
-        && normalized !== "no se especifica"
-        && normalized !== "no modifica"
-        && normalized !== "no aplica"
-        && normalized !== "-"
-        && normalized !== "ninguna";
+    return normalizarTexto(value).length > 0;
 }
 
 function hasSignificantNumber(value: any): boolean {

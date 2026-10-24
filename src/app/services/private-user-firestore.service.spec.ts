@@ -106,4 +106,20 @@ describe('PrivateUserFirestoreService', () => {
 
         expect(personaje?.Archivado).toBeFalse();
     });
+
+    it('sin campaña, trama, subtrama ni región (null en la proyección), los deja vacíos sin el relleno de antes', () => {
+        const service = new PrivateUserFirestoreService(
+            { currentUser: null } as unknown as Auth,
+            {} as any,
+            { run: <T>(fn: () => T) => fn() } as FirebaseInjectionContextService,
+        );
+
+        const personaje = (service as any).mapCharacter({
+            i: 44, n: 'Sin campaña de verdad', ca: null, campaignId: null, campaignName: null, t: null, s: null, id_region: null,
+        }, '44');
+
+        expect(personaje).toEqual(jasmine.objectContaining({
+            campaignId: null, Campana: '', Trama: '', Subtrama: '', Id_region: 0, Region: { Id: 0, Nombre: '' },
+        }));
+    });
 });

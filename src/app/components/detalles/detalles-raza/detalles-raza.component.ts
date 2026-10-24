@@ -10,6 +10,8 @@ import { getGrupoOpcionalRacial } from 'src/app/services/utils/racial-opcionales
 import { normalizarTexto, toBoolean } from 'src/app/services/utils/normalizacion';
 import { tieneTextoVisible } from 'src/app/services/utils/texto-visible';
 import { compararTexto, porNombre } from 'src/app/services/utils/orden-texto';
+import { Comodin } from 'src/app/interfaces/comodin';
+import { leerComodin } from 'src/app/services/utils/comodin';
 
 interface GrupoRacialesDetalle {
     grupo: number;
@@ -22,6 +24,7 @@ interface HabilidadRazaVisible {
     Habilidad: string;
     Id_extra: number;
     Extra: string;
+    Extra_comodin: Comodin | null;
     Tiene_id_extra: boolean;
     Soporta_extra: boolean;
     Cantidad: number;
@@ -116,6 +119,7 @@ export class DetallesRazaComponent {
         return resolverExtraHabilidadVisible({
             extra: habilidad?.Extra,
             idExtra: habilidad?.Id_extra,
+            extraComodin: habilidad?.Extra_comodin,
             soportaExtra: habilidad?.Soporta_extra,
             allowIdZeroAsChoose: habilidad?.Tiene_id_extra === true,
         });
@@ -214,6 +218,7 @@ export class DetallesRazaComponent {
             const idExtraRaw = Number((raw as any)?.Id_extra ?? (raw as any)?.id_extra ?? (raw as any)?.IdExtra ?? (raw as any)?.idExtra ?? (raw as any)?.i_ex ?? (raw as any)?.ie);
             const idExtra = Number.isFinite(idExtraRaw) ? idExtraRaw : 0;
             const extra = `${(raw as any)?.Extra ?? (raw as any)?.extra ?? (raw as any)?.x ?? ''}`.trim();
+            const extraComodin = leerComodin((raw as any)?.Extra_comodin);
             const soportaExtraRaw = (raw as any)?.Soporta_extra ?? (raw as any)?.soporta_extra;
             const soportaExtra = toBoolean(soportaExtraRaw);
             const varios = `${(raw as any)?.Varios ?? (raw as any)?.varios ?? ''}`.trim();
@@ -228,6 +233,7 @@ export class DetallesRazaComponent {
                     Habilidad: nombre.length > 0 ? nombre : `Habilidad ${idHabilidad}`,
                     Id_extra: idExtra,
                     Extra: extra,
+                    Extra_comodin: extraComodin,
                     Tiene_id_extra: tieneIdExtra,
                     Soporta_extra: soportaExtra,
                     Cantidad: cantidad,
@@ -241,6 +247,7 @@ export class DetallesRazaComponent {
             existente.Soporta_extra = existente.Soporta_extra || soportaExtra;
             if (existente.Id_extra <= 0 && idExtra > 0)
                 existente.Id_extra = idExtra;
+            existente.Extra_comodin = existente.Extra_comodin ?? extraComodin;
             if (!this.tieneTextoVisible(existente.Extra) && this.tieneTextoVisible(extra))
                 existente.Extra = extra;
             else if (this.tieneTextoVisible(existente.Extra)

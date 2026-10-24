@@ -99,8 +99,9 @@ describe('DetallesDoteComponent', () => {
             ...(component.doteData as any),
             Prerrequisitos: {
                 clase_especial: [
-                    { Id_especial: 7, Especial: 'Expulsar o reprender muertos vivientes', Extra: 'Nada', Opcional: 1 },
-                    { Id_especial: 8, Especial: 'Expulsar muertos vivientes', Extra: 'Nada', Opcional: 1 },
+                    // Sin extra, la API da `Id_extra` y `Extra` a null (antes, el extra 0 «Nada»), con su marca de comodín.
+                    { Id_especial: 7, Especial: 'Expulsar o reprender muertos vivientes', Id_extra: null, Extra: null, Extra_comodin: null, Opcional: 1 },
+                    { Id_especial: 8, Especial: 'Expulsar muertos vivientes', Id_extra: null, Extra: null, Extra_comodin: null, Opcional: 1 },
                 ],
                 habilidad: [
                     { Id_habilidad: 4, Habilidad: 'Concentracion', Rangos: 8, Opcional: 0 },
@@ -122,6 +123,7 @@ describe('DetallesDoteComponent', () => {
         expect(grupos[1].condiciones[0].campos.some((campo) => campo.etiqueta === 'Especial de clase')).toBeTrue();
         expect(grupos[1].condiciones[0].campos.some((campo) => campo.etiqueta === 'Opcional')).toBeFalse();
         expect(grupos[1].condiciones[0].campos.some((campo) => campo.etiqueta === 'Extra')).toBeFalse();
+        expect(grupos[1].condiciones[0].campos.some((campo) => /comodin/i.test(campo.etiqueta))).toBeFalse();
     });
 
     it('resume caracteristica y dote sin repetir etiquetas internas', () => {

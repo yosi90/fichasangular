@@ -4,7 +4,7 @@ import Swal from 'sweetalert2';
 import { DoteCreateRequest } from '../interfaces/dotes-api';
 import { FirebaseInjectionContextService } from './firebase-injection-context.service';
 import { DoteService } from './dote.service';
-import { normalizeDoteApi, normalizeDoteLegacy } from './utils/dote-mapper';
+import { normalizeContexto, normalizeDoteApi, normalizeDoteLegacy } from './utils/dote-mapper';
 import { simularTokenApi } from 'src/testing/simular-token-api';
 
 const firebaseContextMock = {
@@ -114,6 +114,23 @@ describe('DoteService', () => {
         expect(dote.Tipos).toEqual([{ Id: 2, Nombre: 'General', Usado: 1 }]);
         expect(dote.Extras_disponibles.Armaduras).toEqual([{ Id: 3, Nombre: 'Escudo ligero', Es_escudo: true }]);
         expect(dote.Modificadores).toEqual({ iniciativa: 2 });
+    });
+
+    it('sin dato, Normal, Especial y el extra del contexto quedan vacíos (sin «No especifica» ni «No aplica»)', () => {
+        const dote = normalizeDoteApi(createDoteApiRaw({ Normal: null, Especial: null }));
+        expect(dote.Normal).toBe('');
+        expect(dote.Especial).toBe('');
+        const desdeCache = normalizeDoteLegacy({ Id: 9, Nombre: 'Alerta' });
+        expect(desdeCache.Normal).toBe('');
+        expect(desdeCache.Especial).toBe('');
+        expect(normalizeContexto({ Entidad: 'raza', Extra: null, Id_extra: null }).Extra).toBe('');
+    });
+
+    it('lee Extras_de_todo_el_catalogo de la API y de la caché (en la RTDB, lo que falta es false)', () => {
+        const todo = { Armas: true, Armaduras: false, Escuelas: true, Habilidades: false };
+        expect(normalizeDoteApi(createDoteApiRaw({ Extras_de_todo_el_catalogo: todo })).Extras_de_todo_el_catalogo).toEqual(todo);
+        expect(normalizeDoteLegacy({ Id: 9, Extras_de_todo_el_catalogo: { Armas: true } }).Extras_de_todo_el_catalogo)
+            .toEqual({ Armas: true, Armaduras: false, Escuelas: false, Habilidades: false });
     });
 
     it('descarta aliases legacy en el mapper HTTP de dote', () => {

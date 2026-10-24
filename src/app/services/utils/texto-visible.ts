@@ -3,25 +3,23 @@ import { normalizarTexto } from 'src/app/services/utils/normalizacion';
 import { porNombre } from 'src/app/services/utils/orden-texto';
 
 /**
- * Los textos de relleno que la API manda en vez de dejar el campo vacío (propietario, 2026-10-24: una sola lista para
- * todos los detalles, la unión de las que tenía cada uno). Se comparan sin tildes, mayúsculas ni puntos. Cuando la
- * API deje de mandarlos (roadmap de duplicados, «Entre partes»), esta lista sobra. «Cualquiera» y «Elegir» no son
- * relleno (propietario, 2026-10-24): «Cualquiera» se usa en los prerrequisitos y «Elegir» en la tabla de habilidades.
+ * Los textos que los detalles no enseñan (propietario, 2026-10-24: una sola lista para todos los detalles). Se comparan
+ * sin tildes, mayúsculas ni puntos. Desde el 2026-10-24 la API ya no manda los textos de relleno de la base (da `null`),
+ * así que aquí solo quedan los que pone la propia web: el borrador de la creación, que la vista previa enseña con los
+ * mismos detalles («No aplica» en el extra de una dote, «Ninguna» en la disciplina, «No tener deidad» y «-» en los
+ * nombres que aún no hay), los formularios de alta, que proponen «No especifica» y enseñan su vista previa con los
+ * detalles, «Desconocido» (un origen sin dato) y «Sin genero» (un género de verdad, pero que no se enseña). «Ninguno» o
+ * «Nada» en un texto de la API son un dato y se ven.
+ * «Cualquiera» y «Elegir» no son relleno: «Cualquiera» se usa en los prerrequisitos y «Elegir» en las habilidades.
  */
 const TEXTOS_DE_RELLENO = new Set([
     'no especifica',
-    'no se especifica',
     'no aplica',
-    'no modifica',
-    'no vuela',
     '-',
-    'nada',
     'sin genero',
     'no tener deidad',
     'desconocido',
     'ninguna',
-    'ninguno',
-    'placeholder',
 ]);
 
 /**

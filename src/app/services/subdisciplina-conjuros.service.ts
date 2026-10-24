@@ -30,7 +30,6 @@ export class SubdisciplinaConjurosService {
         return listaRtdb(
             escucharRtdbConAlternativa(this.db, this.firebaseContextSvc, 'subdisciplinas', 'Subdisciplinas'),
             (raw) => normalizeSubdisciplina(raw),
-            (item) => item.Id > 0 && item.id_disciplina > 0 && item.Nombre.length > 0,
         );
     }
 

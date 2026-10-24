@@ -2,11 +2,15 @@ import { idiomasVisibles, nombreDoteConExtra, tieneTextoVisible } from './texto-
 import { extraerValorSimple, formatearValor } from './formato-prerrequisitos';
 
 describe('tieneTextoVisible', () => {
-    it('oculta lo vacío y los textos de relleno, sin tildes, mayúsculas ni puntos', () => {
-        for (const texto of [null, undefined, '', '  ', 'No aplica', 'No especifica.', 'no se especifica', 'No modifica',
-            'No vuela.', '-', 'Nada', 'Sin género', 'No tener deidad', 'Desconocido', 'Ninguna', 'Ninguno',
-            'Placeholder'])
+    it('oculta lo vacío y los textos que pone la propia web, sin tildes, mayúsculas ni puntos', () => {
+        for (const texto of [null, undefined, '', '  ', 'No aplica', 'No especifica.', '-', 'Sin género',
+            'No tener deidad', 'Desconocido', 'Ninguna'])
             expect(tieneTextoVisible(texto)).withContext(`${texto}`).toBeFalse();
+    });
+
+    it('enseña los textos que la API ya no manda como relleno: en un texto suyo son un dato', () => {
+        for (const texto of ['Nada', 'Ninguno', 'No modifica', 'No vuela', 'Placeholder', 'no se especifica'])
+            expect(tieneTextoVisible(texto)).withContext(texto).toBeTrue();
     });
 
     it('«Cualquiera» y «Elegir» no son relleno en los catálogos; «Cualquiera» sí en la ficha de un personaje', () => {
@@ -30,7 +34,7 @@ describe('nombreDoteConExtra', () => {
     });
 
     it('sin extra o con relleno, solo el nombre', () => {
-        for (const extra of [undefined, '', 'No aplica', 'Nada'])
+        for (const extra of [undefined, null, '', 'No aplica'])
             expect(conExtra(extra)).withContext(`${extra}`).toBe('Soltura');
     });
 });
@@ -41,7 +45,8 @@ describe('idiomasVisibles', () => {
             { Nombre: ' Élfico ', Descripcion: ' Uno ' },
             { Nombre: 'Común', Descripcion: '' },
             { Nombre: 'elfico', Descripcion: 'Repetido' },
-            { Nombre: 'Ninguno', Descripcion: '' },
+            { Nombre: 'No aplica', Descripcion: '' },
+            { Nombre: '  ', Descripcion: '' },
         ])).toEqual([
             { Nombre: 'Común', Descripcion: '' },
             { Nombre: 'Élfico', Descripcion: 'Uno' },

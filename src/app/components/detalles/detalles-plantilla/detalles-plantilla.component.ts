@@ -5,7 +5,7 @@ import { SubtipoRef } from 'src/app/interfaces/subtipo';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
 import { normalizarTexto, toNumber } from 'src/app/services/utils/normalizacion';
 import { nombreDoteConExtra, tieneTextoVisible } from 'src/app/services/utils/texto-visible';
-import { esCampoId, extraVisibleDesdeRegistro, extraerValorSimple, formatearClave, formatearValor } from 'src/app/services/utils/formato-prerrequisitos';
+import { esCampoId, esCampoTecnicoPrerrequisito, extraVisibleDesdeRegistro, extraerValorSimple, formatearClave, formatearValor } from 'src/app/services/utils/formato-prerrequisitos';
 import { porNombre } from 'src/app/services/utils/orden-texto';
 
 type PrerrequisitoCondicion = {
@@ -122,26 +122,15 @@ export class DetallesPlantillaComponent {
     }
 
     tieneManiobrabilidadVisible(): boolean {
-        const nombre = `${this.plantillaData?.Maniobrabilidad?.Nombre ?? ''}`;
-        const normalizado = normalizarTexto(nombre);
-        if (!this.tieneTextoVisible(nombre))
-            return false;
-
-        return normalizado !== 'no vuela'
-            && normalizado !== 'sin vuelo'
-            && normalizado !== 'no tiene vuelo';
+        // Sin vuelo, la API da la maniobrabilidad a `null` (antes, «No vuela»).
+        return this.tieneTextoVisible(this.plantillaData?.Maniobrabilidad?.Nombre);
     }
 
     tieneTipoDadoVisible(): boolean {
-        const nombre = `${this.plantillaData?.Tipo_dado?.Nombre ?? ''}`;
-        const normalizado = normalizarTexto(nombre);
-        if (!this.tieneTextoVisible(nombre))
-            return false;
-
-        // Regla de negocio: "Elegir" en tipo de dado implica que la plantilla no modifica el dado de golpe.
-        return normalizado !== 'elegir'
-            && normalizado !== 'a elegir'
-            && normalizado !== 'elige';
+        // Regla de negocio: el comodín «Elegir» en el tipo de dado (`Tipo_dado_comodin`) es que la plantilla no
+        // modifica el dado de golpe.
+        return this.tieneTextoVisible(this.plantillaData?.Tipo_dado?.Nombre)
+            && this.plantillaData?.Tipo_dado_comodin !== 'elegir';
     }
 
     getDgsOtorgadosPlantilla(): number {
@@ -294,7 +283,7 @@ export class DetallesPlantillaComponent {
             return [];
 
         return Object.entries(item)
-            .filter(([clave]) => !esCampoId(clave) && !this.esCampoTecnicoPrerrequisito(clave))
+            .filter(([clave]) => !esCampoId(clave) && !esCampoTecnicoPrerrequisito(clave))
             .map(([clave, valor]) => this.mapCampoPrerrequisito(clave, valor, item))
             .filter(campo => this.tieneTextoVisible(campo.valor) || campo.valor === '0');
     }
@@ -318,8 +307,7 @@ export class DetallesPlantillaComponent {
         return (this.plantillaData?.Compatibilidad_tipos ?? [])
             .map(item => {
                 const tipoComp = this.tieneTextoVisible(item.Tipo_comp) ? `${item.Tipo_comp}` : `Tipo #${item.Id_tipo_comp}`;
-                const tipoNuevoRaw = `${item.Tipo_nuevo ?? ''}`;
-                if (normalizarTexto(tipoNuevoRaw) === 'cualquiera') {
+                if (item.Tipo_nuevo_comodin === 'cualquiera') {
                     return {
                         tipoComp,
                         tipoNuevo: tipoComp,
@@ -352,17 +340,7 @@ export class DetallesPlantillaComponent {
         });
     }
 
-    private esCampoOpcional(clave: string): boolean {
-        const normalizada = clave.replace(/[_\s]/g, '').toLowerCase();
-        return normalizada === 'opcional' || normalizada === 'o';
-    }
 
-    private esCampoTecnicoPrerrequisito(clave: string): boolean {
-        const normalizada = clave.replace(/[_\s]/g, '').toLowerCase();
-        return this.esCampoOpcional(clave)
-            || normalizada === 'requiereextra'
-            || normalizada === 'requierex';
-    }
 
     private getOpcional(item: Record<string, any>): number {
         if (!item || typeof item !== 'object')
@@ -392,7 +370,7 @@ export class DetallesPlantillaComponent {
 
         if (base === 'tiponuevo' || base === 'tiponuevotipo' || base === 'tiporesultante') {
             const tipoNuevo = extraerValorSimple(valor);
-            if (normalizarTexto(tipoNuevo) === 'cualquiera') {
+            if (item?.['Tipo_nuevo_comodin'] === 'cualquiera') {
                 return {
                     etiqueta: 'Tipo nuevo',
                     valor: this.getTipoCompatibleEnCondicion(item),

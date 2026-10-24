@@ -38,7 +38,7 @@ export class ListadoSubtiposComponent {
         this.subtiposDS.sort = this.subtipoSort;
         ordenarEnEspanol(this.subtiposDS);
         this.subtipoSvc.getSubtipos().subscribe(subtipos => {
-            this.subtipos = subtipos.filter(s => s.Nombre !== 'Cualquiera');
+            this.subtipos = subtipos;
             this.manuales = this.buildManualesDisponibles(this.subtipos);
             this.defaultManual = 'Cualquiera';
             this.cdr.detectChanges();

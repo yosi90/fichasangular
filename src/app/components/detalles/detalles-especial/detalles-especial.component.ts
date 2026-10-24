@@ -3,6 +3,7 @@ import { EspecialClaseDetalle } from 'src/app/interfaces/especial';
 import { resolverExtraHabilidadVisible } from 'src/app/services/utils/habilidad-extra-visible';
 import { tieneTextoVisible } from 'src/app/services/utils/texto-visible';
 import { compararTexto } from 'src/app/services/utils/orden-texto';
+import { Comodin } from 'src/app/interfaces/comodin';
 
 @Component({
     selector: 'app-detalles-especial',
@@ -47,7 +48,7 @@ export class DetallesEspecialComponent {
             .sort((a, b) => compararTexto(a.Habilidad, b.Habilidad));
     }
 
-    getExtraVisibleHabilidad(habilidad: { Id_extra?: number; Extra?: string; }): string {
+    getExtraVisibleHabilidad(habilidad: { Id_extra?: number | null; Extra?: string; Extra_comodin?: Comodin | null; }): string {
         const hasIdExtra = Object.prototype.hasOwnProperty.call(habilidad ?? {}, 'Id_extra')
             || Object.prototype.hasOwnProperty.call(habilidad ?? {}, 'id_extra')
             || Object.prototype.hasOwnProperty.call(habilidad ?? {}, 'i_ex')
@@ -56,6 +57,7 @@ export class DetallesEspecialComponent {
         return resolverExtraHabilidadVisible({
             extra: habilidad?.Extra,
             idExtra: habilidad?.Id_extra,
+            extraComodin: habilidad?.Extra_comodin,
             soportaExtra: this.especial?.Extra || this.especial?.Activa_extra,
             allowIdZeroAsChoose: hasIdExtra,
         });

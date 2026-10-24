@@ -23,6 +23,7 @@ import { normalizarTexto, toArray, toBoolean, toInt, toNumber, toText } from 'sr
 import { normalizeManualApi } from 'src/app/services/utils/manual-mapper';
 import { cacheRtdbOApi, escucharRtdb, listaRtdb } from './catalogo-api';
 import { ElementoDeCatalogo, errorDeCatalogo } from "src/app/services/utils/error-catalogo";
+import { leerComodin } from "src/app/services/utils/comodin";
 
 const CLASE: ElementoDeCatalogo = { singular: "clase", plural: "clases", femenino: true };
 
@@ -178,6 +179,23 @@ function normalizeProgressionRef(raw: any): any {
     };
 }
 
+/**
+ * Una dote o un especial que da un nivel de clase. Sin extra, la API (y la caché) dan `Id_extra` y `Extra` a `null`
+ * (o no los traen): quedan `null` y vacío, sin volver a poner el «No aplica» de antes.
+ */
+function normalizeOtorgadoNivel(item: any) {
+    return {
+        Nivel: toNumber(item?.Nivel),
+        Id_extra: item?.Id_extra === null || item?.Id_extra === undefined ? null : toNumber(item.Id_extra),
+        Extra: toText(item?.Extra),
+        Extra_comodin: leerComodin(item?.Extra_comodin),
+        Opcional: toNumber(item?.Opcional),
+        Id_interno: toNumber(item?.Id_interno),
+        Id_especial_requerido: toNumber(item?.Id_especial_requerido),
+        Id_dote_requerida: toNumber(item?.Id_dote_requerida),
+    };
+}
+
 function normalizeNivel(raw: any): ClaseNivelDetalle {
     const diariosRaw = raw?.Conjuros_diarios ?? {};
     const conocidosNivelRaw = raw?.Conjuros_conocidos_nivel_a_nivel ?? {};
@@ -206,23 +224,11 @@ function normalizeNivel(raw: any): ClaseNivelDetalle {
         Conjuros_conocidos_total: toNumber(raw?.Conjuros_conocidos_total, 0),
         Dotes: toArray(raw?.Dotes).map((item: any) => ({
             Dote: item?.Dote ?? {},
-            Nivel: toNumber(item?.Nivel),
-            Id_extra: toNumber(item?.Id_extra, -1),
-            Extra: toText(item?.Extra, "No aplica"),
-            Opcional: toNumber(item?.Opcional),
-            Id_interno: toNumber(item?.Id_interno),
-            Id_especial_requerido: toNumber(item?.Id_especial_requerido),
-            Id_dote_requerida: toNumber(item?.Id_dote_requerida),
+            ...normalizeOtorgadoNivel(item),
         })),
         Especiales: toArray(raw?.Especiales).map((item: any) => ({
             Especial: item?.Especial ?? {},
-            Nivel: toNumber(item?.Nivel),
-            Id_extra: toNumber(item?.Id_extra, -1),
-            Extra: toText(item?.Extra, "No aplica"),
-            Opcional: toNumber(item?.Opcional),
-            Id_interno: toNumber(item?.Id_interno),
-            Id_especial_requerido: toNumber(item?.Id_especial_requerido),
-            Id_dote_requerida: toNumber(item?.Id_dote_requerida),
+            ...normalizeOtorgadoNivel(item),
         })),
     };
 }
@@ -259,6 +265,7 @@ export function normalizeClase(raw: any): Clase {
     return {
         Id: toNumber(raw?.Id),
         Nombre: toText(raw?.Nombre),
+        Comodin: leerComodin(raw?.Comodin),
         Descripcion: toText(raw?.Descripcion),
         Manual: normalizeManualApi(raw?.Manual),
         Tipo_dado: {

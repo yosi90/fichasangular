@@ -8,6 +8,7 @@ import { SubtipoRef } from "src/app/interfaces/subtipo";
 import { toDoteContextualArray } from "./dote-mapper";
 import { normalizarTexto, toBoolean, toNumber, toText } from 'src/app/services/utils/normalizacion';
 import { normalizeConjuroApi } from './conjuro-mapper';
+import { leerComodin } from './comodin';
 
 function toStrictArray<T = any>(value: any): T[] {
     return Array.isArray(value) ? value : [];
@@ -165,6 +166,7 @@ function normalizeHabilidadesApi(raw: any): RazaHabilidades {
             Entrenada: toBoolean(item?.Entrenada),
             Id_extra: item?.Id_extra === undefined || item?.Id_extra === null || `${item?.Id_extra}`.trim() === "" ? -1 : toNumber(item?.Id_extra),
             Extra: toText(item?.Extra).trim(),
+            Extra_comodin: leerComodin(item?.Extra_comodin),
             Cantidad: toNumber(item?.Cantidad),
             Varios: toText(item?.Varios).trim(),
             Soporta_extra: item?.Soporta_extra === undefined ? undefined : toBoolean(item?.Soporta_extra),
@@ -183,8 +185,10 @@ function normalizeHabilidadesApi(raw: any): RazaHabilidades {
             Caracteristica: toText(item?.Caracteristica).trim(),
             Id_extra: item?.Id_extra === undefined || item?.Id_extra === null || `${item?.Id_extra}`.trim() === "" ? -1 : toNumber(item?.Id_extra),
             Extra: toText(item?.Extra).trim(),
+            Extra_comodin: leerComodin(item?.Extra_comodin),
             Cantidad: toNumber(item?.Cantidad),
-            Soporta_extra: item?.Soporta_extra === undefined ? undefined : toBoolean(item?.Soporta_extra),
+            Soporta_extra
+: item?.Soporta_extra === undefined ? undefined : toBoolean(item?.Soporta_extra),
             Custom: true,
             Clasea: toBoolean(item?.Clasea),
             Clase: toBoolean(item?.Clase),

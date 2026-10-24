@@ -54,6 +54,27 @@ describe('ClaseService normalizeClase', () => {
         expect(clase.Desglose_niveles[0].Nivel_max_poder_accesible_nivel_lanzadorPsionico).toBe(-1);
     });
 
+    it('las dotes y los especiales de un nivel sin extra quedan con Id_extra null y Extra vacío, sin «No aplica»', () => {
+        const raw = crearRawClaseConNivel(crearRawNivel({
+            Dotes: [{ Dote: { Id: 1 }, Id_extra: null, Extra: null, Extra_comodin: null }],
+            Especiales: [
+                { Especial: { Id: 1 } },
+                { Especial: { Id: 2 }, Id_extra: 110, Extra: 'Elegir', Extra_comodin: 'elegir' },
+            ],
+        }));
+
+        const nivel = normalizeClase(raw).Desglose_niveles[0];
+
+        expect(nivel.Dotes[0]).toEqual(jasmine.objectContaining({ Id_extra: null, Extra: '', Extra_comodin: null }));
+        expect(nivel.Especiales[0]).toEqual(jasmine.objectContaining({ Id_extra: null, Extra: '', Extra_comodin: null }));
+        expect(nivel.Especiales[1]).toEqual(jasmine.objectContaining({ Id_extra: 110, Extra: 'Elegir', Extra_comodin: 'elegir' }));
+    });
+
+    it('lee la marca Comodin de la clase (la clase 0 «Cualquiera»)', () => {
+        expect(normalizeClase({ Id: 0, Nombre: 'Cualquiera', Comodin: 'cualquiera' }).Comodin).toBe('cualquiera');
+        expect(normalizeClase({ Id: 3, Nombre: 'Mago' }).Comodin).toBeNull();
+    });
+
     it('normaliza puede_elegir_especialidad desde el nuevo campo', () => {
         const clase = normalizeClase({
             ...crearRawClaseConNivel(crearRawNivel()),

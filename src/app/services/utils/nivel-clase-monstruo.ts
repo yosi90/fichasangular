@@ -51,15 +51,9 @@ function resolveAlineamientoBasicoIdFromRaw(item: any): number {
     );
 }
 
+/** Un alineamiento requerido con nombre propio. «Cualquiera» no lo es; los de relleno ya llegan a `null`. */
 function isAlineamientoNombreVisible(nombre: string): boolean {
-    if (!nombre)
-        return false;
-    return nombre !== 'no aplica'
-        && nombre !== 'no especifica'
-        && nombre !== 'no se especifica'
-        && nombre !== '-'
-        && nombre !== 'cualquiera'
-        && nombre !== 'ninguno';
+    return nombre.length > 0 && nombre !== 'cualquiera';
 }
 
 export function normalizeAlineamientosRequeridos(raw: any[]): AlineamientoRequeridoNormalizado[] {

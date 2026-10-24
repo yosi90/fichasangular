@@ -28,6 +28,17 @@ export interface DoteExtrasDisponibles {
     Habilidades: DoteExtraItem[];
 }
 
+/**
+ * Por tipo de extra, si la dote lo admite y se elige de todo el catálogo (no lista sus extras de ese tipo, o lista el
+ * comodín «Elegir» o «Cualquiera»). La API lo da en `Extras_de_todo_el_catalogo` desde el 2026-10-24.
+ */
+export interface DoteExtrasDeTodoElCatalogo {
+    Armas: boolean;
+    Armaduras: boolean;
+    Escuelas: boolean;
+    Habilidades: boolean;
+}
+
 export interface DoteModificadores {
     [key: string]: number;
 }
@@ -52,6 +63,7 @@ export interface Dote {
     Oficial: boolean;
     Extras_soportados: DoteExtrasSoportados;
     Extras_disponibles: DoteExtrasDisponibles;
+    Extras_de_todo_el_catalogo: DoteExtrasDeTodoElCatalogo;
     Modificadores: DoteModificadores;
     Prerrequisitos: DotePrerrequisitos;
 }

@@ -391,7 +391,8 @@ function buildEvaluacionDote(entry: Record<string, any>, ctx: ClaseEvaluacionCon
     const idDote = parseId(entry, ["Id_dote", "id_dote", "Id", "id", "i"]);
     const nombreDote = parseNombre(entry, ["Dote", "dote", "Nombre", "nombre"]);
     const nombreNorm = normalizarTexto(nombreDote);
-    const idExtraReq = toInt(pick(entry, ["Id_extra", "id_extra", "IdExtra", "idExtra", "e"]), Number.NaN);
+    // Sin `Id_extra` (`null` o que no venga) vale cualquier extra; `toInt(null)` daría 0 («con algún extra»).
+    const idExtraReq = parseIdOpcional(entry, ["Id_extra", "id_extra", "IdExtra", "idExtra", "e"]);
     const repetidoReq = Math.max(0, toInt(pick(entry, ["Repetido", "repetido", "r"]), 0));
     const cantidadReq = repetidoReq > 0 ? repetidoReq : 1;
     const coincidencias = ctx.dotes.filter((d) => {
@@ -593,6 +594,8 @@ function buildEvaluacionClaseEspecial(entry: Record<string, any>, ctx: ClaseEval
     const idEspecial = parseId(entry, ["Id_especial", "id_especial", "IdClaseEspecial", "idClaseEspecial", "Id", "id", "i"]);
     const nombreEspecial = parseNombre(entry, ["Clase_especial", "clase_especial", "Especial", "especial", "Nombre", "nombre"]);
     const nombreNorm = normalizarTexto(nombreEspecial);
+    // Sin `Id_extra` vale el especial con cualquier extra. Desde el 2026-10-24 la API da `null` donde antes daba el
+    // extra 0 «Nada» (que aquí era «el especial con el extra 0»): con los datos de hoy son especiales sin extras.
     const idExtraReq = parseIdOpcional(entry, ["Id_extra", "id_extra", "IdExtra", "idExtra", "e"]);
     const claseasActuales = ctx.claseas ?? [];
     const evaluable = idEspecial > 0 || nombreNorm.length > 0;

@@ -1740,28 +1740,28 @@ export class NuevaDoteComponent implements OnInit, OnDestroy {
                 .map((item) => ({ id: toInt((item as any)?.Id, 0), nombre: `${(item as any)?.Nombre ?? ''}`.trim() }))
         );
 
+        // Si un tipo de extra se elige de todo el catálogo lo dice la API (`Extras_de_todo_el_catalogo`), no el nombre
+        // «Elegir» de la lista.
+        const deTodoElCatalogo = dote?.Extras_de_todo_el_catalogo;
         if (toInt(dote?.Extras_soportados?.Extra_arma, 0) > 0)
-            return directosArmas.length > 0 && !this.contieneOpcionElegir(directosArmas) ? directosArmas : this.armasCatalogo;
+            return directosArmas.length > 0 && deTodoElCatalogo?.Armas !== true ? directosArmas : this.armasCatalogo;
 
         if (this.doteSoportaArmaduras(dote) || this.doteSoportaEscudos(dote)) {
             const directosArmadura = this.getOpcionesArmaduraParaDote(dote);
-            if (directosArmadura.length > 0 && !this.contieneOpcionElegir(directosArmadura))
+            if (directosArmadura.length > 0 && deTodoElCatalogo?.Armaduras !== true)
                 return directosArmadura;
             return this.armadurasCatalogo.filter((item) => this.filtraArmaduraPorSoporteDote(dote, item));
         }
 
         if (toInt(dote?.Extras_soportados?.Extra_escuela, 0) > 0)
-            return directosEscuelas.length > 0 && !this.contieneOpcionElegir(directosEscuelas) ? directosEscuelas : this.escuelasCatalogo;
+            return directosEscuelas.length > 0 && deTodoElCatalogo?.Escuelas !== true ? directosEscuelas : this.escuelasCatalogo;
 
         if (toInt(dote?.Extras_soportados?.Extra_habilidad, 0) > 0)
-            return directosHabilidades.length > 0 && !this.contieneOpcionElegir(directosHabilidades) ? directosHabilidades : this.habilidadesCatalogoPrerrequisito;
+            return directosHabilidades.length > 0 && deTodoElCatalogo?.Habilidades !== true ? directosHabilidades : this.habilidadesCatalogoPrerrequisito;
 
         return [];
     }
 
-    private contieneOpcionElegir(items: ExtraSelectorItem[]): boolean {
-        return (items ?? []).some((item) => normalizarTexto(item?.nombre ?? '') === normalizarTexto('Elegir'));
-    }
 
     private filtraArmaduraPorSoporteDote(dote: Dote, item: ArmaduraSelectorItem): boolean {
         if (this.doteSoportaArmaduras(dote) && this.doteSoportaEscudos(dote))

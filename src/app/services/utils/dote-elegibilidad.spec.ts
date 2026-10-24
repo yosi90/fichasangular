@@ -29,6 +29,7 @@ function crearDoteBase(partial?: Partial<Dote>): Dote {
             Escuelas: [],
             Habilidades: [],
         },
+        Extras_de_todo_el_catalogo: { Armas: false, Armaduras: false, Escuelas: false, Habilidades: false },
         Modificadores: {},
         Prerrequisitos: {},
         ...partial,
@@ -461,6 +462,45 @@ describe('dote-elegibilidad', () => {
             }),
         });
         expect(resultado.estado).toBe('eligible');
+    });
+
+    it('clase_especial sin Id_extra (null, antes el extra 0 «Nada») vale con cualquier extra', () => {
+        const dote = crearDoteBase({
+            Prerrequisitos: {
+                clase_especial: [{ Id_especial: 99, Id_extra: null, Extra: null, Opcional: 0 }],
+            },
+        });
+        const resultado = evaluarElegibilidadDote({
+            dote,
+            contexto: crearContextoBase({
+                claseas: [{ id: 99, nombre: 'Forma salvaje', idExtra: 3, extra: 'Lobo' }],
+            }),
+        });
+        expect(resultado.estado).toBe('eligible');
+    });
+
+    it('competencia_arma con Arma_comodin «elegir» pide la competencia con el arma elegida como extra', () => {
+        const dote = crearDoteBase({
+            Prerrequisitos: {
+                competencia_arma: [{ Id_arma: 0, Arma: 'Elegir', Arma_comodin: 'elegir', Opcional: 0 }],
+            },
+        });
+        const contexto = crearContextoBase({ competenciasArmas: [{ id: 17, nombre: 'Espada larga' }] });
+        expect(evaluarElegibilidadDote({ dote, contexto, idExtraSeleccionado: 17, extraSeleccionado: 'Espada larga' }).estado)
+            .toBe('eligible');
+        expect(evaluarElegibilidadDote({ dote, contexto, idExtraSeleccionado: 18, extraSeleccionado: 'Hacha' }).estado)
+            .toBe('blocked_failed');
+    });
+
+    it('competencia_arma sin la marca de comodín no compara el nombre «Elegir»', () => {
+        const dote = crearDoteBase({
+            Prerrequisitos: {
+                competencia_arma: [{ Id_arma: 0, Arma: 'Elegir', Arma_comodin: null, Opcional: 0 }],
+            },
+        });
+        const contexto = crearContextoBase({ competenciasArmas: [{ id: 17, nombre: 'Espada larga' }] });
+        expect(evaluarElegibilidadDote({ dote, contexto, idExtraSeleccionado: 17, extraSeleccionado: 'Espada larga' }).estado)
+            .not.toBe('eligible');
     });
 
     it('region queda en unknown cuando no hay contexto suficiente', () => {

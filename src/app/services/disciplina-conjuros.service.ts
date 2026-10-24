@@ -4,7 +4,7 @@ import { Database } from '@angular/fire/database';
 import { Observable } from "rxjs";
 import { DisciplinaConjuros, Subdisciplinas } from "../interfaces/disciplina-conjuros";
 import { FirebaseInjectionContextService } from "./firebase-injection-context.service";
-import { normalizarTexto, toArray, toInt, toText } from 'src/app/services/utils/normalizacion';
+import { toArray, toInt, toText } from 'src/app/services/utils/normalizacion';
 import { escucharRtdbConAlternativa, listaRtdb } from './catalogo-api';
 
 function normalizeSubdisciplinas(raw: any): Subdisciplinas[] {
@@ -21,10 +21,7 @@ function normalizeSubdisciplinas(raw: any): Subdisciplinas[] {
                 Nombre: toText(item?.Nombre).trim(),
             };
         })
-        .filter((item) => {
-            const nombre = normalizarTexto(item.Nombre);
-            return item.Nombre.length > 0 && nombre !== 'ninguna' && nombre !== 'sin subdisciplina';
-        });
+        .filter((item) => item.Nombre.length > 0);
 }
 
 function normalizeDisciplina(raw: any, fallbackId: number = 0): DisciplinaConjuros {
@@ -60,7 +57,6 @@ export class DisciplinaConjurosService {
         return listaRtdb(
             escucharRtdbConAlternativa(this.db, this.firebaseContextSvc, 'disciplinas', 'Disciplinas'),
             (raw) => normalizeDisciplina(raw),
-            (disciplina) => disciplina.Id > 0 && disciplina.Nombre.length > 0,
         );
     }
 

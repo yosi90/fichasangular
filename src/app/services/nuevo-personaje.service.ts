@@ -47,6 +47,7 @@ import { calcularNivelesLanzadorPersonaje } from './utils/nivel-lanzador-persona
 import { UserSettingsService } from './user-settings.service';
 import { NuevoPersonajeGeneradorConfig } from '../interfaces/user-settings';
 import { normalizarTexto, primerEntero, toBoolean, toInt, toNumber } from 'src/app/services/utils/normalizacion';
+import { esTextoExtraPorElegir } from 'src/app/services/utils/habilidad-extra-visible';
 import { calcularOroPorNep } from './utils/oro-inicial';
 import { experienciaParaNivel } from './utils/experiencia-nivel';
 import { compararTexto, porNombre } from 'src/app/services/utils/orden-texto';
@@ -298,19 +299,6 @@ const HABILIDAD_FAMILIAS_REPETIBLES = {
         patrones: ['saber'],
     },
 } as const;
-const EXTRA_HABILIDAD_VALORES_PENDIENTES = new Set([
-    '-',
-    'no aplica',
-    'no especifica',
-    'no se especifica',
-    'ninguna',
-    'nada',
-    'desconocido',
-    'placeholder',
-    'elegir',
-    'a elegir',
-    'elige',
-]);
 
 const GENERADOR_AUTO_PESOS_POR_POSICION: number[] = [60, 50, 40, 30, 20, 10];
 const GENERADOR_AUTO_SCORING_RULES: {
@@ -2866,29 +2854,30 @@ export class NuevoPersonajeService {
 
         const normalizar = (items: DoteExtraItem[] | null | undefined): DoteExtraOpcion[] =>
             this.normalizarCatalogoExtras(items as Array<{ Id: number; Nombre: string; }>);
-        const contieneElegir = (items: DoteExtraOpcion[]): boolean =>
-            items.some((item) => normalizarTexto(item?.Nombre ?? '') === normalizarTexto('Elegir'));
+        // La API dice en `Extras_de_todo_el_catalogo` si cada tipo de extra se elige de todo el catálogo (la dote lista
+        // el comodín «Elegir» o «Cualquiera», o ninguno): ya no se busca «Elegir» por el nombre.
+        const deTodoElCatalogo = dote?.Extras_de_todo_el_catalogo;
 
         const extras: DoteExtraOpcion[] = [];
         if (toBoolean(dote?.Extras_soportados?.Extra_arma)) {
             const directos = normalizar(dote?.Extras_disponibles?.Armas ?? []);
-            const usarCatalogo = directos.length < 1 || contieneElegir(directos);
+            const usarCatalogo = directos.length < 1 || deTodoElCatalogo?.Armas === true;
             extras.push(...(usarCatalogo ? this.catalogoArmasDotes : directos));
         }
         if (this.doteSoportaArmaduras(dote) || this.doteSoportaEscudos(dote)) {
             const directos = this.filtrarExtrasArmaduraPorSoporte(dote, normalizar(dote?.Extras_disponibles?.Armaduras ?? []));
-            const usarCatalogo = directos.length < 1 || contieneElegir(directos);
+            const usarCatalogo = directos.length < 1 || deTodoElCatalogo?.Armaduras === true;
             const catalogo = this.filtrarExtrasArmaduraPorSoporte(dote, this.catalogoArmadurasDotes);
             extras.push(...(usarCatalogo ? catalogo : directos));
         }
         if (toBoolean(dote?.Extras_soportados?.Extra_escuela)) {
             const directos = normalizar(dote?.Extras_disponibles?.Escuelas ?? []);
-            const usarCatalogo = directos.length < 1 || contieneElegir(directos);
+            const usarCatalogo = directos.length < 1 || deTodoElCatalogo?.Escuelas === true;
             extras.push(...(usarCatalogo ? this.catalogoEscuelasDotes : directos));
         }
         if (toBoolean(dote?.Extras_soportados?.Extra_habilidad)) {
             const directos = normalizar(dote?.Extras_disponibles?.Habilidades ?? []);
-            const usarCatalogo = directos.length < 1 || contieneElegir(directos);
+            const usarCatalogo = directos.length < 1 || deTodoElCatalogo?.Habilidades === true;
             extras.push(...(usarCatalogo ? fuenteHabilidades : directos));
         }
 
@@ -3756,6 +3745,12 @@ export class NuevoPersonajeService {
                 Armaduras: [],
                 Escuelas: [],
                 Habilidades: [],
+            },
+            Extras_de_todo_el_catalogo: {
+                Armas: false,
+                Armaduras: false,
+                Escuelas: false,
+                Habilidades: false,
             },
             Modificadores: {},
             Prerrequisitos: {},
@@ -5563,7 +5558,8 @@ export class NuevoPersonajeService {
     }
 
     private esExtraHabilidadPendienteValor(extraNormalizado: string): boolean {
-        return extraNormalizado.length < 1 || EXTRA_HABILIDAD_VALORES_PENDIENTES.has(extraNormalizado);
+        // Un extra vacío o «Elegir» está por escoger. Los textos de relleno («-», «No aplica»…) ya no llegan de la API.
+        return extraNormalizado.length < 1 || esTextoExtraPorElegir(extraNormalizado);
     }
 
     private getClaveGrupoExtraHabilidad(habilidad: Personaje['Habilidades'][number]): string {
@@ -7558,37 +7554,37 @@ export class NuevoPersonajeService {
         const base: Conjuro = {
             Id: toInt(ref?.Id),
             Nombre: nombre.length > 0 ? nombre : `Conjuro ${toNumber(ref?.Id)}`,
-            Descripcion: 'No especifica',
-            Tiempo_lanzamiento: 'No especifica',
-            Alcance: 'No especifica',
+            Descripcion: '',
+            Tiempo_lanzamiento: '',
+            Alcance: '',
             Escuela: {
                 Id: 0,
-                Nombre: 'No especifica',
-                Nombre_especial: 'No especifica',
+                Nombre: '',
+                Nombre_especial: '',
                 Prohibible: false,
             },
             Disciplina: {
                 Id: 0,
-                Nombre: 'No especifica',
-                Nombre_especial: 'No especifica',
+                Nombre: '',
+                Nombre_especial: '',
                 Subdisciplinas: [],
             },
-            Manual: `${clase?.Manual?.Nombre ?? ''}`.trim() || 'No especifica',
-            Objetivo: 'No especifica',
-            Efecto: 'No especifica',
-            Area: 'No especifica',
+            Manual: `${clase?.Manual?.Nombre ?? ''}`.trim(),
+            Objetivo: '',
+            Efecto: '',
+            Area: '',
             Arcano: !!clase?.Conjuros?.Arcanos,
             Divino: !!clase?.Conjuros?.Divinos,
             Psionico: !!clase?.Conjuros?.Psionicos,
             Alma: !!clase?.Conjuros?.Alma,
-            Duracion: 'No especifica',
-            Tipo_salvacion: 'No especifica',
+            Duracion: '',
+            Tipo_salvacion: '',
             Resistencia_conjuros: false,
             Resistencia_poderes: false,
-            Descripcion_componentes: 'No especifica',
+            Descripcion_componentes: '',
             Permanente: false,
             Puntos_poder: 0,
-            Descripcion_aumentos: 'No especifica',
+            Descripcion_aumentos: '',
             Descriptores: [],
             Nivel_clase: [{
                 Id_clase: toNumber(clase?.Id),
@@ -7701,16 +7697,9 @@ export class NuevoPersonajeService {
         this.recalcularNepExperienciaOro(plantillasSeleccionadas);
     }
 
+    /** Si una raza o una plantilla da una RD o una resistencia. Sin dato, la API da `null` (antes, «No especifica»…). */
     private esTextoReglaValido(valor: string): boolean {
-        const normalizado = normalizarTexto(valor);
-        if (normalizado.length < 1)
-            return false;
-        return normalizado !== 'no especifica'
-            && normalizado !== 'no se especifica'
-            && normalizado !== 'no modifica'
-            && normalizado !== 'no aplica'
-            && normalizado !== '-'
-            && normalizado !== 'ninguna';
+        return normalizarTexto(valor).length > 0;
     }
 
     private resolverDadoGolpeTipoActual(): number {

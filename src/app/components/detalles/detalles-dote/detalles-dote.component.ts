@@ -4,7 +4,7 @@ import { DoteContexto, DoteContextual } from 'src/app/interfaces/dote-contextual
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
 import { normalizarTexto } from 'src/app/services/utils/normalizacion';
 import { tieneTextoVisible } from 'src/app/services/utils/texto-visible';
-import { esCampoId, formatearClave } from 'src/app/services/utils/formato-prerrequisitos';
+import { esCampoId, esCampoTecnicoPrerrequisito, formatearClave } from 'src/app/services/utils/formato-prerrequisitos';
 
 interface PrerrequisitoCampoDetalle {
     etiqueta: string;
@@ -202,13 +202,13 @@ export class DetallesDoteComponent {
             return [];
 
         return Object.entries(item)
-            .filter(([clave]) => !esCampoId(clave) && !this.esCampoTecnicoPrerrequisito(clave))
+            .filter(([clave]) => !esCampoId(clave) && !esCampoTecnicoPrerrequisito(clave))
             .filter(([, valor]) => this.tieneValorMostrable(valor))
             .map(([clave, valor]) => ({
                 etiqueta: this.getEtiquetaCampoPrerrequisito(prerequisiteKey, clave),
                 valor: this.formatearValorPrerrequisito(valor)
             }))
-            .filter((campo) => !this.esCampoExtraSinValor(campo))
+            // Un extra de relleno («Nada», «No aplica») llega a `null` desde el 2026-10-24 y aquí queda vacío.
             .filter(campo => campo.valor.trim().length > 0);
     }
 
@@ -355,17 +355,7 @@ export class DetallesDoteComponent {
         return '-';
     }
 
-    private esCampoOpcional(clave: string): boolean {
-        const normalizada = clave.replace(/[_\s]/g, '').toLowerCase();
-        return normalizada === 'opcional' || normalizada === 'o';
-    }
 
-    private esCampoTecnicoPrerrequisito(clave: string): boolean {
-        const normalizada = clave.replace(/[_\s]/g, '').toLowerCase();
-        return this.esCampoOpcional(clave)
-            || normalizada === 'requiereextra'
-            || normalizada === 'requierex';
-    }
 
     private getOpcional(item: Record<string, any>): number {
         if (!item || typeof item !== 'object')
@@ -383,18 +373,6 @@ export class DetallesDoteComponent {
         return `Eleccion ${index + 1}`;
     }
 
-    private esCampoExtraSinValor(campo: PrerrequisitoCampoDetalle): boolean {
-        if (normalizarTexto(`${campo?.etiqueta ?? ''}`) !== 'extra')
-            return false;
-
-        const valor = normalizarTexto(`${campo?.valor ?? ''}`);
-        return valor === 'nada'
-            || valor === 'no aplica'
-            || valor === 'noaplica'
-            || valor === 'ninguno'
-            || valor === 'ninguna'
-            || valor === 'sin extra';
-    }
 
     private getEtiquetaCampoPrerrequisito(prerequisiteKey: string, fieldKey: string): string {
         const tipo = normalizarTexto(prerequisiteKey).replace(/[_\s]/g, '');

@@ -9,6 +9,7 @@ import { experienciaParaNivel } from './utils/experiencia-nivel';
 import { compararTexto } from 'src/app/services/utils/orden-texto';
 import { sumarPartes, totalesPersonaje } from 'src/app/services/utils/personaje-totales';
 import { habilidadConExtraPorElegir } from 'src/app/services/utils/habilidad-extra-visible';
+import { esNombreComodin } from 'src/app/services/utils/comodin';
 
 
 @Injectable({
@@ -167,7 +168,8 @@ export class FichaPersonajeService {
         const escuelaCalificativo = `${pj?.Escuela_especialista?.Calificativo ?? ''}`.trim();
         const disciplinaNombre = `${pj?.Disciplina_especialista?.Nombre ?? ''}`.trim();
         const disciplinaCalificativo = `${pj?.Disciplina_especialista?.Calificativo ?? ''}`.trim();
-        const tieneEspecialidadArcana = this.esEspecialidadValida(escuelaNombre, escuelaCalificativo);
+        const tieneEspecialidadArcana = !esNombreComodin(pj?.Escuela_especialista, 'cualquiera')
+            && this.esEspecialidadValida(escuelaNombre, escuelaCalificativo);
         const tieneEspecialidadPsionica = this.esEspecialidadValida(disciplinaNombre, disciplinaCalificativo);
 
         if (tieneEspecialidadArcana) {
@@ -505,7 +507,7 @@ export class FichaPersonajeService {
             if (nombre.length < 1)
                 return;
             const extra = `${doteCtx?.Contexto?.Extra ?? ''}`.trim();
-            this.trySetText(form, `conjuro${cont}`, extra.length > 0 && extra !== 'No aplica' ? `${nombre} (${extra})` : nombre);
+            this.trySetText(form, `conjuro${cont}`, extra.length > 0 ? `${nombre} (${extra})` : nombre);
             this.trySetText(form, `desc_con${cont}`, `${doteCtx?.Dote?.Descripcion ?? ''}`.trim());
             this.trySetText(form, `pag_con${cont}`, `${doteCtx?.Dote?.Manual?.Nombre ?? ''} ${toNumber(doteCtx?.Dote?.Manual?.Pagina)}`.trim());
             cont++;
@@ -726,23 +728,16 @@ export class FichaPersonajeService {
         return '';
     }
 
+    /**
+     * Si hay especialidad. La escuela «Cualquiera» se mira aparte, por su comodín. Sin disciplina, la ficha de la API la
+     * da a `null` y el borrador de la creación escribe «Ninguna».
+     */
     private esEspecialidadValida(nombre: string, calificativo: string): boolean {
         const nombreNorm = normalizarTexto(nombre, true);
         const calificativoNorm = normalizarTexto(calificativo, true);
         if (nombreNorm.length < 1 || calificativoNorm.length < 1)
             return false;
-        const placeholders = new Set([
-            'cualquiera',
-            'ninguno',
-            'ninguna',
-            'no aplica',
-            'no especifica',
-            'sin especialidad',
-            'sin disciplina',
-            'n/a',
-            '-',
-        ]);
-        return !placeholders.has(nombreNorm) && !placeholders.has(calificativoNorm);
+        return nombreNorm !== 'ninguna' && calificativoNorm !== 'ninguna';
     }
 
     private obtenerRacialesParaFicha(pj: Personaje): Array<{ nombre: string; origen: string; }> {

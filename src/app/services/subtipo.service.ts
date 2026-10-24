@@ -24,7 +24,6 @@ export class SubtipoService {
         return listaRtdb(
             escucharRtdb(this.db, this.firebaseContextSvc, "Subtipos"),
             (valor) => normalizeSubtipoResumen(valor),
-            (subtipo) => subtipo.Id > 0,
         );
     }
 

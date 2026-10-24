@@ -196,6 +196,8 @@ export interface Personaje extends PersonajeSimple {
     Escuela_especialista: {
         Nombre: string;
         Calificativo: string;
+        /** Solo en la ficha de la API (`espaComodin`): «cualquiera» es que no tiene escuela especialista. */
+        Comodin?: PersonajeExtraComodinDto | null;
     }
     Disciplina_especialista: {
         Nombre: string;

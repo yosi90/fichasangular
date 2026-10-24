@@ -47,7 +47,6 @@ export class IdiomaService {
         return listaRtdb(
             escucharRtdb(this.db, this.firebaseContextSvc, "Idiomas"),
             (valor) => normalizeIdioma(valor),
-            (idioma) => idioma.Id > 0,
         );
     }
 

@@ -2448,13 +2448,9 @@ export class TabControlComponent implements OnInit, OnDestroy {
         return this.clasesEditables?.toArray().find((component) => component.editorTabKey === key);
     }
 
+    /** Un nombre vacío no abre nada. Los nombres de relleno («No aplica», «Nada») ya llegan a `null` de la API. */
     private esNombreNoAplicable(value: string): boolean {
-        const normalizado = normalizarTexto(value).replace(/[.]/g, '');
-        return normalizado.length < 1
-            || normalizado === 'no aplica'
-            || normalizado === 'no especifica'
-            || normalizado === 'no se especifica'
-            || normalizado === 'nada';
+        return normalizarTexto(value).replace(/[.]/g, '').length < 1;
     }
 
     private nombreRacialBase(value: string): string {

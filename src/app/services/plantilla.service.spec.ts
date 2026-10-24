@@ -76,6 +76,7 @@ describe('Plantilla mappers', () => {
             Id_tipo_nuevo: 9,
             Tipo_comp: 'Humanoide',
             Tipo_nuevo: 'Cambiaformas',
+            Tipo_nuevo_comodin: null,
             Opcional: 1,
         }]);
     });
@@ -128,6 +129,7 @@ describe('Plantilla mappers', () => {
             Id_tipo_nuevo: 9,
             Tipo_comp: 'Humanoide',
             Tipo_nuevo: 'Cambiaformas',
+            Tipo_nuevo_comodin: null,
             Opcional: 1,
         }]);
     });

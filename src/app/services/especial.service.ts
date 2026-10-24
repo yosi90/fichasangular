@@ -21,6 +21,7 @@ import { cabeceraApiConFirebase } from './platform-session.service';
 import { toArray, toBoolean, toInt, toNumber, toText } from 'src/app/services/utils/normalizacion';
 import { cacheRtdbOApi, escucharRtdb } from './catalogo-api';
 import { ElementoDeCatalogo, errorDeCatalogo } from "src/app/services/utils/error-catalogo";
+import { leerComodin } from "src/app/services/utils/comodin";
 
 const ESPECIAL: ElementoDeCatalogo = { singular: "especial", plural: "especiales", femenino: false };
 
@@ -59,6 +60,7 @@ function normalizeExtra(raw: any): EspecialExtraRef {
     return {
         Id_extra: toNumber(raw?.Id_extra),
         Extra: toText(raw?.Extra),
+        Extra_comodin: leerComodin(raw?.Extra_comodin),
         Orden: toNumber(raw?.Orden),
     };
 }
@@ -69,6 +71,7 @@ function normalizeHabilidad(raw: any): EspecialHabilidadRef {
         Habilidad: toText(raw?.Habilidad),
         Id_extra: toNumber(raw?.Id_extra),
         Extra: toText(raw?.Extra),
+        Extra_comodin: leerComodin(raw?.Extra_comodin),
         Rangos: toNumber(raw?.Rangos),
     };
 }

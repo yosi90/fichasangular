@@ -122,6 +122,7 @@ export function crearDetalleApi(cambios: Record<string, any> = {}): Record<strin
         resistenciasElementales: [],
         ccl: 0, ccm: 0, ccp: 0,
         espa: 'Cualquiera',
+        espaComodin: 'cualquiera',
         espan: null,
         espp: null,
         esppn: null,

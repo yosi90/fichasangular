@@ -74,7 +74,7 @@
                     </mat-chip>
                 </mat-chip>
             </mat-chip-set>
-            <mat-chip class="tw-h-auto tw-m-1" *ngIf="pj.Escuela_especialista?.Nombre && pj.Escuela_especialista.Nombre != 'Cualquiera'">
+            <mat-chip class="tw-h-auto tw-m-1" *ngIf="tieneEscuelaEspecialista()">
                 <p class="tw-m-0 tw-me-2">Especialización:</p>
                 <mat-chip class="tw-m-1">{{pj.Escuela_especialista.Nombre}}</mat-chip>
             </mat-chip>

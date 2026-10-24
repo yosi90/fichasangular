@@ -74,9 +74,9 @@ export class DetallesConjuroComponent {
             .filter((item) => toInt(item?.Id_disciplina) > 0 && this.hasText(item?.Disciplina));
     }
 
+    /** Sin dato, la API da `null` (antes, «No especifica»). */
     private hasText(value: any): boolean {
-        const normalized = `${value ?? ''}`.trim().toLowerCase();
-        return normalized.length > 0 && normalized !== 'no especifica';
+        return `${value ?? ''}`.trim().length > 0;
     }
 
 }
