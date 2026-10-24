@@ -80,11 +80,6 @@ export class PersonajeService {
         }
     }
 
-    private d_pjs(headers?: HttpHeaders): Observable<any> {
-        const res = this.http.get(`${environment.apiUrl}personajes`, headers ? { headers } : undefined);
-        return res;
-    }
-
     public async actualizarVisibilidadPersonaje(
         idPersonaje: number,
         visible: boolean,
