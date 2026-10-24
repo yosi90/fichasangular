@@ -1,12 +1,12 @@
 import { HttpClient } from "@angular/common/http";
 import { Injectable } from "@angular/core";
-import { Database, Unsubscribe, onValue, ref } from "@angular/fire/database";
+import { Database } from "@angular/fire/database";
 import { Observable } from "rxjs";
 import { environment } from "src/environments/environment";
 import { DominioDetalle } from "../interfaces/dominio";
 import { FirebaseInjectionContextService } from "./firebase-injection-context.service";
 import { toNumber, toText } from 'src/app/services/utils/normalizacion';
-import { cacheRtdbOApi, escucharRtdb } from './catalogo-api';
+import { cacheRtdbOApi, escucharRtdb, listaRtdb } from './catalogo-api';
 
 function toBoolean(value: any): boolean {
     if (typeof value === "boolean")
@@ -53,30 +53,11 @@ export class DominioService {
     }
 
     getDominios(): Observable<DominioDetalle[]> {
-        return new Observable((observador) => {
-            let unsubscribe: Unsubscribe;
-
-            const onNext = (snapshot: any) => {
-                const dominios: DominioDetalle[] = [];
-                snapshot.forEach((obj: any) => {
-                    const dominio = normalizeDominio(obj.val());
-                    if (dominio.Id > 0)
-                        dominios.push(dominio);
-                });
-                dominios.sort((a, b) => a.Nombre.localeCompare(b.Nombre, "es", { sensitivity: "base" }));
-                observador.next(dominios);
-            };
-
-            const onError = (error: any) => {
-                observador.error(error);
-            };
-
-            unsubscribe = this.firebaseContextSvc.run(() => {
-                const dbRef = ref(this.db, "Dominios");
-                return onValue(dbRef, onNext, onError);
-            });
-            return () => unsubscribe();
-        });
+        return listaRtdb(
+            escucharRtdb(this.db, this.firebaseContextSvc, "Dominios"),
+            (valor) => normalizeDominio(valor),
+            (dominio) => dominio.Id > 0,
+        );
     }
 
 }

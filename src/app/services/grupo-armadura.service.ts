@@ -1,12 +1,12 @@
 import { HttpClient } from "@angular/common/http";
 import { Injectable } from "@angular/core";
-import { Database, Unsubscribe, onValue, ref } from "@angular/fire/database";
+import { Database } from "@angular/fire/database";
 import { Observable } from "rxjs";
 import { environment } from "src/environments/environment";
 import { GrupoCompetencia } from "../interfaces/grupo-competencia";
 import { FirebaseInjectionContextService } from "./firebase-injection-context.service";
 import { toNumber, toText } from 'src/app/services/utils/normalizacion';
-import { cacheRtdbOApi, escucharRtdb } from './catalogo-api';
+import { cacheRtdbOApi, escucharRtdb, listaRtdb } from './catalogo-api';
 
 export function normalizeGrupoArmadura(raw: any): GrupoCompetencia {
     return {
@@ -40,30 +40,11 @@ export class GrupoArmaduraService {
     }
 
     getGruposArmaduras(): Observable<GrupoCompetencia[]> {
-        return new Observable((observador) => {
-            let unsubscribe: Unsubscribe;
-
-            const onNext = (snapshot: any) => {
-                const grupos: GrupoCompetencia[] = [];
-                snapshot.forEach((obj: any) => {
-                    const grupo = normalizeGrupoArmadura(obj.val());
-                    if (grupo.Id > 0)
-                        grupos.push(grupo);
-                });
-                grupos.sort((a, b) => a.Nombre.localeCompare(b.Nombre, "es", { sensitivity: "base" }));
-                observador.next(grupos);
-            };
-
-            const onError = (error: any) => {
-                observador.error(error);
-            };
-
-            unsubscribe = this.firebaseContextSvc.run(() => {
-                const dbRef = ref(this.db, "GruposArmaduras");
-                return onValue(dbRef, onNext, onError);
-            });
-            return () => unsubscribe();
-        });
+        return listaRtdb(
+            escucharRtdb(this.db, this.firebaseContextSvc, "GruposArmaduras"),
+            (valor) => normalizeGrupoArmadura(valor),
+            (grupo) => grupo.Id > 0,
+        );
     }
 
 }

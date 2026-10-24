@@ -1,13 +1,13 @@
 import { Injectable } from '@angular/core';
 import { Auth } from '@angular/fire/auth';
-import { Database, Unsubscribe, onValue, ref } from '@angular/fire/database';
+import { Database } from '@angular/fire/database';
 import { Observable } from 'rxjs';
 import { HttpClient } from '@angular/common/http';
 import { environment } from 'src/environments/environment';
 import { Manual } from '../interfaces/manual';
 import { ManualIncludeFlag } from '../config/manual-secciones.config';
 import { FirebaseInjectionContextService } from './firebase-injection-context.service';
-import { cacheRtdbOApi, escucharRtdb } from './catalogo-api';
+import { cacheRtdbOApi, escucharRtdb, listaRtdb } from './catalogo-api';
 
 function toBoolean(value: any): boolean {
     return value === true || value === 1 || value === '1';
@@ -80,30 +80,10 @@ export class ManualService {
     }
 
     getManuales(): Observable<Manual[]> {
-        return new Observable((observador) => {
-            const dbRef = ref(this.db, 'Manuales');
-            let unsubscribe: Unsubscribe;
-
-            const onNext = (snapshot: any) => {
-                const Manuales: Manual[] = [];
-                snapshot.forEach((obj: any) => {
-                    Manuales.push(normalizeManual(obj.val()));
-                });
-
-                Manuales.sort((a, b) => a.Nombre.localeCompare(b.Nombre, 'es', { sensitivity: 'base' }));
-                observador.next(Manuales);
-            };
-
-            const onError = (error: any) => {
-                observador.error(error);
-            };
-
-            unsubscribe = this.firebaseContextSvc.run(() => onValue(dbRef, onNext, onError));
-
-            return () => {
-                unsubscribe();
-            };
-        });
+        return listaRtdb(
+            escucharRtdb(this.db, this.firebaseContextSvc, 'Manuales'),
+            (valor) => normalizeManual(valor),
+        );
     }
 
 }

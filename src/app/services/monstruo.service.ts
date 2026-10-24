@@ -1,6 +1,6 @@
 import { HttpClient } from "@angular/common/http";
 import { Injectable } from "@angular/core";
-import { Database, Unsubscribe, onValue, ref } from "@angular/fire/database";
+import { Database } from "@angular/fire/database";
 import { Observable } from "rxjs";
 import { environment } from "src/environments/environment";
 import { CompaneroMonstruoDetalle, FamiliarMonstruoDetalle, MonstruoDetalle } from "../interfaces/monstruo";
@@ -10,7 +10,7 @@ import {
     normalizeFamiliarMonstruoDetalle,
     normalizeMonstruoDetalle,
 } from "./utils/monstruo-mapper";
-import { cacheRtdbOApi, escucharRtdb } from './catalogo-api';
+import { cacheRtdbOApi, escucharRtdb, listaRtdb } from './catalogo-api';
 
 @Injectable({
     providedIn: "root"
@@ -37,28 +37,11 @@ export class MonstruoService {
     }
 
     getMonstruos(): Observable<MonstruoDetalle[]> {
-        return new Observable((observador) => {
-            const dbRef = ref(this.db, "Monstruos");
-            let unsubscribe: Unsubscribe;
-
-            const onNext = (snapshot: any) => {
-                const monstruos: MonstruoDetalle[] = [];
-                snapshot.forEach((obj: any) => {
-                    const monstruo = normalizeMonstruoDetalle(obj.val(), 1);
-                    if (monstruo.Id > 0)
-                        monstruos.push(monstruo);
-                });
-                monstruos.sort((a, b) => a.Nombre.localeCompare(b.Nombre, "es", { sensitivity: "base" }));
-                observador.next(monstruos);
-            };
-
-            const onError = (error: any) => {
-                observador.error(error);
-            };
-
-            unsubscribe = this.firebaseContextSvc.run(() => onValue(dbRef, onNext, onError));
-            return () => unsubscribe();
-        });
+        return listaRtdb(
+            escucharRtdb(this.db, this.firebaseContextSvc, "Monstruos"),
+            (valor) => normalizeMonstruoDetalle(valor, 1),
+            (monstruo) => monstruo.Id > 0,
+        );
     }
 
     getFamiliar(idFamiliar: number): Observable<FamiliarMonstruoDetalle> {
@@ -75,28 +58,11 @@ export class MonstruoService {
     }
 
     getFamiliares(): Observable<FamiliarMonstruoDetalle[]> {
-        return new Observable((observador) => {
-            const dbRef = ref(this.db, "Familiares");
-            let unsubscribe: Unsubscribe;
-
-            const onNext = (snapshot: any) => {
-                const familiares: FamiliarMonstruoDetalle[] = [];
-                snapshot.forEach((obj: any) => {
-                    const familiar = normalizeFamiliarMonstruoDetalle(obj.val(), 1);
-                    if (familiar.Id_familiar > 0)
-                        familiares.push(familiar);
-                });
-                familiares.sort((a, b) => a.Nombre.localeCompare(b.Nombre, "es", { sensitivity: "base" }));
-                observador.next(familiares);
-            };
-
-            const onError = (error: any) => {
-                observador.error(error);
-            };
-
-            unsubscribe = this.firebaseContextSvc.run(() => onValue(dbRef, onNext, onError));
-            return () => unsubscribe();
-        });
+        return listaRtdb(
+            escucharRtdb(this.db, this.firebaseContextSvc, "Familiares"),
+            (valor) => normalizeFamiliarMonstruoDetalle(valor, 1),
+            (familiar) => familiar.Id_familiar > 0,
+        );
     }
 
     getCompanero(idCompanero: number): Observable<CompaneroMonstruoDetalle> {
@@ -113,28 +79,11 @@ export class MonstruoService {
     }
 
     getCompaneros(): Observable<CompaneroMonstruoDetalle[]> {
-        return new Observable((observador) => {
-            const dbRef = ref(this.db, "Companeros");
-            let unsubscribe: Unsubscribe;
-
-            const onNext = (snapshot: any) => {
-                const companeros: CompaneroMonstruoDetalle[] = [];
-                snapshot.forEach((obj: any) => {
-                    const companero = normalizeCompaneroMonstruoDetalle(obj.val(), 1);
-                    if (companero.Id_companero > 0)
-                        companeros.push(companero);
-                });
-                companeros.sort((a, b) => a.Nombre.localeCompare(b.Nombre, "es", { sensitivity: "base" }));
-                observador.next(companeros);
-            };
-
-            const onError = (error: any) => {
-                observador.error(error);
-            };
-
-            unsubscribe = this.firebaseContextSvc.run(() => onValue(dbRef, onNext, onError));
-            return () => unsubscribe();
-        });
+        return listaRtdb(
+            escucharRtdb(this.db, this.firebaseContextSvc, "Companeros"),
+            (valor) => normalizeCompaneroMonstruoDetalle(valor, 1),
+            (companero) => companero.Id_companero > 0,
+        );
     }
 
 }

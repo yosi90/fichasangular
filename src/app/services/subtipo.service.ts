@@ -1,13 +1,13 @@
 import { HttpClient } from "@angular/common/http";
 import { Injectable } from "@angular/core";
-import { Database, Unsubscribe, onValue, ref } from "@angular/fire/database";
+import { Database } from "@angular/fire/database";
 import { Observable, map, throwError } from "rxjs";
 import { environment } from "src/environments/environment";
 import { SubtipoDetalle, SubtipoResumen } from "../interfaces/subtipo";
 import { FirebaseInjectionContextService } from "./firebase-injection-context.service";
 import { normalizeSubtipoDetalle, normalizeSubtipoResumen } from "./utils/subtipo-mapper";
 import { normalizarTexto } from 'src/app/services/utils/normalizacion';
-import { cacheRtdbOApi, escucharRtdb } from './catalogo-api';
+import { cacheRtdbOApi, escucharRtdb, listaRtdb } from './catalogo-api';
 
 @Injectable({
     providedIn: "root"
@@ -21,25 +21,11 @@ export class SubtipoService {
     ) { }
 
     getSubtipos(): Observable<SubtipoResumen[]> {
-        return new Observable((observador) => {
-            const dbRef = ref(this.db, "Subtipos");
-            let unsubscribe: Unsubscribe;
-
-            const onNext = (snapshot: any) => {
-                const subtipos: SubtipoResumen[] = [];
-                snapshot.forEach((obj: any) => {
-                    const subtipo = normalizeSubtipoResumen(obj.val());
-                    if (subtipo.Id > 0)
-                        subtipos.push(subtipo);
-                });
-                subtipos.sort((a, b) => a.Nombre.localeCompare(b.Nombre, "es", { sensitivity: "base" }));
-                observador.next(subtipos);
-            };
-
-            const onError = (error: any) => observador.error(error);
-            unsubscribe = this.firebaseContextSvc.run(() => onValue(dbRef, onNext, onError));
-            return () => unsubscribe();
-        });
+        return listaRtdb(
+            escucharRtdb(this.db, this.firebaseContextSvc, "Subtipos"),
+            (valor) => normalizeSubtipoResumen(valor),
+            (subtipo) => subtipo.Id > 0,
+        );
     }
 
     getSubtipo(id: number): Observable<SubtipoDetalle> {

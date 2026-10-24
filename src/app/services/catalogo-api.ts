@@ -119,3 +119,31 @@ export function cacheRtdbOApi<T>(lectura: LecturaCacheOApi<T>): Observable<T> {
         return () => dejarDeEscuchar();
     });
 }
+
+const porNombre = (a: { Nombre: string }, b: { Nombre: string }): number =>
+    a.Nombre.localeCompare(b.Nombre, 'es', { sensitivity: 'base' });
+
+/**
+ * Una lista de la caché de la RTDB, sin respaldo de la API: cada vez que cambia la ruta, emite los hijos que pasan
+ * `incluir`, con su mapper, ordenados (por nombre, si no se dice otra cosa).
+ */
+export function listaRtdb<T extends { Nombre: string }>(
+    escuchar: EscuchaRtdb,
+    desdeCache: (valor: any) => T,
+    incluir: (item: T) => boolean = () => true,
+    ordenar: (a: T, b: T) => number = porNombre,
+): Observable<T[]> {
+    return new Observable<T[]>((observador) => {
+        const dejarDeEscuchar = escuchar((snapshot) => {
+            const lista: T[] = [];
+            snapshot.forEach((hijo: any) => {
+                const item = desdeCache(hijo.val());
+                if (incluir(item))
+                    lista.push(item);
+            });
+            lista.sort(ordenar);
+            observador.next(lista);
+        }, (error) => observador.error(error));
+        return () => dejarDeEscuchar();
+    });
+}

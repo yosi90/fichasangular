@@ -1,12 +1,12 @@
 import { HttpClient } from "@angular/common/http";
 import { Injectable } from "@angular/core";
-import { Database, Unsubscribe, onValue, ref } from "@angular/fire/database";
+import { Database } from "@angular/fire/database";
 import { Observable } from "rxjs";
 import { environment } from "src/environments/environment";
 import { ArmaDetalle } from "../interfaces/arma";
 import { FirebaseInjectionContextService } from "./firebase-injection-context.service";
 import { toArray, toNumber, toText } from 'src/app/services/utils/normalizacion';
-import { cacheRtdbOApi, escucharRtdb } from './catalogo-api';
+import { cacheRtdbOApi, escucharRtdb, listaRtdb } from './catalogo-api';
 
 function toBoolean(value: any): boolean {
     if (typeof value === "boolean")
@@ -88,30 +88,11 @@ export class ArmaService {
     }
 
     getArmas(): Observable<ArmaDetalle[]> {
-        return new Observable((observador) => {
-            let unsubscribe: Unsubscribe;
-
-            const onNext = (snapshot: any) => {
-                const armas: ArmaDetalle[] = [];
-                snapshot.forEach((obj: any) => {
-                    const arma = normalizeArma(obj.val());
-                    if (arma.Id > 0)
-                        armas.push(arma);
-                });
-                armas.sort((a, b) => a.Nombre.localeCompare(b.Nombre, "es", { sensitivity: "base" }));
-                observador.next(armas);
-            };
-
-            const onError = (error: any) => {
-                observador.error(error);
-            };
-
-            unsubscribe = this.firebaseContextSvc.run(() => {
-                const dbRef = ref(this.db, "Armas");
-                return onValue(dbRef, onNext, onError);
-            });
-            return () => unsubscribe();
-        });
+        return listaRtdb(
+            escucharRtdb(this.db, this.firebaseContextSvc, "Armas"),
+            (valor) => normalizeArma(valor),
+            (arma) => arma.Id > 0,
+        );
     }
 
 }

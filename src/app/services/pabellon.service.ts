@@ -1,12 +1,12 @@
 import { HttpClient } from "@angular/common/http";
 import { Injectable } from "@angular/core";
-import { Database, Unsubscribe, onValue, ref } from "@angular/fire/database";
+import { Database } from "@angular/fire/database";
 import { Observable } from "rxjs";
 import { environment } from "src/environments/environment";
 import { PabellonDetalle } from "../interfaces/pabellon";
 import { FirebaseInjectionContextService } from "./firebase-injection-context.service";
 import { toNumber, toText } from 'src/app/services/utils/normalizacion';
-import { cacheRtdbOApi, escucharRtdb } from './catalogo-api';
+import { cacheRtdbOApi, escucharRtdb, listaRtdb } from './catalogo-api';
 
 export function normalizePabellon(raw: any): PabellonDetalle {
     return {
@@ -40,28 +40,11 @@ export class PabellonService {
     }
 
     getPabellones(): Observable<PabellonDetalle[]> {
-        return new Observable((observador) => {
-            const dbRef = ref(this.db, "Pabellones");
-            let unsubscribe: Unsubscribe;
-
-            const onNext = (snapshot: any) => {
-                const pabellones: PabellonDetalle[] = [];
-                snapshot.forEach((obj: any) => {
-                    const pabellon = normalizePabellon(obj.val());
-                    if (pabellon.Id > 0)
-                        pabellones.push(pabellon);
-                });
-                pabellones.sort((a, b) => a.Nombre.localeCompare(b.Nombre, "es", { sensitivity: "base" }));
-                observador.next(pabellones);
-            };
-
-            const onError = (error: any) => {
-                observador.error(error);
-            };
-
-            unsubscribe = this.firebaseContextSvc.run(() => onValue(dbRef, onNext, onError));
-            return () => unsubscribe();
-        });
+        return listaRtdb(
+            escucharRtdb(this.db, this.firebaseContextSvc, "Pabellones"),
+            (valor) => normalizePabellon(valor),
+            (pabellon) => pabellon.Id > 0,
+        );
     }
 
 }

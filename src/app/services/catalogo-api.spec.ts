@@ -1,7 +1,7 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { Subject, of, throwError } from 'rxjs';
 import Swal from 'sweetalert2';
-import { EscuchaRtdb, LecturaCacheOApi, cacheRtdbOApi } from './catalogo-api';
+import { EscuchaRtdb, LecturaCacheOApi, cacheRtdbOApi, listaRtdb } from './catalogo-api';
 
 describe('cacheRtdbOApi', () => {
     let emitir: (snapshot: any) => void;
@@ -133,5 +133,38 @@ describe('cacheRtdbOApi', () => {
         fallarRtdb('sin permiso');
 
         expect(errores).toEqual(['sin permiso']);
+    });
+});
+
+describe('listaRtdb', () => {
+    function lista(valores: any[]): any {
+        return { forEach: (fn: (hijo: any) => void) => valores.forEach((v) => fn({ val: () => v })) };
+    }
+
+    it('mapea, filtra y ordena por nombre sin distinguir tildes ni mayúsculas', () => {
+        let emitir: (snapshot: any) => void = () => undefined;
+        const resultado: any[] = [];
+        listaRtdb((onNext) => { emitir = onNext; return () => undefined; },
+            (v) => ({ Id: Number(v.i), Nombre: `${v.n}` }),
+            (item) => item.Id > 0,
+        ).subscribe((items) => resultado.push(items));
+
+        emitir(lista([{ i: 2, n: 'Élfico' }, { i: 0, n: 'Nada' }, { i: 1, n: 'enano' }, { i: 3, n: 'común' }]));
+
+        expect(resultado[0].map((x: any) => x.Nombre)).toEqual(['común', 'Élfico', 'enano']);
+    });
+
+    it('acepta otro orden', () => {
+        let emitir: (snapshot: any) => void = () => undefined;
+        const resultado: any[] = [];
+        listaRtdb((onNext) => { emitir = onNext; return () => undefined; },
+            (v) => ({ Id: v, Nombre: `${10 - v}` }),
+            undefined,
+            (a, b) => a.Id - b.Id,
+        ).subscribe((items) => resultado.push(items));
+
+        emitir(lista([3, 1, 2]));
+
+        expect(resultado[0].map((x: any) => x.Id)).toEqual([1, 2, 3]);
     });
 });

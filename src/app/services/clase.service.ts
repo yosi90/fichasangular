@@ -1,7 +1,7 @@
 import { HttpClient, HttpErrorResponse } from "@angular/common/http";
 import { Injectable } from "@angular/core";
 import { Auth } from "@angular/fire/auth";
-import { Database, Unsubscribe, onValue, ref } from "@angular/fire/database";
+import { Database } from "@angular/fire/database";
 import { Observable, Subject, firstValueFrom, map } from "rxjs";
 import { environment } from "src/environments/environment";
 import { Alineamiento } from "../interfaces/alineamiento";
@@ -20,7 +20,7 @@ import {
 import { FirebaseInjectionContextService } from "./firebase-injection-context.service";
 import { cabeceraApiConFirebase } from './platform-session.service';
 import { normalizarTexto, toArray, toNumber, toText } from 'src/app/services/utils/normalizacion';
-import { cacheRtdbOApi, escucharRtdb } from './catalogo-api';
+import { cacheRtdbOApi, escucharRtdb, listaRtdb } from './catalogo-api';
 
 const CLAVES_PRERREQUISITOS: (keyof ClasePrerrequisitos)[] = [
     "subtipo",
@@ -353,31 +353,10 @@ export class ClaseService {
     }
 
     getClases(): Observable<Clase[]> {
-        return new Observable((observador) => {
-            let unsubscribe: Unsubscribe;
-
-            const onNext = (snapshot: any) => {
-                const clases: Clase[] = [];
-                snapshot.forEach((obj: any) => {
-                    clases.push(normalizeClase(obj.val()));
-                });
-                clases.sort((a, b) => a.Nombre.localeCompare(b.Nombre, "es", { sensitivity: "base" }));
-                observador.next(clases);
-            };
-
-            const onError = (error: any) => {
-                observador.error(error);
-            };
-
-            unsubscribe = this.firebaseContextSvc.run(() => {
-                const dbRef = ref(this.db, "Clases");
-                return onValue(dbRef, onNext, onError);
-            });
-
-            return () => {
-                unsubscribe();
-            };
-        });
+        return listaRtdb(
+            escucharRtdb(this.db, this.firebaseContextSvc, "Clases"),
+            (valor) => normalizeClase(valor),
+        );
     }
 
     buscarPorNombre(nombre: string): Observable<Clase | null> {
