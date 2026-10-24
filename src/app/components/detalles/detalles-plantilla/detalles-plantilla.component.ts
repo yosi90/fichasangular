@@ -4,7 +4,7 @@ import { Plantilla, PlantillaPrerrequisitos } from 'src/app/interfaces/plantilla
 import { SubtipoRef } from 'src/app/interfaces/subtipo';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
 import { normalizarTexto, toNumber } from 'src/app/services/utils/normalizacion';
-import { tieneTextoVisible } from 'src/app/services/utils/texto-visible';
+import { nombreDoteConExtra, tieneTextoVisible } from 'src/app/services/utils/texto-visible';
 import { esCampoId, extraVisibleDesdeRegistro, extraerValorSimple, formatearClave, formatearValor } from 'src/app/services/utils/formato-prerrequisitos';
 
 type PrerrequisitoCondicion = {
@@ -85,6 +85,7 @@ export class DetallesPlantillaComponent {
     }
 
     readonly tieneTextoVisible = tieneTextoVisible;
+    readonly getNombreDote = nombreDoteConExtra;
 
     getSigno(valor: number): string {
         return valor > 0 ? `+${valor}` : `${valor}`;
@@ -331,13 +332,6 @@ export class DetallesPlantillaComponent {
                         : 'No cambia',
                 };
             });
-    }
-
-    getNombreDote(doteCtx: DoteContextual): string {
-        const extra = doteCtx?.Contexto?.Extra;
-        if (this.tieneTextoVisible(extra) && normalizarTexto(extra) !== 'no aplica')
-            return `${doteCtx.Dote.Nombre} (${extra})`;
-        return doteCtx.Dote.Nombre;
     }
 
     getSubtiposActivos(): SubtipoRef[] {

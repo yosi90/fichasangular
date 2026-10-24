@@ -3,8 +3,8 @@ import { DoteContextual } from 'src/app/interfaces/dote-contextual';
 import { Rasgo } from 'src/app/interfaces/rasgo';
 import { SubtipoDetalle } from 'src/app/interfaces/subtipo';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
-import { normalizarTexto, toNumber } from 'src/app/services/utils/normalizacion';
-import { tieneTextoVisible } from 'src/app/services/utils/texto-visible';
+import { toNumber } from 'src/app/services/utils/normalizacion';
+import { nombreDoteConExtra, tieneTextoVisible } from 'src/app/services/utils/texto-visible';
 
 @Component({
     selector: 'app-detalles-subtipo',
@@ -50,13 +50,6 @@ export class DetallesSubtipoComponent {
         const id = Number(idPlantilla);
         if (Number.isFinite(id) && id > 0)
             this.plantillaDetalles.emit(id);
-    }
-
-    getNombreDote(doteCtx: DoteContextual): string {
-        const extra = `${doteCtx?.Contexto?.Extra ?? ''}`.trim();
-        if (this.tieneTextoVisible(extra) && normalizarTexto(extra) !== 'no aplica')
-            return `${doteCtx.Dote.Nombre} (${extra})`;
-        return doteCtx.Dote.Nombre;
     }
 
     getAlineamientoResumen(): string {
@@ -168,5 +161,6 @@ export class DetallesSubtipoComponent {
     }
 
     readonly tieneTextoVisible = tieneTextoVisible;
+    readonly getNombreDote = nombreDoteConExtra;
 
 }

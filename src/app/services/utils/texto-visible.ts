@@ -1,3 +1,4 @@
+import { DoteContextual } from 'src/app/interfaces/dote-contextual';
 import { normalizarTexto } from 'src/app/services/utils/normalizacion';
 
 /**
@@ -26,4 +27,11 @@ const TEXTOS_DE_RELLENO = new Set([
 export function tieneTextoVisible(texto: string | null | undefined): boolean {
     const limpio = normalizarTexto(texto).replace(/[.]/g, '');
     return limpio.length > 0 && !TEXTOS_DE_RELLENO.has(limpio);
+}
+
+/** El nombre de una dote con su extra entre paréntesis, si el extra tiene algo que enseñar. */
+export function nombreDoteConExtra(doteCtx: DoteContextual): string {
+    const extra = `${doteCtx?.Contexto?.Extra ?? ''}`.trim();
+    const nombre = doteCtx?.Dote?.Nombre ?? '';
+    return tieneTextoVisible(extra) ? `${nombre} (${extra})` : nombre;
 }

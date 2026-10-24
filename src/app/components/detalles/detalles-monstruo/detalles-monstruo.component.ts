@@ -5,7 +5,7 @@ import { RacialDetalle } from 'src/app/interfaces/racial';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
 import { buildManiobrabilidadInfoSecciones, tieneManiobrabilidadVisible } from 'src/app/services/utils/maniobrabilidad-info';
 import { normalizarTexto, toNumber } from 'src/app/services/utils/normalizacion';
-import { tieneTextoVisible } from 'src/app/services/utils/texto-visible';
+import { nombreDoteConExtra, tieneTextoVisible } from 'src/app/services/utils/texto-visible';
 
 @Component({
     selector: 'app-detalles-monstruo',
@@ -91,13 +91,6 @@ export class DetallesMonstruoComponent {
         if (!monstruo || toNumber(monstruo.Id) <= 0)
             return;
         this.monstruoRelacionadoDetalles.emit(monstruo);
-    }
-
-    getNombreDote(doteCtx: DoteContextual): string {
-        const extra = `${doteCtx?.Contexto?.Extra ?? ''}`.trim();
-        if (this.tieneTextoVisible(extra) && normalizarTexto(extra) !== 'no aplica')
-            return `${doteCtx.Dote.Nombre} (${extra})`;
-        return doteCtx?.Dote?.Nombre ?? '';
     }
 
     getManualLabel(): string {
@@ -350,6 +343,7 @@ export class DetallesMonstruoComponent {
     }
 
     readonly tieneTextoVisible = tieneTextoVisible;
+    readonly getNombreDote = nombreDoteConExtra;
 
     private formatearListaPersonajes(items: Array<{ id: any; nombre: any; extra?: string; }>): string {
         const textos = items
