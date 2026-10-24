@@ -30,6 +30,7 @@ import { normalizeRaciales } from './utils/racial-mapper';
 import { normalizeSubtipoRefArray } from './utils/subtipo-mapper';
 import { cabeceraApiConFirebase } from './platform-session.service';
 import { normalizarTexto, toArray, toBoolean, toNumber, toText } from 'src/app/services/utils/normalizacion';
+import { experienciaParaNivel } from './utils/experiencia-nivel';
 import { getAlineamientoBasicoIdPorNombre } from './utils/alineamiento-contrato';
 import { calcularOroPorNep } from './utils/oro-inicial';
 
@@ -1004,7 +1005,7 @@ export class PersonajeService {
             nep += toNumber(el?.Ajuste_nivel) + toNumber(el?.Multiplicador_dgs_lic);
         });
 
-        const experiencia = nep > 0 ? ((nep - 1) * nep / 2) * 1000 : 0;
+        const experiencia = experienciaParaNivel(nep);
         const dotesContextuales = toDoteContextualArray(element?.dotes ?? element?.DotesContextuales ?? element?.Dotes);
         const dotes = toDoteLegacyArray(dotesContextuales);
         const progresionLanzador = normalizarProgresionLanzadorPersonaje(
